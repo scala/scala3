@@ -13,6 +13,7 @@ import Names.Name
 import StdNames.nme
 import NameOps.*
 import NameKinds.LazyVarHandleName
+import util.Lst
 
 import ast.*
 
@@ -48,7 +49,7 @@ class MoveStatics extends MiniPhase with SymTransformer {
         val newBodyWithStaticConstr =
           if (staticFields.nonEmpty) {
             /* do NOT put Flags.JavaStatic here. It breaks .enclosingClass */
-            val staticCostructor = newSymbol(orig.symbol, nme.STATIC_CONSTRUCTOR, Flags.Synthetic | Flags.Method | Flags.Private, MethodType(Nil, defn.UnitType))
+            val staticCostructor = newSymbol(orig.symbol, nme.STATIC_CONSTRUCTOR, Flags.Synthetic | Flags.Method | Flags.Private, MethodType(Lst(), defn.UnitType))
             staticCostructor.addAnnotation(Annotation(defn.ScalaStaticAnnot, staticCostructor.span))
             staticCostructor.entered
 

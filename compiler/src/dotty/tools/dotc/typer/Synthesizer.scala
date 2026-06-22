@@ -12,7 +12,7 @@ import ProtoTypes.*
 import Inferencing.{fullyDefinedType, isFullyDefined}
 import ast.untpd
 import transform.SyntheticMembers.*
-import util.Property
+import util.{Property, Lst}
 import ast.Trees.genericEmptyTree
 import annotation.{tailrec, constructorOnly}
 import ast.tpd
@@ -116,7 +116,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                 .appliedTo(arg.select(nme.asInstanceOf_).appliedToType(t)),
               ref(defn.NoneModule))
           }
-          val tpe = MethodType(List(nme.s))(_ => List(tp1), mth => defn.OptionClass.typeRef.appliedTo(mth.newParamRef(0) & tp2))
+          val tpe = MethodType(Lst(nme.s))(_ => Lst(tp1), mth => defn.OptionClass.typeRef.appliedTo(mth.newParamRef(0) & tp2))
           val meth = newAnonFun(ctx.owner, tpe, coord = span)
           val typeTestType = defn.TypeTestClass.typeRef.appliedTo(List(tp1, tp2))
           withNoErrors(Closure(meth, tss => body(tss.head).changeOwner(ctx.owner, meth), targetType = typeTestType).withSpan(span))
@@ -597,13 +597,13 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                     case tp => tp
                   resType <:< target
                   val tparams = poly.paramRefs
-                  val variances = childClass.typeParams.map(_.paramVarianceSign)
-                  @tailrec def fixInstances(cur: List[Type]): List[Type] =
+                  val variances = childClass.typeParams.map(_.paramVarianceSign).toArray
+                  @tailrec def fixInstances(cur: Lst[Type]): Lst[Type] =
                     val next = cur.mapConserve(_.substParams(poly, cur))
-                    if next eq cur then next else fixInstances(next)
+                    if next `eq` cur then next else fixInstances(next)
                   val instanceTypes = {
-                    val types0 = tparams.lazyZip(variances).map: (tparam, variance) =>
-                      TypeComparer.instanceType(tparam, fromBelow = variance < 0, Widen.Unions)
+                    val types0 = Lst.tabulate(tparams.length min variances.length): i =>
+                      TypeComparer.instanceType(tparams(i), fromBelow = variances(i) < 0, Widen.Unions)
                     fixInstances(types0)
                   }
                   val instanceType = resType.substParams(poly, instanceTypes)

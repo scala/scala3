@@ -173,8 +173,8 @@ object ApplyArgsExtractor:
               case _ => defaultBaseParams
           else
             refinedType match
-              case RefinedType(AppliedType(_, args), _, MethodType(ri)) =>
-                baseParams0.zip(ri).zip(args).map { case ((sym, name), arg) =>
+              case RefinedType(AppliedType(_, args), _, MethodType(pnames)) =>
+                baseParams0.zip(pnames.toList).zip(args).map { case ((sym, name), arg) =>
                   RefinedSymbol(sym, name, arg)
                 }
               case _ => defaultBaseParams

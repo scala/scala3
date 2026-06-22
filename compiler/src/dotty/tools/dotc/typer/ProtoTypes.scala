@@ -8,7 +8,7 @@ import Contexts.*, Types.*, Denotations.*, Names.*, StdNames.*, NameOps.*, Symbo
 import NameKinds.DepParamName
 import Trees.*
 import Constants.*
-import util.{Stats, SimpleIdentityMap, SimpleIdentitySet}
+import util.{Stats, SimpleIdentityMap, SimpleIdentitySet, Lst, SourceFile}
 import Decorators.*
 import Uniques.*
 import Flags.{Method, Transparent}
@@ -17,7 +17,6 @@ import config.{Feature, SourceVersion}
 import config.Printers.typr
 import Inferencing.*
 import ErrorReporting.*
-import util.SourceFile
 import util.Spans.{NoSpan, Span}
 import TypeComparer.necessarySubType
 import reporting.*
@@ -534,7 +533,7 @@ object ProtoTypes {
               val passedConstraint = passedTyperState.constraint
               val newLambdas = newConstraint.domainLambdas.filter(tl =>
                 !passedConstraint.contains(tl) || passedConstraint.hasConflictingTypeVarsFor(tl, newConstraint))
-              val newTvars = newLambdas.flatMap(_.paramRefs).map(newConstraint.typeVarOfParam)
+              val newTvars = newLambdas.flatMap(_.paramRefs.toIterable).map(newConstraint.typeVarOfParam)
 
               args1.foreach(arg => Inferencing.instantiateSelected(arg.tpe, newTvars))
 
@@ -818,7 +817,7 @@ object ProtoTypes {
       case tp: MethodType if tp.isContextualMethod =>
         val ownBounds =
           for
-            case PreciseConstrained(ref: TypeParamRef, singleton) <- tp.paramInfos
+            case PreciseConstrained(ref: TypeParamRef, singleton) <- tp.paramInfosList
             if !singletonOnly || singleton
           yield ref
         ownBounds.toSet ++ preciseConstrainedRefs(tp.resType, singletonOnly)
@@ -829,7 +828,7 @@ object ProtoTypes {
 
     def newTypeVars: List[TypeVar] =
       val preciseRefs = preciseConstrainedRefs(added, singletonOnly = false)
-      for paramRef <- added.paramRefs yield
+      for paramRef <- added.paramRefsList yield
         val tvar = TypeVar(paramRef, state, nestingLevel, precise = preciseRefs.contains(paramRef))
         state.ownedVars += tvar
         tvar
@@ -854,7 +853,7 @@ object ProtoTypes {
   /** Instantiate `tl` with fresh type variables added to the constraint. */
   def instantiateWithTypeVars(tl: TypeLambda)(using Context): Type =
     val tvars = constrained(tl)
-    tl.instantiate(tvars)
+    tl.instantiateWithList(tvars)
 
   /** A fresh type variable added to the current constraint.
    *  @param  bounds        The initial bounds of the variable
@@ -869,8 +868,8 @@ object ProtoTypes {
   def newTypeVar(using Context)(
       bounds: TypeBounds, name: TypeName = DepParamName.fresh().toTypeName,
       nestingLevel: Int = ctx.nestingLevel, represents: Type = NoType): TypeVar =
-    val poly = PolyType(name :: Nil)(
-        pt => bounds :: Nil,
+    val poly = PolyType(Lst(name))(
+        pt => Lst(bounds),
         pt => represents.orElse(defn.AnyType))
     constrained(poly, untpd.EmptyTree, alwaysAddTypeVars = true, nestingLevel)
       ._2.head
@@ -942,7 +941,7 @@ object ProtoTypes {
               if (rt eq mt.resultType) tp
               else mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
             case _ =>
-              val ft = defn.FunctionOf(mt.paramInfos, rt)
+              val ft = defn.FunctionOf(mt.paramInfosList, rt)
               if mt.paramInfos.nonEmpty || (ft frozen_<:< pt) then ft else rt
           }
         }

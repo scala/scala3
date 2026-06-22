@@ -23,14 +23,14 @@ import dotty.tools.dotc.transform.ValueClasses
   *   - box and unbox captured variables where necessary
   *   - evaluate by-name params where necessary
   *   - resolve captured variables and check they are available (they may not be captured at runtime)
-  * 
+  *
   * Before:
   *   this.reflectEval(a, "ReflectEvalStrategy.MethodCall(m)", args)
-  * 
+  *
   * After:
   *   this.callMethod(a, "example.A", "m", ["ArgType1", "ArgType2"], "ResType", args)
   *
-  */ 
+  */
 private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionStore: ExpressionStore) extends MiniPhase:
   private val reflectEvalName = termName("reflectEval")
   private val elemName = termName("elem")
@@ -61,14 +61,14 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
             case ReflectEvalStrategy.This(cls) => gen.getThisObject
             case ReflectEvalStrategy.LocalOuter(cls) => gen.getLocalValue("$outer")
             case ReflectEvalStrategy.Outer(outerCls) => gen.getOuter(qualifier, outerCls)
-            
+
             case ReflectEvalStrategy.LocalValue(variable, isByName) =>
               val variableName = JavaEncoding.encode(variable.name)
               val rawLocalValue = gen.getLocalValue(variableName)
               val localValue = if isByName then gen.evaluateByName(rawLocalValue) else rawLocalValue
               val derefLocalValue = gen.derefCapturedVar(localValue, variable)
               gen.boxIfValueClass(variable, derefLocalValue)
-            
+
             case ReflectEvalStrategy.LocalValueAssign(variable) =>
               val value = gen.unboxIfValueClass(variable, args.head)
               val typeSymbol = variable.info.typeSymbol.asType
@@ -82,7 +82,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
                     value
                   )
                 case _ => gen.setLocalValue(variableName, value)
-            
+
             case ReflectEvalStrategy.ClassCapture(variable, cls, isByName) =>
               val rawCapture = gen
                 .getClassCapture(tree)(qualifier, variable.name, cls)
@@ -93,7 +93,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
               val capture = if isByName then gen.evaluateByName(rawCapture) else rawCapture
               val capturedValue = gen.derefCapturedVar(capture, variable)
               gen.boxIfValueClass(variable, capturedValue)
-            
+
             case ReflectEvalStrategy.ClassCaptureAssign(variable, cls) =>
               val capture = gen
                 .getClassCapture(tree)(qualifier, variable.name, cls)
@@ -105,7 +105,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
               val typeSymbol = variable.info.typeSymbol
               val elemField = typeSymbol.info.decl(elemName).symbol
               gen.setField(tree)(capture, elemField.asTerm, value)
-            
+
             case ReflectEvalStrategy.MethodCapture(variable, method, isByName) =>
               val rawCapture = gen
                 .getMethodCapture(method, variable.name)
@@ -116,7 +116,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
               val capture = if isByName then gen.evaluateByName(rawCapture) else rawCapture
               val capturedValue = gen.derefCapturedVar(capture, variable)
               gen.boxIfValueClass(variable, capturedValue)
-            
+
             case ReflectEvalStrategy.MethodCaptureAssign(variable, method) =>
               val capture = gen
                 .getMethodCapture(method, variable.name)
@@ -128,9 +128,9 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
               val typeSymbol = variable.info.typeSymbol
               val elemField = typeSymbol.info.decl(elemName).symbol
               gen.setField(tree)(capture, elemField.asTerm, value)
-            
+
             case ReflectEvalStrategy.StaticObject(obj) => gen.getStaticObject(obj)
-            
+
             case ReflectEvalStrategy.Field(field, isByName) =>
               // if the field is lazy, if it is private in a value class or a trait
               // then we must call the getter method
@@ -141,13 +141,13 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
                   val rawValue = gen.getField(tree)(qualifier, field)
                   if isByName then gen.evaluateByName(rawValue) else rawValue
               gen.boxIfValueClass(field, fieldValue)
-            
+
             case ReflectEvalStrategy.FieldAssign(field) =>
               val arg = gen.unboxIfValueClass(field, args.head)
               if field.owner.is(Trait) then
                 gen.callMethod(tree)(qualifier, field.setter.asTerm, List(arg))
               else gen.setField(tree)(qualifier, field, arg)
-            
+
             case ReflectEvalStrategy.MethodCall(method) => gen.callMethod(tree)(qualifier, method, args)
             case ReflectEvalStrategy.ConstructorCall(ctor, cls) => gen.callConstructor(tree)(qualifier, ctor, args)
         case _ => super.transform(tree)
@@ -228,7 +228,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
 
     def getMethodCapture(method: TermSymbol, originalName: TermName): Option[Tree] =
       val methodType = method.info.asInstanceOf[MethodType]
-      methodType.paramNames
+      methodType.paramNamesList
         .collectFirst { case name @ DerivedName(n, _) if n == originalName => name }
         .map(param => getLocalValue(JavaEncoding.encode(param)))
 
@@ -273,7 +273,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
 
     def callMethod(tree: Tree)(qualifier: Tree, method: TermSymbol, args: List[Tree]): Tree =
       val methodType = method.info.asInstanceOf[MethodType]
-      val paramTypesNames = methodType.paramInfos.map(JavaEncoding.encode)
+      val paramTypesNames = methodType.paramInfosList.map(JavaEncoding.encode)
       val paramTypesArray = JavaSeqLiteral(
         paramTypesNames.map(t => Literal(Constant(t))),
         TypeTree(ctx.definitions.StringType)
@@ -282,13 +282,13 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
       def unknownCapture(name: Name): Tree =
         report.error(s"Unknown captured variable $name in $method", reflectEval.srcPos)
         ref(defn.Predef_undefined)
-      val capturedArgs = methodType.paramNames.dropRight(args.size).map {
+      val capturedArgs = methodType.paramNamesList.dropRight(args.size).map {
         case name @ DerivedName(underlying, _) => capturedValue(tree)(method, underlying).getOrElse(unknownCapture(name))
         case name => unknownCapture(name)
       }
 
       val erasedMethodInfo = atPhase(Phases.elimErasedValueTypePhase)(method.info).asInstanceOf[MethodType]
-      val unboxedArgs = erasedMethodInfo.paramInfos.takeRight(args.size).zip(args).map {
+      val unboxedArgs = erasedMethodInfo.paramInfosList.takeRight(args.size).zip(args).map {
         case (tpe: ErasedValueType, arg) => unboxValueClass(arg, tpe)
         case (_, arg) => arg
       }
@@ -313,11 +313,11 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
 
     def callConstructor(tree: Tree)(qualifier: Tree, ctor: TermSymbol, args: List[Tree]): Tree =
       val methodType = ctor.info.asInstanceOf[MethodType]
-      val paramTypesNames = methodType.paramInfos.map(JavaEncoding.encode)
+      val paramTypesNames = methodType.paramInfosList.map(JavaEncoding.encode)
       val clsName = JavaEncoding.encode(methodType.resType)
 
       val capturedArgs =
-        methodType.paramNames.dropRight(args.size).map {
+        methodType.paramNamesList.dropRight(args.size).map {
           case outer if outer == nme.OUTER => qualifier
           case name @ DerivedName(underlying, _) =>
             // if derived then probably a capture
@@ -333,7 +333,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
 
       val erasedCtrInfo = atPhase(Phases.elimErasedValueTypePhase)(ctor.info)
         .asInstanceOf[MethodType]
-      val unboxedArgs = erasedCtrInfo.paramInfos.takeRight(args.size).zip(args).map {
+      val unboxedArgs = erasedCtrInfo.paramInfosList.takeRight(args.size).zip(args).map {
         case (tpe: ErasedValueType, arg) => unboxValueClass(arg, tpe)
         case (_, arg) => arg
       }

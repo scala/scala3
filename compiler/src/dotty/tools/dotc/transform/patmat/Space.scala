@@ -569,18 +569,18 @@ object SpaceEngine {
       case mt: MethodType => mt
       case pt: PolyType   =>
         scrutineeTp match
-        case AppliedType(tycon, targs)
+        case stp @ AppliedType(tycon, _)
             if unappSym.is(Synthetic)
             && (pt.resultType.asInstanceOf[MethodType].paramInfos.head.typeConstructor =:= tycon) =>
           // Special case synthetic unapply/unapplySeq's
           // Provided the shapes of the types match:
           // the scrutinee type being unapplied and
           // the unapply parameter type
-          pt.instantiate(targs).asInstanceOf[MethodType]
+          pt.instantiate(stp.argsLst).asInstanceOf[MethodType]
         case _ =>
           val locked = ctx.typerState.ownedVars
           val tvars = constrained(pt)
-          val mt = pt.instantiate(tvars).asInstanceOf[MethodType]
+          val mt = pt.instantiateWithList(tvars).asInstanceOf[MethodType]
           val unapplyArgType = mt.paramInfos.head
           scrutineeTp <:< unapplyArgType
           // force type inference to infer a narrower type: could be singleton
@@ -826,7 +826,7 @@ object SpaceEngine {
 
   /** Display spaces.  Used for printing uncovered spaces in the in-exhaustive error message. */
   def display(s: Space)(using Context): String = inContext(ctx.fresh.setPrinterFn(LocalPrinter(_))) {
-    def params(tp: Type): List[Type] = tp.classSymbol.primaryConstructor.info.firstParamTypes
+    def params(tp: Type): Lst[Type] = tp.classSymbol.primaryConstructor.info.firstParamTypes
 
     /** does the companion object of the given symbol have custom unapply */
     def hasCustomUnapply(sym: Symbol): Boolean = {

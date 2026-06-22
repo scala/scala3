@@ -581,7 +581,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       if !isExempt then
         val paramNames = atPhase(thisPhase.prev):
           fn.tpe.widenDealias match
-            case tl: TypeLambda => tl.paramNames
+            case tl: TypeLambda => tl.paramNamesList
             case ref: AppliedType if ref.typeSymbol.isClass => ref.typeSymbol.typeParams.map(_.name)
             case t => args.map(_ => EmptyTypeName)
 
@@ -769,7 +769,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val arg :: Nil = tree.args: @unchecked
         withDiscardedUses(recheck(arg, pt))
       else if meth == defn.Caps_freeze then
-        freeze(super.recheckApply(tree, pt), tree.srcPos)
+        Mutability.freeze(super.recheckApply(tree, pt), tree.srcPos)
       else
         val res = super.recheckApply(tree, pt)
         includeCallCaptures(meth, res, tree)
@@ -924,7 +924,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         var refined: Type = core
         val implied = cls.creationCapset(core)
         var allCaptures: CaptureSet = initCs ++ implied
-        for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
+        for (getterName, argType) <- mt.paramNames.zip(argTypes.toLst) do
           val getter = cls.refiningGetterNamed(getterName)
           if !getter.is(Private) && getter.hasTrackedParts then
             if argType.exists then
@@ -1069,8 +1069,8 @@ class CheckCaptures extends Recheck, SymTransformer:
           case CapturingType(parent, _) =>
             matchParamsAndResult(paramss, parent)
           case defn.PolyFunctionOf(poly: PolyType) =>
-            assert(params.hasSameLengthAs(poly.paramInfos))
-            matchParamsAndResult(paramss1, poly.instantiate(params.map(_.symbol.typeRef)))
+            assert(params.length == poly.paramInfos.length)
+            matchParamsAndResult(paramss1, poly.instantiate(params.mapToLst(_.symbol.typeRef)))
           case FunctionOrMethod(argTypes, resType) =>
             assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
             inContext(ctx.withOwner(anonfun)) {
@@ -1765,13 +1765,13 @@ class CheckCaptures extends Recheck, SymTransformer:
         if defn.isNonRefinedFunction(expected) =>
           actual match
             case defn.RefinedFunctionOf(rinfo: MethodType) =>
-              depFun(args, resultType, isContextual, rinfo.paramNames)
+              depFun(args.toLst, resultType, isContextual, rinfo.paramNames)
             case _ => expected
         case expected @ defn.RefinedFunctionOf(einfo: MethodType)
         if einfo.allParamNamesSynthetic =>
           actual match
             case defn.RefinedFunctionOf(ainfo: MethodType)
-            if !ainfo.allParamNamesSynthetic && ainfo.paramNames.hasSameLengthAs(einfo.paramNames) =>
+            if !ainfo.allParamNamesSynthetic && ainfo.paramNames.length == einfo.paramNames.length =>
               einfo.derivedLambdaType(paramNames = ainfo.paramNames)
                 .toFunctionType(alwaysDependent = true)
             case _ => expected
@@ -2348,14 +2348,14 @@ class CheckCaptures extends Recheck, SymTransformer:
           case TypeApply(fun, args) =>
             fun.nuType.widen match
               case tl: PolyType =>
-                val normArgs = args.lazyZip(tl.paramInfos).map: (arg, bounds) =>
+                val normArgs = args.lazyZip(tl.paramInfosList).map: (arg, bounds) =>
                   arg.withType(arg.nuType.forceBoxStatus(
                     bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
                 withCollapsedLocalCaps: // OK? We need this since bounds use GlobalAny instead of LocalCap
                   // TODO Do bounds still contain GlobalAny?
                   checkBounds(normArgs, tl)
                 if ccConfig.postCheckCapturesets then
-                  args.lazyZip(tl.paramNames).foreach(checkTypeParam(_, _, fun.symbol))
+                  args.toLst.lazyZip(tl.paramNames).foreach(checkTypeParam(_, _, fun.symbol))
               case _ =>
           case TypeDef(_, impl: Template) =>
             val cls = tree.symbol.asClass

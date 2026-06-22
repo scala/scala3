@@ -11,7 +11,7 @@ import NameKinds.{DefaultGetterName, ModuleClassName}
 import ast.desugar, ast.desugar.*
 import ProtoTypes.*
 import util.Spans.*
-import util.Property
+import util.{Property, Lst}
 import collection.mutable, mutable.ListBuffer
 import tpd.tpes
 import Variances.alwaysInvariant
@@ -1129,7 +1129,7 @@ class Namer { typer: Typer =>
       given ctx: Context = nestedCtx.nn
 
       def abstracted(tp: TypeBounds): TypeBounds =
-        HKTypeLambda.boundsFromParams(tparamSyms, tp)
+        HKTypeLambda.boundsFromParams(tparamSyms.toLst, tp)
 
       val dummyInfo1 = abstracted(TypeBounds.empty)
       sym.info = dummyInfo1
@@ -1167,7 +1167,7 @@ class Namer { typer: Typer =>
         case tp: TypeBounds =>
           def recur(tp: Type): Type = tp match
             case tp: HKTypeLambda if !tp.isDeclaredVarianceLambda =>
-              val tp1 = tp.withVariances(tp.paramNames.map(alwaysInvariant))
+              val tp1 = tp.withVariances(tp.paramNamesList.map(alwaysInvariant))
               tp1.derivedLambdaType(resType = recur(tp1.resType))
             case tp => tp
           tp.derivedTypeBounds(tp.lo, recur(tp.hi))
@@ -2185,13 +2185,13 @@ class Namer { typer: Typer =>
             case info: PolyType =>
               paramss match
                 case TypeSymbols(tparams) :: paramss1 if info.paramNames.length == tparams.length =>
-                  instantiatedResType(info.instantiate(tparams.map(_.typeRef)), paramss1)
+                  instantiatedResType(info.instantiate(tparams.mapToLst(_.typeRef)), paramss1)
                 case _ =>
                   NoType
             case info: MethodType =>
               paramss match
                 case TermSymbols(vparams) :: paramss1 if info.paramNames.length == vparams.length =>
-                  instantiatedResType(info.instantiate(vparams.map(_.termRef)), paramss1)
+                  instantiatedResType(info.instantiate(vparams.mapToLst(_.termRef)), paramss1)
                 case _ =>
                   NoType
             case _ =>
@@ -2219,7 +2219,7 @@ class Namer { typer: Typer =>
             sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
           else
             ctx.defContext(sym).denotNamed(original)
-        def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
+        def paramProto(paramss: List[Lst[Type]], idx: Int): Type = paramss match {
           case params :: paramss1 =>
             if (idx < params.length) params(idx)
             else paramProto(paramss1, idx - params.length)

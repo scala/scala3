@@ -13,6 +13,7 @@ import scala.collection.mutable
 import Names.{TermName, termName, EmptyTermName}
 import NameKinds.*
 import dotty.tools.tasty.TastyHeader
+import Decorators.toLst
 
 case class CommonTastyHeader(
   uuid: UUID,
@@ -103,7 +104,7 @@ class TastyUnpickler(protected val reader: TastyReader, isBestEffortTasty: Boole
     def readSignedRest(original: TermName, target: TermName): TermName =
       val result = readName().toTypeName
       val paramsSig = until(end)(readParamSig())
-      val sig = Signature(paramsSig, result)
+      val sig = Signature(paramsSig.toLst, result)
       SignedName(original, sig, target)
 
     val result = tag match {

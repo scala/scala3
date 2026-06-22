@@ -7,6 +7,7 @@ import scala.meta.pc.OffsetParams
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Decorators.flattenLst
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Types.MethodType
 import dotty.tools.dotc.interactive.Interactive
@@ -36,7 +37,7 @@ final class ConvertToNamedArgumentsProvider(
 
     def paramss(fun: tpd.Tree)(using Context): List[String] =
       fun.typeOpt match
-        case m: MethodType => m.paramNamess.flatten.map(_.toString)
+        case m: MethodType => m.paramNamess.flattenLst.map(_.toString).toList
         case _ =>
           fun.symbol.rawParamss.flatten
             .filter(!_.isTypeParam)

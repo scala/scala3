@@ -108,7 +108,7 @@ trait Migrations:
   def contextBoundParams(tree: Tree, tp: Type, pt: FunProto)(using Context): Unit =
     val mversion = mv.ExplicitContextBoundArgument
     def isContextBoundParams = tp.stripPoly match
-      case MethodType(ContextBoundParamName(_) :: _) => true
+      case MethodType(pnames) if pnames.length > 0 && pnames(0).is(ContextBoundParamName) => true
       case _ => false
     if sourceVersion.isAtLeast(`3.4`)
       && isContextBoundParams

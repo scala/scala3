@@ -5,6 +5,7 @@ import scala.meta.pc.SymbolSearch
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Decorators.flattenLst
 import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
@@ -92,5 +93,5 @@ object InferCompletionType:
       // f(@@)
       case ApplyExtractor(app) =>
         val idx = app.args.indexWhere(_.span.contains(span))
-        if idx < 0 then None else app.fun.tpe.widenTermRefExpr.paramInfoss.flatten.lift(idx)
+        if idx < 0 then None else app.fun.tpe.widenTermRefExpr.paramInfoss.flattenLst.toList.lift(idx)
       case _ => None

@@ -5,7 +5,7 @@ package core
 import Contexts.*, Types.*, Symbols.*, Names.*, NameKinds.*, Flags.*
 import SymDenotations.*
 import util.Spans.*
-import util.Stats
+import util.{Stats, Lst}
 import Decorators.*
 import StdNames.*
 import collection.mutable
@@ -452,7 +452,7 @@ object TypeOps:
     }
 
     val raw = refinableDecls.foldLeft(parentType)(addRefinement)
-    HKTypeLambda.fromParams(cls.typeParams, raw) match {
+    HKTypeLambda.fromParams(cls.typeParamsLst, raw) match {
       case tl: HKTypeLambda => tl.derivedLambdaType(resType = close(tl.resType))
       case tp => close(tp)
     }
@@ -500,7 +500,7 @@ object TypeOps:
             else if isExpandingBounds then emptyRange
             else mapOver(tp)
           case tl: HKTypeLambda =>
-            localParamRefs ++= tl.paramRefs
+            localParamRefs ++= tl.paramRefsList
             mapOver(tl)
           case _ =>
             super.apply(tp)
@@ -604,8 +604,8 @@ object TypeOps:
    */
   def boundsViolations(
       args: List[Tree],
-      boundss: List[TypeBounds],
-      instantiate: (Type, List[Type]) => Type,
+      boundss: Lst[TypeBounds],
+      instantiate: (Type, Lst[Type]) => Type,
       app: Type)(
       using Context): List[BoundsViolation] = withMode(Mode.CheckBoundsOrSelfType) {
     val argTypes = args.tpes
@@ -681,8 +681,9 @@ object TypeOps:
           narrowBound(sym.info.hiBound, fromBelow = false)
         }
       }
-      val hiBound = instantiate(bounds.hi, skolemizedArgTypes)
-      val loBound = instantiate(bounds.lo, skolemizedArgTypes)
+      val skolemizedArgTypesArray = skolemizedArgTypes.toLst
+      val hiBound = instantiate(bounds.hi, skolemizedArgTypesArray)
+      val loBound = instantiate(bounds.lo, skolemizedArgTypesArray)
 
       def check(tp1: Type, tp2: Type, which: String, bound: Type)(using Context) =
         val isSub = TypeComparer.isSubType(tp1, tp2)
@@ -700,42 +701,41 @@ object TypeOps:
       check(loBound, hi, "lower", loBound)(using checkCtx)
     }
 
-    def loop(args: List[Tree], boundss: List[TypeBounds]): Unit = args match
-      case arg :: args1 => boundss match
-        case bounds :: boundss1 =>
+    def loop(args: List[Tree], boundsIdx: Int): Unit = args match
+      case arg :: args1 if boundsIdx < boundss.length =>
+        val bounds = boundss(boundsIdx)
 
-          // Drop caps.Pure from a bound (1) at the top-level, (2) in an `&`, (3) under a type lambda.
-          def dropPure(tp: Type): Option[Type] = tp match
-            case tp @ AndType(tp1, tp2) =>
-              dropPure(tp1) match
-                case Some(tp1o) =>
-                  dropPure(tp2) match
-                    case Some(tp2o) => Some(tp.derivedAndType(tp1o, tp2o))
-                    case None => Some(tp1o)
-                case None =>
-                  dropPure(tp2)
-            case tp: HKTypeLambda =>
-              for rt <- dropPure(tp.resType) yield
-                tp.derivedLambdaType(resType = rt)
-            case _ =>
-              if tp.typeSymbol == defn.PureClass then None
-              else Some(tp)
+        // Drop caps.Pure from a bound (1) at the top-level, (2) in an `&`, (3) under a type lambda.
+        def dropPure(tp: Type): Option[Type] = tp match
+          case tp @ AndType(tp1, tp2) =>
+            dropPure(tp1) match
+              case Some(tp1o) =>
+                dropPure(tp2) match
+                  case Some(tp2o) => Some(tp.derivedAndType(tp1o, tp2o))
+                  case None => Some(tp1o)
+              case None =>
+                dropPure(tp2)
+          case tp: HKTypeLambda =>
+            for rt <- dropPure(tp.resType) yield
+              tp.derivedLambdaType(resType = rt)
+          case _ =>
+            if tp.typeSymbol == defn.PureClass then None
+            else Some(tp)
 
-          val relevantBounds =
-            if Feature.ccEnabled then bounds
-            else
-              // Drop caps.Pure from bound, it should be checked only when capture checking is enabled
-              dropPure(bounds.hi).match
-                case Some(hi1) => bounds.derivedTypeBounds(bounds.lo, hi1)
-                case None => TypeBounds(bounds.lo, defn.AnyKindType)
-          arg.tpe match
-            case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi, arg, relevantBounds)
-            case tp => checkOverlapsBounds(tp, tp, arg, relevantBounds)
-          loop(args1, boundss1)
-        case _ =>
+        val relevantBounds =
+          if Feature.ccEnabled then bounds
+          else
+            // Drop caps.Pure from bound, it should be checked only when capture checking is enabled
+            dropPure(bounds.hi).match
+              case Some(hi1) => bounds.derivedTypeBounds(bounds.lo, hi1)
+              case None => TypeBounds(bounds.lo, defn.AnyKindType)
+        arg.tpe match
+          case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi, arg, relevantBounds)
+          case tp => checkOverlapsBounds(tp, tp, arg, relevantBounds)
+        loop(args1, boundsIdx + 1)
       case _ =>
 
-    loop(args, boundss)
+    loop(args, 0)
     violations.toList
   }
 

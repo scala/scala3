@@ -19,7 +19,7 @@ import core.Symbols.isLocalToBlock
 import interactive.Interactive
 import util.Spans.Span
 import reporting.*
-
+import core.Decorators.*
 
 object Signatures {
 
@@ -344,7 +344,7 @@ object Signatures {
    */
   private def extractParamNamess(resultType: Type, denot: Denotation)(using Context): List[List[Name]] =
     if resultType.typeSymbol.flags.is(Flags.CaseClass) && denot.symbol.flags.is(Flags.Synthetic) then
-      resultType.typeSymbol.primaryConstructor.paramInfo.paramNamess
+      resultType.typeSymbol.primaryConstructor.paramInfo.paramNamess.map(_.toList)
     else
       Nil
 
@@ -505,12 +505,12 @@ object Signatures {
       && symbol.paramSymss.flatten.find(_.name.show == name).exists(_.flags.isOneOf(Flags.GivenOrImplicit))
 
     def toTypeParam(tpe: PolyType): List[Param] =
-      val evidenceParams = (tpe.paramNamess.flatten zip tpe.paramInfoss.flatten).flatMap:
+      val evidenceParams = (tpe.paramNamess.flattenLst `zip` tpe.paramInfoss.flattenLst).toList.flatMap:
         case (name, AppliedType(tpe, (ref: TypeParamRef) :: _)) if isSyntheticEvidence(name.show) =>
           Some(ref.paramName -> tpe)
         case _ => None
 
-      val tparams = tpe.paramNames.zip(tpe.paramInfos)
+      val tparams = tpe.paramNames.zip(tpe.paramInfos).toList
       tparams.map: (name, info) =>
         evidenceParams.find((evidenceName: TypeName, _: Type) => name == evidenceName).flatMap:
           case (_, tparam) => tparam.show.split('.').lastOption
@@ -535,7 +535,7 @@ object Signatures {
 
       def toParams(tp: Type, apply: Option[untpd.GenericApply], paramList: Int)(using Context): List[Param] =
         val currentParams = (paramSymss.lift(paramList), tp.paramInfoss.headOption) match
-          case (Some(params), Some(infos)) => params zip infos
+          case (Some(params), Some(infos)) => params zip infos.toList
           case _ => Nil
 
         val params = currentParams.map: (symbol, info) =>
@@ -708,7 +708,7 @@ object Signatures {
           case tpe: MethodType =>
             val score = alreadyCurriedBonus +
               userParamsTypes
-                .zip(tpe.paramInfos)
+                .zip(tpe.paramInfosList)
                 .takeWhile { case (t0, t1) =>t0 <:< t1 }
                 .size
             (score, -tpe.paramInfos.length)

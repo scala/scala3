@@ -12,6 +12,7 @@ import scala.meta.pc.SymbolSearch
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Decorators.flattenLst
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.NameOps.fieldName
@@ -496,8 +497,8 @@ object Parameters:
             None
           else
             val funTp = fun.typeOpt.widenTermRefExpr
-            val paramNames = funTp.paramNamess.flatten
-            val paramInfos = funTp.paramInfoss.flatten
+            val paramNames = funTp.paramNamess.flattenLst.toList
+            val paramInfos = funTp.paramInfoss.flattenLst.toList
 
             Some(
               isInfixFun(fun, args) || underlyingFun.isInfix,

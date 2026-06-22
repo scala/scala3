@@ -14,6 +14,7 @@ import core.StdNames.nme
 import core.Symbols.*
 import core.Types.*
 import core.{Names, StdNames}
+import util.Lst
 import dotty.tools.dotc.config.Feature
 import transform.MegaPhase.MiniPhase
 
@@ -179,7 +180,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     //   else x$lzy.initialize(<RHS>)
     // }
     val initName = LazyLocalInitName.fresh(xname)
-    val initSymbol = newSymbol(x.symbol.owner, initName, initFlags, MethodType(Nil, tpe), coord = x.span)
+    val initSymbol = newSymbol(x.symbol.owner, initName, initFlags, MethodType(Lst(), tpe), coord = x.span)
     val rhs = x.rhs.changeOwnerAfter(x.symbol, initSymbol, this)
     val initialize = holderRef.select(lazyNme.initialize).appliedTo(rhs)
     val initBody = holderRef
@@ -363,11 +364,12 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val casFlag =
       typer.Applications.retypeSignaturePolymorphicFn( // must be retyped to avoid wrapping into Array[Object]
         Select(varHandle, lazyNme.compareAndSet),
-        MethodType(List(defn.ObjectType,defn.ObjectType,defn.ObjectType), defn.BooleanType)
+        MethodType(Lst(defn.ObjectType,defn.ObjectType,defn.ObjectType), defn.BooleanType)
       )
     val accessorMethodSymbol = memberDef.symbol.asTerm
     val lazyInitMethodName = LazyLocalInitName.fresh(memberDef.name.asTermName)
-    val lazyInitMethodSymbol = newSymbol(claz, lazyInitMethodName, Synthetic | Method | Private, MethodType(Nil)(_ => Nil, _ => defn.ObjectType))
+    val lazyInitMethodSymbol = newSymbol(claz, lazyInitMethodName, Synthetic | Method | Private,
+      MethodType(Lst())(_ => Lst(), _ => defn.ObjectType))
 
     val rhs = memberDef.rhs
     val rhsMappedOwner = rhs.changeOwnerAfter(memberDef.symbol, lazyInitMethodSymbol, this)

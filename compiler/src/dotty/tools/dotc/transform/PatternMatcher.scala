@@ -436,7 +436,7 @@ object PatternMatcher {
                         if i == elemTypes.length - 1 then tree.cast(tp) else tree
                       }
                       unapplyProductSeqPlan(selectors, args)
-                    else { 
+                    else {
                       val selectors = productSelectors(getResult.info).map(ref(getResult).select(_))
                       unapplyProductSeqPlan(selectors, args)
                     }
@@ -523,7 +523,7 @@ object PatternMatcher {
             )
           }
         // When match against a `this.type` (say case a: this.type => ???),
-        // the typer will transform the pattern to a `Bind(..., Typed(Ident(a), ThisType(...)))`, 
+        // the typer will transform the pattern to a `Bind(..., Typed(Ident(a), ThisType(...)))`,
         // then post typer will change all the `Ident` with a `ThisType` to a `This`.
         // Therefore, after pattern matching, we will have the following tree `Bind(..., Typed(This(...), ThisType(...)))`.
         // We handle now here the case were the pattern was transformed to a `This`, relying on the fact that the logic for

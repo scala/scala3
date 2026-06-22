@@ -4,6 +4,7 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.*
 import dotty.tools.backend.jvm.analysis.AnalysisUtils
 import dotty.tools.dotc.core.Definitions
+import dotty.tools.dotc.util.Lst
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.switch
@@ -46,7 +47,7 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
   def indyLambdaBodyMethods(hostClass: InternalName, method: MethodNode): Map[InvokeDynamicInsnNode, Handle] = {
     onIndyLambdaImplMethodIfPresent(hostClass)(ms => ms.getOrElse(method, Nil).toMap).getOrElse(Map.empty)
   }
-  
+
   def isPredefLoad(insn: AbstractInsnNode): Boolean = AnalysisUtils.isModuleLoad(insn, _ == ts.PredefRef.internalName)
 
   // ==============================================================================================
@@ -66,7 +67,7 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
     insn.owner == ClassBType.scalaRuntimeBoxesRunTimeInternalName && {
       val args = asm.Type.getArgumentTypes(insn.desc)
       args.length == 1 && (primitiveAsmTypeSortToBType.get(args(0).getSort) match
-        case Some(prim) => 
+        case Some(prim) =>
           val MethodNameAndType(name, tp) = ts.srBoxesRuntimeBoxToMethods(prim)
           name == insn.name && tp.descriptor == insn.desc
         case None => false)
@@ -165,10 +166,10 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
     ts.primitiveBoxConstructors.map(ownerDesc).toSet ++
       ts.srRefConstructors.map(ownerDesc) ++
       ts.tupleClassConstructors.map(ownerDesc) ++ Set(
-      (ts.ObjectRef.internalName, MethodBType(Nil, UNIT).descriptor),
-      (ts.StringRef.internalName, MethodBType(Nil, UNIT).descriptor),
-      (ts.StringRef.internalName, MethodBType(List(ts.StringRef), UNIT).descriptor),
-      (ts.StringRef.internalName, MethodBType(List(ArrayBType(CHAR)), UNIT).descriptor))
+      (ts.ObjectRef.internalName, MethodBType(Lst(), UNIT).descriptor),
+      (ts.StringRef.internalName, MethodBType(Lst(), UNIT).descriptor),
+      (ts.StringRef.internalName, MethodBType(Lst(ts.StringRef), UNIT).descriptor),
+      (ts.StringRef.internalName, MethodBType(Lst(ArrayBType(CHAR)), UNIT).descriptor))
 
   lazy val modulesAllowSkipInitialization: Set[InternalName] =
     Set(

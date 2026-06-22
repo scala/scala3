@@ -18,6 +18,8 @@ import Errors.*
 import Trace.*
 import Util.*
 import Cache.*
+import Decorators.flattenLst
+import util.Lst
 
 import scala.collection.mutable
 import scala.annotation.tailrec
@@ -466,14 +468,14 @@ object Semantic:
           def getTree: Tree =
             val errorCount = ctx.reporter.errorCount
             val rhs = tree.rhs
-  
+
             if (ctx.reporter.errorCount > errorCount)
               emptyTrees.add(tree)
               report.warning("Ignoring analyses of " + tree.name + " due to error in reading TASTy.")
               EmptyTree
             else
               rhs
-  
+
           if (emptyTrees.contains(tree)) EmptyTree
           else getTree
   end TreeCache
@@ -667,10 +669,10 @@ object Semantic:
       def checkArgsWithParametricity() =
         val methodType = atPhaseBeforeTransforms { meth.info.stripPoly }
         var allArgsHot = true
-        val allParamTypes = methodType.paramInfoss.flatten.map(_.repeatedToSingle)
-        if(allParamTypes.size != args.size)
+        val allParamTypes = methodType.paramInfoss.flattenLst.map(_.repeatedToSingle)
+        if allParamTypes.size != args.size then
           report.warning("[Internal error] Number of parameters do not match number of arguments in " + meth.name)
-        val errors = allParamTypes.zip(args).flatMap { (info, arg) =>
+        val errors = allParamTypes.toList.zip(args).flatMap { (info, arg) =>
           val tryReporter = Reporter.errorsIn { arg.promote }
           allArgsHot = allArgsHot && tryReporter.errors.isEmpty
           if tryReporter.errors.isEmpty then tryReporter.errors
@@ -1101,8 +1103,8 @@ object Semantic:
             else if !member.isType && !member.isConstructor  && !member.is(Flags.Deferred) then
               given Trace = Trace.empty
               if member.is(Flags.Method, butNot = Flags.Accessor) then
-                val args = member.info.paramInfoss.flatten.map(_ => new ArgInfo(Hot: Value, Trace.empty))
-                val res = warm.call(member, args, receiver = warm.klass.typeRef, superType = NoType)
+                val args = member.info.paramInfoss.flattenLst.map(_ => new ArgInfo(Hot: Value, Trace.empty))
+                val res = warm.call(member, args.toList, receiver = warm.klass.typeRef, superType = NoType)
                 withTrace(trace.add(member.defTree)) {
                   res.promote("Could not verify that the return value of " + member.show + " is transitively initialized (Hot). It was found to be " + res.show + ".")
                 }
@@ -1623,9 +1625,9 @@ object Semantic:
             // The parameter check of traits comes late in the mixin phase.
             // To avoid crash we supply hot values for erroneous parent calls.
             // See tests/neg/i16438.scala.
-            val args: List[ArgInfo] = ctor.info.paramInfoss.flatten.map(_ => new ArgInfo(Hot, Trace.empty))
+            val args: Lst[ArgInfo] = ctor.info.paramInfoss.flattenLst.map(_ => new ArgInfo(Hot, Trace.empty))
             extendTrace(superParent) {
-              superCall(tref, ctor, args, tasks)
+              superCall(tref, ctor, args.toList, tasks)
             }
       }
 

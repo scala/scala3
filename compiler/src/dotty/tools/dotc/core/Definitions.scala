@@ -9,7 +9,7 @@ import unpickleScala2.Scala2Unpickler.ensureConstructor
 import scala.collection.mutable
 import collection.mutable
 import Denotations.{SingleDenotation, staticRef}
-import util.{SimpleIdentityMap, SourceFile, NoSource}
+import util.{SimpleIdentityMap, SourceFile, NoSource, Lst}
 import typer.ImportInfo.RootRef
 import Comments.{Comment, docCtx}
 import util.Spans.NoSpan
@@ -124,22 +124,22 @@ class Definitions {
       def complete(denot: SymDenotation)(using Context): Unit = {
         val arity = name.functionArity
         if impure then
-          val argParamNames = List.tabulate(arity)(tpnme.syntheticTypeParamName)
+          val argParamNames = Lst.tabulate(arity)(tpnme.syntheticTypeParamName)
           val argVariances = List.fill(arity)(Contravariant)
           val underlyingName = name.asSimpleName.drop(6)
           val underlyingClass = ScalaPackageVal.requiredClass(underlyingName)
           denot.info = TypeAlias(
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
-              tl => List.fill(arity + 1)(TypeBounds.empty),
+              tl => Lst.fill(arity + 1)(TypeBounds.empty),
               tl => AnnotatedType(
-                      underlyingClass.typeRef.appliedTo(tl.paramRefs),
+                      underlyingClass.typeRef.appliedTo(tl.paramRefsList),
                       RetainingAnnotation(defn.RetainsCapAnnot))
             ))
         else
           val cls = denot.asClass.classSymbol
           val decls = newScope
           val paramNamePrefix = tpnme.scala ++ str.NAME_JOIN ++ name ++ str.EXPAND_SEPARATOR
-          val argParamRefs = List.tabulate(arity) { i =>
+          val argParamRefs = Lst.tabulate(arity) { i =>
             enterTypeParam(cls, paramNamePrefix ++ "T" ++ (i + 1).toString, Contravariant, decls).typeRef
           }
           val resParamRef = enterTypeParam(cls, paramNamePrefix ++ "R", Covariant, decls).typeRef
@@ -173,7 +173,7 @@ class Definitions {
 
   private def enterBinaryAlias(name: TypeName, op: (Type, Type) => Type): TypeSymbol =
     enterAliasType(name,
-      HKTypeLambda(TypeBounds.empty :: TypeBounds.empty :: Nil)(
+      HKTypeLambda(Lst(TypeBounds.empty, TypeBounds.empty))(
       tl => op(tl.paramRefs(0), tl.paramRefs(1))))
 
   private def enterPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
@@ -182,7 +182,7 @@ class Definitions {
                     bounds: TypeBounds = TypeBounds.empty,
                     useCompleter: Boolean = false) = {
     val tparamNames = PolyType.syntheticParamNames(typeParamCount)
-    val tparamInfos = tparamNames map (_ => bounds)
+    val tparamInfos = tparamNames.map(_ => bounds)
     def ptype = PolyType(tparamNames)(_ => tparamInfos, resultTypeFn)
     val info =
       if (useCompleter)
@@ -208,6 +208,10 @@ class Definitions {
     if (cls.linkedClass.exists) cls.linkedClass.markAbsent()
     cls
   }
+
+  private def hasOneParam(sym: Symbol, p: Type => Boolean): Boolean =
+    val formals = sym.info.firstParamTypes
+    formals.length == 1 && p(formals(0))
 
   @tu lazy val RootClass: ClassSymbol = newPackageSymbol(
     NoSymbol, nme.ROOT, (root, rootcls) => ctx.base.rootLoader(root)).moduleClass.asClass
@@ -306,8 +310,8 @@ class Definitions {
     @tu lazy val Any_== : TermSymbol          = enterMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
     @tu lazy val Any_!= : TermSymbol          = enterMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final)
     @tu lazy val Any_equals: TermSymbol       = enterMethod(AnyClass, nme.equals_, methOfAny(BooleanType))
-    @tu lazy val Any_hashCode: TermSymbol     = enterMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType))
-    @tu lazy val Any_toString: TermSymbol     = enterMethod(AnyClass, nme.toString_, MethodType(Nil, StringType))
+    @tu lazy val Any_hashCode: TermSymbol     = enterMethod(AnyClass, nme.hashCode_, MethodType(Lst(), IntType))
+    @tu lazy val Any_toString: TermSymbol     = enterMethod(AnyClass, nme.toString_, MethodType(Lst(), StringType))
     @tu lazy val Any_## : TermSymbol          = enterMethod(AnyClass, nme.HASHHASH, ExprType(IntType), Final)
     @tu lazy val Any_isInstanceOf: TermSymbol = enterT1ParameterlessMethod(AnyClass, nme.isInstanceOf_, _ => BooleanType, Final)
     @tu lazy val Any_asInstanceOf: TermSymbol = enterT1ParameterlessMethod(AnyClass, nme.asInstanceOf_, _.paramRefs(0), Final)
@@ -319,7 +323,7 @@ class Definitions {
     @tu lazy val Any_getClass: TermSymbol =
         enterPolyMethod(
           AnyClass, nme.getClass_, 1,
-          pt => MethodType(Nil, ClassClass.typeRef.appliedTo(TypeBounds.upper(pt.paramRefs(0)))),
+          pt => MethodType(Lst(), ClassClass.typeRef.appliedTo(TypeBounds.upper(pt.paramRefs(0)))),
           Final,
           bounds = TypeBounds.lower(AnyClass.thisType))
 
@@ -442,14 +446,14 @@ class Definitions {
     @tu lazy val Object_eq: TermSymbol = enterMethod(ObjectClass, nme.eq, methOfAnyRef(BooleanType), Final | Infix)
     @tu lazy val Object_ne: TermSymbol = enterMethod(ObjectClass, nme.ne, methOfAnyRef(BooleanType), Final | Infix)
     @tu lazy val Object_synchronized: TermSymbol = enterPolyMethod(ObjectClass, nme.synchronized_, 1,
-        pt => MethodType(List(pt.paramRefs(0)), pt.paramRefs(0)), Final)
-    @tu lazy val Object_clone: TermSymbol = enterMethod(ObjectClass, nme.clone_, MethodType(Nil, ObjectType), Protected)
-    @tu lazy val Object_finalize: TermSymbol = enterMethod(ObjectClass, nme.finalize_, MethodType(Nil, UnitType), Protected)
-    @tu lazy val Object_notify: TermSymbol = enterMethod(ObjectClass, nme.notify_, MethodType(Nil, UnitType), Final)
-    @tu lazy val Object_notifyAll: TermSymbol = enterMethod(ObjectClass, nme.notifyAll_, MethodType(Nil, UnitType), Final)
-    @tu lazy val Object_wait: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(Nil, UnitType), Final)
-    @tu lazy val Object_waitL: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: Nil, UnitType), Final)
-    @tu lazy val Object_waitLI: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: IntType :: Nil, UnitType), Final)
+        pt => MethodType(pt.paramRefs, pt.paramRefs(0)), Final)
+    @tu lazy val Object_clone: TermSymbol = enterMethod(ObjectClass, nme.clone_, MethodType(Lst(), ObjectType), Protected)
+    @tu lazy val Object_finalize: TermSymbol = enterMethod(ObjectClass, nme.finalize_, MethodType(Lst(), UnitType), Protected)
+    @tu lazy val Object_notify: TermSymbol = enterMethod(ObjectClass, nme.notify_, MethodType(Lst(), UnitType), Final)
+    @tu lazy val Object_notifyAll: TermSymbol = enterMethod(ObjectClass, nme.notifyAll_, MethodType(Lst(), UnitType), Final)
+    @tu lazy val Object_wait: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(Lst(), UnitType), Final)
+    @tu lazy val Object_waitL: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(Lst(LongType), UnitType), Final)
+    @tu lazy val Object_waitLI: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(Lst(LongType, IntType), UnitType), Final)
 
     def ObjectMethods: List[TermSymbol] = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
@@ -470,17 +474,17 @@ class Definitions {
   @tu lazy val CBCompanion: TypeSymbol = // type `<context-bound-companion>`[-Refs]
     enterPermanentSymbol(tpnme.CBCompanion,
       TypeBounds(NothingType,
-        HKTypeLambda(tpnme.syntheticTypeParamName(0) :: Nil)(
-          tl => TypeBounds.empty :: Nil,
+        HKTypeLambda(Lst(tpnme.syntheticTypeParamName(0)))(
+          tl => Lst(TypeBounds.empty),
           tl => AnyType))).asType
 
   /** Method representing a throw */
   @tu lazy val throwMethod: TermSymbol = enterMethod(OpsPackageClass, nme.THROWkw,
-      MethodType(List(ThrowableType), NothingType))
+      MethodType(Lst(ThrowableType), NothingType))
 
   @tu lazy val spreadMethod = enterMethod(OpsPackageClass, nme.spread,
-      PolyType(TypeBounds.empty :: Nil)(
-        tl => MethodType(AnyType :: Nil, tl.paramRefs(0))
+      PolyType(Lst(TypeBounds.empty))(
+        tl => MethodType(Lst(AnyType), tl.paramRefs(0))
       ))
 
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
@@ -615,15 +619,9 @@ class Definitions {
     @tu lazy val Boolean_&& : Symbol = BooleanClass.requiredMethod(nme.ZAND) // ### harmonize required... calls
     @tu lazy val Boolean_|| : Symbol = BooleanClass.requiredMethod(nme.ZOR)
     @tu lazy val Boolean_== : Symbol =
-      BooleanClass.info.member(nme.EQ).suchThat(_.info.firstParamTypes match {
-        case List(pt) => pt.isRef(BooleanClass)
-        case _ => false
-      }).symbol
+      BooleanClass.info.member(nme.EQ).suchThat(hasOneParam(_, _.isRef(BooleanClass))).symbol
     @tu lazy val Boolean_!= : Symbol =
-      BooleanClass.info.member(nme.NE).suchThat(_.info.firstParamTypes match {
-        case List(pt) => pt.isRef(BooleanClass)
-        case _ => false
-      }).symbol
+      BooleanClass.info.member(nme.NE).suchThat(hasOneParam(_, _.isRef(BooleanClass))).symbol
 
   @tu lazy val ByteType: TypeRef = valueTypeRef("scala.Byte", java.lang.Byte.TYPE, ByteEnc, nme.specializedTypeNames.Byte)
   def ByteClass(using Context): ClassSymbol = ByteType.symbol.asClass
@@ -684,33 +682,27 @@ class Definitions {
   def StringType: Type = StringClass.typeRef
   @tu lazy val StringModule: Symbol = StringClass.linkedClass
     @tu lazy val String_+ : TermSymbol = enterMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
-    @tu lazy val String_valueOf_Object: Symbol = StringModule.info.member(nme.valueOf).suchThat(_.info.firstParamTypes match {
-      case List(pt) => pt.isAny || pt.stripNull().isAnyRef
-      case _ => false
-    }).symbol
+    @tu lazy val String_valueOf_Object: Symbol =
+      StringModule.info.member(nme.valueOf)
+        .suchThat(hasOneParam(_, pt => pt.isAny || pt.stripNull().isAnyRef)).symbol
 
   @tu lazy val JavaCloneableClass: ClassSymbol        = requiredClass("java.lang.Cloneable")
   @tu lazy val NullPointerExceptionClass: ClassSymbol = requiredClass("java.lang.NullPointerException")
   @tu lazy val IndexOutOfBoundsException: ClassSymbol = requiredClass("java.lang.IndexOutOfBoundsException")
   @tu lazy val IndexOutOfBoundsExceptionType: Type    = IndexOutOfBoundsException.typeRef
-    @tu lazy val IndexOutOfBoundsException_IntConstructor: TermSymbol  = IndexOutOfBoundsException.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
-        case List(pt) => pt.isRef(IntClass)
-        case _ => false
-      }).symbol.asTerm
+    @tu lazy val IndexOutOfBoundsException_IntConstructor: TermSymbol  =
+      IndexOutOfBoundsException.info.member(nme.CONSTRUCTOR)
+        .suchThat(hasOneParam(_, _.isRef(IntClass))).symbol.asTerm
   @tu lazy val ClassClass: ClassSymbol                = requiredClass("java.lang.Class")
   @tu lazy val BoxedNumberClass: ClassSymbol          = requiredClass("java.lang.Number")
   @tu lazy val ClassCastExceptionClass: ClassSymbol   = requiredClass("java.lang.ClassCastException")
-    @tu lazy val ClassCastExceptionClass_stringConstructor: TermSymbol  = ClassCastExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
-      case List(pt) =>
-        pt.stripNull().isRef(StringClass)
-      case _ => false
-    }).symbol.asTerm
+    @tu lazy val ClassCastExceptionClass_stringConstructor: TermSymbol  =
+      ClassCastExceptionClass.info.member(nme.CONSTRUCTOR)
+        .suchThat(hasOneParam(_, _.stripNull().isRef(StringClass))).symbol.asTerm
   @tu lazy val ArithmeticExceptionClass: ClassSymbol  = requiredClass("java.lang.ArithmeticException")
-    @tu lazy val ArithmeticExceptionClass_stringConstructor: TermSymbol  = ArithmeticExceptionClass.info.member(nme.CONSTRUCTOR).suchThat(_.info.firstParamTypes match {
-      case List(pt) =>
-        pt.stripNull().isRef(StringClass)
-      case _ => false
-    }).symbol.asTerm
+    @tu lazy val ArithmeticExceptionClass_stringConstructor: TermSymbol  =
+      ArithmeticExceptionClass.info.member(nme.CONSTRUCTOR)
+        .suchThat(hasOneParam(_, _.stripNull().isRef(StringClass))).symbol.asTerm
 
   @tu lazy val JavaSerializableClass: ClassSymbol     = requiredClass("java.io.Serializable")
 
@@ -766,7 +758,7 @@ class Definitions {
                   case meth: MethodType =>
                     info.derivedLambdaType(
                       resType = meth.derivedLambdaType(
-                      paramNames = Nil, paramInfos = Nil))
+                        paramNames = Lst(), paramInfos = Lst()))
                 }
             }
             val argConstr = constr.copy().entered
@@ -1225,9 +1217,9 @@ class Definitions {
     "org.jspecify.annotations.Nullable" :: Nil)
 
   // convenient one-parameter method types
-  def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
-  def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
-  def methOfAnyRef(tp: Type): MethodType = MethodType(List(ObjectType), tp)
+  def methOfAny(tp: Type): MethodType = MethodType(Lst(AnyType), tp)
+  def methOfAnyVal(tp: Type): MethodType = MethodType(Lst(AnyValType), tp)
+  def methOfAnyRef(tp: Type): MethodType = MethodType(Lst(ObjectType), tp)
 
   // Derived types
 
@@ -1255,10 +1247,10 @@ class Definitions {
         case RefinedType(parent, nme.apply, mt: MethodOrPoly)
         if parent.derivesFrom(defn.PolyFunctionClass) || (mt.isInstanceOf[MethodType] && isFunctionNType(parent)) =>
           Some(mt)
-        case AppliedType(parent, targs) if isFunctionNType(ft) =>
+        case ft @ AppliedType(parent, _) if isFunctionNType(ft) =>
           val isContextual = ft.typeSymbol.name.isContextFunction
           val methodType = if isContextual then ContextualMethodType else MethodType
-          Some(methodType(targs.init, targs.last))
+          Some(methodType(ft.argsLst.init, ft.argsLst.last))
         case _ =>
           None
     }
@@ -1266,7 +1258,7 @@ class Definitions {
 
   object FunctionOf {
     def apply(args: List[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
-      val mt = MethodType.companion(isContextual, false)(args, resultType)
+      val mt = MethodType.companion(isContextual, false)(args.toLst, resultType)
       if mt.hasErasedParams then RefinedType(PolyFunctionClass.typeRef, nme.apply, mt)
       else FunctionNOf(args, resultType, isContextual)
 
@@ -1275,7 +1267,7 @@ class Definitions {
     def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
       ft match
         case PolyFunctionOf(mt: MethodType) =>
-          Some(mt.paramInfos, mt.resType, mt.isContextualMethod)
+          Some(mt.paramInfosList, mt.resType, mt.isContextualMethod)
         case AppliedType(parent, targs) if isFunctionNType(ft) =>
           Some(targs.init, targs.last, ft.typeSymbol.name.isContextFunction)
         case _ =>
@@ -1921,38 +1913,38 @@ class Definitions {
     && base.owner.denot.info.member(base.name.specializedName(args)).exists // when dotc compiles the stdlib there are no specialised classes
     && !Feature.shouldBehaveAsScala2 // We do not add the specilized TupleN methods/classes when compiling the stdlib
 
-  def isSpecializableFunction(cls: ClassSymbol, paramTypes: List[Type], retType: Type)(using Context): Boolean =
+  def isSpecializableFunction(cls: ClassSymbol, paramTypes: Lst[Type], retType: Type)(using Context): Boolean =
     paramTypes.length <= 2
     && (cls.derivesFrom(FunctionSymbol(paramTypes.length)) || isByNameFunctionClass(cls))
     && isSpecializableFunctionSAM(paramTypes, retType)
 
   /** If the Single Abstract Method of a Function class has this type, is it specializable? */
-  def isSpecializableFunctionSAM(paramTypes: List[Type], retType: Type)(using Context): Boolean =
-    paramTypes.length <= 2 && (paramTypes match {
-      case Nil =>
-        Function0SpecializedReturnClasses().contains(retType.typeSymbol)
-      case List(paramType0) =>
-        Function1SpecializedParamClasses().contains(paramType0.typeSymbol) &&
-        Function1SpecializedReturnClasses().contains(retType.typeSymbol)
-      case List(paramType0, paramType1) =>
-        Function2SpecializedParamClasses().contains(paramType0.typeSymbol) &&
-        Function2SpecializedParamClasses().contains(paramType1.typeSymbol) &&
-        Function2SpecializedReturnClasses().contains(retType.typeSymbol)
-      case _ =>
-        false
-    })
+  def isSpecializableFunctionSAM(paramTypes: Lst[Type], retType: Type)(using Context): Boolean =
+    paramTypes.length <= 2
+    && paramTypes.length.match
+        case 0 =>
+          Function0SpecializedReturnClasses().contains(retType.typeSymbol)
+        case 1 =>
+          Function1SpecializedParamClasses().contains(paramTypes(0).typeSymbol) &&
+          Function1SpecializedReturnClasses().contains(retType.typeSymbol)
+        case 2 =>
+          Function2SpecializedParamClasses().contains(paramTypes(0).typeSymbol) &&
+          Function2SpecializedParamClasses().contains(paramTypes(1).typeSymbol) &&
+          Function2SpecializedReturnClasses().contains(retType.typeSymbol)
+        case _ =>
+          false
     && !Feature.shouldBehaveAsScala2 // We do not add the specilized FunctionN methods/classes when compiling the stdlib
 
   @tu lazy val Function0SpecializedApplyNames: List[TermName] =
     for r <- Function0SpecializedReturnTypes
-    yield nme.apply.specializedFunction(r, Nil).asTermName
+    yield nme.apply.specializedFunction(r, Lst()).asTermName
 
   @tu lazy val Function1SpecializedApplyNames: List[TermName] =
     for
       r  <- Function1SpecializedReturnTypes
       t1 <- Function1SpecializedParamTypes
     yield
-      nme.apply.specializedFunction(r, List(t1)).asTermName
+      nme.apply.specializedFunction(r, Lst(t1)).asTermName
 
   @tu lazy val Function2SpecializedApplyNames: List[TermName] =
     for
@@ -1960,7 +1952,7 @@ class Definitions {
       t1 <- Function2SpecializedParamTypes
       t2 <- Function2SpecializedParamTypes
     yield
-      nme.apply.specializedFunction(r, List(t1, t2)).asTermName
+      nme.apply.specializedFunction(r, Lst(t1, t2)).asTermName
 
   @tu lazy val FunctionSpecializedApplyNames: collection.Set[Name] =
     Set.concat(Function0SpecializedApplyNames, Function1SpecializedApplyNames, Function2SpecializedApplyNames)
@@ -1997,7 +1989,7 @@ class Definitions {
     def unapply(tp: Type)(using Context): Option[(List[Type], Type)] =
       asContextFunctionType(tp) match
         case PolyFunctionOf(mt: MethodType) =>
-          Some((mt.paramInfos, mt.resType))
+          Some((mt.paramInfosList, mt.resType))
         case tp1 if tp1.exists =>
           val args = tp1.functionArgInfos
           Some((args.init, args.last))

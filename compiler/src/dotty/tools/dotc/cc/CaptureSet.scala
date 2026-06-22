@@ -13,7 +13,7 @@ import reporting.trace
 import reporting.Message.Note
 import printing.{Showable, Printer}
 import printing.Texts.*
-import util.{SimpleIdentitySet, Property, EqHashMap}
+import util.{SimpleIdentitySet, Property, EqHashMap, Lst}
 import scala.collection.{mutable, immutable}
 import CCState.*
 import TypeOps.AvoidMap
@@ -441,7 +441,7 @@ sealed abstract class CaptureSet extends Showable:
           mapped
 
   /** A mapping resulting from substituting parameters of a BindingType to a list of types */
-  def substParams(tl: BindingType, to: List[Type])(using Context) =
+  def substParams(tl: BindingType, to: Lst[Type])(using Context) =
     map(Substituters.SubstParamsMap(tl, to))
 
   def maybe(using Context): CaptureSet = map(MaybeMap())
@@ -1770,15 +1770,15 @@ object CaptureSet:
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodOrPoly) if followResult =>
           ofType(tpd.parent, followResult = false)            // pick up capture set from parent type
           ++ recur(rinfo.resType).freeInResult(rinfo)         // add capture set of result
-        case tpd @ AppliedType(tycon, args) =>
+        case tpd: AppliedType =>
           if followResult && defn.isNonRefinedFunction(tpd) then
-            recur(args.last)
+            recur(tpd.argsLst.last)
               // must be (pure) FunctionN type since ImpureFunctions have already
               // been eliminated in selector's dealias. Use capture set of result.
           else
-            val cs = recur(tycon)
-            tycon.typeParams match
-              case tparams @ (LambdaParam(tl, _) :: _) => cs.substParams(tl, args)
+            val cs = recur(tpd.tycon)
+            tpd.tycon.typeParams match
+              case tparams @ (LambdaParam(tl, _) :: _) => cs.substParams(tl, tpd.argsLst)
               case _ => cs
         case tp: TypeProxy =>
           recur(tp.superType)

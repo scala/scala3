@@ -25,6 +25,7 @@ import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.transform.ElimErasedValueType
 import dotty.tools.dotc.transform.Mixin
 import dotty.tools.dotc.report
+import dotty.tools.dotc.util.Lst
 import tpd.*
 import dotty.tools.dotc.config.ScalaSettingsProperties
 
@@ -310,7 +311,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
         case Apply(fun, args) =>
           fun.tpe.widen match {
             case MethodType(names) =>
-              names.zip(args).filter {
+              names.toList.zip(args).filter {
                 case (_, t: tpd.Ident) if t.tpe.normalizedPrefix eq NoPrefix => false
                 case _ => true
               }
@@ -383,7 +384,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol, isSynthetic: Boolean)(using Context): Unit = {
       val moduleName     = bTypeLoader.classBTypeFromSymbol(module).internalName
       val methodInfo     = module.thisType.memberInfo(m)
-      val paramJavaTypes: List[BType] = methodInfo.firstParamTypes.map(bTypeLoader.bTypeFromType)
+      val paramJavaTypes: Lst[BType] = methodInfo.firstParamTypes.map(bTypeLoader.bTypeFromType)
       // val paramNames     = 0 until paramJavaTypes.length.map("x_" + _)
 
       /* Forwarders must not be marked final,

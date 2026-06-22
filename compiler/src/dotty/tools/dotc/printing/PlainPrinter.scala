@@ -380,7 +380,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       keywordText("erased ").provided(erased)
         ~ specialAnnotText(defn.ConsumeAnnot, ref.underlying)
         ~ ParamRefNameString(ref) ~ hashStr(lam) ~ toTextRHS(ref.underlying, isParameter = true)
-    Text(lam.paramRefs.map(paramText), ", ")
+    Text(lam.paramRefsList.map(paramText), ", ")
   }
 
   protected def ParamRefNameString(name: Name): String = nameString(name)
@@ -546,8 +546,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           if lam.isDeclaredVarianceLambda then
             lam.paramNames.lazyZip(lam.declaredVariances).map((name, v) =>
               varianceSign(v) + name)
-          else lam.paramNames.map(_.toString)
-        val infos = lam.paramInfos.map(toText)
+          else lam.paramNamesList.map(_.toString)
+        val infos = lam.paramInfosList.map(toText)
         val tparams = names.zip(infos).map(_ ~ _)
         ("[" ~ Text(tparams, ",") ~ "]", lam.resType)
       case _ =>

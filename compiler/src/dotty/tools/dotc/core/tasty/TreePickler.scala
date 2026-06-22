@@ -332,9 +332,8 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     writeByte(tag)
     withLength {
       pickleType(tpe.resultType, richTypes = true)
-      tpe.paramNames.lazyZip(tpe.paramInfos).foreach { (name, tpe) =>
-        pickleType(tpe); pickleName(name)
-      }
+      for i <- 0 until tpe.paramNames.length do
+        pickleType(tpe.paramInfos(i)); pickleName(tpe.paramNames(i))
       if (mods != EmptyFlags) pickleFlags(mods, tpe.isTermLambda)
     }
   }

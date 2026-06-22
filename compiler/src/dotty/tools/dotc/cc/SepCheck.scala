@@ -962,13 +962,13 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         case defn.FunctionOf(args, resultType, isContextual) =>
           collectRefs(args, resultType)
         case defn.RefinedFunctionOf(mt) =>
-          collectRefs(mt.paramInfos, mt.resType)
+          collectRefs(mt.paramInfosList, mt.resType)
         case CapturingType(parent, refs) =>
           resultArgCaptures(parent) ++ tpe.boxedCaptureSet.elems
         case _ =>
           emptyRefs
 
-    for (mt, args) <- mtpsWithArgs; (formal, arg) <- mt.paramInfos.zip(args) do
+    for (mt, args) <- mtpsWithArgs; (formal, arg) <- mt.paramInfos.zip(args.toLst) do
       recordDeps(formal, arg)
 
     val resultType = mtpe.finalResultType

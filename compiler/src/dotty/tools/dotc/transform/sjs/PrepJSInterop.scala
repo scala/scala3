@@ -7,7 +7,7 @@ import scala.collection.mutable
 import ast.tpd
 import core.*
 import typer.Checking
-import util.SrcPos
+import util.{SrcPos, Lst, Lst1}
 import Annotations.*
 import Constants.*
 import Contexts.*
@@ -327,7 +327,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
           // new DynamicImportThunk { def apply(): Any = body }
           val dynamicImportThunkAnonClass = AnonClass(currentOwner, List(jsdefn.DynamicImportThunkType), span) { cls =>
-            val applySym = newSymbol(cls, nme.apply, Method, MethodType(Nil, Nil, defn.AnyType), coord = span).entered
+            val applySym = newSymbol(cls, nme.apply, Method, MethodType(Lst(), Lst(), defn.AnyType), coord = span).entered
             val transformedBody = enterDynamicImportEnclosingClass(enclosingClass) {
               transform(body)
             }
@@ -847,7 +847,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
         }
       } else {
         def checkNoDefaultOrRepeated(subject: String) = {
-          if (sym.info.paramInfoss.flatten.exists(_.isRepeatedParam))
+          if (sym.info.paramInfoss.flattenLst.exists(_.isRepeatedParam))
             report.error(s"$subject may not have repeated parameters", tree)
           if (sym.hasDefaultParams)
             report.error(s"$subject may not have default parameters", tree)
@@ -1252,7 +1252,7 @@ object PrepJSInterop {
 
     // There must be exactly one non-varargs, non-default parameter
     tpe.paramInfoss match {
-      case List(List(argInfo)) =>
+      case List(Lst1(argInfo)) =>
         // Arg list is OK. Do additional checks.
         if (tpe.isVarArgsMethod)
           report.error(s"$typeStr setters may not have repeated params", pos)

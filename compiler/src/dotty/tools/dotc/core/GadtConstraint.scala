@@ -186,8 +186,8 @@ sealed trait GadtState {
   def addToConstraint(params: List[Symbol])(using Context): Boolean = {
     import NameKinds.DepParamName
 
-    val poly1 = PolyType(params.map { sym => DepParamName.fresh(sym.name.toTypeName) })(
-      pt => params.map { param =>
+    val poly1 = PolyType(params.mapToLst(sym => DepParamName.fresh(sym.name.toTypeName)))(
+      pt => params.mapToLst { param =>
         // In bound type `tp`, replace the symbols in dependent positions with their internal TypeParamRefs.
         // The replaced symbols will be later picked up in `ConstraintHandling#addToConstraint`
         // and used as orderings.
@@ -218,7 +218,7 @@ sealed trait GadtState {
       pt => defn.AnyType
     )
 
-    val tvars = params.lazyZip(poly1.paramRefs).map { (sym, paramRef) =>
+    val tvars = params.lazyZip(poly1.paramRefsList).map { (sym, paramRef) =>
       val tv = TypeVar(paramRef, creatorState = null)
       gadt = gadt.add(sym, tv)
       tv

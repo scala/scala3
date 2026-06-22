@@ -8,7 +8,7 @@ import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
-import util.{Stats, NoSourcePosition, EqHashMap}
+import util.{Stats, NoSourcePosition, EqHashMap, Lst}
 import config.Config
 import config.Feature.{migrateTo3, sourceVersion}
 import config.Printers.{subtyping, gadts, matchTypes, capt, noPrinter}
@@ -675,7 +675,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             def isSubInfo(info1: Type, info2: Type): Boolean =
               try (info1, info2) match
                 case (info1: PolyType, info2: PolyType) =>
-                  info1.paramNames.hasSameLengthAs(info2.paramNames)
+                  info1.paramNames.length == info2.paramNames.length
                   && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
                 case (info1: MethodType, info2: MethodType) =>
                   matchingMethodParams(info1, info2, precise = false)
@@ -855,7 +855,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // as members of the same type. And it seems most logical to take
           // ()T <:< => T, since everything one can do with a => T one can
           // also do with a ()T by automatic () insertion.
-          case tp1 @ MethodType(Nil) => isSubType(tp1.resultType, restpe2)
+          case tp1 @ MethodType(pnames) if pnames.length == 0 => isSubType(tp1.resultType, restpe2)
           case tp1 @ ExprType(restpe1) => isSubType(restpe1, restpe2)
           case _ => fourthTry
         }
@@ -1070,7 +1070,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             recur(tycon1, tp2)
           case _ => tp2 match {
             case tp2: HKTypeLambda => false // this case was covered in thirdTry
-            case _ => tp2.typeParams.hasSameLengthAs(tp1.paramRefs) && isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefs))
+            case _ => tp2.typeParams.length == tp1.paramRefs.length
+              && isSubType(tp1.resultType, tp2.appliedTo(tp1.paramRefsList))
           }
         }
         compareHKLambda
@@ -1257,18 +1258,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val tparams = tycon.typeParams
         val remainingTparams = otherTycon.typeParams.drop(d)
         variancesConform(remainingTparams, tparams) && {
+          val remainingTparamsLst = remainingTparams.toLst
           val adaptedTycon =
             if d > 0 then
               val initialArgs = otherArgs.take(d)
               /** The arguments passed to `otherTycon` in the body of `tl` */
-              def bodyArgs(tl: HKTypeLambda) = initialArgs ++ tl.paramRefs
+              def bodyArgs(tl: HKTypeLambda) = initialArgs ++ tl.paramRefsList
               /** The bounds of the type parameters of `tl` */
               def adaptedBounds(tl: HKTypeLambda) =
                 val bodyArgsComputed = bodyArgs(tl)
-                remainingTparams.map(_.paramInfo)
-                  .mapconserve(_.substTypeParams(otherTycon, bodyArgsComputed).bounds)
+                remainingTparamsLst.map(_.paramInfo.bounds)
+                  .mapConserve(_.substTypeParams(otherTycon, bodyArgsComputed).bounds)
 
-              HKTypeLambda(remainingTparams.map(_.paramName))(
+              HKTypeLambda(remainingTparamsLst.map(_.paramName))(
                 adaptedBounds,
                 tl => otherTycon.appliedTo(bodyArgs(tl)))
             else
@@ -2302,7 +2304,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // OK: { var x: T } <: { def x: T }
             // NO: { var x: T } <: { val x: T }
             ExprType(info1)
-          case info1 @ MethodType(Nil) if isExpr2 && m.symbol.is(JavaDefined) =>
+          case info1 @ MethodType(pnames) if pnames.length == 0 && isExpr2 && m.symbol.is(JavaDefined) =>
             // OK{ { def x(): T } <: { def x: T} // if x is Java defined
             ExprType(info1.resType)
           case info1 => info1
@@ -2392,7 +2394,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case tp1: PolyType =>
       tp2.widen match {
         case tp2: PolyType =>
-          tp1.paramNames.hasSameLengthAs(tp2.paramNames) &&
+          tp1.paramNames.length == tp2.paramNames.length &&
           matchesType(tp1.resultType, tp2.resultType.subst(tp2, tp1), relaxed)
         case _ =>
           false
@@ -2415,51 +2417,48 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  Otherwise parameters in `tp2` must be subtypes of corresponding parameters in `tp1`.
    */
   def matchingMethodParams(tp1: MethodType, tp2: MethodType, precise: Boolean = true): Boolean = {
-    def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
-      case formal1 :: rest1 =>
-        formals2 match {
-          case formal2 :: rest2 =>
-            val formal2a = if (tp2.isParamDependent) formal2.subst(tp2, tp1) else formal2
-            val paramsMatch =
-              if precise then
-                isSameTypeWhenFrozen(formal1, formal2a)
-              else if isCaptureCheckingOrSetup then
-                // allow to constrain capture set variables
-                isSubType(formal2a, formal1)
-              else
-                isSubTypeWhenFrozen(formal2a, formal1)
-            paramsMatch && loop(rest1, rest2)
-          case nil =>
-            false
-        }
-      case nil =>
-        formals2.isEmpty
-    }
-    // If methods have erased parameters, then the erased parameters must match
-    val erasedValid = (!tp1.hasErasedParams && !tp2.hasErasedParams) || (tp1.paramErasureStatuses == tp2.paramErasureStatuses)
 
-    erasedValid && loop(tp1.paramInfos, tp2.paramInfos)
+    def paramsMatch(formal1: Type, formal2: Type): Boolean =
+      if precise then
+        isSameTypeWhenFrozen(formal1, formal2)
+      else if isCaptureCheckingOrSetup then
+        // allow to constrain capture set variables
+        isSubType(formal2, formal1)
+      else
+        isSubTypeWhenFrozen(formal2, formal1)
+
+    // If methods have erased parameters, then the erased parameters must match
+    val erasedValid = (!tp1.hasErasedParams && !tp2.hasErasedParams)
+      || (tp1.paramErasureStatuses == tp2.paramErasureStatuses)
+    erasedValid && {
+      val formals1 = tp1.paramInfos
+      val formals2 = tp2.paramInfos
+      formals1.length == formals2.length
+      && {
+        var i = 0
+        while i < formals1.length
+          && paramsMatch(formals1(i),
+              if tp2.isParamDependent then formals2(i).subst(tp2, tp1) else formals2(i))
+        do i += 1
+        i == formals1.length
+      }
+    }
   }
 
   /** Do the parameter types of `tp1` and `tp2` match in a way that allows `tp1`
    *  to override `tp2` ? This is the case if they're pairwise >:>.
    */
-  def matchingPolyParams(tp1: PolyType, tp2: PolyType): Boolean = {
-    def loop(formals1: List[Type], formals2: List[Type]): Boolean = formals1 match {
-      case formal1 :: rest1 =>
-        formals2 match {
-          case formal2 :: rest2 =>
-            val formal2a = formal2.subst(tp2, tp1)
-            isSubTypeWhenFrozen(formal2a, formal1) &&
-            loop(rest1, rest2)
-          case nil =>
-            false
-        }
-      case nil =>
-        formals2.isEmpty
+  def matchingPolyParams(tp1: PolyType, tp2: PolyType): Boolean =
+    val formals1 = tp1.paramInfos
+    val formals2 = tp2.paramInfos
+    formals1.length == formals2.length
+    && {
+      var i = 0
+      while i < formals1.length
+        && isSubTypeWhenFrozen(formals2(i).subst(tp2, tp1), formals1(i))
+      do i += 1
+      i == formals1.length
     }
-    loop(tp1.paramInfos, tp2.paramInfos)
-  }
 
   // Type equality =:=
 
@@ -2796,25 +2795,28 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       op: (Type, Type) => Type, original: (Type, Type) => Type, combineVariance: (Variance, Variance) => Variance) = {
     val tparams1 = tp1.typeParams
     val tparams2 = tp2.typeParams
+    val tparams1Lst = tparams1.toLst
+    val tparams2Lst = tparams2.toLst
     def applied(tp: Type) = tp.appliedTo(tp.typeParams.map(_.paramInfoAsSeenFrom(tp)))
     if (tparams1.isEmpty)
       if (tparams2.isEmpty) op(tp1, tp2)
       else original(tp1, applied(tp2))
     else if (tparams2.isEmpty)
       original(applied(tp1), tp2)
-    else if (tparams1.hasSameLengthAs(tparams2))
+    else if tparams1Lst.length == tparams2Lst.length then
       HKTypeLambda(
-        paramNames = HKTypeLambda.syntheticParamNames(tparams1.length),
+        paramNames = HKTypeLambda.syntheticParamNames(tparams1Lst.length),
         variances =
           if tp1.isDeclaredVarianceLambda && tp2.isDeclaredVarianceLambda then
             tparams1.lazyZip(tparams2).map((p1, p2) => combineVariance(p1.paramVariance, p2.paramVariance))
           else Nil
       )(
-        paramInfosExp = tl => tparams1.lazyZip(tparams2).map((tparam1, tparam2) =>
-          tl.integrate(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
-          tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds),
+        paramInfosExp = tl =>
+          tparams1Lst.zipWith(tparams2Lst): (tparam1, tparam2) =>
+            tl.integrate(tparams1Lst, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
+            tl.integrate(tparams2Lst, tparam2.paramInfoAsSeenFrom(tp2)).bounds,
         resultTypeExp = tl =>
-          original(tp1.appliedTo(tl.paramRefs), tp2.appliedTo(tl.paramRefs)))
+          original(tp1.appliedTo(tl.paramRefsList), tp2.appliedTo(tl.paramRefsList)))
     else original(applied(tp1), applied(tp2))
   }
 
@@ -2917,8 +2919,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     case tp1: MethodType =>
       tp2 match {
         case tp2: MethodType =>
-          def asGoodParams(formals1: List[Type], formals2: List[Type]) =
-            (formals2 corresponds formals1)(isSubTypeWhenFrozen)
+          def asGoodParams(formals1: Lst[Type], formals2: Lst[Type]) =
+            (formals2 `corresponds` formals1)(isSubTypeWhenFrozen)
           asGoodParams(tp1.paramInfos, tp2.paramInfos) &&
           (!asGoodParams(tp2.paramInfos, tp1.paramInfos) ||
            isAsGood(tp1.resultType, tp2.resultType))
@@ -3154,7 +3156,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
       // Cases involving type lambdas
       case (tp1: HKTypeLambda, tp2: HKTypeLambda) =>
-        tp1.paramNames.sizeCompare(tp2.paramNames) != 0
+        tp1.paramNames.length != tp2.paramNames.length
           || provablyDisjoint(tp1.resultType, tp2.resultType, pending)
       case (tp1: HKTypeLambda, tp2) =>
         true
@@ -3934,7 +3936,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
         instantiateParams(instances)(body) match
           case Range(lo, hi) =>
             MatchResult.NoInstance {
-              caseLambda.paramNames.zip(instances).collect {
+              caseLambda.paramNamesList.zip(instances).collect {
                 case (name, Range(lo, hi)) => (name, TypeBounds(lo, hi))
               }
             }

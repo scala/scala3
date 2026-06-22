@@ -8,6 +8,7 @@ import Names.{Name, TermName}
 import ast.{tpd, untpd}
 import Decorators.*, NameOps.*
 import config.Printers.capt
+import util.Lst
 import util.Property.Key
 import tpd.*
 import Annotations.Annotation
@@ -36,7 +37,7 @@ def isCaptureCheckingOrSetup(using Context): Boolean =
 /** A dependent function type with given arguments and result type
  *  TODO Move somewhere else where we treat all function type related ops together.
  */
-def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames: List[TermName] = Nil)(using Context): Type =
+def depFun(args: Lst[Type], resultType: Type, isContextual: Boolean, paramNames: Lst[TermName] = Lst())(using Context): Type =
   val make = MethodType.companion(isContextual = isContextual)
   val mt =
     if paramNames.length == args.length then make(paramNames, args, resultType)
@@ -445,10 +446,10 @@ extension (tp: Type)
       else if rinfo1.isInstanceOf[PolyType] then tp.derivedRefinedType(refinedInfo = rinfo1)
       else rinfo1.toFunctionType(alwaysDependent = true)
     case tp: MethodType =>
-      tp.derivedLambdaType(paramInfos = argTypes, resType = resType)
+      tp.derivedLambdaType(paramInfos = argTypes.toLst, resType = resType)
     case tp: PolyType =>
       assert(argTypes.forall(_.isInstanceOf[TypeBounds]))
-      tp.derivedLambdaType(paramInfos = argTypes.asInstanceOf[List[TypeBounds]], resType = resType)
+      tp.derivedLambdaType(paramInfos = argTypes.asInstanceOf[List[TypeBounds]].toLst, resType = resType)
     case _ =>
       tp
 
@@ -918,7 +919,7 @@ end OnlyCapability
 object FunctionOrMethod:
   def unapply(tp: Type)(using Context): Option[(List[Type], Type)] = tp match
     case defn.FunctionOf(args, res, isContextual) => Some((args, res))
-    case mt: MethodOrPoly => Some((mt.paramInfos, mt.resType))
+    case mt: MethodOrPoly => Some((mt.paramInfosList, mt.resType))
     case defn.RefinedFunctionOf(rinfo) => unapply(rinfo)
     case _ => None
 

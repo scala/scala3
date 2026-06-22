@@ -134,8 +134,9 @@ class ScalaPrimitives(using @constructorOnly initCtx: Context) {
       else alts foreach (s =>
         addPrimitive(s,
           s.info.paramInfoss match {
-            case List(tp :: _) if code == ADD && tp =:= ctx.definitions.StringType => CONCAT
-            case _                                          => code
+            case List(pinfos)
+            if code == ADD && pinfos.nonEmpty && pinfos(0) =:= ctx.definitions.StringType => CONCAT
+            case _ => code
           }
         )
         )

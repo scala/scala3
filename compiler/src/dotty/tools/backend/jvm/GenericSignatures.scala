@@ -495,13 +495,13 @@ object GenericSignatures {
         case TypeParamRef(binder, paramNum) =>
           binder.paramInfos(paramNum).hi match
             case hkt @ HKTypeLambda(_, _) =>
-              val instantiated = hkt.instantiate(a.args).dealias
+              val instantiated = hkt.instantiate(a.argsLst).dealias
               // However, since Java doesn't have a way to refer to HKTs in generic signatures,
               // we must trade precision for termination by only resolving one level,
               // otherwise we end up in infinite loops,
               // e.g., in `X[A] <: Thing[X[A]]` or `X[A] <: X[Thing[A]]` we keep resolving `X`.
               // In that case we must completely give up on the genericity, i.e.,
-              // in `X[A] <: Y[X[Z[A]]]` it would not be correct to use `Y[A]` as a type signature! 
+              // in `X[A] <: Y[X[Z[A]]]` it would not be correct to use `Y[A]` as a type signature!
               if instantiated.existsPart(_ == a.tycon) then ResolvedAppliedType.Bail
               else ResolvedAppliedType.Resolved(instantiated)
             case _ => ResolvedAppliedType.NotResolved
@@ -530,7 +530,7 @@ object GenericSignatures {
 
     @tailrec def recur(tpe: Type): Type = tpe match
       case mtd: MethodType =>
-        vparams ++= mtd.paramInfos.filterNot(_.hasAnnotation(defn.ErasedParamAnnot))
+        vparams ++= mtd.paramInfosList.filter(!_.hasAnnotation(defn.ErasedParamAnnot))
         mtd.resType.dealias match
           // Returned context functions are erased by putting their parameters into the method's parameters,
           // so we must duplicate that logic here

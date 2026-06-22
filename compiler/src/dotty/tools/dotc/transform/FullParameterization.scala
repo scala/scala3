@@ -7,6 +7,7 @@ import Contexts.*
 import Symbols.*
 import Decorators.*
 import StdNames.nme
+import util.{Lst, Lst1}
 import ast.*
 
 /** Provides methods to produce fully parameterized versions of instance methods,
@@ -94,14 +95,14 @@ trait FullParameterization {
       case _ => (0, info)
     }
     val ctparams = if (abstractOverClass) clazz.typeParams else Nil
-    val ctnames = ctparams.map(_.name)
+    val ctnames = ctparams.mapToLst(_.name)
 
     /** The method result type */
     def resultType(mapClassParams: Type => Type) = {
       val thisParamType = mapClassParams(clazz.classInfo.selfType)
       val firstArgType = if (liftThisType) thisParamType & clazz.thisType else thisParamType
-      MethodType(nme.SELF :: Nil)(
-          mt => firstArgType :: Nil,
+      MethodType(Lst(nme.SELF))(
+          mt => Lst(firstArgType),
           mt => mapClassParams(origResult).substThisUnlessStatic(clazz, mt.newParamRef(0)))
     }
 
@@ -112,8 +113,8 @@ trait FullParameterization {
     }
 
     /** The bounds for the added type parameters of the polytype `pt` */
-    def mappedClassBounds(pt: PolyType): List[TypeBounds] =
-      ctparams.map(tparam => mapClassParams(tparam.info, pt).bounds)
+    def mappedClassBounds(pt: PolyType): Lst[TypeBounds] =
+      ctparams.mapToLst(tparam => mapClassParams(tparam.info, pt).bounds)
 
     info match {
       case info: PolyType =>
@@ -231,7 +232,7 @@ trait FullParameterization {
         // this type could have changed on forwarding. Need to insert a cast.
         originalDef.trailingParamss.foldLeft(fun)((acc, params) => {
         val meth = acc.tpe.asInstanceOf[MethodType]
-        val paramTypes = meth.instantiateParamInfos(params.tpes)
+        val paramTypes = meth.instantiateParamInfosList(params.tpes)
         acc.appliedToArgs(
           params.lazyZip(paramTypes).map((param, paramType) => {
             assert(param.tpe <:< paramType.widen) // type should still conform to widened type
@@ -259,10 +260,10 @@ object FullParameterization {
   def memberSignature(info: Type)(using Context): Signature = info match {
     case info: PolyType =>
       memberSignature(info.resultType)
-    case MethodTpe(nme.SELF :: Nil, _, restpe) =>
+    case MethodTpe(Lst1(nme.SELF), _, restpe) =>
       restpe.ensureMethodic.signature
-    case info @ MethodTpe(nme.SELF :: otherNames, thisType :: otherTypes, restpe) =>
-      info.derivedLambdaType(otherNames, otherTypes, restpe).signature
+    case info @ MethodTpe(pnames, pinfos, restpe) if pnames.length >= 1 && pnames(0) == nme.SELF =>
+      info.derivedLambdaType(pnames.drop(1), pinfos.drop(1), restpe).signature
     case _ =>
       Signature.NotAMethod
   }

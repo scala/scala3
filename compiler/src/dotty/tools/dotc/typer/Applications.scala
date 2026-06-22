@@ -5,7 +5,7 @@ package typer
 import core.*
 import ast.{Trees, tpd, untpd, desugar, TreeTypeMap}
 import util.Stats.record
-import util.{SrcPos, NoSourcePosition}
+import util.{SrcPos, NoSourcePosition, Property, Lst}
 import Contexts.*
 import Flags.*
 import Symbols.*
@@ -24,7 +24,6 @@ import Inferencing.*
 import reporting.*
 import Nullables.*, NullOpsDecorator.*
 import config.{Feature, MigrationVersion, SourceVersion}
-import util.Property
 import util.chaining.tap
 
 import collection.mutable
@@ -117,9 +116,9 @@ object Applications {
     */
   def unapplySeqTypeElemTp(getTp: Type)(using Context): Type = {
     def lengthTp = ExprType(defn.IntType)
-    def lengthCompareTp = MethodType(List(defn.IntType), defn.IntType)
-    def applyTp(elemTp: Type) = MethodType(List(defn.IntType), elemTp)
-    def dropTp(elemTp: Type) = MethodType(List(defn.IntType), defn.CollectionSeqType.appliedTo(elemTp))
+    def lengthCompareTp = MethodType(Lst(defn.IntType), defn.IntType)
+    def applyTp(elemTp: Type) = MethodType(Lst(defn.IntType), elemTp)
+    def dropTp(elemTp: Type) = MethodType(Lst(defn.IntType), defn.CollectionSeqType.appliedTo(elemTp))
     def toSeqTp(elemTp: Type) = ExprType(defn.CollectionSeqType.appliedTo(elemTp))
 
     // the result type of `def apply(i: Int): T`
@@ -439,7 +438,7 @@ object Applications {
       }
 
       val args = fn.tpe.widen match
-        case mt: MethodType => args0.zipWithConserve(mt.paramInfos)(duplicateByNameArg)
+        case mt: MethodType => args0.zipWithConserve(mt.paramInfosList)(duplicateByNameArg)
         case _ => args0
 
       // Constructors written with a leading implicit parameter list are normalized
@@ -658,7 +657,7 @@ trait Applications extends Compatibility {
           fail(TypeMismatch(methType.resultType, resultType, None))
 
         // match all arguments with corresponding formal parameters
-        if success then matchArgs(orderedArgs, methType.paramInfos, n = 0)
+        if success then matchArgs(orderedArgs, methType.paramInfosList, n = 0)
       case _ =>
         if (methType.isError) ok = false
         else fail(em"$methString does not take parameters")
@@ -690,8 +689,6 @@ trait Applications extends Compatibility {
      *      parameter name.
      */
     def reorder[T <: Untyped](args: TreeList[T]): TreeList[T] = {
-
-      extension [A](list: List[A]) inline def dropOne = if list.isEmpty then list else list.tail // aka list.drop(1)
 
       extension (dna: Annotation)
         def deprecatedName: Name =
@@ -728,6 +725,8 @@ trait Applications extends Compatibility {
         def alternative: Name =
           deprecatedNames.get(name).map(_.deprecatedName).getOrElse(nme.NO_NAME)
 
+      val pnames = methodType.paramNames
+
       /** Reorder the suffix of named args per a list of required names.
        *
        *  @param pnames    The list of parameter names that are missing arguments
@@ -745,27 +744,28 @@ trait Applications extends Compatibility {
        *  If there are no more parameters or no args fit, process the next arg:
        *  a named arg may be previously used, or not yet used, or badly named.
        */
-      def handleNamed(pnames: List[Name], args: TreeList[T],
+      def handleNamed(nameIdx: Int, args: TreeList[T],
                       nameToArg: Map[Name, Trees.NamedArg[T]], toDrop: Set[Name],
-                      missingArgs: Boolean): TreeList[T] = pnames match {
-        case pname :: pnames if nameToArg.contains(pname) =>
+                      missingArgs: Boolean): TreeList[T] =
+        inline def pname = pnames(nameIdx)
+        if nameIdx < pnames.length && nameToArg.contains(pname) then
           val arg = nameToArg(pname) // use the named argument for this parameter
           pname.checkDeprecationOf(pname, arg.srcPos)
-          arg :: handleNamed(pnames, args, nameToArg - pname, toDrop + pname, missingArgs)
-        case pname :: pnames if nameToArg.contains(pname.alternative) =>
+          arg :: handleNamed(nameIdx + 1, args, nameToArg - pname, toDrop + pname, missingArgs)
+        else if nameIdx < pnames.length && nameToArg.contains(pname.alternative) then
           val alt = pname.alternative
           val arg = nameToArg(alt) // use the named argument for this parameter
           pname.checkDeprecationOf(alt, arg.srcPos)
-          arg :: handleNamed(pnames, args, nameToArg - alt, toDrop + alt, missingArgs)
-        case _ =>
+          arg :: handleNamed(nameIdx + 1, args, nameToArg - alt, toDrop + alt, missingArgs)
+        else
           args match
           case allArgs @ (arg @ NamedArg(aname, _)) :: args =>
             if toDrop.contains(aname) then
               // named argument was already picked (using aname), skip it
-              handleNamed(pnames, args, nameToArg, toDrop - aname, missingArgs)
-            else if pnames.nonEmpty && nameToArg.contains(aname) then
+              handleNamed(nameIdx, args, nameToArg, toDrop - aname, missingArgs)
+            else if nameIdx < pnames.length && nameToArg.contains(aname) then
               // argument for pname is missing, pass an empty tree; arg may be used later, so keep it
-              genericEmptyTree :: handleNamed(pnames.tail, allArgs, nameToArg, toDrop, missingArgs = true)
+              genericEmptyTree :: handleNamed(nameIdx + 1, allArgs, nameToArg, toDrop, missingArgs = true)
             else // name not (or no longer) available for named arg
               def msg =
                 if methodType.paramNames.exists(nm => nm == aname || nm.alternative == aname) then
@@ -773,30 +773,31 @@ trait Applications extends Compatibility {
                 else
                   em"$methString does not have a parameter $aname"
               fail(msg, arg.asInstanceOf[Arg])
-              arg :: handleNamed(pnames.dropOne, args, nameToArg, toDrop, missingArgs)
+              arg :: handleNamed(nameIdx + 1, args, nameToArg, toDrop, missingArgs)
           case arg :: args =>
             if toDrop.nonEmpty || missingArgs then
               report.error(i"positional after named argument", arg.srcPos)
-            arg :: handleNamed(pnames.dropOne, args, nameToArg, toDrop, missingArgs) // unnamed argument; pick it
+            arg :: handleNamed(nameIdx + 1, args, nameToArg, toDrop, missingArgs) // unnamed argument; pick it
           case nil => // no more args, continue to pick up any preceding named args
-            if pnames.isEmpty then nil
-            else handleNamed(pnames.dropOne, args = nil, nameToArg, toDrop, missingArgs)
-      }
+            if nameIdx >= pnames.length then nil
+            else handleNamed(nameIdx + 1, args = nil, nameToArg, toDrop, missingArgs)
 
       // Skip prefix of positional args, then handleNamed
-      def handlePositional(pnames: List[Name], args: TreeList[T]): TreeList[T] =
+      def handlePositional(nameIdx: Int, args: TreeList[T]): TreeList[T] =
         args match
-        case (arg @ NamedArg(name, _)) :: args if !pnames.isEmpty && pnames.head.isMatchedBy(name) =>
-          pnames.head.checkDeprecationOf(name, arg.srcPos)
-          arg :: handlePositional(pnames.tail, args)
+        case (arg @ NamedArg(name, _)) :: args
+        if nameIdx < pnames.length && pnames(nameIdx).isMatchedBy(name) =>
+          pnames(nameIdx).checkDeprecationOf(name, arg.srcPos)
+          arg :: handlePositional(nameIdx + 1, args)
         case (_: NamedArg) :: _ =>
-          val nameAssocs = args.collect { case arg @ NamedArg(name, _) => name -> arg }
-          handleNamed(pnames, args, nameAssocs.toMap, toDrop = Set.empty, missingArgs = false)
+          val nameAssocs = args.collect:
+            case arg @ NamedArg(name, _) => name -> arg
+          handleNamed(nameIdx, args, nameAssocs.toMap, toDrop = Set.empty, missingArgs = false)
         case arg :: args =>
-          arg :: handlePositional(pnames.dropOne, args)
+          arg :: handlePositional(nameIdx + 1, args)
         case nil => nil
 
-      handlePositional(methodType.paramNames, args)
+      handlePositional(0, args)
     } // end reorder
 
     /** Is `sym` a constructor of a Java-defined annotation? */
@@ -841,7 +842,7 @@ trait Applications extends Compatibility {
                   // stray parameter references. Test case is i23266.scala.
                 && typeOfArg(argTyped).exists
                   // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-            then formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(argTyped)))
+            then formals1.mapConserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(argTyped)))
             else formals1
 
           def missingArg(n: Int): Unit =
@@ -1216,7 +1217,7 @@ trait Applications extends Compatibility {
           if isJavaAnnotConstr(methRef.symbol) then
             // #19951 Make sure all arguments are NamedArgs for Java annotations
             if typedArgs.exists(!_.isInstanceOf[NamedArg]) then
-              typedArgs = typedArgs.lazyZip(methType.asInstanceOf[MethodType].paramNames).map {
+              typedArgs = typedArgs.lazyZip(methType.asInstanceOf[MethodType].paramNamesList).map {
                 case (arg: NamedArg, _) => arg
                 case (arg, name)        => NamedArg(name, arg)
               }
@@ -1234,7 +1235,7 @@ trait Applications extends Compatibility {
             // with all non-explicit default parameters at the end in declaration order.
             val orderedArgDefs = {
               // Indices of original typed arguments that are lifted by liftArgs
-              val impureArgIndices = typedArgBuf.lazyZip(methodType.paramInfos).zipWithIndex.collect {
+              val impureArgIndices = typedArgBuf.lazyZip(methodType.paramInfosList).zipWithIndex.collect {
                 case ((arg, tp), idx) if lifter.wouldLift(arg, tp) => idx
               }
               def position(arg: Trees.Tree[T]) = {
@@ -1353,7 +1354,7 @@ trait Applications extends Compatibility {
                 case SelectionProto(nme.asInstanceOf_, PolyProto(_, resTp), _, _, _) => resTp
                 case resTp if isFullyDefined(resTp, ForceDegree.all) => resTp
                 case _ => defn.ObjectType
-            val methType = MethodType(proto.typedArgs().map(_.tpe.widen), resultType)
+            val methType = MethodType(proto.typedArgs().mapToLst(_.tpe.widen), resultType)
             val fun2 = Applications.retypeSignaturePolymorphicFn(fun1, methType)
             simpleApply(fun2, proto)
           case funRef: TermRef =>
@@ -1652,10 +1653,8 @@ trait Applications extends Compatibility {
    */
   def isUnary(tp: Type)(using Context): Boolean = tp match {
     case tp: MethodicType =>
-      tp.firstParamTypes match {
-        case ptype :: Nil => !ptype.isRepeatedParam
-        case _ => false
-      }
+      val formals = tp.firstParamTypes
+      formals.length == 1 && !formals(0).isRepeatedParam
     case tp: TermRef =>
       tp.denot.alternatives.forall(alt => isUnary(alt.info))
     case _ =>
@@ -2194,9 +2193,9 @@ trait Applications extends Compatibility {
           ) && (
             if tp1.isVarArgsMethod then
               tp2.isVarArgsMethod
-              && isApplicableMethodRef(alt2, tp1.paramInfos.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
+              && isApplicableMethodRef(alt2, tp1.paramInfosList.map(_.repeatedToSingle), WildcardType, ArgMatch.Compatible)
             else
-              isApplicableMethodRef(alt2, tp1.paramInfos, WildcardType, ArgMatch.Compatible)
+              isApplicableMethodRef(alt2, tp1.paramInfosList, WildcardType, ArgMatch.Compatible)
           )
         case tp1: PolyType => // (2)
           inContext(ctx.fresh.setExploreTyperState()) {
@@ -2633,7 +2632,7 @@ trait Applications extends Compatibility {
             def numDefaultParams =
               if alt.symbol.hasDefaultParams then
                 val fn = ref(alt, needLoad = false)
-                ptypes.indices.count(n => !findDefaultGetter(fn, n, testOnly = true).isEmpty)
+                (0 until ptypes.length).count(n => !findDefaultGetter(fn, n, testOnly = true).isEmpty)
               else 0
             if numParams < numArgs then isVarArgs
             else if numParams == numArgs then true
@@ -2701,7 +2700,7 @@ trait Applications extends Compatibility {
               //    def f(x: String): Unit = ???
               //    def f: java.io.OutputStream = ???
               //    new java.io.ObjectOutputStream(f)
-              narrowByTypes(alts, mtp.paramInfos, mtp.resultType)
+              narrowByTypes(alts, mtp.paramInfosList, mtp.resultType)
             case _ =>
               // pick any alternatives that are not methods since these might be convertible
               // to the expected type, or be used as extension method arguments.
@@ -2722,11 +2721,11 @@ trait Applications extends Compatibility {
             case NoType =>
               NoType
             case rt: PolyType if typeArgs.length == rt.paramInfos.length =>
-              tp.derivedLambdaType(resType = rt.instantiate(typeArgs))
+              tp.derivedLambdaType(resType = rt.instantiateWithList(typeArgs))
             case rt =>
               tp.derivedLambdaType(resType = rt).asInstanceOf[PolyType].flatten
         case tp: MethodType =>
-          tp.instantiate(argTypes)
+          tp.instantiateWithList(argTypes)
         case _ =>
           NoType
       }
@@ -2792,7 +2791,7 @@ trait Applications extends Compatibility {
    *  plus the number of term parameters in `paramss` that come before that suffix.
    */
   def trimParamss(t: Type, paramss: List[List[Symbol]])(using Context): (List[List[Symbol]], Int) = t match
-    case MethodType(Nil) => trimParamss(t.resultType, paramss)
+    case MethodType(pnames) if pnames.isEmpty => trimParamss(t.resultType, paramss)
     case t: MethodOrPoly =>
       val firstParamName = t.paramNames.head
       def recur(pss: List[List[Symbol]], skipped: Int): (List[List[Symbol]], Int) =
@@ -2892,7 +2891,7 @@ trait Applications extends Compatibility {
         recur(altFormals.map(_.tail), args1)
       case _ =>
     }
-    recur(alts.map(_.widen.firstParamTypes), pt.args)
+    recur(alts.map(_.widen.firstParamTypes.toList), pt.args)
   }
 
   private def harmonizeWith[T <: AnyRef](ts: List[T])(tpe: T => Type, adapt: (T, Type) => T)(using Context): List[T] = {

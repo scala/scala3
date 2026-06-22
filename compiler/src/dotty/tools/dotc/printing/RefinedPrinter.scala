@@ -211,7 +211,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             && !showUniqueIds && !printDebug && !ccVerbose
         then
           // cc.Setup converts all functions to dependent functions. Undo that when printing.
-          toTextFunction(tp.paramInfos, tp.resType, tp, refs, isContextual, isPure)
+          toTextFunction(tp.paramInfosList, tp.resType, tp, refs, isContextual, isPure)
         else
           changePrec(GlobalPrec):
             "("

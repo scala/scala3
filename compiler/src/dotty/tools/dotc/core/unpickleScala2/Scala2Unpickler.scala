@@ -18,7 +18,7 @@ import printing.Texts.{*, given}
 import printing.Printer
 import io.AbstractFile
 import util.common.*
-import util.NoSourcePosition
+import util.{NoSourcePosition, Lst}
 import typer.Checking.checkNonCyclic
 import typer.Nullables.*
 import PickleBuffer.*
@@ -52,13 +52,13 @@ object Scala2Unpickler {
       // work better. See the commit message where this change was introduced
       // for more information.
       (if (tparams.head.owner.is(Method)) PolyType else HKTypeLambda)
-        .fromParams(tparams, restpe)
+        .fromParams(tparams.toLst, restpe)
     case tp => tp
   }
 
   def addConstructorTypeParams(denot: SymDenotation)(using Context): Unit = {
     assert(denot.isConstructor)
-    denot.info = PolyType.fromParams(denot.owner.typeParams, denot.info)
+    denot.info = PolyType.fromParams(denot.owner.typeParamsLst, denot.info)
   }
 
   def ensureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope)(using Context): Unit =
@@ -69,7 +69,7 @@ object Scala2Unpickler {
     if scope.lookup(nme.CONSTRUCTOR) == NoSymbol then
       val constr =
         if fromScala2 || cls.isAllOf(Trait | JavaDefined) then newDefaultConstructor(cls)
-        else newConstructor(cls, Private, paramNames = Nil, paramTypes = Nil)
+        else newConstructor(cls, Private, paramNames = Lst(), paramTypes = Lst())
       // Scala 2 traits have a constructor iff they have initialization code
       // In dotc we represent that as !StableRealizable, which is also owner.is(NoInits)
       if clsDenot.flagsUNSAFE.is(Trait) then
@@ -889,7 +889,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val params = until(end, () => readSymbolRef())
         val maker = MethodType.companion(
           isImplicit = tag == IMPLICITMETHODtpe || params.nonEmpty && params.head.is(Implicit))
-        val result = maker.fromSymbols(params, restpe)
+        val result = maker.fromSymbols(params.toLst, restpe)
         result.resType match
           case restpe1: MethodType if restpe1 ne restpe =>
             val prevResParams = paramsOfMethodType.remove(restpe)
@@ -1231,7 +1231,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val symbol = setSym()
         val body = readTreeRef()
         val vparams = until(end, () => readValDefRef())
-        val applyType = MethodType(vparams map (_.name), vparams map (_.tpt.tpe), body.tpe)
+        val applyType = MethodType(vparams.mapToLst(_.name), vparams.mapToLst(_.tpt.tpe), body.tpe)
         val applyMeth = newSymbol(symbol.owner, nme.apply, Method, applyType)
         Closure(applyMeth, Function.const(body.changeOwner(symbol, applyMeth)))
 

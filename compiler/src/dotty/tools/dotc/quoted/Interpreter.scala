@@ -314,7 +314,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     }
     val extraParams = getExtraParams(sym.info.finalResultType)
     val allParams = TypeErasure.erasure(sym.info) match {
-      case meth: MethodType => meth.paramInfos ::: extraParams
+      case meth: MethodType => meth.paramInfosList ::: extraParams
       case _ => extraParams
     }
     allParams.map(paramClass)

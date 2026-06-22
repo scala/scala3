@@ -25,7 +25,7 @@ import Inferencing.{fullyDefinedType, isFullyDefined}
 import Scopes.newScope
 import Typer.BindingPrec, BindingPrec.*
 import Hashable.*
-import util.{EqHashMap, Stats}
+import util.{EqHashMap, Stats, Lst}
 import config.{Config, Feature, SourceVersion}
 import Feature.{migrateTo3, sourceVersion}
 import config.Printers.{implicits, implicitsDetailed}
@@ -135,7 +135,7 @@ object Implicits:
           def methodCandidateKind(mt: MethodType, approx: Boolean) =
             if (mt.isImplicitMethod)
               viewCandidateKind(normalize(mt, pt), argType, resType)
-            else if (mt.paramInfos.lengthCompare(1) == 0 && {
+            else if (mt.paramInfos.length == 1 && {
                   var formal = widenSingleton(mt.paramInfos.head)
                   if (approx) formal = wildApprox(formal)
                   explore(argType relaxed_<:< formal.widenExpr)
@@ -319,7 +319,7 @@ object Implicits:
 
       outerImplicits match
         case null => 1
-        case oi if migrateTo3(using irefCtx) 
+        case oi if migrateTo3(using irefCtx)
                 || (irefCtx.owner eq oi.irefCtx.owner) && (isImport || (irefCtx.scope eq oi.irefCtx.scope) && !isLazyImplicit) => oi.level
         case oi => oi.level + 1
     end level
@@ -2148,7 +2148,7 @@ final class SearchRoot extends SearchHistory:
               case (nsym, nrhs) => ValDef(nsym.asTerm, nrhs.changeNonLocalOwners(nsym))
             }
 
-            val constr = newConstructor(classSym, Synthetic, Nil, Nil).entered
+            val constr = newConstructor(classSym, Synthetic, Lst(), Lst()).entered
             val classDef = ClassDef(classSym, DefDef(constr), vdefs)
 
             val valSym = newLazyImplicit(classSym.typeRef, span)

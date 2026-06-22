@@ -26,6 +26,7 @@ import dotty.tools.dotc.core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.transform.TreeChecker
 import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.util.Spans.NoCoord
+import dotty.tools.dotc.util.Lst
 
 object QuotesImpl {
 
@@ -2306,8 +2307,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given LambdaTypeMethods: LambdaTypeMethods with
       extension (self: LambdaType)
-        def paramNames: List[String] = self.paramNames.map(_.toString)
-        def paramTypes: List[TypeRepr] = self.paramInfos
+        def paramNames: List[String] = self.paramNamesList.map(_.toString)
+        def paramTypes: List[TypeRepr] = self.paramInfosList
         def resType: TypeRepr = self.resType
       end extension
     end LambdaTypeMethods
@@ -2330,15 +2331,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object MethodType extends MethodTypeModule:
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType =
-        Types.MethodType(paramNames.map(_.toTermName))(paramInfosExp, resultTypeExp)
+        Types.MethodType(paramNames.mapToLst(_.toTermName))(paramInfosExp.andThen(_.toLst), resultTypeExp)
       def apply(kind: MethodTypeKind)(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType =
         val companion = kind match
           case MethodTypeKind.Contextual => Types.ContextualMethodType
           case MethodTypeKind.Implicit => Types.ImplicitMethodType
           case MethodTypeKind.Plain => Types.MethodType
-        companion.apply(paramNames.map(_.toTermName))(paramInfosExp, resultTypeExp)
+        companion.apply(paramNames.mapToLst(_.toTermName))(paramInfosExp.andThen(_.toLst), resultTypeExp)
       def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr) =
-        (x.paramNames.map(_.toString), x.paramTypes, x.resType)
+        (x.paramNames.map(_.toString).toList, x.paramTypes, x.resType)
     end MethodType
 
     given MethodTypeMethods: MethodTypeMethods with
@@ -2353,7 +2354,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => MethodTypeKind.Plain
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
 
-        def erasedParams: List[Boolean] = self.paramErasureStatuses
+        def erasedParams: List[Boolean] = self.paramErasureStatuses.toList
         def hasErasedParams: Boolean = self.hasErasedParams
       end extension
     end MethodTypeMethods
@@ -2368,15 +2369,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object PolyType extends PolyTypeModule:
       def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => TypeRepr): PolyType =
-        Types.PolyType(paramNames.map(_.toTypeName))(paramBoundsExp, resultTypeExp)
+        Types.PolyType(paramNames.mapToLst(_.toTypeName))(paramBoundsExp.andThen(_.toLst), resultTypeExp)
       def unapply(x: PolyType): (List[String], List[TypeBounds], TypeRepr) =
-        (x.paramNames.map(_.toString), x.paramBounds, x.resType)
+        (x.paramNames.map(_.toString).toList, x.paramBounds, x.resType)
     end PolyType
 
     given PolyTypeMethods: PolyTypeMethods with
       extension (self: PolyType)
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def paramBounds: List[TypeBounds] = self.paramInfos
+        def paramBounds: List[TypeBounds] = self.paramInfosList
       end extension
     end PolyTypeMethods
 
@@ -2390,15 +2391,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeLambda extends TypeLambdaModule:
       def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => TypeRepr): TypeLambda =
-        Types.HKTypeLambda(paramNames.map(_.toTypeName))(boundsFn, bodyFn)
+        Types.HKTypeLambda(paramNames.mapToLst(_.toTypeName))(boundsFn.andThen(_.toLst), bodyFn)
       def unapply(x: TypeLambda): (List[String], List[TypeBounds], TypeRepr) =
-        (x.paramNames.map(_.toString), x.paramBounds, x.resType)
+        (x.paramNames.map(_.toString).toList, x.paramBounds, x.resType)
     end TypeLambda
 
     given TypeLambdaMethods: TypeLambdaMethods with
       extension (self: TypeLambda)
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def paramBounds: List[TypeBounds] = self.paramInfos
+        def paramBounds: List[TypeBounds] = self.paramInfosList
         def paramVariances: List[Flags] =
           self.typeParams.map(_.paramVariance)
       end extension
@@ -2750,7 +2751,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           parents,
           selfType.getOrElse(Types.NoType),
           dotc.core.Symbols.NoSymbol)
-        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Nil, Nil))
+        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Lst(), Lst()))
         for sym <- decls(cls) do cls.enter(sym)
         cls
 
@@ -2895,7 +2896,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           compUnitInfo = null
         )
         val cls = mod.moduleClass.asClass
-        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Nil, Nil))
+        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Lst(), Lst()))
         for sym <- decls(cls) do cls.enter(sym)
         mod
 
@@ -3188,11 +3189,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given SignatureMethods: SignatureMethods with
       extension (self: Signature)
         def paramSigs: List[String | Int] =
-          self.paramsSig.map {
+          self.paramsSig.toList.map[String | Int] {
             case paramSig: dotc.core.Names.TypeName =>
               paramSig.toString
-            case paramSig: Int =>
-              paramSig
+            case paramSig: Integer =>
+              paramSig.intValue
           }
         def resultSig: String =
           self.resSig.toString

@@ -71,8 +71,8 @@ class NameBuffer extends TastyBuffer(10000) {
     val encodedValue = paramSig match {
       case paramSig: TypeName =>
         nameRefs(paramSig.toTermName).index
-      case paramSig: Int =>
-        -paramSig
+      case paramSig: Integer =>
+        -paramSig.intValue
     }
     writeInt(encodedValue)
   }

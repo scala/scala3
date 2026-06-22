@@ -33,9 +33,10 @@ import inlines.{Inlines, PrepareInlineable}
 import util.Spans.*
 import util.chaining.*
 import util.common.*
-import util.{Property, SimpleIdentityMap, SrcPos}
+import util.{Property, SimpleIdentityMap, SrcPos, Lst}
 import Applications.{defaultArgument, wrapDefs}
 import collection.mutable
+import collection.immutable.BitSet
 import Implicits.*
 import util.Stats.record
 import config.Printers.{gadts, typr}
@@ -1704,7 +1705,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *     def double(x: Char): String = s"$x$x"
    *     "abc" flatMap double
    */
-  private def decomposeProtoFunction(pt: Type, defaultArity: Int, pos: SrcPos)(using Context): (List[Type], untpd.Tree) = {
+  private def decomposeProtoFunction(pt: Type, defaultArity: Int, pos: SrcPos)(using Context): (Lst[Type], untpd.Tree) = {
     def typeTree(tp: Type) = tp match {
       case _: WildcardType => new untpd.InferredTypeTree()
       case _ => untpd.InferredTypeTree(tp)
@@ -1733,12 +1734,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // if expected result type is a wildcard, approximate from above.
           // this can type the greatest set of admissible closures.
 
-          (pt1.argInfos.init, typeTree(interpolateWildcards(pt1.argInfos.last.hiBound)))
+          (pt1.argInfos.toLst.init, typeTree(interpolateWildcards(pt1.argInfos.last.hiBound)))
         case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
         if defn.isNonRefinedFunction(parent) && formals.length == defaultArity =>
-          (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
+          (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.mapToLst(_.termRef))))
         case defn.PolyFunctionOf(mt @ MethodTpe(_, formals, restpe)) if formals.length == defaultArity =>
-          (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
+          (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.mapToLst(_.termRef))))
         case SAMType(mt @ MethodTpe(_, formals, _), samParent) =>
           val restpe = mt.resultType match
             case mt: MethodType => mt.toFunctionType(isJava = samParent.classSymbol.is(JavaDefined))
@@ -1748,12 +1749,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               if (formals.length != defaultArity)
                 typeTree(WildcardType)
               else
-                untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef)))
+                untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.mapToLst(_.termRef)))
             } else
               typeTree(restpe)
           (formals, tree)
         case _ =>
-          (List.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
+          (Lst.tabulate(defaultArity)(alwaysWildcardType), untpd.TypeTree())
       }
     }
   }
@@ -1798,6 +1799,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if (ctx.mode is Mode.Type) typedFunctionType(tree, pt)
     else typedFunctionValue(tree, pt)
 
+  def trueIndices(xs: List[Boolean]): BitSet =
+    def recur(xs: List[Boolean], idx: Int, bs: BitSet): BitSet = xs match
+      case true :: xs1 => recur(xs1, idx + 1, bs + idx)
+      case false :: xs1 => recur(xs1, idx + 1, bs)
+      case Nil => bs
+    recur(xs, 0, BitSet.empty)
+
   def typedFunctionType(tree: untpd.Function, pt: Type)(using Context): Tree = {
     val untpd.Function(args, result) = tree
     result match
@@ -1828,7 +1836,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if mt.paramErasureStatuses.lazyZip(mt.paramInfos).exists: (paramErased, info) =>
         !paramErased && info.derivesFrom(defn.ErasedClass)
       then
-        val newParams = params1.zipWithConserve(mt.paramInfos): (param, info) =>
+        val newParams = params1.zipWithConserve(mt.paramInfosList): (param, info) =>
           if info.derivesFrom(defn.ErasedClass) then param.withAddedFlags(Erased) else param
         typedDependent(newParams, result)
       else
@@ -2039,7 +2047,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case untpd.Ident(id) => id == params.head.name
       fnBody match
         case untpd.Match(scrut, cases @ untpd.CaseDef(untpd.Tuple(elems), untpd.EmptyTree, rhs) :: Nil)
-        if scrut.span.isSynthetic && isParamRef(scrut) && elems.hasSameLengthAs(protoFormals) =>
+        if scrut.span.isSynthetic && isParamRef(scrut) && elems.length == protoFormals.length =>
           // If `pt` is N-ary function type, convert synthetic lambda
           //   x$1 => x$1 match case (a1, ..., aN) => e
           // to
@@ -2117,22 +2125,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     dpt match
       case defn.PolyFunctionOf(poly @ PolyType(_, mt: MethodType)) =>
-        if tparams.lengthCompare(poly.paramNames) == 0 && vparams.lengthCompare(mt.paramNames) == 0 then
+        if tparams.length == poly.paramNames.length && vparams.length == mt.paramNames.length then
           // If the expected type is a polymorphic function with the same number of
           // type and value parameters, then infer the types of value parameters from the expected type.
-          val inferredVParams = vparams.zipWithConserve(mt.paramInfos): (vparam, formal) =>
+          val inferredVParams = vparams.zipWithConserve(mt.paramInfosList): (vparam, formal) =>
             // Unlike in typedFunctionValue, `formal` cannot be a TypeBounds since
             // it must be a valid method parameter type.
             if vparam.tpt.isEmpty && isFullyDefined(formal, ForceDegree.failBottom) then
               cpy.ValDef(vparam)(tpt = new untpd.InLambdaTypeTree(isResult = false, (tsyms, vsyms) =>
                 // We don't need to substitute `mt` by `vsyms` because we currently disallow
                 // dependencies between value parameters of a closure.
-                formal.substParams(poly, tsyms.map(_.typeRef)))
+                formal.substParams(poly, tsyms.mapToLst(_.typeRef)))
               )
             else vparam
           val resultTpt =
             untpd.InLambdaTypeTree(isResult = true, (tsyms, vsyms) =>
-              mt.resultType.substParams(mt, vsyms.map(_.termRef)).substParams(poly, tsyms.map(_.typeRef)))
+              mt.resultType.substParams(mt, vsyms.mapToLst(_.termRef)).substParams(poly, tsyms.mapToLst(_.typeRef)))
           val desugared = desugar.makeClosure(tparams, inferredVParams, body, resultTpt, tree.span)
           typed(desugared, pt)
         else
@@ -4003,7 +4011,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   protected def makeContextualFunction(tree: untpd.Tree, pt: Type)(using Context): Tree = {
     val defn.FunctionOf(formals, _, true) = pt.dropDependentRefinement: @unchecked
     val paramNamesOrNil = pt match
-      case RefinedType(_, _, rinfo: MethodType) => rinfo.paramNames
+      case RefinedType(_, _, rinfo: MethodType) => rinfo.paramNamesList
       case _ => Nil
 
     // The getter of default parameters may reach here.
@@ -4475,7 +4483,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         alts.filter(_.info.isParameterless) match
         case alt :: Nil => readaptSimplified(tree.withType(alt))
         case _ =>
-          altDenots.find(_.info.paramInfoss == ListOfNil) match
+          altDenots.find(_.info.paramInfoss match { case lst :: Nil => lst.isEmpty; case _ => false }) match
           case Some(alt) => readaptSimplified(tree.withType(altRef(alt)))
           case _ => error
 
@@ -4680,7 +4688,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                   report.error(msg, tree.srcPos.endPos)
                 case _ =>
 
-        val args = implicitArgs(wtp.paramInfos, 0, pt)
+        val args = implicitArgs(wtp.paramInfosList, 0, pt)
         val failureType = propagatedFailure(args)
         if failureType.exists then
           // If there are several arguments, some arguments might already

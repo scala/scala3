@@ -17,6 +17,7 @@ import NameKinds.*
 import NameOps.*
 import Phases.erasurePhase
 import ast.Trees.*
+import util.Lst
 import dotty.tools.dotc.transform.sjs.JSSymUtils.isJSType
 
 object Mixin {
@@ -153,7 +154,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     else if (sym.isConstructor && ownerIsTrait)
       sym.copySymDenotation(
         name = nme.TRAIT_CONSTRUCTOR,
-        info = MethodType(Nil, sym.info.resultType))
+        info = MethodType(Lst(), sym.info.resultType))
     else if sym.is(Trait, butNot = JavaDefined) then
       val classInfo = sym.asClass.classInfo
       lazy val decls1 = classInfo.decls.cloneScope
@@ -191,7 +192,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
     getter.copy(
       name = Mixin.traitSetterName(getter),
       flags = Method | Accessor | Deferred,
-      info = MethodType(getter.info.resultType :: Nil, defn.UnitType))
+      info = MethodType(Lst(getter.info.resultType), defn.UnitType))
 
   override def transformTemplate(impl: Template)(using Context): Template = {
     val cls = impl.symbol.owner.asClass

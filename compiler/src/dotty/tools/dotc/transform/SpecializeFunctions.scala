@@ -52,7 +52,7 @@ class SpecializeFunctions extends MiniPhase {
     var specName: Name | Null = null
 
     def isSpecializable = {
-      val paramTypes = ddef.termParamss.head.map(_.symbol.info)
+      val paramTypes = ddef.termParamss.head.mapToLst(_.symbol.info)
       val retType = sym.info.finalResultType
       specName = nme.apply.specializedFunction(retType, paramTypes)
       defn.isSpecializableFunction(cls, paramTypes, retType)

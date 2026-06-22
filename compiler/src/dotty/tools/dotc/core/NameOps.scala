@@ -8,6 +8,7 @@ import scala.io.Codec
 import Int.MaxValue
 import Names.*, StdNames.*, Contexts.*, Symbols.*, Flags.*, NameKinds.*, Types.*
 import util.Chars.{isOperatorPart, isIdentifierPart, digit2int}
+import util.Lst
 import Decorators.*
 import Definitions.*
 import nme.*
@@ -339,7 +340,7 @@ object NameOps {
      *
      *  `<return type><first type><second type><...>`
      */
-    def specializedFunction(ret: Type, args: List[Type])(using Context): N =
+    def specializedFunction(ret: Type, args: Lst[Type])(using Context): N =
       val sb = new StringBuilder
       sb.append(name.toString)
       sb.append(nme.specializedTypeNames.prefix.toString)
