@@ -2,7 +2,6 @@ package dotty.tools.backend.jvm
 
 import dotty.DottyBytecodeTest
 
-import scala.language.unsafeNulls
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -27,7 +26,7 @@ class SourcePositionsTest extends DottyBytecodeTest:
       |}""".stripMargin
 
     checkBCode(code) { dir =>
-      val testClass = loadClassNode(dir.lookupName("Test.class", directory = false).input, skipDebugInfo = false)
+      val testClass = loadClassNode(dir.lookupName("Test.class", directory = false).nn.input, skipDebugInfo = false)
       val testMethod = getMethod(testClass, "test")
       val lineNumbers = instructionsFromMethod(testMethod).collect{case ln: LineNumber => ln}
       val expected = List(
@@ -63,7 +62,7 @@ class SourcePositionsTest extends DottyBytecodeTest:
       |}""".stripMargin
 
     checkBCode(code) { dir =>
-      val testClass = loadClassNode(dir.lookupName("Test.class", directory = false).input, skipDebugInfo = false)
+      val testClass = loadClassNode(dir.lookupName("Test.class", directory = false).nn.input, skipDebugInfo = false)
       val testMethod = getMethod(testClass, "test")
       val lineNumbers = instructionsFromMethod(testMethod).collect{case ln: LineNumber => ln}
       val expected = List(
@@ -99,7 +98,7 @@ class SourcePositionsTest extends DottyBytecodeTest:
       |}""".stripMargin
 
     checkBCode(code) { dir =>
-      val testClass = loadClassNode(dir.lookupName("Test.class", directory = false).input, skipDebugInfo = false)
+      val testClass = loadClassNode(dir.lookupName("Test.class", directory = false).nn.input, skipDebugInfo = false)
       val testMethod = getMethod(testClass, "test")
       val lineNumbers = instructionsFromMethod(testMethod).collect{case ln: LineNumber => ln}
       val expected = List(
@@ -128,7 +127,7 @@ class SourcePositionsTest extends DottyBytecodeTest:
       |
       """.stripMargin
     checkBCode(code): dir =>
-      val testClass = loadClassNode(dir.lookupName("Test.class", directory = false).input, skipDebugInfo = false)
+      val testClass = loadClassNode(dir.lookupName("Test.class", directory = false).nn.input, skipDebugInfo = false)
       val testMethod = getMethod(testClass, "$init$")
       val lineNumbers = instructionsFromMethod(testMethod).collect {case ln: LineNumber => ln}
       val expected = List(

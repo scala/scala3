@@ -1,13 +1,9 @@
 package dotty.tools.dotc.reporting
 
 import dotty.tools.DottyTest
-import dotty.tools.dotc.rewrites.Rewrites
-import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.core.Contexts.*
 
-import scala.annotation.tailrec
-import scala.jdk.CollectionConverters.*
 import scala.runtime.Scala3RunTime.assertFailed
 
 import org.junit.Assert.*
@@ -543,8 +539,7 @@ class CodeActionTest extends DottyTest:
         p2
     else assertFailed("Expected a patch attatched to this action, but it was empty")
 
-    val result = patches.reverse.foldLeft(code): (newCode, patch)  =>
-      import scala.language.unsafeNulls
+    val result = patches.reverse.foldLeft(code): (newCode, patch) =>
       val start = newCode.substring(0, patch.srcPos.start)
       val ending = newCode.substring(patch.srcPos.end, newCode.length)
       start + patch.replacement + ending

@@ -1,14 +1,11 @@
 package dotty.tools.dotc.core.tasty
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.{Driver, Main}
 import dotty.tools.dotc.core.Comments.docCtx
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators.{toTermName, toTypeName}
-import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
@@ -117,7 +114,7 @@ class CommentPicklingTest {
       implicit val ctx: Context = setup(args, initCtx).map(_._2).getOrElse(initCtx)
       ctx.initialize()
       val trees = files.flatMap { f =>
-        val unpickler = new DottyUnpickler(AbstractFile.getFile(f.jpath), f.inputStream().readAllBytes(), isBestEffortTasty = false)
+        val unpickler = new DottyUnpickler(AbstractFile.getFile(f.jpath).nn, f.inputStream().readAllBytes(), isBestEffortTasty = false)
         unpickler.enter(roots = Set.empty)
         unpickler.rootTrees(using ctx)
       }
