@@ -5,76 +5,69 @@ import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
 import dotty.tools.dotc.ast.tpd
 
 import scala.collection.mutable
-import dotty.tools.dotc.{CompilationUnit, interfaces, report, util}
 import dotty.tools.dotc.sbt.ExtractDependencies
 import dotty.tools.dotc.core.*
 import Contexts.*
 import Phases.*
 import Symbols.*
 import StdNames.nme
+import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.tasty.{TastyBuffer, TastyHeaderUnpickler}
 import dotty.tools.dotc.core.tasty.TastyUnpickler
 
 import scala.tools.asm.tree.*
 import tpd.*
 import dotty.tools.io.AbstractFile
-import dotty.tools.dotc.ast.Positioned
-import dotty.tools.dotc.util.NoSourcePosition
-import SymbolUtils.given
-import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.dotc.interfaces.CompilerCallback
-import opt.{OptimizerUtils, CallGraph}
+import dotty.tools.dotc.report
+import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
+import dotty.tools.dotc.util.{SourceFile, SourcePosition}
 
-class CodeGen(val primitives: ScalaPrimitives,
-              val callGraph: Option[CallGraph], val bTypeLoader: BTypeLoader, val knownBTypes: KnownBTypes,
-              val generatedClassHandler: GeneratedClassHandler) {
-  private class Impl extends BCodeIdiomatic(callGraph), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives, knownBTypes), BCodeSyncAndTry
-  private val impl = new Impl()
+class CodeGen(impl: BCodeSyncAndTry) {
+  private val caseInsensitively = new java.util.HashMap[String, (String, SourcePosition)]
 
-  private lazy val mirrorCodeGen = impl.JMirrorBuilder()
+  private val mirrorBuilder = new impl.JMirrorBuilder()
 
   /**
-   * Generate ASM ClassNodes for classes found in the context's compilation unit. The resulting classes are
-   * passed to the `generatedClassHandler`.
+   * Generate ASM ClassNodes for classes found in the context's compilation unit.
    */
-  def genUnit()(using ctx: Context): Unit = {
+  def genUnit()(using ctx: Context): GeneratedCompilationUnit = {
     val generatedClasses = mutable.ListBuffer.empty[GeneratedClass]
     val generatedTasty = mutable.ListBuffer.empty[GeneratedTasty]
 
     def genClassDef(cd: TypeDef): Unit =
       try
         val sym = cd.symbol
-        val sourceFile = ctx.compilationUnit.source.file
-        val mainClassNode = genClass(cd)
-        val mirrorClassNode =
-          if !sym.isTopLevelModuleClass then null
-          else if sym.companionClass == NoSymbol then mirrorCodeGen.genMirrorClass(sym)
-          else
-            report.log(s"No mirror class for module with linked class: ${sym.fullName}", NoSourcePosition)
-            null
+        // This builder cannot be shared as it includes per-class mutable state that is not reset
+        val mainClassNode = new impl.SyncAndTryBuilder().genPlainClass(cd, topLevel = true)
+        val mirrorClassNode = mirrorBuilder.genMirrorClassIfNeeded(sym)
 
         if sym.isClass then
           val tastyAttrNode = if (mirrorClassNode ne null) mirrorClassNode else mainClassNode
           genTastyAndSetAttributes(sym, tastyAttrNode)
 
-        def registerGeneratedClass(classNode: ClassNode | Null, isArtifact: Boolean): Unit =
+        def registerGeneratedClass(classNode: ClassNode | Null): Unit =
           if classNode ne null then
-            generatedClasses += GeneratedClass(classNode,
-              sourceClassName = sym.javaClassName,
+            val className = classNode.name.replace('/', '.')
+            val (fullClassName, isLocal) = atPhase(sbtExtractDependenciesPhase) {
+              (ExtractDependencies.classNameAsString(sym), sym.isLocal)
+            }
+            generatedClasses += GeneratedClass(
+              classNode = classNode,
               position = sym.srcPos.sourcePos,
-              isArtifact = isArtifact,
-              onFileCreated = onFileCreated(classNode, sym, ctx.compilationUnit.source)
+              onFileCreated = onFileCreated(className, fullClassName, isLocal, ctx.compilationUnit.source,
+                                            ctx.compilerCallback, ctx.incCallback)
             )
 
-        registerGeneratedClass(mainClassNode, isArtifact = false)
-        registerGeneratedClass(mirrorClassNode, isArtifact = true)
+        registerGeneratedClass(mainClassNode)
+        registerGeneratedClass(mirrorClassNode)
       catch
         case ex: TypeError =>
           report.error(s"Error while emitting ${ctx.compilationUnit.source}\n${ex.getMessage}", cd.sourcePos)
 
     def genTastyAndSetAttributes(claszSymbol: Symbol, store: ClassNode): Unit =
       for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {
-        generatedTasty += GeneratedTasty(store, binary)
+        generatedTasty += GeneratedTasty(store.name, binary)
         val tasty =
           val uuid = new TastyHeaderUnpickler(TastyUnpickler.scala3CompilerConfig, binary()).readHeader()
           val lo = uuid.getMostSignificantBits
@@ -87,7 +80,7 @@ class CodeGen(val primitives: ScalaPrimitives,
           buffer.writeUncompressedLong(hi)
           buffer.bytes
 
-        val dataAttr = impl.createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
+        val dataAttr = BCodeUtils.createJAttribute(nme.TASTYATTR.mangledString, tasty, 0, tasty.length)
         store.visitAttribute(dataAttr)
       }
 
@@ -100,37 +93,42 @@ class CodeGen(val primitives: ScalaPrimitives,
       }
 
     genClassDefs(ctx.compilationUnit.tpdTree)
-    generatedClassHandler.process(
-      GeneratedCompilationUnit(ctx.compilationUnit.source.file, generatedClasses.toList, generatedTasty.toList)
-    )
+    // Order is not deterministic so we enforce lexicographic order for error-reporting
+    generatedClasses.sortBy(_.classNode.name).foreach(c => warnCaseInsensitiveOverwrite(c.classNode.name, c.position))
+    GeneratedCompilationUnit(ctx.compilationUnit.source.file.canonicalPath, generatedClasses.toList, generatedTasty.toList)
   }
+
+  private def warnCaseInsensitiveOverwrite(name: String, clsPos: SourcePosition)(using Context): Unit =
+    caseInsensitively.putIfAbsent(name.toLowerCase, (name, clsPos)) match {
+      case null => ()
+      case (dupName, dupPos) =>
+        val locationAddendum =
+          if clsPos.source.path == dupPos.source.path then ""
+          else s" (defined in ${dupPos.source.file.name})"
+        def nicify(name: String): String = name.replace('/', '.')
+        if name == dupName then
+          report.error(
+            em"${nicify(name)} and ${nicify(dupName)} produce classes that overwrite one another", clsPos)
+        else
+          report.warning(
+            em"""Generated class ${nicify(name)} differs only in case from ${nicify(dupName)}$locationAddendum.
+                |  Such classes will overwrite one another on case-insensitive filesystems.""", clsPos)
+    }
 
   // Creates a callback that will be evaluated in PostProcessor after creating a file
-  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: util.SourceFile)(using Context): AbstractFile => Unit = {
-    val isLocal = atPhase(sbtExtractDependenciesPhase) {
-      claszSymbol.isLocal
-    }
-    clsFile => {
-      val className = cls.name.replace('/', '.')
-      ctx.compilerCallback match
-        case cb: CompilerCallback => cb.onClassGenerated(sourceFile, clsFile, className)
-        case null => ()
+  private def onFileCreated(className: String, fullClassName: String, isLocal: Boolean, sourceFile: SourceFile,
+                            compilerCallback: CompilerCallback | Null, incrementalCallback: IncrementalCallback | Null)
+                           (clsFile: AbstractFile): Unit = {
+    compilerCallback match
+      case null => ()
+      case cb => cb.onClassGenerated(sourceFile, clsFile, className)
 
-      ctx.withIncCallback: cb =>
-        if isLocal then
-          cb.generatedLocalClass(sourceFile, clsFile.jpath)
-        else if !cb.enabled() then
-          // callback is not enabled, so nonLocalClasses were not reported in ExtractAPI
-          val fullClassName = atPhase(sbtExtractDependenciesPhase) {
-            ExtractDependencies.classNameAsString(claszSymbol)
-          }
-          cb.generatedNonLocalClass(sourceFile, clsFile.jpath, className, fullClassName)
-    }
+    incrementalCallback match
+      case null => ()
+      case cb if isLocal => cb.generatedLocalClass(sourceFile, clsFile.jpath)
+      case cb if !cb.enabled() =>
+        // callback is not enabled, so nonLocalClasses were not reported in ExtractAPI
+        cb.generatedNonLocalClass(sourceFile, clsFile.jpath, className, fullClassName)
+      case cb => ()
   }
-
-  private def genClass(cd: TypeDef)(using Context): ClassNode = {
-    val b = new impl.SyncAndTryBuilder
-    b.genPlainClass(cd)
-  }
-
 }

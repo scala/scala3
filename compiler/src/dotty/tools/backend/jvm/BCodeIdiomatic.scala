@@ -2,7 +2,7 @@ package dotty.tools
 package backend
 package jvm
 
-import dotty.tools.backend.jvm.opt.CallGraph
+import dotty.tools.backend.jvm.CallGraph
 import scala.tools.asm
 import scala.annotation.tailrec
 import scala.tools.asm.tree.MethodInsnNode
@@ -17,17 +17,17 @@ import dotty.tools.dotc.util.NoSourcePosition
  *  @version 1.0
  *
  */
-trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
+trait BCodeIdiomatic(callGraph: CallGraph) {
   private val debugLevel = 3 // 0 -> no debug info; 1-> filename; 2-> lines; 3-> varnames
   final val emitSource = debugLevel >= 1
   final val emitLines = debugLevel >= 2
   final val emitVars = debugLevel >= 3
 
   private def recordCallsitePosition(m: MethodInsnNode, pos: Positioned | Null)(using Context): Unit =
-     callGraph.foreach(_.recordCallsitePosition(m, pos match {
+     callGraph.recordCallsitePosition(m, pos match {
       case p: Positioned => p.sourcePos
       case null => NoSourcePosition
-    }))
+    })
 
   abstract class JCodeMethodN {
 

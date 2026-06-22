@@ -32,7 +32,7 @@ import dotty.tools.dotc.util.SrcPos
  *  @version 1.0
  *
  */
-trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes) extends BCodeSkelBuilder {
+trait BCodeBodyBuilder(val primitives: ScalaPrimitives) extends BCodeSkelBuilder {
   /*
    * Functionality to build the body of ASM MethodNode, except for `synchronized` and `try` expressions.
    */
@@ -1866,13 +1866,17 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
 
       val bsmArgs = bsmArgs0 ++ bsmArgs1 ++ bsmArgs2
 
-      val metafactory =
-        if (flags != 0)
-          bTypes.jliLambdaMetaFactoryAltMetafactoryHandle // altMetafactory required to be able to pass the flags and additional arguments if needed
-        else
-          bTypes.jliLambdaMetaFactoryMetafactoryHandle
-
-      bc.jmethod.visitInvokeDynamicInsn(methodName, desc, metafactory, bsmArgs*)
+      if flags == 0 then
+        bc.jmethod.visitInvokeDynamicInsn(methodName, desc, bTypes.jliLambdaMetaFactoryMetafactoryHandle, bsmArgs*)
+      else
+        // altMetafactory required to be able to pass the flags and additional arguments if needed
+        bc.jmethod.visitInvokeDynamicInsn(methodName, desc, bTypes.jliLambdaMetaFactoryAltMetafactoryHandle, bsmArgs*)
+        // collect serializable lambdas
+        val metafactoryFlags = bsmArgs(3).asInstanceOf[Integer].toInt
+        val isSerializable = (metafactoryFlags & FLAG_SERIALIZABLE) != 0
+        if isSerializable then
+          val implMethod = bsmArgs(1).asInstanceOf[Handle]
+          serializableLambdas ::= implMethod
 
       generatedType
     }

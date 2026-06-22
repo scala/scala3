@@ -19,7 +19,7 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm
 import scala.tools.asm.Opcodes.*
-import scala.tools.asm.Type
+import scala.tools.asm.{Opcodes, Type}
 import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.Value
 import dotty.tools.backend.jvm.BTypes.InternalName
@@ -27,41 +27,20 @@ import dotty.tools.backend.jvm.analysis.*
 import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
-class Inliner(optimizerUtils: OptimizerUtils,
-              callGraph: CallGraph, bTypeLoader: BTypeLoader, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
-              heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
-              settings: OptimizerSettings) {
+abstract class Inliner {
+  def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit
+}
 
-  // True if all instructions (they would cause an IllegalAccessError otherwise) can potentially be
-  // inlined in a later inlining round.
-  // Note that this method has a side effect. It allows inlining `INVOKESPECIAL` calls of static
-  // super accessors that we emit in traits. The inlined calls are marked in the call graph as
-  // `staticallyResolvedInvokespecial`. When looking up the MethodNode for the cloned `INVOKESPECIAL`,
-  // the call graph will always return the corresponding method in the trait.
-  private def maybeInlinedLater(callsite: KnownCallsite, insns: List[AbstractInsnNode]): Boolean = {
-    insns.forall({
-      case mi: MethodInsnNode =>
-        (mi.getOpcode != INVOKESPECIAL) || {
-          // Special handling for invokespecial T.f that appears within T, and T defines f.
-          // Such an instruction can be inlined into a different class, but it needs to be inlined in
-          // turn in a later inlining round.
-          // The call graph needs to treat it specially: the normal dynamic lookup needs to be
-          // avoided, it needs to resolve to T.f, no matter in which class the invocation appears.
-          def hasMethod(c: ClassNode): Boolean = {
-            val r = c.methods.iterator.asScala.exists(m => m.name == mi.name && m.desc == mi.desc)
-            if (r) callGraph.staticallyResolvedInvokespecial += mi
-            r
-          }
+final class GlobalOptimizer(indyTracker: IndyLambdaImplTracker,
+                            callGraph: OptimizerCallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
+                            heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
+                            settings: OptimizerSettings) extends Inliner {
+  def run(classNodesAndSourcePaths: Iterable[(ClassNode, String)], issueSink: OptimizerIssue => Unit): Unit = {
+    // add classes to the bytecode repo before building the call graph: the latter needs to
+    // look up classes and methods in the code repo.
+    for (c, p) <- classNodesAndSourcePaths do byteCodeRepository.add(c, p)
+    for (c, _) <- classNodesAndSourcePaths do callGraph.addClass(c)
 
-          mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME &&
-            mi.owner == callsite.callee.calleeDeclarationClass.internalName &&
-            byteCodeRepository.classNode(mi.owner).map((c, _) => hasMethod(c)).getOrElse(false) // TODO bubble up warning instead
-        }
-      case _ => false
-    })
-  }
-
-  def runInlinerAndClosureOptimizer(issueSink: OptimizerIssue => Unit): Unit = {
     var round = 0
     var changedByInliner = Iterable.empty[MethodNode]
     var changedByClosureOptimizer = mutable.LinkedHashSet.empty[MethodNode]
@@ -176,9 +155,9 @@ class Inliner(optimizerUtils: OptimizerUtils,
             case None =>
               doInline(r, aliasFrame, None)
 
-            case Some(w: IllegalAccessInstructions) if maybeInlinedLater(r.callsite, w.instructions) =>
+            case Some(w: IllegalAccessInstructions) if callGraph.maybeInlinedLater(r.callsite, w.instructions) =>
               if (state.undoLog.isEmpty) {
-                val undo = new UndoLog(optimizerUtils, callGraph)
+                val undo = new UndoLog(indyTracker, callGraph)
                 val currentState = state.clone()
                 // undo actions for the method and global state
                 undo.saveMethodState(r.callsite.callsiteClass, method)
@@ -245,7 +224,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
           }
 
         val rs = mutable.ListBuffer.empty[InlineRequest]
-        callGraph.callsites(method).valuesIterator foreach {
+        callGraph.getCallsites(method).foreach {
           // Don't inline: recursive calls, callsites that failed inlining before
           case cs: KnownCallsite if !failed(cs.callsiteInstruction) && !isLoop(cs.callsiteInstruction, cs.callee) =>
             heuristics.inlineRequest(cs) match {
@@ -403,7 +382,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
    * @return A map associating instruction nodes of the callee with the corresponding cloned
    *         instruction in the callsite method.
    */
-  def inlineCallsite(callsite: KnownCallsite, aliasFrame: Option[AliasingFrame[Value]] = None, updateCallGraph: Boolean = true): Map[AbstractInsnNode, AbstractInsnNode] = {
+  private def inlineCallsite(callsite: KnownCallsite, aliasFrame: Option[AliasingFrame[Value]] = None, updateCallGraph: Boolean = true): Map[AbstractInsnNode, AbstractInsnNode] = {
     val callsiteCallee = callsite.callee
     import callsiteCallee.{callee, calleeDeclarationClass, sourceFilePath}
 
@@ -415,7 +394,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
     //   def g = f; println() // println is unreachable after inlining f
     // If we have an inline request for a call to g, and f has been already inlined into g, we
     // need to run DCE on g's body before inlining g.
-    LocalOptImpls.minimalRemoveUnreachableCode(callee, calleeDeclarationClass.internalName, callGraph, optimizerUtils)
+    LocalOptImpls.minimalRemoveUnreachableCode(callee, calleeDeclarationClass.internalName, callGraph, indyTracker)
 
     // If the callsite was eliminated by DCE, do nothing.
     if (!callGraph.containsCallsite(callsite)) return Map.empty
@@ -696,14 +675,14 @@ class Inliner(optimizerUtils: OptimizerUtils,
 
     callsite.callsiteMethod.maxStack = math.max(MethodMax.maxStack(callsite.callsiteMethod), math.max(stackHeightAtNullCheck, maxStackOfInlinedCode))
 
-    lazy val callsiteLambdaBodyMethods = optimizerUtils.onIndyLambdaImplMethod(callsite.callsiteClass.internalName)(_.getOrElseUpdate(callsite.callsiteMethod, mutable.Map.empty))
-    optimizerUtils.onIndyLambdaImplMethodIfPresent(calleeDeclarationClass.internalName)(methods => methods.getOrElse(callee, Nil) foreach {
+    lazy val callsiteLambdaBodyMethods = indyTracker.get(callsite.callsiteClass.internalName, callsite.callsiteMethod)
+    indyTracker.get(calleeDeclarationClass.internalName, callee).foreach {
       case (indy, handle) => instructionMap.get(indy) match {
         case Some(clonedIndy: InvokeDynamicInsnNode) =>
           callsiteLambdaBodyMethods(clonedIndy) = handle
         case _ =>
       }
-    })
+    }
 
     // Don't remove the inlined instruction from callsitePositions, inlineAnnotatedCallsites so that
     // the information is still there in case the method is rolled back (UndoLog).
@@ -714,6 +693,18 @@ class Inliner(optimizerUtils: OptimizerUtils,
     OptimizerUtils.clearDceDone(callsite.callsiteMethod)
 
     instructionMap
+  }
+
+  override def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit = {
+      var css = toInline.flatMap(callGraph.getCallsite(method, _))
+        .collect { case k: KnownCallsite => k }
+        .toList
+        .sorted(using callsiteOrdering)
+      while (css.nonEmpty) {
+        val cs = css.head
+        css = css.tail
+        inlineCallsite(cs, None, updateCallGraph = css.isEmpty)
+      }
   }
 
   /**
@@ -795,7 +786,7 @@ class Inliner(optimizerUtils: OptimizerUtils,
   private val isInternalCache = mutable.Map.empty[String, Either[OptimizerWarning, Boolean]]
   private def isInternal(name: String): Either[OptimizerWarning, Boolean] = {
     isInternalCache.getOrElseUpdate(name,
-      bTypeLoader.previouslyConstructedClassBType(name) match
+      classBTypeCache.previouslyConstructedClassBType(name) match
         case Some(ct) => Right(!ct.info.inlineInfo.isAccessible)
         case None => bTypesFromClassfile.classBTypeFromParsedClassfile(name) match
           case Left(l) => Left(l)
@@ -974,6 +965,11 @@ class Inliner(optimizerUtils: OptimizerUtils,
   }
 }
 
+object DisabledInliner extends Inliner {
+  override def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit =
+    ()
+}
+
 object Inliner {
   /**
    * Check if a type is accessible to some class, as defined in JVMS 5.4.4.
@@ -1056,7 +1052,7 @@ object Inliner {
   }
 }
 
-class UndoLog(optimizerUtils: OptimizerUtils, callGraph: CallGraph) {
+class UndoLog(indyTracker: IndyLambdaImplTracker, callGraph: OptimizerCallGraph) {
 
   import java.util.{ArrayList => JArrayList}
 
@@ -1073,7 +1069,7 @@ class UndoLog(optimizerUtils: OptimizerUtils, callGraph: CallGraph) {
     val currentMaxLocals = methodNode.maxLocals
     val currentMaxStack = methodNode.maxStack
 
-    val currentIndyLambdaBodyMethods = optimizerUtils.indyLambdaBodyMethods(ownerClass.internalName, methodNode)
+    val currentIndyLambdaBodyMethods = indyTracker.get(ownerClass.internalName, methodNode)
 
     // Instead of saving / restoring the CallGraph's callsites / closureInstantiations, we call
     // callGraph.refresh on rollback. The call graph might not be up to date at the point where
@@ -1105,9 +1101,7 @@ class UndoLog(optimizerUtils: OptimizerUtils, callGraph: CallGraph) {
       OptimizerUtils.clearDceDone(methodNode)
       callGraph.refresh(methodNode, ownerClass)
 
-      optimizerUtils.onIndyLambdaImplMethodIfPresent(ownerClass.internalName)(_.subtractOne(methodNode))
-      if (currentIndyLambdaBodyMethods.nonEmpty)
-        optimizerUtils.onIndyLambdaImplMethod(ownerClass.internalName)(ms => ms(methodNode) = mutable.Map.empty ++= currentIndyLambdaBodyMethods)
+      indyTracker.reset(ownerClass.internalName, methodNode, currentIndyLambdaBodyMethods)
     }
   }
 }
