@@ -11,7 +11,7 @@ def f7(using erased: Int) = 0
 inline def f8(using inline erased: Int) = 0
 def f9(using erased inline: Int) = 0
 // inline def f10(using erased inline x: Int) = 0 // should parse but rejected later
-def f11(using erased Int) = 0
+def f11(using erased x: Int) = 0
 
 val v1 = (erased: Int) => 0
 val v2: Int => Int = erased => 0

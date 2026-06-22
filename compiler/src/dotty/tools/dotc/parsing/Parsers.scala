@@ -1950,7 +1950,7 @@ object Parsers {
                     () => funParam(in.offset))
                 case t =>
                   if leadingMods.is(Erased) then
-                    report.error(em"Erased function parameters must be named", leadingMods.mods.head.srcPos)
+                    report.error(em"Erased function parameter must be named", leadingMods.mods.head.srcPos)
                   commaSeparatedRest(t, funArgType)
           accept(RPAREN)
           if in.isArrow || isPureArrow then
@@ -4042,6 +4042,8 @@ object Parsers {
                            || in.name.nn == nme.tracked // tracked starts a name binding under x.modularity
                               && in.featureEnabled(Feature.modularity)
                            || in.lookahead.isColon)  // a following `:` starts a name binding
+                  if !paramsAreNamed && mods.is(Erased) then
+                    report.error(em"Erased method parameter must be named", mods.mods.head.srcPos)
                   (mods, paramsAreNamed)
               val params =
                 if paramsAreNamed then commaSeparated(() => param())
