@@ -74,9 +74,10 @@ object Main:
     val jarArchive = JarArchive.open(dotty.tools.io.Path(jarPath), create = true)
     val writer = FileWriters.FileWriter(jarArchive, manifestAttributes)
     try
-      dotty.tools.io.Directory(outDir).list.foreach(f => {
-        val input = f.toFile.inputStream()
-        try writer.writeFile(f.name, input.readAllBytes())
+      dotty.tools.io.AbstractFile.getDirectory(outDir, "").nn.deepIterator.foreach(f => {
+        val input = f.input
+        val path = outDir.relativize(f.jpath).toString
+        try writer.writeFile(path, input.readAllBytes())
         finally input.close()
       })
     finally
