@@ -1945,13 +1945,13 @@ object Parsers {
             in.currentRegion.withCommasExpected:
               funArgType() match
                 case Ident(name) if name != tpnme.WILDCARD && in.isColon =>
-                  def funParam(start: Offset, mods: Modifiers) =
+                  def funParam(start: Offset) =
                     atSpan(start):
                       addErased()
-                      typedFunParam(in.offset, ident(), imods)
+                      typedFunParam(in.offset, ident())
                   commaSeparatedRest(
-                    typedFunParam(paramStart, name.toTermName, imods),
-                    () => funParam(in.offset, imods))
+                    typedFunParam(paramStart, name.toTermName),
+                    () => funParam(in.offset))
                 case t =>
                   def funArg() =
                     erasedArgs.addOne(false)
