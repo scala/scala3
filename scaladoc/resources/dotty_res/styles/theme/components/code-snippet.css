@@ -19,7 +19,7 @@
 }
 
 .snippet pre code {
-  font-family: "FiraCode-Regular";
+  font-family: 'DejaVu Sans Mono', monospace;
 }
 
 .snippet pre code > span {
@@ -372,14 +372,14 @@ dd .snippet {
 /* Force the popup's editor to use the exact same font (and weight) scaladoc
  * uses for in-document snippets. Without this Scastie's CodeMirror falls
  * back to whatever Fira Code variant is on the system, which renders with
- * subtly different stroke weight than scaladoc's `FiraCode-Regular`, making
+ * subtly different stroke weight than scaladoc's font, making
  * identical CSS colors look brighter or thinner side-by-side. */
 .snippet-popup .scastie .cm-editor,
 .snippet-popup .scastie .cm-scroller,
 .snippet-popup .scastie .cm-content,
 .snippet-popup .scastie .cm-line,
 .snippet-popup .scastie .inline {
-  font-family: "FiraCode-Regular", "Fira Code", ui-monospace, monospace !important;
+  font-family: 'DejaVu Sans Mono', monospace !important;
   font-weight: 400 !important;
 }
 

@@ -3,41 +3,16 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: initial;
 }
 
-@font-face {
-  font-family: "Inter-Bold";
-  src: url("../../fonts/Inter-Bold.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Inter-SemiBold";
-  src: url("../../fonts/Inter-SemiBold.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Inter-Medium";
-  src: url("../../fonts/Inter-Medium.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "Inter-Regular";
-  src: url("../../fonts/Inter-Regular.ttf") format("truetype");
-}
-
-@font-face {
-  font-family: "FiraCode-Regular";
-  src: url("../../fonts/FiraCode-Regular.ttf");
-}
-
 .h700 {
   font-size: 40px;
   line-height: 40px;
-  font-family: "Inter-Bold", sans-serif;
+  font-family: var(--body-font-family);
 }
 
 .h600 {
   font-size: 32px;
   line-height: 40px;
-  font-family: "Inter-SemiBold", sans-serif;
+  font-family: var(--body-font-family);
 }
 
 .h600 .single {
@@ -47,75 +22,77 @@ h1, h2, h3, h4, h5, h6 {
 .h500 {
   font-size: 28px;
   line-height: 32px;
-  font-family: "Inter-Medium", sans-serif;
+  font-family: var(--body-font-family);
 }
 
 .h400 {
   font-size: 24px;
   line-height: 32px;
-  font-family: "Inter-Medium", sans-serif;
+  font-family: var(--body-font-family);
 }
 
 .h300 {
   font-size: 20px;
   line-height: 24px;
-  font-family: "Inter-Bold", sans-serif;
+  font-family: var(--body-font-family);
 }
 
 .h200 {
   font-size: 16px;
   line-height: 24px;
-  font-family: "Inter-SemiBold", sans-serif;
+  font-family: var(--body-font-family);
 }
 
 .h100 {
   font-size: 13px;
   line-height: 16px;
-  font-family: "Inter-SemiBold", sans-serif;
+  font-family: var(--body-font-family);
 }
 
 .h50 {
   font-size: 9px;
   line-height: 12px;
-  font-family: "Inter-SemiBold", sans-serif;
+  font-family: var(--body-font-family);
 }
 
 .body-large {
   font-size: 20px;
   line-height: 32px;
-  font-family: "Inter-Regular", sans-serif;
+  font-family: var(--body-font-family);
 }
 
 .body-medium {
   font-size: 16px;
   line-height: 24px;
-  font-family: "Inter-Regular", sans-serif;
+  font-family: var(--body-font-family);
 }
 
 .body-small {
   font-size: 13px;
   line-height: 16px;
-  font-family: "Inter-Regular", sans-serif;
+  font-family: var(--body-font-family);
 }
 
 .mono-medium {
   font-size: 16px;
   line-height: 24px;
-  font-family: "FiraCode-Regular", monospace;
+  font-family: var(--code-font-family);
 }
 
 .mono-small-inline {
   font-size: 13px;
   line-height: 16px;
-  font-family: "FiraCode-Regular", monospace;
+  font-family: var(--code-font-family);
 }
 
 .mono-small-block {
   font-size: 13px;
   line-height: 20px;
-  font-family: "FiraCode-Regular", monospace;
+  font-family: var(--code-font-family);
 }
 
 :root {
   font-variant-ligatures: none;
+  --body-font-family: 'DejaVu Sans', Arial, Helvetica, sans-serif;
+  --code-font-family: 'DejaVu Sans Mono', monospace;
 }
