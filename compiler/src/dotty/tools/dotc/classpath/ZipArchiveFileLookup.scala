@@ -18,11 +18,11 @@ import dotty.tools.io.ClassPath
  */
 trait ZipArchiveFileLookup[FileEntryType] extends ClassPath {
   val zipFile: File
-  def release: Option[String]
+  val release: String
 
   override def asURLs: Seq[URL] = Seq(zipFile.toURI.toURL)
 
-  private val archive = new FileZipArchive(zipFile.toPath, release)
+  private val archive = new FileZipArchive(zipFile.toPath, Some(release))
 
   override def packages(inPackage: String): Seq[PackageEntry] = {
     for {

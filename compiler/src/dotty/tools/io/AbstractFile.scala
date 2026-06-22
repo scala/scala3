@@ -22,9 +22,9 @@ import java.nio.file.{FileAlreadyExistsException, Files, Paths}
  */
 object AbstractFile {
   def getFile(path: String): AbstractFile | Null = getFile(File(path))
-  def getDirectory(path: String): AbstractFile | Null = getDirectory(Directory(path))
+  def getDirectory(path: String, jarVersion: String): AbstractFile | Null = getDirectory(Directory(path), jarVersion)
   def getFile(path: JPath): AbstractFile | Null = getFile(File(path))
-  def getDirectory(path: JPath): AbstractFile | Null = getDirectory(Directory(path))
+  def getDirectory(path: JPath, jarVersion: String): AbstractFile | Null = getDirectory(Directory(path), jarVersion)
 
   /**
    * If the specified File exists and is a regular file, returns an
@@ -38,9 +38,9 @@ object AbstractFile {
    * readable zip or jar archive, returns an abstract directory
    * backed by it. Otherwise, returns `null`.
    */
-  def getDirectory(path: Path): AbstractFile | Null =
+  def getDirectory(path: Path, jarVersion: String): AbstractFile | Null =
     if (path.isDirectory) new PlainFile(path)
-    else if (path.isFile && Path.isExtensionJarOrZip(path.jpath)) ZipArchive.fromFile(path.toFile)
+    else if (path.isFile && path.ext.isJarOrZip) new FileZipArchive(path.jpath, Some(jarVersion))
     else null
 
   /**
@@ -51,8 +51,6 @@ object AbstractFile {
   def getURL(url: URL): AbstractFile | Null =
     if (url.getProtocol != "file") null
     else new PlainFile(new Path(Paths.get(url.toURI)))
-
-  def getResources(url: URL): AbstractFile = ZipArchive.fromManifestURL(url)
 }
 
 /**
@@ -97,16 +95,8 @@ abstract class AbstractFile extends Iterable[AbstractFile] with dotty.tools.dotc
     val jpath = this.jpath
     if (jpath == null) path else jpath.normalize.toString
 
-  /** Checks extension case insensitively. */
-  @deprecated("prefer queries on ext")
-  def hasExtension(other: String): Boolean = ext.toLowerCase.equalsIgnoreCase(other)
-
   /** Returns the extension of this abstract file. */
   val ext: FileExtension = Path.fileExtension(name)
-
-  /** Returns the extension of this abstract file as a String. */
-  @deprecated("use ext instead.")
-  def extension: String = ext.toLowerCase
 
   /** The absolute file, if this is a relative file. */
   def absolute: AbstractFile
@@ -176,34 +166,18 @@ abstract class AbstractFile extends Iterable[AbstractFile] with dotty.tools.dotc
   /** Returns contents of file (if applicable) in a byte array.
    */
   @throws(classOf[IOException])
-  def toByteArray: Array[Byte] = {
-    val in = input
-    sizeOption match {
-      case Some(size) =>
-        var rest = size
-        val arr = new Array[Byte](rest)
-        while (rest > 0) {
-          val res = in.read(arr, arr.length - rest, rest)
-          if (res == -1)
-            throw new IOException("read error")
-          rest -= res
-        }
-        in.close()
-        arr
-      case None =>
-        val out = new ByteArrayOutputStream()
-        var c = in.read()
-        while(c != -1) {
-          out.write(c)
-          c = in.read()
-        }
-        in.close()
-        out.toByteArray()
-    }
-  }
+  def toByteArray: Array[Byte] =
+    val is = input
+    try is.readAllBytes()
+    finally is.close()
 
   /** Returns all abstract subfiles of this abstract directory. */
   def iterator: Iterator[AbstractFile]
+
+  /** Returns all subfiles of all subdirectories of this abstract directory, including itself. */
+  def deepIterator: Iterator[AbstractFile] =
+    if isDirectory then iterator.flatMap(_.deepIterator)
+    else Iterator.single(this)
 
   /** Drill down through subdirs looking for the target, as in lookupName.
    *  Ths target name is the last of parts.
@@ -224,18 +198,6 @@ abstract class AbstractFile extends Iterable[AbstractFile] with dotty.tools.dotc
    *  a regular file.
    */
   def lookupName(name: String, directory: Boolean): AbstractFile | Null
-
-  /** Returns an abstract file with the given name. It does not
-   *  check that it exists.
-   */
-  def lookupNameUnchecked(name: String, directory: Boolean): AbstractFile
-
-  /** Return an abstract file that does not check that `path` denotes
-   *  an existing file.
-   */
-  def lookupPathUnchecked(path: String, directory: Boolean): AbstractFile = {
-    lookup((f, p, dir) => f.lookupNameUnchecked(p, dir), path, directory)
-  }
 
   private def lookup(getFile: (AbstractFile, String, Boolean) => AbstractFile,
                      path0: String,

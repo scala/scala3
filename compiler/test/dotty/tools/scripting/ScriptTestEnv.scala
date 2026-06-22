@@ -42,7 +42,7 @@ object ScriptTestEnv {
 
     val bspDir = dottyDir / ".bsp"
     (bspDir / "scala.json").delete()
-    if bspDir.isEmpty then bspDir.delete()
+    if bspDir.walk.isEmpty then bspDir.delete()
   }
 
   lazy val nativePackDir: Option[String] = {

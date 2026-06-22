@@ -13,22 +13,18 @@ import java.io.InputStream
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 object NoAbstractFile extends AbstractFile {
-  def absolute: AbstractFile = this
-  def container: AbstractFile = this
-  def jpath: JPath | Null = null
-  def input: InputStream = throw UnsupportedOperationException("NoAbstractFile.input")
-  def isDirectory: Boolean = false
+  override def absolute: AbstractFile = this
+  override def container: AbstractFile = this
+  override def jpath: JPath | Null = null
+  override def input: InputStream = throw UnsupportedOperationException("NoAbstractFile.input")
+  override def isDirectory: Boolean = false
   override def isVirtual: Boolean = true
-  def iterator: Iterator[AbstractFile] = Iterator.empty
-  def lastModified: Long = 0L
-  def lookupName(name: String, directory: Boolean): AbstractFile | Null = null
-
-  def lookupNameUnchecked(name: String, directory: Boolean): AbstractFile =
-    throw UnsupportedOperationException("NoAbstractFile.lookupNameUnchecked")
-
-  def name: String = ""
-  def output: java.io.OutputStream = throw UnsupportedOperationException("NoAbstractFile.output")
-  def path: String = ""
+  override def iterator: Iterator[AbstractFile] = Iterator.empty
+  override def lastModified: Long = 0L
+  override def lookupName(name: String, directory: Boolean): AbstractFile | Null = null
+  override def name: String = ""
+  override def output: java.io.OutputStream = throw UnsupportedOperationException("NoAbstractFile.output")
+  override def path: String = ""
   override def toByteArray: Array[Byte] = Array[Byte]()
-  override def toString: String = "<no file>"
+  override def toString(): String = "<no file>"
 }

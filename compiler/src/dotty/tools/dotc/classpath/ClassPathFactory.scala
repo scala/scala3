@@ -3,11 +3,11 @@
  */
 package dotty.tools.dotc.classpath
 
-import dotty.tools.io.{AbstractFile, VirtualDirectory}
-import dotty.tools.io.ClassPath
+import dotty.tools.io.{AbstractFile, ClassPath, JarArchive, VirtualDirectory}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.LogicalSourcePath
 import dotty.tools.dotc.interactive.LogicalPackage
+
 import java.nio.file.Files
 
 /**
@@ -27,15 +27,15 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
       case _ =>
         for
           file <- expandPath(path, expandStar = false)
-          dir <- Option(AbstractFile.getDirectory(file))
+          dir <- Option(AbstractFile.getDirectory(file, ctx.settings.javaOutputVersion.value))
         yield ClassPathFactory.newSourcePath(dir)
     }
 
   def expandPath(path: String, expandStar: Boolean = true): List[String] = dotty.tools.io.ClassPath.expandPath(path, expandStar)
 
   /** Expand dir out to contents, a la extdir */
-  private def expandDir(extdir: String): List[String] =
-    AbstractFile.getDirectory(extdir) match
+  private def expandDir(extdir: String)(using Context): List[String] =
+    AbstractFile.getDirectory(extdir, ctx.settings.javaOutputVersion.value) match
       case null => Nil
       case dir => dir.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).toList
 
@@ -43,7 +43,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
     for {
       dir <- expandPath(path, expandStar = false)
       name <- expandDir(dir)
-      entry <- Option(AbstractFile.getDirectory(name))
+      entry <- Option(AbstractFile.getDirectory(name, ctx.settings.javaOutputVersion.value))
     }
     yield ClassPathFactory.newClassPath(entry)
 
@@ -58,7 +58,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
       dir <- {
         def asImage = if (file.endsWith(".jimage")) Some(AbstractFile.getFile(file).nn) else None
 
-        Option(AbstractFile.getDirectory(file)).orElse(asImage)
+        Option(AbstractFile.getDirectory(file, ctx.settings.javaOutputVersion.value)).orElse(asImage)
       }
     }
     yield dir
@@ -67,7 +67,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
       if scala.util.Properties.propOrFalse("scala.expandjavacp") then
         for
           file <- files
-          a <- ClassPath.expandManifestPath(file.absolutePath)
+          a <- JarArchive.expandManifestPath(file.absolutePath)
           path = java.nio.file.Paths.get(a.toURI())
           if Files.exists(path)
         yield

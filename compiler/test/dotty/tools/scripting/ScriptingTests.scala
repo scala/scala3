@@ -38,7 +38,7 @@ class ScriptingTests:
         ),
         scriptFile = scriptFile,
         scriptArgs = scriptArgs
-      ).compileAndRun { (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
+      ).compileAndRun { ctx ?=> (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
         printf("mainClass from ScriptingDriver: %s\n", mainClass)
         true // call compiled script main method
       }
@@ -104,7 +104,7 @@ class ScriptingTests:
       compilerArgs = Array("-classpath", TestConfiguration.basicClasspath),
       scriptFile = scriptFile,
       scriptArgs = Array.empty[String]
-    ).compileAndRun { (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
+    ).compileAndRun { ctx ?=> (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
       printf("success: no call to main method in mainClass: %s\n", mainClass)
       false // no call to compiled script main method
     }
@@ -117,7 +117,7 @@ class ScriptingTests:
       compilerArgs = Array("-classpath", TestConfiguration.basicClasspath),
       scriptFile = scriptFile,
       scriptArgs = Array.empty[String]
-    ).compileAndRun { (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
+    ).compileAndRun { ctx ?=> (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
       printf("call main method in mainClass: %s\n", mainClass)
       true // call compiled script main method, create touchedFile
     }

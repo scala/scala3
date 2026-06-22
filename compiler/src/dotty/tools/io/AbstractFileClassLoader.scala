@@ -22,7 +22,7 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader) exten
   private def findAbstractFile(name: String) = root.lookupPath(name.split('/').toIndexedSeq, directory = false)
 
   // on JDK 20 the URL constructor we're using is deprecated,
-  // but the recommended replacement, URL.of, doesn't exist on JDK 8
+  // but the recommended replacement, URL.of, doesn't exist on JDK 17
   @annotation.nowarn("cat=deprecation")
   override protected def findResource(name: String): URL | Null =
     findAbstractFile(name) match

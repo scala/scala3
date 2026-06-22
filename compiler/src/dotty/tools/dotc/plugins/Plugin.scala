@@ -9,8 +9,7 @@ import transform.MegaPhase.MiniPhase
 
 import java.io.InputStream
 import java.util.Properties
-
-import scala.util.{ Try, Success, Failure }
+import scala.util.{Failure, Success, Try}
 import scala.annotation.nowarn
 
 trait PluginPhase extends MiniPhase {
@@ -144,15 +143,15 @@ object Plugin {
         if (is == null) throw new PluginLoadException(jarp.path, s"Missing $PluginFile in $jarp")
         else fromFile(is, jarp)
 
-      val fileEntry = new java.util.jar.JarEntry(PluginFile)
-      Try(read(new Jar(jarp.jpath.toFile).getEntryStream(fileEntry)))
+      val jarArchive = JarArchive.open(jarp)
+      Try(read(jarArchive.fileNamed(PluginFile).input))
     }
 
     // List[(jar, Try(descriptor))] in dir
     def scan(d: Directory) =
       d.files.toList
+        .filter(JarArchive.isJarOrZip(_))
         .sortBy(_.name)
-        .filter(Jar.isJarOrZip(_))
         .map(j => (j, loadDescriptionFromJar(j)))
 
     type PDResults = List[Try[(String, ClassLoader)]]
