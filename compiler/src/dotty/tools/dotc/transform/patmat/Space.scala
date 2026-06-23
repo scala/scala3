@@ -506,8 +506,8 @@ object SpaceEngine {
       case AndType(tp1, tp2) =>
         AndType(erase(tp1, inArray, isValue, isTyped), erase(tp2, inArray, isValue, isTyped))
 
-      case tp @ RefinedType(parent, _, _) =>
-        erase(parent, inArray, isValue, isTyped)
+      case tp @ RefinedType(parent, name, info) =>
+        tp.derivedRefinedType(erase(parent, inArray, isValue, isTyped), name, erase(info, inArray, isValue, isTyped))
 
       case tref: TypeRef if tref.symbol.isPatternBound =>
         if inArray then erase(tref.underlying, inArray, isValue, isTyped)
