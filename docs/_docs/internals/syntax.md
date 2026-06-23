@@ -237,7 +237,7 @@ NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
 NameAndType       ::=  id ':' Type
 CaptureSet        ::=  '{' CaptureRef {',' CaptureRef} '}'                      -- under captureChecking
 CaptureRef        ::=  { SimpleRef '.' } SimpleRef
-                       [OnlyFilter] [ExceptFilter] ['.' 'rd']                   -- under captureChecking
+                       [OnlyFilter] {ExceptFilter} ['.' 'rd']                   -- under captureChecking
 OnlyFilter        ::=  '.' 'only' '[' QualId ']'                                -- under captureChecking
 ExceptFilter      ::=  '.' 'except' '[' QualId ']'                              -- under captureChecking
 ```

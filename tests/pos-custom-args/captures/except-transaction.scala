@@ -3,10 +3,9 @@ import language.experimental.erasedDefinitions
 import caps.{Classifier, SharedCapability}
 
 // Section 6.2 of "Classifying Capabilities": the withTransaction pattern restricts a
-// specific reference rather than banning a whole effect class. The paper's version
-// uses two exclusions (`tx.except[Commit].except[Rollback]`); here we show the
-// single-exclusion projection that the implementation supports: a view of the
-// transaction that drops its commit capability.
+// specific reference rather than banning a whole effect class. Here we use a single
+// exclusion — a view of the transaction that drops its commit capability; the
+// two-exclusion form the paper uses is in except-transaction-double.scala.
 trait Commit   extends SharedCapability, Classifier
 trait Rollback extends SharedCapability, Classifier
 
