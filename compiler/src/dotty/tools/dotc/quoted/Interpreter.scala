@@ -125,12 +125,14 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
 
     fnType.dealias match
       case fnType: MethodType =>
-        val argTypes = fnType.paramInfos
-        assert(argss.head.size == argTypes.size)
-        val nonErasedArgs = argss.head.lazyZip(fnType.paramErasureStatuses).collect { case (arg, false) => arg }.toList
-        val nonErasedArgTypes = fnType.paramInfos.lazyZip(fnType.paramErasureStatuses).collect { case (arg, false) => arg }.toList
-        assert(nonErasedArgs.size == nonErasedArgTypes.size)
-        interpretArgsGroup(nonErasedArgs, nonErasedArgTypes) ::: interpretArgs(argss.tail, fnType.resType)
+        val formals = fnType.paramInfosList
+        assert(argss.head.size == formals.size)
+        val (nonErasedArgs, nonErasedFormals) =
+          argss.head.zip(formals)
+            .collect { case (arg, info) if !info.hasAnnotation(defn.ErasedParamAnnot) => (arg, info) }
+            .unzip
+        assert(nonErasedArgs.size == nonErasedFormals.size)
+        interpretArgsGroup(nonErasedArgs, nonErasedFormals) ::: interpretArgs(argss.tail, fnType.resType)
       case fnType: AppliedType if defn.isContextFunctionType(fnType) =>
         val argTypes :+ resType = fnType.args: @unchecked
         interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, resType)

@@ -321,31 +321,23 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       val span = pos.span.toSynthetic
       invokeCall(statementId, span)
 
-    private def erasedParamStatuses(app: Apply)(using Context): List[Boolean] =
-      app.fun.tpe.widen match
-        case mt: MethodType if mt.hasErasedParams => mt.paramErasureStatuses
-        case _ => Nil
-
-    private def transformApplyArgs(trees: List[Tree], erasedArgs: List[Boolean] = Nil)(using Context): List[Tree] =
-      if allConstArgs(trees) then trees
-      else if erasedArgs.isEmpty then transform(trees)
-      else trees.lazyZip(erasedArgs).map { (arg, isErased) =>
-        if isErased then arg else transform(arg)
-      }.toList
+    private def transformApplyArgs(tree: GenericApply)(using Context): List[Tree] =
+      val args = tree.args
+      if allConstArgs(args) then args
+      else tree.fun.tpe.widen match
+        case mt: MethodType =>
+          args.zipWithConserve(mt.paramInfosList): (arg, pinfo) =>
+            if pinfo.isForErasedParam then arg else transform(arg)
+        case _ =>
+          transform(args)
 
     private def transformInnerApply(tree: Tree)(using Context): Tree = tree match
       case a: Apply if a.fun.symbol == defn.StringContextModule_apply =>
         a
       case a: Apply =>
-        cpy.Apply(a)(
-          transformInnerApply(a.fun),
-          transformApplyArgs(a.args, erasedParamStatuses(a))
-        )
+        cpy.Apply(a)(transformInnerApply(a.fun), transformApplyArgs(a))
       case a: TypeApply =>
-        cpy.TypeApply(a)(
-          transformInnerApply(a.fun),
-          transformApplyArgs(a.args)
-        )
+        cpy.TypeApply(a)(transformInnerApply(a.fun), transformApplyArgs(a))
       case s: Select =>
         cpy.Select(s)(transformInnerApply(s.qualifier), s.name)
       case i: (Ident | This) => i
@@ -374,7 +366,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       */
     private def tryInstrument(tree: Apply)(using Context): InstrumentedParts =
       if LiftCoverage.isUnsafeAssumeSeparate(tree) then
-        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
+        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree))
         InstrumentedParts.notCovered(transformed)
       else if canInstrumentApply(tree) then
         // Create a call to Invoker.invoked(coverageDirectory, newStatementId)
@@ -383,7 +375,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // Transform args and fun, i.e. instrument them if needed (and if possible)
         val app =
           if tree.fun.symbol eq defn.throwMethod then tree
-          else cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
+          else cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree))
 
         if needsLift(app) then
           // Lifts the arguments. Note that if only one argument needs to be lifted, we lift them all.
@@ -401,7 +393,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           InstrumentedParts.singleExpr(coverageCall, app)
       else
         // Transform recursively but don't instrument the tree itself
-        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
+        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree))
         InstrumentedParts.notCovered(transformed)
     end tryInstrument
 
@@ -695,7 +687,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     private def transformTemplateParents(parents: List[Tree])(using Context): List[Tree] =
       def transformParent(parent: Tree): Tree = parent match
         case tree: Apply =>
-          cpy.Apply(tree)(tree.fun, transformApplyArgs(tree.args, erasedParamStatuses(tree)))
+          cpy.Apply(tree)(tree.fun, transformApplyArgs(tree))
         case tree: TypeApply =>
           // args are types, instrument the fun with transformParent
           cpy.TypeApply(tree)(transformParent(tree.fun), tree.args)

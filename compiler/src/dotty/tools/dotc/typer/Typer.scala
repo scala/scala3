@@ -36,7 +36,6 @@ import util.common.*
 import util.{Property, SimpleIdentityMap, SrcPos, Lst}
 import Applications.{defaultArgument, wrapDefs}
 import collection.mutable
-import collection.immutable.BitSet
 import Implicits.*
 import util.Stats.record
 import config.Printers.{gadts, typr}
@@ -1799,13 +1798,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if (ctx.mode is Mode.Type) typedFunctionType(tree, pt)
     else typedFunctionValue(tree, pt)
 
-  def trueIndices(xs: List[Boolean]): BitSet =
-    def recur(xs: List[Boolean], idx: Int, bs: BitSet): BitSet = xs match
-      case true :: xs1 => recur(xs1, idx + 1, bs + idx)
-      case false :: xs1 => recur(xs1, idx + 1, bs)
-      case Nil => bs
-    recur(xs, 0, BitSet.empty)
-
   def typedFunctionType(tree: untpd.Function, pt: Type)(using Context): Tree = {
     val untpd.Function(args, result) = tree
     result match
@@ -1822,7 +1814,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val isImpure = funFlags.is(Impure)
 
     /** Typechecks dependent function type with given parameters `params` */
-    def typedDependent(params: List[untpd.ValDef], result: untpd.Tree)(using Context): Tree =
+    def typedDependent(params: List[untpd.ValDef], result: untpd.Tree)(using Context): Tree = {
       val params1 =
         if funFlags.is(Given) then params.map(_.withAddedFlags(Given))
         else params
@@ -1832,9 +1824,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val mt = appDef.symbol.info.asInstanceOf[MethodType]
       if (mt.isParamDependent)
         report.error(em"$mt is an illegal function type because it has inter-parameter dependencies", tree.srcPos)
+
       // Restart typechecking if there are erased classes that we want to mark erased
-      if mt.paramErasureStatuses.lazyZip(mt.paramInfos).exists: (paramErased, info) =>
-        !paramErased && info.derivesFrom(defn.ErasedClass)
+      if params1.lazyZip(mt.paramInfos).exists: (param, info) =>
+        !param.mods.is(Erased) && info.derivesFrom(defn.ErasedClass)
       then
         val newParams = params1.zipWithConserve(mt.paramInfosList): (param, info) =>
           if info.derivesFrom(defn.ErasedClass) then param.withAddedFlags(Erased) else param
@@ -1853,7 +1846,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           typed(untpd.makeRetaining(untpd.TypedSplice(res), Nil, tpnme.retainsCap), pt)
         else
           res
-    end typedDependent
+    }
 
     args match {
       case ValDef(_, _, _) :: _ =>

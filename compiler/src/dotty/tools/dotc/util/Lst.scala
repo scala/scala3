@@ -361,6 +361,15 @@ object Lst {
   extension [T <: AnyRef](x: T)
     def +:(ys: Lst[T]): Lst[T] =
       (LstBuffer[T](ys.length + 1) += x ++= ys).toLst
+
+  extension [T <: AnyRef, U <: AnyRef](xs: Lst[(T, U)])
+    def unzip: (Lst[T], Lst[U]) =
+      val buf1 = LstBuffer(xs.length)
+      val buf2 = LstBuffer(xs.length)
+      for (x1, x2) <- xs do
+        buf1 += x1
+        buf2 += x2
+      (buf1.toLst, buf2.toLst)
 }
 
 class LstBuffer[T <: AnyRef](initSize: Int = 8) {

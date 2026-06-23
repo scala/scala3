@@ -141,7 +141,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
         else
           val mtWithoutErasedParams = atPhase(erasurePhase) {
             val defn.ContextFunctionType(argTypes, resType) = tp.dealias: @unchecked
-            val paramInfos = argTypes.filterNot(_.hasAnnotation(defn.ErasedParamAnnot))
+            val paramInfos = argTypes.filterNot(_.isForErasedParam)
             MethodType(paramInfos.toLst, resType)
           }
           val anonFun = newAnonFun(ctx.owner, mtWithoutErasedParams, coord = ctx.owner.coord)

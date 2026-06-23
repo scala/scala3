@@ -590,11 +590,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               case tree1 => tree1
         case app: Apply =>
           val methType = app.fun.tpe.widen.asInstanceOf[MethodType]
-          if (methType.hasErasedParams)
-            for (arg, isErased) <- app.args.lazyZip(methType.paramErasureStatuses) do
-              if isErased then
-                if methType.isResultDependent then
-                  Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
+          // Check that erased arguments to result-dependent methods are realizable
+          if methType.isResultDependent then
+            for (arg, pinfo) <- app.args.lazyZip(methType.paramInfosList) do
+              if pinfo.isForErasedParam then
+                Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
           def app1 =
             // reverse order of transforming args and fun. This way, we get a chance to see other
             // well-formedness errors before reporting errors in possible inferred type args of fun.
