@@ -1615,7 +1615,7 @@ object CaptureSet:
      *  In effect this means that no new elements or dependent sets can be added
      *  in these states (since the previous state cannot be recorded in a snapshot)
      *  On the other hand, these states do allow by default local roots to
-     *  subsume arbitary types, which are then recorded in their hidden sets.
+     *  subsume arbitrary types, which are then recorded in their hidden sets.
      */
     class Closed extends VarState:
       override def canRecord = false
@@ -1716,6 +1716,8 @@ object CaptureSet:
   private class ExceptMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
     override def mapCapability(c: Capability) = c.exclude(cls)
     override def toString = "Except"
+    // TODO: once except carries a list of classes, fuse except[A] ∘ except[B] into one map;
+    // distinct-cls excepts don't fuse today (sound, just unoptimized).
     override def isSameMap(other: BiTypeMap) = other match
       case other: ExceptMap => cls == other.cls
       case _ => false

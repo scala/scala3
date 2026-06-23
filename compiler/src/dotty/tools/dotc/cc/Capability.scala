@@ -150,11 +150,13 @@ object Capabilities:
    *   - dominator-prune the exclusions to a maximal antichain and sort them canonically;
    *   - drop the wrapper entirely if it is the identity (`only = AnyClass`, no exclusions).
    */
-  def mkClassified(ref: CoreCapability | RootCapability, only: ClassSymbol, rawExcept: List[ClassSymbol])(using Context): Capability =
+  def mkClassified(ref: CoreCapability | RootCapability, only: ClassSymbol, rawExcept: List[ClassSymbol])(using Context): CoreCapability | RootCapability | Classified =
     if only == defn.NothingClass || rawExcept.exists(e => only.isSubClass(e)) then
       classifiedNode(ref, defn.NothingClass, Nil)
     else
-      val inside = rawExcept.filter(e => e.isSubClass(only) && e != only).distinct
+      // `e == only` and any `e` above `only` were already collapsed to empty above,
+      // so every surviving exclusion is strictly inside the `only` subtree.
+      val inside = rawExcept.filter(_.isSubClass(only)).distinct
       val maximal = inside.filter(e => !inside.exists(o => (o ne e) && e.isSubClass(o)))
       val canon = maximal.sortBy(_.fullName.toString)
       if only == defn.AnyClass && canon.isEmpty then ref
@@ -353,9 +355,9 @@ object Capabilities:
   end ResultCap
 
   /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
-   *  as well as three kinds of AnnotatedTypes representing readOnly, only, and maybe capabilities.
+   *  as well as four kinds of AnnotatedTypes representing only, except, readOnly, and maybe capabilities.
    *  If there are several annotations they come with an order:
-   *  `*` first, `.only` next, `.except` next, `.rd` next, `?` last.
+   *  `.only` first, `.except` next, `.rd` next, `?` last.
    */
   trait Capability extends Showable:
 
@@ -673,7 +675,12 @@ object Capabilities:
       case ReadOnly(elem1) => elem1.computeHiddenSet(f).map(_.readOnly)
       case _ => emptyRefs
 
-    /** The transitive classifiers of this capability. */
+    /** A sound upper bound of the classifier classes all parts of this capability
+     *  derive from (following `captureSetOfInfo`). One of, per the `Classifiers` enum:
+     *  `ClassifiedAs(cs)` (each part derives from some class in `cs`), `Unclassified`
+     *  (a part has no known classifier), `UnknownClassifier` (an unsolved capture-set var).
+     *  Exclusions are transparent: `x.except[E]` has the same classifiers as `x`.
+     */
     def transClassifiers(using Context): Classifiers =
       def toClassifiers(cls: ClassSymbol): Classifiers =
         if cls == defn.AnyClass then Unclassified
@@ -702,6 +709,10 @@ object Capabilities:
       myClassifiers
     end transClassifiers
 
+    /** May this capability be admitted into a capture set classified as `cls`? The
+     *  classifier gate for adding an element to a classified variable. Permissive:
+     *  roots fit anywhere, a `.only[O]` fits iff `O <: cls`.
+     */
     def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
       cls == defn.AnyClass
       || this.match
@@ -711,7 +722,6 @@ object Capabilities:
         case self: RootCapability =>
           true
         case Classified(ref1, only, _) =>
-          assert(cls != defn.AnyClass)
           if only == defn.AnyClass then ref1.tryClassifyAs(cls)
           else only.isSubClass(cls)
         case ReadOnly(ref1) =>
@@ -722,15 +732,17 @@ object Capabilities:
           if self.derivesFromCapability then self.derivesFrom(cls)
           else captureSetOfInfo.tryClassifyAs(cls)
 
+    /** Is every part of this capability provably classified as `cls` or a subclass? */
+    // Ignores exclusions: sound but loose.
+    // TODO: when attempting classifier-splitting, tighten for the remainder algorithm.
     def isKnownClassifiedAs(cls: ClassSymbol)(using Context): Boolean =
       transClassifiers match
         case ClassifiedAs(cs) => cs.forall(_.isSubClass(cls))
         case _ => false
 
-    /** Is this capability known to have no parts in common with the classifier
-     *  subtree rooted at `cls`? This is the case if all transitive classifiers
-     *  of the capability are unrelated to `cls`, or if all parts that could fall
-     *  under `cls` are removed by an exclusion.
+    /** Is this capability provably free of any parts classified under `cls`?
+     *  True if all its classifiers are on branches unrelated to `cls`, or an exclusion
+     *  already removed the `cls` subtree.
      */
     def isKnownDisjointFrom(cls: ClassSymbol)(using Context): Boolean =
       def disjointByClassifiers: Boolean = transClassifiers match
@@ -746,6 +758,7 @@ object Capabilities:
         case _ =>
           disjointByClassifiers
 
+    /** Is this capability provably the empty capture set? */
     def isKnownEmpty(using Context): Boolean = this match
       case Classified(ref1, only, except) =>
         // empty if the `only` restriction removes everything ...
@@ -773,8 +786,11 @@ object Capabilities:
     /**  x subsumes x
      *   x =:= y       ==>  x subsumes y
      *   x subsumes y  ==>  x subsumes y.f
-     *   x subsumes y  ==>  x* subsumes y, x subsumes y?
-     *   x subsumes y  ==>  x* subsumes y*, x? subsumes y?
+     *   x subsumes y  ==>  x subsumes y?
+     *   x subsumes y  ==>  x? subsumes y?
+     *   x subsumes y  ==>  x subsumes y.rd
+     *   x subsumes y, y classified as O, y disjoint from each Ei  ==>  x.only[O].except[Ei..] subsumes y
+     *   x subsumes y  ==>  x subsumes y.only[O].except[Ei..]
      *   x: x1.type /\ x1 subsumes y  ==>  x subsumes y
      *   X = CapSet^cx, exists rx in cx, rx subsumes y     ==>  X subsumes y
      *   Y = CapSet^cy, forall ry in cy, x subsumes ry     ==>  x subsumes Y
@@ -936,7 +952,7 @@ object Capabilities:
      *   x covers y  ==>  x.except[C] covers y, x covers y.except[C]
      *
      *   TODO what other clauses from subsumes do we need to port here?
-     *   The last clause is a conservative over-approximation: basically, we can't achieve
+     *   The last two clauses are a conservative over-approximation: basically, we can't achieve
      *   separation by having different classifiers for now. It would be good to
      *   have a test that would expect such separation, then we can try to refine
      *   the clause to make the test pass.
