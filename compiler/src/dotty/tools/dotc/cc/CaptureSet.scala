@@ -448,7 +448,7 @@ sealed abstract class CaptureSet extends Showable:
 
   def restrict(cls: ClassSymbol)(using Context): CaptureSet = map(RestrictMap(cls))
 
-  def exclude(cls: ClassSymbol)(using Context): CaptureSet = map(ExceptMap(cls))
+  def exclude(cls: ClassSymbol)(using Context): CaptureSet = map(ExceptMap(cls :: Nil))
 
   def readOnly(using Context): CaptureSet =
     val res = map(ReadOnlyMap())
@@ -1712,15 +1712,16 @@ object CaptureSet:
       case other: RestrictMap => cls == other.cls
       case _ => false
 
-  /** Maps `x` to `x.except[cls]` */
-  private class ExceptMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
-    override def mapCapability(c: Capability) = c.exclude(cls)
+  /** Maps `x` to `x.except[clss...]`; adjacent exclusions fuse into one map. */
+  private class ExceptMap(val clss: List[ClassSymbol])(using Context) extends NarrowingCapabilityMap:
+    override def mapCapability(c: Capability) = clss.foldLeft(c)((c, cls) => c.exclude(cls))
     override def toString = "Except"
-    // TODO: once except carries a list of classes, fuse except[A] ∘ except[B] into one map;
-    // distinct-cls excepts don't fuse today (sound, just unoptimized).
     override def isSameMap(other: BiTypeMap) = other match
-      case other: ExceptMap => cls == other.cls
+      case other: ExceptMap => clss.toSet == other.clss.toSet
       case _ => false
+    override def fuse(next: BiTypeMap)(using Context) = next match
+      case next: ExceptMap => Some(ExceptMap((clss ++ next.clss).distinct))
+      case _ => super.fuse(next)
 
   /* Not needed:
   def ofClass(cinfo: ClassInfo, argTypes: List[Type])(using Context): CaptureSet =
