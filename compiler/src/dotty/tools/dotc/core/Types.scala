@@ -6360,8 +6360,8 @@ object Types extends TypeUtils {
         null
 
     /** Map capability `c` with this type map.
-     *  @return  Either a the mapped capability, or a captureset containing mapped capabilities,
-     *           together with a boolen indicating whether the map is exact, rather than approximated.
+     *  @return  Either the mapped capability, or a captureset containing mapped capabilities,
+     *           together with a boolean indicating whether the map is exact, rather than approximated.
      */
     def mapCapability(c: Capability): Capability | (CaptureSet, Boolean) = c match
       case c @ LocalCap(prefix) =>

@@ -293,8 +293,8 @@ extension (tp: Type)
       case tp: OrType => tp.tp1.isBoxedCapturing || tp.tp2.isBoxedCapturing
       case _ => false
 
-  /** Is the box status of `tp` and `tp2` compatible? I.ee  they are
-   *  box boxed, or both unboxed, or one of them has an empty capture set.
+  /** Is the box status of `tp` and `tp2` compatible? I.e. they are
+   *  both boxed, or both unboxed, or one of them has an empty capture set.
    */
   def isBoxCompatibleWith(tp2: Type)(using Context): Boolean =
     isBoxedCapturing == tp2.isBoxedCapturing
