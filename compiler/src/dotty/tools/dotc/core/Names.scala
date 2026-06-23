@@ -8,7 +8,7 @@ import printing.{Showable, Texts, Printer}
 import Texts.Text
 import StdNames.str
 import config.Config
-import util.{LinearMap, HashSet}
+import util.LinearMap
 
 import scala.annotation.internal.sharable
 
@@ -272,16 +272,24 @@ object Names {
 
   }
 
-  /** A simple name is essentially an interned string */
-  final class SimpleName(val start: Int, val length: Int) extends TermName {
+  /** A simple name is essentially an interned string. It owns its `chars` array, so it and its
+   *  characters are reclaimed by GC once unreferenced (issue #1584). Created only by the `NameTable`
+   *  (constructor and `chars` are private), so each spelling has one canonical instance with
+   *  immutable characters — the invariant that `eq` comparison, scope lookup, keyword recognition
+   *  and the cached content `hashCode` rely on.
+   */
+  final class SimpleName private[Names] (private[Names] val chars: Array[Char]) extends TermName {
+
+    /** The number of characters in this name. */
+    val length: Int = chars.length
 
   /** The n'th character */
-    def apply(n: Int): Char = chrs(start + n)
+    def apply(n: Int): Char = chars(n)
 
     /** A character in this name satisfies predicate `p` */
     def exists(p: Char => Boolean): Boolean = {
       var i = 0
-      while (i < length && !p(chrs(start + i))) i += 1
+      while (i < length && !p(chars(i))) i += 1
       i < length
     }
 
@@ -291,7 +299,7 @@ object Names {
     /** The name contains given character `ch` */
     def contains(ch: Char): Boolean = {
       var i = 0
-      while (i < length && chrs(start + i) != ch) i += 1
+      while (i < length && chars(i) != ch) i += 1
       i < length
     }
 
@@ -310,7 +318,7 @@ object Names {
     /** A slice of this name making up the characters between `from` and `until` (exclusive) */
     def slice(from: Int, end: Int): SimpleName = {
       assert(0 <= from && from <= end && end <= length)
-      termName(chrs, start + from, end - from)
+      termName(chars, from, end - from)
     }
 
     def drop(n: Int): SimpleName = slice(n, length)
@@ -320,7 +328,7 @@ object Names {
 
     /** Same as slice, but as a string */
     def sliceToString(from: Int, end: Int): String =
-      if (end <= from) "" else new String(chrs, start + from, end - from)
+      if (end <= from) "" else new String(chars, from, end - from)
 
     def head: Char = apply(0)
     def last: Char = apply(length - 1)
@@ -330,7 +338,10 @@ object Names {
      */
     def getChars(from: Int, end: Int, dst: Array[Char], dstStart: Int): Unit =
       assert(0 <= from && from <= end && end <= length)
-      Array.copy(chrs, start + from, dst, dstStart, end - from)
+      Array.copy(chars, from, dst, dstStart, end - from)
+
+    /** UTF8 encoding of the characters, as a fresh array (so consumers don't alias `chars`). */
+    private[dotc] def toUTF8: Array[Byte] = Codec.toUTF8(chars, 0, length)
 
     override def asSimpleName: SimpleName = this
     override def toSimpleName: SimpleName = this
@@ -370,8 +381,7 @@ object Names {
       i > suffix.length
 
     override def replace(from: Char, to: Char): SimpleName = {
-      val cs = new Array[Char](length)
-      System.arraycopy(chrs, start, cs, 0, length)
+      val cs = chars.clone()
       for (i <- 0 until length)
         if (cs(i) == from) cs(i) = to
       termName(cs, 0, length)
@@ -380,11 +390,15 @@ object Names {
     override def firstPart: SimpleName = this
     override def lastPart: SimpleName = this
 
-    override def hashCode: Int = start
+    // A cached content hash. It must be content-based, not identity: a name can be collected and
+    // re-interned as a fresh object, and an identity hash would then make name-keyed orderings —
+    // hence generated names and pickled output — vary across runs (issue #1584). Equality stays
+    // `eq`; interning keeps the two consistent (one instance per spelling).
+    override val hashCode: Int = hashValue(chars, 0, length)
 
     protected def computeToString: String =
       if (length == 0) ""
-      else new String(chrs, start, length)
+      else new String(chars)
 
     def debugString: String = toString
   }
@@ -421,6 +435,10 @@ object Names {
     override def decode: TypeName   = toTermName.decode.toTypeName
     override def firstPart: SimpleName = toTermName.firstPart
     override def lastPart: SimpleName = toTermName.lastPart
+
+    // Content-based, like `SimpleName.hashCode`: a type name and its term name share characters,
+    // so this is deterministic and stable across re-interning under weak interning (issue #1584).
+    override def hashCode: Int = toTermName.hashCode
 
     override def toString: String = toTermName.toString
     override def debugString: String = toTermName.debugString + "/T"
@@ -483,70 +501,12 @@ object Names {
     override def debugString: String = s"${underlying.debugString}[$info]"
   }
 
-  /** The term name represented by the empty string */
-  val EmptyTermName: SimpleName = SimpleName(-1, 0)
+  // ------ Name table ------------------------------------------------------------------
 
-  // Nametable
-
-  inline val InitialNameSize = 0x20000
-
-  /** Memory to store all names sequentially. */
-  @sharable // because it's only mutated in synchronized block of enterIfNew
-  private[dotty] var chrs: Array[Char] = new Array[Char](InitialNameSize)
-
-  /** The number of characters filled. */
-  @sharable // because it's only mutated in synchronized block of enterIfNew
-  private var nc = 0
-
-  /** Make sure the capacity of the character array is at least `n` */
-  private def ensureCapacity(n: Int) =
-    if n > chrs.length then
-      val newchrs = new Array[Char](chrs.length * 2)
-      chrs.copyToArray(newchrs)
-      chrs = newchrs
-
-  private class NameTable extends HashSet[SimpleName](initialCapacity = 0x10000, capacityMultiple = 2):
-    import util.Stats
-
-    override def hash(x: SimpleName) = hashValue(chrs, x.start, x.length) // needed for resize
-    override def isEqual(x: SimpleName, y: SimpleName) = ???              // not needed
-
-    def enterIfNew(cs: Array[Char], offset: Int, len: Int): SimpleName =
-      Stats.record(statsItem("put"))
-      val myTable = currentTable // could be outdated under parallel execution
-      var idx = hashValue(cs, offset, len) & (myTable.length - 1)
-      var name: SimpleName | Null = myTable(idx).asInstanceOf[SimpleName | Null]
-      while name != null do
-        if name.nn.length == len && Names.equals(name.nn.start, cs, offset, len) then
-          return name.nn
-        Stats.record(statsItem("miss"))
-        idx = (idx + 1) & (myTable.length - 1)
-        name = myTable(idx).asInstanceOf[SimpleName | Null]
-      Stats.record(statsItem("addEntryAt"))
-      synchronized {
-        if (myTable eq currentTable) && myTable(idx) == null then
-          // Our previous unsynchronized computation of the next free index is still correct.
-          // This relies on the fact that table entries go from null to non-null, and then
-          // stay the same. Note that we do not need the table or the entry in it to be
-          // volatile since SimpleNames are immutable, and hence safely published.
-          // The same holds for the chrs array. We might miss before the synchronized
-          // on published characters but that would make name comparison false, which
-          // means we end up in the synchronized block here, where we get the correct state.
-          name = SimpleName(nc, len)
-          ensureCapacity(nc + len)
-          Array.copy(cs, offset, chrs, nc, len)
-          nc += len
-          addEntryAt(idx, name.nn)
-        else
-          enterIfNew(cs, offset, len)
-      }
-
-    addEntryAt(0, EmptyTermName: @unchecked)
-  end NameTable
-
-  /** Hashtable for finding term names quickly. */
-  @sharable // because it's only mutated in synchronized block of enterIfNew
-  private val nameTable = NameTable()
+  /** Interning is split across `numStripes` independently-locked weak partitions (a power of two),
+   *  so concurrent interning of differently-hashed names doesn't serialize on one lock (issue #1584). */
+  private inline val stripeBits = 4
+  private inline val numStripes = 1 << stripeBits
 
   /** The hash of a name made of from characters cs[offset..offset+len-1].  */
   private def hashValue(cs: Array[Char], offset: Int, len: Int): Int = {
@@ -559,50 +519,154 @@ object Names {
     hash
   }
 
-  /** Is (the ASCII representation of) name at given index equal to
-   *  cs[offset..offset+len-1]?
+  /** Interns simple names weakly: maps a character sequence to the unique `SimpleName` holding it,
+   *  reclaimed (with its characters) once unreferenced (issue #1584). Split into per-stripe
+   *  `WeakHashSet`s with their own locks, since a single global lock degrades under the concurrent
+   *  interning the process-global table sees (e.g. from multiple presentation compilers).
+   *
+   *  Names and characters are GC'd as soon as they're unreferenced; the light `Entry` wrappers are
+   *  only unlinked when a stripe is next interned into. `compactStaleEntries()` drains them eagerly.
    */
-  private def equals(index: Int, cs: Array[Char], offset: Int, len: Int): Boolean = {
-    var i = 0
-    while ((i < len) && (chrs(index + i) == cs(offset + i)))
-      i += 1
-    i == len
-  }
+  private class NameTable:
+    import util.{Stats, WeakHashSet}
+    import WeakHashSet.Entry
+    import scala.annotation.tailrec
+
+    /** Does the whole of `a` equal cs[offset..offset+len-1]? */
+    private def equalsChars(a: Array[Char], cs: Array[Char], offset: Int, len: Int): Boolean =
+      java.util.Arrays.equals(a, 0, a.length, cs, offset, offset + len)
+
+    /** One weakly-interned partition of the table, with its own lock. */
+    private final class Stripe extends WeakHashSet[SimpleName](initialCapacity = 0x10000 >> stripeBits):
+      override def hash(x: SimpleName): Int = hashValue(x.chars, 0, x.length)
+      override def isEqual(x: SimpleName, y: SimpleName): Boolean =
+        equalsChars(x.chars, y.chars, 0, y.length)
+
+      /** Find or create the unique name for cs[offset..offset+len-1], whose hash is `h`. */
+      def enterIfNew(cs: Array[Char], offset: Int, len: Int, h: Int): SimpleName = synchronized {
+        Stats.record(statsItem("put"))
+        removeStaleEntries()
+        val bucket = index(h)
+        val oldHead = table(bucket)
+
+        @tailrec
+        def linkedListLoop(entry: Entry[SimpleName] | Null): SimpleName = entry match
+          case null =>
+            // Each name owns exactly its characters, so a GC'd name reclaims its chars too.
+            val name = SimpleName(java.util.Arrays.copyOfRange(cs, offset, offset + len))
+            addEntryAt(bucket, name, h, oldHead)
+          case _ =>
+            val e = entry.get
+            if e != null && equalsChars(e.chars, cs, offset, len) then e
+            else linkedListLoop(entry.tail)
+
+        linkedListLoop(oldHead)
+      }
+
+      /** Drain GC'd entries from this stripe's bucket array (releases their `Entry` wrappers). */
+      def compact(): Unit = synchronized { removeStaleEntries() }
+
+    private val stripes: Array[Stripe] = Array.fill(numStripes)(new Stripe)
+
+    /** Avalanche `h` before picking a stripe — the raw `hashValue`'s high bits are ~0 for short
+     *  identifiers, which would pile them into stripe 0 (MurmurHash3 finalizer, as `util.HashSet`). */
+    private def mix(h: Int): Int =
+      val i = (h ^ (h >>> 16)) * 0x85EBCA6B
+      i ^ (i >>> 13)
+
+    // Only stripe selection needs the mixed hash; bucketing within a stripe uses raw `h` (= Stripe.hash).
+    private def stripeOf(h: Int): Stripe = stripes(mix(h) & (numStripes - 1))
+
+    def enterIfNew(cs: Array[Char], offset: Int, len: Int): SimpleName =
+      val h = hashValue(cs, offset, len)
+      stripeOf(h).enterIfNew(cs, offset, len, h)
+
+    /** The total number of live interned names across all stripes. */
+    def size: Int =
+      var s = 0
+      var i = 0
+      while i < numStripes do { s += stripes(i).size; i += 1 }
+      s
+
+    /** Unlink the `Entry` wrappers of GC'd names across all stripes (otherwise done lazily on the
+     *  next intern into each). The names/characters are already freed; safe to call at any time. */
+    def compactStaleEntries(): Unit =
+      var i = 0
+      while i < numStripes do { stripes(i).compact(); i += 1 }
+
+    /** The empty term name (interned like any other name, in its hash's stripe). */
+    val empty: SimpleName = enterIfNew(Array.empty[Char], 0, 0)
+
+    /** Create a term name from the characters in cs[offset..offset+len-1]. */
+    def termName(cs: Array[Char], offset: Int, len: Int): SimpleName =
+      enterIfNew(cs, offset, len)
+
+    /** Create a type name from the characters in cs[offset..offset+len-1]. */
+    def typeName(cs: Array[Char], offset: Int, len: Int): TypeName =
+      termName(cs, offset, len).toTypeName
+
+    /** Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1]. */
+    def termName(bs: Array[Byte], offset: Int, len: Int): SimpleName =
+      val chars = Codec.fromUTF8(bs, offset, len)
+      termName(chars, 0, chars.length)
+
+    /** Create a type name from the UTF8 encoded bytes in bs[offset..offset+len-1]. */
+    def typeName(bs: Array[Byte], offset: Int, len: Int): TypeName =
+      termName(bs, offset, len).toTypeName
+
+    /** Create a term name from a string. */
+    def termName(s: String): SimpleName = termName(s.toCharArray.nn, 0, s.length)
+
+    /** Create a type name from a string. */
+    def typeName(s: String): TypeName = typeName(s.toCharArray.nn, 0, s.length)
+  end NameTable
+
+  /** The process-global name table. Names are interned here weakly, so they (and their
+   *  characters) are reclaimed once no tree/symbol references them (issue #1584).
+   */
+  @sharable
+  private val nameTable = NameTable()
+
+  /** Optional maintenance for long-lived hosts (e.g. a presentation compiler dropping a project):
+   *  eagerly release the bookkeeping wrappers of GC'd names for a predictable footprint. The names
+   *  themselves are reclaimed regardless. */
+  private[dotty] def compactStaleEntries(): Unit = nameTable.compactStaleEntries()
+
+  /** The term name represented by the empty string */
+  val EmptyTermName: SimpleName = nameTable.empty
 
   /** Create a term name from the characters in cs[offset..offset+len-1].
    *  Assume they are already encoded.
    */
   def termName(cs: Array[Char], offset: Int, len: Int): SimpleName =
-    nameTable.enterIfNew(cs, offset, len)
+    nameTable.termName(cs, offset, len)
 
   /** Create a type name from the characters in cs[offset..offset+len-1].
    *  Assume they are already encoded.
    */
   def typeName(cs: Array[Char], offset: Int, len: Int): TypeName =
-    termName(cs, offset, len).toTypeName
+    nameTable.typeName(cs, offset, len)
 
   /** Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
    *  Assume they are already encoded.
    */
-  def termName(bs: Array[Byte], offset: Int, len: Int): SimpleName = {
-    val chars = Codec.fromUTF8(bs, offset, len)
-    termName(chars, 0, chars.length)
-  }
+  def termName(bs: Array[Byte], offset: Int, len: Int): SimpleName =
+    nameTable.termName(bs, offset, len)
 
   /** Create a type name from the UTF8 encoded bytes in bs[offset..offset+len-1].
    *  Assume they are already encoded.
    */
   def typeName(bs: Array[Byte], offset: Int, len: Int): TypeName =
-    termName(bs, offset, len).toTypeName
+    nameTable.typeName(bs, offset, len)
 
   /** Create a term name from a string.
    *  See `sliceToTermName` in `Decorators` for a more efficient version
    *  which however requires a Context for its operation.
    */
-  def termName(s: String): SimpleName = termName(s.toCharArray.nn, 0, s.length)
+  def termName(s: String): SimpleName = nameTable.termName(s)
 
   /** Create a type name from a string */
-  def typeName(s: String): TypeName = typeName(s.toCharArray.nn, 0, s.length)
+  def typeName(s: String): TypeName = nameTable.typeName(s)
 
   /** The type name represented by the empty string */
   val EmptyTypeName: TypeName = EmptyTermName.toTypeName
