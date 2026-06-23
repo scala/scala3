@@ -1,13 +1,11 @@
 package dotty.tools.sbtplugin
 
-import sbt.*
+import sbt.{ given, * }
 import sbt.Keys.*
 import sbt.io.Using
 import sbt.librarymanagement.ModuleFilter
-import scala.collection.mutable
 import java.io.File
 import java.nio.file.Files
-import java.nio.ByteBuffer
 import xsbti.VirtualFileRef
 import sbt.internal.inc.Stamper
 import scala.jdk.CollectionConverters.*
@@ -15,8 +13,7 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport.scalaJSVersion
 import ch.epfl.scala.sbtmissinglink.MissingLinkPlugin
 import ch.epfl.scala.sbtmissinglink.MissingLinkPlugin.autoImport.missinglinkCheck
 import com.spotify.missinglink.Conflict
-
-import dotty.tools.tasty.TastyHeaderUnpickler
+import xsbti.FileConverter
 
 object ScalaLibraryPlugin extends AutoPlugin {
 
@@ -34,15 +31,15 @@ object ScalaLibraryPlugin extends AutoPlugin {
 
   override def projectSettings = Seq(
     // Settings to validate that JARs don't contain Scala 2 pickle annotations and have valid TASTY attributes
-    Compile / packageBin := (Compile / packageBin)
-      .map{ jar =>
-        validateNoScala2Pickles(jar)
-        validateTastyAttributes(jar)
-        validateScalaAttributes(jar)
-        jar
-      }
-      .value,
-    (Compile / manipulateBytecode) := {
+    Compile / packageBin := Def.uncached {
+      given FileConverter = fileConverter.value
+      val jar = (Compile / packageBin).value
+      validateNoScala2Pickles(jar.toFile)
+      validateTastyAttributes(jar.toFile)
+      validateScalaAttributes(jar.toFile)
+      jar
+    },
+    (Compile / manipulateBytecode) := Def.uncached {
       val stream = streams.value
       val log = stream.log
       val classDir = (Compile / classDirectory).value
@@ -102,21 +99,14 @@ object ScalaLibraryPlugin extends AutoPlugin {
         .withAnalysis(analysis.copy(stamps = stamps)) // update the analysis with the correct stamps
         .withHasModified(true)  // mark it as updated for sbt to update its caches
     },
-    // The default sbt plugin has no way to filter out problems by class
-    // We need to redefine it which requires reflective access
-    Compile / missinglinkCheck := {
+    Compile / missinglinkCheck := Def.uncached {
       val log = streams.value.log
+      given FileConverter = fileConverter.value
       val cp = (Compile / fullClasspath).value
       val classDir = (Compile / classDirectory).value
 
-      val conflicts: Seq[Conflict] = {
-        val method = MissingLinkPlugin.getClass.getDeclaredMethods()
-          .find(_.getName == "loadArtifactsAndCheckConflicts")
-          .getOrElse(sys.error("MissingLinkPlugin.loadArtifactsAndCheckConflicts not found"))
-        method.setAccessible(true)
-        method.invoke(MissingLinkPlugin, cp, classDir, java.lang.Boolean.FALSE, (_ => true):ModuleFilter, log)
-          .asInstanceOf[Seq[Conflict]]
-      }
+      val conflicts = MissingLinkPlugin.checkConflicts(
+        cp, classDir, scanDependencies = false, (_ => true): ModuleFilter, log)
 
       val filteredConflicts = conflicts.filterNot { conflict =>
         MissingLinkFilters.excludedClassFiles.contains(
@@ -129,16 +119,10 @@ object ScalaLibraryPlugin extends AutoPlugin {
       } else {
         val filteredTotal = filteredConflicts.length
         log.error(s"$filteredTotal conflicts found!")
-        locally {
-          val method = MissingLinkPlugin.getClass.getDeclaredMethods()
-            .find(_.getName == "outputConflicts")
-            .getOrElse(sys.error("MissingLinkPlugin.outputConflicts not found"))
-          method.setAccessible(true)
-          method.invoke(MissingLinkPlugin, filteredConflicts, log)
-        }
+        MissingLinkPlugin.logConflicts(filteredConflicts, log)
         throw new MessageOnlyException(s"There were $filteredTotal conflicts")
       }
-    }
+    },
   )
 
   def fetch(stream: TaskStreams, jar: File) = {
@@ -152,7 +136,7 @@ object ScalaLibraryPlugin extends AutoPlugin {
     (FileFunction.cached(cache / "fetch-scala-library-classes", FilesInfo.lastModified, FilesInfo.exists) { _ =>
       stream.log.info(s"Unpacking scala-library binaries to persistent directory: ${target.getAbsolutePath}")
       IO.unzip(jar, target)
-      (target ** "*.class").get.toSet ++ (target ** "*.sjsir").get.toSet
+      (target ** "*.class").get().toSet ++ (target ** "*.sjsir").get().toSet
     } (Set(jar)), target)
   }
 

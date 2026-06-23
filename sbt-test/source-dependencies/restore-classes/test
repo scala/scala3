@@ -14,7 +14,7 @@ $ copy-file changes/A2.scala A.scala
 
 # the class file for C should be deleted:
 #  it was only added by A2, but compilation hasn't succeeded yet
-$ absent target/classes/C.class
+$ absent target/**/classes/C.class
 
 
 $ copy-file changes/A1.scala A.scala

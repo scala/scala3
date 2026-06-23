@@ -1,13 +1,15 @@
 package dotty.tools.sbtplugin
 
 import com.typesafe.sbt.packager.universal.UniversalPlugin
-import sbt.*
+import sbt.{ given, * }
 import sbt.Keys.*
 import sbt.AutoPlugin
 import sbt.PublishBinPlugin
 import sbt.PublishBinPlugin.autoImport.*
 import sbt.io.Using
 import sbt.util.CacheImplicits.*
+import sbt.{toFile, toFileRef}
+import xsbti.FileConverter
 
 import java.nio.file.Files
 import java.nio.file.attribute.PosixFilePermission
@@ -291,7 +293,7 @@ object RepublishPlugin extends AutoPlugin {
         }
       }
       IO.delete(workFile)
-      Using.urlInputStream(launcherURL) { in =>
+      Using.urlInputStream(launcherURL.toURL) { in =>
         log.info(s"[republish] Downloading $launcherURL to $workFile...")
         IO.transfer(in, workFile)
         log.info(s"[republish] Downloaded $launcherURL to $workFile...")
@@ -359,17 +361,19 @@ object RepublishPlugin extends AutoPlugin {
     republishLibexecOverrides := Seq.empty,
     republishExtraProps := Seq.empty,
     republishCommandLibs := Seq.empty,
-    republishLocalResolved / republishProjectRefs := {
+    republishLocalResolved / republishProjectRefs := Def.uncached {
       val proj = thisProjectRef.value
       val deps = buildDependencies.value
 
       deps.classpathRefs(proj)
     },
-    republishLocalResolved := Def.taskDyn {
+    republishLocalResolved := Def.uncached(
+      Def.taskDyn {
       val deps = (republishLocalResolved / republishProjectRefs).value
       val publishAllLocalBin = deps.map({ d => ((d / publishLocalBin / packagedArtifacts)) }).join
       val resolveId = deps.map({ d => ((d / projectID)) }).join
       Def.task {
+        given FileConverter = fileConverter.value
         val published = publishAllLocalBin.value
         val ids = resolveId.value
 
@@ -388,9 +392,9 @@ object RepublishPlugin extends AutoPlugin {
           var pomOrNull: File = null
           as.foreach({ case (a, f) =>
             if (a.`type` == "jar") {
-              jarOrNull = f
+              jarOrNull = f.toFile
             } else if (a.`type` == "pom") {
-              pomOrNull = f
+              pomOrNull = f.toFile
             }
           })
           assert(jarOrNull != null, s"Could not find jar for ${id}")
@@ -398,8 +402,8 @@ object RepublishPlugin extends AutoPlugin {
           ResolvedArtifacts(simpleId, Some(jarOrNull), Some(pomOrNull))
         })
       }
-    }.value,
-    republishAllResolved := {
+    }.value),
+    republishAllResolved := Def.uncached {
       val resolvedLocal = republishLocalResolved.value
       val coursierJar = republishFetchCoursier.value
       val report = (thisProjectRef / updateFull).value
@@ -426,19 +430,19 @@ object RepublishPlugin extends AutoPlugin {
 
       merged.toSeq
     },
-    republishClasspath := {
+    republishClasspath := Def.uncached {
       val s = streams.value
       val resolved = republishAllResolved.value
       val cacheDir = republishRepo.value
       republishResolvedArtifacts(resolved, cacheDir / "maven2", logOpt = Some(s.log))
     },
-    republishFetchLaunchers := {
+    republishFetchLaunchers := Def.uncached(
       fetchFilesTask(republishPrepareBin, republishLaunchers, strict = true).value
-    },
-    republishFetchCoursier := {
+    ),
+    republishFetchCoursier := Def.uncached(
       fetchFilesTask(republishCoursierDir.toTask, republishCoursier, strict = true).value.head
-    },
-    republishPrepareBin := {
+    ),
+    republishPrepareBin := Def.uncached {
       val baseDir = baseDirectory.value
       val srcLibexec = republishLibexecDir.value
       val overrides = republishLibexecOverrides.value
@@ -449,7 +453,7 @@ object RepublishPlugin extends AutoPlugin {
       overrides.foreach(IO.copyDirectory(_, targetLibexec, overwrite = true))
       targetLibexec
     },
-    republishWriteExtraProps := {
+    republishWriteExtraProps := Def.uncached {
       val s = streams.value
       val log = s.log
       val extraProps = republishExtraProps.value
@@ -469,7 +473,7 @@ object RepublishPlugin extends AutoPlugin {
         Some(propsFile)
       }
     },
-    republish := {
+    republish := Def.uncached {
       val cacheDir = republishRepo.value
       val artifacts = republishClasspath.value
       val launchers = republishFetchLaunchers.value
@@ -479,3 +483,4 @@ object RepublishPlugin extends AutoPlugin {
     },
   )
 }
+

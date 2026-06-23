@@ -1,7 +1,6 @@
 import sbt.*
 import dotty.tools.sbtplugin.Versions
 
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 /**

@@ -27,7 +27,7 @@ object StripScala2Annotations {
    *  ensuring correctness and validating the TASTy format.
    */
   def extractTastyUUID(tastyBytes: Array[Byte]): Array[Byte] = {
-    val unpickler = new TastyHeaderUnpickler(tastyBytes)
+    val unpickler = new TastyHeaderUnpickler(SbtTastyUnpicklerConfig.unpicklerConfig, tastyBytes)
     val header = unpickler.readFullHeader()
     val uuid = header.uuid
 
