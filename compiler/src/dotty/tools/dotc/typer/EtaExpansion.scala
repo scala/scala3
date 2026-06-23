@@ -271,7 +271,7 @@ object EtaExpansion extends LiftImpure {
     if (mt.isContextualMethod) paramFlag |= Given
     else if (mt.isImplicitMethod) paramFlag |= Implicit
     val params = List.tabulate(mt.paramNames.length): i =>
-      val erased = if mt.paramInfos(i).hasAnnotation(defn.ErasedParamAnnot) then Erased else EmptyFlags
+      val erased = if mt.paramInfos(i).isForErasedParam then Erased else EmptyFlags
       ValDef(mt.paramNames(i), paramTypes(i), EmptyTree)
         .withFlags(paramFlag | erased).withSpan(tree.span.startPos)
     var ids: List[Tree] = mt.paramNames.map(name => Ident(name).withSpan(tree.span.startPos)).toList

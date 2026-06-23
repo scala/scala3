@@ -83,7 +83,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
     case tp: MethodType =>
       def exprToFun(tp: Type, name: Name) = tp match
         case ExprType(rt) =>
-          if rt.hasAnnotation(defn.ErasedParamAnnot) then
+          if rt.isForErasedParam then
             report.error(em"By-name parameter cannot be erased: $name", sym.srcPos)
           defn.ByNameFunction(rt)
         case tp => tp

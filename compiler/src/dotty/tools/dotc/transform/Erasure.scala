@@ -804,8 +804,8 @@ object Erasure {
       val insideBridge = ctx.owner.ownersIterator.exists(_.is(Flags.Bridge))
       val ownArgs = origFunType match
         case mt: MethodType if mt.hasErasedParams && !insideBridge =>
-          args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
-            if isErased then
+          args.lazyZip(mt.paramInfos).flatMap: (arg, pinfo) =>
+            if pinfo.isForErasedParam then
               checkPureErased(arg, isArgument = true,
                 isImplicit = mt.isImplicitMethod && arg.span.isSynthetic)
               Nil

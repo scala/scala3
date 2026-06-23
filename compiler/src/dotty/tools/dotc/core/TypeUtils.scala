@@ -48,6 +48,9 @@ class TypeUtils:
     def isByName: Boolean =
       self.isInstanceOf[ExprType]
 
+    def isForErasedParam(using Context): Boolean =
+      self.hasAnnotation(defn.ErasedParamAnnot)
+
     def ensureMethodic(using Context): Type = self match {
       case self: MethodicType => self
       case _ => if (ctx.erasedTypes) MethodType(Lst(), self) else ExprType(self)
