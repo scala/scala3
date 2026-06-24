@@ -28,7 +28,7 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs
 
 4. `erased` can also be used in a function type, e.g.
 
-   * `(x: T1, y: erased T2) ?=> T`
+   * `(x: T1, erased y: T2) ?=> T`
 
    Note that there is no subtype relation between `(erased x: T) => R` and `T => R` (or `(erased x: T) ?=> R` and `T ?=> R`). The `erased` parameters must match exactly in their respective positions.
 
