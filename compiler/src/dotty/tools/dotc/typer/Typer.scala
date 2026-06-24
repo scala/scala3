@@ -3782,7 +3782,17 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   }
 
   /** Translate tuples of all arities */
-  def typedTuple(tree: untpd.Tuple, pt: Type)(using Context): Tree =
+  def typedTuple(tree: untpd.Tuple, pt0: Type)(using Context): Tree =
+    // For a named-tuple pattern, strip any nullability from the expected type
+    // before desugaring. Under explicit nulls a selector type such as
+    // `(a: A, b: B) | Null` (e.g. from a nullified Java generic) would hide the
+    // named-tuple structure, so the named element patterns would fail to
+    // resolve. A tuple pattern never matches `null`, so this is sound; the
+    // `_: Null` case is still reported as inexhaustive at the match level.
+    val pt =
+      if ctx.mode.is(Mode.Pattern) && hasNamedArg(tree.trees)
+      then pt0.stripNull()
+      else pt0
     val tree1 = desugar.tuple(tree, pt).withAttachmentsFrom(tree)
     checkDeprecatedAssignmentSyntax(tree)
     if tree1 ne tree then typed(tree1, pt)
