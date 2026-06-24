@@ -359,14 +359,6 @@ class Inliner(val call: tpd.Tree)(using Context):
           // If this is the first proxy, optimize to `ref(info)` only if call prefix is pure.
           // Otherwise we might forget side effects. See run/i12829.scala.
           ref(info)
-        case info: ThisType if ctx.owner.isContainedIn(info.cls) =>
-          // The proxied `this` resolves (via asSeenFrom on the call prefix) to the
-          // `this` of a class lexically enclosing the call site, so we can name it
-          // directly. This avoids synthesizing an outer path from the call prefix,
-          // which can be impossible to reconstruct across separate compilation when
-          // the prefix is a nested module (whose outer accessor is not pickled and is
-          // only materialized in its defining unit). See i26352.
-          This(info.cls)
         case info =>
           val rhsClsSym = info.widenDealias.classSymbol
           if rhsClsSym.is(Module) && rhsClsSym.isStatic then

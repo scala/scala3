@@ -233,22 +233,16 @@ object ExplicitOuter {
 
   /** Does a module `cls` have an inline member whose body references its outer this?
    *
-   *  A nested module is only instantiated in its defining compilation unit, so its
-   *  outer accessor is normally added there (by `referencesOuter` on its template) and
-   *  never reconstructed elsewhere, since outer accessors are synthesized after pickling
-   *  and `needsOuterAlways` is otherwise false for locally-instantiated modules.
-   *  However, the body of an inline member is expanded in *other* compilation units, where
-   *  it may build an outer path through the module (e.g. `prefix.inner.<outer>`) and thus
-   *  require the module's outer accessor to exist there too. The inline bodies are pickled,
-   *  so we can detect this from them and make such modules `needsOuterAlways`, ensuring the
-   *  accessor is reconstructed wherever the module is seen. See i26352.
+   *  Inline method bodies can be expanded in downstream units.
+   *  If that body needs an access to outer, the module's outer
+   *  accessor must be reconstructed in the downstream unit as well.
    */
   private def referencesOuterViaInlineMembers(cls: ClassSymbol)(using Context): Boolean =
     cls.is(Module)
     && cls.info.decls.toList.exists: mbr =>
          mbr.isInlineMethod
          && Inlines.hasBodyToInline(mbr)
-         && referencesOuter(cls, Inlines.bodyToInline(mbr), assumeInline = true)
+         && referencesOuter(cls, Inlines.bodyToInline(mbr))
 
   /** The outer parameter accessor of cass `cls` */
   private def outerParamAccessor(cls: ClassSymbol)(using Context): TermSymbol =
@@ -281,15 +275,11 @@ object ExplicitOuter {
       outerAccessor(cls).exists)
 
   /** Tree references an outer class of `cls` which is not a static owner.
-   *
-   *  @param assumeInline  treat `tree` as if it were already the body of an inline
-   *                       method (used when analyzing a pickled inline body in
-   *                       isolation, which is not wrapped in its enclosing DefDef).
    */
-  def referencesOuter(cls: Symbol, tree: Tree, assumeInline: Boolean = false)(using Context): Boolean =
+  def referencesOuter(cls: Symbol, tree: Tree)(using Context): Boolean =
 
     val test = new TreeAccumulator[Boolean]:
-      private var inInline = assumeInline
+      private var inInline = false
 
       def isOuterSym(sym: Symbol) =
         !sym.isStaticOwner && cls.isProperlyContainedIn(sym)
