@@ -1,0 +1,4 @@
+-- Error: tests/neg/static-cast.scala:11:18 ----------------------------------------------------------------------------
+11 |val _ = singletons[B, (A.A1.type, A.A2.type, A.A3.type)] // error
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        Cannot statically prove the correctness of the cast
