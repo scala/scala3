@@ -13,7 +13,7 @@ import Names.*
 import StdNames.nme
 import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
-import util.{Lst, LstStartingWith}
+import util.Lst
 
 object TypeApplications {
 
@@ -221,7 +221,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Substitute in `self` the type parameters of `tycon` by some other types. */
   final def substTypeParams(tycon: Type, to: Lst[Type])(using Context): Type =
     (tycon.typeParams: @unchecked) match
-      case LstStartingWith(LambdaParam(lam, _)) => self.substParams(lam, to)
+      case Lst.StartingWith(LambdaParam(lam, _)) => self.substParams(lam, to)
       case params: Lst[Symbol @unchecked] => self.subst(params, to)
 
   /** If `self` is a higher-kinded type, its type parameters, otherwise Nil */
@@ -230,7 +230,7 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** If `self` is a generic class, its type parameter symbols, otherwise Nil */
   final def typeParamSymbols(using Context): Lst[TypeSymbol] = typeParams match {
-    case tparams @ LstStartingWith(_: Symbol) =>
+    case tparams @ Lst.StartingWith(_: Symbol) =>
       assert(tparams.forall(_.isInstanceOf[Symbol]))
       tparams.asInstanceOf[Lst[TypeSymbol]]
         // Note: Two successive calls to typeParams can yield different results here because

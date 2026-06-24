@@ -5,7 +5,7 @@ package typer
 import core.*
 import ast.{Trees, tpd, untpd, desugar, TreeTypeMap}
 import util.Stats.record
-import util.{SrcPos, NoSourcePosition, Property, Lst, LstStartingWith}
+import util.{SrcPos, NoSourcePosition, Property, Lst}
 import Contexts.*
 import Flags.*
 import Symbols.*
@@ -1803,8 +1803,8 @@ trait Applications extends Compatibility {
             case params :: rest =>
               val newAcc =
                 params match
-                  case LstStartingWith(param) if param.isType => true
-                  case LstStartingWith(param) if param.isTerm && !param.isOneOf(GivenOrImplicit) => false
+                  case Lst.StartingWith(param) if param.isType => true
+                  case Lst.StartingWith(param) if param.isTerm && !param.isOneOf(GivenOrImplicit) => false
                   case _ => acc
               hasTrailingTypeParams(paramss.tail, newAcc)
 
@@ -2796,7 +2796,7 @@ trait Applications extends Compatibility {
       val firstParamName = t.paramNames.head
       def recur(pss: List[Lst[Symbol]], skipped: Int): (List[Lst[Symbol]], Int) =
         (pss: @unchecked) match
-          case (ps @ LstStartingWith(p)) :: pss1 =>
+          case (ps @ Lst.StartingWith(p)) :: pss1 =>
             if p.name == firstParamName then (pss, skipped)
             else recur(pss1, if p.name.isTermName then skipped + ps.length else skipped)
           case Nil =>

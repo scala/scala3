@@ -6,7 +6,7 @@ import scala.annotation.tailrec
 import Names.*, Types.*, Contexts.*, StdNames.*, Decorators.*
 import TypeErasure.sigName
 import Signature.*
-import util.{Lst, LstContainer}
+import util.{Lst}
 
 /** The signature of a denotation.
  *
@@ -47,7 +47,7 @@ import util.{Lst, LstContainer}
  *   - tpnme.WILDCARD       Arises from a Wildcard or error type
  *   - tpnme.Uninstantiated Arises from an uninstantiated type variable
  */
-case class Signature(paramsSig: Lst[ParamSig], resSig: TypeName) extends LstContainer[Signature] {
+case class Signature(paramsSig: Lst[ParamSig], resSig: TypeName) extends Lst.Container[Signature] {
 
   /** Two names are consistent if they are the same or one of them is tpnme.Uninstantiated */
   private def consistent(name1: ParamSig, name2: ParamSig) =

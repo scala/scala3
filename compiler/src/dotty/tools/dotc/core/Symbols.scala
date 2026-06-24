@@ -26,7 +26,7 @@ import Variances.Variance
 import reporting.Message
 import collection.mutable
 import io.AbstractFile
-import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, WrappedSourceFile, Lst, LstStartingWith}
+import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, WrappedSourceFile, Lst}
 
 import scala.annotation.internal.sharable
 import config.Printers.typr
@@ -986,7 +986,7 @@ object Symbols extends SymUtils {
    */
   object TermSymbols:
     def unapply(xs: Lst[Symbol])(using Context): Option[Lst[TermSymbol]] = xs match
-      case LstStartingWith(x: Symbol) if x.isType => None
+      case Lst.StartingWith(x: Symbol) if x.isType => None
       case _ => Some(xs.asInstanceOf[Lst[TermSymbol]])
 
   /** Matches lists of type symbols, excluding the empty list.
@@ -994,7 +994,7 @@ object Symbols extends SymUtils {
    */
   object TypeSymbols:
     def unapply(xs: Lst[Symbol])(using Context): Option[Lst[TypeSymbol]] = xs match
-      case LstStartingWith(x: Symbol) if x.isType => Some(xs.asInstanceOf[Lst[TypeSymbol]])
+      case Lst.StartingWith(x: Symbol) if x.isType => Some(xs.asInstanceOf[Lst[TypeSymbol]])
       case _ => None
 
   type DontUseSymbolOnSymbol

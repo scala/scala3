@@ -8,7 +8,7 @@ import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
-import util.{Stats, NoSourcePosition, EqHashMap, Lst, Lst1}
+import util.{Stats, NoSourcePosition, EqHashMap, Lst}
 import config.Config
 import config.Feature.{migrateTo3, sourceVersion}
 import config.Printers.{subtyping, gadts, matchTypes, capt, noPrinter}

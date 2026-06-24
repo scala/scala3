@@ -33,7 +33,7 @@ import inlines.{Inlines, PrepareInlineable}
 import util.Spans.*
 import util.chaining.*
 import util.common.*
-import util.{Property, SimpleIdentityMap, SrcPos, Lst, Lst1, LstStartingWith}
+import util.{Property, SimpleIdentityMap, SrcPos, Lst}
 import Applications.{defaultArgument, wrapDefs}
 import collection.mutable
 import Implicits.*
@@ -733,9 +733,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // extensionParam
     def leadParamOf(m: SymDenotation): Symbol =
       def leadParam(paramss: List[Lst[Symbol]]): Symbol = paramss match
-        case LstStartingWith(param) :: paramss if param.isType => leadParam(paramss)
-        case _ :: Lst1(param) :: _ if m.name.isRightAssocOperatorName => param
-        case LstStartingWith(param) :: _ => param
+        case Lst.StartingWith(param) :: paramss if param.isType => leadParam(paramss)
+        case _ :: Lst.Singleton(param) :: _ if m.name.isRightAssocOperatorName => param
+        case Lst.StartingWith(param) :: _ => param
         case _ => NoSymbol
       leadParam(m.rawParamss)
 
@@ -4699,7 +4699,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // default argument can't override an ambiguous implicit. See tests
             // `given-ambiguous-default*` and `19414*`.
             val namedArgs =
-              wtp.paramNames.lazyZip(args).collect:
+              wtp.paramNames.lazyZip(args.toLst).collect:
                 case (pname, arg) if !arg.tpe.isError || arg.tpe.isInstanceOf[AmbiguousImplicits] =>
                   untpd.NamedArg(pname, untpd.TypedSplice(arg))
               .toList

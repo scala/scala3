@@ -4,6 +4,7 @@ import java.lang.System.arraycopy
 import collection.mutable.ListBuffer
 import reflect.ClassTag
 import scala.collection.immutable
+import util.hashing.MurmurHash3
 
 opaque type Lst[+T <: AnyRef] <: AnyRef = Array[Object]
 
@@ -102,7 +103,7 @@ object Lst {
       if change then ys else xs
 
     def reverse: Lst[T] =
-      val buf = LstBuffer(length)
+      val buf = Buffer(length)
       var i = length
       while i > 0 do
         i -= 1
@@ -159,7 +160,7 @@ object Lst {
     def flatMap[U <: AnyRef](f: T => Lst[U]): Lst[U] = xs.map(f).flatten
 
     def filter(p: T => Boolean): Lst[T] =
-      val buf = LstBuffer(xs.length)
+      val buf = Buffer(xs.length)
       var i = 0
       while i < xs.length do
         val x = xs.at(i)
@@ -168,7 +169,7 @@ object Lst {
       if buf.length == length then xs else buf.toLst
 
     def collect[U <: AnyRef](f: PartialFunction[T, U]): Lst[U] =
-      val buf = LstBuffer(xs.length)
+      val buf = Buffer(xs.length)
       var i = 0
       while i < xs.length do
         if f.isDefinedAt(at(i)) then buf += f(at(i))
@@ -211,10 +212,10 @@ object Lst {
     def ++(ys: Lst[T]): Lst[T] =
       if xs.isEmpty then ys
       else if ys.isEmpty then xs
-      else (LstBuffer(xs.length + ys.length) ++= xs ++= ys).toLst
+      else (Buffer(xs.length + ys.length) ++= xs ++= ys).toLst
 
     def :+(y: T): Lst[T] =
-      (LstBuffer(xs.length + 1) ++= xs += y).toLst
+      (Buffer(xs.length + 1) ++= xs += y).toLst
 
     def updated[U >: T <: AnyRef](idx: Int, x: U): Lst[U] =
       var rs = new Array[Object](xs.length)
@@ -284,8 +285,8 @@ object Lst {
       (take(i), drop(i))
 
     def partition(p: T => Boolean): (Lst[T], Lst[T]) =
-      val yes = LstBuffer[T]()
-      val no = LstBuffer[T]()
+      val yes = Buffer[T]()
+      val no = Buffer[T]()
       var i = 0
       while i < length do
         val x = at(i)
@@ -317,8 +318,8 @@ object Lst {
         cur += 1
         elem
 
-    def toIterable: LstIterable[T] =
-      LstIterable(xs)
+    def toIterable: Lst.Iterable[T] =
+      Lst.Iterable(xs)
 
     def toSet[U >: T]: immutable.Set[U] = immutable.Set.from(toIterable)
 
@@ -378,10 +379,10 @@ object Lst {
 
     def _toString: String = mkString("List(", ", ", ")")
 
-    def lazyZip[U](that: Iterable[U]): collection.LazyZip2[T, U, ? <: LstIterable[T]] =
+    def lazyZip[U](that: collection.Iterable[U]): collection.LazyZip2[T, U, ? <: Lst.Iterable[T]] =
       toIterable.lazyZip(that)
 
-    def lazyZip[U <: AnyRef](that: Lst[U]): collection.LazyZip2[T, U, ? <: LstIterable[T]] =
+    def lazyZip[U <: AnyRef](that: Lst[U]): collection.LazyZip2[T, U, ? <: Lst.Iterable[T]] =
       lazyZip(that.toIterable)
 
   extension [T <: AnyRef](xss: Lst[Lst[T]])
@@ -397,7 +398,7 @@ object Lst {
         xss.at(i)
       else
         val totalLength = xss.foldLeft(0)((len, xs) => len + xs.length)
-        val buf = LstBuffer(totalLength)
+        val buf = Buffer(totalLength)
         var i = 0
         while i < xss.length do
           buf ++= xss.at(i)
@@ -423,12 +424,12 @@ object Lst {
 
   extension [T <: AnyRef](x: T)
     def +:(ys: Lst[T]): Lst[T] =
-      (LstBuffer[T](ys.length + 1) += x ++= ys).toLst
+      (Buffer[T](ys.length + 1) += x ++= ys).toLst
 
   extension [T <: AnyRef, U <: AnyRef](xs: Lst[(T, U)])
     def unzip: (Lst[T], Lst[U]) =
-      val buf1 = LstBuffer(xs.length)
-      val buf2 = LstBuffer(xs.length)
+      val buf1 = Buffer(xs.length)
+      val buf2 = Buffer(xs.length)
       for (x1, x2) <- xs do
         buf1 += x1
         buf2 += x2
@@ -436,76 +437,125 @@ object Lst {
 
     def toMap: immutable.Map[T, U] = immutable.Map.from(xs.toIterable)
 
+  class Buffer[T <: AnyRef](initSize: Int = 8) {
+    import Lst.*
+
+    private var elems = new Array[Object](initSize)
+    private var siz: Int = 0
+    private var dirty = false // need a copy after a toLst and before following += or ++=
+
+    private def ensureCapacity(added: Int) =
+      val newSize = siz + added
+      if newSize > elems.length || dirty then
+        require(elems.length > 0)
+        var newCapacity = elems.length
+        while newSize > newCapacity do newCapacity = newCapacity << 1
+        val newElems = new Array[Object](newCapacity)
+        arraycopy(elems, 0, newElems, 0, siz)
+        elems = newElems
+        dirty = false
+
+    def length: Int = siz
+    def size: Int = siz
+
+    def at(i: Int) = elems(i).asInstanceOf[T]
+
+    def += (x: T): this.type =
+      ensureCapacity(1)
+      elems(siz) = x
+      siz += 1
+      this
+
+    def ++= (xs: Lst[T]): this.type =
+      ensureCapacity(xs.length)
+      arraycopy(xs, 0, elems, siz, xs.length)
+      siz += xs.length
+      this
+
+    def foreach(f: T => Unit): Unit =
+      var i = 0
+      while i < size do
+        f(at(i))
+        i += 1
+
+    def contains(x: T): Boolean =
+      var i = 0
+      while i < size && elems(i) != x do i += 1
+      i < size
+
+    def toLst: Lst[T] =
+      if siz == 0 then Lst()
+      else if siz == elems.length then
+        dirty = true
+        elems.asInstanceOf[Lst[T]]
+      else
+        val result = new Array[Object](siz)
+        arraycopy(elems, 0, result, 0, siz)
+        result.asInstanceOf[Lst[T]]
+  }
+
+  class Iterable[+T <: AnyRef](lst: Lst[T]) extends collection.immutable.Iterable[T]:
+    def iterator: Iterator[T] = lst.iterator
+
+  /** Extractor for lsts of length 1 */
+  object Singleton:
+    def unapply[T <: AnyRef](xs: Lst[T]): Option[T] =
+      if xs.length == 1 then Some(xs.at(0)) else None
+
+  /** Extractor for nonempty lsts starting with some element pattern */
+  object StartingWith:
+    def unapply[T <: AnyRef](xs: Lst[T]): Option[T] =
+      if xs.length >= 1 then Some(xs.at(0)) else None
+
+  /** A super-trait for case classes containing `Lst` elements
+   *  which defines the correct `equals`, `hashCode` and `toString` methods so
+   *  that the functionality is the same as if the elements were regular Lists.
+   *  @param T   the case class
+   */
+  trait Container[T](using ct: ClassTag[T]) { self: Product =>
+    override def toString =
+      val it = productIterator
+      val sb = StringBuilder() ++= productPrefix += '('
+      var first = true
+      while it.hasNext do
+        if !first then sb += ','
+        first = false
+        sb ++= it.next().match
+          case elem: Array[Object] => elem.asInstanceOf[Lst[Object]]._toString
+          case elem => elem.toString
+      sb += ')'
+      sb.toString
+
+    override def equals(that: Any): Boolean =
+      (this `eq` that.asInstanceOf[Object])
+      || ct.runtimeClass.isInstance(that)
+          && {
+            val that1 = that.asInstanceOf[Product]
+            var i = 0
+            var len = productArity
+            while i < len
+              && productElement(i).match
+                case elem: Array[Object] =>
+                  elem.asInstanceOf[Lst[Object]] === that1.productElement(i).asInstanceOf[Lst[Object]]
+                case elem =>
+                  elem == that1.productElement(i)
+            do i += 1
+            i == len && that1.canEqual(this)
+          }
+
+    override def hashCode: Int =
+      val len = productArity
+      var h = productPrefix.hashCode
+      var i = 0
+      while i < len do
+        val elemHash = productElement(i) match
+          case elem: Array[Object] => java.util.Arrays.hashCode(elem)
+          case elem => elem.##
+        h = MurmurHash3.mix(h, elemHash)
+        i += 1
+      MurmurHash3.finalizeHash(h, len)
+  }
 }
-
-class LstBuffer[T <: AnyRef](initSize: Int = 8) {
-  import Lst.*
-
-  private var elems = new Array[Object](initSize)
-  private var siz: Int = 0
-  private var dirty = false // need a copy after a toLst and before following += or ++=
-
-  private def ensureCapacity(added: Int) =
-    val newSize = siz + added
-    if newSize > elems.length || dirty then
-      require(elems.length > 0)
-      var newCapacity = elems.length
-      while newSize > newCapacity do newCapacity = newCapacity << 1
-      val newElems = new Array[Object](newCapacity)
-      arraycopy(elems, 0, newElems, 0, siz)
-      elems = newElems
-      dirty = false
-
-  def length: Int = siz
-  def size: Int = siz
-
-  def at(i: Int) = elems(i).asInstanceOf[T]
-
-  def += (x: T): this.type =
-    ensureCapacity(1)
-    elems(siz) = x
-    siz += 1
-    this
-
-  def ++= (xs: Lst[T]): this.type =
-    ensureCapacity(xs.length)
-    arraycopy(xs, 0, elems, siz, xs.length)
-    siz += xs.length
-    this
-
-  def foreach(f: T => Unit): Unit =
-    var i = 0
-    while i < size do
-      f(at(i))
-      i += 1
-
-  def contains(x: T): Boolean =
-    var i = 0
-    while i < size && elems(i) != x do i += 1
-    i < size
-
-  def toLst: Lst[T] =
-    if siz == 0 then Lst()
-    else if siz == elems.length then
-      dirty = true
-      elems.asInstanceOf[Lst[T]]
-    else
-      val result = new Array[Object](siz)
-      arraycopy(elems, 0, result, 0, siz)
-      result.asInstanceOf[Lst[T]]
-}
-
-class LstIterable[+T <: AnyRef](lst: Lst[T]) extends Iterable[T]:
-  def iterator: Iterator[T] = lst.iterator
-
-/** Extractor for lsts of length 1 */
-object Lst1:
-  def unapply[T <: AnyRef](xs: Lst[T]): Option[T] =
-    if xs.length == 1 then Some(xs(0)) else None
-
-object LstStartingWith:
-  def unapply[T <: AnyRef](xs: Lst[T]): Option[T] =
-    if xs.length >= 1 then Some(xs(0)) else None
 
 @main def LstTest() =
   val xs = Lst("hello", "world")
