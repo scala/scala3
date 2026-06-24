@@ -26,7 +26,7 @@ import Variances.Variance
 import reporting.Message
 import collection.mutable
 import io.AbstractFile
-import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, WrappedSourceFile, Lst}
+import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, WrappedSourceFile, Lst, LstStartingWith}
 
 import scala.annotation.internal.sharable
 import config.Printers.typr
@@ -944,7 +944,7 @@ object Symbols extends SymUtils {
                   // type parameters need to be copied early, since other type
                   // computations depend on them.
                   val decls1 = newScope
-                  val newTypeParams = mapSymbols(original.typeParams, ttmap1, mapAlways = true)
+                  val newTypeParams = mapSymbols(original.typeParamsList, ttmap1, mapAlways = true).toLst
                   newTypeParams.foreach(decls1.enter)
                   for sym <- decls do if !sym.is(TypeParam) then decls1.enter(sym)
                   val parents2 = parents1.map(_.substSym(otypeParams, newTypeParams))
@@ -985,16 +985,16 @@ object Symbols extends SymUtils {
    *  All symbols in the list are assumed to be of the same kind.
    */
   object TermSymbols:
-    def unapply(xs: List[Symbol])(using Context): Option[List[TermSymbol]] = xs match
-      case (x: Symbol) :: _ if x.isType => None
-      case _ => Some(xs.asInstanceOf[List[TermSymbol]])
+    def unapply(xs: Lst[Symbol])(using Context): Option[Lst[TermSymbol]] = xs match
+      case LstStartingWith(x: Symbol) if x.isType => None
+      case _ => Some(xs.asInstanceOf[Lst[TermSymbol]])
 
   /** Matches lists of type symbols, excluding the empty list.
    *  All symbols in the list are assumed to be of the same kind.
    */
   object TypeSymbols:
-    def unapply(xs: List[Symbol])(using Context): Option[List[TypeSymbol]] = xs match
-      case (x: Symbol) :: _ if x.isType => Some(xs.asInstanceOf[List[TypeSymbol]])
+    def unapply(xs: Lst[Symbol])(using Context): Option[Lst[TypeSymbol]] = xs match
+      case LstStartingWith(x: Symbol) if x.isType => Some(xs.asInstanceOf[Lst[TypeSymbol]])
       case _ => None
 
   type DontUseSymbolOnSymbol

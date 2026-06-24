@@ -13,6 +13,7 @@ import reflect.ClassTag
 import annotation.tailrec
 import annotation.internal.sharable
 import cc.{CapturingType, derivedCapturingType}
+import util.Lst
 
 import scala.compiletime.uninitialized
 
@@ -308,8 +309,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     /** Does `param` have bounds in the current constraint? */
     protected def hasBounds(param: TypeParamRef): Boolean = entry(param).isInstanceOf[TypeBounds]
 
-    override def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
-      def tparams(tycon: Type): List[ParamInfo] = tycon match
+    override def tyconTypeParams(tp: AppliedType)(using Context): Lst[ParamInfo] =
+      def tparams(tycon: Type): Lst[ParamInfo] = tycon match
         case tycon: TypeVar if !tycon.isPermanentlyInstantiated => tparams(tycon.origin)
         case tycon: TypeParamRef if !hasBounds(tycon) =>
           val entryParams = entry(tycon).typeParams

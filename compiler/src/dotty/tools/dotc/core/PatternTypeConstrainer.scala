@@ -236,7 +236,7 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
     def widenVariantParams(tp: Type) = tp match {
       case tp @ AppliedType(tycon, args) =>
-        val args1 = args.zipWithConserve(tycon.typeParams)((arg, tparam) =>
+        val args1 = args.zipWithConserve(tycon.typeParams.toList)((arg, tparam) =>
           if (tparam.paramVarianceSign != 0) TypeBounds.empty else arg
         )
         tp.derivedAppliedType(tycon, args1)

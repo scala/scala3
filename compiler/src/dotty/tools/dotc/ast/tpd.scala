@@ -10,7 +10,7 @@ import typer.{ConstFold, ProtoTypes}
 import transform.{Erasure, ExplicitOuter}
 import config.{Feature, Printers}
 import Printers.typr
-import util.{Property, SourceFile, Spans, Lst}
+import util.{Property, SourceFile, Spans, Lst, LstBuffer}
 import Spans.*
 
 import scala.annotation.tailrec
@@ -233,15 +233,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def SyntheticValDef(name: TermName, rhs: Tree, flags: FlagSet = EmptyFlags)(using Context): ValDef =
     ValDef(newSymbol(ctx.owner, name, Synthetic | flags, rhs.tpe.widen, coord = rhs.span), rhs)
 
-  def DefDef(sym: TermSymbol, paramss: List[List[Symbol]],
+  def DefDef(sym: TermSymbol, paramss: List[Lst[Symbol]],
              resultType: Type, rhs: Tree)(using Context): DefDef =
     sym.setParamss(paramss)
     ta.assignType(
       untpd.DefDef(
         sym.name,
         paramss.map {
-          case TypeSymbols(params) => params.map(param => TypeDef(param).withSpan(param.span))
-          case TermSymbols(params) => params.map(param => ValDef(param).withSpan(param.span))
+          case TypeSymbols(params) => params.map(param => TypeDef(param).withSpan(param.span)).toList
+          case TermSymbols(params) => params.map(param => ValDef(param).withSpan(param.span)).toList
           case _ => unreachable()
         },
         TypeTree(resultType),
@@ -261,20 +261,20 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     // Map method type `tp` with remaining parameters stored in rawParamss to
     // final result type and all (given or synthesized) parameters
-    def recur(tp: Type, remaining: List[List[Symbol]]): (Type, List[List[Symbol]]) = tp match
+    def recur(tp: Type, remaining: List[Lst[Symbol]]): (Type, List[Lst[Symbol]]) = tp match
       case tp: PolyType =>
-        val (tparams: List[TypeSymbol], remaining1) = remaining match
+        val (tparams: Lst[TypeSymbol], remaining1) = remaining match
           case tparams :: remaining1 =>
             assert(tparams.length == tp.paramNames.length && tparams.head.isType)
-            (tparams.asInstanceOf[List[TypeSymbol]], remaining1)
+            (tparams.asInstanceOf[Lst[TypeSymbol]], remaining1)
           case nil =>
-            (newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_)).toList,
+            (newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_)),
              Nil)
-        val (rtp, paramss) = recur(tp.instantiate(tparams.mapToLst(_.typeRef)), remaining1)
+        val (rtp, paramss) = recur(tp.instantiate(tparams.map(_.typeRef)), remaining1)
         (rtp, tparams :: paramss)
       case tp: MethodType =>
-        val previousParamRefs: mutable.ListBuffer[TermRef] | Null =
-          if tp.isParamDependent then mutable.ListBuffer[TermRef]() else null
+        val previousParamRefs: LstBuffer[TermRef] | Null =
+          if tp.isParamDependent then LstBuffer[TermRef]() else null
 
         def valueParam(name: TermName, origInfo: Type, isErased: Boolean): TermSymbol =
           val maybeImplicit =
@@ -286,23 +286,23 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           def makeSym(info: Type) = newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
 
           if previousParamRefs ne null then
-            val sym = makeSym(origInfo.substParams(tp, previousParamRefs.toList.toLst))
+            val sym = makeSym(origInfo.substParams(tp, previousParamRefs.toLst))
             previousParamRefs += sym.termRef
             sym
           else makeSym(origInfo)
         end valueParam
 
-        val (vparams: List[TermSymbol], remaining1) =
-          if tp.paramNames.isEmpty then (Nil, remaining)
+        val (vparams: Lst[TermSymbol], remaining1) =
+          if tp.paramNames.isEmpty then (Lst(), remaining)
           else remaining match
             case vparams :: remaining1 =>
               assert(vparams.length == tp.paramNames.length && vparams.head.isTerm)
-              (vparams.asInstanceOf[List[TermSymbol]], remaining1)
+              (vparams.asInstanceOf[Lst[TermSymbol]], remaining1)
             case nil =>
-              (List.tabulate(tp.paramNames.length): i =>
-                valueParam(tp.paramNames(i), tp.paramInfos(i), tp.erasedPositions.contains(i)),
-               Nil)
-        val (rtp, paramss) = recur(tp.instantiate(vparams.mapToLst(_.termRef)), remaining1)
+              val syntheticParams = tp.paramNames.zipWith(tp.paramInfos): (pname, pinfo) =>
+                valueParam(pname, pinfo, pinfo.isForErasedParam)
+              (syntheticParams, Nil)
+        val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), remaining1)
         (rtp, vparams :: paramss)
       case _ =>
         assert(remaining.isEmpty)
@@ -310,7 +310,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     end recur
 
     val (rtp, paramss) = recur(sym.info, sym.rawParamss)
-    DefDef(sym, paramss, rtp, rhsFn(paramss.nestedMap(ref)))
+    DefDef(sym, paramss, rtp, rhsFn(paramss.map(params => params.map(ref).toList)))
   end DefDef
 
   def TypeDef(sym: TypeSymbol)(using Context): TypeDef =
@@ -360,7 +360,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       stat.symbol.is(TypeParam) && stat.symbol.owner == cls
     val bodyTypeParams = body filter isOwnTypeParam map (_.symbol)
     val newTypeParams =
-      for (tparam <- cls.typeParams if !(bodyTypeParams contains tparam))
+      for tparam <- cls.typeParamsList.filter(!bodyTypeParams.contains(_))
       yield TypeDef(tparam)
     val findLocalDummy = FindLocalDummyAccumulator(cls)
     val localDummy = body.foldLeft(NoSymbol: Symbol)(findLocalDummy.apply)

@@ -61,7 +61,7 @@ object ClassfileParser {
   def cook(using Context): TypeMap = new TypeMap {
     def apply(tp: Type): Type = tp match {
       case tp: TypeRef if tp.symbol.typeParams.nonEmpty =>
-        AppliedType(tp, tp.symbol.typeParams.map(Function.const(TypeBounds.empty)))
+        AppliedType(tp, tp.symbol.typeParamsList.map(Function.const(TypeBounds.empty)))
       case tp @ AppliedType(tycon, args) =>
         // disregard tycon itself, but map over it to visit the prefix
         tp.derivedAppliedType(mapOver(tycon), args.mapConserve(this))
@@ -740,7 +740,7 @@ final class ClassfileParser(
       else NoType
     }
 
-    val newTParams = new ListBuffer[Symbol]()
+    val newTParams = new util.LstBuffer[Symbol]()
     if (sig(index) == '<') {
       assert(owner != null)
       index += 1
@@ -757,7 +757,7 @@ final class ClassfileParser(
       }
       index += 1
     }
-    val ownTypeParams = newTParams.toList.asInstanceOf[List[TypeSymbol]]
+    val ownTypeParams = newTParams.toLst.asInstanceOf[Lst[TypeSymbol]]
     val tpe =
       if ((owner == null) || !owner.isClass)
         sig2type(skiptvs = false)
@@ -885,7 +885,7 @@ final class ClassfileParser(
       // with a `FatalError` exception, handled above. Here you'd end up after a NPE (for example),
       // and that should never be swallowed silently.
       report.warning(em"Caught: $ex while parsing annotations in $classfile")
-      if (ctx.debug) ex.printStackTrace()
+      if (ctx.debug || true) ex.printStackTrace()
 
       None // ignore malformed annotations
   }

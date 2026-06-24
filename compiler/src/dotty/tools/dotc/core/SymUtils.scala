@@ -17,6 +17,7 @@ import Annotations.Annotation
 import Phases.*
 import ast.tpd.Literal
 import transform.Mixin
+import util.Lst
 
 import dotty.tools.dotc.transform.sjs.JSSymUtils.sjsNeedsField
 
@@ -296,7 +297,7 @@ class SymUtils:
     }
 
     def paramNamed(name: Name)(using Context): Symbol =
-      self.rawParamss.nestedFind(_.name == name).getOrElse(NoSymbol)
+      self.rawParamss.nestedFindLst(_.name == name).getOrElse(NoSymbol)
 
     /** Is this symbol a constant expression final val?
      *
@@ -440,11 +441,11 @@ class SymUtils:
     def localReturnType(using Context): Type =
       if self.isConstructor then defn.UnitType
       else
-        def instantiateRT(info: Type, psymss: List[List[Symbol]]): Type = info match
+        def instantiateRT(info: Type, psymss: List[Lst[Symbol]]): Type = info match
           case info: PolyType =>
-            instantiateRT(info.instantiateWithList(psymss.head.map(_.typeRef)), psymss.tail)
+            instantiateRT(info.instantiate(psymss.head.map(_.typeRef)), psymss.tail)
           case info: MethodType =>
-            instantiateRT(info.instantiateWithList(psymss.head.map(_.termRef)), psymss.tail)
+            instantiateRT(info.instantiate(psymss.head.map(_.termRef)), psymss.tail)
           case info =>
             info.widenExpr
         instantiateRT(self.info, self.paramSymss)
@@ -461,20 +462,21 @@ class SymUtils:
        * @param  paramss  the parameters of the anonymous functions
        *                  enclosing the return expression
        */
-      def instantiateCFT(pt: Type, paramss: => List[List[Symbol]]): Type =
+      def instantiateCFT(pt: Type, paramss: => List[Lst[Symbol]]): Type =
         val ift = defn.asContextFunctionType(pt)
         if ift.exists then
           ift.nonPrivateMember(nme.apply).info match
             case appType: MethodType =>
-              instantiateCFT(appType.instantiateWithList(paramss.head.map(_.termRef)), paramss.tail)
+              instantiateCFT(appType.instantiate(paramss.head.map(_.termRef)), paramss.tail)
         else pt
 
       def iftParamss = ctx.owner.ownersIterator
           .filter(_.is(Method, butNot = Accessor))
           .takeWhile(_.isAnonymousFunction)
-          .toList
+          .toLst
           .reverse
           .map(_.paramSymss.head)
+          .toList
 
       instantiateCFT(self.localReturnType, iftParamss)
     end returnProto

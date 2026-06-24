@@ -13,6 +13,7 @@ import Names.*
 import StdNames.nme
 import Flags.{Module, Provisional}
 import dotty.tools.dotc.config.Config
+import util.{Lst, LstStartingWith}
 
 object TypeApplications {
 
@@ -48,7 +49,7 @@ object TypeApplications {
         // are empty anyway.
       || {
         val tparams = fn.typeParams
-        val paramRefs = tparams.mapToLst(_.paramRef)
+        val paramRefs = tparams.map(_.paramRef)
         val prefix = fn.normalizedPrefix
         val owner = fn.typeSymbol.maybeOwner
         tp.typeParams.corresponds(tparams) { (param1, param2) =>
@@ -62,7 +63,7 @@ object TypeApplications {
     def unapply(tp: Type)(using Context): Option[Type] = tp match
       case tp @ HKTypeLambda(tparams, AppliedType(fn, args))
       if fn.typeSymbol.isClass
-         && tparams.hasSameLengthAs(args)
+         && tparams.length == args.length
          && args.lazyZip(tparams).forall((arg, tparam) => arg == tparam.paramRef)
          && weakerBounds(tp, fn) => Some(fn)
       case _ => None
@@ -71,9 +72,9 @@ object TypeApplications {
 
    /** Adapt all arguments to possible higher-kinded type parameters using etaExpandIfHK
    */
-  def EtaExpandIfHK(tparams: List[TypeParamInfo], args: List[Type])(using Context): List[Type] =
+  def EtaExpandIfHK(tparams: Lst[TypeParamInfo], args: List[Type])(using Context): List[Type] =
     if (tparams.isEmpty) args
-    else args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(tparam.paramInfoOrCompleter))
+    else args.zipWithConserve(tparams.toList)((arg, tparam) => arg.etaExpandIfHK(tparam.paramInfoOrCompleter))
 
   /** A type map that tries to reduce (part of) the result type of the type lambda `tycon`
    *  with the given `args`(some of which are wildcard arguments represented by type bounds).
@@ -167,7 +168,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  For a refinement type, the type parameters of its parent, dropping
    *  any type parameter that is-rebound by the refinement.
    */
-  final def typeParams(using Context): List[TypeParamInfo] = {
+  final def typeParams(using Context): Lst[TypeParamInfo] = {
     record("typeParams")
     def isTrivial(prefix: Type, tycon: Symbol) = prefix match {
       case prefix: ThisType =>
@@ -197,20 +198,20 @@ class TypeApplications(val self: Type) extends AnyVal {
           case _ => self.info.typeParams
         }
       case self: AppliedType =>
-        if (self.tycon.typeSymbol.isClass) Nil
+        if self.tycon.typeSymbol.isClass then Lst()
         else self.superType.typeParams
       case self: ClassInfo =>
         self.cls.typeParams
       case self: HKTypeLambda =>
         self.typeParams
       case _: SingletonType | _: RefinedType | _: RecType =>
-        Nil
+        Lst()
       case self: WildcardType =>
         self.optBounds.typeParams
       case self: TypeProxy =>
         self.superType.typeParams
       case _ =>
-        Nil
+        Lst()
     }
     catch {
       case ex: Throwable => handleRecursive("type parameters of", self.show, ex)
@@ -218,25 +219,25 @@ class TypeApplications(val self: Type) extends AnyVal {
   }
 
   /** Substitute in `self` the type parameters of `tycon` by some other types. */
-  final def substTypeParams(tycon: Type, to: List[Type])(using Context): Type =
+  final def substTypeParams(tycon: Type, to: Lst[Type])(using Context): Type =
     (tycon.typeParams: @unchecked) match
-      case LambdaParam(lam, _) :: _ => self.substParams(lam, to.toLst)
-      case params: List[Symbol @unchecked] => self.subst(params, to)
+      case LstStartingWith(LambdaParam(lam, _)) => self.substParams(lam, to)
+      case params: Lst[Symbol @unchecked] => self.subst(params, to)
 
   /** If `self` is a higher-kinded type, its type parameters, otherwise Nil */
-  final def hkTypeParams(using Context): List[TypeParamInfo] =
-    if (isLambdaSub) typeParams else Nil
+  final def hkTypeParams(using Context): Lst[TypeParamInfo] =
+    if (isLambdaSub) typeParams else Lst()
 
   /** If `self` is a generic class, its type parameter symbols, otherwise Nil */
-  final def typeParamSymbols(using Context): List[TypeSymbol] = typeParams match {
-    case tparams @ (_: Symbol) :: _ =>
+  final def typeParamSymbols(using Context): Lst[TypeSymbol] = typeParams match {
+    case tparams @ LstStartingWith(_: Symbol) =>
       assert(tparams.forall(_.isInstanceOf[Symbol]))
-      tparams.asInstanceOf[List[TypeSymbol]]
+      tparams.asInstanceOf[Lst[TypeSymbol]]
         // Note: Two successive calls to typeParams can yield different results here because
         // of different completion status. I.e. the first call might produce some symbols,
         // whereas the second call gives some LambdaParams. This was observed
         // for ticket0137.scala
-    case _ => Nil
+    case _ => Lst()
   }
 
   /** Is self type bounded by a type lambda or AnyKind? */
@@ -318,8 +319,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def etaExpand(using Context): Type =
     val tparams = self.typeParams
-    val tparamsLst = tparams.toLst
-    val resType = self.appliedTo(tparams.map(_.paramRef))
+    val resType = self.appliedTo(tparams.map(_.paramRef).toList)
     self.dealias match
       case self: TypeRef if tparams.nonEmpty && self.symbol.isClass =>
         val owner = self.symbol.owner
@@ -335,11 +335,11 @@ class TypeApplications(val self: Type) extends AnyVal {
         // But eta-expanding M2.F should have type parameters with an upper-bound of M2.A.
         // So we take the prefix M2.type and the F symbol's owner, M1,
         // to call asSeenFrom on T's info.
-        HKTypeLambda(tparamsLst.map(_.paramName))(
-          tl => tparamsLst.map(p => HKTypeLambda.toPInfo(tl.integrate(tparamsLst, p.paramInfo.asSeenFrom(self.prefix, owner)))),
-          tl => tl.integrate(tparamsLst, resType))
+        HKTypeLambda(tparams.map(_.paramName))(
+          tl => tparams.map(p => HKTypeLambda.toPInfo(tl.integrate(tparams, p.paramInfo.asSeenFrom(self.prefix, owner)))),
+          tl => tl.integrate(tparams, resType))
       case _ =>
-        HKTypeLambda.fromParams(tparamsLst, resType)
+        HKTypeLambda.fromParams(tparams, resType)
 
   /** If self is not lambda-bound, eta expand it. */
   def ensureLambdaSub(using Context): Type =
@@ -353,7 +353,7 @@ class TypeApplications(val self: Type) extends AnyVal {
     val hkParams = bound.hkTypeParams
     if (hkParams.isEmpty) self
     else self match {
-      case self: TypeRef if self.symbol.isClass && self.typeParams.hasSameLengthAs(hkParams) =>
+      case self: TypeRef if self.symbol.isClass && self.typeParams.length == hkParams.length =>
         etaExpand
       case _ => self
     }
@@ -363,6 +363,9 @@ class TypeApplications(val self: Type) extends AnyVal {
   def etaCollapse(using Context): Type = self match
     case EtaExpansion(classType) => classType
     case _ => self
+
+  final def appliedTo(args: Lst[Type])(using Context): Type =
+    appliedTo(args.toList)
 
   /** The type representing
    *

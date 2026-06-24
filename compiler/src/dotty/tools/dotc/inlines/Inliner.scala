@@ -282,7 +282,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     var bindingFlags: FlagSet = InlineProxy
     if formal.widenExpr.hasAnnotation(defn.InlineParamAnnot) then
       bindingFlags |= Inline
-    if formal.widenExpr.hasAnnotation(defn.ErasedParamAnnot) then
+    if formal.widenExpr.isForErasedParam then
       bindingFlags |= Erased
     if isByName then
       bindingFlags |= Method

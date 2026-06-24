@@ -33,7 +33,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       val paramSymss = forwarder.paramSymss // compute once; different from rawParamss
       forwarder.setParamss(paramSymss)
       atPhaseBeforeTransforms:
-        for (src, dst) <- member.paramSymss.flatten.filter(!_.isType).zip(paramSymss.flatten) do
+        for (src, dst) <- member.paramSymss.flattenLst.filter(!_.isType).zip(paramSymss.flattenLst) do
           dst.addAnnotations(src.annotations)
 
   def superRef(target: Symbol, span: Span = cls.span): Tree = {

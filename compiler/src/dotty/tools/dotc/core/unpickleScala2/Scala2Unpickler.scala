@@ -36,9 +36,9 @@ object Scala2Unpickler {
   /** Exception thrown if classfile is corrupted */
   class BadSignature(msg: String) extends RuntimeException(msg)
 
-  case class TempPolyType(tparams: List[TypeSymbol], tpe: Type) extends UncachedGroundType {
+  case class TempPolyType(tparams: Lst[TypeSymbol], tpe: Type) extends UncachedGroundType {
     override def fallbackToText(printer: Printer): Text =
-      "[" ~ printer.dclsText(tparams, ", ") ~ "]" ~ printer.toText(tpe)
+      "[" ~ printer.dclsText(tparams.toList, ", ") ~ "]" ~ printer.toText(tpe)
   }
 
   /** Temporary type for classinfos, will be decomposed on completion of the class */
@@ -52,13 +52,13 @@ object Scala2Unpickler {
       // work better. See the commit message where this change was introduced
       // for more information.
       (if (tparams.head.owner.is(Method)) PolyType else HKTypeLambda)
-        .fromParams(tparams.toLst, restpe)
+        .fromParams(tparams, restpe)
     case tp => tp
   }
 
   def addConstructorTypeParams(denot: SymDenotation)(using Context): Unit = {
     assert(denot.isConstructor)
-    denot.info = PolyType.fromParams(denot.owner.typeParamsLst, denot.info)
+    denot.info = PolyType.fromParams(denot.owner.typeParams, denot.info)
   }
 
   def ensureConstructor(cls: ClassSymbol, clsDenot: ClassDenotation, scope: Scope)(using Context): Unit =
@@ -82,7 +82,7 @@ object Scala2Unpickler {
     val cls = denot.classSymbol
     val (tparams, TempClassInfoType(parents, decls, clazz)) = info match {
       case TempPolyType(tps, cinfo) => (tps, cinfo)
-      case cinfo => (Nil, cinfo)
+      case cinfo => (Lst(), cinfo)
     }: @unchecked
     val ost =
       if (selfInfo eq NoType) && denot.is(ModuleClass) then
@@ -103,7 +103,7 @@ object Scala2Unpickler {
     // Adjust parents of the tuple classes and BoxedUnit from the standard library
     // If from Scala 2, adjust for tuple classes; if not, it's from Java, and adjust for BoxedUnit
     val normalizedParents =
-      if (fromScala2) defn.adjustForTuple(cls, tparams, parents1)
+      if (fromScala2) defn.adjustForTuple(cls, tparams.toList, parents1)
       else defn.adjustForBoxedUnit(cls, parents1)
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
@@ -165,7 +165,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   private val symScopes = mutable.HashMap[Symbol, Scope]()
 
   /** A mapping from method types to the parameters used in constructing them */
-  private val paramsOfMethodType = new java.util.IdentityHashMap[MethodType, List[Symbol]]
+  private val paramsOfMethodType = new java.util.IdentityHashMap[MethodType, Lst[Symbol]]
 
   protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(using Context): Nothing = {
     val ex = new BadSignature(
@@ -607,7 +607,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   class LocalUnpickler extends LazyType {
     def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
 
-    def paramssOfType(tp: Type): List[List[Symbol]] = tp match
+    def paramssOfType(tp: Type): List[Lst[Symbol]] = tp match
       case TempPolyType(tparams, restpe) => tparams :: paramssOfType(restpe)
       case mt: MethodType =>
         val params = paramsOfMethodType.remove(mt)
@@ -687,7 +687,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   object localMemberUnpickler extends LocalUnpickler
 
   class ClassUnpickler(infoRef: Int) extends LocalUnpickler with TypeParamsCompleter {
-    private var myTypeParams: List[TypeSymbol] | Null = null
+    private var myTypeParams: Lst[TypeSymbol] | Null = null
 
     private def readTypeParams()(using Context): Unit = {
       val tag = readByte()
@@ -695,8 +695,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       myTypeParams =
         if (tag == POLYtpe) {
           val unusedRestpeRef = readNat()
-          until(end, () => readSymbolRef()(using ctx)).asInstanceOf[List[TypeSymbol]]
-        } else Nil
+          until(end, () => readSymbolRef()(using ctx)).toLst.asInstanceOf[Lst[TypeSymbol]]
+        } else Lst()
     }
     private def loadTypeParams()(using Context) =
       atReadPos(index(infoRef), () => readTypeParams()(using ctx))
@@ -705,11 +705,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def areParamsInitialized: Boolean = myTypeParams ne null
 
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
-    def init()(using Context): List[TypeSymbol] =
+    def init()(using Context): Lst[TypeSymbol] =
       if !areParamsInitialized then loadTypeParams()
       myTypeParams.nn
 
-    override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
+    override def completerTypeParams(sym: Symbol)(using Context): Lst[TypeSymbol] =
       init()
   }
 
@@ -727,7 +727,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    *  to
    *    tp { name: T }
    */
-  def elimExistentials(boundSyms: List[Symbol], tp: Type)(using Context): Type = {
+  def elimExistentials(boundSyms: Lst[Symbol], tp: Type)(using Context): Type = {
     // Need to be careful not to run into cyclic references here (observed when
     // compiling t247.scala). That's why we avoid taking `symbol` of a TypeRef
     // unless names match up.
@@ -778,8 +778,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     }
     val tp1 = elim(tp)
     if (isBoundAccumulator(false, tp1)) {
-      val anyTypes = boundSyms map (_ => defn.AnyType)
-      val boundBounds = boundSyms map (_.info.bounds.hi)
+      val anyTypes = boundSyms.map(_ => defn.AnyType)
+      val boundBounds = boundSyms.map(_.info.bounds.hi)
       val tp2 = tp1.subst(boundSyms, boundBounds).subst(boundSyms, anyTypes)
       report.warning(FailureToEliminateExistential(tp, tp1, tp2, boundSyms, classRoot.symbol), NoSourcePosition)
       tp2
@@ -886,10 +886,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         TempClassInfoType(until(end, () => readTypeRef()), symScope(clazz), clazz)
       case METHODtpe | IMPLICITMETHODtpe =>
         val restpe = readTypeRef()
-        val params = until(end, () => readSymbolRef())
+        val params = until(end, () => readSymbolRef()).toLst
         val maker = MethodType.companion(
           isImplicit = tag == IMPLICITMETHODtpe || params.nonEmpty && params.head.is(Implicit))
-        val result = maker.fromSymbols(params.toLst, restpe)
+        val result = maker.fromSymbols(params, restpe)
         result.resType match
           case restpe1: MethodType if restpe1 ne restpe =>
             val prevResParams = paramsOfMethodType.remove(restpe)
@@ -902,12 +902,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val restpe = readTypeRef()
         val typeParams = until(end, () => readSymbolRef())
         if typeParams.nonEmpty then
-          TempPolyType(typeParams.asInstanceOf[List[TypeSymbol]], restpe.widenExpr)
+          TempPolyType(typeParams.toLst.asInstanceOf[Lst[TypeSymbol]], restpe.widenExpr)
         else
           ExprType(restpe)
       case EXISTENTIALtpe =>
         val restpe = readTypeRef()
-        val boundSyms = until(end, () => readSymbolRef())
+        val boundSyms = until(end, () => readSymbolRef()).toLst
         elimExistentials(boundSyms, restpe)
       case ANNOTATEDtpe =>
         AnnotatedType.make(readTypeRef(), until(end, () => readAnnotationRef()))

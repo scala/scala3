@@ -13,7 +13,7 @@ import reporting.trace
 import reporting.Message.Note
 import printing.{Showable, Printer}
 import printing.Texts.*
-import util.{SimpleIdentitySet, Property, EqHashMap, Lst}
+import util.{SimpleIdentitySet, Property, EqHashMap, Lst, LstStartingWith}
 import scala.collection.{mutable, immutable}
 import CCState.*
 import TypeOps.AvoidMap
@@ -1778,7 +1778,7 @@ object CaptureSet:
           else
             val cs = recur(tpd.tycon)
             tpd.tycon.typeParams match
-              case tparams @ (LambdaParam(tl, _) :: _) => cs.substParams(tl, tpd.argsLst)
+              case tparams @ LstStartingWith(LambdaParam(tl, _)) => cs.substParams(tl, tpd.argsLst)
               case _ => cs
         case tp: TypeProxy =>
           recur(tp.superType)

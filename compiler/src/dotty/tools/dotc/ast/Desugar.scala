@@ -725,7 +725,7 @@ object desugar {
 
     val originalTparams = constr1.leadingTypeParams
     val originalVparamss = asTermOnly(constr1.trailingParamss)
-    lazy val derivedEnumParams = enumClass.typeParams.map(derivedTypeParamWithVariance)
+    lazy val derivedEnumParams = enumClass.typeParamsList.map(derivedTypeParamWithVariance)
     val enumTParams =
       if isEnumCase then
         val tparamReferenced = typeParamIsReferenced(
@@ -2058,7 +2058,7 @@ object desugar {
       ValDef(pname, tpt, EmptyTree).withFlags(Given | Param)
     if formalTypesOrNil.nonEmpty then
       params = params.zipWithConserve(formalTypesOrNil): (param, formal) =>
-        if formal.hasAnnotation(defn.ErasedParamAnnot) then param.withAddedFlags(Erased)
+        if formal.isForErasedParam then param.withAddedFlags(Erased)
         else param
     FunctionWithMods(params, body, Modifiers(Given))
 

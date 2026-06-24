@@ -13,6 +13,7 @@ import collection.mutable
 import ast.Trees.*
 import core.NameKinds.SuperArgName
 import config.Feature
+import util.Lst
 
 import core.Decorators.*
 
@@ -71,15 +72,14 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       val constr = cdef.symbol
       lazy val origParams = // The parameters that can be accessed in the supercall
         if (constr == cls.primaryConstructor)
-          cls.info.decls.filter(d => d.is(TypeParam) || d.is(ParamAccessor) && !d.isSetter)
+          cls.info.decls.filter(d => d.is(TypeParam) || d.is(ParamAccessor) && !d.isSetter).toLst
         else
           allParamSyms(cdef)
 
       /** The parameter references defined by the constructor info */
-      def allParamRefs(tp: Type): List[ParamRef] = tp match {
-        case tp: LambdaType => tp.paramRefsList ++ allParamRefs(tp.resultType)
-        case _              => Nil
-      }
+      def allParamRefs(tp: Type): Lst[ParamRef] = tp match
+        case tp: LambdaType => tp.paramRefs ++ allParamRefs(tp.resultType)
+        case _              => Lst()
 
       /** Splice `restpe` in final result type position of `tp` */
       def replaceResult(tp: Type, restpe: Type): Type = tp match {
@@ -140,7 +140,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
               if pref.isType then pref.tpe.typeSymbol else pref.symbol)
             val tmap = new TreeTypeMap(
               typeMap = new TypeMap {
-                lazy val origToParam = (origParams ::: lifted).zip(paramSyms).toMap
+                lazy val origToParam = (origParams.toList ::: lifted).zip(paramSyms).toMap
                 def apply(tp: Type) = tp match {
                   case tp: NamedType if needsRewire(tp) =>
                     origToParam.get(tp.symbol) match {
@@ -174,8 +174,8 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
           }
           val (typeParams, termParams) = origParams.span(_.isType)
           var res = ref(superMeth)
-            .appliedToTypes(typeParams.map(_.typeRef))
-            .appliedToArgss(termParamRefs(constr.info, termParams))
+            .appliedToTypes(typeParams.toList.map(_.typeRef))
+            .appliedToArgss(termParamRefs(constr.info, termParams.toList))
           if lifted.nonEmpty then
             res = res.appliedToArgs(lifted.map(ref))
           report.log(i"hoist $arg, cls = $cls = $res")

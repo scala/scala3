@@ -11,6 +11,7 @@ import NameKinds.{InlineAccessorName, InlineBinderName, InlineScrutineeName}
 import config.Printers.inlining
 import util.SimpleIdentityMap
 import CheckRealizable.{Realizable, realizability}
+import util.Lst
 
 import collection.mutable
 
@@ -279,7 +280,7 @@ class InlineReducer(inliner: Inliner)(using Context):
         }
 
       def registerAsGadtSyms(typeBinds: TypeBindsMap)(using Context): Unit =
-        if (typeBinds.size > 0) ctx.gadtState.addToConstraint(typeBinds.keys)
+        if (typeBinds.size > 0) ctx.gadtState.addToConstraint(typeBinds.keys.toLst)
 
       pat match {
         case Typed(pat1, tpt) =>
@@ -382,7 +383,7 @@ class InlineReducer(inliner: Inliner)(using Context):
 
       def substBindings(bindings: List[(Symbol, MemberDef)]): (List[MemberDef], List[Symbol], List[Symbol]) =
         val (from, to) = bindings.collect { case (sym, bnd) if sym.exists => (sym, bnd.symbol) }.unzip
-        to.foreach(sym => sym.info = sym.info.substSym(from, to))
+        to.foreach(sym => sym.info = sym.info.substSym(from.toLst, to.toLst))
         val substituted = bindings.map { case (sym, bnd) => bnd.subst(from, to) }
         (substituted, from, to)
 

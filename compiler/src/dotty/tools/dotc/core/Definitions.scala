@@ -1247,7 +1247,7 @@ class Definitions {
         case RefinedType(parent, nme.apply, mt: MethodOrPoly)
         if parent.derivesFrom(defn.PolyFunctionClass) || (mt.isInstanceOf[MethodType] && isFunctionNType(parent)) =>
           Some(mt)
-        case ft @ AppliedType(parent, _) if isFunctionNType(ft) =>
+        case ft @ AppliedType(parent, args) if isFunctionNType(ft) =>
           val isContextual = ft.typeSymbol.name.isContextFunction
           val methodType = if isContextual then ContextualMethodType else MethodType
           Some(methodType(ft.argsLst.init, ft.argsLst.last))

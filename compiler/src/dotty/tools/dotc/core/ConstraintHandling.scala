@@ -14,6 +14,7 @@ import UnificationDirection.*
 import NameKinds.AvoidNameKind
 import util.SimpleIdentitySet
 import NullOpsDecorator.stripNull
+import util.Lst
 
 /** Methods for adding constraints and solving them.
  *

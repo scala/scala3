@@ -338,7 +338,7 @@ object PrepJSExports {
 
     def hasIllegalDefaultParam: Boolean = {
       sym.hasDefaultParams
-        && sym.paramSymss.flatten.reverse.dropWhile(_.is(HasDefault)).exists(_.is(HasDefault))
+        && sym.paramSymss.flattenLst.reverse.dropWhile(_.is(HasDefault)).exists(_.is(HasDefault))
     }
 
     def hasAnyNonPrivateCtor: Boolean =
@@ -413,7 +413,7 @@ object PrepJSExports {
       Nil
     } else {
       for {
-        (param, i) <- sym.paramSymss.flatten.zipWithIndex
+        (param, i) <- sym.paramSymss.flattenLst.zipWithIndex.toList
         if param.is(HasDefault)
       } yield {
         genExportDefaultGetter(clsSym, sym, expSym, i, span)

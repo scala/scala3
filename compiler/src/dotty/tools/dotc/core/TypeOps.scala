@@ -5,7 +5,7 @@ package core
 import Contexts.*, Types.*, Symbols.*, Names.*, NameKinds.*, Flags.*
 import SymDenotations.*
 import util.Spans.*
-import util.{Stats, Lst}
+import util.{Stats, Lst, LstBuffer}
 import Decorators.*
 import StdNames.*
 import collection.mutable
@@ -270,7 +270,7 @@ object TypeOps:
             case AppliedType(tycon2, args2) =>
               tp1.derivedAppliedType(
                 mergeRefinedOrApplied(tycon1, tycon2),
-                TypeComparer.lubArgs(args1, args2, tycon1.typeParams))
+                TypeComparer.lubArgs(args1, args2, tycon1.typeParams.toList))
             case _ => fallback
           }
         case tp1 @ TypeRef(pre1, _) =>
@@ -448,11 +448,11 @@ object TypeOps:
     }
 
     def close(tp: Type) = RecType.closeOver { rt =>
-      tp.subst(cls :: Nil, rt.recThis :: Nil).substThis(cls, rt.recThis)
+      tp.subst(Lst(cls), Lst(rt.recThis)).substThis(cls, rt.recThis)
     }
 
     val raw = refinableDecls.foldLeft(parentType)(addRefinement)
-    HKTypeLambda.fromParams(cls.typeParamsLst, raw) match {
+    HKTypeLambda.fromParams(cls.typeParams, raw) match {
       case tl: HKTypeLambda => tl.derivedLambdaType(resType = close(tl.resType))
       case tp => close(tp)
     }
@@ -616,7 +616,7 @@ object TypeOps:
     def skolemizeWildcardArgs(tps: List[Type], app: Type) = app match {
       case AppliedType(tycon: TypeRef, args)
       if tycon.typeSymbol.isClass && !Feature.migrateTo3 =>
-        tps.zipWithConserve(tycon.typeSymbol.typeParams) {
+        tps.zipWithConserve(tycon.typeSymbol.typeParamsList) {
           (tp, tparam) => tp match {
             case _: TypeBounds => app.select(tparam)
             case _ => tp
@@ -788,7 +788,7 @@ object TypeOps:
     /** Gather GADT symbols and singletons found in `tp2`, ie. the scrutinee. */
     object TraverseTp2 extends TypeTraverser:
       val singletons = util.HashMap[Symbol, SingletonType]()
-      val gadtSyms = new mutable.ListBuffer[Symbol]
+      val gadtSyms = LstBuffer[Symbol]()
 
       def traverse(tp: Type) = try
         val tpd = tp.dealias
@@ -812,7 +812,7 @@ object TypeOps:
       catch case ex: Throwable => handleRecursive("traverseTp2", tp.show, ex)
     TraverseTp2.traverse(tp2)
     val singletons = TraverseTp2.singletons
-    val gadtSyms   = TraverseTp2.gadtSyms.toList
+    val gadtSyms   = TraverseTp2.gadtSyms.toLst
 
     // Prefix inference, given `p.C.this.Child`:
     //   1. return it as is, if `C.this` is found in `tp`, i.e. the scrutinee; or
@@ -840,11 +840,11 @@ object TypeOps:
           else if symbol.is(Module) then
             TermRef(this(tref.prefix), symbol.sourceModule)
           else if (prefixTVar != null)
-            this(tref.applyIfParameterized(tref.typeParams.map(_ => WildcardType)))
+            this(tref.applyIfParameterized(tref.typeParams.map(_ => WildcardType).toList))
           else
             prefixTVar = WildcardType  // prevent recursive call from assigning it
             // e.g. tests/pos/i15029.more.scala, create a TypeVar for `Instances`' B, so we can disregard `Ints`
-            val tvars = tref.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds, DepParamName.fresh(tparam.paramName)) }
+            val tvars = tref.typeParams.toList.map { tparam => newTypeVar(tparam.paramInfo.bounds, DepParamName.fresh(tparam.paramName)) }
             val tref2 = this(tref.applyIfParameterized(tvars))
             val v = newTypeVar(TypeBounds.upper(tref2), DepParamName.fresh(tref.name))
             prefixTVar = v

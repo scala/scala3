@@ -159,7 +159,7 @@ object Signatures {
     types: List[tpd.Tree]
   )(using Context): (Int, Int, List[Signature]) =
     val typeName = fun.symbol.name.show
-    val typeParams = fun.symbol.typeRef.typeParams.map(_.paramName.show).map(TypeParam.apply(_))
+    val typeParams = fun.symbol.typeRef.typeParams.toList.map(_.paramName.show).map(TypeParam.apply(_))
     val denot = fun.denot.asSingleDenotation
     val activeParameter =
       val index = findCurrentParamIndex(types, span, typeParams.length - 1)
@@ -502,7 +502,7 @@ object Signatures {
 
     def isSyntheticEvidence(name: String) =
       name.startsWith(NameKinds.ContextBoundParamName.separator)
-      && symbol.paramSymss.flatten.find(_.name.show == name).exists(_.flags.isOneOf(Flags.GivenOrImplicit))
+      && symbol.paramSymss.flattenLst.find(_.name.show == name).exists(_.flags.isOneOf(Flags.GivenOrImplicit))
 
     def toTypeParam(tpe: PolyType): List[Param] =
       val evidenceParams = (tpe.paramNamess.flattenLst `zip` tpe.paramInfoss.flattenLst).toList.flatMap:
@@ -535,10 +535,10 @@ object Signatures {
 
       def toParams(tp: Type, apply: Option[untpd.GenericApply], paramList: Int)(using Context): List[Param] =
         val currentParams = (paramSymss.lift(paramList), tp.paramInfoss.headOption) match
-          case (Some(params), Some(infos)) => params zip infos.toList
-          case _ => Nil
+          case (Some(params), Some(infos)) => params.zip(infos)
+          case _ => Lst()
 
-        val params = currentParams.map: (symbol, info) =>
+        val params = currentParams.toList.map: (symbol, info) =>
           // TODO after we migrate ShortenedTypePrinter into the compiler, it should rely on its api
           val name = if symbol.isAllOf(Flags.Given | Flags.Param) && symbol.name.startsWith("x$") then nme.EMPTY else symbol.name.asTermName
 
@@ -549,7 +549,7 @@ object Signatures {
             isImplicit = tp.isImplicitMethod,
           )
 
-        val finalParams = apply.map: apply =>
+        val finalParams: Option[List[MethodParam]] = apply.map: apply =>
           apply.args match
             case Nil => params
             case n if n.length > params.length => params
@@ -572,18 +572,18 @@ object Signatures {
               val result = argsWithOriginalIndices.map:
                 case -1 =>
                   val h = remainingParams.head
-                  remainingParams = remainingParams.tail
+                  remainingParams = remainingParams.drop(1)
                   h
                 case n => params(n)
 
               val isReordered = params != result
-              val (ordered, reordered) = params.zip(result).span: (definitionMember, reorderedMember) =>
+              val (ordered, reordered) = params.toList.zip(result).span: (definitionMember, reorderedMember) =>
                 definitionMember == reorderedMember
 
               ordered.map(_._2) ++ reordered.map(_._2.copy(isReordered = isReordered))
 
 
-        finalParams.getOrElse(params)
+        finalParams.getOrElse(params.toList)
       end toParams
 
       val applies = untpdFun.map(toApplyList).getOrElse(Nil)

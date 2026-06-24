@@ -178,7 +178,7 @@ object QuotePatterns:
         }
         var newBindingsRefs = newBindings.map(_.typeRef)
         for newBinding <- newBindings do
-          newBinding.info = newBinding.info.subst(oldBindings, newBindingsRefs)
+          newBinding.info = newBinding.info.subst(oldBindings.toLst, newBindingsRefs.toLst)
 
         val patternTypes = newBindings.map(sym => TypeDef(sym).withSpan(sym.span))
         Block(patternTypes, shape0.subst(oldBindings, newBindings))

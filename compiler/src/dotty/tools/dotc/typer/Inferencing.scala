@@ -16,6 +16,7 @@ import reporting.*
 import TypeAssigner.SkolemizedArgs
 import collection.mutable
 import scala.annotation.internal.sharable
+import util.Lst
 
 object Inferencing {
 
@@ -69,7 +70,7 @@ object Inferencing {
   /** Instantiate any type variables in `tp` whose bounds contain a reference to
    *  one of the parameters in `paramss`.
    */
-  def instantiateDependent(tp: Type, paramss: List[List[Symbol]])(using Context): Unit = {
+  def instantiateDependent(tp: Type, paramss: List[Lst[Symbol]])(using Context): Unit = {
     val dependentVars = new TypeAccumulator[Set[TypeVar]] {
       def apply(tvars: Set[TypeVar], tp: Type) = tp match {
         case tp: TypeVar
@@ -485,10 +486,10 @@ object Inferencing {
    *  @return   The list of type symbols that were created
    *            to instantiate undetermined type variables that occur non-variantly
    */
-  def maximizeType(tp: Type, span: Span)(using Context): List[Symbol] = {
+  def maximizeType(tp: Type, span: Span)(using Context): Lst[Symbol] = {
     Stats.record("maximizeType")
     val vs = variances(tp)
-    val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
+    val patternBindings = new util.LstBuffer[(Symbol, TypeParamRef)]
     val gadtBounds = ctx.gadt.symbols.map(ctx.gadt.bounds(_).nn)
     vs.underlying foreachBinding { (tvar, v) =>
       if !tvar.isInstantiated then
@@ -511,7 +512,7 @@ object Inferencing {
           }
         }
     }
-    val res = patternBindings.toList.map { (boundSym, origin) =>
+    val res = patternBindings.toLst.map { (boundSym, origin) =>
       // substitute bounds of pattern bound variables to deal with possible F-bounds
       for (wildCard, param) <- patternBindings do
         boundSym.info = boundSym.info.substParam(param, wildCard.typeRef)
@@ -612,14 +613,14 @@ object Inferencing {
   def captureWildcards(tp: Type)(using Context): Type = derivedOnDealias(tp) {
     case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
       val tparams = tycon.typeParamSymbols
-      val args1 = args.zipWithConserve(tparams.map(_.paramInfo.substApprox(tparams, args))) {
+      val args1 = tp.argsLst.zipWithConserve(tparams.map(_.paramInfo.substApprox(tparams, tp.argsLst))) {
         case (TypeBounds(lo, hi), bounds) =>
           val skolem = SkolemType(defn.TypeBoxClass.typeRef.appliedTo(lo | bounds.loBound, hi & bounds.hiBound))
           TypeRef(skolem, defn.TypeBox_CAP)
         case (arg, _) =>
           arg
       }
-      if tparams.isEmpty then tp else tp.derivedAppliedType(tycon, args1)
+      if tparams.isEmpty then tp else tp.derivedAppliedType(tycon, args1.toList)
     case tp: AndOrType => tp.derivedAndOrType(captureWildcards(tp.tp1), captureWildcards(tp.tp2))
     case tp: RefinedType => tp.derivedRefinedType(parent = captureWildcards(tp.parent))
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))

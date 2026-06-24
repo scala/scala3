@@ -33,7 +33,7 @@ import inlines.{Inlines, PrepareInlineable}
 import util.Spans.*
 import util.chaining.*
 import util.common.*
-import util.{Property, SimpleIdentityMap, SrcPos, Lst}
+import util.{Property, SimpleIdentityMap, SrcPos, Lst, Lst1, LstStartingWith}
 import Applications.{defaultArgument, wrapDefs}
 import collection.mutable
 import Implicits.*
@@ -732,10 +732,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     // extensionParam
     def leadParamOf(m: SymDenotation): Symbol =
-      def leadParam(paramss: List[List[Symbol]]): Symbol = paramss match
-        case (param :: _) :: paramss if param.isType => leadParam(paramss)
-        case _ :: (param :: Nil) :: _ if m.name.isRightAssocOperatorName => param
-        case (param :: Nil) :: _ => param
+      def leadParam(paramss: List[Lst[Symbol]]): Symbol = paramss match
+        case LstStartingWith(param) :: paramss if param.isType => leadParam(paramss)
+        case _ :: Lst1(param) :: _ if m.name.isRightAssocOperatorName => param
+        case LstStartingWith(param) :: _ => param
         case _ => NoSymbol
       leadParam(m.rawParamss)
 
@@ -1736,9 +1736,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           (pt1.argInfos.toLst.init, typeTree(interpolateWildcards(pt1.argInfos.last.hiBound)))
         case RefinedType(parent, nme.apply, mt @ MethodTpe(_, formals, restpe))
         if defn.isNonRefinedFunction(parent) && formals.length == defaultArity =>
-          (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.mapToLst(_.termRef))))
+          (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
         case defn.PolyFunctionOf(mt @ MethodTpe(_, formals, restpe)) if formals.length == defaultArity =>
-          (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.mapToLst(_.termRef))))
+          (formals, untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef))))
         case SAMType(mt @ MethodTpe(_, formals, _), samParent) =>
           val restpe = mt.resultType match
             case mt: MethodType => mt.toFunctionType(isJava = samParent.classSymbol.is(JavaDefined))
@@ -1748,7 +1748,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               if (formals.length != defaultArity)
                 typeTree(WildcardType)
               else
-                untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.mapToLst(_.termRef)))
+                untpd.InLambdaTypeTree(isResult = true, (_, syms) => restpe.substParams(mt, syms.map(_.termRef)))
             } else
               typeTree(restpe)
           (formals, tree)
@@ -2128,12 +2128,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               cpy.ValDef(vparam)(tpt = new untpd.InLambdaTypeTree(isResult = false, (tsyms, vsyms) =>
                 // We don't need to substitute `mt` by `vsyms` because we currently disallow
                 // dependencies between value parameters of a closure.
-                formal.substParams(poly, tsyms.mapToLst(_.typeRef)))
+                formal.substParams(poly, tsyms.map(_.typeRef)))
               )
             else vparam
           val resultTpt =
             untpd.InLambdaTypeTree(isResult = true, (tsyms, vsyms) =>
-              mt.resultType.substParams(mt, vsyms.mapToLst(_.termRef)).substParams(poly, tsyms.mapToLst(_.typeRef)))
+              mt.resultType.substParams(mt, vsyms.map(_.termRef)).substParams(poly, tsyms.map(_.typeRef)))
           val desugared = desugar.makeClosure(tparams, inferredVParams, body, resultTpt, tree.span)
           typed(desugared, pt)
         else
@@ -2672,8 +2672,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val lambdaCtx = ctx.outersIterator.dropWhile(_.owner.name ne nme.ANON_FUN).next()
         // A lambda has at most one type parameter list followed by exactly one term parameter list.
         // Parameters are entered in order in the scope of the lambda.
-        val (tsyms: List[TypeSymbol @unchecked], vsyms: List[TermSymbol @unchecked]) =
-          lambdaCtx.scope.toList.partition(_.isType): @unchecked
+        val (tsyms: Lst[TypeSymbol @unchecked], vsyms: Lst[TermSymbol @unchecked]) =
+          lambdaCtx.scope.toList.toLst.partition(_.isType): @unchecked
         tree.tpFun(tsyms, vsyms)
     completeTypeTree(InferredTypeTree(), tp, tree)
 
@@ -2813,9 +2813,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               else desugaredArg.withType(UnspecifiedErrorType)
           }
         }
-        args.zipWithConserve(tparams)(typedArg)
+        args.zipWithConserve(tparams.toList)(typedArg)
       }
-      val paramBounds = tparams.lazyZip(args).map {
+      val paramBounds = tparams.zipWith(args.toLst) {
         case (tparam, untpd.WildcardTypeBoundsTree()) =>
           // if type argument is a wildcard, suppress kind checking since
           // there is no real argument.
@@ -2823,7 +2823,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         case (tparam, _) =>
           tparam.paramInfo.bounds
       }
-      var checkedArgs = preCheckKinds(args1, paramBounds)
+      var checkedArgs = preCheckKinds(args1, paramBounds.toList)
         // check that arguments conform to bounds is done in phase PostTyper
       val tycon = tpt1.symbol
       if tycon == defn.andType || tycon == defn.orType then
@@ -3046,7 +3046,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         // Create a new local context with a dummy owner and a scope containing the
         // type parameters of the enclosing method or class. Thus annotations can see
         // these type parameters. See i12953.scala for a test case.
-        local.setScope(newScopeWith(completer.completerTypeParams(sym)*))
+        local.setScope(newScopeWith(completer.completerTypeParams(sym).toList*))
       case _ =>
         if outer.owner.isClass then local else outer
     ctx0.addMode(Mode.InAnnotation)
@@ -3166,7 +3166,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     if tparamss.nonEmpty then
       rhsCtx.setFreshGADTBounds
-      val tparamSyms = tparamss.flatten.map(_.symbol)
+      val tparamSyms = tparamss.flatten.mapToLst(_.symbol)
       if !sym.isConstructor then
         // we're typing a polymorphic definition's body,
         // so we allow constraining all of its type parameters
@@ -3236,11 +3236,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
     if sym.is(Method) && sym.owner.denot.isRefinementClass then
-      for annot <- sym.paramSymss.flatten.filter(_.isTerm).flatMap(_.getAnnotation(defn.ImplicitNotFoundAnnot)) do
-        report.warning(
-          i"The annotation ${defn.ImplicitNotFoundAnnot} is not allowed on parameters of methods defined inside a refinement and it will have no effect",
-          annot.tree.sourcePos
-        )
+      for param <- sym.paramSymss.flattenLst.filter(_.isTerm) do
+        for annot <- param.getAnnotation(defn.ImplicitNotFoundAnnot) do
+          report.warning(
+            i"The annotation ${defn.ImplicitNotFoundAnnot} is not allowed on parameters of methods defined inside a refinement and it will have no effect",
+            annot.tree.sourcePos
+          )
 
     val ddef2 = assignType(cpy.DefDef(ddef)(name, paramss1, tpt1, rhs1), sym)
 
@@ -4675,7 +4676,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 case failure: SearchFailureType =>
                   val methodStr = err.refStr(methPart(fun).tpe)
                   val paramStr = implicitParamString(paramName, methodStr, fun)
-                  val paramSym = fun.symbol.paramSymss.flatten.find(_.name == paramName)
+                  val paramSym = fun.symbol.paramSymss.flattenLst.find(_.name == paramName)
                   val paramSymWithMethodCallTree = paramSym.map((_, res))
                   val msg = missingArgMsg(arg, formal, paramStr, paramSymWithMethodCallTree)
                   report.error(msg, tree.srcPos.endPos)
@@ -5106,7 +5107,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else {
           if (ctx.isJava)
             // Cook raw type
-            val typeArgs = tp.typeParams.map(Function.const(TypeBounds.empty))
+            val typeArgs = tp.typeParams.map(Function.const(TypeBounds.empty)).toList
             val tree1 = AppliedTypeTree(tree, typeArgs.map(TypeTree(_)))
             val tp1 = AppliedType(tree.tpe, typeArgs)
             tree1.withType(tp1)

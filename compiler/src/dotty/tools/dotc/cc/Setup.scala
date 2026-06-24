@@ -98,7 +98,7 @@ object Setup:
       capt.println(i"added $ann to $param of $constr")
 
     val target = superCall.fun.symbol
-    for case (param, arg: Ident) <- target.paramSymss.flatten.filter(_.isTerm).lazyZip(superCall.args) do
+    for case (param, arg: Ident) <- target.paramSymss.flattenLst.filter(_.isTerm).lazyZip(superCall.args) do
       if arg.symbol.is(Param) && arg.symbol.owner == constr then
         if target == constr.owner.primaryConstructor then
           addParamAlias(arg.symbol, param.name.toString)
@@ -724,9 +724,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         // parameters. Constructor defs have `Unit` as result type tree, that's why
         // we can't get this type by reading the result type tree, and have to construct
         // it explicitly.
-        def constrReturnType(info: Type, psymss: List[List[Symbol]]): Type = info match
+        def constrReturnType(info: Type, psymss: List[Lst[Symbol]]): Type = info match
           case info: MethodOrPoly =>
-            constrReturnType(info.instantiate(psymss.head.mapToLst(_.namedType)), psymss.tail)
+            constrReturnType(info.instantiate(psymss.head.map(_.namedType)), psymss.tail)
           case _ =>
             info
 
@@ -753,12 +753,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         def ownerChanges =
           ctx.owner.name.is(TryOwnerName)
 
-        def paramsToCap(psymss: List[List[Symbol]], mt: Type)(using Context): Type = mt match
+        def paramsToCap(psymss: List[Lst[Symbol]], mt: Type)(using Context): Type = mt match
           case mt: MethodType =>
             try
               mt.derivedLambdaType(
                 paramInfos =
-                  psymss.head.toLst.zipWith(mt.paramInfos)(localCapToGlobal),
+                  psymss.head.zipWith(mt.paramInfos)(localCapToGlobal),
                 resType = paramsToCap(psymss.tail, mt.resType))
             catch case ex: AssertionError =>
               println(i"error while mapping params ${mt.paramInfos} of $sym")

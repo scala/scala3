@@ -280,6 +280,10 @@ object Decorators {
       case xs :: xss1 => xs.exists(p) || xss1.nestedExistsLst(p)
       case nil => false
 
+    def nestedFindLst(p: T => Boolean): Option[T] = xss match
+      case xs :: xss1 => xs.find(p).orElse(xss1.nestedFindLst(p))
+      case nil => None
+
   extension (text: Text)
     def show(using Context): String = text.mkString(ctx.settings.pageWidth.value)
 
@@ -287,7 +291,7 @@ object Decorators {
    *  a given phase. See [[config.CompilerCommand#explainAdvanced]] for the
    *  exact meaning of "contains" here.
    */
-   extension (names: List[String])
+  extension (names: List[String])
     def containsPhase(phase: Phase): Boolean =
       names.nonEmpty && {
         phase match {
@@ -303,6 +307,12 @@ object Decorators {
             }
         }
       }
+
+  extension [T <: AnyRef](it: Iterator[T])
+    def toLst: Lst[T] =
+      val buf = LstBuffer[T]()
+      while it.hasNext do buf += it.next()
+      buf.toLst
 
   extension [T](x: T)
     def showing[U](
@@ -364,6 +374,14 @@ object Decorators {
       val buf = LstBuffer[T](xs.length)
       for x <- xs do buf += x
       buf.toLst
+
+    def toLstReverse: Lst[T] =
+      val rs = new Array[Object](xs.size)
+      var i = rs.length
+      for x <- xs do
+        i = i - 1
+        rs(i) = x
+      rs.asInstanceOf[Lst[T]]
 
     def mapToLst[U <: AnyRef](f: T => U): Lst[U] =
       val buf = LstBuffer[U](xs.length)

@@ -18,6 +18,7 @@ import ast.{tpd, untpd}
 import cc.*
 import CaptureSet.Mutability
 import Capabilities.*
+import util.Lst
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -376,7 +377,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def paramsText(lam: LambdaType): Text = {
     def paramText(ref: ParamRef) =
-      val erased = ref.underlying.hasAnnotation(defn.ErasedParamAnnot)
+      val erased = ref.underlying.isForErasedParam
       keywordText("erased ").provided(erased)
         ~ specialAnnotText(defn.ConsumeAnnot, ref.underlying)
         ~ ParamRefNameString(ref) ~ hashStr(lam) ~ toTextRHS(ref.underlying, isParameter = true)
@@ -762,7 +763,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected final def escapedString(str: String): String = Chars.escapedString(str, quoted = false)
 
-  def dclsText(syms: List[Symbol], sep: String): Text = Text(syms map dclText, sep)
+  def dclsText(syms: List[Symbol], sep: String): Text = Text(syms.map(dclText), sep)
 
   def toText(sc: Scope): Text =
     ("Scope{" ~ dclsText(sc.toList) ~ "}").close
