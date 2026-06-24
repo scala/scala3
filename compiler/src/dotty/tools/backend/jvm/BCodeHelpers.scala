@@ -374,7 +374,6 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
           else genSig.toString
       }
     }
-
   } // end of trait BCJGenSigGen
 
   trait BCForwardersGen extends BCAnnotGen with BCJGenSigGen {
@@ -690,7 +689,7 @@ object BCodeHelpers {
     asm.Opcodes.ACC_PUBLIC   | asm.Opcodes.ACC_PRIVATE   | asm.Opcodes.ACC_PROTECTED  |
       asm.Opcodes.ACC_STATIC   | asm.Opcodes.ACC_FINAL     | asm.Opcodes.ACC_INTERFACE  |
       asm.Opcodes.ACC_ABSTRACT | asm.Opcodes.ACC_SYNTHETIC | asm.Opcodes.ACC_ANNOTATION |
-      asm.Opcodes.ACC_ENUM
+      asm.Opcodes.ACC_ENUM  | asm.Opcodes.ACC_SUPER
   }
 
 }

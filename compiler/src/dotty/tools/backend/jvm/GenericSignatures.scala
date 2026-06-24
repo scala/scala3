@@ -179,7 +179,9 @@ object GenericSignatures {
       builder.append(';')
     }
 
-    def typeParamSigWithName(sanitizedName: String): Unit = {
+    def typeParamSigWithName(sanitizedName: String, includeNullSignature: Boolean = false): Unit = {
+      if (includeNullSignature)
+        builder.append(ClassfileConstants.BANG)
       builder.append(ClassfileConstants.TVAR_TAG)
       builder.append(sanitizedName)
       builder.append(';')
@@ -191,6 +193,8 @@ object GenericSignatures {
       if (sym == defn.UnitClass || sym == defn.BoxedUnitModule || sym0.isConstructor)
         builder.append(ClassfileConstants.VOID_TAG)
       else
+        if (isNonNullRefType(restpe))
+          builder.append(ClassfileConstants.BANG)
         jsig(finalType)
     }
 
@@ -235,6 +239,8 @@ object GenericSignatures {
               boxedSig(tp.widenDealias.widenNullaryMethod)
         }
 
+      if (sym.hasAnnotation(defn.NonNullAnnot))
+        builder.append(ClassfileConstants.BANG)
       pre.widenDealias match {
         // If the class is an inner class of a generic class, we must emit the outer generic class with its parameters
         // (see test `inner-of-generic` for an example of Java compatibility)
@@ -256,11 +262,17 @@ object GenericSignatures {
       builder.append(';')
     }
 
+    def isNonNullRefType(tp: Type)(using Context) = {
+      !(defn.NullType <:< tp) && (tp ne defn.UnitType) && (tp.typeSymbol ne defn.BoxedUnitModule) && !tp.isPrimitiveValueType
+    }
+
     enum ValueClassBoxing:
       case Box, Unbox, UnboxOnlyPrimitives
 
-    def jsig(tp0: Type, toplevel: Boolean = false, vcBoxing: ValueClassBoxing = ValueClassBoxing.Unbox): Unit = {
+    def jsig(tp0: Type, level: Int = 2, vcBoxing: ValueClassBoxing = ValueClassBoxing.Unbox): Unit = {
       def arraySig(elemtp: Type): Unit =
+        if (level == 0 || (level == 1 && builder.charAt(builder.length() - 1) != '!'))
+          builder.append(ClassfileConstants.BANG)
         if (isGenericArrayElement(elemtp, isScala2 = false))
           jsig(defn.ObjectType)
         else
@@ -275,17 +287,17 @@ object GenericSignatures {
       val tp = tp0.dealias
       tp match {
         case RefinedType(parent, _, _) =>
-          jsig(parent, toplevel = toplevel, vcBoxing = vcBoxing)
+          jsig(parent, level = level, vcBoxing = vcBoxing)
 
         case ref @ TypeParamRef(_: PolyType, _) =>
           val erasedUnderlying = fullErasure(ref.underlying.bounds.hi)
           // don't emit type param name if the param is upper-bounded by a primitive type (including via a value class)
           if erasedUnderlying.isPrimitiveValueType then
-            jsig(erasedUnderlying, toplevel = toplevel, vcBoxing = vcBoxing)
+            jsig(erasedUnderlying, level = level, vcBoxing = vcBoxing)
           else
             val name = sanitizeName(ref.paramName.lastPart)
             val nameToUse = methodTypeParamRenaming.getOrElse(name, name)
-            typeParamSigWithName(nameToUse)
+            typeParamSigWithName(nameToUse, isNonNullRefType(tp) && (level == 0 || (level == 1 && builder.charAt(builder.length() - 1) != '!')))
 
         case ref: TermRef if ref.symbol.isGetter =>
           // If the type of a val is a TermRef to another val, generating the generic signature
@@ -295,13 +307,13 @@ object GenericSignatures {
           // Since the TermRef originally intended to capture the underlying type of a `val`,
           // we recover that information by directly checking the resultType of the getter.
           // See `tests/run/i24553.scala` for an example
-          jsig(ref.info.resultType, toplevel = toplevel, vcBoxing = vcBoxing)
+          jsig(ref.info.resultType, level = level, vcBoxing = vcBoxing)
 
         case ref: SingletonType =>
           // Singleton types like `x.type` need to be widened to their underlying type
           // For example, `def identity[A](x: A): x.type` should have signature
           // with return type `A` (not `java.lang.Object`)
-          jsig(ref.underlying, toplevel = toplevel, vcBoxing = vcBoxing)
+          jsig(ref.underlying, level = level, vcBoxing = vcBoxing)
 
         case defn.ArrayOf(elemtp) =>
           arraySig(elemtp)
@@ -347,19 +359,20 @@ object GenericSignatures {
                     if seenUnderlying.isPrimitiveValueType && !underlying.isPrimitiveValueType then defn.boxedType(seenUnderlying)
                     else if underlying.derivesFrom(defn.ArrayClass) then erasure(underlying)
                     else seenUnderlying
-                  jsig(compatibleUnderlying, toplevel = toplevel)
+                  if(builder.charAt(builder.length() - 1) == '!') builder.deleteCharAt(builder.length() - 1)
+                  jsig(compatibleUnderlying, level = level)
                 case classSym: ClassSymbol => classSig(classSym, pre, args)
-                case _ => jsig(erasure(tp), toplevel = toplevel, vcBoxing = vcBoxing)
+                case _ => jsig(erasure(tp), level = level, vcBoxing = vcBoxing)
 
         case ExprType(restpe) =>
-          if toplevel then
+          if level == 0 then
             builder.append("()")
             methodResultSig(restpe)
           else
             jsig(defn.FunctionType(0).appliedTo(restpe))
 
         case mtd: MethodOrPoly =>
-          val collectTParams = toplevel && !sym0.isConstructor
+          val collectTParams = level == 0 && !sym0.isConstructor
           val (tparams, vparams, rte) = collectMethodParams(mtd, collectTParams)
           if (tparams != null) {
             if (sym0.is(Method)) {
@@ -378,7 +391,7 @@ object GenericSignatures {
             polyParamSig(tparams)
           }
           builder.append('(')
-          for vparam <- vparams do jsig(vparam)
+          for vparam <- vparams do jsig(vparam, level = 1)
           builder.append(')')
           methodResultSig(rte)
 
@@ -401,36 +414,36 @@ object GenericSignatures {
           val (reprParents, _) = splitIntersection(parents)
           val repr =
             reprParents.find(_.typeSymbol.is(TypeParam)).getOrElse(reprParents.head)
-          jsig(repr, toplevel = false, vcBoxing = vcBoxing)
+          jsig(repr, vcBoxing = vcBoxing)
 
         case ci: ClassInfo =>
           val tParams = tp.typeParams
-          if (toplevel) polyParamSig(tParams)
+          if (level == 0) polyParamSig(tParams)
           superSig(ci.typeSymbol, ci.parents)
 
         case AnnotatedType(atp, _) =>
-          jsig(atp, toplevel, vcBoxing)
+          jsig(atp, level, vcBoxing)
 
         case hktl: HKTypeLambda =>
-          jsig(hktl.finalResultType, toplevel, vcBoxing)
+          jsig(hktl.finalResultType, level, vcBoxing)
 
         case ErasedValueType(tycon, underlying) =>
           if vcBoxing == ValueClassBoxing.Unbox || (vcBoxing == ValueClassBoxing.UnboxOnlyPrimitives && underlying.isPrimitiveValueType)
-          then jsig(underlying, toplevel, vcBoxing)
-          else jsig(tycon, toplevel, vcBoxing)
+          then jsig(underlying, level, vcBoxing)
+          else jsig(tycon, level, vcBoxing)
 
         case _ =>
           val etp = erasure(tp)
           assert(etp ne tp, i"$tp erases to itself")
-          jsig(etp, toplevel, vcBoxing)
+          jsig(etp, level, vcBoxing)
       }
     }
-    jsig(info, toplevel = true)
+    jsig(info, level = 0)
     for annot <- sym0.annotations do
       annot match
         case ThrownException(e) =>
           builder.append('^')
-          jsig(e, toplevel = true)
+          jsig(e, level = 0)
         case _ => ()
 
     if builder.length == 0

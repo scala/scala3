@@ -59,6 +59,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private var myValueSymbols: List[Symbol] = Nil
   private var myCaseSymbols: List[Symbol] = Nil
+  private var myValueCaseSymbols: List[Symbol] = Nil
   private var myCaseModuleSymbols: List[Symbol] = Nil
   private var myEnumValueSymbols: List[Symbol] = Nil
   private var myNonJavaEnumValueSymbols: List[Symbol] = Nil
@@ -67,6 +68,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     if (myValueSymbols.isEmpty) {
       myValueSymbols = List(defn.Any_hashCode, defn.Any_equals)
       myCaseSymbols = defn.caseClassSynthesized
+      myValueCaseSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
       myCaseModuleSymbols = myCaseSymbols.filter(_ ne defn.Any_equals)
       myEnumValueSymbols = List(defn.Product_productPrefix)
       myNonJavaEnumValueSymbols = myEnumValueSymbols :+ defn.Any_toString :+ defn.Enum_ordinal :+ defn.Any_hashCode
@@ -74,6 +76,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   def valueSymbols(using Context): List[Symbol] = { initSymbols; myValueSymbols }
   def caseSymbols(using Context): List[Symbol] = { initSymbols; myCaseSymbols }
+  def valueCaseSymbols(using Context): List[Symbol] = { initSymbols; myValueCaseSymbols }
   def caseModuleSymbols(using Context): List[Symbol] = { initSymbols; myCaseModuleSymbols }
   def enumValueSymbols(using Context): List[Symbol] = { initSymbols; myEnumValueSymbols }
   def nonJavaEnumValueSymbols(using Context): List[Symbol] = { initSymbols; myNonJavaEnumValueSymbols }
@@ -108,6 +111,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val symbolsToSynthesize: List[Symbol] =
       if clazz.is(Case) then
         if clazz.is(Module) then caseModuleSymbols
+        else if clazz.isDeepValhalla then valueCaseSymbols
         else caseSymbols
       else if isNonJavaEnumValue then nonJavaEnumValueSymbols
       else if isEnumValue then enumValueSymbols
@@ -309,7 +313,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val matchingCase = CaseDef(pattern, EmptyTree, rhs) // case x$0 @ (_: C) => this.x == this$0.x && this.y == x$0.y
       val defaultCase = CaseDef(Underscore(defn.AnyType), EmptyTree, Literal(Constant(false))) // case _ => false
       val matchExpr = Match(that, List(matchingCase, defaultCase))
-      if (isDerivedValueClass(clazz)) matchExpr
+      if (isDerivedValueClass(clazz) || clazz.isValhallaValueClass) matchExpr
       else {
         val eqCompare = This(clazz).select(defn.Object_eq).appliedTo(that.cast(defn.ObjectType))
         eqCompare `or` matchExpr
@@ -436,7 +440,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private def hasWriteReplace(clazz: ClassSymbol)(using Context): Boolean =
     clazz.membersNamed(nme.writeReplace)
-      .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, sourceLanguage = SourceLanguage.Scala3))
+      .filterWithPredicate(s => s.signature == Signature(defn.AnyRefType, sourceLanguage = SourceLanguage.Scala3) || s.signature == Signature(defn.AnyType, sourceLanguage = SourceLanguage.Scala3))
       .exists
 
   private def hasReadResolve(clazz: ClassSymbol)(using Context): Boolean =
@@ -450,7 +454,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private def readResolveDef(clazz: ClassSymbol)(using Context): TermSymbol =
     newSymbol(clazz, nme.readResolve, PrivateMethod | Synthetic,
-        MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
+        MethodType(Nil, defn.AnyType), coord = clazz.coord).entered.asTerm
 
   /** If this is a static object `Foo`, add the method:
    *

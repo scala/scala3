@@ -114,6 +114,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
         info  = fieldType,
         coord = tree.span
       ).withAnnotationsCarrying(sym, defn.FieldMetaAnnot, orNoneOf = defn.MetaAnnots)
+       .withAnnotationsRemovedOnCond(!sym.isParamOrAccessor, defn.NonNullAnnot)
        .enteredAfter(thisPhase)
     }
 
@@ -151,7 +152,7 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
             if isErasableBottomField(field, rhsClass) then erasedBottomTree(rhsClass)
             else transformFollowingDeep(ref(field))(using ctx.withOwner(sym))
           val getterDef = cpy.DefDef(tree)(rhs = getterRhs)
-          sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot))
+          sym.keepAnnotationsCarrying(thisPhase, Set(defn.GetterMetaAnnot), andAlso = Set(defn.NonNullAnnot))
           Thicket(fieldDef, getterDef)
       else if sym.isSetter then
         if (!sym.is(ParamAccessor)) { val Literal(Constant(())) = tree.rhs: @unchecked } // This is intended as an assertion
