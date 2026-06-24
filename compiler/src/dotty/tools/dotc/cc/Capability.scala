@@ -732,13 +732,23 @@ object Capabilities:
           if self.derivesFromCapability then self.derivesFrom(cls)
           else captureSetOfInfo.tryClassifyAs(cls)
 
-    /** Is every part of this capability provably classified as `cls` or a subclass? */
-    // Ignores exclusions: sound but loose.
-    // TODO: when attempting classifier-splitting, tighten for the remainder algorithm.
+    /** Is every part of this capability provably classified as `cls` or a subclass?
+     *  (Subkinding: the classifier kind subtracts to empty against `cls`, exclusions included.)
+     */
     def isKnownClassifiedAs(cls: ClassSymbol)(using Context): Boolean =
-      transClassifiers match
-        case ClassifiedAs(cs) => cs.forall(_.isSubClass(cls))
-        case _ => false
+      def emptyUnder(roots: List[ClassSymbol], except: List[ClassSymbol]) =
+        roots.forall(k => subtractClassifiers(k, except, cls, Nil).isEmpty)
+      this match
+        case Classified(_, only, except) if only != defn.AnyClass =>
+          emptyUnder(only :: Nil, except)
+        case Classified(ref, _, except) => // only == AnyClass
+          ref.transClassifiers match
+            case ClassifiedAs(cs) => emptyUnder(cs, except)
+            case _ => false
+        case _ =>
+          transClassifiers match
+            case ClassifiedAs(cs) => emptyUnder(cs, Nil)
+            case _ => false
 
     /** Is this capability provably free of any parts classified under `cls`?
      *  True if all its classifiers are on branches unrelated to `cls`, or an exclusion
@@ -1055,6 +1065,24 @@ object Capabilities:
     if cls1.isSubClass(cls2) then cls1
     else if cls2.isSubClass(cls1) then cls2
     else defn.NothingClass
+
+  /** The classifier subtrees making up the kind subtraction
+   *  `(only1 - except1) \ (only2 - except2)`, i.e. the remainder of the first classifier
+   *  projection after subtracting the second, as a union of `(only, except)` subtrees.
+   *  Empty subtrees are dropped. The subtrahend is assumed non-empty.
+   *  Follows the kind subtraction of "Classifying Capabilities" (Fig. 3).
+   */
+  def subtractClassifiers(only1: ClassSymbol, except1: List[ClassSymbol],
+      only2: ClassSymbol, except2: List[ClassSymbol])(using Context): List[(ClassSymbol, List[ClassSymbol])] =
+    def isEmpty(only: ClassSymbol, except: List[ClassSymbol]) = except.exists(only.isSubClass)
+    def recur(rhsExcept: List[ClassSymbol]): List[(ClassSymbol, List[ClassSymbol])] = rhsExcept match
+      case Nil => (only1, only2 :: except1) :: Nil          // st-tree: subtract the bare `only2` subtree
+      case l :: rest =>
+        if !l.isSubClass(only2) then recur(rest)            // st-irrel-r: `l` outside `only2`, no effect
+        else if l.isSubClass(only1) then (l, except1) :: recur(rest)  // st-sub-r: `only1.only[l]` survives
+        else if only1.isSubClass(l) then (only1, except1) :: Nil      // st-sub-l: all of `only1` survives
+        else recur(rest)                                    // st-irrel-l: `l` disjoint from `only1`
+    recur(except2).filterNot(isEmpty)
 
   /** The least classifier that both `cls1` and `cls2` extend, or `AnyClass`,
    *  if `cls1` and `cls2` don't have a common ancestor classifier. It is
