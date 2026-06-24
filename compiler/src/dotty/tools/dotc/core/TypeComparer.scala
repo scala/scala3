@@ -8,6 +8,7 @@ import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
+import collection.immutable.BitSet
 import util.{Stats, NoSourcePosition, EqHashMap, Lst}
 import config.Config
 import config.Feature.{migrateTo3, sourceVersion}
@@ -1814,155 +1815,145 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case _ => Some(verified(recur(tp1, NothingType)))
       case _ => None
 
+  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: Lst[ParamInfo]): Boolean =
+    isSubArgs(args1.toLst, args2.toLst, tp1, tparams2)
+
   /** Subtype test for corresponding arguments in `args1`, `args2` according to
    *  variances in type parameters `tparams2`.
    *
    *  @param  tp1       The applied type containing `args1`
    *  @param  tparams2  The type parameters of the type constructor applied to `args2`
    */
-  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: Lst[ParamInfo]): Boolean = {
+  def isSubArgs(args1: Lst[Type], args2: Lst[Type], tp1: Type, tparams2: Lst[ParamInfo]): Boolean = {
 
     /** The bounds of parameter `tparam`, where all references to type paramneters
      *  are replaced by corresponding arguments (or their approximations in the case of
      *  wildcard arguments).
      */
     def paramBounds(tparam: Symbol): TypeBounds =
-      tparam.info.substApprox(tparams2.asInstanceOf[Lst[Symbol]], args2.toLst).bounds
+      tparam.info.substApprox(tparams2.asInstanceOf[Lst[Symbol]], args2).bounds
 
-    /** Test all arguments. Incomplete argument tests (according to isIncomplete) are deferred in
-     *  the first run and picked up in the second.
+    /** An argument test is incomplete if it implies a comparison A <: B where
+     *  A is an AndType or B is an OrType. In these cases we need to run an
+     *  either, which can lose solutions if there are type variables involved.
+     *  So we defer such tests to run last, on the chance that some other argument
+     *  comparison will instantiate or constrain type variables first.
      */
-    def recurArgs(args1: List[Type], args2: List[Type], tparams2: List[ParamInfo],
-                  canDefer: Boolean,
-                  deferred1: List[Type], deferred2: List[Type], deferredTparams2: List[ParamInfo]): Boolean =
-      if args1.isEmpty then
-        args2.isEmpty
-        && (deferred1.isEmpty
-            || recurArgs(
-                  deferred1.reverse, deferred2.reverse, deferredTparams2.reverse,
-                  canDefer = false, Nil, Nil, Nil))
-      else args2.nonEmpty && tparams2.nonEmpty && {
-        val tparam = tparams2.head
-        val v = tparam.paramVarianceSign
+    def isIncomplete(arg1: Type, arg2: Type, v: Int): Boolean =
+      val arg1d = arg1.stripped
+      val arg2d = arg2.stripped
+      (v >= 0) && (arg1d.isInstanceOf[AndType] || arg2d.isInstanceOf[OrType])
+      ||
+      (v <= 0) && (arg1d.isInstanceOf[OrType] || arg2d.isInstanceOf[AndType])
 
-        /** An argument test is incomplete if it implies a comparison A <: B where
-         *  A is an AndType or B is an OrType. In these cases we need to run an
-         *  either, which can lose solutions if there are type variables involved.
-         *  So we defer such tests to run last, on the chance that some other argument
-         *  comparison will instantiate or constrain type variables first.
-         */
-        def isIncomplete(arg1: Type, arg2: Type): Boolean =
-          val arg1d = arg1.stripped
-          val arg2d = arg2.stripped
-          (v >= 0) && (arg1d.isInstanceOf[AndType] || arg2d.isInstanceOf[OrType])
-          ||
-          (v <= 0) && (arg1d.isInstanceOf[OrType] || arg2d.isInstanceOf[AndType])
-
-        /** Try a capture conversion:
-         *  If the original left-hand type `leftRoot` is a path `p.type`,
-         *  and the current widened left type is an application with wildcard arguments
-         *  such as `C[?]`, where `X` is `C`'s type parameter corresponding to the `_` argument,
-         *  compare with `C[p.X]` instead. Otherwise approximate based on variance.
-         *  Also do a capture conversion in either of the following cases:
-         *
-         *   - If we are after typer. We generally relax soundness requirements then.
-         *     We need the relaxed condition to correctly compute overriding relationships.
-         *     Missing this case led to AbstractMethod errors in the bootstrap.
-         *
-         *   - If we are in mode TypevarsMissContext, which means we test implicits
-         *     for eligibility. In this case, we can be more permissive, since it's
-         *     just a pre-check. This relaxation is needed since the full
-         *     implicit typing might perform an adaptation that skolemizes the
-         *     type of a synthesized tree before comparing it with an expected type.
-         *     But no such adaptation is applied for implicit eligibility
-         *     testing, so we have to compensate.
-         *
-         *  Note: Doing the capture conversion on path types is actually not necessary
-         *  since we can already deal with the situation through skolemization in Typer#captureWildcards.
-         *  But performance tests indicate that it's better to do it, since we avoid
-         *  skolemizations, which are more expensive . And, besides, capture conversion on
-         *  paths is less intrusive than skolemization.
-         */
-        def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
-          case tparam: Symbol =>
-            val leftr = leftRoot.nn
-            if (leftr.isStable || ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
-                && leftr.isValueType
-                && leftr.member(tparam.name).exists
-            then
-              val captured = TypeRef(leftr, tparam)
-              try isSubArg(captured, arg2)
-              catch case ex: TypeError =>
-                // The captured reference could be illegal and cause a
-                // TypeError to be thrown in argDenot
-                false
-            else if (v > 0)
-              isSubType(paramBounds(tparam).hi, arg2)
-            else if (v < 0)
-              isSubType(arg2, paramBounds(tparam).lo)
-            else
-              false
-          case _ =>
-            false
-        }
-
-        def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match
-          case arg2: TypeBounds =>
-            val arg1norm = arg1 match {
-              case arg1: TypeBounds =>
-                tparam match {
-                  case tparam: Symbol => arg1 & paramBounds(tparam)
-                  case _ => arg1 // This case can only arise when a hk-type is illegally instantiated with a wildcard
-                }
-              case _ => arg1
-            }
-            arg2.contains(arg1norm)
-          case ExprType(arg2res)
-          if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
-               && defn.isByNameFunction(arg1.dealias) =>
-            // ElimByName maps `=> T` to `()? => T`, but only in method parameters. It leaves
-            // embedded `=> T` arguments alone. This clause needs to compensate for that.
-            isSubArg(arg1.dealias.argInfos.head, arg2res)
-          case _ =>
-            arg1 match
-              case arg1: TypeBounds =>
-                CaptureSet.subCapturesRange(arg1, arg2)
-                  // subCapturesRange is important for invariant arguments that get expanded
-                  // to TypeBounds where each bound is obtained by adding a captureset variable
-                  // to the argument type. If subCapturesRange returns true we know that arg1's'
-                  // capture set can be unified with arg2's capture set, so it only remains to
-                  // check the underlying types with `isSubArg`.
-                  && isSubArg(arg1.hi.stripCapturing, arg2.stripCapturing)
-                || compareCaptured(arg1, arg2)
-              case ExprType(arg1res)
-              if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
-                   && defn.isByNameFunction(arg2.dealias) =>
-                 isSubArg(arg1res, arg2.argInfos.head)
-              case _ =>
-                if v < 0 then isSubType(arg2, arg1)
-                else if v > 0 then isSubType(arg1, arg2)
-                else isSameType(arg2, arg1)
-
-        val arg1 = args1.head
-        val arg2 = args2.head
-        val rest1 = args1.tail
-        if !canDefer
-            || rest1.isEmpty && deferred1.isEmpty
-                // skip the incompleteness test if this is the last argument and no previous argument tests were incomplete
-            || !isIncomplete(arg1, arg2)
+    /** Try a capture conversion:
+      *  If the original left-hand type `leftRoot` is a path `p.type`,
+      *  and the current widened left type is an application with wildcard arguments
+      *  such as `C[?]`, where `X` is `C`'s type parameter corresponding to the `_` argument,
+      *  compare with `C[p.X]` instead. Otherwise approximate based on variance.
+      *  Also do a capture conversion in either of the following cases:
+      *
+      *   - If we are after typer. We generally relax soundness requirements then.
+      *     We need the relaxed condition to correctly compute overriding relationships.
+      *     Missing this case led to AbstractMethod errors in the bootstrap.
+      *
+      *   - If we are in mode TypevarsMissContext, which means we test implicits
+      *     for eligibility. In this case, we can be more permissive, since it's
+      *     just a pre-check. This relaxation is needed since the full
+      *     implicit typing might perform an adaptation that skolemizes the
+      *     type of a synthesized tree before comparing it with an expected type.
+      *     But no such adaptation is applied for implicit eligibility
+      *     testing, so we have to compensate.
+      *
+      *  Note: Doing the capture conversion on path types is actually not necessary
+      *  since we can already deal with the situation through skolemization in Typer#captureWildcards.
+      *  But performance tests indicate that it's better to do it, since we avoid
+      *  skolemizations, which are more expensive . And, besides, capture conversion on
+      *  paths is less intrusive than skolemization.
+      */
+    def compareCaptured(arg1: TypeBounds, arg2: Type, tparam: ParamInfo, v: Int) = tparam match {
+      case tparam: Symbol =>
+        val leftr = leftRoot.nn
+        if (leftr.isStable || ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
+            && leftr.isValueType
+            && leftr.member(tparam.name).exists
         then
-          isSubArg(arg1, arg2)
-          && recurArgs(
-                rest1, args2.tail, tparams2.tail, canDefer,
-                deferred1, deferred2, deferredTparams2)
+          val captured = TypeRef(leftr, tparam)
+          try isSubArg(captured, arg2, tparam)
+          catch case ex: TypeError =>
+            // The captured reference could be illegal and cause a
+            // TypeError to be thrown in argDenot
+            false
+        else if (v > 0)
+          isSubType(paramBounds(tparam).hi, arg2)
+        else if (v < 0)
+          isSubType(arg2, paramBounds(tparam).lo)
         else
-          recurArgs(
-            rest1, args2.tail, tparams2.tail, canDefer,
-            arg1 :: deferred1, arg2 :: deferred2, tparams2.head :: deferredTparams2)
-      }
+          false
+      case _ =>
+        false
+    }
 
-    recurArgs(args1, args2, tparams2.toList, canDefer = true, Nil, Nil, Nil)
+    def isSubArg(arg1: Type, arg2: Type, tparam: ParamInfo): Boolean = arg2 match {
+      case arg2: TypeBounds =>
+        val arg1norm = arg1 match {
+          case arg1: TypeBounds =>
+            tparam match {
+              case tparam: Symbol => arg1 & paramBounds(tparam)
+              case _ => arg1 // This case can only arise when a hk-type is illegally instantiated with a wildcard
+            }
+          case _ => arg1
+        }
+        arg2.contains(arg1norm)
+      case ExprType(arg2res)
+      if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
+            && defn.isByNameFunction(arg1.dealias) =>
+        // ElimByName maps `=> T` to `()? => T`, but only in method parameters. It leaves
+        // embedded `=> T` arguments alone. This clause needs to compensate for that.
+        isSubArg(arg1.dealias.argInfos.head, arg2res, tparam)
+      case _ =>
+        val v = tparam.paramVarianceSign
+        arg1 match
+          case arg1: TypeBounds =>
+            CaptureSet.subCapturesRange(arg1, arg2)
+              // subCapturesRange is important for invariant arguments that get expanded
+              // to TypeBounds where each bound is obtained by adding a captureset variable
+              // to the argument type. If subCapturesRange returns true we know that arg1's'
+              // capture set can be unified with arg2's capture set, so it only remains to
+              // check the underlying types with `isSubArg`.
+              && isSubArg(arg1.hi.stripCapturing, arg2.stripCapturing, tparam)
+            || compareCaptured(arg1, arg2, tparam, v)
+          case ExprType(arg1res)
+          if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
+                && defn.isByNameFunction(arg2.dealias) =>
+              isSubArg(arg1res, arg2.argInfos.head, tparam)
+          case _ =>
+            if v < 0 then isSubType(arg2, arg1)
+            else if v > 0 then isSubType(arg1, arg2)
+            else isSameType(arg2, arg1)
+    }
 
+    // Test all arguments. Incomplete argument tests (according to isIncomplete) are deferred in
+    // the first run and picked up in the second.
+
+    val len = args1.length
+    if len != args2.length || len != tparams2.length then return false
+    var i = 0
+    var deferred: BitSet = BitSet.empty
+    while i < len do
+      if !(i == len - 1 && deferred.isEmpty)
+          // skip the incompleteness test if this is the last argument and no previous argument tests were incomplete
+        && isIncomplete(args1(i), args2(i), tparams2(i).paramVarianceSign)
+      then
+        deferred += i
+      else if !isSubArg(args1(i), args2(i), tparams2(i)) then
+        return false
+      i += 1
+    val it = deferred.iterator
+    while it.hasNext do
+      val i = it.next()
+      if !isSubArg(args1(i), args2(i), tparams2(i)) then return false
+    true
   }
 
   /** Test whether `tp1` has a base type of the form `B[T1, ..., Tn]` where
