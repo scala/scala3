@@ -25,7 +25,7 @@ import typer.ConstFold
 import typer.Checking.checkNonCyclic
 import typer.Nullables.*
 import util.Spans.*
-import util.{SourceFile, Property, Lst, LstBuffer}
+import util.{SourceFile, Property, Lst}
 import ast.{Trees, tpd, untpd}
 import Trees.*
 import Decorators.*
@@ -291,7 +291,7 @@ class TreeUnpickler(reader: TastyReader,
     def readParamTypes[T <: Type](n: Int)(using Context): Lst[T] =
       if n == 0 then Lst()
       else
-        val ts = LstBuffer[T](n)
+        val ts = Lst.Buffer[T](n)
         var i = 0
         while i < n do
           ts += readType().asInstanceOf[T]

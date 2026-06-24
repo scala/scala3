@@ -17,7 +17,7 @@ import Trees.Literal
 import Variances.Variance
 import annotation.tailrec
 import util.SimpleIdentityMap
-import util.{Stats, Lst, Lst1, LstStartingWith}
+import util.{Stats, Lst}
 import java.util.WeakHashMap
 import config.Config
 import reporting.*
@@ -1037,7 +1037,7 @@ object SymDenotations {
       && is(JavaDefined)
       && hasAnnotation(defn.NativeAnnot)
       && atPhase(typerPhase)(symbol.denot).paramSymss.match
-        case List(Lst1(p)) => p.info.isRepeatedParam
+        case List(Lst.Singleton(p)) => p.info.isRepeatedParam
         case _             => false
 
     def containsSignaturePolymorphic(using Context): Boolean =
@@ -2365,7 +2365,7 @@ object SymDenotations {
               val baseTp =
                 if (tycon.typeSymbol eq symbol) && !tycon.isLambdaSub then tp
                 else (tycon.typeParams: @unchecked) match
-                  case LstStartingWith(LambdaParam(_, _)) =>
+                  case Lst.StartingWith(LambdaParam(_, _)) =>
                     recur(tp.superType)
                   case tparams: Lst[Symbol @unchecked] =>
                     recur(tycon).substApprox(tparams, tp.argsLst)

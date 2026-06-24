@@ -10,7 +10,7 @@ import typer.{ConstFold, ProtoTypes}
 import transform.{Erasure, ExplicitOuter}
 import config.{Feature, Printers}
 import Printers.typr
-import util.{Property, SourceFile, Spans, Lst, LstBuffer}
+import util.{Property, SourceFile, Spans, Lst}
 import Spans.*
 
 import scala.annotation.tailrec
@@ -273,8 +273,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val (rtp, paramss) = recur(tp.instantiate(tparams.map(_.typeRef)), remaining1)
         (rtp, tparams :: paramss)
       case tp: MethodType =>
-        val previousParamRefs: LstBuffer[TermRef] | Null =
-          if tp.isParamDependent then LstBuffer[TermRef]() else null
+        val previousParamRefs: Lst.Buffer[TermRef] | Null =
+          if tp.isParamDependent then Lst.Buffer[TermRef]() else null
 
         def valueParam(name: TermName, origInfo: Type, isErased: Boolean): TermSymbol =
           val maybeImplicit =

@@ -18,7 +18,7 @@ import MegaPhase.MiniPhase
 import typer.{ImportInfo, Typer, TyperPhase}
 import typer.Deriving.OriginalTypeClass
 import typer.Implicits.{ContextualImplicits, RenamedImplicitRef}
-import util.{Property, Spans, SrcPos, Lst1}, Spans.Span
+import util.{Property, Spans, SrcPos, Lst}, Spans.Span
 import util.Chars.{isLineBreakChar, isWhitespace}
 import util.chaining.*
 
@@ -681,7 +681,7 @@ object CheckUnused:
           && !sym.is(Synthetic) // param to setter is unused bc there is no field yet
           && !(sym.owner.is(ExtensionMethod) &&
             m.paramSymss.dropWhile(_.exists(_.isTypeParam)).match
-            case Lst1(h) :: _ => h == sym // param is the extended receiver
+            case Lst.Singleton(h) :: _ => h == sym // param is the extended receiver
             case _ => false
           )
           && !sym.name.isInstanceOf[DerivedName]

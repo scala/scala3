@@ -12,7 +12,7 @@ import util.Spans.*
 import util.SrcPos
 import collection.mutable.ListBuffer
 import ErrorReporting.errorTree
-import util.{Lst, LstStartingWith}
+import util.{Lst}
 
 /** A typer mixin that implements type class derivation functionality */
 trait Deriving {
@@ -230,7 +230,7 @@ trait Deriving {
         // Retain only rows with L/R params of kind * which CanEqual can be applied to.
         // No pairwise evidence will be required for params of other kinds.
         val firstKindedParamss = clsParamss.filter {
-          case LstStartingWith(param) => !param.info.isLambdaSub
+          case Lst.StartingWith(param) => !param.info.isLambdaSub
           case _ => false
         }
 

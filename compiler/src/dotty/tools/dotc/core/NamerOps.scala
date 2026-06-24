@@ -12,7 +12,7 @@ import collection.mutable
 import config.Printers.typr
 import rewrites.Rewrites.patch
 import util.Spans.Span
-import util.{Lst, LstStartingWith}
+import util.{Lst}
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
@@ -91,7 +91,7 @@ object NamerOps:
     if !isConstructor then paramss
     else paramss match
       case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor, implicitRewritePosition)
-      case TermSymbols(LstStartingWith(vparam)) :: _ if vparam.is(Implicit) =>
+      case TermSymbols(Lst.StartingWith(vparam)) :: _ if vparam.is(Implicit) =>
         implicitRewritePosition match
           case Some(position) if ctx.settings.YimplicitToGiven.value => patch(position, "()")
           case _ => ()
@@ -282,7 +282,7 @@ object NamerOps:
   def linkConstructorParams(sym: Symbol)(using Context): Context =
     if sym.isConstructor && !sym.isPrimaryConstructor then
       sym.rawParamss match
-        case (tparams @ LstStartingWith(tparam)) :: _ if tparam.isType =>
+        case (tparams @ Lst.StartingWith(tparam)) :: _ if tparam.isType =>
           val rhsCtx = ctx.fresh.setFreshGADTBounds
           linkConstructorParams(sym, tparams, rhsCtx)
           rhsCtx

@@ -9,7 +9,7 @@ import Contexts.*, Names.*, Phases.*, Symbols.*, Types.*
 import printing.{ Printer, Showable }, printing.Formatting.*, printing.Texts.*
 import transform.MegaPhase
 import reporting.{Message, NoExplanation}
-import util.{Lst, LstBuffer}
+import util.{Lst}
 
 /** This object provides useful extension methods for types defined elsewhere */
 object Decorators {
@@ -272,7 +272,7 @@ object Decorators {
         case _ =>
           val totalSize = xss.foldLeft(0): (s, xs) =>
             s + xs.length
-          val buf = LstBuffer[T](totalSize)
+          val buf = Lst.Buffer[T](totalSize)
           xss.foreach(buf ++= _)
           buf.toLst
 
@@ -310,7 +310,7 @@ object Decorators {
 
   extension [T <: AnyRef](it: Iterator[T])
     def toLst: Lst[T] =
-      val buf = LstBuffer[T]()
+      val buf = Lst.Buffer[T]()
       while it.hasNext do buf += it.next()
       buf.toLst
 
@@ -371,7 +371,7 @@ object Decorators {
 
   extension [T <: AnyRef](xs: Seq[T])
     def toLst: Lst[T] =
-      val buf = LstBuffer[T](xs.length)
+      val buf = Lst.Buffer[T](xs.length)
       for x <- xs do buf += x
       buf.toLst
 
@@ -384,7 +384,7 @@ object Decorators {
       rs.asInstanceOf[Lst[T]]
 
     def mapToLst[U <: AnyRef](f: T => U): Lst[U] =
-      val buf = LstBuffer[U](xs.length)
+      val buf = Lst.Buffer[U](xs.length)
       for x <- xs do buf += f(x)
       buf.toLst
 

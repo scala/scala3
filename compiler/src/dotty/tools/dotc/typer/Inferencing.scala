@@ -489,7 +489,7 @@ object Inferencing {
   def maximizeType(tp: Type, span: Span)(using Context): Lst[Symbol] = {
     Stats.record("maximizeType")
     val vs = variances(tp)
-    val patternBindings = new util.LstBuffer[(Symbol, TypeParamRef)]
+    val patternBindings = new util.Lst.Buffer[(Symbol, TypeParamRef)]
     val gadtBounds = ctx.gadt.symbols.map(ctx.gadt.bounds(_).nn)
     vs.underlying foreachBinding { (tvar, v) =>
       if !tvar.isInstantiated then

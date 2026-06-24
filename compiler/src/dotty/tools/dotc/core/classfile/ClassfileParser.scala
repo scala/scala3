@@ -684,8 +684,8 @@ final class ClassfileParser(
             true
           end isRepeatedParam
 
-          val paramtypes = new util.LstBuffer[Type]()
-          var paramnames = new util.LstBuffer[TermName]()
+          val paramtypes = new util.Lst.Buffer[Type]()
+          var paramnames = new util.Lst.Buffer[TermName]()
           while !isMethodEnd(index) do
             paramnames += nme.syntheticParamName(paramtypes.length)
             paramtypes += {
@@ -740,7 +740,7 @@ final class ClassfileParser(
       else NoType
     }
 
-    val newTParams = new util.LstBuffer[Symbol]()
+    val newTParams = new util.Lst.Buffer[Symbol]()
     if (sig(index) == '<') {
       assert(owner != null)
       index += 1

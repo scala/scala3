@@ -21,7 +21,7 @@ import CheckRealizable.*
 import Variances.{Variance, setStructuralVariances, Invariant}
 import typer.Nullables
 import util.Stats.*
-import util.{SimpleIdentityMap, SimpleIdentitySet, Lst, Lst1}
+import util.{SimpleIdentityMap, SimpleIdentitySet, Lst}
 import ast.tpd.*
 import ast.TreeTypeMap
 import printing.Texts.*
@@ -5499,7 +5499,7 @@ object Types extends TypeUtils {
               tycon.info match
                 case _: RealTypeBounds =>
                   recAbstractTypeConstructor(pat)
-                case TypeAlias(tl @ HKTypeLambda(Lst1(onlyParam), resType: RefinedType)) =>
+                case TypeAlias(tl @ HKTypeLambda(Lst.Singleton(onlyParam), resType: RefinedType)) =>
                   /* Unlike for eta-expanded classes, the typer does not automatically
                    * dealias poly type aliases to refined types. So we have to give them
                    * a chance here.

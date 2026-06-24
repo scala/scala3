@@ -5,7 +5,7 @@ package core
 import Contexts.*, Types.*, Symbols.*, Names.*, NameKinds.*, Flags.*
 import SymDenotations.*
 import util.Spans.*
-import util.{Stats, Lst, LstBuffer}
+import util.{Stats, Lst}
 import Decorators.*
 import StdNames.*
 import collection.mutable
@@ -788,7 +788,7 @@ object TypeOps:
     /** Gather GADT symbols and singletons found in `tp2`, ie. the scrutinee. */
     object TraverseTp2 extends TypeTraverser:
       val singletons = util.HashMap[Symbol, SingletonType]()
-      val gadtSyms = LstBuffer[Symbol]()
+      val gadtSyms = Lst.Buffer[Symbol]()
 
       def traverse(tp: Type) = try
         val tpd = tp.dealias
