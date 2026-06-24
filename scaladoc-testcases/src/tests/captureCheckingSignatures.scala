@@ -127,6 +127,7 @@ trait ConsumeMethodExamples extends Mutable:
 // --- Classifiers ---
 
 class MyIO extends SharedCapability
+trait Async extends SharedCapability, Classifier
 trait Control extends SharedCapability, Classifier
 
 // .only[Classifier] restricted capabilities
@@ -141,6 +142,8 @@ trait ExceptExamples:
   def sharedExcept: AnyRef^{any.except[Control]} //expected: def sharedExcept: AnyRef^{any.except[Control]}
   def pathExcept: AnyRef^{a.except[Control]} //expected: def pathExcept: AnyRef^{a.except[Control]}
   def onlyThenExcept: AnyRef^{a.only[Control].except[Control]} //expected: def onlyThenExcept: AnyRef^{a.only[Control].except[Control]}
+  def multiExcept: AnyRef^{a.except[Async].except[Control]} //expected: def multiExcept: AnyRef^{a.except[Async].except[Control]}
+  def onlyMultiExcept: AnyRef^{a.only[SharedCapability].except[Async].except[Control]} //expected: def onlyMultiExcept: AnyRef^{a.only[SharedCapability].except[Async].except[Control]}
 
 // --- Capture set variables and capability members ---
 

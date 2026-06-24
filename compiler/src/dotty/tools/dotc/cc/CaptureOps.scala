@@ -70,9 +70,9 @@ extension (tp: Type)
     case OnlyCapability(tp1, cls) =>
       if cls.isTopClassifier then tp1.toCapability // identity projection
       else tp1.toCapability.restrict(cls)
-    case ExceptCapability(tp1, cls) =>
-      if cls.isTopClassifier then tp1.toCapability.restrict(defn.NothingClass) // empty projection
-      else tp1.toCapability.exclude(cls)
+    case ExceptCapability(tp1, clss) =>
+      if clss.exists(_.isTopClassifier) then tp1.toCapability.restrict(defn.NothingClass) // empty projection
+      else clss.foldLeft(tp1.toCapability)((c, cls) => c.exclude(cls))
     case ref: TermRef if ref.isCapsAnyRef =>
       GlobalAny
     case ref: TermRef if ref.isCapsFreshRef =>
@@ -112,7 +112,7 @@ extension (tp: Type)
       elem match
         case CapturingType(parent, refs) if parent.derivesFromCapSet =>
           refs.elems.toList
-        case ExceptCapability(_, cls) if cls.isTopClassifier =>
+        case ExceptCapability(_, clss) if clss.exists(_.isTopClassifier) =>
           Nil // empty projection
         case _ =>
           elem.toCapability :: Nil
@@ -929,10 +929,32 @@ end ClassifiedCapability
  */
 object OnlyCapability extends ClassifiedCapability(defn.OnlyCapabilityAnnot)
 
-/** An extractor for `ref @exceptCapability[C]`, which is used to express
- *  the excluded capability `ref.except[C]` as a type.
+/** An extractor for `ref @exceptCapability[A | B | ...]`, which expresses the excluded
+ *  capability `ref.except[A].except[B]...` as a type. The excluded classifiers are rolled
+ *  into a single annotation whose argument is their union.
  */
-object ExceptCapability extends ClassifiedCapability(defn.ExceptCapabilityAnnot)
+object ExceptCapability:
+  def apply(tp: Type, clss: List[ClassSymbol])(using Context): Type = clss match
+    case Nil => tp
+    case _ =>
+      val arg = clss.map(_.typeRef: Type).reduce((a, b) => OrType(a, b, soft = false))
+      AnnotatedType(tp,
+        Annotation(defn.ExceptCapabilityAnnot.typeRef.appliedTo(arg), Nil, util.Spans.NoSpan))
+
+  def unapply(tree: AnnotatedType)(using Context): Option[(Type, List[ClassSymbol])] = tree match
+    case AnnotatedType(parent: Type, ann) if ann.hasSymbol(defn.ExceptCapabilityAnnot) =>
+      classifiersOf(ann.tree.tpe.argTypes.head) match
+        case Nil => None
+        case clss => Some((parent, clss))
+    case _ => None
+
+  /** The classifier classes in a possibly-union annotation argument. */
+  private def classifiersOf(tp: Type)(using Context): List[ClassSymbol] = tp.dealias match
+    case OrType(tp1, tp2) => classifiersOf(tp1) ++ classifiersOf(tp2)
+    case tp => tp.typeSymbol match
+      case cls: ClassSymbol => cls :: Nil
+      case _ => Nil
+end ExceptCapability
 
 /** An extractor for all kinds of function types as well as method and poly types.
  *  It includes aliases of function types such as `=>`. TODO: Can we do without?

@@ -192,14 +192,22 @@ object OnlyCapability:
 end OnlyCapability
 
 object ExceptCapability:
-  def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[(qctx.reflect.TypeRepr, qctx.reflect.Symbol)] =
+  def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[(qctx.reflect.TypeRepr, List[qctx.reflect.Symbol])] =
     import qctx.reflect._
     ty match
       case AnnotatedType(base, app @ Apply(TypeApply(Select(New(annot), _), _), Nil)) if annot.tpe.typeSymbol.isExceptCapabilityAnnot =>
-        app.tpe.typeArgs.head.classSymbol.match
-          case Some(clazzsym) => Some((base, clazzsym))
-          case None => None
+        classifierSyms(app.tpe.typeArgs.head) match
+          case Nil => None
+          case clss => Some((base, clss))
       case _ => None
+
+  // Split the union-encoded classifiers. No dealias needed: the reflect API already
+  // presents `|` as an OrType (as in decomposeCaptureRefs below).
+  private def classifierSyms(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): List[qctx.reflect.Symbol] =
+    import qctx.reflect._
+    ty match
+      case OrType(t1, t2) => classifierSyms(t1) ++ classifierSyms(t2)
+      case t => t.classSymbol.toList
 end ExceptCapability
 
 /** Decompose capture sets in the union-type-encoding into the sequence of atomic `TypeRepr`s.

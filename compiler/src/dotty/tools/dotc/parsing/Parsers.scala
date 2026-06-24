@@ -1810,13 +1810,16 @@ object Parsers {
         else ref
 
       def exceptOpt(ref: Tree): Tree =
-        if in.token == DOT && in.lookahead.isIdent(nme.except) then
-          val ref1 = atSpan(startOffset(ref)):
+        def excepts(acc: List[Tree]): List[Tree] =
+          if in.token == DOT && in.lookahead.isIdent(nme.except) then
             in.nextToken()
             in.nextToken()
-            Annotated(ref, makeExceptAnnot(inBrackets(convertToTypeId(qualId()))))
-          exceptOpt(ref1)
-        else ref
+            excepts(acc :+ inBrackets(convertToTypeId(qualId())))
+          else acc
+        excepts(Nil) match
+          case Nil => ref
+          case clss => atSpan(startOffset(ref)):
+            Annotated(ref, makeExceptAnnot(clss.reduce((l, r) => makeOrType(l, r))))
 
       def readOnlyOpt(ref: Tree): Tree =
         if in.token == DOT && in.lookahead.isIdent(nme.rd) then

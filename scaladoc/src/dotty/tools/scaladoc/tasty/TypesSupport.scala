@@ -546,7 +546,9 @@ trait TypesSupport:
     ref match
       case ReadOnlyCapability(c)  => emitCapability(c, skipThisTypePrefix) :+ Keyword(".rd")
       case OnlyCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("only"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
-      case ExceptCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("except"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
+      case ExceptCapability(c, clss) =>
+        clss.foldLeft(emitCapability(c, skipThisTypePrefix)): (acc, cls) =>
+          acc ++ List(Plain("."), Keyword("except"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
       case t @ ThisType(tpe)      =>
         // Render `this` for self-references and `EnclosingClass.this` otherwise.
         // We deliberately call `inner` without `inCC` in scope so the enclosing

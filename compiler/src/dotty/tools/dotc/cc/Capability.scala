@@ -1023,7 +1023,7 @@ object Capabilities:
           case _: ReadOnly => ReadOnlyCapability(c1)
           case Classified(_, only, except) =>
             val t0 = if only == defn.AnyClass then c1 else OnlyCapability(c1, only)
-            except.foldLeft(t0)((t, e) => ExceptCapability(t, e))
+            ExceptCapability(t0, except)
           case _: Maybe => MaybeCapability(c1)
           case _ => c1
 
