@@ -3,7 +3,7 @@ import reflect.ClassTag
 
 import language.experimental.captureChecking
 
-import scala.collection.{LazyZip2, SeqView, Searching, Stepper, StepperShape}
+import scala.collection.{LazyZip2, SeqView, Searching, Stepper, StepperShape, Factory}
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable.{ArrayBuilder, Builder}
 
@@ -13,6 +13,10 @@ opaque type IArray[+T] = Array[? <: T]
  *  but it cannot be updated. Unlike regular arrays, immutable arrays are covariant.
  */
 object IArray:
+
+  /** Provides an implicit conversion from the IArray object to a collection Factory */
+  given convertIArrayToFactory: [A : ClassTag] => Conversion[IArray.type, Factory[A, IArray[A]]] =
+    _ => Factory.IArrayFactory[A]
 
   /** The selection operation on an immutable array.
    *
@@ -135,7 +139,7 @@ object IArray:
     genericArrayOps(arr).find(p)
 
   /** Builds a new array by applying a function to all elements of this array
-   *  and using the elements of the resulting collections. 
+   *  and using the elements of the resulting collections.
    *
    *  @tparam U the element type of the returned array
    *  @param f the function to apply to each element, returning a collection of results
@@ -144,7 +148,7 @@ object IArray:
     genericArrayOps(arr).flatMap(f)
 
   /** Flattens a two-dimensional array by concatenating all its rows
-   *  into a single array. 
+   *  into a single array.
    *
    *  @tparam U the element type of the resulting array after flattening
    *  @param asIterable the implicit evidence that `T` can be viewed as `Iterable[U]`
@@ -162,7 +166,7 @@ object IArray:
     genericArrayOps(arr).fold(z)(op)
 
   /** Applies a binary operator to a start value and all elements of this array,
-   *  going left to right. 
+   *  going left to right.
    *
    *  @tparam U the result type of the binary operator
    *  @param z the start value
@@ -172,7 +176,7 @@ object IArray:
     genericArrayOps(arr).foldLeft(z)(op)
 
   /** Applies a binary operator to all elements of this array and a start value,
-   *  going right to left. 
+   *  going right to left.
    *
    *  @tparam U the result type of the binary operator
    *  @param z the start value
@@ -297,7 +301,7 @@ object IArray:
     genericArrayOps(arr).scan(z)(op)
 
   /** Produces an array containing cumulative results of applying the binary
-   *  operator going left to right. 
+   *  operator going left to right.
    *
    *  @tparam U the element type of the returned array
    *  @param z the initial value for the scan
@@ -307,7 +311,7 @@ object IArray:
     genericArrayOps(arr).scanLeft(z)(op)
 
   /** Produces an array containing cumulative results of applying the binary
-   *  operator going right to left. 
+   *  operator going right to left.
    *
    *  @tparam U the element type of the returned array
    *  @param z the initial value for the scan
@@ -329,7 +333,7 @@ object IArray:
     genericArrayOps(arr).slice(from, until)
 
   /** Sorts this array according to the Ordering which results from transforming
-   *  an implicitly given Ordering with a transformation function. 
+   *  an implicitly given Ordering with a transformation function.
    *
    *  @tparam U the target type of the transformation function, which has an `Ordering`
    *  @param f the transformation function mapping elements to their sort keys
