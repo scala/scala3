@@ -33,8 +33,6 @@ import MegaPhase.MiniPhase
 class CheckTermination extends MiniPhase {
   import tpd.*
 
-  private var checked = Set[Symbol]()
-
   override def phaseName: String = CheckTermination.name
 
   override def description: String = CheckTermination.description
@@ -45,10 +43,9 @@ class CheckTermination extends MiniPhase {
     val method = tree.symbol
     val mandatory = method.hasAnnotation(defn.TerminationAnnot)
 
-    if mandatory && !method.is(Deferred) && !checked.contains(method) then
+    if mandatory && !method.is(Deferred) then
       val checker = new TerminationChecker(method)
       checker.traverse(tree.rhs)
-      if !checker.hasFailed then checked ++= checker.traversedMethods
     // if the method overrides a method that has `@terminates`,
     // the overriding method is required to have `@terminates` as well.
     else if method.allOverriddenSymbols.exists(_.hasAnnotation(defn.TerminationAnnot)) then
@@ -67,9 +64,6 @@ class CheckTermination extends MiniPhase {
       case Smaller, Same, Unknown
 
     var shouldCheckCalls = true
-
-    var hasFailed = false
-    var traversedMethods = Set[Symbol](startMethod)
 
     // Maps `val` symbol to a (source, size) pair.
     // The source may be a tree as it is also used to keep track of closures.
@@ -180,7 +174,6 @@ class CheckTermination extends MiniPhase {
      *
      *  If `methodSymbol` is already present in `callStack`, the call is (mutually) recursive and `areSmaller` is called
      *  to assert that `args` is lexicographically smaller than `methodSymbol`'s parameters.
-     *  If the check fails, an error is reported and `hasFailed` is set.
      *
      *  If `methodSymbol` is not yet on the stack, `traverseCalled` inlines its body.
      *
@@ -200,7 +193,6 @@ class CheckTermination extends MiniPhase {
       def traverseCalled(methodSymbol: Symbol) = {
         methodSymbol.defTree match
           case defTree: DefDef if !defTree.rhs.isEmpty || methodSymbol.isConstructor =>
-            traversedMethods += methodSymbol
             // Push callee to the stack
             callStack = methodSymbol :: callStack
             val savedMap = valMap
@@ -221,13 +213,12 @@ class CheckTermination extends MiniPhase {
               report.warning(s"Method ${methodSymbol.name} has an empty tree.", pos)
       }
 
-      if !checked.contains(methodSymbol) && !methodSymbol.hasAnnotation(defn.AssumeTerminatesAnnot) then
+      if !methodSymbol.hasAnnotation(defn.AssumeTerminatesAnnot) then
         callStack.find(_ == methodSymbol) match
           case Some(_) => // Recursive call.
             val params = getMethodParams(methodSymbol)
             if !areSmaller(args, params, methodSymbol) then
               report.error(s"${startMethod.name} may not terminate due to (mutually) recursive call.", pos)
-              hasFailed = true
           case None => traverseCalled(fallBackSymbol.getOrElse(methodSymbol))
     }
 
