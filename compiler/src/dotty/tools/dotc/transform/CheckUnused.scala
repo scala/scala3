@@ -18,7 +18,7 @@ import MegaPhase.MiniPhase
 import typer.{ImportInfo, Typer, TyperPhase}
 import typer.Deriving.OriginalTypeClass
 import typer.Implicits.{ContextualImplicits, RenamedImplicitRef}
-import util.{Property, Spans, SrcPos}, Spans.Span
+import util.{Property, Spans, SrcPos, Lst1}, Spans.Span
 import util.Chars.{isLineBreakChar, isWhitespace}
 import util.chaining.*
 
@@ -681,7 +681,7 @@ object CheckUnused:
           && !sym.is(Synthetic) // param to setter is unused bc there is no field yet
           && !(sym.owner.is(ExtensionMethod) &&
             m.paramSymss.dropWhile(_.exists(_.isTypeParam)).match
-            case (h :: Nil) :: _ => h == sym // param is the extended receiver
+            case Lst1(h) :: _ => h == sym // param is the extended receiver
             case _ => false
           )
           && !sym.name.isInstanceOf[DerivedName]
@@ -1020,7 +1020,7 @@ object CheckUnused:
       relaxer.traverse(tree)
 
   def ignoreArgsOfSelfConstruction(tree: Apply, ctor: Symbol)(using Context): Unit =
-    val pars = ctor.denot.paramSymss.flatten.iterator.filter(_.isTerm)
+    val pars = ctor.denot.paramSymss.flattenLst.iterator.filter(_.isTerm)
     val args = allTermArguments(tree)
     for (par, arg) <- pars.zip(args) do
       if arg.symbol.is(ParamAccessor) && arg.symbol.name == par.name && arg.symbol.owner == ctor.owner then

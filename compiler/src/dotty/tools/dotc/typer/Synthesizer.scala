@@ -597,7 +597,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                     case tp => tp
                   resType <:< target
                   val tparams = poly.paramRefs
-                  val variances = childClass.typeParams.map(_.paramVarianceSign).toArray
+                  val variances = childClass.typeParamsList.map(_.paramVarianceSign).toArray
                   @tailrec def fixInstances(cur: Lst[Type]): Lst[Type] =
                     val next = cur.mapConserve(_.substParams(poly, cur))
                     if next `eq` cur then next else fixInstances(next)

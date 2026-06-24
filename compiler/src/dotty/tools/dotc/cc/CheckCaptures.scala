@@ -581,9 +581,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       if !isExempt then
         val paramNames = atPhase(thisPhase.prev):
           fn.tpe.widenDealias match
-            case tl: TypeLambda => tl.paramNamesList
+            case tl: TypeLambda => tl.paramNames
             case ref: AppliedType if ref.typeSymbol.isClass => ref.typeSymbol.typeParams.map(_.name)
-            case t => args.map(_ => EmptyTypeName)
+            case t => args.mapToLst(_ => EmptyTypeName)
 
         for case (arg: TypeTree, pname) <- args.lazyZip(paramNames) do
           def where = if sym.exists then i" in an argument of $sym" else ""
@@ -888,7 +888,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         instCls.primaryConstructor.info.stripPoly match
           case primaryMt: MethodType =>
             var aliasMap = Map.empty[Name, Type]
-            for (param, argType) <- sym.paramSymss.flatten.filter(_.isTerm).lazyZip(argTypes) do
+            for (param, argType) <- sym.paramSymss.flattenLst.filter(_.isTerm).lazyZip(argTypes) do
               for
                 ann <- param.annotations.filter(_.matches(defn.ParamAliasAnnot))
                 name <- ann.argumentConstantString(0)
@@ -1252,9 +1252,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         // ctx with AssumedContains entries for each Contains parameter
         val bodyCtx =
           var ac = CaptureSet.assumedContains
-          for paramSyms <- sym.paramSymss do
-            for case ContainsParam(cs, ref) <- paramSyms do
-              ac = ac.updated(cs, ac.getOrElse(cs, SimpleIdentitySet.empty) + ref)
+          for paramSyms <- sym.paramSymss; sym <- paramSyms do
+            sym match
+              case ContainsParam(cs, ref) =>
+                ac = ac.updated(cs, ac.getOrElse(cs, SimpleIdentitySet.empty) + ref)
+              case _ =>
           if ac.isEmpty then ctx
           else ctx.withProperty(CaptureSet.AssumedContains, Some(ac))
 

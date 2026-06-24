@@ -192,7 +192,7 @@ object Mutability:
         case AppliedType(etycon, eargs) =>
           if atycon.typeSymbol == esym then
             actual.derivedAppliedType(atycon,
-              improveArgs(aargs, eargs, etycon.typeParams))
+              improveArgs(aargs, eargs, etycon.typeParams.toList))
           else if esym.isClass then
             // This case is tricky: Try to lift actual to the base type with class `esym`,
             // improve the resulting arguments, and figure out if anything can be
@@ -202,7 +202,7 @@ object Mutability:
                 // If any of the base type arguments can be improved, check
                 // whether they are the same as an original argument, and in this
                 // case improve the original argument.
-                val iargs = improveArgs(bargs, eargs, etycon.typeParams)
+                val iargs = improveArgs(bargs, eargs, etycon.typeParams.toList)
                 if iargs ne bargs then
                   val updates =
                     for

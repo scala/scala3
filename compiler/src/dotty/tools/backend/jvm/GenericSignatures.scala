@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.TypeApplications.*
 import dotty.tools.dotc.core.TypeErasure.*
 import dotty.tools.dotc.core.classfile.ClassfileConstants
 import dotty.tools.dotc.transform.ValueClasses
+import dotty.tools.dotc.util.Lst
 
 import java.lang.StringBuilder
 import scala.annotation.tailrec
@@ -405,7 +406,7 @@ object GenericSignatures {
 
         case ci: ClassInfo =>
           val tParams = tp.typeParams
-          if (toplevel) polyParamSig(tParams)
+          if (toplevel) polyParamSig(tParams.toList)
           superSig(ci.typeSymbol, ci.parents)
 
         case AnnotatedType(atp, _) =>
@@ -534,7 +535,7 @@ object GenericSignatures {
 
     @tailrec def recur(tpe: Type): Type = tpe match
       case mtd: MethodType =>
-        vparams ++= mtd.paramInfosList.filter(!_.hasAnnotation(defn.ErasedParamAnnot))
+        vparams ++= mtd.paramInfosList.filter(!_.isForErasedParam)
         mtd.resType.dealias match
           // Returned context functions are erased by putting their parameters into the method's parameters,
           // so we must duplicate that logic here
@@ -547,7 +548,7 @@ object GenericSignatures {
           case _ =>
             recur(mtd.resType)
       case PolyType(tps, tpe) =>
-        if tparams != null then tparams ++= tps
+        if tparams != null then tparams ++= tps.toIterable
         recur(tpe)
       case _ =>
         tpe

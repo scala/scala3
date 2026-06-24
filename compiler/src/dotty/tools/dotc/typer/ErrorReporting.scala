@@ -15,6 +15,7 @@ import reporting.*
 import Message.Note
 import collection.mutable
 import cc.isCaptureChecking
+import util.Lst
 
 object ErrorReporting {
 
@@ -39,7 +40,7 @@ object ErrorReporting {
     ErrorType(ex.toMessage)
   }
 
-  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: SrcPos)(using Context): ErrorType =
+  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: Lst[ParamInfo], actual: List[untpd.Tree], pos: SrcPos)(using Context): ErrorType =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual), pos)
 
   def missingArgs(tree: Tree, mt: Type)(using Context): Unit =
@@ -294,11 +295,12 @@ object ErrorReporting {
     end selectErrorAddendum
   }
 
-  def substitutableTypeSymbolsInScope(sym: Symbol)(using Context): List[Symbol] =
-    sym.ownersIterator.takeWhile(!_.is(Flags.Package)).flatMap { ownerSym =>
-      ownerSym.paramSymss.flatten.filter(_.isType) ++
-      ownerSym.typeRef.nonClassTypeMembers.map(_.symbol)
-    }.toList
+  def substitutableTypeSymbolsInScope(sym: Symbol)(using Context): Lst[Symbol] =
+    sym.ownersIterator.takeWhile(!_.is(Flags.Package))
+      .flatMap: ownerSym =>
+        (ownerSym.paramSymss.flattenLst.filter(_.isType)
+         ++ ownerSym.typeRef.nonClassTypeMembers.mapToLst(_.symbol)).toIterable
+      .toLst
 
   def dependentMsg =
     """Term-dependent types are experimental,

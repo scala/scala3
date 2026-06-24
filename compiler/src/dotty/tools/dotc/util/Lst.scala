@@ -3,6 +3,7 @@ package dotc.util
 import java.lang.System.arraycopy
 import collection.mutable.ListBuffer
 import reflect.ClassTag
+import scala.collection.immutable
 
 opaque type Lst[+T <: AnyRef] <: AnyRef = Array[Object]
 
@@ -99,6 +100,14 @@ object Lst {
         if ys(i) `ne` at(i) then change = true
         i += 1
       if change then ys else xs
+
+    def reverse: Lst[T] =
+      val buf = LstBuffer(length)
+      var i = length
+      while i > 0 do
+        i -= 1
+        buf += at(i)
+      buf.toLst
 
     def zip[U <: AnyRef](ys: Lst[U]): Lst[(T, U)] =
       val zs = new Array[Object](xs.length min ys.length)
@@ -245,6 +254,13 @@ object Lst {
       else if n >= length then (xs, Lst())
       else (slice(0, n), slice(n, length))
 
+    def indexOf[U >: T <: AnyRef](x: U): Int =
+      var i = 0
+      while i < length do
+        if at(i) == x then return i
+        i += 1
+      -1
+
     def indexWhere(p: T => Boolean): Int =
       var i = 0
       while i < length do
@@ -252,12 +268,45 @@ object Lst {
         i += 1
       -1
 
+    def dropWhile(p: T => Boolean): Lst[T] =
+      var i = 0
+      while i < length && p(at(i)) do i += 1
+      drop(i)
+
+    def takeWhile(p: T => Boolean): Lst[T] =
+      var i = 0
+      while i < length && p(at(i)) do i += 1
+      take(i)
+
+    def span(p: T => Boolean): (Lst[T], Lst[T]) =
+      var i = 0
+      while i < length && p(at(i)) do i += 1
+      (take(i), drop(i))
+
+    def partition(p: T => Boolean): (Lst[T], Lst[T]) =
+      val yes = LstBuffer[T]()
+      val no = LstBuffer[T]()
+      var i = 0
+      while i < length do
+        val x = at(i)
+        (if p(x) then yes else no) += x
+        i += 1
+      (yes.toLst, no.toLst)
+
     def toList: List[T] =
       var i = xs.length
       var rs: List[T] = Nil
       while i > 0 do
         i -= 1
         rs = at(i) :: rs
+      rs
+
+    def reverseToLst: List[T] =
+      var i = 0
+      var rs: List[T] = Nil
+      while i < length do
+        rs = at(i) :: rs
+        i += 1
       rs
 
     def iterator: Iterator[T] = new scala.collection.Iterator:
@@ -270,6 +319,8 @@ object Lst {
 
     def toIterable: LstIterable[T] =
       LstIterable(xs)
+
+    def toSet[U >: T]: immutable.Set[U] = immutable.Set.from(toIterable)
 
     def corresponds[U <: AnyRef](ys: Lst[U])(p: (T, U) => Boolean): Boolean =
       xs.length == ys.length
@@ -334,6 +385,7 @@ object Lst {
       lazyZip(that.toIterable)
 
   extension [T <: AnyRef](xss: Lst[Lst[T]])
+
     def flatten: Lst[T] =
       var i = 0
       while i < xss.length && xss.at(i).isEmpty do i += 1
@@ -351,6 +403,17 @@ object Lst {
           buf ++= xss.at(i)
           i += 1
         buf.toLst
+
+    def nestedExists(p: T => Boolean): Boolean =
+      var i = 0
+      while i < xss.length do
+        val xs = xss.at(i)
+        var j = 0
+        while j < xs.length do
+          if p(xs.at(j)) then return true
+          j += 1
+        i += 1
+      false
 
   extension [T <: AnyRef: ClassTag](xs: Lst[T])
     def toArray: Array[T] =
@@ -370,6 +433,9 @@ object Lst {
         buf1 += x1
         buf2 += x2
       (buf1.toLst, buf2.toLst)
+
+    def toMap: immutable.Map[T, U] = immutable.Map.from(xs.toIterable)
+
 }
 
 class LstBuffer[T <: AnyRef](initSize: Int = 8) {
@@ -393,6 +459,8 @@ class LstBuffer[T <: AnyRef](initSize: Int = 8) {
   def length: Int = siz
   def size: Int = siz
 
+  def at(i: Int) = elems(i).asInstanceOf[T]
+
   def += (x: T): this.type =
     ensureCapacity(1)
     elems(siz) = x
@@ -404,6 +472,17 @@ class LstBuffer[T <: AnyRef](initSize: Int = 8) {
     arraycopy(xs, 0, elems, siz, xs.length)
     siz += xs.length
     this
+
+  def foreach(f: T => Unit): Unit =
+    var i = 0
+    while i < size do
+      f(at(i))
+      i += 1
+
+  def contains(x: T): Boolean =
+    var i = 0
+    while i < size && elems(i) != x do i += 1
+    i < size
 
   def toLst: Lst[T] =
     if siz == 0 then Lst()
@@ -423,6 +502,10 @@ class LstIterable[+T <: AnyRef](lst: Lst[T]) extends Iterable[T]:
 object Lst1:
   def unapply[T <: AnyRef](xs: Lst[T]): Option[T] =
     if xs.length == 1 then Some(xs(0)) else None
+
+object LstStartingWith:
+  def unapply[T <: AnyRef](xs: Lst[T]): Option[T] =
+    if xs.length >= 1 then Some(xs(0)) else None
 
 @main def LstTest() =
   val xs = Lst("hello", "world")

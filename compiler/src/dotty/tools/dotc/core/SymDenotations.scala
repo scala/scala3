@@ -17,7 +17,7 @@ import Trees.Literal
 import Variances.Variance
 import annotation.tailrec
 import util.SimpleIdentityMap
-import util.{Stats, Lst}
+import util.{Stats, Lst, Lst1, LstStartingWith}
 import java.util.WeakHashMap
 import config.Config
 import reporting.*
@@ -56,7 +56,7 @@ object SymDenotations {
     private var myFlags: FlagSet = adaptFlags(initFlags)
     private var myPrivateWithin: Symbol = initPrivateWithin
     private var myAnnotations: List[Annotation] = Nil
-    private var myParamss: List[List[Symbol]] = Nil
+    private var myParamss: List[Lst[Symbol]] = Nil
 
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = maybeOwner
@@ -316,15 +316,15 @@ object SymDenotations {
     /** If this is a method, the parameter symbols, by section.
      *  Both type and value parameters are included. Empty sections are skipped.
      */
-    final def rawParamss: List[List[Symbol]] = myParamss
-    final def rawParamss_=(pss: List[List[Symbol]]): Unit =
+    final def rawParamss: List[Lst[Symbol]] = myParamss
+    final def rawParamss_=(pss: List[Lst[Symbol]]): Unit =
       myParamss = pss
 
-    final def setParamss(paramss: List[List[Symbol]])(using Context): Unit =
-      rawParamss = paramss.filterConserve(!_.isEmpty)
+    final def setParamss(paramss: List[Lst[Symbol]])(using Context): Unit =
+      rawParamss = paramss.filter(!_.isEmpty)
 
     final def setParamssFromDefs(paramss: List[tpd.ParamClause])(using Context): Unit =
-      setParamss(paramss.map(_.map(_.symbol)))
+      setParamss(paramss.map(_.mapToLst(_.symbol)))
 
     /** The symbols of each type parameter list and value parameter list of this
      *  method, or Nil if this isn't a method.
@@ -332,17 +332,17 @@ object SymDenotations {
      *  Makes use of `rawParamss` when present, or constructs fresh parameter symbols otherwise.
      *  This method can be allocation-heavy.
      */
-    final def paramSymss(using Context): List[List[Symbol]] =
+    final def paramSymss(using Context): List[Lst[Symbol]] =
 
-      def recurWithParamss(info: Type, paramss: List[List[Symbol]]): List[List[Symbol]] =
+      def recurWithParamss(info: Type, paramss: List[Lst[Symbol]]): List[Lst[Symbol]] =
         info match
           case info: LambdaType =>
-            if info.paramNames.isEmpty then Nil :: recurWithParamss(info.resType, paramss)
+            if info.paramNames.isEmpty then Lst() :: recurWithParamss(info.resType, paramss)
             else paramss.head :: recurWithParamss(info.resType, paramss.tail)
           case _ =>
             Nil
 
-      def recurWithoutParamss(info: Type): List[List[Symbol]] = info match
+      def recurWithoutParamss(info: Type): List[Lst[Symbol]] = info match
         case info: LambdaType =>
           val commonFlags =
             if info.isContextualMethod then Given | SyntheticParam
@@ -354,7 +354,7 @@ object SymDenotations {
           val prefs = params.map(_.namedType)
           for param <- params do
             param.info = param.info.substParams(info, prefs)
-          params.toList :: recurWithoutParamss(info.instantiate(prefs))
+          params :: recurWithoutParamss(info.instantiate(prefs))
         case _ =>
           Nil
 
@@ -367,11 +367,14 @@ object SymDenotations {
      *  @pre this symbol is an extension method
      */
     final def extensionParam(using Context): Symbol =
-      def leadParam(paramss: List[List[Symbol]]): Symbol = paramss match
-        case (param :: _) :: paramss1 if param.isType => leadParam(paramss1)
-        case _ :: (snd :: Nil) :: _ if name.isRightAssocOperatorName => snd
-        case (fst :: Nil) :: _ => fst
-        case _ => NoSymbol
+      def leadParam(paramss: List[Lst[Symbol]]): Symbol = paramss match
+        case params :: paramss1 if params.nonEmpty =>
+          if params(0).isType then leadParam(paramss1)
+          else if name.isRightAssocOperatorName && params.length >= 2 then params(1)
+          else if params.length == 1 then params(0)
+          else NoSymbol
+        case _ =>
+          NoSymbol
       assert(isAllOf(ExtensionMethod))
       ensureCompleted()
       leadParam(rawParamss)
@@ -441,7 +444,7 @@ object SymDenotations {
      *  @param tparams The type parameters with which the right-hand side bounds should be abstracted
      *
      */
-    def opaqueToBounds(info: Type, rhs: tpd.Tree, tparams: List[TypeSymbol])(using Context): Type =
+    def opaqueToBounds(info: Type, rhs: tpd.Tree, tparams: Lst[TypeSymbol])(using Context): Type =
 
       def setAlias(tp: Type) =
         def recur(self: Type): Unit = self match
@@ -468,7 +471,7 @@ object SymDenotations {
       info match
         case info: AliasingBounds if isOpaqueAlias && owner.isClass =>
           setAlias(info.alias)
-          HKTypeLambda.boundsFromParams(tparams.toLst, bounds(rhs))
+          HKTypeLambda.boundsFromParams(tparams, bounds(rhs))
         case _ =>
           info
     end opaqueToBounds
@@ -1009,7 +1012,7 @@ object SymDenotations {
       else if is(NoDefaultParams) || !is(Method) then false
       else
         val result =
-          rawParamss.nestedExists(_.is(HasDefault))
+          rawParamss.nestedExistsLst(_.is(HasDefault))
           || allOverriddenSymbols.exists(_.hasDefaultParams)
         setFlag(if result then HasDefaultParams else NoDefaultParams)
         result
@@ -1034,7 +1037,7 @@ object SymDenotations {
       && is(JavaDefined)
       && hasAnnotation(defn.NativeAnnot)
       && atPhase(typerPhase)(symbol.denot).paramSymss.match
-        case List(List(p)) => p.info.isRepeatedParam
+        case List(Lst1(p)) => p.info.isRepeatedParam
         case _             => false
 
     def containsSignaturePolymorphic(using Context): Boolean =
@@ -1549,9 +1552,9 @@ object SymDenotations {
     // ----- type-related ------------------------------------------------
 
     /** The type parameters of a class symbol, Nil for all other symbols */
-    def typeParams(using Context): List[TypeSymbol] = Nil
+    def typeParams(using Context): Lst[TypeSymbol] = Lst()
 
-    def typeParamsLst(using Context): Lst[TypeSymbol] = Lst()
+    def typeParamsList(using Context): List[TypeSymbol] = Nil
 
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(using Context): Type = NoPrefix
@@ -1699,7 +1702,7 @@ object SymDenotations {
       info: Type | Null = null,
       privateWithin: Symbol | Null = null,
       annotations: List[Annotation] | Null = null,
-      rawParamss: List[List[Symbol]] | Null = null)(
+      rawParamss: List[Lst[Symbol]] | Null = null)(
         using Context): SymDenotation = {
       // simulate default parameters, while also passing implicit context ctx to the default values
       val initFlags1 = (if (initFlags != UndefinedFlags) initFlags else this.flags)
@@ -1870,8 +1873,8 @@ object SymDenotations {
 
     // ----- caches -------------------------------------------------------
 
-    private var myTypeParams: List[TypeSymbol] | Null = null
-    private var myTypeParamsLst: Lst[TypeSymbol] | Null = null
+    private var myTypeParams: Lst[TypeSymbol] | Null = null
+    private var myTypeParamsList: List[TypeSymbol] | Null = null
     private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.empty
 
     private var myMemberCache: EqHashMap[Name, PreDenotation] | Null = null
@@ -1960,13 +1963,13 @@ object SymDenotations {
      */
     private def typeParamsFromDecls(using Context) =
       unforcedDecls.filter(sym =>
-        sym.is(TypeParam) && sym.owner == symbol).asInstanceOf[List[TypeSymbol]]
+        sym.is(TypeParam) && sym.owner == symbol).toLst.asInstanceOf[Lst[TypeSymbol]]
 
     /** The type parameters of this class */
-    override final def typeParams(using Context): List[TypeSymbol] = {
+    override final def typeParams(using Context): Lst[TypeSymbol] = {
       if (myTypeParams == null)
         myTypeParams =
-          if (ctx.erasedTypes || is(Module)) Nil // fast return for modules to avoid scanning package decls
+          if (ctx.erasedTypes || is(Module)) Lst() // fast return for modules to avoid scanning package decls
           else {
             val di = initial
             if (this ne di) di.typeParams
@@ -1978,9 +1981,9 @@ object SymDenotations {
       myTypeParams.nn
     }
 
-    override final def typeParamsLst(using Context): Lst[TypeSymbol] =
-      if myTypeParamsLst == null then myTypeParamsLst = typeParams.toLst
-      myTypeParamsLst.nn
+    override final def typeParamsList(using Context): List[TypeSymbol] =
+      if myTypeParamsList == null then myTypeParamsList = typeParams.toList
+      myTypeParamsList.nn
 
     override protected[dotc] final def info_=(tp: Type): Unit = {
       if (changedClassParents(infoOrCompleter, tp, completersMatter = true))
@@ -2362,10 +2365,10 @@ object SymDenotations {
               val baseTp =
                 if (tycon.typeSymbol eq symbol) && !tycon.isLambdaSub then tp
                 else (tycon.typeParams: @unchecked) match
-                  case LambdaParam(_, _) :: _ =>
+                  case LstStartingWith(LambdaParam(_, _)) =>
                     recur(tp.superType)
-                  case tparams: List[Symbol @unchecked] =>
-                    recur(tycon).substApprox(tparams, args)
+                  case tparams: Lst[Symbol @unchecked] =>
+                    recur(tycon).substApprox(tparams, tp.argsLst)
               record(tp, baseTp)
               baseTp
             }
@@ -2857,8 +2860,8 @@ object SymDenotations {
     private var myModuleClassFn: Context ?=> Symbol = LazyType.NoSymbolFn
 
     /** The type parameters computed by the completer before completion has finished */
-    def completerTypeParams(sym: Symbol)(using Context): List[TypeParamInfo] =
-      if (sym.is(Touched)) Nil // return `Nil` instead of throwing a cyclic reference
+    def completerTypeParams(sym: Symbol)(using Context): Lst[TypeParamInfo] =
+      if (sym.is(Touched)) Lst() // return `Lst()` instead of throwing a cyclic reference
       else sym.info.typeParams
 
     def decls: Scope = myDecls
@@ -2890,7 +2893,7 @@ object SymDenotations {
    *  should be completed independently of the info.
    */
   trait TypeParamsCompleter extends LazyType {
-    override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
+    override def completerTypeParams(sym: Symbol)(using Context): Lst[TypeSymbol] =
       unsupported("completerTypeParams") // should be abstract, but Scala-2 will then compute the wrong type for it
   }
 

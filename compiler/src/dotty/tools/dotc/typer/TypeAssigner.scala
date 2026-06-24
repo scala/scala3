@@ -335,7 +335,7 @@ trait TypeAssigner {
         tree.withType {
           val paramNames = pt.paramNames
           if (hasNamedArg(args)) {
-            val paramBoundsByName = paramNames.zip(pt.paramInfos).toArray.toMap
+            val paramBoundsByName = paramNames.zip(pt.paramInfos).toMap
 
             // Type arguments which are specified by name (immutable after this first loop)
             val namedArgMap = new mutable.HashMap[Name, Type]
@@ -446,19 +446,19 @@ trait TypeAssigner {
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {
     val ownType =
       if (body.isType) {
-        val params1 = pat.bindTypeSymbols
+        val params1 = pat.bindTypeSymbols.toLst
         val params2 = pat.tpe match
-          case AppliedType(tycon, args) =>
+          case tp @ AppliedType(tycon, args) =>
             val tparams = tycon.typeParamSymbols
-            params1.mapconserve { param =>
+            params1.mapConserve { param =>
               val info1 = param.info
-              val info2 = info1.subst(tparams, args)
+              val info2 = info1.subst(tparams, tp.argsLst)
               if info2 eq info1 then param else param.copy(info = info2).asType
             }
           case _ => params1
         val matchCase1 = defn.MatchCase(pat.tpe, body.tpe)
         val matchCase2 = if params2 eq params1 then matchCase1 else matchCase1.substSym(params1, params2)
-        HKTypeLambda.fromParams(params2.toLst, matchCase2)
+        HKTypeLambda.fromParams(params2, matchCase2)
       }
       else body.tpe
     tree.withType(ownType)
@@ -505,7 +505,7 @@ trait TypeAssigner {
     assert(!hasNamedArg(args) || ctx.reporter.errorsReported, tree)
     val tparams = tycon.tpe.typeParams
     val ownType =
-      if tparams.hasSameLengthAs(args) then
+      if tparams.length == args.length then
         processAppliedType(tycon.tpe.appliedTo(args.tpes))
       else
         wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)

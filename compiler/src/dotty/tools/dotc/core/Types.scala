@@ -21,7 +21,7 @@ import CheckRealizable.*
 import Variances.{Variance, setStructuralVariances, Invariant}
 import typer.Nullables
 import util.Stats.*
-import util.{SimpleIdentityMap, SimpleIdentitySet, Lst}
+import util.{SimpleIdentityMap, SimpleIdentitySet, Lst, Lst1}
 import ast.tpd.*
 import ast.TreeTypeMap
 import printing.Texts.*
@@ -1816,7 +1816,7 @@ object Types extends TypeUtils {
     /** The full parent types, including all type arguments */
     def parents(using Context): List[Type] = this match {
       case tp @ AppliedType(tycon, args) if tycon.typeSymbol.isClass =>
-        tycon.parents.map(_.subst(tycon.typeSymbol.typeParams, args))
+        tycon.parents.map(_.subst(tycon.typeSymbol.typeParams, tp.argsLst))
       case tp: TypeRef =>
         if (tp.info.isInstanceOf[TempClassInfo])
           tp.recomputeDenot()
@@ -1965,17 +1965,11 @@ object Types extends TypeUtils {
     /** Substitute all types that refer in their symbol attribute to
      *  one of the symbols in `from` by the corresponding types in `to`.
      */
-    final def subst(from: List[Symbol], to: List[Type])(using Context): Type =
+    final def subst(from: Lst[Symbol], to: Lst[Type])(using Context): Type =
       if (from.isEmpty) this
-      else {
-        val from1 = from.tail
-        if (from1.isEmpty) Substituters.subst1(this, from.head, to.head, null)
-        else {
-          val from2 = from1.tail
-          if (from2.isEmpty) Substituters.subst2(this, from.head, to.head, from1.head, to.tail.head, null)
-          else Substituters.subst(this, from, to, null)
-        }
-      }
+      else if from.length == 1 then
+        Substituters.subst1(this, from.head, to.head, null)
+      else Substituters.subst(this, from, to, null)
 
     /** Substitute all types of the form `TypeParamRef(from, N)` by
      *  `TypeParamRef(to, N)`.
@@ -2005,14 +1999,14 @@ object Types extends TypeUtils {
 
     /** Substitute all occurrences of symbols in `from` by references to corresponding symbols in `to`
      */
-    final def substSym(from: List[Symbol], to: List[Symbol])(using Context): Type =
+    final def substSym(from: Lst[Symbol], to: Lst[Symbol])(using Context): Type =
       Substituters.substSym(this, from, to, null)
 
     /** Substitute all occurrences of symbols in `from` by corresponding types in `to`.
      *  Unlike for `subst`, the `to` types can be type bounds. A TypeBounds target
      *  will be replaced by range that gets absorbed in an approximating type map.
      */
-    final def substApprox(from: List[Symbol], to: List[Type])(using Context): Type =
+    final def substApprox(from: Lst[Symbol], to: Lst[Type])(using Context): Type =
       new Substituters.SubstApproxMap(from, to).apply(this)
 
 // ----- misc -----------------------------------------------------------
@@ -2584,7 +2578,7 @@ object Types extends TypeUtils {
         case arg: TypeBounds => TypeRef(prefix, tparam)
         case arg => arg
       }
-      val concretized = args.zipWithConserve(typeParams)(concretize)
+      val concretized = args.toLst.zipWithConserve(typeParams)(concretize)
 
       def rebase(arg: Type) = arg.subst(typeParams, concretized)
 
@@ -2785,20 +2779,16 @@ object Types extends TypeUtils {
       val cls = tparam.owner
       val base = pre.baseType(cls)
       base.stripped match {
-        case AppliedType(tycon, allArgs) =>
-          var tparams = cls.typeParams
-          var args = allArgs
-          var idx = 0
-          while (tparams.nonEmpty && args.nonEmpty) {
-            if (tparams.head.eq(tparam))
-              return args.head match {
-                case _: TypeBounds if !widenAbstract => TypeRef(pre, tparam)
+        case app: AppliedType =>
+          val tparams = cls.typeParams
+          val args = app.argsLst
+          var i = 0
+          while i < tparams.length && i < args.length do
+            if tparams(i) eq tparam then
+              return args(i) match
+                case _: TypeBounds if !widenAbstract => TypeRef(pre, tparams(i))
                 case arg => arg
-              }
-            tparams = tparams.tail
-            args = args.tail
-            idx += 1
-          }
+            i += 1
           NoType
         case base: AndOrType =>
           var tp1 = argForParam(base.tp1)
@@ -4255,23 +4245,12 @@ object Types extends TypeUtils {
 
     final override def isImplicitMethod: Boolean =
       companion.eq(ImplicitMethodType) || isContextualMethod
+
     final override def hasErasedParams(using Context): Boolean =
-      paramInfos.exists(p => p.hasAnnotation(defn.ErasedParamAnnot))
+      paramInfos.exists(_.isForErasedParam)
 
     final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType)
-
-    def paramErasureStatuses(using Context): List[Boolean] =
-      paramInfosList.map(p => p.hasAnnotation(defn.ErasedParamAnnot))
-
-    def erasedPositions(using Context): BitSet =
-      var bs = BitSet.empty
-      var i = 0
-      val pinfos = paramInfos
-      while i < pinfos.length do
-        if pinfos(i).hasAnnotation(defn.ErasedParamAnnot) then bs += i
-        i += 1
-      bs
 
     def nonErasedParamCount(using Context): Int =
       paramInfos.count(p => !p.hasAnnotation(defn.ErasedParamAnnot))
@@ -4375,7 +4354,7 @@ object Types extends TypeUtils {
      */
     def checkValid2(mt: MethodType)(using Context): mt.type = {
       var t = new TypeTraverser:
-        val ps = mt.paramNames.zip(mt.paramRefs).toArray.toMap
+        val ps = mt.paramNames.zip(mt.paramRefs).toMap
         def traverse(t: Type) =
           t match
             case CapturingType(p, refs) =>
@@ -4427,8 +4406,8 @@ object Types extends TypeUtils {
 
     def newParamRef(n: Int): TypeParamRef = new TypeParamRefImpl(this, n)
 
-    @threadUnsafe lazy val typeParams: List[LambdaParam] =
-      List.tabulate(paramNames.length): i =>
+    @threadUnsafe lazy val typeParams: Lst[LambdaParam] =
+      Lst.tabulate(paramNames.length): i =>
         new LambdaParam(this, i)
 
     def derivedLambdaAbstraction(paramNames: Lst[TypeName], paramInfos: Lst[TypeBounds], resType: Type)(using Context): Type =
@@ -4473,10 +4452,10 @@ object Types extends TypeUtils {
         setVariances(tparams.tail, vs.tail)
 
     override val isDeclaredVarianceLambda = variances.nonEmpty
-    if isDeclaredVarianceLambda then setVariances(typeParams, variances)
+    if isDeclaredVarianceLambda then setVariances(typeParams.toList, variances)
 
     def declaredVariances: List[Variance] =
-      if isDeclaredVarianceLambda then typeParams.map(_.declaredVariance)
+      if isDeclaredVarianceLambda then typeParams.toList.map(_.declaredVariance)
       else Nil
 
     override def computeHash(bs: Binders): Int =
@@ -4574,7 +4553,7 @@ object Types extends TypeUtils {
         resultTypeExp: HKTypeLambda => Type)(using Context): HKTypeLambda =
       unique(new HKTypeLambda(paramNames, variances)(paramInfosExp, resultTypeExp))
 
-    def unapply(tl: HKTypeLambda): Some[(List[LambdaParam], Type)] =
+    def unapply(tl: HKTypeLambda): Some[(Lst[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
 
     def any(n: Int)(using Context): HKTypeLambda =
@@ -4646,7 +4625,7 @@ object Types extends TypeUtils {
         resultTypeExp: PolyType => Type)(using Context): PolyType =
       unique(new PolyType(paramNames)(paramInfosExp, resultTypeExp))
 
-    def unapply(tl: PolyType): Some[(List[LambdaParam], Type)] =
+    def unapply(tl: PolyType): Some[(Lst[LambdaParam], Type)] =
       Some((tl.typeParams, tl.resType))
   }
 
@@ -4854,7 +4833,7 @@ object Types extends TypeUtils {
         NoType
     }
 
-    def tyconTypeParams(using Context): List[ParamInfo] = {
+    def tyconTypeParams(using Context): Lst[ParamInfo] = {
       val tparams = tycon.typeParams
       if (tparams.isEmpty) HKTypeLambda.any(args.length).typeParams else tparams
     }
@@ -5503,7 +5482,7 @@ object Types extends TypeUtils {
                 rec(pat.toNestedPairs, variance)
               else
                 recArgPatterns(pat) { argPatterns =>
-                  val needsConcreteScrut = argPatterns.zip(tycon.typeParams).exists {
+                  val needsConcreteScrut = argPatterns.zip(tycon.typeParams.toList).exists {
                     (argPattern, tparam) => tparam.paramVarianceSign != 0 && argPattern.needsConcreteScrutInVariantPos
                   }
                   MatchTypeCasePattern.BaseTypeTest(tycon, argPatterns, needsConcreteScrut)
@@ -5520,7 +5499,7 @@ object Types extends TypeUtils {
               tycon.info match
                 case _: RealTypeBounds =>
                   recAbstractTypeConstructor(pat)
-                case TypeAlias(tl @ HKTypeLambda(onlyParam :: Nil, resType: RefinedType)) =>
+                case TypeAlias(tl @ HKTypeLambda(Lst1(onlyParam), resType: RefinedType)) =>
                   /* Unlike for eta-expanded classes, the typer does not automatically
                    * dealias poly type aliases to refined types. So we have to give them
                    * a chance here.
@@ -5569,7 +5548,7 @@ object Types extends TypeUtils {
 
       def recArgPatterns(pat: AppliedType)(whenNotTypeTest: List[MatchTypeCasePattern] => MatchTypeCaseResult): MatchTypeCaseResult =
         val AppliedType(tycon, args) = pat
-        val tparams = tycon.typeParams
+        val tparams = tycon.typeParams.toList
         val argPatterns = args.zip(tparams).map { (arg, tparam) =>
           rec(arg, tparam.paramVarianceSign)
         }
@@ -6144,7 +6123,7 @@ object Types extends TypeUtils {
                   foldOver(vmap, t)
             val vmap = accu(VarianceMap.empty, samMeth.info)
             val tparams = tycon.typeParamSymbols
-            val args1 = args.zipWithConserve(tparams):
+            val args1 = args.zipWithConserve(tparams.toList):
               case (arg @ TypeBounds(lo, hi), tparam) =>
                 val v = vmap.computedVariance(tparam)
                 if v != null && v < 0 then lo
@@ -6256,7 +6235,7 @@ object Types extends TypeUtils {
      *  of instantiations in the constraint that are not yet propagated to the
      *  instance types of type variables.
      */
-    protected def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
+    protected def tyconTypeParams(tp: AppliedType)(using Context): Lst[ParamInfo] =
       tp.tyconTypeParams
   end VariantTraversal
 
@@ -6467,7 +6446,7 @@ object Types extends TypeUtils {
             derivedSelect(tp, prefix1)
 
         case tp: AppliedType =>
-          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp)))
+          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp).toList))
 
         case tp: LambdaType =>
           mapOverLambda(tp)
@@ -6821,7 +6800,7 @@ object Types extends TypeUtils {
               case nil =>
                 true
             }
-            if (distributeArgs(args, tyconTypeParams(tp)))
+            if (distributeArgs(args, tyconTypeParams(tp).toList))
               range(tp.derivedAppliedType(tycon, loBuf.toList),
                     tp.derivedAppliedType(tycon, hiBuf.toList))
             else if tycon.isLambdaSub || args.exists(isRangeOfNonTermTypes) then
@@ -6987,7 +6966,7 @@ object Types extends TypeUtils {
             }
             foldArgs(acc, tparams.tail, args.tail)
           }
-        foldArgs(this(x, tycon), tyconTypeParams(tp), args)
+        foldArgs(this(x, tycon), tyconTypeParams(tp).toList, args)
 
       case _: BoundType | _: ThisType => x
 

@@ -12,6 +12,7 @@ import reporting.*
 import transform.MegaPhase.MiniPhase
 import util.LinearSet
 import dotty.tools.initialize
+import util.Lst
 
 /** A Tail Rec Transformer.
  *
@@ -138,7 +139,7 @@ class TailRec extends MiniPhase {
       // than first one will collect info about which transformations and rewritings should be applied
       // and second one will actually apply,
       // now this speculatively transforms tree and throws away result in many cases
-      val transformer = new TailRecElimination(method, enclosingClass, tree.termParamss.head.map(_.symbol), mandatory)
+      val transformer = new TailRecElimination(method, enclosingClass, tree.termParamss.head.mapToLst(_.symbol), mandatory)
       val rhsSemiTransformed = transformer.transform(tree.rhs)
 
       if (transformer.rewrote) {
@@ -149,7 +150,7 @@ class TailRec extends MiniPhase {
         val initialVarDefs = {
           val initialParamVarDefs = rewrittenParamSyms.lazyZip(varsForRewrittenParamSyms).map {
             (param, local) => ValDef(local.asTerm, ref(param))
-          }
+          }.toList
           varForRewrittenThis match {
             case Some(local) => ValDef(local.asTerm, This(enclosingClass)) :: initialParamVarDefs
             case none => initialParamVarDefs
@@ -228,7 +229,7 @@ class TailRec extends MiniPhase {
     else noTailTransform(failureReported = false)
   }
 
-  class TailRecElimination(method: Symbol, enclosingClass: ClassSymbol, paramSyms: List[Symbol], isMandatory: Boolean) extends TreeMap {
+  class TailRecElimination(method: Symbol, enclosingClass: ClassSymbol, paramSyms: Lst[Symbol], isMandatory: Boolean) extends TreeMap {
 
     var rewrote: Boolean = false
     var failureReported: Boolean = false
@@ -241,9 +242,9 @@ class TailRec extends MiniPhase {
     /** The local `var` that replaces `this`, if it is modified in at least one recursive call. */
     var varForRewrittenThis: Option[Symbol] = None
     /** The subset of `paramSyms` that are modified in at least one recursive call, and which therefore need a replacement `var`. */
-    var rewrittenParamSyms: List[Symbol] = Nil
+    var rewrittenParamSyms: Lst[Symbol] = Lst()
     /** The replacement `var`s for the params in `rewrittenParamSyms`. */
-    var varsForRewrittenParamSyms: List[Symbol] = Nil
+    var varsForRewrittenParamSyms: Lst[Symbol] = Lst()
 
     private def getVarForRewrittenThis()(using Context): Symbol =
       varForRewrittenThis match {
@@ -261,8 +262,8 @@ class TailRec extends MiniPhase {
       rewrittenParamSyms.indexOf(param) match {
         case -1 =>
           val sym = newSymbol(method, TailLocalName.fresh(param.name.toTermName), Synthetic | Mutable, param.info)
-          rewrittenParamSyms ::= param
-          varsForRewrittenParamSyms ::= sym
+          rewrittenParamSyms = param +: rewrittenParamSyms
+          varsForRewrittenParamSyms = sym +: varsForRewrittenParamSyms
           sym
         case index => varsForRewrittenParamSyms(index)
       }
@@ -354,7 +355,7 @@ class TailRec extends MiniPhase {
             rewrote = true
 
             val assignParamPairs = for {
-              (param, arg) <- paramSyms.zip(arguments)
+              (param, arg) <- paramSyms.toList.zip(arguments)
               if (arg match {
                 case arg: Ident => arg.symbol != param
                 case _ => true

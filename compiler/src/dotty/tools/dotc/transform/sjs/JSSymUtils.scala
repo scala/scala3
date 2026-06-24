@@ -202,7 +202,7 @@ object JSSymUtils {
       }
 
       val paramInfosAtElimEVT = atPhase(elimErasedValueTypePhase) {
-        paramNamesAndTypes.toList.toMap
+        paramNamesAndTypes.toMap
       }
 
       {for ((paramName, paramInfoNow) <- paramNamesAndTypes) yield {

@@ -1979,7 +1979,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def appliedTo(targs: List[TypeRepr]): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr =
-          self.subst(from, to)
+          self.subst(from.toLst, to.toLst)
 
         def typeArgs: List[TypeRepr] = self match
           case AppliedType(_, args) => args
@@ -2415,7 +2415,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
         def paramBounds: List[TypeBounds] = self.paramInfosList
         def paramVariances: List[Flags] =
-          self.typeParams.map(_.paramVariance)
+          self.typeParams.toList.map(_.paramVariance)
       end extension
     end TypeLambdaMethods
 
@@ -2848,7 +2848,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
                 case (AppliedType(tycon, args), pt: PolyType) =>
                   xCheckMacroAssert(
                     args.length == pt.typeParams.length &&
-                    args.zip(pt.typeParams).forall {
+                    args.toLst.zip(pt.typeParams).forall {
                       case (arg, param) => arg == param.paramRef
                     },
                     "Constructor result type does not correspond to the declared type parameters"
@@ -2921,7 +2921,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val privateWithin1 = if privateWithin.isTerm then Symbol.noSymbol else privateWithin
         checkValidFlags(flags.toTermFlags, Flags.validMethodFlags)
         val method = dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin1)
-        method.setParamss(method.paramSymss)
+        method.setParamss(method.paramSymss.map(_.toLst))
         method
       def newVal(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
         xCheckMacroAssert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
@@ -3116,7 +3116,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
                 if typeA.isTypeParam && typeB.isTypeParam then
                   // put type params at the beginning (and sort them by declaration order)
                   val pl = typeA.owner
-                  val typeParamPositionMap = pl.typeParams.map(_.asInstanceOf[Symbol]).zipWithIndex.toMap
+                  val typeParamPositionMap = pl.typeParamsList.map(_.asInstanceOf[Symbol]).zipWithIndex.toMap
                   typeParamPositionMap(typeA) < typeParamPositionMap(typeB)
                 else if typeA.isTypeParam then true
                 else if typeB.isTypeParam then false
@@ -3129,7 +3129,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def declarations: List[Symbol] =
           self.typeRef.info.decls.toList
 
-        def paramSymss: List[List[Symbol]] = self.denot.paramSymss
+        def paramSymss: List[List[Symbol]] = self.denot.paramSymss.map(_.toList)
         def primaryConstructor: Symbol =
           val initialPrimary = self.denot.primaryConstructor
           // Java outline parser creates a dummyConstructor. We want to avoid returning it here,

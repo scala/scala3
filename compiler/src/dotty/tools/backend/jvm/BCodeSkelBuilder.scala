@@ -765,7 +765,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val enclosingClass = origSym.owner.asClass
         new TreeTypeMap(
           typeMap = _.substThis(enclosingClass, selfParamRef.symbol.termRef)
-            .subst(dd.termParamss.head.map(_.symbol), regularParamRefs.map(_.symbol.termRef)),
+            .subst(dd.termParamss.head.mapToLst(_.symbol), regularParamRefs.mapToLst(_.symbol.termRef)),
           treeMap = {
             case tree: This if tree.symbol == enclosingClass =>
               // Since we want the positions to be accurate in the bytecode, we preserve

@@ -94,8 +94,8 @@ trait FullParameterization {
       case info: ExprType => (0, info.resultType)
       case _ => (0, info)
     }
-    val ctparams = if (abstractOverClass) clazz.typeParams else Nil
-    val ctnames = ctparams.mapToLst(_.name)
+    val ctparams = if (abstractOverClass) clazz.typeParams else Lst()
+    val ctnames = ctparams.map(_.name)
 
     /** The method result type */
     def resultType(mapClassParams: Type => Type) = {
@@ -108,13 +108,14 @@ trait FullParameterization {
 
     /** Replace class type parameters by the added type parameters of the polytype `pt` */
     def mapClassParams(tp: Type, pt: PolyType): Type = {
-      val classParamsRange = (mtparamCount until mtparamCount + ctparams.length).toList
-      tp.subst(ctparams, classParamsRange map (pt.paramRefs(_)))
+      val prefs = Lst.tabulate(ctparams.length): i =>
+        pt.paramRefs(i + mtparamCount)
+      tp.subst(ctparams, prefs)
     }
 
     /** The bounds for the added type parameters of the polytype `pt` */
     def mappedClassBounds(pt: PolyType): Lst[TypeBounds] =
-      ctparams.mapToLst(tparam => mapClassParams(tparam.info, pt).bounds)
+      ctparams.map(tparam => mapClassParams(tparam.info, pt).bounds)
 
     info match {
       case info: PolyType =>
@@ -132,11 +133,11 @@ trait FullParameterization {
   /** The type parameters (skolems) of the method definition `originalDef`,
    *  followed by the class parameters of its enclosing class.
    */
-  private def allInstanceTypeParams(originalDef: DefDef, abstractOverClass: Boolean)(using Context): List[Symbol] =
+  private def allInstanceTypeParams(originalDef: DefDef, abstractOverClass: Boolean)(using Context): Lst[Symbol] =
     if (abstractOverClass)
-      originalDef.leadingTypeParams.map(_.symbol) ::: originalDef.symbol.enclosingClass.typeParams
+      originalDef.leadingTypeParams.mapToLst(_.symbol) ++ originalDef.symbol.enclosingClass.typeParams
     else
-      originalDef.leadingTypeParams.map(_.symbol)
+      originalDef.leadingTypeParams.mapToLst(_.symbol)
 
   /** Given an instance method definition `originalDef`, return a
    *  fully parameterized method definition derived from `originalDef`, which
@@ -151,7 +152,7 @@ trait FullParameterization {
       val origMeth = originalDef.symbol
       val origClass = origMeth.enclosingClass.asClass
       val origLeadingTypeParamSyms = allInstanceTypeParams(originalDef, abstractOverClass)
-      val origOtherParamSyms = originalDef.trailingParamss.flatten.map(_.symbol)
+      val origOtherParamSyms = originalDef.trailingParamss.flatten.mapToLst(_.symbol)
       val thisRef :: argRefs = vrefss.flatten: @unchecked
 
       /** If tree should be rewired, the rewired tree, otherwise EmptyTree.
@@ -204,7 +205,7 @@ trait FullParameterization {
 
       new TreeTypeMap(
         typeMap = rewireType(_)
-          .subst(origLeadingTypeParamSyms ++ origOtherParamSyms, (trefs ++ argRefs).tpes)
+          .subst(origLeadingTypeParamSyms ++ origOtherParamSyms, (trefs ++ argRefs).mapToLst(_.tpe))
           .substThisUnlessStatic(origClass, thisRef.tpe),
         treeMap = {
           case tree: This if tree.symbol == origClass => thisRef.withSpan(tree.span)
@@ -223,7 +224,7 @@ trait FullParameterization {
   def forwarder(derived: TermSymbol, originalDef: DefDef, abstractOverClass: Boolean = true, liftThisType: Boolean = false)(using Context): Tree = {
     val fun: Tree =
       ref(derived.termRef)
-        .appliedToTypes(allInstanceTypeParams(originalDef, abstractOverClass).map(_.typeRef))
+        .appliedToTypes(allInstanceTypeParams(originalDef, abstractOverClass).map(_.typeRef).toList)
         .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
     val fwd =
       if !liftThisType then

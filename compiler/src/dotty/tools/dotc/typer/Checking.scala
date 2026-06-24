@@ -113,7 +113,7 @@ object Checking {
     val AppliedTypeTree(tycon, args) = tree
     // If `args` is a list of named arguments, return corresponding type parameters,
     // otherwise return type parameters unchanged
-    val tparams = tycon.tpe.typeParams.toLst
+    val tparams = tycon.tpe.typeParams
     val bounds = tparams.map(_.paramInfoAsSeenFrom(tree.tpe).bounds)
     def instantiate(bound: Type, args: Lst[Type]) =
       tparams.headOption match
@@ -902,10 +902,9 @@ object Checking {
 
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */
   def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
-    lazy val params = sym.paramSymss.flatten
     for
       sym2 <- sym.allOverriddenSymbols
-      (p1, p2) <- sym.paramSymss.flatten.lazyZip(sym2.paramSymss.flatten)
+      (p1, p2) <- sym.paramSymss.flattenLst.lazyZip(sym2.paramSymss.flattenLst)
       if p1.is(Inline) != p2.is(Inline)
     do
       report.error(

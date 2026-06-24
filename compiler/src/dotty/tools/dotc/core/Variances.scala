@@ -4,6 +4,7 @@ package core
 import Types.*, Contexts.*, Flags.*, Symbols.*, Annotations.*
 import TypeApplications.TypeParamInfo
 import Decorators.*
+import util.{Lst, LstStartingWith}
 
 object Variances {
 
@@ -57,13 +58,13 @@ object Variances {
    *  of corresponding type parameters `tparams2`?
    *  This is only the case if `tparams1` and `tparams2` have the same length.
    */
-  def variancesConform(tparams1: List[TypeParamInfo], tparams2: List[TypeParamInfo])(using Context): Boolean =
+  def variancesConform(tparams1: Lst[TypeParamInfo], tparams2: Lst[TypeParamInfo])(using Context): Boolean =
     val needsDetailedCheck = tparams2 match
-      case (_: Symbol) :: _ => true
-      case LambdaParam(tl: HKTypeLambda, _) :: _ => tl.isDeclaredVarianceLambda
+      case LstStartingWith(_: Symbol) => true
+      case LstStartingWith(LambdaParam(tl: HKTypeLambda, _)) => tl.isDeclaredVarianceLambda
       case _ => false
     if needsDetailedCheck then tparams1.corresponds(tparams2)(varianceConforms)
-    else tparams1.hasSameLengthAs(tparams2)
+    else tparams1.length == tparams2.length
 
   def varianceSign(v: Variance): String = varianceSign(varianceToInt(v))
   def varianceLabel(v: Variance): String = varianceLabel(varianceToInt(v))

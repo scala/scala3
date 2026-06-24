@@ -363,7 +363,7 @@ object QuotesAndSplices {
       override def transform(tree: Tree)(using Context) = tree match
         // TODO: handle TypeBoundsTree, LambdaTypeTree as well as method parameters in DefTrees?
         case tree @ AppliedTypeTree(tpt, args) =>
-          val args1: List[Tree] = args.zipWithConserve(tpt.tpe.typeParams.map(_.paramVarianceSign)) { (arg, v) =>
+          val args1: List[Tree] = args.zipWithConserve(tpt.tpe.typeParams.toList.map(_.paramVarianceSign)) { (arg, v) =>
             arg.tpe match {
               case _: TypeBounds => transform(arg)
               case _ => atVariance(v * variance)(transform(arg))
@@ -384,9 +384,9 @@ object QuotesAndSplices {
 
       val bounds = typeargs.mapToLst(_ => TypeBounds.empty)
       val resultTypeExp = (pt: PolyType) => {
-        val fromSymbols = typeargs map (_.typeSymbol)
-        val args1 = args.toLst.map(_.subst(fromSymbols, pt.paramRefsList))
-        val resultType1 = resultType.subst(fromSymbols, pt.paramRefsList)
+        val fromSymbols = typeargs.mapToLst(_.typeSymbol)
+        val args1 = args.toLst.map(_.subst(fromSymbols, pt.paramRefs))
+        val resultType1 = resultType.subst(fromSymbols, pt.paramRefs)
         MethodType(args1, resultType1)
       }
       defn.PolyFunctionOf(PolyType(typeargs1)(_ => bounds, resultTypeExp))

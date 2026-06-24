@@ -166,7 +166,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *
    *  Note: This is only used briefly in Typer and does not need the copy/transform/fold infrastructure.
    */
-  case class InLambdaTypeTree(isResult: Boolean, tpFun: (List[TypeSymbol], List[TermSymbol]) => Type)(implicit @constructorOnly src: SourceFile) extends Tree
+  case class InLambdaTypeTree(isResult: Boolean, tpFun: (Lst[TypeSymbol], Lst[TermSymbol]) => Type)(implicit @constructorOnly src: SourceFile) extends Tree
 
   @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY)(using NoSource), WithoutTypeOrPos[Untyped] {
     override def isEmpty: Boolean = true
@@ -520,7 +520,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   def rawRef(tp: NamedType)(using Context): Tree =
     if tp.typeParams.isEmpty then ref(tp)
-    else AppliedTypeTree(ref(tp), tp.typeParams.map(_ => WildcardTypeBoundsTree()))
+    else AppliedTypeTree(ref(tp), tp.typeParams.toList.map(_ => WildcardTypeBoundsTree()))
 
   def rootDot(name: Name)(implicit src: SourceFile): Select = Select(Ident(nme.ROOTPKG), name)
   def scalaDot(name: Name)(implicit src: SourceFile): Select = Select(rootDot(nme.scala), name)

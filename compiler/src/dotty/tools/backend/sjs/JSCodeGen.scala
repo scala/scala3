@@ -3771,7 +3771,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genDynamicImportForwarder(clsSym: Symbol)(using Position): js.MethodDef = {
     withNewLocalNameScope {
       val ctor = clsSym.primaryConstructor
-      val paramSyms = ctor.paramSymss.flatten
+      val paramSyms = ctor.paramSymss.flattenLst.toList
       val paramDefs = paramSyms.map(genParamDef(_))
 
       val body = {
@@ -4180,7 +4180,7 @@ class JSCodeGen()(using genCtx: Context) {
                 js.ApplyDynamicImport(
                     js.ApplyFlags.empty,
                     encodeClassName(clsSym),
-                    encodeDynamicImportForwarderIdent(ctor.paramSymss.flatten),
+                    encodeDynamicImportForwarderIdent(ctor.paramSymss.flattenLst.toList),
                     genActualArgs(ctor, args))
             )
 
@@ -4777,7 +4777,7 @@ class JSCodeGen()(using genCtx: Context) {
      */
 
     val existedBeforeUncurry = atPhase(elimRepeatedPhase) {
-      sym.info.paramNamess.flattenLst.toArray.toSet
+      sym.info.paramNamess.flattenLst.toSet
     }
 
     for {

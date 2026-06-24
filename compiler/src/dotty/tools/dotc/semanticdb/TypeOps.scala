@@ -211,7 +211,7 @@ private[semanticdb] class TypeOps:
           )
 
         case cls: ClassInfo =>
-          val stparams = cls.cls.typeParams.sscopeOpt
+          val stparams = cls.cls.typeParamsList.sscopeOpt
           val sparents = cls.parents.map(_.toSemanticType(sym))
           val sself = cls.selfType.toSemanticType(sym)
           val decls = cls.decls.toList.sscopeOpt

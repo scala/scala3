@@ -8,7 +8,7 @@ import Phases.{gettersPhase, elimByNamePhase}
 import StdNames.nme
 import TypeOps.refineUsingParent
 import collection.mutable
-import util.{Stats, NoSourcePosition, EqHashMap, Lst}
+import util.{Stats, NoSourcePosition, EqHashMap, Lst, Lst1}
 import config.Config
 import config.Feature.{migrateTo3, sourceVersion}
 import config.Printers.{subtyping, gadts, matchTypes, capt, noPrinter}
@@ -1258,19 +1258,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         val tparams = tycon.typeParams
         val remainingTparams = otherTycon.typeParams.drop(d)
         variancesConform(remainingTparams, tparams) && {
-          val remainingTparamsLst = remainingTparams.toLst
           val adaptedTycon =
             if d > 0 then
-              val initialArgs = otherArgs.take(d)
+              val initialArgs = otherArgs.toLst.take(d)
               /** The arguments passed to `otherTycon` in the body of `tl` */
-              def bodyArgs(tl: HKTypeLambda) = initialArgs ++ tl.paramRefsList
+              def bodyArgs(tl: HKTypeLambda) = initialArgs ++ tl.paramRefs
               /** The bounds of the type parameters of `tl` */
               def adaptedBounds(tl: HKTypeLambda) =
                 val bodyArgsComputed = bodyArgs(tl)
-                remainingTparamsLst.map(_.paramInfo.bounds)
+                remainingTparams.map(_.paramInfo.bounds)
                   .mapConserve(_.substTypeParams(otherTycon, bodyArgsComputed).bounds)
 
-              HKTypeLambda(remainingTparamsLst.map(_.paramName))(
+              HKTypeLambda(remainingTparams.map(_.paramName))(
                 adaptedBounds,
                 tl => otherTycon.appliedTo(bodyArgs(tl)))
             else
@@ -1821,14 +1820,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *  @param  tp1       The applied type containing `args1`
    *  @param  tparams2  The type parameters of the type constructor applied to `args2`
    */
-  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: List[ParamInfo]): Boolean = {
+  def isSubArgs(args1: List[Type], args2: List[Type], tp1: Type, tparams2: Lst[ParamInfo]): Boolean = {
 
     /** The bounds of parameter `tparam`, where all references to type paramneters
      *  are replaced by corresponding arguments (or their approximations in the case of
      *  wildcard arguments).
      */
     def paramBounds(tparam: Symbol): TypeBounds =
-      tparam.info.substApprox(tparams2.asInstanceOf[List[Symbol]], args2).bounds
+      tparam.info.substApprox(tparams2.asInstanceOf[Lst[Symbol]], args2.toLst).bounds
 
     /** Test all arguments. Incomplete argument tests (according to isIncomplete) are deferred in
      *  the first run and picked up in the second.
@@ -1962,7 +1961,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             arg1 :: deferred1, arg2 :: deferred2, tparams2.head :: deferredTparams2)
       }
 
-    recurArgs(args1, args2, tparams2, canDefer = true, Nil, Nil, Nil)
+    recurArgs(args1, args2, tparams2.toList, canDefer = true, Nil, Nil, Nil)
 
   }
 
@@ -1971,7 +1970,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *   - the type parameters of `B` match one-by-one the variances of `tparams`,
    *   - `B` satisfies predicate `p`.
    */
-  private def testLifted(tp1: Type, tp2: Type, tparams: List[TypeParamInfo], p: Type => Boolean): Boolean = {
+  private def testLifted(tp1: Type, tp2: Type, tparams: Lst[TypeParamInfo], p: Type => Boolean): Boolean = {
     val classBounds = tp2.classSymbols
     def recur(bcs: List[ClassSymbol]): Boolean = bcs match {
       case bc :: bcs1 =>
@@ -2435,8 +2434,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         isSubTypeWhenFrozen(formal2, formal1)
 
     // If methods have erased parameters, then the erased parameters must match
-    val erasedValid = (!tp1.hasErasedParams && !tp2.hasErasedParams)
-      || (tp1.paramErasureStatuses == tp2.paramErasureStatuses)
+    val erasedValid = tp1.paramInfos.corresponds(tp2.paramInfos): (info1, info2) =>
+      info1.isForErasedParam == info2.isForErasedParam
     erasedValid && {
       val formals1 = tp1.paramInfos
       val formals2 = tp2.paramInfos
@@ -2802,26 +2801,24 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       op: (Type, Type) => Type, original: (Type, Type) => Type, combineVariance: (Variance, Variance) => Variance) = {
     val tparams1 = tp1.typeParams
     val tparams2 = tp2.typeParams
-    val tparams1Lst = tparams1.toLst
-    val tparams2Lst = tparams2.toLst
     def applied(tp: Type) = tp.appliedTo(tp.typeParams.map(_.paramInfoAsSeenFrom(tp)))
     if (tparams1.isEmpty)
       if (tparams2.isEmpty) op(tp1, tp2)
       else original(tp1, applied(tp2))
     else if (tparams2.isEmpty)
       original(applied(tp1), tp2)
-    else if tparams1Lst.length == tparams2Lst.length then
+    else if tparams1.length == tparams2.length then
       HKTypeLambda(
-        paramNames = HKTypeLambda.syntheticParamNames(tparams1Lst.length),
+        paramNames = HKTypeLambda.syntheticParamNames(tparams1.length),
         variances =
           if tp1.isDeclaredVarianceLambda && tp2.isDeclaredVarianceLambda then
-            tparams1.lazyZip(tparams2).map((p1, p2) => combineVariance(p1.paramVariance, p2.paramVariance))
+            tparams1.toList.lazyZip(tparams2.toList).map((p1, p2) => combineVariance(p1.paramVariance, p2.paramVariance))
           else Nil
       )(
         paramInfosExp = tl =>
-          tparams1Lst.zipWith(tparams2Lst): (tparam1, tparam2) =>
-            tl.integrate(tparams1Lst, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
-            tl.integrate(tparams2Lst, tparam2.paramInfoAsSeenFrom(tp2)).bounds,
+          tparams1.zipWith(tparams2): (tparam1, tparam2) =>
+            tl.integrate(tparams1, tparam1.paramInfoAsSeenFrom(tp1)).bounds &
+            tl.integrate(tparams2, tparam2.paramInfoAsSeenFrom(tp2)).bounds,
         resultTypeExp = tl =>
           original(tp1.appliedTo(tl.paramRefsList), tp2.appliedTo(tl.paramRefsList)))
     else original(applied(tp1), applied(tp2))
@@ -2835,7 +2832,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       tp2 match {
         case AppliedType(tycon2, args2)
         if tycon1.typeSymbol == tycon2.typeSymbol && tycon1 =:= tycon2 =>
-          val jointArgs = glbArgs(args1, args2, tycon1.typeParams)
+          val jointArgs = glbArgs(args1, args2, tycon1.typeParams.toList)
           if (jointArgs.forall(_.exists)) (tycon1 & tycon2).appliedTo(jointArgs)
           else NoType
         case _ =>
@@ -3225,7 +3222,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           val typeArgs = tp match
             case tp: TypeRef          => Nil
             case AppliedType(_, args) => args
-          cls.typeParams.sizeCompare(typeArgs) == 0
+          cls.typeParams.length == typeArgs.length
 
         def existsCommonBaseTypeWithDisjointArguments: Boolean =
           if !typeArgsMatch(tp1, cls1) || !typeArgsMatch(tp2, cls2) then
@@ -3349,7 +3346,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           || (cannotBeNothing(tp1) || cannotBeNothing(tp2))
       }
 
-    args1.lazyZip(args2).lazyZip(cls.typeParams).exists {
+    args1.lazyZip(args2).lazyZip(cls.typeParamsList).exists {
       (arg1, arg2, tparam) =>
         val v = tparam.paramVarianceSign
         if (v > 0)
@@ -3771,14 +3768,14 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
                 val innerScrutIsWidenedAbstract =
                   scrutIsWidenedAbstract
                     || (needsConcreteScrut && !isConcrete(scrut)) // no point in checking concreteness if it does not need to be concrete
-                matchArgs(argPatterns, baseArgs, classType.typeParams, innerScrutIsWidenedAbstract)
+                matchArgs(argPatterns, baseArgs, classType.typeParams.toList, innerScrutIsWidenedAbstract)
               case _ =>
                 false
 
           case MatchTypeCasePattern.AbstractTypeConstructor(tycon, argPatterns) =>
             scrut.dealias match
               case scrutDealias @ AppliedType(scrutTycon, args) if scrutTycon =:= tycon =>
-                matchArgs(argPatterns, args, tycon.typeParams, scrutIsWidenedAbstract)
+                matchArgs(argPatterns, args, tycon.typeParams.toList, scrutIsWidenedAbstract)
               case _ =>
                 false
 

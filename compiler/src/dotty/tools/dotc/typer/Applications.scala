@@ -5,7 +5,7 @@ package typer
 import core.*
 import ast.{Trees, tpd, untpd, desugar, TreeTypeMap}
 import util.Stats.record
-import util.{SrcPos, NoSourcePosition, Property, Lst}
+import util.{SrcPos, NoSourcePosition, Property, Lst, LstStartingWith}
 import Contexts.*
 import Flags.*
 import Symbols.*
@@ -704,7 +704,7 @@ trait Applications extends Compatibility {
           else sym.paramSymss
         paramss.find(_.exists(_.isTerm)) match
           case Some(ps) if ps.exists(_.hasAnnotation(defn.DeprecatedNameAnnot)) =>
-            ps.flatMap: p =>
+            ps.toList.flatMap: p =>
               p.getAnnotation(defn.DeprecatedNameAnnot).map(p.name -> _)
             .toMap
           case _ => Map.empty
@@ -1797,14 +1797,14 @@ trait Applications extends Compatibility {
          *  (non-implicit) term parameters list.
          */
         @tailrec
-        def hasTrailingTypeParams(paramss: List[List[Symbol]], acc: Boolean = false): Boolean =
+        def hasTrailingTypeParams(paramss: List[Lst[Symbol]], acc: Boolean = false): Boolean =
           paramss match
             case Nil => acc
             case params :: rest =>
               val newAcc =
                 params match
-                  case param :: _ if param.isType => true
-                  case param :: _ if param.isTerm && !param.isOneOf(GivenOrImplicit) => false
+                  case LstStartingWith(param) if param.isType => true
+                  case LstStartingWith(param) if param.isTerm && !param.isOneOf(GivenOrImplicit) => false
                   case _ => acc
               hasTrailingTypeParams(paramss.tail, newAcc)
 
@@ -1921,7 +1921,7 @@ trait Applications extends Compatibility {
     end unapplyImplicits
 
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
-    def addBinders(unapp: Tree, bound: List[Symbol]) = unapp match {
+    def addBinders(unapp: Tree, bound: Lst[Symbol]) = unapp match {
       case TypeApply(fn, args) =>
         var remain = bound.toSet
         def addBinder(arg: Tree) = arg.tpe.stripTypeVar match {
@@ -1996,7 +1996,7 @@ trait Applications extends Compatibility {
     val preciseTp = tree1.tpe.widenSkolems
     val classTp = typedType(nw.tpt).tpe
     def classSymbolHasOnlyTrackedParameters =
-      !classTp.classSymbol.primaryConstructor.paramSymss.nestedExists: param =>
+      !classTp.classSymbol.primaryConstructor.paramSymss.nestedExistsLst: param =>
         param.isTerm && !param.is(Tracked)
     if !preciseTp.isError && !classSymbolHasOnlyTrackedParameters then
       report.warning(OnlyFullyDependentAppliedConstructorType(), tree.srcPos)
@@ -2279,7 +2279,7 @@ trait Applications extends Compatibility {
                 def mapArg(arg: Type, tparam: TypeParamInfo) =
                   if (variance > 0 && tparam.paramVarianceSign < 0) defn.FunctionNOf(arg :: Nil, defn.UnitType)
                   else arg
-                mapOver(t.derivedAppliedType(tycon, args.zipWithConserve(tycon.typeParams)(mapArg)))
+                mapOver(t.derivedAppliedType(tycon, args.zipWithConserve(tycon.typeParams.toList)(mapArg)))
               case _ => mapOver(t)
           (flip(tp1p) relaxed_<:< flip(tp2p)) || viewExists(tp1, tp2)
         else
@@ -2790,13 +2790,13 @@ trait Applications extends Compatibility {
   /** The largest suffix of `paramss` that has the same first parameter name as `t`,
    *  plus the number of term parameters in `paramss` that come before that suffix.
    */
-  def trimParamss(t: Type, paramss: List[List[Symbol]])(using Context): (List[List[Symbol]], Int) = t match
+  def trimParamss(t: Type, paramss: List[Lst[Symbol]])(using Context): (List[Lst[Symbol]], Int) = t match
     case MethodType(pnames) if pnames.isEmpty => trimParamss(t.resultType, paramss)
     case t: MethodOrPoly =>
       val firstParamName = t.paramNames.head
-      def recur(pss: List[List[Symbol]], skipped: Int): (List[List[Symbol]], Int) =
+      def recur(pss: List[Lst[Symbol]], skipped: Int): (List[Lst[Symbol]], Int) =
         (pss: @unchecked) match
-          case (ps @ (p :: _)) :: pss1 =>
+          case (ps @ LstStartingWith(p)) :: pss1 =>
             if p.name == firstParamName then (pss, skipped)
             else recur(pss1, if p.name.isTermName then skipped + ps.length else skipped)
           case Nil =>

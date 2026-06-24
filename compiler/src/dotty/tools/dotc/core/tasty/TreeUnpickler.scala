@@ -956,7 +956,7 @@ class TreeUnpickler(reader: TastyReader,
           val paramDefss = readParamss()(using localCtx)
           val tpt = readTpt()(using localCtx)
           val paramss = normalizeIfConstructor(
-              paramDefss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
+              paramDefss.map(_.mapToLst(_.symbol)), name == nme.CONSTRUCTOR)
           val resType =
             if name == nme.CONSTRUCTOR then
               effectiveResultType(sym, paramss)
@@ -998,8 +998,8 @@ class TreeUnpickler(reader: TastyReader,
 
             def opaqueToBounds(info: Type): Type =
               val tparamSyms = rhs match
-                case LambdaTypeTree(tparams, body) => tparams.map(_.symbol.asType)
-                case _ => Nil
+                case LambdaTypeTree(tparams, body) => tparams.mapToLst(_.symbol.asType)
+                case _ => Lst()
               sym.opaqueToBounds(info, rhs, tparamSyms)
 
             val info = checkNonCyclic(sym, rhs.tpe.toBounds, reportErrors = false)
@@ -1060,7 +1060,7 @@ class TreeUnpickler(reader: TastyReader,
           else
             val args = until(end)(readTpt())
             val cls = tycon.classSymbol
-            assert(cls.typeParams.hasSameLengthAs(args))
+            assert(cls.typeParams.length == args.length)
             cls.typeRef.appliedTo(args.tpes)
         case APPLY | BLOCK =>
           val end = readEnd()
@@ -1146,17 +1146,17 @@ class TreeUnpickler(reader: TastyReader,
             def complete(denot: SymDenotation)(using Context) =
               val sym = denot.symbol
               val pflags = flags | Flags.Param
-              val tparamRefs = tparams.map(_.symbol.asType)
-              lazy val derivedTparamSyms: List[TypeSymbol] = tparams.map: tdef =>
+              val tparamRefs = tparams.mapToLst(_.symbol.asType)
+              lazy val derivedTparamSyms: Lst[TypeSymbol] = tparams.mapToLst: tdef =>
                 val completer = new LazyType {
                   def complete(denot: SymDenotation)(using Context) =
                     denot.info = tdef.symbol.asType.info.subst(tparamRefs, derivedTparamRefs)
                 }
                 newSymbol(sym, tdef.name, Flags.JavaDefined | Flags.Param, completer, coord = cls.coord)
-              lazy val derivedTparamRefs: List[Type] = derivedTparamSyms.map(_.typeRef)
+              lazy val derivedTparamRefs: Lst[Type] = derivedTparamSyms.map(_.typeRef)
               val vparamSym =
                 newSymbol(sym, nme.syntheticParamName(1), pflags, defn.UnitType, coord = cls.coord)
-              val vparamSymss: List[List[Symbol]] = List(vparamSym) :: Nil
+              val vparamSymss: List[Lst[Symbol]] = Lst(vparamSym) :: Nil
               val paramSymss =
                 if derivedTparamSyms.nonEmpty then derivedTparamSyms :: vparamSymss else vparamSymss
               val res = effectiveResultType(sym, paramSymss)
