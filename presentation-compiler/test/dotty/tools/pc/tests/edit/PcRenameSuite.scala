@@ -545,3 +545,10 @@ class PcRenameSuite extends BasePcRenameSuite:
         |""".stripMargin,
       wrap = false
     )
+
+  @Test def `named-tuple-field` =
+    check(
+      """|val x: (name: String, age: Int) = ???
+         |val y = x.<<na@@me>>
+         |""".stripMargin
+    )
