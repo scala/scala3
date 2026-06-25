@@ -4726,8 +4726,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val usingDefaultArgs =
               wtp.paramNames.zipWithIndex
                 .exists((n, i) => !namedArgs.exists(_.name == n) && !findDefaultArgument(i).isEmpty)
+            // When `tree` is a Block or Inlined produced by `wrapDefs`, `wtp` was
+            // approximated by `avoidingType` and may have lost the precise types
+            // needed for implicit search (issue #23952). Retry so that `typedApply`
+            // can recover the un-approximated method type via `methPart`.
+            val treeWrapsApp = tree.isInstanceOf[Block] || tree.isInstanceOf[Inlined]
 
-            if !usingDefaultArgs then
+            if !usingDefaultArgs && !treeWrapsApp then
               issueErrors(tree, args, failureType)
             else
               val app = cpy.Apply(tree)(untpd.TypedSplice(tree), namedArgs)
