@@ -21,6 +21,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.printing.RefinedPrinter
 import dotty.tools.dotc.printing.Texts.Text
+import dotty.tools.dotc.util.Lst
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.AutoImports.ImportSel
 import dotty.tools.pc.IndexedContext
@@ -547,7 +548,7 @@ class ShortenedTypePrinter(
       .map(_.info)
       .collect {
         // AppliedType(TypeRef(ThisType(TypeRef(NoPrefix,module class reflect)),trait ClassTag),List(TypeRef(NoPrefix,type T)))
-        case AppliedType(tycon, TypeRef(_, tparam) :: Nil)
+        case AppliedType(tycon, Lst.Singleton(TypeRef(_, tparam)))
             if tparam.isInstanceOf[Symbol] =>
           (tycon, tparam.asInstanceOf[Symbol])
       }
