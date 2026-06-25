@@ -1912,7 +1912,7 @@ class Objects(using Context @constructorOnly):
             // product sequence match
             val selectors = productSelectors(resultTp)
             assert(selectors.length <= pats.length)
-            selectors.init.zip(pats).map { (sel, pat) =>
+            selectors.init.zip(pats.toLst).map { (sel, pat) =>
               val selectRes = call(resToMatch, sel, Nil, resultTp, superType = NoType, needResolve = true)
               evalPattern(selectRes, pat)
             }
@@ -1932,7 +1932,7 @@ class Objects(using Context @constructorOnly):
             // product match
             val selectors = productSelectors(unapplyResTp)
             assert(selectors.length == pats.length)
-            selectors.zip(pats).map { (sel, pat) =>
+            selectors.zip(pats.toLst).map { (sel, pat) =>
               val selectRes = call(unapplyRes, sel, Nil, unapplyResTp, superType = NoType, needResolve = true)
               evalPattern(selectRes, pat)
             }
@@ -1952,7 +1952,7 @@ class Objects(using Context @constructorOnly):
             else
               val getResTp = getDenot.info.finalResultType
               val selectors = productSelectors(getResTp).take(pats.length)
-              selectors.zip(pats).map { (sel, pat) =>
+              selectors.zip(pats.toLst).map { (sel, pat) =>
                 val selectRes = call(unapplyRes, sel, Nil, getResTp, superType = NoType, needResolve = true)
                 evalPattern(selectRes, pat)
               }

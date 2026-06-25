@@ -68,7 +68,7 @@ class TypeUtils:
 
     /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs
      */
-    def tupleElementTypes(using Context): Option[List[Type]] =
+    def tupleElementTypes(using Context): Option[Lst[Type]] =
       tupleElementTypesUpTo(Int.MaxValue)
 
     /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs
@@ -78,19 +78,19 @@ class TypeUtils:
      *                   If false, never normalize and dealias only to find *:
      *                   and EmptyTuple types. This is useful for printing.
      */
-    def tupleElementTypesUpTo(bound: Int, normalize: Boolean = true)(using Context): Option[List[Type]] =
-      def recur(tp: Type, bound: Int): Option[List[Type]] =
-        if bound < 0 then Some(Nil)
+    def tupleElementTypesUpTo(bound: Int, normalize: Boolean = true)(using Context): Option[Lst[Type]] =
+      def recur(tp: Type, bound: Int): Option[Lst[Type]] =
+        if bound < 0 then Some(Lst())
         else (if normalize then tp.dealias.normalized else tp).dealias match
-          case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
-            recur(tl, bound - 1).map(hd :: _)
+          case AppliedType(tycon, args) if tycon.isRef(defn.PairClass) && args.length == 2 =>
+            recur(args(1), bound - 1).map(args(0) +: _)
           case tp: AppliedType if defn.isTupleNType(tp) && normalize =>
             Some(tp.args)  // if normalize is set, use the dealiased tuple
                            // otherwise rely on the default case below to print unaliased tuples.
           case tp: SkolemType =>
             recur(tp.underlying, bound)
           case tp: SingletonType =>
-            if tp.termSymbol == defn.EmptyTupleModule then Some(Nil)
+            if tp.termSymbol == defn.EmptyTupleModule then Some(Lst())
             else if normalize then recur(tp.widen, bound)
             else None
           case _ =>
@@ -140,24 +140,24 @@ class TypeUtils:
         case Some(types) => TypeOps.nestedPairs(types)
         case None => throw new AssertionError("not a tuple")
 
-    def namedTupleElementTypesUpTo(bound: Int, derived: Boolean, normalize: Boolean = true)(using Context): List[(TermName, Type)] =
-      def extractNamesTypes(nmes: Type, vals: Type): List[(TermName, Type)] =
-        val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil).map(_.dealias).map:
+    def namedTupleElementTypesUpTo(bound: Int, derived: Boolean, normalize: Boolean = true)(using Context): Lst[(TermName, Type)] =
+      def extractNamesTypes(nmes: Type, vals: Type): Lst[(TermName, Type)] =
+        val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Lst()).map(_.dealias).map:
           case ConstantType(Constant(str: String)) => str.toTermName
           case t => throw TypeError(em"Malformed NamedTuple: names must be string types, but $t was found.")
-        val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil)
+        val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Lst())
         names.zip(values)
 
       (if normalize then self.normalized else self).dealias match
         // for desugaring and printer, ignore derived types to avoid infinite recursion in NamedTuple.unapply
         case defn.NamedTupleDirect(nmes, vals) => extractNamesTypes(nmes, vals)
-        case t if !derived => Nil
+        case t if !derived => Lst()
         // default cause, used for post-typing
         case defn.NamedTuple(nmes, vals) => extractNamesTypes(nmes, vals)
         case t =>
-          Nil
+          Lst()
 
-    def namedTupleElementTypes(derived: Boolean)(using Context): List[(TermName, Type)] =
+    def namedTupleElementTypes(derived: Boolean)(using Context): Lst[(TermName, Type)] =
       namedTupleElementTypesUpTo(Int.MaxValue, derived)
 
     /** If this is a generic tuple type with arity <= MaxTupleArity, return the
@@ -268,7 +268,7 @@ class TypeUtils:
         def recur(ctpe: Type): Boolean = ctpe match
           case ctpe: PolyType =>
             if argTypes.isEmpty then recur(ctpe.resultType) // no need to know instances
-            else recur(ctpe.instantiate(self.argTypes.toLst))
+            else recur(ctpe.instantiate(self.argTypes))
           case ctpe: MethodType =>
             var paramInfos = ctpe.paramInfosList
             if adaptVarargs && paramInfos.length == argTypes.length + 1

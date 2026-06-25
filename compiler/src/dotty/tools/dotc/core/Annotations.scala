@@ -10,6 +10,7 @@ import printing.Texts.Text
 import cc.{isRetainsLike, RetainingAnnotation}
 import config.Feature.sourceVersion
 import Decorators.*
+import util.Lst
 
 import scala.annotation.internal.sharable
 
@@ -41,8 +42,8 @@ object Annotations {
     def arguments(using Context): List[Tree] = tpd.allTermArguments(tree)
 
     /** All type arguments of this annotation in a single flat list */
-    def argumentTypes(using Context): List[Type] =
-      tpd.allArguments(tree).filterConserve(_.isType).tpes
+    def argumentTypes(using Context): Lst[Type] =
+      tpd.allArguments(tree).filterConserve(_.isType).mapToLst(_.tpe)
 
     def argument(i: Int)(using Context): Option[Tree] = {
       val args = arguments
@@ -158,9 +159,9 @@ object Annotations {
       if tp eq this.tpe then this else CompactAnnotation(tp)
 
     override def arguments(using Context): List[Tree] =
-      argumentTypes.map(TypeTree(_))
+      argumentTypes.mapToList(TypeTree(_))
 
-    override def argumentTypes(using Context): List[Type] = tpe.argInfos
+    override def argumentTypes(using Context): Lst[Type] = tpe.argInfos
 
     def argumentType(i: Int)(using Context): Type =
       val args = argumentTypes
@@ -202,7 +203,7 @@ object Annotations {
       if tp.typeSymbol.isRetainsLike then RetainingAnnotation(tp)
       else new CompactAnnotation(tp)
     def apply(tree: Tree)(using Context): CompactAnnotation =
-      val argTypes = tpd.allArguments(tree).map(_.tpe)
+      val argTypes = tpd.allArguments(tree).mapToLst(_.tpe)
       apply(annotClass(tree).typeRef.appliedTo(argTypes))
   end CompactAnnotation
 
@@ -347,7 +348,7 @@ object Annotations {
 
       def unapply(ann: Annotation)(using Context): Option[Symbol] =
         if (ann.symbol == defn.ChildAnnot) {
-          val AppliedType(_, (arg: NamedType) :: Nil) = ann.tree.tpe: @unchecked
+          val AppliedType(_, Lst.Singleton(arg: NamedType)) = ann.tree.tpe: @unchecked
           Some(arg.symbol)
         }
         else None

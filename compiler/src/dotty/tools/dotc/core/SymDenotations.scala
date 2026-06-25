@@ -2368,7 +2368,7 @@ object SymDenotations {
                   case Lst.StartingWith(LambdaParam(_, _)) =>
                     recur(tp.superType)
                   case tparams: Lst[Symbol @unchecked] =>
-                    recur(tycon).substApprox(tparams, tp.argsLst)
+                    recur(tycon).substApprox(tparams, tp.args)
               record(tp, baseTp)
               baseTp
             }

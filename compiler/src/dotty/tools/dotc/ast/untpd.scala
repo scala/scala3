@@ -478,12 +478,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case TypedSplice(tpt1: tpd.Tree) =>
         val argTypes = tpt1.tpe.dealias.argTypesLo
         def wrap(tpe: Type) = TypeTree(tpe).withSpan(tpt.span)
-        (tpt, argTypes.map(wrap))
+        (tpt, argTypes.mapToList(wrap))
       case _ =>
         (tpt, Nil)
     }
     val nu: Tree = Select(New(tycon), nme.CONSTRUCTOR)
-    if (targs.nonEmpty) TypeApply(nu, targs) else nu
+    if targs.nonEmpty then TypeApply(nu, targs) else nu
   }
 
   def Block(stat: Tree, expr: Tree)(implicit src: SourceFile): Block =

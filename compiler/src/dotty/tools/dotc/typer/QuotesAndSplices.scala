@@ -136,7 +136,7 @@ trait QuotesAndSplices {
       val patType = (tree.typeargs.isEmpty, tree.args.isEmpty) match
         case (true, true) => pt
         case (true, false)  =>
-          defn.FunctionNOf(argTypes, pt)
+          defn.FunctionNOf(argTypes.toLst, pt)
         case (false,  _) =>
           PolyFunctionOf(typedTypeargs.tpes, argTypes, pt)
 
@@ -164,7 +164,7 @@ trait QuotesAndSplices {
     def isInBraces: Boolean = splice.span.end != splice.body.span.end
     if isInBraces then // ${x}(...) match an application
       val typedArgs = args.map(arg => typedExpr(arg))
-      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
+      val argTypes = typedArgs.mapToLst(_.tpe.widenTermRefExpr)
       val splice1 = typedSplicePattern(splice, defn.FunctionNOf(argTypes, pt))
       untpd.cpy.Apply(tree)(splice1.select(nme.apply), typedArgs).withType(pt)
     else // $x(...) higher-order quasipattern
@@ -185,7 +185,7 @@ trait QuotesAndSplices {
     if isInBraces then // ${x}[...](...) match an application
       val typedTypeargs = typeargs.map(arg => typedType(arg))
       val typedArgs = args.map(arg => typedExpr(arg))
-      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
+      val argTypes = typedArgs.mapToLst(_.tpe.widenTermRefExpr)
       val splice1 = typedSplicePattern(splice, ProtoTypes.PolyProto(typedArgs, defn.FunctionOf(argTypes, pt)))
       val typedTypeApply = untpd.cpy.TypeApply(typeApplyTree)(splice1.select(nme.apply), typedTypeargs)
       untpd.cpy.Apply(tree)(typedTypeApply, typedArgs).withType(pt)

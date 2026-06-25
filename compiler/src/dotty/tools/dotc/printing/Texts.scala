@@ -1,6 +1,7 @@
 package dotty.tools.dotc
 package printing
 import scala.annotation.internal.sharable
+import util.Lst
 
 object Texts {
 

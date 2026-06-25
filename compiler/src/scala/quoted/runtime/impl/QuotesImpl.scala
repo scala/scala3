@@ -573,10 +573,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
         withDefaultPos(tpd.Select(qualifier, name.toTermName))
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Term =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType))
-
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs.toLst, Types.WildcardType))
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType))
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs.toLst, returnType))
       def copy(original: Tree)(qualifier: Term, name: String): Select =
         original match
           case original: tpd.Select if original.name.toString == name =>
@@ -1977,7 +1976,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def appliedTo(targ: TypeRepr): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targ)
         def appliedTo(targs: List[TypeRepr]): TypeRepr =
-          dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
+          dotc.core.Types.decorateTypeApplications(self).appliedTo(targs.toLst)
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr =
           self.subst(from.toLst, to.toLst)
 
@@ -2115,7 +2114,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object AppliedType extends AppliedTypeModule:
       def apply(tycon: TypeRepr, args: List[TypeRepr]): AppliedType =
-        Types.AppliedType(tycon, args)
+        Types.AppliedType(tycon, args.toLst)
       def unapply(x: AppliedType): (TypeRepr, List[TypeRepr]) =
         (AppliedTypeMethods.tycon(x), AppliedTypeMethods.args(x))
     end AppliedType
@@ -2123,7 +2122,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given AppliedTypeMethods: AppliedTypeMethods with
       extension (self: AppliedType)
         def tycon: TypeRepr = self.tycon.stripTypeVar
-        def args: List[TypeRepr] = self.args.mapConserve(_.stripTypeVar)
+        def args: List[TypeRepr] = self.args.mapConserve(_.stripTypeVar).toList
       end extension
     end AppliedTypeMethods
 
@@ -2429,7 +2428,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object MatchCase extends MatchCaseModule:
       def apply(pattern: TypeRepr, rhs: TypeRepr): MatchCase =
-        Types.AppliedType(dotc.core.Symbols.defn.MatchCaseClass.typeRef, List(pattern, rhs))
+        Types.AppliedType(dotc.core.Symbols.defn.MatchCaseClass.typeRef, Lst(pattern, rhs))
       def unapply(x: MatchCase): (TypeRepr, TypeRepr) = (x.pattern, x.rhs)
     end MatchCase
 

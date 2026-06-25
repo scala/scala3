@@ -104,7 +104,7 @@ object Recheck:
     case tp @ defn.FunctionOf(pformals, restpe, isContextual) =>
       val pformals1 = pformals.mapConserve(mapExprType)
       val restpe1 = normalizeByName(restpe)
-      if (pformals1 ne pformals) || (restpe1 ne restpe) then
+      if (pformals1 _ne_ pformals) || (restpe1 ne restpe) then
         defn.FunctionOf(pformals1, restpe1, isContextual)
       else
         tp
@@ -431,7 +431,7 @@ abstract class Recheck extends Phase, SymTransformer:
 
     def recheckMatch(tree: Match, pt: Type)(using Context): Type =
       val selectorType = recheck(tree.selector)
-      val casesTypes = tree.cases.map(recheckCase(_, selectorType.widen, pt))
+      val casesTypes = tree.cases.mapToLst(recheckCase(_, selectorType.widen, pt))
       TypeComparer.lub(casesTypes)
 
     def recheckCase(tree: CaseDef, selType: Type, pt: Type)(using Context): Type =
@@ -478,9 +478,9 @@ abstract class Recheck extends Phase, SymTransformer:
       recheckTryRest(recheck(tree.expr, pt), tree.cases, tree.finalizer, pt)
 
     protected def recheckTryRest(bodyType: Type, cases: List[CaseDef], finalizer: Tree, pt: Type)(using Context): Type =
-      val casesTypes = cases.map(recheckCase(_, defn.ThrowableType, pt))
+      val casesTypes = cases.mapToLst(recheckCase(_, defn.ThrowableType, pt))
       val finalizerType = recheck(finalizer, defn.UnitType)
-      TypeComparer.lub(bodyType :: casesTypes)
+      TypeComparer.lub(bodyType +: casesTypes)
 
     def seqLiteralElemProto(tree: SeqLiteral, pt: Type, declared: Type)(using Context): Type =
       declared.orElse:
@@ -492,8 +492,8 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckSeqLiteral(tree: SeqLiteral, pt: Type)(using Context): Type =
       val declaredElemType = recheck(tree.elemtpt)
       val elemProto = seqLiteralElemProto(tree, pt, declaredElemType)
-      val elemTypes = tree.elems.map(recheck(_, elemProto))
-      seqLitType(tree, TypeComparer.lub(declaredElemType :: elemTypes))
+      val elemTypes = tree.elems.mapToLst(recheck(_, elemProto))
+      seqLitType(tree, TypeComparer.lub(declaredElemType +: elemTypes))
 
     def recheckTypeTree(tree: TypeTree)(using Context): Type =
       tree.nuType  // allows to install new types at Setup
@@ -505,7 +505,7 @@ abstract class Recheck extends Phase, SymTransformer:
           tp.derivedAnnotatedType(argType, tp.annot)
 
     def recheckAlternative(tree: Alternative, pt: Type)(using Context): Type =
-      val altTypes = tree.trees.map(recheck(_, pt))
+      val altTypes = tree.trees.mapToLst(recheck(_, pt))
       TypeComparer.lub(altTypes)
 
     def recheckPackageDef(tree: PackageDef)(using Context): Type =

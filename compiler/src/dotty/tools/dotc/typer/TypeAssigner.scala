@@ -452,7 +452,7 @@ trait TypeAssigner {
             val tparams = tycon.typeParamSymbols
             params1.mapConserve { param =>
               val info1 = param.info
-              val info2 = info1.subst(tparams, tp.argsLst)
+              val info2 = info1.subst(tparams, args)
               if info2 eq info1 then param else param.copy(info = info2).asType
             }
           case _ => params1
@@ -465,7 +465,7 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.Match, scrutinee: Tree, cases: List[CaseDef])(using Context): Match =
-    tree.withType(TypeComparer.lub(cases.tpes))
+    tree.withType(TypeComparer.lub(cases.mapToLst(_.tpe)))
 
   def assignType(tree: untpd.Labeled)(using Context): Labeled =
     tree.withType(tree.bind.symbol.info)
@@ -478,7 +478,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Try, expr: Tree, cases: List[CaseDef])(using Context): Try =
     if (cases.isEmpty) tree.withType(expr.tpe)
-    else tree.withType(TypeComparer.lub(expr.tpe :: cases.tpes))
+    else tree.withType(TypeComparer.lub(expr.tpe +: cases.mapToLst(_.tpe)))
 
   def assignType(tree: untpd.SeqLiteral, elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral =
     tree.withType(seqLitType(tree, elemtpt.tpe))
@@ -506,7 +506,7 @@ trait TypeAssigner {
     val tparams = tycon.tpe.typeParams
     val ownType =
       if tparams.length == args.length then
-        processAppliedType(tycon.tpe.appliedTo(args.tpes))
+        processAppliedType(tycon.tpe.appliedTo(args.mapToLst(_.tpe)))
       else
         wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
     tree.withType(ownType)
@@ -538,7 +538,7 @@ trait TypeAssigner {
     tree.withType(NamedType(NoPrefix, sym))
 
   def assignType(tree: untpd.Alternative, trees: List[Tree])(using Context): Alternative =
-    tree.withType(TypeComparer.lub(trees.tpes))
+    tree.withType(TypeComparer.lub(trees.mapToLst(_.tpe)))
 
   def assignType(tree: untpd.UnApply, proto: Type)(using Context): UnApply =
     tree.withType(proto)

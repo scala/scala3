@@ -102,7 +102,7 @@ object Formatting {
       given [X <: AnyRef: Show]: Show[SimpleIdentitySet[X]] with
         def show(x: SimpleIdentitySet[X]) = summon[Show[List[X]]].show(x.toList)
 
-      given [X <: AnyRef: Show]: Show[Lst[X]] with
+      given [X: Show]: Show[Lst[X]] with
         def show(x: Lst[X]) = summon[Show[List[X]]].show(x.toList)
 
       given Show[FlagSet] with

@@ -94,7 +94,7 @@ object TypeErasure:
    *           -2 if the arity depends on an uninstantiated type variable or WildcardType.
    */
   def tupleArity(tp: Type)(using Context): Int = tp/*.dealias*/ match
-    case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
+    case AppliedType(tycon, Lst.Pair(_, tl)) if tycon.isRef(defn.PairClass) =>
       val arity = tupleArity(tl)
       if (arity < 0) arity else arity + 1
     case tp: SingletonType =>
@@ -1093,7 +1093,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       case tp: TermRef =>
         sigName(underlyingOfTermRef(tp))
       case ExprType(rt) =>
-        sigName(defn.FunctionNOf(Nil, rt))
+        sigName(defn.FunctionNOf(Lst(), rt))
       case tp: TypeVar if !tp.isInstantiated =>
         tpnme.Uninstantiated
       case tp @ defn.PolyFunctionOf(_) =>

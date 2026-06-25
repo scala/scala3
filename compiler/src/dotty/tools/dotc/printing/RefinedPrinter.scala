@@ -24,6 +24,7 @@ import Trees.*
 import TypeApplications.*
 import NameKinds.{WildcardParamName, DefaultGetterName}
 import util.Chars.isOperatorPart
+import util.Lst
 import config.{Config, Feature}
 import config.Feature.sourceVersion
 import config.SourceVersion.*
@@ -184,11 +185,11 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         case _ => (isPure, toTextGeneralCaptureSet(refs))
     arrow(isContextual, printPure) ~ refsText
 
-  private def toTextFunction(args: List[Type], res: Type, fn: MethodType | AppliedType,
+  private def toTextFunction(args: Lst[Type], res: Type, fn: MethodType | AppliedType,
       refs: GeneralCaptureSet | Null, isContextual: Boolean, isPure: Boolean): Text =
     changePrec(GlobalPrec):
       val argStr: Text = args match
-        case arg :: Nil if !defn.isDirectTupleNType(arg) && !isContextual =>
+        case Lst.Singleton(arg) if !defn.isDirectTupleNType(arg) && !isContextual =>
           atPrec(InfixPrec):
             argText(arg)
         case _=>
@@ -211,7 +212,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             && !showUniqueIds && !printDebug && !ccVerbose
         then
           // cc.Setup converts all functions to dependent functions. Undo that when printing.
-          toTextFunction(tp.paramInfosList, tp.resType, tp, refs, isContextual, isPure)
+          toTextFunction(tp.paramInfos, tp.resType, tp, refs, isContextual, isPure)
         else
           changePrec(GlobalPrec):
             "("
@@ -233,12 +234,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     recur(info, null)
 
   override def toText(tp: Type): Text = controlled {
-    def toTextTuple(args: List[Type]): Text =
+    def toTextTuple(args: Lst[Type]): Text =
       "(" ~ argsText(args) ~ ")"
 
-    def toTextNamedTuple(elems: List[(TermName, Type)]): Text =
+    def toTextNamedTuple(elems: Lst[(TermName, Type)]): Text =
       val elemsText = atPrec(GlobalPrec):
-        Text(elems.map((name, tp) => toText(name) ~ " : " ~ argText(tp)), ", ")
+        Text(elems.map((name, tp) => toText(name) ~ " : " ~ argText(tp)).toIterable, ", ")
       "(" ~ elemsText ~ ")"
 
     def isInfixType(tp: Type): Boolean = tp match
@@ -278,7 +279,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         val namedElems =
           try tp.namedTupleElementTypesUpTo(200, false, normalize = false)
           catch
-            case ex: TypeError => Nil
+            case ex: TypeError => Lst()
         if namedElems.nonEmpty then
           toTextNamedTuple(namedElems)
         else tp.tupleElementTypesUpTo(200, normalize = false) match
@@ -291,7 +292,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             if tycon.isRepeatedParam then toTextLocal(args.head) ~ "*"
             else if defn.isFunctionSymbol(tsym) then toTextFunction(tp, null)
             else if isInfixType(tp) then
-              val l :: r :: Nil = args: @unchecked
+              val Lst.Pair(l, r) = args: @unchecked
               val opName = tyconName(tycon)
               toTextInfixType(tyconName(tycon), l, r) { simpleNameString(tycon.typeSymbol) }
             else Str("")

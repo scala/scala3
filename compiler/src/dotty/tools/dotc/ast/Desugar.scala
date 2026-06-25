@@ -552,9 +552,9 @@ object desugar {
   private def functionsOf(paramss: List[ParamClause], rhs: Tree)(using Context): Tree = paramss match
     case Nil => rhs
     case ValDefs(head @ (fst :: _)) :: rest if fst.mods.isOneOf(GivenOrImplicit) =>
-      val paramTpts = head.map(_.tpt)
-      val paramNames = head.map(_.name)
-      makeContextualFunction(paramTpts, Nil, paramNames, functionsOf(rest, rhs)).withSpan(rhs.span)
+      val paramTpts = head.mapToLst(_.tpt)
+      val paramNames = head.mapToLst(_.name)
+      makeContextualFunction(paramTpts, Lst(), paramNames, functionsOf(rest, rhs)).withSpan(rhs.span)
     case ValDefs(head) :: rest =>
       Function(head, functionsOf(rest, rhs))
     case TypeDefs(head) :: rest =>
@@ -1875,7 +1875,7 @@ object desugar {
       else
         var selNames = pt.namedTupleElementTypes(false).map(_(0))
         if isCaseClass && selNames.isEmpty then
-          selNames = pt.classSymbol.caseAccessors.map(_.name.asTermName)
+          selNames = pt.classSymbol.caseAccessors.mapToLst(_.name.asTermName)
         val nameToIdx = selNames.zipWithIndex.toMap
         val reordered = Array.fill[untpd.Tree](selNames.length):
           untpd.Ident(nme.WILDCARD).withSpan(wildcardSpan)
@@ -2048,19 +2048,19 @@ object desugar {
       .collect:
         case vd: ValDef => vd
 
-  def makeContextualFunction(formalTpts: List[Tree], formalTypesOrNil: List[Type], paramNamesOrNil: List[TermName], body: Tree, augmenting: Boolean = false)(using Context): Function =
+  def makeContextualFunction(formalTpts: Lst[Tree], formalTypesOrNil: Lst[Type], paramNamesOrNil: Lst[TermName], body: Tree, augmenting: Boolean = false)(using Context): Function =
     val paramNames =
       if paramNamesOrNil.nonEmpty then
         if augmenting then paramNamesOrNil.map(ContextFunctionParamName.fresh(_))
         else paramNamesOrNil
-      else List.fill(formalTpts.length)(ContextFunctionParamName.fresh())
-    var params = for (tpt, pname) <- formalTpts.lazyZip(paramNames) yield
+      else Lst.fill(formalTpts.length)(ContextFunctionParamName.fresh())
+    var params = formalTpts.zipWith(paramNames): (tpt, pname) =>
       ValDef(pname, tpt, EmptyTree).withFlags(Given | Param)
     if formalTypesOrNil.nonEmpty then
       params = params.zipWithConserve(formalTypesOrNil): (param, formal) =>
         if formal.isForErasedParam then param.withAddedFlags(Erased)
         else param
-    FunctionWithMods(params, body, Modifiers(Given))
+    FunctionWithMods(params.toList, body, Modifiers(Given))
 
   private def derivedValDef(originalSpan: Span, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(using Context) =
     val vdef = ValDef(named.name.asTermName, tpt, rhs)

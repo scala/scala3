@@ -93,7 +93,7 @@ trait Deriving {
       def cannotBeUnified =
         report.error(em"${cls.name} cannot be unified with the type argument of ${typeClass.name}", derived.srcPos)
 
-      def addInstance(derivedParams: Lst[TypeSymbol], evidenceParamInfos: Lst[Lst[Type]], instanceTypes: List[Type]): Unit = {
+      def addInstance(derivedParams: Lst[TypeSymbol], evidenceParamInfos: Lst[Lst[Type]], instanceTypes: Lst[Type]): Unit = {
         val resultType = typeClassType.appliedTo(instanceTypes)
         val monoInfo =
           if evidenceParamInfos.isEmpty then resultType
@@ -175,13 +175,13 @@ trait Deriving {
                 tl => clsType.appliedTo(derivedParamTypes ++ tl.paramRefs.takeRight(clsArity)))
             }
 
-          addInstance(derivedParams, Lst(), List(instanceType))
+          addInstance(derivedParams, Lst(), Lst(instanceType))
         }
         else if (instanceArity == 0 && !clsParams.exists(_.info.isLambdaSub)) {
           // case (b) ... see description above
           val instanceType = clsType.appliedTo(clsParams.map(_.typeRef))
           val evidenceParamInfos = clsParams.map(param => Lst(param.typeRef))
-          addInstance(clsParams, evidenceParamInfos, List(instanceType))
+          addInstance(clsParams, evidenceParamInfos, Lst(instanceType))
         }
         else
           cannotBeUnified
@@ -242,9 +242,8 @@ trait Deriving {
 
         // The class instances in the result type. Running example:
         //   A[T_L, U_L, V_L], A[T_R, U_R, V_R]
-        val instanceTypes =
-          for (n <- List.range(0, typeClassArity))
-          yield cls.typeRef.appliedTo(clsParamss.map(row => row(n).typeRef))
+        val instanceTypes = Lst.tabulate(typeClassArity): i =>
+          cls.typeRef.appliedTo(clsParamss.map(row => row(i).typeRef))
 
         // CanEqual[A[T_L, U_L, V_L], A[T_R, U_R, V_R]]
         addInstance(clsParamss.flatten, evidenceParamInfos, instanceTypes)

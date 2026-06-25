@@ -1772,13 +1772,13 @@ object CaptureSet:
           ++ recur(rinfo.resType).freeInResult(rinfo)         // add capture set of result
         case tpd: AppliedType =>
           if followResult && defn.isNonRefinedFunction(tpd) then
-            recur(tpd.argsLst.last)
+            recur(tpd.args.last)
               // must be (pure) FunctionN type since ImpureFunctions have already
               // been eliminated in selector's dealias. Use capture set of result.
           else
             val cs = recur(tpd.tycon)
             tpd.tycon.typeParams match
-              case tparams @ Lst.StartingWith(LambdaParam(tl, _)) => cs.substParams(tl, tpd.argsLst)
+              case tparams @ Lst.StartingWith(LambdaParam(tl, _)) => cs.substParams(tl, tpd.args)
               case _ => cs
         case tp: TypeProxy =>
           recur(tp.superType)

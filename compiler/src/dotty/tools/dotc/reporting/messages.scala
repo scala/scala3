@@ -2198,7 +2198,7 @@ class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(Pa
         |Rename either one of them$or."""
 }
 
-class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: List[Type])(using Context)
+class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: Lst[Type])(using Context)
   extends SyntaxMsg(UnapplyInvalidNumberOfArgumentsID) {
   def msg(using Context) = i"Wrong number of argument patterns for $qual; expected: ($argTypes%, %)"
   def explain(using Context) =
@@ -3011,7 +3011,7 @@ class MissingImplicitArgument(
    *  all occurrences of `${X}` where `X` is in `paramNames` with the
    *  corresponding shown type in `args`.
    */
-  def userDefinedErrorString(raw: String, paramNames: Lst[String], args: List[Type])(using Context): String =
+  def userDefinedErrorString(raw: String, paramNames: Lst[String], args: Lst[Type])(using Context): String =
     def translate(name: String): Option[String] =
       val idx = paramNames.indexOf(name)
       if (idx >= 0) Some(i"${args(idx)}") else None
@@ -3029,14 +3029,14 @@ class MissingImplicitArgument(
     rawMsg: String,
     sym: Symbol,
     paramNames: Lst[Name],
-    args: List[Type],
+    args: Lst[Type],
     substituteType: Type => Type,
   )(using Context): String =
     val substitutableTypesSymbols = substitutableTypeSymbolsInScope(sym)
     userDefinedErrorString(
       rawMsg,
       paramNames = (paramNames ++ substitutableTypesSymbols.map(_.name)).map(_.unexpandedName.toString),
-      args = args ::: substitutableTypesSymbols.map(_.typeRef).map(substituteType).toList
+      args = args ++ substitutableTypesSymbols.map(_.typeRef).map(substituteType)
     )
 
   /** Extract a user defined error message from a symbol `sym`
@@ -3051,7 +3051,7 @@ class MissingImplicitArgument(
   def userDefinedImplicitNotFoundTypeMessageFor(
     sym: Symbol,
     params: Lst[ParamInfo] = Lst(),
-    args: List[Type] = Nil
+    args: Lst[Type] = Lst()
   )(using Context): Option[String] = for
     rawMsg <- userDefinedMsg(sym, defn.ImplicitNotFoundAnnot)
     if Feature.migrateTo3 || sym != defn.Function1
@@ -3074,15 +3074,15 @@ class MissingImplicitArgument(
         val methodOwner = fn.symbol.owner
         val methodOwnerType = tpd.qualifier(fn).tpe
         val methodTypeParams = fn.symbol.paramSymss.flattenLst.filter(_.isType).map(_.name)
-        val methodTypeArgs = targs.map(_.tpe)
+        val methodTypeArgs = targs.mapToLst(_.tpe)
         formatAnnotationMessage(rawMsg, sym.owner, methodTypeParams, methodTypeArgs, _.asSeenFrom(methodOwnerType, methodOwner))
 
   def userDefinedImplicitNotFoundTypeMessage(using Context): Option[String] =
-    def recur(tp: Type, params: Lst[ParamInfo] = Lst(), args: List[Type] = Nil): Option[String] = tp match
+    def recur(tp: Type, params: Lst[ParamInfo] = Lst(), args: Lst[Type] = Lst()): Option[String] = tp match
       case tp: AppliedType =>
         val tycon = tp.typeConstructor
         val typeParams = if tycon.isLambdaSub then tycon.hkTypeParams else tycon.typeParams
-        recur(tycon, typeParams ++ params, tp.args ::: args)
+        recur(tycon, typeParams ++ params, tp.args ++ args)
       case tp: TypeRef =>
         userDefinedImplicitNotFoundTypeMessageFor(tp.symbol, params, args)
           .orElse(recur(tp.info))
@@ -3171,7 +3171,7 @@ class MissingImplicitArgument(
         case _           => Lst()
       }
       def resolveTypes(targs: List[tpd.Tree])(using Context) =
-        targs.map(a => Inferencing.fullyDefinedType(a.tpe, "type argument", a.srcPos))
+        targs.mapToLst(a => Inferencing.fullyDefinedType(a.tpe, "type argument", a.srcPos))
 
       // We can extract type arguments from:
       //   - a function call:

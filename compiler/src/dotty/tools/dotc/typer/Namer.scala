@@ -514,7 +514,7 @@ class Namer { typer: Typer =>
         val pcls = parents.foldLeft(defn.ObjectClass)(improve)
         typr.println(i"ensure first is class $parents%, % --> ${parents.map(_.baseType(pcls))}%, %")
         val bases = parents.map(_.baseType(pcls))
-        var first = TypeComparer.glb(defn.ObjectType :: bases)
+        var first = TypeComparer.glb((defn.ObjectType :: bases).toLst)
         val isProvisional = parents.exists(!_.baseType(defn.AnyClass).exists)
         if isProvisional then
           typr.println(i"provisional superclass $first for $cls")
@@ -1678,7 +1678,7 @@ class Namer { typer: Typer =>
             case core => (core, Nil)
           core match
             case Select(New(tpt), nme.CONSTRUCTOR) =>
-              val targs1 = targs map (typedAheadType(_))
+              val targs1 = targs.mapToLst(typedAheadType(_))
               val ptype = typedAheadType(tpt).tpe.appliedTo(targs1.tpes)
               if ptype.typeParams.isEmpty && !ptype.dealias.typeSymbol.is(Dependent) then
                 ptype
@@ -1815,7 +1815,7 @@ class Namer { typer: Typer =>
       completeConstructor(denot)
       denot.info = tempInfo.nn
 
-      val parentTypes = defn.adjustForTuple(cls, cls.typeParamsList,
+      val parentTypes = defn.adjustForTuple(cls, cls.typeParams,
         defn.adjustForBoxedUnit(cls,
           addUsingTraits:
             val isJava = ctx.isJava

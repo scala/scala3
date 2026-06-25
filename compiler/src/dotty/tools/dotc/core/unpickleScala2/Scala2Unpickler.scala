@@ -103,7 +103,7 @@ object Scala2Unpickler {
     // Adjust parents of the tuple classes and BoxedUnit from the standard library
     // If from Scala 2, adjust for tuple classes; if not, it's from Java, and adjust for BoxedUnit
     val normalizedParents =
-      if (fromScala2) defn.adjustForTuple(cls, tparams.toList, parents1)
+      if (fromScala2) defn.adjustForTuple(cls, tparams, parents1)
       else defn.adjustForBoxedUnit(cls, parents1)
     for (tparam <- tparams) {
       val tsym = decls.lookup(tparam.name)
@@ -852,8 +852,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           case _ =>
         }
         val tycon = select(pre, sym)
-        val args = until(end, () => readTypeRef())
-        if (sym == defn.ByNameParamClass2x) ExprType(args.head)
+        val args = untilLst(end, () => readTypeRef())
+        if (sym == defn.ByNameParamClass2x) ExprType(args(0))
         else if (ctx.settings.scalajs.value && args.length == 2 &&
             sym.owner == JSDefinitions.jsdefn.ScalaJSJSPackageClass && sym.name == tpnme.raw.BAR) {
           // Treat Scala.js pseudo-unions as real unions, this requires a

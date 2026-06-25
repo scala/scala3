@@ -132,7 +132,7 @@ class Definitions {
             HKTypeLambda(argParamNames :+ "R".toTypeName, argVariances :+ Covariant)(
               tl => Lst.fill(arity + 1)(TypeBounds.empty),
               tl => AnnotatedType(
-                      underlyingClass.typeRef.appliedTo(tl.paramRefsList),
+                      underlyingClass.typeRef.appliedTo(tl.paramRefs),
                       RetainingAnnotation(defn.RetainsCapAnnot))
             ))
         else
@@ -1250,24 +1250,24 @@ class Definitions {
         case ft @ AppliedType(parent, args) if isFunctionNType(ft) =>
           val isContextual = ft.typeSymbol.name.isContextFunction
           val methodType = if isContextual then ContextualMethodType else MethodType
-          Some(methodType(ft.argsLst.init, ft.argsLst.last))
+          Some(methodType(args.init, args.last))
         case _ =>
           None
     }
   }
 
   object FunctionOf {
-    def apply(args: List[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
-      val mt = MethodType.companion(isContextual, false)(args.toLst, resultType)
+    def apply(args: Lst[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
+      val mt = MethodType.companion(isContextual, false)(args, resultType)
       if mt.hasErasedParams then RefinedType(PolyFunctionClass.typeRef, nme.apply, mt)
       else FunctionNOf(args, resultType, isContextual)
 
     // Unlike PolyFunctionOf and RefinedFunctionOf this extractor follows aliases.
     // Can we do without? Same for FunctionNOf and isFunctionNType.
-    def unapply(ft: Type)(using Context): Option[(List[Type], Type, Boolean)] = {
+    def unapply(ft: Type)(using Context): Option[(Lst[Type], Type, Boolean)] = {
       ft match
         case PolyFunctionOf(mt: MethodType) =>
-          Some(mt.paramInfosList, mt.resType, mt.isContextualMethod)
+          Some(mt.paramInfos, mt.resType, mt.isContextualMethod)
         case AppliedType(parent, targs) if isFunctionNType(ft) =>
           Some(targs.init, targs.last, ft.typeSymbol.name.isContextFunction)
         case _ =>
@@ -1277,13 +1277,13 @@ class Definitions {
 
   object FunctionNOf {
     /** Create a `FunctionN` or `ContextFunctionN` type applied to the arguments and result type */
-    def apply(args: List[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
-      FunctionType(args.length, isContextual).appliedTo(args ::: resultType :: Nil)
+    def apply(args: Lst[Type], resultType: Type, isContextual: Boolean = false)(using Context): Type =
+      FunctionType(args.length, isContextual).appliedTo(args :+ resultType)
 
     /** Matches a (possibly aliased) `FunctionN[...]` or `ContextFunctionN[...]`.
      *  Extracts the list of function argument types, the result type and whether function is contextual.
      */
-    def unapply(tpe: AppliedType)(using Context): Option[(List[Type], Type, Boolean)] = {
+    def unapply(tpe: AppliedType)(using Context): Option[(Lst[Type], Type, Boolean)] = {
       if !isFunctionNType(tpe) then None
       else Some(tpe.args.init, tpe.args.last, tpe.typeSymbol.name.isContextFunction)
     }
@@ -1334,21 +1334,20 @@ class Definitions {
 
   object PartialFunctionOf {
     def apply(arg: Type, result: Type)(using Context): Type =
-      PartialFunctionClass.typeRef.appliedTo(arg :: result :: Nil)
-    def unapply(pft: Type)(using Context): Option[(Type, List[Type])] =
-      if (pft.isRef(PartialFunctionClass)) {
+      PartialFunctionClass.typeRef.appliedTo(Lst(arg, result))
+    def unapply(pft: Type)(using Context): Option[(Type, Type)] =
+      if pft.isRef(PartialFunctionClass) then
         val targs = pft.dealias.argInfos
-        if (targs.length == 2) Some((targs.head, targs.tail)) else None
-      }
+        if (targs.length == 2) Some((targs(0), targs(1))) else None
       else None
   }
 
   object ArrayOf {
     def apply(elem: Type)(using Context): Type =
       if (ctx.erasedTypes) JavaArrayType(elem)
-      else ArrayType.appliedTo(elem :: Nil)
+      else ArrayType.appliedTo(Lst(elem))
     def unapply(tp: Type)(using Context): Option[Type] = tp.dealias match {
-      case AppliedType(at, arg :: Nil) if at.isRef(ArrayType.symbol) => Some(arg)
+      case AppliedType(at, Lst.Singleton(arg)) if at.isRef(ArrayType.symbol) => Some(arg)
       case JavaArrayType(tp) if ctx.erasedTypes => Some(tp)
       case _ => None
     }
@@ -1358,7 +1357,7 @@ class Definitions {
     def apply(pat: Type, body: Type)(using Context): Type =
       MatchCaseClass.typeRef.appliedTo(pat, body)
     def unapply(tp: Type)(using Context): Option[(Type, Type)] = tp match {
-      case AppliedType(tycon, pat :: body :: Nil) if tycon.isRef(MatchCaseClass) =>
+      case AppliedType(tycon, Lst.Pair(pat, body)) if tycon.isRef(MatchCaseClass) =>
         Some((pat, body))
       case _ =>
         None
@@ -1405,11 +1404,11 @@ class Definitions {
   object ByNameFunction:
     def apply(tp: Type)(using Context): Type = tp match
       case tp @ AnnotatedType(tp1, ann: RetainingAnnotation) if ann.symbol == RetainsByNameAnnot =>
-        AnnotatedType(apply(tp1), RetainingAnnotation(defn.RetainsAnnot, ann.argumentTypes*))
+        AnnotatedType(apply(tp1), RetainingAnnotation(defn.RetainsAnnot, ann.argumentTypes))
       case _ =>
-        defn.ContextFunction0.typeRef.appliedTo(tp :: Nil)
+        defn.ContextFunction0.typeRef.appliedTo(Lst(tp))
     def unapply(tp: Type)(using Context): Option[Type] = tp match
-      case tp @ AppliedType(tycon, arg :: Nil) if defn.isByNameFunctionClass(tycon.typeSymbol) =>
+      case tp @ AppliedType(tycon, Lst.Singleton(arg)) if defn.isByNameFunctionClass(tycon.typeSymbol) =>
         Some(arg)
       case tp @ AnnotatedType(parent, _) =>
         unapply(parent)
@@ -1426,13 +1425,13 @@ class Definitions {
   object NamedTupleDirect:
     def unapply(t: Type)(using Context): Option[(Type, Type)] =
       t match
-        case AppliedType(tycon, nmes :: vals :: Nil) if tycon.typeSymbol == NamedTupleTypeRef.symbol =>
+        case AppliedType(tycon, Lst.Pair(nmes, vals)) if tycon.typeSymbol == NamedTupleTypeRef.symbol =>
           Some((nmes, vals))
         case _ => None
 
   object NamedTuple:
     def apply(nmes: Type, vals: Type)(using Context): Type =
-      AppliedType(NamedTupleTypeRef, nmes :: vals :: Nil)
+      AppliedType(NamedTupleTypeRef, Lst(nmes, vals))
     def unapply(t: Type)(using Context): Option[(Type, Type)] =
       t match
         case NamedTupleDirect(nmes, vals) =>
@@ -1575,7 +1574,7 @@ class Definitions {
   def isSpecializedTuple(cls: Symbol)(using Context): Boolean =
     cls.isClass && TupleSpecializedClasses.exists(tupleCls => cls.name.isSpecializedNameOf(tupleCls.name))
 
-  def SpecializedTuple(base: Symbol, args: List[Type])(using Context): Symbol =
+  def SpecializedTuple(base: Symbol, args: Lst[Type])(using Context): Symbol =
     base.owner.requiredClass(base.name.specializedName(args))
 
   /** Cached function types of arbitary arities.
@@ -1821,7 +1820,7 @@ class Definitions {
     val tp1 = tp.dealias
     isDirectTupleNType(tp1)
 
-  def tupleType(elems: List[Type]): Type = {
+  def tupleType(elems: Lst[Type]): Type = {
     val arity = elems.length
     if 0 < arity && arity <= MaxTupleArity then
       val tupletp = TupleType(arity)
@@ -1870,7 +1869,7 @@ class Definitions {
   private def withSpecMethods(cls: ClassSymbol, bases: List[Name], paramTypes: Set[TypeRef]) =
     if !Feature.shouldBehaveAsScala2 then
       for base <- bases; tp <- paramTypes do
-        cls.enter(newSymbol(cls, base.specializedName(List(tp)), Method, ExprType(tp)))
+        cls.enter(newSymbol(cls, base.specializedName(Lst(tp)), Method, ExprType(tp)))
     cls
 
   @tu lazy val Tuple1: ClassSymbol = withSpecMethods(requiredClass("scala.Tuple1"), List(nme._1), Tuple1SpecializedParamTypes)
@@ -1905,10 +1904,10 @@ class Definitions {
   @tu lazy val Function2SpecializedReturnClasses: PerRun[collection.Set[Symbol]] =
     new PerRun(Function2SpecializedReturnTypes.toSet.map(_.symbol))
 
-  def isSpecializableTuple(base: Symbol, args: List[Type])(using Context): Boolean =
+  def isSpecializableTuple(base: Symbol, args: Lst[Type])(using Context): Boolean =
     args.length <= 2 && base.isClass && TupleSpecializedClasses.exists(base.asClass.derivesFrom) && args.match
-      case List(x)    => Tuple1SpecializedParamClasses().contains(x.classSymbol)
-      case List(x, y) => Tuple2SpecializedParamClasses().contains(x.classSymbol) && Tuple2SpecializedParamClasses().contains(y.classSymbol)
+      case Lst.Singleton(x) => Tuple1SpecializedParamClasses().contains(x.classSymbol)
+      case Lst.Pair(x, y)   => Tuple2SpecializedParamClasses().contains(x.classSymbol) && Tuple2SpecializedParamClasses().contains(y.classSymbol)
       case _          => false
     && base.owner.denot.info.member(base.name.specializedName(args)).exists // when dotc compiles the stdlib there are no specialised classes
     && !Feature.shouldBehaveAsScala2 // We do not add the specilized TupleN methods/classes when compiling the stdlib
@@ -1986,10 +1985,10 @@ class Definitions {
    *  types `As`, the result type `B` and a whether the type is an erased context function.
    */
   object ContextFunctionType:
-    def unapply(tp: Type)(using Context): Option[(List[Type], Type)] =
+    def unapply(tp: Type)(using Context): Option[(Lst[Type], Type)] =
       asContextFunctionType(tp) match
         case PolyFunctionOf(mt: MethodType) =>
-          Some((mt.paramInfosList, mt.resType))
+          Some((mt.paramInfos, mt.resType))
         case tp1 if tp1.exists =>
           val args = tp1.functionArgInfos
           Some((args.init, args.last))
@@ -2002,7 +2001,7 @@ class Definitions {
     || sym.is(Module) && isAssuredNoInits(sym.companionClass)
 
   /** If `cls` is Tuple1..Tuple22, add the corresponding *: type as last parent to `parents` */
-  def adjustForTuple(cls: ClassSymbol, tparams: List[TypeSymbol], parents: List[Type]): List[Type] = {
+  def adjustForTuple(cls: ClassSymbol, tparams: Lst[TypeSymbol], parents: List[Type]): List[Type] = {
     if !isTupleClass(cls) then parents
     else if tparams.isEmpty then parents :+ TupleTypeRef
     else

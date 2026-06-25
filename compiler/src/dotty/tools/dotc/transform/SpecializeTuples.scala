@@ -7,6 +7,7 @@ import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
 import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*
 import MegaPhase.MiniPhase
 import inlines.Inliner.isElideableExpr
+import util.Lst
 
 /** Specializes Tuples by replacing tuple construction and selection trees.
  *
@@ -23,15 +24,15 @@ class SpecializeTuples extends MiniPhase:
 
   override def transformApply(tree: Apply)(using Context): Tree = tree match
     case Apply(TypeApply(fun: NameTree, targs), args)
-        if fun.symbol.name == nme.apply && fun.symbol.exists && defn.isSpecializableTuple(fun.symbol.owner.companionClass, targs.map(_.tpe))
+        if fun.symbol.name == nme.apply && fun.symbol.exists && defn.isSpecializableTuple(fun.symbol.owner.companionClass, targs.mapToLst(_.tpe))
         && isElideableExpr(tree)
     =>
-      cpy.Apply(tree)(Select(New(defn.SpecializedTuple(fun.symbol.owner.companionClass, targs.map(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
+      cpy.Apply(tree)(Select(New(defn.SpecializedTuple(fun.symbol.owner.companionClass, targs.mapToLst(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
     case Apply(TypeApply(fun: NameTree, targs), args)
-        if fun.symbol.name == nme.CONSTRUCTOR && fun.symbol.exists && defn.isSpecializableTuple(fun.symbol.owner, targs.map(_.tpe))
+        if fun.symbol.name == nme.CONSTRUCTOR && fun.symbol.exists && defn.isSpecializableTuple(fun.symbol.owner, targs.mapToLst(_.tpe))
         && isElideableExpr(tree)
     =>
-      cpy.Apply(tree)(Select(New(defn.SpecializedTuple(fun.symbol.owner, targs.map(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
+      cpy.Apply(tree)(Select(New(defn.SpecializedTuple(fun.symbol.owner, targs.mapToLst(_.tpe)).typeRef), nme.CONSTRUCTOR), args).withType(tree.tpe)
     case _ => tree
   end transformApply
 
@@ -41,7 +42,7 @@ class SpecializeTuples extends MiniPhase:
         case AppliedType(tycon, args) if defn.isSpecializableTuple(tycon.classSymbol, args) =>
           val argIdx = if name == nme._1 then 0 else 1
           // Keep the specialized accessor for performance, then adapt back to the original expected type.
-          Select(qual, name.specializedName(args(argIdx) :: Nil)).ensureConforms(tree.tpe)
+          Select(qual, name.specializedName(Lst(args(argIdx)))).ensureConforms(tree.tpe)
         case _ =>
           tree
     case _ => tree

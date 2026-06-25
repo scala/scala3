@@ -177,6 +177,11 @@ class TreeUnpickler(reader: TastyReader,
     def forkAt(start: Addr): TreeReader = new TreeReader(subReader(start, endAddr))
     def fork: TreeReader = forkAt(currentAddr)
 
+     def untilLst[T](end: Addr)(op: => T): Lst[T] =
+      val buf = Lst.Buffer[T]()
+      untilDo(end)(buf += op)
+      buf.toLst
+
     def skipParentTree(tag: Int): Unit = {
       if tag == SPLITCLAUSE then ()
       else skipTree(tag)
@@ -419,7 +424,7 @@ class TreeUnpickler(reader: TastyReader,
                 // Note that the lambda "rt => ..." is not equivalent to a wildcard closure!
                 // Eta expansion of the latter puts readType() out of the expression.
             case APPLIEDtype =>
-              readType().appliedTo(until(end)(readType()))
+              readType().appliedTo(untilLst(end)(readType()))
             case TYPEBOUNDS =>
               val lo = readType()
               if nothingButMods(end) then AliasingBounds(readVariances(lo))
@@ -1058,7 +1063,7 @@ class TreeUnpickler(reader: TastyReader,
             goto(end)
             tycon
           else
-            val args = until(end)(readTpt())
+            val args = untilLst(end)(readTpt())
             val cls = tycon.classSymbol
             assert(cls.typeParams.length == args.length)
             cls.typeRef.appliedTo(args.tpes)
@@ -1670,8 +1675,8 @@ class TreeUnpickler(reader: TastyReader,
               // wrong number of arguments in some scenarios reading F-bounded
               // types. This came up in #137 of collection strawman.
               val tycon = readTpt()
-              val args = until(end)(readTpt())
-              val tree = untpd.AppliedTypeTree(tycon, args)
+              val args = untilLst(end)(readTpt())
+              val tree = untpd.AppliedTypeTree(tycon, args.toList)
               val ownType = ctx.typeAssigner.processAppliedType(tycon.tpe.safeAppliedTo(args.tpes))
               tree.withType(ownType)
             case ANNOTATEDtpt =>

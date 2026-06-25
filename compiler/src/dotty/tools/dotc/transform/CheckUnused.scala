@@ -129,7 +129,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     // check for multiversal equals
     tree match
     case Apply(Select(left, nme.Equals | nme.NotEquals), right :: Nil) =>
-      val caneq = defn.CanEqualClass.typeRef.appliedTo(left.tpe.widen :: right.tpe.widen :: Nil)
+      val caneq = defn.CanEqualClass.typeRef.appliedTo(Lst(left.tpe.widen, right.tpe.widen))
       resolveScoped(caneq, tree.srcPos)
     case tree =>
       refUsage(tree.tpe.typeSymbol, tree.srcPos)
@@ -149,7 +149,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForMatch(tree: Match)(using Context): Context =
     // allow case.pat against tree.selector (simple var pat only for now)
     tree.selector match
-    case Ident(nm) => tree.cases.foreach(k => allowVariableBindings(List(nm), List(k.pat)))
+    case Ident(nm) => tree.cases.foreach(k => allowVariableBindings(Lst(nm), List(k.pat)))
     case _ =>
     ctx
   override def transformMatch(tree: Match)(using Context): tree.type =
@@ -966,8 +966,8 @@ object CheckUnused:
         case Typed(rhs, _) => isUnconsuming(rhs)
         case _ => false
 
-  def allowVariableBindings(ok: List[Name], args: List[Tree]): Unit =
-    ok.zip(args).foreach:
+  def allowVariableBindings(ok: Lst[Name], args: List[Tree]): Unit =
+    ok.zip(args.toLst).foreach:
       case (param, arg @ Bind(p, _)) if param == p => arg.withAttachment(NoWarn, ())
       case _ =>
 
@@ -977,13 +977,13 @@ object CheckUnused:
       case UnApply(fun, _, args) =>
         val unapplied = tree.tpe.finalResultType.dealias.typeSymbol
         if unapplied.is(CaseClass) then
-          allowVariableBindings(unapplied.primaryConstructor.info.firstParamNames.toList, args)
+          allowVariableBindings(unapplied.primaryConstructor.info.firstParamNames, args)
         else if fun.symbol == defn.PairClass_unapply then
           val ok = fun.symbol.info match
             case PolyType(tycon, MethodTpe(_, _, AppliedType(_, tprefs))) =>
               tprefs.collect:
                 case ref: TypeParamRef => termName(ref.binder.paramNames(ref.paramNum).toString.toLowerCase)
-            case _ => Nil
+            case _ => Lst()
           allowVariableBindings(ok, args)
         else if fun.symbol == defn.TypeTest_unapply then
           () // just recurse into args
@@ -996,7 +996,8 @@ object CheckUnused:
             val implName = s"dotty.tools.dotc.ast.Trees$$${unapplied.name}"
             try
               val clz = Class.forName(implName) // TODO improve to use class path or reflect
-              val ok = clz.getConstructors.head.getParameters.map(p => termName(p.getName)).toList.init
+              val ok = collection.immutable.ArraySeq.unsafeWrapArray(clz.getConstructors.head.getParameters)
+                .map(p => termName(p.getName)).toLst.init
               allowVariableBindings(ok, args)
             catch case _: ClassNotFoundException => ()
         args.foreach(traverse)

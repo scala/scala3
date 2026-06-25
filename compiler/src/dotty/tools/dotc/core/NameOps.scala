@@ -325,7 +325,7 @@ object NameOps {
     /** Returns the name of the class specialised to the provided types,
      *  in the given order.  Used for the specialized tuple classes.
      */
-    def specializedName(args: List[Type])(using Context): N =
+    def specializedName(args: Lst[Type])(using Context): N =
       val sb = new StringBuilder
       sb.append(name.toString)
       sb.append(nme.specializedTypeNames.prefix.toString)

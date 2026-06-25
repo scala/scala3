@@ -435,7 +435,7 @@ extension (tp: Type)
   /** If `tp` is a function or method, a type of the same kind with the given
    *  argument and result types.
   */
-  def derivedFunctionOrMethod(argTypes: List[Type], resType: Type)(using Context): Type = tp match
+  def derivedFunctionOrMethod(argTypes: Lst[Type], resType: Type)(using Context): Type = tp match
     case tp @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp) =>
       val args1 = argTypes :+ resType
       if args.corresponds(args1)(_ eq _) then tp
@@ -446,10 +446,10 @@ extension (tp: Type)
       else if rinfo1.isInstanceOf[PolyType] then tp.derivedRefinedType(refinedInfo = rinfo1)
       else rinfo1.toFunctionType(alwaysDependent = true)
     case tp: MethodType =>
-      tp.derivedLambdaType(paramInfos = argTypes.toLst, resType = resType)
+      tp.derivedLambdaType(paramInfos = argTypes, resType = resType)
     case tp: PolyType =>
       assert(argTypes.forall(_.isInstanceOf[TypeBounds]))
-      tp.derivedLambdaType(paramInfos = argTypes.asInstanceOf[List[TypeBounds]].toLst, resType = resType)
+      tp.derivedLambdaType(paramInfos = argTypes.asInstanceOf[Lst[TypeBounds]], resType = resType)
     case _ =>
       tp
 
@@ -917,9 +917,9 @@ end OnlyCapability
  *           2nd half: The result type
  */
 object FunctionOrMethod:
-  def unapply(tp: Type)(using Context): Option[(List[Type], Type)] = tp match
+  def unapply(tp: Type)(using Context): Option[(Lst[Type], Type)] = tp match
     case defn.FunctionOf(args, res, isContextual) => Some((args, res))
-    case mt: MethodOrPoly => Some((mt.paramInfosList, mt.resType))
+    case mt: MethodOrPoly => Some((mt.paramInfos, mt.resType))
     case defn.RefinedFunctionOf(rinfo) => unapply(rinfo)
     case _ => None
 
@@ -937,7 +937,7 @@ object ContainsImpl:
 object ContainsParam:
   def unapply(sym: Symbol)(using Context): Option[(TypeRef, Capability)] =
     sym.info.dealias match
-      case AppliedType(tycon, (cs: TypeRef) :: arg2 :: Nil)
+      case AppliedType(tycon, Lst.Pair((cs: TypeRef), arg2))
       if tycon.typeSymbol == defn.Caps_ContainsTrait
           && cs.typeSymbol.isAbstractOrParamType =>
         arg2.stripCapturing match // ref.type was converted to box ref.type^{ref} by boxing

@@ -370,7 +370,7 @@ object Signatures {
           if (cls == ctx.definitions.OptionClass || cls == ctx.definitions.SomeClass) =>
         tycon match
           // unapply[T](_$1: Any): Option[(T1, T2 ... Tn)]
-          case typeRef: TypeRef if ctx.definitions.isTupleClass(typeRef.symbol) => List(args)
+          case typeRef: TypeRef if ctx.definitions.isTupleClass(typeRef.symbol) => List(args.toList)
           case _ => List(List(appliedType))
       // unapply[T](_$1: Any): CustomClass[T]
       case appliedType: AppliedType => mapOptionLessUnapply(appliedType, patternsSize, isUnapplySeq(denot))

@@ -11,6 +11,7 @@ import config.Feature
 import ast.tpd.Tree
 import typer.ProtoTypes.LhsProto
 import StdNames.nme
+import util.Lst
 
 /** Handling mutability and read-only access
  */
@@ -176,23 +177,18 @@ object Mutability:
         case _ =>
           actual
     case actual @ AppliedType(atycon, aargs) =>
-      def improveArgs(aargs: List[Type], eargs: List[Type], formals: List[ParamInfo]): List[Type] =
-        aargs match
-          case aargs @ (aarg :: aargs1) =>
-            val aarg1 =
-              if formals.head.paramVariance.is(Covariant)
-              then adaptReadOnlyToExpected(aarg, eargs.head)
-              else aarg
-            aargs.derivedCons(aarg1, improveArgs(aargs1, eargs.tail, formals.tail))
-          case Nil =>
-            aargs
+      def improveArgs(aargs: Lst[Type], eargs: Lst[Type], formals: Lst[ParamInfo]): Lst[Type] =
+        Lst.tabulate(aargs.length): i =>
+          if formals(i).paramVariance.is(Covariant)
+          then adaptReadOnlyToExpected(aargs(i), eargs(i))
+          else aargs(i)
       val expected1 = expected.dealias.stripCapturing
       val esym = expected1.typeSymbol
       expected1 match
         case AppliedType(etycon, eargs) =>
           if atycon.typeSymbol == esym then
             actual.derivedAppliedType(atycon,
-              improveArgs(aargs, eargs, etycon.typeParams.toList))
+              improveArgs(aargs, eargs, etycon.typeParams))
           else if esym.isClass then
             // This case is tricky: Try to lift actual to the base type with class `esym`,
             // improve the resulting arguments, and figure out if anything can be
@@ -202,8 +198,8 @@ object Mutability:
                 // If any of the base type arguments can be improved, check
                 // whether they are the same as an original argument, and in this
                 // case improve the original argument.
-                val iargs = improveArgs(bargs, eargs, etycon.typeParams.toList)
-                if iargs ne bargs then
+                val iargs = improveArgs(bargs, eargs, etycon.typeParams)
+                if iargs _ne_ bargs then
                   val updates =
                     for
                       (barg, iarg) <- bargs.lazyZip(iargs)

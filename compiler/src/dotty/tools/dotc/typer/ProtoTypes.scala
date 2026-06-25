@@ -474,10 +474,9 @@ object ProtoTypes {
           case Some(untpd.Function(args, _)) if !force =>
             // If force = false, assume what we know about the parameter types rather than reporting an error.
             // That way we don't cause a "missing parameter" error in `typerFn(arg)`
-            val paramTypes = args map {
+            val paramTypes = args.mapToLst:
               case ValDef(_, tpt, _) if !tpt.isEmpty => typer.typedType(tpt).typeOpt
               case _ => WildcardType
-            }
             targ = arg.withType(defn.FunctionNOf(paramTypes, WildcardType))
           case Some(_) if !force =>
             targ = arg.withType(WildcardType)
@@ -804,7 +803,7 @@ object ProtoTypes {
     tl: TypeLambda, owningTree: untpd.Tree,
     alwaysAddTypeVars: Boolean,
     nestingLevel: Int = ctx.nestingLevel
-  ): (TypeLambda, List[TypeVar]) =
+  ): (TypeLambda, Lst[TypeVar]) =
     val state = ctx.typerState
     val addTypeVars = alwaysAddTypeVars || !owningTree.isEmpty
     if (tl.isInstanceOf[PolyType])
@@ -826,14 +825,14 @@ object ProtoTypes {
       case _ =>
         Set.empty
 
-    def newTypeVars: List[TypeVar] =
+    def newTypeVars: Lst[TypeVar] =
       val preciseRefs = preciseConstrainedRefs(added, singletonOnly = false)
-      for paramRef <- added.paramRefsList yield
+      for paramRef <- added.paramRefs yield
         val tvar = TypeVar(paramRef, state, nestingLevel, precise = preciseRefs.contains(paramRef))
         state.ownedVars += tvar
         tvar
 
-    val tvars = if addTypeVars then newTypeVars else Nil
+    val tvars = if addTypeVars then newTypeVars else Lst()
     TypeComparer.addToConstraint(added, tvars)
     val singletonRefs = preciseConstrainedRefs(added, singletonOnly = true)
     for paramRef <- added.paramRefs do
@@ -842,18 +841,17 @@ object ProtoTypes {
     (added, tvars)
   end constrained
 
-  def constrained(tl: TypeLambda, owningTree: untpd.Tree)(using Context): (TypeLambda, List[TypeVar]) =
+  def constrained(tl: TypeLambda, owningTree: untpd.Tree)(using Context): (TypeLambda, Lst[TypeVar]) =
     constrained(tl, owningTree,
       alwaysAddTypeVars = tl.isInstanceOf[PolyType] && ctx.typerState.isCommittable)
 
   /**  Same as `constrained(tl, EmptyTree, alwaysAddTypeVars = true)`, but returns just the created type vars. */
-  def constrained(tl: TypeLambda)(using Context): List[TypeVar] =
+  def constrained(tl: TypeLambda)(using Context): Lst[TypeVar] =
     constrained(tl, EmptyTree, alwaysAddTypeVars = true)._2
 
   /** Instantiate `tl` with fresh type variables added to the constraint. */
   def instantiateWithTypeVars(tl: TypeLambda)(using Context): Type =
-    val tvars = constrained(tl)
-    tl.instantiateWithList(tvars)
+    tl.instantiate(constrained(tl))
 
   /** A fresh type variable added to the current constraint.
    *  @param  bounds        The initial bounds of the variable
@@ -941,7 +939,7 @@ object ProtoTypes {
               if (rt eq mt.resultType) tp
               else mt.derivedLambdaType(mt.paramNames, mt.paramInfos, rt)
             case _ =>
-              val ft = defn.FunctionOf(mt.paramInfosList, rt)
+              val ft = defn.FunctionOf(mt.paramInfos, rt)
               if mt.paramInfos.nonEmpty || (ft frozen_<:< pt) then ft else rt
           }
         }

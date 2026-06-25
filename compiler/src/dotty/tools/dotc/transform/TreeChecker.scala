@@ -775,7 +775,7 @@ object TreeChecker {
       else assert(tree1.typeOpt =:= pt)
 
       // Check that the types of the args conform to the types of the contents of the hole
-      val argQuotedTypes = args.map { arg =>
+      val argQuotedTypes = args.mapToLst { arg =>
         if arg.isTerm then
           val tpe = arg.typeOpt.widenTermRefExpr match
             case _: MethodicType =>
@@ -790,7 +790,7 @@ object TreeChecker {
         if isTerm then defn.QuotedExprClass.typeRef.appliedTo(tree1.typeOpt)
         else defn.QuotedTypeClass.typeRef.appliedTo(tree1.typeOpt)
       val contextualResult =
-        defn.FunctionNOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
+        defn.FunctionNOf(Lst(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
       val expectedContentType =
         defn.FunctionNOf(argQuotedTypes, contextualResult)
       assert(content.typeOpt =:= expectedContentType, i"unexpected content of hole\nexpected: ${expectedContentType}\nwas: ${content.typeOpt}")

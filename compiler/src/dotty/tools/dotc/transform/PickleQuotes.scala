@@ -326,7 +326,7 @@ object PickleQuotes {
               defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
             args =>
               val cases = holeContents.zipWithIndex.map { case (splice, idx) =>
-                val defn.FunctionNOf(argTypes, defn.FunctionNOf(quotesType :: _, _, _), _) = splice.tpe: @unchecked
+                val defn.FunctionNOf(argTypes, defn.FunctionNOf(Lst.StartingWith(quotesType), _, _), _) = splice.tpe: @unchecked
                 val rhs = {
                   val spliceArgs = argTypes.zipWithIndex.map { (argType, i) =>
                     args(1).select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argType)
@@ -335,7 +335,7 @@ object PickleQuotes {
                   // TODO: beta reduce inner closure? Or wait until BetaReduce phase?
                   BetaReduce(
                     splice
-                      .select(nme.apply).appliedToArgs(spliceArgs))
+                      .select(nme.apply).appliedToArgs(spliceArgs.toList))
                       .select(nme.apply).appliedTo(args(2).asInstance(quotesType))
                 }
                 CaseDef(Literal(Constant(idx)), EmptyTree, rhs)

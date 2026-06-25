@@ -5,7 +5,7 @@ import ast.Trees.*, ast.tpd, core.*
 import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
 import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*, NameKinds.*
 import MegaPhase.MiniPhase
-
+import util.Lst
 
 /** Specializes classes that inherit from `FunctionN` where there exists a
  *  specialized form.
@@ -102,7 +102,7 @@ class SpecializeFunctions extends MiniPhase {
                   // Need to cast to regular function, since specialized apply methods
                   // are not members of ContextFunction0. The cast will be eliminated in
                   // erasure.
-                  qual.cast(defn.FunctionNOf(Nil, res))
+                  qual.cast(defn.FunctionNOf(Lst(), res))
                 case _ =>
                   qual
               qual1.select(specializedApply)

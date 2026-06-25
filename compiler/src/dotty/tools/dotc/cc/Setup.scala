@@ -65,7 +65,7 @@ object Setup:
   /** Recognizer for `res $throws exc`, returning `(res, exc)` in case of success */
   object throwsAlias:
     def unapply(tp: Type)(using Context): Option[(Type, Type)] = tp match
-      case AppliedType(tycon, res :: exc :: Nil) if tycon.typeSymbol == defn.throwsAlias =>
+      case AppliedType(tycon, Lst.Pair(res, exc)) if tycon.typeSymbol == defn.throwsAlias =>
         Some((res, exc))
       case _ =>
         None
@@ -279,13 +279,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         // Expand if we have an applied type that underwent some addition of capture sets
         val expand = expandAlways || original.match
           case original @ AppliedType(`tycon`, _) =>
-            original.argsLst.last `ne` tp.argsLst.last
+            original.args.last `ne` tp.args.last
           case _ => false
         if expand then
           depFun(
-              tp.argsLst.init, tp.argsLst.last,
+              tp.args.init, tp.args.last,
               isContextual = defn.isContextFunctionClass(tycon.classSymbol)
-            ).showing(i"add function refinement $tp ($tycon, ${tp.argsLst.init}, ${tp.argsLst.last}) --> $result", capt)
+            ).showing(i"add function refinement $tp ($tycon, ${tp.args.init}, ${tp.args.last}) --> $result", capt)
         else tp
       case _ => tp
 
@@ -540,7 +540,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             try derivedLambdaType(mt)(ptypes1, this(mt.resType))
             finally enclMethodType = saved
           case t @ AppliedType(tycon, _)
-          if defn.isNonRefinedFunction(t) && t.argsLst.last.containsGlobalFreshDirectly =>
+          if defn.isNonRefinedFunction(t) && t.args.last.containsGlobalFreshDirectly =>
             // Convert to dependent function so that we have a binder for `fresh` in result type.
             // Copy all annotations and capturing sets of the original type to the new one.
             def copyAnnots(t: Type, from: Type): Type = from match
@@ -548,7 +548,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               case _ => t
             apply(
               copyAnnots(
-                depFun(t.argsLst.init, t.argsLst.last,
+                depFun(t.args.init, t.args.last,
                   isContextual = defn.isContextFunctionClass(tycon.classSymbol)),
                 t.dealiasKeepAnnots))
               .showing(i"convert dep $t to $result", capt)

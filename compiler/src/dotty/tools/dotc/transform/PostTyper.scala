@@ -16,7 +16,7 @@ import Symbols.*, NameOps.*
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import config.Feature
-import util.{SrcPos, Stats}
+import util.{SrcPos, Stats, Lst}
 import reporting.*
 import NameKinds.{WildcardParamName, TempResultName}
 import typer.Applications.{spread, HasSpreads}
@@ -472,7 +472,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         tp match
           case FunctionOrMethod(formals, res) =>
             val rhs1 = formals match
-              case (_: TypeBounds) :: _ => rhs
+              case Lst.StartingWith(_: TypeBounds) => rhs
               case _ => mdef.rhs
             val formals1 = formals.mapConserve(makeFormalDeclared)
             tp.derivedFunctionOrMethod(formals1, makeFormalsDeclared(res, rhs1))
@@ -859,7 +859,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       else tp
     case _ => tp
 
-  private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[List[Type]] =
+  private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[Lst[Type]] =
     val companionClass = sym.companionClass
     if companionClass.is(CaseClass)
       && !companionClass.primaryConstructor.is(Private)
@@ -867,7 +867,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     then
       sym.info.decl(nme.apply).info match
         case info: MethodType if info.paramInfos.length == 1 =>
-          Some(info.paramInfos(0) :: info.resultType :: Nil)
+          Some(Lst(info.paramInfos(0), info.resultType))
         case _ => None
     else
       None

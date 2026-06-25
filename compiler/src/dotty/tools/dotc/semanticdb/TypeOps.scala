@@ -428,7 +428,7 @@ private[semanticdb] class TypeOps:
           s.RepeatedType(stpe)
 
         case app @ AppliedType(tycon, args) =>
-          val targs = args.map { arg =>
+          val targs = args.toList.map { arg =>
             arg match
               // For wildcard type C[_ <: T], it's internal type representation will be
               // `AppliedType(TypeBounds(lo = <Nothing>, hi = <T>))`.

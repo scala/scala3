@@ -143,8 +143,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** Pretty-print comma-separated type arguments for a constructor to be inserted among parentheses or brackets
     * (hence with `GlobalPrec` precedence).
     */
-  protected def argsText(args: List[Type]): Text =
-    atPrec(GlobalPrec) { Text(args.map(argText(_)), ", ") }
+  protected def argsText(args: Lst[Type]): Text =
+    atPrec(GlobalPrec) { Text(args.map(argText(_)).toIterable, ", ") }
 
   /** The longest sequence of refinement types, starting at given type
    *  and following parents.

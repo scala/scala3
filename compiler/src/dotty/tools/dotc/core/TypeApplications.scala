@@ -108,9 +108,9 @@ object TypeApplications {
 
    /** Adapt all arguments to possible higher-kinded type parameters using etaExpandIfHK
    */
-  def EtaExpandIfHK(tparams: Lst[TypeParamInfo], args: List[Type])(using Context): List[Type] =
-    if (tparams.isEmpty) args
-    else args.zipWithConserve(tparams.toList)((arg, tparam) => arg.etaExpandIfHK(tparam.paramInfoOrCompleter))
+  def EtaExpandIfHK(tparams: Lst[TypeParamInfo], args: Lst[Type])(using Context): Lst[Type] =
+    if tparams.isEmpty then args
+    else args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(tparam.paramInfoOrCompleter))
 
   /** A type map that tries to reduce (part of) the result type of the type lambda `tycon`
    *  with the given `args`(some of which are wildcard arguments represented by type bounds).
@@ -147,7 +147,7 @@ object TypeApplications {
    *  result type. Using this mode, we can guarantee that `appliedTo` will never
    *  produce a higher-kinded application with a type lambda as type constructor.
    */
-  class Reducer(tycon: TypeLambda, args: List[Type])(using Context) extends TypeMap {
+  class Reducer(tycon: TypeLambda, args: Lst[Type])(using Context) extends TypeMap {
     private var available = (0 until args.length).toSet
     var allReplaced: Boolean = true
     def hasWildcardArg(p: TypeParamRef): Boolean =
@@ -355,7 +355,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   def etaExpand(using Context): Type =
     val tparams = self.typeParams
-    val resType = self.appliedTo(tparams.map(_.paramRef).toList)
+    val resType = self.appliedTo(tparams.map(_.paramRef))
     self.dealias match
       case self: TypeRef if tparams.nonEmpty && self.symbol.isClass =>
         val owner = self.symbol.owner
@@ -400,9 +400,6 @@ class TypeApplications(val self: Type) extends AnyVal {
     case EtaExpansion(classType) => classType
     case _ => self
 
-  final def appliedTo(args: Lst[Type])(using Context): Type =
-    appliedTo(args.toList)
-
   /** The type representing
    *
    *     T[U1, ..., Un]
@@ -411,7 +408,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  @param  self   = `T`
    *  @param  args   = `U1,...,Un`
    */
-  final def appliedTo(args: List[Type])(using Context): Type = {
+  final def appliedTo(args: Lst[Type])(using Context): Type = {
     record("appliedTo")
     val typParams = self.typeParams
     val stripped = self.stripTypeVar
@@ -428,8 +425,8 @@ class TypeApplications(val self: Type) extends AnyVal {
                   // just eta-reduction (ignoring variance annotations).
                   // See i2201*.scala for examples where more aggressive
                   // reduction would break type inference.
-                  dealiased.paramRefsList == dealiasedArgs ||
-                  defn.isCompiletimeAppliedType(tyconBody.typeSymbol)
+                  dealiased.paramRefs == dealiasedArgs
+                  || defn.isCompiletimeAppliedType(tyconBody.typeSymbol)
                 case _ => false
               }
             }
@@ -440,7 +437,7 @@ class TypeApplications(val self: Type) extends AnyVal {
                 AppliedType(self, args)
               else
                 try
-                  val instantiated = dealiased.instantiate(args.toLst)
+                  val instantiated = dealiased.instantiate(args)
                   if (followAlias) instantiated.normalized else instantiated
                 catch
                   case ex: Throwable => handleRecursive("try to instantiate", i"$dealiased[$args%, %]", ex)
@@ -465,7 +462,7 @@ class TypeApplications(val self: Type) extends AnyVal {
                   else AppliedType(dealiased, args)
         tryReduce
       case dealiased: PolyType =>
-        dealiased.instantiate(args.toLst)
+        dealiased.instantiate(args)
       case dealiased: AndType =>
         dealiased.derivedAndType(dealiased.tp1.appliedTo(args), dealiased.tp2.appliedTo(args))
       case dealiased: OrType =>
@@ -485,10 +482,10 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
-  final def appliedTo(arg: Type)(using Context): Type = appliedTo(arg :: Nil)
-  final def appliedTo(arg1: Type, arg2: Type)(using Context): Type = appliedTo(arg1 :: arg2 :: Nil)
+  final def appliedTo(arg: Type)(using Context): Type = appliedTo(Lst(arg))
+  final def appliedTo(arg1: Type, arg2: Type)(using Context): Type = appliedTo(Lst(arg1, arg2))
 
-  final def applyIfParameterized(args: List[Type])(using Context): Type =
+  final def applyIfParameterized(args: Lst[Type])(using Context): Type =
     if (typeParams.nonEmpty) appliedTo(args) else self
 
   /** A cycle-safe version of `appliedTo` where computing type parameters do not force
@@ -496,7 +493,7 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  up hk type parameters matching the arguments. This is needed when unpickling
    *  Scala2 files such as `scala.collection.generic.Mapfactory`.
    */
-  final def safeAppliedTo(args: List[Type])(using Context): Type = self match {
+  final def safeAppliedTo(args: Lst[Type])(using Context): Type = self match {
     case self: TypeRef if !self.symbol.isClass && self.symbol.isCompleting =>
       AppliedType(self, args)
     case _ =>
@@ -594,32 +591,26 @@ class TypeApplications(val self: Type) extends AnyVal {
    *  otherwise return Nil.
    *  Existential types in arguments are returned as TypeBounds instances.
    */
-  final def argInfos(using Context): List[Type] = self.stripped match
+  final def argInfos(using Context): Lst[Type] = self.stripped match
     case AppliedType(tycon, args) => args
     case tp: FlexibleType => tp.underlying.argInfos
-    case _ => Nil
+    case _ => Lst()
 
   /** If this is an encoding of a function type, return its arguments, otherwise return Nil.
    *  Handles poly functions gracefully.
    */
-  final def functionArgInfos(using Context): List[Type] = self.dealias match
-    case defn.PolyFunctionOf(mt: MethodType) =>
-      var infos = mt.resultType :: Nil
-      var i = mt.paramInfos.length
-      while i > 0 do
-        i -= 1
-        infos = mt.paramInfos(i) :: infos
-      infos
+  final def functionArgInfos(using Context): Lst[Type] = self.dealias match
+    case defn.PolyFunctionOf(mt: MethodType) => mt.paramInfos :+ mt.resultType
     case _ => self.dropDependentRefinement.dealias.argInfos
 
   /** Argument types where existential types in arguments are disallowed */
-  def argTypes(using Context): List[Type] = argInfos mapConserve noBounds
+  def argTypes(using Context): Lst[Type] = argInfos.mapConserve(noBounds)
 
   /** Argument types where existential types in arguments are approximated by their lower bound */
-  def argTypesLo(using Context): List[Type] = argInfos.mapConserve(_.loBound)
+  def argTypesLo(using Context): Lst[Type] = argInfos.mapConserve(_.loBound)
 
   /** Argument types where existential types in arguments are approximated by their upper bound  */
-  def argTypesHi(using Context): List[Type] = argInfos.mapConserve(_.hiBound)
+  def argTypesHi(using Context): Lst[Type] = argInfos.mapConserve(_.hiBound)
 
   /** If this is the image of a type argument; recover the type argument,
    *  otherwise NoType.

@@ -107,19 +107,18 @@ object Inferencing {
     case AppliedType(tycon, args) =>
       // The argument in `args` that may potentially appear directly as result
       // and thereby influence the members of this type
-      def argsInResult: List[Type] = tycon.stripTypeVar match
+      def argsInResult: Lst[Type] = tycon.stripTypeVar match
         case tycon: TypeRef =>
           tycon.info match
             case MatchAlias(_) => args
             case TypeBounds(_, upper: TypeLambda) =>
               upper.resultType match
                 case ref: TypeParamRef if ref.binder == upper =>
-                  args.lazyZip(upper.paramRefs).collect {
+                  args.zip(upper.paramRefs).collect:
                     case (arg, pref) if pref eq ref => arg
-                  }.toList
-                case _ => Nil
-            case _ => Nil
-        case _ => Nil
+                case _ => Lst()
+            case _ => Lst()
+        case _ => Lst()
       couldInstantiateTypeVar(tycon, applied)
       || (if applied then args else argsInResult).exists(couldInstantiateTypeVar(_, applied))
     case RefinedType(parent, _, _) =>
@@ -367,7 +366,7 @@ object Inferencing {
   def inferTypeParams(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match
     case tl: TypeLambda =>
       val (tl1, tvars) = constrained(tl, tree)
-      val tree1 = AppliedTypeTree(tree.withType(tl1), tvars.map(_.wrapInTypeTree(tree)))
+      val tree1 = AppliedTypeTree(tree.withType(tl1), tvars.mapToList(_.wrapInTypeTree(tree)))
       tree1.tpe <:< pt
       if isFullyDefined(tree1.tpe, force = ForceDegree.failBottom) then
         tree1
@@ -613,14 +612,14 @@ object Inferencing {
   def captureWildcards(tp: Type)(using Context): Type = derivedOnDealias(tp) {
     case tp @ AppliedType(tycon, args) if tp.hasWildcardArg =>
       val tparams = tycon.typeParamSymbols
-      val args1 = tp.argsLst.zipWithConserve(tparams.map(_.paramInfo.substApprox(tparams, tp.argsLst))) {
+      val args1 = args.zipWithConserve(tparams.map(_.paramInfo.substApprox(tparams, args))) {
         case (TypeBounds(lo, hi), bounds) =>
           val skolem = SkolemType(defn.TypeBoxClass.typeRef.appliedTo(lo | bounds.loBound, hi & bounds.hiBound))
           TypeRef(skolem, defn.TypeBox_CAP)
         case (arg, _) =>
           arg
       }
-      if tparams.isEmpty then tp else tp.derivedAppliedType(tycon, args1.toList)
+      if tparams.isEmpty then tp else tp.derivedAppliedType(tycon, args1)
     case tp: AndOrType => tp.derivedAndOrType(captureWildcards(tp.tp1), captureWildcards(tp.tp2))
     case tp: RefinedType => tp.derivedRefinedType(parent = captureWildcards(tp.parent))
     case tp: RecType => tp.derivedRecType(captureWildcards(tp.parent))
