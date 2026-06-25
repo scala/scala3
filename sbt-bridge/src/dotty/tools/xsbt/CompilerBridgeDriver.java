@@ -175,12 +175,8 @@ public class CompilerBridgeDriver extends Driver {
       return new PlainFile(new Path(path));
     }
 
-    try {
-      dotty.tools.io.VirtualFile file = new dotty.tools.io.VirtualFile(virtualFile.name(), virtualFile.id());
-      try (java.io.OutputStream output = file.output(); java.io.InputStream input = virtualFile.input()) {
-        input.transferTo(output);
-      }
-      return file;
+    try (java.io.InputStream input = virtualFile.input()) {
+      return new dotty.tools.io.VirtualFile(virtualFile.id(), input.readAllBytes());
     } catch (IOException e) {
       throw new IllegalArgumentException("invalid file " + virtualFile.name(), e);
     }
