@@ -208,7 +208,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     // Serialize once at the end with merged coverage
     val mergedCoverage = Coverage()
-    val currentFiles = units.map(_.source.file.absolute.jpath)
+    val currentFiles = units.map(_.source.file.jpath.nn.toAbsolutePath)
 
     // Add statements from previous coverage that aren't from recompiled files
     // and whose source files still exist

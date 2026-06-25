@@ -166,8 +166,8 @@ object CompilationUnit {
   /** Create a compilation unit corresponding to an in-memory String.
    *  Used for `compiletime.testing.typeChecks`.
    */
-  def apply(name: String, source: String): CompilationUnit = {
-    val src = SourceFile.virtual(name = name, content = source, maybeIncomplete = false)
+  def apply(path: String, source: String): CompilationUnit = {
+    val src = SourceFile.virtual(path, source)
     new CompilationUnit(src, null)
   }
 

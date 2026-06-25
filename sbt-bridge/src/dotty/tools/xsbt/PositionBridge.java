@@ -91,7 +91,7 @@ public class PositionBridge implements Position {
   @Override
   public Optional<File> sourceFile() {
     if (!src.exists()) return Optional.empty();
-    return Optional.ofNullable(src.file().file());
+    return src.file().jfile();
   }
 
   @Override

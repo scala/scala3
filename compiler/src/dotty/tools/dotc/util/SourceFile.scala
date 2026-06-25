@@ -86,18 +86,19 @@ object WrappedSourceFile:
             regex.findFirstMatchIn(text) match
               case Some(m) =>
                 val sourceStartOffset = sourceFile.nextLine(m.start)
-                val file = ctx.getFile(m.group(1).nn)
-                if file.exists then
-                  HasHeader(sourceStartOffset, ctx.getSource(file))
+                val name = m.group(1).nn
+                val src = ctx.getSource(name)
+                if src.file.exists then
+                  HasHeader(sourceStartOffset, src)
                 else
-                  report.warning(em"original source file not found: ${file.path}")
+                  report.warning(em"original source file not found: $name")
                   NoHeader
               case None => NoHeader
         cache(sourceFile) = result
         result
       case result => result
 
-class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
+class SourceFile(val file: AbstractFile, computeContent: => Array[Char], val maybeIncomplete: Boolean = false) extends interfaces.SourceFile {
   import SourceFile.*
 
   private var myContent: Array[Char] | Null = null
@@ -109,13 +110,9 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
     myContent.nn
   }
 
-  private var _maybeInComplete: Boolean = false
-
-  def maybeIncomplete: Boolean = _maybeInComplete
-
   override def name: String = file.name
   override def path: String = file.path
-  override def jfile: Optional[JFile] = Optional.ofNullable(file.file)
+  override def jfile: Optional[JFile] = file.jfile
 
   override def equals(that: Any): Boolean =
     (this `eq` that.asInstanceOf[AnyRef]) || {
@@ -254,18 +251,15 @@ object SourceFile {
 
   implicit def fromContext(using Context): SourceFile = ctx.source
 
-  /** A source file with an underlying virtual file. The name is taken as a file system path
+  /** A source file with an underlying virtual file. The path is taken as a file system path
    *  with the local separator converted to "/". The last element of the path will be the simple name of the file.
    */
-  def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
-    SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
-      .tap(_._maybeInComplete = maybeIncomplete)
+  def virtual(path: String, content: String, maybeIncomplete: Boolean = false): SourceFile =
+    new SourceFile(new VirtualFile(path.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray, maybeIncomplete)
 
-  /** A helper method to create a virtual source file for given URI.
-   *  It relies on SourceFile#virtual implementation to create the virtual file.
-   */
+  /** A source file with an underlying virtual file. */
   def virtual(uri: URI, content: String): SourceFile =
-    SourceFile(new VirtualFile(Paths.get(uri), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
+    virtual(java.nio.file.Path.of(uri).toString, content)
 
   /** Returns the relative path of `source` within the `reference` path
    *
