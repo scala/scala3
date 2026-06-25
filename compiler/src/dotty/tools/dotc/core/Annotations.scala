@@ -129,6 +129,15 @@ object Annotations {
   }
 
   case class ConcreteAnnotation(t: Tree) extends Annotation:
+    // Cache annotClass(t); invariant per-instance since t is immutable.
+    private var mySymbol: Symbol | Null = null
+    override def symbol(using Context): Symbol =
+      val s = mySymbol
+      if s != null then s.uncheckedNN
+      else
+        val s2 = annotClass(t)
+        mySymbol = s2
+        s2
     def tree(using Context): Tree = t
 
   /** A class for optimized, compact annotations that are defined by a type

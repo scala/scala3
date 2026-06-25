@@ -1474,7 +1474,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   override def inlineContext(tree: Inlined)(using Context): Context = {
     // We assume enclosingInlineds is already normalized, and only process the new call with the head.
-    val oldIC = enclosingInlineds
+    val oldICIndex = ctx.propertyIndex(InlinedCalls)
+    val oldIC =
+      if oldICIndex >= 0 then ctx.propertyAt[List[Tree]](oldICIndex)
+      else Nil
 
     val newIC =
       if tree.inlinedFromOuterScope then
@@ -1484,24 +1487,24 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else
         tree.call :: oldIC
 
-    val ctx1 = ctx.fresh.setProperty(InlinedCalls, newIC)
-    if oldIC.isEmpty then ctx1.setProperty(InlinedTrees, new Counter) else ctx1
+    if oldIC.isEmpty then ctx.fresh.setProperties(InlinedCalls, newIC, InlinedTrees, new Counter)
+    else ctx.fresh.replacePropertyAt(oldICIndex, InlinedCalls, newIC)
   }
 
   /** All enclosing calls that are currently inlined, from innermost to outermost.
    */
   def enclosingInlineds(using Context): List[Tree] =
-    ctx.property(InlinedCalls).getOrElse(Nil)
+    ctx.propertyOrElse(InlinedCalls, Nil)
 
   /** Record inlined trees */
   def addInlinedTrees(n: Int)(using Context): Unit =
-    ctx.property(InlinedTrees).foreach(_.count += n)
+    val counter = ctx.propertyOrElse(InlinedTrees, null)
+    if counter != null then counter.count += n
 
   /** Check if the limit on the number of inlined trees has been reached */
   def reachedInlinedTreesLimit(using Context): Boolean =
-    ctx.property(InlinedTrees) match
-      case Some(c) => c.count > ctx.settings.XmaxInlinedTrees.value
-      case None => false
+    val counter = ctx.propertyOrElse(InlinedTrees, null)
+    counter != null && counter.count > ctx.settings.XmaxInlinedTrees.value
 
   /** The source file where the symbol of the `inline` method referred to by `call`
    *  is defined
