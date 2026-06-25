@@ -4187,8 +4187,30 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedExpr(tree: untpd.Tree, pt: Type = WildcardType)(using Context): Tree =
     withoutMode(Mode.PatternOrTypeBits)(typed(tree, pt))
 
+  /** In a match type case pattern, desugar inline refinement type captures.
+   *  `X { type A = a }` where `a` is a var-pattern name is rewritten to
+   *  `([a] => X { type A = a })[a]` so that the existing type-arg var-pattern
+   *  mechanism binds `a` as a pattern-bound type variable.
+   */
+  private def desugarRefinedTypePatternCaptures(tree: untpd.Tree)(using Context): untpd.Tree =
+    tree match
+      case tree @ untpd.RefinedTypeTree(_, refinements) =>
+        val varPatDefs = refinements.collect:
+          case td @ untpd.TypeDef(_, rhs: untpd.Ident) if untpd.isVarPattern(rhs) => (td = td, rhs = rhs)
+        if varPatDefs.isEmpty then tree
+        else
+          given util.SourceFile = tree.source
+          val tparams = varPatDefs.map: (td, rhs) =>
+            untpd.TypeDef(rhs.name.toTypeName, untpd.TypeBoundsTree(untpd.EmptyTree, untpd.EmptyTree)).withFlags(Param).withSpan(td.span)
+          untpd.AppliedTypeTree(untpd.LambdaTypeTree(tparams, tree), varPatDefs.map(_.rhs))
+      case _ => tree
+
   def typedType(tree: untpd.Tree, pt: Type = WildcardType, mapPatternBounds: Boolean = false)(using Context): Tree = {
-    val tree1 = withMode(Mode.Type) { typed(tree, pt) }
+    val tree0 =
+      if mapPatternBounds && ctx.mode.is(Mode.Pattern) && !ctx.isAfterTyper then
+        desugarRefinedTypePatternCaptures(tree)
+      else tree
+    val tree1 = withMode(Mode.Type) { typed(tree0, pt) }
     if mapPatternBounds && ctx.mode.is(Mode.Pattern) && !ctx.isAfterTyper then
       tree1 match
         case tree1: TypeBoundsTree =>
