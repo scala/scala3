@@ -457,7 +457,7 @@ trait TypeAssigner {
             }
           case _ => params1
         val matchCase1 = defn.MatchCase(pat.tpe, body.tpe)
-        val matchCase2 = if params2 eq params1 then matchCase1 else matchCase1.substSym(params1, params2)
+        val matchCase2 = if params2 _eq_ params1 then matchCase1 else matchCase1.substSym(params1, params2)
         HKTypeLambda.fromParams(params2, matchCase2)
       }
       else body.tpe

@@ -308,7 +308,7 @@ object Decorators {
         }
       }
 
-  extension [T <: AnyRef](it: Iterator[T])
+  extension [T](it: Iterator[T])
     def toLst: Lst[T] =
       val buf = Lst.Buffer[T]()
       while it.hasNext do buf += it.next()
@@ -369,7 +369,7 @@ object Decorators {
   extension [T <: AnyRef](arr: Array[T])
     def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)
 
-  extension [T <: AnyRef](xs: Seq[T])
+  extension [T](xs: Seq[T])
     def toLst: Lst[T] =
       val buf = Lst.Buffer[T](xs.length)
       for x <- xs do buf += x
@@ -380,16 +380,16 @@ object Decorators {
       var i = rs.length
       for x <- xs do
         i = i - 1
-        rs(i) = x
-      rs.asInstanceOf[Lst[T]]
+        rs(i) = x.asInstanceOf[Object]
+      new Lst(rs)
 
     def mapToLst[U <: AnyRef](f: T => U): Lst[U] =
       val buf = Lst.Buffer[U](xs.length)
       for x <- xs do buf += f(x)
       buf.toLst
 
-  extension [T <: AnyRef](xs: Array[Object])
-    def freeze: Lst[T] = xs.asInstanceOf[Lst[T]]
+  extension [T](xs: Array[Object])
+    def freeze: Lst[T] = new Lst(xs)
 
   extension [T](xs: Iterable[T])
     def lazyZip[U <: AnyRef](that: Lst[U]): collection.LazyZip2[T, U, xs.type] =

@@ -17,7 +17,7 @@ import util.{Lst}
  *  and `OverloadedSignature`) is composed of a list of _parameter signatures_,
  *  plus a _type signature_ for the final result type.
  *
- *  A _parameter signature_ (a value of type `ParamSig`) is either an integer,
+ *  A _parameter signature_ (a value of type `ParamSig`) is either an Int,
  *  representing the number of type parameters in a type parameter section, or
  *  the _type signature_ of a term parameter.
  *
@@ -47,7 +47,7 @@ import util.{Lst}
  *   - tpnme.WILDCARD       Arises from a Wildcard or error type
  *   - tpnme.Uninstantiated Arises from an uninstantiated type variable
  */
-case class Signature(paramsSig: Lst[ParamSig], resSig: TypeName) extends Lst.Container[Signature] {
+case class Signature(paramsSig: Lst[ParamSig], resSig: TypeName) {
 
   /** Two names are consistent if they are the same or one of them is tpnme.Uninstantiated */
   private def consistent(name1: ParamSig, name2: ParamSig) =
@@ -60,7 +60,7 @@ case class Signature(paramsSig: Lst[ParamSig], resSig: TypeName) extends Lst.Con
   final def consistentParams(that: Signature)(using Context): Boolean =
     val names1 = this.paramsSig
     val names2 = that.paramsSig
-    (names1 `eq` names2)
+    (names1 _eq_ names2)
     || names1.length == names2.length
       && {
         var i = 0
@@ -133,8 +133,8 @@ case class Signature(paramsSig: Lst[ParamSig], resSig: TypeName) extends Lst.Con
 
 object Signature {
   /** A parameter signature, see the documentation of `Signature` for more information. */
-  type ParamSig = TypeName | Integer
-    // Erasure means that our Ints will be boxed, but Integer#valueOf caches
+  type ParamSig = TypeName | Int
+    // Erasure means that our Ints will be boxed, but Int#valueOf caches
     // small values, so the performance hit should be minimal.
 
   enum MatchDegree {
@@ -180,14 +180,14 @@ object Signature {
             case y: TypeName =>
               // `Ordering[TypeName]` doesn't work due to `Ordering` still being invariant
               summon[Ordering[Name]].compare(x, y)
-            case y: Integer =>
+            case y: Int =>
               1
           }
-        case x: Integer =>
+        case x: Int =>
           y match {
             case y: Name =>
               -1
-            case y: Integer =>
+            case y: Int =>
               x.intValue - y.intValue
           }
       }

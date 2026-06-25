@@ -1,391 +1,418 @@
 package dotty.tools
 package dotc.util
+import java.util.Arrays
 import java.lang.System.arraycopy
 import collection.mutable.ListBuffer
 import reflect.ClassTag
 import scala.collection.immutable
 import util.hashing.MurmurHash3
 
-opaque type Lst[+T <: AnyRef] <: AnyRef = Array[Object]
+class Lst[+T](private val arr: Array[Object]) extends AnyVal {
 
+  def elems: Array[Object] = arr
+
+  private def at(i: Int): T = {
+    assert(arr != null)
+    assert(arr(i) != null)
+    arr(i).asInstanceOf[T]
+  }
+  def length: Int = arr.length
+  def size: Int = arr.length
+  def isEmpty: Boolean = arr.length == 0
+  def nonEmpty: Boolean = arr.length != 0
+
+  def apply(i: Int): T = at(i)
+
+  def head: T = at(0)
+  def last: T = at(length - 1)
+
+  def headOption: Option[T] =
+    if length > 0 then Some(head) else None
+
+  def lastOption: Option[T] =
+    if length > 0 then Some(last) else None
+
+  def map[U](f: T => U): Lst[U] =
+    val ys = new Array[Object](arr.length)
+    var i = 0
+    while i < arr.length do
+      ys(i) = f(at(i)).asInstanceOf[Object]
+      i += 1
+    new Lst(ys)
+
+  def mapConserve[U >: T](f: T => U): Lst[U] =
+    val ys = new Array[Object](arr.length)
+    var i = 0
+    var change = false
+    while i < length do
+      ys(i) = f(at(i)).asInstanceOf[Object]
+      if ys(i) `ne` arr(i) then change = true
+      i += 1
+    if change then new Lst(ys) else this
+
+  def reverse: Lst[T] =
+    val buf = Lst.Buffer[T](length)
+    var i = length
+    while i > 0 do
+      i -= 1
+      buf += at(i)
+    buf.toLst
+
+  def _eq_ [U >: T](ys: Lst[U]) = arr eq ys.arr
+  def _ne_ [U >: T](ys: Lst[U]) = arr ne ys.arr
+
+  def zip[U](ys: Lst[U]): Lst[(T, U)] =
+    val zs = new Array[Object](length min ys.length)
+    var i = 0
+    while i < zs.length do
+      zs(i) = (at(i), ys.at(i))
+      i += 1
+    new Lst(zs)
+
+  def zipWithIndex: Lst[(T, Int)] =
+    val zs = new Array[Object](length)
+    var i = 0
+    while i < length do
+      zs(i) = (at(i), i)
+      i += 1
+    new Lst(zs)
+
+  def zipWith[U, V](ys: Lst[U])(f: (T, U) => V): Lst[V] =
+    val zs = new Array[Object](length min ys.length)
+    var i = 0
+    while i < zs.length do
+      zs(i) = f(at(i), ys(i)).asInstanceOf[Object]
+      i += 1
+    new Lst(zs)
+
+  /** Like `xs.zip(ys).map(f)`, but returns list `xs` itself
+   *  - instead of a copy - if function `f` maps all elements of
+   *  `xs` to themselves. Also, it is required that `ys` is at least
+   *  as long as `xs`.
+   */
+  def zipWithConserve[V >: T, U](ys: Lst[U])(f: (T, U) => V): Lst[V] =
+    val zs = new Array[Object](length min ys.length)
+    var i = 0
+    var change = false
+    while i < zs.length do
+      zs(i) = f(at(i), ys(i)).asInstanceOf[Object]
+      if arr(i) `ne` zs(i) then change = true
+      i += 1
+    if change then new Lst(zs) else this
+
+  def foldLeft[U](z: U)(f: (U, T) => U): U =
+    var acc = z
+    var i = 0
+    while i < arr.length do
+      acc = f(acc, at(i))
+      i += 1
+    acc
+
+  def flatMap[U](f: T => Lst[U]): Lst[U] =
+    map[Lst[U]](f).flatten
+
+  def filter(p: T => Boolean): Lst[T] =
+    val buf = Lst.Buffer[T](length)
+    var i = 0
+    while i < length do
+      val x = at(i)
+      if p(x) then buf += x
+      i += 1
+    if buf.length == length then this else buf.toLst
+
+  def collect[U](f: PartialFunction[T, U]): Lst[U] =
+    val buf = Lst.Buffer[U](length)
+    var i = 0
+    while i < length do
+      if f.isDefinedAt(at(i)) then buf += f(at(i))
+      i += 1
+    buf.toLst
+
+  def foreach(f: T => Unit): Unit =
+    var i = 0
+    while i < length do
+      f(at(i))
+      i += 1
+
+  def exists(p: T => Boolean): Boolean =
+    var i = 0
+    while i < length && !p(at(i)) do i += 1
+    i < length
+
+  def forall(p: T => Boolean): Boolean = !exists(!p(_))
+
+  def contains[U >: T](elem: U): Boolean =
+    var i = 0
+    while i < length && elem != at(i) do i += 1
+    i < length
+
+  def count(p: T => Boolean): Int =
+    var c = 0
+    var i = 0
+    while i < length do
+      if p(at(i)) then c += 1
+      i += 1
+    c
+
+  def find(p: T => Boolean): Option[T] =
+    var i = 0
+    while i < length do
+      if p(at(i)) then return Some(at(i))
+      i += 1
+    None
+
+  def ++ [U >: T](ys: Lst[U]): Lst[U] =
+    if isEmpty then ys
+    else if ys.isEmpty then this
+    else (new Lst.Buffer[U](length + ys.length) ++= this ++= ys).toLst
+
+  def :+ [U >: T](y: U): Lst[U] =
+    (new Lst.Buffer[U](length + 1) ++= this += y).toLst
+
+  def updated[U >: T](idx: Int, x: U): Lst[U] =
+    var rs = new Array[Object](length)
+    arraycopy(arr, 0, rs, 0, length)
+    rs(idx) = x.asInstanceOf[Object]
+    new Lst(rs)
+
+  def slice(from: Int, until: Int): Lst[T] =
+    if from < 0 then slice(0, until)
+    else if until > length then slice(from, length)
+    else if from >= until then Lst()
+    else
+      val rs = new Array[Object](until - from)
+      var i = 0
+      while i < rs.length do
+        rs(i) = at(i + from).asInstanceOf[Object]
+        i += 1
+      new Lst(rs)
+
+  def drop(n: Int): Lst[T] =
+    if n <= 0 then this else slice(n, length)
+
+  def take(n: Int): Lst[T] =
+    if n >= length then this else slice(0, n)
+
+  def dropRight(n: Int): Lst[T] =
+    if n <= 0 then this else slice(0, length - n)
+
+  def takeRight(n: Int): Lst[T] =
+    if n >= length then this else slice(length - n, length)
+
+  def init: Lst[T] =
+    slice(0, length - 1)
+
+  def splitAt(n: Int): (Lst[T], Lst[T]) =
+    if n <= 0 then (Lst(), this)
+    else if n >= length then (this, Lst())
+    else (slice(0, n), slice(n, length))
+
+  def indexOf[U >: T](x: U): Int =
+    var i = 0
+    while i < length do
+      if at(i) == x then return i
+      i += 1
+    -1
+
+  def indexWhere(p: T => Boolean): Int =
+    var i = 0
+    while i < length do
+      if p(at(i)) then return i
+      i += 1
+    -1
+
+  def dropWhile(p: T => Boolean): Lst[T] =
+    var i = 0
+    while i < length && p(at(i)) do i += 1
+    drop(i)
+
+  def takeWhile(p: T => Boolean): Lst[T] =
+    var i = 0
+    while i < length && p(at(i)) do i += 1
+    take(i)
+
+  def span(p: T => Boolean): (Lst[T], Lst[T]) =
+    var i = 0
+    while i < length && p(at(i)) do i += 1
+    (take(i), drop(i))
+
+  def partition(p: T => Boolean): (Lst[T], Lst[T]) =
+    val yes = Lst.Buffer[T]()
+    val no = Lst.Buffer[T]()
+    var i = 0
+    while i < length do
+      val x = at(i)
+      (if p(x) then yes else no) += x
+      i += 1
+    (yes.toLst, no.toLst)
+
+  def toList: List[T] =
+    var i = length
+    var rs: List[T] = Nil
+    while i > 0 do
+      i -= 1
+      rs = at(i) :: rs
+    rs
+
+  def reverseToLst: List[T] =
+    var i = 0
+    var rs: List[T] = Nil
+    while i < length do
+      rs = at(i) :: rs
+      i += 1
+    rs
+
+  def iterator: Iterator[T] = new scala.collection.Iterator:
+    var cur = 0
+    def hasNext: Boolean = cur < arr.length
+    def next(): T =
+      val elem = at(cur)
+      cur += 1
+      elem
+
+  def toIterable: Lst.Iterable[T] =
+    Lst.Iterable(this)
+
+  def toSet[U >: T]: immutable.Set[U] = immutable.Set.from(toIterable)
+
+  def corresponds[U](ys: Lst[U])(p: (T, U) => Boolean): Boolean =
+    length == ys.length
+      && {
+        var i = 0
+        while i < length && p(at(i), ys.at(i)) do i += 1
+        i == length
+      }
+
+  def copyToArray[U >: T <: AnyRef](ys: Array[U], start: Int = 0): Unit =
+    arraycopy(arr, 0, ys, start, length)
+
+  def mapToList[U](f: T => U): List[U] =
+    val buf = new ListBuffer[U]
+    var i = 0
+    while i < length do
+      buf += f(at(i))
+      i += 1
+    buf.toList
+
+  def mkString(prefix: String, sep: String, suffix: String): String =
+    val sb = StringBuilder()
+    sb ++= prefix
+    var i = 0
+    while i < length do
+      if i > 0 then sb ++= sep
+      sb ++= at(i).toString
+      i += 1
+    sb ++= suffix
+    sb.toString
+
+  def mkString(sep: String): String = mkString("", sep, "")
+  def mkString: String = mkString("")
+
+  def _toString: String = mkString("List(", ", ", ")")
+
+  def lazyZip[U](that: collection.Iterable[U]): collection.LazyZip2[T, U, ? <: Lst.Iterable[T]] =
+    toIterable.lazyZip(that)
+
+  def lazyZip[U](that: Lst[U]): collection.LazyZip2[T, U, ? <: Lst.Iterable[T]] =
+    lazyZip(that.toIterable)
+
+  override def equals(ys: Any): Boolean = ys match
+    case ys: Lst[_] => Arrays.equals(elems, ys.elems)
+    case _ => false
+
+  override def hashCode: Int = Arrays.hashCode(elems)
+
+  override def toString = mkString("List(", ", ", ")")
+}
 object Lst {
 
   val genericEmpty: Array[Object] = new Array[Object](0)
 
-  def apply[T <: AnyRef](): Lst[T] = genericEmpty
+  def apply[T](): Lst[T] = new Lst(genericEmpty)
 
-  def apply[T <: AnyRef](x: T): Lst[T] =
+  def apply[T](x: T): Lst[T] =
     val rs = new Array[Object](1)
-    rs(0) = x
-    rs
+    rs(0) = x.asInstanceOf[Object]
+    new Lst(rs)
 
-  def apply[T <: AnyRef](x0: T, x1: T): Lst[T] =
+  def apply[T](x0: T, x1: T): Lst[T] =
     val rs = new Array[Object](2)
-    rs(0) = x0
-    rs(1) = x1
-    rs
+    rs(0) = x0.asInstanceOf[Object]
+    rs(1) = x1.asInstanceOf[Object]
+    new Lst(rs)
 
-  def apply[T <: AnyRef](x0: T, x1: T, x2: T): Lst[T] =
+  def apply[T](x0: T, x1: T, x2: T): Lst[T] =
     val rs = new Array[Object](3)
-    rs(0) = x0
-    rs(1) = x1
-    rs(2) = x2
-    rs
+    rs(0) = x0.asInstanceOf[Object]
+    rs(1) = x1.asInstanceOf[Object]
+    rs(2) = x2.asInstanceOf[Object]
+    new Lst(rs)
 
-  def apply[T <: AnyRef](x0: T, x1: T, x2: T, x3: T): Lst[T] =
+  def apply[T](x0: T, x1: T, x2: T, x3: T): Lst[T] =
     val rs = new Array[Object](4)
-    rs(0) = x0
-    rs(1) = x1
-    rs(2) = x2
-    rs(3) = x3
-    rs
+    rs(0) = x0.asInstanceOf[Object]
+    rs(1) = x1.asInstanceOf[Object]
+    rs(2) = x2.asInstanceOf[Object]
+    rs(3) = x3.asInstanceOf[Object]
+    new Lst(rs)
 
-  def apply[T <: AnyRef](xs: T*): Lst[T] =
-    val rs = new Array[Object](xs.length)
+  def apply[T](xs: T*): Lst[T] =
+    val rs = new Array[Object](xs.size)
     var i = 0
-    while i < xs.length do
-      rs(i) = xs(i)
+    while i < rs.length do
+      rs(i) = xs(i).asInstanceOf[Object]
       i += 1
-    rs
+    new Lst(rs)
 
-  def fill[T <: AnyRef](n: Int)(elemFn: => T): Lst[T] =
+  def fill[T](n: Int)(elemFn: => T): Lst[T] =
     val rs = new Array[Object](n)
     var i = 0
     while i < n do
-      rs(i) = elemFn
+      rs(i) = elemFn.asInstanceOf[Object]
       i += 1
-    rs
+    new Lst(rs)
 
-  def tabulate[T <: AnyRef](n: Int)(elemFn: Int => T): Lst[T] =
+  def tabulate[T](n: Int)(elemFn: Int => T): Lst[T] =
     val rs = new Array[Object](n)
     var i = 0
     while i < n do
-      rs(i) = elemFn(i)
+      rs(i) = elemFn(i).asInstanceOf[Object]
       i += 1
-    rs
+    new Lst(rs)
 
   extension [T <: AnyRef](xs: Lst[T])
-    private def arr: Array[Object] = xs: Array[Object]
-    private def at(i: Int): T = arr(i).asInstanceOf[T]
 
-    def length: Int = arr.length
-    def size: Int = arr.length
-    def isEmpty: Boolean = arr.length == 0
-    def nonEmpty: Boolean = arr.length != 0
-
-    def apply(i: Int): T = at(i)
-
-    def head: T = at(0)
-    def last: T = at(length - 1)
-
-    def headOption: Option[T] =
-      if length > 0 then Some(head) else None
-
-    def lastOption: Option[T] =
-      if length > 0 then Some(last) else None
-
-    def map[U <: AnyRef](f: T => U): Lst[U] =
-      val ys = new Array[Object](arr.length)
-      var i = 0
-      while i < arr.length do
-        ys(i) = f(at(i))
-        i += 1
-      ys
-
-    def mapConserve[U >: T <: AnyRef](f: T => U): Lst[U] =
-      val ys = new Array[Object](arr.length)
-      var i = 0
-      var change = false
-      while i < xs.length do
-        ys(i) = f(at(i))
-        if ys(i) `ne` at(i) then change = true
-        i += 1
-      if change then ys else xs
-
-    def reverse: Lst[T] =
-      val buf = Buffer(length)
-      var i = length
-      while i > 0 do
-        i -= 1
-        buf += at(i)
-      buf.toLst
-
-    def zip[U <: AnyRef](ys: Lst[U]): Lst[(T, U)] =
-      val zs = new Array[Object](xs.length min ys.length)
-      var i = 0
-      while i < zs.length do
-        zs(i) = (xs.at(i), ys.at(i))
-        i += 1
-      zs
-
-    def zipWithIndex: Lst[(T, Int)] =
-      val zs = new Array[Object](xs.length)
-      var i = 0
-      while i < xs.length do
-        zs(i) = (xs.at(i), i)
-        i += 1
-      zs
-
-    def zipWith[U <: AnyRef, V <: AnyRef](ys: Lst[U])(f: (T, U) => V): Lst[V] =
-      val zs = new Array[Object](xs.length min ys.length)
-      var i = 0
-      while i < zs.length do
-        zs(i) = f(xs.at(i), ys.at(i))
-        i += 1
-      zs
-
-    /** Like `xs.zip(ys).map(f)`, but returns list `xs` itself
-     *  - instead of a copy - if function `f` maps all elements of
-     *  `xs` to themselves. Also, it is required that `ys` is at least
-     *  as long as `xs`.
-     */
-    def zipWithConserve[U <: AnyRef](ys: Lst[U])(f: (T, U) => T): Lst[T] =
-      val zs = new Array[Object](xs.length min ys.length)
-      var i = 0
-      var change = false
-      while i < zs.length do
-        zs(i) = f(xs.at(i), ys.at(i))
-        if xs.at(i) `ne` zs.at(i) then change = true
-        i += 1
-      if change then zs else xs
-
-    def foldLeft[U](z: U)(f: (U, T) => U): U =
-      var acc = z
-      var i = 0
-      while i < arr.length do
-        acc = f(acc, at(i))
-        i += 1
-      acc
-
-    def flatMap[U <: AnyRef](f: T => Lst[U]): Lst[U] = xs.map(f).flatten
-
-    def filter(p: T => Boolean): Lst[T] =
-      val buf = Buffer(xs.length)
-      var i = 0
-      while i < xs.length do
-        val x = xs.at(i)
-        if p(x) then buf += x
-        i += 1
-      if buf.length == length then xs else buf.toLst
-
-    def collect[U <: AnyRef](f: PartialFunction[T, U]): Lst[U] =
-      val buf = Buffer(xs.length)
-      var i = 0
-      while i < xs.length do
-        if f.isDefinedAt(at(i)) then buf += f(at(i))
-        i += 1
-      buf.toLst
-
-    def foreach(f: T => Unit): Unit =
-      var i = 0
-      while i < length do
-        f(at(i))
-        i += 1
-
-    def exists(p: T => Boolean): Boolean =
-      var i = 0
-      while i < length && !p(at(i)) do i += 1
-      i < length
-
-    def forall(p: T => Boolean): Boolean = !exists(!p(_))
-
-    def contains(elem: T): Boolean =
-      var i = 0
-      while i < length && elem != at(i) do i += 1
-      i < length
-
-    def count(p: T => Boolean): Int =
-      var c = 0
-      var i = 0
-      while i < length do
-        if p(at(i)) then c += 1
-        i += 1
-      c
-
-    def find(p: T => Boolean): Option[T] =
-      var i = 0
-      while i < length do
-        if p(at(i)) then return Some(at(i))
-        i += 1
-      None
-
-    def ++(ys: Lst[T]): Lst[T] =
-      if xs.isEmpty then ys
-      else if ys.isEmpty then xs
-      else (Buffer(xs.length + ys.length) ++= xs ++= ys).toLst
-
-    def :+(y: T): Lst[T] =
-      (Buffer(xs.length + 1) ++= xs += y).toLst
-
-    def updated[U >: T <: AnyRef](idx: Int, x: U): Lst[U] =
-      var rs = new Array[Object](xs.length)
-      arraycopy(xs, 0, rs, 0, xs.length)
-      rs(idx) = x
-      rs
-
-    def slice(from: Int, until: Int): Lst[T] =
-      if from < 0 then slice(0, until)
-      else if until > xs.length then slice(from, xs.length)
-      else if from >= until then Lst()
-      else
-        val rs = new Array[Object](until - from)
-        var i = 0
-        while i < rs.length do
-          rs(i) = xs(i + from)
-          i += 1
-        rs
-
-    def drop(n: Int): Lst[T] =
-      if n <= 0 then xs else slice(n, length)
-
-    def take(n: Int): Lst[T] =
-      if n >= length then xs else slice(0, n)
-
-    def dropRight(n: Int): Lst[T] =
-      if n <= 0 then xs else slice(0, length - n)
-
-    def takeRight(n: Int): Lst[T] =
-      if n >= length then xs else slice(length - n, length)
-
-    def init: Lst[T] =
-      slice(0, length - 1)
-
-    def splitAt(n: Int): (Lst[T], Lst[T]) =
-      if n <= 0 then (Lst(), xs)
-      else if n >= length then (xs, Lst())
-      else (slice(0, n), slice(n, length))
-
-    def indexOf[U >: T <: AnyRef](x: U): Int =
-      var i = 0
-      while i < length do
-        if at(i) == x then return i
-        i += 1
-      -1
-
-    def indexWhere(p: T => Boolean): Int =
-      var i = 0
-      while i < length do
-        if p(at(i)) then return i
-        i += 1
-      -1
-
-    def dropWhile(p: T => Boolean): Lst[T] =
-      var i = 0
-      while i < length && p(at(i)) do i += 1
-      drop(i)
-
-    def takeWhile(p: T => Boolean): Lst[T] =
-      var i = 0
-      while i < length && p(at(i)) do i += 1
-      take(i)
-
-    def span(p: T => Boolean): (Lst[T], Lst[T]) =
-      var i = 0
-      while i < length && p(at(i)) do i += 1
-      (take(i), drop(i))
-
-    def partition(p: T => Boolean): (Lst[T], Lst[T]) =
-      val yes = Buffer[T]()
-      val no = Buffer[T]()
-      var i = 0
-      while i < length do
-        val x = at(i)
-        (if p(x) then yes else no) += x
-        i += 1
-      (yes.toLst, no.toLst)
-
-    def toList: List[T] =
-      var i = xs.length
-      var rs: List[T] = Nil
-      while i > 0 do
-        i -= 1
-        rs = at(i) :: rs
-      rs
-
-    def reverseToLst: List[T] =
-      var i = 0
-      var rs: List[T] = Nil
-      while i < length do
-        rs = at(i) :: rs
-        i += 1
-      rs
-
-    def iterator: Iterator[T] = new scala.collection.Iterator:
-      var cur = 0
-      def hasNext: Boolean = cur < arr.length
-      def next(): T =
-        val elem = at(cur)
-        cur += 1
-        elem
-
-    def toIterable: Lst.Iterable[T] =
-      Lst.Iterable(xs)
-
-    def toSet[U >: T]: immutable.Set[U] = immutable.Set.from(toIterable)
-
-    def corresponds[U <: AnyRef](ys: Lst[U])(p: (T, U) => Boolean): Boolean =
-      xs.length == ys.length
+    def eqElements[U <: AnyRef](ys: Lst[U]): Boolean =
+    (this.asInstanceOf[Object] `eq` ys.asInstanceOf[Object])
+    || xs.length == ys.length
         && {
           var i = 0
-          while i < xs.length && p(xs.at(i), ys.at(i)) do i += 1
+          while i < xs.length && (xs(i) `eq` ys(i)) do i += 1
           i == xs.length
         }
 
-    def eqElements[U <: AnyRef](ys: Lst[U]): Boolean =
-      (xs `eq` ys)
-      || xs.length == ys.length
-          && {
-            var i = 0
-            while i < xs.length && (xs(i) `eq` ys(i)) do i += 1
-            i == xs.length
-          }
+  extension [T: ClassTag](xs: Lst[T])
+    def toArray: Array[T] =
+      val rs = new Array[T](xs.length)
+      arraycopy(xs.arr, 0, rs, 0, xs.length)
+      rs
 
-    def ===[U <: AnyRef](ys: Lst[U]): Boolean =
-      (xs `eq` ys)
-      || xs.length == ys.length
-          && {
-            var i = 0
-            while i < xs.length && (xs(i) == ys(i)) do i += 1
-            i == xs.length
-          }
+  extension [T](x: T)
+    def +:(ys: Lst[T]): Lst[T] =
+      (Buffer[T](ys.length + 1) += x ++= ys).toLst
 
-    def hash: Int =
-      java.util.Arrays.hashCode(xs)
+  extension [T, U](xs: Lst[(T, U)])
+    def unzip: (Lst[T], Lst[U]) =
+      val buf1 = Buffer[T](xs.length)
+      val buf2 = Buffer[U](xs.length)
+      for (x1, x2) <- xs do
+        buf1 += x1
+        buf2 += x2
+      (buf1.toLst, buf2.toLst)
 
-    def copyToArray(ys: Array[T], start: Int = 0): Unit =
-      arraycopy(xs, 0, ys, start, length)
+    def toMap: immutable.Map[T, U] = immutable.Map.from(xs.toIterable)
 
-    def mapToList[U](f: T => U): List[U] =
-      val buf = new ListBuffer[U]
-      var i = 0
-      while i < xs.length do
-        buf += f(at(i))
-        i += 1
-      buf.toList
-
-    def mkString(prefix: String, sep: String, suffix: String): String =
-      val sb = StringBuilder()
-      sb ++= prefix
-      var i = 0
-      while i < length do
-        if i > 0 then sb ++= sep
-        sb ++= at(i).toString
-        i += 1
-      sb ++= suffix
-      sb.toString
-
-    def mkString(sep: String): String = mkString("", sep, "")
-    def mkString: String = mkString("")
-
-    def _toString: String = mkString("List(", ", ", ")")
-
-    def lazyZip[U](that: collection.Iterable[U]): collection.LazyZip2[T, U, ? <: Lst.Iterable[T]] =
-      toIterable.lazyZip(that)
-
-    def lazyZip[U <: AnyRef](that: Lst[U]): collection.LazyZip2[T, U, ? <: Lst.Iterable[T]] =
-      lazyZip(that.toIterable)
-
-  extension [T <: AnyRef](xss: Lst[Lst[T]])
+  extension [T](xss: Lst[Lst[T]])
 
     def flatten: Lst[T] =
       var i = 0
@@ -398,10 +425,10 @@ object Lst {
         xss.at(i)
       else
         val totalLength = xss.foldLeft(0)((len, xs) => len + xs.length)
-        val buf = Buffer(totalLength)
+        val buf = Buffer[T](totalLength)
         var i = 0
         while i < xss.length do
-          buf ++= xss.at(i)
+          buf ++= xss(i)
           i += 1
         buf.toLst
 
@@ -411,33 +438,12 @@ object Lst {
         val xs = xss.at(i)
         var j = 0
         while j < xs.length do
-          if p(xs.at(j)) then return true
+          if p(xs(j)) then return true
           j += 1
         i += 1
       false
 
-  extension [T <: AnyRef: ClassTag](xs: Lst[T])
-    def toArray: Array[T] =
-      val rs = new Array[T](xs.length)
-      arraycopy(xs, 0, rs, 0, xs.length)
-      rs
-
-  extension [T <: AnyRef](x: T)
-    def +:(ys: Lst[T]): Lst[T] =
-      (Buffer[T](ys.length + 1) += x ++= ys).toLst
-
-  extension [T <: AnyRef, U <: AnyRef](xs: Lst[(T, U)])
-    def unzip: (Lst[T], Lst[U]) =
-      val buf1 = Buffer(xs.length)
-      val buf2 = Buffer(xs.length)
-      for (x1, x2) <- xs do
-        buf1 += x1
-        buf2 += x2
-      (buf1.toLst, buf2.toLst)
-
-    def toMap: immutable.Map[T, U] = immutable.Map.from(xs.toIterable)
-
-  class Buffer[T <: AnyRef](initSize: Int = 8) {
+  class Buffer[T](initSize: Int = 8) {
     import Lst.*
 
     private var elems = new Array[Object](initSize)
@@ -462,13 +468,13 @@ object Lst {
 
     def += (x: T): this.type =
       ensureCapacity(1)
-      elems(siz) = x
+      elems(siz) = x.asInstanceOf[Object]
       siz += 1
       this
 
     def ++= (xs: Lst[T]): this.type =
       ensureCapacity(xs.length)
-      arraycopy(xs, 0, elems, siz, xs.length)
+      arraycopy(xs.arr, 0, elems, siz, xs.length)
       siz += xs.length
       this
 
@@ -487,83 +493,34 @@ object Lst {
       if siz == 0 then Lst()
       else if siz == elems.length then
         dirty = true
-        elems.asInstanceOf[Lst[T]]
+        new Lst[T](elems)
       else
         val result = new Array[Object](siz)
         arraycopy(elems, 0, result, 0, siz)
-        result.asInstanceOf[Lst[T]]
+        new Lst[T](result)
   }
 
-  class Iterable[+T <: AnyRef](lst: Lst[T]) extends collection.immutable.Iterable[T]:
+  class Iterable[+T](lst: Lst[T]) extends collection.immutable.Iterable[T]:
     def iterator: Iterator[T] = lst.iterator
 
   /** Extractor for lsts of length 1 */
   object Singleton:
-    def unapply[T <: AnyRef](xs: Lst[T]): Option[T] =
-      if xs.length == 1 then Some(xs.at(0)) else None
+    def unapply[T](xs: Lst[T]): Option[T] =
+      if xs.length == 1 then Some(xs(0)) else None
 
   /** Extractor for nonempty lsts starting with some element pattern */
   object StartingWith:
-    def unapply[T <: AnyRef](xs: Lst[T]): Option[T] =
-      if xs.length >= 1 then Some(xs.at(0)) else None
-
-  /** A super-trait for case classes containing `Lst` elements
-   *  which defines the correct `equals`, `hashCode` and `toString` methods so
-   *  that the functionality is the same as if the elements were regular Lists.
-   *  @param T   the case class
-   */
-  trait Container[T](using ct: ClassTag[T]) { self: Product =>
-    override def toString =
-      val it = productIterator
-      val sb = StringBuilder() ++= productPrefix += '('
-      var first = true
-      while it.hasNext do
-        if !first then sb += ','
-        first = false
-        sb ++= it.next().match
-          case elem: Array[Object] => elem.asInstanceOf[Lst[Object]]._toString
-          case elem => elem.toString
-      sb += ')'
-      sb.toString
-
-    override def equals(that: Any): Boolean =
-      (this `eq` that.asInstanceOf[Object])
-      || ct.runtimeClass.isInstance(that)
-          && {
-            val that1 = that.asInstanceOf[Product]
-            var i = 0
-            var len = productArity
-            while i < len
-              && productElement(i).match
-                case elem: Array[Object] =>
-                  elem.asInstanceOf[Lst[Object]] === that1.productElement(i).asInstanceOf[Lst[Object]]
-                case elem =>
-                  elem == that1.productElement(i)
-            do i += 1
-            i == len && that1.canEqual(this)
-          }
-
-    override def hashCode: Int =
-      val len = productArity
-      var h = productPrefix.hashCode
-      var i = 0
-      while i < len do
-        val elemHash = productElement(i) match
-          case elem: Array[Object] => java.util.Arrays.hashCode(elem)
-          case elem => elem.##
-        h = MurmurHash3.mix(h, elemHash)
-        i += 1
-      MurmurHash3.finalizeHash(h, len)
-  }
+    def unapply[T](xs: Lst[T]): Option[T] =
+      if xs.length >= 1 then Some(xs(0)) else None
 }
 
 @main def LstTest() =
   val xs = Lst("hello", "world")
-  println(xs.mkString)
+  println(xs)
   val ys = xs.map(_.tail)
   println(ys.mkString("[", ",", "]"))
   val zs = xs.flatMap(x => Lst(x, "?"))
-  println(zs.mkString)
+  println(zs)
   val as = zs.filter(_.length > 1)
   println(as.mkString)
   println(as.toList)
@@ -574,4 +531,6 @@ object Lst {
   val xs1 = Lst(arr*)
   assert(xs1.eqElements(xs))
   assert(xs1.corresponds(xs)(_ == _))
-  assert(xs1 === xs)
+  assert(xs1 == xs)
+  var ns: Lst[String] | Null = null
+  assert(ns == null)

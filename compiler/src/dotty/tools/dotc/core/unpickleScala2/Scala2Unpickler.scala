@@ -612,7 +612,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case mt: MethodType =>
         val params = paramsOfMethodType.remove(mt)
         val rest = paramssOfType(mt.resType)
-        if params == null then rest else params :: rest
+        if params.elems == null then rest else params :: rest
       case _ => Nil
 
     def complete(denot: SymDenotation)(using Context): Unit = try {
@@ -702,7 +702,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       atReadPos(index(infoRef), () => readTypeParams()(using ctx))
 
     /** Have the type params of this class already been unpickled? */
-    def areParamsInitialized: Boolean = myTypeParams ne null
+    def areParamsInitialized: Boolean = myTypeParams != null
 
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
     def init()(using Context): Lst[TypeSymbol] =
