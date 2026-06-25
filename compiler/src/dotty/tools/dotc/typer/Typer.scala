@@ -2889,19 +2889,27 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     if sel1Tpe.isLambdaSub then
       report.error(MatchTypeScrutineeCannotBeHigherKinded(sel1Tpe), sel1.srcPos)
     val pt1 = if (bound1.isEmpty) pt else bound1.tpe
-    val cases1 = tree.cases.mapconserve(typedTypeCase(_, sel1Tpe, pt1))
-    val bound2 = if tree.bound.isEmpty then
-      val lub = cases1.foldLeft(defn.NothingType: Type): (acc, case1) =>
-        if !acc.exists then NoType
-        else if case1.body.tpe.isProvisional then NoType
-        else acc | TypeOps.avoid(case1.body.tpe, case1.pat.bindTypeSymbols)
-      if lub.exists then
-        if !lub.isAny then
-          val msg = em"Match type upper bound inferred as $lub, where previously it was defaulted to Any"
-          warnOnMigration(msg, tree, `3.6`)
-        TypeTree(lub, inferred = true)
+    // While typing case bodies and inferring the match type's upper bound, a
+    // `compiletime.ops` body that fails to constant-fold (e.g. `case _ => 1 / 0`)
+    // is left unreduced rather than raising a hard error: a branch that is never
+    // selected must not make the match type undefinable. The error still surfaces
+    // when such a branch is actually selected during reduction at a use site.
+    val (cases1, bound2) = inContext(ctx.fresh.setProperty(TypeEval.SuppressFoldErrors, ())) {
+      val cs = tree.cases.mapconserve(typedTypeCase(_, sel1Tpe, pt1))
+      val b2 = if tree.bound.isEmpty then
+        val lub = cs.foldLeft(defn.NothingType: Type): (acc, case1) =>
+          if !acc.exists then NoType
+          else if case1.body.tpe.isProvisional then NoType
+          else acc | TypeOps.avoid(case1.body.tpe, case1.pat.bindTypeSymbols)
+        if lub.exists then
+          if !lub.isAny then
+            val msg = em"Match type upper bound inferred as $lub, where previously it was defaulted to Any"
+            warnOnMigration(msg, tree, `3.6`)
+          TypeTree(lub, inferred = true)
+        else bound1
       else bound1
-    else bound1
+      (cs, b2)
+    }
     assignType(cpy.MatchTypeTree(tree)(bound2, sel1, cases1), bound2, sel1, cases1)
   }
 

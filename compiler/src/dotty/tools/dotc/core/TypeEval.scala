@@ -10,8 +10,18 @@ import reporting.trace
 import StdNames.tpnme
 import Flags.CaseClass
 import TypeOps.nestedPairs
+import util.Property
 
 object TypeEval:
+
+  /** When present in the context, a `compiletime.ops` application whose constant
+   *  folding *fails* (e.g. `1 / 0`) is left unreduced (stuck) instead of raising
+   *  a hard error. This is set only while typing match-type case bodies and
+   *  computing a match type's upper bound, so a branch that is never selected —
+   *  such as `case _ => 1 / 0` — does not turn into a definition-time error. A
+   *  genuine use elsewhere (e.g. `val x: 1 / 0 = 5`) still reports the failure.
+   */
+  val SuppressFoldErrors: Property.Key[Unit] = Property.Key()
 
   def tryCompiletimeConstantFold(tp: AppliedType)(using Context): Type = tp.tycon match
     case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) =>
@@ -80,13 +90,15 @@ object TypeEval:
       def natValue(tp: Type): Option[Int] = intValue(tp).filter(n => n >= 0 && n < Int.MaxValue)
 
       // Runs the op and returns the result as a constant type.
-      // If the op throws an exception, then this exception is converted into a type error.
+      // If the op throws an exception, the exception is converted into a type
+      // error — unless `SuppressFoldErrors` is set in the context (while typing a
+      // match-type case body), in which case the application is left unreduced so
+      // that a never-selected branch like `case _ => 1 / 0` is not a hard error.
       def runConstantOp[T](op: => T)(using Constant.ValueToConstant[T]): Type =
-        val result =
-          try op
-          catch case ex: Exception =>
-            throw TypeError(em"${ex.getMessage}")
-        ConstantType(Constant.fromValue(result))
+        try ConstantType(Constant.fromValue(op))
+        catch case ex: Exception =>
+          if ctx.property(SuppressFoldErrors).isDefined then NoType
+          else throw TypeError(em"${ex.getMessage}")
 
       def fieldsOf: Option[Type] =
         expectArgsNum(1)
