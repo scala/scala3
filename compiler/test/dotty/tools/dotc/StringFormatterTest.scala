@@ -52,7 +52,7 @@ abstract class AbstractStringFormatterTest extends DottyTest:
     val names = Lst(typeName("Foo"), typeName("Bar"))
     val infos = Lst(TypeBounds.upper(defn.IntType), TypeBounds.upper(defn.StringType))
     val tl = PolyType(names)(_ => infos, _ => defn.AnyType)
-    TypeComparer.addToConstraint(tl, Nil)
+    TypeComparer.addToConstraint(tl, Lst())
     tl.paramRefs
 
   def ckSub(obtained: String, snippet: String)  = assert(obtained.contains(snippet))

@@ -22,7 +22,7 @@ object SyntheticMembers {
 
   enum MirrorImpl:
     case OfProduct(pre: Type)
-    case OfSum(childPres: List[Type])
+    case OfSum(childPres: Lst[Type])
 
   /** Attachment marking an anonymous class as a singleton case that will extend from Mirror.Singleton */
   val ExtendsSingletonMirror: Property.StickyKey[Unit] = new Property.StickyKey
@@ -554,7 +554,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           val tvars = constrained(tl)
           val targs = for tvar <- tvars yield
             tvar.instantiate(fromBelow = false)
-          (AppliedType(classRef, targs), tl.instantiate(targs.toLst).asInstanceOf[MethodType], symss(1))
+          (AppliedType(classRef, targs), tl.instantiate(targs).asInstanceOf[MethodType], symss(1))
         case mt: MethodType =>
           (classRef, mt, symss.head)
 
@@ -628,20 +628,20 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     if cls.is(Enum) then
       param.select(nme.ordinal).ensureApplied
     else
-      def computeChildTypes: List[Type] =
+      def computeChildTypes: Lst[Type] =
         def rawRef(child: Symbol): Type =
           if (child.isTerm) child.reachableTermRef else child.reachableRawTypeRef
         optInfo match
           case Some(info) => info
             .childPres
-            .lazyZip(cls.children)
-            .map((pre, child) => rawRef(child).asSeenFrom(pre, child.owner))
+            .zipWith(cls.children.toLst): (pre, child) =>
+              rawRef(child).asSeenFrom(pre, child.owner)
           case _ =>
-            cls.children.map(rawRef)
+            cls.children.mapToLst(rawRef)
 
       val childTypes = computeChildTypes
       val cases =
-        for (patType, idx) <- childTypes.zipWithIndex yield
+        for (patType, idx) <- childTypes.toList.zipWithIndex yield
           val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
           CaseDef(pat, EmptyTree, Literal(Constant(idx)))
 

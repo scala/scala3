@@ -136,19 +136,19 @@ object Applications {
     if (isValid) elemTp else NoType
   }
 
-  def namedTupleOrProductTypes(tp: Type)(using Context): List[Type] =
+  def namedTupleOrProductTypes(tp: Type)(using Context): Lst[Type] =
     if tp.isNamedTupleType then tp.namedTupleElementTypes(true).map(_(1))
     else productSelectorTypes(tp, NoSourcePosition)
 
-  def productSelectorTypes(tp: Type, errorPos: SrcPos)(using Context): List[Type] = {
+  def productSelectorTypes(tp: Type, errorPos: SrcPos)(using Context): Lst[Type] = {
     if tp.isError then
-      Nil
+      Lst()
     else
       val sels = for (n <- Iterator.from(0)) yield extractorMemberType(tp, nme.selectorName(n), errorPos)
-      sels.takeWhile(_.exists).toList
+      sels.takeWhile(_.exists).toLst
   }
 
-  def tupleComponentTypes(tp: Type)(using Context): List[Type] =
+  def tupleComponentTypes(tp: Type)(using Context): Lst[Type] =
     tp.widenExpr.dealias.normalized match
       case defn.NamedTuple(_, vals) =>
         tupleComponentTypes(vals)
@@ -156,33 +156,33 @@ object Applications {
         if defn.isTupleClass(tp.tycon.typeSymbol) then
           tp.args
         else if tp.tycon.derivesFrom(defn.PairClass) then
-          val List(head, tail) = tp.args
-          head :: tupleComponentTypes(tail)
+          val Lst.Pair(head, tail) = tp.args.runtimeChecked
+          head +: tupleComponentTypes(tail)
         else
-          Nil
+          Lst()
       case _ =>
-        Nil
+        Lst()
 
   def productArity(tp: Type, errorPos: SrcPos = NoSourcePosition)(using Context): Int =
     if (defn.isProductSubType(tp)) productSelectorTypes(tp, errorPos).size else -1
 
-  def productSelectors(tp: Type)(using Context): List[Symbol] = {
+  def productSelectors(tp: Type)(using Context): Lst[Symbol] = {
     val sels = for (n <- Iterator.from(0)) yield
       tp.member(nme.selectorName(n)).suchThat(_.info.isParameterless).symbol
-    sels.takeWhile(_.exists).toList
+    sels.takeWhile(_.exists).toLst
   }
 
-  def productSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] =
+  def productSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): Lst[Type] =
     seqSelectors(productSelectorTypes(tp, pos), argsNum)
 
-  def nonEmptyTupleSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): List[Type] =
+  def nonEmptyTupleSeqSelectors(tp: Type, argsNum: Int, pos: SrcPos)(using Context): Lst[Type] =
     seqSelectors(tp.tupleElementTypes.get, argsNum)
 
-  private def seqSelectors(selectorTypes: List[Type], argsNum: Int)(using Context): List[Type] =
+  private def seqSelectors(selectorTypes: Lst[Type], argsNum: Int)(using Context): Lst[Type] =
     val arity = selectorTypes.length
     val elemTp = unapplySeqTypeElemTp(selectorTypes.last)
-    (0 until argsNum).map(i => if (i < arity - 1) selectorTypes(i) else elemTp).toList
-  end seqSelectors
+    Lst.tabulate(argsNum): i =>
+      if i < arity - 1 then selectorTypes(i) else elemTp
 
   /** A utility class that matches results of unapplys with patterns. Two queriable members:
    *     val argTypes: List[Type]
@@ -204,13 +204,13 @@ object Applications {
 
     private def fail = {
       report.error(UnapplyInvalidReturnType(unapplyResult, unapplyName), pos)
-      Nil
+      Lst()
     }
 
-    private def unapplySeq(tp: Type)(fallback: => List[Type]): List[Type] =
+    private def unapplySeq(tp: Type)(fallback: => Lst[Type]): Lst[Type] =
       val elemTp = unapplySeqTypeElemTp(tp)
       if elemTp.exists then
-        args.map(Function.const(elemTp))
+        args.mapToLst(Function.const(elemTp))
       else if isProductSeqMatch(tp, args.length, pos) then
         productSeqSelectors(tp, args.length, pos)
       else if isNonEmptyTupleSeqMatch(tp, args.length, pos) then
@@ -219,7 +219,7 @@ object Applications {
 
     private def tryAdaptPatternArgs(elems: List[untpd.Tree], pt: Type)(using Context): Option[List[untpd.Tree]] =
       namedTupleOrProductTypes(pt) match
-        case List(defn.NamedTuple(_, _))=>
+        case Lst.Singleton(defn.NamedTuple(_, _))=>
           // if the product types list is a singleton named tuple, autotupling might be applied, so don't fail eagerly
           tryEither[Option[List[untpd.Tree]]]
             (Some(desugar.adaptPatternArgs(elems, pt, pos)))
@@ -227,7 +227,7 @@ object Applications {
         case pts =>
           Some(desugar.adaptPatternArgs(elems, pt, pos))
 
-    private def getUnapplySelectors(tp: Type)(using Context): List[Type] =
+    private def getUnapplySelectors(tp: Type)(using Context): Lst[Type] =
       // We treat patterns as product elements if
       // they are named, or there is more than one pattern
       val isProduct = args match
@@ -240,11 +240,11 @@ object Applications {
           // would return None for these, but they are still valid types
           // for a get match. A test case is pos/extractors.scala.
           val sels = productSelectorTypes(tp, pos)
-          if (sels.length == args.length) sels
-          else tp :: Nil
-      else tp :: Nil
+          if sels.length == args.length then sels
+          else Lst(tp)
+      else Lst(tp)
 
-    private def productUnapplySelectors(tp: Type)(using Context): Option[List[Type]] =
+    private def productUnapplySelectors(tp: Type)(using Context): Option[Lst[Type]] =
       val validatedTupleElements = desugar.checkWellFormedTupleElems(args)
 
       if defn.isProductSubType(tp) && args.lengthCompare(productArity(tp)) <= 0 then
@@ -263,7 +263,7 @@ object Applications {
         case _ => None
 
     /** The computed argument types which will be the scutinees of the sub-patterns. */
-    val argTypes: List[Type] =
+    val argTypes: Lst[Type] =
       if unapplyName == nme.unapplySeq then
         unapplySeq(unapplyResult):
           if (isGetMatch(unapplyResult, pos)) unapplySeq(getTp)(fail)
@@ -274,9 +274,9 @@ object Applications {
           if isGetMatch(unapplyResult, pos) then
             getUnapplySelectors(getTp)
           else if unapplyResult.derivesFrom(defn.BooleanClass) then
-            Nil
+            Lst()
           else if unapplyResult.derivesFrom(defn.NonEmptyTupleClass) then
-            unapplyResult.tupleElementTypes.getOrElse(Nil)
+            unapplyResult.tupleElementTypes.getOrElse(Lst())
           else if defn.isProductSubType(unapplyResult) && productArity(unapplyResult, pos) != 0 then
             productSelectorTypes(unapplyResult, pos)
               // this will cause a "wrong number of arguments in pattern" error later on,
@@ -289,7 +289,7 @@ object Applications {
       for argType <- argTypes do
         assert(!isBounds(argType), unapplyResult.show)
       val alignedArgs = argTypes match
-        case argType :: Nil
+        case Lst.Singleton(argType)
         if args.lengthCompare(1) > 0
             && Feature.autoTuplingEnabled
             && defn.isTupleNType(argType.normalizedTupleType) =>
@@ -311,16 +311,15 @@ object Applications {
           else false
         else false
 
-      val alignedArgTypes =
+      val alignedArgTypes: Lst[Type] =
         if argTypes.length == alignedArgs.length then
           argTypes
         else if hasInvalidSeqWildcard then
-          alignedArgs.map(_ => WildcardType)
+          alignedArgs.mapToLst(_ => WildcardType)
         else
           report.error(UnapplyInvalidNumberOfArguments(qual, argTypes), pos)
           argTypes.take(args.length) ++
-            List.fill(argTypes.length - args.length)(WildcardType)
-
+            Lst.fill(argTypes.length - args.length)(WildcardType)
 
       if varArgs.length >= 2 then
         report.error(em"Only one spread pattern allowed in sequence", varArgs(1).srcPos)
@@ -339,7 +338,7 @@ object Applications {
    */
   private def mappedAltInfo(sym: Symbol)(using Context): Option[(Type, Int)] =
     for ann <- sym.getAnnotation(defn.MappedAlternativeAnnot) yield
-      val AppliedType(_, pre :: ConstantType(c) :: Nil) = ann.tree.tpe: @unchecked
+      val AppliedType(_, Lst.Pair(pre, ConstantType(c))) = ann.tree.tpe: @unchecked
       (pre, c.intValue)
 
   /** Find reference to default parameter getter for parameter #n in current
@@ -1722,7 +1721,7 @@ trait Applications extends Compatibility {
     // e.g., if `(a: Any, b: Any)` is matched with `x @ (_, y: Int)` then `x` should be of type `(Any, Int)`
     val selType = selType0 match
       case AppliedType(selCon, selArgs) if defn.isTupleClass(selCon.typeSymbol) && unadaptedArgs.length == selArgs.length =>
-        val newSelArgs = unadaptedArgs.zip(selArgs).map:
+        val newSelArgs = unadaptedArgs.toLst.zip(selArgs).map:
           case (Typed(_, tpt: AppliedTypeTree), t) =>
             // However, we can't do that if the args changed, e.g., if the args were patterns
             typed(tpt) match
@@ -2277,9 +2276,9 @@ trait Applications extends Compatibility {
             def apply(t: Type) = t match
               case t @ AppliedType(tycon, args) =>
                 def mapArg(arg: Type, tparam: TypeParamInfo) =
-                  if (variance > 0 && tparam.paramVarianceSign < 0) defn.FunctionNOf(arg :: Nil, defn.UnitType)
+                  if (variance > 0 && tparam.paramVarianceSign < 0) defn.FunctionNOf(Lst(arg), defn.UnitType)
                   else arg
-                mapOver(t.derivedAppliedType(tycon, args.zipWithConserve(tycon.typeParams.toList)(mapArg)))
+                mapOver(t.derivedAppliedType(tycon, args.zipWithConserve(tycon.typeParams)(mapArg)))
               case _ => mapOver(t)
           (flip(tp1p) relaxed_<:< flip(tp2p)) || viewExists(tp1, tp2)
         else
@@ -2543,10 +2542,10 @@ trait Applications extends Compatibility {
     def typeShape(tree: untpd.Tree): Type = tree match {
       case untpd.Function(args, body) =>
         defn.FunctionNOf(
-          args.map(Function.const(defn.AnyType)), typeShape(body),
+          args.mapToLst(Function.const(defn.AnyType)), typeShape(body),
           isContextual = untpd.isContextualClosure(tree))
       case Match(EmptyTree, _) =>
-        defn.PartialFunctionClass.typeRef.appliedTo(defn.AnyType :: defn.NothingType :: Nil)
+        defn.PartialFunctionClass.typeRef.appliedTo(Lst(defn.AnyType, defn.NothingType))
       case _ =>
         defn.NothingType
     }
@@ -2587,8 +2586,8 @@ trait Applications extends Compatibility {
           if formals.length > idx then
             formals(idx).dealias match
               case defn.FunctionNOf(args, _, _) => args
-              case _ => Nil
-          else Nil
+              case _ => Lst()
+          else Lst()
 
         def isCorrectUnaryFunction(alt: TermRef): Boolean =
           val formals = params(alt)
@@ -2599,7 +2598,7 @@ trait Applications extends Compatibility {
                 // it's a type parameter (a method type parameter presumably)
                 // so check its bounds allow for a tuple type of the correct arity.
                 // See i21682 for an example.
-                val tup = defn.tupleType(args.map(v => if v.tpt.isEmpty then WildcardType else typedAheadType(v.tpt).tpe))
+                val tup = defn.tupleType(args.mapToLst(v => if v.tpt.isEmpty then WildcardType else typedAheadType(v.tpt).tpe))
                 val TypeBounds(lo, hi) = formal.paramInfo
                 lo <:< tup && tup <:< hi
               case formal =>
@@ -2608,7 +2607,7 @@ trait Applications extends Compatibility {
 
         val numArgs = args.length
         if numArgs > 1
-           && !alts.exists(params(_).lengthIs == numArgs)
+           && !alts.exists(params(_).length == numArgs)
            && alts.exists(isCorrectUnaryFunction)
         then
           desugar.makeTupledFunction(args, body, isGenericTuple = true)
@@ -2684,7 +2683,7 @@ trait Applications extends Compatibility {
               TypeOps.boundsViolations(targs1, tp.paramInfos, _.substParams(tp, _), NoType).isEmpty
           val alts2 = alts1.filter(withinBounds)
           if isDetermined(alts2) then alts2
-          else resolveMapped(alts1, _.widen.appliedTo(targs1.tpes), pt1)
+          else resolveMapped(alts1, _.widen.appliedTo(targs1.mapToLst(_.tpe)), pt1)
 
       case pt =>
         val compat = alts.filterConserve(normalizedCompatible(_, pt, keepConstraint = false))
@@ -2784,7 +2783,7 @@ trait Applications extends Compatibility {
   def ptIsCorrectProduct(formal: Type, params: List[untpd.ValDef])(using Context): Boolean =
     isFullyDefined(formal, ForceDegree.flipBottom)
     && (defn.isProductSubType(formal) || formal.isNamedTupleType)
-    && tupleComponentTypes(formal).corresponds(params): (argType, param) =>
+    && tupleComponentTypes(formal).corresponds(params.toLst): (argType, param) =>
          param.tpt.isEmpty || argType.widenExpr <:< typedAheadType(param.tpt).tpe
 
   /** The largest suffix of `paramss` that has the same first parameter name as `t`,
@@ -2856,7 +2855,7 @@ trait Applications extends Compatibility {
         val formalsForArg: List[Type] = altFormals.map(_.head)
         def argTypesOfFormal(formal: Type): List[Type] =
           formal.dealias match {
-            case defn.FunctionOf(args, result, isImplicit) => args
+            case defn.FunctionOf(args, result, isImplicit) => args.toList
             case defn.PartialFunctionOf(arg, result) => arg :: Nil
             case _ => Nil
           }
@@ -2879,7 +2878,7 @@ trait Applications extends Compatibility {
               false
           val commonFormal =
             if (isPartial) defn.PartialFunctionOf(commonParamTypes.head, WildcardType)
-            else defn.FunctionNOf(commonParamTypes, WildcardType, isContextual = untpd.isContextualClosure(arg))
+            else defn.FunctionNOf(commonParamTypes.toLst, WildcardType, isContextual = untpd.isContextualClosure(arg))
           overload.println(i"pretype arg $arg with expected type $commonFormal")
           if (commonParamTypes.forall(isFullyDefined(_, ForceDegree.flipBottom)))
             withMode(Mode.ImplicitsEnabled) {

@@ -174,7 +174,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
           }
           val (typeParams, termParams) = origParams.span(_.isType)
           var res = ref(superMeth)
-            .appliedToTypes(typeParams.toList.map(_.typeRef))
+            .appliedToTypes(typeParams.map(_.typeRef))
             .appliedToArgss(termParamRefs(constr.info, termParams.toList))
           if lifted.nonEmpty then
             res = res.appliedToArgs(lifted.map(ref))

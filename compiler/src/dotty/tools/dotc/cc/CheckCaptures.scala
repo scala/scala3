@@ -1072,7 +1072,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             assert(params.length == poly.paramInfos.length)
             matchParamsAndResult(paramss1, poly.instantiate(params.mapToLst(_.symbol.typeRef)))
           case FunctionOrMethod(argTypes, resType) =>
-            assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
+            assert(params.length == argTypes.length, i"$mdef vs $pt, ${params}")
             inContext(ctx.withOwner(anonfun)) {
               // Propagate argument types to parameter types with inferred types
               for case (argType, param: ValDef) <- argTypes.lazyZip(params) do
@@ -1495,7 +1495,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         for case tpt: TypeTree <- impl.parents do
           tpt.tpe match
             case AppliedType(fn, args) =>
-              markFreeTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
+              markFreeTypeArgs(tpt, fn.typeSymbol, args.mapToList(TypeTree(_)))
             case _ =>
 
         checkFieldCaptures(cls)
@@ -1767,7 +1767,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         if defn.isNonRefinedFunction(expected) =>
           actual match
             case defn.RefinedFunctionOf(rinfo: MethodType) =>
-              depFun(args.toLst, resultType, isContextual, rinfo.paramNames)
+              depFun(args, resultType, isContextual, rinfo.paramNames)
             case _ => expected
         case expected @ defn.RefinedFunctionOf(einfo: MethodType)
         if einfo.allParamNamesSynthetic =>
@@ -1892,7 +1892,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 recur(_, _, !covariant)
               val ares1 = recur(ares, eres, covariant)
               val resTp =
-                if (aargs1 eq aargs) && (ares1 eq ares) then actualShape // optimize to avoid redundant matches
+                if (aargs1 _eq_ aargs) && (ares1 eq ares) then actualShape // optimize to avoid redundant matches
                 else actualShape.derivedFunctionOrMethod(aargs1, ares1)
               curEnv.captured match
                 case cs: CaptureSet.Var => cs.markSolved(provisional = true)

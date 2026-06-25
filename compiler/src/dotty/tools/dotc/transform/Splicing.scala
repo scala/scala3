@@ -179,7 +179,7 @@ class Splicing extends MacroTransform:
       val methType = MethodType(bindingsTypes, newTree.tpe)
       val meth = newSymbol(spliceOwner, nme.ANON_FUN, Synthetic | Method, methType)
       val ddef = DefDef(meth, List(bindings.toLst), newTree.tpe, newTree.changeOwner(ctx.owner, meth))
-      val fnType = defn.FunctionType(bindings.size, isContextual = false).appliedTo(bindingsTypes.toList :+ newTree.tpe)
+      val fnType = defn.FunctionType(bindings.size, isContextual = false).appliedTo(bindingsTypes :+ newTree.tpe)
       val closure = Block(ddef :: Nil, Closure(Nil, ref(meth), TypeTree(fnType)))
       tpd.Hole(true, holeIdx, refs, closure, tpe)
 

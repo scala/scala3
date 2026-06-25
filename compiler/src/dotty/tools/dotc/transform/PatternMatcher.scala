@@ -18,6 +18,7 @@ import config.Feature
 import reporting.*
 import ast.*
 import util.Property.*
+import util.Lst
 import cc.{CapturingType, Capabilities}
 
 import scala.annotation.tailrec
@@ -276,7 +277,7 @@ object PatternMatcher {
           args match {
             case arg :: args1 =>
               if (args.length != syms.length)
-                report.error(UnapplyInvalidNumberOfArguments(tree, tree.tpe :: Nil), arg.srcPos)
+                report.error(UnapplyInvalidNumberOfArguments(tree, Lst(tree.tpe)), arg.srcPos)
                 // Generate a throwaway but type-correct plan.
                 // This plan will never execute because it'll be guarded by a `NonNullTest`.
                 ResultPlan(tpd.Throw(tpd.nullLiteral))
@@ -409,16 +410,16 @@ object PatternMatcher {
             val isUnapplySeq = unapp.symbol.name == nme.unapplySeq
             if isProductMatch(unappType, args.length) && !isUnapplySeq then
               val selectors = productSelectors(unappType).take(args.length)
-                .map(ref(unappResult).select(_))
+                .mapToList(ref(unappResult).select(_))
               matchArgsPlan(selectors, args, onSuccess)
             else if isUnapplySeq && unapplySeqTypeElemTp(unappType.finalResultType).exists then
               unapplySeqPlan(unappResult, args)
             else if isUnapplySeq && isProductSeqMatch(unappType, args.length, unapp.srcPos) then
-              val selectors = productSelectors(unappType).map(ref(unappResult).select(_))
+              val selectors = productSelectors(unappType).mapToList(ref(unappResult).select(_))
               unapplyProductSeqPlan(selectors, args)
             else if unappResult.info <:< defn.NonEmptyTupleTypeRef then
               val components =
-                (0 until unappResult.denot.info.tupleElementTypes.getOrElse(Nil).length)
+                (0 until unappResult.denot.info.tupleElementTypes.getOrElse(Lst()).length)
                   .toList.map(tupleApp(_, ref(unappResult)))
               matchArgsPlan(components, args, onSuccess)
             else {
@@ -430,14 +431,14 @@ object PatternMatcher {
                     if unapplySeqTypeElemTp(get.tpe).exists then
                       unapplySeqPlan(getResult, args)
                     else if isGenericTuple(getResult.info) then
-                      val elemTypes = getResult.info.tupleElementTypes.getOrElse(Nil)
-                      val selectors = elemTypes.zipWithIndex.map { (tp, i) =>
+                      val elemTypes = getResult.info.tupleElementTypes.getOrElse(Lst())
+                      val selectors = elemTypes.zipWithIndex.mapToList { (tp, i) =>
                         val tree = tupleApp(i, ref(getResult))
                         if i == elemTypes.length - 1 then tree.cast(tp) else tree
                       }
                       unapplyProductSeqPlan(selectors, args)
                     else {
-                      val selectors = productSelectors(getResult.info).map(ref(getResult).select(_))
+                      val selectors = productSelectors(getResult.info).mapToList(ref(getResult).select(_))
                       unapplyProductSeqPlan(selectors, args)
                     }
                   }
@@ -453,7 +454,7 @@ object PatternMatcher {
                       case arg :: Nil if !wasUnaryNamedTupleSelectArgForNamedTuple =>
                         ref(getResult) :: Nil
                       case _ =>
-                        productSelectors(getResult.info).map(ref(getResult).select(_))
+                        productSelectors(getResult.info).mapToList(ref(getResult).select(_))
                     matchArgsPlan(selectors, args, onSuccess)
                   }
               }

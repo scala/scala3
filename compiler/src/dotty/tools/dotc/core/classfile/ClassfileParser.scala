@@ -61,7 +61,7 @@ object ClassfileParser {
   def cook(using Context): TypeMap = new TypeMap {
     def apply(tp: Type): Type = tp match {
       case tp: TypeRef if tp.symbol.typeParams.nonEmpty =>
-        AppliedType(tp, tp.symbol.typeParamsList.map(Function.const(TypeBounds.empty)))
+        AppliedType(tp, tp.symbol.typeParams.map(Function.const(TypeBounds.empty)))
       case tp @ AppliedType(tycon, args) =>
         // disregard tycon itself, but map over it to visit the prefix
         tp.derivedAppliedType(mapOver(tycon), args.mapConserve(this))
@@ -618,7 +618,7 @@ final class ClassfileParser(
             case tp: TypeRef =>
               if (sig(index) == '<') {
                 accept('<')
-                val argsBuf = if (skiptvs) null else new ListBuffer[Type]
+                val argsBuf = if (skiptvs) null else new Lst.Buffer[Type]
                 while (sig(index) != '>') {
                   val arg = sig(index) match {
                     case variance @ ('+' | '-' | '*') =>
@@ -638,7 +638,7 @@ final class ClassfileParser(
                   if (argsBuf != null) argsBuf += arg
                 }
                 accept('>')
-                if (argsBuf == null) tp else AppliedType(tp, argsBuf.toList)
+                if (argsBuf == null) tp else AppliedType(tp, argsBuf.toLst)
               }
               else tp
             case tp =>

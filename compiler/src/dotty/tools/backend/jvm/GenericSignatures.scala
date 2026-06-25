@@ -195,7 +195,7 @@ object GenericSignatures {
         jsig(finalType)
     }
 
-    def classSig(sym: ClassSymbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
+    def classSig(sym: ClassSymbol, pre: Type = NoType, args: Lst[Type] = Lst()): Unit = {
       def argSig(tp: Type): Unit =
         tp.dealias match {
           case bounds: TypeBounds =>
@@ -247,7 +247,7 @@ object GenericSignatures {
       }
       if (args.nonEmpty) {
         builder.append('<')
-        args foreach argSig
+        args.foreach(argSig)
         builder.append('>')
       }
       builder.append(';')
@@ -328,7 +328,7 @@ object GenericSignatures {
                 else builder.append(defn.typeTag(sym.info))
               else if defn.isSyntheticFunctionClass(sym) then
                 defn.functionTypeErasure(sym).classSymbol match
-                  case classSym: ClassSymbol => classSig(classSym, pre, if classSym.typeParams.isEmpty then Nil else args)
+                  case classSym: ClassSymbol => classSig(classSym, pre, if classSym.typeParams.isEmpty then Lst() else args)
                   case NoSymbol => throw new AssertionError(s"No class symbol for erased function type $sym")
               else sym match
                 case classSym: ClassSymbol if classSym.isDerivedValueClass && vcBoxing == ValueClassBoxing.Unbox =>
@@ -496,7 +496,7 @@ object GenericSignatures {
         case TypeParamRef(binder, paramNum) =>
           binder.paramInfos(paramNum).hi match
             case hkt @ HKTypeLambda(_, _) =>
-              val instantiated = hkt.instantiate(a.argsLst).dealias
+              val instantiated = hkt.instantiate(a.args).dealias
               // However, since Java doesn't have a way to refer to HKTs in generic signatures,
               // we must trade precision for termination by only resolving one level,
               // otherwise we end up in infinite loops,
@@ -509,13 +509,13 @@ object GenericSignatures {
         case _ => ResolvedAppliedType.NotResolved
 
     @tailrec
-    def unapply(tp: Type)(using Context): Option[(Symbol, Type, List[Type])] = tp match
+    def unapply(tp: Type)(using Context): Option[(Symbol, Type, Lst[Type])] = tp match
       case TypeRef(pre, _) if !tp.typeSymbol.isAliasType =>
-        Some((tp.typeSymbol, pre, Nil))
+        Some((tp.typeSymbol, pre, Lst()))
       case TypeParamRef(_, _) =>
-        Some((tp.typeSymbol, tp, Nil))
+        Some((tp.typeSymbol, tp, Lst()))
       case TermParamRef(_, _) =>
-        Some((tp.termSymbol, tp, Nil))
+        Some((tp.termSymbol, tp, Lst()))
       case a @ AppliedType(pre, args) =>
         resolveAppliedType(a) match
           case ResolvedAppliedType.Resolved(resolved) => unapply(resolved)
@@ -525,13 +525,13 @@ object GenericSignatures {
         None
   }
 
-  private def collectMethodParams(mtd: MethodOrPoly, collectTParams: Boolean)(using Context): (Iterable[TypeParamInfo] | Null, Iterable[Type], Type) =
+  private def collectMethodParams(mtd: MethodOrPoly, collectTParams: Boolean)(using Context): (Iterable[TypeParamInfo] | Null, Lst[Type], Type) =
     val tparams = if collectTParams then ListBuffer.empty[TypeParamInfo] else null
-    val vparams = ListBuffer.empty[Type]
+    val vparams = Lst.Buffer[Type]()
 
     @tailrec def recur(tpe: Type): Type = tpe match
       case mtd: MethodType =>
-        vparams ++= mtd.paramInfosList.filter(!_.isForErasedParam)
+        vparams ++= mtd.paramInfos.filter(!_.isForErasedParam)
         mtd.resType.dealias match
           // Returned context functions are erased by putting their parameters into the method's parameters,
           // so we must duplicate that logic here
@@ -551,11 +551,11 @@ object GenericSignatures {
     end recur
 
     val rte = recur(mtd)
-    (tparams, vparams, rte)
+    (tparams, vparams.toLst, rte)
   end collectMethodParams
 
   /** Collect type parameters that are actually used in the given types. */
-  private def collectUsedTypeParams(types: Iterable[Type], resType: Type, initialSymbol: Symbol)(using Context): (Set[Name], Set[Symbol]) =
+  private def collectUsedTypeParams(types: Lst[Type], resType: Type, initialSymbol: Symbol)(using Context): (Set[Name], Set[Symbol]) =
     def isTypeParameterInMethSig(sym: Symbol, initialSymbol: Symbol)(using Context) =
       !sym.maybeOwner.isTypeParam && // check if it's not higher order type param
         sym.isTypeParam && sym.owner == initialSymbol

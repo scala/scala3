@@ -236,9 +236,8 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
     def widenVariantParams(tp: Type) = tp match {
       case tp @ AppliedType(tycon, args) =>
-        val args1 = args.zipWithConserve(tycon.typeParams.toList)((arg, tparam) =>
+        val args1 = args.zipWithConserve(tycon.typeParams): (arg, tparam) =>
           if (tparam.paramVarianceSign != 0) TypeBounds.empty else arg
-        )
         tp.derivedAppliedType(tycon, args1)
       case tp =>
         tp
@@ -258,21 +257,21 @@ trait PatternTypeConstrainer { self: TypeComparer =>
     trace(i"constraining simple pattern type $tp >:< $pt", gadts, (res: Boolean) => i"$res gadt = ${ctx.gadt}") {
       (tp, pt) match {
         case (AppliedType(tyconS, argsS), AppliedType(tyconP, argsP)) => rollbackConstraintsUnless:
-          tyconS.typeParams.lazyZip(argsS).lazyZip(argsP).forall { (param, argS, argP) =>
-            val variance = param.paramVarianceSign
-            if variance == 0 || assumeInvariantRefinement ||
+          val tparams = tyconS.typeParams
+          (0 until (tparams.length min argsS.length min argsP.length)).forall: i =>
+            val variance = tparams(i).paramVarianceSign
+            if variance == 0 || assumeInvariantRefinement
               // As a special case, when pattern and scrutinee types have the same type constructor,
               // we infer better bounds for pattern-bound abstract types.
-              argP.typeSymbol.isPatternBound && patternTp.classSymbol == scrutineeTp.classSymbol
+              || argsP(i).typeSymbol.isPatternBound && patternTp.classSymbol == scrutineeTp.classSymbol
             then
-              val TypeBounds(loS, hiS) = argS.bounds
-              val TypeBounds(loP, hiP) = argP.bounds
+              val TypeBounds(loS, hiS) = argsS(i).bounds
+              val TypeBounds(loP, hiP) = argsP(i).bounds
               var res = true
               if variance <  1 then res &&= isSubType(loS, hiP)
               if variance > -1 then res &&= isSubType(loP, hiS)
               res
             else true
-          }
         case _ =>
           // Give up if we don't get AppliedType, e.g. if we upcasted to Any.
           // Note that this doesn't mean that patternTp, scrutineeTp cannot possibly

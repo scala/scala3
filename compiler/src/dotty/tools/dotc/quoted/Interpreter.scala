@@ -134,7 +134,8 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
         assert(nonErasedArgs.size == nonErasedFormals.size)
         interpretArgsGroup(nonErasedArgs, nonErasedFormals) ::: interpretArgs(argss.tail, fnType.resType)
       case fnType: AppliedType if defn.isContextFunctionType(fnType) =>
-        val argTypes :+ resType = fnType.args: @unchecked
+        val argTypes = fnType.args.init.toList
+        val resType = fnType.args.last
         interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, resType)
       case fnType: PolyType => interpretArgs(argss, fnType.resType)
       case fnType: ExprType => interpretArgs(argss, fnType.resType)
@@ -311,7 +312,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     def getExtraParams(tp: Type): List[Type] = tp.widenDealias match {
       case tp: AppliedType if defn.isContextFunctionType(tp) =>
         // Call context function type direct method
-        tp.args.init.map(arg => TypeErasure.erasure(arg)) ::: getExtraParams(tp.args.last)
+        tp.args.init.toList.map(arg => TypeErasure.erasure(arg)) ::: getExtraParams(tp.args.last)
       case _ => Nil
     }
     val extraParams = getExtraParams(sym.info.finalResultType)

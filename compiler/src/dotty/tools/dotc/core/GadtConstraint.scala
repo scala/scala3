@@ -219,7 +219,7 @@ sealed trait GadtState {
       pt => defn.AnyType
     )
 
-    val tvars = List.tabulate(params.length): i =>
+    val tvars = Lst.tabulate(params.length): i =>
       val tv = TypeVar(poly1.paramRefs(i), creatorState = null)
       gadt = gadt.add(params(i), tv)
       tv

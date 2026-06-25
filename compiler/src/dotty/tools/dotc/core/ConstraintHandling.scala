@@ -787,7 +787,7 @@ trait ConstraintHandling {
    *  and propagate all bounds.
    *  @param tvars   See Constraint#add
    */
-  def addToConstraint(tl: TypeLambda, tvars: List[TypeVar])(using Context): Boolean =
+  def addToConstraint(tl: TypeLambda, tvars: Lst[TypeVar])(using Context): Boolean =
     checkPropagated(i"initialized $tl") {
       constraint = constraint.add(tl, tvars)
       tl.paramRefs.forall { param =>

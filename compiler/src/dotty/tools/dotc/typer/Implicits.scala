@@ -215,9 +215,9 @@ object Implicits:
             tp.derivedLambdaType(paramInfos = tp.paramInfos.mapConserve(widenSingleton))
           case _ =>
             tp.baseType(defn.ConversionClass) match
-              case app @ AppliedType(tycon, from :: rest) =>
+              case app @ AppliedType(tycon, args @ Lst.StartingWith(from)) =>
                 val wideFrom = from.widenSingleton
-                if wideFrom ne from then app.derivedAppliedType(tycon, wideFrom :: rest)
+                if wideFrom ne from then app.derivedAppliedType(tycon, args.updated(0, wideFrom))
                 else tp
               case _ => tp
 
@@ -509,7 +509,7 @@ object Implicits:
             case _ =>
               mapOver(t)
 
-          override def mapArgs(args: List[Type], tparams: List[ParamInfo]) =
+          override def mapArgs(args: Lst[Type], tparams: Lst[ParamInfo]) =
             args.mapConserve {
               case t: TypeParamRef =>
                 constraint.entry(t) match
@@ -856,7 +856,7 @@ trait ImplicitRunInfo:
             case t @ AppliedType(tycon, args) if !tycon.typeSymbol.isClass =>
               // To prevent arguments to be reduced away when re-applying the tycon bounds,
               // we collect all parts as elements of a tuple. See i21951.scala for a test case.
-              apply(defn.tupleType(tycon :: args))
+              apply(defn.tupleType(tycon +: args))
             case t => mapOver(t)
         end liftToAnchors
         val liftedTp = liftToAnchors(tp)

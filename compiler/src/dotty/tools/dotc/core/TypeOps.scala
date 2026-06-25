@@ -270,7 +270,7 @@ object TypeOps:
             case AppliedType(tycon2, args2) =>
               tp1.derivedAppliedType(
                 mergeRefinedOrApplied(tycon1, tycon2),
-                TypeComparer.lubArgs(args1, args2, tycon1.typeParams.toList))
+                TypeComparer.lubArgs(args1, args2, tycon1.typeParams))
             case _ => fallback
           }
         case tp1 @ TypeRef(pre1, _) =>
@@ -608,15 +608,15 @@ object TypeOps:
       instantiate: (Type, Lst[Type]) => Type,
       app: Type)(
       using Context): List[BoundsViolation] = withMode(Mode.CheckBoundsOrSelfType) {
-    val argTypes = args.tpes
+    val argTypes = args.toLst.tpes
 
     /** Replace all wildcards in `tps` with `<app>#<tparam>` where `<tparam>` is the
      *  type parameter corresponding to the wildcard.
      */
-    def skolemizeWildcardArgs(tps: List[Type], app: Type) = app match {
+    def skolemizeWildcardArgs(tps: Lst[Type], app: Type) = app match {
       case AppliedType(tycon: TypeRef, args)
       if tycon.typeSymbol.isClass && !Feature.migrateTo3 =>
-        tps.zipWithConserve(tycon.typeSymbol.typeParamsList) {
+        tps.zipWithConserve(tycon.typeSymbol.typeParams) {
           (tp, tparam) => tp match {
             case _: TypeBounds => app.select(tparam)
             case _ => tp
@@ -633,7 +633,7 @@ object TypeOps:
       //println(i" = ${instantiate(bounds.hi, argTypes)}")
 
       var checkCtx = ctx  // the context to be used for bounds checking
-      if (argTypes ne skolemizedArgTypes) { // some of the arguments are wildcards
+      if argTypes _ne_ skolemizedArgTypes then { // some of the arguments are wildcards
 
         /** Is there a `LazyRef(TypeRef(_, sym))` reference in `tp`? */
         def isLazyIn(sym: Symbol, tp: Type): Boolean = {
@@ -681,9 +681,8 @@ object TypeOps:
           narrowBound(sym.info.hiBound, fromBelow = false)
         }
       }
-      val skolemizedArgTypesArray = skolemizedArgTypes.toLst
-      val hiBound = instantiate(bounds.hi, skolemizedArgTypesArray)
-      val loBound = instantiate(bounds.lo, skolemizedArgTypesArray)
+      val hiBound = instantiate(bounds.hi, skolemizedArgTypes)
+      val loBound = instantiate(bounds.lo, skolemizedArgTypes)
 
       def check(tp1: Type, tp2: Type, which: String, bound: Type)(using Context) =
         val isSub = TypeComparer.isSubType(tp1, tp2)
@@ -840,11 +839,11 @@ object TypeOps:
           else if symbol.is(Module) then
             TermRef(this(tref.prefix), symbol.sourceModule)
           else if (prefixTVar != null)
-            this(tref.applyIfParameterized(tref.typeParams.map(_ => WildcardType).toList))
+            this(tref.applyIfParameterized(tref.typeParams.map(_ => WildcardType)))
           else
             prefixTVar = WildcardType  // prevent recursive call from assigning it
             // e.g. tests/pos/i15029.more.scala, create a TypeVar for `Instances`' B, so we can disregard `Ints`
-            val tvars = tref.typeParams.toList.map { tparam => newTypeVar(tparam.paramInfo.bounds, DepParamName.fresh(tparam.paramName)) }
+            val tvars = tref.typeParams.map { tparam => newTypeVar(tparam.paramInfo.bounds, DepParamName.fresh(tparam.paramName)) }
             val tref2 = this(tref.applyIfParameterized(tvars))
             val v = newTypeVar(TypeBounds.upper(tref2), DepParamName.fresh(tref.name))
             prefixTVar = v
@@ -937,7 +936,7 @@ object TypeOps:
     val prefixInferredTp = inferThisMap(tp1)
     val tvars = prefixInferredTp.etaExpand match
       case eta: TypeLambda => constrained(eta)
-      case _               => Nil
+      case _               => Lst()
     val protoTp1 = prefixInferredTp.appliedTo(tvars)
 
     if gadtSyms.nonEmpty then
@@ -971,7 +970,7 @@ object TypeOps:
     }
   }
 
-  def nestedPairs(ts: List[Type])(using Context): Type =
+  def nestedPairs(ts: Lst[Type])(using Context): Type =
     ts.foldRight(defn.EmptyTupleModule.termRef: Type)(defn.PairClass.typeRef.appliedTo(_, _))
 
   class StripTypeVarsMap(using Context) extends TypeMap:
@@ -980,7 +979,7 @@ object TypeOps:
   /** Map no-flip covariant occurrences of `into[T]` to `T @$into` */
   def suppressInto(using Context) = new FollowAliasesMap:
     def apply(t: Type): Type = t match
-      case AppliedType(tycon: TypeRef, arg :: Nil) if variance >= 0 && defn.isInto(tycon.symbol) =>
+      case AppliedType(tycon: TypeRef, Lst.Singleton(arg)) if variance >= 0 && defn.isInto(tycon.symbol) =>
         AnnotatedType(arg, Annotation(defn.SilentIntoAnnot, util.Spans.NoSpan))
       case _: MatchType | _: LazyRef =>
         t
@@ -993,7 +992,7 @@ object TypeOps:
       case AnnotatedType(t1, ann) if variance >= 0 && ann.symbol == defn.SilentIntoAnnot =>
         AppliedType(
           defn.ConversionModule.termRef.select(defn.Conversion_into), // the external reference to the opaque type
-          t1 :: Nil)
+          Lst(t1))
       case _: MatchType | _: LazyRef =>
         t
       case _ =>

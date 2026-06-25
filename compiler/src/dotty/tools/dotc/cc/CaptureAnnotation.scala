@@ -10,6 +10,7 @@ import Decorators.*
 import config.Printers.capt
 import printing.Printer
 import printing.Texts.Text
+import util.Lst
 import cc.Capabilities.{Capability, RootCapability}
 
 /** An annotation representing a capture set and whether it is boxed.
@@ -46,7 +47,7 @@ case class CaptureAnnotation(refs: CaptureSet, boxed: Boolean)(cls: Symbol) exte
       val trefs =
         if elems.isEmpty then defn.NothingType
         else elems.reduce((a, b) => OrType(a, b, soft = false))
-      New(AppliedType(symbol.typeRef, trefs :: Nil), Nil)
+      New(AppliedType(symbol.typeRef, Lst(trefs)), Nil)
 
   override def symbol(using Context) = cls
 

@@ -331,7 +331,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     def adaptedSuperArgs(ctpe: Type): List[Tree] = ctpe match
       case ctpe: PolyType =>
-        adaptedSuperArgs(ctpe.instantiate(firstParent.argTypes.toLst))
+        adaptedSuperArgs(ctpe.instantiate(firstParent.argTypes))
       case ctpe: MethodType
       if ctpe.paramInfos.length == superArgs.length + 1 =>
         // last argument must be a vararg, otherwise isApplicable would have failed
@@ -561,7 +561,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def wrapArray(tree: Tree, elemtp: Type)(using Context): Tree =
     val wrapper = ref(defn.getWrapVarargsArrayModule)
       .select(wrapArrayMethodName(elemtp))
-      .appliedToTypes(if elemtp.classSymbol.isPrimitiveValueClass then Nil else elemtp :: Nil)
+      .appliedToTypes(if elemtp.classSymbol.isPrimitiveValueClass then Lst() else Lst(elemtp))
     val actualElem = wrapper.tpe.widen.firstParamTypes.head
     wrapper.appliedTo(tree.ensureConforms(actualElem))
 
@@ -1018,11 +1018,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToType(targ: Type)(using Context): Tree =
-      appliedToTypes(targ :: Nil)
+      appliedToTypes(Lst(targ))
 
     /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
-    def appliedToTypes(targs: List[Type])(using Context): Tree =
-      appliedToTypeTrees(targs map (TypeTree(_)))
+    def appliedToTypes(targs: Lst[Type])(using Context): Tree =
+      appliedToTypeTrees(targs.mapToList(TypeTree(_)))
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToTypeTree(targ: Tree)(using Context): Tree =
@@ -1043,7 +1043,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (that.tpe.widen.isRef(defn.NothingClass))
         Literal(Constant(false))
       else
-        applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
+        applyOverloaded(tree, nme.EQ, that :: Nil, Lst(), defn.BooleanType)
 
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
     def isInstance(tp: Type)(using Context): Tree = tp.dealias match {
@@ -1223,7 +1223,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case defn.ContextFunctionType(argTypes, resType) =>
           val anonFun = newAnonFun(
             ctx.owner,
-            MethodType.companion(isContextual = true)(argTypes.toLst, resType),
+            MethodType.companion(isContextual = true)(argTypes, resType),
             coord = ctx.owner.coord)
           def lambdaBody(refss: List[List[Tree]]) =
             expand(target.select(nme.apply).appliedToArgss(refss), resType)(
@@ -1372,6 +1372,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case x :: xs1 => x.tpe :: xs1.tpes
       case nil => Nil
     }
+
+  extension (xs: Lst[tpd.Tree])
+    def tpes: Lst[Type] = xs.map(_.tpe)
 
   /** A trait for loaders that compute trees. Currently implemented just by DottyUnpickler. */
   trait TreeProvider {
@@ -1609,14 +1612,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       // TupleN[elem1Tpe, ...](elem1, ...)
       ref(defn.TupleType(arity).nn.typeSymbol.companionModule)
         .select(nme.apply)
-        .appliedToTypes(elems.map(_.tpe.widenIfUnstable))
+        .appliedToTypes(elems.mapToLst(_.tpe.widenIfUnstable))
         .appliedToArgs(elems)
     else
       // TupleXXL.apply(elems*) // TODO add and use Tuple.apply(elems*) ?
       ref(defn.TupleXXLModule)
         .select(nme.apply)
         .appliedToVarargs(elems.map(_.asInstance(defn.ObjectType)), TypeTree(defn.ObjectType))
-        .asInstance(defn.tupleType(elems.map(elem => elem.tpe.widenIfUnstable)))
+        .asInstance(defn.tupleType(elems.mapToLst(elem => elem.tpe.widenIfUnstable)))
   }
 
   /** Creates the tuple type tree representation of the type trees in `ts` */

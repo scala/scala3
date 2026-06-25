@@ -12,6 +12,7 @@ import dotc.core.Constants.*
 import dotc.core.Phases.*
 import dotc.core.Types.*
 import dotc.core.Symbols.*
+import dotc.util.Lst
 
 import java.io.File
 import java.nio.file.*
@@ -29,7 +30,7 @@ class AnnotationsTest:
         val defn = ctx.definitions
         val cls = requiredClass("A")
         val annotCls = requiredClass("Annot")
-        val arrayOfString = defn.ArrayType.appliedTo(List(defn.StringType))
+        val arrayOfString = defn.ArrayType.appliedTo(Lst(defn.StringType))
 
         atPhase(erasurePhase.next) {
           // Even though we're forcing the annotation after erasure,

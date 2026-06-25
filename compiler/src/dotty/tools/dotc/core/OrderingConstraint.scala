@@ -501,7 +501,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       tp
   }
 
-  def add(poly: TypeLambda, tvars: List[TypeVar])(using Context): This = {
+  def add(poly: TypeLambda, tvars: Lst[TypeVar])(using Context): This = {
     assert(!contains(poly))
     val nparams = poly.paramNames.length
     val entries1 = new Array[Type](nparams * 2)

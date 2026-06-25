@@ -165,7 +165,7 @@ trait FullParameterization {
             val base = thisArg.tpe.baseType(origClass)
             assert(base.exists)
             ref(rewired.termRef)
-              .appliedToTypeTrees(targs ++ base.argInfos.map(TypeTree(_)))
+              .appliedToTypeTrees(targs ++ base.argInfos.mapToList(TypeTree(_)))
               .appliedTo(thisArg)
           } else EmptyTree
         }
@@ -224,7 +224,7 @@ trait FullParameterization {
   def forwarder(derived: TermSymbol, originalDef: DefDef, abstractOverClass: Boolean = true, liftThisType: Boolean = false)(using Context): Tree = {
     val fun: Tree =
       ref(derived.termRef)
-        .appliedToTypes(allInstanceTypeParams(originalDef, abstractOverClass).map(_.typeRef).toList)
+        .appliedToTypes(allInstanceTypeParams(originalDef, abstractOverClass).map(_.typeRef))
         .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
     val fwd =
       if !liftThisType then

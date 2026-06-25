@@ -5,7 +5,7 @@ import java.lang.System.arraycopy
 import collection.mutable.ListBuffer
 import reflect.ClassTag
 import scala.collection.immutable
-import util.hashing.MurmurHash3
+import scala.util.hashing.MurmurHash3
 
 class Lst[+T](private val arr: Array[Object]) extends AnyVal {
 
@@ -107,6 +107,11 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
       acc = f(acc, at(i))
       i += 1
     acc
+
+  def foldRight[U](z: U)(f: (T, U) => U): U =
+    def recur(start: Int): U =
+      if start < length then f(at(start), recur(start + 1)) else z
+    recur(0)
 
   def flatMap[U](f: T => Lst[U]): Lst[U] =
     map[Lst[U]](f).flatten
@@ -365,7 +370,7 @@ object Lst {
     new Lst(rs)
 
   def fill[T](n: Int)(elemFn: => T): Lst[T] =
-    val rs = new Array[Object](n)
+    val rs = new Array[Object](n max 0)
     var i = 0
     while i < n do
       rs(i) = elemFn.asInstanceOf[Object]
@@ -383,13 +388,13 @@ object Lst {
   extension [T <: AnyRef](xs: Lst[T])
 
     def eqElements[U <: AnyRef](ys: Lst[U]): Boolean =
-    (this.asInstanceOf[Object] `eq` ys.asInstanceOf[Object])
-    || xs.length == ys.length
-        && {
-          var i = 0
-          while i < xs.length && (xs(i) `eq` ys(i)) do i += 1
-          i == xs.length
-        }
+      (xs.asInstanceOf[Object] `eq` ys.asInstanceOf[Object])
+      || xs.length == ys.length
+          && {
+            var i = 0
+            while i < xs.length && (xs(i) `eq` ys(i)) do i += 1
+            i == xs.length
+          }
 
   extension [T: ClassTag](xs: Lst[T])
     def toArray: Array[T] =
@@ -507,6 +512,16 @@ object Lst {
   object Singleton:
     def unapply[T](xs: Lst[T]): Option[T] =
       if xs.length == 1 then Some(xs(0)) else None
+
+  /** Extractor for lsts of length 2 */
+  object Pair:
+    def unapply[T](xs: Lst[T]): Option[(T, T)] =
+      if xs.length == 2 then Some(xs(0), xs(1)) else None
+
+  /** Extractor for lsts of length 3 */
+  object Triple:
+    def unapply[T](xs: Lst[T]): Option[(T, T, T)] =
+      if xs.length == 3 then Some(xs(0), xs(1), xs(2)) else None
 
   /** Extractor for nonempty lsts starting with some element pattern */
   object StartingWith:

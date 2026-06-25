@@ -604,8 +604,8 @@ object Completion:
               val denot = SymDenotation(symbol, NoSymbol, name, EmptyFlags, tpe)
               name -> denot
             }
-            .toSeq
             .filter((name, denot) => include(denot, name))
+            .toList
             .groupByName
 
       val qualTpe = qual.typeOpt

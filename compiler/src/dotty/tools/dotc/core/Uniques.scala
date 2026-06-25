@@ -5,7 +5,7 @@ import Types.*, Contexts.*, util.Stats.*, Hashable.*, Names.*
 import config.Config
 import Symbols.Symbol
 import Decorators.*
-import util.{WeakHashSet, Stats}
+import util.{WeakHashSet, Stats, Lst}
 import WeakHashSet.Entry
 import scala.annotation.tailrec
 
@@ -77,7 +77,7 @@ object Uniques:
   final class AppliedUniques extends WeakHashSet[AppliedType](Config.initialUniquesCapacity * 2) with Hashable:
     override def hash(x: AppliedType): Int = x.hash
 
-    def enterIfNew(tycon: Type, args: List[Type]): AppliedType =
+    def enterIfNew(tycon: Type, args: Lst[Type]): AppliedType =
       val h = doHash(null, tycon, args)
       def newType = new CachedAppliedType(tycon, args, h)
       if monitored then recordCaching(h, classOf[CachedAppliedType])

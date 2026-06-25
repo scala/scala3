@@ -118,7 +118,7 @@ object Checking {
     def instantiate(bound: Type, args: Lst[Type]) =
       tparams.headOption match
         case Some(LambdaParam(lam, _)) =>
-          HKTypeLambda.fromParams(tparams, bound).appliedTo(args.toList)
+          HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
         case _ =>
           bound // paramInfoAsSeenFrom already took care of instantiation in this case
     if !ctx.mode.is(Mode.Pattern)           // no bounds checking in patterns
@@ -136,7 +136,7 @@ object Checking {
       case _ =>
     }
     def checkValidIfApply(using Context): Unit =
-      checkWildcardApply(tycon.tpe.appliedTo(args.map(_.tpe)))
+      checkWildcardApply(tycon.tpe.appliedTo(args.mapToLst(_.tpe)))
     withMode(Mode.AllowLambdaWildcardApply)(checkValidIfApply)
   }
 
@@ -162,7 +162,7 @@ object Checking {
                   // capture sets, it's better to be lenient for backwards compatibility.
               then
                 checkAppliedType(
-                  untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
+                  untpd.AppliedTypeTree(TypeTree(tycon), argTypes.mapToList(TypeTree(_)))
                     .withType(tp).withSpan(tpt.span.toSynthetic),
                   tpt)
               traverseChildren(tp)
@@ -1158,7 +1158,7 @@ trait Checking {
                 case NamedArg(_, pat) => pat
                 case pat => pat
               val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, normalizedPats, pat.srcPos).argTypes
-              pats.corresponds(argPts)(recur)
+              pats.toLst.corresponds(argPts)(recur)
             }
           case Alternative(pats) =>
             pats.forall(recur(_, pt))
@@ -1580,7 +1580,7 @@ trait Checking {
       val javaEnumBase = cls.thisType.baseType(defn.JavaEnumClass)
       if javaEnumBase.exists then
         javaEnumBase.argInfos match
-          case typeArg :: Nil =>
+          case Lst.Singleton(typeArg) =>
             if cls.typeParams.nonEmpty then
               report.error(em"An enum extending java.lang.Enum cannot have type parameters", cdef.srcPos)
             if typeArg.classSymbol ne cls then

@@ -472,7 +472,7 @@ object Types extends TypeUtils {
      *  target of an implicit converson without requiring a language import?
      */
     def isInto(using Context): Boolean = this match
-      case AppliedType(tycon: TypeRef, arg :: Nil) => defn.isInto(tycon.symbol)
+      case AppliedType(tycon: TypeRef, Lst.Singleton(_)) => defn.isInto(tycon.symbol)
       case _ => false
 
     /** Is this type of the form `<context-bound-companion>[Ref1] & ... & <context-bound-companion>[RefN]`?
@@ -1816,7 +1816,7 @@ object Types extends TypeUtils {
     /** The full parent types, including all type arguments */
     def parents(using Context): List[Type] = this match {
       case tp @ AppliedType(tycon, args) if tycon.typeSymbol.isClass =>
-        tycon.parents.map(_.subst(tycon.typeSymbol.typeParams, tp.argsLst))
+        tycon.parents.map(_.subst(tycon.typeSymbol.typeParams, tp.args))
       case tp: TypeRef =>
         if (tp.info.isInstanceOf[TempClassInfo])
           tp.recomputeDenot()
@@ -2026,7 +2026,7 @@ object Types extends TypeUtils {
             case res => res
           }
           defn.FunctionNOf(
-            mt.paramInfosList.mapConserve:
+            mt.paramInfos.mapConserve:
               _.translateFromRepeated(toArray = isJava),
             result1, isContextual)
         if mt.hasErasedParams then
@@ -2578,7 +2578,7 @@ object Types extends TypeUtils {
         case arg: TypeBounds => TypeRef(prefix, tparam)
         case arg => arg
       }
-      val concretized = args.toLst.zipWithConserve(typeParams)(concretize)
+      val concretized = args.zipWithConserve(typeParams)(concretize)
 
       def rebase(arg: Type) = arg.subst(typeParams, concretized)
 
@@ -2781,7 +2781,7 @@ object Types extends TypeUtils {
       base.stripped match {
         case app: AppliedType =>
           val tparams = cls.typeParams
-          val args = app.argsLst
+          val args = app.args
           var i = 0
           while i < tparams.length && i < args.length do
             if tparams(i) eq tparam then
@@ -4692,8 +4692,8 @@ object Types extends TypeUtils {
   }
 
   /** A type application `C[T_1, ..., T_n]` */
-  abstract case class AppliedType(tycon: Type, args: List[Type])
-  extends CachedProxyType with ValueType {
+  abstract case class AppliedType(tycon: Type, args: Lst[Type])
+  extends CachedProxyType, ValueType {
 
     private var validSuper: Period = Nowhere
     private var cachedSuper: Type = uninitialized
@@ -4711,11 +4711,11 @@ object Types extends TypeUtils {
     private var validUnderlyingNormalizable: Period = Nowhere
     private var cachedUnderlyingNormalizable: Type = uninitialized
 
-    private var cachedArgsLst: Lst[Type] | Null = null
+    private var cachedArgsList: List[Type] | Null = null
 
-    def argsLst: Lst[Type] =
-      if cachedArgsLst == null then cachedArgsLst = args.toLst
-      cachedArgsLst.nn
+    def argsList: List[Type] =
+      if cachedArgsList == null then cachedArgsList = args.toList
+      cachedArgsList.nn
 
     def isGround(acc: TypeAccumulator[Boolean])(using Context): Boolean =
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
@@ -4768,16 +4768,10 @@ object Types extends TypeUtils {
     }
 
     inline def map(inline op: Type => Type)(using Context) =
-      def mapArgs(args: List[Type]): List[Type] = args match
-        case args @ (arg :: rest) => args.derivedCons(op(arg), mapArgs(rest))
-        case nil => nil
-      derivedAppliedType(op(tycon), mapArgs(args))
+      derivedAppliedType(op(tycon), args.mapConserve(op))
 
-    inline def fold[T](x: T, inline op: (T, Type) => T)(using Context): T =
-      def foldArgs(x: T, args: List[Type]): T = args match
-        case arg :: rest => foldArgs(op(x, arg), rest)
-        case nil => x
-      foldArgs(op(x, tycon), args)
+    inline def fold[T](x: T, op: (T, Type) => T)(using Context): T =
+      args.foldLeft(op(x, tycon))(op)
 
     /** Exists if the tycon is a TypeRef of an alias with an underlying match type,
      *  or a compiletime applied type. Anything else should have already been
@@ -4808,7 +4802,7 @@ object Types extends TypeUtils {
      */
     def isUnreducibleWild(using Context): Boolean =
       tycon.isLambdaSub && hasWildcardArg && !isMatchAlias
-        && !(args.sizeIs == 1 && defn.isCompiletime_S(tycon.typeSymbol)) // S is a pseudo Match Alias
+        && !(args.length == 1 && defn.isCompiletime_S(tycon.typeSymbol)) // S is a pseudo Match Alias
 
     def tryCompiletimeConstantFold(using Context): Type =
       if myEvalRunId == ctx.runId then myEvalued
@@ -4840,8 +4834,8 @@ object Types extends TypeUtils {
 
     def hasWildcardArg(using Context): Boolean = args.exists(isBounds)
 
-    def derivedAppliedType(tycon: Type, args: List[Type])(using Context): Type =
-      if ((tycon eq this.tycon) && (args eq this.args)) this
+    def derivedAppliedType(tycon: Type, args: Lst[Type])(using Context): Type =
+      if (tycon eq this.tycon) && (args _eq_ this.args) then this
       else tycon.appliedTo(args)
 
     override def computeHash(bs: Binders): Int = doHash(bs, tycon, args)
@@ -4861,12 +4855,12 @@ object Types extends TypeUtils {
     }
   }
 
-  final class CachedAppliedType(tycon: Type, args: List[Type], hc: Int) extends AppliedType(tycon, args) {
+  final class CachedAppliedType(tycon: Type, args: Lst[Type], hc: Int) extends AppliedType(tycon, args) {
     myHash = hc
   }
 
   object AppliedType {
-    def apply(tycon: Type, args: List[Type])(using Context): AppliedType = {
+    def apply(tycon: Type, args: Lst[Type])(using Context): AppliedType = {
       assertUnerased()
       ctx.base.uniqueAppliedTypes.enterIfNew(tycon, args)
     }
@@ -5374,9 +5368,9 @@ object Types extends TypeUtils {
   enum MatchTypeCasePattern:
     case Capture(num: Int, isWildcard: Boolean)
     case TypeTest(tpe: Type)
-    case BaseTypeTest(classType: TypeRef, argPatterns: List[MatchTypeCasePattern], needsConcreteScrut: Boolean)
+    case BaseTypeTest(classType: TypeRef, argPatterns: Lst[MatchTypeCasePattern], needsConcreteScrut: Boolean)
     case CompileTimeS(argPattern: MatchTypeCasePattern)
-    case AbstractTypeConstructor(tycon: Type, argPatterns: List[MatchTypeCasePattern])
+    case AbstractTypeConstructor(tycon: Type, argPatterns: Lst[MatchTypeCasePattern])
     case TypeMemberExtractor(typeMemberName: TypeName, capture: Capture)
 
     def isTypeTest: Boolean =
@@ -5484,12 +5478,12 @@ object Types extends TypeUtils {
                 rec(pat.toNestedPairs, variance)
               else
                 recArgPatterns(pat) { argPatterns =>
-                  val needsConcreteScrut = argPatterns.zip(tycon.typeParams.toList).exists {
+                  val needsConcreteScrut = argPatterns.zip(tycon.typeParams).exists {
                     (argPattern, tparam) => tparam.paramVarianceSign != 0 && argPattern.needsConcreteScrutInVariantPos
                   }
                   MatchTypeCasePattern.BaseTypeTest(tycon, argPatterns, needsConcreteScrut)
                 }
-            else if defn.isCompiletime_S(tyconSym) && args.sizeIs == 1 then
+            else if defn.isCompiletime_S(tyconSym) && args.size == 1 then
               rec(args.head, variance) match
                 case err: MatchTypeCaseError =>
                   err
@@ -5548,14 +5542,14 @@ object Types extends TypeUtils {
         }
       end recAbstractTypeConstructor
 
-      def recArgPatterns(pat: AppliedType)(whenNotTypeTest: List[MatchTypeCasePattern] => MatchTypeCaseResult): MatchTypeCaseResult =
+      def recArgPatterns(pat: AppliedType)(whenNotTypeTest: Lst[MatchTypeCasePattern] => MatchTypeCaseResult): MatchTypeCaseResult =
         val AppliedType(tycon, args) = pat
-        val tparams = tycon.typeParams.toList
+        val tparams = tycon.typeParams
         val argPatterns = args.zip(tparams).map { (arg, tparam) =>
           rec(arg, tparam.paramVarianceSign)
         }
         argPatterns.find(_.isInstanceOf[MatchTypeCaseError]).getOrElse:
-          val argPatterns1 = argPatterns.asInstanceOf[List[MatchTypeCasePattern]] // they are not errors
+          val argPatterns1 = argPatterns.asInstanceOf[Lst[MatchTypeCasePattern]] // they are not errors
           if argPatterns1.forall(_.isTypeTest) then
             MatchTypeCasePattern.TypeTest(pat)
           else
@@ -6124,7 +6118,7 @@ object Types extends TypeUtils {
                   foldOver(vmap, t)
             val vmap = accu(VarianceMap.empty, samMeth.info)
             val tparams = tycon.typeParamSymbols
-            val args1 = args.zipWithConserve(tparams.toList):
+            val args1 = args.zipWithConserve(tparams):
               case (arg @ TypeBounds(lo, hi), tparam) =>
                 val v = vmap.computedVariance(tparam)
                 if v != null && v < 0 then lo
@@ -6300,7 +6294,7 @@ object Types extends TypeUtils {
       tp.derivedTypeBounds(lo, hi)
     protected def derivedSuperType(tp: SuperType, thistp: Type, supertp: Type): Type =
       tp.derivedSuperType(thistp, supertp)
-    protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
+    protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: Lst[Type]): Type =
       tp.derivedAppliedType(tycon, args)
     protected def derivedAndType(tp: AndType, tp1: Type, tp2: Type): Type =
       tp.derivedAndType(tp1, tp2)
@@ -6334,14 +6328,9 @@ object Types extends TypeUtils {
       case arg: TypeBounds => this(arg)
       case arg => atVariance(variance * tparam.paramVarianceSign)(this(arg))
 
-    protected def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match
-      case arg :: otherArgs if tparams.nonEmpty =>
-        val arg1 = mapArg(arg, tparams.head)
-        val otherArgs1 = mapArgs(otherArgs, tparams.tail)
-        if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
-        else arg1 :: otherArgs1
-      case nil =>
-        nil
+    protected def mapArgs(args: Lst[Type], tparams: Lst[ParamInfo]): Lst[Type] =
+      args.zipWithConserve(tparams): (arg, tparam) =>
+         mapArg(arg, tparam)
 
     protected def mapOverLambda(tp: LambdaType) =
       val restpe = tp.resultType
@@ -6447,7 +6436,7 @@ object Types extends TypeUtils {
             derivedSelect(tp, prefix1)
 
         case tp: AppliedType =>
-          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp).toList))
+          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp)))
 
         case tp: LambdaType =>
           mapOverLambda(tp)
@@ -6764,7 +6753,7 @@ object Types extends TypeUtils {
       if (isRange(thistp) || isRange(supertp)) emptyRange
       else tp.derivedSuperType(thistp, supertp)
 
-    override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
+    override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: Lst[Type]): Type =
       tycon match {
         case Range(tyconLo, tyconHi) =>
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
@@ -6778,7 +6767,7 @@ object Types extends TypeUtils {
                 case tp1 =>
                   return tp1
             end if
-            val loBuf, hiBuf = new mutable.ListBuffer[Type]
+            val loBuf, hiBuf = Lst.Buffer[Type](args.length)
             // Given `C[A1, ..., An]` where some A's are ranges, try to find
             // non-range arguments L1, ..., Ln and H1, ..., Hn such that
             // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
@@ -6786,24 +6775,28 @@ object Types extends TypeUtils {
             // Fail for non-variant argument ranges (see use-site else branch below).
             // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
             // @return  operation succeeded for all arguments.
-            def distributeArgs(args: List[Type], tparams: List[ParamInfo]): Boolean = args match {
-              case Range(lo, hi) :: args1 =>
-                val v = tparams.head.paramVarianceSign
-                if (v == 0) false
-                else {
-                  if (v > 0) { loBuf += lo; hiBuf += hi }
-                  else { loBuf += hi; hiBuf += lo }
-                  distributeArgs(args1, tparams.tail)
-                }
-              case arg :: args1 =>
-                loBuf += arg; hiBuf += arg
-                distributeArgs(args1, tparams.tail)
-              case nil =>
-                true
-            }
-            if (distributeArgs(args, tyconTypeParams(tp).toList))
-              range(tp.derivedAppliedType(tycon, loBuf.toList),
-                    tp.derivedAppliedType(tycon, hiBuf.toList))
+            def distributeArgs(args: Lst[Type], tparams: Lst[ParamInfo]): Boolean =
+              var i = 0
+              while i < args.length do
+                args(i) match
+                  case Range(lo, hi) =>
+                    val v = tparams(i).paramVarianceSign
+                    if v == 0 then return false
+                    if v > 0 then
+                      loBuf += lo
+                      hiBuf += hi
+                    else
+                      loBuf += hi
+                      hiBuf += lo
+                  case arg =>
+                    loBuf += arg
+                    hiBuf += arg
+                i += 1
+              true
+
+            if distributeArgs(args, tyconTypeParams(tp)) then
+              range(tp.derivedAppliedType(tycon, loBuf.toLst),
+                    tp.derivedAppliedType(tycon, hiBuf.toLst))
             else if tycon.isLambdaSub || args.exists(isRangeOfNonTermTypes) then
               range(defn.NothingType, defn.AnyType)
             else
@@ -6957,17 +6950,17 @@ object Types extends TypeUtils {
           if (tp1.exists) this(x, tp1) else applyToPrefix(x, tp)
 
       case tp @ AppliedType(tycon, args) =>
-        @tailrec def foldArgs(x: T, tparams: List[ParamInfo], args: List[Type]): T =
-          if (args.isEmpty || tparams.isEmpty) x
-          else {
-            val tparam = tparams.head
-            val acc = args.head match {
-              case arg: TypeBounds => this(x, arg)
-              case arg => atVariance(variance * tparam.paramVarianceSign)(this(x, arg))
-            }
-            foldArgs(acc, tparams.tail, args.tail)
-          }
-        foldArgs(this(x, tycon), tyconTypeParams(tp).toList, args)
+        def foldArgs(tparams: Lst[ParamInfo], args: Lst[Type]): T =
+          var acc = this(x, tycon)
+          var i = 0
+          while i < args.length && i < tparams.length do
+            val tparam = tparams(i)
+            acc = args(i) match
+              case arg: TypeBounds => this(acc, arg)
+              case arg => atVariance(variance * tparam.paramVarianceSign)(this(acc, arg))
+            i += 1
+          acc
+        foldArgs(tyconTypeParams(tp), args)
 
       case _: BoundType | _: ThisType => x
 
