@@ -36,6 +36,7 @@ import dotty.tools.dotc.transform.sjs.JSSymUtils.*
 import JSEncoding.*
 import ScopedVar.withScopedVars
 import scala.reflect.NameTransformer
+import java.io.BufferedOutputStream
 
 /** Main codegen for Scala.js IR.
  *
@@ -324,7 +325,7 @@ class JSCodeGen()(using genCtx: Context) {
 
   private def genIRFile(cunit: CompilationUnit, tree: ir.Trees.ClassDef): Unit = {
     val outfile = getFileFor(cunit, tree.name.name, ".sjsir")
-    val output = outfile.bufferedOutput
+    val output = new BufferedOutputStream(outfile.output)
     try {
       ir.Serializers.serialize(output, tree)
     } finally {

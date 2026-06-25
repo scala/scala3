@@ -286,7 +286,7 @@ object Symbols extends SymUtils {
      */
     def associatedFile(using Context): AbstractFile | Null =
       val compUnitInfo = compilationUnitInfo
-      if compUnitInfo == null then (null: AbstractFile | Null)
+      if compUnitInfo == null then null
       else compUnitInfo.associatedFile
 
     /** The compilation unit info (associated file, tasty versions, ...).
