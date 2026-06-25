@@ -1,0 +1,12 @@
+-- [E050] Type Error: tests/neg/i23272.scala:9:55 ----------------------------------------------------------------------
+9 |    def toArray: Array[Double] = v.components.map(c => c(lhs)) // error // error
+  |                                                       ^
+  |                                                       parameter c does not take parameters
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E172] Type Error: tests/neg/i23272.scala:9:62 ----------------------------------------------------------------------
+9 |    def toArray: Array[Double] = v.components.map(c => c(lhs)) // error // error
+  |                                                              ^
+  |No given instance of type Vectoric[Array[V => Double]] was found for parameter v of method map in trait VectoricOps
+  |
+  |Note: `v` is not a leading implicit of `map`; it is not used to construct the extension.
