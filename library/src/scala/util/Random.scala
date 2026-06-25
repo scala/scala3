@@ -13,6 +13,7 @@
 package scala
 package util
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.annotation.{migration, tailrec}
 import scala.collection.mutable.ArrayBuffer
@@ -255,7 +256,7 @@ class Random(val self: java.util.Random^) extends AnyRef with Serializable {
    *  @param bf the implicit `BuildFrom` instance used to build the result collection
    *  @return         the shuffled collection
    */
-  def shuffle[T, C](xs: IterableOnce[T])(implicit bf: BuildFrom[xs.type, T, C]): C = {
+  def shuffle[T, C](xs: IterableOnce[T]^)(implicit bf: BuildFrom[xs.type, T, C]): C = {
     val buf = new ArrayBuffer[T] ++= xs
 
     def swap(i1: Int, i2: Int): Unit = {

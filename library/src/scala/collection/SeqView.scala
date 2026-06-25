@@ -38,7 +38,7 @@ trait SeqView[+A] extends SeqOps[A, View, View[A]] with View[A] {
   def appendedAll[B >: A](suffix: SeqView.SomeSeqOps[B]^): SeqView[B]^{this, suffix} = new SeqView.Concat(this, suffix)
   def prependedAll[B >: A](prefix: SeqView.SomeSeqOps[B]^): SeqView[B]^{this, prefix} = new SeqView.Concat(prefix, this)
 
-  override def sorted[B >: A](implicit ord: Ordering[B]): SeqView[A]^{this} = new SeqView.Sorted(this, ord)
+  override def sorted[B >: A](implicit ord: Ordering[B]^): SeqView[A]^{this, ord} = new SeqView.Sorted(this, ord)
 
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix: String = "SeqView"
@@ -135,7 +135,7 @@ object SeqView {
   @SerialVersionUID(3L)
   class Sorted[A, B >: A] private (underlying_ : SomeSeqOps[A]^,
                                    private val len: Int,
-                                   ord: Ordering[B])
+                                   ord: Ordering[B]^)
     extends SeqView[A] {
     outer: Sorted[A, B]^ =>
 
@@ -143,11 +143,12 @@ object SeqView {
 
     // force evaluation immediately by calling `length` so infinite collections
     // hang on `sorted`/`sortWith`/`sortBy` rather than on arbitrary method calls
-    def this(underlying: SomeSeqOps[A]^, ord: Ordering[B]) = this(underlying, underlying.length, ord)
+    def this(underlying: SomeSeqOps[A]^, ord: Ordering[B]^) = this(underlying, underlying.length, ord)
 
     @SerialVersionUID(3L)
-    private class ReverseSorted extends SeqView[A] {
+    private class ReverseSorted extends SeqView[A] uses Sorted.this uses_init Sorted.this {
       private lazy val _reversed = new SeqView.Reverse(_sorted)
+      private val original: Sorted[A, B]^{Sorted.this} = outer
 
       def apply(i: Int): A = _reversed.apply(i)
       def length: Int = len
@@ -158,10 +159,10 @@ object SeqView {
       override def reverse: SeqView[A]^{this} = outer
       override protected def reversed: Iterable[A]^{outer} = outer
 
-      override def sorted[B1 >: A](implicit ord1: Ordering[B1]): SeqView[A]^{this} =
-        if (ord1 == Sorted.this.ord) outer
+      override def sorted[B1 >: A](implicit ord1: Ordering[B1]^): SeqView[A]^{this, ord1} =
+        if (ord1 == Sorted.this.ord) original
         else if (ord1.isReverseOf(Sorted.this.ord)) this
-        else new Sorted(elems, len, ord1)
+        else new Sorted(original.elems, len, ord1)
     }
 
     @volatile private var evaluated = false
@@ -207,7 +208,7 @@ object SeqView {
     //  so this is acceptable for `reversed`
     override protected def reversed: Iterable[A]^{this} = new ReverseSorted
 
-    override def sorted[B1 >: A](implicit ord1: Ordering[B1]): SeqView[A]^{this} =
+    override def sorted[B1 >: A](implicit ord1: Ordering[B1]^): SeqView[A]^{this, ord1} =
       if (ord1 == this.ord) this
       else if (ord1.isReverseOf(this.ord)) reverse
       else new Sorted(elems, len, ord1)
