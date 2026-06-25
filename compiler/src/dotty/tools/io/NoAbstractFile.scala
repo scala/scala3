@@ -6,6 +6,7 @@
 package dotty.tools.io
 
 import java.io.InputStream
+import java.net.URL
 
 /** A distinguished object so you can avoid both null
  *  and Option.
@@ -13,8 +14,6 @@ import java.io.InputStream
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 object NoAbstractFile extends AbstractFile {
-  override def absolute: AbstractFile = this
-  override def container: AbstractFile = this
   override def jpath: JPath | Null = null
   override def input: InputStream = throw UnsupportedOperationException("NoAbstractFile.input")
   override def isDirectory: Boolean = false
@@ -25,6 +24,6 @@ object NoAbstractFile extends AbstractFile {
   override def name: String = ""
   override def output: java.io.OutputStream = throw UnsupportedOperationException("NoAbstractFile.output")
   override def path: String = ""
-  override def toByteArray: Array[Byte] = Array[Byte]()
+  override def toURL: Option[URL] = None
   override def toString(): String = "<no file>"
 }
