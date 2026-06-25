@@ -674,7 +674,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
       val pageWidth = TestConfiguration.pageWidth - 20
 
-      val fileArgs = files.map(_.getAbsolutePath)
+      val fileArgs = files.map(_.getPath)
 
       def scala2Command(): Array[String] = {
         assert(!flags.options.contains("-scalajs"),
@@ -1055,8 +1055,6 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     // to obviate `anypos-error` in that case.
     def getMissingExpectedErrors(errorMap: HashMap[String, Integer], reporterErrors: Iterator[Diagnostic]): (List[String], List[String]) =
       val unexpected, unpositioned = ListBuffer.empty[String]
-      // For some reason, absolute paths leak from the compiler itself...
-      def relativize(path: String): String = path.split(JFile.separatorChar).dropWhile(_ != "tests").mkString(JFile.separator)
       def seenAt(key: String): Boolean =
         errorMap.get(key) match
         case null => false
@@ -1064,12 +1062,12 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         case n => errorMap.put(key, n - 1); true
       def sawDiagnostic(d: Diagnostic): Unit =
         val srcpos = d.pos.nonInlined.adjustedAtEOF
-        val relatively = relativize(srcpos.source.file.toString)
+        val path = srcpos.source.file.toString
         if srcpos.exists then
-          val key = s"${relatively}:${srcpos.line + 1}"
+          val key = s"$path:${srcpos.line + 1}"
           if !seenAt(key) then unexpected += key
         else
-          if !seenAt("nopos") then unpositioned += relatively
+          if !seenAt("nopos") then unpositioned += path
 
       reporterErrors.foreach(sawDiagnostic)
 
