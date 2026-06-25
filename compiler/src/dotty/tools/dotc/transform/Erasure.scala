@@ -386,8 +386,18 @@ object Erasure {
       case _: FunProto | AnyFunctionProto => tree
       case _ => tree.tpe.widen match
         case mt: MethodType if tree.isTerm =>
-          assert(mt.paramInfos.isEmpty, i"bad adapt for $tree: $mt")
-          adaptToType(tree.appliedToNone, pt)
+          if mt.paramInfos.isEmpty then
+            adaptToType(tree.appliedToNone, pt)
+          else
+            // Partial application left over because the callee's signature has
+            // been integrated with extra parameters from a context-function
+            // result type (`@ContextResultCount`), but the call site does not
+            // supply those arguments (the result is consumed as a value, e.g.
+            // when an inline method is expanded with a concrete context-function
+            // type substituted for an abstract result type that the call site
+            // treats as a value). Eta-expand to a closure so the remaining
+            // parameters become a regular function value. See i25806.
+            adaptToType(etaExpandPartialApply(tree, mt), pt)
         case tpw =>
           if (pt.isInstanceOf[ProtoType] || tree.tpe <:< pt)
             tree
@@ -506,6 +516,33 @@ object Erasure {
       else
         tree
     end adaptClosure
+
+    /** Wrap `tree`, whose type is the method type `mt` left over from a
+     *  partial application, into a closure that supplies the missing
+     *  parameters: `(xs) => tree(xs)`. Used to recover a value when an
+     *  integrated context-function result is consumed as a value rather than
+     *  immediately applied.
+     */
+    def etaExpandPartialApply(tree: Tree, mt: MethodType)(using Context): Tree =
+      val anonFun = newAnonFun(ctx.owner, mt, coord = ctx.owner.coord)
+      anonFun.info = transformInfo(anonFun, anonFun.info)
+      // Merge the new args into the existing application chain so the
+      // resulting tree is a fully-applied call. Producing a nested partial
+      // Apply here would leave a partial-method-typed inner Apply that
+      // later phases (e.g. constructors) would re-typecheck with fewer
+      // arguments than the integrated method type expects.
+      def addArgs(t: Tree, newArgs: List[Tree]): Tree = t match
+        case Block(stats, expr) =>
+          cpy.Block(t)(stats, addArgs(expr, newArgs))
+        case Apply(fn, prevArgs) =>
+          Apply(fn, prevArgs ++ newArgs)
+        case _ =>
+          t.appliedToTermArgs(newArgs)
+      val block = Closure(anonFun, refss =>
+        addArgs(tree, refss.head).changeOwner(ctx.owner, anonFun))
+      cpy.Block(block)(block.stats,
+        adaptClosure(block.expr.asInstanceOf[Closure]))
+    end etaExpandPartialApply
   end Boxing
 
   class Typer(erasurePhase: DenotTransformer) extends typer.ReTyper with NoChecking {
