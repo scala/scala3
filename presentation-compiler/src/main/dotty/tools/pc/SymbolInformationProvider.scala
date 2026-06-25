@@ -158,6 +158,6 @@ object SymbolProvider:
       else requiredPackage(normalizePackage(info.packagePart))
     val found = loop(List(pkgSym), info.names)
     info.paramName match
-      case Some(name) => found.flatMap(_.paramSymss.flatten.find(_.showName == name))
+      case Some(name) => found.flatMap(_.paramSymsLists.flatten.find(_.showName == name))
       case _ => found
   end toSymbols

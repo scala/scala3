@@ -100,7 +100,7 @@ final class ExtractMethodProvider(
 
       val methodParams = allSymbols.toList.filter(_.isTerm)
       val methodParamTypes = methodParams
-        .flatMap(p => p :: p.paramSymss.flatten)
+        .flatMap(p => p :: p.paramSymsLists.flatten)
         .map(_.info.typeSymbol)
         .filter(tp => nonAvailable(tp) && tp.isTypeParam)
         .distinct

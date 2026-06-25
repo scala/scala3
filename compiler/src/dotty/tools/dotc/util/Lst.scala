@@ -5,17 +5,12 @@ import java.lang.System.arraycopy
 import collection.mutable.ListBuffer
 import reflect.ClassTag
 import scala.collection.immutable
-import scala.util.hashing.MurmurHash3
 
 class Lst[+T](private val arr: Array[Object]) extends AnyVal {
 
   def elems: Array[Object] = arr
 
-  private def at(i: Int): T = {
-    assert(arr != null)
-    assert(arr(i) != null)
-    arr(i).asInstanceOf[T]
-  }
+  private def at(i: Int): T = arr(i).asInstanceOf[T]
   def length: Int = arr.length
   def size: Int = arr.length
   def isEmpty: Boolean = arr.length == 0
@@ -449,8 +444,6 @@ object Lst {
       false
 
   class Buffer[T](initSize: Int = 8) {
-    import Lst.*
-
     private var elems = new Array[Object](initSize)
     private var siz: Int = 0
     private var dirty = false // need a copy after a toLst and before following += or ++=

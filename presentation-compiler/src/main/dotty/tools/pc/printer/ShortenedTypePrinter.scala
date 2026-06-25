@@ -416,7 +416,7 @@ class ShortenedTypePrinter(
       isUsingClause(params) || isTypeParamClause(params)
 
     val paramss =
-      if gsym.rawParamss.length != 0 then gsym.rawParamss else gsym.paramSymss
+      if gsym.rawParamss.length != 0 then gsym.rawParamsLists else gsym.paramSymsLists
     if gsym.is(Flags.ExtensionMethod) then
       val filteredParams =
         if gsym.name.isRightAssocOperatorName then

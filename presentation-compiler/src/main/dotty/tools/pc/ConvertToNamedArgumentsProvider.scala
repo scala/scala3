@@ -39,7 +39,7 @@ final class ConvertToNamedArgumentsProvider(
       fun.typeOpt match
         case m: MethodType => m.paramNamess.flattenLst.map(_.toString).toList
         case _ =>
-          fun.symbol.rawParamss.flatten
+          fun.symbol.rawParamsLists.flatten
             .filter(!_.isTypeParam)
             .map(_.nameBackticked)
 

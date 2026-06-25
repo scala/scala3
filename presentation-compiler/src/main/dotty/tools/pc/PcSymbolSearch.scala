@@ -106,7 +106,7 @@ trait PcSymbolSearch:
               .withEnd(arg.span.start + length)
               .withPoint(arg.span.start)
           )
-          appl.symbol.paramSymss.flatten.find(_.name == arg.name).map { s =>
+          appl.symbol.paramSymsLists.flatten.find(_.name == arg.name).map { s =>
             // if it's a case class we need to look for parameters also
             if caseClassSynthetics(s.owner.name) && s.owner.is(Flags.Synthetic)
             then

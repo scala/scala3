@@ -320,6 +320,8 @@ object SymDenotations {
     final def rawParamss_=(pss: List[Lst[Symbol]]): Unit =
       myParamss = pss
 
+    final def rawParamsLists: List[List[Symbol]] = rawParamss.map(_.toList)
+
     final def setParamss(paramss: List[Lst[Symbol]])(using Context): Unit =
       rawParamss = paramss.filter(!_.isEmpty)
 
@@ -362,6 +364,9 @@ object SymDenotations {
       if rawParamss.isEmpty then recurWithoutParamss(info)
       else recurWithParamss(info, rawParamss)
     end paramSymss
+
+    final def paramSymsLists(using Context): List[List[Symbol]] =
+      paramSymss.map(_.toList)
 
     /** The extension parameter of this extension method
      *  @pre this symbol is an extension method
