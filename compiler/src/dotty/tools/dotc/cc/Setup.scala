@@ -925,6 +925,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         val sym = tp.typeSymbol
         if sym.isClass then
           !sym.isPureClass && sym != defn.AnyClass
+          && sym != defn.MatchCaseClass
         else
           val tp1 = tp.dealiasKeepAnnotsAndOpaques
           if tp1 ne tp then needsVariable(tp1)
