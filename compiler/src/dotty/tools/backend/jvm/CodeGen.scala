@@ -35,7 +35,7 @@ class CodeGen(impl: BCodeSyncAndTry) {
       try
         val sym = cd.symbol
         // This builder cannot be shared as it includes per-class mutable state that is not reset
-        val mainClassNode = new impl.SyncAndTryBuilder().genPlainClass(cd, topLevel = true)
+        val mainClassNode = new impl.SyncAndTryBuilder().genPlainClass(cd)
         val mirrorClassNode = mirrorBuilder.genMirrorClassIfNeeded(sym)
 
         if sym.isClass then

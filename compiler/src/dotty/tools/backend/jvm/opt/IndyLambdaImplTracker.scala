@@ -25,19 +25,19 @@ final class IndyLambdaImplTracker {
     onMethods(hostClass)(_.get(method).foreach(_.remove(indy)))
   }
 
-  def reset(hostClass: InternalName, method: MethodNode, values: mutable.Map[InvokeDynamicInsnNode, Handle]): Unit = {
+  def reset(hostClass: InternalName, method: MethodNode, values: collection.Map[InvokeDynamicInsnNode, Handle]): Unit = {
     onMethods(hostClass)(ms => {
       if values.isEmpty then
         ms.remove(method)
       else
-        ms(method) = values
+        ms(method) = mutable.Map.from(values)
     })
   }
 
   /**
    * The methods used as lambda bodies for IndyLambda instructions within `method` of `hostClass`.
    */
-  def get(hostClass: InternalName, method: MethodNode): mutable.Map[InvokeDynamicInsnNode, Handle] = {
+  def get(hostClass: InternalName, method: MethodNode): collection.Map[InvokeDynamicInsnNode, Handle] = {
     onMethods(hostClass)(ms => ms.getOrElseUpdate(method, mutable.Map.empty))
   }
 }

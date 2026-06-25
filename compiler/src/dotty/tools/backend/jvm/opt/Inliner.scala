@@ -696,11 +696,10 @@ class Inliner(indyTracker: IndyLambdaImplTracker,
 
     callsite.callsiteMethod.maxStack = math.max(MethodMax.maxStack(callsite.callsiteMethod), math.max(stackHeightAtNullCheck, maxStackOfInlinedCode))
 
-    lazy val callsiteLambdaBodyMethods = indyTracker.get(callsite.callsiteClass.internalName, callsite.callsiteMethod)
     indyTracker.get(calleeDeclarationClass.internalName, callee).foreach {
       case (indy, handle) => instructionMap.get(indy) match {
         case Some(clonedIndy: InvokeDynamicInsnNode) =>
-          callsiteLambdaBodyMethods(clonedIndy) = handle
+          indyTracker.add(callsite.callsiteClass.internalName, callsite.callsiteMethod, clonedIndy, handle)
         case _ =>
       }
     }
