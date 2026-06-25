@@ -23,6 +23,7 @@ import scala.annotation.publicInBinary
 import mutable.{Builder, ListBuffer}
 import scala.collection.generic.{CommonErrors, DefaultSerializable}
 import scala.runtime.Statics.releaseFence
+import scala.annotation.{assumeDecreases, assumeWellFounded}
 
 /** A class for immutable linked lists representing ordered collections
  *  of elements of type `A`.
@@ -80,6 +81,7 @@ import scala.runtime.Statics.releaseFence
  *  @define willNotTerminateInf
  */
 @SerialVersionUID(3L)
+@assumeWellFounded
 sealed abstract class List[+A]
   extends AbstractSeq[A]
     with LinearSeq[A]
@@ -653,6 +655,7 @@ final case class :: [+A](override val head: A, private[scala] var next: List[A @
   extends List[A] {
   releaseFence()
   override def headOption: Some[A] = Some(head)
+  @assumeDecreases
   override def tail: List[A] = next
 
   @publicInBinary
@@ -661,9 +664,12 @@ final case class :: [+A](override val head: A, private[scala] var next: List[A @
 }
 
 case object Nil extends List[Nothing] {
+  @assumeDecreases
   override def head: Nothing = throw new NoSuchElementException("head of empty list")
   override def headOption: None.type = None
+  @assumeDecreases
   override def tail: Nothing = throw new UnsupportedOperationException("tail of empty list")
+  @assumeDecreases
   override def last: Nothing = throw new NoSuchElementException("last of empty list")
   override def init: Nothing = throw new UnsupportedOperationException("init of empty list")
   override def knownSize: Int = 0
