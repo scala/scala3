@@ -72,13 +72,4 @@ trait ClassRepresentation {
   def name: String
   def binary: Option[AbstractFile]
   def source: Option[AbstractFile]
-
-  /** returns the length of `name` by stripping the extension of `fileName`
-   *
-   *  Used to avoid creating String instance of `name`.
-   */
-  final def nameLength: Int = {
-    val ix = fileName.lastIndexOf('.')
-    if (ix < 0) fileName.length else ix
-  }
 }
