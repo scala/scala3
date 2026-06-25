@@ -475,7 +475,7 @@ class CompletionValueGenerator(
     )
 
   private def tryInfixPattern(sym: Symbol, name: String)(using Context): Option[String] =
-    sym.primaryConstructor.paramSymss match
+    sym.primaryConstructor.paramSymsLists match
       case (a :: b :: Nil) :: Nil =>
         Some(
           s"${a.decodedName} $name ${b.decodedName}"
@@ -494,7 +494,7 @@ class CompletionValueGenerator(
     val suffix =
       if isModuleLike && !(sym.isClass && sym.is(Enum)) then ""
       else
-        sym.primaryConstructor.paramSymss match
+        sym.primaryConstructor.paramSymsLists match
           case Nil => "()"
           case _ :: params :: _ =>
             params
@@ -510,7 +510,7 @@ class CompletionValueGenerator(
       sym: Symbol,
       name: String
   )(using Context): String =
-    val suffix = sym.typeParams match
+    val suffix = sym.typeParams.toList match
       case Nil => ""
       case tparams => tparams.map(_ => "?").mkString("[", ", ", "]")
     val bind = if hasBind then "" else "_: "

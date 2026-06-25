@@ -212,12 +212,12 @@ class Completions(
   private def getParams(symbol: Symbol) =
     lazy val extensionParam = symbol.extensionParam
     if symbol.is(Flags.Extension) then
-      symbol.paramSymss.filterNot(
+      symbol.paramSymsLists.filterNot(
         _.contains(extensionParam)
       )
     else if symbol.isConstructor then
-      symbol.owner.paramSymss
-    else symbol.paramSymss.filter(!_.exists(_.isTypeParam))
+      symbol.owner.paramSymsLists
+    else symbol.paramSymsLists.filter(!_.exists(_.isTypeParam))
 
   private def isAbstractType(symbol: Symbol) =
     try
@@ -1108,8 +1108,8 @@ class Completions(
                           if byOwner != 0 then byOwner
                           else
                             val byParamCount = Integer.compare(
-                              s1.paramSymss.flatten.size,
-                              s2.paramSymss.flatten.size
+                              s1.paramSymsLists.flatten.size,
+                              s2.paramSymsLists.flatten.size
                             )
                             if byParamCount != 0 then byParamCount
                             else s1.detailString.compareTo(s2.detailString)

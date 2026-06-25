@@ -143,7 +143,7 @@ object ApplyArgsExtractor:
       end if
 
     matchingMethods.map { methodSym =>
-      val vparamss = methodSym.vparamss
+      val vparamss = methodSym.vparamss.toList
 
       // get params and args we are interested in
       // e.g.
@@ -174,7 +174,7 @@ object ApplyArgsExtractor:
           else
             refinedType match
               case RefinedType(AppliedType(_, args), _, MethodType(pnames)) =>
-                baseParams0.zip(pnames.toList).zip(args).map { case ((sym, name), arg) =>
+                baseParams0.zip(pnames.toList).zip(args.toList).map { case ((sym, name), arg) =>
                   RefinedSymbol(sym, name, arg)
                 }
               case _ => defaultBaseParams
@@ -203,7 +203,7 @@ object ApplyArgsExtractor:
     def vparamss(using Context) = method.filteredParamss(_.isTerm)
     def tparams(using Context) = method.filteredParamss(_.isType).flatten
     def filteredParamss(f: Symbol => Boolean)(using Context) =
-      method.paramSymss.filter(params => params.forall(f))
+      method.paramSymsLists.filter(params => params.forall(f))
 sealed trait ParamSymbol:
   def name: Name
   def info: Type
