@@ -1855,8 +1855,7 @@ object Parsers {
      */
     def typ(inContextBound: Boolean = false): Tree =
       val start = in.offset
-      var imods = Modifiers()
-      val erasedArgs: ListBuffer[Boolean] = ListBuffer()
+      var funMods = Modifiers()
 
       def functionRest(params: List[Tree]): Tree =
         val paramSpan = Span(start, in.lastOffset)
@@ -1870,17 +1869,17 @@ object Parsers {
             isPure = true
             token = CTXARROW
           else if token == TLARROW then
-            if !imods.flags.isEmpty || params.isEmpty then
+            if !funMods.flags.isEmpty || params.isEmpty then
               syntaxError(em"illegal parameter list for type lambda", start)
               token = ARROW
           else if Feature.pureFunsEnabled then
             // `=>` means impure function under pureFunctions or captureChecking
             // language imports, whereas `->` is then a regular function.
-            imods |= Impure
+            funMods |= Impure
 
           if token == CTXARROW then
             in.nextToken()
-            imods |= Given
+            funMods |= Given
           else if token == ARROW || token == TLARROW then
             in.nextToken()
           else
@@ -1893,11 +1892,11 @@ object Parsers {
               if isByNameType(tpt) then
                 syntaxError(em"parameter of type lambda may not be call-by-name", tpt.span)
             TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], resultType)
-          else if imods.isOneOf(Given | Impure) || erasedArgs.contains(true) then
-            if imods.is(Given) && params.isEmpty then
-              imods &~= Given
+          else if !funMods.flags.isEmpty then
+            if funMods.is(Given) && params.isEmpty then
+              funMods &~= Given
               syntaxError(em"context function types require at least one parameter", paramSpan)
-            FunctionWithMods(params, resultType, imods, erasedArgs.toList)
+            FunctionWithMods(params, resultType, funMods)
           else if !ctx.settings.XkindProjector.isDefault then
             val (newParams :+ newResultType, tparams) = replaceKindProjectorPlaceholders(params :+ resultType): @unchecked
             lambdaAbstract(tparams, Function(newParams, newResultType))
@@ -1907,7 +1906,6 @@ object Parsers {
 
       def typeRest(t: Tree) = in.token match
         case ARROW | CTXARROW =>
-          erasedArgs.addOne(false)
           functionRest(t :: Nil)
         case MATCH =>
           matchType(t)
@@ -1915,18 +1913,17 @@ object Parsers {
           syntaxError(ExistentialTypesNoLongerSupported())
           t
         case _ if isPureArrow =>
-          erasedArgs.addOne(false)
           functionRest(t :: Nil)
         case _ =>
-          if erasedArgs.contains(true) && !t.isInstanceOf[FunctionWithMods] then
-            syntaxError(ErasedTypesCanOnlyBeFunctionTypes(), implicitKwPos(start))
           t
 
       def convertToElem(t: Tree): Tree = t match
         case ByNameTypeTree(t1) =>
           syntaxError(ByNameParameterNotSupported(t), t.span)
           t1
-        case ValDef(name, tpt, _) =>
+        case t @ ValDef(name, tpt, _) =>
+          if t.mods.is(Erased) then
+            report.error(ErasedTypesCanOnlyBeFunctionTypes(), t.srcPos)
           NamedArg(name, convertToElem(tpt)).withSpan(t.span)
         case _ => t
 
@@ -1937,28 +1934,26 @@ object Parsers {
           functionRest(Nil)
         else
           val paramStart = in.offset
-          def addErased() =
-            erasedArgs.addOne(isErased)
-            if isErased then in.skipToken()
-          addErased()
+          def erasedMods(): Modifiers =
+            if isErased then addModifier(EmptyModifiers) else EmptyModifiers
+          val leadingMods = erasedMods()
           val args =
             in.currentRegion.withCommasExpected:
               funArgType() match
                 case Ident(name) if name != tpnme.WILDCARD && in.isColon =>
-                  def funParam(start: Offset, mods: Modifiers) =
+                  def funParam(start: Offset) =
                     atSpan(start):
-                      addErased()
-                      typedFunParam(in.offset, ident(), imods)
+                      val mods = erasedMods()
+                      typedFunParam(in.offset, ident(), mods)
                   commaSeparatedRest(
-                    typedFunParam(paramStart, name.toTermName, imods),
-                    () => funParam(in.offset, imods))
+                    typedFunParam(paramStart, name.toTermName, leadingMods),
+                    () => funParam(in.offset))
                 case t =>
-                  def funArg() =
-                    erasedArgs.addOne(false)
-                    funArgType()
-                  commaSeparatedRest(t, funArg)
+                  if leadingMods.is(Erased) then
+                    report.error(em"Erased function parameter must be named", leadingMods.mods.head.srcPos)
+                  commaSeparatedRest(t, funArgType)
           accept(RPAREN)
-          if in.isArrow || isPureArrow || erasedArgs.contains(true) then
+          if in.isArrow || isPureArrow then
             functionRest(args)
           else
             val tuple = atSpan(start):
@@ -4047,6 +4042,8 @@ object Parsers {
                            || in.name.nn == nme.tracked // tracked starts a name binding under x.modularity
                               && in.featureEnabled(Feature.modularity)
                            || in.lookahead.isColon)  // a following `:` starts a name binding
+                  if !paramsAreNamed && mods.is(Erased) then
+                    report.error(em"Erased method parameter must be named", mods.mods.head.srcPos)
                   (mods, paramsAreNamed)
               val params =
                 if paramsAreNamed then commaSeparated(() => param())

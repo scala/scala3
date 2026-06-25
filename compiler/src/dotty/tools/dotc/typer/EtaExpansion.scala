@@ -259,22 +259,22 @@ object EtaExpansion extends LiftImpure {
       case _ => true
     }
     val paramTypes: List[Tree] =
-      if (isLastApplication && mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
-      else mt.paramInfos map TypeTree
+      if (isLastApplication && mt.paramInfos.length == xarity) mt.paramInfos.map(_ => TypeTree())
+      else mt.paramInfos.map(TypeTree)
     var paramFlag = SyntheticParam
     if (mt.isContextualMethod) paramFlag |= Given
     else if (mt.isImplicitMethod) paramFlag |= Implicit
-    val params = mt.paramNames.lazyZip(paramTypes).map((name, tpe) =>
-      ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.span.startPos))
-    var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.span.startPos))
+    val params = mt.paramNames.lazyZip(paramTypes).lazyZip(mt.paramInfos).map: (name, tpe, pinfo) =>
+      val erased = if pinfo.hasAnnotation(defn.ErasedParamAnnot) then Erased else EmptyFlags
+      ValDef(name, tpe, EmptyTree).withFlags(paramFlag | erased).withSpan(tree.span.startPos)
+    var ids: List[Tree] = mt.paramNames.map(name => Ident(name).withSpan(tree.span.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
     val body = Apply(lifted, ids)
     if (mt.isContextualMethod) body.setApplyKind(ApplyKind.Using)
     val fn =
-      if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given), mt.paramErasureStatuses)
-      else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit), mt.paramErasureStatuses)
-      else if (mt.hasErasedParams) new untpd.FunctionWithMods(params, body, Modifiers(), mt.paramErasureStatuses)
+      if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given))
+      else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
       else untpd.Function(params, body)
     if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
   }

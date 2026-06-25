@@ -182,7 +182,7 @@ Type              ::=  FunType
                     |  FunParamClause ‘=>>’ Type                                TermLambdaTypeTree(ps, t)
                     |  MatchType
                     |  InfixType
-FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type                          Function(ts, t) | FunctionWithMods(ts, t, mods, erasedParams)
+FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type                          Function(ts, t) | FunctionWithMods(ts, t, mods)
                     |  FunTypeArgs (‘->’ | ‘?->’) [CaptureSet] Type             -- under pureFunctions and captureChecking
                     |  TypTypeParamClause ‘=>’ Type                             PolyFunction(ps, t)
                     |  TypTypeParamClause ‘->’ [CaptureSet] Type                -- under pureFunctions and captureChecking

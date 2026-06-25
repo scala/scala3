@@ -1805,10 +1805,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         return typedUnadapted(untpd.makeRetaining(
           cpy.Function(tree)(args, result1), refs, tpnme.retains), pt)
       case _ =>
-    var (funFlags, erasedParams) = tree match {
-      case tree: untpd.FunctionWithMods => (tree.mods.flags, tree.erasedParams)
-      case _ => (EmptyFlags, args.map(_ => false))
-    }
+    var funFlags = tree match
+      case tree: untpd.FunctionWithMods => tree.mods.flags
+      case _ => EmptyFlags
 
     val numArgs = args.length
     val isContextual = funFlags.is(Given)
@@ -1819,9 +1818,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val params1 =
         if funFlags.is(Given) then params.map(_.withAddedFlags(Given))
         else params
-      val params2 = params1.zipWithConserve(erasedParams): (arg, isErased) =>
-        if isErased then arg.withAddedFlags(Erased) else arg
-      val appDef0 = untpd.DefDef(nme.apply, List(params2), result, EmptyTree).withSpan(tree.span)
+      val appDef0 = untpd.DefDef(nme.apply, List(params1), result, EmptyTree).withSpan(tree.span)
       index(appDef0 :: Nil)
       val appDef = typed(appDef0).asInstanceOf[DefDef]
       val mt = appDef.symbol.info.asInstanceOf[MethodType]
@@ -1831,7 +1828,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if mt.paramErasureStatuses.lazyZip(mt.paramInfos).exists: (paramErased, info) =>
         !paramErased && info.derivesFrom(defn.ErasedClass)
       then
-        val newParams = params2.zipWithConserve(mt.paramInfos): (param, info) =>
+        val newParams = params1.zipWithConserve(mt.paramInfos): (param, info) =>
           if info.derivesFrom(defn.ErasedClass) then param.withAddedFlags(Erased) else param
         typedDependent(newParams, result)
       else
@@ -1864,26 +1861,22 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedDependent(fixedArgs, fixedResult)(
           using ctx.fresh.setOwner(newRefinedClassSymbol(tree.span)).setNewScope)
       case _ =>
-        if erasedParams.contains(true) then
-          typedFunctionType(desugar.makeFunctionWithValDefs(tree, pt), pt)
-        else
-          val funSym = defn.FunctionSymbol(numArgs, isContextual, isImpure)
-          val funTpt = typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funSym.typeRef), args :+ result), pt)
-          // if there are any erased classes, we need to re-do the typecheck.
-          funTpt match
-            case r: AppliedTypeTree if r.args.init.exists(_.tpe.derivesFrom(defn.ErasedClass)) =>
-              typedFunctionType(desugar.makeFunctionWithValDefs(tree, pt), pt)
-            case _ => funTpt
+        val funSym = defn.FunctionSymbol(numArgs, isContextual, isImpure)
+        val funTpt = typed(cpy.AppliedTypeTree(tree)(untpd.TypeTree(funSym.typeRef), args :+ result), pt)
+        // if there are any erased classes, we need to re-do the typecheck.
+        funTpt match
+          case r: AppliedTypeTree if r.args.init.exists(_.tpe.derivesFrom(defn.ErasedClass)) =>
+            typedFunctionType(desugar.makeFunctionWithValDefs(tree), pt)
+          case _ => funTpt
     }
   }
 
   def typedFunctionValue(tree: untpd.Function, pt: Type)(using Context): Tree = {
     val untpd.Function(params: List[untpd.ValDef] @unchecked, _) = tree: @unchecked
 
-    val (isContextual, isDefinedErased) = tree match {
-      case tree: untpd.FunctionWithMods => (tree.mods.is(Given), tree.erasedParams)
-      case _ => (false, tree.args.map(_ => false))
-    }
+    val isContextual = tree match
+      case tree: untpd.FunctionWithMods => tree.mods.is(Given)
+      case _ => false
 
     /** The function body to be returned in the closure. Can become a TypedSplice
      *  of a typed expression if this is necessary to infer a parameter type.
@@ -2027,10 +2020,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     val (protoFormals, resultTpt) = decomposeProtoFunction(pt, params.length, tree.srcPos)
 
-    /** Returns the type and whether the parameter is erased */
-    def protoFormal(i: Int): (Type, Boolean) =
-      if (protoFormals.length == params.length) (protoFormals(i), isDefinedErased(i))
-      else (errorType(WrongNumberOfParameters(tree, params.length, pt, protoFormals.length), tree.srcPos), false)
+    def protoFormal(i: Int): Type =
+      if (protoFormals.length == params.length) protoFormals(i)
+      else errorType(WrongNumberOfParameters(tree, params.length, pt, protoFormals.length), tree.srcPos)
 
     var desugared: untpd.Tree = EmptyTree
     if protoFormals.length == 1 && params.length != 1 then
@@ -2076,7 +2068,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         for ((param, i) <- params.zipWithIndex) yield
           if (!param.tpt.isEmpty) param
           else
-            val (formalBounds, isErased) = protoFormal(i)
+            val formalBounds = protoFormal(i)
             val formal = formalBounds.loBound
             val isBottomFromWildcard = (formalBounds ne formal) && formal.isExactlyNothing
             val knownFormal = isFullyDefined(formal, forceDegree)
@@ -2084,12 +2076,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // try to prioritize inferring from target. See issue 16405 (tests/run/16405.scala)
             val paramType =
               // Strip inferred erased annotation, to avoid accidentally inferring erasedness
-              val formal0 = if !isErased then formal.stripAnnots(_.symbol != defn.ErasedParamAnnot) else formal
+              val normalizedFormal = if !param.mods.is(Erased)
+                then formal.stripAnnots(_.symbol != defn.ErasedParamAnnot)
+                else formal
               if knownFormal && !isBottomFromWildcard then
-                formal0
+                normalizedFormal
               else
-                inferredFromTarget(param, formal, calleeType, isErased, paramIndex).orElse(
-                  if knownFormal then formal0
+                inferredFromTarget(param, normalizedFormal, calleeType, param.mods.is(Erased), paramIndex).orElse(
+                  if knownFormal then normalizedFormal
                   else errorType(AnonymousFunctionMissingParamType(param, tree, inferredType = formal, expectedType = pt), param.srcPos)
                 )
             val untpdTpt = formal match
@@ -2104,8 +2098,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 untpdTpt.withType(paramType.translateFromRepeated(toArray = false))
                   .withSpan(param.span.endPos)
               )
-            val param0 = cpy.ValDef(param)(tpt = paramTpt)
-            if isErased then param0.withAddedFlags(Flags.Erased) else param0
+            cpy.ValDef(param)(tpt = paramTpt).withAddedFlags(param.mods.flags & Erased)
       desugared = desugar.makeClosure(Nil, inferredParams, fnBody, resultTpt, tree.span)
 
     typed(desugared, pt)
@@ -4049,13 +4042,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       else formals.map(formal => untpd.InferredTypeTree(formal.loBound)) // about loBound, see tests/pos/i18649.scala
     }
 
-    val erasedParams = pt match {
-      case defn.PolyFunctionOf(mt: MethodType) => mt.paramErasureStatuses
-      case _ => paramTypes.map(_ => false)
-    }
-
-    val ifun = desugar.makeContextualFunction(paramTypes, paramNamesOrNil, tree, erasedParams, augmenting = true)
-    typr.println(i"make contextual function $tree / $pt ---> $ifun")
+    val ifun = desugar.makeContextualFunction(paramTypes, formals, paramNamesOrNil, tree, augmenting = true)
+    typr.println(i"make contextual function $tree / $pt / $formals ---> $ifun")
     typedFunctionValue(ifun, pt)
       .tap:
         case tree @ Block((m1: DefDef) :: _, _: Closure) if ctx.settings.Whas.wrongArrow =>
