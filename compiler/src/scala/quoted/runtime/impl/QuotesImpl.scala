@@ -3192,7 +3192,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.paramsSig.toList.map[String | Int] {
             case paramSig: dotc.core.Names.TypeName =>
               paramSig.toString
-            case paramSig: Integer =>
+            case paramSig: Int =>
               paramSig.intValue
           }
         def resultSig: String =

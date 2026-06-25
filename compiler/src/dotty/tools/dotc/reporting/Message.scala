@@ -138,7 +138,7 @@ object Message:
           (cur, existing).match
             case (cur: ParamRef, existing: ParamRef) =>
               (cur.paramName eq existing.paramName)
-              && cur.binder.paramNames === existing.binder.paramNames
+              && cur.binder.paramNames == existing.binder.paramNames
             case _ =>
               false
 

@@ -627,7 +627,7 @@ object TreeChecker {
       def defParamss = ddef.paramss.filter(!_.isEmpty).map(_.mapToLst(_.symbol))
       def layout(symss: List[Lst[Symbol]]): String =
         symss.map(syms => i"($syms%, %)").mkString
-      assert(ctx.erasedTypes || sym.rawParamss.corresponds(defParamss)(_ === _),
+      assert(ctx.erasedTypes || sym.rawParamss == defParamss,
         i"""param mismatch for ${sym.showLocated}:
            |defined in tree  = ${layout(defParamss)}
            |stored in symbol = ${layout(sym.rawParamss)}""")

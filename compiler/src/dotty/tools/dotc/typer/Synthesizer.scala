@@ -600,7 +600,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                   val variances = childClass.typeParamsList.map(_.paramVarianceSign).toArray
                   @tailrec def fixInstances(cur: Lst[Type]): Lst[Type] =
                     val next = cur.mapConserve(_.substParams(poly, cur))
-                    if next `eq` cur then next else fixInstances(next)
+                    if next _eq_ cur then next else fixInstances(next)
                   val instanceTypes = {
                     val types0 = Lst.tabulate(tparams.length min variances.length): i =>
                       TypeComparer.instanceType(tparams(i), fromBelow = variances(i) < 0, Widen.Unions)

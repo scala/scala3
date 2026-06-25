@@ -4887,12 +4887,14 @@ object Types extends TypeUtils {
     def paramName: binder.ThisName = binder.paramNames(paramNum)
     def paramInfo: binder.PInfo    = binder.paramInfos(paramNum)
 
-    override def underlying(using Context): Type = {
+    override def underlying(using Context): Type =
       // This can be called while we're initializing `binder.paramInfos`, at which point it's null
-      val infos: Lst[Type] | Null = binder.paramInfos
-      if (infos == null) NoType
-      else infos(paramNum)
-    }
+      val infos: Lst[Type] = binder.paramInfos
+      if infos.elems == null then NoType
+      else try infos(paramNum)
+        catch case ex: AssertionError =>
+          println(s"error while indexing ${String.valueOf(infos)}")
+          throw ex
 
     override def computeHash(bs: Binders): Int = doHash(paramNum, binder.identityHash(bs))
 
@@ -7328,7 +7330,7 @@ object Types extends TypeUtils {
       i == tps1.length
 
     def equalElements(tps2: Lst[Type], bs: BinderPairs): Boolean =
-      (tps1 `eq` tps2)
+      (tps1 _eq_ tps2)
       || (tps1.length == tps2.length)
           && {
             var i = 0
