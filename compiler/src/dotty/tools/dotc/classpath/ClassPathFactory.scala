@@ -4,6 +4,7 @@
 package dotty.tools.dotc.classpath
 
 import dotty.tools.io.{AbstractFile, ClassPath, JarArchive, VirtualDirectory}
+import dotty.tools.dotc.classpath.FileUtils.isClassContainer
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.LogicalSourcePath
 import dotty.tools.dotc.interactive.LogicalPackage
@@ -37,7 +38,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
   private def expandDir(extdir: String)(using Context): List[String] =
     AbstractFile.getDirectory(extdir, ctx.settings.javaOutputVersion.value) match
       case null => Nil
-      case dir => dir.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).toList
+      case dir => dir.iterator.filter(_.isClassContainer).map(x => new java.io.File(dir.file, x.name).getPath).toList
 
   def contentsOfDirsInPath(path: String)(using Context): List[ClassPath] =
     for {
@@ -67,7 +68,7 @@ class ClassPathFactory(precomputedSourcePackages: Option[LogicalPackage] = None)
       if scala.util.Properties.propOrFalse("scala.expandjavacp") then
         for
           file <- files
-          a <- JarArchive.expandManifestPath(file.absolutePath)
+          a <- JarArchive.expandManifestPath(file.path)
           path = java.nio.file.Paths.get(a.toURI())
           if Files.exists(path)
         yield

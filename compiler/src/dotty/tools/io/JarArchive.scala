@@ -1,7 +1,7 @@
 package dotty.tools.io
 
 import java.net.{MalformedURLException, URI, URISyntaxException, URL}
-import java.nio.file.{FileSystemAlreadyExistsException, FileSystems}
+import java.nio.file.{FileSystemAlreadyExistsException, FileSystems, InvalidPathException, Paths}
 import java.util.jar.{Attributes, JarInputStream}
 import scala.jdk.CollectionConverters.*
 
@@ -11,7 +11,32 @@ import scala.jdk.CollectionConverters.*
  */
 class JarArchive private (val jarPath: Path, root: Directory) extends PlainDirectory(root) {
   def close(): Unit = this.synchronized(jpath.getFileSystem().close())
+
   override def exists: Boolean = jpath.getFileSystem().isOpen() && super.exists
+
+  def underlyingSource: Option[AbstractFile] = {
+    val fileSystem = jpath.getFileSystem
+    fileSystem.provider().getScheme match {
+      case "jar" =>
+        val fileStores = fileSystem.getFileStores.iterator()
+        if (fileStores.hasNext) {
+          val jarPath = fileStores.next().name
+          try {
+            Some(new PlainFile(new Path(Paths.get(jarPath.stripSuffix(fileSystem.getSeparator)))))
+          } catch {
+            case _: InvalidPathException =>
+              None
+          }
+        } else None
+      case "jrt" =>
+        if (jpath.getNameCount > 2 && jpath.startsWith("/modules")) {
+          // TODO limit this to OpenJDK based JVMs?
+          val moduleName = jpath.getName(1)
+          Some(new PlainFile(new Path(Paths.get(System.getProperty("java.home"), "jmods", moduleName.toString + ".jmod"))))
+        } else None
+      case _ => None
+    }
+  }
 
   override def toString: String = jarPath.toString
 }
