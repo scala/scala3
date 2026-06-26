@@ -448,6 +448,8 @@ sealed abstract class CaptureSet extends Showable:
 
   def restrict(cls: ClassSymbol)(using Context): CaptureSet = map(RestrictMap(cls))
 
+  def exclude(cls: ClassSymbol)(using Context): CaptureSet = map(ExceptMap(cls))
+
   def readOnly(using Context): CaptureSet =
     val res = map(ReadOnlyMap())
     if mutability != Ignored then res.mutability = Reader
@@ -1613,7 +1615,7 @@ object CaptureSet:
      *  In effect this means that no new elements or dependent sets can be added
      *  in these states (since the previous state cannot be recorded in a snapshot)
      *  On the other hand, these states do allow by default local roots to
-     *  subsume arbitary types, which are then recorded in their hidden sets.
+     *  subsume arbitrary types, which are then recorded in their hidden sets.
      */
     class Closed extends VarState:
       override def canRecord = false
@@ -1676,8 +1678,8 @@ object CaptureSet:
     protected def isSameMap(other: BiTypeMap) = other.getClass == getClass
 
     override def fuse(next: BiTypeMap)(using Context) = next match
-      case next: Inverse if next.inverse.getClass == getClass => Some(IdentityTypeMap)
-      case next: NarrowingCapabilityMap if next.getClass == getClass => Some(this)
+      case next: Inverse if isSameMap(next.inverse) => Some(IdentityTypeMap)
+      case next: NarrowingCapabilityMap if isSameMap(next) => Some(this)
       case _ => None
 
     class Inverse extends BiTypeMap:
@@ -1710,6 +1712,16 @@ object CaptureSet:
       case other: RestrictMap => cls == other.cls
       case _ => false
 
+  /** Maps `x` to `x.except[cls]` */
+  private class ExceptMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
+    override def mapCapability(c: Capability) = c.exclude(cls)
+    override def toString = "Except"
+    // TODO: once except carries a list of classes, fuse except[A] ∘ except[B] into one map;
+    // distinct-cls excepts don't fuse today (sound, just unoptimized).
+    override def isSameMap(other: BiTypeMap) = other match
+      case other: ExceptMap => cls == other.cls
+      case _ => false
+
   /* Not needed:
   def ofClass(cinfo: ClassInfo, argTypes: List[Type])(using Context): CaptureSet =
     CaptureSet.empty
@@ -1734,9 +1746,11 @@ object CaptureSet:
 
   /** The capture set of the type underlying the capability `c` */
   def ofInfo(c: Capability)(using Context): CaptureSet = c match
-    case Restricted(c1, cls) =>
-      if cls == defn.NothingClass then CaptureSet.empty
-      else c1.captureSetOfInfo.restrict(cls) // todo: should we simplify using subsumption here?
+    case c @ Classified(c1, only, except) =>
+      if c.isKnownEmpty then CaptureSet.empty
+      else
+        val cs0 = if only == defn.AnyClass then c1.captureSetOfInfo else c1.captureSetOfInfo.restrict(only)
+        except.foldLeft(cs0)((s, e) => s.exclude(e))
     case ReadOnly(c1) =>
       c1.captureSetOfInfo.readOnly
     case Maybe(c1) =>
