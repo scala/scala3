@@ -23,6 +23,10 @@ object Trees {
 
   type Untyped = Type | Null
 
+  // Must match VectorStatics.WIDTH: `Vector.fromArray1Unsafe` accepts only the
+  // compact Vector1 layout.
+  private inline val MaxVector1Length = 32
+
   /** The total number of created tree nodes, maintained if Stats.enabled */
   @sharable var ntrees: Int = 0
 
@@ -168,7 +172,7 @@ object Trees {
      *  for thickets which return their element trees.
      */
     def toList: List[Tree[T]] = this :: Nil
-    def toVector: Vector[Tree[T]] = this +: Vector()
+    def toVector: Vector[Tree[T]] = Vector(this)
 
     /** if this tree is the empty tree, the alternative, else this tree */
     inline def orElse[U >: T <: Untyped](inline that: Tree[U]): Tree[U] =
@@ -1102,16 +1106,16 @@ object Trees {
   def genericEmptyValDef[T <: Untyped]: ValDef[T]       = theEmptyValDef.asInstanceOf[ValDef[T]]
   def genericEmptyTree[T <: Untyped]: Thicket[T]        = theEmptyTree.asInstanceOf[Thicket[T]]
 
-  def flatten[T <: Untyped](trees: Vector[Tree[T]]): Vector[Tree[T]] = {
-    def appendFlattened(buf: ListBuffer[Tree[T]], elems: Vector[Tree[T]]): Unit = {
-      var i = 0
-      while i < elems.length do
-        elems(i) match
-          case Thicket(nested) => appendFlattened(buf, nested)
-          case tree => buf += tree
-        i += 1
-    }
+  private def appendFlattened[T <: Untyped](buf: collection.mutable.Growable[Tree[T]], elems: Vector[Tree[T]]): Unit = {
+    var i = 0
+    while i < elems.length do
+      elems(i) match
+        case Thicket(nested) => appendFlattened(buf, nested)
+        case tree => buf += tree
+      i += 1
+  }
 
+  def flatten[T <: Untyped](trees: Vector[Tree[T]]): Vector[Tree[T]] = {
     var buf: ListBuffer[Tree[T]] | Null = null
     def currentBuf: ListBuffer[Tree[T]] = buf.asInstanceOf[ListBuffer[Tree[T]]]
     var i = 0
@@ -1129,6 +1133,74 @@ object Trees {
           if buf != null then currentBuf += tree
       i += 1
     if (buf != null) currentBuf.toVector else trees
+  }
+
+  def flattenedMapConserve[T <: Untyped](trees: Vector[Tree[T]])(op: Tree[T] => Tree[T]): Vector[Tree[T]] = {
+    def finishWithBuffer(buf: ListBuffer[Tree[T]], start: Int): Vector[Tree[T]] =
+      var i = start
+      while i < trees.length do
+        op(trees(i)) match
+          case Thicket(elems) => appendFlattened(buf, elems)
+          case tree => buf += tree
+        i += 1
+      buf.toVector
+
+    val len = trees.length
+    var i = 0
+    while i < len do
+      val tree0 = trees(i)
+      val tree1 = op(tree0)
+      tree1 match
+        case Thicket(elems) =>
+          val buf = new ListBuffer[Tree[T]]
+          var j = 0
+          while j < i do
+            buf += trees(j)
+            j += 1
+          appendFlattened(buf, elems)
+          return finishWithBuffer(buf, i + 1)
+        case _ if !(tree1.asInstanceOf[AnyRef] eq tree0.asInstanceOf[AnyRef]) =>
+          if len <= MaxVector1Length then
+            val elems = new Array[AnyRef](len)
+            var j = 0
+            while j < i do
+              elems(j) = trees(j).asInstanceOf[AnyRef]
+              j += 1
+            elems(i) = tree1.asInstanceOf[AnyRef]
+            i += 1
+            while i < len do
+              val tree1 = op(trees(i))
+              tree1 match
+                case Thicket(elems1) =>
+                  val buf = new ListBuffer[Tree[T]]
+                  var k = 0
+                  while k < i do
+                    buf += elems(k).asInstanceOf[Tree[T]]
+                    k += 1
+                  appendFlattened(buf, elems1)
+                  return finishWithBuffer(buf, i + 1)
+                case _ =>
+                  elems(i) = tree1.asInstanceOf[AnyRef]
+              i += 1
+            return Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[Tree[T]]]
+          else
+            val buf = Vector.newBuilder[Tree[T]]
+            buf.sizeHint(len)
+            var j = 0
+            while j < i do
+              buf += trees(j)
+              j += 1
+            buf += tree1
+            i += 1
+            while i < len do
+              op(trees(i)) match
+                case Thicket(elems) => appendFlattened(buf, elems)
+                case tree => buf += tree
+              i += 1
+            return buf.result()
+        case _ =>
+      i += 1
+    trees
   }
 
   // ----- Lazy trees and tree sequences
@@ -1241,12 +1313,12 @@ object Trees {
     // ----- Auxiliary creation methods ------------------
 
     def Thicket(): Thicket = EmptyTree
-    def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = new Thicket(x1 +: x2 +: Vector())
-    def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = new Thicket(x1 +: x2 +: x3 +: Vector())
+    def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = new Thicket(Vector(x1, x2))
+    def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = new Thicket(Vector(x1, x2, x3))
     def Thicket(xs: Vector[Tree])(implicit src: SourceFile) = new Thicket(xs)
 
     def flatTree(xs: Vector[Tree])(implicit src: SourceFile): Tree = flatten(xs) match {
-      case x +: Vector() => x
+      case Vector(x) => x
       case ys => Thicket(ys)
     }
 
@@ -1664,7 +1736,7 @@ object Trees {
       def transformBlock(blk: Block)(using Context): Block =
         cpy.Block(blk)(transformStats(blk.stats, ctx.owner), transform(blk.expr))
       def transform(trees: Vector[Tree])(using Context): Vector[Tree] =
-        flatten(trees.mapConserve(transform(_)))
+        flattenedMapConserve(trees)(transform(_))
       def transformSub[Tr <: Tree](tree: Tr)(using Context): Tr =
         transform(tree).asInstanceOf[Tr]
       def transformSub[Tr <: Tree](trees: Vector[Tr])(using Context): Vector[Tr] =
@@ -1685,10 +1757,12 @@ object Trees {
       def apply(x: X, tree: Tree)(using Context): X
 
       def apply(x: X, trees: Vector[Tree])(using Context): X =
-        def fold(x: X, trees: Vector[Tree]): X = (trees: @unchecked) match
-          case tree +: rest => fold(apply(x, tree), rest)
-          case Vector() => x
-        fold(x, trees)
+        var acc = x
+        var i = 0
+        while i < trees.length do
+          acc = apply(acc, trees(i))
+          i += 1
+        acc
 
       def foldOver(x: X, tree: Tree)(using Context): X =
         if (tree.source != ctx.source && tree.source.exists)
@@ -1854,15 +1928,15 @@ object Trees {
     }.asInstanceOf[tree.ThisTree[T]]
 
     object TypeDefs:
-      def unapply(xs: Vector[Tree]): Option[Vector[TypeDef]] = xs match
-        case (x: TypeDef) +: _ => Some(xs.asInstanceOf[Vector[TypeDef]])
-        case _ => None
+      def unapply(xs: Vector[Tree]): Option[Vector[TypeDef]] =
+        if xs.nonEmpty && xs(0).isInstanceOf[TypeDef] then Some(xs.asInstanceOf[Vector[TypeDef]])
+        else None
 
     object ValDefs:
-      def unapply(xs: Vector[Tree]): Option[Vector[ValDef]] = xs match
-        case Vector() => Some(Vector())
-        case (x: ValDef) +: _ => Some(xs.asInstanceOf[Vector[ValDef]])
-        case _ => None
+      def unapply(xs: Vector[Tree]): Option[Vector[ValDef]] =
+        if xs.isEmpty then Some(Vector())
+        else if xs(0).isInstanceOf[ValDef] then Some(xs.asInstanceOf[Vector[ValDef]])
+        else None
 
     def termParamssIn(paramss: Vector[ParamClause]): Vector[Vector[ValDef]] = paramss match
       case ValDefs(vparams) +: paramss1 =>
