@@ -185,7 +185,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    */
   val scope: MutableScope = newScope(nestingLevel)
 
-  /** A temporary data item valid for a single typed ident:
+  /** A temporary data item valid for a single `findRef`:
    *  The set of all root import symbols that have been
    *  encountered as a qualifier of an import so far.
    *  Note: It would be more proper to move importedFromRoot into typedIdent.
@@ -584,7 +584,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       loop(NoContext)
     }
 
-    findRefRecur(NoType, BindingPrec.NothingBound, NoContext)
+    // Root imports hidden during this lookup should not affect later lookups.
+    val savedUnimported = unimported
+    unimported = Set.empty
+    try findRefRecur(NoType, BindingPrec.NothingBound, NoContext)
+    finally unimported = savedUnimported
   }
 
   /** If `ref` is a trackable `TermRef` of an `OrNull` type that flow typing has
