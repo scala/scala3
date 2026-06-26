@@ -475,7 +475,7 @@ object Types extends TypeUtils {
      *  target of an implicit converson without requiring a language import?
      */
     def isInto(using Context): Boolean = this match
-      case AppliedType(tycon: TypeRef, arg +: Vector()) => defn.isInto(tycon.symbol)
+      case AppliedType(tycon: TypeRef, Vector(arg)) => defn.isInto(tycon.symbol)
       case _ => false
 
     /** Is this type of the form `<context-bound-companion>[Ref1] & ... & <context-bound-companion>[RefN]`?
@@ -666,11 +666,11 @@ object Types extends TypeUtils {
     final def parentSymbols(include: Symbol => Boolean)(using Context): Vector[Symbol] = this match {
       case tp: TypeRef =>
         val sym = tp.symbol
-        if (include(sym)) sym +: Vector() else tp.superType.parentSymbols(include)
+        if (include(sym)) Vector(sym) else tp.superType.parentSymbols(include)
       case tp: TypeProxy =>
         tp.superType.parentSymbols(include)
       case tp: ClassInfo =>
-        tp.cls +: Vector()
+        Vector(tp.cls)
       case AndType(l, r) =>
         l.parentSymbols(include).setUnion(r.parentSymbols(include))
       case OrType(l, r) =>
@@ -1064,7 +1064,7 @@ object Types extends TypeUtils {
         Set()
     }
 
-    def memberDenots(keepOnly: NameFilter, f: (Name, mutable.Buffer[SingleDenotation]) => Unit)(using Context): Seq[SingleDenotation] = {
+    def memberDenots(keepOnly: NameFilter, f: (Name, mutable.Buffer[SingleDenotation]) => Unit)(using Context): Vector[SingleDenotation] = {
       val buf = mutable.ListBuffer[SingleDenotation]()
       for (name <- memberNames(keepOnly)) f(name, buf)
       buf.toVector
@@ -1150,9 +1150,18 @@ object Types extends TypeUtils {
     /** The set of implicit term members of this type */
     final def implicitMembers(using Context): Vector[TermRef] = {
       record("implicitMembers")
-      memberDenots(implicitFilter,
-          (name, buf) => buf ++= implicitMembersNamed(name))
-        .toVector.map(d => TermRef(this, d.symbol.asTerm))
+      val names = memberNames(implicitFilter)
+      if names.isEmpty then Vector.empty
+      else
+        val b = Vector.newBuilder[TermRef]
+        b.sizeHint(names.size)
+        for name <- names do
+          val denots = implicitMembersNamed(name)
+          var i = 0
+          while i < denots.length do
+            b += TermRef(this, denots(i).symbol.asTerm)
+            i += 1
+        b.result()
     }
 
     /** The set of member classes of this type */
@@ -3539,15 +3548,31 @@ object Types extends TypeUtils {
       if (myBaseClassesPeriod != ctx.period) {
         val bcs1 = tp1.baseClasses
         val bcs1set = BaseClassSet(bcs1)
-        def recur(bcs2: Vector[ClassSymbol]): Vector[ClassSymbol] = bcs2 match {
-          case bc2 +: bcs2rest =>
-            if bcs1set.contains(bc2) then
-              if bc2.is(Trait) then recur(bcs2rest)
-              else bcs1 // common class, therefore rest is the same in both sequences
-            else bc2 +: recur(bcs2rest)
-          case nil => bcs1
-        }
-        myBaseClasses = recur(tp2.baseClasses)
+        val bcs2 = tp2.baseClasses
+        val bcs2len = bcs2.length
+        var prefixBuilder: mutable.Builder[ClassSymbol, Vector[ClassSymbol]] | Null = null
+        def addPrefix(bc: ClassSymbol): Unit =
+          if prefixBuilder == null then
+            val b = Vector.newBuilder[ClassSymbol]
+            b.sizeHint(bcs2len + bcs1.length)
+            prefixBuilder = b
+          prefixBuilder.nn += bc
+        def prefixWithBcs1(): Vector[ClassSymbol] =
+          if prefixBuilder == null then bcs1
+          else
+            val b = prefixBuilder.nn
+            b ++= bcs1
+            b.result()
+        var result: Vector[ClassSymbol] | Null = null
+        var i = 0
+        while i < bcs2len && result == null do
+          val bc2 = bcs2(i)
+          if bcs1set.contains(bc2) then
+            if !bc2.is(Trait) then
+              result = prefixWithBcs1() // common class, therefore rest is the same in both sequences
+          else addPrefix(bc2)
+          i += 1
+        myBaseClasses = if result == null then prefixWithBcs1() else result
         myBaseClassesPeriod = ctx.period
       }
       myBaseClasses
@@ -3634,15 +3659,41 @@ object Types extends TypeUtils {
       if (myBaseClassesPeriod != ctx.period) {
         val bcs1 = tp1.baseClasses
         val bcs1set = BaseClassSet(bcs1)
-        def recur(bcs2: Vector[ClassSymbol]): Vector[ClassSymbol] = bcs2 match {
-          case bc2 +: bcs2rest =>
-            if bcs1set.contains(bc2) then
-              if bc2.is(Trait) then bc2 +: recur(bcs2rest) else bcs2
-            else recur(bcs2rest)
-          case nil =>
-            bcs2
-        }
-        myBaseClasses = recur(tp2.baseClasses)
+        val bcs2 = tp2.baseClasses
+        val bcs2len = bcs2.length
+        var prefixBuilder: mutable.Builder[ClassSymbol, Vector[ClassSymbol]] | Null = null
+        def addPrefix(bc: ClassSymbol): Unit =
+          if prefixBuilder == null then
+            val b = Vector.newBuilder[ClassSymbol]
+            b.sizeHint(bcs2len)
+            prefixBuilder = b
+          prefixBuilder.nn += bc
+        def prefixWithSuffix(start: Int): Vector[ClassSymbol] =
+          if prefixBuilder == null && start == 0 then bcs2
+          else
+            val b =
+              if prefixBuilder == null then
+                val b = Vector.newBuilder[ClassSymbol]
+                b.sizeHint(bcs2len - start)
+                b
+              else prefixBuilder.nn
+            var j = start
+            while j < bcs2len do
+              b += bcs2(j)
+              j += 1
+            b.result()
+        var result: Vector[ClassSymbol] | Null = null
+        var i = 0
+        while i < bcs2len && result == null do
+          val bc2 = bcs2(i)
+          if bcs1set.contains(bc2) then
+            if bc2.is(Trait) then addPrefix(bc2)
+            else result = prefixWithSuffix(i)
+          i += 1
+        myBaseClasses =
+          if result != null then result
+          else if prefixBuilder == null then Vector()
+          else prefixBuilder.nn.result()
         myBaseClassesPeriod = ctx.period
       }
       myBaseClasses
@@ -4317,8 +4368,13 @@ object Types extends TypeUtils {
       if (myParamDependencyStatus != Unknown) myParamDependencyStatus
       else {
         val result =
-          if (paramInfos.isEmpty) NoDeps
-          else paramInfos.tail.foldLeft(NoDeps)(depStatus(_, _, forParams = true))
+          val infos = paramInfos
+          var status: DependencyStatus = NoDeps
+          var i = 1
+          while i < infos.length do
+            status = depStatus(status, infos(i), forParams = true)
+            i += 1
+          status
         if ((result & Provisional) == 0) myParamDependencyStatus = result
         (result & StatusMask).toByte
       }
@@ -4388,7 +4444,11 @@ object Types extends TypeUtils {
     final override def isImplicitMethod: Boolean =
       companion.eq(ImplicitMethodType) || isContextualMethod
     final override def hasErasedParams(using Context): Boolean =
-      paramInfos.exists(p => p.hasAnnotation(defn.ErasedParamAnnot))
+      var i = 0
+      while i < paramInfos.length do
+        if paramInfos(i).hasAnnotation(defn.ErasedParamAnnot) then return true
+        i += 1
+      false
 
     final override def isContextualMethod: Boolean =
       companion.eq(ContextualMethodType)
@@ -4718,9 +4778,10 @@ object Types extends TypeUtils {
     val resType: Type = resultTypeExp(this: @unchecked)
 
     private def setVariances(tparams: Vector[LambdaParam], vs: Vector[Variance]): Unit =
-      if tparams.nonEmpty then
-        tparams.head.declaredVariance = vs.head
-        setVariances(tparams.tail, vs.tail)
+      var i = 0
+      while i < tparams.length do
+        tparams(i).declaredVariance = vs(i)
+        i += 1
 
     override val isDeclaredVarianceLambda = variances.nonEmpty
     if isDeclaredVarianceLambda then setVariances(typeParams, variances)
@@ -5049,10 +5110,12 @@ object Types extends TypeUtils {
       derivedAppliedType(op(tycon), args.mapconserve(op))
 
     inline def fold[T](x: T, inline op: (T, Type) => T)(using Context): T =
-      def foldArgs(x: T, args: Vector[Type]): T = args match
-        case arg +: rest => foldArgs(op(x, arg), rest)
-        case nil => x
-      foldArgs(op(x, tycon), args)
+      var acc = op(x, tycon)
+      var i = 0
+      while i < args.length do
+        acc = op(acc, args(i))
+        i += 1
+      acc
 
     /** Exists if the tycon is a TypeRef of an alias with an underlying match type,
      *  or a compiletime applied type. Anything else should have already been
@@ -5779,7 +5842,7 @@ object Types extends TypeUtils {
               tycon.info match
                 case _: RealTypeBounds =>
                   recAbstractTypeConstructor(pat)
-                case TypeAlias(tl @ HKTypeLambda(onlyParam +: Vector(), resType: RefinedType)) =>
+                case TypeAlias(tl @ HKTypeLambda(Vector(onlyParam), resType: RefinedType)) =>
                   /* Unlike for eta-expanded classes, the typer does not automatically
                    * dealias poly type aliases to refined types. So we have to give them
                    * a chance here.
@@ -7116,16 +7179,39 @@ object Types extends TypeUtils {
         case Range(tyconLo, tyconHi) =>
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
         case _ =>
-          if args.exists(isRange) then
+          val len = args.length
+          var hasRange = false
+          var hasRangeOfNonTermTypes = false
+          var i = 0
+          while i < len do
+            args(i) match
+              case Range(lo, hi) =>
+                hasRange = true
+                if !lo.isInstanceOf[TermType] || !hi.isInstanceOf[TermType] then
+                  hasRangeOfNonTermTypes = true
+              case _ =>
+            i += 1
+          if hasRange then
+            def argsWithRangesAsBounds(): Vector[Type] =
+              val b = Vector.newBuilder[Type]
+              b.sizeHint(len)
+              var i = 0
+              while i < len do
+                b += rangeToBounds(args(i))
+                i += 1
+              b.result()
+
             if variance > 0 then
-              tp.derivedAppliedType(tycon, args.map(rangeToBounds)) match
+              tp.derivedAppliedType(tycon, argsWithRangesAsBounds()) match
                 case tp1: AppliedType if tp1.isUnreducibleWild && ctx.phase != checkCapturesPhase =>
-                  // don't infer a type that would trigger an error later in
-                  // Checking.checkAppliedType; fall through to default handling instead
+                // don't infer a type that would trigger an error later in
+                // Checking.checkAppliedType; fall through to default handling instead
                 case tp1 =>
                   return tp1
-            end if
-            val loBuf, hiBuf = new mutable.ListBuffer[Type]
+            val loBuf = Vector.newBuilder[Type]
+            val hiBuf = Vector.newBuilder[Type]
+            loBuf.sizeHint(len)
+            hiBuf.sizeHint(len)
             // Given `C[A1, ..., An]` where some A's are ranges, try to find
             // non-range arguments L1, ..., Ln and H1, ..., Hn such that
             // C[L1, ..., Ln] <: C[H1, ..., Hn] by taking the right limits of
@@ -7133,29 +7219,35 @@ object Types extends TypeUtils {
             // Fail for non-variant argument ranges (see use-site else branch below).
             // If successful, the L-arguments are in loBut, the H-arguments in hiBuf.
             // @return  operation succeeded for all arguments.
-            def distributeArgs(args: Vector[Type], tparams: Vector[ParamInfo]): Boolean = args match {
-              case Range(lo, hi) +: args1 =>
-                val v = tparams.head.paramVarianceSign
-                if (v == 0) false
-                else {
-                  if (v > 0) { loBuf += lo; hiBuf += hi }
-                  else { loBuf += hi; hiBuf += lo }
-                  distributeArgs(args1, tparams.tail)
-                }
-              case arg +: args1 =>
-                loBuf += arg; hiBuf += arg
-                distributeArgs(args1, tparams.tail)
-              case nil =>
-                true
-            }
-            if (distributeArgs(args, tyconTypeParams(tp)))
-              range(tp.derivedAppliedType(tycon, loBuf.toVector),
-                    tp.derivedAppliedType(tycon, hiBuf.toVector))
-            else if tycon.isLambdaSub || args.exists(isRangeOfNonTermTypes) then
+            def distributeArgs(tparams: Vector[ParamInfo]): Boolean =
+              var i = 0
+              while i < len do
+                val tparam = tparams(i)
+                args(i) match
+                  case Range(lo, hi) =>
+                    val v = tparam.paramVarianceSign
+                    if v == 0 then return false
+                    else if v > 0 then
+                      loBuf += lo
+                      hiBuf += hi
+                    else
+                      loBuf += hi
+                      hiBuf += lo
+                  case arg =>
+                    loBuf += arg
+                    hiBuf += arg
+                i += 1
+              true
+            if distributeArgs(tyconTypeParams(tp)) then
+              range(
+                tp.derivedAppliedType(tycon, loBuf.result()),
+                tp.derivedAppliedType(tycon, hiBuf.result())
+              )
+            else if tycon.isLambdaSub || hasRangeOfNonTermTypes then
               range(defn.NothingType, defn.AnyType)
             else
               // See lampepfl/dotty#14152
-              range(defn.NothingType, tp.derivedAppliedType(tycon, args.map(rangeToBounds)))
+              range(defn.NothingType, tp.derivedAppliedType(tycon, argsWithRangesAsBounds()))
           else tp.derivedAppliedType(tycon, args)
       }
 
@@ -7311,17 +7403,18 @@ object Types extends TypeUtils {
           if (tp1.exists) this(x, tp1) else applyToPrefix(x, tp)
 
       case tp @ AppliedType(tycon, args) =>
-        @tailrec def foldArgs(x: T, tparams: Vector[ParamInfo], args: Vector[Type]): T =
-          if (args.isEmpty || tparams.isEmpty) x
-          else {
-            val tparam = tparams.head
-            val acc = args.head match {
-              case arg: TypeBounds => this(x, arg)
-              case arg => atVariance(variance * tparam.paramVarianceSign)(this(x, arg))
-            }
-            foldArgs(acc, tparams.tail, args.tail)
-          }
-        foldArgs(this(x, tycon), tyconTypeParams(tp), args)
+        val tparams = tyconTypeParams(tp)
+        val len = args.length
+        val tlen = tparams.length
+        var acc = this(x, tycon)
+        var i = 0
+        while i < len && i < tlen do
+          val tparam = tparams(i)
+          acc = args(i) match
+            case arg: TypeBounds => this(acc, arg)
+            case arg => atVariance(variance * tparam.paramVarianceSign)(this(acc, arg))
+          i += 1
+        acc
 
       case _: BoundType | _: ThisType => x
 
@@ -7399,10 +7492,13 @@ object Types extends TypeUtils {
       case _ => x
     }}
 
-    @tailrec final def foldOver(x: T, ts: Vector[Type]): T = ts match {
-      case t +: ts1 => foldOver(apply(x, t), ts1)
-      case nil => x
-    }
+    final def foldOver(x: T, ts: Vector[Type]): T =
+      var acc = x
+      var i = 0
+      while i < ts.length do
+        acc = apply(acc, ts(i))
+        i += 1
+      acc
   }
 
   abstract class TypeTraverser(using Context) extends TypeAccumulator[Unit] {
@@ -7659,12 +7755,22 @@ object Types extends TypeUtils {
   implicit def decorateTypeApplications(tpe: Type): TypeApplications = new TypeApplications(tpe)
 
   extension (tps1: Vector[Type]) {
-    @tailrec def hashIsStable: Boolean =
-      tps1.isEmpty || tps1.head.hashIsStable && tps1.tail.hashIsStable
-    @tailrec def equalElements(tps2: Vector[Type], bs: BinderPairs): Boolean =
+    def hashIsStable: Boolean =
+      var i = 0
+      while i < tps1.length do
+        if !tps1(i).hashIsStable then return false
+        i += 1
+      true
+    def equalElements(tps2: Vector[Type], bs: BinderPairs): Boolean =
       (tps1 `eq` tps2) || {
-        if (tps1.isEmpty) tps2.isEmpty
-        else tps2.nonEmpty && tps1.head.equals(tps2.head, bs) && tps1.tail.equalElements(tps2.tail, bs)
+        val len = tps1.length
+        if len != tps2.length then false
+        else
+          var i = 0
+          while i < len do
+            if !tps1(i).equals(tps2(i), bs) then return false
+            i += 1
+          true
       }
   }
 
