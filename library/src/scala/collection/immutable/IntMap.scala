@@ -129,6 +129,7 @@ private[immutable] abstract class IntMapIterator[V, T](it: IntMap[V]) extends Ab
   /** What value do we assign to a tip?
    *
    *  @param tip the leaf node to extract a value from
+   *  @return the iterator element derived from `tip` (e.g. the key, the value, or the key/value pair, as determined by the concrete subclass)
    */
   def valueOf(tip: IntMap.Tip[V]): T
 

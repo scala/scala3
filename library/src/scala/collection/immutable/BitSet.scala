@@ -69,6 +69,7 @@ sealed abstract class BitSet
    *
    *  @param idx the index of the word to update
    *  @param w the new value for the word at index `idx`
+   *  @return a new bitset with the word at `idx` set to `w`, growing the underlying storage if needed
    */
   protected def updateWord(idx: Int, w: Long): BitSet
 
@@ -115,6 +116,7 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
   /** A bitset containing all the bits in an array.
    *
    *  @param elems the array of `Long` words representing the bits; the array is defensively copied
+   *  @return a new immutable bitset containing the bits represented by `elems`
    */
   def fromBitMask(elems: Array[Long]): BitSet = {
     val len = elems.length
@@ -131,6 +133,7 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
    *  array without copying.
    *
    *  @param elems the array of `Long` words representing the bits; the caller must not modify the array after this call
+   *  @return a new immutable bitset backed by the given `elems` array
    */
   def fromBitMaskNoCopy(elems: Array[Long]): BitSet = {
     val len = elems.length
