@@ -38,6 +38,8 @@ import scala.reflect.ClassTag
 
 object Symbols extends SymUtils {
 
+  private inline val MaxVector1Length = 32
+
   implicit def eqSymbol: CanEqual[Symbol, Symbol] = CanEqual.derived
 
   /** Tree attachment containing the identifiers in a tree as a sorted array */
@@ -917,21 +919,62 @@ object Symbols extends SymUtils {
    *  and mapAlways is false.
    */
   def mapSymbols(originals: Vector[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): Vector[Symbol] =
-    if (originals.forall(sym =>
-        (ttmap.mapType(sym.info) eq sym.info) &&
-        !(ttmap.oldOwners contains sym.owner)) && !mapAlways)
+    def containsSymbol(syms: Vector[Symbol], sym: Symbol): Boolean =
+      var i = 0
+      while i < syms.length do
+        if syms(i) == sym then return true
+        i += 1
+      false
+
+    def intersectsSymbols(left: Vector[Symbol], right: Vector[Symbol]): Boolean =
+      var i = 0
+      while i < left.length do
+        if containsSymbol(right, left(i)) then return true
+        i += 1
+      false
+
+    def originalsUnchanged: Boolean =
+      var i = 0
+      while i < originals.length do
+        val sym = originals(i)
+        if !(ttmap.mapType(sym.info) eq sym.info) || containsSymbol(ttmap.oldOwners, sym.owner) then return false
+        i += 1
+      true
+
+    def copySymbol(original: Symbol): Symbol =
+      val odenot = original.denot
+      original.copy(
+        owner = ttmap.mapOwner(odenot.owner),
+        flags = odenot.flags &~ Touched,
+        info = NoCompleter,
+        privateWithin = ttmap.mapOwner(odenot.privateWithin),
+        coord = original.coord)
+
+    val len = originals.length
+    if len == 0 || (!mapAlways && originalsUnchanged) then
       originals
     else {
-      val copies: Vector[Symbol] = for (original <- originals) yield
-        val odenot = original.denot
-        original.copy(
-          owner = ttmap.mapOwner(odenot.owner),
-          flags = odenot.flags &~ Touched,
-          info = NoCompleter,
-          privateWithin = ttmap.mapOwner(odenot.privateWithin),
-          coord = original.coord)
+      val copies: Vector[Symbol] =
+        if len <= MaxVector1Length then
+          val elems = new Array[AnyRef](len)
+          var i = 0
+          while i < len do
+            elems(i) = copySymbol(originals(i)).asInstanceOf[AnyRef]
+            i += 1
+          Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[Symbol]]
+        else
+          val b = Vector.newBuilder[Symbol]
+          b.sizeHint(len)
+          var i = 0
+          while i < len do
+            b += copySymbol(originals(i))
+            i += 1
+          b.result()
       val ttmap1 = ttmap.withSubstitution(originals, copies)
-      originals.lazyZip(copies) foreach { (original, copy) =>
+      var pairIdx = 0
+      while pairIdx < len do
+        val original = originals(pairIdx)
+        val copy = copies(pairIdx)
         val odenot = original.denot
         val completer = new LazyType:
 
@@ -952,7 +995,7 @@ object Symbols extends SymUtils {
                   val newTypeParams = mapSymbols(original.typeParams, ttmap1, mapAlways = true)
                   newTypeParams.foreach(decls1.enter)
                   for sym <- decls do if !sym.is(TypeParam) then decls1.enter(sym)
-                  val parents2 = parents1.map(_.substSym(otypeParams, newTypeParams))
+                  val parents2 = parents1.mapConserve(_.substSym(otypeParams, newTypeParams))
                   val selfInfo1 = selfInfo match
                     case selfInfo: Type => selfInfo.substSym(otypeParams, newTypeParams)
                     case _ => selfInfo
@@ -972,16 +1015,23 @@ object Symbols extends SymUtils {
           case cd: ClassDenotation =>
             cd.registeredCompanion = original.registeredCompanion.subst(originals, copies)
           case _ =>
-      }
+        pairIdx += 1
 
-      copies.foreach(_.ensureCompleted()) // avoid memory leak
+      var copyIdx = 0
+      while copyIdx < len do
+        copies(copyIdx).ensureCompleted() // avoid memory leak
+        copyIdx += 1
 
       // Update Child annotations of classes encountered previously to new values
       // if some child is among the mapped symbols
-      for orig <- ttmap1.substFrom do
-        if orig.is(Sealed) && orig.children.exists(originals.contains) then
+      val substFrom = ttmap1.substFrom
+      var substIdx = 0
+      while substIdx < substFrom.length do
+        val orig = substFrom(substIdx)
+        if orig.is(Sealed) && intersectsSymbols(orig.children, originals) then
           val sealedCopy = orig.subst(ttmap1.substFrom, ttmap1.substTo)
           sealedCopy.annotations = sealedCopy.annotations.mapConserve(ttmap1.apply)
+        substIdx += 1
 
       copies
     }
@@ -990,17 +1040,17 @@ object Symbols extends SymUtils {
    *  All symbols in the list are assumed to be of the same kind.
    */
   object TermSymbols:
-    def unapply(xs: Vector[Symbol])(using Context): Option[Vector[TermSymbol]] = xs match
-      case (x: Symbol) +: _ if x.isType => None
-      case _ => Some(xs.asInstanceOf[Vector[TermSymbol]])
+    def unapply(xs: Vector[Symbol])(using Context): Option[Vector[TermSymbol]] =
+      if xs.nonEmpty && xs(0).isType then None
+      else Some(xs.asInstanceOf[Vector[TermSymbol]])
 
   /** Matches lists of type symbols, excluding the empty list.
    *  All symbols in the list are assumed to be of the same kind.
    */
   object TypeSymbols:
-    def unapply(xs: Vector[Symbol])(using Context): Option[Vector[TypeSymbol]] = xs match
-      case (x: Symbol) +: _ if x.isType => Some(xs.asInstanceOf[Vector[TypeSymbol]])
-      case _ => None
+    def unapply(xs: Vector[Symbol])(using Context): Option[Vector[TypeSymbol]] =
+      if xs.nonEmpty && xs(0).isType then Some(xs.asInstanceOf[Vector[TypeSymbol]])
+      else None
 
   type DontUseSymbolOnSymbol
 
