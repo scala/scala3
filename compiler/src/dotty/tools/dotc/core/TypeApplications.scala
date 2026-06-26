@@ -76,7 +76,7 @@ object TypeApplications {
     else args.zipWithConserve(tparams)((arg, tparam) => arg.etaExpandIfHK(tparam.paramInfoOrCompleter))
 
   /** A type map that tries to reduce (part of) the result type of the type lambda `tycon`
-   *  with the given `args`(some of which are wildcard arguments represented by type bounds).
+   *  with the given `args` (some of which are wildcard arguments represented by type bounds).
    *  Non-wildcard arguments are substituted everywhere as usual. A wildcard argument
    *  `>: L <: H` is substituted for a type lambda parameter `X` only under certain conditions.
    *
@@ -91,15 +91,17 @@ object TypeApplications {
    *        C[..., ? >: L <: H, ...]
    *
    *  The `allReplaced` field indicates whether all occurrences of type lambda parameters
-   *  in the reduced type have been replaced with arguments.
+   *  in the reduced type have been replaced with arguments. This implements the
+   *  `admitsWildcard` condition of the spec section "Applications to Wildcard
+   *  Arguments": `allReplaced` is true iff it held for every wildcarded parameter.
    *
    *  2. If Mode.AllowLambdaWildcardApply is not set:
    *  All `X` arguments are replaced by:
    *
    *        ? >: L <: H
    *
-   *  Any other occurrence of `X` in `tycon` is replaced by `U`, if the
-   *  occurrence of `X` in `tycon` is covariant, or nonvariant, or by `L`,
+   *  Any other occurrence of `X` in `tycon` is replaced by `H`, if the
+   *  occurrence of `X` in `tycon` is covariant or nonvariant, or by `L`,
    *  if the occurrence is contravariant.
    *
    *  The idea is that the `AllowLambdaWildcardApply` mode is used to check whether
@@ -135,6 +137,12 @@ object TypeApplications {
     }
 
     def apply(t: Type): Type = t match {
+      case t @ AppliedType(tycon, args1)
+      if ctx.mode.is(Mode.AllowLambdaWildcardApply) && tycon.isRef(defn.MatchCaseClass) =>
+        // Don't substitute wildcards into case patterns or bodies: that is the
+        // unsound application we are checking for (#21013). Leaving them unreduced
+        // keeps `allReplaced` false, so `isUnreducibleWild` can flag it.
+        t.derivedAppliedType(apply(tycon), args1.mapConserve(arg => atNestedLevel(apply(arg))))
       case t @ AppliedType(tycon, args1) if tycon.typeSymbol.isClass =>
         t.derivedAppliedType(apply(tycon), args1.mapConserve(applyArg))
       case t @ RefinedType(parent, name, TypeAlias(info)) =>
