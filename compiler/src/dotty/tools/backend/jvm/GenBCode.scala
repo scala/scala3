@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.*
 import dotty.tools.dotc.interfaces.CompilerCallback
 import Contexts.*
 import dotty.tools.backend.ScalaPrimitives
-import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, CallGraph, IndyLambdaImplTracker, OptimizerKnownBTypes}
+import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, CallGraph, OptimizerKnownBTypes}
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.io.*
 
@@ -53,13 +53,12 @@ class GenBCode extends Phase { self =>
     val primitives = new ScalaPrimitives()
     val classBTypeCache = new ClassBType.Cache()
     if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations then
-      val indyTracker = new IndyLambdaImplTracker()
-      val byteCodeRepository = new BCodeRepository(ctx.platform.classPath, indyTracker)
+      val byteCodeRepository = new BCodeRepository(ctx.platform.classPath)
       val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, classBTypeCache)
       val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, Some(bTypesFromClassfile))
       val knownBTypes = new OptimizerKnownBTypes(bTypeLoader)
       val callGraph = new CallGraph(byteCodeRepository, bTypesFromClassfile)
-      _postProcessor = new PostProcessorWithOptimizations(classBTypeCache, byteCodeRepository, bTypesFromClassfile, callGraph, indyTracker, knownBTypes)
+      _postProcessor = new PostProcessorWithOptimizations(classBTypeCache, byteCodeRepository, bTypesFromClassfile, callGraph, knownBTypes)
       _generatedClassHandler = GeneratedClassHandler.withGlobalOptimizations(createClassHandler(_postProcessor))
       object impl extends BCodeIdiomatic(Some(callGraph)), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives, knownBTypes), BCodeSyncAndTry
       _codeGen = new CodeGen(impl)
