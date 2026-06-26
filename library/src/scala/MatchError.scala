@@ -17,6 +17,8 @@ import scala.language.`2.13`
 /** This class implements errors which are thrown whenever an
  *  object doesn't match any pattern of a pattern matching
  *  expression.
+ *
+ *  @param obj the object that failed to match any pattern; included in the error message
  */
 final class MatchError(@transient obj: Any) extends RuntimeException {
   /** There's no reason we need to call toString eagerly,
