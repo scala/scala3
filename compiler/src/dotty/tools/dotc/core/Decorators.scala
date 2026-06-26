@@ -2,9 +2,6 @@ package dotty.tools
 package dotc
 package core
 
-import scala.annotation.tailrec
-import scala.collection.mutable.ListBuffer
-
 import Contexts.*, Names.*, Phases.*, Symbols.*, Types.*
 import printing.{ Printer, Showable }, printing.Formatting.*, printing.Texts.*
 import transform.MegaPhase
@@ -12,6 +9,29 @@ import reporting.{Message, NoExplanation}
 
 /** This object provides useful extension methods for types defined elsewhere */
 object Decorators {
+
+  // Must match VectorStatics.WIDTH: `Vector.fromArray1Unsafe` accepts only the
+  // compact Vector1 layout.
+  private inline val MaxVector1Length = 32
+
+  private def mapVector[T, U](xs: Vector[T])(f: T => U): Vector[U] =
+    val len = xs.length
+    if len == 0 then Vector.empty
+    else if len <= MaxVector1Length then
+      val elems = new Array[AnyRef](len)
+      var i = 0
+      while i < len do
+        elems(i) = f(xs(i)).asInstanceOf[AnyRef]
+        i += 1
+      Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[U]]
+    else
+      val b = Vector.newBuilder[U]
+      b.sizeHint(len)
+      var i = 0
+      while i < len do
+        b += f(xs(i))
+        i += 1
+      b.result()
 
   /** Extension methods for toType/TermName methods on PreNames.
    */
@@ -98,8 +118,6 @@ object Decorators {
         pt.derivedLambdaType(pt.paramNames, pt.paramInfos, pt.resType.withCleanParamNames)
       case _ => tp
 
-  inline val MaxFilterRecursions = 10
-
   /** Implements filterConserve, zipWithConserve methods
    *  on vectors that avoid duplication of vector nodes where feasible.
    */
@@ -107,25 +125,54 @@ object Decorators {
 
     final def mapconserve[U](f: T => U): Vector[U] = {
       val len = xs.length
-      var i = 0
-      while i < len do
-        val x = xs(i)
-        val y = f(x)
-        if !(y.asInstanceOf[AnyRef] eq x.asInstanceOf[AnyRef]) then
-          val b = Vector.newBuilder[U]
-          b.sizeHint(len)
-          var j = 0
-          while j < i do
-            b += xs(j).asInstanceOf[U]
-            j += 1
-          b += y
+      if len == 0 then
+        return xs.asInstanceOf[Vector[U]]
+      else if len == 1 then
+        val x0 = xs(0)
+        val y0 = f(x0)
+        if y0.asInstanceOf[AnyRef] eq x0.asInstanceOf[AnyRef] then xs.asInstanceOf[Vector[U]]
+        else Vector(y0)
+      else if len == 2 then
+        val x0 = xs(0)
+        val y0 = f(x0)
+        val x1 = xs(1)
+        val y1 = f(x1)
+        if (y0.asInstanceOf[AnyRef] eq x0.asInstanceOf[AnyRef]) &&
+           (y1.asInstanceOf[AnyRef] eq x1.asInstanceOf[AnyRef]) then xs.asInstanceOf[Vector[U]]
+        else Vector(y0, y1)
+      else
+        var i = 0
+        while i < len do
+          val x = xs(i)
+          val y = f(x)
+          if !(y.asInstanceOf[AnyRef] eq x.asInstanceOf[AnyRef]) then
+            if len <= MaxVector1Length then
+              val elems = new Array[AnyRef](len)
+              var j = 0
+              while j < i do
+                elems(j) = xs(j).asInstanceOf[AnyRef]
+                j += 1
+              elems(i) = y.asInstanceOf[AnyRef]
+              i += 1
+              while i < len do
+                elems(i) = f(xs(i)).asInstanceOf[AnyRef]
+                i += 1
+              return Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[U]]
+            else
+              val b = Vector.newBuilder[U]
+              b.sizeHint(len)
+              var j = 0
+              while j < i do
+                b += xs(j).asInstanceOf[U]
+                j += 1
+              b += y
+              i += 1
+              while i < len do
+                b += f(xs(i))
+                i += 1
+              return b.result()
           i += 1
-          while i < len do
-            b += f(xs(i))
-            i += 1
-          return b.result()
-        i += 1
-      xs.asInstanceOf[Vector[U]]
+        xs.asInstanceOf[Vector[U]]
     }
 
     final def mapConserve[U](f: T => U): Vector[U] = mapconserve(f)
@@ -139,18 +186,46 @@ object Decorators {
       while i < len do
         val x = xs(i)
         if !p(x) then
-          val b = Vector.newBuilder[T]
-          b.sizeHint(len - 1)
-          var j = 0
-          while j < i do
-            b += xs(j)
-            j += 1
-          i += 1
-          while i < len do
-            val x = xs(i)
-            if p(x) then b += x
+          if len <= MaxVector1Length then
+            val firstDropped = i
+            var kept = firstDropped
+            var keepMask = 0
             i += 1
-          return b.result()
+            while i < len do
+              val x = xs(i)
+              if p(x) then
+                keepMask |= 1 << i
+                kept += 1
+              i += 1
+            if kept == 0 then
+              return Vector.empty
+            else
+              val elems = new Array[AnyRef](kept)
+              var j = 0
+              while j < firstDropped do
+                elems(j) = xs(j).asInstanceOf[AnyRef]
+                j += 1
+              var out = j
+              j = firstDropped + 1
+              while j < len do
+                if (keepMask & (1 << j)) != 0 then
+                  elems(out) = xs(j).asInstanceOf[AnyRef]
+                  out += 1
+                j += 1
+              return Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[T]]
+          else
+            val b = Vector.newBuilder[T]
+            b.sizeHint(len - 1)
+            var j = 0
+            while j < i do
+              b += xs(j)
+              j += 1
+            i += 1
+            while i < len do
+              val x = xs(i)
+              if p(x) then b += x
+              i += 1
+            return b.result()
         i += 1
       xs
     end filterConserve
@@ -167,21 +242,74 @@ object Decorators {
         val x = xs(i)
         val y = f(x, ys(i))
         if !(y.asInstanceOf[AnyRef] eq x.asInstanceOf[AnyRef]) then
-          val b = Vector.newBuilder[V]
-          b.sizeHint(len)
-          var j = 0
-          while j < i do
-            b += xs(j).asInstanceOf[V]
-            j += 1
-          b += y
-          i += 1
-          while i < len do
-            b += f(xs(i), ys(i))
+          if len <= MaxVector1Length then
+            val elems = new Array[AnyRef](len)
+            var j = 0
+            while j < i do
+              elems(j) = xs(j).asInstanceOf[AnyRef]
+              j += 1
+            elems(i) = y.asInstanceOf[AnyRef]
             i += 1
-          return b.result()
+            while i < len do
+              elems(i) = f(xs(i), ys(i)).asInstanceOf[AnyRef]
+              i += 1
+            return Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[V]]
+          else
+            val b = Vector.newBuilder[V]
+            b.sizeHint(len)
+            var j = 0
+            while j < i do
+              b += xs(j).asInstanceOf[V]
+              j += 1
+            b += y
+            i += 1
+            while i < len do
+              b += f(xs(i), ys(i))
+              i += 1
+            return b.result()
         i += 1
       if len == xs.length then xs.asInstanceOf[Vector[V]]
       else xs.take(len).asInstanceOf[Vector[V]]
+
+    /** Like `xs.lazyZip(ys).map(f)`, but avoids the generic lazyZip builder path. */
+    def zipMap[U, V](ys: Vector[U])(f: (T, U) => V): Vector[V] =
+      val len = math.min(xs.length, ys.length)
+      if len == 0 then Vector.empty
+      else if len <= MaxVector1Length then
+        val elems = new Array[AnyRef](len)
+        var i = 0
+        while i < len do
+          elems(i) = f(xs(i), ys(i)).asInstanceOf[AnyRef]
+          i += 1
+        Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[V]]
+      else
+        val b = Vector.newBuilder[V]
+        b.sizeHint(len)
+        var i = 0
+        while i < len do
+          b += f(xs(i), ys(i))
+          i += 1
+        b.result()
+
+    /** Like `xs.lazyZip(ys).lazyZip(zs).map(f)`, but avoids the generic lazyZip builder path. */
+    def zipMap[U, V, W](ys: Vector[U], zs: Vector[V])(f: (T, U, V) => W): Vector[W] =
+      val len = math.min(math.min(xs.length, ys.length), zs.length)
+      if len == 0 then Vector.empty
+      else if len <= MaxVector1Length then
+        val elems = new Array[AnyRef](len)
+        var i = 0
+        while i < len do
+          elems(i) = f(xs(i), ys(i), zs(i)).asInstanceOf[AnyRef]
+          i += 1
+        Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[W]]
+      else
+        val b = Vector.newBuilder[W]
+        b.sizeHint(len)
+        var i = 0
+        while i < len do
+          b += f(xs(i), ys(i), zs(i))
+          i += 1
+        b.result()
 
     /** Like `xs.lazyZip(xs.indices).map(f)`, but returns vector `xs` itself
      *  - instead of a copy - if function `f` maps all elements of
@@ -194,18 +322,31 @@ object Decorators {
         val x = xs(i)
         val y = f(x, i)
         if !(y.asInstanceOf[AnyRef] eq x.asInstanceOf[AnyRef]) then
-          val b = Vector.newBuilder[U]
-          b.sizeHint(len)
-          var j = 0
-          while j < i do
-            b += xs(j).asInstanceOf[U]
-            j += 1
-          b += y
-          i += 1
-          while i < len do
-            b += f(xs(i), i)
+          if len <= MaxVector1Length then
+            val elems = new Array[AnyRef](len)
+            var j = 0
+            while j < i do
+              elems(j) = xs(j).asInstanceOf[AnyRef]
+              j += 1
+            elems(i) = y.asInstanceOf[AnyRef]
             i += 1
-          return b.result()
+            while i < len do
+              elems(i) = f(xs(i), i).asInstanceOf[AnyRef]
+              i += 1
+            return Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[U]]
+          else
+            val b = Vector.newBuilder[U]
+            b.sizeHint(len)
+            var j = 0
+            while j < i do
+              b += xs(j).asInstanceOf[U]
+              j += 1
+            b += y
+            i += 1
+            while i < len do
+              b += f(xs(i), i)
+              i += 1
+            return b.result()
         i += 1
       xs.asInstanceOf[Vector[U]]
     end mapWithIndexConserve
@@ -239,19 +380,83 @@ object Decorators {
         xs.reduceLeft(op)
 
   extension [T, U](xss: Vector[Vector[T]])
-    def nestedMap(f: T => U): Vector[Vector[U]] = xss match
-      case xs +: xss1 => xs.map(f) +: xss1.nestedMap(f)
-      case nil => Vector()
+    def nestedMap(f: T => U): Vector[Vector[U]] =
+      val len = xss.length
+      if len == 0 then Vector.empty
+      else if len <= MaxVector1Length then
+        val elems = new Array[AnyRef](len)
+        var i = 0
+        while i < len do
+          elems(i) = mapVector(xss(i))(f).asInstanceOf[AnyRef]
+          i += 1
+        Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[Vector[U]]]
+      else
+        val b = Vector.newBuilder[Vector[U]]
+        b.sizeHint(len)
+        var i = 0
+        while i < len do
+          b += mapVector(xss(i))(f)
+          i += 1
+        b.result()
+
     def nestedMapConserve(f: T => U): Vector[Vector[U]] =
-      xss.mapconserve(_.mapconserve(f))
+      val len = xss.length
+      var i = 0
+      while i < len do
+        val xs = xss(i)
+        val ys = xs.mapconserve(f)
+        if !(ys.asInstanceOf[AnyRef] eq xs.asInstanceOf[AnyRef]) then
+          if len <= MaxVector1Length then
+            val elems = new Array[AnyRef](len)
+            var j = 0
+            while j < i do
+              elems(j) = xss(j).asInstanceOf[AnyRef]
+              j += 1
+            elems(i) = ys.asInstanceOf[AnyRef]
+            i += 1
+            while i < len do
+              elems(i) = xss(i).mapconserve(f).asInstanceOf[AnyRef]
+              i += 1
+            return Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[Vector[U]]]
+          else
+            val b = Vector.newBuilder[Vector[U]]
+            b.sizeHint(len)
+            var j = 0
+            while j < i do
+              b += xss(j).asInstanceOf[Vector[U]]
+              j += 1
+            b += ys
+            i += 1
+            while i < len do
+              b += xss(i).mapconserve(f)
+              i += 1
+            return b.result()
+        i += 1
+      xss.asInstanceOf[Vector[Vector[U]]]
+
     def nestedZipWithConserve(yss: Vector[Vector[U]])(f: (T, U) => T): Vector[Vector[T]] =
       xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
-    def nestedExists(p: T => Boolean): Boolean = xss match
-      case xs +: xss1 => xs.exists(p) || xss1.nestedExists(p)
-      case nil => false
-    def nestedFind(p: T => Boolean): Option[T] = xss match
-      case xs +: xss1 => xs.find(p).orElse(xss1.nestedFind(p))
-      case nil => None
+    def nestedExists(p: T => Boolean): Boolean =
+      var i = 0
+      while i < xss.length do
+        val xs = xss(i)
+        var j = 0
+        while j < xs.length do
+          if p(xs(j)) then return true
+          j += 1
+        i += 1
+      false
+    def nestedFind(p: T => Boolean): Option[T] =
+      var i = 0
+      while i < xss.length do
+        val xs = xss(i)
+        var j = 0
+        while j < xs.length do
+          val x = xs(j)
+          if p(x) then return Some(x)
+          j += 1
+        i += 1
+      None
   end extension
 
   extension (text: Text)
