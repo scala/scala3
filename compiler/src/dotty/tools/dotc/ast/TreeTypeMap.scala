@@ -41,6 +41,8 @@ class TreeTypeMap(
   cpy: tpd.TreeCopier = tpd.cpy)(using Context) extends tpd.TreeMap(cpy) {
   import tpd.*
 
+  private inline val MaxVector1Length = 32
+
   def copy(
       typeMap: Type => Type,
       treeMap: Tree => Tree,
@@ -50,35 +52,131 @@ class TreeTypeMap(
       substTo: Vector[Symbol])(using Context): TreeTypeMap =
     new TreeTypeMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
 
+  private def concatSymbols(left: Vector[Symbol], right: Vector[Symbol]): Vector[Symbol] =
+    if left.isEmpty then right
+    else if right.isEmpty then left
+    else
+      val leftLen = left.length
+      val rightLen = right.length
+      val len = leftLen + rightLen
+      if len <= MaxVector1Length then
+        val elems = new Array[AnyRef](len)
+        var i = 0
+        while i < leftLen do
+          elems(i) = left(i).asInstanceOf[AnyRef]
+          i += 1
+        var j = 0
+        while j < rightLen do
+          elems(leftLen + j) = right(j).asInstanceOf[AnyRef]
+          j += 1
+        Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[Symbol]]
+      else
+        val b = Vector.newBuilder[Symbol]
+        b.sizeHint(len)
+        var i = 0
+        while i < leftLen do
+          b += left(i)
+          i += 1
+        var j = 0
+        while j < rightLen do
+          b += right(j)
+          j += 1
+        b.result()
+
   /** If `sym` is one of `oldOwners`, replace by corresponding symbol in `newOwners` */
   def mapOwner(sym: Symbol): Symbol = sym.subst(oldOwners, newOwners)
 
   /** Replace occurrences of `This(oldOwner)` in some prefix of a type
    *  by the corresponding `This(newOwner)`.
    */
+  assert(oldOwners.length == newOwners.length, i"mismatched owners: $oldOwners --> $newOwners")
+  assert(substFrom.length == substTo.length, i"mismatched substitution: $substFrom --> $substTo")
+
+  private val classOwnerCount =
+    var count = 0
+    var i = 0
+    while i < oldOwners.length do
+      if oldOwners(i).isClass then count += 1
+      i += 1
+    count
+
+  private val oldOwnerClasses = new Array[ClassSymbol](classOwnerCount)
+  private val newOwnerThisTypes = new Array[Type](classOwnerCount)
+
+  private def initOwnerThisSubst(): Unit =
+    var i = 0
+    var j = 0
+    while i < oldOwners.length do
+      oldOwners(i) match
+        case cls: ClassSymbol =>
+          oldOwnerClasses(j) = cls
+          newOwnerThisTypes(j) = newOwners(i).thisType
+          j += 1
+        case _ =>
+      i += 1
+
+  initOwnerThisSubst()
+
   private val mapOwnerThis = new TypeMap {
-    private def mapPrefix(from: Vector[Symbol], to: Vector[Symbol], tp: Type): Type =
+    private def mapPrefix(tp: Type): Type =
       var result = tp
       var i = 0
-      while i < from.length do
-        from(i) match
-          case cls: ClassSymbol => result = result.substThis(cls, to(i).thisType)
-          case _ =>
+      while i < oldOwnerClasses.length do
+        result = result.substThis(oldOwnerClasses(i), newOwnerThisTypes(i))
         i += 1
       result
     def apply(tp: Type): Type = tp match {
-      case tp: NamedType => tp.derivedSelect(mapPrefix(oldOwners, newOwners, tp.prefix))
+      case tp: NamedType => tp.derivedSelect(mapPrefix(tp.prefix))
       case _ => mapOver(tp)
     }
   }
 
+  private val substFrom1 = if substFrom.length >= 1 then substFrom(0) else NoSymbol
+  private val substTo1 = if substTo.length >= 1 then substTo(0) else NoSymbol
+  private val substFrom2 = if substFrom.length >= 2 then substFrom(1) else NoSymbol
+  private val substTo2 = if substTo.length >= 2 then substTo(1) else NoSymbol
+  private val symbolSubstData: Substituters.SubstSymData | Null =
+    substFrom.length match
+      case 0 => null
+      case 1 | 2 => null
+      case _ => Substituters.SubstSymData(substFrom, substTo)
+
+  private def substSymbols(tp: Type)(using Context): Type =
+    substFrom.length match
+      case 0 => tp
+      case 1 =>
+        val substMap = new TypeMap():
+          def apply(tp: Type): Type = tp match
+            case tp: TermRef if tp.symbol.isImport => mapOver(tp)
+            case tp => Substituters.substSym1(tp, substFrom1, substTo1, null)
+        substMap(tp)
+      case 2 =>
+        val substMap = new TypeMap():
+          def apply(tp: Type): Type = tp match
+            case tp: TermRef if tp.symbol.isImport => mapOver(tp)
+            case tp => Substituters.substSym2(tp, substFrom1, substTo1, substFrom2, substTo2, null)
+        substMap(tp)
+      case _ =>
+        symbolSubstData.nn.substImportAware(tp)
+
   def mapType(tp: Type): Type =
-    val substMap = new TypeMap():
-      def apply(tp: Type): Type = tp match
-        case tp: TermRef if tp.symbol.isImport => mapOver(tp)
-        case tp => tp.substSym(substFrom, substTo)
-    mapOwnerThis(substMap(typeMap(tp)))
-  end mapType
+    val tp1 = typeMap(tp)
+    val tp2 = substSymbols(tp1)
+    if oldOwnerClasses.length == 0 then tp2 else mapOwnerThis(tp2)
+
+  private def containsSymbol(syms: Vector[Symbol], sym: Symbol): Boolean =
+    var i = 0
+    while i < syms.length do
+      if syms(i) == sym then return true
+      i += 1
+    false
+
+  private def containsAny(syms: Vector[Symbol], targets: Vector[Symbol]): Boolean =
+    var i = 0
+    while i < syms.length do
+      if containsSymbol(targets, syms(i)) then return true
+      i += 1
+    false
 
   private def updateDecls(prevStats: Vector[Tree], newStats: Vector[Tree]): Unit =
     assert(prevStats.length == newStats.length)
@@ -101,7 +199,7 @@ class TreeTypeMap(
 
   override def transform(tree: Tree)(using Context): Tree = treeMap(tree) match {
     case impl @ Template(constr, _, self, _) =>
-      val tmap = withMappedSyms(localSyms(impl +: self +: Vector()))
+      val tmap = withMappedSyms(localSyms(Vector(impl, self)))
       cpy.Template(impl)(
           constr = tmap.transformSub(constr),
           parents = impl.parents.mapconserve(transform),
@@ -151,7 +249,7 @@ class TreeTypeMap(
           val rhs1 = tmap.transform(rhs)
           cpy.CaseDef(cdef)(pat1, guard1, rhs1)
         case labeled @ Labeled(bind, expr) =>
-          val tmap = withMappedSyms(bind.symbol +: Vector())
+          val tmap = withMappedSyms(Vector(bind.symbol))
           val bind1 = tmap.transformSub(bind)
           val expr1 = tmap.transform(expr)
           cpy.Labeled(labeled)(bind1, expr1)
@@ -192,17 +290,17 @@ class TreeTypeMap(
       // setting up a proper substitution abstraction with a compose operator that
       // guarantees idempotence. But this might be too inefficient in some cases.
       // We'll cross that bridge when we need to.
-      assert(!from.exists(substTo contains _))
-      assert(!to.exists(substFrom contains _))
-      assert(!from.exists(newOwners contains _))
-      assert(!to.exists(oldOwners contains _))
+      assert(!containsAny(from, substTo))
+      assert(!containsAny(to, substFrom))
+      assert(!containsAny(from, newOwners))
+      assert(!containsAny(to, oldOwners))
       copy(
         typeMap,
         treeMap,
-        from ++ oldOwners,
-        to ++ newOwners,
-        from ++ substFrom,
-        to ++ substTo)
+        concatSymbols(from, oldOwners),
+        concatSymbols(to, newOwners),
+        concatSymbols(from, substFrom),
+        concatSymbols(to, substTo))
     }
 
   /** Apply `typeMap` and `ownerMap` to given symbols `syms`
@@ -219,23 +317,34 @@ class TreeTypeMap(
   def withMappedSyms(syms: Vector[Symbol], mapped: Vector[Symbol]): TreeTypeMap =
     if syms eq mapped then this
     else
-      val substMap = withSubstitution(syms, mapped)
-      lazy val origCls = mapped.zip(syms).filter(_._1.isClass).toMap
-      mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
-        val origDcls = cls.info.decls.toVector.filterNot(_.is(TypeParam))
-        val tmap0 = tmap.withSubstitution(origCls(cls).typeParams, cls.typeParams)
-        val mappedDcls = mapSymbols(origDcls, tmap0, mapAlways = true)
-        val tmap1 = tmap.withMappedSyms(
-          origCls(cls).typeParams ++ origDcls,
-          cls.typeParams ++ mappedDcls)
-        mapped.foreach { sym =>
-          // outer Symbols can reference nested ones in info,
-          // so we remap that once again with the updated TreeTypeMap
-          sym.info = tmap1.mapType(sym.info)
+      var tmap = withSubstitution(syms, mapped)
+      var clsIdx = 0
+      while clsIdx < mapped.length do
+        val cls = mapped(clsIdx)
+        if cls.isClass then {
+          val origCls = syms(clsIdx)
+          val origDcls = cls.info.decls.toVector.filterNot(_.is(TypeParam))
+          val tmap0 = tmap.withSubstitution(origCls.typeParams, cls.typeParams)
+          val mappedDcls = mapSymbols(origDcls, tmap0, mapAlways = true)
+          val tmap1 = tmap.withMappedSyms(
+            concatSymbols(origCls.typeParams, origDcls),
+            concatSymbols(cls.typeParams, mappedDcls))
+          var mappedIdx = 0
+          while mappedIdx < mapped.length do
+            val sym = mapped(mappedIdx)
+            // outer Symbols can reference nested ones in info,
+            // so we remap that once again with the updated TreeTypeMap
+            sym.info = tmap1.mapType(sym.info)
+            mappedIdx += 1
+          val cls1 = cls.asClass
+          var dclIdx = 0
+          while dclIdx < origDcls.length do
+            cls1.replace(origDcls(dclIdx), mappedDcls(dclIdx))
+            dclIdx += 1
+          tmap = tmap1
         }
-        origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
-        tmap1
-      }
+        clsIdx += 1
+      tmap
 
   override def toString =
     def showSyms(syms: Vector[Symbol]) =
