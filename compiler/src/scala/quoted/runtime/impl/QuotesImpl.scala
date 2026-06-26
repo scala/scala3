@@ -1931,8 +1931,22 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               member.info.substThis(self.classSymbol.asClass, self)
             else
               member.info
+          
+          // We treat the constructor type parameters as if they were the same as corresponding type members.
+          // That's how Scala 2 symbols are unpickled to begin with.
+          val memberInfoSubstituted =
+            if member.owner.isConstructor then
+              self match
+                case dotc.core.Types.AppliedType(_, args) =>
+                  val ctorTypeParams = member.owner.paramSymss.flatten.filter(_.isType)
+                  if ctorTypeParams.length == args.length then
+                    memberInfo.subst(ctorTypeParams, args)
+                  else
+                    memberInfo
+                case _ => memberInfo
+            else memberInfo
 
-          memberInfo.asSeenFrom(self, member.owner) match
+          memberInfoSubstituted.asSeenFrom(self, member.owner) match
             case dotc.core.Types.ClassInfo(prefix, sym, _, _, _) =>
               // We do not want to expose ClassInfo in the reflect API, instead we change it to a TypeRef,
               // see issue #22395
