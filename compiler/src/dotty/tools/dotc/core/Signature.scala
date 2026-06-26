@@ -46,6 +46,10 @@ import Signature.*
  */
 case class Signature(paramsSig: Vector[ParamSig], resSig: TypeName) {
 
+  // Must match VectorStatics.WIDTH: `Vector.fromArray1Unsafe` accepts only the
+  // compact Vector1 layout.
+  private inline val MaxVector1Length = 32
+
   /** Two names are consistent if they are the same or one of them is tpnme.Uninstantiated */
   private def consistent(name1: ParamSig, name2: ParamSig) =
     name1 == name2 || name1 == tpnme.Uninstantiated || name2 == tpnme.Uninstantiated
@@ -109,7 +113,31 @@ case class Signature(paramsSig: Vector[ParamSig], resSig: TypeName) {
    *  Like Signature#apply, the result is only cacheable if `isUnderDefined == false`.
    */
   def prependTermParams(params: Vector[Type], sourceLanguage: SourceLanguage)(using Context): Signature =
-    Signature(params.map(p => sigName(p, sourceLanguage)) ++ paramsSig, resSig)
+    val paramsLen = params.length
+    if paramsLen == 0 then Signature(paramsSig, resSig)
+    else
+      val sigLen = paramsSig.length
+      val len = paramsLen + sigLen
+      if len <= MaxVector1Length then
+        val elems = new Array[AnyRef](len)
+        var i = 0
+        while i < paramsLen do
+          elems(i) = sigName(params(i), sourceLanguage).asInstanceOf[AnyRef]
+          i += 1
+        var j = 0
+        while j < sigLen do
+          elems(paramsLen + j) = paramsSig(j).asInstanceOf[AnyRef]
+          j += 1
+        Signature(Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[ParamSig]], resSig)
+      else
+        val b = Vector.newBuilder[ParamSig]
+        b.sizeHint(len)
+        var i = 0
+        while i < paramsLen do
+          b += sigName(params(i), sourceLanguage)
+          i += 1
+        b ++= paramsSig
+        Signature(b.result(), resSig)
 
   /** Construct a signature by prepending the length of a type parameter section
    *  to the parameter part of this signature.
@@ -117,14 +145,33 @@ case class Signature(paramsSig: Vector[ParamSig], resSig: TypeName) {
    *  Like Signature#apply, the result is only cacheable if `isUnderDefined == false`.
    */
   def prependTypeParams(typeParamSigsSectionLength: Int)(using Context): Signature =
-    Signature(typeParamSigsSectionLength +: paramsSig, resSig)
+    val sigLen = paramsSig.length
+    val len = sigLen + 1
+    if len <= MaxVector1Length then
+      val elems = new Array[AnyRef](len)
+      elems(0) = java.lang.Integer.valueOf(typeParamSigsSectionLength)
+      var i = 0
+      while i < sigLen do
+        elems(i + 1) = paramsSig(i).asInstanceOf[AnyRef]
+        i += 1
+      Signature(Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[ParamSig]], resSig)
+    else
+      val b = Vector.newBuilder[ParamSig]
+      b.sizeHint(len)
+      b += typeParamSigsSectionLength
+      b ++= paramsSig
+      Signature(b.result(), resSig)
 
   /** A signature is under-defined if its paramsSig part contains at least one
    *  `tpnme.Uninstantiated`. Under-defined signatures arise when taking a signature
    *  of a type that still contains uninstantiated type variables.
    */
   def isUnderDefined(using Context): Boolean =
-    paramsSig.contains(tpnme.Uninstantiated) || resSig == tpnme.Uninstantiated
+    var i = 0
+    while i < paramsSig.length do
+      if paramsSig(i) == tpnme.Uninstantiated then return true
+      i += 1
+    resSig == tpnme.Uninstantiated
 }
 
 object Signature {
