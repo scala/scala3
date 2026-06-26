@@ -756,21 +756,43 @@ trait Inferencing { this: Typer =>
     def filterByDeps(tvs0: ToInstantiate): ToInstantiate =
       val excluded =  // ignore dependencies from other variables that are being instantiated
         typeVarsIn(tvs0)
-      def step(tvs: ToInstantiate): ToInstantiate = (tvs: @unchecked) match
-        case tvs @ (hd @ (tvar, v)) +: tvs1 =>
+      def step(tvs: ToInstantiate): ToInstantiate =
+        var b: mutable.Builder[(TypeVar, Int), Vector[(TypeVar, Int)]] | Null = null
+        var i = 0
+        while i < tvs.length do
+          val hd @ (tvar, v) = tvs(i)
           def aboveOK = !constraint.dependsOn(tvar, excluded, co = true)
           def belowOK = !constraint.dependsOn(tvar, excluded, co = false)
-          if v == 0 && !aboveOK then
-            step((tvar, 1) +: tvs1)
-          else if v == 0 && !belowOK then
-            step((tvar, -1) +: tvs1)
-          else if v == -1 && !aboveOK || v == 1 && !belowOK then
-            typr.println(i"drop $tvar, $v in $tp, $pt, qualifying = ${qualifying.toVector}, tvs0 = ${tvs0.toVector}%, %, excluded = ${excluded.toVector}, $constraint")
-            step(tvs1)
-          else // no conflict, keep the instantiation proposal
-            tvs.derivedCons(hd, step(tvs1))
-        case Vector() =>
-          Vector()
+          val adjusted =
+            if v == 0 && !aboveOK then 1
+            else if v == 0 && !belowOK then -1
+            else v
+          val drop =
+            adjusted == -1 && !aboveOK || adjusted == 1 && !belowOK
+          if drop then
+            typr.println(i"drop $tvar, $adjusted in $tp, $pt, qualifying = ${qualifying.toVector}, tvs0 = ${tvs0.toVector}%, %, excluded = ${excluded.toVector}, $constraint")
+            if b == null then
+              val b0 = Vector.newBuilder[(TypeVar, Int)]
+              b0.sizeHint(tvs.length - 1)
+              var j = 0
+              while j < i do
+                b0 += tvs(j)
+                j += 1
+              b = b0
+          else
+            val hd1 = if adjusted == v then hd else (tvar, adjusted)
+            if b != null then b += hd1
+            else if adjusted != v then
+              val b0 = Vector.newBuilder[(TypeVar, Int)]
+              b0.sizeHint(tvs.length)
+              var j = 0
+              while j < i do
+                b0 += tvs(j)
+                j += 1
+              b0 += hd1
+              b = b0
+          i += 1
+        if b == null then tvs else b.result()
       val tvs1 = step(tvs0)
       if tvs1 eq tvs0 then tvs1
       else filterByDeps(tvs1) // filter again with smaller excluded set
@@ -809,26 +831,31 @@ trait Inferencing { this: Typer =>
     def doInstantiate(tvs: ToInstantiate): Unit =
 
       /** Try to instantiate `tvs`, return any suspended type variables */
-      def tryInstantiate(tvs: ToInstantiate): ToInstantiate = (tvs: @unchecked) match
-        case (hd @ (tvar, v)) +: tvs1 =>
+      def tryInstantiate(tvs: ToInstantiate): ToInstantiate =
+        var suspended: mutable.Builder[(TypeVar, Int), Vector[(TypeVar, Int)]] | Null = null
+        var i = 0
+        while i < tvs.length do
+          val hd @ (tvar, v) = tvs(i)
           val fromBelow = v == 1 || (v == 0 && tvar.hasLowerBound)
           typr.println(
             i"interpolate${if v == 0 then " non-occurring" else ""} $tvar in $state in $tree: $tp, fromBelow = $fromBelow, $constraint")
-          if tvar.isInstantiated then
-            tryInstantiate(tvs1)
-          else
-            val suspend = tvs1.exists{ (following, _) =>
+          if !tvar.isInstantiated then
+            var j = i + 1
+            var suspend = false
+            while j < tvs.length && !suspend do
+              val following = tvs(j)._1
               if fromBelow
-              then constraint.isLess(following.origin, tvar.origin)
-              else constraint.isLess(tvar.origin, following.origin)
-            }
+              then suspend = constraint.isLess(following.origin, tvar.origin)
+              else suspend = constraint.isLess(tvar.origin, following.origin)
+              j += 1
             if suspend then
               typr.println(i"suspended: $hd")
-              hd +: tryInstantiate(tvs1)
+              if suspended == null then suspended = Vector.newBuilder[(TypeVar, Int)]
+              suspended += hd
             else
               tvar.instantiate(fromBelow)
-              tryInstantiate(tvs1)
-        case Vector() => Vector()
+          i += 1
+        if suspended == null then Vector() else suspended.result()
       if tvs.nonEmpty then doInstantiate(tryInstantiate(tvs))
     end doInstantiate
 

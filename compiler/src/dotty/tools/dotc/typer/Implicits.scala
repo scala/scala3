@@ -253,7 +253,7 @@ object Implicits:
       if refs.isEmpty && (!considerExtension || companionRefs.isEmpty) then
         Vector()
       else
-        val candidates = new mutable.ListBuffer[Candidate]
+        val candidates = Vector.newBuilder[Candidate]
         def tryCandidate(extensionOnly: Boolean)(ref: ImplicitRef) =
           var ckind = exploreInFreshCtx { (ctx: FreshContext) ?=>
             ctx.setMode(ctx.mode &~ Mode.SafeNulls | Mode.TypevarsMissContext)
@@ -267,7 +267,7 @@ object Implicits:
           companionRefs.foreach(tryCandidate(extensionOnly = true))
         if refs.nonEmpty then
           refs.foreach(tryCandidate(extensionOnly = false))
-        candidates.toVector
+        candidates.result()
     }
   }
 
@@ -278,9 +278,9 @@ object Implicits:
   class OfTypeImplicits(tp: Type, override val companionRefs: TermRefSet)(initctx: Context) extends ImplicitRefs(initctx) {
     implicits.println(i"implicit scope of type $tp = ${companionRefs.showAsList}%, %")
     @threadUnsafe lazy val refs: Vector[ImplicitRef] = {
-      val buf = new mutable.ListBuffer[TermRef]
-      for (companion <- companionRefs) buf ++= companion.implicitMembers
-      buf.toVector
+      val b = Vector.newBuilder[TermRef]
+      for (companion <- companionRefs) b ++= companion.implicitMembers
+      b.result()
     }
 
     /** The candidates that are eligible for expected type `tp` */
@@ -444,7 +444,7 @@ object Implicits:
    */
   case class SearchSuccess(tree: Tree, ref: TermRef, level: Int, isExtension: Boolean = false)(val tstate: TyperState, val gstate: GadtConstraint)
   extends SearchResult with RefAndLevel with Showable:
-    final def found = ref +: Vector()
+    final def found = Vector(ref)
 
   /** A failed search */
   case class SearchFailure(tree: Tree) extends SearchResult {
@@ -452,7 +452,7 @@ object Implicits:
     final def isAmbiguous: Boolean = tree.tpe.isInstanceOf[AmbiguousImplicits | TooUnspecific]
     final def reason: SearchFailureType = tree.tpe.asInstanceOf[SearchFailureType]
     final def found = tree.tpe match
-      case tpe: AmbiguousImplicits => tpe.alt1.ref +: tpe.alt2.ref +: Vector()
+      case tpe: AmbiguousImplicits => Vector(tpe.alt1.ref, tpe.alt2.ref)
       case _ => Vector()
   }
 
@@ -541,11 +541,11 @@ object Implicits:
   case class TooUnspecific(target: Type) extends NoMatchingImplicits(NoType, EmptyTree, OrderingConstraint.empty):
 
     override def notes(using Context) =
-      Note:
+      Vector(Note {
         i"""
           |Note that implicit conversions were not tried because the result of an implicit conversion
           |must be more specific than $target"""
-      +: Vector()
+      })
 
     override def msg(using Context) =
       super.msg.append(i"\nThe expected type $target is not specific enough, so no search was attempted")
@@ -574,11 +574,11 @@ object Implicits:
         Vector()
       else
         val what = if (expectedType.isInstanceOf[SelectionProto]) "extension methods" else "conversions"
-        Note:
+        Vector(Note {
           i"""
              |Note that implicit $what cannot be applied because they are ambiguous;
              |$explanation"""
-        +: Vector()
+        })
 
     def asNested = if nested then this else AmbiguousImplicits(alt1, alt2, expectedType, argument, nested = true)
   end AmbiguousImplicits
@@ -1195,7 +1195,7 @@ trait Implicits:
                   nme.apply)
               else untpdGenerated
             typed(
-              untpd.Apply(untpdConv, untpd.TypedSplice(argument) +: Vector()),
+              untpd.Apply(untpdConv, Vector(untpd.TypedSplice(argument))),
               pt, locked)
           }
           pt match
@@ -1368,7 +1368,7 @@ trait Implicits:
                       case 1 => (alt2, alt1)
                       case -1 => (alt1, alt2)
               val msg = GivenSearchPriorityWarning(pt, cmp, prev, winner.ref, loser.ref, isLastOldVersion)
-              val critical = alt1.ref +: alt2.ref +: Vector()
+              val critical = Vector(alt1.ref, alt2.ref)
               priorityChangeWarnings += ((critical, msg))
               if isLastOldVersion then prev else cmp
             else cmp max prev
@@ -1486,7 +1486,7 @@ trait Implicits:
                   else
                     // The ambiguity happened in a nested search: to recover we
                     // need a candidate better than `cand`
-                    healAmbiguous(fail, cand +: Vector())
+                    healAmbiguous(fail, Vector(cand))
                 else
                   // keep only warnings that don't involve the failed candidate reference
                   priorityChangeWarnings.filterInPlace: (critical, _) =>
@@ -1505,7 +1505,7 @@ trait Implicits:
                     // The ambiguity happened in the current search: to recover we
                     // need a candidate better than the two ambiguous alternatives.
                     val ambi = fail.reason.asInstanceOf[AmbiguousImplicits]
-                    healAmbiguous(fail, ambi.alt1 +: ambi.alt2 +: Vector())
+                    healAmbiguous(fail, Vector(ambi.alt1, ambi.alt2))
                 }
             }
           case nil =>
@@ -1630,9 +1630,9 @@ trait Implicits:
        */
       def sort(eligible: Vector[Candidate]) = eligible match
         case Vector() => eligible
-        case e1 +: Vector() => eligible
-        case e1 +: e2 +: Vector() =>
-          if compareEligibles(e2, e1) < 0 then e2 +: e1 +: Vector()
+        case Vector(e1) => eligible
+        case Vector(e1, e2) =>
+          if compareEligibles(e2, e1) < 0 then Vector(e2, e1)
           else eligible
         case _ =>
           val ord: Ordering[Candidate] = (a, b) => compareEligibles(a, b)
@@ -2160,7 +2160,7 @@ final class SearchRoot extends SearchHistory:
               ref => valSym.termRef.select(vsymMap(ref.symbol)),
               id  => Select(tpd.ref(valSym), id.name))
 
-            val blk = Block(classDef +: inst +: Vector(), res).withSpan(span)
+            val blk = Block(Vector(classDef, inst), res).withSpan(span)
 
             success.copy(tree = blk)(success.tstate, success.gstate)
           }
@@ -2181,7 +2181,7 @@ sealed class TermRefSet(using Context):
         case null =>
           elems.put(sym, pre)
         case prefix: Type =>
-          if !(prefix =:= pre) then elems.put(sym, pre +: prefix +: Vector())
+          if !(prefix =:= pre) then elems.put(sym, Vector(pre, prefix))
         case prefixes: Vector[Type] =>
           if !prefixes.exists(_ =:= pre) then elems.put(sym, pre +: prefixes)
 
