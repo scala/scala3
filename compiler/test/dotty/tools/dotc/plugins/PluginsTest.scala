@@ -28,20 +28,20 @@ class PluginsTest {
   class P7  extends TestPhase
   class P8  extends TestPhase
 
-  val basicPlan = List(
-    List(new P1),
-    List(new P2),
-    List(new P3a, new P3b, new P3c, new P3d, new P3e),
-    List(new P4),
-    List(new P5),
-    List(new P6a, new P6b, new P6c, new P6d, new P6e),
-    List(new P7),
-    List(new P8)
+  val basicPlan = Vector(
+    Vector(new P1),
+    Vector(new P2),
+    Vector(new P3a, new P3b, new P3c, new P3d, new P3e),
+    Vector(new P4),
+    Vector(new P5),
+    Vector(new P6a, new P6b, new P6c, new P6d, new P6e),
+    Vector(new P7),
+    Vector(new P8)
   )
 
   implicit def clazzToName(cls: Class[?]): String = cls.getName
 
-  def debugPlan(plan: List[List[Phase]]): Unit = {
+  def debugPlan(plan: Vector[Vector[Phase]]): Unit = {
     println(plan.mkString("plan:\n- ", "\n- ", ""))
   }
 
@@ -51,7 +51,7 @@ class PluginsTest {
       override val runsAfter = Set(classOf[P3d])
     }
 
-    val updatedPlan = Plugins.schedule(basicPlan, M1 :: Nil)
+    val updatedPlan = Plugins.schedule(basicPlan, M1 +: Vector())
     assert(updatedPlan(3)(0) eq M1)
   }
 
@@ -61,7 +61,7 @@ class PluginsTest {
       override val runsBefore = Set(classOf[P7])
     }
 
-    val updatedPlan = Plugins.schedule(basicPlan, ConstFold :: Nil)
+    val updatedPlan = Plugins.schedule(basicPlan, ConstFold +: Vector())
     assert(updatedPlan(6)(0) eq ConstFold)
   }
 
@@ -73,7 +73,7 @@ class PluginsTest {
     }
 
     // prefers the runsBefore
-    val updatedPlan = Plugins.schedule(basicPlan, ConstFold :: Nil)
+    val updatedPlan = Plugins.schedule(basicPlan, ConstFold +: Vector())
     assert(updatedPlan(6)(0) eq ConstFold)
   }
 
@@ -85,7 +85,7 @@ class PluginsTest {
     }
 
     try {
-      Plugins.schedule(basicPlan, ConstFold :: Nil)
+      Plugins.schedule(basicPlan, ConstFold +: Vector())
       assert(false, "unsatisfiable constraint should throw exception, but not")
     } catch {
       case _: Exception =>
@@ -104,12 +104,12 @@ class PluginsTest {
     }
 
     // M1 inserted to plan first
-    val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
+    val updatedPlan1 = Plugins.schedule(basicPlan, M1 +: M2 +: Vector())
     assert(updatedPlan1(6)(0) eq M1)
     assert(updatedPlan1(7)(0) eq M2)
 
     // M2 inserted to plan first
-    val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
+    val updatedPlan2 = Plugins.schedule(basicPlan, M2 +: M1 +: Vector())
     assert(updatedPlan2(6)(0) eq M1)
     assert(updatedPlan2(7)(0) eq M2)
   }
@@ -125,12 +125,12 @@ class PluginsTest {
     }
 
     // M1 inserted to plan first
-    val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
+    val updatedPlan1 = Plugins.schedule(basicPlan, M1 +: M2 +: Vector())
     assert(updatedPlan1(4)(0) eq M1)
     assert(updatedPlan1(3)(0) eq M2)
 
     // M2 inserted to plan first
-    val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
+    val updatedPlan2 = Plugins.schedule(basicPlan, M2 +: M1 +: Vector())
     assert(updatedPlan2(4)(0) eq M1)
     assert(updatedPlan2(3)(0) eq M2)
   }
@@ -147,12 +147,12 @@ class PluginsTest {
     }
 
     // M1 inserted to plan first
-    val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
+    val updatedPlan1 = Plugins.schedule(basicPlan, M1 +: M2 +: Vector())
     assert(updatedPlan1(7)(0) eq M1)
     assert(updatedPlan1(4)(0) eq M2)
 
     // M2 inserted to plan first
-    val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
+    val updatedPlan2 = Plugins.schedule(basicPlan, M2 +: M1 +: Vector())
     assert(updatedPlan2(7)(0) eq M1)
     assert(updatedPlan2(4)(0) eq M2)
   }
@@ -169,12 +169,12 @@ class PluginsTest {
     }
 
     // M1 inserted to plan first
-    val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
+    val updatedPlan1 = Plugins.schedule(basicPlan, M1 +: M2 +: Vector())
     assert(updatedPlan1(4)(0) eq M1)
     assert(updatedPlan1(5)(0) eq M2)
 
     // M2 inserted to plan first
-    val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
+    val updatedPlan2 = Plugins.schedule(basicPlan, M2 +: M1 +: Vector())
     assert(updatedPlan2(4)(0) eq M1)
     assert(updatedPlan2(5)(0) eq M2)
   }
@@ -195,13 +195,13 @@ class PluginsTest {
     }
 
     // M1 inserted to plan first
-    val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: M3 :: Nil)
+    val updatedPlan1 = Plugins.schedule(basicPlan, M1 +: M2 +: M3 +: Vector())
     assert(updatedPlan1(3)(0) eq M1)
     assert(updatedPlan1(4)(0) eq M2)
     assert(updatedPlan1(5)(0) eq M3)
 
     // M2 inserted to plan first
-    val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: M3 :: Nil)
+    val updatedPlan2 = Plugins.schedule(basicPlan, M2 +: M1 +: M3 +: Vector())
     assert(updatedPlan1(3)(0) eq M1)
     assert(updatedPlan1(4)(0) eq M2)
     assert(updatedPlan1(5)(0) eq M3)
@@ -219,11 +219,11 @@ class PluginsTest {
       override val runsBefore = Set(classOf[P7], classOf[P8])
     }
 
-    val updatedPlan1 = Plugins.schedule(basicPlan, M1 :: M2 :: Nil)
+    val updatedPlan1 = Plugins.schedule(basicPlan, M1 +: M2 +: Vector())
     assert(updatedPlan1(6)(0) eq M1)
     assert(updatedPlan1(7)(0) eq M2)
 
-    val updatedPlan2 = Plugins.schedule(basicPlan, M2 :: M1 :: Nil)
+    val updatedPlan2 = Plugins.schedule(basicPlan, M2 +: M1 +: Vector())
     assert(updatedPlan1(6)(0) eq M1)
     assert(updatedPlan1(7)(0) eq M2)
   }

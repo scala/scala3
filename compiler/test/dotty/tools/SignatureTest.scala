@@ -68,7 +68,7 @@ class SignatureTest:
       val prefix = cls.typeRef.appliedTo(tvar)
 
       def checkSignatures(expectedIsUnderDefined: Boolean)(using Context): Unit =
-        for decl <- cls.info.decls.toList if decl.is(Method) && !decl.isConstructor do
+        for decl <- cls.info.decls.toVector if decl.is(Method) && !decl.isConstructor do
           val meth = decl.asSeenFrom(prefix)
           val sig = meth.info.signature
           val what = if expectedIsUnderDefined then "underdefined" else "fully-defined"

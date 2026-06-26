@@ -15,16 +15,16 @@ trait ErrorMessagesTest extends DottyTest {
     initialCtx.setReporter(rep).withoutColors
   }
 
-  class Report(messages: List[Message], ictx: Context) {
-    def expect(f: (Context, List[Message]) => Unit): Unit =
+  class Report(messages: Vector[Message], ictx: Context) {
+    def expect(f: (Context, Vector[Message]) => Unit): Unit =
       f(ictx, messages)
 
     def expectNoErrors: Unit =
       assert(this.isInstanceOf[EmptyReport], "errors found when not expected")
   }
 
-  class EmptyReport extends Report(Nil, null) {
-    override def expect(f: (Context, List[Message]) => Unit) =
+  class EmptyReport extends Report(Vector(), null) {
+    override def expect(f: (Context, Vector[Message]) => Unit) =
       fail("""|
               |Couldn't capture errors from compiled sources, this can happen if
               |there are no errors or the compiler crashes.""".stripMargin)
@@ -42,7 +42,7 @@ trait ErrorMessagesTest extends DottyTest {
     }
   }
 
-  def assertMessageCount(expected: Int, messages: List[Message]): Unit =
+  def assertMessageCount(expected: Int, messages: Vector[Message]): Unit =
     assertEquals(messages.mkString,
       expected,
       messages.length

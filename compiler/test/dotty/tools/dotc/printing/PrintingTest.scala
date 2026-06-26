@@ -24,10 +24,10 @@ import java.io.File
 
 class PrintingTest {
 
-  def options(phase: String, flags: List[String]) =
+  def options(phase: String, flags: Vector[String]) =
     val outDir = new File(ParallelTesting.defaultOutputDir, "printing")
     outDir.mkdirs()
-    List(s"-Vprint:$phase", "-color:never", "-nowarn", "-d", outDir.getAbsolutePath, "-classpath", TestConfiguration.basicClasspath) ::: flags
+    Vector(s"-Vprint:$phase", "-color:never", "-nowarn", "-d", outDir.getAbsolutePath, "-classpath", TestConfiguration.basicClasspath) ++ flags
 
   private def compileFile(path: JPath, phase: String): Boolean = {
     val baseFilePath  = path.toString.stripSuffix(".scala").stripSuffix(".java")
@@ -36,11 +36,11 @@ class PrintingTest {
     val byteStream    = new ByteArrayOutputStream()
     val reporter = TestReporter.reporter(new PrintStream(byteStream), INFO)
     val flags =
-      if (!(new File(flagsFilePath)).exists) Nil
-      else Using(Source.fromFile(flagsFilePath, StandardCharsets.UTF_8.name))(_.getLines().toList).get
+      if (!(new File(flagsFilePath)).exists) Vector()
+      else Using(Source.fromFile(flagsFilePath, StandardCharsets.UTF_8.name))(_.getLines().toVector).get
 
     try {
-      Main.process((path.toString :: options(phase, flags)).toArray, reporter, null)
+      Main.process((path.toString +: options(phase, flags)).toArray, reporter, null)
     } catch {
       case e: Throwable =>
         println(s"Compile $path exception:")
@@ -53,7 +53,7 @@ class PrintingTest {
   }
 
   def testIn(testsDir: String, phase: String) =
-    val res = Directory(testsDir).list.toList
+    val res = Directory(testsDir).list.toVector
       .filter(_.ext.isSourceExtension)
       .map(f => compileFile(f.jpath, phase))
 

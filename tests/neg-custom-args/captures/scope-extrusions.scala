@@ -11,7 +11,7 @@ def test(io: IO): Unit =
     w = g  // error
 
   def withFile[T](op: IO => T): T =
-    val io = IO()
+    val io = new IO
     op(io)
 
   def id(x: IO): x.type = x
@@ -31,4 +31,3 @@ def test(io: IO): Unit =
   val f2: IO => IO = (x: IO) => x  // error
   val f3 = (x: IO) => x
   val f4: IO => IO = f3  // error
-

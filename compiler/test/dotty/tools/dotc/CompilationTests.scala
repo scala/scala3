@@ -23,7 +23,7 @@ class CompilationTests {
 
   @Test def pos: Unit = {
     given TestGroup = TestGroup("compilePos")
-    val tests = List(
+    val tests = Vector(
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
@@ -39,10 +39,10 @@ class CompilationTests {
       // Run tests for legacy lazy vals
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
-    ) ::: (
+    ) ++ (
       // TODO create a folder for capture checking tests with the stdlib, or use tests/pos-custom-args/captures under this mode?
-      if Properties.usingScalaLibraryCCTasty then List(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
-      else Nil
+      if Properties.usingScalaLibraryCCTasty then Vector(compileDir("tests/pos-special/stdlib", allowDeepSubtypes))
+      else Vector()
     )
     val compilationTest = withCoverage(aggregateTests(tests*))
     runWithCoverageOrFallback[PosTestWithCoverage](compilationTest, "Pos")
@@ -152,7 +152,7 @@ class CompilationTests {
       compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
       compileFile("tests/neg-custom-args/sourcepath/outer/nested/Test1.scala", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath")),
       compileDir("tests/neg-custom-args/sourcepath2/hi", defaultOptions.and("-sourcepath", "tests/neg-custom-args/sourcepath2", "-Werror")),
-      compileList("duplicate source", List(
+      compileList("duplicate source", Vector(
         "tests/neg-custom-args/toplevel-samesource/S.scala",
         "tests/neg-custom-args/toplevel-samesource/nested/S.scala"),
         defaultOptions),
@@ -234,7 +234,7 @@ class CompilationTests {
     //   unsafeFile.keepOutput.checkCompile()
     //   flexibleFile.keepOutput.checkExpectedErrors()
 
-    //   List(unsafeFile, flexibleFile).foreach(_.delete())
+    //   Vector(unsafeFile, flexibleFile).foreach(_.delete())
     // }
   }
 
@@ -256,7 +256,7 @@ class CompilationTests {
       ("Foo/lib/Foo", o => compileDir("tests/explicit-nulls/special/25722/scala", o))
     )
     // locally {
-    //   val tests = List(
+    //   val tests = Vector(
     //     compileFile("tests/explicit-nulls/flexible-unpickle/pos/Unsafe_1.scala", explicitNullsOptions without "-Yexplicit-nulls"),
     //     compileFile("tests/explicit-nulls/flexible-unpickle/pos/Flexible_2.scala",
     //     explicitNullsOptions.and("-Yflexify-tasty").withClasspath(defaultOutputDir + testGroup + "/Unsafe_1/pos/Unsafe_1")),
@@ -341,7 +341,7 @@ class CompilationTests {
       val classA1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v1", "A").toString
       val classB1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "B", "v1", "B").toString
 
-      val tests = List(
+      val tests = Vector(
         withCoverage(compileFile("tests/init/tasty-error/val-or-defdef/v1/A.scala", tastyErrorOptions)(using tastyErrorGroup).keepOutput),
         withCoverage(compileFile("tests/init/tasty-error/val-or-defdef/v1/B.scala", tastyErrorOptions.withClasspath(classA1))(using tastyErrorGroup).keepOutput),
         withCoverage(compileFile("tests/init/tasty-error/val-or-defdef/v0/A.scala", tastyErrorOptions)(using tastyErrorGroup).keepOutput),
@@ -366,7 +366,7 @@ class CompilationTests {
       val classA1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v1", "A").toString
       val classB1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "B", "v1", "B").toString
 
-      val tests = List(
+      val tests = Vector(
         withCoverage(compileFile("tests/init/tasty-error/typedef/C.scala", tastyErrorOptions)(using tastyErrorGroup).keepOutput),
         withCoverage(compileFile("tests/init/tasty-error/typedef/v1/A.scala", tastyErrorOptions.withClasspath(classC))(using tastyErrorGroup).keepOutput),
         withCoverage(compileFile("tests/init/tasty-error/typedef/v1/B.scala", tastyErrorOptions.withClasspath(classC).withClasspath(classA1))(using tastyErrorGroup).keepOutput),
@@ -428,13 +428,13 @@ class CompilationTests {
                       expectError: Boolean,
                       first: TestFlags => TestGroup ?=> CompilationTest,
                       rest: (String, TestFlags => TestGroup ?=> CompilationTest)*): Unit = {
-    var allTests = List[CompilationTest]()
+    var allTests = Vector[CompilationTest]()
     def run(t: CompilationTest, expectError: Boolean): Unit = {
       if expectError then
         t.checkExpectedErrors()
       else
         runWithCoverageOrFallback[PosTestWithCoverage](t, "Pos")
-      allTests ::= t
+      allTests +:= t
     }
     try
       val thisGroup = TestGroup(groupName)

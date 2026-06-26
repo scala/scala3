@@ -65,14 +65,14 @@ class FileUtilsTest {
       val sExpected = new BufferedWriter(new FileWriter(fileExpected))
 
       val t1 = System.nanoTime()
-      List.tabulate(10000) {i =>
+      Vector.tabulate(10000) {i =>
         sTest.write(s"line $i text;")
         sTest.newLine()
       }
       val t2 = System.nanoTime()
       sTest.close()
       val t3 = System.nanoTime()
-      List.tabulate(10000) {i =>
+      Vector.tabulate(10000) {i =>
         sExpected.write(s"line $i text;")
         sExpected.newLine()
       }

@@ -14,20 +14,20 @@ import org.junit.Assert.*
 class TypeTestsCastsTest extends DottyTest:
   val defn = ctx.definitions; import defn.*
 
-  @Test def orL = checkFound(List(StringType, LongType), OrType(LongType, StringType, false))
-  @Test def orR = checkFound(List(LongType, StringType), OrType(StringType, LongType, false))
+  @Test def orL = checkFound(Vector(StringType, LongType), OrType(LongType, StringType, false))
+  @Test def orR = checkFound(Vector(LongType, StringType), OrType(StringType, LongType, false))
 
-  @Test def annot = checkFound(List(StringType, LongType), AnnotatedType(OrType(LongType, StringType, false), Annotation(defn.UncheckedAnnot, Span(0))))
+  @Test def annot = checkFound(Vector(StringType, LongType), AnnotatedType(OrType(LongType, StringType, false), Annotation(defn.UncheckedAnnot, Span(0))))
 
-  @Test def andL = checkFound(List(StringType), AndType(StringType, AnyType))
-  @Test def andR = checkFound(List(StringType), AndType(AnyType, StringType))
-  @Test def andX = checkFound(List(NoType), AndType(StringType, BooleanType))
+  @Test def andL = checkFound(Vector(StringType), AndType(StringType, AnyType))
+  @Test def andR = checkFound(Vector(StringType), AndType(AnyType, StringType))
+  @Test def andX = checkFound(Vector(NoType), AndType(StringType, BooleanType))
 
   // (A | B) & C       => {(A & B), (A & C)}
   // A & (B | C)       => {(A & B), (A & C)}
   // (A | B) & (C | D) => {(A & C), (A & D), (B & C), (B & D)}
-  @Test def orInAndL = checkFound(List(StringType, LongType), AndType(OrType(LongType, StringType, false), AnyType))
-  @Test def orInAndR = checkFound(List(StringType, LongType), AndType(AnyType, OrType(LongType, StringType, false)))
+  @Test def orInAndL = checkFound(Vector(StringType, LongType), AndType(OrType(LongType, StringType, false), AnyType))
+  @Test def orInAndR = checkFound(Vector(StringType, LongType), AndType(AnyType, OrType(LongType, StringType, false)))
   @Test def orInAndZ =
     // (Throwable | Exception) & (RuntimeException | Any) =
     //   Throwable & RuntimeException = RuntimeException
@@ -37,10 +37,10 @@ class TypeTestsCastsTest extends DottyTest:
     val ExceptionType = defn.ExceptionClass.typeRef
     val RuntimeExceptionType = defn.RuntimeExceptionClass.typeRef
     val tp = AndType(OrType(ThrowableType, ExceptionType, false), OrType(RuntimeExceptionType, AnyType, false))
-    val exp = List(ExceptionType, RuntimeExceptionType, ThrowableType, RuntimeExceptionType)
+    val exp = Vector(ExceptionType, RuntimeExceptionType, ThrowableType, RuntimeExceptionType)
     checkFound(exp, tp)
 
-  def checkFound(found: List[Type], tp: Type) =
+  def checkFound(found: Vector[Type], tp: Type) =
     val expected = found.map(_.classSymbol)
     val obtained = TypeTestsCasts.foundClasses(tp)
     assertEquals(expected, obtained)

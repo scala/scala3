@@ -32,10 +32,10 @@ class ExpressionTest:
 
   @Test def verifyImports: Unit =
     assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
-    val expressionLines = List(
+    val expressionLines = Vector(
       "import java.nio.file.Paths",
       "import scala.util.Properties.userDir",
-      "println(Paths.get(userDir).toFile.listFiles.toList.filter(_.isDirectory).size)",
+      "println(Paths.get(userDir).toFile.listFiles.toVector.filter(_.isDirectory).size)",
     )
     val expression = expressionLines.mkString(";")
     val success = testExpression(expression){ result =>

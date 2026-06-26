@@ -10,7 +10,7 @@ class IO extends SharedCapability:
 
 @main def run =
   val console: Console^ = Console()
-  val io: IO^ = IO()
+  val io: IO^ = new IO
   lazy val x: () ->{io} String = {
     console.println("Computing x")
     () => io.readLine()

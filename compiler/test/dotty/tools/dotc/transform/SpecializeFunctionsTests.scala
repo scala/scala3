@@ -26,7 +26,7 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
           case m if m.name == "apply" => m
         }
         .map(_.name)
-        .toList
+        .toVector
 
       assert(
         // there should be two "apply", one generic and the one overwritten and
@@ -39,7 +39,7 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
 
       // It's not essential they are in this particular order,
       // but they should be in deterministic order
-      assert(applys == List("apply", "apply$mcII$sp", "apply"))
+      assert(applys == Vector("apply", "apply$mcII$sp", "apply"))
     }
   }
 
@@ -59,7 +59,7 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
           case m if m.name.startsWith("apply") => m
         }
         .map(_.name)
-        .toList
+        .toVector
 
       assert(
         apps.length == 56,
@@ -71,7 +71,7 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
       // It's not essential they are in this particular order,
       // but they should be in some deterministic order:
       assert(
-        apps == List(
+        apps == Vector(
           "apply$mcVII$sp",
           "apply$mcVIJ$sp",
           "apply$mcVID$sp",
@@ -146,7 +146,7 @@ class SpecializeFunctionsTests extends DottyBytecodeTest {
           case m if m.name == "apply" => m
         }
         .map(_.name)
-        .toList
+        .toVector
 
       assert(
         apps.length == 1,

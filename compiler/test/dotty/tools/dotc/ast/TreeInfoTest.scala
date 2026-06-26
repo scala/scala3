@@ -19,7 +19,7 @@ class TreeInfoTest extends DottyTest {
       given Context = context
       val xTree = tree.find(tree => tree.symbol.name == termName("x")).get
       val path = defPath(xTree.symbol, tree)
-      assertEquals(List(
+      assertEquals(Vector(
         ("PackageDef", nme.EMPTY_PACKAGE),
         ("TypeDef", typeName("A")),
         ("Template", termName("<local A>")),

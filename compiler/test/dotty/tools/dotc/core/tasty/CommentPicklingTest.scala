@@ -26,41 +26,41 @@ class CommentPicklingTest {
   val unpickleOptions = TestConfiguration.defaultOptions
 
   @Test def commentOnDef: Unit = {
-    val sources = "object A { /** foo */ def bar = 2 }" :: Nil
+    val sources = "object A { /** foo */ def bar = 2 }" +: Vector()
     compileAndCheckComment(sources, "bar".toTermName, Some("/** foo */"))
   }
 
   @Test def commentOnVal: Unit = {
-    val sources = "object A { /** foo */ val bar = 2 }" :: Nil
+    val sources = "object A { /** foo */ val bar = 2 }" +: Vector()
     compileAndCheckComment(sources, "bar".toTermName, Some("/** foo */"))
   }
 
   @Test def commentLocalVal: Unit = {
-    val sources = "object A { def buzz = { /** foo */ val bar = 3 } }" :: Nil
+    val sources = "object A { def buzz = { /** foo */ val bar = 3 } }" +: Vector()
     compileAndCheckComment(sources, "bar".toTermName, Some("/** foo */"))
   }
 
   @Test def commentLocalDef: Unit = {
-    val sources = "object A { def buzz = { /** foo */ def bar = 5 } }" :: Nil
+    val sources = "object A { def buzz = { /** foo */ def bar = 5 } }" +: Vector()
     compileAndCheckComment(sources, "bar".toTermName, Some("/** foo */"))
   }
 
   @Test def commentOnClass: Unit = {
-    val sources = "/** foo */ class A" :: Nil
+    val sources = "/** foo */ class A" +: Vector()
     compileAndCheckComment(sources, "A".toTypeName, Some("/** foo */"))
   }
 
   @Test def commentOnObject: Unit = {
-    val sources = "/** foo */ object A" :: Nil
+    val sources = "/** foo */ object A" +: Vector()
     compileAndCheckComment(sources, "A".toTermName, Some("/** foo */"))
   }
 
   @Test def commentOnlazyVal: Unit = {
-    val sources = "class A { /** foo */ lazy val buzz = 2 }" :: Nil
+    val sources = "class A { /** foo */ lazy val buzz = 2 }" +: Vector()
     compileAndCheckComment(sources, "buzz".toTermName, Some("/** foo */"))
   }
 
-  private def compileAndCheckComment(sources: List[String], treeName: Name, expectedComment: Option[String]): Unit = {
+  private def compileAndCheckComment(sources: Vector[String], treeName: Name, expectedComment: Option[String]): Unit = {
     compileAndUnpickle(sources) { (trees, ctx) =>
       findTreeNamed(treeName)(trees, ctx) match {
         case Some(md: tpd.MemberDef) =>
@@ -74,14 +74,14 @@ class CommentPicklingTest {
     }
   }
 
-  private def findTreeNamed(name: Name)(trees: List[tpd.Tree], ctx: Context): Option[tpd.MemberDef] = {
+  private def findTreeNamed(name: Name)(trees: Vector[tpd.Tree], ctx: Context): Option[tpd.MemberDef] = {
     implicit val _ctx: Context = ctx
     trees.flatMap { _.find { case md: tpd.MemberDef => md.name == name; case _ => false }
-      .map(_.asInstanceOf[tpd.MemberDef]).toList
+      .map(_.asInstanceOf[tpd.MemberDef]).toVector
     }.headOption
   }
 
-  private def compileAndUnpickle[T](sources: List[String])(fn: (List[tpd.Tree], Context) => T) = {
+  private def compileAndUnpickle[T](sources: Vector[String])(fn: (Vector[tpd.Tree], Context) => T) = {
     Directory.inTempDirectory { tmp =>
       val sourceFiles = sources.zipWithIndex.map {
         case (src, id) =>
@@ -98,7 +98,7 @@ class CommentPicklingTest {
       Main.process(options.all, reporter)
       assertFalse("Compilation failed.", reporter.hasErrors)
 
-      val tastyFiles = Path.onlyFiles(out.walkFilter(_.ext.isTasty)).toList
+      val tastyFiles = Path.onlyFiles(out.walkFilter(_.ext.isTasty)).toVector
       val unpicklingOptions = unpickleOptions
         .withClasspath(out.toAbsolute.toString)
         .and("dummy") // Need to pass a dummy source file name
@@ -113,7 +113,7 @@ class CommentPicklingTest {
       ctx.setSetting(ctx.settings.XreadComments, true)
       ctx
 
-    def unpickle[T](args: Array[String], files: List[File])(fn: (List[tpd.Tree], Context) => T): T = {
+    def unpickle[T](args: Array[String], files: Vector[File])(fn: (Vector[tpd.Tree], Context) => T): T = {
       implicit val ctx: Context = setup(args, initCtx).map(_._2).getOrElse(initCtx)
       ctx.initialize()
       val trees = files.flatMap { f =>

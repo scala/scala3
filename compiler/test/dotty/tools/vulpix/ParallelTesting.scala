@@ -46,17 +46,17 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    */
   def isInteractive: Boolean
 
-  /** A list of strings which is used to filter which tests to run, if `Nil` will run
+  /** A list of strings which is used to filter which tests to run, if `Vector()` will run
    *  all tests. All absolute paths that contain any of the substrings in `testFilter`
    *  will be run
    */
-  def testFilter: List[String]
+  def testFilter: Vector[String]
 
   /** Tests should override the checkfiles with the current output */
   def updateCheckFiles: Boolean
 
   /** Contains a list of failed tests to run, if list is empty no tests will run */
-  def failedTests: Option[List[String]]
+  def failedTests: Option[Vector[String]]
 
   protected def testPlatform: TestPlatform = TestPlatform.JVM
 
@@ -108,7 +108,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     }
 
     lazy val allToolArgs: ToolArgs =
-      toolArgsFor(sourceFiles.toList.map(_.toPath), getCharsetFromEncodingOpt(flags))
+      toolArgsFor(sourceFiles.toVector.map(_.toPath), getCharsetFromEncodingOpt(flags))
 
     /** Generate the instructions to redo the test from the command line */
     def buildInstructions(errors: Int, warnings: Int): String = {
@@ -205,7 +205,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     import SeparateCompilationSource.*
     case class Group(ordinal: Int, compiler: String)
 
-    lazy val compilationGroups: List[(Group, Array[JFile])] = {
+    lazy val compilationGroups: Vector[(Group, Array[JFile])] = {
       def groupFor(file: JFile): Group =
         val groupSuffix = file.getName.dropWhile(_ != '_').stripSuffix(".scala").stripSuffix(".java")
         val groupSuffixParts = groupSuffix.split("_")
@@ -216,7 +216,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       dir.listFiles
         .filter(isSourceFile)
         .groupBy(groupFor)
-        .toList
+        .toVector
         .sortBy { (g, _) => (g.ordinal, g.compiler) }
         .map { (g, f) => (g, f.sorted) }
     }
@@ -261,7 +261,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
      * Compiles the test source.
      * @return The reporters containing the results of all the compilation runs for this test source.
      */
-    private final def compileTestSource(testSource: TestSource): Try[List[TestReporter]] =
+    private final def compileTestSource(testSource: TestSource): Try[Vector[TestReporter]] =
       Try(testSource match {
         case testSource @ JointCompilationSource(name, files, flags, outDir, fromTasty, decompilation) =>
           val reporter = fromTasty match
@@ -277,7 +277,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
             case FromTasty => compileFromTasty(flags, outDir)
             case FromBestEffortTasty => compileFromBestEffortTasty(flags, outDir)
             case WithBestEffortTasty(bestEffortDir) => compileWithBestEffortTasty(testSource.sourceFiles, bestEffortDir, flags, outDir)
-          List(reporter)
+          Vector(reporter)
 
         case testSource @ SeparateCompilationSource(_, dir, flags, outDir) =>
           testSource.compilationGroups.map { (group, files) =>
@@ -299,7 +299,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
      * Checks if the given actual lines are the same as the ones in the check file.
      * If not, fails the test.
      */
-    final def diffTest(testSource: TestSource, checkFile: JFile, actual: List[String], reporters: Seq[TestReporter], logger: LoggedRunnable) = {
+    final def diffTest(testSource: TestSource, checkFile: JFile, actual: Vector[String], reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       for (msg <- FileDiff.check(testSource.title, actual, checkFile.getPath)) {
         if (updateCheckFiles) {
           FileDiff.dump(checkFile.toPath.toString, actual)
@@ -326,7 +326,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     private final def onComplete(testSource: TestSource, reportersOrCrash: Try[Seq[TestReporter]], logger: LoggedRunnable): Unit =
       try
         reportersOrCrash match
-          case util.Failure(exn) => onFailure(testSource, Nil, logger, Some(s"Fatal compiler crash when compiling: ${testSource.title}:\n${exn.getMessage}${exn.getStackTrace.map("\n\tat " + _).mkString}"))
+          case util.Failure(exn) => onFailure(testSource, Vector(), logger, Some(s"Fatal compiler crash when compiling: ${testSource.title}:\n${exn.getMessage}${exn.getStackTrace.map("\n\tat " + _).mkString}"))
           case util.Success(reporters) if !reporters.exists(_.skipped) =>
             maybeFailureMessage(testSource, reporters) match {
               case Some(msg) => onFailure(testSource, reporters, logger, Option(msg).filter(_.nonEmpty))
@@ -373,7 +373,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   /** Each `Test` takes the `testSources` and performs the compilation and assertions
    *  according to the implementing class "neg", "run" or "pos".
    */
-  protected class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using summaryReport: SummaryReporting) extends CompilationLogic { test =>
+  protected class Test(testSources: Vector[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using summaryReport: SummaryReporting) extends CompilationLogic { test =>
 
     import summaryReport.{addFailedTest, addReproduceInstruction, addSkippedTest, reportFailed, reportPassed}
 
@@ -522,17 +522,17 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       val files: Array[JFile] = files0.flatMap(flattenFiles)
 
       val (platformFiles, toolArgs) =
-        platformAndToolArgsFor(files.toList.map(_.toPath), getCharsetFromEncodingOpt(flags0))
+        platformAndToolArgsFor(files.toVector.map(_.toPath), getCharsetFromEncodingOpt(flags0))
 
       val spec = raw"(\d+)(\+)?".r
       val testIsFiltered = toolArgs.get(ToolName.Test) match
-        case Some("-jvm" :: spec(n, more) :: Nil) =>
+        case Some(Vector("-jvm", spec(n, more))) =>
           if more == "+" then isJavaAtLeast(n) else javaSpecVersion == n
         case Some(args) => throw new IllegalStateException(args.mkString("unknown test option: ", ", ", ""))
         case None => true
 
-      def scalacOptions = toolArgs.getOrElse(ToolName.Scalac, Nil)
-      def javacOptions  = toolArgs.getOrElse(ToolName.Javac, Nil)
+      def scalacOptions = toolArgs.getOrElse(ToolName.Scalac, Vector())
+      def javacOptions  = toolArgs.getOrElse(ToolName.Javac, Vector())
 
       var flags = flags0
         .and(scalacOptions*)
@@ -564,7 +564,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
           private def ntimes(n: Int)(op: Int => Reporter): Reporter =
             (1 to n).foldLeft(emptyReporter) ((_, i) => op(i))
 
-          override def doCompile(comp: Compiler, files: List[AbstractFile])(using Context) =
+          override def doCompile(comp: Compiler, files: Vector[AbstractFile])(using Context) =
             ntimes(times) { run =>
               val start = System.nanoTime()
               val rep = super.doCompile(comp, files)
@@ -613,15 +613,15 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       val warnPattern = """^.*Warning: (.*\.scala):(\d+):(\d+).*""".r
       val summaryPattern = """\d+ (?:warning|error)s? found""".r
       val indent = "    "
-      var diagnostics = List.empty[Diagnostic.Error]
+      var diagnostics = Vector.empty[Diagnostic.Error]
       def barLine(start: Boolean) = s"$indent${if start then "╭" else "╰"}${"┄" * pageWidth}${if start then "╮" else "╯"}\n"
       def errorLine(line: String) = s"$indent┆${String.format(s"%-${pageWidth}s", stripAnsi(line))}┆\n"
       def stripAnsi(str: String): String = str.replaceAll("\u001b\\[\\d+m", "")
       def addToLast(str: String): Unit =
-        diagnostics match
-          case head :: tail =>
-            diagnostics = Diagnostic.Error(s"${head.msg.message}$str", head.pos) :: tail
-          case Nil =>
+        (diagnostics: @unchecked) match
+          case head +: tail =>
+            diagnostics = Diagnostic.Error(s"${head.msg.message}$str", head.pos) +: tail
+          case Vector() =>
       var inError = false
       for line <- errorsText.linesIterator do
         line match
@@ -637,10 +637,10 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
             val span = Spans.Span(offset)
             val sourcePos = SourcePosition(sourceFile, span)
             addToLast(barLine(start = false))
-            diagnostics ::= Diagnostic.Error(s"Compilation of $filePath with Scala $compilerVersion failed at line: $line, column: $column.\nFull error output:\n${barLine(start = true)}${errorLine(error)}", sourcePos)
+            diagnostics +:= Diagnostic.Error(s"Compilation of $filePath with Scala $compilerVersion failed at line: $line, column: $column.\nFull error output:\n${barLine(start = true)}${errorLine(error)}", sourcePos)
           case error @ brokenClassPattern(filePath) =>
             inError = true
-            diagnostics ::= Diagnostic.Error(s"$error\nFull error output:\n${barLine(start = true)}${errorLine(error)}", NoSourcePosition)
+            diagnostics +:= Diagnostic.Error(s"$error\nFull error output:\n${barLine(start = true)}${errorLine(error)}", NoSourcePosition)
           case summaryPattern() => // Ignored
           case line if inError => addToLast(errorLine(line))
           case _ =>
@@ -649,12 +649,12 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     /** Older compilers don't support `-coverage-out` or `-Ycheck:instrumentCoverage`. */
     private def stripCoverageOptions(flags: TestFlags): TestFlags =
-      def loop(opts: List[String]): List[String] = opts match
-        case "-coverage-out" :: _ :: tail => loop(tail)
-        case flag :: tail if flag.startsWith("-Ycheck:") && flag.contains("instrumentCoverage") => loop(tail)
-        case other :: tail => other :: loop(tail)
-        case Nil => Nil
-      flags.copy(options = loop(flags.options.toList).toArray)
+      def loop(opts: Vector[String]): Vector[String] = (opts: @unchecked) match
+        case "-coverage-out" +: _ +: tail => loop(tail)
+        case flag +: tail if flag.startsWith("-Ycheck:") && flag.contains("instrumentCoverage") => loop(tail)
+        case other +: tail => other +: loop(tail)
+        case Vector() => Vector()
+      flags.copy(options = loop(flags.options.toVector).toArray)
 
     protected def compileWithOtherCompiler(compiler: String, files: Array[JFile], flags: TestFlags, targetDir: JFile): TestReporter = {
       def artifactClasspath(organizationName: String, moduleName: String) =
@@ -766,8 +766,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     protected def diffCheckfile(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
       testSource.checkFile.foreach(diffTest(testSource, _, reporterOutputLines(reporters), reporters, logger))
 
-    private def reporterOutputLines(reporters: Seq[TestReporter]): List[String] =
-      reporters.flatMap(_.consoleOutput.linesIterator).toList
+    private def reporterOutputLines(reporters: Seq[TestReporter]): Vector[String] =
+      reporters.flatMap(_.consoleOutput.linesIterator).toVector
 
     private[ParallelTesting] def executeTestSuite(): this.type = {
       assert(testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
@@ -834,10 +834,10 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   }
   end Test
 
-  private final class PosTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
+  private final class PosTest(testSources: Vector[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput)
 
-  protected class WarnTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
+  protected class WarnTest(testSources: Vector[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput):
     override def suppressErrors = true
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
@@ -894,7 +894,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       (map, count)
 
     // return unfulfilled expected warnings and unexpected diagnostics
-    def getMissingExpectedWarnings(expected: HashMap[String, Integer], reporterWarnings: Iterator[Diagnostic]): (List[String], List[String]) =
+    def getMissingExpectedWarnings(expected: HashMap[String, Integer], reporterWarnings: Iterator[Diagnostic]): (Vector[String], Vector[String]) =
       val unexpected = ListBuffer.empty[String]
       def relativize(path: String): String = path.split(JFile.separatorChar).dropWhile(_ != "tests").mkString(JFile.separator)
       def seenAt(key: String): Boolean =
@@ -913,12 +913,12 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       reporterWarnings.foreach(sawDiagnostic)
 
       val splitter = raw"(?:[^:]*):(\d+)".r
-      val unfulfilled = expected.asScala.keys.toList.sortBy { case splitter(n) => n.toInt case _ => -1 }
-      (unfulfilled, unexpected.toList)
+      val unfulfilled = expected.asScala.keys.toVector.sortBy { case splitter(n) => n.toInt case _ => -1 }
+      (unfulfilled, unexpected.toVector)
     end getMissingExpectedWarnings
   end WarnTest
 
-  protected class RewriteTest(testSources: List[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
+  protected class RewriteTest(testSources: Vector[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private def verifyOutput(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) = {
       testSource.sourceFiles.foreach { file =>
@@ -926,7 +926,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
           val checkFile = checkFiles(file)
           val actual = {
             val source = Source.fromFile(file, StandardCharsets.UTF_8.name)
-            try source.getLines().toList
+            try source.getLines().toVector
             finally source.close()
           }
           diffTest(testSource, checkFile, actual, reporters, logger)
@@ -940,7 +940,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       verifyOutput(testSource, reporters, logger)
   }
 
-  protected class RunTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using summaryReport: SummaryReporting)
+  protected class RunTest(testSources: Vector[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using summaryReport: SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private var didAddNoRunWarning = false
     protected def addNoRunWarning() = if (!didAddNoRunWarning) {
@@ -961,7 +961,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         runMain(runClassPath, allToolArgs) match
           case Success(output) =>
             for file <- checkFile if file.exists do
-              diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
+              diffTest(testSource, file, output.linesIterator.toVector, reporters, logger)
           case Failure("") =>
             echo(s"Test '$title' failed with no output")
             failTestSource(testSource)
@@ -977,7 +977,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       verifyOutput(testSource.checkFile, testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
   }
 
-  private final class NegTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
+  private final class NegTest(testSources: Vector[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     override def suppressErrors = true
 
@@ -1053,7 +1053,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     // the errorMap of expected errors is drained and returned as unfulfilled.
     // a diagnostic at EOF after NL is recorded at the preceding line,
     // to obviate `anypos-error` in that case.
-    def getMissingExpectedErrors(errorMap: HashMap[String, Integer], reporterErrors: Iterator[Diagnostic]): (List[String], List[String]) =
+    def getMissingExpectedErrors(errorMap: HashMap[String, Integer], reporterErrors: Iterator[Diagnostic]): (Vector[String], Vector[String]) =
       val unexpected, unpositioned = ListBuffer.empty[String]
       // For some reason, absolute paths leak from the compiler itself...
       def relativize(path: String): String = path.split(JFile.separatorChar).dropWhile(_ != "tests").mkString(JFile.separator)
@@ -1077,17 +1077,17 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         errorMap.remove("anypos")
         unexpected.clear()
 
-      (errorMap.asScala.keys.toList, (unexpected ++ unpositioned).toList)
+      (errorMap.asScala.keys.toVector, (unexpected ++ unpositioned).toVector)
     end getMissingExpectedErrors
   }
 
-  private final class NoCrashTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
+  private final class NoCrashTest(testSources: Vector[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     override def suppressErrors = true
     override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] = None
   }
 
-  private final class NoBestEffortErrorsTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
+  private final class NoBestEffortErrorsTest(testSources: Vector[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     override def suppressErrors = true
     override def maybeFailureMessage(testSource: TestSource, reporters: Seq[TestReporter]): Option[String] =
@@ -1209,7 +1209,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    *  `aggregateTests` in the companion, which will ensure that aggregation is allowed.
    */
   final class CompilationTest private (
-    val targets: List[TestSource],
+    val targets: Vector[TestSource],
     val times: Int,
     val shouldDelete: Boolean,
     val threadLimit: Option[Int],
@@ -1219,12 +1219,12 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     import org.junit.Assert.fail
 
     def this(target: TestSource) =
-      this(List(target), 1, true, None, false, false)
+      this(Vector(target), 1, true, None, false, false)
 
-    def this(targets: List[TestSource]) =
+    def this(targets: Vector[TestSource]) =
       this(targets, 1, true, None, false, false)
 
-    def copy(targets: List[TestSource],
+    def copy(targets: Vector[TestSource],
       times: Int = times,
       shouldDelete: Boolean = shouldDelete,
       threadLimit: Option[Int] = threadLimit,
@@ -1473,11 +1473,11 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   }
 
   /** Separates directories from files and returns them as `(dirs, files)` */
-  private def compilationTargets(sourceDir: JFile, fileFilter: FileFilter = FileFilter.NoFilter): (List[JFile], List[JFile]) =
-    sourceDir.listFiles.foldLeft((List.empty[JFile], List.empty[JFile])) { case ((dirs, files), f) =>
+  private def compilationTargets(sourceDir: JFile, fileFilter: FileFilter = FileFilter.NoFilter): (Vector[JFile], Vector[JFile]) =
+    sourceDir.listFiles.foldLeft((Vector.empty[JFile], Vector.empty[JFile])) { case ((dirs, files), f) =>
       if (!fileFilter.accept(f.getName)) (dirs, files)
-      else if (f.isDirectory) (f :: dirs, files)
-      else if (isSourceFile(f)) (dirs, f :: files)
+      else if (f.isDirectory) (f +: dirs, files)
+      else if (isSourceFile(f)) (dirs, f +: files)
       else (dirs, files)
     }
 
@@ -1526,7 +1526,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     val sortedFiles = flatten(sourceDir).sorted
     val randomized  = randomOrder match {
       case None       => sortedFiles
-      case Some(seed) => new Random(seed).shuffle(sortedFiles.toList).toArray
+      case Some(seed) => new Random(seed).shuffle(sortedFiles.toVector).toArray
     }
 
     // Directories in which to compile all containing files with `flags`:
@@ -1541,7 +1541,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    *  `testName` since files can be in separate directories and or be otherwise
    *  dissociated
    */
-  def compileList(testName: String, files: List[String], flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
+  def compileList(testName: String, files: Vector[String], flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
     // Directories in which to compile all containing files with `flags`:
     val targetDir = new JFile(new JFile(defaultOutputDir, testGroup.name), testName)
     targetDir.mkdirs()
@@ -1628,8 +1628,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     val (dirs, files) = compilationTargets(sourceDir, fromTastyFilter)
 
     val filteredFiles = testFilter match
-      case _ :: _ => files.filter(f => testFilter.exists(f.getPath.contains))
-      case _      => Nil
+      case _ +: _ => files.filter(f => testFilter.exists(f.getPath.contains))
+      case _      => Vector()
 
     class JointCompilationSourceFromTasty(
        name: String,
@@ -1776,7 +1776,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     val semanticDbFlag = "-Xsemanticdb"
     val withBetastyFlag = "-Ywith-best-effort-tasty"
     val sourceDir = new JFile(f)
-    val dirs = sourceDir.listFiles.toList
+    val dirs = sourceDir.listFiles.toVector
     assert(dirs.forall(_.isDirectory), s"All files in $f have to be directories.")
 
     val (step1Targets, step2Targets, bestEffortDirs) = dirs.map { dir =>
@@ -1838,7 +1838,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     }
   }
 
-  class BestEffortOptionsTest(step1: CompilationTest, step2: CompilationTest, bestEffortDirs: List[JFile], shouldDelete: Boolean)(implicit testGroup: TestGroup) {
+  class BestEffortOptionsTest(step1: CompilationTest, step2: CompilationTest, bestEffortDirs: Vector[JFile], shouldDelete: Boolean)(implicit testGroup: TestGroup) {
 
     def checkNoCrash()(using SummaryReporting): this.type = {
       step1.checkNoBestEffortError() // Compile all files to generate the class files with best effort tasty

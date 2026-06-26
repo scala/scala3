@@ -108,13 +108,13 @@ final class SummaryReport extends SummaryReporting {
     startingMessages.asScala.foreach(rep.append)
 
     failedTests.asScala.map(x => s"    ${x.title}${x.extra}\n").foreach(rep.append)
-    TestReporter.writeFailedTests(failedTests.asScala.toList.map(_.title))
+    TestReporter.writeFailedTests(failedTests.asScala.toVector.map(_.title))
 
     // If we're compiling locally, we don't need to see instructions on how to
     // reproduce failures on stdout, only a pointer to the log file.
     if (isInteractive) {
       println(rep.toString)
-      skippedTests.asScala.map(x => s"    ${x.title} skipped").toList.distinct.foreach(println)
+      skippedTests.asScala.map(x => s"    ${x.title} skipped").toVector.distinct.foreach(println)
       if (failed > 0) println {
         s"""|
             |--------------------------------------------------------------------------------

@@ -11,7 +11,7 @@ import java.lang.reflect.Member
 class ClassfileParserTest {
   @Test
   def noConstantPoolLag(): Unit = {
-    def constNames(ms: List[Member]) = ms.collect {
+    def constNames(ms: Vector[Member]) = ms.collect {
       case f if f.getName.startsWith("CONSTANT_") => f.getName
     }.sorted
 
@@ -23,15 +23,15 @@ class ClassfileParserTest {
       "CONSTANT_NAME_AND_TYPE" -> "CONSTANT_NAMEANDTYPE",
     ).withDefault(x => x)
 
-    val asmConsts = constNames(Class.forName("scala.tools.asm.Symbol").getDeclaredFields.toList)
+    val asmConsts = constNames(Class.forName("scala.tools.asm.Symbol").getDeclaredFields.toVector)
       .map(_.stripSuffix("_TAG"))
       .map(toDotc)
-      .::("CONSTANT_UNICODE")
+      .+:("CONSTANT_UNICODE")
       .sorted
     // in the Scala 2 version of this test, we also use Java reflection to get the constant
     // names out of ClassfileConstants. in Dotty, the constants are `inline val`s, invisible
     // to Java reflection, so we hardcode them here
-    assertEquals(asmConsts, List(
+    assertEquals(asmConsts, Vector(
       // do not add to this list without also making the corresponding change
       // in ClassfileConstants! that would defeat the purpose of the test
       "CONSTANT_CLASS",

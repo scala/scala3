@@ -107,21 +107,21 @@ class SemanticdbTests:
   def trimTrailingWhitespace(s: String): String =
     Pattern.compile(" +$", Pattern.MULTILINE).matcher(s).replaceAll("")
 
-  def inputFiles(): List[Path] =
+  def inputFiles(): Vector[Path] =
     val ls = Files.walk(expectSrc)
     val files =
       try ls.filter(p => scalaFile.matches(p) && !expectFile.matches(p)).collect(Collectors.toList).asScala
       finally ls.close()
     require(files.nonEmpty, s"No input files! $expectSrc")
-    files.toList
+    files.toVector
 
-  def javaFiles(): List[Path] =
+  def javaFiles(): Vector[Path] =
     val ls = Files.walk(javaRoot)
     val files =
       try ls.filter(p => javaFile.matches(p)).collect(Collectors.toList).asScala
       finally ls.close()
     require(files.nonEmpty, s"No input files! $expectSrc")
-    files.toList
+    files.toVector
 
   def generateSemanticdb(): Path =
     val target = Files.createTempDirectory("semanticdb")

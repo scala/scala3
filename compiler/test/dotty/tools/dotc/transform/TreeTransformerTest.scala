@@ -40,7 +40,7 @@ class TreeTransformerTest extends DottyTest {
       val transformed = transformer.transformUnit(tree)
 
       Assert.assertTrue("returns same tree if unmodified",
-        transformed.toString.contains("List(ValDef(Modifiers(,,List()),d,TypeTree[TypeRef(ThisType(module class scala),Int)],Literal(Constant(2)))")
+        transformed.toString.contains("Vector(ValDef(Modifiers(,,Vector()),d,TypeTree[TypeRef(ThisType(module class scala),Int)],Literal(Constant(2)))")
       )
   }
 

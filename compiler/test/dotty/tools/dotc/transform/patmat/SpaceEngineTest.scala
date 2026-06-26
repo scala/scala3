@@ -22,7 +22,7 @@ class SpaceEngineTest:
 
     val tp      = defn.ConsType.appliedTo(defn.AnyType)
     val unappTp = requiredMethod("scala.collection.immutable.::.unapply").termRef
-    val params  = List(Empty, Typ(tp))
+    val params  = Vector(Empty, Typ(tp))
 
     val a = Prod(tp, unappTp, params)
     val b = Empty

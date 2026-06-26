@@ -29,6 +29,6 @@ import org.junit.Ignore
     val testFile = "26037.scala"
     compileBestEffortTastyInDir(
       "tests/neg", options,
-      picklingFilter = FileFilter.include(List(testFile)),
-      unpicklingFilter = FileFilter.include(List(testFile))
+      picklingFilter = FileFilter.include(Vector(testFile)),
+      unpicklingFilter = FileFilter.include(Vector(testFile))
     ).checkNoCrash()

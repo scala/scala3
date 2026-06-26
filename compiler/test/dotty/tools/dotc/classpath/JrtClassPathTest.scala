@@ -31,7 +31,7 @@ class JrtClassPathTest {
       }
       else JrtClassPath(None).get
 
-    assertEquals(Nil, cp.classes(""))
+    assertEquals(Vector(), cp.classes(""))
     assertTrue(cp.packages("java").toString, cp.packages("java").exists(_.name == "java.lang"))
     assertTrue(cp.classes("java.lang").exists(_.name == "Object"))
     val jl_Object = cp.classes("java.lang").find(_.name == "Object").get

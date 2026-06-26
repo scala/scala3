@@ -2,7 +2,7 @@ import caps.*
 
 class IO extends SharedCapability
 
-val out: IO^ = IO()
+val out: IO^ = new IO
 
 object Test:
   val inc = () =>

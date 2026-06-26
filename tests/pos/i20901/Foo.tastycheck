@@ -17,7 +17,7 @@ Names (276 bytes, starting from <elided base index>):
     10: java[Qualified . lang]
     11: Object
     12: java[Qualified . lang][Qualified . Object]
-    13: <init>[Signed Signature(List(),java.lang.Object) @<init>]
+    13: <init>[Signed Signature(Vector(),java.lang.Object) @<init>]
     14: Unit
     15: mkArray
     16: T
@@ -35,7 +35,7 @@ Names (276 bytes, starting from <elided base index>):
     28: scala[Qualified . annotation][Qualified . internal][Qualified . SourceFile]
     29: String
     30: java[Qualified . lang][Qualified . String]
-    31: <init>[Signed Signature(List(java.lang.String),scala.annotation.internal.SourceFile) @<init>]
+    31: <init>[Signed Signature(Vector(java.lang.String),scala.annotation.internal.SourceFile) @<init>]
     32: <elided source file name>
     33: Positions
     34: Comments
@@ -50,7 +50,7 @@ Trees (98 bytes, starting from <elided base index>):
     10:   TYPEDEF(86) 6 [Foo]
     13:     TEMPLATE(65)
     15:       APPLY(10)
-    17:         SELECTin(8) 13 [<init>[Signed Signature(List(),java.lang.Object) @<init>]]
+    17:         SELECTin(8) 13 [<init>[Signed Signature(Vector(),java.lang.Object) @<init>]]
     20:           NEW
     21:             TYPEREF 11 [Object]
     23:               TERMREFpkg 10 [java[Qualified . lang]]
@@ -85,7 +85,7 @@ Trees (98 bytes, starting from <elided base index>):
     82:       TYPEREF 23 [SourceFile]
     84:         TERMREFpkg 27 [scala[Qualified . annotation][Qualified . internal]]
     86:       APPLY(10)
-    88:         SELECTin(6) 31 [<init>[Signed Signature(List(java.lang.String),scala.annotation.internal.SourceFile) @<init>]]
+    88:         SELECTin(6) 31 [<init>[Signed Signature(Vector(java.lang.String),scala.annotation.internal.SourceFile) @<init>]]
     91:           NEW
     92:             SHAREDtype 82
     94:           SHAREDtype 82

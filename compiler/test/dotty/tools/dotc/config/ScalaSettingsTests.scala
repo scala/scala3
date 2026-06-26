@@ -20,11 +20,11 @@ class ScalaSettingsTests:
 
   @Test def `A setting with aliases is accepted`: Unit =
     class MySettings extends SettingGroup:
-      val classpath: Setting[String] = PathSetting(RootSetting, "classpath", "Specify where to find user class files.", ".", aliases = List("--class-path", "-cp"))
+      val classpath: Setting[String] = PathSetting(RootSetting, "classpath", "Specify where to find user class files.", ".", aliases = Vector("--class-path", "-cp"))
     val settings = MySettings()
     val args = tokenize("-cp path/to/classes1:other/path/to/classes2")
-    val summary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
-    val res  = settings.processArguments(summary, processAll = true, skipped = Nil)
+    val summary = ArgsSummary(settings.defaultState, args, errors = Vector(), warnings = Vector())
+    val res  = settings.processArguments(summary, processAll = true, skipped = Vector())
     val classpath = settings.classpath.valueIn(res.sstate)
     assertEquals(2, args.length)
     assertTrue(s"found warnings: ${res.warnings}", res.warnings.isEmpty)
@@ -33,11 +33,11 @@ class ScalaSettingsTests:
 
   @Test def `A multistring setting is multivalued`: Unit =
     class SUT extends SettingGroup:
-      val language: Setting[List[String]] = MultiStringSetting(RootSetting, "language", "feature", "Enable one or more language features.")
+      val language: Setting[Vector[String]] = MultiStringSetting(RootSetting, "language", "feature", "Enable one or more language features.")
     val sut  = SUT()
     val args = tokenize("-language:implicitConversions,dynamics")
-    val sumy = ArgsSummary(sut.defaultState, args, errors = Nil, warnings = Nil)
-    val res  = sut.processArguments(sumy, processAll = true, skipped = Nil)
+    val sumy = ArgsSummary(sut.defaultState, args, errors = Vector(), warnings = Vector())
+    val res  = sut.processArguments(sumy, processAll = true, skipped = Vector())
     val set  = sut.language.valueIn(res.sstate)
     assertEquals(1, args.length)
     assertTrue("No warnings!", res.warnings.isEmpty)
@@ -47,11 +47,11 @@ class ScalaSettingsTests:
 
   @Test def `t9719 Apply -language more than once`: Unit =
     class SUT extends SettingGroup:
-      val language: Setting[List[String]] = MultiStringSetting(RootSetting, "language", "feature", "Enable one or more language features.")
+      val language: Setting[Vector[String]] = MultiStringSetting(RootSetting, "language", "feature", "Enable one or more language features.")
     val sut  = SUT()
     val args = tokenize("-language:implicitConversions -language:dynamics")
-    val sumy = ArgsSummary(sut.defaultState, args, errors = Nil, warnings = Nil)
-    val res  = sut.processArguments(sumy, processAll = true, skipped = Nil)
+    val sumy = ArgsSummary(sut.defaultState, args, errors = Vector(), warnings = Vector())
+    val res  = sut.processArguments(sumy, processAll = true, skipped = Vector())
     val set  = sut.language.valueIn(res.sstate)
     assertEquals(2, args.length)
     assertTrue("No warnings!", res.warnings.isEmpty)
@@ -61,11 +61,11 @@ class ScalaSettingsTests:
 
   @Test def `Don't warn if multistring element is supplied multiply`: Unit =
     class SUT extends SettingGroup:
-      val language: Setting[List[String]] = MultiStringSetting(RootSetting, "language", "feature", "Enable one or more language features.")
+      val language: Setting[Vector[String]] = MultiStringSetting(RootSetting, "language", "feature", "Enable one or more language features.")
     val sut  = SUT()
     val args = tokenize("-language:dynamics -language:implicitConversions -language:dynamics")
-    val sumy = ArgsSummary(sut.defaultState, args, errors = Nil, warnings = Nil)
-    val res  = sut.processArguments(sumy, processAll = true, skipped = Nil)
+    val sumy = ArgsSummary(sut.defaultState, args, errors = Vector(), warnings = Vector())
+    val res  = sut.processArguments(sumy, processAll = true, skipped = Vector())
     val set  = sut.language.valueIn(res.sstate)
     assertEquals(3, args.length)
     assertTrue("Mustn't warn", res.warnings.isEmpty)
@@ -76,9 +76,9 @@ class ScalaSettingsTests:
   @Test def `WConf setting is parsed`: Unit =
     import reporting.{Action, Diagnostic, NoExplanation}
     val sets = ScalaSettings
-    val args = List("-Wconf:cat=deprecation:s,cat=feature:e", "-Wconf:msg=a problem\\.:s")
-    val sumy = ArgsSummary(sets.defaultState, args, errors = Nil, warnings = Nil)
-    val proc = sets.processArguments(sumy, processAll = true, skipped = Nil)
+    val args = Vector("-Wconf:cat=deprecation:s,cat=feature:e", "-Wconf:msg=a problem\\.:s")
+    val sumy = ArgsSummary(sets.defaultState, args, errors = Vector(), warnings = Vector())
+    val proc = sets.processArguments(sumy, processAll = true, skipped = Vector())
     val conf = sets.Wconf.valueIn(proc.sstate)
     val sut  = reporting.WConf.fromSettings(conf).getOrElse(???)
     val msg  = "There was a problem!".toMessage
@@ -97,13 +97,13 @@ class ScalaSettingsTests:
       s"${oldSetting.name}$value" -> newSetting
 
     val settings = ScalaSettings
-    List[(String, Setting[?])](
+    Vector[(String, Setting[?])](
       // Fill this with newly-deprecated options, optionally with a value:
       createTestCase(settings.YkindProjector         , settings.XkindProjector, ":underscores"),
     ).map: (deprecatedArgument, newSetting) =>
-      val args = List(deprecatedArgument)
-      val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
-      val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
+      val args = Vector(deprecatedArgument)
+      val argSummary = ArgsSummary(settings.defaultState, args, errors = Vector(), warnings = Vector())
+      val conf = settings.processArguments(argSummary, processAll = true, skipped = Vector())
       assert(!newSetting.isDefaultIn(conf.sstate), s"Setting $deprecatedArgument was not forwarded to ${newSetting.name}")
 
   @nowarn("cat=deprecation")
@@ -112,19 +112,19 @@ class ScalaSettingsTests:
       s"${oldSetting.name}:$value" -> newSetting
 
     val settings = ScalaSettings
-    List[(String, Setting[?])](
+    Vector[(String, Setting[?])](
       // Fill this with newly-deprecated options:
       createTestCase(settings.YkindProjector         , settings.XkindProjector),
     ).map: (deprecatedArgument, newSetting) =>
-      val args = List(deprecatedArgument)
-      val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
-      val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
+      val args = Vector(deprecatedArgument)
+      val argSummary = ArgsSummary(settings.defaultState, args, errors = Vector(), warnings = Vector())
+      val conf = settings.processArguments(argSummary, processAll = true, skipped = Vector())
       assert(newSetting.isDefaultIn(conf.sstate), s"Setting $deprecatedArgument was forwarded to ${newSetting.name}, when it should be ignored because first option was erroreus")
 
   @nowarn("cat=deprecation")
   @Test def `Aliases of deprecated options are correctly mapped to their replacements`: Unit =
     val settings = ScalaSettings
-    val tests = List[Setting[?] *: Setting[?] *: Tuple](
+    val tests = Vector[Setting[?] *: Setting[?] *: Tuple](
       // Fill this with newly-deprecated options, optionally with a value:
       settings.YkindProjector          -> settings.XkindProjector :* ":underscores",
     )
@@ -135,17 +135,17 @@ class ScalaSettingsTests:
     do
       assert(old.deprecation.isDefined)
       val argString = if test.size > 2 then s"$alias:${test(2)}" else alias
-      val argSummary = ArgsSummary(settings.defaultState, arguments = argString :: Nil, errors = Nil, warnings = Nil)
-      val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
+      val argSummary = ArgsSummary(settings.defaultState, arguments = argString +: Vector(), errors = Vector(), warnings = Vector())
+      val conf = settings.processArguments(argSummary, processAll = true, skipped = Vector())
       def problem = s"Setting alias $argString was not forwarded to ${fwd.name}"
       assert(!fwd.isDefaultIn(conf.sstate), problem)
 
   @Test def `i18367 rightmost WConf flags take precedence over flags to the left`: Unit =
     import reporting.{Action, Diagnostic}
     val sets = ScalaSettings
-    val args = List("-Wconf:cat=deprecation:e", "-Wconf:cat=deprecation:s")
-    val sumy = ArgsSummary(sets.defaultState, args, errors = Nil, warnings = Nil)
-    val proc = sets.processArguments(sumy, processAll = true, skipped = Nil)
+    val args = Vector("-Wconf:cat=deprecation:e", "-Wconf:cat=deprecation:s")
+    val sumy = ArgsSummary(sets.defaultState, args, errors = Vector(), warnings = Vector())
+    val proc = sets.processArguments(sumy, processAll = true, skipped = Vector())
     val conf = sets.Wconf.valueIn(proc.sstate)
     val msg  = "Don't use that!".toMessage
     val depr = new Diagnostic.DeprecationWarning(msg, util.NoSourcePosition, origin="")
@@ -154,11 +154,11 @@ class ScalaSettingsTests:
 
 
   private def wconfSrcFilterTest(argsStr: String,
-                                 warning: reporting.Diagnostic.Warning): Either[List[String], reporting.Action] =
+                                 warning: reporting.Diagnostic.Warning): Either[Vector[String], reporting.Action] =
     import reporting.Diagnostic
     val settings = ScalaSettings
-    val args = ArgsSummary(settings.defaultState, List(argsStr), errors = Nil, warnings = Nil)
-    val proc = settings.processArguments(args, processAll = true, skipped = Nil)
+    val args = ArgsSummary(settings.defaultState, Vector(argsStr), errors = Vector(), warnings = Vector())
+    val proc = settings.processArguments(args, processAll = true, skipped = Vector())
     val wconfStr = settings.Wconf.valueIn(proc.sstate)
     val wconf = reporting.WConf.fromSettings(wconfStr)
     wconf.map(_.action(warning))
@@ -253,13 +253,13 @@ class ScalaSettingsTests:
   @Test def `illegal source versions are not accepted when parsing the settings`: Unit =
     for source <- SourceVersion.illegalInSettings do
       val settings = ScalaSettings
-      val result = settings.processArguments(List("-source", source.toString()), true)
+      val result = settings.processArguments(Vector("-source", source.toString()), true)
       assertEquals(0, result.warnings.length)
       assertEquals(1, result.errors.length)
 
   @Test def `deprecated aliases warn`: Unit =
     val settings = ScalaSettings
-    val args = "-Xfatal-warnings" :: "-Xprint" :: "typer" :: Nil
+    val args = "-Xfatal-warnings" +: "-Xprint" +: "typer" +: Vector()
     val result = settings.processArguments(args, processAll = true)
     assertEquals(2, result.warnings.length)
     assertEquals("Option -Xfatal-warnings is a deprecated alias: use -Werror instead", result.warnings.head)
@@ -269,17 +269,17 @@ class ScalaSettingsTests:
   @Test def `-Xearly-tasty-output preferPrevious does not warn on change of value`: Unit =
     val settings = ScalaSettings
     val conf = Using.resource(Files.createTempDirectory("testDir")): dir =>
-      val args = List("-Ypickle-write", s"$dir/foo.jar", "-Ypickle-write", s"$dir/bar.jar")
-      val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
-      settings.processArguments(argSummary, processAll = true, skipped = Nil)
+      val args = Vector("-Ypickle-write", s"$dir/foo.jar", "-Ypickle-write", s"$dir/bar.jar")
+      val argSummary = ArgsSummary(settings.defaultState, args, errors = Vector(), warnings = Vector())
+      settings.processArguments(argSummary, processAll = true, skipped = Vector())
     assert(conf.warnings.isEmpty, s"WARN: ${conf.warnings}")
     assert(conf.errors.isEmpty, s"ERROR: ${conf.errors}")
 
   @Test def `-Xjava-tasty preferPrevious warns on change of value`: Unit =
     val settings = ScalaSettings
-    val args = List("-Xjava-tasty", "-Xjava-tasty:false")
-    val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
-    val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
+    val args = Vector("-Xjava-tasty", "-Xjava-tasty:false")
+    val argSummary = ArgsSummary(settings.defaultState, args, errors = Vector(), warnings = Vector())
+    val conf = settings.processArguments(argSummary, processAll = true, skipped = Vector())
     assertEquals(s"Warnings [${conf.warnings}]", 1, conf.warnings.size)
     assertEquals("Ignoring conflicting value for Boolean flag -Xjava-tasty", conf.warnings.head)
     assert(conf.errors.isEmpty, s"ERROR: ${conf.errors}")

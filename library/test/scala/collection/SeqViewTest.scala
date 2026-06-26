@@ -8,7 +8,12 @@ import tools.AssertUtil.assertThrows
 class SeqViewTest {
   @Test
   def _toString(): Unit = {
-    assertEquals("SeqView(<not computed>)", Seq(1, 2, 3).view.toString)
+    // `Seq(1, 2, 3)` is rewritten at the call site by the compiler's `ArrayApply` intrinsic,
+    // which (depending on the compiler) produces a `List` or a `Vector`, yielding a `SeqView`
+    // or `IndexedSeqView` respectively. Route through a factory value so the real library
+    // `Seq.apply` (a `Vector`, hence `IndexedSeqView`) is exercised regardless of the compiler.
+    val seqFactory: IterableFactory[Seq] = Seq
+    assertEquals("IndexedSeqView(<not computed>)", seqFactory(1, 2, 3).view.toString)
   }
 
   private def seq(n: Int, maxIterate: Int = -1): Seq[Int] =

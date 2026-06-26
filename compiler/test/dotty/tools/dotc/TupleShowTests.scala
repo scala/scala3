@@ -11,17 +11,17 @@ class TupleShowTests extends DottyTest:
   def IntType = defn.IntType
   def LongType = defn.LongType
   def ShortType = defn.ShortType
-  def Types_10 = List.fill(5)(IntType) ::: List.fill(5)(LongType)
-  def Types_20 = Types_10 ::: Types_10
+  def Types_10 = Vector.fill(5)(IntType) ++ Vector.fill(5)(LongType)
+  def Types_20 = Types_10 ++ Types_10
 
-  val tup0  = defn.tupleType(Nil)
-  val tup1  = defn.tupleType(IntType :: Nil)
-  val tup2  = defn.tupleType(IntType :: LongType :: Nil)
-  val tup3  = defn.tupleType(IntType :: LongType :: ShortType :: Nil)
-  val tup21 = defn.tupleType(Types_20 ::: IntType :: Nil)
-  val tup22 = defn.tupleType(Types_20 ::: IntType :: LongType :: Nil)
-  val tup23 = defn.tupleType(Types_20 ::: IntType :: LongType :: ShortType :: Nil)
-  val tup24 = defn.tupleType(Types_20 ::: IntType :: LongType :: ShortType :: ShortType :: Nil)
+  val tup0  = defn.tupleType(Vector())
+  val tup1  = defn.tupleType(IntType +: Vector())
+  val tup2  = defn.tupleType(IntType +: LongType +: Vector())
+  val tup3  = defn.tupleType(IntType +: LongType +: ShortType +: Vector())
+  val tup21 = defn.tupleType(Types_20 ++ Vector(IntType))
+  val tup22 = defn.tupleType(Types_20 ++ Vector(IntType, LongType))
+  val tup23 = defn.tupleType(Types_20 ++ Vector(IntType, LongType, ShortType))
+  val tup24 = defn.tupleType(Types_20 ++ Vector(IntType, LongType, ShortType, ShortType))
 
   @Test def tup0_show  = chkEq("EmptyTuple.type", i"$tup0")
   @Test def tup1_show  = chkEq("Tuple1[Int]", i"$tup1")
@@ -34,18 +34,18 @@ class TupleShowTests extends DottyTest:
 
   @Test def tup3_text =
     val obt = tup3.toText(ctx.printer)
-    val exp = Fluid(List(
+    val exp = Fluid(Vector(
       Str(")"),
       Str("Short"),
-      Closed(List(Str(", "), Str("Long"))),
-      Closed(List(Str(", "), Str("Int"))),
+      Closed(Vector(Str(", "), Str("Long"))),
+      Closed(Vector(Str(", "), Str("Int"))),
       Str("("),
     ))
     chkEq(exp, obt)
 
   @Test def tup3_layout10 =
     val obt = tup3.toText(ctx.printer).layout(10)
-    val exp = Fluid(List(
+    val exp = Fluid(Vector(
       Str("  Short)"),
       Str("  Long, "),
       Str("(Int, "),

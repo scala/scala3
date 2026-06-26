@@ -87,7 +87,7 @@ class VulpixUnitTests:
   @test def runTimeout: Unit =
     val fileName = s"tests/vulpix-tests/unit/timeout.scala"
     val expect = """(?m).*test '.+' timed out.*"""
-    assertThrows[AssertionError](_.getMessage.linesIterator.toList.last.matches(expect)):
+    assertThrows[AssertionError](_.getMessage.linesIterator.toVector.last.matches(expect)):
       compileFile(fileName, defaultOptions)
         .suppressAllOutput
         .checkRuns()
@@ -98,7 +98,7 @@ object VulpixUnitTests extends ParallelTesting:
   def numberOfWorkers = 5
   def safeMode = sys.env.get("SAFEMODE").isDefined
   def isInteractive = !sys.env.contains("DOTTY_CI_RUN")
-  def testFilter = Nil
+  def testFilter = Vector()
   def updateCheckFiles: Boolean = false
   def failedTests = None
 

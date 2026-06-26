@@ -40,7 +40,7 @@ object BashScriptsTests:
   printf("scala path:  [%s]\n", scalaPath)
   printf("scalac path: [%s]\n", scalacPath)
 
-  val expectedOutput = List(
+  val expectedOutput = Vector(
     "arg  0:[a]",
     "arg  1:[b]",
     "arg  2:[c]",
@@ -201,7 +201,7 @@ class BashScriptsTests:
     assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val scriptFile = testFiles.find(_.getName == "classpathReport_scalacli.sc").get
     printf("===> verify SCALA_OPTS='@argsfile' is properly handled by `dist/bin/scala`\n")
-    val envPairs = List(("SCALA_OPTS", s"@$argsfile"))
+    val envPairs = Vector(("SCALA_OPTS", s"@$argsfile"))
     val (validTest, exitCode, stdout, stderr) = bashCommand(scriptFile.absPath, envPairs)
     printf("stdout: %s\n", stdout.mkString("\n","\n",""))
     if verifyValid(validTest) then

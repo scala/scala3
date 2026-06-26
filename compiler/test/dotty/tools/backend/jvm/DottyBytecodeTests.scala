@@ -481,7 +481,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      for ((clsName, methodName) <- List(("Case", "equals"), ("Value$", "equals$extension"))) {
+      for ((clsName, methodName) <- Vector(("Case", "equals"), ("Value$", "equals$extension"))) {
         val moduleIn = dir.lookupName(s"$clsName.class", directory = false)
         val moduleNode = loadClassNode(moduleIn.input)
         val equalsMethod = getMethod(moduleNode, methodName)
@@ -912,11 +912,11 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
       val instructions = instructionsFromMethod(method)
 
-      val expected = List(
+      val expected = Vector(
         Op(Opcodes.ICONST_0),
         VarOp(Opcodes.ISTORE, 1),
         Label(2),
-        FrameEntry(1, List(1), List()),
+        FrameEntry(1, Vector(1), Vector()),
         VarOp(Opcodes.ILOAD, 1),
         Op(Opcodes.ICONST_5),
         Jump(Opcodes.IF_ICMPGT, Label(13)),
@@ -927,7 +927,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         Incr(Opcodes.IINC, 1, 1),
         Jump(Opcodes.GOTO, Label(2)),
         Label(13),
-        FrameEntry(3, List(), List()),
+        FrameEntry(3, Vector(), Vector()),
         Op(Opcodes.RETURN))
 
       assert(instructions == expected,
@@ -954,7 +954,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val x = getField(clsNode, "x")
       val y = getField(clsNode, "y")
       assert((f.access & Opcodes.ACC_STATIC) != 0)
-      List(x, y).foreach { node =>
+      Vector(x, y).foreach { node =>
         assert((node.access & Opcodes.ACC_STATIC) != 0)
         assert((node.access & Opcodes.ACC_FINAL) != 0)
       }
@@ -984,11 +984,11 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val a = getField(clsNode, "a")
       val b = getField(clsNode, "b")
       assert((f.access & Opcodes.ACC_STATIC) != 0)
-      List(x, y).foreach { node =>
+      Vector(x, y).foreach { node =>
         assert((node.access & Opcodes.ACC_STATIC) != 0)
         assert((node.access & Opcodes.ACC_FINAL) != 0)
       }
-      List(a, b).foreach { node =>
+      Vector(a, b).foreach { node =>
         assert((node.access & Opcodes.ACC_STATIC) != 0)
       }
     }
@@ -1008,7 +1008,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
          |}
       """.stripMargin
 
-    checkBCode(List(sourceA, sourceB)) { dir =>
+    checkBCode(Vector(sourceA, sourceB)) { dir =>
       val clsNodeA = loadClassNode(dir.lookupName("A.class", directory = false).input, skipDebugInfo = false)
       val clsNodeB = loadClassNode(dir.lookupName("B.class", directory = false).input, skipDebugInfo = false)
       val a1 = getMethod(clsNodeA, "a1")
@@ -1054,7 +1054,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val isFrameLine = (x: Instruction) => x.isInstanceOf[FrameEntry] || x.isInstanceOf[LineNumber]
       // TODO: The same test in scalac uses different labels because their LineNumberTable isn't the same as ours,
       // this should be investigated.
-      assertSameCode(instructions.filterNot(isFrameLine), List(
+      assertSameCode(instructions.filterNot(isFrameLine), Vector(
         Label(0), Ldc(LDC, ""), VarOp(ASTORE, 1),
         Label(5), VarOp(ALOAD, 1), Jump(IFNULL, Label(19)),
         Label(10), VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "C", "foo", "()V", false), Label(14), Op(ACONST_NULL), VarOp(ASTORE, 1), Jump(GOTO, Label(5)),
@@ -1090,7 +1090,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val fooClass = loadClassNode(dir.lookupName("Foo.class", directory = false).input)
       val factMeth = getMethod(fooClass, "fact")
 
-      assertSameCode(factMeth, List(
+      assertSameCode(factMeth, Vector(
         Label(0),
         VarOp(ILOAD, 1),
         Op(ICONST_0),
@@ -1118,7 +1118,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val intListClass = loadClassNode(dir.lookupName("IntList.class", directory = false).input)
       val sumMeth = getMethod(intListClass, "sum")
 
-      assertSameCode(sumMeth, List(
+      assertSameCode(sumMeth, Vector(
         Label(0),
         VarOp(ALOAD, 0),
         Field(GETFIELD, "IntList", "tail", "LIntList;"),
@@ -1168,7 +1168,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
       val m1Meth = getMethod(fooClass, "m1")
 
-      assertSameCode(m1Meth, List(
+      assertSameCode(m1Meth, Vector(
         VarOp(ALOAD, 1),
         VarOp(ASTORE, 2),
         VarOp(ALOAD, 2),
@@ -1208,7 +1208,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
       val m2Meth = getMethod(fooClass, "m2")
 
-      assertSameCode(m2Meth, List(
+      assertSameCode(m2Meth, Vector(
         VarOp(ALOAD, 1),
         VarOp(ASTORE, 2),
         VarOp(ALOAD, 2),
@@ -1281,11 +1281,11 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
       val m1Meth = getMethod(fooClass, "m1")
 
-      assertSameCode(m1Meth, List(
+      assertSameCode(m1Meth, Vector(
         VarOp(ILOAD, 1),
         VarOp(ISTORE, 2),
         VarOp(ILOAD, 2),
-        LookupSwitch(LOOKUPSWITCH, Label(20), List(1, 7, 8, 9), List(Label(4), Label(8), Label(12), Label(16))),
+        LookupSwitch(LOOKUPSWITCH, Label(20), Vector(1, 7, 8, 9), Vector(Label(4), Label(8), Label(12), Label(16))),
         Label(4),
         IntOp(BIPUSH, 10),
         Op(IRETURN),
@@ -1307,11 +1307,11 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
       val m2Meth = getMethod(fooClass, "m2")
 
-      assertSameCode(m2Meth, List(
+      assertSameCode(m2Meth, Vector(
         VarOp(ILOAD, 1),
         VarOp(ISTORE, 2),
         VarOp(ILOAD, 2),
-        LookupSwitch(LOOKUPSWITCH, Label(16), List(1, 2, 7, 8), List(Label(4), Label(4), Label(8), Label(12))),
+        LookupSwitch(LOOKUPSWITCH, Label(16), Vector(1, 2, 7, 8), Vector(Label(4), Label(4), Label(8), Label(12))),
         Label(4),
         IntOp(BIPUSH, 10),
         Op(IRETURN),
@@ -1396,7 +1396,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
       val writeBase64VLQMeth = getMethod(sourceMapWriterClass, "writeBase64VLQ")
 
-      assertSameCode(writeBase64VLQMeth, List(
+      assertSameCode(writeBase64VLQMeth, Vector(
         VarOp(ILOAD, 1),
         IntOp(BIPUSH, 31),
         Op(ISHR),
@@ -1434,7 +1434,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
       val writeBase64VLQSlowPathMeth = getMethod(sourceMapWriterClass, "writeBase64VLQSlowPath$1")
 
-      assertSameCode(writeBase64VLQSlowPathMeth, List(
+      assertSameCode(writeBase64VLQSlowPathMeth, Vector(
         VarOp(ILOAD, 1),
         VarOp(ISTORE, 2),
         Label(2),
@@ -1502,10 +1502,10 @@ class DottyBytecodeTests extends DottyBytecodeTest {
   def invocationReceivers(): Unit = {
     import Opcodes.*
 
-    checkBCode(List(invocationReceiversTestCode.definitions("Object"))) { dir =>
+    checkBCode(Vector(invocationReceiversTestCode.definitions("Object"))) { dir =>
       val c1 = loadClassNode(dir.lookupName("C1.class", directory = false).input)
       val c2 = loadClassNode(dir.lookupName("C2.class", directory = false).input)
-      assertSameCode(getMethod(c1, "clone"), List(VarOp(ALOAD, 0), Invoke(INVOKESTATIC, "T", "clone$", "(LT;)Ljava/lang/Object;", true), Op(ARETURN)))
+      assertSameCode(getMethod(c1, "clone"), Vector(VarOp(ALOAD, 0), Invoke(INVOKESTATIC, "T", "clone$", "(LT;)Ljava/lang/Object;", true), Op(ARETURN)))
       assertInvoke(getMethod(c1, "f1"), "T", "clone")
       assertInvoke(getMethod(c1, "f2"), "T", "clone")
       assertInvoke(getMethod(c1, "f3"), "C1", "clone")
@@ -1513,24 +1513,24 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assertInvoke(getMethod(c2, "f2"), "T", "clone")
       assertInvoke(getMethod(c2, "f3"), "C1", "clone")
     }
-    checkBCode(List(invocationReceiversTestCode.definitions("String"))) { dir =>
+    checkBCode(Vector(invocationReceiversTestCode.definitions("String"))) { dir =>
       val c1b = loadClassNode(dir.lookupName("C1.class", directory = false).input)
       val c2b = loadClassNode(dir.lookupName("C2.class", directory = false).input)
       val tb = loadClassNode(dir.lookupName("T.class", directory = false).input)
       val ub = loadClassNode(dir.lookupName("U.class", directory = false).input)
 
-      def ms(c: ClassNode, n: String) = c.methods.asScala.toList.filter(_.name == n)
+      def ms(c: ClassNode, n: String) = c.methods.asScala.toVector.filter(_.name == n)
       assert(ms(tb, "clone").length == 1)
       assert(ms(ub, "clone").isEmpty)
-      val List(c1Clone) = ms(c1b, "clone").filter(_.desc == "()Ljava/lang/Object;")
+      val Vector(c1Clone) = ms(c1b, "clone").filter(_.desc == "()Ljava/lang/Object;")
       assert((c1Clone.access | Opcodes.ACC_BRIDGE) != 0)
-      assertSameCode(c1Clone, List(VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "C1", "clone", "()Ljava/lang/String;", false), Op(ARETURN)))
+      assertSameCode(c1Clone, Vector(VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "C1", "clone", "()Ljava/lang/String;", false), Op(ARETURN)))
 
       def iv(m: MethodNode) = getInstructions(c1b, "f1").collect({case i: Invoke => i})
-      assertSameCode(iv(getMethod(c1b, "f1")), List(Invoke(INVOKEINTERFACE, "T", "clone", "()Ljava/lang/String;", true)))
-      assertSameCode(iv(getMethod(c1b, "f2")), List(Invoke(INVOKEINTERFACE, "T", "clone", "()Ljava/lang/String;", true)))
+      assertSameCode(iv(getMethod(c1b, "f1")), Vector(Invoke(INVOKEINTERFACE, "T", "clone", "()Ljava/lang/String;", true)))
+      assertSameCode(iv(getMethod(c1b, "f2")), Vector(Invoke(INVOKEINTERFACE, "T", "clone", "()Ljava/lang/String;", true)))
       // invokeinterface T.clone in C1 is OK here because it is not an override of Object.clone (different signature)
-      assertSameCode(iv(getMethod(c1b, "f3")), List(Invoke(INVOKEINTERFACE, "T", "clone", "()Ljava/lang/String;", true)))
+      assertSameCode(iv(getMethod(c1b, "f3")), Vector(Invoke(INVOKEINTERFACE, "T", "clone", "()Ljava/lang/String;", true)))
     }
   }
 
@@ -1566,7 +1566,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         |}
       """.stripMargin
 
-    checkBCode(scalaSources = List(cC), javaSources = List(aC, bC, iC, jC)) { dir =>
+    checkBCode(scalaSources = Vector(cC), javaSources = Vector(aC, bC, iC, jC)) { dir =>
       val clsIn   = dir.subdirectoryNamed("b").lookupName("C.class", directory = false).input
       val c = loadClassNode(clsIn)
 
@@ -1671,7 +1671,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
 
       // No allocations of ApproxState
 
-      assertSameCode(instructions1.filterNot(isFrameLine), List(
+      assertSameCode(instructions1.filterNot(isFrameLine), Vector(
         VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "Foo", "approx", "()I", false),
         VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "Foo", "FreshApprox", "()I", false),
         Jump(IF_ICMPNE, Label(7)), Op(ICONST_1),
@@ -1679,7 +1679,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
         Label(7), Op(ICONST_0),
         Label(10), Op(IRETURN)))
 
-      assertSameCode(instructions2.filterNot(isFrameLine), List(
+      assertSameCode(instructions2.filterNot(isFrameLine), Vector(
         Op(ICONST_4),
         VarOp(ALOAD, 0), Invoke(INVOKEVIRTUAL, "Foo", "FreshApprox", "()I", false),
         Jump(IF_ICMPNE, Label(6)), Op(ICONST_1),
@@ -1726,7 +1726,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val clsNode    = loadClassNode(clsIn)
       def testSig(methodName: String, expectedDescriptor: String) = {
         val descriptor = clsNode.methods.asScala.filter(_.name == methodName).map(_.desc)
-        assertEquals(List(expectedDescriptor), descriptor)
+        assertEquals(Vector(expectedDescriptor), descriptor)
       }
       testSig("foo", "()I")
       testSig("bar", "()I")
@@ -1753,7 +1753,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val method  = getMethod(clsNode, "m")
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
 
-      val expected = List(
+      val expected = Vector(
         LineNumber(3, Label(0)),
         LineNumber(4, Label(5)), // case y =>
         LineNumber(5, Label(9)),
@@ -1794,7 +1794,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val method  = getMethod(clsNode, "m")
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
 
-      val expected = List(
+      val expected = Vector(
         LineNumber(3, Label(0)),
         LineNumber(4, Label(5)), // case a if a == 3 =>
         LineNumber(5, Label(15)),
@@ -1828,7 +1828,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val clsNode = loadClassNode(clsIn, skipDebugInfo = false)
       val method = getMethod(clsNode, "m")
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
-      val expected = List(LineNumber(3, Label(0)))
+      val expected = Vector(LineNumber(3, Label(0)))
       assertSameCode(instructions, expected)
 
     }
@@ -1858,7 +1858,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
 
       // There used to be references to line 7 here
-      val expected = List(
+      val expected = Vector(
         LineNumber(9, Label(0)),
       )
 
@@ -1936,7 +1936,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val method  = getMethod(clsNode, "main")
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
 
-      val expected = List(
+      val expected = Vector(
         LineNumber(3, Label(0)),
       )
 
@@ -1965,7 +1965,7 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val method  = getMethod(clsNode, "main")
       val instructions = instructionsFromMethod(method).filter(_.isInstanceOf[LineNumber])
 
-      val expected = List(
+      val expected = Vector(
         LineNumber(3, Label(0)),
         LineNumber(6, Label(15)),
         LineNumber(3, Label(24)),
@@ -1990,11 +1990,11 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       |  def foo =
       |    super.receive()
       |    super.timers()""".stripMargin
-    checkBCode(scalaSources = List(source), javaSources = List(javaSource)) { dir =>
+    checkBCode(scalaSources = Vector(source), javaSources = Vector(javaSource)) { dir =>
       val clsIn   = dir.lookupName("PersistentShardCoordinator.class", directory = false).input
       val clsNode = loadClassNode(clsIn)
 
-      val expected = List("Actor", "Timers")
+      val expected = Vector("Actor", "Timers")
       assertEquals(expected, clsNode.interfaces.asScala)
     }
   }

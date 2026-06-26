@@ -29,9 +29,9 @@ class CreateCompanionObjectsTest extends DottyTest {
         override def name: String = "test"
       }
       val transformed = transformer.transform(tree).toString
-      val classPattern = "TypeDef(Modifiers(,,List()),A,"
+      val classPattern = "TypeDef(Modifiers(,,Vector()),A,"
       val classPos = transformed.indexOf(classPattern)
-      val moduleClassPattern = "TypeDef(Modifiers(final module <synthetic>,,List()),A$"
+      val moduleClassPattern = "TypeDef(Modifiers(final module <synthetic>,,Vector()),A$"
       val modulePos = transformed.indexOf(moduleClassPattern)
 
       Assert.assertTrue("should create non-existing objects in package",
@@ -54,9 +54,9 @@ class CreateCompanionObjectsTest extends DottyTest {
         override def name: String = "test"
       }
       val transformed = transformer.transform(tree).toString
-      val classPattern = "TypeDef(Modifiers(,,List()),A,"
+      val classPattern = "TypeDef(Modifiers(,,Vector()),A,"
       val classPos = transformed.indexOf(classPattern)
-      val moduleClassPattern = "TypeDef(Modifiers(final module <synthetic>,,List()),A$"
+      val moduleClassPattern = "TypeDef(Modifiers(final module <synthetic>,,Vector()),A$"
       val modulePos = transformed.indexOf(moduleClassPattern)
 
       Assert.assertTrue("should create non-existing objects in block",
@@ -78,9 +78,9 @@ class CreateCompanionObjectsTest extends DottyTest {
         override def name: String = "test"
       }
       val transformed = transformer.transform(tree).toString
-      val classPattern = "TypeDef(Modifiers(,,List()),A,"
+      val classPattern = "TypeDef(Modifiers(,,Vector()),A,"
       val classPos = transformed.indexOf(classPattern)
-      val moduleClassPattern = "TypeDef(Modifiers(final module <synthetic>,,List()),A$"
+      val moduleClassPattern = "TypeDef(Modifiers(final module <synthetic>,,Vector()),A$"
       val modulePos = transformed.indexOf(moduleClassPattern)
 
       Assert.assertTrue("should create non-existing objects in template",
@@ -102,12 +102,12 @@ class CreateCompanionObjectsTest extends DottyTest {
         override def name: String = "test"
       }
       val transformed = transformer.transform(tree).toString
-      val classPattern = "TypeDef(Modifiers(,,List()),A,"
+      val classPattern = "TypeDef(Modifiers(,,Vector()),A,"
       val classPos = transformed.indexOf(classPattern)
-      val moduleClassPattern = "TypeDef(Modifiers(final module <synthetic>,,List()),CREATE$"
+      val moduleClassPattern = "TypeDef(Modifiers(final module <synthetic>,,Vector()),CREATE$"
       val modulePos = transformed.indexOf(moduleClassPattern)
 
-      val notCreatedModulePattern = "TypeDef(Modifiers(final module <synthetic>,,List()),DONT"
+      val notCreatedModulePattern = "TypeDef(Modifiers(final module <synthetic>,,Vector()),DONT"
       val notCreatedPos = transformed.indexOf(notCreatedModulePattern)
 
       Assert.assertTrue("should create non-existing objects in template",

@@ -34,9 +34,9 @@ object TestConfiguration {
     "-Wconf:id=E222:s", // name=EncodedPackageName don't warn about file names with hyphens
   )
 
-  val basicClasspath = mkClasspath(List(Properties.scalaLibrary))
+  val basicClasspath = mkClasspath(Vector(Properties.scalaLibrary))
 
-  lazy val withCompilerClasspath = mkClasspath(List(
+  lazy val withCompilerClasspath = mkClasspath(Vector(
     Properties.scalaLibrary,
     Properties.scalaAsm,
     Properties.compilerInterface,
@@ -46,18 +46,18 @@ object TestConfiguration {
   ))
 
   lazy val withStagingClasspath =
-    withCompilerClasspath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
+    withCompilerClasspath + File.pathSeparator + mkClasspath(Vector(Properties.dottyStaging))
 
   lazy val withTastyInspectorClasspath =
-    withCompilerClasspath + File.pathSeparator + mkClasspath(List(Properties.dottyTastyInspector))
+    withCompilerClasspath + File.pathSeparator + mkClasspath(Vector(Properties.dottyTastyInspector))
 
-  lazy val scalaJSClasspath = mkClasspath(List(
+  lazy val scalaJSClasspath = mkClasspath(Vector(
     Properties.scalaJSJavalib,
     Properties.scalaJSScalalib,
     Properties.scalaJSLibrary,
   ))
 
-  def mkClasspath(classpaths: List[String]): String =
+  def mkClasspath(classpaths: Vector[String]): String =
     classpaths.map({ p =>
       val file = new java.io.File(p)
       assert(file.exists, s"File $p couldn't be found.")

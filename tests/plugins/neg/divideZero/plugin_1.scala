@@ -30,7 +30,7 @@ class DivideZero extends PluginPhase with StandardPlugin {
   }
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = tree match {
-    case tpd.Apply(fun, tpd.Literal(Constants.Constant(v)) :: Nil) if isNumericDivide(fun.symbol) && v == 0 =>
+    case tpd.Apply(fun, tpd.Literal(Constants.Constant(v)) +: Vector()) if isNumericDivide(fun.symbol) && v == 0 =>
       report.error("divide by zero", tree.sourcePos)
       tree
     case _ =>

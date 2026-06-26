@@ -48,10 +48,10 @@ abstract class AbstractStringFormatterTest extends DottyTest:
   def Big = (1 to 120).foldLeft(defn.StringType)((tp, i) => RefinedType(tp, typeName("A" * 69 + i), TypeAlias(defn.IntType)))
 
   def mkCstrd =
-    val names = List(typeName("Foo"), typeName("Bar"))
-    val infos = List(TypeBounds.upper(defn.IntType), TypeBounds.upper(defn.StringType))
+    val names = Vector(typeName("Foo"), typeName("Bar"))
+    val infos = Vector(TypeBounds.upper(defn.IntType), TypeBounds.upper(defn.StringType))
     val tl = PolyType(names)(_ => infos, _ => defn.AnyType)
-    TypeComparer.addToConstraint(tl, Nil)
+    TypeComparer.addToConstraint(tl, Vector())
     tl.paramRefs
 
   def ckSub(obtained: String, snippet: String)  = assert(obtained.contains(snippet))

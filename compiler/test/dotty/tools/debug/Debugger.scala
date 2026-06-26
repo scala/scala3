@@ -24,7 +24,7 @@ class Debugger(vm: VirtualMachine, evaluator: ExpressionEvaluator, maxDuration: 
 
   // Internal event subscriptions, to react to JDI events
   // Example: add a Breakpoint on a ClassPrepareEvent
-  private val eventSubs = new AtomicReference(List.empty[PartialFunction[Event, Unit]])
+  private val eventSubs = new AtomicReference(Vector.empty[PartialFunction[Event, Unit]])
   private val eventListener = startListeningVM()
 
   def configureBreakpoint(className: String, line: Int): Unit =
@@ -84,7 +84,7 @@ class Debugger(vm: VirtualMachine, evaluator: ExpressionEvaluator, maxDuration: 
     newThreadRef
 
   private def subscribe(f: PartialFunction[Event, Unit]): Unit =
-    eventSubs.updateAndGet(f :: _)
+    eventSubs.updateAndGet(f +: _)
 
   private def startListeningVM(): Thread =
     val thread = Thread: () =>
