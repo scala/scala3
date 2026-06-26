@@ -5828,7 +5828,8 @@ object Types extends TypeUtils {
    *  If we assumed full substitutivity, we would have to reject all recursive match
    *  aliases (or else take the jump and allow full recursive types).
    */
-  class MatchAlias(alias: Type) extends AliasingBounds(alias)
+  class MatchAlias(alias: Type) extends AliasingBounds(alias):
+    override def isMatchAlias(using Context): Boolean = true
 
   object TypeBounds {
     def apply(lo: Type, hi: Type)(using Context): TypeBounds =
