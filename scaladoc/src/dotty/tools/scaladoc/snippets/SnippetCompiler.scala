@@ -60,7 +60,7 @@ class SnippetCompiler(
           case Some((_, ctx)) => ctx
           case None => baseContext
     val run = newRun(using context)
-    run.compileFromStrings(List(wrappedSnippet.snippet))
+    run.compileFromStrings(Vector(wrappedSnippet.snippet))
 
     val diagnostics = context.reporter.pendingMessages(using context)
     val observed = SnippetExpectations.observe(diagnostics, wrappedSnippet, sourceFile)

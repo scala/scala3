@@ -111,8 +111,8 @@ class StaticSiteContext(
     )
 
     links match {
-      case link :: rest => Seq(driFor(link))
-      case Nil => memberLinkResolver(link).toSeq
+      case link +: _ => Seq(driFor(link))
+      case _ => memberLinkResolver(link).toSeq
     }
 
   def driFor(dest: Path): DRI =
