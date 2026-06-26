@@ -2,7 +2,7 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.annotation.{switch, tailrec}
+import scala.annotation.switch
 import scala.collection.mutable.SortedMap
 import scala.tools.asm
 import scala.tools.asm.{Handle, Opcodes}
@@ -110,12 +110,12 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           val Local(tk, _, idx, _) = locals.getOrMakeLocal(s)
 
           rhs match {
-            case Apply(Select(larg: Ident, nme.ADD), Literal(x) +: Vector())
+            case Apply(Select(larg: Ident, nme.ADD), Vector(Literal(x)))
             if larg.symbol == s && tk.isIntSizedType && x.isShortRange =>
               lineNumber(tree)
               bc.iinc(idx, x.intValue)
 
-            case Apply(Select(larg: Ident, nme.SUB), Literal(x) +: Vector())
+            case Apply(Select(larg: Ident, nme.SUB), Vector(Literal(x)))
             if larg.symbol == s && tk.isIntSizedType && Constant(-x.intValue).isShortRange =>
               lineNumber(tree)
               bc.iinc(idx, -x.intValue)
@@ -153,7 +153,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           }
 
         // binary operation
-        case rarg +: Vector() =>
+        case Vector(rarg) =>
           val isShift = isShiftOp(code)
           resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg), bTypes.ObjectRef)
 
@@ -389,7 +389,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
             stack.push(prefixTK)
           }
 
-          genLoadArguments(env, fun.symbol.info.firstParamTypes.map(bTypeLoader.bTypeFromType))
+          genLoadArguments(env, bTypeLoader.bTypesFromTypes(fun.symbol.info.firstParamTypes))
           stack.restoreSize(savedStackSize)
           generatedType = genInvokeDynamicLambda(NoSymbol, fun.symbol, env.size, functionalInterface)
 
@@ -1253,19 +1253,14 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
     }
 
     def genLoadArguments(args: Vector[Tree], btpes: Vector[BType])(using Context): Unit =
-      @tailrec def loop(args: Vector[Tree], btpes: Vector[BType]): Unit =
-        args match
-          case arg +: args1 =>
-            btpes match
-              case btpe +: btpes1 =>
-                genLoad(arg, btpe)
-                stack.push(btpe)
-                loop(args1, btpes1)
-              case _ =>
-          case _ =>
-
       val savedStackSize = stack.recordSize()
-      loop(args, btpes)
+      val len = args.length min btpes.length
+      var i = 0
+      while i < len do
+        val btpe = btpes(i)
+        genLoad(args(i), btpe)
+        stack.push(btpe)
+        i += 1
       stack.restoreSize(savedStackSize)
     end genLoadArguments
 
@@ -1364,7 +1359,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
               case _ => true
             }
             .map {
-              case Apply(boxOp, value +: Vector()) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
+              case Apply(boxOp, Vector(value)) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
                 // Eliminate boxing of primitive values. Boxing is introduced by erasure because
                 // there's only a single synthetic `+` method "added" to the string class.
                 value
@@ -1532,9 +1527,9 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
             primitives.getPrimitive(tree, larg.tpe) == ScalaPrimitivesOps.CONCAT)
           liftStringConcat(larg) ++ rarg
         else
-          tree +: Vector()
+          Vector(tree)
       case _ =>
-        tree +: Vector()
+        Vector(tree)
     }
 
     /* Emit code to compare the two top-most stack values using the 'op' operator. */
@@ -1807,12 +1802,12 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       // Requires https://github.com/scala/scala-java8-compat on the runtime classpath
       val returnUnit = lambdaTarget.info.resultType.typeSymbol == defn.UnitClass
       val functionalInterfaceDesc: String = generatedType.descriptor
-      val desc = capturedParamsTypes.map(bTypeLoader.bTypeFromType).mkString(("("), "", ")") + functionalInterfaceDesc
+      val desc = bTypeLoader.methodArgumentDescriptorFromTypes(capturedParamsTypes) + functionalInterfaceDesc
 
       val samMethod = atPhase(erasurePhase) {
         val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toVector
         samMethods match {
-          case x +: Vector() => x.symbol
+          case Vector(x) => x.symbol
           case Vector() => throw new AssertionError(s"${functionalInterface.show} is not a functional interface. It doesn't have abstract methods")
           case xs => throw new AssertionError(s"${functionalInterface.show} is not a functional interface. " +
             s"It has the following abstract methods: ${xs.map(_.name).mkString(", ")}")
@@ -1829,7 +1824,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         else instantiatedType
       // TODO specialization
       val instantiatedMethodBType = MethodBType(
-        lambdaParamTypes.map(bTypeLoader.bTypeFromType),
+        bTypeLoader.bTypesFromTypes(lambdaParamTypes),
         boxInstantiated(bTypeLoader.bTypeFromType(lambdaTarget.info.resultType), samMethodBType.returnType)
       )
 

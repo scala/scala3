@@ -20,6 +20,10 @@ import scala.tools.asm
 import scala.tools.asm.tree.ClassNode
 
 final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader]) {
+  // Must match VectorStatics.WIDTH: `Vector.fromArray1Unsafe` accepts only the
+  // compact Vector1 layout.
+  private inline val MaxVector1Length = 32
+
   // Concurrent map because stack map frames are computed when in the class writer, which
   // might run on multiple classes concurrently.
   private val classBTypeCache = new ConcurrentHashMap[InternalName, ClassBType]
@@ -90,7 +94,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
         superClass = Some(classBTypeFromSymbol(defn.ObjectClass)),
         interfaces = Vector(),
         flags = asm.Opcodes.ACC_SUPER | asm.Opcodes.ACC_PUBLIC | asm.Opcodes.ACC_FINAL,
-        nestedClasses = getMemberClasses(moduleClassSym).map(classBTypeFromSymbol),
+        nestedClasses = classBTypesFromSymbols(getMemberClasses(moduleClassSym)),
         nestedInfo = None,
         inlineInfo = InlineInfo.empty
       )
@@ -105,8 +109,35 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     val resT: BType =
       if (msym.isClassConstructor || msym.isConstructor) UNIT
       else bTypeFromType(msym.info.resultType)
-    MethodBType(msym.info.firstParamTypes.map(bTypeFromType), resT)
+    MethodBType(bTypesFromTypes(msym.info.firstParamTypes), resT)
   }
+
+  def bTypesFromTypes(tpes: Vector[Type])(using Context): Vector[BType] =
+    val len = tpes.length
+    if len == 0 then Vector()
+    else if len <= MaxVector1Length then
+      val elems = new Array[AnyRef](len)
+      var i = 0
+      while i < len do
+        elems(i) = bTypeFromType(tpes(i)).asInstanceOf[AnyRef]
+        i += 1
+      Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[BType]]
+    else
+      val b = Vector.newBuilder[BType]
+      b.sizeHint(len)
+      var i = 0
+      while i < len do
+        b += bTypeFromType(tpes(i))
+        i += 1
+      b.result()
+
+  def methodArgumentDescriptorFromTypes(tpes: Vector[Type])(using Context): String =
+    val b = new StringBuilder("(")
+    var i = 0
+    while i < tpes.length do
+      b.append(bTypeFromType(tpes(i)))
+      i += 1
+    b.append(')').toString
 
   /**
    * This method returns the BType for a type reference, for example a parameter type.
@@ -176,8 +207,33 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     // This is not only a performance optimization (as the JVM needs to handle fewer inheritance declarations),
     // but also required for correctness in the presence of sealed interfaces (see i23479):
     // if `C` inherits from `non-sealed A` which itself inherits from `sealed B permits A`, then having `C` inherit from `B` directly is illegal.
-    val allBaseClasses = classSym.directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
-    val interfaces = classSym.directlyInheritedTraits.filter(!allBaseClasses(_)).map(classBTypeFromSymbol)
+    val directlyInheritedTraits = classSym.directlyInheritedTraits
+    val allBaseClasses = directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
+    val interfaces =
+      val len = directlyInheritedTraits.length
+      if len == 0 then Vector()
+      else if len <= MaxVector1Length then
+        val elems = new Array[AnyRef](len)
+        var i = 0
+        var kept = 0
+        while i < len do
+          val traitSym = directlyInheritedTraits(i)
+          if !allBaseClasses(traitSym) then
+            elems(kept) = classBTypeFromSymbol(traitSym).asInstanceOf[AnyRef]
+            kept += 1
+          i += 1
+        if kept == len then Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[ClassBType]]
+        else if kept == 0 then Vector()
+        else Vector.fromArray1Unsafe(java.util.Arrays.copyOf(elems, kept)).asInstanceOf[Vector[ClassBType]]
+      else
+        val b = Vector.newBuilder[ClassBType]
+        b.sizeHint(len)
+        var i = 0
+        while i < len do
+          val traitSym = directlyInheritedTraits(i)
+          if !allBaseClasses(traitSym) then b += classBTypeFromSymbol(traitSym)
+          i += 1
+        b.result()
 
     val flags = BCodeUtils.javaFlags(classSym)
 
@@ -221,9 +277,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
      * (In Scala 2, we had an assertion that there must be exactly 2 nested class symbols with the same name and owner,
      * but in Dotty there will be B & B$)
      */
-    val nestedClassSymbolsNoJavaModuleClasses = nestedClassSymbols.filter(s => !(s.is(JavaDefined) && s.is(ModuleClass)))
-
-    val memberClasses = nestedClassSymbolsNoJavaModuleClasses.map(classBTypeFromSymbol)
+    val memberClasses = nonJavaModuleClassBTypesFromSymbols(nestedClassSymbols)
 
     val nestedInfo = buildNestedInfo(classSym)
 
@@ -244,6 +298,51 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
    * (but not inherited ones). The empty list for classes that are not currently compiled.
    */
   private def getMemberClasses(sym: Symbol)(using Context): Vector[Symbol] = definedClasses(sym, lambdaLiftPhase)
+
+  private def classBTypesFromSymbols(symbols: Vector[Symbol])(using Context): Vector[ClassBType] =
+    val len = symbols.length
+    if len == 0 then Vector()
+    else if len <= MaxVector1Length then
+      val elems = new Array[AnyRef](len)
+      var i = 0
+      while i < len do
+        elems(i) = classBTypeFromSymbol(symbols(i)).asInstanceOf[AnyRef]
+        i += 1
+      Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[ClassBType]]
+    else
+      val b = Vector.newBuilder[ClassBType]
+      b.sizeHint(len)
+      var i = 0
+      while i < len do
+        b += classBTypeFromSymbol(symbols(i))
+        i += 1
+      b.result()
+
+  private def nonJavaModuleClassBTypesFromSymbols(symbols: Vector[Symbol])(using Context): Vector[ClassBType] =
+    val len = symbols.length
+    if len == 0 then Vector()
+    else if len <= MaxVector1Length then
+      val elems = new Array[AnyRef](len)
+      var i = 0
+      var kept = 0
+      while i < len do
+        val sym = symbols(i)
+        if !(sym.is(JavaDefined) && sym.is(ModuleClass)) then
+          elems(kept) = classBTypeFromSymbol(sym).asInstanceOf[AnyRef]
+          kept += 1
+        i += 1
+      if kept == len then Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[ClassBType]]
+      else if kept == 0 then Vector()
+      else Vector.fromArray1Unsafe(java.util.Arrays.copyOf(elems, kept)).asInstanceOf[Vector[ClassBType]]
+    else
+      val b = Vector.newBuilder[ClassBType]
+      b.sizeHint(len)
+      var i = 0
+      while i < len do
+        val sym = symbols(i)
+        if !(sym.is(JavaDefined) && sym.is(ModuleClass)) then b += classBTypeFromSymbol(sym)
+        i += 1
+      b.result()
 
   private def definedClasses(sym: Symbol, phase: Phase)(using Context) =
     if (sym.isDefinedInCurrentRun)

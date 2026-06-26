@@ -150,7 +150,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     def paramTKs(app: Apply, take: Int = -1)(using Context): Vector[BType] = app match {
       case Apply(fun, _) =>
       val funSym = fun.symbol
-      funSym.info.firstParamTypes.map(bTypeLoader.bTypeFromType) // this tracks mentioned inner classes (in innerClassBufferASM)
+      bTypeLoader.bTypesFromTypes(funSym.info.firstParamTypes) // this tracks mentioned inner classes (in innerClassBufferASM)
     }
 
     def symInfoTK(sym: Symbol)(using Context): BType = {
@@ -773,8 +773,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
               selfParamRef.withSpan(tree.span)
             case tree => tree
           },
-          oldOwners = origSym +: Vector(),
-          newOwners = newSym +: Vector()
+          oldOwners = Vector(origSym),
+          newOwners = Vector(newSym)
         ).transform(dd.rhs)
       })
 

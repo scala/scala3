@@ -182,14 +182,20 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
      * must-single-thread
      */
     def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: Vector[Vector[Annotation]])(using Context): Unit =
-      val annotationss = pannotss.map(_.filter(shouldEmitAnnotation))
-      if (annotationss.forall(_.isEmpty)) return
-      for ((annots, idx) <- annotationss.zipWithIndex; annot <- annots) {
-        val typ = annot.tree.tpe
-        val assocs = assocsFromApply(annot.tree)
-        val pannVisitor: asm.AnnotationVisitor = jmethod.visitParameterAnnotation(idx, bTypeLoader.bTypeFromType(typ).descriptor, isRuntimeVisible(annot))
-        emitAssocs(pannVisitor, assocs)
-      }
+      var idx = 0
+      while idx < pannotss.length do
+        val annots = pannotss(idx)
+        var annotIdx = 0
+        while annotIdx < annots.length do
+          val annot = annots(annotIdx)
+          if shouldEmitAnnotation(annot) then
+            val typ = annot.tree.tpe
+            val assocs = assocsFromApply(annot.tree)
+            val pannVisitor: asm.AnnotationVisitor =
+              jmethod.visitParameterAnnotation(idx, bTypeLoader.bTypeFromType(typ).descriptor, isRuntimeVisible(annot))
+            emitAssocs(pannVisitor, assocs)
+          annotIdx += 1
+        idx += 1
 
 
     private def shouldEmitAnnotation(annot: Annotation)(using Context): Boolean = {
@@ -383,7 +389,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol, isSynthetic: Boolean)(using Context): Unit = {
       val moduleName     = bTypeLoader.classBTypeFromSymbol(module).internalName
       val methodInfo     = module.thisType.memberInfo(m)
-      val paramJavaTypes: Vector[BType] = methodInfo.firstParamTypes.map(bTypeLoader.bTypeFromType)
+      val paramJavaTypes: Vector[BType] = bTypeLoader.bTypesFromTypes(methodInfo.firstParamTypes)
       // val paramNames     = 0 until paramJavaTypes.length.map("x_" + _)
 
       /* Forwarders must not be marked final,
