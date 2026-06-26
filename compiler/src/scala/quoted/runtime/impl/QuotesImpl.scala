@@ -1931,7 +1931,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               member.info.substThis(self.classSymbol.asClass, self)
             else
               member.info
-
+          
+          // We treat the constructor type parameters as if they were the same as corresponding type members.
+          // That's how Scala 2 symbols are unpickled to begin with.
           val memberInfoSubstituted =
             if member.owner.isConstructor then
               self match
