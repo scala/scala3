@@ -4696,6 +4696,20 @@ object Types extends TypeUtils {
       if myGround == 0 then myGround = if acc.foldOver(true, this) then 1 else -1
       myGround > 0
 
+    private def hasProvisionalArg(using Context): Boolean =
+      var i = 0
+      while i < args.length do
+        if args(i).isProvisional then return true
+        i += 1
+      false
+
+    private def allArgsStable(using Context): Boolean =
+      var i = 0
+      while i < args.length do
+        if !args(i).isStable then return false
+        i += 1
+      true
+
     private[Types] def cachedIsStable(using Context): Boolean =
       // We need to invalidate the cache when the run changes because the case
       // `TermRef` of `Type#isStable` reads denotations, which depend on the
@@ -4714,7 +4728,7 @@ object Types extends TypeUtils {
         myIsStable
 
     private def computeIsStable(using Context): Boolean = tycon match
-      case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) && args.forall(_.isStable) => true
+      case tycon: TypeRef if defn.isCompiletimeAppliedType(tycon.symbol) && allArgsStable => true
       case _ => false
 
     override def underlying(using Context): Type = tycon
@@ -4726,7 +4740,7 @@ object Types extends TypeUtils {
           case tycon: HKTypeLambda => defn.AnyType
           case tycon: TypeRef if tycon.symbol.isClass => tycon
           case tycon: TypeProxy =>
-            superIsProvisional ||= args.exists(_.isProvisional)
+            superIsProvisional ||= hasProvisionalArg
               // applyIfParameterized may perform eta-reduction leading to different
               // variance annotations depending on the instantiation of type params
               // see tests/pos/typeclass-encoding3b.scala:348 for an example
@@ -4810,7 +4824,12 @@ object Types extends TypeUtils {
       if (tparams.isEmpty) HKTypeLambda.any(args.length).typeParams else tparams
     }
 
-    def hasWildcardArg(using Context): Boolean = args.exists(isBounds)
+    def hasWildcardArg(using Context): Boolean =
+      var i = 0
+      while i < args.length do
+        if isBounds(args(i)) then return true
+        i += 1
+      false
 
     def derivedAppliedType(tycon: Type, args: Vector[Type])(using Context): Type =
       if ((tycon eq this.tycon) && (args eq this.args)) this
@@ -6786,6 +6805,13 @@ object Types extends TypeUtils {
       case Range(lo, hi) => !lo.isInstanceOf[TermType] || !hi.isInstanceOf[TermType]
       case _             => false
 
+    private def containsRange(ts: Vector[? <: Type]): Boolean =
+      var i = 0
+      while i < ts.length do
+        if isRange(ts(i)) then return true
+        i += 1
+      false
+
     override protected def derivedAndType(tp: AndType, tp1: Type, tp2: Type): Type =
       if (isRange(tp1) || isRange(tp2)) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
       else tp.derivedAndType(tp1, tp2)
@@ -6831,7 +6857,7 @@ object Types extends TypeUtils {
           scrutinee match
             case Range(lo, hi) => range(bound.bounds.lo, bound.bounds.hi)
             case _ =>
-              if cases.exists(isRange) then
+              if containsRange(cases) then
                 Range(
                   tp.derivedMatchType(bound, scrutinee, cases.map(lower)),
                   tp.derivedMatchType(bound, scrutinee, cases.map(upper)))
@@ -6858,7 +6884,7 @@ object Types extends TypeUtils {
         case Range(lo, hi) =>
           range(derivedLambdaType(tp)(formals, lo), derivedLambdaType(tp)(formals, hi))
         case _ =>
-          if formals.exists(isRange) then
+          if containsRange(formals) then
             range(
               derivedLambdaType(tp)(formals.map(upper(_).asInstanceOf[tp.PInfo]), restpe),
               derivedLambdaType(tp)(formals.map(lower(_).asInstanceOf[tp.PInfo]), restpe))
