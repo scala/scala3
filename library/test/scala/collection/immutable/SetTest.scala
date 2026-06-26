@@ -1,7 +1,7 @@
 package scala.collection.immutable
 
 // "Disabled string conversions so as not to get confused!"
-import scala.Predef.{any2stringadd => _, *}
+import scala.Predef.{any2stringadd => _, *, given}
 
 import org.junit.Assert.{assertEquals, assertNotSame, assertSame, assertTrue}
 import org.junit.Test
