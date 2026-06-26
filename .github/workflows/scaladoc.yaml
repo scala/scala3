@@ -25,7 +25,7 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -70,21 +70,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.12.3
+      - uses: VirtusLab/scala-cli-setup@v1.14
 
       - name: Validate docs sidebars
         run: scala-cli ./project/scripts/checkSidebarDocs.scala
 
   validate-generated-docs:
-    if: false
     needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -133,7 +132,7 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -147,9 +146,9 @@ jobs:
   check-error-code-snippets:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.11
+      - uses: VirtusLab/scala-cli-setup@v1.14
         with:
           jvm: temurin:17
           apps: sbt

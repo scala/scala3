@@ -1,33 +1,29 @@
 package dotty.tools.dotc
 package sbt
 
-import scala.language.unsafeNulls
-
 import java.io.File
 import java.nio.file.Path
 import java.util.EnumSet
-
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.classpath.FileUtils.{hasClassExtension, hasTastyExtension}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types.*
-
-import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
+import dotty.tools.dotc.typer.Applications.*
+import dotty.tools.dotc.util.{NoSourcePosition, SrcPos}
 import dotty.tools.io
-import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive, NoAbstractFile, FileExtension}
+import dotty.tools.io.{AbstractFile, FileExtension, NoAbstractFile, PlainFile, ZipArchive}
 import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext.*
 
 import scala.jdk.CollectionConverters.*
-
 import scala.collection.{Set, mutable}
 import scala.compiletime.uninitialized
 
@@ -127,6 +123,9 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends Abst
   override def traverse(tree: Tree)(using Context): Unit =
     try
       recordTree(tree)
+
+      recordInlineCallArgs(tree)
+        
       tree match
         case tree: Inlined if !tree.inlinedFromOuterScope =>
           // The inlined call is normally ignored by TreeTraverser but we need to
@@ -184,6 +183,26 @@ trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
         rec.addClassDependency(parent.tpe.classSymbol, depContext)
     }
 
+  // Only reference DependencyByMacroExpansion if it an be found on the classpath,
+  // as it was added later to the zinc.apiinfo DependencyContext enum
+  // e.g. pre 1.10.x sbt would throw java.lang.NoSuchFieldError errors here
+  lazy val allowsDependencyByMacroExpansion =
+    classOf[DependencyContext].getFields().exists(_.getName() == "DependencyByMacroExpansion")
+
+  private def addMacroDependency(trees: List[Tree])(using Context): Unit =
+    if (allowsDependencyByMacroExpansion) {
+      val traverser = new TypeDependencyTraverser {
+        def addDependency(symbol: Symbol) =
+          if (!ignoreDependency(symbol)) {
+            val enclOrModuleClass = if (symbol.is(ModuleVal)) symbol.moduleClass else symbol.enclosingClass
+            assert(enclOrModuleClass.isClass, s"$enclOrModuleClass, $symbol")
+
+            rec.addClassDependency(enclOrModuleClass, DependencyByMacroExpansion)
+          }
+      }
+      trees.foreach(tree => traverser.traverse(tree.tpe))
+    }
+
   private def depContextOf(cls: Symbol)(using Context): DependencyContext =
     if cls.isLocal then LocalDependencyByInheritance
     else DependencyByInheritance
@@ -199,6 +218,12 @@ trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
     catch case ex: StaleSymbol =>
       // can happen for constructor proxies. Test case is pos-macros/i13532.
       true
+
+  protected def recordInlineCallArgs(tree: Tree)(using Context) =
+    tree match
+      case TypeApply(fun, args) if fun.symbol.is(Inline) =>
+        addMacroDependency(args)
+      case _ =>
 
   protected def recordTree(tree: Tree)(using Context): Unit =
     tree match
@@ -238,6 +263,37 @@ trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
         addInheritanceDependencies(t)
       case t: Template =>
         addInheritanceDependencies(t)
+      case UnApply(fun, _, _) =>
+        // PatternMatcher (which runs after this phase) lowers case-class patterns
+        // to direct product-selector calls (_1, _2, …) or case-accessor calls.
+        // Those calls are never present in the typed tree seen here, so they would
+        // not normally be recorded as used names.
+
+        // Always record both unapply and unapplySeq on the extractor so that adding
+        // one alongside the other triggers recompilation.  The typer tries unapply
+        // first and falls back to unapplySeq (see trySelectUnapply); if the set of
+        // available methods changes the winner can change.  The class dependency on
+        // the extractor owner is already established by traversal of `fun`.
+        rec.addUsedRawName(nme.unapply)
+        rec.addUsedRawName(nme.unapplySeq)
+
+        // For a *synthetic* case-class unapply (`def unapply(x: C): C = x`), record
+        // the primary constructor of C.  Its zinc-mangled name (`C;init;`) encodes
+        // the full parameter list: any change to parameter types, arity, or names
+        // changes the name hash and triggers recompilation.
+        val linkedCls = fun.symbol.owner.linkedClass
+        if fun.symbol.is(Synthetic) && linkedCls.is(Case) then
+          addMemberRefDependency(linkedCls.primaryConstructor)
+        else
+          // For other extractors that return a product type, record the _N selectors
+          // so that return-type changes trigger recompilation.  Also record the
+          // selector one past the current arity (_N+1) so that a new member being
+          // added to the product type is detected.  The class dependency needed to
+          // make that raw-name watch effective is established by the selector loop.
+          val selectors = productSelectors(fun.tpe.widen.finalResultType)
+          selectors.foreach(addMemberRefDependency)
+          if selectors.nonEmpty then
+            rec.addUsedRawName(nme.selectorName(selectors.length))
       case _ => ()
 
   /**Reused EqHashSet, safe to use as each TypeDependencyTraverser is used atomically
@@ -370,8 +426,8 @@ class DependencyRecorder {
    *  safely.
    */
   def addUsedRawName(name: Name, includeSealedChildren: Boolean = false)(using Context): Unit = {
-    val fromClass = resolveDependencyFromClass
-    if (fromClass.exists) {
+    val lastFoundCache = resolveDependencyFromClass
+    if (lastFoundCache != null) {
       lastFoundCache.recordName(name, includeSealedChildren)
     }
   }
@@ -437,8 +493,8 @@ class DependencyRecorder {
    *  from the current non-local enclosing class.
   */
   def addClassDependency(toClass: Symbol, context: DependencyContext)(using Context): Unit =
-    val fromClass = resolveDependencyFromClass
-    if (fromClass.exists)
+    val lastFoundCache = resolveDependencyFromClass
+    if (lastFoundCache != null)
       lastFoundCache.addDependency(toClass, context)
 
   private val _foundDeps = new util.EqHashMap[Symbol, FoundDepsInClass]
@@ -504,7 +560,7 @@ class DependencyRecorder {
     if depFile != null then {
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = depCtx == DependencyByInheritance || depCtx == LocalDependencyByInheritance
-      val isTastyOrSig = depFile.hasTastyExtension
+      val isTastyOrSig = depFile.ext.isTasty
 
       def processExternalDependency() = {
         val binaryClassName = depClass.binaryClassName
@@ -521,7 +577,7 @@ class DependencyRecorder {
         }
       }
 
-      if isTastyOrSig || depFile.hasClassExtension then
+      if isTastyOrSig || depFile.ext.isClass then
         processExternalDependency()
       else if allowLocal || depFile != sourceFile.file then
         // We cannot ignore dependencies coming from the same source file because
@@ -531,17 +587,16 @@ class DependencyRecorder {
     }
   }
 
-  private var lastOwner: Symbol = uninitialized
-  private var lastDepSource: Symbol = uninitialized
-  private var lastFoundCache: FoundDepsInClass | Null = uninitialized
+  private var lastOwner: Symbol | Null = null
+  private var lastDepSource: Symbol | Null = null
+  private var lastFoundCache: FoundDepsInClass | Null = null
 
   /** The source of the dependency according to `nonLocalEnclosingClass`
    *  if it exists, otherwise fall back to `responsibleForImports`.
    *
    *  This is backed by a cache which is invalidated when `ctx.owner` changes.
    */
-  private def resolveDependencyFromClass(using Context): Symbol = {
-    import dotty.tools.uncheckedNN
+  private def resolveDependencyFromClass(using Context): FoundDepsInClass | Null = {
     if (lastOwner != ctx.owner) {
       lastOwner = ctx.owner
       val source = nonLocalEnclosingClass
@@ -551,7 +606,10 @@ class DependencyRecorder {
         lastFoundCache = _foundDeps.getOrElseUpdate(fromClass, new FoundDepsInClass)
     }
 
-    lastDepSource
+    if lastDepSource != null && lastDepSource.nn.exists then
+      lastFoundCache
+    else
+      null
   }
 
   /** The closest non-local enclosing class from `ctx.owner`. */
@@ -575,7 +633,7 @@ class DependencyRecorder {
   /** Top level import dependencies are registered as coming from a first top level
    *  class/trait/object declared in the compilation unit. If none exists, issue a warning and return NoSymbol.
    */
-  private def responsibleForImports(using Context) = {
+  private def responsibleForImports(using Context): Symbol = {
     import tpd.*
     def firstClassOrModule(tree: Tree) = {
       val acc = new TreeAccumulator[Symbol] {
@@ -593,12 +651,12 @@ class DependencyRecorder {
     if (_responsibleForImports == null) {
       val tree = ctx.compilationUnit.tpdTree
       _responsibleForImports = firstClassOrModule(tree)
-      if (!_responsibleForImports.exists)
+      if (!_responsibleForImports.nn.exists)
           report.warning("""|No class, trait or object is defined in the compilation unit.
                             |The incremental compiler cannot record the dependency information in such case.
                             |Some errors like unused import referring to a non-existent class might not be reported.
                             |""".stripMargin, tree.sourcePos)
     }
-    _responsibleForImports
+    _responsibleForImports.nn
   }
 }

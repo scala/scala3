@@ -1,13 +1,14 @@
 package dotty.tools
 package backend.jvm
 
+import dotty.DottyBytecodeTest
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
-import scala.tools.asm.Opcodes._
+import scala.tools.asm.Opcodes.*
 
 class ArrayApplyOptTest extends DottyBytecodeTest {
-  import ASMConverters._
+  import dotty.AsmConverters.*
 
   @Test def testArrayEmptyGenericApply = {
     test("Array[String]()", List(Op(ICONST_0), TypeOp(ANEWARRAY, "java/lang/String"), Op(POP), Op(RETURN)))
@@ -141,7 +142,7 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
   private def test(code: String, expectedInstructions: List[Any])= {
     val source =
       s"""class Foo {
-         | import Foo._
+         | import Foo.*
          | def test: Unit = $code
          |}
          |object Foo {
@@ -151,7 +152,7 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
        """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Foo.class", directory = false).input
+      val clsIn   = dir.lookupName("Foo.class", directory = false).nn.input
       val clsNode = loadClassNode(clsIn)
       val meth   = getMethod(clsNode, "test")
 
@@ -332,7 +333,7 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
 
   def checkApplyAvoidsIntermediateArray(name: String)(source: String): Unit = {
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Foo.class", directory = false).input
+      val clsIn   = dir.lookupName("Foo.class", directory = false).nn.input
       val clsNode = loadClassNode(clsIn)
       val meth1   = getMethod(clsNode, "meth1")
       val meth2   = getMethod(clsNode, "meth2")

@@ -58,7 +58,7 @@ object Test {
     // type B = given Set[Int] => Int
     // assert(isContextFunctionType[B])
 
-    assert(isErasedFunctionType[(erased Int) => Int])
+    assert(isErasedFunctionType[(erased x: Int) => Int])
     assert(!isErasedFunctionType[Int => Int])
     // type C = erased Set[Int] => Int
     // assert(isErasedFunctionType[C])

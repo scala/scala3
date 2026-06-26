@@ -27,15 +27,13 @@ import scala.runtime.ClassValueCompat
  *  its argument types. This runtime information is enough for runtime `Array` creation.
  *
  *  For example:
- *  ```
- *   scala> def mkArray[T : ClassTag](elems: T*) = Array[T](elems*)
- *   def mkArray[T](elems: T*)(using ClassTag[T]): Array[T]
+ *  ```scala sc:compile
+ *  import scala.reflect.ClassTag
  *
- *   scala> mkArray(42, 13)
- *   val res0: Array[Int] = Array(42, 13)
+ *  def mkArray[T: ClassTag](elems: T*): Array[T] = Array[T](elems*)
  *
- *   scala> mkArray("Japan","Brazil","Germany")
- *   val res1: Array[String] = Array(Japan, Brazil, Germany)
+ *  val ints = mkArray(42, 13)
+ *  val strings = mkArray("Japan", "Brazil", "Germany")
  *  ```
  *
  *  For compile-time type information in macros, see the facilities in the
@@ -57,7 +55,10 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
   /** Produces a `ClassTag` that knows how to instantiate an `Array[Array[T]]`. */
   def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](arrayClass(runtimeClass))
 
-  /** Produces a new array with element type `T` and length `len`. */
+  /** Produces a new array with element type `T` and length `len`.
+   *
+   *  @param len the length of the new array
+   */
   def newArray(len: Int): Array[T] =
     java.lang.reflect.Array.newInstance(runtimeClass, len).asInstanceOf[Array[T]]
 
@@ -68,6 +69,9 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
    *  Type tests necessary before calling other extractors are treated similarly.
    *  `SomeExtractor(...)` is turned into `ct(SomeExtractor(...))` if `T` in `SomeExtractor.unapply(x: T)`
    *  is uncheckable, but we have an instance of `ClassTag[T]`.
+   *
+   *  @param x the value to match against the runtime class of `T`
+   *  @return `Some(x)` if `x` is an instance of `T`, `None` otherwise
    */
   def unapply(x: Any): Option[T] =
     if (runtimeClass.isInstance(x)) Some(x.asInstanceOf[T])

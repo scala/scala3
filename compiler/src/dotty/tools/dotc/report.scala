@@ -55,6 +55,9 @@ object report:
     else issueWarning(new FeatureWarning(msg, pos.sourcePos))
   end featureWarning
 
+  def optimizerWarning(msg: String, site: String, pos: SrcPos)(using Context): Unit =
+    issueWarning(new OptimizerWarning(em"$msg", site, addInlineds(pos)))
+  
   def warning(msg: Message, pos: SrcPos, origin: String)(using Context): Unit =
     issueWarning(LintWarning(msg, addInlineds(pos), origin))
 
@@ -153,7 +156,7 @@ object report:
   def enrichErrorMessage(errorMessage: String)(using Context): String =
     if ctx.settings.XnoEnrichErrorMessages.value then errorMessage
     else try enrichErrorMessage1(errorMessage)
-    catch case _: Throwable => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
+    catch case _: Exception => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
 
   private def enrichErrorMessage1(errorMessage: String)(using Context): String = {
     import untpd.*, config.Settings.*

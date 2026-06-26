@@ -136,10 +136,9 @@ sealed abstract class CaptureSet extends Showable:
    *  does not contain a ResultCap?
    */
   final def containsGlobalOrLocalCap(using Context) =
-    !containsResultCapability
-    && elems.exists: elem =>
+    elems.exists: elem =>
       elem.core match
-        case _: GlobalCap => true
+        case GlobalAny => true
         case _: LocalCap => true
         case _ => false
 
@@ -261,7 +260,7 @@ sealed abstract class CaptureSet extends Showable:
         || // Even though subsumes already follows captureSetOfInfo, this is not enough.
            // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
           !x.isTerminalCapability
-          && !x.coreType.derivesFrom(defn.Caps_CapSet)
+          && !x.coreType.derivesFromCapSet
           && !(vs.isSeparating && x.captureSetOfInfo.containsTerminalCapability)
             // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
             // and might therefore insert an element that is too unspecific.
@@ -316,7 +315,7 @@ sealed abstract class CaptureSet extends Showable:
         try
           that.tryInclude(elems, this) && addDependent(that)
         catch case ex: AssertionError =>
-          println(i"err while subcap $this <:< $that")
+          println(i"error while subcap $this <:< $that")
           throw ex
 
   /** Two capture sets are considered =:= equal if they mutually subcapture each other
@@ -686,7 +685,7 @@ object CaptureSet:
       && variance >= 0
       && sym.isContainedIn(defn.ScalaPackageClass)
     if parent.derivesFromStateful
-      && parent.derivesFromExclusive
+      && parent.derivesFromCapTrait(defn.Caps_ExclusiveCapability)
       && !isArrayFromScalaPackage
     then GlobalAny.readOnly
     else GlobalAny
@@ -1683,7 +1682,7 @@ object CaptureSet:
 
     class Inverse extends BiTypeMap:
       def apply(t: Type) = t // since f(c) <: c, this is the best inverse
-      override def mapCapability(c: Capability, deep: Boolean): Capability = c
+      override def mapCapability(c: Capability): Capability = c
       def inverse = NarrowingCapabilityMap.this
       override def toString = NarrowingCapabilityMap.this.toString ++ ".inverse"
       override def fuse(next: BiTypeMap)(using Context) = next match
@@ -1696,16 +1695,16 @@ object CaptureSet:
 
   /** Maps `x` to `x?` */
   private class MaybeMap(using Context) extends NarrowingCapabilityMap:
-    override def mapCapability(c: Capability, deep: Boolean) = c.maybe
+    override def mapCapability(c: Capability) = c.maybe
     override def toString = "Maybe"
 
   /** Maps `x` to `x.rd` */
   private class ReadOnlyMap(using Context) extends NarrowingCapabilityMap:
-    override def mapCapability(c: Capability, deep: Boolean) = c.readOnly
+    override def mapCapability(c: Capability) = c.readOnly
     override def toString = "ReadOnly"
 
   private class RestrictMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
-    override def mapCapability(c: Capability, deep: Boolean) = c.restrict(cls)
+    override def mapCapability(c: Capability) = c.restrict(cls)
     override def toString = "Restrict"
     override def isSameMap(other: BiTypeMap) = other match
       case other: RestrictMap => cls == other.cls
@@ -1735,9 +1734,6 @@ object CaptureSet:
 
   /** The capture set of the type underlying the capability `c` */
   def ofInfo(c: Capability)(using Context): CaptureSet = c match
-    case Reach(c1) =>
-      c1.widen.computeDeepCaptureSet(includeTypevars = true)
-        .showing(i"Deep capture set of $c: ${c1.widen} = ${result}", capt)
     case Restricted(c1, cls) =>
       if cls == defn.NothingClass then CaptureSet.empty
       else c1.captureSetOfInfo.restrict(cls) // todo: should we simplify using subsumption here?
@@ -1767,7 +1763,7 @@ object CaptureSet:
         case tp: TermParamRef =>
           tp.captureSet
         case tp: (TypeRef | TypeParamRef) =>
-          if tp.derivesFrom(defn.Caps_CapSet) then tp.captureSet
+          if tp.derivesFromCapSet then tp.captureSet
           else empty
         case CapturingOrRetainsType(parent, refs) =>
           recur(parent) ++ refs
@@ -1806,7 +1802,7 @@ object CaptureSet:
         else this(acc, parent)
 
       def abstractTypeCase(acc: CaptureSet, t: TypeRef, upperBound: Type) =
-        if t.derivesFrom(defn.Caps_CapSet) then t.singletonCaptureSet
+        if t.derivesFromCapSet then t.singletonCaptureSet
         else if includeTypevars && upperBound.isExactlyAny then LocalCap(Origin.DeepCS(t)).singletonCaptureSet
         else this(acc, upperBound)
 

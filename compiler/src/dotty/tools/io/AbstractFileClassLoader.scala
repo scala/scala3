@@ -13,8 +13,6 @@
 package dotty.tools
 package io
 
-import scala.language.unsafeNulls
-
 import dotty.tools.io.AbstractFile
 
 import java.net.{URL, URLConnection, URLStreamHandler}
@@ -24,7 +22,7 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader) exten
   private def findAbstractFile(name: String) = root.lookupPath(name.split('/').toIndexedSeq, directory = false)
 
   // on JDK 20 the URL constructor we're using is deprecated,
-  // but the recommended replacement, URL.of, doesn't exist on JDK 8
+  // but the recommended replacement, URL.of, doesn't exist on JDK 17
   @annotation.nowarn("cat=deprecation")
   override protected def findResource(name: String): URL | Null =
     findAbstractFile(name) match
@@ -41,19 +39,20 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader) exten
       case url  => Collections.enumeration(Collections.singleton(url))
 
   override def findClass(name: String): Class[?] = {
-    var file: AbstractFile | Null = root
+    var file: AbstractFile = root
     val pathParts = name.split("[./]").toList
     for (dirPart <- pathParts.init) {
-      file = file.lookupName(dirPart, true)
-      if (file == null) {
+      val subFile = file.lookupName(dirPart, true)
+      if (subFile == null) {
         throw new ClassNotFoundException(name)
       }
+      file = subFile
     }
-    file = file.lookupName(pathParts.last+".class", false)
-    if (file == null) {
+    val lastFile = file.lookupName(pathParts.last+".class", false)
+    if (lastFile == null) {
       throw new ClassNotFoundException(name)
     }
-    val bytes = file.toByteArray
+    val bytes = lastFile.toByteArray
     defineClass(name, bytes, 0, bytes.length)
   }
 

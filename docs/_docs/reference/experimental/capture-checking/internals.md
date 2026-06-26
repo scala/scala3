@@ -80,5 +80,3 @@ This section lists all variables that appeared in previous diagnostics and their
  - variable `31` has a constant fixed superset `{xs, f}`
  - variable `32` has no dependencies.
 
-
-

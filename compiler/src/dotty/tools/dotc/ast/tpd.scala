@@ -15,7 +15,6 @@ import Spans.*
 
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
-import scala.compiletime.uninitialized
 
 /** Some creators for typed trees */
 object tpd extends Trees.Instance[Type] with TypedTreeInfo {
@@ -273,11 +272,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         val (rtp, paramss) = recur(tp.instantiate(tparams.map(_.typeRef)), remaining1)
         (rtp, tparams :: paramss)
       case tp: MethodType =>
-        val isParamDependent = tp.isParamDependent
-        val previousParamRefs: mutable.ListBuffer[TermRef] =
-          // It is ok to assign `null` here.
-          // If `isParamDependent == false`, the value of `previousParamRefs` is not used.
-          if isParamDependent then mutable.ListBuffer[TermRef]() else (null: mutable.ListBuffer[TermRef] | Null).uncheckedNN
+        val previousParamRefs: mutable.ListBuffer[TermRef] | Null =
+          if tp.isParamDependent then mutable.ListBuffer[TermRef]() else null
 
         def valueParam(name: TermName, origInfo: Type, isErased: Boolean): TermSymbol =
           val maybeImplicit =
@@ -288,7 +284,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
           def makeSym(info: Type) = newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
 
-          if isParamDependent then
+          if previousParamRefs ne null then
             val sym = makeSym(origInfo.substParams(tp, previousParamRefs.toList))
             previousParamRefs += sym.termRef
             sym
@@ -398,8 +394,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           if !overridden.is(Deferred) then fwdMeth.setFlag(Override)
         DefDef(fwdMeth, ref(fn).appliedToArgss(_))
       }
-      termForwarders.map((name, sym) => forwarder(name, sym)) ++
-      typeMembers.map((name, info) => TypeDef(newSymbol(cls, name, Synthetic, info).entered))
+      val typeDefs = typeMembers.map((name, info) => TypeDef(newSymbol(cls, name, Synthetic, info).entered))
+      termForwarders.map((name, sym) => forwarder(name, sym)) ++ typeDefs
     }
   }
 
@@ -562,7 +558,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def wrapArray(tree: Tree, elemtp: Type)(using Context): Tree =
     val wrapper = ref(defn.getWrapVarargsArrayModule)
       .select(wrapArrayMethodName(elemtp))
-      .appliedToTypes(if (elemtp.isPrimitiveValueType) Nil else elemtp :: Nil)
+      .appliedToTypes(if elemtp.classSymbol.isPrimitiveValueClass then Nil else elemtp :: Nil)
     val actualElem = wrapper.tpe.widen.firstParamTypes.head
     wrapper.appliedTo(tree.ensureConforms(actualElem))
 
@@ -1031,7 +1027,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
     def appliedToTypeTrees(targs: List[Tree])(using Context): Tree =
-      if targs.isEmpty then tree else TypeApply(tree, targs)
+      if targs.isEmpty then tree else tree match
+        case Block(stmts, expr) if stmts.nonEmpty => Block(stmts, TypeApply(expr, targs))
+        case _ => TypeApply(tree, targs)
 
     /** Apply to `()` unless tree's widened type is parameterless */
     def ensureApplied(using Context): Tree =
@@ -1215,7 +1213,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def ensureHasSym(sym: Symbol)(using Context): Unit =
       if sym.exists && sym != tree.symbol then
         typr.println(i"correcting definition symbol from ${tree.symbol.showLocated} to ${sym.showLocated}")
-        tree.overwriteType(NamedType(sym.owner.thisType, sym.asTerm.name, sym.denot))
+        tree.overwriteType(NamedType(sym.owner.thisType, sym.name, sym.denot))
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match
@@ -1376,13 +1374,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   trait TreeProvider {
     protected def computeRootTrees(using Context): List[Tree]
 
-    private var myTrees: List[Tree] | Null = uninitialized
+    private var myTrees: List[Tree] | Null = null
 
     /** Get trees defined by this provider. Cache them if -Yretain-trees is set. */
     def rootTrees(using Context): List[Tree] =
       if (ctx.settings.YretainTrees.value) {
-        if (myTrees == null) myTrees = computeRootTrees
-        myTrees.uncheckedNN
+        initialize(myTrees, myTrees = _, computeRootTrees)
       }
       else computeRootTrees
 
@@ -1415,7 +1412,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   @tailrec
   def sameTypes(trees: List[tpd.Tree], trees1: List[tpd.Tree]): Boolean =
-    if (trees.isEmpty) trees.isEmpty
+    if (trees.isEmpty) trees1.isEmpty
     else if (trees1.isEmpty) trees.isEmpty
     else (trees.head.tpe eq trees1.head.tpe) && sameTypes(trees.tail, trees1.tail)
 

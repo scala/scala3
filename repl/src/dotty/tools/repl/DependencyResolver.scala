@@ -101,7 +101,7 @@ object DependencyResolver:
 
     // Add each JAR to the compiler's classpath
     for file <- files do
-      val jarFile = AbstractFile.getDirectory(file.getAbsolutePath)
+      val jarFile = AbstractFile.getDirectory(file.getAbsolutePath, ctx.settings.javaOutputVersion.value)
       if jarFile != null then
         val jarClassPath = ClassPathFactory.newClassPath(jarFile)
         ctx.platform.addToClassPath(jarClassPath)

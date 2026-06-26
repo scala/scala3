@@ -1,7 +1,6 @@
 import language.experimental.captureChecking
 import annotation.experimental
 import caps.{CapSet, SharedCapability}
-import caps.use
 import caps.unsafe.untrackedCaptures
 
 @experimental object Test:

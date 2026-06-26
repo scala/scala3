@@ -15,7 +15,6 @@ class ReplDependencyMacroTests extends ReplTest:
   private def resolveUpickle()(using State): Unit =
     run(":dep com.lihaoyi::upickle:4.4.3")
     val output = storedOutput()
-    println(s"[debug][i25291] :dep output:\n$output")
     assertTrue(output, output.contains("Resolved 1 dependencies"))
     assertNoMacroFailure(output)
 
@@ -40,7 +39,6 @@ class ReplDependencyMacroTests extends ReplTest:
     filesToAdd.foreach: file =>
       run(s":jar ${file.getAbsolutePath}")
       val output = storedOutput()
-      println(s"[debug][i25291] :jar output (${file.getName}):\n$output")
       assertTrue(output, output.contains("Added"))
       assertNoMacroFailure(output)
 
@@ -49,7 +47,6 @@ class ReplDependencyMacroTests extends ReplTest:
       resolveUpickle()
       run("case class FooDerives(x: Int) derives upickle.default.ReadWriter")
       val output = storedOutput()
-      println(s"[debug][i25291] derives output:\n$output")
       assertNoMacroFailure(output)
       assertTrue(output, output.contains("// defined case class FooDerives"))
 
@@ -58,7 +55,6 @@ class ReplDependencyMacroTests extends ReplTest:
       resolveUpickle()
       run("case class FooMacroRw(x: Int); object FooMacroRw { given upickle.default.ReadWriter[FooMacroRw] = upickle.default.macroRW }")
       val second = storedOutput()
-      println(s"[debug][i25291] macroRW output:\n$second")
       assertNoMacroFailure(second)
       assertTrue(second, second.contains("// defined case class FooMacroRw"))
 
@@ -67,7 +63,6 @@ class ReplDependencyMacroTests extends ReplTest:
       addUpickleViaJar()
       run("case class FooJar(x: Int) derives upickle.default.ReadWriter")
       val output = storedOutput()
-      println(s"[debug][i25291] :jar derives output:\n$output")
       assertNoMacroFailure(output)
       assertTrue(output, output.contains("// defined case class FooJar"))
 
@@ -76,6 +71,5 @@ class ReplDependencyMacroTests extends ReplTest:
       resolveUpickle()
       run("case class FooSummon(x: Int) derives upickle.default.ReadWriter; summon[upickle.default.ReadWriter[FooSummon]]")
       val second = storedOutput()
-      println(s"[debug][i25291] summon output:\n$second")
       assertNoMacroFailure(second)
       assertTrue(second, second.contains("// defined case class FooSummon"))

@@ -73,9 +73,9 @@ object Trees {
     /** The type of the tree. In case of an untyped tree,
      *   an UnAssignedTypeException is thrown. (Overridden by empty trees)
      */
-    final def tpe: T =
-      if myTpe == null then throw UnAssignedTypeException(this)
-      myTpe.uncheckedNN
+    final def tpe: T = myTpe match
+      case null => throw UnAssignedTypeException(this)
+      case t => t
 
     /** Copy `tpe` attribute from tree `from` into this tree, independently
      *  whether it is null or not.
@@ -292,10 +292,11 @@ object Trees {
   trait DefTree[+T <: Untyped] extends DenotingTree[T] {
     type ThisTree[+T <: Untyped] <: DefTree[T]
 
-    private var myMods: untpd.Modifiers | Null = uninitialized
+    private var myMods: untpd.Modifiers | Null = null
 
-    private[dotc] def rawMods: untpd.Modifiers =
-      if (myMods == null) untpd.EmptyModifiers else myMods.uncheckedNN
+    private[dotc] def rawMods: untpd.Modifiers = myMods match
+      case null => untpd.EmptyModifiers
+      case mods => mods
 
     def withAnnotations(annots: List[untpd.Tree]): ThisTree[Untyped] = withMods(rawMods.withAnnotations(annots))
 
@@ -627,8 +628,6 @@ object Trees {
   case class CaseDef[+T <: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit @constructorOnly src: SourceFile)
     extends Tree[T] {
     type ThisTree[+T <: Untyped] = CaseDef[T]
-    /** Should this case be considered partial for exhaustivity and unreachability checking */
-    def maybePartial(using Context): Boolean = !guard.isEmpty || body.isInstanceOf[SubMatch[T]]
   }
 
   /** label[tpt]: { expr } */

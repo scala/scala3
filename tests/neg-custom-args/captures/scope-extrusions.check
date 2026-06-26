@@ -142,7 +142,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/scope-extrusions.scala:33:21 -----------------------------
 33 |  val f4: IO => IO = f3  // error
    |                     ^^
-   |                     Found:    (f3 : (x$0: IO) ->{} IO^{x$0})
+   |                     Found:    (f3 : (x$0: IO) -> IO^{x$0})
    |                     Required: IO^ => IO^{any}
    |
    |                     Note that capability `x$0` cannot flow into capture set {any}

@@ -460,7 +460,7 @@ object Inlines:
       }
 
     private def packError(kind: ErrorKind, error: Error)(using Context): Tree =
-      def lit(x: Any) = Literal(Constant(x))
+      def lit[T](x: T)(using Constant.ValueToConstant[T]) = Literal(Constant.fromValue(x))
       val constructor: Tree = ref(defn.CompiletimeTesting_Error_apply)
       val parserErrorKind: Tree = ref(defn.CompiletimeTesting_ErrorKind_Parser)
       val typerErrorKind: Tree = ref(defn.CompiletimeTesting_ErrorKind_Typer)

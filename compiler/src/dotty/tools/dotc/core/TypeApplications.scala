@@ -393,15 +393,17 @@ class TypeApplications(val self: Type) extends AnyVal {
                 case _ => false
               }
             }
-            if ((dealiased eq stripped) || followAlias)
-              try
-                val instantiated = dealiased.instantiate(args)
-                if (followAlias) instantiated.normalized else instantiated
-              catch
-                case ex: IndexOutOfBoundsException =>
-                  AppliedType(self, args)
-                case ex: Throwable =>
-                  handleRecursive("try to instantiate", i"$dealiased[$args%, %]", ex)
+            if (dealiased eq stripped) || followAlias then
+              val paramsWithoutArg = dealiased.typeParams.drop(args.length).map(_.paramRef)
+              val hasParamsWithoutArg = paramsWithoutArg.nonEmpty && dealiased.resType.existsPart(paramsWithoutArg.contains, forceLazy = false)
+              if hasParamsWithoutArg then
+                AppliedType(self, args)
+              else
+                try
+                  val instantiated = dealiased.instantiate(args)
+                  if (followAlias) instantiated.normalized else instantiated
+                catch
+                  case ex: Throwable => handleRecursive("try to instantiate", i"$dealiased[$args%, %]", ex)
 
             else AppliedType(self, args)
           }

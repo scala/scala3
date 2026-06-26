@@ -1,0 +1,55 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh-3.scala:9:22 --------------------------------
+9 |  val _: () -> Ref^ = () => Ref() // error, monotonicity violation
+  |                      ^^^^^^^^^^^
+  |                      Found:    () ->'s1 Ref^{fresh}
+  |                      Required: () -> Ref^{any}
+  |
+  |                      Note that capability `fresh` cannot flow into capture set {any}
+  |                      because fresh is not visible from any in value _$1.
+  |
+  |                      where:    any   is a root capability classified as Unscoped in the type of value _$1
+  |                                fresh is a root capability associated with the result type of (): Ref^{fresh}
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh-3.scala:11:28 -------------------------------
+11 |  val _: () -> () => Ref^ = () => () => Ref() // error, monotonicity violation
+   |                            ^^^^^^^^^^^^^^^^^
+   |Found:    () ->'s2 () ->{fresh} Ref^
+   |Required: () -> () ->{any} Ref^²
+   |
+   |Note that capability `fresh` cannot flow into capture set {any}
+   |because fresh is not visible from any in value _$3.
+   |
+   |where:    ^     refers to a root capability classified as Unscoped created in anonymous function of type (): Ref^{fresh²} when constructing instance Ref
+   |          ^²    refers to a root capability classified as Unscoped in the type of value _$3
+   |          any   is a root capability in the type of value _$3
+   |          fresh is a root capability associated with the result type of (): () ->{fresh} Ref^
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh-3.scala:16:22 -------------------------------
+16 |  val _: () -> Ref^ = f1 // error
+   |                      ^^
+   |                      Found:    (f1 : () -> Ref^{fresh})
+   |                      Required: () -> Ref^{any}
+   |
+   |                      Note that capability `fresh` cannot flow into capture set {any}
+   |                      because fresh is not visible from any in value _$5.
+   |
+   |                      where:    any   is a root capability classified as Unscoped in the type of value _$5
+   |                                fresh is a root capability associated with the result type of (): Ref^{fresh}
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lambda-fresh-3.scala:17:22 -------------------------------
+17 |  val _: () => Ref^ = f1 // error
+   |                      ^^
+   |                      Found:    (f1 : () -> Ref^{fresh})
+   |                      Required: () => Ref^{any}
+   |
+   |                      Note that capability `fresh` cannot flow into capture set {any}
+   |                      because fresh is not visible from any in value _$6.
+   |
+   |                      where:    =>    refers to a root capability in the type of value _$6
+   |                                any   is a root capability classified as Unscoped in the type of value _$6
+   |                                fresh is a root capability associated with the result type of (): Ref^{fresh}
+   |
+   | longer explanation available when compiling with `-explain`

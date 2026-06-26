@@ -1,0 +1,4 @@
+public void Bar.Foo$_setter_$foo_$eq(scala.Option)
+public void Bar.Foo$_setter_$foo_$eq(scala.Option<java.lang.String>)
+public scala.Option Bar.foo()
+public scala.Option<java.lang.String> Bar.foo()

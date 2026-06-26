@@ -1,21 +1,21 @@
 package dotty.tools.dotc.classpath
 
-import scala.language.unsafeNulls
+import dotty.DottyBytecodeTest
 
+import scala.language.unsafeNulls
 import dotty.tools.dotc.core.Contexts.Context
 
 import java.io.{ByteArrayOutputStream, IOException}
 import java.nio.file.{FileSystems, Files, Path}
 import java.util.jar.Attributes
 import java.util.jar.Attributes.Name
-
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Properties
 
-class MultiReleaseJarTest extends dotty.tools.backend.jvm.DottyBytecodeTest {
+class MultiReleaseJarTest extends DottyBytecodeTest {
 
   @Test
   def mrJar(): Unit = {

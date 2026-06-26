@@ -3,6 +3,7 @@
  */
 package dotty.tools.dotc.classpath
 
+import dotty.tools.io.ClassPath
 import dotty.tools.io.ClassPath.RootPackage
 
 /**
@@ -33,5 +34,24 @@ object PackageNameUtils {
     if (packageDottedName.contains("."))
       packageDottedName.startsWith(inPackage) && packageDottedName.lastIndexOf('.') == inPackage.length
     else inPackage == ""
+  }
+
+  def dirPathTrailingSlashJar(pkg: String): String =
+    FileUtils.dirPathInJar(pkg) + "/"
+
+  def dirPathTrailingSlash(pkg: String): String =
+    if (java.io.File.separatorChar == '/')
+      dirPathTrailingSlashJar(pkg)
+    else
+      FileUtils.dirPath(pkg) + java.io.File.separator
+
+  def entryName(pkg: String, entry: String): String = {
+    if (pkg == ClassPath.RootPackage) entry else {
+      val builder = new java.lang.StringBuilder(pkg.length + 1 + entry.length)
+      builder.append(pkg)
+      builder.append('.')
+      builder.append(entry)
+      builder.toString
+    }
   }
 }

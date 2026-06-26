@@ -14,7 +14,7 @@ import Uniques.*
 import ast.Trees.*
 import Flags.ParamAccessor
 import ast.untpd
-import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance}
+import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance, WrappedSourceFile}
 import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import inlines.Inliner
 import Nullables.*
@@ -39,14 +39,13 @@ import dotty.tools.dotc.sbt.interfaces.{IncrementalCallback, ProgressCallback}
 import util.Property.Key
 import util.Store
 import plugins.*
-import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 import dotty.tools.dotc.coverage.Coverage
 import scala.annotation.tailrec
 
 object Contexts {
 
-  private val (compilerCallbackLoc,  store1) = Store.empty.newLocation[CompilerCallback]()
+  private val (compilerCallbackLoc,  store1) = Store.empty.newLocation[CompilerCallback | Null]()
   private val (incCallbackLoc,       store2) = store1.newLocation[IncrementalCallback | Null]()
   private val (printerFnLoc,         store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
   private val (settingsStateLoc,     store4) = store3.newLocation[SettingsState]()
@@ -166,7 +165,7 @@ object Contexts {
     def store: Store
 
     /** The compiler callback implementation, or null if no callback will be called. */
-    def compilerCallback: CompilerCallback = store(compilerCallbackLoc)
+    def compilerCallback: CompilerCallback | Null = store(compilerCallbackLoc)
 
     /** The Zinc callback implementation if we are run from Zinc, null otherwise */
     def incCallback: IncrementalCallback | Null = store(incCallbackLoc)
@@ -896,13 +895,13 @@ object Contexts {
     finally ctx.base.comparersInUse = saved
   end comparing
 
-  @sharable val NoContext: Context = new FreshContext((null: ContextBase | Null).uncheckedNN) {
+  @sharable val NoContext: Context = new FreshContext(null.asInstanceOf[ContextBase]) {
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this: @unchecked)
     setSource(NoSource)
   }
 
   /** A context base defines state and associated methods that exist once per
-   *  compiler run.
+   *  logical compiler instance.
    */
   class ContextBase extends ContextState
                        with Phases.PhasesBase
@@ -914,7 +913,7 @@ object Contexts {
     val initialCtx: Context = FreshContext.initial(this: @unchecked, settings)
 
     /** The platform, initialized by `initPlatform()`. */
-    private var _platform: Platform | Null = uninitialized
+    private var _platform: Platform | Null = null
 
     /** The platform */
     def platform: Platform = {
@@ -1008,6 +1007,10 @@ object Contexts {
     /** Sources and Files that were loaded */
     val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
     val files: util.HashMap[TermName, AbstractFile] = util.HashMap()
+
+    /** Cache for magic offset header lookups, scoped to this compiler instance
+     *  so that concurrent compilers in the same classloader don't share stale entries. */
+    private[dotc] val magicHeaderCache: util.HashMap[SourceFile, WrappedSourceFile.MagicHeaderInfo] = util.HashMap()
 
     /** Was best effort file used during compilation? */
     private[core] var usedBestEffortTasty = false

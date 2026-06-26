@@ -24,7 +24,6 @@ import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
-import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
@@ -80,15 +79,20 @@ class Completions(
         if appl.fun == funSel && sel == fun => false
     case _ => true
 
-  private lazy val isDerivingTemplate = adjustedPath match
+  private lazy val isDerivingOrContextBound = adjustedPath match
     /* In case of `class X derives TC@@` we shouldn't add `[]`
      */
     case Ident(_) :: (templ: untpd.DerivingTemplate) :: _ =>
       val pos = completionPos.toSourcePosition
       !templ.derived.exists(_.sourcePos.contains(pos))
+    /* In case of `def demo[F[_]: TC@@]` or `def demo[F[_]: {TC1, TC@@}]`
+     * we shouldn't add `[]` as we are in a context bound position.
+     */
+    case Ident(_) :: (_: untpd.ContextBounds) :: _ => false
+    case Ident(_) :: (_: untpd.ContextBoundTypeTree) :: _ => false
     case _ => true
 
-  private lazy val shouldAddSuffix = shouldAddSnippet && isContinuedApply && isDerivingTemplate
+  private lazy val shouldAddSuffix = shouldAddSnippet && isContinuedApply && isDerivingOrContextBound
 
   private lazy val isNew: Boolean = Completion.isInNewContext(adjustedPath)
 
@@ -119,8 +123,10 @@ class Completions(
   end includeSymbol
 
   lazy val fuzzyMatcher: Name => Boolean = name =>
-    if completionMode.is(Mode.Member) then CompletionFuzzy.matchesSubCharacters(completionPos.query, name.toString)
-    else CompletionFuzzy.matches(completionPos.query, name.toString)
+    val nameString = name.toString
+    if nameString.isEmpty then false
+    else if completionMode.is(Mode.Member) then CompletionFuzzy.matchesSubCharacters(completionPos.query, nameString)
+    else CompletionFuzzy.matches(completionPos.query, nameString)
 
   def enrichedCompilerCompletions(
       qualType: Type,
@@ -133,7 +139,8 @@ class Completions(
         completionPos.query,
         fromPath,
         adjustedPath,
-        Some(fuzzyMatcher)
+        Some(fuzzyMatcher),
+        calculatedScopeContext = Some(indexedContext.scopeContext)
       )
 
     compilerCompletions
@@ -243,9 +250,9 @@ class Completions(
         }
         .chain { suffix =>
           adjustedPath match
-            case (ident: Ident) :: (app @ Apply(_, List(arg))) :: _ =>
+            case (_: Ident) :: (app @ Apply(_, List(arg))) :: _ =>
               app.symbol.info match
-                case mt @ MethodType(termNames)
+                case _: MethodType
                     if app.symbol.paramSymss.last.exists(_.is(Given)) &&
                       !text.substring(app.fun.span.start, arg.span.end).contains("using") =>
                   suffix.withNewPrefix(Affix(PrefixKind.Using))
@@ -293,10 +300,10 @@ class Completions(
         symbol.info.member(nme.CONSTRUCTOR).allSymbols
       catch case NonFatal(_) => Nil
     val sym = denot.symbol
-    val hasNonSyntheticConstructor = sym.name.isTypeName && sym.isClass
+    def hasNonSyntheticConstructor = sym.name.isTypeName && sym.isClass
       && !sym.is(ModuleClass) && !sym.is(Trait) && !sym.is(Abstract) && !sym.is(Flags.JavaDefined)
 
-    val (extraMethodDenots, skipOriginalDenot): (List[SingleDenotation], Boolean) =
+    val (extraMethodDenots: List[SingleDenotation], skipOriginalDenot: Boolean) =
       if shouldAddSnippet && isNew && hasNonSyntheticConstructor then
         val constructors = safeConstructorMembers(sym).map(_.asSingleDenotation)
           .filter(_.symbol.isAccessibleFrom(denot.info))
@@ -531,7 +538,6 @@ class Completions(
             this,
             config.isCompletionSnippetsEnabled(),
             search,
-            config,
             buildTargetIdentifier
           )
           .filterInteresting(enrich = false)
@@ -616,7 +622,7 @@ class Completions(
 
   private def enrichWithSymbolSearch(
       visit: CompletionValue => Boolean,
-      qualType: Type = ctx.definitions.AnyType
+      qualType: Type
   ): Option[SymbolSearch.Result] =
     val query = completionPos.query
     if completionMode.is(Mode.Scope) && query.nonEmpty then
@@ -936,7 +942,7 @@ class Completions(
           isMember(symbol) && symbol.owner != tpe.typeSymbol
         def postProcess(items: List[CompletionValue]): List[CompletionValue] =
           items.map {
-            case completion @ CompletionValue.Compiler(label, denot, suffix)
+            case completion @ CompletionValue.Compiler(label, _, suffix)
                 if isMember(completion.symbol) =>
               CompletionValue.Compiler(
                 label,

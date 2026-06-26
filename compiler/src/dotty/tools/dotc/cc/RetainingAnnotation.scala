@@ -5,13 +5,14 @@ package cc
 import core.*
 import Types.*, Symbols.*, Contexts.*
 import Annotations.{Annotation, CompactAnnotation, EmptyAnnotation}
+import ast.tpd.TypeTree
 import config.Feature
 
 /** A class for annotations @retains, @retainsByName and @retainsCap
  *  We make sure that all annotations with these classes are represented
  *  as RetainingAnnotations.
  */
-class RetainingAnnotation(tpe: Type) extends CompactAnnotation(tpe):
+class RetainingAnnotation(tpe: Type) extends CompactAnnotation(tpe) {
 
   def this(cls: ClassSymbol, args: Type*)(using Context) = this(cls.typeRef.appliedTo(args.toList))
 
@@ -48,5 +49,17 @@ class RetainingAnnotation(tpe: Type) extends CompactAnnotation(tpe):
     if myCaptureSet == null then
       myCaptureSet = CaptureSet(retainedType.retainedElements*)
     myCaptureSet.nn
+}
+object RetainingAnnotation {
 
-end RetainingAnnotation
+  /** Convert annotation with retains as symbol to a RetainingAnnotation */
+  def fromAnnotation(ann: Annotation)(using Context): RetainingAnnotation = ann match
+    case ann: RetainingAnnotation => ann
+    case _ =>
+      assert(ann.symbol.isRetains)
+      ann.tree match
+        case atree: TypeTree => // this is the case if sourceVersion.enablesCompactAnnotation
+          CompactAnnotation(atree.tpe).asInstanceOf[RetainingAnnotation]
+        case atree =>
+          CompactAnnotation(atree).asInstanceOf[RetainingAnnotation]
+}

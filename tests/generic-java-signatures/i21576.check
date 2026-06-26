@@ -1,0 +1,3 @@
+public SubFlow(SubFlowDef<Flow1>,SubFlowDef<Flow2>)
+public SubFlowDef<Flow1> SubFlow.delegate1()
+public SubFlowDef<Flow2> SubFlow.delegate2()

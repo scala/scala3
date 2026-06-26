@@ -7,7 +7,7 @@ import ast.*
 import Trees.*, StdNames.*, Scopes.*, Denotations.*, NamerOps.*, ContextOps.*
 import Contexts.*, Symbols.*, Types.*, SymDenotations.*, Names.*, NameOps.*, Flags.*
 import Decorators.*, Comments.{_, given}
-import NameKinds.DefaultGetterName
+import NameKinds.{DefaultGetterName, ModuleClassName}
 import ast.desugar, ast.desugar.*
 import ProtoTypes.*
 import util.Spans.*
@@ -15,7 +15,7 @@ import util.Property
 import collection.mutable, mutable.ListBuffer
 import tpd.tpes
 import Variances.alwaysInvariant
-import config.{Config, Feature}
+import config.{Config, Feature, MigrationVersion}
 import config.Printers.typr
 import inlines.{Inlines, PrepareInlineable}
 import parsing.JavaParsers.JavaParser
@@ -28,6 +28,7 @@ import TypeErasure.erasure
 import reporting.*
 import config.Feature.{sourceVersion, modularity}
 import config.SourceVersion.*
+import rewrites.Rewrites.patch
 
 import scala.compiletime.uninitialized
 
@@ -179,6 +180,39 @@ class Namer { typer: Typer =>
     if conflictsDetected then name.freshened else name
   end checkNoConflict
 
+  def checkDefName(name: Name, tree: Tree, flags: FlagSet)(using Context): Unit =
+    val isModule = name.is(ModuleClassName)
+    // nme.raw.DOLLAR or $$, avoiding toString and toSimpleName but incurring toTermName
+    // also matches "a" since it cannot contain "$"
+    inline def isDollars =
+      name.toTermName.match {
+        case simple: SimpleName =>
+          simple.length == 1 || simple.length == 2 && simple.endsWith(str.EXPAND_SEPARATOR)
+        case _ =>
+          isModule && {
+            val simple = name.toSimpleName
+            simple.length == 2 && simple.endsWith(str.EXPAND_SEPARATOR)
+          }
+      }
+    def exempt =
+         isBackquoted(tree)
+      || tree.span.isSynthetic
+      || flags.isOneOf(Synthetic | Accessor | CaseAccessor) // check the case param not the accessor
+      || flags.is(Param) && ctx.owner.is(Synthetic)
+      || isDollars
+    // no point in warning about $ in Java, there are no backticks to insert nor other ways to suppress such a warning
+    if !flags.is(JavaDefined) && !exempt && (isModule || !name.toTermName.isInstanceOf[DerivedName]) then
+      val simple = name.toSimpleName
+      val max = if isModule then simple.length - 1 else simple.length
+      val last = simple.lastIndexOf('$', start = max - 1)
+      if last >= 0 then
+        val start = tree.span.point
+        val errPos = tree.srcPos.sourcePos.withSpan(Span(start, start + max, start))
+        if MigrationVersion.IdentifierDollars.needsPatch then
+          patch(errPos.sourcePos.source, errPos.span.startPos, "`")
+          patch(errPos.sourcePos.source, errPos.span.endPos, "`")
+        report.errorOrMigrationWarning(IllegalIdentifier(name), errPos, MigrationVersion.IdentifierDollars)
+
   /** If this tree is a member def or an import, create a symbol of it
    *  and store in symOfTree map.
    */
@@ -252,6 +286,8 @@ class Namer { typer: Typer =>
         if Feature.shouldBehaveAsScala2 then
           flags |= Scala2x
         val name = checkNoConflict(tree.name, tree.span).asTypeName
+        if name == tree.name then
+          checkDefName(name, tree, flags)
         val cls =
           createOrRefine[ClassSymbol](tree, name, flags, ctx.owner,
             cls => adjustIfModule(new ClassCompleter(cls, tree)(ctx), tree),
@@ -261,6 +297,8 @@ class Namer { typer: Typer =>
       case tree: MemberDef =>
         var flags = checkFlags(tree.mods.flags)
         val name = checkNoConflict(tree.name, tree.span)
+        if name == tree.name then
+          checkDefName(name, tree, flags)
         tree match
           case tree: ValOrDefDef =>
             if tree.isInstanceOf[ValDef] && !flags.is(Param) && name.endsWith("_=") then
@@ -343,7 +381,10 @@ class Namer { typer: Typer =>
         report.error(PkgDuplicateSymbol(existingType), pid.srcPos)
         newCompletePackageSymbol(pkgOwner, (pid.name ++ "$_error_").toTermName).entered
       }
-      else newCompletePackageSymbol(pkgOwner, pid.name.asTermName).entered
+      else
+        val pname = pid.name.asTermName
+        checkDefName(pname, pid, EmptyFlags)
+        newCompletePackageSymbol(pkgOwner, pname).entered
     }
   }
 
@@ -488,14 +529,22 @@ class Namer { typer: Typer =>
    */
   final def addChild(cls: Symbol, child: Symbol)(using Context): Unit = {
     val childStart = if (child.span.exists) child.span.start else -1
+    // A Child annotation that is currently being forced cannot be safely
+    // inspected here (forcing it again would trigger an assertion in
+    // `LazyAnnotation.tree`). This can happen when adding a child causes
+    // completion of another class that itself needs to be added as a child of
+    // the same parent (see tests/pos-special/i24719). In that case, fall back
+    // to just prepending the new Child annotation.
+    def isReady(ann: Annotation): Boolean =
+      ann.symbol == defn.ChildAnnot && !ann.isEvaluating
     def insertInto(annots: List[Annotation]): List[Annotation] =
-      annots.find(_.symbol == defn.ChildAnnot) match {
-        case Some(Annotation.Child(other)) if other.span.exists && childStart <= other.span.start =>
+      annots.find(isReady) match {
+        case Some(Annotation.NonStaleChild(other)) if other.span.exists && childStart <= other.span.start =>
           if (child == other)
             annots // can happen if a class has several inaccessible children
           else {
             assert(childStart != other.span.start || child.source != other.source, i"duplicate child annotation $child / $other")
-            val (prefix, otherAnnot :: rest) = annots.span(_.symbol != defn.ChildAnnot): @unchecked
+            val (prefix, otherAnnot :: rest) = annots.span(ann => !isReady(ann)): @unchecked
             prefix ::: otherAnnot :: insertInto(rest)
           }
         case _ =>
@@ -552,7 +601,7 @@ class Namer { typer: Typer =>
         if (tree == modCls) {
           val fromTempl = fromCls.rhs.asInstanceOf[Template]
           val modTempl = modCls.rhs.asInstanceOf[Template]
-          res = cpy.TypeDef(modCls)(
+          val r = cpy.TypeDef(modCls)(
             rhs = cpy.Template(modTempl)(
               derived = if (fromTempl.derived.nonEmpty) fromTempl.derived else modTempl.derived,
               body = fromTempl.body.filter {
@@ -563,10 +612,10 @@ class Namer { typer: Typer =>
           if (fromTempl.derived.nonEmpty) {
             if (modTempl.derived.nonEmpty)
               report.error(em"a class and its companion cannot both have `derives` clauses", mdef.srcPos)
-            // `res` is inside a closure, so the flow-typing doesn't work here.
-            res.uncheckedNN.putAttachment(desugar.DerivingCompanion, fromTempl.srcPos.startPos)
+            r.putAttachment(desugar.DerivingCompanion, fromTempl.srcPos.startPos)
           }
-          res.uncheckedNN
+          res = r
+          r
         }
         else tree
       }
@@ -888,8 +937,9 @@ class Namer { typer: Typer =>
       completedTypeParamSyms = tparams
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
-      if completedTypeParamSyms != null then completedTypeParamSyms.uncheckedNN
-      else Nil
+      completedTypeParamSyms match
+        case null => Nil
+        case cpts => cpts
 
     protected def addAnnotations(sym: Symbol): Unit = original match {
       case original: untpd.MemberDef =>
@@ -1051,10 +1101,11 @@ class Namer { typer: Typer =>
       }
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
-      if myTypeParams == null then
+      initialize(myTypeParams, myTypeParams = _, {
         //println(i"completing type params of $sym in ${sym.owner}")
-        nestedCtx = localContext(sym).setNewScope
-        given Context = nestedCtx.uncheckedNN
+        val newScope = localContext(sym).setNewScope
+        nestedCtx = newScope
+        given Context = newScope
 
         def typeParamTrees(tdef: Tree): List[TypeDef] = tdef match
           case TypeDef(_, original) =>
@@ -1066,10 +1117,11 @@ class Namer { typer: Typer =>
 
         val tparams = typeParamTrees(original)
         index(tparams)
-        myTypeParams = tparams.map(symbolOfTree(_).asType)
+        val res = tparams.map(symbolOfTree(_).asType)
+        myTypeParams = res
         for param <- tparams do typedAheadExpr(param)
-      end if
-      myTypeParams.uncheckedNN
+        res
+      })
     end completerTypeParams
 
     override final def typeSig(sym: Symbol): Type =
@@ -1171,7 +1223,7 @@ class Namer { typer: Typer =>
 
     val TypeDef(name, impl @ Template(constr, _, self, _)) = original: @unchecked
 
-    private val (params, rest): (List[Tree], List[Tree]) = impl.body.span {
+    private val (params: List[Tree], rest: List[Tree]) = impl.body.span {
       case td: TypeDef => td.mods.is(Param)
       case vd: ValDef => vd.mods.is(ParamAccessor)
       case _ => false
@@ -1216,7 +1268,9 @@ class Namer { typer: Typer =>
                it suffices to check if symbol is the same class. */
             cls == id.symbol
           case _ => false
-        if !sym.isAccessibleFrom(pathType) then
+        if mbr.info.isInstanceOf[ErrorType] then
+          No("already has an error")
+        else if !sym.isAccessibleFrom(pathType) then
           No("is not accessible")
         else if sym.isConstructor || sym.is(ModuleClass) || sym.is(Bridge) || sym.is(PhantomSymbol) || sym.isAllOf(JavaModule) then
           Skip
@@ -2106,7 +2160,7 @@ class Namer { typer: Typer =>
   )(using Context): Type =
     /** Is this member tracked? This is true if it is marked as `tracked` or if
      *  it overrides a `tracked` member. To account for the later, `isTracked`
-     *  is overriden to `true` as a side-effect of computing `inherited`.
+     *  is overridden to `true` as a side-effect of computing `inherited`.
      */
     var isTracked: Boolean = sym.is(Tracked)
 
@@ -2228,7 +2282,7 @@ class Namer { typer: Typer =>
         // See i21558, the default argument new A(1.0) is of type A[?T]
         // With an uninterpolated, invariant ?T type variable.
         // So before we return the default getter parameter type (A[? <: Double])
-        // we want to force ?T to instantiate, so it's poly is removed from the constraint
+        // we want to force ?T to instantiate, so its poly is removed from the constraint
         isFullyDefined(tp, ForceDegree.all)
         // When possible, widen to the default getter parameter type to permit a
         // larger choice of overrides (see `default-getter.scala`).

@@ -183,8 +183,6 @@ object Types extends TypeUtils {
         // https://www.scala-lang.org/files/archive/spec/2.11/11-annotations.html#scala-compiler-annotations
         tp.annot.symbol == defn.UncheckedStableAnnot || tp.parent.isStable
       case tp: AndType =>
-        // TODO: fix And type check when tp contains type parames for explicit-nulls flow-typing
-        // see: tests/explicit-nulls/pos/flow-stable.scala.disabled
         tp.tp1.isStable && (realizability(tp.tp2) eq Realizable) ||
         tp.tp2.isStable && (realizability(tp.tp1) eq Realizable)
       case tp: AppliedType => tp.cachedIsStable
@@ -626,10 +624,11 @@ object Types extends TypeUtils {
      *  instance, or NoSymbol if none exists (either because this type is not a
      *  value type, or because superclasses are ambiguous).
      */
-    final def classSymbol(using Context): Symbol = this match
+    final def classSymbol(using Context): ClassSymbol | NoSymbol.type = this match
       case tp: TypeRef =>
-        val sym = tp.symbol
-        if (sym.isClass) sym else tp.superType.classSymbol
+        tp.symbol match
+          case classSym: ClassSymbol => classSym
+          case _ => tp.superType.classSymbol
       case tp: TypeProxy =>
         tp.superType.classSymbol
       case tp: ClassInfo =>
@@ -736,8 +735,7 @@ object Types extends TypeUtils {
           case tp: WildcardType =>
             tp.effectiveBounds.hi.baseClasses
           case _ => Nil
-      catch case ex: Throwable =>
-        handleRecursive("base classes of", this.show, ex)
+      catch case ex: Throwable => handleRecursive("base classes of", this.show, ex)
 
 // ----- Member access -------------------------------------------------
 
@@ -875,7 +873,7 @@ object Types extends TypeUtils {
           NoDenotation
       }
       def goRec(tp: RecType) =
-        // TODO: change tp.parent to nullable or other values
+        // this can be called while we're initializing `tp.parent`, at which point it's null
         if ((tp.parent: Type | Null) == null) NoDenotation
         else if (tp eq pre) go(tp.parent)
         else
@@ -2432,7 +2430,9 @@ object Types extends TypeUtils {
      *  current run.
      */
     def denotationIsCurrent(using Context): Boolean =
-      lastDenotation != null && lastDenotation.uncheckedNN.validFor.runId == ctx.runId
+      lastDenotation match
+        case null => false
+        case ld => ld.validFor.runId == ctx.runId
 
     /** If the reference is symbolic or the denotation is current, its symbol, otherwise NoDenotation.
      *
@@ -4125,7 +4125,7 @@ object Types extends TypeUtils {
             tp match
               case CapturingType(parent, refs) =>
                 val status1 = (compute(status, parent, theAcc) /: refs.elems):
-                  (s, ref) => ref.stripReach match
+                  (s, ref) => ref match
                     case tp: TermParamRef if tp.binder eq thisLambdaType => combine(s, TrueDeps)
                     case tp => combine(s, compute(status, tp.coreType, theAcc))
                 if refs.isConst || forParams // We assume capture set variables in parameters don't generate param dependencies
@@ -4198,7 +4198,7 @@ object Types extends TypeUtils {
     def nonDependentResultApprox(using Context): Type =
       if isResultDependent then
         object dropDependencies extends ApproximatingTypeMap {
-          def apply(tp: Type) = tp match {
+          def apply(tp: Type) = tp match
             case tp @ TermParamRef(`thisLambdaType`, _) =>
               range(defn.NothingType, atVariance(1)(apply(tp.underlying)))
             case CapturingType(_, _) =>
@@ -4212,13 +4212,6 @@ object Types extends TypeUtils {
               else
                 parent1
             case _ => mapOver(tp)
-          }
-          override def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
-            case Reach(c1) =>
-              apply(c1) match
-                case tp1a: ObjectCapability if tp1a.isTrackableRef => tp1a.reach
-                case _ => GlobalAny
-            case _ => super.mapCapability(c, deep)
         }
         dropDependencies(resultType)
       else resultType
@@ -4330,8 +4323,6 @@ object Types extends TypeUtils {
       if param.is(Erased) then
         paramType = addAnnotation(paramType, defn.ErasedParamAnnot, param)
       // Copy `@use` and `@consume` annotations from parameter symbols to the type.
-      if param.hasAnnotation(defn.UseAnnot) then
-        paramType = addAnnotation(paramType, defn.UseAnnot, param)
       if param.hasAnnotation(defn.ConsumeAnnot) then
         paramType = addAnnotation(paramType, defn.ConsumeAnnot, param)
       paramType
@@ -4883,9 +4874,9 @@ object Types extends TypeUtils {
     def paramInfo: binder.PInfo    = binder.paramInfos(paramNum)
 
     override def underlying(using Context): Type = {
-      // TODO: update paramInfos's type to nullable
+      // This can be called while we're initializing `binder.paramInfos`, at which point it's null
       val infos: List[Type] | Null = binder.paramInfos
-      if (infos == null) NoType // this can happen if the referenced generic type is not initialized yet
+      if (infos == null) NoType
       else infos(paramNum)
     }
 
@@ -4967,10 +4958,7 @@ object Types extends TypeUtils {
     }
 
     override def toString: String =
-      try s"RecThis(${binder.hashCode})"
-      catch {
-        case ex: NullPointerException => s"RecThis(<under construction>)"
-      }
+      s"RecThis(${binder.hashCode})"
   }
 
   private final class RecThisImpl(binder: RecType) extends RecThis(binder)
@@ -5069,11 +5057,13 @@ object Types extends TypeUtils {
     private[core] def permanentInst = inst
     private[core] def setPermanentInst(tp: Type): Unit =
       inst = tp
-      if tp.exists && owningState != null then
-        val owningState1 = owningState.uncheckedNN.get
-        if owningState1 != null then
-          owningState1.ownedVars -= this
-          owningState = null // no longer needed; null out to avoid a memory leak
+      owningState match
+        case os: WeakReference[TyperState] if tp.exists =>
+          val owningState1 = os.get
+          if owningState1 != null then
+            owningState1.ownedVars -= this
+            owningState = null // no longer needed; null out to avoid a memory leak
+        case _ => ()
 
     private[core] def resetInst(ts: TyperState): Unit =
       assert(inst.exists)
@@ -5130,7 +5120,7 @@ object Types extends TypeUtils {
         assert(currentEntry.bounds.contains(tp),
           i"$origin is constrained to be $currentEntry but attempted to instantiate it to $tp")
 
-      if ((ctx.typerState eq owningState.nn.get.uncheckedNN) && !TypeComparer.subtypeCheckInProgress)
+      if ((ctx.typerState eq owningState.nn.get) && !TypeComparer.subtypeCheckInProgress)
         setPermanentInst(tp)
       ctx.typerState.constraint = ctx.typerState.constraint.replace(origin, tp)
       tp
@@ -6121,7 +6111,7 @@ object Types extends TypeUtils {
             val args1 = args.zipWithConserve(tparams):
               case (arg @ TypeBounds(lo, hi), tparam) =>
                 val v = vmap.computedVariance(tparam)
-                if v.uncheckedNN < 0 then lo
+                if v != null && v < 0 then lo
                 else hi
               case (arg, _) => arg
             tp.derivedAppliedType(tycon, args1)
@@ -6250,8 +6240,8 @@ object Types extends TypeUtils {
     def inverse: BiTypeMap
 
     /** A restriction of this map to a function on tracked Capabilities */
-    override def mapCapability(c: Capability, deep: Boolean): Capability =
-      super.mapCapability(c, deep) match
+    override def mapCapability(c: Capability): Capability =
+      super.mapCapability(c) match
         case c1: Capability => c1
         case (cs, _) => assert(false, i"bimap $toString should map $c to a capability, but result = $cs")
 
@@ -6368,7 +6358,11 @@ object Types extends TypeUtils {
       case _ =>
         null
 
-    def mapCapability(c: Capability, deep: Boolean = false): Capability | (CaptureSet, Boolean) = c match
+    /** Map capability `c` with this type map.
+     *  @return  Either a the mapped capability, or a captureset containing mapped capabilities,
+     *           together with a boolen indicating whether the map is exact, rather than approximated.
+     */
+    def mapCapability(c: Capability): Capability | (CaptureSet, Boolean) = c match
       case c @ LocalCap(prefix) =>
         // If `pre` is not a path, transform it to a path starting with a skolem TermRef.
         // We create at most one such skolem per LocalCap/context owner pair.
@@ -6387,33 +6381,25 @@ object Types extends TypeUtils {
                 skolem
         c.derivedLocalCap(ensurePath(apply(prefix)))
       case c: RootCapability => c
-      case Reach(c1) =>
-        mapCapability(c1, deep = true)
       case Restricted(c1, cls) =>
         mapCapability(c1) match
           case c2: Capability => c2.restrict(cls)
           case (cs: CaptureSet, exact) => (cs.restrict(cls), exact)
       case ReadOnly(c1) =>
-        assert(!deep)
         mapCapability(c1) match
           case c2: Capability => c2.readOnly
           case (cs: CaptureSet, exact) => (cs.readOnly, exact)
       case Maybe(c1) =>
-        assert(!deep)
         mapCapability(c1) match
           case c2: Capability => c2.maybe
           case (cs: CaptureSet, exact) => (cs.maybe, exact)
       case ref: CoreCapability =>
         val tp1 = apply(ref)
         val ref1 = toTrackableRef(tp1)
-        if ref1 != null then
-          if deep then ref1.reach
-          else ref1
+        if ref1 != null then ref1
         else
           val isLiteral = tp1.typeSymbol == defn.Caps_CapSet
-          val cs =
-            if deep && !isLiteral then CaptureSet.ofTypeDeeply(tp1)
-            else CaptureSet.ofType(tp1, followResult = false)
+          val cs = CaptureSet.ofType(tp1, followResult = false)
           (cs, isLiteral)
 
     /** Utility method. Maps the supertype of a type proxy. Returns the

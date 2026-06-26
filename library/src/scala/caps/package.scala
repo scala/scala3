@@ -46,10 +46,6 @@ object any extends Capability
 @experimental
 object fresh extends Capability
 
-@experimental // TODO: Drop once we bootstrap with 3.8.4 (is still being used by non-bootstrap compiler)
-@deprecated
-object cap extends Capability
-
 /** Marker trait for capabilities that can be safely shared in a concurrent context.
  *
  *  [[SharedCapability]] has a formal meaning when
@@ -92,12 +88,6 @@ trait Control extends SharedCapability, Classifier
 @experimental
 trait Stateful
 
-/** Marker trait for classes that produce fresh capabilities with their values. If a value of a type
- *  extending Separate is created, a fresh `any` is automatically added to the value's capture set.
- */
-@experimental @deprecated
-trait Separate extends Stateful, ExclusiveCapability
-
 /** Marker trait for classes that are not subject to scoping restrictions of captured capabilities. */
 @experimental
 trait Unscoped extends ExclusiveCapability, Classifier
@@ -105,18 +95,15 @@ trait Unscoped extends ExclusiveCapability, Classifier
 @experimental
 trait Mutable extends Stateful, Unscoped
 
-/** Marker trait for classes with reader methods, typically extended by Mutable classes. */
-@experimental
-@deprecated
-trait Read extends Mutable
-
-
 /** Carrier trait for capture set type parameters. */
 @experimental
 trait CapSet extends Any
 
 /** A type constraint expressing that the capture set `C` needs to contain
  *  the capability `R`
+ *
+ *  @tparam C the capture set that must contain the capability `R`
+ *  @tparam R the singleton type of the capability that must be present in `C`
  */
 @experimental
 sealed trait Contains[+C >: CapSet <: CapSet @retainsCap, R <: Singleton]
@@ -129,16 +116,12 @@ object Contains:
   @experimental
   given containsImpl[C >: CapSet <: CapSet @retainsCap, R <: Singleton]: Contains[C, R]()
 
-/** An annotation on capset parameters `C` stating that the method's body does not
+/** Was an annotation on capset parameters `C` stating that the method's body does not
  *  have `C` in its use-set. `C` might be accessed under a box in the method
- *  or in the result type of the method. Consequently, when calling the method
- *  we do not need to charge the capture set of the actual argiment to the
- *  environment.
- *
- *  Note: This should go into annotations. For now it is here, so that we
- *  can experiment with it quickly between minor releases
+ *  or in the result type of the method.
+ *  Now deprecated and with no effect.
  */
-@experimental
+@experimental @deprecated
 final class reserve extends annotation.StaticAnnotation
 
 /** An annotation for definitions that should not be accessible from code
@@ -155,23 +138,6 @@ final class rejectSafe(message: String = "") extends scala.annotation.ConstantAn
 @getter @setter @beanGetter @beanSetter @field
 final class assumeSafe extends scala.annotation.ConstantAnnotation
 
-/** Allowed only for source versions up to 3.7:
- *  An annotation on parameters `x` stating that the method's body makes
- *  use of the reach capability `x*`. Consequently, when calling the method
- *  we need to charge the deep capture set of the actual argiment to the
- *  environment.
- */
-@experimental
-@deprecated(since = "3.8.0")
-final class use extends annotation.StaticAnnotation
-
-/** A trait that used to allow expressing existential types. Replaced by
- *  root.Result instances.
- */
-@experimental
-@deprecated
-sealed trait Exists extends Capability
-
 @experimental
 object internal:
 
@@ -182,27 +148,37 @@ object internal:
   final class consume extends annotation.StaticAnnotation
 
   /** An annotation on a type indicating that the type was inferred. Added
-   *  during inlining when we want to mark portions of aotherwise explicit type
+   *  during inlining when we want to mark portions of an otherwise explicit type
    *  as inferred.
    */
   final class inferred extends annotation.StaticAnnotation
 
-  /** An internal annotation placed on a refinement created by capture checking.
-   *  Refinements with this annotation unconditionally override any
-   *  info from the parent type, so no intersection needs to be formed.
-   *  This could be useful for tracked parameters as well.
+  /** An annotation on a type indicating that the type was declared. Added
+   *  during PostTyper when we want to mark types of closure parameters as
+   *  explicit, even if the closure type as a whole is inferred.
    */
-  @deprecated
-  final class refineOverride extends annotation.StaticAnnotation
+  final class declared extends annotation.StaticAnnotation
+
+  /** An internal annotation placed on a parameter of a secondary constructor
+   *  that gets forwarded indirectly or directly to a parameter of the
+   *  corresponding primary constructor.
+   *  @param parmName   the name of the primary constructor parameter
+   */
+  final class paramAlias(paramName: String) extends annotation.StaticAnnotation
 
   /** An erasedValue issued internally by the compiler. Unlike the
    *  user-accessible compiletime.erasedValue, this version is assumed
    *  to be a pure expression, hence capability safe. The compiler generates this
    *  version only where it is known that a value can be generated.
+   *
+   *  @tparam T the type of the erased value to produce
    */
   def erasedValue[T]: T = ???
 
-  /** A trait for capabilities representing usage of mutable vars in capture sets. */
+  /** A trait for capabilities representing usage of mutable vars in capture sets.
+   *
+   *  @tparam T the type of the mutable variable's value
+   */
   trait Var[T] extends Mutable:
     def get: T
     update def set(x: T): Unit
@@ -254,16 +230,24 @@ object unsafe:
      */
     def unsafeAssumePure: T = x
 
-  /** A wrapper around code for which separation checks are suppressed. */
+  /** A wrapper around code for which separation checks are suppressed.
+   *
+   *  @param op the code block to execute without separation checking; returned as-is
+   */
   def unsafeAssumeSeparate(op: Any): op.type = op
 
-  /** A wrapper around code for which uses go unrecorded. */
+  /** A wrapper around code for which uses go unrecorded.
+   *
+   *  @param op the code block to execute without recording capability uses; returned as-is
+   */
   def unsafeDiscardUses(op: Any): op.type = op
 
   /** An unsafe variant of erasedValue that can be used as an escape hatch. Unlike the
    *  user-accessible compiletime.erasedValue, this version is assumed
    *  to be a pure expression, hence capability safe. But there is no proof
    *  of realizability, hence it is unsafe.
+   *
+   *  @tparam T the type of the erased value to produce (no realizability guarantee, hence unsafe)
    */
   def unsafeErasedValue[T]: T = ???
 

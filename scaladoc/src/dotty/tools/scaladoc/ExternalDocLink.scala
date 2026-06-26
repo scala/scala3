@@ -22,7 +22,7 @@ object ExternalDocLink:
 
   private def tryParse[T](mapping: String, descr: String)(op: => T): Either[String, T] = Try(op) match {
     case Success(v) => Right(v)
-    case Failure(e) => fail(mapping, s"Unable to parse $descr. Exception $e occured")
+    case Failure(e) => fail(mapping, s"Unable to parse $descr. Exception $e occurred")
   }
 
   private def stripIndex(url: String): String = url.stripSuffix("index.html").stripSuffix("/") + "/"

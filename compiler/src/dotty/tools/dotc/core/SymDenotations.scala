@@ -19,7 +19,6 @@ import annotation.tailrec
 import util.SimpleIdentityMap
 import util.Stats
 import java.util.WeakHashMap
-import scala.util.control.NonFatal
 import config.Config
 import reporting.*
 import collection.mutable
@@ -854,6 +853,10 @@ object SymDenotations {
     final def isPrimaryConstructor(using Context): Boolean =
       isConstructor && owner.primaryConstructor == symbol
 
+    /** Does this symbol denote a secondary constructor for its enclosing class? */
+    def isSecondaryConstructor(using Context): Boolean =
+      isConstructor && owner.primaryConstructor != symbol
+
     /** Does this symbol denote the static constructor of its enclosing class? */
     final def isStaticConstructor(using Context): Boolean =
       name.isStaticConstructorName
@@ -870,7 +873,7 @@ object SymDenotations {
     def derivesFrom(base: Symbol)(using Context): Boolean = false
 
     /** Could `this` derive from `base` now or in the future.
-     *  For concistency with derivesFrom, the info is only forced when this is a ClassDenotation.
+     *  For consistency with derivesFrom, the info is only forced when this is a ClassDenotation.
      *  If the info is a TempClassInfo then the baseClassSet may be temporarily approximated as empty.
      *  This is problematic when stability of `!derivesFrom(base)` is assumed for soundness,
      *  e.g., in `TypeComparer#provablyDisjointClasses`.
@@ -1844,6 +1847,10 @@ object SymDenotations {
     /** Same as `sealedStrictDescendants` but prepends this symbol as well.
      */
     final def sealedDescendants(using Context): List[Symbol] = this.symbol :: sealedStrictDescendants
+
+    def javaSimpleName(using Context): String = name.mangledString
+    def javaClassName(using Context): String = fullName.mangledString
+    def javaBinaryName(using Context): String = javaClassName.replace('.', '/')
   }
 
   /** The contents of a class definition during a period
@@ -1910,7 +1917,9 @@ object SymDenotations {
       invalidateMemberNamesCache()
 
     def invalidateMemberCachesFor(sym: Symbol)(using Context): Unit =
-      if myMemberCache != null then myMemberCache.uncheckedNN.remove(sym.name)
+      myMemberCache match
+        case null => ()
+        case mc => mc.remove(sym.name)
       if !sym.flagsUNSAFE.is(Private) then
         invalidateMemberNamesCache()
         if sym.isWrappedToplevelDef then
@@ -2057,7 +2066,25 @@ object SymDenotations {
         case p :: parents1 =>
           p.classSymbol match {
             case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
-            case _ => assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive) || ctx.tolerateErrorsForBestEffort, s"$this has non-class parent: $p")
+            case _ =>
+              // The parent type couldn't be resolved to a class, e.g.
+              // because a transitive dependency was removed from the
+              // classpath. Report a `BadSymbolicReference` (mirroring the
+              // pattern used by `StubInfo.complete` above) rather than
+              // crashing with an internal assertion. See scala/scala3#20010.
+              def ignoreBadParent =
+                isRefinementClass || p.isError
+                  || ctx.mode.is(Mode.Interactive) || ctx.tolerateErrorsForBestEffort
+              p match
+                case p: TypeRef if p.symbol == NoSymbol && !ignoreBadParent =>
+                  val stubOwner =
+                    p.prefix.classSymbol
+                      .orElse(p.prefix.termSymbol.moduleClass)
+                      .orElse(defn.RootClass)
+                  val stub = newStubSymbol(stubOwner, p.name, CompilationUnitInfo(symbol.associatedFile))
+                  report.error(BadSymbolicReference(stub.denot), symbol.srcPos)
+                case _ =>
+                  assert(ignoreBadParent, s"$this has non-class parent: $p")
           }
           traverse(parents1)
         case nil =>
@@ -2140,7 +2167,9 @@ object SymDenotations {
      */
     def replace(prev: Symbol, replacement: Symbol)(using Context): Unit = {
       unforcedDecls.openForMutations.replace(prev, replacement)
-      if (myMemberCache != null) myMemberCache.uncheckedNN.remove(replacement.name)
+      myMemberCache match
+        case null => ()
+        case mc => mc.remove(replacement.name)
     }
 
     /** Delete symbol from current scope.
@@ -2151,7 +2180,9 @@ object SymDenotations {
       val scope = info.decls.openForMutations
       scope.unlink(sym, sym.name)
       if sym.name != sym.originalName then scope.unlink(sym, sym.originalName)
-      if (myMemberCache != null) myMemberCache.uncheckedNN.remove(sym.name)
+      myMemberCache match
+        case null => ()
+        case mc => mc.remove(sym.name)
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
 
@@ -2384,7 +2415,7 @@ object SymDenotations {
         }
       }
       catch {
-        case ex: Throwable =>
+        case ex: Exception =>
           tp match
             case tp: CachedType => btrCache.remove(tp)
             case _ =>
@@ -2415,6 +2446,11 @@ object SymDenotations {
             case pcls: ClassSymbol =>
               for name <- pcls.memberNames(keepOnly) do
                 maybeAdd(name)
+            case _ =>
+              // Parent failed to resolve to a class (the missing
+              // reference has been reported by computeBaseData).
+              // Skip here to avoid a secondary MatchError.
+              // See scala/scala3#20010.
         val ownSyms =
           if (keepOnly eq implicitFilter)
             if (this.is(Package)) Iterator.empty
@@ -2425,8 +2461,7 @@ object SymDenotations {
         names
       }
       catch {
-        case ex: Throwable =>
-          handleRecursive("member names", i"of $this", ex)
+        case ex: Throwable => handleRecursive("member names", i"of $this", ex)
       }
     }
 
@@ -2614,7 +2649,7 @@ object SymDenotations {
             // since the older file might have been loaded from a jar earlier in the
             // classpath.
             def sameContainer(f: AbstractFile): Boolean =
-              try f.container == chosen.container catch case NonFatal(ex) => true
+              try f.container == chosen.container catch case ex: Exception => true
             if !ambiguityWarningIssued then
               for conflicting <- assocFiles.find(!sameContainer(_)) do
                 report.warning(em"""${ambiguousFilesMsg(conflicting)}
@@ -3044,17 +3079,18 @@ object SymDenotations {
         : (List[ClassSymbol], BaseClassSet) = {
       assert(isValid)
       CyclicReference.trace("compute the base classes of ", clsd.symbol):
-        if cache != null then cache.uncheckedNN
-        else
-          if (locked) throw CyclicReference(clsd)
-          locked = true
-          provisional = false
-          val computed =
-            try clsd.computeBaseData(using this, ctx)
-            finally locked = false
-          if (!provisional) cache = computed
-          else onBehalf.signalProvisional()
-          computed
+        cache match
+          case null =>
+            if (locked) throw CyclicReference(clsd)
+            locked = true
+            provisional = false
+            val computed =
+              try clsd.computeBaseData(using this, ctx)
+              finally locked = false
+            if (!provisional) cache = computed
+            else onBehalf.signalProvisional()
+            computed
+          case mc => mc
     }
 
     def sameGroup(p1: Phase, p2: Phase) = p1.sameParentsStartId == p2.sameParentsStartId

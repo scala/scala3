@@ -12,6 +12,8 @@ import language.experimental.captureChecking
  *
  *  The annotation can also be written explicitly if one wants to avoid the
  *  non-standard capturing type syntax.
+ *
+ *  @tparam Elems a union of singleton `.type` references representing the captured capabilities (e.g., `x.type | y.type | z.type`)
  */
 @experimental
 class retains[Elems] extends annotation.StaticAnnotation

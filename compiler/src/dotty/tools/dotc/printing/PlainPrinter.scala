@@ -12,7 +12,6 @@ import typer.Implicits.*
 import typer.ImportInfo
 import Variances.varianceSign
 import util.{Chars, SourcePosition}
-import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
 import ast.{tpd, untpd}
@@ -90,7 +89,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else tp
 
   private def sameBound(lo: Type, hi: Type): Boolean =
-    try lo frozen_=:= hi catch { case NonFatal(ex) => false }
+    try lo frozen_=:= hi catch { case ex: Exception => false }
 
   private def homogenizeArg(tp: Type) = tp match {
     case TypeBounds(lo, hi) if homogenizedView && sameBound(lo, hi) => homogenize(hi)
@@ -135,9 +134,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def argText(arg: Type, isErased: Boolean = false): Text =
     keywordText("erased ").provided(isErased)
-    ~ specialAnnotText(defn.UseAnnot, arg)
     ~ specialAnnotText(defn.ConsumeAnnot, arg)
-    ~ specialAnnotText(defn.ReserveAnnot, arg)
     ~ homogenizeArg(arg).match
         case arg: TypeBounds => "?" ~ toText(arg)
         case arg => toText(arg)
@@ -278,7 +275,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val boxText: Text = Str("box ") `provided` tp.isBoxed && ccVerbose
         if elideCapabilityCaps
             && parent.derivesFromCapability
-            && refs.containsTerminalCapability
+            && refs.containsGlobalOrLocalCap
             && (!parent.derivesFromStateful || refs.isReadOnly)
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
@@ -355,7 +352,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: LazyRef =>
         def refTxt =
           try toTextGlobal(tp.ref)
-          catch case _: Throwable => Str("...") // reconsider catching errors
+          catch case _: Exception => Str("...") // reconsider catching errors
         "LazyRef(" ~ refTxt ~ ")"
       case Range(lo, hi) =>
         toText(lo) ~ ".." ~ toText(hi)
@@ -381,7 +378,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
     def paramText(ref: ParamRef) =
       val erased = ref.underlying.hasAnnotation(defn.ErasedParamAnnot)
       keywordText("erased ").provided(erased)
-        ~ specialAnnotText(defn.UseAnnot, ref.underlying)
         ~ specialAnnotText(defn.ConsumeAnnot, ref.underlying)
         ~ ParamRefNameString(ref) ~ hashStr(lam) ~ toTextRHS(ref.underlying, isParameter = true)
     Text(lam.paramRefs.map(paramText), ", ")
@@ -398,8 +394,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** If -uniqid is set, the hashcode of the type, after a # */
   protected def hashStr(tp: Type): String =
     if showUniqueIds then
-      try "#" + tp.hashCode
-      catch case ex: NullPointerException => ""
+      "#" + tp.hashCode
     else ""
 
   /** A string to append to a symbol composed of:
@@ -467,7 +462,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
   def toTextCapability(c: Capability): Text = c match
     case ReadOnly(c1) => toTextCapability(c1) ~ ".rd"
     case Restricted(c1, cls) => toTextCapability(c1) ~ s".only[${nameString(cls)}]"
-    case Reach(c1) => toTextCapability(c1) ~ "*"
     case Maybe(c1) => toTextCapability(c1) ~ "?"
     case GlobalAny => "any"
     case GlobalFresh => "fresh"
@@ -570,15 +564,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** Is this a capture variable's bounds? i.e. lo and hi are both CapSet-based. */
   private def isCaptureVarBounds(lo: Type, hi: Type): Boolean =
-    lo.derivesFrom(defn.Caps_CapSet) && (hi match
-      case CapturingType(parent, _) => parent.derivesFrom(defn.Caps_CapSet)
-      case hi => hi.derivesFrom(defn.Caps_CapSet))
+    lo.derivesFromCapSet && (hi match
+      case CapturingType(parent, _) => parent.derivesFromCapSet
+      case hi => hi.derivesFromCapSet)
 
   /** Print capture variable bounds using `^` syntax.
-   *  Plain CapSet lower bound and universal upper bound are elided.
+   *  Plain CapSet lower bound, empty lower bound, and universal upper bound are elided.
    */
   private def toTextCaptureVarBounds(lo: Type, hi: Type): Text =
     val loText = lo match
+      case CapturingType(_, refs: CaptureSet) if refs.elems.isEmpty && !ccVerbose => Text() // empty lower bound
       case CapturingType(_, refs) => " >: " ~ toTextCaptureSet(refs)
       case _ => Text() // plain CapSet = trivial lower bound
     val hiText = hi match

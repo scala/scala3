@@ -4,14 +4,8 @@ set -e
 
 source $(dirname $0)/cmdTestsCommon.inc.sh
 
-# check that benchmarks can run
-"$SBT" "scala3-bench/jmh:run 1 1 tests/pos/alias.scala"
-# The above is here as it relies on the bootstrapped library.
-"$SBT" "scala3-bench-bootstrapped/jmh:run 1 1 tests/pos/alias.scala"
-"$SBT" "scala3-bench-bootstrapped/jmh:run 1 1 -with-compiler compiler/src/dotty/tools/dotc/core/Types.scala"
-
 echo "testing scala.quoted.Expr.run from sbt scala"
-"$SBT" ";scala3-compiler-bootstrapped/scalac -with-compiler tests/run-staging/quote-run.scala; scala3-compiler-bootstrapped/scala -with-compiler Test" > "$tmp"
+"$SBT" ";scala3-bootstrapped/scalac -with-compiler tests/run-staging/quote-run.scala; scala3-bootstrapped/scala -with-compiler Test" | tee "$tmp"
 grep -qe "val a: scala.Int = 3" "$tmp"
 
 # setup for `scalac`/`scala` script tests
@@ -28,7 +22,7 @@ scala_version=${versionProps[2]}
 echo "testing ./bin/scalac and ./bin/scala"
 clear_out "$OUT"
 ./bin/scalac "$SOURCE" -d "$OUT"
-./bin/scala -classpath "$OUT" -M "$MAIN" > "$tmp"
+./bin/scala -classpath "$OUT" -M "$MAIN" | tee "$tmp"
 test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
 # Test scaladoc based on compiled classes
@@ -38,44 +32,44 @@ clear_out "$OUT1"
 # check that `scalac` and `scala` works for staging.
 clear_out "$OUT"
 ./bin/scalac tests/run-staging/i4044f.scala -d "$OUT"
-./bin/scala -with-compiler -classpath "$OUT" -M Test > "$tmp"
+./bin/scala -with-compiler -classpath "$OUT" -M Test | tee "$tmp"
 
 # check that `scalac -from-tasty` compiles and `scala` runs it
 echo "testing ./bin/scalac -from-tasty and scala -classpath"
 clear_out "$OUT1"
 ./bin/scalac "$SOURCE" -d "$OUT"
 ./bin/scalac -from-tasty -d "$OUT1" "$OUT/$TASTY"
-./bin/scala -classpath "$OUT1" -M "$MAIN" > "$tmp"
+./bin/scala -classpath "$OUT1" -M "$MAIN" | tee "$tmp"
 test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
 # check that `sbt scalac -decompile` runs
 echo "testing sbt scalac -decompile from file"
-./bin/scalac -decompile -color:never "$OUT/$TASTY" > "$tmp"
+./bin/scalac -decompile -color:never "$OUT/$TASTY" | tee "$tmp"
 grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
 
 # check that `sbt scalac -print-tasty` runs
 echo "testing sbt scalac -print-tasty from file"
-./bin/scalac -print-tasty -color:never "$OUT/$TASTY" > "$tmp"
+./bin/scalac -print-tasty -color:never "$OUT/$TASTY" | tee "$tmp"
 grep -qe "118:           STRINGconst 32 \[hello world\]" "$tmp"
 
 echo "testing loading tasty from .tasty file in jar"
 clear_out "$OUT"
 ./bin/scalac -d "$OUT/out.jar" "$SOURCE"
-./bin/scalac -decompile -color:never "$OUT/out.jar" > "$tmp"
+./bin/scalac -decompile -color:never "$OUT/out.jar" | tee "$tmp"
 grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tmp"
 
 echo "testing printing tasty from .tasty file in jar"
-./bin/scalac -print-tasty -color:never "$OUT/out.jar" > "$tmp"
+./bin/scalac -print-tasty -color:never "$OUT/out.jar" | tee "$tmp"
 grep -qe "118:           STRINGconst 32 \[hello world\]" "$tmp"
 
 echo "testing -script from scalac"
 clear_out "$OUT"
-./bin/scalac -script "$SOURCE" > "$tmp"
+./bin/scalac -script "$SOURCE" | tee "$tmp"
 test "$EXPECTED_OUTPUT" = "$(cat "$tmp")"
 
 echo "testing sbt scalac with suspension"
 clear_out "$OUT"
-"$SBT" "scala3-compiler-bootstrapped/scalac -d $OUT tests/pos-macros/macros-in-same-project-1/Bar.scala tests/pos-macros/macros-in-same-project-1/Foo.scala"  > "$tmp"
+"$SBT" "scala3-bootstrapped/scalac -d $OUT tests/pos-macros/macros-in-same-project-1/Bar.scala tests/pos-macros/macros-in-same-project-1/Foo.scala"  | tee "$tmp"
 
 # echo ":quit" | ./$DIST_DIR/target/universal/stage/bin/scala  # not supported by CI
 
@@ -93,10 +87,10 @@ clear_out "$OUT"
 ./bin/scalac @project/scripts/options "$SOURCE"
 
 # test command line options
-./bin/scalac -help > "$tmp" 2>&1
+./bin/scalac -help 2>&1 | tee "$tmp"
 grep -qe "Usage: scalac <options> <source files>" "$tmp"
 
-./bin/scala -help > "$tmp" 2>&1
+./bin/scala -help 2>&1 | tee "$tmp"
 grep -qe "See 'scala <command> --help' to read about a specific subcommand." "$tmp"
 
 ./bin/scala -d hello.jar tests/run/hello.scala
@@ -105,14 +99,14 @@ clear_cli_dotfiles tests/run
 
 # check that `scala` runs scripts with args
 echo "testing ./bin/scala with arguments"
-./bin/scala run project/scripts/echoArgs.sc -- abc true 123 > "$tmp"
+./bin/scala run project/scripts/echoArgs.sc -- abc true 123 | tee "$tmp"
 test "$EXPECTED_OUTPUT_ARGS" = "$(cat "$tmp")"
 clear_cli_dotfiles project/scripts
 
 #echo "testing i12973"
 #clear_out "$OUT"
 #./bin/scalac -d "$OUT/out.jar" tests/pos/i12973.scala
-#echo "Bug12973().check" | TERM=dumb ./bin/scala -cp "$OUT/out.jar" > "$tmp" 2>&1
+#echo "Bug12973().check" | TERM=dumb ./bin/scala -cp "$OUT/out.jar" | tee "$tmp" 2>&1
 #grep -qe "Bug12973 is fixed" "$tmp"
 
 echo "testing -sourcepath with incremental compile: inlining changed inline def into a def"

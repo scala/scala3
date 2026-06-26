@@ -17,7 +17,7 @@ import scala.annotation.internal.sharable
 case class SourcePosition(source: SourceFile, span: Span, outer: SourcePosition | Null = null)
 extends SrcPos, interfaces.SourcePosition, Showable:
 
-  def sourcePos(using Context) = this
+  def sourcePos(using Context) = WrappedSourceFile.sourcePos(source, span)
 
   /** Is `that` a source position contained in this source position?
    *  `outer` is not taken into account. */
@@ -85,6 +85,15 @@ extends SrcPos, interfaces.SourcePosition, Showable:
   override def toString: String =
     s"${if (source.exists) source.file.toString else "(no source)"}:$span"
 
+  /** A textual representation of this position in the format `file:line:column`.
+   *  Terminals in VS Code or  IntelliJ IDEA recognize this format and turn it
+   *  into a clickable link that jumps to the referenced location.
+   *  Returns `"<no position>"` if this position does not exist.
+   */
+  def showLineColumn: String =
+    if exists then s"$source:${line + 1}:${column + 1}"
+    else "<no position>"
+
   def toText(printer: Printer): Text = printer.toText(this)
 
 object SourcePosition:
@@ -111,3 +120,4 @@ trait SrcPos:
   def endPos(using ctx: Context): SourcePosition = sourcePos.endPos
   def focus(using ctx: Context): SourcePosition = sourcePos.focus
   def line(using ctx: Context): Int = sourcePos.line
+  def orElse(other: SrcPos): SrcPos = if span.exists then this else other

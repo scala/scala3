@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package semanticdb
 
-import scala.language.unsafeNulls
-
 import core.*
 import Phases.*
 import ast.tpd.*
@@ -151,7 +149,7 @@ private[semanticdb] object ExtractSemanticDB:
 
   /** Output directory for SemanticDB files */
   private def semanticdbOutDir(using Context): Path =
-    semanticdbTarget.getOrElse(outputDirectory.jpath)
+    semanticdbTarget.getOrElse(outputDirectory.jpath.nn)
 
   private def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
 
@@ -569,10 +567,20 @@ private[semanticdb] object ExtractSemanticDB:
       else
         Span(span.start)
 
-      if namePresentInSource(sym, span, treeSource) || sym.isAnonymousClass then
+      if namePresentInSource(sym, span, treeSource)
+        || sym.isAnonymousClass
+        || isPositionedMainEntryPoint(sym, span)
+      then
         registerOccurrence(sname, finalSpan, SymbolOccurrence.Role.DEFINITION, treeSource)
       if !sym.is(Package) then
         registerSymbol(sym, symkinds)
+
+    /** A generated main entry point may be anchored on a source span that does
+     *  not contain its name, so `namePresentInSource` is false and no
+     *  occurrence is emitted. Still emit one for such entry points so tooling
+     *  can locate them, restricted to runnable main classes. */
+    private def isPositionedMainEntryPoint(sym: Symbol, span: Span)(using Context): Boolean =
+      span.hasLength && ctx.platform.hasMainMethod(sym)
 
     private def spanOfSymbol(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Span =
       val contents = if treeSource.exists then treeSource.content() else Array.empty[Char]
@@ -671,7 +679,11 @@ private[semanticdb] object ExtractSemanticDB:
           val symkinds =
             getters.get(vparam.name).fold(SymbolKind.emptySet)(getter =>
               if getter.mods.is(Mutable) then SymbolKind.VarSet else SymbolKind.ValSet)
-          registerSymbol(vparam.symbol, symkinds)
+          // Emit a definition occurrence for the constructor parameter at its name span (and
+          // record the symbol; registerDefinition calls registerSymbol internally). The param
+          // symbol `C#<init>().(x)` then shares the name range with the param-accessor
+          // occurrence emitted from the template body.
+          registerDefinition(vparam.symbol, vparam.nameSpan, symkinds, vparam.source)
         traverse(vparam.tpt)
       tparams.foreach(tp => traverse(tp.rhs))
   end Extractor

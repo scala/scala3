@@ -182,7 +182,17 @@ object PickledQuotes {
         class ReplaceSplicedTyped extends TypeMap() {
           override def apply(tp: Type): Type = tp match {
             case tp: ClassInfo =>
-              tp.derivedClassInfo(declaredParents = tp.declaredParents.map(apply))
+              val parents = tp.declaredParents.map(apply)
+              // If a decl of this class references a spliced type, force a different
+              // ClassInfo instance so that `mapSymbols` makes a copy of the class and
+              // remaps its decls. Otherwise members whose infos reference splice type
+              // symbols are left un-remapped, leading to unsound erased signatures
+              val declsReferenceSplicedType = tp.decls.exists: d =>
+                d.info.existsPart(t => typeSpliceMap.contains(t.typeSymbol))
+              if declsReferenceSplicedType then
+                tp.derivedClassInfo(declaredParents = parents, decls = tp.decls.cloneScope)
+              else
+                tp.derivedClassInfo(declaredParents = parents)
             case tp: TypeRef =>
               typeSpliceMap.get(tp.symbol) match
                 case Some(t) if tp.typeSymbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) => mapOver(t)
@@ -223,11 +233,9 @@ object PickledQuotes {
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
     if tree.span.exists then
-      val positionWarnings = new mutable.ListBuffer[Message]()
       val reference = ctx.settings.sourceroot.value
       PositionPickler.picklePositions(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
-        ctx.compilationUnit.source, tree :: Nil, positionWarnings)
-      positionWarnings.foreach(report.warning(_))
+        ctx.compilationUnit.source, tree :: Nil)
 
     val pickled = pickler.assembleParts()
     quotePickling.println(s"**** pickled quote\n${TastyPrinter.showContents(pickled, ctx.settings.color.value == "never", isBestEffortTasty = false)}")

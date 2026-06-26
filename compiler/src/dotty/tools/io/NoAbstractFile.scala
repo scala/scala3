@@ -5,8 +5,6 @@
 
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
 import java.io.InputStream
 
 /** A distinguished object so you can avoid both null
@@ -15,19 +13,18 @@ import java.io.InputStream
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 object NoAbstractFile extends AbstractFile {
-  def absolute: AbstractFile = this
-  def container: AbstractFile = this
-  def jpath: JPath = null
-  def input: InputStream = null
-  def isDirectory: Boolean = false
+  override def absolute: AbstractFile = this
+  override def container: AbstractFile = this
+  override def jpath: JPath | Null = null
+  override def input: InputStream = throw UnsupportedOperationException("NoAbstractFile.input")
+  override def isDirectory: Boolean = false
   override def isVirtual: Boolean = true
-  def iterator: Iterator[AbstractFile] = Iterator.empty
-  def lastModified: Long = 0L
-  def lookupName(name: String, directory: Boolean): AbstractFile = null
-  def lookupNameUnchecked(name: String, directory: Boolean): AbstractFile = null
-  def name: String = ""
-  def output: java.io.OutputStream = null
-  def path: String = ""
+  override def iterator: Iterator[AbstractFile] = Iterator.empty
+  override def lastModified: Long = 0L
+  override def lookupName(name: String, directory: Boolean): AbstractFile | Null = null
+  override def name: String = ""
+  override def output: java.io.OutputStream = throw UnsupportedOperationException("NoAbstractFile.output")
+  override def path: String = ""
   override def toByteArray: Array[Byte] = Array[Byte]()
-  override def toString: String = "<no file>"
+  override def toString(): String = "<no file>"
 }

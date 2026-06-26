@@ -17,7 +17,6 @@ import TypeErasure.{erasedLub, erasedGlb}
 import TypeApplications.*
 import Variances.{Variance, variancesConform}
 import Constants.Constant
-import scala.util.control.NonFatal
 import typer.ProtoTypes.constrained
 import typer.Applications.productSelectorTypes
 import reporting.trace
@@ -55,6 +54,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     maxErrorLevel = -1
     errorNotes = Nil
     undoLog.clear()
+    frozenConstraint = false
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
@@ -108,7 +108,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   override def checkReset() =
     super.checkReset()
-    assert(pendingSubTypes == null || pendingSubTypes.uncheckedNN.isEmpty)
+    pendingSubTypes match
+      case null => ()
+      case ps => assert(ps.isEmpty)
     assert(canCompareAtoms == true)
     assert(successCount == 0)
     assert(totalCount == 0)
@@ -670,24 +672,28 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             // TODO: Merge with isSubInfo in hasMatchingMember. Currently, we can't since
             // the isSubinfo of hasMatchingMember has problems dealing with PolyTypes
             // (---> orphan params during pickling)
-            def isSubInfo(info1: Type, info2: Type): Boolean = (info1, info2) match
-              case (info1: PolyType, info2: PolyType) =>
-                info1.paramNames.hasSameLengthAs(info2.paramNames)
-                && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
-              case (info1: MethodType, info2: MethodType) =>
-                matchingMethodParams(info1, info2, precise = false)
-                && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
-              case (info1 @ CapturingType(parent1, refs1), info2: Type)
-              if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
-                compareCaptures(info1, refs1, info2, info2.captureSet)
-                  && isSubInfo(parent1, info2)
-              case (info1: Type, CapturingType(parent2, refs2))
-              if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
-                val refs1 = info1.captureSet
-                (refs1.isAlwaysEmpty || compareCaptures(info1, refs1, info2, refs2))
-                  && isSubInfo(info1, parent2)
-              case _ =>
-                isSubType(info1, info2)
+            def isSubInfo(info1: Type, info2: Type): Boolean =
+              try (info1, info2) match
+                case (info1: PolyType, info2: PolyType) =>
+                  info1.paramNames.hasSameLengthAs(info2.paramNames)
+                  && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
+                case (info1: MethodType, info2: MethodType) =>
+                  matchingMethodParams(info1, info2, precise = false)
+                  && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
+                case (info1 @ CapturingType(parent1, refs1), info2: Type)
+                if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
+                  compareCaptures(info1, refs1, info2, info2.captureSet)
+                    && isSubInfo(parent1, info2)
+                case (info1: Type, CapturingType(parent2, refs2))
+                if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
+                  val refs1 = info1.captureSet
+                  (refs1.isAlwaysEmpty || compareCaptures(info1, refs1, info2, refs2))
+                    && isSubInfo(info1, parent2)
+                case _ =>
+                  isSubType(info1, info2)
+              catch case ex: AssertionError =>
+                println(i"error while subinfo $info1 <:< $info2")
+                throw ex
 
             if defn.isFunctionType(tp2) then
               if tp2.derivesFrom(defn.PolyFunctionClass) then
@@ -1043,15 +1049,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         def tp1widened =
           val tp1w = tp1.underlying.widenExpr
-          if isCaptureCheckingOrSetup then
-            tp1
-              .match
-                case tp1: Capability if isCaptureCheckingOrSetup && tp1.isTracked =>
-                  CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
-                case _ =>
-                  tp1w
-              .withReachCaptures(tp1)
-          else tp1w
+          tp1 match
+            case tp1: Capability if isCaptureCheckingOrSetup && tp1.isTracked =>
+              CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
+            case _ =>
+              tp1w
 
         comparePaths || isSubType(tp1widened, tp2, approx.addLow)
       case tp1: RefinedType =>
@@ -1609,8 +1611,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
     def isCaptureVarComparison: Boolean =
       isCaptureCheckingOrSetup
-      && tp1.derivesFrom(defn.Caps_CapSet)
-      && tp2.derivesFrom(defn.Caps_CapSet)
+      && tp1.derivesFromCapSet
+      && tp2.derivesFromCapSet
 
     // begin recur
     if tp2 eq NoType then false
@@ -1636,12 +1638,18 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           needsGc = false
         if (Stats.monitored) recordStatistics(result, savedSuccessCount)
         result
-      catch case NonFatal(ex) =>
-        if ex.isInstanceOf[AssertionError] then showGoal(tp1, tp2)
-        recCount -= 1
-        restore()
-        successCount = savedSuccessCount
-        throw ex
+      catch
+        case ex: AssertionError =>
+          showGoal(tp1, tp2)
+          recCount -= 1
+          restore()
+          successCount = savedSuccessCount
+          throw ex
+        case ex: Exception =>
+          recCount -= 1
+          restore()
+          successCount = savedSuccessCount
+          throw ex
   }
 
   /** Undo all actions in undoLog following prevSize */
@@ -2987,7 +2995,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         explainPoly(tp1)
         explainPoly(tp2)
       }
-    catch case NonFatal(ex) =>
+    catch case ex: Exception =>
       report.echo(s"assertion failure [[cannot display since $ex was thrown]]")
 
   /** Record statistics about the total number of subtype checks
@@ -3305,8 +3313,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     // sjrd: I will not be surprised when this causes further issues in the future.
     // This is a compromise to be able to fix #21295 without breaking the world.
     def cannotBeNothing(tp: Type): Boolean = tp match
-      case tp: TypeParamRef => cannotBeNothing(tp.paramInfo)
-      case _                => !(tp.loBound.stripTypeVar <:< defn.NothingType)
+      case tp: TypeParamRef                       => cannotBeNothing(tp.paramInfo)
+      case tp: TypeRef if tp.symbol.is(TypeParam) => cannotBeNothing(tp.info.bounds)
+      case _                                      => !(tp.loBound.stripTypeVar <:< defn.NothingType)
 
     // It is possible to conclude that two types applied are disjoint by
     // looking at covariant type parameters if the said type parameters
@@ -3998,7 +4007,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
 }
 
 /** A type comparer that can record traces of subtype operations
- *  @param short  if true print only failing forward traces; never print succesful
+ *  @param short  if true print only failing forward traces; never print successful
  *                subtraces; never print backtraces starting with `<==`.
  */
 class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeComparer(initctx) {

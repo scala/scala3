@@ -100,7 +100,7 @@ object Annotation:
   case class LinkParameter(name: Option[String] = None, dri: DRI, value: String) extends AnnotationParameter
   case class UnresolvedParameter(name: Option[String] = None, unresolvedText: String) extends AnnotationParameter
 
-case class UsesClause(keyword: String, signature: Signature)
+case class UsesClause(signature: Signature)
 
 case class TermParameterList(
   parameters: Seq[TermParameter],
@@ -167,7 +167,7 @@ case class Member(
   visibility: Visibility = Visibility.Unrestricted,
   modifiers: Seq[Modifier] = Nil,
   annotations: List[Annotation] = Nil,
-  usesClauses: List[UsesClause] = Nil,
+  usesClause: Option[UsesClause] = None,
   signature: Signature = Signature(),
   sources: Option[TastyMemberSource] = None,
   origin: Origin = Origin.RegularlyDefined,
