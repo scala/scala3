@@ -180,7 +180,9 @@ trait TypeAssigner {
         val pre = maybeSkolemizePrefix(qualType1, name)
         reallyExists(qualType1.findMember(name, pre))
       case _ => false
-    def addendum = err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum, foundWithoutNull)
+    def addendum =
+      err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum, foundWithoutNull)
+      ++ err.transparentInlineSelectAddendum(qual)
     val msg: Message =
       if tree.name == nme.CONSTRUCTOR then em"$qualType does not have a constructor"
       else NotAMember(qualType, tree.name, kind, proto, addendum)
