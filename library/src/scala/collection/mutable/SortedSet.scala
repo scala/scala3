@@ -38,6 +38,7 @@ trait SortedSet[A]
  *
  *  @tparam A the element type of the set
  *  @tparam CC the type constructor for the sorted set collection
+ *  @tparam C the concrete collection type of this sorted set (the self-type used as the return type of transformation operations)
  */
 transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, CC, C]]
   extends SetOps[A, Set, C]

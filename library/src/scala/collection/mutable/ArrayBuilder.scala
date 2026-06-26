@@ -50,6 +50,7 @@ sealed abstract class ArrayBuilder[T]
   /** Adds all elements of an array.
    *
    *  @param xs the array of elements to add
+   *  @return this builder with the elements of `xs` appended
    */
   def addAll(xs: Array[? <: T]): this.type = addAll(xs, 0, xs.length)
 
@@ -58,6 +59,7 @@ sealed abstract class ArrayBuilder[T]
    *  @param xs the array from which a slice of elements is added
    *  @param offset the start index within `xs` from which to copy elements (clamped to 0 if negative)
    *  @param length the maximum number of elements to copy from `xs` (clamped to 0 if negative, and to the number of available elements)
+   *  @return this builder with the selected slice of `xs` appended
    */
   def addAll(xs: Array[? <: T], offset: Int, length: Int): this.type = {
     val offset1 = offset.max(0)
