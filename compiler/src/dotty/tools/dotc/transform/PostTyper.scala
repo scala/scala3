@@ -627,6 +627,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree: TypeApply =>
           if tree.symbol == defn.QuotedTypeModule_of then
             ctx.compilationUnit.needsStaging = true
+            ctx.compilationUnit.stagedQuoteSurvivors = true
           registerNeedsInlining(tree)
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           for arg <- args do
@@ -788,6 +789,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           flattenSpreads(tree)
         case _: Quote | _: QuotePattern =>
           ctx.compilationUnit.needsStaging = true
+          ctx.compilationUnit.stagedQuoteSurvivors = true
           super.transform(tree)
         case tree =>
           super.transform(tree)
