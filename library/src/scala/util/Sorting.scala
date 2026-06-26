@@ -307,6 +307,7 @@ object Sorting {
    *
    *  @tparam K the element type, which must have a `ClassTag` and an `Ordering`
    *  @param a the sequence of elements to sort
+   *  @return a new array containing the elements of `a` sorted according to the `Ordering` for `K`
    */
   def stableSort[K: ClassTag: Ordering](a: scala.collection.Seq[K]): Array[K] = {
     val ret = a.toArray
@@ -320,6 +321,7 @@ object Sorting {
    *  @tparam K the element type, which must have a `ClassTag`
    *  @param a the sequence of elements to sort
    *  @param f a function that returns `true` if its first argument is less than its second
+   *  @return a new array containing the elements of `a` sorted according to the less-than relation `f`
    */
   def stableSort[K: ClassTag](a: scala.collection.Seq[K], f: (K, K) => Boolean): Array[K] = {
     val ret = a.toArray
@@ -333,6 +335,7 @@ object Sorting {
    *  @tparam M the key type returned by the extraction function, which must have an `Ordering`
    *  @param a the sequence of elements to sort
    *  @param f a function that extracts a comparable key from each element
+   *  @return a new array containing the elements of `a` sorted by comparing the keys produced by `f`
    */
   def stableSort[K: ClassTag, M: Ordering](a: scala.collection.Seq[K], f: K => M): Array[K] = {
     val ret = a.toArray
