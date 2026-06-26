@@ -504,8 +504,16 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     assert(!contains(poly))
     val nparams = poly.paramNames.length
     val entries1 = new Array[Type](nparams * 2)
-    poly.paramInfos.copyToArray(entries1, 0)
-    tvars.copyToArray(entries1, nparams)
+    val paramInfos = poly.paramInfos
+    var i = 0
+    while i < nparams do
+      entries1(i) = paramInfos(i)
+      i += 1
+    i = 0
+    val ntvars = math.min(tvars.length, nparams)
+    while i < ntvars do
+      entries1(nparams + i) = tvars(i)
+      i += 1
     newConstraint(boundsMap = this.boundsMap.updated(poly, entries1))
       .init(poly)
   }
