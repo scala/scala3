@@ -1153,21 +1153,47 @@ class Inliner(val call: tpd.Tree)(using Context):
       dropUnusedDefs(termBindings1.asInstanceOf[List[ValOrDefDef]], tree1)
     }
     else {
+      // Recognise the synthetic this-proxy and opaque-alias-proxy
+      // bindings, both of which have a guaranteed-pure rhs:
+      //
+      //   - opaque proxies are created by `OpaqueProxy.apply`; their
+      //     rhs is built with `tpd.cast`, documented as safe
+      //     ("assuming no exception is raised, i.e. the operation is
+      //     pure"). They carry `Synthetic` + `InlineBinderName` and
+      //     *no* `InlineProxy` (see `OpaqueProxy.unapply`).
+      //   - this-proxies are created by `registerType`; their rhs is
+      //     a stable module/outer reference. They carry the
+      //     `InlineProxy` flag and a `<class>_this` name (not
+      //     `InlineBinderName`).
+      //
+      // Param bindings (`paramBindingDef`) also carry `InlineProxy`,
+      // but their rhs is the user's argument, which may have side
+      // effects (e.g. `new Bomb()` for a by-value extension prefix —
+      // see tests/run-macros/i5110), so they must not be classified
+      // as elideable.
+      def isThisOrOpaqueProxy(sym: Symbol): Boolean =
+        (sym.is(InlineProxy) && !sym.name.is(InlineBinderName))
+          || (sym.is(Synthetic, butNot = InlineProxy) && sym.name.is(InlineBinderName))
+
       val refCount = MutableSymbolMap[Int]()
+      val termRefCount = MutableSymbolMap[Int]()
       val bindingOfSym = MutableSymbolMap[MemberDef]()
 
       def isInlineable(binding: MemberDef) = binding match {
         case ddef @ DefDef(_, Nil, _, _) => isElideableExpr(ddef.rhs)
-        case vdef @ ValDef(_, _, _) => isElideableExpr(vdef.rhs)
+        case vdef @ ValDef(_, _, _) => isElideableExpr(vdef.rhs) || isThisOrOpaqueProxy(vdef.symbol)
         case _ => false
       }
       for (binding <- bindings if isInlineable(binding)) {
         refCount(binding.symbol) = 0
+        termRefCount(binding.symbol) = 0
         bindingOfSym(binding.symbol) = binding
       }
 
       def updateRefCount(sym: Symbol, inc: Int) =
         for (x <- refCount.get(sym)) refCount(sym) = x + inc
+      def updateTermRefCount(sym: Symbol, inc: Int) =
+        for (x <- termRefCount.get(sym)) termRefCount(sym) = x + inc
       def updateTermRefCounts(tree: Tree) =
         tree.typeOpt.foreachPart {
           case ref: TermRef => updateRefCount(ref.symbol, 2) // can't be inlined, so make sure refCount is at least 2
@@ -1177,6 +1203,7 @@ class Inliner(val call: tpd.Tree)(using Context):
         tree.foreachSubTree {
           case t: RefTree =>
             updateRefCount(t.symbol, 1)
+            updateTermRefCount(t.symbol, 1)
             updateTermRefCounts(t)
           case t @ (_: New | _: TypeTree) =>
             updateTermRefCounts(t)
@@ -1184,6 +1211,72 @@ class Inliner(val call: tpd.Tree)(using Context):
         }
       countRefs(tree)
       for (binding <- bindings) countRefs(binding)
+
+      // Identify inline proxy bindings whose only references are in type
+      // positions (e.g. type ascriptions `(v: proxy.OpaqueAlias)`). For
+      // these we can dealias the type references and drop the bindings,
+      // so they don't leave dead values in the bytecode (see issue #21334).
+      val typeOnlySyms: Set[Symbol] = bindings.iterator.collect {
+        case b if isThisOrOpaqueProxy(b.symbol)
+            && refCount.contains(b.symbol)
+            && refCount.getOrElse(b.symbol, 0) > 0
+            && termRefCount.getOrElse(b.symbol, 0) == 0 => b.symbol
+      }.toSet
+
+      if typeOnlySyms.nonEmpty && !inlinedMethod.is(Transparent) then
+        // The proxies are only referenced from type positions, but in
+        // general we cannot just drop them: the type ascription
+        // `(value: proxy.OpaqueAlias)` is needed during typing to expose
+        // the alias, and rewriting it (either to the original opaque or to
+        // the underlying alias) loses information that downstream code
+        // relies on (see scala/scala3#21334).
+        //
+        // The case we *can* handle is when the inlined expansion is
+        // `Typed(inner, tpt)` and:
+        //
+        //   1. `tpt` references the proxies but `inner` does not,
+        //   2. `inner.tpe` is *not* already a subtype of `call.tpe`.
+        //
+        // Condition (2) ensures the cast logic in `Inlines.scala` —
+        // `if !(inlined.tpe <:< target) then inlined.cast(target)` — will
+        // re-cast the inlined block back to the call's expected type after
+        // we strip the type ascription. If `inner.tpe` is already a
+        // subtype of `call.tpe` (e.g. `Predef.???` whose result is
+        // `Nothing`, see tests/pos/i22068.orig.scala), no cast is added
+        // and downstream selects on the inlined block would see an
+        // unexpectedly narrow qualifier type and fail `Ycheck`.
+        //
+        // Transparent inline methods are excluded entirely because their
+        // result type is inferred from the inlined block and the proxies
+        // are part of that type (see tests/pos/i13461-c.scala). Cases
+        // where the proxy is used in an argument position (e.g. inside an
+        // Apply, see tests/pos/i17948.all.scala) don't match the outer
+        // `Typed` shape and are unaffected.
+        tree match
+          case Typed(inner, tpt) =>
+            var tptRefsProxy = false
+            tpt.tpe.foreachPart {
+              case ref: TermRef if typeOnlySyms.contains(ref.symbol) =>
+                tptRefsProxy = true
+              case _ =>
+            }
+            var innerRefsProxy = false
+            inner.foreachSubTree {
+              case t @ (_: RefTree | _: New | _: TypeTree) =>
+                t.typeOpt.foreachPart {
+                  case ref: TermRef if typeOnlySyms.contains(ref.symbol) =>
+                    innerRefsProxy = true
+                  case _ =>
+                }
+              case _ =>
+            }
+            if tptRefsProxy && !innerRefsProxy
+                && inner.tpe.exists && call.tpe.exists
+                && !(inner.tpe.widen <:< call.tpe.widen)
+            then
+              return dropUnusedDefs(bindings, inner)
+          case _ =>
+      end if
 
       def retain(boundSym: Symbol) = {
         refCount.get(boundSym) match {
