@@ -33,12 +33,12 @@ object ConstFold:
       case Select(xt, op) if foldedBinops.contains(op) =>
         xt match
           case ConstantTree(x) =>
-            tree.args match
-              case yt +: Vector() =>
-                yt match
-                  case ConstantTree(y) => tree.withFoldedType(foldBinop(op, x, y))
-                  case _ => tree
-              case _ => tree
+            val args = tree.args
+            if args.lengthCompare(1) == 0 then
+              args.head match
+                case ConstantTree(y) => tree.withFoldedType(foldBinop(op, x, y))
+                case _ => tree
+            else tree
           case _ => tree
       case TypeApply(Select(qual, nme.getClass_), _)
       if qual.tpe.widen.isPrimitiveValueType && tree.args.isEmpty =>
@@ -57,8 +57,8 @@ object ConstFold:
   def apply[T <: Tree](tree: T)(using Context): T = tree match
     case tree: Apply => Apply(tree)
     case tree: Select => Select(tree)
-    case TypeApply(_, targ +: Vector()) if tree.symbol eq defn.Predef_classOf =>
-      tree.withFoldedType(Constant(targ.tpe))
+    case TypeApply(_, args) if args.lengthCompare(1) == 0 && (tree.symbol eq defn.Predef_classOf) =>
+      tree.withFoldedType(Constant(args.head.tpe))
     case _ => tree
 
   private object ConstantTree:
