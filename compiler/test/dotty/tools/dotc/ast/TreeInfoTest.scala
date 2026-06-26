@@ -28,4 +28,17 @@ class TreeInfoTest extends DottyTest {
         ("ValDef", termName("x"))
       ), path.map(x => (x.productPrefix, x.symbol.name)))
   }
+
+  @Test
+  def localSymsHandlesMoreThanVector1Width: Unit =
+    val stats = (0 to 32).map(i => s"val x$i = $i").mkString("\n")
+    checkCompile("typer", s"class A { def bar = { $stats; x32 } }") {
+      (tree, context) =>
+        given Context = context
+        val bar = tree.find(_.symbol.name == termName("bar")).get.asInstanceOf[DefDef]
+        val block = bar.rhs.asInstanceOf[Block]
+        val syms = localSyms(block.stats)
+        assertEquals(33, syms.length)
+        assertEquals((0 to 32).map(i => termName(s"x$i")).toVector, syms.map(_.name))
+    }
 }
