@@ -229,5 +229,234 @@ trait Migrations:
       then
           patchImplicitParams(tree, pt)
 
+  /** Under `-Yapp-to-main`, rewrite `object Foo extends App { body }` into an object
+   *  with an explicit `main` method, dropping the deprecated `scala.App` parent
+   *  (see issue #559).
+   *
+   *  The rewrite preserves a leading run of member definitions as object members and
+   *  wraps the trailing executable statements into `main`, keeping the brace vs.
+   *  braceless style of the source. This is safe because such members keep their
+   *  visibility and their initialization order is unchanged (object initialization
+   *  still runs them, in source order, before `main`).
+   *
+   *  Anything that cannot be rewritten safely is left untouched and reported with a
+   *  diagnostic pointing at `@main`, so the user knows why it was skipped. This
+   *  covers definitions that only inherit `App`/`DelayedInit` indirectly, a `class`,
+   *  `App` mixed with other parents, a self type, a body that uses `App`-specific
+   *  API such as `executionStart`, member definitions interleaved with statements,
+   *  an unsupported single-line body, and overlap with another active rewrite.
+   */
+  object AppToMain:
+    private val mainHeader = "def main(args: Array[String]): Unit ="
+
+    /** @param impl   the untyped template, used for body shape and source spans
+     *  @param impl1  the typed template, used for the semantic safety checks
+     */
+    def rewrite(cdef: untpd.TypeDef, impl: untpd.Template, impl1: tpd.Template, cls: ClassSymbol)(using Context): Unit =
+      if !ctx.settings.YappToMain.value then return
+      // Candidates are everything inheriting the deprecated `App`/`DelayedInit`,
+      // so that even indirect inheritance is surfaced; only a direct `App` parent
+      // is actually rewritten.
+      val derivesApp = cls.derivesFrom(defn.AppClass)
+      val derivesDelayedInit = cls.derivesFrom(defn.DelayedInitClass)
+
+      if !derivesApp then
+        // `DelayedInit` without `App` is not an application entry point, so there is
+        // no `@main`-style rewrite to offer; the pattern must be refactored by hand.
+        if derivesDelayedInit then
+          report.warning(
+            em"""$cls inherits from the deprecated `DelayedInit`, for which there is no automatic rewrite.
+                |`DelayedInit` is not an application entry point; refactor the deferred-initialization pattern by hand (for example into an explicit method or the constructor body).""",
+            cdef.srcPos)
+        return
+
+      def cannot(reason: String): Unit =
+        report.warning(
+          em"""$cls inherits from the deprecated `App` but could not be rewritten to an explicit `main` method: $reason.
+              |Migrate it by hand, preferably to a `@main` method: https://docs.scala-lang.org/scala3/book/methods-main-methods.html""",
+          cdef.srcPos)
+
+      val directApp = impl1.parents.exists(_.tpe.classSymbol == defn.AppClass)
+      // Objects carry a synthetic `_: Foo.type` self; a user-written `self =>`
+      // would have a real name and sits inside the body, so it is out of scope.
+      if !directApp then
+        cannot("only an `object` that directly extends `App` can be rewritten")
+      else if !cls.is(ModuleClass) then
+        cannot("only an `object` can be rewritten")
+      else if impl.self.name != nme.WILDCARD then
+        cannot("it declares a self type")
+      else if impl.parents.lengthIs != 1 then
+        cannot("`App` is mixed with other parents")
+      else
+        // Use the *untyped* body for the source layout: the typed body has
+        // compiler-synthesized members (e.g. inline accessors) appended, which carry
+        // source spans and would corrupt the split. The typed body is consulted only
+        // to resolve symbols for the semantic checks.
+        val sourceStats = impl.body.filter(_.span.exists)
+        val typedAt = impl1.body.iterator
+          .filter(t => t.span.exists && !t.symbol.is(Synthetic))
+          .map(t => t.span.start -> t)
+          .toMap
+        def typedOf(u: untpd.Tree): Option[tpd.Tree] = typedAt.get(u.span.start)
+
+        // A safe split keeps a leading run of template members as object members and
+        // moves the trailing statements into `main`. Besides definitions, `import`
+        // and `export` are template-level constructs (exports add client-visible
+        // members) and must stay in the object, never move into `main`.
+        def isTemplateMember(t: untpd.Tree) =
+          t.isInstanceOf[untpd.MemberDef] || t.isInstanceOf[untpd.ImportOrExport]
+        // A preserved member is unsafe if it references `App`-only API (where even
+        // `args` is unavailable outside `main`) or overrides an `App`/`DelayedInit`
+        // member (the `override` would dangle once the parent is dropped). Statements
+        // moved into `main` may use the `args` parameter freely.
+        def unsafeMember(u: untpd.Tree): Boolean =
+          typedOf(u).fold(true)(t => usesAppMember(t, allowArgs = false) || overridesAppApi(t))
+        def unsafeStatement(u: untpd.Tree): Boolean =
+          typedOf(u).fold(true)(t => usesAppMember(t, allowArgs = true))
+
+        val (leadingDefs, rest) = sourceStats.span(isTemplateMember)
+        if rest.exists(isTemplateMember) then
+          cannot("its definitions, imports or exports are interleaved with statements, which would change their meaning")
+        else if leadingDefs.exists(unsafeMember) then
+          cannot("a member it keeps uses or overrides `App`-specific API such as `args`, `delayedInit` or `executionStart`")
+        else if rest.exists(unsafeStatement) then
+          cannot("its body uses `App`-specific API such as `executionStart`")
+        else if sourceStats.nonEmpty && rest.isEmpty then
+          cannot("its body has no statements to run in `main`")
+        else
+          // `rest` is the statements to wrap (empty only when the whole body is empty).
+          wrapIntoMain(cdef, impl.parents.head, rest).foreach(cannot)
+
+    /** Does `tree` reference an inherited `App` member that would no longer be
+     *  available after the rewrite? When `allowArgs` is set, an unqualified `args`
+     *  reference is exempt because statements moved into `main` see it as a parameter.
+     *  Preserved members stay outside `main`, so for them `allowArgs` must be false.
+     */
+    private def usesAppMember(tree: tpd.Tree, allowArgs: Boolean)(using Context): Boolean =
+      def isAppMember(sym: Symbol) = sym.exists && sym.maybeOwner == defn.AppClass
+      tree.existsSubTree {
+        case id: tpd.Ident   => isAppMember(id.symbol) && !(allowArgs && id.symbol.name.toString == "args")
+        case sel: tpd.Select => isAppMember(sel.symbol)
+        case _               => false
+      }
+
+    /** Does `tree`'s symbol override or implement a member of `App`/`DelayedInit`?
+     *  Keeping such a member would leave an `override` of a parent the rewrite drops.
+     */
+    private def overridesAppApi(tree: tpd.Tree)(using Context): Boolean =
+      val sym = tree.symbol
+      sym.exists && sym.allOverriddenSymbols.exists: ov =>
+        ov.owner == defn.AppClass || ov.owner == defn.DelayedInitClass
+
+    /** Emit the patches that wrap `stmts` into a `main` method, dropping `extends App`.
+     *  Returns `None` on success or `Some(reason)` if the source layout is not
+     *  supported, so the caller can report it instead of silently doing nothing.
+     */
+    private def wrapIntoMain(cdef: untpd.TypeDef, appParent: untpd.Tree, stmts: List[untpd.Tree])(using Context): Option[String] =
+      val src = ctx.source
+      val content = src.content()
+      val appStart = appParent.span.start
+      val appEnd = appParent.span.end
+
+      def isHSpace(c: Char) = c == ' ' || c == '\t'
+
+      // Leading whitespace of the source line containing `offset`.
+      def lineIndent(offset: Int): String =
+        val ls = src.startOfLine(offset)
+        var k = ls
+        while k < content.length && isHSpace(content(k)) do k += 1
+        String(content, ls, k - ls)
+
+      // Is `offset` preceded on its line only by whitespace?
+      def startsOwnLine(offset: Int): Boolean =
+        (src.startOfLine(offset) until offset).forall(i => isHSpace(content(i)))
+
+      // Start offset of ` extends App`, consuming the whitespace before `extends`.
+      def extendsStart: Int =
+        val kw = "extends"
+        def matchesAt(i: Int) =
+          i + kw.length <= content.length && kw.indices.forall(j => content(i + j) == kw(j))
+        var i = appStart - kw.length
+        while i >= 0 && !matchesAt(i) do i -= 1
+        if i < 0 then -1
+        else
+          var s = i
+          while s > 0 && content(s - 1).isWhitespace do s -= 1
+          s
+
+      val delStart = extendsStart
+      if delStart < 0 then return Some("its `extends` clause could not be located in the source")
+
+      // First non-horizontal-space character after `App` decides the body style.
+      var afterApp = appEnd
+      while afterApp < content.length && isHSpace(content(afterApp)) do afterApp += 1
+      val next = if afterApp < content.length then content(afterApp) else ' '
+
+      val objIndent = lineIndent(cdef.span.start)
+
+      // Bail out if another active rewrite (e.g. `-indent`/`-no-indent`) already
+      // patches our region; emitting overlapping patches would crash writeBack.
+      def conflicts(end: Int): Boolean = Rewrites.overlapsPatch(src, Span(delStart, end))
+      val conflictReason =
+        "it overlaps another active rewrite (for example `-indent`); run `-Yapp-to-main` without other rewrite options"
+
+      if stmts.isEmpty then
+        // The whole body is empty: replace ` extends App` (and any `{}`) with an
+        // empty braceless `main`.
+        val endRegion =
+          if next == '{' then
+            var k = afterApp + 1
+            while k < content.length && content(k) != '}' do k += 1
+            if k < content.length then k + 1 else appEnd
+          else appEnd
+        if conflicts(endRegion) then return Some(conflictReason)
+        patch(Span(delStart, endRegion), s":\n$objIndent  $mainHeader ()")
+        return None
+
+      val firstStmt = stmts.head.span.start
+      val lastStmt = stmts.last.span.end
+      if !startsOwnLine(firstStmt) then
+        return Some("its statements are not laid out on their own lines")
+
+      val firstStmtLine = src.offsetToLine(firstStmt)
+      val lastStmtLine = src.offsetToLine(lastStmt - 1)
+      val bodyIndent = lineIndent(firstStmt)
+
+      // Re-indent the statement lines after the first by two spaces (the first line's
+      // extra indent is folded into the inserted `main` header to avoid two patches
+      // sharing an offset).
+      def reindentStmtTail(): Unit =
+        var line = firstStmtLine + 1
+        while line <= lastStmtLine do
+          val ls = src.lineToOffset(line)
+          var k = ls
+          while k < content.length && isHSpace(content(k)) do k += 1
+          if k < content.length && content(k) != '\n' then patch(Span(ls), "  ")
+          line += 1
+
+      next match
+        case ':' =>
+          if conflicts(lastStmt) then return Some(conflictReason)
+          patch(Span(delStart, appEnd), "")
+          patch(Span(src.startOfLine(firstStmt)), s"$bodyIndent$mainHeader\n  ")
+          reindentStmtTail()
+          None
+        case '{' =>
+          // Locate the object's closing brace and require it on its own line.
+          var close = lastStmt
+          while close < content.length && content(close) != '}' do close += 1
+          if close >= content.length || src.offsetToLine(close) <= lastStmtLine then
+            Some("its closing brace is not on its own line")
+          else if conflicts(close + 1) then
+            Some(conflictReason)
+          else
+            patch(Span(delStart, appEnd), "")
+            patch(Span(src.startOfLine(firstStmt)), s"$bodyIndent$mainHeader {\n  ")
+            reindentStmtTail()
+            patch(Span(src.startOfLine(close)), s"$bodyIndent}\n")
+            None
+        case _ =>
+          Some("its body layout is not supported")
+    end wrapIntoMain
 
 end Migrations
