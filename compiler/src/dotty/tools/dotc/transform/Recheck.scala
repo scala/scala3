@@ -154,7 +154,7 @@ abstract class Recheck extends Phase, SymTransformer:
     rechecker.checkUnit(ctx.compilationUnit)
     rechecker.reset()
 
-  override def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
+  override def runOn(units: Vector[CompilationUnit])(using runCtx: Context): Vector[CompilationUnit] =
     try super.runOn(units)
     finally preRecheckPhase.pastRecheck = true
 
@@ -315,7 +315,7 @@ abstract class Recheck extends Phase, SymTransformer:
      *  NOTE: It seems this is no longer true, and `mapJavaArgs` is not needed.
      *  The invocation is currently disabled in recheckApply.
      */
-    private def mapJavaArgs(formals: List[Type])(using Context): List[Type] =
+    private def mapJavaArgs(formals: Vector[Type])(using Context): Vector[Type] =
       val tm = new TypeMap:
         def apply(t: Type) =
           t match
@@ -324,7 +324,7 @@ abstract class Recheck extends Phase, SymTransformer:
       formals.mapConserve(tm)
 
     /** Hook for method type instantiation */
-    protected def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
+    protected def instantiate(mt: MethodType, argTypes: Vector[Type], sym: Symbol)(using Context): Type =
       mt.instantiate(argTypes)
 
     /** A hook to massage the type of an applied method */
@@ -340,7 +340,7 @@ abstract class Recheck extends Phase, SymTransformer:
      *   @param  funType   the method type of `fn`
      *   @param  argTypes  the types of the arguments
      */
-    protected def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
+    protected def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: Vector[Type])(using Context): Type =
       constFold(tree, instantiate(funType, argTypes, tree.fun.symbol))
 
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
@@ -360,17 +360,17 @@ abstract class Recheck extends Phase, SymTransformer:
             if false && tree.symbol.is(JavaDefined) // see NOTE in mapJavaArgs
             then mapJavaArgs(fntpe.paramInfos)
             else fntpe.paramInfos
-          def recheckArgs(args: List[Tree], formals: List[Type], prefs: List[ParamRef]): List[Type] = args match
-            case arg :: args1 =>
+          def recheckArgs(args: Vector[Tree], formals: Vector[Type], prefs: Vector[ParamRef]): Vector[Type] = (args: @unchecked) match
+            case arg +: args1 =>
               val argType = recheckArg(arg, normalizeByName(formals.head), prefs.head, tree)
               val formals1 =
                 if fntpe.isParamDependent
                 then formals.tail.map(_.substParam(prefs.head, argType))
                 else formals.tail
-              argType :: recheckArgs(args1, formals1, prefs.tail)
-            case Nil =>
+              argType +: recheckArgs(args1, formals1, prefs.tail)
+            case Vector() =>
               assert(formals.isEmpty)
-              Nil
+              Vector()
           val argTypes = recheckArgs(tree.args, formals, fntpe.paramRefs)
           recheckApplication(tree, qualType, fntpe, argTypes)
             //.showing(i"typed app $tree : $fntpe with ${tree.args}%, % : $argTypes%, % = $result")
@@ -395,21 +395,21 @@ abstract class Recheck extends Phase, SymTransformer:
       recheck(tree.rhs, lhsType.widen)
       defn.UnitType
 
-    protected def avoidLocals(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type =
+    protected def avoidLocals(tp: Type, symsToAvoid: => Vector[Symbol])(using Context): Type =
       TypeOps.avoid(tp, symsToAvoid)
 
-    private def recheckBlock(stats: List[Tree], expr: Tree, pt: Type)(using Context): Type =
+    private def recheckBlock(stats: Vector[Tree], expr: Tree, pt: Type)(using Context): Type =
       recheckStats(stats)
       val exprType = recheck(expr, pt)
       avoidLocals(exprType, localSyms(stats).filterConserve(_.isTerm))
 
     def recheckBlock(tree: Block, pt: Type)(using Context): Type = tree match
-      case Block((mdef : DefDef) :: Nil, closure: Closure) =>
+      case Block((mdef : DefDef) +: Vector(), closure: Closure) =>
         recheckClosureBlock(mdef, closure.withSpan(tree.span), pt)
       case Block(stats, expr) => recheckBlock(stats, expr, pt)
 
     def recheckClosureBlock(mdef: DefDef, expr: Closure, pt: Type)(using Context): Type =
-      recheckBlock(mdef :: Nil, expr, pt)
+      recheckBlock(mdef +: Vector(), expr, pt)
 
     def recheckInlined(tree: Inlined, pt: Type)(using Context): Type =
       recheckBlock(tree.bindings, tree.expansion, pt)(using inlineContext(tree))
@@ -422,8 +422,8 @@ abstract class Recheck extends Phase, SymTransformer:
       if tree.tpt.isEmpty then
         tree.meth.tpe.widen.toFunctionType(tree.meth.symbol.is(JavaDefined), alwaysDependent = forceDependent)
       else if defn.isByNameFunction(tree.tpt.tpe) then
-        val mt @ MethodType(Nil) = tree.meth.tpe.widen: @unchecked
-        val cmt = ContextualMethodType(Nil, Nil, mt.resultType)
+        val mt @ MethodType(Vector()) = tree.meth.tpe.widen: @unchecked
+        val cmt = ContextualMethodType(Vector(), Vector(), mt.resultType)
         cmt.toFunctionType(alwaysDependent = forceDependent)
       else
         recheck(tree.tpt)
@@ -476,10 +476,10 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckTry(tree: Try, pt: Type)(using Context): Type =
       recheckTryRest(recheck(tree.expr, pt), tree.cases, tree.finalizer, pt)
 
-    protected def recheckTryRest(bodyType: Type, cases: List[CaseDef], finalizer: Tree, pt: Type)(using Context): Type =
+    protected def recheckTryRest(bodyType: Type, cases: Vector[CaseDef], finalizer: Tree, pt: Type)(using Context): Type =
       val casesTypes = cases.map(recheckCase(_, defn.ThrowableType, pt))
       val finalizerType = recheck(finalizer, defn.UnitType)
-      TypeComparer.lub(bodyType :: casesTypes)
+      TypeComparer.lub(bodyType +: casesTypes)
 
     def seqLiteralElemProto(tree: SeqLiteral, pt: Type, declared: Type)(using Context): Type =
       declared.orElse:
@@ -492,7 +492,7 @@ abstract class Recheck extends Phase, SymTransformer:
       val declaredElemType = recheck(tree.elemtpt)
       val elemProto = seqLiteralElemProto(tree, pt, declaredElemType)
       val elemTypes = tree.elems.map(recheck(_, elemProto))
-      seqLitType(tree, TypeComparer.lub(declaredElemType :: elemTypes))
+      seqLitType(tree, TypeComparer.lub(declaredElemType +: elemTypes))
 
     def recheckTypeTree(tree: TypeTree)(using Context): Type =
       tree.nuType  // allows to install new types at Setup
@@ -514,11 +514,11 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckStat(stat: Tree)(using Context): Unit =
       recheck(stat)
 
-    def recheckStats(stats: List[Tree])(using Context): Unit =
-      @tailrec def traverse(stats: List[Tree])(using Context): Unit = stats match
-        case (imp: Import) :: rest =>
+    def recheckStats(stats: Vector[Tree])(using Context): Unit =
+      @tailrec def traverse(stats: Vector[Tree])(using Context): Unit = stats match
+        case (imp: Import) +: rest =>
           traverse(rest)(using ctx.importContext(imp, imp.symbol))
-        case stat :: rest =>
+        case stat +: rest =>
           recheckStat(stat)
           traverse(rest)
         case _ =>
@@ -656,7 +656,7 @@ abstract class Recheck extends Phase, SymTransformer:
       println(i"fail while $actual iscompat $expected")
       throw ex
 
-    def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: List[Note] = Nil)(using Context): Type =
+    def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: Vector[Note] = Vector())(using Context): Type =
       //println(i"check conforms $actual <:< $expected")
       if !isCompatible(actual, expected) then
         recheckr.println(i"conforms failed for ${tree}: $actual vs $expected")

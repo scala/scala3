@@ -55,8 +55,8 @@ object OverridingPairs:
     private val decls = {
       val decls = newScope
       // fill `decls` with overriding shadowing overridden */
-      def fillDecls(bcs: List[Symbol], deferred: Boolean): Unit = bcs match {
-        case bc :: bcs1 =>
+      def fillDecls(bcs: Vector[Symbol], deferred: Boolean): Unit = bcs match {
+        case bc +: bcs1 =>
           fillDecls(bcs1, deferred)
           var e = bc.info.decls.lastEntry
           while (e != null) {

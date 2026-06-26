@@ -44,7 +44,7 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
    * The methods used as lambda bodies for IndyLambda instructions within `method` of `hostClass`.
    */
   def indyLambdaBodyMethods(hostClass: InternalName, method: MethodNode): Map[InvokeDynamicInsnNode, Handle] = {
-    onIndyLambdaImplMethodIfPresent(hostClass)(ms => ms.getOrElse(method, Nil).toMap).getOrElse(Map.empty)
+    onIndyLambdaImplMethodIfPresent(hostClass)(ms => ms.getOrElse(method, Vector()).toMap).getOrElse(Map.empty)
   }
   
   def isPredefLoad(insn: AbstractInsnNode): Boolean = AnalysisUtils.isModuleLoad(insn, _ == ts.PredefRef.internalName)
@@ -165,10 +165,10 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
     ts.primitiveBoxConstructors.map(ownerDesc).toSet ++
       ts.srRefConstructors.map(ownerDesc) ++
       ts.tupleClassConstructors.map(ownerDesc) ++ Set(
-      (ts.ObjectRef.internalName, MethodBType(Nil, UNIT).descriptor),
-      (ts.StringRef.internalName, MethodBType(Nil, UNIT).descriptor),
-      (ts.StringRef.internalName, MethodBType(List(ts.StringRef), UNIT).descriptor),
-      (ts.StringRef.internalName, MethodBType(List(ArrayBType(CHAR)), UNIT).descriptor))
+      (ts.ObjectRef.internalName, MethodBType(Vector(), UNIT).descriptor),
+      (ts.StringRef.internalName, MethodBType(Vector(), UNIT).descriptor),
+      (ts.StringRef.internalName, MethodBType(Vector(ts.StringRef), UNIT).descriptor),
+      (ts.StringRef.internalName, MethodBType(Vector(ArrayBType(CHAR)), UNIT).descriptor))
 
   lazy val modulesAllowSkipInitialization: Set[InternalName] =
     Set(
@@ -298,7 +298,6 @@ object OptimizerUtils {
     if (method.isEmpty) c
     else s"$c.$method"
   }
-
   // No point in trying to load SCoverage runtime counters, we shouldn't and can't inline them,
   // and warning about it is also not productive.
   def isSCoverage(classInternalName: InternalName): Boolean =

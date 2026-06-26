@@ -89,7 +89,7 @@ class DottyLanguageServer extends LanguageServer
             .update("-d", config.classDirectory.getAbsolutePath)
             .update("-classpath", (config.classDirectory +: config.dependencyClasspath).mkString(File.pathSeparator))
             .update("-sourcepath", config.sourceDirectories.mkString(File.pathSeparator))
-        myDrivers(config) = new InteractiveDriver(settings)
+        myDrivers(config) = new InteractiveDriver(settings.toVector)
       }
     myDrivers
   }
@@ -146,7 +146,7 @@ class DottyLanguageServer extends LanguageServer
       defaultFlags ++
       config.compilerArguments.toList
         .update("-classpath", (classPath +: config.dependencyClasspath).mkString(File.pathSeparator))
-    new IDEDecompilerDriver(settings)
+    new IDEDecompilerDriver(settings.toVector)
   }
 
   /** A mapping from project `p` to the set of projects that transitively depend on `p`. */
@@ -359,7 +359,7 @@ class DottyLanguageServer extends LanguageServer
     val references = {
       // Collect the information necessary to look into each project separately: representation of
       // `originalSymbol` in this project, the context and correct Driver.
-      val perProjectInfo = inProjectsSeeing(driver, definitions, originalSymbols)
+      val perProjectInfo = inProjectsSeeing(driver, definitions.toList, originalSymbols.toList)
 
       perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
         definitions.flatMap { definition =>
@@ -385,21 +385,21 @@ class DottyLanguageServer extends LanguageServer
     val syms = Interactive.enclosingSourceSymbols(path, pos)
     val newName = params.getNewName
 
-    def findRenamedReferences(trees: List[SourceTree], syms: List[Symbol], withName: Name): List[SourceTree] = {
+    def findRenamedReferences(trees: Vector[SourceTree], syms: Vector[Symbol], withName: Name): List[SourceTree] = {
       val includes = Include.all
       syms.flatMap { sym =>
         Interactive.findTreesMatching(trees, Include.all, sym, t => Interactive.sameName(t.name, withName))
-      }
+      }.toList
     }
 
     val refs =
       path match {
         // Selected a renaming in an import node
-        case untpd.ImportSelector(_, rename: untpd.Ident, _) :: (_: Import) :: rest if rename.span.contains(pos.span) =>
+        case untpd.ImportSelector(_, rename: untpd.Ident, _) +: (_: Import) +: rest if rename.span.contains(pos.span) =>
           findRenamedReferences(uriTrees, syms, rename.name)
 
         // Selected a reference that has been renamed
-        case (nameTree: NameTree) :: rest if Interactive.isRenamed(nameTree) =>
+        case (nameTree: NameTree) +: rest if Interactive.isRenamed(nameTree) =>
           findRenamedReferences(uriTrees, syms, nameTree.name)
 
         case _ =>
@@ -408,16 +408,16 @@ class DottyLanguageServer extends LanguageServer
               showMessageRequest(MessageType.Info,
                 RENAME_OVERRIDDEN_QUESTION,
                 List(
-                  RENAME_OVERRIDDEN    -> (() => (Include.all, syms.flatMap(s => s :: s.allOverriddenSymbols.toList))),
+                  RENAME_OVERRIDDEN    -> (() => (Include.all, syms.flatMap(s => s +: s.allOverriddenSymbols.toVector))),
                   RENAME_NO_OVERRIDDEN -> (() => (Include.all.except(Include.overridden), syms)))
-              ).get.getOrElse((Include.empty, Nil))
+              ).get.getOrElse((Include.empty, Vector.empty))
             } else {
               (Include.all, syms)
             }
 
           val names = allSymbols.map(_.name.sourceModuleName).toSet
-          val definitions = Interactive.findDefinitions(allSymbols, driver, include.isOverridden, includeExternal = true)
-          val perProjectInfo = inProjectsSeeing(driver, definitions, allSymbols)
+          val definitions = Interactive.findDefinitions(allSymbols.toVector, driver, include.isOverridden, includeExternal = true)
+          val perProjectInfo = inProjectsSeeing(driver, definitions.toList, allSymbols.toList)
 
           perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
             definitions.flatMap { definition =>
@@ -474,11 +474,11 @@ class DottyLanguageServer extends LanguageServer
     if (tp.isError || tpw == NoType) null // null here indicates that no response should be sent
     else {
       Interactive.enclosingSourceSymbols(path, pos) match {
-        case Nil =>
+        case symbols if symbols.isEmpty =>
           null
         case symbols =>
           val docComments = symbols.flatMap(ParsedComment.docOf)
-          val content = hoverContent(Some(tpw.show), docComments)
+          val content = hoverContent(Some(tpw.show), docComments.toList)
           new Hover(content, null)
       }
     }
@@ -535,7 +535,7 @@ class DottyLanguageServer extends LanguageServer
     }
 
     val implementations = {
-      val perProjectInfo = inProjectsSeeing(driver, definitions, originalSymbols)
+      val perProjectInfo = inProjectsSeeing(driver, definitions.toList, originalSymbols.toList)
 
       perProjectInfo.flatMap { (remoteDriver, ctx, definitions) =>
         val trees = remoteDriver.sourceTrees(using ctx)
@@ -858,7 +858,7 @@ object DottyLanguageServer {
     } yield doc
 
     if (documentation.nonEmpty) {
-      item.setDocumentation(hoverContent(None, documentation))
+      item.setDocumentation(hoverContent(None, documentation.toList))
     }
 
     item.setDeprecated(completion.symbols.forall(_.hasAnnotation(defn.DeprecatedAnnot)))

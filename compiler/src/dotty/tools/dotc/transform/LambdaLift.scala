@@ -60,8 +60,8 @@ object LambdaLift:
 
     def proxyOf(sym: Symbol, fv: Symbol): Symbol = proxyMap.getOrElse(sym, Map.empty)(fv)
 
-    def proxies(sym: Symbol): List[Symbol] =
-      deps.freeVars(sym).toList.map(proxyOf(sym, _))
+    def proxies(sym: Symbol): Vector[Symbol] =
+      deps.freeVars(sym).toVector.map(proxyOf(sym, _))
 
     private def newName(sym: Symbol)(using Context): Name =
       if (sym.isAnonymousFunction && sym.owner.is(Method))
@@ -72,7 +72,7 @@ object LambdaLift:
 
     private def generateProxies()(using Context): Unit =
       for owner <- deps.tracked do
-        val fvs = deps.freeVars(owner).toList
+        val fvs = deps.freeVars(owner).toVector
         val newFlags = Synthetic | (if (owner.isClass) PrivateParamAccessor else Param)
         report.debuglog(i"free var proxy of ${owner.showLocated}: $fvs%, %")
         val freeProxyPairs =
@@ -142,9 +142,9 @@ object LambdaLift:
         deps.logicalOwner.getOrElse(sym, sym.enclosure)
       def searchIn(enclosure: Symbol): Symbol = {
         if (!enclosure.exists) {
-          def enclosures(encl: Symbol): List[Symbol] =
-            if (encl.exists) encl :: enclosures(liftedEnclosure(encl)) else Nil
-          throw new IllegalArgumentException(i"Could not find proxy for ${sym.showDcl} in ${sym.ownersIterator.toList}, encl = $currentEnclosure, owners = ${currentEnclosure.ownersIterator.toList}%, %; enclosures = ${enclosures(currentEnclosure)}%, %")
+          def enclosures(encl: Symbol): Vector[Symbol] =
+            if (encl.exists) encl +: enclosures(liftedEnclosure(encl)) else Vector()
+          throw new IllegalArgumentException(i"Could not find proxy for ${sym.showDcl} in ${sym.ownersIterator.toVector}, encl = $currentEnclosure, owners = ${currentEnclosure.ownersIterator.toVector}%, %; enclosures = ${enclosures(currentEnclosure)}%, %")
         }
         report.debuglog(i"searching for $sym(${sym.owner}) in $enclosure")
         proxyMap get enclosure match {
@@ -179,12 +179,12 @@ object LambdaLift:
       thisPhase.transformFollowingDeep(if (psym.owner.isTerm) ref(psym) else memberRef(psym))
     }
 
-    def addFreeArgs(sym: Symbol, args: List[Tree])(using Context): List[Tree] =
+    def addFreeArgs(sym: Symbol, args: Vector[Tree])(using Context): Vector[Tree] =
       val fvs = deps.freeVars(sym)
-      if fvs.nonEmpty then fvs.toList.map(proxyRef(_)) ++ args else args
+      if fvs.nonEmpty then fvs.toVector.map(proxyRef(_)) ++ args else args
 
-    def addFreeParams(tree: Tree, proxies: List[Symbol])(using Context): Tree = proxies match {
-      case Nil => tree
+    def addFreeParams(tree: Tree, proxies: Vector[Symbol])(using Context): Tree = proxies match {
+      case Vector() => tree
       case proxies =>
         val sym = tree.symbol
         val freeParamDefs = proxies.map(proxy =>
@@ -194,7 +194,7 @@ object LambdaLift:
 
         /** Initialize proxy fields from proxy parameters and map `rhs` from fields to parameters */
         def copyParams(rhs: Tree) = {
-          val fvs = deps.freeVars(sym.owner).toList
+          val fvs = deps.freeVars(sym.owner).toVector
           val classProxies = fvs.map(proxyOf(sym.owner, _))
           val constrProxies = fvs.map(proxyOf(sym, _))
           report.debuglog(i"copy params ${constrProxies.map(_.showLocated)}%, % to ${classProxies.map(_.showLocated)}%, %}")

@@ -13,7 +13,7 @@ import scala.quoted.runtime.impl.QuotesImpl
 /**
   * Decompiler to be used with IDEs
   */
-class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
+class IDEDecompilerDriver(val settings: Vector[String]) extends dotc.Driver {
 
   private val myInitCtx: Context = {
     val rootCtx = initCtx.fresh.addMode(Mode.Interactive | Mode.ReadPositions)
@@ -33,7 +33,7 @@ class IDEDecompilerDriver(val settings: List[String]) extends dotc.Driver {
     val run = decompiler.newRun(using myInitCtx.fresh.setReporter(reporter))
 
     inContext(run.runContext) {
-      run.compile(List(tastyFile))
+      run.compile(Vector(tastyFile))
       run.printSummary()
       val unit = ctx.run.nn.units.head
 

@@ -31,6 +31,7 @@ trait PcSymbolSearch:
           // same issue https://github.com/lampepfl/dotty/issues/15937 as below
           t.isInstanceOf[TypeTree]
       )
+      .toList
 
   lazy val extensionMethods =
     NavigateAST
@@ -41,7 +42,7 @@ trait PcSymbolSearch:
     // For type it will sometimes go into the wrong tree since TypeTree also contains the same span
     // https://github.com/lampepfl/dotty/issues/15937
     case TypeApply(sel: Select, _) :: _ if sel.span.contains(pos.span) =>
-      Interactive.pathTo(sel, pos.span) ::: rawPath
+      Interactive.pathTo(sel, pos.span).toList ::: rawPath
     case _ => rawPath
 
   lazy val soughtSymbols: Option[(Set[Symbol], SourcePosition)] =
@@ -155,7 +156,7 @@ trait PcSymbolSearch:
         }
         collectTrees(annotTree).flatMap { t =>
           soughtSymbols(
-            Interactive.pathTo(t, pos.span)
+            Interactive.pathTo(t, pos.span).toList
           )
         }.headOption
 
@@ -187,14 +188,14 @@ trait PcSymbolSearch:
               v.name,
               v.namePos,
               v.symbol,
-              extMethods.methods
+              extMethods.methods.toList
             )
           case i: untpd.Ident =>
             ExtensionParamOccurrence(
               i.name,
               i.sourcePos,
               i.symbol,
-              extMethods.methods
+              extMethods.methods.toList
             )
         }
 
@@ -222,7 +223,7 @@ trait PcSymbolSearch:
           for
             method <- methods.toSet
             symbol <-
-              Interactive.pathTo(tree, method.span) match
+              Interactive.pathTo(tree, method.span).toList match
                 case (d: DefDef) :: _ =>
                   d.paramss.flatten.collect {
                     case param if param.name.decoded == name.decoded =>
@@ -245,7 +246,7 @@ trait PcSymbolSearch:
         methods <- extensionMethods.map(_.methods)
         symbols <- collectAllExtensionParamSymbols(
           unit.tpdTree,
-          ExtensionParamOccurrence(name, pos, sym, methods)
+          ExtensionParamOccurrence(name, pos, sym, methods.toList)
         )
       yield symbols
     symbols.getOrElse((symbolAlternatives(sym), pos))

@@ -7,7 +7,7 @@ import scala.collection.immutable.TreeMap
 
 class Attributes private[tasty](
   private[tasty] val booleanTags: BitSet,
-  private[tasty] val stringTagValues: List[(Int, String)],
+  private[tasty] val stringTagValues: Vector[(Int, String)],
 ) {
   def scala2StandardLibrary: Boolean = booleanTags(SCALA2STANDARDLIBRARYattr)
   def explicitNulls: Boolean = booleanTags(EXPLICITNULLSattr)
@@ -36,11 +36,11 @@ object Attributes:
     if isJava then booleanTags += JAVAattr
     if isOutline then booleanTags += OUTLINEattr
 
-    val stringTagValues = List.newBuilder[(Int, String)]
+    val stringTagValues = Vector.newBuilder[(Int, String)]
     stringTagValues += SOURCEFILEattr -> sourceFile
 
     new Attributes(booleanTags.result(), stringTagValues.result())
   end apply
 
   val empty: Attributes =
-    new Attributes(BitSet.empty, Nil)
+    new Attributes(BitSet.empty, Vector())

@@ -57,7 +57,7 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
    *  @param mArgss Arguments for the method call not present in `tree`
    *  @return       A tree for the extension method call
    */
-  private def rewire(tree: Tree, mtArgs: List[Tree] = Nil, mArgss: List[List[Tree]] = Nil)
+  private def rewire(tree: Tree, mtArgs: Vector[Tree] = Vector(), mArgss: Vector[Vector[Tree]] = Vector())
     (using Context): Tree =
     def noTypeApplyIn(tree: Tree): Boolean = tree match
       case _: TypeApply => false
@@ -65,12 +65,12 @@ class VCInlineMethods extends MiniPhase with IdentityDenotTransformer {
       case _ => true
     tree match {
       case Apply(qual, mArgs) =>
-        rewire(qual, mtArgs, mArgs :: mArgss)
+        rewire(qual, mtArgs, mArgs +: mArgss)
       case TypeApply(qual, mtArgs2) =>
         if noTypeApplyIn(qual) then
           rewire(qual, mtArgs2, mArgss)
         else
-          rewire(qual, mtArgs, mtArgs2 :: mArgss)
+          rewire(qual, mtArgs, mtArgs2 +: mArgss)
       case sel @ Select(qual, _) =>
         val origMeth = sel.symbol
         val origCls = origMeth.enclosingClass

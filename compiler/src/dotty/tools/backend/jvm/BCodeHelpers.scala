@@ -139,7 +139,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     /*
      * must-single-thread
      */
-    def emitAnnotations(cw: asm.ClassVisitor, annotations: List[Annotation])(using Context): Unit =
+    def emitAnnotations(cw: asm.ClassVisitor, annotations: Vector[Annotation])(using Context): Unit =
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
@@ -150,7 +150,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     /*
      * must-single-thread
      */
-    def emitAnnotations(mw: asm.MethodVisitor, annotations: List[Annotation])(using Context): Unit =
+    def emitAnnotations(mw: asm.MethodVisitor, annotations: Vector[Annotation])(using Context): Unit =
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
@@ -161,7 +161,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     /*
      * must-single-thread
      */
-    def emitAnnotations(fw: asm.FieldVisitor, annotations: List[Annotation])(using Context): Unit =
+    def emitAnnotations(fw: asm.FieldVisitor, annotations: Vector[Annotation])(using Context): Unit =
       for(annot <- annotations; if shouldEmitAnnotation(annot)) {
         val typ = annot.tree.tpe
         val assocs = assocsFromApply(annot.tree)
@@ -172,7 +172,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     /*
      * must-single-thread
      */
-    def emitParamNames(jmethod: asm.MethodVisitor, params: List[Symbol])(using Context): Unit =
+    def emitParamNames(jmethod: asm.MethodVisitor, params: Vector[Symbol])(using Context): Unit =
       for param <- params do
         var access = asm.Opcodes.ACC_FINAL
         if param.is(Artifact) then access |= asm.Opcodes.ACC_SYNTHETIC
@@ -181,7 +181,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     /*
      * must-single-thread
      */
-    def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]])(using Context): Unit =
+    def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: Vector[Vector[Annotation]])(using Context): Unit =
       val annotationss = pannotss.map(_.filter(shouldEmitAnnotation))
       if (annotationss.forall(_.isEmpty)) return
       for ((annots, idx) <- annotationss.zipWithIndex; annot <- annots) {
@@ -197,7 +197,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
         retentionPolicyOf(annot) != annotationRetentionSourceAttr
     }
 
-    private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)])(using Context): Unit = {
+    private def emitAssocs(av: asm.AnnotationVisitor, assocs: Vector[(Name, Object)])(using Context): Unit = {
       for ((name, value) <- assocs)
         emitArgument(av, name.mangledString, value.asInstanceOf[Tree])
       av.visitEnd()
@@ -251,7 +251,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
           val flatArgs = actualArgs.flatMap { arg =>
             normalizeArgument(arg) match {
               case t: tpd.SeqLiteral => t.elems
-              case e => List(e)
+              case e => Vector(e)
             }
           }
           for arg <- flatArgs do
@@ -304,7 +304,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       annot.tree.tpe.typeSymbol.getAnnotation(annotationRetentionAttr).
         flatMap(_.argument(0).map(_.tpe.termSymbol)).getOrElse(annotationRetentionClassAttr)
 
-    private def assocsFromApply(tree: Tree)(using Context): List[(Name, Tree)] = {
+    private def assocsFromApply(tree: Tree)(using Context): Vector[(Name, Tree)] = {
       tree match {
         case Block(_, expr) => assocsFromApply(expr)
         case Apply(fun, args) =>
@@ -383,7 +383,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol, isSynthetic: Boolean)(using Context): Unit = {
       val moduleName     = bTypeLoader.classBTypeFromSymbol(module).internalName
       val methodInfo     = module.thisType.memberInfo(m)
-      val paramJavaTypes: List[BType] = methodInfo.firstParamTypes.map(bTypeLoader.bTypeFromType)
+      val paramJavaTypes: Vector[BType] = methodInfo.firstParamTypes.map(bTypeLoader.bTypeFromType)
       // val paramNames     = 0 until paramJavaTypes.length.map("x_" + _)
 
       /* Forwarders must not be marked final,
@@ -402,7 +402,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       val mdesc = MethodBType(paramJavaTypes, jReturnType).descriptor
       val jgensig = getStaticForwarderGenericSignature(m, module, mdesc)
       val (throws, others) = m.annotations.partition(_.symbol eq defn.ThrowsAnnot)
-      val thrownExceptions: List[String] = getExceptions(throws)
+      val thrownExceptions: Vector[String] = getExceptions(throws)
 
       val mirrorMethodName = m.javaSimpleName
       val lengthOk = if jgensig ne null then BCodeUtils.checkConstantStringLength(jgensig)
@@ -419,7 +419,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       )
 
       emitAnnotations(mirrorMethod, others)
-      val params: List[Symbol] = Nil // backend uses this to emit annotations on parameter lists of forwarders
+      val params: Vector[Symbol] = Vector() // backend uses this to emit annotations on parameter lists of forwarders
       // to static methods of companion class
       // Old assumption: in Dotty this link does not exists: there is no way to get from method type
       // to inner symbols of DefDef
@@ -487,7 +487,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     /** The members of this type that have all of `required` flags but none of `excluded` flags set.
      *  The members are sorted by name and signature to guarantee a stable ordering.
      */
-    private def sortedMembersBasedOnFlags(tp: Type, required: Flag, excluded: FlagSet)(using Context): List[Symbol] = {
+    private def sortedMembersBasedOnFlags(tp: Type, required: Flag, excluded: FlagSet)(using Context): Vector[Symbol] = {
       // The output of `memberNames` is a Set, sort it to guarantee a stable ordering.
       val names = tp.memberNames(takeAllFilter).toSeq.sorted
       val buffer = mutable.ListBuffer[Symbol]()
@@ -495,7 +495,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
         buffer ++= tp.memberBasedOnFlags(name, required, excluded)
           .alternatives.sortBy(_.signature)(using Signature.lexicographicOrdering).map(_.symbol)
       }
-      buffer.toList
+      buffer.toVector
     }
 
     /*
@@ -508,7 +508,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
      *
      * must-single-thread
      */
-    def getExceptions(excs: List[Annotation])(using Context): List[String] = {
+    def getExceptions(excs: Vector[Annotation])(using Context): Vector[String] = {
       for (case ThrownException(exc) <- excs.distinct)
       yield bTypeLoader.classBTypeFromSymbol(TypeErasure.erasure(exc).classSymbol).internalName
     }

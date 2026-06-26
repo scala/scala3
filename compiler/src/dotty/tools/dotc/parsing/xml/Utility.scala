@@ -30,7 +30,7 @@ object Utility {
   private final def unescape(ref: String, s: StringBuilder): StringBuilder | Null =
     ((unescMap get ref) map (s append _)).orNull
 
-  def parseAttributeValue[T](value: String, text: String => T, entityRef: String => T): List[T] = {
+  def parseAttributeValue[T](value: String, text: String => T, entityRef: String => T): Vector[T] = {
     val sb  = new StringBuilder
     var rfb: StringBuilder | Null = null
     val nb = new mutable.ListBuffer[T]()
@@ -73,7 +73,7 @@ object Utility {
     if (!sb.isEmpty) // flush buffer
       nb += text(sb.toString())
 
-    nb.toList
+    nb.toVector
   }
 
   /**

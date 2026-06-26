@@ -7,5 +7,5 @@ import dotty.tools.dotc.core.Phases.Phase
   * on the CompilationUnits
  */
 class PartialTASTYDecompiler extends TASTYDecompiler {
-  override protected def backendPhases: List[List[Phase]] = Nil
+  override protected def backendPhases: Vector[Vector[Phase]] = Vector()
 }

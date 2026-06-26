@@ -30,7 +30,7 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
           tree
 
         case _: Template =>
-          val decls = tree.symbol.owner.info.decls.toList
+          val decls = tree.symbol.owner.info.decls.toVector
           super.transform(tree)(using symbolsInCurrentLevel(decls))
 
         case LambdaTypeTree(tparams, body) =>
@@ -39,8 +39,8 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
         case tree: DefTree =>
           val paramSyms = tree match
             case tree: DefDef => tree.paramss.flatten.map(_.symbol)
-            case _ => Nil
-          super.transform(tree)(using symbolsInCurrentLevel(tree.symbol :: paramSyms))
+            case _ => Vector()
+          super.transform(tree)(using symbolsInCurrentLevel(tree.symbol +: paramSyms))
 
         case _ =>
           super.transform(tree)

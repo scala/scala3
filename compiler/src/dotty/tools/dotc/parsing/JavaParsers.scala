@@ -108,19 +108,19 @@ object JavaParsers {
     def javaLangRecord(): Tree = javaLangDot(tpnme.Record)
 
     def arrayOf(tpt: Tree): AppliedTypeTree =
-      AppliedTypeTree(scalaDot(tpnme.Array), List(tpt))
+      AppliedTypeTree(scalaDot(tpnme.Array), Vector(tpt))
 
     def classOf(tpt: Tree): Tree =
-      TypeApply(Select(scalaDot(nme.Predef), nme.classOf), List(tpt))
+      TypeApply(Select(scalaDot(nme.Predef), nme.classOf), Vector(tpt))
 
-    def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: List[TypeDef], needsDummyConstr: Boolean): Template = {
+    def makeTemplate(parents: Vector[Tree], stats: Vector[Tree], tparams: Vector[TypeDef], needsDummyConstr: Boolean): Template = {
       def UnitTpt(): Tree = TypeTree(defn.UnitType)
 
-      def pullOutFirstConstr(stats: List[Tree]): (Tree, List[Tree]) = stats match {
-        case (meth: DefDef) :: rest if meth.name == nme.CONSTRUCTOR => (meth, rest)
-        case first :: rest =>
+      def pullOutFirstConstr(stats: Vector[Tree]): (Tree, Vector[Tree]) = stats match {
+        case (meth: DefDef) +: rest if meth.name == nme.CONSTRUCTOR => (meth, rest)
+        case first +: rest =>
           val (constr, tail) = pullOutFirstConstr(rest)
-          (constr, first :: tail)
+          (constr, first +: tail)
         case nil => (EmptyTree, nil)
       }
       var (constr1, stats1) = pullOutFirstConstr(stats)
@@ -129,14 +129,14 @@ object JavaParsers {
       // can call it.
       // This also avoids clashes between the constructor parameter names and member names.
       if (needsDummyConstr) {
-        if (constr1 == EmptyTree) constr1 = makeConstructor(List(), Nil, Parsers.unimplementedExpr)
-        stats1 = constr1 :: stats1
-        constr1 = makeConstructor(List(UnitTpt()), tparams, EmptyTree, fakeFlags)
+        if (constr1 == EmptyTree) constr1 = makeConstructor(Vector(), Vector(), Parsers.unimplementedExpr)
+        stats1 = constr1 +: stats1
+        constr1 = makeConstructor(Vector(UnitTpt()), tparams, EmptyTree, fakeFlags)
       }
       else if (constr1 == EmptyTree) {
-        constr1 = makeConstructor(List(), tparams, EmptyTree)
+        constr1 = makeConstructor(Vector(), tparams, EmptyTree)
       }
-      Template(constr1.asInstanceOf[DefDef], parents, Nil, EmptyValDef, stats1)
+      Template(constr1.asInstanceOf[DefDef], parents, Vector(), EmptyValDef, stats1)
     }
 
     def makeSyntheticParam(count: Int, tpt: Tree): ValDef =
@@ -144,9 +144,9 @@ object JavaParsers {
     def makeParam(name: TermName, tpt: Tree): ValDef =
       ValDef(name, tpt, EmptyTree).withFlags(Flags.JavaDefined | Flags.Param)
 
-    def makeConstructor(formals: List[Tree], tparams: List[TypeDef], body: Tree, flags: FlagSet = Flags.JavaDefined): DefDef = {
+    def makeConstructor(formals: Vector[Tree], tparams: Vector[TypeDef], body: Tree, flags: FlagSet = Flags.JavaDefined): DefDef = {
       val vparams = formals.zipWithIndex.map { case (p, i) => makeSyntheticParam(i + 1, p).withAddedFlags(flags) }
-      DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(vparams)), TypeTree(), body).withFlags(flags)
+      DefDef(nme.CONSTRUCTOR, joinParams(tparams, Vector(vparams)), TypeTree(), body).withFlags(flags)
     }
 
     // ------------- general parsing ---------------------------
@@ -223,13 +223,13 @@ object JavaParsers {
         nme.ERROR
       }
 
-    def repsep[T <: Tree](p: () => T, sep: Int): List[T] = {
+    def repsep[T <: Tree](p: () => T, sep: Int): Vector[T] = {
       val buf = ListBuffer[T](p())
       while (in.token == sep) {
         in.nextToken()
         buf += p()
       }
-      buf.toList
+      buf.toVector
     }
 
     /** Convert (qual)ident to type identifier
@@ -329,7 +329,7 @@ object JavaParsers {
             TypeDef(
               Modifiers(Flags.JavaDefined | Flags.Deferred),
               typeName("_$" +(wildnum += 1)),
-              List(),
+              Vector(),
               TypeBoundsTree(lo, hi))
               */
             TypeBoundsTree(lo, hi)
@@ -350,7 +350,7 @@ object JavaParsers {
       else t
     }
 
-    def annotations(): List[Tree] = {
+    def annotations(): Vector[Tree] = {
       val annots = new ListBuffer[Tree]
       while (in.token == AT) {
         in.nextToken()
@@ -359,7 +359,7 @@ object JavaParsers {
           case _ =>
         }
       }
-      annots.toList
+      annots.toVector
     }
 
     /** Annotation                   ::= TypeName [`(` [AnnotationArgument {`,` AnnotationArgument}] `)`]
@@ -395,7 +395,7 @@ object JavaParsers {
             in.nextToken() // using this instead of repsep allows us to handle trailing commas
         accept(RBRACE)
         Option.unless(buffer contains None) {
-          Apply(scalaDot(nme.Array), buffer.flatten.toList)
+          Apply(scalaDot(nme.Array), buffer.flatten.toVector)
         }
 
       def argValue(): Option[Tree] =
@@ -457,12 +457,12 @@ object JavaParsers {
       Option.unless(args contains None) {
         Apply(
           Select(New(id), nme.CONSTRUCTOR),
-          args.flatten.toList
+          args.flatten.toVector
         )
       }
     }
 
-    def modifiers(inInterface: Boolean, annots0: List[Tree] = Nil): Modifiers = {
+    def modifiers(inInterface: Boolean, annots0: Vector[Tree] = Vector()): Modifiers = {
       var flags: FlagSet = Flags.JavaDefined
       // assumed true unless we see public/private/protected
       var isPackageAccess = true
@@ -528,20 +528,20 @@ object JavaParsers {
               if (isPackageAccess && !inInterface) thisPackageName
               else tpnme.EMPTY
 
-            return Modifiers(flags, privateWithin).withAnnotations(annots.toList)
+            return Modifiers(flags, privateWithin).withAnnotations(annots.toVector)
         }
       assert(false, "should not be here")
       throw new RuntimeException
     }
 
-    def typeParams(flags: FlagSet = Flags.JavaDefined | Flags.PrivateLocal | Flags.Param): List[TypeDef] =
+    def typeParams(flags: FlagSet = Flags.JavaDefined | Flags.PrivateLocal | Flags.Param): Vector[TypeDef] =
       if (in.token == LT) {
         in.nextToken()
         val tparams = repsep(() => typeParam(flags), COMMA)
         acceptClosingAngle()
         tparams
       }
-      else List()
+      else Vector()
 
     def typeParam(flags: FlagSet): TypeDef =
       atSpan(in.offset) {
@@ -558,14 +558,14 @@ object JavaParsers {
           in.nextToken()
           buf += typ()
         }
-        val ts = buf.toList
+        val ts = buf.toVector
         if (ts.tail.isEmpty) ts.head
         else ts.reduce(makeAndType(_,_))
       }
 
-    def formalParams(): List[ValDef] = {
+    def formalParams(): Vector[ValDef] = {
       accept(LPAREN)
-      val vparams = if (in.token == RPAREN) List() else repsep(() => formalParam(), COMMA)
+      val vparams = if (in.token == RPAREN) Vector() else repsep(() => formalParam(), COMMA)
       accept(RPAREN)
       vparams
     }
@@ -608,9 +608,9 @@ object JavaParsers {
       if in.token == IDENTIFIER && in.name.nn == jnme.RECORDid then
         in.token = RECORD
 
-    def termDecl(start: Offset, mods: Modifiers, parentToken: Int): List[Tree] = {
+    def termDecl(start: Offset, mods: Modifiers, parentToken: Int): Vector[Tree] = {
       val inInterface = definesInterface(parentToken)
-      val tparams = if (in.token == LT) typeParams(Flags.JavaDefined | Flags.Param) else List()
+      val tparams = if (in.token == LT) typeParams(Flags.JavaDefined | Flags.Param) else Vector()
       val isVoid = in.token == VOID
       var rtpt =
         if (isVoid)
@@ -628,9 +628,9 @@ object JavaParsers {
         // constructor declaration
         val vparams = formalParams()
         optThrows()
-        List {
+        Vector {
           atSpan(start) {
-            DefDef(nme.CONSTRUCTOR, joinParams(tparams, List(vparams)),
+            DefDef(nme.CONSTRUCTOR, joinParams(tparams, Vector(vparams)),
                    TypeTree(), methodBody()).withMods(mods)
           }
         }
@@ -643,7 +643,7 @@ object JavaParsers {
         }
         */
         methodBody()
-        Nil
+        Vector()
       }
       else {
         var mods1 = mods
@@ -663,7 +663,7 @@ object JavaParsers {
               if (parentToken == AT && in.token == DEFAULT) {
                 val annot =
                   atSpan(nameOffset) {
-                    New(Select(Select(scalaDot(nme.annotation), nme.internal), tpnme.AnnotationDefaultATTR), Nil)
+                    New(Select(Select(scalaDot(nme.annotation), nme.internal), tpnme.AnnotationDefaultATTR), Vector())
                   }
                 mods1 = mods1.withAddedAnnotation(annot)
                 val unimplemented = unimplementedExpr
@@ -676,9 +676,9 @@ object JavaParsers {
                 EmptyTree
               }
           //if (inInterface) mods1 |= Flags.Deferred
-          List {
+          Vector {
             atSpan(start, nameOffset) {
-              DefDef(name.toTermName, joinParams(tparams, List(vparams)), rtpt, body).withMods(mods1 | Flags.Method)
+              DefDef(name.toTermName, joinParams(tparams, Vector(vparams)), rtpt, body).withMods(mods1 | Flags.Method)
             }
           }
         }
@@ -700,7 +700,7 @@ object JavaParsers {
       *  Once we have reached the end of the statement, we know whether
       *  these potential definitions are real or not.
       */
-    def fieldDecls(start: Offset, firstNameOffset: Offset, mods: Modifiers, tpt: Tree, name: Name): List[Tree] = {
+    def fieldDecls(start: Offset, firstNameOffset: Offset, mods: Modifiers, tpt: Tree, name: Name): Vector[Tree] = {
       val buf = ListBuffer[Tree](
           atSpan(start, firstNameOffset) { varDecl(mods, tpt, name.toTermName) })
       val maybe = new ListBuffer[Tree] // potential variable definitions.
@@ -730,7 +730,7 @@ object JavaParsers {
       }
       if (in.token == SEMI)
         buf ++= maybe // every potential vardef that survived until here is real.
-      buf.toList
+      buf.toVector
     }
 
     def varDecl(mods: Modifiers, tpt: Tree, name: TermName): ValDef = {
@@ -780,21 +780,21 @@ object JavaParsers {
       ValDef(name, tpt2, if (mods.is(Flags.Param)) EmptyTree else unimplementedExpr).withMods(mods1)
     }
 
-    def memberDecl(start: Offset, mods: Modifiers, parentToken: Int): List[Tree] =
+    def memberDecl(start: Offset, mods: Modifiers, parentToken: Int): Vector[Tree] =
       if (isTypeDeclStart()) typeDecl(start, if definesInterface(parentToken) then mods | Flags.JavaStatic else mods)
       else termDecl(start, mods, parentToken)
 
-    def makeCompanionObject(cdef: TypeDef, statics: List[Tree]): Tree =
+    def makeCompanionObject(cdef: TypeDef, statics: Vector[Tree]): Tree =
       atSpan(cdef.span) {
         assert(cdef.span.exists)
         ModuleDef(cdef.name.toTermName,
-          makeTemplate(List(), statics, List(), needsDummyConstr = false)).withMods((cdef.mods & Flags.RetainedModuleClassFlags).toTermFlags)
+          makeTemplate(Vector(), statics, Vector(), needsDummyConstr = false)).withMods((cdef.mods & Flags.RetainedModuleClassFlags).toTermFlags)
       }
 
-    def addCompanionObject(statics: List[Tree], cdef: TypeDef): List[Tree] =
-      List(makeCompanionObject(cdef, statics), cdef)
+    def addCompanionObject(statics: Vector[Tree], cdef: TypeDef): Vector[Tree] =
+      Vector(makeCompanionObject(cdef, statics), cdef)
 
-    def importDecl(): List[Tree] = {
+    def importDecl(): Vector[Tree] = {
       val start = in.offset
       accept(IMPORT)
       val buf = new ListBuffer[Name]
@@ -818,10 +818,10 @@ object JavaParsers {
       else buf += nme.ROOTPKG
       val lastnameOffset = collectIdents()
       accept(SEMI)
-      val names = buf.toList
+      val names = buf.toVector
       if (names.length < 2) {
         syntaxError(start, em"illegal import", skipIt = false)
-        List()
+        Vector()
       }
       else {
         val qual = names.tail.init.foldLeft(Ident(names.head): Tree)(Select(_, _))
@@ -831,21 +831,21 @@ object JavaParsers {
 //          case nme.WILDCARD => Pair(ident, Ident(null) withPos Span(-1))
 //          case _            => Pair(ident, ident)
 //        }
-        val imp = atSpan(start) { Import(qual, ImportSelector(ident) :: Nil) }
-        imp :: Nil
+        val imp = atSpan(start) { Import(qual, ImportSelector(ident) +: Vector()) }
+        imp +: Vector()
       }
     }
 
-    def interfacesOpt(): List[Tree] =
+    def interfacesOpt(): Vector[Tree] =
       if (in.token == IMPLEMENTS) {
         in.nextToken()
         repsep(() => typ(), COMMA)
       }
       else
-        List()
+        Vector()
 
 
-    def permittedSubclassesOpt(isSealed: Boolean) : List[Tree] =
+    def permittedSubclassesOpt(isSealed: Boolean) : Vector[Tree] =
       if in.token == PERMITS && !isSealed then
         syntaxError(em"A type declaration that has a permits clause should have a sealed modifier")
       if in.token == PERMITS then
@@ -853,9 +853,9 @@ object JavaParsers {
         repsep(() => typ(), COMMA)
       else
         // JEP-409: Class/Interface may omit the permits clause
-        Nil
+        Vector()
 
-    def classDecl(start: Offset, mods: Modifiers): List[Tree] = {
+    def classDecl(start: Offset, mods: Modifiers): Vector[Tree] = {
       accept(CLASS)
       val nameOffset = in.offset
       val name = identForType()
@@ -871,12 +871,12 @@ object JavaParsers {
       val permittedSubclasses = permittedSubclassesOpt(mods.is(Flags.Sealed))
       val (statics, body) = typeBody(CLASS, name)
       val cls = atSpan(start, nameOffset) {
-        TypeDef(name, makeTemplate(superclass :: interfaces, body, tparams, needsDummyConstr = true)).withMods(mods)
+        TypeDef(name, makeTemplate(superclass +: interfaces, body, tparams, needsDummyConstr = true)).withMods(mods)
       }
       addCompanionObject(statics, cls)
     }
 
-    def recordDecl(start: Offset, mods: Modifiers): List[Tree] =
+    def recordDecl(start: Offset, mods: Modifiers): Vector[Tree] =
       accept(RECORD)
       val nameOffset = in.offset
       val name = identForType()
@@ -905,19 +905,19 @@ object JavaParsers {
         (for (name, (tpt, annots)) <- fieldsByName yield
           DefDef(name, ListOfNil, adaptVarargsType(tpt), unimplementedExpr)
             .withMods(Modifiers(Flags.JavaDefined | Flags.Method | Flags.Synthetic))
-        ).toList
+        ).toVector
 
       // generate the canonical constructor
       val canonicalConstructor =
-        DefDef(nme.CONSTRUCTOR, joinParams(Nil, List(header)), TypeTree(), EmptyTree)
+        DefDef(nme.CONSTRUCTOR, joinParams(Vector(), Vector(header)), TypeTree(), EmptyTree)
           .withMods(Modifiers(Flags.JavaDefined | Flags.Synthetic, mods.privateWithin))
 
       // return the trees
       val recordTypeDef = atSpan(start, nameOffset) {
         TypeDef(name,
           makeTemplate(
-            parents = superclass :: interfaces,
-            stats = canonicalConstructor :: accessors ::: body,
+            parents = superclass +: interfaces,
+            stats = canonicalConstructor +: (accessors ++ body),
             tparams = tparams,
             needsDummyConstr = true
           )
@@ -926,7 +926,7 @@ object JavaParsers {
       addCompanionObject(statics, recordTypeDef)
     end recordDecl
 
-    def interfaceDecl(start: Offset, mods: Modifiers): List[Tree] = {
+    def interfaceDecl(start: Offset, mods: Modifiers): Vector[Tree] = {
       accept(INTERFACE)
       val nameOffset = in.offset
       val name = identForType()
@@ -937,7 +937,7 @@ object JavaParsers {
           repsep(() => typ(), COMMA)
         }
         else
-          List(ObjectTpt())
+          Vector(ObjectTpt())
       val permittedSubclasses = permittedSubclassesOpt(mods.is(Flags.Sealed))
       val (statics, body) = typeBody(INTERFACE, name)
       val iface = atSpan(start, nameOffset) {
@@ -948,14 +948,14 @@ object JavaParsers {
       addCompanionObject(statics, iface)
     }
 
-    def typeBody(leadingToken: Int, parentName: Name): (List[Tree], List[Tree]) = {
+    def typeBody(leadingToken: Int, parentName: Name): (Vector[Tree], Vector[Tree]) = {
       accept(LBRACE)
       val defs = typeBodyDecls(leadingToken, parentName)
       accept(RBRACE)
       defs
     }
 
-    def typeBodyDecls(parentToken: Int, parentName: Name): (List[Tree], List[Tree]) = {
+    def typeBodyDecls(parentToken: Int, parentName: Name): (Vector[Tree], Vector[Tree]) = {
       val inInterface = definesInterface(parentToken)
       val statics = new ListBuffer[Tree]
       val members = new ListBuffer[Tree]
@@ -978,13 +978,13 @@ object JavaParsers {
             members) ++= decls
         }
       }
-      (statics.toList, members.toList)
+      (statics.toVector, members.toVector)
     }
-    def annotationParents: List[Tree] = List(
+    def annotationParents: Vector[Tree] = Vector(
       ObjectTpt(),
       Select(javaLangDot(nme.annotation), tpnme.Annotation)
     )
-    def annotationDecl(start: Offset, mods: Modifiers): List[Tree] = {
+    def annotationDecl(start: Offset, mods: Modifiers): Vector[Tree] = {
       accept(AT)
       accept(INTERFACE)
       val nameOffset = in.offset
@@ -995,15 +995,15 @@ object JavaParsers {
           makeParam(dd.name, dd.tpt)
       }
       val constr = DefDef(nme.CONSTRUCTOR,
-        List(constructorParams), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))
-      val templ = makeTemplate(annotationParents, constr :: body, List(), needsDummyConstr = true)
+        Vector(constructorParams), TypeTree(), EmptyTree).withMods(Modifiers(Flags.JavaDefined))
+      val templ = makeTemplate(annotationParents, constr +: body, Vector(), needsDummyConstr = true)
       val annot = atSpan(start, nameOffset) {
         TypeDef(name, templ).withMods(mods | Flags.JavaInterface | Flags.JavaAnnotation)
       }
       addCompanionObject(statics, annot)
     }
 
-    def enumDecl(start: Offset, mods: Modifiers): List[Tree] = {
+    def enumDecl(start: Offset, mods: Modifiers): Vector[Tree] = {
       accept(ENUM)
       val nameOffset = in.offset
       val name = identForType()
@@ -1020,15 +1020,15 @@ object JavaParsers {
           }
         }
       parseEnumConsts()
-      val consts = buf.toList
+      val consts = buf.toVector
       val (statics, body) =
         if (in.token == SEMI) {
           in.nextToken()
           typeBodyDecls(ENUM, name)
         }
         else
-          (List(), List())
-      val predefs = List(
+          (Vector(), Vector())
+      val predefs = Vector(
         DefDef(
           nme.values,
           ListOfNil,
@@ -1036,21 +1036,21 @@ object JavaParsers {
           unimplementedExpr).withMods(Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method)),
         DefDef(
           nme.valueOf,
-          List(List(makeParam("x".toTermName, TypeTree(StringType)))),
+          Vector(Vector(makeParam("x".toTermName, TypeTree(StringType)))),
           enumType,
           unimplementedExpr).withMods(Modifiers(Flags.JavaDefined | Flags.JavaStatic | Flags.Method)))
       accept(RBRACE)
       /*
       val superclazz =
-        AppliedTypeTree(javaLangDot(tpnme.Enum), List(enumType))
+        AppliedTypeTree(javaLangDot(tpnme.Enum), Vector(enumType))
         */
       val superclazz = Apply(TypeApply(
-        Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)), Nil)
+        Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), Vector(enumType)), Vector())
       val enumclazz = atSpan(start, nameOffset) {
         TypeDef(name,
-          makeTemplate(superclazz :: interfaces, body, List(), needsDummyConstr = true)).withMods(mods | Flags.JavaEnum)
+          makeTemplate(superclazz +: interfaces, body, Vector(), needsDummyConstr = true)).withMods(mods | Flags.JavaEnum)
       }
-      addCompanionObject(consts ::: statics ::: predefs, enumclazz)
+      addCompanionObject(consts ++ statics ++ predefs, enumclazz)
     }
 
     def enumConst(enumType: Tree): ValDef = {
@@ -1075,13 +1075,13 @@ object JavaParsers {
       case CLASS | ENUM | RECORD | INTERFACE | AT => true
       case _ => false
     }
-    def typeDecl(start: Offset, mods: Modifiers): List[Tree] = in.token match
+    def typeDecl(start: Offset, mods: Modifiers): Vector[Tree] = in.token match
       case ENUM      => enumDecl(start, mods)
       case INTERFACE => interfaceDecl(start, mods)
       case AT        => annotationDecl(start, mods)
       case CLASS     => classDecl(start, mods)
       case RECORD    => recordDecl(start, mods)
-      case _         => in.nextToken(); syntaxError(em"illegal start of type declaration", skipIt = true); List(errorTypeTree)
+      case _         => in.nextToken(); syntaxError(em"illegal start of type declaration", skipIt = true); Vector(errorTypeTree)
 
     def tryConstant: Option[Constant] = {
       val negate = in.token match {
@@ -1109,7 +1109,7 @@ object JavaParsers {
     def compilationUnit(): Tree = {
       val buf = ListBuffer.empty[Tree]
       var start = in.offset
-      val leadingAnnots = if (in.token == AT) annotations() else Nil
+      val leadingAnnots = if (in.token == AT) annotations() else Vector()
       val pkg: RefTree =
         if in.token == PACKAGE then
           if leadingAnnots.nonEmpty then
@@ -1127,12 +1127,12 @@ object JavaParsers {
         case _        => tpnme.EMPTY
       }
       var compact = false
-      def typeDeclOrCompact(start: Offset, mods: Modifiers): List[Tree] =
+      def typeDeclOrCompact(start: Offset, mods: Modifiers): Vector[Tree] =
         if (isTypeDeclStart()) typeDecl(start, mods)
         else
           val ts = termDecl(start, mods, CLASS)
           if (ts.nonEmpty) compact = true
-          Nil
+          Vector()
       if buf.isEmpty then
         while (in.token == IMPORT)
           buf ++= importDecl()
@@ -1145,11 +1145,11 @@ object JavaParsers {
           buf ++= typeDeclOrCompact(start, mods)
         }
       }
-      val unit = atSpan(start) { PackageDef(pkg, buf.toList) }
+      val unit = atSpan(start) { PackageDef(pkg, buf.toVector) }
       accept(EOF)
       if (compact) EmptyTree
       else unit match
-        case PackageDef(Ident(nme.EMPTY_PACKAGE), Nil) => EmptyTree
+        case PackageDef(Ident(nme.EMPTY_PACKAGE), Vector()) => EmptyTree
         case _ => unit
     }
   }
@@ -1162,9 +1162,9 @@ object JavaParsers {
    */
   class OutlineJavaParser(source: SourceFile)(using Context) extends JavaParser(source) with OutlineParserCommon {
     override def skipBracesHook(): Option[Tree] = None
-    override def typeBody(leadingToken: Int, parentName: Name): (List[Tree], List[Tree]) = {
+    override def typeBody(leadingToken: Int, parentName: Name): (Vector[Tree], Vector[Tree]) = {
       skipBraces()
-      (List(EmptyValDef), List(EmptyTree))
+      (Vector(EmptyValDef), Vector(EmptyTree))
     }
   }
 }

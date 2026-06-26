@@ -25,7 +25,6 @@ import Errors.*
 import Trace.*
 import Util.*
 
-import scala.collection.immutable.ListSet
 import scala.collection.mutable
 import scala.annotation.tailrec
 import scala.annotation.constructorOnly
@@ -131,7 +130,7 @@ class Objects(using Context @constructorOnly):
    * Config ::= (thisV: Value, scope: Scope, Heap, EnvMap)
    * Cache ::= Config -> (Heap, EnvMap)
    *
-   * regions ::= List(sourcePosition)
+   * regions ::= Vector(sourcePosition)
    */
 
   sealed trait Value:
@@ -299,9 +298,9 @@ class Objects(using Context @constructorOnly):
 
   object SafeValue:
     val safeTypeSymbols =
-      defn.StringClass ::
+      defn.StringClass +:
       (defn.ScalaNumericValueTypeList ++
-       List(defn.UnitType, defn.BooleanType, defn.NullType, defn.ClassClass.typeRef))
+       Vector(defn.UnitType, defn.BooleanType, defn.NullType, defn.ClassClass.typeRef))
       .map(_.symbol)
 
     def getSafeTypeSymbol(tpe: Type): Option[Symbol] =
@@ -562,7 +561,7 @@ class Objects(using Context @constructorOnly):
     /**
      * Creates an environment that evaluates the body of a method or the body of a closure
      */
-    def ofDefDef(ddef: DefDef, args: List[Value], thisV: ThisValue, outerEnv: EnvSet)
+    def ofDefDef(ddef: DefDef, args: Vector[Value], thisV: ThisValue, outerEnv: EnvSet)
                 (using State.Data, EnvMap.EnvMapMutableData, Trace): EnvRef =
       val params = ddef.termParamss.flatten.map(_.symbol)
       assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
@@ -913,9 +912,9 @@ class Objects(using Context @constructorOnly):
    * By default, the region context is empty.
    */
   object Regions:
-    opaque type Data = List[SourcePosition]
-    val empty: Data = Nil
-    def extend(pos: SourcePosition)(using data: Data): Data = pos :: data
+    opaque type Data = Vector[SourcePosition]
+    val empty: Data = Vector()
+    def extend(pos: SourcePosition)(using data: Data): Data = pos +: data
     def exists(pos: SourcePosition)(using data: Data): Boolean = data.indexOf(pos) >= 0
     def show(using data: Data, ctx: Context): String = data.map(_.show).mkString("[", ", ", "]")
 
@@ -1054,7 +1053,7 @@ class Objects(using Context @constructorOnly):
    * @param superType    The type of the super in a super call. NoType for non-super calls.
    * @param needResolve  Whether the target of the call needs resolution?
    */
-  def call(value: Value, meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+  def call(value: Value, meth: Symbol, args: Vector[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", this = " + value.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value.filterClass(meth.owner) match
     case UnknownValue =>
       reportWarningForUnknownValue("Using unknown value. " + Trace.show, Trace.position)
@@ -1221,7 +1220,7 @@ class Objects(using Context @constructorOnly):
    * @param ctor         The symbol of the target method.
    * @param args         Arguments of the constructor call (all parameter blocks flatten to a list).
    */
-  def callConstructor(value: Value, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+  def callConstructor(value: Value, ctor: Symbol, args: Vector[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     value match
     case ref: Ref =>
       if ctor.hasSource then
@@ -1399,7 +1398,7 @@ class Objects(using Context @constructorOnly):
    * @param ctor        The symbol of the target constructor.
    * @param args        The arguments passsed to the constructor.
    */
-  def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+  def instantiate(outer: Value, klass: ClassSymbol, ctor: Symbol, args: Vector[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", outer = " + outer + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
     outer.filterClass(klass.owner) match
     case _ : Fun | _: ArrayRef | SafeValue(_)  =>
       report.warning("[Internal error] unexpected outer in instantiating a class, outer = " + outer.show + ", class = " + klass.show + ", " + Trace.show, Trace.position)
@@ -1556,7 +1555,7 @@ class Objects(using Context @constructorOnly):
   }
 
 
-  def checkClasses(classes: List[ClassSymbol])(using Context): Unit =
+  def checkClasses(classes: Vector[ClassSymbol])(using Context): Unit =
     given State.Data = new State.Data
     given Trace = Trace.empty
     given Heap.MutableData = Heap.empty // TODO: do garbage collection on the heap
@@ -1593,7 +1592,7 @@ class Objects(using Context @constructorOnly):
 
 
   /** Evaluate a list of expressions */
-  def evalExprs(exprs: List[Tree], thisV: ThisValue, klass: ClassSymbol): Contextual[List[Value]] =
+  def evalExprs(exprs: Vector[Tree], thisV: ThisValue, klass: ClassSymbol): Contextual[Vector[Value]] =
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Handles the evaluation of different expressions
@@ -1629,7 +1628,7 @@ class Objects(using Context @constructorOnly):
       case TypeCast(elem, tpe) =>
         eval(elem, thisV, klass).filterType(tpe)
 
-      case Apply(ref, arg :: Nil) if ref.symbol == defn.InitRegionMethod =>
+      case Apply(ref, arg +: Vector()) if ref.symbol == defn.InitRegionMethod =>
         val regions2 = Regions.extend(expr.sourcePos)
         if Regions.exists(expr.sourcePos) then
           report.warning("Cyclic region detected. Trace:\n" + Trace.show, expr)
@@ -1738,7 +1737,7 @@ class Objects(using Context @constructorOnly):
 
       case If(cond, thenp, elsep) =>
         eval(cond, thisV, klass)
-        evalExprs(thenp :: elsep :: Nil, thisV, klass).join
+        evalExprs(thenp +: elsep +: Vector(), thisV, klass).join
 
       case Annotated(arg, annot) =>
         if expr.tpe.hasAnnotation(defn.UncheckedAnnot) then
@@ -1755,14 +1754,14 @@ class Objects(using Context @constructorOnly):
         Bottom
 
       case WhileDo(cond, body) =>
-        evalExprs(cond :: body :: Nil, thisV, klass)
+        evalExprs(cond +: body +: Vector(), thisV, klass)
         Bottom
 
       case Labeled(_, expr) =>
         eval(expr, thisV, klass)
 
       case Try(block, cases, finalizer) =>
-        val res = evalExprs(block :: cases.map(_.body), thisV, klass).join
+        val res = evalExprs(block +: cases.map(_.body), thisV, klass).join
         if !finalizer.isEmpty then
           eval(finalizer, thisV, klass)
         res
@@ -1775,13 +1774,13 @@ class Objects(using Context @constructorOnly):
         val args = evalArgs(elems.map(Arg.apply), thisV, klass)
         val arr = ArrayRef(State.currentObject, summon[Regions.Data])
         arr.writeElement(args.map(_.value).join)
-        call(accessObject(module), meth, List(ArgInfo(arr, summon[Trace], EmptyTree)), module.typeRef, NoType)
+        call(accessObject(module), meth, Vector(ArgInfo(arr, summon[Trace], EmptyTree)), module.typeRef, NoType)
 
       case Inlined(call, bindings, expansion) =>
         evalExprs(bindings, thisV, klass)
         eval(expansion, thisV, klass)
 
-      case Thicket(List()) =>
+      case Thicket(Vector()) =>
         // possible in try/catch/finally, see tests/crash/i6914.scala
         Bottom
 
@@ -1824,12 +1823,12 @@ class Objects(using Context @constructorOnly):
    *  @param thisV       The value for `C.this` where `C` is represented by `klass`.
    *  @param klass       The enclosing class where the type `tp` is located.
    */
-  def patternMatch(scrutinee: Value, cases: List[CaseDef], thisV: ThisValue, klass: ClassSymbol): Contextual[Value] =
+  def patternMatch(scrutinee: Value, cases: Vector[CaseDef], thisV: ThisValue, klass: ClassSymbol): Contextual[Value] =
     // expected member types for `unapplySeq`
     def lengthType = ExprType(defn.IntType)
-    def lengthCompareType = MethodType(List(defn.IntType), defn.IntType)
-    def applyType(elemTp: Type) = MethodType(List(defn.IntType), elemTp)
-    def dropType(elemTp: Type) = MethodType(List(defn.IntType), defn.CollectionSeqType.appliedTo(elemTp))
+    def lengthCompareType = MethodType(Vector(defn.IntType), defn.IntType)
+    def applyType(elemTp: Type) = MethodType(Vector(defn.IntType), elemTp)
+    def dropType(elemTp: Type) = MethodType(Vector(defn.IntType), defn.CollectionSeqType.appliedTo(elemTp))
     def toSeqType(elemTp: Type) = ExprType(defn.CollectionSeqType.appliedTo(elemTp))
 
     def getMemberMethod(receiver: Type, name: TermName, tp: Type): Denotation =
@@ -1873,13 +1872,13 @@ class Objects(using Context @constructorOnly):
           case select: Select =>
             eval(select.qualifier, thisV, klass)
 
-        def implicitArgsBeforeScrutinee(fun: Tree): Contextual[List[ArgInfo]] = fun match
+        def implicitArgsBeforeScrutinee(fun: Tree): Contextual[Vector[ArgInfo]] = fun match
           case Apply(f, implicitArgs) =>
             implicitArgsBeforeScrutinee(f) ++ evalArgs(implicitArgs.map(Arg.apply), thisV, klass)
-          case _ => List()
+          case _ => Vector()
 
         val implicitArgsAfterScrutinee = evalArgs(implicits.map(Arg.apply), thisV, klass)
-        val args = implicitArgsBeforeScrutinee(fun) ++ (ArgInfo(scrutinee, summon[Trace], EmptyTree) :: implicitArgsAfterScrutinee)
+        val args = implicitArgsBeforeScrutinee(fun) ++ (ArgInfo(scrutinee, summon[Trace], EmptyTree) +: implicitArgsAfterScrutinee)
         val unapplyRes = call(receiver, funRef.symbol, args, funRef.prefix, superType = NoType, needResolve = true)
 
         if fun.symbol.name == nme.unapplySeq then
@@ -1899,10 +1898,10 @@ class Objects(using Context @constructorOnly):
           if needsGet then
             // Get match
             val isEmptyDenot = unapplyResTp.member(nme.isEmpty).suchThat(_.info.isParameterless)
-            call(unapplyRes, isEmptyDenot.symbol, Nil, unapplyResTp, superType = NoType, needResolve = true)
+            call(unapplyRes, isEmptyDenot.symbol, Vector(), unapplyResTp, superType = NoType, needResolve = true)
 
             val getDenot = unapplyResTp.member(nme.get).suchThat(_.info.isParameterless)
-            resToMatch = call(unapplyRes, getDenot.symbol, Nil, unapplyResTp, superType = NoType, needResolve = true)
+            resToMatch = call(unapplyRes, getDenot.symbol, Vector(), unapplyResTp, superType = NoType, needResolve = true)
           end if
 
           if elemTp.exists then
@@ -1913,11 +1912,11 @@ class Objects(using Context @constructorOnly):
             val selectors = productSelectors(resultTp)
             assert(selectors.length <= pats.length)
             selectors.init.zip(pats).map { (sel, pat) =>
-              val selectRes = call(resToMatch, sel, Nil, resultTp, superType = NoType, needResolve = true)
+              val selectRes = call(resToMatch, sel, Vector(), resultTp, superType = NoType, needResolve = true)
               evalPattern(selectRes, pat)
             }
             val seqPats = pats.drop(selectors.length - 1)
-            val toSeqRes = call(resToMatch, selectors.last, Nil, resultTp, superType = NoType, needResolve = true)
+            val toSeqRes = call(resToMatch, selectors.last, Vector(), resultTp, superType = NoType, needResolve = true)
             val toSeqResTp = resultTp.memberInfo(selectors.last).finalResultType
             elemTp = unapplySeqTypeElemTp(toSeqResTp)
             // elemTp must conform to the signature in sequence match
@@ -1933,7 +1932,7 @@ class Objects(using Context @constructorOnly):
             val selectors = productSelectors(unapplyResTp)
             assert(selectors.length == pats.length)
             selectors.zip(pats).map { (sel, pat) =>
-              val selectRes = call(unapplyRes, sel, Nil, unapplyResTp, superType = NoType, needResolve = true)
+              val selectRes = call(unapplyRes, sel, Vector(), unapplyResTp, superType = NoType, needResolve = true)
               evalPattern(selectRes, pat)
             }
           else if unapplyResTp <:< defn.BooleanType then
@@ -1942,10 +1941,10 @@ class Objects(using Context @constructorOnly):
           else
             // Get match
             val isEmptyDenot = unapplyResTp.member(nme.isEmpty).suchThat(_.info.isParameterless)
-            call(unapplyRes, isEmptyDenot.symbol, Nil, unapplyResTp, superType = NoType, needResolve = true)
+            call(unapplyRes, isEmptyDenot.symbol, Vector(), unapplyResTp, superType = NoType, needResolve = true)
 
             val getDenot = unapplyResTp.member(nme.get).suchThat(_.info.isParameterless)
-            val getRes = call(unapplyRes, getDenot.symbol, Nil, unapplyResTp, superType = NoType, needResolve = true)
+            val getRes = call(unapplyRes, getDenot.symbol, Vector(), unapplyResTp, superType = NoType, needResolve = true)
             if pats.length == 1 then
               // single match
               evalPattern(getRes, pats.head)
@@ -1953,7 +1952,7 @@ class Objects(using Context @constructorOnly):
               val getResTp = getDenot.info.finalResultType
               val selectors = productSelectors(getResTp).take(pats.length)
               selectors.zip(pats).map { (sel, pat) =>
-                val selectRes = call(unapplyRes, sel, Nil, getResTp, superType = NoType, needResolve = true)
+                val selectRes = call(unapplyRes, sel, Vector(), getResTp, superType = NoType, needResolve = true)
                 evalPattern(selectRes, pat)
               }
             end if
@@ -1979,30 +1978,30 @@ class Objects(using Context @constructorOnly):
     /**
      * Evaluate a sequence value against sequence patterns.
      */
-    def evalSeqPatterns(scrutinee: Value, scrutineeType: Type, elemType: Type, pats: List[Tree])(using Trace): Unit =
+    def evalSeqPatterns(scrutinee: Value, scrutineeType: Type, elemType: Type, pats: Vector[Tree])(using Trace): Unit =
       // call .lengthCompare or .length
       val lengthCompareDenot = getMemberMethod(scrutineeType, nme.lengthCompare, lengthCompareType)
       if lengthCompareDenot.exists then
-        call(scrutinee, lengthCompareDenot.symbol, ArgInfo(UnknownValue, summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+        call(scrutinee, lengthCompareDenot.symbol, ArgInfo(UnknownValue, summon[Trace], EmptyTree) +: Vector(), scrutineeType, superType = NoType, needResolve = true)
       else
         val lengthDenot = getMemberMethod(scrutineeType, nme.length, lengthType)
-        call(scrutinee, lengthDenot.symbol, Nil, scrutineeType, superType = NoType, needResolve = true)
+        call(scrutinee, lengthDenot.symbol, Vector(), scrutineeType, superType = NoType, needResolve = true)
       end if
 
       // call .apply
       val applyDenot = getMemberMethod(scrutineeType, nme.apply, applyType(elemType))
-      val applyRes = call(scrutinee, applyDenot.symbol, ArgInfo(SafeValue(defn.IntType), summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+      val applyRes = call(scrutinee, applyDenot.symbol, ArgInfo(SafeValue(defn.IntType), summon[Trace], EmptyTree) +: Vector(), scrutineeType, superType = NoType, needResolve = true)
 
       if isWildcardStarArgList(pats) then
         if pats.size == 1 then
           // call .toSeq
           val toSeqDenot = getMemberMethod(scrutineeType, nme.toSeq, toSeqType(elemType))
-          val toSeqRes = call(scrutinee, toSeqDenot.symbol, Nil, scrutineeType, superType = NoType, needResolve = true)
+          val toSeqRes = call(scrutinee, toSeqDenot.symbol, Vector(), scrutineeType, superType = NoType, needResolve = true)
           evalPattern(toSeqRes, pats.head)
         else
           // call .drop
           val dropDenot = getMemberMethod(scrutineeType, nme.drop, dropType(elemType))
-          val dropRes = call(scrutinee, dropDenot.symbol, ArgInfo(SafeValue(defn.IntType), summon[Trace], EmptyTree) :: Nil, scrutineeType, superType = NoType, needResolve = true)
+          val dropRes = call(scrutinee, dropDenot.symbol, ArgInfo(SafeValue(defn.IntType), summon[Trace], EmptyTree) +: Vector(), scrutineeType, superType = NoType, needResolve = true)
           for pat <- pats.init do evalPattern(applyRes, pat)
           evalPattern(dropRes, pats.last)
         end if
@@ -2090,7 +2089,7 @@ class Objects(using Context @constructorOnly):
   }
 
   /** Evaluate arguments of methods and constructors */
-  def evalArgs(args: List[Arg], thisV: ThisValue, klass: ClassSymbol): Contextual[List[ArgInfo]] =
+  def evalArgs(args: Vector[Arg], thisV: ThisValue, klass: ClassSymbol): Contextual[Vector[ArgInfo]] =
     val argInfos = new mutable.ArrayBuffer[ArgInfo]
     args.foreach { arg =>
       val res =
@@ -2101,7 +2100,7 @@ class Objects(using Context @constructorOnly):
 
       argInfos += ArgInfo(res, trace.add(arg.tree), arg.tree)
     }
-    argInfos.toList
+    argInfos.toVector
 
   /** Initialize part of an abstract object in `klass` of the inheritance chain
    *
@@ -2127,7 +2126,7 @@ class Objects(using Context @constructorOnly):
     // Tasks is used to schedule super constructor calls.
     // Super constructor calls are delayed until all outers are set.
     type Tasks = mutable.ArrayBuffer[() => Unit]
-    def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo], tasks: Tasks): Unit =
+    def superCall(tref: TypeRef, ctor: Symbol, args: Vector[ArgInfo], tasks: Tasks): Unit =
       val cls = tref.classSymbol.asClass
       // update outer for super class
       val res = outerValue(tref, thisV, klass)
@@ -2165,7 +2164,7 @@ class Objects(using Context @constructorOnly):
 
       case _ =>   // extends A or extends A[T]
         val tref = typeRefOf(parent.tpe)
-        superCall(tref, tref.classSymbol.primaryConstructor, Nil, tasks)
+        superCall(tref, tref.classSymbol.primaryConstructor, Vector(), tasks)
 
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
@@ -2205,7 +2204,7 @@ class Objects(using Context @constructorOnly):
             // The parameter check of traits comes late in the mixin phase.
             // To avoid crash we supply hot values for erroneous parent calls.
             // See tests/neg/i16438.scala.
-            val args: List[ArgInfo] = ctor.info.paramInfoss.flatten.map(_ => new ArgInfo(Bottom, Trace.empty, EmptyTree))
+            val args: Vector[ArgInfo] = ctor.info.paramInfoss.flatten.map(_ => new ArgInfo(Bottom, Trace.empty, EmptyTree))
             extendTrace(superParent) {
               superCall(tref, ctor, args, tasks)
             }

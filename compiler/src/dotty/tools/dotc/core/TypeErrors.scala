@@ -16,7 +16,7 @@ import util.Property
 import config.Printers.{cyclicErrors, noPrinter}
 import collection.mutable
 
-import scala.annotation.constructorOnly
+import scala.annotation.{constructorOnly, publicInBinary}
 
 abstract class TypeError(using creationContext: Context) extends Exception(""):
 
@@ -85,35 +85,39 @@ class MissingType(val pre: Type, val name: Name)(using Context) extends TypeErro
         |$reason."""
 end MissingType
 
-class RecursionOverflow(val op: String, details: => String, val previous: Throwable, val weight: Int)(using Context)
+class RecursionOverflow @publicInBinary private[dotc] (
+  val op: String,
+  details: RecursionOverflow.Details,
+  val previous: Throwable,
+  val weight: Int)(using Context)
 extends TypeError:
 
-  def explanation: String = s"$op $details"
+  def explanation: String = s"$op ${details.value}"
 
-  private def recursions: List[RecursionOverflow] = {
+  private def recursions: Vector[RecursionOverflow] = {
     val result = mutable.ListBuffer.empty[RecursionOverflow]
-    @annotation.tailrec def loop(throwable: Throwable): List[RecursionOverflow] = throwable match {
+    @annotation.tailrec def loop(throwable: Throwable): Vector[RecursionOverflow] = throwable match {
       case ro: RecursionOverflow =>
         result += ro
         loop(ro.previous)
-      case _ => result.toList
+      case _ => result.toVector
     }
 
     loop(this)
   }
 
-  def opsString(rs: List[RecursionOverflow])(using Context): String = {
+  def opsString(rs: Vector[RecursionOverflow])(using Context): String = {
     val maxShown = 20
     if (rs.lengthCompare(maxShown) > 0)
       i"""${opsString(rs.take(maxShown / 2))}
          |  ...
          |${opsString(rs.takeRight(maxShown / 2))}"""
     else
-      (rs.map(_.explanation): List[String]).mkString("\n  ", "\n|  ", "")
+      (rs.map(_.explanation): Vector[String]).mkString("\n  ", "\n|  ", "")
   }
 
   override def toMessage(using Context): Message =
-    val mostCommon = recursions.groupBy(_.op).toList.maxBy(_._2.map(_.weight).sum)._2.reverse
+    val mostCommon = recursions.groupBy(_.op).toVector.maxBy(_._2.map(_.weight).sum)._2.reverse
     em"""Recursion limit exceeded.
         |Maybe there is an illegal cyclic reference?
         |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
@@ -123,6 +127,23 @@ extends TypeError:
 
   override def fillInStackTrace(): Throwable = this
   override def getStackTrace(): Array[StackTraceElement] = previous.getStackTrace().asInstanceOf
+end RecursionOverflow
+
+object RecursionOverflow:
+  sealed abstract class Details:
+    def value: String
+
+  private final class StrictDetails(details: String) extends Details:
+    def value: String = details
+
+  @annotation.nowarn("id=197")
+  inline def apply(op: String, details: => String, previous: Throwable, weight: Int)(using Context): RecursionOverflow =
+    new RecursionOverflow(op, new Details:
+      def value: String = details
+    , previous, weight)
+
+  def withStrictDetails(op: String, details: String, previous: Throwable, weight: Int)(using Context): RecursionOverflow =
+    new RecursionOverflow(op, new StrictDetails(details), previous, weight)
 end RecursionOverflow
 
 /** Post-process exceptions that might result from StackOverflow to add
@@ -136,15 +157,15 @@ object handleRecursive:
     while e != null && !e.isInstanceOf[StackOverflowError] do e = e.getCause
     e
 
-  def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
+  inline def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
     if ctx.settings.XnoEnrichErrorMessages.value then
       throw exc
     else exc match
       case _: RecursionOverflow =>
-        throw new RecursionOverflow(op, details, exc, weight)
+        throw RecursionOverflow(op, details, exc, weight)
       case _ =>
         val so = underlyingStackOverflowOrNull(exc)
-        if so != null then throw new RecursionOverflow(op, details, so, weight)
+        if so != null then throw RecursionOverflow(op, details, so, weight)
         else throw exc
 end handleRecursive
 

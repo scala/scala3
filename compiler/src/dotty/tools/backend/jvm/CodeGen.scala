@@ -101,7 +101,7 @@ class CodeGen(val primitives: ScalaPrimitives,
 
     genClassDefs(ctx.compilationUnit.tpdTree)
     generatedClassHandler.process(
-      GeneratedCompilationUnit(ctx.compilationUnit.source.file, generatedClasses.toList, generatedTasty.toList)
+      GeneratedCompilationUnit(ctx.compilationUnit.source.file, generatedClasses.toVector, generatedTasty.toVector)
     )
   }
 

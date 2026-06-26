@@ -102,7 +102,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
             // make sure we have a constructor
             case parent: TypeTree
             if !cls.is(Trait) && !parentCls.is(Trait) && !defn.NotRuntimeClasses.contains(parentCls) =>
-              New(parent.tpe, Nil).withSpan(impl.span)
+              New(parent.tpe, Vector()).withSpan(impl.span)
             case _ => parent
       cpy.Template(impl)(parents = parents1, body = impl.body ++ newDefs)
     }
@@ -133,7 +133,7 @@ object ExplicitOuter {
 
   /** The outer accessor and potentially outer param accessor needed for class `cls` */
   private def newOuterAccessors(cls: ClassSymbol)(using Context) =
-    newOuterAccessor(cls, cls) :: (if (cls.is(Trait)) Nil else newOuterParamAccessor(cls) :: Nil)
+    newOuterAccessor(cls, cls) +: (if (cls.is(Trait)) Vector() else newOuterParamAccessor(cls) +: Vector())
 
   /** Scala 2.x and Dotty don't always agree on what should be the type of the outer parameter,
    *  so we replicate the old behavior when passing arguments to methods coming from Scala 2.x.
@@ -403,14 +403,14 @@ object ExplicitOuter {
       if (needsOuterParam(cls)) {
         val mt @ MethodTpe(pnames, ptypes, restpe) = tp: @unchecked
         mt.derivedLambdaType(
-          nme.OUTER :: pnames, outerClass(cls).typeRef :: ptypes, restpe)
+          nme.OUTER +: pnames, outerClass(cls).typeRef +: ptypes, restpe)
       }
       else tp
 
     /** If function in an apply node is a constructor that needs to be passed an
-     *  outer argument, the singleton list with the argument, otherwise Nil.
+     *  outer argument, the singleton list with the argument, otherwise Vector().
      */
-    def args(fun: Tree): List[Tree] =
+    def args(fun: Tree): Vector[Tree] =
       if (fun.symbol.isConstructor) {
         val cls = fun.symbol.owner.asClass
         def outerArg(receiver: Tree): Tree = receiver match {
@@ -423,18 +423,18 @@ object ExplicitOuter {
         }
         if (needsOuterParam(cls))
           methPart(fun) match {
-            case Select(receiver, _) => outerArg(receiver).withSpan(fun.span) :: Nil
+            case Select(receiver, _) => outerArg(receiver).withSpan(fun.span) +: Vector()
           }
-        else Nil
+        else Vector()
       }
-      else Nil
+      else Vector()
 
     /** If the constructors of the given `cls` need to be passed an outer
-     *  argument, the singleton list with the argument, otherwise Nil.
+     *  argument, the singleton list with the argument, otherwise Vector().
      */
-    def argsForNew(cls: ClassSymbol, tpe: Type): List[Tree] =
-      if (needsOuterParam(cls)) singleton(fixThis(outerPrefix(tpe))) :: Nil
-      else Nil
+    def argsForNew(cls: ClassSymbol, tpe: Type): Vector[Tree] =
+      if (needsOuterParam(cls)) singleton(fixThis(outerPrefix(tpe))) +: Vector()
+      else Vector()
 
     /** A path of outer accessors starting from node `start`. `start` defaults to the
      *  context owner's this node. There are two alternative conditions that determine
@@ -465,10 +465,10 @@ object ExplicitOuter {
                   outerAccessor(treeCls.asClass)
             }
             assert(outerAcc.exists,
-                i"failure to construct path from ${ctx.owner.ownersIterator.toList}%/% to `this` of ${toCls.showLocated};\n${treeCls.showLocated} does not have an outer accessor")
+                i"failure to construct path from ${ctx.owner.ownersIterator.toVector}%/% to `this` of ${toCls.showLocated};\n${treeCls.showLocated} does not have an outer accessor")
             loop(tree.select(outerAcc).ensureApplied, count - 1)
 
-        report.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).toList}")
+        report.log(i"computing outerpath to $toCls from ${ctx.outersIterator.map(_.owner).toVector}")
         loop(start, count)
       catch case ex: ClassCastException =>
         throw new ClassCastException(i"no path exists from ${ctx.owner.enclosingClass} to $toCls")

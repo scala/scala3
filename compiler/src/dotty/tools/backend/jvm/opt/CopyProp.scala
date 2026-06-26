@@ -158,7 +158,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       //     `true`: then the store argument is already known to be ACONST_NULL.
       val toNullOut = mutable.Map.empty[VarInsnNode, Boolean]
 
-      val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
+      val toReplace = mutable.Map.empty[AbstractInsnNode, Vector[AbstractInsnNode]]
 
       val returns = mutable.Set.empty[AbstractInsnNode]
 
@@ -180,7 +180,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
               case _ => false
             })
           }
-          if (canElim) toReplace(vi) = List(popFor(vi))
+          if (canElim) toReplace(vi) = Vector(popFor(vi))
           else {
             val prods = prodCons.producersForValueAt(vi, prodCons.frameAt(vi).stackTop)
             val isStoreNull = prods.size == 1 && prods.head.getOpcode == ACONST_NULL
@@ -188,7 +188,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
           }
 
         case ii: IincInsnNode if hasNoCons(ii, ii.`var`) =>
-          toReplace(ii) = Nil
+          toReplace(ii) = Vector()
 
         case vi: VarInsnNode =>
           val opc = vi.getOpcode
@@ -205,8 +205,8 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
           if (newArrayInstr != null) {
             val receiverProds = prodCons.producersForValueAt(mi, prodCons.frameAt(mi).stackTop - 1)
             if (receiverProds.size == 1) {
-              toReplace(receiverProds.head) = List(receiverProds.head, getPop(1))
-              toReplace(mi) = List(newArrayInstr)
+              toReplace(receiverProds.head) = Vector(receiverProds.head, getPop(1))
+              toReplace(mi) = Vector(newArrayInstr)
               toInline ++= prodCons.ultimateConsumersOfOutputsFrom(mi).collect({case i if AnalysisUtils.isRuntimeArrayLoadOrUpdate(i) => i.asInstanceOf[MethodInsnNode]})
             }
           }
@@ -231,7 +231,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
           if (i.getType == AbstractInsnNode.VAR_INSN) {
             val vi = i.asInstanceOf[VarInsnNode]
             if (toNullOut.remove(vi).nonEmpty)
-              toReplace(vi) = List(popFor(vi))
+              toReplace(vi) = Vector(popFor(vi))
           }
           i = i.getPrevious
         }
@@ -278,11 +278,12 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
 
       if (toInline.nonEmpty) {
         val methodCallsites = callGraph.callsites(method).collect { case (k, v: KnownCallsite) => (k, v) }
-        var css = toInline.flatMap(methodCallsites.get).toList.sorted(using callsiteOrdering)
-        while (css.nonEmpty) {
-          val cs = css.head
-          css = css.tail
-          inliner.inlineCallsite(cs, None, updateCallGraph = css.isEmpty)
+        val css = toInline.flatMap(methodCallsites.get).toVector.sorted(using callsiteOrdering)
+        var idx = 0
+        while (idx < css.length) {
+          val cs = css(idx)
+          idx += 1
+          inliner.inlineCallsite(cs, None, updateCallGraph = idx == css.length)
         }
       }
 
@@ -316,7 +317,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       // running the ProdConsAnalyzer only once.)
       val toRemove = mutable.Set.empty[AbstractInsnNode]
       // instructions to insert before some instruction
-      val toInsertBefore = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
+      val toInsertBefore = mutable.Map.empty[AbstractInsnNode, Vector[AbstractInsnNode]]
       // an instruction to insert after some instruction
       val toInsertAfter = mutable.Map.empty[AbstractInsnNode, AbstractInsnNode]
 
@@ -424,7 +425,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
           }
         }
         handle(numArgs - 1) // handle stack offsets (numArgs - 1) to 0
-        if (pops.nonEmpty) toInsertBefore(prod) = pops.toList
+        if (pops.nonEmpty) toInsertBefore(prod) = pops.toVector
       }
 
       /* Eliminate LMF `indy` and its inputs. */
@@ -488,7 +489,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
             } else if (optimizerUtils.isScalaUnbox(methodInsn)) {
               val tp = optimizerUtils.primitiveAsmTypeSortToBType(Type.getReturnType(methodInsn.desc).getSort)
               val boxTp = ts.boxedClassOfPrimitive(tp)
-              toInsertBefore(methodInsn) = List(new TypeInsnNode(CHECKCAST, boxTp.internalName), new InsnNode(POP))
+              toInsertBefore(methodInsn) = Vector(new TypeInsnNode(CHECKCAST, boxTp.internalName), new InsnNode(POP))
               toRemove += prod
               callGraph.removeCallsite(methodInsn, method)
               castAdded = true
@@ -499,7 +500,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
               nullCheck += new InsnNode(ACONST_NULL)
               nullCheck += new InsnNode(ATHROW)
               nullCheck += nonNullLabel
-              toInsertBefore(methodInsn) = nullCheck.toList
+              toInsertBefore(methodInsn) = nullCheck.toVector
               toRemove += prod
               callGraph.removeCallsite(methodInsn, method)
               method.maxStack = math.max(MethodMax.maxStack(method), prodCons.frameAt(methodInsn).getStackSize + 1)
@@ -549,7 +550,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
           changed = true
         }
 
-        for (mi <- sideEffectFreeConstructorCalls.toList) { // toList to allow removing elements while traversing
+        for (mi <- sideEffectFreeConstructorCalls.toVector) { // toVector to allow removing elements while traversing
         val frame = prodCons.frameAt(mi)
           val stackTop = frame.stackTop
           val numArgs = Type.getArgumentTypes(mi.desc).length
@@ -645,7 +646,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
     val liveVars = new Array[Boolean](MethodMax.maxLocals(method))
     val liveLabels = mutable.Set.empty[LabelNode]
 
-    def mkRemovePair(store: VarInsnNode, other: AbstractInsnNode, depends: List[RemovePairDependency]): RemovePair = {
+    def mkRemovePair(store: VarInsnNode, other: AbstractInsnNode, depends: Vector[RemovePairDependency]): RemovePair = {
       val r = RemovePair(store, other, depends)
       removePairs += r
       r
@@ -694,14 +695,14 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       @tailrec def tryPairing(): Unit = {
         if (completesStackTop(insn)) {
           val (store: VarInsnNode, depends) = pairStartStack.pop(): @unchecked
-          addDepends(mkRemovePair(store, insn, depends.toList))
+          addDepends(mkRemovePair(store, insn, depends.toVector))
         } else if (pairStartStack.nonEmpty) {
           val (top, topDepends) = pairStartStack.pop()
           if (pairStartStack.nonEmpty) {
             (pairStartStack.top, top) match {
               case ((ldNull: InsnNode, depends), store: VarInsnNode) if ldNull.getOpcode == ACONST_NULL && store.getOpcode == ASTORE =>
                 pairStartStack.pop()
-                addDepends(mkRemovePair(store, ldNull, depends.toList))
+                addDepends(mkRemovePair(store, ldNull, depends.toVector))
                 // example: store; (null; store;) (store; load;) load
                 //                         s1^     ^^^^^p1^^^^^        // p1 is added to s1's depends
                 // then:    store; (null; store;) load
@@ -761,7 +762,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
 
     while (!doneEliding) {
       doneEliding = true
-      for (removePair <- removePairs.toList) {
+      for (removePair <- removePairs.toVector) {
         val slot = removePair.store.`var`
         if (liveVars(slot)) elide(removePair)
         else removePair.depends foreach {
@@ -782,7 +783,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
 }
 
 sealed trait RemovePairDependency
-case class RemovePair(store: VarInsnNode, other: AbstractInsnNode, depends: List[RemovePairDependency]) extends RemovePairDependency {
+case class RemovePair(store: VarInsnNode, other: AbstractInsnNode, depends: Vector[RemovePairDependency]) extends RemovePairDependency {
   override def toString = s"<${LogUtils.textify(store)},${LogUtils.textify(other)}> [$depends]"
 }
 case class LabelNotLive(label: LabelNode) extends RemovePairDependency

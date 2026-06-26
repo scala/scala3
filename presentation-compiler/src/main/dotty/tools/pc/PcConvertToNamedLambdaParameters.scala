@@ -96,15 +96,15 @@ object PcConvertToNamedLambdaParameters:
   class Lambda(using Context):
     def unapply(tree: tpd.Block): Option[(List[tpd.ValDef], tpd.Tree)] = tree match
       case tpd.Block(
-            (ddef @ tpd.DefDef(_, tpd.ValDefs(params) :: Nil, _, body: tpd.Tree)) :: Nil,
+            Vector(ddef @ tpd.DefDef(_, Vector(tpd.ValDefs(params)), _, body: tpd.Tree)),
             tpd.Closure(_, meth, _)
           )
           if ddef.symbol == meth.symbol =>
         params match
-          case List(param) =>
+          case Vector(param) =>
             // lambdas with multiple wildcard parameters are represented as a single parameter function and a block with wildcard valdefs
             Some(multipleUnderscoresFromBody(param, body))
-          case _ => Some(params -> body)
+          case _ => Some(params.toList -> body)
       case _ => None
 
   private def multipleUnderscoresFromBody(
@@ -115,7 +115,7 @@ object PcConvertToNamedLambdaParameters:
       val wildcardParamDefs = defs.collect {
         case valdef: tpd.ValDef if isWildcardParam(valdef) => valdef
       }
-      if wildcardParamDefs.size == defs.size then wildcardParamDefs -> expr
+      if wildcardParamDefs.size == defs.size then wildcardParamDefs.toList -> expr
       else List(param) -> body
     case _ => List(param) -> body
 

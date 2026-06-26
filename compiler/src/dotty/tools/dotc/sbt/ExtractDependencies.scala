@@ -189,7 +189,7 @@ trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
   lazy val allowsDependencyByMacroExpansion =
     classOf[DependencyContext].getFields().exists(_.getName() == "DependencyByMacroExpansion")
 
-  private def addMacroDependency(trees: List[Tree])(using Context): Unit =
+  private def addMacroDependency(trees: Vector[Tree])(using Context): Unit =
     if (allowsDependencyByMacroExpansion) {
       val traverser = new TypeDependencyTraverser {
         def addDependency(symbol: Symbol) =

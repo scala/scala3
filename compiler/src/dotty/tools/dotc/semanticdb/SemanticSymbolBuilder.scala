@@ -99,7 +99,7 @@ private[semanticdb] class SemanticSymbolBuilder:
   end localIdx
 
 private[semanticdb] object SemanticSymbolBuilder:
-  def inverseSymbol(sym: String)(using ctx: Context): List[Symbol] =
+  def inverseSymbol(sym: String)(using ctx: Context): Vector[Symbol] =
     def stripBackticks(s: String): String = s.stripPrefix("`").stripSuffix("`")
 
     import Scala3.StringOps.*
@@ -107,28 +107,28 @@ private[semanticdb] object SemanticSymbolBuilder:
     val defns = ctx.definitions
     import defns.*
 
-    def loop(s: String): List[Symbol] =
-      if !s.isSymbol || s.isRootPackage then RootPackage :: Nil
-      else if s.isEmptyPackage then EmptyPackageVal :: Nil
+    def loop(s: String): Vector[Symbol] =
+      if !s.isSymbol || s.isRootPackage then RootPackage +: Vector()
+      else if s.isEmptyPackage then EmptyPackageVal +: Vector()
       else if s.isPackage then
         try
           val pkg = s.split('/').map(stripBackticks).mkString(".")
-          requiredPackage(pkg) :: Nil
+          requiredPackage(pkg) +: Vector()
         catch
           case _: Exception =>
-            Nil
+            Vector()
       else
         val (desc, parent) = DescriptorParser(s)
         val parentSymbol = loop(parent)
 
-        def tryMember(sym: Symbol): List[Symbol] =
+        def tryMember(sym: Symbol): Vector[Symbol] =
           sym match
             case NoSymbol =>
-              Nil
+              Vector()
             case owner =>
               desc match
                 case Descriptor.None =>
-                  Nil
+                  Vector()
                 case Descriptor.Type(value) =>
                   val typeSym = owner.info.decl(typeName(value)).symbol
                   // Semanticdb describes java static members as a reference from type
@@ -138,7 +138,7 @@ private[semanticdb] object SemanticSymbolBuilder:
                   //   `java/nio/file/Files#exists()` - `exists` is a member of type `Files#`
                   //   however in scalac this method is defined only in `module Files`
                   if typeSym.is(JavaDefined) then
-                    typeSym :: owner.info.decl(termName(value)).symbol :: Nil
+                    typeSym +: owner.info.decl(termName(value)).symbol +: Vector()
                   /**
                    * Looks like decl doesn't work for:
                    *  package a:
@@ -146,13 +146,13 @@ private[semanticdb] object SemanticSymbolBuilder:
                    *      def inc = i + 1
                    */
                   else if typeSym == NoSymbol then
-                    owner.info.member(typeName(value)).symbol :: Nil
-                  else typeSym :: Nil
+                    owner.info.member(typeName(value)).symbol +: Vector()
+                  else typeSym +: Vector()
                   end if
                 case Descriptor.Term(value) =>
                   val outSymbol = owner.info.decl(termName(value)).symbol
                   if outSymbol.exists
-                  then outSymbol :: Nil
+                  then outSymbol +: Vector()
                   else if owner.is(Package)
                   then
                     // Fallback for type companion objects,
@@ -170,18 +170,18 @@ private[semanticdb] object SemanticSymbolBuilder:
                         s.isPackageObject && s.name.stripModuleClassSuffix.show.endsWith("$package")
                       }
                       .flatMap(tryMember)
-                  else Nil
+                  else Vector()
                   end if
                 case Descriptor.Package(value) =>
-                  owner.info.decl(termName(value)).symbol :: Nil
+                  owner.info.decl(termName(value)).symbol +: Vector()
                 case Descriptor.Parameter(value) =>
                   // TODO - need to check how to implement this properly
                   // owner.paramSymss.flatten.filter(_.name.containsName(value))
-                  Nil
+                  Vector()
                 case Descriptor.TypeParameter(value) =>
                   // TODO - need to check how to implement this properly
                   // owner.typeParams.filter(_.name.containsName(value))
-                  Nil
+                  Vector()
                 case Descriptor.Method(value, _) =>
                   owner.info
                     .decl(termName(value))
@@ -189,7 +189,7 @@ private[semanticdb] object SemanticSymbolBuilder:
                     .iterator
                     .map(_.symbol)
                     .filter(sym => symbolName(sym) == s)
-                    .toList
+                    .toVector
           end match
         end tryMember
 
@@ -197,7 +197,7 @@ private[semanticdb] object SemanticSymbolBuilder:
     try
       val res = loop(sym)
       res.filterNot(_ == NoSymbol)
-    catch case e: Exception => Nil
+    catch case e: Exception => Vector()
   end inverseSymbol
 
   private def addName(b: StringBuilder, name: Name): Unit =
@@ -225,10 +225,12 @@ private[semanticdb] object SemanticSymbolBuilder:
         else
           decls0
       end decls
-      val alts = decls.filter(_.isOneOf(Method | Mutable)).toList.reverse.partition(!_.is(Synthetic)).toList.flatten
+      val (nonSyntheticAlts, syntheticAlts) =
+        decls.filter(_.isOneOf(Method | Mutable)).toVector.reverse.partition(!_.is(Synthetic))
+      val alts = nonSyntheticAlts ++ syntheticAlts
 
       def find(filter: Symbol => Boolean) = alts match
-        case notSym :: rest if !filter(notSym) =>
+        case notSym +: rest if !filter(notSym) =>
           val idx = rest.indexWhere(filter)
           if idx >= 0 then b.append('+').append(idx + 1)
         case _ =>

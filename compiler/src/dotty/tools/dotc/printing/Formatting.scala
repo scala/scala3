@@ -100,7 +100,7 @@ object Formatting {
           CtxShow(toStr(x.head) *: toShown(x.tail).asInstanceOf[Tuple])
 
       given [X <: AnyRef: Show]: Show[SimpleIdentitySet[X]] with
-        def show(x: SimpleIdentitySet[X]) = summon[Show[List[X]]].show(x.toList)
+        def show(x: SimpleIdentitySet[X]) = summon[Show[Vector[X]]].show(x.toVector)
 
       given Show[FlagSet] with
         def show(x: FlagSet) = x.flagsString
@@ -121,7 +121,7 @@ object Formatting {
       given Show[Atoms] with
         def show(x: Atoms) = x match
           case Atoms.Unknown       => "Unknown"
-          case Atoms.Range(lo, hi) => CtxShow(s"Range(${toStr(lo.toList)}, ${toStr(hi.toList)})")
+          case Atoms.Range(lo, hi) => CtxShow(s"Range(${toStr(lo.toVector)}, ${toStr(hi.toVector)})")
       end given
 
       given Show[ast.untpd.Modifiers] with
@@ -188,12 +188,12 @@ object Formatting {
         val (pre, post) = s.span(c => !isLineBreak(c))
         pre ++ post.stripMargin
       }
-      val (prefix, suffixes) = sc.parts.toList match {
-        case head :: tail => (head.stripMargin, tail map stripTrailingPart)
-        case Nil => ("", Nil)
+      val (prefix, suffixes) = (sc.parts.toVector: @unchecked) match {
+        case head +: tail => (head.stripMargin, tail map stripTrailingPart)
+        case Vector() => ("", Vector())
       }
       val (args1, suffixes1) = args.lazyZip(suffixes).map(treatArg(_, _)).unzip
-      new StringContext(prefix :: suffixes1.toList*).s(args1*)
+      new StringContext(prefix +: suffixes1.toVector*).s(args1*)
     }
   }
 

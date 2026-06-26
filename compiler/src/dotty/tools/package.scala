@@ -2,8 +2,8 @@ package dotty
 
 package object tools {
 
-  /** Cached single-element list of Nil. (Whether this helps performance has not been tested) */
-  val ListOfNil: List[Nil.type] = Nil :: Nil
+  /** Cached single-element collection of an empty argument list. (Whether this helps performance has not been tested) */
+  val ListOfNil: Vector[Vector[Nothing]] = Vector(Vector())
 
   /** Throws an `UnsupportedOperationException` with the given method name. */
   def unsupported(methodName: String): Nothing =

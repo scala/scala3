@@ -110,12 +110,12 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           val Local(tk, _, idx, _) = locals.getOrMakeLocal(s)
 
           rhs match {
-            case Apply(Select(larg: Ident, nme.ADD), Literal(x) :: Nil)
+            case Apply(Select(larg: Ident, nme.ADD), Literal(x) +: Vector())
             if larg.symbol == s && tk.isIntSizedType && x.isShortRange =>
               lineNumber(tree)
               bc.iinc(idx, x.intValue)
 
-            case Apply(Select(larg: Ident, nme.SUB), Literal(x) :: Nil)
+            case Apply(Select(larg: Ident, nme.SUB), Literal(x) +: Vector())
             if larg.symbol == s && tk.isIntSizedType && Constant(-x.intValue).isShortRange =>
               lineNumber(tree)
               bc.iinc(idx, -x.intValue)
@@ -143,7 +143,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
 
       args match {
         // unary operation
-        case Nil =>
+        case Vector() =>
           genLoad(larg, resKind)
           code match {
             case POS => () // nothing
@@ -153,7 +153,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           }
 
         // binary operation
-        case rarg :: Nil =>
+        case rarg +: Vector() =>
           val isShift = isShiftOp(code)
           resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg), bTypes.ObjectRef)
 
@@ -209,7 +209,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         bc.aload(elementType)
       }
       else if (isArraySet(code)) {
-        val List(a1, a2) = args
+        val Vector(a1, a2) = args
         stack.push(k)
         genLoad(a1, INT)
         stack.push(INT)
@@ -333,7 +333,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           bc.store(idx, tk)
           val localVarStart = currProgramPoint()
           if (!isSynth) { // there are case <synthetic> ValDef's emitted by patmat
-            varsInScope = (sym -> localVarStart) :: varsInScope.nn
+            varsInScope = (sym -> localVarStart) +: varsInScope.nn
           }
           generatedType = UNIT
 
@@ -372,8 +372,8 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
             else t.tpe.classSymbol
           val (fun, args) = call match {
             case Apply(fun, args) => (fun, args)
-            case t @ DesugaredSelect(_, _) => (t, Nil) // TODO: use Select
-            case t @ Ident(_) => (t, Nil)
+            case t @ DesugaredSelect(_, _) => (t, Vector()) // TODO: use Select
+            case t @ Ident(_) => (t, Vector())
           }
 
           val savedStackSize = stack.recordSize()
@@ -637,11 +637,11 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
 
       if (NoSymbol == fromSym) {
         // return from enclosing method
-        cleanups match {
-          case Nil =>
+        (cleanups: @unchecked) match {
+          case Vector() =>
             // not an assertion: !shouldEmitCleanup (at least not yet, pendingCleanups() may still have to run, and reset `shouldEmitCleanup`.
             genLoadTo(expr, returnType, LoadDestination.Return)
-          case nextCleanup :: rest =>
+          case nextCleanup +: rest =>
             genLoad(expr, returnType)
             lineNumber(r)
             val saveReturnValue = (returnType != UNIT)
@@ -739,7 +739,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
     } // end of genTypeApply()
 
 
-    private def mkArrayConstructorCall(arr: ArrayBType, app: Apply, args: List[Tree])(using Context) = {
+    private def mkArrayConstructorCall(arr: ArrayBType, app: Apply, args: Vector[Tree])(using Context) = {
       val dims     = arr.dimension
       var elemKind = arr.elementType
       val argsSize = args.length
@@ -753,7 +753,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
          */
         for (i <- args.length until dims) elemKind = ArrayBType(elemKind)
       }
-      genLoadArguments(args, List.fill(args.size)(INT))
+      genLoadArguments(args, Vector.fill(args.size)(INT))
       (argsSize /*: @switch*/) match {
         case 1 => bc.newarray(elemKind)
         case _ =>
@@ -768,7 +768,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       lineNumber(app)
       app match {
         case Apply(_, args) if app.symbol eq defn.newArrayMethod =>
-          val List(elemClaz, Literal(c: Constant), av: tpd.JavaSeqLiteral) = args: @unchecked
+          val Vector(elemClaz, Literal(c: Constant), av: tpd.JavaSeqLiteral) = args: @unchecked
 
           generatedType = bTypeLoader.bTypeFromType(c.typeValue)
           mkArrayConstructorCall(generatedType.asArrayBType, app, av.elems)
@@ -834,7 +834,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
               throw new AssertionError(s"Cannot instantiate $tpt of kind: $generatedType")
           }
 
-        case Apply(fun, List(expr)) if Erasure.Boxing.isBox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
+        case Apply(fun, Vector(expr)) if Erasure.Boxing.isBox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
           val returnType = bTypes.boxedClassOfPrimitive(nativeKind)
@@ -842,7 +842,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           bc.invokestatic(ClassBType.scalaRuntimeBoxesRunTimeInternalName, methodName, BTypes.methodDescriptor(nativeKind, returnType), itf = false, app)
           generatedType = returnType
 
-        case Apply(fun, List(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
+        case Apply(fun, Vector(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           genLoad(expr)
           val boxType = bTypeLoader.bTypeFromType(app.tpe)
           generatedType = boxType
@@ -921,7 +921,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       genArray(av.elems, tpt)
     }
 
-    private def genArray(elems: List[Tree], elemType: Type)(using Context): BType = {
+    private def genArray(elems: Vector[Tree], elemType: Type)(using Context): BType = {
       val elmKind       = bTypeLoader.bTypeFromType(elemType)
       val generatedType = ArrayBType(elmKind)
 
@@ -934,13 +934,11 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       stack.push(INT)
 
       var i = 0
-      var rest = elems
-      while (!rest.isEmpty) {
+      while (i < elems.length) {
         bc.dup(    generatedType)
         bc.iconst( i)
-        genLoad(rest.head, elmKind)
+        genLoad(elems(i), elmKind)
         bc.astore( elmKind)
-        rest = rest.tail
         i = i + 1
       }
 
@@ -982,9 +980,9 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
          * On a second pass, we emit the switch blocks, one for each different target.
          */
 
-        var flatKeysAndTargets: List[(Int, asm.Label)]       = Nil
+        var flatKeysAndTargets: Vector[(Int, asm.Label)]       = Vector()
         var default:  asm.Label | Null = null
-        var switchBlocks: List[(asm.Label, Tree)] = Nil
+        var switchBlocks: Vector[(asm.Label, Tree)] = Vector()
 
         genLoad(selector, INT)
 
@@ -992,17 +990,17 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         for (caze @ CaseDef(pat, guard, body) <- cases) {
           assert(guard == tpd.EmptyTree, guard)
           val switchBlockPoint = new asm.Label
-          switchBlocks ::= (switchBlockPoint, body)
+          switchBlocks +:= (switchBlockPoint, body)
           pat match {
             case Literal(value) =>
-              flatKeysAndTargets ::= (value.intValue, switchBlockPoint)
+              flatKeysAndTargets +:= (value.intValue, switchBlockPoint)
             case Ident(nme.WILDCARD) =>
               assert(default == null, s"multiple default targets in a Match node, at ${tree.span}")
               default = switchBlockPoint
             case Alternative(alts) =>
               alts foreach {
                 case Literal(value) =>
-                  flatKeysAndTargets ::= (value.intValue, switchBlockPoint)
+                  flatKeysAndTargets +:= (value.intValue, switchBlockPoint)
                 case _ =>
                   throw new AssertionError(s"Invalid alternative in alternative pattern in Match node: $tree at: ${tree.span}")
               }
@@ -1038,11 +1036,11 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
          */
 
         var default:  asm.Label | Null = null
-        var indirectBlocks: List[(asm.Label, Tree | Null)] = Nil
+        var indirectBlocks: Vector[(asm.Label, Tree | Null)] = Vector()
 
 
         // Cases grouped by their hashCode
-        val casesByHash = SortedMap.empty[Int, List[(String, Either[asm.Label, Tree])]]
+        val casesByHash = SortedMap.empty[Int, Vector[(String, Either[asm.Label, Tree])]]
 
         for (caze @ CaseDef(pat, guard, body) <- cases) {
           assert(guard == tpd.EmptyTree, guard)
@@ -1051,22 +1049,22 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
               val strValue = value.stringValue
               casesByHash.updateWith(strValue.##) { existingCasesOpt =>
                 val newCase = (strValue, Right(body))
-                Some(newCase :: existingCasesOpt.getOrElse(Nil))
+                Some(newCase +: existingCasesOpt.getOrElse(Vector()))
               }
             case Ident(nme.WILDCARD) =>
               assert(default == null, s"multiple default targets in a Match node, at ${tree.span}")
               default = new asm.Label
-              indirectBlocks ::= (default.nn, body)
+              indirectBlocks +:= (default.nn, body)
             case Alternative(alts) =>
               // We need an extra basic block since multiple strings can lead to this code
               val indirectCaseGroupLabel = new asm.Label
-              indirectBlocks ::= (indirectCaseGroupLabel, body)
+              indirectBlocks +:= (indirectCaseGroupLabel, body)
               alts foreach {
                 case Literal(value) =>
                   val strValue = value.stringValue
                   casesByHash.updateWith(strValue.##) { existingCasesOpt =>
                     val newCase = (strValue, Left(indirectCaseGroupLabel))
-                    Some(newCase :: existingCasesOpt.getOrElse(Nil))
+                    Some(newCase +: existingCasesOpt.getOrElse(Vector()))
                   }
                 case _ =>
                   throw new AssertionError(s"Invalid alternative in alternative pattern in Match node: $tree at: ${tree.span}")
@@ -1078,18 +1076,18 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         }
 
         // Organize the hashCode options into switch cases
-        var flatKeysAndTargets: List[(Int, asm.Label)]       = Nil
-        var hashBlocks: List[(asm.Label, List[(String, Either[asm.Label, Tree])])] = Nil
+        var flatKeysAndTargets: Vector[(Int, asm.Label)]       = Vector()
+        var hashBlocks: Vector[(asm.Label, Vector[(String, Either[asm.Label, Tree])])] = Vector()
         for ((hashValue, hashCases) <- casesByHash) {
           val switchBlockPoint = new asm.Label
-          hashBlocks ::= (switchBlockPoint, hashCases)
-          flatKeysAndTargets ::= (hashValue, switchBlockPoint)
+          hashBlocks +:= (switchBlockPoint, hashCases)
+          flatKeysAndTargets +:= (hashValue, switchBlockPoint)
         }
 
         val hasDefault = default != null
         if !hasDefault then
           default = new asm.Label
-          indirectBlocks ::= (default.nn, null)
+          indirectBlocks +:= (default.nn, null)
 
         // Push the hashCode of the string (or `0` it is `null`) onto the stack and switch on it
         genLoadIfTo(
@@ -1144,7 +1142,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       case Block(stats, expr) =>
 
       val savedScope = varsInScope
-      varsInScope = Nil
+      varsInScope = Vector()
       stats foreach genStat
       genLoadTo(expr, expectedType, dest)
       emitLocalVarScopes()
@@ -1254,12 +1252,12 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       }
     }
 
-    def genLoadArguments(args: List[Tree], btpes: List[BType])(using Context): Unit =
-      @tailrec def loop(args: List[Tree], btpes: List[BType]): Unit =
+    def genLoadArguments(args: Vector[Tree], btpes: Vector[BType])(using Context): Unit =
+      @tailrec def loop(args: Vector[Tree], btpes: Vector[BType]): Unit =
         args match
-          case arg :: args1 =>
+          case arg +: args1 =>
             btpes match
-              case btpe :: btpes1 =>
+              case btpe +: btpes1 =>
                 genLoad(arg, btpe)
                 stack.push(btpe)
                 loop(args1, btpes1)
@@ -1355,7 +1353,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       lineNumber(tree)
       liftStringConcat(tree) match {
         // Optimization for expressions of the form "" + x
-        case List(Literal(Constant("")), arg) =>
+        case Vector(Literal(Constant("")), arg) =>
           genLoad(arg, bTypes.ObjectRef)
           genCallMethod(defn.String_valueOf_Object, InvokeStyle.Static)
 
@@ -1366,13 +1364,13 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
               case _ => true
             }
             .map {
-              case Apply(boxOp, value :: Nil) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
+              case Apply(boxOp, value +: Vector()) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
                 // Eliminate boxing of primitive values. Boxing is introduced by erasure because
                 // there's only a single synthetic `+` method "added" to the string class.
                 value
               case other => other
             }
-            .toList
+            .toVector
 
           /* `StringConcatFactory#makeConcatWithConstants` accepts max 200 argument slots. If
            * the string concatenation is longer (unlikely), we spill into multiple calls
@@ -1476,7 +1474,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
             style.isVirtual &&
             isEmittedInterface(receiver) &&
             defn.ObjectType.decl(method.name).symbol.exists && { // fast path - compute overrideChain on the next line only if necessary
-              val syms = method.allOverriddenSymbols.toList
+              val syms = method.allOverriddenSymbols.toVector
               !syms.isEmpty && syms.last.owner == defn.ObjectClass
             }
         }
@@ -1495,7 +1493,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       if (style == Super) {
         val ownerBType = bTypeLoader.bTypeFromType(method.owner.info)
         if (isInterface && !method.is(JavaDefined)) {
-          val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
+          val staticDesc = MethodBType(ownerBType +: bmType.argumentTypes, bmType.returnType).descriptor
           val staticName = SymbolUtils.traitSuperAccessorName(method)
           bc.invokestatic(receiverName, staticName, staticDesc, isInterface, pos)
         } else {
@@ -1528,15 +1526,15 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
      * Returns a list of trees that each should be concatenated, from left to right.
      * It turns a chained call like "a".+("b").+("c") into a list of arguments.
      */
-    def liftStringConcat(tree: Tree)(using Context): List[Tree] = tree match {
+    def liftStringConcat(tree: Tree)(using Context): Vector[Tree] = tree match {
       case tree @ Apply(fun @ DesugaredSelect(larg, method), rarg) =>
         if (isPrimitive(fun) &&
             primitives.getPrimitive(tree, larg.tpe) == ScalaPrimitivesOps.CONCAT)
-          liftStringConcat(larg) ::: rarg
+          liftStringConcat(larg) ++ rarg
         else
-          tree :: Nil
+          tree +: Vector()
       case _ =>
-        tree :: Nil
+        tree +: Vector()
     }
 
     /* Emit code to compare the two top-most stack values using the 'op' operator. */
@@ -1675,7 +1673,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
            * This is particularly effective for the shape of do..while loops.
            */
           val savedScope = varsInScope
-          varsInScope = Nil
+          varsInScope = Vector()
           stats foreach genStat
           genCond(expr, success, failure, targetIfNoJump)
           emitLocalVarScopes()
@@ -1803,7 +1801,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       val (a,b) = lambdaTarget.info.firstParamTypes.splitAt(environmentSize)
       var (capturedParamsTypes, lambdaParamTypes) = (a,b)
 
-      if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = lambdaTarget.owner.info :: capturedParamsTypes
+      if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = lambdaTarget.owner.info +: capturedParamsTypes
 
       // TODO: this comment seems to indicate this is very old and could be removed? this lib isn't recommended since >=2.13
       // Requires https://github.com/scala/scala-java8-compat on the runtime classpath
@@ -1812,10 +1810,10 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       val desc = capturedParamsTypes.map(bTypeLoader.bTypeFromType).mkString(("("), "", ")") + functionalInterfaceDesc
 
       val samMethod = atPhase(erasurePhase) {
-        val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toList
+        val samMethods = toDenot(functionalInterface).info.possibleSamMethods.toVector
         samMethods match {
-          case x :: Nil => x.symbol
-          case Nil => throw new AssertionError(s"${functionalInterface.show} is not a functional interface. It doesn't have abstract methods")
+          case x +: Vector() => x.symbol
+          case Vector() => throw new AssertionError(s"${functionalInterface.show} is not a functional interface. It doesn't have abstract methods")
           case xs => throw new AssertionError(s"${functionalInterface.show} is not a functional interface. " +
             s"It has the following abstract methods: ${xs.map(_.name).mkString(", ")}")
         }
@@ -1841,7 +1839,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       // version. Using the lambda a structural type `{def apply(t: T): U}` causes a reflective lookup for this method.
       val needsGenericBridge = samMethodType != instantiatedMethodType
       val bridgeMethods = atPhase(erasurePhase){
-        samMethod.allOverriddenSymbols.toList
+        samMethod.allOverriddenSymbols.toVector
       }
       val overriddenMethodTypes = bridgeMethods.map(b => bTypeLoader.methodBTypeFromSymbol(b).toASMType)
 

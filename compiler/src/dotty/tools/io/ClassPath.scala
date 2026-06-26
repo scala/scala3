@@ -39,12 +39,12 @@ object ClassPath {
   val RootPackage: String = ""
 
   /** Expand single path entry */
-  private def expandS(pattern: String): List[String] = {
+  private def expandS(pattern: String): Vector[String] = {
     val wildSuffix = File.separator + "*"
 
     /* Get all subdirectories, jars, zips out of a directory. */
     def lsDir(dir: Directory, filt: String => Boolean = _ => true) =
-      dir.list.filter(x => filt(x.name) && (x.isDirectory || isJarOrZip(x))).map(_.path).toList
+      dir.list.filter(x => filt(x.name) && (x.isDirectory || isJarOrZip(x))).map(_.path).toVector
 
     if (pattern == "*") lsDir(Directory("."))
     // On Windows the JDK supports forward slash or backslash in classpath entries
@@ -54,25 +54,25 @@ object ClassPath {
         val regexp = ("^" + pattern.replace("""\*""", """.*""") + "$").r
         lsDir(Directory(pattern).parent, regexp.findFirstIn(_).isDefined)
       }
-      catch { case _: PatternSyntaxException => List(pattern) }
+      catch { case _: PatternSyntaxException => Vector(pattern) }
     }
-    else List(pattern)
+    else Vector(pattern)
   }
 
   /** Split classpath using platform-dependent path separator */
-  def split(path: String): List[String] = path.split(pathSeparator).toList.filterNot(_ == "").distinct
+  def split(path: String): Vector[String] = path.split(pathSeparator).toVector.filterNot(_ == "").distinct
 
   /** Expand path and possibly expanding stars */
-  def expandPath(path: String, expandStar: Boolean = true): List[String] =
+  def expandPath(path: String, expandStar: Boolean = true): Vector[String] =
     if (expandStar) split(path).flatMap(expandS)
     else split(path)
 
   /** Expand manifest jar classpath entries: these are either urls, or paths
    *  relative to the location of the jar.
    */
-  def expandManifestPath(jarPath: String): List[URL] = {
+  def expandManifestPath(jarPath: String): Vector[URL] = {
     val file = File(jarPath)
-    if (!file.isFile) return Nil
+    if (!file.isFile) return Vector()
 
     val baseDir = file.parent
     new Jar(file).classPathElements map (elem =>

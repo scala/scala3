@@ -57,7 +57,7 @@ import scala.collection.mutable
  *         ...
  *       ]],
  *       typeHole = Seq(a, b),
- *       termHole = (idx: Int, args: List[Any], quotes: Quotes) => idx match {
+ *       termHole = (idx: Int, args: Seq[Any], quotes: Quotes) => idx match {
  *         case 3 => holeContents0.apply(args(0).asInstanceOf[Expr[U1]]).apply(quotes) // beta reduced
  *         case 4 => holeContents1.apply(args(0).asInstanceOf[Expr[U2]]).apply(quotes) // beta reduced
  *         case 5 => holeContents2.apply(args(0).asInstanceOf[Expr[U1]], args(1).asInstanceOf[Expr[U2]]).apply(quotes) // beta reduced
@@ -91,7 +91,7 @@ class PickleQuotes extends MacroTransform {
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
-        case Apply(Select(quote: Quote, nme.apply), List(quotes)) =>
+        case Apply(Select(quote: Quote, nme.apply), Vector(quotes)) =>
           val (holeContents, quote1) = extractHolesContents(quote)
           val quote2 = encodeTypeArgs(quote1)
           val holeContents1 = holeContents.map(transform(_))
@@ -102,9 +102,9 @@ class PickleQuotes extends MacroTransform {
           super.transform(tree)
   }
 
-  private def extractHolesContents(quote: tpd.Quote)(using Context): (List[Tree], tpd.Quote) =
+  private def extractHolesContents(quote: tpd.Quote)(using Context): (Vector[Tree], tpd.Quote) =
     class HoleContentExtractor extends Transformer:
-      private val holeContents = List.newBuilder[Tree]
+      private val holeContents = Vector.newBuilder[Tree]
       private val stagedClasses = mutable.HashSet.empty[Symbol]
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
         tree match
@@ -114,7 +114,7 @@ class PickleQuotes extends MacroTransform {
             holeContents += content
             val holeType = getPicklableHoleType(tree.tpe, stagedClasses)
             val hole = untpd.cpy.Hole(tree)(content = EmptyTree).withType(holeType)
-            Inlined(EmptyTree, Nil, hole).withSpan(tree.span)
+            Inlined(EmptyTree, Vector(), hole).withSpan(tree.span)
           case tree: DefTree =>
             if tree.symbol.isClass then
               stagedClasses += tree.symbol
@@ -186,7 +186,7 @@ class PickleQuotes extends MacroTransform {
 
   private def mkTagSymbolAndAssignType(typeArg: Tree, idx: Int)(using Context): TypeDef = {
     val holeType = getPicklableHoleType(typeArg.tpe.select(tpnme.Underlying), _ => false)
-    val hole = untpd.cpy.Hole(typeArg)(isTerm = false, idx, Nil, EmptyTree).withType(holeType)
+    val hole = untpd.cpy.Hole(typeArg)(isTerm = false, idx, Vector(), EmptyTree).withType(holeType)
     val local = newSymbol(
       owner = ctx.owner,
       name = UniqueName.fresh(typeArg.symbol.name.toTypeName),
@@ -211,7 +211,7 @@ object PickleQuotes {
   val name: String = "pickleQuotes"
   val description: String = "turn quoted trees into explicit run-time data structures"
 
-  def pickle(quote: Quote, quotes: Tree, holeContents: List[Tree])(using Context) = {
+  def pickle(quote: Quote, quotes: Tree, holeContents: Vector[Tree])(using Context) = {
     val body = quote.body
     val bodyType = quote.bodyType
 
@@ -233,8 +233,8 @@ object PickleQuotes {
     def pickleAsLiteral(lit: Literal) = {
       val typeName = body.tpe.typeSymbol.name
       val literalValue =
-        if lit.const.tag == Constants.NullTag || lit.const.tag == Constants.UnitTag then Nil
-        else List(body)
+        if lit.const.tag == Constants.NullTag || lit.const.tag == Constants.UnitTag then Vector()
+        else Vector(body)
       val constModule = lit.const.tag match
         case Constants.BooleanTag => defn. Quotes_reflect_BooleanConstant
         case Constants.ByteTag => defn. Quotes_reflect_ByteConstant
@@ -303,10 +303,10 @@ object PickleQuotes {
     def pickleAsTasty() = {
       val body1 =
         if body.isType then body
-        else Inlined(Inlines.inlineCallTrace(ctx.owner, quote.sourcePos), Nil, body)
+        else Inlined(Inlines.inlineCallTrace(ctx.owner, quote.sourcePos), Vector(), body)
       val pickleQuote = PickledQuotes.pickleQuote(body1)
       val pickledQuoteStrings = pickleQuote match
-        case x :: Nil => Literal(Constant(x))
+        case x +: Vector() => Literal(Constant(x))
         case xs => tpd.mkList(xs.map(x => Literal(Constant(x))), TypeTree(defn.StringType))
 
       // This and all closures in typeSplices are removed by the BetaReduce phase
@@ -320,17 +320,17 @@ object PickleQuotes {
         else
           Lambda(
             MethodType(
-              List(nme.idx, nme.contents, nme.quotes).map(name => UniqueName.fresh(name).toTermName),
-              List(defn.IntType, defn.SeqType.appliedTo(defn.AnyType), defn.QuotesClass.typeRef),
+              Vector(nme.idx, nme.contents, nme.quotes).map(name => UniqueName.fresh(name).toTermName),
+              Vector(defn.IntType, defn.SeqType.appliedTo(defn.AnyType), defn.QuotesClass.typeRef),
               defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
             args =>
               val cases = holeContents.zipWithIndex.map { case (splice, idx) =>
-                val defn.FunctionNOf(argTypes, defn.FunctionNOf(quotesType :: _, _, _), _) = splice.tpe: @unchecked
+                val defn.FunctionNOf(argTypes, defn.FunctionNOf(quotesType +: _, _, _), _) = splice.tpe: @unchecked
                 val rhs = {
                   val spliceArgs = argTypes.zipWithIndex.map { (argType, i) =>
                     args(1).select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argType)
                   }
-                  val Block(List(ddef: DefDef), _) = splice: @unchecked
+                  val Block(Vector(ddef: DefDef), _) = splice: @unchecked
                   // TODO: beta reduce inner closure? Or wait until BetaReduce phase?
                   BetaReduce(
                     splice
@@ -340,19 +340,19 @@ object PickleQuotes {
                 CaseDef(Literal(Constant(idx)), EmptyTree, rhs)
               }
               cases match
-                case CaseDef(_, _, rhs) :: Nil => rhs
+                case CaseDef(_, _, rhs) +: Vector() => rhs
                 case _ => Match(args(0).annotated(New(ref(defn.UncheckedAnnot.typeRef))), cases)
           )
 
       val quoteClass = if quote.isTypeQuote then defn.QuotedTypeClass else defn.QuotedExprClass
       val quotedType = quoteClass.typeRef.appliedTo(bodyType)
-      val lambdaTpe = MethodType(defn.QuotesClass.typeRef :: Nil, quotedType)
+      val lambdaTpe = MethodType(defn.QuotesClass.typeRef +: Vector(), quotedType)
       val unpickleMeth =
         if quote.isTypeQuote then defn.QuoteUnpickler_unpickleTypeV2
         else defn.QuoteUnpickler_unpickleExprV2
       val unpickleArgs =
-        if quote.isTypeQuote then List(pickledQuoteStrings, types)
-        else List(pickledQuoteStrings, types, termHoles)
+        if quote.isTypeQuote then Vector(pickledQuoteStrings, types)
+        else Vector(pickledQuoteStrings, types, termHoles)
       quotes
         .asInstance(defn.QuoteUnpicklerClass.typeRef)
         .select(unpickleMeth).appliedToType(bodyType)
@@ -372,14 +372,14 @@ object PickleQuotes {
     def taggedType() =
       reflect.asType(body.tpe) {
         reflect.TypeRepr_typeConstructorOf(
-          TypeApply(ref(defn.Predef_classOf.termRef), body :: Nil)
+          TypeApply(ref(defn.Predef_classOf.termRef), body +: Vector())
         )
       }
 
     def getLiteral(tree: tpd.Tree): Option[Literal] = tree match
       case tree: Literal => Some(tree)
-      case Block(Nil, e) => getLiteral(e)
-      case Inlined(_, Nil, e) => getLiteral(e)
+      case Block(Vector(), e) => getLiteral(e)
+      case Inlined(_, Vector(), e) => getLiteral(e)
       case _ => None
 
     if body.isType then

@@ -47,7 +47,7 @@ class PcDefinitionProvider(
 
     val pos = driver.sourcePosition(params)
     val path =
-      Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
+      Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx).toList
 
     val unit = driver.currentCtx.run.nn.units.head
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)

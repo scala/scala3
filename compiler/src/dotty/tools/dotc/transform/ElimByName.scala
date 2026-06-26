@@ -99,7 +99,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
 
   def byNameClosure(arg: Tree, argType: Type)(using Context): Tree =
     report.log(i"creating by name closure for $argType")
-    val meth = newAnonFun(ctx.owner, MethodType(Nil, argType), coord = arg.span)
+    val meth = newAnonFun(ctx.owner, MethodType(Vector(), argType), coord = arg.span)
     Closure(meth,
         _ => arg.changeOwnerAfter(ctx.owner, meth, thisPhase),
         targetType = defn.ByNameFunction(argType)
@@ -125,7 +125,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
     applyIfFunction(tree)
 
   override def transformTypeApply(tree: TypeApply)(using Context): Tree = tree match {
-    case TypeApply(Select(_, nme.asInstanceOf_), arg :: Nil) =>
+    case TypeApply(Select(_, nme.asInstanceOf_), arg +: Vector()) =>
       // tree might be of form e.asInstanceOf[x.type] where x becomes a function.
       // See pos/t296.scala
       applyIfFunction(tree)
@@ -141,7 +141,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
             case Typed(expr, _) => stripTyped(expr)
             case _ => t
           stripTyped(arg) match
-            case Apply(Select(qual, nme.apply), Nil)
+            case Apply(Select(qual, nme.apply), Vector())
             if isByNameRef(qual) && (isPureExpr(qual) || qual.symbol.isAllOf(InlineParam)) =>
               qual
             case _ =>

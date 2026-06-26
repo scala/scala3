@@ -30,21 +30,21 @@ object MainProxies {
    *         catch case err: ParseError => showError(err)
    *       }
    */
-  def proxies(stats: List[tpd.Tree])(using Context): List[untpd.Tree] = {
+  def proxies(stats: Vector[tpd.Tree])(using Context): Vector[untpd.Tree] = {
     import tpd.*
-    def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap {
+    def mainMethods(stats: Vector[Tree]): Vector[Symbol] = stats.flatMap {
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
-        stat.symbol :: Nil
+        stat.symbol +: Vector()
       case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
         mainMethods(impl.body)
       case _ =>
-        Nil
+        Vector()
     }
     mainMethods(stats).flatMap(mainProxy)
   }
 
   import untpd.*
-  private def mainProxy(mainFun: Symbol)(using Context): List[TypeDef] = {
+  private def mainProxy(mainFun: Symbol)(using Context): Vector[TypeDef] = {
     val mainAnnotSpan = mainFun.getAnnotation(defn.MainAnnot).get.tree.span
     def pos = mainFun.sourcePos
     val argsRef = Ident(nme.args)
@@ -61,8 +61,8 @@ object MainProxies {
               if (formal.isRepeatedParam) (defn.CLP_parseRemainingArguments, formal.argTypes.head)
               else (defn.CLP_parseArgument, formal)
             val arg = Apply(
-              TypeApply(ref(parserSym.termRef), TypeTree(formalElem) :: Nil),
-              argsRef :: Literal(Constant(idx + n)) :: Nil)
+              TypeApply(ref(parserSym.termRef), TypeTree(formalElem) +: Vector()),
+              argsRef +: Literal(Constant(idx + n)) +: Vector())
             if (formal.isRepeatedParam) repeated(arg) else arg
         }
         val call1 = Apply(call, args)
@@ -76,7 +76,7 @@ object MainProxies {
         }
       }
 
-    var result: List[TypeDef] = Nil
+    var result: Vector[TypeDef] = Vector()
     if (!mainFun.owner.isStaticOwner)
       report.error(em"@main method is not statically accessible", pos)
     else {
@@ -94,8 +94,8 @@ object MainProxies {
       val handler = CaseDef(
         Typed(errVar, TypeTree(defn.CLP_ParseError.typeRef)),
         EmptyTree,
-        Apply(ref(defn.CLP_showError.termRef), errVar :: Nil))
-      val body = Try(call, handler :: Nil, EmptyTree)
+        Apply(ref(defn.CLP_showError.termRef), errVar +: Vector()))
+      val body = Try(call, handler +: Vector(), EmptyTree)
       val mainArg = ValDef(nme.args, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
         .withFlags(Param)
 
@@ -109,15 +109,15 @@ object MainProxies {
       val annots = mainFun.annotations
         .filterNot(_.matches(defn.MainAnnot))
         .map(annot => TypedSplice(annot.tree)(using annotsCtx))
-      val mainMeth = DefDef(nme.main, (mainArg :: Nil) :: Nil, TypeTree(defn.UnitType), body)
+      val mainMeth = DefDef(nme.main, (mainArg +: Vector()) +: Vector(), TypeTree(defn.UnitType), body)
         .withFlags(JavaStatic | Synthetic)
         .withAnnotations(annots)
-      val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)
+      val mainTempl = Template(emptyConstructor, Vector(), Vector(), EmptyValDef, mainMeth +: Vector())
       val mainCls = TypeDef(mainFun.name.toTypeName, mainTempl)
         .withFlags(Final | Invisible)
 
       if (!ctx.reporter.hasErrors)
-        result = mainCls.withSpan(mainAnnotSpan.toSynthetic) :: Nil
+        result = mainCls.withSpan(mainAnnotSpan.toSynthetic) +: Vector()
     }
     result
   }

@@ -101,138 +101,131 @@ object Decorators {
   inline val MaxFilterRecursions = 10
 
   /** Implements filterConserve, zipWithConserve methods
-   *  on lists that avoid duplication of list nodes where feasible.
+   *  on vectors that avoid duplication of vector nodes where feasible.
    */
-  extension [T](xs: List[T])
+  extension [T](xs: Vector[T])
 
-    final def mapconserve[U](f: T => U): List[U] = {
-      @tailrec
-      def loop(mapped: ListBuffer[U] | Null, unchanged: List[U], pending: List[T]): List[U] =
-        if (pending.isEmpty)
-          if (mapped == null) unchanged
-          else mapped.prependToList(unchanged)
-        else {
-          val head0 = pending.head
-          val head1 = f(head0)
-
-          if (head1.asInstanceOf[AnyRef] eq head0.asInstanceOf[AnyRef])
-            loop(mapped, unchanged, pending.tail)
-          else {
-            val b = if (mapped == null) new ListBuffer[U] else mapped
-            var xc = unchanged
-            while (xc ne pending) {
-              b += xc.head
-              xc = xc.tail
-            }
-            b += head1
-            val tail0 = pending.tail
-            loop(b, tail0.asInstanceOf[List[U]], tail0)
-          }
-        }
-      loop(null, xs.asInstanceOf[List[U]], xs)
+    final def mapconserve[U](f: T => U): Vector[U] = {
+      val len = xs.length
+      var i = 0
+      while i < len do
+        val x = xs(i)
+        val y = f(x)
+        if !(y.asInstanceOf[AnyRef] eq x.asInstanceOf[AnyRef]) then
+          val b = Vector.newBuilder[U]
+          b.sizeHint(len)
+          var j = 0
+          while j < i do
+            b += xs(j).asInstanceOf[U]
+            j += 1
+          b += y
+          i += 1
+          while i < len do
+            b += f(xs(i))
+            i += 1
+          return b.result()
+        i += 1
+      xs.asInstanceOf[Vector[U]]
     }
 
-    /** Like `xs filter p` but returns list `xs` itself  - instead of a copy -
+    final def mapConserve[U](f: T => U): Vector[U] = mapconserve(f)
+
+    /** Like `xs filter p` but returns vector `xs` itself  - instead of a copy -
      *  if `p` is true for all elements.
      */
-    def filterConserve(p: T => Boolean): List[T] =
-
-      def addAll(buf: ListBuffer[T], from: List[T], until: List[T]): ListBuffer[T] =
-        if from eq until then buf else addAll(buf += from.head, from.tail, until)
-
-      def loopWithBuffer(buf: ListBuffer[T], xs: List[T]): List[T] = xs match
-        case x :: xs1 =>
-          if p(x) then buf += x
-          loopWithBuffer(buf, xs1)
-        case nil => buf.toList
-
-      def loop(keep: List[T], explore: List[T], keepCount: Int, recCount: Int): List[T] =
-        explore match
-          case x :: rest =>
-            if p(x) then
-              loop(keep, rest, keepCount + 1, recCount)
-            else if keepCount <= 3 && recCount <= MaxFilterRecursions then
-              val rest1 = loop(rest, rest, 0, recCount + 1)
-              keepCount match
-                case 0 => rest1
-                case 1 => keep.head :: rest1
-                case 2 => keep.head :: keep.tail.head :: rest1
-                case 3 => val tl = keep.tail; keep.head :: tl.head :: tl.tail.head :: rest1
-            else
-              loopWithBuffer(addAll(new ListBuffer[T], keep, explore), rest)
-          case nil =>
-            keep
-
-      loop(xs, xs, 0, 0)
+    def filterConserve(p: T => Boolean): Vector[T] =
+      val len = xs.length
+      var i = 0
+      while i < len do
+        val x = xs(i)
+        if !p(x) then
+          val b = Vector.newBuilder[T]
+          b.sizeHint(len - 1)
+          var j = 0
+          while j < i do
+            b += xs(j)
+            j += 1
+          i += 1
+          while i < len do
+            val x = xs(i)
+            if p(x) then b += x
+            i += 1
+          return b.result()
+        i += 1
+      xs
     end filterConserve
 
-    /** Like `xs.lazyZip(ys).map(f)`, but returns list `xs` itself
+    /** Like `xs.lazyZip(ys).map(f)`, but returns vector `xs` itself
      *  - instead of a copy - if function `f` maps all elements of
      *  `xs` to themselves. Also, it is required that `ys` is at least
      *  as long as `xs`.
      */
-    def zipWithConserve[U, V <: T](ys: List[U])(f: (T, U) => V): List[V] =
-      if (xs.isEmpty || ys.isEmpty) Nil
-      else {
-        val x1 = f(xs.head, ys.head)
-        val xs1 = xs.tail.zipWithConserve(ys.tail)(f)
-        if (x1.asInstanceOf[AnyRef] eq xs.head.asInstanceOf[AnyRef]) && (xs1 eq xs.tail)
-          then xs.asInstanceOf[List[V]]
-        else x1 :: xs1
-      }
+    def zipWithConserve[U, V <: T](ys: Vector[U])(f: (T, U) => V): Vector[V] =
+      val len = math.min(xs.length, ys.length)
+      var i = 0
+      while i < len do
+        val x = xs(i)
+        val y = f(x, ys(i))
+        if !(y.asInstanceOf[AnyRef] eq x.asInstanceOf[AnyRef]) then
+          val b = Vector.newBuilder[V]
+          b.sizeHint(len)
+          var j = 0
+          while j < i do
+            b += xs(j).asInstanceOf[V]
+            j += 1
+          b += y
+          i += 1
+          while i < len do
+            b += f(xs(i), ys(i))
+            i += 1
+          return b.result()
+        i += 1
+      if len == xs.length then xs.asInstanceOf[Vector[V]]
+      else xs.take(len).asInstanceOf[Vector[V]]
 
-    /** Like `xs.lazyZip(xs.indices).map(f)`, but returns list `xs` itself
+    /** Like `xs.lazyZip(xs.indices).map(f)`, but returns vector `xs` itself
      *  - instead of a copy - if function `f` maps all elements of
      *  `xs` to themselves.
      */
-    def mapWithIndexConserve[U <: T](f: (T, Int) => U): List[U] =
-
-      @tailrec
-      def addAll(buf: ListBuffer[T], from: List[T], until: List[T]): ListBuffer[T] =
-        if from eq until then buf else addAll(buf += from.head, from.tail, until)
-
-      @tailrec
-      def loopWithBuffer(buf: ListBuffer[U], explore: List[T], idx: Int): List[U] = explore match
-        case Nil       => buf.toList
-        case t :: rest => loopWithBuffer(buf += f(t, idx), rest, idx + 1)
-
-      @tailrec
-      def loop(keep: List[T], explore: List[T], idx: Int): List[U] = explore match
-        case Nil => keep.asInstanceOf[List[U]]
-        case t :: rest =>
-          val u = f(t, idx)
-          if u.asInstanceOf[AnyRef] eq t.asInstanceOf[AnyRef] then
-            loop(keep, rest, idx + 1)
-          else
-            val buf = addAll(new ListBuffer[T], keep, explore).asInstanceOf[ListBuffer[U]]
-            loopWithBuffer(buf += u, rest, idx + 1)
-
-      loop(xs, xs, 0)
+    def mapWithIndexConserve[U <: T](f: (T, Int) => U): Vector[U] =
+      val len = xs.length
+      var i = 0
+      while i < len do
+        val x = xs(i)
+        val y = f(x, i)
+        if !(y.asInstanceOf[AnyRef] eq x.asInstanceOf[AnyRef]) then
+          val b = Vector.newBuilder[U]
+          b.sizeHint(len)
+          var j = 0
+          while j < i do
+            b += xs(j).asInstanceOf[U]
+            j += 1
+          b += y
+          i += 1
+          while i < len do
+            b += f(xs(i), i)
+            i += 1
+          return b.result()
+        i += 1
+      xs.asInstanceOf[Vector[U]]
     end mapWithIndexConserve
 
-    /** True if two lists have the same length.  Since calling length on linear sequences
-     *  is Θ(n), it is an inadvisable way to test length equality.  This method is Θ(n min m).
+    /** True if two vectors have the same length.
      */
-    final def hasSameLengthAs[U](ys: List[U]): Boolean = {
-      @tailrec def loop(xs: List[T], ys: List[U]): Boolean =
-        if (xs.isEmpty) ys.isEmpty
-        else ys.nonEmpty && loop(xs.tail, ys.tail)
-      loop(xs, ys)
-    }
+    final def hasSameLengthAs[U](ys: Vector[U]): Boolean =
+      xs.length == ys.length
 
-    @tailrec final def eqElements(ys: List[AnyRef]): Boolean = xs match {
-      case x :: _ =>
-        ys match {
-          case y :: _ =>
-            x.asInstanceOf[AnyRef].eq(y) &&
-            xs.tail.eqElements(ys.tail)
-          case _ => false
-        }
-      case nil => ys.isEmpty
-    }
+    final def eqElements(ys: Vector[AnyRef]): Boolean =
+      if xs.length != ys.length then false
+      else
+        var i = 0
+        while i < xs.length do
+          if !xs(i).asInstanceOf[AnyRef].eq(ys(i)) then return false
+          i += 1
+        true
 
-    /** Union on lists seen as sets */
-    def setUnion (ys: List[T]): List[T] = xs ::: ys.filterNot(xs contains _)
+    /** Union on vectors seen as sets */
+    def setUnion (ys: Vector[T]): Vector[T] = xs ++ ys.filterNot(xs contains _)
 
     /** Reduce left with `op` as long as list `xs` is not longer than `seqLimit`.
      *  Otherwise, split list in two half, reduce each, and combine with `op`.
@@ -245,19 +238,19 @@ object Decorators {
       else
         xs.reduceLeft(op)
 
-  extension [T, U](xss: List[List[T]])
-    def nestedMap(f: T => U): List[List[U]] = xss match
-      case xs :: xss1 => xs.map(f) :: xss1.nestedMap(f)
-      case nil => Nil
-    def nestedMapConserve(f: T => U): List[List[U]] =
+  extension [T, U](xss: Vector[Vector[T]])
+    def nestedMap(f: T => U): Vector[Vector[U]] = xss match
+      case xs +: xss1 => xs.map(f) +: xss1.nestedMap(f)
+      case nil => Vector()
+    def nestedMapConserve(f: T => U): Vector[Vector[U]] =
       xss.mapconserve(_.mapconserve(f))
-    def nestedZipWithConserve(yss: List[List[U]])(f: (T, U) => T): List[List[T]] =
+    def nestedZipWithConserve(yss: Vector[Vector[U]])(f: (T, U) => T): Vector[Vector[T]] =
       xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
     def nestedExists(p: T => Boolean): Boolean = xss match
-      case xs :: xss1 => xs.exists(p) || xss1.nestedExists(p)
+      case xs +: xss1 => xs.exists(p) || xss1.nestedExists(p)
       case nil => false
     def nestedFind(p: T => Boolean): Option[T] = xss match
-      case xs :: xss1 => xs.find(p).orElse(xss1.nestedFind(p))
+      case xs +: xss1 => xs.find(p).orElse(xss1.nestedFind(p))
       case nil => None
   end extension
 
@@ -268,7 +261,7 @@ object Decorators {
    *  a given phase. See [[config.CompilerCommand#explainAdvanced]] for the
    *  exact meaning of "contains" here.
    */
-   extension (names: List[String])
+   extension (names: Vector[String])
     def containsPhase(phase: Phase): Boolean =
       names.nonEmpty && {
         phase match {
@@ -321,9 +314,17 @@ object Decorators {
       x
     }
 
-  extension [T <: AnyRef](xs: ::[T])
-    def derivedCons(x1: T, xs1: List[T]) =
-      if (xs.head eq x1) && (xs.tail eq xs1) then xs else x1 :: xs1
+  extension [T <: AnyRef](xs: Vector[T])
+    def derivedCons(x1: T, xs1: Vector[T]) =
+      def sameTail =
+        val len = xs.length
+        if xs1.length != len - 1 then false
+        else
+          var i = 1
+          while i < len && xs(i) == xs1(i - 1) do
+            i += 1
+          i == len
+      if xs.nonEmpty && (xs.head eq x1) && sameTail then xs else x1 +: xs1
 
   extension (sc: StringContext)
 

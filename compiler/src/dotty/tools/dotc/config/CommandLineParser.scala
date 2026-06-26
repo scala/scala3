@@ -17,17 +17,17 @@ object CommandLineParser:
    *
    *  Single or double quotes can be embedded to preserve internal whitespace:
    *
-   *  `""" echo "hello, world!" """`   => "echo" :: "hello, world!" :: Nil
-   *  `""" echo hello,' 'world! """`   => "echo" :: "hello, world!" :: Nil
-   *  `""" echo \"hello, world!\" """` => "echo" :: "\"hello," :: "world!\"" :: Nil
+   *  `""" echo "hello, world!" """`   => "echo" +: "hello, world!" +: Vector()
+   *  `""" echo hello,' 'world! """`   => "echo" +: "hello, world!" +: Vector()
+   *  `""" echo \"hello, world!\" """` => "echo" +: "\"hello," +: "world!\"" +: Vector()
    *
    *  The embedded quotes are stripped. Escaping backslash is not stripped.
    *
    *  Invoke `errorFn` with a descriptive message if an end quote is missing.
    */
-  def tokenize(line: String, errorFn: String => Unit): List[String] =
+  def tokenize(line: String, errorFn: String => Unit): Vector[String] =
 
-    var accum: List[String] = Nil
+    var accum: Vector[String] = Vector()
 
     var pos   = 0
     var start = 0
@@ -91,31 +91,31 @@ object CommandLineParser:
 
     inline def skipWhitespace() = while isWhitespace(cur) do bump()
 
-    @tailrec def loop(): List[String] =
+    @tailrec def loop(): Vector[String] =
       skipWhitespace()
       start = pos
       if done then
         accum.reverse
       else if !skipToDelim() then
         badquote()
-        Nil
+        Vector()
       else
-        accum ::= text()
+        accum +:= text()
         loop()
     end loop
 
     loop()
   end tokenize
 
-  def tokenize(line: String): List[String] = tokenize(line, x => throw new ParseException(x))
+  def tokenize(line: String): Vector[String] = tokenize(line, x => throw new ParseException(x))
 
   /** Expands all arguments starting with @ to the contents of the file named like each argument.
    */
-  def expandArg(arg: String): List[String] =
+  def expandArg(arg: String): Vector[String] =
     val path = Paths.get(arg.stripPrefix("@"))
     if !Files.exists(path) then
       System.err.println(s"Argument file ${path.getFileName} could not be found")
-      Nil
+      Vector()
     else
       def stripComment(s: String) = s.indexOf('#') match { case -1 => s case i => s.substring(0, i) }
       val lines = Files.readAllLines(path)

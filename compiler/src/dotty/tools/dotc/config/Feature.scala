@@ -49,12 +49,12 @@ object Feature:
   /** Experimental language imports that imply that the importing unit
    *  is experimental.
    */
-  def experimentalAutoEnableFeatures(using Context): List[TermName] =
+  def experimentalAutoEnableFeatures(using Context): Vector[TermName] =
     defn.languageExperimentalFeatures
       .map(sym => experimental(sym.name))
       .filterNot(nonViralExperimentalFeatures.contains(_))
 
-  val values = List(
+  val values = Vector(
     (nme.help, "Display all available features"),
     (nme.noAutoTupling, "Disable automatic tupling"),
     (nme.dynamics, "Allow direct or indirect subclasses of scala.Dynamic"),
@@ -84,13 +84,13 @@ object Feature:
   )
 
   // legacy language features from Scala 2 that are no longer supported.
-  val legacyFeatures = List(
+  val legacyFeatures = Vector(
     "higherKinds",
     "existentials",
     "reflectiveCalls"
   )
 
-  private def enabledLanguageFeaturesBySetting(using Context): List[String] =
+  private def enabledLanguageFeaturesBySetting(using Context): Vector[String] =
     ctx.settings.language.value.asInstanceOf
 
   /** Is `feature` enabled by by a command-line setting? The enabling setting is

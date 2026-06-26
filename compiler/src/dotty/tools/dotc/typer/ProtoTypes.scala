@@ -368,7 +368,7 @@ object ProtoTypes {
   class FunProtoState {
 
     /** The list of typed arguments, if all arguments are typed */
-    var typedArgs: List[Tree] = Nil
+    var typedArgs: Vector[Tree] = Vector()
 
     /** A map in which typed arguments can be stored to be later integrated in `typedArgs`. */
     var typedArg: SimpleIdentityMap[untpd.Tree, Tree] = SimpleIdentityMap.empty
@@ -396,7 +396,7 @@ object ProtoTypes {
    *                    A flag to indicate that constrainResult on this prototype
    *                    should typecheck and compare the arguments.
    */
-  case class FunProto(args: List[untpd.Tree], resType: Type)(
+  case class FunProto(args: Vector[untpd.Tree], resType: Type)(
     typer: Typer,
     override val applyKind: ApplyKind,
     state: FunProtoState = new FunProtoState,
@@ -413,7 +413,7 @@ object ProtoTypes {
     }
 
     def derivedFunProto(
-        args: List[untpd.Tree] = this.args,
+        args: Vector[untpd.Tree] = this.args,
         resultType: Type = this.resultType,
         typer: Typer = this.typer,
         constrainResultDeep: Boolean = this.constrainResultDeep): FunProto =
@@ -505,7 +505,7 @@ object ProtoTypes {
      *  @param norm   a normalization function that is applied to an untyped argument tree
      *                before it is typed. The second Int parameter is the parameter index.
      */
-    def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree = sameTree)(using Context): List[Tree] =
+    def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree = sameTree)(using Context): Vector[Tree] =
       if state.typedArgs.size == args.length then state.typedArgs
       else
         val passedCtx = ctx
@@ -598,8 +598,8 @@ object ProtoTypes {
         pt
       case _ =>
         val dualArgs = args match
-          case untpd.Tuple(elems) :: Nil => elems
-          case _ => untpd.Tuple(args) :: Nil
+          case untpd.Tuple(elems) +: Vector() => elems
+          case _ => untpd.Tuple(args) +: Vector()
         state.tupledDual = new FunProto(dualArgs, resultType)(typer, applyKind)
         tupledDual
     }
@@ -656,9 +656,9 @@ object ProtoTypes {
    *
    *  [](args): resultType, where args are known to be typed
    */
-  class FunProtoTyped(args: List[tpd.Tree], resultType: Type)(typer: Typer, applyKind: ApplyKind)(using Context)
+  class FunProtoTyped(args: Vector[tpd.Tree], resultType: Type)(typer: Typer, applyKind: ApplyKind)(using Context)
   extends FunProto(args, resultType)(typer, applyKind):
-    override def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree)(using Context): List[tpd.Tree] = args
+    override def typedArgs(norm: (untpd.Tree, Int) => untpd.Tree)(using Context): Vector[tpd.Tree] = args
     override def typedArg(arg: untpd.Tree, formal: Type)(using Context): tpd.Tree = arg.asInstanceOf[tpd.Tree]
     override def allArgTypesAreCurrent()(using Context): Boolean = true
     override def withContext(ctx: Context): FunProtoTyped = this
@@ -673,7 +673,7 @@ object ProtoTypes {
     override def resultType(using Context): Type = resType
 
     def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean =
-      ctx.typer.isApplicableType(tp, argType :: Nil, resultType) || {
+      ctx.typer.isApplicableType(tp, argType +: Vector(), resultType) || {
         resType match {
           case selProto @ SelectionProto(selName: TermName, mbrType, _, _, _) =>
             ctx.typer.hasExtensionMethodNamed(tp, selName, argType, mbrType)
@@ -719,13 +719,13 @@ object ProtoTypes {
   }
 
   class UnapplyFunProto(argType: Type, typer: Typer)(using Context) extends FunProto(
-    untpd.TypedSplice(dummyTreeOfType(argType)(using ctx.source)) :: Nil, WildcardType)(typer, applyKind = ApplyKind.Regular)
+    untpd.TypedSplice(dummyTreeOfType(argType)(using ctx.source)) +: Vector(), WildcardType)(typer, applyKind = ApplyKind.Regular)
 
   /** A prototype for expressions [] that are type-parameterized:
    *
    *    [] [targs] resultType
    */
-  case class PolyProto(targs: List[Tree], resType: Type) extends UncachedGroundType with FunOrPolyProto {
+  case class PolyProto(targs: Vector[Tree], resType: Type) extends UncachedGroundType with FunOrPolyProto {
 
     override def resultType(using Context): Type = resType
 
@@ -736,7 +736,7 @@ object ProtoTypes {
     override def isMatchedBy(tp: Type, keepConstraint: Boolean)(using Context): Boolean =
       canInstantiate(tp) || tp.member(nme.apply).hasAltWith(d => canInstantiate(d.info))
 
-    def derivedPolyProto(targs: List[Tree], resType: Type): PolyProto =
+    def derivedPolyProto(targs: Vector[Tree], resType: Type): PolyProto =
       if ((targs eq this.targs) && (resType eq this.resType)) this
       else PolyProto(targs, resType)
 
@@ -776,7 +776,7 @@ object ProtoTypes {
   extension (pt: Type)
     def isExtensionApplyProto: Boolean = pt match
       case PolyProto(targs, res) => res.isExtensionApplyProto
-      case FunProto((arg: untpd.TypedSplice) :: Nil, _) => arg.isExtensionReceiver
+      case FunProto((arg: untpd.TypedSplice) +: Vector(), _) => arg.isExtensionReceiver
       case _ => false
 
   /** An extractor for Singleton and Precise witness types.
@@ -805,7 +805,7 @@ object ProtoTypes {
     tl: TypeLambda, owningTree: untpd.Tree,
     alwaysAddTypeVars: Boolean,
     nestingLevel: Int = ctx.nestingLevel
-  ): (TypeLambda, List[TypeVar]) =
+  ): (TypeLambda, Vector[TypeVar]) =
     val state = ctx.typerState
     val addTypeVars = alwaysAddTypeVars || !owningTree.isEmpty
     if (tl.isInstanceOf[PolyType])
@@ -827,14 +827,14 @@ object ProtoTypes {
       case _ =>
         Set.empty
 
-    def newTypeVars: List[TypeVar] =
+    def newTypeVars: Vector[TypeVar] =
       val preciseRefs = preciseConstrainedRefs(added, singletonOnly = false)
       for paramRef <- added.paramRefs yield
         val tvar = TypeVar(paramRef, state, nestingLevel, precise = preciseRefs.contains(paramRef))
         state.ownedVars += tvar
         tvar
 
-    val tvars = if addTypeVars then newTypeVars else Nil
+    val tvars = if addTypeVars then newTypeVars else Vector()
     TypeComparer.addToConstraint(added, tvars)
     val singletonRefs = preciseConstrainedRefs(added, singletonOnly = true)
     for paramRef <- added.paramRefs do
@@ -843,12 +843,12 @@ object ProtoTypes {
     (added, tvars)
   end constrained
 
-  def constrained(tl: TypeLambda, owningTree: untpd.Tree)(using Context): (TypeLambda, List[TypeVar]) =
+  def constrained(tl: TypeLambda, owningTree: untpd.Tree)(using Context): (TypeLambda, Vector[TypeVar]) =
     constrained(tl, owningTree,
       alwaysAddTypeVars = tl.isInstanceOf[PolyType] && ctx.typerState.isCommittable)
 
   /**  Same as `constrained(tl, EmptyTree, alwaysAddTypeVars = true)`, but returns just the created type vars. */
-  def constrained(tl: TypeLambda)(using Context): List[TypeVar] =
+  def constrained(tl: TypeLambda)(using Context): Vector[TypeVar] =
     constrained(tl, EmptyTree, alwaysAddTypeVars = true)._2
 
   /** Instantiate `tl` with fresh type variables added to the constraint. */
@@ -869,8 +869,8 @@ object ProtoTypes {
   def newTypeVar(using Context)(
       bounds: TypeBounds, name: TypeName = DepParamName.fresh().toTypeName,
       nestingLevel: Int = ctx.nestingLevel, represents: Type = NoType): TypeVar =
-    val poly = PolyType(name :: Nil)(
-        pt => bounds :: Nil,
+    val poly = PolyType(name +: Vector())(
+        pt => bounds +: Vector(),
         pt => represents.orElse(defn.AnyType))
     constrained(poly, untpd.EmptyTree, alwaysAddTypeVars = true, nestingLevel)
       ._2.head

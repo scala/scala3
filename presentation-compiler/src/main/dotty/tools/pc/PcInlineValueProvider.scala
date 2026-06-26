@@ -106,7 +106,7 @@ final class PcInlineValueProvider(
           DefinitionTree(defn, pos)
         }
         .toRight(Errors.didNotFindDefinition)
-      path = Interactive.pathTo(unit.tpdTree, definition.tree.rhs.span)(using newctx)
+      path = Interactive.pathTo(unit.tpdTree, definition.tree.rhs.span)(using newctx).toList
       indexedContext = IndexedContext(definition.tree.namePos, path, newctx)
       symbols = symbolsUsedInDefn(definition.tree.rhs, indexedContext)
       references <- getReferencesToInline(definition, allOccurrences, symbols)
@@ -167,7 +167,7 @@ final class PcInlineValueProvider(
 
   private def referenceRequiresBrackets(tree: Tree)(using Context): Boolean =
     NavigateAST.untypedPath(tree.span) match
-      case (_: untpd.InfixOp) :: _ => true
+      case (_: untpd.InfixOp) +: _ => true
       case _ =>
         tree match
           case _: Apply => StdNames.nme.raw.isUnary(tree.symbol.name)
@@ -261,7 +261,7 @@ final class PcInlineValueProvider(
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
     def buildRef(occurrence: Occurrence): Either[String, Reference] =
       val path =
-        Interactive.pathTo(unit.tpdTree, occurrence.pos.span)(using newctx)
+        Interactive.pathTo(unit.tpdTree, occurrence.pos.span)(using newctx).toList
       val indexedContext = IndexedContext(pos, path, newctx)
       import indexedContext.ctx
       val conflictingSymbols = symbols

@@ -22,7 +22,7 @@ object Nullables:
 
   def importUnsafeNulls(using Context): Import = Import(
     ref(defn.LanguageModule),
-    List(untpd.ImportSelector(untpd.Ident(nme.unsafeNulls), EmptyTree, EmptyTree)))
+    Vector(untpd.ImportSelector(untpd.Ident(nme.unsafeNulls), EmptyTree, EmptyTree)))
 
   inline def unsafeNullsEnabled(using Context): Boolean =
     ctx.explicitNulls && !ctx.mode.is(Mode.SafeNulls)
@@ -127,13 +127,13 @@ object Nullables:
      *  The second boolean result is true for equality tests, false for inequality tests
      */
     def unapply(tree: Tree)(using Context): Option[(Tree, Boolean)] = tree match
-      case Apply(Select(l, _), Literal(Constant(null)) :: Nil) =>
+      case Apply(Select(l, _), Literal(Constant(null)) +: Vector()) =>
         testSym(tree.symbol, l)
-      case Apply(Select(Literal(Constant(null)), _), r :: Nil) =>
+      case Apply(Select(Literal(Constant(null)), _), r +: Vector()) =>
         testSym(tree.symbol, r)
-      case Apply(Apply(op, l :: Nil), Literal(Constant(null)) :: Nil) =>
+      case Apply(Apply(op, l +: Vector()), Literal(Constant(null)) +: Vector()) =>
         testPredefSym(op.symbol, l)
-      case Apply(Apply(op, Literal(Constant(null)) :: Nil), r :: Nil) =>
+      case Apply(Apply(op, Literal(Constant(null)) +: Vector()), r +: Vector()) =>
         testPredefSym(op.symbol, r)
       case _ =>
         None
@@ -233,14 +233,14 @@ object Nullables:
     case _ if isVarPattern(pat) => true
     case _ => false
 
-  extension (infos: List[NotNullInfo])
+  extension (infos: Vector[NotNullInfo])
 
     /** Do the current not-null infos imply that `ref` is not null?
     *  Not-null infos are as a history where earlier assertions and retractions replace
     *  later ones (i.e. it records the assignment history in reverse, with most recent first)
     */
     @tailrec def impliesNotNull(ref: TermRef): Boolean = infos match
-      case info :: infos1 =>
+      case info +: infos1 =>
         if info.asserted == null || info.asserted.contains(ref) then true
         else if info.retracted.contains(ref) then false
         else infos1.impliesNotNull(ref)
@@ -252,7 +252,7 @@ object Nullables:
     */
     def extendWith(info: NotNullInfo) =
       if info.isEmpty then infos
-      else info :: infos
+      else info +: infos
 
     /** Retract all references to mutable variables */
     def retractMutables(using Context) =
@@ -405,7 +405,7 @@ object Nullables:
           case CompareNull(TrackedRef(ref), testEqual) =>
             if testEqual then setConditional(Set(), Set(ref))
             else setConditional(Set(ref), Set())
-          case Apply(Select(x, _), y :: Nil) =>
+          case Apply(Select(x, _), y +: Vector()) =>
             val xc = x.notNullConditional
             val yc = y.notNullConditional
             if !(xc.isEmpty && yc.isEmpty) then
@@ -464,18 +464,18 @@ object Nullables:
    *  Note: we track the local variables through their offset and not through their name
    *  because of shadowing.
    */
-  def assignmentSpans(using Context): Map[Int, List[Span]] =
+  def assignmentSpans(using Context): Map[Int, Vector[Span]] =
     import ast.untpd.*
 
     object populate extends UntypedTreeTraverser:
 
       /** The name offsets of variables that are tracked */
-      var tracked: Map[Int, List[Span]] = Map.empty
+      var tracked: Map[Int, Vector[Span]] = Map.empty
 
       /** Map the names of potentially trackable candidate variables in scope to the spans
        *  of their reachable assignments
        */
-      val candidates = mutable.Map[Name, List[Span]]()
+      val candidates = mutable.Map[Name, Vector[Span]]()
 
       /** An assignment to a variable that's not in reachable makes the variable
        *  ineligible for tracking
@@ -486,11 +486,11 @@ object Nullables:
         val savedReachable = reachable
         tree match
           case Block(stats, expr) =>
-            var shadowed: Set[(Name, List[Span])] = Set.empty
+            var shadowed: Set[(Name, Vector[Span])] = Set.empty
             for stat <- stats do
               stat match
                 case stat: ValDef if stat.mods.is(Mutable) =>
-                  for prevSpans <- candidates.put(stat.name, Nil) do
+                  for prevSpans <- candidates.put(stat.name, Vector()) do
                     shadowed += (stat.name -> prevSpans)
                   reachable += stat.name
                 case _ =>
@@ -505,7 +505,7 @@ object Nullables:
           case Assign(Ident(name), rhs) =>
             candidates.get(name) match
               case Some(spans) =>
-                if reachable.contains(name) then candidates(name) = tree.span :: spans
+                if reachable.contains(name) then candidates(name) = tree.span +: spans
                 else candidates -= name
               case None =>
             traverseChildren(tree)
@@ -551,7 +551,7 @@ object Nullables:
     def isRetracted(ref: TermRef): Boolean =
       val sym = ref.symbol
       sym.span.exists
-      && assignmentSpans.getOrElse(sym.span.start, Nil).exists(whileSpan.contains(_))
+      && assignmentSpans.getOrElse(sym.span.start, Vector()).exists(whileSpan.contains(_))
       && ctx.notNullInfos.impliesNotNull(ref)
 
     val retractedVars = ctx.notNullInfos.flatMap(info =>
@@ -616,8 +616,8 @@ object Nullables:
                   nestedCtx.typerState.commit()
                   arg2
 
-            def recur(formals: List[Type], args: List[Tree]): List[Tree] = (formals, args) match
-              case (formal :: formalsRest, arg :: argsRest) =>
+            def recur(formals: Vector[Type], args: Vector[Tree]): Vector[Tree] = (formals, args) match
+              case (formal +: formalsRest, arg +: argsRest) =>
                 val arg1 =
                   if formal.isInstanceOf[ExprType]
                   then postProcess(formal.widenExpr.repeatedToSingle, arg)
@@ -626,7 +626,7 @@ object Nullables:
                   if formal.isRepeatedParam then formals else formalsRest,
                   argsRest)
                 if (arg1 eq arg) && (argsRest1 eq argsRest) then args
-                else arg1 :: argsRest1
+                else arg1 +: argsRest1
               case _ => args
 
             tpd.cpy.Apply(app)(fn, recur(mt.paramInfos, args))

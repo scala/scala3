@@ -113,7 +113,7 @@ object ScaladocCompletions:
                   !param.name.is(ContextBoundParamName) &&
                   param.symbol != extensionParam =>
               param.name.show
-          }
+          }.toList
         case clazz: TypeDef =>
           clazz.symbol.primaryConstructor.rawParamss.flatten.collect {
             case param
@@ -121,7 +121,7 @@ object ScaladocCompletions:
                   !param.isTypeParam &&
                   !param.name.is(ContextBoundParamName) =>
               param.name.show
-          }
+          }.toList
         case _ =>
           Nil
 

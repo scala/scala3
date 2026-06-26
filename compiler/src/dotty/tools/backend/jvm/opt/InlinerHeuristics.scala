@@ -82,15 +82,16 @@ class InlinerHeuristics(optimizerUtils: OptimizerUtils, byteCodeRepository: BCod
   val mediumSize = 2000
   val smallSize = 1000
 
-  def selectRequestsForMethodSize(method: MethodNode, requests: List[InlineRequest], methodSizes: mutable.Map[MethodNode, Int]): List[InlineRequest] = {
+  def selectRequestsForMethodSize(method: MethodNode, requests: Vector[InlineRequest], methodSizes: mutable.Map[MethodNode, Int]): Vector[InlineRequest] = {
     val byReason = requests.groupBy(_.reason)
     var size = method.instructions.size
     val res = mutable.ListBuffer.empty[InlineRequest]
     def include(kind: InlineReason, limit: Int): Unit = {
-      var rs = byReason.getOrElse(kind, Nil)
-      while (rs.nonEmpty && size < limit) {
-        val r = rs.head
-        rs = rs.tail
+      val rs = byReason.getOrElse(kind, Vector())
+      var idx = 0
+      while (idx < rs.length && size < limit) {
+        val r = rs(idx)
+        idx += 1
         val callee = r.callsite.callee.callee
         val cSize = methodSizes.getOrElse(callee, callee.instructions.size)
         if (size + cSize < limit) {
@@ -110,7 +111,7 @@ class InlinerHeuristics(optimizerUtils: OptimizerUtils, byteCodeRepository: BCod
     include(GenericForwarder, smallSize)
     include(TrivialMethod, smallSize)
     methodSizes(method) = size
-    res.toList
+    res.toVector
   }
 
   /**
@@ -268,7 +269,7 @@ object InlinerHeuristics {
   case object HigherOrderWithLiteral extends InlineReason
   case object HigherOrderWithForwardedParam extends InlineReason
 
-  class InlineSourceMatcher(inlineFromSetting: List[String]) {
+  class InlineSourceMatcher(inlineFromSetting: Vector[String]) {
     // `terminal` is true if all remaining entries are of the same negation as this one
     case class Entry(pattern: Pattern, negated: Boolean, terminal: Boolean) {
       def matches(internalName: InternalName): Boolean = pattern.matcher(internalName).matches()
@@ -277,14 +278,14 @@ object InlinerHeuristics {
     private val startAllow: Boolean = patternStrings.headOption.contains("**")
     private var _allowFromSources: Boolean = false
 
-    val entries: List[Entry] = parse()
+    val entries: Vector[Entry] = parse()
 
     def allowFromSources: Boolean = _allowFromSources
 
     def allow(internalName: InternalName): Boolean = {
       var answer = startAllow
-      @tailrec def check(es: List[Entry]): Boolean = es match {
-        case e :: rest =>
+      @tailrec def check(es: Vector[Entry]): Boolean = es match {
+        case e +: rest =>
           if (answer && e.negated && e.matches(internalName))
             answer = false
           else if (!answer && !e.negated && e.matches(internalName))
@@ -299,8 +300,8 @@ object InlinerHeuristics {
       check(entries)
     }
 
-    private def parse(): List[Entry] = {
-      var result = List.empty[Entry]
+    private def parse(): Vector[Entry] = {
+      var result = Vector.empty[Entry]
 
       val patternsRevIterator = {
         val it = patternStrings.reverseIterator
@@ -356,7 +357,7 @@ object InlinerHeuristics {
           }
 
           val isTerminal = result.isEmpty || result.head.terminal && result.head.negated == negated
-          result ::= Entry(Pattern.compile(regex.toString), negated, isTerminal)
+          result +:= Entry(Pattern.compile(regex.toString), negated, isTerminal)
         }
       }
       result

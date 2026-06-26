@@ -37,7 +37,7 @@ import dotty.tools.dotc.util.SrcPos
  *  Type heal example:
  *
  *    '{
- *      val x: List[T] = List[T]()
+ *      val x: Vector[T] = Vector[T]()
  *      '{ .. T .. }
  *      ()
  *    }
@@ -45,7 +45,7 @@ import dotty.tools.dotc.util.SrcPos
  *  is transformed to
  *
  *    '<t>{ // where `t` is a given term of type `Type[T]`
- *      val x: List[t.Underlying] = List[t.Underlying]();
+ *      val x: Vector[t.Underlying] = Vector[t.Underlying]();
  *      '{ .. t.Underlying .. }
  *      ()
  *     }
@@ -95,7 +95,7 @@ class CrossStageSafety extends TreeMapWithStages {
           val (tags, body1) = inContextWithQuoteTypeTags { transform(body)(using quoteContext) }
           val quotes = transform(tree.args.head)
           tags match
-            case tag :: Nil if body1.isType && body1.tpe =:= tag.tpe.select(tpnme.Underlying) =>
+            case tag +: Vector() if body1.isType && body1.tpe =:= tag.tpe.select(tpnme.Underlying) =>
               tag // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
             case _ =>
               // `quoted.Type.of[<body>](<quotes>)` --> `'[<body1>].apply(<quotes>)`
@@ -251,7 +251,7 @@ class CrossStageSafety extends TreeMapWithStages {
   private object CancelledQuote:
     def unapply(tree: Quote): Option[Tree] =
       def rec(tree: Tree): Option[Tree] = tree match
-        case Block(Nil, expr) => rec(expr)
+        case Block(Vector(), expr) => rec(expr)
         case Splice(inner) => Some(inner)
         case _ => None
       rec(tree.body)
@@ -259,7 +259,7 @@ class CrossStageSafety extends TreeMapWithStages {
   private object CancelledSplice:
     def unapply(tree: Splice): Option[Tree] =
       def rec(tree: Tree): Option[Tree] = tree match
-        case Block(Nil, expr) => rec(expr)
+        case Block(Vector(), expr) => rec(expr)
         case Quote(inner, _) => Some(inner)
         case _ => None
       rec(tree.expr)

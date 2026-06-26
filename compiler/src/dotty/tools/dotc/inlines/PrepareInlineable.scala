@@ -36,7 +36,7 @@ object PrepareInlineable {
   def makeInlineable(tree: Tree)(using Context): Tree =
     ctx.property(InlineAccessorsKey).get.makeInlineable(tree)
 
-  def addAccessorDefs(cls: Symbol, body: List[Tree])(using Context): List[Tree] =
+  def addAccessorDefs(cls: Symbol, body: Vector[Tree])(using Context): Vector[Tree] =
     ctx.property(InlineAccessorsKey) match
       case Some(inlineAccessors) => inlineAccessors.addAccessorDefs(cls, body)
       case _ => body
@@ -92,7 +92,7 @@ object PrepareInlineable {
 
       def postTransform(tree: Tree)(using Context): Tree = tree match {
         case Assign(lhs, rhs) if lhs.symbol.name.is(InlineAccessorName) =>
-          cpy.Apply(tree)(useSetter(lhs), rhs :: Nil)
+          cpy.Apply(tree)(useSetter(lhs), rhs +: Vector())
         case _ =>
           tree
       }
@@ -178,13 +178,13 @@ object PrepareInlineable {
           // The types that are local to the inline method, and that therefore have
           // to be abstracted out in the accessor, which is external to the inline method
           val localRefs = qualType.namedPartsWith(ref =>
-            ref.isType && ref.symbol.isContainedIn(inlineSym)).toList
+            ref.isType && ref.symbol.isContainedIn(inlineSym)).toVector
 
           // Add qualifier type as leading method argument to argument `tp`
           def addQualType(tp: Type): Type = tp match {
             case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
             case tp: ExprType => addQualType(tp.resultType)
-            case tp => MethodType(qualType.simplified :: Nil, tp)
+            case tp => MethodType(qualType.simplified +: Vector(), tp)
           }
 
           // Abstract accessed type over local refs
@@ -206,7 +206,7 @@ object PrepareInlineable {
           val (leadingTypeArgs, otherArgss) = splitArgs(argss)
           val argss1 = joinArgs(
             localRefs.map(TypeTree(_)) ++ leadingTypeArgs, // TODO: pass type parameters in two sections?
-            (qual :: Nil) :: otherArgss
+            (qual +: Vector()) +: otherArgss
           )
           ref(accessor).appliedToArgss(argss1).withSpan(tree.span)
 
@@ -311,10 +311,10 @@ object PrepareInlineable {
             report.error("Macro cannot be implemented with an `inline` method", code.srcPos)
           Splicer.checkValidMacroBody(code)
           (new CrossStageSafety).transform(body) // Ignore output, only check cross-stage safety
-        case Block(List(stat), Literal(Constants.Constant(()))) => checkMacro(stat)
-        case Block(Nil, expr) => checkMacro(expr)
+        case Block(Vector(stat), Literal(Constants.Constant(()))) => checkMacro(stat)
+        case Block(Vector(), expr) => checkMacro(expr)
         case Typed(expr, _) => checkMacro(expr)
-        case Block(DefDef(nme.ANON_FUN, _, _, _) :: Nil, Closure(_, fn, _)) if fn.symbol.info.isImplicitMethod =>
+        case Block(DefDef(nme.ANON_FUN, _, _, _) +: Vector(), Closure(_, fn, _)) if fn.symbol.info.isImplicitMethod =>
           // TODO Support this pattern
           report.error(
             """Macros using a return type of the form `foo(): X ?=> Y` are not yet supported.

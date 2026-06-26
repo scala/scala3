@@ -220,7 +220,7 @@ object Scala2Erasure:
    *  possible to make them easier to compare, cf:
    *  https://github.com/scala/scala/blob/v2.13.5/src/reflect/scala/reflect/internal/transform/Erasure.scala#L356-L389
    */
-  def intersectionDominator(parents: List[Type])(using Context): Type =
+  def intersectionDominator(parents: Vector[Type])(using Context): Type =
     val psyms = parents.map(pseudoSymbol)
     if (psyms.contains(defn.ArrayClass)) {
       defn.ArrayOf(
@@ -240,7 +240,7 @@ object Scala2Erasure:
    *  Mimic what Scala 2 does: intersections like `A with (B with C)` are
    *  flattened to three parents.
    */
-  def flattenedParents(tp: AndType)(using Context): List[Type] =
+  def flattenedParents(tp: AndType)(using Context): Vector[Type] =
     val parents = ListBuffer[Type]()
 
     def collect(parent: Type, parents: ListBuffer[Type]): Unit = parent.dealiasKeepAnnots match
@@ -252,6 +252,6 @@ object Scala2Erasure:
         parents += parent
 
     collect(tp, parents)
-    parents.toList
+    parents.toVector
   end flattenedParents
 end Scala2Erasure

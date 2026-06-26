@@ -79,7 +79,7 @@ object IndexedContext:
       case NoContext => Empty
       case _ =>
         val typerCtx: Context = Interactive
-          .contextOfPath(tpdPath)(using driverCtx).withPhase(Phases.typerPhase(using driverCtx))
+          .contextOfPath(tpdPath.toVector)(using driverCtx).withPhase(Phases.typerPhase(using driverCtx))
         LazyWrapper(pos, tpdPath)(using typerCtx)
 
   case object Empty extends IndexedContext:
@@ -92,7 +92,7 @@ object IndexedContext:
 
   class LazyWrapper(pos: SourcePosition, tpdPath: List[tpd.Tree])(using val ctx: Context) extends IndexedContext:
 
-    val scopeContext: CompletionResult = Completion.scopeContext(pos, tpdPath, ctx)
+    val scopeContext: CompletionResult = Completion.scopeContext(pos, tpdPath.toVector, ctx)
     val names: Map[String, Seq[SingleDenotation]] = scopeContext.names.toList.groupBy(_._1.show).map {
       case (name, denotations) =>
         val denots = denotations.flatMap(_._2.denots)

@@ -36,13 +36,13 @@ object Scala2Unpickler {
   /** Exception thrown if classfile is corrupted */
   class BadSignature(msg: String) extends RuntimeException(msg)
 
-  case class TempPolyType(tparams: List[TypeSymbol], tpe: Type) extends UncachedGroundType {
+  case class TempPolyType(tparams: Vector[TypeSymbol], tpe: Type) extends UncachedGroundType {
     override def fallbackToText(printer: Printer): Text =
       "[" ~ printer.dclsText(tparams, ", ") ~ "]" ~ printer.toText(tpe)
   }
 
   /** Temporary type for classinfos, will be decomposed on completion of the class */
-  case class TempClassInfoType(parentTypes: List[Type], decls: Scope, clazz: Symbol) extends UncachedGroundType
+  case class TempClassInfoType(parentTypes: Vector[Type], decls: Scope, clazz: Symbol) extends UncachedGroundType
 
   /** Convert temp poly type to poly type and leave other types alone. */
   def translateTempPoly(tp: Type)(using Context): Type = tp match {
@@ -69,7 +69,7 @@ object Scala2Unpickler {
     if scope.lookup(nme.CONSTRUCTOR) == NoSymbol then
       val constr =
         if fromScala2 || cls.isAllOf(Trait | JavaDefined) then newDefaultConstructor(cls)
-        else newConstructor(cls, Private, paramNames = Nil, paramTypes = Nil)
+        else newConstructor(cls, Private, paramNames = Vector(), paramTypes = Vector())
       // Scala 2 traits have a constructor iff they have initialization code
       // In dotc we represent that as !StableRealizable, which is also owner.is(NoInits)
       if clsDenot.flagsUNSAFE.is(Trait) then
@@ -82,7 +82,7 @@ object Scala2Unpickler {
     val cls = denot.classSymbol
     val (tparams, TempClassInfoType(parents, decls, clazz)) = info match {
       case TempPolyType(tps, cinfo) => (tps, cinfo)
-      case cinfo => (Nil, cinfo)
+      case cinfo => (Vector(), cinfo)
     }: @unchecked
     val ost =
       if (selfInfo eq NoType) && denot.is(ModuleClass) then
@@ -99,7 +99,7 @@ object Scala2Unpickler {
       else selfInfo
     val tempInfo = new TempClassInfo(denot.owner.thisType, cls, decls, ost)
     denot.info = tempInfo // first rough info to avoid CyclicReferences
-    val parents1 = if (parents.isEmpty) defn.ObjectType :: Nil else parents.map(_.dealias)
+    val parents1 = if (parents.isEmpty) defn.ObjectType +: Vector() else parents.map(_.dealias)
     // Adjust parents of the tuple classes and BoxedUnit from the standard library
     // If from Scala 2, adjust for tuple classes; if not, it's from Java, and adjust for BoxedUnit
     val normalizedParents =
@@ -165,7 +165,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   private val symScopes = mutable.HashMap[Symbol, Scope]()
 
   /** A mapping from method types to the parameters used in constructing them */
-  private val paramsOfMethodType = new java.util.IdentityHashMap[MethodType, List[Symbol]]
+  private val paramsOfMethodType = new java.util.IdentityHashMap[MethodType, Vector[Symbol]]
 
   protected def errorBadSignature(msg: String, original: Option[RuntimeException] = None)(using Context): Nothing = {
     val ex = new BadSignature(
@@ -367,7 +367,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if (denot.exists && !denot1.exists) { // !!!DEBUG
           val alts = denot.alternatives map (d => s"$d:${d.info}/${d.signature}")
           System.err.println(s"!!! disambiguation failure: $alts")
-          val members = denot.alternatives.head.symbol.owner.info.decls.toList map (d => s"$d:${d.info}/${d.signature}")
+          val members = denot.alternatives.head.symbol.owner.info.decls.toVector map (d => s"$d:${d.info}/${d.signature}")
           System.err.println(s"!!! all members: $members")
         }
         if (tag == EXTref) sym else sym.moduleClass
@@ -418,7 +418,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           nestedObjectSymbol `orElse` {
             // (4) Call the mirror's "missing" hook.
             adjust(missingHook(owner, name)) `orElse` {
-              // println(owner.info.decls.toList.map(_.debugString).mkString("\n  ")) // !!! DEBUG
+              // println(owner.info.decls.toVector.map(_.debugString).mkString("\n  ")) // !!! DEBUG
               //              }
               // (5) Create a stub symbol to defer hard failure a little longer.
               System.err.println(i"***** missing reference, looking for ${name.debugString} in $owner")
@@ -607,13 +607,13 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   class LocalUnpickler extends LazyType {
     def startCoord(denot: SymDenotation): Coord = denot.symbol.coord
 
-    def paramssOfType(tp: Type): List[List[Symbol]] = tp match
-      case TempPolyType(tparams, restpe) => tparams :: paramssOfType(restpe)
+    def paramssOfType(tp: Type): Vector[Vector[Symbol]] = tp match
+      case TempPolyType(tparams, restpe) => tparams +: paramssOfType(restpe)
       case mt: MethodType =>
         val params = paramsOfMethodType.remove(mt)
         val rest = paramssOfType(mt.resType)
-        if params == null then rest else params :: rest
-      case _ => Nil
+        if params == null then rest else params +: rest
+      case _ => Vector()
 
     def complete(denot: SymDenotation)(using Context): Unit = try {
       def parseToCompletion(denot: SymDenotation)(using Context) = {
@@ -632,7 +632,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         if denot.is(Method) then
           var params = paramssOfType(tp)
           if denot.isConstructor && denot.owner.typeParams.nonEmpty then
-            params = denot.owner.typeParams :: params
+            params = denot.owner.typeParams +: params
           denot.rawParamss = params
 
         denot match {
@@ -687,7 +687,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   object localMemberUnpickler extends LocalUnpickler
 
   class ClassUnpickler(infoRef: Int) extends LocalUnpickler with TypeParamsCompleter {
-    private var myTypeParams: List[TypeSymbol] | Null = null
+    private var myTypeParams: Vector[TypeSymbol] | Null = null
 
     private def readTypeParams()(using Context): Unit = {
       val tag = readByte()
@@ -695,8 +695,8 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       myTypeParams =
         if (tag == POLYtpe) {
           val unusedRestpeRef = readNat()
-          until(end, () => readSymbolRef()(using ctx)).asInstanceOf[List[TypeSymbol]]
-        } else Nil
+          until(end, () => readSymbolRef()(using ctx)).asInstanceOf[Vector[TypeSymbol]]
+        } else Vector()
     }
     private def loadTypeParams()(using Context) =
       atReadPos(index(infoRef), () => readTypeParams()(using ctx))
@@ -705,11 +705,11 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     def areParamsInitialized: Boolean = myTypeParams ne null
 
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
-    def init()(using Context): List[TypeSymbol] =
+    def init()(using Context): Vector[TypeSymbol] =
       if !areParamsInitialized then loadTypeParams()
       myTypeParams.nn
 
-    override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
+    override def completerTypeParams(sym: Symbol)(using Context): Vector[TypeSymbol] =
       init()
   }
 
@@ -727,7 +727,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    *  to
    *    tp { name: T }
    */
-  def elimExistentials(boundSyms: List[Symbol], tp: Type)(using Context): Type = {
+  def elimExistentials(boundSyms: Vector[Symbol], tp: Type)(using Context): Type = {
     // Need to be careful not to run into cyclic references here (observed when
     // compiling t247.scala). That's why we avoid taking `symbol` of a TypeRef
     // unless names match up.
@@ -878,7 +878,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         else {
           def subst(info: Type, rt: RecType) = info.substThis(clazz.asClass, rt.recThis)
           def addRefinement(tp: Type, sym: Symbol) = RefinedType(tp, sym.name, sym.info)
-          val refined = decls.toList.foldLeft(parent)(addRefinement)
+          val refined = decls.toVector.foldLeft(parent)(addRefinement)
           RecType.closeOver(rt => refined.substThis(clazz, rt.recThis))
         }
       case CLASSINFOtpe =>
@@ -902,7 +902,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val restpe = readTypeRef()
         val typeParams = until(end, () => readSymbolRef())
         if typeParams.nonEmpty then
-          TempPolyType(typeParams.asInstanceOf[List[TypeSymbol]], restpe.widenExpr)
+          TempPolyType(typeParams.asInstanceOf[Vector[TypeSymbol]], restpe.widenExpr)
         else
           ExprType(restpe)
       case EXISTENTIALtpe =>
@@ -916,14 +916,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     }
   }
 
-  def readTypeParams()(using Context): List[Symbol] = {
+  def readTypeParams()(using Context): Vector[Symbol] = {
     val tag = readByte()
     val end = readNat() + readIndex
     if (tag == POLYtpe) {
       val unusedRestperef = readNat()
       until(end, () => readSymbolRef())
     }
-    else Nil
+    else Vector()
   }
 
   def noSuchTypeTag(tag: Int, end: Int)(using Context): Type =
@@ -1053,7 +1053,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           else readAnnotArg(argref)
         }
       }
-      t.toList
+      t.toVector
     }
     untpd.resolveConstructor(atp, args)
   }
@@ -1136,7 +1136,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val impl = readTemplateRef()
         val tparams = until(end, () => readTypeDefRef())
         val cls = symbol.asClass
-        val ((constr: DefDef) :: Nil, stats) =
+        val ((constr: DefDef) +: Vector(), stats) =
           impl.body.partition(_.symbol == cls.primaryConstructor): @unchecked
         ClassDef(cls, constr, tparams ++ stats)
 
@@ -1172,7 +1172,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val ldef = DefDef(symbol.asTerm, rhs)
         def isCaseLabel(sym: Symbol) = sym.name.startsWith(nme.CASEkw.toString)
         if (isCaseLabel(symbol)) ldef
-        else Block(ldef :: Nil, Apply(Ident(symbol.termRef), Nil))
+        else Block(ldef +: Vector(), Apply(Ident(symbol.termRef), Vector()))
 
       case IMPORTtree =>
         val symbol = setSym()
@@ -1191,7 +1191,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val parents = times(readNat(), () => readTreeRef())
         val self = readValDefRef()
         val body = until(end, () => readTreeRef())
-        untpd.Template(???, parents, Nil, self, body) // !!! TODO: pull out primary constructor
+        untpd.Template(???, parents, Vector(), self, body) // !!! TODO: pull out primary constructor
           .withType(symbol.namedType)
 
       case BLOCKtree =>
@@ -1219,7 +1219,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
       case UNAPPLYtree =>
         val fun = readTreeRef()
         val args = until(end, () => readTreeRef())
-        UnApply(fun, Nil, args, defn.AnyType) // !!! this is wrong in general
+        UnApply(fun, Vector(), args, defn.AnyType) // !!! this is wrong in general
 
       case ARRAYVALUEtree =>
         val elemtpt = readTreeRef()
@@ -1376,7 +1376,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val pflags = (pflagsHi.toLong << 32) + pflagsLo
     val flags = unpickleScalaFlags(pflags, isType)
     val privateWithin = readNameRef().asTypeName
-    Modifiers(flags, privateWithin, Nil)
+    Modifiers(flags, privateWithin, Vector())
   }
 
   protected def readTemplateRef()(using Context): Template =

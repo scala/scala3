@@ -114,7 +114,7 @@ class QuoteMatcher(debug: Boolean) {
   /** Sequence of matched expressions.
    *  These expressions are part of the scrutinee and will be bound to the quote pattern term splices.
    */
-  private type MatchingExprs = Seq[MatchResult]
+  private type MatchingExprs = Vector[MatchResult]
 
   /** Return type that indicates that the method returns a T or aborts to the enclosing boundary with a `None` */
   private type optional[T] = boundary.Label[None.type] ?=> T
@@ -157,7 +157,7 @@ class QuoteMatcher(debug: Boolean) {
                 case TypeRef(NoPrefix, _) => typeHoleMapping.getOrElse(tp.typeSymbol, tp)
                 case _ => mapOver(tp)
             }
-          if matchings.isEmpty then Nil
+          if matchings.isEmpty then Vector.empty
           else matchings.map(_.toExpr(typeHoleMap, spliceScope))
         val results = matchedTypes ++ matchedExprs
         Tuple.fromIArray(IArray.unsafeFromArray(results.toArray))
@@ -165,20 +165,20 @@ class QuoteMatcher(debug: Boolean) {
     }
   }
 
-  def instrumentTypeHoles(pat: Tree)(using Context): (Tree, List[Symbol], Context) =
+  def instrumentTypeHoles(pat: Tree)(using Context): (Tree, Vector[Symbol], Context) =
     def isTypeHoleDef(tree: Tree): Boolean = tree match
       case tree: TypeDef => tree.symbol.hasAnnotation(defn.QuotedRuntimePatterns_patternTypeAnnot)
       case _ => false
     pat match
-      case tpd.Inlined(_, Nil, pat2) => instrumentTypeHoles(pat2)
-      case tpd.Block(stats @ ((typeHole: TypeDef) :: _), expr) if isTypeHoleDef(typeHole) =>
+      case tpd.Inlined(_, Vector(), pat2) => instrumentTypeHoles(pat2)
+      case tpd.Block(stats @ ((typeHole: TypeDef) +: _), expr) if isTypeHoleDef(typeHole) =>
         val (holeDefs, otherStats) = stats.span(isTypeHoleDef)
         val holeSyms = holeDefs.map(_.symbol)
         val ctx1 = ctx.fresh.setFreshGADTBounds.addMode(GadtConstraintInference)
         ctx1.gadtState.addToConstraint(holeSyms)
         (tpd.cpy.Block(pat)(otherStats, expr), holeSyms, ctx1)
       case _ =>
-        (pat, Nil, ctx)
+        (pat, Vector.empty, ctx)
 
   /** Type approximation of a quote pattern type variable.
    *  Should only be approximated after matching the tree.
@@ -189,14 +189,17 @@ class QuoteMatcher(debug: Boolean) {
     if fromAboveAnnot then fullBounds.nn.hi else fullBounds.nn.lo
 
   /** Check that all trees match with `mtch` and concatenate the results with &&& */
-  private def matchLists[T](l1: List[T], l2: List[T])(mtch: (T, T) => MatchingExprs): optional[MatchingExprs] = (l1, l2) match {
-    case (x :: xs, y :: ys) => mtch(x, y) &&& matchLists(xs, ys)(mtch)
-    case (Nil, Nil) => matched
-    case _ => notMatched
-  }
+  private def matchLists[T](l1: Seq[T], l2: Seq[T])(mtch: (T, T) => MatchingExprs): optional[MatchingExprs] =
+    val it1 = l1.iterator
+    val it2 = l2.iterator
+    var result = matched
+    while it1.hasNext && it2.hasNext do
+      result = result &&& mtch(it1.next(), it2.next())
+    if it1.hasNext || it2.hasNext then notMatched
+    else result
 
-  extension (scrutinees: List[Tree])
-    private def =?= (patterns: List[Tree])(using Env, Context): optional[MatchingExprs] =
+  extension (scrutinees: Seq[Tree])
+    private def =?= (patterns: Seq[Tree])(using Env, Context): optional[MatchingExprs] =
       matchLists(scrutinees, patterns)(_ =?= _)
 
   extension (scrutinee0: Tree)
@@ -215,12 +218,12 @@ class QuoteMatcher(debug: Boolean) {
       /* Match block flattening */ // TODO move to cases
       /** Normalize the tree */
       def normalize(tree: Tree): Tree = tree match {
-        case Block(Nil, expr) => normalize(expr)
+        case Block(Vector(), expr) => normalize(expr)
         case Block(stats1, Block(stats2, expr)) =>
           expr match
             case _: Closure => tree
-            case _ => normalize(Block(stats1 ::: stats2, expr))
-        case Inlined(_, Nil, expr) => normalize(expr)
+            case _ => normalize(Block(stats1 ++ stats2, expr))
+        case Inlined(_, Vector(), expr) => normalize(expr)
         case _ => tree
       }
 
@@ -259,14 +262,14 @@ class QuoteMatcher(debug: Boolean) {
         arg match
           case id: Ident => id
           case Apply(fun, _) => getCapturedIdent(fun)
-          case Block((ddef: DefDef) :: _, _: Closure) => getCapturedIdent(ddef.rhs)
+          case Block((ddef: DefDef) +: _, _: Closure) => getCapturedIdent(ddef.rhs)
           case Typed(expr, _) => getCapturedIdent(expr)
 
       def runMatch(): optional[MatchingExprs] = pattern match
 
         /* Term hole */
         // Match a scala.internal.Quoted.patternHole typed as a repeated argument and return the scrutinee tree
-        case Typed(TypeApply(patternHole, tpt :: Nil), tpt2)
+        case Typed(TypeApply(patternHole, Vector(tpt)), tpt2)
             if patternHole.symbol.eq(defn.QuotedRuntimePatterns_patternHole) &&
                tpt2.tpe.derivesFrom(defn.RepeatedParamClass) =>
           scrutinee match
@@ -275,7 +278,7 @@ class QuoteMatcher(debug: Boolean) {
 
         /* Term hole */
         // Match a scala.internal.Quoted.patternHole and return the scrutinee tree
-        case TypeApply(patternHole, tpt :: Nil)
+        case TypeApply(patternHole, Vector(tpt))
             if patternHole.symbol.eq(defn.QuotedRuntimePatterns_patternHole) &&
                 isSubTypeUnderEnv(scrutinee, tpt) =>
           scrutinee match
@@ -285,7 +288,7 @@ class QuoteMatcher(debug: Boolean) {
 
         /* Higher order term hole */
         // Matches an open term and wraps it into a lambda that provides the free variables
-        case Apply(TypeApply(Ident(_), List(TypeTree())), SeqLiteral(args, _) :: Nil)
+        case Apply(TypeApply(Ident(_), Vector(TypeTree())), SeqLiteral(args, _) +: Vector())
             if pattern.symbol.eq(defn.QuotedRuntimePatterns_higherOrderHole) =>
 
           val env = summon[Env]
@@ -296,13 +299,13 @@ class QuoteMatcher(debug: Boolean) {
             typeEnv = env.typeEnv)
           withEnv(captureEnv) {
             scrutinee match
-              case ClosedPatternTerm(scrutinee) => matchedOpen(scrutinee, pattern.tpe, capturedIds, args.map(_.tpe), Nil, env)
+              case ClosedPatternTerm(scrutinee) => matchedOpen(scrutinee, pattern.tpe, capturedIds, args.map(_.tpe), Vector.empty, env)
               case _ => notMatched
           }
 
         /* Higher order term hole */
         // Matches an open term and wraps it into a lambda that provides the free variables
-        case Apply(TypeApply(Ident(_), List(TypeTree(), targs)), SeqLiteral(args, _) :: Nil)
+        case Apply(TypeApply(Ident(_), Vector(TypeTree(), targs)), SeqLiteral(args, _) +: Vector())
             if pattern.symbol.eq(defn.QuotedRuntimePatterns_higherOrderHoleWithTypes) =>
 
           val env = summon[Env]
@@ -367,9 +370,9 @@ class QuoteMatcher(debug: Boolean) {
                 case _ => notMatched
 
             /* Match block */
-            case Block(stat1 :: stats1, expr1) =>
+            case Block(stat1 +: stats1, expr1) =>
               pattern match
-                case Block(stat2 :: stats2, expr2) =>
+                case Block(stat2 +: stats2, expr2) =>
                   val newEnv = (stat1, stat2) match {
                     case (stat1: ValOrDefDef, stat2: ValOrDefDef) =>
                       val Env(termEnv, typeEnv) = summon[Env]
@@ -472,9 +475,9 @@ class QuoteMatcher(debug: Boolean) {
                         case _ => notMatched
                     case _ => notMatched
 
-                  def matchParamss(scparamss: List[ParamClause], ptparamss: List[ParamClause])(using Env): optional[(Env, MatchingExprs)] =
+                  def matchParamss(scparamss: Vector[ParamClause], ptparamss: Vector[ParamClause])(using Env): optional[(Env, MatchingExprs)] =
                     (scparamss, ptparamss) match {
-                      case (ValDefs(scparams) :: screst, ValDefs(ptparams) :: ptrest) =>
+                      case (ValDefs(scparams) +: screst, ValDefs(ptparams) +: ptrest) =>
                         val mr1 = matchLists(scparams, ptparams)(_ =?= _)
                         val Env(termEnv, typeEnv) = summon[Env]
                         val newEnv = new Env(
@@ -483,7 +486,7 @@ class QuoteMatcher(debug: Boolean) {
                         )
                         val (resEnv, mrrest) = withEnv(newEnv)(matchParamss(screst, ptrest))
                         (resEnv, mr1 &&& mrrest)
-                      case (TypeDefs(scparams) :: screst, TypeDefs(ptparams) :: ptrest) =>
+                      case (TypeDefs(scparams) +: screst, TypeDefs(ptparams) +: ptrest) =>
                         val mr1 = matchLists(scparams, ptparams)(matchTypeDef)
                         val Env(termEnv, typeEnv) = summon[Env]
                         val newEnv = new Env(
@@ -492,7 +495,7 @@ class QuoteMatcher(debug: Boolean) {
                         )
                         val (resEnv, mrrest) = withEnv(newEnv)(matchParamss(screst, ptrest))
                         (resEnv, mr1 &&& mrrest)
-                      case (Nil, Nil) => (summon[Env], matched)
+                      case (Vector(), Vector()) => (summon[Env], matched)
                       case _ => notMatched
                     }
 
@@ -582,7 +585,7 @@ class QuoteMatcher(debug: Boolean) {
   private def isSubTypeUnderEnv(scrutinee: Tree, pattern: Tree)(using Env, Context): Boolean =
     val env = summon[Env].typeEnv
     val scType = if env.isEmpty then scrutinee.tpe
-      else scrutinee.subst(env.keys.toList, env.values.toList).tpe
+      else scrutinee.subst(env.keys.toVector, env.values.toVector).tpe
     scType <:< pattern.tpe
 
   private object ClosedPatternTerm {
@@ -623,7 +626,7 @@ class QuoteMatcher(debug: Boolean) {
      *  @param typeArgs type arguments from the pattern
      *  @param env Mapping between scrutinee and pattern variables
      */
-    case OpenTree(tree: Tree, patternTpe: Type, argIds: List[Tree], argTypes: List[Type], typeArgs: List[Type], env: Env)
+    case OpenTree(tree: Tree, patternTpe: Type, argIds: Vector[Tree], argTypes: Vector[Type], typeArgs: Vector[Type], env: Env)
 
     /** Return the expression that was extracted from a hole.
      *
@@ -637,9 +640,9 @@ class QuoteMatcher(debug: Boolean) {
       case MatchResult.ClosedTree(tree) =>
         new ExprImpl(tree, spliceScope)
       case MatchResult.OpenTree(tree, patternTpe, argIds, argTypes, typeArgs, Env(termEnv, typeEnv)) =>
-        val names: List[TermName] = argIds.map(_.symbol.name.asTermName)
+        val names: Vector[TermName] = argIds.map(_.symbol.name.asTermName)
         val paramTypes = argTypes.map(tpe => mapTypeHoles(tpe.widenTermRefExpr))
-        val ptTypeVarSymbols = typeArgs.map(_.typeSymbol)
+        val ptTypeVarSymbols = typeArgs.map(_.typeSymbol).toVector
         val isNotPoly = typeArgs.isEmpty
 
         val methTpe = if isNotPoly then
@@ -650,17 +653,17 @@ class QuoteMatcher(debug: Boolean) {
           val resultTypeExp = (pt: PolyType) => {
             val argTypes1 = paramTypes.map(_.subst(ptTypeVarSymbols, pt.paramRefs))
             val resultType1 = mapTypeHoles(patternTpe).subst(ptTypeVarSymbols, pt.paramRefs)
-            MethodType(argTypes1, resultType1)
+            MethodType(argTypes1.toVector, resultType1)
           }
           PolyType(typeArgs1)(_ => bounds, resultTypeExp)
 
         val meth = newAnonFun(ctx.owner, methTpe)
 
-        def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
+        def bodyFn(lambdaArgss: Vector[Vector[Tree]]): Tree = {
           val (typeParams, params) = if isNotPoly then
-              (List.empty, lambdaArgss.head)
+              (Vector.empty, lambdaArgss.head)
             else
-              (lambdaArgss.head.map(_.tpe), lambdaArgss.tail.head)
+              (lambdaArgss.head.map(_.tpe), lambdaArgss(1))
 
           val typeArgsMap = ptTypeVarSymbols.zip(typeParams).toMap
           val argsMap = argIds.view.map(_.symbol).zip(params).toMap
@@ -696,13 +699,13 @@ class QuoteMatcher(debug: Boolean) {
     boundary.break(None)
 
   private inline def matched: MatchingExprs =
-    Seq.empty
+    Vector.empty
 
   private inline def matched(tree: Tree)(using Context): MatchingExprs =
-    Seq(MatchResult.ClosedTree(tree))
+    Vector(MatchResult.ClosedTree(tree))
 
-  private def matchedOpen(tree: Tree, patternTpe: Type, argIds: List[Tree], argTypes: List[Type], typeArgs: List[Type], env: Env)(using Context): MatchingExprs =
-    Seq(MatchResult.OpenTree(tree, patternTpe, argIds, argTypes, typeArgs, env))
+  private def matchedOpen(tree: Tree, patternTpe: Type, argIds: Vector[Tree], argTypes: Vector[Type], typeArgs: Vector[Type], env: Env)(using Context): MatchingExprs =
+    Vector(MatchResult.OpenTree(tree, patternTpe, argIds, argTypes, typeArgs, env))
 
   extension (self: MatchingExprs)
       /** Concatenates the contents of two successful matchings */
@@ -710,8 +713,8 @@ class QuoteMatcher(debug: Boolean) {
   end extension
 
   // TODO-18271: Duplicate with QuotePatterns.unrollHkNestedPairsTypeTree
-  private def unrollHkNestedPairsTypeTree(tree: Tree)(using Context): List[Tree] = tree match
+  private def unrollHkNestedPairsTypeTree(tree: Tree)(using Context): Vector[Tree] = tree match
     case AppliedTypeTree(tupleN, bindings) if defn.isTupleClass(tupleN.symbol) => bindings // TupleN, 1 <= N <= 22
-    case AppliedTypeTree(_, head :: tail :: Nil) => head :: unrollHkNestedPairsTypeTree(tail) // KCons or *:
-    case _ => Nil // KNil or EmptyTuple
+    case AppliedTypeTree(_, Vector(head, tail)) => head +: unrollHkNestedPairsTypeTree(tail) // KCons or *:
+    case _ => Vector.empty // KNil or EmptyTuple
 }

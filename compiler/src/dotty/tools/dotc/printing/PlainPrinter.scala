@@ -37,7 +37,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
    */
   private var elideCapabilityCaps = false
 
-  private var openRecs: List[RecType] = Nil
+  private var openRecs: Vector[RecType] = Vector()
 
   protected def maxToTextRecursions: Int = 100
 
@@ -142,16 +142,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** Pretty-print comma-separated type arguments for a constructor to be inserted among parentheses or brackets
     * (hence with `GlobalPrec` precedence).
     */
-  protected def argsText(args: List[Type]): Text =
+  protected def argsText(args: Vector[Type]): Text =
     atPrec(GlobalPrec) { Text(args.map(argText(_)), ", ") }
 
   /** The longest sequence of refinement types, starting at given type
    *  and following parents.
    */
-  private def refinementChain(tp: Type): List[Type] =
-    tp :: (tp match {
+  private def refinementChain(tp: Type): Vector[Type] =
+    tp +: (tp match {
       case tp: RefinedType => refinementChain(tp.parent.stripTypeVar)
-      case _ => Nil
+      case _ => Vector()
     })
 
   /** Direct references to these symbols are printed without their prefix for convenience.
@@ -175,7 +175,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         then cs.asVar.repr.show ~ idTxt
         else
           Str("'").provided(ccVerbose && !cs.isConst)
-           ~ "{" ~ Text(cs.processElems(_.toList.map(toTextCapability)), ", ") ~ "}"
+           ~ "{" ~ Text(cs.processElems(_.toVector.map(toTextCapability)), ", ") ~ "}"
            ~ Str(".reader").provided(ccVerbose && cs.mutability == Mutability.Reader)
            ~ idTxt
       core ~ cs.optionalInfo
@@ -187,10 +187,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
       catch case _ =>
         toText(ref)
 
-  private def toTextRetainedElems(refs: List[Type]): Text =
+  private def toTextRetainedElems(refs: Vector[Type]): Text =
     "{" ~ Text(refs.map(ref => toTextRetainedElem(ref)), ", ") ~ "}"
 
-  type GeneralCaptureSet = CaptureSet | List[Type]
+  type GeneralCaptureSet = CaptureSet | Vector[Type]
 
   protected def isElidableUniversal(refs: GeneralCaptureSet): Boolean = refs match
     case refs: CaptureSet =>
@@ -200,12 +200,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
           case GlobalAny => true
           case _ => false
         && !ccVerbose
-    case ref :: Nil => ref.isCapsAnyRef
-    case _ => false
+    case refs: Vector[?] =>
+      refs.size == 1 && refs.head.asInstanceOf[Type].isCapsAnyRef
 
   protected def toTextGeneralCaptureSet(refs: GeneralCaptureSet): Text = refs match
     case refs: CaptureSet => toTextCaptureSet(refs)
-    case refs: List[Type] => toTextRetainedElems(refs)
+    case refs: Vector[Type] => toTextRetainedElems(refs)
 
   /** Print capturing type, overridden in RefinedPrinter to account for
    *  capturing function types.
@@ -246,12 +246,12 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case AppliedType(tycon, args) =>
         (toTextLocal(tycon) ~ "[" ~ argsText(args) ~ "]").close
       case tp: RefinedType =>
-        val parent :: (refined: List[RefinedType @unchecked]) =
+        val parent +: (refined: Vector[RefinedType @unchecked]) =
           refinementChain(tp).reverse: @unchecked
         toTextLocal(parent) ~ "{" ~ Text(refined map toTextRefinement, "; ").close ~ "}"
       case tp: RecType =>
         try {
-          openRecs = tp :: openRecs
+          openRecs = tp +: openRecs
           "{" ~ selfRecName(openRecs.length) ~ " => " ~ toTextGlobal(tp.parent) ~ "}"
         }
         finally openRecs = openRecs.tail
@@ -303,7 +303,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         def arrowText: Text = restp match
           case AnnotatedType(parent, ann: RetainingAnnotation) if !ann.isStrict =>
             ann.retainedType.retainedElementsRaw match
-              case ref :: Nil if ref.isCapsAnyRef => Str("=>")
+              case ref +: Vector() if ref.isCapsAnyRef => Str("=>")
               case refs => Str("->") ~ toTextRetainedElems(refs)
           case _ =>
             if Feature.pureFunsEnabled then "->" else "=>"
@@ -598,7 +598,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         tparamStr ~ binder
       case tp @ ClassInfo(pre, cls, cparents, decls, selfInfo) =>
         val preText = toTextLocal(pre)
-        val (tparams, otherDecls) = decls.toList partition treatAsTypeParam
+        val (tparams, otherDecls) = decls.toVector partition treatAsTypeParam
         val tparamsText =
           if (tparams.isEmpty) Text() else ("[" ~ dclsText(tparams) ~ "]").close
         val selfText: Text = selfInfo match {
@@ -626,7 +626,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     }
   }
 
-  protected def toTextParents(parents: List[Type]): Text = Text(parents.map(toTextLocal), " with ")
+  protected def toTextParents(parents: Vector[Type]): Text = Text(parents.map(toTextLocal), " with ")
 
   protected def treatAsTypeParam(sym: Symbol): Boolean = false
   protected def treatAsTypeArg(sym: Symbol): Boolean = false
@@ -762,20 +762,20 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected final def escapedString(str: String): String = Chars.escapedString(str, quoted = false)
 
-  def dclsText(syms: List[Symbol], sep: String): Text = Text(syms map dclText, sep)
+  def dclsText(syms: Vector[Symbol], sep: String): Text = Text(syms map dclText, sep)
 
   def toText(sc: Scope): Text =
-    ("Scope{" ~ dclsText(sc.toList) ~ "}").close
+    ("Scope{" ~ dclsText(sc.toVector) ~ "}").close
 
   def toText[T <: Untyped](tree: Tree[T]): Text = {
     def toTextElem(elem: Any): Text = elem match {
       case elem: Showable => elem.toText(this)
-      case elem: List[?] => "List(" ~ Text(elem map toTextElem, ",") ~ ")"
+      case elem: Vector[?] => "Vector(" ~ Text(elem map toTextElem, ",") ~ ")"
       case elem => elem.toString
     }
     val nodeName = tree.productPrefix
     val elems =
-      Text(tree.productIterator.map(toTextElem).toList, ", ")
+      Text(tree.productIterator.map(toTextElem).toVector, ", ")
     val tpSuffix =
       if (ctx.settings.XprintTypes.value && tree.hasType)
         " | " ~ toText(tree.typeOpt)
@@ -815,7 +815,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     val siteStr = importInfo.site.show
     val exprStr = if siteStr.endsWith(".type") then siteStr.dropRight(5) else siteStr
     val selectorStr = importInfo.selectors match
-      case sel :: Nil if sel.renamed.isEmpty && sel.bound.isEmpty =>
+      case sel +: Vector() if sel.renamed.isEmpty && sel.bound.isEmpty =>
         if sel.isGiven then "given" else sel.name.show
       case _ => "{...}"
     s"import $exprStr.$selectorStr"
@@ -858,7 +858,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         }
       val depsText = if Config.showConstraintDeps then c.depsToString else ""
       //Printer.debugPrintUnique = false
-      Text.lines(List(uninstVarsText, constrainedText, boundsText, orderingText, depsText))
+      Text.lines(Vector(uninstVarsText, constrainedText, boundsText, orderingText, depsText))
     finally
       ctx.typerState.constraint = savedConstraint
 
@@ -881,4 +881,3 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def coloredText(text: Text, color: String): Text =
     if (ctx.useColors) color ~ text ~ SyntaxHighlighting.NoColor else text
 }
-

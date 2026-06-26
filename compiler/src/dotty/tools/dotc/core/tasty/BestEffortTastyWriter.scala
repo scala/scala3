@@ -10,13 +10,13 @@ import dotty.tools.dotc.core.Contexts.Context
 
 object BestEffortTastyWriter:
 
-  def write(dir: JPath, units: List[CompilationUnit])(using Context): Unit =
+  def write(dir: JPath, units: Vector[CompilationUnit])(using Context): Unit =
     if JFiles.exists(dir) then JFiles.createDirectories(dir)
 
     units.foreach { unit =>
       unit.pickled.foreach { (clz, binary) =>
         val parts = clz.fullName.mangledString.split('.')
-        val outPath = outputPath(parts.toList, dir)
+        val outPath = outputPath(parts.toVector, dir)
         val outTastyFile = new File(outPath)
         val outstream = new DataOutputStream(new PlainFile(outTastyFile).bufferedOutput)
         try outstream.write(binary())
@@ -27,13 +27,13 @@ object BestEffortTastyWriter:
       }
     }
 
-  def outputPath(parts: List[String], acc: JPath): JPath =
-    parts match
-      case Nil => throw new Exception("Invalid class name")
-      case last :: Nil =>
+  def outputPath(parts: Vector[String], acc: JPath): JPath =
+    (parts: @unchecked) match
+      case Vector() => throw new Exception("Invalid class name")
+      case last +: Vector() =>
         val name = last.stripSuffix("$")
         acc.resolve(s"$name.betasty")
-      case pkg :: tail =>
+      case pkg +: tail =>
         val next = acc.resolve(pkg)
         if !JFiles.exists(next) then JFiles.createDirectory(next)
         outputPath(tail, next)

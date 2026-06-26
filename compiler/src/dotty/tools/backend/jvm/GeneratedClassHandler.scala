@@ -26,7 +26,7 @@ private[jvm] sealed trait GeneratedClassHandler {
    * If running in parallel, block until all generated classes are handled.
    * Returns any exceptions encountered during processing, with the corresponding file.
    */
-  def complete(): List[(Throwable, AbstractFile)]
+  def complete(): Vector[(Throwable, AbstractFile)]
 
   /**
     * Invoked at the end of the jvm phase
@@ -54,7 +54,7 @@ private[jvm] object GeneratedClassHandler {
 
     def process(unit: GeneratedCompilationUnit): Unit = generatedUnits += unit
 
-    def complete(): List[(Throwable, AbstractFile)] = {
+    def complete(): Vector[(Throwable, AbstractFile)] = {
       val allGeneratedUnits = generatedUnits.result()
       generatedUnits.clear()
       postProcessor.runGlobalOptimizations(allGeneratedUnits)
@@ -90,13 +90,13 @@ private[jvm] object GeneratedClassHandler {
 
     private val executionContext: ExecutionContextExecutor = ExecutionContext.fromExecutor(javaExecutor)
 
-    private def takeProcessingUnits(): List[CompilationUnitInPostProcess] = {
+    private def takeProcessingUnits(): Vector[CompilationUnitInPostProcess] = {
       val result = processingUnits.result()
       processingUnits.clear()
-      result
+      result.toVector
     }
 
-    final def complete(): List[(Exception, AbstractFile)] = {
+    final def complete(): Vector[(Exception, AbstractFile)] = {
       def stealWhileWaiting(unitInPostProcess: CompilationUnitInPostProcess): Unit = {
         val task = unitInPostProcess.task
         while (!task.isCompleted)
@@ -124,10 +124,10 @@ private[jvm] object GeneratedClassHandler {
           stealWhileWaiting(unitInPostProcess)
           // We know the future is complete, throw the exception if it completed with a failure
           unitInPostProcess.task.value.get.get
-          Nil
+          Vector()
         catch
           case _: ClosedByInterruptException => throw new InterruptedException()
-          case e: Exception => List((e, unitInPostProcess.sourceFile))
+          case e: Exception => Vector((e, unitInPostProcess.sourceFile))
       }
     }
   }

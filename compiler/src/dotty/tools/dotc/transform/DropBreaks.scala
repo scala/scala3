@@ -65,17 +65,17 @@ class DropBreaks extends MiniPhase:
        */
       def unapply(expr: Tree)(using Context): Option[(Symbol, Symbol)] = stripTyped(expr) match
         case If(
-          Apply(Select(ex: Ident, isSameLabelAs), (lbl @ Ident(local)) :: Nil),
+          Apply(Select(ex: Ident, isSameLabelAs), (lbl @ Ident(local)) +: Vector()),
           Select(ex2: Ident, value),
-          Apply(throww, (ex3: Ident) :: Nil))
+          Apply(throww, (ex3: Ident) +: Vector()))
         if isSameLabelAs == nme.isSameLabelAs && local == nme.local && value == nme.value
             && throww.symbol == defn.throwMethod
             && ex.symbol == ex2.symbol && ex.symbol == ex3.symbol =>
           Some((ex.symbol, lbl.symbol))
         case If(
-          Apply(Select(ex: Ident, isSameLabelAs), (lbl @ Ident(local)) :: Nil),
+          Apply(Select(ex: Ident, isSameLabelAs), (lbl @ Ident(local)) +: Vector()),
           Literal(_), // in the case where the value is constant folded
-          Apply(throww, (ex3: Ident) :: Nil))
+          Apply(throww, (ex3: Ident) +: Vector()))
         if isSameLabelAs == nme.isSameLabelAs && local == nme.local
             && throww.symbol == defn.throwMethod
             && ex.symbol == ex3.symbol
@@ -92,7 +92,7 @@ class DropBreaks extends MiniPhase:
      *        if ex.label.eq(local) then ex.value else throw ex
      */
     def unapply(tree: Tree)(using Context): Option[(Symbol, Tree)] = stripTyped(tree) match
-      case Try(body, CaseDef(pat @ Bind(_, Typed(_, tpt)), EmptyTree, GuardedThrow(exc, local)) :: Nil, EmptyTree)
+      case Try(body, CaseDef(pat @ Bind(_, Typed(_, tpt)), EmptyTree, GuardedThrow(exc, local)) +: Vector(), EmptyTree)
       if tpt.tpe.isRef(defn.BreakClass) && exc == pat.symbol =>
         Some((local, body))
       case _ =>
@@ -106,7 +106,7 @@ class DropBreaks extends MiniPhase:
      *      { val local: Label[...] = ...; <LabelTry(local, body)> }
      */
     def unapply(tree: Tree)(using Context): Option[(Symbol, Tree)] = stripTyped(tree) match
-      case Block((vd @ ValDef(nme.local, _, _)) :: Nil, LabelTry(caughtAndRhs))
+      case Block((vd @ ValDef(nme.local, _, _)) +: Vector(), LabelTry(caughtAndRhs))
       if vd.symbol.info.isRef(defn.LabelClass) && vd.symbol == caughtAndRhs._1 =>
         Some(caughtAndRhs)
       case _ =>
@@ -127,13 +127,13 @@ class DropBreaks extends MiniPhase:
      *     break()(local)
      */
     def unapply(tree: Tree)(using Context): Option[(Symbol, Tree)] = tree match
-      case Apply(Apply(fn, args), id :: Nil)
+      case Apply(Apply(fn, args), id +: Vector())
       if isBreak(fn.symbol) =>
         stripInlined(id) match
           case id: Ident =>
             val arg = (args: @unchecked) match
-              case arg :: Nil => arg
-              case Nil => unitLiteral.withSpan(tree.span)
+              case arg +: Vector() => arg
+              case Vector() => unitLiteral.withSpan(tree.span)
             Some((id.symbol, arg))
           case _ => None
       case _ => None

@@ -173,13 +173,13 @@ class Splicing extends MacroTransform:
     def transformSplice(tree: tpd.Tree, tpe: Type, holeIdx: Int)(using Context): tpd.Tree =
       assert(level == 0)
       val newTree = transform(tree)
-      val (refs, bindings) = refBindingMap.values.toList.unzip
+      val (refs, bindings) = refBindingMap.values.toVector.unzip
       val bindingsTypes = bindings.map(_.termRef.widenTermRefExpr)
       val methType = MethodType(bindingsTypes, newTree.tpe)
       val meth = newSymbol(spliceOwner, nme.ANON_FUN, Synthetic | Method, methType)
-      val ddef = DefDef(meth, List(bindings), newTree.tpe, newTree.changeOwner(ctx.owner, meth))
+      val ddef = DefDef(meth, Vector(bindings), newTree.tpe, newTree.changeOwner(ctx.owner, meth))
       val fnType = defn.FunctionType(bindings.size, isContextual = false).appliedTo(bindingsTypes :+ newTree.tpe)
-      val closure = Block(ddef :: Nil, Closure(Nil, ref(meth), TypeTree(fnType)))
+      val closure = Block(ddef +: Vector(), Closure(Vector(), ref(meth), TypeTree(fnType)))
       tpd.Hole(true, holeIdx, refs, closure, tpe)
 
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
@@ -216,7 +216,7 @@ class Splicing extends MacroTransform:
           else super.transform(tree)
         case CapturedApplication(fn, argss) =>
           transformCapturedApplication(tree, fn, argss)
-        case Apply(Select(Quote(body, _), nme.apply), quotes :: Nil) if level == 0 && body.isTerm =>
+        case Apply(Select(Quote(body, _), nme.apply), quotes +: Vector()) if level == 0 && body.isTerm =>
           body match
             case _: RefTree if isCaptured(body.symbol) => capturedTerm(body)
             case _ => withCurrentQuote(quotes) { super.transform(tree) }
@@ -232,17 +232,17 @@ class Splicing extends MacroTransform:
       val (tags, body1) = inContextWithQuoteTypeTags {
         transform(quote.body)(using quoteContext)
       }
-      cpy.Quote(quote)(body1, quote.tags ::: tags)
+      cpy.Quote(quote)(body1, quote.tags ++ tags)
 
-    class ArgsClause(val args: List[Tree]):
+    class ArgsClause(val args: Vector[Tree]):
       def isTerm: Boolean = args.isEmpty || args.head.isTerm
 
     private object CapturedApplication {
 
       /** Matches and application `f(...)` (possibly with several argument clauses) where `f` is captured */
-      def unapply(tree: Tree)(using Context): Option[(RefTree, List[ArgsClause])] = tree match
+      def unapply(tree: Tree)(using Context): Option[(RefTree, Vector[ArgsClause])] = tree match
         case GenericApply(fn: RefTree, args) if isCaptured(fn.symbol) =>
-          Some((fn, ArgsClause(args) :: Nil))
+          Some((fn, ArgsClause(args) +: Vector()))
         case GenericApply(CapturedApplication(fn, argss), args) =>
           Some((fn, argss :+ ArgsClause(args)))
         case _ =>
@@ -268,17 +268,17 @@ class Splicing extends MacroTransform:
       }
 
     /** Transform an application `f(a1, a2, ...)` with a captured `f` to
-     * `${ Apply(f$1.asTerm, List('{a1$}.asTerm, '{a2$}.asTerm, ...)).asExpr.asInstanceOf[Expr[T]] }`
+     * `${ Apply(f$1.asTerm, Vector('{a1$}.asTerm, '{a2$}.asTerm, ...)).asExpr.asInstanceOf[Expr[T]] }`
      *
      *  Registers `f` as a captured variable in the hole and creates an `f$1` `Expr` reference to it.
      *
      *  It also handles cases with multiple argument clauses using nested `Apply`/`TypeApply`.
      */
-    private def transformCapturedApplication(tree: Tree, fn: RefTree, argss: List[ArgsClause])(using Context): Tree =
+    private def transformCapturedApplication(tree: Tree, fn: RefTree, argss: Vector[ArgsClause])(using Context): Tree =
       spliced(tree.tpe) {
-        def TermList(args: List[Tree]): List[Tree] =
+        def TermList(args: Vector[Tree]): Vector[Tree] =
           args.map(arg => reflect.asTerm(quoted(transform(arg)(using spliceContext))))
-        def TypeTreeList(args: List[Tree]): List[Tree] =
+        def TypeTreeList(args: Vector[Tree]): Vector[Tree] =
           args.map(arg => reflect.Inferred(reflect.TypeReprOf(transform(arg)(using spliceContext).tpe)))
         reflect.asExpr(tree.tpe) {
           argss.foldLeft[Tree](reflect.asTerm(capturedTerm(fn, defn.AnyType))) { (acc, clause) =>
@@ -330,7 +330,7 @@ class Splicing extends MacroTransform:
         }
         TypeTree(capturePartTypes(quote.body.tpe.widenTermRefExpr))
       }
-      cpy.Quote(quote)(body1, quote.tags ::: tags)
+      cpy.Quote(quote)(body1, quote.tags ++ tags)
 
     private def getTagRefFor(tree: Tree)(using Context): Tree =
       val capturedTypeSym = capturedType(tree)
@@ -347,7 +347,7 @@ class Splicing extends MacroTransform:
     private def spliced(tpe: Type)(body: Context ?=> Tree)(using Context): Tree =
       val exprTpe = defn.QuotedExprClass.typeRef.appliedTo(tpe)
       val closure =
-        val methTpe = ContextualMethodType(List(defn.QuotesClass.typeRef), exprTpe)
+        val methTpe = ContextualMethodType(Vector(defn.QuotesClass.typeRef), exprTpe)
         val meth = newSymbol(ctx.owner, nme.ANON_FUN, Synthetic | Method, methTpe)
         Closure(meth, argss => {
           withCurrentQuote(argss.head.head) {
@@ -357,7 +357,7 @@ class Splicing extends MacroTransform:
       Splice(closure, tpe)
 
     private def quoted(expr: Tree)(using Context): Tree =
-      tpd.Quote(expr, Nil).select(nme.apply).appliedTo(quotes.nn)
+      tpd.Quote(expr, Vector()).select(nme.apply).appliedTo(quotes.nn)
 
     /** Helper methods to construct trees calling methods in `Quotes.reflect` based on the current `quotes` tree */
     private object reflect extends ReifiedReflect {

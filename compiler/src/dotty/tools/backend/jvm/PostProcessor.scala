@@ -295,5 +295,5 @@ case class GeneratedClass(
   isArtifact: Boolean,
   onFileCreated: AbstractFile => Unit)
 case class GeneratedTasty(classNode: ClassNode, tastyGen: () => Array[Byte])
-case class GeneratedCompilationUnit(sourceFile: AbstractFile, classes: List[GeneratedClass], tasty: List[GeneratedTasty])
+case class GeneratedCompilationUnit(sourceFile: AbstractFile, classes: Vector[GeneratedClass], tasty: Vector[GeneratedTasty])
 

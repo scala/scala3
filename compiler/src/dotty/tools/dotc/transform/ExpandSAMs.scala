@@ -47,7 +47,7 @@ class ExpandSAMs extends MiniPhase:
   override def description: String = ExpandSAMs.description
 
   override def transformBlock(tree: Block)(using Context): Tree = tree match {
-    case Block(stats @ (fn: DefDef) :: Nil, Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
+    case Block(stats @ (fn: DefDef) +: Vector(), Closure(_, fnRef, tpt)) if fnRef.symbol == fn.symbol =>
       tpt.tpe match {
         case NoType =>
           tree // it's a plain function
@@ -97,20 +97,20 @@ class ExpandSAMs extends MiniPhase:
               }
               ref(implSym).appliedToTermArgs(adaptedArgs)
             })
-            cpy.Block(tree)(fn :: wrapperDef :: Nil,
+            cpy.Block(tree)(fn +: wrapperDef +: Vector(),
               transformFollowingDeep:
-                AnonClass(List(tpe1),
-                  List(samDenot.symbol.asTerm.name -> wrapperSym),
-                  refinements.toList,
+                AnonClass(Vector(tpe1),
+                  Vector(samDenot.symbol.asTerm.name -> wrapperSym),
+                  refinements.toVector,
                   adaptVarargs = true
                 )
             )
           else
             cpy.Block(tree)(stats,
               transformFollowingDeep:
-                AnonClass(List(tpe1),
-                  List(samDenot.symbol.asTerm.name -> implSym),
-                  refinements.toList,
+                AnonClass(Vector(tpe1),
+                  Vector(samDenot.symbol.asTerm.name -> implSym),
+                  refinements.toVector,
                   adaptVarargs = true
                 )
             )
@@ -165,7 +165,7 @@ class ExpandSAMs extends MiniPhase:
    *  ```
    */
   private def toPartialFunction(tree: Block, tpe: Type)(using Context): Tree =
-    val closureDef(anon @ DefDef(_, List(List(param)), _, _)) = tree: @unchecked
+    val closureDef(anon @ DefDef(_, Vector(Vector(param)), _, _)) = tree: @unchecked
 
     // The right hand side from which to construct the partial function. This is always a Match.
     // If the original rhs is already a Match (possibly in braces), return that.
@@ -177,16 +177,16 @@ class ExpandSAMs extends MiniPhase:
         case _ =>
       tree match
       case m: Match => m
-      case Block(Nil, expr) => partialFunRHS(expr)
+      case Block(Vector(), expr) => partialFunRHS(expr)
       case _ =>
         checkMatch()
         Match(ref(param.symbol),
-          CaseDef(untpd.Ident(nme.WILDCARD).withType(param.symbol.info), EmptyTree, tree) :: Nil)
+          CaseDef(untpd.Ident(nme.WILDCARD).withType(param.symbol.info), EmptyTree, tree) +: Vector())
 
     val pfRHS = partialFunRHS(anon.rhs)
     val anonSym = anon.symbol
     val anonTpe = anon.tpe.widen
-    val parents = List(
+    val parents = Vector(
       defn.AbstractPartialFunctionClass.typeRef.appliedTo(anonTpe.firstParamTypes.head, anonTpe.resultType),
       defn.SerializableType)
 
@@ -199,7 +199,7 @@ class ExpandSAMs extends MiniPhase:
       val isDefinedAtFn = overrideSym(defn.PartialFunction_isDefinedAt)
       val applyOrElseFn = overrideSym(defn.PartialFunction_applyOrElse)
 
-      def translateMatch(owner: Symbol)(pfParam: Symbol, cases: List[CaseDef], defaultValue: Tree)(using Context) =
+      def translateMatch(owner: Symbol)(pfParam: Symbol, cases: Vector[CaseDef], defaultValue: Tree)(using Context) =
         val tree: Match = pfRHS
         val selector = tree.selector
         val cases1 = if cases.exists(isDefaultCase) then cases
@@ -209,13 +209,13 @@ class ExpandSAMs extends MiniPhase:
           val defaultCase = CaseDef(Bind(defaultSym, Underscore(selectorTpe)), EmptyTree, defaultValue)
           cases :+ defaultCase
         cpy.Match(tree)(selector, cases1)
-          .subst(param.symbol :: Nil, pfParam :: Nil)
+          .subst(param.symbol +: Vector(), pfParam +: Vector())
             // Needed because a partial function can be written as:
             // param => param match { case "foo" if foo(param) => param }
             // And we need to update all references to 'param'
           .changeOwner(anonSym, owner)
 
-      def isDefinedAtRhs(paramRefss: List[List[Tree]])(using Context) =
+      def isDefinedAtRhs(paramRefss: Vector[Vector[Tree]])(using Context) =
         val tru = Literal(Constant(true))
         def translateCase(cdef: CaseDef): CaseDef =
           val body1 = cdef.body match
@@ -226,8 +226,8 @@ class ExpandSAMs extends MiniPhase:
         val defaultValue = Literal(Constant(false))
         translateMatch(isDefinedAtFn)(paramRef.symbol, pfRHS.cases.map(translateCase), defaultValue)
 
-      def applyOrElseRhs(paramRefss: List[List[Tree]])(using Context) =
-        val List(paramRef, defaultRef) = paramRefss(1)
+      def applyOrElseRhs(paramRefss: Vector[Vector[Tree]])(using Context) =
+        val Vector(paramRef, defaultRef) = paramRefss(1)
         val defaultValue = defaultRef.select(nme.apply).appliedTo(paramRef)
         translateMatch(applyOrElseFn)(paramRef.symbol, pfRHS.cases, defaultValue)
 
@@ -235,6 +235,6 @@ class ExpandSAMs extends MiniPhase:
         DefDef(isDefinedAtFn, isDefinedAtRhs(_)(using ctx.withOwner(isDefinedAtFn)))
       val applyOrElseDef = transformFollowingDeep:
         DefDef(applyOrElseFn, applyOrElseRhs(_)(using ctx.withOwner(applyOrElseFn)))
-      List(isDefinedAtDef, applyOrElseDef)
+      Vector(isDefinedAtDef, applyOrElseDef)
   end toPartialFunction
 end ExpandSAMs

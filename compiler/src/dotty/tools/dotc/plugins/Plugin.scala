@@ -120,7 +120,13 @@ object Plugin {
   def loadAllFrom(
     paths: List[List[Path]],
     dirs: List[Path],
-    ignoring: List[String]): List[Try[Plugin]] = {
+    ignoring: List[String]): List[Try[Plugin]] =
+    loadAllFrom(paths.map(_.toVector).toVector, dirs.toVector, ignoring.toVector).toList
+
+  def loadAllFrom(
+    paths: Vector[Vector[Path]],
+    dirs: Vector[Path],
+    ignoring: Vector[String]): Vector[Try[Plugin]] = {
 
     def fromFile(inputStream: InputStream, path: Path): String = {
       val props = new Properties
@@ -148,28 +154,28 @@ object Plugin {
       Try(read(new Jar(jarp.jpath.toFile).getEntryStream(fileEntry)))
     }
 
-    // List[(jar, Try(descriptor))] in dir
+    // Vector[(jar, Try(descriptor))] in dir
     def scan(d: Directory) =
-      d.files.toList
+      d.files.toVector
         .sortBy(_.name)
         .filter(Jar.isJarOrZip(_))
         .map(j => (j, loadDescriptionFromJar(j)))
 
-    type PDResults = List[Try[(String, ClassLoader)]]
+    type PDResults = Vector[Try[(String, ClassLoader)]]
 
     // scan plugin dirs for jars containing plugins, ignoring dirs with none and other jars
     val fromDirs: PDResults = dirs filter (_.isDirectory) flatMap { d =>
       scan(d.toDirectory) collect {
-        case (j, Success(pd)) => Success((pd, loaderFor(Seq(j))))
+        case (j, Success(pd)) => Success((pd, loaderFor(Vector(j))))
       }
     }
 
     // scan jar paths for plugins, taking the first plugin you find.
     // a path element can be either a plugin.jar or an exploded dir.
-    def findDescriptor(ps: List[Path]) = {
-      def loop(qs: List[Path]): Try[String] = qs match {
-        case Nil       => Failure(new MissingPluginException(ps))
-        case p :: rest =>
+    def findDescriptor(ps: Vector[Path]) = {
+      def loop(qs: Vector[Path]): Try[String] = (qs: @unchecked) match {
+        case Vector()       => Failure(new MissingPluginException(ps))
+        case p +: rest =>
           if (p.isDirectory) loadDescriptionFromDir(p.toDirectory) `orElse` loop(rest)
           else if (p.isFile) loadDescriptionFromJar(p.toFile) `orElse` loop(rest)
           else loop(rest)
@@ -183,7 +189,7 @@ object Plugin {
     })
 
     val seen = util.HashSet[String]()
-    val enabled = (fromPaths ::: fromDirs) map(_.flatMap {
+    val enabled = (fromPaths ++ fromDirs) map(_.flatMap {
       case (classname, loader) =>
         Plugin.load(classname, loader).flatMap {  clazz =>
           val plugin = instantiate(clazz)
@@ -212,4 +218,5 @@ class PluginLoadException(val path: String, message: String, cause: Exception | 
 
 class MissingPluginException(path: String) extends PluginLoadException(path, s"No plugin in path $path") {
   def this(paths: List[Path]) = this(paths mkString File.pathSeparator)
+  def this(paths: Vector[Path]) = this(paths mkString File.pathSeparator)
 }

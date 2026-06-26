@@ -42,8 +42,9 @@ class SelectionRangeProvider(driver: InteractiveDriver, params: ju.List[OffsetPa
       val unit = driver.compilationUnits(uri)
 
       val untpdPath: List[Tree] = NavigateAST
-        .pathTo(pos.span, List(unit.untpdTree), true).collect:
+        .pathTo(pos.span, Vector(unit.untpdTree), true).collect:
           case untpdTree: Tree => untpdTree
+        .toList
 
       val bareRanges = untpdPath
         .flatMap(selectionRangesFromTree(pos))
@@ -106,15 +107,15 @@ class SelectionRangeProvider(driver: InteractiveDriver, params: ju.List[OffsetPa
       case mdef @ ModuleDef(_, _) =>
         maybeToSelectionRange(mdef.namePos)
       case ddef @ DefDef(_, paramss, _, _) =>
-        maybeToSelectionRange(ddef.namePos) ++: paramss.flatMap(allArgsSelectionRange)
+        maybeToSelectionRange(ddef.namePos) ++: paramss.toList.flatMap(params => allArgsSelectionRange(params.toList))
       case Apply(_, args) =>
-        allArgsSelectionRange(args)
+        allArgsSelectionRange(args.toList)
       case TypeApply(_, args) =>
-        allArgsSelectionRange(args)
+        allArgsSelectionRange(args.toList)
       case AppliedTypeTree(_, args) =>
-        allArgsSelectionRange(args)
+        allArgsSelectionRange(args.toList)
       case Function(args, _) =>
-        allArgsSelectionRange(args)
+        allArgsSelectionRange(args.toList)
       case _ => Seq.empty
     allSelectionRanges ++ treeSelectionRange
 

@@ -71,7 +71,7 @@ object Inlines:
         // with a dummy argument (see Applications.typedUnApply). We delay the
         // inlining of this call.
         def rec(tree: Tree): Boolean = tree match
-          case Apply(_, ProtoTypes.dummyTreeOfType(_) :: Nil) => true
+          case Apply(_, ProtoTypes.dummyTreeOfType(_) +: Vector()) => true
           case Apply(fn, _) => rec(fn)
           case _ => false
         tree.symbol.name.isUnapplyName && rec(tree)
@@ -137,7 +137,7 @@ object Inlines:
       override def transform(t: Tree)(using Context) =
         if call.span.exists then
           t match
-            case t @ Inlined(_, Nil, expr) if t.inlinedFromOuterScope => expr
+            case t @ Inlined(_, Vector(), expr) if t.inlinedFromOuterScope => expr
             case _ if t.isEmpty => t
             case _ => super.transform(t.withSpan(call.span))
         else t
@@ -156,7 +156,7 @@ object Inlines:
       case tree @ Inlined(call, stats, expr) =>
         bindings ++= stats.map(liftPos)
         val lifter = liftFromInlined(call)
-        cpy.Inlined(tree)(call, Nil, liftBindings(expr, liftFromInlined(call).transform(_)))
+        cpy.Inlined(tree)(call, Vector(), liftBindings(expr, liftFromInlined(call).transform(_)))
       case Apply(fn, args) =>
         cpy.Apply(tree)(liftBindings(fn, liftPos), args)
       case TypeApply(fn, args) =>
@@ -179,7 +179,7 @@ object Inlines:
     val tree1 = liftBindings(tree0, identity)
     val tree2  =
       if bindings.nonEmpty then
-        cpy.Block(tree0)(bindings.toList, inlineCall(tree1))
+        cpy.Block(tree0)(bindings.toVector, inlineCall(tree1))
       else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
         val body =
           try bodyToInline(tree0.symbol) // can typecheck the tree and thereby produce errors
@@ -196,7 +196,7 @@ object Inlines:
           em"""|Maximal number of $reason (${setting.value}) exceeded,
                |Maybe this is caused by a recursive inline method?
                |You can use ${setting.name} to change the limit.""",
-          (tree :: enclosingInlineds).last.srcPos
+          (tree +: enclosingInlineds).last.srcPos
         )
     if ctx.base.stopInlining && enclosingInlineds.isEmpty then
       ctx.base.stopInlining = false
@@ -227,7 +227,7 @@ object Inlines:
 
     val sym = fun.symbol
 
-    val newUnapply = AnonClass(ctx.owner, List(defn.ObjectType), sym.coord) { cls =>
+    val newUnapply = AnonClass(ctx.owner, Vector(defn.ObjectType), sym.coord) { cls =>
       // `fun` is a partially applied method that contains all type applications of the method.
       // The methodic type `fun.tpe.widen` is the type of the function starting from the scrutinee argument
       // and its type parameters are instantiated.
@@ -244,9 +244,9 @@ object Inlines:
           case info: LambdaType => info.newLikeThis(info.paramNames, info.paramInfos, refinedResult(info.resultType))
           case _ => refinedResultType
         unapplySym.info = refinedResult(unapplyInfo)
-        List(cpy.DefDef(unapply)(tpt = TypeTree(refinedResultType), rhs = inlinedBody))
+        Vector(cpy.DefDef(unapply)(tpt = TypeTree(refinedResultType), rhs = inlinedBody))
       else
-        List(unapply)
+        Vector(unapply)
     }
 
     newUnapply.select(sym.name).withSpan(fun.span)
@@ -352,16 +352,16 @@ object Inlines:
     private enum ErrorKind:
       case Parser, Typer
 
-    private def compileForErrors(tree: Tree)(using Context): List[(ErrorKind, Error)] =
+    private def compileForErrors(tree: Tree)(using Context): Vector[(ErrorKind, Error)] =
       assert(tree.symbol == defn.CompiletimeTesting_typeChecks || tree.symbol == defn.CompiletimeTesting_typeCheckErrors)
       def stripTyped(t: Tree): Tree = t match {
         case Typed(t2, _) => stripTyped(t2)
-        case Block(Nil, t2) => stripTyped(t2)
-        case Inlined(_, Nil, t2) => stripTyped(t2)
+        case Block(Vector(), t2) => stripTyped(t2)
+        case Inlined(_, Vector(), t2) => stripTyped(t2)
         case _ => t
       }
 
-      val Apply(_, codeArg :: Nil) = tree: @unchecked
+      val Apply(_, codeArg +: Vector()) = tree: @unchecked
       val codeArg1 = stripTyped(codeArg.underlying)
       val underlyingCodeArg =
         if Inlines.isInlineable(codeArg1.symbol) then stripTyped(Inlines.inlineCall(codeArg1))
@@ -385,15 +385,15 @@ object Inlines:
       // but the equivalent is also not run in the scala 2's `ctx.typechecks`,
       // so let's leave it out for now).
       lazy val reconstructedTransformPhases =
-        val transformPhases: List[List[(Class[?], () => MiniPhase)]] = List(
-          List(
+        val transformPhases: Vector[Vector[(Class[?], () => MiniPhase)]] = Vector(
+          Vector(
             (classOf[InlineVals], () => new InlineVals),
             (classOf[ElimRepeated], () => new ElimRepeated),
             (classOf[RefChecks], () => new RefChecks),
           ),
         )
 
-        transformPhases.flatMap( (megaPhaseList: List[(Class[?], () => MiniPhase)]) =>
+        transformPhases.flatMap( (megaPhaseList: Vector[(Class[?], () => MiniPhase)]) =>
           val (newMegaPhasePhases, phaseIds) =
             megaPhaseList.flatMap {
               case (filteredPhaseClass, miniphaseConstructor) =>
@@ -410,11 +410,11 @@ object Inlines:
         case ConstantType(Constant(code: String)) =>
           val unitName = "tasty-reflect"
           val source2 = SourceFile.virtual(unitName, code)
-          def compilationUnits(untpdTree: untpd.Tree, tpdTree: Tree): List[CompilationUnit] =
+          def compilationUnits(untpdTree: untpd.Tree, tpdTree: Tree): Vector[CompilationUnit] =
             val compilationUnit = CompilationUnit(unitName, code)
             compilationUnit.tpdTree = tpdTree
             compilationUnit.untpdTree = untpdTree
-            List(compilationUnit)
+            Vector(compilationUnit)
           // We need a dummy owner, as the actual one does not have a computed denotation yet,
           // but might be inspected in a transform phase, leading to cyclic errors
           val dummyOwner = newSymbol(ctx.owner, "$dummySymbol$".toTermName, Private, defn.AnyType, NoSymbol)
@@ -456,7 +456,7 @@ object Inlines:
           }
         case t =>
           report.error(em"argument to compileError must be a statically known String but was: $codeArg", codeArg1.srcPos)
-          Nil
+          Vector()
       }
 
     private def packError(kind: ErrorKind, error: Error)(using Context): Tree =
@@ -471,8 +471,8 @@ object Inlines:
         lit(error.pos.column),
         if kind == ErrorKind.Parser then parserErrorKind else typerErrorKind)
 
-    private def packErrors(errors: List[(ErrorKind, Error)], pos: SrcPos)(using Context): Tree =
-      val individualErrors: List[Tree] = errors.map(packError)
+    private def packErrors(errors: Vector[(ErrorKind, Error)], pos: SrcPos)(using Context): Tree =
+      val individualErrors: Vector[Tree] = errors.map(packError)
       val errorTpt = ref(defn.CompiletimeTesting_ErrorClass).withSpan(pos.span)
       mkList(individualErrors, errorTpt)
 
@@ -505,10 +505,10 @@ object Inlines:
 
       // Special handling of `requireConst` and `codeOf`
       callValueArgss match
-        case (arg :: Nil) :: Nil =>
+        case (arg +: Vector()) +: Vector() =>
           if inlinedMethod == defn.Compiletime_requireConst then
             arg match
-              case ConstantValue(_) | Inlined(_, Nil, Typed(ConstantValue(_), _)) => // ok
+              case ConstantValue(_) | Inlined(_, Vector(), Typed(ConstantValue(_), _)) => // ok
               case _ => report.error(em"expected a constant value but found: $arg", arg.srcPos)
             return unitLiteral.withSpan(call.span)
           else if inlinedMethod == defn.Compiletime_codeOf then
@@ -539,13 +539,13 @@ object Inlines:
                 evidence
           }
 
-        def unrollTupleTypes(tpe: Type): Option[List[Type]] = tpe.dealias match
+        def unrollTupleTypes(tpe: Type): Option[Vector[Type]] = tpe.dealias match
           case AppliedType(tycon, args) if defn.isTupleClass(tycon.typeSymbol) =>
             Some(args)
-          case AppliedType(tycon, head :: tail :: Nil) if tycon.isRef(defn.PairClass) =>
-            unrollTupleTypes(tail).map(head :: _)
+          case AppliedType(tycon, head +: tail +: Vector()) if tycon.isRef(defn.PairClass) =>
+            unrollTupleTypes(tail).map(head +: _)
           case tpe: TermRef if tpe.symbol == defn.EmptyTupleModule =>
-            Some(Nil)
+            Some(Vector())
           case tpe: AppliedType if tpe.isMatchAlias =>
             unrollTupleTypes(tpe.tryNormalize)
           case _ =>
@@ -558,7 +558,7 @@ object Inlines:
           val constVal = tryConstValue(callTypeArgs.head.tpe)
           return (
             if (constVal.isEmpty) ref(defn.NoneModule.termRef)
-            else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), constVal :: Nil)
+            else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), constVal +: Vector())
           )
         }
         else if (inlinedMethod == defn.Compiletime_constValueTuple) {

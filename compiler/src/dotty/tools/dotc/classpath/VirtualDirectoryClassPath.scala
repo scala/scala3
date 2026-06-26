@@ -41,7 +41,7 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
     val parentDir = lookupPath(dir)(pathSeq.init.toSeq, directory = true)
     if parentDir == null then None
     else
-      Option(lookupPath(parentDir)(pathSeq.last + ".class" :: Nil, directory = false))
+      Option(lookupPath(parentDir)(Vector(pathSeq.last + ".class"), directory = false))
   }
 
   override def classes(inPackage: String): Seq[BinaryFileEntry] = files(inPackage)

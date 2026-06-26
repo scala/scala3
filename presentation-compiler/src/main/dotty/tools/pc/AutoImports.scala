@@ -291,7 +291,7 @@ object AutoImports:
         tree: Tree
     ): Option[PackageDef] =
       tree match
-        case curr @ PackageDef(_, (next: PackageDef) :: Nil)
+        case curr @ PackageDef(_, Vector(next: PackageDef))
             if !curr.symbol.isPackageObject =>
           lastPackageDef(Some(curr), next)
         case pkg: PackageDef if !pkg.symbol.isPackageObject => Some(pkg)

@@ -37,14 +37,14 @@ import scala.collection.mutable
  */
 class ReplCompiler extends Compiler:
 
-  override protected def frontendPhases: List[List[Phase]] = List(
-    List(Parser()),
-    List(ReplPhase()),
-    List(TyperPhase(addRootImports = false)),
-    List(CheckUnused.PostTyper(), CheckShadowing()),
-    List(CollectTopLevelImports()),
-    List(PostTyper()),
-    List(UnrollDefinitions()),
+  override protected def frontendPhases: Vector[Vector[Phase]] = Vector(
+    Vector(Parser()),
+    Vector(ReplPhase()),
+    Vector(TyperPhase(addRootImports = false)),
+    Vector(CheckUnused.PostTyper(), CheckShadowing()),
+    Vector(CollectTopLevelImports()),
+    Vector(PostTyper()),
+    Vector(UnrollDefinitions()),
   )
 
   def newRun(initCtx: Context, state: State): Run =
@@ -59,7 +59,7 @@ class ReplCompiler extends Compiler:
           val path = nme.EMPTY_PACKAGE ++ "." ++ ReplCompiler.objectNames(id)
           val ctx0 = ctx.fresh
             .setNewScope
-            .withRootImports(RootRef(() => requiredModuleRef(path)) :: Nil)
+            .withRootImports(Vector(RootRef(() => requiredModuleRef(path))))
 
           // then its user defined imports
           val imports = state.imports.getOrElse(id, Nil)
@@ -81,7 +81,7 @@ class ReplCompiler extends Compiler:
 
   private def packaged(stats: List[untpd.Tree])(using Context): untpd.PackageDef =
     import untpd.*
-    PackageDef(Ident(nme.EMPTY_PACKAGE), stats)
+    PackageDef(Ident(nme.EMPTY_PACKAGE), stats.toVector)
 
   final def compile(parsed: Parsed)(using state: State): Either[(List[Diagnostic], State), (CompilationUnit, State)] =
     assert(!parsed.trees.isEmpty)
@@ -91,12 +91,12 @@ class ReplCompiler extends Compiler:
       unit.untpdTree = packaged(parsed.trees)
       unit.untpdTree.putAttachment(ReplCompiler.ReplState, state)
     }
-    ctx.run.nn.compileUnits(unit :: Nil)
+    ctx.run.nn.compileUnits(Vector(unit))
     ctx.run.nn.printSummary() // "2 errors found"
 
     val newState = unit.tpdTree.getAttachment(ReplCompiler.ReplState).get
     if !ctx.reporter.hasErrors then Right(unit, newState)
-    else Left(ctx.reporter.removeBufferedMessages, newState)
+    else Left(ctx.reporter.removeBufferedMessages.toList, newState)
   end compile
 
   final def typeOf(expr: String)(using state: State): Either[List[Diagnostic], String] =
@@ -126,7 +126,7 @@ class ReplCompiler extends Compiler:
         // Stop after CC — we only need types, not bytecode.
         val ccCtx = state.context.fresh
           .setSource(parsed.source)
-          .setSetting(state.context.settings.YstopAfter, List("cc"))
+          .setSetting(state.context.settings.YstopAfter, Vector("cc"))
         val compileState = state.copy(context = ccCtx)
         compile(parsed)(using compileState).fold(
           (errs, _) => Left(errs),
@@ -211,12 +211,12 @@ class ReplCompiler extends Compiler:
       def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
         import untpd.*
 
-        val valdef = ValDef("expr".toTermName, TypeTree(), Block(trees, syntheticUnitLiteral).withSpan(Span(0, expr.length)))
-        val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, List(valdef))
+        val valdef = ValDef("expr".toTermName, TypeTree(), Block(trees.toVector, syntheticUnitLiteral).withSpan(Span(0, expr.length)))
+        val tmpl = Template(emptyConstructor, Vector(), Vector(), EmptyValDef, Vector(valdef))
         val wrapper = TypeDef("$wrapper".toTypeName, tmpl)
           .withMods(Modifiers(Final))
           .withSpan(Span(0, expr.length))
-        PackageDef(Ident(nme.EMPTY_PACKAGE), List(wrapper))
+        PackageDef(Ident(nme.EMPTY_PACKAGE), Vector(wrapper))
       }
 
       ParseResult(sourceFile) match {
@@ -240,7 +240,7 @@ class ReplCompiler extends Compiler:
     def unwrappedTypeTree(tree: tpd.Tree, sourceFile0: SourceFile)(using Context): Either[List[Diagnostic], tpd.ValDef] = {
       import tpd.*
       tree match {
-        case PackageDef(_, List(TypeDef(_, tmpl: Template))) =>
+        case PackageDef(_, Vector(TypeDef(_, tmpl: Template))) =>
           tmpl.body
               .collectFirst { case dd: ValDef if dd.name.show == "expr" => Right(dd) }
               .getOrElse(error[tpd.ValDef](sourceFile0))
@@ -252,7 +252,7 @@ class ReplCompiler extends Compiler:
     def unwrappedUntypedTree(tree: untpd.Tree, sourceFile0: SourceFile)(using Context): Either[List[Diagnostic], untpd.ValDef] =
       import untpd.*
       tree match {
-        case PackageDef(_, List(TypeDef(_, tmpl: Template))) =>
+        case PackageDef(_, Vector(TypeDef(_, tmpl: Template))) =>
           tmpl.body
               .collectFirst { case dd: ValDef if dd.name.show == "expr" => Right(dd) }
               .getOrElse(error[untpd.ValDef](sourceFile0))
@@ -263,12 +263,13 @@ class ReplCompiler extends Compiler:
     val src = SourceFile.virtual("<typecheck>", expr)
     inContext(state.context.fresh
       .setReporter(newStoreReporter)
-      .setSetting(state.context.settings.YstopAfter, List("typer"))
+      .setSetting(state.context.settings.YstopAfter, Vector("typer"))
     ) {
+      given Context = ctx
       wrapped(expr, src, state).flatMap { pkg =>
         val unit = CompilationUnit(src)
         unit.untpdTree = pkg
-        ctx.run.nn.compileUnits(unit :: Nil, ctx)
+        ctx.run.nn.compileUnits(Vector(unit), ctx)
 
         if (errorsAllowed || !ctx.reporter.hasErrors)
           for
@@ -276,7 +277,7 @@ class ReplCompiler extends Compiler:
             untpdTree <- unwrappedUntypedTree(unit.untpdTree, src)
           yield untpdTree -> tpdTree
         else
-          Left(ctx.reporter.removeBufferedMessages)
+          Left(ctx.reporter.removeBufferedMessages.toList)
       }
     }
   }
@@ -321,14 +322,14 @@ class ReplPhase extends Phase:
     case _ =>
   end run
 
-  private case class Definitions(stats: List[untpd.Tree], state: State)
+  private case class Definitions(stats: Vector[untpd.Tree], state: State)
 
-  private def definitions(trees: List[untpd.Tree])(using Context, State): Definitions =
+  private def definitions(trees: Vector[untpd.Tree])(using Context, State): Definitions =
     import untpd.*
 
     // If trees is of the form `{ def1; def2; def3 }` then `List(def1, def2, def3)`
     val flattened = trees match {
-      case List(Block(stats, expr)) =>
+      case Vector(Block(stats, expr)) =>
         if (expr eq EmptyTree) stats // happens when expr is not an expression
         else stats :+ expr
       case _ =>
@@ -367,7 +368,7 @@ class ReplPhase extends Phase:
         defs += other
     }
 
-    Definitions(defs.toList, state.copy(objectIndex = state.objectIndex + 1, valIndex = valIdx))
+    Definitions(defs.toVector, state.copy(objectIndex = state.objectIndex + 1, valIndex = valIdx))
   end definitions
 
   /** Wrap trees in an object and add imports from the previous compilations.
@@ -393,8 +394,8 @@ class ReplPhase extends Phase:
     val objectTermName = objectName.toTermName
     ReplCompiler.objectNames.update(defs.state.objectIndex, objectTermName)
 
-    val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, defs.stats)
+    val tmpl = Template(emptyConstructor, Vector(), Vector(), EmptyValDef, defs.stats)
     val module = ModuleDef(objectTermName, tmpl).withSpan(span)
 
-    PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
+    PackageDef(Ident(nme.EMPTY_PACKAGE), Vector(module))
 end ReplPhase

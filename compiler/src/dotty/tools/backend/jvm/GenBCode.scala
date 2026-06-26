@@ -140,7 +140,7 @@ class GenBCode extends Phase { self =>
       case cb: CompilerCallback => cb.onSourceCompiled(ctx.source)
       case null => ()
 
-  override def runOn(units: List[CompilationUnit])(using ctx:Context): List[CompilationUnit] = {
+  override def runOn(units: Vector[CompilationUnit])(using ctx:Context): Vector[CompilationUnit] = {
     // as long as we might initialize `generatedClassHandler` (or anything else) in here, we must set the context's phase,
     // otherwise we'll initialize stuff like KnownBTypes with a context at the wrong phase, thus the symbols won't have the denotations we expect
     given unitCtx: Context = ctx.fresh.setPhase(this)

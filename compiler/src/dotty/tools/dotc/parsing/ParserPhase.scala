@@ -40,7 +40,7 @@ class Parser extends Phase {
   }
 
 
-  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
+  override def runOn(units: Vector[CompilationUnit])(using Context): Vector[CompilationUnit] = {
     val unitContexts =
       for unit <- units yield
         report.inform(s"parsing ${unit.source}")

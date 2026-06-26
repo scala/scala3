@@ -7,9 +7,9 @@ import config.Printers.capt
 trait CaptureRunInfo:
   self: Run =>
   private var maxSize = 0
-  private var maxPath: List[CaptureSet.DerivedVar] = Nil
+  private var maxPath: Vector[CaptureSet.DerivedVar] = Vector()
 
-  def recordPath(size: Int, path: => List[CaptureSet.DerivedVar]): Unit =
+  def recordPath(size: Int, path: => Vector[CaptureSet.DerivedVar]): Unit =
     if size > maxSize then
       maxSize = size
       maxPath = path
@@ -21,5 +21,5 @@ trait CaptureRunInfo:
 
   protected def reset(): Unit =
     maxSize = 0
-    maxPath = Nil
+    maxPath = Vector()
 end CaptureRunInfo

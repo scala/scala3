@@ -156,7 +156,7 @@ object Pickler {
    *    The user is then certain that they are always benefitting as much as possible from pipelining.
    */
   def writeSigFilesAsync(
-      tasks: List[(String, Array[Byte])],
+      tasks: Vector[(String, Array[Byte])],
       writer: EarlyFileWriter,
       async: AsyncTastyHolder)(using ctx: ReadOnlyContext): Unit = {
     try
@@ -224,7 +224,7 @@ object Pickler {
     // We could use a listBuffer etc - but that would be extra allocation in the common case
     // buffered logs are updated atomically.
 
-    private val _bufferedReports = AtomicReference(List.empty[Report])
+    private val _bufferedReports = AtomicReference(Vector.empty[Report])
     private val _hasErrors = AtomicBoolean(false)
 
 
@@ -234,12 +234,12 @@ object Pickler {
 
     /** Atomically add a report to the log */
     private def recordReport(report: Report): Unit =
-      _bufferedReports.getAndUpdate(report :: _)
+      _bufferedReports.getAndUpdate(report +: _)
 
     /** atomically extract and clear the buffered reports, must only be called at a synchronization point. */
-    def resetReports(): List[Report] =
+    def resetReports(): Vector[Report] =
       val curr = _bufferedReports.get()
-      if curr.nonEmpty && !_bufferedReports.compareAndSet(curr, Nil) then
+      if curr.nonEmpty && !_bufferedReports.compareAndSet(curr, Vector()) then
         throw ConcurrentModificationException("concurrent modification of buffered reports")
       else curr
 
@@ -328,7 +328,7 @@ class Pickler extends Phase {
   private val pickledBytes = new mutable.HashMap[ClassSymbol, (CompilationUnit, Array[Byte])]
 
   /** Drop any elements of this list that are linked module classes of other elements in the list */
-  private def dropCompanionModuleClasses(clss: List[ClassSymbol])(using Context): List[ClassSymbol] = {
+  private def dropCompanionModuleClasses(clss: Vector[ClassSymbol])(using Context): Vector[ClassSymbol] = {
     val companionModuleClasses =
       clss.filterNot(_.is(Module)).map(_.linkedClass).filterNot(_.isAbsent())
     clss.filterNot(companionModuleClasses.contains)
@@ -350,8 +350,8 @@ class Pickler extends Phase {
     def commit(internalName: String, tasty: Array[Byte]): Unit = synchronized {
       buf += ((internalName, tasty))
     }
-    def result(): List[(String, Array[Byte])] = synchronized {
-      val res = buf.toList
+    def result(): Vector[(String, Array[Byte])] = synchronized {
+      val res = buf.toVector
       buf.clear()
       res
     }
@@ -379,13 +379,14 @@ class Pickler extends Phase {
   // This can be called inside a Future in a background thread, it must not capture a Context
   def computePickled(pickler: TastyPickler, treePkl: TreePickler, 
                      tree: Tree, unit: CompilationUnit, internalName: String, attributes: Attributes,
-                     reference: String/*ctx.settings.sourceroot.value*/, dropComments: Boolean/*ctx.settings.XdropComments.value*/): Array[Byte] =
+                     reference: String/*ctx.settings.sourceroot.value*/, dropComments: Boolean/*ctx.settings.XdropComments.value*/,
+                     positionWarnings: mutable.ListBuffer[Message]): Array[Byte] =
     serialized.run { scratch =>
       treePkl.compactify(scratch)
       if tree.span.exists then
         PositionPickler.picklePositions(
           pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
-          unit.source, tree :: Nil,
+          unit.source, tree +: Vector(), positionWarnings,
           scratch.positionBuffer, scratch.pickledIndices)
 
       if !dropComments then
@@ -398,7 +399,7 @@ class Pickler extends Phase {
       val pickled = pickler.assembleParts()
 
       def rawBytes = // not needed right now, but useful to print raw format.
-        pickled.iterator.grouped(10).toList.zipWithIndex.map {
+        pickled.iterator.grouped(10).toVector.zipWithIndex.map {
           case (row, i) => s"${i}0: ${row.mkString(" ")}"
         }
 
@@ -452,13 +453,16 @@ class Pickler extends Phase {
       val treePkl = new TreePickler(pickler, attributes)
       val successful =
         try
-          treePkl.pickle(tree :: Nil)
+          treePkl.pickle(tree +: Vector())
           true
         catch
           case ex: Exception if ctx.isBestEffort =>
             report.bestEffortError(ex, "Some best-effort tasty files will not be generated.")
             false
       Profile.current.recordTasty(treePkl.buf.length)
+
+      val positionWarnings = new mutable.ListBuffer[Message]()
+      def reportPositionWarnings() = positionWarnings.foreach(report.warning(_))
 
       val internalName = if fastDoAsyncTasty then computeInternalName(cls) else ""
 
@@ -467,7 +471,7 @@ class Pickler extends Phase {
         val dropComments = ctx.settings.XdropComments.value
         // must not depend on a Context as it's passed to the executor, so we fetch settings before
         def doComputePickled() =
-          computePickled(pickler, treePkl, tree, unit, internalName, attributes, sourceroot, dropComments)
+          computePickled(pickler, treePkl, tree, unit, internalName, attributes, sourceroot, dropComments, positionWarnings)
         /** A function that returns the pickled bytes. Depending on `Pickler.ParallelPickling`
          *  either computes the pickled data in a future or eagerly before constructing the
          *  function value.
@@ -475,9 +479,12 @@ class Pickler extends Phase {
         val demandPickled: () => Array[Byte] =
           if useExecutor then
             val futurePickled = executor.schedule(doComputePickled)
-            () => futurePickled.force.get
+            () =>
+              try futurePickled.force.get
+              finally reportPositionWarnings()
           else
             val pickled = doComputePickled()
+            reportPositionWarnings()
             if ctx.settings.YprintTasty.value || pickling != noPrinter then
               println(i"**** pickled info of $cls")
               println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never", isBestEffortTasty = false))
@@ -492,7 +499,7 @@ class Pickler extends Phase {
     end for
   }
 
-  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] = {
+  override def runOn(units: Vector[CompilationUnit])(using Context): Vector[CompilationUnit] = {
     val useExecutor = this.useExecutor
 
     val writeTask: Option[() => Unit] =
@@ -601,8 +608,8 @@ class Pickler extends Phase {
   private def diff(actual: String, expect: String): Option[Seq[String]] =
     import scala.util.Using
     import scala.io.Source
-    val actualLines = Using(Source.fromString(actual))(_.getLines().toList).get
-    val expectLines = Using(Source.fromString(expect))(_.getLines().toList).get
+    val actualLines = Using(Source.fromString(actual))(_.getLines().toVector).get
+    val expectLines = Using(Source.fromString(expect))(_.getLines().toVector).get
     Option.when(!matches(actualLines, expectLines))(actualLines)
 
   private def matches(actual: String, expect: String): Boolean = {

@@ -93,7 +93,7 @@ object MarkupParsers {
 
     var xEmbeddedBlock: Boolean = false
 
-    private var debugLastStartElement = List.empty[(Int, String)]
+    private var debugLastStartElement = Vector.empty[(Int, String)]
     private def debugLastPos = debugLastStartElement.head._1
     private def debugLastElem = debugLastStartElement.head._2
 
@@ -286,7 +286,7 @@ object MarkupParsers {
         if (qname == "xml:unparsed")
           return xUnparsed(start)
 
-        debugLastStartElement = (start, qname) :: debugLastStartElement
+        debugLastStartElement = (start, qname) +: debugLastStartElement
         val ts = content
         xEndTag(qname)
         debugLastStartElement = debugLastStartElement.tail
@@ -421,7 +421,7 @@ object MarkupParsers {
 
     /** xScalaPatterns  ::= patterns
      */
-    def xScalaPatterns: List[Tree] = escapeToScala(parser.patterns(), "pattern")
+    def xScalaPatterns: Vector[Tree] = escapeToScala(parser.patterns(), "pattern")
 
     def reportSyntaxError(offset: Int, str: String): Unit = parser.syntaxError(str.toMessage, offset)
     def reportSyntaxError(str: String): Unit = {
@@ -435,7 +435,7 @@ object MarkupParsers {
     def xPattern: Tree = {
       val start = curOffset - 1 // include <
       val qname = xName
-      debugLastStartElement = (start, qname) :: debugLastStartElement
+      debugLastStartElement = (start, qname) +: debugLastStartElement
       xSpaceOpt()
 
       val ts = new ArrayBuffer[Tree]

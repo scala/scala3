@@ -151,7 +151,7 @@ class TailRec extends MiniPhase {
             (param, local) => ValDef(local.asTerm, ref(param))
           }
           varForRewrittenThis match {
-            case Some(local) => ValDef(local.asTerm, This(enclosingClass)) :: initialParamVarDefs
+            case Some(local) => ValDef(local.asTerm, This(enclosingClass)) +: initialParamVarDefs
             case none => initialParamVarDefs
           }
         }
@@ -228,7 +228,7 @@ class TailRec extends MiniPhase {
     else noTailTransform(failureReported = false)
   }
 
-  class TailRecElimination(method: Symbol, enclosingClass: ClassSymbol, paramSyms: List[Symbol], isMandatory: Boolean) extends TreeMap {
+  class TailRecElimination(method: Symbol, enclosingClass: ClassSymbol, paramSyms: Vector[Symbol], isMandatory: Boolean) extends TreeMap {
 
     var rewrote: Boolean = false
     var failureReported: Boolean = false
@@ -241,9 +241,9 @@ class TailRec extends MiniPhase {
     /** The local `var` that replaces `this`, if it is modified in at least one recursive call. */
     var varForRewrittenThis: Option[Symbol] = None
     /** The subset of `paramSyms` that are modified in at least one recursive call, and which therefore need a replacement `var`. */
-    var rewrittenParamSyms: List[Symbol] = Nil
+    var rewrittenParamSyms: Vector[Symbol] = Vector()
     /** The replacement `var`s for the params in `rewrittenParamSyms`. */
-    var varsForRewrittenParamSyms: List[Symbol] = Nil
+    var varsForRewrittenParamSyms: Vector[Symbol] = Vector()
 
     private def getVarForRewrittenThis()(using Context): Symbol =
       varForRewrittenThis match {
@@ -261,8 +261,8 @@ class TailRec extends MiniPhase {
       rewrittenParamSyms.indexOf(param) match {
         case -1 =>
           val sym = newSymbol(method, TailLocalName.fresh(param.name.toTermName), Synthetic | Mutable, param.info)
-          rewrittenParamSyms ::= param
-          varsForRewrittenParamSyms ::= sym
+          rewrittenParamSyms +:= param
+          varsForRewrittenParamSyms +:= sym
           sym
         case index => varsForRewrittenParamSyms(index)
       }
@@ -288,8 +288,8 @@ class TailRec extends MiniPhase {
     def noTailTransform(tree: Tree)(using Context): Tree =
       transform(tree, tailPosition = false)
 
-    def noTailTransforms[Tr <: Tree](trees: List[Tr])(using Context): List[Tr] =
-      trees.mapConserve(noTailTransform).asInstanceOf[List[Tr]]
+    def noTailTransforms[Tr <: Tree](trees: Vector[Tr])(using Context): Vector[Tr] =
+      trees.mapConserve(noTailTransform).asInstanceOf[Vector[Tr]]
 
     override def transform(tree: Tree)(using Context): Tree = {
       /* Rewrite an Apply to be considered for tail call transformation. */
@@ -376,19 +376,19 @@ class TailRec extends MiniPhase {
                 // Avoid assigning `this = MyObject`
                 assignParamPairs
               case _ =>
-                (getVarForRewrittenThis(), noTailTransform(prefix)) :: assignParamPairs
+                (getVarForRewrittenThis(), noTailTransform(prefix)) +: assignParamPairs
 
             val assignments = assignThisAndParamPairs match {
-              case (lhs, rhs) :: Nil =>
-                Assign(ref(lhs), rhs) :: Nil
-              case _ :: _ =>
+              case (lhs, rhs) +: Vector() =>
+                Assign(ref(lhs), rhs) +: Vector()
+              case _ +: _ =>
                 val (tempValDefs, assigns) = (for ((lhs, rhs) <- assignThisAndParamPairs) yield {
                   val temp = newSymbol(method, TailTempName.fresh(lhs.name.toTermName), Synthetic, lhs.info)
                   (ValDef(temp, rhs), Assign(ref(lhs), ref(temp)).withSpan(tree.span))
                 }).unzip
-                tempValDefs ::: assigns
+                tempValDefs ++ assigns
               case nil =>
-                Nil
+                Vector()
             }
 
             /* The `Typed` node is necessary to perfectly preserve the type of the node.

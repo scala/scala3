@@ -558,8 +558,8 @@ sealed trait RefBType extends BType {
  * @param nestedInfo    If this describes a nested class, information for the InnerClass table.
  * @param inlineInfo    Inlining information for this class, if requested and available.
  */
-final case class ClassInfo(superClass: Option[ClassBType], interfaces: List[ClassBType], flags: Int,
-                           nestedClasses: List[ClassBType], nestedInfo: Option[NestedInfo],
+final case class ClassInfo(superClass: Option[ClassBType], interfaces: Vector[ClassBType], flags: Int,
+                           nestedClasses: Vector[ClassBType], nestedInfo: Option[NestedInfo],
                            inlineInfo: InlineInfo)
 
 /**
@@ -704,11 +704,11 @@ final case class ClassBType private(internalName: String) extends RefBType {
   def isInterface: Boolean = (info.flags & asm.Opcodes.ACC_INTERFACE) != 0
 
   /** The super class chain of this type, starting with Object, ending with `this`. */
-  def superClassesChain: List[ClassBType] = {
-    var res = List(this)
+  def superClassesChain: Vector[ClassBType] = {
+    var res = Vector(this)
     var sc = info.superClass
     while (sc.nonEmpty) {
-      res ::= sc.get
+      res +:= sc.get
       sc = sc.get.info.superClass
     }
     res
@@ -729,9 +729,9 @@ final case class ClassBType private(internalName: String) extends RefBType {
 
   def isNestedClass: Boolean = info.nestedInfo.isDefined
 
-  def enclosingNestedClassesChain: List[ClassBType] = info.nestedInfo match
-    case Some(ni) => this :: ni.enclosingClass.enclosingNestedClassesChain
-    case None => Nil
+  def enclosingNestedClassesChain: Vector[ClassBType] = info.nestedInfo match
+    case Some(ni) => this +: ni.enclosingClass.enclosingNestedClassesChain
+    case None => Vector()
 
   def innerClassAttributeEntry: Option[InnerClassEntry] = info.nestedInfo map {
     case NestedInfo(_, outerName, innerName, isStaticNestedClass) =>
@@ -796,14 +796,13 @@ final case class ClassBType private(internalName: String) extends RefBType {
     res
   }
 
-  private def firstCommonSuffix(as: List[ClassBType], bs: List[ClassBType], objectRef: ClassBType): ClassBType = {
-    var chainA = as.tail
-    var chainB = bs.tail
+  private def firstCommonSuffix(as: Vector[ClassBType], bs: Vector[ClassBType], objectRef: ClassBType): ClassBType = {
+    val len = math.min(as.length, bs.length)
+    var idx = 1
     var fcs = objectRef
-    while (chainA.nonEmpty && chainB.nonEmpty && chainA.head == chainB.head) {
-      fcs = chainA.head
-      chainA = chainA.tail
-      chainB = chainB.tail
+    while (idx < len && as(idx) == bs(idx)) {
+      fcs = as(idx)
+      idx += 1
     }
     fcs
   }
@@ -886,7 +885,7 @@ final case class ArrayBType(componentType: BType) extends RefBType {
   }
 }
 
-final case class MethodBType(argumentTypes: List[BType], returnType: BType) extends BType {
+final case class MethodBType(argumentTypes: Vector[BType], returnType: BType) extends BType {
   def isNothing: Boolean = false
   def isNull: Boolean = false
 }
@@ -902,6 +901,6 @@ object BTypes {
   def methodDescriptor(argumentType: BType, returnType: BType): String =
     s"($argumentType)$returnType"
 
-  def methodDescriptor(argumentTypes: List[BType], returnType: BType): String =
+  def methodDescriptor(argumentTypes: Vector[BType], returnType: BType): String =
     argumentTypes.mkString("(", "", ")" + returnType)
 }

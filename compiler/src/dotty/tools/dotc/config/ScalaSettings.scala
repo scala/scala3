@@ -30,16 +30,16 @@ object ScalaSettings extends ScalaSettings
 
 // Kept as separate type to avoid breaking backward compatibility
 abstract class ScalaSettings extends SettingGroup, AllScalaSettings:
-  val settingsByCategory: Map[SettingCategory, List[Setting[?]]] =
+  val settingsByCategory: Map[SettingCategory, Vector[Setting[?]]] =
     allSettings.groupBy(_.category)
-      .view.mapValues(_.toList).toMap
-      .withDefaultValue(Nil)
-  def categories: List[SettingCategory] = settingsByCategory.keys.toList.sortBy(_.prefixLetter)
-  val rootSettings: List[Setting[?]] = settingsByCategory(RootSetting).sortBy(_.name)
-  val warningSettings: List[Setting[?]] = settingsByCategory(WarningSetting).sortBy(_.name)
-  val forkSettings: List[Setting[?]] = settingsByCategory(ForkSetting).sortBy(_.name)
-  val advancedSettings: List[Setting[?]] = settingsByCategory(AdvancedSetting).sortBy(_.name)
-  val verboseSettings: List[Setting[?]] = settingsByCategory(VerboseSetting).sortBy(_.name)
+      .view.mapValues(_.toVector).toMap
+      .withDefaultValue(Vector())
+  def categories: Vector[SettingCategory] = settingsByCategory.keys.toVector.sortBy(_.prefixLetter)
+  val rootSettings: Vector[Setting[?]] = settingsByCategory(RootSetting).sortBy(_.name)
+  val warningSettings: Vector[Setting[?]] = settingsByCategory(WarningSetting).sortBy(_.name)
+  val forkSettings: Vector[Setting[?]] = settingsByCategory(ForkSetting).sortBy(_.name)
+  val advancedSettings: Vector[Setting[?]] = settingsByCategory(AdvancedSetting).sortBy(_.name)
+  val verboseSettings: Vector[Setting[?]] = settingsByCategory(VerboseSetting).sortBy(_.name)
   val settingsByAliases: Map[String, Setting[?]] = allSettings.flatMap(s => s.aliases.map(_.name -> s)).toMap
 
 
@@ -50,22 +50,22 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
   val semanticdbTarget: Setting[String] = PathSetting(RootSetting, "semanticdb-target", "Specify an alternative output directory for SemanticDB files.", "")
   val semanticdbText: Setting[Boolean] = BooleanSetting(RootSetting, "semanticdb-text", "Specifies whether to include source code in SemanticDB files or not.")
 
-  val source: Setting[String] = ChoiceSetting(RootSetting, "source", "source version", "source version", ScalaSettingsProperties.supportedSourceVersions, SourceVersion.defaultSourceVersion.toString, aliases = List("--source"))
-  val uniqid: Setting[Boolean] = BooleanSetting(RootSetting, "uniqid", "Uniquely tag all identifiers in debugging output.", aliases = List("--unique-id"))
-  val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites](RootSetting, "rewrite", "When used in conjunction with a `...-migration` source version, rewrites sources to migrate to new version.", aliases = List("--rewrite"))
-  val fromTasty: Setting[Boolean] = BooleanSetting(RootSetting, "from-tasty", "Compile classes from tasty files. The arguments are .tasty or .jar files.", aliases = List("--from-tasty"))
+  val source: Setting[String] = ChoiceSetting(RootSetting, "source", "source version", "source version", ScalaSettingsProperties.supportedSourceVersions, SourceVersion.defaultSourceVersion.toString, aliases = Vector("--source"))
+  val uniqid: Setting[Boolean] = BooleanSetting(RootSetting, "uniqid", "Uniquely tag all identifiers in debugging output.", aliases = Vector("--unique-id"))
+  val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites](RootSetting, "rewrite", "When used in conjunction with a `...-migration` source version, rewrites sources to migrate to new version.", aliases = Vector("--rewrite"))
+  val fromTasty: Setting[Boolean] = BooleanSetting(RootSetting, "from-tasty", "Compile classes from tasty files. The arguments are .tasty or .jar files.", aliases = Vector("--from-tasty"))
 
   val newSyntax: Setting[Boolean] = BooleanSetting(RootSetting, "new-syntax", "Require `then` and `do` in control expressions.")
   val oldSyntax: Setting[Boolean] = BooleanSetting(RootSetting, "old-syntax", "Require `(...)` around conditions.")
   val indent: Setting[Boolean] = BooleanSetting(RootSetting, "indent", "Together with -rewrite, remove {...} syntax when possible due to significant indentation.")
-  val noindent: Setting[Boolean] = BooleanSetting(RootSetting, "no-indent", "Require classical {...} syntax, indentation is not significant.", aliases = List("-noindent"))
+  val noindent: Setting[Boolean] = BooleanSetting(RootSetting, "no-indent", "Require classical {...} syntax, indentation is not significant.", aliases = Vector("-noindent"))
 
   /* Decompiler settings */
-  val printTasty: Setting[Boolean] = BooleanSetting(RootSetting, "print-tasty", "Prints the raw tasty.", aliases = List("--print-tasty"))
+  val printTasty: Setting[Boolean] = BooleanSetting(RootSetting, "print-tasty", "Prints the raw tasty.", aliases = Vector("--print-tasty"))
 
   /* Scala.js-related settings */
   val scalajsGenStaticForwardersForNonTopLevelObjects: Setting[Boolean] = BooleanSetting(RootSetting, "scalajs-genStaticForwardersForNonTopLevelObjects", "Generate static forwarders even for non-top-level objects (Scala.js only).")
-  val scalajsMapSourceURI: Setting[List[String]] = MultiStringSetting(RootSetting, "scalajs-mapSourceURI", "uri1[->uri2]", "rebases source URIs from uri1 to uri2 (or to a relative URI) for source maps (Scala.js only).")
+  val scalajsMapSourceURI: Setting[Vector[String]] = MultiStringSetting(RootSetting, "scalajs-mapSourceURI", "uri1[->uri2]", "rebases source URIs from uri1 to uri2 (or to a relative URI) for source maps (Scala.js only).")
 
   val projectUrl: Setting[String] = StringSetting (
     RootSetting,
@@ -85,71 +85,71 @@ trait CommonScalaSettings:
   self: SettingGroup =>
 
   /* Path related settings */
-  val bootclasspath: Setting[String] = PathSetting(RootSetting, "bootclasspath", "Override location of bootstrap class files.", Defaults.scalaBootClassPath, aliases = List("--boot-class-path"))
-  val extdirs: Setting[String] = PathSetting(RootSetting, "extdirs", "Override location of installed extensions.", Defaults.scalaExtDirs, aliases = List("--extension-directories"))
-  val javabootclasspath: Setting[String] = PathSetting(RootSetting, "javabootclasspath", "Override java boot classpath.", Defaults.javaBootClassPath, aliases = List("--java-boot-class-path"))
-  val javaextdirs: Setting[String] = PathSetting(RootSetting, "javaextdirs", "Override java extdirs classpath.", Defaults.javaExtDirs, aliases = List("--java-extension-directories"))
-  val sourcepath: Setting[String] = PathSetting(RootSetting, "sourcepath", "Specify location(s) of source files.", Defaults.scalaSourcePath, aliases = List("--source-path"))
+  val bootclasspath: Setting[String] = PathSetting(RootSetting, "bootclasspath", "Override location of bootstrap class files.", Defaults.scalaBootClassPath, aliases = Vector("--boot-class-path"))
+  val extdirs: Setting[String] = PathSetting(RootSetting, "extdirs", "Override location of installed extensions.", Defaults.scalaExtDirs, aliases = Vector("--extension-directories"))
+  val javabootclasspath: Setting[String] = PathSetting(RootSetting, "javabootclasspath", "Override java boot classpath.", Defaults.javaBootClassPath, aliases = Vector("--java-boot-class-path"))
+  val javaextdirs: Setting[String] = PathSetting(RootSetting, "javaextdirs", "Override java extdirs classpath.", Defaults.javaExtDirs, aliases = Vector("--java-extension-directories"))
+  val sourcepath: Setting[String] = PathSetting(RootSetting, "sourcepath", "Specify location(s) of source files.", Defaults.scalaSourcePath, aliases = Vector("--source-path"))
   val sourceroot: Setting[String] = PathSetting(RootSetting, "sourceroot", "Specify workspace root directory.", ".")
 
-  val classpath: Setting[String] = PathSetting(RootSetting, "classpath", "Specify where to find user class files.", ScalaSettingsProperties.defaultClasspath, aliases = List("-cp", "--class-path"))
+  val classpath: Setting[String] = PathSetting(RootSetting, "classpath", "Specify where to find user class files.", ScalaSettingsProperties.defaultClasspath, aliases = Vector("-cp", "--class-path"))
   val outputDir: Setting[AbstractFile] = OutputSetting(RootSetting, "d", "directory|jar", "Destination for generated classfiles.",
     new PlainDirectory(Directory(".")))
-  val color: Setting[String] = ChoiceSetting(RootSetting, "color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/, aliases = List("--color"))
-  val verbose: Setting[Boolean] = BooleanSetting(RootSetting, "verbose", "Output messages about what the compiler is doing.", aliases = List("--verbose"))
-  val version: Setting[Boolean] = BooleanSetting(RootSetting, "version", "Print product version and exit.", aliases = List("--version"))
-  val help: Setting[Boolean] = BooleanSetting(RootSetting, "help", "Print a synopsis of standard options.", aliases = List("--help", "-h"))
-  val pageWidth: Setting[Int] = IntSetting(RootSetting, "pagewidth", "Set page width", ScalaSettingsProperties.defaultPageWidth, aliases = List("--page-width"))
-  val silentWarnings: Setting[Boolean] = BooleanSetting(RootSetting, "nowarn", "Silence all warnings.", aliases = List("--no-warnings"))
+  val color: Setting[String] = ChoiceSetting(RootSetting, "color", "mode", "Colored output", Vector("always", "never"/*, "auto"*/), "always"/* "auto"*/, aliases = Vector("--color"))
+  val verbose: Setting[Boolean] = BooleanSetting(RootSetting, "verbose", "Output messages about what the compiler is doing.", aliases = Vector("--verbose"))
+  val version: Setting[Boolean] = BooleanSetting(RootSetting, "version", "Print product version and exit.", aliases = Vector("--version"))
+  val help: Setting[Boolean] = BooleanSetting(RootSetting, "help", "Print a synopsis of standard options.", aliases = Vector("--help", "-h"))
+  val pageWidth: Setting[Int] = IntSetting(RootSetting, "pagewidth", "Set page width", ScalaSettingsProperties.defaultPageWidth, aliases = Vector("--page-width"))
+  val silentWarnings: Setting[Boolean] = BooleanSetting(RootSetting, "nowarn", "Silence all warnings.", aliases = Vector("--no-warnings"))
 
-  val javaOutputVersion: Setting[String] = ChoiceSetting(RootSetting, "java-output-version", "version", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version. Corresponds to -release flag in javac.", ScalaSettingsProperties.supportedReleaseVersions, "", aliases = List("-release", "--release"))
+  val javaOutputVersion: Setting[String] = ChoiceSetting(RootSetting, "java-output-version", "version", "Compile code with classes specific to the given version of the Java platform available on the classpath and emit bytecode for this version. Corresponds to -release flag in javac.", ScalaSettingsProperties.supportedReleaseVersions, "", aliases = Vector("-release", "--release"))
 
-  val deprecation: Setting[Boolean] = BooleanSetting(RootSetting, "deprecation", "Emit warning and location for usages of deprecated APIs.", aliases = List("--deprecation"))
-  val feature: Setting[Boolean] = BooleanSetting(RootSetting, "feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = List("--feature"))
-  val explain: Setting[Boolean] = BooleanSetting(RootSetting, "explain", "Explain errors in more detail.", aliases = List("--explain"))
+  val deprecation: Setting[Boolean] = BooleanSetting(RootSetting, "deprecation", "Emit warning and location for usages of deprecated APIs.", aliases = Vector("--deprecation"))
+  val feature: Setting[Boolean] = BooleanSetting(RootSetting, "feature", "Emit warning and location for usages of features that should be imported explicitly.", aliases = Vector("--feature"))
+  val explain: Setting[Boolean] = BooleanSetting(RootSetting, "explain", "Explain errors in more detail.", aliases = Vector("--explain"))
   // -explain-types setting is necessary for cross compilation, since it is mentioned in sbt-tpolecat, for instance
   // it is otherwise subsumed by -explain, and should be dropped as soon as we can.
-  val explainTypes: Setting[Boolean] = BooleanSetting(RootSetting, "explain-types", "Explain type errors in more detail (deprecated, use -explain instead).", aliases = List("--explain-types", "-explaintypes"))
-  val explainCyclic: Setting[Boolean] = BooleanSetting(RootSetting, "explain-cyclic", "Explain cyclic reference errors in more detail.", aliases = List("--explain-cyclic"))
-  val unchecked: Setting[Boolean] = BooleanSetting(RootSetting, "unchecked", "Enable additional warnings where generated code depends on assumptions.", initialValue = true, aliases = List("--unchecked"))
-  val language: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(RootSetting, "language", "feature", "Enable one or more language features.", choices = ScalaSettingsProperties.supportedLanguageFeatures, legacyChoices = ScalaSettingsProperties.legacyLanguageFeatures, default = Nil, aliases = List("--language"))
+  val explainTypes: Setting[Boolean] = BooleanSetting(RootSetting, "explain-types", "Explain type errors in more detail (deprecated, use -explain instead).", aliases = Vector("--explain-types", "-explaintypes"))
+  val explainCyclic: Setting[Boolean] = BooleanSetting(RootSetting, "explain-cyclic", "Explain cyclic reference errors in more detail.", aliases = Vector("--explain-cyclic"))
+  val unchecked: Setting[Boolean] = BooleanSetting(RootSetting, "unchecked", "Enable additional warnings where generated code depends on assumptions.", initialValue = true, aliases = Vector("--unchecked"))
+  val language: Setting[Vector[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(RootSetting, "language", "feature", "Enable one or more language features.", choices = ScalaSettingsProperties.supportedLanguageFeatures, legacyChoices = ScalaSettingsProperties.legacyLanguageFeatures, default = Vector(), aliases = Vector("--language"))
   val experimental: Setting[Boolean] = BooleanSetting(RootSetting, "experimental", "Annotate all top-level definitions with @experimental. This enables the use of experimental features anywhere in the project.")
   val preview: Setting[Boolean] = BooleanSetting(RootSetting, "preview", "Enable the use of preview features anywhere in the project.")
 
   /* Coverage settings */
-  val coverageOutputDir = PathSetting(RootSetting, "coverage-out", "Destination for coverage classfiles and instrumentation data.", "", aliases = List("--coverage-out"))
-  val coverageExcludeClasslikes: Setting[List[String]] = MultiStringSetting(RootSetting, "coverage-exclude-classlikes", "packages, classes and modules", "List of regexes for packages, classes and modules to exclude from coverage.", aliases = List("--coverage-exclude-classlikes"))
-  val coverageExcludeFiles: Setting[List[String]] = MultiStringSetting(RootSetting, "coverage-exclude-files", "files", "List of regexes for files to exclude from coverage.", aliases = List("--coverage-exclude-files"))
+  val coverageOutputDir = PathSetting(RootSetting, "coverage-out", "Destination for coverage classfiles and instrumentation data.", "", aliases = Vector("--coverage-out"))
+  val coverageExcludeClasslikes: Setting[Vector[String]] = MultiStringSetting(RootSetting, "coverage-exclude-classlikes", "packages, classes and modules", "List of regexes for packages, classes and modules to exclude from coverage.", aliases = Vector("--coverage-exclude-classlikes"))
+  val coverageExcludeFiles: Setting[Vector[String]] = MultiStringSetting(RootSetting, "coverage-exclude-files", "files", "List of regexes for files to exclude from coverage.", aliases = Vector("--coverage-exclude-files"))
 
   /* Other settings */
-  val encoding: Setting[String] = StringSetting(RootSetting, "encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding, aliases = List("--encoding"))
-  val scalajs: Setting[Boolean] = BooleanSetting(RootSetting, "scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).", aliases = List("--scalajs"))
-  val replInitScript: Setting[String] = StringSetting(RootSetting, "repl-init-script", "code", "The code will be run on REPL startup.", "", aliases = List("--repl-init-script"))
-  val replQuitAfterInit: Setting[Boolean] = BooleanSetting(RootSetting, "repl-quit-after-init", "Quit REPL after evaluating the init script.", aliases = List("--repl-quit-after-init"))
+  val encoding: Setting[String] = StringSetting(RootSetting, "encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding, aliases = Vector("--encoding"))
+  val scalajs: Setting[Boolean] = BooleanSetting(RootSetting, "scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).", aliases = Vector("--scalajs"))
+  val replInitScript: Setting[String] = StringSetting(RootSetting, "repl-init-script", "code", "The code will be run on REPL startup.", "", aliases = Vector("--repl-init-script"))
+  val replQuitAfterInit: Setting[Boolean] = BooleanSetting(RootSetting, "repl-quit-after-init", "Quit REPL after evaluating the init script.", aliases = Vector("--repl-quit-after-init"))
 
   /* YSettings shared with scaladoc */
-  val Yusejavacp: Setting[Boolean] = BooleanSetting(ForkSetting, "Yusejavacp", "Utilize the java.class.path in classpath resolution.", aliases = List("--use-java-class-path", "-usejavacp", "--usejavacp"))
+  val Yusejavacp: Setting[Boolean] = BooleanSetting(ForkSetting, "Yusejavacp", "Utilize the java.class.path in classpath resolution.", aliases = Vector("--use-java-class-path", "-usejavacp", "--usejavacp"))
 end CommonScalaSettings
 
 /** -P "plugin" settings. Various tools might support plugins. */
 private sealed trait PluginSettings:
   self: SettingGroup =>
-  val plugin: Setting[List[String]]        = MultiStringSetting  (AdvancedSetting, "Xplugin", "paths", "Load a plugin from each classpath.")
-  val disable: Setting[List[String]]       = MultiStringSetting  (AdvancedSetting, "Xplugin-disable", "plugin", "Disable plugins by name.")
-  val require: Setting[List[String]]       = MultiStringSetting  (AdvancedSetting, "Xplugin-require", "plugin", "Abort if a named plugin is not loaded.")
+  val plugin: Setting[Vector[String]]        = MultiStringSetting  (AdvancedSetting, "Xplugin", "paths", "Load a plugin from each classpath.")
+  val disable: Setting[Vector[String]]       = MultiStringSetting  (AdvancedSetting, "Xplugin-disable", "plugin", "Disable plugins by name.")
+  val require: Setting[Vector[String]]       = MultiStringSetting  (AdvancedSetting, "Xplugin-require", "plugin", "Abort if a named plugin is not loaded.")
   val showPlugins: Setting[Boolean]        = BooleanSetting      (AdvancedSetting, "Xplugin-list", "Print a synopsis of loaded plugins.")
   val pluginsDir: Setting[String]          = StringSetting       (AdvancedSetting, "Xpluginsdir", "path", "Path to search for plugin archives.", Defaults.scalaPluginPath)
-  val pluginOptions: Setting[List[String]] = MultiStringSetting  (RootSetting, "P", "plugin:opt", "Pass an option to a plugin, e.g. -P:<plugin>:<opt>")
+  val pluginOptions: Setting[Vector[String]] = MultiStringSetting  (RootSetting, "P", "plugin:opt", "Pass an option to a plugin, e.g. -P:<plugin>:<opt>")
 
 /** -V "Verbose" settings */
 private sealed trait VerboseSettings:
   self: SettingGroup =>
   val Vhelp: Setting[Boolean] = BooleanSetting(VerboseSetting, "V", "Print a synopsis of verbose options.")
-  val Vprint: Setting[List[String]] = PhasesSetting(VerboseSetting, "Vprint", "Print out program after", aliases = SettingAlias("-Xprint", Deprecation()) :: Nil)
-  val XshowPhases: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vphases", "List compiler phases.", aliases = SettingAlias("-Xshow-phases", Deprecation()) :: Nil)
+  val Vprint: Setting[Vector[String]] = PhasesSetting(VerboseSetting, "Vprint", "Print out program after", aliases = SettingAlias("-Xprint", Deprecation()) +: Vector())
+  val XshowPhases: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vphases", "List compiler phases.", aliases = SettingAlias("-Xshow-phases", Deprecation()) +: Vector())
 
   val Vprofile: Setting[Boolean] = BooleanSetting(VerboseSetting, "Vprofile", "Show metrics about sources and internal representations to estimate compile-time complexity.")
-  val VprofileSortedBy = ChoiceSetting(VerboseSetting, "Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", List("name", "path", "lines", "tokens", "tasty", "complexity"), "")
+  val VprofileSortedBy = ChoiceSetting(VerboseSetting, "Vprofile-sorted-by", "key", "Show metrics about sources and internal representations sorted by given column name", Vector("name", "path", "lines", "tokens", "tasty", "complexity"), "")
   val VprofileDetails = IntSetting(VerboseSetting, "Vprofile-details", "Show metrics about sources and internal representations of the most complex methods", 0)
 
 /** -W "Warnings" settings
@@ -158,7 +158,7 @@ private sealed trait WarningSettings:
   self: SettingGroup =>
 
   val Whelp: Setting[Boolean] = BooleanSetting(WarningSetting, "W", "Print a synopsis of warning options.")
-  val Werror: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = SettingAlias("-Xfatal-warnings", Deprecation()) :: Nil)
+  val Werror: Setting[Boolean] = BooleanSetting(WarningSetting, "Werror", "Fail the compilation if there are any warnings.", aliases = SettingAlias("-Xfatal-warnings", Deprecation()) +: Vector())
   val Wall: Setting[Boolean] = BooleanSetting(WarningSetting, "Wall", "Enable all warning settings.")
   private val WvalueDiscard: Setting[Boolean] = BooleanSetting(WarningSetting, "Wvalue-discard", "Warn when non-Unit expression results are unused.")
   private val WNonUnitStatement = BooleanSetting(WarningSetting, "Wnonunit-statement", "Warn when block statements are non-Unit expressions.")
@@ -169,12 +169,12 @@ private sealed trait WarningSettings:
   private val WrecurseWithDefault = BooleanSetting(WarningSetting, "Wrecurse-with-default", "Warn when a method calls itself with a default argument.")
   private val WwrongArrow = BooleanSetting(WarningSetting, "Wwrong-arrow", "Warn if function arrow was used instead of context literal ?=>.")
   private val WinferUnion = BooleanSetting(WarningSetting, "Winfer-union", "Warn if type argument was inferred as union type.")
-  private val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
+  private val Wunused: Setting[Vector[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
     helpArg = "warning",
     descr = "Enable or disable specific `unused` warnings",
-    choices = List(
+    choices = Vector(
       ChoiceWithHelp("nowarn", ""),
       ChoiceWithHelp("all", ""),
       ChoiceWithHelp("imports", "Warn if an import selector is not referenced."),
@@ -187,7 +187,7 @@ private sealed trait WarningSettings:
       //ChoiceWithHelp("inlined", "Apply -Wunused to inlined expansions"), // TODO
       ChoiceWithHelp("linted", "Enable -Wunused:imports,privates,locals,implicits"),
     ),
-    default = Nil
+    default = Vector()
   )
   object WunusedHas:
     def isChoiceSet(s: String)(using Context) = Wunused.value.pipe(us => us.contains(s))
@@ -217,11 +217,11 @@ private sealed trait WarningSettings:
     def strictNoImplicitWarn(using Context) =
       isChoiceSet("strict-no-implicit-warn")
 
-  val Wconf: Setting[List[String]] = MultiStringSetting(
+  val Wconf: Setting[Vector[String]] = MultiStringSetting(
     WarningSetting,
     "Wconf",
     "patterns",
-    default = List(),
+    default = Vector(),
     descr =
     raw"""Configure compiler warnings.
          |Syntax: -Wconf:<filters>:<action>,<filters>:<action>,...
@@ -274,17 +274,17 @@ private sealed trait WarningSettings:
          |to prevent the shell from expanding patterns.""".stripMargin,
   )
 
-  val Wshadow: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
+  val Wshadow: Setting[Vector[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wshadow",
     helpArg = "warning",
     descr = "Enable or disable specific `shadow` warnings",
-    choices = List(
+    choices = Vector(
       ChoiceWithHelp("all", ""),
       ChoiceWithHelp("private-shadow", "Warn if a private field or class parameter shadows a superclass field"),
       ChoiceWithHelp("type-parameter-shadow", "Warn when a type parameter shadows a type already in the scope"),
     ),
-    default = Nil
+    default = Vector()
   )
 
   object WshadowHas:
@@ -326,7 +326,7 @@ private sealed trait OptimizerSettings:
     name = "Yopt-specific",
     helpArg = "optimization",
     descr = "Enable specific optimizations: `-Yopt-specific:unreachable-code`; `-Yopt-specific:help` for details.",
-    choices = List(
+    choices = Vector(
       ChoiceWithHelp("unreachable-code", "Eliminate unreachable code, exception handlers guarding no instructions, redundant metadata (debug information, line numbers)."),
       ChoiceWithHelp("simplify-jumps", "Simplify branching instructions, eliminate unnecessary ones."),
       ChoiceWithHelp("compact-locals", "Eliminate empty slots in the sequence of local variables."),
@@ -339,7 +339,7 @@ private sealed trait OptimizerSettings:
       ChoiceWithHelp("assume-modules-non-null", "Assume loading a module never results in null (happens if the module is accessed in its super constructor)."),
       ChoiceWithHelp("allow-skip-class-loading", "Allow optimizations that can skip or delay class loading.")
     ),
-    default = Nil
+    default = Vector()
   )
   private def optEnabled(s: String)(using Context): Boolean = opt.value || YoptSpecific.value.contains(s)
   def optUnreachableCode(using Context): Boolean = optEnabled("unreachable-code")
@@ -376,7 +376,7 @@ private sealed trait OptimizerSettings:
       |When patterns are supplied on a command line, it is usually necessary to quote special shell characters
       |such as `*`, `<`, `>`, and `$`: `'-opt-inline:p.*,!p.C$D' '-opt-inline:<sources>'`.
       |Quoting may not be needed in a build file.""".stripMargin
-  val optInline: Setting[List[String]] = MultiStringSetting(RootSetting, "opt-inline", "filter", inlineHelp)
+  val optInline: Setting[Vector[String]] = MultiStringSetting(RootSetting, "opt-inline", "filter", inlineHelp)
   def optInlineEnabled(using Context): Boolean = optInline.value.nonEmpty
 
   val YoptInlineHeuristics = ChoiceSetting(
@@ -384,7 +384,7 @@ private sealed trait OptimizerSettings:
     name = "Yopt-inline-heuristics",
     helpArg = "strategy",
     descr = "Set the heuristics for inlining decisions.",
-    choices = List("at-inline-annotated", "everything", "default"),
+    choices = Vector("at-inline-annotated", "everything", "default"),
     default = "default")
 
   val Wopt = MultiChoiceHelpSetting(
@@ -392,7 +392,7 @@ private sealed trait OptimizerSettings:
     name = "Wopt",
     helpArg = "warning",
     descr = "Enable optimizer warnings, `help` for details.",
-    choices = List(
+    choices = Vector(
       ChoiceWithHelp("all", ""),
       ChoiceWithHelp("at-inline-failed-summary", "One-line summary if there were @inline method calls that could not be inlined."),
       ChoiceWithHelp("at-inline-failed", "A detailed warning for each @inline method call that could not be inlined."),
@@ -401,7 +401,7 @@ private sealed trait OptimizerSettings:
       ChoiceWithHelp("no-inline-missing-bytecode", "Warn if an inlining decision cannot be made because a the bytecode of a class or member cannot be found on the compilation classpath."),
       ChoiceWithHelp("no-inline-missing-attribute", "Warn if an inlining decision cannot be made because a Scala classfile does not have a ScalaInlineInfo attribute.")
     ),
-    default = Nil
+    default = Vector()
   )
   private def optWarningsEnabled(s: String)(using Context): Boolean = Wopt.value.contains("all") || Wopt.value.contains(s)
   def optWarningsSummaryOnly(using Context): Boolean = optWarningsEnabled("at-inline-failed-summary")
@@ -445,38 +445,38 @@ private sealed trait XSettings:
   val XverifySignatures: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xverify-signatures", "Verify generic signatures in generated bytecode.")
   val XignoreScala2Macros: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xignore-scala2-macros", "Ignore errors when compiling code that calls Scala2 macros, these will fail at runtime.")
   val XimportSuggestionTimeout: Setting[Int] = IntSetting(AdvancedSetting, "Ximport-suggestion-timeout", "Timeout (in ms) for searching for import suggestions when errors are reported.", 8000)
-  val Xsemanticdb: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xsemanticdb", "Store information in SemanticDB.", aliases = List("-Ysemanticdb"))
-  val XuncheckedJavaOutputVersion: Setting[String] = ChoiceSetting(AdvancedSetting, "Xunchecked-java-output-version", "target", "Emit bytecode for the specified version of the Java platform. This might produce bytecode that will break at runtime. Corresponds to -target flag in javac. When on JDK 9+, consider -java-output-version as a safer alternative.", ScalaSettingsProperties.supportedTargetVersions, "", aliases = List("-Xtarget", "--Xtarget"))
-  val XcheckMacros: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xcheck-macros", "Check some invariants of macro generated code while expanding macros", aliases = List("--Xcheck-macros"))
+  val Xsemanticdb: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xsemanticdb", "Store information in SemanticDB.", aliases = Vector("-Ysemanticdb"))
+  val XuncheckedJavaOutputVersion: Setting[String] = ChoiceSetting(AdvancedSetting, "Xunchecked-java-output-version", "target", "Emit bytecode for the specified version of the Java platform. This might produce bytecode that will break at runtime. Corresponds to -target flag in javac. When on JDK 9+, consider -java-output-version as a safer alternative.", ScalaSettingsProperties.supportedTargetVersions, "", aliases = Vector("-Xtarget", "--Xtarget"))
+  val XcheckMacros: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xcheck-macros", "Check some invariants of macro generated code while expanding macros", aliases = Vector("--Xcheck-macros"))
   val XmainClass: Setting[String] = StringSetting(AdvancedSetting, "Xmain-class", "path", "Class for manifest's Main-Class entry (only useful with -d <jar>)", "")
   val XimplicitSearchLimit: Setting[Int] = IntSetting(AdvancedSetting, "Ximplicit-search-limit", "Maximal number of expressions to be generated in an implicit search", 50000)
 
-  val XtermConflict: Setting[String] = ChoiceSetting(AdvancedSetting, "Xresolve-term-conflict", "strategy", "Resolve term conflicts", List("package", "object", "error"), "error")
+  val XtermConflict: Setting[String] = ChoiceSetting(AdvancedSetting, "Xresolve-term-conflict", "strategy", "Resolve term conflicts", Vector("package", "object", "error"), "error")
   val XnoGenericSig: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-generic-signatures", "Suppress generation of generic signatures for Java.")
   val Xdumpclasses: Setting[String] = StringSetting(AdvancedSetting, "Xdump-classes", "dir", "Dump the generated bytecode to .class files (useful for reflective compilation that utilizes in-memory classloaders).", "")
   val XjarCompressionLevel: Setting[Int] = IntChoiceSetting(AdvancedSetting, "Xjar-compression-level", "compression level to use when writing jar files", Deflater.DEFAULT_COMPRESSION to Deflater.BEST_COMPRESSION, Deflater.DEFAULT_COMPRESSION)
-  val XkindProjector: Setting[String] = ChoiceSetting(AdvancedSetting, "Xkind-projector", "[underscores, enable, disable]", "Allow `*` as type lambda placeholder to be compatible with kind projector. When invoked as -Xkind-projector:underscores will repurpose `_` to be a type parameter placeholder, this will disable usage of underscore as a wildcard.", List("disable", "", "underscores"), "disable", legacyArgs = true)
+  val XkindProjector: Setting[String] = ChoiceSetting(AdvancedSetting, "Xkind-projector", "[underscores, enable, disable]", "Allow `*` as type lambda placeholder to be compatible with kind projector. When invoked as -Xkind-projector:underscores will repurpose `_` to be a type parameter placeholder, this will disable usage of underscore as a wildcard.", Vector("disable", "", "underscores"), "disable", legacyArgs = true)
 
   /** Documentation related settings */
-  val XdropComments: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xdrop-docs", "Drop documentation when scanning source files.", aliases = List("-Xdrop-comments"))
-  val XcookComments: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xcook-docs", "Cook the documentation (type check `@usecase`, etc.)", aliases = List("-Xcook-comments"))
+  val XdropComments: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xdrop-docs", "Drop documentation when scanning source files.", aliases = Vector("-Xdrop-comments"))
+  val XcookComments: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xcook-docs", "Cook the documentation (type check `@usecase`, etc.)", aliases = Vector("-Xcook-comments"))
   val XreadComments: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xread-docs", "Read documentation from tasty.")
 
   /** Area-specific debug output */
-  val XnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.", aliases = List("Xno-decode-stacktraces"))
+  val XnoEnrichErrorMessages: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xno-enrich-error-messages", "Show raw error messages, instead of enriching them with contextual information.", aliases = Vector("Xno-decode-stacktraces"))
   val XdebugMacros: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xdebug-macros", "Show debug info when quote pattern match fails")
 
   /** Pipeline compilation options */
-  val XjavaTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xjava-tasty", "Pickler phase should compute TASTy for .java defined symbols for use by build tools", aliases = List("-Xpickle-java", "-Yjava-tasty", "-Ypickle-java"), preferPrevious = true)
-  val XearlyTastyOutput: Setting[AbstractFile] = OutputSetting(AdvancedSetting, "Xearly-tasty-output", "directory|jar", "Destination to write generated .tasty files to for use in pipelined compilation.", NoAbstractFile, aliases = List("-Xpickle-write", "-Yearly-tasty-output", "-Ypickle-write"), ignoreInvalidArgs = true, preferPrevious = true)
-  val XallowOutlineFromTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xallow-outline-from-tasty", "Allow outline TASTy to be loaded with the -from-tasty option.", aliases = List("-Yallow-outline-from-tasty"))
+  val XjavaTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xjava-tasty", "Pickler phase should compute TASTy for .java defined symbols for use by build tools", aliases = Vector("-Xpickle-java", "-Yjava-tasty", "-Ypickle-java"), preferPrevious = true)
+  val XearlyTastyOutput: Setting[AbstractFile] = OutputSetting(AdvancedSetting, "Xearly-tasty-output", "directory|jar", "Destination to write generated .tasty files to for use in pipelined compilation.", NoAbstractFile, aliases = Vector("-Xpickle-write", "-Yearly-tasty-output", "-Ypickle-write"), ignoreInvalidArgs = true, preferPrevious = true)
+  val XallowOutlineFromTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xallow-outline-from-tasty", "Allow outline TASTy to be loaded with the -from-tasty option.", aliases = Vector("-Yallow-outline-from-tasty"))
 
   val XmixinForceForwarders = ChoiceSetting(
     AdvancedSetting,
     name    = "Xmixin-force-forwarders",
     helpArg = "mode",
     descr   = "Generate forwarder methods in classes inheriting concrete methods from traits.",
-    choices = List("true", "junit", "false"),
+    choices = Vector("true", "junit", "false"),
     default = "true")
 
   object mixinForwarderChoices {
@@ -484,7 +484,7 @@ private sealed trait XSettings:
     def isAtLeastJunit(using Context) = isTruthy || XmixinForceForwarders.value == "junit"
   }
 
-  val XmacroSettings: Setting[List[String]] = MultiStringSetting(AdvancedSetting, "Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
+  val XmacroSettings: Setting[Vector[String]] = MultiStringSetting(AdvancedSetting, "Xmacro-settings", "setting1,setting2,..settingN", "List of settings which exposed to the macros")
 
 end XSettings
 
@@ -493,7 +493,7 @@ private sealed trait YSettings:
   self: SettingGroup =>
 
   val Yhelp: Setting[Boolean] = BooleanSetting(ForkSetting, "Y", "Print a synopsis of private options.")
-  val Ycheck: Setting[List[String]] = PhasesSetting(ForkSetting, "Ycheck", "Check the tree at the end of")
+  val Ycheck: Setting[Vector[String]] = PhasesSetting(ForkSetting, "Ycheck", "Check the tree at the end of")
   val YcheckMods: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycheck-mods", "Check that symbols and their defining trees have modifiers in sync.")
   val Ydebug: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydebug", "Increase the quantity of debugging output.")
   val YdebugTrace: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydebug-trace", "Trace core operations.")
@@ -506,7 +506,7 @@ private sealed trait YSettings:
   val YdebugError: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydebug-error", "Print the stack trace when any error is caught.", false)
   val YdebugUnpickling: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydebug-unpickling", "Print the stack trace when an error occurs when reading Tasty.", false)
   val YdebugCyclic: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydebug-cyclic", "Print the stack trace when a cyclic reference error occurs.", false)
-  val Ylog: Setting[List[String]] = PhasesSetting(ForkSetting, "Ylog", "Log operations during")
+  val Ylog: Setting[Vector[String]] = PhasesSetting(ForkSetting, "Ylog", "Log operations during")
   val YlogClasspath: Setting[Boolean] = BooleanSetting(ForkSetting, "Ylog-classpath", "Output information about what classpath is being applied.")
   val YdisableFlatCpCaching: Setting[Boolean] = BooleanSetting(ForkSetting, "YdisableFlatCpCaching", "Do not cache flat classpath representation of classpath elements from jars across compiler instances.")
 
@@ -515,13 +515,13 @@ private sealed trait YSettings:
   val Yscala2Unpickler: Setting[String] = StringSetting(ForkSetting, "Yscala2-unpickler", "", "Control where we may get Scala 2 symbols from. This is either \"always\", \"never\", or a classpath.", "always")
 
   val YnoImports: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-imports", "Compile without importing scala.*, java.lang.*, or Predef.")
-  val Yimports: Setting[List[String]] = MultiStringSetting(ForkSetting, "Yimports", helpArg="", "Custom root imports. If set, none of scala.*, java.lang.*, or Predef.* will be imported unless explicitly included.")
+  val Yimports: Setting[Vector[String]] = MultiStringSetting(ForkSetting, "Yimports", helpArg="", "Custom root imports. If set, none of scala.*, java.lang.*, or Predef.* will be imported unless explicitly included.")
   val YnoPredef: Setting[Boolean] = BooleanSetting(ForkSetting, "Yno-predef", "Compile without importing Predef.")
-  val Yskip: Setting[List[String]] = PhasesSetting(ForkSetting, "Yskip", "Skip")
+  val Yskip: Setting[Vector[String]] = PhasesSetting(ForkSetting, "Yskip", "Skip")
   val YbackendParallelism: Setting[Int] = IntChoiceSetting(ForkSetting, "Ybackend-parallelism", "maximum worker threads for backend", 1 to 16, 1)
   val YbackendWorkerQueue: Setting[Int] = IntChoiceSetting(ForkSetting, "Ybackend-worker-queue", "backend threads worker queue size", 0 to 1000, 0)
-  val YstopAfter: Setting[List[String]] = PhasesSetting(ForkSetting, "Ystop-after", "Stop after the phase group containing the named phase. Mini-phases fused into a MegaPhase share a group, so the rest of that group still runs.", aliases = List("-stop")) // backward compat
-  val YstopBefore: Setting[List[String]] = PhasesSetting(ForkSetting, "Ystop-before", "Stop before") // stop before erasure as long as we have not debugged it fully
+  val YstopAfter: Setting[Vector[String]] = PhasesSetting(ForkSetting, "Ystop-after", "Stop after the phase group containing the named phase. Mini-phases fused into a MegaPhase share a group, so the rest of that group still runs.", aliases = Vector("-stop")) // backward compat
+  val YstopBefore: Setting[Vector[String]] = PhasesSetting(ForkSetting, "Ystop-before", "Stop before") // stop before erasure as long as we have not debugged it fully
   val YshowSuppressedErrors: Setting[Boolean] = BooleanSetting(ForkSetting, "Yshow-suppressed-errors", "Also show follow-on errors and warnings that are normally suppressed.")
   val YlogicalPackageLoading: Setting[Boolean] = BooleanSetting(ForkSetting, "Ylogical-package-loading", "Enable logical package loading. This will load the logical package structure by preparsing the source files to discover the package structure. To be used together with -sourcepath option.")
   val YdetailedStats: Setting[Boolean] = BooleanSetting(ForkSetting, "Ydetailed-stats", "Show detailed internal compiler stats (needs Stats.enabled to be set to true).")
@@ -546,14 +546,14 @@ private sealed trait YSettings:
   val YcheckConstraintDeps: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycheck-constraint-deps", "Check dependency tracking in constraints (used for testing the algorithm).")
   val YretainTrees: Setting[Boolean] = BooleanSetting(ForkSetting, "Yretain-trees", "Retain trees for top-level classes, accessible from ClassSymbol#tree")
   val YshowTreeIds: Setting[Boolean] = BooleanSetting(ForkSetting, "Yshow-tree-ids", "Uniquely tag all tree nodes in debugging output.")
-  val YfromTastyIgnoreList: Setting[List[String]] = MultiStringSetting(ForkSetting, "Yfrom-tasty-ignore-list", "file", "List of `tasty` files in jar files that will not be loaded when using -from-tasty.")
+  val YfromTastyIgnoreList: Setting[Vector[String]] = MultiStringSetting(ForkSetting, "Yfrom-tasty-ignore-list", "file", "List of `tasty` files in jar files that will not be loaded when using -from-tasty.")
   val YlegacyLazyVals: Setting[Boolean] = BooleanSetting(ForkSetting, "Ylegacy-lazy-vals", "Use legacy (pre 3.3.0) implementation of lazy vals.")
   val YcompileScala2Library: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycompile-scala2-library", "Used when compiling the Scala 2 standard library.")
   val YprofileEnabled: Setting[Boolean] = BooleanSetting(ForkSetting, "Yprofile-enabled", "Enable profiling.")
-  val YprofileDestination: Setting[String] = StringSetting(ForkSetting, "Yprofile-destination", "file", "Where to send profiling output - specify a file, default is to the console.", "", depends = List(YprofileEnabled -> true))
-  val YprofileExternalTool: Setting[List[String]] = PhasesSetting(ForkSetting, "Yprofile-external-tool", "Enable profiling for a phase using an external tool hook. Generally only useful for a single phase.", "typer", depends = List(YprofileEnabled -> true))
-  val YprofileRunGcBetweenPhases: Setting[List[String]] = PhasesSetting(ForkSetting, "Yprofile-run-gc", "Run a GC between phases - this allows heap size to be accurate at the expense of more time. Specify a list of phases, or *", "_", depends = List(YprofileEnabled -> true))
-  val YprofileTrace: Setting[String]  = StringSetting(ForkSetting, "Yprofile-trace", "file", s"Capture trace of compilation in JSON Chrome Trace format to the specified file. This option requires ${YprofileEnabled.name}. The output file can be visualized using https://ui.perfetto.dev/.", "", depends = List(YprofileEnabled -> true))
+  val YprofileDestination: Setting[String] = StringSetting(ForkSetting, "Yprofile-destination", "file", "Where to send profiling output - specify a file, default is to the console.", "", depends = Vector(YprofileEnabled -> true))
+  val YprofileExternalTool: Setting[Vector[String]] = PhasesSetting(ForkSetting, "Yprofile-external-tool", "Enable profiling for a phase using an external tool hook. Generally only useful for a single phase.", "typer", depends = Vector(YprofileEnabled -> true))
+  val YprofileRunGcBetweenPhases: Setting[Vector[String]] = PhasesSetting(ForkSetting, "Yprofile-run-gc", "Run a GC between phases - this allows heap size to be accurate at the expense of more time. Specify a list of phases, or *", "_", depends = Vector(YprofileEnabled -> true))
+  val YprofileTrace: Setting[String]  = StringSetting(ForkSetting, "Yprofile-trace", "file", s"Capture trace of compilation in JSON Chrome Trace format to the specified file. This option requires ${YprofileEnabled.name}. The output file can be visualized using https://ui.perfetto.dev/.", "", depends = Vector(YprofileEnabled -> true))
 
   val YbestEffort: Setting[Boolean] = BooleanSetting(ForkSetting, "Ybest-effort", "Enable best-effort compilation attempting to produce betasty to the META-INF/best-effort directory, regardless of errors, as part of the pickler phase.")
   val YwithBestEffortTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Ywith-best-effort-tasty", "Allow to compile using best-effort tasty files. If such file is used, the compiler will stop after the pickler phase.")
@@ -584,6 +584,5 @@ private sealed trait YSettings:
 
   // Should be removed but causes a lot of breakage in practice, e.g., with old versions of the sbt-typelevel plugin
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
-  val YkindProjector: Setting[String] = ChoiceSetting(ForkSetting, "Ykind-projector", "[underscores, enable, disable]", "Allow `*` as type lambda placeholder to be compatible with kind projector. When invoked as -Ykind-projector:underscores will repurpose `_` to be a type parameter placeholder, this will disable usage of underscore as a wildcard.", List("disable", "", "underscores"), "disable", legacyArgs = true, deprecation = Deprecation.renamed("-Xkind-projector"))
+  val YkindProjector: Setting[String] = ChoiceSetting(ForkSetting, "Ykind-projector", "[underscores, enable, disable]", "Allow `*` as type lambda placeholder to be compatible with kind projector. When invoked as -Ykind-projector:underscores will repurpose `_` to be a type parameter placeholder, this will disable usage of underscore as a wildcard.", Vector("disable", "", "underscores"), "disable", legacyArgs = true, deprecation = Deprecation.renamed("-Xkind-projector"))
 end YSettings
-

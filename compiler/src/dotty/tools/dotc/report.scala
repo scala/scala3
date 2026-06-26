@@ -145,11 +145,11 @@ object report:
     if (ctx.settings.Ydebug.value) warning(msg, pos)
 
   private def addInlineds(pos: SrcPos)(using Context): SourcePosition =
-    def recur(pos: SourcePosition, inlineds: List[Trees.Tree[?]]): SourcePosition = inlineds match
-      case inlined :: inlineds =>
+    def recur(pos: SourcePosition, inlineds: Vector[Trees.Tree[?]]): SourcePosition = (inlineds: @unchecked) match
+      case inlined +: inlineds =>
         val outer = recur(inlined.sourcePos, inlineds)
         pos.withOuter(outer)
-      case Nil => pos
+      case Vector() => pos
     recur(pos.sourcePos, tpd.enclosingInlineds)
 
   // Should only be called from Run#enrichErrorMessage.
@@ -160,12 +160,12 @@ object report:
 
   private def enrichErrorMessage1(errorMessage: String)(using Context): String = {
     import untpd.*, config.Settings.*
-    def formatExplain(pairs: List[(String, Any)]) = pairs.map((k, v) => f"$k%20s: $v").mkString("\n")
+    def formatExplain(pairs: Vector[(String, Any)]) = pairs.map((k, v) => f"$k%20s: $v").mkString("\n")
 
     val settings = ctx.settings.userSetSettings(ctx.settingsState).sortBy(_.name)
     def showSetting(s: Setting[?]): String = if s.value == "" then s"${s.name} \"\"" else s"${s.name} ${s.value}"
 
-    val info1 = formatExplain(List(
+    val info1 = formatExplain(Vector(
       "while compiling"    -> ctx.compilationUnit,
       "during phase"       -> ctx.phase.megaPhase,
       "mode"               -> ctx.mode,

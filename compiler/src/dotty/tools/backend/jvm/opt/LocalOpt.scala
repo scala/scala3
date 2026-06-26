@@ -395,16 +395,16 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       def isNull(insn: AbstractInsnNode, slot: Int) = nullness(insn, slot).contains(NullValue)
 
       // cannot change instructions while iterating, it gets the analysis out of synch (indexed by instructions)
-      val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
+      val toReplace = mutable.Map.empty[AbstractInsnNode, Vector[AbstractInsnNode]]
 
       val it = method.instructions.iterator
       while (it.hasNext) it.next() match {
         case vi: VarInsnNode if isNull(vi, vi.`var`) =>
           if (vi.getOpcode == ALOAD)
-            toReplace(vi) = List(new InsnNode(ACONST_NULL))
+            toReplace(vi) = Vector(new InsnNode(ACONST_NULL))
           else if (vi.getOpcode == ASTORE)
             for (frame <- frameAt(vi) if frame.peekStack(0) == NullValue)
-              toReplace(vi) = List(getPop(1))
+              toReplace(vi) = Vector(getPop(1))
 
         case ji: JumpInsnNode =>
           val isIfNull = ji.getOpcode == IFNULL
@@ -414,8 +414,8 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
             val taken = nullness == NullValue && isIfNull || nullness == NotNullValue && isIfNonNull
             val avoided = nullness == NotNullValue && isIfNull || nullness == NullValue && isIfNonNull
             if (taken || avoided) {
-              val jump = if (taken) List(new JumpInsnNode(GOTO, ji.label)) else Nil
-              toReplace(ji) = getPop(1) :: jump
+              val jump = if (taken) Vector(new JumpInsnNode(GOTO, ji.label)) else Vector()
+              toReplace(ji) = getPop(1) +: jump
             }
           } else {
             val isIfEq = ji.getOpcode == IF_ACMPEQ
@@ -428,20 +428,20 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
               val taken = isIfEq && eq || isIfNe && ne
               val avoided = isIfEq && ne || isIfNe && eq
               if (taken || avoided) {
-                val jump = if (taken) List(new JumpInsnNode(GOTO, ji.label)) else Nil
-                toReplace(ji) = getPop(1) :: getPop(1) :: jump
+                val jump = if (taken) Vector(new JumpInsnNode(GOTO, ji.label)) else Vector()
+                toReplace(ji) = getPop(1) +: getPop(1) +: jump
               }
             }
           }
 
         case ti: TypeInsnNode =>
           if (ti.getOpcode == INSTANCEOF) for (frame <- frameAt(ti) if frame.peekStack(0) == NullValue) {
-            toReplace(ti) = List(getPop(1), new InsnNode(ICONST_0))
+            toReplace(ti) = Vector(getPop(1), new InsnNode(ICONST_0))
           }
 
         case mi: MethodInsnNode =>
           if (optimizerUtils.isScalaUnbox(mi)) for (frame <- frameAt(mi) if frame.peekStack(0) == NullValue) {
-            toReplace(mi) = List(
+            toReplace(mi) = Vector(
               getPop(1),
               loadZeroForTypeSort(Type.getReturnType(mi.desc).getSort))
           }
@@ -451,7 +451,7 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
               val thisNullness = frame.peekStack(1)
               val otherNullness = frame.peekStack(0)
               if thisNullness == NotNullValue && otherNullness == NullValue then
-                toReplace(mi) = List(getPop(1), getPop(1), new InsnNode(ICONST_0))
+                toReplace(mi) = Vector(getPop(1), getPop(1), new InsnNode(ICONST_0))
             )
           // As well as `Objects.equals` (which in Scala can be `x == y`) with `(null, null)`, `(null, nonnull)`, and `(nonnull, null)`
           else if mi.owner == "java/util/Objects" && mi.name == "equals" && mi.desc == "(Ljava/lang/Object;Ljava/lang/Object;)Z" then
@@ -459,9 +459,9 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
               val thisNullness = frame.peekStack(1)
               val otherNullness = frame.peekStack(0)
               if thisNullness == NullValue && otherNullness == NullValue then
-                toReplace(mi) = List(getPop(1), getPop(1), new InsnNode(ICONST_1))
+                toReplace(mi) = Vector(getPop(1), getPop(1), new InsnNode(ICONST_1))
               else if (thisNullness == NullValue && otherNullness == NotNullValue) || (thisNullness == NotNullValue && otherNullness == NullValue) then
-                toReplace(mi) = List(getPop(1), getPop(1), new InsnNode(ICONST_0))
+                toReplace(mi) = Vector(getPop(1), getPop(1), new InsnNode(ICONST_0))
             )
 
         case _ =>
@@ -576,7 +576,7 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
     lazy val nullnessAnalyzer = new NullnessAnalyzer(method, owner, optimizerUtils.isNonNullMethodInvocation, settings.optAssumeModulesNonNull)
 
     // cannot remove instructions while iterating, it gets the analysis out of synch (indexed by instructions)
-    val toReplace = mutable.Map.empty[AbstractInsnNode, List[AbstractInsnNode]]
+    val toReplace = mutable.Map.empty[AbstractInsnNode, Vector[AbstractInsnNode]]
 
     val it = method.instructions.iterator
     while (it.hasNext) it.next() match {
@@ -588,7 +588,7 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
             frame.getValue(frame.stackTop)
           }
           if (opc == INSTANCEOF && valueNullness == NullValue) {
-            toReplace(ti) = List(getPop(1), new InsnNode(ICONST_0))
+            toReplace(ti) = Vector(getPop(1), new InsnNode(ICONST_0))
           } else {
             val valueDesc = typeAnalyzer.preciseAaloadTypeDesc({
               val frame = typeAnalyzer.frameAt(ti)
@@ -597,13 +597,13 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
             if valueDesc != "Lnull;" then
               if (isSubType(valueDesc, ti.desc)) {
                 if (opc == CHECKCAST) {
-                  toReplace(ti) = Nil
+                  toReplace(ti) = Vector()
                 } else if (valueNullness == NotNullValue) {
-                  toReplace(ti) = List(getPop(1), new InsnNode(ICONST_1))
+                  toReplace(ti) = Vector(getPop(1), new InsnNode(ICONST_1))
                 }
               } else if (opc == INSTANCEOF && isUnrelated(valueDesc, ti.desc)) {
                 // the two types are unrelated, so the instance check is known to fail
-                toReplace(ti) = List(getPop(1), new InsnNode(ICONST_0))
+                toReplace(ti) = Vector(getPop(1), new InsnNode(ICONST_0))
               }
           }
         }
@@ -612,12 +612,12 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
         // Rewrite some known method invocations
         if (isArrayGetLengthOnStaticallyKnownArray(mi, typeAnalyzer)) {
           // Array.getLength(x) where x is known to be an array
-          toReplace(mi) = List(new InsnNode(ARRAYLENGTH))
+          toReplace(mi) = Vector(new InsnNode(ARRAYLENGTH))
         } else {
           // x.getClass where x is statically known to be a primitive array
           val getClassTp = getClassOnStaticallyKnownPrimitiveArray(mi, typeAnalyzer)
           if (getClassTp != null) {
-            toReplace(mi) = List(getPop(1), new LdcInsnNode(getClassTp))
+            toReplace(mi) = Vector(getPop(1), new LdcInsnNode(getClassTp))
           }
         }
 
@@ -1233,8 +1233,8 @@ object LocalOptImpls {
     def run(): Boolean = {
       var changed = false
 
-      // `.toList` because we're modifying the map while iterating over it
-      for ((jumpInsn, inTryBlock) <- jumpInsns.toList if jumpInsns.contains(jumpInsn) && isJumpNonJsr(jumpInsn)) {
+      // `.toVector` because we're modifying the map while iterating over it
+      for ((jumpInsn, inTryBlock) <- jumpInsns.toVector if jumpInsns.contains(jumpInsn) && isJumpNonJsr(jumpInsn)) {
         var jumpRemoved = simplifyThenElseSameTarget(jumpInsn)
 
         if (!jumpRemoved) {

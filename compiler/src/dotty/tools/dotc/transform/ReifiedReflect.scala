@@ -37,15 +37,15 @@ trait ReifiedReflect:
   def TypeTreeTpt(using Context) =
     self.select(defn.Quotes_reflect_TypeTreeType)
 
-  /** Create tree for `quotes.reflect.Apply(<fn>, List(<args>*))` */
-  def Apply(fn: Tree, args: List[Tree])(using Context) =
+  /** Create tree for `quotes.reflect.Apply(<fn>, Vector(<args>*))` */
+  def Apply(fn: Tree, args: Vector[Tree])(using Context) =
     val argTrees = tpd.mkList(args, TermTpt)
     self.select(defn.Quotes_reflect_Apply)
       .select(defn.Quotes_reflect_Apply_apply)
       .appliedTo(fn, argTrees)
 
-  /** Create tree for `quotes.reflect.TypeApply(<fn>, List(<args>*))` */
-  def TypeApply(fn: Tree, args: List[Tree])(using Context) =
+  /** Create tree for `quotes.reflect.TypeApply(<fn>, Vector(<args>*))` */
+  def TypeApply(fn: Tree, args: Vector[Tree])(using Context) =
     val argTrees = tpd.mkList(args, TypeTreeTpt)
     self.select(defn.Quotes_reflect_TypeApply)
       .select(defn.Quotes_reflect_TypeApply_apply)
@@ -75,7 +75,7 @@ trait ReifiedReflect:
       .select(defn.Quotes_reflect_TypeRepr_of)
       .appliedToType(tpe)
       .appliedTo(
-        tpd.Quote(TypeTree(tpe), Nil)
+        tpd.Quote(TypeTree(tpe), Vector())
           .select(nme.apply)
           .appliedTo(quotesTree)
       )

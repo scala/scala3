@@ -416,7 +416,7 @@ class ShortenedTypePrinter(
       isUsingClause(params) || isTypeParamClause(params)
 
     val paramss =
-      if gsym.rawParamss.length != 0 then gsym.rawParamss else gsym.paramSymss
+      (if gsym.rawParamss.length != 0 then gsym.rawParamss else gsym.paramSymss).map(_.toList).toList
     if gsym.is(Flags.ExtensionMethod) then
       val filteredParams =
         if gsym.name.isRightAssocOperatorName then
@@ -547,7 +547,7 @@ class ShortenedTypePrinter(
       .map(_.info)
       .collect {
         // AppliedType(TypeRef(ThisType(TypeRef(NoPrefix,module class reflect)),trait ClassTag),List(TypeRef(NoPrefix,type T)))
-        case AppliedType(tycon, TypeRef(_, tparam) :: Nil)
+        case AppliedType(tycon, Vector(TypeRef(_, tparam)))
             if tparam.isInstanceOf[Symbol] =>
           (tycon, tparam.asInstanceOf[Symbol])
       }

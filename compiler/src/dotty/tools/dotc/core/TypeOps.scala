@@ -227,12 +227,12 @@ object TypeOps:
   def orDominator(tp: Type)(using Context): Type = {
 
     /** a faster version of cs1 intersect cs2 */
-    def intersect(cs1: List[ClassSymbol], cs2: List[ClassSymbol]): List[ClassSymbol] =
+    def intersect(cs1: Vector[ClassSymbol], cs2: Vector[ClassSymbol]): Vector[ClassSymbol] =
       val cs2AsSet = BaseClassSet(cs2)
       cs1.filter(cs2AsSet.contains)
 
     /** a version of Type#baseClasses that treats bottom types correctly */
-    def orBaseClasses(tp: Type): List[ClassSymbol] = tp.stripTypeVar match
+    def orBaseClasses(tp: Type): Vector[ClassSymbol] = tp.stripTypeVar match
       case OrType(tp1, tp2) =>
         if tp1.isBottomType && (tp1 frozen_<:< tp2) then orBaseClasses(tp2)
         else if tp2.isBottomType && (tp2 frozen_<:< tp1) then orBaseClasses(tp1)
@@ -240,13 +240,13 @@ object TypeOps:
       case _ => tp.baseClasses
 
     /** The minimal set of classes in `cs` which derive all other classes in `cs` */
-    def dominators(cs: List[ClassSymbol], accu: List[ClassSymbol]): List[ClassSymbol] = (cs: @unchecked) match {
-      case c :: rest =>
-        val accu1 = if accu.exists(_.derivesFrom(c)) then accu else c :: accu
+    def dominators(cs: Vector[ClassSymbol], accu: Vector[ClassSymbol]): Vector[ClassSymbol] = (cs: @unchecked) match {
+      case c +: rest =>
+        val accu1 = if accu.exists(_.derivesFrom(c)) then accu else c +: accu
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
-      case Nil => // this case can happen because after erasure we do not have a top class anymore
+      case Vector() => // this case can happen because after erasure we do not have a top class anymore
         assert(ctx.erasedTypes || ctx.reporter.errorsReported)
-        defn.ObjectClass :: Nil
+        defn.ObjectClass +: Vector()
     }
 
     def mergeRefinedOrApplied(tp1: Type, tp2: Type): Type = {
@@ -389,7 +389,7 @@ object TypeOps:
       // Step 3: Intersect base classes of both sides
       val commonBaseClasses = orBaseClasses(tp).filterConserve(isAccessible)
 
-      val doms = dominators(commonBaseClasses, Nil)
+      val doms = dominators(commonBaseClasses, Vector())
       def baseTp(cls: ClassSymbol): Type =
         tp.baseType(cls).mapReduceOr(identity)(mergeRefinedOrApplied)
       doms.map(baseTp).reduceLeft(AndType.apply)
@@ -424,7 +424,7 @@ object TypeOps:
     val parentType = info.parents.reduceLeft(TypeComparer.andType(_, _))
     def isRefinable(sym: Symbol) =
       !sym.is(Private) && !sym.isConstructor && !sym.isClass
-    val (refinableDecls, missingDecls) = info.decls.toList.partition(isRefinable)
+    val (refinableDecls, missingDecls) = info.decls.toVector.partition(isRefinable)
 
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
@@ -448,7 +448,7 @@ object TypeOps:
     }
 
     def close(tp: Type) = RecType.closeOver { rt =>
-      tp.subst(cls :: Nil, rt.recThis :: Nil).substThis(cls, rt.recThis)
+      tp.subst(cls +: Vector(), rt.recThis +: Vector()).substThis(cls, rt.recThis)
     }
 
     val raw = refinableDecls.foldLeft(parentType)(addRefinement)
@@ -562,7 +562,7 @@ object TypeOps:
    *  does not update `ctx.nestingLevel` when entering a block so I'm leaving
    *  this as Future Work™.
    */
-  def avoid(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type = {
+  def avoid(tp: Type, symsToAvoid: => Vector[Symbol])(using Context): Type = {
     val widenMap = new AvoidMap {
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(tp: NamedType) = forbidden.contains(tp.symbol)
@@ -603,17 +603,17 @@ object TypeOps:
    *  (maybe it still needs to be revised).
    */
   def boundsViolations(
-      args: List[Tree],
-      boundss: List[TypeBounds],
-      instantiate: (Type, List[Type]) => Type,
+      args: Vector[Tree],
+      boundss: Vector[TypeBounds],
+      instantiate: (Type, Vector[Type]) => Type,
       app: Type)(
-      using Context): List[BoundsViolation] = withMode(Mode.CheckBoundsOrSelfType) {
+      using Context): Vector[BoundsViolation] = withMode(Mode.CheckBoundsOrSelfType) {
     val argTypes = args.tpes
 
     /** Replace all wildcards in `tps` with `<app>#<tparam>` where `<tparam>` is the
      *  type parameter corresponding to the wildcard.
      */
-    def skolemizeWildcardArgs(tps: List[Type], app: Type) = app match {
+    def skolemizeWildcardArgs(tps: Vector[Type], app: Type) = app match {
       case AppliedType(tycon: TypeRef, args)
       if tycon.typeSymbol.isClass && !Feature.migrateTo3 =>
         tps.zipWithConserve(tycon.typeSymbol.typeParams) {
@@ -700,9 +700,9 @@ object TypeOps:
       check(loBound, hi, "lower", loBound)(using checkCtx)
     }
 
-    def loop(args: List[Tree], boundss: List[TypeBounds]): Unit = args match
-      case arg :: args1 => boundss match
-        case bounds :: boundss1 =>
+    def loop(args: Vector[Tree], boundss: Vector[TypeBounds]): Unit = args match
+      case arg +: args1 => boundss match
+        case bounds +: boundss1 =>
 
           // Drop caps.Pure from a bound (1) at the top-level, (2) in an `&`, (3) under a type lambda.
           def dropPure(tp: Type): Option[Type] = tp match
@@ -736,7 +736,7 @@ object TypeOps:
       case _ =>
 
     loop(args, boundss)
-    violations.toList
+    violations.toVector
   }
 
   /** Refine child based on parent
@@ -758,7 +758,7 @@ object TypeOps:
    *  If the subtyping is true, the instantiated type `p.child[Vs]` is
    *  returned. Otherwise, `NoType` is returned.
    */
-  def refineUsingParent(parent: Type, child: Symbol, mixins: List[Type] = Nil)(using Context): Type = {
+  def refineUsingParent(parent: Type, child: Symbol, mixins: Vector[Type] = Vector())(using Context): Type = {
     // <local child> is a place holder from Scalac, it is hopeless to instantiate it.
     //
     // Quote from scalac (from nsc/symtab/classfile/Pickler.scala):
@@ -784,7 +784,7 @@ object TypeOps:
    *
    *  Otherwise, return NoType.
    */
-  private def instantiateToSubType(tp1: NamedType, tp2: Type, mixins: List[Type])(using Context): Type = trace(i"instantiateToSubType($tp1, $tp2, $mixins)", typr) {
+  private def instantiateToSubType(tp1: NamedType, tp2: Type, mixins: Vector[Type])(using Context): Type = trace(i"instantiateToSubType($tp1, $tp2, $mixins)", typr) {
     /** Gather GADT symbols and singletons found in `tp2`, ie. the scrutinee. */
     object TraverseTp2 extends TypeTraverser:
       val singletons = util.HashMap[Symbol, SingletonType]()
@@ -812,7 +812,7 @@ object TypeOps:
       catch case ex: Throwable => handleRecursive("traverseTp2", tp.show, ex)
     TraverseTp2.traverse(tp2)
     val singletons = TraverseTp2.singletons
-    val gadtSyms   = TraverseTp2.gadtSyms.toList
+    val gadtSyms   = TraverseTp2.gadtSyms.toVector
 
     // Prefix inference, given `p.C.this.Child`:
     //   1. return it as is, if `C.this` is found in `tp`, i.e. the scrutinee; or
@@ -937,7 +937,7 @@ object TypeOps:
     val prefixInferredTp = inferThisMap(tp1)
     val tvars = prefixInferredTp.etaExpand match
       case eta: TypeLambda => constrained(eta)
-      case _               => Nil
+      case _               => Vector()
     val protoTp1 = prefixInferredTp.appliedTo(tvars)
 
     if gadtSyms.nonEmpty then
@@ -971,7 +971,7 @@ object TypeOps:
     }
   }
 
-  def nestedPairs(ts: List[Type])(using Context): Type =
+  def nestedPairs(ts: Vector[Type])(using Context): Type =
     ts.foldRight(defn.EmptyTupleModule.termRef: Type)(defn.PairClass.typeRef.appliedTo(_, _))
 
   class StripTypeVarsMap(using Context) extends TypeMap:
@@ -980,7 +980,7 @@ object TypeOps:
   /** Map no-flip covariant occurrences of `into[T]` to `T @$into` */
   def suppressInto(using Context) = new FollowAliasesMap:
     def apply(t: Type): Type = t match
-      case AppliedType(tycon: TypeRef, arg :: Nil) if variance >= 0 && defn.isInto(tycon.symbol) =>
+      case AppliedType(tycon: TypeRef, arg +: Vector()) if variance >= 0 && defn.isInto(tycon.symbol) =>
         AnnotatedType(arg, Annotation(defn.SilentIntoAnnot, util.Spans.NoSpan))
       case _: MatchType | _: LazyRef =>
         t
@@ -993,7 +993,7 @@ object TypeOps:
       case AnnotatedType(t1, ann) if variance >= 0 && ann.symbol == defn.SilentIntoAnnot =>
         AppliedType(
           defn.ConversionModule.termRef.select(defn.Conversion_into), // the external reference to the opaque type
-          t1 :: Nil)
+          t1 +: Vector())
       case _: MatchType | _: LazyRef =>
         t
       case _ =>
@@ -1056,13 +1056,13 @@ object TypeOps:
         )
       )
 
-    def stripCommonPrefix(xs: List[Symbol], ys: List[Symbol]): (List[Symbol], List[Symbol]) = (xs, ys) match
-      case (x :: xs1, y :: ys1) if x eq y => stripCommonPrefix(xs1, ys1)
+    def stripCommonPrefix(xs: Vector[Symbol], ys: Vector[Symbol]): (Vector[Symbol], Vector[Symbol]) = (xs, ys) match
+      case (x +: xs1, y +: ys1) if x eq y => stripCommonPrefix(xs1, ys1)
       case _ => (xs, ys)
 
     val (parentRest, childRest) = stripCommonPrefix(
-      parent.owner.ownersIterator.toList.reverse,
-      child.owner.ownersIterator.toList.reverse
+      parent.owner.ownersIterator.toVector.reverse,
+      child.owner.ownersIterator.toVector.reverse
     )
 
     val commonPrefix = subPrefixAt(pre, parentRest.size) // unwind parent owners up to common prefix

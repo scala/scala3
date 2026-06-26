@@ -4,6 +4,7 @@ package typer
 
 import core.*
 import Run.SubPhase
+import Decorators.*
 import Phases.*
 import Contexts.*
 import Symbols.*
@@ -61,11 +62,11 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
   protected def discardAfterTyper(unit: CompilationUnit)(using Context): Boolean =
     (unit.isJava && !ctx.settings.XjavaTasty.value) || unit.suspended
 
-  override val subPhases: List[SubPhase] = List(
+  override val subPhases: Vector[SubPhase] = Vector(
     SubPhase("indexing"), SubPhase("typechecking"), SubPhase("checkingJava"))
 
-  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
-    val List(Indexing @ _, Typechecking @ _, CheckingJava @ _) = subPhases: @unchecked
+  override def runOn(units: Vector[CompilationUnit])(using Context): Vector[CompilationUnit] =
+    val Vector(Indexing @ _, Typechecking @ _, CheckingJava @ _) = subPhases: @unchecked
     val unitContexts =
       for unit <- units yield
         val newCtx0 = ctx.fresh.setPhase(this.start).setCompilationUnit(unit)
@@ -77,10 +78,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
           newCtx
 
     val unitContexts0 = runSubPhase(Indexing) {
-      for
-        unitContext <- unitContexts
-        if enterSyms(using unitContext)
-      yield unitContext
+      unitContexts.filterConserve(unitContext => enterSyms(using unitContext))
     }
 
     ctx.base.parserPhase match {
@@ -94,19 +92,13 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     }
 
     val unitContexts1 = runSubPhase(Typechecking) {
-      for
-        unitContext <- unitContexts0
-        if typeCheck(using unitContext)
-      yield unitContext
+      unitContexts0.filterConserve(unitContext => typeCheck(using unitContext))
     }
 
     record("total trees after typer", ast.Trees.ntrees)
 
     val unitContexts2 = runSubPhase(CheckingJava) {
-      for
-        unitContext <- unitContexts1
-        if javaCheck(using unitContext) // after typechecking to avoid cycles
-      yield unitContext
+      unitContexts1.filterConserve(unitContext => javaCheck(using unitContext)) // after typechecking to avoid cycles
     }
     val newUnits = unitContexts2.map(_.compilationUnit).filterNot(discardAfterTyper)
     ctx.run.nn.checkSuspendedUnits(newUnits)

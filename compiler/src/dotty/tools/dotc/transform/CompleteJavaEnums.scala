@@ -58,25 +58,25 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
           tp.derivedLambdaType(resType = addConstrParams(restpe))
         case _ =>
           tp.derivedLambdaType(
-            paramNames = tp.paramNames ++ List(nameParamName, ordinalParamName),
-            paramInfos = tp.paramInfos ++ List(defn.StringType, defn.IntType))
+            paramNames = tp.paramNames ++ Vector(nameParamName, ordinalParamName),
+            paramInfos = tp.paramInfos ++ Vector(defn.StringType, defn.IntType))
       }
   }
 
   /** The list of parameter definitions `$name: String, $ordinal: Int`, in given `owner`
    *  with given flags (either `Param` or `ParamAccessor`)
    */
-  private def addedParams(owner: Symbol, isLocal: Boolean, flag: FlagSet)(using Context): List[ValDef] = {
+  private def addedParams(owner: Symbol, isLocal: Boolean, flag: FlagSet)(using Context): Vector[ValDef] = {
     val flags = flag | Synthetic | (if isLocal then Private | Deferred else EmptyFlags)
     val nameParam = newSymbol(owner, nameParamName, flags, defn.StringType, coord = owner.span)
     val ordinalParam = newSymbol(owner, ordinalParamName, flags, defn.IntType, coord = owner.span)
-    List(ValDef(nameParam), ValDef(ordinalParam))
+    Vector(ValDef(nameParam), ValDef(ordinalParam))
   }
 
   /** Add arguments `args` to the parent constructor application in `parents` that invokes
    *  a constructor of `targetCls`,
    */
-  private def addEnumConstrArgs(targetCls: Symbol, parents: List[Tree], args: List[Tree])(using Context): List[Tree] =
+  private def addEnumConstrArgs(targetCls: Symbol, parents: Vector[Tree], args: Vector[Tree])(using Context): Vector[Tree] =
     parents.map {
       case app @ Apply(fn, args0) if fn.symbol.owner == targetCls =>
         if args0.nonEmpty && targetCls == defn.JavaEnumClass then
@@ -91,7 +91,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     if sym.isConstructor && sym.owner.derivesFromJavaEnum then
       val tree1 = cpy.DefDef(tree)(
         paramss = tree.paramss.init
-          :+ (tree.paramss.last.asInstanceOf[List[ValDef]]
+          :+ (tree.paramss.last.asInstanceOf[Vector[ValDef]]
               ++ addedParams(sym, isLocal=false, Param)))
       sym.setParamssFromDefs(tree1.paramss)
       tree1
@@ -101,7 +101,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   /** Return a list of forwarders for enum values defined in the companion object
    *  for java interop.
    */
-  private def addedEnumForwarders(clazz: Symbol)(using Context): List[MemberDef] = {
+  private def addedEnumForwarders(clazz: Symbol)(using Context): Vector[MemberDef] = {
     val moduleCls = clazz.companionClass
     val moduleRef = ref(clazz.companionModule)
 
@@ -119,7 +119,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         // Scala.js has no support for <clinit> so we must avoid assigning static fields in the enum class.
         // However, since the public contract for reading static fields in the IR ABI is to call "static getters",
         // we achieve the right contract with static forwarders instead.
-        DefDef(forwarderSym(EnumValue | Method | JavaStatic, MethodType(Nil, enumValue.info)), body)
+        DefDef(forwarderSym(EnumValue | Method | JavaStatic, MethodType(Vector(), enumValue.info)), body)
       else
         val sym = forwarderSym(EnumValue | JavaStatic | Mutable, enumValue.info)
         forwarderSyms += sym
@@ -128,7 +128,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
 
     // Store forwarder symbols for later use in companion initialization
     if forwarderSyms.nonEmpty then
-      enumForwarders(clazz) = forwarderSyms.toList
+      enumForwarders(clazz) = forwarderSyms.toVector
 
     result
   }
@@ -138,13 +138,13 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
    *  For each enum value, generates: EnumClass.enumValue = Module.enumValue
    *  see: https://github.com/scala/scala3/issues/12637
    */
-  private def enumForwarderInitializers(moduleCls: Symbol)(using Context): List[Tree] = {
+  private def enumForwarderInitializers(moduleCls: Symbol)(using Context): Vector[Tree] = {
     if ctx.settings.scalajs.value then
-      Nil // Scala.js uses methods, no initialization needed
+      Vector() // Scala.js uses methods, no initialization needed
     else
       val enumClass = moduleCls.linkedClass
-      val forwarderSyms = enumForwarders.get(enumClass).getOrElse(Nil)
-      val enums = moduleCls.info.decls.filter(member => member.isAllOf(EnumValue)).toList
+      val forwarderSyms = enumForwarders.get(enumClass).getOrElse(Vector())
+      val enums = moduleCls.info.decls.filter(member => member.isAllOf(EnumValue)).toVector
 
       forwarderSyms.zip(enums).map { case (forwarderSym, enumValue) =>
         val lhs = ref(forwarderSym)
@@ -159,7 +159,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     && cls.owner.owner.linkedClass.derivesFromJavaEnum
 
   private val enumCaseOrdinals = MutableSymbolMap[Int]()
-  private val enumForwarders = MutableSymbolMap[List[Symbol]]()
+  private val enumForwarders = MutableSymbolMap[Vector[Symbol]]()
 
   private def registerEnumClass(cls: Symbol)(using Context): Unit =
     cls.children.zipWithIndex.foreach(enumCaseOrdinals.update)
@@ -204,9 +204,9 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         ref(cls.owner.paramSymss.head.find(_.name == name).get)
       val args =
         if cls.owner.isAllOf(EnumCase) then
-          List(Literal(Constant(cls.owner.name.toString)), Literal(Constant(ordinalFor(cls.owner))))
+          Vector(Literal(Constant(cls.owner.name.toString)), Literal(Constant(ordinalFor(cls.owner))))
         else
-          List(creatorParamRef(nme.nameDollar), creatorParamRef(nme.ordinalDollar_))
+          Vector(creatorParamRef(nme.nameDollar), creatorParamRef(nme.ordinalDollar_))
       cpy.Template(templ)(
         parents = addEnumConstrArgs(cls.owner.owner.linkedClass, templ.parents, args),
       )

@@ -147,7 +147,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
-    def paramTKs(app: Apply, take: Int = -1)(using Context): List[BType] = app match {
+    def paramTKs(app: Apply, take: Int = -1)(using Context): Vector[BType] = app match {
       case Apply(fun, _) =>
       val funSym = fun.symbol
       funSym.info.firstParamTypes.map(bTypeLoader.bTypeFromType) // this tracks mentioned inner classes (in innerClassBufferASM)
@@ -213,7 +213,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             claszSymbol,
             nme.STATIC_CONSTRUCTOR,
             JavaStatic | Method,
-            MethodType(Nil)(_ => Nil, _ => defn.UnitType),
+            MethodType(Vector())(_ => Vector(), _ => defn.UnitType),
             privateWithin = NoSymbol,
             coord = claszSymbol.coord
           )
@@ -245,14 +245,14 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         def rewire(stat: Tree) = thisMap.transform(stat).changeOwner(claszSymbol.primaryConstructor, clInitSymbol)
 
-        val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToTermArgs(Nil)
+        val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToTermArgs(Vector())
         val assignModuleField = Assign(ref(moduleField), callConstructor)
         val remainingConstrStatsSubst = remainingConstrStats.map(rewire)
         val clinit = clinits match {
-          case (ddef: DefDef) :: _ =>
-            cpy.DefDef(ddef)(rhs = Block(ddef.rhs :: assignModuleField :: remainingConstrStatsSubst, unitLiteral))
+          case (ddef: DefDef) +: _ =>
+            cpy.DefDef(ddef)(rhs = Block(ddef.rhs +: assignModuleField +: remainingConstrStatsSubst, unitLiteral))
           case _ =>
-            DefDef(clInitSymbol, Block(assignModuleField :: remainingConstrStatsSubst, unitLiteral))
+            DefDef(clInitSymbol, Block(assignModuleField +: remainingConstrStatsSubst, unitLiteral))
         }
 
         val constr2 = {
@@ -260,7 +260,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
           cpy.DefDef(impl.constr)(rhs = rhs)
         }
 
-        val impl2 = cpy.Template(impl)(constr = constr2, body = clinit :: body)
+        val impl2 = cpy.Template(impl)(constr = constr2, body = clinit +: body)
         cpy.TypeDef(cd0)(rhs = impl2)
       } else cd0
 
@@ -310,7 +310,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val additionalBTypes = superCallTargets.filter(!directInterfacesBTypes.contains(_))
       val interfaces = directInterfacesBTypes.filter(t => !baseClassesBTypes(t) || superCallTargets(t)) ++ additionalBTypes
 
-      val interfaceNames0 = interfaces.iterator.map(_.internalName).toList
+      val interfaceNames0 = interfaces.iterator.map(_.internalName).toVector
       /* To avoid deadlocks when combining objects, lambdas and multi-threading,
        * lambdas in objects are compiled to instance methods of the module class
        * instead of static methods (see tests/run/deadlock.scala and
@@ -484,9 +484,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
      *  The case of abrupt (ie exceptional) termination is covered by exception handlers
      *  emitted for that purpose as described in `genLoadTry()` and `genSynchronized()`.
      */
-    var cleanups: List[asm.Label] = Nil
+    var cleanups: Vector[asm.Label] = Vector()
     def registerCleanup(finCleanup: asm.Label | Null): Unit = {
-      if (finCleanup != null) { cleanups = finCleanup :: cleanups }
+      if (finCleanup != null) { cleanups = finCleanup +: cleanups }
     }
     def unregisterCleanup(finCleanup: asm.Label | Null): Unit = {
       if (finCleanup != null) {
@@ -586,7 +586,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /* ---------------- Part 2 of program points, ie Labels in the ASM world ---------------- */
 
     // bookkeeping the scopes of non-synthetic local vars, to emit debug info (`emitVars`).
-    var varsInScope: List[(Symbol, asm.Label)] | Null = null // (local-var-sym -> start-of-scope)
+    var varsInScope: Vector[(Symbol, asm.Label)] | Null = null // (local-var-sym -> start-of-scope)
 
     // helpers around program-points.
     def lastInsn: asm.tree.AbstractInsnNode = mnode.instructions.getLast
@@ -649,7 +649,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // check previous invocation of genDefDef exited as many varsInScope as it entered.
       assert(varsInScope == null, "Unbalanced entering/exiting of GenBCode's genBlock().")
       // check previous invocation of genDefDef unregistered as many cleanups as it registered.
-      assert(cleanups == Nil, "Previous invocation of genDefDef didn't unregister as many cleanups as it registered.")
+      assert(cleanups == Vector(), "Previous invocation of genDefDef didn't unregister as many cleanups as it registered.")
       earlyReturnVar      = null
       shouldEmitCleanup   = false
 
@@ -707,12 +707,12 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    private def initJMethod(flags: Int, params: List[Symbol])(using Context): Unit = {
+    private def initJMethod(flags: Int, params: Vector[Symbol])(using Context): Unit = {
 
       val mdesc = bTypeLoader.methodBTypeFromSymbol(methSymbol).descriptor
       val jgensig = getGenericSignature(methSymbol, claszSymbol, mdesc)
       val (excs, others) = methSymbol.annotations.partition(_.symbol eq defn.ThrowsAnnot)
-      val thrownExceptions: List[String] = getExceptions(excs)
+      val thrownExceptions: Vector[String] = getExceptions(excs)
 
       val bytecodeName =
         if (isMethSymStaticCtor) BCodeUtils.CLASS_CONSTRUCTOR_NAME
@@ -761,7 +761,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val origSym = dd.symbol.asTerm
       val newSym = SymbolUtils.makeStatifiedDefSymbol(origSym, origSym.name)
       tpd.DefDef(newSym, { paramRefss =>
-        val selfParamRef :: regularParamRefs = paramRefss.head: @unchecked
+        val selfParamRef +: regularParamRefs = paramRefss.head: @unchecked
         val enclosingClass = origSym.owner.asClass
         new TreeTypeMap(
           typeMap = _.substThis(enclosingClass, selfParamRef.symbol.termRef)
@@ -773,8 +773,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
               selfParamRef.withSpan(tree.span)
             case tree => tree
           },
-          oldOwners = origSym :: Nil,
-          newOwners = newSym :: Nil
+          oldOwners = origSym +: Vector(),
+          newOwners = newSym +: Vector()
         ).transform(dd.rhs)
       })
 
@@ -824,9 +824,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // add method-local vars for params
 
       assert(vparamss.isEmpty || vparamss.tail.isEmpty, s"Malformed parameter list: $vparamss")
-      val params = if (vparamss.isEmpty) Nil else vparamss.head
+      val params = if (vparamss.isEmpty) Vector() else vparamss.head
       for (p <- params) { locals.makeLocal(p.symbol) }
-      // debug assert((params.map(p => locals(p.symbol).tk)) == asmMethodType(methSymbol).getArgumentTypes.toList, "debug")
+      // debug assert((params.map(p => locals(p.symbol).tk)) == asmMethodType(methSymbol).getArgumentTypes.toVector, "debug")
 
       val paramsSize = params.map { param =>
         val tpeTym = param.symbol.info.typeSymbol
@@ -858,9 +858,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       if (!isAbstractMethod && !isNative) {
         // #14773 Reuse locals slots for tailrec-generated mutable vars
         val trimmedRhs: Tree =
-          @tailrec def loop(stats: List[Tree]): List[Tree] =
+          @tailrec def loop(stats: Vector[Tree]): Vector[Tree] =
             stats match
-              case (tree @ ValDef(TailLocalName(_, _), _, _)) :: rest if tree.symbol.isAllOf(Mutable | Synthetic) =>
+              case (tree @ ValDef(TailLocalName(_, _), _, _)) +: rest if tree.symbol.isAllOf(Mutable | Synthetic) =>
                 tree.rhs match
                   case This(_) =>
                     locals.reuseThisSlot(tree.symbol)

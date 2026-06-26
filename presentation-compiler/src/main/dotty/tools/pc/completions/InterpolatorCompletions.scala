@@ -70,7 +70,7 @@ object InterpolatorCompletions:
   ): PartialFunction[Tree, Option[Ident | Select]] =
     case Apply(
           _,
-          List(Typed(expr: SeqLiteral, _))
+          Vector(Typed(expr: SeqLiteral, _))
         ) if expr.elems.exists {
           case _: Ident => true
           case _: Select => true

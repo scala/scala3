@@ -47,7 +47,7 @@ object Comments {
     span: Span,
     raw: String,
     expanded: Option[String],
-    usecases: List[UseCase],
+    usecases: Vector[UseCase],
     variables: Map[String, String],
   ) {
 
@@ -79,11 +79,11 @@ object Comments {
     def isDocComment(comment: String): Boolean = comment.startsWith("/**")
 
     def apply(span: Span, raw: String): Comment =
-      Comment(span, raw, None, Nil, Map.empty)
+      Comment(span, raw, None, Vector(), Map.empty)
 
-    private def parseUsecases(expandedComment: String, span: Span)(using Context): List[UseCase] =
+    private def parseUsecases(expandedComment: String, span: Span)(using Context): Vector[UseCase] =
       if (!isDocComment(expandedComment))
-        Nil
+        Vector()
       else
         tagIndex(expandedComment)
           .filter { startsWithTag(expandedComment, _, "@usecase") }
@@ -168,11 +168,11 @@ object Comments {
     private def template(raw: String): String =
       removeSections(raw, "@define")
 
-    private def defines(raw: String): List[String] = {
+    private def defines(raw: String): Vector[String] = {
       val sections = tagIndex(raw)
       val defines = sections filter { startsWithTag(raw, _, "@define") }
       val usecases = sections filter { startsWithTag(raw, _, "@usecase") }
-      val end = startTag(raw, (defines ::: usecases).sortBy(_._1))
+      val end = startTag(raw, (defines ++ usecases).sortBy(_._1))
 
       defines map { case (start, end) => raw.substring(start, end) }
     }
@@ -328,7 +328,7 @@ object Comments {
           }
         }
 
-        def mainComment(str: String, sections: List[(Int, Int)]): String =
+        def mainComment(str: String, sections: Vector[(Int, Int)]): String =
           if (str.trim.length > 3)
             str.trim.substring(3, startTag(str, sections))
           else
@@ -423,7 +423,7 @@ object Comments {
       case NoSymbol => None
       case _        =>
         val searchList =
-          if (site.flags.is(Flags.Module)) site :: site.info.baseClasses
+          if (site.flags.is(Flags.Module)) site +: site.info.baseClasses
           else site.info.baseClasses
 
         searchList collectFirst { case x if defs(x) contains vble => defs(x)(vble) } match {
@@ -443,9 +443,9 @@ object Comments {
      *  an infinite loop has broken out between superComment and cookedDocComment
      *  since r23926.
      */
-    private def allInheritedOverriddenSymbols(sym: Symbol)(using Context): List[Symbol] =
-      if (!sym.owner.isClass) Nil
-      else sym.allOverriddenSymbols.toList.filter(_ != NoSymbol) //TODO: could also be `sym.owner.allOverrid..`
+    private def allInheritedOverriddenSymbols(sym: Symbol)(using Context): Vector[Symbol] =
+      if (!sym.owner.isClass) Vector()
+      else sym.allOverriddenSymbols.toVector.filter(_ != NoSymbol) //TODO: could also be `sym.owner.allOverrid..`
       //else sym.owner.ancestors map (sym overriddenSymbol _) filter (_ != NoSymbol)
 
     class ExpansionLimitExceeded(str: String) extends Exception

@@ -5,6 +5,7 @@ package typer
 import core.*
 import ast.{Trees, untpd, tpd}
 import Contexts.*
+import Decorators.*
 import Types.*
 import Flags.*
 import Symbols.*
@@ -102,7 +103,7 @@ abstract class Lifter {
   /** Lift arguments that are not-idempotent into ValDefs in buffer `defs`
    *  and replace by the idents of so created ValDefs.
    */
-  def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(using Context): List[Tree] =
+  def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: Vector[Tree])(using Context): Vector[Tree] =
     methRef.widen match {
       case mt: MethodType =>
         args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map: (arg, name, tp) =>
@@ -258,7 +259,7 @@ object EtaExpansion extends LiftImpure {
       case rt: MethodType => rt.isImplicitMethod
       case _ => true
     }
-    val paramTypes: List[Tree] =
+    val paramTypes: Vector[Tree] =
       if (isLastApplication && mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
       else mt.paramInfos map TypeTree
     var paramFlag = SyntheticParam
@@ -266,7 +267,7 @@ object EtaExpansion extends LiftImpure {
     else if (mt.isImplicitMethod) paramFlag |= Implicit
     val params = mt.paramNames.lazyZip(paramTypes).map((name, tpe) =>
       ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.span.startPos))
-    var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.span.startPos))
+    var ids: Vector[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.span.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
     val body = Apply(lifted, ids)
@@ -276,6 +277,6 @@ object EtaExpansion extends LiftImpure {
       else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit), mt.paramErasureStatuses)
       else if (mt.hasErasedParams) new untpd.FunctionWithMods(params, body, Modifiers(), mt.paramErasureStatuses)
       else untpd.Function(params, body)
-    if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
+    if (defs.nonEmpty) untpd.Block(defs.toVector map (untpd.TypedSplice(_)), fn) else fn
   }
 }

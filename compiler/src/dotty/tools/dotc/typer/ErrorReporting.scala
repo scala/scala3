@@ -39,7 +39,7 @@ object ErrorReporting {
     ErrorType(ex.toMessage)
   }
 
-  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree], pos: SrcPos)(using Context): ErrorType =
+  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: Vector[ParamInfo], actual: Vector[untpd.Tree], pos: SrcPos)(using Context): ErrorType =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual), pos)
 
   def missingArgs(tree: Tree, mt: Type)(using Context): Unit =
@@ -120,7 +120,7 @@ object ErrorReporting {
       i"$kind $tpe"
     }
 
-    def overloadedAltsStr(alts: List[SingleDenotation]): String =
+    def overloadedAltsStr(alts: Vector[SingleDenotation]): String =
       i"""overloaded alternatives of ${denotStr(alts.head)} with types
          | ${alts map (_.info)}%\n %"""
 
@@ -168,7 +168,7 @@ object ErrorReporting {
 
     def patternConstrStr(tree: Tree): String = ???
 
-    def typeMismatch(tree: Tree, pt: Type, notes: List[Note] = Nil): Tree = {
+    def typeMismatch(tree: Tree, pt: Type, notes: Vector[Note] = Vector()): Tree = {
       val normTp = normalize(tree.tpe, pt)
       val normPt = normalize(pt, pt)
 
@@ -187,24 +187,24 @@ object ErrorReporting {
 
       def moreNotes = tree match
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
-          Note("\n\nMaybe you are missing an else part for the conditional?") :: Nil
+          Note("\n\nMaybe you are missing an else part for the conditional?") +: Vector()
         case Literal(Constant(())) if tree.span.isZeroExtent =>
           ctx.tree match
             case Block(stats, EmptyTree) if stats.nonEmpty =>
               def after = stats.last match
                 case stat: MemberDef => i" after the definition of `${stat.name}`"
                 case _ => ""
-              Note(i"\n\nMaybe the enclosing block is missing a final expression$after?") :: Nil
+              Note(i"\n\nMaybe the enclosing block is missing a final expression$after?") +: Vector()
             case _ =>
-              Nil
+              Vector()
         case _ if tree.span.isZeroExtent && isCaptureChecking =>
           def synthText =
             if tree.isInstanceOf[DefTree]
             then i"definition of ${tree.symbol} in:  $tree"
             else i"tree:  $tree"
-          Note(i"\n\nThe error occurred for a synthesized $synthText") :: Nil
+          Note(i"\n\nThe error occurred for a synthesized $synthText") +: Vector()
         case _ =>
-          Nil
+          Vector()
 
       errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), notes ++ moreNotes))
     }
@@ -261,7 +261,7 @@ object ErrorReporting {
         "\npossible cause: maybe a wrong Dynamic method signature?"
       else if attempts.nonEmpty then
         val attemptStrings =
-          attempts.toList
+          attempts.toVector
             .map((tree, whyFailed) => (tree.showIndented(4), whyFailed))
             .distinctBy(_._1)
             .map((treeStr, whyFailed) =>
@@ -294,11 +294,11 @@ object ErrorReporting {
     end selectErrorAddendum
   }
 
-  def substitutableTypeSymbolsInScope(sym: Symbol)(using Context): List[Symbol] =
+  def substitutableTypeSymbolsInScope(sym: Symbol)(using Context): Vector[Symbol] =
     sym.ownersIterator.takeWhile(!_.is(Flags.Package)).flatMap { ownerSym =>
       ownerSym.paramSymss.flatten.filter(_.isType) ++
       ownerSym.typeRef.nonClassTypeMembers.map(_.symbol)
-    }.toList
+    }.toVector
 
   def dependentMsg =
     """Term-dependent types are experimental,

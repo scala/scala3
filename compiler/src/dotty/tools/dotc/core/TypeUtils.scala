@@ -49,11 +49,11 @@ class TypeUtils:
 
     def ensureMethodic(using Context): Type = self match {
       case self: MethodicType => self
-      case _ => if (ctx.erasedTypes) MethodType(Nil, self) else ExprType(self)
+      case _ => if (ctx.erasedTypes) MethodType(Vector(), self) else ExprType(self)
     }
 
     def widenToParents(using Context): Type = self.parents match {
-      case Nil => self
+      case Vector() => self
       case ps => ps.reduceLeft(AndType(_, _))
     }
 
@@ -64,7 +64,7 @@ class TypeUtils:
 
     /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs
      */
-    def tupleElementTypes(using Context): Option[List[Type]] =
+    def tupleElementTypes(using Context): Option[Vector[Type]] =
       tupleElementTypesUpTo(Int.MaxValue)
 
     /** The element types of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs
@@ -74,19 +74,19 @@ class TypeUtils:
      *                   If false, never normalize and dealias only to find *:
      *                   and EmptyTuple types. This is useful for printing.
      */
-    def tupleElementTypesUpTo(bound: Int, normalize: Boolean = true)(using Context): Option[List[Type]] =
-      def recur(tp: Type, bound: Int): Option[List[Type]] =
-        if bound < 0 then Some(Nil)
+    def tupleElementTypesUpTo(bound: Int, normalize: Boolean = true)(using Context): Option[Vector[Type]] =
+      def recur(tp: Type, bound: Int): Option[Vector[Type]] =
+        if bound < 0 then Some(Vector())
         else (if normalize then tp.dealias.normalized else tp).dealias match
-          case AppliedType(tycon, hd :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
-            recur(tl, bound - 1).map(hd :: _)
+          case AppliedType(tycon, hd +: tl +: Vector()) if tycon.isRef(defn.PairClass) =>
+            recur(tl, bound - 1).map(hd +: _)
           case tp: AppliedType if defn.isTupleNType(tp) && normalize =>
             Some(tp.args)  // if normalize is set, use the dealiased tuple
                            // otherwise rely on the default case below to print unaliased tuples.
           case tp: SkolemType =>
             recur(tp.underlying, bound)
           case tp: SingletonType =>
-            if tp.termSymbol == defn.EmptyTupleModule then Some(Nil)
+            if tp.termSymbol == defn.EmptyTupleModule then Some(Vector())
             else if normalize then recur(tp.widen, bound)
             else None
           case _ =>
@@ -136,24 +136,24 @@ class TypeUtils:
         case Some(types) => TypeOps.nestedPairs(types)
         case None => throw new AssertionError("not a tuple")
 
-    def namedTupleElementTypesUpTo(bound: Int, derived: Boolean, normalize: Boolean = true)(using Context): List[(TermName, Type)] =
-      def extractNamesTypes(nmes: Type, vals: Type): List[(TermName, Type)] =
-        val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil).map(_.dealias).map:
+    def namedTupleElementTypesUpTo(bound: Int, derived: Boolean, normalize: Boolean = true)(using Context): Vector[(TermName, Type)] =
+      def extractNamesTypes(nmes: Type, vals: Type): Vector[(TermName, Type)] =
+        val names = nmes.tupleElementTypesUpTo(bound, normalize).getOrElse(Vector()).map(_.dealias).map:
           case ConstantType(Constant(str: String)) => str.toTermName
           case t => throw TypeError(em"Malformed NamedTuple: names must be string types, but $t was found.")
-        val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Nil)
+        val values = vals.tupleElementTypesUpTo(bound, normalize).getOrElse(Vector())
         names.zip(values)
 
       (if normalize then self.normalized else self).dealias match
         // for desugaring and printer, ignore derived types to avoid infinite recursion in NamedTuple.unapply
         case defn.NamedTupleDirect(nmes, vals) => extractNamesTypes(nmes, vals)
-        case t if !derived => Nil
+        case t if !derived => Vector()
         // default cause, used for post-typing
         case defn.NamedTuple(nmes, vals) => extractNamesTypes(nmes, vals)
         case t =>
-          Nil
+          Vector()
 
-    def namedTupleElementTypes(derived: Boolean)(using Context): List[(TermName, Type)] =
+    def namedTupleElementTypes(derived: Boolean)(using Context): Vector[(TermName, Type)] =
       namedTupleElementTypesUpTo(Int.MaxValue, derived)
 
     /** If this is a generic tuple type with arity <= MaxTupleArity, return the
@@ -259,7 +259,7 @@ class TypeUtils:
      *  @param adaptVarargs   if true, allow a constructor with just a varargs argument to
      *                        match an empty argument list.
      */
-    def applicableConstructors(argTypes: List[Type], adaptVarargs: Boolean)(using Context): List[Symbol] =
+    def applicableConstructors(argTypes: Vector[Type], adaptVarargs: Boolean)(using Context): Vector[Symbol] =
       def isApplicable(constr: Symbol): Boolean =
         def recur(ctpe: Type): Boolean = ctpe match
           case ctpe: PolyType =>

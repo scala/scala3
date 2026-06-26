@@ -9,22 +9,22 @@ object ScalaSettingsProperties:
   private val maxTargetVersion = 26
   private val minReleaseVersion = 17
 
-  def supportedTargetVersions: List[String] =
-    (minTargetVersion to maxTargetVersion).toList.map(_.toString)
+  def supportedTargetVersions: Vector[String] =
+    (minTargetVersion to maxTargetVersion).toVector.map(_.toString)
 
-  def supportedReleaseVersions: List[String] =
+  def supportedReleaseVersions: Vector[String] =
     val jdkVersion = Runtime.version().feature()
     val maxVersion = Math.min(jdkVersion, maxTargetVersion)
-    (minReleaseVersion to maxVersion).toList.map(_.toString)
+    (minReleaseVersion to maxVersion).toVector.map(_.toString)
 
-  def supportedSourceVersions: List[String] =
+  def supportedSourceVersions: Vector[String] =
     SourceVersion.values.diff(SourceVersion.illegalInSettings)
-      .map(_.toString).toList
+      .map(_.toString).toVector
 
-  def supportedLanguageFeatures: List[ChoiceWithHelp[String]] =
+  def supportedLanguageFeatures: Vector[ChoiceWithHelp[String]] =
     Feature.values.map((n, d) => ChoiceWithHelp(n.toString, d))
 
-  val legacyLanguageFeatures: List[String] =
+  val legacyLanguageFeatures: Vector[String] =
     Feature.legacyFeatures
 
   def defaultClasspath: String = sys.env.getOrElse("CLASSPATH", ".")

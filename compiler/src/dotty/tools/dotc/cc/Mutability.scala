@@ -176,15 +176,15 @@ object Mutability:
         case _ =>
           actual
     case actual @ AppliedType(atycon, aargs) =>
-      def improveArgs(aargs: List[Type], eargs: List[Type], formals: List[ParamInfo]): List[Type] =
-        aargs match
-          case aargs @ (aarg :: aargs1) =>
+      def improveArgs(aargs: Vector[Type], eargs: Vector[Type], formals: Vector[ParamInfo]): Vector[Type] =
+        (aargs: @unchecked) match
+          case aargs @ (aarg +: aargs1) =>
             val aarg1 =
               if formals.head.paramVariance.is(Covariant)
               then adaptReadOnlyToExpected(aarg, eargs.head)
               else aarg
             aargs.derivedCons(aarg1, improveArgs(aargs1, eargs.tail, formals.tail))
-          case Nil =>
+          case Vector() =>
             aargs
       val expected1 = expected.dealias.stripCapturing
       val esym = expected1.typeSymbol

@@ -27,8 +27,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   /**
    * The map contains the list of the offset trees.
    */
-  class OffsetInfo(var defs: List[Tree], var ord: Int = 0)
-  class VarHandleInfo(var defs: List[Tree])
+  class OffsetInfo(var defs: Vector[Tree], var ord: Int = 0)
+  class VarHandleInfo(var defs: Vector[Tree])
 
   private val appendOffsetDefs = mutable.Map.empty[Symbol, OffsetInfo]
   private val appendVarHandleDefs = mutable.Map.empty[Symbol, VarHandleInfo]
@@ -37,7 +37,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   override def description: String = LazyVals.description
 
-  /** List of names of phases that should have finished processing of tree
+  /** Vector of names of phases that should have finished processing of tree
     * before this phase starts processing same tree */
   override def runsAfter: Set[String] = Set(Mixin.name, CollectNullableFields.name)
 
@@ -53,8 +53,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   private def nullableFor(sym: Symbol)(using Context) = {
     // optimisation: value only used once, we can remove the value from the map
     val nullables = lazyValNullables.nn.remove(sym)
-    if (nullables == null) Nil
-    else nullables.toList
+    if (nullables == null) Vector()
+    else nullables.toVector
   }
 
   private def needsBoxing(tp: Type)(using Context): Boolean = tp.classSymbol.isPrimitiveValueClass
@@ -126,9 +126,9 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       }
   }
 
-  private def addInFront(prefix: List[Tree], stats: List[Tree]) = stats match {
-    case first :: rest if isSuperConstrCall(first) => first :: prefix ::: rest
-    case _ => prefix ::: stats
+  private def addInFront(prefix: Vector[Tree], stats: Vector[Tree]) = stats match {
+    case first +: rest if isSuperConstrCall(first) => first +: (prefix ++ rest)
+    case _ => prefix ++ stats
   }
 
   /** Make an eager val that would implement synthetic module.
@@ -168,7 +168,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val holderName = LazyLocalName.fresh(xname)
     val holderImpl = defn.LazyHolder()(tpe.typeSymbol)
     val holderSymbol = newSymbol(x.symbol.owner, holderName, containerFlags, holderImpl.typeRef, coord = x.span)
-    val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, Nil))
+    val holderTree = ValDef(holderSymbol, New(holderImpl.typeRef, Vector()))
 
     val holderRef = ref(holderSymbol)
     val getValue = holderRef.select(lazyNme.value).ensureApplied.withSpan(x.span)
@@ -179,7 +179,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     //   else x$lzy.initialize(<RHS>)
     // }
     val initName = LazyLocalInitName.fresh(xname)
-    val initSymbol = newSymbol(x.symbol.owner, initName, initFlags, MethodType(Nil, tpe), coord = x.span)
+    val initSymbol = newSymbol(x.symbol.owner, initName, initFlags, MethodType(Vector(), tpe), coord = x.span)
     val rhs = x.rhs.changeOwnerAfter(x.symbol, initSymbol, this)
     val initialize = holderRef.select(lazyNme.initialize).appliedTo(rhs)
     val initBody = holderRef
@@ -196,7 +196,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     Thicket(holderTree, initTree, accessor)
   }
 
-  override def transformStats(trees: List[tpd.Tree])(using Context): List[Tree] = {
+  override def transformStats(trees: Vector[tpd.Tree])(using Context): Vector[Tree] = {
     // backend requires field usage to be after field definition
     // need to bring containers to start of method
     val (holders, stats) =
@@ -205,10 +205,10 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         // Filtering out Touched is not required currently, as there are no LazyTypes involved here
         // but just to be more safe
       }
-    holders:::stats
+    holders++stats
   }
 
-  private def nullOut(nullables: List[Symbol])(using Context): List[Tree] =
+  private def nullOut(nullables: Vector[Symbol])(using Context): Vector[Tree] =
     nullables.map { field =>
       assert(field.isField)
       field.setFlag(Mutable)
@@ -249,13 +249,13 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
   def mkThreadUnsafeDef(sym: Symbol, flag: Symbol, target: Symbol, rhs: Tree)(using Context): DefDef = {
     val targetRef = ref(target)
     val flagRef = ref(flag)
-    val stats = targetRef.becomes(rhs) :: flagRef.becomes(Literal(Constant(true))) :: nullOut(nullableFor(sym))
+    val stats = targetRef.becomes(rhs) +: flagRef.becomes(Literal(Constant(true))) +: nullOut(nullableFor(sym))
     val init = If(
       flagRef.ensureApplied.select(nme.UNARY_!).ensureApplied,
       Block(stats.init, stats.last),
       unitLiteral
     )
-    DefDef(sym.asTerm, Block(List(init), targetRef.ensureApplied))
+    DefDef(sym.asTerm, Block(Vector(init), targetRef.ensureApplied))
   }
 
   /** Create thread-unsafe lazy accessor for not-nullable types  equivalent to such code
@@ -271,13 +271,13 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     */
   def mkDefThreadUnsafeNonNullable(sym: Symbol, target: Symbol, rhs: Tree)(using Context): DefDef = {
     val targetRef = ref(target)
-    val stats = targetRef.becomes(rhs) :: nullOut(nullableFor(sym))
+    val stats = targetRef.becomes(rhs) +: nullOut(nullableFor(sym))
     val init = If(
       targetRef.select(nme.eq).appliedTo(nullLiteral),
       Block(stats.init, stats.last),
       unitLiteral
     )
-    DefDef(sym.asTerm, Block(List(init), targetRef.ensureApplied))
+    DefDef(sym.asTerm, Block(Vector(init), targetRef.ensureApplied))
   }
 
   def transformMemberDefThreadUnsafe(x: ValOrDefDef)(using Context): Thicket = {
@@ -363,11 +363,11 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val casFlag =
       typer.Applications.retypeSignaturePolymorphicFn( // must be retyped to avoid wrapping into Array[Object]
         Select(varHandle, lazyNme.compareAndSet),
-        MethodType(List(defn.ObjectType,defn.ObjectType,defn.ObjectType), defn.BooleanType)
+        MethodType(Vector(defn.ObjectType,defn.ObjectType,defn.ObjectType), defn.BooleanType)
       )
     val accessorMethodSymbol = memberDef.symbol.asTerm
     val lazyInitMethodName = LazyLocalInitName.fresh(memberDef.name.asTermName)
-    val lazyInitMethodSymbol = newSymbol(claz, lazyInitMethodName, Synthetic | Method | Private, MethodType(Nil)(_ => Nil, _ => defn.ObjectType))
+    val lazyInitMethodSymbol = newSymbol(claz, lazyInitMethodName, Synthetic | Method | Private, MethodType(Vector())(_ => Vector(), _ => defn.ObjectType))
 
     val rhs = memberDef.rhs
     val rhsMappedOwner = rhs.changeOwnerAfter(memberDef.symbol, lazyInitMethodSymbol, this)
@@ -383,7 +383,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
     val accessorBody =
       Block(
-        ValDef(valueSymbol, ref(target)) :: Nil,
+        ValDef(valueSymbol, ref(target)) +: Vector(),
         If( // if _x != null && !_x.isInstanceOf[LazyValControlState] then
           immediateValueCondition,
             ref(valueSymbol).ensureConforms(tp), // then return _x.asInstanceOf[A]
@@ -406,7 +406,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       val lockRel = {
         val lockSymb = newSymbol(lazyInitMethodSymbol, lazyNme.lock, Synthetic, waiting.typeOpt)
         Block(ValDef(lockSymb, ref(target).cast(waiting.typeOpt))
-          :: casFlag.appliedTo(thiz, ref(lockSymb), ref(resSymb)) :: Nil,
+          +: casFlag.appliedTo(thiz, ref(lockSymb), ref(resSymb)) +: Vector(),
           ref(lockSymb).select(lazyNme.RLazyVals.waitingRelease).ensureApplied)
       }
       // finally block
@@ -420,20 +420,20 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
         Block(
           (Assign(ref(resSymbNullable), if needsBoxing(tp) && rhsMappedOwner != EmptyTree then rhsMappedOwner.ensureConforms(defn.boxedType(tp)) else rhsMappedOwner) // try result = rhs
-          :: If(
+          +: If(
               ref(resSymbNullable).select(defn.Object_eq).appliedTo(nullLiteral),
               Assign(ref(resSymb), nullValue),
               Assign(ref(resSymb), ref(resSymbNullable))
-          ) :: Nil)
-          ::: nullOut(nullableFor(accessorMethodSymbol)),
+          ) +: Vector())
+          ++ nullOut(nullableFor(accessorMethodSymbol)),
           unitLiteral),
-        Nil,
+        Vector(),
         fin
       )
       // if CAS(_, null, Evaluating)
       If(
         casFlag.appliedTo(thiz, nullLiteral, evaluating),
-        Block(ValDef(resSymb, nullLiteral) :: ValDef(resSymbNullable, nullLiteral) :: evaluate :: Nil, // var result: AnyRef = null
+        Block(ValDef(resSymb, nullLiteral) +: ValDef(resSymbNullable, nullLiteral) +: evaluate +: Vector(), // var result: AnyRef = null
           Return(ref(resSymbNullable), lazyInitMethodSymbol)),
         unitLiteral
       ).withType(defn.UnitType)
@@ -448,7 +448,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
             ref(current).select(defn.Object_eq).appliedTo(evaluating),
             // if is Evaluating then CAS(_, Evaluating, new Waiting)
             Block(
-              casFlag.appliedTo(thiz, ref(current), Select(New(waiting), StdNames.nme.CONSTRUCTOR).ensureApplied) :: Nil,
+              casFlag.appliedTo(thiz, ref(current), Select(New(waiting), StdNames.nme.CONSTRUCTOR).ensureApplied) +: Vector(),
               unitLiteral
             ),
             // if not Evaluating
@@ -463,7 +463,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         Return(ref(current), lazyInitMethodSymbol)
       )
 
-    val initBody = Block(ValDef(current, ref(target)) :: Nil, If(ref(current).select(defn.Object_eq).appliedTo(nullLiteral), initialize, ifNotUninitialized).withType(defn.UnitType))
+    val initBody = Block(ValDef(current, ref(target)) +: Vector(), If(ref(current).select(defn.Object_eq).appliedTo(nullLiteral), initialize, ifNotUninitialized).withType(defn.UnitType))
     val initMainLoop = WhileDo(EmptyTree, initBody) // becomes: while (true) do { body }
     val initMethodDef = DefDef(lazyInitMethodSymbol, initMainLoop)
     (accessorDef, initMethodDef)
@@ -497,8 +497,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
     val varHandleTree = ValDef(varHandleSymbol, getVarHandle)
     val varHandle = ref(varHandleSymbol)
 
-    val varHandleInfo = appendVarHandleDefs.getOrElseUpdate(claz, new VarHandleInfo(Nil))
-    varHandleInfo.defs = varHandleTree :: varHandleInfo.defs
+    val varHandleInfo = appendVarHandleDefs.getOrElseUpdate(claz, new VarHandleInfo(Vector()))
+    varHandleInfo.defs = varHandleTree +: varHandleInfo.defs
     val swapOver =
         This(claz)
 
@@ -568,8 +568,8 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       val resultSymbol = newSymbol(methodSymbol, lazyNme.result, Synthetic, tp)
       val resultRef = ref(resultSymbol)
       val stats = (
-        ValDef(resultSymbol, rhs) ::
-        ref(target).becomes(resultRef) ::
+        ValDef(resultSymbol, rhs) +:
+        ref(target).becomes(resultRef) +:
         (nullOut(nullableFor(methodSymbol)) :+
         setFlagState.appliedTo(thiz, offset, computedState, fieldId))
       )
@@ -582,13 +582,13 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       CaseDef(
         Bind(caseSymbol, ref(caseSymbol)),
         EmptyTree,
-        Block(List(triggerRetry), Throw(ref(caseSymbol)))
+        Block(Vector(triggerRetry), Throw(ref(caseSymbol)))
       )
     }
 
     val initialize = If(
       casFlag.appliedTo(thiz, offset, flagRef, computeState, fieldId),
-      Try(compute, List(retryCase), EmptyTree),
+      Try(compute, Vector(retryCase), EmptyTree),
       unitLiteral
     )
 
@@ -602,7 +602,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
       )
     )
 
-    val loop = WhileDo(EmptyTree, Block(List(flagDef, stateDef), condition))
+    val loop = WhileDo(EmptyTree, Block(Vector(flagDef, stateDef), condition))
     DefDef(methodSymbol, loop)
   }
 
@@ -638,7 +638,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
           flag = ValDef(flagSymbol, Literal(Constant(0L)))
           val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(flagName.toString)))
           val offsetTree = ValDef(offsetSymbol, getOffsetStatic.appliedTo(fieldTree))
-          info.defs = offsetTree :: info.defs
+          info.defs = offsetTree +: info.defs
         }
 
       case None =>
@@ -649,7 +649,7 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
         flag = ValDef(flagSymbol, Literal(Constant(0L)))
         val fieldTree = thizClass.select(lazyNme.RLazyVals.getDeclaredField).appliedTo(Literal(Constant(flagName.toString)))
         val offsetTree = ValDef(offsetSymbol, getOffsetStatic.appliedTo(fieldTree))
-        appendOffsetDefs += (claz -> new OffsetInfo(List(offsetTree), ord))
+        appendOffsetDefs += (claz -> new OffsetInfo(Vector(offsetTree), ord))
     }
 
     val containerName = LazyLocalName.fresh(x.name.asTermName)

@@ -79,39 +79,39 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
     }
 
   /** Reorder statements so that module classes always come after their companion classes */
-  private def reorderAndComplete(stats: List[Tree])(using Context): List[Tree] = {
+  private def reorderAndComplete(stats: Vector[Tree])(using Context): Vector[Tree] = {
     val moduleClassDefs, singleClassDefs = mutable.Map[Name, Tree]()
 
     /* Returns the result of reordering stats and prepending revPrefix in reverse order to it.
-     * The result of reorder is equivalent to reorder(stats, revPrefix) = revPrefix.reverse ::: reorder(stats, Nil).
+     * The result of reorder is equivalent to reorder(stats, revPrefix) = revPrefix.reverse ++ reorder(stats, Vector()).
      * This implementation is tail recursive as long as the element is not a module TypeDef.
      */
-    def reorder(stats: List[Tree], revPrefix: List[Tree]): List[Tree] = stats match {
-      case (stat: TypeDef) :: stats1 if stat.symbol.isClass =>
+    def reorder(stats: Vector[Tree], revPrefix: Vector[Tree]): Vector[Tree] = (stats: @unchecked) match {
+      case (stat: TypeDef) +: stats1 if stat.symbol.isClass =>
         if (stat.symbol.is(Flags.Module)) {
-          def pushOnTop(xs: List[Tree], ys: List[Tree]): List[Tree] =
-            xs.foldLeft(ys)((ys, x) => x :: ys)
+          def pushOnTop(xs: Vector[Tree], ys: Vector[Tree]): Vector[Tree] =
+            xs.foldLeft(ys)((ys, x) => x +: ys)
           moduleClassDefs += (stat.name -> stat)
           singleClassDefs -= stat.name.stripModuleClassSuffix
-          val stats1r = reorder(stats1, Nil)
-          pushOnTop(revPrefix, if (moduleClassDefs contains stat.name) stat :: stats1r else stats1r)
+          val stats1r = reorder(stats1, Vector())
+          pushOnTop(revPrefix, if (moduleClassDefs contains stat.name) stat +: stats1r else stats1r)
         }
         else
           reorder(
             stats1,
             moduleClassDefs remove stat.name.moduleClassName match {
               case Some(mcdef) =>
-                mcdef :: stat :: revPrefix
+                mcdef +: stat +: revPrefix
               case None =>
                 singleClassDefs += (stat.name -> stat)
-                stat :: revPrefix
+                stat +: revPrefix
             }
           )
-      case stat :: stats1 => reorder(stats1, stat :: revPrefix)
-      case Nil => revPrefix.reverse
+      case stat +: stats1 => reorder(stats1, stat +: revPrefix)
+      case Vector() => revPrefix.reverse
     }
 
-    reorder(stats, Nil)
+    reorder(stats, Vector())
   }
 
   /** Eliminate self in Template
@@ -126,7 +126,7 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
       case self: ValDef if !self.tpt.isEmpty && Feature.ccEnabled =>
         val tsym = newSymbol(ctx.owner, tpnme.SELF, PrivateLocal, TypeAlias(self.tpt.tpe))
         val tdef = untpd.cpy.TypeDef(self)(tpnme.SELF, self.tpt).withType(tsym.typeRef)
-        cpy.Template(impl)(self = EmptyValDef, body = tdef :: impl.body)
+        cpy.Template(impl)(self = EmptyValDef, body = tdef +: impl.body)
       case _ =>
         cpy.Template(impl)(self = EmptyValDef)
 
@@ -138,14 +138,14 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
           .appliedTo(Literal(Constant(s"native method stub"))))
     else ddef
 
-  override def transformStats(trees: List[Tree])(using Context): List[Tree] =
+  override def transformStats(trees: Vector[Tree])(using Context): Vector[Tree] =
     ast.Trees.flatten(atPhase(thisPhase.next)(reorderAndComplete(trees)))
 
-  private object collectBinders extends TreeAccumulator[List[Ident]] {
-    def apply(annots: List[Ident], t: Tree)(using Context): List[Ident] = t match {
+  private object collectBinders extends TreeAccumulator[Vector[Ident]] {
+    def apply(annots: Vector[Ident], t: Tree)(using Context): Vector[Ident] = t match {
       case t @ Bind(_, body) =>
         val annot = untpd.Ident(tpnme.BOUNDTYPE_ANNOT).withType(t.symbol.typeRef)
-        apply(annot :: annots, body)
+        apply(annot +: annots, body)
       case _ =>
         foldOver(annots, t)
     }
@@ -156,7 +156,7 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
    *  so that bound symbols can be properly copied.
    */
   private def toTypeTree(tree: Tree)(using Context) = {
-    val binders = collectBinders.apply(Nil, tree)
+    val binders = collectBinders.apply(Vector(), tree)
     val result: Tree = TypeTree(tree.tpe).withSpan(tree.span)
     binders.foldLeft(result)(Annotated(_, _))
   }
@@ -224,7 +224,7 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
   private def foldCondition(tree: Apply)(using Context) = tree.fun match {
     case Select(x @ Literal(Constant(c: Boolean)), op) =>
       tree.args match {
-        case y :: Nil if y.tpe.widen.isRef(defn.BooleanClass) =>
+        case y +: Vector() if y.tpe.widen.isRef(defn.BooleanClass) =>
           op match {
             case nme.ZAND => if (c) y else x
             case nme.ZOR  => if (c) x else y

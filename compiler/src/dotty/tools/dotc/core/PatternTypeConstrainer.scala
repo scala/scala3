@@ -98,14 +98,14 @@ trait PatternTypeConstrainer { self: TypeComparer =>
 
     def constrainUpcasted(scrut: Type): Boolean = trace(i"constrainUpcasted($scrut)", gadts) {
       // Fold a list of types into an AndType
-      def buildAndType(xs: List[Type]): Type = {
-        @annotation.tailrec def recur(acc: Type, rem: List[Type]): Type = rem match {
-          case Nil => acc
-          case x :: rem => recur(AndType(acc, x), rem)
+      def buildAndType(xs: Vector[Type]): Type = {
+        @annotation.tailrec def recur(acc: Type, rem: Vector[Type]): Type = (rem: @unchecked) match {
+          case Vector() => acc
+          case x +: rem => recur(AndType(acc, x), rem)
         }
-        xs match {
-          case Nil => NoType
-          case x :: xs => recur(x, xs)
+        (xs: @unchecked) match {
+          case Vector() => NoType
+          case x +: xs => recur(x, xs)
         }
       }
 
@@ -118,13 +118,13 @@ trait PatternTypeConstrainer { self: TypeComparer =>
         case scrut @ AppliedType(tycon: TypeRef, _) if tycon.symbol.isClass =>
           val patCls = pat.classSymbol
           // find all shared parents in the inheritance hierarchy between pat and scrut
-          def allParentsSharedWithPat(tp: Type, tpClassSym: ClassSymbol): List[Symbol] = {
+          def allParentsSharedWithPat(tp: Type, tpClassSym: ClassSymbol): Vector[Symbol] = {
             var parents = tpClassSym.info.parents
             if parents.nonEmpty && parents.head.classSymbol == defn.ObjectClass then
               parents = parents.tail
             parents flatMap { tp =>
               val sym = tp.classSymbol.asClass
-              if patCls.derivesFrom(sym) then List(sym)
+              if patCls.derivesFrom(sym) then Vector(sym)
               else allParentsSharedWithPat(tp, sym)
             }
           }

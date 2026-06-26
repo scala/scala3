@@ -59,7 +59,7 @@ class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
 
   override def transformApply(tree: Apply)(using Context): Tree = {
     if (tree.symbol == jsdefn.Runtime_createLocalJSClass) {
-      val classValueArg :: superClassValueArg :: _ :: Nil = tree.args: @unchecked
+      val classValueArg +: superClassValueArg +: _ +: Vector() = tree.args: @unchecked
       val cls = classValueArg match {
         case Literal(constant) if constant.tag == Constants.ClazzTag =>
           constant.typeValue.typeSymbol.asClass
@@ -70,12 +70,12 @@ class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
       }
 
       val fakeNews = {
-        val ctors = cls.info.decls.lookupAll(nme.CONSTRUCTOR).toList.reverse
+        val ctors = cls.info.decls.lookupAll(nme.CONSTRUCTOR).toVector.reverse
         val elems = ctors.map(ctor => fakeNew(cls, ctor.asTerm))
         JavaSeqLiteral(elems, TypeTree(defn.ObjectType))
       }
 
-      cpy.Apply(tree)(tree.fun, classValueArg :: superClassValueArg :: fakeNews :: Nil)
+      cpy.Apply(tree)(tree.fun, classValueArg +: superClassValueArg +: fakeNews +: Vector())
     } else {
       tree
     }
@@ -86,9 +86,9 @@ class AddLocalJSFakeNews extends MiniPhase { thisPhase =>
     val tycon = cls.typeRef
     val outerArgs = outer.argsForNew(cls, tycon)
     val nonOuterArgCount = ctor.info.firstParamTypes.size - outerArgs.size
-    val nonOuterArgs = List.fill(nonOuterArgCount)(ref(defn.Predef_undefined).appliedToNone)
+    val nonOuterArgs = Vector.fill(nonOuterArgCount)(ref(defn.Predef_undefined).appliedToNone)
 
-    New(tycon, ctor, outerArgs ::: nonOuterArgs)
+    New(tycon, ctor, outerArgs ++ nonOuterArgs)
   }
 }
 

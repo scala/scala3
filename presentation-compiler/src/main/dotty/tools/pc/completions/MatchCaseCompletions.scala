@@ -97,7 +97,7 @@ object CaseKeywordCompletion:
           /* Parent is a function expecting a case match expression */
           case TreeApply(fun, _) if !fun.tpe.isErroneous =>
             fun.tpe.paramInfoss match
-              case (head :: Nil) :: _
+              case Vector(Vector(head), _*)
                   if definitions.isFunctionType(head) || head.isRef(
                     definitions.PartialFunctionClass
                   ) =>
@@ -355,7 +355,7 @@ object CaseKeywordCompletion:
         && child.maybeOwner.exists
         && (child.isPublic || child.isAccessibleFrom(sym.info))
         && child.name != StdNames.tpnme.LOCAL_CHILD
-    )
+    ).toList
 
   def subclassesForType(tpe: Type)(using Context): List[Symbol] =
     /** Split type made of & and | types to a list of simple types. For example,
@@ -476,11 +476,11 @@ class CompletionValueGenerator(
 
   private def tryInfixPattern(sym: Symbol, name: String)(using Context): Option[String] =
     sym.primaryConstructor.paramSymss match
-      case (a :: b :: Nil) :: Nil =>
+      case Vector(Vector(a, b)) =>
         Some(
           s"${a.decodedName} $name ${b.decodedName}"
         )
-      case _ :: (a :: b :: Nil) :: _ =>
+      case Vector(_, Vector(a, b), _*) =>
         Some(
           s"${a.decodedName} $name ${b.decodedName}"
         )
@@ -495,12 +495,12 @@ class CompletionValueGenerator(
       if isModuleLike && !(sym.isClass && sym.is(Enum)) then ""
       else
         sym.primaryConstructor.paramSymss match
-          case Nil => "()"
-          case _ :: params :: _ =>
+          case Vector() => "()"
+          case Vector(_, params, _*) =>
             params
               .map(param => param.showName)
               .mkString("(", ", ", ")")
-          case head :: _ =>
+          case Vector(head, _*) =>
             head
               .map(param => param.showName)
               .mkString("(", ", ", ")")
@@ -511,7 +511,7 @@ class CompletionValueGenerator(
       name: String
   )(using Context): String =
     val suffix = sym.typeParams match
-      case Nil => ""
+      case Vector() => ""
       case tparams => tparams.map(_ => "?").mkString("[", ", ", "]")
     val bind = if hasBind then "" else "_: "
     bind + name + suffix

@@ -59,17 +59,17 @@ object SourceVersion extends Property.Key[SourceVersion]:
   val defaultSourceVersion = `3.10`
 
   /* Illegal source versions that may not appear in the settings `-source:<...>` */
-  val illegalInSettings = List(`2.13`, `3.1-migration`, `never`)
+  val illegalInSettings = Vector(`2.13`, `3.1-migration`, `never`)
 
   /* Illegal source versions that may not appear as an import `import scala.language.<...>` */
-  val illegalInImports  = List(`3.1-migration`, `never`)
+  val illegalInImports  = Vector(`3.1-migration`, `never`)
 
   /** language versions that may appear in a language import, are deprecated, but not removed from the standard library. */
   val illegalSourceVersionNames = illegalInImports.map(_.toString.toTermName)
 
   /** language versions that the compiler recognises. */
-  val validSourceVersionNames = values.toList.map(_.toString.toTermName)
+  val validSourceVersionNames = values.toVector.map(_.toString.toTermName)
 
   /** All source versions that can be recognised from a language import. e.g. `import language.3.1` */
-  val allSourceVersionNames = validSourceVersionNames ::: illegalSourceVersionNames
+  val allSourceVersionNames = validSourceVersionNames ++ illegalSourceVersionNames
 end SourceVersion

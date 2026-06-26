@@ -34,7 +34,7 @@ private class InteractiveContextBase(precomputedSourcePackages: Option[LogicalPa
 
 /** A Driver subclass designed to be used from IDEs */
 class InteractiveDriver(
-    val settings: List[String],
+    val settings: Vector[String],
     val logicalRootPackage: Option[LogicalPackage] = None
 ) extends Driver {
   import tpd.*
@@ -67,8 +67,8 @@ class InteractiveDriver(
   private val myOpenedFiles = new mutable.LinkedHashMap[URI, SourceFile].withDefaultValue(NoSource)
   def openedFiles: Map[URI, SourceFile] = myOpenedFiles
 
-  private val myOpenedTrees = new mutable.LinkedHashMap[URI, List[SourceTree]].withDefaultValue(Nil)
-  def openedTrees: Map[URI, List[SourceTree]] = myOpenedTrees
+  private val myOpenedTrees = new mutable.LinkedHashMap[URI, Vector[SourceTree]].withDefaultValue(Vector())
+  def openedTrees: Map[URI, Vector[SourceTree]] = myOpenedTrees
 
   private val myCompilationUnits = new mutable.LinkedHashMap[URI, CompilationUnit]
   def compilationUnits: Map[URI, CompilationUnit] = myCompilationUnits
@@ -112,7 +112,7 @@ class InteractiveDriver(
    * This includes the trees for the buffers that are presently open in the IDE, and the trees
    * from the target directory.
    */
-  def sourceTrees(using Context): List[SourceTree] = sourceTreesContaining("")
+  def sourceTrees(using Context): Vector[SourceTree] = sourceTreesContaining("")
 
   /**
    * The trees for all the source files in this project that contain `id`.
@@ -120,8 +120,8 @@ class InteractiveDriver(
    * This includes the trees for the buffers that are presently open in the IDE, and the trees
    * from the target directory.
    */
-  def sourceTreesContaining(id: String)(using Context): List[SourceTree] = {
-    val fromBuffers = openedTrees.values.flatten.toList
+  def sourceTreesContaining(id: String)(using Context): Vector[SourceTree] = {
+    val fromBuffers = openedTrees.values.flatten.toVector
     val fromCompilationOutput = {
       val classNames = new mutable.ListBuffer[TypeName]
       val output = ctx.settings.outputDir.value
@@ -142,7 +142,7 @@ class InteractiveDriver(
    * This includes the trees of the sources of this project, along with the trees that are found
    * on this project's classpath.
    */
-  def allTrees(using Context): List[SourceTree] = allTreesContaining("")
+  def allTrees(using Context): Vector[SourceTree] = allTreesContaining("")
 
   /**
    * All the trees for this project that contain `id`.
@@ -150,17 +150,17 @@ class InteractiveDriver(
    * This includes the trees of the sources of this project, along with the trees that are found
    * on this project's classpath.
    */
-  def allTreesContaining(id: String)(using Context): List[SourceTree] = {
-    val fromSource = openedTrees.values.flatten.toList
+  def allTreesContaining(id: String)(using Context): Vector[SourceTree] = {
+    val fromSource = openedTrees.values.flatten.toVector
     val fromClassPath = (dirClassPathClasses ++ zipClassPathClasses).flatMap { cls =>
       treesFromClassName(cls, id)
     }
     (fromSource ++ fromClassPath).distinct
   }
 
-  def run(uri: URI, sourceCode: String): List[Diagnostic] = run(uri, SourceFile.virtual(uri, sourceCode))
+  def run(uri: URI, sourceCode: String): Vector[Diagnostic] = run(uri, SourceFile.virtual(uri, sourceCode))
 
-  def run(uri: URI, source: SourceFile): List[Diagnostic] = {
+  def run(uri: URI, source: SourceFile): Vector[Diagnostic] = {
     import typer.ImportInfo.*
 
     val previousCtx = myCtx
@@ -175,7 +175,7 @@ class InteractiveDriver(
 
       myOpenedFiles(uri) = source
 
-      run.compileSources(List(source))
+      run.compileSources(Vector(source))
       run.printSummary()
       val ctxRun = ctx.run.nn
       val unit = if ctxRun.units.nonEmpty then ctxRun.units.head else ctxRun.suspendedUnits.head
@@ -190,7 +190,7 @@ class InteractiveDriver(
       case ex: FatalError  =>
         myCtx = previousCtx
         close(uri)
-        Nil
+        Vector()
     }
   }
 
@@ -205,18 +205,18 @@ class InteractiveDriver(
    *
    * @see SourceTree.fromSymbol
    */
-  private def treesFromClassName(className: TypeName, id: String)(using Context): List[SourceTree] = {
-    def trees(className: TypeName, id: String): List[SourceTree] = {
+  private def treesFromClassName(className: TypeName, id: String)(using Context): Vector[SourceTree] = {
+    def trees(className: TypeName, id: String): Vector[SourceTree] = {
       val clsd = staticRef(className)
       clsd match {
         case clsd: ClassDenotation =>
           clsd.ensureCompleted()
           SourceTree.fromSymbol(clsd.symbol.asClass, id)
         case _ =>
-          Nil
+          Vector()
       }
     }
-    trees(className, id) ::: trees(className.moduleClassName, id)
+    trees(className, id) ++ trees(className.moduleClassName, id)
   }
 
   // FIXME: classfiles in directories may change at any point, so we retraverse
@@ -263,7 +263,7 @@ class InteractiveDriver(
       case _: NoSuchFileException =>
     }
 
-  private def topLevelTrees(topTree: Tree, source: SourceFile): List[SourceTree] = {
+  private def topLevelTrees(topTree: Tree, source: SourceFile): Vector[SourceTree] = {
     val trees = new mutable.ListBuffer[SourceTree]
 
     def addTrees(tree: Tree): Unit = tree match {
@@ -277,7 +277,7 @@ class InteractiveDriver(
     }
     addTrees(topTree)
 
-    trees.toList
+    trees.toVector
   }
 
   /** Remove attachments and error out completers. The goal is to avoid
@@ -320,7 +320,7 @@ class InteractiveDriver(
   private def initialize(): Unit = {
     val run = compiler.newRun(using myInitCtx.fresh)
     myCtx = run.runContext
-    run.compileUnits(Nil, myCtx)
+    run.compileUnits(Vector(), myCtx)
   }
 }
 

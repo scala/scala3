@@ -13,8 +13,8 @@ class ExploringReporter extends StoreReporter(null, fromTyperState = false):
   override def hasUnreportedErrors: Boolean =
     infos.nn.exists(_.isInstanceOf[Error])
 
-  override def removeBufferedMessages(using Context): List[Diagnostic] =
-    try infos.nn.toList finally reset()
+  override def removeBufferedMessages(using Context): Vector[Diagnostic] =
+    try infos.nn.toVector finally reset()
 
   override def mapBufferedMessages(f: Diagnostic => Diagnostic)(using Context): Unit =
     infos.nn.mapInPlace(f)

@@ -35,7 +35,7 @@ class Checker extends Phase:
     val unit = ctx.compilationUnit
     traverser.traverse(unit.tpdTree)
 
-  override def runOn(units: List[CompilationUnit])(using Context): List[CompilationUnit] =
+  override def runOn(units: Vector[CompilationUnit])(using Context): Vector[CompilationUnit] =
     val checkCtx = ctx.fresh.setPhase(this)
     val traverser = new InitTreeTraverser()
 
@@ -66,7 +66,7 @@ class Checker extends Phase:
   class InitTreeTraverser extends TreeTraverser:
     private val classes: mutable.ArrayBuffer[ClassSymbol] = new mutable.ArrayBuffer
 
-    def getClasses(): List[ClassSymbol] = classes.toList
+    def getClasses(): Vector[ClassSymbol] = classes.toVector
 
     override def traverse(tree: Tree)(using Context): Unit =
       traverseChildren(tree)

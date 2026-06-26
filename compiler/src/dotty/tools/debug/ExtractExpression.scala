@@ -112,7 +112,7 @@ private class ExtractExpression(
 
         // non-static object
         case tree: (Ident | Select) if isNonStaticObject(tree.symbol) =>
-          callMethod(tree)(getTransformedQualifier(tree), tree.symbol.asTerm, Nil)
+          callMethod(tree)(getTransformedQualifier(tree), tree.symbol.asTerm, Vector())
 
         // local variable
         case tree: Ident if isLocalVariable(tree.symbol) =>
@@ -178,9 +178,9 @@ private class ExtractExpression(
         .findLast(_.isClass)
         .orElse(candidates.find(_.is(Method)))
 
-    private def getTransformedArgs(tree: Tree)(using Context): List[Tree] =
+    private def getTransformedArgs(tree: Tree)(using Context): Vector[Tree] =
       tree match
-        case _: (Ident | Select) => Nil
+        case _: (Ident | Select) => Vector()
         case Apply(fun, args) => getTransformedArgs(fun) ++ args.map(transform)
         case TypeApply(fun, _) => getTransformedArgs(fun)
 
@@ -236,20 +236,20 @@ private class ExtractExpression(
     else nullLiteral
 
   private def getThis(tree: Tree)(cls: ClassSymbol)(using Context): Tree =
-    reflectEval(tree)(nullLiteral, ReflectEvalStrategy.This(cls), Nil)
+    reflectEval(tree)(nullLiteral, ReflectEvalStrategy.This(cls), Vector())
 
   private def getLocalOuter(tree: Tree)(outerCls: ClassSymbol)(using Context): Tree =
     val strategy = ReflectEvalStrategy.LocalOuter(outerCls)
-    reflectEval(tree)(nullLiteral, strategy, Nil)
+    reflectEval(tree)(nullLiteral, strategy, Vector())
 
   private def getOuter(tree: Tree)(qualifier: Tree, outerCls: ClassSymbol)(using Context): Tree =
     val strategy = ReflectEvalStrategy.Outer(outerCls)
-    reflectEval(tree)(qualifier, strategy, Nil)
+    reflectEval(tree)(qualifier, strategy, Vector())
 
   private def getLocalValue(tree: Tree)(variable: Symbol)(using Context): Tree =
     val isByName = isByNameParam(variable.info)
     val strategy = ReflectEvalStrategy.LocalValue(variable.asTerm, isByName)
-    reflectEval(tree)(nullLiteral, strategy, Nil)
+    reflectEval(tree)(nullLiteral, strategy, Vector())
 
   private def isByNameParam(tpe: Type)(using Context): Boolean =
     tpe match
@@ -259,57 +259,57 @@ private class ExtractExpression(
 
   private def setLocalValue(tree: Tree)(variable: Symbol, rhs: Tree)(using Context): Tree =
     val strategy = ReflectEvalStrategy.LocalValueAssign(variable.asTerm)
-    reflectEval(tree)(nullLiteral, strategy, List(rhs))
+    reflectEval(tree)(nullLiteral, strategy, Vector(rhs))
 
   private def getClassCapture(tree: Tree)(variable: Symbol, cls: ClassSymbol)(using Context): Tree =
     val byName = isByNameParam(variable.info)
     val strategy = ReflectEvalStrategy.ClassCapture(variable.asTerm, cls, byName)
     val qualifier = thisOrOuterValue(tree)(cls)
-    reflectEval(tree)(qualifier, strategy, Nil)
+    reflectEval(tree)(qualifier, strategy, Vector())
 
   private def setClassCapture(tree: Tree)(variable: Symbol, cls: ClassSymbol, value: Tree)(using Context) =
     val strategy = ReflectEvalStrategy.ClassCaptureAssign(variable.asTerm, cls)
     val qualifier = thisOrOuterValue(tree)(cls)
-    reflectEval(tree)(qualifier, strategy, List(value))
+    reflectEval(tree)(qualifier, strategy, Vector(value))
 
   private def getMethodCapture(tree: Tree)(variable: Symbol, method: TermSymbol)(using Context): Tree =
     val isByName = isByNameParam(variable.info)
     val strategy =
       ReflectEvalStrategy.MethodCapture(variable.asTerm, method.asTerm, isByName)
-    reflectEval(tree)(nullLiteral, strategy, Nil)
+    reflectEval(tree)(nullLiteral, strategy, Vector())
 
   private def setMethodCapture(tree: Tree)(variable: Symbol, method: Symbol, value: Tree)(using Context) =
     val strategy =
       ReflectEvalStrategy.MethodCaptureAssign(variable.asTerm, method.asTerm)
-    reflectEval(tree)(nullLiteral, strategy, List(value))
+    reflectEval(tree)(nullLiteral, strategy, Vector(value))
 
   private def getStaticObject(tree: Tree)(obj: Symbol)(using ctx: Context): Tree =
     val strategy = ReflectEvalStrategy.StaticObject(obj.asClass)
-    reflectEval(tree)(nullLiteral, strategy, Nil)
+    reflectEval(tree)(nullLiteral, strategy, Vector())
 
   private def getField(tree: Tree)(qualifier: Tree, field: TermSymbol)(using Context): Tree =
     val byName = isByNameParam(field.info)
     val strategy = ReflectEvalStrategy.Field(field, byName)
-    reflectEval(tree)(qualifier, strategy, Nil)
+    reflectEval(tree)(qualifier, strategy, Vector())
 
   private def setField(tree: Tree)(qualifier: Tree, field: TermSymbol, rhs: Tree)(using Context): Tree =
     val strategy = ReflectEvalStrategy.FieldAssign(field)
-    reflectEval(tree)(qualifier, strategy, List(rhs))
+    reflectEval(tree)(qualifier, strategy, Vector(rhs))
 
-  private def callMethod(tree: Tree)(qualifier: Tree, method: TermSymbol, args: List[Tree])(using Context): Tree =
+  private def callMethod(tree: Tree)(qualifier: Tree, method: TermSymbol, args: Vector[Tree])(using Context): Tree =
     val strategy = ReflectEvalStrategy.MethodCall(method)
     reflectEval(tree)(qualifier, strategy, args)
 
-  private def callConstructor(tree: Tree)(qualifier: Tree, ctr: TermSymbol, args: List[Tree])(using Context): Tree =
+  private def callConstructor(tree: Tree)(qualifier: Tree, ctr: TermSymbol, args: Vector[Tree])(using Context): Tree =
     val strategy = ReflectEvalStrategy.ConstructorCall(ctr, ctr.owner.asClass)
     reflectEval(tree)(qualifier, strategy, args)
 
   private def reflectEval(tree: Tree)(
       qualifier: Tree,
       strategy: ReflectEvalStrategy,
-      args: List[Tree]
+      args: Vector[Tree]
   )(using Context): Tree =
-    val evalArgs = List(
+    val evalArgs = Vector(
       qualifier,
       Literal(Constant(strategy.toString)), // only useful for debugging, when printing trees
       JavaSeqLiteral(args, TypeTree(ctx.definitions.ObjectType))

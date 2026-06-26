@@ -139,7 +139,7 @@ class JUnitBootstrappers extends MiniPhase {
     }
 
     if (bootstrappers.isEmpty) tree
-    else cpy.PackageDef(tree)(tree.pid, tree.stats ::: bootstrappers)
+    else cpy.PackageDef(tree)(tree.pid, tree.stats ++ bootstrappers)
   }
 
   private def genBootstrapper(testClass: ClassSymbol)(using Context): TypeDef = {
@@ -155,7 +155,7 @@ class JUnitBootstrappers extends MiniPhase {
     val owner = testClass.owner
     val moduleSym = newCompleteModuleSymbol(owner, bootstrapperName,
       Synthetic, Synthetic,
-      List(defn.ObjectType, junitdefn.BootstrapperType), newScope,
+      Vector(defn.ObjectType, junitdefn.BootstrapperType), newScope,
       coord = testClass.span, compUnitInfo = testClass.compUnitInfo).entered
     val classSym = moduleSym.moduleClass.asClass
 
@@ -163,7 +163,7 @@ class JUnitBootstrappers extends MiniPhase {
 
     val testMethods = annotatedMethods(testClass, junitdefn.TestAnnotClass)
 
-    val defs = List(
+    val defs = Vector(
       genCallOnModule(classSym, junitNme.beforeClass, testClass.companionModule, junitdefn.BeforeClassAnnotClass),
       genCallOnModule(classSym, junitNme.afterClass, testClass.companionModule, junitdefn.AfterClassAnnotClass),
       genCallOnParam(classSym, junitNme.before, testClass, junitdefn.BeforeAnnotClass),
@@ -182,7 +182,7 @@ class JUnitBootstrappers extends MiniPhase {
     val sym = newDefaultConstructor(owner).entered
     DefDef(sym, {
       Block(
-        Super(This(owner), tpnme.EMPTY).select(defn.ObjectClass.primaryConstructor).appliedToNone :: Nil,
+        Super(This(owner), tpnme.EMPTY).select(defn.ObjectClass.primaryConstructor).appliedToNone +: Vector(),
         unitLiteral
       )
     })
@@ -190,12 +190,12 @@ class JUnitBootstrappers extends MiniPhase {
 
   private def genCallOnModule(owner: ClassSymbol, name: TermName, module: Symbol, annot: Symbol)(using Context): DefDef = {
     val sym = newSymbol(owner, name, Synthetic | Method,
-      MethodType(Nil, Nil, defn.UnitType)).entered
+      MethodType(Vector(), Vector(), defn.UnitType)).entered
 
     DefDef(sym, {
       if (module.exists) {
         val calls = annotatedMethods(module.moduleClass.asClass, annot)
-          .map(m => Apply(ref(module).select(m), Nil))
+          .map(m => Apply(ref(module).select(m), Vector()))
         Block(calls, unitLiteral)
       } else {
         unitLiteral
@@ -205,21 +205,21 @@ class JUnitBootstrappers extends MiniPhase {
 
   private def genCallOnParam(owner: ClassSymbol, name: TermName, testClass: ClassSymbol, annot: Symbol)(using Context): DefDef = {
     val sym = newSymbol(owner, name, Synthetic | Method,
-      MethodType(junitNme.instance :: Nil, defn.ObjectType :: Nil, defn.UnitType)).entered
+      MethodType(junitNme.instance +: Vector(), defn.ObjectType +: Vector(), defn.UnitType)).entered
 
-    DefDef(sym, { (paramRefss: List[List[Tree]]) =>
-      val List(List(instanceParamRef)) = paramRefss
+    DefDef(sym, { (paramRefss: Vector[Vector[Tree]]) =>
+      val Vector(Vector(instanceParamRef)) = paramRefss
       val calls = annotatedMethods(testClass, annot)
-        .map(m => Apply(instanceParamRef.cast(testClass.typeRef).select(m), Nil))
+        .map(m => Apply(instanceParamRef.cast(testClass.typeRef).select(m), Vector()))
       Block(calls, unitLiteral)
     })
   }
 
-  private def genTests(owner: ClassSymbol, tests: List[Symbol])(using Context): DefDef = {
+  private def genTests(owner: ClassSymbol, tests: Vector[Symbol])(using Context): DefDef = {
     val junitdefn = jsdefn.junit
 
     val sym = newSymbol(owner, junitNme.tests, Synthetic | Method,
-      MethodType(Nil, defn.ArrayOf(junitdefn.TestMetadataType))).entered
+      MethodType(Vector(), defn.ArrayOf(junitdefn.TestMetadataType))).entered
 
     DefDef(sym, {
       val metadata = for (test <- tests) yield {
@@ -229,7 +229,7 @@ class JUnitBootstrappers extends MiniPhase {
 
         val mappedArguments = testAnnot.arguments.flatMap{
           // Since classOf[...] in annotations would not be transformed, grab the resulting class constant here
-          case NamedArg(expectedName: SimpleName, TypeApply(Ident(nme.classOf), fstArg :: _))
+          case NamedArg(expectedName: SimpleName, TypeApply(Ident(nme.classOf), fstArg +: _))
             if expectedName.toString == "expected" => Some(clsOf(fstArg.tpe))
           // The only other valid argument to @Test annotations is timeout
           case NamedArg(timeoutName: TermName, timeoutLiteral: Literal)
@@ -245,26 +245,26 @@ class JUnitBootstrappers extends MiniPhase {
         }
 
         val reifiedAnnot = resolveConstructor(junitdefn.TestAnnotType, mappedArguments)
-        New(junitdefn.TestMetadataType, List(name, ignored, reifiedAnnot))
+        New(junitdefn.TestMetadataType, Vector(name, ignored, reifiedAnnot))
       }
       JavaSeqLiteral(metadata, TypeTree(junitdefn.TestMetadataType))
     })
   }
 
-  private def genInvokeTest(owner: ClassSymbol, testClass: ClassSymbol, tests: List[Symbol])(using Context): DefDef = {
+  private def genInvokeTest(owner: ClassSymbol, testClass: ClassSymbol, tests: Vector[Symbol])(using Context): DefDef = {
     val junitdefn = jsdefn.junit
 
     val sym = newSymbol(owner, junitNme.invokeTest, Synthetic | Method,
-      MethodType(List(junitNme.instance, junitNme.name), List(defn.ObjectType, defn.StringType), junitdefn.FutureType)).entered
+      MethodType(Vector(junitNme.instance, junitNme.name), Vector(defn.ObjectType, defn.StringType), junitdefn.FutureType)).entered
 
-    DefDef(sym, { (paramRefss: List[List[Tree]]) =>
-      val List(List(instanceParamRef, nameParamRef)) = paramRefss
+    DefDef(sym, { (paramRefss: Vector[Vector[Tree]]) =>
+      val Vector(Vector(instanceParamRef, nameParamRef)) = paramRefss
       val castInstanceSym = newSymbol(sym, junitNme.castInstance, Synthetic, testClass.typeRef, coord = owner.span)
       Block(
-        ValDef(castInstanceSym, instanceParamRef.cast(testClass.typeRef)) :: Nil,
+        ValDef(castInstanceSym, instanceParamRef.cast(testClass.typeRef)) +: Vector(),
         tests.foldRight[Tree] {
           val tp = junitdefn.NoSuchMethodExceptionType
-          Throw(resolveConstructor(tp, nameParamRef :: Nil))
+          Throw(resolveConstructor(tp, nameParamRef +: Vector()))
         } { (test, next) =>
           If(Literal(Constant(test.name.mangledString)).select(defn.Any_equals).appliedTo(nameParamRef),
             genTestInvocation(testClass, test, ref(castInstanceSym)),
@@ -281,7 +281,7 @@ class JUnitBootstrappers extends MiniPhase {
     if (resultType.isRef(defn.UnitClass)) {
       val newSuccess = ref(junitdefn.SuccessModule_apply).appliedTo(ref(defn.BoxedUnit_UNIT))
       Block(
-        instance.select(testMethod).appliedToNone :: Nil,
+        instance.select(testMethod).appliedToNone +: Vector(),
         ref(junitdefn.FutureModule_successful).appliedTo(newSuccess)
       )
     } else if (resultType.isRef(junitdefn.FutureClass)) {
@@ -295,20 +295,20 @@ class JUnitBootstrappers extends MiniPhase {
 
   private def genNewInstance(owner: ClassSymbol, testClass: ClassSymbol)(using Context): DefDef = {
     val sym = newSymbol(owner, junitNme.newInstance, Synthetic | Method,
-      MethodType(Nil, defn.ObjectType)).entered
+      MethodType(Vector(), defn.ObjectType)).entered
 
-    DefDef(sym, New(testClass.typeRef, Nil))
+    DefDef(sym, New(testClass.typeRef, Vector()))
   }
 
   private def castParam(param: Symbol, clazz: Symbol)(using Context): Tree =
     ref(param).cast(clazz.typeRef)
 
-  private def annotatedMethods(owner: ClassSymbol, annot: Symbol)(using Context): List[Symbol] =
+  private def annotatedMethods(owner: ClassSymbol, annot: Symbol)(using Context): Vector[Symbol] =
     owner.info
       .membersBasedOnFlags(Method, EmptyFlags)
       .filter(_.symbol.hasAnnotation(annot))
       .map(_.symbol)
-      .toList
+      .toVector
 }
 
 object JUnitBootstrappers {

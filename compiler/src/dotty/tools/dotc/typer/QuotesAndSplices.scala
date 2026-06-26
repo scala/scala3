@@ -65,7 +65,7 @@ trait QuotesAndSplices {
       // TODO typecheck directly (without `exprQuote`)
       val exprQuoteTree = untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.body)
       val quotedExpr = typedApply(exprQuoteTree, pt)(using quoteContext) match
-        case Apply(TypeApply(fn, tpt :: Nil), quotedExpr :: Nil) => untpd.Quote(quotedExpr, Nil).withBodyType(tpt.tpe)
+        case Apply(TypeApply(fn, tpt +: Vector()), quotedExpr +: Vector()) => untpd.Quote(quotedExpr, Vector()).withBodyType(tpt.tpe)
       makeInlineable(quotedExpr.select(nme.apply).appliedTo(quotes).withSpan(tree.span))
   }
 
@@ -80,7 +80,7 @@ trait QuotesAndSplices {
     checkSpliceOutsideQuote(tree)
     assert(!ctx.mode.isQuotedPattern)
     tree.expr match {
-      case untpd.Quote(innerExpr, Nil) if innerExpr.isTerm =>
+      case untpd.Quote(innerExpr, Vector()) if innerExpr.isTerm =>
         report.warning("Canceled quote directly inside a splice. ${ '{ XYZ } } is equivalent to XYZ.", tree.srcPos)
         return typed(innerExpr, pt)
       case _ =>
@@ -99,7 +99,7 @@ trait QuotesAndSplices {
     val internalSplice =
       untpd.Apply(untpd.ref(defn.QuotedRuntime_exprSplice.termRef), tree.expr)
     typedApply(internalSplice, pt)(using spliceContext).withSpan(tree.span) match
-      case tree @ Apply(TypeApply(_, tpt :: Nil), spliced :: Nil) if tree.symbol == defn.QuotedRuntime_exprSplice =>
+      case tree @ Apply(TypeApply(_, tpt +: Vector()), spliced +: Vector()) if tree.symbol == defn.QuotedRuntime_exprSplice =>
         cpy.Splice(tree)(spliced)
       case tree => tree
   }
@@ -170,7 +170,7 @@ trait QuotesAndSplices {
     else // $x(...) higher-order quasipattern
       if args.isEmpty then
          report.error("Missing arguments for open pattern", tree.srcPos)
-      typedSplicePattern(untpd.cpy.SplicePattern(tree)(splice.body, Nil, args), pt)
+      typedSplicePattern(untpd.cpy.SplicePattern(tree)(splice.body, Vector(), args), pt)
   }
 
   /** Types a splice applied to some type arguments and arguments
@@ -197,7 +197,7 @@ trait QuotesAndSplices {
   }
 
   def typedTypeAppliedSplice(tree: untpd.TypeApply, pt: Type)(using Context): Tree = {
-    typedAppliedSpliceWithTypes(untpd.Apply(tree, Nil), pt)
+    typedAppliedSpliceWithTypes(untpd.Apply(tree, Vector()), pt)
   }
 
   /** Type check a type binding reference in a quoted pattern.
@@ -276,11 +276,11 @@ trait QuotesAndSplices {
 
     val (typeTypeVariables, patternBlockCtx) =
       val quoteCtx = quotePatternContext(quoted.isType)
-      if checkedUntpdTypeVariables.isEmpty then (Nil, quoteCtx)
+      if checkedUntpdTypeVariables.isEmpty then (Vector(), quoteCtx)
       else typedBlockStats(checkedUntpdTypeVariables)(using quoteCtx)
     val patternCtx = patternBlockCtx.addMode(if quoted.isType then Mode.QuotedTypePattern else Mode.QuotedExprPattern)
 
-    val allTypeBindings = List.newBuilder[Bind]
+    val allTypeBindings = Vector.newBuilder[Bind]
     for tpVar <- typeTypeVariables do
       val sym = tpVar.symbol
       allTypeBindings += Bind(sym, untpd.Ident(nme.WILDCARD).withType(sym.info)).withSpan(tpVar.span)
@@ -363,7 +363,7 @@ object QuotesAndSplices {
       override def transform(tree: Tree)(using Context) = tree match
         // TODO: handle TypeBoundsTree, LambdaTypeTree as well as method parameters in DefTrees?
         case tree @ AppliedTypeTree(tpt, args) =>
-          val args1: List[Tree] = args.zipWithConserve(tpt.tpe.typeParams.map(_.paramVarianceSign)) { (arg, v) =>
+          val args1: Vector[Tree] = args.zipWithConserve(tpt.tpe.typeParams.map(_.paramVarianceSign)) { (arg, v) =>
             arg.tpe match {
               case _: TypeBounds => transform(arg)
               case _ => atVariance(v * variance)(transform(arg))
@@ -379,7 +379,7 @@ object QuotesAndSplices {
       * Return a poly-type + method type [$typeargs] => ($args) => ($resultType)
       * where typeargs occur in args and resulttype
       */
-    def apply(typeargs: List[Type], args: List[Type], resultType: Type)(using Context): Type =
+    def apply(typeargs: Vector[Type], args: Vector[Type], resultType: Type)(using Context): Type =
       val typeargs1 = PolyType.syntheticParamNames(typeargs.length)
 
       val bounds = typeargs map (_ => TypeBounds.empty)

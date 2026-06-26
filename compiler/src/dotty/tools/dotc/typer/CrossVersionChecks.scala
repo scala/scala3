@@ -75,7 +75,7 @@ class CrossVersionChecks extends MiniPhase:
   }
 
   /** ??? */
-  def checkDeprecatedInheritance(parents: List[Tree])(using Context): Unit = {
+  def checkDeprecatedInheritance(parents: Vector[Tree])(using Context): Unit = {
     for parent <- parents
         psym = parent.tpe.classSymbol
         annot <- psym.getAnnotation(defn.DeprecatedInheritanceAnnot)

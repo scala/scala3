@@ -85,7 +85,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object CompilationInfo extends CompilationInfoModule:
       def isWhileTyping: Boolean = !ctx.isAfterTyper
-      def XmacroSettings: List[String] = ctx.settings.XmacroSettings.value
+      def XmacroSettings: List[String] = ctx.settings.XmacroSettings.value.toList
     end CompilationInfo
 
     extension (expr: Expr[Any])
@@ -144,17 +144,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object PackageClause extends PackageClauseModule:
       def apply(pid: Ref, stats: List[Tree]): PackageClause =
-        withDefaultPos(tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats))
+        withDefaultPos(tpd.PackageDef(pid.asInstanceOf[tpd.RefTree], stats.toVector))
       def copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause =
-        tpd.cpy.PackageDef(original)(pid, stats)
+        tpd.cpy.PackageDef(original)(pid, stats.toVector)
       def unapply(tree: PackageClause): (Ref, List[Tree]) =
-        (tree.pid, tree.stats)
+        (tree.pid, tree.stats.toList)
     end PackageClause
 
     given PackageClauseMethods: PackageClauseMethods with
       extension (self: PackageClause)
         def pid: Ref = self.pid
-        def stats: List[Tree] = self.stats
+        def stats: List[Tree] = self.stats.toList
       end extension
     end PackageClauseMethods
 
@@ -169,18 +169,18 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Import extends ImportModule:
       def apply(expr: Term, selectors: List[Selector]): Import =
         if selectors.isEmpty then throw IllegalArgumentException("Empty selectors")
-        withDefaultPos(tpd.Import(expr, selectors))
+        withDefaultPos(tpd.Import(expr, selectors.toVector))
       def copy(original: Tree)(expr: Term, selectors: List[Selector]): Import =
         if selectors.isEmpty then throw IllegalArgumentException("Empty selectors")
-        tpd.cpy.Import(original)(expr, selectors)
+        tpd.cpy.Import(original)(expr, selectors.toVector)
       def unapply(tree: Import): (Term, List[Selector]) =
-        (tree.expr, tree.selectors)
+        (tree.expr, tree.selectors.toList)
     end Import
 
     given ImportMethods: ImportMethods with
       extension (self: Import)
         def expr: Term = self.expr
-        def selectors: List[Selector] = self.selectors
+        def selectors: List[Selector] = self.selectors.toList
       end extension
     end ImportMethods
 
@@ -194,13 +194,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Export extends ExportModule:
       def unapply(tree: Export): (Term, List[Selector]) =
-        (tree.expr, tree.selectors)
+        (tree.expr, tree.selectors.toList)
     end Export
 
     given ExportMethods: ExportMethods with
       extension (self: Export)
         def expr: Term = self.expr
-        def selectors: List[Selector] = self.selectors
+        def selectors: List[Selector] = self.selectors.toList
       end extension
     end ExportMethods
 
@@ -242,46 +242,46 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object ClassDef extends ClassDefModule:
       def apply(cls: Symbol, parents: List[Tree], body: List[Statement]): ClassDef =
-        val paramsDefs: List[untpd.ParamClause] =
+        val paramsDefs: Vector[untpd.ParamClause] =
           cls.primaryConstructor.paramSymss.map { paramSym =>
             if paramSym.headOption.map(_.isType).getOrElse(false) then
-              paramSym.map(sym => TypeDef(sym))
+              paramSym.map(sym => TypeDef(sym)).toVector
             else
-              paramSym.map(ValDef(_, None))
-          }
+              paramSym.map(ValDef(_, None)).toVector
+          }.toVector.asInstanceOf[Vector[untpd.ParamClause]]
         def throwError() =
           throw new RuntimeException(
             "Symbols necessary for creation of the ClassDef tree could not be found."
           )
-        val paramsAccessDefs: List[ParamClause] =
+        val paramsAccessDefs: Vector[ParamClause] =
           cls.primaryConstructor.paramSymss.map { paramSym =>
             if paramSym.headOption.map(_.isType).getOrElse(false) then
               paramSym.map { symm =>
                 def isParamAccessor(memberSym: Symbol) = memberSym.flags.is(Flags.Param) && memberSym.name == symm.name
                 TypeDef(cls.typeMembers.find(isParamAccessor).getOrElse(throwError()))
-              }
+              }.toVector
             else
               paramSym.map { symm =>
                 def isParam(memberSym: Symbol) = memberSym.flags.is(Flags.ParamAccessor) && memberSym.name == symm.name
                 ValDef(cls.fieldMembers.find(isParam).getOrElse(throwError()), None)
-              }
-          }
+              }.toVector
+          }.toVector.asInstanceOf[Vector[ParamClause]]
 
         val termSymbol: dotc.core.Symbols.TermSymbol = cls.primaryConstructor.asTerm
         val untpdCtr = untpd.DefDef(nme.CONSTRUCTOR, paramsDefs, tpd.TypeTree(dotc.core.Symbols.defn.UnitClass.typeRef), tpd.EmptyTree)
         val ctr = ctx.typeAssigner.assignType(untpdCtr, cls.primaryConstructor)
-        tpd.ClassDefWithParents(cls.asClass, ctr, parents, paramsAccessDefs.flatten ++ body)
+        tpd.ClassDefWithParents(cls.asClass, ctr, parents.toVector, (paramsAccessDefs.flatten ++ body).toVector)
 
       def copy(original: Tree)(name: String, constr: DefDef, parents: List[Tree], selfOpt: Option[ValDef], body: List[Statement]): ClassDef = {
         val dotc.ast.Trees.TypeDef(_, originalImpl: tpd.Template) = original: @unchecked
-        tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents, derived = Nil, selfOpt.getOrElse(tpd.EmptyValDef), body))
+        tpd.cpy.TypeDef(original)(name.toTypeName, tpd.cpy.Template(originalImpl)(constr, parents.toVector, derived = Vector(), selfOpt.getOrElse(tpd.EmptyValDef), body.toVector))
       }
       def unapply(cdef: ClassDef): (String, DefDef, List[Tree /* Term | TypeTree */], Option[ValDef], List[Statement]) =
         val rhs = cdef.rhs.asInstanceOf[tpd.Template]
-        (cdef.name.toString, cdef.constructor, cdef.parents, cdef.self, rhs.body)
+        (cdef.name.toString, cdef.constructor, cdef.parents.toList, cdef.self, rhs.body.toList)
 
       def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef) = {
-        if xCheckMacro then TreeChecker.checkParents(module.moduleClass.asClass, parents, xCheckMacroAssert)
+        if xCheckMacro then TreeChecker.checkParents(module.moduleClass.asClass, parents.toVector, xCheckMacroAssert)
         val cls = module.moduleClass
         val clsDef = ClassDef(cls, parents, body)
         val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil)
@@ -295,11 +295,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def constructor: DefDef =
           self.rhs.asInstanceOf[tpd.Template].constr
         def parents: List[Tree] =
-          self.rhs.asInstanceOf[tpd.Template].parents
+          self.rhs.asInstanceOf[tpd.Template].parents.toList
         def self: Option[ValDef] =
           optional(self.rhs.asInstanceOf[tpd.Template].self)
         def body: List[Statement] =
-          self.rhs.asInstanceOf[tpd.Template].body
+          self.rhs.asInstanceOf[tpd.Template].body.toList
       end extension
     end ClassDefMethods
 
@@ -331,20 +331,20 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         xCheckMacroAssert(symbol.isTerm, s"expected a term symbol, but received $symbol")
         xCheckMacroAssert(symbol.flags.is(Flags.Method), "expected a symbol with `Method` flag set")
         withDefaultPos(tpd.DefDef(symbol.asTerm, prefss =>
-          xCheckedMacroOwners(xCheckMacroValidExpr(rhsFn(prefss)), symbol).getOrElse(tpd.EmptyTree)
+          xCheckedMacroOwners(xCheckMacroValidExpr(rhsFn(prefss.map(_.toList).toList)), symbol).getOrElse(tpd.EmptyTree)
         ))
       def copy(original: Tree)(name: String, paramss: List[ParamClause], tpt: TypeTree, rhs: Option[Term]): DefDef =
-        tpd.cpy.DefDef(original)(name.toTermName, paramss, tpt, xCheckedMacroOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
+        tpd.cpy.DefDef(original)(name.toTermName, paramss.toVector, tpt, xCheckedMacroOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
       def unapply(ddef: DefDef): (String, List[ParamClause], TypeTree, Option[Term]) =
-        (ddef.name.toString, ddef.paramss, ddef.tpt, optional(ddef.rhs))
+        (ddef.name.toString, ddef.paramss.toList, ddef.tpt, optional(ddef.rhs))
     end DefDef
 
     given DefDefMethods: DefDefMethods with
       extension (self: DefDef)
-        def paramss: List[ParamClause] = self.paramss
-        def leadingTypeParams: List[TypeDef] = self.leadingTypeParams
-        def trailingParamss: List[ParamClause] = self.trailingParamss
-        def termParamss: List[TermParamClause] = self.termParamss
+        def paramss: List[ParamClause] = self.paramss.toList
+        def leadingTypeParams: List[TypeDef] = self.leadingTypeParams.toList
+        def trailingParamss: List[ParamClause] = self.trailingParamss.toList
+        def termParamss: List[TermParamClause] = self.termParamss.toList
         def returnTpt: TypeTree = self.tpt
         def rhs: Option[Term] = optional(self.rhs)
       end extension
@@ -572,10 +572,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
         withDefaultPos(tpd.Select(qualifier, name.toTermName))
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Term =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType))
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args.toVector, targs.toVector, Types.WildcardType))
 
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType))
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args.toVector, targs.toVector, returnType))
       def copy(original: Tree)(qualifier: Term, name: String): Select =
         original match
           case original: tpd.Select if original.name.toString == name =>
@@ -713,13 +713,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def apply(fun: Term, args: List[Term]): Apply =
         xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.MethodType], "Expected `fun.tpe` to widen into a `MethodType`")
         xCheckMacroValidExprs(args)
-        withDefaultPos(tpd.Apply(fun, args))
+        withDefaultPos(tpd.Apply(fun, args.toVector))
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply =
         xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.MethodType], "Expected `fun.tpe` to widen into a `MethodType`")
         xCheckMacroValidExprs(args)
-        tpd.cpy.Apply(original)(fun, args)
+        tpd.cpy.Apply(original)(fun, args.toVector)
       def unapply(x: Apply): (Term, List[Term]) =
-        (x.fun, x.args)
+        (x.fun, x.args.toList)
     end Apply
 
     given ApplyMethods: ApplyMethods with
@@ -738,7 +738,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               .withSpan(self.span)
 
         def args: List[Term] = self match
-          case self: tpd.Apply => self.args
+          case self: tpd.Apply => self.args.toList
           case self: tpd.Quote => List(self.body) // TODO expose Quote AST in Quotes
           case self: tpd.Splice => List(self.expr) // TODO expose Splice AST in Quotes
       end extension
@@ -755,18 +755,18 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object TypeApply extends TypeApplyModule:
       def apply(fun: Term, args: List[TypeTree]): TypeApply =
         xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.PolyType], "Expected `fun.tpe` to widen into a `PolyType`")
-        withDefaultPos(tpd.TypeApply(fun, args))
+        withDefaultPos(tpd.TypeApply(fun, args.toVector))
       def copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply =
         xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.PolyType], "Expected `fun.tpe` to widen into a `PolyType`")
-        tpd.cpy.TypeApply(original)(fun, args)
+        tpd.cpy.TypeApply(original)(fun, args.toVector)
       def unapply(x: TypeApply): (Term, List[TypeTree]) =
-        (x.fun, x.args)
+        (x.fun, x.args.toList)
     end TypeApply
 
     given TypeApplyMethods: TypeApplyMethods with
       extension (self: TypeApply)
         def fun: Term = self.fun
-        def args: List[TypeTree] = self.args
+        def args: List[TypeTree] = self.args.toList
       end extension
     end TypeApplyMethods
 
@@ -881,16 +881,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Block extends BlockModule:
       def apply(stats: List[Statement], expr: Term): Block =
-        xCheckMacroBlockOwners(withDefaultPos(tpd.Block(stats, xCheckMacroValidExpr(expr))))
+        xCheckMacroBlockOwners(withDefaultPos(tpd.Block(stats.toVector, xCheckMacroValidExpr(expr))))
       def copy(original: Tree)(stats: List[Statement], expr: Term): Block =
-        xCheckMacroBlockOwners(tpd.cpy.Block(original)(stats, expr))
+        xCheckMacroBlockOwners(tpd.cpy.Block(original)(stats.toVector, expr))
       def unapply(x: Block): (List[Statement], Term) =
         (x.statements, x.expr)
     end Block
 
     given BlockMethods: BlockMethods with
       extension (self: Block)
-        def statements: List[Statement] = self.stats
+        def statements: List[Statement] = self.stats.toList
         def expr: Term = self.expr
       end extension
     end BlockMethods
@@ -906,10 +906,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Closure extends ClosureModule:
       def apply(meth: Term, tpe: Option[TypeRepr]): Closure =
         xCheckMacroAssert(meth.symbol.isAnonymousFunction, "Closures must refer to anonymous functions")
-        withDefaultPos(tpd.Closure(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.Closure(Vector(), meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
 
       def copy(original: Tree)(meth: Tree, tpe: Option[TypeRepr]): Closure =
-        tpd.cpy.Closure(original)(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
+        tpd.cpy.Closure(original)(Vector(), meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
       def unapply(x: Closure): (Term, Option[TypeRepr]) =
         (x.meth, x.tpeOpt)
     end Closure
@@ -924,12 +924,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Lambda extends LambdaModule:
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
         val meth = dotc.core.Symbols.newAnonFun(owner, tpe)
-        withDefaultPos(tpd.Closure(meth, tss => xCheckedMacroOwners(xCheckMacroValidExpr(rhsFn(meth, tss.head.map(withDefaultPos))), meth)))
+        withDefaultPos(tpd.Closure(meth, tss => xCheckedMacroOwners(xCheckMacroValidExpr(rhsFn(meth, tss.head.map(withDefaultPos).toList)), meth)))
 
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
         case Block((ddef @ DefDef(_, tpd.ValDefs(params) :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
         if ddef.symbol == meth.symbol =>
-          Some((params, body))
+          Some((params.toList, body))
         case _ => None
       }
     end Lambda
@@ -970,19 +970,19 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Match extends MatchModule:
       def apply(selector: Term, cases: List[CaseDef]): Match =
-        withDefaultPos(tpd.Match(xCheckMacroValidExpr(selector), cases))
+        withDefaultPos(tpd.Match(xCheckMacroValidExpr(selector), cases.toVector))
 
       def copy(original: Tree)(selector: Term, cases: List[CaseDef]): Match =
-        tpd.cpy.Match(original)(xCheckMacroValidExpr(selector), cases)
+        tpd.cpy.Match(original)(xCheckMacroValidExpr(selector), cases.toVector)
 
       def unapply(x: Match): (Term, List[CaseDef]) =
-        (x.scrutinee, x.cases)
+        (x.scrutinee, x.cases.toList)
     end Match
 
     given MatchMethods: MatchMethods with
       extension (self: Match)
         def scrutinee: Term = self.selector
-        def cases: List[CaseDef] = self.cases
+        def cases: List[CaseDef] = self.cases.toList
         def isInline: Boolean = self.isInline
       end extension
     end MatchMethods
@@ -997,16 +997,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object SummonFrom extends SummonFromModule:
       def apply(cases: List[CaseDef]): SummonFrom =
-        withDefaultPos(tpd.Match(tpd.EmptyTree, cases))
+        withDefaultPos(tpd.Match(tpd.EmptyTree, cases.toVector))
       def copy(original: Tree)(cases: List[CaseDef]): SummonFrom =
-        tpd.cpy.Match(original)(tpd.EmptyTree, cases)
+        tpd.cpy.Match(original)(tpd.EmptyTree, cases.toVector)
       def unapply(x: SummonFrom): Some[List[CaseDef]] =
-        Some(x.cases)
+        Some(x.cases.toList)
     end SummonFrom
 
     given SummonFromMethods: SummonFromMethods with
       extension (self: SummonFrom)
-        def cases: List[CaseDef] = self.cases
+        def cases: List[CaseDef] = self.cases.toList
       end extension
     end SummonFromMethods
 
@@ -1020,17 +1020,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Try extends TryModule:
       def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-        withDefaultPos(tpd.Try(xCheckMacroValidExpr(expr), cases, finalizer.getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.Try(xCheckMacroValidExpr(expr), cases.toVector, finalizer.getOrElse(tpd.EmptyTree)))
       def copy(original: Tree)(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try =
-        tpd.cpy.Try(original)(xCheckMacroValidExpr(expr), cases, finalizer.getOrElse(tpd.EmptyTree))
+        tpd.cpy.Try(original)(xCheckMacroValidExpr(expr), cases.toVector, finalizer.getOrElse(tpd.EmptyTree))
       def unapply(x: Try): (Term, List[CaseDef], Option[Term]) =
-        (x.body, x.cases, optional(x.finalizer))
+        (x.body, x.cases.toList, optional(x.finalizer))
     end Try
 
     given TryMethods: TryMethods with
       extension (self: Try)
         def body: Term = self.expr
-        def cases: List[CaseDef] = self.cases
+        def cases: List[CaseDef] = self.cases.toList
         def finalizer: Option[Term] = optional(self.finalizer)
       end extension
     end TryMethods
@@ -1070,17 +1070,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Repeated extends RepeatedModule:
       def apply(elems: List[Term], elemtpt: TypeTree): Repeated =
         xCheckMacroValidExprs(elems)
-        withDefaultPos(tpd.SeqLiteral(elems, elemtpt))
+        withDefaultPos(tpd.SeqLiteral(elems.toVector, elemtpt))
       def copy(original: Tree)(elems: List[Term], elemtpt: TypeTree): Repeated =
         xCheckMacroValidExprs(elems)
-        tpd.cpy.SeqLiteral(original)(elems, elemtpt)
+        tpd.cpy.SeqLiteral(original)(elems.toVector, elemtpt)
       def unapply(x: Repeated): (List[Term], TypeTree) =
-        (x.elems, x.elemtpt)
+        (x.elems.toList, x.elemtpt)
     end Repeated
 
     given RepeatedMethods: RepeatedMethods with
       extension (self: Repeated)
-        def elems: List[Term] = self.elems
+        def elems: List[Term] = self.elems.toList
         def elemtpt: TypeTree = self.elemtpt
       end extension
     end RepeatedMethods
@@ -1095,21 +1095,21 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Inlined extends InlinedModule:
       def apply(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
-        withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }, xCheckMacroValidExpr(expansion)))
+        withDefaultPos(tpd.Inlined(call.getOrElse(tpd.EmptyTree), bindings.map { case b: tpd.MemberDef => b }.toVector, xCheckMacroValidExpr(expansion)))
       def copy(original: Tree)(call: Option[Tree], bindings: List[Definition], expansion: Term): Inlined =
         original match
           case original: Inlined =>
-            tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]], xCheckMacroValidExpr(expansion))
+            tpd.cpy.Inlined(original)(call.getOrElse(tpd.EmptyTree), bindings.asInstanceOf[List[tpd.MemberDef]].toVector, xCheckMacroValidExpr(expansion))
           case original =>
             throw new IllegalArgumentException(i"Expected argument `original` to be an `Inlined` but was: ${original.show}")
       def unapply(x: Inlined): (Option[Tree /* Term | TypeTree */], List[Definition], Term) =
-        (optional(x.call), x.bindings, x.body)
+        (optional(x.call), x.bindings.map(_.asInstanceOf[Definition]).toList, x.body)
     end Inlined
 
     given InlinedMethods: InlinedMethods with
       extension (self: Inlined)
         def call: Option[Tree] = optional(self.call)
-        def bindings: List[Definition] = self.bindings
+        def bindings: List[Definition] = self.bindings.map(_.asInstanceOf[Definition]).toList
         def body: Term = self.expansion
       end extension
     end InlinedMethods
@@ -1311,17 +1311,18 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Refined extends RefinedModule:
       def apply(tpt: TypeTree, refinements: List[Definition], refineCls: Symbol): Refined = // Symbol of the class being refined, according to which the refinements are typed
         assert(refineCls.isClass, "refineCls must be a class/trait/object")
-        withDefaultPos(tpd.RefinedTypeTree(tpt, refinements, refineCls.asClass).asInstanceOf[tpd.RefinedTypeTree])
+        withDefaultPos(tpd.RefinedTypeTree(tpt, refinements.toVector, refineCls.asClass).asInstanceOf[tpd.RefinedTypeTree])
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined =
-        tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
+        tpd.cpy.RefinedTypeTree(original)(tpt, refinements.toVector)
       def unapply(x: Refined): (TypeTree, List[Definition]) =
-        (x.tpt, x.refinements.asInstanceOf[List[Definition]])
+        (x.tpt, x.refinements.map(_.asInstanceOf[Definition]).toList)
     end Refined
 
     given RefinedMethods: RefinedMethods with
       extension (self: Refined)
         def tpt: TypeTree = self.tpt
-        def refinements: List[Definition] = self.refinements.asInstanceOf[List[Definition]]
+        def refinements: List[Definition] =
+          self.refinements.map(_.asInstanceOf[Definition]).toList
       end extension
     end RefinedMethods
 
@@ -1335,17 +1336,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Applied extends AppliedModule:
       def apply(tpt: TypeTree, args: List[Tree]): Applied =
-        withDefaultPos(tpd.AppliedTypeTree(tpt, args))
+        withDefaultPos(tpd.AppliedTypeTree(tpt, args.toVector))
       def copy(original: Tree)(tpt: TypeTree, args: List[Tree]): Applied =
-        tpd.cpy.AppliedTypeTree(original)(tpt, args)
+        tpd.cpy.AppliedTypeTree(original)(tpt, args.toVector)
       def unapply(x: Applied): (TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/]) =
-        (x.tpt, x.args)
+        (x.tpt, x.args.toList)
     end Applied
 
     given AppliedMethods: AppliedMethods with
       extension (self: Applied)
         def tpt: TypeTree = self.tpt
-        def args: List[Tree] = self.args
+        def args: List[Tree] = self.args.toList
       end extension
     end AppliedMethods
 
@@ -1383,18 +1384,18 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object MatchTypeTree extends MatchTypeTreeModule:
       def apply(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
-        withDefaultPos(tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases))
+        withDefaultPos(tpd.MatchTypeTree(bound.getOrElse(tpd.EmptyTree), selector, cases.toVector))
       def copy(original: Tree)(bound: Option[TypeTree], selector: TypeTree, cases: List[TypeCaseDef]): MatchTypeTree =
-        tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases)
+        tpd.cpy.MatchTypeTree(original)(bound.getOrElse(tpd.EmptyTree), selector, cases.toVector)
       def unapply(x: MatchTypeTree): (Option[TypeTree], TypeTree, List[TypeCaseDef]) =
-        (optional(x.bound), x.selector, x.cases)
+        (optional(x.bound), x.selector, x.cases.map(_.asInstanceOf[TypeCaseDef]).toList)
     end MatchTypeTree
 
     given MatchTypeTreeMethods: MatchTypeTreeMethods with
       extension (self: MatchTypeTree)
         def bound: Option[TypeTree] = optional(self.bound)
         def selector: TypeTree = self.selector
-        def cases: List[TypeCaseDef] = self.cases
+        def cases: List[TypeCaseDef] = self.cases.map(_.asInstanceOf[TypeCaseDef]).toList
       end extension
     end MatchTypeTreeMethods
 
@@ -1431,16 +1432,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object LambdaTypeTree extends LambdaTypeTreeModule:
       def apply(tparams: List[TypeDef], body: Tree): LambdaTypeTree =
-        withDefaultPos(tpd.LambdaTypeTree(tparams, body))
+        withDefaultPos(tpd.LambdaTypeTree(tparams.toVector, body))
       def copy(original: Tree)(tparams: List[TypeDef], body: Tree): LambdaTypeTree =
-        tpd.cpy.LambdaTypeTree(original)(tparams, body)
+        tpd.cpy.LambdaTypeTree(original)(tparams.toVector, body)
       def unapply(tree: LambdaTypeTree): (List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/) =
-        (tree.tparams, tree.body)
+        (tree.tparams.toList, tree.body)
     end LambdaTypeTree
 
     given LambdaTypeTreeMethods: LambdaTypeTreeMethods with
       extension (self: LambdaTypeTree)
-        def tparams: List[TypeDef] = self.tparams
+        def tparams: List[TypeDef] = self.tparams.toList
         def body: Tree = self.body
       end extension
     end LambdaTypeTreeMethods
@@ -1477,16 +1478,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeBlock extends TypeBlockModule:
       def apply(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
-        withDefaultPos(tpd.Block(aliases, tpt))
+        withDefaultPos(tpd.Block(aliases.toVector, tpt))
       def copy(original: Tree)(aliases: List[TypeDef], tpt: TypeTree): TypeBlock =
-        tpd.cpy.Block(original)(aliases, tpt)
+        tpd.cpy.Block(original)(aliases.toVector, tpt)
       def unapply(x: TypeBlock): (List[TypeDef], TypeTree) =
         (x.aliases, x.tpt)
     end TypeBlock
 
     given TypeBlockMethods: TypeBlockMethods with
       extension (self: TypeBlock)
-        def aliases: List[TypeDef] = self.stats.map { case alias: TypeDef => alias }
+        def aliases: List[TypeDef] = self.stats.map { case alias: TypeDef => alias }.toList
         def tpt: TypeTree = self.expr
       end extension
     end TypeBlockMethods
@@ -1631,11 +1632,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Unapply extends UnapplyModule:
       def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
-        withDefaultPos(tpd.UnApply(fun, implicits, patterns, dotc.core.Symbols.defn.NothingType))
+        withDefaultPos(tpd.UnApply(fun, implicits.toVector, patterns.toVector, dotc.core.Symbols.defn.NothingType))
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
-        withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits, patterns))
+        withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits.toVector, patterns.toVector))
       def unapply(x: Unapply): (Term, List[Term], List[Tree]) =
-        (x.fun, x.implicits, x.patterns)
+        (x.fun, x.implicits.toList, x.patterns.toList)
     end Unapply
 
     given UnapplyMethods: UnapplyMethods with
@@ -1644,15 +1645,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           case self: tpd.UnApply => self.fun
           case self: tpd.QuotePattern => QuotePatterns.encode(self).fun // TODO expose QuotePattern AST in Quotes
         def implicits: List[Term] = self match
-          case self: tpd.UnApply => self.implicits
-          case self: tpd.QuotePattern => QuotePatterns.encode(self).implicits // TODO expose QuotePattern AST in Quotes
+          case self: tpd.UnApply => self.implicits.toList
+          case self: tpd.QuotePattern => QuotePatterns.encode(self).implicits.toList // TODO expose QuotePattern AST in Quotes
         def patterns: List[Tree] = self match
-          case self: tpd.UnApply => effectivePatterns(self.patterns)
-          case self: tpd.QuotePattern => effectivePatterns(QuotePatterns.encode(self).patterns) // TODO expose QuotePattern AST in Quotes
+          case self: tpd.UnApply => effectivePatterns(self.patterns.toList)
+          case self: tpd.QuotePattern => effectivePatterns(QuotePatterns.encode(self).patterns.toList) // TODO expose QuotePattern AST in Quotes
       end extension
       private def effectivePatterns(patterns: List[Tree]): List[Tree] =
         patterns match
-          case patterns0 :+ dotc.ast.Trees.SeqLiteral(elems, _) => patterns0 ::: elems
+          case patterns0 :+ dotc.ast.Trees.SeqLiteral(elems, _) => patterns0 ::: elems.toList
           case _ => patterns
     end UnapplyMethods
 
@@ -1666,16 +1667,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Alternatives extends AlternativesModule:
       def apply(patterns: List[Tree]): Alternatives =
-        withDefaultPos(tpd.Alternative(patterns))
+        withDefaultPos(tpd.Alternative(patterns.toVector))
       def copy(original: Tree)(patterns: List[Tree]): Alternatives =
-        tpd.cpy.Alternative(original)(patterns)
+        tpd.cpy.Alternative(original)(patterns.toVector)
       def unapply(x: Alternatives): Some[List[Tree]] =
-        Some(x.patterns)
+        Some(x.patterns.toList)
     end Alternatives
 
     given AlternativesMethods: AlternativesMethods with
       extension (self: Alternatives)
-        def patterns: List[Tree] = self.trees
+        def patterns: List[Tree] = self.trees.toList
       end extension
     end AlternativesMethods
 
@@ -1685,10 +1686,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given ParamClauseMethods: ParamClauseMethods with
       extension (self: ParamClause)
-        def params: List[ValDef] | List[TypeDef] = self
+        def params: List[ValDef] | List[TypeDef] =
+          self.toList.asInstanceOf[List[ValDef] | List[TypeDef]]
     end ParamClauseMethods
 
-    type TermParamClause = List[tpd.ValDef]
+    type TermParamClause = Vector[tpd.ValDef]
 
     given TermParamClauseTypeTest: TypeTest[ParamClause, TermParamClause] with
       def unapply(x: ParamClause): Option[TermParamClause & x.type] = x match
@@ -1701,13 +1703,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         if xCheckMacro then
           val implicitParams = params.count(_.symbol.is(dotc.core.Flags.Implicit))
           xCheckMacroAssert(implicitParams == 0 || implicitParams == params.size, "Expected all or none of the parameters to be implicit")
-        params
-      def unapply(x: TermParamClause): Some[List[ValDef]] = Some(x)
+        params.toVector
+      def unapply(x: TermParamClause): Some[List[ValDef]] = Some(x.toList)
     end TermParamClause
 
     given TermParamClauseMethods: TermParamClauseMethods with
       extension (self: TermParamClause)
-        def params: List[ValDef] = self
+        def params: List[ValDef] = self.toList
         def isImplicit: Boolean =
           self.nonEmpty && self.head.symbol.is(dotc.core.Flags.Implicit)
         def isGiven: Boolean =
@@ -1715,12 +1717,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def isErased: Boolean = false
 
         def erasedArgs: List[Boolean] =
-          self.map(_.symbol.is(dotc.core.Flags.Erased))
+          self.map(_.symbol.is(dotc.core.Flags.Erased)).toList
         def hasErasedArgs: Boolean =
           self.exists(_.symbol.is(dotc.core.Flags.Erased))
     end TermParamClauseMethods
 
-    type TypeParamClause = List[tpd.TypeDef]
+    type TypeParamClause = Vector[tpd.TypeDef]
 
     given TypeParamClauseTypeTest: TypeTest[ParamClause, TypeParamClause] with
       def unapply(x: ParamClause): Option[TypeParamClause & x.type] = x match
@@ -1731,13 +1733,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object TypeParamClause extends TypeParamClauseModule:
       def apply(params: List[TypeDef]): TypeParamClause =
         if params.isEmpty then throw IllegalArgumentException("Empty type parameters")
-        params
-      def unapply(x: TypeParamClause): Some[List[TypeDef]] = Some(x)
+        params.toVector
+      def unapply(x: TypeParamClause): Some[List[TypeDef]] = Some(x.toList)
     end TypeParamClause
 
     given TypeParamClauseMethods: TypeParamClauseMethods with
       extension (self: TypeParamClause)
-        def params: List[TypeDef] = self
+        def params: List[TypeDef] = self.toList
     end TypeParamClauseMethods
 
     type Selector = untpd.ImportSelector
@@ -1938,7 +1940,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               // see issue #22395
               prefix.select(sym)
             case other => other
-        def baseClasses: List[Symbol] = self.baseClasses
+        def baseClasses: List[Symbol] = self.baseClasses.toList
         def baseType(cls: Symbol): TypeRepr = self.baseType(cls)
         def derivesFrom(cls: Symbol): Boolean = self.derivesFrom(cls)
         def isFunctionType: Boolean =
@@ -1962,9 +1964,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def appliedTo(targ: TypeRepr): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targ)
         def appliedTo(targs: List[TypeRepr]): TypeRepr =
-          dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
+          dotc.core.Types.decorateTypeApplications(self).appliedTo(targs.toVector)
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr =
-          self.subst(from, to)
+          self.subst(from.toVector, to.toVector)
 
         def typeArgs: List[TypeRepr] = self match
           case AppliedType(_, args) => args
@@ -2100,7 +2102,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object AppliedType extends AppliedTypeModule:
       def apply(tycon: TypeRepr, args: List[TypeRepr]): AppliedType =
-        Types.AppliedType(tycon, args)
+        Types.AppliedType(tycon, args.toVector)
       def unapply(x: AppliedType): (TypeRepr, List[TypeRepr]) =
         (AppliedTypeMethods.tycon(x), AppliedTypeMethods.args(x))
     end AppliedType
@@ -2108,7 +2110,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given AppliedTypeMethods: AppliedTypeMethods with
       extension (self: AppliedType)
         def tycon: TypeRepr = self.tycon.stripTypeVar
-        def args: List[TypeRepr] = self.args.mapConserve(_.stripTypeVar)
+        def args: List[TypeRepr] = self.args.mapConserve(_.stripTypeVar).toList
       end extension
     end AppliedTypeMethods
 
@@ -2185,16 +2187,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object MatchType extends MatchTypeModule:
       def apply(bound: TypeRepr, scrutinee: TypeRepr, cases: List[TypeRepr]): MatchType =
-        Types.MatchType(bound, scrutinee, cases)
+        Types.MatchType(bound, scrutinee, cases.toVector)
       def unapply(x: MatchType): (TypeRepr, TypeRepr, List[TypeRepr]) =
-        (x.bound, x.scrutinee, x.cases)
+        (x.bound, x.scrutinee, x.cases.toList)
     end MatchType
 
     given MatchTypeMethods: MatchTypeMethods with
       extension (self: MatchType)
         def bound: TypeRepr = self.bound
         def scrutinee: TypeRepr = self.scrutinee
-        def cases: List[TypeRepr] = self.cases
+        def cases: List[TypeRepr] = self.cases.toList
       end extension
     end MatchTypeMethods
 
@@ -2306,8 +2308,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given LambdaTypeMethods: LambdaTypeMethods with
       extension (self: LambdaType)
-        def paramNames: List[String] = self.paramNames.map(_.toString)
-        def paramTypes: List[TypeRepr] = self.paramInfos
+        def paramNames: List[String] = self.paramNames.map(_.toString).toList
+        def paramTypes: List[TypeRepr] = self.paramInfos.toList
         def resType: TypeRepr = self.resType
       end extension
     end LambdaTypeMethods
@@ -2330,15 +2332,19 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object MethodType extends MethodTypeModule:
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType =
-        Types.MethodType(paramNames.map(_.toTermName))(paramInfosExp, resultTypeExp)
+        Types.MethodType(paramNames.map(_.toTermName).toVector)(
+          mt => paramInfosExp(mt).toVector,
+          mt => resultTypeExp(mt))
       def apply(kind: MethodTypeKind)(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType =
         val companion = kind match
           case MethodTypeKind.Contextual => Types.ContextualMethodType
           case MethodTypeKind.Implicit => Types.ImplicitMethodType
           case MethodTypeKind.Plain => Types.MethodType
-        companion.apply(paramNames.map(_.toTermName))(paramInfosExp, resultTypeExp)
+        companion.apply(paramNames.map(_.toTermName).toVector)(
+          mt => paramInfosExp(mt).toVector,
+          mt => resultTypeExp(mt))
       def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr) =
-        (x.paramNames.map(_.toString), x.paramTypes, x.resType)
+        (x.paramNames.map(_.toString).toList, x.paramTypes.toList, x.resType)
     end MethodType
 
     given MethodTypeMethods: MethodTypeMethods with
@@ -2353,7 +2359,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => MethodTypeKind.Plain
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
 
-        def erasedParams: List[Boolean] = self.paramErasureStatuses
+        def erasedParams: List[Boolean] = self.paramErasureStatuses.toList
         def hasErasedParams: Boolean = self.hasErasedParams
       end extension
     end MethodTypeMethods
@@ -2368,15 +2374,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object PolyType extends PolyTypeModule:
       def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => TypeRepr): PolyType =
-        Types.PolyType(paramNames.map(_.toTypeName))(paramBoundsExp, resultTypeExp)
+        Types.PolyType(paramNames.map(_.toTypeName).toVector)(
+          pt => paramBoundsExp(pt).toVector,
+          pt => resultTypeExp(pt))
       def unapply(x: PolyType): (List[String], List[TypeBounds], TypeRepr) =
-        (x.paramNames.map(_.toString), x.paramBounds, x.resType)
+        (x.paramNames.map(_.toString).toList, x.paramBounds.toList, x.resType)
     end PolyType
 
     given PolyTypeMethods: PolyTypeMethods with
       extension (self: PolyType)
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def paramBounds: List[TypeBounds] = self.paramInfos
+        def paramBounds: List[TypeBounds] = self.paramInfos.toList
       end extension
     end PolyTypeMethods
 
@@ -2390,17 +2398,19 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeLambda extends TypeLambdaModule:
       def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => TypeRepr): TypeLambda =
-        Types.HKTypeLambda(paramNames.map(_.toTypeName))(boundsFn, bodyFn)
+        Types.HKTypeLambda(paramNames.map(_.toTypeName).toVector)(
+          tl => boundsFn(tl).toVector,
+          tl => bodyFn(tl))
       def unapply(x: TypeLambda): (List[String], List[TypeBounds], TypeRepr) =
-        (x.paramNames.map(_.toString), x.paramBounds, x.resType)
+        (x.paramNames.map(_.toString).toList, x.paramBounds.toList, x.resType)
     end TypeLambda
 
     given TypeLambdaMethods: TypeLambdaMethods with
       extension (self: TypeLambda)
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def paramBounds: List[TypeBounds] = self.paramInfos
+        def paramBounds: List[TypeBounds] = self.paramInfos.toList
         def paramVariances: List[Flags] =
-          self.typeParams.map(_.paramVariance)
+          self.typeParams.map(_.paramVariance).toList
       end extension
     end TypeLambdaMethods
 
@@ -2414,7 +2424,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object MatchCase extends MatchCaseModule:
       def apply(pattern: TypeRepr, rhs: TypeRepr): MatchCase =
-        Types.AppliedType(dotc.core.Symbols.defn.MatchCaseClass.typeRef, List(pattern, rhs))
+        Types.AppliedType(dotc.core.Symbols.defn.MatchCaseClass.typeRef, Vector(pattern, rhs))
       def unapply(x: MatchCase): (TypeRepr, TypeRepr) = (x.pattern, x.rhs)
     end MatchCase
 
@@ -2747,10 +2757,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           owner,
           name.toTypeName,
           dotc.core.Flags.EmptyFlags,
-          parents,
+          parents.toVector,
           selfType.getOrElse(Types.NoType),
           dotc.core.Symbols.NoSymbol)
-        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Nil, Nil))
+        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Vector(), Vector()))
         for sym <- decls(cls) do cls.enter(sym)
         cls
 
@@ -2804,10 +2814,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           owner,
           name.toTypeName,
           clsFlags,
-          parents,
+          cls => parents(cls).toVector,
           selfType.getOrElse(Types.NoType),
           clsPrivateWithin,
-          clsAnnotations,
+          clsAnnotations.toVector,
           NoCoord,
           compUnitInfo = null
         )
@@ -2888,14 +2898,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           name.toTermName,
           modFlags | dotc.core.Flags.ModuleValCreationFlags,
           clsFlags | dotc.core.Flags.ModuleClassCreationFlags,
-          parents,
+          cls => parents(cls).toVector,
           newScope,
           privateWithin,
           NoCoord,
           compUnitInfo = null
         )
         val cls = mod.moduleClass.asClass
-        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Nil, Nil))
+        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Vector(), Vector()))
         for sym <- decls(cls) do cls.enter(sym)
         mod
 
@@ -2906,7 +2916,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val privateWithin1 = if privateWithin.isTerm then Symbol.noSymbol else privateWithin
         checkValidFlags(flags.toTermFlags, Flags.validMethodFlags)
         val method = dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin1)
-        method.setParamss(method.paramSymss)
+        method.setParamss(method.denot.paramSymss)
         method
       def newVal(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
         xCheckMacroAssert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
@@ -2992,7 +3002,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.denot.annotations.flatMap {
             case _: dotc.core.Annotations.BodyAnnotation => Nil
             case annot => annot.tree :: Nil
-          }
+          }.toList
 
         def isDefinedInCurrentRun: Boolean =
           self.exists && self.topLevelClass.asClass.isDefinedInCurrentRun
@@ -3022,7 +3032,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           val sym = self.unforcedDecls.find(sym => sym.name == name.toTermName)
           if (isField(sym)) sym else dotc.core.Symbols.NoSymbol
 
-        def declaredFields: List[Symbol] = self.unforcedDecls.filter(isField)
+        def declaredFields: List[Symbol] = self.unforcedDecls.filter(isField).toList
 
         /** The prefix on which a member lookup should be performed. */
         private def lookupPrefix: TypeRepr =
@@ -3081,7 +3091,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           lookupPrefix.member(name.toTypeName).symbol
 
         def memberTypes: List[Symbol] =
-          self.typeRef.decls.filter(_.isType)
+          self.typeRef.decls.filter(_.isType).toList
         def typeMembers: List[Symbol] =
           // lookupPrefix.typeMembers currently returns a Set wrapped into a unsorted Seq,
           // so we try to sort that here (see discussion: https://github.com/scala/scala3/issues/22472),
@@ -3112,9 +3122,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           }.map(_.asInstanceOf[Symbol])
 
         def declarations: List[Symbol] =
-          self.typeRef.info.decls.toList
+          self.typeRef.info.decls.toVector.toList
 
-        def paramSymss: List[List[Symbol]] = self.denot.paramSymss
+        def paramSymss: List[List[Symbol]] = self.denot.paramSymss.map(_.toList).toList
         def primaryConstructor: Symbol =
           val initialPrimary = self.denot.primaryConstructor
           // Java outline parser creates a dummyConstructor. We want to avoid returning it here,
@@ -3144,7 +3154,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           if !self.isClass then Nil
           else self.asClass.paramAccessors.collect {
             case sym if sym.is(dotc.core.Flags.CaseAccessor) => sym.asTerm
-          }
+          }.toList
 
         def isTypeParam: Boolean = self.isTypeParam
         def paramVariance: Flags = self.paramVariance
@@ -3152,7 +3162,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def moduleClass: Symbol = self.denot.moduleClass
         def companionClass: Symbol = self.denot.companionClass
         def companionModule: Symbol = self.denot.companionModule
-        def children: List[Symbol] = self.denot.children
+        def children: List[Symbol] = self.denot.children.toList
         def typeRef: TypeRef = self.denot.typeRef
         def termRef: TermRef = self.denot.termRef
 
@@ -3193,7 +3203,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               paramSig.toString
             case paramSig: Int =>
               paramSig
-          }
+          }.toList
         def resultSig: String =
           self.resSig.toString
       end extension
@@ -3519,12 +3529,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
      */
     private def xCheckMacroBlockOwners(tree: Tree): tree.type =
       if xCheckMacro then
-        val defs = new tpd.TreeAccumulator[List[Tree]] {
-          def apply(defs: List[Tree], tree: Tree)(using Context): List[Tree] =
+        val defs = new tpd.TreeAccumulator[Vector[Tree]] {
+          def apply(defs: Vector[Tree], tree: Tree)(using Context): Vector[Tree] =
             tree match
-              case tree: tpd.DefTree => tree :: defs
+              case tree: tpd.DefTree => tree +: defs
               case _ => foldOver(defs, tree)
-        }.apply(Nil, tree)
+        }.apply(Vector.empty, tree)
         val defOwners = defs.groupBy(_.symbol.owner)
         assert(defOwners.size <= 1,
           s"""Block contains definition with different owners.
@@ -3606,20 +3616,24 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
   end reflect
 
+  private def pickledToVector(pickled: String | List[String]): String | Vector[String] = pickled match
+    case pickled: String => pickled
+    case pickled: List[?] => pickled.asInstanceOf[List[String]].toVector
+
   def unpickleExpr[T](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?]): scala.quoted.Expr[T] =
-    val tree = PickledQuotes.unpickleTerm(pickled, PickledQuotes.TypeHole.V1(typeHole), PickledQuotes.ExprHole.V1(termHole))
+    val tree = PickledQuotes.unpickleTerm(pickledToVector(pickled), PickledQuotes.TypeHole.V1(typeHole), PickledQuotes.ExprHole.V1(termHole))
     new ExprImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Expr[T]]
 
   def unpickleExprV2[T](pickled: String | List[String], types: Null | Seq[Type[?]], termHole: Null | ((Int, Seq[Type[?] | Expr[Any]], Quotes) => Expr[?])): scala.quoted.Expr[T] =
-    val tree = PickledQuotes.unpickleTerm(pickled, PickledQuotes.TypeHole.V2(types), PickledQuotes.ExprHole.V2(termHole))
+    val tree = PickledQuotes.unpickleTerm(pickledToVector(pickled), PickledQuotes.TypeHole.V2(types), PickledQuotes.ExprHole.V2(termHole))
     new ExprImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Expr[T]]
 
   def unpickleType[T <: AnyKind](pickled: String | List[String], typeHole: (Int, Seq[Any]) => scala.quoted.Type[?], termHole: (Int, Seq[Any], scala.quoted.Quotes) => scala.quoted.Expr[?]): scala.quoted.Type[T] =
-    val tree = PickledQuotes.unpickleTypeTree(pickled, PickledQuotes.TypeHole.V1(typeHole))
+    val tree = PickledQuotes.unpickleTypeTree(pickledToVector(pickled), PickledQuotes.TypeHole.V1(typeHole))
     new TypeImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Type[T]]
 
   def unpickleTypeV2[T <: AnyKind](pickled: String | List[String], types: Null | Seq[Type[?]]): scala.quoted.Type[T] =
-    val tree = PickledQuotes.unpickleTypeTree(pickled, PickledQuotes.TypeHole.V2(types))
+    val tree = PickledQuotes.unpickleTypeTree(pickledToVector(pickled), PickledQuotes.TypeHole.V2(types))
     new TypeImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Type[T]]
 
   object ExprMatch extends ExprMatchModule:
