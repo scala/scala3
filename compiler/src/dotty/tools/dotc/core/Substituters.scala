@@ -3,11 +3,103 @@ package core
 
 import Types.*, Symbols.*, Contexts.*, Decorators.i
 import cc.Capabilities.{Capability, ResultCap}
+import dotty.tools.dotc.util.EqHashMap
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
  */
 object Substituters:
+  private inline val MaxVector1Length = 32
+
+  private def substApplied[BT <: BindingType](
+      tp: AppliedType,
+      from: BT,
+      to: BT,
+      theMap: SubstBindingMap[BT] | Null
+  )(using Context): Type =
+    val tycon = tp.tycon
+    val tycon1 = subst(tycon, from, to, theMap)
+    val args = tp.args
+    val len = args.length
+    var i = 0
+    while i < len do
+      val arg = args(i)
+      val arg1 = subst(arg, from, to, theMap)
+      if !arg1.asInstanceOf[AnyRef].eq(arg.asInstanceOf[AnyRef]) then
+        val args1 =
+          if len <= MaxVector1Length then
+            val elems = new Array[AnyRef](len)
+            var j = 0
+            while j < i do
+              elems(j) = args(j).asInstanceOf[AnyRef]
+              j += 1
+            elems(i) = arg1.asInstanceOf[AnyRef]
+            i += 1
+            while i < len do
+              elems(i) = subst(args(i), from, to, theMap).asInstanceOf[AnyRef]
+              i += 1
+            Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[Type]]
+          else
+            val b = Vector.newBuilder[Type]
+            b.sizeHint(len)
+            var j = 0
+            while j < i do
+              b += args(j)
+              j += 1
+            b += arg1
+            i += 1
+            while i < len do
+              b += subst(args(i), from, to, theMap)
+              i += 1
+            b.result()
+        return tp.derivedAppliedType(tycon1, args1)
+      i += 1
+    tp.derivedAppliedType(tycon1, args)
+
+  private def substParamsApplied(
+      tp: AppliedType,
+      from: BindingType,
+      to: Vector[Type],
+      theMap: SubstParamsMap | Null
+  )(using Context): Type =
+    val tycon = tp.tycon
+    val tycon1 = substParams(tycon, from, to, theMap)
+    val args = tp.args
+    val len = args.length
+    var i = 0
+    while i < len do
+      val arg = args(i)
+      val arg1 = substParams(arg, from, to, theMap)
+      if !arg1.asInstanceOf[AnyRef].eq(arg.asInstanceOf[AnyRef]) then
+        val args1 =
+          if len <= MaxVector1Length then
+            val elems = new Array[AnyRef](len)
+            var j = 0
+            while j < i do
+              elems(j) = args(j).asInstanceOf[AnyRef]
+              j += 1
+            elems(i) = arg1.asInstanceOf[AnyRef]
+            i += 1
+            while i < len do
+              elems(i) = substParams(args(i), from, to, theMap).asInstanceOf[AnyRef]
+              i += 1
+            Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[Type]]
+          else
+            val b = Vector.newBuilder[Type]
+            b.sizeHint(len)
+            var j = 0
+            while j < i do
+              b += args(j)
+              j += 1
+            b += arg1
+            i += 1
+            while i < len do
+              b += substParams(args(i), from, to, theMap)
+              i += 1
+            b.result()
+        return tp.derivedAppliedType(tycon1, args1)
+      i += 1
+    tp.derivedAppliedType(tycon1, args)
 
   final def subst[BT <: BindingType](tp: Type, from: BT, to: BT, theMap: SubstBindingMap[BT] | Null)(using Context): Type =
     tp match {
@@ -19,7 +111,7 @@ object Substituters:
       case _: ThisType =>
         tp
       case tp: AppliedType =>
-        tp.map(subst(_, from, to, theMap))
+        substApplied(tp, from, to, theMap)
       case _ =>
         (if (theMap != null) theMap else new SubstBindingMap(from, to))
           .mapOver(tp)
@@ -74,6 +166,12 @@ object Substituters:
     }
 
   final def substSym(tp: Type, from: Vector[Symbol], to: Vector[Symbol], theMap: SubstSymMap | Null)(using Context): Type =
+    if theMap == null then
+      from.length match
+        case 0 => return tp
+        case 1 => return substSym1(tp, from(0), to(0), null)
+        case 2 => return substSym2(tp, from(0), to(0), from(1), to(1), null)
+        case _ =>
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
@@ -97,6 +195,120 @@ object Substituters:
         tp
       case _ =>
         (if (theMap != null) theMap else new SubstSymMap(from, to))
+          .mapOver(tp)
+    }
+
+  private def symbolsToArray(syms: Vector[Symbol]): Array[Symbol] =
+    val arr = new Array[Symbol](syms.length)
+    var i = 0
+    while i < syms.length do
+      arr(i) = syms(i)
+      i += 1
+    arr
+
+  private def largeSubstLookup(from: Array[Symbol], to: Array[Symbol]): EqHashMap[Symbol, Symbol] | Null =
+    if from.length <= MaxVector1Length then null
+    else
+      val lookup = new EqHashMap[Symbol, Symbol](from.length * 2)
+      var i = 0
+      while i < from.length do
+        if lookup.lookup(from(i)) == null then lookup.update(from(i), to(i))
+        i += 1
+      lookup
+
+  private def substSymLookup(sym: Symbol, from: Array[Symbol], to: Array[Symbol], lookup: EqHashMap[Symbol, Symbol] | Null): Symbol | Null =
+    if lookup != null then lookup.lookup(sym)
+    else
+      var idx = 0
+      while idx < from.length do
+        if from(idx) eq sym then return to(idx)
+        idx += 1
+      null
+
+  private final def substSymArray(
+      tp: Type,
+      from: Array[Symbol],
+      to: Array[Symbol],
+      lookup: EqHashMap[Symbol, Symbol] | Null,
+      theMap: TypeMap
+  )(using Context): Type =
+    tp match {
+      case tp: NamedType =>
+        val sym1 = substSymLookup(tp.symbol, from, to, lookup)
+        if sym1 != null then
+          return substSymArray(tp.prefix, from, to, lookup, theMap).select(sym1)
+        if (tp.prefix `eq` NoPrefix) tp
+        else tp.derivedSelect(substSymArray(tp.prefix, from, to, lookup, theMap))
+      case tp: ThisType =>
+        val sym1 = substSymLookup(tp.cls, from, to, lookup)
+        if sym1 == null then tp else sym1.asClass.thisType
+      case _: BoundType =>
+        tp
+      case _ =>
+        theMap.mapOver(tp)
+    }
+
+  final class SubstSymData(fromVector: Vector[Symbol], toVector: Vector[Symbol]):
+    assert(fromVector.length == toVector.length, s"mismatched substitution: $fromVector --> $toVector")
+    private val from = symbolsToArray(fromVector)
+    private val to = symbolsToArray(toVector)
+    private val lookup = largeSubstLookup(from, to)
+
+    private[core] def subst(tp: Type, theMap: TypeMap)(using Context): Type =
+      substSymArray(tp, from, to, lookup, theMap)
+
+    def substImportAware(tp: Type)(using Context): Type =
+      val substMap = new DeepTypeMap:
+        def apply(tp: Type): Type = tp match
+          case tp: TermRef if tp.symbol.isImport => mapOver(tp)
+          case tp => subst(tp, this)
+      substMap(tp)
+
+    def inverse: SubstSymData = SubstSymData(toVector, fromVector) // implicitly requires that `to` contains no duplicates.
+
+  final def substSym1(tp: Type, from: Symbol, to: Symbol, theMap: SubstSym1Map | Null)(using Context): Type =
+    tp match {
+      case tp: NamedType =>
+        val sym = tp.symbol
+        if (from eq sym)
+          return substSym1(tp.prefix, from, to, theMap).select(to)
+        if (tp.prefix `eq` NoPrefix) tp
+        else tp.derivedSelect(substSym1(tp.prefix, from, to, theMap))
+      case tp: ThisType =>
+        if (from eq tp.cls) to.asClass.thisType else tp
+      case _: BoundType =>
+        tp
+      case _ =>
+        (if (theMap != null) theMap else new SubstSym1Map(from, to))
+          .mapOver(tp)
+    }
+
+  final def substSym2(
+      tp: Type,
+      from1: Symbol,
+      to1: Symbol,
+      from2: Symbol,
+      to2: Symbol,
+      theMap: SubstSym2Map | Null
+  )(using Context): Type =
+    tp match {
+      case tp: NamedType =>
+        val sym = tp.symbol
+        if (from1 eq sym)
+          return substSym2(tp.prefix, from1, to1, from2, to2, theMap).select(to1)
+        if (from2 eq sym)
+          return substSym2(tp.prefix, from1, to1, from2, to2, theMap).select(to2)
+        if (tp.prefix `eq` NoPrefix) tp
+        else tp.derivedSelect(substSym2(tp.prefix, from1, to1, from2, to2, theMap))
+      case tp: ThisType =>
+        val sym = tp.cls
+        if (from1 eq sym) to1.asClass.thisType
+        else if (from2 eq sym) to2.asClass.thisType
+        else tp
+      case _: BoundType =>
+        tp
+      case _ =>
+        (if (theMap != null) theMap else new SubstSym2Map(from1, to1, from2, to2))
           .mapOver(tp)
     }
 
@@ -152,7 +364,7 @@ object Substituters:
       case _: ThisType =>
         tp
       case tp: AppliedType =>
-        tp.map(substParams(_, from, to, theMap))
+        substParamsApplied(tp, from, to, theMap)
       case _ =>
         (if (theMap != null) theMap else new SubstParamsMap(from, to))
           .mapOver(tp)
@@ -218,9 +430,18 @@ object Substituters:
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstSymMap(from: Vector[Symbol], to: Vector[Symbol])(using Context) extends DeepTypeMap {
-    def apply(tp: Type): Type = substSym(tp, from, to, this)(using mapCtx)
-    def inverse = SubstSymMap(to, from) // implicitly requires that `to` contains no duplicates.
+  final class SubstSymMap(fromVector: Vector[Symbol], toVector: Vector[Symbol])(using Context) extends DeepTypeMap {
+    private val data = SubstSymData(fromVector, toVector)
+    def apply(tp: Type): Type = data.subst(tp, this)(using mapCtx)
+    def inverse = SubstSymMap(toVector, fromVector) // implicitly requires that `to` contains no duplicates.
+  }
+
+  final class SubstSym1Map(from: Symbol, to: Symbol)(using Context) extends DeepTypeMap {
+    def apply(tp: Type): Type = substSym1(tp, from, to, this)(using mapCtx)
+  }
+
+  final class SubstSym2Map(from1: Symbol, to1: Symbol, from2: Symbol, to2: Symbol)(using Context) extends DeepTypeMap {
+    def apply(tp: Type): Type = substSym2(tp, from1, to1, from2, to2, this)(using mapCtx)
   }
 
   final class SubstThisMap(from: ClassSymbol, to: Type)(using Context) extends DeepTypeMap {
