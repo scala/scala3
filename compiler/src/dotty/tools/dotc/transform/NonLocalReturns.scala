@@ -91,7 +91,11 @@ class NonLocalReturns extends MiniPhase {
   }
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =
-    nonLocalReturnKeys.remove(tree.symbol) match
+    // Keys for a method are created by `transformReturn` before the enclosing
+    // DefDef is reached (mini-phase transforms run bottom-up), so an empty map
+    // proves there is no key for this method and saves the `tree.symbol` read.
+    if nonLocalReturnKeys.isEmpty then tree
+    else nonLocalReturnKeys.remove(tree.symbol) match
       case key: TermSymbol => cpy.DefDef(tree)(rhs = nonLocalReturnTry(tree.rhs, key, tree.symbol))
       case null => tree
 

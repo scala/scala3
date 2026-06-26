@@ -39,12 +39,22 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   override def relaxedTypingInGroup: Boolean = true
     // Because it adds additional parameters to some constructors
 
+  override def infoMayChange(sym: Symbol)(using Context): Boolean = sym.isConstructor
+
   def transformInfo(tp: Type, sym: Symbol)(using Context): Type =
     if (sym.isConstructor && (
          sym == defn.JavaEnumClass.primaryConstructor ||
          sym.owner.derivesFromJavaEnum))
       addConstrParams(sym.info)
     else tp
+
+  override def transformIsNoOpFor(ref: Denotations.SingleDenotation)(using Context): Boolean =
+    // `transformInfo` only changes infos of constructors (`isConstructor` is a
+    // phase-stable name test); for a non-constructor SymDenotation it returns
+    // `ref.info` unchanged, so `transform` returns `ref` itself.
+    ref match
+      case ref: SymDenotations.SymDenotation => !ref.isConstructor
+      case _ => false
 
   /** Add constructor parameters `$name: String` and `$ordinal: Int` to the end of
    *  the last parameter list of (method- or poly-) type `tp`.

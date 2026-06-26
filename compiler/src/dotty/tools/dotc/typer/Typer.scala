@@ -3966,7 +3966,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             errorTree(xtree, ex, xtree.srcPos.focus)
 
         try
-          val ifpt = defn.asContextFunctionType(pt)
+          // `asContextFunctionType` strips + dealiases `pt` (the #1 external `dealias`
+          // caller); its result `ifpt` is only ever consulted on the `!ctx.isAfterTyper`
+          // branch below (the arity-0 error fires exactly when `!afterTyper && ifpt.exists`,
+          // and `makeContextualFunction` is gated by the same `!afterTyper`). On this
+          // workload 76.6% of these calls are `ctx.isAfterTyper` (Inlining / MegaPhase /
+          // Erasure re-typing), where the result is unused — so compute `ifpt` only when
+          // `!ctx.isAfterTyper`. Behaviour-identical: the boolean below is unchanged because
+          // every use of `ifpt` is already guarded by `!ctx.isAfterTyper`.
+          val ifpt = if ctx.isAfterTyper then NoType else defn.asContextFunctionType(pt)
           val result =
             if ifpt.exists
               && !ctx.isAfterTyper
@@ -3998,11 +4006,21 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      }
   }
 
+  private def widensToMethodOrPoly(tp: Type)(using Context): Boolean = tp match
+    case _: TypeRef | _: AppliedType => false
+    case _: MethodOrPoly => true
+    case tp: TermRef =>
+      val denot = tp.denot
+      !denot.isOverloaded && widensToMethodOrPoly(denot.info)
+    case tp: SingletonType => widensToMethodOrPoly(tp.underlying)
+    case tp: ExprType => widensToMethodOrPoly(tp.resultType)
+    case _ => tp.widen.isInstanceOf[MethodOrPoly]
+
   /** Interpolate and simplify the type of the given tree. */
   protected def simplify(tree: Tree, pt: Type, locked: TypeVars)(using Context): tree.type =
     if !tree.denot.isOverloaded then // for overloaded trees: resolve overloading before simplifying
-      if !tree.tpe.widen.isInstanceOf[MethodOrPoly] // wait with simplifying until method is fully applied
-         || tree.isDef                              // ... unless tree is a definition
+      if !widensToMethodOrPoly(tree.tpe) // wait with simplifying until method is fully applied
+         || tree.isDef                   // ... unless tree is a definition
       then
         interpolateTypeVars(tree, pt, locked)
         val simplified = tree.tpe.simplified
@@ -4064,7 +4082,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       record("typed total")
       if ctx.phase.isTyper then
         assertPositioned(tree)
-      if tree.source != ctx.source && tree.source.exists then
+      if (tree.source `ne` ctx.source) && tree.source.exists then
         typed(tree, pt, locked)(using ctx.withSource(tree.source))
       else if ctx.run.nn.isCancelled then
         tree.withType(WildcardType)
@@ -4847,25 +4865,38 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         missingArgs(wtp)
     }
 
-    def adaptNoArgsOther(wtp: Type, functionExpected: Boolean): Tree = {
-      val implicitFun = defn.isContextFunctionType(wtp) && !untpd.isContextualClosure(tree)
+    def adaptNoArgsOther(wtp: Type, functionExpected: => Boolean): Tree = {
+      // `isContextFunctionType` strips + dealiases `wtp` (a hot `dealias` caller via
+      // `asContextFunctionType`); `implicitFun` is consulted at exactly one site below,
+      // `if canInsertApply && (implicitFun || caseCompanion)`. Because `&&` short-circuits,
+      // `implicitFun` is never read when `canInsertApply` is false (`ctx.isAfterTyper` /
+      // `ctx.isInlineContext` / `Mode.Pattern` / apply-/singleton-/lhs-proto), which is the
+      // re-typing majority on this workload. Make it a `def` (mirroring the sibling
+      // `def caseCompanion` and the accepted `ifpt` gate above) so the dealias walk runs only
+      // when `canInsertApply` holds. Behaviour-identical: a pure Boolean with no side effects,
+      // recomputing the same value when reached.
+      def implicitFun = defn.isContextFunctionType(wtp) && !untpd.isContextualClosure(tree)
       def caseCompanion =
-          functionExpected &&
-          tree.symbol.is(Module) &&
-          tree.symbol.companionClass.is(Case) &&
+          functionExpected && {
+            val sym = tree.symbol
+            sym.is(Module) &&
+            sym.companionClass.is(Case)
+          } &&
           !tree.tpe.baseClasses.exists(defn.isFunctionClass) && {
             report.warning("The method `apply` is inserted. The auto insertion will be deprecated, please write `" + tree.show + ".apply` explicitly.", tree.sourcePos)
             true
           }
 
-      if (implicitFun || caseCompanion)
-          && !isApplyProto(pt)
-          && pt != SingletonTypeProto
-          && pt != LhsProto
-          && !ctx.mode.is(Mode.Pattern)
-          && !tree.isInstanceOf[SplicePattern]
-          && !ctx.isAfterTyper
-          && !ctx.isInlineContext
+      def canInsertApply =
+        !isApplyProto(pt)
+        && pt != SingletonTypeProto
+        && pt != LhsProto
+        && !ctx.mode.is(Mode.Pattern)
+        && !tree.isInstanceOf[SplicePattern]
+        && !ctx.isAfterTyper
+        && !ctx.isInlineContext
+
+      if canInsertApply && (implicitFun || caseCompanion)
       then
         typr.println(i"insert apply on implicit $tree")
         val sel = untpd.Select(untpd.TypedSplice(tree), nme.apply).withAttachment(InsertedApply, ())
@@ -4950,7 +4981,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ => pt
 
     def adaptNoArgs(wtp: Type): Tree = {
-      val ptNorm = underlyingApplied(pt)
+      var ptNormCache: Type = NoType
+      def ptNorm =
+        if ptNormCache eq NoType then ptNormCache = underlyingApplied(pt)
+        ptNormCache
       def functionExpected = defn.isFunctionNType(ptNorm)
       def needsEta = pt.revealIgnored match
         case _: SingletonType | _: FunOrPolyProto => false
@@ -5309,8 +5343,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   private def checkStatementPurity(tree: tpd.Tree)(original: untpd.Tree, exprOwner: Symbol, isUnitExpr: Boolean)
       (using Context): Unit =
-    if !tree.tpe.isErroneous
-      && !ctx.isAfterTyper
+    if !ctx.isAfterTyper
+      && !tree.tpe.isErroneous
       && tree.match
          case Inlined(_, Nil, Literal(k)) if k.tag == UnitTag => false // e.g., assert(2 + 2 == 4)
          case tree => isPureExpr(tree)

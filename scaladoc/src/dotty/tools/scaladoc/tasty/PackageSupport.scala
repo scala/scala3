@@ -10,6 +10,7 @@ import dotty.tools.scaladoc.cc.CCImport
 trait PackageSupport:
     self: TastyParser =>
     import qctx.reflect._
+    import SymOpsWithLinkCache.dri
 
     private given qctx.type = qctx
 

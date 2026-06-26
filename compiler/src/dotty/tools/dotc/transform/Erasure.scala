@@ -325,6 +325,12 @@ object Erasure {
       }
     }
 
+    private def isClassSubType(tp1: Type, tp2: Type)(using Context): Boolean = (tp1, tp2) match
+      case (tp1: TypeRef, tp2: TypeRef) =>
+        tp1.symbol.isClass && tp2.symbol.isClass && tp1.symbol.derivesFrom(tp2.symbol)
+      case _ =>
+        false
+
     /** Generate a synthetic cast operation from tree.tpe to pt.
      *  Does not do any boxing/unboxing (this is handled upstream).
      *  Casts from and to ErasedValueType are special, see the explanation
@@ -389,7 +395,7 @@ object Erasure {
           assert(mt.paramInfos.isEmpty, i"bad adapt for $tree: $mt")
           adaptToType(tree.appliedToNone, pt)
         case tpw =>
-          if (pt.isInstanceOf[ProtoType] || tree.tpe <:< pt)
+          if (pt.isInstanceOf[ProtoType] || isClassSubType(tpw, pt) || tree.tpe <:< pt)
             tree
           else if (tpw.isErasedValueType)
             if (pt.isErasedValueType) then
@@ -524,16 +530,20 @@ object Erasure {
      */
     private def checkNotErased(tree: Tree)(using Context): tree.type =
       if !ctx.mode.is(Mode.Type) then
+        val sym = tree.symbol
         if isErased(tree) then
           val msg =
-            if tree.symbol.is(Flags.Inline) then
+            if sym.is(Flags.Inline) then
               em"""${tree.symbol} is declared as `inline`, but was not inlined
                   |
                   |Try increasing `-Xmax-inlines` above ${ctx.settings.XmaxInlines.value}"""
             else
               em"${tree.symbol} is declared as `erased`, but is in fact used"
           report.error(msg, tree.srcPos)
-        tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match
+        val compileTimeOnlyAnnot = sym.annotations match
+          case Nil => None
+          case annots => annots.find(_.matches(defn.CompileTimeOnlyAnnot))
+        compileTimeOnlyAnnot match
           case Some(annot) =>
             val message = annot.argumentConstantString(0) match
               case Some(msg) =>
@@ -609,10 +619,22 @@ object Erasure {
       else if (tree.const.tag == Constants.ClazzTag)
         clsOf(tree.const.typeValue)
       else
-        super.typedLiteral(tree)
+        tree.withType(tree.const.tpe)
 
     override def typedIdent(tree: untpd.Ident, pt: Type)(using Context): Tree =
-      checkNotErased(super.typedIdent(tree, pt))
+      val tree1 = checkNotErased(super.typedIdent(tree, pt))
+      tree1 match
+        case tree1: Ident if tree1.isTerm =>
+          // Record references to term-owned mutable variables, so that
+          // `CapturedVars.prepareForUnit` can compute the captured set without
+          // re-traversing the unit. Erasure runs after every phase that can grant
+          // `Mutable` to a term-owned symbol visibly to that computation, and
+          // the computation sees exactly the trees produced here.
+          val sym = tree1.symbol
+          if sym.isMutableVar && sym.owner.isTerm then
+            ctx.compilationUnit.recordMutableLocalRef(sym, ctx.owner.enclosingMethod)
+        case _ =>
+      tree1
 
     /** Type check select nodes, applying the following rewritings exhaustively
      *  on selections `e.m`, where `OT` is the type of the owner of `m` and `ET`
@@ -634,8 +656,15 @@ object Erasure {
      *      e.clone -> e.clone'         where clone' is Object's clone method
      *      e.m -> e.[]m                if `m` is an array operation other than `clone`.
      */
+    private def shouldProbeIntegratedApply(tree: untpd.Select)(using Context): Boolean =
+      val sym = tree.symbol
+      if !sym.exists then true
+      else
+        val owner = sym.maybeOwner
+        owner.isClass && (defn.isContextFunctionClass(owner) || owner.derivesFrom(defn.PolyFunctionClass))
+
     override def typedSelect(tree: untpd.Select, pt: Type)(using Context): Tree = {
-      if tree.name == nme.apply && integrateSelect(tree) then
+      if tree.name == nme.apply && shouldProbeIntegratedApply(tree) && integrateSelect(tree) then
         return typed(tree.qualifier, pt)
 
       var qual1 = typed(tree.qualifier, AnySelectionProto)
@@ -691,7 +720,14 @@ object Erasure {
         qual1 = checkValue(qual1)
 
       def select(qual: Tree, sym: Symbol): Tree =
-        untpd.cpy.Select(tree)(qual, sym.name).withType(NamedType(qual.tpe, sym))
+        val qualType = qual.tpe
+        val tpe = tree.typeOpt match
+          case tpe: NamedType =>
+            if (tpe.prefix eq qualType) && (tpe.designator.asInstanceOf[AnyRef] eq sym) then tpe
+            else NamedType(qualType, sym)
+          case _ =>
+            NamedType(qualType, sym)
+        untpd.cpy.Select(tree)(qual, sym.name).withType(tpe)
 
       def selectArrayMember(qual: Tree, erasedPre: Type): Tree =
         if erasedPre.isAnyRef then
@@ -801,16 +837,17 @@ object Erasure {
       val Apply(fun, args) = tree
       val origFun = fun.asInstanceOf[tpd.Tree]
       val origFunType = origFun.tpe.widen(using preErasureCtx)
-      val insideBridge = ctx.owner.ownersIterator.exists(_.is(Flags.Bridge))
       val ownArgs = origFunType match
-        case mt: MethodType if mt.hasErasedParams && !insideBridge =>
-          args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
-            if isErased then
-              checkPureErased(arg, isArgument = true,
-                isImplicit = mt.isImplicitMethod && arg.span.isSynthetic)
-              Nil
-            else
-              arg :: Nil
+        case mt: MethodType if mt.hasErasedParams =>
+          if ctx.owner.ownersIterator.exists(_.is(Flags.Bridge)) then args
+          else
+            args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
+              if isErased then
+                checkPureErased(arg, isArgument = true,
+                  isImplicit = mt.isImplicitMethod && arg.span.isSynthetic)
+                Nil
+              else
+                arg :: Nil
         case _ => args
       val fun1 = typedExpr(fun, AnyFunctionProto)
       fun1.tpe.widen match

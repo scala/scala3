@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package core
 
-import Contexts.*, Types.*, Symbols.*, Names.*, NameKinds.*, Flags.*
+import Contexts.*, Types.*, Symbols.*, Names.*, NameKinds.*, Flags.*, Periods.*
 import SymDenotations.*
 import util.Spans.*
 import util.Stats
@@ -21,6 +21,7 @@ import reporting.TestingReporter
 import Annotations.Annotation
 import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed, isBoxedCapturing}
 import CaptureSet.{IdentityCaptRefMap, VarState}
+import Periods.*
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -67,6 +68,32 @@ object TypeOps:
      */
     private[TypeOps] var approxCount: Int = 0
 
+    private val outerPre: Type = pre
+    private val outerCls: Symbol = cls
+    private val outerPreIsTrivial: Boolean = (pre eq NoType) || (pre eq NoPrefix)
+    private val outerClsIsPackage: Boolean = cls.is(PackageClass)
+
+    private var myToPrefixBasePre: Type | Null = null
+    private var myToPrefixBaseCls: Symbol = NoSymbol
+    private var myToPrefixBasePeriod: Period = Nowhere
+    private var myToPrefixBaseType: Type = NoType
+
+    private def toPrefixBaseType(pre: Type, cls: Symbol)(using Context): Type =
+      val now = ctx.period
+      if (myToPrefixBasePre eq pre) && (myToPrefixBaseCls eq cls) && myToPrefixBasePeriod == now
+          && !ctx.gadt.isNarrowing && !CapturingType.isUncachable(pre)
+      then myToPrefixBaseType
+      else
+        val baseTp = pre.baseType(cls)
+        if (baseTp ne NoPrefix)
+            && !(pre.isProvisional || baseTp.isProvisional || CapturingType.isUncachable(pre) || ctx.gadt.isNarrowing)
+        then
+          myToPrefixBasePre = pre
+          myToPrefixBaseCls = cls
+          myToPrefixBasePeriod = now
+          myToPrefixBaseType = baseTp
+        baseTp
+
     def apply(tp: Type): Type = {
 
       /** Map a `C.this` type to the right prefix. If the prefix is unstable, and
@@ -76,12 +103,14 @@ object TypeOps:
        *  @param  thiscls The prefix `C` of the `C.this` type.
        */
       def toPrefix(pre: Type, cls: Symbol, thiscls: ClassSymbol): Type = /*>|>*/ trace.conditionally(track, s"toPrefix($pre, $cls, $thiscls)", show = true) /*<|<*/ {
-        if ((pre eq NoType) || (pre eq NoPrefix) || cls.is(PackageClass))
+        val isOuterCall = (pre eq outerPre) && (cls eq outerCls)
+        if isOuterCall && (outerPreIsTrivial || outerClsIsPackage) then tp
+        else if !isOuterCall && ((pre eq NoType) || (pre eq NoPrefix) || cls.is(PackageClass)) then
           tp
         else pre match {
           case pre: SuperType => toPrefix(pre.thistpe, cls, thiscls)
           case _ =>
-            if (thiscls.derivesFrom(cls) && pre.baseType(thiscls).exists)
+            if (((thiscls eq cls) || thiscls.derivesFrom(cls)) && toPrefixBaseType(pre, thiscls).exists)
               if (variance <= 0 && !isLegalPrefix(pre))
                 approxCount += 1
                 range(defn.NothingType, pre)
@@ -89,7 +118,7 @@ object TypeOps:
             else if (pre.termSymbol.is(Package) && !thiscls.is(Package))
               toPrefix(pre.select(nme.PACKAGE), cls, thiscls)
             else
-              toPrefix(pre.baseType(cls).normalizedPrefix, cls.owner, thiscls)
+              toPrefix(toPrefixBaseType(pre, cls).normalizedPrefix, cls.owner, thiscls)
         }
       }
 
@@ -98,16 +127,44 @@ object TypeOps:
         // TODO: generalize the inlining trick?
         tp match {
           case tp: NamedType =>
-            val sym = tp.symbol
-            if sym.isStatic && !sym.maybeOwner.seesOpaques || (tp.prefix `eq` NoPrefix)
-            then tp
-            else derivedSelect(tp, atVariance(variance max 0)(this(tp.prefix)))
+            if tp.prefix `eq` NoPrefix then tp
+            else
+              val sym = tp.symbol
+              if sym.isStatic && !sym.maybeOwner.seesOpaques then tp
+              else
+                // `saved max 0` is the identity when variance >= 0, so skip the save/restore.
+                val prefix =
+                  if variance >= 0 then this(tp.prefix)
+                  else
+                    val saved = variance
+                    variance = 0
+                    val res = this(tp.prefix)
+                    variance = saved
+                    res
+                derivedSelect(tp, prefix)
           case tp: LambdaType =>
             mapOverLambda(tp) // special cased common case
           case tp: ThisType =>
             toPrefix(pre, cls, tp.cls)
           case _: BoundType =>
             tp
+          case tp: AppliedType =>
+            val tycon1 = this(tp.tycon)
+            val args = tp.args
+            val args1 = if args.isEmpty then args else mapArgs(args, tyconTypeParams(tp))
+            if (tycon1 eq tp.tycon) && (args1 eq args) then tp
+            else derivedAppliedType(tp, tycon1, args1)
+          case tp: AliasingBounds =>
+            val saved = variance
+            variance = 0
+            val alias1 = this(tp.alias)
+            variance = saved
+            derivedAlias(tp, alias1)
+          case tp: TypeBounds =>
+            variance = -variance
+            val lo1 = this(tp.lo)
+            variance = -variance
+            derivedTypeBounds(tp, lo1, this(tp.hi))
           case _ =>
             mapOver(tp)
         }

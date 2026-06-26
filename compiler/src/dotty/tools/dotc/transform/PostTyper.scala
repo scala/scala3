@@ -149,6 +149,35 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
     private var noCheckNews: Set[New] = Set()
 
+    private var cleanupRetainsCache: util.EqHashMap[Type, Type] | Null = null
+    private var cleanupRetainsLastFrom: Type | Null = null
+    private var cleanupRetainsLastTo: Type | Null = null
+
+    private def cleanupRetains(tp: Type)(using Context): Type =
+      if tp eq cleanupRetainsLastFrom then cleanupRetainsLastTo.asInstanceOf[Type]
+      else
+        val cache = cleanupRetainsCache
+        val cleaned =
+          if cache == null then
+            val cleaned = CleanupRetains()(tp)
+            val lastFrom = cleanupRetainsLastFrom
+            if lastFrom != null then
+              val fresh = new util.EqHashMap[Type, Type]
+              fresh.update(lastFrom.asInstanceOf[Type], cleanupRetainsLastTo.asInstanceOf[Type])
+              fresh.update(tp, cleaned)
+              cleanupRetainsCache = fresh
+            cleaned
+          else
+            val cached = cache.lookup(tp)
+            if cached != null then cached
+            else
+              val cleaned = CleanupRetains()(tp)
+              cache.update(tp, cleaned)
+              cleaned
+        cleanupRetainsLastFrom = tp
+        cleanupRetainsLastTo = cleaned
+        cleaned
+
     def isValidUnrolledMethod(method: Symbol, origin: SrcPos)(using Context): Boolean =
       seenUnrolledMethods.getOrElseUpdate(method, {
         val isCtor = method.isConstructor
@@ -212,8 +241,22 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       Stats.trackTime("Annotations copySymbols"):
         val ttm =
           new TreeTypeMap:
+            override def withMappedSym(sym: Symbol) =
+              if sym.isClass then withMappedSyms(sym :: Nil, mapSymbols(sym :: Nil, this, true))
+              else withMappedSym(sym, mapSymbol(sym, this, true))
+            override def withMappedSyms(sym1: Symbol, sym2: Symbol) =
+              if sym1.isClass || sym2.isClass || (sym1 eq sym2) then
+                val syms = sym1 :: sym2 :: Nil
+                withMappedSyms(syms, mapSymbols(syms, this, true))
+              else
+                val (mapped1, mapped2) = mapTwoSymbols(sym1, sym2, this, true)
+                withMappedSyms(sym1, sym2, mapped1, mapped2)
             override def withMappedSyms(syms: List[Symbol]) =
-              withMappedSyms(syms, mapSymbols(syms, this, true))
+              syms match
+                case Nil => this
+                case sym :: Nil => withMappedSym(sym)
+                case sym1 :: sym2 :: Nil => withMappedSyms(sym1, sym2)
+                case _ => withMappedSyms(syms, mapSymbols(syms, this, true))
         ttm(tree)
 
     /** Transforms the given annotation tree. */
@@ -623,10 +666,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           val tree1 = cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
           // The pickling of UnApply trees uses the tpe of the tree,
           // so we need to clean retains from it here
-          tree1.withType(transformAnnotsIn(CleanupRetains()(tree1.tpe)))
+          tree1.withType(transformAnnotsIn(cleanupRetains(tree1.tpe)))
         case tree: TypeApply =>
           if tree.symbol == defn.QuotedTypeModule_of then
             ctx.compilationUnit.needsStaging = true
+            ctx.compilationUnit.stagedQuoteSurvivors = true
           registerNeedsInlining(tree)
           val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
           for arg <- args do
@@ -727,7 +771,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           if sym.isType && !sym.name.is(WildcardParamName) then
             Checking.checkGoodBounds(sym)
           // Cleanup retains from the info of the Bind symbol
-          sym.copySymDenotation(info = transformAnnotsIn(CleanupRetains()(sym.info))).installAfter(thisPhase)
+          sym.copySymDenotation(info = transformAnnotsIn(cleanupRetains(sym.info))).installAfter(thisPhase)
           super.transform(tree)
         case tree: New if isCheckable(tree) =>
           Checking.checkInstantiable(tree.tpe, tree.tpe, tree.srcPos)
@@ -759,7 +803,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               report.error(em"type ${alias.tpe} outside bounds $bounds", tree.srcPos)
           super.transform(tree)
         case tree: TypeTree =>
-          val tpe = if tree.isInferred then CleanupRetains()(tree.tpe) else tree.tpe
+          val tpe = if tree.isInferred then cleanupRetains(tree.tpe) else tree.tpe
           tree.withType(transformAnnotsIn(tpe))
         case Typed(Ident(nme.WILDCARD), _) =>
           withMode(Mode.Pattern)(super.transform(tree))
@@ -788,6 +832,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           flattenSpreads(tree)
         case _: Quote | _: QuotePattern =>
           ctx.compilationUnit.needsStaging = true
+          ctx.compilationUnit.stagedQuoteSurvivors = true
           super.transform(tree)
         case tree =>
           super.transform(tree)
@@ -844,6 +889,15 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
 
   protected override def infoMayChange(sym: Symbol)(using Context): Boolean =
     compilingScala2StdLib && sym.isAllOf(ModuleClass, butNot = Package)
+
+  override def transformIsNoOpFor(ref: Denotations.SingleDenotation)(using Context): Boolean =
+    // Off-stdlib, `infoMayChange` is constant-false, so `InfoTransformer.transform`
+    // returns `ref` for every existing symbol denotation. For a SymDenotation,
+    // `ref.symbol.exists` evaluated at this phase is exactly `ref.exists`, since
+    // `ref` is the denotation of its symbol valid up to this transformer's phase.
+    !compilingScala2StdLib && (ref match
+      case ref: SymDenotation => ref.exists
+      case _ => false)
 
   def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match
     case info: ClassInfo =>

@@ -61,6 +61,13 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
     || sym == defn.Function1
     || sym == defn.Function2
 
+  override def transformIsNoOpFor(ref: Denotations.SingleDenotation)(using Context): Boolean =
+    // `transformInfo` only changes the ClassInfos of Function0/1/2; for any
+    // other symbol `InfoTransformer.transform` returns `ref` itself, whether
+    // through the `infoMayChange` exit or through `transformInfo`'s identity.
+    val sym = ref.symbol
+    (sym ne defn.Function0) && (sym ne defn.Function1) && (sym ne defn.Function2)
+
   /** Add symbols for specialized methods to FunctionN */
   override def transformInfo(tp: Type, sym: Symbol)(using Context) = tp match {
     case tp: ClassInfo =>

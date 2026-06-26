@@ -28,6 +28,11 @@ import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized
 
 object SymDenotations {
+  private var ownerChainCacheEpoch: Int = 1
+
+  private def bumpOwnerChainCacheEpoch(): Unit =
+    ownerChainCacheEpoch += 1
+    if ownerChainCacheEpoch == 0 then ownerChainCacheEpoch = 1
 
   /** A sym-denotation represents the contents of a definition
    *  during a period.
@@ -58,6 +63,26 @@ object SymDenotations {
     private var myAnnotations: List[Annotation] = Nil
     private var myParamss: List[List[Symbol]] = Nil
 
+    private var myIsStaticRunId: RunId = NoRunId
+    private var myIsStaticEpoch: Int = 0
+    private var myIsStaticCached: Boolean = false
+
+    private var myStaticOwnerRunId: RunId = NoRunId
+    private var myStaticOwnerEpoch: Int = 0
+    private var myStaticOwnerCached: Boolean = false
+
+    private var mySeesOpaquesRunId: RunId = NoRunId
+    private var mySeesOpaquesEpoch: Int = 0
+    private var mySeesOpaquesCached: Boolean = false
+
+    private def invalidateStaticCaches(): Unit =
+      myIsStaticRunId = NoRunId
+      myStaticOwnerRunId = NoRunId
+      mySeesOpaquesRunId = NoRunId
+      bumpOwnerChainCacheEpoch()
+
+    protected def invalidateAbsentSensitiveCaches(): Unit = ()
+
     /** The owner of the symbol; overridden in NoDenotation */
     def owner: Symbol = maybeOwner
 
@@ -75,14 +100,22 @@ object SymDenotations {
     private def adaptFlags(flags: FlagSet) = if (isType) flags.toTypeFlags else flags.toTermFlags
 
     /** Update the flag set */
-    final def flags_=(flags: FlagSet): Unit =
+    final def flags_=(flags: FlagSet): Unit = {
       myFlags = adaptFlags(flags)
+      invalidateStaticCaches()
+    }
 
     /** Set given flags(s) of this denotation */
-    final def setFlag(flags: FlagSet): Unit = { myFlags |= flags }
+    final def setFlag(flags: FlagSet): Unit = {
+      myFlags |= flags
+      invalidateStaticCaches()
+    }
 
     /** Unset given flags(s) of this denotation */
-    final def resetFlag(flags: FlagSet): Unit = { myFlags &~= flags }
+    final def resetFlag(flags: FlagSet): Unit = {
+      myFlags &~= flags
+      invalidateStaticCaches()
+    }
 
     /** Set applicable flags in {NoInits, PureInterface}
      *  @param  parentFlags  The flags that match the class or trait's parents
@@ -186,7 +219,20 @@ object SymDenotations {
         }
         */
       if (Config.checkNoSkolemsInInfo) assertNoSkolems(tp)
+      // Clear the cached completeness bit BEFORE swapping `myInfo` so a concurrent
+      // reader of `info` can never observe `myInfoIsComplete = true` paired with a
+      // half-written `myInfo`. The final bit value is written AFTER the swap and is
+      // `@volatile`, so the release/acquire pairs the new bit with the new `myInfo`.
+      myInfoIsComplete = false
       myInfo = tp
+      myInfoIsComplete = !tp.isInstanceOf[LazyType]
+      // No `invalidateStaticCaches()`: `isStatic`/`isStaticOwner`/`seesOpaques`
+      // read only FromStartFlags (JavaStatic, Module/ModuleClass, Package/PackageClass,
+      // Opaque) and the constructor-fixed `maybeOwner` chain — never `info`. Installing a
+      // (completed) info therefore cannot change any of those predicates, so it must not
+      // bump the shared `ownerChainCacheEpoch` (doing so thrashed those caches process-wide).
+      // Relevant flag changes still go through `flags_=`/`setFlag`/`resetFlag`, which keep
+      // invalidating, and `markAbsent` is unchanged.
     }
 
     /** The name, except
@@ -609,6 +655,9 @@ object SymDenotations {
         assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
           s"Illegal call to `markAbsent()` while completing $this using completer $myInfo")
       myInfo = NoType
+      myInfoIsComplete = true // NoType is not a LazyType
+      invalidateStaticCaches()
+      invalidateAbsentSensitiveCaches()
     }
 
     /** Is symbol known to not exist?
@@ -707,8 +756,17 @@ object SymDenotations {
     def containsOpaques(using Context): Boolean = is(Opaque) && isClass
 
     def seesOpaques(using Context): Boolean =
-      containsOpaques ||
-      is(Module, butNot = Package) && owner.seesOpaques
+      val rid = ctx.runId
+      val epoch = ownerChainCacheEpoch
+      if mySeesOpaquesRunId == rid && mySeesOpaquesEpoch == epoch then mySeesOpaquesCached
+      else
+        val res =
+          containsOpaques ||
+          is(Module, butNot = Package) && owner.seesOpaques
+        mySeesOpaquesCached = res
+        mySeesOpaquesEpoch = epoch
+        mySeesOpaquesRunId = rid
+        res
 
     def isProvisional(using Context): Boolean =
       flagsUNSAFE.is(Provisional) // do not force the info to check the flag
@@ -738,12 +796,13 @@ object SymDenotations {
      *  Same as `ownersIterator contains boundary` but more efficient.
      */
     final def isContainedIn(boundary: Symbol)(using Context): Boolean = {
-      def recur(sym: Symbol): Boolean =
-        if (sym eq boundary) true
-        else if (sym eq NoSymbol) false
-        else if (sym.is(PackageClass) && !boundary.is(PackageClass)) false
-        else recur(sym.owner)
-      recur(symbol)
+      val boundaryIsPackage = boundary.is(PackageClass)
+      @tailrec def recur(d: SymDenotation): Boolean =
+        if (d.symbol eq boundary) true
+        else if (!d.exists) false
+        else if (d.is(PackageClass) && !boundaryIsPackage) false
+        else recur(d.owner.denot)
+      recur(this)
     }
 
     final def isProperlyContainedIn(boundary: Symbol)(using Context): Boolean =
@@ -751,12 +810,29 @@ object SymDenotations {
 
     /** Is this denotation static (i.e. with no outer instance)? */
     final def isStatic(using Context): Boolean =
-      (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.originDenotation.isStaticOwner) ||
-        myFlags.is(JavaStatic)
+      val rid = ctx.runId
+      val epoch = ownerChainCacheEpoch
+      if myIsStaticRunId == rid && myIsStaticEpoch == epoch then myIsStaticCached
+      else
+        val res =
+          (if (maybeOwner eq NoSymbol) isRoot else maybeOwner.originDenotation.isStaticOwner) ||
+            myFlags.is(JavaStatic)
+        myIsStaticCached = res
+        myIsStaticEpoch = epoch
+        myIsStaticRunId = rid
+        res
 
     /** Is this a package class or module class that defines static symbols? */
     final def isStaticOwner(using Context): Boolean =
-      myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
+      val rid = ctx.runId
+      val epoch = ownerChainCacheEpoch
+      if myStaticOwnerRunId == rid && myStaticOwnerEpoch == epoch then myStaticOwnerCached
+      else
+        val res = myFlags.is(ModuleClass) && (myFlags.is(PackageClass) || isStatic)
+        myStaticOwnerCached = res
+        myStaticOwnerEpoch = epoch
+        myStaticOwnerRunId = rid
+        res
 
     /** Is this denotation defined in the same scope and compilation unit as that symbol? */
     final def isCoDefinedWith(other: Symbol)(using Context): Boolean =
@@ -989,10 +1065,10 @@ object SymDenotations {
       def preIsThis = pre match
         case pre: ThisType => pre.sameThis(thisType)
         case _ => false
-      !(  this.isTerm
-       || this.isStaticOwner && !this.seesOpaques
-       || ctx.erasedTypes
+      !(  ctx.erasedTypes
        || (pre eq NoPrefix)
+       || this.isTerm
+       || this.isStaticOwner && !this.seesOpaques
        || preIsThis
        )
 
@@ -1329,14 +1405,18 @@ object SymDenotations {
      */
     final def companionModule(using Context): Symbol =
       if (is(Module)) sourceModule
-      else if registeredCompanion.isAbsent() then NoSymbol
-      else registeredCompanion.sourceModule
+      else
+        val companion = registeredCompanion.denot
+        if companion.isAbsent() then NoSymbol
+        else companion.sourceModule
 
     private def companionType(using Context): Symbol =
       if (is(Package)) NoSymbol
       else if (is(ModuleVal)) moduleClass.denot.companionType
-      else if registeredCompanion.isAbsent() then NoSymbol
-      else registeredCompanion
+      else
+        val companion = registeredCompanion.denot
+        if companion.isAbsent() then NoSymbol
+        else companion.symbol
 
     /** The class with the same (type-) name as this module or module class,
      *  and which is also defined in the same scope and compilation unit.
@@ -1551,18 +1631,57 @@ object SymDenotations {
     /** The type parameters of a class symbol, Nil for all other symbols */
     def typeParams(using Context): List[TypeSymbol] = Nil
 
+    /** The type parameters of a class symbol as type refs, Nil for all other symbols */
+    def typeParamRefs(using Context): List[Type] = typeParams.map(_.typeRef)
+
     /** The type This(cls), where cls is this class, NoPrefix for all other symbols */
     def thisType(using Context): Type = NoPrefix
 
-    def typeRef(using Context): TypeRef =
-      TypeRef(maybeOwner.thisType, symbol)
+    private var myCachedTypeRef: TypeRef | Null = null
+    private var myCachedTypeRefPeriod: Period = Nowhere
 
-    def termRef(using Context): TermRef =
-      TermRef(maybeOwner.thisType, symbol)
+    def typeRef(using Context): TypeRef = {
+      val cached = myCachedTypeRef
+      if (cached != null && myCachedTypeRefPeriod == ctx.period) cached
+      else {
+        val pre = maybeOwner.thisType
+        val ref = TypeRef(pre, symbol)
+        if (!isProvisional && !pre.isProvisional) {
+          myCachedTypeRef = ref
+          myCachedTypeRefPeriod = ctx.period
+        }
+        else if (cached != null) {
+          myCachedTypeRef = null
+          myCachedTypeRefPeriod = Nowhere
+        }
+        ref
+      }
+    }
+
+    private var myTermRef: TermRef | Null = null
+    private var myTermRefPeriod: Period = Nowhere
+
+    def termRef(using Context): TermRef = {
+      val cached = myTermRef
+      if (cached != null && myTermRefPeriod == ctx.period) cached
+      else {
+        val pre = maybeOwner.thisType
+        val ref = TermRef(pre, symbol)
+        if (!isProvisional && !pre.isProvisional) {
+          myTermRef = ref
+          myTermRefPeriod = ctx.period
+        }
+        else if (cached != null) {
+          myTermRef = null
+          myTermRefPeriod = Nowhere
+        }
+        ref
+      }
+    }
 
     /** The typeRef applied to its own type parameters */
     def appliedRef(using Context): Type =
-      typeRef.appliedTo(symbol.typeParams.map(_.typeRef))
+      typeRef.appliedTo(typeParamRefs)
 
     /** The NamedType representing this denotation at its original location.
      *  Same as either `typeRef` or `termRef` depending whether this denotes a type or not.
@@ -1864,36 +1983,194 @@ object SymDenotations {
     initPrivateWithin: Symbol)
     extends SymDenotation(symbol, maybeOwner, name, initFlags, initInfo, initPrivateWithin) {
 
-    import util.EqHashMap
+    import util.{EqHashMap, GenericHashMap}
 
     // ----- caches -------------------------------------------------------
+
+    private inline val MaxBaseTypeCachePresizeEntries = 8192
+    private inline val MaxMemberCachePresizeEntries = 256
+
+    private def cacheInitialCapacityForEntries(entries: Int): Int =
+      if entries <= GenericHashMap.DenseLimit then GenericHashMap.DenseLimit * 2
+      else entries * 2
+
+    private def cappedCacheInitialCapacity(entries: Int, maxEntries: Int): Int =
+      cacheInitialCapacityForEntries(if entries > maxEntries then maxEntries else entries)
 
     private var myTypeParams: List[TypeSymbol] | Null = null
     private var fullNameCache: SimpleIdentityMap[QualifiedNameKind, Name] = SimpleIdentityMap.empty
 
-    private var myMemberCache: EqHashMap[Name, PreDenotation] | Null = null
+    private var myMemberCache: EqHashMap.HashedOnly[Name, PreDenotation] | Null = null
     private var myMemberCachePeriod: Period = Nowhere
 
+    // 2-slot, period-keyed Name->PreDenotation cache used as the first backing
+    // store for membersNamed. Classes that only query one or two distinct names
+    // in a period never allocate myMemberCache; the EqHashMap is promoted lazily
+    // when a third distinct name is queried. After promotion, these slots remain
+    // the fast path in front of the map.
+    private var myMembersNamedPeriod: Period = Nowhere
+    private var myMembersNamedName0: Name | Null = null
+    private var myMembersNamedDenots0: PreDenotation | Null = null
+    private var myMembersNamedName1: Name | Null = null
+    private var myMembersNamedDenots1: PreDenotation | Null = null
+    private var myMembersNamedNoName0: Name | Null = null
+    private var myMembersNamedNoName1: Name | Null = null
+    private var myMembersNamedNoName2: Name | Null = null
+    private var myMembersNamedNoName3: Name | Null = null
+    private var myMemberCacheMutationId: Int = 0
+
     /** A cache from types T to baseType(T, C) */
-    type BaseTypeMap = EqHashMap[CachedType, Type]
+    type BaseTypeMap = EqHashMap.HashedOnly[CachedType, Type]
     private var myBaseTypeCache: BaseTypeMap | Null = null
     private var myBaseTypeCachePeriod: Period = Nowhere
+    private var myBaseTypeCacheKey: CachedType | Null = null
+    private var myBaseTypeCacheValue: Type | Null = null
+    private var myBaseTypeCacheKeyPeriod: Period = Nowhere
 
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
 
-    private def memberCache(using Context): EqHashMap[Name, PreDenotation] = {
-      if (myMemberCachePeriod != ctx.period) {
-        myMemberCache = EqHashMap()
+    private var myParentClassDenotsPeriod: Period = Nowhere
+    private var myParentClassDenotsInfo: ClassInfo | Null = null
+    private var myParentClassDenots: Array[ClassDenotation] | Null = null
+
+    private var myLinearizedBaseScopesPeriod: Period = Nowhere
+    private var myLinearizedBaseScopesInfo: ClassInfo | Null = null
+    private var myLinearizedBaseScopes: Array[Scope] | Null = null
+    private var myLinearizedBaseScopesBloom: Long = 0L
+
+    // 2-slot direct-mapped RunId-keyed cache for derivesFrom(base).
+    // Slot 0 is the most recently inserted entry; on a miss we shift slot 0
+    // into slot 1 and write the new entry into slot 0 (FIFO size 2). The
+    // RunId guard handles cross-run invalidation; info_= also resets both
+    // slots in case the class's parents (and hence baseClassSet) change.
+    private var myDerivesFromRunId0: RunId = NoRunId
+    private var myDerivesFromBase0: Symbol = NoSymbol
+    private var myDerivesFromResult0: Boolean = false
+    private var myDerivesFromRunId1: RunId = NoRunId
+    private var myDerivesFromBase1: Symbol = NoSymbol
+    private var myDerivesFromResult1: Boolean = false
+
+    // 1-slot RunId-keyed cache for isValueClass. Only the fast-path arm
+    // (di.baseDataCache.isValid && !ctx.erasedTypes) writes the slot; the
+    // slow-path arm computes via atPhase(firstPhaseId) and is left
+    // uncached to avoid mixing pre/post-erasure regimes.
+    private var myIsValueClassRunId: RunId = NoRunId
+    private var myIsValueClassResult: Boolean = false
+
+    override protected def invalidateAbsentSensitiveCaches(): Unit =
+      myDerivesFromRunId0 = NoRunId
+      myDerivesFromRunId1 = NoRunId
+      myIsValueClassRunId = NoRunId
+
+    private def currentMemberCache(using Context): EqHashMap.HashedOnly[Name, PreDenotation] | Null =
+      if myMemberCachePeriod == ctx.period then myMemberCache else null
+
+    private def promotedMemberCache(using Context): EqHashMap.HashedOnly[Name, PreDenotation] =
+      if myMemberCachePeriod != ctx.period || myMemberCache == null then
+        val oldSize = if myMemberCache == null then 0 else myMemberCache.nn.size
+        val predictedSize =
+          if oldSize > 0 then oldSize
+          else info match
+            case cinfo: ClassInfo => cinfo.decls.size
+            case _ => 0
+        myMemberCache = EqHashMap.HashedOnly(
+          cappedCacheInitialCapacity(predictedSize, MaxMemberCachePresizeEntries))
         myMemberCachePeriod = ctx.period
-      }
       myMemberCache.nn
-    }
+
+    private def invalidateMembersNamedCache(): Unit =
+      myMembersNamedPeriod = Nowhere
+      myMemberCacheMutationId += 1
+
+    private def clearMembersNamedNegativeSlots(): Unit =
+      myMembersNamedNoName0 = null
+      myMembersNamedNoName1 = null
+      myMembersNamedNoName2 = null
+      myMembersNamedNoName3 = null
+
+    private def reserveMembersNamedSlot(period: Period, name: Name): Boolean =
+      if myMembersNamedPeriod != period then
+        myMembersNamedPeriod = period
+        myMembersNamedName0 = name
+        myMembersNamedDenots0 = null
+        myMembersNamedName1 = null
+        myMembersNamedDenots1 = null
+        clearMembersNamedNegativeSlots()
+        true
+      else if (myMembersNamedName0 eq name) || (myMembersNamedName1 eq name) then
+        true
+      else if myMembersNamedName0 == null then
+        myMembersNamedName0 = name
+        myMembersNamedDenots0 = null
+        true
+      else if myMembersNamedName1 == null then
+        myMembersNamedName1 = name
+        myMembersNamedDenots1 = null
+        true
+      else false
+
+    private def promoteMemberCacheFromMembersNamed()(using Context): EqHashMap.HashedOnly[Name, PreDenotation] =
+      val cache = promotedMemberCache
+      val name0 = myMembersNamedName0
+      val denots0 = myMembersNamedDenots0
+      if name0 != null && denots0 != null then
+        if denots0 eq NoDenotation then rememberMembersNamedNoDenotation(ctx.period, name0)
+        else cache(name0) = denots0
+      val name1 = myMembersNamedName1
+      val denots1 = myMembersNamedDenots1
+      if name1 != null && denots1 != null && (name1 ne name0) then
+        if denots1 eq NoDenotation then rememberMembersNamedNoDenotation(ctx.period, name1)
+        else cache(name1) = denots1
+      cache
+
+    private def isMembersNamedNoDenotationCached(name: Name): Boolean =
+      (myMembersNamedNoName0 eq name)
+      || (myMembersNamedNoName1 eq name)
+      || (myMembersNamedNoName2 eq name)
+      || (myMembersNamedNoName3 eq name)
+
+    private def rememberMembersNamedNoDenotation(period: Period, name: Name): Unit =
+      if myMembersNamedPeriod != period then
+        myMembersNamedPeriod = period
+        myMembersNamedName0 = null
+        myMembersNamedDenots0 = null
+        myMembersNamedName1 = null
+        myMembersNamedDenots1 = null
+        clearMembersNamedNegativeSlots()
+      if !isMembersNamedNoDenotationCached(name) then
+        myMembersNamedNoName3 = myMembersNamedNoName2
+        myMembersNamedNoName2 = myMembersNamedNoName1
+        myMembersNamedNoName1 = myMembersNamedNoName0
+        myMembersNamedNoName0 = name
+
+    private def rememberMembersNamed(period: Period, name: Name, denots: PreDenotation): Unit =
+      if myMembersNamedPeriod != period then
+        myMembersNamedPeriod = period
+        myMembersNamedName0 = name
+        myMembersNamedDenots0 = denots
+        myMembersNamedName1 = null
+        myMembersNamedDenots1 = null
+        clearMembersNamedNegativeSlots()
+      else if myMembersNamedName0 eq name then
+        myMembersNamedDenots0 = denots
+      else if myMembersNamedName1 eq name then
+        myMembersNamedDenots1 = denots
+      else
+        myMembersNamedName1 = myMembersNamedName0
+        myMembersNamedDenots1 = myMembersNamedDenots0
+        myMembersNamedName0 = name
+        myMembersNamedDenots0 = denots
 
     private def baseTypeCache(using Context): BaseTypeMap = {
       if !currentHasSameBaseTypesAs(myBaseTypeCachePeriod) then
-        myBaseTypeCache = new BaseTypeMap()
+        val oldSize = if myBaseTypeCache == null then 0 else myBaseTypeCache.nn.size
+        myBaseTypeCache = new BaseTypeMap(
+          cappedCacheInitialCapacity(oldSize, MaxBaseTypeCachePresizeEntries))
         myBaseTypeCachePeriod = ctx.period
+        myBaseTypeCacheKey = null
+        myBaseTypeCacheValue = null
+        myBaseTypeCacheKeyPeriod = Nowhere
       myBaseTypeCache.nn
     }
 
@@ -1901,6 +2178,17 @@ object SymDenotations {
       baseDataCache.invalidate()
       baseDataCache = BaseData.None
     }
+
+    private def invalidateParentClassDenotsCache(): Unit =
+      myParentClassDenotsPeriod = Nowhere
+      myParentClassDenotsInfo = null
+      myParentClassDenots = null
+
+    private def invalidateLinearizedBaseScopesCache(): Unit =
+      myLinearizedBaseScopesPeriod = Nowhere
+      myLinearizedBaseScopesInfo = null
+      myLinearizedBaseScopes = null
+      myLinearizedBaseScopesBloom = 0L
 
     private def invalidateMemberNamesCache() = {
       memberNamesCache.invalidate()
@@ -1910,21 +2198,29 @@ object SymDenotations {
     def invalidateBaseTypeCache(): Unit = {
       myBaseTypeCache = null
       myBaseTypeCachePeriod = Nowhere
+      myBaseTypeCacheKey = null
+      myBaseTypeCacheValue = null
+      myBaseTypeCacheKeyPeriod = Nowhere
     }
 
     def invalidateMemberCaches()(using Context): Unit =
       myMemberCachePeriod = Nowhere
+      invalidateMembersNamedCache()
       invalidateMemberNamesCache()
+      invalidateLinearizedBaseScopesCache()
 
     def invalidateMemberCachesFor(sym: Symbol)(using Context): Unit =
       myMemberCache match
         case null => ()
         case mc => mc.remove(sym.name)
+      invalidateMembersNamedCache()
       if !sym.flagsUNSAFE.is(Private) then
         invalidateMemberNamesCache()
         if sym.isWrappedToplevelDef then
-          val outerCache = sym.owner.owner.asClass.classDenot.myMemberCache
+          val outerClassDenot = sym.owner.owner.asClass.classDenot
+          val outerCache = outerClassDenot.myMemberCache
           if outerCache != null then outerCache.remove(sym.name)
+          outerClassDenot.invalidateMembersNamedCache()
 
     override def copyCaches(from: SymDenotation, phase: Phase)(using Context): this.type = {
       from match {
@@ -1975,13 +2271,111 @@ object SymDenotations {
       myTypeParams.nn
     }
 
+    private var myTypeParamRefs: List[Type] | Null = null
+    private var myTypeParamRefsPeriod: Period = Nowhere
+
+    /** The type parameters of this class as type refs */
+    override final def typeParamRefs(using Context): List[Type] = {
+      val tparams = typeParams
+      if tparams.isEmpty then Nil
+      else
+        val cached = myTypeParamRefs
+        if cached != null && myTypeParamRefsPeriod == ctx.period then cached
+        else
+          val refs = tparams.map(_.typeRef)
+          myTypeParamRefs = refs
+          myTypeParamRefsPeriod = ctx.period
+          refs
+    }
+
     override protected[dotc] final def info_=(tp: Type): Unit = {
       if (changedClassParents(infoOrCompleter, tp, completersMatter = true))
         invalidateBaseDataCache()
       invalidateMemberNamesCache()
       myTypeParams = null // changing the info might change decls, and with it typeParams
+      myTypeParamRefs = null
+      myTypeParamRefsPeriod = Nowhere
+      invalidateAbsentSensitiveCaches()
+      invalidateParentClassDenotsCache()
+      invalidateLinearizedBaseScopesCache()
       super.info_=(tp)
     }
+
+    private def parentClassDenots(cinfo: ClassInfo)(using Context): Array[ClassDenotation] | Null =
+      val period = ctx.period
+      if myParentClassDenotsPeriod == period && (myParentClassDenotsInfo eq cinfo) then
+        myParentClassDenots
+      else
+        val parents = cinfo.declaredParents
+        val denots = new Array[ClassDenotation](parents.length)
+        var ps = parents
+        var i = 0
+        while ps.nonEmpty do
+          ps.head.classSymbol.denot match
+            case parentd: ClassDenotation =>
+              denots(i) = parentd
+              i += 1
+              ps = ps.tail
+            case _ =>
+              myParentClassDenotsPeriod = period
+              myParentClassDenotsInfo = cinfo
+              myParentClassDenots = null
+              return null
+        myParentClassDenotsPeriod = period
+        myParentClassDenotsInfo = cinfo
+        myParentClassDenots = denots
+        denots
+
+    /** The `info.decls` scopes of this class's base classes in linearization
+     *  order, excluding the class itself, or `null` if the linearized
+     *  inherited-member scan does not apply to this class in the current
+     *  period (a parent or base class without a class denotation, or a
+     *  linearization not headed by this class, or still-provisional base
+     *  data). This caches, per (info, period), exactly the machinery
+     *  `collectLinearizedNoOwn` would otherwise re-derive on every scan:
+     *  `baseClasses` (a `baseData` access), the per-base `Symbol.denot`
+     *  probe, and the `info.decls` dereference. Like `parentClassDenots`,
+     *  it is invalidated by `info_=`; mid-period member-scope replacement
+     *  is excluded by the same enter-after-subclass-query contract that
+     *  already protects `memberCache`. Provisional base data (a base class
+     *  still completing, so the linearization may be missing bases) is never
+     *  captured: `BaseDataImpl` does not cache provisional results, which
+     *  `baseDataCache.isComputed` detects exactly. A `CyclicReference` from
+     *  forcing a base's `info` propagates before any field is written, so a
+     *  partial chain is never cached either.
+     */
+    private def linearizedBaseScopes(cinfo: ClassInfo)(using Context): Array[Scope] | Null =
+      val period = ctx.period
+      if myLinearizedBaseScopesPeriod == period && (myLinearizedBaseScopesInfo eq cinfo) then
+        myLinearizedBaseScopes
+      else
+        var scopes: Array[Scope] | Null = null
+        var bloom = 0L
+        if parentClassDenots(cinfo) != null then
+          val bases = baseClasses
+          if bases.nonEmpty && (bases.head eq classSymbol) && baseDataCache.isComputed then
+            val arr = new Array[Scope](bases.length - 1)
+            var rest = bases.tail
+            var i = 0
+            var ok = true
+            while ok && rest.nonEmpty do
+              rest.head.denot match
+                case based: ClassDenotation =>
+                  val decls = based.info.decls
+                  arr(i) = decls
+                  bloom =
+                    if decls.maySynthesizeMember then -1L
+                    else bloom | decls.memberNameBloom
+                  i += 1
+                  rest = rest.tail
+                case _ =>
+                  ok = false
+            if ok then scopes = arr
+        myLinearizedBaseScopesPeriod = period
+        myLinearizedBaseScopesInfo = cinfo
+        myLinearizedBaseScopes = scopes
+        myLinearizedBaseScopesBloom = if scopes == null then 0L else bloom
+        scopes
 
     /** The types of the parent classes. */
     def parentTypes(using Context): List[Type] = info match
@@ -2055,10 +2449,19 @@ object SymDenotations {
     private def baseClassSet(implicit onBehalf: BaseData, ctx: Context): BaseClassSet =
       baseData._2
 
+    /** Does this class have `base` in its base-class linearization? */
+    final def hasBaseClass(base: ClassSymbol)(using BaseData, Context): Boolean =
+      (symbol eq base) || baseClassSet.contains(base)
+
     def computeBaseData(implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet) = {
       def emptyParentsExpected =
         is(Package) || (symbol == defn.AnyClass) || ctx.erasedTypes && (symbol == defn.ObjectClass)
-      val parents = parentTypes
+      val cinfo = info match
+        case cinfo: ClassInfo => cinfo
+        case _ =>
+          if (!emptyParentsExpected) onBehalf.signalProvisional()
+          return (classSymbol :: Nil, BaseClassSet(Nil))
+      val parents = cinfo.declaredParents
       if (parents.isEmpty && !emptyParentsExpected)
         onBehalf.signalProvisional()
       val builder = new BaseDataBuilder
@@ -2089,14 +2492,36 @@ object SymDenotations {
           traverse(parents1)
         case nil =>
       }
-      traverse(parents)
+      val parentDenots = parentClassDenots(cinfo)
+      if parentDenots != null then
+        var i = 0
+        while i < parentDenots.length do
+          builder.addAll(parentDenots(i).baseClasses)
+          i += 1
+      else
+        traverse(parents)
       (classSymbol :: builder.baseClasses, builder.baseClassSet)
     }
 
     final override def derivesFrom(base: Symbol)(using Context): Boolean =
-      !isAbsent()
-      && base.isClass
-      && ((symbol eq base) || baseClassSet.contains(base))
+      val rid = ctx.runId
+      if myDerivesFromRunId0 == rid && (myDerivesFromBase0 eq base) then
+        myDerivesFromResult0
+      else if myDerivesFromRunId1 == rid && (myDerivesFromBase1 eq base) then
+        myDerivesFromResult1
+      else
+        val res =
+          !isAbsent()
+          && base.isClass
+          && ((symbol eq base) || baseClassSet.contains(base))
+        // FIFO size 2: evict slot 0 into slot 1, install new entry into slot 0.
+        myDerivesFromRunId1 = myDerivesFromRunId0
+        myDerivesFromBase1 = myDerivesFromBase0
+        myDerivesFromResult1 = myDerivesFromResult0
+        myDerivesFromRunId0 = rid
+        myDerivesFromBase0 = base
+        myDerivesFromResult0 = res
+        res
 
     final override def isSubClass(base: Symbol)(using Context): Boolean =
       derivesFrom(base)
@@ -2127,15 +2552,24 @@ object SymDenotations {
     protected def proceedWithEnter(sym: Symbol, mscope: MutableScope)(using Context): Boolean = true
 
     final override def isValueClass(using Context): Boolean =
-      val di = initial.asClass
-      val anyVal = defn.AnyValClass
-      if di.baseDataCache.isValid && !ctx.erasedTypes then
-        // fast path that does not demand time travel
-        (symbol eq anyVal) || di.baseClassSet.contains(anyVal)
+      val rid = ctx.runId
+      if myIsValueClassRunId == rid then myIsValueClassResult
       else
-        // We call derivesFrom at the initial phase both because AnyVal does not exist
-        // after Erasure and to avoid cyclic references caused by forcing denotations
-        atPhase(di.validFor.firstPhaseId)(di.derivesFrom(anyVal))
+        val di = initial.asClass
+        val anyVal = defn.AnyValClass
+        if di.baseDataCache.isValid && !ctx.erasedTypes then
+          // fast path that does not demand time travel
+          val res = (symbol eq anyVal) || di.baseClassSet.contains(anyVal)
+          // Only cache the fast-path result: the slow-path arm below computes
+          // via atPhase(firstPhaseId), and caching it under the current runId
+          // would risk returning a pre-erasure result to a post-erasure caller.
+          myIsValueClassResult = res
+          myIsValueClassRunId = rid
+          res
+        else
+          // We call derivesFrom at the initial phase both because AnyVal does not exist
+          // after Erasure and to avoid cyclic references caused by forcing denotations
+          atPhase(di.validFor.firstPhaseId)(di.derivesFrom(anyVal))
 
     /** Enter a symbol in current scope, and future scopes of same denotation.
      *  Note: We require that this does not happen after the first time
@@ -2170,6 +2604,7 @@ object SymDenotations {
       myMemberCache match
         case null => ()
         case mc => mc.remove(replacement.name)
+      invalidateMembersNamedCache()
     }
 
     /** Delete symbol from current scope.
@@ -2183,6 +2618,7 @@ object SymDenotations {
       myMemberCache match
         case null => ()
         case mc => mc.remove(sym.name)
+      invalidateMembersNamedCache()
       if (!sym.flagsUNSAFE.is(Private)) invalidateMemberNamesCache()
     }
 
@@ -2208,13 +2644,58 @@ object SymDenotations {
     final def membersNamed(name: Name)(using Context): PreDenotation =
       Stats.record("membersNamed")
       if Config.cacheMembersNamed then
-        var denots: PreDenotation | Null = memberCache.lookup(name)
-        if denots == null then
-          denots = computeMembersNamed(name)
-          memberCache(name) = denots
-        else if Config.checkCacheMembersNamed then
-          val denots1 = computeMembersNamed(name)
-          assert(denots.exists == denots1.exists, s"cache inconsistency: cached: $denots, computed $denots1, name = $name, owner = $this")
+        val period = ctx.period
+        // Fast path: bypass EqHashMap.lookup for either scalar slot.
+        if myMembersNamedPeriod == period then
+          val cached =
+            if myMembersNamedName0 eq name then myMembersNamedDenots0
+            else if myMembersNamedName1 eq name then myMembersNamedDenots1
+            else null
+          if cached != null then
+            if Config.checkCacheMembersNamed then
+              val denots1 = computeMembersNamed(name)
+              assert(cached.exists == denots1.exists, s"cache inconsistency: cached: $cached, computed $denots1, name = $name, owner = $this")
+            return cached
+          if isMembersNamedNoDenotationCached(name) then
+            if Config.checkCacheMembersNamed then
+              val denots1 = computeMembersNamed(name)
+              assert(!denots1.exists, s"cache inconsistency: cached: $NoDenotation, computed $denots1, name = $name, owner = $this")
+            return NoDenotation
+        var cache = currentMemberCache
+        var reservedScalarSlot = false
+        if cache != null then
+          val cached = cache.lookup(name)
+          if cached != null then
+            if Config.checkCacheMembersNamed then
+              val denots1 = computeMembersNamed(name)
+              assert(cached.exists == denots1.exists, s"cache inconsistency: cached: $cached, computed $denots1, name = $name, owner = $this")
+            if cached eq NoDenotation then rememberMembersNamedNoDenotation(period, name)
+            else rememberMembersNamed(period, name, cached)
+            return cached
+        else
+          reservedScalarSlot = reserveMembersNamedSlot(period, name)
+
+        val mutationId = myMemberCacheMutationId
+        val denots = computeMembersNamed(name)
+        if myMemberCacheMutationId == mutationId then
+          if denots eq NoDenotation then
+            // Remember computed absences in an already-promoted member-cache
+            // map so repeat negative lookups become map hits instead of full
+            // recomputed parent walks. Promotion policy is unchanged: absences
+            // never trigger a promotion, and classes without a map keep using
+            // the scalar negative runway. Package classes are excluded since
+            // their scopes are backed by lazy symbol loaders.
+            cache = currentMemberCache
+            if cache != null && !is(PackageClass) then cache(name) = denots
+            else if reservedScalarSlot then rememberMembersNamed(period, name, denots)
+            else rememberMembersNamedNoDenotation(period, name)
+          else
+            cache = currentMemberCache
+            if cache != null then cache(name) = denots
+            else if !reservedScalarSlot then
+              cache = promoteMemberCacheFromMembersNamed()
+              cache(name) = denots
+            rememberMembersNamed(period, name, denots)
         denots
       else computeMembersNamed(name)
 
@@ -2247,25 +2728,149 @@ object SymDenotations {
 
     private def addInherited(name: Name, ownDenots: PreDenotation,
         required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): PreDenotation =
+      def collectLinearizedNoOwn(): PreDenotation | Null =
+        info match
+          case cinfo: ClassInfo =>
+            val baseScopes = linearizedBaseScopes(cinfo)
+            if baseScopes == null then null
+            else if (myLinearizedBaseScopesBloom & memberNameBloomBit(name)) == 0L then NoDenotation
+            else
+              val excludedInherited = excluded | Private
+              var denots: PreDenotation = NoDenotation
+              var i = 0
+              var ok = true
+              while ok && i < baseScopes.length do
+                val ownInherited = baseScopes(i).denotsNamed(name)
+                if ownInherited.exists then
+                  val filtered = ownInherited.filterWithFlags(required, excludedInherited)
+                  if filtered.exists then
+                    if denots.exists then ok = false
+                    else
+                      // `mapInherited(NoDenotation, NoDenotation, thisType)`
+                      // reduces to `asSeenFrom(thisType)`: with empty
+                      // prevDenots the containsSym check is always false and
+                      // with empty ownDenots filterDisjoint is the identity.
+                      val inherited = filtered.asSeenFrom(thisType)
+                      if inherited.exists then denots = inherited
+                i += 1
+              if ok then denots else null
+          case _ => null
+      /** The early-out subset of the linearized fast path for the
+       *  `ownDenots.exists` case: when the whole-array inherited bloom proves
+       *  no base class declares `name`, nothing is inherited, so the recursive
+       *  `collectFromParentDenots` parent walk (which starts from `ownDenots`
+       *  and unions in per-parent inherited members, all empty here) leaves
+       *  `ownDenots` unchanged. Return it directly. Returns `null` to fall
+       *  through to `collectFromInfo` when the bloom is set (a base may
+       *  declare `name`, so the full recursive fold is still required), when
+       *  the linearization does not apply (`baseScopes == null`), or for a
+       *  non-`ClassInfo` info. This reuses the SAME inherited-only bloom and
+       *  the SAME null-gate as `collectLinearizedNoOwn`, so it carries the
+       *  same correctness guarantee; the `-1L` synth sentinel keeps the bit
+       *  set for synthesizing base scopes and so forces the recursive path.
+       */
+      def collectLinearizedWithOwn(): PreDenotation | Null =
+        info match
+          case cinfo: ClassInfo =>
+            val baseScopes = linearizedBaseScopes(cinfo)
+            if baseScopes == null then null
+            else if (myLinearizedBaseScopesBloom & memberNameBloomBit(name)) == 0L then ownDenots
+            else null
+          case _ => null
       def collect(denots: PreDenotation, parents: List[Type]): PreDenotation = parents match
         case p :: ps =>
           val denots1 = collect(denots, ps)
           p.classSymbol.denot match
             case parentd: ClassDenotation =>
               val inherited = parentd.membersNamedNoShadowingBasedOnFlags(name, required, excluded | Private)
-              denots1.union(inherited.mapInherited(ownDenots, denots1, thisType))
+              if inherited.exists then denots1.union(inherited.mapInherited(ownDenots, denots1, thisType))
+              else denots1
             case _ =>
               denots1
         case nil => denots
+      def collectFromParentDenots(parentDenots: Array[ClassDenotation]): PreDenotation =
+        var denots = ownDenots
+        var i = parentDenots.length - 1
+        while i >= 0 do
+          val inherited = parentDenots(i).membersNamedNoShadowingBasedOnFlags(name, required, excluded | Private)
+          if inherited.exists then denots = denots.union(inherited.mapInherited(ownDenots, denots, thisType))
+          i -= 1
+        denots
+      def collectFromInfo(): PreDenotation =
+        info match
+          case cinfo: ClassInfo =>
+            val parentDenots = parentClassDenots(cinfo)
+            if parentDenots != null then collectFromParentDenots(parentDenots)
+            else collect(ownDenots, cinfo.parents)
+          case _ =>
+            collect(ownDenots, info.parents)
       if name.isConstructorName then ownDenots
-      else collect(ownDenots, info.parents)
+      else if !ownDenots.exists && !is(PackageClass) && !is(Package) then
+        // The linearized fast path reads base classes' `info.decls` directly.
+        // During lazy TASTy completion (e.g. doc generation) this can force a
+        // still-completing base and turn a normally-provisional cyclic
+        // dependency into a fatal CyclicReference. The fast path is a pure
+        // optimization, so on a cycle we fall back to the provisional-safe
+        // `collectFromInfo`; a genuine cyclic error is re-thrown by that path.
+        // During typer, a still-completing base can also yield a provisional
+        // (possibly incomplete) linearization without throwing; that case is
+        // detected via `baseDataCache.isComputed` inside the fast path, which
+        // then likewise bails to `collectFromInfo`.
+        val fast =
+          try collectLinearizedNoOwn()
+          catch case _: CyclicReference => null
+        fast match
+          case denots: PreDenotation =>
+            if Config.checkCacheMembersNamed then
+              val denots1 = collectFromInfo()
+              assert(denots.exists == denots1.exists,
+                s"linearized/recursive inconsistency: linearized: $denots, recursive: $denots1, name = $name, owner = $this")
+            denots
+          case null => collectFromInfo()
+      else if ownDenots.exists && !is(PackageClass) && !is(Package) then
+        // The class declares its own member of `name`. The dominant outcome is
+        // that no base class also declares `name` (no override), in which case
+        // the recursive `collectFromParentDenots` re-walk leaves `ownDenots`
+        // unchanged. `collectLinearizedWithOwn` detects that via the same
+        // inherited bloom and returns `ownDenots` in one AND+compare. As with
+        // the no-own path the bloom read forces a base's `info.decls`, so a
+        // still-completing base is guarded the same way: on a `CyclicReference`
+        // (or any bloom-set / null-linearization case) fall back to the
+        // provisional-safe `collectFromInfo`.
+        val fast =
+          try collectLinearizedWithOwn()
+          catch case _: CyclicReference => null
+        fast match
+          case denots: PreDenotation =>
+            if Config.checkCacheMembersNamed then
+              val denots1 = collectFromInfo()
+              assert(denots.exists == denots1.exists,
+                s"linearized/recursive inconsistency (own): linearized: $denots, recursive: $denots1, name = $name, owner = $this")
+            denots
+          case null => collectFromInfo()
+      else collectFromInfo()
 
     override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
       val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)
       val pre1 = pre match
         case pre: OrType => pre.widenUnion
         case _ => pre
-      raw.filterWithFlags(required, excluded).asSeenFrom(pre1).toDenot(pre1)
+      // `nonPrivateMembersNamed` already applied this exact flag filter,
+      // including the pre-typer Invisible lift in filterWithFlags.
+      // Identity-preserving bypass: SingleDenotation.filterWithFlags is
+      // a strict identity when `required.isEmpty && excluded.isEmpty` AND
+      // the realExcluded lift to `excluded | Invisible` does not apply
+      // (i.e. ctx.isAfterTyper || ctx.mode.is(Mode.ResolveFromTASTy)).
+      // The same identity propagates through MultiPreDenotation via
+      // derivedUnion, so the entire `filterWithFlags` call is a no-op
+      // on the no-op-flags shape in those modes.
+      val filtered =
+        if required.isEmpty && excluded == Private then raw
+        else if required.isEmpty && excluded.isEmpty
+           && (ctx.isAfterTyper || ctx.mode.is(Mode.ResolveFromTASTy))
+        then raw
+        else raw.filterWithFlags(required, excluded)
+      filtered.asSeenFrom(pre1).toDenot(pre1)
 
     final def findMemberNoShadowingBasedOnFlags(name: Name, pre: Type,
         required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): Denotation =
@@ -2274,18 +2879,40 @@ object SymDenotations {
     /** Compute tp.baseType(this) */
     final def baseTypeOf(tp: Type)(using Context): Type = {
       val btrCache = baseTypeCache
-      def inCache(tp: Type) = tp match
-        case tp: CachedType => btrCache.contains(tp)
-        case _ => false
+      val btrCachePeriod = myBaseTypeCachePeriod
+      // Side-channel: set by `recur` on every exit to indicate whether the
+      // value just returned is/was stored in `btrCache` for its input.
+      // Post-`recur` sites use this to decide whether to record the outer
+      // `tp`, replacing redundant `inCache(superTp)` EqHashMap re-probes.
+      // Capture into a local immediately after each recur call before any
+      // other recur invocation overwrites it.
+      var lastRecurCacheable: Boolean = false
+      def rememberFront(tp: CachedType, baseTp: Type) =
+        myBaseTypeCacheKey = tp
+        myBaseTypeCacheValue = baseTp
+        myBaseTypeCacheKeyPeriod = btrCachePeriod
+      def forgetFront(tp: CachedType) =
+        if (myBaseTypeCacheKeyPeriod == btrCachePeriod) && (myBaseTypeCacheKey eq tp) then
+          myBaseTypeCacheKey = null
+          myBaseTypeCacheValue = null
+          myBaseTypeCacheKeyPeriod = Nowhere
+      // Updates `lastRecurCacheable` to reflect whether `tp` ended up
+      // present in `btrCache` (i.e. the cacheable branch was taken).
       def record(tp: CachedType, baseTp: Type) = {
         if (Stats.monitored) {
           Stats.record("basetype cache entries")
           if (!baseTp.exists) Stats.record("basetype cache NoTypes")
         }
-        if !(tp.isProvisional || CapturingType.isUncachable(tp) || ctx.gadt.isNarrowing) then
+        if !(tp.isProvisional || CapturingType.isUncachable(tp) || ctx.gadt.isNarrowing) then {
           btrCache(tp) = baseTp
-        else
+          rememberFront(tp, baseTp)
+          lastRecurCacheable = true
+        }
+        else {
           btrCache.remove(tp) // Remove any potential sentinel value
+          forgetFront(tp)
+          lastRecurCacheable = false
+        }
       }
 
       def ensureAcyclic(baseTp: Type) = {
@@ -2296,17 +2923,32 @@ object SymDenotations {
       def recur(tp: Type): Type = try {
         tp match {
           case tp: CachedType =>
+            if (myBaseTypeCacheKeyPeriod == btrCachePeriod) && (myBaseTypeCacheKey eq tp) then
+              lastRecurCacheable = true
+              return ensureAcyclic(myBaseTypeCacheValue.nn)
             val baseTp: Type | Null = btrCache.lookup(tp)
-            if (baseTp != null)
-              return ensureAcyclic(baseTp)
+            if (baseTp != null) {
+              lastRecurCacheable = true
+              val cached = ensureAcyclic(baseTp)
+              rememberFront(tp, cached)
+              return cached
+            }
           case _ =>
         }
+        // Default for the compute paths below; specific arms override.
+        lastRecurCacheable = false
         if (Stats.monitored) {
           Stats.record("computeBaseType, total")
           Stats.record(s"computeBaseType, ${tp.getClass}")
         }
         val normed = tp.tryNormalize
-        if (normed.exists) return recur(normed)
+        if (normed.exists) {
+          val baseTp = recur(normed)
+          // `tp` itself was never recorded here -- only `normed` was visited.
+          // Reflect that for callers checking the cacheability bit.
+          lastRecurCacheable = false
+          return baseTp
+        }
 
         tp match {
           case tp @ TypeRef(prefix, _) =>
@@ -2340,10 +2982,12 @@ object SymDenotations {
                 case _ =>
                   val superTp = tp.superType
                   val baseTp = recur(superTp)
-                  if (inCache(superTp))
-                    record(tp, baseTp)
-                  else
+                  if (lastRecurCacheable) record(tp, baseTp)
+                  else {
                     btrCache.remove(tp)
+                    forgetFront(tp)
+                    lastRecurCacheable = false
+                  }
                   baseTp
               }
             }
@@ -2365,19 +3009,25 @@ object SymDenotations {
             computeApplied
 
           case tp: TypeParamRef =>  // uncachable, since baseType depends on context bounds
-            recur(TypeComparer.bounds(tp).hi)
+            val baseTp = recur(TypeComparer.bounds(tp).hi)
+            lastRecurCacheable = false
+            baseTp
 
           case CapturingType(parent, refs) =>
-            tp.derivedCapturingType(recur(parent), refs)
+            val baseTp = tp.derivedCapturingType(recur(parent), refs)
+            lastRecurCacheable = false
+            baseTp
 
           case tp: TypeProxy =>
             def computeTypeProxy = {
               val superTp = tp.superType
               val baseTp = recur(superTp)
+              val superCacheable = lastRecurCacheable
               tp match {
-                case tp: CachedType if baseTp.exists && inCache(superTp) =>
+                case tp: CachedType if baseTp.exists && superCacheable =>
                   record(tp, baseTp)
                 case _ =>
+                  lastRecurCacheable = false
               }
               baseTp
             }
@@ -2388,37 +3038,57 @@ object SymDenotations {
               val tp1 = tp.tp1
               val tp2 = tp.tp2
               if !tp.isAnd then
-                if tp1.isBottomType && (tp1 frozen_<:< tp2) then return recur(tp2)
-                if tp2.isBottomType && (tp2 frozen_<:< tp1) then return recur(tp1)
+                // `tp` itself is not recorded along these short-circuit paths;
+                // ensure the flag reflects that for our caller.
+                if tp1.isBottomType && (tp1 frozen_<:< tp2) then {
+                  val baseTp = recur(tp2)
+                  lastRecurCacheable = false
+                  return baseTp
+                }
+                if tp2.isBottomType && (tp2 frozen_<:< tp1) then {
+                  val baseTp = recur(tp1)
+                  lastRecurCacheable = false
+                  return baseTp
+                }
+              var cacheable1 = false
+              var cacheable2 = false
               val baseTp =
                 if symbol.isStatic && tp.derivesFrom(symbol) && symbol.typeParams.isEmpty then
                   symbol.typeRef
                 else
                   val baseTp1 = recur(tp1)
+                  cacheable1 = lastRecurCacheable
                   val baseTp2 = recur(tp2)
+                  cacheable2 = lastRecurCacheable
                   val combined = if (tp.isAnd) baseTp1 & baseTp2 else baseTp1 | baseTp2
                   combined match
                     case combined: AndOrType
                     if (combined.tp1 eq tp1) && (combined.tp2 eq tp2) && (combined.isAnd == tp.isAnd) => tp
                     case _ => combined
 
-              if (baseTp.exists && inCache(tp1) && inCache(tp2)) record(tp, baseTp)
+              if (baseTp.exists && cacheable1 && cacheable2) record(tp, baseTp)
+              else lastRecurCacheable = false
               baseTp
 
             computeAndOrType
 
           case JavaArrayType(_) if symbol == defn.ObjectClass =>
+            lastRecurCacheable = false
             this.typeRef
 
           case _ =>
+            lastRecurCacheable = false
             NoType
         }
       }
       catch {
         case ex: Exception =>
           tp match
-            case tp: CachedType => btrCache.remove(tp)
+            case tp: CachedType =>
+              btrCache.remove(tp)
+              forgetFront(tp)
             case _ =>
+          lastRecurCacheable = false
           throw ex
       }
 
@@ -2441,16 +3111,27 @@ object SymDenotations {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
       try {
-        for ptype <- parentTypes do
-          ptype.classSymbol match
-            case pcls: ClassSymbol =>
-              for name <- pcls.memberNames(keepOnly) do
-                maybeAdd(name)
-            case _ =>
-              // Parent failed to resolve to a class (the missing
-              // reference has been reported by computeBaseData).
-              // Skip here to avoid a secondary MatchError.
-              // See scala/scala3#20010.
+        info match
+          case cinfo: ClassInfo =>
+            val parentDenots = parentClassDenots(cinfo)
+            if parentDenots != null then
+              var i = 0
+              while i < parentDenots.length do
+                for name <- parentDenots(i).memberNames(keepOnly) do
+                  maybeAdd(name)
+                i += 1
+            else
+              for ptype <- cinfo.declaredParents do
+                ptype.classSymbol match
+                  case pcls: ClassSymbol =>
+                    for name <- pcls.memberNames(keepOnly) do
+                      maybeAdd(name)
+                  case _ =>
+                    // Parent failed to resolve to a class (the missing
+                    // reference has been reported by computeBaseData).
+                    // Skip here to avoid a secondary MatchError.
+                    // See scala/scala3#20010.
+          case _ =>
         val ownSyms =
           if (keepOnly eq implicitFilter)
             if (this.is(Package)) Iterator.empty
@@ -2971,12 +3652,21 @@ object SymDenotations {
     def apply(clsd: ClassDenotation)
              (implicit onBehalf: BaseData, ctx: Context): (List[ClassSymbol], BaseClassSet)
     def signalProvisional(): Unit
+
+    /** Does this cache hold a fully computed, non-provisional result?
+     *  Provisional results (a base class was still completing when the base
+     *  data was computed, so the linearization may be missing bases) are
+     *  never stored in the cache, so this is false right after a provisional
+     *  compute and true right after a complete one.
+     */
+    def isComputed: Boolean
   }
 
   object BaseData {
     implicit val None: BaseData = new InvalidCache with BaseData {
       def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context) = ???
       def signalProvisional() = ()
+      def isComputed = false
     }
     def newCache()(using Context): BaseData = new BaseDataImpl(ctx.period)
   }
@@ -3074,6 +3764,8 @@ object SymDenotations {
       }
 
     def signalProvisional() = provisional = true
+
+    def isComputed = cache != null
 
     def apply(clsd: ClassDenotation)(implicit onBehalf: BaseData, ctx: Context)
         : (List[ClassSymbol], BaseClassSet) = {

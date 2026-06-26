@@ -57,13 +57,13 @@ class CrossStageSafety extends TreeMapWithStages {
   private val InAnnotation = Property.Key[Unit]()
 
   override def transform(tree: Tree)(using Context): Tree =
-    if (tree.source != ctx.source && tree.source.exists)
+    if ((tree.source `ne` ctx.source) && tree.source.exists)
       transform(tree)(using ctx.withSource(tree.source))
     else tree match
       case CancelledQuote(tree) =>
         transform(tree) // Optimization: `'{ $x }` --> `x`
       case tree: Quote =>
-        if (ctx.property(InAnnotation).isDefined)
+        if (ctx.propertyRaw(InAnnotation) != null)
           report.error("Cannot have a quote in an annotation", tree.srcPos)
 
         val tree1 =
@@ -73,6 +73,7 @@ class CrossStageSafety extends TreeMapWithStages {
           tree.withBodyType(bodyType1)
 
         if level == 0 then
+          ctx.compilationUnit.hasLevel0Quotes = true // record the survivor for `Splicing`
           val (tags, body1) = inContextWithQuoteTypeTags { transform(tree1.body)(using quoteContext) }
           cpy.Quote(tree1)(body1, tags)
         else
@@ -88,7 +89,7 @@ class CrossStageSafety extends TreeMapWithStages {
         untpd.cpy.Splice(tree)(body1).withType(tpe1)
 
       case tree @ QuotedTypeOf(body) =>
-        if (ctx.property(InAnnotation).isDefined)
+        if (ctx.propertyRaw(InAnnotation) != null)
           report.error("Cannot have a quote in an annotation", tree.srcPos)
 
         if level == 0 then
@@ -99,6 +100,7 @@ class CrossStageSafety extends TreeMapWithStages {
               tag // Optimization: `quoted.Type.of[x.Underlying](quotes)`  -->  `x`
             case _ =>
               // `quoted.Type.of[<body>](<quotes>)` --> `'[<body1>].apply(<quotes>)`
+              ctx.compilationUnit.hasLevel0Quotes = true // record the survivor for `Splicing`
               tpd.Quote(body1, tags).select(nme.apply).appliedTo(quotes).withSpan(tree.span)
         else
           super.transform(tree)

@@ -124,23 +124,87 @@ object Denotations {
     /** Map `f` over all single denotations and aggregate the results with `g`. */
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T
 
+    // Slot 0 (inline, MRU). The extra slots below are allocated lazily only when
+    // a second distinct prefix is queried — keeping per-PreDenotation overhead at
+    // the current 3 fields for denotations that are only asked from one prefix.
     private var cachedPrefix: Type = uninitialized
     private var cachedAsSeenFrom: AsSeenFromResult = uninitialized
     private var validAsSeenFrom: Period = Nowhere
+    // Lazy extra slots: 3 (prefix, result) pairs (size 6). Direct-mapped via
+    // System.identityHashCode(pre) mod 3. All extra slots share one period
+    // (`extraValidPeriod`); we invalidate the whole array when the active
+    // period changes. This avoids per-slot Int storage and the boxing it
+    // would incur for `Period` (an `AnyVal` Int wrapper).
+    private var extraAsfKeys: Array[AnyRef] | Null = null
+    private var extraValidPeriod: Period = Nowhere
 
     type AsSeenFromResult <: PreDenotation
 
     /** The denotation with info(s) as seen from prefix type */
     def asSeenFrom(pre: Type)(using Context): AsSeenFromResult =
       if (Config.cacheAsSeenFrom) {
-        if ((cachedPrefix ne pre) || ctx.period != validAsSeenFrom) {
-          cachedAsSeenFrom = computeAsSeenFrom(pre)
-          cachedPrefix = pre
-          validAsSeenFrom = if (pre.isProvisional) Nowhere else ctx.period
-        }
-        cachedAsSeenFrom
+        val now = ctx.period
+        if ((cachedPrefix eq pre) && now == validAsSeenFrom) cachedAsSeenFrom
+        else asSeenFromSlow(pre, now)
       }
       else computeAsSeenFrom(pre)
+
+    private def asSeenFromSlow(pre: Type, now: Period)(using Context): AsSeenFromResult = {
+      // Probe the extra direct-mapped slots first (if allocated and not stale).
+      val keys = extraAsfKeys
+      if keys != null && extraValidPeriod == now then
+        val s = (System.identityHashCode(pre) & 0x7fffffff) % 3
+        val k = s << 1
+        if keys(k) eq pre then
+          // Hit: promote to slot 0 by swapping with the inline slot.
+          val hitResult = keys(k + 1).asInstanceOf[AsSeenFromResult]
+          val prevPrefix = cachedPrefix
+          val prevResult = cachedAsSeenFrom
+          val prevValid = validAsSeenFrom
+          cachedPrefix = pre
+          cachedAsSeenFrom = hitResult
+          validAsSeenFrom = now
+          // Evict our slot 0 contents into the extra slot we just consumed,
+          // but only if slot 0 was fresh (same period, non-null prefix). Else
+          // clear the slot to avoid retaining a stale entry that won't ever hit.
+          if prevPrefix != null && prevValid == now then
+            keys(k) = prevPrefix
+            keys(k + 1) = prevResult.asInstanceOf[AnyRef]
+          else
+            keys(k) = null.asInstanceOf[AnyRef]
+            keys(k + 1) = null.asInstanceOf[AnyRef]
+          return hitResult
+      end if
+      // Miss. Before clobbering slot 0, evict the existing slot 0 into the extras
+      // (so the existing value is not lost). Allocate the extras lazily on the
+      // second distinct prefix.
+      val prevPrefix = cachedPrefix
+      val prevResult = cachedAsSeenFrom
+      val prevValid = validAsSeenFrom
+      val computed = computeAsSeenFrom(pre)
+      if prevPrefix != null && prevValid == now then
+        if keys == null then
+          val newKeys = new Array[AnyRef](6)
+          val s = (System.identityHashCode(prevPrefix) & 0x7fffffff) % 3
+          newKeys(s << 1) = prevPrefix
+          newKeys((s << 1) + 1) = prevResult.asInstanceOf[AnyRef]
+          extraAsfKeys = newKeys
+          extraValidPeriod = now
+        else
+          if extraValidPeriod != now then
+            // Period changed; clear stale entries before reusing.
+            var i = 0
+            while i < 6 do { keys(i) = null.asInstanceOf[AnyRef]; i += 1 }
+            extraValidPeriod = now
+          val s = (System.identityHashCode(prevPrefix) & 0x7fffffff) % 3
+          keys(s << 1) = prevPrefix
+          keys((s << 1) + 1) = prevResult.asInstanceOf[AnyRef]
+      end if
+      cachedAsSeenFrom = computed
+      cachedPrefix = pre
+      validAsSeenFrom = if pre.isProvisional then Nowhere else now
+      computed
+    }
 
     protected def computeAsSeenFrom(pre: Type)(using Context): AsSeenFromResult
 
@@ -181,15 +245,33 @@ object Denotations {
   abstract class Denotation(val symbol: Symbol, protected var myInfo: Type, val isType: Boolean) extends PreDenotation with printing.Showable {
     type AsSeenFromResult <: Denotation
 
+    /** Cached `!myInfo.isInstanceOf[LazyType]` bit, maintained by `info_=` and `markAbsent`.
+     *  Replaces the per-call `instanceof[LazyType]` check in `info` with a primitive
+     *  field read. `@volatile` so the JIT cannot hoist the read out of a hot loop and
+     *  so write ordering pairs with reader-side acquire semantics: the writers below
+     *  clear this to `false` BEFORE touching `myInfo` and set the final value AFTER,
+     *  so a reader that observes `true` is guaranteed to see the post-update `myInfo`
+     *  and never a stale `true` paired with a half-written `myInfo`. A reader that
+     *  observes a stale `false` falls through to `completeInfo`, which re-checks the
+     *  actual type of `myInfo` to tolerate the race instead of throwing on the cast.
+     */
+    @volatile protected var myInfoIsComplete: Boolean = !myInfo.isInstanceOf[LazyType]
+
     /** The type info.
      *  The info is an instance of TypeType iff this is a type denotation
      *  Uncompleted denotations set myInfo to a LazyType.
      */
     final def info(using Context): Type = {
       def completeInfo = { // Written this way so that `info` is small enough to be inlined
-        this.asInstanceOf[SymDenotation].completeFrom(myInfo.asInstanceOf[LazyType]); info
+        // Re-read `myInfo` and pattern-match instead of an unconditional cast so
+        // that a stale `myInfoIsComplete = false` observed against an already-
+        // completed `myInfo` returns the completed type instead of throwing.
+        myInfo match
+          case lazyInfo: LazyType =>
+            this.asInstanceOf[SymDenotation].completeFrom(lazyInfo); info
+          case completed => completed
       }
-      if (myInfo.isInstanceOf[LazyType]) completeInfo else myInfo
+      if (myInfoIsComplete) myInfo else completeInfo
     }
 
     /** The type info, or, if this is a SymDenotation where the symbol
@@ -231,8 +313,9 @@ object Denotations {
 
     final def validFor: Period = myValidFor
     final def validFor_=(p: Period): Unit = {
-      myValidFor = p
-      symbol.invalidateDenotCache()
+      if p != myValidFor then
+        myValidFor = p
+        symbol.invalidateDenotCache()
     }
 
     /** Is this denotation different from NoDenotation or an ErrorDenotation? */
@@ -786,6 +869,18 @@ object Denotations {
     def skipRemoved(using Context): SingleDenotation =
       if (validFor == Nowhere) nextDefined else this
 
+    /** A 1-step probe along the `nextInRun` ring: if the immediate `nextInRun`
+     *  denotation is valid for `currentPeriod` and denotes the same symbol as
+     *  this denotation, return it. Otherwise return `null`. Used by
+     *  `NamedType.computeDenot` to skip the dispatch through `current` /
+     *  `goForward` in the common case where the next flock member already
+     *  covers the current period.
+     */
+    final def nextInRunIfFast(currentPeriod: Period): SingleDenotation | Null =
+      val next = nextInRun
+      if (next ne this) && next.validFor.contains(currentPeriod) && (next.symbol eq symbol) then next
+      else null
+
     /** Produce a denotation that is valid for the given context.
      *  Usually called when !(validFor contains ctx.period)
      *  (even though this is not a precondition).
@@ -826,35 +921,50 @@ object Denotations {
         else
           //println(s"might need new denot for $cur, valid for ${cur.validFor} at $currentPeriod")
           // not found, cur points to highest existing variant
-          val nextTransformerId = ctx.base.nextDenotTransformerId(cur.validFor.lastPhaseId)
-          if currentPeriod.lastPhaseId <= nextTransformerId then
-            cur.validFor = Period(currentPeriod.runId, cur.validFor.firstPhaseId, nextTransformerId)
-          else
-            var startPid = nextTransformerId + 1
-            val transformer = ctx.base.denotTransformers(nextTransformerId)
-            //println(s"transforming $this with $transformer")
-            val savedPeriod = ctx.period
-            val mutCtx = ctx.asInstanceOf[FreshContext]
-            try
-              mutCtx.setPhase(transformer)
-              next = transformer.transform(cur)
-                // We temporarily update the context with the new phase instead of creating a
-                // new one. This is done for performance. We cut down on about 30% of context
-                // creations that way, and also avoid phase caches in contexts to get large.
-                // To work correctly, we need to demand that the context with the new phase
-                // is not retained in the result.
-            finally
-              mutCtx.setPeriod(savedPeriod)
-            if next eq cur then
-              startPid = cur.validFor.firstPhaseId
+          var done = false
+          while !done do
+            val nextTransformerId = ctx.base.nextDenotTransformerId(cur.validFor.lastPhaseId)
+            if currentPeriod.lastPhaseId <= nextTransformerId then
+              cur.validFor = Period(currentPeriod.runId, cur.validFor.firstPhaseId, nextTransformerId)
+              done = true
             else
-              assertNotPackage(next, transformer)
-              next.insertAfter(cur)
-              cur = next
-            cur.validFor = Period(currentPeriod.runId, startPid, transformer.lastPhaseId)
-            //printPeriods(cur)
-            //println(s"new denot: $cur, valid for ${cur.validFor}")
-          cur.current // multiple transformations could be required
+              val nextNonIdentityTransformerId = ctx.base.nextNonIdentityDenotTransformerId(nextTransformerId)
+              if nextNonIdentityTransformerId != nextTransformerId then
+                cur.validFor =
+                  Period(currentPeriod.runId, cur.validFor.firstPhaseId, nextNonIdentityTransformerId)
+                done = currentPeriod.lastPhaseId <= nextNonIdentityTransformerId
+              else
+                val transformer = ctx.base.denotTransformers(nextTransformerId)
+                //println(s"transforming $this with $transformer")
+                if transformer.transformIsNoOpFor(cur) then
+                  // Pre-verified no-op: extend the validity period exactly as the
+                  // identity-return path below does, without invoking the transformer.
+                  cur.validFor = Period(currentPeriod.runId, cur.validFor.firstPhaseId, transformer.lastPhaseId)
+                else
+                  var startPid = nextTransformerId + 1
+                  val savedPeriod = ctx.period
+                  val mutCtx = ctx.asInstanceOf[FreshContext]
+                  try
+                    mutCtx.setPhase(transformer)
+                    next = transformer.transform(cur)
+                      // We temporarily update the context with the new phase instead of creating a
+                      // new one. This is done for performance. We cut down on about 30% of context
+                      // creations that way, and also avoid phase caches in contexts to get large.
+                      // To work correctly, we need to demand that the context with the new phase
+                      // is not retained in the result.
+                  finally
+                    mutCtx.setPeriod(savedPeriod)
+                  if next eq cur then
+                    startPid = cur.validFor.firstPhaseId
+                  else
+                    assertNotPackage(next, transformer)
+                    next.insertAfter(cur)
+                    cur = next
+                  cur.validFor = Period(currentPeriod.runId, startPid, transformer.lastPhaseId)
+                  //printPeriods(cur)
+                  //println(s"new denot: $cur, valid for ${cur.validFor}")
+                  // Loop instead of calling cur.current recursively (multiple transformations may be required)
+          cur
       end goForward
 
       def goBack: SingleDenotation =
@@ -884,6 +994,8 @@ object Denotations {
         toNewRun
       else if currentPeriod > valid then
         goForward
+      else if valid.contains(currentPeriod) then
+        this
       else
         goBack
     end current
@@ -1091,52 +1203,66 @@ object Denotations {
 
     protected def computeAsSeenFrom(pre: Type)(using Context): SingleDenotation = {
       val symbol = this.symbol
-      val owner = this match {
-        case thisd: SymDenotation => thisd.owner
-        case _ => if (symbol.exists) symbol.owner else NoSymbol
-      }
-
-      /** The derived denotation with the given `info` transformed with `asSeenFrom`.
-       *
-       *  As a performance hack, we might reuse an existing SymDenotation,
-       *  instead of creating a new denotation with a given `prefix`,
-       *  see `Config.reuseSymDenotations`.
-       */
-      def derived(info: Type) =
-        /** Do we need to return a denotation with a prefix set? */
-        def needsPrefix =
-          // For opaque types, the prefix is used in `ElimOpaques#transform`,
-          // without this i7159.scala would fail when compiled from tasty.
-          symbol.is(Opaque)
-
-        val derivedInfo = info.asSeenFrom(pre, owner)
-        if Config.reuseSymDenotations && this.isInstanceOf[SymDenotation]
-           && (derivedInfo eq info) && !needsPrefix then
-          this
-        else
-          derivedSingleDenotation(symbol, derivedInfo, pre)
-      end derived
-
-      // Tt could happen that we see the symbol with prefix `this` as a member a different class
-      // through a self type and that it then has a different info. In this case we have to go
-      // through the asSeenFrom to switch the type back. Test case is pos/i9352.scala.
-      def hasOriginalInfo: Boolean = this match
-        case sd: SymDenotation => true
-        case _ => info eq symbol.info
-
-      def ownerIsPrefix = pre match
-        case pre: ThisType => pre.sameThis(owner.thisType)
+      val isNonMember = this match
+        case thisd: SymDenotation => thisd.is(NonMember)
         case _ => false
 
-      if !owner.membersNeedAsSeenFrom(pre) && (!ownerIsPrefix || hasOriginalInfo)
-         || symbol.is(NonMember)
-      then this
-      else if symbol.isAllOf(ClassTypeParam) then
-        val arg = symbol.typeRef.argForParam(pre, widenAbstract = true)
-        if arg.exists
-        then derivedSingleDenotation(symbol, normalizedArgBounds(arg.bounds), pre)
+      if isNonMember then this
+      else {
+        val owner = this match {
+          case thisd: SymDenotation => thisd.owner
+          case _ => if (symbol.exists) symbol.owner else NoSymbol
+        }
+        val needsAsSeenFrom = owner.membersNeedAsSeenFrom(pre)
+
+        /** The derived denotation with the given `info` transformed with `asSeenFrom`.
+         *
+         *  As a performance hack, we might reuse an existing SymDenotation,
+         *  instead of creating a new denotation with a given `prefix`,
+         *  see `Config.reuseSymDenotations`.
+         */
+        def derived(info: Type) =
+          /** Do we need to return a denotation with a prefix set? */
+          def needsPrefix =
+            // For opaque types, the prefix is used in `ElimOpaques#transform`,
+            // without this i7159.scala would fail when compiled from tasty.
+            symbol.is(Opaque)
+
+          val derivedInfo =
+            if needsAsSeenFrom then info.asSeenFromKnownNeeded(pre, owner)
+            else info.asSeenFrom(pre, owner)
+          if Config.reuseSymDenotations && this.isInstanceOf[SymDenotation]
+             && (derivedInfo eq info) && !needsPrefix then
+            this
+          else
+            derivedSingleDenotation(symbol, derivedInfo, pre)
+        end derived
+
+        // Tt could happen that we see the symbol with prefix `this` as a member a different class
+        // through a self type and that it then has a different info. In this case we have to go
+        // through the asSeenFrom to switch the type back. Test case is pos/i9352.scala.
+        def hasOriginalInfo: Boolean = this match
+          case sd: SymDenotation => true
+          case _ => info eq symbol.info
+
+        def ownerIsPrefix = pre match
+          case pre: ThisType => pre.sameThis(owner.thisType)
+          case _ => false
+
+        def nonSymDenotIsNonMember: Boolean = this match
+          case _: SymDenotation => false
+          case _ => symbol.is(NonMember)
+
+        if !needsAsSeenFrom && (!ownerIsPrefix || hasOriginalInfo)
+           || nonSymDenotIsNonMember
+        then this
+        else if symbol.isAllOf(ClassTypeParam) then
+          val arg = symbol.typeRef.argForParam(pre, widenAbstract = true)
+          if arg.exists
+          then derivedSingleDenotation(symbol, normalizedArgBounds(arg.bounds), pre)
+          else derived(symbol.info)
         else derived(symbol.info)
-      else derived(symbol.info)
+      }
     }
 
     /** The argument bounds, possibly intersected with the parameter's info TypeBounds,
@@ -1221,6 +1347,26 @@ object Denotations {
 
   // --- Overloaded denotations and predenotations -------------------------------------------------
 
+  private def filterWithCurrentFlags(denot: PreDenotation, required: FlagSet, realExcluded: FlagSet)(using Context): PreDenotation | Null =
+    denot match
+      case denot: MultiPreDenotation =>
+        val denot1 = filterWithCurrentFlags(denot.denot1, required, realExcluded)
+        if denot1 == null then null
+        else
+          val denot2 = filterWithCurrentFlags(denot.denot2, required, realExcluded)
+          if denot2 == null then null
+          else if (denot1 eq denot.denot1) && (denot2 eq denot.denot2) then denot
+          else denot1.union(denot2)
+      case denot: SymDenotation =>
+        if denot.isCurrent(required) && denot.isCurrent(realExcluded) then
+          val flags = denot.flagsUNSAFE
+          if !required.isEmpty && !flags.isAllOf(required)
+             || flags.isOneOf(realExcluded) then NoDenotation
+          else denot
+        else null
+      case _ =>
+        null
+
   trait MultiPreDenotation extends PreDenotation {
     def denot1: PreDenotation
     def denot2: PreDenotation
@@ -1237,7 +1383,12 @@ object Denotations {
     def filterDisjoint(denot: PreDenotation)(using Context): PreDenotation =
       derivedUnion(denot1.filterDisjoint(denot), denot2.filterDisjoint(denot))
     def filterWithFlags(required: FlagSet, excluded: FlagSet)(using Context): PreDenotation =
-      derivedUnion(denot1.filterWithFlags(required, excluded), denot2.filterWithFlags(required, excluded))
+      val realExcluded =
+        if ctx.isAfterTyper || ctx.mode.is(Mode.ResolveFromTASTy) then excluded
+        else excluded | Invisible
+      filterWithCurrentFlags(this, required, realExcluded) match
+        case null => derivedUnion(denot1.filterWithFlags(required, excluded), denot2.filterWithFlags(required, excluded))
+        case denot => denot
     def aggregate[T](f: SingleDenotation => T, g: (T, T) => T): T =
       g(denot1.aggregate(f, g), denot2.aggregate(f, g))
     protected def derivedUnion(denot1: PreDenotation, denot2: PreDenotation) =

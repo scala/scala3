@@ -19,7 +19,14 @@ enum Atoms:
   def & (that: Atoms): Atoms = this match
     case Range(lo1, hi1) =>
       that match
-        case Range(lo2, hi2) => Range(lo1 & lo2, hi1 & hi2)
+        case Range(lo2, hi2) =>
+          if (lo1 eq hi1) && (lo2 eq hi2) then
+            // Both ranges are exact, so the intersections of the lower and upper
+            // bounds are the same set; compute it once and share it. Sharing also
+            // keeps the result exact, so exactness propagates up nested chains.
+            val u = lo1 & lo2
+            Range(u, u)
+          else Range(lo1 & lo2, hi1 & hi2)
         case Unknown => Range(Set.empty, hi1)
     case Unknown =>
       that match
@@ -29,7 +36,14 @@ enum Atoms:
   def | (that: Atoms): Atoms = this match
     case Range(lo1, hi1) =>
       that match
-        case Range(lo2, hi2) => Range(lo1 | lo2, hi1 | hi2)
+        case Range(lo2, hi2) =>
+          if (lo1 eq hi1) && (lo2 eq hi2) then
+            // Both ranges are exact, so the unions of the lower and upper
+            // bounds are the same set; compute it once and share it. Sharing also
+            // keeps the result exact, so exactness propagates up nested chains.
+            val u = lo1 | lo2
+            Range(u, u)
+          else Range(lo1 | lo2, hi1 | hi2)
         case Unknown => Unknown
     case Unknown => Unknown
 

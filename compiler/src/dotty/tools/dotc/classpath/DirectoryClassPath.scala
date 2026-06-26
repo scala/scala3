@@ -146,11 +146,26 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
     ps.map(p => (p.toString.stripPrefix("/packages/"), lookup(p))).toMap
   }
 
+  // e.g. "java" -> Vector(PackageEntry("java.lang"), PackageEntry("java.util"), ...).
+  // Each package is grouped under its parent prefix ("" for top-level packages), which is
+  // equivalent to `packageContains(parent, pack)`: the buckets are filled by iterating
+  // `packageToModuleBases.keysIterator` in the same order the previous per-call linear
+  // scan traversed, so each bucket preserves the exact enumeration order that scan produced.
+  private val packageIndex: Map[String, Vector[PackageEntry]] = {
+    val index = collection.mutable.HashMap.empty[String, collection.immutable.VectorBuilder[PackageEntry]]
+    packageToModuleBases.keysIterator.foreach { pack =>
+      val lastDotIndex = pack.lastIndexOf('.')
+      val parent = if (lastDotIndex < 0) ClassPath.RootPackage else pack.substring(0, lastDotIndex).nn
+      index.getOrElseUpdate(parent, new collection.immutable.VectorBuilder) += PackageEntry(pack)
+    }
+    index.iterator.map { case (parent, builder) => (parent, builder.result()) }.toMap
+  }
+
   /** Empty string represents root package */
   override def hasPackage(pkg: String): Boolean = packageToModuleBases.contains(pkg)
 
   override def packages(inPackage: String): Seq[PackageEntry] =
-    packageToModuleBases.keysIterator.filter(pack => packageContains(inPackage, pack)).map(PackageEntry(_)).toVector
+    packageIndex.getOrElse(inPackage, Vector.empty)
 
   override def classes(inPackage: String): Seq[BinaryFileEntry] =
     if (inPackage == ClassPath.RootPackage) Nil

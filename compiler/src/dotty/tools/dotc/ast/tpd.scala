@@ -324,6 +324,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    */
   def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree],
       superArgs: List[Tree] = Nil, adaptVarargs: Boolean = false)(using Context): TypeDef =
+    ClassDef(cls, constr, body, superArgs, adaptVarargs, NoSymbol)
+
+  def ClassDef(cls: ClassSymbol, constr: DefDef, body: List[Tree],
+      superArgs: List[Tree], adaptVarargs: Boolean, localDummy: Symbol)(using Context): TypeDef =
     val firstParent :: otherParents = cls.info.parents: @unchecked
 
     def adaptedSuperArgs(ctpe: Type): List[Tree] = ctpe match
@@ -346,10 +350,13 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           case _ => assert(false, i"multiple applicable parent constructors of $firstParent for supercall arguments $superArgs")
         New(firstParent, parentConstr.asTerm, adaptedSuperArgs(parentConstr.info))
 
-    ClassDefWithParents(cls, constr, superRef :: otherParents.map(TypeTree(_)), body)
+    ClassDefWithParents(cls, constr, superRef :: otherParents.map(TypeTree(_)), body, localDummy)
   end ClassDef
 
-  def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree])(using Context): TypeDef = {
+  def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree])(using Context): TypeDef =
+    ClassDefWithParents(cls, constr, parents, body, NoSymbol)
+
+  def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree], localDummy: Symbol)(using Context): TypeDef = {
     val selfType =
       if (cls.classInfo.selfInfo ne NoType) ValDef(newSelfSym(cls))
       else EmptyValDef
@@ -359,11 +366,17 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val newTypeParams =
       for (tparam <- cls.typeParams if !(bodyTypeParams contains tparam))
       yield TypeDef(tparam)
-    val findLocalDummy = FindLocalDummyAccumulator(cls)
-    val localDummy = body.foldLeft(NoSymbol: Symbol)(findLocalDummy.apply)
-      .orElse(newLocalDummy(cls))
+    val templateDummy =
+      if localDummy.exists then
+        assert(isTemplateLocalDummy(cls, localDummy),
+          i"local dummy $localDummy has owner ${localDummy.owner}, expected $cls")
+        localDummy
+      else
+        val findLocalDummy = FindLocalDummyAccumulator(cls)
+        body.foldLeft(NoSymbol: Symbol)(findLocalDummy.apply)
+          .orElse(newLocalDummy(cls))
     val impl = untpd.Template(constr, parents, Nil, selfType, newTypeParams ++ body)
-      .withType(localDummy.termRef)
+      .withType(templateDummy.termRef)
     ta.assignType(untpd.TypeDef(cls.name, impl), cls)
   }
 
@@ -604,11 +617,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  the RHS of a method contains a class owned by the method, this would be
    *  an error.)
    */
-  def ModuleDef(sym: TermSymbol, body: List[Tree])(using Context): tpd.Thicket = {
+  def ModuleDef(sym: TermSymbol, body: List[Tree])(using Context): tpd.Thicket =
+    ModuleDef(sym, body, NoSymbol)
+
+  def ModuleDef(sym: TermSymbol, body: List[Tree], localDummy: Symbol)(using Context): tpd.Thicket = {
     val modcls = sym.moduleClass.asClass
     val constrSym = modcls.primaryConstructor `orElse` newDefaultConstructor(modcls).entered
     val constr = DefDef(constrSym.asTerm, EmptyTree)
-    val clsdef = ClassDef(modcls, constr, body)
+    val clsdef = ClassDef(modcls, constr, body, Nil, adaptVarargs = false, localDummy)
     val valdef = ValDef(sym, New(modcls.typeRef).select(constrSym).appliedToNone)
     Thicket(valdef, clsdef)
   }
@@ -630,13 +646,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     else nullLiteral.select(defn.Any_asInstanceOf).appliedToType(tpe)
   }
 
+  private def isTemplateLocalDummy(cls: ClassSymbol, sym: Symbol)(using Context): Boolean =
+    sym.isLocalDummy && sym.owner == cls
+
   private class FindLocalDummyAccumulator(cls: ClassSymbol)(using Context) extends TreeAccumulator[Symbol] {
     def apply(sym: Symbol, tree: Tree)(using Context) =
       if (sym.exists) sym
       else if (tree.isDef) {
         val owner = tree.symbol.owner
-        if (owner.isLocalDummy && owner.owner == cls) owner
-        else if (owner == cls) foldOver(sym, tree)
+        if (isTemplateLocalDummy(cls, owner)) owner
         else sym
       }
       else foldOver(sym, tree)
@@ -654,6 +672,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     TypedTreeCopier()
 
   val cpyBetweenPhases: TimeTravellingTreeCopier = TimeTravellingTreeCopier()
+  val cpyBetweenApplicationTypePreservingPhases: TimeTravellingTreeCopier =
+    ApplicationTypePreservingTreeCopier()
+  val cpyBetweenSafeTypePreservingPhases: TimeTravellingTreeCopier =
+    SafeTypePreservingTreeCopier()
 
   class TypedTreeCopier extends TreeCopier {
     def postProcess(tree: Tree, copied: untpd.Tree): copied.ThisTree[Type] =
@@ -663,42 +685,54 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     protected val untpdCpy = untpd.cpy
 
-    override def Select(tree: Tree)(qualifier: Tree, name: Name)(using Context): Select = {
-      val tree1 = untpdCpy.Select(tree)(qualifier, name)
-      tree match {
-        case tree: Select if qualifier.tpe eq tree.qualifier.tpe =>
-          tree1.withTypeUnchecked(tree.tpe)
-        case _ =>
-          val tree2: Select = tree.tpe match {
-            case tpe: NamedType =>
-              val qualType = qualifier.tpe.widenIfUnstable
-              if qualType.isExactlyNothing then tree1.withTypeUnchecked(tree.tpe)
-              else tree1.withType(tpe.derivedSelect(qualType))
-            case _ => tree1.withTypeUnchecked(tree.tpe)
-          }
-          ConstFold.Select(tree2)
-      }
+    override def Select(tree: Tree)(qualifier: Tree, name: Name)(using Context): Select = tree match {
+      case tree: Select if (qualifier eq tree.qualifier) && (name == tree.name) => tree
+      case _ =>
+        val tree1 = untpdCpy.Select(tree)(qualifier, name)
+        tree match {
+          case tree: Select if qualifier.tpe eq tree.qualifier.tpe =>
+            tree1.withTypeUnchecked(tree.tpe)
+          case _ =>
+            val tree2: Select = tree.tpe match {
+              case tpe: NamedType =>
+                val qualType = qualifier.tpe.widenIfUnstable
+                if qualType.isExactlyNothing then tree1.withTypeUnchecked(tree.tpe)
+                else tree1.withType(tpe.derivedSelect(qualType))
+              case _ => tree1.withTypeUnchecked(tree.tpe)
+            }
+            ConstFold.Select(tree2)
+        }
     }
 
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply = {
-      val tree1 = untpdCpy.Apply(tree)(fun, args)
-      tree match {
-        case tree: Apply
-        if (fun.tpe eq tree.fun.tpe) && sameTypes(args, tree.args) =>
-          tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, fun, args)
-      }
+    protected def typedApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply = tree match {
+      case tree: Apply if (fun eq tree.fun) && (args eq tree.args) => tree
+      case _ =>
+        val tree1 = untpdCpy.Apply(tree)(fun, args)
+        tree match {
+          case tree: Apply
+          if (fun.tpe eq tree.fun.tpe) && sameTypes(args, tree.args) =>
+            tree1.withTypeUnchecked(tree.tpe)
+          case _ => ta.assignType(tree1, fun, args)
+        }
     }
 
-    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply = {
-      val tree1 = untpdCpy.TypeApply(tree)(fun, args)
-      tree match {
-        case tree: TypeApply
-        if (fun.tpe eq tree.fun.tpe) && sameTypes(args, tree.args) =>
-          tree1.withTypeUnchecked(tree.tpe)
-        case _ => ta.assignType(tree1, fun, args)
-      }
+    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
+      typedApply(tree)(fun, args)
+
+    protected def typedTypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply = tree match {
+      case tree: TypeApply if (fun eq tree.fun) && (args eq tree.args) => tree
+      case _ =>
+        val tree1 = untpdCpy.TypeApply(tree)(fun, args)
+        tree match {
+          case tree: TypeApply
+          if (fun.tpe eq tree.fun.tpe) && sameTypes(args, tree.args) =>
+            tree1.withTypeUnchecked(tree.tpe)
+          case _ => ta.assignType(tree1, fun, args)
+        }
     }
+
+    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply =
+      typedTypeApply(tree)(fun, args)
 
     override def Literal(tree: Tree)(const: Constant)(using Context): Literal =
       ta.assignType(untpdCpy.Literal(tree)(const))
@@ -744,7 +778,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       }
     }
 
-    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure = {
+    protected def typedClosure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure = {
       val tree1 = untpdCpy.Closure(tree)(env, meth, tpt)
       tree match {
         case tree: Closure if sameTypes(env, tree.env) && (meth.tpe eq tree.meth.tpe) && (tpt.tpe eq tree.tpt.tpe) =>
@@ -752,6 +786,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         case _ => ta.assignType(tree1, meth, tpt)
       }
     }
+
+    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure =
+      typedClosure(tree)(env, meth, tpt)
 
     override def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(using Context): Match = {
       val tree1 = untpdCpy.Match(tree)(selector, cases)
@@ -853,6 +890,41 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     override def Closure(tree: Closure)(env: List[Tree] = tree.env, meth: Tree = tree.meth, tpt: Tree = tree.tpt)(using Context): Closure =
       Closure(tree: Tree)(env, meth, tpt)
+  }
+
+  class ApplicationTypePreservingTreeCopier extends TimeTravellingTreeCopier {
+    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
+      typedApply(tree)(fun, args)
+
+    override def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply =
+      typedTypeApply(tree)(fun, args)
+  }
+
+  class SafeTypePreservingTreeCopier extends ApplicationTypePreservingTreeCopier {
+    override def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure =
+      typedClosure(tree)(env, meth, tpt)
+
+    override def Labeled(tree: Tree)(bind: Bind, expr: Tree)(using Context): Labeled =
+      tree match
+        case tree: Labeled if tree.tpe eq bind.symbol.info =>
+          untpdCpy.Labeled(tree)(bind, expr).withTypeUnchecked(tree.tpe)
+        case _ =>
+          ta.assignType(untpdCpy.Labeled(tree)(bind, expr))
+
+    override def Return(tree: Tree)(expr: Tree, from: Tree)(using Context): Return =
+      tree match
+        case tree: Return if tree.tpe eq defn.NothingType =>
+          untpdCpy.Return(tree)(expr, from).withTypeUnchecked(tree.tpe)
+        case _ =>
+          ta.assignType(untpdCpy.Return(tree)(expr, from))
+
+    override def WhileDo(tree: Tree)(cond: Tree, body: Tree)(using Context): WhileDo =
+      val expectedType = if cond eq EmptyTree then defn.NothingType else defn.UnitType
+      tree match
+        case tree: WhileDo if tree.tpe eq expectedType =>
+          untpdCpy.WhileDo(tree)(cond, body).withTypeUnchecked(tree.tpe)
+        case _ =>
+          ta.assignType(untpdCpy.WhileDo(tree)(cond, body))
   }
 
   override def skipTransform(tree: Tree)(using Context): Boolean = tree.tpe.isError
@@ -1301,7 +1373,32 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
               if mapped == null then unchanged
               else mapped.prependToList(unchanged))
 
-      loop(null, trees, trees)
+      @tailrec
+      def sameOwnerPrefixLoop(mapped: mutable.ListBuffer[Tree] | Null, unchanged: List[Tree], pending: List[Tree])(using Context): T =
+        pending match
+          case (stat: ImportOrExport) :: _ =>
+            loop(mapped, unchanged, pending)
+          case stat :: rest =>
+            val stat1 = op(stat)
+            if stat1 eq stat then
+              sameOwnerPrefixLoop(mapped, unchanged, rest)
+            else
+              val buf = if mapped == null then new mutable.ListBuffer[Tree] else mapped
+              var xc = unchanged
+              while xc ne pending do
+                buf += xc.head
+                xc = xc.tail
+              stat1 match
+                case Thicket(stats1) => buf ++= stats1
+                case _ => buf += stat1
+              sameOwnerPrefixLoop(buf, rest, rest)
+          case nil =>
+            wrapResult(
+              if mapped == null then unchanged
+              else mapped.prependToList(unchanged))
+
+      if exprOwner == ctx.owner then sameOwnerPrefixLoop(null, trees, trees)
+      else loop(null, trees, trees)
     end mapStatements
   end extension
 
@@ -1316,8 +1413,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     final override def transformStats(trees: List[Tree], exprOwner: Symbol)(using Context): List[Tree] =
       transformStats(trees, exprOwner, sameStats)
     override def transformBlock(blk: Block)(using Context) =
-      transformStats(blk.stats, ctx.owner,
-        stats1 => ctx ?=> cpy.Block(blk)(stats1, transform(blk.expr)))
+      if blk.stats.isEmpty then
+        cpy.Block(blk)(Nil, transform(blk.expr))
+      else
+        transformStats(blk.stats, ctx.owner,
+          stats1 => ctx ?=> cpy.Block(blk)(stats1, transform(blk.expr)))
 
   val sameStats: List[Tree] => Context ?=> List[Tree] = stats => stats
 
@@ -1412,7 +1512,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   @tailrec
   def sameTypes(trees: List[tpd.Tree], trees1: List[tpd.Tree]): Boolean =
-    if (trees.isEmpty) trees1.isEmpty
+    if (trees eq trees1) true
+    else if (trees.isEmpty) trees1.isEmpty
     else if (trees1.isEmpty) trees.isEmpty
     else (trees.head.tpe eq trees1.head.tpe) && sameTypes(trees.tail, trees1.tail)
 
@@ -1472,9 +1573,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  EmptyTree calls (for parameters) cancel the next-enclosing call in the list instead of being added to it.
    *  We assume parameters are never nested inside parameters.
    */
-  override def inlineContext(tree: Inlined)(using Context): Context = {
+  private def freshInlineContext(tree: Inlined)(using Context): FreshContext = {
     // We assume enclosingInlineds is already normalized, and only process the new call with the head.
-    val oldIC = enclosingInlineds
+    val oldICIndex = ctx.propertyIndex(InlinedCalls)
+    val oldIC =
+      if oldICIndex >= 0 then ctx.propertyAt[List[Tree]](oldICIndex)
+      else Nil
 
     val newIC =
       if tree.inlinedFromOuterScope then
@@ -1484,24 +1588,33 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else
         tree.call :: oldIC
 
-    val ctx1 = ctx.fresh.setProperty(InlinedCalls, newIC)
-    if oldIC.isEmpty then ctx1.setProperty(InlinedTrees, new Counter) else ctx1
+    if oldIC.isEmpty then ctx.fresh.setProperties(InlinedCalls, newIC, InlinedTrees, new Counter)
+    else ctx.fresh.replacePropertyAt(oldICIndex, InlinedCalls, newIC)
   }
+
+  override def inlineContext(tree: Inlined)(using Context): Context =
+    freshInlineContext(tree)
+
+  override protected def inlineContext(tree: Inlined, source: SourceFile)(using Context): Context =
+    val ctx1 = freshInlineContext(tree).setSource(source)
+    if ctx1.compilationUnit eq NoCompilationUnit then
+      ctx1.setCompilationUnit(CompilationUnit(source, mustExist = false)(using ctx1))
+    ctx1
 
   /** All enclosing calls that are currently inlined, from innermost to outermost.
    */
   def enclosingInlineds(using Context): List[Tree] =
-    ctx.property(InlinedCalls).getOrElse(Nil)
+    ctx.propertyOrElse(InlinedCalls, Nil)
 
   /** Record inlined trees */
   def addInlinedTrees(n: Int)(using Context): Unit =
-    ctx.property(InlinedTrees).foreach(_.count += n)
+    val counter = ctx.propertyOrElse(InlinedTrees, null)
+    if counter != null then counter.count += n
 
   /** Check if the limit on the number of inlined trees has been reached */
   def reachedInlinedTreesLimit(using Context): Boolean =
-    ctx.property(InlinedTrees) match
-      case Some(c) => c.count > ctx.settings.XmaxInlinedTrees.value
-      case None => false
+    val counter = ctx.propertyOrElse(InlinedTrees, null)
+    counter != null && counter.count > ctx.settings.XmaxInlinedTrees.value
 
   /** The source file where the symbol of the `inline` method referred to by `call`
    *  is defined

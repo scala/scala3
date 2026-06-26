@@ -18,6 +18,7 @@ import dotty.tools.{scaladoc => api}
 trait ClassLikeSupport:
   self: TastyParser =>
   import qctx.reflect._
+  import SymOpsWithLinkCache.dri
 
   private given qctx.type = qctx
 

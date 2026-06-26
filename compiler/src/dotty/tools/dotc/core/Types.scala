@@ -198,17 +198,28 @@ object Types extends TypeUtils {
     def isRef(sym: Symbol, skipRefined: Boolean = true)(using Context): Boolean = this match {
       case this1: TypeRef =>
         // avoid forcing symbol if it's a class, not a type alias (see i15177.FakeEnum.scala)
-        if this1.symbol.isClass then this1.symbol eq sym
+        val sym1 = this1.symbol
+        if sym1.isClass then sym1 eq sym
         else this1.info match { // see comment in Namer#TypeDefCompleter#typeSig
           case TypeAlias(tp) => tp.isRef(sym, skipRefined)
-          case _ => this1.symbol eq sym
+          case _ => sym1 eq sym
         }
       case this1: RefinedOrRecType if skipRefined =>
         this1.parent.isRef(sym, skipRefined)
       case this1: AppliedType =>
-        val this2 = this1.dealias
-        if (this2 ne this1) this2.isRef(sym, skipRefined)
-        else this1.underlying.isRef(sym, skipRefined)
+        this1.tycon match {
+          case tref: TypeRef =>
+            val sym1 = tref.symbol
+            if sym1.isClass then sym1 eq sym
+            else
+              val this2 = this1.dealias
+              if (this2 ne this1) this2.isRef(sym, skipRefined)
+              else this1.underlying.isRef(sym, skipRefined)
+          case _ =>
+            val this2 = this1.dealias
+            if (this2 ne this1) this2.isRef(sym, skipRefined)
+            else this1.underlying.isRef(sym, skipRefined)
+        }
       case this1: TypeVar =>
         this1.instanceOpt.isRef(sym, skipRefined)
       case this1: AnnotatedType =>
@@ -806,7 +817,14 @@ object Types extends TypeUtils {
      *  contains private members, also look for shadowed non-private implicits.
      */
     def implicitMembersNamed(name: Name)(using Context): List[SingleDenotation] =
-      val d = member(name)
+      implicitAltsOf(member(name), name)
+
+    /** The implicit alternatives selected from an already-resolved member denotation `d`
+     *  (the result of `member(name)`). If there are none and `d` contains private members,
+     *  also look for shadowed non-private implicits. Shared by `implicitMembersNamed` and
+     *  the receiver-hoisted gather in `implicitMembers`.
+     */
+    private def implicitAltsOf(d: Denotation, name: Name)(using Context): List[SingleDenotation] =
       val alts = d.altsWith(_.isOneOf(GivenOrImplicitVal))
       if alts.isEmpty && d.hasAltWith(_.symbol.is(Private)) then
         nonPrivateMember(name).altsWith(_.isOneOf(GivenOrImplicitVal))
@@ -819,9 +837,10 @@ object Types extends TypeUtils {
     final def findMember(name: Name, pre: Type, required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): Denotation = {
       @tailrec def go(tp: Type): Denotation = tp match {
         case tp: TermRef =>
-          go (tp.underlying match {
+          val denot = tp.denot
+          go (if denot.isOverloaded then NoType else denot.info match {
             case mt: MethodType
-            if mt.paramInfos.isEmpty && tp.symbol.is(StableRealizable) => mt.resultType
+            if mt.paramInfos.isEmpty && denot.symbol.is(StableRealizable) => mt.resultType
             case tp1 => tp1
           })
         case tp: TypeRef =>
@@ -832,7 +851,11 @@ object Types extends TypeUtils {
         case tp: AppliedType =>
           tp.tycon match {
             case tc: TypeRef =>
-              if (tc.symbol.isClass) go(tc)
+              if (tc.symbol.isClass)
+                tc.denot match {
+                  case d: ClassDenotation => d.findMember(name, pre, required, excluded)
+                  case d => go(d.info)
+                }
               else {
                 val normed = tp.tryNormalize
                 go(if (normed.exists) normed else tp.superType)
@@ -1146,9 +1169,66 @@ object Types extends TypeUtils {
     /** The set of implicit term members of this type */
     final def implicitMembers(using Context): List[TermRef] = {
       record("implicitMembers")
-      memberDenots(implicitFilter,
-          (name, buf) => buf ++= implicitMembersNamed(name))
-        .toList.map(d => TermRef(this, d.symbol.asTerm))
+      // The receiver `this` and the prefix derived from it by `memberBasedOnFlags`
+      // are loop-invariant across all names looked up by an `implicitMembers` call.
+      // For receivers that `findMember`'s `go` peels deterministically (independent of
+      // `name`/`pre`) to a single `ClassDenotation` — the dominant companion-`TermRef`
+      // case — we resolve that `ClassDenotation` and the prefix ONCE, then look up each
+      // name directly via `cd.findMember(name, pre, ...)`. This is the exact terminal call
+      // `member(name)` reaches per name (`member` -> `memberBasedOnFlags` -> `pre =
+      // widenIfUnstable` -> `findMember(name, pre)` -> `go(this)` -> `cd.findMember(...)`),
+      // so the resulting denotation — and hence the `TermRef(this, sym)` built from it — is
+      // identical; only the per-name receiver re-peel + prefix recomputation is removed.
+      // For any receiver shape `go`'s result depends on (And/Or/Refined/self-typed `This`/
+      // overloaded `TermRef`/...), we leave `cd` null and fall back to the per-name `member()`.
+      val buf = mutable.ListBuffer[SingleDenotation]()
+      val cd = implicitScopeClassDenot
+      if cd != null then
+        val pre = this match
+          case tp: ClassInfo => tp.appliedRef
+          case _ => widenIfUnstable
+        for name <- memberNames(implicitFilter) do
+          buf ++= implicitAltsOf(cd.findMember(name, pre, EmptyFlags, EmptyFlags), name)
+      else
+        for name <- memberNames(implicitFilter) do buf ++= implicitMembersNamed(name)
+      buf.toList.map(d => TermRef(this, d.symbol.asTerm))
+    }
+
+    /** If `findMember`'s `go(this)` peels this receiver — independently of the looked-up
+     *  `name` and the prefix — down to a single `ClassDenotation` whose `findMember` is the
+     *  terminal call (with no further post-transformation of the result), return that
+     *  `ClassDenotation`; otherwise return `null`. This mirrors exactly the `name`-independent
+     *  structural arms of `go`, so for every receiver it accepts, looking each name up via the
+     *  returned `cd.findMember(name, pre, ...)` is byte-equivalent to per-name `member(name)`.
+     */
+    private def implicitScopeClassDenot(using Context): ClassDenotation | Null = {
+      @tailrec def peel(tp: Type): ClassDenotation | Null = tp match
+        case tp: TermRef =>
+          val denot = tp.denot
+          if denot.isOverloaded then null
+          else
+            val next = denot.info match
+              case mt: MethodType
+              if mt.paramInfos.isEmpty && denot.symbol.is(StableRealizable) => mt.resultType
+              case tp1 => tp1
+            peel(next)
+        case tp: TypeRef =>
+          tp.denot match
+            case d: ClassDenotation => d
+            case d => peel(d.info)
+        case tp: AppliedType =>
+          tp.tycon match
+            case tc: TypeRef if tc.symbol.isClass =>
+              tc.denot match
+                case d: ClassDenotation => d
+                case d => peel(d.info)
+            case _ => null
+        case tp: ClassInfo => tp.cls.classDenot
+        // The remaining `go` arms (ThisType/RefinedType/RecType/TypeParamRef/SuperType/
+        // MatchType/AndType/OrType/non-class TypeProxy/...) either depend on `name`/`pre`
+        // or post-transform the looked-up denotation, so they are not hoistable here.
+        case _ => null
+      peel(this)
     }
 
     /** The set of member classes of this type */
@@ -1187,8 +1267,14 @@ object Types extends TypeUtils {
     final def asSeenFrom(pre: Type, cls: Symbol)(using Context): Type = {
       record("asSeenFrom")
       if (!cls.membersNeedAsSeenFrom(pre)) this
-      else TypeOps.asSeenFrom(this, pre, cls)
+      else asSeenFromKnownNeeded(pre, cls)
     }
+
+    /** Like `asSeenFrom`, but assumes `cls.membersNeedAsSeenFrom(pre)` is known
+     *  to be true.
+     */
+    private[core] final inline def asSeenFromKnownNeeded(pre: Type, cls: Symbol)(using Context): Type =
+      TypeOps.asSeenFrom(this, pre, cls)
 
 // ----- Subtype-related --------------------------------------------
 
@@ -1380,6 +1466,7 @@ object Types extends TypeUtils {
       case tp: TermRef => // fast path for next most frequent case
         val denot = tp.denot
         if denot.isOverloaded then tp else denot.info.widen
+      case _: AppliedType => this // fast path: AppliedType.stripped eq this, so widen is identity
       case tp: SingletonType => tp.underlying.widen
       case tp: ExprType => tp.resultType.widen
       case tp =>
@@ -1573,7 +1660,55 @@ object Types extends TypeUtils {
      *  TypeVars until type is no longer alias type, annotated type, LazyRef,
      *  or instantiated type variable.
      */
-    final def dealias(using Context): Type = dealias(KeepNothing)
+    final def dealias(using Context): Type =
+      var tp: Type = this
+      var result: Type = NoType
+      var done = false
+
+      while !done do tp match
+        case t: TypeRef =>
+          if t.symbol.isClass then
+            result = t
+            done = true
+          else t.info match
+            case TypeAlias(alias) =>
+              tp = alias
+            case _ =>
+              result = t
+              done = true
+
+        case app @ AppliedType(tycon, _) =>
+          val tycon1 = tycon.dealias
+          if tycon1 ne tycon then tp = app.superType
+          else
+            result = app
+            done = true
+
+        case t: TypeVar =>
+          val t1 = t.instanceOpt
+          if t1.exists then tp = t1
+          else
+            result = t
+            done = true
+
+        case t: AnnotatedType =>
+          val parent1 = t.parent.dealias
+          t match
+            case cap @ CapturingType(parent, refs) =>
+              result = cap.derivedCapturingType(parent1, refs)
+              done = true
+            case _ =>
+              result = parent1
+              done = true
+
+        case t: LazyRef =>
+          tp = t.ref
+
+        case _ =>
+          result = tp
+          done = true
+
+      result
 
     /** Follow aliases and dereference LazyRefs and instantiated TypeVars until type
      *  is no longer alias type, LazyRef, or instantiated type variable.
@@ -1660,7 +1795,12 @@ object Types extends TypeUtils {
     }
 
     /** Dealias, and if result is a dependent function type, drop the `apply` refinement. */
-    final def dropDependentRefinement(using Context): Type = dealias match {
+    final def dropDependentRefinement(using Context): Type = dropDependentRefinementOf(dealias)
+
+    /** Like `dropDependentRefinement`, but takes the already-dealiased `this` to avoid a
+     *  redundant leading `dealias`. `dealiased` must be `this.dealias`; since `dealias` is
+     *  idempotent this is behaviour-preserving. */
+    final def dropDependentRefinementOf(dealiased: Type)(using Context): Type = dealiased match {
       case RefinedType(parent, nme.apply, mt) if defn.isNonRefinedFunction(parent) => parent
       case tp => tp
     }
@@ -2415,7 +2555,38 @@ object Types extends TypeUtils {
       // We can rely on checkedPeriod (unlike in the definition of `denot` below)
       // because SymDenotation#installAfter never changes the symbol
       if (checkedPeriod == ctx.period) lastSymbol.asInstanceOf[Symbol]
-      else computeSymbol
+      else designator match
+        // Per-runId fast-path narrowed to symbolic designators only: when the
+        // designator is itself a Symbol and its last-known denotation is from
+        // the current run AND still maps back to this symbol (the same gate
+        // `isValidInCurrentRun` applies), `computeSymbol` would just return
+        // `sym` via its `isValidInCurrentRun` first disjunct without invoking
+        // `stillValid`. Narrowing to symbolic designators distinguishes this
+        // from the rejected widened cache: there's no validFor probe on the
+        // type's own lastDenotation and no extra stamp field. The check piggy-
+        // backs on `sym.lastKnownDenotation` (no Context-keyed work).
+        case sym: Symbol =>
+          val symd = sym.lastKnownDenotation
+          if symd.validFor.runId == ctx.runId && (symd.symbol eq sym) then
+            if checkedPeriod != Nowhere then checkedPeriod = ctx.period
+            sym
+          else computeSymbol
+        case _ => computeSymbol
+
+    /** Returns `lastDenotation.symbol` if there is a cached denotation valid for the
+     *  current period, otherwise `null`. Uses the SAME `validFor.contains(ctx.period)`
+     *  gate as `NamedType.denot`, so the fast-path hit rate matches `denot`'s -- which
+     *  is looser than the strict `checkedPeriod == ctx.period` gate used by `symbol`.
+     *  Returning `null` lets callers fall back to `denot.symbol` without allocating
+     *  an Option. Used to short-circuit `Tree.symbol` reads on hot typed-arm callers
+     *  (e.g. `Select.symbol`) where the cached denotation is virtually always valid.
+     */
+    final def cachedSymbolOrNull(using Context): Symbol | Null =
+      val lastd = lastDenotation
+      if lastd != null && checkedPeriod != Nowhere && lastd.validFor.contains(ctx.period) then
+        lastd.symbol: Symbol | Null
+      else
+        null
 
     private def computeSymbol(using Context): Symbol =
       val result = designator match
@@ -2481,12 +2652,17 @@ object Types extends TypeUtils {
       util.Stats.record("NamedType.computeDenot")
 
       def finish(d: Denotation) = {
-        if d.exists then
+        if d.exists && (d ne lastDenotation) then
           // Avoid storing NoDenotations in the cache - we will not be able to recover from
           // them. The situation might arise that a type has NoDenotation in some later
           // phase but a defined denotation earlier (e.g. a TypeRef to an abstract type
           // is undefined after erasure.) We need to be able to do time travel back and
           // forth also in these cases.
+          // Skip setDenot when d eq lastDenotation: lastSymbol is already correct
+          // (set together with lastDenotation), and checkedPeriod is either Nowhere
+          // (provisional prefix) or a value already covering ctx.period via validFor.
+          // Crucially, skipping avoids clearDerivedSelectCache()'s wipe of the hot
+          // 3-field derivedSelect cache on every identity refresh.
           setDenot(d)
         d
       }
@@ -2521,11 +2697,16 @@ object Types extends TypeUtils {
                     }
                   )
           then
-            finish(lastd.current)
+            // 1-step nextInRun fast-path: if the immediate next flock member
+            // already covers ctx.period and denotes the same symbol, skip the
+            // dispatch through `lastd.current` / `goForward`.
+            val fast = lastd.nextInRunIfFast(ctx.period)
+            if fast != null then finish(fast)
+            else finish(lastd.current)
           else
             val newd = lastd match
               case lastd: SymDenotation =>
-                if stillValid(lastd) && checkedPeriod != Nowhere && !needsRecompute
+                if checkedPeriod != Nowhere && stillValid(lastd) && !needsRecompute
                 then finish(lastd.current)
                 else finish(memberDenot(lastd.initial.name, allowPrivate = lastd.is(Private)))
               case _ =>
@@ -2816,6 +2997,21 @@ object Types extends TypeUtils {
       }
     }
 
+    /** True if `lookupRefined` cannot reduce this prefix shape.
+     *
+     *  Keep this as an allowlist of shapes that the current `lookupRefined`
+     *  implementation does not normalize through. Prefixes that can contain,
+     *  wrap, or reveal refinements must keep using `lookupRefined`.
+     */
+    private inline def prefixSkipsRefinedLookup(prefix: Type): Boolean = prefix match
+      case _: TermRef | _: Types.ThisType | _: SuperType | _: ConstantType
+         | _: AppliedType | _: AndOrType | _: FlexibleType | _: BoundType
+         | _: MatchType | _: JavaArrayType | _: FlexType | _: WildcardType
+         | NoPrefix | NoType =>
+        true
+      case _ =>
+        false
+
     /** A selection of the same kind, but with potentially a different prefix.
      *  The following normalizations are performed for type selections T#A:
      *
@@ -2834,6 +3030,7 @@ object Types extends TypeUtils {
       else
         val reduced =
           if isType && currentValidSymbol.isAllOf(ClassTypeParam) then argForParam(prefix)
+          else if prefixSkipsRefinedLookup(prefix) then NoType
           else prefix.lookupRefined(name)
         if reduced.exists then return reduced
         if Config.splitProjections && isType then
@@ -3049,6 +3246,15 @@ object Types extends TypeUtils {
   final class CachedTermRef(prefix: Type, designator: Designator, hc: Int) extends TermRef(prefix, designator) {
     assert((prefix ne NoPrefix) || designator.isInstanceOf[Symbol])
     myHash = hc
+
+    private var atomsRunId: RunId = NoRunId
+    private var myAtoms: Atoms = uninitialized
+
+    override def atoms(using Context): Atoms =
+      if atomsRunId != ctx.runId then
+        myAtoms = super.atoms
+        if !isProvisional then atomsRunId = ctx.runId
+      myAtoms
   }
 
   final class CachedTypeRef(prefix: Type, designator: Designator, hc: Int) extends TypeRef(prefix, designator) {
@@ -3133,9 +3339,19 @@ object Types extends TypeUtils {
    */
   abstract case class ThisType(tref: TypeRef)
   extends CachedProxyType, SingletonType, ObjectCapability {
-    def cls(using Context): ClassSymbol = tref.stableInRunSymbol match {
-      case cls: ClassSymbol => cls
-      case _ if ctx.mode.is(Mode.Interactive) => defn.AnyClass // was observed to happen in IDE mode
+    private var myCls: ClassSymbol | Null = null
+    private var myClsRunId: Int = NoRunId
+
+    def cls(using Context): ClassSymbol = {
+      if myClsRunId == ctx.runId then myCls.nn
+      else tref.stableInRunSymbol match {
+        case cls: ClassSymbol =>
+          myCls = cls
+          myClsRunId = ctx.runId
+          cls
+        // Skip caching the Mode.Interactive fallback since the answer can shift mid-run.
+        case _ if ctx.mode.is(Mode.Interactive) => defn.AnyClass // was observed to happen in IDE mode
+      }
     }
 
     override def underlying(using Context): Type =
@@ -3211,7 +3427,7 @@ object Types extends TypeUtils {
   object ConstantType {
     def apply(value: Constant)(using Context): ConstantType = {
       assertUnerased()
-      unique(new CachedConstantType(value))
+      ctx.uniques.enterIfNew(value)
     }
   }
 
@@ -3841,7 +4057,7 @@ object Types extends TypeUtils {
   object ExprType {
     def apply(resultType: Type)(using Context): ExprType = {
       assertUnerased()
-      unique(new CachedExprType(resultType))
+      ctx.uniques.enterIfNewExprType(resultType)
     }
   }
 
@@ -3872,21 +4088,99 @@ object Types extends TypeUtils {
     final def isTypeLambda: Boolean = isInstanceOf[TypeLambda]
     final def isHigherKinded: Boolean = isInstanceOf[TypeProxy]
 
+    private var myParamRefsArr: Array[ParamRef] | Null = null
     private var myParamRefs: List[ParamRefType] | Null = null
 
+    /** Tri-state memo of whether any `paramInfo` of this lambda transitively
+     *  contains a `WildcardType` (under `StopAt.Static`, matching the cutoff
+     *  used by `AvoidWildcardsMap`): 0 = not yet computed, 1 = no wildcard
+     *  bounds, 2 = has wildcard bounds. Used by `OrderingConstraint.init` to
+     *  skip the otherwise-no-op `AvoidWildcardsMap` traversal: if no paramInfo
+     *  contains a wildcard, then `AvoidWildcardsMap(bound) eq bound` for every
+     *  bound (the map only rewrites `WildcardType` nodes), so the pass is
+     *  provably an identity. The memo is computed lazily and only ever flips
+     *  from 0 to a definite answer, which is stable because `paramInfos` is
+     *  fixed for the lifetime of the (cached) lambda. */
+    private var myWildcardBoundsKnown: Byte = 0
+
+    /** True iff no `paramInfo` of this lambda transitively contains a
+     *  `WildcardType`; see `myWildcardBoundsKnown`. Eq-safe to gate skipping
+     *  `AvoidWildcardsMap`: only returns true when the map is provably an
+     *  identity on every bound. */
+    final def hasNoWildcardBounds(using Context): Boolean =
+      val known = myWildcardBoundsKnown
+      if known != 0 then known == 1
+      else
+        var infos = paramInfos
+        var anyWildcard = false
+        while infos.nonEmpty && !anyWildcard do
+          if infos.head.containsWildcardTypes then anyWildcard = true
+          infos = infos.tail
+        myWildcardBoundsKnown = if anyWildcard then 2 else 1
+        !anyWildcard
+
+    private def ensureParamRefsArr(): Array[ParamRef] = {
+      val arr = myParamRefsArr
+      if arr != null then arr
+      else {
+        var n = 0
+        var names = paramNames
+        while names.nonEmpty do { n += 1; names = names.tail }
+        val a = new Array[ParamRef](n)
+        var i = 0
+        while i < n do { a(i) = newParamRef(i); i += 1 }
+        myParamRefsArr = a
+        a
+      }
+    }
+
+    /** Direct O(1) access to the i-th parameter ref. */
+    final def paramRef(i: Int): ParamRefType =
+      ensureParamRefsArr()(i).asInstanceOf[ParamRefType]
+
     def paramRefs: List[ParamRefType] = {
-      if myParamRefs == null then
-        def recur(paramNames: List[ThisName], i: Int): List[ParamRefType] =
-          paramNames match
-            case _ :: rest => newParamRef(i) :: recur(rest, i + 1)
-            case _ => Nil
-        myParamRefs = recur(paramNames, 0)
-      myParamRefs.nn
+      val cached = myParamRefs
+      if cached != null then cached
+      else {
+        val arr = ensureParamRefsArr()
+        var lst: List[ParamRefType] = Nil
+        var i = arr.length - 1
+        while i >= 0 do { lst = arr(i).asInstanceOf[ParamRefType] :: lst; i -= 1 }
+        myParamRefs = lst
+        lst
+      }
     }
 
     /** Like `paramInfos` but substitute parameter references with the given arguments */
     final def instantiateParamInfos(argTypes: => List[Type])(using Context): List[Type] =
-      if (isParamDependent) paramInfos.mapConserve(_.substParams(this, argTypes))
+      if (isParamDependent) {
+        val args = argTypes
+        var sharedMap: Substituters.SubstParamsMap | Null = null
+        def getMap(): Substituters.SubstParamsMap =
+          val map = sharedMap
+          if map != null then map
+          else
+            val map = new Substituters.SubstParamsMap(self, args)
+            sharedMap = map
+            map
+        def substParamInfo(tp: Type): Type = tp match
+          case tp: ParamRef =>
+            if ((tp.binder eq self) || tp.binder == self) args(tp.paramNum) else tp
+          case tp: NamedType =>
+            if (tp.prefix `eq` NoPrefix) tp
+            else tp.derivedSelect(substParamInfo(tp.prefix))
+          case _: ThisType =>
+            tp
+          case tp: AppliedType =>
+            tp.map(substParamInfo)
+          case _ =>
+            getMap().mapOver(tp)
+        def substParamInfoRoot(tp: Type): Type =
+          val map = sharedMap
+          if map != null then map.applyFromRoot(tp)
+          else substParamInfo(tp)
+        paramInfos.mapConserve(substParamInfoRoot)
+      }
       else paramInfos
 
     /** Like `resultType` but substitute parameter references with the given arguments */
@@ -3895,6 +4189,9 @@ object Types extends TypeUtils {
       else resultType
 
     def companion: LambdaTypeCompanion[ThisName, PInfo, This]
+
+    protected def needsParamRebind(paramInfos: List[PInfo])(using Context): Boolean = true
+    protected def needsResultRebind(resType: Type)(using Context): Boolean = true
 
     /** The type `[tparams := paramRefs] tp`, where `tparams` can be
      *  either a list of type parameter symbols or a list of lambda parameters
@@ -3958,14 +4255,24 @@ object Types extends TypeUtils {
       else newLikeThis(paramNames, paramInfos, resType)
 
     def newLikeThis(paramNames: List[ThisName], paramInfos: List[PInfo], resType: Type)(using Context): This =
-      def substParams(pinfos: List[PInfo], to: This): List[PInfo] = pinfos match
+      def substParams(pinfos: List[PInfo], substMap: Substituters.SubstBindingMap[This]): List[PInfo] = pinfos match
         case pinfos @ (pinfo :: rest) =>
-          pinfos.derivedCons(pinfo.subst(this, to).asInstanceOf[PInfo], substParams(rest, to))
+          pinfos.derivedCons(substMap.applyFromRoot(pinfo).asInstanceOf[PInfo], substParams(rest, substMap))
         case nil =>
           nil
+      var sharedMap: Substituters.SubstBindingMap[This] | Null = null
+      def getMap(x: This): Substituters.SubstBindingMap[This] =
+        val m = sharedMap
+        if m != null then m
+        else
+          val m1 = new Substituters.SubstBindingMap[This](this, x)
+          sharedMap = m1
+          m1
+      val rebindParams = needsParamRebind(paramInfos)
+      val rebindResult = needsResultRebind(resType)
       companion(paramNames)(
-          x => substParams(paramInfos, x),
-          x => resType.subst(this, x))
+          x => if rebindParams then substParams(paramInfos, getMap(x)) else paramInfos,
+          x => if rebindResult then getMap(x).applyFromRoot(resType) else resType)
 
     protected def prefixString: String
     override def toString: String = s"$prefixString($paramNames, $paramInfos, $resType)"
@@ -4094,6 +4401,7 @@ object Types extends TypeUtils {
 
     private var myDependencyStatus: DependencyStatus = Unknown
     private var myParamDependencyStatus: DependencyStatus = Unknown
+    private var myResultDependencyParamMask: Long = Long.MinValue
 
     private def depStatus(initial: DependencyStatus, tp: Type, forParams: Boolean)(using Context): DependencyStatus =
       class DepAcc extends TypeAccumulator[DependencyStatus]:
@@ -4104,19 +4412,31 @@ object Types extends TypeUtils {
         (if status == TrueDeps then status else status | provisional).toByte
       def compute(status: DependencyStatus, tp: Type, theAcc: TypeAccumulator[DependencyStatus] | Null): DependencyStatus =
         def applyPrefix(tp: NamedType) =
-          if tp.isInstanceOf[SingletonType] && tp.currentSymbol.isStatic
+          // Test the terminator prefixes first: when the prefix is NoPrefix or a
+          // ThisType, both the static-stop branch and the recursive `compute`
+          // call (via its `case _: ThisType | _: BoundType | NoPrefix => status`
+          // arm) return `status` unchanged, so the `currentSymbol.isStatic`
+          // probe is irrelevant and can be skipped. BoundType is excluded
+          // because TermParamRef (which also extends BoundType) is intercepted
+          // earlier in `compute` and can return TrueDeps.
+          val pre = tp.prefix
+          if (pre eq NoPrefix) || pre.isInstanceOf[ThisType]
+          then status
+          else if tp.isInstanceOf[SingletonType] && tp.currentSymbol.isStatic
           then status // Note: a type ref with static symbol can still be dependent since the symbol might be refined in the enclosing type. See pos/15331.scala.
-          else compute(status, tp.prefix, theAcc)
+          else compute(status, pre, theAcc)
         if status == TrueDeps then status
         else tp match
           case tp: TypeRef =>
             val status1 = applyPrefix(tp)
-            tp.info match { // follow type alias to avoid dependency
-              case TypeAlias(alias) if status1 == TrueDeps =>
-                combine(compute(status, alias, theAcc), FalseDeps)
-              case _ =>
-                status1
-            }
+            if status1 == TrueDeps then
+              tp.info match { // follow type alias to avoid dependency
+                case TypeAlias(alias) =>
+                  combine(compute(status, alias, theAcc), FalseDeps)
+                case _ =>
+                  status1
+              }
+            else status1
           case tp: TermRef => applyPrefix(tp)
           case tp: AppliedType => tp.fold(status, compute(_, _, theAcc))
           case tp: TypeVar if !tp.isInstantiated => combine(status, Provisional)
@@ -4184,6 +4504,59 @@ object Types extends TypeUtils {
     def isParamDependent(using Context): Boolean =
       paramDependencyStatus == TrueDeps
 
+    /** A bit mask of term parameters that occur in the raw result type, or -1
+     *  if the result dependency is not precise enough for per-parameter skips.
+     */
+    def resultDependencyParamMask(using Context): Long =
+      if dependencyStatus != TrueDeps then 0L
+      else
+        val cached = myResultDependencyParamMask
+        if cached != Long.MinValue then cached
+        else
+          val mask = computeResultDependencyParamMask
+          if mask >= 0 then myResultDependencyParamMask = mask
+          mask
+
+    private def computeResultDependencyParamMask(using Context): Long =
+      val UnknownMask = -1L
+      def combine(mask1: Long, mask2: Long): Long =
+        if mask1 < 0 || mask2 < 0 then UnknownMask else mask1 | mask2
+      def paramBit(n: Int): Long =
+        if n >= 0 && n < 63 then 1L << n else UnknownMask
+
+      object dependencyParamAcc extends TypeAccumulator[Long]:
+        override protected def stopAt: StopAt = StopAt.None
+        override protected def applyToAnnot(mask: Long, annot: Annotation): Long =
+          if mask < 0 then mask
+          else if annot.refersToParamOf(thisLambdaType) then UnknownMask
+          else mask
+
+        def apply(mask: Long, tp: Type): Long =
+          if mask < 0 then mask
+          else tp match
+            case tp: TermParamRef if tp.binder eq thisLambdaType =>
+              combine(mask, paramBit(tp.paramNum))
+            case tp: NamedType =>
+              if tp.prefix eq NoPrefix then mask else this(mask, tp.prefix)
+            case tp: TypeVar if !tp.isInstantiated =>
+              UnknownMask
+            case tp: LazyRef if !tp.completed =>
+              UnknownMask
+            case CapturingType(parent, refs) =>
+              var result = this(mask, parent)
+              val elems = refs.elems
+              for ref <- elems do
+                result = ref match
+                  case tp: TermParamRef if tp.binder eq thisLambdaType =>
+                    combine(result, paramBit(tp.paramNum))
+                  case tp =>
+                    this(result, tp.coreType)
+              result
+            case _ =>
+              foldOver(mask, tp)
+
+      dependencyParamAcc(0L, resType)
+
     /** Like isResultDependent, but without attempt to eliminate dependencies with de-aliasing */
     def looksResultDependent(using Context): Boolean =
       (dependencyStatus & StatusMask) != NoDeps
@@ -4191,6 +4564,24 @@ object Types extends TypeUtils {
     /** Like isParamDependent, but without attempt to eliminate dependencies with de-aliasing */
     def looksParamDependent(using Context): Boolean =
       (paramDependencyStatus & StatusMask) != NoDeps
+
+    private def hasDependencies(status: DependencyStatus): Boolean =
+      (status & StatusMask) != NoDeps
+
+    private def rawDependencyStatus(tp: Type, forParams: Boolean)(using Context): DependencyStatus =
+      (depStatus(NoDeps, tp, forParams) & StatusMask).toByte
+
+    private def rawParamDependencyStatus(pinfos: List[Type])(using Context): DependencyStatus =
+      if pinfos.isEmpty then NoDeps
+      else (pinfos.tail.foldLeft(NoDeps)(depStatus(_, _, forParams = true)) & StatusMask).toByte
+
+    override protected def needsParamRebind(pinfos: List[Type])(using Context): Boolean =
+      isCaptureCheckingOrSetup
+      || hasDependencies(paramDependencyStatus)
+
+    override protected def needsResultRebind(res: Type)(using Context): Boolean =
+      isCaptureCheckingOrSetup
+      || hasDependencies(if res eq resType then dependencyStatus else rawDependencyStatus(res, forParams = false))
 
     def newParamRef(n: Int): TermParamRef = new TermParamRefImpl(this, n)
 
@@ -4478,9 +4869,19 @@ object Types extends TypeUtils {
       newLikeThis(paramNames, declaredVariances, paramInfos, resType)
 
     def newLikeThis(paramNames: List[ThisName], variances: List[Variance], paramInfos: List[PInfo], resType: Type)(using Context): This =
+      var sharedMap: Substituters.SubstBindingMap[This] | Null = null
+      def getMap(x: This): Substituters.SubstBindingMap[This] =
+        val m = sharedMap
+        if m != null then m
+        else
+          val m1 = new Substituters.SubstBindingMap[This](this, x)
+          sharedMap = m1
+          m1
       HKTypeLambda(paramNames, variances)(
-          x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
-          x => resType.subst(this, x))
+          x =>
+            val substMap = getMap(x)
+            paramInfos.mapConserve(pinfo => substMap.applyFromRoot(pinfo).asInstanceOf[PInfo]),
+          x => getMap(x).applyFromRoot(resType))
 
     def withVariances(variances: List[Variance])(using Context): This =
       newLikeThis(paramNames, variances, paramInfos, resType)
@@ -4687,18 +5088,35 @@ object Types extends TypeUtils {
   abstract case class AppliedType(tycon: Type, args: List[Type])
   extends CachedProxyType with ValueType {
 
+    /** A hash of `args` element identities, used as a fast pre-filter
+     *  before `args.eqElements(...)` in the AppliedUniques probe loop.
+     *  Safe (and identity-preserving) because `args` is immutable and
+     *  Types are hash-consed, so structurally-equal args share `eq`-equal
+     *  elements. Computed once at construction.
+     */
+    private[core] val argsEqHash: Int
+
     private var validSuper: Period = Nowhere
     private var cachedSuper: Type = uninitialized
 
     // Boolean caches: 0 = uninitialized, -1 = false, 1 = true
     private var myStableHash: Byte = 0
     private var myGround: Byte = 0
+    private var myArgShapes: Byte = 0
 
     private var myisStableRunId: RunId = NoRunId
     private var myIsStable: Boolean = uninitialized
 
     private var myEvalRunId: RunId = NoRunId
     private var myEvalued: Type = uninitialized
+
+    // Memoizes `toNestedPairs` for tuple-shaped AppliedTypes. The result
+    // `*:[args(0), *:[args(1), ..., EmptyTuple]]` is a pure function of `args`
+    // and a couple of defn refs that change only per run, so RunId-keyed
+    // invalidation is sufficient. Hot path: TypeComparer.compareAppliedType2
+    // tuple-vs-tuple subtyping rebuilds the *: chain on every check.
+    private var myNestedPairsRunId: RunId = NoRunId
+    private var myNestedPairs: Type = uninitialized
 
     private var validUnderlyingNormalizable: Period = Nowhere
     private var cachedUnderlyingNormalizable: Type = uninitialized
@@ -4757,7 +5175,10 @@ object Types extends TypeUtils {
       def mapArgs(args: List[Type]): List[Type] = args match
         case args @ (arg :: rest) => args.derivedCons(op(arg), mapArgs(rest))
         case nil => nil
-      derivedAppliedType(op(tycon), mapArgs(args))
+      val tycon1 = op(tycon)
+      val args1 = mapArgs(args)
+      if (tycon1 eq tycon) && (args1 eq args) then this
+      else derivedAppliedType(tycon1, args1)
 
     inline def fold[T](x: T, inline op: (T, Type) => T)(using Context): T =
       def foldArgs(x: T, args: List[Type]): T = args match
@@ -4805,6 +5226,18 @@ object Types extends TypeUtils {
           myEvalued = res
         res
 
+    /** Cached `toNestedPairs` for tuple-shaped AppliedTypes. Callers that have
+     *  already verified `defn.isTupleNType(this)` should use this entry point;
+     *  the non-tuple branch retains the `tupleElementTypes` slow path. */
+    def cachedToNestedPairs(using Context): Type =
+      if myNestedPairsRunId == ctx.runId then myNestedPairs
+      else
+        val res = TypeOps.nestedPairs(args)
+        if !isProvisional then
+          myNestedPairsRunId = ctx.runId
+          myNestedPairs = res
+        res
+
     def lowerBound(using Context): Type = tycon.stripTypeVar match {
       case tycon: TypeRef =>
         tycon.info match {
@@ -4819,12 +5252,34 @@ object Types extends TypeUtils {
         NoType
     }
 
-    def tyconTypeParams(using Context): List[ParamInfo] = {
-      val tparams = tycon.typeParams
+    final inline def tyconTypeParams(using Context): List[ParamInfo] = {
+      val tparams = tycon match
+        case tycon: TypeRef =>
+          tycon.designator match
+            case cls: ClassSymbol if cls.isValidInCurrentRun => cls.typeParams
+            case _ => tycon.typeParams
+        case _ => tycon.typeParams
       if (tparams.isEmpty) HKTypeLambda.any(args.length).typeParams else tparams
     }
 
-    def hasWildcardArg(using Context): Boolean = args.exists(isBounds)
+    private def argShapeFlags: Int =
+      if myArgShapes == 0 then
+        var flags = AppliedType.HasArgShapes
+        var xs = args
+        while xs.nonEmpty do
+          val arg = xs.head
+          if arg.isInstanceOf[TypeBounds] then flags |= AppliedType.HasBoundsArg
+          if arg.isInstanceOf[Range] then flags |= AppliedType.HasRangeArg
+          xs = xs.tail
+        myArgShapes = flags.toByte
+        flags
+      else myArgShapes
+
+    private[core] def hasRangeArg: Boolean =
+      (argShapeFlags & AppliedType.HasRangeArg) != 0
+
+    def hasWildcardArg(using Context): Boolean =
+      (argShapeFlags & AppliedType.HasBoundsArg) != 0
 
     def derivedAppliedType(tycon: Type, args: List[Type])(using Context): Type =
       if ((tycon eq this.tycon) && (args eq this.args)) this
@@ -4847,15 +5302,35 @@ object Types extends TypeUtils {
     }
   }
 
-  final class CachedAppliedType(tycon: Type, args: List[Type], hc: Int) extends AppliedType(tycon, args) {
+  final class CachedAppliedType(
+      tycon: Type,
+      args: List[Type],
+      hc: Int,
+      private[core] val argsEqHash: Int
+  ) extends AppliedType(tycon, args) {
     myHash = hc
   }
 
   object AppliedType {
+    private[core] inline val HasBoundsArg = 1
+    private[core] inline val HasRangeArg = 2
+    private[core] inline val HasArgShapes = 4
+
     def apply(tycon: Type, args: List[Type])(using Context): AppliedType = {
       assertUnerased()
       ctx.base.uniqueAppliedTypes.enterIfNew(tycon, args)
     }
+
+    def apply(tycon: Type, arg: Type)(using Context): AppliedType = {
+      assertUnerased()
+      ctx.base.uniqueAppliedTypes.enterIfNew(tycon, arg)
+    }
+
+    def apply(tycon: Type, arg1: Type, arg2: Type)(using Context): AppliedType = {
+      assertUnerased()
+      ctx.base.uniqueAppliedTypes.enterIfNew(tycon, arg1, arg2)
+    }
+
   }
 
   // ----- BoundTypes: ParamRef, RecThis ----------------------------------------
@@ -4905,7 +5380,7 @@ object Types extends TypeUtils {
   extends ParamRef, SingletonType, ObjectCapability {
     type BT = TermLambda
     def kindString: String = "Term"
-    def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
+    def copyBoundType(bt: BT): Type = bt.paramRef(paramNum)
   }
 
   private final class TermParamRefImpl(binder: TermLambda, paramNum: Int) extends TermParamRef(binder, paramNum)
@@ -4917,7 +5392,7 @@ object Types extends TypeUtils {
   extends ParamRef, SetCapability {
     type BT = TypeLambda
     def kindString: String = "Type"
-    def copyBoundType(bt: BT): Type = bt.paramRefs(paramNum)
+    def copyBoundType(bt: BT): Type = bt.paramRef(paramNum)
 
     /** Optimized version of occursIn, avoid quadratic blowup when solving
      *  constraints over large ground types.
@@ -5604,7 +6079,7 @@ object Types extends TypeUtils {
     def appliedRef(using Context): Type = {
       if (appliedRefCache == null)
         appliedRefCache =
-          TypeRef(prefix, cls).appliedTo(cls.classDenot.typeParams.map(_.typeRef))
+          TypeRef(prefix, cls).appliedTo(cls.classDenot.typeParamRefs)
       appliedRefCache.nn
     }
 
@@ -5714,6 +6189,8 @@ object Types extends TypeUtils {
   /** Type bounds >: lo <: hi */
   abstract case class TypeBounds(lo: Type, hi: Type) extends CachedProxyType with TypeType {
 
+    private[core] var myWildcard: WildcardType | Null = null
+
     assert(lo.isInstanceOf[TermType], lo)
     assert(hi.isInstanceOf[TermType], hi)
 
@@ -5742,25 +6219,30 @@ object Types extends TypeUtils {
       val lo2 = that.lo.stripLazyRef
       val hi1 = this.hi.stripLazyRef
       val hi2 = that.hi.stripLazyRef
+      inline def frozenSub(tp1: Type, tp2: Type): Boolean =
+        (tp1 eq tp2) || (tp1 frozen_<:< tp2)
 
       // This will try to preserve the FromJavaObjects type in upper bounds.
       // For example, (? <: FromJavaObjects | Null) & (? <: Any),
       // we want to get (? <: FromJavaObjects | Null) intead of (? <: Any),
       // because we may check the result <:< (? <: Object | Null) later.
-      if hi1.containsFromJavaObject && (hi1 frozen_<:< hi2) && (lo2 frozen_<:< lo1) then
+      if hi1.containsFromJavaObject && frozenSub(hi1, hi2) && frozenSub(lo2, lo1) then
         // FromJavaObject in tp1.hi guarantees tp2.hi <:< tp1.hi
         // prefer tp1 if FromJavaObject is in its hi
         this
-      else if hi2.containsFromJavaObject && (hi2 frozen_<:< hi1) && (lo1 frozen_<:< lo2) then
+      else if hi2.containsFromJavaObject && frozenSub(hi2, hi1) && frozenSub(lo1, lo2) then
         // Similarly, prefer tp2 if FromJavaObject is in its hi
         that
-      else if (lo1 frozen_<:< lo2) && (hi2 frozen_<:< hi1) then that
-      else if (lo2 frozen_<:< lo1) && (hi1 frozen_<:< hi2) then this
+      else if frozenSub(lo1, lo2) && frozenSub(hi2, hi1) then that
+      else if frozenSub(lo2, lo1) && frozenSub(hi1, hi2) then this
       else TypeBounds(lo1 | lo2, hi1 & hi2)
 
     def | (that: TypeBounds)(using Context): TypeBounds =
-      if ((this.lo frozen_<:< that.lo) && (that.hi frozen_<:< this.hi)) this
-      else if ((that.lo frozen_<:< this.lo) && (this.hi frozen_<:< that.hi)) that
+      inline def frozenSub(tp1: Type, tp2: Type): Boolean =
+        (tp1 eq tp2) || (tp1 frozen_<:< tp2)
+
+      if (frozenSub(this.lo, that.lo) && frozenSub(that.hi, this.hi)) this
+      else if (frozenSub(that.lo, this.lo) && frozenSub(this.hi, that.hi)) that
       else TypeBounds(this.lo & that.lo, this.hi | that.hi)
 
     override def & (that: Type)(using Context): Type = that match {
@@ -5922,7 +6404,7 @@ object Types extends TypeUtils {
     def make(underlying: Type, annots: List[Annotation])(using Context): Type =
       annots.foldLeft(underlying)(apply(_, _))
     def apply(parent: Type, annot: Annotation)(using Context): AnnotatedType =
-      unique(CachedAnnotatedType(parent, annot))
+      ctx.uniques.enterIfNew(parent, annot)
   end AnnotatedType
 
   // Special type objects and classes -----------------------------------------------------
@@ -6034,7 +6516,16 @@ object Types extends TypeUtils {
           apply(bounds)
         else
           result
-      else unique(CachedWildcardType(bounds))
+      else if bounds.hash == NotCached then
+        unique(CachedWildcardType(bounds))
+      else
+        val result = bounds.myWildcard
+        if result == null then
+          val wildcard = unique(CachedWildcardType(bounds))
+          bounds.myWildcard = wildcard
+          wildcard
+        else
+          result
     /** A wildcard matching any type of the same kind as `tp`. */
     def sameKindAs(tp: Type)(using Context): WildcardType =
       apply(TypeBounds.emptySameKindAs(tp))
@@ -6316,7 +6807,15 @@ object Types extends TypeUtils {
 
     protected def mapArg(arg: Type, tparam: ParamInfo): Type = arg match
       case arg: TypeBounds => this(arg)
-      case arg => atVariance(variance * tparam.paramVarianceSign)(this(arg))
+      case arg =>
+        val sign = tparam.paramVarianceSign
+        if sign == 1 then this(arg)
+        else
+          val saved = variance
+          variance = saved * sign
+          val res = this(arg)
+          variance = saved
+          res
 
     protected def mapArgs(args: List[Type], tparams: List[ParamInfo]): List[Type] = args match
       case arg :: otherArgs if tparams.nonEmpty =>
@@ -6329,10 +6828,19 @@ object Types extends TypeUtils {
 
     protected def mapOverLambda(tp: LambdaType) =
       val restpe = tp.resultType
-      val saved = variance
-      variance = if (defn.MatchCase.isInstance(restpe)) 0 else -variance
-      val ptypes1 = tp.paramInfos.mapConserve(this).asInstanceOf[List[tp.PInfo]]
-      variance = saved
+      val ptypes = tp.paramInfos
+      val ptypes1 =
+        if ptypes.isEmpty then ptypes
+        else
+          val saved = variance
+          // TermLambda (MethodType) result types are never MatchCase, so skip the check.
+          variance =
+            if tp.isInstanceOf[TermLambda] then -variance
+            else if defn.MatchCase.isInstance(restpe) then 0
+            else -variance
+          val res = ptypes.mapConserve(this).asInstanceOf[List[tp.PInfo]]
+          variance = saved
+          res
       derivedLambdaType(tp)(ptypes1, this(restpe))
 
     protected def mapOverTypeVar(tp: TypeVar) =
@@ -6427,17 +6935,57 @@ object Types extends TypeUtils {
         case tp: NamedType =>
           if stopBecauseStaticOrLocal(tp) then tp
           else
-            val prefix1 = atVariance(variance max 0)(this(tp.prefix)) // see comment of TypeAccumulator's applyToPrefix
-            derivedSelect(tp, prefix1)
+            // see comment of TypeAccumulator's applyToPrefix
+            // `saved max 0` is the identity when variance >= 0 (prefixes are
+            // never visited contravariantly there), so skip the save/restore.
+            val prefix1 =
+              if variance >= 0 then this(tp.prefix)
+              else
+                val saved = variance
+                variance = 0
+                val res = this(tp.prefix)
+                variance = saved
+                res
+            if (prefix1 eq tp.prefix) then tp else derivedSelect(tp, prefix1)
 
         case tp: AppliedType =>
-          derivedAppliedType(tp, this(tp.tycon), mapArgs(tp.args, tyconTypeParams(tp)))
+          val tycon1 = this(tp.tycon)
+          val args = tp.args
+          val args1 = if args.isEmpty then args else mapArgs(args, tyconTypeParams(tp))
+          if (tycon1 eq tp.tycon) && (args1 eq args) then tp
+          else derivedAppliedType(tp, tycon1, args1)
 
         case tp: LambdaType =>
           mapOverLambda(tp)
 
+        case tp: ConstantType =>
+          // Ground leaf: literal ConstantTypes map to themselves; only a
+          // class-literal constant (ClazzTag) carries a Type value that must be
+          // remapped through erasure (see tests/run/classof.scala). The tag
+          // compare is exactly equivalent to the old `Constant(_: Type)` test
+          // (ClazzTag is the only tag whose value is a Type), and handling
+          // ConstantType here skips the ~15-arm tail of the match for the common
+          // primitive/String literals.
+          if tp.value.tag == ClazzTag then
+            val classType = tp.value.tpe
+            val classType1 = this(classType)
+            if classType eq classType1 then tp
+            else classType1
+          else tp
+
+        case _ if (tp eq NoType) || tp.isInstanceOf[ErrorType] =>
+          // Ground leaves with no mappable substructure; return directly instead
+          // of walking the rest of the match to the default arm. ErrorType is the
+          // only FlexType caught here (TryDynamicCallType, the other FlexType, is
+          // left to the default arm).
+          tp
+
         case tp: AliasingBounds =>
-          derivedAlias(tp, atVariance(0)(this(tp.alias)))
+          val saved = variance
+          variance = 0
+          val alias1 = this(tp.alias)
+          variance = saved
+          derivedAlias(tp, alias1)
 
         case tp: TypeBounds =>
           variance = -variance
@@ -6475,12 +7023,6 @@ object Types extends TypeUtils {
         case tp @ SuperType(thistp, supertp) =>
           derivedSuperType(tp, this(thistp), this(supertp))
 
-        case tp @ ConstantType(const @ Constant(_: Type)) =>
-          val classType = const.tpe
-          val classType1 = this(classType)
-          if classType eq classType1 then tp
-          else classType1
-
         case tp: LazyRef =>
           LazyRef { refCtx =>
             given Context = refCtx
@@ -6508,14 +7050,20 @@ object Types extends TypeUtils {
 
         case tp: MatchType =>
           val bound1 = this(tp.bound)
-          val scrut1 = atVariance(0)(this(tp.scrutinee))
+          val saved = variance
+          variance = 0
+          val scrut1 = this(tp.scrutinee)
+          variance = saved
           derivedMatchType(tp, bound1, scrut1, tp.cases.mapConserve(this))
 
         case tp: SkolemType =>
           derivedSkolemType(tp, this(tp.info))
 
         case tp: WildcardType =>
-          derivedWildcardType(tp, mapOver(tp.optBounds))
+          // An unbounded wildcard has NoType bounds; derivedWildcardType(tp, NoType)
+          // returns tp, so skip the full mapOver(NoType) dispatch for it.
+          val ob = tp.optBounds
+          if ob.exists then derivedWildcardType(tp, mapOver(ob)) else tp
 
         case tp: JavaArrayType =>
           derivedJavaArrayType(tp, this(tp.elemType))
@@ -6749,11 +7297,15 @@ object Types extends TypeUtils {
       else tp.derivedSuperType(thistp, supertp)
 
     override protected def derivedAppliedType(tp: AppliedType, tycon: Type, args: List[Type]): Type =
-      tycon match {
+      if (tycon eq tp.tycon) && (args eq tp.args) then tp
+      else tycon match {
         case Range(tyconLo, tyconHi) =>
           range(derivedAppliedType(tp, tyconLo, args), derivedAppliedType(tp, tyconHi, args))
         case _ =>
-          if args.exists(isRange) then
+          val argsHaveRange =
+            if args eq tp.args then tp.hasRangeArg
+            else args.exists(isRange)
+          if argsHaveRange then
             if variance > 0 then
               tp.derivedAppliedType(tycon, args.map(rangeToBounds)) match
                 case tp1: AppliedType if tp1.isUnreducibleWild && ctx.phase != checkCapturesPhase =>
@@ -6801,11 +7353,13 @@ object Types extends TypeUtils {
       case _             => false
 
     override protected def derivedAndType(tp: AndType, tp1: Type, tp2: Type): Type =
-      if (isRange(tp1) || isRange(tp2)) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
+      if (tp1 eq tp.tp1) && (tp2 eq tp.tp2) then tp
+      else if (isRange(tp1) || isRange(tp2)) range(lower(tp1) & lower(tp2), upper(tp1) & upper(tp2))
       else tp.derivedAndType(tp1, tp2)
 
     override protected def derivedOrType(tp: OrType, tp1: Type, tp2: Type): Type =
-      if (isRange(tp1) || isRange(tp2)) range(lower(tp1) | lower(tp2), upper(tp1) | upper(tp2))
+      if (tp1 eq tp.tp1) && (tp2 eq tp.tp2) then tp
+      else if (isRange(tp1) || isRange(tp2)) range(lower(tp1) | lower(tp2), upper(tp1) | upper(tp2))
       else tp.derivedOrType(tp1, tp2)
 
     override protected def derivedAnnotatedType(tp: AnnotatedType, underlying: Type, annot: Annotation): Type =
@@ -6928,7 +7482,18 @@ object Types extends TypeUtils {
      *  more relaxed scheme is used.
      */
     protected def applyToPrefix(x: T, tp: NamedType): T =
-      atVariance(variance max 0)(this(x, tp.prefix))
+      // Inline `atVariance(variance max 0)(this(x, tp.prefix))` to eliminate the
+      // by-name `op$proxy` thunk on this hot foldOver path. Mirrors precedent
+      // 94af7d7d55 for the TypeMap.mapOver NamedType arm. Overridable: subclasses
+      // (e.g. OrderingConstraint.ConstraintAwareTraversal) replace this entirely.
+      // `saved max 0` is the identity when variance >= 0, so skip the save/restore.
+      if variance >= 0 then this(x, tp.prefix)
+      else
+        val saved = variance
+        variance = 0
+        val res = this(x, tp.prefix)
+        variance = saved
+        res
 
     def foldOver(x: T, tp: Type): T = {
       record(s"foldOver $getClass")
@@ -6937,8 +7502,23 @@ object Types extends TypeUtils {
       case tp: NamedType =>
         if stopBecauseStaticOrLocal(tp) then x
         else
-          val tp1 = tp.prefix.lookupRefined(tp.name)
-          if (tp1.exists) this(x, tp1) else applyToPrefix(x, tp)
+          val prefix = tp.prefix
+          // Fast-path: skip lookupRefined when the prefix shape cannot carry
+          // refinements.  Mirrors NamedType.prefixSkipsRefinedLookup (which is
+          // private to NamedType).  For these prefix shapes lookupRefined always
+          // returns NoType, so we can go straight to applyToPrefix.
+          inline def prefixSkipsRefined: Boolean = prefix match
+            case _: TermRef | _: ThisType | _: SuperType | _: ConstantType
+               | _: AppliedType | _: AndOrType | _: FlexibleType | _: BoundType
+               | _: MatchType | _: JavaArrayType | _: FlexType | _: WildcardType
+               | NoPrefix | NoType =>
+              true
+            case _ =>
+              false
+          if prefixSkipsRefined then applyToPrefix(x, tp)
+          else
+            val tp1 = prefix.lookupRefined(tp.name)
+            if tp1.exists then this(x, tp1) else applyToPrefix(x, tp)
 
       case tp @ AppliedType(tycon, args) =>
         @tailrec def foldArgs(x: T, tparams: List[ParamInfo], args: List[Type]): T =
@@ -6947,11 +7527,19 @@ object Types extends TypeUtils {
             val tparam = tparams.head
             val acc = args.head match {
               case arg: TypeBounds => this(x, arg)
-              case arg => atVariance(variance * tparam.paramVarianceSign)(this(x, arg))
+              case arg =>
+                val saved = variance
+                variance = saved * tparam.paramVarianceSign
+                val res = this(x, arg)
+                variance = saved
+                res
             }
             foldArgs(acc, tparams.tail, args.tail)
           }
         foldArgs(this(x, tycon), tyconTypeParams(tp), args)
+
+      case _: ConstantType | NoType | _: ErrorType =>
+        x
 
       case _: BoundType | _: ThisType => x
 
