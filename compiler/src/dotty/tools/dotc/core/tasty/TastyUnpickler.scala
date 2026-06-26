@@ -7,7 +7,7 @@ import dotty.tools.tasty.{TastyFormat, TastyVersion, TastyBuffer, TastyReader, T
 import dotty.tools.tasty.besteffort.{BestEffortTastyHeader, BestEffortTastyHeaderUnpickler}
 
 import TastyFormat.NameTags.*, TastyFormat.nameTagToString
-import TastyBuffer.NameRef
+import TastyBuffer.{Addr, NameRef}
 
 import scala.collection.mutable
 import Names.{TermName, termName, EmptyTermName}
@@ -33,10 +33,31 @@ object TastyUnpickler {
   }
 
   class NameTable extends (NameRef => TermName) {
-    private val names = new mutable.ArrayBuffer[TermName]
-    def add(name: TermName): mutable.ArrayBuffer[TermName] = names += name
+    private var names = new Array[TermName](0)
+    private var length = 0
+
+    def reserve(size: Int): Unit =
+      if size > names.length then names = new Array[TermName](size)
+
+    def add(name: TermName): Unit =
+      if length == names.length then
+        val newLength = if length == 0 then 16 else length * 2
+        val newNames = new Array[TermName](newLength)
+        System.arraycopy(names, 0, newNames, 0, length)
+        names = newNames
+      names(length) = name
+      length += 1
+
     def apply(ref: NameRef): TermName = names(ref.index)
-    def contents: Iterable[TermName] = names
+
+    def contents: Iterable[TermName] = new Iterable[TermName]:
+      def iterator: Iterator[TermName] = new Iterator[TermName]:
+        private var index = 0
+        def hasNext: Boolean = index < NameTable.this.length
+        def next(): TermName =
+          val name = names(index)
+          index += 1
+          name
   }
 
   trait Scala3CompilerConfig extends UnpicklerConfig:
@@ -142,8 +163,24 @@ class TastyUnpickler(protected val reader: TastyReader, isBestEffortTasty: Boole
     else
       new CommonTastyHeader(new TastyHeaderUnpickler(reader).readFullHeader())
 
+  private def countNameEntries(end: Addr): Int =
+    val start = currentAddr
+    var count = 0
+    while currentAddr.index < end.index do
+      readByte()
+      val length = readNat()
+      goto(currentAddr + length)
+      count += 1
+    assert(currentAddr == end)
+    goto(start)
+    count
+
   def readNames(): Unit =
-    until(readEnd()) { nameAtRef.add(readNameContents()) }
+    val end = readEnd()
+    nameAtRef.reserve(countNameEntries(end))
+    while currentAddr.index < end.index do
+      nameAtRef.add(readNameContents())
+    assert(currentAddr == end)
 
   def loadSections(): Unit = {
     while (!isAtEnd) {
