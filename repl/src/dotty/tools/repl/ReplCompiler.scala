@@ -54,9 +54,12 @@ class ReplCompiler extends Compiler:
         def importContext(imp: tpd.Import)(using Context) =
           ctx.importContext(imp, imp.symbol)
 
+        val pkgName = initCtx.settings.replInitPackage.value(using initCtx).trim
+        val pkgPrefix = if pkgName.isEmpty then nme.EMPTY_PACKAGE.toString else pkgName
+
         def importPreviousRun(id: Int)(using Context) = {
           // we first import the wrapper object id
-          val path = nme.EMPTY_PACKAGE ++ "." ++ ReplCompiler.objectNames(id)
+          val path = s"$pkgPrefix.${ReplCompiler.objectNames(id)}"
           val ctx0 = ctx.fresh
             .setNewScope
             .withRootImports(RootRef(() => requiredModuleRef(path)) :: Nil)
@@ -68,6 +71,9 @@ class ReplCompiler extends Compiler:
             importContext(imp)(using ctx))
         }
 
+        // The owner stays the empty package; the PackageDef wrapping each
+        // input is what places definitions into the configured package
+        // during typechecking.
         val rootCtx = super.rootContext.fresh
           .withRootImports
           .fresh.setOwner(defn.EmptyPackageClass): Context
@@ -81,7 +87,7 @@ class ReplCompiler extends Compiler:
 
   private def packaged(stats: List[untpd.Tree])(using Context): untpd.PackageDef =
     import untpd.*
-    PackageDef(Ident(nme.EMPTY_PACKAGE), stats)
+    PackageDef(ReplCompiler.packageId, stats)
 
   final def compile(parsed: Parsed)(using state: State): Either[(List[Diagnostic], State), (CompilationUnit, State)] =
     assert(!parsed.trees.isEmpty)
@@ -216,7 +222,7 @@ class ReplCompiler extends Compiler:
         val wrapper = TypeDef("$wrapper".toTypeName, tmpl)
           .withMods(Modifiers(Final))
           .withSpan(Span(0, expr.length))
-        PackageDef(Ident(nme.EMPTY_PACKAGE), List(wrapper))
+        PackageDef(ReplCompiler.packageId, List(wrapper))
       }
 
       ParseResult(sourceFile) match {
@@ -280,9 +286,19 @@ class ReplCompiler extends Compiler:
       }
     }
   }
+
 object ReplCompiler:
   val ReplState: Property.StickyKey[State] = Property.StickyKey()
   val objectNames = mutable.Map.empty[Int, TermName]
+
+  def packageId(using Context): untpd.RefTree =
+    import untpd.*
+    val name = ctx.settings.replInitPackage.value.trim
+    if name.isEmpty then Ident(nme.EMPTY_PACKAGE)
+    else
+      val parts = name.split('.').toList
+      parts.tail.foldLeft[RefTree](Ident(parts.head.toTermName))((acc, p) =>
+        Select(acc, p.toTermName))
 end ReplCompiler
 
 class ReplCompilationUnit(source: SourceFile) extends CompilationUnit(source, CompilationUnitInfo(source.file)):
@@ -396,5 +412,5 @@ class ReplPhase extends Phase:
     val tmpl = Template(emptyConstructor, Nil, Nil, EmptyValDef, defs.stats)
     val module = ModuleDef(objectTermName, tmpl).withSpan(span)
 
-    PackageDef(Ident(nme.EMPTY_PACKAGE), List(module))
+    PackageDef(ReplCompiler.packageId, List(module))
 end ReplPhase

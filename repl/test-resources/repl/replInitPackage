@@ -1,0 +1,11 @@
+//> using options --repl-init-package:my.app
+scala> class Foo
+// defined class Foo
+scala> classOf[Foo].getName
+val res0: String = "my.app.rs$line$1$Foo"
+scala> object Bar { val x = 1 }
+// defined object Bar
+scala> Bar.x + 1
+val res1: Int = 2
+scala> Bar.getClass.getName
+val res2: String = "my.app.rs$line$3$Bar$"

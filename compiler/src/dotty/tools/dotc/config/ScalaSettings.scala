@@ -125,6 +125,7 @@ trait CommonScalaSettings:
   val encoding: Setting[String] = StringSetting(RootSetting, "encoding", "encoding", "Specify character encoding used by source files.", Properties.sourceEncoding, aliases = List("--encoding"))
   val scalajs: Setting[Boolean] = BooleanSetting(RootSetting, "scalajs", "Compile in Scala.js mode (requires scalajs-library.jar on the classpath).", aliases = List("--scalajs"))
   val replInitScript: Setting[String] = StringSetting(RootSetting, "repl-init-script", "code", "The code will be run on REPL startup.", "", aliases = List("--repl-init-script"))
+  val replInitPackage: Setting[String] = StringSetting(RootSetting, "repl-init-package", "package", "The package in which REPL-entered code is wrapped. Defaults to the empty package.", "", aliases = List("--repl-init-package"))
   val replQuitAfterInit: Setting[Boolean] = BooleanSetting(RootSetting, "repl-quit-after-init", "Quit REPL after evaluating the init script.", aliases = List("--repl-quit-after-init"))
 
   /* YSettings shared with scaladoc */
