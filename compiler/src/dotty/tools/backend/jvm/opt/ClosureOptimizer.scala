@@ -107,7 +107,7 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
-        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, optimizerUtils)
+        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph)
 
         if (Limits.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get(method) match {
           case Some(closureInits) =>
