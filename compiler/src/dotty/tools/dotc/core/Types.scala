@@ -53,6 +53,10 @@ object Types extends TypeUtils {
 
   implicit def eqType: CanEqual[Type, Type] = CanEqual.derived
 
+  // Must match VectorStatics.WIDTH: `Vector.fromArray1Unsafe` accepts only the
+  // compact Vector1 layout.
+  private inline val MaxVector1Length = 32
+
   /** Main class representing types.
    *
    *  The principal subclasses and sub-objects are as follows:
@@ -3866,17 +3870,180 @@ object Types extends TypeUtils {
 
     def paramRefs: Vector[ParamRefType] = {
       if myParamRefs == null then
-        def recur(paramNames: Vector[ThisName], i: Int): Vector[ParamRefType] =
-          paramNames match
-            case _ +: rest => newParamRef(i) +: recur(rest, i + 1)
-            case _ => Vector()
-        myParamRefs = recur(paramNames, 0)
+        val len = paramNames.length
+        if len == 0 then myParamRefs = Vector()
+        else if len <= MaxVector1Length then
+          val elems = new Array[AnyRef](len)
+          var i = 0
+          while i < len do
+            elems(i) = newParamRef(i).asInstanceOf[AnyRef]
+            i += 1
+          myParamRefs = Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[ParamRefType]]
+        else
+          val b = Vector.newBuilder[ParamRefType]
+          b.sizeHint(len)
+          var i = 0
+          while i < len do
+            b += newParamRef(i)
+            i += 1
+          myParamRefs = b.result()
       myParamRefs.nn
     }
 
+    protected final def substParamInfos(pinfos: Vector[PInfo], to: This)(using Context): Vector[PInfo] =
+      val len = pinfos.length
+      if len == 0 then pinfos
+      else if len == 1 then
+        val pinfo = pinfos(0)
+        val pinfo1 = pinfo.subst(this, to).asInstanceOf[PInfo]
+        if pinfo1.asInstanceOf[AnyRef] eq pinfo.asInstanceOf[AnyRef] then pinfos
+        else Vector(pinfo1)
+      else if len == 2 then
+        val substMap = new Substituters.SubstBindingMap[LambdaType](this, to)
+        val pinfo0 = pinfos(0)
+        val pinfo1 = pinfos(1)
+        val pinfo0a = Substituters.subst[LambdaType](pinfo0, this, to, substMap).asInstanceOf[PInfo]
+        val pinfo1a = Substituters.subst[LambdaType](pinfo1, this, to, substMap).asInstanceOf[PInfo]
+        if pinfo0a.asInstanceOf[AnyRef] eq pinfo0.asInstanceOf[AnyRef] then
+          if pinfo1a.asInstanceOf[AnyRef] eq pinfo1.asInstanceOf[AnyRef] then pinfos
+          else Vector(pinfo0, pinfo1a)
+        else if pinfo1a.asInstanceOf[AnyRef] eq pinfo1.asInstanceOf[AnyRef] then
+          Vector(pinfo0a, pinfo1)
+        else
+          Vector(pinfo0a, pinfo1a)
+      else
+        val substMap = new Substituters.SubstBindingMap[LambdaType](this, to)
+        var substInfos: Array[AnyRef] | Null = null
+        var i = 0
+        while i < len do
+          val pinfo = pinfos(i)
+          val pinfo1 = Substituters.subst[LambdaType](pinfo, this, to, substMap).asInstanceOf[PInfo]
+          if substInfos != null then
+            substInfos(i) = pinfo1
+          else if !(pinfo1.asInstanceOf[AnyRef] eq pinfo.asInstanceOf[AnyRef]) then
+            val substInfos1 = new Array[AnyRef](len)
+            var j = 0
+            while j < i do
+              substInfos1(j) = pinfos(j)
+              j += 1
+            substInfos1(i) = pinfo1
+            substInfos = substInfos1
+          i += 1
+        if substInfos == null then
+          pinfos
+        else
+          val substInfos1 = substInfos
+          var suffixStart = len
+          var sameSuffix = true
+          i = len - 1
+          while i >= 0 do
+            val pinfo = pinfos(i)
+            if sameSuffix && (substInfos1(i) eq pinfo.asInstanceOf[AnyRef]) then
+              suffixStart = i
+            else
+              sameSuffix = false
+            i -= 1
+          if suffixStart == 0 then
+            pinfos
+          else
+            if len <= MaxVector1Length then
+              i = suffixStart
+              while i < len do
+                substInfos1(i) = pinfos(i).asInstanceOf[AnyRef]
+                i += 1
+              Vector.fromArray1Unsafe(substInfos1).asInstanceOf[Vector[PInfo]]
+            else
+              val b = Vector.newBuilder[PInfo]
+              b.sizeHint(len)
+              i = 0
+              while i < suffixStart do
+                b += substInfos1(i).asInstanceOf[PInfo]
+                i += 1
+              while i < len do
+                b += pinfos(i)
+                i += 1
+              b.result()
+
+    private def substParamInfosWithArgs(argTypes: => Vector[Type])(using Context): Vector[Type] =
+      val pinfos = paramInfos
+      val len = pinfos.length
+      if len == 0 then pinfos
+      else
+        val args = argTypes
+        if len == 1 then
+          val pinfo = pinfos(0)
+          val pinfo1 = Substituters.substParams(pinfo, this, args, null)
+          if pinfo1.asInstanceOf[AnyRef] eq pinfo.asInstanceOf[AnyRef] then pinfos
+          else Vector(pinfo1)
+        else if len == 2 then
+          val substMap = new Substituters.SubstParamsMap(this, args)
+          val pinfo0 = pinfos(0)
+          val pinfo1 = pinfos(1)
+          val pinfo0a = Substituters.substParams(pinfo0, this, args, substMap)
+          val pinfo1a = Substituters.substParams(pinfo1, this, args, substMap)
+          if pinfo0a.asInstanceOf[AnyRef] eq pinfo0.asInstanceOf[AnyRef] then
+            if pinfo1a.asInstanceOf[AnyRef] eq pinfo1.asInstanceOf[AnyRef] then pinfos
+            else Vector(pinfo0, pinfo1a)
+          else if pinfo1a.asInstanceOf[AnyRef] eq pinfo1.asInstanceOf[AnyRef] then
+            Vector(pinfo0a, pinfo1)
+          else
+            Vector(pinfo0a, pinfo1a)
+        else
+          val substMap = new Substituters.SubstParamsMap(this, args)
+          var substInfos: Array[AnyRef] | Null = null
+          var i = 0
+          while i < len do
+            val pinfo = pinfos(i)
+            val pinfo1 = Substituters.substParams(pinfo, this, args, substMap)
+            if substInfos != null then
+              substInfos(i) = pinfo1
+            else if !(pinfo1.asInstanceOf[AnyRef] eq pinfo.asInstanceOf[AnyRef]) then
+              val substInfos1 = new Array[AnyRef](len)
+              var j = 0
+              while j < i do
+                substInfos1(j) = pinfos(j)
+                j += 1
+              substInfos1(i) = pinfo1
+              substInfos = substInfos1
+            i += 1
+          if substInfos == null then
+            pinfos
+          else
+            val substInfos1 = substInfos
+            var suffixStart = len
+            var sameSuffix = true
+            i = len - 1
+            while i >= 0 do
+              val pinfo = pinfos(i)
+              if sameSuffix && (substInfos1(i) eq pinfo.asInstanceOf[AnyRef]) then
+                suffixStart = i
+              else
+                sameSuffix = false
+              i -= 1
+            if suffixStart == 0 then
+              pinfos
+            else
+              if len <= MaxVector1Length then
+                i = suffixStart
+                while i < len do
+                  substInfos1(i) = pinfos(i).asInstanceOf[AnyRef]
+                  i += 1
+                Vector.fromArray1Unsafe(substInfos1).asInstanceOf[Vector[Type]]
+              else
+                val b = Vector.newBuilder[Type]
+                b.sizeHint(len)
+                i = 0
+                while i < suffixStart do
+                  b += substInfos1(i).asInstanceOf[Type]
+                  i += 1
+                while i < len do
+                  b += pinfos(i)
+                  i += 1
+                b.result()
+
     /** Like `paramInfos` but substitute parameter references with the given arguments */
     final def instantiateParamInfos(argTypes: => Vector[Type])(using Context): Vector[Type] =
-      if (isParamDependent) paramInfos.mapConserve(_.substParams(this, argTypes))
+      if (isParamDependent) substParamInfosWithArgs(argTypes)
       else paramInfos
 
     /** Like `resultType` but substitute parameter references with the given arguments */
@@ -3947,13 +4114,8 @@ object Types extends TypeUtils {
       else newLikeThis(paramNames, paramInfos, resType)
 
     def newLikeThis(paramNames: Vector[ThisName], paramInfos: Vector[PInfo], resType: Type)(using Context): This =
-      def substParams(pinfos: Vector[PInfo], to: This): Vector[PInfo] = pinfos match
-        case pinfos @ (pinfo +: rest) =>
-          pinfos.derivedCons(pinfo.subst(this, to).asInstanceOf[PInfo], substParams(rest, to))
-        case nil =>
-          nil
       companion(paramNames)(
-          x => substParams(paramInfos, x),
+          x => substParamInfos(paramInfos, x),
           x => resType.subst(this, x))
 
     protected def prefixString: String
@@ -4249,7 +4411,24 @@ object Types extends TypeUtils {
 
     @sharable private val memoizedNames = util.HashMap[Int, Vector[N]]()
     def syntheticParamNames(n: Int): Vector[N] = synchronized {
-      memoizedNames.getOrElseUpdate(n, (0 until n).map(syntheticParamName).toVector)
+      memoizedNames.getOrElseUpdate(n,
+        if n <= 0 then Vector.empty
+        else if n <= MaxVector1Length then
+          val elems = new Array[AnyRef](n)
+          var i = 0
+          while i < n do
+            elems(i) = syntheticParamName(i).asInstanceOf[AnyRef]
+            i += 1
+          Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[N]]
+        else
+          val b = Vector.newBuilder[N]
+          b.sizeHint(n)
+          var i = 0
+          while i < n do
+            b += syntheticParamName(i)
+            i += 1
+          b.result()
+      )
     }
 
     def apply(paramNames: Vector[N])(paramInfosExp: LT => Vector[PInfo], resultTypeExp: LT => Type)(using Context): LT
@@ -4262,10 +4441,48 @@ object Types extends TypeUtils {
 
     protected def toPInfo(tp: Type)(using Context): PInfo
 
+    protected def paramNamesFrom[PI <: ParamInfo.Of[N]](params: Vector[PI])(using Context): Vector[N] =
+      val len = params.length
+      if len == 0 then Vector.empty
+      else if len <= MaxVector1Length then
+        val elems = new Array[AnyRef](len)
+        var i = 0
+        while i < len do
+          elems(i) = params(i).paramName.asInstanceOf[AnyRef]
+          i += 1
+        Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[N]]
+      else
+        val b = Vector.newBuilder[N]
+        b.sizeHint(len)
+        var i = 0
+        while i < len do
+          b += params(i).paramName
+          i += 1
+        b.result()
+
+    protected def integratedParamInfos[PI <: ParamInfo.Of[N]](tl: LT, params: Vector[PI])(using Context): Vector[PInfo] =
+      val len = params.length
+      if len == 0 then Vector.empty
+      else if len <= MaxVector1Length then
+        val elems = new Array[AnyRef](len)
+        var i = 0
+        while i < len do
+          elems(i) = toPInfo(tl.integrate(params, params(i).paramInfo)).asInstanceOf[AnyRef]
+          i += 1
+        Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[PInfo]]
+      else
+        val b = Vector.newBuilder[PInfo]
+        b.sizeHint(len)
+        var i = 0
+        while i < len do
+          b += toPInfo(tl.integrate(params, params(i).paramInfo))
+          i += 1
+        b.result()
+
     def fromParams[PI <: ParamInfo.Of[N]](params: Vector[PI], resultType: Type)(using Context): Type =
       if (params.isEmpty) resultType
-      else apply(params.map(_.paramName))(
-        tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
+      else apply(paramNamesFrom(params))(
+        tl => integratedParamInfos(tl, params),
         tl => tl.integrate(params, resultType))
   }
 
@@ -4282,6 +4499,25 @@ object Types extends TypeUtils {
       case tp: ErrorType => TypeAlias(tp)
     }
     def syntheticParamName(n: Int): TypeName = tpnme.syntheticTypeParamName(n)
+
+    protected def paramVariancesFrom[PI <: ParamInfo.Of[TypeName]](params: Vector[PI])(using Context): Vector[Variance] =
+      val len = params.length
+      if len == 0 then Vector.empty
+      else if len <= MaxVector1Length then
+        val elems = new Array[AnyRef](len)
+        var i = 0
+        while i < len do
+          elems(i) = params(i).paramVariance.asInstanceOf[AnyRef]
+          i += 1
+        Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[Variance]]
+      else
+        val b = Vector.newBuilder[Variance]
+        b.sizeHint(len)
+        var i = 0
+        while i < len do
+          b += params(i).paramVariance
+          i += 1
+        b.result()
   }
 
   abstract class MethodTypeCompanion(val prefixString: String) extends TermLambdaCompanion[MethodType] { self =>
@@ -4295,9 +4531,46 @@ object Types extends TypeUtils {
      *   - map `T @$into` types to `into[T]`
      */
     def fromSymbols(params: Vector[Symbol], resultType: Type)(using Context): MethodType =
-      apply(params.map(_.name.asTermName))(
-         tl => params.map(p => tl.integrate(params, adaptParamInfo(p))),
-         tl => tl.integrate(params, resultType))
+      def paramNames: Vector[TermName] =
+        val len = params.length
+        if len == 0 then Vector.empty
+        else if len <= MaxVector1Length then
+          val elems = new Array[AnyRef](len)
+          var i = 0
+          while i < len do
+            elems(i) = params(i).name.asTermName.asInstanceOf[AnyRef]
+            i += 1
+          Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[TermName]]
+        else
+          val b = Vector.newBuilder[TermName]
+          b.sizeHint(len)
+          var i = 0
+          while i < len do
+            b += params(i).name.asTermName
+            i += 1
+          b.result()
+      def paramInfos(tl: MethodType): Vector[Type] =
+        val len = params.length
+        if len == 0 then Vector.empty
+        else if len <= MaxVector1Length then
+          val elems = new Array[AnyRef](len)
+          var i = 0
+          while i < len do
+            elems(i) = tl.integrate(params, adaptParamInfo(params(i))).asInstanceOf[AnyRef]
+            i += 1
+          Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[Type]]
+        else
+          val b = Vector.newBuilder[Type]
+          b.sizeHint(len)
+          var i = 0
+          while i < len do
+            b += tl.integrate(params, adaptParamInfo(params(i)))
+            i += 1
+          b.result()
+      apply(paramNames)(
+        tl => paramInfos(tl),
+        tl => tl.integrate(params, resultType)
+      )
 
     /** Adapt info of parameter symbol to be integrated into corresponding MethodType
      *  using the scheme described in `fromSymbols`.
@@ -4390,7 +4663,23 @@ object Types extends TypeUtils {
     def newParamRef(n: Int): TypeParamRef = new TypeParamRefImpl(this, n)
 
     @threadUnsafe lazy val typeParams: Vector[LambdaParam] =
-      paramNames.indices.toVector.map(new LambdaParam(this, _))
+      val len = paramNames.length
+      if len == 0 then Vector.empty
+      else if len <= MaxVector1Length then
+        val elems = new Array[AnyRef](len)
+        var i = 0
+        while i < len do
+          elems(i) = new LambdaParam(this, i).asInstanceOf[AnyRef]
+          i += 1
+        Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[LambdaParam]]
+      else
+        val b = Vector.newBuilder[LambdaParam]
+        b.sizeHint(len)
+        var i = 0
+        while i < len do
+          b += new LambdaParam(this, i)
+          i += 1
+        b.result()
 
     def derivedLambdaAbstraction(paramNames: Vector[TypeName], paramInfos: Vector[TypeBounds], resType: Type)(using Context): Type =
       resType match {
@@ -4468,7 +4757,7 @@ object Types extends TypeUtils {
 
     def newLikeThis(paramNames: Vector[ThisName], variances: Vector[Variance], paramInfos: Vector[PInfo], resType: Type)(using Context): This =
       HKTypeLambda(paramNames, variances)(
-          x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
+          x => substParamInfos(paramInfos, x),
           x => resType.subst(this, x))
 
     def withVariances(variances: Vector[Variance])(using Context): This =
@@ -4578,8 +4867,8 @@ object Types extends TypeUtils {
     def boundsFromParams[PI <: ParamInfo.Of[TypeName]](params: Vector[PI], bounds: TypeBounds)(using Context): TypeBounds = {
       def expand(tp: Type, useVariances: Boolean) =
         if params.nonEmpty && useVariances then
-          apply(params.map(_.paramName), params.map(_.paramVariance))(
-            tl => params.map(param => toPInfo(tl.integrate(params, param.paramInfo))),
+          apply(paramNamesFrom(params), paramVariancesFrom(params))(
+            tl => integratedParamInfos(tl, params),
             tl => tl.integrate(params, tp))
         else
           super.fromParams(params, tp)
@@ -6323,20 +6612,89 @@ object Types extends TypeUtils {
       case arg: TypeBounds => this(arg)
       case arg => atVariance(variance * tparam.paramVarianceSign)(this(arg))
 
-    protected def mapArgs(args: Vector[Type], tparams: Vector[ParamInfo]): Vector[Type] = args match
-      case arg +: otherArgs if tparams.nonEmpty =>
-        val arg1 = mapArg(arg, tparams.head)
-        val otherArgs1 = mapArgs(otherArgs, tparams.tail)
-        if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
-        else arg1 +: otherArgs1
-      case nil =>
-        nil
+    protected def mapLambdaParamInfos(tp: LambdaType): Vector[tp.PInfo] =
+      val ptypes = tp.paramInfos
+      val len = ptypes.length
+      var i = 0
+      while i < len do
+        val ptype = ptypes(i)
+        val ptype1 = this(ptype).asInstanceOf[tp.PInfo]
+        if !(ptype1.asInstanceOf[AnyRef] eq ptype.asInstanceOf[AnyRef]) then
+          if len <= MaxVector1Length then
+            val elems = new Array[AnyRef](len)
+            var j = 0
+            while j < i do
+              elems(j) = ptypes(j).asInstanceOf[AnyRef]
+              j += 1
+            elems(i) = ptype1.asInstanceOf[AnyRef]
+            i += 1
+            while i < len do
+              elems(i) = this(ptypes(i)).asInstanceOf[AnyRef]
+              i += 1
+            return Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[tp.PInfo]]
+          else
+            val b = Vector.newBuilder[tp.PInfo]
+            b.sizeHint(len)
+            var j = 0
+            while j < i do
+              b += ptypes(j)
+              j += 1
+            b += ptype1
+            i += 1
+            while i < len do
+              b += this(ptypes(i)).asInstanceOf[tp.PInfo]
+              i += 1
+            return b.result()
+        i += 1
+      ptypes
+
+    protected def mapArgs(args: Vector[Type], tparams: Vector[ParamInfo]): Vector[Type] =
+      val len = args.length
+      val tlen = tparams.length
+      var i = 0
+      while i < len && i < tlen do
+        val arg = args(i)
+        val arg1 = mapArg(arg, tparams(i))
+        if !(arg1 eq arg) then
+          if len <= MaxVector1Length then
+            val elems = new Array[AnyRef](len)
+            var j = 0
+            while j < i do
+              elems(j) = args(j).asInstanceOf[AnyRef]
+              j += 1
+            elems(i) = arg1.asInstanceOf[AnyRef]
+            i += 1
+            while i < len && i < tlen do
+              elems(i) = mapArg(args(i), tparams(i)).asInstanceOf[AnyRef]
+              i += 1
+            while i < len do
+              elems(i) = args(i).asInstanceOf[AnyRef]
+              i += 1
+            return Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[Type]]
+          else
+            val b = Vector.newBuilder[Type]
+            b.sizeHint(len)
+            var j = 0
+            while j < i do
+              b += args(j)
+              j += 1
+            b += arg1
+            i += 1
+            while i < len && i < tlen do
+              b += mapArg(args(i), tparams(i))
+              i += 1
+            while i < len do
+              b += args(i)
+              i += 1
+            return b.result()
+        i += 1
+      args
 
     protected def mapOverLambda(tp: LambdaType) =
       val restpe = tp.resultType
       val saved = variance
       variance = if (defn.MatchCase.isInstance(restpe)) 0 else -variance
-      val ptypes1 = tp.paramInfos.mapConserve(this).asInstanceOf[Vector[tp.PInfo]]
+      val ptypes1 = mapLambdaParamInfos(tp)
       variance = saved
       derivedLambdaType(tp)(ptypes1, this(restpe))
 
