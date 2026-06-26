@@ -62,6 +62,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
      *  ```
      *
      *  @param that the expression to pattern match against
+     *
+     *  @return `true` if this expression matches `that`, `false` otherwise
      */
     def matches(that: Expr[Any]): Boolean
 
@@ -106,12 +108,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Checks is the `quoted.Expr[?]` is valid expression of type `X`.
      *
      *  @tparam X the target type to check against
+     *  @return `true` if this expression is a valid expression of type `X`, `false` otherwise
      */
     def isExprOf[X](using Type[X]): Boolean
 
     /** Converts this to an `quoted.Expr[X]` if this expression is a valid expression of type `X` or throws.
      *
      *  @tparam X the target type to cast this expression to
+     *  @return this expression as an `Expr[X]`
      */
     def asExprOf[X](using Type[X]): Expr[X]
   end extension
@@ -338,6 +342,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Changes the owner of the symbols in the tree.
          *
          *  @param newOwner the new owner symbol for the definitions in this tree
+         *  @return a copy of this tree with `newOwner` as the owner of its symbols
          */
         def changeOwner(newOwner: Symbol): ThisTree
       end extension
@@ -373,6 +378,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param pid the package name reference
        *  @param stats the definitions, imports, or exports within the package
+       *  @return a new `PackageClause` tree
        */
       def apply(pid: Ref, stats: List[Tree]): PackageClause
       /** Copies a package clause `package pid { stats }`.
@@ -380,11 +386,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param original the original tree being copied
        *  @param pid the package name reference
        *  @param stats the definitions, imports, or exports within the package
+       *  @return a copy of `original` with the given `pid` and `stats`
        */
       def copy(original: Tree)(pid: Ref, stats: List[Tree]): PackageClause
       /** Matches a package clause `package pid { stats }` and extracts the `pid` and `stats`.
        *
        *  @param tree the package clause tree to match against
+       *  @return a tuple of the package reference and its contained statements
        */
       def unapply(tree: PackageClause): (Ref, List[Tree])
     }
@@ -420,6 +428,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param expr the qualifier term being imported from
        *  @param selectors the list of import selectors
+       *  @return a new `Import` tree
        */
       def apply(expr: Term, selectors: List[Selector]): Import
       /** Copies an `Import` with the given qualifier and selectors.
@@ -427,11 +436,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param original the original tree being copied
        *  @param expr the qualifier term being imported from
        *  @param selectors the list of import selectors
+       *  @return a copy of `original` with the given `expr` and `selectors`
        */
       def copy(original: Tree)(expr: Term, selectors: List[Selector]): Import
       /** Matches an `Import` and extracts the qualifier and selectors.
        *
        *  @param tree the import tree to match against
+       *  @return a tuple of the qualifier term and the list of selectors
        */
       def unapply(tree: Import): (Term, List[Selector])
     }
@@ -470,6 +481,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches an `Export` and extracts the qualifier and selectors.
        *
        *  @param tree the export tree to match against
+       *  @return a tuple of the qualifier term and the list of selectors
        */
       def unapply(tree: Export): (Term, List[Selector])
     }
@@ -970,12 +982,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Converts a partially applied term into a lambda expression.
          *
          *  @param owner the owner symbol of the generated lambda
+         *  @return a lambda term equivalent to this partially applied term
          */
         def etaExpand(owner: Symbol): Term
 
         /** A unary apply node with given argument: `tree(arg)`.
          *
          *  @param arg the argument to apply
+         *  @return this tree applied to `arg`
          */
         def appliedTo(arg: Term): Term
 
@@ -983,12 +997,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  @param arg the first argument to apply
          *  @param args the remaining arguments to apply
+         *  @return this tree applied to the given arguments
          */
         def appliedTo(arg: Term, args: Term*): Term
 
         /** An apply node with given argument list `tree(args(0), ..., args(args.length - 1))`.
          *
          *  @param args the list of arguments to apply
+         *  @return an `Apply` of this tree to the given arguments
          */
         def appliedToArgs(args: List[Term]): Apply
 
@@ -996,6 +1012,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  `tree (argss(0)) ... (argss(argss.length -1))`
          *
          *  @param argss the list of argument lists to apply sequentially
+         *  @return this tree applied to each argument list in turn
          */
         def appliedToArgss(argss: List[List[Term]]): Term
 
@@ -1008,24 +1025,28 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The current tree applied to given type argument: `tree[targ]`.
          *
          *  @param targ the type argument to apply
+         *  @return this tree applied to the given type argument
          */
         def appliedToType(targ: TypeRepr): Term
 
         /** The current tree applied to given type arguments: `tree[targ0, ..., targN]`.
          *
          *  @param targs the type arguments to apply
+         *  @return this tree applied to the given type arguments
          */
         def appliedToTypes(targs: List[TypeRepr]): Term
 
         /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]`.
          *
          *  @param targs the type argument trees to apply
+         *  @return this tree applied to the given type argument trees
          */
         def appliedToTypeTrees(targs: List[TypeTree]): Term
 
         /** A select node that selects the given symbol.
          *
          *  @param sym the symbol of the member to select
+         *  @return a `Select` tree selecting `sym` on this term
          */
         def select(sym: Symbol): Select
 
@@ -1048,6 +1069,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** A tree representing the same reference as the given type.
        *
        *  @param tp the term reference type to create a reference tree for
+       *  @return a `Ref` tree representing the given term reference
        */
       def term(tp: TermRef): Ref
 
@@ -1093,6 +1115,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a term identifier and returns its name.
        *
        *  @param tree the identifier tree to match against
+       *  @return `Some` containing the identifier's name as a `String`
        */
       def unapply(tree: Ident): Some[String]
     }
@@ -1124,6 +1147,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a tree representing a `_` wildcard.
        *
        *  @param wildcard the wildcard tree to match against
+       *  @return `true` (the match always succeeds for a `Wildcard`)
        */
       def unapply(wildcard: Wildcard): true
     }
@@ -1143,6 +1167,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param qualifier the term on which the member is selected
        *  @param symbol the symbol of the member to select
+       *  @return a `Select` tree selecting `symbol` on `qualifier`
        */
       def apply(qualifier: Term, symbol: Symbol): Select
 
@@ -1164,6 +1189,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param name the name of the overloaded method
        *  @param targs the type arguments for overload resolution
        *  @param args the term arguments for overload resolution
+       *  @return a term representing the call to the resolved overload
        */
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Term
 
@@ -1174,6 +1200,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param targs the type arguments for overload resolution
        *  @param args the term arguments for overload resolution
        *  @param returnType the expected return type for overload resolution
+       *  @return a term representing the call to the resolved overload
        */
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term
 
@@ -1182,6 +1209,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches `<qualifier: Term>.<name: String>`.
        *
        *  @param x the select tree to match against
+       *  @return a tuple of the qualifier term and the selected name
        */
       def unapply(x: Select): (Term, String)
     }
@@ -1216,6 +1244,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Creates a literal constant.
        *
        *  @param constant the constant value for the literal
+       *  @return a `Literal` tree wrapping `constant`
        */
       def apply(constant: Constant): Literal
 
@@ -1224,6 +1253,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a literal constant.
        *
        *  @param x the `Literal` to match against
+       *  @return `Some` containing the wrapped constant
        */
       def unapply(x: Literal): Some[Constant]
     }
@@ -1254,6 +1284,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Creates a `C.this` for `C` pointing to `cls`.
        *
        *  @param cls the symbol of the enclosing class
+       *  @return a `This` tree referring to `cls`
        */
       def apply(cls: Symbol): This
 
@@ -1262,6 +1293,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches `this` or `qual.this` and returns the name of `qual`.
        *
        *  @param x the `This` to match against
+       *  @return `Some(Some(name))` for a qualified `qual.this`, or `Some(None)` for an unqualified `this`
        */
       def unapply(x: This): Some[Option[String]]
     }
@@ -1297,6 +1329,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Creates a `new <tpt: TypeTree>`.
        *
        *  @param tpt the type tree of the class to instantiate
+       *  @return a `New` tree representing `new tpt`
        */
       def apply(tpt: TypeTree): New
 
@@ -1305,6 +1338,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches `new <tpt: TypeTree>`.
        *
        *  @param x the `New` to match against
+       *  @return `Some` containing the instantiated type tree
        */
       def unapply(x: New): Some[TypeTree]
     }
@@ -1336,6 +1370,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param name the argument name
        *  @param arg the argument value
+       *  @return a `NamedArg` tree representing `name = arg`
        */
       def apply(name: String, arg: Term): NamedArg
 
@@ -1344,6 +1379,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a named argument `<name: String> = <value: Term>`.
        *
        *  @param x the `NamedArg` to match against
+       *  @return a tuple of the argument name and the argument value
        */
       def unapply(x: NamedArg): (String, Term)
     }
@@ -1379,6 +1415,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param fun the function being applied
        *  @param args the term arguments
+       *  @return an `Apply` tree representing `fun(args)`
        */
       def apply(fun: Term, args: List[Term]): Apply
 
@@ -1387,6 +1424,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a function application `<fun: Term>(<args: List[Term]>)`.
        *
        *  @param x the `Apply` to match against
+       *  @return a tuple of the applied function and its term arguments
        */
       def unapply(x: Apply): (Term, List[Term])
     }
@@ -1442,6 +1480,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param fun the function being applied
        *  @param args the type argument trees
+       *  @return a `TypeApply` tree representing `fun[args]`
        */
       def apply(fun: Term, args: List[TypeTree]): TypeApply
 
@@ -1450,6 +1489,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a function type application `<fun: Term>[<args: List[TypeTree]>]`.
        *
        *  @param x the `TypeApply` to match against
+       *  @return a tuple of the applied function and its type argument trees
        */
       def unapply(x: TypeApply): (Term, List[TypeTree])
     }
@@ -1519,6 +1559,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param qual the qualifier term
        *  @param mix the optional mixin class name for `super[mix]`
+       *  @return a `Super` tree representing `qual.super[mix]`
        */
       def apply(qual: Term, mix: Option[String]): Super
 
@@ -1527,6 +1568,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a `<qualifier: Term>.super[<id: Option[Id]>`.
        *
        *  @param x the `Super` to match against
+       *  @return a tuple of the qualifier term and the optional mixin name
        */
       def unapply(x: Super): (Term, Option[String])
     }
@@ -1563,6 +1605,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param expr the expression being ascribed
        *  @param tpt the type tree for the ascription
+       *  @return a `Typed` tree representing `expr: tpt`
        */
       def apply(expr: Term, tpt: TypeTree): Typed
 
@@ -1571,6 +1614,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches `<expr: Term>: <tpt: TypeTree>`.
        *
        *  @param x the `Typed` to match against
+       *  @return a tuple of the ascribed expression and its type tree
        */
       def unapply(x: Typed): (Term, TypeTree)
     }
@@ -1602,6 +1646,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param lhs the left-hand side of the assignment
        *  @param rhs the right-hand side of the assignment
+       *  @return an `Assign` tree representing `lhs = rhs`
        */
       def apply(lhs: Term, rhs: Term): Assign
 
@@ -1610,6 +1655,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches an assignment `<lhs: Term> = <rhs: Term>`.
        *
        *  @param x the `Assign` to match against
+       *  @return a tuple of the left-hand side and the right-hand side terms
        */
       def unapply(x: Assign): (Term, Term)
     }
@@ -1641,6 +1687,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param stats the list of statements
        *  @param expr the result expression of the block
+       *  @return a `Block` tree with statements `stats` and result expression `expr`
        */
       def apply(stats: List[Statement], expr: Term): Block
 
@@ -1649,6 +1696,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a block `{ <statements: List[Statement]>; <expr: Term> }`.
        *
        *  @param x the `Block` to match against
+       *  @return a tuple of the block's statements and its result expression
        */
       def unapply(x: Block): (List[Statement], Term)
     }
@@ -1725,6 +1773,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  Extracts the parameter definitions and body.
        *
        *  @param tree the tree to match against
+       *
+       *  @return `Some` with the lambda parameters and body, or `None` if `tree` is not a lambda
        */
       def unapply(tree: Block): Option[(List[ValDef], Term)]
 
@@ -1757,6 +1807,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param owner owner of the generated `meth` symbol
        *  @param tpe Type of the definition
        *  @param rhsFn Function that receives the `meth` symbol and the a list of references to the `params`
+       *
+       *  @return a `Block` representing the generated lambda
        */
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block
     }
@@ -1778,6 +1830,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param cond the condition expression
        *  @param thenp the then branch expression
        *  @param elsep the else branch expression
+       *  @return an `If` tree representing `if (cond) thenp else elsep`
        */
       def apply(cond: Term, thenp: Term, elsep: Term): If
 
@@ -1786,6 +1839,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches an if/then/else `if (<cond: Term>) <thenp: Term> else <elsep: Term>`.
        *
        *  @param tree the tree to match against
+       *  @return a tuple of the condition, then branch and else branch
        */
       def unapply(tree: If): (Term, Term, Term)
     }
@@ -1819,6 +1873,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param selector the scrutinee expression being matched
        *  @param cases the list of case definitions
+       *  @return a `Match` tree representing `selector match { cases }`
        */
       def apply(selector: Term, cases: List[CaseDef]): Match
 
@@ -1827,6 +1882,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a pattern match `<scrutinee: Term> match { <cases: List[CaseDef]> }`.
        *
        *  @param x the `Match` to match against
+       *  @return a tuple of the scrutinee term and the list of cases
        */
       def unapply(x: Match): (Term, List[CaseDef])
     }
@@ -1858,6 +1914,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Creates a pattern match `given match { <cases: List[CaseDef]> }`.
        *
        *  @param cases the list of match cases for the given match
+       *  @return a `SummonFrom` tree containing the given `cases`
        */
       def apply(cases: List[CaseDef]): SummonFrom
 
@@ -1866,6 +1923,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a pattern match `given match { <cases: List[CaseDef]> }`.
        *
        *  @param x the `SummonFrom` to match against
+       *  @return `Some` containing the list of cases
        */
       def unapply(x: SummonFrom): Some[List[CaseDef]]
     }
@@ -1897,6 +1955,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param expr the body expression of the try block
        *  @param cases the list of catch case definitions
        *  @param finalizer the optional finally block expression
+       *  @return a `Try` tree representing `try expr catch { cases } finally finalizer`
        */
       def apply(expr: Term, cases: List[CaseDef], finalizer: Option[Term]): Try
 
@@ -1905,6 +1964,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a try/catch `try <body: Term> catch { <cases: List[CaseDef]> } finally <finalizer: Option[Term]>`.
        *
        *  @param x the `Try` to match against
+       *  @return a tuple of the body, catch cases, and optional finalizer
        */
       def unapply(x: Try): (Term, List[CaseDef], Option[Term])
     }
@@ -1937,6 +1997,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param expr the expression being returned
        *  @param from the symbol of the enclosing method
+       *  @return a `Return` tree representing `return expr` from method `from`
        */
       def apply(expr: Term, from: Symbol): Return
 
@@ -1945,6 +2006,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches `return <expr: Term>` and extracts the expression and symbol of the method.
        *
        *  @param x the `Return` to match against
+       *  @return a tuple of the returned expression and the enclosing method symbol
        */
       def unapply(x: Return): (Term, Symbol)
     }
@@ -1999,6 +2061,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param elems the list of element terms in the sequence
        *  @param tpt the element type tree
+       *  @return a `Repeated` tree wrapping `elems` of type `tpt`
        */
       def apply(elems: List[Term], tpt: TypeTree): Repeated
       /** Copies a literal sequence of elements.
@@ -2006,11 +2069,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param original the original tree being copied
        *  @param elems the list of element terms in the sequence
        *  @param tpt the element type tree
+       *  @return a copy of `original` with the given elements and element type
        */
       def copy(original: Tree)(elems: List[Term], tpt: TypeTree): Repeated
       /** Matches a literal sequence of elements.
        *
        *  @param x the `Repeated` to match against
+       *  @return a tuple of the element terms and the element type tree
        */
       def unapply(x: Repeated): (List[Term], TypeTree)
     }
@@ -2098,6 +2163,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param cond the condition expression
        *  @param body the loop body expression
+       *  @return a `While` tree representing `while (cond) body`
        */
       def apply(cond: Term, body: Term): While
 
@@ -2106,6 +2172,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Extractor for while loops. Matches `while (<cond>) <body>` and returns (<cond>, <body>).
        *
        *  @param x the `While` to match against
+       *  @return a tuple of the loop condition and the loop body
        */
       def unapply(x: While): (Term, Term)
     }
@@ -2137,6 +2204,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param expr the expression being ascribed
        *  @param tpt the type tree for the ascription
+       *  @return a `TypedOrTest` tree representing `expr: tpt`
        */
       def apply(expr: Tree, tpt: TypeTree): TypedOrTest
 
@@ -2145,6 +2213,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches `<expr: Tree>: <tpt: TypeTree>`.
        *
        *  @param x the `TypedOrTest` to match against
+       *  @return a tuple of the ascribed tree and its type tree
        */
       def unapply(x: TypedOrTest): (Tree, TypeTree)
     }
@@ -2212,6 +2281,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a TypeTree containing an inferred type.
        *
        *  @param x the `Inferred` to match against
+       *  @return `true` (the match always succeeds for an `Inferred`)
        */
       def unapply(x: Inferred): true
     }
@@ -2591,6 +2661,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a TypeBoundsTree containing wildcard type bounds.
        *
        *  @param x the `WildcardTypeTree` to match against
+       *  @return `true` (the match always succeeds for a `WildcardTypeTree`)
        */
       def unapply(x: WildcardTypeTree): true
     }
@@ -2707,6 +2778,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param fun the extractor function
        *  @param implicits the implicit arguments passed to the extractor
        *  @param patterns the list of nested patterns
+       *  @return an `Unapply` tree representing the extractor pattern
        */
       def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
       /** Copies an `Unapply` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)`.
@@ -2715,11 +2787,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param fun the extractor function
        *  @param implicits the implicit arguments passed to the extractor
        *  @param patterns the list of nested patterns
+       *  @return a copy of `original` with the given `fun`, `implicits`, and `patterns`
        */
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply
       /** Matches an `Unapply(fun, implicits, patterns)` tree representing a pattern `<fun>(<patterns*>)(using <implicits*>)`.
        *
        *  @param x the `Unapply` to match against
+       *  @return a tuple of the extractor function, implicit arguments, and nested patterns
        */
       def unapply(x: Unapply): (Term, List[Term], List[Tree])
     }
@@ -3122,12 +3196,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *  ```
          *
          *  @param cls the class symbol to compute the base type for
+         *  @return the least super-type instance of `cls` for this type
          */
         def baseType(cls: Symbol): TypeRepr
 
         /** Is this type an instance of a non-bottom subclass of the given class `cls`?
          *
          *  @param cls the class symbol to check against
+         *  @return `true` if this type derives from `cls`, `false` otherwise
          */
         def derivesFrom(cls: Symbol): Boolean
 
@@ -3169,18 +3245,21 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The type <this . sym>, reduced if possible.
          *
          *  @param sym the member symbol to select
+         *  @return the type of `sym` as a member of this type
          */
         def select(sym: Symbol): TypeRepr
 
         /** The current type applied to given type arguments: `this[targ]`.
          *
          *  @param targ the type argument to apply
+         *  @return this type applied to the given type argument
          */
         def appliedTo(targ: TypeRepr): TypeRepr
 
         /** The current type applied to given type arguments: `this[targ0, ..., targN]`.
          *
          *  @param targs the type arguments
+         *  @return this type applied to the given type arguments
          */
         def appliedTo(targs: List[TypeRepr]): TypeRepr
 
@@ -3189,6 +3268,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  @param from the list of symbols to substitute
          *  @param to the list of replacement types corresponding to `from`
+         *  @return a new type with the substitutions applied
          */
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr
 
@@ -3347,6 +3427,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param tycon the type constructor
        *  @param args the type arguments
+       *  @return the `AppliedType` `tycon[args]`
        */
       def apply(tycon: TypeRepr, args: List[TypeRepr]): AppliedType
       def unapply(x: AppliedType): (TypeRepr, List[TypeRepr])
@@ -3739,6 +3820,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Reference to the i-th parameter.
          *
          *  @param idx the zero-based index of the parameter
+         *  @return a `TypeRepr` referencing the parameter at position `idx`
          */
         def param(idx: Int) : TypeRepr
         /** Type bounds of the i-th parameter. */
@@ -3905,11 +3987,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Creates a constant Boolean value.
        *
        *  @param x the `Boolean` value
+       *  @return a `BooleanConstant` wrapping `x`
        */
       def apply(x: Boolean): BooleanConstant
       /** Match Boolean value constant and extract its value.
        *
        *  @param constant the `BooleanConstant` to match against
+       *  @return `Some` containing the wrapped `Boolean` value
        */
       def unapply(constant: BooleanConstant): Some[Boolean]
     }
@@ -3928,11 +4012,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Creates a constant Byte value.
        *
        *  @param x the `Byte` value
+       *  @return a `ByteConstant` wrapping `x`
        */
       def apply(x: Byte): ByteConstant
       /** Match Byte value constant and extract its value.
        *
        *  @param constant the `ByteConstant` to match against
+       *  @return `Some` containing the wrapped `Byte` value
        */
       def unapply(constant: ByteConstant): Some[Byte]
     }
@@ -3951,11 +4037,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Creates a constant Short value.
        *
        *  @param x the `Short` value
+       *  @return a `ShortConstant` wrapping `x`
        */
       def apply(x: Short): ShortConstant
       /** Match Short value constant and extract its value.
        *
        *  @param constant the `ShortConstant` to match against
+       *  @return `Some` containing the wrapped `Short` value
        */
       def unapply(constant: ShortConstant): Some[Short]
     }
@@ -3974,11 +4062,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Creates a constant Int value.
        *
        *  @param x the `Int` value
+       *  @return an `IntConstant` wrapping `x`
        */
       def apply(x: Int): IntConstant
       /** Match Int value constant and extract its value.
        *
        *  @param constant the `IntConstant` to match against
+       *  @return `Some` containing the wrapped `Int` value
        */
       def unapply(constant: IntConstant): Some[Int]
     }
@@ -3997,11 +4087,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Creates a constant Long value.
        *
        *  @param x the `Long` value
+       *  @return a `LongConstant` wrapping `x`
        */
       def apply(x: Long): LongConstant
       /** Match Long value constant and extract its value.
        *
        *  @param constant the `LongConstant` to match against
+       *  @return `Some` containing the wrapped `Long` value
        */
       def unapply(constant: LongConstant): Some[Long]
     }
@@ -4020,11 +4112,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Creates a constant Float value.
        *
        *  @param x the `Float` value
+       *  @return a `FloatConstant` wrapping `x`
        */
       def apply(x: Float): FloatConstant
       /** Match Float value constant and extract its value.
        *
        *  @param constant the `FloatConstant` to match against
+       *  @return `Some` containing the wrapped `Float` value
        */
       def unapply(constant: FloatConstant): Some[Float]
     }
@@ -4043,11 +4137,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Creates a constant Double value.
        *
        *  @param x the `Double` value
+       *  @return a `DoubleConstant` wrapping `x`
        */
       def apply(x: Double): DoubleConstant
       /** Match Double value constant and extract its value.
        *
        *  @param constant the `DoubleConstant` to match against
+       *  @return `Some` containing the wrapped `Double` value
        */
       def unapply(constant: DoubleConstant): Some[Double]
     }
@@ -4066,11 +4162,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Creates a constant Char value.
        *
        *  @param x the `Char` value
+       *  @return a `CharConstant` wrapping `x`
        */
       def apply(x: Char): CharConstant
       /** Match Char value constant and extract its value.
        *
        *  @param constant the `CharConstant` to match against
+       *  @return `Some` containing the wrapped `Char` value
        */
       def unapply(constant: CharConstant): Some[Char]
     }
@@ -4091,11 +4189,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @throw `IllegalArgumentException` if the argument is `null`
        *
        *  @param x the `String` value
+       *  @return a `StringConstant` wrapping `x`
        */
       def apply(x: String): StringConstant
       /** Match String value constant and extract its value.
        *
        *  @param constant the `StringConstant` to match against
+       *  @return `Some` containing the wrapped `String` value
        */
       def unapply(constant: StringConstant): Some[String]
     }
@@ -4116,6 +4216,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Match Unit value constant.
        *
        *  @param constant the `UnitConstant` to match against
+       *  @return `true` (the match always succeeds for a `UnitConstant`)
        */
       def unapply(constant: UnitConstant): true
     }
@@ -4136,6 +4237,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches null value constant.
        *
        *  @param constant the `NullConstant` to match against
+       *  @return `true` if the constant represents a `null` literal, `false` otherwise
        */
       def unapply(constant: NullConstant): Boolean
     }
@@ -4154,11 +4256,13 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Creates a constant class value representing `classOf[<tpe>]`.
        *
        *  @param tpe the type represented by the `classOf` constant
+       *  @return a `ClassOfConstant` representing `classOf[tpe]`
        */
       def apply(tpe: TypeRepr): ClassOfConstant
       /** Matches a class value constant representing `classOf[<tpe>]` and extracts its type.
        *
        *  @param constant the `ClassOfConstant` to match against
+       *  @return `Some` containing the type represented by the `classOf` constant, or `None` if no type can be extracted
        */
       def unapply(constant: ClassOfConstant): Option[TypeRepr]
     }
@@ -4176,6 +4280,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  Returns an `ImplicitSearchResult`.
        *
        *  @param tpe type of the implicit parameter
+       *  @return the result of the implicit search
        */
       def search(tpe: TypeRepr): ImplicitSearchResult
 
@@ -4272,30 +4377,35 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Gets package symbol if package is either defined in current compilation run or present on classpath.
        *
        *  @param path the fully qualified package name (e.g., `scala.collection.immutable`)
+       *  @return the symbol of the package at `path`
        */
       def requiredPackage(path: String): Symbol
 
       /** Gets class symbol if class is either defined in current compilation run or present on classpath.
        *
        *  @param path the fully qualified name (e.g., `scala.collection.immutable.List`)
+       *  @return the symbol of the class at `path`
        */
       def requiredClass(path: String): Symbol
 
       /** Gets module symbol if module is either defined in current compilation run or present on classpath.
        *
        *  @param path the fully qualified module name (e.g., `scala.Predef`)
+       *  @return the symbol of the module at `path`
        */
       def requiredModule(path: String): Symbol
 
       /** Gets method symbol if method is either defined in current compilation run or present on classpath. Throws if the method has an overload.
        *
        *  @param path the fully qualified method name (e.g., `scala.Predef.println`)
+       *  @return the symbol of the method at `path`
        */
       def requiredMethod(path: String): Symbol
 
       /** The class Symbol of a global class definition.
        *
        *  @param fullName the fully qualified name of the class
+       *  @return the symbol of the class with the given fully qualified name
        */
       def classSymbol(fullName: String): Symbol
 
@@ -4770,12 +4880,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is the annotation defined with `annotSym` attached to this symbol?
          *
          *  @param annotSym the symbol of the annotation to check for
+         *  @return `true` if this symbol has an annotation with `annotSym`, `false` otherwise
          */
         def hasAnnotation(annotSym: Symbol): Boolean
 
         /** Gets the annotation defined with `annotSym` attached to this symbol.
          *
          *  @param annotSym the symbol of the annotation to retrieve
+         *  @return `Some` containing the annotation term, or `None` if the annotation is not present
          */
         def getAnnotation(annotSym: Symbol): Option[Term]
 
@@ -4844,6 +4956,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Field with the given name directly declared in the class.
          *
          *  @param name the name of the field
+         *  @return the symbol of the declared field, or `noSymbol` if no such field exists
          */
         def declaredField(name: String): Symbol
 
@@ -4857,6 +4970,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Gets named non-private fields declared or inherited.
          *
          *  @param name the name of the field
+         *  @return the symbol of the field, or `noSymbol` if no such field exists
          */
         def fieldMember(name: String): Symbol
 
@@ -4870,6 +4984,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Gets non-private named methods defined directly inside the class.
          *
          *  @param name the name of the method
+         *  @return the list of symbols of declared methods with the given name (multiple if overloaded)
          */
         def declaredMethod(name: String): List[Symbol]
 
@@ -4883,6 +4998,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Gets named non-private methods declared or inherited.
          *
          *  @param name the name of the method
+         *  @return the list of symbols of methods with the given name (multiple if overloaded)
          */
         def methodMember(name: String): List[Symbol]
 
@@ -4896,6 +5012,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Gets non-private named type defined directly inside the class.
          *
          *  @param name the name of the type
+         *  @return the list of symbols of declared types with the given name
          */
         def declaredType(name: String): List[Symbol]
 
@@ -4909,6 +5026,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Type member with the given name declared or inherited in the class.
          *
          *  @param name the name of the type member
+         *  @return the symbol of the type member, or `noSymbol` if no such member exists
          */
         def typeMember(name: String): Symbol
 
@@ -4933,6 +5051,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** The symbol overriding this symbol in given subclass `ofclazz`.
          *
          *  @param ofclazz is a subclass of this symbol's owner
+         *  @return the overriding symbol in `ofclazz`, or `noSymbol` if it is not overridden
          */
         def overridingSymbol(ofclazz: Symbol): Symbol
 
@@ -5041,6 +5160,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches the method signature and returns its parameters and result type.
        *
        *  @param sig the signature to match against
+       *  @return a tuple of the parameter signatures and the result signature
        */
       def unapply(sig: Signature): (List[String | Int], String)
     }
@@ -5234,12 +5354,14 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *   - ...
        *
        *  @param arity the arity of the tuple
+       *  @return the class symbol of `scala.TupleN` where `N == arity`, or `NoSymbol` if no such tuple class exists
        */
       def TupleClass(arity: Int): Symbol
 
       /** Returns `true` if `sym` is a `Tuple1`, `Tuple2`, ... `Tuple22`.
        *
        *  @param sym the symbol to check
+       *  @return `true` if `sym` is a `TupleN` class, `false` otherwise
        */
       def isTupleClass(sym: Symbol): Boolean
 
@@ -5442,6 +5564,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is the given flag set a subset of this flag sets.
          *
          *  @param that the flag set to check for
+         *  @return `true` if every flag in `that` is also set in this flag set, `false` otherwise
          */
         def is(that: Flags): Boolean
 
@@ -5485,6 +5608,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param sourceFile the source file for the position
        *  @param start the start offset in the source file
        *  @param end the end offset in the source file
+       *  @return a `Position` covering the range `[start, end)` in `sourceFile`
        */
       def apply(sourceFile: SourceFile, start: Int, end: Int): Position
     }
@@ -6021,6 +6145,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Shows the arguments as a `String`.
        *
        *  @param x the value to render as a `String`
+       *  @return a `String` representation of `x`
        */
       def show(x: T): String
     end Printer

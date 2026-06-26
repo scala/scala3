@@ -16,9 +16,10 @@ end Type
 /** Methods to interact with the current `Type[T]` in scope. */
 object Type:
 
-  /** Shows a source code like representation of this type without syntax highlight.
+  /** Shows a source code like representation of this type without syntax highlighting.
    *
    *  @tparam T the type or type constructor to show
+   *  @return a source-code-like `String` representation of the type `T`, without syntax highlighting
    */
   def show[T <: AnyKind](using Type[T])(using Quotes): String =
     import quotes.reflect.*

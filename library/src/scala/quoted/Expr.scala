@@ -71,6 +71,7 @@ object Expr {
    *  @tparam T the type of the final expression, which determines the block's result type
    *  @param statements the statements to execute before the final expression in the block
    *  @param expr the final expression whose value becomes the result of the block
+   *  @return an expression of type `T` representing a block of the given `statements` followed by `expr`, equivalent to `'{ $s1; $s2; ...; $expr }`
    */
   def block[T](statements: List[Expr[Any]], expr: Expr[T])(using Quotes): Expr[T] = {
     import quotes.reflect.*
@@ -81,6 +82,7 @@ object Expr {
    *
    *  @tparam T the type of the value to be lifted into an expression
    *  @param x the value to lift into a quoted expression
+   *  @return an expression that, when spliced, will construct the value `x`
    */
   def apply[T](x: T)(using ToExpr[T])(using Quotes): Expr[T] =
     scala.Predef.summon[ToExpr[T]].apply(x)
@@ -294,6 +296,8 @@ object Expr {
   /** Given a tuple of the form `(Expr[A1], ..., Expr[An])`, outputs a tuple `Expr[(A1, ..., An)]`.
    *
    *  @tparam T the tuple type where each element is wrapped in `Expr`, e.g., `(Expr[A1], ..., Expr[An])`
+   *  @param tup the tuple of expressions to combine into a single tuple expression
+   *  @return an expression representing the tuple `(A1, ..., An)` constructed from the given element expressions
    */
   def ofTuple[T <: Tuple: Tuple.IsMappedBy[Expr]: Type](tup: T)(using Quotes): Expr[Tuple.InverseMap[T, Expr]] = {
     val elems: Seq[Expr[Any]] = tup.asInstanceOf[Product].productIterator.toSeq.asInstanceOf[Seq[Expr[Any]]]
@@ -305,6 +309,7 @@ object Expr {
    *  `None` if implicit resolution failed.
    *
    *  @tparam T type of the implicit parameter
+   *  @return `Some` containing the found implicit expression, or `None` if implicit resolution failed
    */
   def summon[T](using Type[T])(using Quotes): Option[Expr[T]] = {
     import quotes.reflect.*
@@ -321,6 +326,7 @@ object Expr {
    *
    *  @tparam T type of the implicit parameter
    *  @param ignored Symbols ignored during the initial implicit search
+   *  @param quotes the `Quotes` context used for the implicit search, named so that `ignored` can refer to its path-dependent `reflect.Symbol` type
    *  @return `Some` containing the found implicit expression, or `None` if implicit resolution failed
    *
    *  @note if the found given requires additional search for other given instances,
