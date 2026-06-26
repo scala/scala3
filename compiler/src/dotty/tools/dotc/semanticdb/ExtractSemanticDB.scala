@@ -679,7 +679,11 @@ private[semanticdb] object ExtractSemanticDB:
           val symkinds =
             getters.get(vparam.name).fold(SymbolKind.emptySet)(getter =>
               if getter.mods.is(Mutable) then SymbolKind.VarSet else SymbolKind.ValSet)
-          registerSymbol(vparam.symbol, symkinds)
+          // Emit a definition occurrence for the constructor parameter at its name span (and
+          // record the symbol; registerDefinition calls registerSymbol internally). The param
+          // symbol `C#<init>().(x)` then shares the name range with the param-accessor
+          // occurrence emitted from the template body.
+          registerDefinition(vparam.symbol, vparam.nameSpan, symkinds, vparam.source)
         traverse(vparam.tpt)
       tparams.foreach(tp => traverse(tp.rhs))
   end Extractor
