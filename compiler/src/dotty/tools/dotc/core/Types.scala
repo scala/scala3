@@ -6359,8 +6359,8 @@ object Types extends TypeUtils {
         null
 
     /** Map capability `c` with this type map.
-     *  @return  Either a the mapped capability, or a captureset containing mapped capabilities,
-     *           together with a boolen indicating whether the map is exact, rather than approximated.
+     *  @return  Either the mapped capability, or a captureset containing mapped capabilities,
+     *           together with a boolean indicating whether the map is exact, rather than approximated.
      */
     def mapCapability(c: Capability): Capability | (CaptureSet, Boolean) = c match
       case c @ LocalCap(prefix) =>
@@ -6381,10 +6381,12 @@ object Types extends TypeUtils {
                 skolem
         c.derivedLocalCap(ensurePath(apply(prefix)))
       case c: RootCapability => c
-      case Restricted(c1, cls) =>
+      case Classified(c1, only, except) =>
         mapCapability(c1) match
-          case c2: Capability => c2.restrict(cls)
-          case (cs: CaptureSet, exact) => (cs.restrict(cls), exact)
+          case c2: Capability =>
+            except.foldLeft(if only == defn.AnyClass then c2 else c2.restrict(only))((c, e) => c.exclude(e))
+          case (cs: CaptureSet, exact) =>
+            (except.foldLeft(if only == defn.AnyClass then cs else cs.restrict(only))((s, e) => s.exclude(e)), exact)
       case ReadOnly(c1) =>
         mapCapability(c1) match
           case c2: Capability => c2.readOnly

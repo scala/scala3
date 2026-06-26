@@ -1789,8 +1789,9 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [CapFilter] [`.` `rd`] -- under captureChecking
-     *  CapFilter   ::=  `.` `only` `[` QualId `]`
+    /** CaptureRef    ::=  { SimpleRef `.` } SimpleRef [`*`] [OnlyFilter] [ExceptFilter] [`.` `rd`] -- under captureChecking
+     *  OnlyFilter    ::=  `.` `only` `[` QualId `]`
+     *  ExceptFilter  ::=  `.` `except` `[` QualId `]`
      */
     def captureRef(): Tree =
 
@@ -1808,6 +1809,18 @@ object Parsers {
             Annotated(ref, makeOnlyAnnot(inBrackets(convertToTypeId(qualId()))))
         else ref
 
+      def exceptOpt(ref: Tree): Tree =
+        def excepts(acc: List[Tree]): List[Tree] =
+          if in.token == DOT && in.lookahead.isIdent(nme.except) then
+            in.nextToken()
+            in.nextToken()
+            excepts(acc :+ inBrackets(convertToTypeId(qualId())))
+          else acc
+        excepts(Nil) match
+          case Nil => ref
+          case clss => atSpan(startOffset(ref)):
+            Annotated(ref, makeExceptAnnot(clss.reduce((l, r) => makeOrType(l, r))))
+
       def readOnlyOpt(ref: Tree): Tree =
         if in.token == DOT && in.lookahead.isIdent(nme.rd) then
           atSpan(startOffset(ref)):
@@ -1817,7 +1830,7 @@ object Parsers {
         else ref
 
       def recur(ref: Tree): Tree =
-        val ref1 = readOnlyOpt(restrictedOpt(reachOpt(ref)))
+        val ref1 = readOnlyOpt(exceptOpt(restrictedOpt(reachOpt(ref))))
         if (ref1 eq ref) && in.token == DOT then
           in.nextToken()
           recur(selector(ref))

@@ -29,7 +29,7 @@ import annotation.meta.*
 sealed trait Capability extends Any
 
 /** A marker trait for classifier capabilities that can appear in `.only`
- *  qualifiers. Capability classes directly extending `Classifier` are treated
+ *  and `.except` qualifiers. Capability classes directly extending `Classifier` are treated
  *  as classifier capbilities.
  *
  *  [[Classifier]] has a formal meaning when
