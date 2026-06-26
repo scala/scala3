@@ -205,15 +205,16 @@ trait Dynamic {
           cpy.Apply(tree)(addClassOfs(fn), args)
         case Apply(fn @ Select(_, nme.applyDynamic), nameArg :: _ :: Nil) =>
           fn.tpe.widen match
-            case mt: MethodType => mt.paramInfos match
-              case _ :: classOfsParam :: Nil
+            case mt: MethodType if mt.paramInfos.length == 2 =>
+              val classOfsParam = mt.paramInfos(1)
               if classOfsParam.isRepeatedParam
-                 && classOfsParam.argInfos.head.isRef(defn.ClassClass) =>
-                  val jlClassType = defn.ClassClass.typeRef.appliedTo(TypeBounds.empty)
-                  cpy.Apply(tree)(fn,
-                    nameArg :: seqToRepeated(SeqLiteral(classOfs, TypeTree(jlClassType))) :: Nil)
-              case _ => tree
-            case other => tree
+                 && classOfsParam.argInfos.head.isRef(defn.ClassClass)
+              then
+                val jlClassType = defn.ClassClass.typeRef.appliedTo(TypeBounds.empty)
+                cpy.Apply(tree)(fn,
+                  nameArg :: seqToRepeated(SeqLiteral(classOfs, TypeTree(jlClassType))) :: Nil)
+              else tree
+            case _ => tree
         case _ => tree
 
       // We type the application of `applyDynamic` without inlining (arguments are already typed and inlined),
@@ -272,11 +273,11 @@ trait Dynamic {
           // class-literal constant. Rewrite it back to the Scala `Array[T]` form, which
           // re-erases to the same JVM class at code generation time.
           def classOfs =
-            if tpe.paramInfoss.nestedExists(!TypeErasure.hasStableErasure(_)) then
+            if tpe.paramInfoss.nestedExistsLst(!TypeErasure.hasStableErasure(_)) then
               fail(i"has a parameter type with an unstable erasure") :: Nil
             else
               TypeErasure.erasure(tpe).asInstanceOf[MethodType].paramInfos
-                .map(p => clsOf(TypeErasure.escapeJavaArray(p)))
+                .map(p => clsOf(TypeErasure.escapeJavaArray(p))).toList
           structuralCall(nme.applyDynamic, classOfs).maybeBoxingCast(tpe.finalResultType)
         }
 

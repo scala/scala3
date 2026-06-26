@@ -188,14 +188,14 @@ private[semanticdb] class TypeOps:
                 paramRefSymtab.lookup(mt, name).getOrElse {
                   TermParamRefSymbol(sym, name, info).tap(registerFakeSymbol)
                 }
-              }
+              }.toList
               flatten(mt.resType, paramss :+ syms, tparams)
             case pt: PolyType =>
               val syms: List[SemanticSymbol] = pt.paramNames.zip(pt.paramInfos).map { (name, info) =>
                 paramRefSymtab.lookup(pt, name).getOrElse {
                   TypeParamRefSymbol(sym, name, info).tap(registerFakeSymbol)
                 }
-              }
+              }.toList
               flatten(pt.resType, paramss, tparams ++ syms)
             case other =>
               (other, paramss, tparams)
@@ -211,7 +211,7 @@ private[semanticdb] class TypeOps:
           )
 
         case cls: ClassInfo =>
-          val stparams = cls.cls.typeParams.sscopeOpt
+          val stparams = cls.cls.typeParamsList.sscopeOpt
           val sparents = cls.parents.map(_.toSemanticType(sym))
           val sself = cls.selfType.toSemanticType(sym)
           val decls = cls.decls.toList.sscopeOpt
@@ -229,7 +229,7 @@ private[semanticdb] class TypeOps:
                   paramRefSymtab.lookup(lambda, paramName).getOrElse {
                     TypeParamRefSymbol(sym, paramName, bounds).tap(registerFakeSymbol)
                   }
-              }
+              }.toList
               (lambda.resType, paramSyms)
             case _ => (tpe, Nil)
           }
@@ -338,7 +338,7 @@ private[semanticdb] class TypeOps:
         case matchType: MatchType =>
           val scases = matchType.cases.map { caseType => caseType match {
             case lam: HKTypeLambda => // case Array[t] => t
-              val paramSyms = lam.paramNames.flatMap { paramName =>
+              val paramSyms = lam.paramNamesList.flatMap { paramName =>
                 val key = (lam, paramName)
                 paramRefSymtab.get(key)
               }.sscope
@@ -428,7 +428,7 @@ private[semanticdb] class TypeOps:
           s.RepeatedType(stpe)
 
         case app @ AppliedType(tycon, args) =>
-          val targs = args.map { arg =>
+          val targs = args.toList.map { arg =>
             arg match
               // For wildcard type C[_ <: T], it's internal type representation will be
               // `AppliedType(TypeBounds(lo = <Nothing>, hi = <T>))`.
@@ -495,7 +495,7 @@ private[semanticdb] class TypeOps:
               paramRefSymtab.lookup(lambda, paramName).getOrElse {
                 TypeParamRefSymbol(sym, paramName, bounds).tap(registerFakeSymbol)
               }
-          }
+          }.toList
           val parameters =
             paramSyms.sscopeOpt(using LinkMode.HardlinkChildren)
           val resType = loop(lambda.resType)

@@ -165,7 +165,7 @@ class CheckRealizable(using Context) {
         base.argInfos.collect {
           case bounds @ TypeBounds(lo, hi) if !(lo <:< hi) =>
             new HasProblemBaseArg(base, bounds)
-        }
+        }.toList
     }
     val baseProblems =
       tp.baseClasses.map(_.baseTypeOf(tp)).flatMap(baseTypeProblems)

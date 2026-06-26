@@ -4,6 +4,7 @@ package core
 package unpickleScala2
 
 import Flags.*
+import util.Lst
 
 /** Variable length byte arrays, with methods for basic pickling and unpickling.
  *
@@ -161,6 +162,13 @@ class PickleBuffer(data: Array[Byte], from: Int, to: Int) {
    */
   def until[T](end: Int, op: () => T): List[T] =
     if (readIndex == end) List() else op() :: until(end, op)
+
+  def untilLst[T](end: Int, op: () => T): Lst[T] =
+    if (readIndex == end) Lst()
+    else
+      val buf = Lst.Buffer[T]()
+      while readIndex != end do buf += op()
+      buf.toLst
 
   /** Perform operation <code>op</code> the number of
    *  times specified.  Concatenate the results into a list.

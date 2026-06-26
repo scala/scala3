@@ -48,7 +48,7 @@ object Util:
           case mt: MethodType => mt.paramInfos
         if (args.size != argTps.size)
           report.warning("[Internal error] Number of arguments do not match number of argument types in " + tree.symbol.name)
-        val normArgs: List[Arg] = args.zip(argTps).map {
+        val normArgs: List[Arg] = args.zip(argTps.toIterable).map {
           case (arg, _: ExprType) => ByNameArg(arg)
           case (arg, _)           => arg
         }

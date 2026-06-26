@@ -7,6 +7,8 @@ import Types.*, Symbols.*, Contexts.*
 import Annotations.{Annotation, CompactAnnotation, EmptyAnnotation}
 import ast.tpd.TypeTree
 import config.Feature
+import util.Lst
+import Decorators.toLst
 
 /** A class for annotations @retains, @retainsByName and @retainsCap
  *  We make sure that all annotations with these classes are represented
@@ -14,7 +16,8 @@ import config.Feature
  */
 class RetainingAnnotation(tpe: Type) extends CompactAnnotation(tpe) {
 
-  def this(cls: ClassSymbol, args: Type*)(using Context) = this(cls.typeRef.appliedTo(args.toList))
+  def this(cls: ClassSymbol, args: Lst[Type])(using Context) = this(cls.typeRef.appliedTo(args))
+  def this(cls: ClassSymbol, args: Type*)(using Context) = this(cls, args.toLst)
 
   /** Sanitize @retains arguments to approximate illegal types that could cause a compilation
    *  time blowup before they are dropped ot detected. This means mapping all all skolems

@@ -9,7 +9,7 @@ import SymDenotations.*, Symbols.*, Denotations.*, StdNames.*, Comments.*
 import collection.mutable.ListBuffer
 import printing.Printer
 import printing.Texts.Text
-import util.{Stats, Attachment, Property, SourceFile, NoSource, SrcPos, SourcePosition}
+import util.{Stats, Attachment, Property, SourceFile, NoSource, SrcPos, SourcePosition, Lst}
 import config.Config
 import config.Printers.overload
 import annotation.internal.sharable
@@ -1898,7 +1898,7 @@ object Trees {
      *  @param expectedType  An expected type of the application used to guide overloading resolution
      */
     def applyOverloaded(
-        receiver: tpd.Tree, method: TermName, args: List[Tree], targs: List[Type],
+        receiver: tpd.Tree, method: TermName, args: List[Tree], targs: Lst[Type],
         expectedType: Type)(using parentCtx: Context): tpd.Tree = {
       given ctx: Context = parentCtx.retractMode(Mode.ImplicitsEnabled)
       import dotty.tools.dotc.ast.tpd.TreeOps

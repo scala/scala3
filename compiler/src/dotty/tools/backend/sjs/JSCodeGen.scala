@@ -911,7 +911,7 @@ class JSCodeGen()(using genCtx: Context) {
         val methodIdent = encodeMethodSym(m)
         val originalName = originalNameOfMethod(m)
         val jsParams = for {
-          (paramName, paramInfo) <- m.info.paramNamess.flatten.zip(m.info.paramInfoss.flatten)
+          (paramName, paramInfo) <- m.info.paramNamess.flattenLst.zip(m.info.paramInfoss.flattenLst).toList
         } yield {
           js.ParamDef(freshLocalIdent(paramName), NoOriginalName,
               toIRType(paramInfo), mutable = false)
@@ -1083,7 +1083,7 @@ class JSCodeGen()(using genCtx: Context) {
       } yield {
         withNewLocalNameScope {
           val (parameterTypes, formalParams, actualParams) = (for {
-            (paramName, paramInfo) <- ctor.info.paramNamess.flatten.zip(ctor.info.paramInfoss.flatten)
+            (paramName, paramInfo) <- ctor.info.paramNamess.flattenLst.zip(ctor.info.paramInfoss.flattenLst).toList
           } yield {
             val paramType = js.ClassOf(toTypeRef(paramInfo))
             val paramDef = js.ParamDef(freshLocalIdent(paramName),
@@ -3620,7 +3620,7 @@ class JSCodeGen()(using genCtx: Context) {
       funInterfaceSym.exists && {
         val Seq(samMethodDenot) = funInterfaceSym.info.possibleSamMethods
         val samMethod = samMethodDenot.symbol
-        atPhase(elimRepeatedPhase)(samMethod.info.paramInfoss.flatten.exists(_.isRepeatedParam))
+        atPhase(elimRepeatedPhase)(samMethod.info.paramInfoss.flattenLst.exists(_.isRepeatedParam))
       }
     }
     val isFunctionXXL =
@@ -3660,8 +3660,8 @@ class JSCodeGen()(using genCtx: Context) {
 
       // Construct the ParamDefs of the js.Closure, and adapt their references to the target's param types
 
-      val formalParamNames = target.info.paramNamess.flatten.drop(envSize)
-      val formalParamTypes = target.info.paramInfoss.flatten.drop(envSize)
+      val formalParamNames = target.info.paramNamess.flattenLst.drop(envSize).toList
+      val formalParamTypes = target.info.paramInfoss.flattenLst.drop(envSize).toList
       val formalParamRepeateds =
         if (hasRepeatedParam) (0 until (formalParamTypes.size - 1)).map(_ => false) :+ true
         else (0 until formalParamTypes.size).map(_ => false)
@@ -3771,7 +3771,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genDynamicImportForwarder(clsSym: Symbol)(using Position): js.MethodDef = {
     withNewLocalNameScope {
       val ctor = clsSym.primaryConstructor
-      val paramSyms = ctor.paramSymss.flatten
+      val paramSyms = ctor.paramSymss.flattenLst.toList
       val paramDefs = paramSyms.map(genParamDef(_))
 
       val body = {
@@ -4180,7 +4180,7 @@ class JSCodeGen()(using genCtx: Context) {
                 js.ApplyDynamicImport(
                     js.ApplyFlags.empty,
                     encodeClassName(clsSym),
-                    encodeDynamicImportForwarderIdent(ctor.paramSymss.flatten),
+                    encodeDynamicImportForwarderIdent(ctor.paramSymss.flattenLst.toList),
                     genActualArgs(ctor, args))
             )
 
@@ -4581,7 +4581,7 @@ class JSCodeGen()(using genCtx: Context) {
   private def genActualArgs(sym: Symbol, args: List[Tree]): List[js.Tree] = {
     // Fast path for methods that do not have any repeated parameter
     val isAnyParamRepeated: Boolean = atPhase(elimRepeatedPhase) {
-      sym.info.paramInfoss.flatten.exists(_.isRepeatedParam)
+      sym.info.paramInfoss.flattenLst.exists(_.isRepeatedParam)
     }
 
     if (!isAnyParamRepeated) {
@@ -4593,12 +4593,12 @@ class JSCodeGen()(using genCtx: Context) {
        * We also do this in JSSymUtils.jsParamInfos for JS methods.
        */
       val namesOfRepeatedParams: Set[TermName] = atPhase(elimRepeatedPhase) {
-        sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten).collect {
+        sym.info.paramNamess.flattenLst.zip(sym.info.paramInfoss.flattenLst).toList.collect {
           case (paramName, paramInfo) if paramInfo.isRepeatedParam => paramName
         }.toSet
       }
 
-      for ((arg, paramName) <- args.zip(sym.info.paramNamess.flatten)) yield {
+      for ((arg, paramName) <- args.zip(sym.info.paramNamess.flattenLst.toList)) yield {
         if (namesOfRepeatedParams.contains(paramName)) {
           /* If the argument is a call to the compiler's chosen `wrapArray`
            * method with an array literal as argument, we know it actually
@@ -4777,11 +4777,11 @@ class JSCodeGen()(using genCtx: Context) {
      */
 
     val existedBeforeUncurry = atPhase(elimRepeatedPhase) {
-      sym.info.paramNamess.flatten.toSet
+      sym.info.paramNamess.flattenLst.toSet
     }
 
     for {
-      (arg, paramName) <- args.zip(sym.info.paramNamess.flatten)
+      (arg, paramName) <- args.zip(sym.info.paramNamess.flattenLst.toList)
       if !existedBeforeUncurry(paramName)
     } yield {
       genExpr(arg)

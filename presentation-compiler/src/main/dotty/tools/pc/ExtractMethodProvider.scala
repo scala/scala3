@@ -17,6 +17,7 @@ import dotty.tools.dotc.core.Types.PolyType
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.printer.ShortenedTypePrinter
@@ -55,10 +56,12 @@ final class ExtractMethodProvider(
           case _: (MethodType | PolyType) =>
             prettyPrintReturnType(tpe.resultType)
           case tpe => printer.tpe(tpe)
-      def printParams(params: List[Type]) =
-        params match
-          case p :: Nil => prettyPrintReturnType(p)
-          case _ => s"(${params.map(prettyPrintReturnType).mkString(", ")})"
+      def printParams(params: Lst[Type]) =
+        if params.length == 1 then
+          prettyPrintReturnType(params(0))
+        else
+          s"(${params.map(prettyPrintReturnType).mkString(", ")})"
+
       if tpe.paramInfoss.isEmpty
       then prettyPrintReturnType(tpe)
       else
@@ -97,7 +100,7 @@ final class ExtractMethodProvider(
 
       val methodParams = allSymbols.toList.filter(_.isTerm)
       val methodParamTypes = methodParams
-        .flatMap(p => p :: p.paramSymss.flatten)
+        .flatMap(p => p :: p.paramSymsLists.flatten)
         .map(_.info.typeSymbol)
         .filter(tp => nonAvailable(tp) && tp.isTypeParam)
         .distinct

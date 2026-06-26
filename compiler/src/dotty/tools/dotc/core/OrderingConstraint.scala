@@ -13,6 +13,7 @@ import reflect.ClassTag
 import annotation.tailrec
 import annotation.internal.sharable
 import cc.{CapturingType, derivedCapturingType}
+import util.Lst
 
 import scala.compiletime.uninitialized
 
@@ -308,8 +309,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     /** Does `param` have bounds in the current constraint? */
     protected def hasBounds(param: TypeParamRef): Boolean = entry(param).isInstanceOf[TypeBounds]
 
-    override def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
-      def tparams(tycon: Type): List[ParamInfo] = tycon match
+    override def tyconTypeParams(tp: AppliedType)(using Context): Lst[ParamInfo] =
+      def tparams(tycon: Type): Lst[ParamInfo] = tycon match
         case tycon: TypeVar if !tycon.isPermanentlyInstantiated => tparams(tycon.origin)
         case tycon: TypeParamRef if !hasBounds(tycon) =>
           val entryParams = entry(tycon).typeParams
@@ -500,7 +501,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       tp
   }
 
-  def add(poly: TypeLambda, tvars: List[TypeVar])(using Context): This = {
+  def add(poly: TypeLambda, tvars: Lst[TypeVar])(using Context): This = {
     assert(!contains(poly))
     val nparams = poly.paramNames.length
     val entries1 = new Array[Type](nparams * 2)
@@ -821,8 +822,8 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       if (tl.isInstanceOf[HKLambda]) {
         // HKLambdas are hash-consed, need to create an artificial difference by adding
         // a LazyRef to a bound.
-        val TypeBounds(lo, hi) :: pinfos1 = tl.paramInfos: @unchecked
-        paramInfos = TypeBounds(lo, LazyRef.of(hi)) :: pinfos1
+        val TypeBounds(lo, hi) = paramInfos(0)
+        paramInfos = paramInfos.updated(0, TypeBounds(lo, LazyRef.of(hi)))
       }
       ensureFresh(tl.newLikeThis(tl.paramNames, paramInfos, tl.resultType))
     }

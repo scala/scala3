@@ -9,6 +9,7 @@ import Decorators.*
 import util.{Property, SourceFile}
 import typer.ErrorReporting.*
 import transform.SyntheticMembers.ExtendsSingletonMirror
+import util.Lst
 
 import scala.annotation.internal.sharable
 
@@ -199,7 +200,7 @@ object DesugarEnums {
    *   - it's a value case, i.e. no value parameters are given
    */
   def typeParamIsReferenced(
-    enumTypeParams: List[TypeSymbol],
+    enumTypeParams: Lst[TypeSymbol],
     caseTypeParams: List[TypeDef],
     vparamss: List[List[ValDef]],
     parents: List[Tree])(using Context): Boolean = {

@@ -33,7 +33,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       val paramSymss = forwarder.paramSymss // compute once; different from rawParamss
       forwarder.setParamss(paramSymss)
       atPhaseBeforeTransforms:
-        for (src, dst) <- member.paramSymss.flatten.filter(!_.isType).zip(paramSymss.flatten) do
+        for (src, dst) <- member.paramSymss.flattenLst.filter(!_.isType).zip(paramSymss.flattenLst) do
           dst.addAnnotations(src.annotations)
 
   def superRef(target: Symbol, span: Span = cls.span): Tree = {
@@ -90,7 +90,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
 
     // Similarly, Java serialization won't take into account a readResolve/writeReplace default method.
     def generateSerializationForwarder: Boolean =
-       (meth.name == nme.readResolve || meth.name == nme.writeReplace) && meth.info.paramNamess.flatten.isEmpty
+       (meth.name == nme.readResolve || meth.name == nme.writeReplace) && meth.info.paramNamess.flattenLst.isEmpty
 
     !meth.isConstructor
     && meth.is(Method, butNot = PrivateOrAccessorOrDeferred)

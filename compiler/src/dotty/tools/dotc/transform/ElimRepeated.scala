@@ -200,7 +200,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
   /** Is there a repeated parameter in some parameter list? */
   private def hasRepeatedParams(sym: Symbol)(using Context): Boolean =
-    sym.info.paramInfoss.nestedExists(_.isRepeatedParam)
+    sym.info.paramInfoss.nestedExistsLst(_.isRepeatedParam)
 
   /** Is this the type of a method that has a repeated parameter type as
    *  its last parameter in the last parameter list?
@@ -280,9 +280,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         case m: MethodType => // multiple param lists
           tp.derivedLambdaType(tp.paramNames, tp.paramInfos, toJavaVarArgs(m))
         case _ =>
-          val init :+ last = tp.paramInfos: @unchecked
-          val vararg = varargArrayType(last)
-          tp.derivedLambdaType(tp.paramNames, init :+ vararg, tp.resultType)
+          val vararg = varargArrayType(tp.paramInfos.last)
+          tp.derivedLambdaType(tp.paramNames, tp.paramInfos.init :+ vararg, tp.resultType)
 
   /** Translate a repeated type T* to an `Array[? <: Upper]`
    *  such that it is compatible with java varargs.

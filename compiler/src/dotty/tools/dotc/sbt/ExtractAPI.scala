@@ -19,7 +19,7 @@ import inlines.Inlines
 import transform.ValueClasses
 import transform.Pickler
 import dotty.tools.io.{File, FileExtension, JarArchive}
-import util.{Property, SourceFile}
+import util.{Property, SourceFile, Lst}
 import java.io.PrintWriter
 
 import ExtractAPI.NonLocalClassSymbolsInCurrentUnits
@@ -452,20 +452,20 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     def tparamList(pt: TypeLambda): List[api.TypeParameter] =
       pt.paramNames.lazyZip(pt.paramInfos).map((pname, pbounds) =>
         apiTypeParameter(pname.toString, 0, pbounds.lo, pbounds.hi)
-      )
+      ).toList
 
-    def paramList(mt: MethodType, params: List[Symbol]): api.ParameterList =
+    def paramList(mt: MethodType, params: Lst[Symbol]): api.ParameterList =
       val apiParams = params.lazyZip(mt.paramInfos).map((param, ptype) =>
         mixInlineParam(param)
         api.MethodParameter.of(
           param.name.toString, apiType(ptype), param.is(HasDefault), api.ParameterModifier.Plain))
       api.ParameterList.of(apiParams.toArray, mt.isImplicitMethod)
 
-    def paramLists(t: Type, paramss: List[List[Symbol]]): List[api.ParameterList] = t match {
+    def paramLists(t: Type, paramss: List[Lst[Symbol]]): List[api.ParameterList] = t match {
       case pt: TypeLambda =>
         paramLists(pt.resultType, paramss.drop(1))
       case mt @ MethodTpe(pnames, ptypes, restpe) =>
-        assert(paramss.nonEmpty && paramss.head.hasSameLengthAs(pnames),
+        assert(paramss.nonEmpty && paramss.head.length == pnames.length,
           i"mismatch for $sym, ${sym.info}, ${sym.paramSymss}")
         paramList(mt, paramss.head) :: paramLists(restpe, paramss.tail)
       case _ =>

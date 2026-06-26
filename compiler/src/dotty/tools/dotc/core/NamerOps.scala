@@ -12,6 +12,7 @@ import collection.mutable
 import config.Printers.typr
 import rewrites.Rewrites.patch
 import util.Spans.Span
+import util.{Lst}
 
 /** Operations that are shared between Namer and TreeUnpickler */
 object NamerOps:
@@ -39,7 +40,7 @@ object NamerOps:
    *
    *  @param ctor the constructor
    */
-  def effectiveResultType(ctor: Symbol, paramss: List[List[Symbol]])(using Context): Type =
+  def effectiveResultType(ctor: Symbol, paramss: List[Lst[Symbol]])(using Context): Type =
     paramss match
       case TypeSymbols(tparams) :: rest =>
         addParamRefinements(ctor.owner.typeRef.appliedTo(tparams.map(_.typeRef)), rest)
@@ -52,8 +53,8 @@ object NamerOps:
    *  since without it there are no tracked parameters. Parameter refinements are added for
    *  constructors and given companion methods.
    */
-  def addParamRefinements(resType: Type, paramss: List[List[Symbol]])(using Context): Type =
-    paramss.flatten.foldLeft(resType): (rt, param) =>
+  def addParamRefinements(resType: Type, paramss: List[Lst[Symbol]])(using Context): Type =
+    paramss.flattenLst.foldLeft(resType): (rt, param) =>
       if param.is(Tracked) then RefinedType.precise(rt, param.name, param.termRef)
       else rt
 
@@ -86,26 +87,26 @@ object NamerOps:
    * implicitRewritePosition, if included, will point to where `()` should be added if rewriting
    * with -Yimplicit-to-given
    */
-  def normalizeIfConstructor(paramss: List[List[Symbol]], isConstructor: Boolean, implicitRewritePosition: Option[Span] = None)(using Context): List[List[Symbol]] =
+  def normalizeIfConstructor(paramss: List[Lst[Symbol]], isConstructor: Boolean, implicitRewritePosition: Option[Span] = None)(using Context): List[Lst[Symbol]] =
     if !isConstructor then paramss
     else paramss match
       case TypeSymbols(tparams) :: paramss1 => tparams :: normalizeIfConstructor(paramss1, isConstructor, implicitRewritePosition)
-      case TermSymbols(vparam :: _) :: _ if vparam.is(Implicit) =>
+      case TermSymbols(Lst.StartingWith(vparam)) :: _ if vparam.is(Implicit) =>
         implicitRewritePosition match
           case Some(position) if ctx.settings.YimplicitToGiven.value => patch(position, "()")
           case _ => ()
-        Nil :: paramss
+        Lst() :: paramss
       case _ =>
         if paramss.forall {
           case TermSymbols(vparams) => vparams.nonEmpty && vparams.head.is(Given)
           case _ => true
         }
-        then paramss :+ Nil
+        then paramss :+ Lst()
         else paramss
 
   /** The method type corresponding to given parameters and result type */
-  def methodType(paramss: List[List[Symbol]], resultType: Type, isJava: Boolean = false)(using Context): Type =
-    def recur(paramss: List[List[Symbol]]): Type = (paramss: @unchecked) match
+  def methodType(paramss: List[Lst[Symbol]], resultType: Type, isJava: Boolean = false)(using Context): Type =
+    def recur(paramss: List[Lst[Symbol]]): Type = (paramss: @unchecked) match
       case Nil =>
         resultType
       case TermSymbols(params) :: paramss1 =>
@@ -281,7 +282,7 @@ object NamerOps:
   def linkConstructorParams(sym: Symbol)(using Context): Context =
     if sym.isConstructor && !sym.isPrimaryConstructor then
       sym.rawParamss match
-        case (tparams @ (tparam :: _)) :: _ if tparam.isType =>
+        case (tparams @ Lst.StartingWith(tparam)) :: _ if tparam.isType =>
           val rhsCtx = ctx.fresh.setFreshGADTBounds
           linkConstructorParams(sym, tparams, rhsCtx)
           rhsCtx
@@ -293,7 +294,7 @@ object NamerOps:
    *  that their type parameters are aliases of the class type parameters. This is done
    *  by (ab?)-using GADT constraints. See pos/i941.scala.
    */
-  def linkConstructorParams(sym: Symbol, tparams: List[Symbol], rhsCtx: Context)(using Context): Unit =
+  def linkConstructorParams(sym: Symbol, tparams: Lst[Symbol], rhsCtx: Context)(using Context): Unit =
     rhsCtx.gadtState.addToConstraint(tparams)
     tparams.lazyZip(sym.owner.typeParams).foreach { (psym, tparam) =>
       val tr = tparam.typeRef

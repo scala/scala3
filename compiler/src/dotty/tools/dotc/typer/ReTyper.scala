@@ -134,7 +134,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
     val patternTpe =
       if !typeargs1.isEmpty then QuotesAndSplices.PolyFunctionOf(typeargs1.map(_.tpe), args1.map(_.tpe), tree.typeOpt)
       else if args1.isEmpty then tree.typeOpt
-      else defn.FunctionType(args1.size).appliedTo(args1.map(_.tpe) :+ tree.typeOpt)
+      else defn.FunctionType(args1.size).appliedTo(args1.mapToLst(_.tpe) :+ tree.typeOpt)
     val bodyCtx = spliceContext.addMode(Mode.Pattern).retractMode(Mode.QuotedPatternBits)
     val body1 = typed(tree.body, defn.QuotedExprClass.typeRef.appliedTo(patternTpe))(using bodyCtx)
     untpd.cpy.SplicePattern(tree)(body1, typeargs1, args1).withType(tree.typeOpt)
@@ -161,7 +161,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
 
   override def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(using Context): Tree = fun.tpe match {
     case mt: MethodType =>
-      val args: List[Tree] = tree.args.zipWithConserve(mt.paramInfos)(typedExpr)
+      val args: List[Tree] = tree.args.zipWithConserve(mt.paramInfosList)(typedExpr)
       assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
     case _ =>
       super.handleUnexpectedFunType(tree, fun)

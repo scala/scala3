@@ -72,7 +72,7 @@ class NameBuffer extends TastyBuffer(10000) {
       case paramSig: TypeName =>
         nameRefs(paramSig.toTermName).index
       case paramSig: Int =>
-        -paramSig
+        -paramSig.intValue
     }
     writeInt(encodedValue)
   }

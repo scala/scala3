@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.ast.TreeTypeMap
+import dotty.tools.dotc.util.Lst
 
 import scala.util.boundary
 
@@ -175,7 +176,7 @@ class QuoteMatcher(debug: Boolean) {
         val (holeDefs, otherStats) = stats.span(isTypeHoleDef)
         val holeSyms = holeDefs.map(_.symbol)
         val ctx1 = ctx.fresh.setFreshGADTBounds.addMode(GadtConstraintInference)
-        ctx1.gadtState.addToConstraint(holeSyms)
+        ctx1.gadtState.addToConstraint(holeSyms.toLst)
         (tpd.cpy.Block(pat)(otherStats, expr), holeSyms, ctx1)
       case _ =>
         (pat, Nil, ctx)
@@ -452,7 +453,9 @@ class QuoteMatcher(debug: Boolean) {
                   def matchErasedParams(sctype: Type, pttype: Type): optional[MatchingExprs] =
                     (sctype, pttype) match
                       case (sctpe: MethodType, pttpe: MethodType) =>
-                        if sctpe.paramErasureStatuses.sameElements(pttpe.paramErasureStatuses) then
+                        if sctpe.paramInfos.corresponds(pttpe.paramInfos): (scinfo, ptinfo) =>
+                          scinfo.isForErasedParam == ptinfo.isForErasedParam
+                        then
                           matchErasedParams(sctpe.resType, pttpe.resType)
                         else
                           notMatched
@@ -637,16 +640,16 @@ class QuoteMatcher(debug: Boolean) {
       case MatchResult.ClosedTree(tree) =>
         new ExprImpl(tree, spliceScope)
       case MatchResult.OpenTree(tree, patternTpe, argIds, argTypes, typeArgs, Env(termEnv, typeEnv)) =>
-        val names: List[TermName] = argIds.map(_.symbol.name.asTermName)
-        val paramTypes = argTypes.map(tpe => mapTypeHoles(tpe.widenTermRefExpr))
-        val ptTypeVarSymbols = typeArgs.map(_.typeSymbol)
+        val names: Lst[TermName] = argIds.mapToLst(_.symbol.name.asTermName)
+        val paramTypes = argTypes.mapToLst(tpe => mapTypeHoles(tpe.widenTermRefExpr))
+        val ptTypeVarSymbols = typeArgs.mapToLst(_.typeSymbol)
         val isNotPoly = typeArgs.isEmpty
 
         val methTpe = if isNotPoly then
           MethodType(names)(_ => paramTypes, _ => mapTypeHoles(patternTpe))
         else
           val typeArgs1 = PolyType.syntheticParamNames(typeArgs.length)
-          val bounds = typeArgs map (_ => TypeBounds.empty)
+          val bounds = typeArgs.mapToLst(_ => TypeBounds.empty)
           val resultTypeExp = (pt: PolyType) => {
             val argTypes1 = paramTypes.map(_.subst(ptTypeVarSymbols, pt.paramRefs))
             val resultType1 = mapTypeHoles(patternTpe).subst(ptTypeVarSymbols, pt.paramRefs)
@@ -658,9 +661,9 @@ class QuoteMatcher(debug: Boolean) {
 
         def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
           val (typeParams, params) = if isNotPoly then
-              (List.empty, lambdaArgss.head)
+              (Lst(), lambdaArgss.head)
             else
-              (lambdaArgss.head.map(_.tpe), lambdaArgss.tail.head)
+              (lambdaArgss.head.mapToLst(_.tpe), lambdaArgss.tail.head)
 
           val typeArgsMap = ptTypeVarSymbols.zip(typeParams).toMap
           val argsMap = argIds.view.map(_.symbol).zip(params).toMap

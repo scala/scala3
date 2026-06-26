@@ -6,7 +6,7 @@ import core.*
 import Types.*, Contexts.*, Constants.*, Names.*, Flags.*
 import dotty.tools.dotc.typer.ProtoTypes
 import Symbols.*, StdNames.*, Trees.*
-import util.{Property, SourceFile, NoSource}
+import util.{Property, SourceFile, NoSource, Lst}
 import util.Spans.Span
 import annotation.constructorOnly
 import annotation.internal.sharable
@@ -166,7 +166,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *
    *  Note: This is only used briefly in Typer and does not need the copy/transform/fold infrastructure.
    */
-  case class InLambdaTypeTree(isResult: Boolean, tpFun: (List[TypeSymbol], List[TermSymbol]) => Type)(implicit @constructorOnly src: SourceFile) extends Tree
+  case class InLambdaTypeTree(isResult: Boolean, tpFun: (Lst[TypeSymbol], Lst[TermSymbol]) => Type)(implicit @constructorOnly src: SourceFile) extends Tree
 
   @sharable object EmptyTypeIdent extends Ident(tpnme.EMPTY)(using NoSource), WithoutTypeOrPos[Untyped] {
     override def isEmpty: Boolean = true
@@ -478,12 +478,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case TypedSplice(tpt1: tpd.Tree) =>
         val argTypes = tpt1.tpe.dealias.argTypesLo
         def wrap(tpe: Type) = TypeTree(tpe).withSpan(tpt.span)
-        (tpt, argTypes.map(wrap))
+        (tpt, argTypes.mapToList(wrap))
       case _ =>
         (tpt, Nil)
     }
     val nu: Tree = Select(New(tycon), nme.CONSTRUCTOR)
-    if (targs.nonEmpty) TypeApply(nu, targs) else nu
+    if targs.nonEmpty then TypeApply(nu, targs) else nu
   }
 
   def Block(stat: Tree, expr: Tree)(implicit src: SourceFile): Block =
@@ -520,7 +520,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   def rawRef(tp: NamedType)(using Context): Tree =
     if tp.typeParams.isEmpty then ref(tp)
-    else AppliedTypeTree(ref(tp), tp.typeParams.map(_ => WildcardTypeBoundsTree()))
+    else AppliedTypeTree(ref(tp), tp.typeParams.toList.map(_ => WildcardTypeBoundsTree()))
 
   def rootDot(name: Name)(implicit src: SourceFile): Select = Select(Ident(nme.ROOTPKG), name)
   def scalaDot(name: Name)(implicit src: SourceFile): Select = Select(rootDot(nme.scala), name)

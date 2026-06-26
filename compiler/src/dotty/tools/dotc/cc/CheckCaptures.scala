@@ -583,7 +583,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           fn.tpe.widenDealias match
             case tl: TypeLambda => tl.paramNames
             case ref: AppliedType if ref.typeSymbol.isClass => ref.typeSymbol.typeParams.map(_.name)
-            case t => args.map(_ => EmptyTypeName)
+            case t => args.mapToLst(_ => EmptyTypeName)
 
         for case (arg: TypeTree, pname) <- args.lazyZip(paramNames) do
           def where = if sym.exists then i" in an argument of $sym" else ""
@@ -769,7 +769,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val arg :: Nil = tree.args: @unchecked
         withDiscardedUses(recheck(arg, pt))
       else if meth == defn.Caps_freeze then
-        freeze(super.recheckApply(tree, pt), tree.srcPos)
+        Mutability.freeze(super.recheckApply(tree, pt), tree.srcPos)
       else
         val res = super.recheckApply(tree, pt)
         includeCallCaptures(meth, res, tree)
@@ -888,7 +888,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         instCls.primaryConstructor.info.stripPoly match
           case primaryMt: MethodType =>
             var aliasMap = Map.empty[Name, Type]
-            for (param, argType) <- sym.paramSymss.flatten.filter(_.isTerm).lazyZip(argTypes) do
+            for (param, argType) <- sym.paramSymss.flattenLst.filter(_.isTerm).lazyZip(argTypes) do
               for
                 ann <- param.annotations.filter(_.matches(defn.ParamAliasAnnot))
                 name <- ann.argumentConstantString(0)
@@ -924,7 +924,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         var refined: Type = core
         val implied = cls.creationCapset(core)
         var allCaptures: CaptureSet = initCs ++ implied
-        for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
+        for (getterName, argType) <- mt.paramNames.zip(argTypes.toLst) do
           val getter = cls.refiningGetterNamed(getterName)
           if !getter.is(Private) && getter.hasTrackedParts then
             if argType.exists then
@@ -1069,10 +1069,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           case CapturingType(parent, _) =>
             matchParamsAndResult(paramss, parent)
           case defn.PolyFunctionOf(poly: PolyType) =>
-            assert(params.hasSameLengthAs(poly.paramInfos))
-            matchParamsAndResult(paramss1, poly.instantiate(params.map(_.symbol.typeRef)))
+            assert(params.length == poly.paramInfos.length)
+            matchParamsAndResult(paramss1, poly.instantiate(params.mapToLst(_.symbol.typeRef)))
           case FunctionOrMethod(argTypes, resType) =>
-            assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
+            assert(params.length == argTypes.length, i"$mdef vs $pt, ${params}")
             inContext(ctx.withOwner(anonfun)) {
               // Propagate argument types to parameter types with inferred types
               for case (argType, param: ValDef) <- argTypes.lazyZip(params) do
@@ -1252,9 +1252,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         // ctx with AssumedContains entries for each Contains parameter
         val bodyCtx =
           var ac = CaptureSet.assumedContains
-          for paramSyms <- sym.paramSymss do
-            for case ContainsParam(cs, ref) <- paramSyms do
-              ac = ac.updated(cs, ac.getOrElse(cs, SimpleIdentitySet.empty) + ref)
+          for paramSyms <- sym.paramSymss; sym <- paramSyms do
+            sym match
+              case ContainsParam(cs, ref) =>
+                ac = ac.updated(cs, ac.getOrElse(cs, SimpleIdentitySet.empty) + ref)
+              case _ =>
           if ac.isEmpty then ctx
           else ctx.withProperty(CaptureSet.AssumedContains, Some(ac))
 
@@ -1493,7 +1495,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         for case tpt: TypeTree <- impl.parents do
           tpt.tpe match
             case AppliedType(fn, args) =>
-              markFreeTypeArgs(tpt, fn.typeSymbol, args.map(TypeTree(_)))
+              markFreeTypeArgs(tpt, fn.typeSymbol, args.mapToList(TypeTree(_)))
             case _ =>
 
         checkFieldCaptures(cls)
@@ -1771,7 +1773,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         if einfo.allParamNamesSynthetic =>
           actual match
             case defn.RefinedFunctionOf(ainfo: MethodType)
-            if !ainfo.allParamNamesSynthetic && ainfo.paramNames.hasSameLengthAs(einfo.paramNames) =>
+            if !ainfo.allParamNamesSynthetic && ainfo.paramNames.length == einfo.paramNames.length =>
               einfo.derivedLambdaType(paramNames = ainfo.paramNames)
                 .toFunctionType(alwaysDependent = true)
             case _ => expected
@@ -1890,7 +1892,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 recur(_, _, !covariant)
               val ares1 = recur(ares, eres, covariant)
               val resTp =
-                if (aargs1 eq aargs) && (ares1 eq ares) then actualShape // optimize to avoid redundant matches
+                if (aargs1 _eq_ aargs) && (ares1 eq ares) then actualShape // optimize to avoid redundant matches
                 else actualShape.derivedFunctionOrMethod(aargs1, ares1)
               curEnv.captured match
                 case cs: CaptureSet.Var => cs.markSolved(provisional = true)
@@ -2348,14 +2350,14 @@ class CheckCaptures extends Recheck, SymTransformer:
           case TypeApply(fun, args) =>
             fun.nuType.widen match
               case tl: PolyType =>
-                val normArgs = args.lazyZip(tl.paramInfos).map: (arg, bounds) =>
+                val normArgs = args.lazyZip(tl.paramInfosList).map: (arg, bounds) =>
                   arg.withType(arg.nuType.forceBoxStatus(
                     bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
                 withCollapsedLocalCaps: // OK? We need this since bounds use GlobalAny instead of LocalCap
                   // TODO Do bounds still contain GlobalAny?
                   checkBounds(normArgs, tl)
                 if ccConfig.postCheckCapturesets then
-                  args.lazyZip(tl.paramNames).foreach(checkTypeParam(_, _, fun.symbol))
+                  args.toLst.lazyZip(tl.paramNames).foreach(checkTypeParam(_, _, fun.symbol))
               case _ =>
           case TypeDef(_, impl: Template) =>
             val cls = tree.symbol.asClass

@@ -2,6 +2,7 @@ package dotty.tools
 package dotc
 
 import core.*, Decorators.*, Symbols.*
+import util.Lst
 import printing.Texts.*
 
 import java.lang.System.{ lineSeparator => EOL }
@@ -11,17 +12,17 @@ class TupleShowTests extends DottyTest:
   def IntType = defn.IntType
   def LongType = defn.LongType
   def ShortType = defn.ShortType
-  def Types_10 = List.fill(5)(IntType) ::: List.fill(5)(LongType)
-  def Types_20 = Types_10 ::: Types_10
+  def Types_10 = Lst.fill(5)(IntType) ++ Lst.fill(5)(LongType)
+  def Types_20 = Types_10 ++ Types_10
 
-  val tup0  = defn.tupleType(Nil)
-  val tup1  = defn.tupleType(IntType :: Nil)
-  val tup2  = defn.tupleType(IntType :: LongType :: Nil)
-  val tup3  = defn.tupleType(IntType :: LongType :: ShortType :: Nil)
-  val tup21 = defn.tupleType(Types_20 ::: IntType :: Nil)
-  val tup22 = defn.tupleType(Types_20 ::: IntType :: LongType :: Nil)
-  val tup23 = defn.tupleType(Types_20 ::: IntType :: LongType :: ShortType :: Nil)
-  val tup24 = defn.tupleType(Types_20 ::: IntType :: LongType :: ShortType :: ShortType :: Nil)
+  val tup0  = defn.tupleType(Lst())
+  val tup1  = defn.tupleType(Lst(IntType))
+  val tup2  = defn.tupleType(Lst(IntType, LongType))
+  val tup3  = defn.tupleType(Lst(IntType, LongType, ShortType))
+  val tup21 = defn.tupleType(Types_20 :+ IntType)
+  val tup22 = defn.tupleType(Types_20 ++ Lst(IntType, LongType))
+  val tup23 = defn.tupleType(Types_20 ++ Lst(IntType, LongType, ShortType))
+  val tup24 = defn.tupleType(Types_20 ++ Lst(IntType, LongType, ShortType, ShortType))
 
   @Test def tup0_show  = chkEq("EmptyTuple.type", i"$tup0")
   @Test def tup1_show  = chkEq("Tuple1[Int]", i"$tup1")

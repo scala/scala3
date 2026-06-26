@@ -19,8 +19,7 @@ import util.Spans.Span
 import Phases.refchecksPhase
 import Constants.Constant
 
-import util.SrcPos
-import util.Spans.Span
+import util.{SrcPos, Lst}
 import rewrites.Rewrites.patch
 import inlines.Inlines
 import Decorators.*
@@ -66,10 +65,10 @@ object Checking {
    *              or (in case it is inferred) containing the type.
    *  See TypeOps.boundsViolations for an explanation of the first four parameters.
    */
-  def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds],
-    instantiate: (Type, List[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(using Context): Unit =
+  def checkBounds(args: List[tpd.Tree], boundss: Lst[TypeBounds],
+    instantiate: (Type, Lst[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(using Context): Unit =
     if !isCaptureChecking then
-      args.lazyZip(boundss).foreach { (arg, bound) =>
+      args.lazyZip(boundss.toList).foreach { (arg, bound) =>
         if !bound.isLambdaSub && !arg.tpe.hasSimpleKind then
           errorTree(arg,
             showInferred(MissingTypeParameterInTypeApp(arg.tpe), app, tpt))
@@ -116,9 +115,9 @@ object Checking {
     // otherwise return type parameters unchanged
     val tparams = tycon.tpe.typeParams
     val bounds = tparams.map(_.paramInfoAsSeenFrom(tree.tpe).bounds)
-    def instantiate(bound: Type, args: List[Type]) =
-      tparams match
-        case LambdaParam(lam, _) :: _ =>
+    def instantiate(bound: Type, args: Lst[Type]) =
+      tparams.headOption match
+        case Some(LambdaParam(lam, _)) =>
           HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
         case _ =>
           bound // paramInfoAsSeenFrom already took care of instantiation in this case
@@ -137,7 +136,7 @@ object Checking {
       case _ =>
     }
     def checkValidIfApply(using Context): Unit =
-      checkWildcardApply(tycon.tpe.appliedTo(args.map(_.tpe)))
+      checkWildcardApply(tycon.tpe.appliedTo(args.mapToLst(_.tpe)))
     withMode(Mode.AllowLambdaWildcardApply)(checkValidIfApply)
   }
 
@@ -163,7 +162,7 @@ object Checking {
                   // capture sets, it's better to be lenient for backwards compatibility.
               then
                 checkAppliedType(
-                  untpd.AppliedTypeTree(TypeTree(tycon), argTypes.map(TypeTree(_)))
+                  untpd.AppliedTypeTree(TypeTree(tycon), argTypes.mapToList(TypeTree(_)))
                     .withType(tp).withSpan(tpt.span.toSynthetic),
                   tpt)
               traverseChildren(tp)
@@ -524,11 +523,12 @@ object Checking {
     def info = sym match
       case sym: ClassSymbol => sym.primaryConstructor.info
       case _ => sym.info
-    def paramName = info.firstParamNames match
-      case pname :: _ => pname.show
+    def paramName =
+      info.firstParamNames.headOption match
+      case Some(pname) => pname.show
       case _ => "x"
-    def paramTypeStr = info.firstParamTypes match
-      case pinfo :: _ => pinfo.show
+    def paramTypeStr = info.firstParamTypes.headOption match
+      case Some(pinfo) => pinfo.show
       case _ => "T"
     def toFunctionStr(info: Type): String = info match
       case ExprType(resType) =>
@@ -902,10 +902,9 @@ object Checking {
 
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */
   def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
-    lazy val params = sym.paramSymss.flatten
     for
       sym2 <- sym.allOverriddenSymbols
-      (p1, p2) <- sym.paramSymss.flatten.lazyZip(sym2.paramSymss.flatten)
+      (p1, p2) <- sym.paramSymss.flattenLst.lazyZip(sym2.paramSymss.flattenLst)
       if p1.is(Inline) != p2.is(Inline)
     do
       report.error(
@@ -1159,7 +1158,7 @@ trait Checking {
                 case NamedArg(_, pat) => pat
                 case pat => pat
               val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, normalizedPats, pat.srcPos).argTypes
-              pats.corresponds(argPts)(recur)
+              pats.toLst.corresponds(argPts)(recur)
             }
           case Alternative(pats) =>
             pats.forall(recur(_, pt))
@@ -1581,7 +1580,7 @@ trait Checking {
       val javaEnumBase = cls.thisType.baseType(defn.JavaEnumClass)
       if javaEnumBase.exists then
         javaEnumBase.argInfos match
-          case typeArg :: Nil =>
+          case Lst.Singleton(typeArg) =>
             if cls.typeParams.nonEmpty then
               report.error(em"An enum extending java.lang.Enum cannot have type parameters", cdef.srcPos)
             if typeArg.classSymbol ne cls then

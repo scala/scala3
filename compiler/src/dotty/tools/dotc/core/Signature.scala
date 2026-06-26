@@ -6,6 +6,7 @@ import scala.annotation.tailrec
 import Names.*, Types.*, Contexts.*, StdNames.*, Decorators.*
 import TypeErasure.sigName
 import Signature.*
+import util.{Lst}
 
 /** The signature of a denotation.
  *
@@ -16,7 +17,7 @@ import Signature.*
  *  and `OverloadedSignature`) is composed of a list of _parameter signatures_,
  *  plus a _type signature_ for the final result type.
  *
- *  A _parameter signature_ (a value of type `ParamSig`) is either an integer,
+ *  A _parameter signature_ (a value of type `ParamSig`) is either an Int,
  *  representing the number of type parameters in a type parameter section, or
  *  the _type signature_ of a term parameter.
  *
@@ -46,7 +47,7 @@ import Signature.*
  *   - tpnme.WILDCARD       Arises from a Wildcard or error type
  *   - tpnme.Uninstantiated Arises from an uninstantiated type variable
  */
-case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
+case class Signature(paramsSig: Lst[ParamSig], resSig: TypeName) {
 
   /** Two names are consistent if they are the same or one of them is tpnme.Uninstantiated */
   private def consistent(name1: ParamSig, name2: ParamSig) =
@@ -56,19 +57,23 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *  This is the case if all parameter signatures are _consistent_, i.e. they are either
    *  equal or on of them is tpnme.Uninstantiated.
    */
-  final def consistentParams(that: Signature)(using Context): Boolean = {
-    @tailrec def loop(names1: List[ParamSig], names2: List[ParamSig]): Boolean =
-      if (names1.isEmpty) names2.isEmpty
-      else !names2.isEmpty && consistent(names1.head, names2.head) && loop(names1.tail, names2.tail)
-    loop(this.paramsSig, that.paramsSig)
-  }
+  final def consistentParams(that: Signature)(using Context): Boolean =
+    val names1 = this.paramsSig
+    val names2 = that.paramsSig
+    (names1 _eq_ names2)
+    || names1.length == names2.length
+      && {
+        var i = 0
+        while i < names1.length && consistent(names1(i), names2(i)) do i += 1
+        i == names1.length
+      }
 
   /** `that` signature, but keeping all corresponding parts of `this` signature. */
   final def updateWith(that: Signature): Signature = {
     def update[T <: ParamSig](name1: T, name2: T): T =
       if (consistent(name1, name2)) name1 else name2
     if (this == that) this
-    else if (!this.paramsSig.hasSameLengthAs(that.paramsSig)) that
+    else if (this.paramsSig.length != that.paramsSig.length) that
     else {
       val mapped = Signature(
           this.paramsSig.zipWithConserve(that.paramsSig)(update),
@@ -107,8 +112,8 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *
    *  Like Signature#apply, the result is only cacheable if `isUnderDefined == false`.
    */
-  def prependTermParams(params: List[Type], sourceLanguage: SourceLanguage)(using Context): Signature =
-    Signature(params.map(p => sigName(p, sourceLanguage)) ::: paramsSig, resSig)
+  def prependTermParams(params: Lst[Type], sourceLanguage: SourceLanguage)(using Context): Signature =
+    Signature(params.map(p => sigName(p, sourceLanguage)) ++ paramsSig, resSig)
 
   /** Construct a signature by prepending the length of a type parameter section
    *  to the parameter part of this signature.
@@ -116,7 +121,7 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *  Like Signature#apply, the result is only cacheable if `isUnderDefined == false`.
    */
   def prependTypeParams(typeParamSigsSectionLength: Int)(using Context): Signature =
-    Signature(typeParamSigsSectionLength :: paramsSig, resSig)
+    Signature(typeParamSigsSectionLength +: paramsSig, resSig)
 
   /** A signature is under-defined if its paramsSig part contains at least one
    *  `tpnme.Uninstantiated`. Under-defined signatures arise when taking a signature
@@ -129,7 +134,7 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
 object Signature {
   /** A parameter signature, see the documentation of `Signature` for more information. */
   type ParamSig = TypeName | Int
-    // Erasure means that our Ints will be boxed, but Integer#valueOf caches
+    // Erasure means that our Ints will be boxed, but Int#valueOf caches
     // small values, so the performance hit should be minimal.
 
   enum MatchDegree {
@@ -150,11 +155,11 @@ object Signature {
   /** The signature of everything that's not a method, i.e. that has
    *  a type different from PolyType or MethodType.
    */
-  val NotAMethod: Signature = Signature(List(), EmptyTypeName)
+  val NotAMethod: Signature = Signature(Lst(), EmptyTypeName)
 
   /** The signature of an overloaded denotation.
    */
-  val OverloadedSignature: Signature = Signature(List(tpnme.OVERLOADED), EmptyTypeName)
+  val OverloadedSignature: Signature = Signature(Lst[ParamSig](tpnme.OVERLOADED), EmptyTypeName)
 
   /** The signature of a method with no parameters and result type `resultType`.
    *
@@ -164,7 +169,7 @@ object Signature {
    */
   def apply(resultType: Type, sourceLanguage: SourceLanguage)(using Context): Signature = {
     assert(!resultType.isInstanceOf[ExprType])
-    apply(Nil, sigName(resultType, sourceLanguage))
+    apply(Lst(), sigName(resultType, sourceLanguage))
   }
 
   val lexicographicOrdering: Ordering[Signature] = new Ordering[Signature] {
@@ -183,14 +188,18 @@ object Signature {
             case y: Name =>
               -1
             case y: Int =>
-              x - y
+              x.intValue - y.intValue
           }
       }
     }
     def compare(x: Signature, y: Signature): Int = {
-      import scala.math.Ordering.Implicits.seqOrdering
-      val paramsOrdering = seqOrdering(using paramSigOrdering).compare(x.paramsSig, y.paramsSig)
-      if (paramsOrdering != 0) paramsOrdering
+      var i = 0
+      while i < x.paramsSig.length && i < y.paramsSig.length do
+        val r = paramSigOrdering.compare(x.paramsSig(i), y.paramsSig(i))
+        if r != 0 then return r
+        i += 1
+      if i < y.paramsSig.length then -1
+      else if i < x.paramsSig.length then +1
       else summon[Ordering[Name]].compare(x.resSig, y.resSig)
     }
   }

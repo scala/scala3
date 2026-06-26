@@ -136,7 +136,7 @@ trait QuotesAndSplices {
       val patType = (tree.typeargs.isEmpty, tree.args.isEmpty) match
         case (true, true) => pt
         case (true, false)  =>
-          defn.FunctionNOf(argTypes, pt)
+          defn.FunctionNOf(argTypes.toLst, pt)
         case (false,  _) =>
           PolyFunctionOf(typedTypeargs.tpes, argTypes, pt)
 
@@ -164,7 +164,7 @@ trait QuotesAndSplices {
     def isInBraces: Boolean = splice.span.end != splice.body.span.end
     if isInBraces then // ${x}(...) match an application
       val typedArgs = args.map(arg => typedExpr(arg))
-      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
+      val argTypes = typedArgs.mapToLst(_.tpe.widenTermRefExpr)
       val splice1 = typedSplicePattern(splice, defn.FunctionNOf(argTypes, pt))
       untpd.cpy.Apply(tree)(splice1.select(nme.apply), typedArgs).withType(pt)
     else // $x(...) higher-order quasipattern
@@ -185,7 +185,7 @@ trait QuotesAndSplices {
     if isInBraces then // ${x}[...](...) match an application
       val typedTypeargs = typeargs.map(arg => typedType(arg))
       val typedArgs = args.map(arg => typedExpr(arg))
-      val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
+      val argTypes = typedArgs.mapToLst(_.tpe.widenTermRefExpr)
       val splice1 = typedSplicePattern(splice, ProtoTypes.PolyProto(typedArgs, defn.FunctionOf(argTypes, pt)))
       val typedTypeApply = untpd.cpy.TypeApply(typeApplyTree)(splice1.select(nme.apply), typedTypeargs)
       untpd.cpy.Apply(tree)(typedTypeApply, typedArgs).withType(pt)
@@ -363,7 +363,7 @@ object QuotesAndSplices {
       override def transform(tree: Tree)(using Context) = tree match
         // TODO: handle TypeBoundsTree, LambdaTypeTree as well as method parameters in DefTrees?
         case tree @ AppliedTypeTree(tpt, args) =>
-          val args1: List[Tree] = args.zipWithConserve(tpt.tpe.typeParams.map(_.paramVarianceSign)) { (arg, v) =>
+          val args1: List[Tree] = args.zipWithConserve(tpt.tpe.typeParams.toList.map(_.paramVarianceSign)) { (arg, v) =>
             arg.tpe match {
               case _: TypeBounds => transform(arg)
               case _ => atVariance(v * variance)(transform(arg))
@@ -382,10 +382,10 @@ object QuotesAndSplices {
     def apply(typeargs: List[Type], args: List[Type], resultType: Type)(using Context): Type =
       val typeargs1 = PolyType.syntheticParamNames(typeargs.length)
 
-      val bounds = typeargs map (_ => TypeBounds.empty)
+      val bounds = typeargs.mapToLst(_ => TypeBounds.empty)
       val resultTypeExp = (pt: PolyType) => {
-        val fromSymbols = typeargs map (_.typeSymbol)
-        val args1 = args map (_.subst(fromSymbols, pt.paramRefs))
+        val fromSymbols = typeargs.mapToLst(_.typeSymbol)
+        val args1 = args.toLst.map(_.subst(fromSymbols, pt.paramRefs))
         val resultType1 = resultType.subst(fromSymbols, pt.paramRefs)
         MethodType(args1, resultType1)
       }

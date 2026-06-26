@@ -7,6 +7,7 @@ import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
 
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Decorators.flattenLst
 import dotty.tools.dotc.core.Denotations.Denotation
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
@@ -18,9 +19,9 @@ import dotty.tools.dotc.core.Names.NameOrdering
 import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.printing.RefinedPrinter
 import dotty.tools.dotc.printing.Texts.Text
+import dotty.tools.dotc.util.Lst
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
 import dotty.tools.pc.AutoImports.ImportSel
 import dotty.tools.pc.IndexedContext
@@ -291,7 +292,7 @@ class ShortenedTypePrinter(
   ): String =
     val namess = gtpe.paramNamess
     val infoss = gtpe.paramInfoss
-    val nameToInfo: Map[Name, Type] = namess.flatten.lazyZip(infoss.flatten).toMap
+    val nameToInfo: Map[Name, Type] = namess.flattenLst.zip(infoss.flattenLst).toArray.toMap
 
     val (methodParams, extParams) = splitExtensionParamss(gsym)
     val paramss = methodParams ++ extParams
@@ -416,7 +417,7 @@ class ShortenedTypePrinter(
       isUsingClause(params) || isTypeParamClause(params)
 
     val paramss =
-      if gsym.rawParamss.length != 0 then gsym.rawParamss else gsym.paramSymss
+      if gsym.rawParamss.length != 0 then gsym.rawParamsLists else gsym.paramSymsLists
     if gsym.is(Flags.ExtensionMethod) then
       val filteredParams =
         if gsym.name.isRightAssocOperatorName then
@@ -547,7 +548,7 @@ class ShortenedTypePrinter(
       .map(_.info)
       .collect {
         // AppliedType(TypeRef(ThisType(TypeRef(NoPrefix,module class reflect)),trait ClassTag),List(TypeRef(NoPrefix,type T)))
-        case AppliedType(tycon, TypeRef(_, tparam) :: Nil)
+        case AppliedType(tycon, Lst.Singleton(TypeRef(_, tparam)))
             if tparam.isInstanceOf[Symbol] =>
           (tycon, tparam.asInstanceOf[Symbol])
       }

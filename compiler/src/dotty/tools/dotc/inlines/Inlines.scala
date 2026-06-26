@@ -23,6 +23,7 @@ import cc.CleanupRetains
 import collection.mutable
 import reporting.{NotConstant, trace}
 import util.Spans.Span
+import util.Lst
 import dotty.tools.dotc.core.Periods.PhaseId
 import dotty.tools.dotc.util.chaining.*
 
@@ -162,7 +163,7 @@ object Inlines:
       case TypeApply(fn, args) =>
         fn.tpe.widenTermRefExpr match
           case tp: PolyType =>
-            val targBounds = tp.instantiateParamInfos(args.map(_.tpe))
+            val targBounds = tp.instantiateParamInfosList(args.tpes)
             for case (arg, bounds: TypeBounds) <- args.zip(targBounds) if !bounds.contains(arg.tpe) do
               val boundsStr =
                 if bounds == TypeBounds.empty then " <: Any. Note that this type is higher-kinded."
@@ -539,13 +540,13 @@ object Inlines:
                 evidence
           }
 
-        def unrollTupleTypes(tpe: Type): Option[List[Type]] = tpe.dealias match
+        def unrollTupleTypes(tpe: Type): Option[Lst[Type]] = tpe.dealias match
           case AppliedType(tycon, args) if defn.isTupleClass(tycon.typeSymbol) =>
             Some(args)
-          case AppliedType(tycon, head :: tail :: Nil) if tycon.isRef(defn.PairClass) =>
-            unrollTupleTypes(tail).map(head :: _)
+          case AppliedType(tycon, Lst.Pair(head, tail)) if tycon.isRef(defn.PairClass) =>
+            unrollTupleTypes(tail).map(head +: _)
           case tpe: TermRef if tpe.symbol == defn.EmptyTupleModule =>
-            Some(Nil)
+            Some(Lst())
           case tpe: AppliedType if tpe.isMatchAlias =>
             unrollTupleTypes(tpe.tryNormalize)
           case _ =>
@@ -565,7 +566,7 @@ object Inlines:
           unrollTupleTypes(callTypeArgs.head.tpe) match
             case Some(types) =>
               val constants = types.map(constValueOrError)
-              return Typed(tpd.tupleTree(constants), TypeTree(callTypeArgs.head.tpe)).withSpan(call.span)
+              return Typed(tpd.tupleTree(constants.toList), TypeTree(callTypeArgs.head.tpe)).withSpan(call.span)
             case _ =>
               return errorTree(call, em"Tuple element types must be known at compile time")
         }
@@ -576,7 +577,7 @@ object Inlines:
           unrollTupleTypes(callTypeArgs.head.tpe) match
             case Some(types) =>
               val implicits = types.map(searchImplicitOrError)
-              return Typed(tpd.tupleTree(implicits), TypeTree(callTypeArgs.head.tpe)).withSpan(call.span)
+              return Typed(tpd.tupleTree(implicits.toList), TypeTree(callTypeArgs.head.tpe)).withSpan(call.span)
             case _ =>
               return errorTree(call, em"Tuple element types must be known at compile time")
         }

@@ -16,7 +16,7 @@ import Symbols.*, NameOps.*
 import ContextFunctionResults.annotateContextResults
 import config.Printers.typr
 import config.Feature
-import util.{SrcPos, Stats}
+import util.{SrcPos, Stats, Lst}
 import reporting.*
 import NameKinds.{WildcardParamName, TempResultName}
 import typer.Applications.{spread, HasSpreads}
@@ -355,7 +355,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         tycon.tpe.widen match {
           case tp: PolyType if args.exists(isNamedArg) =>
             val (namedArgs, otherArgs) = args.partition(isNamedArg)
-            val args1 = reorderArgs(tp.paramNames, namedArgs.asInstanceOf[List[NamedArg]], otherArgs)
+            val args1 = reorderArgs(tp.paramNamesList, namedArgs.asInstanceOf[List[NamedArg]], otherArgs)
             TypeApply(tycon, args1).withSpan(tree.span).withType(tree.tpe)
           case _ =>
             tree
@@ -472,7 +472,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         tp match
           case FunctionOrMethod(formals, res) =>
             val rhs1 = formals match
-              case (_: TypeBounds) :: _ => rhs
+              case Lst.StartingWith(_: TypeBounds) => rhs
               case _ => mdef.rhs
             val formals1 = formals.mapConserve(makeFormalDeclared)
             tp.derivedFunctionOrMethod(formals1, makeFormalsDeclared(res, rhs1))
@@ -590,11 +590,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
               case tree1 => tree1
         case app: Apply =>
           val methType = app.fun.tpe.widen.asInstanceOf[MethodType]
-          if (methType.hasErasedParams)
-            for (arg, isErased) <- app.args.lazyZip(methType.paramErasureStatuses) do
-              if isErased then
-                if methType.isResultDependent then
-                  Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
+          // Check that erased arguments to result-dependent methods are realizable
+          if methType.isResultDependent then
+            for (arg, pinfo) <- app.args.lazyZip(methType.paramInfosList) do
+              if pinfo.isForErasedParam then
+                Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
           def app1 =
             // reverse order of transforming args and fun. This way, we get a chance to see other
             // well-formedness errors before reporting errors in possible inferred type args of fun.
@@ -859,18 +859,15 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       else tp
     case _ => tp
 
-  private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[List[Type]] =
+  private def argTypeOfCaseClassThatNeedsAbstractFunction1(sym: Symbol)(using Context): Option[Lst[Type]] =
     val companionClass = sym.companionClass
     if companionClass.is(CaseClass)
       && !companionClass.primaryConstructor.is(Private)
       && !companionClass.primaryConstructor.info.isVarArgsMethod
     then
       sym.info.decl(nme.apply).info match
-        case info: MethodType =>
-          info.paramInfos match
-            case arg :: Nil =>
-              Some(arg :: info.resultType :: Nil)
-            case args => None
+        case info: MethodType if info.paramInfos.length == 1 =>
+          Some(Lst(info.paramInfos(0), info.resultType))
         case _ => None
     else
       None

@@ -10,6 +10,7 @@ import StdNames.*
 import Symbols.*
 import MegaPhase.*
 import Types.*
+import util.Lst
 import dotty.tools.dotc.ast.tpd
 
 /** Optimize generic operations on tuples */
@@ -39,7 +40,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
         if (size <= 5)
           // val t = tail
           // TupleN+1(head, t._1, ..., t._n)
-          evalOnce(Typed(tail, TypeTree(defn.tupleType(tpes.tail)))) { tup =>
+          evalOnce(Typed(tail, TypeTree(defn.tupleType(tpes.drop(1))))) { tup =>
             val elements = head :: tupleSelectors(tup, size - 1)
             knownTupleFromElements(tpes, elements)
           }
@@ -73,7 +74,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           // TupleN-1(t._2, ..., t._n)
           evalOnce(Typed(tup, TypeTree(defn.tupleType(tpes)))) { tup =>
             val elements = tupleSelectors(tup, size).tail
-            knownTupleFromElements(tpes.tail, elements)
+            knownTupleFromElements(tpes.drop(1), elements)
           }
         else if (size <= MaxTupleArity + 1)
           // val it = this.asInstanceOf[Product].productIterator
@@ -116,7 +117,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
           // TupleN+M(t._1,..., t._N, u._1, ..., u._M)
           evalOnce(Typed(self, TypeTree(defn.tupleType(tpes1)))) { self =>
             evalOnce(Typed(that, TypeTree(defn.tupleType(tpes2)))) { that =>
-              val types = tpes1 ::: tpes2
+              val types = tpes1 ++ tpes2
               val elements = tupleSelectors(self, n) ::: tupleSelectors(that, m)
               knownTupleFromElements(types, elements)
             }
@@ -185,7 +186,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
   }
 
   /** Create a TupleN (1 <= N < 23) from the elements */
-  private def knownTupleFromElements(tpes: List[Type], elements: List[Tree])(using Context) = {
+  private def knownTupleFromElements(tpes: Lst[Type], elements: List[Tree])(using Context) = {
     val size = elements.size
     assert(0 < size && size <= MaxTupleArity)
     val tupleModule = defn.TupleType(size).nn.classSymbol.companionModule
@@ -202,7 +203,7 @@ class TupleOptimizations extends MiniPhase with IdentityDenotTransformer {
       // TODO outline this code for the 22 alternatives (or less, may not need the smallest ones)?
       // This would yield smaller bytecode at the cost of an extra (easily JIT inlinable) call.
       // def tupleN(it: Iterator[Any]): TupleN[Any, ..., Any] = Tuple(it.next(), ..., it.next())
-      val tpes = List.fill(size)(defn.AnyType)
+      val tpes = Lst.fill(size)(defn.AnyType)
       val elements = (0 until size).map(_ => it.select(nme.next)).toList
       knownTupleFromElements(tpes, elements)
     }

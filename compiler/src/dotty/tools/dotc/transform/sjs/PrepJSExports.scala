@@ -332,13 +332,13 @@ object PrepJSExports {
       isJSAny(sym.owner) || (sym.isConstructor && isJSAny(sym.owner.owner))
 
     def hasIllegalRepeatedParam: Boolean = {
-      val paramInfos = sym.info.paramInfoss.flatten
+      val paramInfos = sym.info.paramInfoss.flattenLst
       paramInfos.nonEmpty && paramInfos.init.exists(_.isRepeatedParam)
     }
 
     def hasIllegalDefaultParam: Boolean = {
       sym.hasDefaultParams
-        && sym.paramSymss.flatten.reverse.dropWhile(_.is(HasDefault)).exists(_.is(HasDefault))
+        && sym.paramSymss.flattenLst.reverse.dropWhile(_.is(HasDefault)).exists(_.is(HasDefault))
     }
 
     def hasAnyNonPrivateCtor: Boolean =
@@ -413,7 +413,7 @@ object PrepJSExports {
       Nil
     } else {
       for {
-        (param, i) <- sym.paramSymss.flatten.zipWithIndex
+        (param, i) <- sym.paramSymss.flattenLst.zipWithIndex.toList
         if param.is(HasDefault)
       } yield {
         genExportDefaultGetter(clsSym, sym, expSym, i, span)
@@ -465,7 +465,7 @@ object PrepJSExports {
           case Nil =>
             trgSym.typeRef
           case (targs @ (first :: _)) :: Nil if first.isType =>
-            trgSym.typeRef.appliedTo(targs.map(_.tpe))
+            trgSym.typeRef.appliedTo(targs.mapToLst(_.tpe))
           case _ =>
             throw AssertionError(s"got a class export with unexpected paramss. target: $trgSym, proxy: $proxySym at $span")
         }

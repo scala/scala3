@@ -178,7 +178,7 @@ object QuotePatterns:
         }
         var newBindingsRefs = newBindings.map(_.typeRef)
         for newBinding <- newBindings do
-          newBinding.info = newBinding.info.subst(oldBindings, newBindingsRefs)
+          newBinding.info = newBinding.info.subst(oldBindings.toLst, newBindingsRefs.toLst)
 
         val patternTypes = newBindings.map(sym => TypeDef(sym).withSpan(sym.span))
         Block(patternTypes, shape0.subst(oldBindings, newBindings))
@@ -196,7 +196,7 @@ object QuotePatterns:
     }
 
     val patterns = givenTypes ::: splicePatterns
-    val patternTypes = patterns.map(_.tpe.widenTermRefExpr)
+    val patternTypes = patterns.mapToLst(_.tpe.widenTermRefExpr)
 
     val splicePat =
       if patterns.isEmpty then ref(defn.EmptyTupleModule.termRef)
@@ -213,10 +213,10 @@ object QuotePatterns:
 
     val patType =
       val quotedTypes =
-        quotePattern.bindings.map(givenType => defn.QuotedTypeClass.typeRef.appliedTo(givenType.symbol.typeRef))
+        quotePattern.bindings.mapToLst(givenType => defn.QuotedTypeClass.typeRef.appliedTo(givenType.symbol.typeRef))
       val quotedExprs =
-        splicePatterns.map(_.tpe.widenTermRefExpr)
-      defn.tupleType(quotedTypes :::quotedExprs)
+        splicePatterns.mapToLst(_.tpe.widenTermRefExpr)
+      defn.tupleType(quotedTypes ++ quotedExprs)
 
     UnApply(
       fun = unapplyFun.appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),

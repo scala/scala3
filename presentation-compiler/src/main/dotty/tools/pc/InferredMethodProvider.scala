@@ -190,7 +190,7 @@ final class InferredMethodProvider(
           if defn.isFunctionType(expectedFunctionType) then
             expectedFunctionType match
               case defn.FunctionOf(argTypes, retType, _) =>
-                (Some(argTypes), Some(retType))
+                (Some(argTypes.toList), Some(retType))
               case _ =>
                 (None, Some(expectedFunctionType))
           else

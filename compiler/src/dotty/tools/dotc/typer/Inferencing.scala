@@ -16,6 +16,7 @@ import reporting.*
 import TypeAssigner.SkolemizedArgs
 import collection.mutable
 import scala.annotation.internal.sharable
+import util.Lst
 
 object Inferencing {
 
@@ -69,7 +70,7 @@ object Inferencing {
   /** Instantiate any type variables in `tp` whose bounds contain a reference to
    *  one of the parameters in `paramss`.
    */
-  def instantiateDependent(tp: Type, paramss: List[List[Symbol]])(using Context): Unit = {
+  def instantiateDependent(tp: Type, paramss: List[Lst[Symbol]])(using Context): Unit = {
     val dependentVars = new TypeAccumulator[Set[TypeVar]] {
       def apply(tvars: Set[TypeVar], tp: Type) = tp match {
         case tp: TypeVar
@@ -106,19 +107,18 @@ object Inferencing {
     case AppliedType(tycon, args) =>
       // The argument in `args` that may potentially appear directly as result
       // and thereby influence the members of this type
-      def argsInResult: List[Type] = tycon.stripTypeVar match
+      def argsInResult: Lst[Type] = tycon.stripTypeVar match
         case tycon: TypeRef =>
           tycon.info match
             case MatchAlias(_) => args
             case TypeBounds(_, upper: TypeLambda) =>
               upper.resultType match
                 case ref: TypeParamRef if ref.binder == upper =>
-                  args.lazyZip(upper.paramRefs).collect {
+                  args.zip(upper.paramRefs).collect:
                     case (arg, pref) if pref eq ref => arg
-                  }.toList
-                case _ => Nil
-            case _ => Nil
-        case _ => Nil
+                case _ => Lst()
+            case _ => Lst()
+        case _ => Lst()
       couldInstantiateTypeVar(tycon, applied)
       || (if applied then args else argsInResult).exists(couldInstantiateTypeVar(_, applied))
     case RefinedType(parent, _, _) =>
@@ -366,7 +366,7 @@ object Inferencing {
   def inferTypeParams(tree: Tree, pt: Type)(using Context): Tree = tree.tpe match
     case tl: TypeLambda =>
       val (tl1, tvars) = constrained(tl, tree)
-      val tree1 = AppliedTypeTree(tree.withType(tl1), tvars.map(_.wrapInTypeTree(tree)))
+      val tree1 = AppliedTypeTree(tree.withType(tl1), tvars.mapToList(_.wrapInTypeTree(tree)))
       tree1.tpe <:< pt
       if isFullyDefined(tree1.tpe, force = ForceDegree.failBottom) then
         tree1
@@ -485,10 +485,10 @@ object Inferencing {
    *  @return   The list of type symbols that were created
    *            to instantiate undetermined type variables that occur non-variantly
    */
-  def maximizeType(tp: Type, span: Span)(using Context): List[Symbol] = {
+  def maximizeType(tp: Type, span: Span)(using Context): Lst[Symbol] = {
     Stats.record("maximizeType")
     val vs = variances(tp)
-    val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
+    val patternBindings = new util.Lst.Buffer[(Symbol, TypeParamRef)]
     val gadtBounds = ctx.gadt.symbols.map(ctx.gadt.bounds(_).nn)
     vs.underlying foreachBinding { (tvar, v) =>
       if !tvar.isInstantiated then
@@ -511,7 +511,7 @@ object Inferencing {
           }
         }
     }
-    val res = patternBindings.toList.map { (boundSym, origin) =>
+    val res = patternBindings.toLst.map { (boundSym, origin) =>
       // substitute bounds of pattern bound variables to deal with possible F-bounds
       for (wildCard, param) <- patternBindings do
         boundSym.info = boundSym.info.substParam(param, wildCard.typeRef)

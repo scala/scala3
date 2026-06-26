@@ -11,6 +11,7 @@ import Constants.*
 import ast.Trees.*
 import ast.untpd
 import ast.TreeTypeMap
+import util.Lst
 
 import NameKinds.*
 import dotty.tools.dotc.ast.tpd
@@ -320,12 +321,12 @@ object PickleQuotes {
         else
           Lambda(
             MethodType(
-              List(nme.idx, nme.contents, nme.quotes).map(name => UniqueName.fresh(name).toTermName),
-              List(defn.IntType, defn.SeqType.appliedTo(defn.AnyType), defn.QuotesClass.typeRef),
+              Lst(nme.idx, nme.contents, nme.quotes).map(name => UniqueName.fresh(name).toTermName),
+              Lst(defn.IntType, defn.SeqType.appliedTo(defn.AnyType), defn.QuotesClass.typeRef),
               defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
             args =>
               val cases = holeContents.zipWithIndex.map { case (splice, idx) =>
-                val defn.FunctionNOf(argTypes, defn.FunctionNOf(quotesType :: _, _, _), _) = splice.tpe: @unchecked
+                val defn.FunctionNOf(argTypes, defn.FunctionNOf(Lst.StartingWith(quotesType), _, _), _) = splice.tpe: @unchecked
                 val rhs = {
                   val spliceArgs = argTypes.zipWithIndex.map { (argType, i) =>
                     args(1).select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argType)
@@ -334,7 +335,7 @@ object PickleQuotes {
                   // TODO: beta reduce inner closure? Or wait until BetaReduce phase?
                   BetaReduce(
                     splice
-                      .select(nme.apply).appliedToArgs(spliceArgs))
+                      .select(nme.apply).appliedToArgs(spliceArgs.toList))
                       .select(nme.apply).appliedTo(args(2).asInstance(quotesType))
                 }
                 CaseDef(Literal(Constant(idx)), EmptyTree, rhs)
@@ -346,7 +347,7 @@ object PickleQuotes {
 
       val quoteClass = if quote.isTypeQuote then defn.QuotedTypeClass else defn.QuotedExprClass
       val quotedType = quoteClass.typeRef.appliedTo(bodyType)
-      val lambdaTpe = MethodType(defn.QuotesClass.typeRef :: Nil, quotedType)
+      val lambdaTpe = MethodType(Lst(defn.QuotesClass.typeRef), quotedType)
       val unpickleMeth =
         if quote.isTypeQuote then defn.QuoteUnpickler_unpickleTypeV2
         else defn.QuoteUnpickler_unpickleExprV2

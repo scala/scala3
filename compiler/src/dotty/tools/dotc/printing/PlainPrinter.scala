@@ -18,6 +18,7 @@ import ast.{tpd, untpd}
 import cc.*
 import CaptureSet.Mutability
 import Capabilities.*
+import util.Lst
 
 class PlainPrinter(_ctx: Context) extends Printer {
 
@@ -142,8 +143,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** Pretty-print comma-separated type arguments for a constructor to be inserted among parentheses or brackets
     * (hence with `GlobalPrec` precedence).
     */
-  protected def argsText(args: List[Type]): Text =
-    atPrec(GlobalPrec) { Text(args.map(argText(_)), ", ") }
+  protected def argsText(args: Lst[Type]): Text =
+    atPrec(GlobalPrec) { Text(args.map(argText(_)).toIterable, ", ") }
 
   /** The longest sequence of refinement types, starting at given type
    *  and following parents.
@@ -376,11 +377,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def paramsText(lam: LambdaType): Text = {
     def paramText(ref: ParamRef) =
-      val erased = ref.underlying.hasAnnotation(defn.ErasedParamAnnot)
+      val erased = ref.underlying.isForErasedParam
       keywordText("erased ").provided(erased)
         ~ specialAnnotText(defn.ConsumeAnnot, ref.underlying)
         ~ ParamRefNameString(ref) ~ hashStr(lam) ~ toTextRHS(ref.underlying, isParameter = true)
-    Text(lam.paramRefs.map(paramText), ", ")
+    Text(lam.paramRefsList.map(paramText), ", ")
   }
 
   protected def ParamRefNameString(name: Name): String = nameString(name)
@@ -546,8 +547,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
           if lam.isDeclaredVarianceLambda then
             lam.paramNames.lazyZip(lam.declaredVariances).map((name, v) =>
               varianceSign(v) + name)
-          else lam.paramNames.map(_.toString)
-        val infos = lam.paramInfos.map(toText)
+          else lam.paramNamesList.map(_.toString)
+        val infos = lam.paramInfosList.map(toText)
         val tparams = names.zip(infos).map(_ ~ _)
         ("[" ~ Text(tparams, ",") ~ "]", lam.resType)
       case _ =>
@@ -762,7 +763,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected final def escapedString(str: String): String = Chars.escapedString(str, quoted = false)
 
-  def dclsText(syms: List[Symbol], sep: String): Text = Text(syms map dclText, sep)
+  def dclsText(syms: List[Symbol], sep: String): Text = Text(syms.map(dclText), sep)
 
   def toText(sc: Scope): Text =
     ("Scope{" ~ dclsText(sc.toList) ~ "}").close

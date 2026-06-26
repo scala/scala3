@@ -65,7 +65,7 @@ object MainProxies {
               argsRef :: Literal(Constant(idx + n)) :: Nil)
             if (formal.isRepeatedParam) repeated(arg) else arg
         }
-        val call1 = Apply(call, args)
+        val call1 = Apply(call, args.toList)
         mt.resType match {
           case restpe: MethodType =>
             if (mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam)

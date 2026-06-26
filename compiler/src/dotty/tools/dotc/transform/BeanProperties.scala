@@ -12,6 +12,7 @@ import Flags.*
 import Names.*
 import Types.*
 import util.Spans.*
+import util.Lst
 
 import DenotTransformers.*
 
@@ -30,7 +31,7 @@ class BeanProperties(thisPhase: DenotTransformer):
         owner = ctx.owner,
         name = prefixedName(prefix, valDef.name),
         flags = Method | Synthetic | Invisible,
-        info = MethodType(Nil, valDef.denot.info),
+        info = MethodType(Lst(), valDef.denot.info),
         coord = annot.tree.span
       ).enteredAfter(thisPhase).asTerm
        .withAnnotationsCarrying(valDef.symbol, defn.BeanGetterMetaAnnot)
@@ -44,7 +45,7 @@ class BeanProperties(thisPhase: DenotTransformer):
           owner,
           name = prefixedName("set", valDef.name),
           flags = Method | Synthetic | Invisible,
-          info = MethodType(valDef.name :: Nil, valDef.denot.info :: Nil, defn.UnitType),
+          info = MethodType(Lst(valDef.name), Lst(valDef.denot.info), defn.UnitType),
           coord = annot.tree.span
         ).enteredAfter(thisPhase).asTerm
          .withAnnotationsCarrying(valDef.symbol, defn.BeanSetterMetaAnnot)

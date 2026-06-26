@@ -19,7 +19,7 @@ object SymbolUtils:
   def makeStatifiedDefSymbol(origSym: TermSymbol, name: TermName)(using Context): TermSymbol =
     val info = origSym.info match
       case mt: MethodType =>
-        MethodType(nme.SELF :: mt.paramNames, origSym.owner.typeRef :: mt.paramInfos, mt.resType)
+        MethodType(nme.SELF +: mt.paramNames, origSym.owner.typeRef +: mt.paramInfos, mt.resType)
     origSym.copy(
       name = name.toTermName,
       flags = Method | JavaStatic,
@@ -59,7 +59,7 @@ object SymbolUtils:
             toDenot(sym).isStatic
           }
         }
-      
+
       def originalLexicallyEnclosingClass(using Context): Symbol =
         // used to populate the EnclosingMethod attribute.
         // it is very tricky in presence of classes(and anonymous classes) defined inside supper calls.

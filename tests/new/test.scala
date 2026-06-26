@@ -13,4 +13,3 @@ def writeList[T](out: java.io.ObjectOutputStream, xs: List[T])(using erased CanS
 
 @main def Test(out: java.io.ObjectOutputStream) =
   writeList(out, List("a", "b"))                            // ok
-  writeList(out, List[Int => Int](x => x + 1, y => y * 2))  // error

@@ -115,7 +115,7 @@ object ScaladocCompletions:
               param.name.show
           }
         case clazz: TypeDef =>
-          clazz.symbol.primaryConstructor.rawParamss.flatten.collect {
+          clazz.symbol.primaryConstructor.rawParamsLists.flatten.collect {
             case param
                 if !param.is(Synthetic) &&
                   !param.isTypeParam &&

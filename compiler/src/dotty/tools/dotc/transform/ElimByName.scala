@@ -15,7 +15,8 @@ import MegaPhase.*
 import Decorators.*
 import typer.RefChecks
 import reporting.trace
-import dotty.tools.dotc.core.Names.Name
+import util.Lst
+import Names.Name
 
 /** This phase implements the following transformations:
  *
@@ -82,7 +83,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
     case tp: MethodType =>
       def exprToFun(tp: Type, name: Name) = tp match
         case ExprType(rt) =>
-          if rt.hasAnnotation(defn.ErasedParamAnnot) then
+          if rt.isForErasedParam then
             report.error(em"By-name parameter cannot be erased: $name", sym.srcPos)
           defn.ByNameFunction(rt)
         case tp => tp
@@ -99,7 +100,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
 
   def byNameClosure(arg: Tree, argType: Type)(using Context): Tree =
     report.log(i"creating by name closure for $argType")
-    val meth = newAnonFun(ctx.owner, MethodType(Nil, argType), coord = arg.span)
+    val meth = newAnonFun(ctx.owner, MethodType(Lst(), argType), coord = arg.span)
     Closure(meth,
         _ => arg.changeOwnerAfter(ctx.owner, meth, thisPhase),
         targetType = defn.ByNameFunction(argType)
@@ -151,7 +152,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
           arg
 
       val mt @ MethodType(_) = tree.fun.tpe.widen: @unchecked
-      val args1 = tree.args.zipWithConserve(mt.paramInfos)(transformArg)
+      val args1 = tree.args.zipWithConserve(mt.paramInfosList)(transformArg)
       cpy.Apply(tree)(tree.fun, args1)
     }
 

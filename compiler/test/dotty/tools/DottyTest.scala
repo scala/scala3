@@ -112,5 +112,5 @@ trait DottyTest extends ContextEscapeDetection {
   }
 
   def methType(names: String*)(paramTypes: Type*)(resultType: Type = defn.UnitType) =
-    MethodType(names.toList map (_.toTermName), paramTypes.toList, resultType)
+    MethodType(names.toLst.map(_.toTermName), paramTypes.toLst, resultType)
 }

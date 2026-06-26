@@ -482,8 +482,8 @@ final class ClassfileParser(
       def normalizeConstructorParams() = innerClasses.get(currentClassName.toString) match {
         case Some(entry) if !isStatic(entry.jflags) =>
           val mt @ MethodTpe(paramNames, paramTypes, resultType) = denot.info: @unchecked
-          var normalizedParamNames = paramNames.tail
-          var normalizedParamTypes = paramTypes.tail
+          var normalizedParamNames = paramNames.drop(1)
+          var normalizedParamTypes = paramTypes.drop(1)
           if ((jflags & JAVA_ACC_SYNTHETIC) != 0) {
             // SI-7455 strip trailing dummy argument ("access constructor tag") from synthetic constructors which
             // are added when an inner class needs to access a private constructor.
@@ -618,7 +618,7 @@ final class ClassfileParser(
             case tp: TypeRef =>
               if (sig(index) == '<') {
                 accept('<')
-                val argsBuf = if (skiptvs) null else new ListBuffer[Type]
+                val argsBuf = if (skiptvs) null else new Lst.Buffer[Type]
                 while (sig(index) != '>') {
                   val arg = sig(index) match {
                     case variance @ ('+' | '-' | '*') =>
@@ -638,7 +638,7 @@ final class ClassfileParser(
                   if (argsBuf != null) argsBuf += arg
                 }
                 accept('>')
-                if (argsBuf == null) tp else AppliedType(tp, argsBuf.toList)
+                if (argsBuf == null) tp else AppliedType(tp, argsBuf.toLst)
               }
               else tp
             case tp =>
@@ -684,8 +684,8 @@ final class ClassfileParser(
             true
           end isRepeatedParam
 
-          val paramtypes = new ListBuffer[Type]()
-          var paramnames = new ListBuffer[TermName]()
+          val paramtypes = new util.Lst.Buffer[Type]()
+          var paramnames = new util.Lst.Buffer[TermName]()
           while !isMethodEnd(index) do
             paramnames += nme.syntheticParamName(paramtypes.length)
             paramtypes += {
@@ -700,7 +700,7 @@ final class ClassfileParser(
 
           index += 1
           val restype = sig2type(skiptvs = false)
-          MethodType(paramnames.toList, paramtypes.toList, restype)
+          MethodType(paramnames.toLst, paramtypes.toLst, restype)
         case 'T' =>
           val n = subName(';'.==).toTypeName
           index += 1
@@ -740,7 +740,7 @@ final class ClassfileParser(
       else NoType
     }
 
-    val newTParams = new ListBuffer[Symbol]()
+    val newTParams = new util.Lst.Buffer[Symbol]()
     if (sig(index) == '<') {
       assert(owner != null)
       index += 1
@@ -757,7 +757,7 @@ final class ClassfileParser(
       }
       index += 1
     }
-    val ownTypeParams = newTParams.toList.asInstanceOf[List[TypeSymbol]]
+    val ownTypeParams = newTParams.toLst.asInstanceOf[Lst[TypeSymbol]]
     val tpe =
       if ((owner == null) || !owner.isClass)
         sig2type(skiptvs = false)
@@ -885,7 +885,7 @@ final class ClassfileParser(
       // with a `FatalError` exception, handled above. Here you'd end up after a NPE (for example),
       // and that should never be swallowed silently.
       report.warning(em"Caught: $ex while parsing annotations in $classfile")
-      if (ctx.debug) ex.printStackTrace()
+      if (ctx.debug || true) ex.printStackTrace()
 
       None // ignore malformed annotations
   }
@@ -940,7 +940,7 @@ final class ClassfileParser(
 
       def fillInParamNames(t: Type): Type = t match
         case mt @ MethodType(oldp) if namedParams.nonEmpty =>
-          mt.derivedLambdaType(List.tabulate(oldp.size)(n => namedParams.getOrElse(n, oldp(n))))
+          mt.derivedLambdaType(Lst.tabulate(oldp.size)(n => namedParams.getOrElse(n, oldp(n))))
         case pt: PolyType if namedParams.nonEmpty =>
           pt.derivedLambdaType(pt.paramNames, pt.paramInfos, fillInParamNames(pt.resultType))
         case _ => t
@@ -1075,8 +1075,8 @@ final class ClassfileParser(
   class AnnotConstructorCompleter(classInfo: TempClassInfoType) extends LazyType {
     def complete(denot: SymDenotation)(using Context): Unit = {
       val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol && sym.name != nme.CONSTRUCTOR)
-      val paramNames = attrs.map(_.name.asTermName)
-      val paramTypes = attrs.map(_.info.resultType)
+      val paramNames = attrs.mapToLst(_.name.asTermName)
+      val paramTypes = attrs.mapToLst(_.info.resultType)
       denot.info = MethodType(paramNames, paramTypes, classRoot.typeRef)
     }
   }

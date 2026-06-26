@@ -72,7 +72,7 @@ class TreeTypeMap(
     val substMap = new TypeMap():
       def apply(tp: Type): Type = tp match
         case tp: TermRef if tp.symbol.isImport => mapOver(tp)
-        case tp => tp.substSym(substFrom, substTo)
+        case tp => tp.substSym(substFrom.toLst, substTo.toLst)
     mapOwnerThis(substMap(typeMap(tp)))
   end mapType
 
@@ -189,8 +189,8 @@ class TreeTypeMap(
       // setting up a proper substitution abstraction with a compose operator that
       // guarantees idempotence. But this might be too inefficient in some cases.
       // We'll cross that bridge when we need to.
-      assert(!from.exists(substTo contains _))
-      assert(!to.exists(substFrom contains _))
+      assert(!from.exists(substTo `contains` _))
+      assert(!to.exists(substFrom `contains` _))
       assert(!from.exists(newOwners contains _))
       assert(!to.exists(oldOwners contains _))
       copy(
@@ -220,11 +220,11 @@ class TreeTypeMap(
       lazy val origCls = mapped.zip(syms).filter(_._1.isClass).toMap
       mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
         val origDcls = cls.info.decls.toList.filterNot(_.is(TypeParam))
-        val tmap0 = tmap.withSubstitution(origCls(cls).typeParams, cls.typeParams)
+        val tmap0 = tmap.withSubstitution(origCls(cls).typeParamsList, cls.typeParamsList)
         val mappedDcls = mapSymbols(origDcls, tmap0, mapAlways = true)
         val tmap1 = tmap.withMappedSyms(
-          origCls(cls).typeParams ::: origDcls,
-          cls.typeParams ::: mappedDcls)
+          origCls(cls).typeParamsList ::: origDcls,
+          cls.typeParamsList ::: mappedDcls)
         mapped.foreach { sym =>
           // outer Symbols can reference nested ones in info,
           // so we remap that once again with the updated TreeTypeMap

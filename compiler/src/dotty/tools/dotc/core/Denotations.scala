@@ -21,6 +21,7 @@ import io.AbstractFile
 import config.Config
 import config.Printers.overload
 import util.common.*
+import util.Lst
 import typer.ProtoTypes.NoViewsAllowed
 import reporting.Message
 import collection.mutable.ListBuffer
@@ -328,7 +329,7 @@ object Denotations {
       info.member(name).requiredSymbol("method", name, this, argTypes) { x =>
         x.is(Method) && {
           x.info.paramInfoss match {
-            case paramInfos :: Nil => paramInfos.corresponds(argTypes)(_ =:= _)
+            case paramInfos :: Nil => paramInfos.corresponds(argTypes.toLst)(_ =:= _)
             case _ => false
           }
         }
@@ -529,9 +530,12 @@ object Denotations {
   /** Merge parameter names of lambda types. If names in corresponding positions match, keep them,
     *  otherwise generate new synthetic names.
     */
-  private def mergeParamNames(tp1: LambdaType, tp2: LambdaType): List[tp1.ThisName] =
-    (for ((name1, name2, idx) <- tp1.paramNames.lazyZip(tp2.paramNames).lazyZip(tp1.paramNames.indices))
-      yield if (name1 == name2) name1 else tp1.companion.syntheticParamName(idx)).toList
+  private def mergeParamNames(tp1: LambdaType, tp2: LambdaType): Lst[tp1.ThisName] =
+    val pnames1 = tp1.paramNames
+    val pnames2 = tp2.paramNames
+    Lst.tabulate(pnames1.length min pnames2.length): i =>
+      if pnames1(i) == pnames2(i) then pnames1(i)
+      else tp1.companion.syntheticParamName(i)
 
   /** Normally, `tp1 & tp2`, with extra care taken to return `tp1` or `tp2` directly if that's
    *  a valid answer. Special cases for matching methods and classes, with
@@ -563,7 +567,7 @@ object Denotations {
           case _ => NoType
       case tp1: PolyType =>
         tp2 match
-          case tp2: PolyType if tp1.paramNames.hasSameLengthAs(tp2.paramNames) =>
+          case tp2: PolyType if tp1.paramNames.length == tp2.paramNames.length =>
             val resType = infoMeet(tp1.resType, tp2.resType.subst(tp2, tp1), safeIntersection)
             if resType.exists then
               tp1.derivedLambdaType(

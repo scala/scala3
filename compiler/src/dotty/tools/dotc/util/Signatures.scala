@@ -19,7 +19,7 @@ import core.Symbols.isLocalToBlock
 import interactive.Interactive
 import util.Spans.Span
 import reporting.*
-
+import core.Decorators.*
 
 object Signatures {
 
@@ -159,7 +159,7 @@ object Signatures {
     types: List[tpd.Tree]
   )(using Context): (Int, Int, List[Signature]) =
     val typeName = fun.symbol.name.show
-    val typeParams = fun.symbol.typeRef.typeParams.map(_.paramName.show).map(TypeParam.apply(_))
+    val typeParams = fun.symbol.typeRef.typeParams.toList.map(_.paramName.show).map(TypeParam.apply(_))
     val denot = fun.denot.asSingleDenotation
     val activeParameter =
       val index = findCurrentParamIndex(types, span, typeParams.length - 1)
@@ -344,7 +344,7 @@ object Signatures {
    */
   private def extractParamNamess(resultType: Type, denot: Denotation)(using Context): List[List[Name]] =
     if resultType.typeSymbol.flags.is(Flags.CaseClass) && denot.symbol.flags.is(Flags.Synthetic) then
-      resultType.typeSymbol.primaryConstructor.paramInfo.paramNamess
+      resultType.typeSymbol.primaryConstructor.paramInfo.paramNamess.map(_.toList)
     else
       Nil
 
@@ -366,11 +366,11 @@ object Signatures {
       // unapply(_$1: Any): CustomClass
       case ref: TypeRef if !ref.symbol.isPrimitiveValueClass => mapOptionLessUnapply(ref, patternsSize, isUnapplySeq(denot))
       // unapply(_$1: Any): Option[T[_]]
-      case AppliedType(TypeRef(_, cls), (appliedType @ AppliedType(tycon, args)) :: Nil)
+      case AppliedType(TypeRef(_, cls), Lst.Singleton(appliedType @ AppliedType(tycon, args)))
           if (cls == ctx.definitions.OptionClass || cls == ctx.definitions.SomeClass) =>
         tycon match
           // unapply[T](_$1: Any): Option[(T1, T2 ... Tn)]
-          case typeRef: TypeRef if ctx.definitions.isTupleClass(typeRef.symbol) => List(args)
+          case typeRef: TypeRef if ctx.definitions.isTupleClass(typeRef.symbol) => List(args.toList)
           case _ => List(List(appliedType))
       // unapply[T](_$1: Any): CustomClass[T]
       case appliedType: AppliedType => mapOptionLessUnapply(appliedType, patternsSize, isUnapplySeq(denot))
@@ -502,15 +502,15 @@ object Signatures {
 
     def isSyntheticEvidence(name: String) =
       name.startsWith(NameKinds.ContextBoundParamName.separator)
-      && symbol.paramSymss.flatten.find(_.name.show == name).exists(_.flags.isOneOf(Flags.GivenOrImplicit))
+      && symbol.paramSymss.flattenLst.find(_.name.show == name).exists(_.flags.isOneOf(Flags.GivenOrImplicit))
 
     def toTypeParam(tpe: PolyType): List[Param] =
-      val evidenceParams = (tpe.paramNamess.flatten zip tpe.paramInfoss.flatten).flatMap:
-        case (name, AppliedType(tpe, (ref: TypeParamRef) :: _)) if isSyntheticEvidence(name.show) =>
+      val evidenceParams = (tpe.paramNamess.flattenLst `zip` tpe.paramInfoss.flattenLst).toList.flatMap:
+        case (name, AppliedType(tpe, Lst.StartingWith(ref: TypeParamRef))) if isSyntheticEvidence(name.show) =>
           Some(ref.paramName -> tpe)
         case _ => None
 
-      val tparams = tpe.paramNames.zip(tpe.paramInfos)
+      val tparams = tpe.paramNames.zip(tpe.paramInfos).toList
       tparams.map: (name, info) =>
         evidenceParams.find((evidenceName: TypeName, _: Type) => name == evidenceName).flatMap:
           case (_, tparam) => tparam.show.split('.').lastOption
@@ -535,10 +535,10 @@ object Signatures {
 
       def toParams(tp: Type, apply: Option[untpd.GenericApply], paramList: Int)(using Context): List[Param] =
         val currentParams = (paramSymss.lift(paramList), tp.paramInfoss.headOption) match
-          case (Some(params), Some(infos)) => params zip infos
-          case _ => Nil
+          case (Some(params), Some(infos)) => params.zip(infos)
+          case _ => Lst()
 
-        val params = currentParams.map: (symbol, info) =>
+        val params = currentParams.toList.map: (symbol, info) =>
           // TODO after we migrate ShortenedTypePrinter into the compiler, it should rely on its api
           val name = if symbol.isAllOf(Flags.Given | Flags.Param) && symbol.name.startsWith("x$") then nme.EMPTY else symbol.name.asTermName
 
@@ -549,7 +549,7 @@ object Signatures {
             isImplicit = tp.isImplicitMethod,
           )
 
-        val finalParams = apply.map: apply =>
+        val finalParams: Option[List[MethodParam]] = apply.map: apply =>
           apply.args match
             case Nil => params
             case n if n.length > params.length => params
@@ -572,18 +572,18 @@ object Signatures {
               val result = argsWithOriginalIndices.map:
                 case -1 =>
                   val h = remainingParams.head
-                  remainingParams = remainingParams.tail
+                  remainingParams = remainingParams.drop(1)
                   h
                 case n => params(n)
 
               val isReordered = params != result
-              val (ordered, reordered) = params.zip(result).span: (definitionMember, reorderedMember) =>
+              val (ordered, reordered) = params.toList.zip(result).span: (definitionMember, reorderedMember) =>
                 definitionMember == reorderedMember
 
               ordered.map(_._2) ++ reordered.map(_._2.copy(isReordered = isReordered))
 
 
-        finalParams.getOrElse(params)
+        finalParams.getOrElse(params.toList)
       end toParams
 
       val applies = untpdFun.map(toApplyList).getOrElse(Nil)
@@ -708,7 +708,7 @@ object Signatures {
           case tpe: MethodType =>
             val score = alreadyCurriedBonus +
               userParamsTypes
-                .zip(tpe.paramInfos)
+                .zip(tpe.paramInfosList)
                 .takeWhile { case (t0, t1) =>t0 <:< t1 }
                 .size
             (score, -tpe.paramInfos.length)

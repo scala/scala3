@@ -128,7 +128,7 @@ object MetalsInteractive:
           List((sym, sym.info, None))
         else
           val paramSymbol =
-            for param <- funSym.paramSymss.flatten.find(_.name == name)
+            for param <- funSym.paramSymsLists.flatten.find(_.name == name)
             yield param
           val sym = paramSymbol.getOrElse(fn.symbol)
           List((sym, sym.info, None))
@@ -219,7 +219,7 @@ object MetalsInteractive:
             fun.symbol.owner.exists && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
         def getIndex(t: Tree): Option[Type] =
           t.tpe.dealias match
-            case AppliedType(_, args) => args.get(i)
+            case AppliedType(_, args) => args.toList.get(i)
             case _ => None
         val name = getIndex(t1) match
           case Some(c: ConstantType) => c.value.stringValue

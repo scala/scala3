@@ -282,7 +282,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     var bindingFlags: FlagSet = InlineProxy
     if formal.widenExpr.hasAnnotation(defn.InlineParamAnnot) then
       bindingFlags |= Inline
-    if formal.widenExpr.hasAnnotation(defn.ErasedParamAnnot) then
+    if formal.widenExpr.isForErasedParam then
       bindingFlags |= Erased
     if isByName then
       bindingFlags |= Method
@@ -629,7 +629,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     def paramTypess(call: Tree, acc: List[List[Type]]): List[List[Type]] = call match
       case Apply(fn, args) =>
         fn.tpe.widen.match
-          case mt: MethodType => paramTypess(fn, mt.instantiateParamInfos(args.tpes) :: acc)
+          case mt: MethodType => paramTypess(fn, mt.instantiateParamInfosList(args.tpes) :: acc)
           case _ => Nil
       case TypeApply(fn, _) => paramTypess(fn, acc)
       case _ => acc

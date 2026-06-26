@@ -10,7 +10,7 @@ import typer.{ConstFold, ProtoTypes}
 import transform.{Erasure, ExplicitOuter}
 import config.{Feature, Printers}
 import Printers.typr
-import util.{Property, SourceFile, Spans}
+import util.{Property, SourceFile, Spans, Lst}
 import Spans.*
 
 import scala.annotation.tailrec
@@ -233,15 +233,15 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def SyntheticValDef(name: TermName, rhs: Tree, flags: FlagSet = EmptyFlags)(using Context): ValDef =
     ValDef(newSymbol(ctx.owner, name, Synthetic | flags, rhs.tpe.widen, coord = rhs.span), rhs)
 
-  def DefDef(sym: TermSymbol, paramss: List[List[Symbol]],
+  def DefDef(sym: TermSymbol, paramss: List[Lst[Symbol]],
              resultType: Type, rhs: Tree)(using Context): DefDef =
     sym.setParamss(paramss)
     ta.assignType(
       untpd.DefDef(
         sym.name,
         paramss.map {
-          case TypeSymbols(params) => params.map(param => TypeDef(param).withSpan(param.span))
-          case TermSymbols(params) => params.map(param => ValDef(param).withSpan(param.span))
+          case TypeSymbols(params) => params.map(param => TypeDef(param).withSpan(param.span)).toList
+          case TermSymbols(params) => params.map(param => ValDef(param).withSpan(param.span)).toList
           case _ => unreachable()
         },
         TypeTree(resultType),
@@ -261,19 +261,20 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     // Map method type `tp` with remaining parameters stored in rawParamss to
     // final result type and all (given or synthesized) parameters
-    def recur(tp: Type, remaining: List[List[Symbol]]): (Type, List[List[Symbol]]) = tp match
+    def recur(tp: Type, remaining: List[Lst[Symbol]]): (Type, List[Lst[Symbol]]) = tp match
       case tp: PolyType =>
-        val (tparams: List[TypeSymbol], remaining1) = remaining match
+        val (tparams: Lst[TypeSymbol], remaining1) = remaining match
           case tparams :: remaining1 =>
-            assert(tparams.hasSameLengthAs(tp.paramNames) && tparams.head.isType)
-            (tparams.asInstanceOf[List[TypeSymbol]], remaining1)
+            assert(tparams.length == tp.paramNames.length && tparams.head.isType)
+            (tparams.asInstanceOf[Lst[TypeSymbol]], remaining1)
           case nil =>
-            (newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_)), Nil)
+            (newTypeParams(sym, tp.paramNames, EmptyFlags, tp.instantiateParamInfos(_)),
+             Nil)
         val (rtp, paramss) = recur(tp.instantiate(tparams.map(_.typeRef)), remaining1)
         (rtp, tparams :: paramss)
       case tp: MethodType =>
-        val previousParamRefs: mutable.ListBuffer[TermRef] | Null =
-          if tp.isParamDependent then mutable.ListBuffer[TermRef]() else null
+        val previousParamRefs: Lst.Buffer[TermRef] | Null =
+          if tp.isParamDependent then Lst.Buffer[TermRef]() else null
 
         def valueParam(name: TermName, origInfo: Type, isErased: Boolean): TermSymbol =
           val maybeImplicit =
@@ -285,20 +286,22 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           def makeSym(info: Type) = newSymbol(sym, name, TermParam | maybeImplicit | maybeErased, info, coord = sym.coord)
 
           if previousParamRefs ne null then
-            val sym = makeSym(origInfo.substParams(tp, previousParamRefs.toList))
+            val sym = makeSym(origInfo.substParams(tp, previousParamRefs.toLst))
             previousParamRefs += sym.termRef
             sym
           else makeSym(origInfo)
         end valueParam
 
-        val (vparams: List[TermSymbol], remaining1) =
-          if tp.paramNames.isEmpty then (Nil, remaining)
+        val (vparams: Lst[TermSymbol], remaining1) =
+          if tp.paramNames.isEmpty then (Lst(), remaining)
           else remaining match
             case vparams :: remaining1 =>
-              assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
-              (vparams.asInstanceOf[List[TermSymbol]], remaining1)
+              assert(vparams.length == tp.paramNames.length && vparams.head.isTerm)
+              (vparams.asInstanceOf[Lst[TermSymbol]], remaining1)
             case nil =>
-              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.paramErasureStatuses).map(valueParam), Nil)
+              val syntheticParams = tp.paramNames.zipWith(tp.paramInfos): (pname, pinfo) =>
+                valueParam(pname, pinfo, pinfo.isForErasedParam)
+              (syntheticParams, Nil)
         val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), remaining1)
         (rtp, vparams :: paramss)
       case _ =>
@@ -307,7 +310,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     end recur
 
     val (rtp, paramss) = recur(sym.info, sym.rawParamss)
-    DefDef(sym, paramss, rtp, rhsFn(paramss.nestedMap(ref)))
+    DefDef(sym, paramss, rtp, rhsFn(paramss.map(params => params.map(ref).toList)))
   end DefDef
 
   def TypeDef(sym: TypeSymbol)(using Context): TypeDef =
@@ -357,7 +360,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       stat.symbol.is(TypeParam) && stat.symbol.owner == cls
     val bodyTypeParams = body filter isOwnTypeParam map (_.symbol)
     val newTypeParams =
-      for (tparam <- cls.typeParams if !(bodyTypeParams contains tparam))
+      for tparam <- cls.typeParamsList.filter(!bodyTypeParams.contains(_))
       yield TypeDef(tparam)
     val findLocalDummy = FindLocalDummyAccumulator(cls)
     val localDummy = body.foldLeft(NoSymbol: Symbol)(findLocalDummy.apply)
@@ -418,7 +421,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     var flags = Synthetic | Final
     if Feature.ccEnabled then flags |= CaptureChecked
     val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, flags, parents1, coord = coord)
-    val constr = newConstructor(cls, Synthetic, Nil, Nil).entered
+    val constr = newConstructor(cls, Synthetic, Lst(), Lst()).entered
     val cdef = ClassDef(cls, DefDef(constr), body(cls), Nil, adaptVarargs)
     Block(cdef :: Nil, New(cls.typeRef, Nil))
 
@@ -558,7 +561,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def wrapArray(tree: Tree, elemtp: Type)(using Context): Tree =
     val wrapper = ref(defn.getWrapVarargsArrayModule)
       .select(wrapArrayMethodName(elemtp))
-      .appliedToTypes(if elemtp.classSymbol.isPrimitiveValueClass then Nil else elemtp :: Nil)
+      .appliedToTypes(if elemtp.classSymbol.isPrimitiveValueClass then Lst() else Lst(elemtp))
     val actualElem = wrapper.tpe.widen.firstParamTypes.head
     wrapper.appliedTo(tree.ensureConforms(actualElem))
 
@@ -1015,11 +1018,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToType(targ: Type)(using Context): Tree =
-      appliedToTypes(targ :: Nil)
+      appliedToTypes(Lst(targ))
 
     /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
-    def appliedToTypes(targs: List[Type])(using Context): Tree =
-      appliedToTypeTrees(targs map (TypeTree(_)))
+    def appliedToTypes(targs: Lst[Type])(using Context): Tree =
+      appliedToTypeTrees(targs.mapToList(TypeTree(_)))
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToTypeTree(targ: Tree)(using Context): Tree =
@@ -1040,7 +1043,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (that.tpe.widen.isRef(defn.NothingClass))
         Literal(Constant(false))
       else
-        applyOverloaded(tree, nme.EQ, that :: Nil, Nil, defn.BooleanType)
+        applyOverloaded(tree, nme.EQ, that :: Nil, Lst(), defn.BooleanType)
 
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
     def isInstance(tp: Type)(using Context): Tree = tp.dealias match {
@@ -1370,6 +1373,9 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       case nil => Nil
     }
 
+  extension (xs: Lst[tpd.Tree])
+    def tpes: Lst[Type] = xs.map(_.tpe)
+
   /** A trait for loaders that compute trees. Currently implemented just by DottyUnpickler. */
   trait TreeProvider {
     protected def computeRootTrees(using Context): List[Tree]
@@ -1606,14 +1612,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       // TupleN[elem1Tpe, ...](elem1, ...)
       ref(defn.TupleType(arity).nn.typeSymbol.companionModule)
         .select(nme.apply)
-        .appliedToTypes(elems.map(_.tpe.widenIfUnstable))
+        .appliedToTypes(elems.mapToLst(_.tpe.widenIfUnstable))
         .appliedToArgs(elems)
     else
       // TupleXXL.apply(elems*) // TODO add and use Tuple.apply(elems*) ?
       ref(defn.TupleXXLModule)
         .select(nme.apply)
         .appliedToVarargs(elems.map(_.asInstance(defn.ObjectType)), TypeTree(defn.ObjectType))
-        .asInstance(defn.tupleType(elems.map(elem => elem.tpe.widenIfUnstable)))
+        .asInstance(defn.tupleType(elems.mapToLst(elem => elem.tpe.widenIfUnstable)))
   }
 
   /** Creates the tuple type tree representation of the type trees in `ts` */

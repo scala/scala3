@@ -12,6 +12,7 @@ import util.Spans.*
 import util.SrcPos
 import collection.mutable.ListBuffer
 import ErrorReporting.errorTree
+import util.{Lst}
 
 /** A typer mixin that implements type class derivation functionality */
 trait Deriving {
@@ -86,13 +87,13 @@ trait Deriving {
       val typeClassParams = typeClass.typeParams
       val typeClassArity = typeClassParams.length
 
-      def sameParamKinds(xs: List[ParamInfo], ys: List[ParamInfo]): Boolean =
+      def sameParamKinds(xs: Lst[ParamInfo], ys: Lst[ParamInfo]): Boolean =
         xs.corresponds(ys)((x, y) => x.paramInfo.hasSameKindAs(y.paramInfo))
 
       def cannotBeUnified =
         report.error(em"${cls.name} cannot be unified with the type argument of ${typeClass.name}", derived.srcPos)
 
-      def addInstance(derivedParams: List[TypeSymbol], evidenceParamInfos: List[List[Type]], instanceTypes: List[Type]): Unit = {
+      def addInstance(derivedParams: Lst[TypeSymbol], evidenceParamInfos: Lst[Lst[Type]], instanceTypes: Lst[Type]): Unit = {
         val resultType = typeClassType.appliedTo(instanceTypes)
         val monoInfo =
           if evidenceParamInfos.isEmpty then resultType
@@ -174,13 +175,13 @@ trait Deriving {
                 tl => clsType.appliedTo(derivedParamTypes ++ tl.paramRefs.takeRight(clsArity)))
             }
 
-          addInstance(derivedParams, Nil, List(instanceType))
+          addInstance(derivedParams, Lst(), Lst(instanceType))
         }
         else if (instanceArity == 0 && !clsParams.exists(_.info.isLambdaSub)) {
           // case (b) ... see description above
           val instanceType = clsType.appliedTo(clsParams.map(_.typeRef))
-          val evidenceParamInfos = clsParams.map(param => List(param.typeRef))
-          addInstance(clsParams, evidenceParamInfos, List(instanceType))
+          val evidenceParamInfos = clsParams.map(param => Lst(param.typeRef))
+          addInstance(clsParams, evidenceParamInfos, Lst(instanceType))
         }
         else
           cannotBeUnified
@@ -221,7 +222,7 @@ trait Deriving {
         //     T_L  T_R
         //     U_L  U_R
         //     V_L  V_R
-        val clsParamss: List[List[TypeSymbol]] = cls.typeParams.map { tparam =>
+        val clsParamss: Lst[Lst[TypeSymbol]] = cls.typeParams.map { tparam =>
           typeClassParams.map(tcparam =>
             tparam.copy(name = s"${tparam.name}_$$_${tcparam.name}".toTypeName)
               .asInstanceOf[TypeSymbol])
@@ -229,7 +230,7 @@ trait Deriving {
         // Retain only rows with L/R params of kind * which CanEqual can be applied to.
         // No pairwise evidence will be required for params of other kinds.
         val firstKindedParamss = clsParamss.filter {
-          case param :: _ => !param.info.isLambdaSub
+          case Lst.StartingWith(param) => !param.info.isLambdaSub
           case _ => false
         }
 
@@ -241,9 +242,8 @@ trait Deriving {
 
         // The class instances in the result type. Running example:
         //   A[T_L, U_L, V_L], A[T_R, U_R, V_R]
-        val instanceTypes =
-          for (n <- List.range(0, typeClassArity))
-          yield cls.typeRef.appliedTo(clsParamss.map(row => row(n).typeRef))
+        val instanceTypes = Lst.tabulate(typeClassArity): i =>
+          cls.typeRef.appliedTo(clsParamss.map(row => row(i).typeRef))
 
         // CanEqual[A[T_L, U_L, V_L], A[T_R, U_R, V_R]]
         addInstance(clsParamss.flatten, evidenceParamInfos, instanceTypes)
@@ -272,14 +272,14 @@ trait Deriving {
       def typeclassInstance(sym: Symbol)(using Context): List[List[tpd.Tree]] => tpd.Tree =
         (paramRefss: List[List[tpd.Tree]]) =>
           val (tparamRefs, vparamRefss) = splitArgs(paramRefss)
-          val tparamTypes = tparamRefs.tpes
+          val tparamTypes = tparamRefs.mapToLst(_.tpe)
           val tparams = tparamTypes.map(_.typeSymbol.asType)
           val vparams = if (vparamRefss.isEmpty) Nil else vparamRefss.head.map(_.symbol.asTerm)
           tparams.foreach(ctx.enter(_))
           vparams.foreach(ctx.enter(_))
           def instantiated(info: Type): Type = info match {
             case info: PolyType => instantiated(info.instantiate(tparamTypes))
-            case info: MethodType => info.instantiate(vparams.map(_.termRef))
+            case info: MethodType => info.instantiate(vparams.mapToLst(_.termRef))
             case info => info.widenExpr
           }
           def companionRef(tp: Type): TermRef = tp match {
@@ -294,18 +294,18 @@ trait Deriving {
           val rhs = untpd.Select(module, nme.derived)
           val derivedMember = companion.member(nme.derived)
 
-          if !companion.termSymbol.exists then 
+          if !companion.termSymbol.exists then
             errorTree(rhs, em"$resultType cannot be derived since ${resultType.typeSymbol} has no companion object")
-          else if hasExplicitParams(derivedMember.symbol) then 
+          else if hasExplicitParams(derivedMember.symbol) then
             errorTree(rhs, em"""derived instance $resultType failed to generate:
             |method `derived` from object ${module} takes explicit term parameters""")
-          else 
+          else
             typed(rhs, resultType)
       end typeclassInstance
 
       // checks whether any of the params of 'sym' is explicit
-      def hasExplicitParams(sym: Symbol) = 
-        !sym.paramSymss.flatten.forall(sym => sym.isType || sym.is(Flags.Given) || sym.is(Flags.Implicit))
+      def hasExplicitParams(sym: Symbol) =
+        !sym.paramSymss.flattenLst.forall(sym => sym.isType || sym.is(Flags.Given) || sym.is(Flags.Implicit))
 
       def syntheticDef(sym: Symbol): Tree = inContext(ctx.fresh.setOwner(sym).setNewScope) {
         if sym.is(Method) then tpd.DefDef(sym.asTerm, typeclassInstance(sym))

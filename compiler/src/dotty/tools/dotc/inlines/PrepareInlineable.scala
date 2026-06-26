@@ -20,7 +20,7 @@ import Annotations.*
 import transform.{AccessProxies, Splicer}
 import staging.CrossStageSafety
 import config.Printers.inlining
-import util.Property
+import util.{Property, Lst}
 import staging.StagingLevel
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.util.SrcPos
@@ -184,13 +184,13 @@ object PrepareInlineable {
           def addQualType(tp: Type): Type = tp match {
             case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
             case tp: ExprType => addQualType(tp.resultType)
-            case tp => MethodType(qualType.simplified :: Nil, tp)
+            case tp => MethodType(Lst(qualType.simplified), tp)
           }
 
           // Abstract accessed type over local refs
           def abstractQualType(mtpe: Type): Type =
             if (localRefs.isEmpty) mtpe
-            else PolyType.fromParams(localRefs.map(_.symbol.asType), mtpe)
+            else PolyType.fromParams(localRefs.mapToLst(_.symbol.asType), mtpe)
               .asInstanceOf[PolyType].flatten
 
           val accessed = refPart.symbol.asTerm

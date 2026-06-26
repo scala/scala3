@@ -17,7 +17,7 @@ import typer.TypeAssigner.seqLitType
 import typer.ConstFold
 import reporting.Message.Note
 import config.Printers.recheckr
-import util.Property
+import util.{Property, Lst}
 import StdNames.nme
 import annotation.constructorOnly
 import annotation.tailrec
@@ -104,7 +104,7 @@ object Recheck:
     case tp @ defn.FunctionOf(pformals, restpe, isContextual) =>
       val pformals1 = pformals.mapConserve(mapExprType)
       val restpe1 = normalizeByName(restpe)
-      if (pformals1 ne pformals) || (restpe1 ne restpe) then
+      if (pformals1 _ne_ pformals) || (restpe1 ne restpe) then
         defn.FunctionOf(pformals1, restpe1, isContextual)
       else
         tp
@@ -315,7 +315,7 @@ abstract class Recheck extends Phase, SymTransformer:
      *  NOTE: It seems this is no longer true, and `mapJavaArgs` is not needed.
      *  The invocation is currently disabled in recheckApply.
      */
-    private def mapJavaArgs(formals: List[Type])(using Context): List[Type] =
+    private def mapJavaArgs(formals: Lst[Type])(using Context): Lst[Type] =
       val tm = new TypeMap:
         def apply(t: Type) =
           t match
@@ -325,7 +325,7 @@ abstract class Recheck extends Phase, SymTransformer:
 
     /** Hook for method type instantiation */
     protected def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
-      mt.instantiate(argTypes)
+      mt.instantiateWithList(argTypes)
 
     /** A hook to massage the type of an applied method */
     protected def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType = funtpe
@@ -355,7 +355,7 @@ abstract class Recheck extends Phase, SymTransformer:
       funtpe1.widen match
         case fntpe1: MethodType =>
           val fntpe = prepareFunction(fntpe1, tree.fun.symbol)
-          assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
+          assert(fntpe.paramInfos.length == tree.args.length)
           val formals =
             if false && tree.symbol.is(JavaDefined) // see NOTE in mapJavaArgs
             then mapJavaArgs(fntpe.paramInfos)
@@ -371,7 +371,7 @@ abstract class Recheck extends Phase, SymTransformer:
             case Nil =>
               assert(formals.isEmpty)
               Nil
-          val argTypes = recheckArgs(tree.args, formals, fntpe.paramRefs)
+          val argTypes = recheckArgs(tree.args, formals.toList, fntpe.paramRefsList)
           recheckApplication(tree, qualType, fntpe, argTypes)
             //.showing(i"typed app $tree : $fntpe with ${tree.args}%, % : $argTypes%, % = $result")
         case tp =>
@@ -381,9 +381,9 @@ abstract class Recheck extends Phase, SymTransformer:
       val funtpe = recheck(tree.fun)
       funtpe.widen match
         case fntpe: PolyType =>
-          assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
+          assert(fntpe.paramInfos.length == tree.args.length)
           val argTypes = tree.args.map(recheck(_))
-          constFold(tree, fntpe.instantiate(argTypes))
+          constFold(tree, fntpe.instantiateWithList(argTypes))
 
     def recheckTyped(tree: Typed)(using Context): Type =
       val tptType = recheck(tree.tpt)
@@ -422,15 +422,16 @@ abstract class Recheck extends Phase, SymTransformer:
       if tree.tpt.isEmpty then
         tree.meth.tpe.widen.toFunctionType(tree.meth.symbol.is(JavaDefined), alwaysDependent = forceDependent)
       else if defn.isByNameFunction(tree.tpt.tpe) then
-        val mt @ MethodType(Nil) = tree.meth.tpe.widen: @unchecked
-        val cmt = ContextualMethodType(Nil, Nil, mt.resultType)
+        val (mt: MethodType) = tree.meth.tpe.widen: @unchecked
+        assert(mt.paramNames.isEmpty)
+        val cmt = ContextualMethodType(Lst(), Lst(), mt.resultType)
         cmt.toFunctionType(alwaysDependent = forceDependent)
       else
         recheck(tree.tpt)
 
     def recheckMatch(tree: Match, pt: Type)(using Context): Type =
       val selectorType = recheck(tree.selector)
-      val casesTypes = tree.cases.map(recheckCase(_, selectorType.widen, pt))
+      val casesTypes = tree.cases.mapToLst(recheckCase(_, selectorType.widen, pt))
       TypeComparer.lub(casesTypes)
 
     def recheckCase(tree: CaseDef, selType: Type, pt: Type)(using Context): Type =
@@ -477,9 +478,9 @@ abstract class Recheck extends Phase, SymTransformer:
       recheckTryRest(recheck(tree.expr, pt), tree.cases, tree.finalizer, pt)
 
     protected def recheckTryRest(bodyType: Type, cases: List[CaseDef], finalizer: Tree, pt: Type)(using Context): Type =
-      val casesTypes = cases.map(recheckCase(_, defn.ThrowableType, pt))
+      val casesTypes = cases.mapToLst(recheckCase(_, defn.ThrowableType, pt))
       val finalizerType = recheck(finalizer, defn.UnitType)
-      TypeComparer.lub(bodyType :: casesTypes)
+      TypeComparer.lub(bodyType +: casesTypes)
 
     def seqLiteralElemProto(tree: SeqLiteral, pt: Type, declared: Type)(using Context): Type =
       declared.orElse:
@@ -491,8 +492,8 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckSeqLiteral(tree: SeqLiteral, pt: Type)(using Context): Type =
       val declaredElemType = recheck(tree.elemtpt)
       val elemProto = seqLiteralElemProto(tree, pt, declaredElemType)
-      val elemTypes = tree.elems.map(recheck(_, elemProto))
-      seqLitType(tree, TypeComparer.lub(declaredElemType :: elemTypes))
+      val elemTypes = tree.elems.mapToLst(recheck(_, elemProto))
+      seqLitType(tree, TypeComparer.lub(declaredElemType +: elemTypes))
 
     def recheckTypeTree(tree: TypeTree)(using Context): Type =
       tree.nuType  // allows to install new types at Setup
@@ -504,7 +505,7 @@ abstract class Recheck extends Phase, SymTransformer:
           tp.derivedAnnotatedType(argType, tp.annot)
 
     def recheckAlternative(tree: Alternative, pt: Type)(using Context): Type =
-      val altTypes = tree.trees.map(recheck(_, pt))
+      val altTypes = tree.trees.mapToLst(recheck(_, pt))
       TypeComparer.lub(altTypes)
 
     def recheckPackageDef(tree: PackageDef)(using Context): Type =

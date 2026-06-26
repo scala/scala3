@@ -125,14 +125,17 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
 
     fnType.dealias match
       case fnType: MethodType =>
-        val argTypes = fnType.paramInfos
-        assert(argss.head.size == argTypes.size)
-        val nonErasedArgs = argss.head.lazyZip(fnType.paramErasureStatuses).collect { case (arg, false) => arg }.toList
-        val nonErasedArgTypes = fnType.paramInfos.lazyZip(fnType.paramErasureStatuses).collect { case (arg, false) => arg }.toList
-        assert(nonErasedArgs.size == nonErasedArgTypes.size)
-        interpretArgsGroup(nonErasedArgs, nonErasedArgTypes) ::: interpretArgs(argss.tail, fnType.resType)
+        val formals = fnType.paramInfosList
+        assert(argss.head.size == formals.size)
+        val (nonErasedArgs, nonErasedFormals) =
+          argss.head.zip(formals)
+            .collect { case (arg, info) if !info.hasAnnotation(defn.ErasedParamAnnot) => (arg, info) }
+            .unzip
+        assert(nonErasedArgs.size == nonErasedFormals.size)
+        interpretArgsGroup(nonErasedArgs, nonErasedFormals) ::: interpretArgs(argss.tail, fnType.resType)
       case fnType: AppliedType if defn.isContextFunctionType(fnType) =>
-        val argTypes :+ resType = fnType.args: @unchecked
+        val argTypes = fnType.args.init.toList
+        val resType = fnType.args.last
         interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, resType)
       case fnType: PolyType => interpretArgs(argss, fnType.resType)
       case fnType: ExprType => interpretArgs(argss, fnType.resType)
@@ -309,12 +312,12 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     def getExtraParams(tp: Type): List[Type] = tp.widenDealias match {
       case tp: AppliedType if defn.isContextFunctionType(tp) =>
         // Call context function type direct method
-        tp.args.init.map(arg => TypeErasure.erasure(arg)) ::: getExtraParams(tp.args.last)
+        tp.args.init.toList.map(arg => TypeErasure.erasure(arg)) ::: getExtraParams(tp.args.last)
       case _ => Nil
     }
     val extraParams = getExtraParams(sym.info.finalResultType)
     val allParams = TypeErasure.erasure(sym.info) match {
-      case meth: MethodType => meth.paramInfos ::: extraParams
+      case meth: MethodType => meth.paramInfosList ::: extraParams
       case _ => extraParams
     }
     allParams.map(paramClass)

@@ -316,7 +316,7 @@ object Message:
       super.toText(sym)
   end Printer
 
-end Message 
+end Message
 
 /** A `Message` contains all semantic information necessary to easily
   * comprehend what caused the message to be logged. Each message can be turned

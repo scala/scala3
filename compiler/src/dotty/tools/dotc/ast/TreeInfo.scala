@@ -14,6 +14,7 @@ import util.SrcPos
 
 import Decorators.*
 import Constants.Constant
+import util.Lst
 import scala.collection.mutable
 
 import scala.annotation.tailrec
@@ -242,8 +243,8 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     case _ => tree
 
   /** All type and value parameter symbols of this DefDef */
-  def allParamSyms(ddef: DefDef)(using Context): List[Symbol] =
-    ddef.paramss.flatten.map(_.symbol)
+  def allParamSyms(ddef: DefDef)(using Context): Lst[Symbol] =
+    ddef.paramss.flatten.mapToLst(_.symbol)
 
   /** Does this argument list end with an argument of the form <expr> * ? */
   def isWildcardStarArgList(trees: List[Tree])(using Context): Boolean =

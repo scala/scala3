@@ -11,7 +11,7 @@ import NameOps.*
 import collection.mutable
 import reporting.*
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
-import util.Property
+import util.{Property, Lst}
 import transform.Splicer
 
 trait TypeAssigner {
@@ -145,9 +145,9 @@ trait TypeAssigner {
     val name = tree.name
     val p = nme.primitive
     name match
-      case p.arrayApply  => MethodType(defn.IntType :: Nil, arrayElemType)
-      case p.arrayUpdate => MethodType(defn.IntType :: arrayElemType :: Nil, defn.UnitType)
-      case p.arrayLength => MethodType(Nil, defn.IntType)
+      case p.arrayApply  => MethodType(Lst(defn.IntType), arrayElemType)
+      case p.arrayUpdate => MethodType(Lst(defn.IntType, arrayElemType), defn.UnitType)
+      case p.arrayLength => MethodType(Lst(), defn.IntType)
       // Note that we do not need to handle calls to Array[T]#clone() specially:
       // The JLS section 10.7 says "The return type of the clone method of an array type
       // T[] is T[]", but the actual return type at the bytecode level is Object which
@@ -303,10 +303,10 @@ trait TypeAssigner {
     var skolems: SkolemBuffer | Null = null
     val ownType = fn.tpe.widen match {
       case fntpe: MethodType =>
-        if fntpe.paramInfos.hasSameLengthAs(args) || ctx.phase.prev.relaxedTyping then
+        if fntpe.paramInfos.length == args.length || ctx.phase.prev.relaxedTyping then
           if fntpe.isResultDependent then
             skolems = new mutable.ListBuffer()
-            safeSubstParams(fntpe.resultType, fntpe.paramRefs, args, skolems.nn)
+            safeSubstParams(fntpe.resultType, fntpe.paramRefsList, args, skolems.nn)
           else fntpe.resultType // fast path optimization
         else
           val erroringPhase =
@@ -357,9 +357,9 @@ trait TypeAssigner {
             }
 
             // Type parameters after naming assignment, conserving paramNames order
-            val normArgs: List[Type] = paramNames.zipWithIndex.map { case (pname, idx) =>
-              namedArgMap.getOrElse(pname, nextPoly(idx))
-            }
+            val normArgs: Lst[Type] =
+              Lst.tabulate(paramNames.length): idx =>
+                namedArgMap.getOrElse(paramNames(idx), nextPoly(idx))
 
             val transform = new TypeMap {
               def apply(t: Type) = t match {
@@ -372,12 +372,12 @@ trait TypeAssigner {
             else {
               val gaps = gapBuf.toList
               pt.derivedLambdaType(
-                gaps.map(paramNames),
-                gaps.map(idx => transform(pt.paramInfos(idx)).bounds),
+                gaps.map(paramNames(_)).toLst,
+                gaps.map(idx => transform(pt.paramInfos(idx)).bounds).toLst,
                 resultType1)
             }
           }
-          else if !args.hasSameLengthAs(paramNames) then
+          else if args.length != paramNames.length then
             wrongNumberOfTypeArgs(fn.tpe, pt.typeParams, args, tree.srcPos)
           else {
             // Make sure arguments don't contain the type `pt` itself.
@@ -387,7 +387,7 @@ trait TypeAssigner {
             // but we want to avoid that because it would increase compilation cost.
             // See pos/i6682a.scala for a test case where the defensive copying matters.
             val needsFresh = new ExistsAccumulator(_ eq pt, StopAt.None, forceLazy = false)
-            val argTypes = args.tpes
+            val argTypes = args.mapToLst(_.tpe)
             val pt1 = if argTypes.exists(needsFresh(false, _)) then
               pt.newLikeThis(pt.paramNames, pt.paramInfos, pt.resType)
             else pt
@@ -446,18 +446,18 @@ trait TypeAssigner {
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {
     val ownType =
       if (body.isType) {
-        val params1 = pat.bindTypeSymbols
+        val params1 = pat.bindTypeSymbols.toLst
         val params2 = pat.tpe match
-          case AppliedType(tycon, args) =>
+          case tp @ AppliedType(tycon, args) =>
             val tparams = tycon.typeParamSymbols
-            params1.mapconserve { param =>
+            params1.mapConserve { param =>
               val info1 = param.info
               val info2 = info1.subst(tparams, args)
               if info2 eq info1 then param else param.copy(info = info2).asType
             }
           case _ => params1
         val matchCase1 = defn.MatchCase(pat.tpe, body.tpe)
-        val matchCase2 = if params2 eq params1 then matchCase1 else matchCase1.substSym(params1, params2)
+        val matchCase2 = if params2 _eq_ params1 then matchCase1 else matchCase1.substSym(params1, params2)
         HKTypeLambda.fromParams(params2, matchCase2)
       }
       else body.tpe
@@ -465,7 +465,7 @@ trait TypeAssigner {
   }
 
   def assignType(tree: untpd.Match, scrutinee: Tree, cases: List[CaseDef])(using Context): Match =
-    tree.withType(TypeComparer.lub(cases.tpes))
+    tree.withType(TypeComparer.lub(cases.mapToLst(_.tpe)))
 
   def assignType(tree: untpd.Labeled)(using Context): Labeled =
     tree.withType(tree.bind.symbol.info)
@@ -478,7 +478,7 @@ trait TypeAssigner {
 
   def assignType(tree: untpd.Try, expr: Tree, cases: List[CaseDef])(using Context): Try =
     if (cases.isEmpty) tree.withType(expr.tpe)
-    else tree.withType(TypeComparer.lub(expr.tpe :: cases.tpes))
+    else tree.withType(TypeComparer.lub(expr.tpe +: cases.mapToLst(_.tpe)))
 
   def assignType(tree: untpd.SeqLiteral, elems: List[Tree], elemtpt: Tree)(using Context): SeqLiteral =
     tree.withType(seqLitType(tree, elemtpt.tpe))
@@ -505,8 +505,8 @@ trait TypeAssigner {
     assert(!hasNamedArg(args) || ctx.reporter.errorsReported, tree)
     val tparams = tycon.tpe.typeParams
     val ownType =
-      if tparams.hasSameLengthAs(args) then
-        processAppliedType(tycon.tpe.appliedTo(args.tpes))
+      if tparams.length == args.length then
+        processAppliedType(tycon.tpe.appliedTo(args.mapToLst(_.tpe)))
       else
         wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
     tree.withType(ownType)
@@ -518,7 +518,7 @@ trait TypeAssigner {
       if !ok then assert(ctx.reporter.errorsReported)
       ok
     }
-    tree.withType(HKTypeLambda.fromParams(validParams.map(_.symbol.asType), body.tpe))
+    tree.withType(HKTypeLambda.fromParams(validParams.mapToLst(_.symbol.asType), body.tpe))
 
   def assignType(tree: untpd.MatchTypeTree, bound: Tree, scrutinee: Tree, cases: List[CaseDef])(using Context): MatchTypeTree = {
     val boundType = if (bound.isEmpty) defn.AnyType else bound.tpe
@@ -538,7 +538,7 @@ trait TypeAssigner {
     tree.withType(NamedType(NoPrefix, sym))
 
   def assignType(tree: untpd.Alternative, trees: List[Tree])(using Context): Alternative =
-    tree.withType(TypeComparer.lub(trees.tpes))
+    tree.withType(TypeComparer.lub(trees.mapToLst(_.tpe)))
 
   def assignType(tree: untpd.UnApply, proto: Type)(using Context): UnApply =
     tree.withType(proto)

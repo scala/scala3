@@ -16,6 +16,7 @@ import dotty.tools.dotc.core.TypeApplications.*
 import dotty.tools.dotc.core.TypeErasure.*
 import dotty.tools.dotc.core.classfile.ClassfileConstants
 import dotty.tools.dotc.transform.ValueClasses
+import dotty.tools.dotc.util.Lst
 
 import java.lang.StringBuilder
 import scala.annotation.tailrec
@@ -194,7 +195,7 @@ object GenericSignatures {
         jsig(finalType)
     }
 
-    def classSig(sym: ClassSymbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
+    def classSig(sym: ClassSymbol, pre: Type = NoType, args: Lst[Type] = Lst()): Unit = {
       def argSig(tp: Type): Unit =
         tp.dealias match {
           case bounds: TypeBounds =>
@@ -250,7 +251,7 @@ object GenericSignatures {
       }
       if (args.nonEmpty) {
         builder.append('<')
-        args foreach argSig
+        args.foreach(argSig)
         builder.append('>')
       }
       builder.append(';')
@@ -331,7 +332,7 @@ object GenericSignatures {
                 else builder.append(defn.typeTag(sym.info))
               else if defn.isSyntheticFunctionClass(sym) then
                 defn.functionTypeErasure(sym).classSymbol match
-                  case classSym: ClassSymbol => classSig(classSym, pre, if classSym.typeParams.isEmpty then Nil else args)
+                  case classSym: ClassSymbol => classSig(classSym, pre, if classSym.typeParams.isEmpty then Lst() else args)
                   case NoSymbol => throw new AssertionError(s"No class symbol for erased function type $sym")
               else sym match
                 case classSym: ClassSymbol if classSym.isDerivedValueClass && vcBoxing == ValueClassBoxing.Unbox =>
@@ -405,7 +406,7 @@ object GenericSignatures {
 
         case ci: ClassInfo =>
           val tParams = tp.typeParams
-          if (toplevel) polyParamSig(tParams)
+          if (toplevel) polyParamSig(tParams.toList)
           superSig(ci.typeSymbol, ci.parents)
 
         case AnnotatedType(atp, _) =>
@@ -505,20 +506,20 @@ object GenericSignatures {
               // otherwise we end up in infinite loops,
               // e.g., in `X[A] <: Thing[X[A]]` or `X[A] <: X[Thing[A]]` we keep resolving `X`.
               // In that case we must completely give up on the genericity, i.e.,
-              // in `X[A] <: Y[X[Z[A]]]` it would not be correct to use `Y[A]` as a type signature! 
+              // in `X[A] <: Y[X[Z[A]]]` it would not be correct to use `Y[A]` as a type signature!
               if instantiated.existsPart(_ == a.tycon) then ResolvedAppliedType.Bail
               else ResolvedAppliedType.Resolved(instantiated)
             case _ => ResolvedAppliedType.NotResolved
         case _ => ResolvedAppliedType.NotResolved
 
     @tailrec
-    def unapply(tp: Type)(using Context): Option[(Symbol, Type, List[Type])] = tp match
+    def unapply(tp: Type)(using Context): Option[(Symbol, Type, Lst[Type])] = tp match
       case TypeRef(pre, _) if !tp.typeSymbol.isAliasType =>
-        Some((tp.typeSymbol, pre, Nil))
+        Some((tp.typeSymbol, pre, Lst()))
       case TypeParamRef(_, _) =>
-        Some((tp.typeSymbol, tp, Nil))
+        Some((tp.typeSymbol, tp, Lst()))
       case TermParamRef(_, _) =>
-        Some((tp.termSymbol, tp, Nil))
+        Some((tp.termSymbol, tp, Lst()))
       case a @ AppliedType(pre, args) =>
         resolveAppliedType(a) match
           case ResolvedAppliedType.Resolved(resolved) => unapply(resolved)
@@ -528,13 +529,13 @@ object GenericSignatures {
         None
   }
 
-  private def collectMethodParams(mtd: MethodOrPoly, collectTParams: Boolean)(using Context): (Iterable[TypeParamInfo] | Null, Iterable[Type], Type) =
+  private def collectMethodParams(mtd: MethodOrPoly, collectTParams: Boolean)(using Context): (Iterable[TypeParamInfo] | Null, Lst[Type], Type) =
     val tparams = if collectTParams then ListBuffer.empty[TypeParamInfo] else null
-    val vparams = ListBuffer.empty[Type]
+    val vparams = Lst.Buffer[Type]()
 
     @tailrec def recur(tpe: Type): Type = tpe match
       case mtd: MethodType =>
-        vparams ++= mtd.paramInfos.filterNot(_.hasAnnotation(defn.ErasedParamAnnot))
+        vparams ++= mtd.paramInfos.filter(!_.isForErasedParam)
         mtd.resType.dealias match
           // Returned context functions are erased by putting their parameters into the method's parameters,
           // so we must duplicate that logic here
@@ -547,18 +548,18 @@ object GenericSignatures {
           case _ =>
             recur(mtd.resType)
       case PolyType(tps, tpe) =>
-        if tparams != null then tparams ++= tps
+        if tparams != null then tparams ++= tps.toIterable
         recur(tpe)
       case _ =>
         tpe
     end recur
 
     val rte = recur(mtd)
-    (tparams, vparams, rte)
+    (tparams, vparams.toLst, rte)
   end collectMethodParams
 
   /** Collect type parameters that are actually used in the given types. */
-  private def collectUsedTypeParams(types: Iterable[Type], resType: Type, initialSymbol: Symbol)(using Context): (Set[Name], Set[Symbol]) =
+  private def collectUsedTypeParams(types: Lst[Type], resType: Type, initialSymbol: Symbol)(using Context): (Set[Name], Set[Symbol]) =
     def isTypeParameterInMethSig(sym: Symbol, initialSymbol: Symbol)(using Context) =
       !sym.maybeOwner.isTypeParam && // check if it's not higher order type param
         sym.isTypeParam && sym.owner == initialSymbol

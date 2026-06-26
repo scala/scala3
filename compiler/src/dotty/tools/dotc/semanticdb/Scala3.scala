@@ -12,6 +12,7 @@ import core.StdNames.nme
 import SymbolInformation.{Kind => k}
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.core.Names.Designator
 
 import java.lang.Character.{isJavaIdentifierPart, isJavaIdentifierStart}
@@ -249,8 +250,8 @@ private[semanticdb] object Scala3:
         val setterName = sym.name.toTermName.setterName
 
         extension (t: Type) inline def matchingType = t.paramInfoss match
-          case (arg::Nil)::Nil => t.resultType == defn.UnitType && arg == sym.info
-          case _               => false
+          case Lst.Singleton(arg) :: Nil => t.resultType == defn.UnitType && arg == sym.info
+          case _                => false
 
         sym.owner.info.decls.find(s => s.name == setterName && s.info.matchingType)
 

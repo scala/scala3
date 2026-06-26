@@ -26,6 +26,7 @@ import dotty.tools.dotc.core.NameKinds.ExceptionBinderName
 import dotty.tools.dotc.transform.TreeChecker
 import dotty.tools.dotc.core.Names
 import dotty.tools.dotc.util.Spans.NoCoord
+import dotty.tools.dotc.util.Lst
 
 object QuotesImpl {
 
@@ -572,10 +573,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
         withDefaultPos(tpd.Select(qualifier, name.toTermName))
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Term =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, Types.WildcardType))
-
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs.toLst, Types.WildcardType))
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType))
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs.toLst, returnType))
       def copy(original: Tree)(qualifier: Term, name: String): Select =
         original match
           case original: tpd.Select if original.name.toString == name =>
@@ -1962,9 +1962,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def appliedTo(targ: TypeRepr): TypeRepr =
           dotc.core.Types.decorateTypeApplications(self).appliedTo(targ)
         def appliedTo(targs: List[TypeRepr]): TypeRepr =
-          dotc.core.Types.decorateTypeApplications(self).appliedTo(targs)
+          dotc.core.Types.decorateTypeApplications(self).appliedTo(targs.toLst)
         def substituteTypes(from: List[Symbol], to: List[TypeRepr]): TypeRepr =
-          self.subst(from, to)
+          self.subst(from.toLst, to.toLst)
 
         def typeArgs: List[TypeRepr] = self match
           case AppliedType(_, args) => args
@@ -2100,7 +2100,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object AppliedType extends AppliedTypeModule:
       def apply(tycon: TypeRepr, args: List[TypeRepr]): AppliedType =
-        Types.AppliedType(tycon, args)
+        Types.AppliedType(tycon, args.toLst)
       def unapply(x: AppliedType): (TypeRepr, List[TypeRepr]) =
         (AppliedTypeMethods.tycon(x), AppliedTypeMethods.args(x))
     end AppliedType
@@ -2108,7 +2108,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given AppliedTypeMethods: AppliedTypeMethods with
       extension (self: AppliedType)
         def tycon: TypeRepr = self.tycon.stripTypeVar
-        def args: List[TypeRepr] = self.args.mapConserve(_.stripTypeVar)
+        def args: List[TypeRepr] = self.args.mapConserve(_.stripTypeVar).toList
       end extension
     end AppliedTypeMethods
 
@@ -2306,8 +2306,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given LambdaTypeMethods: LambdaTypeMethods with
       extension (self: LambdaType)
-        def paramNames: List[String] = self.paramNames.map(_.toString)
-        def paramTypes: List[TypeRepr] = self.paramInfos
+        def paramNames: List[String] = self.paramNamesList.map(_.toString)
+        def paramTypes: List[TypeRepr] = self.paramInfosList
         def resType: TypeRepr = self.resType
       end extension
     end LambdaTypeMethods
@@ -2330,15 +2330,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object MethodType extends MethodTypeModule:
       def apply(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType =
-        Types.MethodType(paramNames.map(_.toTermName))(paramInfosExp, resultTypeExp)
+        Types.MethodType(paramNames.mapToLst(_.toTermName))(paramInfosExp.andThen(_.toLst), resultTypeExp)
       def apply(kind: MethodTypeKind)(paramNames: List[String])(paramInfosExp: MethodType => List[TypeRepr], resultTypeExp: MethodType => TypeRepr): MethodType =
         val companion = kind match
           case MethodTypeKind.Contextual => Types.ContextualMethodType
           case MethodTypeKind.Implicit => Types.ImplicitMethodType
           case MethodTypeKind.Plain => Types.MethodType
-        companion.apply(paramNames.map(_.toTermName))(paramInfosExp, resultTypeExp)
+        companion.apply(paramNames.mapToLst(_.toTermName))(paramInfosExp.andThen(_.toLst), resultTypeExp)
       def unapply(x: MethodType): (List[String], List[TypeRepr], TypeRepr) =
-        (x.paramNames.map(_.toString), x.paramTypes, x.resType)
+        (x.paramNames.map(_.toString).toList, x.paramTypes, x.resType)
     end MethodType
 
     given MethodTypeMethods: MethodTypeMethods with
@@ -2353,7 +2353,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             case _ => MethodTypeKind.Plain
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
 
-        def erasedParams: List[Boolean] = self.paramErasureStatuses
+        def erasedParams: List[Boolean] = self.paramInfosList.map(_.isForErasedParam)
         def hasErasedParams: Boolean = self.hasErasedParams
       end extension
     end MethodTypeMethods
@@ -2368,15 +2368,15 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object PolyType extends PolyTypeModule:
       def apply(paramNames: List[String])(paramBoundsExp: PolyType => List[TypeBounds], resultTypeExp: PolyType => TypeRepr): PolyType =
-        Types.PolyType(paramNames.map(_.toTypeName))(paramBoundsExp, resultTypeExp)
+        Types.PolyType(paramNames.mapToLst(_.toTypeName))(paramBoundsExp.andThen(_.toLst), resultTypeExp)
       def unapply(x: PolyType): (List[String], List[TypeBounds], TypeRepr) =
-        (x.paramNames.map(_.toString), x.paramBounds, x.resType)
+        (x.paramNames.map(_.toString).toList, x.paramBounds, x.resType)
     end PolyType
 
     given PolyTypeMethods: PolyTypeMethods with
       extension (self: PolyType)
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def paramBounds: List[TypeBounds] = self.paramInfos
+        def paramBounds: List[TypeBounds] = self.paramInfosList
       end extension
     end PolyTypeMethods
 
@@ -2390,17 +2390,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object TypeLambda extends TypeLambdaModule:
       def apply(paramNames: List[String], boundsFn: TypeLambda => List[TypeBounds], bodyFn: TypeLambda => TypeRepr): TypeLambda =
-        Types.HKTypeLambda(paramNames.map(_.toTypeName))(boundsFn, bodyFn)
+        Types.HKTypeLambda(paramNames.mapToLst(_.toTypeName))(boundsFn.andThen(_.toLst), bodyFn)
       def unapply(x: TypeLambda): (List[String], List[TypeBounds], TypeRepr) =
-        (x.paramNames.map(_.toString), x.paramBounds, x.resType)
+        (x.paramNames.map(_.toString).toList, x.paramBounds, x.resType)
     end TypeLambda
 
     given TypeLambdaMethods: TypeLambdaMethods with
       extension (self: TypeLambda)
         def param(idx: Int): TypeRepr = self.newParamRef(idx)
-        def paramBounds: List[TypeBounds] = self.paramInfos
+        def paramBounds: List[TypeBounds] = self.paramInfosList
         def paramVariances: List[Flags] =
-          self.typeParams.map(_.paramVariance)
+          self.typeParams.toList.map(_.paramVariance)
       end extension
     end TypeLambdaMethods
 
@@ -2414,7 +2414,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object MatchCase extends MatchCaseModule:
       def apply(pattern: TypeRepr, rhs: TypeRepr): MatchCase =
-        Types.AppliedType(dotc.core.Symbols.defn.MatchCaseClass.typeRef, List(pattern, rhs))
+        Types.AppliedType(dotc.core.Symbols.defn.MatchCaseClass.typeRef, Lst(pattern, rhs))
       def unapply(x: MatchCase): (TypeRepr, TypeRepr) = (x.pattern, x.rhs)
     end MatchCase
 
@@ -2750,7 +2750,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           parents,
           selfType.getOrElse(Types.NoType),
           dotc.core.Symbols.NoSymbol)
-        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Nil, Nil))
+        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Lst(), Lst()))
         for sym <- decls(cls) do cls.enter(sym)
         cls
 
@@ -2833,7 +2833,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
                 case (AppliedType(tycon, args), pt: PolyType) =>
                   xCheckMacroAssert(
                     args.length == pt.typeParams.length &&
-                    args.zip(pt.typeParams).forall {
+                    args.toLst.zip(pt.typeParams).forall {
                       case (arg, param) => arg == param.paramRef
                     },
                     "Constructor result type does not correspond to the declared type parameters"
@@ -2895,7 +2895,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           compUnitInfo = null
         )
         val cls = mod.moduleClass.asClass
-        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Nil, Nil))
+        cls.enter(dotc.core.Symbols.newConstructor(cls, dotc.core.Flags.Synthetic, Lst(), Lst()))
         for sym <- decls(cls) do cls.enter(sym)
         mod
 
@@ -2906,7 +2906,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val privateWithin1 = if privateWithin.isTerm then Symbol.noSymbol else privateWithin
         checkValidFlags(flags.toTermFlags, Flags.validMethodFlags)
         val method = dotc.core.Symbols.newSymbol(owner, name.toTermName, flags | dotc.core.Flags.Method, tpe, privateWithin1)
-        method.setParamss(method.paramSymss)
+        method.setParamss(method.paramSymss.map(_.toLst))
         method
       def newVal(owner: Symbol, name: String, tpe: TypeRepr, flags: Flags, privateWithin: Symbol): Symbol =
         xCheckMacroAssert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
@@ -3101,7 +3101,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
                 if typeA.isTypeParam && typeB.isTypeParam then
                   // put type params at the beginning (and sort them by declaration order)
                   val pl = typeA.owner
-                  val typeParamPositionMap = pl.typeParams.map(_.asInstanceOf[Symbol]).zipWithIndex.toMap
+                  val typeParamPositionMap = pl.typeParamsList.map(_.asInstanceOf[Symbol]).zipWithIndex.toMap
                   typeParamPositionMap(typeA) < typeParamPositionMap(typeB)
                 else if typeA.isTypeParam then true
                 else if typeB.isTypeParam then false
@@ -3114,7 +3114,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def declarations: List[Symbol] =
           self.typeRef.info.decls.toList
 
-        def paramSymss: List[List[Symbol]] = self.denot.paramSymss
+        def paramSymss: List[List[Symbol]] = self.denot.paramSymss.map(_.toList)
         def primaryConstructor: Symbol =
           val initialPrimary = self.denot.primaryConstructor
           // Java outline parser creates a dummyConstructor. We want to avoid returning it here,
@@ -3188,11 +3188,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     given SignatureMethods: SignatureMethods with
       extension (self: Signature)
         def paramSigs: List[String | Int] =
-          self.paramsSig.map {
+          self.paramsSig.toList.map[String | Int] {
             case paramSig: dotc.core.Names.TypeName =>
               paramSig.toString
             case paramSig: Int =>
-              paramSig
+              paramSig.intValue
           }
         def resultSig: String =
           self.resSig.toString

@@ -7,6 +7,7 @@ import printing.Formatting.Show
 
 import org.junit.Test
 import org.junit.Assert.*
+import util.Lst
 
 class StringFormatterTest extends AbstractStringFormatterTest:
   @Test def string     = check("foo", i"${"foo"}")
@@ -48,10 +49,10 @@ abstract class AbstractStringFormatterTest extends DottyTest:
   def Big = (1 to 120).foldLeft(defn.StringType)((tp, i) => RefinedType(tp, typeName("A" * 69 + i), TypeAlias(defn.IntType)))
 
   def mkCstrd =
-    val names = List(typeName("Foo"), typeName("Bar"))
-    val infos = List(TypeBounds.upper(defn.IntType), TypeBounds.upper(defn.StringType))
+    val names = Lst(typeName("Foo"), typeName("Bar"))
+    val infos = Lst(TypeBounds.upper(defn.IntType), TypeBounds.upper(defn.StringType))
     val tl = PolyType(names)(_ => infos, _ => defn.AnyType)
-    TypeComparer.addToConstraint(tl, Nil)
+    TypeComparer.addToConstraint(tl, Lst())
     tl.paramRefs
 
   def ckSub(obtained: String, snippet: String)  = assert(obtained.contains(snippet))

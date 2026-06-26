@@ -8,6 +8,7 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.ClassBType.runtimeNullInternalName
 import dotty.tools.backend.jvm.opt.OptimizerWarning
 import dotty.tools.dotc.core.Definitions
+import dotty.tools.dotc.util.Lst
 
 import scala.collection.SortedMap
 import scala.tools.asm.Opcodes
@@ -886,7 +887,7 @@ final case class ArrayBType(componentType: BType) extends RefBType {
   }
 }
 
-final case class MethodBType(argumentTypes: List[BType], returnType: BType) extends BType {
+final case class MethodBType(argumentTypes: Lst[BType], returnType: BType) extends BType {
   def isNothing: Boolean = false
   def isNull: Boolean = false
 }
@@ -902,6 +903,6 @@ object BTypes {
   def methodDescriptor(argumentType: BType, returnType: BType): String =
     s"($argumentType)$returnType"
 
-  def methodDescriptor(argumentTypes: List[BType], returnType: BType): String =
+  def methodDescriptor(argumentTypes: Lst[BType], returnType: BType): String =
     argumentTypes.mkString("(", "", ")" + returnType)
 }
