@@ -1022,7 +1022,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         // Special case: Java arrays are covariant.
         // When checking overrides (frozenConstraint) of Java methods, allow B[] <: A[] if B <: A.
         def checkJavaArrayCovariance: Boolean = tp2 match {
-          case AppliedType(tycon2, arg2 +: Vector())
+          case AppliedType(tycon2, Vector(arg2))
             if frozenConstraint
               && tycon1.typeSymbol == defn.ArrayClass
               && tycon2.typeSymbol == defn.ArrayClass
@@ -1537,7 +1537,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *  Otherwise, if `other` is a Nat constant `n`, proceed with comparing `arg` and `n - 1`.
      */
     def compareS(tp: AppliedType, other: Type, fromBelow: Boolean): Boolean = tp.args match {
-      case arg +: Vector() =>
+      case Vector(arg) =>
         natValue(arg) match {
           case Some(n) if n != Int.MaxValue =>
             val succ = ConstantType(Constant(n + 1))
@@ -1825,135 +1825,149 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *  the first run and picked up in the second.
      */
     def recurArgs(args1: Vector[Type], args2: Vector[Type], tparams2: Vector[ParamInfo],
-                  canDefer: Boolean,
-                  deferred1: Vector[Type], deferred2: Vector[Type], deferredTparams2: Vector[ParamInfo]): Boolean =
-      if args1.isEmpty then
-        args2.isEmpty
-        && (deferred1.isEmpty
-            || recurArgs(
-                  deferred1.reverse, deferred2.reverse, deferredTparams2.reverse,
-                  canDefer = false, Vector(), Vector(), Vector()))
-      else args2.nonEmpty && tparams2.nonEmpty && {
-        val tparam = tparams2.head
-        val v = tparam.paramVarianceSign
+                  canDefer: Boolean): Boolean =
+      val len = args1.length
+      if args2.length != len || tparams2.length < len then false
+      else
+        var deferred1: mutable.Builder[Type, Vector[Type]] | Null = null
+        var deferred2: mutable.Builder[Type, Vector[Type]] | Null = null
+        var deferredTparams2: mutable.Builder[ParamInfo, Vector[ParamInfo]] | Null = null
+        var i = 0
+        var result = true
+        while i < len && result do
+          val arg1 = args1(i)
+          val arg2 = args2(i)
+          val tparam = tparams2(i)
+          val v = tparam.paramVarianceSign
 
-        /** An argument test is incomplete if it implies a comparison A <: B where
-         *  A is an AndType or B is an OrType. In these cases we need to run an
-         *  either, which can lose solutions if there are type variables involved.
-         *  So we defer such tests to run last, on the chance that some other argument
-         *  comparison will instantiate or constrain type variables first.
-         */
-        def isIncomplete(arg1: Type, arg2: Type): Boolean =
-          val arg1d = arg1.stripped
-          val arg2d = arg2.stripped
-          (v >= 0) && (arg1d.isInstanceOf[AndType] || arg2d.isInstanceOf[OrType])
-          ||
-          (v <= 0) && (arg1d.isInstanceOf[OrType] || arg2d.isInstanceOf[AndType])
+          /** An argument test is incomplete if it implies a comparison A <: B where
+           *  A is an AndType or B is an OrType. In these cases we need to run an
+           *  either, which can lose solutions if there are type variables involved.
+           *  So we defer such tests to run last, on the chance that some other argument
+           *  comparison will instantiate or constrain type variables first.
+           */
+          def isIncomplete(arg1: Type, arg2: Type): Boolean =
+            val arg1d = arg1.stripped
+            val arg2d = arg2.stripped
+            (v >= 0) && (arg1d.isInstanceOf[AndType] || arg2d.isInstanceOf[OrType])
+            ||
+            (v <= 0) && (arg1d.isInstanceOf[OrType] || arg2d.isInstanceOf[AndType])
 
-        /** Try a capture conversion:
-         *  If the original left-hand type `leftRoot` is a path `p.type`,
-         *  and the current widened left type is an application with wildcard arguments
-         *  such as `C[?]`, where `X` is `C`'s type parameter corresponding to the `_` argument,
-         *  compare with `C[p.X]` instead. Otherwise approximate based on variance.
-         *  Also do a capture conversion in either of the following cases:
-         *
-         *   - If we are after typer. We generally relax soundness requirements then.
-         *     We need the relaxed condition to correctly compute overriding relationships.
-         *     Missing this case led to AbstractMethod errors in the bootstrap.
-         *
-         *   - If we are in mode TypevarsMissContext, which means we test implicits
-         *     for eligibility. In this case, we can be more permissive, since it's
-         *     just a pre-check. This relaxation is needed since the full
-         *     implicit typing might perform an adaptation that skolemizes the
-         *     type of a synthesized tree before comparing it with an expected type.
-         *     But no such adaptation is applied for implicit eligibility
-         *     testing, so we have to compensate.
-         *
-         *  Note: Doing the capture conversion on path types is actually not necessary
-         *  since we can already deal with the situation through skolemization in Typer#captureWildcards.
-         *  But performance tests indicate that it's better to do it, since we avoid
-         *  skolemizations, which are more expensive . And, besides, capture conversion on
-         *  paths is less intrusive than skolemization.
-         */
-        def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
-          case tparam: Symbol =>
-            val leftr = leftRoot.nn
-            if (leftr.isStable || ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
-                && leftr.isValueType
-                && leftr.member(tparam.name).exists
-            then
-              val captured = TypeRef(leftr, tparam)
-              try isSubArg(captured, arg2)
-              catch case ex: TypeError =>
-                // The captured reference could be illegal and cause a
-                // TypeError to be thrown in argDenot
+          /** Try a capture conversion:
+           *  If the original left-hand type `leftRoot` is a path `p.type`,
+           *  and the current widened left type is an application with wildcard arguments
+           *  such as `C[?]`, where `X` is `C`'s type parameter corresponding to the `_` argument,
+           *  compare with `C[p.X]` instead. Otherwise approximate based on variance.
+           *  Also do a capture conversion in either of the following cases:
+           *
+           *   - If we are after typer. We generally relax soundness requirements then.
+           *     We need the relaxed condition to correctly compute overriding relationships.
+           *     Missing this case led to AbstractMethod errors in the bootstrap.
+           *
+           *   - If we are in mode TypevarsMissContext, which means we test implicits
+           *     for eligibility. In this case, we can be more permissive, since it's
+           *     just a pre-check. This relaxation is needed since the full
+           *     implicit typing might perform an adaptation that skolemizes the
+           *     type of a synthesized tree before comparing it with an expected type.
+           *     But no such adaptation is applied for implicit eligibility
+           *     testing, so we have to compensate.
+           *
+           *  Note: Doing the capture conversion on path types is actually not necessary
+           *  since we can already deal with the situation through skolemization in Typer#captureWildcards.
+           *  But performance tests indicate that it's better to do it, since we avoid
+           *  skolemizations, which are more expensive . And, besides, capture conversion on
+           *  paths is less intrusive than skolemization.
+           */
+          def compareCaptured(arg1: TypeBounds, arg2: Type) = tparam match {
+            case tparam: Symbol =>
+              val leftr = leftRoot.nn
+              if (leftr.isStable || ctx.isAfterTyper || ctx.mode.is(Mode.TypevarsMissContext))
+                  && leftr.isValueType
+                  && leftr.member(tparam.name).exists
+              then
+                val captured = TypeRef(leftr, tparam)
+                try isSubArg(captured, arg2)
+                catch case ex: TypeError =>
+                  // The captured reference could be illegal and cause a
+                  // TypeError to be thrown in argDenot
+                  false
+              else if (v > 0)
+                isSubType(paramBounds(tparam).hi, arg2)
+              else if (v < 0)
+                isSubType(arg2, paramBounds(tparam).lo)
+              else
                 false
-            else if (v > 0)
-              isSubType(paramBounds(tparam).hi, arg2)
-            else if (v < 0)
-              isSubType(arg2, paramBounds(tparam).lo)
-            else
+            case _ =>
               false
-          case _ =>
-            false
-        }
+          }
 
-        def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match
-          case arg2: TypeBounds =>
-            val arg1norm = arg1 match {
-              case arg1: TypeBounds =>
-                tparam match {
-                  case tparam: Symbol => arg1 & paramBounds(tparam)
-                  case _ => arg1 // This case can only arise when a hk-type is illegally instantiated with a wildcard
-                }
-              case _ => arg1
-            }
-            arg2.contains(arg1norm)
-          case ExprType(arg2res)
-          if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
-               && defn.isByNameFunction(arg1.dealias) =>
-            // ElimByName maps `=> T` to `()? => T`, but only in method parameters. It leaves
-            // embedded `=> T` arguments alone. This clause needs to compensate for that.
-            isSubArg(arg1.dealias.argInfos.head, arg2res)
-          case _ =>
-            arg1 match
-              case arg1: TypeBounds =>
-                CaptureSet.subCapturesRange(arg1, arg2)
-                  // subCapturesRange is important for invariant arguments that get expanded
-                  // to TypeBounds where each bound is obtained by adding a captureset variable
-                  // to the argument type. If subCapturesRange returns true we know that arg1's'
-                  // capture set can be unified with arg2's capture set, so it only remains to
-                  // check the underlying types with `isSubArg`.
-                  && isSubArg(arg1.hi.stripCapturing, arg2.stripCapturing)
-                || compareCaptured(arg1, arg2)
-              case ExprType(arg1res)
-              if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
-                   && defn.isByNameFunction(arg2.dealias) =>
-                 isSubArg(arg1res, arg2.argInfos.head)
-              case _ =>
-                if v < 0 then isSubType(arg2, arg1)
-                else if v > 0 then isSubType(arg1, arg2)
-                else isSameType(arg2, arg1)
+          def isSubArg(arg1: Type, arg2: Type): Boolean = arg2 match
+            case arg2: TypeBounds =>
+              val arg1norm = arg1 match {
+                case arg1: TypeBounds =>
+                  tparam match {
+                    case tparam: Symbol => arg1 & paramBounds(tparam)
+                    case _ => arg1 // This case can only arise when a hk-type is illegally instantiated with a wildcard
+                  }
+                case _ => arg1
+              }
+              arg2.contains(arg1norm)
+            case ExprType(arg2res)
+            if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
+                 && defn.isByNameFunction(arg1.dealias) =>
+              // ElimByName maps `=> T` to `()? => T`, but only in method parameters. It leaves
+              // embedded `=> T` arguments alone. This clause needs to compensate for that.
+              isSubArg(arg1.dealias.argInfos.head, arg2res)
+            case _ =>
+              arg1 match
+                case arg1: TypeBounds =>
+                  CaptureSet.subCapturesRange(arg1, arg2)
+                    // subCapturesRange is important for invariant arguments that get expanded
+                    // to TypeBounds where each bound is obtained by adding a captureset variable
+                    // to the argument type. If subCapturesRange returns true we know that arg1's'
+                    // capture set can be unified with arg2's capture set, so it only remains to
+                    // check the underlying types with `isSubArg`.
+                    && isSubArg(arg1.hi.stripCapturing, arg2.stripCapturing)
+                  || compareCaptured(arg1, arg2)
+                case ExprType(arg1res)
+                if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
+                     && defn.isByNameFunction(arg2.dealias) =>
+                   isSubArg(arg1res, arg2.argInfos.head)
+                case _ =>
+                  if v < 0 then isSubType(arg2, arg1)
+                  else if v > 0 then isSubType(arg1, arg2)
+                  else isSameType(arg2, arg1)
 
-        val arg1 = args1.head
-        val arg2 = args2.head
-        val rest1 = args1.tail
-        if !canDefer
-            || args1.length == 1 && deferred1.isEmpty
-                // skip the incompleteness test if this is the last argument and no previous argument tests were incomplete
-            || !isIncomplete(arg1, arg2)
-        then
-          isSubArg(arg1, arg2)
-          && recurArgs(
-                rest1, args2.tail, tparams2.tail, canDefer,
-                deferred1, deferred2, deferredTparams2)
-        else
-          recurArgs(
-            rest1, args2.tail, tparams2.tail, canDefer,
-            arg1 +: deferred1, arg2 +: deferred2, tparams2.head +: deferredTparams2)
-      }
+          if !canDefer
+              || i == len - 1 && deferred1 == null
+                  // skip the incompleteness test if this is the last argument and no previous argument tests were incomplete
+              || !isIncomplete(arg1, arg2)
+          then
+            result = isSubArg(arg1, arg2)
+          else
+            if deferred1 == null then
+              val b1 = Vector.newBuilder[Type]
+              val b2 = Vector.newBuilder[Type]
+              val btparams2 = Vector.newBuilder[ParamInfo]
+              b1.sizeHint(len - i)
+              b2.sizeHint(len - i)
+              btparams2.sizeHint(len - i)
+              deferred1 = b1
+              deferred2 = b2
+              deferredTparams2 = btparams2
+            deferred1 += arg1
+            deferred2.nn += arg2
+            deferredTparams2.nn += tparam
+          i += 1
 
-    recurArgs(args1, args2, tparams2, canDefer = true, Vector(), Vector(), Vector())
+        result
+        && (deferred1 == null || recurArgs(
+          deferred1.result(),
+          deferred2.nn.result(),
+          deferredTparams2.nn.result(),
+          canDefer = false))
+
+    recurArgs(args1, args2, tparams2, canDefer = true)
 
   }
 
@@ -2872,7 +2886,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   /** Try to distribute `|` inside type, detect and handle conflicts
    *  Note that a disjunction cannot be pushed into a refined or applied type. Example:
    *
-   *     Vector[T] | Vector[U] is not the same as Vector[T | U].
+   *     List[T] | List[U] is not the same as List[T | U].
    *
    *  The rhs is a proper supertype of the lhs.
    */

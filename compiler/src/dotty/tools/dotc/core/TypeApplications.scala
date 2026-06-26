@@ -385,11 +385,18 @@ class TypeApplications(val self: Type) extends AnyVal {
     val typParams = self.typeParams
     val stripped = self.stripTypeVar
     val dealiased = stripped.safeDealias
+    def argsHaveBounds =
+      var i = 0
+      var found = false
+      while !found && i < args.length do
+        found = isBounds(args(i))
+        i += 1
+      found
     if (args.isEmpty || ctx.erasedTypes) self
     else dealiased match {
       case dealiased: HKTypeLambda =>
         def tryReduce =
-          if (!args.exists(isBounds)) {
+          if (!argsHaveBounds) {
             val followAlias = Config.simplifyApplications && {
               dealiased.resType match {
                 case AppliedType(tyconBody, dealiasedArgs) =>
@@ -403,8 +410,19 @@ class TypeApplications(val self: Type) extends AnyVal {
               }
             }
             if (dealiased eq stripped) || followAlias then
-              val paramsWithoutArg = dealiased.typeParams.drop(args.length).map(_.paramRef)
-              val hasParamsWithoutArg = paramsWithoutArg.nonEmpty && dealiased.resType.existsPart(paramsWithoutArg.contains, forceLazy = false)
+              val firstParamWithoutArg = args.length
+              val typeParamCount = dealiased.typeParams.length
+              val hasParamsWithoutArg =
+                firstParamWithoutArg < typeParamCount &&
+                  dealiased.resType.existsPart(
+                    {
+                      case param: TypeParamRef =>
+                        (param.binder eq dealiased) && param.paramNum >= firstParamWithoutArg && param.paramNum < typeParamCount
+                      case _ =>
+                        false
+                    },
+                    forceLazy = false
+                  )
               if hasParamsWithoutArg then
                 AppliedType(self, args)
               else
@@ -451,8 +469,8 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
-  final def appliedTo(arg: Type)(using Context): Type = appliedTo(arg +: Vector())
-  final def appliedTo(arg1: Type, arg2: Type)(using Context): Type = appliedTo(arg1 +: arg2 +: Vector())
+  final def appliedTo(arg: Type)(using Context): Type = appliedTo(Vector(arg))
+  final def appliedTo(arg1: Type, arg2: Type)(using Context): Type = appliedTo(Vector(arg1, arg2))
 
   final def applyIfParameterized(args: Vector[Type])(using Context): Type =
     if (typeParams.nonEmpty) appliedTo(args) else self

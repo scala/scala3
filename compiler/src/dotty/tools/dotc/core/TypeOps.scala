@@ -246,7 +246,7 @@ object TypeOps:
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
       case Vector() => // this case can happen because after erasure we do not have a top class anymore
         assert(ctx.erasedTypes || ctx.reporter.errorsReported)
-        defn.ObjectClass +: Vector()
+        Vector(defn.ObjectClass)
     }
 
     def mergeRefinedOrApplied(tp1: Type, tp2: Type): Type = {
@@ -448,7 +448,7 @@ object TypeOps:
     }
 
     def close(tp: Type) = RecType.closeOver { rt =>
-      tp.subst(cls +: Vector(), rt.recThis +: Vector()).substThis(cls, rt.recThis)
+      tp.subst(Vector(cls), Vector(rt.recThis)).substThis(cls, rt.recThis)
     }
 
     val raw = refinableDecls.foldLeft(parentType)(addRefinement)
@@ -972,7 +972,12 @@ object TypeOps:
   }
 
   def nestedPairs(ts: Vector[Type])(using Context): Type =
-    ts.foldRight(defn.EmptyTupleModule.termRef: Type)(defn.PairClass.typeRef.appliedTo(_, _))
+    var result: Type = defn.EmptyTupleModule.termRef
+    var i = ts.length - 1
+    while i >= 0 do
+      result = defn.PairClass.typeRef.appliedTo(ts(i), result)
+      i -= 1
+    result
 
   class StripTypeVarsMap(using Context) extends TypeMap:
     def apply(tp: Type) = mapOver(tp).stripTypeVar
@@ -980,7 +985,7 @@ object TypeOps:
   /** Map no-flip covariant occurrences of `into[T]` to `T @$into` */
   def suppressInto(using Context) = new FollowAliasesMap:
     def apply(t: Type): Type = t match
-      case AppliedType(tycon: TypeRef, arg +: Vector()) if variance >= 0 && defn.isInto(tycon.symbol) =>
+      case AppliedType(tycon: TypeRef, Vector(arg)) if variance >= 0 && defn.isInto(tycon.symbol) =>
         AnnotatedType(arg, Annotation(defn.SilentIntoAnnot, util.Spans.NoSpan))
       case _: MatchType | _: LazyRef =>
         t
@@ -993,7 +998,7 @@ object TypeOps:
       case AnnotatedType(t1, ann) if variance >= 0 && ann.symbol == defn.SilentIntoAnnot =>
         AppliedType(
           defn.ConversionModule.termRef.select(defn.Conversion_into), // the external reference to the opaque type
-          t1 +: Vector())
+          Vector(t1))
       case _: MatchType | _: LazyRef =>
         t
       case _ =>
@@ -1056,9 +1061,12 @@ object TypeOps:
         )
       )
 
-    def stripCommonPrefix(xs: Vector[Symbol], ys: Vector[Symbol]): (Vector[Symbol], Vector[Symbol]) = (xs, ys) match
-      case (x +: xs1, y +: ys1) if x eq y => stripCommonPrefix(xs1, ys1)
-      case _ => (xs, ys)
+    def stripCommonPrefix(xs: Vector[Symbol], ys: Vector[Symbol]): (Vector[Symbol], Vector[Symbol]) =
+      val limit = math.min(xs.length, ys.length)
+      var idx = 0
+      while idx < limit && (xs(idx) eq ys(idx)) do
+        idx += 1
+      (xs.drop(idx), ys.drop(idx))
 
     val (parentRest, childRest) = stripCommonPrefix(
       parent.owner.ownersIterator.toVector.reverse,
