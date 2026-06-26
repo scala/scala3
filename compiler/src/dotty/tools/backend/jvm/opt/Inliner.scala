@@ -27,8 +27,7 @@ import dotty.tools.backend.jvm.analysis.*
 import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
-class Inliner(indyTracker: IndyLambdaImplTracker,
-              callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
+class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
               heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
               settings: OptimizerSettings) {
 
@@ -178,7 +177,7 @@ class Inliner(indyTracker: IndyLambdaImplTracker,
 
             case Some(w: IllegalAccessInstructions) if maybeInlinedLater(r.callsite, w.instructions) =>
               if (state.undoLog.isEmpty) {
-                val undo = new UndoLog(indyTracker, callGraph)
+                val undo = new UndoLog(callGraph)
                 val currentState = state.clone()
                 // undo actions for the method and global state
                 undo.saveMethodState(r.callsite.callsiteClass, method)
@@ -415,7 +414,7 @@ class Inliner(indyTracker: IndyLambdaImplTracker,
     //   def g = f; println() // println is unreachable after inlining f
     // If we have an inline request for a call to g, and f has been already inlined into g, we
     // need to run DCE on g's body before inlining g.
-    LocalOptImpls.minimalRemoveUnreachableCode(callee, calleeDeclarationClass.internalName, callGraph, indyTracker)
+    LocalOptImpls.minimalRemoveUnreachableCode(callee, calleeDeclarationClass.internalName, callGraph)
 
     // If the callsite was eliminated by DCE, do nothing.
     if (!callGraph.containsCallsite(callsite)) return Map.empty
@@ -695,14 +694,6 @@ class Inliner(indyTracker: IndyLambdaImplTracker,
     }
 
     callsite.callsiteMethod.maxStack = math.max(MethodMax.maxStack(callsite.callsiteMethod), math.max(stackHeightAtNullCheck, maxStackOfInlinedCode))
-
-    indyTracker.get(calleeDeclarationClass.internalName, callee).foreach {
-      case (indy, handle) => instructionMap.get(indy) match {
-        case Some(clonedIndy: InvokeDynamicInsnNode) =>
-          indyTracker.add(callsite.callsiteClass.internalName, callsite.callsiteMethod, clonedIndy, handle)
-        case _ =>
-      }
-    }
 
     // Don't remove the inlined instruction from callsitePositions, inlineAnnotatedCallsites so that
     // the information is still there in case the method is rolled back (UndoLog).
@@ -1055,7 +1046,7 @@ object Inliner {
   }
 }
 
-class UndoLog(indyTracker: IndyLambdaImplTracker, callGraph: CallGraph) {
+class UndoLog(callGraph: CallGraph) {
 
   import java.util.{ArrayList => JArrayList}
 
@@ -1071,8 +1062,6 @@ class UndoLog(indyTracker: IndyLambdaImplTracker, callGraph: CallGraph) {
     val currentTryCatchBlocks = new JArrayList(methodNode.tryCatchBlocks)
     val currentMaxLocals = methodNode.maxLocals
     val currentMaxStack = methodNode.maxStack
-
-    val currentIndyLambdaBodyMethods = indyTracker.get(ownerClass.internalName, methodNode)
 
     // Instead of saving / restoring the CallGraph's callsites / closureInstantiations, we call
     // callGraph.refresh on rollback. The call graph might not be up to date at the point where
@@ -1103,8 +1092,6 @@ class UndoLog(indyTracker: IndyLambdaImplTracker, callGraph: CallGraph) {
 
       OptimizerUtils.clearDceDone(methodNode)
       callGraph.refresh(methodNode, ownerClass)
-
-      indyTracker.reset(ownerClass.internalName, methodNode, currentIndyLambdaBodyMethods)
     }
   }
 }
