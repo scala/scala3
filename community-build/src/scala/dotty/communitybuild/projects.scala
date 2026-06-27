@@ -124,7 +124,6 @@ object SbtCommunityProject:
     "-Xcheck-macros",
     "-Wsafe-init",
     "-Yexplicit-nulls",
-    "-language:unsafeNulls",
   )
 
 object projects:
