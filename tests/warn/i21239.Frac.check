@@ -1,8 +1,0 @@
--- Migration Warning: tests/warn/i21239.Frac.scala:14:8 ----------------------------------------------------------------
-14 |      f + Frac.wrap(((-g.numerator).toLong << 32) | (g.unwrap & 0xFFFFFFFFL)) // warn
-   |      ^^^
-   |      Previously this selected the extension method + in object Frac
-   |      Now it selects + on the opaque type's underlying type Long
-   |
-   |      You can change this back by selecting kse.maths.Frac.+(f)
-   |      Or by defining the extension method outside of the opaque type's scope.

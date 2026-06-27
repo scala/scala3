@@ -3609,6 +3609,9 @@ object TypeComparer {
 
   inline def noNotes(inline op: Boolean)(using Context): Boolean =
     currentComparer.isolated(op, x => x)
+
+  def liftToThis(tp: Type)(using Context): Type =
+    comparing(_.liftToThis(tp))
 }
 
 object MatchReducer:
