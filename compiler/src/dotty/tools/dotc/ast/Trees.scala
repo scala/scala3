@@ -428,7 +428,7 @@ object Trees {
   trait ValOrTypeDef[+T <: Untyped] extends MemberDef[T]:
     type ThisTree[+T <: Untyped] <: ValOrTypeDef[T]
 
-  type ParamClause[T <: Untyped] = List[ValDef[T]] | List[TypeDef[T]]
+  type ParamClause[+T <: Untyped] = List[ValOrTypeDef[T]]
 
   // ----------- Tree case classes ------------------------------------
 
@@ -1662,10 +1662,8 @@ object Trees {
         transform(tree).asInstanceOf[Tr]
       def transformSub[Tr <: Tree](trees: List[Tr])(using Context): List[Tr] =
         transform(trees).asInstanceOf[List[Tr]]
-      def transformParams(params: ParamClause)(using Context): ParamClause =
-        transform(params).asInstanceOf[ParamClause]
       def transformParamss(paramss: List[ParamClause])(using Context): List[ParamClause] =
-        paramss.mapConserve(transformParams)
+        paramss.mapConserve(transformSub)
 
       protected def transformMoreCases(tree: Tree)(using Context): Tree = {
         assert(ctx.reporter.errorsReported)

@@ -1685,7 +1685,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given ParamClauseMethods: ParamClauseMethods with
       extension (self: ParamClause)
-        def params: List[ValDef] | List[TypeDef] = self
+        def params: List[ValDef] | List[TypeDef] = self.asInstanceOf[List[ValDef] | List[TypeDef]]
     end ParamClauseMethods
 
     type TermParamClause = List[tpd.ValDef]
