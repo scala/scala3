@@ -177,9 +177,14 @@ class TreeUnpickler(reader: TastyReader,
     def forkAt(start: Addr): TreeReader = new TreeReader(subReader(start, endAddr))
     def fork: TreeReader = forkAt(currentAddr)
 
-     def untilLst[T](end: Addr)(op: => T): Lst[T] =
+    def untilLst[T](end: Addr)(op: => T): Lst[T] =
       val buf = Lst.Buffer[T]()
       untilDo(end)(buf += op)
+      buf.toLst
+
+    def collectLst[T](cond: => Boolean)(op: => T): Lst[T] =
+      val buf = Lst.Buffer[T]()
+      while cond do buf += op
       buf.toLst
 
     def skipParentTree(tag: Int): Unit = {
@@ -279,9 +284,9 @@ class TreeUnpickler(reader: TastyReader,
     /** Read names in an interleaved sequence of types/bounds and (parameter) names,
      *  possibly followed by a sequence of modifiers.
      */
-    def readParamNamesAndMods(end: Addr): (List[Name], FlagSet) =
+    def readParamNamesAndMods(end: Addr): (Lst[Name], FlagSet) =
       val names =
-        collectWhile(currentAddr != end && !isModifierTag(nextByte)) {
+        collectLst(currentAddr != end && !isModifierTag(nextByte)) {
           skipTree()
           readName()
         }
@@ -376,7 +381,7 @@ class TreeUnpickler(reader: TastyReader,
               nameReader.skipTree() // skip result
               val paramReader = nameReader.fork
               val (paramNames, mods) = nameReader.readParamNamesAndMods(end)
-              companionOp(mods)(paramNames.toLst.map(nameMap))(
+              companionOp(mods)(paramNames.map(nameMap))(
                 pt => registeringType(pt, paramReader.readParamTypes[PInfo](paramNames.length)),
                 pt => readType())
             })
@@ -918,7 +923,7 @@ class TreeUnpickler(reader: TastyReader,
         nextByte match
           case PARAM => readParams[ValDef](PARAM) :: readRest()
           case TYPEPARAM => readParams[TypeDef](TYPEPARAM) :: readRest()
-          case EMPTYCLAUSE => readByte(); Nil :: readRest()
+          case EMPTYCLAUSE => readByte(); Lst() :: readRest()
           case _ => Nil
 
       val localCtx = localContext(sym)
@@ -961,7 +966,7 @@ class TreeUnpickler(reader: TastyReader,
           val paramDefss = readParamss()(using localCtx)
           val tpt = readTpt()(using localCtx)
           val paramss = normalizeIfConstructor(
-              paramDefss.map(_.mapToLst(_.symbol)), name == nme.CONSTRUCTOR)
+              paramDefss.map(_.map(_.symbol)), name == nme.CONSTRUCTOR)
           val resType =
             if name == nme.CONSTRUCTOR then
               effectiveResultType(sym, paramss)
@@ -1003,7 +1008,7 @@ class TreeUnpickler(reader: TastyReader,
 
             def opaqueToBounds(info: Type): Type =
               val tparamSyms = rhs match
-                case LambdaTypeTree(tparams, body) => tparams.mapToLst(_.symbol.asType)
+                case LambdaTypeTree(tparams, body) => tparams.map(_.symbol.asType)
                 case _ => Lst()
               sym.opaqueToBounds(info, rhs, tparamSyms)
 
@@ -1151,8 +1156,8 @@ class TreeUnpickler(reader: TastyReader,
             def complete(denot: SymDenotation)(using Context) =
               val sym = denot.symbol
               val pflags = flags | Flags.Param
-              val tparamRefs = tparams.mapToLst(_.symbol.asType)
-              lazy val derivedTparamSyms: Lst[TypeSymbol] = tparams.mapToLst: tdef =>
+              val tparamRefs = tparams.map(_.symbol.asType)
+              lazy val derivedTparamSyms: Lst[TypeSymbol] = tparams.map: tdef =>
                 val completer = new LazyType {
                   def complete(denot: SymDenotation)(using Context) =
                     denot.info = tdef.symbol.asType.info.subst(tparamRefs, derivedTparamRefs)
@@ -1182,7 +1187,7 @@ class TreeUnpickler(reader: TastyReader,
 
       val lazyStats = readLater(end, rdr => {
         val stats = rdr.readIndexedStats(localDummy, end)
-        tparams ++ vparams ++ stats
+        tparams.toList ++ vparams.toList ++ stats
       })
       NamerOps.addConstructorProxies(cls)
       NamerOps.addContextBoundCompanions(cls)
@@ -1280,14 +1285,14 @@ class TreeUnpickler(reader: TastyReader,
 
     private def sameTrees(xs: List[Tree], ctx: Context) = xs
 
-    def readIndexedParams[T <: MemberDef](tag: Int)(using Context): List[T] =
-      collectWhile(nextByte == tag) { readIndexedDef().asInstanceOf[T] }
+    def readIndexedParams[T <: MemberDef](tag: Int)(using Context): Lst[T] =
+      collectLst(nextByte == tag) { readIndexedDef().asInstanceOf[T] }
 
-    def readParams[T <: MemberDef](tag: Int)(using Context): List[T] =
+    def readParams[T <: MemberDef](tag: Int)(using Context): Lst[T] =
       if nextByte == tag then
         fork.indexParams(tag)
         readIndexedParams(tag)
-      else Nil
+      else Lst()
 
 // ------ Reading trees -----------------------------------------------------
 
@@ -1651,7 +1656,7 @@ class TreeUnpickler(reader: TastyReader,
             case UNAPPLY =>
               val fn = readTree()
               val implicitArgs =
-                collectWhile(nextByte == IMPLICITarg) {
+                collectLst(nextByte == IMPLICITarg) {
                   readByte()
                   readTree()
                 }

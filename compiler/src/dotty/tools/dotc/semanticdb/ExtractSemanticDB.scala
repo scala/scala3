@@ -15,7 +15,7 @@ import StdNames.{nme, tpnme}
 import NameOps.*
 import Denotations.StaleSymbol
 import util.Spans.Span
-import util.SourceFile
+import util.{Lst, SourceFile}
 
 import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }
@@ -588,7 +588,7 @@ private[semanticdb] object ExtractSemanticDB:
       val start = if idx >= 0 then idx else span.start
       Span(start, start + sym.name.show.length, start)
 
-    extension (list: List[List[ValDef]])
+    extension (list: List[Lst[ValDef]])
       private  inline def isSingleArg = list match
         case (_::Nil)::Nil => true
         case _             => false
@@ -667,7 +667,7 @@ private[semanticdb] object ExtractSemanticDB:
         symkinds.toSet
 
     private def ctorParams(
-      vparamss: List[List[ValDef]], tparams: List[TypeDef], body: List[Tree])(using Context): Unit =
+      vparamss: List[Lst[ValDef]], tparams: Lst[TypeDef], body: List[Tree])(using Context): Unit =
       @tu lazy val getters = findGetters(vparamss.flatMap(_.map(_.name)).toSet, body)
       for
         vparams <- vparamss

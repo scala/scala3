@@ -16,6 +16,7 @@ import Types.*
 
 import util.Spans.Span
 import util.SrcPos
+import util.Lst
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 import JSExportUtils.*
@@ -454,7 +455,7 @@ object PrepJSExports {
     DefDef(proxySym, { argss =>
       if (trgSym.isConstructor) {
         val tycon = trgSym.owner.typeRef
-        New(tycon).select(TermRef(tycon, trgSym)).appliedToArgss(argss)
+        New(tycon).select(TermRef(tycon, trgSym)).appliedToArgss(argss.map(_.toList))
       } else if (trgSym.is(ModuleClass)) {
         assert(argss.isEmpty,
             s"got a module export with non-empty paramss. target: $trgSym, proxy: $proxySym at $span")
@@ -464,14 +465,14 @@ object PrepJSExports {
         val tpe = argss match {
           case Nil =>
             trgSym.typeRef
-          case (targs @ (first :: _)) :: Nil if first.isType =>
+          case (targs @ Lst.StartingWith(first)) :: Nil if first.isType =>
             trgSym.typeRef.appliedTo(targs.mapToLst(_.tpe))
           case _ =>
             throw AssertionError(s"got a class export with unexpected paramss. target: $trgSym, proxy: $proxySym at $span")
         }
         ref(jsdefn.JSPackage_constructorOf).appliedToType(tpe)
       } else {
-        This(clsSym).select(trgSym).appliedToArgss(argss)
+        This(clsSym).select(trgSym).appliedToArgss(argss.map(_.toList))
       }
     }).withSpan(span)
   }

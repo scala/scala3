@@ -761,7 +761,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             toText(arg)
         }
         val argsText = args match {
-          case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg)
+          case Lst.Singleton(arg @ ValDef(_, tpt, _)) if tpt.isEmpty => argToText(arg)
           case _ => "(" ~ Text(args.map(argToText), ", ") ~ ")"
         }
         val isPure =
@@ -988,9 +988,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
   def paramsText[T <: Untyped](params: ParamClause[T]): Text = (params: @unchecked) match
-    case Nil =>
+    case Lst.Empty() =>
       "()"
-    case untpd.ValDefs(vparams @ (vparam :: _)) =>
+    case untpd.ValDefs(vparams @ Lst.StartingWith(vparam)) =>
       "(" ~ keywordText("using ").provided(vparam.mods.is(Given))
           ~ toText(vparams, ", ") ~ ")"
     case untpd.TypeDefs(tparams) =>

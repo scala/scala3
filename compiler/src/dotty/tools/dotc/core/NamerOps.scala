@@ -320,7 +320,7 @@ object NamerOps:
    *
    *  The companion has the same access flags as the original type.
    */
-  def addContextBoundCompanionFor(tsym: Symbol, witnessNames: List[TermName], params: List[Symbol])(using Context): Unit =
+  def addContextBoundCompanionFor(tsym: Symbol, witnessNames: List[TermName], params: Lst[Symbol])(using Context): Unit =
     val prefix = ctx.owner.thisType
     val companionName = tsym.name.toTermName
     val witnessRefs =
@@ -351,7 +351,7 @@ object NamerOps:
           if ann.symbol == defn.WitnessNamesAnnot then
             ann.tree match
               case ast.tpd.WitnessNamesAnnot(witnessNames) =>
-                addContextBoundCompanionFor(sym, witnessNames, Nil)
+                addContextBoundCompanionFor(sym, witnessNames, Lst())
 
   /** Add a dummy term symbol for a type def that has capture parameter flag.
    *  The dummy symbol has the same name as the original type symbol and is stable.

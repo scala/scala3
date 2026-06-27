@@ -173,7 +173,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     /*
      * must-single-thread
      */
-    def emitParamNames(jmethod: asm.MethodVisitor, params: List[Symbol])(using Context): Unit =
+    def emitParamNames(jmethod: asm.MethodVisitor, params: Lst[Symbol])(using Context): Unit =
       for param <- params do
         var access = asm.Opcodes.ACC_FINAL
         if param.is(Artifact) then access |= asm.Opcodes.ACC_SYNTHETIC
@@ -182,7 +182,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     /*
      * must-single-thread
      */
-    def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]])(using Context): Unit =
+    def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: Lst[List[Annotation]])(using Context): Unit =
       val annotationss = pannotss.map(_.filter(shouldEmitAnnotation))
       if (annotationss.forall(_.isEmpty)) return
       for ((annots, idx) <- annotationss.zipWithIndex; annot <- annots) {
@@ -423,7 +423,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       )
 
       emitAnnotations(mirrorMethod, others)
-      val params: List[Symbol] = Nil // backend uses this to emit annotations on parameter lists of forwarders
+      val params: Lst[Symbol] = Lst() // backend uses this to emit annotations on parameter lists of forwarders
       // to static methods of companion class
       // Old assumption: in Dotty this link does not exists: there is no way to get from method type
       // to inner symbols of DefDef

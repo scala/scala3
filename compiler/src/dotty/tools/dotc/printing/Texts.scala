@@ -2,6 +2,7 @@ package dotty.tools.dotc
 package printing
 import scala.annotation.internal.sharable
 import util.Lst
+import Conversion.into
 
 object Texts {
 
@@ -149,7 +150,7 @@ object Texts {
     /** A concatenation of elements in `xs` and interspersed with
      *  separator strings `sep`.
      */
-    def apply(xs: Iterable[Text], sep: String = " "): Text =
+    def apply(xs: into[Iterable[Text]], sep: String = " "): Text =
       if sep == "\n" then lines(xs)
       else
         val ys = xs.filterNot(_.isEmpty)

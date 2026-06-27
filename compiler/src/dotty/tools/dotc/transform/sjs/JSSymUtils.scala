@@ -205,7 +205,7 @@ object JSSymUtils {
         paramNamesAndTypes.toMap
       }
 
-      {for ((paramName, paramInfoNow) <- paramNamesAndTypes) yield {
+      {for ((paramName, paramInfoNow) <- paramNamesAndTypes.toList) yield {
         paramInfosAtElimRepeated.get(paramName) match {
           case None =>
             // This is a capture parameter introduced by erasure or lambdalift
@@ -218,7 +218,7 @@ object JSSymUtils {
             val info = paramInfosAtElimEVT.getOrElse(paramName, paramInfoNow)
             new JSParamInfo(info)
         }
-      }}.toList
+      }}
     }
 
     /** Tests whether the semantics of Scala.js require a field for this symbol,

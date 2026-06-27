@@ -9,6 +9,7 @@ import util.chaining.*
 
 import StdNames.*, NameOps.*
 import typer.Nullables
+import util.Lst
 
 class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd.*
@@ -109,9 +110,9 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   private val PrivateOrAccessor: FlagSet = Private | Accessor
   private val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
-  def forwarderRhsFn(target: Symbol): List[List[Tree]] => Tree =
+  def forwarderRhsFn(target: Symbol): List[Lst[Tree]] => Tree =
     prefss =>
-      val (targs, vargss) = splitArgs(prefss)
+      val (targs, vargss) = splitArgs(prefss.map(_.toList))
       val tapp = superRef(target).appliedToTypeTrees(targs)
       val rhs = vargss match
         case Nil | List(Nil) =>

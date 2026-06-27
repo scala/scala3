@@ -71,12 +71,12 @@ class SpecializeFunctions extends MiniPhase {
       DefDef(specializedApply.asTerm, vparamss => {
         ddef.rhs
           .changeOwner(ddef.symbol, specializedApply)
-          .subst(ddef.termParamss.head.map(_.symbol), vparamss.head.map(_.symbol))
+          .subst(ddef.termParamss.head.mapToList(_.symbol), vparamss.head.mapToList(_.symbol))
       })
 
     // create a forwarding to the specialized apply
     val args = ddef.termParamss.head.map(vparam => ref(vparam.symbol))
-    val rhs = This(cls).select(specializedApply).appliedToTermArgs(args)
+    val rhs = This(cls).select(specializedApply).appliedToTermArgs(args.toList)
     val ddef1 = cpy.DefDef(ddef)(rhs = rhs)
     Thicket(ddef1, specializedDecl)
   }

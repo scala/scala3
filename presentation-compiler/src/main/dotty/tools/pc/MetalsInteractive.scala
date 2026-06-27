@@ -305,7 +305,7 @@ object MetalsInteractive:
       tree match
         case TypeApply(qual, args) => Some(qual -> args)
         case Apply(qual, args) => Some(qual -> args)
-        case UnApply(qual, implicits, args) => Some(qual -> (implicits ++ args))
+        case UnApply(qual, implicits, args) => Some(qual -> (implicits.toList ++ args))
         case AppliedTypeTree(qual, args) => Some(qual -> args)
         case _ => None
 end MetalsInteractive

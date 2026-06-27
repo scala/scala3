@@ -23,7 +23,7 @@ import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.typer.ImportInfo.withRootImports
-import dotty.tools.dotc.util.SrcPos
+import dotty.tools.dotc.util.{SrcPos, Lst}
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.io.AbstractFileClassLoader
 import dotty.tools.dotc.core.CyclicReference
@@ -93,7 +93,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       else
         unexpectedTree(tree)
 
-    case closureDef((ddef @ DefDef(_, ValDefs(arg :: Nil) :: Nil, _, _))) =>
+    case closureDef((ddef @ DefDef(_, ValDefs(Lst.Singleton(arg)) :: Nil, _, _))) =>
       (obj: AnyRef) => interpretTree(ddef.rhs)(using env.updated(arg.symbol, obj))
 
     // Interpret `foo(j = x, i = y)` which it is expanded to

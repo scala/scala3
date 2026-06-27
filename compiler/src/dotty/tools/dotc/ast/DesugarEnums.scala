@@ -134,7 +134,7 @@ object DesugarEnums {
         CaseDef(Literal(Constant(enumValue.name.toString)), EmptyTree, enumValue)
       ) ::: defaultCase :: Nil
       Match(Ident(nme.nameDollar), stringCases)
-    val valueOfDef = DefDef(nme.valueOf, List(param(nme.nameDollar, defn.StringType) :: Nil),
+    val valueOfDef = DefDef(nme.valueOf, List(Lst(param(nme.nameDollar, defn.StringType))),
       TypeTree(), valuesOfBody)
         .withFlags(Synthetic)
 
@@ -188,7 +188,7 @@ object DesugarEnums {
       body = Nil
     ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW,
-        List(List(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
+        List(Lst(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
         TypeTree(), creator).withFlags(Private | Synthetic)
   }
 
@@ -201,8 +201,8 @@ object DesugarEnums {
    */
   def typeParamIsReferenced(
     enumTypeParams: Lst[TypeSymbol],
-    caseTypeParams: List[TypeDef],
-    vparamss: List[List[ValDef]],
+    caseTypeParams: Lst[TypeDef],
+    vparamss: List[Lst[ValDef]],
     parents: List[Tree])(using Context): Boolean = {
 
     object searchRef extends UntypedTreeAccumulator[Boolean] {
@@ -221,7 +221,7 @@ object DesugarEnums {
               report.error(em"illegal reference to type parameter $name from enum case", tree.srcPos)
             matches
           case LambdaTypeTree(lambdaParams, body) =>
-            underBinders(lambdaParams, foldOver(x, tree))
+            underBinders(lambdaParams.toList, foldOver(x, tree))
           case RefinedTypeTree(parent, refinements) =>
             val refinementDefs = refinements collect { case r: MemberDef => r }
             underBinders(refinementDefs, foldOver(x, tree))
@@ -229,7 +229,7 @@ object DesugarEnums {
         }
       }
       def apply(tree: Tree)(using Context): Boolean =
-        underBinders(caseTypeParams, apply(false, tree))
+        underBinders(caseTypeParams.toList, apply(false, tree))
     }
 
     def typeHasRef(tpt: Tree) = searchRef(tpt)
@@ -242,7 +242,7 @@ object DesugarEnums {
       case parent => parent.isType && typeHasRef(parent)
     }
 
-    vparamss.nestedExists(valDefHasRef) || parents.exists(parentHasRef)
+    vparamss.nestedExistsLst(valDefHasRef) || parents.exists(parentHasRef)
   }
 
   /** A pair consisting of
@@ -277,7 +277,7 @@ object DesugarEnums {
     ordinalMeth(Literal(Constant(ord)))
 
   def fromOrdinalMeth(body: Tree => Tree)(using Context): DefDef =
-    DefDef(nme.fromOrdinal, (param(nme.ordinal, defn.IntType) :: Nil) :: Nil,
+    DefDef(nme.fromOrdinal, Lst(param(nme.ordinal, defn.IntType)) :: Nil,
       rawRef(enumClass.typeRef), body(Ident(nme.ordinal))).withFlags(Synthetic)
 
   /** Expand a module definition representing a parameterless enum case */

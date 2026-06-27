@@ -180,7 +180,7 @@ class StringInterpolatorOpt extends MiniPhase:
         case intp: Ident    => tpd.desugarIdentPrefix(intp)
       val stringToString = defn.StringContextModule_processEscapes.info.asInstanceOf[MethodType]
       val process = tpd.Lambda(stringToString, args =>
-        if isRaw then args.head else ref(defn.StringContextModule_processEscapes).appliedToTermArgs(args)
+        if isRaw then args.head else ref(defn.StringContextModule_processEscapes).appliedToTermArgs(args.toList)
       )
       evalOnce(pre) { sc =>
         val parts = sc.select(defn.StringContext_parts)

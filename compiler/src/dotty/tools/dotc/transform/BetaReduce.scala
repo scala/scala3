@@ -167,7 +167,7 @@ object BetaReduce:
       val expansion = TreeTypeMap(
         oldOwners = ddef.symbol :: Nil,
         newOwners = ctx.owner :: Nil,
-        substFrom = (tparams ::: vparams).map(_.symbol),
+        substFrom = (tparams.toList ::: vparams).map(_.symbol),
         substTo = targSyms ::: argSyms
       ).transform(ddef.rhs)
 

@@ -235,7 +235,7 @@ object Inlines:
       val unapplyInfo = fun.tpe.widen
       val unapplySym = newSymbol(cls, sym.name.toTermName, Synthetic | Method, unapplyInfo, coord = sym.coord).entered
 
-      val unapply = DefDef(unapplySym.asTerm, argss => fun.appliedToArgss(argss).withSpan(fun.span))
+      val unapply = DefDef(unapplySym.asTerm, argss => fun.appliedToArgss(argss.map(_.toList)).withSpan(fun.span))
 
       if sym.is(Transparent) then
         // Inline the body and refine the type of the unapply method
@@ -275,7 +275,7 @@ object Inlines:
     retainer.deriveTargetNameAnnotation(meth, name => BodyRetainerName(name.asTermName))
     DefDef(retainer, prefss =>
       inlineCall(
-        ref(meth).appliedToArgss(prefss).withSpan(mdef.rhs.span.startPos))(
+        ref(meth).appliedToArgss(prefss.map(_.toList)).withSpan(mdef.rhs.span.startPos))(
         using ctx.withOwner(retainer)))
     .showing(i"retainer for $meth: $result", inlining)
 

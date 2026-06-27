@@ -284,6 +284,14 @@ object Decorators {
       case xs :: xss1 => xs.find(p).orElse(xss1.nestedFindLst(p))
       case nil => None
 
+  extension [T, U](xss: List[Lst[T]])
+    def nestedMapLst(f: T => U): List[Lst[U]] = xss match
+      case xs :: xss1 => xs.map(f) :: xss1.nestedMapLst(f)
+      case nil => Nil
+
+    def nestedZipWithConserveLst(yss: List[Lst[U]])(f: (T, U) => T): List[Lst[T]] =
+      xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
+
   extension (text: Text)
     def show(using Context): String = text.mkString(ctx.settings.pageWidth.value)
 
@@ -369,9 +377,9 @@ object Decorators {
   extension [T <: AnyRef](arr: Array[T])
     def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)
 
-  extension [T](xs: Seq[T])
+  extension [T](xs: collection.Iterable[T])
     def toLst: Lst[T] =
-      val buf = Lst.Buffer[T](xs.length)
+      val buf = Lst.Buffer[T](xs.size)
       for x <- xs do buf += x
       buf.toLst
 
@@ -384,7 +392,7 @@ object Decorators {
       new Lst(rs)
 
     def mapToLst[U <: AnyRef](f: T => U): Lst[U] =
-      val buf = Lst.Buffer[U](xs.length)
+      val buf = Lst.Buffer[U](xs.size)
       for x <- xs do buf += f(x)
       buf.toLst
 

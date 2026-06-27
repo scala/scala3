@@ -9,6 +9,7 @@ import Names.Name
 import Comments.Comment
 import NameKinds.DefaultGetterName
 import Annotations.Annotation
+import util.Lst
 
 object MainProxies {
 
@@ -109,7 +110,7 @@ object MainProxies {
       val annots = mainFun.annotations
         .filterNot(_.matches(defn.MainAnnot))
         .map(annot => TypedSplice(annot.tree)(using annotsCtx))
-      val mainMeth = DefDef(nme.main, (mainArg :: Nil) :: Nil, TypeTree(defn.UnitType), body)
+      val mainMeth = DefDef(nme.main, Lst(mainArg) :: Nil, TypeTree(defn.UnitType), body)
         .withFlags(JavaStatic | Synthetic)
         .withAnnotations(annots)
       val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)

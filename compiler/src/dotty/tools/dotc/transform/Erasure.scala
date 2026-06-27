@@ -499,7 +499,7 @@ object Erasure {
           inContext(ctx.withOwner(bridge)) {
             val List(bridgeParams) = bridgeParamss
             assert(ctx.typer.isInstanceOf[Erasure.Typer])
-            val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes.toList).map(ctx.typer.adapt(_, _)))
+            val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(ctx.typer.adapt(_, _)).toList)
             ctx.typer.adapt(rhs, bridgeType.resultType)
           },
           targetType = functionalInterface).withSpan(tree.span)
@@ -902,10 +902,10 @@ object Erasure {
         erasedDef(sym)
       else
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
-        var vparams = outerParamDefs(sym)
-            ::: ddef.paramss.collect {
+        var vparams: Lst[untpd.ValDef] = outerParamDefs(sym)
+            ++ ddef.paramss.collect {
               case untpd.ValDefs(vparams) => vparams
-            }.flatten.filterConserve(!_.symbol.is(Flags.Erased))
+            }.flattenLst.filter(!_.symbol.is(Flags.Erased))
 
         def skipContextClosures(rhs: Tree, crCount: Int)(using Context): Tree =
           if crCount == 0 then rhs
@@ -932,8 +932,8 @@ object Erasure {
             case (paramDef, idx) =>
               assignType(untpd.cpy.ValDef(paramDef)(rhs = selector(idx)), paramDef.symbol)
           }
-          vparams = ValDef(bunchedParam) :: Nil
-          rhs1 = Block(paramDefs, rhs1)
+          vparams = Lst(ValDef(bunchedParam))
+          rhs1 = Block(paramDefs.toList, rhs1)
 
         val ddef1 = untpd.cpy.DefDef(ddef)(
           paramss = vparams :: Nil,
@@ -943,12 +943,12 @@ object Erasure {
     end typedDefDef
 
     /** The outer parameter definition of a constructor if it needs one */
-    private def outerParamDefs(constr: Symbol)(using Context): List[ValDef] =
+    private def outerParamDefs(constr: Symbol)(using Context): Lst[ValDef] =
       if constr.isConstructor && needsOuterParam(constr.owner.asClass) then
         constr.info match
           case MethodTpe(pnames, ptypes, _) =>
             val outerSym = newSymbol(constr, pnames(0), Flags.Param | Flags.SyntheticArtifact, ptypes(0))
-            ValDef(outerSym) :: Nil
+            Lst(ValDef(outerSym))
           case _ =>
             // There's a possible race condition that a constructor was looked at
             // after erasure before we had a chance to run ExplicitOuter on its class
@@ -962,7 +962,7 @@ object Erasure {
               info = outer.addParam(constr.owner.asClass, constr.info)
             ).installAfter(erasurePhase)
             outerParamDefs(constr)
-      else Nil
+      else Lst()
 
     /** For all statements in stats: given a retained inline method and
      *  its retainedBody method such as

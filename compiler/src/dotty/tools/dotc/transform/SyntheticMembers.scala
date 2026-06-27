@@ -88,7 +88,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       NoSymbol
   end existingDef
 
-  private def synthesizeDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Context ?=> Tree)(using Context): Tree =
+  private def synthesizeDef(sym: TermSymbol, rhsFn: List[Lst[Tree]] => Context ?=> Tree)(using Context): Tree =
     DefDef(sym, rhsFn(_)(using ctx.withOwner(sym))).withSpan(ctx.owner.span.focus)
 
   /** If this is a case or value class, return the appropriate additional methods,
@@ -158,10 +158,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         else if (isNonJavaEnumValue) identifierRef
         else forwardToRuntime(vrefss.head)
 
-      def syntheticRHS(vrefss: List[List[Tree]])(using Context): Tree = synthetic.name match {
+      def syntheticRHS(vrefss: List[Lst[Tree]])(using Context): Tree = synthetic.name match {
         case nme.hashCode_ if isDerivedValueClass(clazz) => valueHashCodeBody
         case nme.hashCode_ => chooseHashcode
-        case nme.toString_ => toStringBody(vrefss)
+        case nme.toString_ => toStringBody(vrefss.map(_.toList))
         case nme.equals_ => equalsBody(vrefss.head.head)
         case nme.canEqual_ => canEqualBody(vrefss.head.head, synthetic.span)
         case nme.ordinal => ordinalRef

@@ -12,6 +12,7 @@ import util.SourcePosition
 import typer.ImportInfo
 import cc.CaptureSet
 import cc.Capabilities.Capability
+import Conversion.into
 
 import scala.annotation.internal.sharable
 
@@ -196,7 +197,7 @@ abstract class Printer {
     atPrec(DotPrec) { toText(elems, sep) }
 
   /** Render elements within lowest precedence */
-  def toTextGlobal(elems: Iterable[Showable], sep: String): Text =
+  def toTextGlobal(elems: into[Iterable[Showable]], sep: String): Text =
     atPrec(GlobalPrec) { toText(elems, sep) }
 
   /** A plain printer without any embellishments */

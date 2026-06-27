@@ -11,6 +11,7 @@ import Names.TypeName
 
 import NullOpsDecorator.*
 import ast.untpd
+import util.Lst
 import scala.collection.mutable.ListBuffer
 
 /** Expand SAM closures that cannot be represented by the JVM as lambdas to anonymous classes.
@@ -95,7 +96,7 @@ class ExpandSAMs extends MiniPhase:
               val adaptedArgs = paramss.head.lazyZip(implMt.paramInfos).map { (arg, implPt) =>
                 if arg.tpe =:= implPt then arg else arg.cast(implPt)
               }
-              ref(implSym).appliedToTermArgs(adaptedArgs)
+              ref(implSym).appliedToTermArgs(adaptedArgs.toList)
             })
             cpy.Block(tree)(fn :: wrapperDef :: Nil,
               transformFollowingDeep:
@@ -165,7 +166,7 @@ class ExpandSAMs extends MiniPhase:
    *  ```
    */
   private def toPartialFunction(tree: Block, tpe: Type)(using Context): Tree =
-    val closureDef(anon @ DefDef(_, List(List(param)), _, _)) = tree: @unchecked
+    val closureDef(anon @ DefDef(_, List(Lst.Singleton(param)), _, _)) = tree: @unchecked
 
     // The right hand side from which to construct the partial function. This is always a Match.
     // If the original rhs is already a Match (possibly in braces), return that.
@@ -215,7 +216,7 @@ class ExpandSAMs extends MiniPhase:
             // And we need to update all references to 'param'
           .changeOwner(anonSym, owner)
 
-      def isDefinedAtRhs(paramRefss: List[List[Tree]])(using Context) =
+      def isDefinedAtRhs(paramRefss: List[Lst[Tree]])(using Context) =
         val tru = Literal(Constant(true))
         def translateCase(cdef: CaseDef): CaseDef =
           val body1 = cdef.body match
@@ -226,8 +227,8 @@ class ExpandSAMs extends MiniPhase:
         val defaultValue = Literal(Constant(false))
         translateMatch(isDefinedAtFn)(paramRef.symbol, pfRHS.cases.map(translateCase), defaultValue)
 
-      def applyOrElseRhs(paramRefss: List[List[Tree]])(using Context) =
-        val List(paramRef, defaultRef) = paramRefss(1)
+      def applyOrElseRhs(paramRefss: List[Lst[Tree]])(using Context) =
+        val Lst.Pair(paramRef, defaultRef) = paramRefss(1).runtimeChecked
         val defaultValue = defaultRef.select(nme.apply).appliedTo(paramRef)
         translateMatch(applyOrElseFn)(paramRef.symbol, pfRHS.cases, defaultValue)
 

@@ -65,11 +65,11 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   /** The list of parameter definitions `$name: String, $ordinal: Int`, in given `owner`
    *  with given flags (either `Param` or `ParamAccessor`)
    */
-  private def addedParams(owner: Symbol, isLocal: Boolean, flag: FlagSet)(using Context): List[ValDef] = {
+  private def addedParams(owner: Symbol, isLocal: Boolean, flag: FlagSet)(using Context): Lst[ValDef] = {
     val flags = flag | Synthetic | (if isLocal then Private | Deferred else EmptyFlags)
     val nameParam = newSymbol(owner, nameParamName, flags, defn.StringType, coord = owner.span)
     val ordinalParam = newSymbol(owner, ordinalParamName, flags, defn.IntType, coord = owner.span)
-    List(ValDef(nameParam), ValDef(ordinalParam))
+    Lst(ValDef(nameParam), ValDef(ordinalParam))
   }
 
   /** Add arguments `args` to the parent constructor application in `parents` that invokes
@@ -90,7 +90,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     if sym.isConstructor && sym.owner.derivesFromJavaEnum then
       val tree1 = cpy.DefDef(tree)(
         paramss = tree.paramss.init
-          :+ (tree.paramss.last.asInstanceOf[List[ValDef]]
+          :+ (tree.paramss.last.asInstanceOf[Lst[ValDef]]
               ++ addedParams(sym, isLocal=false, Param)))
       sym.setParamssFromDefs(tree1.paramss)
       tree1
@@ -196,7 +196,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       val addedSyms = addedDefs.map(_.symbol.entered)
       val addedForwarders = addedEnumForwarders(cls)
       cpy.Template(templ)(
-        parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
+        parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.mapToList(ref)),
         body = params ++ addedDefs ++ addedForwarders ++ rest)
     else if isJavaEnumValueImpl(cls) then
       def creatorParamRef(name: TermName) =

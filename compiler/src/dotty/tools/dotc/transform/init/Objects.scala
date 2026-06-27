@@ -1878,7 +1878,7 @@ class Objects(using Context @constructorOnly):
             implicitArgsBeforeScrutinee(f) ++ evalArgs(implicitArgs.map(Arg.apply), thisV, klass)
           case _ => List()
 
-        val implicitArgsAfterScrutinee = evalArgs(implicits.map(Arg.apply), thisV, klass)
+        val implicitArgsAfterScrutinee = evalArgs(implicits.map(Arg.apply).toList, thisV, klass)
         val args = implicitArgsBeforeScrutinee(fun) ++ (ArgInfo(scrutinee, summon[Trace], EmptyTree) :: implicitArgsAfterScrutinee)
         val unapplyRes = call(receiver, funRef.symbol, args, funRef.prefix, superType = NoType, needResolve = true)
 

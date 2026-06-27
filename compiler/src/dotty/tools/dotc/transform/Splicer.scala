@@ -17,6 +17,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Denotations.staticRef
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Constants.Constant
+import dotty.tools.dotc.util.Lst
 
 import dotty.tools.dotc.quoted.Interpreter
 
@@ -193,7 +194,7 @@ object Splicer {
       }
 
       def checkIfValidStaticCall(tree: Tree)(using Env): Unit = tree match {
-        case closureDef(ddef @ DefDef(_, ValDefs(ev :: Nil) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
+        case closureDef(ddef @ DefDef(_, ValDefs(Lst.Singleton(ev)) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
           checkIfValidStaticCall(ddef.rhs)(using summon[Env] + ev.symbol)
 
         case Block(stats, expr) =>

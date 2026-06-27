@@ -7,6 +7,7 @@ import scala.jdk.CollectionConverters.*
 import scala.meta.pc.OffsetParams
 
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.interactive.Interactive
@@ -101,10 +102,10 @@ object PcConvertToNamedLambdaParameters:
           )
           if ddef.symbol == meth.symbol =>
         params match
-          case List(param) =>
+          case Lst.Singleton(param) =>
             // lambdas with multiple wildcard parameters are represented as a single parameter function and a block with wildcard valdefs
             Some(multipleUnderscoresFromBody(param, body))
-          case _ => Some(params -> body)
+          case _ => Some(params.toList -> body)
       case _ => None
 
   private def multipleUnderscoresFromBody(

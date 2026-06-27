@@ -707,7 +707,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    private def initJMethod(flags: Int, params: List[Symbol])(using Context): Unit = {
+    private def initJMethod(flags: Int, params: Lst[Symbol])(using Context): Unit = {
 
       val mdesc = bTypeLoader.methodBTypeFromSymbol(methSymbol).descriptor
       val jgensig = getGenericSignature(methSymbol, claszSymbol, mdesc)
@@ -761,11 +761,11 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val origSym = dd.symbol.asTerm
       val newSym = SymbolUtils.makeStatifiedDefSymbol(origSym, origSym.name)
       tpd.DefDef(newSym, { paramRefss =>
-        val selfParamRef :: regularParamRefs = paramRefss.head: @unchecked
+        val Lst.Cons(selfParamRef, regularParamRefs) = paramRefss.head: @unchecked
         val enclosingClass = origSym.owner.asClass
         new TreeTypeMap(
           typeMap = _.substThis(enclosingClass, selfParamRef.symbol.termRef)
-            .subst(dd.termParamss.head.mapToLst(_.symbol), regularParamRefs.mapToLst(_.symbol.termRef)),
+            .subst(dd.termParamss.head.map(_.symbol), regularParamRefs.map(_.symbol.termRef)),
           treeMap = {
             case tree: This if tree.symbol == enclosingClass =>
               // Since we want the positions to be accurate in the bytecode, we preserve
@@ -803,7 +803,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val sym = SymbolUtils.makeStatifiedDefSymbol(origSym, name)
       tpd.DefDef(sym, { paramss =>
         val params = paramss.head
-        tpd.Apply(params.head.select(origSym), params.tail)
+        tpd.Apply(params.head.select(origSym), params.toList.tail)
           .withAttachment(BCodeHelpers.UseInvokeSpecial, ())
       })
 
@@ -824,7 +824,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // add method-local vars for params
 
       assert(vparamss.isEmpty || vparamss.tail.isEmpty, s"Malformed parameter list: $vparamss")
-      val params = if (vparamss.isEmpty) Nil else vparamss.head
+      val params = if (vparamss.isEmpty) Lst() else vparamss.head
       for (p <- params) { locals.makeLocal(p.symbol) }
       // debug assert((params.map(p => locals(p.symbol).tk)) == asmMethodType(methSymbol).getArgumentTypes.toList, "debug")
 

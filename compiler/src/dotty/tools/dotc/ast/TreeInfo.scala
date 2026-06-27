@@ -244,7 +244,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
 
   /** All type and value parameter symbols of this DefDef */
   def allParamSyms(ddef: DefDef)(using Context): Lst[Symbol] =
-    ddef.paramss.flatten.mapToLst(_.symbol)
+    ddef.paramss.flattenLst.map(_.symbol)
 
   /** Does this argument list end with an argument of the form <expr> * ? */
   def isWildcardStarArgList(trees: List[Tree])(using Context): Boolean =
@@ -299,7 +299,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
 
   /** Is this parameter list a using clause? */
   def isUsingClause(params: ParamClause)(using Context): Boolean = params match
-    case ValDefs(vparam :: _) =>
+    case ValDefs(Lst.StartingWith(vparam)) =>
       val sym = vparam.symbol
       if sym.exists then sym.is(Given) else vparam.mods.is(Given)
     case _ =>
@@ -472,7 +472,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
   /** Is `tree` an context function or closure, possibly nested in a block? */
   def isContextualClosure(tree: Tree)(using Context): Boolean = unsplice(tree) match {
     case tree: FunctionWithMods => tree.mods.is(Given)
-    case Function((param: untpd.ValDef) :: _, _) => param.mods.is(Given)
+    case Function(Lst.StartingWith(param: untpd.ValDef), _) => param.mods.is(Given)
     case Closure(_, meth, _) => true
     case Block(Nil, expr) => isContextualClosure(expr)
     case Block(DefDef(nme.ANON_FUN, params :: _, _, _) :: Nil, cl: Closure) =>
@@ -1140,7 +1140,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  The supercall is always the first statement (if it exists)
    */
   final def splitAtSuper(constrStats: List[Tree])(implicit ctx: Context): (List[Tree], List[Tree]) =
-    constrStats.toList match {
+    constrStats match {
       case (sc: Apply) :: rest if sc.symbol.isConstructor => (sc :: Nil, rest)
       case (block @ Block(_, sc: Apply)) :: rest if sc.symbol.isConstructor => (block :: Nil, rest)
       case stats => (Nil, stats)

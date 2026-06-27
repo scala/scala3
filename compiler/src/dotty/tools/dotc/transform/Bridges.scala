@@ -7,7 +7,7 @@ import Symbols.*, Types.*, Contexts.*, Decorators.*, Flags.*, Scopes.*, Phases.*
 import DenotTransformers.*
 import ast.untpd
 import collection.{mutable, immutable}
-import util.SrcPos
+import util.{Lst, SrcPos}
 import ContextFunctionResults.{contextResultCount, contextFunctionResultTypeAfter}
 import StdNames.nme
 import Constants.Constant
@@ -147,16 +147,16 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
           val anonFun = newAnonFun(ctx.owner, mtWithoutErasedParams, coord = ctx.owner.coord)
           anonFun.info = transformInfo(anonFun, anonFun.info)
 
-          def lambdaBody(refss: List[List[Tree]]) =
+          def lambdaBody(refss: List[Lst[Tree]]) =
             val refs :: Nil = refss: @unchecked
             val expandedRefs = refs.map(_.withSpan(ctx.owner.span.endPos)) match
-              case (bunchedParam @ Ident(nme.ALLARGS)) :: Nil =>
-                List.tabulate(mtWithoutErasedParams.paramInfos.length): n =>
+              case Lst.Singleton(bunchedParam @ Ident(nme.ALLARGS)) =>
+                Lst.tabulate(mtWithoutErasedParams.paramInfos.length): n =>
                   bunchedParam
                     .select(nme.primitive.arrayApply)
                     .appliedTo(Literal(Constant(n)))
               case refs1 => refs1
-            expand(args ::: expandedRefs, mtWithoutErasedParams.resType, n - 1)(using ctx.withOwner(anonFun))
+            expand(args ::: expandedRefs.toList, mtWithoutErasedParams.resType, n - 1)(using ctx.withOwner(anonFun))
 
           val unadapted = Closure(anonFun, lambdaBody)
           cpy.Block(unadapted)(unadapted.stats,
@@ -168,12 +168,12 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       expand(args, start, memberCount - otherCount)(using ctx.withOwner(bridge))
     end etaExpand
 
-    def bridgeRhs(argss: List[List[Tree]]) =
+    def bridgeRhs(argss: List[Lst[Tree]]) =
       assert(argss.tail.isEmpty)
       val ref = This(root).select(member)
       if member.info.isParameterless then ref // can happen if `member` is a module
-      else if memberCount == 0 then ref.appliedToTermArgs(argss.head)
-      else etaExpand(ref, argss.head)
+      else if memberCount == 0 then ref.appliedToTermArgs(argss.head.toList)
+      else etaExpand(ref, argss.head.toList)
 
     bridges += DefDef(bridge, bridgeRhs(_).withSpan(bridge.span))
   }

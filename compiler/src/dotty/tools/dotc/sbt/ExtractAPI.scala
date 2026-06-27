@@ -845,6 +845,8 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
             h = positionedHash(p, h)
           case xs: List[?] =>
             h = iteratorHash(xs.iterator, h)
+          case xs: Lst[?] =>
+            h = iteratorHash(xs.iterator, h)
           case c: Constant =>
             h = constantHash(c, h)
           case n: Name =>

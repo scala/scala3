@@ -49,7 +49,7 @@ class BeanProperties(thisPhase: DenotTransformer):
           coord = annot.tree.span
         ).enteredAfter(thisPhase).asTerm
          .withAnnotationsCarrying(valDef.symbol, defn.BeanSetterMetaAnnot)
-        def body(params: List[List[Tree]]): Tree = Assign(ref(valDef.symbol), params.head.head)
+        def body(params: List[Lst[Tree]]): Tree = Assign(ref(valDef.symbol), params.head.head)
         DefDef(meth, body).withSpan(meth.span)
       }
 

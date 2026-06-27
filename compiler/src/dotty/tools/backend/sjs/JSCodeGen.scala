@@ -1137,7 +1137,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     // VarDefs for the parameters of all constructors.
     val paramVarDefs = for {
-      vparam <- constructorTrees.flatMap(_.paramss.flatten)
+      vparam <- constructorTrees.flatMap(_.paramss.flatMap(_.toList))
     } yield {
       val sym = vparam.symbol
       val tpe = toIRType(sym.info)
@@ -1333,7 +1333,7 @@ class JSCodeGen()(using genCtx: Context) {
       vparamss: List[ParamClause]): List[(Symbol, JSParamInfo)] = {
     implicit val pos: SourcePosition = ctorSym.sourcePos
 
-    val paramSyms = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol)
+    val paramSyms = if (vparamss.isEmpty) Nil else vparamss.head.mapToList(_.symbol)
     paramSyms.zip(ctorSym.jsParamInfos)
   }
 
@@ -1611,7 +1611,7 @@ class JSCodeGen()(using genCtx: Context) {
     withPerMethodBodyState(sym, initThisLocalVarName) {
       assert(vparamss.isEmpty || vparamss.tail.isEmpty,
           "Malformed parameter list: " + vparamss)
-      val params = if (vparamss.isEmpty) Nil else vparamss.head.map(_.symbol)
+      val params = if (vparamss.isEmpty) Nil else vparamss.head.mapToList(_.symbol)
 
       val methodName = encodeMethodSym(sym)
       val originalName = originalNameOfMethod(sym)

@@ -115,7 +115,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  where the closure's type is the target type of the expression (FunctionN, unless
    *  otherwise specified).
    */
-  def Closure(meth: TermSymbol, rhsFn: List[List[Tree]] => Tree, targs: List[Tree] = Nil, targetType: Type = NoType)(using Context): Block = {
+  def Closure(meth: TermSymbol, rhsFn: List[Lst[Tree]] => Tree, targs: List[Tree] = Nil, targetType: Type = NoType)(using Context): Block = {
     val targetTpt = if (targetType.exists) TypeTree(targetType, inferred = true) else EmptyTree
     val call =
       if (targs.isEmpty) Ident(TermRef(NoPrefix, meth))
@@ -126,7 +126,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   }
 
   /** A closure whose anonymous function has the given method type */
-  def Lambda(tpe: MethodType, rhsFn: List[Tree] => Tree)(using Context): Block = {
+  def Lambda(tpe: MethodType, rhsFn: Lst[Tree] => Tree)(using Context): Block = {
     val meth = newAnonFun(ctx.owner, tpe)
     Closure(meth, tss => rhsFn(tss.head).changeOwner(ctx.owner, meth))
   }
@@ -203,7 +203,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def ByNameTypeTree(result: Tree)(using Context): ByNameTypeTree =
     ta.assignType(untpd.ByNameTypeTree(result), result)
 
-  def LambdaTypeTree(tparams: List[TypeDef], body: Tree)(using Context): LambdaTypeTree =
+  def LambdaTypeTree(tparams: Lst[TypeDef], body: Tree)(using Context): LambdaTypeTree =
     ta.assignType(untpd.LambdaTypeTree(tparams, body), tparams, body)
 
   def MatchTypeTree(bound: Tree, selector: Tree, cases: List[CaseDef])(using Context): MatchTypeTree =
@@ -222,7 +222,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def Alternative(trees: List[Tree])(using Context): Alternative =
     ta.assignType(untpd.Alternative(trees), trees)
 
-  def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree], proto: Type)(using Context): UnApply = {
+  def UnApply(fun: Tree, implicits: Lst[Tree], patterns: List[Tree], proto: Type)(using Context): UnApply = {
     assert(fun.isInstanceOf[RefTree] || fun.isInstanceOf[GenericApply])
     ta.assignType(untpd.UnApply(fun, implicits, patterns), proto)
   }
@@ -240,8 +240,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       untpd.DefDef(
         sym.name,
         paramss.map {
-          case TypeSymbols(params) => params.map(param => TypeDef(param).withSpan(param.span)).toList
-          case TermSymbols(params) => params.map(param => ValDef(param).withSpan(param.span)).toList
+          case TypeSymbols(params) => params.map(param => TypeDef(param).withSpan(param.span))
+          case TermSymbols(params) => params.map(param => ValDef(param).withSpan(param.span))
           case _ => unreachable()
         },
         TypeTree(resultType),
@@ -257,7 +257,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *  Parameter symbols are taken from the `rawParamss` field of `sym`, or
    *  are freshly generated if `rawParamss` is empty.
    */
-  def DefDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Tree)(using Context): DefDef =
+  def DefDef(sym: TermSymbol, rhsFn: List[Lst[Tree]] => Tree)(using Context): DefDef =
 
     // Map method type `tp` with remaining parameters stored in rawParamss to
     // final result type and all (given or synthesized) parameters
@@ -310,7 +310,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     end recur
 
     val (rtp, paramss) = recur(sym.info, sym.rawParamss)
-    DefDef(sym, paramss, rtp, rhsFn(paramss.map(params => params.map(ref).toList)))
+    DefDef(sym, paramss, rtp, rhsFn(paramss.map(params => params.map(ref))))
   end DefDef
 
   def TypeDef(sym: TypeSymbol)(using Context): TypeDef =
@@ -395,7 +395,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         for overridden <- fwdMeth.allOverriddenSymbols do
           if overridden.is(Extension) then fwdMeth.setFlag(Extension)
           if !overridden.is(Deferred) then fwdMeth.setFlag(Override)
-        DefDef(fwdMeth, ref(fn).appliedToArgss(_))
+        DefDef(fwdMeth, paramss => ref(fn).appliedToArgss(paramss.map(_.toList)))
       }
       val typeDefs = typeMembers.map((name, info) => TypeDef(newSymbol(cls, name, Synthetic, info).entered))
       termForwarders.map((name, sym) => forwarder(name, sym)) ++ typeDefs
@@ -1225,14 +1225,41 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
             ctx.owner,
             MethodType.companion(isContextual = true)(argTypes, resType),
             coord = ctx.owner.coord)
-          def lambdaBody(refss: List[List[Tree]]) =
-            expand(target.select(nme.apply).appliedToArgss(refss), resType)(
+          def lambdaBody(refss: List[Lst[Tree]]) =
+            expand(target.select(nme.apply).appliedToArgss(refss.map(_.toList)), resType)(
               using ctx.withOwner(anonFun))
           Closure(anonFun, lambdaBody)
         case _ =>
           target
       expand(tree, tree.tpe.widen)
   }
+
+  extension (trees: Lst[Tree])
+
+    /** Equivalent (but faster) to
+     *
+     *    flatten(trees.mapConserve(op))
+     *
+     *  assuming that `trees` does not contain `Thicket`s to start with.
+     */
+    inline def flattenedMapConserve(inline f: Tree => Tree): Lst[Tree] =
+      var buf: Lst.Buffer[Tree] | Null = null
+      var i = 0
+      while i < trees.length do
+        val tree = trees(i)
+        val mapped = f(tree)
+        if buf == null && (mapped ne tree) then
+          buf = Lst.Buffer[Tree](trees.length)
+          var j = 0
+          while j < i do
+            buf += trees(j)
+            j += 1
+        if buf != null then
+          mapped match
+            case Thicket(elems) => buf ++= elems.toLst
+            case _ => buf += mapped
+        i += 1
+      if buf == null then trees else buf.toLst
 
   extension (trees: List[Tree])
 

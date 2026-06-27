@@ -18,6 +18,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.TypeOps.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.reporting.IllegalVariableInPatternAlternative
+import dotty.tools.dotc.util.Lst
 
 
 import scala.collection.mutable
@@ -205,10 +206,10 @@ object QuotePatterns:
           ref(defn.TupleType(patterns.size).nn.typeSymbol.companionModule)
             .select(nme.unapply)
             .appliedToTypes(patternTypes)
-        UnApply(tupleNUnapply, Nil, patterns, defn.tupleType(patternTypes))
+        UnApply(tupleNUnapply, Lst(), patterns, defn.tupleType(patternTypes))
       else
         val tupleXXLUnapplySeq = ref(defn.TupleXXL_unapplySeq)
-        val unapply = UnApply(tupleXXLUnapplySeq, Nil, patterns, defn.tupleType(patternTypes))
+        val unapply = UnApply(tupleXXLUnapplySeq, Lst(), patterns, defn.tupleType(patternTypes))
         Typed(unapply, TypeTree(defn.TupleXXLClass.typeRef))
 
     val patType =
@@ -220,7 +221,7 @@ object QuotePatterns:
 
     UnApply(
       fun = unapplyFun.appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
-      implicits = quotedShape :: Nil,
+      implicits = Lst(quotedShape),
       patterns = splicePat :: Nil,
       quotePattern.tpe)
 
@@ -297,8 +298,8 @@ object QuotePatterns:
       case UnApply(_, _, patterns) => patterns // TupleN
       case Typed(UnApply(_, _, patterns), _) => patterns // TupleXXL
     val shape = (implicits: @unchecked) match
-      case Apply(Select(Quote(shape, _), _), _) :: Nil => shape
-      case List(Apply(TypeApply(_, shape :: Nil), _)) => shape
+      case Lst.Singleton(Apply(Select(Quote(shape, _), _), _)) => shape
+      case Lst.Singleton(Apply(TypeApply(_, shape :: Nil), _)) => shape
     fun match
       // <quotes>.asInstanceOf[QuoteMatching].{ExprMatch,TypeMatch}.unapply[<typeBindings>, <resTypes>]
       case TypeApply(Select(Select(TypeApply(Select(quotes, _), _), _), _), typeBindings :: resTypes :: Nil) =>

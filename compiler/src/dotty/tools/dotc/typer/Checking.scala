@@ -1443,16 +1443,14 @@ trait Checking {
   /** Check that method parameter types do not reference their own parameter
    *  or later parameters in the same parameter section.
    */
-  def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = vparams match {
-    case vparam :: vparams1 =>
-      vparam.tpt.foreachSubTree {
-        case id: Ident if vparams.exists(_.symbol == id.symbol) =>
+  def checkNoForwardDependencies(vparams: Lst[ValDef])(using Context): Unit =
+    for i <- 0 until vparams.length do
+      vparams(i).tpt.foreachSubTree:
+        case id: Ident
+        if (i until vparams.length).exists: j =>
+          vparams(j).symbol == id.symbol =>
           report.error(em"illegal forward reference to method parameter", id.srcPos)
         case _ =>
-      }
-      checkNoForwardDependencies(vparams1)
-    case Nil =>
-  }
 
   /** Check that all named types that form part of this type have a denotation.
    *  Called on inferred (result) types of ValDefs and DefDefs.
@@ -1827,7 +1825,7 @@ trait NoChecking extends ReChecking {
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
   override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
-  override def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = ()
+  override def checkNoForwardDependencies(vparams: Lst[ValDef])(using Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp
   override def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit = ()
   override def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = ()

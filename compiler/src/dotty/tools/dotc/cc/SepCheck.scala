@@ -1080,8 +1080,11 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           else
             inSection:
               consumed.segment:
-                for params <- tree.paramss; case param: ValDef <- params do
-                  pushDef(param, emptyRefs)
+                for params <- tree.paramss do
+                  for param <- params do
+                    param match
+                      case param: ValDef => pushDef(param, emptyRefs)
+                      case _ =>
                 traverseChildren(tree)
           checkValOrDefDef(tree)
         case If(cond, thenp, elsep) =>

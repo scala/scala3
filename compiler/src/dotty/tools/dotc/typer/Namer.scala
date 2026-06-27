@@ -454,7 +454,7 @@ class Namer { typer: Typer =>
         mdef match
           case tdef: TypeDef if ctx.owner.isClass =>
             for case WitnessNamesAnnot(witnessNames) <- tdef.mods.annotations do
-              addContextBoundCompanionFor(symbolOfTree(tdef), witnessNames, Nil)
+              addContextBoundCompanionFor(symbolOfTree(tdef), witnessNames, Lst())
           case _ =>
         ctx
       case stats: Thicket =>
@@ -570,6 +570,9 @@ class Namer { typer: Typer =>
         setDocstring(sym, meth)
     case _ => ()
   }
+
+  def index(stats: Lst[Tree])(using Context): Context =
+    index(stats.toList)
 
   /** Create top-level symbols for statements and enter them into symbol table
    *  @return A context that reflects all imports in `stats`.
@@ -1107,13 +1110,13 @@ class Namer { typer: Typer =>
         nestedCtx = newScope
         given Context = newScope
 
-        def typeParamTrees(tdef: Tree): List[TypeDef] = tdef match
+        def typeParamTrees(tdef: Tree): Lst[TypeDef] = tdef match
           case TypeDef(_, original) =>
             original match
               case LambdaTypeTree(tparams, _) => tparams
               case original: DerivedFromParamTree => typeParamTrees(original.watched)
-              case _ => Nil
-          case _ => Nil
+              case _ => Lst()
+          case _ => Lst()
 
         val tparams = typeParamTrees(original)
         index(tparams)
@@ -1422,8 +1425,8 @@ class Namer { typer: Typer =>
             val ddef = tpd.DefDef(forwarder.asTerm, prefss => {
               val forwarderCtx = ctx.withOwner(forwarder)
               val (pathRefss, methRefss) = prefss.splitAt(extensionParamsCount(path.tpe.widen))
-              val ref = path.appliedToArgss(pathRefss).select(sym.asTerm).withSpan(span.focus)
-              val rhs = ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
+              val ref = path.appliedToArgss(pathRefss.map(_.toList)).select(sym.asTerm).withSpan(span.focus)
+              val rhs = ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss.map(_.toList)))
                 .etaExpandCFT(using forwarderCtx)
               if forwarder.isInlineMethod then
                 // Eagerly make the body inlineable. `registerInlineInfo` does this lazily
@@ -2091,7 +2094,7 @@ class Namer { typer: Typer =>
      *  Once all witness parameters for a context bound are seen, create a
      *  context bound companion for it.
      */
-    def completeParams(params: List[MemberDef])(using Context): Unit =
+    def completeParams(params: Lst[MemberDef])(using Context): Unit =
       if indexingCtor || !sym.isPrimaryConstructor then
         index(params)
       var prevParams = Set.empty[Name]

@@ -15,6 +15,7 @@ import StdNames.*
 import Types.*
 import util.Lst
 import Decorators.em
+import util.Lst
 
 import dotty.tools.dotc.transform.MegaPhase.*
 
@@ -208,8 +209,8 @@ class JUnitBootstrappers extends MiniPhase {
     val sym = newSymbol(owner, name, Synthetic | Method,
       MethodType(Lst(junitNme.instance), Lst(defn.ObjectType), defn.UnitType)).entered
 
-    DefDef(sym, { (paramRefss: List[List[Tree]]) =>
-      val List(List(instanceParamRef)) = paramRefss
+    DefDef(sym, { (paramRefss: List[Lst[Tree]]) =>
+      val List(Lst.Singleton(instanceParamRef)) = paramRefss.runtimeChecked
       val calls = annotatedMethods(testClass, annot)
         .map(m => Apply(instanceParamRef.cast(testClass.typeRef).select(m), Nil))
       Block(calls, unitLiteral)
@@ -258,8 +259,8 @@ class JUnitBootstrappers extends MiniPhase {
     val sym = newSymbol(owner, junitNme.invokeTest, Synthetic | Method,
       MethodType(Lst(junitNme.instance, junitNme.name), Lst(defn.ObjectType, defn.StringType), junitdefn.FutureType)).entered
 
-    DefDef(sym, { (paramRefss: List[List[Tree]]) =>
-      val List(List(instanceParamRef, nameParamRef)) = paramRefss
+    DefDef(sym, { (paramRefss: List[Lst[Tree]]) =>
+      val List(Lst.Pair(instanceParamRef, nameParamRef)) = paramRefss.runtimeChecked
       val castInstanceSym = newSymbol(sym, junitNme.castInstance, Synthetic, testClass.typeRef, coord = owner.span)
       Block(
         ValDef(castInstanceSym, instanceParamRef.cast(testClass.typeRef)) :: Nil,

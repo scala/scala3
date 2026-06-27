@@ -1905,7 +1905,7 @@ trait Applications extends Compatibility {
       else (unapplyFn, unapplyAppCall)
     end inlinedUnapplyFnAndApp
 
-    def unapplyImplicits(dummyArg: Tree, unapp: Tree): List[Tree] =
+    def unapplyImplicits(dummyArg: Tree, unapp: Tree): Lst[Tree] =
       val res = List.newBuilder[Tree]
       def loop(unapp: Tree): Unit = unapp match
         case Apply(Apply(unapply, `dummyArg` :: Nil), args2) => assert(args2.nonEmpty); res ++= args2
@@ -1916,7 +1916,7 @@ trait Applications extends Compatibility {
         case _ => ().assertingErrorsReported
 
       loop(unapp)
-      res.result()
+      res.result().toLst
     end unapplyImplicits
 
     /** Add a `Bind` node for each `bound` symbol in a type application `unapp` */
@@ -1971,7 +1971,7 @@ trait Applications extends Compatibility {
       case tp =>
         val unapplyErr = if (tp.isError) unapplyFn else notAnExtractor(unapplyFn)
         val typedArgsErr = unadaptedArgs.mapconserve(typed(_, defn.AnyType))
-        cpy.UnApply(tree)(unapplyErr, Nil, typedArgsErr).withType(unapplyErr.tpe)
+        cpy.UnApply(tree)(unapplyErr, Lst(), typedArgsErr).withType(unapplyErr.tpe)
     }
   }
 
@@ -2574,7 +2574,7 @@ trait Applications extends Compatibility {
      */
     def normArg(alts: List[TermRef], arg: untpd.Tree, idx: Int): untpd.Tree = arg match
       case Block(Nil, expr) if !expr.isEmpty => normArg(alts, expr, idx)
-      case untpd.Function(args: List[untpd.ValDef] @unchecked, body) =>
+      case untpd.Function(args: Lst[untpd.ValDef] @unchecked, body) =>
 
         // If ref refers to a method whose parameter at index `idx` is a function type,
         // the parameters of that function, otherwise Nil.
@@ -2780,7 +2780,7 @@ trait Applications extends Compatibility {
   end resolveOverloaded1
 
   /** Is `formal` a product type which is elementwise compatible with `params`? */
-  def ptIsCorrectProduct(formal: Type, params: List[untpd.ValDef])(using Context): Boolean =
+  def ptIsCorrectProduct(formal: Type, params: Lst[untpd.ValDef])(using Context): Boolean =
     isFullyDefined(formal, ForceDegree.flipBottom)
     && (defn.isProductSubType(formal) || formal.isNamedTupleType)
     && tupleComponentTypes(formal).corresponds(params.toLst): (argType, param) =>

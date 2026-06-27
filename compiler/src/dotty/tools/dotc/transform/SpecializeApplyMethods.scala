@@ -98,7 +98,7 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
           { vparamss =>
               This(cls)
                 .select(nme.apply)
-                .appliedToArgss(vparamss)
+                .appliedToArgss(vparamss.map(_.toList))
                 .ensureConforms(applySym.info.finalResultType)
           }
         )

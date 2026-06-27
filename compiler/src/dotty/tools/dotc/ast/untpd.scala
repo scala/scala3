@@ -72,19 +72,19 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     extends TermTree
 
   /** A function type or closure */
-  case class Function(args: List[Tree], body: Tree)(implicit @constructorOnly src: SourceFile) extends Tree {
+  case class Function(args: Lst[Tree], body: Tree)(implicit @constructorOnly src: SourceFile) extends Tree {
     override def isTerm: Boolean = body.isTerm
     override def isType: Boolean = body.isType
   }
 
   /** A function type or closure with `implicit` or `given` modifiers and information on which parameters are `erased` */
-  class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers)(implicit @constructorOnly src: SourceFile)
+  class FunctionWithMods(args: Lst[Tree], body: Tree, val mods: Modifiers)(implicit @constructorOnly src: SourceFile)
   extends Function(args, body) {
       override def toString = s"FunctionWithMods($args, $body, $mods)"
   }
 
   /** A polymorphic function type */
-  case class PolyFunction(targs: List[Tree], body: Tree)(implicit @constructorOnly src: SourceFile) extends Tree {
+  case class PolyFunction(targs: Lst[Tree], body: Tree)(implicit @constructorOnly src: SourceFile) extends Tree {
     override def isTerm = body.isTerm
     override def isType = body.isType
   }
@@ -96,7 +96,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  This is equivalent to Function, except that forms a special case for the overlapping
    *  positions tests.
    */
-  class WildcardFunction(placeholderParams: List[ValDef], body: Tree)(implicit @constructorOnly src: SourceFile)
+  class WildcardFunction(placeholderParams: Lst[ValDef], body: Tree)(implicit @constructorOnly src: SourceFile)
     extends Function(placeholderParams, body)
 
   case class InfixOp(left: Tree, op: Ident, right: Tree)(implicit @constructorOnly src: SourceFile) extends OpTree
@@ -432,14 +432,14 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def SingletonTypeTree(ref: Tree)(implicit src: SourceFile): SingletonTypeTree = new SingletonTypeTree(ref)
   def RefinedTypeTree(tpt: Tree, refinements: List[Tree])(implicit src: SourceFile): RefinedTypeTree = new RefinedTypeTree(tpt, refinements)
   def AppliedTypeTree(tpt: Tree, args: List[Tree])(implicit src: SourceFile): AppliedTypeTree = new AppliedTypeTree(tpt, args)
-  def LambdaTypeTree(tparams: List[TypeDef], body: Tree)(implicit src: SourceFile): LambdaTypeTree = new LambdaTypeTree(tparams, body)
-  def TermLambdaTypeTree(params: List[ValDef], body: Tree)(implicit src: SourceFile): TermLambdaTypeTree = new TermLambdaTypeTree(params, body)
+  def LambdaTypeTree(tparams: Lst[TypeDef], body: Tree)(implicit src: SourceFile): LambdaTypeTree = new LambdaTypeTree(tparams, body)
+  def TermLambdaTypeTree(params: Lst[ValDef], body: Tree)(implicit src: SourceFile): TermLambdaTypeTree = new TermLambdaTypeTree(params, body)
   def MatchTypeTree(bound: Tree, selector: Tree, cases: List[CaseDef])(implicit src: SourceFile): MatchTypeTree = new MatchTypeTree(bound, selector, cases)
   def ByNameTypeTree(result: Tree)(implicit src: SourceFile): ByNameTypeTree = new ByNameTypeTree(result)
   def TypeBoundsTree(lo: Tree, hi: Tree, alias: Tree = EmptyTree)(implicit src: SourceFile): TypeBoundsTree = new TypeBoundsTree(lo, hi, alias)
   def Bind(name: Name, body: Tree)(implicit src: SourceFile): Bind = new Bind(name, body)
   def Alternative(trees: List[Tree])(implicit src: SourceFile): Alternative = new Alternative(trees)
-  def UnApply(fun: Tree, implicits: List[Tree], patterns: List[Tree])(implicit src: SourceFile): UnApply = new UnApply(fun, implicits, patterns)
+  def UnApply(fun: Tree, implicits: Lst[Tree], patterns: List[Tree])(implicit src: SourceFile): UnApply = new UnApply(fun, implicits, patterns)
   def ValDef(name: TermName, tpt: Tree, rhs: LazyTree)(implicit src: SourceFile): ValDef = new ValDef(name, tpt, rhs)
   def DefDef(name: TermName, paramss: List[ParamClause], tpt: Tree, rhs: LazyTree)(implicit src: SourceFile): DefDef = new DefDef(name, paramss, tpt, rhs)
   def TypeDef(name: TypeName, rhs: Tree)(implicit src: SourceFile): TypeDef = new TypeDef(name, rhs)
@@ -579,11 +579,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def makeConsumeAnnot()(using Context): Tree =
     New(scalaCapsInternalDot(tpnme.consume), Nil :: Nil)
 
-  def makeConstructor(tparams: List[TypeDef], vparamss: List[List[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
+  def makeConstructor(tparams: Lst[TypeDef], vparamss: List[Lst[ValDef]], rhs: Tree = EmptyTree)(using Context): DefDef =
     DefDef(nme.CONSTRUCTOR, joinParams(tparams, vparamss), TypeTree(), rhs)
 
   def emptyConstructor(using Context): DefDef =
-    makeConstructor(Nil, Nil)
+    makeConstructor(Lst(), Nil)
 
   def makeSelfDef(name: TermName, tpt: Tree)(using Context): ValDef =
     ValDef(name, tpt, EmptyTree).withFlags(PrivateLocal)
@@ -614,13 +614,15 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     ValDef(nme.syntheticParamName(n), if (tpt == null) TypeTree() else tpt, EmptyTree)
       .withFlags(flags)
 
-  def lambdaAbstract(params: List[ValDef] | List[TypeDef], tpt: Tree)(using Context): Tree =
+  def lambdaAbstract(params: Lst[ValDef] | Lst[TypeDef], tpt: Tree)(using Context): Tree =
     params match
-      case Nil               => tpt
-      case (vd: ValDef) :: _ => TermLambdaTypeTree(params.asInstanceOf[List[ValDef]], tpt)
-      case _                 => LambdaTypeTree(params.asInstanceOf[List[TypeDef]], tpt)
+      case Lst.Empty() => tpt
+      case Lst.StartingWith(_: ValDef) =>
+        TermLambdaTypeTree(params.asInstanceOf[Lst[ValDef]], tpt)
+      case _ =>
+        LambdaTypeTree(params.asInstanceOf[Lst[TypeDef]], tpt)
 
-  def lambdaAbstractAll(paramss: List[List[ValDef] | List[TypeDef]], tpt: Tree)(using Context): Tree =
+  def lambdaAbstractAll(paramss: List[Lst[ValDef] | Lst[TypeDef]], tpt: Tree)(using Context): Tree =
     paramss.foldRight(tpt)(lambdaAbstract)
 
   /** A reference to given definition. If definition is a repeated
@@ -669,16 +671,16 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: InterpolatedString if (id eq tree.id) && (segments eq tree.segments) => tree
       case _ => finalize(tree, untpd.InterpolatedString(id, segments)(using tree.source))
     }
-    def Function(tree: Tree)(args: List[Tree], body: Tree)(using Context): Tree = tree match {
-      case tree: Function if (args eq tree.args) && (body eq tree.body) => tree
+    def Function(tree: Tree)(args: Lst[Tree], body: Tree)(using Context): Tree = tree match {
+      case tree: Function if (args _eq_ tree.args) && (body eq tree.body) => tree
       case _ =>
         val tree1 = tree match
           case tree: FunctionWithMods => untpd.FunctionWithMods(args, body, tree.mods)(using tree.source)
           case _ => untpd.Function(args, body)(using tree.source)
         finalize(tree, tree1)
     }
-    def PolyFunction(tree: Tree)(targs: List[Tree], body: Tree)(using Context): Tree = tree match {
-      case tree: PolyFunction if (targs eq tree.targs) && (body eq tree.body) => tree
+    def PolyFunction(tree: Tree)(targs: Lst[Tree], body: Tree)(using Context): Tree = tree match {
+      case tree: PolyFunction if (targs _eq_ tree.targs) && (body eq tree.body) => tree
       case _ => finalize(tree, untpd.PolyFunction(targs, body)(using tree.source))
     }
     def InfixOp(tree: Tree)(left: Tree, op: Ident, right: Tree)(using Context): Tree = tree match {

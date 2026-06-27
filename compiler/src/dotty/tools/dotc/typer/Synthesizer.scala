@@ -119,7 +119,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           val tpe = MethodType(Lst(nme.s))(_ => Lst(tp1), mth => defn.OptionClass.typeRef.appliedTo(mth.newParamRef(0) & tp2))
           val meth = newAnonFun(ctx.owner, tpe, coord = span)
           val typeTestType = defn.TypeTestClass.typeRef.appliedTo(Lst(tp1, tp2))
-          withNoErrors(Closure(meth, tss => body(tss.head).changeOwner(ctx.owner, meth), targetType = typeTestType).withSpan(span))
+          withNoErrors(Closure(meth, tss => body(tss.head.toList).changeOwner(ctx.owner, meth), targetType = typeTestType).withSpan(span))
       case _ =>
         EmptyTreeNoError
     }

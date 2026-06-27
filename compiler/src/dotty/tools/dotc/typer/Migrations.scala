@@ -22,7 +22,7 @@ import rewrites.Rewrites.patch
 import util.Spans.Span
 import rewrites.Rewrites
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.{Lst, SourcePosition}
 
 /** A utility trait containing source-dependent deprecation messages
  *  and migrations.
@@ -70,7 +70,7 @@ trait Migrations:
             msg.actions
               .headOption
               .foreach(Rewrites.applyAction)
-            return typed(untpd.Function(Nil, qual), pt)
+            return typed(untpd.Function(Lst(), qual), pt)
     }
     nestedCtx.typerState.commit()
 

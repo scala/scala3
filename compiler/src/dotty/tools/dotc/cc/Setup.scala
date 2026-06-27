@@ -741,7 +741,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         // type only if the transformed type is different from the original.
         def paramSignatureChanges = tree.match
           case tree: DefDef =>
-            tree.paramss.nestedExists:
+            tree.paramss.nestedExistsLst:
               case param: ValDef =>  param.tpt.hasNuType
               case param: TypeDef => param.rhs.hasNuType
           case _ => false

@@ -6,7 +6,7 @@ import core.*
 import Types.*, Contexts.*, Flags.*
 import Symbols.*, Annotations.*, Trees.*, Symbols.*, Constants.Constant
 import Decorators.*
-
+import util.Lst
 
 /** A map that applies three functions and a substitution together to a tree and
  *  makes sure they are coordinated so that the result is well-typed. The functions are
@@ -165,6 +165,10 @@ class TreeTypeMap(
     (tmap, tmap.transformSub(trees))
   }
 
+  def transformDefs[TT <: Tree](trees: Lst[TT])(using Context): (TreeTypeMap, Lst[TT]) = {
+    val tmap = withMappedSyms(localSyms(trees.toList))
+    (tmap, tmap.transformSub(trees))
+  }
   private def transformAllParamss(paramss: List[ParamClause]): (TreeTypeMap, List[ParamClause]) = paramss match
     case params :: paramss1 =>
       val (tmap1, params1: ParamClause) = ((params: @unchecked) match

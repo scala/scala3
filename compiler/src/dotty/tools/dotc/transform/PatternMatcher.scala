@@ -499,7 +499,7 @@ object PatternMatcher {
             }
             val mt @ MethodType(_) = extractor.tpe.widen: @unchecked
             val unapp0 = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))
-            val unapp = applyImplicits(unapp0, implicits, mt.resultType)
+            val unapp = applyImplicits(unapp0, implicits.toList, mt.resultType)
             unapplyPlan(unapp, args)
           }
           if (scrutinee.info.isNotNull || nonNull(scrutinee)) unappPlan

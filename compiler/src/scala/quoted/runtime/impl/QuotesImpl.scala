@@ -244,25 +244,25 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object ClassDef extends ClassDefModule:
       def apply(cls: Symbol, parents: List[Tree], body: List[Statement]): ClassDef =
         val paramsDefs: List[untpd.ParamClause] =
-          cls.primaryConstructor.paramSymss.map { paramSym =>
-            if paramSym.headOption.map(_.isType).getOrElse(false) then
-              paramSym.map(sym => TypeDef(sym))
+          cls.primaryConstructor.paramSymss.map { paramSyms =>
+            if paramSyms.headOption.map(_.isType).getOrElse(false) then
+              paramSyms.mapToLst(sym => TypeDef(sym))
             else
-              paramSym.map(ValDef(_, None))
+              paramSyms.mapToLst(ValDef(_, None))
           }
         def throwError() =
           throw new RuntimeException(
             "Symbols necessary for creation of the ClassDef tree could not be found."
           )
         val paramsAccessDefs: List[ParamClause] =
-          cls.primaryConstructor.paramSymss.map { paramSym =>
-            if paramSym.headOption.map(_.isType).getOrElse(false) then
-              paramSym.map { symm =>
+          cls.primaryConstructor.paramSymss.map { paramSyms =>
+            if paramSyms.headOption.map(_.isType).getOrElse(false) then
+              paramSyms.map { symm =>
                 def isParamAccessor(memberSym: Symbol) = memberSym.flags.is(Flags.Param) && memberSym.name == symm.name
                 TypeDef(cls.typeMembers.find(isParamAccessor).getOrElse(throwError()))
               }
             else
-              paramSym.map { symm =>
+              paramSyms.map { symm =>
                 def isParam(memberSym: Symbol) = memberSym.flags.is(Flags.ParamAccessor) && memberSym.name == symm.name
                 ValDef(cls.fieldMembers.find(isParam).getOrElse(throwError()), None)
               }
@@ -332,20 +332,20 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         xCheckMacroAssert(symbol.isTerm, s"expected a term symbol, but received $symbol")
         xCheckMacroAssert(symbol.flags.is(Flags.Method), "expected a symbol with `Method` flag set")
         withDefaultPos(tpd.DefDef(symbol.asTerm, prefss =>
-          xCheckedMacroOwners(xCheckMacroValidExpr(rhsFn(prefss)), symbol).getOrElse(tpd.EmptyTree)
+          xCheckedMacroOwners(xCheckMacroValidExpr(rhsFn(prefss.map(_.toList))), symbol).getOrElse(tpd.EmptyTree)
         ))
       def copy(original: Tree)(name: String, paramss: List[ParamClause], tpt: TypeTree, rhs: Option[Term]): DefDef =
-        tpd.cpy.DefDef(original)(name.toTermName, paramss, tpt, xCheckedMacroOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
+        tpd.cpy.DefDef(original)(name.toTermName, paramss.map(_.toLst.asInstanceOf[tpd.ParamClause]), tpt, xCheckedMacroOwners(rhs, original.symbol).getOrElse(tpd.EmptyTree))
       def unapply(ddef: DefDef): (String, List[ParamClause], TypeTree, Option[Term]) =
-        (ddef.name.toString, ddef.paramss, ddef.tpt, optional(ddef.rhs))
+        (ddef.name.toString, ddef.paramss.map(_.toList.asInstanceOf[ParamClause]), ddef.tpt, optional(ddef.rhs))
     end DefDef
 
     given DefDefMethods: DefDefMethods with
       extension (self: DefDef)
-        def paramss: List[ParamClause] = self.paramss
-        def leadingTypeParams: List[TypeDef] = self.leadingTypeParams
-        def trailingParamss: List[ParamClause] = self.trailingParamss
-        def termParamss: List[TermParamClause] = self.termParamss
+        def paramss: List[ParamClause] = self.paramss.map(_.toList.asInstanceOf[ParamClause])
+        def leadingTypeParams: List[TypeDef] = self.leadingTypeParams.toList
+        def trailingParamss: List[ParamClause] = self.trailingParamss.map(_.toList.asInstanceOf[ParamClause])
+        def termParamss: List[TermParamClause] = self.termParamss.map(_.toList)
         def returnTpt: TypeTree = self.tpt
         def rhs: Option[Term] = optional(self.rhs)
       end extension
@@ -469,7 +469,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
             val closureMethod = dotc.core.Symbols.newAnonFun(owner, closureTpe)
-            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToTermArgs(tss.head).etaExpand(closureMethod))
+            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToTermArgs(tss.head.toList).etaExpand(closureMethod))
           case _ => self
         }
 
@@ -924,12 +924,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Lambda extends LambdaModule:
       def apply(owner: Symbol, tpe: MethodType, rhsFn: (Symbol, List[Tree]) => Tree): Block =
         val meth = dotc.core.Symbols.newAnonFun(owner, tpe)
-        withDefaultPos(tpd.Closure(meth, tss => xCheckedMacroOwners(xCheckMacroValidExpr(rhsFn(meth, tss.head.map(withDefaultPos))), meth)))
+        withDefaultPos(tpd.Closure(meth, tss => xCheckedMacroOwners(xCheckMacroValidExpr(rhsFn(meth, tss.head.map(withDefaultPos).toList)), meth)))
 
       def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
         case Block((ddef @ DefDef(_, tpd.ValDefs(params) :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
         if ddef.symbol == meth.symbol =>
-          Some((params, body))
+          Some((params.toList, body))
         case _ => None
       }
     end Lambda
@@ -1431,16 +1431,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object LambdaTypeTree extends LambdaTypeTreeModule:
       def apply(tparams: List[TypeDef], body: Tree): LambdaTypeTree =
-        withDefaultPos(tpd.LambdaTypeTree(tparams, body))
+        withDefaultPos(tpd.LambdaTypeTree(tparams.toLst, body))
       def copy(original: Tree)(tparams: List[TypeDef], body: Tree): LambdaTypeTree =
-        tpd.cpy.LambdaTypeTree(original)(tparams, body)
+        tpd.cpy.LambdaTypeTree(original)(tparams.toLst, body)
       def unapply(tree: LambdaTypeTree): (List[TypeDef], Tree /*TypeTree | TypeBoundsTree*/) =
-        (tree.tparams, tree.body)
+        (tree.tparams.toList, tree.body)
     end LambdaTypeTree
 
     given LambdaTypeTreeMethods: LambdaTypeTreeMethods with
       extension (self: LambdaTypeTree)
-        def tparams: List[TypeDef] = self.tparams
+        def tparams: List[TypeDef] = self.tparams.toList
         def body: Tree = self.body
       end extension
     end LambdaTypeTreeMethods
@@ -1631,9 +1631,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Unapply extends UnapplyModule:
       def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
-        withDefaultPos(tpd.UnApply(fun, implicits, patterns, dotc.core.Symbols.defn.NothingType))
+        withDefaultPos(tpd.UnApply(fun, implicits.toLst, patterns, dotc.core.Symbols.defn.NothingType))
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
-        withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits, patterns))
+        withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits.toLst, patterns))
       def unapply(x: Unapply): (Term, List[Term], List[Tree]) =
         (x.fun, x.implicits, x.patterns)
     end Unapply
@@ -1644,8 +1644,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           case self: tpd.UnApply => self.fun
           case self: tpd.QuotePattern => QuotePatterns.encode(self).fun // TODO expose QuotePattern AST in Quotes
         def implicits: List[Term] = self match
-          case self: tpd.UnApply => self.implicits
-          case self: tpd.QuotePattern => QuotePatterns.encode(self).implicits // TODO expose QuotePattern AST in Quotes
+          case self: tpd.UnApply => self.implicits.toList
+          case self: tpd.QuotePattern => QuotePatterns.encode(self).implicits.toList // TODO expose QuotePattern AST in Quotes
         def patterns: List[Tree] = self match
           case self: tpd.UnApply => effectivePatterns(self.patterns)
           case self: tpd.QuotePattern => effectivePatterns(QuotePatterns.encode(self).patterns) // TODO expose QuotePattern AST in Quotes
@@ -1679,21 +1679,21 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end AlternativesMethods
 
-    type ParamClause = tpd.ParamClause
+    type ParamClause = List[tpd.ValDef] | List[tpd.TypeDef]
 
     object ParamClause extends ParamClauseModule
 
     given ParamClauseMethods: ParamClauseMethods with
       extension (self: ParamClause)
-        def params: List[ValDef] | List[TypeDef] = self.asInstanceOf[List[ValDef] | List[TypeDef]]
+        def params: ParamClause = self.asInstanceOf[List[tpd.ValDef] | List[tpd.TypeDef]]
     end ParamClauseMethods
 
     type TermParamClause = List[tpd.ValDef]
 
     given TermParamClauseTypeTest: TypeTest[ParamClause, TermParamClause] with
       def unapply(x: ParamClause): Option[TermParamClause & x.type] = x match
-        case tpd.ValDefs(_) => Some(x.asInstanceOf[TermParamClause & x.type])
-        case _ => None
+        case (_: tpd.TypeDef) :: _ => None
+        case _ => Some(x.asInstanceOf[TermParamClause & x.type])
     end TermParamClauseTypeTest
 
     object TermParamClause extends TermParamClauseModule:
@@ -1724,7 +1724,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given TypeParamClauseTypeTest: TypeTest[ParamClause, TypeParamClause] with
       def unapply(x: ParamClause): Option[TypeParamClause & x.type] = x match
-        case tpd.TypeDefs(_) => Some(x.asInstanceOf[TypeParamClause & x.type])
+        case (_: tpd.TypeDef) :: _ => Some(x.asInstanceOf[TypeParamClause & x.type])
         case _ => None
     end TypeParamClauseTypeTest
 

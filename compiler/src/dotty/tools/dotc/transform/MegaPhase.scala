@@ -8,6 +8,7 @@ import core.*
 import Contexts.*, Phases.*, Symbols.*, Decorators.*
 import Flags.PackageVal
 import staging.StagingLevel.*
+import util.Lst
 
 /** A MegaPhase combines a number of mini-phases which are all executed in
  *  a single tree traversal.
@@ -259,8 +260,8 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       case tree: DefDef =>
         inContext(prepDefDef(tree, start)(using outerCtx)) {
           def mapDefDef(using Context) = {
-            val paramss = tree.paramss.mapConserve(transformSpecificTrees(_, start))
-              .asInstanceOf[List[ParamClause]]
+            val paramss = tree.paramss.mapconserve(
+              transformSpecificTrees(_, start))
             val tpt = transformTree(tree.tpt, start)
             val rhs = transformTree(tree.rhs, start)
             cpy.DefDef(tree)(tree.name, paramss, tpt, rhs)
@@ -487,6 +488,12 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   def transformSpecificTrees[T <: Tree](trees: List[T], start: Int)(using Context): List[T] =
     transformTrees(trees, start).asInstanceOf[List[T]]
+
+  def transformTrees(trees: Lst[Tree], start: Int)(using Context): Lst[Tree] =
+    trees.flattenedMapConserve(transformTree(_, start))
+
+  def transformSpecificTrees[T <: Tree](trees: Lst[T], start: Int)(using Context): Lst[T] =
+    transformTrees(trees, start).asInstanceOf[Lst[T]]
 
   protected def run(using Context): Unit =
     ctx.compilationUnit.tpdTree =

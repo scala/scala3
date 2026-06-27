@@ -478,7 +478,7 @@ class QuoteMatcher(debug: Boolean) {
                   def matchParamss(scparamss: List[ParamClause], ptparamss: List[ParamClause])(using Env): optional[(Env, MatchingExprs)] =
                     (scparamss, ptparamss) match {
                       case (ValDefs(scparams) :: screst, ValDefs(ptparams) :: ptrest) =>
-                        val mr1 = matchLists(scparams, ptparams)(_ =?= _)
+                        val mr1 = matchLists(scparams.toList, ptparams.toList)(_ =?= _)
                         val Env(termEnv, typeEnv) = summon[Env]
                         val newEnv = new Env(
                           termEnv = termEnv ++ scparams.map(_.symbol).zip(ptparams.map(_.symbol)),
@@ -487,7 +487,7 @@ class QuoteMatcher(debug: Boolean) {
                         val (resEnv, mrrest) = withEnv(newEnv)(matchParamss(screst, ptrest))
                         (resEnv, mr1 &&& mrrest)
                       case (TypeDefs(scparams) :: screst, TypeDefs(ptparams) :: ptrest) =>
-                        val mr1 = matchLists(scparams, ptparams)(matchTypeDef)
+                        val mr1 = matchLists(scparams.toList, ptparams.toList)(matchTypeDef)
                         val Env(termEnv, typeEnv) = summon[Env]
                         val newEnv = new Env(
                           termEnv = termEnv,
@@ -659,7 +659,7 @@ class QuoteMatcher(debug: Boolean) {
 
         val meth = newAnonFun(ctx.owner, methTpe)
 
-        def bodyFn(lambdaArgss: List[List[Tree]]): Tree = {
+        def bodyFn(lambdaArgss: List[Lst[Tree]]): Tree = {
           val (typeParams, params) = if isNotPoly then
               (Lst(), lambdaArgss.head)
             else

@@ -326,7 +326,7 @@ object SymDenotations {
       rawParamss = paramss.filter(!_.isEmpty)
 
     final def setParamssFromDefs(paramss: List[tpd.ParamClause])(using Context): Unit =
-      setParamss(paramss.map(_.mapToLst(_.symbol)))
+      setParamss(paramss.map(_.map(_.symbol)))
 
     /** The symbols of each type parameter list and value parameter list of this
      *  method, or Nil if this isn't a method.

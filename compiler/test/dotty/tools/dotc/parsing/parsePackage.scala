@@ -30,7 +30,7 @@ object parsePackage extends ParserTest {
         case mdef @ ModuleDef(name, impl) =>
           ModuleDef(name, transformSub(impl)).withMods(mdef.mods)
         case Function(params, body) =>
-          Function(params map transform, body)
+          Function(params.map(transform), body)
         case InfixOp(l, o, r) =>
           InfixOp(transform(l), o, transform(r))
         case PostfixOp(l, o) =>

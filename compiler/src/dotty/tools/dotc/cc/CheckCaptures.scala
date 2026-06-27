@@ -1070,7 +1070,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             matchParamsAndResult(paramss, parent)
           case defn.PolyFunctionOf(poly: PolyType) =>
             assert(params.length == poly.paramInfos.length)
-            matchParamsAndResult(paramss1, poly.instantiate(params.mapToLst(_.symbol.typeRef)))
+            matchParamsAndResult(paramss1, poly.instantiate(params.map(_.symbol.typeRef)))
           case FunctionOrMethod(argTypes, resType) =>
             assert(params.length == argTypes.length, i"$mdef vs $pt, ${params}")
             inContext(ctx.withOwner(anonfun)) {

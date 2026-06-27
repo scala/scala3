@@ -16,6 +16,7 @@ import Decorators.*
 import DenotTransformers.*
 import collection.mutable
 import Types.*
+import util.Lst
 
 object Constructors {
   val name: String = "constructors"
@@ -142,17 +143,17 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def transformTemplate(tree: Template)(using Context): Tree = {
     val cls = ctx.owner.asClass
 
-    val constr @ DefDef(nme.CONSTRUCTOR, (vparams: List[ValDef] @unchecked) :: Nil, _, EmptyTree) = tree.constr: @unchecked
+    val constr @ DefDef(nme.CONSTRUCTOR, (vparams: Lst[ValDef] @unchecked) :: Nil, _, EmptyTree) = tree.constr: @unchecked
 
     // Produce aligned accessors and constructor parameters. We have to adjust
     // for any outer parameters, which are last in the sequence of original
     // parameter accessors but come first in the constructor parameter list.
     val accessors = cls.paramGetters
     val vparamsWithOuterLast = vparams match {
-      case vparam :: rest if vparam.name == nme.OUTER => rest ::: vparam :: Nil
+      case Lst.Cons(vparam, rest) if vparam.name == nme.OUTER => rest :+ vparam
       case _ => vparams
     }
-    val paramSyms = vparamsWithOuterLast map (_.symbol)
+    val paramSyms = vparamsWithOuterLast.map(_.symbol)
 
     // Adjustments performed when moving code into the constructor:
     //  (1) Replace references to param accessors by constructor parameters
@@ -179,7 +180,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
             // here. Identifiers in a constructor always bind to the parameter. This is
             // done for backwards compatbility.
           if sym.is(ParamAccessor) && (switchOutsideSupercall || inSuperCall) then
-            sym = sym.subst(accessors, paramSyms)
+            sym = sym.subst(accessors, paramSyms.toList)
           if sym.maybeOwner.isConstructor then ref(sym).withSpan(tree.span) else tree
         case Apply(fn, Nil) =>
           val fn1 = transform(fn)
@@ -275,7 +276,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
                   else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))
                 constrStats += Apply(ref(setter), intoConstr(stat.rhs, sym).withSpan(stat.span) :: Nil)
               clsStats += cpy.DefDef(stat)(rhs = EmptyTree)
-          case DefDef(nme.CONSTRUCTOR, ((outerParam @ ValDef(nme.OUTER, _, _)) :: _) :: Nil, _, _) =>
+          case DefDef(nme.CONSTRUCTOR, Lst.StartingWith(outerParam @ ValDef(nme.OUTER, _, _)) :: Nil, _, _) =>
             clsStats += mapOuter(outerParam.symbol).transform(stat)
           case _: DefTree =>
             clsStats += stat
@@ -319,7 +320,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
         Nil
       }
       else {
-        val param = acc.subst(accessors, paramSyms)
+        val param = acc.subst(accessors, paramSyms.toList)
         if (param.hasAnnotation(defn.ConstructorOnlyAnnot))
           report.error(em"${acc.name} is marked `@constructorOnly` but it is retained as a field in ${acc.owner}", acc.srcPos)
         val target = if (acc.is(Method)) acc.field else acc
@@ -351,7 +352,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     val (superCalls, followConstrStats) = splitAtSuper(constrStats.toList)
 
     val mappedSuperCalls = vparams match {
-      case (outerParam @ ValDef(nme.OUTER, _, _)) :: _ =>
+      case Lst.StartingWith(outerParam @ ValDef(nme.OUTER, _, _)) =>
         superCalls.map(mapOuter(outerParam.symbol).transform)
       case _ => superCalls
     }

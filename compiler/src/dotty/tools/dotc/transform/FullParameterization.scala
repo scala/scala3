@@ -135,9 +135,9 @@ trait FullParameterization {
    */
   private def allInstanceTypeParams(originalDef: DefDef, abstractOverClass: Boolean)(using Context): Lst[Symbol] =
     if (abstractOverClass)
-      originalDef.leadingTypeParams.mapToLst(_.symbol) ++ originalDef.symbol.enclosingClass.typeParams
+      originalDef.leadingTypeParams.map(_.symbol) ++ originalDef.symbol.enclosingClass.typeParams
     else
-      originalDef.leadingTypeParams.mapToLst(_.symbol)
+      originalDef.leadingTypeParams.map(_.symbol)
 
   /** Given an instance method definition `originalDef`, return a
    *  fully parameterized method definition derived from `originalDef`, which
@@ -148,7 +148,7 @@ trait FullParameterization {
    */
   def fullyParameterizedDef(derived: TermSymbol, originalDef: DefDef, abstractOverClass: Boolean = true)(using Context): Tree =
     DefDef(derived, prefss => {
-      val (trefs, vrefss) = splitArgs(prefss)
+      val (trefs, vrefss) = splitArgs(prefss.map(_.toList))
       val origMeth = originalDef.symbol
       val origClass = origMeth.enclosingClass.asClass
       val origLeadingTypeParamSyms = allInstanceTypeParams(originalDef, abstractOverClass)
@@ -228,17 +228,17 @@ trait FullParameterization {
         .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
     val fwd =
       if !liftThisType then
-        fun.appliedToArgss(originalDef.trailingParamss.nestedMap(param => ref(param.symbol)))
+        fun.appliedToArgss(originalDef.trailingParamss.map(_.mapToList(param => ref(param.symbol))))
       else
         // this type could have changed on forwarding. Need to insert a cast.
         originalDef.trailingParamss.foldLeft(fun)((acc, params) => {
         val meth = acc.tpe.asInstanceOf[MethodType]
-        val paramTypes = meth.instantiateParamInfosList(params.tpes)
+        val paramTypes = meth.instantiateParamInfos(params.tpes)
         acc.appliedToArgs(
           params.lazyZip(paramTypes).map((param, paramType) => {
             assert(param.tpe <:< paramType.widen) // type should still conform to widened type
             ref(param.symbol).ensureConforms(paramType)
-          }))
+          }).toList)
        })
     fwd.withSpan(originalDef.rhs.span)
   }

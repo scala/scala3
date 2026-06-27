@@ -144,7 +144,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     * (hence with `GlobalPrec` precedence).
     */
   protected def argsText(args: Lst[Type]): Text =
-    atPrec(GlobalPrec) { Text(args.map(argText(_)).toIterable, ", ") }
+    atPrec(GlobalPrec) { Text(args.map(argText(_)), ", ") }
 
   /** The longest sequence of refinement types, starting at given type
    *  and following parents.

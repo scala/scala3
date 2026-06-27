@@ -35,7 +35,7 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
       i += 1
     new Lst(ys)
 
-  def mapConserve[U >: T](f: T => U): Lst[U] =
+  def mapConserve[U](f: T => U): Lst[U] =
     val ys = new Array[Object](arr.length)
     var i = 0
     var change = false
@@ -43,7 +43,7 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
       ys(i) = f(at(i)).asInstanceOf[Object]
       if ys(i) `ne` arr(i) then change = true
       i += 1
-    if change then new Lst(ys) else this
+    if change then new Lst(ys) else this.asInstanceOf[Lst[U]]
 
   def reverse: Lst[T] =
     val buf = Lst.Buffer[T](length)
@@ -391,6 +391,9 @@ object Lst {
             i == xs.length
           }
 
+  extension (xs: Lst[Int])
+    def sum = xs.foldLeft(0)(_ + _)
+
   extension [T: ClassTag](xs: Lst[T])
     def toArray: Array[T] =
       val rs = new Array[T](xs.length)
@@ -453,6 +456,7 @@ object Lst {
       if newSize > elems.length || dirty then
         require(elems.length > 0)
         var newCapacity = elems.length
+        if newCapacity == 0 then newCapacity = newSize
         while newSize > newCapacity do newCapacity = newCapacity << 1
         val newElems = new Array[Object](newCapacity)
         arraycopy(elems, 0, newElems, 0, siz)
@@ -461,6 +465,7 @@ object Lst {
 
     def length: Int = siz
     def size: Int = siz
+    def isEmpty = length == 0
 
     def at(i: Int) = elems(i).asInstanceOf[T]
 
@@ -482,10 +487,12 @@ object Lst {
         f(at(i))
         i += 1
 
-    def contains(x: T): Boolean =
+    def exists(p: T => Boolean): Boolean =
       var i = 0
-      while i < size && elems(i) != x do i += 1
+      while i < size && !p(at(i)) do i += 1
       i < size
+
+    def contains(x: T): Boolean = exists(x == _)
 
     def toLst: Lst[T] =
       if siz == 0 then Lst()
@@ -500,6 +507,13 @@ object Lst {
 
   class Iterable[+T](lst: Lst[T]) extends collection.immutable.Iterable[T]:
     def iterator: Iterator[T] = lst.iterator
+
+  given fromIterable: [T] => Conversion[Lst[T], Iterable[T]] =
+    new Iterable(_)
+
+  /** Extractor for lsts of length 0 */
+  object Empty:
+    def unapply[T](xs: Lst[T]): Boolean = xs.length == 0
 
   /** Extractor for lsts of length 1 */
   object Singleton:
@@ -520,6 +534,16 @@ object Lst {
   object StartingWith:
     def unapply[T](xs: Lst[T]): Option[T] =
       if xs.length >= 1 then Some(xs(0)) else None
+
+  /** Extractor for nonempty lsts starting with some element pattern */
+  object Cons:
+    def unapply[T](xs: Lst[T]): Option[(T, Lst[T])] =
+      if xs.length >= 1 then Some(xs.head, xs.drop(1)) else None
+
+  /** Extractor for nonempty lsts starting with some element pattern */
+  object ConsRight:
+    def unapply[T](xs: Lst[T]): Option[(Lst[T], T)] =
+      if xs.length >= 1 then Some((xs.init, xs.last)) else None
 }
 
 @main def LstTest() =
