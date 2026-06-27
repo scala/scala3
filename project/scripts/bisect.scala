@@ -185,12 +185,17 @@ object Releases:
       .flatMap{ m => Option(m.group(1)).map(Release.apply) }
       .toVector
       .sortBy: release =>
-        (release.version, release.date)
+        (release.semanticVersion, release.date)
 
   def fromRange(range: ReleasesRange): Vector[Release] = range.filter(allReleases)
 
 case class Release(version: String):
   private val re = raw".+-bin-(\d{8})-(\w{7})-NIGHTLY".r
+  val semanticVersion: (major: Int, minor: Int, patch: Int) = version match 
+    case s"$major.$minor.$patch-$_" => (major.toInt, minor.toInt, patch.toInt)
+    case s"$major.$minor.$patch" => (major.toInt, minor.toInt, patch.toInt)
+    case _ => sys.error(s"Could not extract semantic version from release name: $version")
+    
   def date: LocalDate = LocalDate.parse(dateString, DateTimeFormatter.BASIC_ISO_DATE)
   def dateString: String =
     version match
