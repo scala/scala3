@@ -89,6 +89,9 @@ object Implicits:
   def strictEqualityPatternMatching(using Context): Boolean =
     Feature.enabled(Feature.strictEqualityPatternMatching)
 
+  def relaxedNullChecks(using Context): Boolean =
+    Feature.enabled(Feature.relaxedNullChecks)
+
 
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
@@ -1079,8 +1082,8 @@ trait Implicits:
         strictEqualityPatternMatching &&
           (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.is(Flags.Module)) &&
           ltp <:< rtp
-        || isNull(leftTree) && ltp <:< rtp
-        || isNull(rightTree) && rtp <:< ltp
+        || relaxedNullChecks && isNull(leftTree) && ltp <:< rtp
+        || relaxedNullChecks && isNull(rightTree) && rtp <:< ltp
       else
         ltp <:< lift(rtp) || rtp <:< lift(ltp)
   }

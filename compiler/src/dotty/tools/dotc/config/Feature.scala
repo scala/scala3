@@ -29,6 +29,7 @@ object Feature:
   val dependent = experimental("dependent")
   val erasedDefinitions = experimental("erasedDefinitions")
   val strictEqualityPatternMatching = experimental("strictEqualityPatternMatching")
+  val relaxedNullChecks = experimental("relaxedNullChecks")
   val symbolLiterals = deprecated("symbolLiterals")
   val saferExceptions = experimental("saferExceptions")
   val pureFunctions = experimental("pureFunctions")
@@ -69,6 +70,7 @@ object Feature:
     (dependent, "Allow dependent method types"),
     (erasedDefinitions, "Allow erased definitions"),
     (strictEqualityPatternMatching, "relaxed CanEqual checks for ADT pattern matching"),
+    (relaxedNullChecks, "relaxed null checks under strictEquality (SIP-79)"),
     (symbolLiterals, "Allow symbol literals"),
     (saferExceptions, "Enable safer exceptions"),
     (pureFunctions, "Enable pure functions for capture checking"),
