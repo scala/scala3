@@ -1,0 +1,4 @@
+-- Error: tests/neg/ycheck-termination-trait.scala:6:8 -----------------------------------------------------------------
+6 |  trait T: // error
+  |        ^
+  |        T is not sealed, termination of any overrides of method f is not guaranteed.

@@ -1,0 +1,4 @@
+-- Error: tests/neg/ycheck-termination-class.scala:10:17 ---------------------------------------------------------------
+10 |    1 + classLoop(r.next) // error
+   |        ^^^^^^^^^^^^^^^^^
+   |        classLoop may not terminate due to (mutually) recursive call.
