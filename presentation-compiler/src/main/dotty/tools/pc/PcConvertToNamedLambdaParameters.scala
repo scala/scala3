@@ -7,11 +7,11 @@ import scala.jdk.CollectionConverters.*
 import scala.meta.pc.OffsetParams
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.utils.InteractiveEnrichments.*

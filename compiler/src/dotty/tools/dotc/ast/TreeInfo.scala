@@ -948,7 +948,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     !rhsOfEtaExpansion(mdef).isEmpty
 
   def rhsOfEtaExpansion(mdef: DefDef)(using Context): Tree = mdef.paramss match
-    case (param :: _) :: _ if param.asInstanceOf[Tree].span.isZeroExtent =>
+    case Lst.StartingWith(param) :: _ if param.asInstanceOf[Tree].span.isZeroExtent =>
       mdef.rhs match
         case rhs: Apply => rhs
         case closureDef(mdef1) => rhsOfEtaExpansion(mdef1)

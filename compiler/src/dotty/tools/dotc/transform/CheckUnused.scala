@@ -956,10 +956,10 @@ object CheckUnused:
         case Block((dd @ DefDef(anonfun, paramss, _, _)) :: Nil, Closure(Nil, Ident(nm), _)) =>
              anonfun == nm // isAnonymousFunctionName(anonfun)
           && paramss.match
-             case (ValDef(contextual, _, _) :: Nil) :: Nil =>
+              case Lst.StartingWith(ValDef(contextual, _, _)) :: Nil =>
                   contextual.is(ContextFunctionParamName)
-               && isUnconsuming(dd.rhs) // rhs was wrapped in a context function
-             case _ => false
+                  && isUnconsuming(dd.rhs) // rhs was wrapped in a context function
+              case _ => false
         case Block(Nil, Literal(u)) => u.tpe =:= defn.UnitType // def f(x: X) = {}
         case This(_) => true
         case Ident(_) => rhs.symbol.is(ParamAccessor)

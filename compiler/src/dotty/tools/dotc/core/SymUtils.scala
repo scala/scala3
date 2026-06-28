@@ -271,6 +271,14 @@ class SymUtils:
       loop(from, to)
     }
 
+   /** Apply symbol/symbol substitution to this symbol */
+    def subst(from: Lst[Symbol], to: Lst[Symbol]): Symbol =
+      var i = 0
+      while i < from.length do
+        if self eq from(i) then return to(i)
+        i += 1
+      self
+
     def accessorNamed(name: TermName)(using Context): Symbol =
       self.owner.info.decl(name).suchThat(_.is(Accessor)).symbol
 

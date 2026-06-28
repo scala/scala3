@@ -148,3 +148,9 @@ i21415.scala
 
 # missing symbol (unsure why it errors here)
 java-records
+
+# before has nofile in some positions, after has current file
+i14953.scala
+i9967.scala
+i14966a.scala
+

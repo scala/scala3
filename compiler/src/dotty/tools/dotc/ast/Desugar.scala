@@ -1207,7 +1207,7 @@ object desugar {
       val (rightTyParams, paramss) = mdef.paramss.span(isTypeParamClause) // first extract type parameters
 
       paramss match
-        case (rightParam @ ValDefs(Lst.StartingWith(vparam))) :: paramss if !vparam.mods.is(Given) =>
+        case (rightParam @ ValDefs(Lst.Singleton(vparam))) :: paramss if !vparam.mods.is(Given) =>
           // must be a single parameter without `given` flag for rassoc rewrite
           // we merge the extension parameters with the method parameters,
           // swapping the operator arguments:

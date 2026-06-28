@@ -1697,7 +1697,13 @@ object Trees {
       def transformSub[Tr <: Tree](trees: Lst[Tr])(using Context): Lst[Tr] =
         transform(trees).asInstanceOf[Lst[Tr]]
       def transformParamss(paramss: List[ParamClause])(using Context): List[ParamClause] =
-        paramss.mapconserve(transformSub)
+        var res = paramss.map(transformSub)
+        if (res `corresponds` paramss)(_ _eq_ _)
+        	// Test needed because of value class boxing. Even if `transformSub` returns identical Lsts
+        	// integrating the Lsts into the enclosing List will wrap, which destroiys identity.
+        	// So even if the outer `map` was a `mapcoonserve` it would not work.
+        then paramss 
+        else res
 
       protected def transformMoreCases(tree: Tree)(using Context): Tree = {
         assert(ctx.reporter.errorsReported)

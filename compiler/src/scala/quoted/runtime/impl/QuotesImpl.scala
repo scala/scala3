@@ -926,12 +926,16 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val meth = dotc.core.Symbols.newAnonFun(owner, tpe)
         withDefaultPos(tpd.Closure(meth, tss => xCheckedMacroOwners(xCheckMacroValidExpr(rhsFn(meth, tss.head.map(withDefaultPos).toList)), meth)))
 
-      def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match {
-        case Block((ddef @ DefDef(_, tpd.ValDefs(params) :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
-        if ddef.symbol == meth.symbol =>
-          Some((params.toList, body))
+      private def isValueParams(params: List[ValOrTypeDef]) = params match
+        case Nil => true
+        case (_: ValDef) :: _ => true
+        case _ => false
+
+      def unapply(tree: Block): Option[(List[ValDef], Term)] = tree match
+        case Block((ddef @ DefDef(_, params :: Nil, _, Some(body))) :: Nil, Closure(meth, _))
+        if ddef.symbol == meth.symbol && isValueParams(params) =>
+          Some((params.asInstanceOf[List[ValDef]], body))
         case _ => None
-      }
     end Lambda
 
     type If = tpd.If
@@ -1931,14 +1935,14 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               member.info.substThis(self.classSymbol.asClass, self)
             else
               member.info
-          
+
           // We treat the constructor type parameters as if they were the same as corresponding type members.
           // That's how Scala 2 symbols are unpickled to begin with.
           val memberInfoSubstituted =
             if member.owner.isConstructor then
               self match
                 case dotc.core.Types.AppliedType(_, args) =>
-                  val ctorTypeParams = member.owner.paramSymss.flatten.filter(_.isType)
+                  val ctorTypeParams = member.owner.paramSymss.flatten.filter(_.isType).toLst
                   if ctorTypeParams.length == args.length then
                     memberInfo.subst(ctorTypeParams, args)
                   else

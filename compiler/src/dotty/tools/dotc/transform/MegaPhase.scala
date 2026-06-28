@@ -260,8 +260,9 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       case tree: DefDef =>
         inContext(prepDefDef(tree, start)(using outerCtx)) {
           def mapDefDef(using Context) = {
-            val paramss = tree.paramss.mapconserve(
-              transformSpecificTrees(_, start))
+            var paramss = tree.paramss.map(transformSpecificTrees(_, start))
+            if (paramss `corresponds` tree.paramss)(_ _eq_ _) then
+              paramss = tree.paramss // see remark on Trees#transformParamss why this is needed
             val tpt = transformTree(tree.tpt, start)
             val rhs = transformTree(tree.rhs, start)
             cpy.DefDef(tree)(tree.name, paramss, tpt, rhs)

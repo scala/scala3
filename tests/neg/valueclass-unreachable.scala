@@ -1,4 +1,5 @@
-//> using options -source 3.2
+class Lst[+T](x: Array[Object]) extends AnyVal
+val xs: Lst[Int] = ???
 
-object Test:
-  def test = 0
+def Test = xs match
+  case 2 :: ys => 2  // error
