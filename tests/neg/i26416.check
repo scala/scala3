@@ -1,0 +1,36 @@
+-- [E007] Type Mismatch Error: tests/neg/i26416.scala:10:43 ------------------------------------------------------------
+10 |    val supersecret: Secret^{this} = Secret("Blahblah") // error // error
+   |                                     ^^^^^^^^^^^^^^^^^^
+   |Found:    test1.Secret^{any}
+   |Required: test1.Secret^{SecretService.this}
+   |
+   |Note that capability `any` cannot flow into capture set {SecretService.this}.
+   |
+   |where:    any is a root capability classified as SharedCapability created in value supersecret when constructing instance test1.Secret
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i26416.scala:7:2 --------------------------------------------------------------
+7 |  var commonsecret: Secret^ = new Secret("Goldfinger") // error // error
+  |  ^
+  |Found:    object test1.i26416$package^{any}
+  |Required: object test1.i26416$package^'s1
+  |
+  |Note that capability `any` cannot flow into capture set {}.
+  |
+  |The error occurred for a synthesized tree:  new test1.i26416$package()
+  |
+  |where:    any is a root capability classified as SharedCapability created in package test1 with contributing field val commonsecret
+  |
+  | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/i26416.scala:7:6 -----------------------------------------------------------------------------------
+7 |  var commonsecret: Secret^ = new Secret("Goldfinger") // error // error
+  |      ^
+  |      a field `commonsecret` with `any` in its type need to be put in an object that extends Capability
+-- Error: tests/neg/i26416.scala:10:21 ---------------------------------------------------------------------------------
+10 |    val supersecret: Secret^{this} = Secret("Blahblah") // error // error
+   |                     ^^^^^^^^^^^^^
+   |                 (SecretService.this : test1.SecretService^'s2) cannot be tracked since its capture set is empty
+-- Error: tests/neg/i26416.scala:35:21 ---------------------------------------------------------------------------------
+35 |    val supersecret: Secret^{this} = Secret("Blahblah") // error
+   |                     ^^^^^^^^^^^^^
+   |                     (SecretService.this : SecretService^'s3) cannot be tracked since its capture set is empty
