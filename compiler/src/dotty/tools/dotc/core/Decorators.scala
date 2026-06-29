@@ -39,13 +39,10 @@ object Decorators {
       s.getChars(start, end, chars, 0)
       termName(chars, 0, len)
 
-    def sliceToTypeName(start: Int, end: Int)(using Context): TypeName =
-      sliceToTermName(start, end).toTypeName
-
     def concat(name: Name)(using Context): SimpleName = name match
       case name: SimpleName =>
         val len = s.length + name.length
-        var chars = ctx.base.sharedCharArray(len)
+        val chars = ctx.base.sharedCharArray(len)
         s.getChars(0, s.length, chars, 0)
         if name.length != 0 then name.getChars(0, name.length, chars, s.length)
         termName(chars, 0, len)

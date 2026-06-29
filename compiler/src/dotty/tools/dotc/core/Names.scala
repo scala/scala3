@@ -548,7 +548,10 @@ object Names {
   @sharable // because it's only mutated in synchronized block of enterIfNew
   private val nameTable = NameTable()
 
-  /** The hash of a name made of from characters cs[offset..offset+len-1].  */
+  /**
+   * The hash of a name made of from characters cs[offset..offset+len-1].
+   * Identical to String's hashCode.
+   */
   private def hashValue(cs: Array[Char], offset: Int, len: Int): Int = {
     var i = offset
     var hash = 0
@@ -570,27 +573,27 @@ object Names {
   }
 
   /** Create a term name from the characters in cs[offset..offset+len-1].
-   *  Assume they are already encoded.
    */
   def termName(cs: Array[Char], offset: Int, len: Int): SimpleName =
     nameTable.enterIfNew(cs, offset, len)
 
   /** Create a type name from the characters in cs[offset..offset+len-1].
-   *  Assume they are already encoded.
    */
   def typeName(cs: Array[Char], offset: Int, len: Int): TypeName =
     termName(cs, offset, len).toTypeName
 
-  /** Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
-   *  Assume they are already encoded.
+  /**
+   * Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
+   * This is less efficient than the Array[Char] version because it requires a copy to convert the bytes to characters.
    */
   def termName(bs: Array[Byte], offset: Int, len: Int): SimpleName = {
     val chars = Codec.fromUTF8(bs, offset, len)
     termName(chars, 0, chars.length)
   }
 
-  /** Create a type name from the UTF8 encoded bytes in bs[offset..offset+len-1].
-   *  Assume they are already encoded.
+  /** 
+   * Create a type name from the UTF8 encoded bytes in bs[offset..offset+len-1].
+   * This is less efficient than the Array[Char] version because it requires a copy to convert the bytes to characters.
    */
   def typeName(bs: Array[Byte], offset: Int, len: Int): TypeName =
     termName(bs, offset, len).toTypeName

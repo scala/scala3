@@ -260,7 +260,7 @@ object Scanners {
     def getDocComment(pos: Int): Option[Comment] = docstringMap.get(pos)
 
     /** A buffer for comments */
-    private val currentCommentBuf = CharBuffer(initialCharBufferSize)
+    private val currentCommentBuf = StringBuilder(initialCharBufferSize)
 
     def toToken(identifier: SimpleName): Token =
       def handleMigration(keyword: Token): Token =
