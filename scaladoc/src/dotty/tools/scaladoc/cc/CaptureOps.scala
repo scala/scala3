@@ -26,20 +26,16 @@ object CaptureDefs:
     qctx.reflect.Symbol.requiredClass("scala.caps.Mutable")
   def Caps_SharedCapability(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.caps.SharedCapability")
-  def UseAnnot(using qctx: Quotes) =
-    qctx.reflect.Symbol.requiredClass("scala.caps.use")
   def ConsumeAnnot(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.caps.internal.consume")
-  def ReachCapabilityAnnot(using qctx: Quotes) =
-    qctx.reflect.Symbol.requiredClass("scala.annotation.internal.reachCapability")
-  def RootCapabilityAnnot(using qctx: Quotes) =
-    qctx.reflect.Symbol.requiredClass("scala.caps.internal.rootCapability")
   def ReadOnlyCapabilityAnnot(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.annotation.internal.readOnlyCapability")
   def RequiresCapabilityAnnot(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.annotation.internal.requiresCapability")
   def OnlyCapabilityAnnot(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.annotation.internal.onlyCapability")
+  def ExceptCapabilityAnnot(using qctx: Quotes) =
+    qctx.reflect.Symbol.requiredClass("scala.annotation.internal.exceptCapability")
 
   def LanguageExperimental(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredPackage("scala.language.experimental")
@@ -56,7 +52,6 @@ object CaptureDefs:
   def ContextFunction1(using qctx: Quotes) =
     qctx.reflect.Symbol.requiredClass("scala.ContextFunction1")
 
-  val useAnnotFullName: String = "scala.caps.use.<init>"
   val consumeAnnotFullName: String = "scala.caps.consume.<init>"
   val ccImportSelector = "captureChecking"
   val captureRootName = "any"
@@ -72,14 +67,14 @@ extension (using qctx: Quotes)(ann: qctx.reflect.Symbol)
   def isRetainsLike: Boolean =
     ann.isRetains || ann == CaptureDefs.retainsByName
 
-  def isReachCapabilityAnnot: Boolean =
-    ann == CaptureDefs.ReachCapabilityAnnot
-
   def isReadOnlyCapabilityAnnot: Boolean =
     ann == CaptureDefs.ReadOnlyCapabilityAnnot
 
   def isOnlyCapabilityAnnot: Boolean =
     ann == CaptureDefs.OnlyCapabilityAnnot
+
+  def isExceptCapabilityAnnot: Boolean =
+    ann == CaptureDefs.ExceptCapabilityAnnot
 end extension
 
 extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr) // FIXME clean up and have versions on Symbol for those
@@ -176,15 +171,6 @@ object CCImport:
   end unapply
 end CCImport
 
-object ReachCapability:
-  def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[qctx.reflect.TypeRepr] =
-    import qctx.reflect._
-    ty match
-      case AnnotatedType(base, Apply(Select(New(annot), _), Nil)) if annot.symbol.isReachCapabilityAnnot =>
-        Some(base)
-      case _ => None
-end ReachCapability
-
 object ReadOnlyCapability:
   def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[qctx.reflect.TypeRepr] =
     import qctx.reflect._
@@ -205,6 +191,25 @@ object OnlyCapability:
       case _ => None
 end OnlyCapability
 
+object ExceptCapability:
+  def unapply(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): Option[(qctx.reflect.TypeRepr, List[qctx.reflect.Symbol])] =
+    import qctx.reflect._
+    ty match
+      case AnnotatedType(base, app @ Apply(TypeApply(Select(New(annot), _), _), Nil)) if annot.tpe.typeSymbol.isExceptCapabilityAnnot =>
+        classifierSyms(app.tpe.typeArgs.head) match
+          case Nil => None
+          case clss => Some((base, clss))
+      case _ => None
+
+  // Split the union-encoded classifiers. No dealias needed: the reflect API already
+  // presents `|` as an OrType (as in decomposeCaptureRefs below).
+  private def classifierSyms(using qctx: Quotes)(ty: qctx.reflect.TypeRepr): List[qctx.reflect.Symbol] =
+    import qctx.reflect._
+    ty match
+      case OrType(t1, t2) => classifierSyms(t1) ++ classifierSyms(t2)
+      case t => t.classSymbol.toList
+end ExceptCapability
+
 /** Decompose capture sets in the union-type-encoding into the sequence of atomic `TypeRepr`s.
  *  Returns `None` if the type is not a capture set.
 */
@@ -219,9 +224,9 @@ def decomposeCaptureRefs(using qctx: Quotes)(typ0: qctx.reflect.TypeRepr): Optio
       case t @ ThisType(_)           => include(t)
       case t @ TermRef(_, _)         => include(t)
       case t @ ParamRef(_, _)        => include(t)
-      case t @ ReachCapability(_)    => include(t)
       case t @ ReadOnlyCapability(_) => include(t)
       case t @ OnlyCapability(_, _)  => include(t)
+      case t @ ExceptCapability(_, _) => include(t)
       case t : TypeRef               => include(t)
       case _ => report.warning(s"Unexpected type tree $typ while trying to extract capture references from $typ0"); false
   if traverse(typ0) then Some(buffer.toList) else None

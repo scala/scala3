@@ -1068,17 +1068,20 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             && !ref.coreType.derivesFromCapSet
         then
           if ref.captureSetOfInfo.elems.isEmpty then
-            report.error(em"$ref cannot be tracked since its capture set is empty", pos)
-          check(parent.captureSet, parent)
+            // an empty projection of a tracked ref denotes {}; only an untracked core is vacuous
+            if !ref.core.isTracked then
+              report.error(em"$ref cannot be tracked since its capture set is empty", pos)
+          else
+            check(parent.captureSet, parent)
 
-          val others =
-            for
-              j <- 0 until retained.length if j != i
-              r = retained(j)
-              if !r.isTerminalCapability
-            yield r
-          val remaining = CaptureSet(others*)
-          check(remaining, remaining)
+            val others =
+              for
+                j <- 0 until retained.length if j != i
+                r = retained(j)
+                if !r.isTerminalCapability
+              yield r
+            val remaining = CaptureSet(others*)
+            check(remaining, remaining)
       end for
     catch case ex: IllegalCaptureRef =>
       report.error(em"Illegal capture reference: ${ex.getMessage}", tpt.srcPos)
