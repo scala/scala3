@@ -39,7 +39,7 @@ import collection.immutable
  *               |                      +-- SetCapability -----+-- TypeRef
  *               |                                             +-- TypeParamRef
  *               |
- *               +-- DerivedCapability -+-- Only
+ *               +-- DerivedCapability -+-- Classified
  *                                      +-- ReadOnly
  *                                      +-- Maybe
  *
@@ -107,20 +107,60 @@ object Capabilities:
    *
    *  Read-only capabilities cannot wrap maybe capabilities.
    */
-  case class ReadOnly(underlying: CoreCapability | RootCapability | Restricted)
+  case class ReadOnly(underlying: CoreCapability | RootCapability | Classified)
   extends DerivedCapability:
     def newLikeThis(c: Capability) = ReadOnly(c.asInstanceOf)
 
-  /** The restricted capability `x.only[C]`. We have {x.only[C]} <: {x}.
+  /** A classified capability `x.only[O].except[E1]...except[En]`, in normal form.
+   *  It stands for the parts of `x` that are classified as `only` but as none of
+   *  the `except` classifiers. We have {x.only[O].except[...]} <: {x}.
    *
-   *  Restricted capabilities cannot wrap maybe capabilities or read-only capabilities.
-   *  We have
-   *      (x?).restrict[T] = (x.restrict[T])?
-   *      (x.rd).restrict[T] = (x.restrict[T]).rd
+   *  Invariants of a normalized node (established by `restrict`/`exclude`):
+   *   - `only` is `AnyClass` if there is no `.only` restriction (the identity),
+   *     `NothingClass` if the capability is known empty, otherwise a classifier class.
+   *   - `except` is a canonical antichain (sorted, dominator-pruned, deduplicated) of
+   *     classifiers strictly below `only`. If `only` is `NothingClass`, `except` is `Nil`.
+   *
+   *  Classified capabilities cannot wrap maybe or read-only capabilities. We have
+   *      (x?).only[O]  = (x.only[O])?
+   *      (x.rd).only[O] = (x.only[O]).rd
+   *  and likewise for `.except`. The case class constructor does NOT normalize;
+   *  use `restrict`/`exclude` (or `mkClassified`) to build normalized nodes.
    */
-  case class Restricted(underlying: CoreCapability | RootCapability, cls: ClassSymbol)
+  case class Classified(
+      underlying: CoreCapability | RootCapability,
+      only: ClassSymbol,
+      except: List[ClassSymbol])
   extends DerivedCapability:
-    def newLikeThis(c: Capability) = Restricted(c.asInstanceOf, cls)
+    def newLikeThis(c: Capability) = Classified(c.asInstanceOf, only, except)
+
+  /** Build a cached `Classified(ref, only, except)`, except for `GlobalCap` refs
+   *  which do not support caching.
+   */
+  private def classifiedNode(ref: CoreCapability | RootCapability, only: ClassSymbol, except: List[ClassSymbol]): Classified =
+    val node = Classified(ref, only, except)
+    ref match
+      case _: GlobalCap => node
+      case _ => ref.cached(node)
+
+  /** Build the normal form of `ref.only[only].except[rawExcept...]`:
+   *   - collapse to empty (`only = NothingClass`) if `only` is empty or some exclusion
+   *     covers the whole `only` subtree;
+   *   - keep only exclusions strictly inside the `only` subtree (drop vacuous ones);
+   *   - dominator-prune the exclusions to a maximal antichain and sort them canonically;
+   *   - drop the wrapper entirely if it is the identity (`only = AnyClass`, no exclusions).
+   */
+  def mkClassified(ref: CoreCapability | RootCapability, only: ClassSymbol, rawExcept: List[ClassSymbol])(using Context): CoreCapability | RootCapability | Classified =
+    if only == defn.NothingClass || rawExcept.exists(e => only.isSubClass(e)) then
+      classifiedNode(ref, defn.NothingClass, Nil)
+    else
+      // `e == only` and any `e` above `only` were already collapsed to empty above,
+      // so every surviving exclusion is strictly inside the `only` subtree.
+      val inside = rawExcept.filter(_.isSubClass(only)).distinct
+      val maximal = inside.filter(e => !inside.exists(o => (o ne e) && e.isSubClass(o)))
+      val canon = maximal.sortBy(_.fullName.toString)
+      if only == defn.AnyClass && canon.isEmpty then ref
+      else classifiedNode(ref, only, canon)
 
   /** A class for the global root capabilities referenced as `caps.any` and `caps.fresh`.
    *  They do not subsume other capabilities, except in arguments of `withCapAsRoot` calls.
@@ -129,10 +169,11 @@ object Capabilities:
     def descr(using Context) = s"the root capability $fullName"
     override val maybe = Maybe(this)
     override val readOnly = ReadOnly(this)
-    override def restrict(cls: ClassSymbol)(using Context) = Restricted(this, cls)
+    override def restrict(cls: ClassSymbol)(using Context) = mkClassified(this, cls, Nil)
+    override def exclude(cls: ClassSymbol)(using Context) = mkClassified(this, defn.AnyClass, cls :: Nil)
     override def singletonCaptureSet(using Context) = CaptureSet.universal
     override def captureSetOfInfo(using Context) = singletonCaptureSet
-    override def cached[C <: DerivedCapability](newRef: C): C = unsupported("cached")
+    private[Capabilities] override def cached[C <: DerivedCapability](newRef: C): C = unsupported("cached")
     override def invalidateCaches() = ()
 
   /** The global root capability referenced as `caps.any` */
@@ -314,9 +355,9 @@ object Capabilities:
   end ResultCap
 
   /** A trait for references in CaptureSets. These can be NamedTypes, ThisTypes or ParamRefs,
-   *  as well as three kinds of AnnotatedTypes representing readOnly, only, and maybe capabilities.
+   *  as well as four kinds of AnnotatedTypes representing only, except, readOnly, and maybe capabilities.
    *  If there are several annotations they come with an order:
-   *  `*` first, `.only` next, `.rd` next, `?` last.
+   *  `.only` first, `.except` next, `.rd` next, `?` last.
    */
   trait Capability extends Showable:
 
@@ -327,13 +368,13 @@ object Capabilities:
     private var myClassifiers: Classifiers = UnknownClassifier
     private var classifiersValid: Validity = invalid
 
-    protected def cached[C <: DerivedCapability](newRef: C): C =
+    private[Capabilities] def cached[C <: DerivedCapability](newRef: C): C =
       def recur(refs: List[DerivedCapability]): C = refs match
         case ref :: refs1 =>
           val exists = ref match
-            case Restricted(_, cls) =>
+            case Classified(_, only, except) =>
               newRef match
-                case Restricted(_, newCls) => cls == newCls
+                case Classified(_, newOnly, newExcept) => only == newOnly && except == newExcept
                 case _ => false
             case _ =>
               ref.getClass == newRef.getClass
@@ -351,16 +392,29 @@ object Capabilities:
     def readOnly: ReadOnly | Maybe = this match
       case Maybe(ref1) => Maybe(ref1.readOnly)
       case self: ReadOnly => self
-      case self: (CoreCapability | RootCapability | Restricted) => cached(ReadOnly(self))
+      case self: (CoreCapability | RootCapability | Classified) => cached(ReadOnly(self))
 
-    def restrict(cls: ClassSymbol)(using Context): Restricted | ReadOnly | Maybe = this match
-      case Maybe(ref1) => Maybe(ref1.restrict(cls))
-      case ReadOnly(ref1) => ReadOnly(ref1.restrict(cls).asInstanceOf[Restricted])
-      case self @ Restricted(ref1, prevCls) =>
-        val combinedCls = leastClassifier(prevCls, cls)
-        if combinedCls == prevCls then self
-        else cached(Restricted(ref1, combinedCls))
-      case self: (CoreCapability | RootCapability) => cached(Restricted(self, cls))
+    /** The restricted version `this.only[cls]` of this capability, which stands
+     *  for the parts of this capability that are classified as `cls` or a subclass.
+     *  `cls == AnyClass` is the identity.
+     */
+    def restrict(cls: ClassSymbol)(using Context): Capability =
+      if cls == defn.AnyClass then this
+      else this match
+        case Maybe(ref1) => Maybe(ref1.restrict(cls))
+        case ReadOnly(ref1) => ReadOnly(ref1.restrict(cls).asInstanceOf[CoreCapability | RootCapability | Classified])
+        case Classified(ref1, only, except) => mkClassified(ref1, leastClassifier(only, cls), except)
+        case self: (CoreCapability | RootCapability) => mkClassified(self, cls, Nil)
+
+    /** The excluded version `this.except[cls]` of this capability, which stands
+     *  for the parts of this capability that are not classified as `cls` or a
+     *  subclass of `cls`.
+     */
+    def exclude(cls: ClassSymbol)(using Context): Capability = this match
+      case Maybe(ref1) => Maybe(ref1.exclude(cls))
+      case ReadOnly(ref1) => ReadOnly(ref1.exclude(cls).asInstanceOf[CoreCapability | RootCapability | Classified])
+      case Classified(ref1, only, except) => mkClassified(ref1, only, except :+ cls)
+      case self: (CoreCapability | RootCapability) => mkClassified(self, defn.AnyClass, cls :: Nil)
 
     /** Is this a maybe reference of the form `x?`? */
     final def isMaybe(using Context): Boolean = this ne stripMaybe
@@ -377,7 +431,7 @@ object Capabilities:
      *  classifier is given.
      */
     final def classifier(using Context): Symbol = this match
-      case Restricted(_, cls) => cls
+      case Classified(ref1, only, _) => if only == defn.AnyClass then ref1.classifier else only
       case ReadOnly(ref1) => ref1.classifier
       case Maybe(ref1) => ref1.classifier
       case self: LocalCap => self.hiddenSet.classifier
@@ -393,15 +447,33 @@ object Capabilities:
       case Maybe(ref1) => ref1.stripReadOnly.maybe
       case _ => this
 
-    /** Drop restrictions with clss `cls` or a superclass of `cls` */
+    /** Drop restrictions with class `cls` or a superclass of `cls`,
+     *  keeping exclusions in place.
+     */
     final def stripRestricted(cls: ClassSymbol)(using Context): Capability = this match
-      case Restricted(ref1, cls1) if cls.isSubClass(cls1) => ref1
+      case Classified(ref1, only, except) =>
+        if only != defn.AnyClass && cls.isSubClass(only) then mkClassified(ref1, defn.AnyClass, except)
+        else this
       case ReadOnly(ref1) => ref1.stripRestricted(cls).readOnly
       case Maybe(ref1) => ref1.stripRestricted(cls).maybe
       case _ => this
 
     final def stripRestricted(using Context): Capability =
       stripRestricted(defn.NothingClass)
+
+    /** Drop exclusions with classes that are subclasses of `cls`,
+     *  keeping restrictions in place.
+     */
+    final def stripExcluded(cls: ClassSymbol)(using Context): Capability = this match
+      case Classified(ref1, only, except) =>
+        val kept = except.filterNot(e => e.isSubClass(cls))
+        if kept.length == except.length then this else mkClassified(ref1, only, kept)
+      case ReadOnly(ref1) => ref1.stripExcluded(cls).readOnly
+      case Maybe(ref1) => ref1.stripExcluded(cls).maybe
+      case _ => this
+
+    final def stripExcluded(using Context): Capability =
+      stripExcluded(defn.AnyClass)
 
     /** Is this reference a root capability or a derived version of one?
      *  These capabilities have themselves as their captureSetOfInfo.
@@ -597,11 +669,18 @@ object Capabilities:
      */
     def computeHiddenSet(f: Refs => Refs)(using Context): Refs = this match
       case self: LocalCap => f(self.hiddenSet.elems)
-      case Restricted(elem1, cls) => elem1.computeHiddenSet(f).map(_.restrict(cls))
+      case Classified(elem1, only, except) =>
+        elem1.computeHiddenSet(f).map: r =>
+          except.foldLeft(if only == defn.AnyClass then r else r.restrict(only))((c, e) => c.exclude(e))
       case ReadOnly(elem1) => elem1.computeHiddenSet(f).map(_.readOnly)
       case _ => emptyRefs
 
-    /** The transitive classifiers of this capability. */
+    /** A sound upper bound of the classifier classes all parts of this capability
+     *  derive from (following `captureSetOfInfo`). One of, per the `Classifiers` enum:
+     *  `ClassifiedAs(cs)` (each part derives from some class in `cs`), `Unclassified`
+     *  (a part has no known classifier), `UnknownClassifier` (an unsolved capture-set var).
+     *  Exclusions are transparent: `x.except[E]` has the same classifiers as `x`.
+     */
     def transClassifiers(using Context): Classifiers =
       def toClassifiers(cls: ClassSymbol): Classifiers =
         if cls == defn.AnyClass then Unclassified
@@ -612,10 +691,12 @@ object Capabilities:
             toClassifiers(self.hiddenSet.classifier)
           case self: RootCapability =>
             Unclassified
-          case Restricted(_, cls) =>
-            assert(cls != defn.AnyClass)
-            if cls == defn.NothingClass then ClassifiedAs(Nil)
-            else ClassifiedAs(cls :: Nil)
+          case Classified(ref1, only, _) =>
+            // An exclusion only removes capabilities, so the transitive classifiers
+            // of the restricted underlying capability remain a sound upper bound.
+            if only == defn.AnyClass then ref1.transClassifiers
+            else if only == defn.NothingClass then ClassifiedAs(Nil)
+            else ClassifiedAs(only :: Nil)
           case ReadOnly(ref1) =>
             ref1.transClassifiers
           case Maybe(ref1) =>
@@ -628,6 +709,10 @@ object Capabilities:
       myClassifiers
     end transClassifiers
 
+    /** May this capability be admitted into a capture set classified as `cls`? The
+     *  classifier gate for adding an element to a classified variable. Permissive:
+     *  roots fit anywhere, a `.only[O]` fits iff `O <: cls`.
+     */
     def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
       cls == defn.AnyClass
       || this.match
@@ -636,9 +721,9 @@ object Capabilities:
           else self.hiddenSet.tryClassifyAs(cls)
         case self: RootCapability =>
           true
-        case Restricted(_, cls1) =>
-          assert(cls != defn.AnyClass)
-          cls1.isSubClass(cls)
+        case Classified(ref1, only, _) =>
+          if only == defn.AnyClass then ref1.tryClassifyAs(cls)
+          else only.isSubClass(cls)
         case ReadOnly(ref1) =>
           ref1.tryClassifyAs(cls)
         case Maybe(ref1) =>
@@ -647,18 +732,56 @@ object Capabilities:
           if self.derivesFromCapability then self.derivesFrom(cls)
           else captureSetOfInfo.tryClassifyAs(cls)
 
+    /** Is every part of this capability provably classified as `cls` or a subclass?
+     *  (Subkinding: the classifier kind subtracts to empty against `cls`, exclusions included.)
+     */
     def isKnownClassifiedAs(cls: ClassSymbol)(using Context): Boolean =
-      transClassifiers match
-        case ClassifiedAs(cs) => cs.forall(_.isSubClass(cls))
-        case _ => false
+      def emptyUnder(roots: List[ClassSymbol], except: List[ClassSymbol]) =
+        roots.forall(k => subtractClassifiers(k, except, cls, Nil).isEmpty)
+      this match
+        case Classified(_, only, except) if only != defn.AnyClass =>
+          emptyUnder(only :: Nil, except)
+        case Classified(ref, _, except) => // only == AnyClass
+          ref.transClassifiers match
+            case ClassifiedAs(cs) => emptyUnder(cs, except)
+            case _ => false
+        case _ =>
+          transClassifiers match
+            case ClassifiedAs(cs) => emptyUnder(cs, Nil)
+            case _ => false
 
+    /** Is this capability provably free of any parts classified under `cls`?
+     *  True if all its classifiers are on branches unrelated to `cls`, or an exclusion
+     *  already removed the `cls` subtree.
+     */
+    def isKnownDisjointFrom(cls: ClassSymbol)(using Context): Boolean =
+      def disjointByClassifiers: Boolean = transClassifiers match
+        case ClassifiedAs(cs) => cs.forall(c => leastClassifier(c, cls) == defn.NothingClass)
+        case _ => false
+      this match
+        case Classified(_, _, except) =>
+          except.exists(e => cls.isSubClass(e)) || disjointByClassifiers
+        case ReadOnly(ref1) =>
+          ref1.isKnownDisjointFrom(cls)
+        case Maybe(ref1) =>
+          ref1.isKnownDisjointFrom(cls)
+        case _ =>
+          disjointByClassifiers
+
+    /** Is this capability provably the empty capture set? */
     def isKnownEmpty(using Context): Boolean = this match
-      case Restricted(ref1, cls) =>
-        val isEmpty = ref1.transClassifiers match
-          case ClassifiedAs(cs) =>
-            cs.forall(c => leastClassifier(c, cls) == defn.NothingClass)
+      case Classified(ref1, only, except) =>
+        // empty if the `only` restriction removes everything ...
+        val emptyByOnly =
+          only == defn.NothingClass
+          || only != defn.AnyClass && (ref1.transClassifiers match
+              case ClassifiedAs(cs) => cs.forall(c => leastClassifier(c, only) == defn.NothingClass)
+              case _ => false)
+        // ... or if some exclusion covers all classifiers of the restricted underlying.
+        val emptyByExcept = transClassifiers match
+          case ClassifiedAs(cs) => except.exists(e => cs.forall(_.isSubClass(e)))
           case _ => false
-        isEmpty || ref1.isKnownEmpty
+        emptyByOnly || emptyByExcept || ref1.isKnownEmpty
       case ReadOnly(ref1) => ref1.isKnownEmpty
       case Maybe(ref1) => ref1.isKnownEmpty
       case _: RootCapability => false
@@ -673,8 +796,11 @@ object Capabilities:
     /**  x subsumes x
      *   x =:= y       ==>  x subsumes y
      *   x subsumes y  ==>  x subsumes y.f
-     *   x subsumes y  ==>  x* subsumes y, x subsumes y?
-     *   x subsumes y  ==>  x* subsumes y*, x? subsumes y?
+     *   x subsumes y  ==>  x subsumes y?
+     *   x subsumes y  ==>  x? subsumes y?
+     *   x subsumes y  ==>  x subsumes y.rd
+     *   x subsumes y, y classified as O, y disjoint from each Ei  ==>  x.only[O].except[Ei..] subsumes y
+     *   x subsumes y  ==>  x subsumes y.only[O].except[Ei..]
      *   x: x1.type /\ x1 subsumes y  ==>  x subsumes y
      *   X = CapSet^cx, exists rx in cx, rx subsumes y     ==>  X subsumes y
      *   Y = CapSet^cy, forall ry in cy, x subsumes ry     ==>  x subsumes Y
@@ -724,7 +850,8 @@ object Capabilities:
           || viaInfo(y.info)(subsumingRefs(this, _))
         case Maybe(y1) => this.stripMaybe.subsumes(y1)
         case ReadOnly(y1) => this.stripReadOnly.subsumes(y1)
-        case Restricted(y1, cls) => this.stripRestricted(cls).subsumes(y1)
+        case Classified(y1, only, except) =>
+          except.foldLeft(this)((c, e) => c.stripExcluded(e)).stripRestricted(only).subsumes(y1)
         case y: TypeRef if y.derivesFromCapSet =>
           // The upper and lower bounds don't have to be in the form of `CapSet^{...}`.
           // They can be other capture set variables, which are bounded by `CapSet`,
@@ -740,7 +867,10 @@ object Capabilities:
           this.subsumes(y.cls.sourceModule.termRef)
         case _ => false
       || this.match
-          case Restricted(x1, cls) => y.isKnownClassifiedAs(cls) && x1.subsumes(y)
+          case Classified(x1, only, except) =>
+            (only == defn.AnyClass || y.isKnownClassifiedAs(only))
+            && except.forall(e => y.isKnownDisjointFrom(e))
+            && x1.subsumes(y)
           case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
           case x: TypeRef if assumedContainsOf(x).contains(y) => true
           case x: TypeRef if x.derivesFromCapSet =>
@@ -808,12 +938,15 @@ object Capabilities:
             case _ => globalCapSubsumes
               // also had: || y.derivesFromCapTrait(defn.Caps_SharedCapability)
               // but this fails i25863a.scala, i.e compilers without errors where there should be
-        case Restricted(x1, cls) =>
-          y.isKnownClassifiedAs(cls) && x1.maxSubsumes(y, canAddHidden)
+        case Classified(x1, only, except) =>
+          (only == defn.AnyClass || y.isKnownClassifiedAs(only))
+          && except.forall(e => y.isKnownDisjointFrom(e))
+          && x1.maxSubsumes(y, canAddHidden)
         case _ =>
           y match
             case ReadOnly(y1) => this.stripReadOnly.maxSubsumes(y1, canAddHidden)
-            case Restricted(y1, cls) => this.stripRestricted(cls).maxSubsumes(y1, canAddHidden)
+            case Classified(y1, only, except) =>
+              except.foldLeft(this)((c, e) => c.stripExcluded(e)).stripRestricted(only).maxSubsumes(y1, canAddHidden)
             case _ => false
 
     /** `x covers y` if we should retain `y` when computing the overlap of
@@ -826,9 +959,10 @@ object Capabilities:
      *   x covers y  ==>  x* covers y*, x? covers y?
      *   x covers y  ==>  <any hiding x> covers y
      *   x covers y  ==>  x.only[C] covers y, x covers y.only[C]
+     *   x covers y  ==>  x.except[C] covers y, x covers y.except[C]
      *
      *   TODO what other clauses from subsumes do we need to port here?
-     *   The last clause is a conservative over-approximation: basically, we can't achieve
+     *   The last two clauses are a conservative over-approximation: basically, we can't achieve
      *   separation by having different classifiers for now. It would be good to
      *   have a test that would expect such separation, then we can try to refine
      *   the clause to make the test pass.
@@ -845,7 +979,7 @@ object Capabilities:
               x match
                 case Maybe(x1) => recur(x1, y1)
                 case _ => false
-            case Restricted(y1, _) =>
+            case Classified(y1, _, _) =>
               recur(x, y1)
             case _ =>
               false
@@ -856,7 +990,7 @@ object Capabilities:
                 seen.add(x)
                 x.hiddenSet.exists(recur(_, y))
               else false
-            case Restricted(x1, _) => recur(x1, y)
+            case Classified(x1, _, _) => recur(x1, y)
             case _ => false
 
       recur(this, y)
@@ -897,7 +1031,9 @@ object Capabilities:
         val c1 = c.underlying.toType
         c match
           case _: ReadOnly => ReadOnlyCapability(c1)
-          case Restricted(_, cls) => OnlyCapability(c1, cls)
+          case Classified(_, only, except) =>
+            val t0 = if only == defn.AnyClass then c1 else OnlyCapability(c1, only)
+            ExceptCapability(t0, except)
           case _: Maybe => MaybeCapability(c1)
           case _ => c1
 
@@ -929,6 +1065,24 @@ object Capabilities:
     if cls1.isSubClass(cls2) then cls1
     else if cls2.isSubClass(cls1) then cls2
     else defn.NothingClass
+
+  /** The classifier subtrees making up the kind subtraction
+   *  `(only1 - except1) \ (only2 - except2)`, i.e. the remainder of the first classifier
+   *  projection after subtracting the second, as a union of `(only, except)` subtrees.
+   *  Empty subtrees are dropped. The subtrahend is assumed non-empty.
+   *  Follows the kind subtraction of "Classifying Capabilities" (Fig. 3).
+   */
+  def subtractClassifiers(only1: ClassSymbol, except1: List[ClassSymbol],
+      only2: ClassSymbol, except2: List[ClassSymbol])(using Context): List[(ClassSymbol, List[ClassSymbol])] =
+    def isEmpty(only: ClassSymbol, except: List[ClassSymbol]) = except.exists(only.isSubClass)
+    def recur(rhsExcept: List[ClassSymbol]): List[(ClassSymbol, List[ClassSymbol])] = rhsExcept match
+      case Nil => (only1, only2 :: except1) :: Nil          // st-tree: subtract the bare `only2` subtree
+      case l :: rest =>
+        if !l.isSubClass(only2) then recur(rest)            // st-irrel-r: `l` outside `only2`, no effect
+        else if l.isSubClass(only1) then (l, except1) :: recur(rest)  // st-sub-r: `only1.only[l]` survives
+        else if only1.isSubClass(l) then (only1, except1) :: Nil      // st-sub-l: all of `only1` survives
+        else recur(rest)                                    // st-irrel-l: `l` disjoint from `only1`
+    recur(except2).filterNot(isEmpty)
 
   /** The least classifier that both `cls1` and `cls2` extend, or `AnyClass`,
    *  if `cls1` and `cls2` don't have a common ancestor classifier. It is

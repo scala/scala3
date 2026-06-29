@@ -254,9 +254,24 @@ sealed abstract class CaptureSet extends Showable:
       val suffix = if ctx.settings.YccVerbose.value then i" with ${x.captureSetOfInfo}" else ""
       i"$this accountsFor $x$suffix"
 
+    // Classifier splitting: a classified projection `b.only[..].except[..]` is accounted for
+    // when no single element subsumes it but the same-base projections in this set collectively
+    // cover its classifier region. Equivalent to its kind subtracting to empty against theirs
+    // (subkinding, "Classifying Capabilities" Fig. 3).
+    def classifierSplit(using Context): Boolean = x match
+      case Classified(xbase, onlyX, exceptX) =>
+        val peers = elems.toList.collect:
+          case Classified(b, o, e) if (b eq xbase) && o != defn.NothingClass => (o, e)
+        peers.nonEmpty
+        && peers.foldLeft((onlyX, exceptX) :: Nil): (rem, peer) =>
+             rem.flatMap((o1, e1) => subtractClassifiers(o1, e1, peer._1, peer._2))
+          .isEmpty
+      case _ => false
+
     def test(using Context) = reporting.trace(debugInfo):
       TypeComparer.noNotes: // Any failures in accountsFor should not lead to error notes
         elems.exists(_.subsumes(x))
+        || classifierSplit
         || // Even though subsumes already follows captureSetOfInfo, this is not enough.
            // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
           !x.isTerminalCapability
@@ -447,6 +462,8 @@ sealed abstract class CaptureSet extends Showable:
   def maybe(using Context): CaptureSet = map(MaybeMap())
 
   def restrict(cls: ClassSymbol)(using Context): CaptureSet = map(RestrictMap(cls))
+
+  def exclude(cls: ClassSymbol)(using Context): CaptureSet = map(ExceptMap(cls :: Nil))
 
   def readOnly(using Context): CaptureSet =
     val res = map(ReadOnlyMap())
@@ -1613,7 +1630,7 @@ object CaptureSet:
      *  In effect this means that no new elements or dependent sets can be added
      *  in these states (since the previous state cannot be recorded in a snapshot)
      *  On the other hand, these states do allow by default local roots to
-     *  subsume arbitary types, which are then recorded in their hidden sets.
+     *  subsume arbitrary types, which are then recorded in their hidden sets.
      */
     class Closed extends VarState:
       override def canRecord = false
@@ -1676,8 +1693,8 @@ object CaptureSet:
     protected def isSameMap(other: BiTypeMap) = other.getClass == getClass
 
     override def fuse(next: BiTypeMap)(using Context) = next match
-      case next: Inverse if next.inverse.getClass == getClass => Some(IdentityTypeMap)
-      case next: NarrowingCapabilityMap if next.getClass == getClass => Some(this)
+      case next: Inverse if isSameMap(next.inverse) => Some(IdentityTypeMap)
+      case next: NarrowingCapabilityMap if isSameMap(next) => Some(this)
       case _ => None
 
     class Inverse extends BiTypeMap:
@@ -1710,6 +1727,17 @@ object CaptureSet:
       case other: RestrictMap => cls == other.cls
       case _ => false
 
+  /** Maps `x` to `x.except[clss...]`; adjacent exclusions fuse into one map. */
+  private class ExceptMap(val clss: List[ClassSymbol])(using Context) extends NarrowingCapabilityMap:
+    override def mapCapability(c: Capability) = clss.foldLeft(c)((c, cls) => c.exclude(cls))
+    override def toString = "Except"
+    override def isSameMap(other: BiTypeMap) = other match
+      case other: ExceptMap => clss.toSet == other.clss.toSet
+      case _ => false
+    override def fuse(next: BiTypeMap)(using Context) = next match
+      case next: ExceptMap => Some(ExceptMap((clss ++ next.clss).distinct))
+      case _ => super.fuse(next)
+
   /* Not needed:
   def ofClass(cinfo: ClassInfo, argTypes: List[Type])(using Context): CaptureSet =
     CaptureSet.empty
@@ -1734,9 +1762,11 @@ object CaptureSet:
 
   /** The capture set of the type underlying the capability `c` */
   def ofInfo(c: Capability)(using Context): CaptureSet = c match
-    case Restricted(c1, cls) =>
-      if cls == defn.NothingClass then CaptureSet.empty
-      else c1.captureSetOfInfo.restrict(cls) // todo: should we simplify using subsumption here?
+    case c @ Classified(c1, only, except) =>
+      if c.isKnownEmpty then CaptureSet.empty
+      else
+        val cs0 = if only == defn.AnyClass then c1.captureSetOfInfo else c1.captureSetOfInfo.restrict(only)
+        except.foldLeft(cs0)((s, e) => s.exclude(e))
     case ReadOnly(c1) =>
       c1.captureSetOfInfo.readOnly
     case Maybe(c1) =>
