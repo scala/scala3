@@ -18,7 +18,10 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
     if (tree.source != ctx.source && tree.source.exists)
       transform(tree)(using ctx.withSource(tree.source))
     else reporting.trace(i"TreeMapWithStages.transform $tree at $level", staging, show = true) {
-      tree match {
+      if level == 0 then tree match
+        case (_: Import | _: Export) => tree
+        case _ => super.transform(tree)
+      else tree match {
         case Block(stats, _) =>
           val defSyms = stats.collect { case defTree: DefTree => defTree.symbol }
           super.transform(tree)(using symbolsInCurrentLevel(defSyms))
