@@ -43,6 +43,7 @@ object Feature:
   val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
   val safe = experimental("safe")
   val dedentedStringLiterals = experimental("dedentedStringLiterals")
+  val methodBlockEndMarkers = experimental("methodBlockEndMarkers")
 
   val nonViralExperimentalFeatures: Set[TermName] =
     Set(captureChecking, separationChecking, safe)
@@ -80,6 +81,7 @@ object Feature:
     (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
     (safe, "Require safe mode"),
     (dedentedStringLiterals, "Enable experimental dedented string literals"),
+    (methodBlockEndMarkers, "Enable experimental end markers for method blocks"),
   )
 
   /** Features that are now standard; the language import / -language choice is
