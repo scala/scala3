@@ -23,13 +23,14 @@ import scala.tools.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
+import OptimizerUtils.*
 
 import scala.tools.asm
 
-class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes, settings: OptimizerSettings) {
+class CopyProp(indyTracker: IndyLambdaImplTracker, callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes, settings: OptimizerSettings) {
 
   private val modulesAllowSkipInitialization =
-    if settings.optAllowSkipCoreModuleInit then optimizerUtils.modulesAllowSkipInitialization else Set.empty
+    if settings.optAllowSkipCoreModuleInit then OptimizerUtils.modulesAllowSkipInitialization else Set.empty
 
   /**
    * For every `xLOAD n`, find all local variable slots that are aliases of `n` using an
@@ -276,15 +277,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
         }
       }
 
-      if (toInline.nonEmpty) {
-        val methodCallsites = callGraph.callsites(method).collect { case (k, v: KnownCallsite) => (k, v) }
-        var css = toInline.flatMap(methodCallsites.get).toList.sorted(using callsiteOrdering)
-        while (css.nonEmpty) {
-          val cs = css.head
-          css = css.tail
-          inliner.inlineCallsite(cs, None, updateCallGraph = css.isEmpty)
-        }
-      }
+      inliner.inlineCallsites(method, toInline)
 
       (staleStoreRemoved, intrinsicRewritten, callInlined)
     }
@@ -398,7 +391,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
 
             case INVOKESPECIAL =>
               val mi = insn.asInstanceOf[MethodInsnNode]
-              if (optimizerUtils.isSideEffectFreeConstructorCall(mi)) sideEffectFreeConstructorCalls += mi
+              if (ts.isSideEffectFreeConstructorCall(mi)) sideEffectFreeConstructorCalls += mi
 
             case _ =>
           }
@@ -431,7 +424,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       def handleClosureInst(indy: InvokeDynamicInsnNode): Unit = {
         toRemove += indy
         callGraph.removeClosureInstantiation(indy, method)
-        optimizerUtils.removeIndyLambdaImplMethod(owner, method, indy)
+        indyTracker.remove(owner, method, indy)
         handleInputs(indy, Type.getArgumentTypes(indy.desc).length)
       }
 
@@ -475,24 +468,24 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
             handleInputs(prod, 1)
 
           case GETFIELD | GETSTATIC =>
-            if (optimizerUtils.isBoxedUnit(prod) || AnalysisUtils.isJavaLangStaticLoad(prod) || AnalysisUtils.isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
+            if (ts.isBoxedUnit(prod) || AnalysisUtils.isJavaLangStaticLoad(prod) || AnalysisUtils.isModuleLoad(prod, modulesAllowSkipInitialization)) toRemove += prod
             else popAfterProd() // keep potential class initialization (static field) or NPE (instance field)
 
           case INVOKEVIRTUAL | INVOKESPECIAL | INVOKESTATIC | INVOKEINTERFACE =>
             val methodInsn = prod.asInstanceOf[MethodInsnNode]
-            if (optimizerUtils.isSideEffectFreeCall(methodInsn)) {
+            if (ts.isSideEffectFreeCall(methodInsn)) {
               toRemove += prod
               callGraph.removeCallsite(methodInsn, method)
               val receiver = if (methodInsn.getOpcode == INVOKESTATIC) 0 else 1
               handleInputs(prod, Type.getArgumentTypes(methodInsn.desc).length + receiver)
-            } else if (optimizerUtils.isScalaUnbox(methodInsn)) {
-              val tp = optimizerUtils.primitiveAsmTypeSortToBType(Type.getReturnType(methodInsn.desc).getSort)
+            } else if (ts.isScalaUnbox(methodInsn)) {
+              val tp = OptimizerUtils.primitiveAsmTypeSortToBType(Type.getReturnType(methodInsn.desc).getSort)
               val boxTp = ts.boxedClassOfPrimitive(tp)
               toInsertBefore(methodInsn) = List(new TypeInsnNode(CHECKCAST, boxTp.internalName), new InsnNode(POP))
               toRemove += prod
               callGraph.removeCallsite(methodInsn, method)
               castAdded = true
-            } else if (optimizerUtils.isJavaUnbox(methodInsn)) {
+            } else if (ts.isJavaUnbox(methodInsn)) {
               val nullCheck = mutable.ListBuffer.empty[AbstractInsnNode]
               val nonNullLabel = newLabelNode
               nullCheck += new JumpInsnNode(IFNONNULL, nonNullLabel)
@@ -514,7 +507,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
             }
 
           case NEW =>
-            if (optimizerUtils.isNewForSideEffectFreeConstructor(prod)) toRemove += prod
+            if (ts.isNewForSideEffectFreeConstructor(prod)) toRemove += prod
             else popAfterProd()
 
           case LDC =>
