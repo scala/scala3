@@ -36,7 +36,7 @@ object FunctionConverters {
    *  @tparam T the first input type of the bi-consumer
    *  @tparam U the second input type of the bi-consumer
    *  @param jf the Java `BiConsumer` to convert
-   *  @return a Scala `Function2` returning `BoxedUnit` equivalent to `jf`
+   *  @return a Scala `Function2` returning `BoxedUnit`, equivalent to `jf`
    */
   @inline def asScalaFromBiConsumer[T, U](jf: java.util.function.BiConsumer[T, U]): scala.Function2[T, U, scala.runtime.BoxedUnit] = jf match {
     case AsJavaBiConsumer((f @ _)) => f.asInstanceOf[scala.Function2[T, U, scala.runtime.BoxedUnit]]
@@ -94,7 +94,7 @@ object FunctionConverters {
    *  @tparam T the first input type of the bi-predicate
    *  @tparam U the second input type of the bi-predicate
    *  @param jf the Java `BiPredicate` to convert
-   *  @return a Scala `Function2` returning `java.lang.Boolean` equivalent to `jf`
+   *  @return a Scala `Function2` returning `java.lang.Boolean`, equivalent to `jf`
    */
   @inline def asScalaFromBiPredicate[T, U](jf: java.util.function.BiPredicate[T, U]): scala.Function2[T, U, java.lang.Boolean] = jf match {
     case AsJavaBiPredicate((f @ _)) => f.asInstanceOf[scala.Function2[T, U, java.lang.Boolean]]
