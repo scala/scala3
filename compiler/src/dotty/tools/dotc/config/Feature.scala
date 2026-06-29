@@ -13,6 +13,7 @@ import NameKinds.QualifiedName
 import Annotations.ExperimentalAnnotation
 import Annotations.PreviewAnnotation
 import Settings.Setting.ChoiceWithHelp
+import ast.untpd
 
 object Feature:
 
@@ -82,6 +83,26 @@ object Feature:
     (safe, "Require safe mode"),
     (dedentedStringLiterals, "Enable experimental dedented string literals"),
   )
+
+  /** Features that are now standard; the language import / -language choice is
+   *  still accepted but deprecated and has no effect. name -> deprecation message. */
+  val deprecatedFeatures: List[(TermName, String)] = List()
+
+  /** Deprecated features that were enabled via the -language command-line setting. */
+  def deprecatedSettingFeatures(using Context): List[(TermName, String)] =
+    deprecatedFeatures.filter((n, _) => enabledBySetting(n))
+
+  /** Emit a deprecation warning for each deprecated feature enabled via -language. */
+  def checkDeprecatedSettingFeatures(using Context): Unit =
+    for (name, msg) <- deprecatedSettingFeatures do
+      report.deprecationWarning(em"Option -language:$name is deprecated: $msg", NoSourcePosition)
+
+  /** Warn when a deprecated language feature is imported. */
+  def warnDeprecatedLanguageImports(prefix: TermName, selectors: List[untpd.ImportSelector])(using Context): Unit =
+    for sel <- selectors if !sel.isWildcard && !sel.isUnimport do
+      val feature = QualifiedName(prefix, sel.name)
+      deprecatedFeatures.collectFirst:
+        case (`feature`, msg) => report.deprecationWarning(em"$msg", sel.srcPos)
 
   // legacy language features from Scala 2 that are no longer supported.
   val legacyFeatures = List(
