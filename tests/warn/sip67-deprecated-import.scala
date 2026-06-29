@@ -1,4 +1,7 @@
+//> using options -deprecation
+
 import scala.language.strictEquality
+import scala.language.experimental.strictEqualityPatternMatching // warn
 
 sealed trait Foo[A]
 object Foo:
