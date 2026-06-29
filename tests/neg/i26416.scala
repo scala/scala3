@@ -37,5 +37,61 @@ def test3 = {
       commonsecret = supersecret
 }
 
+// Version 4: Explicit use declarations to enclosing object: ok
+object test4 {
+  class Secret(private var s: String) extends caps.SharedCapability:
+    def read(): String = s
+  var commonsecret: Secret^ = new Secret("Goldfinger")
+  class SecretService() uses test4:
+    //self: SecretService =>
+    val supersecret: Secret^{this} = Secret("Blahblah")
+    def leak(): Unit =
+      commonsecret = supersecret
+}
+
+// Version 5: Explicit use declarations to nested object
+package test5 {
+  class Secret(private var s: String) extends caps.SharedCapability:
+    def read(): String = s
+
+  object Common extends caps.SharedCapability:
+    var commonsecret: Secret^ = new Secret("Goldfinger")
+
+  class SecretService() uses Common:
+    val supersecret: Secret^{this} = Secret("Blahblah") // error
+    def leak(): Unit =
+      Common.commonsecret = supersecret
+}
+
+// Version 6: Extends SharedCapability
+object test6 {
+  class Secret(private var s: String):
+    def read(): String = s
+
+  private var commonsecret: Secret^ = new Secret("Goldfinger")
+
+  class SecretService extends caps.SharedCapability:
+    val supersecret: Secret^{this} = Secret("Blahblah")
+    def leak(): Unit =
+      commonsecret = supersecret // error
+}
+
+// Version 7: Has self type with any
+object test7 {
+
+  class Secret(private var s: String):
+    def read(): String = s
+
+  private var commonsecret: Secret^ = new Secret("Goldfinger")
+
+  class SecretService { this: SecretService^ =>
+
+    val supersecret: Secret^{this} = Secret("Blahblah")
+    def leak(): Unit =
+      commonsecret = supersecret // error
+  }
+}
+
+
 
 
