@@ -34,7 +34,7 @@ object QuotePatterns:
         val typevars1 = tree match
             case tree @ DefDef(_, paramss, _, _) =>
               typevars `union` paramss.flatMap{ params => params match
-                case TypeDefs(tdefs) => tdefs.map(_.symbol)
+                case TypeDefs(tdefs) => tdefs.mapToList(_.symbol)
                 case _ => List.empty
               }.toSet `union` typevars
             case _ => typevars
@@ -182,7 +182,7 @@ object QuotePatterns:
           newBinding.info = newBinding.info.subst(oldBindings.toLst, newBindingsRefs.toLst)
 
         val patternTypes = newBindings.map(sym => TypeDef(sym).withSpan(sym.span))
-        Block(patternTypes, shape0.subst(oldBindings, newBindings))
+        Block(patternTypes, shape0.subst(oldBindings.toLst, newBindings.toLst))
 
     val quotedShape =
       if (quotePattern.body.isTerm) tpd.Quote(shape1, Nil).select(nme.apply).appliedTo(quotePattern.quotes)
@@ -329,7 +329,7 @@ object QuotePatterns:
               if shapeBinding.hasAnnotation(defn.QuotedRuntimePatterns_fromAboveAnnot) then
                 binding.symbol.addAnnotation(defn.QuotedRuntimePatterns_fromAboveAnnot)
             val body1 = if stats.isEmpty then expr else cpy.Block(block)(stats, expr)
-            body1.subst(shapeBindingSyms, bindings.map(_.symbol))
+            body1.subst(shapeBindingSyms.toLst, bindings.map(_.symbol).toLst)
           case body => body
         cpy.QuotePattern(tree)(bindings, body, quotes)
 

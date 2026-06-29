@@ -508,8 +508,15 @@ object Lst {
   class Iterable[+T](lst: Lst[T]) extends collection.immutable.Iterable[T]:
     def iterator: Iterator[T] = lst.iterator
 
-  given fromIterable: [T] => Conversion[Lst[T], Iterable[T]] =
-    new Iterable(_)
+  /** A conversion from Lst to Iterable. This needs to be explicitly imported
+   *  to be effective. If we enforced already "only implicit conversions with intp
+   *  targets" this would not be necessary. But otherwise, we do get unwanted
+   *  conversions if the toIterable was universally available as a given.
+   */
+  object toIterableConversion:
+    given [T] => Conversion[Lst[T], Iterable[T]] = toIterable(_)
+
+  def toIterable[T]: Conversion[Lst[T], Iterable[T]] = new Iterable(_)
 
   /** Extractor for lsts of length 0 */
   object Empty:

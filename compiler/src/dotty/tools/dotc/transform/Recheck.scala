@@ -395,13 +395,13 @@ abstract class Recheck extends Phase, SymTransformer:
       recheck(tree.rhs, lhsType.widen)
       defn.UnitType
 
-    protected def avoidLocals(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type =
+    protected def avoidLocals(tp: Type, symsToAvoid: => Lst[Symbol])(using Context): Type =
       TypeOps.avoid(tp, symsToAvoid)
 
     private def recheckBlock(stats: List[Tree], expr: Tree, pt: Type)(using Context): Type =
       recheckStats(stats)
       val exprType = recheck(expr, pt)
-      avoidLocals(exprType, localSyms(stats).filterConserve(_.isTerm))
+      avoidLocals(exprType, localSyms(stats).filter(_.isTerm))
 
     def recheckBlock(tree: Block, pt: Type)(using Context): Type = tree match
       case Block((mdef : DefDef) :: Nil, closure: Closure) =>

@@ -210,7 +210,7 @@ class ExpandSAMs extends MiniPhase:
           val defaultCase = CaseDef(Bind(defaultSym, Underscore(selectorTpe)), EmptyTree, defaultValue)
           cases :+ defaultCase
         cpy.Match(tree)(selector, cases1)
-          .subst(param.symbol :: Nil, pfParam :: Nil)
+          .subst(Lst(param.symbol), Lst(pfParam))
             // Needed because a partial function can be written as:
             // param => param match { case "foo" if foo(param) => param }
             // And we need to update all references to 'param'

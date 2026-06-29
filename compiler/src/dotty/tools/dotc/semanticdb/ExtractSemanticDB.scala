@@ -28,6 +28,7 @@ import dotty.tools.io.{AbstractFile, JarArchive}
 import dotty.tools.dotc.semanticdb.DiagnosticOps.*
 import scala.util.{Using, Failure, Success}
 import java.nio.file.Path
+import Decorators.flattenLst
 
 
 /** Extract symbol references and uses to semanticdb files.
@@ -668,7 +669,7 @@ private[semanticdb] object ExtractSemanticDB:
 
     private def ctorParams(
       vparamss: List[Lst[ValDef]], tparams: Lst[TypeDef], body: List[Tree])(using Context): Unit =
-      @tu lazy val getters = findGetters(vparamss.flatMap(_.map(_.name)).toSet, body)
+      @tu lazy val getters = findGetters(vparamss.flattenLst.map(_.name).toSet, body)
       for
         vparams <- vparamss
         vparam  <- vparams

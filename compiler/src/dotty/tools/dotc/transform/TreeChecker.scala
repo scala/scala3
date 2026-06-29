@@ -624,14 +624,14 @@ object TreeChecker {
       tpdTree
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
-      def defParamss = ddef.paramss.filter(!_.isEmpty).map(_.mapToLst(_.symbol))
+      def defParamss = ddef.paramss.filter(!_.isEmpty).map(_.map(_.symbol))
       def layout(symss: List[Lst[Symbol]]): String =
         symss.map(syms => i"($syms%, %)").mkString
       assert(ctx.erasedTypes || sym.rawParamss == defParamss,
         i"""param mismatch for ${sym.showLocated}:
            |defined in tree  = ${layout(defParamss)}
            |stored in symbol = ${layout(sym.rawParamss)}""")
-      withDefinedSyms(ddef.paramss.flatten) {
+      withDefinedSyms(ddef.paramss.flattenLst.toList) {
         if (!sym.isClassConstructor && !(sym.name eq nme.STATIC_CONSTRUCTOR))
           assert(isValidJVMMethodName(sym.name.encode), s"${sym.name.debugString} name is invalid on jvm")
 
@@ -798,7 +798,7 @@ object TreeChecker {
       tree1
     }
 
-    override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree =
+    override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => Lst[Symbol])(using Context): Tree =
       tree
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = {

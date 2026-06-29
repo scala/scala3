@@ -424,7 +424,7 @@ object TypeOps:
     val parentType = info.parents.reduceLeft(TypeComparer.andType(_, _))
     def isRefinable(sym: Symbol) =
       !sym.is(Private) && !sym.isConstructor && !sym.isClass
-    val (refinableDecls, missingDecls) = info.decls.toList.partition(isRefinable)
+    val (refinableDecls, missingDecls) = info.decls.toLst.partition(isRefinable)
 
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
@@ -562,7 +562,7 @@ object TypeOps:
    *  does not update `ctx.nestingLevel` when entering a block so I'm leaving
    *  this as Future Work™.
    */
-  def avoid(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type = {
+  def avoid(tp: Type, symsToAvoid: => Lst[Symbol])(using Context): Type = {
     val widenMap = new AvoidMap {
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(tp: NamedType) = forbidden.contains(tp.symbol)

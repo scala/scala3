@@ -6533,13 +6533,13 @@ object Types extends TypeUtils {
 
     private def treeTypeMap = new TreeTypeMap(typeMap = this)
 
-    def mapOver(syms: List[Symbol]): List[Symbol] = mapSymbols(syms, treeTypeMap)
+    def mapOver(syms: Lst[Symbol]): Lst[Symbol] = mapSymbols(syms, treeTypeMap)
 
     def mapOver(scope: Scope): Scope = {
-      val elems = scope.toList
+      val elems = scope.toLst
       val elems1 = mapOver(elems)
-      if (elems1 eq elems) scope
-      else newScopeWith(elems1*)
+      if elems1 _eq_ elems then scope
+      else newScopeWith(elems1)
     }
 
     def mapOver(tree: Tree): Tree = treeTypeMap(tree)

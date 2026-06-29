@@ -16,7 +16,7 @@ import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPa
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
 import typer.ErrorReporting.err
 import typer.ProtoTypes.{LhsProto, WildcardSelectionProto, SelectionProto}
-import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
+import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property, Lst}
 import util.chaining.tap
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
@@ -1149,7 +1149,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
 
     /** Add var mirrors to the list of block-local symbols to avoid */
-    override def avoidLocals(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type =
+    override def avoidLocals(tp: Type, symsToAvoid: => Lst[Symbol])(using Context): Type =
       val locals = symsToAvoid
       val varMirrors = locals.collect:
         case local if local.termRef.isLocalMutable => local.varMirror

@@ -52,7 +52,7 @@ class SpecializeFunctions extends MiniPhase {
     var specName: Name | Null = null
 
     def isSpecializable = {
-      val paramTypes = ddef.termParamss.head.mapToLst(_.symbol.info)
+      val paramTypes = ddef.termParamss.head.map(_.symbol.info)
       val retType = sym.info.finalResultType
       specName = nme.apply.specializedFunction(retType, paramTypes)
       defn.isSpecializableFunction(cls, paramTypes, retType)
@@ -71,7 +71,7 @@ class SpecializeFunctions extends MiniPhase {
       DefDef(specializedApply.asTerm, vparamss => {
         ddef.rhs
           .changeOwner(ddef.symbol, specializedApply)
-          .subst(ddef.termParamss.head.mapToList(_.symbol), vparamss.head.mapToList(_.symbol))
+          .subst(ddef.termParamss.head.map(_.symbol), vparamss.head.map(_.symbol))
       })
 
     // create a forwarding to the specialized apply

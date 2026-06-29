@@ -212,7 +212,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       Stats.trackTime("Annotations copySymbols"):
         val ttm =
           new TreeTypeMap:
-            override def withMappedSyms(syms: List[Symbol]) =
+            override def withMappedSyms(syms: Lst[Symbol]) =
               withMappedSyms(syms, mapSymbols(syms, this, true))
         ttm(tree)
 

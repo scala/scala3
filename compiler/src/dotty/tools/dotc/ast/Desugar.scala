@@ -368,7 +368,7 @@ object desugar {
       case meth @ PolyFunction(tparams, fun) =>
         val PolyFunction(tparams: Lst[untpd.TypeDef] @unchecked, fun) = meth: @unchecked
         val Function(vparams: Lst[untpd.ValDef] @unchecked, rhs) = fun: @unchecked
-        val newParamss = paramssNoContextBounds(List(tparams.toLst, vparams.toLst))
+        val newParamss = paramssNoContextBounds(List(tparams, vparams))
         val params = evidenceParamBuf.toLst
         if params.isEmpty then
           meth

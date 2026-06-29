@@ -31,6 +31,7 @@ import scala.annotation.tailrec
 import scala.annotation.constructorOnly
 import dotty.tools.dotc.core.Flags.AbstractOrTrait
 import dotty.tools.dotc.util.SrcPos
+import Decorators.flattenLst
 
 /** Check initialization safety of static objects
  *
@@ -564,7 +565,7 @@ class Objects(using Context @constructorOnly):
      */
     def ofDefDef(ddef: DefDef, args: List[Value], thisV: ThisValue, outerEnv: EnvSet)
                 (using State.Data, EnvMap.EnvMapMutableData, Trace): EnvRef =
-      val params = ddef.termParamss.flatten.map(_.symbol)
+      val params = ddef.termParamss.flattenLst.map(_.symbol).toList
       assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size)
       // assert(ddef.symbol.owner.is(Method) ^ (outerEnv == NoEnv), "ddef.owner = " + ddef.symbol.owner.show + ", outerEnv = " + outerEnv + ", " + ddef.source)
       _of(params.zip(args).toMap, ddef, thisV, outerEnv)
@@ -1231,7 +1232,7 @@ class Objects(using Context @constructorOnly):
         given Scope = ref
         if ctor.isPrimaryConstructor then
           val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
-          val params = tpl.constr.termParamss.flatten.map(_.symbol)
+          val params = tpl.constr.termParamss.flattenLst.map(_.symbol).toList
           val paramMap = params.zip(args.map(_.value))
           paramMap.foreach(ref.initVal(_, _))
           extendTrace(cls.defTree) { eval(tpl, ref, cls, cacheResult = true) }
@@ -2110,7 +2111,7 @@ class Objects(using Context @constructorOnly):
    * @param klass     The class to which the template belongs.
    */
   def init(tpl: Template, thisV: Ref, klass: ClassSymbol): Contextual[Ref] = log("init " + klass.show, printer, (_: Value).show) {
-    val paramsMap = tpl.constr.termParamss.flatten.map { vdef =>
+    val paramsMap = tpl.constr.termParamss.flattenLst.map { vdef =>
       vdef.name -> thisV.valValue(vdef.symbol)
     }.toMap
 

@@ -17,6 +17,8 @@ import Denotations.*
 import printing.Texts.*
 import printing.Printer
 import SymDenotations.NoDenotation
+import util.Lst
+import Decorators.toLst
 
 import collection.mutable
 
@@ -81,6 +83,8 @@ object Scopes {
      *  inherited from outer ones first.
      */
     def toList(using Context): List[Symbol]
+
+    def toLst(using Context): Lst[Symbol]
 
     /** Return all symbols as an iterator in the order they were entered in this scope.
      */
@@ -233,6 +237,7 @@ object Scopes {
     /** a cache for all elements, to be used by symbol iterator.
      */
     private var elemsCache: List[Symbol] | Null = null
+    private var elemsCacheLst: Lst[Symbol] | Null = null
 
     /** The synthesizer to be used, or `null` if no synthesis is done on this scope */
     private var synthesize: SymbolSynthesizer | Null = null
@@ -424,6 +429,22 @@ object Scopes {
       elemsCache.nn
     }
 
+    /** Returns all symbols as a list in the order they were entered in this scope.
+     *  Does _not_ include the elements of inherited scopes.
+     */
+    override final def toLst(using Context): Lst[Symbol] =
+      if elemsCacheLst == null then
+        val xs = new Array[Object](size)
+        var e = lastEntry
+        var i = xs.length
+        while e != null && e.owner == this do
+          i -= 1
+          xs(i) = e.sym
+          e = e.prev
+        assert(i == 0)
+        elemsCacheLst = new Lst(xs)
+      elemsCacheLst.nn
+
     override def implicitDecls(using Context): List[TermRef] = {
       ensureComplete()
       val irefs = new mutable.ListBuffer[TermRef]
@@ -473,6 +494,13 @@ object Scopes {
     scope
   }
 
+ /** Create a new scope with given initial elements */
+  def newScopeWith(elems: Lst[Symbol])(using Context): MutableScope = {
+    val scope = newScope
+    elems.foreach(scope.enter)
+    scope
+  }
+
   /** Transform scope of members of `owner` using operation `op`
    *  This is overridden by the reflective compiler to avoid creating new scopes for packages
    */
@@ -485,6 +513,7 @@ object Scopes {
     override def size: Int = 0
     override def nestingLevel: Int = 0
     override def toList(using Context): List[Symbol] = Nil
+    override def toLst(using Context): Lst[Symbol] = Lst()
     override def cloneScope(using Context): MutableScope = newScope(nestingLevel)
     override def lookupEntry(name: Name)(using Context): ScopeEntry | Null = null
     override def lookupNextEntry(entry: ScopeEntry)(using Context): ScopeEntry | Null = null

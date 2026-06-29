@@ -905,10 +905,10 @@ object Symbols extends SymUtils {
         if (name.isTypeName) TypeAlias(errType) else errType)
   }
 
-  def mapSymbols(originals: Lst[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean)(using Context): Lst[Symbol] =
+  def mapSymbols(originals: Lst[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): Lst[Symbol] =
     if originals.forall: sym =>
         (ttmap.mapType(sym.info) eq sym.info)
-        && !(ttmap.oldOwners contains sym.owner)
+        && !(ttmap.oldOwners `contains` sym.owner)
         && !mapAlways
     then originals
     else {
@@ -956,83 +956,6 @@ object Symbols extends SymUtils {
             denot.annotations = odenot.annotations.mapConserve(ttmap1.apply)
 
         }
-
-        copy.info = completer
-        copy.denot match
-          case cd: ClassDenotation =>
-            cd.registeredCompanion = original.registeredCompanion.subst(originals, copies)
-          case _ =>
-      }
-
-      copies.foreach(_.ensureCompleted()) // avoid memory leak
-
-      // Update Child annotations of classes encountered previously to new values
-      // if some child is among the mapped symbols
-      for orig <- ttmap1.substFrom do
-        if orig.is(Sealed) && orig.children.exists(originals.contains) then
-          val sealedCopy = orig.subst(ttmap1.substFrom, ttmap1.substTo)
-          sealedCopy.annotations = sealedCopy.annotations.mapConserve(ttmap1.apply)
-
-      copies
-    }
-
-
-  /** Map given symbols, subjecting their attributes to the mappings
-   *  defined in the given TreeTypeMap `ttmap`.
-   *  Cross symbol references are brought over from originals to copies.
-   *  Do not copy any symbols if all attributes of all symbols stay the same
-   *  and mapAlways is false.
-   */
-  def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): List[Symbol] =
-    if (originals.forall(sym =>
-        (ttmap.mapType(sym.info) eq sym.info) &&
-        !(ttmap.oldOwners contains sym.owner)) && !mapAlways)
-      originals
-    else {
-      val copies: List[Symbol] = for (original <- originals) yield
-        val odenot = original.denot
-        original.copy(
-          owner = ttmap.mapOwner(odenot.owner),
-          flags = odenot.flags &~ Touched,
-          info = NoCompleter,
-          privateWithin = ttmap.mapOwner(odenot.privateWithin),
-          coord = original.coord)
-      val ttmap1 = ttmap.withSubstitution(originals, copies)
-      originals.lazyZip(copies) foreach { (original, copy) =>
-        val odenot = original.denot
-        val completer = new LazyType:
-
-          def complete(denot: SymDenotation)(using Context): Unit =
-
-            val oinfo = original.info match
-              case ClassInfo(pre, _, parents, decls, selfInfo) =>
-                assert(original.isClass)
-                val parents1 = parents.mapConserve(ttmap.mapType)
-                val otypeParams = original.typeParams
-                if otypeParams.isEmpty then
-                  ClassInfo(pre, copy.asClass, parents1, decls.cloneScope, selfInfo)
-                else
-                  // copy type params, enter other definitions unchanged
-                  // type parameters need to be copied early, since other type
-                  // computations depend on them.
-                  val decls1 = newScope
-                  val newTypeParams = mapSymbols(original.typeParams, ttmap1, mapAlways = true)
-                  newTypeParams.foreach(decls1.enter)
-                  for sym <- decls do if !sym.is(TypeParam) then decls1.enter(sym)
-                  val parents2 = parents1.map(_.substSym(otypeParams, newTypeParams))
-                  val selfInfo1 = selfInfo match
-                    case selfInfo: Type => selfInfo.substSym(otypeParams, newTypeParams)
-                    case _ => selfInfo
-                  ClassInfo(pre, copy.asClass, parents2, decls1, selfInfo1)
-              case oinfo => oinfo
-
-            denot.info = oinfo // needed as otherwise we won't be able to go from Sym -> parents & etc
-                               // Note that this is a hack, but hack commonly used in Dotty
-                               // The same thing is done by other completers all the time
-            denot.info = ttmap1.mapType(oinfo)
-            denot.annotations = odenot.annotations.mapConserve(ttmap1.apply)
-
-        end completer
 
         copy.info = completer
         copy.denot match

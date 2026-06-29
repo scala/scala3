@@ -1004,10 +1004,10 @@ object Erasure {
           val toParams = untpd.allParamSyms(stat)
           assert(fromParams.length == toParams.length)
           val mapBody = TreeTypeMap(
-            oldOwners = rdef.symbol :: Nil,
-            newOwners = stat.symbol :: Nil,
-            substFrom = fromParams.toList,
-            substTo   = toParams.toList)
+            oldOwners = Lst(rdef.symbol),
+            newOwners = Lst(stat.symbol),
+            substFrom = fromParams,
+            substTo   = toParams)
           cpy.DefDef(stat)(rhs = mapBody.transform(rdef.rhs))
         case stat => stat
       }

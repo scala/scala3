@@ -9,6 +9,7 @@ import Symbols.*, Contexts.*, Types.*, Decorators.*
 import StdNames.nme
 import ast.TreeTypeMap
 import Constants.Constant
+import util.Lst
 
 import scala.collection.mutable.ListBuffer
 
@@ -121,7 +122,7 @@ object BetaReduce:
       (using Context): Option[Tree] =
     val (targs, args) = argss.flatten.partition(_.isType)
     val tparams = ddef.leadingTypeParams
-    val vparams = ddef.termParamss.flatten
+    val vparams = ddef.termParamss.flattenLst
 
     def shapeMatch(paramss: List[ParamClause], argss: List[List[Tree]]): Boolean = (paramss, argss) match
       case (params :: paramss1, args :: argss1) if params.length == args.length =>
@@ -130,7 +131,7 @@ object BetaReduce:
       case _ => false
 
     val targSyms =
-      for (targ, tparam) <- targs.zip(tparams) yield
+      for (targ, tparam) <- targs.toLst.zip(tparams) yield
         targ.tpe.dealias match
           case ref @ TypeRef(NoPrefix, _) =>
             ref.symbol
@@ -140,7 +141,7 @@ object BetaReduce:
             binding.symbol
 
     val argSyms =
-      for (arg, param) <- args.zip(vparams) yield
+      for (arg, param) <- args.toLst.zip(vparams) yield
         arg.tpe.dealias match
           case ref @ TermRef(NoPrefix, _) if isPurePath(arg) =>
             ref.symbol
@@ -165,10 +166,10 @@ object BetaReduce:
       // function with wrong apply method by hand which causes `shapeMatch` to fail.
       // See neg/i21952.scala
       val expansion = TreeTypeMap(
-        oldOwners = ddef.symbol :: Nil,
-        newOwners = ctx.owner :: Nil,
-        substFrom = (tparams.toList ::: vparams).map(_.symbol),
-        substTo = targSyms ::: argSyms
+        oldOwners = Lst(ddef.symbol),
+        newOwners = Lst(ctx.owner),
+        substFrom = (tparams ++ vparams).map(_.symbol),
+        substTo = targSyms ++ argSyms
       ).transform(ddef.rhs)
 
       val expansion1 = new TreeMap {

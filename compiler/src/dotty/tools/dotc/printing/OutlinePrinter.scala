@@ -11,6 +11,7 @@ import Contexts.*
 import Symbols.*
 import ast.{Trees, untpd}
 import Trees.*
+import util.Lst
 
 object OutlinePrinter:
   def apply(_ctx: Context): Printer = new OutlinePrinter(_ctx)
@@ -20,6 +21,7 @@ object OutlinePrinter:
   * Note that there may still be some differences if you compare before and after pickling.
   */
 class OutlinePrinter private (_ctx: Context) extends RefinedPrinter(_ctx) {
+  import Lst.toIterableConversion.{given}
 
   /** print the symbol infos of type params for the fake java constructor */
   def shouldShowInfo(tsym: Symbol): Boolean =

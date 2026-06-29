@@ -1603,7 +1603,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       pt, localSyms(stats1))
   }
 
-  def escapingRefs(block: Tree, localSyms: => List[Symbol])(using Context): List[NamedType] = {
+  def escapingRefs(block: Tree, localSyms: => Lst[Symbol])(using Context): List[NamedType] = {
     lazy val locals = localSyms.toSet
     block.tpe.namedPartsWith(tp => locals.contains(tp.symbol) && !tp.isErroneous)
   }
@@ -1618,7 +1618,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  expected type of a block is the anonymous class defined inside it. In that
    *  case there's technically a leak which is not removed by the ascription.
    */
-  protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree = {
+  protected def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => Lst[Symbol])(using Context): Tree = {
     def ascribeType(tree: Tree, pt: Type): Tree = tree match {
       case block @ Block(stats, expr) if !expr.isInstanceOf[Closure] =>
         val expr1 = ascribeType(expr, pt)
@@ -2414,7 +2414,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val guard1 = typedExpr(tree.guard, defn.BooleanType)
       var body1 = ensureNoLocalRefs(
         typedExpr(tree.body, pt1)(using ctx.addNotNullInfo(guard1.notNullInfoIf(true))),
-        pt1, ctx.scope.toList)
+        pt1, ctx.scope.toLst)
       if ctx.gadt.isNarrowing then
         // Store GADT constraint to later retrieve it (in PostTyper, for now).
         // GADT constraints are necessary to correctly check bounds of type app,
@@ -2891,7 +2891,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       val lub = cases1.foldLeft(defn.NothingType: Type): (acc, case1) =>
         if !acc.exists then NoType
         else if case1.body.tpe.isProvisional then NoType
-        else acc | TypeOps.avoid(case1.body.tpe, case1.pat.bindTypeSymbols)
+        else acc | TypeOps.avoid(case1.body.tpe, case1.pat.bindTypeSymbols.toLst)
       if lub.exists then
         if !lub.isAny then
           val msg = em"Match type upper bound inferred as $lub, where previously it was defaulted to Any"
@@ -3172,7 +3172,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     if tparamss.nonEmpty then
       rhsCtx.setFreshGADTBounds
-      val tparamSyms = tparamss.flatten.mapToLst(_.symbol)
+      val tparamSyms = tparamss.flattenLst.map(_.symbol)
       if !sym.isConstructor then
         // we're typing a polymorphic definition's body,
         // so we allow constraining all of its type parameters
@@ -3212,10 +3212,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         if sym.owner.is(Case) then
           for
             params <- paramss1.dropWhile(TypeDefs.unapply(_).isDefined).take(1)
-            case param: ValDef <- params
+            param <- params
           do
-            if defn.isContextFunctionType(param.tpt.tpe) then
-              report.error("case class element cannot be a context function", param.srcPos)
+            param match
+              case param: ValDef if defn.isContextFunctionType(param.tpt.tpe) =>
+                report.error("case class element cannot be a context function", param.srcPos)
+              case _ =>
       else {
         for params <- paramss1; param <- params do
           checkRefsLegal(param, sym.owner, (name, sym) => sym.is(TypeParam), "secondary constructor")

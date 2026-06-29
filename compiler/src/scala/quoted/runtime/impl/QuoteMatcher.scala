@@ -481,7 +481,7 @@ class QuoteMatcher(debug: Boolean) {
                         val mr1 = matchLists(scparams.toList, ptparams.toList)(_ =?= _)
                         val Env(termEnv, typeEnv) = summon[Env]
                         val newEnv = new Env(
-                          termEnv = termEnv ++ scparams.map(_.symbol).zip(ptparams.map(_.symbol)),
+                          termEnv = termEnv ++ scparams.mapToList(_.symbol).zip(ptparams.mapToList(_.symbol)),
                           typeEnv = typeEnv
                         )
                         val (resEnv, mrrest) = withEnv(newEnv)(matchParamss(screst, ptrest))
@@ -491,7 +491,7 @@ class QuoteMatcher(debug: Boolean) {
                         val Env(termEnv, typeEnv) = summon[Env]
                         val newEnv = new Env(
                           termEnv = termEnv,
-                          typeEnv = typeEnv ++ scparams.map(_.symbol).zip(ptparams.map(_.symbol)),
+                          typeEnv = typeEnv ++ scparams.mapToList(_.symbol).zip(ptparams.mapToList(_.symbol)),
                         )
                         val (resEnv, mrrest) = withEnv(newEnv)(matchParamss(screst, ptrest))
                         (resEnv, mr1 &&& mrrest)
@@ -585,7 +585,7 @@ class QuoteMatcher(debug: Boolean) {
   private def isSubTypeUnderEnv(scrutinee: Tree, pattern: Tree)(using Env, Context): Boolean =
     val env = summon[Env].typeEnv
     val scType = if env.isEmpty then scrutinee.tpe
-      else scrutinee.subst(env.keys.toList, env.values.toList).tpe
+      else scrutinee.subst(env.keys.toLst, env.values.toLst).tpe
     scType <:< pattern.tpe
 
   private object ClosedPatternTerm {
@@ -663,10 +663,10 @@ class QuoteMatcher(debug: Boolean) {
           val (typeParams, params) = if isNotPoly then
               (Lst(), lambdaArgss.head)
             else
-              (lambdaArgss.head.mapToLst(_.tpe), lambdaArgss.tail.head)
+              (lambdaArgss.head.map(_.tpe), lambdaArgss.tail.head)
 
           val typeArgsMap = ptTypeVarSymbols.zip(typeParams).toMap
-          val argsMap = argIds.view.map(_.symbol).zip(params).toMap
+          val argsMap = argIds.mapToLst(_.symbol).zip(params).toMap
 
           val body = new TreeTypeMap(
             typeMap = if isNotPoly then IdentityTypeMap

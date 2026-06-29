@@ -1120,7 +1120,7 @@ class Namer { typer: Typer =>
 
         val tparams = typeParamTrees(original)
         index(tparams)
-        val res = tparams.toLst.map(symbolOfTree(_).asType)
+        val res = tparams.map(symbolOfTree(_).asType)
         myTypeParams = res
         for param <- tparams do typedAheadExpr(param)
         res
@@ -1968,7 +1968,7 @@ class Namer { typer: Typer =>
             // to type inference problems since it comes too late.
             if !Config.checkLevelsOnConstraints then
               val termParams = paramss.collect { case TermSymbols(vparams) => vparams }.flattenLst
-              val hygienicType = TypeOps.avoid(rhsType, termParams.toList)
+              val hygienicType = TypeOps.avoid(rhsType, termParams)
               if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
                 report.error(
                   em"""return type ${tpt.tpe} of lambda cannot be made hygienic
@@ -2043,9 +2043,9 @@ class Namer { typer: Typer =>
     val completedTypeParams =
       for tparam <- ddef.leadingTypeParams yield typedAheadExpr(tparam).symbol
     if completedTypeParams.forall(_.isType) then
-      completer.setCompletedTypeParams(completedTypeParams.toLst.asInstanceOf[Lst[TypeSymbol]])
+      completer.setCompletedTypeParams(completedTypeParams.asInstanceOf[Lst[TypeSymbol]])
     completeTrailingParamss(ddef, sym, indexingCtor = false)
-    val paramSymss = normalizeIfConstructor(ddef.paramss.map(_.mapToLst(symbolOfTree)), isConstructor, Some(ddef.nameSpan.startPos))
+    val paramSymss = normalizeIfConstructor(ddef.paramss.map(_.map(symbolOfTree)), isConstructor, Some(ddef.nameSpan.startPos))
     sym.setParamss(paramSymss)
 
     def wrapMethType(restpe: Type): Type =
@@ -2082,9 +2082,12 @@ class Namer { typer: Typer =>
     // A map from context-bounded type parameters to associated evidence parameter names
     val witnessNamesOfParam = mutable.Map[TypeDef, List[TermName]]()
     if !ddef.name.is(DefaultGetterName) && !sym.is(Synthetic) && (indexingCtor || !sym.isPrimaryConstructor) then
-      for params <- ddef.paramss; case tdef: TypeDef <- params do
-        for case WitnessNamesAnnot(ws) <- tdef.mods.annotations do
-          witnessNamesOfParam(tdef) = ws
+      for params <- ddef.paramss; tdef <- params do
+        tdef match
+          case tdef: TypeDef =>
+            for case WitnessNamesAnnot(ws) <- tdef.mods.annotations do
+              witnessNamesOfParam(tdef) = ws
+          case _ =>
 
     /** Is each name in `wnames` defined somewhere in the previous parameters? */
     def allParamsSeen(wnames: List[TermName], prevParams: Set[Name]) =

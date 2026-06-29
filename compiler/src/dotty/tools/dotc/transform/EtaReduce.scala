@@ -39,7 +39,7 @@ class EtaReduce extends MiniPhase:
     def tryReduce(mdef: DefDef, rhs: Tree): Tree = rhs match
       case Apply(Select(fn, name), args)
       if (name == nme.apply || defn.FunctionSpecializedApplyNames.contains(name))
-          && mdef.paramss.head.corresponds(args)((param, arg) =>
+          && mdef.paramss.head.corresponds(args.toLst)((param, arg) =>
               arg.isInstanceOf[Ident] && arg.symbol == param.symbol)
           && isPurePath(fn)
           && fn.tpe <:< tree.tpe

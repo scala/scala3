@@ -68,7 +68,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
      *  @param   lifted Argument definitions that were lifted out in a call prefix
      *  @return  The argument after possible hoisting
      */
-    private def hoistSuperArg(arg: Tree, cdef: DefDef, lifted: List[Symbol]): Tree = {
+    private def hoistSuperArg(arg: Tree, cdef: DefDef, lifted: Lst[Symbol]): Tree = {
       val constr = cdef.symbol
       lazy val origParams = // The parameters that can be accessed in the supercall
         if (constr == cls.primaryConstructor)
@@ -97,7 +97,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
         // local parameter accessors
         val abstractedArgType =
           if lifted.isEmpty then argTypeWrtConstr
-          else MethodType.fromSymbols(lifted.toLst, argTypeWrtConstr)
+          else MethodType.fromSymbols(lifted, argTypeWrtConstr)
         newSymbol(
           owner = methOwner,
           name = SuperArgName.fresh(cls.name.toTermName),
@@ -136,11 +136,11 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
         case _ if arg.existsSubTree(needsHoist) =>
           val superMeth = newSuperArgMethod(arg.tpe)
           var superArgDef = DefDef(superMeth, prefss => {
-            val paramSyms = prefss.flatten.map(pref =>
+            val paramSyms = prefss.flattenLst.map(pref =>
               if pref.isType then pref.tpe.typeSymbol else pref.symbol)
             val tmap = new TreeTypeMap(
               typeMap = new TypeMap {
-                lazy val origToParam = (origParams.toList ::: lifted).zip(paramSyms).toMap
+                lazy val origToParam = (origParams ++ lifted).zip(paramSyms).toMap
                 def apply(tp: Type) = tp match {
                   case tp: NamedType if needsRewire(tp) =>
                     origToParam.get(tp.symbol) match {
@@ -177,7 +177,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
             .appliedToTypes(typeParams.map(_.typeRef))
             .appliedToArgss(termParamRefs(constr.info, termParams.toList))
           if lifted.nonEmpty then
-            res = res.appliedToArgs(lifted.map(ref))
+            res = res.appliedToArgs(lifted.mapToList(ref))
           report.log(i"hoist $arg, cls = $cls = $res")
           res
         case _ => arg
@@ -185,17 +185,17 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
     }
 
     /** Hoist complex arguments in super call out of the class. */
-    def hoistSuperArgsFromCall(superCall: Tree, cdef: DefDef, lifted: mutable.ListBuffer[Symbol]): Tree = superCall match
+    def hoistSuperArgsFromCall(superCall: Tree, cdef: DefDef, lifted: Lst.Buffer[Symbol]): Tree = superCall match
       case Block(defs, expr) if !expr.symbol.owner.is(Scala2x) =>
         // MO: The guard avoids the crash for #16351.
         // It would be good to dig deeper, but I won't have the time myself to do it.
         cpy.Block(superCall)(
           stats = defs.mapconserve {
             case vdef: ValDef =>
-              try cpy.ValDef(vdef)(rhs = hoistSuperArg(vdef.rhs, cdef, lifted.toList))
+              try cpy.ValDef(vdef)(rhs = hoistSuperArg(vdef.rhs, cdef, lifted.toLst))
               finally lifted += vdef.symbol
             case ddef: DefDef =>
-              try cpy.DefDef(ddef)(rhs = hoistSuperArg(ddef.rhs, cdef, lifted.toList))
+              try cpy.DefDef(ddef)(rhs = hoistSuperArg(ddef.rhs, cdef, lifted.toLst))
               finally lifted += ddef.symbol
             case stat =>
               stat
@@ -204,14 +204,14 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       case Apply(fn, args) =>
         cpy.Apply(superCall)(
           hoistSuperArgsFromCall(fn, cdef, lifted),
-          args.mapconserve(hoistSuperArg(_, cdef, lifted.toList)))
+          args.mapconserve(hoistSuperArg(_, cdef, lifted.toLst)))
       case _ =>
         superCall
 
     /** Hoist complex arguments in this-constructor call of secondary constructor out of the class. */
     def hoistSuperArgsFromConstr(stat: Tree): Tree = stat match {
       case constr: DefDef if constr.symbol.isClassConstructor =>
-        val lifted = new mutable.ListBuffer[Symbol]
+        val lifted = new Lst.Buffer[Symbol]
         cpy.DefDef(constr)(rhs =
           constr.rhs match
             case Block(stats @ (superCall :: stats1), expr: Literal) =>
@@ -230,7 +230,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
     tdef.rhs match {
       case impl @ Template(cdef, superCall :: others, _, _) =>
         val hoist = new Hoister(tdef.symbol)
-        val hoistedSuperCall = hoist.hoistSuperArgsFromCall(superCall, cdef, new mutable.ListBuffer)
+        val hoistedSuperCall = hoist.hoistSuperArgsFromCall(superCall, cdef, new Lst.Buffer)
         val hoistedBody = impl.body.mapconserve(hoist.hoistSuperArgsFromConstr)
         if (hoist.superArgDefs.isEmpty) tdef
         else {

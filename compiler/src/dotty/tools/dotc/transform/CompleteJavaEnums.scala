@@ -192,11 +192,11 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     if cls.derivesFromJavaEnum then
       registerEnumClass(cls) // invariant: class is visited before cases: see tests/pos/enum-companion-first.scala
       val (params, rest) = decomposeTemplateBody(templ.body)
-      val addedDefs = addedParams(cls, isLocal=true, ParamAccessor)
+      val addedDefs = addedParams(cls, isLocal=true, ParamAccessor).toList
       val addedSyms = addedDefs.map(_.symbol.entered)
       val addedForwarders = addedEnumForwarders(cls)
       cpy.Template(templ)(
-        parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.mapToList(ref)),
+        parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
         body = params ++ addedDefs ++ addedForwarders ++ rest)
     else if isJavaEnumValueImpl(cls) then
       def creatorParamRef(name: TermName) =

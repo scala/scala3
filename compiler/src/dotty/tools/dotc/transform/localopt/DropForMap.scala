@@ -124,7 +124,7 @@ object DropForMap:
     def unapply(tree: Tree)(using Context): Option[(List[ValDef], Tree)] = tree match
       case Block(List(defdef: DefDef), Closure(Nil, ref, _))
       if ref.symbol == defdef.symbol && !defdef.paramss.exists(_.forall(_.isType)) =>
-        Some((defdef.termParamss.flatten, defdef.rhs))
+        Some((defdef.termParamss.flattenLst.toList, defdef.rhs))
       case _ => None
 
   private object MapCall:

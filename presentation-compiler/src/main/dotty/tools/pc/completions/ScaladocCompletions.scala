@@ -4,6 +4,7 @@ import scala.meta.pc.PresentationCompilerConfig
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Decorators.flattenLst
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameKinds.*
 import dotty.tools.dotc.core.Symbols.NoSymbol
@@ -107,7 +108,7 @@ object ScaladocCompletions:
             if defdef.symbol.isAllOf(ExtensionMethod) then
               defdef.symbol.extensionParam
             else NoSymbol
-          defdef.trailingParamss.flatten.collect {
+          defdef.trailingParamss.flattenLst.toList.collect {
             case param
                 if !param.symbol.isOneOf(Synthetic) &&
                   !param.name.is(ContextBoundParamName) &&

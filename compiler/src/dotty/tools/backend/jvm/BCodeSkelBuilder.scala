@@ -773,8 +773,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
               selfParamRef.withSpan(tree.span)
             case tree => tree
           },
-          oldOwners = origSym :: Nil,
-          newOwners = newSym :: Nil
+          oldOwners = Lst(origSym),
+          newOwners = Lst(newSym)
         ).transform(dd.rhs)
       })
 

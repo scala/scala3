@@ -191,7 +191,7 @@ class InlineReducer(inliner: Inliner)(using Context):
      *  bindings for variables bound in this pattern to `caseBindingMap`.
      */
     def reducePattern(
-      caseBindingMap: mutable.ListBuffer[(Symbol, MemberDef)],
+      caseBindingMap: Lst.Buffer[(Symbol, MemberDef)],
       scrut: TermRef,
       pat: Tree
     )(using Context): Boolean = {
@@ -379,18 +379,18 @@ class InlineReducer(inliner: Inliner)(using Context):
         (scrutineeSym.termRef, Some(binding))
 
     def reduceCase(cdef: CaseDef): MatchReduxWithGuard = {
-      val caseBindingMap = new mutable.ListBuffer[(Symbol, MemberDef)]()
+      val caseBindingMap = new Lst.Buffer[(Symbol, MemberDef)]()
 
-      def substBindings(bindings: List[(Symbol, MemberDef)]): (List[MemberDef], List[Symbol], List[Symbol]) =
+      def substBindings(bindings: Lst[(Symbol, MemberDef)]): (Lst[MemberDef], Lst[Symbol], Lst[Symbol]) =
         val (from, to) = bindings.collect { case (sym, bnd) if sym.exists => (sym, bnd.symbol) }.unzip
-        to.foreach(sym => sym.info = sym.info.substSym(from.toLst, to.toLst))
+        to.foreach(sym => sym.info = sym.info.substSym(from, to))
         val substituted = bindings.map { case (sym, bnd) => bnd.subst(from, to) }
         (substituted, from, to)
 
       for binding <- scrutineeBinding do caseBindingMap += ((NoSymbol, binding))
       val gadtCtx = ctx.fresh.setFreshGADTBounds.addMode(Mode.GadtConstraintInference)
       if (reducePattern(caseBindingMap, scrutineeRef, cdef.pat)(using gadtCtx)) {
-        val (caseBindings, from, to) = substBindings(caseBindingMap.toList)
+        val (caseBindings, from, to) = substBindings(caseBindingMap.toLst)
         val (guardOK, canReduceGuard) =
           if cdef.guard.isEmpty then (true, true)
           else stripInlined(typer.typed(cdef.guard.subst(from, to), defn.BooleanType)) match {
@@ -402,8 +402,8 @@ class InlineReducer(inliner: Inliner)(using Context):
         else cdef.body.subst(from, to) match
           case t: SubMatch => // a sub match of an inline match is also inlined
             reduceInlineMatch(t.selector, t.selector.tpe, t.cases, typer).map:
-              (subCaseBindings, rhs) => (caseBindings ++ subCaseBindings, rhs, true)
-          case b => Some((caseBindings, b, true))
+              (subCaseBindings, rhs) => (caseBindings.toList ++ subCaseBindings, rhs, true)
+          case b => Some((caseBindings.toList, b, true))
       }
       else None
     }

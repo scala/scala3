@@ -885,7 +885,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def find[T](pred: (tpd.Tree) => Boolean)(using Context): Option[tpd.Tree] =
       shallowFold[Option[tpd.Tree]](None)((accum, tree) => if (pred(tree)) Some(tree) else accum)
 
-    def subst(from: List[Symbol], to: List[Symbol])(using Context): ThisTree =
+    def subst(from: Lst[Symbol], to: Lst[Symbol])(using Context): ThisTree =
       TreeTypeMap(substFrom = from, substTo = to).apply(tree)
 
     /** Change owner from `from` to `to`. If `from` is a weak owner, also change its
@@ -897,7 +897,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
           loop(from.owner, from :: froms, to :: tos)
         else
           //println(i"change owner ${from :: froms}%, % ==> $tos of $tree")
-          TreeTypeMap(oldOwners = from :: froms, newOwners = tos).apply(tree)
+          TreeTypeMap(oldOwners = (from :: froms).toLst, newOwners = tos.toLst).apply(tree)
       if (from == to) tree else loop(from, Nil, to :: Nil)
     }
 
@@ -915,8 +915,8 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
             foldOver(ss, tree)
         }
       }
-      val owners = ownerAcc(immutable.Set.empty[Symbol], tree).toList
-      val newOwners = List.fill(owners.size)(newOwner)
+      val owners = ownerAcc(immutable.Set.empty[Symbol], tree).toLst
+      val newOwners = Lst.fill(owners.size)(newOwner)
       TreeTypeMap(oldOwners = owners, newOwners = newOwners).apply(tree)
     }
 

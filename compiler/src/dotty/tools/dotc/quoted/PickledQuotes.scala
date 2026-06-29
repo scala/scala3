@@ -14,6 +14,7 @@ import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 import dotty.tools.dotc.report
 import dotty.tools.dotc.reporting.Message
+import dotty.tools.dotc.util.Lst
 
 import scala.quoted.Quotes
 import scala.quoted.runtime.impl.*
@@ -250,7 +251,7 @@ object PickledQuotes {
         treeOwner(tree) match
           case Some(owner) =>
             // Copy the cached tree to make sure the all definitions are unique.
-            val treeCpy = TreeTypeMap(oldOwners = List(owner), newOwners = List(owner)).apply(tree)
+            val treeCpy = TreeTypeMap(oldOwners = Lst(owner), newOwners = Lst(owner)).apply(tree)
             // Then replace the symbol owner with the one pointed by the quote context.
             treeCpy.changeNonLocalOwners(ctx.owner)
           case _ =>

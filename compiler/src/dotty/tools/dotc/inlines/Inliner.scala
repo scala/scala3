@@ -24,6 +24,7 @@ import dotty.tools.dotc.transform.BetaReduce
 import quoted.QuoteUtils
 import staging.StagingLevel.{level, spliceContext}
 import scala.annotation.constructorOnly
+import util.Lst
 
 /** General support for inlining */
 object Inliner:
@@ -116,10 +117,10 @@ object Inliner:
   private class InlinerMap(
       typeMap: Type => Type,
       treeMap: Tree => Tree,
-      oldOwners: List[Symbol],
-      newOwners: List[Symbol],
-      substFrom: List[Symbol],
-      substTo: List[Symbol])(using Context)
+      oldOwners: Lst[Symbol],
+      newOwners: Lst[Symbol],
+      substFrom: Lst[Symbol],
+      substTo: Lst[Symbol])(using Context)
     extends TreeTypeMap(
       typeMap, treeMap, oldOwners, newOwners, substFrom, substTo, InlineCopier()):
 
@@ -143,10 +144,10 @@ object Inliner:
     override def copy(
         typeMap: Type => Type,
         treeMap: Tree => Tree,
-        oldOwners: List[Symbol],
-        newOwners: List[Symbol],
-        substFrom: List[Symbol],
-        substTo: List[Symbol])(using Context) =
+        oldOwners: Lst[Symbol],
+        newOwners: Lst[Symbol],
+        substFrom: Lst[Symbol],
+        substTo: Lst[Symbol])(using Context) =
       new InlinerMap(typeMap, treeMap, oldOwners, newOwners, substFrom, substTo)
 
     override def transformInlined(tree: Inlined)(using Context) =
@@ -724,10 +725,10 @@ class Inliner(val call: tpd.Tree)(using Context):
 
         case tree => tree
       },
-      oldOwners = inlinedMethod :: Nil,
-      newOwners = ctx.owner :: Nil,
-      substFrom = Nil,
-      substTo = Nil
+      oldOwners = Lst(inlinedMethod),
+      newOwners = Lst(ctx.owner),
+      substFrom = Lst(),
+      substTo = Lst()
     )(using inlineCtx)
 
     inlining.println(

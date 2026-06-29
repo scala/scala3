@@ -21,6 +21,7 @@ import Capabilities.*
 import util.Lst
 
 class PlainPrinter(_ctx: Context) extends Printer {
+  import Lst.toIterableConversion.{given}
 
   /** The context of all public methods in Printer and subclasses.
    *  Overridden in RefinedPrinter.

@@ -157,8 +157,8 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
 
     def extractParamSymss[T <: AnyRef](onSymbol: Symbol => T): List[Lst[T]] =
       defdef.paramss.zipWithIndex.map{ case (ps, i) =>
-        if (i == annotatedParamListIndex) ps.take(paramIndex).mapToLst(p => onSymbol(p.symbol))
-        else ps.mapToLst(p => onSymbol(p.symbol))
+        if (i == annotatedParamListIndex) ps.take(paramIndex).map(p => onSymbol(p.symbol))
+        else ps.map(p => onSymbol(p.symbol))
       }
 
     val (forwarderDefSymbol, newParamSymLists) = initNewForwarder()

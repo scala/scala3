@@ -474,7 +474,7 @@ object ProtoTypes {
           case Some(untpd.Function(args, _)) if !force =>
             // If force = false, assume what we know about the parameter types rather than reporting an error.
             // That way we don't cause a "missing parameter" error in `typerFn(arg)`
-            val paramTypes = args.mapToLst:
+            val paramTypes = args.map:
               case ValDef(_, tpt, _) if !tpt.isEmpty => typer.typedType(tpt).typeOpt
               case _ => WildcardType
             targ = arg.withType(defn.FunctionNOf(paramTypes, WildcardType))

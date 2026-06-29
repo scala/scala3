@@ -152,7 +152,7 @@ trait FullParameterization {
       val origMeth = originalDef.symbol
       val origClass = origMeth.enclosingClass.asClass
       val origLeadingTypeParamSyms = allInstanceTypeParams(originalDef, abstractOverClass)
-      val origOtherParamSyms = originalDef.trailingParamss.flatten.mapToLst(_.symbol)
+      val origOtherParamSyms = originalDef.trailingParamss.flattenLst.map(_.symbol)
       val thisRef :: argRefs = vrefss.flatten: @unchecked
 
       /** If tree should be rewired, the rewired tree, otherwise EmptyTree.
@@ -211,8 +211,8 @@ trait FullParameterization {
           case tree: This if tree.symbol == origClass => thisRef.withSpan(tree.span)
           case tree => rewireTree(tree, Nil) `orElse` tree
         },
-        oldOwners = origMeth :: Nil,
-        newOwners = derived :: Nil
+        oldOwners = Lst(origMeth),
+        newOwners = Lst(derived)
       ).transform(originalDef.rhs)
     })
 

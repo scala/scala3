@@ -432,7 +432,7 @@ object Applications {
           // local definitions, reusing the same tree would duplicate the same symbols.
           // Use a fresh copy of those symbols here.
           // see https://github.com/scala/scala3/issues/2939
-          new TreeTypeMap(oldOwners = ctx.owner :: Nil, newOwners = ctx.owner :: Nil).transform(arg)
+          new TreeTypeMap(oldOwners = Lst(ctx.owner), newOwners = Lst(ctx.owner)).transform(arg)
         else arg
       }
 
@@ -2542,7 +2542,7 @@ trait Applications extends Compatibility {
     def typeShape(tree: untpd.Tree): Type = tree match {
       case untpd.Function(args, body) =>
         defn.FunctionNOf(
-          args.mapToLst(Function.const(defn.AnyType)), typeShape(body),
+          args.map(Function.const(defn.AnyType)), typeShape(body),
           isContextual = untpd.isContextualClosure(tree))
       case Match(EmptyTree, _) =>
         defn.PartialFunctionClass.typeRef.appliedTo(Lst(defn.AnyType, defn.NothingType))
@@ -2598,7 +2598,7 @@ trait Applications extends Compatibility {
                 // it's a type parameter (a method type parameter presumably)
                 // so check its bounds allow for a tuple type of the correct arity.
                 // See i21682 for an example.
-                val tup = defn.tupleType(args.mapToLst(v => if v.tpt.isEmpty then WildcardType else typedAheadType(v.tpt).tpe))
+                val tup = defn.tupleType(args.map(v => if v.tpt.isEmpty then WildcardType else typedAheadType(v.tpt).tpe))
                 val TypeBounds(lo, hi) = formal.paramInfo
                 lo <:< tup && tup <:< hi
               case formal =>
@@ -2783,7 +2783,7 @@ trait Applications extends Compatibility {
   def ptIsCorrectProduct(formal: Type, params: Lst[untpd.ValDef])(using Context): Boolean =
     isFullyDefined(formal, ForceDegree.flipBottom)
     && (defn.isProductSubType(formal) || formal.isNamedTupleType)
-    && tupleComponentTypes(formal).corresponds(params.toLst): (argType, param) =>
+    && tupleComponentTypes(formal).corresponds(params): (argType, param) =>
          param.tpt.isEmpty || argType.widenExpr <:< typedAheadType(param.tpt).tpe
 
   /** The largest suffix of `paramss` that has the same first parameter name as `t`,
