@@ -730,6 +730,12 @@ object Erasure {
           erasure(
             inContext(preErasureCtx):
               tree.qualifier.typeOpt.widen.finalResultType)
+              
+        def hasImmediateInlineParent: Boolean = {
+          owner.isInlineTrait && 
+            (qual1.tpe.widenDealias.classSymbol ne sym.owner) &&
+            qual1.tpe.widenDealias.classSymbol.info.parents.exists(_.classSymbol eq sym.owner)
+        }
 
         if qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType then
           recur(box(qual))
@@ -741,10 +747,7 @@ object Erasure {
           adaptIfSuper(qual) match
             case qual1: Super =>
               select(qual1, sym)
-            case qual1 if owner.isInlineTrait && 
-                        (qual1.tpe.widenDealias.classSymbol ne sym.owner) &&
-                        qual1.tpe.widenDealias.classSymbol.derivesFrom(sym.owner) =>
-              
+            case qual1 if hasImmediateInlineParent =>
               // If A is an inline trait and A.foo was inlined into B, references to b.foo (val b = B()) will still
               // point to A.foo until now. We want them to point to B.foo so we get the benefit of specialization. 
               // We fix that here rather than in a separate phase because
