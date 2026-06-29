@@ -139,9 +139,6 @@ object Names {
     def ++ (other: Name): ThisName = ++ (other.toString)
     def ++ (other: String): ThisName = mapLast(n => termName(n.toString + other))
 
-    /** Replace all occurrences of `from` to `to` in this name */
-    def replace(from: Char, to: Char): ThisName = mapParts(_.replace(from, to))
-
     /** Is this name empty? */
     def isEmpty: Boolean
 
@@ -361,14 +358,6 @@ object Names {
       var i = 1
       while i <= suffix.length && i <= length && apply(length - i) == suffix(suffix.length - i) do i += 1
       i > suffix.length
-
-    override def replace(from: Char, to: Char): SimpleName = {
-      val cs = new Array[Char](length)
-      System.arraycopy(chrs, start, cs, 0, length)
-      for (i <- 0 until length)
-        if (cs(i) == from) cs(i) = to
-      termName(cs, 0, length)
-    }
 
     override def firstPart: SimpleName = this
     override def lastPart: SimpleName = this

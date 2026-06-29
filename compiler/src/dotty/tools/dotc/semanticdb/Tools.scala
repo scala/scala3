@@ -33,7 +33,7 @@ private[semanticdb] object Tools:
     sdocs.documents.find(_.uri == reluri) match
     case None => throw new NoSuchElementException(s"$scalaRelativePath")
     case Some(document) =>
-      val text = new String(Files.readAllBytes(scalaAbsolutePath), StandardCharsets.UTF_8)
+      val text = Files.readString(scalaAbsolutePath, StandardCharsets.UTF_8)
       // Assert the SemanticDB payload is in-sync with the contents of the Scala file on disk.
       val md5FingerprintOnDisk = internal.MD5.compute(text)
       if document.md5 != md5FingerprintOnDisk then
@@ -46,7 +46,7 @@ private[semanticdb] object Tools:
   def loadTextDocumentUnsafe(scalaAbsolutePath: Path, semanticdbAbsolutePath: Path): TextDocument =
     val docs = parseTextDocuments(semanticdbAbsolutePath).documents
     assert(docs.length == 1)
-    docs.head.copy(text = new String(Files.readAllBytes(scalaAbsolutePath), StandardCharsets.UTF_8))
+    docs.head.copy(text = Files.readString(scalaAbsolutePath, StandardCharsets.UTF_8))
 
   /** Parses SemanticDB text documents from an absolute path to a `*.semanticdb` file. */
   private def parseTextDocuments(path: Path): TextDocuments =

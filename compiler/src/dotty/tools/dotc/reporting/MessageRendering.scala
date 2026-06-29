@@ -50,19 +50,19 @@ trait MessageRendering {
       lnum + line.stripLineEnd
     }
 
-    def linesFrom(arr: Array[Char]): List[String] = {
+    def linesFrom(str: String): List[String] = {
       def pred(c: Char) = (c: @switch) match {
         case LF | CR | FF | SU => true
         case _ => false
       }
-      val (line, rest0) = arr.span(!pred(_))
+      val (line, rest0) = str.span(!pred(_))
       val (_, rest) = rest0.span(pred)
       new String(line) :: { if (rest.isEmpty) Nil else linesFrom(rest) }
     }
 
     val syntax =
       if (ctx.settings.color.value != "never" && !ctx.isJava)
-        SyntaxHighlighting.highlight(new String(pos.linesSlice)).toCharArray
+        SyntaxHighlighting.highlight(pos.linesSlice)
       else pos.linesSlice
     val lines = linesFrom(syntax)
     val (before, after) = pos.beforeAndAfterPoint

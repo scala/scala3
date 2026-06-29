@@ -488,12 +488,14 @@ object Scanners {
       }
 
     /** The indentation width of the given offset. */
-    def indentWidth(offset: Offset, buf: Array[Char] = this.buf): IndentWidth =
+    def indentWidth(offset: Offset, buf: String | Array[Char] = this.buf): IndentWidth =
       import IndentWidth.{Run, Conc}
       def recur(idx: Int, ch: Char, n: Int, k: IndentWidth => IndentWidth): IndentWidth =
         if (idx < 0) k(Run(ch, n))
         else {
-          val nextChar = buf(idx)
+          val nextChar = buf match
+            case s: String => s(idx)
+            case arr: Array[Char] => arr(idx)
           if (nextChar == LF) k(Run(ch, n))
           else if (nextChar == ' ' || nextChar == '\t')
             if (nextChar == ch)
@@ -1737,7 +1739,7 @@ object Scanners {
 
     def < (that: IndentWidth): Boolean = this <= that && !(that <= this)
 
-    final def advance(buf: Array[Char], start: Int): Int = this match
+    final def advance(buf: String, start: Int): Int = this match
       case Run(ch, n) =>
         if start + n > buf.length then -1
         else

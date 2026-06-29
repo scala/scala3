@@ -32,9 +32,9 @@ extends SrcPos, interfaces.SourcePosition, Showable:
 
   def line: Int = source.offsetToLine(point)
 
-  /** Extracts the lines from the underlying source file as `Array[Char]`*/
-  def linesSlice: Array[Char] =
-    source.content.slice(source.startOfLine(start), source.nextLine(end))
+  /** Extracts the lines from the underlying source file as a String. */
+  def linesSlice: String =
+    new String(source.content.slice(source.startOfLine(start), source.nextLine(end)))
 
   /** The lines of the position */
   def lines: Range = {

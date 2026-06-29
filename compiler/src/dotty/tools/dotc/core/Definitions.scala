@@ -1594,9 +1594,7 @@ class Definitions {
     private var classRefs: Array[TypeRef | Null] = new Array(22)
     def apply(n: Int): TypeRef =
       while n >= classRefs.length do
-        val classRefs1 = new Array[TypeRef | Null](classRefs.length * 2)
-        Array.copy(classRefs, 0, classRefs1, 0, classRefs.length)
-        classRefs = classRefs1
+        classRefs = Array.copyOf(classRefs, classRefs.length * 2)
       if classRefs(n) == null then
         val funName = s"scala.$prefix$n"
         classRefs(n) =
