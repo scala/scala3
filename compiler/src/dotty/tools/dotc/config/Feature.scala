@@ -74,7 +74,6 @@ object Feature:
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
     (separationChecking, "Enable experimental separation checking (implies captureChecking)"),
-    (into, "Allow into modifier on parameter types"),
     (modularity, "Enable experimental modularity features"),
     (multiSpreads, "Enable experimental varargs with multi-spreads"),
     (subCases, "Enable experimental match expressions with sub-cases"),
@@ -88,6 +87,22 @@ object Feature:
   val deprecatedFeatures: List[(TermName, String)] = List(
     (strictEqualityPatternMatching,
      "`strictEqualityPatternMatching` is now standard, no language import is needed"),
+    (experimental("fewerBraces"),
+     "`fewerBraces` is now standard, no language import is needed"),
+    (experimental("relaxedExtensionImports"),
+     "`experimental.relaxedExtensionImports` is now standard, no language import is needed"),
+    (experimental("clauseInterleaving"),
+     "`clauseInterleaving` is now standard, no language import is needed"),
+    (experimental("betterMatchTypeExtractors"),
+     "`experimental.betterMatchTypeExtractors` is now standard, no language import is needed"),
+    (experimental("namedTuples"),
+     "`experimental.namedTuples` is now standard, no language import is needed"),
+    (experimental("betterFors"),
+     "`experimental.betterFors` is now standard, no language import is needed"),
+    (into,
+     "The `into` language import is no longer needed; the `into` modifier is now in preview and can be enabled with the -preview flag"),
+    (experimental("packageObjectValues"),
+     "The `experimental.packageObjectValues` language import is no longer needed; the feature is now in preview and can be enabled with the -preview flag"),
   )
 
   /** Deprecated features that were enabled via the -language command-line setting. */
