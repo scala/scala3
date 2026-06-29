@@ -6,6 +6,7 @@ import core.Decorators.*
 import core.StdNames
 import util.Spans.*
 import Trees.{Closure, MemberDef, DefTree, WithLazyFields}
+import util.Lst
 import dotty.tools.dotc.core.Types.AnnotatedType
 import dotty.tools.dotc.core.Types.ImportType
 import dotty.tools.dotc.core.Types.Type
@@ -82,6 +83,7 @@ object NavigateAST {
           case p: Positioned if !p.isInstanceOf[Closure[?]] => singlePath(p, path)
           case m: untpd.Modifiers => childPath(m.productIterator, path)
           case xs: List[?] => childPath(xs.iterator, path)
+          case xs: Lst[?] => childPath(xs.iterator, path)
           case _ => path
 
         if (path1 ne path) && ((bestFit eq path) || isBetterFit(bestFit, path1)) then
