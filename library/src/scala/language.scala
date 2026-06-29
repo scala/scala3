@@ -370,6 +370,13 @@ object language {
     @compileTimeOnly("`subCases` can only be used at compile time in import statements")
     object subCases
 
+    /** Experimental support for end markers for method blocks.
+     *
+     *  @see [[https://github.com/scala/improvement-proposals/pull/77]]
+     */
+    @compileTimeOnly("`methodBlockEndMarkers` can only be used at compile time in import statements")
+    object methodBlockEndMarkers
+
     /** Experimental support for single-line lambdas and case clause expressions after `:`
      */
     @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")

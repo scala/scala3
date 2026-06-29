@@ -50,6 +50,7 @@ enum SourceVersion:
   /** See PR #23441 and tests/neg/i23435-min */
   def enablesDistributeAnd = !isAtLeast(`future`)
   def enablesCompactAnnotation = isAtLeast(`3.9`) && this != `2.13`
+  def enablesMethodBlockEndMarkers(using Context) = isAtLeast(`3.8`) || Feature.enabled(Feature.methodBlockEndMarkers)
 
   def requiresNewSyntax = isAtLeast(future)
 
