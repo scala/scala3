@@ -258,14 +258,14 @@ object SourceFile {
    *  with the local separator converted to "/". The last element of the path will be the simple name of the file.
    */
   def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
-    SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
+    new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
       .tap(_._maybeInComplete = maybeIncomplete)
 
   /** A helper method to create a virtual source file for given URI.
    *  It relies on SourceFile#virtual implementation to create the virtual file.
    */
   def virtual(uri: URI, content: String): SourceFile =
-    SourceFile(new VirtualFile(Paths.get(uri), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
+    new SourceFile(new VirtualFile(Paths.get(uri), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
 
   /** Returns the relative path of `source` within the `reference` path
    *
@@ -310,9 +310,7 @@ object SourceFile {
     ScriptSourceFile.hasScriptHeader(content)
 
   def apply(file: AbstractFile, codec: Codec): SourceFile =
-    // Files.exists is slow on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
-    // so cope with failure.
-    val chars =
+    def chars =
       try new String(file.toByteArray, codec.charSet).toCharArray
       catch
         case _: FileSystemException => Array.empty[Char]
@@ -320,9 +318,7 @@ object SourceFile {
     if isScript(file, chars) then
       ScriptSourceFile(file, chars)
     else
-      SourceFile(file, chars)
-
-  def apply(file: AbstractFile, computeContent: => Array[Char]): SourceFile = new SourceFile(file, computeContent)
+      new SourceFile(file, chars)
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {

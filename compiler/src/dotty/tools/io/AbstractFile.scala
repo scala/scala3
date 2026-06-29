@@ -156,13 +156,6 @@ abstract class AbstractFile extends Iterable[AbstractFile] with dotty.tools.dotc
     val jpath = this.jpath
     if (jpath == null) null else jpath.toUri.toURL
 
-  /** Returns contents of file (if applicable) in a Char array.
-   *  warning: use `Global.getSourceFile()` to use the proper
-   *  encoding when converting to the char array.
-   */
-  @throws(classOf[IOException])
-  def toCharArray: Array[Char] = new String(toByteArray).toCharArray
-
   /** Returns contents of file (if applicable) in a byte array.
    */
   @throws(classOf[IOException])
