@@ -69,7 +69,6 @@ object Feature:
     (scala2macros, "Allow Scala 2 macros"),
     (dependent, "Allow dependent method types"),
     (erasedDefinitions, "Allow erased definitions"),
-    (strictEqualityPatternMatching, "relaxed CanEqual checks for ADT pattern matching"),
     (symbolLiterals, "Allow symbol literals"),
     (saferExceptions, "Enable safer exceptions"),
     (pureFunctions, "Enable pure functions for capture checking"),
@@ -86,7 +85,10 @@ object Feature:
 
   /** Features that are now standard; the language import / -language choice is
    *  still accepted but deprecated and has no effect. name -> deprecation message. */
-  val deprecatedFeatures: List[(TermName, String)] = List()
+  val deprecatedFeatures: List[(TermName, String)] = List(
+    (strictEqualityPatternMatching,
+     "`strictEqualityPatternMatching` is now standard, no language import is needed"),
+  )
 
   /** Deprecated features that were enabled via the -language command-line setting. */
   def deprecatedSettingFeatures(using Context): List[(TermName, String)] =
