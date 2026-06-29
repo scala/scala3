@@ -5,7 +5,7 @@ import scala.annotation.nowarn
 @nowarn("id=E234")
 sealed inline trait List[+T: Specialized]:
     inline def zip[S: Specialized](other: List[S]): List[(T, S)] = 
-        def zip(xxs: List[T], yys: List[S]): List[(T, S)] = (xxs, yys) match {
+        def zip(xxs: List[T], yys: List[S]): List[(T, S)] = ((xxs, yys) : @unchecked) match {
             case (_: Nill[_], _) => Nill()
             case (_, _: Nill[_]) => Nill()
             case (xxs: :+:[T @unchecked], yys: :+:[S @unchecked]) =>  :+:((xxs.head, yys.head), zip(xxs.tail, yys.tail)) 
