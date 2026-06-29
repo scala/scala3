@@ -735,16 +735,14 @@ object Predef extends LowPriorityImplicits {
 
   // extension method sugar ---------------------------------------------
 
-  given ArrowAssocSyntax: AnyRef {
-    extension [A](inline self: A)
-      /**
-       *  @tparam A the type of the left-hand side of the arrow association
-       *  @tparam B the type of the left-hand side of the arrow association
-       *  @param self the value to use as the first element of the resulting tuple
-       *  @param that the value to use as the second element of the resulting tuple
-       */
-      inline def -> [B](inline that: B): (A, B) = (self, that)
-  }
+  extension [A](inline self: A)
+    /**
+     *  @tparam A the type of the left-hand side of the arrow association
+     *  @tparam B the type of the left-hand side of the arrow association
+     *  @param self the value to use as the first element of the resulting tuple
+     *  @param that the value to use as the second element of the resulting tuple
+     */
+    inline def -> [B](inline that: B): (A, B) = (self, that)
 
 
 }
