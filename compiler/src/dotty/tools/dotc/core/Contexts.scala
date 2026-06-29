@@ -1102,16 +1102,9 @@ object Contexts {
     private[Contexts] val comparers = new mutable.ArrayBuffer[TypeComparer]
     private[Contexts] var comparersInUse: Int = 0
 
-    private var charArray = new Array[Char](256)
-
     private[core] val reusableDataReader = ReusableInstance(new ReusableDataReader())
 
     private[dotc] var wConfCache: (List[String], WConf) = uninitialized
-
-    def sharedCharArray(len: Int): Array[Char] =
-      while len > charArray.length do
-        charArray = new Array[Char](charArray.length * 2)
-      charArray
 
     def reset(): Unit =
       uniques.clear()

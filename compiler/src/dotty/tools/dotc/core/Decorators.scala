@@ -30,25 +30,6 @@ object Decorators {
         else Some((s.take(idx), s.drop(if (doDropIndex) idx + 1 else idx)))
       splitAt(s.indexWhere(f), doDropIndex)
 
-    /** Create a term name from a string slice, using a common buffer.
-     *  This avoids some allocation relative to `termName(s)`
-     */
-    def sliceToTermName(start: Int, end: Int)(using Context): SimpleName =
-      val len = end - start
-      val chars = ctx.base.sharedCharArray(len)
-      s.getChars(start, end, chars, 0)
-      termName(chars, 0, len)
-
-    def concat(name: Name)(using Context): SimpleName = name match
-      case name: SimpleName =>
-        val len = s.length + name.length
-        val chars = ctx.base.sharedCharArray(len)
-        s.getChars(0, s.length, chars, 0)
-        if name.length != 0 then name.getChars(0, name.length, chars, s.length)
-        termName(chars, 0, len)
-      case name: TypeName => s.concat(name.toTermName)
-      case _ => termName(s.concat(name.toString))
-
     def indented(width: Int): String =
       val padding = " " * width
       padding + s.replace("\n", "\n" + padding)

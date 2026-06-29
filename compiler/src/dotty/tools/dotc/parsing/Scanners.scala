@@ -6,7 +6,7 @@ import core.Names.*, core.Contexts.*, core.Decorators.*, util.Spans.*
 import core.StdNames.*, core.Comments.*
 import util.SourceFile
 import util.Chars.*
-import util.{SourcePosition, CharBuffer}
+import util.SourcePosition
 import util.Spans.Span
 import config.Config
 import Tokens.*
@@ -142,7 +142,7 @@ object Scanners {
 
     /** A character buffer for literals
       */
-    protected val litBuf = CharBuffer(initialCharBufferSize)
+    protected val litBuf = java.lang.StringBuilder(initialCharBufferSize)
 
     /** append Unicode character to "litBuf" buffer
       */
@@ -155,9 +155,9 @@ object Scanners {
      *  If `target` is different from `this`, don't treat identifiers as end tokens.
      */
     def finishNamedToken(idtoken: Token, target: TokenData): Unit =
-      val name = termName(litBuf.chars, 0, litBuf.length)
+      val name = termName(litBuf)
       target.name = name
-      litBuf.clear()
+      litBuf.setLength(0)
       if name.contains('$') && Feature.safeEnabled && !SafeRefs.allowDollarIn(name) then
         report.error(em"Identifier may not contain '$$' in safe mode", sourcePos())
       target.token = idtoken
@@ -171,7 +171,7 @@ object Scanners {
     /** Clear buffer and set string */
     def setStrVal(): Unit =
       strVal = litBuf.toString
-      litBuf.clear()
+      litBuf.setLength(0)
 
     inline def isNumberSeparator(c: Char): Boolean = c == '_'
 
@@ -179,7 +179,7 @@ object Scanners {
 
     // disallow trailing numeric separator char, but continue lexing
     def checkNoTrailingSeparator(): Unit =
-      if (!litBuf.isEmpty && isNumberSeparator(litBuf.last))
+      if (!litBuf.isEmpty && isNumberSeparator(litBuf.charAt(litBuf.length - 1)))
         errorButContinue(em"trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
@@ -1558,7 +1558,7 @@ object Scanners {
       else {
         token = op
         strVal = Objects.toString(name)
-        litBuf.clear()
+        litBuf.setLength(0)
       }
     }
 

@@ -562,14 +562,7 @@ object JavaScanners {
 
         // Remove the last N characters from the buffer */
         def popNChars(n: Int): Unit =
-          if n > 0 then
-            val text = litBuf.toString
-            litBuf.clear()
-            var i = 0
-            val end = text.length - (n min text.length)
-            while i < end do
-              litBuf.append(text(i))
-              i += 1
+          litBuf.setLength(litBuf.length - n)
 
         // Drop the line's trailing whitespace
         popNChars(trailingWhitespaceLength)
