@@ -329,14 +329,14 @@ object Implicits:
     }
 
     def bindingPrec: BindingPrec =
-      if isImport then if ctx.importInfo.uncheckedNN.isWildcardImport then WildImport else NamedImport else Definition
+      if isImport then if ctx.importInfo.nn.isWildcardImport then WildImport else NamedImport else Definition
 
     private def combineEligibles(ownEligible: List[Candidate], outerEligible: List[Candidate]): List[Candidate] =
       if ownEligible.isEmpty then outerEligible
       else if outerEligible.isEmpty then ownEligible
       else
         val ownNames = mutable.Set(ownEligible.map(_.ref.implicitName)*)
-        val outer = outerImplicits.uncheckedNN
+        val outer = outerImplicits.nn
         if !migrateTo3(using irefCtx) && level == outer.level && outer.bindingPrec.beats(bindingPrec) then
           val keptOuters = outerEligible.filterConserve: cand =>
             if ownNames.contains(cand.ref.implicitName) then

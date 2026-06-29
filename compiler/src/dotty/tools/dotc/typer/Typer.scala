@@ -283,7 +283,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // wildcard imports, provided both are in contexts with same scope
           found
         else if newPrec == WildImport && ctx.outersIterator.exists: ctx =>
-          ctx.isImportContext && namedImportRef(ctx.importInfo.uncheckedNN).exists
+          ctx.isImportContext && namedImportRef(ctx.importInfo.nn).exists
         then
           // Don't let two ambiguous wildcard imports rule over
           // a winning named import. See pos/i18529.
@@ -318,7 +318,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             then
               altImports += altImp
 
-          val curImport = ctx.importInfo.uncheckedNN
+          val curImport = ctx.importInfo.nn
           namedImportRef(curImport) match
             case altImp: TermRef =>
               if prevPrec == WildImport then
