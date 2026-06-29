@@ -86,14 +86,10 @@ object Implicits:
   def strictEquality(using Context): Boolean =
     ctx.mode.is(Mode.StrictEquality) || Feature.enabled(nme.strictEquality)
 
-  def strictEqualityPatternMatching(using Context): Boolean =
-    Feature.enabled(Feature.strictEqualityPatternMatching)
-
   def relaxedNullChecks(using Context): Boolean =
     Feature.enabled(Feature.relaxedNullChecks)
 
-
-  /** A common base class of contextual implicits and of-type implicits which
+/** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
    */
   abstract class ImplicitRefs(initctx: Context) {
@@ -1048,7 +1044,7 @@ trait Implicits:
    *   - if one of T, U is an error type, or
    *   - if one of T, U is a subtype of the lifted version of the other,
    *     unless strict equality is set.
-   *   - if strictEqualityPatternMatching is set and the necessary conditions are met
+   *   - if the strictEqualityPatternMatching (SIP-67) conditions apply
    *   - if one of the sides is Null and the other is a supertype of Null
    */
   def assumedCanEqual(ltp: Type, rtp: Type, leftTree: Tree = EmptyTree, rightTree: Tree = EmptyTree)(using Context): Boolean = {
@@ -1079,8 +1075,7 @@ trait Implicits:
         def isNull(t: Tree) = t match
           case Literal(Constants.Constant(null)) => true
           case _ => false
-        strictEqualityPatternMatching &&
-          (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.is(Flags.Module)) &&
+        (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.is(Flags.Module)) &&
           ltp <:< rtp
         || relaxedNullChecks && isNull(leftTree) && ltp <:< rtp
         || relaxedNullChecks && isNull(rightTree) && rtp <:< ltp
@@ -1089,7 +1084,7 @@ trait Implicits:
   }
 
   /** Check that equality tests between types `ltp` and `left.tpe` make sense.
-   * `left` is required to check for the condition for language.strictEqualityPatternMatching.
+   * `left` is required to check for the condition for language.strictEqualityPatternMatching (SIP-67)
    */
   def checkCanEqual(left: Tree, right: Tree, span: Span)(using Context): Unit =
     val ltp = left.tpe.widen

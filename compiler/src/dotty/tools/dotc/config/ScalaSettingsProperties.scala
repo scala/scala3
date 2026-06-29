@@ -22,7 +22,8 @@ object ScalaSettingsProperties:
       .map(_.toString).toList
 
   def supportedLanguageFeatures: List[ChoiceWithHelp[String]] =
-    Feature.values.map((n, d) => ChoiceWithHelp(n.toString, d))
+    (Feature.values ++ Feature.deprecatedFeatures.map((n, _) => (n, "(deprecated, no effect)")))
+      .map((n, d) => ChoiceWithHelp(n.toString, d))
 
   val legacyLanguageFeatures: List[String] =
     Feature.legacyFeatures

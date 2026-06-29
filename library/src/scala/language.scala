@@ -248,6 +248,7 @@ object language {
      * @see [[https://github.com/scala/improvement-proposals/pull/97]]
      */
     @compileTimeOnly("`strictEqualityPatternMatching` can only be used at compile time in import statements")
+    @deprecated("`strictEqualityPatternMatching` is now standard, no language import is needed", since = "3.9")
     object strictEqualityPatternMatching
 
     /** Experimental support for relaxed null checks under strictEquality (SIP-79)
