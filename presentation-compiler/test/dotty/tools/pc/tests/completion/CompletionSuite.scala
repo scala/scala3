@@ -138,7 +138,6 @@ class CompletionSuite extends BaseCompletionSuite:
          |nn: List.type
          |runtimeChecked scala.collection.immutable
          |formatted(fmtstr: String): String
-         |→[B](y: B): (List.type, B)
          |""".stripMargin
     )
 

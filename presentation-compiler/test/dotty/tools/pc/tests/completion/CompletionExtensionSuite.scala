@@ -472,6 +472,5 @@ class CompletionExtensionSuite extends BaseCompletionSuite:
          |nn: `?1`.type
          |runtimeChecked: `?2`.type
          |formatted(fmtstr: String): String
-         |→[B](y: B): (Bar, B)
-         | """.stripMargin
+         |""".stripMargin
     )

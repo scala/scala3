@@ -1001,6 +1001,7 @@ object Build {
       Compile / mainClass := None,
 
       Test / unmanagedSourceDirectories   := Seq(baseDirectory.value / "test"),
+      Test / unmanagedSourceDirectories   += baseDirectory.value / "test-nonbootstrapped",
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       libraryDependencies ++= Seq(
         Dependencies.sbtJunitInterface % Test,
@@ -1091,6 +1092,7 @@ object Build {
       bspEnabled := enableBspAllProjects,
       Compile / mainClass := None,
       Test / unmanagedSourceDirectories   := Seq(baseDirectory.value / "test"),
+      Test / unmanagedSourceDirectories   += baseDirectory.value / "test-bootstrapped",
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       libraryDependencies ++= Seq(
         Dependencies.sbtJunitInterface % Test,

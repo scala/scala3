@@ -1040,7 +1040,6 @@ class CompletionTest {
         ("hashCode", Method, "(): Int"),
         ("notifyAll", Method, "(): Unit"),
         ("values", Method, "=> Array[Foo.Bar]"),
-        ("→", Method, "[B](y: B): (Foo.Bar.type, B)"),
         ("!=", Method, "(x$0: Any): Boolean"),
         ("fromOrdinal", Method, "(ordinal: Int): Foo.Bar"),
         ("asInstanceOf", Method, "[X0]: X0"),
