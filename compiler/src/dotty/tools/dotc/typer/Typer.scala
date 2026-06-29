@@ -4675,22 +4675,28 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             case _ => propagatedFailure(args)
           case Nil => NoType
 
-        /** Reports errors for arguments of `appTree` that have a `SearchFailureType`.
+        /** Reports errors for arguments that have a `SearchFailureType`.
          */
         def issueErrors(fun: Tree, args: List[Tree], failureType: Type): Tree =
+          // If there are several arguments, some arguments might already
+          // have influenced the context, binding variables, but later ones
+          // might fail. In that case the constraint and instantiated variables
+          // need to be reset.
+          ctx.typerState.resetTo(saved)
+
           val errorType = failureType match
             case ai: AmbiguousImplicits => ai.asNested
             case tp => tp
           untpd.Apply(fun, args)
             .withType(errorType)
-            .tap: res =>
+            .tap: app =>
               wtp.paramNames.lazyZip(wtp.paramInfos).lazyZip(args).foreach: (paramName, formal, arg) =>
                 arg.tpe match
                 case failure: SearchFailureType =>
                   val methodStr = err.refStr(methPart(fun).tpe)
                   val paramStr = implicitParamString(paramName, methodStr, fun)
                   val paramSym = fun.symbol.paramSymss.flatten.find(_.name == paramName)
-                  val paramSymWithMethodCallTree = paramSym.map((_, res))
+                  val paramSymWithMethodCallTree = paramSym.map((_, app))
                   val msg = missingArgMsg(arg, formal, paramStr, paramSymWithMethodCallTree)
                   report.error(msg, tree.srcPos.endPos)
                 case _ =>
@@ -4698,12 +4704,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         val args = implicitArgs(wtp.paramInfos, 0, pt)
         val failureType = propagatedFailure(args)
         if failureType.exists then
-          // If there are several arguments, some arguments might already
-          // have influenced the context, binding variables, but later ones
-          // might fail. In that case the constraint and instantiated variables
-          // need to be reset.
-          ctx.typerState.resetTo(saved)
-
           // If method has default params, fall back to regular application
           // where all inferred implicits are passed as named args.
           if hasDefaultParams && !failureType.isInstanceOf[AmbiguousImplicits] then
