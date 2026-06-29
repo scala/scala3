@@ -543,7 +543,7 @@ object Inlines:
         def unrollTupleTypes(tpe: Type): Option[Lst[Type]] = tpe.dealias match
           case AppliedType(tycon, args) if defn.isTupleClass(tycon.typeSymbol) =>
             Some(args)
-          case AppliedType(tycon, Lst.Pair(head, tail)) if tycon.isRef(defn.PairClass) =>
+          case AppliedType(tycon, Lst.pair(head, tail)) if tycon.isRef(defn.PairClass) =>
             unrollTupleTypes(tail).map(head +: _)
           case tpe: TermRef if tpe.symbol == defn.EmptyTupleModule =>
             Some(Lst())

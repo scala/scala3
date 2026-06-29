@@ -298,8 +298,8 @@ object QuotePatterns:
       case UnApply(_, _, patterns) => patterns // TupleN
       case Typed(UnApply(_, _, patterns), _) => patterns // TupleXXL
     val shape = (implicits: @unchecked) match
-      case Lst.Singleton(Apply(Select(Quote(shape, _), _), _)) => shape
-      case Lst.Singleton(Apply(TypeApply(_, shape :: Nil), _)) => shape
+      case Lst.single(Apply(Select(Quote(shape, _), _), _)) => shape
+      case Lst.single(Apply(TypeApply(_, shape :: Nil), _)) => shape
     fun match
       // <quotes>.asInstanceOf[QuoteMatching].{ExprMatch,TypeMatch}.unapply[<typeBindings>, <resTypes>]
       case TypeApply(Select(Select(TypeApply(Select(quotes, _), _), _), _), typeBindings :: resTypes :: Nil) =>

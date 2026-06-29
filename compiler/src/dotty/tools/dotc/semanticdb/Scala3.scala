@@ -250,7 +250,7 @@ private[semanticdb] object Scala3:
         val setterName = sym.name.toTermName.setterName
 
         extension (t: Type) inline def matchingType = t.paramInfoss match
-          case Lst.Singleton(arg) :: Nil => t.resultType == defn.UnitType && arg == sym.info
+          case Lst.single(arg) :: Nil => t.resultType == defn.UnitType && arg == sym.info
           case _                => false
 
         sym.owner.info.decls.find(s => s.name == setterName && s.info.matchingType)

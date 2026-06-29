@@ -55,7 +55,7 @@ class Erasure extends Phase with DenotTransformer {
       def isCompacted(symd: SymDenotation) =
         symd.isAnonymousFunction && {
           atPhase(ctx.phase.next)(symd.info) match {
-            case MethodType(Lst.Singleton(nme.ALLARGS)) => true
+            case MethodType(Lst.single(nme.ALLARGS)) => true
             case _                              => false
           }
         }
@@ -231,7 +231,7 @@ object Erasure {
    */
   def expandedMethodType(mt: MethodType, origFun: Tree)(using Context): MethodType =
     mt.paramInfos match
-      case Lst.Singleton(JavaArrayType(elemType)) if elemType.isRef(defn.ObjectClass) =>
+      case Lst.single(JavaArrayType(elemType)) if elemType.isRef(defn.ObjectClass) =>
         val origArity = totalParamCount(origFun.symbol)(using preErasureCtx)
         if origArity > MaxImplementedFunctionArity then
           MethodType(Lst.fill(origArity)(defn.ObjectType), mt.resultType)

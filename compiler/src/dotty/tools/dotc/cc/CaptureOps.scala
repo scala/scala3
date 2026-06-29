@@ -937,7 +937,7 @@ object ContainsImpl:
 object ContainsParam:
   def unapply(sym: Symbol)(using Context): Option[(TypeRef, Capability)] =
     sym.info.dealias match
-      case AppliedType(tycon, Lst.Pair((cs: TypeRef), arg2))
+      case AppliedType(tycon, Lst.pair((cs: TypeRef), arg2))
       if tycon.typeSymbol == defn.Caps_ContainsTrait
           && cs.typeSymbol.isAbstractOrParamType =>
         arg2.stripCapturing match // ref.type was converted to box ref.type^{ref} by boxing

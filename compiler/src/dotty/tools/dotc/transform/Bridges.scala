@@ -150,7 +150,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
           def lambdaBody(refss: List[Lst[Tree]]) =
             val refs :: Nil = refss: @unchecked
             val expandedRefs = refs.map(_.withSpan(ctx.owner.span.endPos)) match
-              case Lst.Singleton(bunchedParam @ Ident(nme.ALLARGS)) =>
+              case Lst.single(bunchedParam @ Ident(nme.ALLARGS)) =>
                 Lst.tabulate(mtWithoutErasedParams.paramInfos.length): n =>
                   bunchedParam
                     .select(nme.primitive.arrayApply)

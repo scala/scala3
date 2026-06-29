@@ -60,8 +60,8 @@ object Variances {
    */
   def variancesConform(tparams1: Lst[TypeParamInfo], tparams2: Lst[TypeParamInfo])(using Context): Boolean =
     val needsDetailedCheck = tparams2 match
-      case Lst.StartingWith(_: Symbol) => true
-      case Lst.StartingWith(LambdaParam(tl: HKTypeLambda, _)) => tl.isDeclaredVarianceLambda
+      case Lst.withHead(_: Symbol) => true
+      case Lst.withHead(LambdaParam(tl: HKTypeLambda, _)) => tl.isDeclaredVarianceLambda
       case _ => false
     if needsDetailedCheck then tparams1.corresponds(tparams2)(varianceConforms)
     else tparams1.length == tparams2.length

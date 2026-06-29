@@ -652,13 +652,13 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
         case tree: DefDef =>
           def pickleParamss(paramss: List[ParamClause]): Unit = paramss match
             case Nil =>
-            case Lst.Empty() :: rest =>
+            case Lst.empty() :: rest =>
               writeByte(EMPTYCLAUSE)
               pickleParamss(rest)
-            case (params @ Lst.StartingWith(param1)) :: rest =>
+            case (params @ Lst.withHead(param1)) :: rest =>
               pickleParams(params)
               rest match
-                case Lst.StartingWith(param2) :: _
+                case Lst.withHead(param2) :: _
                 if param1.isInstanceOf[untpd.TypeDef] == param2.isInstanceOf[untpd.TypeDef] =>
                   writeByte(SPLITCLAUSE)
                 case _ =>

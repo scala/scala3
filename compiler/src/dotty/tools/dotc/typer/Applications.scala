@@ -156,7 +156,7 @@ object Applications {
         if defn.isTupleClass(tp.tycon.typeSymbol) then
           tp.args
         else if tp.tycon.derivesFrom(defn.PairClass) then
-          val Lst.Pair(head, tail) = tp.args.runtimeChecked
+          val Lst.pair(head, tail) = tp.args.runtimeChecked
           head +: tupleComponentTypes(tail)
         else
           Lst()
@@ -219,7 +219,7 @@ object Applications {
 
     private def tryAdaptPatternArgs(elems: List[untpd.Tree], pt: Type)(using Context): Option[List[untpd.Tree]] =
       namedTupleOrProductTypes(pt) match
-        case Lst.Singleton(defn.NamedTuple(_, _))=>
+        case Lst.single(defn.NamedTuple(_, _))=>
           // if the product types list is a singleton named tuple, autotupling might be applied, so don't fail eagerly
           tryEither[Option[List[untpd.Tree]]]
             (Some(desugar.adaptPatternArgs(elems, pt, pos)))
@@ -289,7 +289,7 @@ object Applications {
       for argType <- argTypes do
         assert(!isBounds(argType), unapplyResult.show)
       val alignedArgs = argTypes match
-        case Lst.Singleton(argType)
+        case Lst.single(argType)
         if args.lengthCompare(1) > 0
             && Feature.autoTuplingEnabled
             && defn.isTupleNType(argType.normalizedTupleType) =>
@@ -338,7 +338,7 @@ object Applications {
    */
   private def mappedAltInfo(sym: Symbol)(using Context): Option[(Type, Int)] =
     for ann <- sym.getAnnotation(defn.MappedAlternativeAnnot) yield
-      val AppliedType(_, Lst.Pair(pre, ConstantType(c))) = ann.tree.tpe: @unchecked
+      val AppliedType(_, Lst.pair(pre, ConstantType(c))) = ann.tree.tpe: @unchecked
       (pre, c.intValue)
 
   /** Find reference to default parameter getter for parameter #n in current
@@ -1802,8 +1802,8 @@ trait Applications extends Compatibility {
             case params :: rest =>
               val newAcc =
                 params match
-                  case Lst.StartingWith(param) if param.isType => true
-                  case Lst.StartingWith(param) if param.isTerm && !param.isOneOf(GivenOrImplicit) => false
+                  case Lst.withHead(param) if param.isType => true
+                  case Lst.withHead(param) if param.isTerm && !param.isOneOf(GivenOrImplicit) => false
                   case _ => acc
               hasTrailingTypeParams(paramss.tail, newAcc)
 
@@ -2795,7 +2795,7 @@ trait Applications extends Compatibility {
       val firstParamName = t.paramNames.head
       def recur(pss: List[Lst[Symbol]], skipped: Int): (List[Lst[Symbol]], Int) =
         (pss: @unchecked) match
-          case (ps @ Lst.StartingWith(p)) :: pss1 =>
+          case (ps @ Lst.withHead(p)) :: pss1 =>
             if p.name == firstParamName then (pss, skipped)
             else recur(pss1, if p.name.isTermName then skipped + ps.length else skipped)
           case Nil =>

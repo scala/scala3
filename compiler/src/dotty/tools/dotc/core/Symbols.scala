@@ -981,7 +981,7 @@ object Symbols extends SymUtils {
    */
   object TermSymbols:
     def unapply(xs: Lst[Symbol])(using Context): Option[Lst[TermSymbol]] = xs match
-      case Lst.StartingWith(x: Symbol) if x.isType => None
+      case Lst.withHead(x: Symbol) if x.isType => None
       case _ => Some(xs.asInstanceOf[Lst[TermSymbol]])
 
   /** Matches lists of type symbols, excluding the empty list.
@@ -989,7 +989,7 @@ object Symbols extends SymUtils {
    */
   object TypeSymbols:
     def unapply(xs: Lst[Symbol])(using Context): Option[Lst[TypeSymbol]] = xs match
-      case Lst.StartingWith(x: Symbol) if x.isType => Some(xs.asInstanceOf[Lst[TypeSymbol]])
+      case Lst.withHead(x: Symbol) if x.isType => Some(xs.asInstanceOf[Lst[TypeSymbol]])
       case _ => None
 
   type DontUseSymbolOnSymbol

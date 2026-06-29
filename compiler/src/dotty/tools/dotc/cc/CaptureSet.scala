@@ -1778,7 +1778,7 @@ object CaptureSet:
           else
             val cs = recur(tpd.tycon)
             tpd.tycon.typeParams match
-              case tparams @ Lst.StartingWith(LambdaParam(tl, _)) => cs.substParams(tl, tpd.args)
+              case tparams @ Lst.withHead(LambdaParam(tl, _)) => cs.substParams(tl, tpd.args)
               case _ => cs
         case tp: TypeProxy =>
           recur(tp.superType)

@@ -737,9 +737,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // extensionParam
     def leadParamOf(m: SymDenotation): Symbol =
       def leadParam(paramss: List[Lst[Symbol]]): Symbol = paramss match
-        case Lst.StartingWith(param) :: paramss if param.isType => leadParam(paramss)
-        case _ :: Lst.Singleton(param) :: _ if m.name.isRightAssocOperatorName => param
-        case Lst.StartingWith(param) :: _ => param
+        case Lst.withHead(param) :: paramss if param.isType => leadParam(paramss)
+        case _ :: Lst.single(param) :: _ if m.name.isRightAssocOperatorName => param
+        case Lst.withHead(param) :: _ => param
         case _ => NoSymbol
       leadParam(m.rawParamss)
 
@@ -1061,7 +1061,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def tryAlts(prevs: Alts, witnesses: Type): Alts = witnesses.widen match
       case AndType(wit1, wit2) =>
         tryAlts(tryAlts(prevs, wit1), wit2)
-      case AppliedType(_, Lst.Singleton(witness: TermRef)) =>
+      case AppliedType(_, Lst.single(witness: TermRef)) =>
         val altQual = tpd.ref(witness).withSpan(qual.span)
         val altCtx = ctx.fresh.setNewTyperState()
         val alt = typedSelectWithAdapt(tree, pt, altQual)(using altCtx)
@@ -1450,7 +1450,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
      * Under explicit nulls, the pt could be nullable. We need to strip `Null` type first.
      */
     val arg1 = pt.stripNull() match {
-      case AppliedType(a, Lst.Singleton(typ)) if ctx.isJava && a.isRef(defn.ArrayClass) =>
+      case AppliedType(a, Lst.single(typ)) if ctx.isJava && a.isRef(defn.ArrayClass) =>
         tryAlternatively { typed(tree.arg, pt) } {
             val elemTp = untpd.TypedSplice(TypeTree(typ))
             typed(untpd.JavaSeqLiteral(tree.arg :: Nil, elemTp), pt)
@@ -1853,7 +1853,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     }
 
     args match {
-      case Lst.StartingWith(ValDef(_, _, _)) =>
+      case Lst.withHead(ValDef(_, _, _)) =>
         val fixThis = new untpd.UntypedTreeMap:
           // pretype all references of this so that they do not refer to the
           // refined type being constructed
@@ -2953,7 +2953,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case _ => false
 
     body1 match {
-      case UnApply(fn, Lst.Empty(), arg :: Nil)
+      case UnApply(fn, Lst.empty(), arg :: Nil)
       if fn.symbol.exists && (fn.symbol.owner.derivesFrom(defn.TypeTestClass) || fn.symbol.owner == defn.ClassTagClass) && !body1.tpe.isError =>
         // A typed pattern `x @ (e: T)` with an implicit `tt: TypeTest[T]` or `ctag: ClassTag[T]`
         // was rewritten to `x @ tt(e)` `x @ ctag(e)` by `tryWithTypeTest`.

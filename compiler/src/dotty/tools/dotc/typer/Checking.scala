@@ -1578,7 +1578,7 @@ trait Checking {
       val javaEnumBase = cls.thisType.baseType(defn.JavaEnumClass)
       if javaEnumBase.exists then
         javaEnumBase.argInfos match
-          case Lst.Singleton(typeArg) =>
+          case Lst.single(typeArg) =>
             if cls.typeParams.nonEmpty then
               report.error(em"An enum extending java.lang.Enum cannot have type parameters", cdef.srcPos)
             if typeArg.classSymbol ne cls then

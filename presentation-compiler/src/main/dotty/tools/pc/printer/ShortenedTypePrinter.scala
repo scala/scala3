@@ -548,7 +548,7 @@ class ShortenedTypePrinter(
       .map(_.info)
       .collect {
         // AppliedType(TypeRef(ThisType(TypeRef(NoPrefix,module class reflect)),trait ClassTag),List(TypeRef(NoPrefix,type T)))
-        case AppliedType(tycon, Lst.Singleton(TypeRef(_, tparam)))
+        case AppliedType(tycon, Lst.single(TypeRef(_, tparam)))
             if tparam.isInstanceOf[Symbol] =>
           (tycon, tparam.asInstanceOf[Symbol])
       }

@@ -616,8 +616,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   def lambdaAbstract(params: Lst[ValDef] | Lst[TypeDef], tpt: Tree)(using Context): Tree =
     params match
-      case Lst.Empty() => tpt
-      case Lst.StartingWith(_: ValDef) =>
+      case Lst.empty() => tpt
+      case Lst.withHead(_: ValDef) =>
         TermLambdaTypeTree(params.asInstanceOf[Lst[ValDef]], tpt)
       case _ =>
         LambdaTypeTree(params.asInstanceOf[Lst[TypeDef]], tpt)

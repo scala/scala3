@@ -959,11 +959,11 @@ object Trees {
     def rhs(using Context): Tree[T] = { forceFields(); preRhs.asInstanceOf[Tree[T]] }
 
     def leadingTypeParams(using Context): Lst[TypeDef[T]] = paramss match
-      case (tparams @ Lst.StartingWith(_: TypeDef[?])) :: _ => tparams.asInstanceOf[Lst[TypeDef[T]]]
+      case (tparams @ Lst.withHead(_: TypeDef[?])) :: _ => tparams.asInstanceOf[Lst[TypeDef[T]]]
       case _ => Lst()
 
     def trailingParamss(using Context): List[ParamClause[T]] = paramss match
-      case (_ @ Lst.StartingWith(_: TypeDef[?])) :: paramss1 => paramss1
+      case (_ @ Lst.withHead(_: TypeDef[?])) :: paramss1 => paramss1
       case _ => paramss
 
     def termParamss(using Context): List[Lst[ValDef[T]]] =
@@ -1702,7 +1702,7 @@ object Trees {
         	// Test needed because of value class boxing. Even if `transformSub` returns identical Lsts
         	// integrating the Lsts into the enclosing List will wrap, which destroiys identity.
         	// So even if the outer `map` was a `mapcoonserve` it would not work.
-        then paramss 
+        then paramss
         else res
 
       protected def transformMoreCases(tree: Tree)(using Context): Tree = {
@@ -1890,13 +1890,13 @@ object Trees {
 
     object TypeDefs:
       def unapply(xs: Lst[Tree]): Option[Lst[TypeDef]] = xs match
-        case Lst.StartingWith(_: TypeDef) => Some(xs.asInstanceOf[Lst[TypeDef]])
+        case Lst.withHead(_: TypeDef) => Some(xs.asInstanceOf[Lst[TypeDef]])
         case _ => None
 
     object ValDefs:
       def unapply(xs: Lst[Tree]): Option[Lst[ValDef]] = xs match
-        case Lst.Empty() => Some(Lst())
-        case Lst.StartingWith(_: ValDef) => Some(xs.asInstanceOf[Lst[ValDef]])
+        case Lst.empty() => Some(Lst())
+        case Lst.withHead(_: ValDef) => Some(xs.asInstanceOf[Lst[ValDef]])
         case _ => None
 
     def termParamssIn(paramss: List[ParamClause]): List[Lst[ValDef]] = paramss match
@@ -1922,7 +1922,7 @@ object Trees {
       case Nil => true
       case params :: paramss1 =>
         params match
-          case Lst.StartingWith(_: untpd.TypeDef) => false
+          case Lst.withHead(_: untpd.TypeDef) => false
           case _ => isTermOnly(paramss1)
 
     def asTermOnly(paramss: List[ParamClause]): List[Lst[ValDef]] =

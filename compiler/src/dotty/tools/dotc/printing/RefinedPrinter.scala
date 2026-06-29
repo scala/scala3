@@ -190,7 +190,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       refs: GeneralCaptureSet | Null, isContextual: Boolean, isPure: Boolean): Text =
     changePrec(GlobalPrec):
       val argStr: Text = args match
-        case Lst.Singleton(arg) if !defn.isDirectTupleNType(arg) && !isContextual =>
+        case Lst.single(arg) if !defn.isDirectTupleNType(arg) && !isContextual =>
           atPrec(InfixPrec):
             argText(arg)
         case _=>
@@ -293,7 +293,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             if tycon.isRepeatedParam then toTextLocal(args.head) ~ "*"
             else if defn.isFunctionSymbol(tsym) then toTextFunction(tp, null)
             else if isInfixType(tp) then
-              val Lst.Pair(l, r) = args: @unchecked
+              val Lst.pair(l, r) = args: @unchecked
               val opName = tyconName(tycon)
               toTextInfixType(tyconName(tycon), l, r) { simpleNameString(tycon.typeSymbol) }
             else Str("")
@@ -762,7 +762,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
             toText(arg)
         }
         val argsText = args match {
-          case Lst.Singleton(arg @ ValDef(_, tpt, _)) if tpt.isEmpty => argToText(arg)
+          case Lst.single(arg @ ValDef(_, tpt, _)) if tpt.isEmpty => argToText(arg)
           case _ => "(" ~ Text(args.map(argToText), ", ") ~ ")"
         }
         val isPure =
@@ -989,9 +989,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
   def paramsText[T <: Untyped](params: ParamClause[T]): Text = (params: @unchecked) match
-    case Lst.Empty() =>
+    case Lst.empty() =>
       "()"
-    case untpd.ValDefs(vparams @ Lst.StartingWith(vparam)) =>
+    case untpd.ValDefs(vparams @ Lst.withHead(vparam)) =>
       "(" ~ keywordText("using ").provided(vparam.mods.is(Given))
           ~ toText(vparams, ", ") ~ ")"
     case untpd.TypeDefs(tparams) =>

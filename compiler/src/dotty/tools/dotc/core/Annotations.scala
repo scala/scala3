@@ -348,7 +348,7 @@ object Annotations {
 
       def unapply(ann: Annotation)(using Context): Option[Symbol] =
         if (ann.symbol == defn.ChildAnnot) {
-          val AppliedType(_, Lst.Singleton(arg: NamedType)) = ann.tree.tpe: @unchecked
+          val AppliedType(_, Lst.single(arg: NamedType)) = ann.tree.tpe: @unchecked
           Some(arg.symbol)
         }
         else None

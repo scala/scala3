@@ -230,7 +230,7 @@ trait Deriving {
         // Retain only rows with L/R params of kind * which CanEqual can be applied to.
         // No pairwise evidence will be required for params of other kinds.
         val firstKindedParamss = clsParamss.filter {
-          case Lst.StartingWith(param) => !param.info.isLambdaSub
+          case Lst.withHead(param) => !param.info.isLambdaSub
           case _ => false
         }
 

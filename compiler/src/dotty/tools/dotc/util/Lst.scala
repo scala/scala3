@@ -519,36 +519,36 @@ object Lst {
   def toIterable[T]: Conversion[Lst[T], Iterable[T]] = new Iterable(_)
 
   /** Extractor for lsts of length 0 */
-  object Empty:
+  object empty:
     def unapply[T](xs: Lst[T]): Boolean = xs.length == 0
 
   /** Extractor for lsts of length 1 */
-  object Singleton:
+  object single:
     def unapply[T](xs: Lst[T]): Option[T] =
       if xs.length == 1 then Some(xs(0)) else None
 
   /** Extractor for lsts of length 2 */
-  object Pair:
+  object pair:
     def unapply[T](xs: Lst[T]): Option[(T, T)] =
       if xs.length == 2 then Some(xs(0), xs(1)) else None
 
   /** Extractor for lsts of length 3 */
-  object Triple:
+  object triple:
     def unapply[T](xs: Lst[T]): Option[(T, T, T)] =
       if xs.length == 3 then Some(xs(0), xs(1), xs(2)) else None
 
   /** Extractor for nonempty lsts starting with some element pattern */
-  object StartingWith:
+  object withHead:
     def unapply[T](xs: Lst[T]): Option[T] =
       if xs.length >= 1 then Some(xs(0)) else None
 
   /** Extractor for nonempty lsts starting with some element pattern */
-  object Cons:
+  object cons:
     def unapply[T](xs: Lst[T]): Option[(T, Lst[T])] =
       if xs.length >= 1 then Some(xs.head, xs.drop(1)) else None
 
   /** Extractor for nonempty lsts starting with some element pattern */
-  object ConsRight:
+  object consRight:
     def unapply[T](xs: Lst[T]): Option[(Lst[T], T)] =
       if xs.length >= 1 then Some((xs.init, xs.last)) else None
 }

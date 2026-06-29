@@ -65,7 +65,7 @@ object Setup:
   /** Recognizer for `res $throws exc`, returning `(res, exc)` in case of success */
   object throwsAlias:
     def unapply(tp: Type)(using Context): Option[(Type, Type)] = tp match
-      case AppliedType(tycon, Lst.Pair(res, exc)) if tycon.typeSymbol == defn.throwsAlias =>
+      case AppliedType(tycon, Lst.pair(res, exc)) if tycon.typeSymbol == defn.throwsAlias =>
         Some((res, exc))
       case _ =>
         None

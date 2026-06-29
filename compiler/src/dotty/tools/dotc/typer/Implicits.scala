@@ -211,7 +211,7 @@ object Implicits:
             tp.derivedLambdaType(paramInfos = tp.paramInfos.mapConserve(widenSingleton))
           case _ =>
             tp.baseType(defn.ConversionClass) match
-              case app @ AppliedType(tycon, args @ Lst.StartingWith(from)) =>
+              case app @ AppliedType(tycon, args @ Lst.withHead(from)) =>
                 val wideFrom = from.widenSingleton
                 if wideFrom ne from then app.derivedAppliedType(tycon, args.updated(0, wideFrom))
                 else tp

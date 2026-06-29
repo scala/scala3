@@ -472,7 +472,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         tp match
           case FunctionOrMethod(formals, res) =>
             val rhs1 = formals match
-              case Lst.StartingWith(_: TypeBounds) => rhs
+              case Lst.withHead(_: TypeBounds) => rhs
               case _ => mdef.rhs
             val formals1 = formals.mapConserve(makeFormalDeclared)
             tp.derivedFunctionOrMethod(formals1, makeFormalsDeclared(res, rhs1))

@@ -150,7 +150,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     // parameter accessors but come first in the constructor parameter list.
     val accessors = cls.paramGetters
     val vparamsWithOuterLast = vparams match {
-      case Lst.Cons(vparam, rest) if vparam.name == nme.OUTER => rest :+ vparam
+      case Lst.cons(vparam, rest) if vparam.name == nme.OUTER => rest :+ vparam
       case _ => vparams
     }
     val paramSyms = vparamsWithOuterLast.map(_.symbol)
@@ -276,7 +276,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
                   else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))
                 constrStats += Apply(ref(setter), intoConstr(stat.rhs, sym).withSpan(stat.span) :: Nil)
               clsStats += cpy.DefDef(stat)(rhs = EmptyTree)
-          case DefDef(nme.CONSTRUCTOR, Lst.StartingWith(outerParam @ ValDef(nme.OUTER, _, _)) :: Nil, _, _) =>
+          case DefDef(nme.CONSTRUCTOR, Lst.withHead(outerParam @ ValDef(nme.OUTER, _, _)) :: Nil, _, _) =>
             clsStats += mapOuter(outerParam.symbol).transform(stat)
           case _: DefTree =>
             clsStats += stat
@@ -352,7 +352,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     val (superCalls, followConstrStats) = splitAtSuper(constrStats.toList)
 
     val mappedSuperCalls = vparams match {
-      case Lst.StartingWith(outerParam @ ValDef(nme.OUTER, _, _)) =>
+      case Lst.withHead(outerParam @ ValDef(nme.OUTER, _, _)) =>
         superCalls.map(mapOuter(outerParam.symbol).transform)
       case _ => superCalls
     }

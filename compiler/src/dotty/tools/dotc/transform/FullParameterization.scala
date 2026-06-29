@@ -261,7 +261,7 @@ object FullParameterization {
   def memberSignature(info: Type)(using Context): Signature = info match {
     case info: PolyType =>
       memberSignature(info.resultType)
-    case MethodTpe(Lst.Singleton(nme.SELF), _, restpe) =>
+    case MethodTpe(Lst.single(nme.SELF), _, restpe) =>
       restpe.ensureMethodic.signature
     case info @ MethodTpe(pnames, pinfos, restpe) if pnames.length >= 1 && pnames(0) == nme.SELF =>
       info.derivedLambdaType(pnames.drop(1), pinfos.drop(1), restpe).signature

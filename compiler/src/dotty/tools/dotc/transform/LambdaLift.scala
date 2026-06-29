@@ -184,7 +184,7 @@ object LambdaLift:
       if fvs.nonEmpty then fvs.toList.map(proxyRef(_)) ++ args else args
 
     def addFreeParams(tree: Tree, proxies: Lst[Symbol])(using Context): Tree = proxies match {
-      case Lst.Empty() => tree
+      case Lst.empty() => tree
       case proxies =>
         val sym = tree.symbol
         val freeParamDefs = proxies.map(proxy =>

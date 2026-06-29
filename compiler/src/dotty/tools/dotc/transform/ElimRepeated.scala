@@ -186,7 +186,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         .symbol.asTerm
       // Generate the method
       val forwarderDef = DefDef(forwarderSym, prefss =>
-        val init :+ Lst.ConsRight(last, vararg) = prefss: @unchecked
+        val init :+ Lst.consRight(last, vararg) = prefss: @unchecked
         // Can't call `.argTypes` here because the underlying array type is of the
         // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
         val elemtp = vararg.tpe.widen.argInfos.head

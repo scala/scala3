@@ -1042,7 +1042,7 @@ object SymDenotations {
       && is(JavaDefined)
       && hasAnnotation(defn.NativeAnnot)
       && atPhase(typerPhase)(symbol.denot).paramSymss.match
-        case List(Lst.Singleton(p)) => p.info.isRepeatedParam
+        case List(Lst.single(p)) => p.info.isRepeatedParam
         case _             => false
 
     def containsSignaturePolymorphic(using Context): Boolean =
@@ -2370,7 +2370,7 @@ object SymDenotations {
               val baseTp =
                 if (tycon.typeSymbol eq symbol) && !tycon.isLambdaSub then tp
                 else (tycon.typeParams: @unchecked) match
-                  case Lst.StartingWith(LambdaParam(_, _)) =>
+                  case Lst.withHead(LambdaParam(_, _)) =>
                     recur(tp.superType)
                   case tparams: Lst[Symbol @unchecked] =>
                     recur(tycon).substApprox(tparams, tp.args)

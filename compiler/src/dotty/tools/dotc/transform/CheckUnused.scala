@@ -681,7 +681,7 @@ object CheckUnused:
           && !sym.is(Synthetic) // param to setter is unused bc there is no field yet
           && !(sym.owner.is(ExtensionMethod) &&
             m.paramSymss.dropWhile(_.exists(_.isTypeParam)).match
-            case Lst.Singleton(h) :: _ => h == sym // param is the extended receiver
+            case Lst.single(h) :: _ => h == sym // param is the extended receiver
             case _ => false
           )
           && !sym.name.isInstanceOf[DerivedName]
@@ -956,7 +956,7 @@ object CheckUnused:
         case Block((dd @ DefDef(anonfun, paramss, _, _)) :: Nil, Closure(Nil, Ident(nm), _)) =>
              anonfun == nm // isAnonymousFunctionName(anonfun)
           && paramss.match
-              case Lst.StartingWith(ValDef(contextual, _, _)) :: Nil =>
+              case Lst.withHead(ValDef(contextual, _, _)) :: Nil =>
                   contextual.is(ContextFunctionParamName)
                   && isUnconsuming(dd.rhs) // rhs was wrapped in a context function
               case _ => false

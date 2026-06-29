@@ -1252,7 +1252,7 @@ object PrepJSInterop {
 
     // There must be exactly one non-varargs, non-default parameter
     tpe.paramInfoss match {
-      case List(Lst.Singleton(argInfo)) =>
+      case List(Lst.single(argInfo)) =>
         // Arg list is OK. Do additional checks.
         if (tpe.isVarArgsMethod)
           report.error(s"$typeStr setters may not have repeated params", pos)

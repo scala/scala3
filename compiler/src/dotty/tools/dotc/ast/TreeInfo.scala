@@ -299,7 +299,7 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
 
   /** Is this parameter list a using clause? */
   def isUsingClause(params: ParamClause)(using Context): Boolean = params match
-    case ValDefs(Lst.StartingWith(vparam)) =>
+    case ValDefs(Lst.withHead(vparam)) =>
       val sym = vparam.symbol
       if sym.exists then sym.is(Given) else vparam.mods.is(Given)
     case _ =>
@@ -472,7 +472,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
   /** Is `tree` an context function or closure, possibly nested in a block? */
   def isContextualClosure(tree: Tree)(using Context): Boolean = unsplice(tree) match {
     case tree: FunctionWithMods => tree.mods.is(Given)
-    case Function(Lst.StartingWith(param: untpd.ValDef), _) => param.mods.is(Given)
+    case Function(Lst.withHead(param: untpd.ValDef), _) => param.mods.is(Given)
     case Closure(_, meth, _) => true
     case Block(Nil, expr) => isContextualClosure(expr)
     case Block(DefDef(nme.ANON_FUN, params :: _, _, _) :: Nil, cl: Closure) =>
@@ -948,7 +948,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     !rhsOfEtaExpansion(mdef).isEmpty
 
   def rhsOfEtaExpansion(mdef: DefDef)(using Context): Tree = mdef.paramss match
-    case Lst.StartingWith(param) :: _ if param.asInstanceOf[Tree].span.isZeroExtent =>
+    case Lst.withHead(param) :: _ if param.asInstanceOf[Tree].span.isZeroExtent =>
       mdef.rhs match
         case rhs: Apply => rhs
         case closureDef(mdef1) => rhsOfEtaExpansion(mdef1)

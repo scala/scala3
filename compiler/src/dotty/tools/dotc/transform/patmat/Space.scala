@@ -653,11 +653,11 @@ object SpaceEngine {
   def covers(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): Boolean = trace(i"covers($unapp, $scrutineeTp, $argLen)") {
     SpaceEngine.isIrrefutable(unapp, argLen)
     || unapp.symbol == defn.TypeTest_unapply && {
-      val AppliedType(_, Lst.Pair(_, tp)) = unapp.prefix.widen.dealias: @unchecked
+      val AppliedType(_, Lst.pair(_, tp)) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
     || unapp.symbol == defn.ClassTagClass_unapply && {
-      val AppliedType(_, Lst.Singleton(tp)) = unapp.prefix.widen.dealias: @unchecked
+      val AppliedType(_, Lst.single(tp)) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
   }

@@ -366,7 +366,7 @@ object Signatures {
       // unapply(_$1: Any): CustomClass
       case ref: TypeRef if !ref.symbol.isPrimitiveValueClass => mapOptionLessUnapply(ref, patternsSize, isUnapplySeq(denot))
       // unapply(_$1: Any): Option[T[_]]
-      case AppliedType(TypeRef(_, cls), Lst.Singleton(appliedType @ AppliedType(tycon, args)))
+      case AppliedType(TypeRef(_, cls), Lst.single(appliedType @ AppliedType(tycon, args)))
           if (cls == ctx.definitions.OptionClass || cls == ctx.definitions.SomeClass) =>
         tycon match
           // unapply[T](_$1: Any): Option[(T1, T2 ... Tn)]
@@ -506,7 +506,7 @@ object Signatures {
 
     def toTypeParam(tpe: PolyType): List[Param] =
       val evidenceParams = (tpe.paramNamess.flattenLst `zip` tpe.paramInfoss.flattenLst).toList.flatMap:
-        case (name, AppliedType(tpe, Lst.StartingWith(ref: TypeParamRef))) if isSyntheticEvidence(name.show) =>
+        case (name, AppliedType(tpe, Lst.withHead(ref: TypeParamRef))) if isSyntheticEvidence(name.show) =>
           Some(ref.paramName -> tpe)
         case _ => None
 

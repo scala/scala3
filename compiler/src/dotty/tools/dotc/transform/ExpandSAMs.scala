@@ -166,7 +166,7 @@ class ExpandSAMs extends MiniPhase:
    *  ```
    */
   private def toPartialFunction(tree: Block, tpe: Type)(using Context): Tree =
-    val closureDef(anon @ DefDef(_, List(Lst.Singleton(param)), _, _)) = tree: @unchecked
+    val closureDef(anon @ DefDef(_, List(Lst.single(param)), _, _)) = tree: @unchecked
 
     // The right hand side from which to construct the partial function. This is always a Match.
     // If the original rhs is already a Match (possibly in braces), return that.
@@ -228,7 +228,7 @@ class ExpandSAMs extends MiniPhase:
         translateMatch(isDefinedAtFn)(paramRef.symbol, pfRHS.cases.map(translateCase), defaultValue)
 
       def applyOrElseRhs(paramRefss: List[Lst[Tree]])(using Context) =
-        val Lst.Pair(paramRef, defaultRef) = paramRefss(1).runtimeChecked
+        val Lst.pair(paramRef, defaultRef) = paramRefss(1).runtimeChecked
         val defaultValue = defaultRef.select(nme.apply).appliedTo(paramRef)
         translateMatch(applyOrElseFn)(paramRef.symbol, pfRHS.cases, defaultValue)
 

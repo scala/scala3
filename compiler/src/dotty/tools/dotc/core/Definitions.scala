@@ -1347,7 +1347,7 @@ class Definitions {
       if (ctx.erasedTypes) JavaArrayType(elem)
       else ArrayType.appliedTo(Lst(elem))
     def unapply(tp: Type)(using Context): Option[Type] = tp.dealias match {
-      case AppliedType(at, Lst.Singleton(arg)) if at.isRef(ArrayType.symbol) => Some(arg)
+      case AppliedType(at, Lst.single(arg)) if at.isRef(ArrayType.symbol) => Some(arg)
       case JavaArrayType(tp) if ctx.erasedTypes => Some(tp)
       case _ => None
     }
@@ -1357,7 +1357,7 @@ class Definitions {
     def apply(pat: Type, body: Type)(using Context): Type =
       MatchCaseClass.typeRef.appliedTo(pat, body)
     def unapply(tp: Type)(using Context): Option[(Type, Type)] = tp match {
-      case AppliedType(tycon, Lst.Pair(pat, body)) if tycon.isRef(MatchCaseClass) =>
+      case AppliedType(tycon, Lst.pair(pat, body)) if tycon.isRef(MatchCaseClass) =>
         Some((pat, body))
       case _ =>
         None
@@ -1408,7 +1408,7 @@ class Definitions {
       case _ =>
         defn.ContextFunction0.typeRef.appliedTo(Lst(tp))
     def unapply(tp: Type)(using Context): Option[Type] = tp match
-      case tp @ AppliedType(tycon, Lst.Singleton(arg)) if defn.isByNameFunctionClass(tycon.typeSymbol) =>
+      case tp @ AppliedType(tycon, Lst.single(arg)) if defn.isByNameFunctionClass(tycon.typeSymbol) =>
         Some(arg)
       case tp @ AnnotatedType(parent, _) =>
         unapply(parent)
@@ -1425,7 +1425,7 @@ class Definitions {
   object NamedTupleDirect:
     def unapply(t: Type)(using Context): Option[(Type, Type)] =
       t match
-        case AppliedType(tycon, Lst.Pair(nmes, vals)) if tycon.typeSymbol == NamedTupleTypeRef.symbol =>
+        case AppliedType(tycon, Lst.pair(nmes, vals)) if tycon.typeSymbol == NamedTupleTypeRef.symbol =>
           Some((nmes, vals))
         case _ => None
 
@@ -1906,8 +1906,8 @@ class Definitions {
 
   def isSpecializableTuple(base: Symbol, args: Lst[Type])(using Context): Boolean =
     args.length <= 2 && base.isClass && TupleSpecializedClasses.exists(base.asClass.derivesFrom) && args.match
-      case Lst.Singleton(x) => Tuple1SpecializedParamClasses().contains(x.classSymbol)
-      case Lst.Pair(x, y)   => Tuple2SpecializedParamClasses().contains(x.classSymbol) && Tuple2SpecializedParamClasses().contains(y.classSymbol)
+      case Lst.single(x) => Tuple1SpecializedParamClasses().contains(x.classSymbol)
+      case Lst.pair(x, y)   => Tuple2SpecializedParamClasses().contains(x.classSymbol) && Tuple2SpecializedParamClasses().contains(y.classSymbol)
       case _          => false
     && base.owner.denot.info.member(base.name.specializedName(args)).exists // when dotc compiles the stdlib there are no specialised classes
     && !Feature.shouldBehaveAsScala2 // We do not add the specilized TupleN methods/classes when compiling the stdlib

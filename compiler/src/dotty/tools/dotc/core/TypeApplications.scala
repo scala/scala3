@@ -257,7 +257,7 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** Substitute in `self` the type parameters of `tycon` by some other types. */
   final def substTypeParams(tycon: Type, to: Lst[Type])(using Context): Type =
     (tycon.typeParams: @unchecked) match
-      case Lst.StartingWith(LambdaParam(lam, _)) => self.substParams(lam, to)
+      case Lst.withHead(LambdaParam(lam, _)) => self.substParams(lam, to)
       case params: Lst[Symbol @unchecked] => self.subst(params, to)
 
   /** If `self` is a higher-kinded type, its type parameters, otherwise Nil */
@@ -266,7 +266,7 @@ class TypeApplications(val self: Type) extends AnyVal {
 
   /** If `self` is a generic class, its type parameter symbols, otherwise Nil */
   final def typeParamSymbols(using Context): Lst[TypeSymbol] = typeParams match {
-    case tparams @ Lst.StartingWith(_: Symbol) =>
+    case tparams @ Lst.withHead(_: Symbol) =>
       assert(tparams.forall(_.isInstanceOf[Symbol]))
       tparams.asInstanceOf[Lst[TypeSymbol]]
         // Note: Two successive calls to typeParams can yield different results here because

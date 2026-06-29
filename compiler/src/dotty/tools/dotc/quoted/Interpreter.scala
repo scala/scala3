@@ -93,7 +93,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       else
         unexpectedTree(tree)
 
-    case closureDef((ddef @ DefDef(_, ValDefs(Lst.Singleton(arg)) :: Nil, _, _))) =>
+    case closureDef((ddef @ DefDef(_, ValDefs(Lst.single(arg)) :: Nil, _, _))) =>
       (obj: AnyRef) => interpretTree(ddef.rhs)(using env.updated(arg.symbol, obj))
 
     // Interpret `foo(j = x, i = y)` which it is expanded to

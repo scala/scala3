@@ -472,7 +472,7 @@ object Types extends TypeUtils {
      *  target of an implicit converson without requiring a language import?
      */
     def isInto(using Context): Boolean = this match
-      case AppliedType(tycon: TypeRef, Lst.Singleton(_)) => defn.isInto(tycon.symbol)
+      case AppliedType(tycon: TypeRef, Lst.single(_)) => defn.isInto(tycon.symbol)
       case _ => false
 
     /** Is this type of the form `<context-bound-companion>[Ref1] & ... & <context-bound-companion>[RefN]`?
@@ -5495,7 +5495,7 @@ object Types extends TypeUtils {
               tycon.info match
                 case _: RealTypeBounds =>
                   recAbstractTypeConstructor(pat)
-                case TypeAlias(tl @ HKTypeLambda(Lst.Singleton(onlyParam), resType: RefinedType)) =>
+                case TypeAlias(tl @ HKTypeLambda(Lst.single(onlyParam), resType: RefinedType)) =>
                   /* Unlike for eta-expanded classes, the typer does not automatically
                    * dealias poly type aliases to refined types. So we have to give them
                    * a chance here.

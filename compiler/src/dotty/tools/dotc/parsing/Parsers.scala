@@ -1915,7 +1915,7 @@ object Parsers {
               syntaxError(em"context function types require at least one parameter", paramSpan)
             FunctionWithMods(params, resultType, funMods)
           else if !ctx.settings.XkindProjector.isDefault then
-            val (Lst.ConsRight(newParams, newResultType), tparams) = replaceKindProjectorPlaceholders(params :+ resultType): @unchecked
+            val (Lst.consRight(newParams, newResultType), tparams) = replaceKindProjectorPlaceholders(params :+ resultType): @unchecked
             lambdaAbstract(tparams, Function(newParams, newResultType))
           else
             Function(params, resultType)
@@ -4783,7 +4783,7 @@ object Parsers {
             newSignature()
         val hasParams = tparams.nonEmpty || vparamss0.nonEmpty
         val vparamss = vparamss0 match
-          case Lst.Empty() :: Nil => Nil
+          case Lst.empty() :: Nil => Nil
           case _ => vparamss0
         val parentsIsType = parents.length == 1 && parents.head.isType
         if in.token == EQUALS && parentsIsType then

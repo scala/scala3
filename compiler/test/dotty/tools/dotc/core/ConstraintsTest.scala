@@ -20,7 +20,7 @@ class ConstraintsTest:
   @Test def mergeParamsTransitivity: Unit =
     inCompilerContext(TestConfiguration.basicClasspath,
         scalaSources = "trait A { def foo[S, T, R]: Any  }") {
-      val Lst.Triple(s, t, r) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda]).runtimeChecked
+      val Lst.triple(s, t, r) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda]).runtimeChecked
 
       val innerCtx = ctx.fresh.setExploreTyperState()
       inContext(innerCtx) {
@@ -38,7 +38,7 @@ class ConstraintsTest:
   @Test def mergeBoundsTransitivity: Unit =
     inCompilerContext(TestConfiguration.basicClasspath,
         scalaSources = "trait A { def foo[S, T]: Any  }") {
-      val Lst.Pair(s, t) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda]).runtimeChecked
+      val Lst.pair(s, t) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda]).runtimeChecked
 
       val innerCtx = ctx.fresh.setExploreTyperState()
       inContext(innerCtx) {
@@ -56,7 +56,7 @@ class ConstraintsTest:
   @Test def validBoundsInit: Unit = inCompilerContext(
     TestConfiguration.basicClasspath,
     scalaSources = "trait A { def foo[S >: T <: T | Int, T <: String]: Any  }") {
-      val Lst.Pair(s, t) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda]).runtimeChecked
+      val Lst.pair(s, t) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda]).runtimeChecked
 
       val TypeBounds(lo, hi) = ctx.typerState.constraint.entry(t.origin): @unchecked
       assert(lo =:= defn.NothingType, i"Unexpected lower bound $lo for $t: ${ctx.typerState.constraint}")
@@ -66,7 +66,7 @@ class ConstraintsTest:
   @Test def validBoundsUnify: Unit = inCompilerContext(
     TestConfiguration.basicClasspath,
     scalaSources = "trait A { def foo[S >: T <: T | Int, T <: String | Int]: Any  }") {
-      val Lst.Pair(s, t) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda]).runtimeChecked
+      val Lst.pair(s, t) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda]).runtimeChecked
 
       s <:< t
 
@@ -78,7 +78,7 @@ class ConstraintsTest:
   @Test def validBoundsReplace: Unit = inCompilerContext(
     TestConfiguration.basicClasspath,
     scalaSources = "trait X; trait A { def foo[S <: U | X, T, U]: Any }") {
-      val tvars @ Lst.Triple(s, t, u) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda]).runtimeChecked
+      val tvars @ Lst.triple(s, t, u) = constrained(requiredClass("A").typeRef.select("foo".toTermName).info.asInstanceOf[TypeLambda]).runtimeChecked
       s =:= t
       t =:= u
 

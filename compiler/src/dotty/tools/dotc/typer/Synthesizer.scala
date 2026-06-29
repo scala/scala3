@@ -69,7 +69,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         tp
 
     val tag = formal.argInfos match
-      case Lst.Singleton(arg) =>
+      case Lst.single(arg) =>
         instArg(arg) match
           case defn.ArrayOf(elemTp) =>
             val etag = typer.inferImplicitArg(defn.ClassTagClass.typeRef.appliedTo(elemTp), span)
@@ -94,7 +94,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   val synthesizedTypeTest: SpecialHandler =
     (formal, span) => formal.argInfos match {
-      case Lst.Pair(arg1, arg2) if !defn.isBottomClass(arg2.typeSymbol) =>
+      case Lst.pair(arg1, arg2) if !defn.isBottomClass(arg2.typeSymbol) =>
         val srcPos = ctx.source.atSpan(span)
         val tp1 = fullyDefinedType(arg1, "TypeTest argument", srcPos)
         val tp2 = fullyDefinedType(arg2, "TypeTest argument", srcPos).normalized
@@ -127,7 +127,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
   val synthesizedTupleFunction: SpecialHandler = (formal, span) =>
     formal match
-      case AppliedType(_, funArgs @ Lst.Pair(fun, tupled)) =>
+      case AppliedType(_, funArgs @ Lst.pair(fun, tupled)) =>
         def functionTypeEqual(baseFun: Type, actualArgs: Lst[Type],
             actualRet: Type, expected: Type) =
           expected =:= defn.FunctionNOf(actualArgs, actualRet,
@@ -145,7 +145,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           else if defn.isFunctionNType(tupled) then
             // TupledFunction[?, (...) => R]
             tupled.functionArgInfos match
-              case Lst.Pair(tupledArgs, funRet) =>
+              case Lst.pair(tupledArgs, funRet) =>
                 tupledArgs.tupleElementTypes match
                   case Some(funArgs) if functionTypeEqual(tupled, funArgs, funRet, fun) =>
                     // TupledFunction[?, ((...funArgs...)) => funRet]
@@ -222,7 +222,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
           canComparePredefinedClasses(cls1, cls2)))
 
     formal.argTypes match
-      case args @ Lst.Pair(arg1, arg2) =>
+      case args @ Lst.pair(arg1, arg2) =>
         List(arg1, arg2).foreach(fullyDefinedType(_, "eq argument", ctx.source.atSpan(span)))
         if canComparePredefined(arg1, arg2)
             || !Implicits.strictEquality && explore(validEqAnyArgs(arg1, arg2))
@@ -239,7 +239,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     def success(t: Tree) =
       New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
     formal.argInfos match
-      case Lst.Singleton(arg) =>
+      case Lst.single(arg) =>
         fullyDefinedType(arg, "ValueOf argument", ctx.source.atSpan(span)).normalized.dealias match
           case ConstantType(c: Constant) =>
             withNoErrors(success(Literal(c)))
@@ -775,7 +775,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         case result                   => result
 
     formal.argInfos match
-      case Lst.Singleton(arg) =>
+      case Lst.single(arg) =>
         val manifest = synthesize(fullyDefinedType(arg, "Manifest argument", ctx.source.atSpan(span)), kind, topLevel = true)
         if manifest != EmptyTree then
           report.deprecationWarning(

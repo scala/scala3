@@ -326,7 +326,7 @@ object PickleQuotes {
               defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
             args =>
               val cases = holeContents.zipWithIndex.map { case (splice, idx) =>
-                val defn.FunctionNOf(argTypes, defn.FunctionNOf(Lst.StartingWith(quotesType), _, _), _) = splice.tpe: @unchecked
+                val defn.FunctionNOf(argTypes, defn.FunctionNOf(Lst.withHead(quotesType), _, _), _) = splice.tpe: @unchecked
                 val rhs = {
                   val spliceArgs = argTypes.zipWithIndex.map { (argType, i) =>
                     args(1).select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argType)

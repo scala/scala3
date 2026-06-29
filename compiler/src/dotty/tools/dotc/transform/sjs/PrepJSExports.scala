@@ -465,7 +465,7 @@ object PrepJSExports {
         val tpe = argss match {
           case Nil =>
             trgSym.typeRef
-          case (targs @ Lst.StartingWith(first)) :: Nil if first.isType =>
+          case (targs @ Lst.withHead(first)) :: Nil if first.isType =>
             trgSym.typeRef.appliedTo(targs.map(_.tpe))
           case _ =>
             throw AssertionError(s"got a class export with unexpected paramss. target: $trgSym, proxy: $proxySym at $span")

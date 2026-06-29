@@ -102,7 +102,7 @@ object PcConvertToNamedLambdaParameters:
           )
           if ddef.symbol == meth.symbol =>
         params match
-          case Lst.Singleton(param) =>
+          case Lst.single(param) =>
             // lambdas with multiple wildcard parameters are represented as a single parameter function and a block with wildcard valdefs
             Some(multipleUnderscoresFromBody(param, body))
           case _ => Some(params.toList -> body)
