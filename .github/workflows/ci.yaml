@@ -276,5 +276,18 @@ jobs:
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.14
-      - run: scala-cli format --check
+      - uses: VirtusLab/scala-cli-setup@v1.15
+      - name: Check formatting
+        run: |
+          if ! scala-cli format --check; then
+            echo ""
+            echo "========================================"
+            echo "Formatting check failed!"
+            echo "To fix this, run the following command in the root of the project:"
+            echo ""
+            echo "  scala-cli format"
+            echo ""
+            echo "Then commit the changes."
+            echo "========================================"
+            exit 1
+          fi
