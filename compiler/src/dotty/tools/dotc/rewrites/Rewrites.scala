@@ -42,7 +42,7 @@ object Rewrites {
       def p(other: Span): Boolean = span.start == other.start || span.end == other.end
       pbuf.filterInPlace(x => !p(x.span))
 
-    def apply(cs: Array[Char]): Array[Char] = {
+    def apply(cs: String): Array[Char] = {
       val patches = pbuf.toList.distinct.sortBy(_.span.start)
       val delta = patches.map(_.delta).sum
       if (patches.nonEmpty)
@@ -72,7 +72,7 @@ object Rewrites {
     }
 
     def writeBack(): Unit =
-      val chars = apply(source.underlying.content)
+      val chars = apply(source.underlying.content())
       val osw = OutputStreamWriter(source.file.output, UTF_8)
       try osw.write(chars, 0, chars.length)
       finally osw.close()

@@ -34,7 +34,7 @@ extends SrcPos, interfaces.SourcePosition, Showable:
 
   /** Extracts the lines from the underlying source file as a String. */
   def linesSlice: String =
-    new String(source.content.slice(source.startOfLine(start), source.nextLine(end)))
+    source.content().substring(source.startOfLine(start), source.nextLine(end))
 
   /** The lines of the position */
   def lines: Range = {
