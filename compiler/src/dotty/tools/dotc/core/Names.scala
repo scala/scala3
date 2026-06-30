@@ -144,6 +144,9 @@ object Names {
     /** Is this name empty? */
     def isEmpty: Boolean
 
+    /** Length of the name */
+    def length: Int
+
     /** Does (the first part of) this name starting at index `start` starts with `str`? */
     def startsWith(str: String, start: Int = 0): Boolean = firstPart.startsWith(str, start)
 
@@ -370,6 +373,9 @@ object Names {
       if (length == 0) ""
       else new String(chrs, start, length)
 
+    def toUTF8Bytes: Array[Byte] =
+      if length == 0 then Array.emptyByteArray else Codec.toUTF8(chrs, start, length)
+
     def debugString: String = toString
   }
 
@@ -400,6 +406,7 @@ object Names {
     override def is(kind: NameKind): Boolean = toTermName.is(kind)
 
     override def isEmpty: Boolean = toTermName.isEmpty
+    override def length: Int = toTermName.length
 
     override def encode: TypeName   = toTermName.encode.toTypeName
     override def decode: TypeName   = toTermName.decode.toTypeName
@@ -419,7 +426,7 @@ object Names {
     override def asSimpleName: Nothing = throw new UnsupportedOperationException(s"$debugString is not a simple name")
 
     override def toSimpleName: SimpleName = termName(toString)
-    override final def mangle: SimpleName = encode.toSimpleName
+    override def mangle: SimpleName = encode.toSimpleName
 
     override def replace(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this))
@@ -456,6 +463,7 @@ object Names {
     }
 
     override def isEmpty: Boolean = false
+    override def length: Int = toString.length
     override def encode: ThisName = underlying.encode.derived(info.map(NameTransformer.encode)) // encodes <init>
     override def decode: ThisName = underlying.decode.derived(info.map(_.decode))
     override def firstPart: SimpleName = underlying.firstPart
@@ -472,11 +480,11 @@ object Names {
 
   // Nametable
 
-  inline val InitialNameSize = 0x20000
+  private inline val InitialNameSize = 0x20000
 
   /** Memory to store all names sequentially. */
   @sharable // because it's only mutated in synchronized block of enterIfNew
-  private[dotty] var chrs: Array[Char] = new Array[Char](InitialNameSize)
+  private var chrs: Array[Char] = new Array[Char](InitialNameSize)
 
   /** The number of characters filled. */
   @sharable // because it's only mutated in synchronized block of enterIfNew

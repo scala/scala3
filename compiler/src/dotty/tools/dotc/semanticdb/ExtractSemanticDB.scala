@@ -390,7 +390,7 @@ private[semanticdb] object ExtractSemanticDB:
             arg match
               case tree @ NamedArg(name, arg) =>
                 traverse(localBodies.get(arg.symbol).getOrElse(arg))
-                registerUse(genParamSymbol(name), tree.span.startPos.withEnd(tree.span.start + name.toString.length), tree.source)
+                registerUse(genParamSymbol(name), tree.span.startPos.withEnd(tree.span.start + name.length), tree.source)
               case _ => traverse(arg)
         case tree: Assign =>
           val qualSym = condOpt(tree.lhs) { case Select(qual, _) if qual.symbol.exists => qual.symbol }

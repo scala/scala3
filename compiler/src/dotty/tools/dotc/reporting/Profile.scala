@@ -125,7 +125,7 @@ class ActiveProfile(details: Int) extends Profile:
 
     def printDetails(agg: Profile.Info): Unit =
       val sourceNameWidth = safeMax(agg.leading.map(_.meth.source.file.name.length))
-      val methNameWidth = safeMax(agg.leading.map(_.meth.name.toString.length))
+      val methNameWidth = safeMax(agg.leading.map(_.meth.name.length))
       report.echo("\nMost complex methods:")
       val layout = printHeader(sourceNameWidth, methNameWidth)
       for
