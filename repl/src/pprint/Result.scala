@@ -1,3 +1,4 @@
+package dotty.vendored
 package pprint
 
 import scala.annotation.tailrec

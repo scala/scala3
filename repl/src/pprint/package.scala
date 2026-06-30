@@ -1,3 +1,4 @@
+package dotty.vendored
 /**
   * Contains a convenient default pre-configured PPrinter.
   *

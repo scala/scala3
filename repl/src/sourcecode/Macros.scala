@@ -1,3 +1,4 @@
+package dotty.vendored
 package sourcecode
 
 import java.util.concurrent.ConcurrentHashMap

@@ -1,6 +1,7 @@
 Vendored from lihaoyi/fansi commit c8d4e5b56c46f2b360a441ca6d35620819a1ee52
 
 Changes:
+- Added `package dotty.vendored`
 - `private[this]` -> `private`
 - `protected[this]` -> `protected`
 - `:_*` -> `*`

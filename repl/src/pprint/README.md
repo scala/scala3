@@ -1,6 +1,7 @@
 Vendored from lihaoyi/pprint commit 66733cc563c1a4c8d694b3daba69ab643a50dd79
 
 Changes:
+- Added `package dotty.vendored`
 - `[_]` -> `[?]`
 - `private[this]` -> `private`
 - `:_*` -> `*`
