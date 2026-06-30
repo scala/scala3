@@ -14,8 +14,6 @@ object Dependencies {
   val coursier = "io.get-coursier" %% "coursier" % "2.1.24"
   val coursierInterface = "io.get-coursier" % "interface" % "1.0.29-M4"
 
-  val fansi = "com.lihaoyi" %% "fansi" % "0.5.1"
-
   private val flexmarkVersion = "0.64.8"
   val flexmarkDeps = Seq(
     "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
@@ -54,8 +52,6 @@ object Dependencies {
   private val mtagsVersion = "1.6.7"
   val mtagsInterfaces = "org.scalameta" % "mtags-interfaces" % mtagsVersion
   val mtagsShared = "org.scalameta" % s"mtags-shared_${Versions.scala2Version}" % mtagsVersion
-
-  val pprint = "com.lihaoyi" %% "pprint" % "0.9.3"
 
   val sbtCompilerInterface = "org.scala-sbt" % "compiler-interface" % "1.12.0"
   val sbtJunitInterface = "com.github.sbt" % "junit-interface" % "0.13.3"
