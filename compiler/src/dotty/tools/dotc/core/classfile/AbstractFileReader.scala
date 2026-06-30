@@ -7,8 +7,6 @@ import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
 import java.io.{ByteArrayInputStream, DataInputStream}
 
-import io.AbstractFile
-
 /**
  * This class reads files byte per byte. Only used by ClassFileParser
  *
@@ -16,7 +14,6 @@ import io.AbstractFile
  * @version 1.0, 23/03/2004
  */
 final class AbstractFileReader(val buf: Array[Byte]) extends DataReader {
-  def this(file: AbstractFile) = this(file.toByteArray)
 
   /** the current input pointer
    */
@@ -30,11 +27,6 @@ final class AbstractFileReader(val buf: Array[Byte]) extends DataReader {
   def getBytes(mybp: Int, bytes: Array[Byte]): Unit = {
     System.arraycopy(buf, mybp, bytes, 0, bytes.length)
   }
-
-  /** return byte at offset 'pos'
-   */
-  @throws(classOf[IndexOutOfBoundsException])
-  def byteAt(pos: Int): Byte = buf(pos)
 
   /** read a byte
    */

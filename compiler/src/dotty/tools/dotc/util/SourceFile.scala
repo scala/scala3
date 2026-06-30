@@ -21,42 +21,7 @@ import java.nio.file.{FileSystemException, Paths}
 import java.util.Optional
 import java.util.regex.Pattern
 
-// TODO add #! .. !# support to parser and remove this
-object ScriptSourceFile {
-  @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
-  private val headerStarts  = List("#!", "::#!")
-
-  /** Return true if has a script header */
-  def hasScriptHeader(content: String): Boolean =
-    headerStarts.exists(content.startsWith)
-
-  def apply(file: AbstractFile, content: String): SourceFile = {
-    /** Length of the script header from the given content, if there is one.
-     *  The header begins with "#!" or "::#!" and is either a single line,
-     *  or it ends with a line starting with "!#" or "::!#", if present.
-     */
-    val headerLength =
-      if hasScriptHeader(content) then
-        val matcher = headerPattern.matcher(content.mkString)
-        if matcher.find then matcher.end
-        else content.indexOf('\n') // end of first line
-      else 0
-
-    // overwrite hash-bang lines with all spaces to preserve line numbers
-    val hashBangLines = content.take(headerLength).mkString.split("\\r?\\n")
-    if hashBangLines.nonEmpty then
-      for i <- 0 until headerLength do
-        content(i) match {
-          case '\r' | '\n' =>
-          case _ =>
-            () // TODO:content(i) = ' '
-        }
-
-    new SourceFile(file, content) {
-      override val underlying = new SourceFile(this.file, this.content())
-    }
-  }
-}
+// TODO add #! .. !# support to parser now that we've removed ScriptSourceFile
 
 object WrappedSourceFile:
   enum MagicHeaderInfo:
@@ -228,7 +193,7 @@ class SourceFile(val file: AbstractFile, computeContent: => String) {
 
   /** The column corresponding to `offset`, starting at 0 */
   def column(offset: Int): Int = {
-    var idx = startOfLine(offset)
+    val idx = startOfLine(offset)
     offset - idx
   }
 
@@ -299,22 +264,12 @@ object SourceFile {
         jpath.toString
   }
 
-  /** Return true if file is a script:
-   *  if filename extension is not .scala and has a script header.
-   */
-  def isScript(file: AbstractFile, content: String): Boolean =
-    ScriptSourceFile.hasScriptHeader(content)
-
   def apply(file: AbstractFile, codec: Codec): SourceFile =
     def content =
-      try new String(file.toByteArray, codec.charSet)
-      catch
-        case _: FileSystemException => ""
+      try file.readAsString(codec.charSet)
+      catch case _: FileSystemException => ""
 
-    if isScript(file, content) then
-      ScriptSourceFile(file, content)
-    else
-      new SourceFile(file, content)
+    new SourceFile(file, content)
 
   def toInterface(source: SourceFile): interfaces.SourceFile = new interfaces.SourceFile {
     private var _content: Array[Char] | Null = null

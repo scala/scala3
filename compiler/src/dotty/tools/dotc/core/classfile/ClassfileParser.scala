@@ -235,9 +235,10 @@ object ClassfileParser {
           val start = starts(index)
           if (in.getByte(start).toInt != CONSTANT_UTF8) errorBadTag(start)
           val len = in.getChar(start + 1)
-          val buf = new Array[Byte](len)
-          in.getBytes(start + 3, buf)
-          bytesBuffer ++= buf
+          var i = 0
+          while i < len do
+            bytesBuffer += in.getByte(start + 3 + i)
+            i += i
         }
         value = getSubArray(bytesBuffer.toArray)
         values(indices.head) = value

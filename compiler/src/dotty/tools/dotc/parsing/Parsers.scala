@@ -1577,18 +1577,16 @@ object Parsers {
         if totalCutSize > cs.length then
           "" // happens for empty '''-enclosed literals since the \n is counted twice
         else
-          val target = new Array[Char](cs.length - totalCutSize)
+          val target = java.lang.StringBuilder(cs.length - totalCutSize)
           def recur(cuts: List[Cut], fromIdx: Int, toIdx: Int): Unit = cuts match
             case Nil =>
-              val len = cs.length - fromIdx
-              assert(len == target.length - toIdx, i"len = $len, remaining = ${target.length - toIdx}")
-              cs.getChars(fromIdx, cs.length, target, toIdx)
+              target.append(cs, fromIdx, cs.length)
             case Cut(offset, length) :: cuts1 =>
               val len = offset - fromIdx
-              cs.getChars(fromIdx, offset, target, toIdx)
+              target.append(cs, fromIdx, offset)
               recur(cuts1, offset + length, toIdx + len)
           recur(cuts, 0, 0)
-          new String(target)
+          target.toString
 
       /** Trim the start of a '''-literal, up to and including the first \n.
        *  This must be all whitespace.
