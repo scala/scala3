@@ -125,18 +125,15 @@ abstract class TokensCommon {
   inline val firstParen = LPAREN
   inline val lastParen = OUTDENT
 
-  def buildKeywordArray(keywords: TokenSet): (Int, Array[Int]) = {
-    def start(tok: Token) = tokenString(tok).nn.toTermName.asSimpleName.start
+  /** Maps each source keyword's interned name to its token, keyed by name identity
+   *  (`SimpleName.equals` is `eq`). Holding the names as keys pins them, so under weak interning the
+   *  scanner re-interns e.g. `given` to the same instance and the lookup matches (issue #1584). */
+  def buildKeywordMap(keywords: TokenSet): Map[core.Names.SimpleName, Token] = {
     def sourceKeywords = keywords.toList.filter { (kw: Token) =>
       val ts = tokenString(kw)
       (ts != null) && !ts.contains(' ')
     }
-
-    val lastKeywordStart = sourceKeywords.map(start).max
-
-    val arr = Array.fill(lastKeywordStart + 1)(IDENTIFIER)
-    for (kw <- sourceKeywords) arr(start(kw)) = kw
-    (lastKeywordStart, arr)
+    sourceKeywords.map(kw => tokenString(kw).nn.toTermName.asSimpleName -> kw).toMap
   }
 }
 

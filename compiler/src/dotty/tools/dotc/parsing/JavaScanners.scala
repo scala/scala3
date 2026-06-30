@@ -18,10 +18,8 @@ object JavaScanners {
 
     override def decodeUni: Boolean = true
 
-    def toToken(name: SimpleName): Token = {
-      val idx = name.start
-      if (idx >= 0 && idx <= lastKeywordStart) kwArray(idx) else IDENTIFIER
-    }
+    def toToken(name: SimpleName): Token =
+      keywordTokens.getOrElse(name, IDENTIFIER)
 
     private class JavaTokenData0 extends TokenData
 
@@ -740,5 +738,5 @@ object JavaScanners {
     initialize()
   }
 
-  private val (lastKeywordStart, kwArray) = buildKeywordArray(keywords)
+  private val keywordTokens: Map[core.Names.SimpleName, Token] = buildKeywordMap(keywords)
 }
