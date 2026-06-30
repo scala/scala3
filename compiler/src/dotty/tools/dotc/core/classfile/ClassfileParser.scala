@@ -238,7 +238,7 @@ object ClassfileParser {
           var i = 0
           while i < len do
             bytesBuffer += in.getByte(start + 3 + i)
-            i += i
+            i += 1
         }
         value = getSubArray(bytesBuffer.toArray)
         values(indices.head) = value
