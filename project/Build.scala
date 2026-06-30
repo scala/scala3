@@ -906,7 +906,6 @@ object Build {
         Dependencies.jlineTerminalJni,
         Dependencies.pprint,
         Dependencies.fansi,
-        Dependencies.sourcecode,
         Dependencies.sbtJunitInterface % Test,
         Dependencies.coursierInterface, // used by the REPL for dependency resolution
         Dependencies.usingDirectives, // used by the REPL for parsing magic comments

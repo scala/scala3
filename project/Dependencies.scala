@@ -71,7 +71,5 @@ object Dependencies {
   val scalaJsLibrary = "org.scala-js" %% "scalajs-library" % scalaJSVersion
   val scalaJsLinker = "org.scala-js" %% "scalajs-linker" % scalaJSVersion
 
-  val sourcecode = "com.lihaoyi" %% "sourcecode" % "0.4.4"
-
   val usingDirectives = "org.virtuslab" % "using_directives" % "1.1.4"
 }
