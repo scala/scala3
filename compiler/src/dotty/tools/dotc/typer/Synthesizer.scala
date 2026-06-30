@@ -80,7 +80,11 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             if defn.SpecialClassTagClasses.contains(sym) then
               classTagModul.select(sym.name.toTermName).withSpan(span)
             else
-              val ctype = escapeJavaArray(erasure(tp.normalizedTupleType))
+              val normalTupleType = tp.normalizedTupleType
+              val specializedType = 
+                if tp.typeSymbol.denot.isSpecializedTrait then normalTupleType 
+                else erasure(normalTupleType)
+              val ctype = escapeJavaArray(specializedType)
               if ctype.exists then
                 classTagModul.select(nme.apply)
                   .appliedToType(tp)
