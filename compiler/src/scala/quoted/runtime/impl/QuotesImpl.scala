@@ -3384,7 +3384,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def sourceCode: Option[String] =
           val contents = self.source.content()
           if contents.length < self.end then None
-          else Some(contents.substring(self.start, self.end - self.start))
+          else Some(contents.substring(self.start, self.end))
       end extension
     end PositionMethods
 
