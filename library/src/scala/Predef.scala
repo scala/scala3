@@ -403,11 +403,17 @@ object Predef extends LowPriorityImplicits {
    *  @tparam A the type of the left-hand side of the arrow association
    *  @param self the value to use as the first element of the resulting tuple
    */
-  implicit final class ArrowAssoc[A](private val self: A) extends AnyVal {
+  @deprecated("Use `->` extension method instead.", since = "3.10.0")
+  final class ArrowAssoc[A](private val self: A) extends AnyVal {
+    @deprecated("Use `->` extension method instead.", since = "3.10.0")
     @inline def -> [B](y: B): (A, B) = (self, y)
     @deprecated("Use `->` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", "2.13.0")
     def →[B](y: B): (A, B) = ->(y)
   }
+
+  @deprecated("Use `->` extension method instead.", since = "3.10.0")
+  // no longer implicit, but direct calls should still resolve.
+  final def ArrowAssoc[A >: Nothing <: Any](self: A): ArrowAssoc[A] = new ArrowAssoc[A](self)
 
   /**
    *  @group implicit-classes-any
@@ -726,6 +732,18 @@ object Predef extends LowPriorityImplicits {
      *  ```
      */
     inline def runtimeChecked: x.type @RuntimeChecked = x: @RuntimeChecked
+
+  // extension method sugar ---------------------------------------------
+
+  extension [A](inline self: A)
+    /**
+     *  @tparam A the type of the left-hand side of the arrow association
+     *  @tparam B the type of the left-hand side of the arrow association
+     *  @param self the value to use as the first element of the resulting tuple
+     *  @param that the value to use as the second element of the resulting tuple
+     */
+    inline def -> [B](inline that: B): (A, B) = (self, that)
+
 
 }
 
