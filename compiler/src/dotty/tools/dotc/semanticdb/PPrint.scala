@@ -335,7 +335,7 @@ private[semanticdb] class SyntheticPrinter(symtab: PrinterSymtab, source: Source
         math.min(range.startCharacter, lineLength(range.startLine))
       val end = source.lineToOffset(range.endLine) +
         math.min(range.endCharacter, lineLength(range.endLine))
-      source.content().substring(start, end - start)
+      source.content().substring(start, end)
 
 
   // def pprint(tree: s.Tree, range: Option[Range]): String =
