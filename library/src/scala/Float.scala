@@ -22,12 +22,19 @@ import scala.language.`2.13`
  *  which provides useful non-primitive operations.
  */
 final abstract class Float private extends AnyVal {
+  /** Returns this value first converted to an `Int` (NaN to `0`, a finite value outside the `Int` range to `Int.MinValue` or `Int.MaxValue`, otherwise rounded toward zero), then narrowed to a `Byte` by keeping only its low-order 8 bits. */
   def toByte: Byte
+  /** Returns this value first converted to an `Int` (NaN to `0`, a finite value outside the `Int` range to `Int.MinValue` or `Int.MaxValue`, otherwise rounded toward zero), then narrowed to a `Short` by keeping only its low-order 16 bits. */
   def toShort: Short
+  /** Returns this value first converted to an `Int` (NaN to `0`, a finite value outside the `Int` range to `Int.MinValue` or `Int.MaxValue`, otherwise rounded toward zero), then narrowed to a `Char` by keeping only its low-order 16 bits. */
   def toChar: Char
+  /** Returns this value as an `Int`, rounded toward zero. A NaN value converts to `0`, and a finite value outside the `Int` range converts to `Int.MinValue` or `Int.MaxValue`. */
   def toInt: Int
+  /** Returns this value as a `Long`, rounded toward zero. A NaN value converts to `0L`, and a finite value outside the `Long` range converts to `Long.MinValue` or `Long.MaxValue`. */
   def toLong: Long
+  /** Returns this value, unmodified. */
   def toFloat: Float
+  /** Returns this value widened to a `Double`. The conversion is exact, since every `Float` value is representable as a `Double`. */
   def toDouble: Double
 
   /** Returns this value, unmodified. */
@@ -399,6 +406,10 @@ object Float extends AnyValCompanion {
    *  @param x the `Float` value to convert
    */
   import scala.language.implicitConversions
+  /** Returns `x` widened to a `Double`, the language-mandated coercion from `Float` to the "wider" `Double` type.
+   *
+   *  @param x the `Float` value to convert
+   */
   implicit def float2double(x: Float): Double = x.toDouble
 }
 

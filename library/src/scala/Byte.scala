@@ -22,12 +22,19 @@ import scala.language.`2.13`
  *  which provides useful non-primitive operations.
  */
 final abstract class Byte private extends AnyVal {
+  /** Returns the value of this as a [[scala.Byte]]. */
   def toByte: Byte
+  /** Returns the value of this as a [[scala.Short]]. */
   def toShort: Short
+  /** Returns the value of this as a [[scala.Char]]. */
   def toChar: Char
+  /** Returns the value of this as an [[scala.Int]]. */
   def toInt: Int
+  /** Returns the value of this as a [[scala.Long]]. */
   def toLong: Long
+  /** Returns the value of this as a [[scala.Float]]. */
   def toFloat: Float
+  /** Returns the value of this as a [[scala.Double]]. */
   def toDouble: Double
 
   /** Returns the bitwise negation of this value.
@@ -644,10 +651,30 @@ object Byte extends AnyValCompanion {
    *  @param x the `Byte` value to convert
    */
   import scala.language.implicitConversions
+  /** Returns the given `Byte` value as a [[scala.Short]].
+   *
+   *  @param x the `Byte` value to convert
+   */
   implicit def byte2short(x: Byte): Short = x.toShort
+  /** Returns the given `Byte` value as an [[scala.Int]].
+   *
+   *  @param x the `Byte` value to convert
+   */
   implicit def byte2int(x: Byte): Int = x.toInt
+  /** Returns the given `Byte` value as a [[scala.Long]].
+   *
+   *  @param x the `Byte` value to convert
+   */
   implicit def byte2long(x: Byte): Long = x.toLong
+  /** Returns the given `Byte` value as a [[scala.Float]].
+   *
+   *  @param x the `Byte` value to convert
+   */
   implicit def byte2float(x: Byte): Float = x.toFloat
+  /** Returns the given `Byte` value as a [[scala.Double]].
+   *
+   *  @param x the `Byte` value to convert
+   */
   implicit def byte2double(x: Byte): Double = x.toDouble
 }
 
