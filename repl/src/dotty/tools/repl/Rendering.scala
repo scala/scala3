@@ -110,7 +110,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   /** Whether `staticType` has a user-written `toString` override. */
   private def hasUserDefinedToString(staticType: Type)(using Context): Boolean =
-    if staticType.derivesFrom(defn.ProductClass) then
+    if staticType.derivesFrom(defn.ProductClass) && !staticType.derivesFrom(defn.TupleClass) then
       val toStringSym = staticType.member(nme.toString_).symbol
       toStringSym.exists && toStringSym.owner != defn.AnyClass && !toStringSym.is(Synthetic)
     else false
