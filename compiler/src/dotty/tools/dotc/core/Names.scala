@@ -4,12 +4,14 @@ package core
 
 import scala.io.Codec
 import util.NameTransformer
-import printing.{Showable, Texts, Printer}
+import printing.{Printer, Showable, Texts}
 import Texts.Text
 import StdNames.str
 import config.Config
-import util.{LinearMap, HashSet}
+import util.{HashSet, LinearMap}
 
+import java.nio.CharBuffer
+import java.nio.charset.StandardCharsets
 import scala.annotation.internal.sharable
 
 object Names {
@@ -272,7 +274,7 @@ object Names {
   /** A simple name is essentially an interned string */
   final class SimpleName(val start: Int, val length: Int) extends TermName {
 
-  /** The n'th character */
+    /** The nth character */
     def apply(n: Int): Char = chrs(start + n)
 
     /** A character in this name satisfies predicate `p` */
@@ -307,7 +309,7 @@ object Names {
     /** A slice of this name making up the characters between `from` and `until` (exclusive) */
     def slice(from: Int, end: Int): SimpleName = {
       assert(0 <= from && from <= end && end <= length)
-      termName(chrs, start + from, end - from)
+      termName(CharBuffer.wrap(chrs, start + from, end - from))
     }
 
     def drop(n: Int): SimpleName = slice(n, length)
@@ -324,7 +326,7 @@ object Names {
 
     override def asSimpleName: SimpleName = this
     override def toSimpleName: SimpleName = this
-    override final def mangle: SimpleName = encode
+    override def mangle: SimpleName = encode
 
     override def replace(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this)) else this
@@ -493,7 +495,7 @@ object Names {
     override def hash(x: SimpleName) = hashValue(chrs, x.start, x.length) // needed for resize
     override def isEqual(x: SimpleName, y: SimpleName) = ???              // not needed
 
-    def enterIfNew(cs: CharSequence | Array[Char], offset: Int, len: Int): SimpleName =
+    def enterIfNew(cs: CharSequence, offset: Int, len: Int): SimpleName =
       Stats.record(statsItem("put"))
       val myTable = currentTable // could be outdated under parallel execution
       var idx = hashValue(cs, offset, len) & (myTable.length - 1)
@@ -531,75 +533,68 @@ object Names {
   private val nameTable = NameTable()
 
   /** The hash of a name made of from characters cs[offset..offset+len-1]. */
-  private def hashValue(cs: CharSequence | Array[Char], offset: Int, len: Int): Int = cs match {
-    case seq: CharSequence =>
-      var i = offset
-      var hash = 0
-      while (i < len + offset) {
-        hash = 31 * hash + seq.charAt(i)
-        i += 1
-      }
-      hash
-    case arr: Array[Char] =>
-      var i = offset
-      var hash = 0
-      while (i < len + offset) {
-        hash = 31 * hash + arr(i)
-        i += 1
-      }
-      hash
+  private def hashValue(cs: CharSequence, offset: Int, len: Int): Int = {
+    var i = offset
+    var hash = 0
+    while (i < len + offset) {
+      hash = 31 * hash + cs.charAt(i)
+      i += 1
+    }
+    hash
+  }
+
+  /** The hash of a name made of from characters cs[offset..offset+len-1]. */
+  private def hashValue(cs: Array[Char], offset: Int, len: Int): Int = {
+    var i = offset
+    var hash = 0
+    while (i < len + offset) {
+      hash = 31 * hash + cs(i)
+      i += 1
+    }
+    hash
   }
 
   /** Is (the ASCII representation of) name at given index equal to
    *  cs[offset..offset+len-1]?
    */
-  private def equals(index: Int, cs: CharSequence | Array[Char], offset: Int, len: Int): Boolean = cs match {
-    case s: CharSequence =>
-      var i = 0
-      while ((i < len) && (chrs(index + i) == s.charAt(offset + i)))
-        i += 1
-      i == len
-    case arr: Array[Char] =>
-      var i = 0
-      while ((i < len) && (chrs(index + i) == arr(offset + i)))
-        i += 1
-      i == len
+  private def equals(index: Int, cs: CharSequence, offset: Int, len: Int): Boolean = {
+    var i = 0
+    while ((i < len) && (chrs(index + i) == cs.charAt(offset + i)))
+      i += 1
+    i == len
   }
 
   /** Copies the given characters starting at the given offset for the given length into the chrs array. */
-  private def copy(cs: CharSequence | Array[Char], offset: Int, len: Int): Unit = cs match {
-    case s: String => s.getChars(offset, offset + len, chrs, nc)
-    case seq: CharSequence =>
-      var i = 0
-      while i < len do
-        chrs(nc) = seq.charAt(offset + i)
-        nc += 1
-        i += 1
-    case arr: Array[Char] => System.arraycopy(arr, offset, chrs, nc, len)
+  private def copy(cs: CharSequence, offset: Int, len: Int): Unit = {
+    var i = 0
+    while i < len do
+      chrs(nc) = cs.charAt(offset + i)
+      nc += 1
+      i += 1
   }
 
   /** Create a term name from the characters in cs[offset..offset+len-1].
    */
-  def termName(cs: CharSequence | Array[Char], offset: Int, len: Int): SimpleName =
+  def termName(cs: CharSequence, offset: Int, len: Int): SimpleName =
     nameTable.enterIfNew(cs, offset, len)
 
   /** Create a type name from the characters in cs[offset..offset+len-1].
    */
-  def typeName(cs: CharSequence | Array[Char], offset: Int, len: Int): TypeName =
+  def typeName(cs: CharSequence, offset: Int, len: Int): TypeName =
     termName(cs, offset, len).toTypeName
 
   /**
    * Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
-   * This is less efficient than the Array[Char] version because it requires a copy to convert the bytes to characters.
+   * This is less efficient than the CharSequence version because it requires a copy to convert the bytes to characters.
    */
   def termName(bs: Array[Byte], offset: Int, len: Int): SimpleName = {
-    val chars = Codec.fromUTF8(bs, offset, len)
+    val chars = new String(bs, offset, len, StandardCharsets.UTF_8)
     termName(chars, 0, chars.length)
   }
 
   /**
    * Create a type name from the UTF8 encoded bytes in bs[offset..offset+len-1].
-   * This is less efficient than the Array[Char] version because it requires a copy to convert the bytes to characters.
+   * This is less efficient than the CharSequence version because it requires a copy to convert the bytes to characters.
    */
   def typeName(bs: Array[Byte], offset: Int, len: Int): TypeName =
     termName(bs, offset, len).toTypeName

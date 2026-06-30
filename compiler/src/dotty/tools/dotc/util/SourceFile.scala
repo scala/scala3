@@ -21,7 +21,7 @@ import java.nio.file.{FileSystemException, Paths}
 import java.util.Optional
 import java.util.regex.Pattern
 
-// TODO add #! support to parser and remove this
+// TODO add #! .. !# support to parser and remove this
 object ScriptSourceFile {
   @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
   private val headerStarts  = List("#!", "::#!")
