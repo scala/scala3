@@ -31,8 +31,8 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
 
   private def isLocal(diag: Diagnostic, uri: java.net.URI): Boolean =
     diag.pos.exists && {
-      val sourcePath = diag.pos.source.jfile.map(_.toPath())
-      sourcePath.isPresent() && sourcePath.get().toUri().equals(uri)
+      val sourceURL = diag.pos.source.file.toURL
+      sourceURL != null && sourceURL.toURI.equals(uri)
     }
 
   private def toLsp(diag: Diagnostic)(using Context): Option[lsp4j.Diagnostic] =
@@ -62,7 +62,7 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
     lspAction.setKind(lsp4j.CodeActionKind.QuickFix)
     lspAction.setIsPreferred(true)
     val edits = action.patches
-      .groupBy(_.srcPos.source.path)
+      .groupBy(_.srcPos.source.file.path)
       .map((path, actions) => path -> (actions.map(toLspTextEdit).asJava))
       .asJava
 

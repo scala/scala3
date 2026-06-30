@@ -33,7 +33,7 @@ object DocumentPrinter:
         symtab.get(occ.symbol).exists(_.isPrimary)
       if !occ.symbol.isPackage && !isPrimaryConstructor then
         assert(end <= doc.text.length,
-          s"doc is only ${doc.text.length} - offset=$offset, end=$end , symbol=${occ.symbol} in source ${sourceFile.name}")
+          s"doc is only ${doc.text.length} - offset=$offset, end=$end , symbol=${occ.symbol} in source ${sourceFile.file.name}")
         sb.append(doc.text.substring(offset, end))
         sb.append("/*")
           .append(if (occ.role.isDefinition) "<-" else "->")

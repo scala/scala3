@@ -29,7 +29,7 @@ final class PcRenameProvider(
     val decodedName = sym.decodedName
     def isForbiddenMethod = sym.is(Method) && forbiddenMethods(decodedName)
     def local = sym.ownersIterator.drop(1).exists(ow => ow.is(Method))
-    def isInWorksheet = sym.source.path.isWorksheet
+    def isInWorksheet = sym.source.file.path.isWorksheet
     !isForbiddenMethod && (local || isInWorksheet) && soughtSymbolNames(decodedName)
 
   def prepareRename(): Option[l.Range] =

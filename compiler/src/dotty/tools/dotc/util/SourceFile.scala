@@ -21,6 +21,7 @@ import java.nio.file.{FileSystemException, Paths}
 import java.util.Optional
 import java.util.regex.Pattern
 
+// TODO add #! support to parser and remove this
 object ScriptSourceFile {
   @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
   private val headerStarts  = List("#!", "::#!")
@@ -96,7 +97,7 @@ object WrappedSourceFile:
         result
       case result => result
 
-class SourceFile(val file: AbstractFile, computeContent: => String) /*extends interfaces.SourceFile*/ {
+class SourceFile(val file: AbstractFile, computeContent: => String) {
   import SourceFile.*
 
   private var myContent: String | Null = null
@@ -111,11 +112,7 @@ class SourceFile(val file: AbstractFile, computeContent: => String) /*extends in
   private var _maybeInComplete: Boolean = false
 
   def maybeIncomplete: Boolean = _maybeInComplete
-/*
-  override def name: String = file.name
-  override def path: String = file.path
-  override def jfile: Optional[JFile] = Optional.ofNullable(file.file)
-*/
+
   override def equals(that: Any): Boolean =
     (this `eq` that.asInstanceOf[AnyRef]) || {
       that match {
@@ -318,6 +315,16 @@ object SourceFile {
       ScriptSourceFile(file, content)
     else
       new SourceFile(file, content)
+
+  def toInterface(source: SourceFile): interfaces.SourceFile = new interfaces.SourceFile {
+    private var _content: Array[Char] | Null = null
+    override def content(): Array[Char] =
+      initialize(_content, _content = _, source.content().toCharArray)
+
+    override def name: String = source.file.name
+    override def path: String = source.file.path
+    override def jfile: Optional[JFile] = Optional.ofNullable(source.file.file)
+  }
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, "") {

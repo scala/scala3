@@ -15,7 +15,7 @@ import scala.annotation.internal.sharable
  *  `outer` must not be `NoSourcePosition`. It should be `null` instead (the default).
  */
 case class SourcePosition(source: SourceFile, span: Span, outer: SourcePosition | Null = null)
-extends SrcPos, interfaces.SourcePosition, Showable:
+extends SrcPos, Showable:
 
   def sourcePos(using Context) = WrappedSourceFile.sourcePos(source, span)
 
@@ -102,6 +102,20 @@ object SourcePosition:
     def inlinePosStack: List[SourcePosition] =
       if pos.outer != null && pos.outer.exists then pos :: pos.outer.inlinePosStack
       else pos :: Nil
+
+  def toInterface(pos: SourcePosition): interfaces.SourcePosition = new interfaces.SourcePosition {
+    override def lineContent(): String = pos.lineContent
+    override def point(): Int = pos.point
+    override def line(): Int = pos.line
+    override def column(): Int = pos.column
+    override def start(): Int = pos.start
+    override def startLine(): Int = pos.startLine
+    override def startColumn(): Int = pos.startColumn
+    override def end(): Int = pos.end
+    override def endLine(): Int = pos.endLine
+    override def endColumn(): Int = pos.endColumn
+    override def source(): interfaces.SourceFile = SourceFile.toInterface(pos.source)
+}
 end SourcePosition
 
 /** A sentinel for a non-existing source position */

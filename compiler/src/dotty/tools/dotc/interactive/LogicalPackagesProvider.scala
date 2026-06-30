@@ -47,7 +47,7 @@ class LogicalPackagesProvider(sourcePath: String){
       sourceFile: SourceFile,
       rootPackage: ParsedLogicalPackage
   ): Unit =
-    val fileName = sourceFile.path
+    val fileName = sourceFile.file.path
     if fileName.endsWith(".scala") then
       parseScalaSourceFile(sourceFile, fileName, rootPackage)
     else if fileName.endsWith(".java") then

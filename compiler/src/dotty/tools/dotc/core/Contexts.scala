@@ -793,7 +793,7 @@ object Contexts {
     @tailrec
     def originalCompilationUnit: CompilationUnit =
       val cu = ctx.compilationUnit
-      if cu.source.name == SyntaxHighlighting.VirtualSourceName then ctx.outer.originalCompilationUnit
+      if cu.source.file.name == SyntaxHighlighting.VirtualSourceName then ctx.outer.originalCompilationUnit
       else cu
 
   extension (c: Context)

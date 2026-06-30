@@ -120,7 +120,7 @@ object OverrideCompletions:
           shouldMoveCursor = true,
           config,
           autoImportsGen,
-          indexedContext.ctx.compilationUnit.source.content
+          indexedContext.ctx.compilationUnit.source.content()
             .startsWith("o", start)
         )
       )

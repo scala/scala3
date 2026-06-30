@@ -43,16 +43,16 @@ class CachingDriver private (
   private var lastCompiledURI: URI = uninitialized
   private var previousDiags = List.empty[Diagnostic]
 
-  private def alreadyCompiled(uri: URI, content: Array[Char]): Boolean =
+  private def alreadyCompiled(uri: URI, content: String): Boolean =
     compilationUnits.get(uri) match
       case Some(unit)
           if lastCompiledURI == uri &&
-            ju.Arrays.equals(unit.source.content(), content) =>
+            unit.source.content() == content =>
         true
       case _ => false
 
   override def run(uri: URI, source: SourceFile): List[Diagnostic] =
-    if !alreadyCompiled(uri, source.content) then previousDiags = super.run(uri, source)
+    if !alreadyCompiled(uri, source.content()) then previousDiags = super.run(uri, source)
     lastCompiledURI = uri
     previousDiags
 
