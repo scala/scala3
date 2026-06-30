@@ -843,6 +843,46 @@ class ReplCompilerTests extends ReplTest:
     )
     assertEquals(expected, lines())
 
+  @Test def `i26329 user toString is used instead of pprint`: Unit = initially:
+    run:
+      """case class Conjunction(left: String, right: String):
+        |  override def toString = s"$left ∧ $right"
+        |
+        |Conjunction("p", "q")
+        |""".stripMargin
+    val expected = List(
+      "// defined case class Conjunction",
+      "val res0: Conjunction = p ∧ q"
+    )
+    assertEquals(expected, lines())
+
+  @Test def `i26329 synthetic toString is not used instead of pprint`: Unit = initially:
+    run:
+      """case class Point(x: Int, y: Int)
+        |
+        |Point(1, 2)
+        |""".stripMargin
+    val expected = List(
+      "// defined case class Point",
+      "val res0: Point = Point(x = 1, y = 2)"
+    )
+    assertEquals(expected, lines())
+
+  @Test def `i26329 widened static type ignores overriden toString`: Unit = initially:
+    run:
+      """trait Formula
+        |case class Conjunction(left: String, right: String) extends Formula:
+        |  override def toString = s"$left ∧ $right"
+        |
+        |val x: Formula = Conjunction("p", "q")
+        |""".stripMargin
+    val expected = List(
+      "// defined trait Formula",
+      "// defined case class Conjunction",
+      """val x: Formula = Conjunction(left = "p", right = "q")"""
+    )
+    assertEquals(expected, lines())
+
 object ReplCompilerTests:
 
   private val pattern = Pattern.compile("\\r[\\n]?|\\n");
