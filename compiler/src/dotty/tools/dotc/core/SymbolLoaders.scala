@@ -437,14 +437,14 @@ abstract class SymbolLoader extends LazyType { self =>
     catch {
       case ex: ClosedByInterruptException =>
         throw new InterruptedException
-/*      case ex: IOException =>
+      case ex: IOException =>
         signalError(ex)
       case ex: TypeError =>
         println(s"exception caught when loading $root: ${ex.toMessage}")
         throw ex
       case ex: Exception =>
         println(s"exception caught when loading $root: $ex")
-        throw ex*/
+        throw ex
     }
     finally {
       def postProcess(denot: SymDenotation, other: Symbol) =
