@@ -110,12 +110,14 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   /** Return a colored fansi.Str representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(value: Object, prefixLength: Int)(using Context): fansi.Str = {
-    val res = pprintRender(
-      value,
-      width = ctx.settings.pageWidth.value,
-      height = ctx.settings.XreplPrintHeight.value,
-      initialOffset = prefixLength
-    )
+    val res =
+      if ctx.settings.YreplPrintToString.value then String.valueOf(value)
+      else pprintRender(
+        value,
+        width = ctx.settings.pageWidth.value,
+        height = ctx.settings.XreplPrintHeight.value,
+        initialOffset = prefixLength
+      )
     if (ctx.settings.color.value == "never") fansi.Str(res).plainText else res
   }
 

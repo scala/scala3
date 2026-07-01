@@ -537,6 +537,7 @@ private sealed trait YSettings:
   val YprintLevel: Setting[Boolean] = BooleanSetting(ForkSetting, "Yprint-level", "print nesting levels of symbols and type variables.")
   val YshowPrintErrors: Setting[Boolean] = BooleanSetting(ForkSetting, "Yshow-print-errors", "Don't suppress exceptions thrown during tree printing.")
   val YprintTasty: Setting[Boolean] = BooleanSetting(ForkSetting, "Yprint-tasty", "Prints the generated TASTY to stdout.")
+  val YreplPrintToString: Setting[Boolean] = BooleanSetting(ForkSetting, "Yrepl-print-tostring", "Render REPL results with their `toString` instead of the pretty-printer.")
   val YtestPickler: Setting[Boolean] = BooleanSetting(ForkSetting, "Ytest-pickler", "Self-test for pickling functionality; should be used with -Ystop-after:pickler.")
   val YtestPicklerCheck: Setting[Boolean] = BooleanSetting(ForkSetting, "Ytest-pickler-check", "Self-test for pickling -print-tasty output; should be used with -Ytest-pickler.")
   val YcheckReentrant: Setting[Boolean] = BooleanSetting(ForkSetting, "Ycheck-reentrant", "Check that compiled program does not contain vars that can be accessed from a global root.")

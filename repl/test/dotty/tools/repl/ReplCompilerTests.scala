@@ -855,6 +855,24 @@ object ReplCompilerTests:
 
 end ReplCompilerTests
 
+class ReplPrintToStringTests extends ReplTest(ReplTest.defaultOptions :+ "-Yrepl-print-tostring"):
+  private def lines() =
+    storedOutput().trim.linesIterator.toList
+
+  @Test def `i26329 -Yrepl-print-tostring renders results via toString`: Unit = initially:
+    run:
+      """case class Conjunction(left: String, right: String):
+        |  override def toString = s"$left ∧ $right"
+        |
+        |Conjunction("p", "q")
+        |""".stripMargin
+    val expected = List(
+      "// defined case class Conjunction",
+      "val res0: Conjunction = p ∧ q"
+    )
+    assertEquals(expected, lines())
+end ReplPrintToStringTests
+
 class ReplXPrintTyperTests extends ReplTest(ReplTest.defaultOptions :+ "-Vprint:typer"):
   @Test def i9111 = initially {
     run("""|enum E {
