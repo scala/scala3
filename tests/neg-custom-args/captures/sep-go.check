@@ -1,0 +1,34 @@
+-- Error: tests/neg-custom-args/captures/sep-go.scala:15:4 -------------------------------------------------------------
+15 |  f(x)   // error
+   |    ^
+   |Separation failure: argument of type  (x : Matrix^)
+   |to a function of type Matrix^ ->{x.rd} Unit
+   |corresponds to capture-polymorphic formal parameter v1 of type  Matrix^²
+   |and hides capabilities  {x}.
+   |Some of these overlap with the captures of the function prefix.
+   |
+   |  Hidden set of current argument        : {x}
+   |  Hidden footprint of current argument  : {x}
+   |  Capture set of function prefix        : {f}
+   |  Footprint set of function prefix      : {f, x.rd}
+   |  The two sets overlap at               : {x}
+   |
+   |where:    ^  refers to a root capability classified as Unscoped in the type of parameter x
+   |          ^² refers to a root capability classified as Unscoped created in method race when checking argument to parameter v1 of method apply
+-- Error: tests/neg-custom-args/captures/sep-go.scala:16:5 -------------------------------------------------------------
+16 |  go(x)  // error
+   |     ^
+   |Separation failure: argument of type  (x : Matrix^)
+   |to method go: (y: Matrix^): Unit
+   |corresponds to capture-polymorphic formal parameter y of type  Matrix^²
+   |and hides capabilities  {x}.
+   |Some of these overlap with the captures of the function prefix with type  (go : (y: Matrix^): Unit).
+   |
+   |  Hidden set of current argument        : {x}
+   |  Hidden footprint of current argument  : {x}
+   |  Capture set of function prefix        : {x.rd}
+   |  Footprint set of function prefix      : {x.rd}
+   |  The two sets overlap at               : {x}
+   |
+   |where:    ^  refers to a root capability classified as Unscoped in the type of parameter x
+   |          ^² refers to a root capability classified as Unscoped created in method race when checking argument to parameter y of method go
