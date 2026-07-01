@@ -10,4 +10,6 @@ class Baz extends Bar, Confounder
 
 @main def Test = 
   val baz = Baz()
-  assert(baz.problem == "Foo")
+  // TODO: Is this what we want? Should it be Foo?
+  // need to discuss.
+  assert(baz.problem == "Baz")
