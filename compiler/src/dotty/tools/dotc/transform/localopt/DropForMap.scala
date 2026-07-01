@@ -9,6 +9,7 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 /** Drop unused trailing map calls in for comprehensions.
@@ -100,8 +101,8 @@ object DropForMap:
    *  If `map` is an extension method, the nominal receiver is `args.head`.
    */
   private object Unmapped:
-    private def loop(tree: Tree)(using Context): Option[(Tree, Symbol, List[Tree])] = tree match
-      case Apply(fun, args @ Lambda(_ :: Nil, _) :: Nil) =>
+    private def loop(tree: Tree)(using Context): Option[(Tree, Symbol, Lst[Tree])] = tree match
+      case Apply(fun, Lst.single(args @ Lambda(_ :: Nil, _))) =>
         tree.removeAttachment(TrailingForMap) match
         case Some(_) =>
           fun match
@@ -115,33 +116,33 @@ object DropForMap:
       case TypeApply(fun, _) => loop(fun)
       case _ => None
     end loop
-    def unapply(tree: Apply)(using Context): Option[(Tree, Symbol, List[Tree])] =
+    def unapply(tree: Apply)(using Context): Option[(Tree, Symbol, Lst[Tree])] =
       tree.tpe match
       case _: MethodOrPoly => None
       case _ => loop(tree)
 
   private object Lambda:
     def unapply(tree: Tree)(using Context): Option[(List[ValDef], Tree)] = tree match
-      case Block(List(defdef: DefDef), Closure(Nil, ref, _))
+      case Block(List(defdef: DefDef), Closure(Lst.empty(), ref, _))
       if ref.symbol == defdef.symbol && !defdef.paramss.exists(_.forall(_.isType)) =>
-        Some((defdef.termParamss.flatten, defdef.rhs))
+        Some((defdef.termParamss.flattenLst.toList, defdef.rhs))
       case _ => None
 
   private object MapCall:
-    def unapply(tree: Tree)(using Context): Option[(Tree, Symbol, List[Tree])] =
-      def loop(tree: Tree, args: List[Tree]): Option[(Tree, Symbol, List[Tree])] =
+    def unapply(tree: Tree)(using Context): Option[(Tree, Symbol, Lst[Tree])] =
+      def loop(tree: Tree, args: Lst[Tree]): Option[(Tree, Symbol, Lst[Tree])] =
         tree match
         case Ident(nme.map) if tree.symbol.is(Extension) => Some((EmptyTree, tree.symbol, args))
         case Select(f, nme.map) => Some((f, tree.symbol, args))
         case Apply(fn, args) => loop(fn, args)
         case TypeApply(fn, _) => loop(fn, args)
         case _ => None
-      loop(tree, Nil)
+      loop(tree, Lst())
 
   private object Converted:
     def unapply(tree: Tree)(using Context): Option[Tree] = tree match
       case Apply(fn @ Apply(_, _), _) => unapply(fn)
-      case Apply(fn, r :: Nil)
+      case Apply(fn, Lst.single(r))
       if fn.symbol.is(Implicit)
       || fn.symbol.name == nme.apply && fn.symbol.owner.derivesFrom(defn.ConversionClass)
       => Some(r)

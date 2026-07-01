@@ -9,6 +9,7 @@ import util.chaining.*
 
 import StdNames.*, NameOps.*
 import typer.Nullables
+import util.Lst
 
 class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd.*
@@ -33,7 +34,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       val paramSymss = forwarder.paramSymss // compute once; different from rawParamss
       forwarder.setParamss(paramSymss)
       atPhaseBeforeTransforms:
-        for (src, dst) <- member.paramSymss.flatten.filter(!_.isType).zip(paramSymss.flatten) do
+        for (src, dst) <- member.paramSymss.flattenLst.filter(!_.isType).zip(paramSymss.flattenLst) do
           dst.addAnnotations(src.annotations)
 
   def superRef(target: Symbol, span: Span = cls.span): Tree = {
@@ -90,7 +91,7 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
 
     // Similarly, Java serialization won't take into account a readResolve/writeReplace default method.
     def generateSerializationForwarder: Boolean =
-       (meth.name == nme.readResolve || meth.name == nme.writeReplace) && meth.info.paramNamess.flatten.isEmpty
+       (meth.name == nme.readResolve || meth.name == nme.writeReplace) && meth.info.paramNamess.flattenLst.isEmpty
 
     !meth.isConstructor
     && meth.is(Method, butNot = PrivateOrAccessorOrDeferred)
@@ -109,12 +110,12 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   private val PrivateOrAccessor: FlagSet = Private | Accessor
   private val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
-  def forwarderRhsFn(target: Symbol): List[List[Tree]] => Tree =
+  def forwarderRhsFn(target: Symbol): List[Lst[Tree]] => Tree =
     prefss =>
       val (targs, vargss) = splitArgs(prefss)
       val tapp = superRef(target).appliedToTypeTrees(targs)
       val rhs = vargss match
-        case Nil | List(Nil) =>
+        case Nil | List(Lst.empty()) =>
           // Overriding is somewhat loose about `()T` vs `=> T`, so just pick
           // whichever makes sense for `target`
           tapp.ensureApplied

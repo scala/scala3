@@ -21,6 +21,7 @@ import dotty.tools.dotc.staging.StagingLevel.*
 import dotty.tools.dotc.typer.ErrorReporting.errorTree
 import dotty.tools.dotc.typer.Implicits.*
 import dotty.tools.dotc.typer.Inferencing.*
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.util.Stats.record
@@ -65,7 +66,7 @@ trait QuotesAndSplices {
       // TODO typecheck directly (without `exprQuote`)
       val exprQuoteTree = untpd.Apply(untpd.ref(defn.QuotedRuntime_exprQuote.termRef), tree.body)
       val quotedExpr = typedApply(exprQuoteTree, pt)(using quoteContext) match
-        case Apply(TypeApply(fn, tpt :: Nil), quotedExpr :: Nil) => untpd.Quote(quotedExpr, Nil).withBodyType(tpt.tpe)
+        case Apply(TypeApply(fn, Lst.single(tpt)), Lst.single(quotedExpr)) => untpd.Quote(quotedExpr, Nil).withBodyType(tpt.tpe)
       makeInlineable(quotedExpr.select(nme.apply).appliedTo(quotes).withSpan(tree.span))
   }
 
@@ -99,7 +100,7 @@ trait QuotesAndSplices {
     val internalSplice =
       untpd.Apply(untpd.ref(defn.QuotedRuntime_exprSplice.termRef), tree.expr)
     typedApply(internalSplice, pt)(using spliceContext).withSpan(tree.span) match
-      case tree @ Apply(TypeApply(_, tpt :: Nil), spliced :: Nil) if tree.symbol == defn.QuotedRuntime_exprSplice =>
+      case tree @ Apply(TypeApply(_, Lst.single(tpt)), Lst.single(spliced)) if tree.symbol == defn.QuotedRuntime_exprSplice =>
         cpy.Splice(tree)(spliced)
       case tree => tree
   }
@@ -130,8 +131,9 @@ trait QuotesAndSplices {
           report.error("Open pattern expected an identifier", arg.srcPos)
           EmptyTree
       }
-      for arg <- typedArgs if arg.symbol.isMutableVarOrAccessor do // TODO support these patterns. Possibly using scala.quoted.util.Var
-        report.error("References to `var`s cannot be used in higher-order pattern", arg.srcPos)
+      for arg <- typedArgs do
+        if arg.symbol.isMutableVarOrAccessor then // TODO support these patterns. Possibly using scala.quoted.util.Var
+          report.error("References to `var`s cannot be used in higher-order pattern", arg.srcPos)
       val argTypes = typedArgs.map(_.tpe.widenTermRefExpr)
       val patType = (tree.typeargs.isEmpty, tree.args.isEmpty) match
         case (true, true) => pt
@@ -170,7 +172,7 @@ trait QuotesAndSplices {
     else // $x(...) higher-order quasipattern
       if args.isEmpty then
          report.error("Missing arguments for open pattern", tree.srcPos)
-      typedSplicePattern(untpd.cpy.SplicePattern(tree)(splice.body, Nil, args), pt)
+      typedSplicePattern(untpd.cpy.SplicePattern(tree)(splice.body, Lst(), args), pt)
   }
 
   /** Types a splice applied to some type arguments and arguments
@@ -197,7 +199,7 @@ trait QuotesAndSplices {
   }
 
   def typedTypeAppliedSplice(tree: untpd.TypeApply, pt: Type)(using Context): Tree = {
-    typedAppliedSpliceWithTypes(untpd.Apply(tree, Nil), pt)
+    typedAppliedSpliceWithTypes(untpd.Apply(tree, Lst()), pt)
   }
 
   /** Type check a type binding reference in a quoted pattern.
@@ -363,7 +365,7 @@ object QuotesAndSplices {
       override def transform(tree: Tree)(using Context) = tree match
         // TODO: handle TypeBoundsTree, LambdaTypeTree as well as method parameters in DefTrees?
         case tree @ AppliedTypeTree(tpt, args) =>
-          val args1: List[Tree] = args.zipWithConserve(tpt.tpe.typeParams.map(_.paramVarianceSign)) { (arg, v) =>
+          val args1: Lst[Tree] = args.zipWithConserve(tpt.tpe.typeParams.map(_.paramVarianceSign)) { (arg, v) =>
             arg.tpe match {
               case _: TypeBounds => transform(arg)
               case _ => atVariance(v * variance)(transform(arg))
@@ -379,13 +381,13 @@ object QuotesAndSplices {
       * Return a poly-type + method type [$typeargs] => ($args) => ($resultType)
       * where typeargs occur in args and resulttype
       */
-    def apply(typeargs: List[Type], args: List[Type], resultType: Type)(using Context): Type =
+    def apply(typeargs: Lst[Type], args: Lst[Type], resultType: Type)(using Context): Type =
       val typeargs1 = PolyType.syntheticParamNames(typeargs.length)
 
-      val bounds = typeargs map (_ => TypeBounds.empty)
+      val bounds = typeargs.map(_ => TypeBounds.empty)
       val resultTypeExp = (pt: PolyType) => {
-        val fromSymbols = typeargs map (_.typeSymbol)
-        val args1 = args map (_.subst(fromSymbols, pt.paramRefs))
+        val fromSymbols = typeargs.map(_.typeSymbol)
+        val args1 = args.map(_.subst(fromSymbols, pt.paramRefs))
         val resultType1 = resultType.subst(fromSymbols, pt.paramRefs)
         MethodType(args1, resultType1)
       }

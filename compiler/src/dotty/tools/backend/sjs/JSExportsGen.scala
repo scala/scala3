@@ -884,7 +884,7 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
   }
 
   private class ExportedSymbol(sym: Symbol, static: Boolean)
-      extends Exported(sym, sym.jsParamInfos.toIndexedSeq) {
+      extends Exported(sym, sym.jsParamInfos.toList.toIndexedSeq) {
 
     def genBody(formalArgsRegistry: FormalArgsRegistry): js.Tree =
       genApplyForSingleExported(formalArgsRegistry, this, static)

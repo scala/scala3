@@ -12,7 +12,7 @@ import typer.ProtoTypes.constrained
 import ast.untpd
 import config.Feature
 
-import util.Property
+import util.{Property, Lst}
 import util.Spans.Span
 import config.Printers.derive
 import NullOpsDecorator.*
@@ -22,7 +22,7 @@ object SyntheticMembers {
 
   enum MirrorImpl:
     case OfProduct(pre: Type)
-    case OfSum(childPres: List[Type])
+    case OfSum(childPres: Lst[Type])
 
   /** Attachment marking an anonymous class as a singleton case that will extend from Mirror.Singleton */
   val ExtendsSingletonMirror: Property.StickyKey[Unit] = new Property.StickyKey
@@ -88,7 +88,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       NoSymbol
   end existingDef
 
-  private def synthesizeDef(sym: TermSymbol, rhsFn: List[List[Tree]] => Context ?=> Tree)(using Context): Tree =
+  private def synthesizeDef(sym: TermSymbol, rhsFn: List[Lst[Tree]] => Context ?=> Tree)(using Context): Tree =
     DefDef(sym, rhsFn(_)(using ctx.withOwner(sym))).withSpan(ctx.owner.span.focus)
 
   /** If this is a case or value class, return the appropriate additional methods,
@@ -130,8 +130,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         info = clazz.thisType.memberInfo(sym),
         coord = clazz.coord).enteredAfter(thisPhase).asTerm
 
-      def forwardToRuntime(vrefs: List[Tree]): Tree =
-        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToTermArgs(This(clazz) :: vrefs)
+      def forwardToRuntime(vrefs: Lst[Tree]): Tree =
+        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToTermArgs(This(clazz) +: vrefs)
 
       def ownNameLit: Tree = Literal(Constant(ownName))
 
@@ -153,12 +153,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           assert(candidate.isDefined, i"could not find child for $vdef in ${parentEnum.children}%, % of $parentEnum")
           Literal(Constant(candidate.get))
 
-      def toStringBody(vrefss: List[List[Tree]]): Tree =
+      def toStringBody(vrefss: List[Lst[Tree]]): Tree =
         if (clazz.is(ModuleClass)) ownNameLit
         else if (isNonJavaEnumValue) identifierRef
         else forwardToRuntime(vrefss.head)
 
-      def syntheticRHS(vrefss: List[List[Tree]])(using Context): Tree = synthetic.name match {
+      def syntheticRHS(vrefss: List[Lst[Tree]])(using Context): Tree = synthetic.name match {
         case nme.hashCode_ if isDerivedValueClass(clazz) => valueHashCodeBody
         case nme.hashCode_ => chooseHashcode
         case nme.toString_ => toStringBody(vrefss)
@@ -362,7 +362,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      * For case classes with primitive paramters, see [[caseHashCodeBody]].
      */
     def chooseHashcode(using Context) =
-      if (isNonJavaEnumValue) identifierRef.select(nme.hashCode_).appliedToTermArgs(Nil)
+      if (isNonJavaEnumValue) identifierRef.select(nme.hashCode_).appliedToTermArgs(Lst())
       else if (accessors.isEmpty) Literal(Constant(ownName.hashCode))
       else if (accessors.exists(_.info.finalResultType.classSymbol.isPrimitiveValueClass))
         caseHashCodeBody
@@ -399,7 +399,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val mixes = for (accessor <- accessors) yield
         Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
       val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
-      Block(accDef :: mixPrefix :: mixes, finish)
+      Block(accDef :: mixPrefix :: mixes.toList, finish)
     }
 
     /** The `hashCode` implementation for given symbol `sym`. */
@@ -446,11 +446,11 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
   private def writeReplaceDef(clazz: ClassSymbol)(using Context): TermSymbol =
     newSymbol(clazz, nme.writeReplace, PrivateMethod | Synthetic,
-        MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
+        MethodType(Lst(), defn.AnyRefType), coord = clazz.coord).entered.asTerm
 
   private def readResolveDef(clazz: ClassSymbol)(using Context): TermSymbol =
     newSymbol(clazz, nme.readResolve, PrivateMethod | Synthetic,
-        MethodType(Nil, defn.AnyRefType), coord = clazz.coord).entered.asTerm
+        MethodType(Lst(), defn.AnyRefType), coord = clazz.coord).entered.asTerm
 
   /** If this is a static object `Foo`, add the method:
    *
@@ -472,7 +472,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         DefDef(writeReplaceDef(clazz),
           _ => New(defn.ModuleSerializationProxyClass.typeRef,
                    defn.ModuleSerializationProxyConstructor,
-                   List(Literal(Constant(clazz.sourceModule.termRef)))))
+                   Lst(Literal(Constant(clazz.sourceModule.termRef)))))
           .withSpan(ctx.owner.span.focus))
     else
       Nil
@@ -571,10 +571,10 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
 
     // Create symbols for the vals corresponding to each parameter
     // If there are dependent parameters, the infos won't be correct yet.
-    val bindingSyms = constrMeth.paramRefs.map: pref =>
+    val bindingSyms = constrMeth.paramRefsList.map: pref =>
       newSymbol(ctx.owner, pref.paramName.freshened, Synthetic,
         pref.underlying.translateFromRepeated(toArray = false), coord = ctx.owner.span.focus)
-    val bindingRefs = bindingSyms.map(TermRef(NoPrefix, _))
+    val bindingRefs = bindingSyms.mapToLst(TermRef(NoPrefix, _))
     // Fix the infos for dependent parameters. We also need to include false dependencies that would
     // be fixed by de-aliasing since we do no such de-aliasing here. See i22944.scala.
     if constrMeth.looksParamDependent then
@@ -599,7 +599,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       ).ensureConforms(bindingSym.info)
       ValDef(bindingSym, rhs)
 
-    val newArgs = bindingRefs.lazyZip(constrMeth.paramInfos).map: (bindingRef, paramInfo) =>
+    val newArgs = bindingRefs.zipWith(constrMeth.paramInfos): (bindingRef, paramInfo) =>
       val refTree = ref(bindingRef)
       if paramInfo.isRepeatedParam then ctx.typer.seqToRepeated(refTree) else refTree
     Block(
@@ -628,24 +628,24 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     if cls.is(Enum) then
       param.select(nme.ordinal).ensureApplied
     else
-      def computeChildTypes: List[Type] =
+      def computeChildTypes: Lst[Type] =
         def rawRef(child: Symbol): Type =
           if (child.isTerm) child.reachableTermRef else child.reachableRawTypeRef
         optInfo match
           case Some(info) => info
             .childPres
-            .lazyZip(cls.children)
-            .map((pre, child) => rawRef(child).asSeenFrom(pre, child.owner))
+            .zipWith(cls.children.toLst): (pre, child) =>
+              rawRef(child).asSeenFrom(pre, child.owner)
           case _ =>
-            cls.children.map(rawRef)
+            cls.children.mapToLst(rawRef)
 
       val childTypes = computeChildTypes
       val cases =
-        for (patType, idx) <- childTypes.zipWithIndex yield
+        for (patType, idx) <- childTypes.toList.zipWithIndex yield
           val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
           CaseDef(pat, EmptyTree, Literal(Constant(idx)))
 
-      Match(param.annotated(New(defn.UncheckedAnnot.typeRef, Nil)), cases)
+      Match(param.annotated(New(defn.UncheckedAnnot.typeRef, Lst())), cases)
   end ordinalBody
 
   /** - If `impl` is the companion of a generic sum, add `deriving.Mirror.Sum` parent
@@ -692,12 +692,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       addParent(defn.Mirror_SingletonClass.typeRef)
     def makeProductMirror(cls: Symbol, optInfo: Option[MirrorImpl.OfProduct]) = {
       addParent(defn.Mirror_ProductClass.typeRef)
-      addMethod(nme.fromProduct, MethodType(defn.ProductClass.typeRef :: Nil, monoType.typeRef), cls,
+      addMethod(nme.fromProduct, MethodType(Lst(defn.ProductClass.typeRef), monoType.typeRef), cls,
         fromProductBody(_, _, optInfo).ensureConforms(monoType.typeRef))  // t4758.scala or i3381.scala are examples where a cast is needed
     }
     def makeSumMirror(cls: Symbol, optInfo: Option[MirrorImpl.OfSum]) = {
       addParent(defn.Mirror_SumClass.typeRef)
-      addMethod(nme.ordinal, MethodType(monoType.typeRef :: Nil, defn.IntType), cls,
+      addMethod(nme.ordinal, MethodType(Lst(monoType.typeRef), defn.IntType), cls,
         ordinalBody(_, _, optInfo))
     }
 

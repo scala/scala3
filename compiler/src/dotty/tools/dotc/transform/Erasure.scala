@@ -34,7 +34,7 @@ import ValueClasses.*
 import ContextFunctionResults.*
 import ExplicitOuter.*
 import core.Mode
-import util.Property
+import util.{Property, Lst}
 import reporting.*
 import scala.annotation.tailrec
 
@@ -55,7 +55,7 @@ class Erasure extends Phase with DenotTransformer {
       def isCompacted(symd: SymDenotation) =
         symd.isAnonymousFunction && {
           atPhase(ctx.phase.next)(symd.info) match {
-            case MethodType(nme.ALLARGS :: Nil) => true
+            case MethodType(Lst.single(nme.ALLARGS)) => true
             case _                              => false
           }
         }
@@ -147,7 +147,7 @@ class Erasure extends Phase with DenotTransformer {
   private def erasedClassInfo(cls: ClassSymbol)(using Context) =
     cls.classInfo.derivedClassInfo(
       declaredParents = defn.ObjectClass.typeRef :: Nil,
-      decls = newScopeWith(newConstructor(cls, Flags.EmptyFlags, Nil, Nil)))
+      decls = newScopeWith(newConstructor(cls, Flags.EmptyFlags, Lst(), Lst())))
 
   override def checkPostCondition(tree: tpd.Tree)(using Context): Unit = {
     assertErased(tree)
@@ -215,12 +215,12 @@ object Erasure {
   private val BunchedArgs = new Property.Key[Unit]
 
   /** An Apply node which might still be missing some arguments */
-  def partialApply(fn: Tree, args: List[Tree])(using Context): Tree =
-    untpd.Apply(fn, args.toList)
+  def partialApply(fn: Tree, args: Lst[Tree])(using Context): Tree =
+    untpd.Apply(fn, args)
       .withType(applyResultType(fn.tpe.widen.asInstanceOf[MethodType], args))
 
   /** The type of an Apply node which might still be missing some arguments */
-  private def applyResultType(mt: MethodType, args: List[Tree])(using Context): Type =
+  private def applyResultType(mt: MethodType, args: Lst[Tree])(using Context): Type =
     if mt.paramInfos.length <= args.length then mt.resultType
     else MethodType(mt.paramInfos.drop(args.length), mt.resultType)
 
@@ -231,10 +231,10 @@ object Erasure {
    */
   def expandedMethodType(mt: MethodType, origFun: Tree)(using Context): MethodType =
     mt.paramInfos match
-      case JavaArrayType(elemType) :: Nil if elemType.isRef(defn.ObjectClass) =>
+      case Lst.single(JavaArrayType(elemType)) if elemType.isRef(defn.ObjectClass) =>
         val origArity = totalParamCount(origFun.symbol)(using preErasureCtx)
         if origArity > MaxImplementedFunctionArity then
-          MethodType(List.fill(origArity)(defn.ObjectType), mt.resultType)
+          MethodType(Lst.fill(origArity)(defn.ObjectType), mt.resultType)
         else mt
       case _ => mt
 
@@ -259,7 +259,7 @@ object Erasure {
      *  fields (see TupleX). (ID)
      */
     private def safelyRemovableUnboxArg(tree: Tree)(using Context): Tree = tree match {
-      case Apply(fn, arg :: Nil)
+      case Apply(fn, Lst.single(arg))
       if isUnbox(fn.symbol) && defn.ScalaBoxedClasses().contains(arg.tpe.typeSymbol) =>
         arg
       case _ =>
@@ -272,7 +272,7 @@ object Erasure {
     final def box(tree: Tree, target: => String = "")(using Context): Tree = trace(i"boxing ${tree.showSummary()}: ${tree.tpe} into $target") {
       tree.tpe.widen match {
         case ErasedValueType(tycon, _) =>
-          New(tycon, cast(tree, underlyingOfValueClass(tycon.symbol.asClass)) :: Nil) // todo: use adaptToType?
+          New(tycon, Lst(cast(tree, underlyingOfValueClass(tycon.symbol.asClass)))) // todo: use adaptToType?
         case tp =>
           val cls = tp.classSymbol
           if (cls eq defn.UnitClass) constant(tree, ref(defn.BoxedUnit_UNIT))
@@ -499,7 +499,7 @@ object Erasure {
           inContext(ctx.withOwner(bridge)) {
             val List(bridgeParams) = bridgeParamss
             assert(ctx.typer.isInstanceOf[Erasure.Typer])
-            val rhs = Apply(meth, bridgeParams.lazyZip(implParamTypes).map(ctx.typer.adapt(_, _)))
+            val rhs = Apply(meth, bridgeParams.zipWith(implParamTypes)(ctx.typer.adapt(_, _)))
             ctx.typer.adapt(rhs, bridgeType.resultType)
           },
           targetType = functionalInterface).withSpan(tree.span)
@@ -695,7 +695,7 @@ object Erasure {
 
       def selectArrayMember(qual: Tree, erasedPre: Type): Tree =
         if erasedPre.isAnyRef then
-          partialApply(ref(defn.runtimeMethodRef(tree.name.genericArrayOp)), qual :: Nil)
+          partialApply(ref(defn.runtimeMethodRef(tree.name.genericArrayOp)), Lst(qual))
         else if !(qual.tpe <:< erasedPre) then
           selectArrayMember(cast(qual, erasedPre), erasedPre)
         else
@@ -781,7 +781,7 @@ object Erasure {
           val fun1 = typedExpr(fun, AnyFunctionProto)
           fun1.tpe.widen match {
             case funTpe: PolyType =>
-              val args1 = args.mapconserve(typedType(_))
+              val args1 = args.mapConserve(typedType(_))
               untpd.cpy.TypeApply(tree)(fun1, args1).withType(funTpe.instantiate(args1.tpes))
             case _ => fun1
           }
@@ -802,15 +802,15 @@ object Erasure {
       val origFun = fun.asInstanceOf[tpd.Tree]
       val origFunType = origFun.tpe.widen(using preErasureCtx)
       val insideBridge = ctx.owner.ownersIterator.exists(_.is(Flags.Bridge))
-      val ownArgs = origFunType match
+      val ownArgs: Lst[untpd.Tree] = origFunType match
         case mt: MethodType if mt.hasErasedParams && !insideBridge =>
-          args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
-            if isErased then
+          args.zip(mt.paramInfos).flatMap: (arg, pinfo) =>
+            if pinfo.isForErasedParam then
               checkPureErased(arg, isArgument = true,
                 isImplicit = mt.isImplicitMethod && arg.span.isSynthetic)
-              Nil
+              Lst()
             else
-              arg :: Nil
+              Lst(arg)
         case _ => args
       val fun1 = typedExpr(fun, AnyFunctionProto)
       fun1.tpe.widen match
@@ -819,15 +819,15 @@ object Erasure {
                 bunchArgs,  // whether arguments are bunched
                 outers) =   // the outer reference parameter(s)
             if fun1.isInstanceOf[Apply] then
-              (mt, fun1.removeAttachment(BunchedArgs).isDefined, Nil)
+              (mt, fun1.removeAttachment(BunchedArgs).isDefined, Lst())
             else
               val xmt = expandedMethodType(mt, origFun)
               (xmt, xmt ne mt, outer.args(origFun))
 
-          val args0 = outers ::: ownArgs
+          val args0 = outers ++ ownArgs
           val args1 = args0.zipWithConserve(xmt.paramInfos)(typedExpr)
 
-          def mkApply(finalFun: Tree, finalArgs: List[Tree]) =
+          def mkApply(finalFun: Tree, finalArgs: Lst[Tree]) =
             val app = untpd.cpy.Apply(tree)(finalFun, finalArgs)
               .withType(applyResultType(xmt, args1))
             if bunchArgs then app.withAttachment(BunchedArgs, ()) else app
@@ -835,12 +835,12 @@ object Erasure {
           def app(fun1: Tree): Tree = fun1 match
             case Block(stats, expr) =>
               cpy.Block(fun1)(stats, app(expr))
-            case Apply(fun2, SeqLiteral(prevArgs, argTpt) :: _) if bunchArgs =>
-              mkApply(fun2, JavaSeqLiteral(prevArgs ++ args1, argTpt) :: Nil)
+            case Apply(fun2, Lst.withHead(SeqLiteral(prevArgs, argTpt))) if bunchArgs =>
+              mkApply(fun2, Lst(JavaSeqLiteral(prevArgs ++ args1, argTpt)))
             case Apply(fun2, prevArgs) =>
               mkApply(fun2, prevArgs ++ args1)
             case _ if bunchArgs =>
-              mkApply(fun1, JavaSeqLiteral(args1, TypeTree(defn.ObjectType)) :: Nil)
+              mkApply(fun1, Lst(JavaSeqLiteral(args1, TypeTree(defn.ObjectType))))
             case _ =>
               mkApply(fun1, args1)
 
@@ -902,10 +902,10 @@ object Erasure {
         erasedDef(sym)
       else
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
-        var vparams = outerParamDefs(sym)
-            ::: ddef.paramss.collect {
+        var vparams: Lst[untpd.ValDef] = outerParamDefs(sym)
+            ++ ddef.paramss.collect {
               case untpd.ValDefs(vparams) => vparams
-            }.flatten.filterConserve(!_.symbol.is(Flags.Erased))
+            }.flattenLst.filter(!_.symbol.is(Flags.Erased))
 
         def skipContextClosures(rhs: Tree, crCount: Int)(using Context): Tree =
           if crCount == 0 then rhs
@@ -932,8 +932,8 @@ object Erasure {
             case (paramDef, idx) =>
               assignType(untpd.cpy.ValDef(paramDef)(rhs = selector(idx)), paramDef.symbol)
           }
-          vparams = ValDef(bunchedParam) :: Nil
-          rhs1 = Block(paramDefs, rhs1)
+          vparams = Lst(ValDef(bunchedParam))
+          rhs1 = Block(paramDefs.toList, rhs1)
 
         val ddef1 = untpd.cpy.DefDef(ddef)(
           paramss = vparams :: Nil,
@@ -943,12 +943,12 @@ object Erasure {
     end typedDefDef
 
     /** The outer parameter definition of a constructor if it needs one */
-    private def outerParamDefs(constr: Symbol)(using Context): List[ValDef] =
+    private def outerParamDefs(constr: Symbol)(using Context): Lst[ValDef] =
       if constr.isConstructor && needsOuterParam(constr.owner.asClass) then
         constr.info match
-          case MethodTpe(outerName :: _, outerType :: _, _) =>
-            val outerSym = newSymbol(constr, outerName, Flags.Param | Flags.SyntheticArtifact, outerType)
-            ValDef(outerSym) :: Nil
+          case MethodTpe(pnames, ptypes, _) =>
+            val outerSym = newSymbol(constr, pnames(0), Flags.Param | Flags.SyntheticArtifact, ptypes(0))
+            Lst(ValDef(outerSym))
           case _ =>
             // There's a possible race condition that a constructor was looked at
             // after erasure before we had a chance to run ExplicitOuter on its class
@@ -962,7 +962,7 @@ object Erasure {
               info = outer.addParam(constr.owner.asClass, constr.info)
             ).installAfter(erasurePhase)
             outerParamDefs(constr)
-      else Nil
+      else Lst()
 
     /** For all statements in stats: given a retained inline method and
      *  its retainedBody method such as
@@ -1002,10 +1002,10 @@ object Erasure {
           val rdef = retainerDef(stat.symbol)
           val fromParams = untpd.allParamSyms(rdef)
           val toParams = untpd.allParamSyms(stat)
-          assert(fromParams.hasSameLengthAs(toParams))
+          assert(fromParams.length == toParams.length)
           val mapBody = TreeTypeMap(
-            oldOwners = rdef.symbol :: Nil,
-            newOwners = stat.symbol :: Nil,
+            oldOwners = Lst(rdef.symbol),
+            newOwners = Lst(stat.symbol),
             substFrom = fromParams,
             substTo   = toParams)
           cpy.DefDef(stat)(rhs = mapBody.transform(rdef.rhs))

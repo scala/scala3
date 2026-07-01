@@ -23,6 +23,7 @@ import cc.CleanupRetains
 import collection.mutable
 import reporting.{NotConstant, trace}
 import util.Spans.Span
+import util.Lst
 import dotty.tools.dotc.core.Periods.PhaseId
 import dotty.tools.dotc.util.chaining.*
 
@@ -71,7 +72,7 @@ object Inlines:
         // with a dummy argument (see Applications.typedUnApply). We delay the
         // inlining of this call.
         def rec(tree: Tree): Boolean = tree match
-          case Apply(_, ProtoTypes.dummyTreeOfType(_) :: Nil) => true
+          case Apply(_, Lst.single(ProtoTypes.dummyTreeOfType(_))) => true
           case Apply(fn, _) => rec(fn)
           case _ => false
         tree.symbol.name.isUnapplyName && rec(tree)
@@ -162,12 +163,14 @@ object Inlines:
       case TypeApply(fn, args) =>
         fn.tpe.widenTermRefExpr match
           case tp: PolyType =>
-            val targBounds = tp.instantiateParamInfos(args.map(_.tpe))
-            for case (arg, bounds: TypeBounds) <- args.zip(targBounds) if !bounds.contains(arg.tpe) do
-              val boundsStr =
-                if bounds == TypeBounds.empty then " <: Any. Note that this type is higher-kinded."
-                else bounds.show
-              report.error(em"${arg.tpe} does not conform to bound$boundsStr", arg)
+            val targBounds = tp.instantiateParamInfos(args.tpes)
+            args.zip(targBounds).foreach:
+              case (arg, bounds: TypeBounds) if !bounds.contains(arg.tpe) =>
+                val boundsStr =
+                  if bounds == TypeBounds.empty then " <: Any. Note that this type is higher-kinded."
+                  else bounds.show
+                report.error(em"${arg.tpe} does not conform to bound$boundsStr", arg)
+              case _ =>
         cpy.TypeApply(tree)(liftBindings(fn, liftPos), args)
       case Select(qual, name) =>
         cpy.Select(tree)(liftBindings(qual, liftPos), name)
@@ -361,7 +364,7 @@ object Inlines:
         case _ => t
       }
 
-      val Apply(_, codeArg :: Nil) = tree: @unchecked
+      val Apply(_, Lst.single(codeArg)) = tree: @unchecked
       val codeArg1 = stripTyped(codeArg.underlying)
       val underlyingCodeArg =
         if Inlines.isInlineable(codeArg1.symbol) then stripTyped(Inlines.inlineCall(codeArg1))
@@ -472,7 +475,7 @@ object Inlines:
         if kind == ErrorKind.Parser then parserErrorKind else typerErrorKind)
 
     private def packErrors(errors: List[(ErrorKind, Error)], pos: SrcPos)(using Context): Tree =
-      val individualErrors: List[Tree] = errors.map(packError)
+      val individualErrors: Lst[Tree] = errors.mapToLst(packError)
       val errorTpt = ref(defn.CompiletimeTesting_ErrorClass).withSpan(pos.span)
       mkList(individualErrors, errorTpt)
 
@@ -505,7 +508,7 @@ object Inlines:
 
       // Special handling of `requireConst` and `codeOf`
       callValueArgss match
-        case (arg :: Nil) :: Nil =>
+        case Lst.single(arg) :: Nil =>
           if inlinedMethod == defn.Compiletime_requireConst then
             arg match
               case ConstantValue(_) | Inlined(_, Nil, Typed(ConstantValue(_), _)) => // ok
@@ -539,13 +542,13 @@ object Inlines:
                 evidence
           }
 
-        def unrollTupleTypes(tpe: Type): Option[List[Type]] = tpe.dealias match
+        def unrollTupleTypes(tpe: Type): Option[Lst[Type]] = tpe.dealias match
           case AppliedType(tycon, args) if defn.isTupleClass(tycon.typeSymbol) =>
             Some(args)
-          case AppliedType(tycon, head :: tail :: Nil) if tycon.isRef(defn.PairClass) =>
-            unrollTupleTypes(tail).map(head :: _)
+          case AppliedType(tycon, Lst.pair(head, tail)) if tycon.isRef(defn.PairClass) =>
+            unrollTupleTypes(tail).map(head +: _)
           case tpe: TermRef if tpe.symbol == defn.EmptyTupleModule =>
-            Some(Nil)
+            Some(Lst())
           case tpe: AppliedType if tpe.isMatchAlias =>
             unrollTupleTypes(tpe.tryNormalize)
           case _ =>
@@ -558,7 +561,7 @@ object Inlines:
           val constVal = tryConstValue(callTypeArgs.head.tpe)
           return (
             if (constVal.isEmpty) ref(defn.NoneModule.termRef)
-            else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), constVal :: Nil)
+            else New(defn.SomeClass.typeRef.appliedTo(constVal.tpe), Lst(constVal))
           )
         }
         else if (inlinedMethod == defn.Compiletime_constValueTuple) {

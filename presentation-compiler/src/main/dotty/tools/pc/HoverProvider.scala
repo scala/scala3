@@ -21,6 +21,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.printer.ShortenedTypePrinter
@@ -218,7 +219,8 @@ object HoverProvider:
               if (name == refName.toString() || refName.toString() == nme.Fields.toString()) =>
             val resultType =
               rest match
-                case Select(_, asInstanceOf) :: TypeApply(_, List(tpe)) :: _ if asInstanceOf == nme.asInstanceOfPM =>
+                case Select(_, asInstanceOf) :: TypeApply(_, Lst.single(tpe)) :: _
+                    if asInstanceOf == nme.asInstanceOfPM =>
                   tpe.tpe.widenTermRefExpr.deepDealiasAndSimplify
                 case _ if n == nme.selectDynamic => tpe.resultType
                 case _ => tpe
@@ -270,8 +272,8 @@ object SelectDynamicExtractor:
     path match
       // tests `structural-types` and `structural-types1` in HoverScala3TypeSuite
       case Select(_, _) :: Apply(
-            Select(Apply(reflSel, List(sel)), n),
-            List(Literal(Constant(name: String)))
+            Select(Apply(reflSel, Lst.single(sel)), n),
+            Lst.single(Literal(Constant(name: String)))
           ) :: rest
           if (n == nme.selectDynamic || n == nme.applyDynamic) &&
             nme.reflectiveSelectable == reflSel.symbol.name =>
@@ -279,7 +281,7 @@ object SelectDynamicExtractor:
       // tests `selectable`,  `selectable2` and `selectable-full` in HoverScala3TypeSuite
       case Select(_, _) :: Apply(
             Select(sel, n),
-            List(Literal(Constant(name: String)))
+            Lst.single(Literal(Constant(name: String)))
           ) :: rest if n == nme.selectDynamic || n == nme.applyDynamic =>
         Some(sel, n, name, rest)
       case _ => None

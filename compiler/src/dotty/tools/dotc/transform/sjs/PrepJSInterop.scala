@@ -7,7 +7,7 @@ import scala.collection.mutable
 import ast.tpd
 import core.*
 import typer.Checking
-import util.SrcPos
+import util.{SrcPos, Lst}
 import Annotations.*
 import Constants.*
 import Contexts.*
@@ -296,7 +296,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           super.transform(tree)
 
         // Validate js.constructorOf[T]
-        case TypeApply(ctorOfTree, List(tpeArg))
+        case TypeApply(ctorOfTree, Lst.single(tpeArg))
             if ctorOfTree.symbol == jsdefn.JSPackage_constructorOf =>
           validateJSConstructorOf(tree, tpeArg)
           super.transform(tree)
@@ -304,7 +304,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
         /* Rewrite js.ConstructorTag.materialize[T] into
          * runtime.newConstructorTag[T](js.constructorOf[T])
          */
-        case TypeApply(ctorOfTree, List(tpeArg))
+        case TypeApply(ctorOfTree, Lst.single(tpeArg))
             if ctorOfTree.symbol == jsdefn.JSConstructorTag_materialize =>
           validateJSConstructorOf(tree, tpeArg)
           val ctorOf = ref(jsdefn.JSPackage_constructorOf).appliedToTypeTree(tpeArg)
@@ -316,7 +316,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
          *   new DynamicImportThunk { def apply(): Any = body }
          * )
          */
-        case Apply(TypeApply(fun, List(tpeArg)), List(body))
+        case Apply(TypeApply(fun, Lst.single(tpeArg)), Lst.single(body))
             if fun.symbol == jsdefn.JSPackage_dynamicImport =>
           val span = tree.span
           val currentOwner = ctx.owner
@@ -327,7 +327,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
           // new DynamicImportThunk { def apply(): Any = body }
           val dynamicImportThunkAnonClass = AnonClass(currentOwner, List(jsdefn.DynamicImportThunkType), span) { cls =>
-            val applySym = newSymbol(cls, nme.apply, Method, MethodType(Nil, Nil, defn.AnyType), coord = span).entered
+            val applySym = newSymbol(cls, nme.apply, Method, MethodType(Lst(), Lst(), defn.AnyType), coord = span).entered
             val transformedBody = enterDynamicImportEnclosingClass(enclosingClass) {
               transform(body)
             }
@@ -355,7 +355,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
               fun.symbol == jsdefn.JSDynamicLiteral_applyDynamicNamed =>
           // Check that the first argument list is a constant string "apply"
           nameArgs match {
-            case List(Literal(Constant(s: String))) =>
+            case Lst.single(Literal(Constant(s: String))) =>
               if (s != "apply")
                 report.error(em"js.Dynamic.literal does not have a method named $s", tree)
             case _ =>
@@ -682,7 +682,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
 
           case Some(annot) if annot.symbol == jsdefn.JSImportAnnot =>
             checkJSImportLiteral(annot)
-            if (annot.arguments.sizeIs < 2) {
+            if (annot.arguments.size < 2) {
               val symTermName = sym.name.exclude(NameKinds.ModuleClassName).toTermName
               if (symTermName == nme.apply) {
                 report.error(
@@ -716,7 +716,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
           // Extract the Int argument if it is present
           val optIntArg = vd.rhs match {
             case _:Select | _:Ident      => None
-            case Apply(_, intArg :: Nil) => Some(intArg)
+            case Apply(_, Lst.single(intArg)) => Some(intArg)
           }
 
           val defaultName = vd.name.getterName.encode.toString
@@ -847,7 +847,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
         }
       } else {
         def checkNoDefaultOrRepeated(subject: String) = {
-          if (sym.info.paramInfoss.flatten.exists(_.isRepeatedParam))
+          if (sym.info.paramInfoss.flattenLst.exists(_.isRepeatedParam))
             report.error(s"$subject may not have repeated parameters", tree)
           if (sym.hasDefaultParams)
             report.error(s"$subject may not have default parameters", tree)
@@ -945,7 +945,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
               tree.rhs match {
                 case sel: Select if sel.symbol == jsdefn.JSPackage_undefined =>
                   // ok
-                case Apply(Apply(TypeApply(fromTypeConstructorFun, _), (sel: Select) :: Nil), _)
+                case Apply(Apply(TypeApply(fromTypeConstructorFun, _), Lst.single(sel: Select)), _)
                     if sel.symbol == jsdefn.JSPackage_undefined
                         && fromTypeConstructorFun.symbol == jsdefn.PseudoUnion_fromTypeConstructor =>
                   // ok: js.|.fromTypeConstructor(js.undefined)(...)
@@ -1114,7 +1114,7 @@ class PrepJSInterop extends MacroTransform with IdentityDenotTransformer { thisP
                     }
                 }
               }
-              if (newArgs eq args)
+              if (newArgs _eq_ args)
                 annot
               else
                 Annotation(cpy.Apply(app)(fun, newArgs))
@@ -1252,7 +1252,7 @@ object PrepJSInterop {
 
     // There must be exactly one non-varargs, non-default parameter
     tpe.paramInfoss match {
-      case List(List(argInfo)) =>
+      case List(Lst.single(argInfo)) =>
         // Arg list is OK. Do additional checks.
         if (tpe.isVarArgsMethod)
           report.error(s"$typeStr setters may not have repeated params", pos)

@@ -12,6 +12,7 @@ import Symbols.*, StdNames.*, Trees.*
 import util.Property
 import Constants.Constant
 import Flags.MethodOrLazy
+import util.Lst
 
 object DropBreaks:
   val name: String = "dropBreaks"
@@ -65,17 +66,17 @@ class DropBreaks extends MiniPhase:
        */
       def unapply(expr: Tree)(using Context): Option[(Symbol, Symbol)] = stripTyped(expr) match
         case If(
-          Apply(Select(ex: Ident, isSameLabelAs), (lbl @ Ident(local)) :: Nil),
+          Apply(Select(ex: Ident, isSameLabelAs), Lst.single(lbl @ Ident(local))),
           Select(ex2: Ident, value),
-          Apply(throww, (ex3: Ident) :: Nil))
+          Apply(throww, Lst.single(ex3: Ident)))
         if isSameLabelAs == nme.isSameLabelAs && local == nme.local && value == nme.value
             && throww.symbol == defn.throwMethod
             && ex.symbol == ex2.symbol && ex.symbol == ex3.symbol =>
           Some((ex.symbol, lbl.symbol))
         case If(
-          Apply(Select(ex: Ident, isSameLabelAs), (lbl @ Ident(local)) :: Nil),
+          Apply(Select(ex: Ident, isSameLabelAs), Lst.single(lbl @ Ident(local))),
           Literal(_), // in the case where the value is constant folded
-          Apply(throww, (ex3: Ident) :: Nil))
+          Apply(throww, Lst.single(ex3: Ident)))
         if isSameLabelAs == nme.isSameLabelAs && local == nme.local
             && throww.symbol == defn.throwMethod
             && ex.symbol == ex3.symbol
@@ -127,13 +128,13 @@ class DropBreaks extends MiniPhase:
      *     break()(local)
      */
     def unapply(tree: Tree)(using Context): Option[(Symbol, Tree)] = tree match
-      case Apply(Apply(fn, args), id :: Nil)
+      case Apply(Apply(fn, args), Lst.single(id))
       if isBreak(fn.symbol) =>
         stripInlined(id) match
           case id: Ident =>
             val arg = (args: @unchecked) match
-              case arg :: Nil => arg
-              case Nil => unitLiteral.withSpan(tree.span)
+              case Lst.single(arg) => arg
+              case Lst.empty() => unitLiteral.withSpan(tree.span)
             Some((id.symbol, arg))
           case _ => None
       case _ => None

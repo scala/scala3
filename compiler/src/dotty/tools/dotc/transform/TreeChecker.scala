@@ -25,6 +25,7 @@ import ProtoTypes.*
 import staging.StagingLevel
 import inlines.Inlines.inInlineMethod
 import cc.RetainingAnnotation
+import util.Lst
 
 /** Run by -Ycheck option after a given phase, this class retypes all syntax trees
  *  and verifies that the type of each tree node so obtained conforms to the type found in the tree node.
@@ -623,14 +624,14 @@ object TreeChecker {
       tpdTree
 
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
-      def defParamss = ddef.paramss.filter(!_.isEmpty).nestedMap(_.symbol)
-      def layout(symss: List[List[Symbol]]): String =
+      def defParamss = ddef.paramss.filter(!_.isEmpty).map(_.map(_.symbol))
+      def layout(symss: List[Lst[Symbol]]): String =
         symss.map(syms => i"($syms%, %)").mkString
       assert(ctx.erasedTypes || sym.rawParamss == defParamss,
         i"""param mismatch for ${sym.showLocated}:
            |defined in tree  = ${layout(defParamss)}
            |stored in symbol = ${layout(sym.rawParamss)}""")
-      withDefinedSyms(ddef.paramss.flatten) {
+      withDefinedSyms(ddef.paramss.flattenLst.toList) {
         if (!sym.isClassConstructor && !(sym.name eq nme.STATIC_CONSTRUCTOR))
           assert(isValidJVMMethodName(sym.name.encode), s"${sym.name.debugString} name is invalid on jvm")
 
@@ -774,7 +775,7 @@ object TreeChecker {
       else assert(tree1.typeOpt =:= pt)
 
       // Check that the types of the args conform to the types of the contents of the hole
-      val argQuotedTypes = args.map { arg =>
+      val argQuotedTypes = args.map: arg =>
         if arg.isTerm then
           val tpe = arg.typeOpt.widenTermRefExpr match
             case _: MethodicType =>
@@ -784,12 +785,12 @@ object TreeChecker {
             case tpe => tpe
           defn.QuotedExprClass.typeRef.appliedTo(tpe)
         else defn.QuotedTypeClass.typeRef.appliedTo(arg.typeOpt)
-      }
+
       val expectedResultType =
         if isTerm then defn.QuotedExprClass.typeRef.appliedTo(tree1.typeOpt)
         else defn.QuotedTypeClass.typeRef.appliedTo(tree1.typeOpt)
       val contextualResult =
-        defn.FunctionNOf(List(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
+        defn.FunctionNOf(Lst(defn.QuotesClass.typeRef), expectedResultType, isContextual = true)
       val expectedContentType =
         defn.FunctionNOf(argQuotedTypes, contextualResult)
       assert(content.typeOpt =:= expectedContentType, i"unexpected content of hole\nexpected: ${expectedContentType}\nwas: ${content.typeOpt}")
@@ -797,7 +798,7 @@ object TreeChecker {
       tree1
     }
 
-    override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => List[Symbol])(using Context): Tree =
+    override def ensureNoLocalRefs(tree: Tree, pt: Type, localSyms: => Lst[Symbol])(using Context): Tree =
       tree
 
     override def adapt(tree: Tree, pt: Type, locked: TypeVars)(using Context): Tree = {

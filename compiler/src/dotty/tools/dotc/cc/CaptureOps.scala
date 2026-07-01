@@ -8,6 +8,7 @@ import Names.{Name, TermName}
 import ast.{tpd, untpd}
 import Decorators.*, NameOps.*
 import config.Printers.capt
+import util.Lst
 import util.Property.Key
 import tpd.*
 import Annotations.Annotation
@@ -36,7 +37,7 @@ def isCaptureCheckingOrSetup(using Context): Boolean =
 /** A dependent function type with given arguments and result type
  *  TODO Move somewhere else where we treat all function type related ops together.
  */
-def depFun(args: List[Type], resultType: Type, isContextual: Boolean, paramNames: List[TermName] = Nil)(using Context): Type =
+def depFun(args: Lst[Type], resultType: Type, isContextual: Boolean, paramNames: Lst[TermName] = Lst())(using Context): Type =
   val make = MethodType.companion(isContextual = isContextual)
   val mt =
     if paramNames.length == args.length then make(paramNames, args, resultType)
@@ -56,7 +57,7 @@ extension (tree: Tree)
    *  annotation tree (represented as an Apply node).
    */
   def retainedSet(using Context): Type = tree match
-    case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
+    case Apply(TypeApply(_, Lst.single(refs)), _) => refs.tpe
     case _ =>
       if tree.symbol.maybeOwner == defn.RetainsCapAnnot
       then defn.Caps_any.termRef
@@ -434,7 +435,7 @@ extension (tp: Type)
   /** If `tp` is a function or method, a type of the same kind with the given
    *  argument and result types.
   */
-  def derivedFunctionOrMethod(argTypes: List[Type], resType: Type)(using Context): Type = tp match
+  def derivedFunctionOrMethod(argTypes: Lst[Type], resType: Type)(using Context): Type = tp match
     case tp @ AppliedType(tycon, args) if defn.isNonRefinedFunction(tp) =>
       val args1 = argTypes :+ resType
       if args.corresponds(args1)(_ eq _) then tp
@@ -448,7 +449,7 @@ extension (tp: Type)
       tp.derivedLambdaType(paramInfos = argTypes, resType = resType)
     case tp: PolyType =>
       assert(argTypes.forall(_.isInstanceOf[TypeBounds]))
-      tp.derivedLambdaType(paramInfos = argTypes.asInstanceOf[List[TypeBounds]], resType = resType)
+      tp.derivedLambdaType(paramInfos = argTypes.asInstanceOf[Lst[TypeBounds]], resType = resType)
     case _ =>
       tp
 
@@ -900,7 +901,7 @@ object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
 object OnlyCapability:
   def apply(tp: Type, cls: ClassSymbol)(using Context): AnnotatedType =
     AnnotatedType(tp,
-      Annotation(defn.OnlyCapabilityAnnot.typeRef.appliedTo(cls.typeRef), Nil, util.Spans.NoSpan))
+      Annotation(defn.OnlyCapabilityAnnot.typeRef.appliedTo(cls.typeRef), Lst(), util.Spans.NoSpan))
 
   def unapply(tree: AnnotatedType)(using Context): Option[(Type, ClassSymbol)] = tree match
     case AnnotatedType(parent: Type, ann) if ann.hasSymbol(defn.OnlyCapabilityAnnot) =>
@@ -916,7 +917,7 @@ end OnlyCapability
  *           2nd half: The result type
  */
 object FunctionOrMethod:
-  def unapply(tp: Type)(using Context): Option[(List[Type], Type)] = tp match
+  def unapply(tp: Type)(using Context): Option[(Lst[Type], Type)] = tp match
     case defn.FunctionOf(args, res, isContextual) => Some((args, res))
     case mt: MethodOrPoly => Some((mt.paramInfos, mt.resType))
     case defn.RefinedFunctionOf(rinfo) => unapply(rinfo)
@@ -928,7 +929,7 @@ object ContainsImpl:
     tree.fun.tpe.widen match
       case fntpe: PolyType if tree.fun.symbol == defn.Caps_containsImpl =>
         tree.args match
-          case csArg :: refArg :: Nil => Some((csArg, refArg))
+          case Lst.pair(csArg, refArg) => Some((csArg, refArg))
           case _ => None
       case _ => None
 
@@ -936,7 +937,7 @@ object ContainsImpl:
 object ContainsParam:
   def unapply(sym: Symbol)(using Context): Option[(TypeRef, Capability)] =
     sym.info.dealias match
-      case AppliedType(tycon, (cs: TypeRef) :: arg2 :: Nil)
+      case AppliedType(tycon, Lst.pair((cs: TypeRef), arg2))
       if tycon.typeSymbol == defn.Caps_ContainsTrait
           && cs.typeSymbol.isAbstractOrParamType =>
         arg2.stripCapturing match // ref.type was converted to box ref.type^{ref} by boxing

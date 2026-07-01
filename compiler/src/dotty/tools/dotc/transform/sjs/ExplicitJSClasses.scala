@@ -20,7 +20,7 @@ import core.SymDenotations.SymDenotation
 import core.Names.*
 import core.NameKinds.*
 
-
+import util.Lst
 import util.Store
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
@@ -332,7 +332,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
         case _              => false
       }
     }.symbol.asTerm
-    Annotation(New(annotClass.typeRef, stringCtor, Literal(Constant(argument)) :: Nil))
+    Annotation(New(annotClass.typeRef, stringCtor, Lst(Literal(Constant(argument)))))
   }
 
   override def transformInfo(tp: Type, sym: Symbol)(using Context): Type = tp match {
@@ -597,11 +597,11 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
 
       tree match {
         // Desugar js.constructorOf[T]
-        case TypeApply(fun, tpt :: Nil) if sym == jsdefn.JSPackage_constructorOf =>
+        case TypeApply(fun, Lst.single(tpt)) if sym == jsdefn.JSPackage_constructorOf =>
           genJSConstructorOf(tree, tpt.tpe).cast(jsdefn.JSDynamicType)
 
         // Translate x.isInstanceOf[T] for inner and local JS classes
-        case TypeApply(fun @ Select(obj, _), tpeArg :: Nil)
+        case TypeApply(fun @ Select(obj, _), Lst.single(tpeArg))
             if sym == defn.Any_isInstanceOf && isTypeTreeForInnerOrLocalJSClass(tpeArg) =>
           val jsCtorOf = genJSConstructorOf(tree, tpeArg.tpe)
           ref(jsdefn.Special_instanceof).appliedTo(obj, jsCtorOf)
@@ -694,7 +694,7 @@ class ExplicitJSClasses extends MiniPhase with InfoTransformer { thisPhase =>
     ref(jsdefn.Runtime_withContextualJSClassValue).appliedToType(tree.tpe).appliedTo(jsClassValue, tree)
 
   private def unwrapWithContextualJSClassValue(tree: Tree)(using Context): Tree = tree match {
-    case Apply(fun, jsClassValue :: actualTree :: Nil)
+    case Apply(fun, Lst.pair(jsClassValue, actualTree))
         if fun.symbol == jsdefn.Runtime_withContextualJSClassValue =>
       actualTree
     case _ =>

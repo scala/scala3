@@ -8,7 +8,7 @@ import Symbols.*
 import Types.*
 import StdNames.*
 import dotty.tools.dotc.ast.tpd
-
+import util.Lst
 
 import scala.collection.immutable.::
 
@@ -26,18 +26,18 @@ class ArrayConstructors extends MiniPhase {
   override def description: String = ArrayConstructors.description
 
   override def transformApply(tree: tpd.Apply)(using Context): tpd.Tree = {
-    def expand(elemType: Type, dims: List[Tree]) =
+    def expand(elemType: Type, dims: Lst[Tree]) =
       val elemTypeNonVoid =
         if elemType.isValueSubType(defn.UnitType) then defn.BoxedUnitClass.typeRef
         else elemType
       tpd.newArray(elemTypeNonVoid, tree.tpe, tree.span, JavaSeqLiteral(dims, TypeTree(defn.IntClass.typeRef)))
 
     if (tree.fun.symbol eq defn.ArrayConstructor) {
-      val TypeApply(tycon, targ :: Nil) = tree.fun: @unchecked
+      val TypeApply(tycon, Lst.single(targ)) = tree.fun: @unchecked
       expand(targ.tpe, tree.args)
     }
     else if ((tree.fun.symbol.maybeOwner eq defn.ArrayModuleClass) && (tree.fun.symbol.name eq nme.ofDim) && !tree.tpe.isInstanceOf[MethodicType]) {
-      val Apply(Apply(TypeApply(_, List(tp)), _), _) = tree: @unchecked
+      val Apply(Apply(TypeApply(_, Lst.single(tp)), _), _) = tree: @unchecked
       val cs = tp.tpe.classSymbol
       tree.fun match {
         case Apply(TypeApply(t: Ident, targ), dims)

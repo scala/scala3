@@ -12,6 +12,7 @@ import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.Type
+import dotty.tools.dotc.util.Lst
 import dotty.tools.pc.CompilerSearchVisitor
 import dotty.tools.pc.IndexedContext
 import dotty.tools.pc.utils.InteractiveEnrichments.*
@@ -70,7 +71,7 @@ object InterpolatorCompletions:
   ): PartialFunction[Tree, Option[Ident | Select]] =
     case Apply(
           _,
-          List(Typed(expr: SeqLiteral, _))
+          Lst.single(Typed(expr: SeqLiteral, _))
         ) if expr.elems.exists {
           case _: Ident => true
           case _: Select => true
@@ -78,7 +79,7 @@ object InterpolatorCompletions:
         } =>
       parent match
         case SeqLiteral(elems, _) if elems.size > 0 =>
-          expr.elems.zip(elems.tail).collectFirst {
+          expr.elems.zip(elems.drop(1)).collectFirst {
             case (i: (Ident | Select), literal) if literal == lit =>
               i
           }

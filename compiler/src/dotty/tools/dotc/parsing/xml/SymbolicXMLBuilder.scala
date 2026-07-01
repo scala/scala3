@@ -14,6 +14,7 @@ import Symbols.*, Contexts.*
 import util.Spans.*
 import Parsers.Parser
 import dotty.tools.dotc.ast.tpd.TreeOps
+import util.Lst
 
 /** This class builds instance of `Tree` that represent XML.
  *
@@ -70,13 +71,13 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     _toVector}
 
   // convenience methods
-  private def LL[A](x: A*): List[List[A]] = List(x.toList)
+  private def LL[A](x: A*): List[Lst[A]] = List(x.toLst)
   private def const(x: String): Tree = Literal(Constant(x))
 
   private def nullAsString: Tree =
     val lit = Literal(Constant(null))
     if ctx.explicitNulls
-    then TypeApply(Select(lit, nme.asInstanceOf_), TypeTree(defn.StringType) :: Nil)
+    then TypeApply(Select(lit, nme.asInstanceOf_), Lst(TypeTree(defn.StringType)))
     else lit
 
   private def wild                          = Ident(nme.WILDCARD)
@@ -113,11 +114,11 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     children: collection.Seq[Tree]): Tree =
   {
     def starArgs =
-      if (children.isEmpty) Nil
-      else List(Typed(makeXMLseq(span, children, toVector = true), wildStar))
+      if (children.isEmpty) Lst()
+      else Lst(Typed(makeXMLseq(span, children, toVector = true), wildStar))
 
-    def pat    = Apply(_scala_xml__Elem, List(pre, label, wild, wild) ::: convertToTextPat(children))
-    def nonpat = New(_scala_xml_Elem, List(List(pre, label, attrs, scope, if (empty) Literal(Constant(true)) else Literal(Constant(false))) ::: starArgs))
+    def pat    = Apply(_scala_xml__Elem, Lst(pre, label, wild, wild) ++ convertToTextPat(children))
+    def nonpat = New(_scala_xml_Elem, List(Lst(pre, label, attrs, scope, if (empty) Literal(Constant(true)) else Literal(Constant(false))) ++ starArgs))
 
     atSpan(span) { if (isPattern) pat else nonpat }
   }
@@ -131,7 +132,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     else makeText1(const(txt))
   }
 
-  def makeTextPat(txt: Tree): Apply               = Apply(_scala_xml__Text, List(txt))
+  def makeTextPat(txt: Tree): Apply               = Apply(_scala_xml__Text, Lst(txt))
   def makeText1(txt: Tree): Tree                  = New(_scala_xml_Text, LL(txt))
   def comment(span: Span, text: String): Tree  = atSpan(span)( Comment(const(text)) )
   def charData(span: Span, txt: String): Tree  = atSpan(span)( makeText1(const(txt)) )
@@ -155,8 +156,8 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
     case _: Literal => makeTextPat(t)
     case _          => t
   }
-  protected def convertToTextPat(buf: collection.Seq[Tree]): List[Tree] =
-    (buf map convertToTextPat).toList
+  protected def convertToTextPat(buf: collection.Seq[Tree]): Lst[Tree] =
+    (buf map convertToTextPat).toLst
 
   def parseAttribute(span: Span, s: String): Tree = {
     val ts = Utility.parseAttributeValue(s, text(span, _), entityRef(span, _))
@@ -174,8 +175,8 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
 
   /** could optimize if args.length == 0, args.length == 1 AND args(0) is <: Node. */
   def makeXMLseq(span: Span, args: collection.Seq[Tree], toVector: Boolean): Block = {
-    val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, ListOfNil))
-    val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), List(t)))
+    val buffer = ValDef(_buf, TypeTree(), New(_scala_xml_NodeBuffer, ListOfEmpty))
+    val applies = args filterNot isEmptyText map (t => Apply(Select(Ident(_buf), _plus), Lst(t)))
 
     val res = if (toVector) Select(Ident(_buf), _toVector) else Ident(_buf)
     atSpan(span)(new XMLBlock(buffer :: applies.toList, res))
@@ -202,7 +203,7 @@ class SymbolicXMLBuilder(parser: Parser, preserveWS: Boolean)(using Context) {
       )
 
       val uri1 = attrMap(z) match {
-        case Apply(_, List(uri @ Literal(Constant(_)))) => mkAssign(uri)
+        case Apply(_, Lst.single(uri @ Literal(Constant(_)))) => mkAssign(uri)
         case Select(_, nme.Nil)                         => mkAssign(nullAsString)  // allow for xmlns="" -- bug #1626
         case x                                          => mkAssign(x)
       }

@@ -23,7 +23,7 @@ trait BasicSupport:
     def inner(t: Term): List[Annotation.AnnotationParameter] = t match {
         case i: Ident => List(Annotation.LinkParameter(None, i.tpe.typeSymbol.dri, i.name))
         case Typed(term, tpeTree) => inner(term)
-        case SeqLiteral(args, tpeTree) => args.map(_.asInstanceOf[Term]).flatMap(inner)
+        case SeqLiteral(args, tpeTree) => args.map(_.asInstanceOf[Term]).toList.flatMap(inner)
         case Literal(constant) => List(Annotation.PrimitiveParameter(None, constant.show))
         case NamedArg(name, Literal(constant)) => List(Annotation.PrimitiveParameter(Some(name), constant.show))
         case x @ Select(qual, name) => List.empty
@@ -32,7 +32,7 @@ trait BasicSupport:
 
     val params = annotTerm match
       case Apply(target, appliedWith) => {
-        appliedWith.flatMap(inner)
+        appliedWith.toList.flatMap(inner)
       }
 
     Annotation(dri, params)

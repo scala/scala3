@@ -20,6 +20,7 @@ import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.report
 import SymbolUtils.given
 import dotty.tools.dotc.core.NameOps.isStaticConstructorName
+import dotty.tools.dotc.util.Lst
 import tpd.*
 
 import scala.compiletime.uninitialized
@@ -147,11 +148,10 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
-    def paramTKs(app: Apply, take: Int = -1)(using Context): List[BType] = app match {
+    def paramTKs(app: Apply, take: Int = -1)(using Context): Lst[BType] = app match
       case Apply(fun, _) =>
-      val funSym = fun.symbol
-      funSym.info.firstParamTypes.map(bTypeLoader.bTypeFromType) // this tracks mentioned inner classes (in innerClassBufferASM)
-    }
+        val funSym = fun.symbol
+        funSym.info.firstParamTypes.map(bTypeLoader.bTypeFromType) // this tracks mentioned inner classes (in innerClassBufferASM)
 
     def symInfoTK(sym: Symbol)(using Context): BType = {
       bTypeLoader.bTypeFromType(sym.info) // this tracks mentioned inner classes (in innerClassBufferASM)
@@ -213,7 +213,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             claszSymbol,
             nme.STATIC_CONSTRUCTOR,
             JavaStatic | Method,
-            MethodType(Nil)(_ => Nil, _ => defn.UnitType),
+            MethodType(Lst())(_ => Lst(), _ => defn.UnitType),
             privateWithin = NoSymbol,
             coord = claszSymbol.coord
           )
@@ -245,7 +245,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         def rewire(stat: Tree) = thisMap.transform(stat).changeOwner(claszSymbol.primaryConstructor, clInitSymbol)
 
-        val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToTermArgs(Nil)
+        val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToTermArgs(Lst())
         val assignModuleField = Assign(ref(moduleField), callConstructor)
         val remainingConstrStatsSubst = remainingConstrStats.map(rewire)
         val clinit = clinits match {
@@ -707,7 +707,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     /*
      * must-single-thread
      */
-    private def initJMethod(flags: Int, params: List[Symbol])(using Context): Unit = {
+    private def initJMethod(flags: Int, params: Lst[Symbol])(using Context): Unit = {
 
       val mdesc = bTypeLoader.methodBTypeFromSymbol(methSymbol).descriptor
       val jgensig = getGenericSignature(methSymbol, claszSymbol, mdesc)
@@ -761,7 +761,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val origSym = dd.symbol.asTerm
       val newSym = SymbolUtils.makeStatifiedDefSymbol(origSym, origSym.name)
       tpd.DefDef(newSym, { paramRefss =>
-        val selfParamRef :: regularParamRefs = paramRefss.head: @unchecked
+        val Lst.cons(selfParamRef, regularParamRefs) = paramRefss.head: @unchecked
         val enclosingClass = origSym.owner.asClass
         new TreeTypeMap(
           typeMap = _.substThis(enclosingClass, selfParamRef.symbol.termRef)
@@ -773,8 +773,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
               selfParamRef.withSpan(tree.span)
             case tree => tree
           },
-          oldOwners = origSym :: Nil,
-          newOwners = newSym :: Nil
+          oldOwners = Lst(origSym),
+          newOwners = Lst(newSym)
         ).transform(dd.rhs)
       })
 
@@ -803,7 +803,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val sym = SymbolUtils.makeStatifiedDefSymbol(origSym, name)
       tpd.DefDef(sym, { paramss =>
         val params = paramss.head
-        tpd.Apply(params.head.select(origSym), params.tail)
+        tpd.Apply(params.head.select(origSym), params.drop(1))
           .withAttachment(BCodeHelpers.UseInvokeSpecial, ())
       })
 
@@ -824,7 +824,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       // add method-local vars for params
 
       assert(vparamss.isEmpty || vparamss.tail.isEmpty, s"Malformed parameter list: $vparamss")
-      val params = if (vparamss.isEmpty) Nil else vparamss.head
+      val params = if (vparamss.isEmpty) Lst() else vparamss.head
       for (p <- params) { locals.makeLocal(p.symbol) }
       // debug assert((params.map(p => locals(p.symbol).tk)) == asmMethodType(methSymbol).getArgumentTypes.toList, "debug")
 

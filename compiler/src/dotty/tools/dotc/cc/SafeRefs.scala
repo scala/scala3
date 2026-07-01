@@ -17,6 +17,7 @@ import Types.*
 import Names.Name
 import NameOps.isReplWrapperName
 import config.Printers.capt
+import util.Lst
 
 /** Check whether references from safe mode should be allowed */
 object SafeRefs {
@@ -29,7 +30,7 @@ object SafeRefs {
 
   private def rejectSafe(sym: Symbol)(using Context): Unit =
     if !sym.infoOrCompleter.isInstanceOf[StubInfo] then
-      sym.addAnnotation(Annotation(defn.RejectSafeAnnot, List(Literal(Constant(""))), NoSpan))
+      sym.addAnnotation(Annotation(defn.RejectSafeAnnot, Lst(Literal(Constant(""))), NoSpan))
       if sym.is(ModuleVal) then rejectSafe(sym.moduleClass)
 
   private def assumeSafe(sym: Symbol, except: List[String])(using Context): Unit =

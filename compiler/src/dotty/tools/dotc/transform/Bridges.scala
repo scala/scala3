@@ -7,7 +7,7 @@ import Symbols.*, Types.*, Contexts.*, Decorators.*, Flags.*, Scopes.*, Phases.*
 import DenotTransformers.*
 import ast.untpd
 import collection.{mutable, immutable}
-import util.SrcPos
+import util.{Lst, SrcPos}
 import ContextFunctionResults.{contextResultCount, contextFunctionResultTypeAfter}
 import StdNames.nme
 import Constants.Constant
@@ -133,30 +133,30 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
      *  type and figure out which context function types in its result are
      *  not yet instantiated.
      */
-    def etaExpand(ref: Tree, args: List[Tree])(using Context): Tree =
-      def expand(args: List[Tree], tp: Type, n: Int)(using Context): Tree =
+    def etaExpand(ref: Tree, args: Lst[Tree])(using Context): Tree =
+      def expand(args: Lst[Tree], tp: Type, n: Int)(using Context): Tree =
         if n <= 0 then
           assert(ctx.typer.isInstanceOf[Erasure.Typer])
           ctx.typer.typed(untpd.cpy.Apply(ref)(ref, args), member.info.finalResultType)
         else
           val mtWithoutErasedParams = atPhase(erasurePhase) {
             val defn.ContextFunctionType(argTypes, resType) = tp.dealias: @unchecked
-            val paramInfos = argTypes.filterNot(_.hasAnnotation(defn.ErasedParamAnnot))
+            val paramInfos = argTypes.filter(!_.isForErasedParam)
             MethodType(paramInfos, resType)
           }
           val anonFun = newAnonFun(ctx.owner, mtWithoutErasedParams, coord = ctx.owner.coord)
           anonFun.info = transformInfo(anonFun, anonFun.info)
 
-          def lambdaBody(refss: List[List[Tree]]) =
+          def lambdaBody(refss: List[Lst[Tree]]) =
             val refs :: Nil = refss: @unchecked
             val expandedRefs = refs.map(_.withSpan(ctx.owner.span.endPos)) match
-              case (bunchedParam @ Ident(nme.ALLARGS)) :: Nil =>
-                mtWithoutErasedParams.paramInfos.indices.toList.map(n =>
+              case Lst.single(bunchedParam @ Ident(nme.ALLARGS)) =>
+                Lst.tabulate(mtWithoutErasedParams.paramInfos.length): n =>
                   bunchedParam
                     .select(nme.primitive.arrayApply)
-                    .appliedTo(Literal(Constant(n))))
+                    .appliedTo(Literal(Constant(n)))
               case refs1 => refs1
-            expand(args ::: expandedRefs, mtWithoutErasedParams.resType, n - 1)(using ctx.withOwner(anonFun))
+            expand(args ++ expandedRefs, mtWithoutErasedParams.resType, n - 1)(using ctx.withOwner(anonFun))
 
           val unadapted = Closure(anonFun, lambdaBody)
           cpy.Block(unadapted)(unadapted.stats,
@@ -168,7 +168,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       expand(args, start, memberCount - otherCount)(using ctx.withOwner(bridge))
     end etaExpand
 
-    def bridgeRhs(argss: List[List[Tree]]) =
+    def bridgeRhs(argss: List[Lst[Tree]]) =
       assert(argss.tail.isEmpty)
       val ref = This(root).select(member)
       if member.info.isParameterless then ref // can happen if `member` is a module

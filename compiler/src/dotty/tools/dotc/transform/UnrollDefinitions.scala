@@ -20,6 +20,7 @@ import dotty.tools.dotc.printing.Formatting.hl
 
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.unreachable
+import util.Lst
 
 /**Implementation of SIP-61.
  * Runs when `@unroll` annotations are found in a compilation unit, installing new definitions
@@ -71,7 +72,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
             .paramSymss
             .zipWithIndex
             .flatMap: (paramClause, paramClauseIndex) =>
-              val annotationIndices = findUnrollAnnotations(paramClause)
+              val annotationIndices = findUnrollAnnotations(paramClause.toList)
               if (annotationIndices.isEmpty) None
               else Some((paramClauseIndex, annotationIndices))
           if indices.nonEmpty then
@@ -129,7 +130,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
                               annotatedParamListIndex: Int,
                               isCaseApply: Boolean)(using Context): DefDef = {
 
-    def initNewForwarder()(using Context): (TermSymbol, List[List[Symbol]]) = {
+    def initNewForwarder()(using Context): (TermSymbol, List[Lst[Symbol]]) = {
       val forwarderDefSymbol0 = Symbols.newSymbol(
         defdef.symbol.owner,
         defdef.name,
@@ -140,9 +141,9 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
       ).entered
 
       val newParamSymMappings = extractParamSymss(copyParamSym(_, forwarderDefSymbol0))
-      val (oldParams, newParams) = newParamSymMappings.flatten.unzip
+      val (oldParams, newParams) = newParamSymMappings.flattenLst.unzip
 
-      val newParamSymLists0 =
+      val newParamSymLists0: List[Lst[Symbol]] =
         newParamSymMappings.map: pairs =>
           pairs.map: (oldSym, newSym) =>
             newSym.info = oldSym.info.substSym(oldParams, newParams)
@@ -154,7 +155,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
       forwarderDefSymbol0 -> newParamSymLists0
     }
 
-    def extractParamSymss[T](onSymbol: Symbol => T): List[List[T]] =
+    def extractParamSymss[T <: AnyRef](onSymbol: Symbol => T): List[Lst[T]] =
       defdef.paramss.zipWithIndex.map{ case (ps, i) =>
         if (i == annotatedParamListIndex) ps.take(paramIndex).map(p => onSymbol(p.symbol))
         else ps.map(p => onSymbol(p.symbol))
@@ -198,7 +199,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
 
         newParamSymLists
           .take(annotatedParamListIndex)
-          .map(_.map(ref))
+          .nestedMapLst(ref)
           .foldLeft(inner)(_.appliedToArgs(_))
       )
 
@@ -206,10 +207,9 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
         This(defdef.symbol.owner.asClass).select(defdef.symbol)
 
       val forwarderCallArgs =
-        newParamSymLists.zipWithIndex.map{case (ps, i) =>
-          if (i == annotatedParamListIndex) ps.map(ref).take(nextParamIndex) ++ defaultCalls
+        newParamSymLists.zipWithIndex.map: (ps, i) =>
+          if i == annotatedParamListIndex then ps.map(ref).take(nextParamIndex) ++ defaultCalls.toLst
           else ps.map(ref)
-        }
 
       val forwarderCall0 = forwarderCallArgs.foldLeft(forwarderInner)(_.appliedToArgs(_))
 

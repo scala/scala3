@@ -20,6 +20,7 @@ import transform.ValueClasses
 import ErrorReporting.*
 import reporting.*
 import inlines.Inlines
+import util.Lst
 
 object Dynamic {
   private def isDynamicMethod(name: Name): Boolean =
@@ -40,12 +41,12 @@ object Dynamic {
 }
 
 object DynamicUnapply {
-  def unapply(tree: tpd.Tree): Option[List[tpd.Tree]] = tree match
+  def unapply(tree: tpd.Tree): Option[Lst[tpd.Tree]] = tree match
     case TypeApply(Select(qual, name), _) if name == nme.asInstanceOfPM =>
       unapply(qual)
-    case Apply(Apply(Select(selectable, fname), Literal(Constant(name)) :: restArgs), _ :: implicits)
+    case Apply(Apply(Select(selectable, fname), Lst.cons(Literal(Constant(name)), restArgs)), Lst.cons(_, implicits))
     if fname == nme.applyDynamic && (name == "unapply" || name == "unapplySeq") =>
-      Some(selectable :: (restArgs ::: implicits))
+      Some(selectable +: (restArgs ++ implicits))
     case _ =>
       None
 }
@@ -79,14 +80,14 @@ trait Dynamic {
    *    foo.bar[T0, ...](x = bazX, y = bazY, baz, ...) ~~> foo.applyDynamicNamed[T0, ...]("bar")(("x", bazX), ("y", bazY), ("", baz), ...)
    */
   def typedDynamicApply(tree: untpd.Apply, isInsertedApply: Boolean, pt: Type)(using Context): Tree = {
-    def typedDynamicApply(qual: untpd.Tree, name: Name, selSpan: Span, targs: List[untpd.Tree]): Tree = {
+    def typedDynamicApply(qual: untpd.Tree, name: Name, selSpan: Span, targs: Lst[untpd.Tree]): Tree = {
       def isNamedArg(arg: untpd.Tree): Boolean = arg match { case NamedArg(_, _) => true; case _ => false }
       val args = tree.args
       val dynName = if (args.exists(isNamedArg)) nme.applyDynamicNamed else nme.applyDynamic
       if (dynName == nme.applyDynamicNamed && untpd.isWildcardStarArgList(args))
         errorTree(tree, em"applyDynamicNamed does not support passing a vararg parameter")
       else {
-        def namedArgTuple(name: String, arg: untpd.Tree) = untpd.Tuple(List(Literal(Constant(name)), arg))
+        def namedArgTuple(name: String, arg: untpd.Tree) = untpd.Tuple(Lst(Literal(Constant(name)), arg))
         def namedArgs = args.map {
           case NamedArg(argName, arg) => namedArgTuple(argName.toString, arg)
           case arg => namedArgTuple("", arg)
@@ -101,12 +102,12 @@ trait Dynamic {
         case TypeApply(fun, targs) =>
           typedDynamicApply(fun, nme.apply, fun.span, targs)
         case fun =>
-          typedDynamicApply(fun, nme.apply, fun.span, Nil)
+          typedDynamicApply(fun, nme.apply, fun.span, Lst())
       }
     } else {
       tree.fun match {
         case sel @ Select(qual, name) if !isDynamicMethod(name) =>
-          typedDynamicApply(qual, name, sel.span, Nil)
+          typedDynamicApply(qual, name, sel.span, Lst())
         case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
           typedDynamicApply(qual, name, sel.span, targs)
         case _ =>
@@ -122,18 +123,18 @@ trait Dynamic {
    *  Note: inner part of translation foo.bar(baz) = quux ~~> foo.selectDynamic(bar).update(baz, quux) is achieved
    *  through an existing transformation of in typedAssign [foo.bar(baz) = quux ~~> foo.bar.update(baz, quux)].
    */
-  def typedDynamicSelect(tree: untpd.Select, targs: List[untpd.Tree], pt: Type)(using Context): Tree =
+  def typedDynamicSelect(tree: untpd.Select, targs: Lst[untpd.Tree], pt: Type)(using Context): Tree =
     typedApply(coreDynamic(tree.qualifier, nme.selectDynamic, tree.name, tree.span, targs), pt)
 
   /** Translate selection that does not typecheck according to the normal rules into a updateDynamic.
    *    foo.bar = baz ~~> foo.updateDynamic(bar)(baz)
    */
   def typedDynamicAssign(tree: untpd.Assign, pt: Type)(using Context): Tree = {
-    def typedDynamicAssign(qual: untpd.Tree, name: Name, selSpan: Span, targs: List[untpd.Tree]): Tree =
+    def typedDynamicAssign(qual: untpd.Tree, name: Name, selSpan: Span, targs: Lst[untpd.Tree]): Tree =
       typedApply(untpd.Apply(coreDynamic(qual, nme.updateDynamic, name, selSpan, targs), tree.rhs), pt)
     tree.lhs match {
       case sel @ Select(qual, name) if !isDynamicMethod(name) =>
-        typedDynamicAssign(qual, name, sel.span, Nil)
+        typedDynamicAssign(qual, name, sel.span, Lst())
       case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
         typedDynamicAssign(qual, name, sel.span, targs)
       case lhs =>
@@ -144,7 +145,7 @@ trait Dynamic {
     }
   }
 
-  private def coreDynamic(qual: untpd.Tree, dynName: Name, name: Name, selSpan: Span, targs: List[untpd.Tree])(using Context): untpd.Apply = {
+  private def coreDynamic(qual: untpd.Tree, dynName: Name, name: Name, selSpan: Span, targs: Lst[untpd.Tree])(using Context): untpd.Apply = {
     val select = untpd.Select(qual, dynName).withSpan(selSpan)
     val selectWithTypes =
       if (targs.isEmpty) select
@@ -185,35 +186,36 @@ trait Dynamic {
     val fun @ Select(qual, name) = funPart(tree): @unchecked
     val vargss = termArgss(tree)
 
-    def structuralCall(selectorName: TermName, classOfs: => List[Tree]) = {
+    def structuralCall(selectorName: TermName, classOfs: => Lst[Tree]) = {
       val selectable = adapt(qual, defn.SelectableClass.typeRef | defn.DynamicClass.typeRef)
 
       // ($qual: Selectable).$selectorName("$name")
       val base =
         untpd.Apply(
           untpd.Select(untpd.TypedSplice(selectable), selectorName).withSpan(fun.span),
-          (Literal(Constant(name.encode.toString)) :: Nil).map(untpd.TypedSplice(_)))
+          Lst(untpd.TypedSplice(Literal(Constant(name.encode.toString)))))
 
       val scall =
         if (vargss.isEmpty) base
-        else untpd.Apply(base, vargss.flatten.map(untpd.TypedSplice(_)))
+        else untpd.Apply(base, vargss.flattenLst.map(untpd.TypedSplice(_)))
 
       // If function is an `applyDynamic` that takes a Class* parameter,
       // add `classOfs`.
       def addClassOfs(tree: Tree): Tree = tree match
         case Apply(fn: Apply, args) =>
           cpy.Apply(tree)(addClassOfs(fn), args)
-        case Apply(fn @ Select(_, nme.applyDynamic), nameArg :: _ :: Nil) =>
+        case Apply(fn @ Select(_, nme.applyDynamic), Lst.pair(nameArg, _)) =>
           fn.tpe.widen match
-            case mt: MethodType => mt.paramInfos match
-              case _ :: classOfsParam :: Nil
+            case mt: MethodType if mt.paramInfos.length == 2 =>
+              val classOfsParam = mt.paramInfos(1)
               if classOfsParam.isRepeatedParam
-                 && classOfsParam.argInfos.head.isRef(defn.ClassClass) =>
-                  val jlClassType = defn.ClassClass.typeRef.appliedTo(TypeBounds.empty)
-                  cpy.Apply(tree)(fn,
-                    nameArg :: seqToRepeated(SeqLiteral(classOfs, TypeTree(jlClassType))) :: Nil)
-              case _ => tree
-            case other => tree
+                 && classOfsParam.argInfos.head.isRef(defn.ClassClass)
+              then
+                val jlClassType = defn.ClassClass.typeRef.appliedTo(TypeBounds.empty)
+                cpy.Apply(tree)(fn,
+                  Lst(nameArg, seqToRepeated(SeqLiteral(classOfs, TypeTree(jlClassType)))))
+              else tree
+            case _ => tree
         case _ => tree
 
       // We type the application of `applyDynamic` without inlining (arguments are already typed and inlined),
@@ -245,14 +247,14 @@ trait Dynamic {
           if tpe.classSymbol.isDerivedValueClass && qual.tpe <:< defn.ReflectSelectableTypeRef then
             val genericUnderlying = ValueClasses.valueClassUnbox(tpe.classSymbol.asClass)
             val underlying = tpe.select(genericUnderlying).widen.resultType
-            New(tpe.widen.dealias, tree.cast(underlying) :: Nil)
+            New(tpe.widen.dealias, Lst(tree.cast(underlying)))
           else
             tree
         maybeBoxed.cast(tpe)
 
     fun.tpe.widen match {
       case tpe: ValueType =>
-        structuralCall(nme.selectDynamic, Nil).maybeBoxingCast(fun.tpe.widenExpr)
+        structuralCall(nme.selectDynamic, Lst()).maybeBoxingCast(fun.tpe.widenExpr)
 
       case tpe: MethodType =>
         def isDependentMethod(tpe: Type): Boolean = tpe match {
@@ -272,8 +274,8 @@ trait Dynamic {
           // class-literal constant. Rewrite it back to the Scala `Array[T]` form, which
           // re-erases to the same JVM class at code generation time.
           def classOfs =
-            if tpe.paramInfoss.nestedExists(!TypeErasure.hasStableErasure(_)) then
-              fail(i"has a parameter type with an unstable erasure") :: Nil
+            if tpe.paramInfoss.nestedExistsLst(!TypeErasure.hasStableErasure(_)) then
+              Lst(fail(i"has a parameter type with an unstable erasure"))
             else
               TypeErasure.erasure(tpe).asInstanceOf[MethodType].paramInfos
                 .map(p => clsOf(TypeErasure.escapeJavaArray(p)))

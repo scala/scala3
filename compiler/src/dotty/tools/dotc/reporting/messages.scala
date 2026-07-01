@@ -24,6 +24,7 @@ import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbo
 import typer.ProtoTypes.{ViewProto, FunProto}
 import typer.Implicits.*
 import typer.Inferencing
+import util.{Lst, SourcePosition, SourceFile}
 import StdNames.nme
 import Formatting.{hl, delay}
 import scala.util.matching.Regex
@@ -32,8 +33,6 @@ import cc.CaptureSet
 import cc.Capabilities.Capability
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 import dotty.tools.dotc.util.Spans.Span
-import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.config.SourceVersion
 import DidYouMean.*
 import Message.{Disambiguation, Note}
@@ -775,7 +774,7 @@ extends SyntaxMsg(ByNameParameterNotSupportedID) {
         |"""
 }
 
-class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: List[ParamInfo], actual: List[untpd.Tree])(using Context)
+class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: Lst[ParamInfo], actual: Lst[untpd.Tree])(using Context)
 extends SyntaxMsg(WrongNumberOfTypeArgsID) {
 
   private val expectedCount = expectedArgs.length
@@ -1584,7 +1583,7 @@ class ReassignmentToVal(name: Name, pt: Type)(using Context)
          |Reassigment is only permitted if the variable is declared with `var`."""
 }
 
-class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)
+class TypeDoesNotTakeParameters(tpe: Type, params: Lst[untpd.Tree])(using Context)
   extends TypeMsg(TypeDoesNotTakeParametersID) {
   private def fboundsAddendum(using Context) =
     if tpe.typeSymbol.isAllOf(Provisional | TypeParam) then
@@ -2015,11 +2014,11 @@ class TailrecNestedCall(definition: Symbol, innerDef: Symbol)(using Context)
       |""".stripMargin
 }
 
-class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: List[Symbol], classRoot: Symbol)(using Context)
+class FailureToEliminateExistential(tp: Type, tp1: Type, tp2: Type, boundSyms: Lst[Symbol], classRoot: Symbol)(using Context)
   extends Message(FailureToEliminateExistentialID) {
   def kind = MessageKind.Compatibility
   def msg(using Context) =
-    val originalType = ctx.printer.dclsText(boundSyms, "; ").show
+    val originalType = ctx.printer.dclsText(boundSyms.toList, "; ").show
     i"""An existential type that came from a Scala-2 classfile for $classRoot
         |cannot be mapped accurately to a Scala-3 equivalent.
         |original type    : $tp forSome ${originalType}
@@ -2087,7 +2086,7 @@ class DuplicateNamedTypeParameter(name: Name)(using Context)
   def explain(using Context) = ""
 }
 
-class UndefinedNamedTypeParameter(undefinedName: Name, definedNames: List[Name])(using Context)
+class UndefinedNamedTypeParameter(undefinedName: Name, definedNames: Lst[Name])(using Context)
   extends SyntaxMsg(UndefinedNamedTypeParameterID) {
   def msg(using Context) = i"Type parameter $undefinedName is undefined. Expected one of ${definedNames.map(_.show).mkString(", ")}."
   def explain(using Context) = ""
@@ -2199,7 +2198,7 @@ class PackageNameAlreadyDefined(pkg: Symbol)(using Context) extends NamingMsg(Pa
         |Rename either one of them$or."""
 }
 
-class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: List[Type])(using Context)
+class UnapplyInvalidNumberOfArguments(qual: untpd.Tree, argTypes: Lst[Type])(using Context)
   extends SyntaxMsg(UnapplyInvalidNumberOfArgumentsID) {
   def msg(using Context) = i"Wrong number of argument patterns for $qual; expected: ($argTypes%, %)"
   def explain(using Context) =
@@ -3012,7 +3011,7 @@ class MissingImplicitArgument(
    *  all occurrences of `${X}` where `X` is in `paramNames` with the
    *  corresponding shown type in `args`.
    */
-  def userDefinedErrorString(raw: String, paramNames: List[String], args: List[Type])(using Context): String =
+  def userDefinedErrorString(raw: String, paramNames: Lst[String], args: Lst[Type])(using Context): String =
     def translate(name: String): Option[String] =
       val idx = paramNames.indexOf(name)
       if (idx >= 0) Some(i"${args(idx)}") else None
@@ -3029,15 +3028,15 @@ class MissingImplicitArgument(
   def formatAnnotationMessage(
     rawMsg: String,
     sym: Symbol,
-    paramNames: List[Name],
-    args: List[Type],
+    paramNames: Lst[Name],
+    args: Lst[Type],
     substituteType: Type => Type,
   )(using Context): String =
     val substitutableTypesSymbols = substitutableTypeSymbolsInScope(sym)
     userDefinedErrorString(
       rawMsg,
-      paramNames = (paramNames ::: substitutableTypesSymbols.map(_.name)).map(_.unexpandedName.toString),
-      args = args ::: substitutableTypesSymbols.map(_.typeRef).map(substituteType)
+      paramNames = (paramNames ++ substitutableTypesSymbols.map(_.name)).map(_.unexpandedName.toString),
+      args = args ++ substitutableTypesSymbols.map(_.typeRef).map(substituteType)
     )
 
   /** Extract a user defined error message from a symbol `sym`
@@ -3051,8 +3050,8 @@ class MissingImplicitArgument(
 
   def userDefinedImplicitNotFoundTypeMessageFor(
     sym: Symbol,
-    params: List[ParamInfo] = Nil,
-    args: List[Type] = Nil
+    params: Lst[ParamInfo] = Lst(),
+    args: Lst[Type] = Lst()
   )(using Context): Option[String] = for
     rawMsg <- userDefinedMsg(sym, defn.ImplicitNotFoundAnnot)
     if Feature.migrateTo3 || sym != defn.Function1
@@ -3071,19 +3070,19 @@ class MissingImplicitArgument(
     paramSymWithMethodCallTree.flatMap: (sym, applTree) =>
       userDefinedMsg(sym, defn.ImplicitNotFoundAnnot).map: rawMsg =>
         val fn = tpd.funPart(applTree)
-        val targs = tpd.typeArgss(applTree).flatten
+        val targs = tpd.typeArgss(applTree).flattenLst
         val methodOwner = fn.symbol.owner
         val methodOwnerType = tpd.qualifier(fn).tpe
-        val methodTypeParams = fn.symbol.paramSymss.flatten.withFilter(_.isType).map(_.name)
+        val methodTypeParams = fn.symbol.paramSymss.flattenLst.filter(_.isType).map(_.name)
         val methodTypeArgs = targs.map(_.tpe)
         formatAnnotationMessage(rawMsg, sym.owner, methodTypeParams, methodTypeArgs, _.asSeenFrom(methodOwnerType, methodOwner))
 
   def userDefinedImplicitNotFoundTypeMessage(using Context): Option[String] =
-    def recur(tp: Type, params: List[ParamInfo] = Nil, args: List[Type] = Nil): Option[String] = tp match
+    def recur(tp: Type, params: Lst[ParamInfo] = Lst(), args: Lst[Type] = Lst()): Option[String] = tp match
       case tp: AppliedType =>
         val tycon = tp.typeConstructor
         val typeParams = if tycon.isLambdaSub then tycon.hkTypeParams else tycon.typeParams
-        recur(tycon, typeParams ::: params, tp.args ::: args)
+        recur(tycon, typeParams ++ params, tp.args ++ args)
       case tp: TypeRef =>
         userDefinedImplicitNotFoundTypeMessageFor(tp.symbol, params, args)
           .orElse(recur(tp.info))
@@ -3169,9 +3168,9 @@ class MissingImplicitArgument(
     def userDefinedAmbiguousImplicitMsg(alt: SearchSuccess, raw: String) = {
       val params = alt.ref.underlying match {
         case p: PolyType => p.paramNames.map(_.toString)
-        case _           => Nil
+        case _           => Lst()
       }
-      def resolveTypes(targs: List[tpd.Tree])(using Context) =
+      def resolveTypes(targs: Lst[tpd.Tree])(using Context) =
         targs.map(a => Inferencing.fullyDefinedType(a.tpe, "type argument", a.srcPos))
 
       // We can extract type arguments from:
@@ -3186,7 +3185,7 @@ class MissingImplicitArgument(
       //     implicitly[Int => String] // found: x => f[Any](x)
 
       val call = tpd.closureBody(alt.tree) // the tree itself if not a closure
-      val targs = tpd.typeArgss(call).flatten
+      val targs = tpd.typeArgss(call).flattenLst
       val args = resolveTypes(targs)(using ctx.fresh.setTyperState(alt.tstate))
       userDefinedErrorString(raw, params, args)
     }
@@ -3649,7 +3648,7 @@ class MatchIsNotPartialFunction(using Context) extends SyntaxMsg(MatchIsNotParti
        |Efficient operations will use `applyOrElse` to avoid computing the match twice,
        |but the `apply` body would be executed "per element" in the example."""
 
-final class PointlessAppliedConstructorType(tpt: untpd.Tree, args: List[untpd.Tree], tpe: Type)(using Context) extends TypeMsg(PointlessAppliedConstructorTypeID):
+final class PointlessAppliedConstructorType(tpt: untpd.Tree, args: Lst[untpd.Tree], tpe: Type)(using Context) extends TypeMsg(PointlessAppliedConstructorTypeID):
   override protected def msg(using Context): String =
     val act = i"$tpt(${args.map(_.show).mkString(", ")})"
     i"""|Applied constructor type $act has no effect.

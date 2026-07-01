@@ -11,7 +11,7 @@ import NameKinds.WildcardParamName
 import config.Printers.capt
 import StdNames.nme
 import transform.LiftCoverage
-import util.{SimpleIdentitySet, EqHashMap, SrcPos}
+import util.{SimpleIdentitySet, EqHashMap, SrcPos, Lst}
 import tpd.*
 import reflect.ClassTag
 import reporting.trace
@@ -833,7 +833,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
             case t @ AppliedType(tycon, args) =>
               val c1 = foldOver(Captures.None, t)
               if c1 == Captures.NeedsCheck then
-                toCheck = (tycon :: args) :: toCheck
+                toCheck = (tycon :: args.toList) :: toCheck
               c.add(c1)
             case t @ CapturingType(parent, cs) =>
               val c1 = this(c, parent)
@@ -957,7 +957,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     inline def isLocalRef(x: Capability): Boolean = x.isInstanceOf[TermParamRef]
 
     def resultArgCaptures(tpe: Type): Refs =
-      def collectRefs(args: List[Type], res: Type) =
+      def collectRefs(args: Lst[Type], res: Type) =
         args.foldLeft(resultArgCaptures(res)): (refs, arg) =>
           refs ++ arg.captureSet.elems
       tpe match
@@ -970,7 +970,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
         case _ =>
           emptyRefs
 
-    for (mt, args) <- mtpsWithArgs; (formal, arg) <- mt.paramInfos.zip(args) do
+    for (mt, args) <- mtpsWithArgs; (formal, arg) <- mt.paramInfos.zip(args.toLst) do
       recordDeps(formal, arg)
 
     val resultType = mtpe.finalResultType
@@ -988,7 +988,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    */
   private def traverseApply(app: Tree)(using Context): Unit =
     def recur(tree: Tree, argss: List[List[Tree]]): Unit = tree match
-      case Apply(fn, args) => recur(fn, args :: argss)
+      case Apply(fn, args) => recur(fn, args.toList :: argss)
       case TypeApply(fn, args) => recur(fn, argss) // skip type arguments
       case _ =>
         if argss.nestedExists(_.needsSepCheck) then
@@ -1080,8 +1080,11 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           else
             inSection:
               consumed.segment:
-                for params <- tree.paramss; case param: ValDef <- params do
-                  pushDef(param, emptyRefs)
+                for params <- tree.paramss do
+                  for param <- params do
+                    param match
+                      case param: ValDef => pushDef(param, emptyRefs)
+                      case _ =>
                 traverseChildren(tree)
           checkValOrDefDef(tree)
         case If(cond, thenp, elsep) =>

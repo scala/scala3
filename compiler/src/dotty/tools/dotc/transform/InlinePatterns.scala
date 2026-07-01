@@ -7,6 +7,7 @@ import MegaPhase.*
 import Symbols.*, Contexts.*, Types.*, Decorators.*
 import NameOps.*
 import Names.*
+import util.Lst
 
 import scala.collection.mutable.ListBuffer
 
@@ -48,15 +49,15 @@ class InlinePatterns extends MiniPhase:
     else app
 
   private object App:
-    def unapply(app: Tree): (Tree, List[List[Tree]]) =
+    def unapply(app: Tree): (Tree, List[Lst[Tree]]) =
       app match
         case Apply(App(fn, argss), args) => (fn, argss :+ args)
         case _ => (app, Nil)
 
   // TODO merge with BetaReduce.scala
-  private def betaReduce(tree: Apply, fn: Tree, name: Name, argss: List[List[Tree]])(using Context): Tree =
+  private def betaReduce(tree: Apply, fn: Tree, name: Name, argss: List[Lst[Tree]])(using Context): Tree =
     fn match
-      case Block(TypeDef(_, template: Template) :: Nil, Apply(Select(New(_),_), Nil)) if template.constr.rhs.isEmpty =>
+      case Block(TypeDef(_, template: Template) :: Nil, Apply(Select(New(_),_), Lst.empty())) if template.constr.rhs.isEmpty =>
         template.body match
           case List(ddef @ DefDef(`name`, _, _, _)) =>
             val bindings = new ListBuffer[DefTree]()

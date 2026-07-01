@@ -93,7 +93,7 @@ object MetalsInteractive:
         select.name
       )
     gtree match
-      case Apply(fun, List(_: Block)) => isForSynthetic(fun)
+      case Apply(fun, Lst.single(_: Block)) => isForSynthetic(fun)
       case TypeApply(fun, _) => isForSynthetic(fun)
       case gtree: Select if isForComprehensionSyntheticName(gtree) => true
       case _ => false
@@ -128,7 +128,7 @@ object MetalsInteractive:
           List((sym, sym.info, None))
         else
           val paramSymbol =
-            for param <- funSym.paramSymss.flatten.find(_.name == name)
+            for param <- funSym.paramSymsLists.flatten.find(_.name == name)
             yield param
           val sym = paramSymbol.getOrElse(fn.symbol)
           List((sym, sym.info, None))
@@ -214,12 +214,15 @@ object MetalsInteractive:
             Nil
 
       // Handle select on named tuples
-      case (Apply(Apply(TypeApply(fun, List(t1, t2)), List(ddef)), List(Literal(Constant(i: Int))))) :: _
+      case (Apply(
+            Apply(TypeApply(fun, Lst.pair(t1, t2)), Lst.single(ddef)),
+            Lst.single(Literal(Constant(i: Int)))
+          )) :: _
           if fun.symbol.exists && fun.symbol.name == nme.apply &&
             fun.symbol.owner.exists && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
         def getIndex(t: Tree): Option[Type] =
           t.tpe.dealias match
-            case AppliedType(_, args) => args.get(i)
+            case AppliedType(_, args) => args.toList.get(i)
             case _ => None
         val name = getIndex(t1) match
           case Some(c: ConstantType) => c.value.stringValue
@@ -303,9 +306,9 @@ object MetalsInteractive:
   object TreeApply:
     def unapply(tree: Tree): Option[(Tree, List[Tree])] =
       tree match
-        case TypeApply(qual, args) => Some(qual -> args)
-        case Apply(qual, args) => Some(qual -> args)
-        case UnApply(qual, implicits, args) => Some(qual -> (implicits ++ args))
-        case AppliedTypeTree(qual, args) => Some(qual -> args)
+        case TypeApply(qual, args) => Some(qual -> args.toList)
+        case Apply(qual, args) => Some(qual -> args.toList)
+        case UnApply(qual, implicits, args) => Some(qual -> (implicits.toList ++ args.toList))
+        case AppliedTypeTree(qual, args) => Some(qual -> args.toList)
         case _ => None
 end MetalsInteractive

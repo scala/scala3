@@ -17,6 +17,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Denotations.staticRef
 import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Constants.Constant
+import dotty.tools.dotc.util.Lst
 
 import dotty.tools.dotc.quoted.Interpreter
 
@@ -165,7 +166,7 @@ object Splicer {
           }
           noSpliceChecker.traverse(body)
 
-        case Apply(TypeApply(fn, List(quoted)), _)if fn.symbol == defn.QuotedTypeModule_of =>
+        case Apply(TypeApply(fn, Lst.single(quoted)), _) if fn.symbol == defn.QuotedTypeModule_of =>
           // OK
 
         case Literal(Constant(value)) =>
@@ -193,7 +194,7 @@ object Splicer {
       }
 
       def checkIfValidStaticCall(tree: Tree)(using Env): Unit = tree match {
-        case closureDef(ddef @ DefDef(_, ValDefs(ev :: Nil) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
+        case closureDef(ddef @ DefDef(_, ValDefs(Lst.single(ev)) :: Nil, _, _)) if ddef.symbol.info.isContextualMethod =>
           checkIfValidStaticCall(ddef.rhs)(using summon[Env] + ev.symbol)
 
         case Block(stats, expr) =>
@@ -258,7 +259,7 @@ object Splicer {
         new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(body1, ctx.owner)).withSpan(body1.span), SpliceScope.getCurrent)
 
       // Interpret level -1 `Type.of[T]`
-      case Apply(TypeApply(fn, quoted :: Nil), _) if fn.symbol == defn.QuotedTypeModule_of =>
+      case Apply(TypeApply(fn, Lst.single(quoted)), _) if fn.symbol == defn.QuotedTypeModule_of =>
         new TypeImpl(QuoteUtils.changeOwnerOfTree(quoted, ctx.owner), SpliceScope.getCurrent)
 
       case _ =>

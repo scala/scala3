@@ -18,7 +18,7 @@ import Constants.*
 import Decorators.{em, toMessage}
 import util.SourceFile
 import Utility.*
-
+import util.Lst
 
 // XXX/Note: many/most of the functions in here are almost direct cut and pastes
 // from another file - scala.xml.parsing.MarkupParser, it looks like.
@@ -421,7 +421,7 @@ object MarkupParsers {
 
     /** xScalaPatterns  ::= patterns
      */
-    def xScalaPatterns: List[Tree] = escapeToScala(parser.patterns(), "pattern")
+    def xScalaPatterns: List[Tree] = escapeToScala(parser.patterns().toList, "pattern")
 
     def reportSyntaxError(offset: Int, str: String): Unit = parser.syntaxError(str.toMessage, offset)
     def reportSyntaxError(str: String): Unit = {

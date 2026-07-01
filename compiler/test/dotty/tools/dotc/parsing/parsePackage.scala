@@ -26,11 +26,11 @@ object parsePackage extends ParserTest {
         case SymbolLit(str) =>
           tree
         case InterpolatedString(id, segments) =>
-          InterpolatedString(id, segments map transform)
+          InterpolatedString(id, segments.map(transform))
         case mdef @ ModuleDef(name, impl) =>
           ModuleDef(name, transformSub(impl)).withMods(mdef.mods)
         case Function(params, body) =>
-          Function(params map transform, body)
+          Function(params.map(transform), body)
         case InfixOp(l, o, r) =>
           InfixOp(transform(l), o, transform(r))
         case PostfixOp(l, o) =>
@@ -40,7 +40,7 @@ object parsePackage extends ParserTest {
         case Parens(t) =>
           Parens(transform(t))
         case Tuple(ts) =>
-          Tuple(ts map transform)
+          Tuple(ts.map(transform))
         case WhileDo(cond, body) =>
           WhileDo(transform(cond), transform(body))
         case ForYield(enums, expr) =>

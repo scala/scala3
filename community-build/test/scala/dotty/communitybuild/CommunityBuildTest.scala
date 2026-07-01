@@ -16,7 +16,10 @@ given testRunner: CommunityBuildRunner with
 
 @Category(Array(classOf[TestCategory]))
 class CommunityBuildTestA:
-  @Test def izumiReflect = projects.izumiReflect.run()
+  //@Test def izumiReflect = projects.izumiReflect.run()
+  // Izumi needs to be disabled since it accesses internal compiler APIs through casts. The
+  // cast asserts an internal compiler field is of type List[LambdaParam] but it now is of
+  // type Lst[LambdaParam]. Izumi should not access compiler internals in this way.
   @Test def scalaSTM = projects.scalaSTM.run()
   //@Test def scalatest = projects.scalatest.run()
   @Test def scalatestplusTestNG = projects.scalatestplusTestNG.run()

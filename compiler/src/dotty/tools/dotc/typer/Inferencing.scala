@@ -16,6 +16,7 @@ import reporting.*
 import TypeAssigner.SkolemizedArgs
 import collection.mutable
 import scala.annotation.internal.sharable
+import util.Lst
 
 object Inferencing {
 
@@ -58,7 +59,7 @@ object Inferencing {
    *  If none of (1) - (4) applies, the type variable is left uninstantiated.
    *  The method is called to instantiate type variables before an implicit search.
    */
-  def instantiateSelected(tp: Type, tvars: List[Type])(using Context): Unit =
+  def instantiateSelected(tp: Type, tvars: Lst[Type])(using Context): Unit =
     if (tvars.nonEmpty)
       IsFullyDefinedAccumulator(
         new ForceDegree.Value(IfBottom.flip):
@@ -69,7 +70,7 @@ object Inferencing {
   /** Instantiate any type variables in `tp` whose bounds contain a reference to
    *  one of the parameters in `paramss`.
    */
-  def instantiateDependent(tp: Type, paramss: List[List[Symbol]])(using Context): Unit = {
+  def instantiateDependent(tp: Type, paramss: List[Lst[Symbol]])(using Context): Unit = {
     val dependentVars = new TypeAccumulator[Set[TypeVar]] {
       def apply(tvars: Set[TypeVar], tp: Type) = tp match {
         case tp: TypeVar
@@ -83,7 +84,7 @@ object Inferencing {
       }
     }
     val depVars = dependentVars(Set(), tp)
-    if (depVars.nonEmpty) instantiateSelected(tp, depVars.toList)
+    if (depVars.nonEmpty) instantiateSelected(tp, depVars.toLst)
   }
 
   /** If `tp` is top-level type variable with a lower bound in the current constraint,
@@ -106,19 +107,18 @@ object Inferencing {
     case AppliedType(tycon, args) =>
       // The argument in `args` that may potentially appear directly as result
       // and thereby influence the members of this type
-      def argsInResult: List[Type] = tycon.stripTypeVar match
+      def argsInResult: Lst[Type] = tycon.stripTypeVar match
         case tycon: TypeRef =>
           tycon.info match
             case MatchAlias(_) => args
             case TypeBounds(_, upper: TypeLambda) =>
               upper.resultType match
                 case ref: TypeParamRef if ref.binder == upper =>
-                  args.lazyZip(upper.paramRefs).collect {
+                  args.zip(upper.paramRefs).collect:
                     case (arg, pref) if pref eq ref => arg
-                  }.toList
-                case _ => Nil
-            case _ => Nil
-        case _ => Nil
+                case _ => Lst()
+            case _ => Lst()
+        case _ => Lst()
       couldInstantiateTypeVar(tycon, applied)
       || (if applied then args else argsInResult).exists(couldInstantiateTypeVar(_, applied))
     case RefinedType(parent, _, _) =>
@@ -387,10 +387,10 @@ object Inferencing {
    *    - The prefix `p` of a selection `p.f`.
    *    - The result expression `e` of a block `{s1; .. sn; e}`.
    */
-  def tvarsInParams(tree: Tree, locked: TypeVars)(using Context): List[TypeVar] = {
-    def boundVars(tree: Tree, acc: List[TypeVar]): List[TypeVar] = tree match {
+  def tvarsInParams(tree: Tree, locked: TypeVars)(using Context): Lst[TypeVar] = {
+    def boundVars(tree: Tree, acc: Lst[TypeVar]): Lst[TypeVar] = tree match {
       case Apply(fn, args) =>
-        val argTpVars = args.flatMap(boundVars(_, Nil))
+        val argTpVars = args.flatMap(boundVars(_, Lst()))
         boundVars(fn, acc ++ argTpVars)
       case TypeApply(fn, targs) =>
         val tvars = targs.filter(_.isInstanceOf[InferredTypeTree]).tpes.collect {
@@ -399,30 +399,30 @@ object Inferencing {
              ctx.typerState.ownedVars.contains(tvar) &&
              !locked.contains(tvar) => tvar
         }
-        boundVars(fn, acc ::: tvars)
+        boundVars(fn, acc ++ tvars)
       case Select(pre, _) => boundVars(pre, acc)
       case Block(_, expr) => boundVars(expr, acc)
       case _ => acc
     }
-    def occurring(tree: Tree, toTest: List[TypeVar], acc: List[TypeVar]): List[TypeVar] =
+    def occurring(tree: Tree, toTest: Lst[TypeVar], acc: Lst[TypeVar]): Lst[TypeVar] =
       if (toTest.isEmpty) acc
       else tree match {
         case Apply(fn, args) =>
-          val argsOcc = args.flatMap(occurring(_, toTest, Nil))
-          val argsNocc = toTest.filterNot(argsOcc.contains)
+          val argsOcc = args.flatMap(occurring(_, toTest, Lst()))
+          val argsNocc = toTest.filter(!argsOcc.contains(_))
           fn.tpe.widen match {
             case mtp: MethodType =>
               val (occ, nocc) = argsNocc.partition(tvar => mtp.paramInfos.exists(tvar.occursIn))
-              occurring(fn, nocc, occ ::: argsOcc ::: acc)
+              occurring(fn, nocc, occ ++ argsOcc ++ acc)
             case _ =>
-              occurring(fn, argsNocc, argsOcc ::: acc)
+              occurring(fn, argsNocc, argsOcc ++ acc)
           }
         case TypeApply(fn, targs) => occurring(fn, toTest, acc)
         case Select(pre, _) => occurring(pre, toTest, acc)
         case Block(_, expr) => occurring(expr, toTest, acc)
         case _ => acc
       }
-    occurring(tree, boundVars(tree, Nil), Nil)
+    occurring(tree, boundVars(tree, Lst()), Lst())
   }
 
   /** The instantiation direction for given poly param computed
@@ -485,10 +485,10 @@ object Inferencing {
    *  @return   The list of type symbols that were created
    *            to instantiate undetermined type variables that occur non-variantly
    */
-  def maximizeType(tp: Type, span: Span)(using Context): List[Symbol] = {
+  def maximizeType(tp: Type, span: Span)(using Context): Lst[Symbol] = {
     Stats.record("maximizeType")
     val vs = variances(tp)
-    val patternBindings = new mutable.ListBuffer[(Symbol, TypeParamRef)]
+    val patternBindings = new util.Lst.Buffer[(Symbol, TypeParamRef)]
     val gadtBounds = ctx.gadt.symbols.map(ctx.gadt.bounds(_).nn)
     vs.underlying foreachBinding { (tvar, v) =>
       if !tvar.isInstantiated then
@@ -511,7 +511,7 @@ object Inferencing {
           }
         }
     }
-    val res = patternBindings.toList.map { (boundSym, origin) =>
+    val res = patternBindings.toLst.map { (boundSym, origin) =>
       // substitute bounds of pattern bound variables to deal with possible F-bounds
       for (wildCard, param) <- patternBindings do
         boundSym.info = boundSym.info.substParam(param, wildCard.typeRef)

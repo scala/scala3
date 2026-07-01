@@ -20,7 +20,7 @@ import Annotations.*
 import transform.{AccessProxies, Splicer}
 import staging.CrossStageSafety
 import config.Printers.inlining
-import util.Property
+import util.{Property, Lst}
 import staging.StagingLevel
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.util.SrcPos
@@ -92,7 +92,7 @@ object PrepareInlineable {
 
       def postTransform(tree: Tree)(using Context): Tree = tree match {
         case Assign(lhs, rhs) if lhs.symbol.name.is(InlineAccessorName) =>
-          cpy.Apply(tree)(useSetter(lhs), rhs :: Nil)
+          cpy.Apply(tree)(useSetter(lhs), Lst(rhs))
         case _ =>
           tree
       }
@@ -184,13 +184,13 @@ object PrepareInlineable {
           def addQualType(tp: Type): Type = tp match {
             case tp: PolyType => tp.derivedLambdaType(tp.paramNames, tp.paramInfos, addQualType(tp.resultType))
             case tp: ExprType => addQualType(tp.resultType)
-            case tp => MethodType(qualType.simplified :: Nil, tp)
+            case tp => MethodType(Lst(qualType.simplified), tp)
           }
 
           // Abstract accessed type over local refs
           def abstractQualType(mtpe: Type): Type =
             if (localRefs.isEmpty) mtpe
-            else PolyType.fromParams(localRefs.map(_.symbol.asType), mtpe)
+            else PolyType.fromParams(localRefs.mapToLst(_.symbol.asType), mtpe)
               .asInstanceOf[PolyType].flatten
 
           val accessed = refPart.symbol.asTerm
@@ -205,8 +205,8 @@ object PrepareInlineable {
 
           val (leadingTypeArgs, otherArgss) = splitArgs(argss)
           val argss1 = joinArgs(
-            localRefs.map(TypeTree(_)) ++ leadingTypeArgs, // TODO: pass type parameters in two sections?
-            (qual :: Nil) :: otherArgss
+            localRefs.mapToLst(TypeTree(_)) ++ leadingTypeArgs, // TODO: pass type parameters in two sections?
+            Lst(qual) :: otherArgss
           )
           ref(accessor).appliedToArgss(argss1).withSpan(tree.span)
 

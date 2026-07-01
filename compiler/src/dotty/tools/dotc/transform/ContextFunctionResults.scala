@@ -9,6 +9,7 @@ import StdNames.nme
 import ast.untpd
 import ast.tpd.*
 import config.Config
+import util.Lst
 
 object ContextFunctionResults:
 
@@ -50,7 +51,7 @@ object ContextFunctionResults:
   def contextResultCount(sym: Symbol)(using Context): Int =
     sym.getAnnotation(defn.ContextResultCountAnnot) match
       case Some(annot) =>
-        val ast.Trees.Literal(Constant(crCount: Int)) :: Nil = annot.arguments: @unchecked
+        val Lst.single(ast.Trees.Literal(Constant(crCount: Int))) = annot.arguments: @unchecked
         crCount
       case none => 0
 
@@ -87,7 +88,7 @@ object ContextFunctionResults:
       else
         val defn.ContextFunctionType(params, resTpe) = tp: @unchecked
         val rest = contextParamCount(resTpe, crCount - 1)
-        val nonErasedParams = params.count(!_.hasAnnotation(defn.ErasedParamAnnot))
+        val nonErasedParams = params.count(!_.isForErasedParam)
         nonErasedParams + rest
 
     def normalParamCount(tp: Type): Int = tp.widenExpr.stripPoly match

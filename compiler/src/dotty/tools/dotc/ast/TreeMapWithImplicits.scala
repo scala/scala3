@@ -4,9 +4,11 @@ package ast
 import Trees.*
 import core.Contexts.*
 import core.ContextOps.enter
+import core.Decorators.flattenLst
 import core.Flags.*
 import core.Symbols.*
 import core.TypeError
+import util.Lst
 
 /** A TreeMap that maintains the necessary infrastructure to support
  *  contextual implicit searches (type-scope implicits are supported anyway).
@@ -47,7 +49,7 @@ class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
             tree.name,
             transformParamss(tree.paramss),
             transform(tree.tpt),
-            transform(tree.rhs)(using nestedScopeCtx(tree.paramss.flatten)))
+            transform(tree.rhs)(using nestedScopeCtx(tree.paramss.flattenLst.toList)))
         }
       case impl @ Template(constr, _, self, _) =>
         cpy.Template(tree)(

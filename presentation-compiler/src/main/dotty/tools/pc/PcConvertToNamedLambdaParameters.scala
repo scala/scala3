@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.utils.InteractiveEnrichments.*
@@ -101,10 +102,10 @@ object PcConvertToNamedLambdaParameters:
           )
           if ddef.symbol == meth.symbol =>
         params match
-          case List(param) =>
+          case Lst.single(param) =>
             // lambdas with multiple wildcard parameters are represented as a single parameter function and a block with wildcard valdefs
             Some(multipleUnderscoresFromBody(param, body))
-          case _ => Some(params -> body)
+          case _ => Some(params.toList -> body)
       case _ => None
 
   private def multipleUnderscoresFromBody(

@@ -194,7 +194,7 @@ object JSEncoding {
 
     val tpe = sym.info
 
-    val paramTypeRefs0 = tpe.firstParamTypes.map(paramOrResultTypeRef(_))
+    val paramTypeRefs0 = tpe.firstParamTypes.mapToList(paramOrResultTypeRef(_))
 
     val hasExplicitThisParameter = !sym.is(JavaStatic) && sym.owner.isNonNativeJSClass
     val paramTypeRefs =

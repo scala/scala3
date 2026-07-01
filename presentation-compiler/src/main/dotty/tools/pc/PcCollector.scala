@@ -190,11 +190,11 @@ trait PcCollector[T]:
                       (sym.owner == apply.symbol.owner.companion || sym.owner == apply.symbol.owner))
                 ) =>
               arg
-          }
+          }.toList
           val named = args.map { arg =>
             val realName = arg.name.stripModuleClassSuffix.lastPart
             val length = realName.toString.backticked.length()
-            val sym = apply.symbol.paramSymss.flatten
+            val sym = apply.symbol.paramSymsLists.flatten
               .find(_.name == realName)
             collect(
               arg,

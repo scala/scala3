@@ -12,6 +12,7 @@ import scala.meta.pc.SymbolSearch
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Decorators.flattenLst
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.NameOps.fieldName
@@ -270,10 +271,10 @@ object ImplicitConversion:
     if params.implicitConversions() then
       tree match
         case Apply(fun: Ident, args) if isSynthetic(fun) && args.exists(!_.span.isZeroExtent) =>
-          implicitConversion(fun, args)
+          implicitConversion(fun, args.toList)
         case Apply(Select(fun, name), args)
             if name == nme.apply && isSynthetic(fun) && args.exists(!_.span.isZeroExtent) =>
-          implicitConversion(fun, args)
+          implicitConversion(fun, args.toList)
         case _ => None
     else None
   private def isSynthetic(tree: Tree)(using Context) =
@@ -291,8 +292,8 @@ object ImplicitParameters:
   def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context) =
     if params.implicitParameters() then
       tree match
-        case Apply(_, args) if hasImplicitArgs(tree, args) => implicitArgs(args)
-        case Inlined(Apply(_, args), _, _) if hasImplicitArgs(tree, args) => implicitArgs(args)
+        case Apply(_, args) if hasImplicitArgs(tree, args.toList) => implicitArgs(args.toList)
+        case Inlined(Apply(_, args), _, _) if hasImplicitArgs(tree, args.toList) => implicitArgs(args.toList)
         case _ => None
     else None
 
@@ -342,7 +343,7 @@ object ImplicitParameters:
             case Apply(fun, args) =>
               val applyLabel = (fun.symbol.decodedName, Some(fun.symbol))
               recurseImplicitArgs(
-                args,
+                args.toList,
                 remainingArgs :: remainingArgsLists,
                 ("(", None) :: applyLabel :: parts
               )
@@ -398,8 +399,8 @@ object TypeParameters:
             if sel.isForComprehensionMethod || sel.isInfix ||
               sel.symbol.name == nme.unapply =>
           None
-        case TypeApply(fun, args) if inferredTypeArgs(args) =>
-          val tpes = args.map(_.tpe.stripTypeVar.widen.finalResultType)
+        case TypeApply(fun, args) if inferredTypeArgs(args.toList) =>
+          val tpes = args.map(_.tpe.stripTypeVar.widen.finalResultType).toList
           Some((tpes, fun.sourcePos.endPos, fun))
         case _ => None
     else None
@@ -506,12 +507,12 @@ object Parameters:
             None
           else
             val funTp = fun.typeOpt.widenTermRefExpr
-            val paramNames = funTp.paramNamess.flatten
-            val paramInfos = funTp.paramInfoss.flatten
+            val paramNames = funTp.paramNamess.flattenLst.toList
+            val paramInfos = funTp.paramInfoss.flattenLst.toList
 
             Some(
-              isInfixFun(fun, args) || underlyingFun.isInfix,
-              args
+              isInfixFun(fun, args.toList) || underlyingFun.isInfix,
+              args.toList
                 .zip(paramNames)
                 .zip(paramInfos)
                 .collect {
