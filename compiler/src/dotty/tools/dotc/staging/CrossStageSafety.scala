@@ -63,7 +63,7 @@ class CrossStageSafety extends TreeMapWithStages {
       case CancelledQuote(tree) =>
         transform(tree) // Optimization: `'{ $x }` --> `x`
       case tree: Quote =>
-        if (ctx.property(InAnnotation).isDefined)
+        if (ctx.propertyRaw(InAnnotation) != null)
           report.error("Cannot have a quote in an annotation", tree.srcPos)
 
         val tree1 =
@@ -88,7 +88,7 @@ class CrossStageSafety extends TreeMapWithStages {
         untpd.cpy.Splice(tree)(body1).withType(tpe1)
 
       case tree @ QuotedTypeOf(body) =>
-        if (ctx.property(InAnnotation).isDefined)
+        if (ctx.propertyRaw(InAnnotation) != null)
           report.error("Cannot have a quote in an annotation", tree.srcPos)
 
         if level == 0 then

@@ -1843,16 +1843,40 @@ class Definitions {
   /** Is `tp` (an alias) of either a scala.FunctionN or a scala.ContextFunctionN
    *  instance?
    */
-  def isNonRefinedFunction(tp: Type)(using Context): Boolean = {
-    val arity = functionArity(tp)
-    val sym = tp.dealias.typeSymbol
+  def isNonRefinedFunction(tp: Type)(using Context): Boolean =
+    isNonRefinedFunctionDealiased(tp.dealias)
 
-    arity >= 0
-    && isFunctionClass(sym)
-    && tp.isRef(
-        FunctionType(arity, sym.name.isContextFunction).typeSymbol,
-        skipRefined = false)
-  }
+  /** Like `isNonRefinedFunction`, but `d` must already be the result of
+   *  `tp.dealias`. Threads a single dealias through the function-type
+   *  pipeline (functionArity / typeSymbol / isRef previously each dealiased
+   *  on their own).
+   */
+  private def isNonRefinedFunctionDealiased(d: Type)(using Context): Boolean =
+    // For a RefinedType (including PolyFunctionOf), `isRef(..., skipRefined = false)`
+    // below would return false, so short-circuit here. This also avoids walking
+    // `argInfos` through `functionArgInfos`' RefinedType arm.
+    if d.isInstanceOf[RefinedType] then false
+    else
+      val arity = d.argInfos.length - 1
+      if arity < 0 then false
+      else
+        val sym = d.typeSymbol
+        if !isFunctionClass(sym) then false
+        else
+          val target = FunctionType(arity, sym.name.isContextFunction).typeSymbol
+          // Inline `d.isRef(target, skipRefined = false)`: `d` is already
+          // dealiased, so the AppliedType arm's inner `dealias` is redundant.
+          d match
+            case at: AppliedType =>
+              at.tycon match
+                case tref: TypeRef if tref.symbol.isClass => tref.symbol eq target
+                case _ => d.isRef(target, skipRefined = false)
+            case tref: TypeRef =>
+              if tref.symbol.isClass then tref.symbol eq target
+              else tref.info match
+                case TypeAlias(tp) => tp.isRef(target, skipRefined = false)
+                case _ => tref.symbol eq target
+            case _ => d.isRef(target, skipRefined = false)
 
   /** Is a dependent function type represented as a RefinedType?
    */
@@ -1864,7 +1888,13 @@ class Definitions {
    *  - scala.ContextFunctionN
    */
   def isFunctionNType(tp: Type)(using Context): Boolean =
-    isNonRefinedFunction(tp.dropDependentRefinement)
+    // Inline `tp.dropDependentRefinement` and `isNonRefinedFunction` so we
+    // dealias `tp` only once. The previous chain dealiased inside
+    // dropDependentRefinement and then again inside isNonRefinedFunction.
+    val d = tp.dealias
+    d match
+      case RefinedType(parent, nme.apply, _) => isNonRefinedFunction(parent)
+      case _ => isNonRefinedFunctionDealiased(d)
 
   /** Returns whether `tp` is an instance or a refined instance of:
    *  - scala.FunctionN
@@ -1982,8 +2012,17 @@ class Definitions {
       case tp: FlexibleType =>
         asContextFunctionType(tp.hi)
       case tp1 =>
-        if tp1.typeSymbol.name.isContextFunction && isFunctionNType(tp1) then tp1
+        // tp1 is already dealiased: thread it through isFunctionNType to
+        // avoid a redundant dealias inside dropDependentRefinement/
+        // isNonRefinedFunction.
+        if tp1.typeSymbol.name.isContextFunction && isFunctionNTypeFromDealiased(tp1) then tp1
         else NoType
+
+  /** Variant of `isFunctionNType` whose input `d` is already a dealiased type. */
+  private def isFunctionNTypeFromDealiased(d: Type)(using Context): Boolean =
+    d match
+      case RefinedType(parent, nme.apply, _) => isNonRefinedFunction(parent)
+      case _ => isNonRefinedFunctionDealiased(d)
 
   /** Is `tp` an context function type? */
   def isContextFunctionType(tp: Type)(using Context): Boolean =
