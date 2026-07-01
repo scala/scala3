@@ -158,16 +158,13 @@ object Source {
   def fromBytes(bytes: Array[Byte], enc: String): Source =
     fromBytes(bytes)(using Codec(enc))
 
-  /** Creates a `Source` from array of bytes, assuming
-   *  one byte per character (ISO-8859-1 encoding.)
-   */
-  @deprecated("Use `fromBytes` and specify an encoding", since="2.13.9")
   /** Creates a `Source` from array of bytes, assuming one byte per character
    *  (ISO-8859-1 encoding).
    *
    *  @param bytes the array of bytes to decode into characters
    *  @return the created `Source` instance
    */
+  @deprecated("Use `fromBytes` and specify an encoding", since="2.13.9")
   def fromRawBytes(bytes: Array[Byte]): Source =
     fromString(new String(bytes, Codec.ISO8859.charSet))
 

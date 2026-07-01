@@ -22,15 +22,15 @@ import scala.language.`2.13`
  *  which provides useful non-primitive operations.
  */
 final abstract class Double private extends AnyVal {
-  /** Returns this value first converted to an `Int` (NaN to `0`, a finite value outside the `Int` range to `Int.MinValue` or `Int.MaxValue`, otherwise rounded toward zero), then narrowed to a `Byte` by keeping only its low-order 8 bits. */
+  /** Returns this value first converted to an `Int` (NaN to `0`, an infinite value or a finite value outside the `Int` range to `Int.MinValue` or `Int.MaxValue`, otherwise rounded toward zero), then narrowed to a `Byte` by keeping only its low-order 8 bits. */
   def toByte: Byte
-  /** Returns this value first converted to an `Int` (NaN to `0`, a finite value outside the `Int` range to `Int.MinValue` or `Int.MaxValue`, otherwise rounded toward zero), then narrowed to a `Short` by keeping only its low-order 16 bits. */
+  /** Returns this value first converted to an `Int` (NaN to `0`, an infinite value or a finite value outside the `Int` range to `Int.MinValue` or `Int.MaxValue`, otherwise rounded toward zero), then narrowed to a `Short` by keeping only its low-order 16 bits. */
   def toShort: Short
-  /** Returns this value first converted to an `Int` (NaN to `0`, a finite value outside the `Int` range to `Int.MinValue` or `Int.MaxValue`, otherwise rounded toward zero), then narrowed to a `Char` by keeping only its low-order 16 bits. */
+  /** Returns this value first converted to an `Int` (NaN to `0`, an infinite value or a finite value outside the `Int` range to `Int.MinValue` or `Int.MaxValue`, otherwise rounded toward zero), then narrowed to a `Char` by keeping only its low-order 16 bits. */
   def toChar: Char
-  /** Returns this value as an `Int`, rounded toward zero. A NaN value converts to `0`, and a finite value outside the `Int` range converts to `Int.MinValue` or `Int.MaxValue`. */
+  /** Returns this value as an `Int`, rounded toward zero. A NaN value converts to `0`, and an infinite value or a finite value outside the `Int` range converts to `Int.MinValue` or `Int.MaxValue`. */
   def toInt: Int
-  /** Returns this value as a `Long`, rounded toward zero. A NaN value converts to `0L`, and a finite value outside the `Long` range converts to `Long.MinValue` or `Long.MaxValue`. */
+  /** Returns this value as a `Long`, rounded toward zero. A NaN value converts to `0L`, and an infinite value or a finite value outside the `Long` range converts to `Long.MinValue` or `Long.MaxValue`. */
   def toLong: Long
   /** Returns this value as a `Float`, which may lose precision. */
   def toFloat: Float

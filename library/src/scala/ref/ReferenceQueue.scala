@@ -38,12 +38,16 @@ class ReferenceQueue[+T <: AnyRef] {
 
   /** Returns and removes the next available reference from this queue without blocking, or `None` if the queue is empty. */
   def poll: Option[Reference[T]] = Wrapper(underlying.poll)
-  /** Returns and removes the next reference from this queue, blocking until one becomes available. */
+  /** Returns and removes the next reference from this queue, blocking until one becomes available.
+   *
+   *  @throws java.lang.InterruptedException if the current thread is interrupted while waiting
+   */
   def remove: Option[Reference[T]] = Wrapper(underlying.remove)
   /** Removes and returns the next reference from this queue, blocking until one becomes available or the given timeout elapses.
    *
    *  @param timeout the maximum number of milliseconds to wait, where `0` means wait indefinitely and a negative value throws `IllegalArgumentException`
    *  @return `Some` reference if one became available within the timeout, or `None` if the timeout elapsed first
+   *  @throws java.lang.InterruptedException if the current thread is interrupted while waiting
    */
   def remove(timeout: Long): Option[Reference[T]] = Wrapper(underlying.remove(timeout))
 
