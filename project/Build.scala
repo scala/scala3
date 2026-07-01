@@ -968,7 +968,8 @@ object Build {
    *  compile for `scala3-repl-deps`.
    */
   lazy val fetchReplDepsSources: Def.Initialize[Task[Seq[File]]] = Def.task {
-    val log = streams.value.log
+    val s = streams.value
+    val cacheDir = s.cacheDirectory
     val outDir = (Compile / sourceManaged).value / "repl-deps-src"
     // (upstream repo, git tag, source subdirectories to include)
     val libs = Seq(
@@ -979,10 +980,10 @@ object Build {
     // The leading token is a shading-scheme version: bump it to force regeneration
     // when the shading/fetching logic (`shadeReplDepSource`, `fetchReplDepsSources`) changes.
     val stamp = (s"scheme:3:$replDepsShadedPackage" +: libs.map { case (r, v, ds) => s"$r:$v:${ds.mkString(",")}" }).mkString("|")
-    val stampFile = outDir / ".stamp"
-    val upToDate = stampFile.exists && IO.read(stampFile) == stamp
-    if (!upToDate) {
-      log.info(s"Fetching and shading vendored REPL dependency sources into $outDir ...")
+    val stampFile = cacheDir / "fetchReplDepsSources.stamp"
+    IO.write(stampFile, stamp)
+    val cached = FileFunction.cached(cacheDir / "fetchReplDepsSources", FilesInfo.hash, FilesInfo.exists) { _ =>
+      s.log.info(s"Fetching and shading vendored REPL dependency sources into $outDir ...")
       IO.delete(outDir)
       IO.createDirectory(outDir)
       IO.withTemporaryDirectory { tmp =>
@@ -1007,9 +1008,9 @@ object Build {
             sys.error(s"No Scala sources vendored for $repo $tag (looked in ${subdirs.mkString(", ")}); check the archive layout.")
         }
       }
-      IO.write(stampFile, stamp)
+      (outDir ** "*.scala").get.toSet
     }
-    (outDir ** "*.scala").get
+    cached(Set(stampFile)).toSeq
   }
 
   /** Shades a single vendored source file into `dotty.tools.repl.shaded.*`.
