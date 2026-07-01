@@ -5,9 +5,10 @@
 
 package dotty.tools.io
 
-import java.io.{ IOException, InputStream, OutputStream, FilterInputStream }
+import java.io.{FilterInputStream, IOException, InputStream, OutputStream}
+import java.net.URL
 import java.nio.file.Files
-import java.util.zip.{ ZipEntry, ZipFile }
+import java.util.zip.{ZipEntry, ZipFile}
 import java.util.jar.JarFile
 import scala.collection.mutable
 
@@ -44,31 +45,27 @@ import ZipArchive.*
 abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with Equals {
   self =>
 
-  override def underlyingSource: Option[ZipArchive] = Some(this)
   override def isDirectory: Boolean = true
-  override def lookupName(name: String, directory: Boolean): AbstractFile = unsupported()
   override def output: OutputStream    = unsupported()
-  override def container: AbstractFile = unsupported()
-  override def absolute: AbstractFile  = unsupported()
+  override def toURL: Option[URL] = Some(jpath.toUri.toURL)
 
   /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-  sealed abstract class Entry(path: String, val parent: Entry | Null) extends VirtualFile(baseName(path), path) {
+  sealed abstract class Entry(path: String, parent: Entry | Null) extends VirtualFile(path, Array.emptyByteArray) {
     // have to keep this name for compat with sbt's compiler-interface
     def getArchive: ZipFile | Null = null
-    override def underlyingSource: Option[ZipArchive] = Some(self)
-    override def container: AbstractFile = if parent == null then NoAbstractFile else parent
+    def underlyingSource: ZipArchive = self
+    override def container: Option[AbstractFile] = Option(parent)
     override def toString: String = self.path + "(" + path + ")"
   }
 
   /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
   class DirEntry(path: String, parent: Entry | Null) extends Entry(path, parent) {
-    val entries: mutable.HashMap[String, Entry] = mutable.HashMap()
+    private[io] val entries: mutable.HashMap[String, Entry] = mutable.HashMap()
 
     override def isDirectory: Boolean = true
     override def iterator: Iterator[Entry] = entries.valuesIterator
     override def lookupName(name: String, directory: Boolean): Entry | Null = {
-      if (directory) entries.get(name + "/").orNull
-      else entries.get(name).orNull
+      entries.get(name).orNull
     }
   }
 
@@ -143,7 +140,7 @@ final class FileZipArchive(jpath: JPath, release: Option[String] = None) extends
     override def sizeOption: Option[Int] = Some(zipEntry.getSize.toInt)
   }
 
-  lazy val (root: DirEntry, allDirs: collection.Map[String, DirEntry]) = {
+  private lazy val (root: DirEntry, allDirs: collection.Map[String, DirEntry]) = {
     val root = new DirEntry("/", null)
     val dirs = mutable.HashMap[String, DirEntry]("/" -> root)
     val zipFile = openZipFile()
@@ -183,6 +180,12 @@ final class FileZipArchive(jpath: JPath, release: Option[String] = None) extends
   }
 
   override def iterator: Iterator[Entry] = root.iterator
+
+  override def lookupName(name: String, directory: Boolean): AbstractFile | Null =
+    if name == "" then allDirs("/")
+    else if directory then allDirs.get(name + "/").orNull
+    else root.lookupName(name, false)
+
 
   override def name: String       = jpath.getFileName.toString
   override def path: String       = jpath.toString
