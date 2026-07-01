@@ -220,15 +220,22 @@ object Decorators {
       loop(xs, ys)
     }
 
-    @tailrec final def eqElements(ys: List[AnyRef]): Boolean = xs match {
-      case x :: _ =>
-        ys match {
-          case y :: _ =>
-            x.asInstanceOf[AnyRef].eq(y) &&
-            xs.tail.eqElements(ys.tail)
-          case _ => false
+    final def eqElements(ys: List[AnyRef]): Boolean = {
+      var xs0: List[T] = xs
+      var ys0: List[AnyRef] = ys
+      while true do
+        xs0 match {
+          case xc: ::[T @unchecked] =>
+            ys0 match {
+              case yc: ::[AnyRef @unchecked] =>
+                if !xc.head.asInstanceOf[AnyRef].eq(yc.head) then return false
+                xs0 = xc.tail
+                ys0 = yc.tail
+              case _ => return false
+            }
+          case _ => return ys0.isEmpty
         }
-      case nil => ys.isEmpty
+      false
     }
 
     /** Union on lists seen as sets */

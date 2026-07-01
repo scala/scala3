@@ -48,9 +48,25 @@ import Signature.*
  */
 case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
 
-  /** Two names are consistent if they are the same or one of them is tpnme.Uninstantiated */
-  private def consistent(name1: ParamSig, name2: ParamSig) =
-    name1 == name2 || name1 == tpnme.Uninstantiated || name2 == tpnme.Uninstantiated
+  /** Two names are consistent if they are the same or one of them is tpnme.Uninstantiated.
+   *
+   *  `ParamSig = TypeName | Int` erases to `AnyRef`, so a plain `==` compiles to
+   *  `BoxesRunTime.equals(_, _)` and dispatches through `equals2` (instanceof Number /
+   *  Character / null / virtual `Object.equals`). The dominant `TypeName` arm
+   *  collapses to `eq` once that chain unwinds (Names.scala:157), so we
+   *  hand-write a typed-arm match that emits `if_acmpeq` / `if_icmpeq` directly
+   *  and never re-enters the boxing helper.
+   */
+  private def consistent(name1: ParamSig, name2: ParamSig): Boolean =
+    name1 match
+      case n1: TypeName =>
+        name2 match
+          case n2: TypeName => (n1 eq n2) || (n1 eq tpnme.Uninstantiated) || (n2 eq tpnme.Uninstantiated)
+          case _: Int      => (n1 eq tpnme.Uninstantiated)
+      case i1: Int =>
+        name2 match
+          case _: TypeName => name2.asInstanceOf[AnyRef] eq tpnme.Uninstantiated
+          case i2: Int     => i1 == i2
 
   /** Does this signature coincide with that signature on their parameter parts?
    *  This is the case if all parameter signatures are _consistent_, i.e. they are either
@@ -87,7 +103,7 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    */
   final def matchDegree(that: Signature)(using Context): MatchDegree =
     if consistentParams(that) then
-      if resSig == that.resSig || isWildcard(resSig) || isWildcard(that.resSig) then
+      if (resSig eq that.resSig) || isWildcard(resSig) || isWildcard(that.resSig) then
         FullMatch
       else if (this == NotAMethod) != (that == NotAMethod) then
         MethodNotAMethodMatch
@@ -100,7 +116,7 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
   def clashes(that: Signature)(using Context): Boolean =
     matchDegree(that) == FullMatch
 
-  private def isWildcard(name: TypeName) = name == tpnme.WILDCARD
+  private def isWildcard(name: TypeName) = name eq tpnme.WILDCARD
 
   /** Construct a signature by prepending the signature names of the given `params`
    *  to the parameter part of this signature.
@@ -123,7 +139,17 @@ case class Signature(paramsSig: List[ParamSig], resSig: TypeName) {
    *  of a type that still contains uninstantiated type variables.
    */
   def isUnderDefined(using Context): Boolean =
-    paramsSig.contains(tpnme.Uninstantiated) || resSig == tpnme.Uninstantiated
+    containsUninstantiated(paramsSig) || (resSig eq tpnme.Uninstantiated)
+
+  /** Same as `paramsSig.contains(tpnme.Uninstantiated)` but typed on the union arms
+   *  so the per-element comparator emits `if_acmpeq` instead of going through
+   *  `BoxesRunTime.equals` for each element. Int arms can never equal the
+   *  TypeName `tpnme.Uninstantiated` and are skipped without dispatch.
+   */
+  @tailrec private def containsUninstantiated(xs: List[ParamSig]): Boolean = xs match
+    case Nil          => false
+    case (n: TypeName) :: rest => (n eq tpnme.Uninstantiated) || containsUninstantiated(rest)
+    case _ :: rest    => containsUninstantiated(rest)
 }
 
 object Signature {
