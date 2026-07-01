@@ -1,0 +1,12 @@
+-- [E172] Type Error: tests/neg/i25353.scala:15:30 ---------------------------------------------------------------------
+15 |    implicitly[Foo =:= String]       // error
+   |                              ^
+   |                              Cannot prove that Foo =:= String.
+-- [E008] Not Found Error: tests/neg/i25353.scala:16:6 -----------------------------------------------------------------
+16 |    x.length                         // error
+   |    ^^^^^^^^
+   |    value length is not a member of Foo
+-- [E008] Not Found Error: tests/neg/i25353.scala:19:6 -----------------------------------------------------------------
+19 |    x.length // error
+   |    ^^^^^^^^
+   |    value length is not a member of Foo.Type
