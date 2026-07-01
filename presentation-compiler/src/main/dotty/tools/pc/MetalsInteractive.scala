@@ -214,7 +214,10 @@ object MetalsInteractive:
             Nil
 
       // Handle select on named tuples
-      case (Apply(Apply(TypeApply(fun, Lst.pair(t1, t2)), Lst.single(ddef)), Lst.single(Literal(Constant(i: Int))))) :: _
+      case (Apply(
+            Apply(TypeApply(fun, Lst.pair(t1, t2)), Lst.single(ddef)),
+            Lst.single(Literal(Constant(i: Int)))
+          )) :: _
           if fun.symbol.exists && fun.symbol.name == nme.apply &&
             fun.symbol.owner.exists && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
         def getIndex(t: Tree): Option[Type] =

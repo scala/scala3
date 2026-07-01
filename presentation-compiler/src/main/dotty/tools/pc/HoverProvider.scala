@@ -219,7 +219,8 @@ object HoverProvider:
               if (name == refName.toString() || refName.toString() == nme.Fields.toString()) =>
             val resultType =
               rest match
-                case Select(_, asInstanceOf) :: TypeApply(_, Lst.single(tpe)) :: _ if asInstanceOf == nme.asInstanceOfPM =>
+                case Select(_, asInstanceOf) :: TypeApply(_, Lst.single(tpe)) :: _
+                    if asInstanceOf == nme.asInstanceOfPM =>
                   tpe.tpe.widenTermRefExpr.deepDealiasAndSimplify
                 case _ if n == nme.selectDynamic => tpe.resultType
                 case _ => tpe
