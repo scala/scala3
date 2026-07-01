@@ -517,7 +517,7 @@ object Symbols extends SymUtils {
 
     private var mySource: SourceFile = NoSource
 
-    final def sourceOfClass(using Context): SourceFile = {
+    final def sourceOfClass(using Context): SourceFile = atPhaseNoLater(flattenPhase) {
       if !mySource.exists && !denot.is(Package) then
         // this allows sources to be added in annotations after `sourceOfClass` is first called
         val file = associatedFile
@@ -530,12 +530,12 @@ object Symbols extends SymUtils {
               case Some(path) => mySource = ctx.getSource(path)
               case _ =>
           if !mySource.exists then
-            mySource = atPhaseNoLater(flattenPhase) {
+            mySource = {
               denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match
                 case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match
                   case Some(Constant(path: String)) => ctx.getSource(path)
-                  case none => NoSource
-                case none => NoSource
+                  case _ => NoSource
+                case _ => NoSource
             }
       mySource
     }
