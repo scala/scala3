@@ -10,6 +10,8 @@ import printing.SyntaxHighlighting
 import reporting.Diagnostic
 import StackTraceOps.*
 
+import dotty.tools.repl.shaded.{fansi, pprint}
+
 import scala.compiletime.uninitialized
 import scala.util.control.NonFatal
 
@@ -55,8 +57,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       // Due to the possible interruption instrumentation, it is unlikely that we can get
       // rid of reflection here.
       val cl = classLoader()
-      val pprintCls = Class.forName("pprint.PPrinter$Color$", false, cl)
-      val fansiStrCls = Class.forName("fansi.Str", false, cl)
+      val pprintCls = Class.forName("dotty.tools.repl.shaded.pprint.PPrinter$Color$", false, cl)
+      val fansiStrCls = Class.forName("dotty.tools.repl.shaded.fansi.Str", false, cl)
       val Color = pprintCls.getField("MODULE$").get(null)
       val Color_apply = pprintCls.getMethod("apply",
         classOf[Any],     // value

@@ -723,7 +723,7 @@ object Build {
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped` , `scala-library-bootstrapped`,
       `tasty-core-bootstrapped`, `scala3-compiler-bootstrapped`, `scala3-sbt-bridge-bootstrapped`,
       `scala3-staging`, `scala3-tasty-inspector`, `scala-library-sjs`, `scala3-library-sjs`,
-      scaladoc, `scala3-repl`, `scala3-presentation-compiler`, `scala3-language-server`)
+      scaladoc, `scala3-repl`, `scala3-repl-deps`, `scala3-presentation-compiler`, `scala3-language-server`)
     .settings(
       name          := "scala3-bootstrapped",
       moduleName    := "scala3-bootstrapped",
@@ -774,6 +774,7 @@ object Build {
         (`scala3-tasty-inspector` / publishLocalBin),
         (scaladoc / publishLocalBin),
         (`scala3-repl` / publishLocalBin),
+        (`scala3-repl-deps` / publishLocalBin),
         publishLocalBin,
       ).evaluated,
       bspEnabled := false,
@@ -879,6 +880,7 @@ object Build {
 
   lazy val `scala3-repl` = project.in(file("repl"))
     .dependsOn(`scala3-compiler-bootstrapped` % "compile->compile;test->test")
+    .dependsOn(`scala3-repl-deps`)
     .settings(publishSettings)
     .settings(
       name          := "scala3-repl",
@@ -904,9 +906,6 @@ object Build {
         Dependencies.jlineReader,
         Dependencies.jlineTerminal,
         Dependencies.jlineTerminalJni,
-        Dependencies.pprint,
-        Dependencies.fansi,
-        Dependencies.sourcecode,
         Dependencies.sbtJunitInterface % Test,
         Dependencies.coursierInterface, // used by the REPL for dependency resolution
         Dependencies.usingDirectives, // used by the REPL for parsing magic comments
@@ -926,6 +925,111 @@ object Build {
       },
       bspEnabled := enableBspAllProjects,
     )
+
+  /* Vendored and shaded REPL dependencies.
+   *
+   * The recompiled classes are shaded under `dotty.tools.repl.shaded.*`
+   */
+  lazy val `scala3-repl-deps` = project.in(file("repl-deps"))
+    // The compiler is needed on the compile classpath for the pprint/sourcecode
+    // macros (`scala.quoted`), and at runtime, but must not leak to downstream
+    // consumers (the REPL already depends on it). Mirrors `scala3-staging`.
+    .dependsOn(`scala3-compiler-bootstrapped` % "provided; compile->runtime")
+    .settings(publishSettings)
+    .settings(
+      name          := "scala3-repl-deps",
+      moduleName    := "scala3-repl-deps",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := dottyNonBootstrappedVersion,
+      crossPaths    := true,
+      autoScalaLibrary := false,
+      Compile / unmanagedSourceDirectories := Nil,
+      Compile / unmanagedResourceDirectories := Nil,
+      Test / unmanagedSourceDirectories := Nil,
+      scalacOptions := Seq("-encoding", "UTF8", "-release:17"),
+      // Fetch and shade the upstream sources, then compile them with the in-tree compiler.
+      Compile / sourceGenerators += fetchReplDepsSources.taskValue,
+      bootstrappedScalaInstanceSettings,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := false,
+      Compile / doc / sources := Seq(),
+      Test / publishArtifact := false,
+      publish / skip := false,
+      target := target.value / "scala3-repl-deps",
+      bspEnabled := false,
+    )
+
+  /** Package all vendored REPL dependencies are shaded into. */
+  private val replDepsShadedPackage = "dotty.tools.repl.shaded"
+
+  /** Fetches the upstream sources of pprint/fansi/sourcecode from their git tags,
+   *  shades them into `dotty.tools.repl.shaded.*`, and returns the Scala sources to
+   *  compile for `scala3-repl-deps`.
+   */
+  lazy val fetchReplDepsSources: Def.Initialize[Task[Seq[File]]] = Def.task {
+    val s = streams.value
+    val cacheDir = s.cacheDirectory
+    val outDir = (Compile / sourceManaged).value / "repl-deps-src"
+    // (upstream repo, git tag, source subdirectories to include)
+    val libs = Seq(
+      ("fansi",      Dependencies.fansiVersion,      Seq("fansi/src")),
+      ("sourcecode", Dependencies.sourcecodeVersion, Seq("sourcecode/src", "sourcecode/src-3")),
+      ("pprint",     Dependencies.pprintVersion,     Seq("pprint/src", "pprint/src-3")),
+    )
+    // The leading token is a shading-scheme version: bump it to force regeneration
+    // when the shading/fetching logic (`shadeReplDepSource`, `fetchReplDepsSources`) changes.
+    val stamp = (s"scheme:3:$replDepsShadedPackage" +: libs.map { case (r, v, ds) => s"$r:$v:${ds.mkString(",")}" }).mkString("|")
+    val stampFile = cacheDir / "fetchReplDepsSources.stamp"
+    IO.write(stampFile, stamp)
+    val cached = FileFunction.cached(cacheDir / "fetchReplDepsSources", FilesInfo.hash, FilesInfo.exists) { _ =>
+      s.log.info(s"Fetching and shading vendored REPL dependency sources into $outDir ...")
+      IO.delete(outDir)
+      IO.createDirectory(outDir)
+      IO.withTemporaryDirectory { tmp =>
+        libs.foreach { case (repo, tag, subdirs) =>
+          val url = new java.net.URI(s"https://codeload.github.com/com-lihaoyi/$repo/zip/refs/tags/$tag").toURL
+          val zip = tmp / s"$repo-$tag.zip"
+          sbt.io.Using.urlInputStream(url)(in => IO.transfer(in, zip))
+          val extractDir = tmp / s"$repo-$tag-extracted"
+          IO.unzip(zip, extractDir)
+          val root = IO.listFiles(extractDir).filter(_.isDirectory).toList match {
+            case dir :: Nil => dir
+            case dirs => sys.error(s"Expected one top-level directory in the $repo archive, found: ${dirs.map(_.getName).mkString(", ")}")
+          }
+          subdirs.foreach { sub =>
+            val srcRoot = root / sub
+            (srcRoot ** "*.scala").get.foreach { f =>
+              val rel = IO.relativize(srcRoot, f).getOrElse(f.getName)
+              IO.write(outDir / repo / rel, shadeReplDepSource(IO.read(f)))
+            }
+          }
+          if ((outDir / repo ** "*.scala").get.isEmpty)
+            sys.error(s"No Scala sources vendored for $repo $tag (looked in ${subdirs.mkString(", ")}); check the archive layout.")
+        }
+      }
+      (outDir ** "*.scala").get.toSet
+    }
+    cached(Set(stampFile)).toSeq
+  }
+
+  /** Shades a single vendored source file into `dotty.tools.repl.shaded.*`.
+   *
+   *  pprint/fansi/sourcecode reference each other only through fully-qualified names
+   *  (there are no `import fansi.*` etc.), so wrapping every compilation unit in an
+   *  outer `package dotty.tools.repl.shaded` clause is enough: the top-level
+   *  `pprint`/`fansi`/`sourcecode` packages become siblings under that package and
+   *  keep resolving each other, while being invisible under their original names.
+   *
+   *  The one file that stays put is pprint's `scala.collection.internal.pprint`
+   *  helper: it relies on a `private[scala]` accessor, so it must remain in the
+   *  `scala` namespace and cannot be relocated.
+   */
+  private def shadeReplDepSource(content: String): String = {
+    val firstPackage = content.linesIterator.find(_.trim.startsWith("package ")).map(_.trim).getOrElse("")
+    if (firstPackage.startsWith("package scala")) content
+    else s"package $replDepsShadedPackage\n\n$content"
+  }
 
   // ==============================================================================================
   // =================================== SCALA STANDARD LIBRARY ===================================
@@ -2444,6 +2548,7 @@ object Build {
         (`scala3-tasty-inspector` / publishLocalBin).value
         (scaladoc / publishLocalBin).value
         (`scala3-repl` / publishLocalBin).value
+        (`scala3-repl-deps` / publishLocalBin).value
         (`scala3-compiler-bootstrapped` / publishLocalBin).value
         (`scala-library-sjs` / publishLocalBin).value
         (`scala3-library-sjs` / publishLocalBin).value
@@ -2538,8 +2643,10 @@ object Build {
     Universal / mappings ++= directory(republishRepo.value / "libexec"),
     Universal / mappings +=  (republishRepo.value / "VERSION") -> "VERSION",
     // ========
-    republishCommandLibs += ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "scala-library", "tasty-core", "scala3-repl")),
-    republishCommandLibs += ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "scala3-repl", "^!scala3-interfaces", "^!scala3-compiler", "^!scala3-library", "^!scala-library", "^!tasty-core")),
+    // NB: use the `_3`-suffixed artifact id for scala3-repl so the fuzzy lookup in
+    // RepublishPlugin does not also match `scala3-repl-deps_3` (the vendored libs).
+    republishCommandLibs += ("scala" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "scala-library", "tasty-core", "scala3-repl_3")),
+    republishCommandLibs += ("with_compiler" -> List("scala3-staging", "scala3-tasty-inspector", "scala3-repl_3", "^!scala3-interfaces", "^!scala3-compiler", "^!scala3-library", "^!scala-library", "^!tasty-core")),
     republishCommandLibs += ("scaladoc" -> List("scala3-interfaces", "scala3-compiler", "scala3-library", "scala-library", "tasty-core", "scala3-tasty-inspector", "scaladoc")),
   )
 
@@ -2641,6 +2748,7 @@ object Build {
         `scala3-interfaces`,
         `scala3-library-bootstrapped`,
         `scala3-repl`,
+        `scala3-repl-deps`, // vendored & shaded pprint/fansi/sourcecode, published to maven2
         `scala3-sbt-bridge-bootstrapped`, // for scala-cli
         `scala3-staging`,
         `scala3-tasty-inspector`,

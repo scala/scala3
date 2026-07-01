@@ -325,6 +325,33 @@ jobs:
       - name: Test REPL
         run: ./project/scripts/sbt scala3-repl/test
 
+  test-repl-deps:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        jdk: [17, 25]
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+      - name: Set up JDK ${{ matrix.jdk }} (REPL subprocess)
+        id: jdk
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: ${{ matrix.jdk }}
+      - name: Set up JDK 17 (build, default)
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test REPL lazy vals warning and shading on JDK ${{ matrix.jdk }}
+        env:
+          DOTTY_REPL_TEST_JAVA_HOME: ${{ steps.jdk.outputs.path }}
+        run: ./project/scripts/sbt "scala3-repl/testOnly *LazyValsWarningTest *ShadingTest"
+
   test-presentation-compiler:
     runs-on: ubuntu-latest
     steps:

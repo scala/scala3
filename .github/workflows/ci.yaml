@@ -216,6 +216,7 @@ jobs:
               scala3-library-sjs/publishSigned \
               scala3-presentation-compiler/publishSigned \
               scala3-repl/publishSigned \
+              scala3-repl-deps/publishSigned \
               scala3-sbt-bridge-bootstrapped/publishSigned \
               scala3-staging/publishSigned \
               scala3-tasty-inspector/publishSigned \
