@@ -17,6 +17,8 @@ import collection.mutable, mutable.ListBuffer
 import dotty.tools.dotc.util.chaining.*
 import java.lang.System.lineSeparator
 
+import dotty.tools.repl.shaded.fansi
+
 object StackTraceOps:
 
   extension (t: Throwable)
