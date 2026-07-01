@@ -14,9 +14,9 @@ package scala.ref
 
 import scala.language.`2.13`
 
-/** A wrapper class for `java.lang.ref.SoftReference`.
- *  New functionality includes: (1) results are `Option` values instead of `null`, and
- *  (2) an extractor that maps the soft reference itself into an option.
+/** A wrapper class for `java.lang.ref.SoftReference`. New functionality
+ *  includes: (1) results are `Option` values instead of `null`, and (2) an
+ *  extractor that maps the soft reference itself into an option.
  *
  *  @tparam T the covariant type of the softly referenced object, must be a subtype of `AnyRef`
  *  @param value the object to be softly referenced

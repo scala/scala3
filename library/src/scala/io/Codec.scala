@@ -50,13 +50,15 @@ class Codec(val charSet: Charset) {
   override def toString(): String = name
 
   // these methods can be chained to configure the variables above
-  /** Configures the action taken when malformed input is encountered during encoding or decoding.
+  /** Configures the action taken when malformed input is encountered during
+   *  encoding or decoding.
    *
    *  @param newAction the action to apply to malformed input
    *  @return this `Codec`, to allow configuration calls to be chained
    */
   def onMalformedInput(newAction: Action): this.type              = { _onMalformedInput = newAction ; this }
-  /** Configures the action taken when an unmappable character is encountered during encoding or decoding.
+  /** Configures the action taken when an unmappable character is encountered
+   *  during encoding or decoding.
    *
    *  @param newAction the action to apply to unmappable characters
    *  @return this `Codec`, to allow configuration calls to be chained
@@ -74,7 +76,8 @@ class Codec(val charSet: Charset) {
    *  @return this `Codec`, to allow configuration calls to be chained
    */
   def encodingReplaceWith(newReplacement: Array[Byte]): this.type = { _encodingReplacement = newReplacement ; this }
-  /** Configures the handler invoked by `wrap` when a `CharacterCodingException` is thrown.
+  /** Configures the handler invoked by `wrap` when a `CharacterCodingException`
+   *  is thrown.
    *
    *  @param handler the handler applied to a coding exception
    *  @return this `Codec`, to allow configuration calls to be chained
@@ -83,8 +86,9 @@ class Codec(val charSet: Charset) {
 
   /** Returns the name of the character set used by this `Codec`. */
   def name: String = charSet.name
-  /** Returns a `CharsetEncoder` for this `Codec`'s character set, configured with this `Codec`'s
-   *  malformed-input, unmappable-character, and replacement settings.
+  /** Returns a `CharsetEncoder` for this `Codec`'s character set, configured
+   *  with this `Codec`'s malformed-input, unmappable-character, and replacement
+   *  settings.
    */
   def encoder: CharsetEncoder = {
     val enc = charSet.newEncoder()
@@ -93,8 +97,9 @@ class Codec(val charSet: Charset) {
     if (_encodingReplacement ne null) enc.replaceWith(_encodingReplacement)
     enc
   }
-  /** Returns a `CharsetDecoder` for this `Codec`'s character set, configured with this `Codec`'s
-   *  malformed-input, unmappable-character, and replacement settings.
+  /** Returns a `CharsetDecoder` for this `Codec`'s character set, configured
+   *  with this `Codec`'s malformed-input, unmappable-character, and replacement
+   *  settings.
    */
   def decoder: CharsetDecoder = {
     val dec = charSet.newDecoder()
@@ -104,7 +109,8 @@ class Codec(val charSet: Charset) {
     dec
   }
 
-  /** Evaluates `body`, routing any thrown `CharacterCodingException` to the configured exception handler.
+  /** Evaluates `body`, routing any thrown `CharacterCodingException` to the
+   *  configured exception handler.
    *
    *  @param body the encoding or decoding operation to evaluate
    *  @return the result of `body`, or the handler's result if a `CharacterCodingException` is thrown

@@ -23,12 +23,14 @@ import scala.annotation.nowarn
  */
 trait ReferenceWrapper[+T <: AnyRef] extends Reference[T] with Proxy {
   val underlying: java.lang.ref.Reference[? <: T]
-  /** Returns `Some(value)` wrapping `underlying.get` if it is non-null, or `None` otherwise.
-   *  For phantom references, `underlying.get` always returns `null`, so this is always `None`.
+  /** Returns `Some(value)` wrapping `underlying.get` if it is non-null, or
+   *  `None` otherwise. For phantom references, `underlying.get` always returns
+   *  `null`, so this is always `None`.
    */
   override def get = Option(underlying.get)
-  /** Returns `underlying.get` when it is non-null, throwing `NoSuchElementException` when it is `null`.
-   *  For phantom references, `underlying.get` always returns `null`, so this always throws.
+  /** Returns `underlying.get` when it is non-null, throwing
+   *  `NoSuchElementException` when it is `null`. For phantom references,
+   *  `underlying.get` always returns `null`, so this always throws.
    */
   def apply() = {
     val ret = underlying.get

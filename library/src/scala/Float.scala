@@ -426,7 +426,8 @@ object Float extends AnyValCompanion {
    *  @param x the `Float` value to convert
    */
   import scala.language.implicitConversions
-  /** Returns `x` widened to a `Double`, the language-mandated coercion from `Float` to the "wider" `Double` type.
+  /** Returns `x` widened to a `Double`, the language-mandated coercion from
+   *  `Float` to the "wider" `Double` type.
    *
    *  @param x the `Float` value to convert
    */

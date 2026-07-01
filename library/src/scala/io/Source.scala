@@ -108,8 +108,8 @@ object Source {
     fromFile(file)(using Codec(enc))
 
   /** Creates a `Source` from `file`, using the named character encoding, with
-   *  input buffered in a buffer of size `bufferSize`, setting its description to
-   *  the filename.
+   *  input buffered in a buffer of size `bufferSize`, setting its description
+   *  to the filename.
    *
    *  @param file the file to read from
    *  @param enc the name of the character encoding to use
@@ -343,7 +343,8 @@ abstract class Source extends Iterator[Char] with Closeable {
   def next(): Char = positioner.next()
 
   @nowarn("cat=deprecation")
-  /** Tracks the line and column position of each character as it is read from this source.
+  /** Tracks the line and column position of each character as it is read from
+   *  this source.
    *
    *  @param encoder the `Position` used to encode line and column numbers into a single position value
    */
@@ -405,8 +406,9 @@ abstract class Source extends Iterator[Char] with Closeable {
    *  position-tracking positioner is the last character returned by `next`.
    */
   def ch: Char = positioner.ch
-  /** Returns the encoded position recorded by the current positioner, which for a
-   *  position-tracking positioner is the position of the last character returned by `next`.
+  /** Returns the encoded position recorded by the current positioner, which for
+   *  a position-tracking positioner is the position of the last character
+   *  returned by `next`.
    */
   def pos: Int = positioner.pos
 
@@ -458,7 +460,8 @@ abstract class Source extends Iterator[Char] with Closeable {
   private var closeFunction: (() => Unit) | Null = null
   private var positioner: Positioner = RelaxedPositioner
 
-  /** Sets the function that [[reset]] uses to produce a fresh copy of this source.
+  /** Sets the function that [[reset]] uses to produce a fresh copy of this
+   *  source.
    *
    *  @param f a `() => Source` that produces a fresh copy of this source, or `null` to leave [[reset]] throwing
    *  @return this source

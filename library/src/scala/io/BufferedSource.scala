@@ -25,7 +25,8 @@ import scala.collection.mutable.StringBuilder
  *  @param bufferSize the size of the internal buffer used for reading
  */
 class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val codec: Codec) extends Source {
-  /** Creates a `BufferedSource` from the given input stream using the default buffer size.
+  /** Creates a `BufferedSource` from the given input stream using the default
+   *  buffer size.
    *
    *  @param inputStream the underlying input stream to read characters from
    *  @param codec the codec used to decode bytes into characters
