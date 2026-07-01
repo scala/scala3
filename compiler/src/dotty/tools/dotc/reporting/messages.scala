@@ -1340,6 +1340,16 @@ class UnreducibleApplication(tycon: Type)(using Context) extends TypeMsg(Unreduc
         |Such applications are equivalent to existential types, which are not
         |supported in Scala 3."""
 
+class UnsoundMatchTypeWildcardApplication(tycon: Type)(using Context) extends TypeMsg(UnsoundMatchTypeWildcardApplicationID):
+  def msg(using Context) = i"unsound application of match type alias $tycon to wildcard arguments"
+  def explain(using Context) =
+    i"""|A match type alias may be applied to a wildcard argument only if the
+        |corresponding type parameter occurs solely in the scrutinee of the match.
+        |If it also occurs in a case pattern, a case body, or the declared upper
+        |bound, substituting a wildcard is unsound: each wildcard stands for a
+        |fresh, unrelated type, so the reduction could equate types that are not
+        |actually the same. See issue #21013."""
+
 class OverloadedOrRecursiveMethodNeedsResultType(val ex: CyclicReference)(using Context)
 extends CyclicMsg(OverloadedOrRecursiveMethodNeedsResultTypeID) {
   def msg(using Context) = i"""Overloaded or recursive $cycleSym needs return type$context"""

@@ -1,34 +1,42 @@
-// Companion to tests/neg/i21013.scala: wildcard applications of match
-// type aliases are sound, and must be accepted, when every wildcarded
-// parameter occurs only in the scrutinee of the underlying match type.
+// Companion to tests/neg/i21013.scala: a wildcard application is accepted
+// when it reduces without the wildcard taking part, or when it stays stuck
+// with every wildcarded parameter occurring only in the scrutinee.
 
-// Sound: parameter only in scrutinee (single case)
-type Ok1[X] = X match
+type Single[X] = X match             // scrutinee only
   case Int => String
 
-val a1: Ok1[?] = ???
-def b1: Ok1[?] = ???
-val c1: List[Ok1[?]] = Nil
-val d1: Option[Ok1[?]] = None
-
-// Sound: parameter only in scrutinee (multiple cases, default)
-type Ok2[X] = X match
+type WithDefault[X] = X match        // scrutinee only, with a default
   case Int => String
   case String => Int
-  case _ => Double
+  case _ => Long
 
-val a2: Ok2[?] = ???
-def b2: Array[Ok2[?]] = null
+type UnderCtor[X] = List[X] match    // scrutinee, under a constructor
+  case List[Int] => String
+  case _ => Long
 
-// Sound mix: the wildcarded parameter only appears in the scrutinee,
-// the other parameter is given concretely and may appear anywhere.
-type Ok3[X, Y] = X match
+type Mixed[X, Y] = X match           // only the scrutinee parameter is wildcarded
   case Int => (Y, Y)
-  case String => List[Y]
+  case _ => List[Y]
 
-val a3: Ok3[?, Int] = ???
-def b3: Ok3[?, String] = ???
+// K occurs in the bound, but PlainBound[?, Int] reduces to Nothing without K
+// taking part; contrast the stuck InBound[?, ?] in tests/neg
+type PlainBound[K, S] <: List[K] = S match
+  case Int => Nothing
 
-// Bounded wildcard, still sound
-def b4: Ok1[? <: Int] = ???
-def b5: Ok2[? >: Nothing <: Int | String] = ???
+def Test: Unit =
+  val a1: Single[?]          = ???
+  val a2: WithDefault[?]     = ???
+  val a3: UnderCtor[?]       = ???
+  val a4: Mixed[?, Int]      = ???
+  val a5: PlainBound[?, Int] = ???
+
+  // a nested wildcard is an ordinary closed existential argument, not a
+  // top-level wildcard, so the application is sound (cf. M[?] in neg)
+  val a6: Single[List[?]]    = ???
+  val a7: Mixed[List[?], Int] = ???
+
+  val b1: Single[? <: Int] = ???                          // bounded wildcards
+  val b2: WithDefault[? >: Nothing <: Int | String] = ???
+
+  val c1: List[Single[?]] = Nil                           // nested in a constructor
+  val c2: Option[WithDefault[?]] = None
