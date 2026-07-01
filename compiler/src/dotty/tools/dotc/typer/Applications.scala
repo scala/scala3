@@ -689,6 +689,8 @@ trait Applications extends Compatibility {
      */
     def reorder[T <: Untyped](args: TreeLst[T]): TreeLst[T] = {
 
+      val reordered = Lst.Buffer[Trees.Tree[T]]()
+
       extension (dna: Annotation)
         def deprecatedName: Name =
           dna.argumentConstantString(0).map(_.toTermName).getOrElse(nme.NO_NAME)
@@ -743,60 +745,67 @@ trait Applications extends Compatibility {
        *  If there are no more parameters or no args fit, process the next arg:
        *  a named arg may be previously used, or not yet used, or badly named.
        */
-      def handleNamed(nameIdx: Int, args: TreeLst[T],
+      def handleNamed(nameIdx: Int, argIdx: Int,
                       nameToArg: Map[Name, Trees.NamedArg[T]], toDrop: Set[Name],
-                      missingArgs: Boolean): TreeLst[T] =
+                      missingArgs: Boolean): Unit =
         inline def pname = pnames(nameIdx)
         if nameIdx < pnames.length && nameToArg.contains(pname) then
           val arg = nameToArg(pname) // use the named argument for this parameter
           pname.checkDeprecationOf(pname, arg.srcPos)
-          arg +: handleNamed(nameIdx + 1, args, nameToArg - pname, toDrop + pname, missingArgs)
+          reordered += arg
+          handleNamed(nameIdx + 1, argIdx, nameToArg - pname, toDrop + pname, missingArgs)
         else if nameIdx < pnames.length && nameToArg.contains(pname.alternative) then
           val alt = pname.alternative
           val arg = nameToArg(alt) // use the named argument for this parameter
           pname.checkDeprecationOf(alt, arg.srcPos)
-          arg +: handleNamed(nameIdx + 1, args, nameToArg - alt, toDrop + alt, missingArgs)
-        else
-          args match
-          case allArgs @ Lst.cons(arg @ NamedArg(aname, _), args) =>
-            if toDrop.contains(aname) then
-              // named argument was already picked (using aname), skip it
-              handleNamed(nameIdx, args, nameToArg, toDrop - aname, missingArgs)
-            else if nameIdx < pnames.length && nameToArg.contains(aname) then
-              // argument for pname is missing, pass an empty tree; arg may be used later, so keep it
-              genericEmptyTree +: handleNamed(nameIdx + 1, allArgs, nameToArg, toDrop, missingArgs = true)
-            else // name not (or no longer) available for named arg
-              def msg =
-                if methodType.paramNames.exists(nm => nm == aname || nm.alternative == aname) then
-                  em"parameter $aname of $methString is already instantiated"
-                else
-                  em"$methString does not have a parameter $aname"
-              fail(msg, arg.asInstanceOf[Arg])
-              arg +: handleNamed(nameIdx + 1, args, nameToArg, toDrop, missingArgs)
-          case Lst.cons(arg, args) =>
-            if toDrop.nonEmpty || missingArgs then
-              report.error(i"positional after named argument", arg.srcPos)
-            arg +: handleNamed(nameIdx + 1, args, nameToArg, toDrop, missingArgs) // unnamed argument; pick it
-          case empty => // no more args, continue to pick up any preceding named args
-            if nameIdx >= pnames.length then Lst()
-            else handleNamed(nameIdx + 1, args = Lst(), nameToArg, toDrop, missingArgs)
+          reordered += arg
+          handleNamed(nameIdx + 1, argIdx, nameToArg - alt, toDrop + alt, missingArgs)
+        else if argIdx < args.length then
+          args(argIdx) match
+            case arg @ NamedArg(aname, _) =>
+              if toDrop.contains(aname) then
+                // named argument was already picked (using aname), skip it
+                handleNamed(nameIdx, argIdx + 1, nameToArg, toDrop - aname, missingArgs)
+              else if nameIdx < pnames.length && nameToArg.contains(aname) then
+                // argument for pname is missing, pass an empty tree; arg may be used later, so keep it
+                reordered += genericEmptyTree
+                handleNamed(nameIdx + 1, argIdx, nameToArg, toDrop, missingArgs = true)
+              else // name not (or no longer) available for named arg
+                def msg =
+                  if methodType.paramNames.exists(nm => nm == aname || nm.alternative == aname) then
+                    em"parameter $aname of $methString is already instantiated"
+                  else
+                    em"$methString does not have a parameter $aname"
+                fail(msg, arg.asInstanceOf[Arg])
+                reordered += arg
+                handleNamed(nameIdx + 1, argIdx + 1, nameToArg, toDrop, missingArgs)
+            case arg =>
+              if toDrop.nonEmpty || missingArgs then
+                report.error(i"positional after named argument", arg.srcPos)
+              reordered += arg
+              handleNamed(nameIdx + 1, argIdx + 1, nameToArg, toDrop, missingArgs) // unnamed argument; pick it
+          else if nameIdx < pnames.length then // no more args, continue to pick up any preceding named args
+            handleNamed(nameIdx + 1, argIdx, nameToArg, toDrop, missingArgs)
 
       // Skip prefix of positional args, then handleNamed
-      def handlePositional(nameIdx: Int, args: TreeLst[T]): TreeLst[T] =
-        args match
-        case Lst.cons(arg @ NamedArg(name, _), args)
-        if nameIdx < pnames.length && pnames(nameIdx).isMatchedBy(name) =>
-          pnames(nameIdx).checkDeprecationOf(name, arg.srcPos)
-          arg +: handlePositional(nameIdx + 1, args)
-        case Lst.cons(_: NamedArg, _) =>
-          val nameAssocs = args.collect:
-            case arg @ NamedArg(name, _) => name -> arg
-          handleNamed(nameIdx, args, nameAssocs.toMap, toDrop = Set.empty, missingArgs = false)
-        case Lst.cons(arg, args) =>
-          arg +: handlePositional(nameIdx + 1, args)
-        case nil => nil
+      def handlePositional(idx: Int): Unit =
+        if idx < args.length then
+          args(idx) match
+            case arg @ NamedArg(name, _)
+            if idx < pnames.length && pnames(idx).isMatchedBy(name) =>
+              pnames(idx).checkDeprecationOf(name, arg.srcPos)
+              reordered += arg
+              handlePositional(idx + 1)
+            case _: NamedArg =>
+              val nameAssocs = args.drop(idx).collect:
+                case arg @ NamedArg(name, _) => name -> arg
+              handleNamed(idx, idx, nameAssocs.toMap, toDrop = Set.empty, missingArgs = false)
+            case arg =>
+              reordered += arg
+              handlePositional(idx + 1)
 
-      handlePositional(0, args)
+      handlePositional(0)
+      reordered.toLst
     } // end reorder
 
     /** Is `sym` a constructor of a Java-defined annotation? */
