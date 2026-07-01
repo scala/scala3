@@ -4069,7 +4069,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       record("typed total")
       if ctx.phase.isTyper then
         assertPositioned(tree)
-      if tree.source != ctx.source && tree.source.exists then
+      if (tree.source `ne` ctx.source) && tree.source.exists then
         typed(tree, pt, locked)(using ctx.withSource(tree.source))
       else if ctx.run.nn.isCancelled then
         tree.withType(WildcardType)
