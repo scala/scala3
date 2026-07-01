@@ -191,41 +191,23 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
         case tree => super.transform(tree)
 
   private def parseExpression(using Context): Tree =
-    val prefix =
-      s"""|object Expression:
-          |  {
-          |    """.stripMargin
-    // don't use stripMargin on wrappedExpression because expression can contain a line starting with `  |`
-    val wrappedExpression = prefix + config.expression + "\n  }\n"
-    val expressionFile = SourceFile.virtual("<expression>", config.expression)
-    val contentBytes = wrappedExpression.getBytes(StandardCharsets.UTF_8)
-    val wrappedExpressionFile =
-      new VirtualFile("<wrapped-expression>", contentBytes)
-    val sourceFile =
-      new SourceFile(wrappedExpressionFile, wrappedExpression.toArray):
-        override def start: Int = -prefix.size
-        override def underlying: SourceFile = expressionFile
-        override def atSpan(span: Span): SourcePosition =
-          if (span.exists) SourcePosition(this, span)
-          else NoSourcePosition
-
+    val sourceFile = SourceFile.virtual("<expression>", config.expression)
     parse(sourceFile)
-      .asInstanceOf[PackageDef]
-      .stats
-      .head
-      .asInstanceOf[ModuleDef]
-      .impl
-      .body
-      .head
 
   private def parseExpressionClass(using Context): Seq[Tree] =
     val sourceFile = SourceFile.virtual("<expression class>", expressionClassSource)
-    parse(sourceFile).asInstanceOf[PackageDef].stats
+    val newCtx = ctx.fresh.setSource(sourceFile)
+    val parser = Parsers.Parser(sourceFile)(using newCtx)
+    parser.parse().asInstanceOf[PackageDef].stats
 
   private def parse(sourceFile: SourceFile)(using Context): Tree =
     val newCtx = ctx.fresh.setSource(sourceFile)
     val parser = Parsers.Parser(sourceFile)(using newCtx)
-    parser.parse()
+    val stats = parser.blockStatSeq(outermost = true)
+    if stats.length > 1 then
+      Block(stats.take(stats.length - 1), stats.last)
+    else
+      stats.head
 
   private def isOnBreakpoint(tree: Tree)(using Context): Boolean =
     val startLine =

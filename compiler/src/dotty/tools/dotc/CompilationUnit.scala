@@ -146,7 +146,7 @@ object CompilationUnit {
   def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit =
     val compilationUnitInfo = clsd.symbol.compilationUnitInfo.nn
     val file = compilationUnitInfo.associatedFile
-    apply(SourceFile(file, Array.empty[Char]), unpickled, forceTrees, compilationUnitInfo)
+    apply(SourceFile(file, Array.emptyCharArray), unpickled, forceTrees, compilationUnitInfo)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
   def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean, info: CompilationUnitInfo)(using Context): CompilationUnit = {
