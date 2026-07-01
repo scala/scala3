@@ -4744,7 +4744,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
               // Otherwise, we don't report anything here.
               typed(app, pt, locked) match
                 case retyped @ Apply(tree, args) if retyped.tpe.isError =>
-                  propagatedFailure(argsList) match
+                  propagatedFailure(args.toList) match
                   case sft: SearchFailureType => issueErrors(tree, args, sft)
                   case _ => issueErrors(tree, args, retyped.tpe)
                 case retyped => retyped
