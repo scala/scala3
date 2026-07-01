@@ -5,11 +5,11 @@ package classfile
 
 import java.io.{DataInputStream, InputStream}
 import java.nio.{BufferUnderflowException, ByteBuffer}
+import scala.compiletime.uninitialized
 
-final class ReusableDataReader() extends DataReader {
-  private var data = new Array[Byte](32768)
-  private var bb: ByteBuffer = ByteBuffer.wrap(data)
-  private var size = 0
+final class ReusableDataReader extends DataReader {
+  private var data: Array[Byte] = uninitialized
+  private var bb: ByteBuffer = uninitialized
   private val reader: DataInputStream = {
     val stream = new InputStream {
       override def read(): Int = try {
@@ -29,53 +29,11 @@ final class ReusableDataReader() extends DataReader {
     new DataInputStream(stream)
   }
 
-  def buf: Array[Byte] = data
-
   private def nextPositivePowerOfTwo(target: Int): Int = 1 << -Integer.numberOfLeadingZeros(target - 1)
 
   def reset(file: dotty.tools.io.AbstractFile): this.type = {
-    this.size = 0
-    file.sizeOption match {
-      case Some(size) =>
-        if (size > data.length) {
-          data = new Array[Byte](nextPositivePowerOfTwo(size))
-        } else {
-          java.util.Arrays.fill(data, 0.toByte)
-        }
-        val input = file.input
-        try {
-          var endOfInput = false
-          while (!endOfInput) {
-            val remaining = data.length - this.size
-            if (remaining == 0) endOfInput = true
-            else {
-              val read = input.read(data, this.size, remaining)
-              if (read < 0) endOfInput = true
-              else this.size += read
-            }
-          }
-          bb = ByteBuffer.wrap(data, 0, size)
-        } finally {
-          input.close()
-        }
-      case None =>
-        val input = file.input
-        try {
-          var endOfInput = false
-          while (!endOfInput) {
-            val remaining = data.length - size
-            if (remaining == 0) {
-              data = java.util.Arrays.copyOf(data, nextPositivePowerOfTwo(size))
-            }
-            val read = input.read(data, this.size, data.length - this.size)
-            if (read < 0) endOfInput = true
-            else this.size += read
-          }
-          bb = ByteBuffer.wrap(data, 0, size)
-        } finally {
-          input.close()
-        }
-    }
+    data = file.toByteArray
+    bb = ByteBuffer.wrap(data)
     this
   }
 
@@ -84,7 +42,7 @@ final class ReusableDataReader() extends DataReader {
 
   def nextBytes(len: Int): Array[Byte] = {
     val result = new Array[Byte](len)
-    reader.readFully(result)
+    bb.get(result, 0, result.length)
     result
   }
 
@@ -116,14 +74,7 @@ final class ReusableDataReader() extends DataReader {
     bb.position(bb.position() + n)
   }
   def bp: Int = bb.position()
-  def bp_=(i: Int): Unit = {
-    try {
-      bb.position(i)
-    } catch {
-      case ex: IllegalArgumentException =>
-        throw ex
-    }
-  }
+  def bp_=(i: Int): Unit = bb.position(i)
 
   def getByte(mybp: Int): Byte = {
     bb.get(mybp)
@@ -131,7 +82,7 @@ final class ReusableDataReader() extends DataReader {
   def getBytes(mybp: Int, bytes: Array[Byte]): Unit = {
     val saved = bb.position()
     bb.position(mybp)
-    try reader.readFully(bytes)
+    try bb.get(bytes, 0, bytes.length)
     finally bb.position(saved)
   }
   def getUTF(mybp: Int, len: Int): String = {

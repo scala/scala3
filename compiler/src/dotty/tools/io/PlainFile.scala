@@ -68,7 +68,6 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
   override def input: InputStream = givenPath.toFile.inputStream()
   override def readAsString(codec: Codec): String = java.nio.file.Files.readString(givenPath.jpath, codec.charSet)
   override def output: OutputStream = givenPath.toFile.outputStream()
-  override def sizeOption: Option[Int] = Some(givenPath.length.toInt)
 
   override def hashCode(): Int = System.identityHashCode(absolutePath)
   override def equals(that: Any): Boolean = that match {

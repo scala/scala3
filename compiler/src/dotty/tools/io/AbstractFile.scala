@@ -147,9 +147,6 @@ abstract class AbstractFile extends Iterable[AbstractFile] with dotty.tools.dotc
   /** Returns a buffered output stream for writing the file - defaults to out */
   def bufferedOutput: BufferedOutputStream = new BufferedOutputStream(output)
 
-  /** size of this file if it is a concrete file. */
-  def sizeOption: Option[Int] = None
-
   def toURL: URL | Null =
     val jpath = this.jpath
     if (jpath == null) null else jpath.toUri.toURL
