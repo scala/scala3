@@ -339,6 +339,8 @@ class Definitions {
   }
   def ObjectType: TypeRef = ObjectClass.typeRef
 
+  @tu lazy val DeepValhallaTrait: ClassSymbol = requiredClass("scala.DeepValhalla")
+
   /** A type alias of Object used to represent any reference to Object in a Java
    *  signature, the secret sauce is that subtype checking treats it specially:
    *
@@ -1148,7 +1150,8 @@ class Definitions {
   @tu lazy val StableNullAnnot: ClassSymbol = requiredClass("scala.annotation.stableNull")
   @tu lazy val InlineAnnot: ClassSymbol = requiredClass("scala.inline")
   @tu lazy val NoInlineAnnot: ClassSymbol = requiredClass("scala.noinline")
-
+  @tu lazy val ValhallaAnnot: ClassSymbol = requiredClass("scala.annotation.valhalla")
+  @tu lazy val NonNullAnnot: ClassSymbol = requiredClass("scala.annotation.internal.nonnull")
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 
   // Initialization annotations
@@ -1176,7 +1179,7 @@ class Definitions {
   // The annotation from jspecify is designed to be used on types only; however, it is common to use it
   // on fields and method parameters required by some frameworks, so we need to recognize annotations
   // form `AnnotatedType` as well as from `Symbol`.
-  @tu lazy val NotNullAnnots: List[ClassSymbol] = getClassesIfDefined(
+  @tu lazy val NotNullAnnots: List[ClassSymbol] = NonNullAnnot :: getClassesIfDefined(
     "javax.annotation.Nonnull" ::
     "javax.validation.constraints.NotNull" ::
     "jakarta.annotation.Nonnull" ::

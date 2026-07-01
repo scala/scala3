@@ -97,6 +97,7 @@ object ClassfileConstants {
   inline val ANNOTATION_TAG = '@'
   inline val SCALA_NOTHING = "scala.runtime.Nothing$"
   inline val SCALA_NULL = "scala.runtime.Null$"
+  inline val BANG = '!'
 
 
   // tags describing the type of newarray
@@ -340,7 +341,7 @@ object ClassfileConstants {
     protected def baseFlags(jflags: Int): FlagSet = EmptyFlags
     protected def isClass: Boolean = false
 
-    private def translateFlag(jflag: Int): FlagSet = (jflag: @switch) match {
+    protected def translateFlag(jflag: Int): FlagSet = (jflag: @switch) match {
       case JAVA_ACC_PRIVATE    => Private
       case JAVA_ACC_PROTECTED  => Protected
       case JAVA_ACC_FINAL      => Final
@@ -377,6 +378,8 @@ object ClassfileConstants {
   }
   val fieldTranslation: FlagTranslation = new FlagTranslation {
     override def baseFlags(jflags: Int) = if ((jflags & JAVA_ACC_FINAL) == 0) Mutable else EmptyFlags
+    
+    override def translateFlag(jflag: Int): FlagSet = super.translateFlag(jflag & ~JAVA_ACC_INTERFACE & ~JAVA_ACC_STRICT)
   }
   val methodTranslation: FlagTranslation = new FlagTranslation {
     override def baseFlags(jflags: Int) = if ((jflags & JAVA_ACC_BRIDGE) != 0) Bridge else EmptyFlags

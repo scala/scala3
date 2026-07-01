@@ -12,7 +12,6 @@ import dotty.tools.dotc.core.Definitions
 import scala.collection.SortedMap
 import scala.tools.asm.Opcodes
 
-
 /**
  * The BTypes component defines The BType class hierarchy. BTypes encapsulates all type information
  * that is required after building the ASM nodes. This includes optimizations, generation of
@@ -763,6 +762,8 @@ final case class ClassBType private(internalName: String) extends RefBType {
     // (*) check if some interface of this class conforms to other.
     info.interfaces.exists(_.isSubtypeOf(other))
   }
+
+  def isDeepValhalla: Boolean = isSubtypeOf(ts.deepValhallaRef)
 
   /**
    * Finding the least upper bound in agreement with the bytecode verifier

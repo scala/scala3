@@ -541,7 +541,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         val builder =
           if defn.ScalaValueClasses().contains(elemCls) then
             makeBuilder(s"of${elemCls.name}")
-          else if elemCls.derivesFrom(defn.ObjectClass) then
+          else if elemCls.derivesFrom(defn.ObjectClass) || elemCls.isValhallaValueClass then
             makeBuilder("ofRef").appliedToType(elemType)
           else
             makeBuilder("generic").appliedToType(elemType)
@@ -614,6 +614,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                 // which would not be reflected as `tree.tpe`
                 checkClassType(nu.tpe, stablePrefixReq = false)
               Checking.checkInstantiable(tree.tpe, nu.tpe, nu.srcPos)
+              Checking.checkDeepValhallaInstantiation(tree.tpe, nu.srcPos)
               withNoCheckNews(nu :: Nil)(app1)
             case _ =>
               app1
@@ -706,6 +707,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
                 val reference = ctx.settings.sourceroot.value
                 val relativePath = util.SourceFile.relativePath(ctx.compilationUnit.source, reference)
                 sym.addAnnotation(Annotation(defn.SourceFileAnnot, Literal(Constants.Constant(relativePath)), tree.span))
+            Checking.checkValhallaValueClass(tree, sym)
           else
             if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
               Checking.checkGoodBounds(tree.symbol)

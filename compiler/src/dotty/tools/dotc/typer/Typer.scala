@@ -3487,13 +3487,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     end implementDeferredGivens
 
     ensureCorrectSuperClass()
-    completeAnnotations(cdef, cls)
     val constr1 = typed(constr).asInstanceOf[DefDef]
     val parents1 = parentTrees(
         cls.classInfo.declaredParents,
         parents.mapconserve(typedParent).filterConserve(!_.isEmpty))
     val firstParentTpe = parents1.head.tpe.dealias
     val firstParent = firstParentTpe.typeSymbol
+
+    if(firstParentTpe.classSymbol.isValhallaValueClass && !cls.hasAnnotation(defn.ValhallaAnnot))
+      val valhallaAnnot = untpd.makeValhallaAnnot().withSpan(cdef.span)
+      val typedValhallaAnnot = ConcreteAnnotation(typedAnnotation(valhallaAnnot))
+      cls.addAnnotation(typedValhallaAnnot)
+
+    completeAnnotations(cdef, cls)
 
     checkEnumParent(cls, firstParent)
 
@@ -3537,7 +3543,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         !Feature.dynamicsEnabled
       if (reportDynamicInheritance) {
         val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
-        report.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef.srcPos)
+        report.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef1.srcPos)
       }
 
       checkNonCyclicInherited(cls.thisType, cls.info.parents, cls.info.decls, cdef.srcPos)
@@ -3549,6 +3555,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       if cls.is(ModuleClass)
          && effectiveOwner.is(Trait)
          && !effectiveOwner.derivesFrom(defn.ObjectClass)
+         && !effectiveOwner.isValhallaValueClass
       then
         report.error(em"$cls cannot be defined in universal $effectiveOwner", cdef.srcPos)
 
@@ -3992,7 +3999,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             else xtree match
               case xtree: untpd.NameTree => typedNamed(xtree, pt)
               case xtree => typedUnnamed(xtree)
-
           val unsimplifiedType = result.tpe
           simplify(result, pt, locked)
           result.tpe.stripTypeVar match

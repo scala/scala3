@@ -449,6 +449,13 @@ class CompilationTests {
     finally
       allTests.foreach(_.delete())
   }
+  
+  // Valhalla Value Classes tests
+  @Test def checkValhallaValueClasses: Unit = {
+    implicit val testGroup: TestGroup = TestGroup("checkValhallaVC")
+    compileFilesInDir("tests/valhalla/pos", valueClassOptions).checkCompile()
+    compileFilesInDir("tests/valhalla/neg", valueClassOptions).checkExpectedErrors()
+  }
 }
 
 object CompilationTests extends ParallelTesting with CoverageSupport {

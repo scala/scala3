@@ -3945,3 +3945,59 @@ class UseOfAnyMethodAsInterpolator(interpolator: Name)(using Context)
        |which can target methods declared by ${hl("Any")} such as ${hl(i"$interpolator")}.
        |This is unlikely to be what you intended."""
 }
+class ValueClassCannotExtendIdentityClass(valueClass: Symbol, parent: Symbol)(using Context)
+  extends SyntaxMsg(ValueClassCannotExtendIdentityClassID) {
+  def msg(using Context) = i"""A Valhalla value class cannot extend Identity Class ($parent)}"""
+  def explain(using Context) = ""
+}
+
+class ValueClassMustNotExtendTraitWithMutableField(parentClass: Symbol, field: Symbol)(using Context)
+  extends SyntaxMsg(ValueClassMustNotExtendTraitWithMutableFieldID) {
+  def msg(using Context) = i"""A Valhalla value class/trait cannot extend $parentClass with mutable field ($field)"""
+  def explain(using Context) = ""
+}
+
+class IncorrectValueClassDeclaration(isClass: Boolean)(using Context)
+  extends SyntaxMsg(IncorrectValueClassDeclarationID) {
+  def msg(using Context) = i"""Incorrect Valhalla value class declaration: Valhalla ${if isClass then "value classes" else "traits"} must extend ${if isClass then "AnyVal" else "Any"}."""
+  def explain(using Context) = "Valhalla Value Classes and Traits need to extend AnyVal or Any respectively."
+}
+
+class ValhallaTraitsMayNotHaveSelfTypesWithVars(selfTypeSym: Symbol, field: Symbol)(using Context)
+  extends SyntaxMsg(ValhallaTraitsMayNotHaveSelfTypesWithVarsID) {
+  def msg(using Context) = i"""A Valhalla trait may not have a self type ($selfTypeSym) with mutable field ($field)."""
+  def explain(using Context) = ""
+}
+
+class AnyRefClassCantExtendDeepValhalla(sym: Symbol)(using Context)
+  extends SyntaxMsg(AnyRefClassCantExtendDeepValhallaID) {
+  def msg(using Context) = i"""An AnyRef class ($sym) cannot extend DeepValhalla."""
+  def explain(using Context) = "Only Valhalla value classes should extend DeepValhalla, which indicates that all fields are either primitives or DeepValhalla classes."
+}
+
+class NonDeepValhallaFieldInClassThatExtendsDeepValhalla(valueClass: Symbol, field: Symbol)(using Context)
+  extends SyntaxMsg(NonDeepValhallaFieldInClassThatExtendsDeepValhallaID) {
+  def msg(using Context) = i"""Non-DeepValhalla field ($field) of type ${field.info} in a DeepValhalla class ($valueClass)."""
+  def explain(using Context) =
+    i"""A DeepValhalla alue class must only have fields which are DeepValhalla or primitive."""
+}
+
+class DeepValhallaFieldInstantiatedWithNonDeepValhallaType(valueClass: Symbol, instTypeSym: Symbol)(using Context)
+  extends SyntaxMsg(DeepValhallaFieldInstantiatedWithNonDeepValhallaTypeID) {
+  def msg(using Context) = i"""DeepValhalla class ($valueClass) is instantiated with non-DeepValhalla type ($instTypeSym)."""
+  def explain(using Context) =
+    i""""""
+}
+
+class DeepValhallaClassExtendsNonDeepValhallaClass(valueClass: Symbol, parentSym: Symbol)(using Context)
+  extends SyntaxMsg(DeepValhallaClassExtendsNonDeepValhallaClassID) {
+  def msg(using Context) = i"""DeepValhalla class ($valueClass) cannot extend non-DeepValhalla class ($parentSym)."""
+  def explain(using Context) =
+    i""""""
+}
+
+class DeepValhallaClassMustNotExtendParentWithIdentityField(parentClass: Symbol, field: Symbol)(using Context)
+  extends SyntaxMsg(DeepValhallaClassMustNotExtendParentWithIdentityFieldID) {
+  def msg(using Context) = i"""A DeepValhalla value class/trait cannot extend $parentClass with non-Identity field ($field)"""
+  def explain(using Context) = ""
+}

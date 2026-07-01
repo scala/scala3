@@ -717,6 +717,11 @@ final class ClassfileParser(
               if (owner.isClass) owner.asClass.enter(s)
               tparams += (n -> s)
               s.typeRef
+          //assert(tparams contains n, s"classTparams = $classTParams, tparams = $tparams, key = $n")
+          if (skiptvs) defn.AnyType else tparams(n).typeRef
+        case '!' =>
+          val underlying = sig2type(skiptvs)
+          AnnotatedType(underlying, CompactAnnotation(defn.NonNullAnnot.typeRef))
         case tag =>
           constantTagToType(tag)
       }
