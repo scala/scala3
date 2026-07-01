@@ -21,9 +21,6 @@ import java.nio.file.{FileSystemException, Paths}
 import java.util.Optional
 import java.util.regex.Pattern
 
-// TODO add #! .. !# support to parser now that we've removed ScriptSourceFile
-// TODO make sure we have enabled tests for this...
-
 object WrappedSourceFile:
   enum MagicHeaderInfo:
     case HasHeader(offset: Int, originalFile: SourceFile)
