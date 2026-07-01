@@ -409,10 +409,10 @@ object SpaceEngine {
           if (elemTp.exists)
             Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, Lst(projectSeq(pats)))
           else
-            Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.take(arity - 1).mapToLst(project) :+ projectSeq(pats.drop(arity - 1)))
+            Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)))
         }
       else
-        Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.mapToLst(project))
+        Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.map(project))
 
     case Typed(pat @ UnApply(_, _, _), _) =>
       project(pat)
@@ -521,7 +521,7 @@ object SpaceEngine {
 
   /** Space of the pattern: unapplySeq(a, b, c*)
    */
-  def projectSeq(pats: List[Tree])(using Context): Space = {
+  def projectSeq(pats: Lst[Tree])(using Context): Space = {
     if (pats.isEmpty) return Typ(defn.NilType, false)
 
     val (items, zero) = if (isWildcardStarArg(pats.last))

@@ -198,7 +198,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
         retentionPolicyOf(annot) != annotationRetentionSourceAttr
     }
 
-    private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)])(using Context): Unit = {
+    private def emitAssocs(av: asm.AnnotationVisitor, assocs: Lst[(Name, Object)])(using Context): Unit = {
       for ((name, value) <- assocs)
         emitArgument(av, name.mangledString, value.asInstanceOf[Tree])
       av.visitEnd()
@@ -252,7 +252,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
           val flatArgs = actualArgs.flatMap { arg =>
             normalizeArgument(arg) match {
               case t: tpd.SeqLiteral => t.elems
-              case e => List(e)
+              case e => Lst(e)
             }
           }
           for arg <- flatArgs do
@@ -308,13 +308,13 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       annot.tree.tpe.typeSymbol.getAnnotation(annotationRetentionAttr).
         flatMap(_.argument(0).map(_.tpe.termSymbol)).getOrElse(annotationRetentionClassAttr)
 
-    private def assocsFromApply(tree: Tree)(using Context): List[(Name, Tree)] = {
+    private def assocsFromApply(tree: Tree)(using Context): Lst[(Name, Tree)] = {
       tree match {
         case Block(_, expr) => assocsFromApply(expr)
         case Apply(fun, args) =>
           fun.tpe.widen match {
             case MethodType(names) =>
-              names.toList.zip(args).filter {
+              names.zip(args).filter {
                 case (_, t: tpd.Ident) if t.tpe.normalizedPrefix eq NoPrefix => false
                 case _ => true
               }

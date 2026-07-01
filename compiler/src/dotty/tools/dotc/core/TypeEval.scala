@@ -94,7 +94,7 @@ object TypeEval:
         val arg = tp.args.head
         val cls = arg.classSymbol
         if MatchTypes.isConcrete(arg) && cls.is(CaseClass) then
-          val fields = cls.caseAccessors.toLst
+          val fields = cls.caseAccessors
           val fieldLabels = fields.map: field =>
             ConstantType(Constant(field.name.toString))
           val fieldTypes = fields.map(arg.memberInfo)

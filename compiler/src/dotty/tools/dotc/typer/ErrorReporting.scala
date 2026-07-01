@@ -40,7 +40,7 @@ object ErrorReporting {
     ErrorType(ex.toMessage)
   }
 
-  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: Lst[ParamInfo], actual: List[untpd.Tree], pos: SrcPos)(using Context): ErrorType =
+  def wrongNumberOfTypeArgs(fntpe: Type, expectedArgs: Lst[ParamInfo], actual: Lst[untpd.Tree], pos: SrcPos)(using Context): ErrorType =
     errorType(WrongNumberOfTypeArgs(fntpe, expectedArgs, actual), pos)
 
   def missingArgs(tree: Tree, mt: Type)(using Context): Unit =

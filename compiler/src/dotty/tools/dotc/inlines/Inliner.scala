@@ -105,7 +105,7 @@ object Inliner:
    *     the application around to be eliminated later by the inline typer.
    */
   private class InlineCopier() extends TypedTreeCopier:
-    override def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply =
+    override def Apply(tree: Tree)(fun: Tree, args: Lst[Tree])(using Context): Apply =
       if fun.tpe.widen.exists && !isSpuriousApply(fun, args)
       then super.Apply(tree)(fun, args)
       else untpd.cpy.Apply(tree)(fun, args).withTypeUnchecked(tree.tpe)
@@ -202,7 +202,7 @@ class Inliner(val call: tpd.Tree)(using Context):
   import Inliner.*
 
   private val methPart = funPart(call)
-  protected val callTypeArgs = typeArgss(call).flatten
+  protected val callTypeArgs = typeArgss(call).flattenLst
   protected val callValueArgss = termArgss(call)
   protected val inlinedMethod = methPart.symbol
   private val inlineCallPrefix =
@@ -305,8 +305,8 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  proxies to this-references. Issue an error if some arguments are missing.
    */
   private def computeParamBindings(
-      tp: Type, targs: List[Tree],
-      argss: List[List[Tree]], formalss: List[List[Type]],
+      tp: Type, targs: Lst[Tree],
+      argss: List[Lst[Tree]], formalss: List[Lst[Type]],
       buf: DefBuffer): Boolean =
     tp match
       case tp: PolyType =>
@@ -320,14 +320,16 @@ class Inliner(val call: tpd.Tree)(using Context):
           report.error(em"missing arguments for inline method $inlinedMethod", call.srcPos)
           false
         else
-          tp.paramNames.lazyZip(formalss.head).lazyZip(argss.head).foreach { (name, formal, arg) =>
-            paramSpan(name) = arg.span
-            paramBinding(name) = arg.tpe.dealias match
-              case _: SingletonType if isIdempotentPath(arg) =>
-                arg.tpe
+          val pnames = tp.paramNames
+          val formals = formalss.head
+          val args = argss.head
+          for i <- 0 until (pnames.length min formals.length min args.length) do
+            paramSpan(pnames(i)) = args(i).span
+            paramBinding(pnames(i)) = args(i).tpe.dealias match
+              case _: SingletonType if isIdempotentPath(args(i)) =>
+                args(i).tpe
               case _ =>
-                paramBindingDef(name, formal, arg, buf).symbol.termRef
-          }
+                paramBindingDef(pnames(i), formals(i), args(i), buf).symbol.termRef
           computeParamBindings(tp.resultType, targs, argss.tail, formalss.tail, buf)
       case _ =>
         assert(targs.isEmpty)
@@ -627,18 +629,18 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     inlining.println(i"-----------------------\nInlining $call\nWith RHS $rhsToInline")
 
-    def paramTypess(call: Tree, acc: List[List[Type]]): List[List[Type]] = call match
+    def paramTypess(call: Tree, acc: List[Lst[Type]]): List[Lst[Type]] = call match
       case Apply(fn, args) =>
         fn.tpe.widen.match
-          case mt: MethodType => paramTypess(fn, mt.instantiateParamInfosList(args.tpes) :: acc)
+          case mt: MethodType => paramTypess(fn, mt.instantiateParamInfos(args.tpes) :: acc)
           case _ => Nil
       case TypeApply(fn, _) => paramTypess(fn, acc)
       case _ => acc
 
     val paramBindings =
-      val mappedCallValueArgss = callValueArgss.nestedMapConserve(mapOpaquesInValueArg)
+      val mappedCallValueArgss = callValueArgss.nestedMapConserveLst(mapOpaquesInValueArg)
       if mappedCallValueArgss ne callValueArgss then
-        inlining.println(i"mapped value args = ${mappedCallValueArgss.flatten}%, %")
+        inlining.println(i"mapped value args = ${mappedCallValueArgss.flattenLst}%, %")
 
       val paramBindingsBuf = new DefBuffer
       // Compute bindings for all parameters, appending them to bindingsBuf
@@ -741,7 +743,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     val expansion = inliner.transform(rhsToInline)
 
     def issueError() = callValueArgss match {
-      case (msgArg :: Nil) :: Nil =>
+      case Lst.single(msgArg) :: Nil =>
         val message = msgArg.tpe match {
           case ConstantType(Constant(msg: String)) => msg.toMessage
           case _ => em"A literal string is expected as an argument to `compiletime.error`. Got $msgArg"
@@ -972,7 +974,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       val locked = ctx.typerState.ownedVars
       specializeEq(inlineIfNeeded(constToLiteral(BetaReduce(super.typedApply(tree, pt))), pt, locked))
 
-    override def isAcceptedSpuriousApply(fun: Tree, args: List[untpd.Tree])(using Context): Boolean =
+    override def isAcceptedSpuriousApply(fun: Tree, args: Lst[untpd.Tree])(using Context): Boolean =
       tpd.isSpuriousApply(fun, args)
 
     override def typedTypeApply(tree: untpd.TypeApply, pt: Type)(using Context): Tree =
@@ -1107,7 +1109,7 @@ class Inliner(val call: tpd.Tree)(using Context):
 
     private def specializeEq(tree: Tree): Tree =
       tree match
-        case Apply(sel @ Select(arg1, opName), arg2 :: Nil)
+        case Apply(sel @ Select(arg1, opName), Lst.single(arg2))
         if sel.symbol == defn.Any_== || sel.symbol == defn.Any_!= =>
           defn.ScalaValueClasses().find { cls =>
             arg1.tpe.derivesFrom(cls) && arg2.tpe.derivesFrom(cls)
@@ -1270,7 +1272,7 @@ class Inliner(val call: tpd.Tree)(using Context):
       override def apply(syms: List[Symbol], tree: tpd.Tree)(using Context): List[Symbol] =
         tree match {
           case Closure(env, meth, tpt) if meth.symbol.isAnonymousFunction =>
-            this(syms, tpt :: env)
+            this(syms, tpt +: env)
           case tree: RefTree if tree.isTerm && level == -1 && tree.symbol.isDefinedInCurrentRun && !tree.symbol.isLocal =>
             foldOver(tree.symbol :: syms, tree)
           case _: This if level == -1 && tree.symbol.isDefinedInCurrentRun =>

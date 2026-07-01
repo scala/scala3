@@ -282,8 +282,8 @@ class SymUtils:
     def accessorNamed(name: TermName)(using Context): Symbol =
       self.owner.info.decl(name).suchThat(_.is(Accessor)).symbol
 
-    def caseAccessors(using Context): List[Symbol] =
-      self.info.decls.filter(_.is(CaseAccessor))
+    def caseAccessors(using Context): Lst[Symbol] =
+      self.info.decls.filterLst(_.is(CaseAccessor))
 
     def getter(using Context): Symbol =
       if (self.isGetter) self else accessorNamed(self.asTerm.name.getterName)

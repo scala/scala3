@@ -39,11 +39,11 @@ object Annotations {
       if (tree eq this.tree) this else Annotation(tree)
 
     /** All term arguments of this annotation in a single flat list */
-    def arguments(using Context): List[Tree] = tpd.allTermArguments(tree)
+    def arguments(using Context): Lst[Tree] = tpd.allTermArguments(tree)
 
     /** All type arguments of this annotation in a single flat list */
     def argumentTypes(using Context): Lst[Type] =
-      tpd.allArguments(tree).filterConserve(_.isType).mapToLst(_.tpe)
+      tpd.allArguments(tree).filter(_.isType).tpes
 
     def argument(i: Int)(using Context): Option[Tree] = {
       val args = arguments
@@ -67,8 +67,8 @@ object Annotations {
      */
     def mapWith(tm: TypeMap)(using Context): Annotation =
       tpd.allArguments(tree) match
-        case Nil => this
-        case arg :: Nil if symbol.isRetainsLike =>
+        case Lst.empty() => this
+        case Lst.single(arg) if symbol.isRetainsLike =>
           assert(false, s"unexpected symbol $symbol for ConcreteAnnotation $this in ${ctx.source}, this should be a CompactAnnotation")
         case args =>
           // Checks if `tm` would result in any change by applying it to types
@@ -148,7 +148,7 @@ object Annotations {
     def tree(using Context) = TypeTree(tpe)
 
     def oldTree(using Context): Tree =
-      New(tpe, Nil).withSpan(NoSpan)
+      New(tpe, Lst()).withSpan(NoSpan)
 
     override def symbol(using Context) = tpe.typeSymbol
 
@@ -158,8 +158,8 @@ object Annotations {
     def derivedAnnotation(tp: Type)(using Context): Annotation =
       if tp eq this.tpe then this else CompactAnnotation(tp)
 
-    override def arguments(using Context): List[Tree] =
-      argumentTypes.mapToList(TypeTree(_))
+    override def arguments(using Context): Lst[Tree] =
+      argumentTypes.map(TypeTree(_))
 
     override def argumentTypes(using Context): Lst[Type] = tpe.argInfos
 
@@ -203,7 +203,7 @@ object Annotations {
       if tp.typeSymbol.isRetainsLike then RetainingAnnotation(tp)
       else new CompactAnnotation(tp)
     def apply(tree: Tree)(using Context): CompactAnnotation =
-      val argTypes = tpd.allArguments(tree).mapToLst(_.tpe)
+      val argTypes = tpd.allArguments(tree).tpes
       apply(annotClass(tree).typeRef.appliedTo(argTypes))
   end CompactAnnotation
 
@@ -261,7 +261,7 @@ object Annotations {
     override def symbol(using Context): ClassSymbol = defn.BodyAnnot
     override def derivedAnnotation(tree: Tree)(using Context): Annotation =
       if (tree eq this.tree) this else ConcreteBodyAnnotation(tree)
-    override def arguments(using Context): List[Tree] = Nil
+    override def arguments(using Context): Lst[Tree] = Lst()
     override def ensureCompleted(using Context): Unit = ()
     override def toText(printer: Printer): Text = "@Body"
   }
@@ -303,18 +303,18 @@ object Annotations {
         else ConcreteAnnotation(tree)
 
     def apply(cls: ClassSymbol, span: Span)(using Context): Annotation =
-      apply(cls, Nil, span)
+      apply(cls, Lst(), span)
 
     def apply(cls: ClassSymbol, arg: Tree, span: Span)(using Context): Annotation =
-      apply(cls, arg :: Nil, span)
+      apply(cls, Lst(arg), span)
 
-    def apply(cls: ClassSymbol, args: List[Tree], span: Span)(using Context): Annotation =
+    def apply(cls: ClassSymbol, args: Lst[Tree], span: Span)(using Context): Annotation =
       apply(cls.typeRef, args, span)
 
     def apply(atp: Type, arg: Tree, span: Span)(using Context): Annotation =
-      apply(atp, arg :: Nil, span)
+      apply(atp, Lst(arg), span)
 
-    def apply(atp: Type, args: List[Tree], span: Span)(using Context): Annotation =
+    def apply(atp: Type, args: Lst[Tree], span: Span)(using Context): Annotation =
       if atp.typeSymbol.isRetainsLike && args.isEmpty
       then RetainingAnnotation(atp)
       else apply(New(atp, args).withSpan(span))
@@ -337,7 +337,7 @@ object Annotations {
       def later(delayedSym: Context ?=> Symbol, span: Span)(using Context): Annotation = {
         def makeChildLater(using Context) = {
           val sym = delayedSym
-          New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Nil)
+          New(defn.ChildAnnot.typeRef.appliedTo(sym.owner.thisType.select(sym.name, sym)), Lst())
             .withSpan(span)
         }
         deferred(defn.ChildAnnot)(makeChildLater)
@@ -393,7 +393,7 @@ object Annotations {
         // new-style: @throws[Exception], @throws[Exception]("cause")
         case _ =>
           stripApply(a.tree) match {
-            case TypeApply(_, List(tpt)) =>
+            case TypeApply(_, Lst.single(tpt)) =>
               Some(tpt.tpe)
             case _ =>
               None

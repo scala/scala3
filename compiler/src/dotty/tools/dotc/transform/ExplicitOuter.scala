@@ -19,6 +19,7 @@ import inlines.Inlines
 
 import scala.annotation.tailrec
 import scala.collection.mutable
+import util.Lst
 
 /** This phase adds outer accessors to classes and traits that need them.
  *  Compared to Scala 2.x, it tries to minimize the set of classes
@@ -103,7 +104,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
             // make sure we have a constructor
             case parent: TypeTree
             if !cls.is(Trait) && !parentCls.is(Trait) && !defn.NotRuntimeClasses.contains(parentCls) =>
-              New(parent.tpe, Nil).withSpan(impl.span)
+              New(parent.tpe, Lst()).withSpan(impl.span)
             case _ => parent
       cpy.Template(impl)(parents = parents1, body = impl.body ++ newDefs)
     }
@@ -426,7 +427,7 @@ object ExplicitOuter {
     /** If function in an apply node is a constructor that needs to be passed an
      *  outer argument, the singleton list with the argument, otherwise Nil.
      */
-    def args(fun: Tree): List[Tree] =
+    def args(fun: Tree): Lst[Tree] =
       if (fun.symbol.isConstructor) {
         val cls = fun.symbol.owner.asClass
         def outerArg(receiver: Tree): Tree = receiver match {
@@ -439,18 +440,18 @@ object ExplicitOuter {
         }
         if (needsOuterParam(cls))
           methPart(fun) match {
-            case Select(receiver, _) => outerArg(receiver).withSpan(fun.span) :: Nil
+            case Select(receiver, _) => Lst(outerArg(receiver).withSpan(fun.span))
           }
-        else Nil
+        else Lst()
       }
-      else Nil
+      else Lst()
 
     /** If the constructors of the given `cls` need to be passed an outer
      *  argument, the singleton list with the argument, otherwise Nil.
      */
-    def argsForNew(cls: ClassSymbol, tpe: Type): List[Tree] =
-      if (needsOuterParam(cls)) singleton(fixThis(outerPrefix(tpe))) :: Nil
-      else Nil
+    def argsForNew(cls: ClassSymbol, tpe: Type): Lst[Tree] =
+      if (needsOuterParam(cls)) Lst(singleton(fixThis(outerPrefix(tpe))))
+      else Lst()
 
     /** A path of outer accessors starting from node `start`. `start` defaults to the
      *  context owner's this node. There are two alternative conditions that determine

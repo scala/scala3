@@ -58,7 +58,7 @@ private[semanticdb] class SyntheticsExtractor:
           s.Synthetic(
             range(tree.span, tree.source),
             s.TypeApplyTree(
-              fnTree, targs
+              fnTree, targs.toList
             )
           ).toOpt
 
@@ -72,7 +72,7 @@ private[semanticdb] class SyntheticsExtractor:
             range(tree.span, tree.source),
             s.ApplyTree(
               tree.fun.toSemanticOriginal,
-              tree.args.map(_.toSemanticTree),
+              tree.args.mapToList(_.toSemanticTree),
               SymbolInformation.Property.GIVEN.value
             )
           ).toOpt
@@ -100,12 +100,12 @@ private[semanticdb] class SyntheticsExtractor:
           case tree: Apply =>
             s.ApplyTree(
               tree.fun.toSemanticQualifierTree,
-              tree.args.map(_.toSemanticTree)
+              tree.args.mapToList(_.toSemanticTree)
             )
           case tree: TypeApply =>
             s.TypeApplyTree(
               tree.fun.toSemanticQualifierTree,
-              tree.args.map { targ =>
+              tree.args.mapToList { targ =>
                 targ.tpe.toSemanticType(targ.symbol)(using LinkMode.SymlinkChildren)
               }
             )

@@ -1190,7 +1190,7 @@ trait Implicits:
                   nme.apply)
               else untpdGenerated
             typed(
-              untpd.Apply(untpdConv, untpd.TypedSplice(argument) :: Nil),
+              untpd.Apply(untpdConv, Lst(untpd.TypedSplice(argument))),
               pt, locked)
           }
           pt match
@@ -2147,7 +2147,7 @@ final class SearchRoot extends SearchHistory:
             val classDef = ClassDef(classSym, DefDef(constr), vdefs)
 
             val valSym = newLazyImplicit(classSym.typeRef, span)
-            val inst = ValDef(valSym, New(classSym.typeRef, Nil))
+            val inst = ValDef(valSym, New(classSym.typeRef, Lst()))
 
             // Substitute dictionary references into outermost result term.
             val res = substVsymRefs(

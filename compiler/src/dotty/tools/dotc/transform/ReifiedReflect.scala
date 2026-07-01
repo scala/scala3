@@ -11,6 +11,7 @@ import Symbols.*
 import NameKinds.*
 import dotty.tools.dotc.ast.tpd
 import tpd.*
+import util.Lst
 
 import scala.collection.mutable
 import dotty.tools.dotc.core.Annotations.*
@@ -38,14 +39,14 @@ trait ReifiedReflect:
     self.select(defn.Quotes_reflect_TypeTreeType)
 
   /** Create tree for `quotes.reflect.Apply(<fn>, List(<args>*))` */
-  def Apply(fn: Tree, args: List[Tree])(using Context) =
+  def Apply(fn: Tree, args: Lst[Tree])(using Context) =
     val argTrees = tpd.mkList(args, TermTpt)
     self.select(defn.Quotes_reflect_Apply)
       .select(defn.Quotes_reflect_Apply_apply)
       .appliedTo(fn, argTrees)
 
   /** Create tree for `quotes.reflect.TypeApply(<fn>, List(<args>*))` */
-  def TypeApply(fn: Tree, args: List[Tree])(using Context) =
+  def TypeApply(fn: Tree, args: Lst[Tree])(using Context) =
     val argTrees = tpd.mkList(args, TypeTreeTpt)
     self.select(defn.Quotes_reflect_TypeApply)
       .select(defn.Quotes_reflect_TypeApply_apply)

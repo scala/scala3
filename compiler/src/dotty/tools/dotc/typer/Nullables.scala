@@ -15,6 +15,7 @@ import collection.mutable
 import config.Printers.nullables
 import ast.{tpd, untpd}
 import ast.Trees.mods
+import util.Lst
 
 /** Operations for implementing a flow analysis for nullability */
 object Nullables:
@@ -127,13 +128,13 @@ object Nullables:
      *  The second boolean result is true for equality tests, false for inequality tests
      */
     def unapply(tree: Tree)(using Context): Option[(Tree, Boolean)] = tree match
-      case Apply(Select(l, _), Literal(Constant(null)) :: Nil) =>
+      case Apply(Select(l, _), Lst.single(Literal(Constant(null)))) =>
         testSym(tree.symbol, l)
-      case Apply(Select(Literal(Constant(null)), _), r :: Nil) =>
+      case Apply(Select(Literal(Constant(null)), _), Lst.single(r)) =>
         testSym(tree.symbol, r)
-      case Apply(Apply(op, l :: Nil), Literal(Constant(null)) :: Nil) =>
+      case Apply(Apply(op, Lst.single(l)), Lst.single(Literal(Constant(null)))) =>
         testPredefSym(op.symbol, l)
-      case Apply(Apply(op, Literal(Constant(null)) :: Nil), r :: Nil) =>
+      case Apply(Apply(op, Lst.single(Literal(Constant(null)))), Lst.single(r)) =>
         testPredefSym(op.symbol, r)
       case _ =>
         None
@@ -405,7 +406,7 @@ object Nullables:
           case CompareNull(TrackedRef(ref), testEqual) =>
             if testEqual then setConditional(Set(), Set(ref))
             else setConditional(Set(ref), Set())
-          case Apply(Select(x, _), y :: Nil) =>
+          case Apply(Select(x, _), Lst.single(y)) =>
             val xc = x.notNullConditional
             val yc = y.notNullConditional
             if !(xc.isEmpty && yc.isEmpty) then
@@ -629,7 +630,7 @@ object Nullables:
                 else arg1 :: argsRest1
               case _ => args
 
-            tpd.cpy.Apply(app)(fn, recur(mt.paramInfosList, args))
+            tpd.cpy.Apply(app)(fn, recur(mt.paramInfosList, args.toList).toLst)
           case _ => app
       case _ => app
   end postProcessByNameArgs

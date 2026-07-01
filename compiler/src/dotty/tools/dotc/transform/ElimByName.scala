@@ -17,6 +17,7 @@ import typer.RefChecks
 import reporting.trace
 import util.Lst
 import Names.Name
+import util.Lst
 
 /** This phase implements the following transformations:
  *
@@ -126,7 +127,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
     applyIfFunction(tree)
 
   override def transformTypeApply(tree: TypeApply)(using Context): Tree = tree match {
-    case TypeApply(Select(_, nme.asInstanceOf_), arg :: Nil) =>
+    case TypeApply(Select(_, nme.asInstanceOf_), Lst.single(arg)) =>
       // tree might be of form e.asInstanceOf[x.type] where x becomes a function.
       // See pos/t296.scala
       applyIfFunction(tree)
@@ -142,7 +143,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
             case Typed(expr, _) => stripTyped(expr)
             case _ => t
           stripTyped(arg) match
-            case Apply(Select(qual, nme.apply), Nil)
+            case Apply(Select(qual, nme.apply), Lst.empty())
             if isByNameRef(qual) && (isPureExpr(qual) || qual.symbol.isAllOf(InlineParam)) =>
               qual
             case _ =>
@@ -152,7 +153,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
           arg
 
       val mt @ MethodType(_) = tree.fun.tpe.widen: @unchecked
-      val args1 = tree.args.zipWithConserve(mt.paramInfosList)(transformArg)
+      val args1 = tree.args.zipWithConserve(mt.paramInfos)(transformArg)
       cpy.Apply(tree)(tree.fun, args1)
     }
 

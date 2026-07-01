@@ -320,7 +320,7 @@ object NamerOps:
    *
    *  The companion has the same access flags as the original type.
    */
-  def addContextBoundCompanionFor(tsym: Symbol, witnessNames: List[TermName], params: Lst[Symbol])(using Context): Unit =
+  def addContextBoundCompanionFor(tsym: Symbol, witnessNames: Lst[TermName], params: Lst[Symbol])(using Context): Unit =
     val prefix = ctx.owner.thisType
     val companionName = tsym.name.toTermName
     val witnessRefs =

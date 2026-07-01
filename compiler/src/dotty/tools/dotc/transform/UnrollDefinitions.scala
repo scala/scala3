@@ -143,7 +143,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
       val newParamSymMappings = extractParamSymss(copyParamSym(_, forwarderDefSymbol0))
       val (oldParams, newParams) = newParamSymMappings.flattenLst.unzip
 
-      val newParamSymLists0 =
+      val newParamSymLists0: List[Lst[Symbol]] =
         newParamSymMappings.map: pairs =>
           pairs.map: (oldSym, newSym) =>
             newSym.info = oldSym.info.substSym(oldParams, newParams)
@@ -199,7 +199,7 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
 
         newParamSymLists
           .take(annotatedParamListIndex)
-          .map(_.toList.map(ref))
+          .nestedMapLst(ref)
           .foldLeft(inner)(_.appliedToArgs(_))
       )
 
@@ -208,8 +208,8 @@ class UnrollDefinitions extends MacroTransform, IdentityDenotTransformer {
 
       val forwarderCallArgs =
         newParamSymLists.zipWithIndex.map: (ps, i) =>
-          if i == annotatedParamListIndex then ps.map(ref).take(nextParamIndex).toList ++ defaultCalls
-          else ps.map(ref).toList
+          if i == annotatedParamListIndex then ps.map(ref).take(nextParamIndex) ++ defaultCalls.toLst
+          else ps.map(ref)
 
       val forwarderCall0 = forwarderCallArgs.foldLeft(forwarderInner)(_.appliedToArgs(_))
 

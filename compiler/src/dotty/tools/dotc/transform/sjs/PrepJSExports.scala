@@ -455,7 +455,7 @@ object PrepJSExports {
     DefDef(proxySym, { argss =>
       if (trgSym.isConstructor) {
         val tycon = trgSym.owner.typeRef
-        New(tycon).select(TermRef(tycon, trgSym)).appliedToArgss(argss.map(_.toList))
+        New(tycon).select(TermRef(tycon, trgSym)).appliedToArgss(argss)
       } else if (trgSym.is(ModuleClass)) {
         assert(argss.isEmpty,
             s"got a module export with non-empty paramss. target: $trgSym, proxy: $proxySym at $span")
@@ -472,7 +472,7 @@ object PrepJSExports {
         }
         ref(jsdefn.JSPackage_constructorOf).appliedToType(tpe)
       } else {
-        This(clsSym).select(trgSym).appliedToArgss(argss.map(_.toList))
+        This(clsSym).select(trgSym).appliedToArgss(argss)
       }
     }).withSpan(span)
   }

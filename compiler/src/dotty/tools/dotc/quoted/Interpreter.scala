@@ -107,7 +107,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       interpretTree(expr)
 
     case SeqLiteral(elems, _) =>
-      interpretVarargs(elems.map(e => interpretTree(e)))
+      interpretVarargs(elems.toList.map(e => interpretTree(e)))
 
     case _ =>
       unexpectedTree(tree)
@@ -342,7 +342,7 @@ object Interpreter:
           Some((fn, args))
         case fn: Ident => Some((tpd.desugarIdent(fn).withSpan(fn.span), Nil))
         case fn: Select => Some((fn, Nil))
-        case Apply(f @ Call0(fn, argss), args) => Some((fn, args :: argss))
+        case Apply(f @ Call0(fn, argss), args) => Some((fn, args.toList :: argss))
         case TypeApply(Call0(fn, argss), _) => Some((fn, argss))
         case _ => None
       }

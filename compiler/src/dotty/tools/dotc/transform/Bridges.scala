@@ -133,8 +133,8 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
      *  type and figure out which context function types in its result are
      *  not yet instantiated.
      */
-    def etaExpand(ref: Tree, args: List[Tree])(using Context): Tree =
-      def expand(args: List[Tree], tp: Type, n: Int)(using Context): Tree =
+    def etaExpand(ref: Tree, args: Lst[Tree])(using Context): Tree =
+      def expand(args: Lst[Tree], tp: Type, n: Int)(using Context): Tree =
         if n <= 0 then
           assert(ctx.typer.isInstanceOf[Erasure.Typer])
           ctx.typer.typed(untpd.cpy.Apply(ref)(ref, args), member.info.finalResultType)
@@ -156,7 +156,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
                     .select(nme.primitive.arrayApply)
                     .appliedTo(Literal(Constant(n)))
               case refs1 => refs1
-            expand(args ::: expandedRefs.toList, mtWithoutErasedParams.resType, n - 1)(using ctx.withOwner(anonFun))
+            expand(args ++ expandedRefs, mtWithoutErasedParams.resType, n - 1)(using ctx.withOwner(anonFun))
 
           val unadapted = Closure(anonFun, lambdaBody)
           cpy.Block(unadapted)(unadapted.stats,
@@ -172,8 +172,8 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       assert(argss.tail.isEmpty)
       val ref = This(root).select(member)
       if member.info.isParameterless then ref // can happen if `member` is a module
-      else if memberCount == 0 then ref.appliedToTermArgs(argss.head.toList)
-      else etaExpand(ref, argss.head.toList)
+      else if memberCount == 0 then ref.appliedToTermArgs(argss.head)
+      else etaExpand(ref, argss.head)
 
     bridges += DefDef(bridge, bridgeRhs(_).withSpan(bridge.span))
   }

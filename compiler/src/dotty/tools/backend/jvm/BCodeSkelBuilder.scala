@@ -245,7 +245,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
         def rewire(stat: Tree) = thisMap.transform(stat).changeOwner(claszSymbol.primaryConstructor, clInitSymbol)
 
-        val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToTermArgs(Nil)
+        val callConstructor = New(claszSymbol.typeRef).select(claszSymbol.primaryConstructor).appliedToTermArgs(Lst())
         val assignModuleField = Assign(ref(moduleField), callConstructor)
         val remainingConstrStatsSubst = remainingConstrStats.map(rewire)
         val clinit = clinits match {
@@ -803,7 +803,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       val sym = SymbolUtils.makeStatifiedDefSymbol(origSym, name)
       tpd.DefDef(sym, { paramss =>
         val params = paramss.head
-        tpd.Apply(params.head.select(origSym), params.toList.tail)
+        tpd.Apply(params.head.select(origSym), params.drop(1))
           .withAttachment(BCodeHelpers.UseInvokeSpecial, ())
       })
 

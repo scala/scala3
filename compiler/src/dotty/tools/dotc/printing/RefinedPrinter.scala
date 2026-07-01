@@ -380,9 +380,10 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
   protected def exprToText(tp: ExprType): Text =
     "=> " ~ toText(tp.resType)
 
-  protected def argsTreeText(args: List[untpd.Tree]): Text = args match
-    case dummyTreeOfType(tp) :: Nil if !tp.isRef(defn.NullClass) && !homogenizedView => toText(Constant(null)) ~ ": " ~ toText(tp)
-    case _                                                                           => toTextGlobal(args, ", ")
+  protected def argsTreeText(args: Lst[untpd.Tree]): Text = args match
+    case Lst.single(dummyTreeOfType(tp))
+    if !tp.isRef(defn.NullClass) && !homogenizedView => toText(Constant(null)) ~ ": " ~ toText(tp)
+    case _                                           => toTextGlobal(args, ", ")
 
   protected def blockToText[T <: Untyped](block: Block[T]): Text =
     blockText(block.stats :+ block.expr)
@@ -642,7 +643,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         then
           toText(tree.typeOpt)
         else args match
-          case arg :: _ if arg.isTerm =>
+          case Lst.withHead(arg) if arg.isTerm =>
             toTextLocal(tpt) ~ "(" ~ Text(args.map(argText), ", ") ~ ")"
           case _ =>
             toTextLocal(tpt) ~ "[" ~ Text(args.map(argText), ", ") ~ "]"
@@ -746,7 +747,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
           case Thicket(List(str: Literal, expr)) => strText(str) ~ "{" ~ toTextGlobal(expr) ~ "}"
           case str: Literal => strText(str)
         }
-        toText(id) ~ "\"" ~ Text(segments map segmentText, "") ~ "\""
+        toText(id) ~ "\"" ~ Text(segments.map(segmentText), "") ~ "\""
       case fn @ Function(args, body) =>
         var implicitSeen: Boolean = false
         var isGiven: Boolean = false
@@ -1158,7 +1159,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
 
   protected def annotText(sym: Symbol, tree: untpd.Tree): Text =
     def recur(t: untpd.Tree): Text = t match
-      case Apply(fn, Nil) => recur(fn)
+      case Apply(fn, Lst.empty()) => recur(fn)
       case Apply(fn, args) =>
         val explicitArgs = args.filterNot(untpd.stripNamedArg(_).symbol.name.is(DefaultGetterName))
         recur(fn) ~ "(" ~ toTextGlobal(explicitArgs, ", ") ~ ")"

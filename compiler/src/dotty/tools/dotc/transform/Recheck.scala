@@ -324,8 +324,8 @@ abstract class Recheck extends Phase, SymTransformer:
       formals.mapConserve(tm)
 
     /** Hook for method type instantiation */
-    protected def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
-      mt.instantiateWithList(argTypes)
+    protected def instantiate(mt: MethodType, argTypes: Lst[Type], sym: Symbol)(using Context): Type =
+      mt.instantiate(argTypes)
 
     /** A hook to massage the type of an applied method */
     protected def prepareFunction(funtpe: MethodType, meth: Symbol)(using Context): MethodType = funtpe
@@ -340,7 +340,7 @@ abstract class Recheck extends Phase, SymTransformer:
      *   @param  funType   the method type of `fn`
      *   @param  argTypes  the types of the arguments
      */
-    protected def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
+    protected def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: Lst[Type])(using Context): Type =
       constFold(tree, instantiate(funType, argTypes, tree.fun.symbol))
 
     def recheckApply(tree: Apply, pt: Type)(using Context): Type =
@@ -360,18 +360,15 @@ abstract class Recheck extends Phase, SymTransformer:
             if false && tree.symbol.is(JavaDefined) // see NOTE in mapJavaArgs
             then mapJavaArgs(fntpe.paramInfos)
             else fntpe.paramInfos
-          def recheckArgs(args: List[Tree], formals: List[Type], prefs: List[ParamRef]): List[Type] = args match
-            case arg :: args1 =>
-              val argType = recheckArg(arg, normalizeByName(formals.head), prefs.head, tree)
-              val formals1 =
-                if fntpe.isParamDependent
-                then formals.tail.map(_.substParam(prefs.head, argType))
-                else formals.tail
-              argType :: recheckArgs(args1, formals1, prefs.tail)
-            case Nil =>
-              assert(formals.isEmpty)
-              Nil
-          val argTypes = recheckArgs(tree.args, formals.toList, fntpe.paramRefsList)
+          def recheckArgs(args: Lst[Tree], formals: Array[Type], prefs: Lst[ParamRef]): Lst[Type] =
+            assert(args.length == formals.length)
+            Lst.tabulate(args.length): i =>
+              val argType = recheckArg(args(i), normalizeByName(formals(i)), prefs(i), tree)
+              if fntpe.isParamDependent then
+                for j <- i + 1 until formals.length do
+                  formals(j) = formals(j).substParam(prefs(i), argType)
+              argType
+          val argTypes = recheckArgs(tree.args, formals.toArray, fntpe.paramRefs)
           recheckApplication(tree, qualType, fntpe, argTypes)
             //.showing(i"typed app $tree : $fntpe with ${tree.args}%, % : $argTypes%, % = $result")
         case tp =>
@@ -383,7 +380,7 @@ abstract class Recheck extends Phase, SymTransformer:
         case fntpe: PolyType =>
           assert(fntpe.paramInfos.length == tree.args.length)
           val argTypes = tree.args.map(recheck(_))
-          constFold(tree, fntpe.instantiateWithList(argTypes))
+          constFold(tree, fntpe.instantiate(argTypes))
 
     def recheckTyped(tree: Typed)(using Context): Type =
       val tptType = recheck(tree.tpt)
@@ -492,7 +489,7 @@ abstract class Recheck extends Phase, SymTransformer:
     def recheckSeqLiteral(tree: SeqLiteral, pt: Type)(using Context): Type =
       val declaredElemType = recheck(tree.elemtpt)
       val elemProto = seqLiteralElemProto(tree, pt, declaredElemType)
-      val elemTypes = tree.elems.mapToLst(recheck(_, elemProto))
+      val elemTypes = tree.elems.map(recheck(_, elemProto))
       seqLitType(tree, TypeComparer.lub(declaredElemType +: elemTypes))
 
     def recheckTypeTree(tree: TypeTree)(using Context): Type =

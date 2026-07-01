@@ -646,8 +646,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               capturedBy(sym) = enclMeth
 
         case Apply(fn, args) =>
-          for case closureDef(mdef) <- args do
-            anonFunCallee(mdef.symbol) = fn.symbol
+          args.foreach:
+            case closureDef(mdef) => anonFunCallee(mdef.symbol) = fn.symbol
+            case _ =>
           traverseChildren(tree)
 
         case tree @ DefDef(_, paramss, tpt: TypeTree, _) =>
@@ -670,14 +671,15 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         case tree @ TypeApply(fn, args) =>
           traverse(fn)
           val formals = fn.tpe.widen match
-            case tl: TypeLambda => tl.paramInfosList
+            case tl: TypeLambda => tl.paramInfos
             case _ => args.map(_ => NoType)
-          for case (arg: TypeTree, formal) <- args.lazyZip(formals) do
-            if defn.isTypeTestOrCast(fn.symbol) then
-              arg.setNuType(
-                globalCapToLocal(arg.tpe, Origin.TypeArg(arg.tpe)))
+          args.lazyZip(formals).foreach:
+            case (arg: TypeTree, formal) =>
+              if defn.isTypeTestOrCast(fn.symbol) then
+                arg.setNuType(globalCapToLocal(arg.tpe, Origin.TypeArg(arg.tpe)))
               else
                 transformTT(arg, NoSymbol, boxed = true, typeArgFormal = formal) // type arguments in type applications are boxed
+            case _ =>
 
         case tree: TypeDef if tree.symbol.isClass =>
           val sym = tree.symbol

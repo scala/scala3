@@ -263,14 +263,14 @@ class TypeUtils:
      *  @param adaptVarargs   if true, allow a constructor with just a varargs argument to
      *                        match an empty argument list.
      */
-    def applicableConstructors(argTypes: List[Type], adaptVarargs: Boolean)(using Context): List[Symbol] =
+    def applicableConstructors(argTypes: Lst[Type], adaptVarargs: Boolean)(using Context): List[Symbol] =
       def isApplicable(constr: Symbol): Boolean =
         def recur(ctpe: Type): Boolean = ctpe match
           case ctpe: PolyType =>
             if argTypes.isEmpty then recur(ctpe.resultType) // no need to know instances
             else recur(ctpe.instantiate(self.argTypes))
           case ctpe: MethodType =>
-            var paramInfos = ctpe.paramInfosList
+            var paramInfos = ctpe.paramInfos
             if adaptVarargs && paramInfos.length == argTypes.length + 1
               && atPhaseNoLater(Phases.elimRepeatedPhase)(constr.info.isVarArgsMethod)
             then // accept missing argument for varargs parameter

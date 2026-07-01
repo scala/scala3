@@ -130,8 +130,8 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         info = clazz.thisType.memberInfo(sym),
         coord = clazz.coord).enteredAfter(thisPhase).asTerm
 
-      def forwardToRuntime(vrefs: List[Tree]): Tree =
-        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToTermArgs(This(clazz) :: vrefs)
+      def forwardToRuntime(vrefs: Lst[Tree]): Tree =
+        ref(defn.runtimeMethodRef("_" + sym.name.toString)).appliedToTermArgs(This(clazz) +: vrefs)
 
       def ownNameLit: Tree = Literal(Constant(ownName))
 
@@ -153,7 +153,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           assert(candidate.isDefined, i"could not find child for $vdef in ${parentEnum.children}%, % of $parentEnum")
           Literal(Constant(candidate.get))
 
-      def toStringBody(vrefss: List[List[Tree]]): Tree =
+      def toStringBody(vrefss: List[Lst[Tree]]): Tree =
         if (clazz.is(ModuleClass)) ownNameLit
         else if (isNonJavaEnumValue) identifierRef
         else forwardToRuntime(vrefss.head)
@@ -161,7 +161,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       def syntheticRHS(vrefss: List[Lst[Tree]])(using Context): Tree = synthetic.name match {
         case nme.hashCode_ if isDerivedValueClass(clazz) => valueHashCodeBody
         case nme.hashCode_ => chooseHashcode
-        case nme.toString_ => toStringBody(vrefss.map(_.toList))
+        case nme.toString_ => toStringBody(vrefss)
         case nme.equals_ => equalsBody(vrefss.head.head)
         case nme.canEqual_ => canEqualBody(vrefss.head.head, synthetic.span)
         case nme.ordinal => ordinalRef
@@ -362,7 +362,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      * For case classes with primitive paramters, see [[caseHashCodeBody]].
      */
     def chooseHashcode(using Context) =
-      if (isNonJavaEnumValue) identifierRef.select(nme.hashCode_).appliedToTermArgs(Nil)
+      if (isNonJavaEnumValue) identifierRef.select(nme.hashCode_).appliedToTermArgs(Lst())
       else if (accessors.isEmpty) Literal(Constant(ownName.hashCode))
       else if (accessors.exists(_.info.finalResultType.classSymbol.isPrimitiveValueClass))
         caseHashCodeBody
@@ -399,7 +399,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val mixes = for (accessor <- accessors) yield
         Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
       val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
-      Block(accDef :: mixPrefix :: mixes, finish)
+      Block(accDef :: mixPrefix :: mixes.toList, finish)
     }
 
     /** The `hashCode` implementation for given symbol `sym`. */
@@ -472,7 +472,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
         DefDef(writeReplaceDef(clazz),
           _ => New(defn.ModuleSerializationProxyClass.typeRef,
                    defn.ModuleSerializationProxyConstructor,
-                   List(Literal(Constant(clazz.sourceModule.termRef)))))
+                   Lst(Literal(Constant(clazz.sourceModule.termRef)))))
           .withSpan(ctx.owner.span.focus))
     else
       Nil
@@ -599,12 +599,12 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       ).ensureConforms(bindingSym.info)
       ValDef(bindingSym, rhs)
 
-    val newArgs = bindingRefs.lazyZip(constrMeth.paramInfosList).map: (bindingRef, paramInfo) =>
+    val newArgs = bindingRefs.zipWith(constrMeth.paramInfos): (bindingRef, paramInfo) =>
       val refTree = ref(bindingRef)
       if paramInfo.isRepeatedParam then ctx.typer.seqToRepeated(refTree) else refTree
     Block(
       arityDef.toList ::: bindingDefs,
-      New(newPrefix, newArgs.toList)
+      New(newPrefix, newArgs)
     )
   end fromProductBody
 
@@ -645,7 +645,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
           val pat = Typed(untpd.Ident(nme.WILDCARD).withType(patType), TypeTree(patType))
           CaseDef(pat, EmptyTree, Literal(Constant(idx)))
 
-      Match(param.annotated(New(defn.UncheckedAnnot.typeRef, Nil)), cases)
+      Match(param.annotated(New(defn.UncheckedAnnot.typeRef, Lst())), cases)
   end ordinalBody
 
   /** - If `impl` is the companion of a generic sum, add `deriving.Mirror.Sum` parent

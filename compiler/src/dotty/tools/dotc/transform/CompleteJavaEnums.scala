@@ -75,7 +75,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
   /** Add arguments `args` to the parent constructor application in `parents` that invokes
    *  a constructor of `targetCls`,
    */
-  private def addEnumConstrArgs(targetCls: Symbol, parents: List[Tree], args: List[Tree])(using Context): List[Tree] =
+  private def addEnumConstrArgs(targetCls: Symbol, parents: List[Tree], args: Lst[Tree])(using Context): List[Tree] =
     parents.map {
       case app @ Apply(fn, args0) if fn.symbol.owner == targetCls =>
         if args0.nonEmpty && targetCls == defn.JavaEnumClass then
@@ -192,20 +192,20 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     if cls.derivesFromJavaEnum then
       registerEnumClass(cls) // invariant: class is visited before cases: see tests/pos/enum-companion-first.scala
       val (params, rest) = decomposeTemplateBody(templ.body)
-      val addedDefs = addedParams(cls, isLocal=true, ParamAccessor).toList
+      val addedDefs = addedParams(cls, isLocal=true, ParamAccessor)
       val addedSyms = addedDefs.map(_.symbol.entered)
       val addedForwarders = addedEnumForwarders(cls)
       cpy.Template(templ)(
         parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
-        body = params ++ addedDefs ++ addedForwarders ++ rest)
+        body = params ++ addedDefs.toIterable ++ addedForwarders ++ rest)
     else if isJavaEnumValueImpl(cls) then
       def creatorParamRef(name: TermName) =
         ref(cls.owner.paramSymss.head.find(_.name == name).get)
       val args =
         if cls.owner.isAllOf(EnumCase) then
-          List(Literal(Constant(cls.owner.name.toString)), Literal(Constant(ordinalFor(cls.owner))))
+          Lst(Literal(Constant(cls.owner.name.toString)), Literal(Constant(ordinalFor(cls.owner))))
         else
-          List(creatorParamRef(nme.nameDollar), creatorParamRef(nme.ordinalDollar_))
+          Lst(creatorParamRef(nme.nameDollar), creatorParamRef(nme.ordinalDollar_))
       cpy.Template(templ)(
         parents = addEnumConstrArgs(cls.owner.owner.linkedClass, templ.parents, args),
       )

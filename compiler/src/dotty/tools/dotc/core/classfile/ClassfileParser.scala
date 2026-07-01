@@ -513,11 +513,11 @@ final class ClassfileParser(
       denot.info = sigToType(sig, isVarargs = isVarargs)
       if (isConstructor) normalizeConstructorParams()
       if isNative then
-        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.NativeAnnot)(New(defn.NativeAnnot.typeRef, Nil))
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.NativeAnnot)(New(defn.NativeAnnot.typeRef, Lst()))
       if isTransient then
-        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.TransientAnnot)(New(defn.TransientAnnot.typeRef, Nil))
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.TransientAnnot)(New(defn.TransientAnnot.typeRef, Lst()))
       if isVolatile then
-        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.VolatileAnnot)(New(defn.VolatileAnnot.typeRef, Nil))
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.VolatileAnnot)(New(defn.VolatileAnnot.typeRef, Lst()))
       denot.info = translateTempPoly(attrCompleter.complete(denot.info, isVarargs))
       if (isConstructor) normalizeConstructorInfo()
 
@@ -811,7 +811,7 @@ final class ClassfileParser(
         val enumCaseName = pool.getName(in.nextChar)
         if (skip) None else Some(EnumTag(sig, enumCaseName))
       case ARRAY_TAG =>
-        val arr = new ArrayBuffer[untpd.Tree]()
+        val arr = new Lst.Buffer[untpd.Tree]
         var hasError = false
         for (i <- 0 until index)
           parseAnnotArg(skip) match {
@@ -821,17 +821,14 @@ final class ClassfileParser(
           }
         if (hasError) None
         else if (skip) None
-        else {
-          val elems = arr.toList
-          Some(untpd.JavaSeqLiteral(elems, untpd.TypeTree()))
-        }
+        else Some(untpd.JavaSeqLiteral(arr.toLst, untpd.TypeTree()))
       case ANNOTATION_TAG =>
         parseAnnotation(index, skip).map(_.untpdTree)
     }
   }
 
-  class ClassfileAnnotation(annotType: Type, lazyArgs: List[(NameOrString, untpd.Tree | EnumTag)]) extends LazyAnnotation {
-    private def args(using Context): List[untpd.Tree] =
+  class ClassfileAnnotation(annotType: Type, lazyArgs: Lst[(NameOrString, untpd.Tree | EnumTag)]) extends LazyAnnotation {
+    private def args(using Context): Lst[untpd.Tree] =
       lazyArgs.map {
         case (name, tree: untpd.Tree) => untpd.NamedArg(name.name, tree).withSpan(NoSpan)
         case (name, tag: EnumTag)     => untpd.NamedArg(name.name, tag.toTree).withSpan(NoSpan)
@@ -853,7 +850,7 @@ final class ClassfileParser(
   def parseAnnotation(attrNameIndex: Char, skip: Boolean = false)(using ctx: Context, in: DataReader): Option[ClassfileAnnotation] = try {
     val attrType = pool.getType(attrNameIndex.toInt)
     val nargs = in.nextChar.toInt
-    val argbuf = new ListBuffer[(NameOrString, untpd.Tree | EnumTag)]
+    val argbuf = new Lst.Buffer[(NameOrString, untpd.Tree | EnumTag)]
     var hasError = false
     for (i <- 0 until nargs) {
       val name = pool.getName(in.nextChar)
@@ -873,7 +870,7 @@ final class ClassfileParser(
         None
       case _ =>
         if (hasError || skip) None
-        else Some(ClassfileAnnotation(attrType, argbuf.toList))
+        else Some(ClassfileAnnotation(attrType, argbuf.toLst))
   }
   catch {
     case f: FatalError => throw f // don't eat fatal errors, they mean a class was not found
@@ -933,7 +930,7 @@ final class ClassfileParser(
       permittedSubclasses.foreach { child =>
         val cls = getClassSymbol(child.name)
         sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)(
-          New(defn.ChildAnnot.typeRef.appliedTo(cls.owner.thisType.select(cls.name, cls)), Nil)
+          New(defn.ChildAnnot.typeRef.appliedTo(cls.owner.thisType.select(cls.name, cls)), Lst())
           .withSpan(NoSpan)
           ))
         }
@@ -971,7 +968,7 @@ final class ClassfileParser(
           val msg = Literal(Constant("see corresponding Javadoc for more information."))
           val since = Literal(Constant(""))
           res.annotations ::= Annotation.deferredSymAndTree(defn.DeprecatedAnnot) {
-            New(defn.DeprecatedAnnot.typeRef, msg :: since :: Nil)
+            New(defn.DeprecatedAnnot.typeRef, Lst(msg, since))
           }
 
         case tpnme.ConstantValueATTR =>
@@ -990,7 +987,7 @@ final class ClassfileParser(
                 res.namedParams += (i -> name.name)
 
         case tpnme.AnnotationDefaultATTR =>
-          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil, sym.span))
+          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Lst(), sym.span))
 
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
         case tpnme.RuntimeVisibleAnnotationATTR

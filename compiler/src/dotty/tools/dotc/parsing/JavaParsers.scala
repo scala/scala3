@@ -109,10 +109,10 @@ object JavaParsers {
     def javaLangRecord(): Tree = javaLangDot(tpnme.Record)
 
     def arrayOf(tpt: Tree): AppliedTypeTree =
-      AppliedTypeTree(scalaDot(tpnme.Array), List(tpt))
+      AppliedTypeTree(scalaDot(tpnme.Array), Lst(tpt))
 
     def classOf(tpt: Tree): Tree =
-      TypeApply(Select(scalaDot(nme.Predef), nme.classOf), List(tpt))
+      TypeApply(Select(scalaDot(nme.Predef), nme.classOf), Lst(tpt))
 
     def makeTemplate(parents: List[Tree], stats: List[Tree], tparams: Lst[TypeDef], needsDummyConstr: Boolean): Template = {
       def UnitTpt(): Tree = TypeTree(defn.UnitType)
@@ -351,7 +351,7 @@ object JavaParsers {
       if (in.token == LT) {
         in.nextToken()
         val t1 = convertToTypeId(t)
-        val args = repsep(() => typeArg(), COMMA)
+        val args = repsepLst(() => typeArg(), COMMA)
         acceptClosingAngle()
         atSpan(t1.span.start) {
           AppliedTypeTree(t1, args)
@@ -405,7 +405,7 @@ object JavaParsers {
             in.nextToken() // using this instead of repsep allows us to handle trailing commas
         accept(RBRACE)
         Option.unless(buffer contains None) {
-          Apply(scalaDot(nme.Array), buffer.flatten.toList)
+          Apply(scalaDot(nme.Array), buffer.flatten.toList.toLst)
         }
 
       def argValue(): Option[Tree] =
@@ -467,7 +467,7 @@ object JavaParsers {
       Option.unless(args contains None) {
         Apply(
           Select(New(id), nme.CONSTRUCTOR),
-          args.flatten.toList
+          args.flatten.toList.toLst
         )
       }
     }
@@ -1055,7 +1055,7 @@ object JavaParsers {
         AppliedTypeTree(javaLangDot(tpnme.Enum), List(enumType))
         */
       val superclazz = Apply(TypeApply(
-        Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), List(enumType)), Nil)
+        Select(New(javaLangDot(tpnme.Enum)), nme.CONSTRUCTOR), Lst(enumType)), Lst())
       val enumclazz = atSpan(start, nameOffset) {
         TypeDef(name,
           makeTemplate(superclazz :: interfaces, body, Lst(), needsDummyConstr = true)).withMods(mods | Flags.JavaEnum)

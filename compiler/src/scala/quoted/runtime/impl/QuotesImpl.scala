@@ -469,7 +469,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
             }
             val closureTpe = Types.MethodType(mtpe.paramNames, mtpe.paramInfos, closureResType)
             val closureMethod = dotc.core.Symbols.newAnonFun(owner, closureTpe)
-            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToTermArgs(tss.head.toList).etaExpand(closureMethod))
+            tpd.Closure(closureMethod, tss => new tpd.TreeOps(self).appliedToTermArgs(tss.head).etaExpand(closureMethod))
           case _ => self
         }
 
@@ -573,9 +573,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         assert(!denot.isOverloaded, s"The symbol `$name` is overloaded. The method Select.unique can only be used for non-overloaded symbols.")
         withDefaultPos(tpd.Select(qualifier, name.toTermName))
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term]): Term =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs.toLst, Types.WildcardType))
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args.toLst, targs.toLst, Types.WildcardType))
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term =
-        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs.toLst, returnType))
+        withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args.toLst, targs.toLst, returnType))
       def copy(original: Tree)(qualifier: Term, name: String): Select =
         original match
           case original: tpd.Select if original.name.toString == name =>
@@ -713,11 +713,11 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def apply(fun: Term, args: List[Term]): Apply =
         xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.MethodType], "Expected `fun.tpe` to widen into a `MethodType`")
         xCheckMacroValidExprs(args)
-        withDefaultPos(tpd.Apply(fun, args))
+        withDefaultPos(tpd.Apply(fun, args.toLst))
       def copy(original: Tree)(fun: Term, args: List[Term]): Apply =
         xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.MethodType], "Expected `fun.tpe` to widen into a `MethodType`")
         xCheckMacroValidExprs(args)
-        tpd.cpy.Apply(original)(fun, args)
+        tpd.cpy.Apply(original)(fun, args.toLst)
       def unapply(x: Apply): (Term, List[Term]) =
         (x.fun, x.args)
     end Apply
@@ -738,7 +738,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
               .withSpan(self.span)
 
         def args: List[Term] = self match
-          case self: tpd.Apply => self.args
+          case self: tpd.Apply => self.args.toList
           case self: tpd.Quote => List(self.body) // TODO expose Quote AST in Quotes
           case self: tpd.Splice => List(self.expr) // TODO expose Splice AST in Quotes
       end extension
@@ -755,18 +755,18 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object TypeApply extends TypeApplyModule:
       def apply(fun: Term, args: List[TypeTree]): TypeApply =
         xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.PolyType], "Expected `fun.tpe` to widen into a `PolyType`")
-        withDefaultPos(tpd.TypeApply(fun, args))
+        withDefaultPos(tpd.TypeApply(fun, args.toLst))
       def copy(original: Tree)(fun: Term, args: List[TypeTree]): TypeApply =
         xCheckMacroAssert(fun.tpe.widen.isInstanceOf[dotc.core.Types.PolyType], "Expected `fun.tpe` to widen into a `PolyType`")
-        tpd.cpy.TypeApply(original)(fun, args)
+        tpd.cpy.TypeApply(original)(fun, args.toLst)
       def unapply(x: TypeApply): (Term, List[TypeTree]) =
-        (x.fun, x.args)
+        (x.fun, x.args.toList)
     end TypeApply
 
     given TypeApplyMethods: TypeApplyMethods with
       extension (self: TypeApply)
         def fun: Term = self.fun
-        def args: List[TypeTree] = self.args
+        def args: List[TypeTree] = self.args.toList
       end extension
     end TypeApplyMethods
 
@@ -906,10 +906,10 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Closure extends ClosureModule:
       def apply(meth: Term, tpe: Option[TypeRepr]): Closure =
         xCheckMacroAssert(meth.symbol.isAnonymousFunction, "Closures must refer to anonymous functions")
-        withDefaultPos(tpd.Closure(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
+        withDefaultPos(tpd.Closure(Lst(), meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
 
       def copy(original: Tree)(meth: Tree, tpe: Option[TypeRepr]): Closure =
-        tpd.cpy.Closure(original)(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
+        tpd.cpy.Closure(original)(Lst(), meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
       def unapply(x: Closure): (Term, Option[TypeRepr]) =
         (x.meth, x.tpeOpt)
     end Closure
@@ -1074,17 +1074,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     object Repeated extends RepeatedModule:
       def apply(elems: List[Term], elemtpt: TypeTree): Repeated =
         xCheckMacroValidExprs(elems)
-        withDefaultPos(tpd.SeqLiteral(elems, elemtpt))
+        withDefaultPos(tpd.SeqLiteral(elems.toLst, elemtpt))
       def copy(original: Tree)(elems: List[Term], elemtpt: TypeTree): Repeated =
         xCheckMacroValidExprs(elems)
-        tpd.cpy.SeqLiteral(original)(elems, elemtpt)
+        tpd.cpy.SeqLiteral(original)(elems.toLst, elemtpt)
       def unapply(x: Repeated): (List[Term], TypeTree) =
-        (x.elems, x.elemtpt)
+        (x.elems.toList, x.elemtpt)
     end Repeated
 
     given RepeatedMethods: RepeatedMethods with
       extension (self: Repeated)
-        def elems: List[Term] = self.elems
+        def elems: List[Term] = self.elems.toList
         def elemtpt: TypeTree = self.elemtpt
       end extension
     end RepeatedMethods
@@ -1339,17 +1339,17 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Applied extends AppliedModule:
       def apply(tpt: TypeTree, args: List[Tree]): Applied =
-        withDefaultPos(tpd.AppliedTypeTree(tpt, args))
+        withDefaultPos(tpd.AppliedTypeTree(tpt, args.toLst))
       def copy(original: Tree)(tpt: TypeTree, args: List[Tree]): Applied =
-        tpd.cpy.AppliedTypeTree(original)(tpt, args)
+        tpd.cpy.AppliedTypeTree(original)(tpt, args.toLst)
       def unapply(x: Applied): (TypeTree, List[Tree /*TypeTree | TypeBoundsTree*/]) =
-        (x.tpt, x.args)
+        (x.tpt, x.args.toList)
     end Applied
 
     given AppliedMethods: AppliedMethods with
       extension (self: Applied)
         def tpt: TypeTree = self.tpt
-        def args: List[Tree] = self.args
+        def args: List[Tree] = self.args.toList
       end extension
     end AppliedMethods
 
@@ -1635,9 +1635,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Unapply extends UnapplyModule:
       def apply(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
-        withDefaultPos(tpd.UnApply(fun, implicits.toLst, patterns, dotc.core.Symbols.defn.NothingType))
+        withDefaultPos(tpd.UnApply(fun, implicits.toLst, patterns.toLst, dotc.core.Symbols.defn.NothingType))
       def copy(original: Tree)(fun: Term, implicits: List[Term], patterns: List[Tree]): Unapply =
-        withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits.toLst, patterns))
+        withDefaultPos(tpd.cpy.UnApply(original)(fun, implicits.toLst, patterns.toLst))
       def unapply(x: Unapply): (Term, List[Term], List[Tree]) =
         (x.fun, x.implicits, x.patterns)
     end Unapply
@@ -1651,12 +1651,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           case self: tpd.UnApply => self.implicits.toList
           case self: tpd.QuotePattern => QuotePatterns.encode(self).implicits.toList // TODO expose QuotePattern AST in Quotes
         def patterns: List[Tree] = self match
-          case self: tpd.UnApply => effectivePatterns(self.patterns)
-          case self: tpd.QuotePattern => effectivePatterns(QuotePatterns.encode(self).patterns) // TODO expose QuotePattern AST in Quotes
+          case self: tpd.UnApply => effectivePatterns(self.patterns.toList)
+          case self: tpd.QuotePattern => effectivePatterns(QuotePatterns.encode(self).patterns.toList) // TODO expose QuotePattern AST in Quotes
       end extension
       private def effectivePatterns(patterns: List[Tree]): List[Tree] =
         patterns match
-          case patterns0 :+ dotc.ast.Trees.SeqLiteral(elems, _) => patterns0 ::: elems
+          case patterns0 :+ dotc.ast.Trees.SeqLiteral(elems, _) => patterns0 ::: elems.toList
           case _ => patterns
     end UnapplyMethods
 
@@ -3160,7 +3160,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def caseFields: List[Symbol] =
           if !self.isClass then Nil
-          else self.asClass.paramAccessors.collect {
+          else self.asClass.paramAccessors.toList.collect {
             case sym if sym.is(dotc.core.Flags.CaseAccessor) => sym.asTerm
           }
 

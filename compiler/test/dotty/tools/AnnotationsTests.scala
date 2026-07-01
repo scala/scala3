@@ -125,5 +125,5 @@ class AnnotationsTest:
         annot.arguments(0).stripNamedArg.stripInlined match
         case Apply(Apply(_, List(Typed(SeqLiteral(ks, _), _))), _) =>
           assert(ks.length == 3, i"$ks")
-          assert(ks.map(_.tpe).collect { case ConstantType(Constant(s: String)) => s } == List("a", "b", "c"))
+          assert(ks.map(_.tpe).collect { case ConstantType(Constant(s: String)) => s } == Lst("a", "b", "c"))
         case bad => assert(false, s"Bad arg $bad")

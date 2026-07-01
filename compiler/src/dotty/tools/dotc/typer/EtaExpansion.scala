@@ -57,7 +57,7 @@ abstract class Lifter {
   /** Hook for lifters that need to record or mark freshly created lifted defs. */
   protected def onLiftedDef(tree: Tree)(using Context): Unit = ()
 
-  private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
+  private def lift(defs: Lst.Buffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
     else {
       val name = UniqueName.fresh(prefix)
@@ -81,7 +81,7 @@ abstract class Lifter {
    *
    *     lhs += expr
    */
-  def liftAssigned(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree = tree match {
+  def liftAssigned(defs: Lst.Buffer[Tree], tree: Tree)(using Context): Tree = tree match {
     case Apply(MaybePoly(fn @ Select(pre, name), targs), args) =>
       cpy.Apply(tree)(
         cpy.Select(fn)(
@@ -94,7 +94,7 @@ abstract class Lifter {
   }
 
   /** Lift a function argument, stripping any NamedArg wrapper and repeated Typed trees */
-  private def liftArg(defs: mutable.ListBuffer[Tree], arg: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
+  private def liftArg(defs: Lst.Buffer[Tree], arg: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     arg match {
       case arg @ NamedArg(name, arg1) => cpy.NamedArg(arg)(name, lift(defs, arg1, prefix))
       case arg @ Typed(arg1, tpt) if tpt.typeOpt.isRepeatedParam => cpy.Typed(arg)(lift(defs, arg1, prefix), tpt)
@@ -104,17 +104,16 @@ abstract class Lifter {
   /** Lift arguments that are not-idempotent into ValDefs in buffer `defs`
    *  and replace by the idents of so created ValDefs.
    */
-  def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(using Context): List[Tree] =
+  def liftArgs(defs: Lst.Buffer[Tree], methRef: Type, args: Lst[Tree])(using Context): Lst[Tree] =
     methRef.widen match {
       case mt: MethodType =>
-        val argsArray = args.toLst
-        List.tabulate(argsArray.length min mt.paramNames.length): i =>
-          val arg = argsArray(i)
+        Lst.tabulate(args.length min mt.paramNames.length): i =>
+          val arg = args(i)
           val name = mt.paramNames(i)
           val tp = mt.paramInfos(i)
           if tp.hasAnnotation(defn.InlineParamAnnot) then arg
-          else
-            lifterFor(tp).liftArg(defs, arg, if name.firstPart.contains('$') then EmptyTermName else name)
+          else lifterFor(tp).liftArg(defs, arg,
+            if name.firstPart.contains('$') then EmptyTermName else name)
       case _ =>
         args.mapConserve(liftArg(defs, _))
     }
@@ -132,7 +131,7 @@ abstract class Lifter {
    *  But leave pure expressions alone.
    *
    */
-  def liftApp(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree = tree match {
+  def liftApp(defs: Lst.Buffer[Tree], tree: Tree)(using Context): Tree = tree match {
     case Apply(fn, args) =>
       val fn1 = liftApp(defs, fn)
       val args1 = liftArgs(defs, fn.tpe, args)
@@ -145,7 +144,7 @@ abstract class Lifter {
         else liftNonIdempotentPrefix(defs, pre)
       cpy.Select(tree)(liftedPrefix, name)
     case Block(stats, expr) =>
-      liftApp(defs ++= stats, expr)
+      liftApp(defs ++= stats.toLst, expr)
     case New(tpt) =>
       tree
     case _ =>
@@ -159,7 +158,7 @@ abstract class Lifter {
    *
    *  unless `pre` is idempotent.
    */
-  private def liftNonIdempotentPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
+  private def liftNonIdempotentPrefix(defs: Lst.Buffer[Tree], tree: Tree)(using Context): Tree =
     if (isIdempotentExpr(tree)) tree else lift(defs, tree)
 
   /** Lift prefix `pre` of an application `pre.f(...)` to
@@ -172,7 +171,7 @@ abstract class Lifter {
    *  Note that default arguments will refer to the prefix, we do not want
    *  to re-evaluate a complex expression each time we access a getter.
    */
-  private def liftPrefix(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree =
+  private def liftPrefix(defs: Lst.Buffer[Tree], tree: Tree)(using Context): Tree =
     tree match
       case tree: Literal => tree
       case tree: This => tree
@@ -258,7 +257,7 @@ object EtaExpansion extends LiftImpure {
   def etaExpand(tree: Tree, mt: MethodType, xarity: Int)(using Context): untpd.Tree = {
     import untpd.*
     assert(!ctx.isAfterTyper || (ctx.phase eq ctx.base.inliningPhase), ctx.phase)
-    val defs = new mutable.ListBuffer[tpd.Tree]
+    val defs = new Lst.Buffer[tpd.Tree]
     val lifted: Tree = TypedSplice(liftApp(defs, tree))
     val isLastApplication = mt.resultType match {
       case rt: MethodType => rt.isImplicitMethod
@@ -274,15 +273,15 @@ object EtaExpansion extends LiftImpure {
       val erased = if mt.paramInfos(i).isForErasedParam then Erased else EmptyFlags
       ValDef(mt.paramNames(i), paramTypes(i), EmptyTree)
         .withFlags(paramFlag | erased).withSpan(tree.span.startPos)
-    var ids: List[Tree] = mt.paramNames.map(name => Ident(name).withSpan(tree.span.startPos)).toList
+    var ids: Lst[Tree] = mt.paramNames.map(name => Ident(name).withSpan(tree.span.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
-    val body = Apply(lifted, ids.toList)
+    val body = Apply(lifted, ids)
     if (mt.isContextualMethod) body.setApplyKind(ApplyKind.Using)
     val fn =
       if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given))
       else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
       else untpd.Function(params, body)
-    if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
+    if !defs.isEmpty then untpd.Block(defs.toLst.mapToList(untpd.TypedSplice(_)), fn) else fn
   }
 }

@@ -109,7 +109,7 @@ object QuotePatterns:
               report.error("Type arguments of a hoas pattern needs to be defined inside the quoted pattern", typearg.srcPos)
           for (arg <- tree.args) // case (2)
           do
-            if !uncapturedTypeVars(arg, tree.typeargs).isEmpty then
+            if !uncapturedTypeVars(arg, tree.typeargs.toList).isEmpty then
               report.error("Type variables that this argument depends on are not captured in this hoas pattern", arg.srcPos)
         case _ => traverseChildren(tree)
       }
@@ -161,7 +161,7 @@ object QuotePatterns:
     val unapplySym = if quotePattern.body.isTerm then defn.QuoteMatching_ExprMatch_unapply else defn.QuoteMatching_TypeMatch_unapply
     val unapplyFun = quotePattern.quotes.asInstance(defn.QuoteMatchingClass.typeRef).select(matchModule).select(unapplySym)
 
-    val typeBindingsTuple = tpd.hkNestedPairsTypeTree(quotePattern.bindings)
+    val typeBindingsTuple = tpd.hkNestedPairsTypeTree(quotePattern.bindings.toLst)
 
     val (splicePatterns, shape0) = splitQuotePattern(quotePattern.body)
 
@@ -196,8 +196,8 @@ object QuotePatterns:
       Bind(givenTypeSym, untpd.Ident(nme.WILDCARD).withType(tpe)).withSpan(binding.span)
     }
 
-    val patterns = givenTypes ::: splicePatterns
-    val patternTypes = patterns.mapToLst(_.tpe.widenTermRefExpr)
+    val patterns = (givenTypes ::: splicePatterns).toLst
+    val patternTypes = patterns.map(_.tpe.widenTermRefExpr)
 
     val splicePat =
       if patterns.isEmpty then ref(defn.EmptyTupleModule.termRef)
@@ -220,9 +220,9 @@ object QuotePatterns:
       defn.tupleType(quotedTypes ++ quotedExprs)
 
     UnApply(
-      fun = unapplyFun.appliedToTypeTrees(typeBindingsTuple :: TypeTree(patType) :: Nil),
+      fun = unapplyFun.appliedToTypeTrees(Lst(typeBindingsTuple, TypeTree(patType))),
       implicits = Lst(quotedShape),
-      patterns = splicePat :: Nil,
+      patterns = Lst(splicePat),
       quotePattern.tpe)
 
   /** Split a typed quoted pattern into the contents of its splices and replace them with place holders.
@@ -260,7 +260,7 @@ object QuotePatterns:
     val patBuf = new mutable.ListBuffer[Tree]
     val shape = new tpd.TreeMap {
       override def transform(tree: Tree)(using Context) = tree match {
-        case Typed(splice @ SplicePattern(pat, Nil, Nil), tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
+        case Typed(splice @ SplicePattern(pat, Lst.empty(), Lst.empty()), tpt) if !tpt.tpe.derivesFrom(defn.RepeatedParamClass) =>
           transform(tpt) // Collect type bindings
           transform(splice)
         case SplicePattern(pat, typeargs, args) =>
@@ -275,7 +275,7 @@ object QuotePatterns:
               .appliedTo(SeqLiteral(args, TypeTree(defn.AnyType)))
               .withSpan(tree.span)
           else ref(defn.QuotedRuntimePatterns_higherOrderHoleWithTypes.termRef)
-            .appliedToTypeTrees(List(TypeTree(tree.tpe), tpd.hkNestedPairsTypeTree(typeargs)))
+            .appliedToTypeTrees(Lst(TypeTree(tree.tpe), tpd.hkNestedPairsTypeTree(typeargs)))
             .appliedTo(SeqLiteral(args, TypeTree(defn.AnyType)))
             .withSpan(tree.span)
         case _ =>
@@ -292,17 +292,17 @@ object QuotePatterns:
    */
   def decode(tree: UnApply)(using Context): QuotePattern =
     val (fun, implicits, patternTuple) = (tree: @unchecked) match
-      case UnApply(fun, implicits, patternTuple :: Nil) => (fun, implicits, patternTuple)
+      case UnApply(fun, implicits, Lst.single(patternTuple)) => (fun, implicits, patternTuple)
     val patterns = patternTuple match
-      case _: Ident => Nil // EmptyTuple
+      case _: Ident => Lst() // EmptyTuple
       case UnApply(_, _, patterns) => patterns // TupleN
       case Typed(UnApply(_, _, patterns), _) => patterns // TupleXXL
     val shape = (implicits: @unchecked) match
       case Lst.single(Apply(Select(Quote(shape, _), _), _)) => shape
-      case Lst.single(Apply(TypeApply(_, shape :: Nil), _)) => shape
+      case Lst.single(Apply(TypeApply(_, Lst.single(shape)), _)) => shape
     fun match
       // <quotes>.asInstanceOf[QuoteMatching].{ExprMatch,TypeMatch}.unapply[<typeBindings>, <resTypes>]
-      case TypeApply(Select(Select(TypeApply(Select(quotes, _), _), _), _), typeBindings :: resTypes :: Nil) =>
+      case TypeApply(Select(Select(TypeApply(Select(quotes, _), _), _), _), Lst.pair(typeBindings, resTypes)) =>
         val bindings = unrollHkNestedPairsTypeTree(typeBindings)
         val addPattenSplice = new TreeMap {
           private val patternIterator = patterns.iterator.filter {
@@ -311,11 +311,11 @@ object QuotePatterns:
           }
           override def transform(tree: tpd.Tree)(using Context): tpd.Tree = tree match
             case TypeApply(patternHole, _) if patternHole.symbol == defn.QuotedRuntimePatterns_patternHole =>
-              cpy.SplicePattern(tree)(patternIterator.next(), Nil, Nil)
-            case Apply(patternHole, SeqLiteral(args, _) :: Nil) if patternHole.symbol == defn.QuotedRuntimePatterns_higherOrderHole =>
-              cpy.SplicePattern(tree)(patternIterator.next(), Nil, args)
-            case Apply(TypeApply(patternHole, List(_, targsTpe)), SeqLiteral(args, _) :: Nil) if patternHole.symbol == defn.QuotedRuntimePatterns_higherOrderHoleWithTypes =>
-              cpy.SplicePattern(tree)(patternIterator.next(), unrollHkNestedPairsTypeTree(targsTpe), args)
+              cpy.SplicePattern(tree)(patternIterator.next(), Lst(), Lst())
+            case Apply(patternHole, Lst.single(SeqLiteral(args, _))) if patternHole.symbol == defn.QuotedRuntimePatterns_higherOrderHole =>
+              cpy.SplicePattern(tree)(patternIterator.next(), Lst(), args)
+            case Apply(TypeApply(patternHole, Lst.pair(_, targsTpe)), Lst.single(SeqLiteral(args, _))) if patternHole.symbol == defn.QuotedRuntimePatterns_higherOrderHoleWithTypes =>
+              cpy.SplicePattern(tree)(patternIterator.next(), unrollHkNestedPairsTypeTree(targsTpe).toLst, args)
             case _ => super.transform(tree)
         }
         val body = addPattenSplice.transform(shape) match
@@ -334,6 +334,6 @@ object QuotePatterns:
         cpy.QuotePattern(tree)(bindings, body, quotes)
 
   private def unrollHkNestedPairsTypeTree(tree: Tree)(using Context): List[Tree] = tree match
-    case AppliedTypeTree(tupleN, bindings) if defn.isTupleClass(tupleN.symbol) => bindings // TupleN, 1 <= N <= 22
-    case AppliedTypeTree(_, head :: tail :: Nil) => head :: unrollHkNestedPairsTypeTree(tail) // KCons or *:
+    case AppliedTypeTree(tupleN, bindings) if defn.isTupleClass(tupleN.symbol) => bindings.toList // TupleN, 1 <= N <= 22
+    case AppliedTypeTree(_, Lst.pair(head, tail)) => head :: unrollHkNestedPairsTypeTree(tail) // KCons or *:
     case _ => Nil // KNil or EmptyTuple

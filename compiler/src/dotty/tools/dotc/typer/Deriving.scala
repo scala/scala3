@@ -271,15 +271,15 @@ trait Deriving {
       /** The type class instance definition with symbol `sym` */
       def typeclassInstance(sym: Symbol)(using Context): List[Lst[tpd.Tree]] => tpd.Tree =
         (paramRefss: List[Lst[tpd.Tree]]) =>
-          val (tparamRefs, vparamRefss) = splitArgs(paramRefss.map(_.toList))
-          val tparamTypes = tparamRefs.mapToLst(_.tpe)
+          val (tparamRefs, vparamRefss) = splitArgs(paramRefss)
+          val tparamTypes = tparamRefs.tpes
           val tparams = tparamTypes.map(_.typeSymbol.asType)
-          val vparams = if (vparamRefss.isEmpty) Nil else vparamRefss.head.map(_.symbol.asTerm)
+          val vparams = if vparamRefss.isEmpty then Lst() else vparamRefss.head.map(_.symbol.asTerm)
           tparams.foreach(ctx.enter(_))
           vparams.foreach(ctx.enter(_))
           def instantiated(info: Type): Type = info match {
             case info: PolyType => instantiated(info.instantiate(tparamTypes))
-            case info: MethodType => info.instantiate(vparams.mapToLst(_.termRef))
+            case info: MethodType => info.instantiate(vparams.map(_.termRef))
             case info => info.widenExpr
           }
           def companionRef(tp: Type): TermRef = tp match {

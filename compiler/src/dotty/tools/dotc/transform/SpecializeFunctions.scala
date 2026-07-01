@@ -76,7 +76,7 @@ class SpecializeFunctions extends MiniPhase {
 
     // create a forwarding to the specialized apply
     val args = ddef.termParamss.head.map(vparam => ref(vparam.symbol))
-    val rhs = This(cls).select(specializedApply).appliedToTermArgs(args.toList)
+    val rhs = This(cls).select(specializedApply).appliedToTermArgs(args)
     val ddef1 = cpy.DefDef(ddef)(rhs = rhs)
     Thicket(ddef1, specializedDecl)
   }

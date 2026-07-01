@@ -179,9 +179,9 @@ object LambdaLift:
       thisPhase.transformFollowingDeep(if (psym.owner.isTerm) ref(psym) else memberRef(psym))
     }
 
-    def addFreeArgs(sym: Symbol, args: List[Tree])(using Context): List[Tree] =
+    def addFreeArgs(sym: Symbol, args: Lst[Tree])(using Context): Lst[Tree] =
       val fvs = deps.freeVars(sym)
-      if fvs.nonEmpty then fvs.toList.map(proxyRef(_)) ++ args else args
+      if fvs.nonEmpty then fvs.toLst.map(proxyRef(_)) ++ args else args
 
     def addFreeParams(tree: Tree, proxies: Lst[Symbol])(using Context): Tree = proxies match {
       case Lst.empty() => tree

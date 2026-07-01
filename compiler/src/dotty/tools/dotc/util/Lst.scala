@@ -5,6 +5,7 @@ import java.lang.System.arraycopy
 import collection.mutable.ListBuffer
 import reflect.ClassTag
 import scala.collection.immutable
+import scala.util.Sorting
 
 class Lst[+T](private val arr: Array[Object]) extends AnyVal {
 
@@ -41,6 +42,16 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
     var change = false
     while i < length do
       ys(i) = f(at(i)).asInstanceOf[Object]
+      if ys(i) `ne` arr(i) then change = true
+      i += 1
+    if change then new Lst(ys) else this.asInstanceOf[Lst[U]]
+
+  def mapWithIndexConserve[U](f: (T, Int) => U): Lst[U] =
+    val ys = new Array[Object](arr.length)
+    var i = 0
+    var change = false
+    while i < length do
+      ys(i) = f(at(i), i).asInstanceOf[Object]
       if ys(i) `ne` arr(i) then change = true
       i += 1
     if change then new Lst(ys) else this.asInstanceOf[Lst[U]]
@@ -85,7 +96,7 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
    *  `xs` to themselves. Also, it is required that `ys` is at least
    *  as long as `xs`.
    */
-  def zipWithConserve[V >: T, U](ys: Lst[U])(f: (T, U) => V): Lst[V] =
+  def zipWithConserve[V, U](ys: Lst[U])(f: (T, U) => V): Lst[V] =
     val zs = new Array[Object](length min ys.length)
     var i = 0
     var change = false
@@ -93,7 +104,7 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
       zs(i) = f(at(i), ys(i)).asInstanceOf[Object]
       if arr(i) `ne` zs(i) then change = true
       i += 1
-    if change then new Lst(zs) else this
+    if change then new Lst(zs) else this.asInstanceOf[Lst[V]]
 
   def foldLeft[U](z: U)(f: (U, T) => U): U =
     var acc = z
@@ -107,6 +118,25 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
     def recur(start: Int): U =
       if start < length then f(at(start), recur(start + 1)) else z
     recur(0)
+
+  def reduce[U >: T](f: (U, U) => U): U =
+    var acc: U = at(0)
+    var i = 1
+    while i < arr.length do
+      acc = f(acc, at(i))
+      i += 1
+    acc
+
+  /** Reduce left with `op` as long as list `xs` is not longer than `seqLimit`.
+   *  Otherwise, split list in two half, reduce each, and combine with `op`.
+   */
+  def reduceBalanced[U >: T](op: (U, U) => U, seqLimit: Int = 100): U =
+    val len = length
+    if len > seqLimit then
+      val (leading, trailing) = splitAt(len / 2)
+      op(leading.reduceBalanced(op, seqLimit), trailing.reduceBalanced(op, seqLimit))
+    else
+      reduce(op)
 
   def flatMap[U](f: T => Lst[U]): Lst[U] =
     map[Lst[U]](f).flatten
@@ -127,6 +157,13 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
       if f.isDefinedAt(at(i)) then buf += f(at(i))
       i += 1
     buf.toLst
+
+  def collectFirst[U](f: PartialFunction[T, U]): Option[U] =
+    var i = 0
+    while i < length do
+      if f.isDefinedAt(at(i)) then return Some(f(at(i)))
+      i += 1
+    None
 
   def foreach(f: T => Unit): Unit =
     var i = 0
@@ -206,6 +243,8 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
     if n <= 0 then (Lst(), this)
     else if n >= length then (this, Lst())
     else (slice(0, n), slice(n, length))
+
+  def indices: Lst[Int] = Lst.range(0, length)
 
   def indexOf[U >: T](x: U): Int =
     var i = 0
@@ -294,6 +333,24 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
       i += 1
     buf.toList
 
+  def distinct: Lst[T] =
+    if length <= Lst.distincDirectMaxSize then
+      val buf = Lst.Buffer[T]()
+      var i = 0
+      while i < length do
+        var j = 0
+        while j < i && arr(j) != arr(i) do j += 1
+        if j == i then buf += at(i)
+        i += 1
+      buf.toLst
+    else Lst.fromIterable(toSet)
+
+  def sortBy[U: Ordering](f: T => U): Lst[T] =
+    val a = new Array[Object](arr.length)
+    arraycopy(arr, 0, a, 0, arr.length)
+    java.util.Arrays.sort(a, 0, a.length, Ordering[U].on(x => f(x.asInstanceOf[T])))
+    new Lst[T](a)
+
   def mkString(prefix: String, sep: String, suffix: String): String =
     val sb = StringBuilder()
     sb ++= prefix
@@ -325,6 +382,8 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
   override def toString = mkString("List(", ", ", ")")
 }
 object Lst {
+
+  private inline val distincDirectMaxSize = 6
 
   val genericEmpty: Array[Object] = new Array[Object](0)
 
@@ -379,6 +438,19 @@ object Lst {
       rs(i) = elemFn(i).asInstanceOf[Object]
       i += 1
     new Lst(rs)
+
+  def range(from: Int, until: Int): Lst[Int] =
+    val rs = new Array[Object](until - from)
+    var i = 0
+    while i < rs.length do
+      rs(i) = (i + from).asInstanceOf[Object]
+      i += 1
+    new Lst(rs)
+
+  def fromIterable[T](xs: collection.Iterable[T]): Lst[T] =
+    val buf = Lst.Buffer[T](xs.size)
+    for x <- xs do buf += x
+    buf.toLst
 
   extension [T <: AnyRef](xs: Lst[T])
 
@@ -446,6 +518,19 @@ object Lst {
         i += 1
       false
 
+    def transpose: Lst[Lst[T]] =
+      if xss.length == 0 then Lst()
+      else
+        var i = 0
+        val bufs = Lst.fill(xss(0).length)(new Lst.Buffer[T])
+        while i < xss.length do
+          var j = 0
+          while j < xss(i).length do
+            bufs(j) += xss(i)(j)
+            j += 1
+          i += 1
+        bufs.map(_.toLst)
+
   class Buffer[T](initSize: Int = 8) {
     private var elems = new Array[Object](initSize)
     private var siz: Int = 0
@@ -503,6 +588,31 @@ object Lst {
         val result = new Array[Object](siz)
         arraycopy(elems, 0, result, 0, siz)
         new Lst[T](result)
+
+    def toLstReverse: Lst[T] =
+      if siz == 0 then Lst()
+      else
+        val result = new Array[Object](siz)
+        var i = 0
+        while i < siz do
+          result(i) = elems(siz - 1 - i)
+          i += 1
+        new Lst[T](result)
+
+    def toLstSuffix(n: Int): Lst[T] =
+      if n <= 0 then Lst()
+      else if n >= siz then
+        val res = toLst
+        siz = 0
+        res
+      else
+        siz = siz - n
+        val result = new Array[Object](n)
+        arraycopy(elems, siz, result, 0, n)
+        new Lst[T](result)
+
+    def clear() =
+      siz = 0
   }
 
   class Iterable[+T](lst: Lst[T]) extends collection.immutable.Iterable[T]:

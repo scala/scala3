@@ -96,11 +96,11 @@ object DesugarEnums {
   private def valuesDot(name: PreName)(implicit src: SourceFile) =
     Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
 
-  private def ArrayLiteral(values: List[Tree], tpt: Tree)(using Context): Tree =
-    val clazzOf = TypeApply(ref(defn.Predef_classOf.termRef), tpt :: Nil)
-    val ctag    = Apply(TypeApply(ref(defn.ClassTagModule_apply.termRef), tpt :: Nil), clazzOf :: Nil)
+  private def ArrayLiteral(values: Lst[Tree], tpt: Tree)(using Context): Tree =
+    val clazzOf = TypeApply(ref(defn.Predef_classOf.termRef), Lst(tpt))
+    val ctag    = Apply(TypeApply(ref(defn.ClassTagModule_apply.termRef), Lst(tpt)), Lst(clazzOf))
     val apply   = Select(ref(defn.ArrayModule.termRef), nme.apply)
-    Apply(Apply(TypeApply(apply, tpt :: Nil), values), ctag :: Nil).setApplyKind(ApplyKind.Using)
+    Apply(Apply(TypeApply(apply, Lst(tpt)), values), Lst(ctag)).setApplyKind(ApplyKind.Using)
 
   /**  The following lists of definitions for an enum type E and known value cases e_0, ..., e_n:
    *
@@ -118,7 +118,7 @@ object DesugarEnums {
     extension (tpe: NamedType) def ofRawEnum = AppliedTypeTree(ref(tpe), rawEnumClassRef)
 
     val privateValuesDef =
-      ValDef(nme.DOLLAR_VALUES, TypeTree(), ArrayLiteral(enumValues, rawEnumClassRef))
+      ValDef(nme.DOLLAR_VALUES, TypeTree(), ArrayLiteral(enumValues.toLst, rawEnumClassRef))
         .withFlags(Private | Synthetic)
 
     val valuesDef =
@@ -129,10 +129,10 @@ object DesugarEnums {
       val defaultCase =
         val msg = Apply(Select(Literal(Constant(s"enum ${enumClass.fullName} has no case with name: ")), nme.PLUS), Ident(nme.nameDollar))
         CaseDef(Ident(nme.WILDCARD), EmptyTree,
-          Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(msg :: Nil))))
+          Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(Lst(msg)))))
       val stringCases = enumValues.map(enumValue =>
         CaseDef(Literal(Constant(enumValue.name.toString)), EmptyTree, enumValue)
-      ) ::: defaultCase :: Nil
+      ) :+ defaultCase
       Match(Ident(nme.nameDollar), stringCases)
     val valueOfDef = DefDef(nme.valueOf, List(Lst(param(nme.nameDollar, defn.StringType))),
       TypeTree(), valuesOfBody)
@@ -150,7 +150,7 @@ object DesugarEnums {
     def fromOrdinal: Tree =
       def throwArg(ordinal: Tree) =
         val msg = Apply(Select(Literal(Constant(s"enum ${enumClass.fullName} has no case with ordinal: ")), nme.PLUS), Select(ordinal, nme.toString_))
-        Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(msg :: Nil)))
+        Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(Lst(msg))))
       if !constraints.cached then
         fromOrdinalMeth(throwArg)
       else
@@ -305,7 +305,7 @@ object DesugarEnums {
     }
     else {
       val (tag, scaffolding) = nextOrdinal(name, CaseKind.Simple, definesLookups)
-      val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
+      val creator = Apply(Ident(nme.DOLLAR_NEW), Lst(Literal(Constant(tag)), Literal(Constant(name.toString))))
       val vdef = ValDef(name, enumClassRef, creator).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(vdef :: scaffolding).withSpan(span)
     }

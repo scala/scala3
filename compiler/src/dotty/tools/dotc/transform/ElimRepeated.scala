@@ -191,8 +191,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
         val elemtp = vararg.tpe.widen.argInfos.head
         ref(sym.termRef)
-          .appliedToArgss(init.map(_.toList))
-          .appliedToTermArgs(last.toList :+ wrapArray(vararg, elemtp))
+          .appliedToArgss(init)
+          .appliedToTermArgs(last :+ wrapArray(vararg, elemtp))
           .withSpan(Span(tree.span.start))
       ).withSpan(tree.span.toSynthetic)
       Thicket(tree, forwarderDef)

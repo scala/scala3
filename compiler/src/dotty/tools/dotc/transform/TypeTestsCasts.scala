@@ -14,7 +14,7 @@ import reporting.*
 import config.Printers.{ transforms => debug }
 
 import patmat.Typ
-import dotty.tools.dotc.util.SrcPos
+import dotty.tools.dotc.util.{Lst, SrcPos}
 
 /** This transform normalizes type tests and type casts,
  *  also replacing type tests with singleton argument type with reference equality check
@@ -192,7 +192,7 @@ object TypeTestsCasts {
         def isPrimitive(tp: Type) = tp.classSymbol.isPrimitiveValueClass
 
         def derivedTree(expr1: Tree, sym: Symbol, tp: Type) =
-          cpy.TypeApply(tree)(expr1.select(sym).withSpan(expr.span), List(TypeTree(tp)))
+          cpy.TypeApply(tree)(expr1.select(sym).withSpan(expr.span), Lst(TypeTree(tp)))
 
         def inMatch =
           tree.fun.symbol == defn.Any_typeTest ||  // new scheme
@@ -300,7 +300,7 @@ object TypeTestsCasts {
             // In the JVM `x.asInstanceOf[Nothing]` would throw a class cast exception except when `x eq null`.
             // To avoid this loophole we execute `x` and then regardless of the result throw a `ClassCastException`
             val throwCCE = Throw(New(defn.ClassCastExceptionClass.typeRef, defn.ClassCastExceptionClass_stringConstructor,
-                Literal(Constant("Cannot cast to scala.Nothing")) :: Nil))
+                Lst(Literal(Constant("Cannot cast to scala.Nothing")))))
             Block(expr :: Nil, throwCCE).withSpan(expr.span)
           }
           else

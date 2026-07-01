@@ -273,6 +273,7 @@ object PatternMatcher {
             case component :: components1 => letAbstract(component, component.avoidPatBoundType())(sym => matchArgsComponentsPlan(components1, sym :: syms))
             case Nil => matchArgsPatternPlan(args, syms.reverse)
           }
+
         def matchArgsPatternPlan(args: List[Tree], syms: List[Symbol]): Plan =
           args match {
             case arg :: args1 =>
@@ -288,6 +289,7 @@ object PatternMatcher {
               assert(syms.isEmpty)
               onSuccess
           }
+
         matchArgsComponentsPlan(components, Nil)
       }
 
@@ -400,9 +402,9 @@ object PatternMatcher {
           val isGenericTuple = defn.isTupleClass(caseClass) &&
             !defn.isTupleNType(tree.tpe match { case tp: OrType => tp.join case tp => tp }) // widen even hard unions, to see if it's a union of tuples
           val components =
-            if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(_, ref(scrutinee)))
+            if isGenericTuple then caseAccessors.indices.map(tupleApp(_, ref(scrutinee)))
             else caseAccessors.map(tupleSel)
-          matchArgsPlan(components, args, onSuccess)
+          matchArgsPlan(components.toList, args, onSuccess)
         else if unappType.isRef(defn.BooleanClass) then
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
         else
@@ -488,7 +490,7 @@ object PatternMatcher {
             // This plan will never execute because it'll be guarded by a `NonNullTest`.
             ResultPlan(tpd.Throw(tpd.nullLiteral))
           else {
-            def applyImplicits(acc: Tree, implicits: List[Tree], mt: Type): Tree = mt match {
+            def applyImplicits(acc: Tree, implicits: Lst[Tree], mt: Type): Tree = mt match {
               case mt: MethodType =>
                 assert(mt.isImplicitMethod)
                 val (args, rest) = implicits.splitAt(mt.paramNames.size)
@@ -499,8 +501,8 @@ object PatternMatcher {
             }
             val mt @ MethodType(_) = extractor.tpe.widen: @unchecked
             val unapp0 = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))
-            val unapp = applyImplicits(unapp0, implicits.toList, mt.resultType)
-            unapplyPlan(unapp, args)
+            val unapp = applyImplicits(unapp0, implicits, mt.resultType)
+            unapplyPlan(unapp, args.toList)
           }
           if (scrutinee.info.isNotNull || nonNull(scrutinee)) unappPlan
           else TestPlan(NonNullTest, scrutinee, tree.span, unappPlan)
@@ -532,7 +534,7 @@ object PatternMatcher {
         case WildcardPattern() | This(_) =>
           onSuccess
         case SeqLiteral(pats, _) =>
-          matchElemsPlan(scrutinee, pats, LengthTest(pats.length, exact = true), onSuccess)
+          matchElemsPlan(scrutinee, pats.toList, LengthTest(pats.length, exact = true), onSuccess)
         case _ =>
           TestPlan(EqualTest(tree), scrutinee, tree.span, onSuccess)
       }
@@ -558,7 +560,7 @@ object PatternMatcher {
 
     private def matchPlan(tree: Match): Plan =
       letAbstract(tree.selector) { scrutinee =>
-        val matchError: Plan = ResultPlan(Throw(New(defn.MatchErrorClass.typeRef, ref(scrutinee) :: Nil)))
+        val matchError: Plan = ResultPlan(Throw(New(defn.MatchErrorClass.typeRef, Lst(ref(scrutinee)))))
         tree.cases.foldRight(matchError) { (cdef, next) =>
           SeqPlan(caseDefPlan(scrutinee, cdef), next)
         }

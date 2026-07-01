@@ -159,13 +159,13 @@ object RefChecks {
       def checkParamInits(app: Apply): Unit =
         val parentCls = app.tpe.classSymbol
         if parentCls.is(Trait) then
-          val params = parentCls.asClass.paramGetters.toLst
-          val args = termArgss(app).flatten
+          val params = parentCls.asClass.paramGetters
+          val args = termArgss(app).flattenLst
           for (param, arg) <- params.lazyZip(args) do
             if !param.is(Private) then // its type can be narrowed through intersection -> a check is needed
               val paramType = cls.thisType.memberInfo(param)
               if !(arg.tpe <:< paramType) then
-                val argTypes = args.mapToLst(_.tpe)
+                val argTypes = args.tpes
                 // it could still be OK but we might need to substitute arguments for parameters
                 // to account for dependent parameters. See pos/i11993.scala
                 if !(arg.tpe.subst(params, argTypes) <:< paramType.subst(params, argTypes))

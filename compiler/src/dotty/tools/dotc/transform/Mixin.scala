@@ -217,7 +217,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
      *     due to reorderings with named and/or default parameters).
      *   - a list of arguments to be used as initializers of trait parameters
      */
-    def transformConstructor(tree: Tree): (Tree, List[Tree], List[Tree]) = tree match {
+    def transformConstructor(tree: Tree): (Tree, List[Tree], Lst[Tree]) = tree match {
       case Block(stats, expr) =>
         val (scall, inits, args) = transformConstructor(expr)
         if args.isEmpty then
@@ -233,14 +233,14 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
               stat.symbol.enteredAfter(thisPhase)
             case _ =>
           }
-          (scall, stats ::: inits, args)
+          (scall, stats ++ inits, args)
       case _ =>
         val Apply(sel @ Select(New(_), nme.CONSTRUCTOR), args) = tree: @unchecked
-        val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Nil, args) else (args, Nil)
+        val (callArgs, initArgs) = if (tree.symbol.owner.is(Trait)) (Lst(), args) else (args, Lst())
         (superRef(tree.symbol, tree.span).appliedToTermArgs(callArgs), Nil, initArgs)
     }
 
-    val superCallsAndArgs: Map[Symbol, (Tree, List[Tree], List[Tree])] = (
+    val superCallsAndArgs: Map[Symbol, (Tree, List[Tree], Lst[Tree])] = (
       for (p <- impl.parents; constr = stripBlock(p).symbol if constr.isConstructor)
       yield constr.owner -> transformConstructor(p)
     ).toMap
@@ -293,7 +293,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
                       cls.srcPos)
                 transformFollowing(superRef(getter).appliedToNone)
               else
-                New(getter.info.resultType, List(This(cls)))
+                New(getter.info.resultType, Lst(This(cls)))
             else
               Underscore(getter.info.resultType)
           // transformFollowing call is needed to make memoize & lazy vals run
@@ -356,7 +356,7 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
         else if (!cls.isPrimitiveValueClass) {
           val mixInits = mixins.flatMap { mixin =>
             val prefix = superCallsAndArgs.get(mixin) match
-              case Some((_, inits, _)) => inits
+              case Some((_, inits, _)) => inits.toList
               case _ => Nil
             prefix
             ::: flatten(traitInits(mixin))

@@ -292,6 +292,9 @@ class TailRec extends MiniPhase {
     def noTailTransforms[Tr <: Tree](trees: List[Tr])(using Context): List[Tr] =
       trees.mapConserve(noTailTransform).asInstanceOf[List[Tr]]
 
+    def noTailTransforms[Tr <: Tree](trees: Lst[Tr])(using Context): Lst[Tr] =
+      trees.mapConserve(noTailTransform).asInstanceOf[Lst[Tr]]
+
     override def transform(tree: Tree)(using Context): Tree = {
       /* Rewrite an Apply to be considered for tail call transformation. */
       def rewriteApply(tree: Apply): Tree = {
@@ -354,15 +357,11 @@ class TailRec extends MiniPhase {
             tailrec.println("Rewriting tail recursive call:  " + tree.span)
             rewrote = true
 
-            val assignParamPairs = for {
-              (param, arg) <- paramSyms.toList.zip(arguments)
-              if (arg match {
+            val assignParamPairs = paramSyms.zip(arguments).collect:
+              case (param, arg) if arg match
                 case arg: Ident => arg.symbol != param
                 case _ => true
-              })
-            }
-            yield
-              (getVarForRewrittenParam(param), arg)
+              => (getVarForRewrittenParam(param), arg)
 
             val assignThisAndParamPairs = prefix match
               case EmptyTree =>
@@ -377,27 +376,28 @@ class TailRec extends MiniPhase {
                 // Avoid assigning `this = MyObject`
                 assignParamPairs
               case _ =>
-                (getVarForRewrittenThis(), noTailTransform(prefix)) :: assignParamPairs
+                (getVarForRewrittenThis(), noTailTransform(prefix)) +: assignParamPairs
 
-            val assignments = assignThisAndParamPairs match {
-              case (lhs, rhs) :: Nil =>
-                Assign(ref(lhs), rhs) :: Nil
-              case _ :: _ =>
-                val (tempValDefs, assigns) = (for ((lhs, rhs) <- assignThisAndParamPairs) yield {
-                  val temp = newSymbol(method, TailTempName.fresh(lhs.name.toTermName), Synthetic, lhs.info)
-                  (ValDef(temp, rhs), Assign(ref(lhs), ref(temp)).withSpan(tree.span))
-                }).unzip
-                tempValDefs ::: assigns
-              case nil =>
-                Nil
-            }
+            val assignments = assignThisAndParamPairs match
+              case Lst.empty() =>
+                Lst()
+              case Lst.single((lhs, rhs)) =>
+                Lst(Assign(ref(lhs), rhs))
+              case _ =>
+                val (tempValDefs, assigns) =
+                  assignThisAndParamPairs
+                    .map: (lhs, rhs) =>
+                      val temp = newSymbol(method, TailTempName.fresh(lhs.name.toTermName), Synthetic, lhs.info)
+                      (ValDef(temp, rhs), Assign(ref(lhs), ref(temp)).withSpan(tree.span))
+                    .unzip
+                tempValDefs ++ assigns
 
             /* The `Typed` node is necessary to perfectly preserve the type of the node.
              * Without it, lubbing in enclosing if/else or match can infer a different type,
              * which can cause Ycheck errors.
              */
             val tpt = TypeTree(method.info.resultType)
-            seq(assignments, Typed(Return(unitLiteral.withSpan(tree.span), continueLabel), tpt))
+            seq(assignments.toList, Typed(Return(unitLiteral.withSpan(tree.span), continueLabel), tpt))
           }
           else fail("it is not in tail position")
         else if (isRecursiveSuperCall)

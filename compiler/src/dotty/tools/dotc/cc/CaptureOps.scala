@@ -57,7 +57,7 @@ extension (tree: Tree)
    *  annotation tree (represented as an Apply node).
    */
   def retainedSet(using Context): Type = tree match
-    case Apply(TypeApply(_, refs :: Nil), _) => refs.tpe
+    case Apply(TypeApply(_, Lst.single(refs)), _) => refs.tpe
     case _ =>
       if tree.symbol.maybeOwner == defn.RetainsCapAnnot
       then defn.Caps_any.termRef
@@ -901,7 +901,7 @@ object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
 object OnlyCapability:
   def apply(tp: Type, cls: ClassSymbol)(using Context): AnnotatedType =
     AnnotatedType(tp,
-      Annotation(defn.OnlyCapabilityAnnot.typeRef.appliedTo(cls.typeRef), Nil, util.Spans.NoSpan))
+      Annotation(defn.OnlyCapabilityAnnot.typeRef.appliedTo(cls.typeRef), Lst(), util.Spans.NoSpan))
 
   def unapply(tree: AnnotatedType)(using Context): Option[(Type, ClassSymbol)] = tree match
     case AnnotatedType(parent: Type, ann) if ann.hasSymbol(defn.OnlyCapabilityAnnot) =>
@@ -929,7 +929,7 @@ object ContainsImpl:
     tree.fun.tpe.widen match
       case fntpe: PolyType if tree.fun.symbol == defn.Caps_containsImpl =>
         tree.args match
-          case csArg :: refArg :: Nil => Some((csArg, refArg))
+          case Lst.pair(csArg, refArg) => Some((csArg, refArg))
           case _ => None
       case _ => None
 

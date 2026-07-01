@@ -23,6 +23,7 @@ import dotty.tools.dotc.parsing.Tokens
 import dotty.tools.dotc.typer.Implicits.SearchSuccess
 import dotty.tools.dotc.typer.Inferencing
 import dotty.tools.dotc.util.Chars
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.util.SourcePosition
 
 import scala.collection.mutable
@@ -107,7 +108,7 @@ object Completion:
       else if sel.isGiven && sel.bound.span.contains(pos.span) then Mode.ImportOrExport
       else Mode.None // import scala.{util => u@@}
     case GenericImportOrExport(_) => Mode.ImportOrExport | Mode.Scope // import TrieMa@@
-    case untpd.InterpolatedString(_, untpd.Literal(Constants.Constant(_: String)) :: _) :: _ =>
+    case untpd.InterpolatedString(_, Lst.withHead(untpd.Literal(Constants.Constant(_: String)))) :: _ =>
       Mode.Term | Mode.Scope
     case untpd.Literal(Constants.Constant(_: String)) :: _ => Mode.Term | Mode.Scope // literal completions
     case (ref: untpd.RefTree) :: _ =>
@@ -191,7 +192,7 @@ object Completion:
   private object NamedTupleSelection:
     def unapply(path: List[tpd.Tree])(using Context): Option[tpd.Tree] =
       path match
-        case (tpd.Apply(tpd.Apply(tpd.TypeApply(fun, _), List(qual)), _)) :: _
+        case (tpd.Apply(tpd.Apply(tpd.TypeApply(fun, _), Lst.single(qual)), _)) :: _
           if fun.symbol.exists && fun.symbol.name == nme.apply &&
              fun.symbol.owner.exists && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
           Some(qual)
@@ -580,7 +581,7 @@ object Completion:
           val typingCtx = ctx.fresh
           inContext(typingCtx):
             val methodRefTree = tpd.ref(conversionTarget.ref, needLoad = false)
-            val convertedTree = ctx.typer.typedAheadExpr(untpd.Apply(untpd.TypedSplice(methodRefTree), untpd.TypedSplice(qual) :: Nil))
+            val convertedTree = ctx.typer.typedAheadExpr(untpd.Apply(untpd.TypedSplice(methodRefTree), Lst(untpd.TypedSplice(qual))))
             Inferencing.fullyDefinedType(convertedTree.tpe, "", pos)
         catch
           case error => conversionTarget.tree.tpe // fallback to not fully defined type

@@ -8,6 +8,7 @@ import NameKinds.NonLocalReturnKeyName
 import config.SourceVersion.*
 import Decorators.em
 import dotty.tools.dotc.config.MigrationVersion
+import util.Lst
 
 object NonLocalReturns {
   import ast.tpd.*
@@ -62,7 +63,7 @@ class NonLocalReturns extends MiniPhase {
     Throw(
       New(
         nonLocalReturnControl,
-        ref(nonLocalReturnKey(meth)) :: expr.ensureConforms(defn.ObjectType) :: Nil))
+        Lst(ref(nonLocalReturnKey(meth)), expr.ensureConforms(defn.ObjectType))))
 
   /** Transform (body, key) to:
    *
@@ -78,7 +79,7 @@ class NonLocalReturns extends MiniPhase {
    *  }
    */
   private def nonLocalReturnTry(body: Tree, key: TermSymbol, meth: Symbol)(using Context) = {
-    val keyDef = ValDef(key, New(defn.ObjectType, Nil))
+    val keyDef = ValDef(key, New(defn.ObjectType, Lst()))
     val ex = newSymbol(meth, nme.ex, Case, nonLocalReturnControl, coord = body.span)
     val pat = BindTyped(ex, nonLocalReturnControl)
     val rhs = If(

@@ -6139,7 +6139,7 @@ object Types extends TypeUtils {
         def takesNoArgs(tp: Type) =
           !tp.classSymbol.primaryConstructor.exists
               // e.g. `ContextFunctionN` does not have constructors
-          || tp.applicableConstructors(argTypes = Nil, adaptVarargs = true).lengthCompare(1) == 0
+          || tp.applicableConstructors(argTypes = Lst(), adaptVarargs = true).lengthCompare(1) == 0
               // we require a unique constructor so that SAM expansion is deterministic
         val noArgsNeeded: Boolean =
           takesNoArgs(tp)

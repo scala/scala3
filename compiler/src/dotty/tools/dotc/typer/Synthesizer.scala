@@ -237,7 +237,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
   val synthesizedValueOf: SpecialHandler = (formal, span) =>
 
     def success(t: Tree) =
-      New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), t :: Nil).withSpan(span)
+      New(defn.ValueOfClass.typeRef.appliedTo(t.tpe), Lst(t)).withSpan(span)
     formal.argInfos match
       case Lst.single(arg) =>
         fullyDefinedType(arg, "ValueOf argument", ctx.source.atSpan(span)).normalized.dealias match
@@ -451,7 +451,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
      *  using TupleMirror avoids generating anonymous classes for tuple mirrors.
      */
     def newTupleMirror(arity: Int): Tree =
-      New(defn.RuntimeTupleMirrorTypeRef, Literal(Constant(arity)) :: Nil)
+      New(defn.RuntimeTupleMirrorTypeRef, Lst(Literal(Constant(arity))))
 
     def makeNamedTupleProductMirror(nameTypePairs: Lst[(TermName, Type)]): TreeWithErrors =
       val (labels, typeElems) = nameTypePairs.unzip
@@ -474,8 +474,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
 
     def makeClassProductMirror(pre: Type, cls: Symbol, tps: Option[Lst[Type]]) =
       val accessors = cls.caseAccessors
-      val elemLabels = accessors.mapToLst(acc => ConstantType(Constant(acc.name.toString)))
-      val typeElems = tps.getOrElse(accessors.mapToLst(mirroredType.resultType.memberInfo(_).widenExpr))
+      val elemLabels = accessors.map(acc => ConstantType(Constant(acc.name.toString)))
+      val typeElems = tps.getOrElse(accessors.map(mirroredType.resultType.memberInfo(_).widenExpr))
       val mirrorRef = (monoType: Type) =>
         if cls.useCompanionAsProductMirror then companionPath(pre, cls, span)
         else if defn.isTupleClass(cls) then newTupleMirror(typeElems.size)
@@ -512,7 +512,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
             val mirrorType = formal.constrained_& {
               mirrorCore(defn.Mirror_SingletonProxyClass, mirroredType, mirroredType, singleton.name)
             }
-            val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, singletonPath :: Nil)
+            val mirrorRef = New(defn.Mirror_SingletonProxyClass.typeRef, Lst(singletonPath))
             withNoErrors(mirrorRef.cast(mirrorType).withSpan(span))
           else
             val mirrorType = formal.constrained_& {
@@ -710,7 +710,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
         EmptyTree
       else
         val factory = if kind == Full then defn.ManifestFactoryModule else defn.ClassManifestFactoryModule
-        applyOverloaded(ref(factory), constructor, args.toList, Lst(tparg), Types.WildcardType).withSpan(span)
+        applyOverloaded(ref(factory), constructor, args.toLst, Lst(tparg), Types.WildcardType).withSpan(span)
 
     /* Creates a tree representing one of the singleton manifests.*/
     def singletonManifest(name: TermName) =

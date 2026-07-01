@@ -427,14 +427,14 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
 
   @deprecated("Consider requiring an immutable Map or fall back to Map.concat", "2.13.0")
   override def + [V1 >: V](kv: (K, V1)): AnyRefMap[K, V1] = AnyRefMap.from(new View.Appended(this, kv))
-
+/*
   @deprecated("Use ++ with an explicit collection argument instead of + with varargs", "2.13.0")
   override def + [V1 >: V](elem1: (K, V1), elem2: (K, V1), elems: (K, V1)*): AnyRefMap[K, V1]^{} = {
     // An empty capture annotation is needed in the result type to satisfy the overriding checker.
     val m = this + elem1 + elem2
     if(elems.isEmpty) m else m.concat(elems)
   }
-
+*/
   override def concat[V2 >: V](xs: scala.collection.IterableOnce[(K, V2)]^): AnyRefMap[K, V2] = {
     val arm = clone().asInstanceOf[AnyRefMap[K, V2]]
     xs.iterator.foreach(kv => arm += kv)

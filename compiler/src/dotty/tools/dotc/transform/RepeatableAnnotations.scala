@@ -44,7 +44,7 @@ class RepeatableAnnotations extends MiniPhase:
               report.error("Container must not be present at the same time as the element it contains", pos)
               Nil
             else
-              val aggregated = JavaSeqLiteral(anns.map(_.tree).toList, TypeTree(sym.typeRef))
+              val aggregated = JavaSeqLiteral(anns.mapToLst(_.tree), TypeTree(sym.typeRef))
               Annotation(containerTpe, NamedArg("value".toTermName, aggregated), sym.span) :: Nil
           case _ =>
             val pos = anns.head.tree.srcPos

@@ -122,7 +122,7 @@ trait Migrations:
             |A `using` clause is needed to pass explicit arguments to them.$rewriteMsg""",
         tree.srcPos, mversion)
       tree match
-        case Apply(ta @ TypeApply(Select(New(_), _), _), Nil) =>
+        case Apply(ta @ TypeApply(Select(New(_), _), _), Lst.empty()) =>
           // Remove empty arguments for calls to new that may precede the context bound.
           // They are no longer necessary.
           patch(Span(ta.span.end, pt.args.head.span.start - 1), "")

@@ -42,7 +42,7 @@ abstract class AccessProxies {
           case info: PolyType => info.paramNames.length
           case _ => 0
         }
-        val (targs, argss) = splitArgs(prefss.map(_.toList))
+        val (targs, argss) = splitArgs(prefss)
         val (accessRef, forwardedTpts, forwardedArgss) =
           if (passReceiverAsArg(accessor.name))
             (argss.head.head.select(accessed), targs.takeRight(numTypeParams), argss.tail)

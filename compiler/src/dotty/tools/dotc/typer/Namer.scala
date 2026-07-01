@@ -1325,14 +1325,14 @@ class Namer { typer: Typer =>
        */
       def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit =
 
-        def adaptForwarderParams(acc: List[List[tpd.Tree]], tp: Type, prefss: List[List[tpd.Tree]])
-          : List[List[tpd.Tree]] = tp match
+        def adaptForwarderParams(acc: List[Lst[tpd.Tree]], tp: Type, prefss: List[Lst[tpd.Tree]])
+          : List[Lst[tpd.Tree]] = tp match
             case mt: MethodType
             if mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam =>
               // Note: in this branch we use the assumptions
               // that `prefss.head` corresponds to `mt.paramInfos` and
               // that `prefss.tail` corresponds to `mt.resType`
-              val init :+ vararg = prefss.head: @unchecked
+              val Lst.consRight(init, vararg) = prefss.head: @unchecked
               val prefs = init :+ ctx.typeAssigner.seqToRepeated(vararg)
               adaptForwarderParams(prefs :: acc, mt.resType, prefss.tail)
             case mt: MethodOrPoly =>
@@ -1425,8 +1425,8 @@ class Namer { typer: Typer =>
             val ddef = tpd.DefDef(forwarder.asTerm, prefss => {
               val forwarderCtx = ctx.withOwner(forwarder)
               val (pathRefss, methRefss) = prefss.splitAt(extensionParamsCount(path.tpe.widen))
-              val ref = path.appliedToArgss(pathRefss.map(_.toList)).select(sym.asTerm).withSpan(span.focus)
-              val rhs = ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss.map(_.toList)))
+              val ref = path.appliedToArgss(pathRefss).select(sym.asTerm).withSpan(span.focus)
+              val rhs = ref.appliedToArgss(adaptForwarderParams(Nil, sym.info, methRefss))
                 .etaExpandCFT(using forwarderCtx)
               if forwarder.isInlineMethod then
                 // Eagerly make the body inlineable. `registerInlineInfo` does this lazily
@@ -1678,10 +1678,10 @@ class Namer { typer: Typer =>
         def typedParentApplication(parent: untpd.Tree): Type =
           val (core, targs) = stripApply(parent) match
             case TypeApply(core, targs) => (core, targs)
-            case core => (core, Nil)
+            case core => (core, Lst())
           core match
             case Select(New(tpt), nme.CONSTRUCTOR) =>
-              val targs1 = targs.mapToLst(typedAheadType(_))
+              val targs1 = targs.map(typedAheadType(_))
               val ptype = typedAheadType(tpt).tpe.appliedTo(targs1.tpes)
               if ptype.typeParams.isEmpty && !ptype.dealias.typeSymbol.is(Dependent) then
                 ptype
@@ -1701,7 +1701,7 @@ class Namer { typer: Typer =>
             // Try to infer type parameters from a synthetic application.
             // This might yield new info if implicit parameters are resolved.
             // A test case is i16778.scala.
-            val app = untpd.Apply(untpd.Select(untpd.New(parentTpt), nme.CONSTRUCTOR), Nil)
+            val app = untpd.Apply(untpd.Select(untpd.New(parentTpt), nme.CONSTRUCTOR), Lst())
             typedParentApplication(app)
             app.getAttachment(TypedAhead).getOrElse(parentTpt)
           else
@@ -2080,7 +2080,7 @@ class Namer { typer: Typer =>
    */
   def completeTrailingParamss(ddef: DefDef, sym: Symbol, indexingCtor: Boolean)(using Context): Unit =
     // A map from context-bounded type parameters to associated evidence parameter names
-    val witnessNamesOfParam = mutable.Map[TypeDef, List[TermName]]()
+    val witnessNamesOfParam = mutable.Map[TypeDef, Lst[TermName]]()
     if !ddef.name.is(DefaultGetterName) && !sym.is(Synthetic) && (indexingCtor || !sym.isPrimaryConstructor) then
       for params <- ddef.paramss; tdef <- params do
         tdef match
@@ -2090,7 +2090,7 @@ class Namer { typer: Typer =>
           case _ =>
 
     /** Is each name in `wnames` defined somewhere in the previous parameters? */
-    def allParamsSeen(wnames: List[TermName], prevParams: Set[Name]) =
+    def allParamsSeen(wnames: Lst[TermName], prevParams: Set[Name]) =
       (wnames.toSet[Name] -- prevParams).isEmpty
 
     /** Enter and typecheck parameter list.

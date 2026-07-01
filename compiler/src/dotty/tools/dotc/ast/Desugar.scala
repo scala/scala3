@@ -284,7 +284,7 @@ object desugar {
       freshName: untpd.Tree => TermName,
       allParamss: List[ParamClause])(using Context): TypeDef =
 
-    val evidenceNames = ListBuffer.empty[TermName]
+    val evidenceNames = Lst.Buffer[TermName]()
 
     def desugarRHS(rhs: Tree): Tree = rhs match
       case ContextBounds(tbounds, ctxbounds) =>
@@ -318,12 +318,12 @@ object desugar {
     // the same method, add a WitnessAnnotation with all generated evidence names to `tdef`.
     // This means a context bound proxy will be created later.
     if Feature.enabled(Feature.modularity)
-        && evidenceNames.nonEmpty
+        && !evidenceNames.isEmpty
         && !evidenceBuf.exists(_.name == tdef.name.toTermName)
         && !allParamss.nestedExistsLst(_.name == tdef.name.toTermName)
     then
       tdef1.withAddedAnnotation:
-        WitnessNamesAnnot(evidenceNames.toList).withSpan(tdef.span)
+        WitnessNamesAnnot(evidenceNames.toLst).withSpan(tdef.span)
     else
       tdef1
   end desugarContextBounds
@@ -823,7 +823,7 @@ object desugar {
 
     val classTycon: Tree = TypeRefTree() // watching is set at end of method
 
-    def appliedTypeTree(tycon: Tree, args: List[Tree]) =
+    def appliedTypeTree(tycon: Tree, args: Lst[Tree]) =
       (if (args.isEmpty) tycon else AppliedTypeTree(tycon, args))
         .withSpan(cdef.span.startPos)
 
@@ -843,7 +843,7 @@ object desugar {
         val targ = refOfDef(tparam)
         def fullyApplied(tparam: Tree): Tree = tparam match {
           case TypeDef(_, LambdaTypeTree(tparams, body)) =>
-            AppliedTypeTree(targ, tparams.mapToList(_ => WildcardTypeBoundsTree()))
+            AppliedTypeTree(targ, tparams.map(_ => WildcardTypeBoundsTree()))
           case TypeDef(_, rhs: DerivedTypeTree) =>
             fullyApplied(rhs.watched)
           case _ =>
@@ -851,7 +851,7 @@ object desugar {
         }
         if (widenHK) fullyApplied(tparam) else targ
       }
-      appliedTypeTree(tycon, targs.toList)
+      appliedTypeTree(tycon, targs)
     }
 
     // a reference to the class type bound by `cdef`, with type parameters coming from the constructor
@@ -866,7 +866,7 @@ object desugar {
       else {
         report.error(TypedCaseDoesNotExplicitlyExtendTypedEnum(enumClass, cdef)
             , cdef.srcPos.startPos)
-        appliedTypeTree(enumClassRef, constrTparams.mapToList(_ => anyRef))
+        appliedTypeTree(enumClassRef, constrTparams.map(_ => anyRef))
       }
 
     // new C[Ts](paramss)
@@ -882,7 +882,7 @@ object desugar {
           then constrVparamss :+ Lst() // add a trailing () to match class parameters
           else constrVparamss
       val nu = vparamss.foldLeft(makeNew(classTypeRef)) { (nu, vparams) =>
-        val app = Apply(nu, vparams.mapToList(refOfDef))
+        val app = Apply(nu, vparams.map(refOfDef))
         vparams match {
           case Lst.withHead(vparam) if vparam.mods.isOneOf(GivenOrImplicit) || vparam.name.is(ContextBoundParamName) =>
             app.setApplyKind(ApplyKind.Using)
@@ -1013,7 +1013,7 @@ object desugar {
               case vparams =>
                 val tupleApply = Select(Ident(nme.scala), s"Tuple$arity".toTermName)
                 val members = vparams.map(vparam => Select(Ident(unapplyParamName), vparam.name))
-                Apply(scalaDot(nme.Option), Apply(tupleApply, members.toList))
+                Apply(scalaDot(nme.Option), Apply(tupleApply, members))
 
           val hasRepeatedParam = constrVparamss.head.exists {
             case ValDef(_, tpt, _) => isRepeated(tpt)
@@ -1375,7 +1375,7 @@ object desugar {
    *  @param followArgs   if true include argument types in the name
    */
   private class NameExtractor(followArgs: Boolean) extends UntypedTreeAccumulator[String] {
-    private def extractArgs(args: List[Tree])(using Context): String =
+    private def extractArgs(args: Lst[Tree])(using Context): String =
       args.map(argNameExtractor.apply("", _)).mkString("_")
     override def apply(x: String, tree: Tree)(using Context): String =
       if (x.isEmpty)
@@ -1390,14 +1390,14 @@ object desugar {
           case ContextBoundTypeTree(tycon, paramName, _) =>
             s"${apply(x, tycon)}_$paramName"
           case InfixOp(left, op, right) =>
-            if followArgs then s"${op.name}_${extractArgs(List(left, right))}"
+            if followArgs then s"${op.name}_${extractArgs(Lst(left, right))}"
             else op.name.toString
           case tree: LambdaTypeTree =>
             apply(x, tree.body)
           case tree: Tuple =>
             extractArgs(tree.trees)
           case tree: Function if tree.args.nonEmpty =>
-            if followArgs then s"${extractArgs(tree.args.toList)}_to_${apply("", tree.body)}"
+            if followArgs then s"${extractArgs(tree.args)}_to_${apply("", tree.body)}"
             else "Function"
           case _ => foldOver(x, tree)
         }
@@ -1550,9 +1550,9 @@ object desugar {
           case TuplePattern(pats, _) =>
             // We want to include wildcards for the optimizations, so we can't use `IdPattern` which excludes them
             val allVariables = pats.map {
-              case id: Ident if isVarPattern(id) => Some(id, TypeTree())
-              case Typed(id: Ident, tpt) if isVarPattern(id) => Some((id, tpt))
-              case _ => None
+              case id: Ident if isVarPattern(id) => Lst((id, TypeTree()))
+              case Typed(id: Ident, tpt) if isVarPattern(id) => Lst((id, tpt))
+              case _ => Lst()
             }.flatten
             if allVariables.size == pats.size then
               def isMatchingTuple(t: Tree) = t match {
@@ -1591,10 +1591,10 @@ object desugar {
           // but `lazy val (_, _) = foo()` cannot do that)
           // (we could special case "lazy with only wildcards" to lower to nothing,
           // but that does not seem like a common thing to do, since it's entirely pointless)
-          case Nil if !mods.is(Lazy) =>
+          case Lst.empty() if !mods.is(Lazy) =>
             loweredRhs
           // If there's a single non-wildcard variable in the LHS, lower to a single assignment.
-          case (named, tpt) :: Nil =>
+          case Lst.single((named, tpt)) =>
             derivedValDef(span, named, tpt, loweredRhs, mods)
           // With more than one item, we need the more general case:
           // lower to one assignment for the tuple of items, and one assignment per item to extract the value.
@@ -1609,7 +1609,7 @@ object desugar {
                                                    && elems.size == variables.size
                                                    && !pat.isInstanceOf[Typed]
                                                    && variables.forall((n, _) => n.name != nme.WILDCARD) =>
-                (Nil, elems)
+                (Lst(), elems)
               case _ =>
                 // Start with the assignment to the tuple:
                 // create a fresh name,
@@ -1626,29 +1626,31 @@ object desugar {
                   ValDef(tmpName, tupType, loweredRhs)
                     .withSpan(pat.span.union(rhs.span))
                     .withMods(patMods)
-                (List(firstDef), tmpName)
+                (Lst(firstDef), tmpName)
+
               // Then write each assignment, keeping in mind we need special selection if we exceed the max tuple arity
               val useSelectors = variables.length <= Definitions.MaxTupleArity
               def selector(idx: Int) = splitRhs match
-                case elems: List[Tree] => elems(idx)
+                case elems: Lst[Tree] => elems(idx)
                 case tmpName: TermName if useSelectors => Select(Ident(tmpName), nme.selectorName(idx))
-                case tmpName: TermName => Apply(Select(Ident(tmpName), nme.apply), Literal(Constant(idx)) :: Nil)
+                case tmpName: TermName => Apply(Select(Ident(tmpName), nme.apply), Lst(Literal(Constant(idx))))
               // and translating to a `def` or `val` as needed depending on laziness.
+              // Use variables.zipWithIndex (not namedVariables) to preserve original tuple position indices.
               val restDefs =
-                for ((named, tpt), idx) <- variables.zipWithIndex if named.name != nme.WILDCARD
-                yield
-                  if mods.is(Lazy) then
-                    DefDef(named.name.asTermName, Nil, tpt, selector(idx))
-                      .withMods(mods &~ Lazy)
-                      .withSpan(named.span)
-                      .withAttachment(PatternVar, ())
-                  else
-                    valDef(
-                      ValDef(named.name.asTermName, tpt, selector(idx))
-                        .withMods(mods)
+                variables.zipWithIndex.collect:
+                  case ((named, tpt), idx) if named.name != nme.WILDCARD =>
+                    if mods.is(Lazy) then
+                      DefDef(named.name.asTermName, Nil, tpt, selector(idx))
+                        .withMods(mods &~ Lazy)
                         .withSpan(named.span)
                         .withAttachment(PatternVar, ())
-                  )
+                    else
+                      valDef(
+                        ValDef(named.name.asTermName, tpt, selector(idx))
+                          .withMods(mods)
+                          .withSpan(named.span)
+                          .withAttachment(PatternVar, ())
+                      )
               flatTree(firstDef ++ restDefs)
     }
   }
@@ -1754,13 +1756,13 @@ object desugar {
         sel.pushAttachment(MultiLineInfix, ())
       arg match
         case Parens(arg) =>
-          Apply(sel, assignToNamedArg(arg) :: Nil)
+          Apply(sel, Lst(assignToNamedArg(arg)))
         case Tuple(args) if args.exists(_.isInstanceOf[Assign]) =>
           Apply(sel, args.mapConserve(assignToNamedArg))
         case Tuple(args) =>
-          Apply(sel, arg :: Nil).setApplyKind(ApplyKind.InfixTuple)
+          Apply(sel, Lst(arg)).setApplyKind(ApplyKind.InfixTuple)
         case _ =>
-          Apply(sel, arg :: Nil)
+          Apply(sel, Lst(arg))
 
     val apply = if op.name.isRightAssocOperatorName then
       makeOp(right, left, Span(op.span.start, right.span.end))
@@ -1780,21 +1782,23 @@ object desugar {
       throws(throws(tpt, op, l), bar, r)
     case e =>
       AppliedTypeTree(
-        TypeTree(defn.throwsAlias.typeRef).withSpan(op.span), tpt :: excepts :: Nil)
+        TypeTree(defn.throwsAlias.typeRef).withSpan(op.span), Lst(tpt, excepts))
 
-  def checkWellFormedTupleElems(elems: List[Tree])(using Context): List[Tree] =
+  def checkWellFormedTupleElems(elems: Lst[Tree])(using Context): Lst[Tree] =
     val seen = mutable.Set[Name]()
-    for case arg @ NamedArg(name, _) <- elems do
-      if seen.contains(name) then
-        report.error(em"Duplicate tuple element name", arg.srcPos)
-      seen += name
-      if name.startsWith("_") && name.toString.tail.toIntOption.isDefined then
-        report.error(
-            em"$name cannot be used as the name of a tuple element because it is a regular tuple selector",
-            arg.srcPos)
+    elems.foreach:
+      case arg @ NamedArg(name, _) =>
+        if seen.contains(name) then
+          report.error(em"Duplicate tuple element name", arg.srcPos)
+        seen += name
+        if name.startsWith("_") && name.toString.tail.toIntOption.isDefined then
+          report.error(
+              em"$name cannot be used as the name of a tuple element because it is a regular tuple selector",
+              arg.srcPos)
+      case _ =>
 
     elems match
-    case elem :: elems1 =>
+    case Lst.cons(elem, elems1) =>
       val mismatchOpt =
         if elem.isInstanceOf[NamedArg]
         then elems1.find(!_.isInstanceOf[NamedArg])
@@ -1853,49 +1857,51 @@ object desugar {
             SingletonTypeTree(Literal(Constant(name.toString))).withSpan(tree.span)),
           WildcardType)
       if ctx.mode.is(Mode.Type) then
-        AppliedTypeTree(ref(defn.NamedTupleTypeRef), namesTuple :: tup :: Nil)
+        AppliedTypeTree(ref(defn.NamedTupleTypeRef), Lst(namesTuple, tup))
       else
         Apply(
           Apply(
             TypeApply(
               Select(ref(defn.NamedTupleModule), nme.build), // NamedTuple.build
-              namesTuple :: Nil), // ++ [(names...)]
-            Nil), // ++ ()
-          tup :: Nil) // .++ ((values...))
+              Lst(namesTuple)), // ++ [(names...)]
+            Lst()), // ++ ()
+          Lst(tup)) // .++ ((values...))
 
   /** When desugaring a list pattern arguments `elems` adapt them and the
    *  expected type `pt` to each other. This means:
    *   - If `elems` are named pattern elements, rearrange them to match `pt`.
    *     This requires all names in `elems` to be also present in `pt`.
    */
-  def adaptPatternArgs(elems: List[Tree], pt: Type, pos: SrcPos)(using Context): List[Tree] =
+  def adaptPatternArgs(elems: Lst[Tree], pt: Type, pos: SrcPos)(using Context): Lst[Tree] =
 
-    def reorderedNamedArgs(wildcardSpan: Span): List[untpd.Tree] =
+    def reorderedNamedArgs(wildcardSpan: Span): Lst[untpd.Tree] =
       inline def isCaseClass = pt.classSymbol.is(CaseClass) && !defn.isTupleClass(pt.classSymbol)
       if !isCaseClass && !pt.isNamedTupleType then
         report.error(NamedPatternNotApplicable(pt), pos)
-        Nil
+        Lst()
       else
         var selNames = pt.namedTupleElementTypes(false).map(_(0))
         if isCaseClass && selNames.isEmpty then
-          selNames = pt.classSymbol.caseAccessors.mapToLst(_.name.asTermName)
+          selNames = pt.classSymbol.caseAccessors.map(_.name.asTermName)
         val nameToIdx = selNames.zipWithIndex.toMap
-        val reordered = Array.fill[untpd.Tree](selNames.length):
+        val reordered = Array.fill[Object](selNames.length):
           untpd.Ident(nme.WILDCARD).withSpan(wildcardSpan)
-        for case arg @ NamedArg(name: TermName, _) <- elems do
-          nameToIdx.get(name) match
-            case Some(idx) =>
-              if reordered(idx).isInstanceOf[Ident] then
-                reordered(idx) = arg
-              else
-                report.error(em"Duplicate named pattern", arg.srcPos)
-            case _ =>
-              report.error(em"No element named `$name` is defined in selector type $pt", arg.srcPos)
-        reordered.toList
+        elems.foreach:
+          case arg @ NamedArg(name: TermName, _) =>
+            nameToIdx.get(name) match
+              case Some(idx) =>
+                if reordered(idx).isInstanceOf[Ident] then
+                  reordered(idx) = arg
+                else
+                  report.error(em"Duplicate named pattern", arg.srcPos)
+              case _ =>
+                report.error(em"No element named `$name` is defined in selector type $pt", arg.srcPos)
+          case _ =>
+        new Lst(reordered)
       end if
 
     elems match
-      case (first @ NamedArg(_, _)) :: _ => reorderedNamedArgs(first.span.startPos)
+      case Lst.withHead(first @ NamedArg(_, _)) => reorderedNamedArgs(first.span.startPos)
       case _ => elems
   end adaptPatternArgs
 
@@ -1964,7 +1970,7 @@ object desugar {
       DefDef(nme.ANON_FUN, paramss, if (tpt == null) TypeTree() else tpt, body)
         .withSpan(span)
         .withMods(synthetic | Artifact),
-      Closure(Nil, Ident(nme.ANON_FUN), EmptyTree).withSpan(span))
+      Closure(Lst(), Ident(nme.ANON_FUN), EmptyTree).withSpan(span))
 
   /** If `nparams` == 1, expand partial function
    *
@@ -1977,9 +1983,10 @@ object desugar {
    *       (x$1, ..., x$n) => (x$0, ..., x${n-1} @unchecked?) match { cases }
    */
   def makeCaseLambda(cases: List[CaseDef], checkMode: MatchCheck, nparams: Int = 1)(using Context): Function = {
-    val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
+    val params = Lst.tabulate(nparams): i =>
+      makeSyntheticParameter(i + 1)
     val selector = makeTuple(params.map(p => Ident(p.name)))
-    Function(params.toLst, Match(makeSelector(selector, checkMode), cases))
+    Function(params, Match(makeSelector(selector, checkMode), cases))
   }
 
   /** Map n-ary function `(x1: T1, ..., xn: Tn) => body` where n != 1 to unary function as follows:
@@ -2007,7 +2014,7 @@ object desugar {
     val param = makeSyntheticParameter(
       tpt =
         if params.exists(_.tpt.isEmpty) then TypeTree()
-        else Tuple(params.mapToList(_.tpt)),
+        else Tuple(params.map(_.tpt)),
       flags =
         if params.nonEmpty && params.head.mods.is(Given) then SyntheticTermParam | Given
         else SyntheticTermParam)
@@ -2038,14 +2045,14 @@ object desugar {
   /** Convert a tuple pattern with given `elems` to a sequence of `ValDefs`,
    *  skipping elements that are not convertible.
    */
-  def patternsToParams(elems: List[Tree])(using Context): Lst[ValDef] =
+  def patternsToParams(elems: Lst[Tree])(using Context): Lst[ValDef] =
     def toParam(elem: Tree, tpt: Tree, span: Span): Tree =
       elem match
         case Annotated(elem1, _) => toParam(elem1, tpt, span)
         case Typed(elem1, tpt1) => toParam(elem1, tpt1, span)
         case Ident(id: TermName) => ValDef(id, tpt, EmptyTree).withFlags(Param).withSpan(span)
         case _ => EmptyTree
-    elems.toLst
+    elems
       .map: param =>
         toParam(param, TypeTree(), param.span)
       .collect:
@@ -2249,8 +2256,8 @@ object desugar {
        *  is done later in the pattern matcher (see discussion in @makePatFilter).
        */
       def isIrrefutable(pat: Tree, rhs: Tree): Boolean = {
-        def matchesTuple(pats: List[Tree], rhs: Tree): Boolean = rhs match {
-          case Tuple(trees) => (pats corresponds trees)(isIrrefutable)
+        def matchesTuple(pats: Lst[Tree], rhs: Tree): Boolean = rhs match {
+          case Tuple(trees) => (pats `corresponds` trees)(isIrrefutable)
           case Parens(rhs1) => matchesTuple(pats, rhs1)
           case Block(_, rhs1) => matchesTuple(pats, rhs1)
           case If(_, thenp, elsep) => matchesTuple(pats, thenp) && matchesTuple(pats, elsep)
@@ -2299,7 +2306,7 @@ object desugar {
         if sourceVersion.enablesBetterFors
           && selectName == mapName
           && gen.checkMode != GenCheckMode.Filtered // results of withFilter have the wrong type
-          && (deepEquals(gen.pat, body) || deepEquals(body, Tuple(Nil)))
+          && (deepEquals(gen.pat, body) || deepEquals(body, Tuple(Lst())))
         then
           aply.putAttachment(TrailingForMap, ())
 
@@ -2337,9 +2344,9 @@ object desugar {
               makePatDef(valeq, defpat, valeq.expr)
             val rhs1 =
               val enums = GenFrom(defpat0, gen.expr, gen.checkMode) :: Nil
-              val body = Block(pdefs, makeTuple(id0 :: ids).withAttachment(ForArtifact, ()))
+              val body = Block(pdefs, makeTuple((id0 :: ids).toLst).withAttachment(ForArtifact, ()))
               makeFor(nme.map, nme.flatMap, enums, body)
-            val allpats = gen.pat :: pats
+            val allpats = (gen.pat :: pats).toLst
             val vfrom1 = GenFrom(makeTuple(allpats), rhs1, GenCheckMode.Ignore)
             makeFor(mapName, flatMapName, enums = vfrom1 :: suffix, body)
           end if
@@ -2380,15 +2387,15 @@ object desugar {
       case SymbolLit(str) =>
         Apply(
           ref(defn.ScalaSymbolClass.companionModule.termRef),
-          Literal(Constant(str)) :: Nil)
+          Lst(Literal(Constant(str))))
       case InterpolatedString(id, segments) =>
         val strs = segments map {
           case ts: Thicket => ts.trees.head
           case t => t
         }
         val elems = segments flatMap {
-          case ts: Thicket => ts.trees.tail
-          case t => Nil
+          case ts: Thicket => ts.trees.tail.toLst
+          case t => Lst()
         } map {
           case Block(Nil, EmptyTree) => syntheticUnitLiteral // for s"... ${} ..."
           case Block(Nil, expr) => expr // important for interpolated string as patterns, see i1773.scala
@@ -2403,7 +2410,7 @@ object desugar {
           else
             Annotated(
               AppliedTypeTree(ref(defn.SeqType), t),
-              New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
+              New(ref(defn.RepeatedAnnot.typeRef), ListOfEmpty))
         else
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)
@@ -2534,9 +2541,9 @@ object desugar {
   /** Returns list of all pattern variables, possibly with their types,
    *  without duplicates.
    */
-  private def getVariables(tree: Tree, shouldAddGiven: Context ?=> Bind => Boolean)(using Context): List[VarInfo] = {
-    val buf = ListBuffer.empty[VarInfo]
-    def seenName(name: Name) = buf exists (_._1.name == name)
+  private def getVariables(tree: Tree, shouldAddGiven: Context ?=> Bind => Boolean)(using Context): Lst[VarInfo] = {
+    val buf = Lst.Buffer[VarInfo]()
+    def seenName(name: Name) = buf.exists(_._1.name == name)
     def add(named: NameTree, t: Tree): Unit =
       if (!seenName(named.name) && named.name.isTermName) buf += ((named, t))
     def collect(tree: Tree): Unit = tree match {
@@ -2558,20 +2565,20 @@ object desugar {
       case id: Ident if isVarPattern(id) && id.name != nme.WILDCARD =>
         add(id, TypeTree())
       case Apply(_, args) =>
-        args foreach collect
+        args.foreach(collect)
       case Typed(expr, _) =>
         collect(expr)
       case NamedArg(_, arg) =>
         collect(arg)
       case SeqLiteral(elems, _) =>
-        elems foreach collect
+        elems.foreach(collect)
       case Alternative(trees) =>
         for (tree <- trees; (vble, _) <- getVariables(tree, shouldAddGiven))
           report.error(IllegalVariableInPatternAlternative(vble.symbol.name), vble.srcPos)
       case Annotated(arg, _) =>
         collect(arg)
       case InterpolatedString(_, segments) =>
-        segments foreach collect
+        segments.foreach(collect)
       case InfixOp(left, _, right) =>
         collect(left)
         collect(right)
@@ -2580,7 +2587,7 @@ object desugar {
       case Parens(tree) =>
         collect(tree)
       case Tuple(trees) =>
-        trees foreach collect
+        trees.foreach(collect)
       case Thicket(trees) =>
         trees foreach collect
       case Block(Nil, expr) =>
@@ -2595,6 +2602,6 @@ object desugar {
       case _ =>
     }
     collect(tree)
-    buf.toList
+    buf.toLst
   }
 }

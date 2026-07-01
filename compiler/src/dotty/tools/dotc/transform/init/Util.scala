@@ -11,6 +11,7 @@ import ast.tpd.*
 
 import reporting.trace as log
 import config.Printers.init as printer
+import util.Lst
 
 import Trace.*
 
@@ -41,17 +42,16 @@ object Util:
 
   object Call:
 
-    def unapply(tree: Tree)(using Context): Option[(Tree, List[List[Arg]])] =
+    def unapply(tree: Tree)(using Context): Option[(Tree, List[Lst[Arg]])] =
       tree match
       case Apply(fn, args) =>
         val argTps = fn.tpe.widen match
           case mt: MethodType => mt.paramInfos
         if (args.size != argTps.size)
           report.warning("[Internal error] Number of arguments do not match number of argument types in " + tree.symbol.name)
-        val normArgs: List[Arg] = args.zip(argTps.toIterable).map {
+        val normArgs: Lst[Arg] = args.zipWith(argTps):
           case (arg, _: ExprType) => ByNameArg(arg)
           case (arg, _)           => arg
-        }
         unapply(fn) match
         case Some((ref, args0)) => Some((ref, args0 :+ normArgs))
         case None => None
@@ -69,7 +69,7 @@ object Util:
       case _ => None
 
   object NewExpr:
-    def unapply(tree: Tree)(using Context): Option[(TypeRef, New, Symbol, List[List[Arg]])] =
+    def unapply(tree: Tree)(using Context): Option[(TypeRef, New, Symbol, List[Lst[Arg]])] =
       tree match
       case Call(fn @ Select(newTree: New, init), argss) if init == nme.CONSTRUCTOR =>
         val tref = typeRefOf(newTree.tpe)

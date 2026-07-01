@@ -166,7 +166,7 @@ object Splicer {
           }
           noSpliceChecker.traverse(body)
 
-        case Apply(TypeApply(fn, List(quoted)), _)if fn.symbol == defn.QuotedTypeModule_of =>
+        case Apply(TypeApply(fn, Lst.single(quoted)), _) if fn.symbol == defn.QuotedTypeModule_of =>
           // OK
 
         case Literal(Constant(value)) =>
@@ -259,7 +259,7 @@ object Splicer {
         new ExprImpl(Inlined(EmptyTree, Nil, QuoteUtils.changeOwnerOfTree(body1, ctx.owner)).withSpan(body1.span), SpliceScope.getCurrent)
 
       // Interpret level -1 `Type.of[T]`
-      case Apply(TypeApply(fn, quoted :: Nil), _) if fn.symbol == defn.QuotedTypeModule_of =>
+      case Apply(TypeApply(fn, Lst.single(quoted)), _) if fn.symbol == defn.QuotedTypeModule_of =>
         new TypeImpl(QuoteUtils.changeOwnerOfTree(quoted, ctx.owner), SpliceScope.getCurrent)
 
       case _ =>

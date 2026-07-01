@@ -7,6 +7,7 @@ import core.*, Contexts.*, Decorators.*, Symbols.*, Flags.*, StdNames.*
 import reporting.trace
 import util.Property
 import MegaPhase.*
+import util.Lst
 
 /** This phase rewrites calls to `Array.apply` to a direct instantiation of the array in the bytecode.
  *
@@ -31,13 +32,13 @@ class ArrayApply extends MiniPhase {
   override def transformApply(tree: Apply)(using Context): Tree =
     if isArrayModuleApply(tree.symbol) then
       tree.args match
-        case StripAscription(Apply(wrapRefArrayMeth, (seqLit: JavaSeqLiteral) :: Nil)) :: ct :: Nil
+        case Lst.pair(StripAscription(Apply(wrapRefArrayMeth, Lst.single(seqLit: JavaSeqLiteral))), ct)
             if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) && elideClassTag(ct) =>
           seqLit
 
-        case elem0 :: StripAscription(Apply(wrapRefArrayMeth, (seqLit: JavaSeqLiteral) :: Nil)) :: Nil
+        case Lst.pair(elem0, StripAscription(Apply(wrapRefArrayMeth, Lst.single(seqLit: JavaSeqLiteral))))
             if defn.WrapArrayMethods().contains(wrapRefArrayMeth.symbol) =>
-          JavaSeqLiteral(elem0 :: seqLit.elems, seqLit.elemtpt)
+          JavaSeqLiteral(elem0 +: seqLit.elems, seqLit.elemtpt)
 
         case _ =>
           tree
@@ -45,7 +46,7 @@ class ArrayApply extends MiniPhase {
     else tree match
       case SeqApplyArgs(elems) if transformListApplyBudget > 0 || elems.isEmpty =>
         val consed = elems.foldRight(ref(defn.NilModule)): (elem, acc) =>
-          New(defn.ConsType, List(elem.ensureConforms(defn.ObjectType), acc))
+          New(defn.ConsType, Lst(elem.ensureConforms(defn.ObjectType), acc))
         consed.cast(tree.tpe)
       case _ => tree
 
@@ -71,11 +72,11 @@ class ArrayApply extends MiniPhase {
       case _ => false
 
   private object SeqApplyArgs:
-    def unapply(tree: Apply)(using Context): Option[List[Tree]] =
+    def unapply(tree: Apply)(using Context): Option[Lst[Tree]] =
       if isSeqApply(tree) then
         tree.args match
           // <List or Seq>(a, b, c) ~> new ::(a, new ::(b, new ::(c, Nil))) but only for reference types
-          case StripAscription(Apply(wrapArrayMeth, List(StripAscription(rest: JavaSeqLiteral)))) :: Nil
+          case Lst.single(StripAscription(Apply(wrapArrayMeth, Lst.single(StripAscription(rest: JavaSeqLiteral)))))
               if rest.elems.isEmpty || defn.WrapArrayMethods().contains(wrapArrayMeth.symbol) =>
             Some(rest.elems)
           case _ => None
@@ -88,7 +89,7 @@ class ArrayApply extends MiniPhase {
    *  - `ClassTag.XYZ` for primitive types
    */
   private def elideClassTag(ct: Tree)(using Context): Boolean = ct match {
-    case Apply(_, rc :: Nil) if ct.symbol == defn.ClassTagModule_apply =>
+    case Apply(_, Lst.single(rc)) if ct.symbol == defn.ClassTagModule_apply =>
       rc match {
         case _: Literal => true // ClassTag.apply(classOf[XYZ])
         case rc: RefTree if rc.name == nme.TYPE_ =>

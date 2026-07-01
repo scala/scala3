@@ -311,7 +311,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       case _ =>
 
 
-    private def transformSelect(tree: Select, targs: List[Tree])(using Context): Tree = {
+    private def transformSelect(tree: Select, targs: Lst[Tree])(using Context): Tree = {
       val qual = tree.qualifier
       qual.symbol.moduleClass.denot match {
         case pkg: PackageClassDenotation =>
@@ -331,7 +331,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       case pt: PolyType => // wait for more arguments coming
         tree
       case _ =>
-        def decompose(tree: TypeApply): (Tree, List[Tree]) = tree.fun match {
+        def decompose(tree: TypeApply): (Tree, Lst[Tree]) = tree.fun match {
           case fun: TypeApply =>
             val (tycon, args) = decompose(fun)
             (tycon, args ++ tree.args)
@@ -355,8 +355,8 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         tycon.tpe.widen match {
           case tp: PolyType if args.exists(isNamedArg) =>
             val (namedArgs, otherArgs) = args.partition(isNamedArg)
-            val args1 = reorderArgs(tp.paramNamesList, namedArgs.asInstanceOf[List[NamedArg]], otherArgs)
-            TypeApply(tycon, args1).withSpan(tree.span).withType(tree.tpe)
+            val args1 = reorderArgs(tp.paramNamesList, namedArgs.asInstanceOf[List[NamedArg]], otherArgs.toList)
+            TypeApply(tycon, args1.toLst).withSpan(tree.span).withType(tree.tpe)
           case _ =>
             tree
         }
@@ -483,7 +483,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *  non-idempotent expressions (not just the spreads) and apply `within` to the resulting
      *  pure references. Otherwise apply `within` to the original trees.
      */
-    private def evalSpreadsOnce(trees: List[Tree])(within: List[Tree] => Tree)(using Context): Tree =
+    private def evalSpreadsOnce(trees: Lst[Tree])(within: Lst[Tree] => Tree)(using Context): Tree =
       if trees.exists:
         case spread(elem) => !(exprPurity(elem) >= TreeInfo.Idempotent)
         case _ => false
@@ -586,7 +586,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
             withMode(Mode.Type)(super.transform(checkNotPackage(tree)))
           else
             checkUsableAsValue(tree) match
-              case tree1: Select => transformSelect(tree1, Nil)
+              case tree1: Select => transformSelect(tree1, Lst())
               case tree1 => tree1
         case app: Apply =>
           val methType = app.fun.tpe.widen.asInstanceOf[MethodType]
@@ -739,7 +739,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           cpy.Annotated(tree)(transform(annotated), transformAnnotTree(annot))
         case tree: AppliedTypeTree =>
           if (tree.tpt.symbol == defn.andType)
-            Checking.checkNonCyclicInherited(tree.tpe, tree.args.tpes, EmptyScope, tree.srcPos)
+            Checking.checkNonCyclicInherited(tree.tpe, tree.args.tpes.toList, EmptyScope, tree.srcPos)
               // Ideally, this should be done by Typer, but we run into cyclic references
               // when trying to typecheck self types which are intersections.
           else if (tree.tpt.symbol == defn.orType)

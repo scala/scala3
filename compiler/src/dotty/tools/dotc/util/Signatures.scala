@@ -97,10 +97,10 @@ object Signatures {
    */
   def computeSignatureHelp(path: List[tpd.Tree], span: Span)(using Context): (Int, Int, List[Signature]) =
     findEnclosingApply(path, span) match
-      case Apply(fun, params) => applyCallInfo(span, params, fun, false)
-      case UnApply(fun, _, patterns) => unapplyCallInfo(span, fun, patterns)
-      case appliedTypeTree @ AppliedTypeTree(_, types) => appliedTypeTreeCallInfo(span, appliedTypeTree, types)
-      case tp @ TypeApply(fun, types) => applyCallInfo(span, types, fun, isTypeApply = true)
+      case Apply(fun, params) => applyCallInfo(span, params.toList, fun, false)
+      case UnApply(fun, _, patterns) => unapplyCallInfo(span, fun, patterns.toList)
+      case appliedTypeTree @ AppliedTypeTree(_, types) => appliedTypeTreeCallInfo(span, appliedTypeTree, types.toList)
+      case tp @ TypeApply(fun, types) => applyCallInfo(span, types.toList, fun, isTypeApply = true)
       case _ => (0, 0, Nil)
 
 
@@ -236,9 +236,9 @@ object Signatures {
 
       val untpdArgs = untpdPath match
         case (Ident(_) | Select(_, _)) :: New(_) :: Select(_, name) :: untpd.Apply(untpdFun, args) :: _
-          if name.isConstructorName => args
-        case _ :: untpd.Apply(_, args) :: _ => args
-        case _ :: untpd.TypeApply(_, args) :: _ => args
+          if name.isConstructorName => args.toList
+        case _ :: untpd.Apply(_, args) :: _ => args.toList
+        case _ :: untpd.TypeApply(_, args) :: _ => args.toList
         case _ => Nil
 
       val currentParamsIndex =
@@ -408,7 +408,7 @@ object Signatures {
    */
   private def unapplyMethodResult(fun: tpd.Tree)(using Context): Type =
     val typeWithoutBinds = fun match
-      case TypeApply(_, Bind(_, _) :: _) => fun.symbol.asSingleDenotation.info
+      case TypeApply(_, Lst.withHead(Bind(_, _))) => fun.symbol.asSingleDenotation.info
       case other => other.tpe
 
     typeWithoutBinds.finalResultType.widenDealias match
@@ -551,7 +551,7 @@ object Signatures {
 
         val finalParams: Option[List[MethodParam]] = apply.map: apply =>
           apply.args match
-            case Nil => params
+            case Lst.empty() => params
             case n if n.length > params.length => params
             case _ =>
               // map argument order with their corresponding order so
@@ -559,7 +559,7 @@ object Signatures {
               //     foo(b = 0, a = 0, d = 0, c = 0) order is List(1, 0, 3, 2)
               //   and if there are missing arguments, they are set to -1 so for the same method:
               //     foo(b= 0, d = 0, ) order is List(1, 3, -1, -1)
-              val argsWithOriginalIndices = apply.args.map:
+              val argsWithOriginalIndices = apply.args.toList.map:
                 case untpd.NamedArg(name, _) =>
                   params.indexWhere(_.name == name.toString)
                 case param => -1

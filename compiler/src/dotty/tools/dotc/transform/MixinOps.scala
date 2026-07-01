@@ -112,10 +112,10 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
 
   def forwarderRhsFn(target: Symbol): List[Lst[Tree]] => Tree =
     prefss =>
-      val (targs, vargss) = splitArgs(prefss.map(_.toList))
+      val (targs, vargss) = splitArgs(prefss)
       val tapp = superRef(target).appliedToTypeTrees(targs)
       val rhs = vargss match
-        case Nil | List(Nil) =>
+        case Nil | List(Lst.empty()) =>
           // Overriding is somewhat loose about `()T` vs `=> T`, so just pick
           // whichever makes sense for `target`
           tapp.ensureApplied

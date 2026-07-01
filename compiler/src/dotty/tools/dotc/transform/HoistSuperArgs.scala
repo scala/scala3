@@ -163,7 +163,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
             superArgDef =
               cpy.DefDef(superArgDef)(tpt = cpy.TypeTree(superArgDef.tpt)(inferred = true))
           superArgDefs += superArgDef
-          def termParamRefs(tp: Type, params: List[Symbol]): List[List[Tree]] = tp match {
+          def termParamRefs(tp: Type, params: Lst[Symbol]): List[Lst[Tree]] = tp match {
             case tp: PolyType =>
               termParamRefs(tp.resultType, params)
             case tp: MethodType =>
@@ -175,9 +175,9 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
           val (typeParams, termParams) = origParams.span(_.isType)
           var res = ref(superMeth)
             .appliedToTypes(typeParams.map(_.typeRef))
-            .appliedToArgss(termParamRefs(constr.info, termParams.toList))
+            .appliedToArgss(termParamRefs(constr.info, termParams))
           if lifted.nonEmpty then
-            res = res.appliedToArgs(lifted.mapToList(ref))
+            res = res.appliedToArgs(lifted.map(ref))
           report.log(i"hoist $arg, cls = $cls = $res")
           res
         case _ => arg
@@ -204,7 +204,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       case Apply(fn, args) =>
         cpy.Apply(superCall)(
           hoistSuperArgsFromCall(fn, cdef, lifted),
-          args.mapconserve(hoistSuperArg(_, cdef, lifted.toLst)))
+          args.mapConserve(hoistSuperArg(_, cdef, lifted.toLst)))
       case _ =>
         superCall
 

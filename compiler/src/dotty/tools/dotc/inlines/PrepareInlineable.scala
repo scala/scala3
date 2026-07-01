@@ -92,7 +92,7 @@ object PrepareInlineable {
 
       def postTransform(tree: Tree)(using Context): Tree = tree match {
         case Assign(lhs, rhs) if lhs.symbol.name.is(InlineAccessorName) =>
-          cpy.Apply(tree)(useSetter(lhs), rhs :: Nil)
+          cpy.Apply(tree)(useSetter(lhs), Lst(rhs))
         case _ =>
           tree
       }
@@ -205,8 +205,8 @@ object PrepareInlineable {
 
           val (leadingTypeArgs, otherArgss) = splitArgs(argss)
           val argss1 = joinArgs(
-            localRefs.map(TypeTree(_)) ++ leadingTypeArgs, // TODO: pass type parameters in two sections?
-            (qual :: Nil) :: otherArgss
+            localRefs.mapToLst(TypeTree(_)) ++ leadingTypeArgs, // TODO: pass type parameters in two sections?
+            Lst(qual) :: otherArgss
           )
           ref(accessor).appliedToArgss(argss1).withSpan(tree.span)
 

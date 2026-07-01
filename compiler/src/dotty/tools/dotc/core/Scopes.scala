@@ -109,6 +109,17 @@ object Scopes {
       syms
     }
 
+    /** Selects all Symbols of this Scope which satisfy a predicate. */
+    def filterLst(p: Symbol => Boolean)(using Context): Lst[Symbol] =
+      ensureComplete()
+      val buf = Lst.Buffer[Symbol]()
+      var e = lastEntry
+      while e != null && e.owner == this do
+        val sym = e.sym
+        if p(sym) then buf += sym
+        e = e.prev
+      buf.toLstReverse
+
     /** Tests whether a predicate holds for at least one Symbol of this Scope. */
     def exists(p: Symbol => Boolean)(using Context): Boolean = filter(p).nonEmpty
 
@@ -274,6 +285,7 @@ object Scopes {
       if (hashTable != null) enterInHash(e)
       size += 1
       elemsCache = null
+      elemsCacheLst = null
       e
     }
 
@@ -350,6 +362,7 @@ object Scopes {
         }
       }
       elemsCache = null
+      elemsCacheLst = null
       size -= 1
     }
 
@@ -377,6 +390,7 @@ object Scopes {
         e = lookupNextEntry(e)
       }
       elemsCache = null
+      elemsCacheLst = null
     }
 
     /** Lookup a symbol entry matching given name.
@@ -434,6 +448,7 @@ object Scopes {
      */
     override final def toLst(using Context): Lst[Symbol] =
       if elemsCacheLst == null then
+        ensureComplete()
         val xs = new Array[Object](size)
         var e = lastEntry
         var i = xs.length

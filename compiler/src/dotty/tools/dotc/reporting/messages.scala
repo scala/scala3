@@ -774,7 +774,7 @@ extends SyntaxMsg(ByNameParameterNotSupportedID) {
         |"""
 }
 
-class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: Lst[ParamInfo], actual: List[untpd.Tree])(using Context)
+class WrongNumberOfTypeArgs(fntpe: Type, expectedArgs: Lst[ParamInfo], actual: Lst[untpd.Tree])(using Context)
 extends SyntaxMsg(WrongNumberOfTypeArgsID) {
 
   private val expectedCount = expectedArgs.length
@@ -1583,7 +1583,7 @@ class ReassignmentToVal(name: Name, pt: Type)(using Context)
          |Reassigment is only permitted if the variable is declared with `var`."""
 }
 
-class TypeDoesNotTakeParameters(tpe: Type, params: List[untpd.Tree])(using Context)
+class TypeDoesNotTakeParameters(tpe: Type, params: Lst[untpd.Tree])(using Context)
   extends TypeMsg(TypeDoesNotTakeParametersID) {
   private def fboundsAddendum(using Context) =
     if tpe.typeSymbol.isAllOf(Provisional | TypeParam) then
@@ -3070,11 +3070,11 @@ class MissingImplicitArgument(
     paramSymWithMethodCallTree.flatMap: (sym, applTree) =>
       userDefinedMsg(sym, defn.ImplicitNotFoundAnnot).map: rawMsg =>
         val fn = tpd.funPart(applTree)
-        val targs = tpd.typeArgss(applTree).flatten
+        val targs = tpd.typeArgss(applTree).flattenLst
         val methodOwner = fn.symbol.owner
         val methodOwnerType = tpd.qualifier(fn).tpe
         val methodTypeParams = fn.symbol.paramSymss.flattenLst.filter(_.isType).map(_.name)
-        val methodTypeArgs = targs.mapToLst(_.tpe)
+        val methodTypeArgs = targs.map(_.tpe)
         formatAnnotationMessage(rawMsg, sym.owner, methodTypeParams, methodTypeArgs, _.asSeenFrom(methodOwnerType, methodOwner))
 
   def userDefinedImplicitNotFoundTypeMessage(using Context): Option[String] =
@@ -3170,8 +3170,8 @@ class MissingImplicitArgument(
         case p: PolyType => p.paramNames.map(_.toString)
         case _           => Lst()
       }
-      def resolveTypes(targs: List[tpd.Tree])(using Context) =
-        targs.mapToLst(a => Inferencing.fullyDefinedType(a.tpe, "type argument", a.srcPos))
+      def resolveTypes(targs: Lst[tpd.Tree])(using Context) =
+        targs.map(a => Inferencing.fullyDefinedType(a.tpe, "type argument", a.srcPos))
 
       // We can extract type arguments from:
       //   - a function call:
@@ -3185,7 +3185,7 @@ class MissingImplicitArgument(
       //     implicitly[Int => String] // found: x => f[Any](x)
 
       val call = tpd.closureBody(alt.tree) // the tree itself if not a closure
-      val targs = tpd.typeArgss(call).flatten
+      val targs = tpd.typeArgss(call).flattenLst
       val args = resolveTypes(targs)(using ctx.fresh.setTyperState(alt.tstate))
       userDefinedErrorString(raw, params, args)
     }
@@ -3648,7 +3648,7 @@ class MatchIsNotPartialFunction(using Context) extends SyntaxMsg(MatchIsNotParti
        |Efficient operations will use `applyOrElse` to avoid computing the match twice,
        |but the `apply` body would be executed "per element" in the example."""
 
-final class PointlessAppliedConstructorType(tpt: untpd.Tree, args: List[untpd.Tree], tpe: Type)(using Context) extends TypeMsg(PointlessAppliedConstructorTypeID):
+final class PointlessAppliedConstructorType(tpt: untpd.Tree, args: Lst[untpd.Tree], tpe: Type)(using Context) extends TypeMsg(PointlessAppliedConstructorTypeID):
   override protected def msg(using Context): String =
     val act = i"$tpt(${args.map(_.show).mkString(", ")})"
     i"""|Applied constructor type $act has no effect.

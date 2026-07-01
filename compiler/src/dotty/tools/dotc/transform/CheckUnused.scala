@@ -128,7 +128,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def transformApply(tree: Apply)(using Context): tree.type =
     // check for multiversal equals
     tree match
-    case Apply(Select(left, nme.Equals | nme.NotEquals), right :: Nil) =>
+    case Apply(Select(left, nme.Equals | nme.NotEquals), Lst.single(right)) =>
       val caneq = defn.CanEqualClass.typeRef.appliedTo(Lst(left.tpe.widen, right.tpe.widen))
       resolveScoped(caneq, tree.srcPos)
     case tree =>
@@ -149,7 +149,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForMatch(tree: Match)(using Context): Context =
     // allow case.pat against tree.selector (simple var pat only for now)
     tree.selector match
-    case Ident(nm) => tree.cases.foreach(k => allowVariableBindings(Lst(nm), List(k.pat)))
+    case Ident(nm) => tree.cases.foreach(k => allowVariableBindings(Lst(nm), Lst(k.pat)))
     case _ =>
     ctx
   override def transformMatch(tree: Match)(using Context): tree.type =
@@ -953,7 +953,7 @@ object CheckUnused:
         case _ => false
      //|| isPurePath(rhs) // a bit strong
      || rhs.match
-        case Block((dd @ DefDef(anonfun, paramss, _, _)) :: Nil, Closure(Nil, Ident(nm), _)) =>
+        case Block((dd @ DefDef(anonfun, paramss, _, _)) :: Nil, Closure(Lst.empty(), Ident(nm), _)) =>
              anonfun == nm // isAnonymousFunctionName(anonfun)
           && paramss.match
               case Lst.withHead(ValDef(contextual, _, _)) :: Nil =>
@@ -966,8 +966,8 @@ object CheckUnused:
         case Typed(rhs, _) => isUnconsuming(rhs)
         case _ => false
 
-  def allowVariableBindings(ok: Lst[Name], args: List[Tree]): Unit =
-    ok.zip(args.toLst).foreach:
+  def allowVariableBindings(ok: Lst[Name], args: Lst[Tree]): Unit =
+    ok.zip(args).foreach:
       case (param, arg @ Bind(p, _)) if param == p => arg.withAttachment(NoWarn, ())
       case _ =>
 
@@ -1021,7 +1021,7 @@ object CheckUnused:
       relaxer.traverse(tree)
 
   def ignoreArgsOfSelfConstruction(tree: Apply, ctor: Symbol)(using Context): Unit =
-    val pars = ctor.denot.paramSymss.flattenLst.iterator.filter(_.isTerm)
+    val pars = ctor.denot.paramSymss.flattenLst.filter(_.isTerm)
     val args = allTermArguments(tree)
     for (par, arg) <- pars.zip(args) do
       if arg.symbol.is(ParamAccessor) && arg.symbol.name == par.name && arg.symbol.owner == ctor.owner then

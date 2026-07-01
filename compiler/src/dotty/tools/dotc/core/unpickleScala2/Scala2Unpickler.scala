@@ -1018,7 +1018,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val end = readNat() + readIndex
     // array elements are trees representing instances of scala.annotation.Annotation
     untpd.JavaSeqLiteral(
-      until(end, () => readClassfileAnnotArg(readNat())),
+      untilLst(end, () => readClassfileAnnotArg(readNat())),
       untpd.TypeTree())
   }
 
@@ -1039,22 +1039,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
    */
   protected def readAnnotationContents(end: Int)(using Context): Tree = {
     val atp = readTypeRef()
-    val args = {
-      val t = new ListBuffer[untpd.Tree]
-
-      while (readIndex != end) {
-        val argref = readNat()
-        t += {
-          if (isNameEntry(argref)) {
-            val name = at(argref, () => readName())
-            val arg = readClassfileAnnotArg(readNat())
-            untpd.NamedArg(name.asTermName, arg)
-          }
-          else readAnnotArg(argref)
-        }
-      }
-      t.toList
-    }
+    def readArg() =
+      val argref = readNat()
+      if isNameEntry(argref) then
+        val name = at(argref, () => readName())
+        val arg = readClassfileAnnotArg(readNat())
+        untpd.NamedArg(name.asTermName, arg)
+      else readAnnotArg(argref)
+    val args = untilLst(end, readArg)
     untpd.resolveConstructor(atp, args)
   }
 
@@ -1172,7 +1164,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val ldef = DefDef(symbol.asTerm, rhs)
         def isCaseLabel(sym: Symbol) = sym.name.startsWith(nme.CASEkw.toString)
         if (isCaseLabel(symbol)) ldef
-        else Block(ldef :: Nil, Apply(Ident(symbol.termRef), Nil))
+        else Block(ldef :: Nil, Apply(Ident(symbol.termRef), Lst()))
 
       case IMPORTtree =>
         val symbol = setSym()
@@ -1218,12 +1210,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
       case UNAPPLYtree =>
         val fun = readTreeRef()
-        val args = until(end, () => readTreeRef())
+        val args = untilLst(end, () => readTreeRef())
         UnApply(fun, Lst(), args, defn.AnyType) // !!! this is wrong in general
 
       case ARRAYVALUEtree =>
         val elemtpt = readTreeRef()
-        val trees = until(end, () => readTreeRef())
+        val trees = untilLst(end, () => readTreeRef())
         SeqLiteral(trees, elemtpt)
           // note can't deal with trees passed to Java methods as arrays here
 
@@ -1274,12 +1266,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
       case TYPEAPPLYtree =>
         val fun = readTreeRef()
-        val args = until(end, () => readTreeRef())
+        val args = untilLst(end, () => readTreeRef())
         TypeApply(fun, args)
 
       case APPLYtree =>
         val fun = readTreeRef()
-        val args = until(end, () => readTreeRef())
+        val args = untilLst(end, () => readTreeRef())
         /*
           if (fun.symbol.isOverloaded) {
             fun.setType(fun.symbol.info)
@@ -1342,7 +1334,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
       case APPLIEDTYPEtree =>
         val tpt = readTreeRef()
-        val args = until(end, () => readTreeRef())
+        val args = untilLst(end, () => readTreeRef())
         AppliedTypeTree(tpt, args)
 
       case TYPEBOUNDStree =>

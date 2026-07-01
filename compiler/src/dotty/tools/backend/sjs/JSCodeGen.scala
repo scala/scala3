@@ -6,6 +6,7 @@ import scala.collection.mutable
 import dotty.tools.FatalError
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.ast.tpd
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.core.*
 import Contexts.*
 import Decorators.*
@@ -36,6 +37,7 @@ import dotty.tools.dotc.transform.sjs.JSSymUtils.*
 import JSEncoding.*
 import ScopedVar.withScopedVars
 import scala.reflect.NameTransformer
+import dotty.tools.dotc.{core => dotcutil}
 
 /** Main codegen for Scala.js IR.
  *
@@ -1252,7 +1254,7 @@ class JSCodeGen()(using genCtx: Context) {
               if fun.symbol.isClassConstructor =>
             assert(jsSuperCall.isEmpty, s"Found 2 JS Super calls at ${dd.sourcePos}")
             implicit val pos: Position = tree.span
-            jsSuperCall = Some(js.JSSuperConstructorCall(genActualJSArgs(fun.symbol, args)))
+            jsSuperCall = Some(js.JSSuperConstructorCall(genActualJSArgs(fun.symbol, args.toList)))
 
           case tree if jsSuperCall.isDefined =>
             // Once we're past the super constructor call, everything goes after.
@@ -1310,7 +1312,7 @@ class JSCodeGen()(using genCtx: Context) {
 
           implicit val pos: Position = tree.span
           val sym = fun.symbol
-          thisCall = Some((sym, genActualArgs(sym, args)))
+          thisCall = Some((sym, genActualArgs(sym, args.toList)))
 
         case stat =>
           val jsStat = genStat(stat)
@@ -2301,7 +2303,7 @@ class JSCodeGen()(using genCtx: Context) {
        * so we call `genExpr(qual)`, not just `genThis()`.
        */
       val superCall = genApplyMethodStatically(
-          genExpr(qual), sym, genActualArgs(sym, args))
+          genExpr(qual), sym, genActualArgs(sym, args.toList))
 
       // Initialize the module instance just after the super constructor call.
       if (isStaticModule(currentClassSym) && !isModuleInitialized.get.value &&
@@ -2336,7 +2338,7 @@ class JSCodeGen()(using genCtx: Context) {
     val clsSym = tpe.typeSymbol
 
     if (isHijackedClass(clsSym)) {
-      genNewHijackedClass(clsSym, ctor, args.map(genExpr))
+      genNewHijackedClass(clsSym, ctor, args.mapToList(genExpr))
     } else /*if (translatedAnonFunctions contains tpe.typeSymbol) {
       val functionMaker = translatedAnonFunctions(tpe.typeSymbol)
       functionMaker(args map genExpr)
@@ -2345,7 +2347,7 @@ class JSCodeGen()(using genCtx: Context) {
     } else {
       toTypeRef(tpe) match {
         case jstpe.ClassRef(className) =>
-          js.New(className, encodeMethodSym(ctor), genActualArgs(ctor, args))
+          js.New(className, encodeMethodSym(ctor), genActualArgs(ctor, args.toList))
 
         case other =>
           throw new FatalError(s"Non ClassRef cannot be instantiated: $other")
@@ -2384,8 +2386,8 @@ class JSCodeGen()(using genCtx: Context) {
           s"$cls at $pos: jsClassValue.isDefined = ${jsClassValue.isDefined} " +
           s"but isInnerNonNativeJSClass = $nestedJSClass")
 
-      def genArgs: List[js.TreeOrJSSpread] = genActualJSArgs(ctor, args)
-      def genArgsAsClassCaptures: List[js.Tree] = args.map(genExpr)
+      def genArgs: List[js.TreeOrJSSpread] = genActualJSArgs(ctor, args.toList)
+      def genArgsAsClassCaptures: List[js.Tree] = args.map(genExpr).toList
 
       jsClassValue.fold {
         // Static JS class (by construction, it cannot be a module class, as their News do not reach the back-end)
@@ -2620,9 +2622,9 @@ class JSCodeGen()(using genCtx: Context) {
     val code = primitives.getPrimitive(tree, receiver.tpe)
 
     if (isArithmeticOp(code) || isLogicalOp(code) || isComparisonOp(code))
-      genSimpleOp(tree, receiver :: args, code)
+      genSimpleOp(tree, receiver :: args.toList, code)
     else if (code == CONCAT)
-      genStringConcat(tree, receiver, args)
+      genStringConcat(tree, receiver, args.toList)
     else if (code == HASH)
       genScalaHash(tree, receiver)
     else if (isArrayOp(code))
@@ -2632,11 +2634,11 @@ class JSCodeGen()(using genCtx: Context) {
     else if (isCoercion(code))
       genCoercion(tree, receiver, code)
     else if (code == JSPrimitives.THROW)
-      genThrow(tree, args)
+      genThrow(tree, args.toList)
     else if (code == JSPrimitives.NEW_ARRAY)
-      genNewArray(tree, args)
+      genNewArray(tree, args.toList)
     else if (JSPrimitives.isJSPrimitive(code))
-      genJSPrimitive(tree, args, code, isStat)
+      genJSPrimitive(tree, args.toList, code, isStat)
     else
       throw new FatalError(s"Unknown primitive: ${tree.symbol.fullName} at: $pos")
   }
@@ -3062,7 +3064,7 @@ class JSCodeGen()(using genCtx: Context) {
     /* JavaScript is single-threaded, so we can drop the
      * synchronization altogether.
      */
-    val Apply(fun, List(arg)) = tree
+    val Apply(fun, Lst.single(arg)) = tree.runtimeChecked
     val receiver = qualifierOf(fun)
 
     val genReceiver = genExpr(receiver)
@@ -3111,7 +3113,7 @@ class JSCodeGen()(using genCtx: Context) {
     val List(elemClazz, Literal(arrayClassConstant), dimsArray: JavaSeqLiteral) = args: @unchecked
 
     dimsArray.elems match {
-      case singleDim :: Nil =>
+      case Lst.single(singleDim) =>
         // Use a js.NewArray
         val arrayTypeRef = toTypeRef(arrayClassConstant.typeValue).asInstanceOf[jstpe.ArrayTypeRef]
         js.NewArray(arrayTypeRef, genExpr(singleDim))
@@ -3149,18 +3151,18 @@ class JSCodeGen()(using genCtx: Context) {
 
     if (isDelambdafyTarget(sym)) {
       // Force inlining at compile-time
-      genApplyInline(consumeDelambdafyTarget(sym), receiver, args)
+      genApplyInline(consumeDelambdafyTarget(sym), receiver, args.toList)
     } else if (isMethodStaticInIR(sym)) {
-      genApplyStatic(sym, genActualArgs(sym, args))
+      genApplyStatic(sym, genActualArgs(sym, args.toList))
     } else if (sym.owner.isJSType) {
       if (!sym.owner.isNonNativeJSClass || sym.isJSExposed)
-        genApplyJSMethodGeneric(sym, genExprOrGlobalScope(receiver), genActualJSArgs(sym, args), isStat)(using tree.sourcePos)
+        genApplyJSMethodGeneric(sym, genExprOrGlobalScope(receiver), genActualJSArgs(sym, args.toList), isStat)(using tree.sourcePos)
       else
-        genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args))
+        genApplyJSClassMethod(genExpr(receiver), sym, genActualArgs(sym, args.toList))
     } else if (sym.hasAnnotation(jsdefn.JSNativeAnnot)) {
       genJSNativeMemberCall(tree)
     } else {
-      genApplyMethodMaybeStatically(genExpr(receiver), sym, genActualArgs(sym, args))
+      genApplyMethodMaybeStatically(genExpr(receiver), sym, genActualArgs(sym, args.toList))
     }
   }
 
@@ -3356,7 +3358,7 @@ class JSCodeGen()(using genCtx: Context) {
 
   /** Gen JS code for a call to a native JS def or val. */
   private def genJSNativeMemberCall(tree: Apply): js.Tree =
-    genJSNativeMemberSelectOrCall(tree, tree.args)
+    genJSNativeMemberSelectOrCall(tree, tree.args.toList)
 
   /** Gen JS code for a call to a native JS def or val. */
   private def genJSNativeMemberSelectOrCall(tree: Tree, args: List[Tree]): js.Tree = {
@@ -3383,8 +3385,8 @@ class JSCodeGen()(using genCtx: Context) {
       val sym = fun.symbol
 
       val genReceiver = genExpr(qual)
-      def genScalaArgs = genActualArgs(sym, args)
-      def genJSArgs = genActualJSArgs(sym, args)
+      def genScalaArgs = genActualArgs(sym, args.toList)
+      def genJSArgs = genActualJSArgs(sym, args.toList)
 
       if (sym.owner == defn.ObjectClass) {
         // Normal call anyway
@@ -3443,7 +3445,7 @@ class JSCodeGen()(using genCtx: Context) {
          * aliasing the field. Removing the cast ahead of time in the compiler allows
          * field aliases to be recognized in the presence of `LinkTimeIf`s.
          */
-        case Apply(innerFun, List(cond, thenp, elsep))
+        case Apply(innerFun, Lst.triple(cond, thenp, elsep))
             if innerFun.symbol == jsdefn.LinkingInfo_linkTimeIf &&
             thenp.tpe <:< to && elsep.tpe <:< to =>
           val genReceiver1 = genReceiver match {
@@ -3470,7 +3472,7 @@ class JSCodeGen()(using genCtx: Context) {
 
     val genElems = tree.elems.map(genExpr)
     val arrayTypeRef = toTypeRef(tree.tpe).asInstanceOf[jstpe.ArrayTypeRef]
-    js.ArrayValue(arrayTypeRef, genElems)
+    js.ArrayValue(arrayTypeRef, genElems.toList)
   }
 
   /** Gen JS code for a switch-`Match`, which is translated into an IR `js.Match`. */
@@ -3630,8 +3632,8 @@ class JSCodeGen()(using genCtx: Context) {
     val isTargetStatic = isMethodStaticInIR(target)
 
     val allCaptureValues =
-      if (isTargetStatic) env
-      else qualifierOf(targetTree) :: env
+      if (isTargetStatic) env.toList
+      else qualifierOf(targetTree) :: env.toList
 
     // Gen actual captures in the local name scope of the enclosing method
     val actualCaptures: List[js.Tree] = allCaptureValues.map(genExpr(_))
@@ -4055,7 +4057,7 @@ class JSCodeGen()(using genCtx: Context) {
               val outer = genThis()
               List.fill(requiredThisParams)(outer)
             } else {
-              val fakeNewInstances = args(2).asInstanceOf[JavaSeqLiteral].elems
+              val fakeNewInstances = args(2).asInstanceOf[JavaSeqLiteral].elems.toList
               fakeNewInstances.flatMap(genCaptureValuesFromFakeNewInstance(_))
             }
           }
@@ -4181,7 +4183,7 @@ class JSCodeGen()(using genCtx: Context) {
                     js.ApplyFlags.empty,
                     encodeClassName(clsSym),
                     encodeDynamicImportForwarderIdent(ctor.paramSymss.flattenLst.toList),
-                    genActualArgs(ctor, args))
+                    genActualArgs(ctor, args.toList))
             )
 
           case tree =>
@@ -4532,10 +4534,10 @@ class JSCodeGen()(using genCtx: Context) {
       (Nil, Nil)
     } else {
       // Extract the param type refs and actual args from the 2nd and 3rd argument to applyDynamic
-      args.tail match {
+      args.toList.tail match {
         case WrapArray(classOfsArray: JavaSeqLiteral) :: WrapArray(actualArgsAnyArray: JavaSeqLiteral) :: Nil =>
           // Extract jstpe.Type's and jstpe.TypeRef's from the classOf[_] trees
-          val formalParamTypesAndTypeRefs = classOfsArray.elems.map {
+          val formalParamTypesAndTypeRefs = classOfsArray.elems.toList.map {
             // classOf[tp] -> tp
             case Literal(const) if const.tag == Constants.ClazzTag =>
               toIRTypeAndTypeRef(const.typeValue)
@@ -4550,7 +4552,7 @@ class JSCodeGen()(using genCtx: Context) {
           }
 
           // Gen the actual args, downcasting them to the formal param types
-          val actualArgs = actualArgsAnyArray.elems.zip(formalParamTypesAndTypeRefs).map {
+          val actualArgs = actualArgsAnyArray.elems.toList.zip(formalParamTypesAndTypeRefs).map {
             (actualArgAny, formalParamTypeAndTypeRef) =>
               val genActualArgAny = genExpr(actualArgAny)
               genAsInstanceOf(genActualArgAny, formalParamTypeAndTypeRef._1)(using genActualArgAny.pos)
@@ -4702,7 +4704,7 @@ class JSCodeGen()(using genCtx: Context) {
         /* Value classes in arrays are already boxed, so no need to use
          * the type before erasure.
          */
-        array.elems.map(e => box(genExpr(e), e.tpe))
+        array.elems.toList.map(e => box(genExpr(e), e.tpe))
 
       // foo()
       case Ident(_) if arg.symbol == defn.NilModule =>
@@ -4754,7 +4756,7 @@ class JSCodeGen()(using genCtx: Context) {
     }
 
     def unapply(tree: Apply): Option[Tree] = tree match {
-      case Apply(wrapArray_?, List(wrapped)) if wrapArraySymToToVarArgsName.contains(wrapArray_?.symbol) =>
+      case Apply(wrapArray_?, Lst.single(wrapped)) if wrapArraySymToToVarArgsName.contains(wrapArray_?.symbol) =>
         Some(wrapped)
       case _ =>
         None
@@ -4781,7 +4783,7 @@ class JSCodeGen()(using genCtx: Context) {
     }
 
     for {
-      (arg, paramName) <- args.zip(sym.info.paramNamess.flattenLst.toList)
+      (arg, paramName) <- args.toList.zip(sym.info.paramNamess.flattenLst.toList)
       if !existedBeforeUncurry(paramName)
     } yield {
       genExpr(arg)
@@ -5114,7 +5116,7 @@ class JSCodeGen()(using genCtx: Context) {
           unexpected("could not read the module argument as a string literal")
         }
         val path = annot.argumentConstantString(1).fold {
-          if (annot.arguments.sizeIs < 2)
+          if (annot.arguments.size < 2)
             parsePath(sym.defaultJSName)
           else
             Nil

@@ -18,7 +18,7 @@ import Errors.*
 import Trace.*
 import Util.*
 import Cache.*
-import Decorators.flattenLst
+import Decorators.{flattenLst, toLst}
 import util.Lst
 
 import scala.collection.mutable
@@ -102,7 +102,7 @@ object Semantic:
    *
    *  We need to restrict nesting levels of `outer` to finitize the domain.
    */
-  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: List[Value]) extends Ref:
+  case class Warm(klass: ClassSymbol, outer: Value, ctor: Symbol, args: Lst[Value]) extends Ref:
 
     /** If a warm value is in the process of populating parameters, class bodies are not executed. */
     private var populatingParams: Boolean = false
@@ -527,6 +527,10 @@ object Semantic:
 
     def widenArgs: Contextual[List[Value]] = values.map(_.widenArg).toList
 
+  extension (values: Lst[Value])
+    def join: Value =
+      if values.isEmpty then Hot
+      else values.reduce { (v1, v2) => v1.join(v2) }
 
   extension (ref: Ref)
     def objekt: Contextual[Objekt] =
@@ -652,7 +656,7 @@ object Semantic:
           refs.map(_.select(field, receiver)).join
     }
 
-    def call(meth: Symbol, args: List[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+    def call(meth: Symbol, args: Lst[ArgInfo], receiver: Type, superType: Type, needResolve: Boolean = true): Contextual[Value] = log("call " + meth.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
       def promoteArgs(): Contextual[Unit] = args.foreach(_.promote)
 
       def isSyntheticApply(meth: Symbol) =
@@ -672,10 +676,10 @@ object Semantic:
         val allParamTypes = methodType.paramInfoss.flattenLst.map(_.repeatedToSingle)
         if allParamTypes.size != args.size then
           report.warning("[Internal error] Number of parameters do not match number of arguments in " + meth.name)
-        val errors = allParamTypes.toList.zip(args).flatMap { (info, arg) =>
+        val errors = allParamTypes.zip(args).flatMap { (info, arg) =>
           val tryReporter = Reporter.errorsIn { arg.promote }
           allArgsHot = allArgsHot && tryReporter.errors.isEmpty
-          if tryReporter.errors.isEmpty then tryReporter.errors
+          if tryReporter.errors.isEmpty then tryReporter.errors.toLst
           else
             info match
             case typeParamRef: TypeParamRef =>
@@ -688,12 +692,12 @@ object Semantic:
               // or that does not contain T as a component.
               if isWithinBounds && !otherParamContains then
                 tryReporter.abort()
-                Nil
+                Lst()
               else
-                tryReporter.errors
-            case _ => tryReporter.errors
+                tryReporter.errors.toLst
+            case _ => tryReporter.errors.toLst
         }
-        (errors, allArgsHot)
+        (errors.toList, allArgsHot)
 
       def filterValue(value: Value): Value =
         // methods of polyfun does not have denotation
@@ -794,10 +798,10 @@ object Semantic:
       }
     }
 
-    def callConstructor(ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+    def callConstructor(ctor: Symbol, args: Lst[ArgInfo]): Contextual[Value] = log("call " + ctor.show + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
       // init "fake" param fields for parameters of primary and secondary constructors
-      def addParamsAsFields(args: List[Value], ref: Ref, ctorDef: DefDef) =
-        val params = ctorDef.termParamss.flattenLst.map(_.symbol).toList
+      def addParamsAsFields(args: Lst[Value], ref: Ref, ctorDef: DefDef) =
+        val params = ctorDef.termParamss.flattenLst.map(_.symbol)
         assert(args.size == params.size, "arguments = " + args.size + ", params = " + params.size + ", ctor = " + ctor.show)
         for (param, value) <- params.zip(args) do
           ref.updateField(param, value)
@@ -812,7 +816,7 @@ object Semantic:
           if ctor.hasSource then
             val cls = ctor.owner.enclosingClass.asClass
             val ddef = ctor.defTree.asInstanceOf[DefDef]
-            val args2 = args.map(_.value).widenArgs
+            val args2 = args.map(_.value.widenArg)
             addParamsAsFields(args2, ref, ddef)
             if ctor.isPrimaryConstructor then
               val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
@@ -830,7 +834,7 @@ object Semantic:
           if ctor.hasSource then
             val cls = ctor.owner.enclosingClass.asClass
             val ddef = ctor.defTree.asInstanceOf[DefDef]
-            val args2 = args.map(_.value).widenArgs
+            val args2 = args.map(_.value.widenArg)
             addParamsAsFields(args2, ref, ddef)
             if ctor.isPrimaryConstructor then
               val tpl = cls.defTree.asInstanceOf[TypeDef].rhs.asInstanceOf[Template]
@@ -850,22 +854,18 @@ object Semantic:
     }
 
     /** Handle a new expression `new p.C` where `p` is abstracted by `value` */
-    def instantiate(klass: ClassSymbol, ctor: Symbol, args: List[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
-      def tryLeak(warm: Warm, nonHotOuterClass: Symbol, argValues: List[Value]): Contextual[Value] =
+    def instantiate(klass: ClassSymbol, ctor: Symbol, args: Lst[ArgInfo]): Contextual[Value] = log("instantiating " + klass.show + ", value = " + value + ", args = " + args.map(_.value.show), printer, (_: Value).show) {
+      def tryLeak(warm: Warm, nonHotOuterClass: Symbol, argValues: Lst[Value]): Contextual[Value] =
         val argInfos2 = args.zip(argValues).map { (argInfo, v) => argInfo.copy(value = v) }
         val errors = Reporter.stopEarly {
           given Trace = Trace.empty
           warm.callConstructor(ctor, argInfos2)
         }
         if errors.nonEmpty then
-          val indices =
-            for
-              (arg, i) <- argValues.zipWithIndex
-              if arg.isCold
-            yield
-              i + 1
+          val indices = argValues.zipWithIndex.collect:
+            case (arg, i) if arg.isCold => i + 1
 
-          val error = UnsafeLeaking(errors.head, nonHotOuterClass, indices)(trace)
+          val error = UnsafeLeaking(errors.head, nonHotOuterClass, indices.toList)(trace)
           reporter.report(error)
           Hot
         else
@@ -902,7 +902,7 @@ object Semantic:
               warm.copy(outer = Cold).ensureObjectExistsAndPopulated()
             case _ => ref
 
-          val argsWidened = args.map(_.value).widenArgs
+          val argsWidened = args.map(_.value.widenArg)
           val warm = Warm(klass, outer, ctor, argsWidened).ensureObjectExists()
           if argsWidened.exists(_.isCold) then
             tryLeak(warm, klass.owner.lexicallyEnclosingClass, argsWidened)
@@ -1104,7 +1104,7 @@ object Semantic:
               given Trace = Trace.empty
               if member.is(Flags.Method, butNot = Flags.Accessor) then
                 val args = member.info.paramInfoss.flattenLst.map(_ => new ArgInfo(Hot: Value, Trace.empty))
-                val res = warm.call(member, args.toList, receiver = warm.klass.typeRef, superType = NoType)
+                val res = warm.call(member, args, receiver = warm.klass.typeRef, superType = NoType)
                 withTrace(trace.add(member.defTree)) {
                   res.promote("Could not verify that the return value of " + member.show + " is transitively initialized (Hot). It was found to be " + res.show + ".")
                 }
@@ -1233,8 +1233,8 @@ object Semantic:
     exprs.map { expr => eval(expr, thisV, klass) }
 
   /** Evaluate arguments of methods */
-  def evalArgs(args: List[Arg], thisV: Ref, klass: ClassSymbol): Contextual[List[ArgInfo]] =
-    val argInfos = new mutable.ArrayBuffer[ArgInfo]
+  def evalArgs(args: Lst[Arg], thisV: Ref, klass: ClassSymbol): Contextual[Lst[ArgInfo]] =
+    val argInfos = new Lst.Buffer[ArgInfo]
     args.foreach { arg =>
       val res =
         if arg.isByName then
@@ -1244,7 +1244,7 @@ object Semantic:
 
       argInfos += new ArgInfo(res, trace.add(arg.tree))
     }
-    argInfos.toList
+    argInfos.toLst
 
   /** Handles the evaluation of different expressions
    *
@@ -1267,7 +1267,7 @@ object Semantic:
 
       case NewExpr(tref, New(tpt), ctor, argss) =>
         // check args
-        val args = evalArgs(argss.flatten, thisV, klass)
+        val args = evalArgs(argss.flattenLst, thisV, klass)
 
         val cls = tref.classSymbol.asClass
         withTrace(trace2) {
@@ -1277,7 +1277,7 @@ object Semantic:
 
       case Call(ref, argss) =>
         // check args
-        val args = evalArgs(argss.flatten, thisV, klass)
+        val args = evalArgs(argss.flattenLst, thisV, klass)
 
         ref match
         case Select(supert: Super, _) =>
@@ -1557,7 +1557,7 @@ object Semantic:
     // Tasks is used to schedule super constructor calls.
     // Super constructor calls are delayed until all outers are set.
     type Tasks = mutable.ArrayBuffer[() => Unit]
-    def superCall(tref: TypeRef, ctor: Symbol, args: List[ArgInfo], tasks: Tasks): Unit =
+    def superCall(tref: TypeRef, ctor: Symbol, args: Lst[ArgInfo], tasks: Tasks): Unit =
       val cls = tref.classSymbol.asClass
       // update outer for super class
       val res = outerValue(tref, thisV, klass)
@@ -1576,16 +1576,16 @@ object Semantic:
       parent match
       case tree @ Block(stats, NewExpr(tref, New(tpt), ctor, argss)) =>  // can happen
         eval(stats, thisV, klass)
-        val args = evalArgs(argss.flatten, thisV, klass)
+        val args = evalArgs(argss.flattenLst, thisV, klass)
         superCall(tref, ctor, args, tasks)
 
       case tree @ NewExpr(tref, New(tpt), ctor, argss) =>       // extends A(args)
-        val args = evalArgs(argss.flatten, thisV, klass)
+        val args = evalArgs(argss.flattenLst, thisV, klass)
         superCall(tref, ctor, args, tasks)
 
       case _ =>   // extends A or extends A[T]
         val tref = typeRefOf(parent.tpe)
-        superCall(tref, tref.classSymbol.primaryConstructor, Nil, tasks)
+        superCall(tref, tref.classSymbol.primaryConstructor, Lst(), tasks)
 
     // see spec 5.1 about "Template Evaluation".
     // https://www.scala-lang.org/files/archive/spec/2.13/05-classes-and-objects.html
@@ -1627,7 +1627,7 @@ object Semantic:
             // See tests/neg/i16438.scala.
             val args: Lst[ArgInfo] = ctor.info.paramInfoss.flattenLst.map(_ => new ArgInfo(Hot, Trace.empty))
             extendTrace(superParent) {
-              superCall(tref, ctor, args.toList, tasks)
+              superCall(tref, ctor, args, tasks)
             }
       }
 

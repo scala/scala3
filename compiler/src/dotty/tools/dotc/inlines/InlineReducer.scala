@@ -42,24 +42,24 @@ class InlineReducer(inliner: Inliner)(using Context):
    *             - whether the instance creation is precomputed or by-name
    */
   private object NewInstance {
-    def unapply(tree: Tree)(using Context): Option[(Symbol, List[Tree], List[Tree], Boolean)] = {
-      def unapplyLet(bindings: List[Tree], expr: Tree) =
+    def unapply(tree: Tree)(using Context): Option[(Symbol, Lst[Tree], Lst[Tree], Boolean)] = {
+      def unapplyLet(bindings: Lst[Tree], expr: Tree) =
         unapply(expr) map {
-          case (cls, reduced, prefix, precomputed) => (cls, reduced, bindings ::: prefix, precomputed)
+          case (cls, reduced, prefix, precomputed) => (cls, reduced, bindings ++ prefix, precomputed)
         }
       tree match {
         case Apply(fn, args) =>
           fn match {
             case Select(New(tpt), nme.CONSTRUCTOR) =>
-              Some((tpt.tpe.classSymbol, args, Nil, false))
+              Some((tpt.tpe.classSymbol, args, Lst(), false))
             case TypeApply(Select(New(tpt), nme.CONSTRUCTOR), _) =>
-              Some((tpt.tpe.classSymbol, args, Nil, false))
+              Some((tpt.tpe.classSymbol, args, Lst(), false))
             case _ =>
               val meth = fn.symbol
               if (meth.name == nme.apply &&
                   meth.flags.is(Synthetic) &&
                   meth.owner.linkedClass.is(Case))
-                Some(meth.owner.linkedClass, args, Nil, false)
+                Some(meth.owner.linkedClass, args, Lst(), false)
               else None
           }
         case Typed(inner, _) =>
@@ -70,9 +70,9 @@ class InlineReducer(inliner: Inliner)(using Context):
           for ((cls, reduced, prefix, precomputed) <- unapply(binding))
           yield (cls, reduced, prefix, precomputed || binding.isInstanceOf[ValDef])
         case Inlined(_, bindings, expansion) =>
-          unapplyLet(bindings, expansion)
+          unapplyLet(bindings.toLst, expansion)
         case Block(stats, expr) if isElideableExpr(tree) =>
-          unapplyLet(stats, expr)
+          unapplyLet(stats.toLst, expr)
         case _ =>
           None
       }
@@ -109,17 +109,18 @@ class InlineReducer(inliner: Inliner)(using Context):
           else {
             // newInstance is evaluated in place, need to reflect side effects of
             // arguments in the order they were written originally
-            def collectImpure(from: Int, end: Int) =
-              (from until end).filterNot(i => isElideableExpr(args(i))).toList.map(args)
+            def collectImpure(from: Int, end: Int): Lst[Tree] =
+              args.slice(from, end).collect:
+                case arg if !isElideableExpr(arg) => arg
             val leading = collectImpure(0, idx)
             val trailing = collectImpure(idx + 1, args.length)
             val argInPlace =
               if (trailing.isEmpty) arg
               else
                 def argsSpan = trailing.map(_.span).foldLeft(arg.span)(_.union(_))
-                letBindUnless(TreeInfo.Pure, arg)(Block(trailing, _).withSpan(argsSpan))
-            val blockSpan = (prefix ::: leading).map(_.span).foldLeft(argInPlace.span)(_.union(_))
-            finish(seq(prefix, seq(leading, argInPlace)).withSpan(blockSpan))
+                letBindUnless(TreeInfo.Pure, arg)(Block(trailing.toList, _).withSpan(argsSpan))
+            val blockSpan = (prefix ++ leading).map(_.span).foldLeft(argInPlace.span)(_.union(_))
+            finish(seq(prefix.toList, seq(leading.toList, argInPlace)).withSpan(blockSpan))
           }
         }
         else tree
@@ -246,7 +247,7 @@ class InlineReducer(inliner: Inliner)(using Context):
         val tptBinds = tpt.bindTypeSymbols.toSet
         val binds: Set[TypeSymbol] = pat match {
           case UnApply(TypeApply(_, tpts), _, _) =>
-            tpts.flatMap(_.bindTypeSymbols).toSet ++ tptBinds
+            tpts.flatMap(_.bindTypeSymbols.toLst).toSet ++ tptBinds
           case _ => tptBinds
         }
 
@@ -318,18 +319,19 @@ class InlineReducer(inliner: Inliner)(using Context):
           unapp.tpe.widen match {
             case mt: MethodType if mt.paramInfos.length == 1 =>
 
-              def reduceSubPatterns(pats: List[Tree], selectors: List[Tree]): Boolean = (pats, selectors) match {
-                case (Nil, Nil) => true
-                case (pat :: pats1, selector :: selectors1) =>
-                  val elem = newSym(InlineBinderName.fresh(), Synthetic, selector.tpe.widenInlineScrutinee).asTerm
-                  adjustErased(elem, selector)
-                  val rhs = constToLiteral(selector)
-                  elem.defTree = rhs
-                  caseBindingMap += ((NoSymbol, ValDef(elem, rhs).withSpan(elem.span)))
-                  reducePattern(caseBindingMap, elem.termRef, pat) &&
-                  reduceSubPatterns(pats1, selectors1)
-                case _ => false
-              }
+              def reduceSubPatterns(pats: Lst[Tree], selectors: Lst[Tree]): Boolean =
+                pats.length == selectors.length && {
+                  var i = 0
+                  while i < pats.length do
+                    val elem = newSym(InlineBinderName.fresh(), Synthetic, selectors(i).tpe.widenInlineScrutinee).asTerm
+                    adjustErased(elem, selectors(i))
+                    val rhs = constToLiteral(selectors(i))
+                    elem.defTree = rhs
+                    caseBindingMap += ((NoSymbol, ValDef(elem, rhs).withSpan(elem.span)))
+                    if !reducePattern(caseBindingMap, elem.termRef, pats(i)) then return false
+                    i += 1
+                  true
+                }
 
               val paramType = mt.paramInfos.head
               val paramCls = paramType.classSymbol

@@ -235,17 +235,6 @@ object Decorators {
     /** Union on lists seen as sets */
     def setUnion (ys: List[T]): List[T] = xs ::: ys.filterNot(xs contains _)
 
-    /** Reduce left with `op` as long as list `xs` is not longer than `seqLimit`.
-     *  Otherwise, split list in two half, reduce each, and combine with `op`.
-     */
-    def reduceBalanced(op: (T, T) => T, seqLimit: Int = 100): T =
-      val len = xs.length
-      if len > seqLimit then
-        val (leading, trailing) = xs.splitAt(len / 2)
-        op(leading.reduceBalanced(op, seqLimit), trailing.reduceBalanced(op, seqLimit))
-      else
-        xs.reduceLeft(op)
-
   extension [T, U](xss: List[List[T]])
     def nestedMap(f: T => U): List[List[U]] = xss match
       case xs :: xss1 => xs.map(f) :: xss1.nestedMap(f)
@@ -262,7 +251,7 @@ object Decorators {
       case nil => None
   end extension
 
-  extension [T <: AnyRef](xss: List[Lst[T]])
+  extension [T](xss: List[Lst[T]])
 
     def flattenLst: Lst[T] =
       xss match
@@ -275,6 +264,13 @@ object Decorators {
           val buf = Lst.Buffer[T](totalSize)
           xss.foreach(buf ++= _)
           buf.toLst
+
+    def nestedMapConserveLst[U](f: T => U): List[Lst[U]] =
+      val yss = xss.map(_.mapConserve(f))
+      if xss.corresponds(yss): (xs, ys) =>
+        xs.asInstanceOf[Lst[Object]] `eqElements` ys.asInstanceOf[Lst[Object]]
+      then xss.asInstanceOf[List[Lst[U]]]
+      else yss
 
     def nestedExistsLst(p: T => Boolean): Boolean = xss match
       case xs :: xss1 => xs.exists(p) || xss1.nestedExistsLst(p)
@@ -378,10 +374,7 @@ object Decorators {
     def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)
 
   extension [T](xs: collection.Iterable[T])
-    def toLst: Lst[T] =
-      val buf = Lst.Buffer[T](xs.size)
-      for x <- xs do buf += x
-      buf.toLst
+    def toLst: Lst[T] = Lst.fromIterable(xs)
 
     def toLstReverse: Lst[T] =
       val rs = new Array[Object](xs.size)

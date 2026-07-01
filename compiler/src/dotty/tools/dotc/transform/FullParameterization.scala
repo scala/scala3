@@ -148,24 +148,24 @@ trait FullParameterization {
    */
   def fullyParameterizedDef(derived: TermSymbol, originalDef: DefDef, abstractOverClass: Boolean = true)(using Context): Tree =
     DefDef(derived, prefss => {
-      val (trefs, vrefss) = splitArgs(prefss.map(_.toList))
+      val (trefs, vrefss) = splitArgs(prefss)
       val origMeth = originalDef.symbol
       val origClass = origMeth.enclosingClass.asClass
       val origLeadingTypeParamSyms = allInstanceTypeParams(originalDef, abstractOverClass)
       val origOtherParamSyms = originalDef.trailingParamss.flattenLst.map(_.symbol)
-      val thisRef :: argRefs = vrefss.flatten: @unchecked
+      val Lst.cons(thisRef, argRefs) = vrefss.flattenLst.runtimeChecked
 
       /** If tree should be rewired, the rewired tree, otherwise EmptyTree.
        *  @param   targs  Any type arguments passed to the rewired tree.
        */
-      def rewireTree(tree: Tree, targs: List[Tree])(using Context): Tree = {
+      def rewireTree(tree: Tree, targs: Lst[Tree])(using Context): Tree = {
         def rewireCall(thisArg: Tree): Tree = {
           val rewired = rewiredTarget(tree, derived)
           if (rewired.exists) {
             val base = thisArg.tpe.baseType(origClass)
             assert(base.exists)
             ref(rewired.termRef)
-              .appliedToTypeTrees(targs ++ base.argInfos.mapToList(TypeTree(_)))
+              .appliedToTypeTrees(targs ++ base.argInfos.map(TypeTree(_)))
               .appliedTo(thisArg)
           } else EmptyTree
         }
@@ -205,11 +205,11 @@ trait FullParameterization {
 
       new TreeTypeMap(
         typeMap = rewireType(_)
-          .subst(origLeadingTypeParamSyms ++ origOtherParamSyms, (trefs ++ argRefs).mapToLst(_.tpe))
+          .subst(origLeadingTypeParamSyms ++ origOtherParamSyms, (trefs ++ argRefs).tpes)
           .substThisUnlessStatic(origClass, thisRef.tpe),
         treeMap = {
           case tree: This if tree.symbol == origClass => thisRef.withSpan(tree.span)
-          case tree => rewireTree(tree, Nil) `orElse` tree
+          case tree => rewireTree(tree, Lst()) `orElse` tree
         },
         oldOwners = Lst(origMeth),
         newOwners = Lst(derived)
@@ -228,18 +228,16 @@ trait FullParameterization {
         .appliedTo(This(originalDef.symbol.enclosingClass.asClass))
     val fwd =
       if !liftThisType then
-        fun.appliedToArgss(originalDef.trailingParamss.map(_.mapToList(param => ref(param.symbol))))
+        fun.appliedToArgss(originalDef.trailingParamss.map(_.map(param => ref(param.symbol))))
       else
         // this type could have changed on forwarding. Need to insert a cast.
-        originalDef.trailingParamss.foldLeft(fun)((acc, params) => {
-        val meth = acc.tpe.asInstanceOf[MethodType]
-        val paramTypes = meth.instantiateParamInfos(params.tpes)
-        acc.appliedToArgs(
-          params.lazyZip(paramTypes).map((param, paramType) => {
-            assert(param.tpe <:< paramType.widen) // type should still conform to widened type
-            ref(param.symbol).ensureConforms(paramType)
-          }).toList)
-       })
+        originalDef.trailingParamss.foldLeft(fun): (acc, params) =>
+          val meth = acc.tpe.asInstanceOf[MethodType]
+          val paramTypes = meth.instantiateParamInfos(params.tpes)
+          acc.appliedToArgs:
+            params.zipWith(paramTypes): (param, paramType) =>
+              assert(param.tpe <:< paramType.widen) // type should still conform to widened type
+              ref(param.symbol).ensureConforms(paramType)
     fwd.withSpan(originalDef.rhs.span)
   }
 }

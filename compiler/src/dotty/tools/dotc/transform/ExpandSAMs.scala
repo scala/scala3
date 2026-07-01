@@ -93,10 +93,9 @@ class ExpandSAMs extends MiniPhase:
               samInfo, coord = implSym.span).entered.asTerm
             val wrapperDef = DefDef(wrapperSym, paramss => {
               val implMt = implInfo.stripPoly.asInstanceOf[MethodType]
-              val adaptedArgs = paramss.head.lazyZip(implMt.paramInfos).map { (arg, implPt) =>
+              val adaptedArgs = paramss.head.zipWith(implMt.paramInfos): (arg, implPt) =>
                 if arg.tpe =:= implPt then arg else arg.cast(implPt)
-              }
-              ref(implSym).appliedToTermArgs(adaptedArgs.toList)
+              ref(implSym).appliedToTermArgs(adaptedArgs)
             })
             cpy.Block(tree)(fn :: wrapperDef :: Nil,
               transformFollowingDeep:
