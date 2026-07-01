@@ -4,7 +4,7 @@ package repl
 import scala.language.unsafeNulls
 
 import dotc.*, core.*
-import Contexts.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*, Types.*
+import Contexts.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
 import printing.ReplPrinter
 import printing.SyntaxHighlighting
 import reporting.Diagnostic
@@ -108,17 +108,10 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     if ncp <= maxPrintCharacters then str
     else str.substring(0, str.offsetByCodePoints(0, maxPrintCharacters - 1))
 
-  /** Whether `staticType` has a user-written `toString` override. */
-  private def hasUserDefinedToString(staticType: Type)(using Context): Boolean =
-    if staticType.derivesFrom(defn.ProductClass) && !staticType.derivesFrom(defn.TupleClass) then
-      val toStringSym = staticType.member(nme.toString_).symbol
-      toStringSym.exists && toStringSym.owner != defn.AnyClass && !toStringSym.is(Synthetic)
-    else false
-
   /** Return a colored fansi.Str representation of a value we got from `classLoader()`. */
-  private[repl] def replStringOf(value: Object, prefixLength: Int, staticType: Type)(using Context): fansi.Str = {
+  private[repl] def replStringOf(value: Object, prefixLength: Int)(using Context): fansi.Str = {
     val res =
-      if hasUserDefinedToString(staticType) then String.valueOf(value)
+      if ctx.settings.YreplPrintToString.value then String.valueOf(value)
       else pprintRender(
         value,
         width = ctx.settings.pageWidth.value,
@@ -141,7 +134,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       .flatMap(result => rewrapValueClass(sym.info.classSymbol, result.invoke(null)))
     symValue
       .filter(_ => sym.is(Flags.Method) || sym.info != defn.UnitType)
-      .map(value => stripReplPrefixFansi(replStringOf(value, prefixLength, sym.info.finalResultType)))
+      .map(value => stripReplPrefixFansi(replStringOf(value, prefixLength)))
 
   private def stripReplPrefixFansi(s: fansi.Str): fansi.Str =
     val plain = s.plainText
