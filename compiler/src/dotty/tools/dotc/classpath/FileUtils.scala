@@ -15,7 +15,7 @@ object FileUtils {
     def isPackage: Boolean = file.isDirectory && mayBeValidPackage(file.name)
 
     /** Does this abstract file represent something which can contain classfiles? */
-    def isClassContainer: Boolean = file.isDirectory || (file.jpath != null && file.ext.isJarOrZip)
+    def isClassContainer: Boolean = file.isDirectory || file.ext.isJarOrZip
 
     /**
      * Returns if there is an existing sibling `.tasty` file.
