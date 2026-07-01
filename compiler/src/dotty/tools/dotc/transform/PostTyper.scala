@@ -355,7 +355,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         tycon.tpe.widen match {
           case tp: PolyType if args.exists(isNamedArg) =>
             val (namedArgs, otherArgs) = args.partition(isNamedArg)
-            val args1 = reorderArgs(tp.paramNamesList, namedArgs.asInstanceOf[List[NamedArg]], otherArgs.toList)
+            val args1 = reorderArgs(tp.paramNamesList, namedArgs.toList.asInstanceOf[List[NamedArg]], otherArgs.toList)
             TypeApply(tycon, args1.toLst).withSpan(tree.span).withType(tree.tpe)
           case _ =>
             tree
