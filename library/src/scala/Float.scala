@@ -397,6 +397,7 @@ object Float extends AnyValCompanion {
   /** Language mandated coercions from `Float` to "wider" types.
    *
    *  @param x the `Float` value to convert
+   *  @return the `Double` value resulting from widening `x`
    */
   import scala.language.implicitConversions
   implicit def float2double(x: Float): Double = x.toDouble

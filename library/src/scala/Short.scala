@@ -642,6 +642,7 @@ object Short extends AnyValCompanion {
   /** Language mandated coercions from `Short` to "wider" types.
    *
    *  @param x the `Short` value to be implicitly converted
+   *  @return the value of `x` converted to the wider numeric type
    */
   import scala.language.implicitConversions
   implicit def short2int(x: Short): Int = x.toInt

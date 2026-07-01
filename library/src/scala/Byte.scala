@@ -642,6 +642,7 @@ object Byte extends AnyValCompanion {
   /** Language mandated coercions from `Byte` to "wider" types.
    *
    *  @param x the `Byte` value to convert
+   *  @return the value of `x` widened to the target numeric type
    */
   import scala.language.implicitConversions
   implicit def byte2short(x: Byte): Short = x.toShort

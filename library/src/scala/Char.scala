@@ -642,6 +642,7 @@ object Char extends AnyValCompanion {
   /** Language mandated coercions from `Char` to "wider" types.
    *
    *  @param x the `Char` value to convert
+   *  @return the value of `x` widened to the corresponding numeric type
    */
   import scala.language.implicitConversions
   implicit def char2int(x: Char): Int = x.toInt
