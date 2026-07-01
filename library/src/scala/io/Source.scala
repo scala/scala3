@@ -114,7 +114,6 @@ object Source {
    *  @param file the file to read from
    *  @param enc the name of the character encoding to use
    *  @param bufferSize the size of the input buffer, in characters
-   *  @return the buffered source
    */
   def fromFile(file: JFile, enc: String, bufferSize: Int): BufferedSource =
     fromFile(file, bufferSize)(using Codec(enc))
@@ -240,8 +239,8 @@ object Source {
   def fromInputStream(is: InputStream, enc: String): BufferedSource =
     fromInputStream(is)(using Codec(enc))
 
-  /** Creates a `Source` reading from an input stream, using the encoding in the
-   *  implicit `codec` parameter.
+  /** Creates a `Source` reading from an input stream, using the encoding
+   *  specified by `codec`.
    *
    *  @param is the input stream from which to read
    *  @param codec the implicit codec used for character encoding
@@ -302,7 +301,9 @@ abstract class Source extends Iterator[Char] with Closeable {
      *  @param ch the character to test
      */
     def isNewline(ch: Char): Boolean = ch == '\r' || ch == '\n'
-    /** Returns `true` after appending the next non-terminating character to the current line buffer, or `false` at a line separator or end of input. */
+    /** Returns `true` after appending the next non-terminating character to the
+     *  current line buffer, or `false` at a line separator or end of input.
+     */
     def getc(): Boolean = iter.hasNext && {
       val ch = iter.next()
       if (ch == '\n') false
@@ -360,7 +361,9 @@ abstract class Source extends Iterator[Char] with Closeable {
     /** Default col increment for tabs '\t', set to 4 initially. */
     var tabinc = 4
 
-    /** Returns the next character from the underlying iterator, updating the current character, encoded position, line, and column. */
+    /** Returns the next character from the underlying iterator, updating the
+     *  current character, encoded position, line, and column.
+     */
     def next(): Char = {
       ch = iter.next()
       pos = encoder.encode(cline, ccol)
