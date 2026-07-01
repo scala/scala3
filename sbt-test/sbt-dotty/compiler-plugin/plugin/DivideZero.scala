@@ -11,6 +11,7 @@ import Decorators._
 import Symbols._
 import Constants.Constant
 import transform.{Pickler, Staging}
+import util.Lst
 
 /** Compiler plugin that emits an error when compiling a division by zero */
 class DivideZero extends PluginPhase with StandardPlugin {
@@ -33,7 +34,7 @@ class DivideZero extends PluginPhase with StandardPlugin {
   }
 
   override def transformApply(tree: tpd.Apply)(implicit ctx: Context): tpd.Tree = tree match {
-    case tpd.Apply(fun, tpd.Literal(Constants.Constant(v)) :: Nil) if isNumericDivide(fun.symbol) && v == 0 =>
+    case tpd.Apply(fun, Lst.single(tpd.Literal(Constants.Constant(v)))) if isNumericDivide(fun.symbol) && v == 0 =>
       report.error("divide by zero", tree.sourcePos)
       tpd.Literal(Constant(0))
     case _ =>
