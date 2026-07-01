@@ -60,6 +60,13 @@ private[scala] object language:
     @deprecated("`strictEqualityPatternMatching` is now standard, no language import is needed", since = "3.10")
     object strictEqualityPatternMatching
 
+    /** Experimental support for relaxed null checks under strictEquality (SIP-79)
+     *
+     * @see [[https://github.com/scala/improvement-proposals/pull/133]]
+     */
+    @compileTimeOnly("`relaxedNullChecks` can only be used at compile time in import statements")
+    object relaxedNullChecks
+
     /** Experimental support for using indentation for arguments
      */
     @compileTimeOnly("`fewerBraces` can only be used at compile time in import statements")
