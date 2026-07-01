@@ -6,6 +6,7 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.ExtMethods
+import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameOps.*
@@ -167,6 +168,22 @@ trait PcSymbolSearch:
           .selector(pos.span)
           .map(sym => (symbolAlternatives(sym), sym.sourcePos))
 
+      /* Named tuple field access:
+       *  ```
+       *  val x: (name: String) = ???
+       *  x.na@@me
+       *  ```
+       */
+      case (app @ Apply(
+            Apply(TypeApply(fun, List(t1, t2)), List(_)),
+            List(Literal(Constant(i: Int)))
+          )) :: _
+          if fun.symbol.exists && fun.symbol.name == nme.apply
+            && fun.symbol.owner.exists
+            && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
+        namedTupleFieldSymbol(app, t1, t2, i).map: sym =>
+          (Set(sym), pos.withSpan(app.span.withStart(app.span.point)))
+
       case _ => None
 
     sought match
@@ -280,5 +297,19 @@ object PcSymbolSearch:
       nameSpan.start,
       nameSpan.end
     ) != df.name.toString()
+
+  /** Extract a synthetic symbol for a named tuple field from the desugared
+   *  `NamedTuple.apply[N, V](qual)(idx)` tree.
+   */
+  def namedTupleFieldSymbol(app: Apply, t1: Tree, t2: Tree, i: Int)(using Context): Option[Symbol] =
+    def typeAt(t: Tree): Option[Type] =
+      t.tpe.dealias match
+        case AppliedType(_, args) => args.get(i)
+        case _ => None
+    for
+      case ConstantType(Constant(name: String)) <- typeAt(t1)
+    yield
+      val fieldType = typeAt(t2).getOrElse(NoType)
+      newSymbol(NoSymbol, termName(name), Flags.EmptyFlags, fieldType)
 
 end PcSymbolSearch
