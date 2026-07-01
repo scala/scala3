@@ -22,12 +22,25 @@ import scala.language.`2.13`
  *  which provides useful non-primitive operations.
  */
 final abstract class Int private extends AnyVal {
+  /** Returns this value as a [[scala.Byte]], which may involve truncation of
+   *  the high-order bits.
+   */
   def toByte: Byte
+  /** Returns this value as a [[scala.Short]], which may involve truncation of
+   *  the high-order bits.
+   */
   def toShort: Short
+  /** Returns this value as a [[scala.Char]], which may involve truncation of
+   *  the high-order bits.
+   */
   def toChar: Char
+  /** Returns this value unchanged. */
   def toInt: Int
+  /** Returns this value as a [[scala.Long]]. */
   def toLong: Long
+  /** Returns this value as a [[scala.Float]], which may lose precision. */
   def toFloat: Float
+  /** Returns this value as a [[scala.Double]]. */
   def toDouble: Double
 
   /** Returns the bitwise negation of this value.
@@ -642,8 +655,21 @@ object Int extends AnyValCompanion {
   /** Language mandated coercions from `Int` to "wider" types. */
   import scala.language.implicitConversions
   @deprecated("Implicit conversion from Int to Float is dangerous because it loses precision. Write `.toFloat` instead.", "2.13.1")
+  /** Returns `x` converted to a `Float`.
+   *
+   *  @param x the `Int` value to convert
+   *  @return `x` as a `Float`; because `Float` has fewer significant bits than `Int`, the result may lose precision
+   */
   implicit def int2float(x: Int): Float = x.toFloat
+  /** Returns `x` converted to a `Long`.
+   *
+   *  @param x the `Int` value to convert
+   */
   implicit def int2long(x: Int): Long = x.toLong
+  /** Returns `x` converted to a `Double`.
+   *
+   *  @param x the `Int` value to convert
+   */
   implicit def int2double(x: Int): Double = x.toDouble
 }
 

@@ -107,6 +107,14 @@ object Source {
   def fromFile(file: JFile, enc: String): BufferedSource =
     fromFile(file)(using Codec(enc))
 
+  /** Creates a `Source` from `file`, using the named character encoding, with
+   *  input buffered in a buffer of size `bufferSize`, setting its description
+   *  to the filename.
+   *
+   *  @param file the file to read from
+   *  @param enc the name of the character encoding to use
+   *  @param bufferSize the size of the input buffer, in characters
+   */
   def fromFile(file: JFile, enc: String, bufferSize: Int): BufferedSource =
     fromFile(file, bufferSize)(using Codec(enc))
 
@@ -134,16 +142,26 @@ object Source {
    *
    *  @param bytes the array of bytes to decode into characters
    *  @param codec the implicit codec used for character encoding
-   *  @return      the created `Source` instance.
+   *  @return the created `Source` instance
    */
   def fromBytes(bytes: Array[Byte])(implicit codec: Codec): Source =
     fromString(new String(bytes, codec.name))
 
+  /** Creates a `Source` from array of bytes, decoding the bytes according to
+   *  the named character encoding.
+   *
+   *  @param bytes the array of bytes to decode into characters
+   *  @param enc the name of the character encoding to use
+   *  @return the created `Source` instance
+   */
   def fromBytes(bytes: Array[Byte], enc: String): Source =
     fromBytes(bytes)(using Codec(enc))
 
-  /** Creates a `Source` from array of bytes, assuming
-   *  one byte per character (ISO-8859-1 encoding.)
+  /** Creates a `Source` from array of bytes, assuming one byte per character
+   *  (ISO-8859-1 encoding).
+   *
+   *  @param bytes the array of bytes to decode into characters
+   *  @return the created `Source` instance
    */
   @deprecated("Use `fromBytes` and specify an encoding", since="2.13.9")
   def fromRawBytes(bytes: Array[Byte]): Source =
@@ -211,9 +229,23 @@ object Source {
     new BufferedSource(inputStream, bufferSize)(using codec) withReset resetFn withClose close
   }
 
+  /** Creates a `Source` reading from an input stream, using the named character
+   *  encoding.
+   *
+   *  @param is the input stream from which to read
+   *  @param enc the name of the character encoding to use
+   *  @return the buffered source
+   */
   def fromInputStream(is: InputStream, enc: String): BufferedSource =
     fromInputStream(is)(using Codec(enc))
 
+  /** Creates a `Source` reading from an input stream, using the encoding
+   *  specified by `codec`.
+   *
+   *  @param is the input stream from which to read
+   *  @param codec the implicit codec used for character encoding
+   *  @return the buffered source
+   */
   def fromInputStream(is: InputStream)(implicit codec: Codec): BufferedSource =
     createBufferedSource(is, reset = () => fromInputStream(is)(using codec), close = () => is.close())(using codec)
 
@@ -259,11 +291,21 @@ abstract class Source extends Iterator[Char] with Closeable {
 
   private def lineNum(line: Int): String = (getLines() drop (line - 1) take 1).mkString
 
+  /** An iterator over the lines of this source, excluding any line separator
+   *  characters.
+   */
   class LineIterator extends AbstractIterator[String] with Iterator[String] {
     private val sb = new StringBuilder
 
     lazy val iter: BufferedIterator[Char] = Source.this.iter.buffered
+    /** Returns `true` if `ch` is a carriage return or line feed character.
+     *
+     *  @param ch the character to test
+     */
     def isNewline(ch: Char): Boolean = ch == '\r' || ch == '\n'
+    /** Returns `true` after appending the next non-terminating character to the
+     *  current line buffer, or `false` at a line separator or end of input.
+     */
     def getc(): Boolean = iter.hasNext && {
       val ch = iter.next()
       if (ch == '\n') false
@@ -278,7 +320,9 @@ abstract class Source extends Iterator[Char] with Closeable {
         true
       }
     }
+    /** Returns `true` if this source has more lines to read. */
     def hasNext: Boolean = iter.hasNext
+    /** Returns the next line, excluding its line separator. */
     def next(): String = {
       sb.clear()
       while (getc()) { }
@@ -299,7 +343,14 @@ abstract class Source extends Iterator[Char] with Closeable {
   def next(): Char = positioner.next()
 
   @nowarn("cat=deprecation")
+  /** Tracks the line and column position of each character as it is read from
+   *  this source.
+   *
+   *  @param encoder the `Position` used to encode line and column numbers into a single position value
+   */
   class Positioner(encoder: Position) {
+    /** Creates a `Positioner` that encodes positions using `RelaxedPosition`.
+     */
     def this() = this(RelaxedPosition)
     /** the last character returned by next. */
     var ch: Char = compiletime.uninitialized
@@ -314,6 +365,9 @@ abstract class Source extends Iterator[Char] with Closeable {
     /** Default col increment for tabs '\t', set to 4 initially. */
     var tabinc = 4
 
+    /** Returns the next character from the underlying iterator, updating the
+     *  current character, encoded position, line, and column.
+     */
     def next(): Char = {
       ch = iter.next()
       pos = encoder.encode(cline, ccol)
@@ -334,13 +388,28 @@ abstract class Source extends Iterator[Char] with Closeable {
    */
   @nowarn("cat=deprecation")
   object RelaxedPosition extends Position {
+    /** Performs no validation, accepting any line and column without throwing.
+     *
+     *  @param line the line number that would otherwise be validated
+     *  @param column the column number that would otherwise be validated
+     */
     def checkInput(line: Int, column: Int): Unit = ()
   }
   object RelaxedPositioner extends Positioner(RelaxedPosition) { }
   object NoPositioner extends Positioner(Position) {
+    /** Returns the next character from the underlying iterator without tracking
+     *  its position.
+     */
     override def next(): Char = iter.next()
   }
+  /** Returns the character recorded by the current positioner, which for a
+   *  position-tracking positioner is the last character returned by `next`.
+   */
   def ch: Char = positioner.ch
+  /** Returns the encoded position recorded by the current positioner, which for
+   *  a position-tracking positioner is the position of the last character
+   *  returned by `next`.
+   */
   def pos: Int = positioner.pos
 
   /** Reports an error message to the output stream `out`.
@@ -391,14 +460,30 @@ abstract class Source extends Iterator[Char] with Closeable {
   private var closeFunction: (() => Unit) | Null = null
   private var positioner: Positioner = RelaxedPositioner
 
+  /** Sets the function that [[reset]] uses to produce a fresh copy of this
+   *  source.
+   *
+   *  @param f a `() => Source` that produces a fresh copy of this source, or `null` to leave [[reset]] throwing
+   *  @return this source
+   */
   def withReset(f: (() => Source) | Null): this.type = {
     resetFunction = f
     this
   }
+  /** Sets the function that [[close]] uses to close the underlying resource.
+   *
+   *  @param f a `() => Unit` that closes the underlying resource, or `null` to make [[close]] a no-op
+   *  @return this source
+   */
   def withClose(f: (() => Unit) | Null): this.type = {
     closeFunction = f
     this
   }
+  /** Sets the description of this source.
+   *
+   *  @param text the description to use
+   *  @return this source
+   */
   def withDescription(text: String): this.type = {
     descr = text
     this
@@ -411,6 +496,11 @@ abstract class Source extends Iterator[Char] with Closeable {
     positioner = if (on) RelaxedPositioner else NoPositioner
     this
   }
+  /** Sets a custom positioner used to track line and column positions.
+   *
+   *  @param pos the positioner to use
+   *  @return this source
+   */
   def withPositioning(pos: Positioner): this.type = {
     positioner = pos
     this
