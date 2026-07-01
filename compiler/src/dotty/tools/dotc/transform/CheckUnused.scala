@@ -57,6 +57,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     tree
 
   override def transformIdent(tree: Ident)(using Context): tree.type =
+    val name = tree.removeAttachment(OriginalName).getOrElse(tree.name)
     if tree.symbol.exists then
       // if in an inline expansion, resolve at summonInline (synthetic pos) or in an enclosing call site
       val resolvingImports =
@@ -69,9 +70,9 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
             loopOverPrefixes(prefix.normalizedPrefix, depth + 1)
         if tree.srcPos.isZeroExtentSynthetic then
           loopOverPrefixes(tree.typeOpt.normalizedPrefix, depth = 0)
-        resolveUsage(tree.symbol, tree.name, tree.typeOpt.importPrefix.skipPackageObject, tree.srcPos, resolvingImports)
+        resolveUsage(tree.symbol, name, tree.typeOpt.importPrefix.skipPackageObject, tree.srcPos, resolvingImports)
     else if tree.hasType then
-      resolveUsage(tree.tpe.classSymbol, tree.name, tree.tpe.importPrefix.skipPackageObject, tree.srcPos)
+      resolveUsage(tree.tpe.classSymbol, name, tree.tpe.importPrefix.skipPackageObject, tree.srcPos)
     tree
 
   // import x.y; y may be rewritten x.y, also import x.z as y
@@ -517,6 +518,14 @@ object CheckUnused:
 
   /** Attachment holding the name of an Ident as written by the user. */
   val OriginalName = Property.StickyKey[Name]
+
+  /** Record the name as written by the user when it differs from the referenced
+   *  symbol's name, such as a renamed import or a renamed extension method, so that
+   *  CheckUnused can match the reference against the import selector that renamed it.
+   */
+  def withOriginalName(tree: Tree, written: Name)(using Context): tree.type =
+    if tree.symbol.name != written then tree.withAttachment(OriginalName, written)
+    tree
 
   /** Suppress warning in a tree, such as a patvar name allowed by special convention. */
   val NoWarn = Property.StickyKey[Unit]
