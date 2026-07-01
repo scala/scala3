@@ -192,8 +192,8 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
     def isStale: Boolean =
       sym.sourcePos.span.exists && {
         val source = ctx.source
-        if (source ne sym.source) && source.path == sym.source.path then
-          !source.content.startsWith(
+        if (source ne sym.source) && source.file.path == sym.source.file.path then
+          !source.content().startsWith(
             sym.decodedName.toString(),
             sym.sourcePos.span.point
           )

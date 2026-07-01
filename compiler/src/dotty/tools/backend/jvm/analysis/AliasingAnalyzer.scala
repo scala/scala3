@@ -512,9 +512,7 @@ object AliasSet {
     else {
       var newLength = set.length
       while (index >= newLength) newLength *= 2
-      val newSet = new Array[Long](newLength)
-      Array.copy(set, 0, newSet, 0, set.length)
-      newSet
+      Array.copyOf(set, newLength)
     }
   }
 

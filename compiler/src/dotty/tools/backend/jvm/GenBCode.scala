@@ -9,6 +9,7 @@ import Contexts.*
 import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.backend.jvm.opt.{BCodeRepository, BTypesFromClassfile, CallGraph, OptimizerKnownBTypes, OptimizerUtils}
 import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.util.SourceFile
 import dotty.tools.io.*
 
 import scala.collection.mutable
@@ -137,7 +138,7 @@ class GenBCode extends Phase { self =>
   protected def run(using Context): Unit =
     codeGen.genUnit()
     ctx.compilerCallback match
-      case cb: CompilerCallback => cb.onSourceCompiled(ctx.source)
+      case cb: CompilerCallback => cb.onSourceCompiled(SourceFile.toInterface(ctx.source))
       case null => ()
 
   override def runOn(units: List[CompilationUnit])(using ctx:Context): List[CompilationUnit] = {

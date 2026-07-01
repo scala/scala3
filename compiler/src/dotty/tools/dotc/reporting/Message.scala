@@ -150,7 +150,7 @@ object Message:
 
         val suffix = alts.length match {
           case 1 => ""
-          case n => n.toString.toCharArray.map {
+          case n => n.toString.map {
             case '0' => '⁰'
             case '1' => '¹'
             case '2' => '²'
@@ -161,7 +161,7 @@ object Message:
             case '7' => '⁷'
             case '8' => '⁸'
             case '9' => '⁹'
-          }.mkString
+          }
         }
         str + suffix
       else str

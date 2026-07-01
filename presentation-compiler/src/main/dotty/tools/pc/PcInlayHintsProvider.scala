@@ -69,7 +69,7 @@ class PcInlayHintsProvider(
   ): InlayHints =
     // Skip trees positioned outside the analyzed file (inlined expansions from
     // other sources). See [[dotty.tools.pc.tests.inlayHints.InlayHintsInlinedDependencySuite]].
-    if tree.source.path != source.path then inlayHints
+    if tree.source.file.path != source.file.path then inlayHints
     else collectDecorationsImpl(inlayHints, tree, parent)
 
   private def collectDecorationsImpl(

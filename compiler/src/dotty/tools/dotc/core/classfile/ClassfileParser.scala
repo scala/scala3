@@ -235,9 +235,10 @@ object ClassfileParser {
           val start = starts(index)
           if (in.getByte(start).toInt != CONSTANT_UTF8) errorBadTag(start)
           val len = in.getChar(start + 1)
-          val buf = new Array[Byte](len)
-          in.getBytes(start + 3, buf)
-          bytesBuffer ++= buf
+          var i = 0
+          while i < len do
+            bytesBuffer += in.getByte(start + 3 + i)
+            i += 1
         }
         value = getSubArray(bytesBuffer.toArray)
         values(indices.head) = value
@@ -384,7 +385,7 @@ final class ClassfileParser(
     }
 
     val result = unpickleOrParseInnerClasses()
-    if (!result.isDefined) {
+    if (result.isEmpty) {
       var classInfo: Type = TempClassInfoType(parseParents, instanceScope, classRoot.symbol)
       // might be reassigned by later parseAttributes
       val staticInfo = TempClassInfoType(List(), staticScope, moduleRoot.symbol)
@@ -418,7 +419,7 @@ final class ClassfileParser(
       setClassInfo(classRoot, classInfo, fromScala2 = false)
       NamerOps.addConstructorProxies(moduleRoot.classSymbol)
     }
-    else if (result == Some(NoEmbedded))
+    else if (result.contains(NoEmbedded))
       for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
         classRoot.owner.asClass.delete(sym)
         sym.markAbsent()
@@ -1112,7 +1113,7 @@ final class ClassfileParser(
    *  Restores the old `bp`.
    *  @return Some(unpickler) iff classfile is from Scala, so no Java info needs to be read.
    */
-  def unpickleOrParseInnerClasses()(using ctx: Context, in: DataReader): Option[Embedded] = {
+  private def unpickleOrParseInnerClasses()(using ctx: Context, in: DataReader): Option[Embedded] = {
     val oldbp = in.bp
     try {
       skipSuperclasses()

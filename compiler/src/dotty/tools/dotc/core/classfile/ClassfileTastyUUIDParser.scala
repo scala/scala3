@@ -52,10 +52,8 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
     skipMembers() // fields
     skipMembers() // methods
     val attrs = in.nextChar
-    val attrbp = in.bp
 
     def scan(target: TypeName): Boolean = {
-      in.bp = attrbp
       var i = 0
       while (i < attrs && pool.getName(in.nextChar).name.toTypeName != target) {
         val attrLen = in.nextInt

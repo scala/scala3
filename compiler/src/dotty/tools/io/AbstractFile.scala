@@ -5,12 +5,10 @@
 
 package dotty.tools.io
 
-import java.io.{
-  IOException, InputStream, OutputStream, BufferedOutputStream,
-  ByteArrayOutputStream
-}
+import java.io.{BufferedOutputStream, ByteArrayOutputStream, IOException, InputStream, OutputStream}
 import java.net.URL
 import java.nio.file.{FileAlreadyExistsException, Files, Paths}
+import scala.io.Codec
 
 /**
  * An abstraction over files for use in the reflection/compiler libraries.
@@ -149,19 +147,9 @@ abstract class AbstractFile extends Iterable[AbstractFile] with dotty.tools.dotc
   /** Returns a buffered output stream for writing the file - defaults to out */
   def bufferedOutput: BufferedOutputStream = new BufferedOutputStream(output)
 
-  /** size of this file if it is a concrete file. */
-  def sizeOption: Option[Int] = None
-
   def toURL: URL | Null =
     val jpath = this.jpath
     if (jpath == null) null else jpath.toUri.toURL
-
-  /** Returns contents of file (if applicable) in a Char array.
-   *  warning: use `Global.getSourceFile()` to use the proper
-   *  encoding when converting to the char array.
-   */
-  @throws(classOf[IOException])
-  def toCharArray: Array[Char] = new String(toByteArray).toCharArray
 
   /** Returns contents of file (if applicable) in a byte array.
    */
@@ -170,6 +158,11 @@ abstract class AbstractFile extends Iterable[AbstractFile] with dotty.tools.dotc
     val is = input
     try is.readAllBytes()
     finally is.close()
+
+  /** Reads the entire file as a string using the given codec; potentially more efficient than toByteArray */
+  @throws(classOf[IOException])
+  def readAsString(codec: Codec): String =
+    new String(toByteArray, codec.charSet)
 
   /** Returns all abstract subfiles of this abstract directory. */
   def iterator: Iterator[AbstractFile]

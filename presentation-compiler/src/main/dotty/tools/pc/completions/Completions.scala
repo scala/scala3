@@ -374,7 +374,7 @@ class Completions(
   ): (List[CompletionValue], Boolean) =
     val pos = completionPos.originalCursorPosition
     lazy val rawPath = Paths
-      .get(pos.source.path).nn
+      .get(pos.source.file.path).nn
     lazy val rawFileName = rawPath
       .getFileName()
       .toString()

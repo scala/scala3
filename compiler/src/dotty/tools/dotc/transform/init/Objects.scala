@@ -8,19 +8,17 @@ import Symbols.*
 import Types.*
 import Denotations.Denotation
 import StdNames.*
-import Names.TermName
+import Names.{TermName, termName}
 import NameKinds.OuterSelectName
 import NameKinds.SuperAccessorName
 import Decorators.*
-
 import ast.tpd.*
-import util.{ SourcePosition, NoSourcePosition }
+import util.{NoSourcePosition, SourcePosition}
 import config.Printers.init as printer
 import reporting.StoreReporter
 import reporting.trace as log
 import reporting.trace.force as forcelog
 import typer.Applications.*
-
 import Errors.*
 import Trace.*
 import Util.*
@@ -63,6 +61,7 @@ import dotty.tools.dotc.util.SrcPos
  *
  */
 class Objects(using Context @constructorOnly):
+  private val nextName = termName("next")
   val immutableHashSetNode: Symbol = requiredClass("scala.collection.immutable.SetNode")
   // TODO: this should really be an annotation on the rhs of the field initializer rather than the field itself.
   val SetNode_EmptySetNode: Symbol = Denotations.staticRef("scala.collection.immutable.SetNode.EmptySetNode".toTermName).symbol
@@ -1304,7 +1303,7 @@ class Objects(using Context @constructorOnly):
           UnknownValue
 
       else if target.exists then
-        def isNextFieldOfColonColon: Boolean = ref.klass == defn.ConsClass && target.name.toString == "next"
+        def isNextFieldOfColonColon: Boolean = ref.klass == defn.ConsClass && target.name == nextName
         if target.isMutableVarOrAccessor && !isNextFieldOfColonColon then
           if ref.hasVar(target) then
             if ref.owner == State.currentObject then

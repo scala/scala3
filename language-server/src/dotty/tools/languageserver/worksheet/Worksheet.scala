@@ -67,7 +67,7 @@ object Worksheet {
    * @param sourcefile The sourcefile of the worksheet.
    */
   private def query(tree: Tree, sourcefile: SourceFile)(implicit ctx: Context): (SourcePosition, String) = {
-    val source = sourcefile.content.slice(tree.span.start, tree.span.end).mkString
+    val source = sourcefile.content().substring(tree.span.start, tree.span.end)
     (tree.sourcePos, source)
   }
 

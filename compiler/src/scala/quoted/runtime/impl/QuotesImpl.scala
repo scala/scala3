@@ -3384,7 +3384,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def sourceCode: Option[String] =
           val contents = self.source.content()
           if contents.length < self.end then None
-          else Some(new String(contents, self.start, self.end - self.start))
+          else Some(contents.substring(self.start, self.end))
       end extension
     end PositionMethods
 
@@ -3406,8 +3406,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           self.file.jpath.asInstanceOf[java.nio.file.Path] // the cast is the reason this is deprecated
 
         def getJPath: Option[java.nio.file.Path] = Option(self.file.jpath)
-        def name: String = self.name
-        def path: String = self.path
+        def name: String = self.file.name
+        def path: String = self.file.path
         def content: Option[String] =
           // TODO detect when we do not have a source and return None
           Some(new String(self.content()))

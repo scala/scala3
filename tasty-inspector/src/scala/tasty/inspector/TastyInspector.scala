@@ -75,7 +75,7 @@ object TastyInspector:
         class TastyImpl(val path: String, val ast: quotesImpl.reflect.Tree) extends Tasty[quotesImpl.type] {
           val quotes = quotesImpl
         }
-        val tastys = units.map(unit => new TastyImpl(unit.source.path , unit.tpdTree.asInstanceOf[quotesImpl.reflect.Tree]))
+        val tastys = units.map(unit => new TastyImpl(unit.source.file.path , unit.tpdTree.asInstanceOf[quotesImpl.reflect.Tree]))
         inspector.inspect(using quotesImpl)(tastys)
         units
 

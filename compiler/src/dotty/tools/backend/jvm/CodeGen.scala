@@ -19,11 +19,11 @@ import scala.tools.asm.tree.*
 import tpd.*
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.ast.Positioned
-import dotty.tools.dotc.util.NoSourcePosition
+import dotty.tools.dotc.util.{NoSourcePosition, SourceFile}
 import SymbolUtils.given
 import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.dotc.interfaces.CompilerCallback
-import opt.{OptimizerUtils, CallGraph}
+import opt.{CallGraph, OptimizerUtils}
 
 class CodeGen(val primitives: ScalaPrimitives,
               val callGraph: Option[CallGraph], val bTypeLoader: BTypeLoader, val knownBTypes: KnownBTypes,
@@ -113,7 +113,7 @@ class CodeGen(val primitives: ScalaPrimitives,
     clsFile => {
       val className = cls.name.replace('/', '.')
       ctx.compilerCallback match
-        case cb: CompilerCallback => cb.onClassGenerated(sourceFile, clsFile, className)
+        case cb: CompilerCallback => cb.onClassGenerated(SourceFile.toInterface(sourceFile), clsFile, className)
         case null => ()
 
       ctx.withIncCallback: cb =>

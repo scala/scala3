@@ -90,7 +90,7 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
           if (name < dupName) ((clsPos, dupPos), (name, dupName))
           else ((dupPos, clsPos), (dupName, name))
         val locationAddendum =
-          if pos1.source.path == pos2.source.path then ""
+          if pos1.source.file.path == pos2.source.file.path then ""
           else s" (defined in ${pos2.source.file.name})"
         def nicify(name: String): String = name.replace('/', '.')
         if name1 == name2 then

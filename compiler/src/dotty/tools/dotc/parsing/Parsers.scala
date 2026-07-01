@@ -107,7 +107,7 @@ object Parsers {
   def unimplementedExpr(using Context): Select =
     Select(scalaDot(nme.Predef), nme.???)
 
-  abstract class ParserCommon(val source: SourceFile)(using Context) {
+  abstract class ParserCommon(source: SourceFile)(using Context) {
 
     val in: ScannerCommon
 
@@ -752,12 +752,12 @@ object Parsers {
     var possibleColonOffset: Int = -1
 
     def testChar(idx: Int, p: Char => Boolean): Boolean = {
-      val txt = source.content
+      val txt = source.content()
       idx >= 0 && idx < txt.length && p(txt(idx))
     }
 
     def testChar(idx: Int, c: Char): Boolean = {
-      val txt = source.content
+      val txt = source.content()
       idx >= 0 && idx < txt.length && txt(idx) == c
     }
 
@@ -1554,7 +1554,7 @@ object Parsers {
       if in.token == STRINGLIT then
         val dedentWidth =
           if in.delimChar == '\''
-          then trim.lastIndent(in.strVal.nn.toCharArray)
+          then trim.lastIndent(in.strVal.nn)
           else null
         segmentBuf += literal(in.offset + offsetCorrection, inPattern = inPattern, inStringInterpolation = true)
         if dedentWidth != null then
@@ -1570,30 +1570,28 @@ object Parsers {
     /** Trimming '''-enclosed strings */
     object trim {
 
-      private case class Cut(val offset: Int, val length: Int)
+      private case class Cut(offset: Int, length: Int)
 
-      private def shorten(cs: Array[Char], cuts: List[Cut]): String =
+      private def shorten(cs: String, cuts: List[Cut]): String =
         val totalCutSize = cuts.map(_.length).sum
         if totalCutSize > cs.length then
           "" // happens for empty '''-enclosed literals since the \n is counted twice
         else
-          val target = new Array[Char](cs.length - totalCutSize)
+          val target = java.lang.StringBuilder(cs.length - totalCutSize)
           def recur(cuts: List[Cut], fromIdx: Int, toIdx: Int): Unit = cuts match
             case Nil =>
-              val len = cs.length - fromIdx
-              assert(len == target.length - toIdx, i"len = $len, remaining = ${target.length - toIdx}")
-              Array.copy(cs, fromIdx, target, toIdx, len)
+              target.append(cs, fromIdx, cs.length)
             case Cut(offset, length) :: cuts1 =>
               val len = offset - fromIdx
-              Array.copy(cs, fromIdx, target, toIdx, len)
+              target.append(cs, fromIdx, offset)
               recur(cuts1, offset + length, toIdx + len)
           recur(cuts, 0, 0)
-          new String(target)
+          target.toString
 
       /** Trim the start of a '''-literal, up to and including the first \n.
        *  This must be all whitespace.
        */
-      private def trimStart(cs: Array[Char], strOffset: Int): List[Cut] =
+      private def trimStart(cs: String, strOffset: Int): List[Cut] =
         var i = 0
         while i < cs.length && isWhitespace(cs(i)) do i += 1
         if i < cs.length && cs(i) == Chars.LF then
@@ -1605,7 +1603,7 @@ object Parsers {
       /** Trim the end of a '''-literal, up to and including the last \n.
        *  This must be all whitespace.
        */
-      private def trimEnd(cs: Array[Char], strOffset: Int): List[Cut] =
+      private def trimEnd(cs: String, strOffset: Int): List[Cut] =
         var i = cs.length - 1
         while i >= 0 && isWhitespace(cs(i)) do i -= 1
         if i >= 0 && cs(i) == Chars.LF then
@@ -1619,7 +1617,7 @@ object Parsers {
       /** Trim the IndentWidth prefix from all starts of lines.
        *  Error if a line does not start with at least IndentWidth.
        */
-      private def trimLeft(cs: Array[Char], width: IndentWidth, strOffset: Int): List[Cut] =
+      private def trimLeft(cs: String, width: IndentWidth, strOffset: Int): List[Cut] =
         def checkCut(cut: Cut): Boolean =
           if cut.length < 0 then
             var i = cut.offset
@@ -1639,10 +1637,10 @@ object Parsers {
 
       /** The indentation width of the last line in `cs` (i.e. what comes before the closing `'''`).
        */
-      def lastIndent(cs: Array[Char]): IndentWidth =
+      def lastIndent(cs: String): IndentWidth =
         in.indentWidth(cs.length, cs)
 
-      private def trimAll(cs: Array[Char], width: IndentWidth, strOffset: Int,
+      private def trimAll(cs: String, width: IndentWidth, strOffset: Int,
                           isFirst: Boolean, isLast: Boolean): String =
         val startCuts = if isFirst then trimStart(cs, strOffset) else Nil
         var leftCuts = trimLeft(cs, width, strOffset)
@@ -1655,15 +1653,14 @@ object Parsers {
        *  The string without leading quotes starts at `strOffset`.
        */
       def apply(str: String, strOffset: Int): String =
-        val cs = str.toCharArray()
-        trimAll(cs, lastIndent(cs), strOffset, isFirst = true, isLast = true)
+        trimAll(str, lastIndent(str), strOffset, isFirst = true, isLast = true)
 
       /** Trim part of '''-enclosed interpolated string literal */
       def apply(tree: Tree, width: IndentWidth, isFirst: Boolean, isLast: Boolean): Tree = tree match
         case Thicket(lit :: rest) =>
           Thicket(apply(lit, width, isFirst, isLast) :: rest)
         case Literal(Constant(str: String)) =>
-          val trimmed = trimAll(str.toCharArray, width, tree.span.start, isFirst, isLast)
+          val trimmed = trimAll(str, width, tree.span.start, isFirst, isLast)
           cpy.Literal(tree)(Constant(trimmed))
     }
 

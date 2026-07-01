@@ -202,7 +202,7 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
     val wrappedExpressionFile =
       new VirtualFile("<wrapped-expression>", contentBytes)
     val sourceFile =
-      new SourceFile(wrappedExpressionFile, wrappedExpression.toArray):
+      new SourceFile(wrappedExpressionFile, wrappedExpression):
         override def start: Int = -prefix.size
         override def underlying: SourceFile = expressionFile
         override def atSpan(span: Span): SourcePosition =

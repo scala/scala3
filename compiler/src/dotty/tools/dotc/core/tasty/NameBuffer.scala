@@ -82,9 +82,7 @@ class NameBuffer extends TastyBuffer(10000) {
     name.toTermName match {
       case name: SimpleName =>
         writeByte(tag)
-        val bytes =
-          if (name.length == 0) new Array[Byte](0)
-          else Codec.toUTF8(chrs, name.start, name.length)
+        val bytes = name.toUTF8Bytes
         writeNat(bytes.length)
         writeBytes(bytes, bytes.length)
       case AnyQualifiedName(prefix, name) =>
