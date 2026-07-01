@@ -113,7 +113,7 @@ class TypedFormatChecker(partsElems: Lst[Tree], parts: Lst[String], args: Lst[Tr
         catch case ex: Throwable =>
           report.partError(ex.getMessage, index = n, offset = 0)
           ""
-      checkPart(parts(n), n)
+      checkPart(part, n)
 
     if reported then (Lst(), Lst()) // on error, Transform.checked will revert to unamended inputs
     else
