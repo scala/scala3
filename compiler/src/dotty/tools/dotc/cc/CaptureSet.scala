@@ -466,6 +466,20 @@ sealed abstract class CaptureSet extends Showable:
     else
       UnknownClassifier
 
+  /** Is every element of this set provably free of parts classified under `cls`?
+   *  Like `transClassifiers`, refuses to answer for unsolved variables, whose
+   *  elements can still grow.
+   */
+  def isKnownDisjointFrom(cls: ClassSymbol)(using Context): Boolean =
+    def elemsDisjoint = elems.forall(_.isKnownDisjointFrom(cls))
+    if ccState.isSepCheck then
+      dropEmpties()
+      elemsDisjoint
+    else if isConst then
+      elemsDisjoint
+    else
+      false
+
   def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
     elems.forall(_.tryClassifyAs(cls))
 

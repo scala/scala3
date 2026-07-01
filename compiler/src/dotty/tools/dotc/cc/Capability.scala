@@ -742,21 +742,27 @@ object Capabilities:
 
     /** Is this capability provably free of any parts classified under `cls`?
      *  True if all its classifiers are on branches unrelated to `cls`, or an exclusion
-     *  already removed the `cls` subtree.
+     *  already removed the `cls` subtree. Unlike `transClassifiers`, this looks at
+     *  exclusions everywhere along `captureSetOfInfo`.
      */
     def isKnownDisjointFrom(cls: ClassSymbol)(using Context): Boolean =
-      def disjointByClassifiers: Boolean = transClassifiers match
-        case ClassifiedAs(cs) => cs.forall(c => leastClassifier(c, cls) == defn.NothingClass)
-        case _ => false
       this match
-        case Classified(_, _, except) =>
-          except.exists(e => cls.isSubClass(e)) || disjointByClassifiers
+        case self: LocalCap =>
+          if self.isClassified then leastClassifier(self.hiddenSet.classifier, cls) == defn.NothingClass
+          else self.hiddenSet.isKnownDisjointFrom(cls)
+        case self: RootCapability =>
+          false
+        case Classified(ref1, only, except) =>
+          leastClassifier(only, cls) == defn.NothingClass
+          || except.exists(e => cls.isSubClass(e))
+          || ref1.isKnownDisjointFrom(cls)
         case ReadOnly(ref1) =>
           ref1.isKnownDisjointFrom(cls)
         case Maybe(ref1) =>
           ref1.isKnownDisjointFrom(cls)
-        case _ =>
-          disjointByClassifiers
+        case self: CoreCapability =>
+          leastClassifier(self.inheritedClassifier, cls) == defn.NothingClass
+          || captureSetOfInfo.isKnownDisjointFrom(cls)
 
     /** Is this capability provably the empty capture set? */
     def isKnownEmpty(using Context): Boolean = this match
