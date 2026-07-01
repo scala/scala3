@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.typer.Applications.UnapplyArgs
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.Spans.Span
@@ -52,7 +53,7 @@ class InferExpectedType(
 object InferCompletionType:
   def inferType(path: List[Tree])(using Context): Option[Type] =
     path match
-      case (lit: Literal) :: Select(Literal(_), _) :: Apply(Select(Literal(_), _), List(s: Select)) :: rest
+      case (lit: Literal) :: Select(Literal(_), _) :: Apply(Select(Literal(_), _), Lst.single(s: Select)) :: rest
           if s.symbol == defn.Predef_undefined => inferType(rest, lit.span)
       case ident :: rest => inferType(rest, ident.span)
       case _ => None

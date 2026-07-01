@@ -263,7 +263,7 @@ final class InferredMethodProvider(
           Apply(method, outerArgs) ::
           _ if id.symbol == NoSymbol && func == id && method != apply =>
 
-        val argTypes = args.map(_.typeOpt.widenDealias)
+        val argTypes = args.map(_.typeOpt.widenDealias).toList
 
         val argIndex = outerArgs.indexOf(apply)
         val (allArgTypes, retTypeOpt) =
@@ -309,7 +309,7 @@ final class InferredMethodProvider(
           _ if id.symbol == NoSymbol && func == id && apply == body =>
 
         val retType = tpt.tpe.widenDealias
-        val argTypes = args.map(_.typeOpt.widenDealias)
+        val argTypes = args.map(_.typeOpt.widenDealias).toList
 
         val signature = printSignature(errorMethod, List(argTypes), Some(retType))
         signatureEdits(signature)
@@ -338,7 +338,7 @@ final class InferredMethodProvider(
           (Apply(func, args)) ::
           _ if id.symbol == NoSymbol && func == id =>
 
-        val argTypes = args.map(_.typeOpt.widenDealias)
+        val argTypes = args.map(_.typeOpt.widenDealias).toList
 
         val signature = printSignature(errorMethod, List(argTypes), None)
         signatureEdits(signature)
@@ -361,7 +361,7 @@ final class InferredMethodProvider(
           (Apply(func, args)) ::
           _ if select.symbol == NoSymbol && func == select =>
 
-        val argTypes = args.map(_.typeOpt.widenDealias)
+        val argTypes = args.map(_.typeOpt.widenDealias).toList
         val signature = printSignature(errorMethod, List(argTypes), None)
         signatureEditsForContainer(signature, container)
 

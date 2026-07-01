@@ -8,7 +8,7 @@ import ast.Trees.*
 import ast.desugar
 import core.Mode
 import Contexts.Context
-
+import util.Lst
 
 class DeSugarTest extends ParserTest {
 
@@ -29,7 +29,7 @@ class DeSugarTest extends ParserTest {
 
     def transform(tree: Tree, mode: Mode)(using Context): Tree = withMode(mode) { transform(tree) }
     def transform(trees: List[Tree], mode: Mode)(using Context): List[Tree] = withMode(mode) { transform(trees) }
-    def transform(trees: Lst[Tree], mode: Mode)(using Context): List[Tree] = withMode(mode) { transform(trees) }
+    def transform(trees: Lst[Tree], mode: Mode)(using Context): Lst[Tree] = withMode(mode) { transform(trees) }
 
     override def transform(tree: Tree)(using Context): Tree = {
       val tree1 = desugar(tree)(using ctx.withModeBits(curMode))

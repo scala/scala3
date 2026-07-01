@@ -29,6 +29,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.Completion.Mode
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
@@ -250,7 +251,7 @@ class Completions(
         }
         .chain { suffix =>
           adjustedPath match
-            case (_: Ident) :: (app @ Apply(_, List(arg))) :: _ =>
+            case (_: Ident) :: (app @ Apply(_, Lst.single(arg))) :: _ =>
               app.symbol.info match
                 case _: MethodType
                     if app.symbol.paramSymss.last.exists(_.is(Given)) &&

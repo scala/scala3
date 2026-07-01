@@ -53,12 +53,12 @@ object ApplyArgsExtractor:
           case Block(List(d: DefDef), _: Closure) =>
             d.rhs match
               case app: Apply =>
-                app.args
+                app.args.toList
               case b @ Block(List(_: DefDef), _: Closure) =>
                 stripContextFuntionArgument(b)
               case _ => Nil
           case v => List(v)
-      val args = a.args.flatMap(stripContextFuntionArgument)
+      val args = a.args.toList.flatMap(stripContextFuntionArgument)
       a.fun match
         case app: Apply => collectArgss(app) :+ args
         case _ => List(args)

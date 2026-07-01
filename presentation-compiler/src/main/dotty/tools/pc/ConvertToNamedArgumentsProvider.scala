@@ -51,7 +51,7 @@ final class ConvertToNamedArgumentsProvider(
           case tpd.TypeApply(FromNewApply(fun, argss), _) =>
             Some(fun, argss)
           case tpd.Apply(FromNewApply(fun, argss), args) =>
-            Some(fun, argss ++ args)
+            Some(fun, argss ++ args.toList)
           case _ => None
 
     def edits(tree: Option[tpd.Tree])(using Context): Either[String, List[l.TextEdit]] =
@@ -75,7 +75,7 @@ final class ConvertToNamedArgumentsProvider(
             case FromNewApply(fun, args) =>
               makeTextEdits(fun, args)
             case tpd.Apply(fun, args) =>
-              makeTextEdits(fun, args)
+              makeTextEdits(fun, args.toList)
             case _ => Right(Nil)
         case _ => Right(Nil)
     edits(tree)(using newctx)

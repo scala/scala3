@@ -108,11 +108,11 @@ class SelectionRangeProvider(driver: InteractiveDriver, params: ju.List[OffsetPa
       case ddef @ DefDef(_, paramss, _, _) =>
         maybeToSelectionRange(ddef.namePos) ++: paramss.flatMap(pc => allArgsSelectionRange(pc.toList))
       case Apply(_, args) =>
-        allArgsSelectionRange(args)
+        allArgsSelectionRange(args.toList)
       case TypeApply(_, args) =>
-        allArgsSelectionRange(args)
+        allArgsSelectionRange(args.toList)
       case AppliedTypeTree(_, args) =>
-        allArgsSelectionRange(args)
+        allArgsSelectionRange(args.toList)
       case Function(args, _) =>
         allArgsSelectionRange(args.toList)
       case _ => Seq.empty

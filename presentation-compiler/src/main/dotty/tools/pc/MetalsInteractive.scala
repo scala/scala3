@@ -93,7 +93,7 @@ object MetalsInteractive:
         select.name
       )
     gtree match
-      case Apply(fun, List(_: Block)) => isForSynthetic(fun)
+      case Apply(fun, Lst.single(_: Block)) => isForSynthetic(fun)
       case TypeApply(fun, _) => isForSynthetic(fun)
       case gtree: Select if isForComprehensionSyntheticName(gtree) => true
       case _ => false
@@ -214,7 +214,7 @@ object MetalsInteractive:
             Nil
 
       // Handle select on named tuples
-      case (Apply(Apply(TypeApply(fun, List(t1, t2)), List(ddef)), List(Literal(Constant(i: Int))))) :: _
+      case (Apply(Apply(TypeApply(fun, Lst.pair(t1, t2)), Lst.single(ddef)), Lst.single(Literal(Constant(i: Int))))) :: _
           if fun.symbol.exists && fun.symbol.name == nme.apply &&
             fun.symbol.owner.exists && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
         def getIndex(t: Tree): Option[Type] =
@@ -303,9 +303,9 @@ object MetalsInteractive:
   object TreeApply:
     def unapply(tree: Tree): Option[(Tree, List[Tree])] =
       tree match
-        case TypeApply(qual, args) => Some(qual -> args)
-        case Apply(qual, args) => Some(qual -> args)
-        case UnApply(qual, implicits, args) => Some(qual -> (implicits.toList ++ args))
-        case AppliedTypeTree(qual, args) => Some(qual -> args)
+        case TypeApply(qual, args) => Some(qual -> args.toList)
+        case Apply(qual, args) => Some(qual -> args.toList)
+        case UnApply(qual, implicits, args) => Some(qual -> (implicits.toList ++ args.toList))
+        case AppliedTypeTree(qual, args) => Some(qual -> args.toList)
         case _ => None
 end MetalsInteractive
