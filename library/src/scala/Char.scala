@@ -22,9 +22,13 @@ import scala.language.`2.13`
  *  which provides useful non-primitive operations.
  */
 final abstract class Char private extends AnyVal {
-  /** Returns the value of this `Char` as a `Byte`, which may involve truncation. */
+  /** Returns the value of this `Char` as a `Byte`, which may involve
+   *  truncation.
+   */
   def toByte: Byte
-  /** Returns the value of this `Char` as a `Short`, which may involve a change of sign. */
+  /** Returns the value of this `Char` as a `Short`, which may involve a change
+   *  of sign.
+   */
   def toShort: Short
   /** Returns this `Char` value, unmodified. */
   def toChar: Char

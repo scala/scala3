@@ -291,7 +291,9 @@ abstract class Source extends Iterator[Char] with Closeable {
 
   private def lineNum(line: Int): String = (getLines() drop (line - 1) take 1).mkString
 
-  /** An iterator over the lines of this source, excluding any line separator characters. */
+  /** An iterator over the lines of this source, excluding any line separator
+   *  characters.
+   */
   class LineIterator extends AbstractIterator[String] with Iterator[String] {
     private val sb = new StringBuilder
 
@@ -346,7 +348,8 @@ abstract class Source extends Iterator[Char] with Closeable {
    *  @param encoder the `Position` used to encode line and column numbers into a single position value
    */
   class Positioner(encoder: Position) {
-    /** Creates a `Positioner` that encodes positions using `RelaxedPosition`. */
+    /** Creates a `Positioner` that encodes positions using `RelaxedPosition`.
+     */
     def this() = this(RelaxedPosition)
     /** the last character returned by next. */
     var ch: Char = compiletime.uninitialized
@@ -393,7 +396,9 @@ abstract class Source extends Iterator[Char] with Closeable {
   }
   object RelaxedPositioner extends Positioner(RelaxedPosition) { }
   object NoPositioner extends Positioner(Position) {
-    /** Returns the next character from the underlying iterator without tracking its position. */
+    /** Returns the next character from the underlying iterator without tracking
+     *  its position.
+     */
     override def next(): Char = iter.next()
   }
   /** Returns the character recorded by the current positioner, which for a

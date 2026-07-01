@@ -22,7 +22,8 @@ import scala.language.`2.13`
 class ReferenceQueue[+T <: AnyRef] {
 
   private[ref] val underlying: java.lang.ref.ReferenceQueue[? <: T] = new java.lang.ref.ReferenceQueue[T]
-  /** Returns the string representation of the underlying Java reference queue. */
+  /** Returns the string representation of the underlying Java reference queue.
+   */
   override def toString(): String = underlying.toString
 
   /** Extracts the Scala `Reference` wrapper from a reference dequeued from the underlying queue.
@@ -36,7 +37,9 @@ class ReferenceQueue[+T <: AnyRef] {
       case ref => Some(ref.asInstanceOf[ReferenceWithWrapper[T]].wrapper)
     }
 
-  /** Returns and removes the next available reference from this queue without blocking, or `None` if the queue is empty. */
+  /** Returns and removes the next available reference from this queue without
+   *  blocking, or `None` if the queue is empty.
+   */
   def poll: Option[Reference[T]] = Wrapper(underlying.poll)
   /** Returns and removes the next reference from this queue, blocking until one becomes available.
    *

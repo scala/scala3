@@ -22,11 +22,17 @@ import scala.language.`2.13`
  *  which provides useful non-primitive operations.
  */
 final abstract class Int private extends AnyVal {
-  /** Returns this value as a [[scala.Byte]], which may involve truncation of the high-order bits. */
+  /** Returns this value as a [[scala.Byte]], which may involve truncation of
+   *  the high-order bits.
+   */
   def toByte: Byte
-  /** Returns this value as a [[scala.Short]], which may involve truncation of the high-order bits. */
+  /** Returns this value as a [[scala.Short]], which may involve truncation of
+   *  the high-order bits.
+   */
   def toShort: Short
-  /** Returns this value as a [[scala.Char]], which may involve truncation of the high-order bits. */
+  /** Returns this value as a [[scala.Char]], which may involve truncation of
+   *  the high-order bits.
+   */
   def toChar: Char
   /** Returns this value unchanged. */
   def toInt: Int

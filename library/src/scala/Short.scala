@@ -22,7 +22,9 @@ import scala.language.`2.13`
  *  which provides useful non-primitive operations.
  */
 final abstract class Short private extends AnyVal {
-  /** Returns this value as a [[scala.Byte]], which may involve truncation of the high-order bits. */
+  /** Returns this value as a [[scala.Byte]], which may involve truncation of
+   *  the high-order bits.
+   */
   def toByte: Byte
   /** Returns this value unchanged. */
   def toShort: Short

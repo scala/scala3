@@ -35,13 +35,22 @@ trait ReferenceWrapper[+T <: AnyRef] extends Reference[T] with Proxy {
     if (ret eq null) throw new NoSuchElementException
     ret
   }
-  /** Clears this reference so that it no longer refers to its referent. This does not enqueue the reference. */
+  /** Clears this reference so that it no longer refers to its referent. This
+   *  does not enqueue the reference.
+   */
   def clear(): Unit = underlying.clear()
-  /** Returns `true` if this reference was successfully added to the reference queue with which it was registered, or `false` if it was already enqueued or was not registered with a queue. */
+  /** Returns `true` if this reference was successfully added to the reference
+   *  queue with which it was registered, or `false` if it was already enqueued
+   *  or was not registered with a queue.
+   */
   def enqueue(): Boolean = underlying.enqueue()
-  /** Tests whether this reference is currently enqueued in the reference queue with which it was registered, if any. */
+  /** Tests whether this reference is currently enqueued in the reference queue
+   *  with which it was registered, if any.
+   */
   def isEnqueued: Boolean = underlying.isEnqueued
-  /** Returns the underlying `java.lang.ref.Reference`, to which `Proxy` delegates equality, hashing, and string conversion. */
+  /** Returns the underlying `java.lang.ref.Reference`, to which `Proxy`
+   *  delegates equality, hashing, and string conversion.
+   */
   def self: java.lang.ref.Reference[? <: T] = underlying
 }
 

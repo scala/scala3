@@ -113,7 +113,9 @@ class Codec(val charSet: Charset) {
     try body catch { case e: CharacterCodingException => _onCodingException(e) }
 }
 
-/** Provides the lowest-priority implicit `Codec`, used as a fallback when no other `Codec` is in scope. */
+/** Provides the lowest-priority implicit `Codec`, used as a fallback when no
+ *  other `Codec` is in scope.
+ */
 trait LowPriorityCodecImplicits {
   self: Codec.type =>
 
@@ -131,7 +133,9 @@ object Codec extends LowPriorityCodecImplicits {
    *  as an accident, with any anomalies considered "not a bug".
    */
   def defaultCharsetCodec: Codec = apply(Charset.defaultCharset)
-  /** Returns a `Codec` for the encoding named by the `file.encoding` system property. */
+  /** Returns a `Codec` for the encoding named by the `file.encoding` system
+   *  property.
+   */
   def fileEncodingCodec: Codec = apply(scala.util.Properties.encodingString)
   /** Returns the default `Codec`, backed by the JVM's default charset. */
   def default: Codec = defaultCharsetCodec
