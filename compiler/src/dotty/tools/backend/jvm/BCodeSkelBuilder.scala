@@ -20,9 +20,12 @@ import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.report
 import SymbolUtils.given
 import dotty.tools.dotc.core.NameOps.isStaticConstructorName
+import dotty.tools.dotc.core.Phases.{erasurePhase, mixinPhase}
+import dotty.tools.dotc.transform.Mixin
 import tpd.*
 
 import scala.compiletime.uninitialized
+import scala.tools.asm.tree.MethodNode
 
 /*
  *
@@ -125,12 +128,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
    *   - `genSynchronized()
    *   - `jumpDest` , `cleanups` , `labelDefsAtOrUnder`
    */
-  abstract class PlainSkelBuilder
-    extends BCClassGen
-    with    BCAnnotGen
-    with    BCForwardersGen
-    with    BCPickles
-    with    BCJGenSigGen {
+  abstract class PlainSkelBuilder {
 
     // Strangely I can't find this in the asm code 255, but reserving 1 for "this"
     private inline val MaximumJvmParameters = 254
@@ -293,6 +291,22 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     } // end of method genPlainClass()
 
     /*
+     *  Add public static final field serialVersionUID with value `id`
+     *
+     *  can-multi-thread
+     */
+    private def addSerialVUID(id: Long, jclass: asm.ClassVisitor): Unit = {
+      // add static serialVersionUID field if `clasz` annotated with `@SerialVersionUID(uid: Long)`
+      jclass.visitField(
+        asm.Opcodes.ACC_PRIVATE | asm.Opcodes.ACC_STATIC | asm.Opcodes.ACC_FINAL,
+        "serialVersionUID",
+        "J",
+        null, // no java-generic-signature
+        java.lang.Long.valueOf(id)
+      ).visitEnd()
+    }
+
+    /*
      * must-single-thread
      */
     private def initJClass(jclass: asm.ClassVisitor)(using Context): Unit = {
@@ -333,7 +347,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       val flags = BCodeUtils.javaFlags(claszSymbol)
 
-      val thisSignature = getGenericSignature(claszSymbol, claszSymbol.owner, null)
+      val thisSignature = BCSignatureGen.getGenericSignature(claszSymbol, null)
       val lengthOk = if thisSignature ne null then BCodeUtils.checkConstantStringLength(thisSignature)
                                               else BCodeUtils.checkConstantStringLength(thisName)
       if !lengthOk then
@@ -353,9 +367,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         case _ => ()
       }
 
-      val ssa = None // TODO: inlined form `getAnnotPickle(thisName, claszSymbol)`. Should something be done on Dotty?
-      cnode.visitAttribute(if (ssa.isDefined) pickleMarkerLocal else pickleMarkerForeign)
-      emitAnnotations(cnode, claszSymbol.annotations ++ ssa)
+      cnode.visitAttribute(createScalaJAttribute())
+      BCAnnotGen.emitAnnotations(cnode, claszSymbol.annotations)
 
       if (!isCZStaticModule) {
         val skipStaticForwarders = (claszSymbol.is(Module) || ctx.settings.XnoForwarders.value)
@@ -367,7 +380,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             val isCandidateForForwarders =  (lmoc.is(Module)) && lmoc.isStatic
             if (isCandidateForForwarders) {
               report.log(s"Adding static forwarders from '$claszSymbol' to implementations in '$lmoc'")
-              addForwarders(cnode, thisName, lmoc.moduleClass)
+              BCForwardersGen.addForwarders(cnode, thisName, lmoc.moduleClass)
             }
           }
         }
@@ -389,7 +402,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     private def addClassField(f: Symbol)(using Context): Unit = {
       val descriptor = symInfoTK(f).descriptor
-      val javagensig = getGenericSignature(f, claszSymbol, descriptor)
+      val javagensig = BCSignatureGen.getGenericSignature(f, descriptor)
       val flags = javaFieldFlags(f)
 
       assert(!f.isStaticMember || !claszSymbol.is(Trait) || !f.is(Mutable),
@@ -403,7 +416,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         null // no initial value
       )
       cnode.fields.add(jfield)
-      emitAnnotations(jfield, f.annotations)
+      BCAnnotGen.emitAnnotations(jfield, f.annotations)
     }
 
     private def addClassFields()(using Context): Unit =
@@ -417,9 +430,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       claszSymbol.info.decls.filter(p => p.isTerm && !p.is(Method)).foreach(addClassField)
 
     // current method
-    var mnode: MethodNode1         = uninitialized
-    var jMethodName: String        = uninitialized
-    private var isMethSymStaticCtor = false
+    var mnode: MethodNode          = uninitialized
     var returnType: BType          = uninitialized
     var methSymbol: Symbol         = uninitialized
     // used by genLoadTry() and genSynchronized()
@@ -431,7 +442,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private var lastEmittedLineNr  = -1
 
     object bc extends JCodeMethodN {
-      override def jmethod = PlainSkelBuilder.this.mnode
+      override protected def jmethod = PlainSkelBuilder.this.mnode
     }
 
     /* ---------------- Part 1 of program points, ie Labels in the ASM world ---------------- */
@@ -710,13 +721,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def initJMethod(flags: Int, params: List[Symbol])(using Context): Unit = {
 
       val mdesc = bTypeLoader.methodBTypeFromSymbol(methSymbol).descriptor
-      val jgensig = getGenericSignature(methSymbol, claszSymbol, mdesc)
+      val jgensig = BCSignatureGen.getGenericSignature(methSymbol, mdesc)
       val (excs, others) = methSymbol.annotations.partition(_.symbol eq defn.ThrowsAnnot)
-      val thrownExceptions: List[String] = getExceptions(excs)
+      val thrownExceptions: List[String] = BCForwardersGen.getExceptions(excs)
 
       val bytecodeName =
-        if (isMethSymStaticCtor) BCodeUtils.CLASS_CONSTRUCTOR_NAME
-        else jMethodName
+        if (methSymbol.name.isStaticConstructorName) BCodeUtils.CLASS_CONSTRUCTOR_NAME
+        else methSymbol.javaSimpleName
 
       val lengthOk = if jgensig ne null then BCodeUtils.checkConstantStringLength(jgensig)
                                         else BCodeUtils.checkConstantStringLength(bytecodeName, mdesc)
@@ -729,13 +740,11 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         mdesc,
         jgensig,
         if thrownExceptions.isEmpty then null else thrownExceptions.toArray
-      ).asInstanceOf[MethodNode1]
+      ).asInstanceOf[MethodNode]
 
-      // TODO param names: (m.params.map(p => javaName(p.sym)))
-
-      emitAnnotations(mnode, others)
-      emitParamNames(mnode, params)
-      emitParamAnnotations(mnode, params.map(_.annotations))
+      BCAnnotGen.emitAnnotations(mnode, others)
+      BCAnnotGen.emitParamNames(mnode, params)
+      BCAnnotGen.emitParamAnnotations(mnode, params.map(_.annotations))
 
     } // end of method initJMethod
 
@@ -815,9 +824,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       assert(mnode == null, "GenBCode detected nested method.")
 
       methSymbol  = dd.symbol
-      jMethodName = methSymbol.javaSimpleName
       returnType  = bTypeLoader.methodBTypeFromSymbol(methSymbol).returnType
-      isMethSymStaticCtor = methSymbol.name.isStaticConstructorName
 
       resetMethodBookkeeping(dd)
 
@@ -845,7 +852,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         import GenBCodeOps.addFlagIf
         BCodeUtils.javaFlags(methSymbol)
           .addFlagIf(isAbstractMethod, asm.Opcodes.ACC_ABSTRACT)
-          .addFlagIf(false /*methSymbol.isStrictFP*/, asm.Opcodes.ACC_STRICT)
           .addFlagIf(isNative, asm.Opcodes.ACC_NATIVE) // native methods of objects are generated in mirror classes
 
       // TODO needed? for(ann <- m.symbol.annotations) { ann.symbol.initialize }
@@ -925,7 +931,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       TraceUtils.traceMethodIfRequested(mnode)
 
-      mnode = null.asInstanceOf[MethodNode1] // for GC
+      mnode = null.asInstanceOf[MethodNode] // for GC
     } // end of method genDefDef()
 
     def emitLocalVarScope(sym: Symbol, start: asm.Label, end: asm.Label, force: Boolean = false): Unit = {
