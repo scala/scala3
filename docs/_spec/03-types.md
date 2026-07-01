@@ -530,6 +530,7 @@ The parameterized type is well-formed if
 
 - ´T´ is a type constructor which takes ´n´ type parameters ´a_1, ..., a_n´, i.e., it must conform to a type lambda of the form ´[\pm a_1 >: L_1 <: H_1, ..., \pm a_n >: L_n <: H_n] => U´, and
 - if ´T´ is an abstract type constructor, none of the type arguments is a wildcard type argument, and
+- if ´T´ is a _match type alias_, every wildcard type argument additionally satisfies the conditions in [Applications to Wildcard Arguments](#applications-to-wildcard-arguments), and
 - each type argument _conforms to its bounds_, i.e., given ´\sigma´ the substitution ´[a_1 := T_1, ..., a_n := T_n]´, for each type ´i´:
   - if ´T_i´ is a type and ´\sigma L_i <: T_i <: \sigma H_i´, or
   - ´T_i´ is a wildcard type argument ´? >: L_{Ti} <: H_{Ti}´ and ´\sigma L_i <: L_{Ti}´ and ´H_{Ti} <: \sigma H_i´.
@@ -552,6 +553,8 @@ Then, applying a wildcard type argument ´? >: L <: H´ at the ´i´'th position
 
 - If the type parameter ´T_i´ is declared covariant, then ´T[..., ? >: L <: H, ...] =:= T[..., H, ...]´.
 - If the type parameter ´T_i´ is declared contravariant, then ´T[..., ? >: L <: H, ...] =:= T[..., L, ...]´.
+
+These equivalences apply only to well-formed applications; a wildcard type argument that [Applications to Wildcard Arguments](#applications-to-wildcard-arguments) forbids for a _match type alias_ is therefore not simplified.
 
 #### Example Parameterized Types
 
@@ -1158,10 +1161,30 @@ The reduction of an "empty" match type `´X´ match { }` (which cannot be writte
 #### Applications to Wildcard Arguments
 
 Let `´M´` be a _match type alias_ of the form `type ´M´[´a_1´, ..., ´a_n´] = ´X´ match { case ´P_1´ => ´R_1´; ...; case ´P_k´ => ´R_k´ }` (optionally with a declared upper bound).
-An application `´M´[´T_1´, ..., ´T_n´]` where some `´T_i´` is a wildcard type argument is legal only if every such `´a_i´` occurs exclusively in the scrutinee `´X´` — i.e., it does not occur in the declared upper bound, in any pattern `´P_j´`, or in any body `´R_j´`.
+A wildcard type argument is never substituted into the underlying match type.
+An application `´M´[´T_1´, ..., ´T_n´]` in which some `´T_i´` is a wildcard type argument is well-formed only if
 
-If a wildcard is substituted for a parameter that appears in a pattern, the pattern may spuriously match scrutinees that no non-wildcard substitution would match.
-If a wildcard is substituted for a parameter that appears multiple times in a body (or in the declared upper bound), the resulting type loses the identification between those occurrences, which is the same unsoundness as substituting a wildcard for `X` in `[X] =>> (X, X)`.
+- the underlying match type reduces without the wildcard type arguments taking part (the application then denotes the reduct), or
+- every parameter `´a_i´` instantiated to a wildcard occurs solely in the scrutinee `´X´` (the application then denotes an irreducible match type).
+
+A wildcard type argument stands for an unknown type, and distinct wildcards may denote distinct types.
+A wildcard in the scrutinee merely leaves the match irreducible.
+Anywhere else — in a case pattern, in a case body, or in the declared upper bound of an irreducible application — it would take part in reduction, where treating distinct wildcards as the same type is unsound: the same reason `[X] =>> (X, X)` may not be applied to a wildcard type argument.
+
+##### Example
+
+```scala
+type Scrut[X]   =          X match { case Int => String }    // X only in the scrutinee
+type Pat[X]     =     Double match { case X   => Int }       // X in a pattern
+type Body[X, S] =          S match { case Int => List[X] }   // X in a case body
+type Bnd[X, S] <: List[X]  = S match { case Int => Nothing } // X in the upper bound
+
+def ok1: Scrut[?]     = ???  // legal: irreducible, X only in the scrutinee
+def ok2: Bnd[?, Int]  = ???  // legal: reduces to Nothing, X takes no part
+def no1: Pat[?]       = ???  // error: irreducible, X in a pattern
+def no2: Body[?, Int] = ???  // error: irreducible, X in a case body
+def no3: Bnd[?, ?]    = ???  // error: irreducible, X in the upper bound
+```
 
 ### Skolem Types
 
