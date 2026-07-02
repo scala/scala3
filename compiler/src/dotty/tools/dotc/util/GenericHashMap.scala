@@ -166,11 +166,19 @@ abstract class GenericHashMap[Key, Value]
         if key != null then addOld(key.asInstanceOf[Key], oldTable(idx + 1).asInstanceOf[Value])
         idx += 2
 
+  /** The new logical capacity to grow to once the table is past the dense
+   *  threshold. Default doubles (since `allocate(c)` sizes the array to `c*2`,
+   *  passing the current `table.length` doubles the logical capacity). Caches
+   *  that only ever grow (see `EqHashMap.HashedOnly`) override this to reach
+   *  their final size in fewer re-insert passes.
+   */
+  protected def postDenseGrowCapacity(currentTableLength: Int): Int = currentTableLength
+
   protected def growTable(): Unit =
     val oldTable = table
     val newLength =
       if table.length == DenseLimit * 2 then table.length * roundToPower(capacityMultiple)
-      else table.length
+      else postDenseGrowCapacity(table.length)
     allocate(newLength)
     copyFrom(oldTable)
 

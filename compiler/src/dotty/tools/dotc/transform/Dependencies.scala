@@ -3,7 +3,7 @@ package dotc
 package transform
 
 import core.*
-import Symbols.*, Contexts.*, Types.*, Flags.*, Decorators.*
+import Symbols.*, Contexts.*, Types.*, Flags.*, Decorators.*, SymDenotations.*
 
 import collection.mutable.{LinkedHashMap, LinkedHashSet}
 import annotation.constructorOnly
@@ -70,10 +70,14 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
    *  free variable proxies from their enclosing class.
    */
   private def isLocal(sym: Symbol)(using Context): Boolean =
-    val owner = sym.maybeOwner
-    owner.isTerm
-    || owner.is(Trait) && isLocal(owner)
-    || sym.isConstructor && isLocal(owner)
+    isLocal(sym.denot)
+
+  private def isLocal(denot: SymDenotation)(using Context): Boolean =
+    val owner = denot.maybeOwner
+    val ownerDenot = owner.denot
+    ownerDenot.isTerm
+    || ownerDenot.is(Trait) && isLocal(ownerDenot)
+    || denot.isConstructor && isLocal(ownerDenot)
 
   /** Set `logicOwner(sym)` to `owner` if `owner` is more deeply nested
    *  than the previous value of `logicOwner(sym)`.
@@ -174,8 +178,6 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
   }
 
   protected def process(tree: Tree)(using Context) =
-    val sym = tree.symbol
-
     def narrowTo(thisClass: ClassSymbol) =
       val enclMethod = enclosure
       val enclClass = enclMethod.enclosingClass
@@ -218,7 +220,7 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
                 // method static since that could cause deadlocks in interacting
                 // with class initialization. See deadlock.scala
               )
-          && (!sym.isAnonymousFunction || sym.owner.ownersIterator.exists(_.isConstructor))
+          && (!local.isAnonymousFunction || local.owner.ownersIterator.exists(_.isConstructor))
             // The previous conditions mean methods in static objects and nested static classes
             // don't get lifted out to be static. In general it is prudent to do that. However,
             // for anonymous functions, we prefer them to be static because that means lambdas
@@ -229,10 +231,11 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
             // by its interaction with class initialization. See run/deadlock.scala, which works
             // in Scala 3 but deadlocks in Scala 2.
 
-      logicOwner(sym) = if preferEncClass then encClass else local.enclosingPackageClass
+      logicOwner(local) = if preferEncClass then encClass else local.enclosingPackageClass
 
     tree match
       case tree: Ident =>
+        val sym = tree.symbol
         if isLocal(sym) then
           if isExpr(sym) then markCalled(sym, enclosure)
           else if sym.isTerm then markFree(sym, enclosure)
@@ -242,6 +245,7 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
           case _ =>
         captureImplicitThis(tree.tpe)
       case tree: Select =>
+        val sym = tree.symbol
         if isExpr(sym) && isLocal(sym) then markCalled(sym, enclosure)
         else if sym.isConstructor && tree.qualifier.isInstanceOf[Super] then
           // Super-call to a parent constructor (e.g. `super(args)` in the body of a
@@ -256,20 +260,24 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
           symSet(called, enclosure) += constr
       case tree: This =>
         narrowTo(tree.symbol.asClass)
-      case tree: MemberDef if isExpr(sym) && sym.owner.isTerm =>
-        setLogicOwner(sym)
-          // this will make methods in supercall constructors of top-level classes owned
-          // by the enclosing package, which means they will be static.
-          // On the other hand, all other methods will be indirectly owned by their
-          // top-level class. This avoids possible deadlocks when a static method
-          // has to access its enclosing object from the outside.
-      case tree: DefDef if sym.isPrimaryConstructor && isLocal(sym.owner) && !sym.owner.is(Trait) =>
-        // add a call edge from the constructor of a local non-trait class to
-        // the class itself. This is done so that the constructor inherits
-        // the free variables of the class.
-        symSet(called, sym) += sym.owner
-      case tree: TypeDef if sym.owner.isTerm =>
-        setLogicOwner(sym)
+      case tree: MemberDef =>
+        val sym = tree.symbol
+        tree match
+          case tree: MemberDef if isExpr(sym) && sym.owner.isTerm =>
+            setLogicOwner(sym)
+              // this will make methods in supercall constructors of top-level classes owned
+              // by the enclosing package, which means they will be static.
+              // On the other hand, all other methods will be indirectly owned by their
+              // top-level class. This avoids possible deadlocks when a static method
+              // has to access its enclosing object from the outside.
+          case tree: DefDef if sym.isPrimaryConstructor && isLocal(sym.owner) && !sym.owner.is(Trait) =>
+            // add a call edge from the constructor of a local non-trait class to
+            // the class itself. This is done so that the constructor inherits
+            // the free variables of the class.
+            symSet(called, sym) += sym.owner
+          case tree: TypeDef if sym.owner.isTerm =>
+            setLogicOwner(sym)
+          case _ =>
       case _ =>
   end process
 
@@ -277,10 +285,77 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
     def traverse(tree: Tree)(using Context) =
       try
         process(tree)
-        traverseChildren(tree)
+        traverseChildrenFast(tree)
       catch case ex: Exception =>
         println(i"$ex while traversing $tree")
         throw ex
+
+    private def traverseList(trees: List[Tree])(using Context): Unit =
+      var remaining = trees
+      while remaining.nonEmpty do
+        traverse(remaining.head)
+        remaining = remaining.tail
+
+    private def traverseParamss(paramss: List[ParamClause])(using Context): Unit =
+      var remaining = paramss
+      while remaining.nonEmpty do
+        remaining.head.foreach(traverse)
+        remaining = remaining.tail
+
+    private def traverseChildrenFast(tree: Tree)(using Context): Unit =
+      if (tree.source `ne` ctx.source) && tree.source.exists then
+        traverseChildrenSameSource(tree)(using ctx.withSource(tree.source))
+      else
+        traverseChildrenSameSource(tree)
+
+    private def traverseChildrenSameSource(tree: Tree)(using Context): Unit =
+      tree match
+        case Ident(_) | Literal(_) | This(_) | TypeTree() | EmptyTree =>
+        case Select(qualifier, _) =>
+          traverse(qualifier)
+        case Super(qual, _) =>
+          traverse(qual)
+        case Apply(fun, args) =>
+          traverse(fun)
+          traverseList(args)
+        case TypeApply(fun, args) =>
+          traverse(fun)
+          traverseList(args)
+        case New(tpt) =>
+          traverse(tpt)
+        case Typed(expr, tpt) =>
+          traverse(expr)
+          traverse(tpt)
+        case Assign(lhs, rhs) =>
+          traverse(lhs)
+          traverse(rhs)
+        case Block(stats, expr) =>
+          traverseList(stats)
+          traverse(expr)
+        case If(cond, thenp, elsep) =>
+          traverse(cond)
+          traverse(thenp)
+          traverse(elsep)
+        case Return(expr, from) =>
+          traverse(expr)
+          traverse(from)
+        case tree @ ValDef(_, tpt, _) =>
+          inContext(localCtx(tree)) {
+            traverse(tpt)
+            traverse(tree.rhs)
+          }
+        case tree @ DefDef(_, paramss, tpt, _) =>
+          inContext(localCtx(tree)) {
+            traverseParamss(paramss)
+            traverse(tpt)
+            traverse(tree.rhs)
+          }
+        case tree @ TypeDef(_, rhs) =>
+          inContext(localCtx(tree)) {
+            traverse(rhs)
+          }
+        case _ =>
+          traverseChildren(tree)
 
   /** Compute final free variables map `fvs by closing over caller dependencies. */
   private def computeFreeVars()(using Context): Unit =

@@ -190,7 +190,7 @@ object Config {
   /** Initial capacity of the uniques HashMap.
    *  Note: This should be a power of two to work with util.HashSet
    */
-  inline val initialUniquesCapacity = 0x8000
+  inline val initialUniquesCapacity = 0x20000
 
   /** How many recursive calls to NamedType#underlying are performed before logging starts. */
   inline val LogPendingUnderlyingThreshold = 50

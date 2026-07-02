@@ -58,6 +58,13 @@ object Substituters:
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
+        if theMap != null then
+          val lookup = theMap.lookup
+          if lookup != null then
+            val replacement = lookup.get(sym)
+            if replacement != null then return replacement.nn
+            if tp.prefix `eq` NoPrefix then return tp
+            else return tp.derivedSelect(subst(tp.prefix, from, to, theMap))
         var fs = from
         var ts = to
         while (fs.nonEmpty && ts.nonEmpty) {
@@ -78,18 +85,42 @@ object Substituters:
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
+        if theMap != null && !theMap.maySubstNamed(tp) then
+          if tp.prefix `eq` NoPrefix then return tp
+          else return tp.derivedSelect(theMap.substPrefix(tp.prefix, from, to))
+        if theMap != null then
+          val lookup = theMap.lookup
+          if lookup != null then
+            val replacement = lookup.get(sym)
+            if replacement != null then
+              val prefix = tp.prefix
+              return (if prefix `eq` NoPrefix then NoPrefix else theMap.substPrefix(prefix, from, to)).select(replacement.nn)
+            if tp.prefix `eq` NoPrefix then return tp
+            else return tp.derivedSelect(theMap.substPrefix(tp.prefix, from, to))
         var fs = from
         var ts = to
         while (fs.nonEmpty) {
           if (fs.head eq sym)
-            return substSym(tp.prefix, from, to, theMap).select(ts.head)
+            val prefix = tp.prefix
+            return (if prefix `eq` NoPrefix then NoPrefix
+                    else if theMap != null then theMap.substPrefix(prefix, from, to)
+                    else substSym(prefix, from, to, theMap)
+                   ).select(ts.head)
           fs = fs.tail
           ts = ts.tail
         }
         if (tp.prefix `eq` NoPrefix) tp
+        else if theMap != null then tp.derivedSelect(theMap.substPrefix(tp.prefix, from, to))
         else tp.derivedSelect(substSym(tp.prefix, from, to, theMap))
       case tp: ThisType =>
+        if theMap != null && !theMap.maySubstThisType then return tp
         val sym = tp.cls
+        if theMap != null then
+          val lookup = theMap.lookup
+          if lookup != null then
+            val replacement = lookup.get(sym)
+            if replacement != null then return replacement.nn.asClass.thisType
+            return tp
         var fs = from
         var ts = to
         while (fs.nonEmpty) {
@@ -136,7 +167,9 @@ object Substituters:
   final def substParam(tp: Type, from: ParamRef, to: Type, theMap: SubstParamMap | Null)(using Context): Type =
     tp match {
       case tp: BoundType =>
-        if (tp == from) to else tp
+        // `eq` short-circuit avoids the wrapper `Objects.equals` call on the
+        // common reference-equal case.
+        if ((tp eq from) || tp == from) to else tp
       case tp: NamedType =>
         if (tp.prefix `eq` NoPrefix) tp
         else tp.derivedSelect(substParam(tp.prefix, from, to, theMap))
@@ -150,7 +183,10 @@ object Substituters:
   final def substParams(tp: Type, from: BindingType, to: List[Type], theMap: SubstParamsMap | Null)(using Context): Type =
     tp match {
       case tp: ParamRef =>
-        if (tp.binder == from) to(tp.paramNum) else tp
+        // `eq` short-circuit avoids the wrapper `Objects.equals` call on the
+        // common case where ParamRefs are created via `binder.paramRefs(n)`
+        // with cached results, so the binder is reference-equal.
+        if ((tp.binder eq from) || tp.binder == from) to(tp.paramNum) else tp
       case tp: NamedType =>
         if (tp.prefix `eq` NoPrefix) tp
         else tp.derivedSelect(substParams(tp.prefix, from, to, theMap))
@@ -165,6 +201,11 @@ object Substituters:
 
   final class SubstBindingMap[BT <: BindingType](val from: BT, val to: BT)(using Context) extends DeepTypeMap, BiTypeMap {
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
+
+    inline def applyFromRoot(tp: Type): Type =
+      variance = 1
+      subst(tp, from, to, this)(using mapCtx)
+
     override def mapCapability(c: Capability) = c match
       case c @ ResultCap(binder) if binder eq from =>
         c.derivedResult(to.asInstanceOf[MethodicType])
@@ -220,10 +261,84 @@ object Substituters:
   }
 
   final class SubstMap(from: List[Symbol], to: List[Type])(using Context) extends DeepTypeMap {
+    private val useLookup = from.lengthCompare(4) >= 0
+    private var lookupCache: java.util.IdentityHashMap[Symbol, Type] | Null = null
+
+    private[Substituters] def lookup: java.util.IdentityHashMap[Symbol, Type] | Null =
+      if !useLookup then null
+      else
+        var m = lookupCache
+        if m == null then
+          m = new java.util.IdentityHashMap[Symbol, Type]
+          var fs = from
+          var ts = to
+          while fs.nonEmpty && ts.nonEmpty do
+            // first-occurrence wins; matches the linear-scan semantics
+            if !m.containsKey(fs.head) then m.put(fs.head, ts.head)
+            fs = fs.tail
+            ts = ts.tail
+          lookupCache = m
+        m
+
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
   }
 
   final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap {
+    // Above this length the per-NamedType linear scan of `from` becomes
+    // measurable in deep inlining; cache an identity-keyed lookup once.
+    private[Substituters] val lookup: java.util.IdentityHashMap[Symbol, Symbol] | Null =
+      if from.lengthCompare(4) >= 0 then
+        val m = new java.util.IdentityHashMap[Symbol, Symbol]
+        var fs = from
+        var ts = to
+        while fs.nonEmpty && ts.nonEmpty do
+          // first-occurrence wins; matches the linear-scan semantics
+          if !m.containsKey(fs.head) then m.put(fs.head, ts.head)
+          fs = fs.tail
+          ts = ts.tail
+        m
+      else null
+
+    private inline val ThisTypeSubst = 1
+    private inline val TermRefSubst = 2
+    private inline val TypeRefSubst = 4
+
+    private val substKindMask: Int =
+      var mask = 0
+      var fs = from
+      var ts = to
+      while fs.nonEmpty && ts.nonEmpty do
+        val sym = fs.head
+        if sym.isClass then mask |= ThisTypeSubst | TypeRefSubst
+        else if sym.originDenotation.name.isTypeName then mask |= TypeRefSubst
+        else mask |= TermRefSubst
+        fs = fs.tail
+        ts = ts.tail
+      mask
+
+    private[Substituters] inline def maySubstThisType: Boolean =
+      (substKindMask & ThisTypeSubst) != 0
+
+    private[Substituters] inline def maySubstNamed(tp: NamedType): Boolean =
+      (substKindMask & (if tp.isTerm then TermRefSubst else TypeRefSubst)) != 0
+
+    // One-slot MRU keyed by reference equality on the input prefix:
+    // sibling NamedTypes selecting different names from the same prefix
+    // (e.g. `outer.this.x` / `outer.this.y`) reuse the substituted prefix
+    // instead of re-walking it. The result is a pure function of the input
+    // prefix and the (from, to) lists, all immutable for this instance.
+    private var prefixIn: Type | Null = null
+    private var prefixOut: Type | Null = null
+
+    private[Substituters] def substPrefix(prefix: Type, from: List[Symbol], to: List[Symbol])(using Context): Type =
+      val cached = prefixIn
+      if cached != null && (prefix eq cached) then prefixOut.nn
+      else
+        val out = substSym(prefix, from, to, this)
+        prefixIn = prefix
+        prefixOut = out
+        out
+
     def apply(tp: Type): Type = substSym(tp, from, to, this)(using mapCtx)
     def inverse = SubstSymMap(to, from) // implicitly requires that `to` contains no duplicates.
   }
@@ -242,24 +357,49 @@ object Substituters:
 
   final class SubstParamsMap(from: BindingType, to: List[Type])(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = substParams(tp, from, to, this)(using mapCtx)
+
+    inline def applyFromRoot(tp: Type): Type =
+      variance = 1
+      substParams(tp, from, to, this)(using mapCtx)
   }
 
   /** An approximating substitution that can handle wildcards in the `to` list */
   final class SubstApproxMap(from: List[Symbol], to: List[Type])(using Context) extends ApproximatingTypeMap {
+    private inline val ThisTypeSubst = 1
+    private inline val TermRefSubst = 2
+    private inline val TypeRefSubst = 4
+
+    private val substKindMask: Int =
+      var mask = 0
+      var fs = from
+      var ts = to
+      while fs.nonEmpty && ts.nonEmpty do
+        val sym = fs.head
+        if sym.isClass then mask |= ThisTypeSubst | TypeRefSubst
+        else if sym.originDenotation.name.isTypeName then mask |= TypeRefSubst
+        else mask |= TermRefSubst
+        fs = fs.tail
+        ts = ts.tail
+      mask
+
+    private inline def maySubstNamed(tp: NamedType): Boolean =
+      (substKindMask & (if tp.isTerm then TermRefSubst else TypeRefSubst)) != 0
+
     def apply(tp: Type): Type = tp match {
       case tp: NamedType =>
-        val sym = tp.symbol
-        var fs = from
-        var ts = to
-        while (fs.nonEmpty && ts.nonEmpty) {
-          if (fs.head eq sym)
-            return ts.head match {
-              case TypeBounds(lo, hi) => range(lo, hi)
-              case tp1 => tp1
-            }
-          fs = fs.tail
-          ts = ts.tail
-        }
+        if maySubstNamed(tp) then
+          val sym = tp.symbol
+          var fs = from
+          var ts = to
+          while (fs.nonEmpty && ts.nonEmpty) {
+            if (fs.head eq sym)
+              return ts.head match {
+                case TypeBounds(lo, hi) => range(lo, hi)
+                case tp1 => tp1
+              }
+            fs = fs.tail
+            ts = ts.tail
+          }
         if (tp.prefix `eq` NoPrefix) tp else derivedSelect(tp, apply(tp.prefix))
       case _: ThisType | _: BoundType =>
         tp

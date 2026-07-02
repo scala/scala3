@@ -206,6 +206,7 @@ object Phases {
         }
         nextDenotTransformerId(i) = lastTransformerId
       }
+      setNextNonIdentityDenotTransformerIds()
 
       if (fuse)
         this.fusedPhases = (NoPhase :: phasess).toArray
@@ -219,13 +220,27 @@ object Phases {
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
     }
 
+    private def setNextNonIdentityDenotTransformerIds(): Unit =
+      nextNonIdentityDenotTransformerId = new Array[Int](phases.length)
+      var i = phases.length
+      while i > 0 do
+        i -= 1
+        var nextId = nextDenotTransformerId(i)
+        while denotTransformers(nextId).isInstanceOf[IdentityDenotTransformer] do
+          nextId = nextDenotTransformerId(nextId + 1)
+        nextNonIdentityDenotTransformerId(i) = nextId
+
     /** Unlink `phase` from Denot transformer chain. This means that
      *  any denotation transformer defined by the phase will not be executed.
      */
     def unlinkPhaseAsDenotTransformer(phase: Phase)(using Context) =
+      var changed = false
       for i <- 0 until nextDenotTransformerId.length do
-        if nextDenotTransformerId(i) == phase.id then
+        if nextDenotTransformerId(i) == phase.id then {
           nextDenotTransformerId(i) = nextDenotTransformerId(phase.id + 1)
+          changed = true
+        }
+      if changed then setNextNonIdentityDenotTransformerIds()
 
     private var myParserPhase: Phase = uninitialized
     private var myTyperPhase: Phase = uninitialized

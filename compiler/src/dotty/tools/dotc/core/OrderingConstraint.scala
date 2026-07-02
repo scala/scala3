@@ -148,10 +148,12 @@ import OrderingConstraint.*
  *  @param hardVars a set of type variables that are marked as hard and therefore will not
  *               undergo a `widenUnion` when instantiated to their lower bound.
  */
-class OrderingConstraint(private val boundsMap: ParamBounds,
-                         private val lowerMap : ParamOrdering,
-                         private val upperMap : ParamOrdering,
-                         private val hardVars : TypeVars) extends Constraint {
+class OrderingConstraint(private var boundsMap: ParamBounds,
+                         private var lowerMap : ParamOrdering,
+                         private var upperMap : ParamOrdering,
+                         private val hardVars : TypeVars,
+                         private var lazyInits: SimpleIdentitySet[TypeLambda] = SimpleIdentitySet.empty,
+                         private val propagationFreeAdd: TypeLambda | Null = null) extends Constraint {
   thisConstraint =>
 
   import UnificationDirection.*
@@ -163,14 +165,17 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     boundsMap: ParamBounds = this.boundsMap,
     lowerMap: ParamOrdering = this.lowerMap,
     upperMap: ParamOrdering = this.upperMap,
-    hardVars: TypeVars = this.hardVars)(using Context) : OrderingConstraint =
+    hardVars: TypeVars = this.hardVars,
+    lazyInits: SimpleIdentitySet[TypeLambda] = this.lazyInits,
+    propagationFreeAdd: TypeLambda | Null = null)(using Context) : OrderingConstraint =
       if boundsMap.isEmpty && lowerMap.isEmpty && upperMap.isEmpty then
         empty
       else
-        val result = new OrderingConstraint(boundsMap, lowerMap, upperMap, hardVars)
+        val result = new OrderingConstraint(boundsMap, lowerMap, upperMap, hardVars, lazyInits, propagationFreeAdd)
         if ctx.run != null then ctx.run.nn.recordConstraintSize(result, result.boundsMap.size)
         result.coDeps = this.coDeps
         result.contraDeps = this.contraDeps
+        result.dirtyDeps = this.dirtyDeps
         result
 
 // ----------- Basic indices --------------------------------------------------
@@ -182,9 +187,60 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   private def typeVar(entries: Array[Type], n: Int): Type | Null =
     entries(paramCount(entries) + n)
 
+  // 1-slot last-binder caches for map lookups: consecutive queries during
+  // a single isSubType/compareTypeParamRef typically hit the same binder, so
+  // skipping the megamorphic SimpleIdentityMap walk is a measurable win.
+  // This OrderingConstraint instance is replaced (not mutated) on map
+  // structural updates, so the cache is implicitly per-snapshot. The
+  // ConstraintLens.update path may mutate an entries array in place when the
+  // current constraint is the unique live reference; in that case any cached
+  // pointer still references the same (now updated) array, which is what we want.
+  // Cache fields are private to this instance.
+  private var lastEntryBinder: TypeLambda | Null = null
+  private var lastEntryEntries: Array[Type] | Null = null
+  private var lastLowerBinder: TypeLambda | Null = null
+  private var lastLowerEntries: Array[List[TypeParamRef]] | Null = null
+  private var lastUpperBinder: TypeLambda | Null = null
+  private var lastUpperEntries: Array[List[TypeParamRef]] | Null = null
+
+  private def clearLookupCaches(): Unit =
+    lastEntryBinder = null
+    lastEntryEntries = null
+    lastLowerBinder = null
+    lastLowerEntries = null
+    lastUpperBinder = null
+    lastUpperEntries = null
+
+  /** The `boundsMap` entries corresponding to `binder` */
+  private inline def entries(binder: TypeLambda): Array[Type] | Null =
+    if binder eq lastEntryBinder then lastEntryEntries
+    else
+      val es = boundsMap(binder)
+      lastEntryBinder = binder
+      lastEntryEntries = es
+      es
+
+  /** The `lowerMap` entries corresponding to `binder` */
+  private inline def lowerEntries(binder: TypeLambda): Array[List[TypeParamRef]] | Null =
+    if binder eq lastLowerBinder then lastLowerEntries
+    else
+      val es = lowerMap(binder)
+      lastLowerBinder = binder
+      lastLowerEntries = es
+      es
+
+  /** The `upperMap` entries corresponding to `binder` */
+  private inline def upperEntries(binder: TypeLambda): Array[List[TypeParamRef]] | Null =
+    if binder eq lastUpperBinder then lastUpperEntries
+    else
+      val es = upperMap(binder)
+      lastUpperBinder = binder
+      lastUpperEntries = es
+      es
+
   /** The `boundsMap` entry corresponding to `param` */
   def entry(param: TypeParamRef): Type = {
-    val entries = boundsMap(param.binder)
+    val entries = this.entries(param.binder)
     if (entries == null) NoType
     else entries(param.paramNum)
   }
@@ -194,21 +250,29 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def contains(pt: TypeLambda): Boolean = boundsMap(pt) != null
 
   def contains(param: TypeParamRef): Boolean = {
-    val entries = boundsMap(param.binder)
+    val entries = this.entries(param.binder)
     entries != null && isBounds(entries(param.paramNum))
   }
 
   def contains(tvar: TypeVar): Boolean = {
     val origin = tvar.origin
-    val entries = boundsMap(origin.binder)
+    val entries = this.entries(origin.binder)
     val pnum = origin.paramNum
     entries != null && isBounds(entries(pnum)) && (typeVar(entries, pnum) eq tvar)
   }
 
+  override def canSkipAddPropagation(poly: TypeLambda): Boolean =
+    propagationFreeAdd eq poly
+
 // ---------- Dependency handling ----------------------------------------------
 
-  def lower(param: TypeParamRef): List[TypeParamRef] = lowerLens(this, param.binder, param.paramNum)
-  def upper(param: TypeParamRef): List[TypeParamRef] = upperLens(this, param.binder, param.paramNum)
+  def lower(param: TypeParamRef): List[TypeParamRef] =
+    val entries = lowerEntries(param.binder)
+    if entries == null then Nil else entries(param.paramNum)
+
+  def upper(param: TypeParamRef): List[TypeParamRef] =
+    val entries = upperEntries(param.binder)
+    if entries == null then Nil else entries(param.paramNum)
 
   def minLower(param: TypeParamRef): List[TypeParamRef] = {
     val all = lower(param)
@@ -227,6 +291,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     upper(param).filterNot(isLess(butNot, _))
 
   def bounds(param: TypeParamRef)(using Context): TypeBounds = {
+    forceLazyInit(param.binder)
     val e = entry(param)
     if (e.exists) e.bounds
     else param.binder.paramInfos(param.paramNum)
@@ -238,10 +303,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     upper(param1).contains(param2)
 
   def nonParamBounds(param: TypeParamRef)(using Context): TypeBounds =
+    forceLazyInit(param.binder)
     entry(param).bounds
 
   def typeVarOfParam(param: TypeParamRef): Type =
-    val entries = boundsMap(param.binder)
+    val entries = this.entries(param.binder)
     if entries == null then NoType
     else
       val tvar = typeVar(entries, param.paramNum)
@@ -266,6 +332,12 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    */
   private var contraDeps: ReverseDeps = SimpleIdentityMap.empty
 
+  /** Type lambdas whose bounds have not yet been indexed into `coDeps` and
+   *  `contraDeps`. Bounds are added speculatively by `init`, while most
+   *  constraints are solved or discarded without ever querying reverse deps.
+   */
+  private var dirtyDeps: SimpleIdentitySet[TypeLambda] = SimpleIdentitySet.empty
+
   /** Null-safe indexing */
   extension (deps: ReverseDeps) def at(param: TypeParamRef): SimpleIdentitySet[TypeParamRef] =
     val result = deps(param)
@@ -273,17 +345,52 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     then SimpleIdentitySet.empty
     else result
 
+  /** Mark dependencies for `poly` to be indexed on demand. */
+  private def markDepsDirty(poly: TypeLambda): this.type =
+    dirtyDeps += poly
+    this
+
+  /** Complete any reverse dependency indexing deferred by `init`. */
+  private def materializeDeps()(using Context): this.type =
+    materializeLazyInits()
+    if !dirtyDeps.isEmpty then
+      val toIndex = dirtyDeps
+      dirtyDeps = SimpleIdentitySet.empty
+      toIndex.foreach { poly =>
+        val entries = boundsMap(poly)
+        if entries != null then adjustDeps(poly, entries, add = true)
+      }
+    this
+
+  private def materializeLazyInits()(using Context): this.type =
+    while !lazyInits.isEmpty do forceLazyInit(lazyInits.nth(0))
+    this
+
+  private def forceLazyInit(poly: TypeLambda)(using Context): Unit =
+    if lazyInits.contains(poly) then
+      lazyInits -= poly
+      val forced = init(poly)
+      boundsMap = forced.boundsMap
+      lowerMap = forced.lowerMap
+      upperMap = forced.upperMap
+      coDeps = forced.coDeps
+      contraDeps = forced.contraDeps
+      dirtyDeps = forced.dirtyDeps
+      lazyInits = forced.lazyInits
+      clearLookupCaches()
+
   override def dependsOn(tv: TypeVar, except: TypeVars, co: Boolean)(using Context): Boolean =
+    materializeDeps()
     def origin(tv: TypeVar) =
       assert(!instType(tv).exists)
       tv.origin
     val param = origin(tv)
     val excluded = except.map(origin)
     val qualifies: TypeParamRef => Boolean = !excluded.contains(_)
-    def test(deps: ReverseDeps, lens: ConstraintLens[List[TypeParamRef]]) =
-      deps.at(param).exists(qualifies)
-      || lens(this, tv.origin.binder, tv.origin.paramNum).exists(qualifies)
-    if co then test(coDeps, upperLens) else test(contraDeps, lowerLens)
+    if co then
+      coDeps.at(param).exists(qualifies) || upper(param).exists(qualifies)
+    else
+      contraDeps.at(param).exists(qualifies) || lower(param).exists(qualifies)
 
   /** Modify traversals in two respects:
    *   - when encountering an application C[Ts], where C is a type variable or parameter
@@ -306,14 +413,19 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   private trait ConstraintAwareTraversal[T] extends TypeAccumulator[T]:
 
     /** Does `param` have bounds in the current constraint? */
-    protected def hasBounds(param: TypeParamRef): Boolean = entry(param).isInstanceOf[TypeBounds]
+    protected def hasBounds(param: TypeParamRef, paramEntry: Type): Boolean = paramEntry.isInstanceOf[TypeBounds]
+
+    protected def hasBounds(param: TypeParamRef): Boolean = hasBounds(param, entry(param))
 
     override def tyconTypeParams(tp: AppliedType)(using Context): List[ParamInfo] =
       def tparams(tycon: Type): List[ParamInfo] = tycon match
         case tycon: TypeVar if !tycon.isPermanentlyInstantiated => tparams(tycon.origin)
-        case tycon: TypeParamRef if !hasBounds(tycon) =>
-          val entryParams = entry(tycon).typeParams
-          if entryParams.nonEmpty then entryParams
+        case tycon: TypeParamRef =>
+          val tyconEntry = entry(tycon)
+          if !hasBounds(tycon, tyconEntry) then
+            val entryParams = tyconEntry.typeParams
+            if entryParams.nonEmpty then entryParams
+            else tp.tyconTypeParams
           else tp.tyconTypeParams
         case _ => tp.tyconTypeParams
       tparams(tp.tycon)
@@ -326,14 +438,93 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  @param ignoreBinding  if not null, a parameter that is assumed to be still uninstantiated.
    *                        This is necessary to handle replacements.
    */
-  private class Adjuster(srcParam: TypeParamRef, ignoreBinding: TypeParamRef | Null)(using Context)
+  private class Adjuster(initialSrcParam: TypeParamRef, initialIgnoreBinding: TypeParamRef | Null)(using Context)
   extends TypeTraverser, ConstraintAwareTraversal[Unit]:
 
+    private var srcParam: TypeParamRef = initialSrcParam
+    private var ignoreBinding: TypeParamRef | Null = initialIgnoreBinding
     var add: Boolean = compiletime.uninitialized
-    val seen = util.HashSet[LazyRef]()
+
+    def reset(srcParam: TypeParamRef, ignoreBinding: TypeParamRef | Null): this.type =
+      this.srcParam = srcParam
+      this.ignoreBinding = ignoreBinding
+      this
+
+    private class SeenLazyRefs:
+      private var used: Int = 0
+      private var keys: Array[LazyRef | Null] = new Array[LazyRef | Null](8)
+      private var stamps: Array[Int] = new Array[Int](8)
+      private var limit: Int = keys.length - (keys.length >> 2)
+
+      def reset(): Unit =
+        var i = 0
+        while i < keys.length do
+          keys(i) = null
+          i += 1
+        used = 0
+
+      private def index(ref: LazyRef): Int =
+        val h = System.identityHashCode(ref)
+        val i = (h ^ (h >>> 16)) * 0x85EBCA6B
+        val j = (i ^ (i >>> 13)) & 0x7FFFFFFF
+        j & (keys.length - 1)
+
+      private def insertKnown(ref: LazyRef, stamp: Int): Unit =
+        var idx = index(ref)
+        while keys(idx) != null do idx = (idx + 1) & (keys.length - 1)
+        keys(idx) = ref
+        stamps(idx) = stamp
+        used += 1
+
+      private def grow(): Unit =
+        val oldKeys = keys
+        val oldStamps = stamps
+        keys = new Array[LazyRef | Null](oldKeys.length << 1)
+        stamps = new Array[Int](keys.length)
+        limit = keys.length - (keys.length >> 2)
+        used = 0
+        var i = 0
+        while i < oldKeys.length do
+          val ref = oldKeys(i)
+          if ref != null then insertKnown(ref, oldStamps(i))
+          i += 1
+
+      def addIfNew(ref: LazyRef, generation: Int): Boolean =
+        var idx = index(ref)
+        while keys(idx) != null do
+          if keys(idx).nn eq ref then
+            if stamps(idx) == generation then return false
+            stamps(idx) = generation
+            return true
+          idx = (idx + 1) & (keys.length - 1)
+        if used >= limit then
+          grow()
+          idx = index(ref)
+          while keys(idx) != null do idx = (idx + 1) & (keys.length - 1)
+        keys(idx) = ref
+        stamps(idx) = generation
+        used += 1
+        true
+
+    private var seen: SeenLazyRefs | Null = null
+    var seenGeneration: Int = 0
+
+    def resetSeen(): Unit =
+      val seenRefs = seen
+      if seenRefs != null then seenRefs.reset()
+
+    private def seenLazyRefs: SeenLazyRefs =
+      val seenRefs = seen
+      if seenRefs == null then
+        val fresh = SeenLazyRefs()
+        seen = fresh
+        fresh
+      else seenRefs
 
     override protected def hasBounds(param: TypeParamRef) =
       (param eq ignoreBinding) || super.hasBounds(param)
+    override protected def hasBounds(param: TypeParamRef, paramEntry: Type) =
+      (param eq ignoreBinding) || super.hasBounds(param, paramEntry)
 
     def update(deps: ReverseDeps, referenced: TypeParamRef): ReverseDeps =
       val prev = deps.at(referenced)
@@ -350,8 +541,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         else
           traverse(entry(param))
       case tp: LazyRef =>
-        if !seen.contains(tp) then
-          seen += tp
+        if seenLazyRefs.addIfNew(tp, seenGeneration) then
           traverse(tp.ref)
       case _ => traverseChildren(t)
     catch case ex: Throwable => handleRecursive("adjust", t.show, ex)
@@ -361,7 +551,15 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  and the new bound `entry` for the type parameter `srcParam`.
    */
   def adjustDeps(entry: Type | Null, prevEntry: Type | Null, srcParam: TypeParamRef, ignoreBinding: TypeParamRef | Null = null)(using Context): this.type =
-    val adjuster = new Adjuster(srcParam, ignoreBinding)
+    var myAdjuster: Adjuster | Null = null
+
+    def adjuster: Adjuster =
+      val a = myAdjuster
+      if a == null then
+        val fresh = new Adjuster(srcParam, ignoreBinding)
+        myAdjuster = fresh
+        fresh
+      else a
 
     /** Adjust reverse dependencies of all type parameters referenced by `bound`
      *  @param  isLower `bound` is a lower bound
@@ -370,7 +568,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     def adjustReferenced(bound: Type, isLower: Boolean, add: Boolean) =
       adjuster.variance = if isLower then 1 else -1
       adjuster.add = add
-      adjuster.seen.clear(resetToInitial = false)
+      adjuster.seenGeneration += 1
+      if adjuster.seenGeneration == 0 then
+        adjuster.resetSeen()
+        adjuster.seenGeneration = 1
       adjuster.traverse(bound)
 
     /** Use an optimized strategy to adjust dependencies to account for the delta
@@ -423,10 +624,41 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  @param add   if true, entries is added, otherwise it is dropped
    */
   def adjustDeps(poly: TypeLambda, entries: Array[Type], add: Boolean)(using Context): this.type =
-    for n <- 0 until paramCount(entries) do
-      if add
-      then adjustDeps(entries(n), NoType, poly.paramRefs(n))
-      else adjustDeps(NoType, entries(n), poly.paramRefs(n))
+    val limit = paramCount(entries)
+    var myAdjuster: Adjuster | Null = null
+
+    def adjuster(srcParam: TypeParamRef): Adjuster =
+      val a = myAdjuster
+      if a == null then
+        val fresh = new Adjuster(srcParam, null)
+        myAdjuster = fresh
+        fresh
+      else a.reset(srcParam, null)
+
+    def adjustReferenced(adjuster: Adjuster, bound: Type, isLower: Boolean, add: Boolean) =
+      adjuster.variance = if isLower then 1 else -1
+      adjuster.add = add
+      adjuster.seenGeneration += 1
+      if adjuster.seenGeneration == 0 then
+        adjuster.resetSeen()
+        adjuster.seenGeneration = 1
+      adjuster.traverse(bound)
+
+    def adjustBounds(bounds: TypeBounds, add: Boolean, srcParam: TypeParamRef) =
+      val a = adjuster(srcParam)
+      adjustReferenced(a, bounds.lo, isLower = true, add)
+      adjustReferenced(a, bounds.hi, isLower = false, add)
+
+    var n = 0
+    while n < limit do
+      val param = poly.paramRef(n)
+      entries(n) match
+        case bounds: TypeBounds =>
+          adjustBounds(bounds, add, param)
+          if !add then dropDeps(param)
+        case _ =>
+          dropDeps(param)
+      n += 1
     this
 
   /** Remove all reverse dependencies of `param` */
@@ -436,6 +668,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
 
   /** A string representing the two dependency maps */
   def depsToString(using Context): String =
+    materializeDeps()
     def depsStr(deps: ReverseDeps): String =
       def depStr(param: TypeParamRef) = i"$param --> ${deps.at(param).toList}%, %"
       if deps.isEmpty then "" else i"\n     ${deps.toList.map((k, v) => depStr(k))}%\n     %"
@@ -471,34 +704,162 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *
    *  @param isUpper   If true, `bound` is an upper bound, else a lower bound.
    */
-  private def stripParams(
-      tp: Type,
-      todos: mutable.ListBuffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint],
-      isUpper: Boolean)(using Context): Type = tp match {
-    case param: TypeParamRef if contains(param) =>
-      todos += (if isUpper then order(_, _, param) else order(_, param, _))
-      NoType
-    case tp: TypeBounds =>
-      val lo1 = stripParams(tp.lo, todos, !isUpper).orElse(defn.NothingType)
-      val hi1 = stripParams(tp.hi, todos, isUpper).orElse(tp.topType)
-      tp.derivedTypeBounds(lo1, hi1)
-    case tp: AndType if isUpper =>
-      val tp1 = stripParams(tp.tp1, todos, isUpper)
-      val tp2 = stripParams(tp.tp2, todos, isUpper)
-      if (tp1.exists)
-        if (tp2.exists) tp.derivedAndType(tp1, tp2)
-        else tp1
-      else tp2
-    case tp: OrType if !isUpper =>
-      val tp1 = stripParams(tp.tp1, todos, isUpper)
-      val tp2 = stripParams(tp.tp2, todos, isUpper)
-      if (tp1.exists)
-        if (tp2.exists) tp.derivedOrType(tp1, tp2)
-        else tp1
-      else tp2
-    case _ =>
-      tp
-  }
+  private final class StripParamTodos:
+    private var params = new Array[TypeParamRef | Null](4)
+    private var isUppers = new Array[Boolean](4)
+    private var mySize = 0
+
+    def mark: Int = mySize
+
+    def add(isUpper: Boolean, param: TypeParamRef): Unit =
+      if mySize == params.length then
+        val params1 = new Array[TypeParamRef | Null](mySize * 2)
+        val isUppers1 = new Array[Boolean](mySize * 2)
+        Array.copy(params, 0, params1, 0, mySize)
+        Array.copy(isUppers, 0, isUppers1, 0, mySize)
+        params = params1
+        isUppers = isUppers1
+      params(mySize) = param
+      isUppers(mySize) = isUpper
+      mySize += 1
+
+    def rollback(mark: Int): Unit =
+      var i = mark
+      while i < mySize do
+        params(i) = null
+        i += 1
+      mySize = mark
+
+    def applyTo(current: OrderingConstraint, param: TypeParamRef)(using Context): OrderingConstraint =
+      var current1 = current
+      var i = 0
+      while i < mySize do
+        val depParam = params(i).nn
+        current1 =
+          if isUppers(i) then order(current1, param, depParam)
+          else order(current1, depParam, param)
+        params(i) = null
+        i += 1
+      mySize = 0
+      current1
+  end StripParamTodos
+
+  private final class StripParamsMap(todos: StripParamTodos, avoidWildcards: Boolean)(using Context) extends AvoidWildcardsMap:
+    private var myMapped: Type = NoType
+
+    private def stripMapped(tp: Type, isUpper: Boolean)(using Context): Type = tp match
+      case param: TypeParamRef if contains(param) =>
+        todos.add(isUpper, param)
+        NoType
+      case tp: TypeBounds =>
+        val lo1 = stripMapped(tp.lo, !isUpper).orElse(defn.NothingType)
+        val hi1 = stripMapped(tp.hi, isUpper).orElse(tp.topType)
+        tp.derivedTypeBounds(lo1, hi1)
+      case tp: AndType if isUpper =>
+        val tp1 = stripMapped(tp.tp1, isUpper)
+        val tp2 = stripMapped(tp.tp2, isUpper)
+        if tp1.exists then
+          if tp2.exists then tp.derivedAndType(tp1, tp2)
+          else tp1
+        else tp2
+      case tp: OrType if !isUpper =>
+        val tp1 = stripMapped(tp.tp1, isUpper)
+        val tp2 = stripMapped(tp.tp2, isUpper)
+        if tp1.exists then
+          if tp2.exists then tp.derivedOrType(tp1, tp2)
+          else tp1
+        else tp2
+      case _ =>
+        tp
+
+    private def stripFallback(tp: Type, isUpper: Boolean, mark: Int): Type =
+      todos.rollback(mark)
+      stripMapped(tp, isUpper)
+
+    /** The result of `stripMapped(apply(tp), isUpper)`.
+     *
+     *  `myMapped` is set to `apply(tp)` for callers that need to rebuild the
+     *  wildcard-approximated parent before deciding whether its stripped
+     *  children are semantically reachable.
+     */
+    def strip(tp: Type, isUpper: Boolean)(using Context): Type = tp match
+      case param: TypeParamRef if contains(param) =>
+        myMapped = param
+        todos.add(isUpper, param)
+        NoType
+
+      case tp: TypeBounds =>
+        val mark = todos.mark
+        val saved = variance
+        variance = -saved
+        val lo1 = strip(tp.lo, !isUpper)
+        val loMapped = myMapped
+        variance = saved
+        val hi1 = strip(tp.hi, isUpper)
+        val hiMapped = myMapped
+        val mapped = derivedTypeBounds(tp, loMapped, hiMapped)
+        myMapped = mapped
+        mapped match
+          case mapped: TypeBounds if (mapped.lo eq loMapped) && (mapped.hi eq hiMapped) =>
+            mapped.derivedTypeBounds(lo1.orElse(defn.NothingType), hi1.orElse(mapped.topType))
+          case _ =>
+            stripFallback(mapped, isUpper, mark)
+
+      case tp: AndType if isUpper =>
+        val mark = todos.mark
+        val tp1 = strip(tp.tp1, isUpper)
+        val tp1Mapped = myMapped
+        val tp2 = strip(tp.tp2, isUpper)
+        val tp2Mapped = myMapped
+        val mapped = derivedAndType(tp, tp1Mapped, tp2Mapped)
+        myMapped = mapped
+        mapped match
+          case mapped: AndType if (mapped.tp1 eq tp1Mapped) && (mapped.tp2 eq tp2Mapped) =>
+            if tp1.exists then
+              if tp2.exists then mapped.derivedAndType(tp1, tp2)
+              else tp1
+            else tp2
+          case _ =>
+            stripFallback(mapped, isUpper, mark)
+
+      case tp: OrType if !isUpper =>
+        val mark = todos.mark
+        val tp1 = strip(tp.tp1, isUpper)
+        val tp1Mapped = myMapped
+        val tp2 = strip(tp.tp2, isUpper)
+        val tp2Mapped = myMapped
+        val mapped = derivedOrType(tp, tp1Mapped, tp2Mapped)
+        myMapped = mapped
+        mapped match
+          case mapped: OrType if (mapped.tp1 eq tp1Mapped) && (mapped.tp2 eq tp2Mapped) =>
+            if tp1.exists then
+              if tp2.exists then mapped.derivedOrType(tp1, tp2)
+              else tp1
+            else tp2
+          case _ =>
+            stripFallback(mapped, isUpper, mark)
+
+      case _ =>
+        val mapped = if avoidWildcards then apply(tp) else tp
+        myMapped = mapped
+        stripMapped(mapped, isUpper)
+  end StripParamsMap
+
+  /** True if `poly`'s parameter bounds need neither stripping nor dependency setup. */
+  private def hasIndependentBounds(poly: TypeLambda)(using Context): Boolean =
+    var infos = poly.paramInfos
+    while infos ne Nil do
+      val bounds = infos.head
+      if (bounds.lo ne defn.NothingType)
+          || (bounds.hi ne defn.AnyType) && (bounds.hi ne defn.AnyKindType)
+      then return false
+      infos = infos.tail
+    true
+
+  private def canDeferInit(tvars: List[TypeVar])(using Context): Boolean =
+    tvars.nonEmpty
+    && ctx.mode.is(Mode.TypevarsMissContext)
+    && !ctx.typerState.isCommittable
 
   def add(poly: TypeLambda, tvars: List[TypeVar])(using Context): This = {
     assert(!contains(poly))
@@ -506,8 +867,14 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     val entries1 = new Array[Type](nparams * 2)
     poly.paramInfos.copyToArray(entries1, 0)
     tvars.copyToArray(entries1, nparams)
-    newConstraint(boundsMap = this.boundsMap.updated(poly, entries1))
-      .init(poly)
+    val independent = hasIndependentBounds(poly)
+    val deferred = !independent && canDeferInit(tvars)
+    val current = newConstraint(
+      boundsMap = this.boundsMap.updated(poly, entries1),
+      lazyInits = if deferred then lazyInits + poly else lazyInits,
+      propagationFreeAdd = if deferred then poly else null)
+    if independent || deferred then current.checkWellFormed()
+    else current.init(poly)
   }
 
   /** Split dependent parameters off the bounds for parameters in `poly`.
@@ -516,20 +883,21 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    */
   private def init(poly: TypeLambda)(using Context): This = {
     var current = this
-    val todos = new mutable.ListBuffer[(OrderingConstraint, TypeParamRef) => OrderingConstraint]
-    var i = 0
-    val dropWildcards = AvoidWildcardsMap()
-    while (i < poly.paramNames.length) {
-      val param = poly.paramRefs(i)
-      val bounds = dropWildcards(nonParamBounds(param))
-      val stripped = stripParams(bounds, todos, isUpper = true)
+    val todos = StripParamTodos()
+    val stripParams = StripParamsMap(todos, avoidWildcards = !poly.hasNoWildcardBounds)
+    // Iterate `paramRefs` directly: the previous `while (i < paramNames.length)`
+    // form recomputed `paramNames.length` (O(n) on a List) and `paramRefs(i)`
+    // (O(i)) every iteration, making the loop O(n^2).
+    // Most lambdas are wildcard-free; in that case the fused strip map skips
+    // the otherwise-no-op `AvoidWildcardsMap` traversal.
+    var refs = poly.paramRefs
+    while refs ne Nil do
+      val param = refs.head
+      val stripped = stripParams.strip(nonParamBounds(param), isUpper = true)
       current = boundsLens.update(this, current, param, stripped)
-      while todos.nonEmpty do
-        current = todos.head(current, param)
-        todos.dropInPlace(1)
-      i += 1
-    }
-    current.adjustDeps(poly, current.boundsMap(poly).nn, add = true)
+      current = todos.applyTo(current, param)
+      refs = refs.tail
+    current.markDepsDirty(poly)
       .checkWellFormed()
   }
 
@@ -549,10 +917,12 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       case tp: TypeParamRef =>
         if tp eq param then
           if isUpper then defn.AnyType else defn.NothingType
-        else entry(tp) match
-          case NoType => tp
-          case TypeBounds(lo, hi) => if lo eq hi then recur(lo) else tp
-          case inst => recur(inst)
+        else
+          forceLazyInit(tp.binder)
+          entry(tp) match
+            case NoType => tp
+            case TypeBounds(lo, hi) => if lo eq hi then recur(lo) else tp
+            case inst => recur(inst)
       case tp: TypeVar =>
         val underlying1 = recur(tp.underlying)
         if underlying1 ne tp.underlying then underlying1 else tp
@@ -642,11 +1012,11 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case _ =>
       Nil
 
-  private def updateEntry(current: This, param: TypeParamRef, newEntry: Type)(using Context): This = {
+  private def updateEntry(current: This, param: TypeParamRef, newEntry: Type, deferDeps: Boolean = false)(using Context): This = {
     if Config.checkNoWildcardsInConstraint then assert(!newEntry.containsWildcardTypes)
     val oldEntry = current.entry(param)
     var current1 = boundsLens.update(this, current, param, newEntry)
-      .adjustDeps(newEntry, oldEntry, param)
+    if !deferDeps then current1 = current1.adjustDeps(newEntry, oldEntry, param)
     newEntry match {
       case TypeBounds(lo, hi) =>
         for p <- dependentParams(lo, isUpper = false) do
@@ -659,7 +1029,10 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   }
 
   def updateEntry(param: TypeParamRef, tp: Type)(using Context): This =
-    updateEntry(this, param, tp).checkWellFormed()
+    forceLazyInit(param.binder)
+    val deferDeps = dirtyDeps.contains(param.binder)
+    if !deferDeps then materializeDeps()
+    updateEntry(this, param, tp, deferDeps).checkWellFormed()
 
   def addLess(param1: TypeParamRef, param2: TypeParamRef, direction: UnificationDirection)(using Context): This =
     order(this, param1, param2, direction).checkWellFormed()
@@ -671,6 +1044,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
    *  of the parameter elsewhere in the constraint by type `tp`.
    */
   def replace(param: TypeParamRef, tp: Type)(using Context): OrderingConstraint =
+    materializeDeps()
     val replacement = tp.dealiasKeepAnnots.stripTypeVar
     if param == replacement then this.checkWellFormed()
     else
@@ -759,6 +1133,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case _                                  => this
 
   def remove(pt: TypeLambda)(using Context): This = {
+    materializeDeps()
     def removeFromOrdering(po: ParamOrdering) = {
       def removeFromBoundss(key: TypeLambda, bndss: Array[List[TypeParamRef]]): Array[List[TypeParamRef]] = {
         val bndss1 = bndss.map(_.filterConserve(_.binder ne pt))
@@ -792,6 +1167,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     (this.typeVarOfParam(tl.paramRefs(0)) ne that.typeVarOfParam(tl.paramRefs(0)))
 
   def subst(from: TypeLambda, to: TypeLambda)(using Context): OrderingConstraint =
+    materializeDeps()
     def swapKey[T](m: ArrayValuedMap[T]) =
       val info = m(from)
       if info == null then m else m.remove(from).updated(to, info)
@@ -968,6 +1344,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
           s"cyclic bound for $param: ${inst.show} in ${this.show}")
       }
     if Config.checkConstraintDeps || ctx.settings.YcheckConstraintDeps.value then
+      materializeDeps()
       checkBackward(coDeps, "co", -1)
       checkBackward(contraDeps, "contra", +1)
       domainParams.foreach(p => if contains(p) then checkForward(p).traverse(entry(p)))

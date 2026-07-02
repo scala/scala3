@@ -29,6 +29,17 @@ object DenotTransformers {
     /** The transformation method */
     def transform(ref: SingleDenotation)(using Context): SingleDenotation
 
+    /** If true, `transform(ref)` is known to return `ref` itself, so `goForward`
+     *  in `SingleDenotation.current` may extend `ref`'s validity period across
+     *  this transformer without invoking `transform`. Overriding predicates must
+     *  be pure, phase-stable, and evaluated against `ref`'s own fields (never
+     *  through `Symbol.denot`, whose result depends on the context's phase).
+     *  A wrong `true` silently freezes a denotation across this transformer,
+     *  so only opt in predicates that exactly mirror the identity-return
+     *  condition of `transform`.
+     */
+    def transformIsNoOpFor(ref: SingleDenotation)(using Context): Boolean = false
+
     override def isRunnable(using Context) = super.isRunnable && !ctx.usedBestEffortTasty
   }
 
@@ -39,7 +50,10 @@ object DenotTransformers {
 
     def transform(ref: SingleDenotation)(using Context): SingleDenotation = {
       val sym = ref.symbol
-      if (sym.exists && !infoMayChange(sym)) ref
+      // Test `infoMayChange` first: it is a pure predicate on the symbol's own
+      // fields, whereas `sym.exists` can force an off-period denotation recompute,
+      // which is wasted whenever `infoMayChange(sym)` is true.
+      if (!infoMayChange(sym) && sym.exists) ref
       else {
         val info1 = transformInfo(ref.info, ref.symbol)
         if (info1 eq ref.info) ref

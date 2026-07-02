@@ -28,6 +28,17 @@ class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
     nestedCtx
   }
 
+  private def hasGivenOrImplicitDef(defs: List[Tree])(using Context): Boolean = {
+    var rest = defs
+    while rest.nonEmpty do
+      rest.head match {
+        case d: DefTree if d.symbol.isOneOf(GivenOrImplicitVal) => return true
+        case _ =>
+      }
+      rest = rest.tail
+    false
+  }
+
   private def patternScopeCtx(pattern: Tree)(using Context): Context = {
     val nestedCtx = ctx.fresh.setNewScope
     pattern.foreachSubTree {
@@ -40,7 +51,10 @@ class TreeMapWithImplicits extends tpd.TreeMapWithPreciseStatContexts {
   override def transform(tree: Tree)(using Context): Tree = {
     try tree match {
       case Block(stats, expr) =>
-        super.transform(tree)(using nestedScopeCtx(stats))
+        if hasGivenOrImplicitDef(stats) then
+          super.transform(tree)(using nestedScopeCtx(stats))
+        else
+          super.transform(tree)
       case tree: DefDef =>
         inContext(localCtx(tree)) {
           cpy.DefDef(tree)(

@@ -77,7 +77,20 @@ class Staging extends MacroTransform {
   end checkPostCondition
 
   override protected def run(using Context): Unit =
-    if (ctx.compilationUnit.needsStaging) super.run
+    if (ctx.compilationUnit.needsStaging) {
+      // Assume no level-0 quote survives until the walk below encounters one;
+      // `CrossStageSafety` records each survivor so that `Splicing`, which runs
+      // on this exact tree just after this phase, can skip survivor-free units.
+      ctx.compilationUnit.hasLevel0Quotes = false
+      // Most `needsStaging` units carry no staged quote by this point: the quotes that
+      // set the flag were consumed by macro expansion (see `stagedQuoteSurvivors`). The
+      // `CrossStageSafety` walk is the identity outside quote/splice scope, so it can be
+      // skipped for those units. Units with macro annotations are walked unconditionally
+      // since their expansions may insert quotes without re-typing them through
+      // `InlineTyper`.
+      if (ctx.compilationUnit.stagedQuoteSurvivors || ctx.compilationUnit.hasMacroAnnotations)
+        super.run
+    }
 
   protected def newTransformer(using Context): Transformer = new Transformer {
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =

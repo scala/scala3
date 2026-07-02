@@ -33,6 +33,10 @@ class CheckReentrant extends MiniPhase {
 
   override def description: String = CheckReentrant.description
 
+  override def preservesApplicationTypes: Boolean = true
+
+  override def preservesTrivialResultTypes: Boolean = true
+
   private var shared: Set[Symbol] = Set()
   private var seen: Set[ClassSymbol] = Set()
   private var indent: Int = 0

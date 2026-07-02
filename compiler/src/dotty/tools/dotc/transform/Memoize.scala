@@ -18,9 +18,6 @@ import StdNames.nme
 
 import sjs.JSSymUtils.*
 
-import util.Store
-import scala.compiletime.uninitialized
-
 object Memoize {
   val name: String = "memoize"
   val description: String = "add private fields to getters and setters"
@@ -53,12 +50,6 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
 
   override def description: String = Memoize.description
 
-  private var MyState: Store.Location[MyState] = uninitialized
-  private def myState(using Context): MyState = ctx.store(MyState)
-
-  override def initContext(ctx: FreshContext): Unit =
-    MyState = ctx.addLocation[MyState]()
-
   /* Makes sure that, after getters and constructors gen, there doesn't
    * exist non-deferred definitions that are not implemented. */
   override def checkPostCondition(tree: Tree)(using Context): Unit = {
@@ -87,16 +78,38 @@ class Memoize extends MiniPhase with IdentityDenotTransformer { thisPhase =>
    */
   override def runsAfter: Set[String] = Set(Mixin.name)
 
-  override def prepareForUnit(tree: Tree)(using Context): Context =
-    ctx.fresh.updateStore(MyState, new MyState())
+  private var myStateUnit: CompilationUnit | Null = null
+  private var myStateCache: MyState | Null = null
+
+  override def initContext(ctx: FreshContext): Unit =
+    myStateUnit = null
+    myStateCache = null
+
+  private def myStateIfInitialized(using Context): MyState | Null =
+    val unit = ctx.compilationUnit
+    if myStateUnit ne unit then
+      myStateUnit = unit
+      myStateCache = null
+    myStateCache
+
+  private def myState(using Context): MyState =
+    myStateIfInitialized match
+      case null =>
+        val state = new MyState()
+        myStateCache = state
+        state
+      case state => state
 
   override def transformTemplate(tree: Template)(using Context): Tree =
-    val cls = ctx.owner.asClass
-    if myState.classesThatNeedReleaseFence.contains(cls) then
-      val releaseFenceCall = ref(defn.staticsMethodRef(nme.releaseFence)).appliedToNone
-      cpy.Template(tree)(tree.constr, tree.parents, Nil, tree.self, tree.body :+ releaseFenceCall)
-    else
-      tree
+    myStateIfInitialized match
+      case null => tree
+      case state =>
+        val cls = ctx.owner.asClass
+        if state.classesThatNeedReleaseFence.contains(cls) then
+          val releaseFenceCall = ref(defn.staticsMethodRef(nme.releaseFence)).appliedToNone
+          cpy.Template(tree)(tree.constr, tree.parents, Nil, tree.self, tree.body :+ releaseFenceCall)
+        else
+          tree
 
   override def transformDefDef(tree: DefDef)(using Context): Tree = {
     val sym = tree.symbol

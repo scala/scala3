@@ -45,6 +45,13 @@ class ElimPolyFunction extends MiniPhase with DenotTransformer {
       ref
   }
 
+  override def transformIsNoOpFor(ref: SingleDenotation)(using Context): Boolean =
+    // `transform` only rewrites ClassDenotations deriving from PolyFunction; every
+    // other denotation takes the `case _ => ref` arm, so the gate is a pure
+    // instanceof with no field reads. ClassDenotations stay ungated because
+    // `derivesFrom` in a gate would read phase-dependent base data.
+    !ref.isInstanceOf[ClassDenotation]
+
   def functionTypeOfPoly(cinfo: ClassInfo)(using Context): Type = {
     val applyMeth = cinfo.decls.lookup(nme.apply).info
     val arity = applyMeth.paramNamess.head.length

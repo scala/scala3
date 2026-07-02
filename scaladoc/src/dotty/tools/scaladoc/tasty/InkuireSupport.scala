@@ -17,6 +17,7 @@ import SyntheticsSupport._
 trait InkuireSupport(using DocContext) extends Resources:
   self: TastyParser =>
   import qctx.reflect._
+  import SymOpsWithLinkCache.dri
 
   // Unused in InkuireSupport, required for Resources
   override def effectiveMembers: Map[DRI, Member] = Map.empty

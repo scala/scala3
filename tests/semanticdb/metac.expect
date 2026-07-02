@@ -4451,7 +4451,7 @@ example/ValPattern#app(). => method app (): Unit
 example/ValPattern#left. => val method left Int
 example/ValPattern#leftVar(). => var method leftVar Int
 example/ValPattern#number1. => val method number1 Int
-example/ValPattern#number1Var(). => val method number1Var Int
+example/ValPattern#number1Var(). => var method number1Var Int
 example/ValPattern#q1. => val method q1 Nothing
 example/ValPattern#right. => val method right Int
 example/ValPattern#rightVar(). => var method rightVar Int
@@ -4460,7 +4460,7 @@ local1 => val local right: Int
 local2 => val local number1: Int
 local3 => var local leftVar: Int
 local4 => var local rightVar: Int
-local5 => val local number1Var: Int
+local5 => var local number1Var: Int
 
 Occurrences:
 [0:8..0:15): example <- example/

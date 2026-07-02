@@ -36,6 +36,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
 
   override def description: String = "check for unused elements"
 
+  override def preservesApplicationTypes: Boolean = true
+
+  override def preservesTrivialResultTypes: Boolean = true
+
   override def runsAfter = Set:
     phaseMode match
     case PhaseMode.Aggregate => TyperPhase.name

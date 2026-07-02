@@ -83,6 +83,12 @@ abstract class Constraint extends Showable {
    */
   def add(poly: TypeLambda, tvars: List[TypeVar])(using Context): This
 
+  /** Whether the most recent `add` installed `poly` without initial ordering
+   *  propagation. Low-level hook for constraint implementations that defer
+   *  initialization until the new parameters are actually constrained.
+   */
+  def canSkipAddPropagation(poly: TypeLambda): Boolean = false
+
   /** A new constraint which is derived from this constraint by updating
    *  the entry for parameter `param` to `tp`.
    *  `tp` can be one of the following:
