@@ -1,21 +1,14 @@
-// import scala.annotation.valhalla
+import scala.annotation.valhalla
 
-// @valhalla
-enum Planet(mass: Double, radius: Double): // extends AnyVal
+@valhalla
+enum Planet(mass: Double, radius: Double) extends AnyVal with DeepValhalla:
   private final def G = 6.67300E-11
   def surfaceGravity = G * mass / (radius * radius)
   def surfaceWeight(otherMass: Double) = otherMass * surfaceGravity
 
-  // override def equals(that: Any): Boolean = 
-  //   needs mass & radius to be public
-  //   if !that.isInstanceOf[Planet] then
-  //     return false
-  //   else
-  //     that.asInstanceOf[Planet].mass == mass && that.asInstanceOf[Planet].radius == radius
-
   case Mercury extends Planet(3.303e+23, 2.4397e6)
   case Venus   extends Planet(4.869e+24, 6.0518e6)
-  case Earth(x: Int)   extends Planet(5.976e+24, 6.37814e6)
+  case Earth   extends Planet(5.976e+24, 6.37814e6)
   case Earth1   extends Planet(5.976e+24, 6.37814e6)
   case Mars    extends Planet(6.421e+23, 3.3972e6)
   case Jupiter extends Planet(1.9e+27,   7.1492e7)
@@ -27,12 +20,11 @@ end Planet
 class Main:
   def main(args: Array[String]) =
     val earthWeight = args(0).toDouble
-    val mass = earthWeight / Planet.Earth(1).surfaceGravity
-    // for p <- Planet.values do
-    //   println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
+    val mass = earthWeight / Planet.Earth.surfaceGravity
+    for p <- Planet.values do
+      println(s"Your weight on $p is ${p.surfaceWeight(mass)}")
 
-    // println(Planet.valueOf("Mercury"))
+    println(Planet.valueOf("Mercury"))
     println(Planet.fromOrdinal(0))
     println(Planet.Mercury.ordinal)
-    println(Planet.Earth(1) == Planet.Earth(1))
-    println(Planet.Earth(1) == Planet.Earth(2))
+    println(Planet.Earth == Planet.Earth1)

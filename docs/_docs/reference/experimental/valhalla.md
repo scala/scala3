@@ -47,7 +47,7 @@ Valhalla value classes can be null, so the CanEqual of `null` and a valhalla val
 
 ## Using Value Classes
 
-Use the `--Yvalue-classes` and `-experimental` compiler options when compiling value classes in the scala compiler.
+Use the `-Yvalhalla` and `-experimental` compiler options when compiling value classes in the scala compiler.
 
 ## Getting Started
 
