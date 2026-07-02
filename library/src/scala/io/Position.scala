@@ -99,6 +99,15 @@ private[scala] abstract class Position {
 
 @nowarn
 private[scala] object Position extends Position {
+  /** Validates a line and column number, throwing an `IllegalArgumentException`
+   *  for an invalid combination.
+   *
+   *  A negative `line` or `column` is rejected, as is a nonzero `column` paired
+   *  with a `line` of 0.
+   *
+   *  @param line the 1-based line number to validate (0 for undefined, negative values throw)
+   *  @param column the 1-based column number to validate (must be 0 when `line` is 0, negative values throw)
+   */
   def checkInput(line: Int, column: Int): Unit = {
     if (line < 0)
       throw new IllegalArgumentException(s"$line < 0")

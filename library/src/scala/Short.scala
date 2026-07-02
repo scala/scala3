@@ -22,12 +22,21 @@ import scala.language.`2.13`
  *  which provides useful non-primitive operations.
  */
 final abstract class Short private extends AnyVal {
+  /** Returns this value as a [[scala.Byte]], which may involve truncation of
+   *  the high-order bits.
+   */
   def toByte: Byte
+  /** Returns this value unchanged. */
   def toShort: Short
+  /** Returns this value as a [[scala.Char]]. */
   def toChar: Char
+  /** Returns this value as an [[scala.Int]]. */
   def toInt: Int
+  /** Returns this value as a [[scala.Long]]. */
   def toLong: Long
+  /** Returns this value as a [[scala.Float]]. */
   def toFloat: Float
+  /** Returns this value as a [[scala.Double]]. */
   def toDouble: Double
 
   /** Returns the bitwise negation of this value.
@@ -645,9 +654,25 @@ object Short extends AnyValCompanion {
    *  @return the value of `x` converted to the wider numeric type
    */
   import scala.language.implicitConversions
+  /** Returns `x` converted to an `Int`.
+   *
+   *  @param x the `Short` value to convert
+   */
   implicit def short2int(x: Short): Int = x.toInt
+  /** Returns `x` converted to a `Long`.
+   *
+   *  @param x the `Short` value to convert
+   */
   implicit def short2long(x: Short): Long = x.toLong
+  /** Returns `x` converted to a `Float`.
+   *
+   *  @param x the `Short` value to convert
+   */
   implicit def short2float(x: Short): Float = x.toFloat
+  /** Returns `x` converted to a `Double`.
+   *
+   *  @param x the `Short` value to convert
+   */
   implicit def short2double(x: Short): Double = x.toDouble
 }
 
