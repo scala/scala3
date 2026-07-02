@@ -67,14 +67,14 @@ object Phases {
     final def phasePlan: List[List[Phase]] = this.phasesPlan
     final def setPhasePlan(phasess: List[List[Phase]]): Unit = this.phasesPlan = phasess
 
-    /** Squash TreeTransform's beloning to same sublist to a single TreeTransformer
+    /** Squash TreeTransform's belonging to same sublist to a single TreeTransformer
       * Each TreeTransform gets own period,
       * whereas a combined TreeTransformer gets period equal to union of periods of it's TreeTransforms
       */
     final def fusePhases(phasess: List[List[Phase]],
-                           phasesToSkip: List[String],
-                           stopBeforePhases: List[String],
-                           YCheckAfter: List[String])(using Context): List[Phase] = {
+                         phasesToSkip: List[String],
+                         stopBeforePhases: List[String],
+                         YCheckAfter: List[String])(using Context): List[Phase] = {
       val fusedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
 
