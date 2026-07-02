@@ -11,6 +11,10 @@ import reporting.Diagnostic
 import StackTraceOps.*
 
 import scala.compiletime.uninitialized
+import scala.jdk.CollectionConverters.*
+import scala.tools.asm.*
+import scala.tools.asm.Opcodes.*
+import scala.tools.asm.tree.*
 import scala.util.control.NonFatal
 import java.util.function.Predicate
 
@@ -37,65 +41,167 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     "scala.xml.Elem" // is a Seq that contains itself, https://github.com/scala/scala3/issues/25691
   )
 
-  private def productToStringPredicate(using Context): Predicate[Any] = {
-    val cache = classValue(hasUserDefinedProductToString(_))
+  private object ProductToStringProbe {
 
-    new Predicate[Any] {
-      def test(value: Any): Boolean = value != null && cache.get(value.getClass)
+    def predicate(using Context): Predicate[Any] = (value: Any) => {
+      value != null && {
+        val clazz = value.getClass
+        val toStringDeclaringClass = userToStringDeclaringClass(clazz)
+        val testWithContext = fromSymbol.borrow(ctx) {
+          fromSymbol.cache.get(clazz).orElse(
+            toStringDeclaringClass.filter(_ != clazz).flatMap(fromSymbol.cache.get)
+          )
+        }
+
+        testWithContext.getOrElse(toStringDeclaringClass.exists(bytecodeCache.get))
+      }
     }
-  }
 
-  private def classValue[T](op: Class[?] => T): ClassValue[T] =
-    new ClassValue[T] {
-      def computeValue(clazz: Class[?]): T = op(clazz)
+    /** provides access to a Context for a closure that by contract should not retain
+     * after return
+     */
+    private trait BorrowContext {
+      private var borrowed: Context = uninitialized
+
+      def useContext[T](op: Context ?=> T): T = synchronized {
+        require(borrowed != null, "BorrowContext.access called without a borrowed context")
+        op(using borrowed)
+      }
+
+      def borrow[T](ctx: Context)(op: => T): T = synchronized {
+        if borrowed == null then
+          borrowed = ctx
+          try op
+          finally borrowed = null
+        else op
+      }
     }
 
-  private def hasUserDefinedProductToString(clazz: Class[?])(using Context): Boolean = {
-    val classSym = runtimeClassSymbol(clazz)
-    if !classSym.exists || !classSym.isClass || !classSym.derivesFrom(defn.ProductClass) then false
-    else
-      val toStringSym = defn.Any_toString.matchingMember(classSym.asClass.thisType)
-      toStringSym.exists
-        && toStringSym != defn.Any_toString
-        && !toStringSym.is(Deferred)
-        && !toStringSym.is(Synthetic)
-  }
+    private object fromSymbol extends BorrowContext {
+      val cache = classValue { clazz =>
+        useContext(classHasUserDefinedToString(clazz))
+      }
+    }
 
-  private def runtimeClassSymbol(clazz: Class[?])(using Context): Symbol = {
-    def getClassFromName(className: String | Null): Symbol =
-      if className == null then NoSymbol
+    private val bytecodeCache = classValue(hasRuntimeUserDefinedToString(_))
+
+    private def classValue[T](op: Class[?] => T): ClassValue[T] =
+      new ClassValue[T] {
+        def computeValue(clazz: Class[?]): T = op(clazz)
+      }
+
+    private def classHasUserDefinedToString(clazz: Class[?])(using Context): Option[Boolean] =
+      val classSym = runtimeClassSymbol(clazz)
+      if !classSym.exists || !classSym.isClass then None
       else
-        val name = className.nn.toTypeName
-        val direct = getClassIfDefined(name)
-        if direct.exists then direct
-        else getClassIfDefined(name.unmangleClassName)
+        val toStringSym = defn.Any_toString.matchingMember(classSym.asClass.thisType)
+        if !toStringSym.exists then None
+        else
+          Some(toStringSym != defn.Any_toString
+            && !toStringSym.is(Deferred)
+            && !toStringSym.is(Synthetic))
 
-    def getMemberClass: Symbol =
-      val enclosingClass = clazz.getEnclosingClass
-      if enclosingClass == null then NoSymbol
+    private def userToStringDeclaringClass(clazz: Class[?]): Option[Class[?]] =
+      try
+        val declaringClass = clazz.getMethod("toString").getDeclaringClass
+        if declaringClass == classOf[Object] then None else Some(declaringClass)
+      catch case NonFatal(_) => None
+
+    private def hasRuntimeUserDefinedToString(declaringClass: Class[?]): Boolean =
+      try
+        // Some classpath-local products do not resolve back to their TASTy symbol.
+        // Reject synthesized case-class toString by cracking its bytecode.
+        !isScalaRunTimeProductToString(declaringClass)
+      catch case NonFatal(_) => false
+
+    private def isScalaRunTimeProductToString(clazz: Class[?]): Boolean =
+      def classBytes: Array[Byte] | Null =
+        val resourceName = clazz.getName.replace('.', '/') + ".class"
+        val loader = clazz.getClassLoader
+        val stream =
+          if loader == null then ClassLoader.getSystemResourceAsStream(resourceName)
+          else loader.getResourceAsStream(resourceName)
+        if stream == null then null
+        else
+          try stream.readAllBytes()
+          finally stream.close()
+
+      def isScalaRunTimeModule(insn: AbstractInsnNode): Boolean = insn match
+        case insn: FieldInsnNode =>
+          insn.getOpcode == GETSTATIC
+            && insn.owner == "scala/runtime/ScalaRunTime$"
+            && insn.name == "MODULE$"
+        case _ => false
+
+      def isLoadThis(insn: AbstractInsnNode): Boolean = insn match
+        case insn: VarInsnNode => insn.getOpcode == ALOAD && insn.`var` == 0
+        case _ => false
+
+      def isScalaRunTimeToString(insn: AbstractInsnNode): Boolean = insn match
+        case insn: MethodInsnNode =>
+          (insn.getOpcode == INVOKEVIRTUAL || insn.getOpcode == INVOKESTATIC)
+            && (insn.owner == "scala/runtime/ScalaRunTime$" || insn.owner == "scala/runtime/ScalaRunTime")
+            && insn.name == "_toString"
+            && insn.desc == "(Lscala/Product;)Ljava/lang/String;"
+        case _ => false
+
+      def isReturn(insn: AbstractInsnNode): Boolean =
+        insn.getOpcode == ARETURN
+
+      def isSynthesizedToString(method: MethodNode): Boolean =
+        method.instructions.iterator.asScala.filter(_.getOpcode >= 0).toList match
+          case List(module, loadThis, call, ret) =>
+            isScalaRunTimeModule(module) && isLoadThis(loadThis) && isScalaRunTimeToString(call) && isReturn(ret)
+          case List(loadThis, call, ret) =>
+            isLoadThis(loadThis) && isScalaRunTimeToString(call) && isReturn(ret)
+          case _ => false
+
+      val bytes = classBytes
+      if bytes == null then false
       else
-        val owner = runtimeClassSymbol(enclosingClass)
-        val name = clazz.getSimpleName.toTypeName.unmangleClassName
-        def lookup(owner: Symbol): Symbol =
-          if owner.exists then owner.info.member(name).symbol else NoSymbol
+        val classNode = ClassNode()
+        ClassReader(bytes).accept(classNode, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES)
+        classNode.methods.asScala.exists: method =>
+          method.name == "toString"
+            && method.desc == "()Ljava/lang/String;"
+            && isSynthesizedToString(method)
 
-        val direct = lookup(owner)
-        if direct.exists then direct
-        else if owner.exists then lookup(owner.linkedClass)
-        else NoSymbol
+    private def runtimeClassSymbol(clazz: Class[?])(using Context): Symbol = {
+      def getClassFromName(className: String | Null): Symbol =
+        if className == null then NoSymbol
+        else
+          val name = className.nn.toTypeName
+          val direct = getClassIfDefined(name)
+          if direct.exists then direct
+          else getClassIfDefined(name.unmangleClassName)
 
-    if clazz.isPrimitive || clazz.isArray then NoSymbol
-    else
-      val fromCanonicalName = getClassFromName(clazz.getCanonicalName)
-      if fromCanonicalName.exists then fromCanonicalName
+      def getMemberClass: Symbol =
+        val enclosingClass = clazz.getEnclosingClass
+        if enclosingClass == null then NoSymbol
+        else
+          val owner = runtimeClassSymbol(enclosingClass)
+          val name = clazz.getSimpleName.toTypeName.unmangleClassName
+          def lookup(owner: Symbol): Symbol =
+            if owner.exists then owner.info.member(name).symbol else NoSymbol
+
+          val direct = lookup(owner)
+          if direct.exists then direct
+          else if owner.exists then lookup(owner.linkedClass)
+          else NoSymbol
+
+      if clazz.isPrimitive || clazz.isArray then NoSymbol
       else
-        val fromRuntimeName = getClassFromName(clazz.getName)
-        if fromRuntimeName.exists then fromRuntimeName
-        else getMemberClass
+        val fromCanonicalName = getClassFromName(clazz.getCanonicalName)
+        if fromCanonicalName.exists then fromCanonicalName
+        else
+          val fromMemberClass = getMemberClass
+          if fromMemberClass.exists then fromMemberClass
+          else getClassFromName(clazz.getName)
+    }
   }
 
   private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
-    val useProductToString = productToStringPredicate
+    val useProductToString = ProductToStringProbe.predicate
 
     def fallback() =
       dotty.vendored.pprint.PPrinter.Color
