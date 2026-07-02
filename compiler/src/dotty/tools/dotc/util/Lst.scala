@@ -17,10 +17,10 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
   def isEmpty: Boolean = arr.length == 0
   def nonEmpty: Boolean = arr.length != 0
 
-  def apply(i: Int): T = at(i)
+  def apply(i: Int): T = arr(i).asInstanceOf[T]
 
-  def head: T = at(0)
-  def last: T = at(length - 1)
+  def head: T = arr(0).asInstanceOf[T]
+  def last: T = arr(arr.length - 1).asInstanceOf[T]
 
   def headOption: Option[T] =
     if length > 0 then Some(head) else None
@@ -28,20 +28,20 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
   def lastOption: Option[T] =
     if length > 0 then Some(last) else None
 
-  def map[U](f: T => U): Lst[U] =
+  inline def map[U](inline f: T => U): Lst[U] =
     val ys = new Array[Object](arr.length)
     var i = 0
     while i < arr.length do
-      ys(i) = f(at(i)).asInstanceOf[Object]
+      ys(i) = f(arr(i).asInstanceOf[T]).asInstanceOf[Object]
       i += 1
     new Lst(ys)
 
-  def mapConserve[U](f: T => U): Lst[U] =
+  inline def mapConserve[U](inline f: T => U): Lst[U] =
     val ys = new Array[Object](arr.length)
     var i = 0
     var change = false
-    while i < length do
-      ys(i) = f(at(i)).asInstanceOf[Object]
+    while i < arr.length do
+      ys(i) = f(arr(i).asInstanceOf[T]).asInstanceOf[Object]
       if ys(i) `ne` arr(i) then change = true
       i += 1
     if change then new Lst(ys) else this.asInstanceOf[Lst[U]]
@@ -84,10 +84,10 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
     new Lst(zs)
 
   def zipWith[U, V](ys: Lst[U])(f: (T, U) => V): Lst[V] =
-    val zs = new Array[Object](length min ys.length)
+    val zs = new Array[Object](arr.length min ys.arr.length)
     var i = 0
     while i < zs.length do
-      zs(i) = f(at(i), ys(i)).asInstanceOf[Object]
+      zs(i) = f(arr(i).asInstanceOf[T], ys.arr(i).asInstanceOf[U]).asInstanceOf[Object]
       i += 1
     new Lst(zs)
 
@@ -110,7 +110,7 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
     var acc = z
     var i = 0
     while i < arr.length do
-      acc = f(acc, at(i))
+      acc = f(acc, arr(i).asInstanceOf[T])
       i += 1
     acc
 
@@ -142,13 +142,13 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
     map[Lst[U]](f).flatten
 
   def filter(p: T => Boolean): Lst[T] =
-    val buf = Lst.Buffer[T](length)
+    val buf = Lst.Buffer[T](arr.length)
     var i = 0
-    while i < length do
-      val x = at(i)
+    while i < arr.length do
+      val x = arr(i).asInstanceOf[T]
       if p(x) then buf += x
       i += 1
-    if buf.length == length then this else buf.toLst
+    if buf.length == arr.length then this else buf.toLst
 
   def collect[U](f: PartialFunction[T, U]): Lst[U] =
     val buf = Lst.Buffer[U](length)
@@ -167,14 +167,14 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
 
   def foreach(f: T => Unit): Unit =
     var i = 0
-    while i < length do
-      f(at(i))
+    while i < arr.length do
+      f(arr(i).asInstanceOf[T])
       i += 1
 
   def exists(p: T => Boolean): Boolean =
     var i = 0
-    while i < length && !p(at(i)) do i += 1
-    i < length
+    while i < arr.length && !p(arr(i).asInstanceOf[T]) do i += 1
+    i < arr.length
 
   def forall(p: T => Boolean): Boolean = !exists(!p(_))
 
@@ -663,9 +663,12 @@ object Lst {
       if xs.length >= 1 then Some((xs.init, xs.last)) else None
 }
 
+def f(s: String) = s
+
 @main def LstTest() =
   val xs = Lst("hello", "world")
   println(xs)
+  val xs0 = xs.map(f)
   val ys = xs.map(_.tail)
   println(ys.mkString("[", ",", "]"))
   val zs = xs.flatMap(x => Lst(x, "?"))
