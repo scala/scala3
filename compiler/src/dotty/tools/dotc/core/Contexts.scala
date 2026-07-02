@@ -222,22 +222,23 @@ object Contexts {
     def implicits: ContextualImplicits = {
       if (implicitsCache == null)
         implicitsCache = {
+          val infoIfImport = importInfoIfImportContext
           val implicitRefs: List[ImplicitRef] =
             if (isClassDefContext)
               try owner.thisType.implicitMembers
               catch {
                 case ex: CyclicReference => Nil
               }
-            else if (isImportContext) importInfo.nn.importedImplicits
+            else if (infoIfImport `ne` null) infoIfImport.importedImplicits
             else if (isNonEmptyScopeContext) scope.implicitDecls
             else Nil
-          val outerImplicits =
-            if (isImportContext && importInfo.nn.unimported.exists)
-              outer.implicits.exclude(importInfo.nn.unimported)
-            else
-              outer.implicits
+          val outerImplicits = infoIfImport match
+            case null => outer.implicits
+            case info => if info.unimported.exists
+                         then outer.implicits.exclude(info.unimported)
+                         else outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
-          else new ContextualImplicits(implicitRefs, outerImplicits, isImportContext)(this)
+          else new ContextualImplicits(implicitRefs, outerImplicits, infoIfImport)(this)
         }
       implicitsCache.nn
     }
@@ -367,9 +368,13 @@ object Contexts {
 
     /** Is this a context that introduces an import clause? */
     def isImportContext: Boolean =
-      (this ne NoContext)
-      && (outer ne NoContext)
-      && (this.importInfo ne outer.importInfo)
+      val i = importInfo
+      (i ne null) && (i ne outer.importInfo)
+
+    /** If this a context that introduces an import clause, then `importInfo`, else `null`. */
+    def importInfoIfImportContext: ImportInfo | Null =
+      val i = importInfo
+      if (i ne null) && (i ne outer.importInfo) then i else null
 
     /** Is this a context that introduces a non-empty scope? */
     def isNonEmptyScopeContext: Boolean =
@@ -888,7 +893,8 @@ object Contexts {
   end comparing
 
   @sharable val NoContext: Context = new FreshContext(null.asInstanceOf[ContextBase]) {
-    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this: @unchecked)
+    override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, null)(this: @unchecked)
+    override val importInfo: ImportInfo | Null = null
     setSource(NoSource)
   }
 
