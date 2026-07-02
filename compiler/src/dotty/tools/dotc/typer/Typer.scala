@@ -52,6 +52,7 @@ import cc.{Setup, CheckCaptures, isRetainsLike, derivesFromCapSet}
 import config.MigrationVersion
 import dotty.tools.dotc.core.Mode.Interactive
 import transform.CheckUnused.withOriginalName
+import dotty.tools.dotc.printing.Formatting
 
 import scala.annotation.{unchecked as _, *}
 import dotty.tools.dotc.util.chaining.*
@@ -1171,7 +1172,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedThis(tree: untpd.This)(using Context): Tree = {
     record("typedThis")
-    assignType(tree)
+    val res = assignType(tree)
+    if res.tpe.typeSymbol.name.isTopLevelPackageObjectName && !ctx.owner.is(ExtensionMethod) then
+      report.error(em"Top-level definitions cannot refer to ${Formatting.hl("this")}", tree)
+    res
   }
 
   def typedSuper(tree: untpd.Super, pt: Type)(using Context): Tree = {

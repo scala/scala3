@@ -31,11 +31,6 @@ object MainProxies {
     import tpd.*
     def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap {
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
-        def disallowedThisRef(tree: Tree): Boolean = tree match
-          case t: This => t.qual.isEmpty && t.denot.symbol.is(Synthetic)
-          case _ => false
-        for thisRef <- stat.rhs.filterSubTrees(disallowedThisRef) do
-          report.error(em"${hl("@main")} method cannot refer to ${hl("this")}", thisRef)
         stat.symbol :: Nil
       case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
         mainMethods(impl.body)
@@ -53,7 +48,7 @@ object MainProxies {
 
     def addArgs(call: untpd.Tree, mt: MethodType, idx: Int): untpd.Tree =
       if (mt.isImplicitMethod) {
-        report.error(em"@main method cannot have implicit parameters", pos)
+        report.error(em"${hl("@main")} method cannot have implicit parameters", pos)
         call
       }
       else {
@@ -71,7 +66,7 @@ object MainProxies {
         mt.resType match {
           case restpe: MethodType =>
             if (mt.paramInfos.lastOption.getOrElse(NoType).isRepeatedParam)
-              report.error(em"varargs parameter of @main method must come last", pos)
+              report.error(em"varargs parameter of ${hl("@main")} method must come last", pos)
             addArgs(call1, restpe, idx + args.length)
           case _ =>
             call1
