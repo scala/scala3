@@ -8,7 +8,7 @@ trait Outer[A] {
 
 object Test:
   def main(arguments: Array[String]): Unit =
-    classOf[Outer[?]].getDeclaredMethods
+    classOf[Outer[?]].getDeclaredMethods.sortBy(_.getName())
       .filter(_.getName.contains("_setter_"))
       .foreach(setter => {
         println(setter.getName)
