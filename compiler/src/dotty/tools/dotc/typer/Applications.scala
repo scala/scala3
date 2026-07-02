@@ -656,7 +656,7 @@ trait Applications extends Compatibility {
           fail(TypeMismatch(methType.resultType, resultType, None))
 
         // match all arguments with corresponding formal parameters
-        if success then matchArgs(orderedArgs, methType.paramInfos, n = 0)
+        if success then matchArgs(orderedArgs, methType.paramInfos)
       case _ =>
         if (methType.isError) ok = false
         else fail(em"$methString does not take parameters")
@@ -822,9 +822,12 @@ trait Applications extends Compatibility {
     /** Match re-ordered arguments against formal parameters
      *  @param n   The position of the first parameter in formals in `methType`.
      */
-    def matchArgs(args: Lst[Arg], formals: Lst[Type], n: Int): Unit =
-      formals match {
-        case Lst.cons(formal, formals1) =>
+    def matchArgs(args: Lst[Arg], formals0: Lst[Type]): Unit = {
+      val formals = formals0.toArray
+
+      def recur(n: Int): Unit = {
+        if n < formals.length then
+          val formal = formals(n)
 
           def checkNoVarArg(arg: Arg) =
             if !ctx.isAfterTyper && isVarArg(arg) then
@@ -840,7 +843,7 @@ trait Applications extends Compatibility {
            *           this means substituting the actual argument type for the current formal parameter
            *           in the remaining formal parameters.
            */
-          def addTyped(arg: Arg): Lst[Type] =
+          def addTyped(arg: Arg): Int =
             if !formal.isRepeatedParam then checkNoVarArg(arg)
             val argTyped = typedArg(arg, formal)
             addArg(argTyped, formal)
@@ -850,15 +853,19 @@ trait Applications extends Compatibility {
                   // stray parameter references. Test case is i23266.scala.
                 && typeOfArg(argTyped).exists
                   // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-            then formals1.mapConserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(argTyped)))
-            else formals1
+            then
+              var i = n + 1
+              while i < formals.length do
+                formals(i) = safeSubstParam(formals(i), methodType.paramRefs(n), typeOfArg(argTyped))
+                i += 1
+            n + 1
 
-          def missingArg(n: Int): Unit =
+          def missingArg(): Unit =
             fail(MissingArgument(methodType.paramNames(n), methString))
 
-          def tryDefault(n: Int, args1: Lst[Arg]): Unit = {
+          def tryDefault(): Unit = {
             if !success then
-              missingArg(n) // fail fast before forcing the default arg tpe, to avoid cyclic errors
+              missingArg() // fail fast before forcing the default arg tpe, to avoid cyclic errors
               return
 
             val sym = methRef.symbol
@@ -895,59 +902,60 @@ trait Applications extends Compatibility {
                 report.warning(DefaultShadowsGiven(methodType.paramNames(n)), appPos)
 
               defaultArg.tpe.widen match
-                case _: MethodOrPoly if testOnly => matchArgs(args1, formals1, n + 1)
-                case _ => matchArgs(args1, addTyped(treeToArg(defaultArg)), n + 1)
+                case _: MethodOrPoly if testOnly => recur(n + 1)
+                case _ => recur(addTyped(treeToArg(defaultArg)))
             else if (methodType.isContextualMethod || canSupplyImplicits) && ctx.mode.is(Mode.ImplicitsEnabled) then
               val implicitArg = implicitArgTree(formal, appPos.span)
-              matchArgs(args1, addTyped(treeToArg(implicitArg)), n + 1)
+              recur(addTyped(treeToArg(implicitArg)))
             else
-              missingArg(n)
+              missingArg()
           }
 
-          if (formal.isRepeatedParam)
-            args match {
-              case Lst.single(arg) if isVarArg(arg) =>
-                addTyped(arg)
-              case Lst.single(arg @ Typed(Literal(Constant(null)), _)) if ctx.isAfterTyper =>
-                addTyped(arg)
-              case _ =>
-                val elemFormal = formal.widenExpr.argTypesLo.head
-                val typedVarArgs = util.HashSet[TypedArg]()
-                val typedArgs = harmonic(harmonizeArgs, elemFormal):
-                  args.map: arg =>
-                    if isVarArg(arg) then
-                      if !Feature.enabled(Feature.multiSpreads) || ctx.isAfterTyper then
-                        checkNoVarArg(arg)
-                      typedArg(arg, formal).tap(typedVarArgs += _)
-                    else
-                      typedArg(arg, elemFormal)
-                typedArgs.foreach: targ =>
-                  addArg(targ, if typedVarArgs.contains(targ) then formal else elemFormal)
-                makeVarArg(args.length, elemFormal)
-            }
-          else args match {
-            case Lst.cons(EmptyTree, args1) =>
-              tryDefault(n, args1)
-            case Lst.cons(arg, args1) =>
-              matchArgs(args1, addTyped(arg), n + 1)
-            case nil =>
-              tryDefault(n, args)
-          }
-
-        case nil =>
-          args match {
-            case Lst.cons(arg, args1) =>
-              def msg = arg match
-                case untpd.Tuple(Lst.empty())
-                if applyKind == ApplyKind.InfixTuple && funType.widen.isNullaryMethod =>
-                  em"can't supply unit value with infix notation because nullary $methString takes no arguments; use dotted invocation instead: (...).${methRef.name}()"
+          if formal.isRepeatedParam then
+            val elemFormal = formal.widenExpr.argTypesLo.head
+            if n == args.length - 1 then
+              // pass terminal spread argments and nulls directly
+              args(n) match
+                case arg if isVarArg(arg) =>
+                  return addTyped(arg)
+                case arg @ Typed(Literal(Constant(null)), _) if ctx.isAfterTyper =>
+                  return addTyped(arg)
                 case _ =>
-                  em"too many arguments for $methString"
-              fail(msg, arg)
-            case nil =>
-          }
-      }
-  }
+            val untypedVarArgs = args.drop(n)
+            val typedVarArgs = util.HashSet[TypedArg]()
+            val typedArgs = harmonic(harmonizeArgs, elemFormal):
+              untypedVarArgs.map: arg =>
+                if isVarArg(arg) then
+                  if !Feature.enabled(Feature.multiSpreads) || ctx.isAfterTyper then
+                    checkNoVarArg(arg)
+                  typedArg(arg, formal).tap(typedVarArgs += _)
+                else
+                  typedArg(arg, elemFormal)
+            typedArgs.foreach: targ =>
+              addArg(targ, if typedVarArgs.contains(targ) then formal else elemFormal)
+            makeVarArg(untypedVarArgs.length, elemFormal)
+          else if n < args.length then
+            args(n) match
+              case EmptyTree =>
+                tryDefault()
+              case arg =>
+                recur(addTyped(arg))
+          else
+            tryDefault()
+
+        else if n < args.length then
+          val arg = args(n)
+          def msg = arg match
+            case untpd.Tuple(Lst.empty())
+              if applyKind == ApplyKind.InfixTuple && funType.widen.isNullaryMethod =>
+                em"can't supply unit value with infix notation because nullary $methString takes no arguments; use dotted invocation instead: (...).${methRef.name}()"
+            case _ =>
+              em"too many arguments for $methString"
+          fail(msg, arg)
+      } // end recur
+      recur(0)
+    } // end matchVarArgs
+  } // end Application
 
   /** The degree to which an argument has to match a formal parameter */
   enum ArgMatch:
@@ -2901,21 +2909,20 @@ trait Applications extends Compatibility {
   }
 
   private def harmonizeWith[T <: AnyRef](ts: Lst[T])(tpe: T => Type, adapt: (T, Type) => T)(using Context): Lst[T] = {
-    def targetClass(ts: Lst[T], cls: Symbol, intLitSeen: Boolean): Symbol = ts match {
-      case Lst.cons(t, ts1) =>
-        tpe(t).widenTermRefExpr match {
+    def targetClass(idx: Int, cls: Symbol, intLitSeen: Boolean): Symbol =
+      if idx < ts.length then
+        tpe(ts(idx)).widenTermRefExpr match
           case ConstantType(c: Constant) if c.tag == IntTag =>
-            targetClass(ts1, cls, true)
+            targetClass(idx + 1, cls, true)
           case t =>
             val sym =
               if t.isRepeatedParam then t.argTypesLo.head.classSymbol else t.classSymbol
-            if (!sym.isNumericValueClass || cls.exists && cls != sym) NoSymbol
-            else targetClass(ts1, sym, intLitSeen)
-        }
-      case Lst.empty() =>
-        if (cls != defn.IntClass && intLitSeen) cls else NoSymbol
-    }
-    val cls = targetClass(ts, NoSymbol, false)
+            if !sym.isNumericValueClass || cls.exists && cls != sym then NoSymbol
+            else targetClass(idx + 1, sym, intLitSeen)
+      else if (cls != defn.IntClass && intLitSeen) then cls
+      else NoSymbol
+
+    val cls = targetClass(0, NoSymbol, false)
     if (cls.exists) {
       def lossOfPrecision(n: Int): Boolean =
         cls == defn.FloatClass && n.toFloat.toInt != n

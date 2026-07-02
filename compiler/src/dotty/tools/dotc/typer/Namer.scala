@@ -1332,9 +1332,10 @@ class Namer { typer: Typer =>
               // Note: in this branch we use the assumptions
               // that `prefss.head` corresponds to `mt.paramInfos` and
               // that `prefss.tail` corresponds to `mt.resType`
-              val Lst.consRight(init, vararg) = prefss.head: @unchecked
-              val prefs = init :+ ctx.typeAssigner.seqToRepeated(vararg)
-              adaptForwarderParams(prefs :: acc, mt.resType, prefss.tail)
+              val prefs = prefss.head
+              val vararg = ctx.typeAssigner.seqToRepeated(prefs.last)
+              val prefs1 = prefs.updated(prefs.length - 1, vararg)
+              adaptForwarderParams(prefs1 :: acc, mt.resType, prefss.tail)
             case mt: MethodOrPoly =>
               adaptForwarderParams(prefss.head :: acc, mt.resultType, prefss.tail)
             case _ =>

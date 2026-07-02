@@ -322,7 +322,7 @@ class Lst[+T](private val arr: Array[Object]) extends AnyVal {
         i == length
       }
 
-  def copyToArray[U >: T <: AnyRef](ys: Array[U], start: Int = 0): Unit =
+  def copyToArray[U >: T](ys: Array[U], start: Int = 0): Unit =
     arraycopy(arr, 0, ys, start, length)
 
   def mapToList[U](f: T => U): List[U] =
@@ -469,7 +469,7 @@ object Lst {
   extension [T: ClassTag](xs: Lst[T])
     def toArray: Array[T] =
       val rs = new Array[T](xs.length)
-      arraycopy(xs.arr, 0, rs, 0, xs.length)
+      xs.copyToArray(rs)
       rs
 
   extension [T](x: T)
