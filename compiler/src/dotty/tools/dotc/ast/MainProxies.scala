@@ -3,12 +3,9 @@ package ast
 
 import core.*
 import Symbols.*, Types.*, Contexts.*, Decorators.*, util.Spans.*, Flags.*, Constants.*
-import StdNames.{nme, tpnme}
+import StdNames.nme
+import printing.Formatting.hl
 import ast.Trees.*
-import Names.Name
-import Comments.Comment
-import NameKinds.DefaultGetterName
-import Annotations.Annotation
 
 object MainProxies {
 
@@ -34,6 +31,8 @@ object MainProxies {
     import tpd.*
     def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap {
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
+        for thisRef <- stat.rhs.filterSubTrees(_.isInstanceOf[This]) do
+          report.error(em"${hl("@main")} method cannot refer to ${hl("this")}", thisRef)
         stat.symbol :: Nil
       case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
         mainMethods(impl.body)
@@ -78,7 +77,7 @@ object MainProxies {
 
     var result: List[TypeDef] = Nil
     if (!mainFun.owner.isStaticOwner)
-      report.error(em"@main method is not statically accessible", pos)
+      report.error(em"${hl("@main")} method is not statically accessible", pos)
     else {
       var call = ref(mainFun.termRef)
       mainFun.info match {
@@ -86,9 +85,9 @@ object MainProxies {
         case mt: MethodType =>
           call = addArgs(call, mt, 0)
         case _: PolyType =>
-          report.error(em"@main method cannot have type parameters", pos)
+          report.error(em"${hl("@main")} method cannot have type parameters", pos)
         case _ =>
-          report.error(em"@main can only annotate a method", pos)
+          report.error(em"${hl("@main")} can only annotate a method", pos)
       }
       val errVar = Ident(nme.error)
       val handler = CaseDef(
