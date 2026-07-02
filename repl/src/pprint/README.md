@@ -9,3 +9,4 @@ Changes:
 - added an unsafe cast for `null` since the original builds without explicit nulls
 - added a cast to `String | Null` for `toString` since the original builds without explicit nulls
 - Commented out an unreachable match case in `TPrintImpl` (line 116)
+- Added a REPL hook to honor user-defined `Product.toString` implementations

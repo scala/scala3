@@ -4,7 +4,7 @@ package repl
 import scala.language.unsafeNulls
 
 import dotc.*, core.*
-import Contexts.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
+import Contexts.*, Decorators.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
 import printing.ReplPrinter
 import printing.SyntaxHighlighting
 import reporting.Diagnostic
@@ -12,6 +12,7 @@ import StackTraceOps.*
 
 import scala.compiletime.uninitialized
 import scala.util.control.NonFatal
+import java.util.function.Predicate
 
 import dotty.vendored.fansi
 
@@ -36,10 +37,78 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
     "scala.xml.Elem" // is a Seq that contains itself, https://github.com/scala/scala3/issues/25691
   )
 
+  private def productToStringPredicate(using Context): Predicate[Any] = {
+    val cache = classValue(hasUserDefinedProductToString(_))
+
+    new Predicate[Any] {
+      def test(value: Any): Boolean = value != null && cache.get(value.getClass)
+    }
+  }
+
+  private def classValue[T](op: Class[?] => T): ClassValue[T] =
+    new ClassValue[T] {
+      def computeValue(clazz: Class[?]): T = op(clazz)
+    }
+
+  private def hasUserDefinedProductToString(clazz: Class[?])(using Context): Boolean = {
+    val classSym = runtimeClassSymbol(clazz)
+    if !classSym.exists || !classSym.isClass || !classSym.derivesFrom(defn.ProductClass) then false
+    else
+      val toStringSym = defn.Any_toString.matchingMember(classSym.asClass.thisType)
+      toStringSym.exists
+        && toStringSym != defn.Any_toString
+        && !toStringSym.is(Deferred)
+        && !toStringSym.is(Synthetic)
+  }
+
+  private def runtimeClassSymbol(clazz: Class[?])(using Context): Symbol = {
+    def getClassFromName(className: String | Null): Symbol =
+      if className == null then NoSymbol
+      else
+        val name = className.nn.toTypeName
+        val direct = getClassIfDefined(name)
+        if direct.exists then direct
+        else getClassIfDefined(name.unmangleClassName)
+
+    def getMemberClass: Symbol =
+      val enclosingClass = clazz.getEnclosingClass
+      if enclosingClass == null then NoSymbol
+      else
+        val owner = runtimeClassSymbol(enclosingClass)
+        val name = clazz.getSimpleName.toTypeName.unmangleClassName
+        def lookup(owner: Symbol): Symbol =
+          if owner.exists then owner.info.member(name).symbol else NoSymbol
+
+        val direct = lookup(owner)
+        if direct.exists then direct
+        else if owner.exists then lookup(owner.linkedClass)
+        else NoSymbol
+
+    if clazz.isPrimitive || clazz.isArray then NoSymbol
+    else
+      val fromCanonicalName = getClassFromName(clazz.getCanonicalName)
+      if fromCanonicalName.exists then fromCanonicalName
+      else
+        val fromRuntimeName = getClassFromName(clazz.getName)
+        if fromRuntimeName.exists then fromRuntimeName
+        else getMemberClass
+  }
+
   private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
+    val useProductToString = productToStringPredicate
+
     def fallback() =
       dotty.vendored.pprint.PPrinter.Color
-        .apply(value, width = width, height = height, initialOffset = initialOffset)
+        .applyWithProductToString(
+          value,
+          width = width,
+          height = height,
+          indent = 2,
+          initialOffset = initialOffset,
+          escapeUnicode = false,
+          showFieldNames = true,
+          useProductToString = useProductToString
+        )
         .plainText
     try
       if value != null && forcedToStringClasses(value.getClass.getName) then return value.toString
@@ -57,7 +126,7 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       val pprintCls = Class.forName("dotty.vendored.pprint.PPrinter$Color$", false, cl)
       val fansiStrCls = Class.forName("dotty.vendored.fansi.Str", false, cl)
       val Color = pprintCls.getField("MODULE$").get(null)
-      val Color_apply = pprintCls.getMethod("apply",
+      val Color_apply = pprintCls.getMethod("applyWithProductToString",
         classOf[Any],     // value
         classOf[Int],     // width
         classOf[Int],     // height
@@ -65,10 +134,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         classOf[Int],     // initialOffset
         classOf[Boolean], // escape Unicode
         classOf[Boolean], // show field names
+        classOf[Predicate[?]], // use product toString
       )
       val FansiStr_render = fansiStrCls.getMethod("render")
       val fansiStr = Color_apply.invoke(
-        Color, value, width, height, 2, initialOffset, false, true
+        Color, value, width, height, 2, initialOffset, false, true, useProductToString
       )
       FansiStr_render.invoke(fansiStr).asInstanceOf[String]
     catch

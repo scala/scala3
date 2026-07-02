@@ -73,3 +73,16 @@ class ReplDependencyMacroTests extends ReplTest:
       val second = storedOutput()
       assertNoMacroFailure(second)
       assertTrue(second, second.contains("// defined case class FooSummon"))
+
+  @Test def `product toString from dependency after :dep`: Unit =
+    initially:
+      run(":dep com.lihaoyi::ujson:4.4.3")
+      val depOutput = storedOutput()
+      assertTrue(depOutput, depOutput.contains("Resolved 1 dependencies"))
+      assertNoMacroFailure(depOutput)
+
+      run("ujson.Num(3.5)")
+      val output = storedOutput()
+      assertNoMacroFailure(output)
+      assertTrue(output, output.contains("val res0: ujson.Num = 3.5"))
+      assertFalse(output, output.contains("Num(3.5)"))
