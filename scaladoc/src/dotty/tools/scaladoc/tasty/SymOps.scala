@@ -65,7 +65,7 @@ object SymOps:
       else None
 
     def source =
-      val path = sym.pos.flatMap(_.sourceFile.getJPath).map(_.toAbsolutePath)
+      val path = sym.pos.map(_.sourceFile.path).map(p => java.nio.file.Path.of(p).toAbsolutePath)
       path.map(TastyMemberSource(_, sym.pos.get.startLine))
 
     //TODO: Retrieve string that will match scaladoc anchors
