@@ -461,6 +461,7 @@ object TypeOps:
   /** An approximating map that drops NamedTypes matching `toAvoid` and wildcard types. */
   abstract class AvoidMap(using Context) extends AvoidWildcardsMap:
     @threadUnsafe lazy val localParamRefs = util.HashSet[Type]()
+    private val witnessSkolems = mutable.HashMap.empty[Symbol, SkolemType]
 
     def toAvoid(tp: NamedType): Boolean
 
@@ -477,6 +478,9 @@ object TypeOps:
           case tp: TermRef if toAvoid(tp) =>
             tp.info.widenExpr.dealiasKeepRefiningAnnots match {
               case info: SingletonType => apply(info)
+              case info if tp.isStable =>
+                // Preserve dependent selections on stable local paths; see `WitnessSkolemType`.
+                witnessSkolems.getOrElseUpdate(tp.symbol, WitnessSkolemType(apply(info), tp))
               case info => range(defn.NothingType, apply(info))
             }
           case tp: TypeRef if toAvoid(tp) =>

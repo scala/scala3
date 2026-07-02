@@ -5011,6 +5011,29 @@ object Types extends TypeUtils {
     def apply(info: Type): QualSkolemType = new QualSkolemType(info)
   }
 
+
+  /** A skolem type that keeps the `SingletonType` it was created from as a witness.
+   *
+   *  Type avoidance uses it when a stable local singleton must be hidden from
+   *  the resulting type. The skolem replaces the local singleton, while `witness`
+   *  records the original `SingletonType` so type comparison can still relate
+   *  the hidden skolem back to the original singleton.
+   *
+   *  For example, `inline def async[F[_]](am: Mon[F]) = new Wrap[F, am.Context]`
+   *  can inline to a local-proxy type `Wrap[F, am$proxy.Context]`.
+   *  Avoidance must hide `am$proxy`, but widening it to `? <: Mon[F]` loses the
+   *  dependent member selection. A witness skolem represents this as
+   *  `Wrap[F, ?1.Context]` while retaining `am$proxy` as the witness.
+   */
+  class WitnessSkolemType(info: Type, val witness: SingletonType) extends SkolemType(info) {
+    override def derivedSkolemType(info: Type)(using Context): SkolemType =
+      if (info eq this.info) this else WitnessSkolemType(info, witness)
+  }
+  object WitnessSkolemType {
+    def apply(info: Type, witness: SingletonType): WitnessSkolemType =
+      new WitnessSkolemType(info, witness)
+  }
+
   // ------------ Type variables ----------------------------------------
 
   /** In a TypeApply tree, a TypeVar is created for each argument type to be inferred.

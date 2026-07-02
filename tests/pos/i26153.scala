@@ -1,0 +1,39 @@
+trait Ctx[F[_]]
+
+trait Mon[F[_]]:
+  type Context <: Ctx[F]
+
+class Wrap[F[_], C <: Ctx[F]]:
+  transparent inline def apply[T](inline expr: C ?=> T): F[T] =
+    stage2[F, T, C](expr)
+
+transparent inline def stage2[F[_], T, C <: Ctx[F]](
+    inline expr: C ?=> T
+): F[T] = ???
+
+transparent inline def async[F[_]](using am: Mon[F]) =
+  new Wrap[F, am.Context]
+
+class TupleMon[E] extends Mon[[A] =>> (E, A)]:
+  type Context = Ctx[[A] =>> (E, A)]
+
+given pm[E]: Mon[[A] =>> (E, A)] = new TupleMon[E]
+
+object Test:
+  val outer = new Object
+
+  val r = async[[A] =>> (String, A)] { 42 }
+
+  def stableLocal[F[_]](using am: Mon[F]) =
+    val local = am
+    new Wrap[F, local.Context]
+
+  def stableLocalAscribed[F[_]](using am: Mon[F]): Wrap[F, ? <: Ctx[F]] =
+    val local = am
+    new Wrap[F, local.Context]
+
+  def singletonAlias: outer.type =
+    val local: outer.type = outer
+    local
+
+  val r2 = stableLocal[[A] =>> (String, A)] { 42 }
