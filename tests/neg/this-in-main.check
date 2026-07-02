@@ -1,0 +1,4 @@
+-- Error: tests/neg/this-in-main.scala:2:10 ----------------------------------------------------------------------------
+2 |  val x = this // error
+  |          ^^^^
+  |          @main method cannot refer to this
