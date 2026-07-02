@@ -10,6 +10,7 @@ object Test:
   def main(arguments: Array[String]): Unit =
     classOf[Outer[?]].getDeclaredMethods
       .filter(_.getName.contains("_setter_"))
+      .sortBy(_.getName)
       .foreach(setter => {
         println(setter.getName)
         println(setter.getGenericParameterTypes().mkString(","))
