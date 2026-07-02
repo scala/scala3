@@ -62,6 +62,7 @@ class DynamicVariable[T](init: T) {
    *  @tparam S the result type of the thunk, also the return type of this method
    *  @param newval The value to which to set the variable
    *  @param thunk The code to evaluate under the new setting
+   *  @return the result of evaluating `thunk` with the variable temporarily bound to `newval`
    */
   def withValue[S](newval: T)(thunk: => S): S = {
     val oldval = v

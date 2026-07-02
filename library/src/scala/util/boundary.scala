@@ -81,6 +81,7 @@ object boundary:
    *
    *  @tparam T the result type of the boundary block
    *  @param body the computation to execute, which receives a fresh `Label[T]` as a context parameter
+   *  @return the result of `body`, or the value carried by a `break` targeting the fresh label
    */
   inline def apply[T](inline body: Label[T] ?=> T): T =
     val local = Label[T]()

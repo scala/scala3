@@ -60,6 +60,7 @@ object TailCalls {
      *
      *  @tparam B the result type of the mapped computation
      *  @param f the function to apply to the result, transforming `A` to `B`
+     *  @return a new tailcalling computation that produces `f` applied to the result of this computation
      */
     final def map[B](f: A => B): TailRec[B] = flatMap(a => Call(() => Done(f(a))))
 
@@ -68,6 +69,7 @@ object TailCalls {
      *
      *  @tparam B the result type of the continuation
      *  @param f the function to apply to the result, returning a new tailcalling computation
+     *  @return a tailcalling computation that runs this computation and then continues with `f` applied to its result
      */
     final def flatMap[B](f: A => TailRec[B]): TailRec[B] = this match {
       case Done(a)         => Call(() => f(a))
