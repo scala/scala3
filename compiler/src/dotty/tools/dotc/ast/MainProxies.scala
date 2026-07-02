@@ -31,7 +31,10 @@ object MainProxies {
     import tpd.*
     def mainMethods(stats: List[Tree]): List[Symbol] = stats.flatMap {
       case stat: DefDef if stat.symbol.hasAnnotation(defn.MainAnnot) =>
-        for thisRef <- stat.rhs.filterSubTrees(_.isInstanceOf[This]) do
+        def disallowedThisRef(tree: Tree): Boolean = tree match
+          case t: This => t.qual.isEmpty && t.denot.symbol.is(Synthetic)
+          case _ => false
+        for thisRef <- stat.rhs.filterSubTrees(disallowedThisRef) do
           report.error(em"${hl("@main")} method cannot refer to ${hl("this")}", thisRef)
         stat.symbol :: Nil
       case stat @ TypeDef(name, impl: Template) if stat.symbol.is(Module) =>
