@@ -451,6 +451,44 @@ private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
 
   override def map[B](f: A => B): Vector[B] = new Vector1(mapElems1(prefix1, f))
 
+  // Single-node vectors are backed by one array, so the linear-access methods
+  // below can walk `prefix1` directly: `exists`/`forall` otherwise allocate a
+  // `NewVectorIterator` per call, and `foldLeft` goes through `foldl`'s
+  // per-element virtual `apply` with bounds checks (`foreach` is already
+  // array-walking for all arities via `foreachRec`). Larger vectors keep the
+  // inherited versions, which are preferable for multi-slice traversal.
+
+  override def exists(p: A => Boolean): Boolean = {
+    val a = prefix1
+    var i = 0
+    while (i < a.length) {
+      if (p(a(i).asInstanceOf[A])) return true
+      i += 1
+    }
+    false
+  }
+
+  override def forall(p: A => Boolean): Boolean = {
+    val a = prefix1
+    var i = 0
+    while (i < a.length) {
+      if (!p(a(i).asInstanceOf[A])) return false
+      i += 1
+    }
+    true
+  }
+
+  override def foldLeft[B](z: B)(op: (B, A) => B): B = {
+    val a = prefix1
+    var acc = z
+    var i = 0
+    while (i < a.length) {
+      acc = op(acc, a(i).asInstanceOf[A])
+      i += 1
+    }
+    acc
+  }
+
   protected def slice0(lo: Int, hi: Int): Vector[A] =
     new Vector1(copyOfRange(prefix1, lo, hi))
 
