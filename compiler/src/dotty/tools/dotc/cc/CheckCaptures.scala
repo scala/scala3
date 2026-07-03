@@ -2301,8 +2301,15 @@ class CheckCaptures extends Recheck, SymTransformer:
                 c.origin match
                   case Origin.Parameter(param) if !param.isCapsetParam =>
                     badUseUnlessBoxed(c, param.owner)
-                  case Origin.InDecl(param, _) if param.is(Param) && !param.isCapsetParam =>
-                     badUseUnlessBoxed(c, param.owner)
+                  case Origin.InDecl(sym, _) if !sym.isCapsetParam
+                      && (sym.is(Param)
+                          || sym.is(ParamAccessor) && env.owner.isContainedIn(sym.owner)) =>
+                     // Also covers class parameter fields, but only for uses inside the
+                     // class itself. This replaces the reach-capability era check that
+                     // `x*` of a field `x` may not leak into the class's capture scope.
+                     // Local vals are excluded, their roots may be used within their
+                     // scope (i26347).
+                     badUseUnlessBoxed(c, sym.owner)
                   case _ =>
                     check(c.hiddenSet)
               case _ =>

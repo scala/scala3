@@ -2,7 +2,7 @@ import language.experimental.captureChecking
 
 class Test:
   class Runner(ops: List[() => Unit]):
-    def execute: Unit = ops.foreach(f => f()) // ok: `ops` is a field, its uses are mediated by `this`
+    def execute: Unit = ops.foreach(f => f()) // error
 
   def Runner2(ops: List[() => Unit]) =
     () => ops.foreach(f => f()) // error
