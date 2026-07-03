@@ -42,4 +42,35 @@ class PrinterTests extends DottyTest {
       assertEquals("Int & (Boolean | String)", bar.tpt.show)
     }
   }
+
+  @Test
+  def rightAssocInfixPrintedAsSelection: Unit = {
+    val source = """
+      implicit def cv(i: Int): String = s"$i cv"
+
+      class C {
+        def f_:(s: String): String = s * 2
+        def +:(s: String): String = s * 2
+      }
+
+      @main def test =
+        val c = C()
+        println(42 f_: c)
+        println(42 +: c)
+    """
+
+    checkCompile("typer", source) { (tree, context) =>
+      given Context = context
+
+      val printed = tree.show
+
+      assertTrue(printed.contains(".f_:("))
+      assertTrue(printed.contains(".+:("))
+
+      assertFalse(printed.contains(" f_: "))
+      assertFalse(printed.contains(" +: "))
+    }
+  }
 }
+
+
