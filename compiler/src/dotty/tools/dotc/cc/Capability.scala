@@ -1174,6 +1174,9 @@ object Capabilities:
   class GlobalCapToLocal(origin: Origin)(using Context) extends BiTypeMap, FollowAliasesMap:
     thisMap =>
 
+    /** Should the inverse map `c` back to `caps.any`? Overridden in `localCapToGlobal`. */
+    protected def globalizes(c: LocalCap): Boolean = true
+
     override def apply(t: Type) =
       if variance < 0 then t
       else t match
@@ -1207,7 +1210,7 @@ object Capabilities:
         case _ => mapFollowingAliases(t)
 
       override def mapCapability(c: Capability): Capability = c match
-        case _: LocalCap => GlobalAny
+        case c: LocalCap if globalizes(c) => GlobalAny
         case _ => super.mapCapability(c)
 
       def inverse = thisMap
@@ -1227,9 +1230,21 @@ object Capabilities:
     ccState.withNoVarsMapped:
       GlobalCapToLocal(origin)(tp)
 
-  /** Maps all LocalCap instances to caps.any */
+  /** Maps LocalCap instances created for `param` back to `caps.any`.
+   *  LocalCaps that came from elsewhere are left as they are. In particular,
+   *  the inferred type of an anonymous function's parameter can adopt
+   *  capabilities of the expected parameter type (in `matchParamsAndResult`
+   *  of CheckCaptures). Mapping these to `caps.any` would sever the connection
+   *  to the expected type, so that the closure's type would no longer conform
+   *  to it. See i26347.
+   */
   def localCapToGlobal(param: Symbol, tp: Type)(using Context): Type =
-    GlobalCapToLocal(Origin.Parameter(param)).inverse(tp)
+    val map = new GlobalCapToLocal(Origin.Parameter(param)):
+      override def globalizes(c: LocalCap): Boolean = c.origin match
+        case Origin.InDecl(sym, _) => sym == param
+        case Origin.Parameter(p) => p == param
+        case _ => false
+    map.inverse(tp)
 
   /** The local dual of a result type of a closure type.
    *  @param binder  the method type of the anonymous function whose result is mapped
