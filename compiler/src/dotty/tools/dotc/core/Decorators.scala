@@ -2,9 +2,6 @@ package dotty.tools
 package dotc
 package core
 
-import scala.annotation.tailrec
-import scala.collection.mutable.ListBuffer
-
 import Contexts.*, Names.*, Phases.*, Symbols.*, Types.*
 import printing.{ Printer, Showable }, printing.Formatting.*, printing.Texts.*
 import transform.MegaPhase
@@ -12,6 +9,34 @@ import reporting.{Message, NoExplanation}
 
 /** This object provides useful extension methods for types defined elsewhere */
 object Decorators {
+
+  // Must match VectorStatics.WIDTH: `Vector.fromArray1Unsafe` accepts only the
+  // compact Vector1 layout.
+  inline val MaxVector1Length = 32
+
+  /** Build a `Vector` of length `len` by filling each slot with `elem(i)`,
+   *  taking the array-backed fast path for short (`<= MaxVector1Length`) results.
+   *  A faster `Vector.tabulate`: `elem` is inlined and the single-node case
+   *  avoids the generic builder. Backs `zipMap`, `mapconserve` and the
+   *  index-built parameter vectors in `Types`.
+   */
+  inline def fillVector[V](len: Int)(inline elem: Int => V): Vector[V] =
+    if len == 0 then Vector.empty
+    else if len <= MaxVector1Length then
+      val elems = new Array[AnyRef](len)
+      var i = 0
+      while i < len do
+        elems(i) = elem(i).asInstanceOf[AnyRef]
+        i += 1
+      Vector.fromArray1Unsafe(elems).asInstanceOf[Vector[V]]
+    else
+      val b = Vector.newBuilder[V]
+      b.sizeHint(len)
+      var i = 0
+      while i < len do
+        b += elem(i)
+        i += 1
+      b.result()
 
   /** Extension methods for toType/TermName methods on PreNames.
    */
@@ -98,37 +123,41 @@ object Decorators {
         pt.derivedLambdaType(pt.paramNames, pt.paramInfos, pt.resType.withCleanParamNames)
       case _ => tp
 
-  inline val MaxFilterRecursions = 10
-
   /** Implements filterConserve, zipWithConserve methods
    *  on vectors that avoid duplication of vector nodes where feasible.
    */
   extension [T](xs: Vector[T])
 
-    final def mapconserve[U](f: T => U): Vector[U] = {
+    /** Like `xs.map(f)` but returns `xs` itself - instead of a copy - if `f` maps
+     *  every element to itself. Declared `inline` so each call site gets its own
+     *  specialized loop: `f` is applied monomorphically instead of through a
+     *  megamorphic `Function1`, which matters on the hottest compiler paths
+     *  (type-argument and parameter-info mapping).
+     */
+    inline def mapconserve[U](inline f: T => U): Vector[U] = {
       val len = xs.length
+      // Scan for the first element `f` changes, applying `f` once per element.
+      var changed = -1
+      var changedElem: U = null.asInstanceOf[U]
       var i = 0
-      while i < len do
+      while changed < 0 && i < len do
         val x = xs(i)
         val y = f(x)
-        if !(y.asInstanceOf[AnyRef] eq x.asInstanceOf[AnyRef]) then
-          val b = Vector.newBuilder[U]
-          b.sizeHint(len)
-          var j = 0
-          while j < i do
-            b += xs(j).asInstanceOf[U]
-            j += 1
-          b += y
-          i += 1
-          while i < len do
-            b += f(xs(i))
-            i += 1
-          return b.result()
-        i += 1
-      xs.asInstanceOf[Vector[U]]
+        if y.asInstanceOf[AnyRef] eq x.asInstanceOf[AnyRef] then i += 1
+        else
+          changed = i
+          changedElem = y
+      if changed < 0 then xs.asInstanceOf[Vector[U]]
+      else
+        // Reuse the unchanged prefix and the already-computed element; map the
+        // rest. `fillVector` takes the array-backed fast path for short results.
+        fillVector(len): j =>
+          if j < changed then xs(j).asInstanceOf[U]
+          else if j == changed then changedElem
+          else f(xs(j))
     }
 
-    final def mapConserve[U](f: T => U): Vector[U] = mapconserve(f)
+    inline def mapConserve[U](inline f: T => U): Vector[U] = mapconserve(f)
 
     /** Like `xs filter p` but returns vector `xs` itself  - instead of a copy -
      *  if `p` is true for all elements.
@@ -182,6 +211,30 @@ object Decorators {
         i += 1
       if len == xs.length then xs.asInstanceOf[Vector[V]]
       else xs.take(len).asInstanceOf[Vector[V]]
+
+    /** Like `xs.lazyZip(ys).map(f)`, but avoids the generic lazyZip builder path. */
+    def zipMap[U, V](ys: Vector[U])(f: (T, U) => V): Vector[V] =
+      val len = math.min(xs.length, ys.length)
+      fillVector(len)(i => f(xs(i), ys(i)))
+
+    /** Like `xs.lazyZip(ys).lazyZip(zs).map(f)`, but avoids the generic lazyZip builder path. */
+    def zipMap[U, V, W](ys: Vector[U], zs: Vector[V])(f: (T, U, V) => W): Vector[W] =
+      val len = math.min(math.min(xs.length, ys.length), zs.length)
+      fillVector(len)(i => f(xs(i), ys(i), zs(i)))
+
+    /** Like `xs.lazyZip(ys).foldLeft(z)(op)`: fold `op` over both vectors in
+     *  lockstep, stopping at the shorter one. Inlined so `op` is applied
+     *  monomorphically and no zip iterator is allocated (used on the hot
+     *  `TypeAccumulator` path over type arguments and their parameters).
+     */
+    inline def zipFoldLeft[U, B](ys: Vector[U])(z: B)(inline op: (B, T, U) => B): B =
+      val len = math.min(xs.length, ys.length)
+      var acc = z
+      var i = 0
+      while i < len do
+        acc = op(acc, xs(i), ys(i))
+        i += 1
+      acc
 
     /** Like `xs.lazyZip(xs.indices).map(f)`, but returns vector `xs` itself
      *  - instead of a copy - if function `f` maps all elements of
@@ -239,19 +292,16 @@ object Decorators {
         xs.reduceLeft(op)
 
   extension [T, U](xss: Vector[Vector[T]])
-    def nestedMap(f: T => U): Vector[Vector[U]] = xss match
-      case xs +: xss1 => xs.map(f) +: xss1.nestedMap(f)
-      case nil => Vector()
+    def nestedMap(f: T => U): Vector[Vector[U]] =
+      xss.map(_.map(f))
     def nestedMapConserve(f: T => U): Vector[Vector[U]] =
       xss.mapconserve(_.mapconserve(f))
     def nestedZipWithConserve(yss: Vector[Vector[U]])(f: (T, U) => T): Vector[Vector[T]] =
       xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
-    def nestedExists(p: T => Boolean): Boolean = xss match
-      case xs +: xss1 => xs.exists(p) || xss1.nestedExists(p)
-      case nil => false
-    def nestedFind(p: T => Boolean): Option[T] = xss match
-      case xs +: xss1 => xs.find(p).orElse(xss1.nestedFind(p))
-      case nil => None
+    def nestedExists(p: T => Boolean): Boolean =
+      xss.exists(_.exists(p))
+    def nestedFind(p: T => Boolean): Option[T] =
+      xss.iterator.flatMap(_.iterator).find(p)
   end extension
 
   extension (text: Text)
