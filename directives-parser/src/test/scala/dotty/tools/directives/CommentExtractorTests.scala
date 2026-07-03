@@ -338,10 +338,6 @@ class CommentExtractorTests:
     assertTrue(ws.head.message.contains("Ignoring"))
   }
 
-  // -----------------------------------------------------------------------
-  // Edge Case 7: `*/` followed by directive on same line
-  // -----------------------------------------------------------------------
-
   @Test def directive_on_same_line_after_block_comment_closing_is_treated_as_code(): Unit = {
     val src =
       """/* comment */ //> using scala 3

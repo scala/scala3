@@ -5,14 +5,8 @@ import scala.annotation.tailrec
 /** Phase 3: recursive-descent parser that consumes a token stream and produces [[UsingDirective]]
   * nodes.
   *
-  * Grammar:
-  * {{{
-  * Directives ::= { Directive }
-  * Directive  ::= Using Key Values Newline
-  * Key        ::= Ident                  (dotted keys are single Ident tokens, e.g. "test.dep")
-  * Values     ::= { [Comma] Value }
-  * Value      ::= StringLit | BoolLit | Ident
-  * }}}
+  * The accepted grammar is specified in the module README (the "Grammar" section of
+  * `directives-parser/README.md`), which is the single source of truth for the syntax.
   *
   * When Values is empty (key immediately followed by Newline), a single [[DirectiveValue.EmptyVal]]
   * is produced.

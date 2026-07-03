@@ -1376,7 +1376,7 @@ object Build {
       publish / skip := true,
       target := target.value / "scala3-directives-parser-nonbootstrapped",
       fetchedScalaInstanceSettings,
-      bspEnabled := false,
+      bspEnabled := true,
     )
 
   /* Configuration of the org.scala-lang:scala3-directives-parser_3:*.**.**-bootstrapped project */
@@ -1403,7 +1403,7 @@ object Build {
       publish / skip := false,
       target := target.value / "scala3-directives-parser",
       bootstrappedScalaInstanceSettings,
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
     )
 
   // ==============================================================================================
