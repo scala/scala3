@@ -168,7 +168,7 @@ object Trees {
      *  for thickets which return their element trees.
      */
     def toList: List[Tree[T]] = this :: Nil
-    def toVector: Vector[Tree[T]] = this +: Vector()
+    def toVector: Vector[Tree[T]] = Vector(this)
 
     /** if this tree is the empty tree, the alternative, else this tree */
     inline def orElse[U >: T <: Untyped](inline that: Tree[U]): Tree[U] =
@@ -1241,12 +1241,12 @@ object Trees {
     // ----- Auxiliary creation methods ------------------
 
     def Thicket(): Thicket = EmptyTree
-    def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = new Thicket(x1 +: x2 +: Vector())
-    def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = new Thicket(x1 +: x2 +: x3 +: Vector())
+    def Thicket(x1: Tree, x2: Tree)(implicit src: SourceFile): Thicket = new Thicket(Vector(x1, x2))
+    def Thicket(x1: Tree, x2: Tree, x3: Tree)(implicit src: SourceFile): Thicket = new Thicket(Vector(x1, x2, x3))
     def Thicket(xs: Vector[Tree])(implicit src: SourceFile) = new Thicket(xs)
 
     def flatTree(xs: Vector[Tree])(implicit src: SourceFile): Tree = flatten(xs) match {
-      case x +: Vector() => x
+      case Vector(x) => x
       case ys => Thicket(ys)
     }
 
@@ -1685,10 +1685,7 @@ object Trees {
       def apply(x: X, tree: Tree)(using Context): X
 
       def apply(x: X, trees: Vector[Tree])(using Context): X =
-        def fold(x: X, trees: Vector[Tree]): X = (trees: @unchecked) match
-          case tree +: rest => fold(apply(x, tree), rest)
-          case Vector() => x
-        fold(x, trees)
+        trees.foldLeft(x)(apply(_, _))
 
       def foldOver(x: X, tree: Tree)(using Context): X =
         if (tree.source != ctx.source && tree.source.exists)

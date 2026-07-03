@@ -922,7 +922,7 @@ object Symbols extends SymUtils {
         !(ttmap.oldOwners contains sym.owner)) && !mapAlways)
       originals
     else {
-      val copies: Vector[Symbol] = for (original <- originals) yield
+      def copySymbol(original: Symbol): Symbol =
         val odenot = original.denot
         original.copy(
           owner = ttmap.mapOwner(odenot.owner),
@@ -930,6 +930,7 @@ object Symbols extends SymUtils {
           info = NoCompleter,
           privateWithin = ttmap.mapOwner(odenot.privateWithin),
           coord = original.coord)
+      val copies: Vector[Symbol] = originals.map(copySymbol)
       val ttmap1 = ttmap.withSubstitution(originals, copies)
       originals.lazyZip(copies) foreach { (original, copy) =>
         val odenot = original.denot
@@ -952,7 +953,7 @@ object Symbols extends SymUtils {
                   val newTypeParams = mapSymbols(original.typeParams, ttmap1, mapAlways = true)
                   newTypeParams.foreach(decls1.enter)
                   for sym <- decls do if !sym.is(TypeParam) then decls1.enter(sym)
-                  val parents2 = parents1.map(_.substSym(otypeParams, newTypeParams))
+                  val parents2 = parents1.mapConserve(_.substSym(otypeParams, newTypeParams))
                   val selfInfo1 = selfInfo match
                     case selfInfo: Type => selfInfo.substSym(otypeParams, newTypeParams)
                     case _ => selfInfo
@@ -990,17 +991,17 @@ object Symbols extends SymUtils {
    *  All symbols in the list are assumed to be of the same kind.
    */
   object TermSymbols:
-    def unapply(xs: Vector[Symbol])(using Context): Option[Vector[TermSymbol]] = xs match
-      case (x: Symbol) +: _ if x.isType => None
-      case _ => Some(xs.asInstanceOf[Vector[TermSymbol]])
+    def unapply(xs: Vector[Symbol])(using Context): Option[Vector[TermSymbol]] =
+      if xs.nonEmpty && xs(0).isType then None
+      else Some(xs.asInstanceOf[Vector[TermSymbol]])
 
   /** Matches lists of type symbols, excluding the empty list.
    *  All symbols in the list are assumed to be of the same kind.
    */
   object TypeSymbols:
-    def unapply(xs: Vector[Symbol])(using Context): Option[Vector[TypeSymbol]] = xs match
-      case (x: Symbol) +: _ if x.isType => Some(xs.asInstanceOf[Vector[TypeSymbol]])
-      case _ => None
+    def unapply(xs: Vector[Symbol])(using Context): Option[Vector[TypeSymbol]] =
+      if xs.nonEmpty && xs(0).isType then Some(xs.asInstanceOf[Vector[TypeSymbol]])
+      else None
 
   type DontUseSymbolOnSymbol
 

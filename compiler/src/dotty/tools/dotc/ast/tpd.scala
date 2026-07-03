@@ -122,7 +122,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else TypeApply(Ident(TermRef(NoPrefix, meth)), targs)
     var mdef0 = DefDef(meth, rhsFn)
     val mdef = cpy.DefDef(mdef0)(tpt = TypeTree(mdef0.tpt.tpe, inferred = true))
-    Block(mdef +: Vector(), Closure(Vector(), call, targetTpt))
+    Block(Vector(mdef), Closure(Vector(), call, targetTpt))
   }
 
   /** A closure whose anonymous function has the given method type */
@@ -298,7 +298,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
               assert(vparams.hasSameLengthAs(tp.paramNames) && vparams.head.isTerm)
               (vparams.asInstanceOf[Vector[TermSymbol]], remaining1)
             case nil =>
-              (tp.paramNames.lazyZip(tp.paramInfos).lazyZip(tp.paramErasureStatuses).map(valueParam), Vector())
+              (tp.paramNames.zipMap(tp.paramInfos, tp.paramErasureStatuses)(valueParam), Vector())
         val (rtp, paramss) = recur(tp.instantiate(vparams.map(_.termRef)), remaining1)
         (rtp, vparams +: paramss)
       case _ =>
@@ -342,7 +342,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       else
         val parentConstr = firstParent.applicableConstructors(superArgs.tpes, adaptVarargs) match
           case Vector() => assert(false, i"no applicable parent constructor of $firstParent for supercall arguments $superArgs")
-          case constr +: Vector() => constr
+          case Vector(constr) => constr
           case _ => assert(false, i"multiple applicable parent constructors of $firstParent for supercall arguments $superArgs")
         New(firstParent, parentConstr.asTerm, adaptedSuperArgs(parentConstr.info))
 
@@ -420,7 +420,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     val cls = newNormalizedClassSymbol(owner, tpnme.ANON_CLASS, flags, parents1, coord = coord)
     val constr = newConstructor(cls, Synthetic, Vector(), Vector()).entered
     val cdef = ClassDef(cls, DefDef(constr), body(cls), Vector(), adaptVarargs)
-    Block(cdef +: Vector(), New(cls.typeRef, Vector()))
+    Block(Vector(cdef), New(cls.typeRef, Vector()))
 
   def Import(expr: Tree, selectors: Vector[untpd.ImportSelector])(using Context): Import =
     ta.assignType(untpd.Import(expr, selectors), newImportSymbol(ctx.owner, expr))
@@ -538,10 +538,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     if (!ctx.erasedTypes) {
       assert(!TypeErasure.isGeneric(elemTpe), elemTpe) //needs to be done during typer. See Applications.convertNewGenericArray
-      newArr.appliedToTypeTrees(TypeTree(returnTpe) +: Vector()).appliedToTermArgs(clsOf(elemTpe) +: clsOf(returnTpe) +: dims +: Vector()).withSpan(span)
+      newArr.appliedToTypeTrees(Vector(TypeTree(returnTpe))).appliedToTermArgs(Vector(clsOf(elemTpe), clsOf(returnTpe), dims)).withSpan(span)
     }
     else  // after erasure
-      newArr.appliedToTermArgs(clsOf(elemTpe) +: clsOf(returnTpe) +: dims +: Vector()).withSpan(span)
+      newArr.appliedToTermArgs(Vector(clsOf(elemTpe), clsOf(returnTpe), dims)).withSpan(span)
   }
 
   /** The wrapped array method name for an array of type elemtp */
@@ -558,7 +558,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def wrapArray(tree: Tree, elemtp: Type)(using Context): Tree =
     val wrapper = ref(defn.getWrapVarargsArrayModule)
       .select(wrapArrayMethodName(elemtp))
-      .appliedToTypes(if elemtp.classSymbol.isPrimitiveValueClass then Vector() else elemtp +: Vector())
+      .appliedToTypes(if elemtp.classSymbol.isPrimitiveValueClass then Vector() else Vector(elemtp))
     val actualElem = wrapper.tpe.widen.firstParamTypes.head
     wrapper.appliedTo(tree.ensureConforms(actualElem))
 
@@ -895,7 +895,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
         else
           //println(i"change owner ${from +: froms}%, % ==> $tos of $tree")
           TreeTypeMap(oldOwners = from +: froms, newOwners = tos).apply(tree)
-      if (from == to) tree else loop(from, Vector(), to +: Vector())
+      if (from == to) tree else loop(from, Vector(), Vector(to))
     }
 
     /**
@@ -985,7 +985,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** A unary apply node with given argument: `tree(arg)` */
     def appliedTo(arg: Tree)(using Context): Apply =
-      appliedToTermArgs(arg +: Vector())
+      appliedToTermArgs(Vector(arg))
 
     /** An apply node with given arguments: `tree(arg, args0, ..., argsN)` */
     def appliedTo(arg: Tree, args: Tree*)(using Context): Apply =
@@ -1015,7 +1015,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToType(targ: Type)(using Context): Tree =
-      appliedToTypes(targ +: Vector())
+      appliedToTypes(Vector(targ))
 
     /** The current tree applied to given type arguments: `tree[targ0, ..., targN]` */
     def appliedToTypes(targs: Vector[Type])(using Context): Tree =
@@ -1023,7 +1023,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
     /** The current tree applied to given type argument: `tree[targ]` */
     def appliedToTypeTree(targ: Tree)(using Context): Tree =
-      appliedToTypeTrees(targ +: Vector())
+      appliedToTypeTrees(Vector(targ))
 
     /** The current tree applied to given type argument list: `tree[targs(0), ..., targs(targs.length - 1)]` */
     def appliedToTypeTrees(targs: Vector[Tree])(using Context): Tree =
@@ -1040,7 +1040,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       if (that.tpe.widen.isRef(defn.NothingClass))
         Literal(Constant(false))
       else
-        applyOverloaded(tree, nme.EQ, that +: Vector(), Vector(), defn.BooleanType)
+        applyOverloaded(tree, nme.EQ, Vector(that), Vector(), defn.BooleanType)
 
     /** `tree.isInstanceOf[tp]`, with special treatment of singleton types */
     def isInstance(tp: Type)(using Context): Tree = tp.dealias match {
@@ -1362,10 +1362,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   end TreeTraverserWithPreciseImportContexts
 
   extension (xs: Vector[tpd.Tree])
-    def tpes: Vector[Type] = xs match {
-      case x +: xs1 => x.tpe +: xs1.tpes
-      case nil => Vector()
-    }
+    def tpes: Vector[Type] = xs.map(_.tpe)
 
   /** A trait for loaders that compute trees. Currently implemented just by DottyUnpickler. */
   trait TreeProvider {
@@ -1429,7 +1426,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     if (exprPurity(tree) >= level) within(tree)
     else {
       val vdef = SyntheticValDef(TempResultName.fresh(), tree)
-      Block(vdef +: Vector(), within(Ident(vdef.namedType)))
+      Block(Vector(vdef), within(Ident(vdef.namedType)))
     }
 
   /** Let bind `tree` unless `tree` is at least idempotent */
@@ -1574,14 +1571,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       val selectTree = Select(noPosExpr, sym.name).withSpan(id.span)
       rename match {
         case None =>
-          selectTree +: Vector()
+          Vector(selectTree)
         case Some(rename) =>
           // Get the type of the symbol that is actually selected, and construct a select
           // node with the new name and the type of the real symbol.
           val name = if (sym.name.isTypeName) rename.name.toTypeName else rename.name
           val actual = Select(noPosExpr, sym.name)
           val renameTree = Select(noPosExpr, name).withSpan(rename.span).withType(actual.tpe)
-          selectTree +: renameTree +: Vector()
+          Vector(selectTree, renameTree)
       }
     }
 
@@ -1629,11 +1626,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   /** Creates the nested pairs type tree representation of the type trees in `ts` */
   def nestedPairsTypeTree(ts: Vector[Tree])(using Context): Tree =
-    ts.foldRight[Tree](TypeTree(defn.EmptyTupleModule.termRef))((x, acc) => AppliedTypeTree(TypeTree(defn.PairClass.typeRef), x +: acc +: Vector()))
+    ts.foldRight[Tree](TypeTree(defn.EmptyTupleModule.termRef))((x, acc) => AppliedTypeTree(TypeTree(defn.PairClass.typeRef), Vector(x, acc)))
 
   /** Creates the nested higher-kinded pairs type tree representation of the type trees in `ts` */
   def hkNestedPairsTypeTree(ts: Vector[Tree])(using Context): Tree =
-    ts.foldRight[Tree](TypeTree(defn.QuoteMatching_KNil.typeRef))((x, acc) => AppliedTypeTree(TypeTree(defn.QuoteMatching_KCons.typeRef), x +: acc +: Vector()))
+    ts.foldRight[Tree](TypeTree(defn.QuoteMatching_KNil.typeRef))((x, acc) => AppliedTypeTree(TypeTree(defn.QuoteMatching_KCons.typeRef), Vector(x, acc)))
 
   /** Replaces all positions in `tree` with zero-extent positions */
   private def focusPositions(tree: Tree)(using Context): Tree = {

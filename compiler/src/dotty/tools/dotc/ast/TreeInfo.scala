@@ -14,7 +14,6 @@ import util.SrcPos
 
 import Decorators.*
 import Constants.Constant
-import scala.collection.mutable
 
 import scala.annotation.tailrec
 
@@ -416,12 +415,12 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
     def apply(names: Vector[TermName])(using Context): untpd.Tree =
       untpd.TypedSplice(tpd.New(
           defn.WitnessNamesAnnot.typeRef,
-          tpd.SeqLiteral(names.map(n => tpd.Literal(Constant(n.toString))), tpd.TypeTree(defn.StringType)) +: Vector()
+          Vector(tpd.SeqLiteral(names.map(n => tpd.Literal(Constant(n.toString))), tpd.TypeTree(defn.StringType)))
         ))
 
     def unapply(tree: Tree)(using Context): Option[Vector[TermName]] =
       unsplice(tree) match
-        case Apply(Select(New(tpt: tpd.TypeTree), nme.CONSTRUCTOR), SeqLiteral(elems, _) +: Vector()) =>
+        case Apply(Select(New(tpt: tpd.TypeTree), nme.CONSTRUCTOR), Vector(SeqLiteral(elems, _))) =>
           tpt.tpe match
             case tp: TypeRef if tp.name == tpnme.WitnessNames && tp.symbol == defn.WitnessNamesAnnot =>
               Some:
@@ -474,7 +473,7 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case Function((param: untpd.ValDef) +: _, _) => param.mods.is(Given)
     case Closure(_, meth, _) => true
     case Block(Vector(), expr) => isContextualClosure(expr)
-    case Block(DefDef(nme.ANON_FUN, params +: _, _, _) +: Vector(), cl: Closure) =>
+    case Block(Vector(DefDef(nme.ANON_FUN, params +: _, _, _)), cl: Closure) =>
       isUsingClause(params)
     case _ => false
   }
@@ -547,11 +546,11 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     def apply(tp: Tree)(using Context): untpd.ByNameTypeTree =
       untpd.ByNameTypeTree(
         untpd.CapturesAndResult(
-          untpd.captureRoot.withSpan(tp.span.startPos) +: Vector(), tp))
+          Vector(untpd.captureRoot.withSpan(tp.span.startPos)), tp))
 
     def unapply(tp: Tree)(using Context): Option[Tree] = tp match
       case untpd.ByNameTypeTree(
-        untpd.CapturesAndResult(id @ Select(_, nme.any) +: Vector(), result))
+        untpd.CapturesAndResult(id @ Vector(Select(_, nme.any)), result))
       if id.span == result.span.startPos => Some(result)
       case _ => None
   end ImpureByNameTypeTree
@@ -788,7 +787,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           else
             // it's a primitive unary operator or getClass call;
             // Simplify `pre.op` to `{ pre; v }` where `v` is the value of `pre.op`
-            Block(pre +: Vector(), Literal(value)).withSpan(tree.span)
+            Block(Vector(pre), Literal(value)).withSpan(tree.span)
       case _ => tree1
     }
   }
@@ -891,7 +890,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   object closure {
     def unapply(tree: Tree)(using Context): Option[(Vector[Tree], Tree, Tree)] = tree match {
-      case Block((meth : DefDef) +: Vector(), closure: Closure) if meth.symbol == closure.meth.symbol =>
+      case Block(Vector(meth: DefDef), closure: Closure) if meth.symbol == closure.meth.symbol =>
         unapply(closure)
       case Block(Vector(), expr) =>
         unapply(expr)
@@ -914,7 +913,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
   /** An extractor for def of a closure contained the block of the closure. */
   object closureDef {
     def unapply(tree: Tree)(using Context): Option[DefDef] = tree match {
-      case Block((meth: DefDef) +: Vector(), closure: Closure) if meth.symbol == closure.meth.symbol =>
+      case Block(Vector(meth: DefDef), closure: Closure) if meth.symbol == closure.meth.symbol =>
         Some(meth)
       case Block(Vector(), expr) =>
         unapply(expr)
@@ -994,12 +993,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
 
   /** The symbols defined locally in a statement list */
   def localSyms(stats: Vector[Tree])(using Context): Vector[Symbol] =
-    if stats.isEmpty then Vector()
-    else
-      val locals = new mutable.ListBuffer[Symbol]
-      for stat <- stats do
-        if stat.isDef && stat.symbol.exists then locals += stat.symbol
-      locals.toVector
+    stats.collect { case stat if stat.isDef && stat.symbol.exists => stat.symbol }
 
   /** If `tree` is a DefTree, the symbol defined by it, otherwise NoSymbol */
   def definedSym(tree: Tree)(using Context): Symbol =
@@ -1030,7 +1024,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    */
   def topLevelClasses(tree: Tree)(using Context): Vector[ClassSymbol] = tree match {
     case PackageDef(_, stats) => stats.flatMap(topLevelClasses)
-    case tdef: TypeDef if tdef.symbol.isClass => tdef.symbol.asClass +: Vector()
+    case tdef: TypeDef if tdef.symbol.isClass => Vector(tdef.symbol.asClass)
     case _ => Vector()
   }
 
@@ -1040,19 +1034,19 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       val slicedStats = stats.flatMap(sliceTopLevel(_, cls))
       val isEffectivelyEmpty = slicedStats.forall(_.isInstanceOf[Import])
       if isEffectivelyEmpty then Vector()
-      else cpy.PackageDef(tree)(pid, slicedStats) +: Vector()
+      else Vector(cpy.PackageDef(tree)(pid, slicedStats))
     case tdef: TypeDef =>
       val sym = tdef.symbol
       assert(sym.isClass || ctx.tolerateErrorsForBestEffort)
-      if (cls == sym || cls == sym.linkedClass) tdef +: Vector()
+      if (cls == sym || cls == sym.linkedClass) Vector(tdef)
       else Vector()
     case vdef: ValDef =>
       val sym = vdef.symbol
       assert(sym.is(Module) || ctx.tolerateErrorsForBestEffort)
-      if (cls == sym.companionClass || cls == sym.moduleClass) vdef +: Vector()
+      if (cls == sym.companionClass || cls == sym.moduleClass) Vector(vdef)
       else Vector()
     case tree =>
-      tree +: Vector()
+      Vector(tree)
   }
 
   /** The statement sequence that contains a definition of `sym`, or Vector()
@@ -1139,9 +1133,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
    *  The supercall is always the first statement (if it exists)
    */
   final def splitAtSuper(constrStats: Vector[Tree])(implicit ctx: Context): (Vector[Tree], Vector[Tree]) =
-    constrStats.toVector match {
-      case (sc: Apply) +: rest if sc.symbol.isConstructor => (sc +: Vector(), rest)
-      case (block @ Block(_, sc: Apply)) +: rest if sc.symbol.isConstructor => (block +: Vector(), rest)
+    constrStats match {
+      case (sc: Apply) +: rest if sc.symbol.isConstructor => (Vector(sc), rest)
+      case (block @ Block(_, sc: Apply)) +: rest if sc.symbol.isConstructor => (Vector(block), rest)
       case stats => (Vector(), stats)
     }
 
@@ -1228,7 +1222,7 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       tree.select(defn.Any_typeCast).appliedToType(AndType(tree.tpe, tpnn))
 
     def unapply(tree: tpd.TypeApply)(using Context): Option[tpd.Tree] = tree match
-      case TypeApply(Select(qual: RefTree, nme.asInstanceOfPM), arg +: Vector()) =>
+      case TypeApply(Select(qual: RefTree, nme.asInstanceOfPM), Vector(arg)) =>
         arg.tpe match
           case AndType(ref, nn1) if qual.tpe eq ref =>
             qual.tpe.widen match

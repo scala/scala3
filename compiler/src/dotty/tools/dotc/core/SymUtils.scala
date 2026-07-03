@@ -139,7 +139,7 @@ class SymUtils:
      */
     def isOldStyleImplicitConversion(directOnly: Boolean = false, forImplicitClassOnly: Boolean = false)(using Context): Boolean =
       self.is(Implicit) && self.info.stripPoly.match
-        case mt @ MethodType(_ +: Vector()) if !mt.isImplicitMethod =>
+        case mt @ MethodType(Vector(_)) if !mt.isImplicitMethod =>
           if self.isCoDefinedGiven(mt.finalResultType.typeSymbol)
           then !directOnly
           else !forImplicitClassOnly
@@ -262,13 +262,9 @@ class SymUtils:
       else NoSymbol
 
     /** Apply symbol/symbol substitution to this symbol */
-    def subst(from: Vector[Symbol], to: Vector[Symbol]): Symbol = {
-      @tailrec def loop(from: Vector[Symbol], to: Vector[Symbol]): Symbol =
-        if (from.isEmpty) self
-        else if (self eq from.head) to.head
-        else loop(from.tail, to.tail)
-      loop(from, to)
-    }
+    def subst(from: Vector[Symbol], to: Vector[Symbol]): Symbol =
+      val i = from.indexWhere(self eq _)
+      if i < 0 then self else to(i)
 
     def accessorNamed(name: TermName)(using Context): Symbol =
       self.owner.info.decl(name).suchThat(_.is(Accessor)).symbol
