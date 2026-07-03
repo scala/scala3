@@ -58,7 +58,7 @@ object WrappedSourceFile:
         result
       case result => result
 
-class SourceFile private[util] (val file: AbstractFile, computeContent: => Array[Char], val maybeIncomplete: Boolean = false) extends interfaces.SourceFile {
+class SourceFile private[util] (val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
   private var myContent: Array[Char] | Null = null
 
   /** The contents of the original source file. Note that this can be empty, for example when
@@ -197,8 +197,8 @@ object SourceFile {
   /** A source file with an underlying virtual file. The name is taken as a file system path
    *  with the local separator converted to "/". The last element of the path will be the simple name of the file.
    */
-  def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
-    new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray, maybeIncomplete = maybeIncomplete)
+  def virtual(name: String, content: String) =
+    new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
 
   /** A helper method to create a virtual source file for given URI.
    */
