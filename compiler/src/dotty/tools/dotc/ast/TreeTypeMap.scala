@@ -53,31 +53,64 @@ class TreeTypeMap(
   /** If `sym` is one of `oldOwners`, replace by corresponding symbol in `newOwners` */
   def mapOwner(sym: Symbol): Symbol = sym.subst(oldOwners, newOwners)
 
+  assert(oldOwners.length == newOwners.length, i"mismatched owners: $oldOwners --> $newOwners")
+  assert(substFrom.length == substTo.length, i"mismatched substitution: $substFrom --> $substTo")
+
+  /** The class owners among `oldOwners`, paired with the `this`-types of their
+   *  corresponding `newOwners`, precomputed once so `mapPrefix` does not have to
+   *  re-derive them on every prefix walk.
+   */
+  private val (oldOwnerClasses, newOwnerThisTypes) =
+    oldOwners.lazyZip(newOwners).toVector
+      .collect { case (cls: ClassSymbol, newOwner) => (cls, newOwner.thisType) }
+      .unzip
+
   /** Replace occurrences of `This(oldOwner)` in some prefix of a type
    *  by the corresponding `This(newOwner)`.
    */
   private val mapOwnerThis = new TypeMap {
-    private def mapPrefix(from: Vector[Symbol], to: Vector[Symbol], tp: Type): Type =
+    private def mapPrefix(tp: Type): Type =
       var result = tp
-      var i = 0
-      while i < from.length do
-        from(i) match
-          case cls: ClassSymbol => result = result.substThis(cls, to(i).thisType)
-          case _ =>
-        i += 1
+      oldOwnerClasses.lazyZip(newOwnerThisTypes).foreach: (cls, thisType) =>
+        result = result.substThis(cls, thisType)
       result
     def apply(tp: Type): Type = tp match {
-      case tp: NamedType => tp.derivedSelect(mapPrefix(oldOwners, newOwners, tp.prefix))
+      case tp: NamedType => tp.derivedSelect(mapPrefix(tp.prefix))
       case _ => mapOver(tp)
     }
   }
 
+  private val substFrom1 = if substFrom.length >= 1 then substFrom(0) else NoSymbol
+  private val substTo1 = if substTo.length >= 1 then substTo(0) else NoSymbol
+  private val substFrom2 = if substFrom.length >= 2 then substFrom(1) else NoSymbol
+  private val substTo2 = if substTo.length >= 2 then substTo(1) else NoSymbol
+  private val symbolSubstData: Substituters.SubstSymData | Null =
+    substFrom.length match
+      case 0 | 1 | 2 => null
+      case _ => Substituters.SubstSymData(substFrom, substTo)
+
+  private def substSymbols(tp: Type)(using Context): Type =
+    substFrom.length match
+      case 0 => tp
+      case 1 =>
+        val substMap = new TypeMap():
+          def apply(tp: Type): Type = tp match
+            case tp: TermRef if tp.symbol.isImport => mapOver(tp)
+            case tp => Substituters.substSym1(tp, substFrom1, substTo1, null)
+        substMap(tp)
+      case 2 =>
+        val substMap = new TypeMap():
+          def apply(tp: Type): Type = tp match
+            case tp: TermRef if tp.symbol.isImport => mapOver(tp)
+            case tp => Substituters.substSym2(tp, substFrom1, substTo1, substFrom2, substTo2, null)
+        substMap(tp)
+      case _ =>
+        symbolSubstData.nn.substImportAware(tp)
+
   def mapType(tp: Type): Type =
-    val substMap = new TypeMap():
-      def apply(tp: Type): Type = tp match
-        case tp: TermRef if tp.symbol.isImport => mapOver(tp)
-        case tp => tp.substSym(substFrom, substTo)
-    mapOwnerThis(substMap(typeMap(tp)))
+    val tp1 = typeMap(tp)
+    val tp2 = substSymbols(tp1)
+    if oldOwnerClasses.isEmpty then tp2 else mapOwnerThis(tp2)
   end mapType
 
   private def updateDecls(prevStats: Vector[Tree], newStats: Vector[Tree]): Unit =
@@ -101,7 +134,7 @@ class TreeTypeMap(
 
   override def transform(tree: Tree)(using Context): Tree = treeMap(tree) match {
     case impl @ Template(constr, _, self, _) =>
-      val tmap = withMappedSyms(localSyms(impl +: self +: Vector()))
+      val tmap = withMappedSyms(localSyms(Vector(impl, self)))
       cpy.Template(impl)(
           constr = tmap.transformSub(constr),
           parents = impl.parents.mapconserve(transform),
@@ -151,7 +184,7 @@ class TreeTypeMap(
           val rhs1 = tmap.transform(rhs)
           cpy.CaseDef(cdef)(pat1, guard1, rhs1)
         case labeled @ Labeled(bind, expr) =>
-          val tmap = withMappedSyms(bind.symbol +: Vector())
+          val tmap = withMappedSyms(Vector(bind.symbol))
           val bind1 = tmap.transformSub(bind)
           val expr1 = tmap.transform(expr)
           cpy.Labeled(labeled)(bind1, expr1)
@@ -219,23 +252,26 @@ class TreeTypeMap(
   def withMappedSyms(syms: Vector[Symbol], mapped: Vector[Symbol]): TreeTypeMap =
     if syms eq mapped then this
     else
-      val substMap = withSubstitution(syms, mapped)
-      lazy val origCls = mapped.zip(syms).filter(_._1.isClass).toMap
-      mapped.filter(_.isClass).foldLeft(substMap) { (tmap, cls) =>
-        val origDcls = cls.info.decls.toVector.filterNot(_.is(TypeParam))
-        val tmap0 = tmap.withSubstitution(origCls(cls).typeParams, cls.typeParams)
-        val mappedDcls = mapSymbols(origDcls, tmap0, mapAlways = true)
-        val tmap1 = tmap.withMappedSyms(
-          origCls(cls).typeParams ++ origDcls,
-          cls.typeParams ++ mappedDcls)
-        mapped.foreach { sym =>
-          // outer Symbols can reference nested ones in info,
-          // so we remap that once again with the updated TreeTypeMap
-          sym.info = tmap1.mapType(sym.info)
-        }
-        origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
-        tmap1
-      }
+      // `syms(clsIdx)` recovers each class's original by index correspondence,
+      // avoiding the Map that was previously built from `mapped.zip(syms)`.
+      mapped.indices.foldLeft(withSubstitution(syms, mapped)): (tmap, clsIdx) =>
+        val cls = mapped(clsIdx)
+        if !cls.isClass then tmap
+        else
+          val origCls = syms(clsIdx)
+          val origDcls = cls.info.decls.toVector.filterNot(_.is(TypeParam))
+          val tmap0 = tmap.withSubstitution(origCls.typeParams, cls.typeParams)
+          val mappedDcls = mapSymbols(origDcls, tmap0, mapAlways = true)
+          val tmap1 = tmap.withMappedSyms(
+            origCls.typeParams ++ origDcls,
+            cls.typeParams ++ mappedDcls)
+          mapped.foreach { sym =>
+            // outer Symbols can reference nested ones in info,
+            // so we remap that once again with the updated TreeTypeMap
+            sym.info = tmap1.mapType(sym.info)
+          }
+          origDcls.lazyZip(mappedDcls).foreach(cls.asClass.replace)
+          tmap1
 
   override def toString =
     def showSyms(syms: Vector[Symbol]) =
