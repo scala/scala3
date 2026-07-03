@@ -51,7 +51,7 @@ import NullOpsDecorator.*
 import cc.{Setup, CheckCaptures, isRetainsLike, derivesFromCapSet}
 import config.MigrationVersion
 import dotty.tools.dotc.core.Mode.Interactive
-import transform.CheckUnused.OriginalName
+import transform.CheckUnused.withOriginalName
 
 import scala.annotation.{unchecked as _, *}
 import dotty.tools.dotc.util.chaining.*
@@ -763,9 +763,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       typed(localExtensionSelection, pt)
     else if rawType.exists then
       val ref = setType(ensureAccessible(rawType, superAccess = false, tree.srcPos))
-      if ref.symbol.name != name then
-        ref.withAttachment(OriginalName, name)
-      else ref
+      withOriginalName(ref, name)
     else if name == nme._scope then
       // gross hack to support current xml literals.
       // awaiting a better implicits based solution for library-supported xml
@@ -4341,7 +4339,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       findRef(tree.name, WildcardType, ExtensionMethod, EmptyFlags, qual.srcPos, altImports) match
         case ref: TermRef =>
           def tryExtMethod(ref: TermRef)(using Context) =
-            extMethodApply(untpd.TypedSplice(tpd.ref(ref).withSpan(tree.nameSpan)), qual, pt)
+            val refTree = withOriginalName(tpd.ref(ref).withSpan(tree.nameSpan), tree.name)
+            extMethodApply(untpd.TypedSplice(refTree), qual, pt)
           if altImports.isEmpty then
             tryExtMethod(ref)
           else
