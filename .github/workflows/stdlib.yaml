@@ -281,6 +281,36 @@ jobs:
       - name: Test `tasty-core-bootstrapped`
         run: ./project/scripts/sbt tasty-core-bootstrapped/test
 
+  test-scala3-directives-parser-nonbootstrapped:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test `scala3-directives-parser-nonbootstrapped`
+        run: ./project/scripts/sbt scala3-directives-parser-nonbootstrapped/test
+
+  test-scala3-directives-parser-bootstrapped:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test `scala3-directives-parser-bootstrapped`
+        run: ./project/scripts/sbt scala3-directives-parser-bootstrapped/test
+
   test-scala-js:
     runs-on: ubuntu-latest
     steps:
