@@ -5,9 +5,7 @@ import java.util.function.Predicate
 
 object ProductSupport {
 
-  private[pprint] val neverUseProductToString: Predicate[Any] = new Predicate[Any] {
-    def test(value: Any): Boolean = false
-  }
+  private[pprint] val neverUseProductToString: Any => Boolean = Function.const(false)
 
   private def isIdentifier(name: String) = {
     def isStart(c: Char) = (c == '_') || (c == '$') || Character.isUnicodeIdentifierStart(c)
@@ -24,7 +22,7 @@ object ProductSupport {
                              walker: Walker,
                              escapeUnicode: Boolean,
                              showFieldNames: Boolean,
-                             useProductToString: Predicate[Any]): Iterator[Tree] = {
+                             useProductToString: Any => Boolean): Iterator[Tree] = {
     if (!showFieldNames || x.productArity < 2) {
       x.productIterator.map(x => walker.treeify(x, escapeUnicode, showFieldNames, useProductToString))
     }
@@ -32,7 +30,7 @@ object ProductSupport {
       .zipWithIndex
       .map {
         case (name, i) =>
-          val key = 
+          val key =
             if(!isIdentifier(name)) {
               s"`$name`"
           } else {
