@@ -1022,7 +1022,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         // Special case: Java arrays are covariant.
         // When checking overrides (frozenConstraint) of Java methods, allow B[] <: A[] if B <: A.
         def checkJavaArrayCovariance: Boolean = tp2 match {
-          case AppliedType(tycon2, arg2 +: Vector())
+          case AppliedType(tycon2, Vector(arg2))
             if frozenConstraint
               && tycon1.typeSymbol == defn.ArrayClass
               && tycon2.typeSymbol == defn.ArrayClass
@@ -1537,7 +1537,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
      *  Otherwise, if `other` is a Nat constant `n`, proceed with comparing `arg` and `n - 1`.
      */
     def compareS(tp: AppliedType, other: Type, fromBelow: Boolean): Boolean = tp.args match {
-      case arg +: Vector() =>
+      case Vector(arg) =>
         natValue(arg) match {
           case Some(n) if n != Int.MaxValue =>
             val succ = ConstantType(Constant(n + 1))

@@ -246,7 +246,7 @@ object TypeOps:
         if (cs == c.baseClasses) accu1 else dominators(rest, accu1)
       case Vector() => // this case can happen because after erasure we do not have a top class anymore
         assert(ctx.erasedTypes || ctx.reporter.errorsReported)
-        defn.ObjectClass +: Vector()
+        Vector(defn.ObjectClass)
     }
 
     def mergeRefinedOrApplied(tp1: Type, tp2: Type): Type = {
@@ -448,7 +448,7 @@ object TypeOps:
     }
 
     def close(tp: Type) = RecType.closeOver { rt =>
-      tp.subst(cls +: Vector(), rt.recThis +: Vector()).substThis(cls, rt.recThis)
+      tp.subst(Vector(cls), Vector(rt.recThis)).substThis(cls, rt.recThis)
     }
 
     val raw = refinableDecls.foldLeft(parentType)(addRefinement)
@@ -980,7 +980,7 @@ object TypeOps:
   /** Map no-flip covariant occurrences of `into[T]` to `T @$into` */
   def suppressInto(using Context) = new FollowAliasesMap:
     def apply(t: Type): Type = t match
-      case AppliedType(tycon: TypeRef, arg +: Vector()) if variance >= 0 && defn.isInto(tycon.symbol) =>
+      case AppliedType(tycon: TypeRef, Vector(arg)) if variance >= 0 && defn.isInto(tycon.symbol) =>
         AnnotatedType(arg, Annotation(defn.SilentIntoAnnot, util.Spans.NoSpan))
       case _: MatchType | _: LazyRef =>
         t
@@ -993,7 +993,7 @@ object TypeOps:
       case AnnotatedType(t1, ann) if variance >= 0 && ann.symbol == defn.SilentIntoAnnot =>
         AppliedType(
           defn.ConversionModule.termRef.select(defn.Conversion_into), // the external reference to the opaque type
-          t1 +: Vector())
+          Vector(t1))
       case _: MatchType | _: LazyRef =>
         t
       case _ =>
