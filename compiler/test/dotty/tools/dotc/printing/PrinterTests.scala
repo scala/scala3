@@ -72,5 +72,3 @@ class PrinterTests extends DottyTest {
     }
   }
 }
-
-
