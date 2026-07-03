@@ -3866,17 +3866,25 @@ object Types extends TypeUtils {
 
     def paramRefs: Vector[ParamRefType] = {
       if myParamRefs == null then
-        def recur(paramNames: Vector[ThisName], i: Int): Vector[ParamRefType] =
-          paramNames match
-            case _ +: rest => newParamRef(i) +: recur(rest, i + 1)
-            case _ => Vector()
-        myParamRefs = recur(paramNames, 0)
+        myParamRefs = fillVector(paramNames.length)(newParamRef)
       myParamRefs.nn
     }
 
+    /** Substitute parameter infos, hoisting a single `SubstBindingMap` and
+     *  reusing it across all elements (instead of `.subst(this, to)` allocating
+     *  a fresh map per element), while conserving identity via `mapConserve`.
+     */
+    protected final def substParamInfos(pinfos: Vector[PInfo], to: This)(using Context): Vector[PInfo] =
+      val substMap = new Substituters.SubstBindingMap[This](this, to)
+      pinfos.mapConserve(pinfo =>
+        Substituters.subst[This](pinfo, this, to, substMap).asInstanceOf[PInfo])
+
     /** Like `paramInfos` but substitute parameter references with the given arguments */
     final def instantiateParamInfos(argTypes: => Vector[Type])(using Context): Vector[Type] =
-      if (isParamDependent) paramInfos.mapConserve(_.substParams(this, argTypes))
+      if isParamDependent then
+        val args = argTypes
+        val substMap = new Substituters.SubstParamsMap(this, args)
+        paramInfos.mapConserve(pinfo => Substituters.substParams(pinfo, this, args, substMap))
       else paramInfos
 
     /** Like `resultType` but substitute parameter references with the given arguments */
@@ -3947,13 +3955,8 @@ object Types extends TypeUtils {
       else newLikeThis(paramNames, paramInfos, resType)
 
     def newLikeThis(paramNames: Vector[ThisName], paramInfos: Vector[PInfo], resType: Type)(using Context): This =
-      def substParams(pinfos: Vector[PInfo], to: This): Vector[PInfo] = pinfos match
-        case pinfos @ (pinfo +: rest) =>
-          pinfos.derivedCons(pinfo.subst(this, to).asInstanceOf[PInfo], substParams(rest, to))
-        case nil =>
-          nil
       companion(paramNames)(
-          x => substParams(paramInfos, x),
+          x => substParamInfos(paramInfos, x),
           x => resType.subst(this, x))
 
     protected def prefixString: String
@@ -4249,7 +4252,7 @@ object Types extends TypeUtils {
 
     @sharable private val memoizedNames = util.HashMap[Int, Vector[N]]()
     def syntheticParamNames(n: Int): Vector[N] = synchronized {
-      memoizedNames.getOrElseUpdate(n, (0 until n).map(syntheticParamName).toVector)
+      memoizedNames.getOrElseUpdate(n, Vector.tabulate(n)(syntheticParamName))
     }
 
     def apply(paramNames: Vector[N])(paramInfosExp: LT => Vector[PInfo], resultTypeExp: LT => Type)(using Context): LT
@@ -4390,7 +4393,7 @@ object Types extends TypeUtils {
     def newParamRef(n: Int): TypeParamRef = new TypeParamRefImpl(this, n)
 
     @threadUnsafe lazy val typeParams: Vector[LambdaParam] =
-      paramNames.indices.toVector.map(new LambdaParam(this, _))
+      fillVector(paramNames.length)(new LambdaParam(this, _))
 
     def derivedLambdaAbstraction(paramNames: Vector[TypeName], paramInfos: Vector[TypeBounds], resType: Type)(using Context): Type =
       resType match {
@@ -4468,7 +4471,7 @@ object Types extends TypeUtils {
 
     def newLikeThis(paramNames: Vector[ThisName], variances: Vector[Variance], paramInfos: Vector[PInfo], resType: Type)(using Context): This =
       HKTypeLambda(paramNames, variances)(
-          x => paramInfos.mapConserve(_.subst(this, x).asInstanceOf[PInfo]),
+          x => substParamInfos(paramInfos, x),
           x => resType.subst(this, x))
 
     def withVariances(variances: Vector[Variance])(using Context): This =
@@ -6304,14 +6307,33 @@ object Types extends TypeUtils {
       case arg: TypeBounds => this(arg)
       case arg => atVariance(variance * tparam.paramVarianceSign)(this(arg))
 
-    protected def mapArgs(args: Vector[Type], tparams: Vector[ParamInfo]): Vector[Type] = args match
-      case arg +: otherArgs if tparams.nonEmpty =>
-        val arg1 = mapArg(arg, tparams.head)
-        val otherArgs1 = mapArgs(otherArgs, tparams.tail)
-        if ((arg1 eq arg) && (otherArgs1 eq otherArgs)) args
-        else arg1 +: otherArgs1
-      case nil =>
-        nil
+    protected def mapArgs(args: Vector[Type], tparams: Vector[ParamInfo]): Vector[Type] =
+      // An identity-conserving map that walks `args` in parallel with `tparams`
+      // to pick a variance-aware mapper (there is no stdlib zip-conserve).
+      // Mirrors `Decorators.zipWithConserve`'s builder-on-first-change shape.
+      val len = args.length
+      var i = 0
+      while i < len && i < tparams.length do
+        val arg = args(i)
+        val arg1 = mapArg(arg, tparams(i))
+        if !(arg1 eq arg) then
+          val b = Vector.newBuilder[Type]
+          b.sizeHint(len)
+          var j = 0
+          while j < i do
+            b += args(j)
+            j += 1
+          b += arg1
+          i += 1
+          while i < len && i < tparams.length do
+            b += mapArg(args(i), tparams(i))
+            i += 1
+          while i < len do
+            b += args(i)
+            i += 1
+          return b.result()
+        i += 1
+      args
 
     protected def mapOverLambda(tp: LambdaType) =
       val restpe = tp.resultType
