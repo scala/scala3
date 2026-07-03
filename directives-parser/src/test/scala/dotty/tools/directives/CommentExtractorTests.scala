@@ -6,7 +6,7 @@ import org.junit.Assert.*
 class CommentExtractorTests:
 
   private def extract(src: String): ExtractorResult =
-    CommentExtractor.extract(src.toCharArray)
+    CommentExtractor.extract(src)
 
   @Test def simple_directive_line(): Unit = {
     val r = extract(

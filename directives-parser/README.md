@@ -4,7 +4,7 @@ The `scala3-directives-parser` module parses `//> using` directives from source 
 It is shared between the Scala 3 compiler (REPL, test harness) and
 [Scala CLI](https://github.com/VirtusLab/scala-cli).
 
-The public entry point is `UsingDirectivesParser.parse(Array[Char]): UsingDirectivesResult`.
+The public entry point is `UsingDirectivesParser.parse(IndexedSeq[Char]): UsingDirectivesResult`.
 
 ## Pipeline
 

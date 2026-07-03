@@ -12,11 +12,11 @@ object UsingDirectivesParser:
   /** Parse a source file and return all using directives along with diagnostics.
     *
     * @param content
-    *   the raw content of the source file as a character array
+    *   the raw content of the source file as a character sequence
     * @return
     *   a [[UsingDirectivesResult]] with parsed directives, code offset, and diagnostics
     */
-  def parse(content: Array[Char]): UsingDirectivesResult =
+  def parse(content: IndexedSeq[Char]): UsingDirectivesResult =
     val extracted = CommentExtractor.extract(content)
 
     val allTokens = scala.collection.mutable.ArrayBuffer.empty[Token]
@@ -53,5 +53,5 @@ object UsingDirectivesParser:
     Lexer.tokenize(lineText, lineNum, lineStartOffset)
 
   /** Extract directive lines from source content.  Exposed for testing. */
-  def extractLines(content: Array[Char]): ExtractorResult =
+  def extractLines(content: IndexedSeq[Char]): ExtractorResult =
     CommentExtractor.extract(content)

@@ -33,7 +33,7 @@ object DependencyResolver:
   /** Extract all dependencies from using directives in source code */
   def extractDependencies(sourceCode: String): List[String] =
     try
-      val result = UsingDirectivesParser.parse(sourceCode.toCharArray)
+      val result = UsingDirectivesParser.parse(sourceCode)
       result.directives.flatMap: directive =>
         if directive.key == "dep" then
           directive.values.flatMap:

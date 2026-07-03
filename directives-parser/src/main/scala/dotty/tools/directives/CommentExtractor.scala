@@ -33,7 +33,7 @@ object CommentExtractor:
 
   private val UsingDirectiveRegex = """^//>\s+using(?:\s|$)""".r
 
-  def extract(rawContent: Array[Char]): ExtractorResult =
+  def extract(rawContent: IndexedSeq[Char]): ExtractorResult =
     val content =
       if rawContent.nonEmpty && rawContent(0) == '\uFEFF' then rawContent.drop(1)
       else rawContent
@@ -49,7 +49,7 @@ object CommentExtractor:
     def currentLineText(lineStartOff: Int): String =
       var end = lineStartOff
       while end < length && content(end) != '\n' do end += 1
-      new String(content, lineStartOff, end - lineStartOff)
+      content.slice(lineStartOff, end).mkString
 
     // Skip a block comment starting at `offset` (which points to `/` of `/*`).
     // Returns the offset just after the closing `*/`, updating `lineNum`.

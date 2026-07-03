@@ -145,7 +145,7 @@ private def directiveValuesAsArgs(values: Seq[DirectiveValue]): String =
   values.map(_.rawText).mkString(" ")
 
 private def directiveToolArgs(content: String, filename: Option[String]): List[(String, String)] =
-  UsingDirectivesParser.parse(content.toCharArray).directives.flatMap: directive =>
+  UsingDirectivesParser.parse(content).directives.flatMap: directive =>
     directive.key match
       case "option" | "options" =>
         List(("scalac", directiveValuesAsArgs(directive.values)))

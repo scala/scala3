@@ -6,7 +6,7 @@ import org.junit.Assert.*
 class ParserTests:
 
   private def parse(src: String): UsingDirectivesResult =
-    UsingDirectivesParser.parse(src.toCharArray)
+    UsingDirectivesParser.parse(src)
 
   private def directives(src: String): Seq[UsingDirective] =
     parse(src).directives
