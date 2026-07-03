@@ -10,6 +10,8 @@ import dotc.parsing.Tokens
 import dotc.reporting.{Diagnostic, StoreReporter}
 import dotc.util.SourceFile
 
+import java.util.regex.Pattern
+
 import scala.annotation.internal.sharable
 
 /** A parsing result from string input */
@@ -47,6 +49,34 @@ object Dep {
 }
 /** An ambiguous prefix that matches multiple commands */
 case class AmbiguousCommand(cmd: String, matchingCommands: List[String]) extends Command
+
+case class Save(path: String) extends Command
+
+object Save {
+  val command: String = ":save"
+
+  /** `:load` treats a file as a session only when it starts with this header.
+   * any other file is a plain source loaded as one compilation unit.
+   */
+  val sessionHeader: String = "/* Scala REPL session */"
+
+  /** Written before each saved entry so that `:load` can replay every entry as
+   *  a single compilation unit.
+   */
+  val entrySeparator: String = "/* ---- entry ---- */"
+
+  private val separatorLikeLine = Pattern.quote(entrySeparator)
+
+  def escapeEntry(entry: String): String =
+    entry.linesIterator
+      .map(line => if line.matches("""\\*""" + separatorLikeLine) then "\\" + line else line)
+      .mkString("\n")
+
+  def unescapeEntry(entry: String): String =
+    entry.linesIterator
+      .map(line => if line.matches("""\\+""" + separatorLikeLine) then line.stripPrefix("\\") else line)
+      .mkString("\n")
+}
 
 /** `:load <path>` interprets a scala file as if entered line-by-line into
  *  the REPL
@@ -141,6 +171,7 @@ case object Help extends Command {
     """The REPL has several commands available:
       |
       |:help                    print this summary
+      |:save <path>             save replayable session to a file
       |:load <path>             interpret lines in a file
       |:quit                    exit the interpreter
       |:type <expression>       evaluate the type of the given expression
@@ -174,6 +205,7 @@ object ParseResult {
     Imports.command -> (_  => Imports),
     JarCmd.command -> (arg => JarCmd(arg)),
     KindOf.command -> (arg => KindOf(arg)),
+    Save.command -> (arg => Save(arg)),
     Load.command -> (arg => Load(arg)),
     Require.command -> (arg => Require(arg)),
     Dep.command -> (arg => Dep(arg)),
@@ -215,6 +247,11 @@ object ParseResult {
   def apply(sourceCode: String)(using state: State): ParseResult =
     apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode))
 
+  def isCommand(line: String): Boolean =
+    line match
+      case CommandExtract(_, _) => true
+      case _ => false
+
   /** Check if the input is incomplete.
    *
    *  This can be used in order to check if a newline can be inserted without
@@ -222,7 +259,7 @@ object ParseResult {
    */
   def isIncomplete(sourceCode: String)(using Context): Boolean =
     sourceCode match {
-      case CommandExtract(_) | "" => false
+      case CommandExtract(_, _) | "" => false
       case _ => {
         val reporter = newStoreReporter
         val source   = SourceFile.virtual("<incomplete-handler>", sourceCode)

@@ -6,6 +6,8 @@ import scala.util.control.NonFatal
 
 import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.util.regex.Pattern
 
 import dotc.ast.Trees.*
 import dotc.ast.{tpd, untpd}
@@ -76,8 +78,11 @@ case class State(objectIndex: Int,
                  imports: Map[Int, List[tpd.Import]],
                  invalidObjectIndexes: Set[Int],
                  quiet: Boolean,
-                 context: Context):
+                 context: Context,
+                 pastInputs: List[String] = Nil):
   def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
+
+  def recordInput(input: String): State = copy(pastInputs = pastInputs :+ input)
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
@@ -139,7 +144,7 @@ class ReplDriver(settings: Array[String],
     val combinedScript = initScript.trim() match
       case "" => extraPredef
       case script => s"$extraPredef\n$script"
-    run(combinedScript)(using emptyState)
+    run(combinedScript)(using emptyState).copy(pastInputs = Nil)
 
   /** Reset state of repl to the initial state
    *
@@ -453,7 +458,8 @@ class ReplDriver(settings: Array[String],
                 .sorted
                 .foreach(printDiagnostic)
 
-              updatedState
+              if updatedState.invalidObjectIndexes.contains(updatedState.objectIndex) then updatedState
+              else updatedState.recordInput(parsed.source.content().mkString)
             }
         }
       )
@@ -552,6 +558,16 @@ class ReplDriver(settings: Array[String],
     }
   }
 
+  /** Replay a file saved by `:save`: each entry runs as its own compilation unit. */
+  private def loadSavedEntries(contents: String, state: State): State =
+    val separatorLine = s"(?m)^${Pattern.quote(Save.entrySeparator)}$$"
+    val entries = contents.stripPrefix(Save.sessionHeader).split(separatorLine).toList
+      .map(_.strip).filter(_.nonEmpty).map(Save.unescapeEntry)
+    entries.foldLeft(state) { (st, entry) =>
+      if ParseResult.isCommand(entry) then interpret(ParseResult(entry)(using st))(using st)
+      else run(entry)(using st)
+    }
+
   /** Interpret `cmd` to action and propagate potentially new `state` */
   private def interpretCommand(cmd: Command)(using state: State): State = cmd match {
     case UnknownCommand(cmd) =>
@@ -586,11 +602,28 @@ class ReplDriver(settings: Array[String],
       } out.println(imp.show(using state.context))
       state
 
+    case Save(path) =>
+      if path.isEmpty then
+        out.println("File name is required.")
+      else if state.pastInputs.isEmpty then
+        out.println("Nothing to save.")
+      else
+        try
+          val body = state.pastInputs.map(entry => s"${Save.entrySeparator}\n${Save.escapeEntry(entry)}").mkString("\n")
+          val content = s"${Save.sessionHeader}\n$body"
+          Files.writeString(new JFile(path).toPath, content, StandardCharsets.UTF_8)
+        catch case NonFatal(e) =>
+          out.println(s"""Couldn't save session to "$path": ${e.getMessage}""")
+      state
+
     case Load(path) =>
       val file = new JFile(path)
       if (file.exists) {
         val contents = Using(scala.io.Source.fromFile(file, StandardCharsets.UTF_8.name))(_.mkString).get
-        run(contents)
+        val loaded =
+          if contents.linesIterator.nextOption().contains(Save.sessionHeader) then loadSavedEntries(contents, state)
+          else run(contents)(using state)
+        loaded.copy(pastInputs = state.pastInputs :+ s"${Load.command} $path")
       }
       else {
         out.println(s"""Couldn't find file "${file.getCanonicalPath}"""")
@@ -625,36 +658,41 @@ class ReplDriver(settings: Array[String],
           }
         }
 
-        try {
-          val entries = flatten(jarFile)
+        val isSuccess: Boolean =
+          try {
+            val entries = flatten(jarFile)
 
-          val existingClass = entries.filter(_.ext.isClass).find(tryClassLoad(_).isDefined)
-          if (existingClass.nonEmpty)
-            out.println(s"The path '$path' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
-          else inContext(state.context):
-            val jarClassPath = ClassPathFactory.newClassPath(jarFile)
-            val prevOutputDir = ctx.settings.outputDir.value
+            val existingClass = entries.filter(_.ext.isClass).find(tryClassLoad(_).isDefined)
+            if (existingClass.nonEmpty)
+              out.println(s"The path '$path' cannot be loaded, it contains a classfile that already exists on the classpath: ${existingClass.get}")
+              false
+            else inContext(state.context):
+              val jarClassPath = ClassPathFactory.newClassPath(jarFile)
+              val prevOutputDir = ctx.settings.outputDir.value
 
-            // add to compiler class path
-            ctx.platform.addToClassPath(jarClassPath)
-            SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
+              // add to compiler class path
+              ctx.platform.addToClassPath(jarClassPath)
+              SymbolLoaders.mergeNewEntries(defn.RootClass, ClassPath.RootPackage, jarClassPath, ctx.platform.classPath)
 
-            // new class loader with previous output dir and specified jar
-            val prevClassLoader = rendering.classLoader()
-            val jarClassLoader = fromURLsParallelCapable(
-              jarClassPath.asURLs, prevClassLoader)
-            rendering.myClassLoader = new AbstractFileClassLoader(
-              prevOutputDir,
-              jarClassLoader,
-              AbstractFileClassLoader.InterruptInstrumentation.fromString(ctx.settings.XreplInterruptInstrumentation.value)
-            )
+              // new class loader with previous output dir and specified jar
+              val prevClassLoader = rendering.classLoader()
+              val jarClassLoader = fromURLsParallelCapable(
+                jarClassPath.asURLs, prevClassLoader)
+              rendering.myClassLoader = new AbstractFileClassLoader(
+                prevOutputDir,
+                jarClassLoader,
+                AbstractFileClassLoader.InterruptInstrumentation.fromString(ctx.settings.XreplInterruptInstrumentation.value)
+              )
 
-            out.println(s"Added '$path' to classpath.")
-        } catch {
-          case e: Throwable =>
-            out.println(s"Failed to load '$path' to classpath: ${e.getMessage}")
-        }
-        state
+              out.println(s"Added '$path' to classpath.")
+              true
+          } catch {
+            case e: Throwable =>
+              out.println(s"Failed to load '$path' to classpath: ${e.getMessage}")
+              false
+          }
+
+        if isSuccess then state.recordInput(s"${JarCmd.command} $path") else state
 
     case KindOf(expr) =>
       out.println(s"""The :kind command is not currently supported.""")
@@ -699,30 +737,39 @@ class ReplDriver(settings: Array[String],
         state
       case _  =>
         rootCtx = setupRootCtx(tokenize(arg).toArray, rootCtx)
-        state.copy(context = rootCtx)
+        state.copy(context = rootCtx).recordInput(s"${Settings.command} $arg")
 
     case Silent => state.copy(quiet = !state.quiet)
     case Dep(dep) =>
-      val depStrings = List(dep)
-      if depStrings.nonEmpty then
-        val deps = depStrings.flatMap(DependencyResolver.parseDependency)
-        if deps.nonEmpty then
-          DependencyResolver.resolveDependencies(deps) match
-            case Right(files) =>
-              if files.nonEmpty then
-                inContext(state.context):
-                  // Update both compiler classpath and classloader
-                  val prevOutputDir = ctx.settings.outputDir.value
-                  val prevClassLoader = rendering.classLoader()
-                  rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
-                    files,
-                    prevClassLoader,
-                    prevOutputDir
-                  )
-                  out.println(s"Resolved ${deps.size} dependencies (${files.size} JARs)")
-            case Left(error) =>
-              out.println(s"Error resolving dependencies: $error")
-      state
+      def jarCount(fileSize: Int): String =
+        if fileSize == 1 then "1 JAR" else s"$fileSize JARs"
+
+      val isSuccess: Boolean =
+        if dep.nonEmpty then
+          DependencyResolver.parseDependency(dep) match
+            case Some(d) =>
+              DependencyResolver.resolveDependencies(List(d)) match
+                case Right(files) if files.nonEmpty =>
+                  inContext(state.context):
+                    // Update both compiler classpath and classloader
+                    val prevOutputDir = ctx.settings.outputDir.value
+                    val prevClassLoader = rendering.classLoader()
+                    rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
+                      files,
+                      prevClassLoader,
+                      prevOutputDir
+                    )
+                    out.println(s"Resolved a dependency (${jarCount(files.size)})")
+                    true
+                case Right(_) => false
+                case Left(error) =>
+                  out.println(s"Error resolving a dependency: $error")
+                  false
+            case None => false
+        else
+          out.println("No dependency specified.")
+          false
+      if isSuccess then state.recordInput(s"${Dep.command} $dep") else state
 
     case Quit =>
       // end of the world!
