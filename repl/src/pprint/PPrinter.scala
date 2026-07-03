@@ -63,7 +63,7 @@ case class PPrinter(defaultWidth: Int = 100,
   }
 
   /**
-    * A base version of `pprint.log` or `pprint.err.log` that lets you specify where 
+    * A base version of `pprint.log` or `pprint.err.log` that lets you specify where
     * you want to log the debug message to
     */
   def logTo[T](x: sourcecode.Text[T],
@@ -133,7 +133,7 @@ case class PPrinter(defaultWidth: Int = 100,
                                initialOffset: Int,
                                escapeUnicode: Boolean,
                                showFieldNames: Boolean,
-                               useProductToString: Predicate[Any]): fansi.Str = {
+                               useProductToString: Any => Boolean): fansi.Str = {
     fansi.Str.join(
       this.tokenizeWithProductToString(
         x,
@@ -200,7 +200,7 @@ case class PPrinter(defaultWidth: Int = 100,
                                   initialOffset: Int,
                                   escapeUnicode: Boolean,
                                   showFieldNames: Boolean,
-                                  useProductToString: Predicate[Any]): Iterator[fansi.Str] = {
+                                  useProductToString: Any => Boolean): Iterator[fansi.Str] = {
     // The three stages within the pretty-printing process:
 
     // Convert the Any into a lazy Tree of `Apply`, `Infix` and `Lazy`/`Strict` literals

@@ -60,7 +60,7 @@ abstract class Walker{
   def treeify(x: Any, escapeUnicode: Boolean, showFieldNames: Boolean): Tree =
     treeify(x, escapeUnicode, showFieldNames, ProductSupport.neverUseProductToString)
 
-  def treeify(x: Any, escapeUnicode: Boolean, showFieldNames: Boolean, useProductToString: Predicate[Any]): Tree = additionalHandlers.lift(x).getOrElse{
+  def treeify(x: Any, escapeUnicode: Boolean, showFieldNames: Boolean, useProductToString: Any => Boolean): Tree = additionalHandlers.lift(x).getOrElse{
     def toStringTree(x: Any) = Tree.Lazy(ctx =>
       Iterator(
         x.toString.asInstanceOf[String | Null] match{
@@ -138,7 +138,7 @@ abstract class Walker{
       case x: Product =>
         val className = x.getClass.getName
         if (x.productArity == 0) Tree.Lazy(ctx => Iterator(x.toString))
-        else if (!className.startsWith(tuplePrefix) && useProductToString.test(x)) toStringTree(x)
+        else if (!className.startsWith(tuplePrefix) && useProductToString(x)) toStringTree(x)
         else if(x.productArity == 2 && Util.isOperator(x.productPrefix)){
           Tree.Infix(
             treeify(x.productElement(0), escapeUnicode, showFieldNames, useProductToString),

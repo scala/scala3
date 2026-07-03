@@ -43,18 +43,22 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   private object ProductToStringProbe {
 
-    def predicate(using Context): Predicate[Any] = (value: Any) => {
-      value != null && {
-        val clazz = value.getClass
-        val toStringDeclaringClass = userToStringDeclaringClass(clazz)
-        val testWithContext = fromSymbol.borrow(ctx) {
-          fromSymbol.cache.get(clazz).orElse(
-            toStringDeclaringClass.filter(_ != clazz).flatMap(fromSymbol.cache.get)
-          )
-        }
+    def predicate(using Context): Any => Boolean = Predicate()
 
-        testWithContext.getOrElse(toStringDeclaringClass.exists(bytecodeCache.get))
-      }
+    /** Should be a concrete class so we can reflectively load its apply method. */
+    private class Predicate(using Context) extends (Any => Boolean) {
+      def apply(value: Any): Boolean =
+        value != null && {
+          val clazz = value.getClass
+          val toStringDeclaringClass = userToStringDeclaringClass(clazz)
+          val testWithContext = fromSymbol.borrow(ctx) {
+            fromSymbol.cache.get(clazz).orElse(
+              toStringDeclaringClass.filter(_ != clazz).flatMap(fromSymbol.cache.get)
+            )
+          }
+
+          testWithContext.getOrElse(toStringDeclaringClass.exists(bytecodeCache.get))
+        }
     }
 
     /** provides access to a Context for a closure that by contract should not retain
@@ -232,6 +236,16 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       val pprintCls = Class.forName("dotty.vendored.pprint.PPrinter$Color$", false, cl)
       val fansiStrCls = Class.forName("dotty.vendored.fansi.Str", false, cl)
       val Color = pprintCls.getField("MODULE$").get(null)
+      val Function1Cls = Class.forName("scala.Function1", false, cl)
+      val reflectivePredicate = locally {
+        // cant pass our predicate directly,
+        // so we have to reflectively invoke it from within the repl classloader.
+        val ReflectiveFunctionsCls = Class.forName("dotty.vendored.pprint.ReflectiveFunctions$", false, cl)
+        val ReflectiveFunctions = ReflectiveFunctionsCls.getField("MODULE$").get(null)
+        val factory = ReflectiveFunctionsCls.getMethod("reflectivePredicate", classOf[Any])
+
+        factory.invoke(ReflectiveFunctions, useProductToString)
+      }
       val Color_apply = pprintCls.getMethod("applyWithProductToString",
         classOf[Any],     // value
         classOf[Int],     // width
@@ -240,11 +254,11 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
         classOf[Int],     // initialOffset
         classOf[Boolean], // escape Unicode
         classOf[Boolean], // show field names
-        classOf[Predicate[?]], // use product toString
+        Function1Cls, // use product toString
       )
       val FansiStr_render = fansiStrCls.getMethod("render")
       val fansiStr = Color_apply.invoke(
-        Color, value, width, height, 2, initialOffset, false, true, useProductToString
+        Color, value, width, height, 2, initialOffset, false, true, reflectivePredicate
       )
       FansiStr_render.invoke(fansiStr).asInstanceOf[String]
     catch
