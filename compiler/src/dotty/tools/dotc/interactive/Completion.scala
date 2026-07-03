@@ -126,7 +126,7 @@ object Completion:
    * @param end The end position we'll look for the prefix at
    * @return Either the full prefix including the ` or an empty string
    */
-  private def checkBacktickPrefix(content: Array[Char], start: Int, end: Int): String =
+  private def checkBacktickPrefix(content: String, start: Int, end: Int): String =
     content.lift(start) match
       case Some(char) if char == '`' =>
         content.slice(start, end).mkString

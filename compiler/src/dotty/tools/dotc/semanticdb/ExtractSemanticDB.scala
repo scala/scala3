@@ -167,8 +167,8 @@ private[semanticdb] object ExtractSemanticDB:
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
       uri = Tools.mkURIstring(Paths.get(relPath(source, sourceRoot))),
-      text = if semanticdbText then String(source.content) else "",
-      md5 = internal.MD5.compute(String(source.content)),
+      text = if semanticdbText then source.content() else "",
+      md5 = internal.MD5.compute(source.content()),
       symbols = symbolInfos,
       occurrences = occurrences,
       synthetics = synthetics,
@@ -209,7 +209,7 @@ private[semanticdb] object ExtractSemanticDB:
       .resolve("META-INF")
       .resolve("semanticdb")
       .resolve(relPath(source, sourceRoot))
-      .resolveSibling(source.name + ".semanticdb")
+      .resolveSibling(source.file.name + ".semanticdb")
 
   /** Extractor of symbol occurrences from trees */
   class Extractor extends TreeTraverser:
@@ -390,7 +390,7 @@ private[semanticdb] object ExtractSemanticDB:
             arg match
               case tree @ NamedArg(name, arg) =>
                 traverse(localBodies.get(arg.symbol).getOrElse(arg))
-                registerUse(genParamSymbol(name), tree.span.startPos.withEnd(tree.span.start + name.toString.length), tree.source)
+                registerUse(genParamSymbol(name), tree.span.startPos.withEnd(tree.span.start + name.length), tree.source)
               case _ => traverse(arg)
         case tree: Assign =>
           val qualSym = condOpt(tree.lhs) { case Select(qual, _) if qual.symbol.exists => qual.symbol }
@@ -583,7 +583,7 @@ private[semanticdb] object ExtractSemanticDB:
       span.hasLength && ctx.platform.hasMainMethod(sym)
 
     private def spanOfSymbol(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Span =
-      val contents = if treeSource.exists then treeSource.content() else Array.empty[Char]
+      val contents = if treeSource.exists then treeSource.content() else ""
       val idx = contents.indexOfSlice(sym.name.show, span.start)
       val start = if idx >= 0 then idx else span.start
       Span(start, start + sym.name.show.length, start)

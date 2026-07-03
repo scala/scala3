@@ -71,9 +71,9 @@ public class CompilerBridgeDriver extends Driver {
   }
 
   private static void reportMissingFile(DelegatingReporter reporter, SourceFile sourceFile) {
-    String underline = String.join("", Collections.nCopies(sourceFile.path().length(), "^"));
+    String underline = String.join("", Collections.nCopies(sourceFile.file().path().length(), "^"));
     String message =
-      sourceFile.path() + ": Missing Zinc virtual file\n" +
+      sourceFile.file().path() + ": Missing Zinc virtual file\n" +
       underline + "\n" +
       "    Falling back to placeholder for the given source file (of class " + sourceFile.getClass().getName() + ")\n" +
       "    This is likely a bug in incremental compilation for the Scala 3 compiler.\n" +
@@ -108,7 +108,7 @@ public class CompilerBridgeDriver extends Driver {
         return vf.id();
       else
         // follow Zinc, which uses the path of the source file as a fallback.
-        return sourceFile.path();
+        return sourceFile.file().path();
     });
 
     ProgressCallbackImpl progressCallback = new ProgressCallbackImpl(progress);

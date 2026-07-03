@@ -4,12 +4,14 @@ package core
 
 import scala.io.Codec
 import util.NameTransformer
-import printing.{Showable, Texts, Printer}
+import printing.{Printer, Showable, Texts}
 import Texts.Text
 import StdNames.str
 import config.Config
-import util.{LinearMap, HashSet}
+import util.{HashSet, LinearMap}
 
+import java.nio.CharBuffer
+import java.nio.charset.StandardCharsets
 import scala.annotation.internal.sharable
 
 object Names {
@@ -139,11 +141,11 @@ object Names {
     def ++ (other: Name): ThisName = ++ (other.toString)
     def ++ (other: String): ThisName = mapLast(n => termName(n.toString + other))
 
-    /** Replace all occurrences of `from` to `to` in this name */
-    def replace(from: Char, to: Char): ThisName = mapParts(_.replace(from, to))
-
     /** Is this name empty? */
     def isEmpty: Boolean
+
+    /** Length of the name */
+    def length: Int
 
     /** Does (the first part of) this name starting at index `start` starts with `str`? */
     def startsWith(str: String, start: Int = 0): Boolean = firstPart.startsWith(str, start)
@@ -275,7 +277,7 @@ object Names {
   /** A simple name is essentially an interned string */
   final class SimpleName(val start: Int, val length: Int) extends TermName {
 
-  /** The n'th character */
+    /** The nth character */
     def apply(n: Int): Char = chrs(start + n)
 
     /** A character in this name satisfies predicate `p` */
@@ -310,7 +312,7 @@ object Names {
     /** A slice of this name making up the characters between `from` and `until` (exclusive) */
     def slice(from: Int, end: Int): SimpleName = {
       assert(0 <= from && from <= end && end <= length)
-      termName(chrs, start + from, end - from)
+      termName(CharBuffer.wrap(chrs, start + from, end - from))
     }
 
     def drop(n: Int): SimpleName = slice(n, length)
@@ -325,16 +327,9 @@ object Names {
     def head: Char = apply(0)
     def last: Char = apply(length - 1)
 
-    /** Copy character slice (from until end) to character array starting at `dstStart`.
-     *  @pre Destination must have enough space to hold all characters of this name.
-     */
-    def getChars(from: Int, end: Int, dst: Array[Char], dstStart: Int): Unit =
-      assert(0 <= from && from <= end && end <= length)
-      Array.copy(chrs, start + from, dst, dstStart, end - from)
-
     override def asSimpleName: SimpleName = this
     override def toSimpleName: SimpleName = this
-    override final def mangle: SimpleName = encode
+    override def mangle: SimpleName = encode
 
     override def replace(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this)) else this
@@ -369,14 +364,6 @@ object Names {
       while i <= suffix.length && i <= length && apply(length - i) == suffix(suffix.length - i) do i += 1
       i > suffix.length
 
-    override def replace(from: Char, to: Char): SimpleName = {
-      val cs = new Array[Char](length)
-      System.arraycopy(chrs, start, cs, 0, length)
-      for (i <- 0 until length)
-        if (cs(i) == from) cs(i) = to
-      termName(cs, 0, length)
-    }
-
     override def firstPart: SimpleName = this
     override def lastPart: SimpleName = this
 
@@ -385,6 +372,9 @@ object Names {
     protected def computeToString: String =
       if (length == 0) ""
       else new String(chrs, start, length)
+
+    def toUTF8Bytes: Array[Byte] =
+      if length == 0 then Array.emptyByteArray else Codec.toUTF8(chrs, start, length)
 
     def debugString: String = toString
   }
@@ -416,6 +406,7 @@ object Names {
     override def is(kind: NameKind): Boolean = toTermName.is(kind)
 
     override def isEmpty: Boolean = toTermName.isEmpty
+    override def length: Int = toTermName.length
 
     override def encode: TypeName   = toTermName.encode.toTypeName
     override def decode: TypeName   = toTermName.decode.toTypeName
@@ -435,7 +426,7 @@ object Names {
     override def asSimpleName: Nothing = throw new UnsupportedOperationException(s"$debugString is not a simple name")
 
     override def toSimpleName: SimpleName = termName(toString)
-    override final def mangle: SimpleName = encode.toSimpleName
+    override def mangle: SimpleName = encode.toSimpleName
 
     override def replace(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this))
@@ -472,6 +463,7 @@ object Names {
     }
 
     override def isEmpty: Boolean = false
+    override def length: Int = toString.length
     override def encode: ThisName = underlying.encode.derived(info.map(NameTransformer.encode)) // encodes <init>
     override def decode: ThisName = underlying.decode.derived(info.map(_.decode))
     override def firstPart: SimpleName = underlying.firstPart
@@ -488,11 +480,11 @@ object Names {
 
   // Nametable
 
-  inline val InitialNameSize = 0x20000
+  private inline val InitialNameSize = 0x20000
 
   /** Memory to store all names sequentially. */
   @sharable // because it's only mutated in synchronized block of enterIfNew
-  private[dotty] var chrs: Array[Char] = new Array[Char](InitialNameSize)
+  private var chrs: Array[Char] = new Array[Char](InitialNameSize)
 
   /** The number of characters filled. */
   @sharable // because it's only mutated in synchronized block of enterIfNew
@@ -511,7 +503,7 @@ object Names {
     override def hash(x: SimpleName) = hashValue(chrs, x.start, x.length) // needed for resize
     override def isEqual(x: SimpleName, y: SimpleName) = ???              // not needed
 
-    def enterIfNew(cs: Array[Char], offset: Int, len: Int): SimpleName =
+    def enterIfNew(cs: CharSequence, offset: Int, len: Int): SimpleName =
       Stats.record(statsItem("put"))
       val myTable = currentTable // could be outdated under parallel execution
       var idx = hashValue(cs, offset, len) & (myTable.length - 1)
@@ -534,7 +526,7 @@ object Names {
           // means we end up in the synchronized block here, where we get the correct state.
           name = SimpleName(nc, len)
           ensureCapacity(nc + len)
-          Array.copy(cs, offset, chrs, nc, len)
+          copy(cs, offset, len)
           nc += len
           addEntryAt(idx, name.nn)
         else
@@ -548,7 +540,18 @@ object Names {
   @sharable // because it's only mutated in synchronized block of enterIfNew
   private val nameTable = NameTable()
 
-  /** The hash of a name made of from characters cs[offset..offset+len-1].  */
+  /** The hash of a name made of from characters cs[offset..offset+len-1]. */
+  private def hashValue(cs: CharSequence, offset: Int, len: Int): Int = {
+    var i = offset
+    var hash = 0
+    while (i < len + offset) {
+      hash = 31 * hash + cs.charAt(i)
+      i += 1
+    }
+    hash
+  }
+
+  /** The hash of a name made of from characters cs[offset..offset+len-1]. */
   private def hashValue(cs: Array[Char], offset: Int, len: Int): Int = {
     var i = offset
     var hash = 0
@@ -562,47 +565,55 @@ object Names {
   /** Is (the ASCII representation of) name at given index equal to
    *  cs[offset..offset+len-1]?
    */
-  private def equals(index: Int, cs: Array[Char], offset: Int, len: Int): Boolean = {
+  private def equals(index: Int, cs: CharSequence, offset: Int, len: Int): Boolean = {
     var i = 0
-    while ((i < len) && (chrs(index + i) == cs(offset + i)))
+    while ((i < len) && (chrs(index + i) == cs.charAt(offset + i)))
       i += 1
     i == len
   }
 
+  /** Copies the given characters starting at the given offset for the given length into the chrs array. */
+  private def copy(cs: CharSequence, offset: Int, len: Int): Unit = {
+    var i = 0
+    while i < len do
+      chrs(nc) = cs.charAt(offset + i)
+      nc += 1
+      i += 1
+  }
+
   /** Create a term name from the characters in cs[offset..offset+len-1].
-   *  Assume they are already encoded.
    */
-  def termName(cs: Array[Char], offset: Int, len: Int): SimpleName =
+  def termName(cs: CharSequence, offset: Int, len: Int): SimpleName =
     nameTable.enterIfNew(cs, offset, len)
 
   /** Create a type name from the characters in cs[offset..offset+len-1].
-   *  Assume they are already encoded.
    */
-  def typeName(cs: Array[Char], offset: Int, len: Int): TypeName =
+  def typeName(cs: CharSequence, offset: Int, len: Int): TypeName =
     termName(cs, offset, len).toTypeName
 
-  /** Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
-   *  Assume they are already encoded.
+  /**
+   * Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
+   * This is less efficient than the CharSequence version because it requires a copy to convert the bytes to characters.
    */
   def termName(bs: Array[Byte], offset: Int, len: Int): SimpleName = {
-    val chars = Codec.fromUTF8(bs, offset, len)
+    val chars = new String(bs, offset, len, StandardCharsets.UTF_8)
     termName(chars, 0, chars.length)
   }
 
-  /** Create a type name from the UTF8 encoded bytes in bs[offset..offset+len-1].
-   *  Assume they are already encoded.
+  /**
+   * Create a type name from the UTF8 encoded bytes in bs[offset..offset+len-1].
+   * This is less efficient than the CharSequence version because it requires a copy to convert the bytes to characters.
    */
   def typeName(bs: Array[Byte], offset: Int, len: Int): TypeName =
     termName(bs, offset, len).toTypeName
 
-  /** Create a term name from a string.
-   *  See `sliceToTermName` in `Decorators` for a more efficient version
-   *  which however requires a Context for its operation.
-   */
-  def termName(s: String): SimpleName = termName(s.toCharArray.nn, 0, s.length)
+  /** Create a term name from a sequence of characters. */
+  def termName(s: CharSequence): SimpleName =
+    termName(s, 0, s.length)
 
-  /** Create a type name from a string */
-  def typeName(s: String): TypeName = typeName(s.toCharArray.nn, 0, s.length)
+  /** Create a type name from a sequence of characters. */
+  def typeName(s: CharSequence): TypeName =
+    typeName(s, 0, s.length)
 
   /** The type name represented by the empty string */
   val EmptyTypeName: TypeName = EmptyTermName.toTypeName

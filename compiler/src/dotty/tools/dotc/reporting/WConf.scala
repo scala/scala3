@@ -4,11 +4,9 @@ package reporting
 
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
-import dotty.tools.dotc.interfaces.SourceFile
 import dotty.tools.dotc.reporting.MessageFilter.SourcePattern
 
 import java.util.regex.PatternSyntaxException
-import scala.PartialFunction.cond
 import scala.annotation.internal.sharable
 import scala.util.matching.Regex
 
@@ -26,7 +24,7 @@ enum MessageFilter:
       val noHighlight = message.msg.message.replaceAll("\\e\\[[\\d;]*[^\\d;]", "")
       pattern.findFirstIn(noHighlight).nonEmpty
     case SourcePattern(pattern) =>
-      val source = message.position.orElse(NoSourcePosition).source()
+      val source = message.position.orElse(SourcePosition.toInterface(NoSourcePosition)).source()
       val path = source.jfile()
         .map(_.toPath.toAbsolutePath.toUri.normalize().getRawPath)
         .orElse(source.path())

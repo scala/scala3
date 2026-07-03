@@ -328,14 +328,14 @@ private[semanticdb] class SyntheticPrinter(symtab: PrinterSymtab, source: Source
       /** get the line length of a given line */
       def lineLength(line: Int): Int =
         val isLastLine = source.lineToOffsetOpt(line).nonEmpty && source.lineToOffsetOpt(line + 1).isEmpty
-        if isLastLine then source.content.length - source.lineToOffset(line) - 1
+        if isLastLine then source.content().length - source.lineToOffset(line) - 1
         else source.lineToOffset(line + 1) - source.lineToOffset(line) - 1 // -1 for newline char
 
       val start = source.lineToOffset(range.startLine) +
         math.min(range.startCharacter, lineLength(range.startLine))
       val end = source.lineToOffset(range.endLine) +
         math.min(range.endCharacter, lineLength(range.endLine))
-      new String(source.content, start, end - start)
+      source.content().substring(start, end)
 
 
   // def pprint(tree: s.Tree, range: Option[Range]): String =

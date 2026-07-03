@@ -20,7 +20,6 @@ final class DataReader(file: dotty.tools.io.AbstractFile) {
   }
 
   def nextByte: Byte = bb.get
-
   def nextBytes(len: Int): Array[Byte] = {
     val result = new Array[Byte](len)
     bb.get(result, 0, result.length)
@@ -30,6 +29,7 @@ final class DataReader(file: dotty.tools.io.AbstractFile) {
   def nextChar: Char = bb.getChar()
   def nextInt: Int = bb.getInt()
 
+  def getByte(mybp: Int): Byte = bb.get(mybp)
   def getChar(mybp: Int): Char = bb.getChar(mybp)
   def getInt(mybp: Int): Int = bb.getInt(mybp)
   def getLong(mybp: Int): Long = bb.getLong(mybp)
@@ -41,8 +41,14 @@ final class DataReader(file: dotty.tools.io.AbstractFile) {
   def bp: Int = bb.position()
   def bp_=(i: Int): Unit = bb.position(i)
 
-  def getByte(mybp: Int): Byte = bb.get(mybp)
-  def getBytes(mybp: Int, bytes: Array[Byte]): Unit = bb.get(mybp, bytes, 0, bytes.length)
+  // copies because the operation that calls it needs destructive updates anyway
+  def getBytes(mybp: Int, len: Int): Array[Byte] = {
+    val res = new Array[Byte](len)
+    getBytes(mybp, res, 0, res.length)
+    res
+  }
+  def getBytes(mybp: Int, dest: Array[Byte], offset: Int, len: Int): Unit =
+    bb.get(mybp, dest, offset, len)
 
   def getUTF(mybp: Int, len: Int): String = {
     val saved = bb.position()

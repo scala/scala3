@@ -1089,7 +1089,7 @@ object CheckUnused:
     def namePos: SrcPos =
       sym.srcPos.sourcePos.withSpan:
         val span = sym.span
-        Span(span.start, span.start + sym.name.toString.length)
+        Span(span.start, span.start + sym.name.length)
 
   extension (sel: ImportSelector)
     def boundTpe: Type = sel.bound match

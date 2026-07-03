@@ -9,15 +9,14 @@ import Types.*
 import StdNames.*
 import NameKinds.OuterSelectName
 import NameKinds.SuperAccessorName
-
 import ast.tpd.*
 import config.Printers.init as printer
 import reporting.trace as log
-
 import Errors.*
 import Trace.*
 import Util.*
 import Cache.*
+import dotty.tools.dotc.core.Names.termName
 
 import scala.collection.mutable
 import scala.annotation.tailrec
@@ -580,6 +579,7 @@ object Semantic:
     }
   end extension
 
+  private val tupledName = termName("tupled")
   extension (value: Value)
     def ensureHot(msg: String): Contextual[Value] =
       value.promote(msg)
@@ -782,7 +782,7 @@ object Semantic:
 
         case Fun(body, thisV, klass) =>
           // meth == NoSymbol for poly functions
-          if meth.name.toString == "tupled" then value // a call like `fun.tupled`
+          if meth.name == tupledName then value // a call like `fun.tupled`
           else
             promoteArgs()
             eval(body, thisV, klass, cacheResult = true)

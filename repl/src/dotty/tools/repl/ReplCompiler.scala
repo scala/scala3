@@ -235,7 +235,7 @@ class ReplCompiler extends Compiler:
     }
 
     def error[Tree <: untpd.Tree](sourceFile: SourceFile): Either[List[Diagnostic], Tree] =
-      Left(List(new Diagnostic.Error(s"Invalid scala expression", sourceFile.atSpan(Span(0, sourceFile.content.length)))))
+      Left(List(new Diagnostic.Error(s"Invalid scala expression", sourceFile.atSpan(Span(0, sourceFile.content().length)))))
 
     def unwrappedTypeTree(tree: tpd.Tree, sourceFile0: SourceFile)(using Context): Either[List[Diagnostic], tpd.ValDef] = {
       import tpd.*
