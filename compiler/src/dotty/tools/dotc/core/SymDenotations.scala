@@ -242,7 +242,7 @@ object SymDenotations {
 
     /** Does this denotation have an annotation matching the given class symbol? */
     final def hasAnnotation(cls: Symbol)(using Context): Boolean =
-      dropOtherAnnotations(annotations, cls).nonEmpty
+      annotations.exists(_.matches(cls))
 
     /** Apply transform `f` to all annotations of this denotation */
     final def transformAnnotations(f: Annotation => Annotation)(using Context): Unit =
@@ -271,19 +271,13 @@ object SymDenotations {
 
     /** Optionally, the annotation matching the given class symbol */
     final def getAnnotation(cls: Symbol)(using Context): Option[Annotation] =
-      dropOtherAnnotations(annotations, cls) match {
-        case annot +: _ => Some(annot)
-        case nil => None
-      }
+      annotations.find(_.matches(cls))
 
     /** The same as getAnnotation, but without ensuring
      *  that the symbol carrying the annotation is completed
      */
     final def unforcedAnnotation(cls: Symbol)(using Context): Option[Annotation] =
-      dropOtherAnnotations(myAnnotations, cls) match {
-        case annot +: _ => Some(annot)
-        case nil => None
-      }
+      myAnnotations.find(_.matches(cls))
 
     /** Add given annotation to the annotations of this denotation */
     final def addAnnotation(annot: Annotation): Unit =
@@ -306,12 +300,6 @@ object SymDenotations {
     /** Add all given annotations to this symbol */
     final def addAnnotations(annots: IterableOnce[Annotation])(using Context): Unit =
       annots.iterator.foreach(addAnnotation)
-
-    @tailrec
-    private def dropOtherAnnotations(anns: Vector[Annotation], cls: Symbol)(using Context): Vector[Annotation] = (anns: @unchecked) match {
-      case ann +: rest => if ann.matches(cls) then anns else dropOtherAnnotations(rest, cls)
-      case Vector() => Vector()
-    }
 
     /** If this is a method, the parameter symbols, by section.
      *  Both type and value parameters are included. Empty sections are skipped.
@@ -369,8 +357,8 @@ object SymDenotations {
     final def extensionParam(using Context): Symbol =
       def leadParam(paramss: Vector[Vector[Symbol]]): Symbol = paramss match
         case (param +: _) +: paramss1 if param.isType => leadParam(paramss1)
-        case _ +: (snd +: Vector()) +: _ if name.isRightAssocOperatorName => snd
-        case (fst +: Vector()) +: _ => fst
+        case _ +: Vector(snd) +: _ if name.isRightAssocOperatorName => snd
+        case Vector(fst) +: _ => fst
         case _ => NoSymbol
       assert(isAllOf(ExtensionMethod))
       ensureCompleted()
@@ -558,7 +546,7 @@ object SymDenotations {
       targetNameAnnot match
         case Some(ann) =>
           ann.arguments match
-            case Literal(Constant(str: String)) +: Vector() =>
+            case Vector(Literal(Constant(str: String))) =>
               if isType then
                 if is(ModuleClass) then str.toTypeName.moduleClassName
                 else str.toTypeName
@@ -1470,10 +1458,7 @@ object SymDenotations {
       else overriddenFromType(owner.asClass.classInfo.selfType)
 
     private def overriddenFromType(tp: Type)(using Context): Iterator[Symbol] =
-      (tp.baseClasses: @unchecked) match {
-        case _ +: inherited => inherited.iterator.map(overriddenSymbol(_)).filter(_.exists)
-        case Vector() => Iterator.empty
-      }
+      tp.baseClasses.iterator.drop(1).map(overriddenSymbol(_)).filter(_.exists)
 
     /** The symbol overriding this symbol in given subclass `inClass`.
      *
@@ -1487,17 +1472,11 @@ object SymDenotations {
      *  seen from class `base`. This symbol is always concrete.
      *  pre: `this.owner` is in the base class sequence of `base`.
      */
-    final def superSymbolIn(base: Symbol)(using Context): Symbol = {
-      @tailrec def loop(bcs: Vector[ClassSymbol]): Symbol = bcs match {
-        case bc +: bcs1 =>
-          val sym = matchingDecl(bcs.head, base.thisType)
-            .suchThat(alt => !alt.is(Deferred)).symbol
-          if (sym.exists) sym else loop(bcs.tail)
-        case _ =>
-          NoSymbol
-      }
-      loop(base.info.baseClasses.dropWhile(owner != _).tail)
-    }
+    final def superSymbolIn(base: Symbol)(using Context): Symbol =
+      base.info.baseClasses.iterator.dropWhile(_ != owner).drop(1)
+        .map(bc => matchingDecl(bc, base.thisType).suchThat(alt => !alt.is(Deferred)).symbol)
+        .find(_.exists)
+        .getOrElse(NoSymbol)
 
     /** A member of class `base` is incomplete if
      *  (1) it is declared deferred or
@@ -2247,18 +2226,21 @@ object SymDenotations {
 
     private def addInherited(name: Name, ownDenots: PreDenotation,
         required: FlagSet = EmptyFlags, excluded: FlagSet = EmptyFlags)(using Context): PreDenotation =
-      def collect(denots: PreDenotation, parents: Vector[Type]): PreDenotation = parents match
-        case p +: ps =>
-          val denots1 = collect(denots, ps)
-          p.classSymbol.denot match
+      // Walks the parents last-to-first without a reverseIterator allocation;
+      // this sits on the member-lookup hot path (`membersNamed`/`findMember`).
+      def collect(parents: Vector[Type]): PreDenotation =
+        var denots = ownDenots
+        var i = parents.length - 1
+        while i >= 0 do
+          parents(i).classSymbol.denot match
             case parentd: ClassDenotation =>
               val inherited = parentd.membersNamedNoShadowingBasedOnFlags(name, required, excluded | Private)
-              denots1.union(inherited.mapInherited(ownDenots, denots1, thisType))
+              denots = denots.union(inherited.mapInherited(ownDenots, denots, thisType))
             case _ =>
-              denots1
-        case nil => denots
+          i -= 1
+        denots
       if name.isConstructorName then ownDenots
-      else collect(ownDenots, info.parents)
+      else collect(info.parents)
 
     override final def findMember(name: Name, pre: Type, required: FlagSet, excluded: FlagSet)(using Context): Denotation =
       val raw = if excluded.is(Private) then nonPrivateMembersNamed(name) else membersNamed(name)
@@ -3115,7 +3097,7 @@ object SymDenotations {
 
   object BaseClassSet {
     def apply(bcs: Vector[ClassSymbol]): BaseClassSet =
-      new BaseClassSet(bcs.toArray.map(_.id))
+      new BaseClassSet(bcs.iterator.map(_.id).toArray)
   }
 
   /** A class to combine base data from parent types */
@@ -3138,14 +3120,11 @@ object SymDenotations {
 
     def addAll(bcs: Vector[ClassSymbol]): this.type = {
       val len = length
-      bcs match {
-        case bc +: bcs1 =>
-          addAll(bcs1)
-          if (!new BaseClassSet(classIds).contains(bc, len)) {
-            add(bc)
-            classes = bc +: classes
-          }
-        case nil =>
+      bcs.reverseIterator.foreach { bc =>
+        if (!new BaseClassSet(classIds).contains(bc, len)) {
+          add(bc)
+          classes = bc +: classes
+        }
       }
       this
     }
