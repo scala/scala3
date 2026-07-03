@@ -36,6 +36,10 @@ class CheckLoopingImplicits extends MiniPhase:
 
   override def description: String = CheckLoopingImplicits.description
 
+  override def preservesApplicationTypes: Boolean = true
+
+  override def preservesTrivialResultTypes: Boolean = true
+
   override def transformValDef(mdef: ValDef)(using Context): Tree =
     transform(mdef)
 

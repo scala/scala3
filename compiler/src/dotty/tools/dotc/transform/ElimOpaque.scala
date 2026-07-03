@@ -58,6 +58,18 @@ class ElimOpaque extends MiniPhase with DenotTransformer {
     }
   }
 
+  override def transformIsNoOpFor(ref: SingleDenotation)(using Context): Boolean =
+    // Both SymDenotation arms of `transform` are keyed on `isOpaqueAlias` or
+    // `containsOpaques`, i.e. on the Opaque flag; for a SymDenotation, `sym.denot`
+    // at this phase is `ref` itself, so `!ref.is(Opaque)` read off `ref`'s own flags
+    // makes both arms dead and `transform` falls through to `case _ => ref`. The
+    // NonSymSingleDenotation arm stays ungated: it consults the SYMBOL's opaqueness,
+    // and the symbol's last known denotation could already be the post-elimOpaque,
+    // Opaque-stripped one.
+    ref match
+      case ref: SymDenotation => !ref.is(Opaque)
+      case _ => false
+
   /** Resolve overloading of `==` and `!=` methods with the representation
    *  types in order to avoid boxing.
    */

@@ -3,10 +3,10 @@ package dotc
 package transform
 
 import scala.compiletime.uninitialized
+import scala.collection.mutable
 
 import core.*
 import Contexts.*, Phases.*, Symbols.*, Decorators.*
-import Flags.PackageVal
 import staging.StagingLevel.*
 
 /** A MegaPhase combines a number of mini-phases which are all executed in
@@ -45,6 +45,16 @@ object MegaPhase {
 
     /** If set, use relaxed typing for all phases in group */
     def relaxedTypingInGroup: Boolean = false
+
+    /** If set, this phase does not change the widened function types, term refs,
+     *  or typing assumptions used to compute Apply/TypeApply result types.
+     */
+    def preservesApplicationTypes: Boolean = false
+
+    /** If set, this phase does not change the mechanically fixed result types of
+     *  closures with stable child types or trivial control-flow nodes.
+     */
+    def preservesTrivialResultTypes: Boolean = false
 
     val cpy: TypedTreeCopier = cpyBetweenPhases
 
@@ -132,12 +142,35 @@ object MegaPhase {
     def transformFollowing(tree: Tree)(using Context): Tree =
       superPhase.transformNode(tree, idxInGroup + 1)
 
-    protected def singletonGroup: MegaPhase = new MegaPhase(Array(this))
+    protected lazy val singletonGroup: MegaPhase = new MegaPhase(Array(this))
 
     protected def run(using Context): Unit =
       singletonGroup.run
 
     override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
+  }
+
+  /** The names of all methods declared between a mini phase's class and `MiniPhase`,
+   *  memoized process-wide. Which prepare/transform hooks a mini phase redefines is a
+   *  class-static fact, so one reflective scan per class suffices; `Class#getDeclaredMethods`
+   *  is slow, and rescanning it for every group construction is wasteful. `ClassValue`
+   *  computation is idempotent and safe under concurrent first use of a class.
+   */
+  private val definedMethodNames = new ClassValue[java.util.HashSet[String]] {
+    override def computeValue(cls: Class[?]): java.util.HashSet[String] = {
+      val names = new java.util.HashSet[String]()
+      var cur: Class[?] = cls
+      while (!cur.eq(classOf[MiniPhase])) {
+        val methods = cur.getDeclaredMethods
+        var i = 0
+        while (i < methods.length) {
+          names.add(methods(i).nn.getName)
+          i += 1
+        }
+        cur = cur.getSuperclass.asInstanceOf[Class[?]]
+      }
+      names
+    }
   }
 }
 import MegaPhase.*
@@ -168,7 +201,46 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   override def isRunnable(using Context): Boolean = super.isRunnable && !ctx.usedBestEffortTasty
 
-  private val cpy: TypedTreeCopier = cpyBetweenPhases
+  private val cpy: TypedTreeCopier =
+    if miniPhases.forall(phase => phase.preservesApplicationTypes && phase.preservesTrivialResultTypes) then
+      cpyBetweenSafeTypePreservingPhases
+    else if miniPhases.forall(_.preservesApplicationTypes) then cpyBetweenApplicationTypePreservingPhases
+    else cpyBetweenPhases
+
+  private inline val IdentHook = 1L << 0
+  private inline val SelectHook = 1L << 1
+  private inline val ThisHook = 1L << 2
+  private inline val SuperHook = 1L << 3
+  private inline val ApplyHook = 1L << 4
+  private inline val TypeApplyHook = 1L << 5
+  private inline val LiteralHook = 1L << 6
+  private inline val NewHook = 1L << 7
+  private inline val TypedHook = 1L << 8
+  private inline val AssignHook = 1L << 9
+  private inline val BlockHook = 1L << 10
+  private inline val IfHook = 1L << 11
+  private inline val ClosureHook = 1L << 12
+  private inline val MatchHook = 1L << 13
+  private inline val CaseDefHook = 1L << 14
+  private inline val LabeledHook = 1L << 15
+  private inline val ReturnHook = 1L << 16
+  private inline val WhileDoHook = 1L << 17
+  private inline val TryHook = 1L << 18
+  private inline val SeqLiteralHook = 1L << 19
+  private inline val InlinedHook = 1L << 20
+  private inline val QuoteHook = 1L << 21
+  private inline val SpliceHook = 1L << 22
+  private inline val TypeTreeHook = 1L << 23
+  private inline val BindHook = 1L << 24
+  private inline val AlternativeHook = 1L << 25
+  private inline val UnApplyHook = 1L << 26
+  private inline val ValDefHook = 1L << 27
+  private inline val DefDefHook = 1L << 28
+  private inline val TypeDefHook = 1L << 29
+  private inline val TemplateHook = 1L << 30
+  private inline val PackageDefHook = 1L << 31
+  private inline val StatsHook = 1L << 32
+  private inline val OtherHook = 1L << 33
 
   /** Transform node using all phases in this group that have idxInGroup >= start */
   def transformNode(tree: Tree, start: Int)(using Context): Tree = {
@@ -229,10 +301,17 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   /** Transform full tree using all phases in this group that have idxInGroup >= start */
   def transformTree(tree: Tree, start: Int)(using Context): Tree = {
+    if noTreeHooks(start) then return tree
 
     inline def inLocalContext[T](inline op: Context ?=> T)(using Context): T =
-      val sym = tree.symbol
-      runWithOwner(if (sym.is(PackageVal)) sym.moduleClass else sym)(op)
+      runWithOwner(tree.localCtxOwner)(op)
+
+    inline def noHooks(
+        inline hookBit: Long,
+        prepPhases: Array[MiniPhase | Null],
+        transPhases: Array[MiniPhase | Null]): Boolean =
+      if start == 0 then (hookBits0 & hookBit) == 0L
+      else (prepPhases(start) eq null) && (transPhases(start) eq null)
 
     def transformNamed(tree: Tree, start: Int, outerCtx: Context): Tree = tree match {
       case tree: Ident =>
@@ -240,49 +319,83 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
           goIdent(tree, start)
         }
       case tree: Select =>
-        inContext(prepSelect(tree, start)(using outerCtx)) {
+        if noHooks(SelectHook, nxSelectPrepPhase, nxSelectTransPhase) then
           val qual = transformTree(tree.qualifier, start)
-          goSelect(cpy.Select(tree)(qual, tree.name), start)
-        }
+          cpy.Select(tree)(qual, tree.name)
+        else
+          inContext(prepSelect(tree, start)(using outerCtx)) {
+            val qual = transformTree(tree.qualifier, start)
+            goSelect(cpy.Select(tree)(qual, tree.name), start)
+          }
       case tree: ValDef =>
-        inContext(prepValDef(tree, start)(using outerCtx)) {
+        if noHooks(ValDefHook, nxValDefPrepPhase, nxValDefTransPhase) then
           def mapValDef(using Context) = {
             val tpt = transformTree(tree.tpt, start)
             val rhs = transformTree(tree.rhs, start)
             cpy.ValDef(tree)(tree.name, tpt, rhs)
           }
           if tree.isEmpty then tree
-          else goValDef(
-            if tree.symbol.exists then inLocalContext(mapValDef) else mapValDef,
-            start)
-        }
+          else if tree.symbol.exists then inLocalContext(mapValDef) else mapValDef
+        else
+          inContext(prepValDef(tree, start)(using outerCtx)) {
+            def mapValDef(using Context) = {
+              val tpt = transformTree(tree.tpt, start)
+              val rhs = transformTree(tree.rhs, start)
+              cpy.ValDef(tree)(tree.name, tpt, rhs)
+            }
+            if tree.isEmpty then tree
+            else goValDef(
+              if tree.symbol.exists then inLocalContext(mapValDef) else mapValDef,
+              start)
+          }
       case tree: DefDef =>
-        inContext(prepDefDef(tree, start)(using outerCtx)) {
+        if noHooks(DefDefHook, nxDefDefPrepPhase, nxDefDefTransPhase) then
           def mapDefDef(using Context) = {
-            val paramss = tree.paramss.mapConserve(transformSpecificTrees(_, start))
-              .asInstanceOf[List[ParamClause]]
+            val paramss = transformNonSplicingParamss(tree.paramss, start)
             val tpt = transformTree(tree.tpt, start)
             val rhs = transformTree(tree.rhs, start)
             cpy.DefDef(tree)(tree.name, paramss, tpt, rhs)
           }
-          goDefDef(inLocalContext(mapDefDef), start)
-        }
+          inLocalContext(mapDefDef)
+        else
+          inContext(prepDefDef(tree, start)(using outerCtx)) {
+            def mapDefDef(using Context) = {
+              val paramss = transformNonSplicingParamss(tree.paramss, start)
+              val tpt = transformTree(tree.tpt, start)
+              val rhs = transformTree(tree.rhs, start)
+              cpy.DefDef(tree)(tree.name, paramss, tpt, rhs)
+            }
+            goDefDef(inLocalContext(mapDefDef), start)
+          }
       case tree: TypeDef =>
-        inContext(prepTypeDef(tree, start)(using outerCtx)) {
+        if noHooks(TypeDefHook, nxTypeDefPrepPhase, nxTypeDefTransPhase) then
           val rhs = inLocalContext(transformTree(tree.rhs, start))
-          goTypeDef(cpy.TypeDef(tree)(tree.name, rhs), start)
-        }
+          cpy.TypeDef(tree)(tree.name, rhs)
+        else
+          inContext(prepTypeDef(tree, start)(using outerCtx)) {
+            val rhs = inLocalContext(transformTree(tree.rhs, start))
+            goTypeDef(cpy.TypeDef(tree)(tree.name, rhs), start)
+          }
       case tree: Labeled =>
-        inContext(prepLabeled(tree, start)(using outerCtx)) {
+        if noHooks(LabeledHook, nxLabeledPrepPhase, nxLabeledTransPhase) then
           val bind = transformTree(tree.bind, start).asInstanceOf[Bind]
           val expr = transformTree(tree.expr, start)
-          goLabeled(cpy.Labeled(tree)(bind, expr), start)
-        }
+          cpy.Labeled(tree)(bind, expr)
+        else
+          inContext(prepLabeled(tree, start)(using outerCtx)) {
+            val bind = transformTree(tree.bind, start).asInstanceOf[Bind]
+            val expr = transformTree(tree.expr, start)
+            goLabeled(cpy.Labeled(tree)(bind, expr), start)
+          }
       case tree: Bind =>
-        inContext(prepBind(tree, start)(using outerCtx)) {
+        if noHooks(BindHook, nxBindPrepPhase, nxBindTransPhase) then
           val body = transformTree(tree.body, start)
-          goBind(cpy.Bind(tree)(tree.name, body), start)
-        }
+          cpy.Bind(tree)(tree.name, body)
+        else
+          inContext(prepBind(tree, start)(using outerCtx)) {
+            val body = transformTree(tree.body, start)
+            goBind(cpy.Bind(tree)(tree.name, body), start)
+          }
       case _ =>
         inContext(prepOther(tree, start)(using outerCtx)) {
           goOther(tree, start)
@@ -291,11 +404,16 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
     def transformUnnamed(tree: Tree, start: Int, outerCtx: Context): Tree = tree match {
       case tree: Apply =>
-        inContext(prepApply(tree, start)(using outerCtx)) {
+        if noHooks(ApplyHook, nxApplyPrepPhase, nxApplyTransPhase) then
           val fun = transformTree(tree.fun, start)
-          val args = transformTrees(tree.args, start)
-          goApply(cpy.Apply(tree)(fun, args), start)
-        }
+          val args = transformNonSplicingTrees(tree.args, start)
+          cpy.Apply(tree)(fun, args)
+        else
+          inContext(prepApply(tree, start)(using outerCtx)) {
+            val fun = transformTree(tree.fun, start)
+            val args = transformNonSplicingTrees(tree.args, start)
+            goApply(cpy.Apply(tree)(fun, args), start)
+          }
       case tree: TypeTree =>
         inContext(prepTypeTree(tree, start)(using outerCtx)) {
           goTypeTree(tree, start)
@@ -311,134 +429,238 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
           goLiteral(tree, start)
         }
       case tree: Block =>
-        inContext(prepBlock(tree, start)(using outerCtx)) {
-          transformBlock(tree, start)
-        }
+        if noHooks(BlockHook, nxBlockPrepPhase, nxBlockTransPhase) then transformBlockBody(tree, start)
+        else
+          inContext(prepBlock(tree, start)(using outerCtx)) {
+            transformBlock(tree, start)
+          }
       case tree: TypeApply =>
-        inContext(prepTypeApply(tree, start)(using outerCtx)) {
+        if noHooks(TypeApplyHook, nxTypeApplyPrepPhase, nxTypeApplyTransPhase) then
           val fun = transformTree(tree.fun, start)
-          val args = transformTrees(tree.args, start)
-          goTypeApply(cpy.TypeApply(tree)(fun, args), start)
-        }
+          val args = transformNonSplicingTrees(tree.args, start)
+          cpy.TypeApply(tree)(fun, args)
+        else
+          inContext(prepTypeApply(tree, start)(using outerCtx)) {
+            val fun = transformTree(tree.fun, start)
+            val args = transformNonSplicingTrees(tree.args, start)
+            goTypeApply(cpy.TypeApply(tree)(fun, args), start)
+          }
       case tree: If =>
-        inContext(prepIf(tree, start)(using outerCtx)) {
+        if noHooks(IfHook, nxIfPrepPhase, nxIfTransPhase) then
           val cond = transformTree(tree.cond, start)
           val thenp = transformTree(tree.thenp, start)
           val elsep = transformTree(tree.elsep, start)
-          goIf(cpy.If(tree)(cond, thenp, elsep), start)
-        }
+          cpy.If(tree)(cond, thenp, elsep)
+        else
+          inContext(prepIf(tree, start)(using outerCtx)) {
+            val cond = transformTree(tree.cond, start)
+            val thenp = transformTree(tree.thenp, start)
+            val elsep = transformTree(tree.elsep, start)
+            goIf(cpy.If(tree)(cond, thenp, elsep), start)
+          }
       case tree: New =>
-        inContext(prepNew(tree, start)(using outerCtx)) {
+        if noHooks(NewHook, nxNewPrepPhase, nxNewTransPhase) then
           val tpt = transformTree(tree.tpt, start)
-          goNew(cpy.New(tree)(tpt), start)
-        }
+          cpy.New(tree)(tpt)
+        else
+          inContext(prepNew(tree, start)(using outerCtx)) {
+            val tpt = transformTree(tree.tpt, start)
+            goNew(cpy.New(tree)(tpt), start)
+          }
       case tree: Typed =>
-        inContext(prepTyped(tree, start)(using outerCtx)) {
+        if noHooks(TypedHook, nxTypedPrepPhase, nxTypedTransPhase) then
           val expr = transformTree(tree.expr, start)
           val tpt = transformTree(tree.tpt, start)
-          goTyped(cpy.Typed(tree)(expr, tpt), start)
-        }
+          cpy.Typed(tree)(expr, tpt)
+        else
+          inContext(prepTyped(tree, start)(using outerCtx)) {
+            val expr = transformTree(tree.expr, start)
+            val tpt = transformTree(tree.tpt, start)
+            goTyped(cpy.Typed(tree)(expr, tpt), start)
+          }
       case tree: CaseDef =>
-        inContext(prepCaseDef(tree, start)(using outerCtx)) {
+        if noHooks(CaseDefHook, nxCaseDefPrepPhase, nxCaseDefTransPhase) then
           val pat = withMode(Mode.Pattern)(transformTree(tree.pat, start))
           val guard = transformTree(tree.guard, start)
           val body = transformTree(tree.body, start)
-          goCaseDef(cpy.CaseDef(tree)(pat, guard, body), start)
-        }
+          cpy.CaseDef(tree)(pat, guard, body)
+        else
+          inContext(prepCaseDef(tree, start)(using outerCtx)) {
+            val pat = withMode(Mode.Pattern)(transformTree(tree.pat, start))
+            val guard = transformTree(tree.guard, start)
+            val body = transformTree(tree.body, start)
+            goCaseDef(cpy.CaseDef(tree)(pat, guard, body), start)
+          }
       case tree: Closure =>
-        inContext(prepClosure(tree, start)(using outerCtx)) {
-          val env = transformTrees(tree.env, start)
+        if noHooks(ClosureHook, nxClosurePrepPhase, nxClosureTransPhase) then
+          val env = transformNonSplicingTrees(tree.env, start)
           val meth = transformTree(tree.meth, start)
           val tpt = transformTree(tree.tpt, start)
-          goClosure(cpy.Closure(tree)(env, meth, tpt), start)
-        }
+          cpy.Closure(tree)(env, meth, tpt)
+        else
+          inContext(prepClosure(tree, start)(using outerCtx)) {
+            val env = transformNonSplicingTrees(tree.env, start)
+            val meth = transformTree(tree.meth, start)
+            val tpt = transformTree(tree.tpt, start)
+            goClosure(cpy.Closure(tree)(env, meth, tpt), start)
+          }
       case tree: Assign =>
-        inContext(prepAssign(tree, start)(using outerCtx)) {
+        if noHooks(AssignHook, nxAssignPrepPhase, nxAssignTransPhase) then
           val lhs = transformTree(tree.lhs, start)
           val rhs = transformTree(tree.rhs, start)
-          goAssign(cpy.Assign(tree)(lhs, rhs), start)
-        }
+          cpy.Assign(tree)(lhs, rhs)
+        else
+          inContext(prepAssign(tree, start)(using outerCtx)) {
+            val lhs = transformTree(tree.lhs, start)
+            val rhs = transformTree(tree.rhs, start)
+            goAssign(cpy.Assign(tree)(lhs, rhs), start)
+          }
       case tree: SeqLiteral =>
-        inContext(prepSeqLiteral(tree, start)(using outerCtx)) {
-          val elems = transformTrees(tree.elems, start)
+        if noHooks(SeqLiteralHook, nxSeqLiteralPrepPhase, nxSeqLiteralTransPhase) then
+          val elems = transformNonSplicingTrees(tree.elems, start)
           val elemtpt = transformTree(tree.elemtpt, start)
-          goSeqLiteral(cpy.SeqLiteral(tree)(elems, elemtpt), start)
-        }
+          cpy.SeqLiteral(tree)(elems, elemtpt)
+        else
+          inContext(prepSeqLiteral(tree, start)(using outerCtx)) {
+            val elems = transformNonSplicingTrees(tree.elems, start)
+            val elemtpt = transformTree(tree.elemtpt, start)
+            goSeqLiteral(cpy.SeqLiteral(tree)(elems, elemtpt), start)
+          }
       case tree: Super =>
         inContext(prepSuper(tree, start)(using outerCtx)) {
           goSuper(tree, start)
         }
       case tree: Template =>
-        inContext(prepTemplate(tree, start)(using outerCtx)) {
+        if noHooks(TemplateHook, nxTemplatePrepPhase, nxTemplateTransPhase) then
           val constr = transformSpecificTree(tree.constr, start)
-          val parents = transformTrees(tree.parents, start)(using ctx.superCallContext)
+          val parents = transformNonSplicingTrees(tree.parents, start)(using ctx.superCallContext)
           val self = transformSpecificTree(tree.self, start)
           val body = transformStats(tree.body, tree.symbol, start)
-          goTemplate(cpy.Template(tree)(constr, parents, Nil, self, body), start)
-        }
+          cpy.Template(tree)(constr, parents, Nil, self, body)
+        else
+          inContext(prepTemplate(tree, start)(using outerCtx)) {
+            val constr = transformSpecificTree(tree.constr, start)
+            val parents = transformNonSplicingTrees(tree.parents, start)(using ctx.superCallContext)
+            val self = transformSpecificTree(tree.self, start)
+            val body = transformStats(tree.body, tree.symbol, start)
+            goTemplate(cpy.Template(tree)(constr, parents, Nil, self, body), start)
+          }
       case tree: Match =>
-        inContext(prepMatch(tree, start)(using outerCtx)) {
+        if noHooks(MatchHook, nxMatchPrepPhase, nxMatchTransPhase) then
           val selector = transformTree(tree.selector, start)
-          val cases = transformSpecificTrees(tree.cases, start)
-          goMatch(cpy.Match(tree)(selector, cases), start)
-        }
+          val cases = transformNonSplicingSpecificTrees(tree.cases, start)
+          cpy.Match(tree)(selector, cases)
+        else
+          inContext(prepMatch(tree, start)(using outerCtx)) {
+            val selector = transformTree(tree.selector, start)
+            val cases = transformNonSplicingSpecificTrees(tree.cases, start)
+            goMatch(cpy.Match(tree)(selector, cases), start)
+          }
       case tree: UnApply =>
-        inContext(prepUnApply(tree, start)(using outerCtx)) {
+        if noHooks(UnApplyHook, nxUnApplyPrepPhase, nxUnApplyTransPhase) then
           val fun = transformTree(tree.fun, start)
-          val implicits = transformTrees(tree.implicits, start)
-          val patterns = transformTrees(tree.patterns, start)
-          goUnApply(cpy.UnApply(tree)(fun, implicits, patterns), start)
-        }
+          val implicits = transformNonSplicingTrees(tree.implicits, start)
+          val patterns = transformNonSplicingTrees(tree.patterns, start)
+          cpy.UnApply(tree)(fun, implicits, patterns)
+        else
+          inContext(prepUnApply(tree, start)(using outerCtx)) {
+            val fun = transformTree(tree.fun, start)
+            val implicits = transformNonSplicingTrees(tree.implicits, start)
+            val patterns = transformNonSplicingTrees(tree.patterns, start)
+            goUnApply(cpy.UnApply(tree)(fun, implicits, patterns), start)
+          }
       case tree: PackageDef =>
-        inContext(prepPackageDef(tree, start)(using outerCtx)) {
+        if noHooks(PackageDefHook, nxPackageDefPrepPhase, nxPackageDefTransPhase) then
           def mapPackage(using Context) = {
             val pid = transformSpecificTree(tree.pid, start)
             val stats = transformStats(tree.stats, tree.symbol, start)
             cpy.PackageDef(tree)(pid, stats)
           }
-          goPackageDef(inLocalContext(mapPackage), start)
-        }
+          inLocalContext(mapPackage)
+        else
+          inContext(prepPackageDef(tree, start)(using outerCtx)) {
+            def mapPackage(using Context) = {
+              val pid = transformSpecificTree(tree.pid, start)
+              val stats = transformStats(tree.stats, tree.symbol, start)
+              cpy.PackageDef(tree)(pid, stats)
+            }
+            goPackageDef(inLocalContext(mapPackage), start)
+          }
       case tree: Try =>
-        inContext(prepTry(tree, start)(using outerCtx)) {
+        if noHooks(TryHook, nxTryPrepPhase, nxTryTransPhase) then
           val expr = transformTree(tree.expr, start)
-          val cases = transformSpecificTrees(tree.cases, start)
+          val cases = transformNonSplicingSpecificTrees(tree.cases, start)
           val finalizer = transformTree(tree.finalizer, start)
-          goTry(cpy.Try(tree)(expr, cases, finalizer), start)
-        }
+          cpy.Try(tree)(expr, cases, finalizer)
+        else
+          inContext(prepTry(tree, start)(using outerCtx)) {
+            val expr = transformTree(tree.expr, start)
+            val cases = transformNonSplicingSpecificTrees(tree.cases, start)
+            val finalizer = transformTree(tree.finalizer, start)
+            goTry(cpy.Try(tree)(expr, cases, finalizer), start)
+          }
       case tree: Inlined =>
-        inContext(prepInlined(tree, start)(using outerCtx)) {
-          val bindings = transformSpecificTrees(tree.bindings, start)
+        if noHooks(InlinedHook, nxInlinedPrepPhase, nxInlinedTransPhase) then
+          val bindings = transformNonSplicingSpecificTrees(tree.bindings, start)
           val expansion = transformTree(tree.expansion, start)(using inlineContext(tree))
-          goInlined(cpy.Inlined(tree)(tree.call, bindings, expansion), start)
-        }
+          cpy.Inlined(tree)(tree.call, bindings, expansion)
+        else
+          inContext(prepInlined(tree, start)(using outerCtx)) {
+            val bindings = transformNonSplicingSpecificTrees(tree.bindings, start)
+            val expansion = transformTree(tree.expansion, start)(using inlineContext(tree))
+            goInlined(cpy.Inlined(tree)(tree.call, bindings, expansion), start)
+          }
       case tree: Quote =>
-        inContext(prepQuote(tree, start)(using outerCtx)) {
+        if noHooks(QuoteHook, nxQuotePrepPhase, nxQuoteTransPhase) then
           val body = transformTree(tree.body, start)(using quoteContext)
-          goQuote(cpy.Quote(tree)(body, Nil), start)
-        }
+          cpy.Quote(tree)(body, Nil)
+        else
+          inContext(prepQuote(tree, start)(using outerCtx)) {
+            val body = transformTree(tree.body, start)(using quoteContext)
+            goQuote(cpy.Quote(tree)(body, Nil), start)
+          }
       case tree: Splice =>
-        inContext(prepSplice(tree, start)(using outerCtx)) {
+        if noHooks(SpliceHook, nxSplicePrepPhase, nxSpliceTransPhase) then
           val expr = transformTree(tree.expr, start)(using spliceContext)
-          goSplice(cpy.Splice(tree)(expr), start)
-        }
+          cpy.Splice(tree)(expr)
+        else
+          inContext(prepSplice(tree, start)(using outerCtx)) {
+            val expr = transformTree(tree.expr, start)(using spliceContext)
+            goSplice(cpy.Splice(tree)(expr), start)
+          }
       case tree: Return =>
-        inContext(prepReturn(tree, start)(using outerCtx)) {
+        if noHooks(ReturnHook, nxReturnPrepPhase, nxReturnTransPhase) then
           val expr = transformTree(tree.expr, start)
-          goReturn(cpy.Return(tree)(expr, tree.from), start)
+          cpy.Return(tree)(expr, tree.from)
             // don't transform `tree.from`, as this is not a normal ident, but
             // a pointer to the enclosing method.
-        }
+        else
+          inContext(prepReturn(tree, start)(using outerCtx)) {
+            val expr = transformTree(tree.expr, start)
+            goReturn(cpy.Return(tree)(expr, tree.from), start)
+              // don't transform `tree.from`, as this is not a normal ident, but
+              // a pointer to the enclosing method.
+          }
       case tree: WhileDo =>
-        inContext(prepWhileDo(tree, start)(using outerCtx)) {
+        if noHooks(WhileDoHook, nxWhileDoPrepPhase, nxWhileDoTransPhase) then
           val cond = transformTree(tree.cond, start)
           val body = transformTree(tree.body, start)
-          goWhileDo(cpy.WhileDo(tree)(cond, body), start)
-        }
+          cpy.WhileDo(tree)(cond, body)
+        else
+          inContext(prepWhileDo(tree, start)(using outerCtx)) {
+            val cond = transformTree(tree.cond, start)
+            val body = transformTree(tree.body, start)
+            goWhileDo(cpy.WhileDo(tree)(cond, body), start)
+          }
       case tree: Alternative =>
-        inContext(prepAlternative(tree, start)(using outerCtx)) {
-          val trees = transformTrees(tree.trees, start)
-          goAlternative(cpy.Alternative(tree)(trees), start)
-        }
+        if noHooks(AlternativeHook, nxAlternativePrepPhase, nxAlternativeTransPhase) then
+          val trees = transformNonSplicingTrees(tree.trees, start)
+          cpy.Alternative(tree)(trees)
+        else
+          inContext(prepAlternative(tree, start)(using outerCtx)) {
+            val trees = transformNonSplicingTrees(tree.trees, start)
+            goAlternative(cpy.Alternative(tree)(trees), start)
+          }
       case tree =>
         inContext(prepOther(tree, start)(using outerCtx)) {
           goOther(tree, start)
@@ -446,8 +668,24 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     }
 
     // try
-      if (tree.source != ctx.source && tree.source.exists)
+      if ((tree.source `ne` ctx.source) && tree.source.exists)
         transformTree(tree, start)(using ctx.withSource(tree.source))
+      else if (tree.isInstanceOf[Ident]
+          && noHooks(IdentHook, nxIdentPrepPhase, nxIdentTransPhase))
+        // iter46 E1: leaf-tree shortcut when no mini-phase registers prep/trans for Ident
+        tree
+      else if (tree.isInstanceOf[TypeTree]
+          && noHooks(TypeTreeHook, nxTypeTreePrepPhase, nxTypeTreeTransPhase))
+        // iter46 E1: leaf-tree shortcut when no mini-phase registers prep/trans for TypeTree
+        tree
+      else if (tree.isInstanceOf[This]
+          && noHooks(ThisHook, nxThisPrepPhase, nxThisTransPhase))
+        // leaf-tree shortcut when no mini-phase registers prep/trans for This
+        tree
+      else if (tree.isInstanceOf[Literal]
+          && noHooks(LiteralHook, nxLiteralPrepPhase, nxLiteralTransPhase))
+        // leaf-tree shortcut when no mini-phase registers prep/trans for Literal
+        tree
       else if (tree.isInstanceOf[NameTree])
         transformNamed(tree, start, ctx)
       else
@@ -457,23 +695,62 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
     //  throw ex
   }
 
+  private inline def noStatsHooks(start: Int): Boolean =
+    if start == 0 then (hookBits0 & StatsHook) == 0L
+    else (nxStatsPrepPhase(start) eq null) && (nxStatsTransPhase(start) eq null)
+
+  private inline def noTreeHooks(start: Int): Boolean =
+    if start == 0 then noTreeHooks0
+    else noTreeHooksFrom(start)
+
+  private def transformBlockBody(tree: Block, start: Int)(using Context): Block =
+    if noStatsHooks(start) then
+      tree.stats.mapStatements(ctx.owner,
+        transformTree(_, start),
+        stats1 => ctx ?=> {
+          val expr = transformTree(tree.expr, start)
+          cpy.Block(tree)(stats1, expr)
+        })
+    else
+      val nestedCtx = prepStats(tree.stats, start)
+      tree.stats.mapStatements(ctx.owner,
+        transformTree(_, start),
+        stats1 => ctx ?=> {
+          val stats2 = goStats(stats1, start)(using nestedCtx)
+          val expr = transformTree(tree.expr, start)
+          cpy.Block(tree)(stats2, expr)
+        })(using nestedCtx)
+
   def transformSpecificTree[T <: Tree](tree: T, start: Int)(using Context): T =
     transformTree(tree, start).asInstanceOf[T]
 
   def transformStats(trees: List[Tree], exprOwner: Symbol, start: Int)(using Context): List[Tree] =
-    val nestedCtx = prepStats(trees, start)
-    val trees1 = trees.mapStatements(exprOwner, transformTree(_, start), stats1 => stats1)(using nestedCtx)
-    goStats(trees1, start)(using nestedCtx)
+    if noTreeHooks(start) then trees
+    else if noStatsHooks(start) then
+      trees.mapStatements(exprOwner, transformTree(_, start), stats1 => stats1)
+    else
+      val nestedCtx = prepStats(trees, start)
+      val trees1 = trees.mapStatements(exprOwner, transformTree(_, start), stats1 => stats1)(using nestedCtx)
+      goStats(trees1, start)(using nestedCtx)
 
   def transformBlock(tree: Block, start: Int)(using Context): Tree =
-    val nestedCtx = prepStats(tree.stats, start)
-    val block1 = tree.stats.mapStatements(ctx.owner,
-      transformTree(_, start),
-      stats1 => ctx ?=> {
-        val stats2 = goStats(stats1, start)(using nestedCtx)
-        val expr2 = transformTree(tree.expr, start)
-        cpy.Block(tree)(stats2, expr2)
-      })(using nestedCtx)
+    val block1 =
+      if noStatsHooks(start) then
+        tree.stats.mapStatements(ctx.owner,
+          transformTree(_, start),
+          stats1 => ctx ?=> {
+            val expr2 = transformTree(tree.expr, start)
+            cpy.Block(tree)(stats1, expr2)
+          })
+      else
+        val nestedCtx = prepStats(tree.stats, start)
+        tree.stats.mapStatements(ctx.owner,
+          transformTree(_, start),
+          stats1 => ctx ?=> {
+            val stats2 = goStats(stats1, start)(using nestedCtx)
+            val expr2 = transformTree(tree.expr, start)
+            cpy.Block(tree)(stats2, expr2)
+          })(using nestedCtx)
     goBlock(block1, start)
 
   def transformUnit(tree: Tree)(using Context): Tree = {
@@ -483,10 +760,101 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   }
 
   def transformTrees(trees: List[Tree], start: Int)(using Context): List[Tree] =
-    trees.flattenedMapConserve(transformTree(_, start))
+    transformNonSplicingTrees(trees, start)
 
   def transformSpecificTrees[T <: Tree](trees: List[T], start: Int)(using Context): List[T] =
     transformTrees(trees, start).asInstanceOf[List[T]]
+
+  def transformNonSplicingTrees(trees: List[Tree], start: Int)(using Context): List[Tree] =
+    if noTreeHooks(start) then return trees
+    if trees.nonEmpty && (trees.tail eq Nil) then
+      val head0 = trees.head
+      val head1 = transformTree(head0, start)
+      if head1 eq head0 then return trees
+      head1 match
+        case Thicket(elems1) => return elems1
+        case _ => return head1 :: Nil
+    var mapped: mutable.ListBuffer[Tree] | Null = null
+    var unchanged = trees
+    var pending = trees
+    while pending.nonEmpty do
+      val head0 = pending.head
+      val head1 = transformTree(head0, start)
+      if head1 eq head0 then pending = pending.tail
+      else
+        val buf = if mapped == null then new mutable.ListBuffer[Tree] else mapped
+        var xc = unchanged
+        while xc ne pending do
+          buf += xc.head
+          xc = xc.tail
+        head1 match
+          case Thicket(elems1) =>
+            buf ++= elems1
+            pending = pending.tail
+            while pending.nonEmpty do
+              transformTree(pending.head, start) match
+                case Thicket(elems) => buf ++= elems
+                case tree => buf += tree
+              pending = pending.tail
+            return buf.toList
+          case _ =>
+            buf += head1
+            val tail0 = pending.tail
+            mapped = buf
+            unchanged = tail0
+            pending = tail0
+    if mapped == null then unchanged
+    else mapped.prependToList(unchanged)
+
+  def transformNonSplicingSpecificTrees[T <: Tree](trees: List[T], start: Int)(using Context): List[T] =
+    transformNonSplicingTrees(trees, start).asInstanceOf[List[T]]
+
+  private inline def transformNonSplicingParamClause(params: ParamClause, start: Int)(using Context): ParamClause =
+    if noTreeHooks(start) then params
+    else params.asInstanceOf[List[Tree]] match
+      case Nil => params
+      case param0 :: Nil =>
+        val param1 = transformTree(param0, start)
+        if param1 eq param0 then params
+        else
+          param1 match
+            case Thicket(elems1) => elems1.asInstanceOf[ParamClause]
+            case _ => (param1 :: Nil).asInstanceOf[ParamClause]
+      case trees =>
+        transformNonSplicingTrees(trees, start).asInstanceOf[ParamClause]
+
+  private inline def transformNonSplicingParamss(paramss: List[ParamClause], start: Int)(using Context): List[ParamClause] =
+    paramss match
+      case Nil => Nil
+      case params0 :: Nil =>
+        val params1 = transformNonSplicingParamClause(params0, start)
+        if params1 eq params0 then paramss else params1 :: Nil
+      case params0 :: params1 :: Nil =>
+        val nparams0 = transformNonSplicingParamClause(params0, start)
+        val nparams1 = transformNonSplicingParamClause(params1, start)
+        if (nparams0 eq params0) && (nparams1 eq params1) then paramss
+        else nparams0 :: nparams1 :: Nil
+      case _ =>
+        var mapped: mutable.ListBuffer[ParamClause] | Null = null
+        var unchanged = paramss
+        var pending = paramss
+        while pending.nonEmpty do
+          val params0 = pending.head
+          val params1 = transformNonSplicingParamClause(params0, start)
+          if params1 eq params0 then pending = pending.tail
+          else
+            val buf = if mapped == null then new mutable.ListBuffer[ParamClause] else mapped
+            var xc = unchanged
+            while xc ne pending do
+              buf += xc.head
+              xc = xc.tail
+            buf += params1
+            val tail0 = pending.tail
+            mapped = buf
+            unchanged = tail0
+            pending = tail0
+        if mapped == null then unchanged
+        else mapped.prependToList(unchanged)
 
   protected def run(using Context): Unit =
     ctx.compilationUnit.tpdTree =
@@ -494,26 +862,11 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   // Initialization code
 
-  /** Class#getDeclaredMethods is slow, so we cache its output */
-  private val clsMethodsCache = new java.util.IdentityHashMap[Class[?], Array[java.lang.reflect.Method | Null]]
-
   /** Does `phase` contain a redefinition of method `name`?
    *  (which is a method of MiniPhase)
    */
-  private def defines(phase: MiniPhase, name: String) = {
-    def hasRedefinedMethod(cls: Class[?]): Boolean =
-      if (cls.eq(classOf[MiniPhase])) false
-      else {
-        var clsMethods = clsMethodsCache.get(cls)
-        if (clsMethods == null) {
-          clsMethods = cls.getDeclaredMethods
-          clsMethodsCache.put(cls, clsMethods)
-        }
-        clsMethods.nn.exists(_.nn.getName == name) ||
-        hasRedefinedMethod(cls.getSuperclass.nn)
-      }
-    hasRedefinedMethod(phase.getClass)
-  }
+  private def defines(phase: MiniPhase, name: String) =
+    definedMethodNames.get(phase.getClass).contains(name)
 
   private def newNxArray = new Array[MiniPhase | Null](miniPhases.length + 1)
   private val emptyNxArray = newNxArray
@@ -601,6 +954,143 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
   private val nxUnitTransPhase = init("transformUnit")
   private val nxOtherPrepPhase = init("prepareForOther")
   private val nxOtherTransPhase = init("transformOther")
+
+  private inline def hookBit0(
+      inline bit: Long,
+      prepPhases: Array[MiniPhase | Null],
+      transPhases: Array[MiniPhase | Null]): Long =
+    if (prepPhases(0) eq null) && (transPhases(0) eq null) then 0L else bit
+
+  private val hookBits0: Long =
+    hookBit0(IdentHook, nxIdentPrepPhase, nxIdentTransPhase) |
+    hookBit0(SelectHook, nxSelectPrepPhase, nxSelectTransPhase) |
+    hookBit0(ThisHook, nxThisPrepPhase, nxThisTransPhase) |
+    hookBit0(SuperHook, nxSuperPrepPhase, nxSuperTransPhase) |
+    hookBit0(ApplyHook, nxApplyPrepPhase, nxApplyTransPhase) |
+    hookBit0(TypeApplyHook, nxTypeApplyPrepPhase, nxTypeApplyTransPhase) |
+    hookBit0(LiteralHook, nxLiteralPrepPhase, nxLiteralTransPhase) |
+    hookBit0(NewHook, nxNewPrepPhase, nxNewTransPhase) |
+    hookBit0(TypedHook, nxTypedPrepPhase, nxTypedTransPhase) |
+    hookBit0(AssignHook, nxAssignPrepPhase, nxAssignTransPhase) |
+    hookBit0(BlockHook, nxBlockPrepPhase, nxBlockTransPhase) |
+    hookBit0(IfHook, nxIfPrepPhase, nxIfTransPhase) |
+    hookBit0(ClosureHook, nxClosurePrepPhase, nxClosureTransPhase) |
+    hookBit0(MatchHook, nxMatchPrepPhase, nxMatchTransPhase) |
+    hookBit0(CaseDefHook, nxCaseDefPrepPhase, nxCaseDefTransPhase) |
+    hookBit0(LabeledHook, nxLabeledPrepPhase, nxLabeledTransPhase) |
+    hookBit0(ReturnHook, nxReturnPrepPhase, nxReturnTransPhase) |
+    hookBit0(WhileDoHook, nxWhileDoPrepPhase, nxWhileDoTransPhase) |
+    hookBit0(TryHook, nxTryPrepPhase, nxTryTransPhase) |
+    hookBit0(SeqLiteralHook, nxSeqLiteralPrepPhase, nxSeqLiteralTransPhase) |
+    hookBit0(InlinedHook, nxInlinedPrepPhase, nxInlinedTransPhase) |
+    hookBit0(QuoteHook, nxQuotePrepPhase, nxQuoteTransPhase) |
+    hookBit0(SpliceHook, nxSplicePrepPhase, nxSpliceTransPhase) |
+    hookBit0(TypeTreeHook, nxTypeTreePrepPhase, nxTypeTreeTransPhase) |
+    hookBit0(BindHook, nxBindPrepPhase, nxBindTransPhase) |
+    hookBit0(AlternativeHook, nxAlternativePrepPhase, nxAlternativeTransPhase) |
+    hookBit0(UnApplyHook, nxUnApplyPrepPhase, nxUnApplyTransPhase) |
+    hookBit0(ValDefHook, nxValDefPrepPhase, nxValDefTransPhase) |
+    hookBit0(DefDefHook, nxDefDefPrepPhase, nxDefDefTransPhase) |
+    hookBit0(TypeDefHook, nxTypeDefPrepPhase, nxTypeDefTransPhase) |
+    hookBit0(TemplateHook, nxTemplatePrepPhase, nxTemplateTransPhase) |
+    hookBit0(PackageDefHook, nxPackageDefPrepPhase, nxPackageDefTransPhase) |
+    hookBit0(StatsHook, nxStatsPrepPhase, nxStatsTransPhase) |
+    hookBit0(OtherHook, nxOtherPrepPhase, nxOtherTransPhase)
+
+  private val noTreeHooks0 = hookBits0 == 0L
+
+  private def checkHookBit0(
+      bit: Long,
+      prepPhases: Array[MiniPhase | Null],
+      transPhases: Array[MiniPhase | Null]): Boolean =
+    ((hookBits0 & bit) != 0L) == ((prepPhases(0) ne null) || (transPhases(0) ne null))
+
+  assert(
+    checkHookBit0(IdentHook, nxIdentPrepPhase, nxIdentTransPhase) &&
+    checkHookBit0(SelectHook, nxSelectPrepPhase, nxSelectTransPhase) &&
+    checkHookBit0(ThisHook, nxThisPrepPhase, nxThisTransPhase) &&
+    checkHookBit0(SuperHook, nxSuperPrepPhase, nxSuperTransPhase) &&
+    checkHookBit0(ApplyHook, nxApplyPrepPhase, nxApplyTransPhase) &&
+    checkHookBit0(TypeApplyHook, nxTypeApplyPrepPhase, nxTypeApplyTransPhase) &&
+    checkHookBit0(LiteralHook, nxLiteralPrepPhase, nxLiteralTransPhase) &&
+    checkHookBit0(NewHook, nxNewPrepPhase, nxNewTransPhase) &&
+    checkHookBit0(TypedHook, nxTypedPrepPhase, nxTypedTransPhase) &&
+    checkHookBit0(AssignHook, nxAssignPrepPhase, nxAssignTransPhase) &&
+    checkHookBit0(BlockHook, nxBlockPrepPhase, nxBlockTransPhase) &&
+    checkHookBit0(IfHook, nxIfPrepPhase, nxIfTransPhase) &&
+    checkHookBit0(ClosureHook, nxClosurePrepPhase, nxClosureTransPhase) &&
+    checkHookBit0(MatchHook, nxMatchPrepPhase, nxMatchTransPhase) &&
+    checkHookBit0(CaseDefHook, nxCaseDefPrepPhase, nxCaseDefTransPhase) &&
+    checkHookBit0(LabeledHook, nxLabeledPrepPhase, nxLabeledTransPhase) &&
+    checkHookBit0(ReturnHook, nxReturnPrepPhase, nxReturnTransPhase) &&
+    checkHookBit0(WhileDoHook, nxWhileDoPrepPhase, nxWhileDoTransPhase) &&
+    checkHookBit0(TryHook, nxTryPrepPhase, nxTryTransPhase) &&
+    checkHookBit0(SeqLiteralHook, nxSeqLiteralPrepPhase, nxSeqLiteralTransPhase) &&
+    checkHookBit0(InlinedHook, nxInlinedPrepPhase, nxInlinedTransPhase) &&
+    checkHookBit0(QuoteHook, nxQuotePrepPhase, nxQuoteTransPhase) &&
+    checkHookBit0(SpliceHook, nxSplicePrepPhase, nxSpliceTransPhase) &&
+    checkHookBit0(TypeTreeHook, nxTypeTreePrepPhase, nxTypeTreeTransPhase) &&
+    checkHookBit0(BindHook, nxBindPrepPhase, nxBindTransPhase) &&
+    checkHookBit0(AlternativeHook, nxAlternativePrepPhase, nxAlternativeTransPhase) &&
+    checkHookBit0(UnApplyHook, nxUnApplyPrepPhase, nxUnApplyTransPhase) &&
+    checkHookBit0(ValDefHook, nxValDefPrepPhase, nxValDefTransPhase) &&
+    checkHookBit0(DefDefHook, nxDefDefPrepPhase, nxDefDefTransPhase) &&
+    checkHookBit0(TypeDefHook, nxTypeDefPrepPhase, nxTypeDefTransPhase) &&
+    checkHookBit0(TemplateHook, nxTemplatePrepPhase, nxTemplateTransPhase) &&
+    checkHookBit0(PackageDefHook, nxPackageDefPrepPhase, nxPackageDefTransPhase) &&
+    checkHookBit0(StatsHook, nxStatsPrepPhase, nxStatsTransPhase) &&
+    checkHookBit0(OtherHook, nxOtherPrepPhase, nxOtherTransPhase),
+    "start-zero hook bitmask disagrees with hook arrays")
+
+  private val noTreeHooksFrom: Array[Boolean] = {
+    val hooks = Array[Array[MiniPhase | Null]](
+      nxIdentPrepPhase, nxIdentTransPhase,
+      nxSelectPrepPhase, nxSelectTransPhase,
+      nxThisPrepPhase, nxThisTransPhase,
+      nxSuperPrepPhase, nxSuperTransPhase,
+      nxApplyPrepPhase, nxApplyTransPhase,
+      nxTypeApplyPrepPhase, nxTypeApplyTransPhase,
+      nxLiteralPrepPhase, nxLiteralTransPhase,
+      nxNewPrepPhase, nxNewTransPhase,
+      nxTypedPrepPhase, nxTypedTransPhase,
+      nxAssignPrepPhase, nxAssignTransPhase,
+      nxBlockPrepPhase, nxBlockTransPhase,
+      nxIfPrepPhase, nxIfTransPhase,
+      nxClosurePrepPhase, nxClosureTransPhase,
+      nxMatchPrepPhase, nxMatchTransPhase,
+      nxCaseDefPrepPhase, nxCaseDefTransPhase,
+      nxLabeledPrepPhase, nxLabeledTransPhase,
+      nxReturnPrepPhase, nxReturnTransPhase,
+      nxWhileDoPrepPhase, nxWhileDoTransPhase,
+      nxTryPrepPhase, nxTryTransPhase,
+      nxSeqLiteralPrepPhase, nxSeqLiteralTransPhase,
+      nxInlinedPrepPhase, nxInlinedTransPhase,
+      nxQuotePrepPhase, nxQuoteTransPhase,
+      nxSplicePrepPhase, nxSpliceTransPhase,
+      nxTypeTreePrepPhase, nxTypeTreeTransPhase,
+      nxBindPrepPhase, nxBindTransPhase,
+      nxAlternativePrepPhase, nxAlternativeTransPhase,
+      nxUnApplyPrepPhase, nxUnApplyTransPhase,
+      nxValDefPrepPhase, nxValDefTransPhase,
+      nxDefDefPrepPhase, nxDefDefTransPhase,
+      nxTypeDefPrepPhase, nxTypeDefTransPhase,
+      nxTemplatePrepPhase, nxTemplateTransPhase,
+      nxPackageDefPrepPhase, nxPackageDefTransPhase,
+      nxStatsPrepPhase, nxStatsTransPhase,
+      nxOtherPrepPhase, nxOtherTransPhase)
+    val result = new Array[Boolean](miniPhases.length + 1)
+    var start = 0
+    while start <= miniPhases.length do
+      var idx = 0
+      var hasHooks = false
+      while idx < hooks.length && !hasHooks do
+        hasHooks = hooks(idx)(start) ne null
+        idx += 1
+      result(start) = !hasHooks
+      start += 1
+    result
+  }
+  assert(noTreeHooks0 == noTreeHooksFrom(0), "start-zero tree hook cache disagrees with hook arrays")
 
   for ((phase, idx) <- miniPhases.zipWithIndex) {
     phase.superPhase = this

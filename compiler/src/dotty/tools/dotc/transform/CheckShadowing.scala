@@ -28,6 +28,10 @@ class CheckShadowing extends MiniPhase:
 
   override def description: String = CheckShadowing.description
 
+  override def preservesApplicationTypes: Boolean = true
+
+  override def preservesTrivialResultTypes: Boolean = true
+
   override def isEnabled(using Context): Boolean = ctx.settings.WshadowHas.any
 
   override def isRunnable(using Context): Boolean =

@@ -237,10 +237,14 @@ trait TypesSupport:
             val isCtx = isContextualMethod(m)
             // Use dependent rendering (preserving named params and precise arrow) when either:
             // 1. The method is syntactically dependent (result references a param), or
-            // 2. CC is enabled and the result contains `fresh`, because `fresh` in a
+            // 2. Non-CC contextual functions have multiple params, which the compiler
+            //    represents as a refined function type carrying parameter names, or
+            // 3. CC is enabled and the result contains `fresh`, because `fresh` in a
             //    function result is existentially bound by the function type, making the
             //    dependent form semantically significant (see scoped-capabilities.md).
-            if isDependentMethod(m) || (ccEnabled && resultHasFresh(m.resType)) then
+            if isDependentMethod(m)
+              || (!ccEnabled && isCtx && m.paramTypes.size > 1)
+              || (ccEnabled && resultHasFresh(m.resType)) then
               val paramList = getParamList(m)
               val arrPrefix = if isCtx then "?" else ""
               val arrow =

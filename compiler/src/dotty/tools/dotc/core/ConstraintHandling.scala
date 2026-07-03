@@ -173,18 +173,20 @@ trait ConstraintHandling {
    */
   def fullLowerBound(param: TypeParamRef)(using Context): Type =
     val maxLevel = nestingLevel(param)
+    val lo = nonParamBounds(param).lo
     var loParams = constraint.minLower(param)
     if maxLevel != Int.MaxValue then
       loParams = loParams.mapConserve(atLevel(maxLevel, _))
-    loParams.foldLeft(nonParamBounds(param).lo)(_ | _)
+    loParams.foldLeft(lo)(_ | _)
 
   /** The full upper bound of `param`, see the documentation of `fullLowerBounds` above. */
   def fullUpperBound(param: TypeParamRef)(using Context): Type =
     val maxLevel = nestingLevel(param)
+    val hi = nonParamBounds(param).hi
     var hiParams = constraint.minUpper(param)
     if maxLevel != Int.MaxValue then
       hiParams = hiParams.mapConserve(atLevel(maxLevel, _))
-    hiParams.foldLeft(nonParamBounds(param).hi)(_ & _)
+    hiParams.foldLeft(hi)(_ & _)
 
   /** Full bounds of `param`, including other lower/upper params.
     *
@@ -318,41 +320,50 @@ trait ConstraintHandling {
       // Narrow one of the bounds of type parameter `param`
       // If `isUpper` is true, ensure that `param <: `bound`,
       // otherwise ensure that `param >: bound`.
-      val narrowedBounds: TypeBounds =
-        val bound = legalBound(param, rawBound, isUpper)
-        val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
+      val bound = legalBound(param, rawBound, isUpper)
+      val oldBounds @ TypeBounds(lo, hi) = constraint.nonParamBounds(param)
 
-        val saved = homogenizeArgs
-        homogenizeArgs = Config.alignArgsInAnd
-        try
-          withUntrustedBounds(
-            if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
-            else oldBounds.derivedTypeBounds(lo | bound, hi))
-        finally
-          homogenizeArgs = saved
-      end narrowedBounds
-
-      // If the narrowed bounds are equal and not recursive,
-      // we can remove `param` from the constraint.
-      def tryReplace(newBounds: TypeBounds): Boolean =
-        val TypeBounds(lo, hi) = newBounds
-        val canReplace = (lo eq hi) && !newBounds.existsPart(_ eq param, StopAt.Static)
-        if canReplace then constraint = constraint.replace(param, lo)
+      def tryReplaceInst(inst: Type): Boolean =
+        val canReplace = !inst.existsPart(_ eq param, StopAt.Static)
+        if canReplace then constraint = constraint.replace(param, inst)
         canReplace
 
-      tryReplace(narrowedBounds) || locally:
-        //println(i"narrow bounds for $param from $oldBounds to $narrowedBounds")
-        val c1 = constraint.updateEntry(param, narrowedBounds)
-        (c1 eq constraint)
-        || {
-          constraint = c1
-          val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
-          val isSat = isSub(lo, hi)
-          if isSat then
-            // isSub may have narrowed the bounds further
-            tryReplace(constraint.nonParamBounds(param))
-          isSat
-        }
+      val exactSolve =
+        if isUpper then bound eq lo
+        else bound eq hi
+
+      if exactSolve && tryReplaceInst(bound) then true
+      else
+        val narrowedBounds: TypeBounds =
+          val saved = homogenizeArgs
+          homogenizeArgs = Config.alignArgsInAnd
+          try
+            withUntrustedBounds(
+              if isUpper then oldBounds.derivedTypeBounds(lo, hi & bound)
+              else oldBounds.derivedTypeBounds(lo | bound, hi))
+          finally
+            homogenizeArgs = saved
+        end narrowedBounds
+
+        // If the narrowed bounds are equal and not recursive,
+        // we can remove `param` from the constraint.
+        def tryReplace(newBounds: TypeBounds): Boolean =
+          val TypeBounds(lo, hi) = newBounds
+          (lo eq hi) && tryReplaceInst(lo)
+
+        tryReplace(narrowedBounds) || locally:
+          //println(i"narrow bounds for $param from $oldBounds to $narrowedBounds")
+          val c1 = constraint.updateEntry(param, narrowedBounds)
+          (c1 eq constraint)
+          || {
+            constraint = c1
+            val TypeBounds(lo, hi) = constraint.entry(param): @unchecked
+            val isSat = isSub(lo, hi)
+            if isSat then
+              // isSub may have narrowed the bounds further
+              tryReplace(constraint.nonParamBounds(param))
+            isSat
+          }
   end addOneBound
 
   protected def addBoundTransitively(param: TypeParamRef, rawBound: Type, isUpper: Boolean)(using Context): Boolean =
@@ -395,10 +406,20 @@ trait ConstraintHandling {
       if Config.failOnInstantiationToNothing
       then assert(false, msg)
       else report.log(msg)
-    def others = if isUpper then constraint.lower(param) else constraint.upper(param)
     val bound = adjust(rawBound)
+
+    def addOtherBounds(): Boolean =
+      val others = if isUpper then constraint.lower(param) else constraint.upper(param)
+      others match
+        case Nil =>
+          true
+        case other :: Nil =>
+          addOneBound(other, bound, isUpper)
+        case _ =>
+          others.forall(addOneBound(_, bound, isUpper))
+
     bound.exists
-    && addOneBound(param, bound, isUpper) && others.forall(addOneBound(_, bound, isUpper))
+    && addOneBound(param, bound, isUpper) && addOtherBounds()
         .showing(i"added $description = $result$location", constr)
   end addBoundTransitively
 
@@ -480,19 +501,60 @@ trait ConstraintHandling {
       isSub(tp1, tp2)
 
   inline final def inFrozenConstraint[T](op: => T): T = {
-    val savedFrozen = frozenConstraint
-    val savedLambda = caseLambda
-    frozenConstraint = true
-    caseLambda = NoType
-    try op
-    finally {
-      frozenConstraint = savedFrozen
-      caseLambda = savedLambda
-    }
+    if frozenConstraint && (caseLambda eq NoType) then op
+    else
+      val savedFrozen = frozenConstraint
+      val savedLambda = caseLambda
+      frozenConstraint = true
+      caseLambda = NoType
+      try op
+      finally {
+        frozenConstraint = savedFrozen
+        caseLambda = savedLambda
+      }
   }
 
-  final def isSubTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean = inFrozenConstraint(isSub(tp1, tp2))
-  final def isSameTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean = inFrozenConstraint(isSame(tp1, tp2))
+  final def isSubTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
+    if frozenConstraint && (caseLambda eq NoType) then isSub(tp1, tp2)
+    else if caseLambda eq NoType then
+      val savedFrozen = frozenConstraint
+      frozenConstraint = true
+      try isSub(tp1, tp2)
+      finally {
+        frozenConstraint = savedFrozen
+        caseLambda = NoType
+      }
+    else
+      val savedFrozen = frozenConstraint
+      val savedLambda = caseLambda
+      frozenConstraint = true
+      caseLambda = NoType
+      try isSub(tp1, tp2)
+      finally {
+        frozenConstraint = savedFrozen
+        caseLambda = savedLambda
+      }
+
+  final def isSameTypeWhenFrozen(tp1: Type, tp2: Type)(using Context): Boolean =
+    if frozenConstraint && (caseLambda eq NoType) then isSame(tp1, tp2)
+    else if caseLambda eq NoType then
+      val savedFrozen = frozenConstraint
+      frozenConstraint = true
+      try isSame(tp1, tp2)
+      finally {
+        frozenConstraint = savedFrozen
+        caseLambda = NoType
+      }
+    else
+      val savedFrozen = frozenConstraint
+      val savedLambda = caseLambda
+      frozenConstraint = true
+      caseLambda = NoType
+      try isSame(tp1, tp2)
+      finally {
+        frozenConstraint = savedFrozen
+        caseLambda = savedLambda
+      }
 
   /** Test whether the lower bounds of all parameters in this
    *  constraint are a solution to the constraint.
@@ -789,7 +851,7 @@ trait ConstraintHandling {
   def addToConstraint(tl: TypeLambda, tvars: List[TypeVar])(using Context): Boolean =
     checkPropagated(i"initialized $tl") {
       constraint = constraint.add(tl, tvars)
-      tl.paramRefs.forall { param =>
+      constraint.canSkipAddPropagation(tl) || tl.paramRefs.forall { param =>
         val lower = constraint.lower(param)
         val upper = constraint.upper(param)
         constraint.entry(param) match {
@@ -809,7 +871,8 @@ trait ConstraintHandling {
 
   /** Can `param` be constrained with new bounds? */
   final def canConstrain(param: TypeParamRef): Boolean =
-    (!frozenConstraint || (caseLambda `eq` param.binder)) && constraint.contains(param)
+    if frozenConstraint && (caseLambda `eq` NoType) then false
+    else (!frozenConstraint || (caseLambda `eq` param.binder)) && constraint.contains(param)
 
   /** Is `param` assumed to be a sub- and super-type of any other type?
    *  This holds if `TypeVarsMissContext` is set unless `param` is a part

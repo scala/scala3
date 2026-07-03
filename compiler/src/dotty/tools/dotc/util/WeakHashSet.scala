@@ -54,6 +54,15 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   protected var table = new Array[Entry[A] | Null](computeCapacity)
 
   /**
+   * cached `table.length - 1`, used by `index` to map a hashcode to a bucket.
+   * Kept in sync wherever `table` is reassigned (`resize`, `clear`); avoids an
+   * array-field load + `.length` fetch on every probe and every re-bucketed
+   * entry in the resize loop (the table length is always a power of two, so this
+   * is the bucket mask).
+   */
+  private var mask = table.length - 1
+
+  /**
    * the limit at which we'll increase the size of the hash table
    */
   protected var threshold = computeThreshold
@@ -64,7 +73,7 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   protected def isEqual(x: A, y: A): Boolean = x.equals(y)
 
   /** Turn hashcode `x` into a table index */
-  protected def index(x: Int): Int = x & (table.length - 1)
+  protected def index(x: Int): Int = x & mask
 
   /**
    * remove a single entry from a linked list in a given bucket
@@ -106,12 +115,19 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   }
 
   /**
-   * Double the size of the internal table
+   * Compute the next capacity for the underlying table when the load factor is exceeded.
+   * Subclasses may override to grow faster than the default 2× when resize churn is hot.
+   */
+  protected def nextCapacity(currentCapacity: Int): Int = currentCapacity * 2
+
+  /**
+   * Grow the size of the internal table per `nextCapacity`.
    */
   protected def resize(): Unit = {
     Stats.record(statsItem("resize"))
     val oldTable = table
-    table = new Array[Entry[A] | Null](oldTable.size * 2)
+    table = new Array[Entry[A] | Null](nextCapacity(oldTable.size))
+    mask = table.length - 1
     threshold = computeThreshold
 
     @tailrec
@@ -136,14 +152,17 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   def lookup(elem: A): A | Null =
     Stats.record(statsItem("lookup"))
     removeStaleEntries()
-    val bucket = index(hash(elem))
+    val h = hash(elem)
+    val bucket = index(h)
 
     @tailrec
     def linkedListLoop(entry: Entry[A] | Null): A | Null = entry match {
       case null                    => null
       case _                       =>
-        val entryElem = entry.get
-        if entryElem != null && isEqual(elem, entryElem) then entryElem
+        if entry.hash == h then
+          val entryElem = entry.get
+          if entryElem != null && isEqual(elem, entryElem) then entryElem
+          else linkedListLoop(entry.tail)
         else linkedListLoop(entry.tail)
     }
 
@@ -168,8 +187,10 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
     def linkedListLoop(entry: Entry[A] | Null): A = entry match {
       case null                    => addEntryAt(bucket, elem, h, oldHead)
       case _                       =>
-        val entryElem = entry.get
-        if entryElem != null && isEqual(elem, entryElem) then entryElem
+        if entry.hash == h then
+          val entryElem = entry.get
+          if entryElem != null && isEqual(elem, entryElem) then entryElem
+          else linkedListLoop(entry.tail)
         else linkedListLoop(entry.tail)
     }
 
@@ -180,25 +201,33 @@ abstract class WeakHashSet[A <: AnyRef](initialCapacity: Int = 8, loadFactor: Do
   def -=(elem: A): Unit =
     Stats.record(statsItem("-="))
     removeStaleEntries()
-    val bucket = index(hash(elem))
+    val h = hash(elem)
+    val bucket = index(h)
 
     @tailrec
     def linkedListLoop(prevEntry: Entry[A] | Null, entry: Entry[A] | Null): Unit =
       if entry != null then
-        val entryElem = entry.get
-        if entryElem != null && isEqual(elem, entryElem) then remove(bucket, prevEntry, entry)
+        if entry.hash == h then
+          val entryElem = entry.get
+          if entryElem != null && isEqual(elem, entryElem) then remove(bucket, prevEntry, entry)
+          else linkedListLoop(entry, entry.tail)
         else linkedListLoop(entry, entry.tail)
 
     linkedListLoop(null, table(bucket))
 
   def clear(resetToInitial: Boolean): Unit = {
-    table = new Array[Entry[A] | Null](table.size)
-    threshold = computeThreshold
-    count = 0
+    @tailrec def drainQueue(): Unit = if (queue.poll() != null) drainQueue()
 
-    // drain the queue - doesn't do anything because we're throwing away all the values anyway
-    @tailrec def queueLoop(): Unit = if (queue.poll() != null) queueLoop()
-    queueLoop()
+    if (count == 0) drainQueue()
+    else {
+      table = new Array[Entry[A] | Null](table.size)
+      mask = table.length - 1
+      threshold = computeThreshold
+      count = 0
+
+      // drain the queue - doesn't do anything because we're throwing away all the values anyway
+      drainQueue()
+    }
   }
 
   def size: Int = {

@@ -21,8 +21,21 @@ enum SourceLanguage:
   def isScala2: Boolean = this eq Scala2
   def isScala3: Boolean = this eq Scala3
 object SourceLanguage:
-  /** The language in which `sym` was defined. */
+  /** The language in which `sym` was defined.
+   *
+   *  The result is cached in `sym` for the current run, see `compute` for
+   *  why this is sound.
+   */
   def apply(sym: Symbol)(using Context): SourceLanguage =
+    val cached = sym.cachedSourceLanguage(ctx.runId)
+    if cached != null then cached
+    else
+      val language = compute(sym)
+      sym.setCachedSourceLanguage(language, ctx.runId)
+      language
+
+  /** Compute the language in which `sym` was defined. */
+  private def compute(sym: Symbol)(using Context): SourceLanguage =
     // We might be using this method while recalculating the denotation,
     // so let's use `lastKnownDenotation`.
     // This is ok as the source of the symbol and whether it is inline should

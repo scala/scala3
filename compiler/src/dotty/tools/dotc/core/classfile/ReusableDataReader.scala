@@ -37,10 +37,9 @@ final class ReusableDataReader() extends DataReader {
     this.size = 0
     file.sizeOption match {
       case Some(size) =>
+        val reusedBuffer = size <= data.length
         if (size > data.length) {
           data = new Array[Byte](nextPositivePowerOfTwo(size))
-        } else {
-          java.util.Arrays.fill(data, 0.toByte)
         }
         val input = file.input
         try {
@@ -54,6 +53,8 @@ final class ReusableDataReader() extends DataReader {
               else this.size += read
             }
           }
+          if (reusedBuffer && this.size < size)
+            java.util.Arrays.fill(data, this.size, size, 0.toByte)
           bb = ByteBuffer.wrap(data, 0, size)
         } finally {
           input.close()

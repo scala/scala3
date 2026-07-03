@@ -94,6 +94,21 @@ object Symbols extends SymUtils {
     private var lastDenot: SymDenotation = uninitialized
     private var checkedPeriod: Period = Nowhere
 
+    /** A cache for `SourceLanguage(this)`, which is stable for a whole run:
+     *  the language a symbol was defined in does not change between phases
+     *  (see the comment in `SourceLanguage.apply`). Keyed by run id since the
+     *  symbol can be re-completed with different flags in a later run.
+     */
+    private var mySourceLanguage: SourceLanguage | Null = null
+    private var mySourceLanguageRunId: RunId = NoRunId
+
+    private[core] final def cachedSourceLanguage(runId: RunId): SourceLanguage | Null =
+      if mySourceLanguageRunId == runId then mySourceLanguage else null
+
+    private[core] final def setCachedSourceLanguage(language: SourceLanguage, runId: RunId): Unit =
+      mySourceLanguage = language
+      mySourceLanguageRunId = runId
+
     private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }
 
     /** Set the denotation of this symbol
@@ -108,7 +123,7 @@ object Symbols extends SymUtils {
     /** The current denotation of this symbol */
     final def denot(using Context): SymDenotation = {
       util.Stats.record("Symbol.denot")
-      if checkedPeriod == ctx.period then lastDenot
+      if checkedPeriod.contains(ctx.period) then lastDenot
       else computeDenot(lastDenot)
     }
 
@@ -117,14 +132,25 @@ object Symbols extends SymUtils {
       // the JIT (reputedly, cutoff is at 35 bytes)
       util.Stats.record("Symbol.computeDenot")
       val now = ctx.period
-      checkedPeriod = now
-      if lastd.validFor.contains(now) then lastd else recomputeDenot(lastd)
+      val vf = lastd.validFor
+      if vf.contains(now) then { checkedPeriod = vf; lastd }
+      else { checkedPeriod = now; recomputeDenot(lastd) }
+    }
+
+    protected final def validLastDenot(using Context): SymDenotation | Null = {
+      val lastd = lastDenot
+      val vf = lastd.validFor
+      if vf.contains(ctx.period) then { checkedPeriod = vf; lastd }
+      else null
     }
 
     /** Overridden in NoSymbol */
     protected def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
       util.Stats.record("Symbol.recomputeDenot")
-      val newd = lastd.current.asInstanceOf[SymDenotation]
+      val fast = lastd.nextInRunIfFast(ctx.period)
+      val newd =
+        if fast == null then lastd.current.asInstanceOf[SymDenotation]
+        else fast.asInstanceOf[SymDenotation]
       if newd.exists || lastd.initial.validFor.firstPhaseId <= ctx.phaseId then
         lastDenot = newd
       else
@@ -181,10 +207,8 @@ object Symbols extends SymUtils {
         // periods check out OK. But once a package member is overridden it is not longer
         // valid. If the option would be removed, the check would be no longer needed.
 
-    final def isTerm(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isTerm
-    final def isType(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isType
+    final def isTerm(using Context): Boolean = lastDenot.isTerm
+    final def isType(using Context): Boolean = lastDenot.isType
     final def asTerm(using Context): TermSymbol = {
       assert(isTerm, s"asTerm called on not-a-Term $this" );
       asInstanceOf[TermSymbol]
@@ -541,7 +565,9 @@ object Symbols extends SymUtils {
     }
 
     final def classDenot(using Context): ClassDenotation =
-      denot.asInstanceOf[ClassDenotation]
+      val lastd = validLastDenot
+      if lastd == null then denot.asInstanceOf[ClassDenotation]
+      else lastd.asInstanceOf[ClassDenotation]
 
     override protected def prefixString: String = "ClassSymbol"
   }
@@ -910,6 +936,64 @@ object Symbols extends SymUtils {
         if (name.isTypeName) TypeAlias(errType) else errType)
   }
 
+  private def symbolInfoUnchanged(original: Symbol, ttmap: TreeTypeMap)(using Context): Boolean =
+    (ttmap.mapType(original.info) eq original.info) && !ttmap.mapsOwner(original.owner)
+
+  private def freshMappedSymbol(original: Symbol, ttmap: TreeTypeMap)(using Context): Symbol =
+    val odenot = original.denot
+    original.copy(
+      owner = ttmap.mapOwner(odenot.owner),
+      flags = odenot.flags &~ Touched,
+      info = NoCompleter,
+      privateWithin = ttmap.mapOwner(odenot.privateWithin),
+      coord = original.coord)
+
+  private def installNonClassMappedInfo(original: Symbol, copy: Symbol, ttmap1: TreeTypeMap)(using Context): Unit =
+    val odenot = original.denot
+    val completer = new LazyType:
+
+      def complete(denot: SymDenotation)(using Context): Unit =
+        val oinfo = original.info
+        denot.info = oinfo // See the corresponding note in mapSymbols.
+        denot.info = ttmap1.mapType(oinfo)
+        denot.annotations = odenot.annotations.mapConserve(ttmap1.apply)
+
+    copy.info = completer
+
+  /** Singleton specialization of `mapSymbols` for non-class symbols. */
+  def mapSymbol(original: Symbol, ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): Symbol =
+    if original.isClass then mapSymbols(original :: Nil, ttmap, mapAlways).head
+    else if symbolInfoUnchanged(original, ttmap) && !mapAlways then original
+    else
+      val copy = freshMappedSymbol(original, ttmap)
+      val ttmap1 = ttmap.withSubstitution(original, copy)
+      installNonClassMappedInfo(original, copy, ttmap1)
+      copy.ensureCompleted()
+      copy
+
+  /** Two-symbol specialization of `mapSymbols` for non-class symbols. */
+  def mapTwoSymbols(
+      original1: Symbol,
+      original2: Symbol,
+      ttmap: TreeTypeMap,
+      mapAlways: Boolean = false)(using Context): (Symbol, Symbol) =
+    if original1.isClass || original2.isClass then
+      val mapped = mapSymbols(original1 :: original2 :: Nil, ttmap, mapAlways)
+      (mapped.head, mapped.tail.head)
+    else
+      val unchanged1 = symbolInfoUnchanged(original1, ttmap)
+      val unchanged2 = symbolInfoUnchanged(original2, ttmap)
+      if unchanged1 && unchanged2 && !mapAlways then (original1, original2)
+      else
+        val copy1 = freshMappedSymbol(original1, ttmap)
+        val copy2 = freshMappedSymbol(original2, ttmap)
+        val ttmap1 = ttmap.withSubstitution(original1, original2, copy1, copy2)
+        installNonClassMappedInfo(original1, copy1, ttmap1)
+        installNonClassMappedInfo(original2, copy2, ttmap1)
+        copy1.ensureCompleted()
+        copy2.ensureCompleted()
+        (copy1, copy2)
+
   /** Map given symbols, subjecting their attributes to the mappings
    *  defined in the given TreeTypeMap `ttmap`.
    *  Cross symbol references are brought over from originals to copies.
@@ -919,7 +1003,7 @@ object Symbols extends SymUtils {
   def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): List[Symbol] =
     if (originals.forall(sym =>
         (ttmap.mapType(sym.info) eq sym.info) &&
-        !(ttmap.oldOwners contains sym.owner)) && !mapAlways)
+        !ttmap.mapsOwner(sym.owner)) && !mapAlways)
       originals
     else {
       val copies: List[Symbol] = for (original <- originals) yield
@@ -980,7 +1064,7 @@ object Symbols extends SymUtils {
       // if some child is among the mapped symbols
       for orig <- ttmap1.substFrom do
         if orig.is(Sealed) && orig.children.exists(originals.contains) then
-          val sealedCopy = orig.subst(ttmap1.substFrom, ttmap1.substTo)
+          val sealedCopy = ttmap1.mapSubstitution(orig)
           sealedCopy.annotations = sealedCopy.annotations.mapConserve(ttmap1.apply)
 
       copies

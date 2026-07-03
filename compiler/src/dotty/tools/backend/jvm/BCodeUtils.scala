@@ -486,37 +486,41 @@ object BCodeUtils {
    *      and they would fail verification after lifted.
    */
   final def javaFlags(sym: Symbol)(using Context): Int = {
+    val denot = sym.denot
+    val isClass = denot.isClass
+    val isAbstractOrTrait = denot.isOneOf(AbstractOrTrait)
+    val isTrait = denot.is(Trait)
     // Classes are always emitted as public. This matches the behavior of Scala 2
     // and is necessary for object deserialization to work properly, otherwise
     // ModuleSerializationProxy may fail with an accessiblity error (see
     // tests/run/serialize.scala and https://github.com/typelevel/cats-effect/pull/2360).
-    val privateFlag = !sym.isClass && (sym.is(Private) || (sym.isPrimaryConstructor && sym.owner.isTopLevelModuleClass))
+    val privateFlag = !isClass && (denot.is(Private) || (denot.isPrimaryConstructor && denot.owner.isTopLevelModuleClass))
 
-    val finalFlag = sym.is(Final) && !toDenot(sym).isClassConstructor && !sym.isMutableVar && !sym.enclosingClass.is(Trait)
+    val finalFlag = denot.is(Final) && !denot.isClassConstructor && !denot.isMutableVar && !denot.enclosingClass.denot.is(Trait)
 
     import asm.Opcodes.*
     import GenBCodeOps.addFlagIf
     0 .addFlagIf(privateFlag, ACC_PRIVATE)
       .addFlagIf(!privateFlag, ACC_PUBLIC)
-      .addFlagIf(sym.is(Deferred) || sym.isOneOf(AbstractOrTrait), ACC_ABSTRACT)
-      .addFlagIf(sym.is(Trait), ACC_INTERFACE)
+      .addFlagIf(denot.is(Deferred) || isAbstractOrTrait, ACC_ABSTRACT)
+      .addFlagIf(isTrait, ACC_INTERFACE)
       .addFlagIf(finalFlag
         // Primitives are "abstract final" to prohibit instantiation
         // without having to provide any implementations, but that is an
         // illegal combination of modifiers at the bytecode level so
         // suppress final if abstract if present.
-        && !sym.isOneOf(AbstractOrTrait)
+        && !isAbstractOrTrait
         // Bridges can be final, but final bridges confuse some frameworks
-        && !sym.is(Bridge), ACC_FINAL)
-      .addFlagIf(sym.isStaticMember && !sym.isClass, ACC_STATIC)
-      .addFlagIf(sym.is(Bridge), ACC_BRIDGE | ACC_SYNTHETIC)
-      .addFlagIf(sym.is(Artifact), ACC_SYNTHETIC)
-      .addFlagIf(sym.isClass && !sym.is(Trait), ACC_SUPER)
-      .addFlagIf(sym.isAllOf(JavaEnum), ACC_ENUM)
-      .addFlagIf(sym.is(JavaVarargs), ACC_VARARGS)
-      .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)
+        && !denot.is(Bridge), ACC_FINAL)
+      .addFlagIf(sym.isStaticMember && !isClass, ACC_STATIC)
+      .addFlagIf(denot.is(Bridge), ACC_BRIDGE | ACC_SYNTHETIC)
+      .addFlagIf(denot.is(Artifact), ACC_SYNTHETIC)
+      .addFlagIf(isClass && !isTrait, ACC_SUPER)
+      .addFlagIf(denot.isAllOf(JavaEnum), ACC_ENUM)
+      .addFlagIf(denot.is(JavaVarargs), ACC_VARARGS)
+      .addFlagIf(denot.is(Synchronized), ACC_SYNCHRONIZED)
       .addFlagIf(sym.isDeprecated, ACC_DEPRECATED)
-      .addFlagIf(sym.is(Enum), ACC_ENUM)
+      .addFlagIf(denot.is(Enum), ACC_ENUM)
   }
 
 

@@ -21,6 +21,10 @@ class CheckNoSuperThis extends MiniPhase:
 
   override def description: String = CheckNoSuperThis.description
 
+  override def preservesApplicationTypes: Boolean = true
+
+  override def preservesTrivialResultTypes: Boolean = true
+
   override def runsAfterGroupsOf: Set[String] = Set(Constructors.name)
 
   override def transformDefDef(mdef: DefDef)(using Context): DefDef =

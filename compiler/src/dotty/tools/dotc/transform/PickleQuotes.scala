@@ -88,24 +88,67 @@ class PickleQuotes extends MacroTransform {
   override protected def run(using Context): Unit =
     if (ctx.compilationUnit.needsStaging) super.run
 
-  protected def newTransformer(using Context): Transformer = new Transformer {
+  protected def newTransformer(using Context): Transformer = new Transformer with HoleContentTransformer {
+    def transformHoleContent(tree: tpd.Tree)(using Context): tpd.Tree = transform(tree)
+
     override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
       tree match
         case Apply(Select(quote: Quote, nme.apply), List(quotes)) =>
-          val (holeContents, quote1) = extractHolesContents(quote)
-          val quote2 = encodeTypeArgs(quote1)
-          val holeContents1 = holeContents.map(transform(_))
-          PickleQuotes.pickle(quote2, quotes, holeContents1)
+          PickleQuotes.transformQuote(quote, quotes, this)
         case tree: DefDef if !tree.rhs.isEmpty && tree.symbol.isInlineMethod =>
           tree
         case _ =>
           super.transform(tree)
   }
+}
+
+object PickleQuotes {
+  import tpd.*
+
+  val name: String = "pickleQuotes"
+  val description: String = "turn quoted trees into explicit run-time data structures"
+
+  trait HoleContentTransformer:
+    def transformHoleContent(tree: Tree)(using Context): Tree
+
+  def transformQuote(quote: Quote, quotes: Tree, holeContentTransformer: HoleContentTransformer)(using Context): Tree =
+    val (holeContents, quote1) = extractHolesContents(quote)
+    val quote2 = encodeTypeArgs(quote1)
+    val holeContents1 = holeContents.map(holeContentTransformer.transformHoleContent)
+    pickle(quote2, quotes, holeContents1)
 
   private def extractHolesContents(quote: tpd.Quote)(using Context): (List[Tree], tpd.Quote) =
-    class HoleContentExtractor extends Transformer:
+    class HoleContentExtractor extends TreeMapWithPreciseStatContexts(cpy = cpyBetweenPhases):
       private val holeContents = List.newBuilder[Tree]
       private val stagedClasses = mutable.HashSet.empty[Symbol]
+
+      private def localCtx(tree: Tree)(using Context): FreshContext =
+        ctx.fresh.setTree(tree).setOwner(localOwner(tree))
+
+      private def transformWithMacroContexts(tree: Tree)(using Context): Tree =
+        try
+          tree match
+            case EmptyValDef =>
+              tree
+            case _: PackageDef | _: MemberDef =>
+              super.transform(tree)(using localCtx(tree))
+            case impl @ Template(constr, _, self, _) =>
+              cpy.Template(tree)(
+                transformSub(constr),
+                transform(impl.parents)(using ctx.superCallContext),
+                Nil,
+                transformSelf(self),
+                transformStats(impl.body, tree.symbol))
+            case _ =>
+              super.transform(tree)
+        catch
+          case ex: TypeError =>
+            report.error(ex, tree.srcPos)
+            tree
+
+      private def transformSelf(vd: ValDef)(using Context): ValDef =
+        cpy.ValDef(vd)(tpt = transform(vd.tpt))
+
       override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
         tree match
           case tree @ Hole(isTerm, _, _, content) =>
@@ -122,9 +165,9 @@ class PickleQuotes extends MacroTransform {
               annot.derivedAnnotation(transform(annot.tree)(using ctx.withOwner(tree.symbol)))
             }
             tree.symbol.annotations = newAnnotations
-            super.transform(tree)
+            transformWithMacroContexts(tree)
           case _ =>
-            super.transform(tree).withType(mapAnnots(tree.tpe))
+            transformWithMacroContexts(tree).withType(mapAnnots(tree.tpe))
 
       private def mapAnnots = new TypeMap { // TODO factor out duplicated logic in Splicing
         override def apply(tp: Type): Type = {
@@ -203,13 +246,6 @@ class PickleQuotes extends MacroTransform {
     new TypeOps.AvoidMap {
       def toAvoid(tp: NamedType) = !isStagedClasses(tp.typeSymbol) && !isStaticPrefix(tp)
     }.apply(tpe)
-}
-
-object PickleQuotes {
-  import tpd.*
-
-  val name: String = "pickleQuotes"
-  val description: String = "turn quoted trees into explicit run-time data structures"
 
   def pickle(quote: Quote, quotes: Tree, holeContents: List[Tree])(using Context) = {
     val body = quote.body

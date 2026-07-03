@@ -124,6 +124,38 @@ object Implicits:
         case ViewProto(_, _: SelectionProto) => true
         case _ => false
 
+      val ptIsValueTypeOrProto = pt.isInstanceOf[ValueTypeOrProto]
+      var isFunctionNTypeCached = false
+      var isFunctionNTypeValue = false
+      def expectedIsFunctionNType(using Context): Boolean = {
+        if (!isFunctionNTypeCached) {
+          isFunctionNTypeCached = true
+          isFunctionNTypeValue = ptIsValueTypeOrProto && defn.isFunctionNType(pt)
+        }
+        isFunctionNTypeValue
+      }
+
+      var quickPtClassCached = false
+      var quickPtClassValue: Symbol | Null = null
+      def quickPtClass(using Context): Symbol | Null = {
+        if (!quickPtClassCached) {
+          quickPtClassCached = true
+          if (!pt.isInstanceOf[ProtoType]) {
+            val ptd = pt.dealias
+            if (!ptd.isInstanceOf[RefinedType] && !ptd.isInstanceOf[ProtoType]
+                && !ptd.isMatchAlias) {
+              val ptCls = ptd.classSymbol
+              if ptCls.isClass
+                 && !(ptCls eq defn.NotGivenClass)
+                 && !(ptCls eq defn.ConversionClass)
+                 && !(ptCls eq defn.SubTypeClass)
+              then quickPtClassValue = ptCls
+            }
+          }
+        }
+        quickPtClassValue
+      }
+
       def candidateKind(ref: TermRef)(using Context): Candidate.Kind = { /*trace(i"candidateKind $ref $pt")*/
 
         def viewCandidateKind(tpw: Type, argType: Type, resType: Type): Candidate.Kind = {
@@ -217,14 +249,20 @@ object Implicits:
                 else tp
               case _ => tp
 
+        // The accessibility check (`isAccessible`) is deferred to the very end:
+        // `candidateKind` returns a non-None kind only when the conjunction
+        // {kind != None, !quickIncompatible, isCompatible, isAccessible} holds, and
+        // that conjunction commutes (the kind/quickIncompatible/isCompatible checks
+        // read types, while isAccessible reads symbol flags/info/prefix; no predicate
+        // observes another's mutation). Running isAccessible last means the
+        // `isAccessibleFrom -> accessBoundary -> isAbsent` walk is skipped for every
+        // candidate that already fails one of the cheaper checks.
         var ckind =
-          if !isAccessible(ref) then
-            Candidate.None
-          else pt match {
+          pt match {
             case pt: ViewProto =>
               viewCandidateKind(ref.widen, pt.argType, pt.resType)
             case _: ValueTypeOrProto =>
-              if (defn.isFunctionNType(pt)) Candidate.Value
+              if (expectedIsFunctionNType) Candidate.Value
               else valueTypeCandidateKind(ref.widen)
             case _ =>
               Candidate.Value
@@ -232,6 +270,9 @@ object Implicits:
 
         if (ckind == Candidate.None)
           record("discarded eligible")
+        else if quickIncompatible(ref) then
+          Stats.record("eligible quick-incompatible")
+          ckind = Candidate.None
         else {
           val ptNorm = normalize(pt, pt) // `pt` could be implicit function types, check i2749
           val refAdjusted =
@@ -241,10 +282,36 @@ object Implicits:
           Stats.record("eligible check matches")
           if (!NoViewsAllowed.isCompatible(refNorm, ptNorm))
             ckind = Candidate.None
+          else if !isAccessible(ref) then
+            ckind = Candidate.None
         }
         ckind
       }
 
+      /** Cheap O(1) class-hierarchy prefilter: when both `pt` and the poly
+       *  result type of `ref.widen` reduce to distinct, unrelated class
+       *  symbols, the candidate cannot match, so there is no need to allocate
+       *  fresh TypeVars and run `substParams`. Conservative: any uncertainty
+       *  falls through to the slow path.
+       */
+      def quickIncompatible(ref: TermRef)(using Context): Boolean =
+        val ptCls = quickPtClass
+        if ptCls == null then false
+        else ref.widen match
+          case poly: PolyType =>
+            val rt = poly.resType
+            if rt.isInstanceOf[MethodOrPoly] || rt.isInstanceOf[RefinedType]
+               || defn.isContextFunctionType(rt)
+            then false
+            else
+              val expectedCls = ptCls.uncheckedNN
+              val refCls = rt.classSymbol
+              refCls.isClass
+                && !refCls.derivesFrom(expectedCls)
+                && !expectedCls.derivesFrom(refCls)
+                && !refCls.derivesFrom(defn.ConversionClass)
+                && !refCls.derivesFrom(defn.SubTypeClass)
+          case _ => false
 
       if refs.isEmpty && (!considerExtension || companionRefs.isEmpty) then
         Nil

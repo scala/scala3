@@ -9,7 +9,6 @@ import core.Decorators.*
 import core.Names.TermName
 import MegaPhase.MiniPhase
 import config.Printers.transforms
-import dotty.tools.dotc.util.Property
 
 /** Add accessors for all protected accesses. An accessor is needed if
  *  according to the rules of the JVM a protected class member is not accessible
@@ -57,13 +56,27 @@ class ProtectedAccessors extends MiniPhase {
 
   override def description: String = ProtectedAccessors.description
 
-  private val AccessorsKey = new Property.Key[Accessors]
+  private var accessorsUnit: CompilationUnit | Null = null
+  private var accessorsCache: Accessors | Null = null
+
+  override def initContext(ctx: FreshContext): Unit =
+    accessorsUnit = null
+    accessorsCache = null
+
+  private def accessorsIfInitialized(using Context): Accessors | Null =
+    val unit = ctx.compilationUnit
+    if accessorsUnit ne unit then
+      accessorsUnit = unit
+      accessorsCache = null
+    accessorsCache
 
   private def accessors(using Context): Accessors =
-   ctx.property(AccessorsKey).get
-
-  override def prepareForUnit(tree: Tree)(using Context): Context =
-    ctx.fresh.setProperty(AccessorsKey, new Accessors)
+    accessorsIfInitialized match
+      case null =>
+        val accessors = new Accessors
+        accessorsCache = accessors
+        accessors
+      case accessors => accessors
 
   private class Accessors extends AccessProxies {
     val insert: Insert = new Insert {
@@ -81,20 +94,26 @@ class ProtectedAccessors extends MiniPhase {
   }
 
   override def transformIdent(tree: Ident)(using Context): Tree =
-    accessors.insert.accessorIfNeeded(tree)
+    if ProtectedAccessors.needsAccessor(tree.symbol) then accessors.insert.accessorIfNeeded(tree)
+    else tree
 
   override def transformSelect(tree: Select)(using Context): Tree =
-    accessors.insert.accessorIfNeeded(tree)
+    if ProtectedAccessors.needsAccessor(tree.symbol) then accessors.insert.accessorIfNeeded(tree)
+    else tree
 
   override def transformAssign(tree: Assign)(using Context): Tree =
     tree.lhs match {
       case lhs: RefTree if lhs.name.is(ProtectedAccessorName) =>
-        cpy.Apply(tree)(accessors.insert.useSetter(lhs), tree.rhs :: Nil)
+        accessorsIfInitialized match
+          case null => tree
+          case accessors => cpy.Apply(tree)(accessors.insert.useSetter(lhs), tree.rhs :: Nil)
       case _ =>
         tree
     }
 
   override def transformTemplate(tree: Template)(using Context): Tree =
-    cpy.Template(tree)(body = accessors.addAccessorDefs(tree.symbol.owner, tree.body))
+    accessorsIfInitialized match
+      case null => tree
+      case accessors => cpy.Template(tree)(body = accessors.addAccessorDefs(tree.symbol.owner, tree.body))
 
 }

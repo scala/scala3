@@ -16,21 +16,29 @@ object ConstFold:
 
   import tpd.*
 
-  private val foldedBinops = Set[Name](
-    nme.ZOR, nme.OR, nme.XOR, nme.ZAND, nme.AND, nme.EQ, nme.NE,
-    nme.LT, nme.GT, nme.LE, nme.GE, nme.LSL, nme.LSR, nme.ASR,
-    nme.ADD, nme.SUB, nme.MUL, nme.DIV, nme.MOD)
+  // `nme.*` names are interned singletons (Name.equals is reference identity, see
+  // Names.scala), so membership in the fixed foldable-operator sets is exactly a
+  // disjunction of `eq` tests. This replaces the per-Apply/Select `Set[Name].contains`
+  // hash+trie probe (a hot leaf, ~2.44M probes/run) with a short-circuiting pointer-
+  // compare chain over the same names. Order by expected frequency so the common
+  // non-arithmetic operator exits after the first few failed `eq`.
+  private def isFoldedBinop(op: Name): Boolean =
+    (op eq nme.EQ) || (op eq nme.NE) || (op eq nme.ZAND) || (op eq nme.ZOR) ||
+    (op eq nme.LT) || (op eq nme.GT) || (op eq nme.LE) || (op eq nme.GE) ||
+    (op eq nme.ADD) || (op eq nme.SUB) || (op eq nme.MUL) || (op eq nme.DIV) ||
+    (op eq nme.MOD) || (op eq nme.AND) || (op eq nme.OR) || (op eq nme.XOR) ||
+    (op eq nme.LSL) || (op eq nme.LSR) || (op eq nme.ASR)
 
-  val foldedUnops = Set[Name](
-    nme.UNARY_!, nme.UNARY_~, nme.UNARY_+, nme.UNARY_-,
-    nme.toChar, nme.toInt, nme.toFloat, nme.toLong, nme.toDouble,
-    // toByte and toShort are NOT included because we cannot write
-    // the type of a constant byte or short
-  )
+  // toByte and toShort are NOT included because we cannot write
+  // the type of a constant byte or short.
+  def isFoldedUnop(name: Name): Boolean =
+    (name eq nme.UNARY_!) || (name eq nme.UNARY_~) || (name eq nme.UNARY_+) ||
+    (name eq nme.UNARY_-) || (name eq nme.toInt) || (name eq nme.toLong) ||
+    (name eq nme.toDouble) || (name eq nme.toFloat) || (name eq nme.toChar)
 
   def Apply[T <: Apply](tree: T)(using Context): T =
     tree.fun match
-      case Select(xt, op) if foldedBinops.contains(op) =>
+      case Select(xt, op) if isFoldedBinop(op) =>
         xt match
           case ConstantTree(x) =>
             tree.args match
@@ -47,7 +55,7 @@ object ConstFold:
         tree
 
   def Select[T <: Select](tree: T)(using Context): T =
-    if foldedUnops.contains(tree.name) then
+    if isFoldedUnop(tree.name) then
       tree.qualifier match
         case ConstantTree(x) => tree.withFoldedType(foldUnop(tree.name, x))
         case _ => tree

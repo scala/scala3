@@ -52,8 +52,10 @@ object Trees {
    *   - Type checking an untyped tree should remove all embedded `TypedSplice`
    *     nodes.
    */
-  abstract class Tree[+T <: Untyped](implicit @constructorOnly src: SourceFile)
-  extends Positioned, SrcPos, Product, Attachment.Container, printing.Showable {
+  abstract class Tree[+T <: Untyped] private[ast] (initialSpan: Positioned.InitialSpan)(implicit @constructorOnly src: SourceFile)
+  extends Positioned(initialSpan), SrcPos, Product, Attachment.Container, printing.Showable {
+
+    def this()(implicit src: SourceFile) = this(Positioned.ComputeSpan)(using src)
 
     if (Stats.enabled) ntrees += 1
 
@@ -121,9 +123,10 @@ object Trees {
           }
 
     def withTypeUnchecked(tpe: Type): ThisTree[Type] = {
+      if myTpe.asInstanceOf[AnyRef] eq tpe.asInstanceOf[AnyRef] then
+        return this.asInstanceOf[ThisTree[Type]]
       val tree =
-        (if (myTpe == null ||
-          (myTpe.asInstanceOf[AnyRef] eq tpe.asInstanceOf[AnyRef])) this
+        (if (myTpe == null) this
          else cloneIn(source)).asInstanceOf[Tree[Type]]
       tree.overwriteType(tpe)
       tree.asInstanceOf[ThisTree[Type]]
@@ -147,7 +150,14 @@ object Trees {
     def denot(using Context): Denotation = NoDenotation
 
     /** Shorthand for `denot.symbol`. */
-    final def symbol(using Context): Symbol = denot.symbol
+    def symbol(using Context): Symbol = denot.symbol
+
+    /** The owner to install when running a MegaPhase transform under this tree.
+     *  Equal to `symbol` for every tree except `PackageDef`, which folds in the
+     *  `PackageVal -> moduleClass` adjustment that `MegaPhase.inLocalContext`
+     *  used to perform on every ValDef/DefDef/TypeDef.
+     */
+    def localCtxOwner(using Context): Symbol = symbol
 
     /** Does this tree represent a type? */
     def isType: Boolean = false
@@ -255,27 +265,42 @@ object Trees {
   }
 
   /** Tree's denotation can be derived from its type */
-  abstract class DenotingTree[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends Tree[T] {
+  abstract class DenotingTree[+T <: Untyped] private[ast] (initialSpan: Positioned.InitialSpan)(implicit @constructorOnly src: SourceFile) extends Tree[T](initialSpan) {
+    def this()(implicit src: SourceFile) = this(Positioned.ComputeSpan)(using src)
     type ThisTree[+T <: Untyped] <: DenotingTree[T]
-    override def denot(using Context): Denotation = typeOpt.stripped match
+    // Fast path: inline the common NamedType / ThisType cases of typeOpt
+    // so JIT keeps the body inlineable, avoiding the megamorphic virtual
+    // `stripped` dispatch on every denot read.
+    override def denot(using Context): Denotation = typeOpt match
       case tpe: NamedType => tpe.denot
       case tpe: ThisType => tpe.cls.denot
-      case _ => NoDenotation
+      case NoType => NoDenotation
+      case tpe => tpe.stripped match
+        case tpe: NamedType => tpe.denot
+        case tpe: ThisType => tpe.cls.denot
+        case _ => NoDenotation
   }
 
   /** Tree's denot/isType/isTerm properties come from a subtree
    *  identified by `forwardTo`.
    */
-  abstract class ProxyTree[+T <: Untyped](implicit @constructorOnly src: SourceFile)  extends Tree[T] {
+  abstract class ProxyTree[+T <: Untyped] private[ast] (initialSpan: Positioned.InitialSpan)(implicit @constructorOnly src: SourceFile)  extends Tree[T](initialSpan) {
+    def this()(implicit src: SourceFile) = this(Positioned.ComputeSpan)(using src)
     type ThisTree[+T <: Untyped] <: ProxyTree[T]
     def forwardTo: Tree[T]
     override def denot(using Context): Denotation = forwardTo.denot
+    // Symbol-side fast path: forward directly to `forwardTo.symbol` instead of
+    // routing through `denot.symbol`, so that any `symbol` override on the
+    // forwardTo target (e.g. Select.symbol's cached-symbol fast path) applies
+    // to Apply / TypeApply / Typed / Annotated reads as well.
+    override def symbol(using Context): Symbol = forwardTo.symbol
     override def isTerm: Boolean = forwardTo.isTerm
     override def isType: Boolean = forwardTo.isType
   }
 
   /** Tree has a name */
-  abstract class NameTree[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends DenotingTree[T] {
+  abstract class NameTree[+T <: Untyped] private[ast] (initialSpan: Positioned.InitialSpan)(implicit @constructorOnly src: SourceFile) extends DenotingTree[T](initialSpan) {
+    def this()(implicit src: SourceFile) = this(Positioned.ComputeSpan)(using src)
     type ThisTree[+T <: Untyped] <: NameTree[T]
     def name: Name
   }
@@ -364,9 +389,14 @@ object Trees {
 
   end WithEndMarker
 
-  abstract class NamedDefTree[+T <: Untyped](implicit @constructorOnly src: SourceFile)
-  extends NameTree[T] with DefTree[T] with WithEndMarker[T] {
+  abstract class NamedDefTree[+T <: Untyped] private[ast] (initialSpan: Positioned.InitialSpan)(implicit @constructorOnly src: SourceFile)
+  extends NameTree[T](initialSpan) with DefTree[T] with WithEndMarker[T] {
+    def this()(implicit src: SourceFile) = this(Positioned.ComputeSpan)(using src)
     type ThisTree[+T <: Untyped] <: NamedDefTree[T]
+
+    override def localCtxOwner(using Context): Symbol = typeOpt match
+      case tpe: ThisType => tpe.cls
+      case _ => symbol
 
     protected def srcName(using Context): Name =
       if name == nme.CONSTRUCTOR then nme.this_
@@ -403,7 +433,8 @@ object Trees {
    *  The envelope of a MemberDef contains the whole definition and has its point
    *  on the opening keyword (or the next token after that if keyword is missing).
    */
-  abstract class MemberDef[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends NamedDefTree[T] {
+  abstract class MemberDef[+T <: Untyped] private[ast] (initialSpan: Positioned.InitialSpan)(implicit @constructorOnly src: SourceFile) extends NamedDefTree[T](initialSpan) {
+    def this()(implicit src: SourceFile) = this(Positioned.ComputeSpan)(using src)
     type ThisTree[+T <: Untyped] <: MemberDef[T]
 
     def rawComment: Option[Comment] = getAttachment(DocComment)
@@ -417,7 +448,8 @@ object Trees {
   }
 
   /** A ValDef or DefDef tree */
-  abstract class ValOrDefDef[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends MemberDef[T], WithLazyFields {
+  abstract class ValOrDefDef[+T <: Untyped] private[ast] (initialSpan: Positioned.InitialSpan)(implicit @constructorOnly src: SourceFile) extends MemberDef[T](initialSpan), WithLazyFields {
+    def this()(implicit src: SourceFile) = this(Positioned.ComputeSpan)(using src)
     type ThisTree[+T <: Untyped] <: ValOrDefDef[T]
     def name: TermName
     def tpt: Tree[T]
@@ -438,6 +470,12 @@ object Trees {
     type ThisTree[+T <: Untyped] = Ident[T]
     def qualifier: Tree[T] = genericEmptyTree
 
+    override def symbol(using Context): Symbol = typeOpt match
+      case tpe: NamedType =>
+        val s = tpe.cachedSymbolOrNull
+        if s != null then s else denot.symbol
+      case _ => denot.symbol
+
     def isBackquoted: Boolean = hasAttachment(Backquoted)
   }
 
@@ -452,12 +490,34 @@ object Trees {
     extends RefTree[T] {
     type ThisTree[+T <: Untyped] = Select[T]
 
+    // iter46 D-#1: inline the DenotingTree.denot common path so JIT keeps Select.denot
+    // within its inline budget. ConstantType + stripped fallbacks live in denotSlowPath.
     override def denot(using Context): Denotation = typeOpt match
-      case ConstantType(_) if ConstFold.foldedUnops.contains(name) =>
+      case tpe: NamedType => tpe.denot
+      case tpe: ThisType => tpe.cls.denot
+      case NoType => NoDenotation
+      case _ => denotSlowPath
+
+    private def denotSlowPath(using Context): Denotation = typeOpt match
+      case ConstantType(_) if ConstFold.isFoldedUnop(name) =>
         // Recover the denotation of a constant-folded selection
         qualifier.typeOpt.member(name).atSignature(Signature.NotAMethod, name)
-      case _ =>
-        super.denot
+      case tpe => tpe.stripped match
+        case tpe: NamedType => tpe.denot
+        case tpe: ThisType => tpe.cls.denot
+        case _ => NoDenotation
+
+    // Symbol-side fast path: when the cached NamedType denotation is valid for the
+    // current period (the same gate `NamedType.denot` uses, looser than the strict
+    // `checkedPeriod == ctx.period` gate in `NamedType.symbol`), skip the full
+    // denot-then-`.symbol` indirection and read the cached symbol directly.
+    // Falls back bit-for-bit to `denot.symbol` on a cache miss or non-NamedType
+    // type, preserving the ConstantType / stripped fallbacks in `denotSlowPath`.
+    override def symbol(using Context): Symbol = typeOpt match
+      case tpe: NamedType =>
+        val s = tpe.cachedSymbolOrNull
+        if s != null then s else denot.symbol
+      case _ => denot.symbol
 
     def nameSpan(using Context): Span =
       if span.exists then
@@ -492,6 +552,18 @@ object Trees {
         case _ =>
           super.denot
       }
+    // Symbol-side fast path: avoid the `asSeenFrom` allocation and full denot path
+    // for the common case where we only need the symbol. For Module TermRefs we
+    // return the moduleClass directly (matching the denot.symbol above); for
+    // ThisType / non-module NamedType we use the cached-symbol fast path.
+    override def symbol(using Context): Symbol = typeOpt match
+      case tpe: ThisType => tpe.cls
+      case tpe: NamedType =>
+        val s = tpe.cachedSymbolOrNull
+        if s == null then denot.symbol
+        else if s.is(Module) then s.moduleClass
+        else s
+      case _ => denot.symbol
   }
 
   /** C.super[mix], where qual = C.this */
@@ -501,7 +573,8 @@ object Trees {
     def forwardTo: Tree[T] = qual
   }
 
-  abstract class GenericApply[+T <: Untyped](implicit @constructorOnly src: SourceFile) extends ProxyTree[T] with TermTree[T] {
+  abstract class GenericApply[+T <: Untyped](implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
+  extends ProxyTree[T](initialSpan) with TermTree[T] {
     type ThisTree[+T <: Untyped] <: GenericApply[T]
     val fun: Tree[T]
     val args: List[Tree[T]]
@@ -520,7 +593,7 @@ object Trees {
     case InfixTuple // r f (x1, ..., xN) where N != 1; needs to be treated specially for an error message in typedApply
 
   /** fun(args) */
-  case class Apply[+T <: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
+  case class Apply[+T <: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
     extends GenericApply[T] {
     type ThisTree[+T <: Untyped] = Apply[T]
 
@@ -536,7 +609,7 @@ object Trees {
   }
 
   /** fun[args] */
-  case class TypeApply[+T <: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
+  case class TypeApply[+T <: Untyped] private[ast] (fun: Tree[T], args: List[Tree[T]])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
     extends GenericApply[T] {
     type ThisTree[+T <: Untyped] = TypeApply[T]
   }
@@ -554,8 +627,8 @@ object Trees {
   }
 
   /** expr : tpt */
-  case class Typed[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
-    extends ProxyTree[T] with TermTree[T] {
+  case class Typed[+T <: Untyped] private[ast] (expr: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
+    extends ProxyTree[T](initialSpan) with TermTree[T] {
     type ThisTree[+T <: Untyped] = Typed[T]
     def forwardTo: Tree[T] = expr
   }
@@ -573,16 +646,16 @@ object Trees {
   }
 
   /** { stats; expr } */
-  case class Block[+T <: Untyped] private[ast] (stats: List[Tree[T]], expr: Tree[T])(implicit @constructorOnly src: SourceFile)
-    extends Tree[T] {
+  case class Block[+T <: Untyped] private[ast] (stats: List[Tree[T]], expr: Tree[T])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
+    extends Tree[T](initialSpan) {
     type ThisTree[+T <: Untyped] = Block[T]
     override def isType: Boolean = expr.isType
     override def isTerm: Boolean = !isType // this will classify empty trees as terms, which is necessary
   }
 
   /** if cond then thenp else elsep */
-  case class If[+T <: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])(implicit @constructorOnly src: SourceFile)
-    extends TermTree[T] {
+  case class If[+T <: Untyped] private[ast] (cond: Tree[T], thenp: Tree[T], elsep: Tree[T])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
+    extends Tree[T](initialSpan) with TermTree[T] {
     type ThisTree[+T <: Untyped] = If[T]
     def isInline = false
   }
@@ -601,8 +674,8 @@ object Trees {
    *                of the closure is a function type, otherwise it is the type
    *                given in `tpt`, which must be a SAM type.
    */
-  case class Closure[+T <: Untyped] private[ast] (env: List[Tree[T]], meth: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile)
-    extends TermTree[T] {
+  case class Closure[+T <: Untyped] private[ast] (env: List[Tree[T]], meth: Tree[T], tpt: Tree[T])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
+    extends Tree[T](initialSpan) with TermTree[T] {
     type ThisTree[+T <: Untyped] = Closure[T]
   }
 
@@ -625,8 +698,8 @@ object Trees {
   }
 
   /** case pat if guard => body */
-  case class CaseDef[+T <: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit @constructorOnly src: SourceFile)
-    extends Tree[T] {
+  case class CaseDef[+T <: Untyped] private[ast] (pat: Tree[T], guard: Tree[T], body: Tree[T])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
+    extends Tree[T](initialSpan) {
     type ThisTree[+T <: Untyped] = CaseDef[T]
   }
 
@@ -689,10 +762,10 @@ object Trees {
    *  different context: `bindings` represent the arguments to the inlined
    *  call, whereas `expansion` represents the body of the inlined function.
    */
-  case class Inlined[+T <: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit @constructorOnly src: SourceFile)
-    extends Tree[T] {
+  case class Inlined[+T <: Untyped] private[ast] (call: tpd.Tree, bindings: List[MemberDef[T]], expansion: Tree[T])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
+    extends Tree[T](initialSpan) {
 
-    def inlinedFromOuterScope: Boolean = call.isEmpty
+    def inlinedFromOuterScope: Boolean = call eq theEmptyTree
 
     type ThisTree[+T <: Untyped] = Inlined[T]
     override def isTerm = expansion.isTerm
@@ -718,8 +791,8 @@ object Trees {
    *  @param  body  The tree that was quoted
    *  @param  tags  Term references to instances of `Type[T]` for `T`s that are used in the quote
    */
-  case class Quote[+T <: Untyped] private[ast] (body: Tree[T], tags: List[Tree[T]])(implicit @constructorOnly src: SourceFile)
-    extends TermTree[T] {
+  case class Quote[+T <: Untyped] private[ast] (body: Tree[T], tags: List[Tree[T]])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
+    extends Tree[T](initialSpan) with TermTree[T] {
     type ThisTree[+T <: Untyped] = Quote[T]
 
     /** Is this a type quote `'[tpe]' */
@@ -747,8 +820,8 @@ object Trees {
    *
    *  @param expr The tree that was spliced
    */
-  case class Splice[+T <: Untyped] private[ast] (expr: Tree[T])(implicit @constructorOnly src: SourceFile)
-    extends TermTree[T] {
+  case class Splice[+T <: Untyped] private[ast] (expr: Tree[T])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
+    extends Tree[T](initialSpan) with TermTree[T] {
     type ThisTree[+T <: Untyped] = Splice[T]
   }
 
@@ -929,8 +1002,8 @@ object Trees {
   }
 
   /** mods val name: tpt = rhs */
-  case class ValDef[+T <: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree[T])(implicit @constructorOnly src: SourceFile)
-    extends ValOrDefDef[T], ValOrTypeDef[T] {
+  case class ValDef[+T <: Untyped] private[ast] (name: TermName, tpt: Tree[T], private var preRhs: LazyTree[T])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
+    extends ValOrDefDef[T](initialSpan), ValOrTypeDef[T] {
     type ThisTree[+T <: Untyped] = ValDef[T]
     assert(isEmpty || (tpt ne genericEmptyTree))
 
@@ -941,8 +1014,8 @@ object Trees {
 
   /** mods def name[tparams](vparams_1)...(vparams_n): tpt = rhs */
   case class DefDef[+T <: Untyped] private[ast] (name: TermName,
-      paramss: List[ParamClause[T]], tpt: Tree[T], private var preRhs: LazyTree[T])(implicit @constructorOnly src: SourceFile)
-    extends ValOrDefDef[T] {
+      paramss: List[ParamClause[T]], tpt: Tree[T], private var preRhs: LazyTree[T])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
+    extends ValOrDefDef[T](initialSpan) {
     type ThisTree[+T <: Untyped] = DefDef[T]
     assert(tpt ne genericEmptyTree)
 
@@ -969,8 +1042,8 @@ object Trees {
    *  mods type name >: lo <: hi,          if rhs = TypeBoundsTree(lo, hi)      or
    *  mods type name >: lo <: hi = rhs     if rhs = TypeBoundsTree(lo, hi, alias) and opaque in mods
    */
-  case class TypeDef[+T <: Untyped] private[ast] (name: TypeName, rhs: Tree[T])(implicit @constructorOnly src: SourceFile)
-    extends MemberDef[T], ValOrTypeDef[T] {
+  case class TypeDef[+T <: Untyped] private[ast] (name: TypeName, rhs: Tree[T])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
+    extends MemberDef[T](initialSpan), ValOrTypeDef[T] {
     type ThisTree[+T <: Untyped] = TypeDef[T]
 
     /** Is this a definition of a class? */
@@ -984,8 +1057,8 @@ object Trees {
    *                             if this is of class untpd.DerivingTemplate.
    *                             Typed templates only have parents.
    */
-  case class Template[+T <: Untyped] private[ast] (constr: DefDef[T], private var preParentsOrDerived: LazyTreeList[T], self: ValDef[T], private var preBody: LazyTreeList[T])(implicit @constructorOnly src: SourceFile)
-    extends DefTree[T] with WithLazyFields {
+  case class Template[+T <: Untyped] private[ast] (constr: DefDef[T], private var preParentsOrDerived: LazyTreeList[T], self: ValDef[T], private var preBody: LazyTreeList[T])(implicit @constructorOnly src: SourceFile, @constructorOnly initialSpan: Positioned.InitialSpan = Positioned.ComputeSpan)
+    extends DenotingTree[T](initialSpan) with DefTree[T] with WithLazyFields {
     type ThisTree[+T <: Untyped] = Template[T]
 
     def forceFields()(using Context): Unit =
@@ -1032,6 +1105,9 @@ object Trees {
     type ThisTree[+T <: Untyped] = PackageDef[T]
     def forwardTo: RefTree[T] = pid
     protected def srcName(using Context): Name = pid.name
+    override def localCtxOwner(using Context): Symbol =
+      val sym = symbol
+      if sym.is(PackageVal) then sym.moduleClass else sym
   }
 
   /** arg @annot */
@@ -1138,10 +1214,13 @@ object Trees {
    */
   trait WithLazyFields:
 
-    /** If `x` is lazy, computes the underlying value */
-    protected def force[T <: AnyRef](x: T | Lazy[T])(using Context): T = x match
-      case x: Lazy[T] @unchecked => x.complete
-      case x: T @unchecked => x
+    /** If `x` is lazy, computes the underlying value.
+     *  Inlined so the hot path (already-forced Tree) avoids the pattern-match
+     *  overhead from `force`'s 0.14 self / 0.27 tot profile share.
+     */
+    protected inline def force[T <: AnyRef](x: T | Lazy[T])(using Context): T =
+      if x.isInstanceOf[Lazy[?]] then x.asInstanceOf[Lazy[T]].complete
+      else x.asInstanceOf[T]
 
     /** Assigns all lazy fields their underlying non-lazy value. */
     def forceFields()(using Context): Unit
@@ -1263,11 +1342,59 @@ object Trees {
 
       protected def finalize(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
         Stats.record(s"TreeCopier.finalize/${tree.getClass == copied.getClass}")
-        postProcess(tree, copied.withSpan(tree.span).withAttachmentsFrom(tree))
+        val copied1: copied.type =
+          if copied.span.exists then
+            copied.span = tree.span
+            copied
+          else
+            copied.withSpan(tree.span)
+        postProcess(tree, copied1.withAttachmentsFrom(tree))
 
       protected def finalize(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T] =
         Stats.record(s"TreeCopier.finalize/${tree.getClass == copied.getClass}")
-        postProcess(tree, copied.withSpan(tree.span).withAttachmentsFrom(tree))
+        val copied1: copied.type =
+          if copied.span.exists then
+            copied.span = tree.span
+            copied
+          else
+            copied.withSpan(tree.span)
+        postProcess(tree, copied1.withAttachmentsFrom(tree))
+
+      protected def finalizeKnownSpan(tree: Tree, copied: untpd.Tree): copied.ThisTree[T] =
+        Stats.record(s"TreeCopier.finalize/${tree.getClass == copied.getClass}")
+        postProcess(tree, copied.withAttachmentsFrom(tree))
+
+      protected def finalizeKnownSpan(tree: Tree, copied: untpd.MemberDef): copied.ThisTree[T] =
+        Stats.record(s"TreeCopier.finalize/${tree.getClass == copied.getClass}")
+        postProcess(tree, copied.withAttachmentsFrom(tree))
+
+      private def childHasSpanOrForeignSource(src: SourceFile, child: Trees.Tree[?]): Boolean =
+        child.span.exists || (child.source ne src)
+
+      private def childrenHaveSpansOrForeignSource(src: SourceFile, children: List[? <: Trees.Tree[?]]): Boolean =
+        var rest = children
+        while rest.nonEmpty do
+          if !childHasSpanOrForeignSource(src, rest.head) then return false
+          rest = rest.tail
+        true
+
+      /** As `childHasSpanOrForeignSource` for a possibly lazy child: Lazy values
+       *  are not scanned by the constructor envelope, so they never need backfill.
+       */
+      private def lazyChildHasSpanOrForeignSource(src: SourceFile, child: LazyTree): Boolean = child match
+        case child: Trees.Tree[?] => childHasSpanOrForeignSource(src, child)
+        case _ => true
+
+      private def lazyChildrenHaveSpansOrForeignSource(src: SourceFile, children: LazyTreeList): Boolean = children match
+        case children: List[?] => childrenHaveSpansOrForeignSource(src, children.asInstanceOf[List[Trees.Tree[?]]])
+        case _ => true
+
+      private def paramssHaveSpansOrForeignSource(src: SourceFile, paramss: List[ParamClause]): Boolean =
+        var rest = paramss
+        while rest.nonEmpty do
+          if !childrenHaveSpansOrForeignSource(src, rest.head) then return false
+          rest = rest.tail
+        true
 
       def Ident(tree: Tree)(name: Name)(using Context): Ident = tree match {
         case tree: Ident if name == tree.name => tree
@@ -1296,12 +1423,36 @@ object Trees {
       }
       def Apply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): Apply = tree match {
         case tree: Apply if (fun eq tree.fun) && (args eq tree.args) => tree
-        case _ => finalize(tree, untpd.Apply(fun, args)(using sourceFile(tree)))
+        case _ =>
+          val src = sourceFile(tree)
+          val known = tree match
+            case tree: Apply if tree.span.exists && (src eq tree.source) =>
+              // Children that are `eq` the original's need no check: the original's
+              // construction already positioned all of its same-source children.
+              ((fun eq tree.fun) || childHasSpanOrForeignSource(src, fun))
+              && ((args eq tree.args) || childrenHaveSpansOrForeignSource(src, args))
+            case _ =>
+              childHasSpanOrForeignSource(src, fun) && childrenHaveSpansOrForeignSource(src, args)
+          if known then
+            finalizeKnownSpan(tree, untpd.Apply(fun, args, tree.span)(using src))
+          else
+            finalize(tree, untpd.Apply(fun, args)(using src))
             //.ensuring(res => res.uniqueId != 2213, s"source = $tree, ${tree.uniqueId}, ${tree.span}")
       }
       def TypeApply(tree: Tree)(fun: Tree, args: List[Tree])(using Context): TypeApply = tree match {
         case tree: TypeApply if (fun eq tree.fun) && (args eq tree.args) => tree
-        case _ => finalize(tree, untpd.TypeApply(fun, args)(using sourceFile(tree)))
+        case _ =>
+          val src = sourceFile(tree)
+          val known = tree match
+            case tree: TypeApply if tree.span.exists && (src eq tree.source) =>
+              ((fun eq tree.fun) || childHasSpanOrForeignSource(src, fun))
+              && ((args eq tree.args) || childrenHaveSpansOrForeignSource(src, args))
+            case _ =>
+              childHasSpanOrForeignSource(src, fun) && childrenHaveSpansOrForeignSource(src, args)
+          if known then
+            finalizeKnownSpan(tree, untpd.TypeApply(fun, args, tree.span)(using src))
+          else
+            finalize(tree, untpd.TypeApply(fun, args)(using src))
       }
       def Literal(tree: Tree)(const: Constant)(using Context): Literal = tree match {
         case tree: Literal if const == tree.const => tree
@@ -1313,7 +1464,18 @@ object Trees {
       }
       def Typed(tree: Tree)(expr: Tree, tpt: Tree)(using Context): Typed = tree match {
         case tree: Typed if (expr eq tree.expr) && (tpt eq tree.tpt) => tree
-        case tree => finalize(tree, untpd.Typed(expr, tpt)(using sourceFile(tree)))
+        case _ =>
+          val src = sourceFile(tree)
+          val known = tree match
+            case tree: Typed if tree.span.exists && (src eq tree.source) =>
+              ((expr eq tree.expr) || childHasSpanOrForeignSource(src, expr))
+              && ((tpt eq tree.tpt) || childHasSpanOrForeignSource(src, tpt))
+            case _ =>
+              childHasSpanOrForeignSource(src, expr) && childHasSpanOrForeignSource(src, tpt)
+          if known then
+            finalizeKnownSpan(tree, untpd.Typed(expr, tpt, tree.span)(using src))
+          else
+            finalize(tree, untpd.Typed(expr, tpt)(using src))
       }
       def NamedArg(tree: Tree)(name: Name, arg: Tree)(using Context): NamedArg = tree match {
         case tree: NamedArg if (name == tree.name) && (arg eq tree.arg) => tree
@@ -1325,16 +1487,55 @@ object Trees {
       }
       def Block(tree: Tree)(stats: List[Tree], expr: Tree)(using Context): Block = tree match {
         case tree: Block if (stats eq tree.stats) && (expr eq tree.expr) => tree
-        case _ => finalize(tree, untpd.Block(stats, expr)(using sourceFile(tree)))
+        case _ =>
+          val src = sourceFile(tree)
+          val known = tree match
+            case tree: Block if tree.span.exists && (src eq tree.source) =>
+              ((stats eq tree.stats) || childrenHaveSpansOrForeignSource(src, stats))
+              && ((expr eq tree.expr) || childHasSpanOrForeignSource(src, expr))
+            case _ =>
+              childrenHaveSpansOrForeignSource(src, stats) && childHasSpanOrForeignSource(src, expr)
+          if known then
+            finalizeKnownSpan(tree, untpd.Block(stats, expr, tree.span)(using src))
+          else
+            finalize(tree, untpd.Block(stats, expr)(using src))
       }
       def If(tree: Tree)(cond: Tree, thenp: Tree, elsep: Tree)(using Context): If = tree match {
         case tree: If if (cond eq tree.cond) && (thenp eq tree.thenp) && (elsep eq tree.elsep) => tree
         case tree: InlineIf => finalize(tree, untpd.InlineIf(cond, thenp, elsep)(using sourceFile(tree)))
-        case _ => finalize(tree, untpd.If(cond, thenp, elsep)(using sourceFile(tree)))
+        case _ =>
+          val src = sourceFile(tree)
+          val known = tree match
+            case tree: If if tree.span.exists && (src eq tree.source) =>
+              ((cond eq tree.cond) || childHasSpanOrForeignSource(src, cond))
+              && ((thenp eq tree.thenp) || childHasSpanOrForeignSource(src, thenp))
+              && ((elsep eq tree.elsep) || childHasSpanOrForeignSource(src, elsep))
+            case _ =>
+              childHasSpanOrForeignSource(src, cond)
+              && childHasSpanOrForeignSource(src, thenp)
+              && childHasSpanOrForeignSource(src, elsep)
+          if known then
+            finalizeKnownSpan(tree, untpd.If(cond, thenp, elsep, tree.span)(using src))
+          else
+            finalize(tree, untpd.If(cond, thenp, elsep)(using src))
       }
       def Closure(tree: Tree)(env: List[Tree], meth: Tree, tpt: Tree)(using Context): Closure = tree match {
         case tree: Closure if (env eq tree.env) && (meth eq tree.meth) && (tpt eq tree.tpt) => tree
-        case _ => finalize(tree, untpd.Closure(env, meth, tpt)(using sourceFile(tree)))
+        case _ =>
+          val src = sourceFile(tree)
+          val known = tree match
+            case tree: Closure if tree.span.exists && (src eq tree.source) =>
+              ((env eq tree.env) || childrenHaveSpansOrForeignSource(src, env))
+              && ((meth eq tree.meth) || childHasSpanOrForeignSource(src, meth))
+              && ((tpt eq tree.tpt) || childHasSpanOrForeignSource(src, tpt))
+            case _ =>
+              childrenHaveSpansOrForeignSource(src, env)
+              && childHasSpanOrForeignSource(src, meth)
+              && childHasSpanOrForeignSource(src, tpt)
+          if known then
+            finalizeKnownSpan(tree, untpd.Closure(env, meth, tpt, tree.span)(using src))
+          else
+            finalize(tree, untpd.Closure(env, meth, tpt)(using src))
       }
       def Match(tree: Tree)(selector: Tree, cases: List[CaseDef])(using Context): Match = tree match {
         case tree: Match if (selector eq tree.selector) && (cases eq tree.cases) => tree
@@ -1344,7 +1545,21 @@ object Trees {
       }
       def CaseDef(tree: Tree)(pat: Tree, guard: Tree, body: Tree)(using Context): CaseDef = tree match {
         case tree: CaseDef if (pat eq tree.pat) && (guard eq tree.guard) && (body eq tree.body) => tree
-        case _ => finalize(tree, untpd.CaseDef(pat, guard, body)(using sourceFile(tree)))
+        case _ =>
+          val src = sourceFile(tree)
+          val known = tree match
+            case tree: CaseDef if tree.span.exists && (src eq tree.source) =>
+              ((pat eq tree.pat) || childHasSpanOrForeignSource(src, pat))
+              && ((guard eq tree.guard) || childHasSpanOrForeignSource(src, guard))
+              && ((body eq tree.body) || childHasSpanOrForeignSource(src, body))
+            case _ =>
+              childHasSpanOrForeignSource(src, pat)
+              && childHasSpanOrForeignSource(src, guard)
+              && childHasSpanOrForeignSource(src, body)
+          if known then
+            finalizeKnownSpan(tree, untpd.CaseDef(pat, guard, body, tree.span)(using src))
+          else
+            finalize(tree, untpd.CaseDef(pat, guard, body)(using src))
       }
       def Labeled(tree: Tree)(bind: Bind, expr: Tree)(using Context): Labeled = tree match {
         case tree: Labeled if (bind eq tree.bind) && (expr eq tree.expr) => tree
@@ -1378,15 +1593,26 @@ object Trees {
           val expansionWithSpan =
             if expansion.span.exists then expansion
             else expansion.withSpan(tree.expansion.span)
-          finalize(tree, untpd.Inlined(call, bindings, expansionWithSpan)(using sourceFile(tree)))
+          val src = sourceFile(tree)
+          finalizeKnownSpan(tree, untpd.Inlined(call, bindings, expansionWithSpan, tree.span)(using src))
 
       def Quote(tree: Tree)(body: Tree, tags: List[Tree])(using Context): Quote = tree match {
         case tree: Quote if (body eq tree.body) && (tags eq tree.tags) => tree
-        case _ => finalize(tree, untpd.Quote(body, tags)(using sourceFile(tree)))
+        case _ =>
+          val src = sourceFile(tree)
+          if childHasSpanOrForeignSource(src, body) && childrenHaveSpansOrForeignSource(src, tags) then
+            finalizeKnownSpan(tree, untpd.Quote(body, tags, tree.span)(using src))
+          else
+            finalize(tree, untpd.Quote(body, tags)(using src))
       }
       def Splice(tree: Tree)(expr: Tree)(using Context): Splice = tree match {
         case tree: Splice if (expr eq tree.expr) => tree
-        case _ => finalize(tree, untpd.Splice(expr)(using sourceFile(tree)))
+        case _ =>
+          val src = sourceFile(tree)
+          if childHasSpanOrForeignSource(src, expr) then
+            finalizeKnownSpan(tree, untpd.Splice(expr, tree.span)(using src))
+          else
+            finalize(tree, untpd.Splice(expr)(using src))
       }
       def QuotePattern(tree: Tree)(bindings: List[Tree], body: Tree, quotes: Tree)(using Context): QuotePattern = tree match {
         case tree: QuotePattern if (bindings eq tree.bindings) && (body eq tree.body) && (quotes eq tree.quotes) => tree
@@ -1442,19 +1668,72 @@ object Trees {
       }
       def ValDef(tree: Tree)(name: TermName, tpt: Tree, rhs: LazyTree)(using Context): ValDef = tree match {
         case tree: ValDef if (name == tree.name) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
-        case _ => finalize(tree, untpd.ValDef(name, tpt, rhs)(using sourceFile(tree)))
+        case _ =>
+          val src = sourceFile(tree)
+          val known = tree match
+            case tree: ValDef if tree.span.exists && (src eq tree.source) =>
+              ((tpt eq tree.tpt) || childHasSpanOrForeignSource(src, tpt))
+              && ((rhs eq tree.unforcedRhs) || lazyChildHasSpanOrForeignSource(src, rhs))
+            case _ =>
+              childHasSpanOrForeignSource(src, tpt) && lazyChildHasSpanOrForeignSource(src, rhs)
+          if known then
+            finalizeKnownSpan(tree, untpd.ValDef(name, tpt, rhs, tree.span)(using src))
+          else
+            finalize(tree, untpd.ValDef(name, tpt, rhs)(using src))
       }
       def DefDef(tree: Tree)(name: TermName, paramss: List[ParamClause], tpt: Tree, rhs: LazyTree)(using Context): DefDef = tree match {
         case tree: DefDef if (name == tree.name) && (paramss eq tree.paramss) && (tpt eq tree.tpt) && (rhs eq tree.unforcedRhs) => tree
-        case _ => finalize(tree, untpd.DefDef(name, paramss, tpt, rhs)(using sourceFile(tree)))
+        case _ =>
+          val src = sourceFile(tree)
+          val known = tree match
+            case tree: DefDef if tree.span.exists && (src eq tree.source) =>
+              ((paramss eq tree.paramss) || paramssHaveSpansOrForeignSource(src, paramss))
+              && ((tpt eq tree.tpt) || childHasSpanOrForeignSource(src, tpt))
+              && ((rhs eq tree.unforcedRhs) || lazyChildHasSpanOrForeignSource(src, rhs))
+            case _ =>
+              paramssHaveSpansOrForeignSource(src, paramss)
+              && childHasSpanOrForeignSource(src, tpt)
+              && lazyChildHasSpanOrForeignSource(src, rhs)
+          if known then
+            finalizeKnownSpan(tree, untpd.DefDef(name, paramss, tpt, rhs, tree.span)(using src))
+          else
+            finalize(tree, untpd.DefDef(name, paramss, tpt, rhs)(using src))
       }
       def TypeDef(tree: Tree)(name: TypeName, rhs: Tree)(using Context): TypeDef = tree match {
         case tree: TypeDef if (name == tree.name) && (rhs eq tree.rhs) => tree
-        case _ => finalize(tree, untpd.TypeDef(name, rhs)(using sourceFile(tree)))
+        case _ =>
+          val src = sourceFile(tree)
+          val known = tree match
+            case tree: TypeDef if tree.span.exists && (src eq tree.source) =>
+              (rhs eq tree.rhs) || childHasSpanOrForeignSource(src, rhs)
+            case _ =>
+              childHasSpanOrForeignSource(src, rhs)
+          if known then
+            finalizeKnownSpan(tree, untpd.TypeDef(name, rhs, tree.span)(using src))
+          else
+            finalize(tree, untpd.TypeDef(name, rhs)(using src))
       }
       def Template(tree: Tree)(constr: DefDef, parents: List[Tree], derived: List[untpd.Tree], self: ValDef, body: LazyTreeList)(using Context): Template = tree match {
         case tree: Template if (constr eq tree.constr) && (parents eq tree.parents) && (derived eq tree.derived) && (self eq tree.self) && (body eq tree.unforcedBody) => tree
-        case tree => finalize(tree, untpd.Template(constr, parents, derived, self, body)(using sourceFile(tree)))
+        case _ =>
+          val src = sourceFile(tree)
+          val known = tree match
+            case tree: Template if tree.span.exists && (src eq tree.source) =>
+              ((constr eq tree.constr) || childHasSpanOrForeignSource(src, constr))
+              && childrenHaveSpansOrForeignSource(src, parents)
+              && childrenHaveSpansOrForeignSource(src, derived)
+              && ((self eq tree.self) || childHasSpanOrForeignSource(src, self))
+              && ((body eq tree.unforcedBody) || lazyChildrenHaveSpansOrForeignSource(src, body))
+            case _ =>
+              childHasSpanOrForeignSource(src, constr)
+              && childrenHaveSpansOrForeignSource(src, parents)
+              && childrenHaveSpansOrForeignSource(src, derived)
+              && childHasSpanOrForeignSource(src, self)
+              && lazyChildrenHaveSpansOrForeignSource(src, body)
+          if known then
+            finalizeKnownSpan(tree, untpd.Template(constr, parents, derived, self, body, tree.span)(using src))
+          else
+            finalize(tree, untpd.Template(constr, parents, derived, self, body)(using src))
       }
       def Import(tree: Tree)(expr: Tree, selectors: List[untpd.ImportSelector])(using Context): Import = tree match {
         case tree: Import if (expr eq tree.expr) && (selectors eq tree.selectors) => tree
@@ -1516,6 +1795,12 @@ object Trees {
      */
     protected def inlineContext(tree: Inlined)(using Context): Context = ctx
 
+    /** Like `inlineContext`, but also enters `source`. Typed trees override
+     *  this to avoid a separate source-only context for inlined expansions.
+     */
+    protected def inlineContext(tree: Inlined, source: SourceFile)(using Context): Context =
+      inlineContext(tree)(using ctx.withSource(source))
+
     /** The context to use when mapping or accumulating over a tree */
     def localCtx(tree: Tree)(using Context): Context
 
@@ -1527,7 +1812,7 @@ object Trees {
       */
     def transformCtx(tree: Tree)(using Context): Context =
       val sourced =
-        if tree.source.exists && tree.source != ctx.source
+        if tree.source.exists && (tree.source `ne` ctx.source)
         then ctx.withSource(tree.source)
         else ctx
       tree match
@@ -1538,6 +1823,20 @@ object Trees {
 
     abstract class TreeMap(val cpy: TreeCopier = inst.cpy) { self =>
       def transform(tree: Tree)(using Context): Tree = {
+        // iter4 opt-03: leaf-tree shortcut. For Ident/Literal/This/TypeTree
+        // the slow-path body is just `tree` (no children to recurse into),
+        // so when transformCtx would have returned ctx unchanged
+        // (i.e. tree.source eq ctx.source, or no source) and skipTransform
+        // is false (its default), we can skip the inContext+transformCtx
+        // wrapper entirely. Mirrors MegaPhase's f02474360f leaf shortcut.
+        if ((tree.isInstanceOf[Ident @unchecked]
+              || tree.isInstanceOf[Literal @unchecked]
+              || tree.isInstanceOf[This @unchecked]
+              || tree.isInstanceOf[TypeTree @unchecked])
+            && ((tree.source `eq` ctx.source) || !tree.source.exists)
+            && !skipTransform(tree))
+          tree
+        else
         inContext(transformCtx(tree)) {
           Stats.record(s"TreeMap.transform/$getClass")
           if (skipTransform(tree)) tree
@@ -1657,7 +1956,43 @@ object Trees {
       def transformBlock(blk: Block)(using Context): Block =
         cpy.Block(blk)(transformStats(blk.stats, ctx.owner), transform(blk.expr))
       def transform(trees: List[Tree])(using Context): List[Tree] =
-        flatten(trees mapConserve (transform(_)))
+        trees match
+          case Nil =>
+            Nil
+          case tree :: Nil =>
+            val tree1 = transform(tree)
+            tree1 match
+              case Thicket(_) => flatten(tree1 :: Nil)
+              case _ => if (tree1 eq tree) trees else tree1 :: Nil
+          case _ =>
+            var remaining = trees
+            var buf: ListBuffer[Tree] | Null = null
+            var sawThicket = false
+            while remaining.nonEmpty do
+              val tree = remaining.head
+              val tree1 = transform(tree)
+              tree1 match
+                case _: Thicket => sawThicket = true
+                case _ =>
+              val buf1 = buf
+              if buf1 == null then
+                if tree1 ne tree then
+                  val buf2 = new ListBuffer[Tree]
+                  var prefix = trees
+                  while prefix ne remaining do
+                    buf2 += prefix.head
+                    prefix = prefix.tail
+                  buf2 += tree1
+                  buf = buf2
+              else
+                buf1 += tree1
+              remaining = remaining.tail
+            val buf1 = buf
+            if buf1 == null then
+              if sawThicket then flatten(trees) else trees
+            else
+              val result = buf1.toList
+              if sawThicket then flatten(result) else result
       def transformSub[Tr <: Tree](tree: Tr)(using Context): Tr =
         transform(tree).asInstanceOf[Tr]
       def transformSub[Tr <: Tree](trees: List[Tr])(using Context): List[Tr] =
@@ -1684,8 +2019,26 @@ object Trees {
         fold(x, trees)
 
       def foldOver(x: X, tree: Tree)(using Context): X =
-        if (tree.source != ctx.source && tree.source.exists)
-          foldOver(x, tree)(using ctx.withSource(tree.source))
+        // iter3 opt-3: leaf-tree shortcut. For Ident/Literal/This/TypeTree
+        // the slow-path body is just `x` (no children to fold), so when the
+        // source-switch branch would not have fired (tree.source eq ctx.source,
+        // or no source) we can return `x` directly and skip the Stats.record
+        // + pattern match. Symmetric analogue of 8f9f1f43d0 (TreeMap leaf
+        // shortcut).
+        if ((tree.isInstanceOf[Ident @unchecked]
+              || tree.isInstanceOf[Literal @unchecked]
+              || tree.isInstanceOf[This @unchecked]
+              || tree.isInstanceOf[TypeTree @unchecked])
+            && ((tree.source `eq` ctx.source) || !tree.source.exists))
+          x
+        else if ((tree.source `ne` ctx.source) && tree.source.exists)
+          tree match
+            case tree @ Inlined(call, bindings, expansion) =>
+              val source = tree.source
+              Stats.record(s"TreeAccumulator.foldOver/$getClass")
+              this(this(x, bindings)(using ctx.withSource(source)), expansion)(using inlineContext(tree, source))
+            case _ =>
+              foldOver(x, tree)(using ctx.withSource(tree.source))
         else {
           Stats.record(s"TreeAccumulator.foldOver/$getClass")
           tree match {

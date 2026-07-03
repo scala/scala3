@@ -409,7 +409,16 @@ class TypeApplications(val self: Type) extends AnyVal {
    */
   final def appliedTo(args: List[Type])(using Context): Type = {
     record("appliedTo")
-    val typParams = self.typeParams
+    // Fast path: a class TypeRef is not a TypeVar, has no alias, and only the
+    // catch-all `AppliedType(self, args)` (or Nothing) arm of the match below
+    // can ever fire. Skip stripTypeVar + safeDealias and the dead `typParams`
+    // computation in that common case (List[Int], Option[String], ...).
+    self match
+      case self: TypeRef if self.symbol.isInstanceOf[ClassSymbol] =>
+        if args.isEmpty || ctx.erasedTypes then return self
+        if self.symbol eq defn.NothingClass then return self
+        return AppliedType(self, args)
+      case _ =>
     val stripped = self.stripTypeVar
     val dealiased = stripped.safeDealias
     if (args.isEmpty || ctx.erasedTypes) self
@@ -430,8 +439,17 @@ class TypeApplications(val self: Type) extends AnyVal {
               }
             }
             if (dealiased eq stripped) || followAlias then
-              val paramsWithoutArg = dealiased.typeParams.drop(args.length).map(_.paramRef)
-              val hasParamsWithoutArg = paramsWithoutArg.nonEmpty && dealiased.resType.existsPart(paramsWithoutArg.contains, forceLazy = false)
+              val argCount = args.length
+              val paramCount = dealiased.paramNames.length
+              val hasParamsWithoutArg =
+                if argCount >= paramCount then false
+                else
+                  def isRemainingParam(tp: Type): Boolean = tp match
+                    case TypeParamRef(binder, paramNum) =>
+                      (binder eq dealiased) && paramNum >= argCount && paramNum < paramCount
+                    case _ =>
+                      false
+                  dealiased.resType.existsPart(isRemainingParam, forceLazy = false)
               if hasParamsWithoutArg then
                 AppliedType(self, args)
               else
@@ -481,8 +499,23 @@ class TypeApplications(val self: Type) extends AnyVal {
     }
   }
 
-  final def appliedTo(arg: Type)(using Context): Type = appliedTo(arg :: Nil)
-  final def appliedTo(arg1: Type, arg2: Type)(using Context): Type = appliedTo(arg1 :: arg2 :: Nil)
+  final def appliedTo(arg: Type)(using Context): Type = self match
+    case self: TypeRef if self.symbol.isInstanceOf[ClassSymbol] =>
+      record("appliedTo")
+      if ctx.erasedTypes then self
+      else if self.symbol eq defn.NothingClass then self
+      else AppliedType(self, arg)
+    case _ =>
+      appliedTo(arg :: Nil)
+
+  final def appliedTo(arg1: Type, arg2: Type)(using Context): Type = self match
+    case self: TypeRef if self.symbol.isInstanceOf[ClassSymbol] =>
+      record("appliedTo")
+      if ctx.erasedTypes then self
+      else if self.symbol eq defn.NothingClass then self
+      else AppliedType(self, arg1, arg2)
+    case _ =>
+      appliedTo(arg1 :: arg2 :: Nil)
 
   final def applyIfParameterized(args: List[Type])(using Context): Type =
     if (typeParams.nonEmpty) appliedTo(args) else self
@@ -598,9 +631,19 @@ class TypeApplications(val self: Type) extends AnyVal {
   /** If this is an encoding of a function type, return its arguments, otherwise return Nil.
    *  Handles poly functions gracefully.
    */
-  final def functionArgInfos(using Context): List[Type] = self.dealias match
+  final def functionArgInfos(using Context): List[Type] = functionArgInfosOf(self.dealias)
+
+  /** Like `functionArgInfos`, but takes the already-dealiased `self` to avoid a
+   *  redundant leading `dealias` when the caller has dealiased already. Behaviour
+   *  is identical: `dealiased` is `self.dealias`, and `self.dropDependentRefinement`
+   *  dealiases `self` to exactly this same value, so we reuse it for the dependent
+   *  refinement drop while KEEPING the post-drop `dealias` (it operates on the
+   *  refinement parent, a different type). `dealias` is idempotent, so this is
+   *  behaviour-preserving. */
+  final def functionArgInfosOf(dealiased: Type)(using Context): List[Type] = dealiased match
     case defn.PolyFunctionOf(mt: MethodType) => (mt.paramInfos :+ mt.resultType)
-    case _ => self.dropDependentRefinement.dealias.argInfos
+    case RefinedType(parent, nme.apply, _) if defn.isNonRefinedFunction(parent) => parent.dealias.argInfos
+    case tp => tp.argInfos
 
   /** Argument types where existential types in arguments are disallowed */
   def argTypes(using Context): List[Type] = argInfos mapConserve noBounds

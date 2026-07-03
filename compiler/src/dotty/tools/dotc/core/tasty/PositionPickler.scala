@@ -42,17 +42,33 @@ object PositionPickler:
 
     pickler.newSection(PositionsSection, buf)
 
-    /** Pickle the number of lines followed by the size of each line */
+    /** Pickle the number of lines followed by the size of each line.
+     *  Manual `while` loop over the `Array[Char]` to avoid `ArrayOps.count`
+     *  (which allocates a `Function1` and boxes each `Char` through
+     *  `BoxesRunTime.equals`) and `ArrayOps.indexOf` (same boxing cost).
+     *  Line break semantics are `'\n'`-only, matching
+     *  `SourceFile.setLineIndicesFromLineSizes` which expects an `'\n'`
+     *  terminator on every line except the last.
+     */
     def pickleLinesSizes(): Unit = {
       val content = source.content()
-      buf.writeNat(content.count(_ == '\n') + 1) // number of lines
-      var lastIndex = content.indexOf('\n')
-      buf.writeNat(if lastIndex != -1 then lastIndex else content.length) // size of first line
-      while lastIndex != -1 do
-        val nextIndex = content.indexOf('\n', lastIndex + 1)
-        val end = if nextIndex != -1 then nextIndex else content.length
-        buf.writeNat(end - lastIndex - 1) // size of the next line
-        lastIndex = nextIndex
+      val len = content.length
+      // First pass: count line breaks (primitive `if_icmpeq`, no boxing, no closure).
+      var nlCount = 0
+      var i = 0
+      while i < len do
+        if content(i) == '\n' then nlCount += 1
+        i += 1
+      buf.writeNat(nlCount + 1) // number of lines
+      // Second pass: emit line sizes.
+      var lineStart = 0
+      i = 0
+      while i < len do
+        if content(i) == '\n' then
+          buf.writeNat(i - lineStart) // size of this line (without the '\n')
+          lineStart = i + 1
+        i += 1
+      buf.writeNat(len - lineStart) // size of the last (unterminated) line
     }
     pickleLinesSizes()
 
@@ -79,7 +95,7 @@ object PositionPickler:
     def pickleSource(source: SourceFile): Unit = {
       buf.writeInt(SOURCE)
       val relativePath = SourceFile.relativePath(source, relativePathReference)
-      buf.writeInt(pickler.nameBuffer.nameIndex(relativePath.toTermName).index)
+      buf.writeInt(pickler.nameBuffer.stringLiteralIndex(relativePath).index)
     }
 
     /** True if x's position shouldn't be reconstructed automatically from its initial span

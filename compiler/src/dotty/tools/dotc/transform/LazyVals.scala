@@ -50,20 +50,19 @@ class LazyVals extends MiniPhase with IdentityDenotTransformer {
 
   /** A map of lazy values to the fields they should null after initialization. */
   private var lazyValNullables: IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] | Null = null
+  private def lazyValNullablesMap(using Context): IdentityHashMap[Symbol, mutable.ListBuffer[Symbol]] = {
+    if (lazyValNullables == null)
+      lazyValNullables = ctx.base.collectNullableFieldsPhase.asInstanceOf[CollectNullableFields].lazyValNullables
+    lazyValNullables.nn
+  }
   private def nullableFor(sym: Symbol)(using Context) = {
     // optimisation: value only used once, we can remove the value from the map
-    val nullables = lazyValNullables.nn.remove(sym)
+    val nullables = lazyValNullablesMap.remove(sym)
     if (nullables == null) Nil
     else nullables.toList
   }
 
   private def needsBoxing(tp: Type)(using Context): Boolean = tp.classSymbol.isPrimitiveValueClass
-
-  override def prepareForUnit(tree: Tree)(using Context): Context = {
-    if (lazyValNullables == null)
-      lazyValNullables = ctx.base.collectNullableFieldsPhase.asInstanceOf[CollectNullableFields].lazyValNullables
-    ctx
-  }
 
   override def transformDefDef(tree: DefDef)(using Context): Tree =
    transformLazyVal(tree)
