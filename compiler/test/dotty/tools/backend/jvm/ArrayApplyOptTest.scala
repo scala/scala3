@@ -224,6 +224,55 @@ class ArrayApplyOptTest extends DottyBytecodeTest {
   @Test def testCollectionSeqApplyBuildsVectorDirectly =
     checkSeqApplyBuildsVectorDirectly("import scala.collection.Seq")
 
+  // `Vector(...)` literals are intrinsified the same way as `Seq(...)`: arity 0 to the empty
+  // `Vector`, 1..32 through `Vector.fromArray1Unsafe`.
+  @Test def testVectorApply0To31BuildsVectorDirectly =
+    for arity <- 0 to 31 do
+      val elems = (1 to arity).map(i => s""""$i"""").mkString(", ")
+      val expected =
+        if arity == 0 then "scala/collection/immutable/Vector$.empty"
+        else "scala/collection/immutable/Vector$.fromArray1Unsafe"
+      checkInvokes(
+        s"""class Foo { def test: Vector[String] = Vector($elems) }""",
+        mustContain = expected,
+        mustNotContain = Seq("scala/collection/immutable/Vector$.apply", "wrapRefArray", "arrayseq"))
+
+  @Test def testImmutableVectorApplyBuildsVectorDirectly =
+    checkInvokes(
+      """import scala.collection.immutable.Vector
+        |class Foo { def test: Vector[String] = Vector("1", "2", "3") }""".stripMargin,
+      mustContain = "scala/collection/immutable/Vector$.fromArray1Unsafe",
+      mustNotContain = Seq("scala/collection/immutable/Vector$.apply", "wrapRefArray", "arrayseq"))
+
+  @Test def testPrimitiveVectorApplyBuildsVectorDirectly =
+    checkInvokes(
+      """class Foo { def test: Vector[Int] = Vector(1, 2, 3) }""",
+      mustContain = "scala/collection/immutable/Vector$.fromArray1Unsafe",
+      mustNotContain = Seq("scala/collection/immutable/Vector$.apply", "wrapIntArray", "arrayseq"))
+
+  @Test def testGenericVectorApply1To32BuildsVectorDirectly =
+    for arity <- 1 to 32 do
+      val params = (1 to arity).map(i => s"a$i: A").mkString(", ")
+      val args = (1 to arity).map(i => s"a$i").mkString(", ")
+      checkInvokes(
+        s"""class Foo { def test[A]($params): Vector[A] = Vector($args) }""",
+        mustContain = "scala/collection/immutable/Vector$.fromArray1Unsafe",
+        mustNotContain = Seq("scala/collection/immutable/Vector$.apply", "genericWrapArray", "arrayseq"))
+
+  @Test def testVectorApply32BuildsVectorDirectly = {
+    val elems = (1 to 32).map(i => s""""$i"""").mkString(", ")
+    checkInvokes(s"""class Foo { def test: Vector[String] = Vector($elems) }""",
+      mustContain = "scala/collection/immutable/Vector$.fromArray1Unsafe",
+      mustNotContain = Seq("scala/collection/immutable/Vector$.apply", "wrapRefArray", "arrayseq"))
+  }
+
+  @Test def testVectorApply33UsesFactoryApply = {
+    val elems = (1 to 33).map(i => s""""$i"""").mkString(", ")
+    checkInvokes(s"""class Foo { def test: Vector[String] = Vector($elems) }""",
+      mustContain = "scala/collection/immutable/Vector$.apply",
+      mustNotContain = Seq("fromArray1Unsafe"))
+  }
+
   // A single `Vector1` holds up to 32 elements, so a 32-element `Seq(...)` is still built directly.
   @Test def testSeqApply32BuildsVectorDirectly = {
     val elems = (1 to 32).map(i => s""""$i"""").mkString(", ")

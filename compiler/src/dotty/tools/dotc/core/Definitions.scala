@@ -148,7 +148,7 @@ class Definitions {
             isImplicit = false)
           decls.enter(newMethod(cls, nme.apply, methodType(argParamRefs, resParamRef), Deferred))
           denot.info =
-            ClassInfo(ScalaPackageClass.thisType, cls, ObjectType +: Vector(), decls)
+            ClassInfo(ScalaPackageClass.thisType, cls, Vector(ObjectType), decls)
       }
     }
     if impure then
@@ -173,7 +173,7 @@ class Definitions {
 
   private def enterBinaryAlias(name: TypeName, op: (Type, Type) => Type): TypeSymbol =
     enterAliasType(name,
-      HKTypeLambda(TypeBounds.empty +: TypeBounds.empty +: Vector())(
+      HKTypeLambda(Vector(TypeBounds.empty, TypeBounds.empty))(
       tl => op(tl.paramRefs(0), tl.paramRefs(1))))
 
   private def enterPolyMethod(cls: ClassSymbol, name: TermName, typeParamCount: Int,
@@ -297,7 +297,7 @@ class Definitions {
    */
   @tu lazy val AnyClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Any, Abstract | TransparentType, Vector()), ensureCtor = false)
   def AnyType: TypeRef = AnyClass.typeRef
-  @tu lazy val MatchableClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Matchable, Trait | TransparentType, AnyType +: Vector()), ensureCtor = false)
+  @tu lazy val MatchableClass: ClassSymbol = completeClass(enterCompleteClassSymbol(ScalaPackageClass, tpnme.Matchable, Trait | TransparentType, Vector(AnyType)), ensureCtor = false)
   def MatchableType: TypeRef = MatchableClass.typeRef
   @tu lazy val AnyValClass: ClassSymbol = requiredClass("scala.AnyVal")
 
@@ -448,8 +448,8 @@ class Definitions {
     @tu lazy val Object_notify: TermSymbol = enterMethod(ObjectClass, nme.notify_, MethodType(Vector(), UnitType), Final)
     @tu lazy val Object_notifyAll: TermSymbol = enterMethod(ObjectClass, nme.notifyAll_, MethodType(Vector(), UnitType), Final)
     @tu lazy val Object_wait: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(Vector(), UnitType), Final)
-    @tu lazy val Object_waitL: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(LongType +: Vector(), UnitType), Final)
-    @tu lazy val Object_waitLI: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(LongType +: IntType +: Vector(), UnitType), Final)
+    @tu lazy val Object_waitL: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(Vector(LongType), UnitType), Final)
+    @tu lazy val Object_waitLI: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(Vector(LongType, IntType), UnitType), Final)
 
     def ObjectMethods: Vector[TermSymbol] = Vector(Object_eq, Object_ne, Object_synchronized, Object_clone,
         Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
@@ -470,8 +470,8 @@ class Definitions {
   @tu lazy val CBCompanion: TypeSymbol = // type `<context-bound-companion>`[-Refs]
     enterPermanentSymbol(tpnme.CBCompanion,
       TypeBounds(NothingType,
-        HKTypeLambda(tpnme.syntheticTypeParamName(0) +: Vector())(
-          tl => TypeBounds.empty +: Vector(),
+        HKTypeLambda(Vector(tpnme.syntheticTypeParamName(0)))(
+          tl => Vector(TypeBounds.empty),
           tl => AnyType))).asType
 
   /** Method representing a throw */
@@ -479,8 +479,8 @@ class Definitions {
       MethodType(Vector(ThrowableType), NothingType))
 
   @tu lazy val spreadMethod = enterMethod(OpsPackageClass, nme.spread,
-      PolyType(TypeBounds.empty +: Vector())(
-        tl => MethodType(AnyType +: Vector(), tl.paramRefs(0))
+      PolyType(Vector(TypeBounds.empty))(
+        tl => MethodType(Vector(AnyType), tl.paramRefs(0))
       ))
 
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
@@ -488,7 +488,7 @@ class Definitions {
   def NothingType: TypeRef = NothingClass.typeRef
   @tu lazy val NullClass: ClassSymbol = {
     // When explicit-nulls is enabled, Null becomes a direct subtype of Any and Matchable
-    val parents = if ctx.explicitNulls then AnyType +: MatchableType +: Vector() else ObjectType +: Vector()
+    val parents = if ctx.explicitNulls then Vector(AnyType, MatchableType) else Vector(ObjectType)
     enterCompleteClassSymbol(ScalaPackageClass, tpnme.Null, AbstractFinal, parents)
   }
   def NullType: TypeRef = NullClass.typeRef
@@ -547,6 +547,10 @@ class Definitions {
     methodNames.map(getWrapVarargsArrayModule.requiredMethod(_))
   })
 
+  // The wrapper used for generic-element varargs, accepted alongside `WrapArrayMethods`
+  val GenericWrapArrayMethod: PerRun[Symbol] =
+    new PerRun(getWrapVarargsArrayModule.requiredMethod(nme.genericWrapArray))
+
   @tu lazy val ListClass: Symbol        = requiredClass("scala.collection.immutable.List")
   def ListType: TypeRef                 = ListClass.typeRef
   @tu lazy val ListModule: Symbol       = requiredModule("scala.collection.immutable.List")
@@ -590,6 +594,7 @@ class Definitions {
     @tu lazy val Seq_toSeq        : Symbol = SeqClass.requiredMethod(nme.toSeq)
 
   @tu lazy val VectorModule: Symbol            = requiredModule("scala.collection.immutable.Vector")
+  def VectorModuleAlias: Symbol                = ScalaPackageClass.requiredMethod(nme.Vector)
   @tu lazy val Vector_empty: Symbol            = VectorModule.requiredMethod("empty")
   // Soft lookup: `fromArray1Unsafe` is only present in a `scala-library` whose `Seq` defaults
   // to `Vector`. Absent in the stock 2.13 stdlib, in which case the `Seq(...)` optimization
@@ -1184,52 +1189,54 @@ class Definitions {
   // on fields and method parameters required by some frameworks, so we need to recognize annotations
   // form `AnnotatedType` as well as from `Symbol`.
   @tu lazy val NotNullAnnots: Vector[ClassSymbol] = getClassesIfDefined(
-    "javax.annotation.Nonnull" +:
-    "javax.validation.constraints.NotNull" +:
-    "jakarta.annotation.Nonnull" +:
-    "android.support.annotation.NonNull" +:
-    "android.annotation.NonNull" +:
-    "androidx.annotation.NonNull" +:
-    "androidx.annotation.RecentlyNonNull" +:
-    "com.android.annotations.NonNull" +:
-    "org.eclipse.jdt.annotation.NonNull" +:
-    "edu.umd.cs.findbugs.annotations.NonNull" +:
-    "org.checkerframework.checker.nullness.qual.NonNull" +:
-    "org.checkerframework.checker.nullness.compatqual.NonNullDecl" +:
-    "org.checkerframework.checker.nullness.compatqual.NonNullType" +:
-    "org.jetbrains.annotations.NotNull" +:
-    "org.springframework.lang.NonNull" +:
-    "org.springframework.lang.NonNullApi" +:
-    "org.springframework.lang.NonNullFields" +:
-    "lombok.NonNull" +:
-    "reactor.util.annotation.NonNull" +:
-    "reactor.util.annotation.NonNullApi" +:
-    "io.reactivex.annotations.NonNull" +:
-    "io.reactivex.rxjava3.annotations.NonNull" +:
-    "org.jspecify.annotations.NonNull" +: Vector())
+    Vector(
+    "javax.annotation.Nonnull",
+    "javax.validation.constraints.NotNull",
+    "jakarta.annotation.Nonnull",
+    "android.support.annotation.NonNull",
+    "android.annotation.NonNull",
+    "androidx.annotation.NonNull",
+    "androidx.annotation.RecentlyNonNull",
+    "com.android.annotations.NonNull",
+    "org.eclipse.jdt.annotation.NonNull",
+    "edu.umd.cs.findbugs.annotations.NonNull",
+    "org.checkerframework.checker.nullness.qual.NonNull",
+    "org.checkerframework.checker.nullness.compatqual.NonNullDecl",
+    "org.checkerframework.checker.nullness.compatqual.NonNullType",
+    "org.jetbrains.annotations.NotNull",
+    "org.springframework.lang.NonNull",
+    "org.springframework.lang.NonNullApi",
+    "org.springframework.lang.NonNullFields",
+    "lombok.NonNull",
+    "reactor.util.annotation.NonNull",
+    "reactor.util.annotation.NonNullApi",
+    "io.reactivex.annotations.NonNull",
+    "io.reactivex.rxjava3.annotations.NonNull",
+    "org.jspecify.annotations.NonNull"))
 
   // A list of annotations that are commonly used to indicate that a field/method argument or return
   // type is explicitly nullable.
   @tu lazy val NullableAnnots: Vector[ClassSymbol] = getClassesIfDefined(
-    "javax.annotation.Nullable" +:
-    "javax.annotation.CheckForNull" +:
-    "jakarta.annotation.Nullable" +:
-    "android.support.annotation.Nullable" +:
-    "android.annotation.Nullable" +:
-    "androidx.annotation.Nullable" +:
-    "androidx.annotation.RecentlyNullable" +:
-    "com.android.annotations.Nullable" +:
-    "org.eclipse.jdt.annotation.Nullable" +:
-    "edu.umd.cs.findbugs.annotations.Nullable" +:
-    "org.checkerframework.checker.nullness.qual.Nullable" +:
-    "org.checkerframework.checker.nullness.compatqual.NullableDecl" +:
-    "org.checkerframework.checker.nullness.compatqual.NullableType" +:
-    "org.jetbrains.annotations.Nullable" +:
-    "org.springframework.lang.Nullable" +:
-    "reactor.util.annotation.Nullable" +:
-    "io.reactivex.annotations.Nullable" +:
-    "io.reactivex.rxjava3.annotations.Nullable" +:
-    "org.jspecify.annotations.Nullable" +: Vector())
+    Vector(
+    "javax.annotation.Nullable",
+    "javax.annotation.CheckForNull",
+    "jakarta.annotation.Nullable",
+    "android.support.annotation.Nullable",
+    "android.annotation.Nullable",
+    "androidx.annotation.Nullable",
+    "androidx.annotation.RecentlyNullable",
+    "com.android.annotations.Nullable",
+    "org.eclipse.jdt.annotation.Nullable",
+    "edu.umd.cs.findbugs.annotations.Nullable",
+    "org.checkerframework.checker.nullness.qual.Nullable",
+    "org.checkerframework.checker.nullness.compatqual.NullableDecl",
+    "org.checkerframework.checker.nullness.compatqual.NullableType",
+    "org.jetbrains.annotations.Nullable",
+    "org.springframework.lang.Nullable",
+    "reactor.util.annotation.Nullable",
+    "io.reactivex.annotations.Nullable",
+    "io.reactivex.rxjava3.annotations.Nullable",
+    "org.jspecify.annotations.Nullable"))
 
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(Vector(AnyType), tp)
@@ -1349,7 +1356,7 @@ class Definitions {
 
   object PartialFunctionOf {
     def apply(arg: Type, result: Type)(using Context): Type =
-      PartialFunctionClass.typeRef.appliedTo(arg +: result +: Vector())
+      PartialFunctionClass.typeRef.appliedTo(Vector(arg, result))
     def unapply(pft: Type)(using Context): Option[(Type, Vector[Type])] =
       if (pft.isRef(PartialFunctionClass)) {
         val targs = pft.dealias.argInfos
@@ -1361,9 +1368,9 @@ class Definitions {
   object ArrayOf {
     def apply(elem: Type)(using Context): Type =
       if (ctx.erasedTypes) JavaArrayType(elem)
-      else ArrayType.appliedTo(elem +: Vector())
+      else ArrayType.appliedTo(Vector(elem))
     def unapply(tp: Type)(using Context): Option[Type] = tp.dealias match {
-      case AppliedType(at, arg +: Vector()) if at.isRef(ArrayType.symbol) => Some(arg)
+      case AppliedType(at, Vector(arg)) if at.isRef(ArrayType.symbol) => Some(arg)
       case JavaArrayType(tp) if ctx.erasedTypes => Some(tp)
       case _ => None
     }
@@ -1373,7 +1380,7 @@ class Definitions {
     def apply(pat: Type, body: Type)(using Context): Type =
       MatchCaseClass.typeRef.appliedTo(pat, body)
     def unapply(tp: Type)(using Context): Option[(Type, Type)] = tp match {
-      case AppliedType(tycon, pat +: body +: Vector()) if tycon.isRef(MatchCaseClass) =>
+      case AppliedType(tycon, Vector(pat, body)) if tycon.isRef(MatchCaseClass) =>
         Some((pat, body))
       case _ =>
         None
@@ -1422,9 +1429,9 @@ class Definitions {
       case tp @ AnnotatedType(tp1, ann: RetainingAnnotation) if ann.symbol == RetainsByNameAnnot =>
         AnnotatedType(apply(tp1), RetainingAnnotation(defn.RetainsAnnot, ann.argumentTypes*))
       case _ =>
-        defn.ContextFunction0.typeRef.appliedTo(tp +: Vector())
+        defn.ContextFunction0.typeRef.appliedTo(Vector(tp))
     def unapply(tp: Type)(using Context): Option[Type] = tp match
-      case tp @ AppliedType(tycon, arg +: Vector()) if defn.isByNameFunctionClass(tycon.typeSymbol) =>
+      case tp @ AppliedType(tycon, Vector(arg)) if defn.isByNameFunctionClass(tycon.typeSymbol) =>
         Some(arg)
       case tp @ AnnotatedType(parent, _) =>
         unapply(parent)
@@ -1441,13 +1448,13 @@ class Definitions {
   object NamedTupleDirect:
     def unapply(t: Type)(using Context): Option[(Type, Type)] =
       t match
-        case AppliedType(tycon, nmes +: vals +: Vector()) if tycon.typeSymbol == NamedTupleTypeRef.symbol =>
+        case AppliedType(tycon, Vector(nmes, vals)) if tycon.typeSymbol == NamedTupleTypeRef.symbol =>
           Some((nmes, vals))
         case _ => None
 
   object NamedTuple:
     def apply(nmes: Type, vals: Type)(using Context): Type =
-      AppliedType(NamedTupleTypeRef, nmes +: vals +: Vector())
+      AppliedType(NamedTupleTypeRef, Vector(nmes, vals))
     def unapply(t: Type)(using Context): Option[(Type, Type)] =
       t match
         case NamedTupleDirect(nmes, vals) =>

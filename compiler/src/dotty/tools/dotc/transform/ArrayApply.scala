@@ -23,11 +23,11 @@ class ArrayApply extends MiniPhase {
   private def transformListApplyBudget(using Context) =
     ctx.property(TransformListApplyBudgetKey).getOrElse(8) // default is 8, as originally implemented in nsc
 
-  // A single-node `Vector1` holds up to `WIDTH` = 32 elements; longer `Seq(...)` literals are
-  // left for `Vector.from` to build a multi-level vector. Unlike the `Vector` cons rewrite (whose
-  // budget bounds cons-chain code size), the `Vector` rewrite just hands off the array that the
-  // varargs would build anyway, so it is bounded only by `Vector1`'s capacity.
-  private inline val MaxVector1Length = 32
+  // A single-node `Vector1` holds up to `Decorators.MaxVector1Length` = 32 elements; longer
+  // `Seq(...)`/`Vector(...)` literals are left for `Vector.from` to build a multi-level vector.
+  // Unlike the `List` cons rewrite (whose budget bounds cons-chain code size), the `Vector`
+  // rewrite just hands off the array that the varargs would build anyway, so it is bounded
+  // only by `Vector1`'s capacity.
 
   override def prepareForApply(tree: Apply)(using Context): Context = tree match
     case SeqApplyArgs(elems) if isListApply(tree) || !defn.Vector_fromArray1Unsafe.exists =>
@@ -51,15 +51,15 @@ class ArrayApply extends MiniPhase {
     else tree match
       case SeqApplyArgs(elems) =>
         if !isListApply(tree) && defn.Vector_fromArray1Unsafe.exists then
-          // `Seq(...)` against a `scala-library` whose `Seq` defaults to `Vector`. The literal's
-          // length is statically known, so we emit the exact `Vector` node directly with no
-          // runtime length check.
+          // `Seq(...)`/`Vector(...)` against a `scala-library` whose `Seq` defaults to `Vector`.
+          // The literal's length is statically known, so we emit the exact `Vector` node directly
+          // with no runtime length check.
           if elems.isEmpty then
-            ref(defn.Vector_empty).ensureApplied.cast(tree.tpe) // Seq() ~> Vector.empty
+            ref(defn.Vector_empty).ensureApplied.cast(tree.tpe) // Seq()/Vector() ~> Vector.empty
           else if elems.length <= MaxVector1Length then
-            // Seq(a, b, c) ~> Vector.fromArray1Unsafe([a, b, c]): builds the backing array
-            // directly and wraps it in a single `Vector1`, avoiding the intermediate `ArraySeq`
-            // wrapper and the dispatch inside `Vector.from`.
+            // Seq(a, b, c)/Vector(a, b, c) ~> Vector.fromArray1Unsafe([a, b, c]): builds the
+            // backing array directly and wraps it in a single `Vector1`, avoiding the intermediate
+            // `ArraySeq` wrapper and the dispatch inside `Vector.from`.
             val arr = JavaSeqLiteral(elems.map(_.ensureConforms(defn.ObjectType)), TypeTree(defn.ObjectType))
             ref(defn.Vector_fromArray1Unsafe).appliedTo(arr).cast(tree.tpe)
           else
@@ -93,18 +93,28 @@ class ArrayApply extends MiniPhase {
         sym == defn.SeqModule
         || sym == defn.SeqModuleAlias
         || sym == defn.CollectionSeqType.symbol.companionModule
+        // `Vector(...)` is only matched when the fast path exists: unlike `Seq(...)`,
+        // whose cons fallback still conforms, a `List` built by the fallback could
+        // never be cast to `Vector`, so against a stock standard library we leave
+        // `Vector(...)` untouched.
+        || (sym == defn.VectorModule || sym == defn.VectorModuleAlias)
+            && defn.Vector_fromArray1Unsafe.exists
       case _ => false
 
   private object SeqApplyArgs:
     def unapply(tree: Apply)(using Context): Option[Vector[Tree]] =
       if isSeqApply(tree) then
         tree.args match
-          // <List or Seq>(a, b, c) ~> new ::(a, new ::(b, new ::(c, Nil))) but only for reference types
+          // <List, Seq, or Vector>(a, b, c) after vararg conversion
           case StripAscription(Apply(wrapArrayMeth, Vector(StripAscription(rest: JavaSeqLiteral)))) +: Vector()
-              if rest.elems.isEmpty || defn.WrapArrayMethods().contains(wrapArrayMeth.symbol) =>
+              if rest.elems.isEmpty || isVarargsArrayWrapper(wrapArrayMeth.symbol) =>
             Some(rest.elems)
           case _ => None
       else None
+
+  private def isVarargsArrayWrapper(sym: Symbol)(using Context): Boolean =
+    defn.WrapArrayMethods().contains(sym)
+    || sym == defn.GenericWrapArrayMethod()
 
 
   /** Only optimize when classtag if it is one of
