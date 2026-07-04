@@ -623,7 +623,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val nr =
           val sourcePos = tree.sourcePos
           (
-            if sourcePos.exists then sourcePos.source.positionInUltimateSource(sourcePos).line
+            if sourcePos.exists then sourcePos.line
             else ctx.source.offsetToLine(tree.span.point) // fallback
           ) + 1
 
