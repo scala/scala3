@@ -4788,40 +4788,68 @@ object Types extends TypeUtils {
     /** Is this an unreducible application to wildcard arguments?
      *  This is the case if tycon is higher-kinded. This means
      *  it is a subtype of a hk-lambda. Match aliases are exempt unless the
-     *  wildcard application is unsound; see `unsoundMatchAliasWildcardArgs`.
+     *  application was written in source and is unsound; see
+     *  `unsoundMatchAliasWildcardArgs`.
      *  (normal parameterized aliases are removed in `appliedTo`).
      *  Applications of higher-kinded type constructors to wildcard arguments
      *  are equivalent to existential types, which are not supported.
+     *
+     *  @param isInferred  whether this application arose from inference
+     *                     (avoidance, lub approximation, or an inferred type)
+     *                     rather than being written in source. Inferred
+     *                     wildcard applications of match aliases are always
+     *                     accepted: inference must be able to approximate a
+     *                     type by wildcarding an argument, and rejecting the
+     *                     result (or falling back to a coarser approximation)
+     *                     regresses inference; see i15926 and i14903b.
      */
-    def isUnreducibleWild(using Context): Boolean =
+    def isUnreducibleWild(isInferred: Boolean = false)(using Context): Boolean =
       tycon.isLambdaSub && hasWildcardArg
       && !(args.sizeIs == 1 && defn.isCompiletime_S(tycon.typeSymbol)) // S is a pseudo Match Alias
-      && (tycon match
-            case lam: HKTypeLambda if lam.resType.isInstanceOf[MatchType] =>
-              unsoundMatchAliasWildcardArgs(lam)
+      && (matchAliasLambda match
+            case lam: HKTypeLambda => !isInferred && unsoundMatchAliasWildcardArgs(lam)
             case _ => true)
 
+    /** If this application's tycon is a match alias, the underlying `HKTypeLambda`
+     *  whose result is the match type, otherwise `NoType`. Both shapes occur:
+     *  a bare `HKTypeLambda` from the `Reducer`, and a `TypeRef` since `appliedTo`
+     *  keeps applications of match aliases to wildcard arguments in
+     *  `AppliedType(TypeRef, args)` form (#25866).
+     */
+    private def matchAliasLambda(using Context): Type = tycon match
+      case lam: HKTypeLambda if lam.resType.isInstanceOf[MatchType] => lam
+      case tr: TypeRef => tr.info match
+        case MatchAlias(lam: HKTypeLambda) => lam
+        case _ => NoType
+      case _ => NoType
+
     /** Is this application of the match alias eta-expanded to `lam` an unsound
-     *  wildcard application? This is the case if a wildcard argument (a
-     *  `TypeBounds`) corresponds to a parameter that occurs outside the match
-     *  scrutinee: in the declared bound, or in a case pattern or body. Only
-     *  consulted for applications that `appliedTo` could not reduce away.
-     *  Implements clause 4.2 of the spec section "Applications to Wildcard
-     *  Arguments" (clause 4.1 is the reduction that already failed).
-     *  See issue #21013.
+     *  wildcard application? This is the case if the application does not
+     *  admit the wildcards (the `Reducer` leaves it stuck, `allReplaced` is
+     *  false) and a wildcard argument (a `TypeBounds`) corresponds to a
+     *  parameter that occurs outside the match scrutinee: in the declared
+     *  bound, or in a case pattern or body.
+     *  Implements the `admitsWildcard` condition of the spec section
+     *  "Applications to Wildcard Arguments". See issue #21013.
      */
     private def unsoundMatchAliasWildcardArgs(lam: HKTypeLambda)(using Context): Boolean =
       lam.resType match
         case mt: MatchType =>
-          val collector = new TypeAccumulator[Set[Int]]:
-            def apply(acc: Set[Int], tp: Type): Set[Int] = tp match
-              case tp: TypeParamRef if tp.binder eq lam => acc + tp.paramNum
-              case _ => foldOver(acc, tp)
-          val inBound = collector(Set.empty, mt.bound)
-          val unsafe = mt.cases.foldLeft(inBound)(collector(_, _))
-          unsafe.nonEmpty && args.iterator.zipWithIndex.exists {
-            case (_: TypeBounds, i) => unsafe.contains(i)
-            case _ => false
+          withMode(Mode.AllowLambdaWildcardApply) {
+            val reducer = new TypeApplications.Reducer(lam, args)
+            reducer(mt)
+            !reducer.allReplaced
+          } && {
+            val collector = new TypeAccumulator[Set[Int]]:
+              def apply(acc: Set[Int], tp: Type): Set[Int] = tp match
+                case tp: TypeParamRef if tp.binder eq lam => acc + tp.paramNum
+                case _ => foldOver(acc, tp)
+            val inBound = collector(Set.empty, mt.bound)
+            val unsafe = mt.cases.foldLeft(inBound)(collector(_, _))
+            unsafe.nonEmpty && args.iterator.zipWithIndex.exists {
+              case (_: TypeBounds, i) => unsafe.contains(i)
+              case _ => false
+            }
           }
         case _ => false
 
@@ -6788,7 +6816,7 @@ object Types extends TypeUtils {
           if args.exists(isRange) then
             if variance > 0 then
               tp.derivedAppliedType(tycon, args.map(rangeToBounds)) match
-                case tp1: AppliedType if tp1.isUnreducibleWild && ctx.phase != checkCapturesPhase =>
+                case tp1: AppliedType if tp1.isUnreducibleWild(isInferred = true) && ctx.phase != checkCapturesPhase =>
                   // don't infer a type that would trigger an error later in
                   // Checking.checkAppliedType; fall through to default handling instead
                 case tp1 =>
