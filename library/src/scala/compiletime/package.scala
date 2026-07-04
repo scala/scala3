@@ -236,3 +236,6 @@ def byName[T](x: => T): T = x
  */
 extension [T](x: T)
   transparent inline def asMatchable: x.type & Matchable = x.asInstanceOf[x.type & Matchable]
+
+/** Used internally under magic: A wrapper for spec strings */
+inline def `$spec`(inline sc: StringContext)(inline args: Any*): Unit = ()

@@ -135,6 +135,7 @@ object StdNames {
     val OVERLOADED: N                 = "<overloaded>"
     val PACKAGE: N                    = "package"
     val ROOT: N                       = "<root>"
+    val SPEC: N                       = "$spec"
     val SPECIALIZED_SUFFIX: N         = "$sp"
     val SUPER_PREFIX: N               = "super$"
     val WHILE_PREFIX: N               = "while$"

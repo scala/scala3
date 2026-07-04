@@ -223,6 +223,9 @@ object Scanners {
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
     def trackedEnabled = featureEnabled(Feature.modularity)
+    def dedentedStringLiteralsEnabled =
+         featureEnabled(Feature.dedentedStringLiterals)
+      || Feature.magicEnabled
 
     private var postfixOpsEnabledCache = false
     private var postfixOpsEnabledCtx: Context = NoContext
@@ -952,7 +955,7 @@ object Scanners {
               case _ =>
                 error(em"unclosed character literal")
 
-          if lookaheadChar() == '\'' && featureEnabled(Feature.dedentedStringLiterals) then
+          if lookaheadChar() == '\'' && dedentedStringLiteralsEnabled then
             delimChar = '\''
             delimCount = 1
             fetchString()
@@ -1345,6 +1348,15 @@ object Scanners {
           delimCount += 1
           nextChar()
 
+    def isSpecString(): Boolean =
+      var i = charOffset
+      while buf(i) == '\'' do
+        i += 1
+      Feature.magicEnabled
+      && i - charOffset >= 2
+      && buf(i) == 's' && buf(i + 1) == 'p' && buf(i + 2) == 'e' && buf(i + 3) == 'c'
+      && (isWhitespace(buf(i + 4)) || buf(i + 4) == LF)
+
     def fetchString() =
       delimCount = 1
       if token == INTERPOLATIONID then
@@ -1360,6 +1372,9 @@ object Scanners {
             emptyString()
         else
           stringPart()
+      else if delimChar == '\'' && isSpecString() then
+        token = INTERPOLATIONID
+        name = nme.SPEC.asSimpleName
       else
         nextChar()
         if ch == delimChar then

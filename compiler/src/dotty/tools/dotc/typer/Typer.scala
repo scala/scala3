@@ -919,6 +919,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           tree, pt, IgnoredProto(pt), qual, ctx.typerState.ownedVars, this, inSelect = true)
       else EmptyTree
 
+    // Otherwise, under magic, if selector is `$spec`, convert to spec string representation.
+    def trySpecString(tree: untpd.Select, qual: Tree) =
+      if selName == nme.SPEC then
+        ref(defn.Compiletime_spec).appliedTo(qual).withSpan(tree.span)
+      else EmptyTree
+
     // Otherwise, try a GADT approximation if we're trying to select a member
     def tryGadt() =
       if ctx.gadt.isNarrowing then
@@ -1004,6 +1010,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       .orElse(tryNamedTupleSelection())
       .orElse(trySmallGenericTuple(qual, withCast = true))
       .orElse(tryExt(tree, qual))
+      .orElse(trySpecString(tree, qual))
       .orElse(tryGadt())
       .orElse(tryDefineFurther())
       .orElse(tryDynamic())
