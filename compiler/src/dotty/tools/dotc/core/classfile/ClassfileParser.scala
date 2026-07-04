@@ -365,10 +365,9 @@ final class ClassfileParser(
     if currentClassName.endsWith("package-info") then
       // this is only really ever used for annotations, so copy the annotations to our package class
       assert(currentIsTopLevel)
-      var classInfo: Type = TempClassInfoType(parseParents, instanceScope, classRoot.symbol)
-      classInfo = parseAttributes(classRoot.owner).complete(classInfo)
-      println(ctx.printer.toText(classInfo).mkString())
-      setClassInfo(classRoot.owner.asClass.classDenot, classInfo, fromScala2 = false)
+
+      parseAnnotationsOnly(classRoot.owner)
+      println(ctx.printer.dclText(classRoot.owner).mkString())
       return None
 
 
@@ -956,6 +955,30 @@ final class ClassfileParser(
       cook.apply(fillInParamNames(newType))
     }
   }
+  def parseAnnotationsOnly(sym: Symbol)(using ctx: Context, in: DataReader): Unit =
+    def parseAttribute(): Unit =
+      val attrName = pool.getName(in.nextChar).name.toTypeName
+      val attrLen = in.nextInt
+      val end = in.bp + attrLen
+      attrName match
+        case tpnme.RuntimeVisibleAnnotationATTR
+           | tpnme.RuntimeInvisibleAnnotationATTR =>
+            parseAnnotations(attrLen)
+        case _ => ()
+
+      in.bp = end
+
+    /** Parse a sequence of annotations and attaches them to the
+     *  current symbol sym, except for the ScalaSignature annotation that it returns, if it is available. */
+    def parseAnnotations(len: Int): Unit =
+      val nAttr = in.nextChar
+      for (n <- 0 until nAttr)
+        parseAnnotation(in.nextChar) match
+          case Some(annot) =>
+            sym.addAnnotation(annot)
+          case None => ()
+
+
 
   def parseAttributes(sym: Symbol)(using ctx: Context, in: DataReader): AttributeCompleter = {
     val res = new AttributeCompleter(sym)

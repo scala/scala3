@@ -1145,7 +1145,14 @@ object JavaParsers {
           buf ++= typeDeclOrCompact(start, mods)
         }
       }
-      val unit = atSpan(start) { PackageDef(pkg, buf.toList) }
+      val unit =
+        if leadingAnnots.nonEmpty && pkg != Ident(nme.EMPTY_PACKAGE) then
+          atSpan(start):
+            leadingAnnots.foldLeft[Tree](PackageDef(pkg, buf.toList)): (base, annot) =>
+              Annotated(base, annot)
+
+        else
+          atSpan(start) { PackageDef(pkg, buf.toList) }
       accept(EOF)
       if (compact) EmptyTree
       else unit match

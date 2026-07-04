@@ -88,8 +88,8 @@ object ImplicitNullInterop:
         then checkEnclosingClasses(clazz.owner.lexicallyEnclosingClass)
         else None
 
-    sym.enclosingPackageClass.annotations.foreach: annot =>
-      println(ctx.printer.annotText(annot).mkString())
+
+    println(ctx.printer.dclText(sym.enclosingPackageClass).mkString())
     // TODO: also check the java module
     checkEnclosingClasses(sym.lexicallyEnclosingClass)
       // check package
