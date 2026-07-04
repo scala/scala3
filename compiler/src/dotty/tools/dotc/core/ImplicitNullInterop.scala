@@ -67,6 +67,35 @@ object ImplicitNullInterop:
   object NullMode:
     def Default(using Context): NullMode = if ctx.flexibleTypes then Flexible else Explicit
 
+  /**
+   * Does this type's scope (its class, module, or package) have a NullMarked annotation
+   * that causes it to default to not null?
+   *
+   * based off this specification from JSpecify <https://jspecify.dev/docs/spec/#null-marked-scope>
+   */
+  def defaultModeInScope(sym: Symbol)(using Context): NullMode =
+    def checkOne(sym: Symbol): Option[NullMode] =
+      if hasNullMarkedAnnot(sym) && !hasNullUnmarkedAnnot(sym)
+      then Some(NullMode.Skip)
+      else if hasNullUnmarkedAnnot(sym) && !hasNullMarkedAnnot(sym)
+      then Some(NullMode.Default)
+      else None
+
+    def checkEnclosingClasses(clazz: Symbol): Option[NullMode] =
+      checkOne(clazz).orElse:
+        // use "lexically enclosing class" to _not_ skip static members
+        if !clazz.is(Flags.Package) && clazz.owner.lexicallyEnclosingClass != clazz
+        then checkEnclosingClasses(clazz.owner.lexicallyEnclosingClass)
+        else None
+
+    sym.enclosingPackageClass.annotations.foreach: annot =>
+      println(ctx.printer.annotText(annot).mkString())
+    // TODO: also check the java module
+    checkEnclosingClasses(sym.lexicallyEnclosingClass)
+      // check package
+      .orElse(checkOne(sym.enclosingPackageClass))
+      .getOrElse(NullMode.Default)
+
   /** Transforms the type `tp` of a member `sym` that originates from a source without explicit nulls.
    *  `tp` is passed explicitly because the type stored in `sym` might not yet be set when this is called.
    */
@@ -85,7 +114,7 @@ object ImplicitNullInterop:
       // Don't nullify Given/implicit parameters
       if sym.isOneOf(GivenOrImplicitVal) || hasNotNullAnnot(sym) then NullMode.Skip
       else if hasNullableAnnot(sym) then NullMode.Explicit
-      else NullMode.Default
+      else defaultModeInScope(sym)
 
     val resultTypeMode =
       // Don't nullify result type of constructors
@@ -108,6 +137,12 @@ object ImplicitNullInterop:
 
   private def isNullableAnnot(annot: Annotation)(using Context): Boolean =
     defn.NullableAnnots.exists(annot.hasSymbol)
+
+  private def hasNullMarkedAnnot(sym: Symbol)(using Context): Boolean =
+    defn.NullMarkedAnnots.exists(sym.unforcedAnnotation(_).isDefined)
+
+  private def hasNullUnmarkedAnnot(sym: Symbol)(using Context): Boolean =
+    defn.NullUnmarkedAnnots.exists(sym.unforcedAnnotation(_).isDefined)
 
   case class NullMapState(
     resultTypeMode: NullMode,
@@ -133,7 +168,6 @@ object ImplicitNullInterop:
       val javaDefined: Boolean,
       var state: NullMapState
     )(using Context) extends TypeMap:
-
     /** Should we nullify `tp` at the outermost level?
      *  The symbols are still under construction, so we don't have precise information.
      *  We purposely do not rely on precise subtyping checks here (e.g., asking whether `tp <:< AnyRef`),
@@ -172,6 +206,7 @@ object ImplicitNullInterop:
       if !needsNull(tp) then tp
       else if state.currentTypeMode == NullMode.Flexible then FlexibleType.make(tp)
       else OrNull(tp)
+
 
     override def apply(tp: Type): Type = tp match
       case tp: TypeRef =>

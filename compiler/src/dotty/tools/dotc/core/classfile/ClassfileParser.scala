@@ -349,7 +349,7 @@ final class ClassfileParser(
 
   var sawPrivateConstructor: Boolean = false
 
-  def parseClass()(using ctx: Context, in: DataReader): Option[Embedded] = {
+  def parseClass()(using ctx: Context, in: DataReader): Option[Embedded] =
     val jflags       = in.nextChar
     val isAnnotation = hasAnnotation(jflags)
     val sflags       = classTranslation.flags(jflags)
@@ -357,16 +357,26 @@ final class ClassfileParser(
     val nameIdx      = in.nextChar
     currentClassName = pool.getClassName(nameIdx).name
 
-    if (currentIsTopLevel &&
+    if currentIsTopLevel &&
         currentClassName != classRoot.fullName.toSimpleName &&
-        currentClassName != classRoot.fullName.encode.toSimpleName)
-      mismatchError(currentClassName)
+        currentClassName != classRoot.fullName.encode.toSimpleName
+    then mismatchError(currentClassName)
+
+    if currentClassName.endsWith("package-info") then
+      // this is only really ever used for annotations, so copy the annotations to our package class
+      assert(currentIsTopLevel)
+      var classInfo: Type = TempClassInfoType(parseParents, instanceScope, classRoot.symbol)
+      classInfo = parseAttributes(classRoot.owner).complete(classInfo)
+      println(ctx.printer.toText(classInfo).mkString())
+      setClassInfo(classRoot.owner.asClass.classDenot, classInfo, fromScala2 = false)
+      return None
+
 
     addEnclosingTParams()
 
     /** Parse parents for Java classes. For Scala, return AnyRef, since the real type will be unpickled.
      *  Updates the read pointer of 'in'. */
-    def parseParents: List[Type] = {
+    def parseParents: List[Type] =
       val superType =
         val superClass = in.nextChar
         // Treat these interfaces as universal traits
@@ -381,10 +391,10 @@ final class ClassfileParser(
       val ifaces = List.fill(ifaceCount.toInt):
         pool.getSuperClass(in.nextChar).typeRef
       superType :: ifaces
-    }
+    end parseParents
 
     val result = unpickleOrParseInnerClasses()
-    if (!result.isDefined) {
+    if !result.isDefined then
       var classInfo: Type = TempClassInfoType(parseParents, instanceScope, classRoot.symbol)
       // might be reassigned by later parseAttributes
       val staticInfo = TempClassInfoType(List(), staticScope, moduleRoot.symbol)
@@ -417,15 +427,13 @@ final class ClassfileParser(
 
       setClassInfo(classRoot, classInfo, fromScala2 = false)
       NamerOps.addConstructorProxies(moduleRoot.classSymbol)
-    }
-    else if (result == Some(NoEmbedded))
-      for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
+    else if result == Some(NoEmbedded) then
+      for sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol) do
         classRoot.owner.asClass.delete(sym)
         sym.markAbsent()
-      }
 
     result
-  }
+  end parseClass
 
   /** Add type parameters of enclosing classes */
   def addEnclosingTParams()(using Context): Unit = {
