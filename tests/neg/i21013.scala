@@ -8,6 +8,12 @@ type InPattern[K] = Double match
 type InNestedPattern[K] = Double match
   case List[K] => Int
 
+// The pattern shape that would genuinely reduce with the wildcard taking
+// part: List[Double] matches List[?], so InMatchingPattern[?] would reduce
+// to Int even though InMatchingPattern[String] does not reduce.
+type InMatchingPattern[K] = List[Double] match
+  case List[K] => Int
+
 type InBody[K, S] = S match
   case Int => List[K]
 
@@ -23,9 +29,10 @@ type InAliasBound[K, S] <: Bad[K] = S match
   case Int => Nothing
 
 def Test: Unit =
-  val a1: InPattern[?]         = ??? // error
-  val a2: InNestedPattern[?]   = ??? // error
-  val a3: InBody[?, Int]       = ??? // error
-  val a4: InBodyTwice[?, Int]  = ??? // error
-  val a5: InBound[?, ?]        = ??? // error
-  val a6: InAliasBound[?, Int] = ??? // error
+  val a1: InPattern[?]          = ??? // error
+  val a2: InNestedPattern[?]    = ??? // error
+  val a3: InMatchingPattern[?]  = ??? // error
+  val a4: InBody[?, Int]        = ??? // error
+  val a5: InBodyTwice[?, Int]   = ??? // error
+  val a6: InBound[?, ?]         = ??? // error
+  val a7: InAliasBound[?, Int]  = ??? // error
