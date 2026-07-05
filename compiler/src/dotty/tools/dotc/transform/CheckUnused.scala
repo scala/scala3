@@ -18,7 +18,7 @@ import MegaPhase.MiniPhase
 import typer.{ImportInfo, Typer, TyperPhase}
 import typer.Deriving.OriginalTypeClass
 import typer.Implicits.{ContextualImplicits, RenamedImplicitRef}
-import util.{Property, Spans, SrcPos}, Spans.Span
+import util.{Property, Spans, SrcPos, Lst}, Spans.Span
 import util.Chars.{isLineBreakChar, isWhitespace}
 import util.chaining.*
 
@@ -129,8 +129,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def transformApply(tree: Apply)(using Context): tree.type =
     // check for multiversal equals
     tree match
-    case Apply(Select(left, nme.Equals | nme.NotEquals), right :: Nil) =>
-      val caneq = defn.CanEqualClass.typeRef.appliedTo(left.tpe.widen :: right.tpe.widen :: Nil)
+    case Apply(Select(left, nme.Equals | nme.NotEquals), Lst.single(right)) =>
+      val caneq = defn.CanEqualClass.typeRef.appliedTo(Lst(left.tpe.widen, right.tpe.widen))
       resolveScoped(caneq, tree.srcPos)
     case tree =>
       refUsage(tree.tpe.typeSymbol, tree.srcPos)
@@ -150,7 +150,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForMatch(tree: Match)(using Context): Context =
     // allow case.pat against tree.selector (simple var pat only for now)
     tree.selector match
-    case Ident(nm) => tree.cases.foreach(k => allowVariableBindings(List(nm), List(k.pat)))
+    case Ident(nm) => tree.cases.foreach(k => allowVariableBindings(Lst(nm), Lst(k.pat)))
     case _ =>
     ctx
   override def transformMatch(tree: Match)(using Context): tree.type =
@@ -690,7 +690,7 @@ object CheckUnused:
           && !sym.is(Synthetic) // param to setter is unused bc there is no field yet
           && !(sym.owner.is(ExtensionMethod) &&
             m.paramSymss.dropWhile(_.exists(_.isTypeParam)).match
-            case (h :: Nil) :: _ => h == sym // param is the extended receiver
+            case Lst.single(h) :: _ => h == sym // param is the extended receiver
             case _ => false
           )
           && !sym.name.isInstanceOf[DerivedName]
@@ -962,20 +962,20 @@ object CheckUnused:
         case _ => false
      //|| isPurePath(rhs) // a bit strong
      || rhs.match
-        case Block((dd @ DefDef(anonfun, paramss, _, _)) :: Nil, Closure(Nil, Ident(nm), _)) =>
+        case Block((dd @ DefDef(anonfun, paramss, _, _)) :: Nil, Closure(Lst.empty(), Ident(nm), _)) =>
              anonfun == nm // isAnonymousFunctionName(anonfun)
           && paramss.match
-             case (ValDef(contextual, _, _) :: Nil) :: Nil =>
+              case Lst.withHead(ValDef(contextual, _, _)) :: Nil =>
                   contextual.is(ContextFunctionParamName)
-               && isUnconsuming(dd.rhs) // rhs was wrapped in a context function
-             case _ => false
+                  && isUnconsuming(dd.rhs) // rhs was wrapped in a context function
+              case _ => false
         case Block(Nil, Literal(u)) => u.tpe =:= defn.UnitType // def f(x: X) = {}
         case This(_) => true
         case Ident(_) => rhs.symbol.is(ParamAccessor)
         case Typed(rhs, _) => isUnconsuming(rhs)
         case _ => false
 
-  def allowVariableBindings(ok: List[Name], args: List[Tree]): Unit =
+  def allowVariableBindings(ok: Lst[Name], args: Lst[Tree]): Unit =
     ok.zip(args).foreach:
       case (param, arg @ Bind(p, _)) if param == p => arg.withAttachment(NoWarn, ())
       case _ =>
@@ -992,7 +992,7 @@ object CheckUnused:
             case PolyType(tycon, MethodTpe(_, _, AppliedType(_, tprefs))) =>
               tprefs.collect:
                 case ref: TypeParamRef => termName(ref.binder.paramNames(ref.paramNum).toString.toLowerCase)
-            case _ => Nil
+            case _ => Lst()
           allowVariableBindings(ok, args)
         else if fun.symbol == defn.TypeTest_unapply then
           () // just recurse into args
@@ -1005,7 +1005,8 @@ object CheckUnused:
             val implName = s"dotty.tools.dotc.ast.Trees$$${unapplied.name}"
             try
               val clz = Class.forName(implName) // TODO improve to use class path or reflect
-              val ok = clz.getConstructors.head.getParameters.map(p => termName(p.getName)).toList.init
+              val ok = collection.immutable.ArraySeq.unsafeWrapArray(clz.getConstructors.head.getParameters)
+                .map(p => termName(p.getName)).toLst.init
               allowVariableBindings(ok, args)
             catch case _: ClassNotFoundException => ()
         args.foreach(traverse)
@@ -1029,7 +1030,7 @@ object CheckUnused:
       relaxer.traverse(tree)
 
   def ignoreArgsOfSelfConstruction(tree: Apply, ctor: Symbol)(using Context): Unit =
-    val pars = ctor.denot.paramSymss.flatten.iterator.filter(_.isTerm)
+    val pars = ctor.denot.paramSymss.flattenLst.filter(_.isTerm)
     val args = allTermArguments(tree)
     for (par, arg) <- pars.zip(args) do
       if arg.symbol.is(ParamAccessor) && arg.symbol.name == par.name && arg.symbol.owner == ctor.owner then

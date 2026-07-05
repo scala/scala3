@@ -418,7 +418,7 @@ object Contexts {
      *    from constructor parameters to class parameter accessors.
      */
     def superCallContext: Context =
-      val locals = owner.typeParams
+      val locals = owner.typeParams.toList
           ++ owner.asClass.unforcedDecls.filter: sym =>
               sym.is(ParamAccessor) || sym.isContextBoundCompanion || sym.isDummyCaptureParam
       superOrThisCallContext(owner.primaryConstructor, newScopeWith(locals*))

@@ -6,7 +6,7 @@ import core.*
 import Texts.*, Types.*, Flags.*, Symbols.*, Contexts.*
 import Decorators.*
 import reporting.Message
-import util.{Chars, DiffUtil, SimpleIdentitySet}
+import util.{Chars, DiffUtil, SimpleIdentitySet, Lst}
 import Highlighting.*
 
 object Formatting {
@@ -101,6 +101,9 @@ object Formatting {
 
       given [X <: AnyRef: Show]: Show[SimpleIdentitySet[X]] with
         def show(x: SimpleIdentitySet[X]) = summon[Show[List[X]]].show(x.toList)
+
+      given [X: Show]: Show[Lst[X]] with
+        def show(x: Lst[X]) = summon[Show[List[X]]].show(x.toList)
 
       given Show[FlagSet] with
         def show(x: FlagSet) = x.flagsString

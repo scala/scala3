@@ -11,6 +11,7 @@ import Contexts.*
 import Symbols.*
 import ast.{Trees, untpd}
 import Trees.*
+import util.Lst
 
 object OutlinePrinter:
   def apply(_ctx: Context): Printer = new OutlinePrinter(_ctx)
@@ -20,6 +21,7 @@ object OutlinePrinter:
   * Note that there may still be some differences if you compare before and after pickling.
   */
 class OutlinePrinter private (_ctx: Context) extends RefinedPrinter(_ctx) {
+  import Lst.toIterableConversion.{given}
 
   /** print the symbol infos of type params for the fake java constructor */
   def shouldShowInfo(tsym: Symbol): Boolean =
@@ -39,7 +41,7 @@ class OutlinePrinter private (_ctx: Context) extends RefinedPrinter(_ctx) {
     case tree: Ident[T] if tree.name == nme.WILDCARD => true // `ELIDED exprType`
     case tree: Literal[T] => true // e.g. `()`
     case tree: Select[T] if tree.symbol == defn.Predef_undefined => true // e.g. `Predef.???`
-    case Apply(Select(tree: New[T], nme.CONSTRUCTOR), Nil)
+    case Apply(Select(tree: New[T], nme.CONSTRUCTOR), Lst.empty())
     if tree.tpt.typeOpt.typeSymbol.is(Module) => true // e.g. `new foo.Foo$()` (rhs of a module val)
     case _ =>
       sys.error(s"Unexpected tree in OutlinePrinter: ${tree.show}, $tree")

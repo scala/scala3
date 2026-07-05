@@ -9,6 +9,8 @@ import Symbols.*, Contexts.*, Types.*, Decorators.*
 import StdNames.nme
 import ast.TreeTypeMap
 import Constants.Constant
+import util.Lst
+import Decorators.*
 
 import scala.collection.mutable.ListBuffer
 
@@ -74,7 +76,7 @@ object BetaReduce:
    */
   def apply(tree: Tree)(using Context): Tree =
     val bindingsBuf = new ListBuffer[DefTree]
-    def recur(fn: Tree, argss: List[List[Tree]]): Option[Tree] = fn match
+    def recur(fn: Tree, argss: List[Lst[Tree]]): Option[Tree] = fn match
       case Block((ddef : DefDef) :: Nil, closure: Closure) if ddef.symbol == closure.meth.symbol =>
         reduceApplication(ddef, argss, bindingsBuf)
       case Block((TypeDef(_, template: Template)) :: Nil, Typed(Apply(Select(New(_), _), _), _)) if template.constr.rhs.isEmpty =>
@@ -87,7 +89,7 @@ object BetaReduce:
         recur(expr, argss).map(cpy.Inlined(fn)(call, bindings, _))
       case Typed(expr, tpt) =>
         recur(expr, argss)
-      case TypeApply(Select(expr, nme.asInstanceOfPM), List(tpt)) =>
+      case TypeApply(Select(expr, nme.asInstanceOfPM), Lst.single(tpt)) =>
         recur(expr, argss)
       case _ => None
     // The reduced body's type may be narrower than the apply's result type when
@@ -117,17 +119,15 @@ object BetaReduce:
    *  @return optionally, the expanded call, or none if the actual argument
    *          lists do not match in shape the formal parameters
    */
-  def reduceApplication(ddef: DefDef, argss: List[List[Tree]], bindings: ListBuffer[DefTree])
+  def reduceApplication(ddef: DefDef, argss: List[Lst[Tree]], bindings: ListBuffer[DefTree])
       (using Context): Option[Tree] =
-    val (targs, args) = argss.flatten.partition(_.isType)
+    val (targs, args) = argss.flattenLst.partition(_.isType)
     val tparams = ddef.leadingTypeParams
-    val vparams = ddef.termParamss.flatten
+    val vparams = ddef.termParamss.flattenLst
 
-    def shapeMatch(paramss: List[ParamClause], argss: List[List[Tree]]): Boolean = (paramss, argss) match
-      case (params :: paramss1, args :: argss1) if params.length == args.length =>
-        shapeMatch(paramss1, argss1)
-      case (Nil, Nil) => true
-      case _ => false
+    def shapeMatch(paramss: List[ParamClause], argss: List[Lst[Tree]]): Boolean =
+      paramss.corresponds(argss): (ps, as) =>
+        ps.length == as.length
 
     val targSyms =
       for (targ, tparam) <- targs.zip(tparams) yield
@@ -165,10 +165,10 @@ object BetaReduce:
       // function with wrong apply method by hand which causes `shapeMatch` to fail.
       // See neg/i21952.scala
       val expansion = TreeTypeMap(
-        oldOwners = ddef.symbol :: Nil,
-        newOwners = ctx.owner :: Nil,
-        substFrom = (tparams ::: vparams).map(_.symbol),
-        substTo = targSyms ::: argSyms
+        oldOwners = Lst(ddef.symbol),
+        newOwners = Lst(ctx.owner),
+        substFrom = (tparams ++ vparams).map(_.symbol),
+        substTo = targSyms ++ argSyms
       ).transform(ddef.rhs)
 
       val expansion1 = new TreeMap {

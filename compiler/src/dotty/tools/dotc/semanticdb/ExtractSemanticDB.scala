@@ -15,7 +15,7 @@ import StdNames.{nme, tpnme}
 import NameOps.*
 import Denotations.StaleSymbol
 import util.Spans.Span
-import util.SourceFile
+import util.{Lst, SourceFile}
 
 import scala.collection.mutable
 import scala.annotation.{ threadUnsafe => tu, tailrec }
@@ -28,6 +28,7 @@ import dotty.tools.io.{AbstractFile, JarArchive}
 import dotty.tools.dotc.semanticdb.DiagnosticOps.*
 import scala.util.{Using, Failure, Success}
 import java.nio.file.Path
+import Decorators.flattenLst
 
 
 /** Extract symbol references and uses to semanticdb files.
@@ -489,8 +490,8 @@ private[semanticdb] object ExtractSemanticDB:
     private object ReflectiveSelectableApply:
       def unapply(tree: Tree)(using Context): Option[(Tree, String, Select)] = tree match
         case Apply(
-            sel @ Select(Apply(Ident(reflSelectable), List(qual)), fun),
-            Literal(Constants.Constant(memberName: String)) :: args
+            sel @ Select(Apply(Ident(reflSelectable), Lst.single(qual)), fun),
+            Lst.withHead(Literal(Constants.Constant(memberName: String)))
           ) if reflSelectable == nme.reflectiveSelectable &&
               (fun == nme.selectDynamic || fun == nme.applyDynamic) =>
             Some(qual, memberName, sel)
@@ -519,9 +520,9 @@ private[semanticdb] object ExtractSemanticDB:
         def impl(acc: List[Tree], pats: List[Tree]): List[Tree] = pats match
 
           case pat::pats => pat match
-            case Typed(UnApply(fun: Tree, _, args), tpt: Tree) => impl(fun::tpt::acc, args:::pats)
+            case Typed(UnApply(fun: Tree, _, args), tpt: Tree) => impl(fun::tpt::acc, args.toList:::pats)
             case Typed(obj: Ident, tpt: Tree)                  => impl(obj::tpt::acc, pats)
-            case UnApply(fun: Tree, _, args)                   => impl(fun::acc,      args:::pats)
+            case UnApply(fun: Tree, _, args)                   => impl(fun::acc,      args.toList:::pats)
             case obj: Ident                                    => impl(obj::acc,      pats)
             case _                                             => impl(acc,           pats)
 
@@ -588,7 +589,7 @@ private[semanticdb] object ExtractSemanticDB:
       val start = if idx >= 0 then idx else span.start
       Span(start, start + sym.name.show.length, start)
 
-    extension (list: List[List[ValDef]])
+    extension (list: List[Lst[ValDef]])
       private  inline def isSingleArg = list match
         case (_::Nil)::Nil => true
         case _             => false
@@ -667,8 +668,8 @@ private[semanticdb] object ExtractSemanticDB:
         symkinds.toSet
 
     private def ctorParams(
-      vparamss: List[List[ValDef]], tparams: List[TypeDef], body: List[Tree])(using Context): Unit =
-      @tu lazy val getters = findGetters(vparamss.flatMap(_.map(_.name)).toSet, body)
+      vparamss: List[Lst[ValDef]], tparams: Lst[TypeDef], body: List[Tree])(using Context): Unit =
+      @tu lazy val getters = findGetters(vparamss.flattenLst.map(_.name).toSet, body)
       for
         vparams <- vparamss
         vparam  <- vparams

@@ -125,7 +125,7 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends Abst
       recordTree(tree)
 
       recordInlineCallArgs(tree)
-        
+
       tree match
         case tree: Inlined if !tree.inlinedFromOuterScope =>
           // The inlined call is normally ignored by TreeTraverser but we need to
@@ -222,7 +222,7 @@ trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
   protected def recordInlineCallArgs(tree: Tree)(using Context) =
     tree match
       case TypeApply(fun, args) if fun.symbol.is(Inline) =>
-        addMacroDependency(args)
+        addMacroDependency(args.toList)
       case _ =>
 
   protected def recordTree(tree: Tree)(using Context): Unit =

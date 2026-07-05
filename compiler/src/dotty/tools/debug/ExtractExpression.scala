@@ -3,6 +3,7 @@ package dotty.tools.debug
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.toLst
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Symbols.*
@@ -11,12 +12,13 @@ import dotty.tools.dotc.core.DenotTransformers.DenotTransformer
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.SymDenotations.SymDenotation
 import dotty.tools.dotc.transform.MacroTransform
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.report
 /**
   * This phase extracts the typed expression from the source tree, transforms it and places it
   * in the evaluate method of the Expression class.
-  * 
+  *
   * Before:
   *   package example:
   *     class A:
@@ -25,36 +27,36 @@ import dotty.tools.dotc.report
   *           println("")
   *           typed_expr
   *         body
-  *     
+  *
   *     class Expression(thisObject: Any, names: Array[String], values: Array[Any]):
   *       def evaluate(): Any = ()
-  * 
+  *
   * After:
   *   package example:
   *     class A:
   *       def m: T = body
-  *     
+  *
   *     class Expression(thisObject: Any, names: Array[String], values: Array[Any]):
-  *       def evaluate(): Any = 
+  *       def evaluate(): Any =
             {
   *           transformed_expr
   *         }
-  * 
+  *
   * Every access to a local variable, or an inaccessible member is transformed into a temporary reflectEval call.
   * A ReflectEvalStrategy is attached to each reflectEval call to describe what should be evaluated and how.
   * When printing trees for debugging, the ReflectEvalStrategy appears as a String literal argument.
-  * 
+  *
   * Examples:
   *
   * 1. Get local variable `a`:
   *      reflectEval(null, "ReflectEvalStrategy.LocalValue(a)", [])
-  * 
+  *
   * 2. Call private method `a.m(x1, x2)`:
   *      reflectEval(a, "ReflectEvalStrategy.MethodCall(m)", [x1, x2])
   *
   * 3. Set private field `a.b = c`:
   *      reflectEval(a, "ReflectEvalStrategy.FieldAssign(b)", [c])
-  * 
+  *
   * etc
   *
   */
@@ -181,7 +183,7 @@ private class ExtractExpression(
     private def getTransformedArgs(tree: Tree)(using Context): List[Tree] =
       tree match
         case _: (Ident | Select) => Nil
-        case Apply(fun, args) => getTransformedArgs(fun) ++ args.map(transform)
+        case Apply(fun, args) => getTransformedArgs(fun) ++ args.toList.map(transform)
         case TypeApply(fun, _) => getTransformedArgs(fun)
 
     private def getTransformedQualifier(tree: Tree)(using Context): Tree =
@@ -309,10 +311,10 @@ private class ExtractExpression(
       strategy: ReflectEvalStrategy,
       args: List[Tree]
   )(using Context): Tree =
-    val evalArgs = List(
+    val evalArgs = Lst(
       qualifier,
       Literal(Constant(strategy.toString)), // only useful for debugging, when printing trees
-      JavaSeqLiteral(args, TypeTree(ctx.definitions.ObjectType))
+      JavaSeqLiteral(args.toLst, TypeTree(ctx.definitions.ObjectType))
     )
     cpy
       .Apply(tree)(Select(This(config.expressionClass), termName("reflectEval")), evalArgs)

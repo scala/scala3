@@ -71,6 +71,8 @@ class CodeGen(val primitives: ScalaPrimitives,
       catch
         case ex: TypeError =>
           report.error(s"Error while emitting ${ctx.compilationUnit.source}\n${ex.getMessage}", cd.sourcePos)
+        case ex: AssertionError =>
+          report.error(s"AssertionError while emitting ${ctx.compilationUnit.source} / class ${cd.name}: ${ex.getMessage}", cd.sourcePos)
 
     def genTastyAndSetAttributes(claszSymbol: Symbol, store: ClassNode): Unit =
       for (binary <- ctx.compilationUnit.pickled.get(claszSymbol.asClass)) {

@@ -9,7 +9,7 @@ import core.Decorators.*
 import core.Names.TermName
 import MegaPhase.MiniPhase
 import config.Printers.transforms
-import dotty.tools.dotc.util.Property
+import dotty.tools.dotc.util.{Lst, Property}
 
 /** Add accessors for all protected accesses. An accessor is needed if
  *  according to the rules of the JVM a protected class member is not accessible
@@ -89,7 +89,7 @@ class ProtectedAccessors extends MiniPhase {
   override def transformAssign(tree: Assign)(using Context): Tree =
     tree.lhs match {
       case lhs: RefTree if lhs.name.is(ProtectedAccessorName) =>
-        cpy.Apply(tree)(accessors.insert.useSetter(lhs), tree.rhs :: Nil)
+        cpy.Apply(tree)(accessors.insert.useSetter(lhs), Lst(tree.rhs))
       case _ =>
         tree
     }

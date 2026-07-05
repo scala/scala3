@@ -7,6 +7,7 @@ import Symbols.*, SymDenotations.*, Contexts.*, Flags.*, Types.*, Decorators.*
 import StdNames.nme
 import Names.Name
 import NameKinds.DefaultGetterName
+import util.Lst
 import config.Printers.capt
 import Capabilities.*
 
@@ -86,7 +87,7 @@ object Synthetics:
     /** Augment an unapply of type `(x: C): D` to `(x: C^{any}): D^{x}` */
     def transformUnapplyCaptures(info: Type)(using Context): Type = info match
       case info: MethodType =>
-        val paramInfo :: Nil = info.paramInfos: @unchecked
+        val paramInfo = info.paramInfos(0)
         val newParamInfo = CapturingType(paramInfo, CaptureSet.universal)
         val trackedParam = info.paramRefs.head
         def newResult(tp: Type): Type = tp match
@@ -94,7 +95,7 @@ object Synthetics:
             tp.derivedLambdaType(resType = newResult(tp.resType))
           case _ =>
             CapturingType(tp, CaptureSet(trackedParam))
-        info.derivedLambdaType(paramInfos = newParamInfo :: Nil, resType = newResult(info.resType))
+        info.derivedLambdaType(paramInfos = Lst(newParamInfo), resType = newResult(info.resType))
           .showing(i"augment unapply type $info to $result", capt)
       case info: PolyType =>
         info.derivedLambdaType(resType = transformUnapplyCaptures(info.resType))
@@ -121,7 +122,7 @@ object Synthetics:
     def transformCompareCaptures =
       val (enclThis: ThisType) = symd.owner.thisType: @unchecked
       MethodType(
-        defn.ObjectType.capturing(CaptureSet(GlobalAny, enclThis)) :: Nil,
+        Lst(defn.ObjectType.capturing(CaptureSet(GlobalAny, enclThis))),
         defn.BooleanType)
 
     symd.copySymDenotation(info = symd.name match

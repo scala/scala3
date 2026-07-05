@@ -13,7 +13,9 @@ import Scopes.*
 import Symbols.*
 import StdNames.*
 import Types.*
-import Decorators.em
+import util.Lst
+import Decorators.{em, toLst}
+import util.Lst
 
 import dotty.tools.dotc.transform.MegaPhase.*
 
@@ -190,12 +192,12 @@ class JUnitBootstrappers extends MiniPhase {
 
   private def genCallOnModule(owner: ClassSymbol, name: TermName, module: Symbol, annot: Symbol)(using Context): DefDef = {
     val sym = newSymbol(owner, name, Synthetic | Method,
-      MethodType(Nil, Nil, defn.UnitType)).entered
+      MethodType(Lst(), Lst(), defn.UnitType)).entered
 
     DefDef(sym, {
       if (module.exists) {
         val calls = annotatedMethods(module.moduleClass.asClass, annot)
-          .map(m => Apply(ref(module).select(m), Nil))
+          .map(m => Apply(ref(module).select(m), Lst()))
         Block(calls, unitLiteral)
       } else {
         unitLiteral
@@ -205,12 +207,12 @@ class JUnitBootstrappers extends MiniPhase {
 
   private def genCallOnParam(owner: ClassSymbol, name: TermName, testClass: ClassSymbol, annot: Symbol)(using Context): DefDef = {
     val sym = newSymbol(owner, name, Synthetic | Method,
-      MethodType(junitNme.instance :: Nil, defn.ObjectType :: Nil, defn.UnitType)).entered
+      MethodType(Lst(junitNme.instance), Lst(defn.ObjectType), defn.UnitType)).entered
 
-    DefDef(sym, { (paramRefss: List[List[Tree]]) =>
-      val List(List(instanceParamRef)) = paramRefss
+    DefDef(sym, { (paramRefss: List[Lst[Tree]]) =>
+      val List(Lst.single(instanceParamRef)) = paramRefss.runtimeChecked
       val calls = annotatedMethods(testClass, annot)
-        .map(m => Apply(instanceParamRef.cast(testClass.typeRef).select(m), Nil))
+        .map(m => Apply(instanceParamRef.cast(testClass.typeRef).select(m), Lst()))
       Block(calls, unitLiteral)
     })
   }
@@ -219,7 +221,7 @@ class JUnitBootstrappers extends MiniPhase {
     val junitdefn = jsdefn.junit
 
     val sym = newSymbol(owner, junitNme.tests, Synthetic | Method,
-      MethodType(Nil, defn.ArrayOf(junitdefn.TestMetadataType))).entered
+      MethodType(Lst(), defn.ArrayOf(junitdefn.TestMetadataType))).entered
 
     DefDef(sym, {
       val metadata = for (test <- tests) yield {
@@ -229,25 +231,25 @@ class JUnitBootstrappers extends MiniPhase {
 
         val mappedArguments = testAnnot.arguments.flatMap{
           // Since classOf[...] in annotations would not be transformed, grab the resulting class constant here
-          case NamedArg(expectedName: SimpleName, TypeApply(Ident(nme.classOf), fstArg :: _))
-            if expectedName.toString == "expected" => Some(clsOf(fstArg.tpe))
+          case NamedArg(expectedName: SimpleName, TypeApply(Ident(nme.classOf), Lst.withHead(fstArg)))
+            if expectedName.toString == "expected" => Lst(clsOf(fstArg.tpe))
           // The only other valid argument to @Test annotations is timeout
           case NamedArg(timeoutName: TermName, timeoutLiteral: Literal)
-            if timeoutName.toString == "timeout" => Some(timeoutLiteral)
+            if timeoutName.toString == "timeout" => Lst(timeoutLiteral)
           case other => {
             val shownName = other match {
               case NamedArg(name, _) => name.show(using ctx)
               case other => other.show(using ctx)
             }
             report.error(em"$shownName is an unsupported argument for the JUnit @Test annotation in this position", other.sourcePos)
-            None
+            Lst()
           }
         }
 
         val reifiedAnnot = resolveConstructor(junitdefn.TestAnnotType, mappedArguments)
-        New(junitdefn.TestMetadataType, List(name, ignored, reifiedAnnot))
+        New(junitdefn.TestMetadataType, Lst(name, ignored, reifiedAnnot))
       }
-      JavaSeqLiteral(metadata, TypeTree(junitdefn.TestMetadataType))
+      JavaSeqLiteral(metadata.toLst, TypeTree(junitdefn.TestMetadataType))
     })
   }
 
@@ -255,16 +257,16 @@ class JUnitBootstrappers extends MiniPhase {
     val junitdefn = jsdefn.junit
 
     val sym = newSymbol(owner, junitNme.invokeTest, Synthetic | Method,
-      MethodType(List(junitNme.instance, junitNme.name), List(defn.ObjectType, defn.StringType), junitdefn.FutureType)).entered
+      MethodType(Lst(junitNme.instance, junitNme.name), Lst(defn.ObjectType, defn.StringType), junitdefn.FutureType)).entered
 
-    DefDef(sym, { (paramRefss: List[List[Tree]]) =>
-      val List(List(instanceParamRef, nameParamRef)) = paramRefss
+    DefDef(sym, { (paramRefss: List[Lst[Tree]]) =>
+      val List(Lst.pair(instanceParamRef, nameParamRef)) = paramRefss.runtimeChecked
       val castInstanceSym = newSymbol(sym, junitNme.castInstance, Synthetic, testClass.typeRef, coord = owner.span)
       Block(
         ValDef(castInstanceSym, instanceParamRef.cast(testClass.typeRef)) :: Nil,
         tests.foldRight[Tree] {
           val tp = junitdefn.NoSuchMethodExceptionType
-          Throw(resolveConstructor(tp, nameParamRef :: Nil))
+          Throw(resolveConstructor(tp, Lst(nameParamRef)))
         } { (test, next) =>
           If(Literal(Constant(test.name.mangledString)).select(defn.Any_equals).appliedTo(nameParamRef),
             genTestInvocation(testClass, test, ref(castInstanceSym)),
@@ -295,9 +297,9 @@ class JUnitBootstrappers extends MiniPhase {
 
   private def genNewInstance(owner: ClassSymbol, testClass: ClassSymbol)(using Context): DefDef = {
     val sym = newSymbol(owner, junitNme.newInstance, Synthetic | Method,
-      MethodType(Nil, defn.ObjectType)).entered
+      MethodType(Lst(), defn.ObjectType)).entered
 
-    DefDef(sym, New(testClass.typeRef, Nil))
+    DefDef(sym, New(testClass.typeRef, Lst()))
   }
 
   private def castParam(param: Symbol, clazz: Symbol)(using Context): Tree =

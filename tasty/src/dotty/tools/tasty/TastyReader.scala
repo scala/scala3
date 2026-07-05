@@ -160,6 +160,12 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     buf.toList
   }
 
+  /** Perform `op` until `end` address is reached */
+  def untilDo(end: Addr)(op: => Unit): Unit = {
+    while (bp < index(end)) op
+    assert(bp == index(end))
+  }
+
   /** If before given `end` address, the result of `op`, otherwise `default` */
   def ifBefore[T](end: Addr)(op: => T, default: T): T =
     if (bp < index(end)) op else default

@@ -14,6 +14,7 @@ import UnificationDirection.*
 import NameKinds.AvoidNameKind
 import util.SimpleIdentitySet
 import NullOpsDecorator.stripNull
+import util.Lst
 
 /** Methods for adding constraints and solving them.
  *
@@ -786,7 +787,7 @@ trait ConstraintHandling {
    *  and propagate all bounds.
    *  @param tvars   See Constraint#add
    */
-  def addToConstraint(tl: TypeLambda, tvars: List[TypeVar])(using Context): Boolean =
+  def addToConstraint(tl: TypeLambda, tvars: Lst[TypeVar])(using Context): Boolean =
     checkPropagated(i"initialized $tl") {
       constraint = constraint.add(tl, tvars)
       tl.paramRefs.forall { param =>

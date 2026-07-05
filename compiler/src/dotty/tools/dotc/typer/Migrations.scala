@@ -22,7 +22,7 @@ import rewrites.Rewrites.patch
 import util.Spans.Span
 import rewrites.Rewrites
 import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
-import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.dotc.util.{Lst, SourcePosition}
 
 /** A utility trait containing source-dependent deprecation messages
  *  and migrations.
@@ -70,7 +70,7 @@ trait Migrations:
             msg.actions
               .headOption
               .foreach(Rewrites.applyAction)
-            return typed(untpd.Function(Nil, qual), pt)
+            return typed(untpd.Function(Lst(), qual), pt)
     }
     nestedCtx.typerState.commit()
 
@@ -108,7 +108,7 @@ trait Migrations:
   def contextBoundParams(tree: Tree, tp: Type, pt: FunProto)(using Context): Unit =
     val mversion = mv.ExplicitContextBoundArgument
     def isContextBoundParams = tp.stripPoly match
-      case MethodType(ContextBoundParamName(_) :: _) => true
+      case MethodType(pnames) if pnames.length > 0 && pnames(0).is(ContextBoundParamName) => true
       case _ => false
     if sourceVersion.isAtLeast(`3.4`)
       && isContextBoundParams
@@ -122,7 +122,7 @@ trait Migrations:
             |A `using` clause is needed to pass explicit arguments to them.$rewriteMsg""",
         tree.srcPos, mversion)
       tree match
-        case Apply(ta @ TypeApply(Select(New(_), _), _), Nil) =>
+        case Apply(ta @ TypeApply(Select(New(_), _), _), Lst.empty()) =>
           // Remove empty arguments for calls to new that may precede the context bound.
           // They are no longer necessary.
           patch(Span(ta.span.end, pt.args.head.span.start - 1), "")

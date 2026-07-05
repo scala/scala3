@@ -18,6 +18,7 @@ import config.Feature.sourceVersion
 import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
+import util.Lst
 
 class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   val buf: TreeBuffer = new TreeBuffer
@@ -332,9 +333,8 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     writeByte(tag)
     withLength {
       pickleType(tpe.resultType, richTypes = true)
-      tpe.paramNames.lazyZip(tpe.paramInfos).foreach { (name, tpe) =>
-        pickleType(tpe); pickleName(name)
-      }
+      for i <- 0 until tpe.paramNames.length do
+        pickleType(tpe.paramInfos(i)); pickleName(tpe.paramNames(i))
       if (mods != EmptyFlags) pickleFlags(mods, tpe.isTermLambda)
     }
   }
@@ -413,7 +413,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     }
   }
 
-  def pickleParams(trees: List[Tree])(using Context): Unit = {
+  def pickleParams(trees: Lst[Tree])(using Context): Unit = {
     trees.foreach(preRegister)
     trees.foreach(pickleParam)
   }
@@ -652,17 +652,18 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
         case tree: DefDef =>
           def pickleParamss(paramss: List[ParamClause]): Unit = paramss match
             case Nil =>
-            case Nil :: rest =>
+            case Lst.empty() :: rest =>
               writeByte(EMPTYCLAUSE)
               pickleParamss(rest)
-            case (params @ (param1 :: _)) :: rest =>
+            case (params @ Lst.withHead(param1)) :: rest =>
               pickleParams(params)
               rest match
-                case (param2 :: _) :: _
+                case Lst.withHead(param2) :: _
                 if param1.isInstanceOf[untpd.TypeDef] == param2.isInstanceOf[untpd.TypeDef] =>
                   writeByte(SPLITCLAUSE)
                 case _ =>
               pickleParamss(rest)
+            case _ => unreachable()
           pickleDef(DEFDEF, tree, tree.tpt, tree.rhs, pickleParamss(tree.paramss))
         case tree: TypeDef =>
           pickleDef(TYPEDEF, tree, tree.rhs)
@@ -671,7 +672,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
           writeByte(TEMPLATE)
           val (params, rest) = decomposeTemplateBody(tree.body)
           withLength {
-            pickleParams(params)
+            pickleParams(params.toLst)
             tree.parents.foreach(pickleTree)
             val cinfo @ ClassInfo(_, _, _, _, selfInfo) = tree.symbol.owner.info: @unchecked
             if (!tree.self.isEmpty) {

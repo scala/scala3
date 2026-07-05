@@ -9,6 +9,7 @@ import Names.Name
 import Comments.Comment
 import NameKinds.DefaultGetterName
 import Annotations.Annotation
+import util.Lst
 
 object MainProxies {
 
@@ -61,8 +62,8 @@ object MainProxies {
               if (formal.isRepeatedParam) (defn.CLP_parseRemainingArguments, formal.argTypes.head)
               else (defn.CLP_parseArgument, formal)
             val arg = Apply(
-              TypeApply(ref(parserSym.termRef), TypeTree(formalElem) :: Nil),
-              argsRef :: Literal(Constant(idx + n)) :: Nil)
+              TypeApply(ref(parserSym.termRef), Lst(TypeTree(formalElem))),
+              Lst(argsRef, Literal(Constant(idx + n))))
             if (formal.isRepeatedParam) repeated(arg) else arg
         }
         val call1 = Apply(call, args)
@@ -94,7 +95,7 @@ object MainProxies {
       val handler = CaseDef(
         Typed(errVar, TypeTree(defn.CLP_ParseError.typeRef)),
         EmptyTree,
-        Apply(ref(defn.CLP_showError.termRef), errVar :: Nil))
+        Apply(ref(defn.CLP_showError.termRef), Lst(errVar)))
       val body = Try(call, handler :: Nil, EmptyTree)
       val mainArg = ValDef(nme.args, TypeTree(defn.ArrayType.appliedTo(defn.StringType)), EmptyTree)
         .withFlags(Param)
@@ -109,7 +110,7 @@ object MainProxies {
       val annots = mainFun.annotations
         .filterNot(_.matches(defn.MainAnnot))
         .map(annot => TypedSplice(annot.tree)(using annotsCtx))
-      val mainMeth = DefDef(nme.main, (mainArg :: Nil) :: Nil, TypeTree(defn.UnitType), body)
+      val mainMeth = DefDef(nme.main, Lst(mainArg) :: Nil, TypeTree(defn.UnitType), body)
         .withFlags(JavaStatic | Synthetic)
         .withAnnotations(annots)
       val mainTempl = Template(emptyConstructor, Nil, Nil, EmptyValDef, mainMeth :: Nil)

@@ -10,6 +10,7 @@ import reporting.trace
 import StdNames.tpnme
 import Flags.CaseClass
 import TypeOps.nestedPairs
+import util.Lst
 
 object TypeEval:
 
@@ -99,17 +100,18 @@ object TypeEval:
           val fieldTypes = fields.map(arg.memberInfo)
           Some:
             defn.NamedTupleTypeRef.appliedTo:
-              nestedPairs(fieldLabels) :: nestedPairs(fieldTypes) :: Nil
+              Lst(nestedPairs(fieldLabels), nestedPairs(fieldTypes))
         else arg.widenDealias match
           case arg @ defn.NamedTuple(_, _) => Some(arg)
           case arg if arg.derivesFrom(defn.TupleClass) =>
             val fieldTypesOpt = tupleElementTypes(arg)
             fieldTypesOpt match
               case Some(fieldTypes) =>
-                val fieldLabels = (for i <- 1 to fieldTypes.length yield ConstantType(Constant(s"_$i"))).toList
+                val fieldLabels = Lst.tabulate(fieldTypes.length): i =>
+                    ConstantType(Constant(s"_$i"))
                 Some:
                   defn.NamedTupleTypeRef.appliedTo:
-                    nestedPairs(fieldLabels) :: nestedPairs(fieldTypes) :: Nil
+                    Lst(nestedPairs(fieldLabels), nestedPairs(fieldTypes))
               case _ => None
           case _ => None
 

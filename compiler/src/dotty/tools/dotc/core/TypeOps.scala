@@ -5,7 +5,7 @@ package core
 import Contexts.*, Types.*, Symbols.*, Names.*, NameKinds.*, Flags.*
 import SymDenotations.*
 import util.Spans.*
-import util.Stats
+import util.{Stats, Lst}
 import Decorators.*
 import StdNames.*
 import collection.mutable
@@ -424,7 +424,7 @@ object TypeOps:
     val parentType = info.parents.reduceLeft(TypeComparer.andType(_, _))
     def isRefinable(sym: Symbol) =
       !sym.is(Private) && !sym.isConstructor && !sym.isClass
-    val (refinableDecls, missingDecls) = info.decls.toList.partition(isRefinable)
+    val (refinableDecls, missingDecls) = info.decls.toLst.partition(isRefinable)
 
     def addRefinement(parent: Type, decl: Symbol) = {
       val inherited =
@@ -448,7 +448,7 @@ object TypeOps:
     }
 
     def close(tp: Type) = RecType.closeOver { rt =>
-      tp.subst(cls :: Nil, rt.recThis :: Nil).substThis(cls, rt.recThis)
+      tp.subst(Lst(cls), Lst(rt.recThis)).substThis(cls, rt.recThis)
     }
 
     val raw = refinableDecls.foldLeft(parentType)(addRefinement)
@@ -500,7 +500,7 @@ object TypeOps:
             else if isExpandingBounds then emptyRange
             else mapOver(tp)
           case tl: HKTypeLambda =>
-            localParamRefs ++= tl.paramRefs
+            localParamRefs ++= tl.paramRefsList
             mapOver(tl)
           case _ =>
             super.apply(tp)
@@ -562,7 +562,7 @@ object TypeOps:
    *  does not update `ctx.nestingLevel` when entering a block so I'm leaving
    *  this as Future Work™.
    */
-  def avoid(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type = {
+  def avoid(tp: Type, symsToAvoid: => Lst[Symbol])(using Context): Type = {
     val widenMap = new AvoidMap {
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(tp: NamedType) = forbidden.contains(tp.symbol)
@@ -603,9 +603,9 @@ object TypeOps:
    *  (maybe it still needs to be revised).
    */
   def boundsViolations(
-      args: List[Tree],
-      boundss: List[TypeBounds],
-      instantiate: (Type, List[Type]) => Type,
+      args: Lst[Tree],
+      boundss: Lst[TypeBounds],
+      instantiate: (Type, Lst[Type]) => Type,
       app: Type)(
       using Context): List[BoundsViolation] = withMode(Mode.CheckBoundsOrSelfType) {
     val argTypes = args.tpes
@@ -613,7 +613,7 @@ object TypeOps:
     /** Replace all wildcards in `tps` with `<app>#<tparam>` where `<tparam>` is the
      *  type parameter corresponding to the wildcard.
      */
-    def skolemizeWildcardArgs(tps: List[Type], app: Type) = app match {
+    def skolemizeWildcardArgs(tps: Lst[Type], app: Type) = app match {
       case AppliedType(tycon: TypeRef, args)
       if tycon.typeSymbol.isClass && !Feature.migrateTo3 =>
         tps.zipWithConserve(tycon.typeSymbol.typeParams) {
@@ -633,7 +633,7 @@ object TypeOps:
       //println(i" = ${instantiate(bounds.hi, argTypes)}")
 
       var checkCtx = ctx  // the context to be used for bounds checking
-      if (argTypes ne skolemizedArgTypes) { // some of the arguments are wildcards
+      if argTypes _ne_ skolemizedArgTypes then { // some of the arguments are wildcards
 
         /** Is there a `LazyRef(TypeRef(_, sym))` reference in `tp`? */
         def isLazyIn(sym: Symbol, tp: Type): Boolean = {
@@ -700,42 +700,40 @@ object TypeOps:
       check(loBound, hi, "lower", loBound)(using checkCtx)
     }
 
-    def loop(args: List[Tree], boundss: List[TypeBounds]): Unit = args match
-      case arg :: args1 => boundss match
-        case bounds :: boundss1 =>
+    var i = 0
+    while i < args.length && i < boundss.length do {
+      val arg = args(i)
+      val bounds = boundss(i)
+      i += 1
 
-          // Drop caps.Pure from a bound (1) at the top-level, (2) in an `&`, (3) under a type lambda.
-          def dropPure(tp: Type): Option[Type] = tp match
-            case tp @ AndType(tp1, tp2) =>
-              dropPure(tp1) match
-                case Some(tp1o) =>
-                  dropPure(tp2) match
-                    case Some(tp2o) => Some(tp.derivedAndType(tp1o, tp2o))
-                    case None => Some(tp1o)
-                case None =>
-                  dropPure(tp2)
-            case tp: HKTypeLambda =>
-              for rt <- dropPure(tp.resType) yield
-                tp.derivedLambdaType(resType = rt)
-            case _ =>
-              if tp.typeSymbol == defn.PureClass then None
-              else Some(tp)
-
-          val relevantBounds =
-            if Feature.ccEnabled then bounds
-            else
-              // Drop caps.Pure from bound, it should be checked only when capture checking is enabled
-              dropPure(bounds.hi).match
-                case Some(hi1) => bounds.derivedTypeBounds(bounds.lo, hi1)
-                case None => TypeBounds(bounds.lo, defn.AnyKindType)
-          arg.tpe match
-            case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi, arg, relevantBounds)
-            case tp => checkOverlapsBounds(tp, tp, arg, relevantBounds)
-          loop(args1, boundss1)
+      // Drop caps.Pure from a bound (1) at the top-level, (2) in an `&`, (3) under a type lambda.
+      def dropPure(tp: Type): Option[Type] = tp match
+        case tp @ AndType(tp1, tp2) =>
+          dropPure(tp1) match
+            case Some(tp1o) =>
+              dropPure(tp2) match
+                case Some(tp2o) => Some(tp.derivedAndType(tp1o, tp2o))
+                case None => Some(tp1o)
+            case None =>
+              dropPure(tp2)
+        case tp: HKTypeLambda =>
+          for rt <- dropPure(tp.resType) yield
+            tp.derivedLambdaType(resType = rt)
         case _ =>
-      case _ =>
+          if tp.typeSymbol == defn.PureClass then None
+          else Some(tp)
 
-    loop(args, boundss)
+      val relevantBounds =
+        if Feature.ccEnabled then bounds
+        else
+          // Drop caps.Pure from bound, it should be checked only when capture checking is enabled
+          dropPure(bounds.hi).match
+            case Some(hi1) => bounds.derivedTypeBounds(bounds.lo, hi1)
+            case None => TypeBounds(bounds.lo, defn.AnyKindType)
+      arg.tpe match
+        case TypeBounds(lo, hi) => checkOverlapsBounds(lo, hi, arg, relevantBounds)
+        case tp => checkOverlapsBounds(tp, tp, arg, relevantBounds)
+    }
     violations.toList
   }
 
@@ -788,7 +786,7 @@ object TypeOps:
     /** Gather GADT symbols and singletons found in `tp2`, ie. the scrutinee. */
     object TraverseTp2 extends TypeTraverser:
       val singletons = util.HashMap[Symbol, SingletonType]()
-      val gadtSyms = new mutable.ListBuffer[Symbol]
+      val gadtSyms = Lst.Buffer[Symbol]()
 
       def traverse(tp: Type) = try
         val tpd = tp.dealias
@@ -812,7 +810,7 @@ object TypeOps:
       catch case ex: Throwable => handleRecursive("traverseTp2", tp.show, ex)
     TraverseTp2.traverse(tp2)
     val singletons = TraverseTp2.singletons
-    val gadtSyms   = TraverseTp2.gadtSyms.toList
+    val gadtSyms   = TraverseTp2.gadtSyms.toLst
 
     // Prefix inference, given `p.C.this.Child`:
     //   1. return it as is, if `C.this` is found in `tp`, i.e. the scrutinee; or
@@ -937,7 +935,7 @@ object TypeOps:
     val prefixInferredTp = inferThisMap(tp1)
     val tvars = prefixInferredTp.etaExpand match
       case eta: TypeLambda => constrained(eta)
-      case _               => Nil
+      case _               => Lst()
     val protoTp1 = prefixInferredTp.appliedTo(tvars)
 
     if gadtSyms.nonEmpty then
@@ -971,7 +969,7 @@ object TypeOps:
     }
   }
 
-  def nestedPairs(ts: List[Type])(using Context): Type =
+  def nestedPairs(ts: Lst[Type])(using Context): Type =
     ts.foldRight(defn.EmptyTupleModule.termRef: Type)(defn.PairClass.typeRef.appliedTo(_, _))
 
   class StripTypeVarsMap(using Context) extends TypeMap:
@@ -980,7 +978,7 @@ object TypeOps:
   /** Map no-flip covariant occurrences of `into[T]` to `T @$into` */
   def suppressInto(using Context) = new FollowAliasesMap:
     def apply(t: Type): Type = t match
-      case AppliedType(tycon: TypeRef, arg :: Nil) if variance >= 0 && defn.isInto(tycon.symbol) =>
+      case AppliedType(tycon: TypeRef, Lst.single(arg)) if variance >= 0 && defn.isInto(tycon.symbol) =>
         AnnotatedType(arg, Annotation(defn.SilentIntoAnnot, util.Spans.NoSpan))
       case _: MatchType | _: LazyRef =>
         t
@@ -993,7 +991,7 @@ object TypeOps:
       case AnnotatedType(t1, ann) if variance >= 0 && ann.symbol == defn.SilentIntoAnnot =>
         AppliedType(
           defn.ConversionModule.termRef.select(defn.Conversion_into), // the external reference to the opaque type
-          t1 :: Nil)
+          Lst(t1))
       case _: MatchType | _: LazyRef =>
         t
       case _ =>

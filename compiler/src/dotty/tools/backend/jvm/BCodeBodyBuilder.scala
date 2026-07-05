@@ -17,14 +17,14 @@ import dotty.tools.dotc.transform.Erasure
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Phases.*
-import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.core.Decorators.{em, toLst}
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.report
 import dotty.tools.dotc.ast.Trees.SyntheticUnit
 import dotty.tools.dotc.ast.Positioned
 import tpd.*
 import SymbolUtils.given
-import dotty.tools.dotc.util.SrcPos
+import dotty.tools.dotc.util.{SrcPos, Lst}
 
 /*
  *
@@ -110,12 +110,12 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           val Local(tk, _, idx, _) = locals.getOrMakeLocal(s)
 
           rhs match {
-            case Apply(Select(larg: Ident, nme.ADD), Literal(x) :: Nil)
+            case Apply(Select(larg: Ident, nme.ADD), Lst.single(Literal(x)))
             if larg.symbol == s && tk.isIntSizedType && x.isShortRange =>
               lineNumber(tree)
               bc.iinc(idx, x.intValue)
 
-            case Apply(Select(larg: Ident, nme.SUB), Literal(x) :: Nil)
+            case Apply(Select(larg: Ident, nme.SUB), Lst.single(Literal(x)))
             if larg.symbol == s && tk.isIntSizedType && Constant(-x.intValue).isShortRange =>
               lineNumber(tree)
               bc.iinc(idx, -x.intValue)
@@ -143,7 +143,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
 
       args match {
         // unary operation
-        case Nil =>
+        case Lst.empty() =>
           genLoad(larg, resKind)
           code match {
             case POS => () // nothing
@@ -153,7 +153,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           }
 
         // binary operation
-        case rarg :: Nil =>
+        case Lst.single(rarg) =>
           val isShift = isShiftOp(code)
           resKind = tpeTK(larg).maxType(if (isShift) INT else tpeTK(rarg), bTypes.ObjectRef)
 
@@ -209,7 +209,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         bc.aload(elementType)
       }
       else if (isArraySet(code)) {
-        val List(a1, a2) = args
+        val Lst.pair(a1, a2) = args.runtimeChecked
         stack.push(k)
         genLoad(a1, INT)
         stack.push(INT)
@@ -739,7 +739,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
     } // end of genTypeApply()
 
 
-    private def mkArrayConstructorCall(arr: ArrayBType, app: Apply, args: List[Tree])(using Context) = {
+    private def mkArrayConstructorCall(arr: ArrayBType, app: Apply, args: Lst[Tree])(using Context) = {
       val dims     = arr.dimension
       var elemKind = arr.elementType
       val argsSize = args.length
@@ -753,7 +753,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
          */
         for (i <- args.length until dims) elemKind = ArrayBType(elemKind)
       }
-      genLoadArguments(args, List.fill(args.size)(INT))
+      genLoadArguments(args, Lst.fill(args.size)(INT))
       (argsSize /*: @switch*/) match {
         case 1 => bc.newarray(elemKind)
         case _ =>
@@ -768,7 +768,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       lineNumber(app)
       app match {
         case Apply(_, args) if app.symbol eq defn.newArrayMethod =>
-          val List(elemClaz, Literal(c: Constant), av: tpd.JavaSeqLiteral) = args: @unchecked
+          val Lst.triple(elemClaz, Literal(c: Constant), av: tpd.JavaSeqLiteral) = args: @unchecked
 
           generatedType = bTypeLoader.bTypeFromType(c.typeValue)
           mkArrayConstructorCall(generatedType.asArrayBType, app, av.elems)
@@ -834,7 +834,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
               throw new AssertionError(s"Cannot instantiate $tpt of kind: $generatedType")
           }
 
-        case Apply(fun, List(expr)) if Erasure.Boxing.isBox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
+        case Apply(fun, Lst.single(expr)) if Erasure.Boxing.isBox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           val nativeKind = tpeTK(expr)
           genLoad(expr, nativeKind)
           val returnType = bTypes.boxedClassOfPrimitive(nativeKind)
@@ -842,7 +842,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           bc.invokestatic(ClassBType.scalaRuntimeBoxesRunTimeInternalName, methodName, BTypes.methodDescriptor(nativeKind, returnType), itf = false, app)
           generatedType = returnType
 
-        case Apply(fun, List(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
+        case Apply(fun, Lst.single(expr)) if Erasure.Boxing.isUnbox(fun.symbol) && fun.symbol.denot.owner != defn.UnitModuleClass =>
           genLoad(expr)
           val boxType = bTypeLoader.bTypeFromType(app.tpe)
           generatedType = boxType
@@ -921,7 +921,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       genArray(av.elems, tpt)
     }
 
-    private def genArray(elems: List[Tree], elemType: Type)(using Context): BType = {
+    private def genArray(elems: Lst[Tree], elemType: Type)(using Context): BType = {
       val elmKind       = bTypeLoader.bTypeFromType(elemType)
       val generatedType = ArrayBType(elmKind)
 
@@ -934,15 +934,12 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       stack.push(INT)
 
       var i = 0
-      var rest = elems
-      while (!rest.isEmpty) {
-        bc.dup(    generatedType)
-        bc.iconst( i)
-        genLoad(rest.head, elmKind)
-        bc.astore( elmKind)
-        rest = rest.tail
-        i = i + 1
-      }
+      while i < elems.length do
+        bc.dup(generatedType)
+        bc.iconst(i)
+        genLoad(elems(i), elmKind)
+        bc.astore(elmKind)
+        i += 1
 
       stack.pop(3)
 
@@ -1254,22 +1251,14 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       }
     }
 
-    def genLoadArguments(args: List[Tree], btpes: List[BType])(using Context): Unit =
-      @tailrec def loop(args: List[Tree], btpes: List[BType]): Unit =
-        args match
-          case arg :: args1 =>
-            btpes match
-              case btpe :: btpes1 =>
-                genLoad(arg, btpe)
-                stack.push(btpe)
-                loop(args1, btpes1)
-              case _ =>
-          case _ =>
-
+    def genLoadArguments(args: Lst[Tree], btpes: Lst[BType])(using Context): Unit =
       val savedStackSize = stack.recordSize()
-      loop(args, btpes)
+      var i = 0
+      while i < args.length && i < btpes.length do
+        genLoad(args(i), btpes(i))
+        stack.push(btpes(i))
+        i += 1
       stack.restoreSize(savedStackSize)
-    end genLoadArguments
 
     def genLoadModule(tree: Tree)(using Context): BType = {
       val module = (
@@ -1355,24 +1344,21 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       lineNumber(tree)
       liftStringConcat(tree) match {
         // Optimization for expressions of the form "" + x
-        case List(Literal(Constant("")), arg) =>
+        case Lst.pair(Literal(Constant("")), arg) =>
           genLoad(arg, bTypes.ObjectRef)
           genCallMethod(defn.String_valueOf_Object, InvokeStyle.Static)
 
         case concatenations =>
-          val concatArguments = concatenations.view
-            .filter {
+          val concatArguments = concatenations
+            .filter:
               case Literal(Constant("")) => false // empty strings are no-ops in concatenation
               case _ => true
-            }
-            .map {
-              case Apply(boxOp, value :: Nil) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
+            .map:
+              case Apply(boxOp, Lst.single(value)) if Erasure.Boxing.isBox(boxOp.symbol) && boxOp.symbol.denot.owner != defn.UnitModuleClass =>
                 // Eliminate boxing of primitive values. Boxing is introduced by erasure because
                 // there's only a single synthetic `+` method "added" to the string class.
                 value
               case other => other
-            }
-            .toList
 
           /* `StringConcatFactory#makeConcatWithConstants` accepts max 200 argument slots. If
            * the string concatenation is longer (unlikely), we spill into multiple calls
@@ -1495,7 +1481,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       if (style == Super) {
         val ownerBType = bTypeLoader.bTypeFromType(method.owner.info)
         if (isInterface && !method.is(JavaDefined)) {
-          val staticDesc = MethodBType(ownerBType :: bmType.argumentTypes, bmType.returnType).descriptor
+          val staticDesc = MethodBType(ownerBType +: bmType.argumentTypes, bmType.returnType).descriptor
           val staticName = SymbolUtils.traitSuperAccessorName(method)
           bc.invokestatic(receiverName, staticName, staticDesc, isInterface, pos)
         } else {
@@ -1528,15 +1514,15 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
      * Returns a list of trees that each should be concatenated, from left to right.
      * It turns a chained call like "a".+("b").+("c") into a list of arguments.
      */
-    def liftStringConcat(tree: Tree)(using Context): List[Tree] = tree match {
+    def liftStringConcat(tree: Tree)(using Context): Lst[Tree] = tree match {
       case tree @ Apply(fun @ DesugaredSelect(larg, method), rarg) =>
         if (isPrimitive(fun) &&
             primitives.getPrimitive(tree, larg.tpe) == ScalaPrimitivesOps.CONCAT)
-          liftStringConcat(larg) ::: rarg
+          liftStringConcat(larg) ++ rarg
         else
-          tree :: Nil
+          Lst(tree)
       case _ =>
-        tree :: Nil
+        Lst(tree)
     }
 
     /* Emit code to compare the two top-most stack values using the 'op' operator. */
@@ -1803,7 +1789,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       val (a,b) = lambdaTarget.info.firstParamTypes.splitAt(environmentSize)
       var (capturedParamsTypes, lambdaParamTypes) = (a,b)
 
-      if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = lambdaTarget.owner.info :: capturedParamsTypes
+      if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = lambdaTarget.owner.info +: capturedParamsTypes
 
       // TODO: this comment seems to indicate this is very old and could be removed? this lib isn't recommended since >=2.13
       // Requires https://github.com/scala/scala-java8-compat on the runtime classpath

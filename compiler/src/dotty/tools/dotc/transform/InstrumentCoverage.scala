@@ -27,6 +27,7 @@ import localopt.StringInterpolatorOpt
 import inlines.Inlines
 import scala.util.matching.Regex
 import java.util.regex.Pattern
+import util.Lst
 
 /** Lift impure + lift the prefixes for coverage instrumentation. */
 object LiftCoverage extends LiftImpure:
@@ -102,16 +103,16 @@ object LiftCoverage extends LiftImpure:
       case _ => super.liftedExprType(expr)
 
   private def markSelectedReceiverDef(
-    defs: mutable.ListBuffer[tpd.Tree],
+    defs: Lst.Buffer[tpd.Tree],
     from: Int,
     selectedReceiver: tpd.Apply
   )(using Context): Unit =
     if defs.length > from then
-      defs.last match
+      defs.at(defs.length - 1) match
         case stat: tpd.ValDef => stat.putAttachment(SelectedReceiverApply, selectedReceiver)
         case _ => ()
 
-  def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) =
+  def liftForCoverage(defs: Lst.Buffer[tpd.Tree], tree: tpd.Apply)(using Context) =
     def recur(tree: tpd.Apply): tpd.Tree =
       val liftedFun = tree.fun match
         case sel @ tpd.Select(app: tpd.Apply, name) if selectedReceiverApply(app).nonEmpty =>
@@ -270,7 +271,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     private def invokeCall(id: Int, span: Span)(using Context): Apply =
       ref(defn.InvokedMethodRef).withSpan(span)
         .appliedToArgs(
-          Literal(Constant(id)) :: Literal(ConstOutputPath) :: Nil
+          Lst(Literal(Constant(id)), Literal(ConstOutputPath))
         ).withSpan(span)
         .asInstanceOf[Apply]
 
@@ -321,31 +322,23 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       val span = pos.span.toSynthetic
       invokeCall(statementId, span)
 
-    private def erasedParamStatuses(app: Apply)(using Context): List[Boolean] =
-      app.fun.tpe.widen match
-        case mt: MethodType if mt.hasErasedParams => mt.paramErasureStatuses
-        case _ => Nil
-
-    private def transformApplyArgs(trees: List[Tree], erasedArgs: List[Boolean] = Nil)(using Context): List[Tree] =
-      if allConstArgs(trees) then trees
-      else if erasedArgs.isEmpty then transform(trees)
-      else trees.lazyZip(erasedArgs).map { (arg, isErased) =>
-        if isErased then arg else transform(arg)
-      }.toList
+    private def transformApplyArgs(tree: GenericApply)(using Context): Lst[Tree] =
+      val args = tree.args
+      if allConstArgs(args) then args
+      else tree.fun.tpe.widen match
+        case mt: MethodType =>
+          args.zipWithConserve(mt.paramInfos): (arg, pinfo) =>
+            if pinfo.isForErasedParam then arg else transform(arg)
+        case _ =>
+          transform(args)
 
     private def transformInnerApply(tree: Tree)(using Context): Tree = tree match
       case a: Apply if a.fun.symbol == defn.StringContextModule_apply =>
         a
       case a: Apply =>
-        cpy.Apply(a)(
-          transformInnerApply(a.fun),
-          transformApplyArgs(a.args, erasedParamStatuses(a))
-        )
+        cpy.Apply(a)(transformInnerApply(a.fun), transformApplyArgs(a))
       case a: TypeApply =>
-        cpy.TypeApply(a)(
-          transformInnerApply(a.fun),
-          transformApplyArgs(a.args)
-        )
+        cpy.TypeApply(a)(transformInnerApply(a.fun), transformApplyArgs(a))
       case s: Select =>
         cpy.Select(s)(transformInnerApply(s.qualifier), s.name)
       case i: (Ident | This) => i
@@ -353,16 +346,16 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         cpy.Typed(t)(transformInnerApply(t.expr), t.tpt)
       case other    => transform(other)
 
-    private def allConstArgs(args: List[Tree]) =
+    private def allConstArgs(args: Lst[Tree]) =
       args.forall(arg => arg.isInstanceOf[Literal] || arg.isInstanceOf[Ident])
 
-    private def withSelectedReceiverProbes(stats: List[Tree])(using Context): List[Tree] =
+    private def withSelectedReceiverProbes(stats: Lst[Tree])(using Context): Lst[Tree] =
       stats.flatMap: stat =>
         LiftCoverage.selectedReceiverApply(stat) match
           case Some(app) =>
-            createInvokeCall(app, app.sourcePos) :: stat :: Nil
+            Lst(createInvokeCall(app, app.sourcePos), stat)
           case _ =>
-            stat :: Nil
+            Lst(stat)
 
     /**
       * Tries to instrument an `Apply`.
@@ -374,7 +367,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       */
     private def tryInstrument(tree: Apply)(using Context): InstrumentedParts =
       if LiftCoverage.isUnsafeAssumeSeparate(tree) then
-        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
+        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree))
         InstrumentedParts.notCovered(transformed)
       else if canInstrumentApply(tree) then
         // Create a call to Invoker.invoked(coverageDirectory, newStatementId)
@@ -383,25 +376,25 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // Transform args and fun, i.e. instrument them if needed (and if possible)
         val app =
           if tree.fun.symbol eq defn.throwMethod then tree
-          else cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
+          else cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree))
 
         if needsLift(app) then
           // Lifts the arguments. Note that if only one argument needs to be lifted, we lift them all.
           // Also, tree.fun can be lifted too.
           // See LiftCoverage for the internal working of this lifting.
-          val liftedDefs = mutable.ListBuffer[Tree]()
+          val liftedDefs = Lst.Buffer[Tree]()
           val liftedApp = LiftCoverage.liftForCoverage(liftedDefs, app)
           val prefix =
-            if tree.hasAttachment(TrailingForMap) then liftedDefs.toList
-            else withSelectedReceiverProbes(liftedDefs.toList)
+            if tree.hasAttachment(TrailingForMap) then liftedDefs.toLst
+            else withSelectedReceiverProbes(liftedDefs.toLst)
 
-          InstrumentedParts(prefix, coverageCall, liftedApp)
+          InstrumentedParts(prefix.toList, coverageCall, liftedApp)
         else
           // Instrument without lifting
           InstrumentedParts.singleExpr(coverageCall, app)
       else
         // Transform recursively but don't instrument the tree itself
-        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
+        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree))
         InstrumentedParts.notCovered(transformed)
     end tryInstrument
 
@@ -695,7 +688,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     private def transformTemplateParents(parents: List[Tree])(using Context): List[Tree] =
       def transformParent(parent: Tree): Tree = parent match
         case tree: Apply =>
-          cpy.Apply(tree)(tree.fun, transformApplyArgs(tree.args, erasedParamStatuses(tree)))
+          cpy.Apply(tree)(tree.fun, transformApplyArgs(tree))
         case tree: TypeApply =>
           // args are types, instrument the fun with transformParent
           cpy.TypeApply(tree)(transformParent(tree.fun), tree.args)
@@ -920,7 +913,7 @@ object InstrumentCoverage:
    *  they wrap.
    */
   def isCoverageProbe(tree: Tree)(using Context): Boolean = tree match
-    case Apply(fun, Literal(Constant(_: Int)) :: Literal(Constant(_: String)) :: Nil) =>
+    case Apply(fun, Lst.pair(Literal(Constant(_: Int)), Literal(Constant(_: String)))) =>
       fun.symbol == defn.InvokedMethodRef.symbol
     case _ =>
       false

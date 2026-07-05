@@ -15,6 +15,7 @@ import Annotations.*, Decorators.*
 import collection.mutable
 import util.Spans.*
 import reporting.Message
+import util.Lst
 
 object PositionPickler:
   import ast.tpd.*
@@ -129,6 +130,11 @@ object PositionPickler:
           traverse(x.productElement(n), x.source)
           n += 1
         }
+      case xs: Lst[?] =>
+        var i = 0
+        while i < xs.length do
+          traverse(xs(i), current)
+          i += 1
       case y :: ys =>
         traverse(y, current)
         traverse(ys, current)

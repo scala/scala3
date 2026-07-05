@@ -25,6 +25,7 @@ import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.transform.ElimErasedValueType
 import dotty.tools.dotc.transform.Mixin
 import dotty.tools.dotc.report
+import dotty.tools.dotc.util.Lst
 import tpd.*
 import dotty.tools.dotc.config.ScalaSettingsProperties
 
@@ -172,7 +173,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     /*
      * must-single-thread
      */
-    def emitParamNames(jmethod: asm.MethodVisitor, params: List[Symbol])(using Context): Unit =
+    def emitParamNames(jmethod: asm.MethodVisitor, params: Lst[Symbol])(using Context): Unit =
       for param <- params do
         var access = asm.Opcodes.ACC_FINAL
         if param.is(Artifact) then access |= asm.Opcodes.ACC_SYNTHETIC
@@ -181,7 +182,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     /*
      * must-single-thread
      */
-    def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: List[List[Annotation]])(using Context): Unit =
+    def emitParamAnnotations(jmethod: asm.MethodVisitor, pannotss: Lst[List[Annotation]])(using Context): Unit =
       val annotationss = pannotss.map(_.filter(shouldEmitAnnotation))
       if (annotationss.forall(_.isEmpty)) return
       for ((annots, idx) <- annotationss.zipWithIndex; annot <- annots) {
@@ -197,7 +198,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
         retentionPolicyOf(annot) != annotationRetentionSourceAttr
     }
 
-    private def emitAssocs(av: asm.AnnotationVisitor, assocs: List[(Name, Object)])(using Context): Unit = {
+    private def emitAssocs(av: asm.AnnotationVisitor, assocs: Lst[(Name, Object)])(using Context): Unit = {
       for ((name, value) <- assocs)
         emitArgument(av, name.mangledString, value.asInstanceOf[Tree])
       av.visitEnd()
@@ -251,7 +252,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
           val flatArgs = actualArgs.flatMap { arg =>
             normalizeArgument(arg) match {
               case t: tpd.SeqLiteral => t.elems
-              case e => List(e)
+              case e => Lst(e)
             }
           }
           for arg <- flatArgs do
@@ -307,7 +308,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       annot.tree.tpe.typeSymbol.getAnnotation(annotationRetentionAttr).
         flatMap(_.argument(0).map(_.tpe.termSymbol)).getOrElse(annotationRetentionClassAttr)
 
-    private def assocsFromApply(tree: Tree)(using Context): List[(Name, Tree)] = {
+    private def assocsFromApply(tree: Tree)(using Context): Lst[(Name, Tree)] = {
       tree match {
         case Block(_, expr) => assocsFromApply(expr)
         case Apply(fun, args) =>
@@ -386,7 +387,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     private def addForwarder(jclass: asm.ClassVisitor, module: Symbol, m: Symbol, isSynthetic: Boolean)(using Context): Unit = {
       val moduleName     = bTypeLoader.classBTypeFromSymbol(module).internalName
       val methodInfo     = module.thisType.memberInfo(m)
-      val paramJavaTypes: List[BType] = methodInfo.firstParamTypes.map(bTypeLoader.bTypeFromType)
+      val paramJavaTypes: Lst[BType] = methodInfo.firstParamTypes.map(bTypeLoader.bTypeFromType)
       // val paramNames     = 0 until paramJavaTypes.length.map("x_" + _)
 
       /* Forwarders must not be marked final,
@@ -422,7 +423,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       )
 
       emitAnnotations(mirrorMethod, others)
-      val params: List[Symbol] = Nil // backend uses this to emit annotations on parameter lists of forwarders
+      val params: Lst[Symbol] = Lst() // backend uses this to emit annotations on parameter lists of forwarders
       // to static methods of companion class
       // Old assumption: in Dotty this link does not exists: there is no way to get from method type
       // to inner symbols of DefDef

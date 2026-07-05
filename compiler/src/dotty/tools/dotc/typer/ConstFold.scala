@@ -11,6 +11,7 @@ import Constants.*
 import Names.*
 import StdNames.*
 import Contexts.*
+import util.Lst
 
 object ConstFold:
 
@@ -34,7 +35,7 @@ object ConstFold:
         xt match
           case ConstantTree(x) =>
             tree.args match
-              case yt :: Nil =>
+              case Lst.single(yt) =>
                 yt match
                   case ConstantTree(y) => tree.withFoldedType(foldBinop(op, x, y))
                   case _ => tree
@@ -57,7 +58,7 @@ object ConstFold:
   def apply[T <: Tree](tree: T)(using Context): T = tree match
     case tree: Apply => Apply(tree)
     case tree: Select => Select(tree)
-    case TypeApply(_, targ :: Nil) if tree.symbol eq defn.Predef_classOf =>
+    case TypeApply(_, Lst.single(targ)) if tree.symbol eq defn.Predef_classOf =>
       tree.withFoldedType(Constant(targ.tpe))
     case _ => tree
 

@@ -482,8 +482,8 @@ final class ClassfileParser(
       def normalizeConstructorParams() = innerClasses.get(currentClassName.toString) match {
         case Some(entry) if !isStatic(entry.jflags) =>
           val mt @ MethodTpe(paramNames, paramTypes, resultType) = denot.info: @unchecked
-          var normalizedParamNames = paramNames.tail
-          var normalizedParamTypes = paramTypes.tail
+          var normalizedParamNames = paramNames.drop(1)
+          var normalizedParamTypes = paramTypes.drop(1)
           if ((jflags & JAVA_ACC_SYNTHETIC) != 0) {
             // SI-7455 strip trailing dummy argument ("access constructor tag") from synthetic constructors which
             // are added when an inner class needs to access a private constructor.
@@ -513,11 +513,11 @@ final class ClassfileParser(
       denot.info = sigToType(sig, isVarargs = isVarargs)
       if (isConstructor) normalizeConstructorParams()
       if isNative then
-        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.NativeAnnot)(New(defn.NativeAnnot.typeRef, Nil))
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.NativeAnnot)(New(defn.NativeAnnot.typeRef, Lst()))
       if isTransient then
-        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.TransientAnnot)(New(defn.TransientAnnot.typeRef, Nil))
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.TransientAnnot)(New(defn.TransientAnnot.typeRef, Lst()))
       if isVolatile then
-        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.VolatileAnnot)(New(defn.VolatileAnnot.typeRef, Nil))
+        attrCompleter.annotations ::= Annotation.deferredSymAndTree(defn.VolatileAnnot)(New(defn.VolatileAnnot.typeRef, Lst()))
       denot.info = translateTempPoly(attrCompleter.complete(denot.info, isVarargs))
       if (isConstructor) normalizeConstructorInfo()
 
@@ -618,7 +618,7 @@ final class ClassfileParser(
             case tp: TypeRef =>
               if (sig(index) == '<') {
                 accept('<')
-                val argsBuf = if (skiptvs) null else new ListBuffer[Type]
+                val argsBuf = if (skiptvs) null else new Lst.Buffer[Type]
                 while (sig(index) != '>') {
                   val arg = sig(index) match {
                     case variance @ ('+' | '-' | '*') =>
@@ -638,7 +638,7 @@ final class ClassfileParser(
                   if (argsBuf != null) argsBuf += arg
                 }
                 accept('>')
-                if (argsBuf == null) tp else AppliedType(tp, argsBuf.toList)
+                if (argsBuf == null) tp else AppliedType(tp, argsBuf.toLst)
               }
               else tp
             case tp =>
@@ -684,8 +684,8 @@ final class ClassfileParser(
             true
           end isRepeatedParam
 
-          val paramtypes = new ListBuffer[Type]()
-          var paramnames = new ListBuffer[TermName]()
+          val paramtypes = new util.Lst.Buffer[Type]()
+          var paramnames = new util.Lst.Buffer[TermName]()
           while !isMethodEnd(index) do
             paramnames += nme.syntheticParamName(paramtypes.length)
             paramtypes += {
@@ -700,7 +700,7 @@ final class ClassfileParser(
 
           index += 1
           val restype = sig2type(skiptvs = false)
-          MethodType(paramnames.toList, paramtypes.toList, restype)
+          MethodType(paramnames.toLst, paramtypes.toLst, restype)
         case 'T' =>
           val n = subName(';'.==).toTypeName
           index += 1
@@ -740,7 +740,7 @@ final class ClassfileParser(
       else NoType
     }
 
-    val newTParams = new ListBuffer[Symbol]()
+    val newTParams = new util.Lst.Buffer[Symbol]()
     if (sig(index) == '<') {
       assert(owner != null)
       index += 1
@@ -757,7 +757,7 @@ final class ClassfileParser(
       }
       index += 1
     }
-    val ownTypeParams = newTParams.toList.asInstanceOf[List[TypeSymbol]]
+    val ownTypeParams = newTParams.toLst.asInstanceOf[Lst[TypeSymbol]]
     val tpe =
       if ((owner == null) || !owner.isClass)
         sig2type(skiptvs = false)
@@ -811,7 +811,7 @@ final class ClassfileParser(
         val enumCaseName = pool.getName(in.nextChar)
         if (skip) None else Some(EnumTag(sig, enumCaseName))
       case ARRAY_TAG =>
-        val arr = new ArrayBuffer[untpd.Tree]()
+        val arr = new Lst.Buffer[untpd.Tree]
         var hasError = false
         for (i <- 0 until index)
           parseAnnotArg(skip) match {
@@ -821,17 +821,14 @@ final class ClassfileParser(
           }
         if (hasError) None
         else if (skip) None
-        else {
-          val elems = arr.toList
-          Some(untpd.JavaSeqLiteral(elems, untpd.TypeTree()))
-        }
+        else Some(untpd.JavaSeqLiteral(arr.toLst, untpd.TypeTree()))
       case ANNOTATION_TAG =>
         parseAnnotation(index, skip).map(_.untpdTree)
     }
   }
 
-  class ClassfileAnnotation(annotType: Type, lazyArgs: List[(NameOrString, untpd.Tree | EnumTag)]) extends LazyAnnotation {
-    private def args(using Context): List[untpd.Tree] =
+  class ClassfileAnnotation(annotType: Type, lazyArgs: Lst[(NameOrString, untpd.Tree | EnumTag)]) extends LazyAnnotation {
+    private def args(using Context): Lst[untpd.Tree] =
       lazyArgs.map {
         case (name, tree: untpd.Tree) => untpd.NamedArg(name.name, tree).withSpan(NoSpan)
         case (name, tag: EnumTag)     => untpd.NamedArg(name.name, tag.toTree).withSpan(NoSpan)
@@ -853,7 +850,7 @@ final class ClassfileParser(
   def parseAnnotation(attrNameIndex: Char, skip: Boolean = false)(using ctx: Context, in: DataReader): Option[ClassfileAnnotation] = try {
     val attrType = pool.getType(attrNameIndex.toInt)
     val nargs = in.nextChar.toInt
-    val argbuf = new ListBuffer[(NameOrString, untpd.Tree | EnumTag)]
+    val argbuf = new Lst.Buffer[(NameOrString, untpd.Tree | EnumTag)]
     var hasError = false
     for (i <- 0 until nargs) {
       val name = pool.getName(in.nextChar)
@@ -873,7 +870,7 @@ final class ClassfileParser(
         None
       case _ =>
         if (hasError || skip) None
-        else Some(ClassfileAnnotation(attrType, argbuf.toList))
+        else Some(ClassfileAnnotation(attrType, argbuf.toLst))
   }
   catch {
     case f: FatalError => throw f // don't eat fatal errors, they mean a class was not found
@@ -885,7 +882,7 @@ final class ClassfileParser(
       // with a `FatalError` exception, handled above. Here you'd end up after a NPE (for example),
       // and that should never be swallowed silently.
       report.warning(em"Caught: $ex while parsing annotations in $classfile")
-      if (ctx.debug) ex.printStackTrace()
+      if (ctx.debug || true) ex.printStackTrace()
 
       None // ignore malformed annotations
   }
@@ -933,14 +930,14 @@ final class ClassfileParser(
       permittedSubclasses.foreach { child =>
         val cls = getClassSymbol(child.name)
         sym.addAnnotation(Annotation.deferredSymAndTree(defn.ChildAnnot)(
-          New(defn.ChildAnnot.typeRef.appliedTo(cls.owner.thisType.select(cls.name, cls)), Nil)
+          New(defn.ChildAnnot.typeRef.appliedTo(cls.owner.thisType.select(cls.name, cls)), Lst())
           .withSpan(NoSpan)
           ))
         }
 
       def fillInParamNames(t: Type): Type = t match
         case mt @ MethodType(oldp) if namedParams.nonEmpty =>
-          mt.derivedLambdaType(List.tabulate(oldp.size)(n => namedParams.getOrElse(n, oldp(n))))
+          mt.derivedLambdaType(Lst.tabulate(oldp.size)(n => namedParams.getOrElse(n, oldp(n))))
         case pt: PolyType if namedParams.nonEmpty =>
           pt.derivedLambdaType(pt.paramNames, pt.paramInfos, fillInParamNames(pt.resultType))
         case _ => t
@@ -971,7 +968,7 @@ final class ClassfileParser(
           val msg = Literal(Constant("see corresponding Javadoc for more information."))
           val since = Literal(Constant(""))
           res.annotations ::= Annotation.deferredSymAndTree(defn.DeprecatedAnnot) {
-            New(defn.DeprecatedAnnot.typeRef, msg :: since :: Nil)
+            New(defn.DeprecatedAnnot.typeRef, Lst(msg, since))
           }
 
         case tpnme.ConstantValueATTR =>
@@ -990,7 +987,7 @@ final class ClassfileParser(
                 res.namedParams += (i -> name.name)
 
         case tpnme.AnnotationDefaultATTR =>
-          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil, sym.span))
+          sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Lst(), sym.span))
 
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
         case tpnme.RuntimeVisibleAnnotationATTR
@@ -1075,8 +1072,8 @@ final class ClassfileParser(
   class AnnotConstructorCompleter(classInfo: TempClassInfoType) extends LazyType {
     def complete(denot: SymDenotation)(using Context): Unit = {
       val attrs = classInfo.decls.toList.filter(sym => sym.isTerm && sym != denot.symbol && sym.name != nme.CONSTRUCTOR)
-      val paramNames = attrs.map(_.name.asTermName)
-      val paramTypes = attrs.map(_.info.resultType)
+      val paramNames = attrs.mapToLst(_.name.asTermName)
+      val paramTypes = attrs.mapToLst(_.info.resultType)
       denot.info = MethodType(paramNames, paramTypes, classRoot.typeRef)
     }
   }

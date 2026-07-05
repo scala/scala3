@@ -9,6 +9,7 @@ import Symbols.*, Types.*, Contexts.*, StdNames.*
 import Flags.*
 import interactive.LogicalPackage
 import transform.ExplicitOuter
+import util.Lst
 
 class JavaPlatform(precomputedSourcePackages: Option[LogicalPackage] = None) extends Platform {
 
@@ -24,7 +25,7 @@ class JavaPlatform(precomputedSourcePackages: Option[LogicalPackage] = None) ext
   // The given symbol is a method with the right name and signature to be a runnable java program.
   def isMainMethod(sym: Symbol)(using Context): Boolean =
     (sym.name == nme.main) && (sym.info match {
-      case MethodTpe(_, defn.ArrayOf(el) :: Nil, restpe) => el =:= defn.StringType && restpe.isRef(defn.UnitClass)
+      case MethodTpe(_, Lst.single(defn.ArrayOf(el)), restpe) => el =:= defn.StringType && restpe.isRef(defn.UnitClass)
       case _ => false
     })
 

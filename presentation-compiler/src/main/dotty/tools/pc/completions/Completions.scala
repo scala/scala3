@@ -29,6 +29,7 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.Completion.Mode
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.pc.AutoImports.AutoImportsGenerator
@@ -212,12 +213,12 @@ class Completions(
   private def getParams(symbol: Symbol) =
     lazy val extensionParam = symbol.extensionParam
     if symbol.is(Flags.Extension) then
-      symbol.paramSymss.filterNot(
+      symbol.paramSymsLists.filterNot(
         _.contains(extensionParam)
       )
     else if symbol.isConstructor then
-      symbol.owner.paramSymss
-    else symbol.paramSymss.filter(!_.exists(_.isTypeParam))
+      symbol.owner.paramSymsLists
+    else symbol.paramSymsLists.filter(!_.exists(_.isTypeParam))
 
   private def isAbstractType(symbol: Symbol) =
     try
@@ -250,7 +251,7 @@ class Completions(
         }
         .chain { suffix =>
           adjustedPath match
-            case (_: Ident) :: (app @ Apply(_, List(arg))) :: _ =>
+            case (_: Ident) :: (app @ Apply(_, Lst.single(arg))) :: _ =>
               app.symbol.info match
                 case _: MethodType
                     if app.symbol.paramSymss.last.exists(_.is(Given)) &&
@@ -1108,8 +1109,8 @@ class Completions(
                           if byOwner != 0 then byOwner
                           else
                             val byParamCount = Integer.compare(
-                              s1.paramSymss.flatten.size,
-                              s2.paramSymss.flatten.size
+                              s1.paramSymsLists.flatten.size,
+                              s2.paramSymsLists.flatten.size
                             )
                             if byParamCount != 0 then byParamCount
                             else s1.detailString.compareTo(s2.detailString)

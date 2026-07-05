@@ -9,6 +9,7 @@ import Decorators.*
 import util.{Property, SourceFile}
 import typer.ErrorReporting.*
 import transform.SyntheticMembers.ExtendsSingletonMirror
+import util.Lst
 
 import scala.annotation.internal.sharable
 
@@ -95,11 +96,11 @@ object DesugarEnums {
   private def valuesDot(name: PreName)(implicit src: SourceFile) =
     Select(Ident(nme.DOLLAR_VALUES), name.toTermName)
 
-  private def ArrayLiteral(values: List[Tree], tpt: Tree)(using Context): Tree =
-    val clazzOf = TypeApply(ref(defn.Predef_classOf.termRef), tpt :: Nil)
-    val ctag    = Apply(TypeApply(ref(defn.ClassTagModule_apply.termRef), tpt :: Nil), clazzOf :: Nil)
+  private def ArrayLiteral(values: Lst[Tree], tpt: Tree)(using Context): Tree =
+    val clazzOf = TypeApply(ref(defn.Predef_classOf.termRef), Lst(tpt))
+    val ctag    = Apply(TypeApply(ref(defn.ClassTagModule_apply.termRef), Lst(tpt)), Lst(clazzOf))
     val apply   = Select(ref(defn.ArrayModule.termRef), nme.apply)
-    Apply(Apply(TypeApply(apply, tpt :: Nil), values), ctag :: Nil).setApplyKind(ApplyKind.Using)
+    Apply(Apply(TypeApply(apply, Lst(tpt)), values), Lst(ctag)).setApplyKind(ApplyKind.Using)
 
   /**  The following lists of definitions for an enum type E and known value cases e_0, ..., e_n:
    *
@@ -117,7 +118,7 @@ object DesugarEnums {
     extension (tpe: NamedType) def ofRawEnum = AppliedTypeTree(ref(tpe), rawEnumClassRef)
 
     val privateValuesDef =
-      ValDef(nme.DOLLAR_VALUES, TypeTree(), ArrayLiteral(enumValues, rawEnumClassRef))
+      ValDef(nme.DOLLAR_VALUES, TypeTree(), ArrayLiteral(enumValues.toLst, rawEnumClassRef))
         .withFlags(Private | Synthetic)
 
     val valuesDef =
@@ -128,12 +129,12 @@ object DesugarEnums {
       val defaultCase =
         val msg = Apply(Select(Literal(Constant(s"enum ${enumClass.fullName} has no case with name: ")), nme.PLUS), Ident(nme.nameDollar))
         CaseDef(Ident(nme.WILDCARD), EmptyTree,
-          Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(msg :: Nil))))
+          Throw(New(TypeTree(defn.IllegalArgumentExceptionType), List(Lst(msg)))))
       val stringCases = enumValues.map(enumValue =>
         CaseDef(Literal(Constant(enumValue.name.toString)), EmptyTree, enumValue)
-      ) ::: defaultCase :: Nil
+      ) :+ defaultCase
       Match(Ident(nme.nameDollar), stringCases)
-    val valueOfDef = DefDef(nme.valueOf, List(param(nme.nameDollar, defn.StringType) :: Nil),
+    val valueOfDef = DefDef(nme.valueOf, List(Lst(param(nme.nameDollar, defn.StringType))),
       TypeTree(), valuesOfBody)
         .withFlags(Synthetic)
 
@@ -149,7 +150,7 @@ object DesugarEnums {
     def fromOrdinal: Tree =
       def throwArg(ordinal: Tree) =
         val msg = Apply(Select(Literal(Constant(s"enum ${enumClass.fullName} has no case with ordinal: ")), nme.PLUS), Select(ordinal, nme.toString_))
-        Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(msg :: Nil)))
+        Throw(New(TypeTree(defn.NoSuchElementExceptionType), List(Lst(msg))))
       if !constraints.cached then
         fromOrdinalMeth(throwArg)
       else
@@ -187,7 +188,7 @@ object DesugarEnums {
       body = Nil
     ).withAttachment(ExtendsSingletonMirror, ()))
     DefDef(nme.DOLLAR_NEW,
-        List(List(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
+        List(Lst(param(nme.ordinalDollar_, defn.IntType), param(nme.nameDollar, defn.StringType))),
         TypeTree(), creator).withFlags(Private | Synthetic)
   }
 
@@ -199,9 +200,9 @@ object DesugarEnums {
    *   - it's a value case, i.e. no value parameters are given
    */
   def typeParamIsReferenced(
-    enumTypeParams: List[TypeSymbol],
-    caseTypeParams: List[TypeDef],
-    vparamss: List[List[ValDef]],
+    enumTypeParams: Lst[TypeSymbol],
+    caseTypeParams: Lst[TypeDef],
+    vparamss: List[Lst[ValDef]],
     parents: List[Tree])(using Context): Boolean = {
 
     object searchRef extends UntypedTreeAccumulator[Boolean] {
@@ -220,7 +221,7 @@ object DesugarEnums {
               report.error(em"illegal reference to type parameter $name from enum case", tree.srcPos)
             matches
           case LambdaTypeTree(lambdaParams, body) =>
-            underBinders(lambdaParams, foldOver(x, tree))
+            underBinders(lambdaParams.toList, foldOver(x, tree))
           case RefinedTypeTree(parent, refinements) =>
             val refinementDefs = refinements collect { case r: MemberDef => r }
             underBinders(refinementDefs, foldOver(x, tree))
@@ -228,7 +229,7 @@ object DesugarEnums {
         }
       }
       def apply(tree: Tree)(using Context): Boolean =
-        underBinders(caseTypeParams, apply(false, tree))
+        underBinders(caseTypeParams.toList, apply(false, tree))
     }
 
     def typeHasRef(tpt: Tree) = searchRef(tpt)
@@ -241,7 +242,7 @@ object DesugarEnums {
       case parent => parent.isType && typeHasRef(parent)
     }
 
-    vparamss.nestedExists(valDefHasRef) || parents.exists(parentHasRef)
+    vparamss.nestedExistsLst(valDefHasRef) || parents.exists(parentHasRef)
   }
 
   /** A pair consisting of
@@ -276,7 +277,7 @@ object DesugarEnums {
     ordinalMeth(Literal(Constant(ord)))
 
   def fromOrdinalMeth(body: Tree => Tree)(using Context): DefDef =
-    DefDef(nme.fromOrdinal, (param(nme.ordinal, defn.IntType) :: Nil) :: Nil,
+    DefDef(nme.fromOrdinal, Lst(param(nme.ordinal, defn.IntType)) :: Nil,
       rawRef(enumClass.typeRef), body(Ident(nme.ordinal))).withFlags(Synthetic)
 
   /** Expand a module definition representing a parameterless enum case */
@@ -304,7 +305,7 @@ object DesugarEnums {
     }
     else {
       val (tag, scaffolding) = nextOrdinal(name, CaseKind.Simple, definesLookups)
-      val creator = Apply(Ident(nme.DOLLAR_NEW), List(Literal(Constant(tag)), Literal(Constant(name.toString))))
+      val creator = Apply(Ident(nme.DOLLAR_NEW), Lst(Literal(Constant(tag)), Literal(Constant(name.toString))))
       val vdef = ValDef(name, enumClassRef, creator).withMods(mods.withAddedFlags(EnumValue, span))
       flatTree(vdef :: scaffolding).withSpan(span)
     }

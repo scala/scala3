@@ -19,8 +19,7 @@ import util.Spans.Span
 import Phases.refchecksPhase
 import Constants.Constant
 
-import util.SrcPos
-import util.Spans.Span
+import util.{SrcPos, Lst}
 import rewrites.Rewrites.patch
 import inlines.Inlines
 import Decorators.*
@@ -66,10 +65,10 @@ object Checking {
    *              or (in case it is inferred) containing the type.
    *  See TypeOps.boundsViolations for an explanation of the first four parameters.
    */
-  def checkBounds(args: List[tpd.Tree], boundss: List[TypeBounds],
-    instantiate: (Type, List[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(using Context): Unit =
+  def checkBounds(args: Lst[tpd.Tree], boundss: Lst[TypeBounds],
+    instantiate: (Type, Lst[Type]) => Type, app: Type = NoType, tpt: Tree = EmptyTree)(using Context): Unit =
     if !isCaptureChecking then
-      args.lazyZip(boundss).foreach { (arg, bound) =>
+      args.lazyZip(boundss.toList).foreach { (arg, bound) =>
         if !bound.isLambdaSub && !arg.tpe.hasSimpleKind then
           errorTree(arg,
             showInferred(MissingTypeParameterInTypeApp(arg.tpe), app, tpt))
@@ -83,7 +82,7 @@ object Checking {
    *  Note: This does not check the bounds of AppliedTypeTrees. These
    *  are handled by method checkAppliedType below.
    */
-  def checkBounds(args: List[tpd.Tree], tl: TypeLambda)(using Context): Unit =
+  def checkBounds(args: Lst[tpd.Tree], tl: TypeLambda)(using Context): Unit =
     checkBounds(args, tl.paramInfos, _.substParams(tl, _))
 
   def checkGoodBounds(sym: Symbol)(using Context): Boolean =
@@ -116,9 +115,9 @@ object Checking {
     // otherwise return type parameters unchanged
     val tparams = tycon.tpe.typeParams
     val bounds = tparams.map(_.paramInfoAsSeenFrom(tree.tpe).bounds)
-    def instantiate(bound: Type, args: List[Type]) =
-      tparams match
-        case LambdaParam(lam, _) :: _ =>
+    def instantiate(bound: Type, args: Lst[Type]) =
+      tparams.headOption match
+        case Some(LambdaParam(lam, _)) =>
           HKTypeLambda.fromParams(tparams, bound).appliedTo(args)
         case _ =>
           bound // paramInfoAsSeenFrom already took care of instantiation in this case
@@ -137,7 +136,7 @@ object Checking {
       case _ =>
     }
     def checkValidIfApply(using Context): Unit =
-      checkWildcardApply(tycon.tpe.appliedTo(args.map(_.tpe)))
+      checkWildcardApply(tycon.tpe.appliedTo(args.tpes))
     withMode(Mode.AllowLambdaWildcardApply)(checkValidIfApply)
   }
 
@@ -192,7 +191,7 @@ object Checking {
         arg.tpe.hasSameKindAs(paramBounds.bounds.hi)) arg
     else errorTree(arg, em"Type argument ${arg.tpe} does not have the same kind as its bound $paramBounds")
 
-  def preCheckKinds(args: List[Tree], paramBoundss: List[Type])(using Context): List[Tree] = {
+  def preCheckKinds(args: Lst[Tree], paramBoundss: Lst[Type])(using Context): Lst[Tree] = {
     val args1 = args.zipWithConserve(paramBoundss)(preCheckKind)
     args1 ++ args.drop(paramBoundss.length)
       // add any arguments that do not correspond to a parameter back,
@@ -524,11 +523,12 @@ object Checking {
     def info = sym match
       case sym: ClassSymbol => sym.primaryConstructor.info
       case _ => sym.info
-    def paramName = info.firstParamNames match
-      case pname :: _ => pname.show
+    def paramName =
+      info.firstParamNames.headOption match
+      case Some(pname) => pname.show
       case _ => "x"
-    def paramTypeStr = info.firstParamTypes match
-      case pinfo :: _ => pinfo.show
+    def paramTypeStr = info.firstParamTypes.headOption match
+      case Some(pinfo) => pinfo.show
       case _ => "T"
     def toFunctionStr(info: Type): String = info match
       case ExprType(resType) =>
@@ -880,7 +880,7 @@ object Checking {
           param.isTerm && !param.is(Flags.Accessor)
         }
         clParamAccessors match {
-          case param :: params =>
+          case params @ Lst.withHead(param) =>
             if (defn.isContextFunctionType(param.info))
               report.error("value classes are not allowed for context function types", param.srcPos)
             if (param.is(Mutable))
@@ -890,9 +890,10 @@ object Checking {
             if (param.is(Erased))
               report.error("value class first parameter cannot be `erased`", param.srcPos)
             else
-              for (p <- params if !p.is(Erased))
-                report.error("value class can only have one non `erased` parameter", p.srcPos)
-          case Nil =>
+              for i <- 1 until params.length do
+                if !params(i).is(Erased) then
+                  report.error("value class can only have one non `erased` parameter", params(i).srcPos)
+          case nil =>
             report.error(ValueClassNeedsOneValParam(clazz), clazz.srcPos)
         }
       }
@@ -902,10 +903,9 @@ object Checking {
 
   /** Check the inline override methods only use inline parameters if they override an inline parameter. */
   def checkInlineOverrideParameters(sym: Symbol)(using Context): Unit =
-    lazy val params = sym.paramSymss.flatten
     for
       sym2 <- sym.allOverriddenSymbols
-      (p1, p2) <- sym.paramSymss.flatten.lazyZip(sym2.paramSymss.flatten)
+      (p1, p2) <- sym.paramSymss.flattenLst.lazyZip(sym2.paramSymss.flattenLst)
       if p1.is(Inline) != p2.is(Inline)
     do
       report.error(
@@ -1015,17 +1015,15 @@ object Checking {
       .toMap
 
     annot match
-      case untpd.Apply(fun, List(param)) if !param.isInstanceOf[untpd.NamedArg] && annotationHasValueField =>
-        untpd.cpy.Apply(annot)(fun, List(untpd.cpy.NamedArg(param)(nme.value, param)))
+      case untpd.Apply(fun, Lst.single(param)) if !param.isInstanceOf[untpd.NamedArg] && annotationHasValueField =>
+        untpd.cpy.Apply(annot)(fun, Lst(untpd.cpy.NamedArg(param)(nme.value, param)))
       case untpd.Apply(_, params) =>
-        for
-          (param, paramIdx) <- params.zipWithIndex
-          if !param.isInstanceOf[untpd.NamedArg]
-        do
-          report.errorOrMigrationWarning(NonNamedArgumentInJavaAnnotation(), param, MigrationVersion.NonNamedArgumentInJavaAnnotation)
-          if MigrationVersion.NonNamedArgumentInJavaAnnotation.needsPatch then
-            annotationFieldNamesByIdx.get(paramIdx).foreach: paramName =>
-              patch(param.span.startPos, s"$paramName = ")
+        for (param, paramIdx) <- params.zipWithIndex do
+          if !param.isInstanceOf[untpd.NamedArg] then
+            report.errorOrMigrationWarning(NonNamedArgumentInJavaAnnotation(), param, MigrationVersion.NonNamedArgumentInJavaAnnotation)
+            if MigrationVersion.NonNamedArgumentInJavaAnnotation.needsPatch then
+              annotationFieldNamesByIdx.get(paramIdx).foreach: paramName =>
+                patch(param.span.startPos, s"$paramName = ")
         annot
       case _ => annot
   end checkNamedArgumentForJavaAnnotation
@@ -1444,16 +1442,14 @@ trait Checking {
   /** Check that method parameter types do not reference their own parameter
    *  or later parameters in the same parameter section.
    */
-  def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = vparams match {
-    case vparam :: vparams1 =>
-      vparam.tpt.foreachSubTree {
-        case id: Ident if vparams.exists(_.symbol == id.symbol) =>
+  def checkNoForwardDependencies(vparams: Lst[ValDef])(using Context): Unit =
+    for i <- 0 until vparams.length do
+      vparams(i).tpt.foreachSubTree:
+        case id: Ident
+        if (i until vparams.length).exists: j =>
+          vparams(j).symbol == id.symbol =>
           report.error(em"illegal forward reference to method parameter", id.srcPos)
         case _ =>
-      }
-      checkNoForwardDependencies(vparams1)
-    case Nil =>
-  }
 
   /** Check that all named types that form part of this type have a denotation.
    *  Called on inferred (result) types of ValDefs and DefDefs.
@@ -1545,14 +1541,14 @@ trait Checking {
   def checkAnnotArgs(tree: Tree)(using Context): tree.type =
     val cls = Annotations.annotClass(tree)
     tree match
-      case Apply(tycon, arg :: Nil) if cls == defn.TargetNameAnnot =>
+      case Apply(tycon, Lst.single(arg)) if cls == defn.TargetNameAnnot =>
         arg match
           case Literal(Constant("")) =>
             report.error(em"target name cannot be empty", arg.srcPos)
           case Literal(_) => // ok
           case _ =>
             report.error(em"@${cls.name} needs a string literal as argument", arg.srcPos)
-      case Apply(tycon, arg :: Nil) if cls == defn.ImplicitNotFoundAnnot || cls == defn.ImplicitAmbiguousAnnot =>
+      case Apply(tycon, Lst.single(arg)) if cls == defn.ImplicitNotFoundAnnot || cls == defn.ImplicitAmbiguousAnnot =>
         arg.tpe.widenTermRefExpr.normalized match
           case _: ConstantType => ()
           case _ => report.error(em"@${cls.name} requires constant expressions as a parameter", arg.srcPos)
@@ -1581,7 +1577,7 @@ trait Checking {
       val javaEnumBase = cls.thisType.baseType(defn.JavaEnumClass)
       if javaEnumBase.exists then
         javaEnumBase.argInfos match
-          case typeArg :: Nil =>
+          case Lst.single(typeArg) =>
             if cls.typeParams.nonEmpty then
               report.error(em"An enum extending java.lang.Enum cannot have type parameters", cdef.srcPos)
             if typeArg.classSymbol ne cls then
@@ -1828,7 +1824,7 @@ trait NoChecking extends ReChecking {
   override def checkSimpleKinded(tpt: Tree)(using Context): Tree = tpt
   override def checkDerivedValueClass(cdef: untpd.TypeDef, clazz: Symbol, stats: List[Tree])(using Context): Unit = ()
   override def checkCaseInheritance(parentSym: Symbol, caseCls: ClassSymbol, pos: SrcPos)(using Context): Unit = ()
-  override def checkNoForwardDependencies(vparams: List[ValDef])(using Context): Unit = ()
+  override def checkNoForwardDependencies(vparams: Lst[ValDef])(using Context): Unit = ()
   override def checkMembersOK(tp: Type, pos: SrcPos)(using Context): Type = tp
   override def checkInInlineContext(what: String, pos: SrcPos)(using Context): Unit = ()
   override def checkValidInfix(tree: untpd.InfixOp, meth: Symbol)(using Context): Unit = ()

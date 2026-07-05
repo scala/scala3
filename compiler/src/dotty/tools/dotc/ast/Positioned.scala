@@ -12,6 +12,7 @@ import core.StdNames.nme
 import ast.Trees.mods
 import annotation.constructorOnly
 import annotation.internal.sharable
+import util.Lst
 
 import scala.compiletime.uninitialized
 
@@ -103,6 +104,8 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
             Span(MaxOffset, MaxOffset)
         case m: untpd.Modifiers =>
           include(include(span, m.mods), m.annotations)
+        case ys: Lst[_] =>
+          ys.foldLeft(span)(include)
         case y :: ys =>
           include(include(span, y), ys)
         case _ => span
@@ -141,6 +144,8 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
       case m: untpd.Modifiers =>
         m.mods.exists(isParent) || m.annotations.exists(isParent)
       case xs: List[?] =>
+        xs.exists(isParent)
+      case xs: Lst[?] =>
         xs.exists(isParent)
       case _ =>
         false
@@ -205,6 +210,8 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
         m.annotations.foreach(check)
         m.mods.foreach(check)
       case xs: List[?] =>
+        xs.foreach(check)
+      case xs: Lst[?] =>
         xs.foreach(check)
       case _ =>
     }

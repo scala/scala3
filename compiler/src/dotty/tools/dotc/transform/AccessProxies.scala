@@ -11,6 +11,7 @@ import NameOps.*
 import Decorators.*
 import Types.*
 import util.Spans.Span
+import util.Lst
 import config.Printers.transforms
 import Annotations.ExperimentalAnnotation
 
@@ -118,7 +119,7 @@ abstract class AccessProxies {
           case getterInfo: LambdaType =>
             getterInfo.derivedLambdaType(resType = toSetterInfo(getterInfo.resType))
           case _ =>
-            MethodType(getterInfo :: Nil, defn.UnitType)
+            MethodType(Lst(getterInfo), defn.UnitType)
         }
         val setterInfo = toSetterInfo(getter.info.widenExpr)
         val setter = accessorSymbol(getter.owner, setterName, setterInfo, accessed)

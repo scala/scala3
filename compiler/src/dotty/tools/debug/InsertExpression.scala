@@ -13,19 +13,20 @@ import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.io.VirtualFile
+import dotty.tools.dotc.util.Lst
 
 import java.nio.charset.StandardCharsets
 
 /**
   * This phase inserts the expression being evaluated at the line of the breakpoint
   * and inserts the expression class in the same package (so that it can access package private symbols).
-  * 
+  *
   * Before:
   *   package example:
   *     class A:
   *       def m: T =
   *         body // breakpoint here
-  * 
+  *
   * After:
   *   package example:
   *     class A:
@@ -34,10 +35,10 @@ import java.nio.charset.StandardCharsets
   *           println("") // effect, to prevent constant-folding
   *           expr        // inserted expression
   *         body          // breakpoint here
-  *     
+  *
   *     class Expression(thisObject: Any, names: Array[String], values: Array[Any]):
   *       def evaluate(): Any = ()
-  * 
+  *
   */
 private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
   private var expressionInserted = false
@@ -224,7 +225,7 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
       // we insert a fake effectful tree to avoid the constant-folding of the block during the firstTransform phase
       val effect = Apply(
         Select(Select(Ident(termName("scala")), termName("Predef")), termName("print")),
-        List(Literal(Constant("")))
+        Lst(Literal(Constant("")))
       )
       Block(List(valDef, effect), tree)
 

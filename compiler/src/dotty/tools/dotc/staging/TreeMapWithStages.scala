@@ -7,6 +7,7 @@ import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.staging.StagingLevel.*
+import dotty.tools.dotc.util.Lst
 
 import scala.collection.mutable
 
@@ -34,11 +35,11 @@ abstract class TreeMapWithStages extends TreeMapWithImplicits {
           super.transform(tree)(using symbolsInCurrentLevel(decls))
 
         case LambdaTypeTree(tparams, body) =>
-          super.transform(tree)(using symbolsInCurrentLevel(tparams.map(_.symbol)))
+          super.transform(tree)(using symbolsInCurrentLevel(tparams.mapToList(_.symbol)))
 
         case tree: DefTree =>
           val paramSyms = tree match
-            case tree: DefDef => tree.paramss.flatten.map(_.symbol)
+            case tree: DefDef => tree.paramss.flattenLst.map(_.symbol).toList
             case _ => Nil
           super.transform(tree)(using symbolsInCurrentLevel(tree.symbol :: paramSyms))
 

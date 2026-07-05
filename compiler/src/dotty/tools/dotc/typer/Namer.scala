@@ -11,7 +11,7 @@ import NameKinds.{DefaultGetterName, ModuleClassName}
 import ast.desugar, ast.desugar.*
 import ProtoTypes.*
 import util.Spans.*
-import util.Property
+import util.{Property, Lst}
 import collection.mutable, mutable.ListBuffer
 import tpd.tpes
 import Variances.alwaysInvariant
@@ -454,7 +454,7 @@ class Namer { typer: Typer =>
         mdef match
           case tdef: TypeDef if ctx.owner.isClass =>
             for case WitnessNamesAnnot(witnessNames) <- tdef.mods.annotations do
-              addContextBoundCompanionFor(symbolOfTree(tdef), witnessNames, Nil)
+              addContextBoundCompanionFor(symbolOfTree(tdef), witnessNames, Lst())
           case _ =>
         ctx
       case stats: Thicket =>
@@ -514,7 +514,7 @@ class Namer { typer: Typer =>
         val pcls = parents.foldLeft(defn.ObjectClass)(improve)
         typr.println(i"ensure first is class $parents%, % --> ${parents.map(_.baseType(pcls))}%, %")
         val bases = parents.map(_.baseType(pcls))
-        var first = TypeComparer.glb(defn.ObjectType :: bases)
+        var first = TypeComparer.glb((defn.ObjectType :: bases).toLst)
         val isProvisional = parents.exists(!_.baseType(defn.AnyClass).exists)
         if isProvisional then
           typr.println(i"provisional superclass $first for $cls")
@@ -570,6 +570,9 @@ class Namer { typer: Typer =>
         setDocstring(sym, meth)
     case _ => ()
   }
+
+  def index(stats: Lst[Tree])(using Context): Context =
+    index(stats.toList)
 
   /** Create top-level symbols for statements and enter them into symbol table
    *  @return A context that reflects all imports in `stats`.
@@ -931,14 +934,14 @@ class Namer { typer: Typer =>
             completer.complete(denot)
     }
 
-    private var completedTypeParamSyms: List[TypeSymbol] | Null = null
+    private var completedTypeParamSyms: Lst[TypeSymbol] | Null = null
 
-    def setCompletedTypeParams(tparams: List[TypeSymbol]) =
+    def setCompletedTypeParams(tparams: Lst[TypeSymbol]) =
       completedTypeParamSyms = tparams
 
-    override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
+    override def completerTypeParams(sym: Symbol)(using Context): Lst[TypeSymbol] =
       completedTypeParamSyms match
-        case null => Nil
+        case null => Lst()
         case cpts => cpts
 
     protected def addAnnotations(sym: Symbol): Unit = original match {
@@ -1078,7 +1081,7 @@ class Namer { typer: Typer =>
 
   class TypeDefCompleter(original: TypeDef)(ictx: Context)
   extends Completer(original)(ictx) with TypeParamsCompleter {
-    private var myTypeParams: List[TypeSymbol] | Null = null
+    private var myTypeParams: Lst[TypeSymbol] | Null = null
     private var nestedCtx: Context | Null = null
     assert(!original.isClassDef)
 
@@ -1100,20 +1103,20 @@ class Namer { typer: Typer =>
         !symd.isCompleted
       }
 
-    override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
+    override def completerTypeParams(sym: Symbol)(using Context): Lst[TypeSymbol] =
       initialize(myTypeParams, myTypeParams = _, {
         //println(i"completing type params of $sym in ${sym.owner}")
         val newScope = localContext(sym).setNewScope
         nestedCtx = newScope
         given Context = newScope
 
-        def typeParamTrees(tdef: Tree): List[TypeDef] = tdef match
+        def typeParamTrees(tdef: Tree): Lst[TypeDef] = tdef match
           case TypeDef(_, original) =>
             original match
               case LambdaTypeTree(tparams, _) => tparams
               case original: DerivedFromParamTree => typeParamTrees(original.watched)
-              case _ => Nil
-          case _ => Nil
+              case _ => Lst()
+          case _ => Lst()
 
         val tparams = typeParamTrees(original)
         index(tparams)
@@ -1167,7 +1170,7 @@ class Namer { typer: Typer =>
         case tp: TypeBounds =>
           def recur(tp: Type): Type = tp match
             case tp: HKTypeLambda if !tp.isDeclaredVarianceLambda =>
-              val tp1 = tp.withVariances(tp.paramNames.map(alwaysInvariant))
+              val tp1 = tp.withVariances(tp.paramNamesList.map(alwaysInvariant))
               tp1.derivedLambdaType(resType = recur(tp1.resType))
             case tp => tp
           tp.derivedTypeBounds(tp.lo, recur(tp.hi))
@@ -1322,16 +1325,17 @@ class Namer { typer: Typer =>
        */
       def addForwarder(alias: TermName, mbr: SingleDenotation, span: Span): Unit =
 
-        def adaptForwarderParams(acc: List[List[tpd.Tree]], tp: Type, prefss: List[List[tpd.Tree]])
-          : List[List[tpd.Tree]] = tp match
+        def adaptForwarderParams(acc: List[Lst[tpd.Tree]], tp: Type, prefss: List[Lst[tpd.Tree]])
+          : List[Lst[tpd.Tree]] = tp match
             case mt: MethodType
             if mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam =>
               // Note: in this branch we use the assumptions
               // that `prefss.head` corresponds to `mt.paramInfos` and
               // that `prefss.tail` corresponds to `mt.resType`
-              val init :+ vararg = prefss.head: @unchecked
-              val prefs = init :+ ctx.typeAssigner.seqToRepeated(vararg)
-              adaptForwarderParams(prefs :: acc, mt.resType, prefss.tail)
+              val prefs = prefss.head
+              val vararg = ctx.typeAssigner.seqToRepeated(prefs.last)
+              val prefs1 = prefs.updated(prefs.length - 1, vararg)
+              adaptForwarderParams(prefs1 :: acc, mt.resType, prefss.tail)
             case mt: MethodOrPoly =>
               adaptForwarderParams(prefss.head :: acc, mt.resultType, prefss.tail)
             case _ =>
@@ -1675,10 +1679,10 @@ class Namer { typer: Typer =>
         def typedParentApplication(parent: untpd.Tree): Type =
           val (core, targs) = stripApply(parent) match
             case TypeApply(core, targs) => (core, targs)
-            case core => (core, Nil)
+            case core => (core, Lst())
           core match
             case Select(New(tpt), nme.CONSTRUCTOR) =>
-              val targs1 = targs map (typedAheadType(_))
+              val targs1 = targs.map(typedAheadType(_))
               val ptype = typedAheadType(tpt).tpe.appliedTo(targs1.tpes)
               if ptype.typeParams.isEmpty && !ptype.dealias.typeSymbol.is(Dependent) then
                 ptype
@@ -1698,7 +1702,7 @@ class Namer { typer: Typer =>
             // Try to infer type parameters from a synthetic application.
             // This might yield new info if implicit parameters are resolved.
             // A test case is i16778.scala.
-            val app = untpd.Apply(untpd.Select(untpd.New(parentTpt), nme.CONSTRUCTOR), Nil)
+            val app = untpd.Apply(untpd.Select(untpd.New(parentTpt), nme.CONSTRUCTOR), Lst())
             typedParentApplication(app)
             app.getAttachment(TypedAhead).getOrElse(parentTpt)
           else
@@ -1923,7 +1927,7 @@ class Namer { typer: Typer =>
    *  @param paramFn  A wrapping function that produces the type of the
    *                  defined symbol, given its final return type
    */
-  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
+  def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[Lst[Symbol]], paramFn: Type => Type)(using Context): Type = {
 
     def inferredType = inferredResultType(mdef, sym, paramss, paramFn, WildcardType)
 
@@ -1938,7 +1942,7 @@ class Namer { typer: Typer =>
         // A lambda has at most one type parameter list followed by exactly one term parameter list.
         val tpe = (paramss: @unchecked) match
           case TypeSymbols(tparams) :: TermSymbols(vparams) :: Nil => tpFun(tparams, vparams)
-          case TermSymbols(vparams) :: Nil => tpFun(Nil, vparams)
+          case TermSymbols(vparams) :: Nil => tpFun(Lst(), vparams)
         val rhsCtx = prepareRhsCtx(ctx.fresh, paramss)
         if (isFullyDefined(tpe, ForceDegree.none)) tpe
         else typedAheadExpr(mdef.rhs, tpe)(using rhsCtx).tpe
@@ -1964,7 +1968,7 @@ class Namer { typer: Typer =>
             // So fixing levels at instantiation avoids the soundness problem but apparently leads
             // to type inference problems since it comes too late.
             if !Config.checkLevelsOnConstraints then
-              val termParams = paramss.collect { case TermSymbols(vparams) => vparams }.flatten
+              val termParams = paramss.collect { case TermSymbols(vparams) => vparams }.flattenLst
               val hygienicType = TypeOps.avoid(rhsType, termParams)
               if (!hygienicType.isValueType || !(hygienicType <:< tpt.tpe))
                 report.error(
@@ -2040,9 +2044,9 @@ class Namer { typer: Typer =>
     val completedTypeParams =
       for tparam <- ddef.leadingTypeParams yield typedAheadExpr(tparam).symbol
     if completedTypeParams.forall(_.isType) then
-      completer.setCompletedTypeParams(completedTypeParams.asInstanceOf[List[TypeSymbol]])
+      completer.setCompletedTypeParams(completedTypeParams.asInstanceOf[Lst[TypeSymbol]])
     completeTrailingParamss(ddef, sym, indexingCtor = false)
-    val paramSymss = normalizeIfConstructor(ddef.paramss.nestedMap(symbolOfTree), isConstructor, Some(ddef.nameSpan.startPos))
+    val paramSymss = normalizeIfConstructor(ddef.paramss.map(_.map(symbolOfTree)), isConstructor, Some(ddef.nameSpan.startPos))
     sym.setParamss(paramSymss)
 
     def wrapMethType(restpe: Type): Type =
@@ -2077,21 +2081,24 @@ class Namer { typer: Typer =>
    */
   def completeTrailingParamss(ddef: DefDef, sym: Symbol, indexingCtor: Boolean)(using Context): Unit =
     // A map from context-bounded type parameters to associated evidence parameter names
-    val witnessNamesOfParam = mutable.Map[TypeDef, List[TermName]]()
+    val witnessNamesOfParam = mutable.Map[TypeDef, Lst[TermName]]()
     if !ddef.name.is(DefaultGetterName) && !sym.is(Synthetic) && (indexingCtor || !sym.isPrimaryConstructor) then
-      for params <- ddef.paramss; case tdef: TypeDef <- params do
-        for case WitnessNamesAnnot(ws) <- tdef.mods.annotations do
-          witnessNamesOfParam(tdef) = ws
+      for params <- ddef.paramss; tdef <- params do
+        tdef match
+          case tdef: TypeDef =>
+            for case WitnessNamesAnnot(ws) <- tdef.mods.annotations do
+              witnessNamesOfParam(tdef) = ws
+          case _ =>
 
     /** Is each name in `wnames` defined somewhere in the previous parameters? */
-    def allParamsSeen(wnames: List[TermName], prevParams: Set[Name]) =
+    def allParamsSeen(wnames: Lst[TermName], prevParams: Set[Name]) =
       (wnames.toSet[Name] -- prevParams).isEmpty
 
     /** Enter and typecheck parameter list.
      *  Once all witness parameters for a context bound are seen, create a
      *  context bound companion for it.
      */
-    def completeParams(params: List[MemberDef])(using Context): Unit =
+    def completeParams(params: Lst[MemberDef])(using Context): Unit =
       if indexingCtor || !sym.isPrimaryConstructor then
         index(params)
       var prevParams = Set.empty[Name]
@@ -2154,7 +2161,7 @@ class Namer { typer: Typer =>
   def inferredResultType(
     mdef: ValOrDefDef,
     sym: Symbol,
-    paramss: List[List[Symbol]],
+    paramss: List[Lst[Symbol]],
     paramFn: Type => Type,
     fallbackProto: Type
   )(using Context): Type =
@@ -2181,7 +2188,7 @@ class Namer { typer: Typer =>
           assert(ctx.reporter.errorsReported)
           NoType
         else bcs.tail.foldLeft(NoType: Type) { (tp, cls) =>
-          def instantiatedResType(info: Type, paramss: List[List[Symbol]]): Type = info match
+          def instantiatedResType(info: Type, paramss: List[Lst[Symbol]]): Type = info match
             case info: PolyType =>
               paramss match
                 case TypeSymbols(tparams) :: paramss1 if info.paramNames.length == tparams.length =>
@@ -2219,7 +2226,7 @@ class Namer { typer: Typer =>
             sym.owner.companionClass.info.decl(nme.CONSTRUCTOR)
           else
             ctx.defContext(sym).denotNamed(original)
-        def paramProto(paramss: List[List[Type]], idx: Int): Type = paramss match {
+        def paramProto(paramss: List[Lst[Type]], idx: Int): Type = paramss match {
           case params :: paramss1 =>
             if (idx < params.length) params(idx)
             else paramProto(paramss1, idx - params.length)
@@ -2325,8 +2332,8 @@ class Namer { typer: Typer =>
   end inferredResultType
 
   /** Prepare a GADT-aware context used to type the RHS of a ValOrDefDef. */
-  def prepareRhsCtx(rhsCtx: FreshContext, paramss: List[List[Symbol]])(using Context): FreshContext =
-    val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flatten
+  def prepareRhsCtx(rhsCtx: FreshContext, paramss: List[Lst[Symbol]])(using Context): FreshContext =
+    val typeParams = paramss.collect { case TypeSymbols(tparams) => tparams }.flattenLst
     if typeParams.nonEmpty then
       // we'll be typing an expression from a polymorphic definition's body,
       // so we must allow constraining its type parameters

@@ -12,6 +12,7 @@ import ast.{tpd, untpd}
 import util.Spans.Span
 import Nullables.*
 import staging.StagingLevel.*
+import util.Lst
 
 /** A version of Typer that keeps all symbols defined and referenced in a
  *  previously typed tree.
@@ -87,7 +88,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
       // retract PatternOrTypeBits like in typedExpr
       withoutMode(Mode.PatternOrTypeBits)(typedUnadapted(tree.fun, AnyFunctionProto))
     val implicits1 = tree.implicits.map(typedExpr(_))
-    val patterns1 = tree.patterns.mapconserve(pat => typed(pat, pat.typeOpt))
+    val patterns1 = tree.patterns.mapConserve(pat => typed(pat, pat.typeOpt))
     untpd.cpy.UnApply(tree)(fun1, implicits1, patterns1).withType(tree.typeOpt)
   }
 
@@ -129,12 +130,12 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
 
   override def typedSplicePattern(tree: untpd.SplicePattern, pt: Type)(using Context): Tree =
     assertTyped(tree)
-    val typeargs1 = tree.typeargs.mapconserve(typedType(_))
-    val args1 = tree.args.mapconserve(typedExpr(_))
+    val typeargs1 = tree.typeargs.mapConserve(typedType(_))
+    val args1 = tree.args.mapConserve(typedExpr(_))
     val patternTpe =
       if !typeargs1.isEmpty then QuotesAndSplices.PolyFunctionOf(typeargs1.map(_.tpe), args1.map(_.tpe), tree.typeOpt)
       else if args1.isEmpty then tree.typeOpt
-      else defn.FunctionType(args1.size).appliedTo(args1.map(_.tpe) :+ tree.typeOpt)
+      else defn.FunctionType(args1.size).appliedTo(args1.tpes :+ tree.typeOpt)
     val bodyCtx = spliceContext.addMode(Mode.Pattern).retractMode(Mode.QuotedPatternBits)
     val body1 = typed(tree.body, defn.QuotedExprClass.typeRef.appliedTo(patternTpe))(using bodyCtx)
     untpd.cpy.SplicePattern(tree)(body1, typeargs1, args1).withType(tree.typeOpt)
@@ -161,7 +162,7 @@ class ReTyper(nestingLevel: Int = 0) extends Typer(nestingLevel) with ReChecking
 
   override def handleUnexpectedFunType(tree: untpd.Apply, fun: Tree)(using Context): Tree = fun.tpe match {
     case mt: MethodType =>
-      val args: List[Tree] = tree.args.zipWithConserve(mt.paramInfos)(typedExpr)
+      val args: Lst[Tree] = tree.args.zipWithConserve(mt.paramInfos)(typedExpr)
       assignType(untpd.cpy.Apply(tree)(fun, args), fun, args)
     case _ =>
       super.handleUnexpectedFunType(tree, fun)

@@ -7,6 +7,7 @@ import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.ExtMethods
 import dotty.tools.dotc.core.Contexts.*
+import dotty.tools.dotc.core.Decorators.flattenLst
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
@@ -106,7 +107,7 @@ trait PcSymbolSearch:
               .withEnd(arg.span.start + length)
               .withPoint(arg.span.start)
           )
-          appl.symbol.paramSymss.flatten.find(_.name == arg.name).map { s =>
+          appl.symbol.paramSymsLists.flatten.find(_.name == arg.name).map { s =>
             // if it's a case class we need to look for parameters also
             if caseClassSynthetics(s.owner.name) && s.owner.is(Flags.Synthetic)
             then
@@ -180,7 +181,7 @@ trait PcSymbolSearch:
         extMethods: ExtMethods
     ): Option[ExtensionParamOccurrence] =
       NavigateAST
-        .pathTo(pos.span, extMethods.paramss.flatten)(using compilatonUnitContext)
+        .pathTo(pos.span, extMethods.paramss.flattenLst.toList)(using compilatonUnitContext)
         .collectFirst {
           case v: untpd.ValOrTypeDef =>
             ExtensionParamOccurrence(
@@ -224,7 +225,7 @@ trait PcSymbolSearch:
             symbol <-
               Interactive.pathTo(tree, method.span) match
                 case (d: DefDef) :: _ =>
-                  d.paramss.flatten.collect {
+                  d.paramss.flattenLst.toList.collect {
                     case param if param.name.decoded == name.decoded =>
                       param.symbol
                   }

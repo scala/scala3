@@ -6,6 +6,7 @@ import MegaPhase.MiniPhase
 import core.*
 import Symbols.*, Contexts.*, Types.*, Decorators.*
 import StdNames.nme
+import util.Lst
 
 import NameKinds.AdaptedClosureName
 
@@ -39,8 +40,9 @@ class EtaReduce extends MiniPhase:
     def tryReduce(mdef: DefDef, rhs: Tree): Tree = rhs match
       case Apply(Select(fn, name), args)
       if (name == nme.apply || defn.FunctionSpecializedApplyNames.contains(name))
-          && mdef.paramss.head.corresponds(args)((param, arg) =>
-              arg.isInstanceOf[Ident] && arg.symbol == param.symbol)
+          && mdef.paramss.head.corresponds(args) { (param, arg) =>
+              arg.isInstanceOf[Ident] && arg.symbol == param.symbol
+            }
           && isPurePath(fn)
           && fn.tpe <:< tree.tpe
           && !(fn.symbol.is(Flags.Param) && fn.symbol.owner == mdef.symbol) // Do not eta-educe `(..., f: T => R, ...) => f.apply(..)` into `f`
@@ -49,7 +51,7 @@ class EtaReduce extends MiniPhase:
         fn
       case TypeApply(Select(qual, _), _) if rhs.symbol.isTypeCast && rhs.span.isSynthetic =>
         tryReduce(mdef, qual)
-      case Apply(_, arg :: Nil) if Erasure.Boxing.isUnbox(rhs.symbol) && rhs.span.isSynthetic =>
+      case Apply(_, Lst.single(arg)) if Erasure.Boxing.isUnbox(rhs.symbol) && rhs.span.isSynthetic =>
         tryReduce(mdef, arg)
       case Block(call :: Nil, unit @ Literal(Constants.Constant(()))) if unit.span.isSynthetic =>
         tryReduce(mdef, call)

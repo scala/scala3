@@ -11,6 +11,7 @@ import transform.ValueClasses.*
 import transform.ContextFunctionResults.*
 import unpickleScala2.Scala2Erasure
 import Decorators.*
+import util.Lst
 import Definitions.MaxImplementedFunctionArity
 import scala.annotation.tailrec
 
@@ -93,7 +94,7 @@ object TypeErasure:
    *           -2 if the arity depends on an uninstantiated type variable or WildcardType.
    */
   def tupleArity(tp: Type)(using Context): Int = tp/*.dealias*/ match
-    case AppliedType(tycon, _ :: tl :: Nil) if tycon.isRef(defn.PairClass) =>
+    case AppliedType(tycon, Lst.pair(_, tl)) if tycon.isRef(defn.PairClass) =>
       val arity = tupleArity(tl)
       if (arity < 0) arity else arity + 1
     case tp: SingletonType =>
@@ -275,7 +276,7 @@ object TypeErasure:
 
     def eraseParamBounds(tp: PolyType): Type =
       tp.derivedLambdaType(
-        tp.paramNames, tp.paramNames map (Function.const(TypeBounds.upper(defn.ObjectType))), tp.resultType)
+        tp.paramNames, tp.paramNames.map(Function.const(TypeBounds.upper(defn.ObjectType))), tp.resultType)
 
     if (defn.isPolymorphicAfterErasure(sym)) eraseParamBounds(sym.info.asInstanceOf[PolyType])
     else if (sym.isAbstractOrParamType) TypeAlias(WildcardType)
@@ -285,9 +286,9 @@ object TypeErasure:
     else erase.eraseInfo(tp, sym)(using preErasureCtx) match {
       case einfo: MethodType =>
         if (sym.isGetter && einfo.resultType.isRef(defn.UnitClass))
-          MethodType(Nil, defn.BoxedUnitClass.typeRef)
+          MethodType(Lst(), defn.BoxedUnitClass.typeRef)
         else if (sym.isAnonymousFunction && einfo.paramInfos.length > MaxImplementedFunctionArity)
-          MethodType(nme.ALLARGS :: Nil, JavaArrayType(defn.ObjectType) :: Nil, einfo.resultType)
+          MethodType(Lst(nme.ALLARGS), Lst(JavaArrayType(defn.ObjectType)), einfo.resultType)
         else if (sym.name == nme.apply && sym.owner.derivesFrom(defn.PolyFunctionClass))
           // The erasure of `apply` in subclasses of PolyFunction has to match
           // the erasure of FunctionN#apply, since after `ElimPolyFunction` we replace
@@ -614,9 +615,9 @@ object TypeErasure:
    *  @return (paramNeeded, resultNeeded) indicating what needs bridging
    */
   def additionalAdaptationNeeded(
-      implParamTypes: List[Type],
+      implParamTypes: Lst[Type],
       implResultType: Type,
-      samParamTypes: List[Type],
+      samParamTypes: Lst[Type],
       samResultType: Type
   )(using Context): (paramNeeded: Boolean, resultNeeded: Boolean) =
     def sameClass(tp1: Type, tp2: Type) = tp1.classSymbol == tp2.classSymbol
@@ -845,8 +846,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         val (names, formals0) = if tp.hasErasedParams then
           tp.paramNames
             .zip(tp.paramInfos)
-            .zip(tp.paramErasureStatuses)
-            .collect{ case (param, isErased) if !isErased => param }
+            .collect{ case (param, pinfo) if !pinfo.isForErasedParam => (param, pinfo) }
             .unzip
         else (tp.paramNames, tp.paramInfos)
         val formals = formals0.mapConserve(paramErasure)
@@ -926,7 +926,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
    *  if `underlyingOfTermRef` is replaced by `widen`.
    */
   private def underlyingOfTermRef(tp: TermRef)(using Context) = tp.widen match
-    case tpw @ MethodType(Nil) if tp.symbol.isGetter => tpw.resultType
+    case tpw @ MethodType(pnames) if pnames.length == 0 && tp.symbol.isGetter => tpw.resultType
     case tpw => tpw
 
   private def eraseArray(tp: Type)(using Context) = {
@@ -966,12 +966,12 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
             // forwarders to mixin methods.
             // See doc comment for ElimByName for speculation how we could improve this.
         else
-          MethodType(Nil, Nil,
+          MethodType(Lst(), Lst(),
             eraseResult(rt.translateFromRepeated(toArray = sourceLanguage.isJava)))
       case tp1: PolyType =>
         eraseResult(tp1.resultType) match
           case rt: MethodType => rt
-          case rt => MethodType(Nil, Nil, rt)
+          case rt => MethodType(Lst(), Lst(), rt)
       case tp1 =>
         this(tp1)
 
@@ -1093,7 +1093,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
       case tp: TermRef =>
         sigName(underlyingOfTermRef(tp))
       case ExprType(rt) =>
-        sigName(defn.FunctionNOf(Nil, rt))
+        sigName(defn.FunctionNOf(Lst(), rt))
       case tp: TypeVar if !tp.isInstantiated =>
         tpnme.Uninstantiated
       case tp @ defn.PolyFunctionOf(_) =>

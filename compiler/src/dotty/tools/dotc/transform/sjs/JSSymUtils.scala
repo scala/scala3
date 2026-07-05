@@ -14,6 +14,8 @@ import Symbols.*
 
 import ast.Trees.*
 import Types.*
+import util.Lst
+import Decorators.flattenLst
 
 import dotty.tools.backend.sjs.JSDefinitions.jsdefn
 
@@ -184,8 +186,8 @@ object JSSymUtils {
     def jsParamInfos(using Context): List[JSParamInfo] = {
       assert(sym.is(Method), s"trying to take JS param info of non-method: $sym")
 
-      def paramNamesAndTypes(using Context): List[(Names.TermName, Type)] =
-        sym.info.paramNamess.flatten.zip(sym.info.paramInfoss.flatten)
+      def paramNamesAndTypes(using Context): Lst[(Names.TermName, Type)] =
+        sym.info.paramNamess.flattenLst.zip(sym.info.paramInfoss.flattenLst)
 
       val paramInfosAtElimRepeated = atPhase(elimRepeatedPhase) {
         // See also JSCodeGen.genActualArgs
@@ -196,14 +198,14 @@ object JSSymUtils {
               else None
             name -> v
           }
-        list.toMap
+        list.toList.toMap
       }
 
       val paramInfosAtElimEVT = atPhase(elimErasedValueTypePhase) {
         paramNamesAndTypes.toMap
       }
 
-      for ((paramName, paramInfoNow) <- paramNamesAndTypes) yield {
+      {for ((paramName, paramInfoNow) <- paramNamesAndTypes.toList) yield {
         paramInfosAtElimRepeated.get(paramName) match {
           case None =>
             // This is a capture parameter introduced by erasure or lambdalift
@@ -216,7 +218,7 @@ object JSSymUtils {
             val info = paramInfosAtElimEVT.getOrElse(paramName, paramInfoNow)
             new JSParamInfo(info)
         }
-      }
+      }}
     }
 
     /** Tests whether the semantics of Scala.js require a field for this symbol,

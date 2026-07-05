@@ -15,7 +15,9 @@ import MegaPhase.*
 import Decorators.*
 import typer.RefChecks
 import reporting.trace
-import dotty.tools.dotc.core.Names.Name
+import util.Lst
+import Names.Name
+import util.Lst
 
 /** This phase implements the following transformations:
  *
@@ -82,7 +84,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
     case tp: MethodType =>
       def exprToFun(tp: Type, name: Name) = tp match
         case ExprType(rt) =>
-          if rt.hasAnnotation(defn.ErasedParamAnnot) then
+          if rt.isForErasedParam then
             report.error(em"By-name parameter cannot be erased: $name", sym.srcPos)
           defn.ByNameFunction(rt)
         case tp => tp
@@ -99,7 +101,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
 
   def byNameClosure(arg: Tree, argType: Type)(using Context): Tree =
     report.log(i"creating by name closure for $argType")
-    val meth = newAnonFun(ctx.owner, MethodType(Nil, argType), coord = arg.span)
+    val meth = newAnonFun(ctx.owner, MethodType(Lst(), argType), coord = arg.span)
     Closure(meth,
         _ => arg.changeOwnerAfter(ctx.owner, meth, thisPhase),
         targetType = defn.ByNameFunction(argType)
@@ -125,7 +127,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
     applyIfFunction(tree)
 
   override def transformTypeApply(tree: TypeApply)(using Context): Tree = tree match {
-    case TypeApply(Select(_, nme.asInstanceOf_), arg :: Nil) =>
+    case TypeApply(Select(_, nme.asInstanceOf_), Lst.single(arg)) =>
       // tree might be of form e.asInstanceOf[x.type] where x becomes a function.
       // See pos/t296.scala
       applyIfFunction(tree)
@@ -141,7 +143,7 @@ class ElimByName extends MiniPhase, InfoTransformer:
             case Typed(expr, _) => stripTyped(expr)
             case _ => t
           stripTyped(arg) match
-            case Apply(Select(qual, nme.apply), Nil)
+            case Apply(Select(qual, nme.apply), Lst.empty())
             if isByNameRef(qual) && (isPureExpr(qual) || qual.symbol.isAllOf(InlineParam)) =>
               qual
             case _ =>

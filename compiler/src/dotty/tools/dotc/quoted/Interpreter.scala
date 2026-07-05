@@ -23,7 +23,7 @@ import dotty.tools.dotc.core.TypeErasure
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.quoted.*
 import dotty.tools.dotc.typer.ImportInfo.withRootImports
-import dotty.tools.dotc.util.SrcPos
+import dotty.tools.dotc.util.{SrcPos, Lst}
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.io.AbstractFileClassLoader
 import dotty.tools.dotc.core.CyclicReference
@@ -93,7 +93,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       else
         unexpectedTree(tree)
 
-    case closureDef((ddef @ DefDef(_, ValDefs(arg :: Nil) :: Nil, _, _))) =>
+    case closureDef((ddef @ DefDef(_, ValDefs(Lst.single(arg)) :: Nil, _, _))) =>
       (obj: AnyRef) => interpretTree(ddef.rhs)(using env.updated(arg.symbol, obj))
 
     // Interpret `foo(j = x, i = y)` which it is expanded to
@@ -107,7 +107,7 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
       interpretTree(expr)
 
     case SeqLiteral(elems, _) =>
-      interpretVarargs(elems.map(e => interpretTree(e)))
+      interpretVarargs(elems.toList.map(e => interpretTree(e)))
 
     case _ =>
       unexpectedTree(tree)
@@ -125,14 +125,17 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
 
     fnType.dealias match
       case fnType: MethodType =>
-        val argTypes = fnType.paramInfos
-        assert(argss.head.size == argTypes.size)
-        val nonErasedArgs = argss.head.lazyZip(fnType.paramErasureStatuses).collect { case (arg, false) => arg }.toList
-        val nonErasedArgTypes = fnType.paramInfos.lazyZip(fnType.paramErasureStatuses).collect { case (arg, false) => arg }.toList
-        assert(nonErasedArgs.size == nonErasedArgTypes.size)
-        interpretArgsGroup(nonErasedArgs, nonErasedArgTypes) ::: interpretArgs(argss.tail, fnType.resType)
+        val formals = fnType.paramInfosList
+        assert(argss.head.size == formals.size)
+        val (nonErasedArgs, nonErasedFormals) =
+          argss.head.zip(formals)
+            .collect { case (arg, info) if !info.hasAnnotation(defn.ErasedParamAnnot) => (arg, info) }
+            .unzip
+        assert(nonErasedArgs.size == nonErasedFormals.size)
+        interpretArgsGroup(nonErasedArgs, nonErasedFormals) ::: interpretArgs(argss.tail, fnType.resType)
       case fnType: AppliedType if defn.isContextFunctionType(fnType) =>
-        val argTypes :+ resType = fnType.args: @unchecked
+        val argTypes = fnType.args.init.toList
+        val resType = fnType.args.last
         interpretArgsGroup(argss.head, argTypes) ::: interpretArgs(argss.tail, resType)
       case fnType: PolyType => interpretArgs(argss, fnType.resType)
       case fnType: ExprType => interpretArgs(argss, fnType.resType)
@@ -309,12 +312,12 @@ class Interpreter(pos: SrcPos, classLoader0: ClassLoader)(using Context):
     def getExtraParams(tp: Type): List[Type] = tp.widenDealias match {
       case tp: AppliedType if defn.isContextFunctionType(tp) =>
         // Call context function type direct method
-        tp.args.init.map(arg => TypeErasure.erasure(arg)) ::: getExtraParams(tp.args.last)
+        tp.args.init.toList.map(arg => TypeErasure.erasure(arg)) ::: getExtraParams(tp.args.last)
       case _ => Nil
     }
     val extraParams = getExtraParams(sym.info.finalResultType)
     val allParams = TypeErasure.erasure(sym.info) match {
-      case meth: MethodType => meth.paramInfos ::: extraParams
+      case meth: MethodType => meth.paramInfosList ::: extraParams
       case _ => extraParams
     }
     allParams.map(paramClass)
@@ -339,7 +342,7 @@ object Interpreter:
           Some((fn, args))
         case fn: Ident => Some((tpd.desugarIdent(fn).withSpan(fn.span), Nil))
         case fn: Select => Some((fn, Nil))
-        case Apply(f @ Call0(fn, argss), args) => Some((fn, args :: argss))
+        case Apply(f @ Call0(fn, argss), args) => Some((fn, args.toList :: argss))
         case TypeApply(Call0(fn, argss), _) => Some((fn, argss))
         case _ => None
       }

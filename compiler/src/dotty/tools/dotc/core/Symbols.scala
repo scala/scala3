@@ -26,7 +26,7 @@ import Variances.Variance
 import reporting.Message
 import collection.mutable
 import io.AbstractFile
-import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, WrappedSourceFile}
+import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, WrappedSourceFile, Lst}
 
 import scala.annotation.internal.sharable
 import config.Printers.typr
@@ -849,8 +849,8 @@ object Symbols extends SymUtils {
   def newConstructor(
       cls: ClassSymbol,
       flags: FlagSet,
-      paramNames: List[TermName],
-      paramTypes: List[Type],
+      paramNames: Lst[TermName],
+      paramTypes: Lst[Type],
       privateWithin: Symbol = NoSymbol,
       coord: Coord = NoCoord)(using Context): TermSymbol =
     newSymbol(cls, nme.CONSTRUCTOR, flags | Method, MethodType(paramNames, paramTypes, cls.typeRef), privateWithin, coord)
@@ -861,7 +861,7 @@ object Symbols extends SymUtils {
 
   /** Create an empty default constructor symbol for given class `cls`. */
   def newDefaultConstructor(cls: ClassSymbol)(using Context): TermSymbol =
-    newConstructor(cls, EmptyFlags, Nil, Nil)
+    newConstructor(cls, EmptyFlags, Lst(), Lst())
 
   def newLazyImplicit(info: Type, coord: Coord = NoCoord)(using Context): TermSymbol =
     newSymbol(ctx.owner, LazyImplicitName.fresh(), EmptyFlags, info, coord = coord)
@@ -879,22 +879,17 @@ object Symbols extends SymUtils {
    */
   def newTypeParams(
     owner: Symbol,
-    names: List[TypeName],
+    names: Lst[TypeName],
     flags: FlagSet,
-    boundsFn: List[TypeRef] => List[Type])(using Context): List[TypeSymbol] = {
+    boundsFn: Lst[TypeRef] => Lst[Type])(using Context): Lst[TypeSymbol] = {
 
-    val tparamBuf = new mutable.ListBuffer[TypeSymbol]
-    val trefBuf = new mutable.ListBuffer[TypeRef]
-    for (name <- names) {
-      val tparam = newSymbol(
-        owner, name, flags | owner.typeParamCreationFlags, NoType, coord = owner.coord)
-      tparamBuf += tparam
-      trefBuf += TypeRef(owner.thisType, tparam)
-    }
-    val tparams = tparamBuf.toList
-    val bounds = boundsFn(trefBuf.toList)
-    for (tparam, bound) <- tparams.lazyZip(bounds) do
-      tparam.info = bound
+    val tparams = names.map:
+      newSymbol(owner, _, flags | owner.typeParamCreationFlags, NoType, coord = owner.coord)
+    val trefs = tparams.map:
+      TypeRef(owner.thisType, _)
+    val bounds = boundsFn(trefs)
+    for i <- 0 until tparams.length do
+      tparams(i).info = bounds(i)
     tparams
   }
 
@@ -910,19 +905,14 @@ object Symbols extends SymUtils {
         if (name.isTypeName) TypeAlias(errType) else errType)
   }
 
-  /** Map given symbols, subjecting their attributes to the mappings
-   *  defined in the given TreeTypeMap `ttmap`.
-   *  Cross symbol references are brought over from originals to copies.
-   *  Do not copy any symbols if all attributes of all symbols stay the same
-   *  and mapAlways is false.
-   */
-  def mapSymbols(originals: List[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): List[Symbol] =
-    if (originals.forall(sym =>
-        (ttmap.mapType(sym.info) eq sym.info) &&
-        !(ttmap.oldOwners contains sym.owner)) && !mapAlways)
-      originals
+  def mapSymbols(originals: Lst[Symbol], ttmap: TreeTypeMap, mapAlways: Boolean = false)(using Context): Lst[Symbol] =
+    if originals.forall: sym =>
+        (ttmap.mapType(sym.info) eq sym.info)
+        && !(ttmap.oldOwners `contains` sym.owner)
+        && !mapAlways
+    then originals
     else {
-      val copies: List[Symbol] = for (original <- originals) yield
+      val copies: Lst[Symbol] = for original <- originals yield
         val odenot = original.denot
         original.copy(
           owner = ttmap.mapOwner(odenot.owner),
@@ -933,7 +923,7 @@ object Symbols extends SymUtils {
       val ttmap1 = ttmap.withSubstitution(originals, copies)
       originals.lazyZip(copies) foreach { (original, copy) =>
         val odenot = original.denot
-        val completer = new LazyType:
+        val completer = new LazyType {
 
           def complete(denot: SymDenotation)(using Context): Unit =
 
@@ -965,7 +955,7 @@ object Symbols extends SymUtils {
             denot.info = ttmap1.mapType(oinfo)
             denot.annotations = odenot.annotations.mapConserve(ttmap1.apply)
 
-        end completer
+        }
 
         copy.info = completer
         copy.denot match
@@ -990,16 +980,16 @@ object Symbols extends SymUtils {
    *  All symbols in the list are assumed to be of the same kind.
    */
   object TermSymbols:
-    def unapply(xs: List[Symbol])(using Context): Option[List[TermSymbol]] = xs match
-      case (x: Symbol) :: _ if x.isType => None
-      case _ => Some(xs.asInstanceOf[List[TermSymbol]])
+    def unapply(xs: Lst[Symbol])(using Context): Option[Lst[TermSymbol]] = xs match
+      case Lst.withHead(x: Symbol) if x.isType => None
+      case _ => Some(xs.asInstanceOf[Lst[TermSymbol]])
 
   /** Matches lists of type symbols, excluding the empty list.
    *  All symbols in the list are assumed to be of the same kind.
    */
   object TypeSymbols:
-    def unapply(xs: List[Symbol])(using Context): Option[List[TypeSymbol]] = xs match
-      case (x: Symbol) :: _ if x.isType => Some(xs.asInstanceOf[List[TypeSymbol]])
+    def unapply(xs: Lst[Symbol])(using Context): Option[Lst[TypeSymbol]] = xs match
+      case Lst.withHead(x: Symbol) if x.isType => Some(xs.asInstanceOf[Lst[TypeSymbol]])
       case _ => None
 
   type DontUseSymbolOnSymbol

@@ -24,7 +24,8 @@ import Annotations.Annotation
 import Constants.Constant
 import cc.{stripCapturing, CCState}
 import cc.Mutability.isUpdateMethod
-import dotty.tools.dotc.util.Chars.{isLineBreakChar, isWhitespace}
+import util.Chars.{isLineBreakChar, isWhitespace}
+import util.Lst
 
 object RefChecks {
   import tpd.*
@@ -159,7 +160,7 @@ object RefChecks {
         val parentCls = app.tpe.classSymbol
         if parentCls.is(Trait) then
           val params = parentCls.asClass.paramGetters
-          val args = termArgss(app).flatten
+          val args = termArgss(app).flattenLst
           for (param, arg) <- params.lazyZip(args) do
             if !param.is(Private) then // its type can be narrowed through intersection -> a check is needed
               val paramType = cls.thisType.memberInfo(param)
@@ -394,7 +395,7 @@ object RefChecks {
     /** Detect any param section where params in last position do not agree isRepeatedParam.
      */
     def incompatibleRepeatedParam(member: Symbol, other: Symbol): Boolean =
-      def loop(mParamInfoss: List[List[Type]], oParamInfoss: List[List[Type]]): Boolean =
+      def loop(mParamInfoss: List[Lst[Type]], oParamInfoss: List[Lst[Type]]): Boolean =
         mParamInfoss match
           case Nil => false
           case h :: t =>
@@ -808,41 +809,41 @@ object RefChecks {
               case concrete :: Nil =>
                 val mismatches =
                   abstractParams.zip(concrete.info.firstParamTypes)
-                    .filterNot { case (x, y) => x =:= y }
-                mismatches match {
+                    .filter: (x, y) =>
+                      !(x =:= y)
+                if mismatches.length == 1 then
                   // Only one mismatched parameter: say something useful.
-                  case (pa, pc) :: Nil =>
-                    val abstractSym = pa.typeSymbol
-                    val concreteSym = pc.typeSymbol
-                    def subclassMsg(c1: Symbol, c2: Symbol) =
-                      s"${c1.showLocated} is a subclass of ${c2.showLocated}, but method parameter types must match exactly."
-                    val addendum =
-                      if (abstractSym == concreteSym)
-                        (pa.typeConstructor, pc.typeConstructor) match {
-                          case (TypeRef(pre1, _), TypeRef(pre2, _)) =>
-                            if (pre1 =:= pre2) "their type parameters differ"
-                            else "their prefixes (i.e. enclosing instances) differ"
-                          case _ =>
-                            ""
-                        }
-                      else if abstractSym.isSubClass(concreteSym) then
-                        subclassMsg(abstractSym, concreteSym)
-                      else if concreteSym.isSubClass(abstractSym) then
-                        subclassMsg(concreteSym, abstractSym)
-                      else ""
+                  val (pa, pc) = mismatches(0)
+                  val abstractSym = pa.typeSymbol
+                  val concreteSym = pc.typeSymbol
+                  def subclassMsg(c1: Symbol, c2: Symbol) =
+                    s"${c1.showLocated} is a subclass of ${c2.showLocated}, but method parameter types must match exactly."
+                  val addendum =
+                    if (abstractSym == concreteSym)
+                      (pa.typeConstructor, pc.typeConstructor) match {
+                        case (TypeRef(pre1, _), TypeRef(pre2, _)) =>
+                          if (pre1 =:= pre2) "their type parameters differ"
+                          else "their prefixes (i.e. enclosing instances) differ"
+                        case _ =>
+                          ""
+                      }
+                    else if abstractSym.isSubClass(concreteSym) then
+                      subclassMsg(abstractSym, concreteSym)
+                    else if concreteSym.isSubClass(abstractSym) then
+                      subclassMsg(concreteSym, abstractSym)
+                    else ""
 
-                    undefined(s"""
-                                 |(Note that
-                                 | parameter ${pa.show} in ${showDclAndLocation(underlying)} does not match
-                                 | parameter ${pc.show} in ${showDclAndLocation(concrete.symbol)}
-                                 | $addendum)""".stripMargin)
-                  case xs =>
-                    undefined(
-                      if concrete.symbol.is(AbsOverride) then
-                        s"\n(The class implements ${showDclAndLocation(concrete.symbol)} but that definition still needs an implementation)"
-                      else
-                        s"\n(The class implements a member with a different type: ${showDclAndLocation(concrete.symbol)})")
-                }
+                  undefined(s"""
+                                |(Note that
+                                | parameter ${pa.show} in ${showDclAndLocation(underlying)} does not match
+                                | parameter ${pc.show} in ${showDclAndLocation(concrete.symbol)}
+                                | $addendum)""".stripMargin)
+                else
+                  undefined(
+                    if concrete.symbol.is(AbsOverride) then
+                      s"\n(The class implements ${showDclAndLocation(concrete.symbol)} but that definition still needs an implementation)"
+                    else
+                      s"\n(The class implements a member with a different type: ${showDclAndLocation(concrete.symbol)})")
               case Nil =>
                 undefined("")
               case concretes =>
@@ -1218,7 +1219,7 @@ object RefChecks {
       if sym.is(HasDefaultParams) then
         val getterDenot =
           val receiverName = explicitInfo.firstParamNames.head
-          val num = sym.info.paramNamess.flatten.indexWhere(_ == receiverName)
+          val num = sym.info.paramNamess.flattenLst.indexWhere(_ == receiverName)
           val getterName = DefaultGetterName(sym.name.toTermName, num = num)
           sym.owner.info.member(getterName)
         if getterDenot.exists
@@ -1256,11 +1257,8 @@ object RefChecks {
      *  with invalid type variable references.
      */
     def defDef(sd: SymDenotation)(using Context): Unit =
-      for
-        paramSymss <- sd.paramSymss
-        param <- paramSymss
-        if param.isTerm
-      do checkReferences(param.denot)
+      for paramSymss <- sd.paramSymss; param <- paramSymss
+      do if param.isTerm then checkReferences(param.denot)
 
     private object PositionedStringLiteralArgument:
       def unapply(tree: Tree): Option[(String, Span)] = tree match {

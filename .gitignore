@@ -69,8 +69,6 @@ testlogs/
 
 /bin/.cp
 
-before-pickling.txt
-after-pickling.txt
 after-printing.txt
 bench/compile.txt
 

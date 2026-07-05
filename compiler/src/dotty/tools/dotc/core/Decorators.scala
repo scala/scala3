@@ -9,6 +9,7 @@ import Contexts.*, Names.*, Phases.*, Symbols.*, Types.*
 import printing.{ Printer, Showable }, printing.Formatting.*, printing.Texts.*
 import transform.MegaPhase
 import reporting.{Message, NoExplanation}
+import util.{Lst}
 
 /** This object provides useful extension methods for types defined elsewhere */
 object Decorators {
@@ -90,7 +91,7 @@ object Decorators {
      */
     def withCleanParamNames(using Context): Type = tp match
       case mt: MethodType if mt.allParamNamesSynthetic =>
-        val newNames = mt.paramNames.zipWithIndex.map((_, i) => termName("x" + i))
+        val newNames = Lst.tabulate(mt.paramNames.length)(i => termName("x" + i))
         mt.derivedLambdaType(newNames, mt.paramInfos, mt.resType.withCleanParamNames)
       case mt: MethodType =>
         mt.derivedLambdaType(mt.paramNames, mt.paramInfos, mt.resType.withCleanParamNames)
@@ -234,17 +235,6 @@ object Decorators {
     /** Union on lists seen as sets */
     def setUnion (ys: List[T]): List[T] = xs ::: ys.filterNot(xs contains _)
 
-    /** Reduce left with `op` as long as list `xs` is not longer than `seqLimit`.
-     *  Otherwise, split list in two half, reduce each, and combine with `op`.
-     */
-    def reduceBalanced(op: (T, T) => T, seqLimit: Int = 100): T =
-      val len = xs.length
-      if len > seqLimit then
-        val (leading, trailing) = xs.splitAt(len / 2)
-        op(leading.reduceBalanced(op, seqLimit), trailing.reduceBalanced(op, seqLimit))
-      else
-        xs.reduceLeft(op)
-
   extension [T, U](xss: List[List[T]])
     def nestedMap(f: T => U): List[List[U]] = xss match
       case xs :: xss1 => xs.map(f) :: xss1.nestedMap(f)
@@ -261,6 +251,43 @@ object Decorators {
       case nil => None
   end extension
 
+  extension [T](xss: List[Lst[T]])
+
+    def flattenLst: Lst[T] =
+      xss match
+        case Nil => Lst()
+        case xs :: Nil => xs
+        case xs :: yss if xs.isEmpty => yss.flattenLst
+        case _ =>
+          val totalSize = xss.foldLeft(0): (s, xs) =>
+            s + xs.length
+          val buf = Lst.Buffer[T](totalSize)
+          xss.foreach(buf ++= _)
+          buf.toLst
+
+    def nestedMapConserveLst[U](f: T => U): List[Lst[U]] =
+      val yss = xss.map(_.mapConserve(f))
+      if xss.corresponds(yss): (xs, ys) =>
+        xs.asInstanceOf[Lst[Object]] `eqElements` ys.asInstanceOf[Lst[Object]]
+      then xss.asInstanceOf[List[Lst[U]]]
+      else yss
+
+    def nestedExistsLst(p: T => Boolean): Boolean = xss match
+      case xs :: xss1 => xs.exists(p) || xss1.nestedExistsLst(p)
+      case nil => false
+
+    def nestedFindLst(p: T => Boolean): Option[T] = xss match
+      case xs :: xss1 => xs.find(p).orElse(xss1.nestedFindLst(p))
+      case nil => None
+
+  extension [T, U](xss: List[Lst[T]])
+    def nestedMapLst(f: T => U): List[Lst[U]] = xss match
+      case xs :: xss1 => xs.map(f) :: xss1.nestedMapLst(f)
+      case nil => Nil
+
+    def nestedZipWithConserveLst(yss: List[Lst[U]])(f: (T, U) => T): List[Lst[T]] =
+      xss.zipWithConserve(yss)((xs, ys) => xs.zipWithConserve(ys)(f))
+
   extension (text: Text)
     def show(using Context): String = text.mkString(ctx.settings.pageWidth.value)
 
@@ -268,7 +295,7 @@ object Decorators {
    *  a given phase. See [[config.CompilerCommand#explainAdvanced]] for the
    *  exact meaning of "contains" here.
    */
-   extension (names: List[String])
+  extension (names: List[String])
     def containsPhase(phase: Phase): Boolean =
       names.nonEmpty && {
         phase match {
@@ -284,6 +311,12 @@ object Decorators {
             }
         }
       }
+
+  extension [T](it: Iterator[T])
+    def toLst: Lst[T] =
+      val buf = Lst.Buffer[T]()
+      while it.hasNext do buf += it.next()
+      buf.toLst
 
   extension [T](x: T)
     def showing[U](
@@ -340,4 +373,26 @@ object Decorators {
   extension [T <: AnyRef](arr: Array[T])
     def binarySearch(x: T | Null): Int = java.util.Arrays.binarySearch(arr.asInstanceOf[Array[Object | Null]], x)
 
+  extension [T](xs: collection.Iterable[T])
+    def toLst: Lst[T] = Lst.fromIterable(xs)
+
+    def toLstReverse: Lst[T] =
+      val rs = new Array[Object](xs.size)
+      var i = rs.length
+      for x <- xs do
+        i = i - 1
+        rs(i) = x.asInstanceOf[Object]
+      new Lst(rs)
+
+    def mapToLst[U <: AnyRef](f: T => U): Lst[U] =
+      val buf = Lst.Buffer[U](xs.size)
+      for x <- xs do buf += f(x)
+      buf.toLst
+
+  extension [T](xs: Array[Object])
+    def freeze: Lst[T] = new Lst(xs)
+
+  extension [T](xs: Iterable[T])
+    def lazyZip[U <: AnyRef](that: Lst[U]): collection.LazyZip2[T, U, xs.type] =
+      xs.lazyZip(that.toIterable)
 }

@@ -5,6 +5,7 @@ package patmat
 
 import core.*, Annotations.*, Contexts.*, Decorators.*, Flags.*, Names.*, StdNames.*, Symbols.*, Types.*
 import ast.*, tpd.*
+import util.Lst
 
 import vulpix.TestConfiguration, TestConfiguration.basicClasspath
 
@@ -22,7 +23,7 @@ class SpaceEngineTest:
 
     val tp      = defn.ConsType.appliedTo(defn.AnyType)
     val unappTp = requiredMethod("scala.collection.immutable.::.unapply").termRef
-    val params  = List(Empty, Typ(tp))
+    val params  = Lst(Empty, Typ(tp))
 
     val a = Prod(tp, unappTp, params)
     val b = Empty

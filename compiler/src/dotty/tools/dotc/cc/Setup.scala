@@ -12,7 +12,7 @@ import config.Printers.{capt, captDebug}
 import ast.tpd, tpd.*
 import transform.{PreRecheck, Recheck}, Recheck.*
 import Synthetics.isExcluded
-import util.SimpleIdentitySet
+import util.{SimpleIdentitySet, Lst}
 import util.chaining.*
 import reporting.Message
 import printing.{Printer, Texts}, Texts.{Text, Str}
@@ -65,7 +65,7 @@ object Setup:
   /** Recognizer for `res $throws exc`, returning `(res, exc)` in case of success */
   object throwsAlias:
     def unapply(tp: Type)(using Context): Option[(Type, Type)] = tp match
-      case AppliedType(tycon, res :: exc :: Nil) if tycon.typeSymbol == defn.throwsAlias =>
+      case AppliedType(tycon, Lst.pair(res, exc)) if tycon.typeSymbol == defn.throwsAlias =>
         Some((res, exc))
       case _ =>
         None
@@ -98,7 +98,7 @@ object Setup:
       capt.println(i"added $ann to $param of $constr")
 
     val target = superCall.fun.symbol
-    for case (param, arg: Ident) <- target.paramSymss.flatten.filter(_.isTerm).lazyZip(superCall.args) do
+    for case (param, arg: Ident) <- target.paramSymss.flattenLst.filter(_.isTerm).lazyZip(superCall.args) do
       if arg.symbol.is(Param) && arg.symbol.owner == constr then
         if target == constr.owner.primaryConstructor then
           addParamAlias(arg.symbol, param.name.toString)
@@ -274,17 +274,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
      */
     protected def normalizeFunctions(tp: Type, original: Type, expandAlways: Boolean = false)(using Context): Type =
       tp match
-      case AppliedType(tycon, args)
+      case tp @ AppliedType(tycon, _)
       if defn.isNonRefinedFunction(tp) && isTopLevel =>
         // Expand if we have an applied type that underwent some addition of capture sets
         val expand = expandAlways || original.match
-          case AppliedType(`tycon`, args0) => args0.last ne args.last
+          case original @ AppliedType(`tycon`, _) =>
+            original.args.last `ne` tp.args.last
           case _ => false
         if expand then
           depFun(
-              args.init, args.last,
+              tp.args.init, tp.args.last,
               isContextual = defn.isContextFunctionClass(tycon.classSymbol)
-            ).showing(i"add function refinement $tp ($tycon, ${args.init}, ${args.last}) --> $result", capt)
+            ).showing(i"add function refinement $tp ($tycon, ${tp.args.init}, ${tp.args.last}) --> $result", capt)
         else tp
       case _ => tp
 
@@ -460,8 +461,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             Annotation(defn.ErasedParamAnnot, defn.CanThrowClass.span))
         val resDecomposed = throwsAlias.unapply(res)
         val paramName = nme.syntheticParamName(encl.length)
-        val mt = ContextualMethodType(paramName :: Nil)(
-            _ => paramType :: Nil,
+        val mt = ContextualMethodType(Lst(paramName))(
+            _ => Lst(paramType),
             mt => resDecomposed match
               case Some((res1, exc1)) => expandThrowsAlias(res1, exc1, mt :: encl)
               case _ => res
@@ -538,8 +539,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             enclMethodType = mt
             try derivedLambdaType(mt)(ptypes1, this(mt.resType))
             finally enclMethodType = saved
-          case t @ AppliedType(tycon, args)
-          if defn.isNonRefinedFunction(t) && args.last.containsGlobalFreshDirectly =>
+          case t @ AppliedType(tycon, _)
+          if defn.isNonRefinedFunction(t) && t.args.last.containsGlobalFreshDirectly =>
             // Convert to dependent function so that we have a binder for `fresh` in result type.
             // Copy all annotations and capturing sets of the original type to the new one.
             def copyAnnots(t: Type, from: Type): Type = from match
@@ -547,7 +548,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               case _ => t
             apply(
               copyAnnots(
-                depFun(args.init, args.last,
+                depFun(t.args.init, t.args.last,
                   isContextual = defn.isContextFunctionClass(tycon.classSymbol)),
                 t.dealiasKeepAnnots))
               .showing(i"convert dep $t to $result", capt)
@@ -645,8 +646,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               capturedBy(sym) = enclMeth
 
         case Apply(fn, args) =>
-          for case closureDef(mdef) <- args do
-            anonFunCallee(mdef.symbol) = fn.symbol
+          args.foreach:
+            case closureDef(mdef) => anonFunCallee(mdef.symbol) = fn.symbol
+            case _ =>
           traverseChildren(tree)
 
         case tree @ DefDef(_, paramss, tpt: TypeTree, _) =>
@@ -671,12 +673,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           val formals = fn.tpe.widen match
             case tl: TypeLambda => tl.paramInfos
             case _ => args.map(_ => NoType)
-          for case (arg: TypeTree, formal) <- args.lazyZip(formals) do
-            if defn.isTypeTestOrCast(fn.symbol) then
-              arg.setNuType(
-                globalCapToLocal(arg.tpe, Origin.TypeArg(arg.tpe)))
+          args.lazyZip(formals).foreach:
+            case (arg: TypeTree, formal) =>
+              if defn.isTypeTestOrCast(fn.symbol) then
+                arg.setNuType(globalCapToLocal(arg.tpe, Origin.TypeArg(arg.tpe)))
               else
                 transformTT(arg, NoSymbol, boxed = true, typeArgFormal = formal) // type arguments in type applications are boxed
+            case _ =>
 
         case tree: TypeDef if tree.symbol.isClass =>
           val sym = tree.symbol
@@ -723,7 +726,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         // parameters. Constructor defs have `Unit` as result type tree, that's why
         // we can't get this type by reading the result type tree, and have to construct
         // it explicitly.
-        def constrReturnType(info: Type, psymss: List[List[Symbol]]): Type = info match
+        def constrReturnType(info: Type, psymss: List[Lst[Symbol]]): Type = info match
           case info: MethodOrPoly =>
             constrReturnType(info.instantiate(psymss.head.map(_.namedType)), psymss.tail)
           case _ =>
@@ -740,7 +743,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         // type only if the transformed type is different from the original.
         def paramSignatureChanges = tree.match
           case tree: DefDef =>
-            tree.paramss.nestedExists:
+            tree.paramss.nestedExistsLst:
               case param: ValDef =>  param.tpt.hasNuType
               case param: TypeDef => param.rhs.hasNuType
           case _ => false
@@ -752,12 +755,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         def ownerChanges =
           ctx.owner.name.is(TryOwnerName)
 
-        def paramsToCap(psymss: List[List[Symbol]], mt: Type)(using Context): Type = mt match
+        def paramsToCap(psymss: List[Lst[Symbol]], mt: Type)(using Context): Type = mt match
           case mt: MethodType =>
             try
               mt.derivedLambdaType(
                 paramInfos =
-                  psymss.head.lazyZip(mt.paramInfos).map(localCapToGlobal),
+                  psymss.head.zipWith(mt.paramInfos)(localCapToGlobal),
                 resType = paramsToCap(psymss.tail, mt.resType))
             catch case ex: AssertionError =>
               println(i"error while mapping params ${mt.paramInfos} of $sym")

@@ -111,7 +111,7 @@ case class Typ(tp: Type, decomposed: Boolean = true) extends Space:
 end Typ
 
 /** Space representing an extractor pattern */
-case class Prod(tp: Type, unappTp: TermRef, params: List[Space]) extends Space
+case class Prod(tp: Type, unappTp: TermRef, params: Lst[Space]) extends Space
 
 /** Union of spaces */
 case class Or(spaces: Seq[Space]) extends Space
@@ -126,10 +126,10 @@ object SpaceEngine {
   /** Simplify space such that a space equal to `Empty` becomes `Empty` */
   def computeSimplify(space: Space)(using Context): Space = trace(i"simplify($space)")(space match {
     case Prod(tp, fun, spaces) =>
-      val sps = spaces.mapconserve(simplify)
+      val sps = spaces.mapConserve(simplify)
       if sps.contains(Empty) then Empty
       else if decompose(tp).isEmpty then Empty
-      else if sps eq spaces then space else Prod(tp, fun, sps)
+      else if sps _eq_ spaces then space else Prod(tp, fun, sps)
     case Or(spaces) =>
       val spaces2 = spaces.map(simplify).filter(_ != Empty)
       if spaces2.isEmpty then Empty
@@ -184,16 +184,18 @@ object SpaceEngine {
       else res.get._2
     }
 
-  /** Flatten space to get rid of `Or` for pretty print */
+  /** Flatten space to get rid of `Or` for pretty print
+   *  // TODO turn this into something understandable
+   */
   def flatten(space: Space)(using Context): Seq[Space] = space match {
     case Prod(tp, fun, spaces) =>
-      val ss = LazyList(spaces*).map(flatten)
+      val ss = LazyList({spaces.toList}*).map(flatten)
 
       ss.foldLeft(LazyList(Nil : List[Space])) { (acc, flat) =>
         for { sps <- acc; s <- flat }
         yield sps :+ s
       }.map { sps =>
-        Prod(tp, fun, sps)
+        Prod(tp, fun, sps.toLst)
       }
 
     case Or(spaces) =>
@@ -261,7 +263,7 @@ object SpaceEngine {
       case (a @ Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
         if !isSameUnapply(fun1, fun2) then intersectUnrelatedAtomicTypes(tp1, tp2)(a)
         else if ss1.lazyZip(ss2).exists((a, b) => simplify(intersect(a, b)) == Empty) then Empty
-        else Prod(tp1, fun1, ss1.lazyZip(ss2).map(intersect))
+        else Prod(tp1, fun1, ss1.zipWith(ss2)(intersect))
     }
   }
 
@@ -294,7 +296,7 @@ object SpaceEngine {
       case (Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2))
           if fun1.symbol.name == nme.unapply && ss1.length != ss2.length => a
       case (a @ Prod(tp1, fun1, ss1), Prod(tp2, fun2, ss2)) =>
-        val range = ss1.indices.toList
+        val range = (0 until ss1.length).toList
         val cache = Array.fill[Space | Null](ss2.length)(null)
         def sub(i: Int) =
           if cache(i) == null then
@@ -405,7 +407,7 @@ object SpaceEngine {
           projectSeq(pats)
         else {
           if (elemTp.exists)
-            Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, projectSeq(pats) :: Nil)
+            Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, Lst(projectSeq(pats)))
           else
             Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.take(arity - 1).map(project) :+ projectSeq(pats.drop(arity - 1)))
         }
@@ -519,7 +521,7 @@ object SpaceEngine {
 
   /** Space of the pattern: unapplySeq(a, b, c*)
    */
-  def projectSeq(pats: List[Tree])(using Context): Space = {
+  def projectSeq(pats: Lst[Tree])(using Context): Space = {
     if (pats.isEmpty) return Typ(defn.NilType, false)
 
     val (items, zero) = if (isWildcardStarArg(pats.last))
@@ -530,7 +532,7 @@ object SpaceEngine {
     val unapplyTp = defn.ConsType.classSymbol.companionModule.termRef.select(nme.unapply)
     items.foldRight[Space](zero) { (pat, acc) =>
       val consTp = defn.ConsType.appliedTo(pats.head.tpe.widen)
-      Prod(consTp, unapplyTp, project(pat) :: acc :: Nil)
+      Prod(consTp, unapplyTp, Lst(project(pat), acc))
     }
   }
 
@@ -562,21 +564,21 @@ object SpaceEngine {
 
   /** Return term parameter types of the extractor `unapp`.
    *  Parameter types of the case class type `tp`. Adapted from `unapplyPlan` in patternMatcher  */
-  def signature(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): List[Type] = trace(i"signature($unapp, $scrutineeTp, $argLen)") {
+  def signature(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): Lst[Type] = trace(i"signature($unapp, $scrutineeTp, $argLen)") {
     val unappSym = unapp.symbol
 
     val mt: MethodType = unapp.widen match {
       case mt: MethodType => mt
       case pt: PolyType   =>
         scrutineeTp match
-        case AppliedType(tycon, targs)
+        case stp @ AppliedType(tycon, _)
             if unappSym.is(Synthetic)
             && (pt.resultType.asInstanceOf[MethodType].paramInfos.head.typeConstructor =:= tycon) =>
           // Special case synthetic unapply/unapplySeq's
           // Provided the shapes of the types match:
           // the scrutinee type being unapplied and
           // the unapply parameter type
-          pt.instantiate(targs).asInstanceOf[MethodType]
+          pt.instantiate(stp.args).asInstanceOf[MethodType]
         case _ =>
           val locked = ctx.typerState.ownedVars
           val tvars = constrained(pt)
@@ -618,15 +620,15 @@ object SpaceEngine {
         resTp0 = ctx.typeAssigner.safeSubstParam(resTp0, mt.paramRefs.head, scrutineeTp)
       wildApprox(resTp0.finalResultType.stripNamedTuple)
 
-    val sig =
+    val sig: Lst[Type] =
       if (resTp.isRef(defn.BooleanClass))
-        List()
+        Lst()
       else {
         val isUnapplySeq = unappSym.name == nme.unapplySeq
 
         if (isUnapplySeq) {
           val (arity, elemTp, resultTp) = unapplySeqInfo(resTp, unappSym.srcPos)
-          if (elemTp.exists) defn.ListType.appliedTo(elemTp) :: Nil
+          if (elemTp.exists) Lst(defn.ListType.appliedTo(elemTp))
           else {
             val sels = productSeqSelectors(resultTp, arity, unappSym.srcPos)
             sels.init :+ defn.ListType.appliedTo(sels.last)
@@ -638,7 +640,7 @@ object SpaceEngine {
             productSelectorTypes(resTp, unappSym.srcPos)
           else {
             val getTp = extractorMemberType(resTp, nme.get, unappSym.srcPos).stripNamedTuple
-            if (argLen == 1) getTp :: Nil
+            if (argLen == 1) Lst(getTp)
             else productSelectorTypes(getTp, unappSym.srcPos)
           }
         }
@@ -651,11 +653,11 @@ object SpaceEngine {
   def covers(unapp: TermRef, scrutineeTp: Type, argLen: Int)(using Context): Boolean = trace(i"covers($unapp, $scrutineeTp, $argLen)") {
     SpaceEngine.isIrrefutable(unapp, argLen)
     || unapp.symbol == defn.TypeTest_unapply && {
-      val AppliedType(_, _ :: tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
+      val AppliedType(_, Lst.pair(_, tp)) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
     || unapp.symbol == defn.ClassTagClass_unapply && {
-      val AppliedType(_, tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
+      val AppliedType(_, Lst.single(tp)) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
   }
@@ -805,9 +807,9 @@ object SpaceEngine {
     def genConstraint(space: Space): List[(Type, Type)] = space match {
       case Prod(tp, unappTp, ss) =>
         val tps = signature(unappTp, tp, ss.length)
-        ss.zip(tps).flatMap {
-          case (sp : Prod, tp) => sp.tp -> tp :: genConstraint(sp)
-          case (Typ(tp1, _), tp2) => tp1 -> tp2 :: Nil
+        ss.toList.zip(tps.toList).flatMap {
+          case (sp : Prod, tp) => (sp.tp, tp) :: genConstraint(sp)
+          case (Typ(tp1, _), tp2) => (tp1, tp2) :: Nil
           case _ => impossible
         }
       case Typ(_, _) => Nil
@@ -855,7 +857,7 @@ object SpaceEngine {
 
   /** Display spaces.  Used for printing uncovered spaces in the in-exhaustive error message. */
   def display(s: Space)(using Context): String = inContext(ctx.fresh.setPrinterFn(LocalPrinter(_))) {
-    def params(tp: Type): List[Type] = tp.classSymbol.primaryConstructor.info.firstParamTypes
+    def params(tp: Type): Lst[Type] = tp.classSymbol.primaryConstructor.info.firstParamTypes
 
     /** does the companion object of the given symbol have custom unapply */
     def hasCustomUnapply(sym: Symbol): Boolean = {

@@ -16,6 +16,7 @@ import Decorators.*
 import DenotTransformers.*
 import collection.mutable
 import Types.*
+import util.Lst
 
 object Constructors {
   val name: String = "constructors"
@@ -142,17 +143,17 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
   override def transformTemplate(tree: Template)(using Context): Tree = {
     val cls = ctx.owner.asClass
 
-    val constr @ DefDef(nme.CONSTRUCTOR, (vparams: List[ValDef] @unchecked) :: Nil, _, EmptyTree) = tree.constr: @unchecked
+    val constr @ DefDef(nme.CONSTRUCTOR, (vparams: Lst[ValDef] @unchecked) :: Nil, _, EmptyTree) = tree.constr: @unchecked
 
     // Produce aligned accessors and constructor parameters. We have to adjust
     // for any outer parameters, which are last in the sequence of original
     // parameter accessors but come first in the constructor parameter list.
     val accessors = cls.paramGetters
     val vparamsWithOuterLast = vparams match {
-      case vparam :: rest if vparam.name == nme.OUTER => rest ::: vparam :: Nil
+      case Lst.cons(vparam, rest) if vparam.name == nme.OUTER => rest :+ vparam
       case _ => vparams
     }
-    val paramSyms = vparamsWithOuterLast map (_.symbol)
+    val paramSyms = vparamsWithOuterLast.map(_.symbol)
 
     // Adjustments performed when moving code into the constructor:
     //  (1) Replace references to param accessors by constructor parameters
@@ -181,11 +182,11 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
           if sym.is(ParamAccessor) && (switchOutsideSupercall || inSuperCall) then
             sym = sym.subst(accessors, paramSyms)
           if sym.maybeOwner.isConstructor then ref(sym).withSpan(tree.span) else tree
-        case Apply(fn, Nil) =>
+        case Apply(fn, Lst.empty()) =>
           val fn1 = transform(fn)
           if ((fn1 ne fn) && fn1.symbol.is(Param) && fn1.symbol.owner.isPrimaryConstructor)
             fn1 // in this case, fn1.symbol was an alias for a parameter in a superclass
-          else cpy.Apply(tree)(fn1, Nil)
+          else cpy.Apply(tree)(fn1, Lst())
         case _ =>
           if (noDirectRefsFrom(tree)) tree else super.transform(tree)
       }
@@ -203,7 +204,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     /** Map outer getters $outer and outer accessors $A$B$$$outer to the given outer parameter. */
     def mapOuter(outerParam: Symbol) = new TreeMap {
       override def transform(tree: Tree)(using Context) = tree match {
-        case Apply(fn, Nil)
+        case Apply(fn, Lst.empty())
           if (fn.symbol.is(OuterAccessor)
              || fn.symbol.isGetter && fn.symbol.name == nme.OUTER
              ) &&
@@ -273,9 +274,9 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
                 val setter =
                   if (symSetter.exists) symSetter
                   else sym.accessorNamed(Mixin.traitSetterName(sym.asTerm))
-                constrStats += Apply(ref(setter), intoConstr(stat.rhs, sym).withSpan(stat.span) :: Nil)
+                constrStats += Apply(ref(setter), Lst(intoConstr(stat.rhs, sym).withSpan(stat.span)))
               clsStats += cpy.DefDef(stat)(rhs = EmptyTree)
-          case DefDef(nme.CONSTRUCTOR, ((outerParam @ ValDef(nme.OUTER, _, _)) :: _) :: Nil, _, _) =>
+          case DefDef(nme.CONSTRUCTOR, Lst.withHead(outerParam @ ValDef(nme.OUTER, _, _)) :: Nil, _, _) =>
             clsStats += mapOuter(outerParam.symbol).transform(stat)
           case _: DefTree =>
             clsStats += stat
@@ -312,28 +313,28 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     val copyParams = accessors flatMap { acc =>
       if (!isRetained(acc)) {
         dropped += acc
-        Nil
+        Lst()
       }
       else if (!isRetained(acc.field)) { // It may happen for unit fields, tests/run/i6987.scala
         dropped += acc.field
-        Nil
+        Lst()
       }
       else {
         val param = acc.subst(accessors, paramSyms)
         if (param.hasAnnotation(defn.ConstructorOnlyAnnot))
           report.error(em"${acc.name} is marked `@constructorOnly` but it is retained as a field in ${acc.owner}", acc.srcPos)
         val target = if (acc.is(Method)) acc.field else acc
-        if (!target.exists) Nil // this case arises when the parameter accessor is an alias
+        if (!target.exists) Lst() // this case arises when the parameter accessor is an alias
         else {
-          val assigns = Assign(ref(target), ref(param)).withSpan(tree.span) :: Nil
-          if (acc.name != nme.OUTER) assigns
+          val assign = Assign(ref(target), ref(param)).withSpan(tree.span)
+          if (acc.name != nme.OUTER) Lst(assign)
           else {
             // insert test: if ($outer eq null) throw new NullPointerException
             val nullTest =
               If(ref(param).select(defn.Object_eq).appliedTo(nullLiteral),
-                 Throw(New(defn.NullPointerExceptionClass.typeRef, Nil)),
+                 Throw(New(defn.NullPointerExceptionClass.typeRef, Lst())),
                  unitLiteral)
-            nullTest :: assigns
+            Lst(nullTest, assign)
           }
         }
       }
@@ -351,7 +352,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
     val (superCalls, followConstrStats) = splitAtSuper(constrStats.toList)
 
     val mappedSuperCalls = vparams match {
-      case (outerParam @ ValDef(nme.OUTER, _, _)) :: _ =>
+      case Lst.withHead(outerParam @ ValDef(nme.OUTER, _, _)) =>
         superCalls.map(mapOuter(outerParam.symbol).transform)
       case _ => superCalls
     }
@@ -364,7 +365,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
       case _ => false
     }
 
-    val finalConstrStats = copyParams ::: mappedSuperCalls ::: lazyAssignments ::: stats
+    val finalConstrStats = copyParams.toList ::: mappedSuperCalls ::: lazyAssignments ::: stats
     val expandedConstr =
       if (cls.isAllOf(NoInitsTrait)) {
         assert(finalConstrStats.isEmpty || {

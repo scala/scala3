@@ -6,6 +6,7 @@ import Contexts.*, Types.*, Decorators.*, Symbols.*, DenotTransformers.*
 import SymDenotations.*, Scopes.*, StdNames.*, NameOps.*, Names.*
 import MegaPhase.MiniPhase
 import config.Feature
+import util.Lst
 
 import scala.collection.mutable
 
@@ -25,7 +26,7 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
 
   override def description: String = SpecializeApplyMethods.description
 
-  private def specApplySymbol(sym: Symbol, args: List[Type], ret: Type)(using Context): Symbol = {
+  private def specApplySymbol(sym: Symbol, args: Lst[Type], ret: Type)(using Context): Symbol = {
     val name = nme.apply.specializedFunction(ret, args)
     // Create the symbol at the next phase, so that it is a valid member of the
     // corresponding function for all valid periods of its SymDenotations.
@@ -66,17 +67,17 @@ class SpecializeApplyMethods extends MiniPhase with InfoTransformer {
     case tp: ClassInfo =>
       if sym == defn.Function0 then
         val scope = tp.decls.cloneScope
-        specFun0 { r => scope.enter(specApplySymbol(sym, Nil, r)) }
+        specFun0 { r => scope.enter(specApplySymbol(sym, Lst(), r)) }
         tp.derivedClassInfo(decls = scope)
 
       else if sym == defn.Function1 then
         val scope = tp.decls.cloneScope
-        specFun1 { (t1, r) => scope.enter(specApplySymbol(sym, t1 :: Nil, r)) }
+        specFun1 { (t1, r) => scope.enter(specApplySymbol(sym, Lst(t1), r)) }
         tp.derivedClassInfo(decls = scope)
 
       else if sym == defn.Function2 then
         val scope = tp.decls.cloneScope
-        specFun2 { (t1, t2, r) => scope.enter(specApplySymbol(sym, t1 :: t2 :: Nil, r)) }
+        specFun2 { (t1, t2, r) => scope.enter(specApplySymbol(sym, Lst(t1, t2), r)) }
         tp.derivedClassInfo(decls = scope)
 
       else tp

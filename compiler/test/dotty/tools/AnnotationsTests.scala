@@ -12,6 +12,7 @@ import dotc.core.Constants.*
 import dotc.core.Phases.*
 import dotc.core.Types.*
 import dotc.core.Symbols.*
+import dotc.util.Lst
 
 import java.io.File
 import java.nio.file.*
@@ -29,7 +30,7 @@ class AnnotationsTest:
         val defn = ctx.definitions
         val cls = requiredClass("A")
         val annotCls = requiredClass("Annot")
-        val arrayOfString = defn.ArrayType.appliedTo(List(defn.StringType))
+        val arrayOfString = defn.ArrayType.appliedTo(Lst(defn.StringType))
 
         atPhase(erasurePhase.next) {
           // Even though we're forcing the annotation after erasure,
@@ -122,7 +123,7 @@ class AnnotationsTest:
           def stripNamedArg = tpd.stripNamedArg(t)
           def stripInlined = tpd.stripInlined(t)
         annot.arguments(0).stripNamedArg.stripInlined match
-        case Apply(Apply(_, List(Typed(SeqLiteral(ks, _), _))), _) =>
+        case Apply(Apply(_, Lst.single(Typed(SeqLiteral(ks, _), _))), _) =>
           assert(ks.length == 3, i"$ks")
-          assert(ks.map(_.tpe).collect { case ConstantType(Constant(s: String)) => s } == List("a", "b", "c"))
+          assert(ks.map(_.tpe).collect { case ConstantType(Constant(s: String)) => s } == Lst("a", "b", "c"))
         case bad => assert(false, s"Bad arg $bad")

@@ -13,8 +13,7 @@ import Symbols.*
 import Constants.*
 import Decorators.*
 import DenotTransformers.*
-
-
+import util.Lst
 
 object CompleteJavaEnums {
   val name: String = "completeJavaEnums"
@@ -58,25 +57,25 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
           tp.derivedLambdaType(resType = addConstrParams(restpe))
         case _ =>
           tp.derivedLambdaType(
-            paramNames = tp.paramNames ++ List(nameParamName, ordinalParamName),
-            paramInfos = tp.paramInfos ++ List(defn.StringType, defn.IntType))
+            paramNames = tp.paramNames ++ Lst(nameParamName, ordinalParamName),
+            paramInfos = tp.paramInfos ++ Lst(defn.StringType, defn.IntType))
       }
   }
 
   /** The list of parameter definitions `$name: String, $ordinal: Int`, in given `owner`
    *  with given flags (either `Param` or `ParamAccessor`)
    */
-  private def addedParams(owner: Symbol, isLocal: Boolean, flag: FlagSet)(using Context): List[ValDef] = {
+  private def addedParams(owner: Symbol, isLocal: Boolean, flag: FlagSet)(using Context): Lst[ValDef] = {
     val flags = flag | Synthetic | (if isLocal then Private | Deferred else EmptyFlags)
     val nameParam = newSymbol(owner, nameParamName, flags, defn.StringType, coord = owner.span)
     val ordinalParam = newSymbol(owner, ordinalParamName, flags, defn.IntType, coord = owner.span)
-    List(ValDef(nameParam), ValDef(ordinalParam))
+    Lst(ValDef(nameParam), ValDef(ordinalParam))
   }
 
   /** Add arguments `args` to the parent constructor application in `parents` that invokes
    *  a constructor of `targetCls`,
    */
-  private def addEnumConstrArgs(targetCls: Symbol, parents: List[Tree], args: List[Tree])(using Context): List[Tree] =
+  private def addEnumConstrArgs(targetCls: Symbol, parents: List[Tree], args: Lst[Tree])(using Context): List[Tree] =
     parents.map {
       case app @ Apply(fn, args0) if fn.symbol.owner == targetCls =>
         if args0.nonEmpty && targetCls == defn.JavaEnumClass then
@@ -91,7 +90,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
     if sym.isConstructor && sym.owner.derivesFromJavaEnum then
       val tree1 = cpy.DefDef(tree)(
         paramss = tree.paramss.init
-          :+ (tree.paramss.last.asInstanceOf[List[ValDef]]
+          :+ (tree.paramss.last.asInstanceOf[Lst[ValDef]]
               ++ addedParams(sym, isLocal=false, Param)))
       sym.setParamssFromDefs(tree1.paramss)
       tree1
@@ -119,7 +118,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
         // Scala.js has no support for <clinit> so we must avoid assigning static fields in the enum class.
         // However, since the public contract for reading static fields in the IR ABI is to call "static getters",
         // we achieve the right contract with static forwarders instead.
-        DefDef(forwarderSym(EnumValue | Method | JavaStatic, MethodType(Nil, enumValue.info)), body)
+        DefDef(forwarderSym(EnumValue | Method | JavaStatic, MethodType(Lst(), enumValue.info)), body)
       else
         val sym = forwarderSym(EnumValue | JavaStatic | Mutable, enumValue.info)
         forwarderSyms += sym
@@ -198,15 +197,15 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       val addedForwarders = addedEnumForwarders(cls)
       cpy.Template(templ)(
         parents = addEnumConstrArgs(defn.JavaEnumClass, templ.parents, addedSyms.map(ref)),
-        body = params ++ addedDefs ++ addedForwarders ++ rest)
+        body = params ++ addedDefs.toIterable ++ addedForwarders ++ rest)
     else if isJavaEnumValueImpl(cls) then
       def creatorParamRef(name: TermName) =
         ref(cls.owner.paramSymss.head.find(_.name == name).get)
       val args =
         if cls.owner.isAllOf(EnumCase) then
-          List(Literal(Constant(cls.owner.name.toString)), Literal(Constant(ordinalFor(cls.owner))))
+          Lst(Literal(Constant(cls.owner.name.toString)), Literal(Constant(ordinalFor(cls.owner))))
         else
-          List(creatorParamRef(nme.nameDollar), creatorParamRef(nme.ordinalDollar_))
+          Lst(creatorParamRef(nme.nameDollar), creatorParamRef(nme.ordinalDollar_))
       cpy.Template(templ)(
         parents = addEnumConstrArgs(cls.owner.owner.linkedClass, templ.parents, args),
       )

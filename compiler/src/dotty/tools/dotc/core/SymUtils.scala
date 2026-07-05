@@ -17,6 +17,7 @@ import Annotations.Annotation
 import Phases.*
 import ast.tpd.Literal
 import transform.Mixin
+import util.Lst
 
 import dotty.tools.dotc.transform.sjs.JSSymUtils.sjsNeedsField
 
@@ -139,7 +140,7 @@ class SymUtils:
      */
     def isOldStyleImplicitConversion(directOnly: Boolean = false, forImplicitClassOnly: Boolean = false)(using Context): Boolean =
       self.is(Implicit) && self.info.stripPoly.match
-        case mt @ MethodType(_ :: Nil) if !mt.isImplicitMethod =>
+        case mt @ MethodType(pnames) if pnames.length == 1 && !mt.isImplicitMethod =>
           if self.isCoDefinedGiven(mt.finalResultType.typeSymbol)
           then !directOnly
           else !forImplicitClassOnly
@@ -270,11 +271,19 @@ class SymUtils:
       loop(from, to)
     }
 
+   /** Apply symbol/symbol substitution to this symbol */
+    def subst(from: Lst[Symbol], to: Lst[Symbol]): Symbol =
+      var i = 0
+      while i < from.length do
+        if self eq from(i) then return to(i)
+        i += 1
+      self
+
     def accessorNamed(name: TermName)(using Context): Symbol =
       self.owner.info.decl(name).suchThat(_.is(Accessor)).symbol
 
-    def caseAccessors(using Context): List[Symbol] =
-      self.info.decls.filter(_.is(CaseAccessor))
+    def caseAccessors(using Context): Lst[Symbol] =
+      self.info.decls.filterLst(_.is(CaseAccessor))
 
     def getter(using Context): Symbol =
       if (self.isGetter) self else accessorNamed(self.asTerm.name.getterName)
@@ -296,7 +305,7 @@ class SymUtils:
     }
 
     def paramNamed(name: Name)(using Context): Symbol =
-      self.rawParamss.nestedFind(_.name == name).getOrElse(NoSymbol)
+      self.rawParamss.nestedFindLst(_.name == name).getOrElse(NoSymbol)
 
     /** Is this symbol a constant expression final val?
      *
@@ -440,7 +449,7 @@ class SymUtils:
     def localReturnType(using Context): Type =
       if self.isConstructor then defn.UnitType
       else
-        def instantiateRT(info: Type, psymss: List[List[Symbol]]): Type = info match
+        def instantiateRT(info: Type, psymss: List[Lst[Symbol]]): Type = info match
           case info: PolyType =>
             instantiateRT(info.instantiate(psymss.head.map(_.typeRef)), psymss.tail)
           case info: MethodType =>
@@ -461,7 +470,7 @@ class SymUtils:
        * @param  paramss  the parameters of the anonymous functions
        *                  enclosing the return expression
        */
-      def instantiateCFT(pt: Type, paramss: => List[List[Symbol]]): Type =
+      def instantiateCFT(pt: Type, paramss: => List[Lst[Symbol]]): Type =
         val ift = defn.asContextFunctionType(pt)
         if ift.exists then
           ift.nonPrivateMember(nme.apply).info match
@@ -472,9 +481,10 @@ class SymUtils:
       def iftParamss = ctx.owner.ownersIterator
           .filter(_.is(Method, butNot = Accessor))
           .takeWhile(_.isAnonymousFunction)
-          .toList
+          .toLst
           .reverse
           .map(_.paramSymss.head)
+          .toList
 
       instantiateCFT(self.localReturnType, iftParamss)
     end returnProto

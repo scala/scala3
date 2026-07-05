@@ -1,9 +1,12 @@
 package dotty
+import tools.dotc.util.Lst
 
 package object tools {
 
   /** Cached single-element list of Nil. (Whether this helps performance has not been tested) */
   val ListOfNil: List[Nil.type] = Nil :: Nil
+
+  val ListOfEmpty: List[Lst[Nothing]] = List(Lst())
 
   /** Throws an `UnsupportedOperationException` with the given method name. */
   def unsupported(methodName: String): Nothing =
@@ -53,4 +56,4 @@ package object tools {
   // when handling stack overflows and every operation (including class loading)
   // risks failing.
   dotty.tools.dotc.core.handleRecursive
- }
+}

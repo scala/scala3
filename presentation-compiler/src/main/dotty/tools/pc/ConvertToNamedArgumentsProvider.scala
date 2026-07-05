@@ -7,6 +7,7 @@ import scala.meta.pc.OffsetParams
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Decorators.flattenLst
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Types.MethodType
 import dotty.tools.dotc.interactive.Interactive
@@ -36,9 +37,9 @@ final class ConvertToNamedArgumentsProvider(
 
     def paramss(fun: tpd.Tree)(using Context): List[String] =
       fun.typeOpt match
-        case m: MethodType => m.paramNamess.flatten.map(_.toString)
+        case m: MethodType => m.paramNamess.flattenLst.map(_.toString).toList
         case _ =>
-          fun.symbol.rawParamss.flatten
+          fun.symbol.rawParamsLists.flatten
             .filter(!_.isTypeParam)
             .map(_.nameBackticked)
 
@@ -50,7 +51,7 @@ final class ConvertToNamedArgumentsProvider(
           case tpd.TypeApply(FromNewApply(fun, argss), _) =>
             Some(fun, argss)
           case tpd.Apply(FromNewApply(fun, argss), args) =>
-            Some(fun, argss ++ args)
+            Some(fun, argss ++ args.toList)
           case _ => None
 
     def edits(tree: Option[tpd.Tree])(using Context): Either[String, List[l.TextEdit]] =
@@ -74,7 +75,7 @@ final class ConvertToNamedArgumentsProvider(
             case FromNewApply(fun, args) =>
               makeTextEdits(fun, args)
             case tpd.Apply(fun, args) =>
-              makeTextEdits(fun, args)
+              makeTextEdits(fun, args.toList)
             case _ => Right(Nil)
         case _ => Right(Nil)
     edits(tree)(using newctx)

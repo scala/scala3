@@ -16,7 +16,7 @@ import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPa
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
 import typer.ErrorReporting.err
 import typer.ProtoTypes.{LhsProto, WildcardSelectionProto, SelectionProto}
-import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property}
+import util.{SimpleIdentitySet, EqHashMap, EqHashSet, SrcPos, Property, Lst}
 import util.chaining.tap
 import transform.{Recheck, PreRecheck, CapturedVars}
 import Recheck.*
@@ -89,7 +89,7 @@ object CheckCaptures:
   /** Similar normal substParams, but this is an approximating type map that
    *  maps parameters in contravariant capture sets to the empty set.
    */
-  final class SubstParamsMap(from: BindingType, to: List[Type])(using Context)
+  final class SubstParamsMap(from: BindingType, to: Lst[Type])(using Context)
   extends ApproximatingTypeMap {
     def apply(tp: Type): Type =
       tp match
@@ -576,7 +576,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  @param  sym  the constructor symbol (could be a method or a val or a class)
      *  @param  args the type arguments
      */
-    def markFreeTypeArgs(fn: Tree, sym: Symbol, args: List[Tree])(using Context): Unit =
+    def markFreeTypeArgs(fn: Tree, sym: Symbol, args: Lst[Tree])(using Context): Unit =
       def isExempt = sym.isTypeTestOrCast || defn.capsErasedValueMethods.contains(sym)
       if !isExempt then
         val paramNames = atPhase(thisPhase.prev):
@@ -749,7 +749,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Recheck `caps.unsafe.unsafeAssumePure(...)` */
     def applyAssumePure(tree: Apply, pt: Type)(using Context): Type =
-      val arg :: Nil = tree.args: @unchecked
+      val Lst.single(arg) = tree.args: @unchecked
       val argType0 = recheck(arg, pt.stripCapturing.capturing(LocalCap(Origin.UnsafeAssumePure)))
       val argType =
         if argType0.captureSet.isAlwaysEmpty then argType0
@@ -766,10 +766,10 @@ class CheckCaptures extends Recheck, SymTransformer:
       if meth == defn.Caps_unsafeAssumePure then
         applyAssumePure(tree, pt)
       else if meth == defn.Caps_unsafeDiscardUses then
-        val arg :: Nil = tree.args: @unchecked
+        val Lst.single(arg) = tree.args.runtimeChecked
         withDiscardedUses(recheck(arg, pt))
       else if meth == defn.Caps_freeze then
-        freeze(super.recheckApply(tree, pt), tree.srcPos)
+        Mutability.freeze(super.recheckApply(tree, pt), tree.srcPos)
       else
         val res = super.recheckApply(tree, pt)
         includeCallCaptures(meth, res, tree)
@@ -816,7 +816,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  otherwise we pick Cr.
      */
     protected override
-    def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: List[Type])(using Context): Type =
+    def recheckApplication(tree: Apply, qualType: Type, funType: MethodType, argTypes: Lst[Type])(using Context): Type =
       val instArgs =
         // Improve the argument types with which the method type is instantiated.
         // If the rechecked argument type is an unboxed capturing type but the previous
@@ -825,7 +825,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         // An example is i25613.scala. See i16114.scala for an example why we have to
         // exclude boxed capturing types because this might lose uses stemming from unboxing
         // a function result.
-        if argTypes.hasSameLengthAs(tree.args) then
+        if argTypes.length == tree.args.length then
           val argTypes1 = argTypes.zipWithConserve(tree.args):
             case (nuType @ CapturingType(_, _), arg: Tree)
             if arg.tpe.isStable            // stable --> there might be path dependent types with arg as prefix
@@ -833,7 +833,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                && !nuType.isBoxedCapturing // !isBoxed --> no risk of losing uses when unboxing in result
               => arg.tpe
             case (nuType, _) => nuType
-          if argTypes1 ne argTypes then
+          if argTypes1 _ne_ argTypes then
             capt.println(i"improve $argTypes to $argTypes1 in $tree")
           argTypes1
         else argTypes
@@ -869,7 +869,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *   - Instantiate result type with actual arguments
      *   - if `sym` is a constructor, refine its type with `refineConstructorInstance`
      */
-    override def instantiate(mt: MethodType, argTypes: List[Type], sym: Symbol)(using Context): Type =
+    override def instantiate(mt: MethodType, argTypes: Lst[Type], sym: Symbol)(using Context): Type =
       val ownType =
         if !mt.isResultDependent then mt.resType
         else SubstParamsMap(mt, argTypes)(mt.resType)
@@ -888,7 +888,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         instCls.primaryConstructor.info.stripPoly match
           case primaryMt: MethodType =>
             var aliasMap = Map.empty[Name, Type]
-            for (param, argType) <- sym.paramSymss.flatten.filter(_.isTerm).lazyZip(argTypes) do
+            for (param, argType) <- sym.paramSymss.flattenLst.filter(_.isTerm).lazyZip(argTypes) do
               for
                 ann <- param.annotations.filter(_.matches(defn.ParamAliasAnnot))
                 name <- ann.argumentConstantString(0)
@@ -907,7 +907,7 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  only or by a method in the class. Both captures go into the result type. We
      *  could be more precise by distinguishing the two capture sets.
      */
-    private def refineConstructorInstance(resType: Type, mt: MethodType, argTypes: List[Type], cls: ClassSymbol)(using Context): Type =
+    private def refineConstructorInstance(resType: Type, mt: MethodType, argTypes: Lst[Type], cls: ClassSymbol)(using Context): Type =
 
       /** First half of result pair:
        *  Refine the type of a constructor call `new C(t_1, ..., t_n)`
@@ -924,7 +924,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         var refined: Type = core
         val implied = cls.creationCapset(core)
         var allCaptures: CaptureSet = initCs ++ implied
-        for (getterName, argType) <- mt.paramNames.lazyZip(argTypes) do
+        for (getterName, argType) <- mt.paramNames.zip(argTypes) do
           val getter = cls.refiningGetterNamed(getterName)
           if !getter.is(Private) && getter.hasTrackedParts then
             if argType.exists then
@@ -1069,10 +1069,10 @@ class CheckCaptures extends Recheck, SymTransformer:
           case CapturingType(parent, _) =>
             matchParamsAndResult(paramss, parent)
           case defn.PolyFunctionOf(poly: PolyType) =>
-            assert(params.hasSameLengthAs(poly.paramInfos))
+            assert(params.length == poly.paramInfos.length)
             matchParamsAndResult(paramss1, poly.instantiate(params.map(_.symbol.typeRef)))
           case FunctionOrMethod(argTypes, resType) =>
-            assert(params.hasSameLengthAs(argTypes), i"$mdef vs $pt, ${params}")
+            assert(params.length == argTypes.length, i"$mdef vs $pt, ${params}")
             inContext(ctx.withOwner(anonfun)) {
               // Propagate argument types to parameter types with inferred types
               for case (argType, param: ValDef) <- argTypes.lazyZip(params) do
@@ -1149,7 +1149,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         case _ =>
 
     /** Add var mirrors to the list of block-local symbols to avoid */
-    override def avoidLocals(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type =
+    override def avoidLocals(tp: Type, symsToAvoid: => Lst[Symbol])(using Context): Type =
       val locals = symsToAvoid
       val varMirrors = locals.collect:
         case local if local.termRef.isLocalMutable => local.varMirror
@@ -1252,9 +1252,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         // ctx with AssumedContains entries for each Contains parameter
         val bodyCtx =
           var ac = CaptureSet.assumedContains
-          for paramSyms <- sym.paramSymss do
-            for case ContainsParam(cs, ref) <- paramSyms do
-              ac = ac.updated(cs, ac.getOrElse(cs, SimpleIdentitySet.empty) + ref)
+          for paramSyms <- sym.paramSymss; sym <- paramSyms do
+            sym match
+              case ContainsParam(cs, ref) =>
+                ac = ac.updated(cs, ac.getOrElse(cs, SimpleIdentitySet.empty) + ref)
+              case _ =>
           if ac.isEmpty then ctx
           else ctx.withProperty(CaptureSet.AssumedContains, Some(ac))
 
@@ -1514,7 +1516,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       tree.tpt.tpe match
         case AnnotatedType(_, annot) if annot.symbol == defn.RequiresCapabilityAnnot =>
           annot.tree match
-            case Apply(_, cap :: Nil) =>
+            case Apply(_, Lst.single(cap)) =>
               markFree(cap.symbol, tree)
             case _ =>
         case _ =>
@@ -1771,7 +1773,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         if einfo.allParamNamesSynthetic =>
           actual match
             case defn.RefinedFunctionOf(ainfo: MethodType)
-            if !ainfo.allParamNamesSynthetic && ainfo.paramNames.hasSameLengthAs(einfo.paramNames) =>
+            if !ainfo.allParamNamesSynthetic && ainfo.paramNames.length == einfo.paramNames.length =>
               einfo.derivedLambdaType(paramNames = ainfo.paramNames)
                 .toFunctionType(alwaysDependent = true)
             case _ => expected
@@ -1890,7 +1892,7 @@ class CheckCaptures extends Recheck, SymTransformer:
                 recur(_, _, !covariant)
               val ares1 = recur(ares, eres, covariant)
               val resTp =
-                if (aargs1 eq aargs) && (ares1 eq ares) then actualShape // optimize to avoid redundant matches
+                if (aargs1 _eq_ aargs) && (ares1 eq ares) then actualShape // optimize to avoid redundant matches
                 else actualShape.derivedFunctionOrMethod(aargs1, ares1)
               curEnv.captured match
                 case cs: CaptureSet.Var => cs.markSolved(provisional = true)
@@ -2348,7 +2350,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           case TypeApply(fun, args) =>
             fun.nuType.widen match
               case tl: PolyType =>
-                val normArgs = args.lazyZip(tl.paramInfos).map: (arg, bounds) =>
+                val normArgs = args.zipWith(tl.paramInfos): (arg, bounds) =>
                   arg.withType(arg.nuType.forceBoxStatus(
                     bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
                 withCollapsedLocalCaps: // OK? We need this since bounds use GlobalAny instead of LocalCap

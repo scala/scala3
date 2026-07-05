@@ -3,6 +3,7 @@ package core
 
 import Types.*, Symbols.*, Contexts.*, Decorators.i
 import cc.Capabilities.{Capability, ResultCap}
+import util.Lst
 
 /** Substitution operations on types. See the corresponding `subst` and
  *  `substThis` methods on class Type for an explanation.
@@ -54,18 +55,15 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def subst(tp: Type, from: List[Symbol], to: List[Type], theMap: SubstMap | Null)(using Context): Type =
+  final def subst(tp: Type, from: Lst[Symbol], to: Lst[Type], theMap: SubstMap | Null)(using Context): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
-        var fs = from
-        var ts = to
-        while (fs.nonEmpty && ts.nonEmpty) {
-          if (fs.head eq sym) return ts.head
-          fs = fs.tail
-          ts = ts.tail
-        }
-        if (tp.prefix `eq` NoPrefix) tp
+        var i = 0
+        while i < from.length && i < to.length do
+          if from(i) eq sym then return to(i)
+          i += 1
+        if (tp.prefix eq NoPrefix) tp
         else tp.derivedSelect(subst(tp.prefix, from, to, theMap))
       case _: ThisType | _: BoundType =>
         tp
@@ -74,29 +72,23 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def substSym(tp: Type, from: List[Symbol], to: List[Symbol], theMap: SubstSymMap | Null)(using Context): Type =
+  final def substSym(tp: Type, from: Lst[Symbol], to: Lst[Symbol], theMap: SubstSymMap | Null)(using Context): Type =
     tp match {
       case tp: NamedType =>
         val sym = tp.symbol
-        var fs = from
-        var ts = to
-        while (fs.nonEmpty) {
-          if (fs.head eq sym)
-            return substSym(tp.prefix, from, to, theMap).select(ts.head)
-          fs = fs.tail
-          ts = ts.tail
-        }
+        var i = 0
+        while i < from.length do
+          if from(i) eq sym then
+            return substSym(tp.prefix, from, to, theMap).select(to(i))
+          i += 1
         if (tp.prefix `eq` NoPrefix) tp
         else tp.derivedSelect(substSym(tp.prefix, from, to, theMap))
       case tp: ThisType =>
         val sym = tp.cls
-        var fs = from
-        var ts = to
-        while (fs.nonEmpty) {
-          if (fs.head eq sym) return ts.head.asClass.thisType
-          fs = fs.tail
-          ts = ts.tail
-        }
+        var i = 0
+        while i < from.length do
+          if from(i) eq sym then return to(i).asClass.thisType
+          i += 1
         tp
       case _: BoundType =>
         tp
@@ -147,7 +139,7 @@ object Substituters:
           .mapOver(tp)
     }
 
-  final def substParams(tp: Type, from: BindingType, to: List[Type], theMap: SubstParamsMap | Null)(using Context): Type =
+  final def substParams(tp: Type, from: BindingType, to: Lst[Type], theMap: SubstParamsMap | Null)(using Context): Type =
     tp match {
       case tp: ParamRef =>
         if (tp.binder == from) to(tp.paramNum) else tp
@@ -219,11 +211,11 @@ object Substituters:
     def apply(tp: Type): Type = subst2(tp, from1, to1, from2, to2, this)(using mapCtx)
   }
 
-  final class SubstMap(from: List[Symbol], to: List[Type])(using Context) extends DeepTypeMap {
+  final class SubstMap(from: Lst[Symbol], to: Lst[Type])(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstSymMap(from: List[Symbol], to: List[Symbol])(using Context) extends DeepTypeMap {
+  final class SubstSymMap(from: Lst[Symbol], to: Lst[Symbol])(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = substSym(tp, from, to, this)(using mapCtx)
     def inverse = SubstSymMap(to, from) // implicitly requires that `to` contains no duplicates.
   }
@@ -240,26 +232,22 @@ object Substituters:
     def apply(tp: Type): Type = substParam(tp, from, to, this)(using mapCtx)
   }
 
-  final class SubstParamsMap(from: BindingType, to: List[Type])(using Context) extends DeepTypeMap {
+  final class SubstParamsMap(from: BindingType, to: Lst[Type])(using Context) extends DeepTypeMap {
     def apply(tp: Type): Type = substParams(tp, from, to, this)(using mapCtx)
   }
 
   /** An approximating substitution that can handle wildcards in the `to` list */
-  final class SubstApproxMap(from: List[Symbol], to: List[Type])(using Context) extends ApproximatingTypeMap {
+  final class SubstApproxMap(from: Lst[Symbol], to: Lst[Type])(using Context) extends ApproximatingTypeMap {
     def apply(tp: Type): Type = tp match {
       case tp: NamedType =>
         val sym = tp.symbol
-        var fs = from
-        var ts = to
-        while (fs.nonEmpty && ts.nonEmpty) {
-          if (fs.head eq sym)
-            return ts.head match {
+        var i = 0
+        while i < from.length && i < to.length do
+          if from(i) eq sym then
+            return to(i) match
               case TypeBounds(lo, hi) => range(lo, hi)
               case tp1 => tp1
-            }
-          fs = fs.tail
-          ts = ts.tail
-        }
+          i += 1
         if (tp.prefix `eq` NoPrefix) tp else derivedSelect(tp, apply(tp.prefix))
       case _: ThisType | _: BoundType =>
         tp

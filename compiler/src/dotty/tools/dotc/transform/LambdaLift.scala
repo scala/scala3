@@ -16,7 +16,7 @@ import core.NameOps.*
 import core.NameKinds.ExpandPrefixName
 
 import ExplicitOuter.outer
-import util.Store
+import util.{Lst, Store}
 import collection.mutable.{HashMap, LinkedHashMap, ListBuffer}
 
 import scala.compiletime.uninitialized
@@ -60,8 +60,8 @@ object LambdaLift:
 
     def proxyOf(sym: Symbol, fv: Symbol): Symbol = proxyMap.getOrElse(sym, Map.empty)(fv)
 
-    def proxies(sym: Symbol): List[Symbol] =
-      deps.freeVars(sym).toList.map(proxyOf(sym, _))
+    def proxies(sym: Symbol): Lst[Symbol] =
+      deps.freeVars(sym).toLst.map(proxyOf(sym, _))
 
     private def newName(sym: Symbol)(using Context): Name =
       if (sym.isAnonymousFunction && sym.owner.is(Method))
@@ -179,12 +179,12 @@ object LambdaLift:
       thisPhase.transformFollowingDeep(if (psym.owner.isTerm) ref(psym) else memberRef(psym))
     }
 
-    def addFreeArgs(sym: Symbol, args: List[Tree])(using Context): List[Tree] =
+    def addFreeArgs(sym: Symbol, args: Lst[Tree])(using Context): Lst[Tree] =
       val fvs = deps.freeVars(sym)
-      if fvs.nonEmpty then fvs.toList.map(proxyRef(_)) ++ args else args
+      if fvs.nonEmpty then fvs.toLst.map(proxyRef(_)) ++ args else args
 
-    def addFreeParams(tree: Tree, proxies: List[Symbol])(using Context): Tree = proxies match {
-      case Nil => tree
+    def addFreeParams(tree: Tree, proxies: Lst[Symbol])(using Context): Tree = proxies match {
+      case Lst.empty() => tree
       case proxies =>
         val sym = tree.symbol
         val freeParamDefs = proxies.map(proxy =>
@@ -209,7 +209,7 @@ object LambdaLift:
                   if (sym.isPrimaryConstructor && !sym.owner.is(Trait)) copyParams(tree.rhs)
                   else tree.rhs)
           case tree: Template =>
-            cpy.Template(tree)(body = freeParamDefs ++ tree.body)
+            cpy.Template(tree)(body = freeParamDefs.toList ++ tree.body)
         }
     }
 

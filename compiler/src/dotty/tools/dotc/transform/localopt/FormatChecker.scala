@@ -11,14 +11,15 @@ import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.Phases.typerPhase
 import dotty.tools.dotc.reporting.BadFormatInterpolation
+import dotty.tools.dotc.util.Lst
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.chaining.*
 
 /** Formatter string checker. */
-class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List[Tree])(using Context):
+class TypedFormatChecker(partsElems: Lst[Tree], parts: Lst[String], args: Lst[Tree])(using Context):
 
   val argTypes = args.map(_.tpe)
-  val actuals = ListBuffer.empty[Tree]
+  val actuals = Lst.Buffer[Tree]()
 
   // count of args, for checking indexes
   val argc = argTypes.length
@@ -65,9 +66,9 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
    *
    *  Returns normalized part strings and args, where args correspond to conversions in tail of parts.
    */
-  def checked: (List[String], List[Tree]) =
-    val amended = ListBuffer.empty[String]
-    val convert = ListBuffer.empty[Conversion]
+  def checked: (Lst[String], Lst[Tree]) =
+    val amended = Lst.Buffer[String]()
+    val convert = Lst.Buffer[Conversion]()
 
     def checkPart(part: String, n: Int): Unit =
       val matches = formatPattern.findAllMatchIn(part)
@@ -106,20 +107,18 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
         else if !cv.isLiteral && !cv.isIndexed then errorLeading(cv)
     end checkPart
 
-    @tailrec
-    def loop(remaining: List[String], n: Int): Unit = remaining match
-      case part0 :: remaining =>
-        def badPart(t: Throwable): String = "".tap(_ => report.partError(t.getMessage, index = n, offset = 0))
-        val part = try StringContext.processEscapes(part0) catch badPart
-        checkPart(part, n)
-        loop(remaining, n + 1)
-      case Nil =>
+    for n <- 0 until parts.length do
+      val part =
+        try StringContext.processEscapes(parts(n))
+        catch case ex: Throwable =>
+          report.partError(ex.getMessage, index = n, offset = 0)
+          ""
+      checkPart(part, n)
 
-    loop(parts, n = 0)
-    if reported then (Nil, Nil) // on error, Transform.checked will revert to unamended inputs
+    if reported then (Lst(), Lst()) // on error, Transform.checked will revert to unamended inputs
     else
       assert(argc == actuals.size, s"Expected ${argc} args but got ${actuals.size} for [${parts.mkString(", ")}]")
-      (amended.toList, actuals.toList)
+      (amended.toLst, actuals.toLst)
   end checked
 
   extension (descriptor: Match)

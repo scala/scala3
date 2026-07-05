@@ -1040,13 +1040,13 @@ Synthetics => 2 entries
 Symbols:
 endmarkers/Container# => class Container extends Object { self: Container => +5 decls }
 endmarkers/Container#`<init>`(). => primary ctor <init> (): Container
-endmarkers/Container#`baz_=`(). => var method baz_= (param x$1: Int): Unit
+endmarkers/Container#`baz_=`(). => method baz_= (param x$1: Int): Unit
 endmarkers/Container#`baz_=`().(x$1) => param x$1: Int
 endmarkers/Container#bar. => val method bar Tuple3[Int, Int, Int]
 endmarkers/Container#baz(). => var method baz Int
 endmarkers/Container#foo(). => method foo => Tuple3[Int, Int, Int]
 endmarkers/EndMarkers$package. => final package object endmarkers extends Object { self: endmarkers.type => +8 decls }
-endmarkers/EndMarkers$package.`topLevelVar_=`(). => var method topLevelVar_= (param x$1: String): Unit
+endmarkers/EndMarkers$package.`topLevelVar_=`(). => method topLevelVar_= (param x$1: String): Unit
 endmarkers/EndMarkers$package.`topLevelVar_=`().(x$1) => param x$1: String
 endmarkers/EndMarkers$package.given_Stuff_String. => final implicit given object given_Stuff_String extends Object with Stuff[String] { self: given_Stuff_String.type => +2 decls }
 endmarkers/EndMarkers$package.given_Stuff_String.do(). => method do => String <: endmarkers/Stuff#do().
@@ -2910,7 +2910,7 @@ example/Methods#`<init>`(). => primary ctor <init> [typeparam T ](): Methods[T]
 example/Methods#`m8().`(). => method m8(). (): Nothing
 example/Methods#`m9().`# => class m9(). extends Object { self: m9(). => +1 decls }
 example/Methods#`m9().`#`<init>`(). => primary ctor <init> (): m9().
-example/Methods#`m20_=`(). => var method m20_= (param x$1: m17.type): Unit
+example/Methods#`m20_=`(). => method m20_= (param x$1: m17.type): Unit
 example/Methods#`m20_=`().(x$1) => param x$1: m17.type
 example/Methods#m1(). => method m1 => Nothing
 example/Methods#m2(). => method m2 (): Nothing
@@ -4441,11 +4441,11 @@ Synthetics => 17 entries
 Symbols:
 example/ValPattern# => class ValPattern extends Object { self: ValPattern => +12 decls }
 example/ValPattern#`<init>`(). => primary ctor <init> (): ValPattern
-example/ValPattern#`leftVar_=`(). => var method leftVar_= (param x$1: Int): Unit
+example/ValPattern#`leftVar_=`(). => method leftVar_= (param x$1: Int): Unit
 example/ValPattern#`leftVar_=`().(x$1) => param x$1: Int
-example/ValPattern#`number1Var_=`(). => var method number1Var_= (param x$1: Int): Unit
+example/ValPattern#`number1Var_=`(). => method number1Var_= (param x$1: Int): Unit
 example/ValPattern#`number1Var_=`().(x$1) => param x$1: Int
-example/ValPattern#`rightVar_=`(). => var method rightVar_= (param x$1: Int): Unit
+example/ValPattern#`rightVar_=`(). => method rightVar_= (param x$1: Int): Unit
 example/ValPattern#`rightVar_=`().(x$1) => param x$1: Int
 example/ValPattern#app(). => method app (): Unit
 example/ValPattern#left. => val method left Int
@@ -4570,15 +4570,15 @@ example/Vals#`<init>`().(xp) => val param xp: Int
 example/Vals#`<init>`().(yp) => var param yp: Int
 example/Vals#`explicitSetter_=`(). => method explicitSetter_= (param x: Int): Unit
 example/Vals#`explicitSetter_=`().(x) => param x: Int
-example/Vals#`yam_=`(). => var method yam_= (param x$1: Int): Unit
+example/Vals#`yam_=`(). => abstract method yam_= (param x$1: Int): Unit
 example/Vals#`yam_=`().(x$1) => param x$1: Int
-example/Vals#`yfm_=`(). => final var method yfm_= (param x$1: Int): Unit
+example/Vals#`yfm_=`(). => final method yfm_= (param x$1: Int): Unit
 example/Vals#`yfm_=`().(x$1) => param x$1: Int
-example/Vals#`yim_=`(). => var method yim_= (param x$1: Int): Unit
+example/Vals#`yim_=`(). => method yim_= (param x$1: Int): Unit
 example/Vals#`yim_=`().(x$1) => param x$1: Int
-example/Vals#`ym_=`(). => var method ym_= (param x$1: Int): Unit
+example/Vals#`ym_=`(). => method ym_= (param x$1: Int): Unit
 example/Vals#`ym_=`().(x$1) => param x$1: Int
-example/Vals#`yp_=`(). => var method yp_= (param x$1: Int): Unit
+example/Vals#`yp_=`(). => abstract method yp_= (param x$1: Int): Unit
 example/Vals#`yp_=`().(x$1) => param x$1: Int
 example/Vals#explicitSetter(). => method explicitSetter => Int
 example/Vals#m(). => method m => Unit
@@ -5529,7 +5529,7 @@ a/Definitions.D# => class D extends Object { self: D => +1 decls }
 a/Definitions.D#`<init>`(). => primary ctor <init> (): D
 a/Definitions.E# => trait E extends Object { self: E => +1 decls }
 a/Definitions.E#`<init>`(). => primary ctor <init> (): E
-a/Definitions.`b_=`(). => var method b_= (param x$1: Int): Unit
+a/Definitions.`b_=`(). => method b_= (param x$1: Int): Unit
 a/Definitions.`b_=`().(x$1) => param x$1: Int
 a/Definitions.a. => val method a Int
 a/Definitions.b(). => var method b Int
@@ -5566,7 +5566,7 @@ flags/p/package.AA#`<init>`(). => primary ctor <init> (param x: Int, val param y
 flags/p/package.AA#`<init>`().(x) => param x: Int
 flags/p/package.AA#`<init>`().(y) => val param y: Int
 flags/p/package.AA#`<init>`().(z) => var param z: Int
-flags/p/package.AA#`z_=`(). => var method z_= (param x$1: Int): Unit
+flags/p/package.AA#`z_=`(). => abstract method z_= (param x$1: Int): Unit
 flags/p/package.AA#`z_=`().(x$1) => param x$1: Int
 flags/p/package.AA#x. => private[this] val method x Int
 flags/p/package.AA#y. => val method y Int
@@ -5599,7 +5599,7 @@ flags/p/package.Y# => final class Y extends Object { self: Y => +1 decls }
 flags/p/package.Y#`<init>`(). => primary ctor <init> (): Y
 flags/p/package.Z# => sealed trait Z extends Object { self: Z => +1 decls }
 flags/p/package.Z#`<init>`(). => primary ctor <init> (): Z
-flags/p/package.`y_=`(). => protected var method y_= (param x$1: Int): Unit
+flags/p/package.`y_=`(). => protected method y_= (param x$1: Int): Unit
 flags/p/package.`y_=`().(x$1) => param x$1: Int
 flags/p/package.m(). => macro m [typeparam TT ]: Int
 flags/p/package.m().[TT] => typeparam TT 
