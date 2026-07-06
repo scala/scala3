@@ -258,7 +258,7 @@ class CommentExtractorTests:
     val r = extract(src)
     assertEquals(1, r.directiveLines.length)
     val dl = r.directiveLines.head
-    assertEquals(dl.content, "//> using scala 3")
+    assertEquals("//> using scala 3", dl.content)
     assertEquals(2, dl.lineStartOffset)
     assertEquals(0, r.diagnostics.length)
   }
@@ -269,7 +269,7 @@ class CommentExtractorTests:
         |""".stripMargin
     val r = extract(src)
     assertEquals(1, r.directiveLines.length)
-    assertEquals(r.directiveLines.head.content, "//> using scala 3")
+    assertEquals("//> using scala 3", r.directiveLines.head.content)
     assertEquals(0, r.diagnostics.length)
   }
 
@@ -310,7 +310,7 @@ class CommentExtractorTests:
     val src = "//> using scala 3\r\nval x = 1\r\n"
     val r   = extract(src)
     assertEquals(1, r.directiveLines.length)
-    assertEquals(r.directiveLines.head.content, "//> using scala 3\r")
+    assertEquals("//> using scala 3\r", r.directiveLines.head.content)
     assertEquals(19, r.codeOffset) // includes \r\n
   }
 
