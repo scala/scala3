@@ -3831,7 +3831,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedInterpolated(tree: untpd.InterpolatedString, pt: Type, locked: TypeVars)(using Context) =
     val tree1 =
       if tree.id == nme.SPEC then
-        val segments1 = tree.segments.flatMap(processSpecSegment)
+        val segments1 = processSpec(tree.segments)
         if segments1.corresponds(tree.segments)(_ eq _) then tree
         else untpd.cpy.InterpolatedString(tree)(tree.id, segments1)
       else tree
