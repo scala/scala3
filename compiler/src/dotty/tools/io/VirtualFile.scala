@@ -31,8 +31,6 @@ class VirtualFile(override val path: String, initialContents: Array[Byte]) exten
   // For compatibility, until we remove `AbstractFile.jpath`.
   override def jpath: JPath | Null = try java.nio.file.Path.of(path) catch case _: Exception => null
 
-  override def sizeOption: Option[Int] = Some(content.length)
-
   override def toURL: Option[URL] = None
 
   /** Always returns true, even if jpath is a non-existing file. */
