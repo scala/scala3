@@ -22,7 +22,7 @@ import scala.collection.mutable
  *
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
-object ZipArchive {
+private[io] object ZipArchive {
   private[io] val closeZipFile: Boolean = sys.props.get("scala.classpath.closeZip").exists(_.toBoolean)
 
   private def dirName(path: String)  = splitPath(path, front = true)
@@ -42,7 +42,7 @@ object ZipArchive {
 }
 import ZipArchive.*
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with Equals {
+private[io] abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with Equals {
   self =>
 
   override def isDirectory: Boolean = true
@@ -53,7 +53,7 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
   sealed abstract class Entry(path: String, parent: Entry | Null) extends VirtualFile(path, Array.emptyByteArray) {
     // have to keep this name for compat with sbt's compiler-interface
     def getArchive: ZipFile | Null = null
-    def underlyingSource: ZipArchive = self
+    override def enclosing: Option[AbstractFile] = Some(self)
     override def container: Option[AbstractFile] = Option(parent)
     override def toString: String = self.path + "(" + path + ")"
   }
@@ -96,14 +96,12 @@ abstract class ZipArchive(override val jpath: JPath) extends AbstractFile with E
   def close(): Unit
 }
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
-final class FileZipArchive(jpath: JPath, release: Option[String] = None) extends ZipArchive(jpath) {
+private[io] final class FileZipArchive(jpath: JPath, release: String) extends ZipArchive(jpath) {
   private def openZipFile(): ZipFile = try {
-    release match {
-      case Some(r) if file.nn.getName.endsWith(".jar") =>
-        new JarFile(file, true, ZipFile.OPEN_READ, if r == "" then Runtime.version() else Runtime.Version.parse(r))
-      case _ =>
-        new ZipFile(file)
-    }
+    if file.nn.getName.endsWith(".jar") then
+      new JarFile(file, true, ZipFile.OPEN_READ, if release == "" then Runtime.version() else Runtime.Version.parse(release))
+    else
+      new ZipFile(file)
   } catch {
     case ioe: IOException => throw new IOException("Error accessing " + file.nn.getPath, ioe)
   }
@@ -150,7 +148,7 @@ final class FileZipArchive(jpath: JPath, release: Option[String] = None) extends
       while (entries.hasMoreElements) {
         val zipEntry = entries.nextElement
         if (!zipEntry.getName.startsWith("META-INF/versions/")) {
-          val zipEntryVersioned = if (release.isDefined) {
+          val zipEntryVersioned = if (release != "") {
             // JARFile will return the entry for the corresponding release-dependent version here under META-INF/versions
             zipFile.getEntry(zipEntry.getName)
           } else zipEntry

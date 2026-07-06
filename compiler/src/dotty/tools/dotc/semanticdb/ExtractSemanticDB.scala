@@ -24,7 +24,7 @@ import scala.PartialFunction.condOpt
 import typer.ImportInfo.withRootImports
 
 import dotty.tools.dotc.{semanticdb => s}
-import dotty.tools.io.{AbstractFile, JarArchive}
+import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.semanticdb.DiagnosticOps.*
 import scala.util.{Using, Failure, Success}
 import java.nio.file.Path
@@ -53,7 +53,7 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
 
   override def isRunnable(using Context) =
     import ExtractSemanticDB.{semanticdbTarget, outputDirectory}
-    def writesToOutputJar = semanticdbTarget.isEmpty && outputDirectory.isInstanceOf[JarArchive]
+    def writesToOutputJar = semanticdbTarget.isEmpty && outputDirectory.ext.isJar
     (super.isRunnable || ctx.isBestEffort) && ctx.settings.Xsemanticdb.value && !writesToOutputJar
 
   // Check not needed since it does not transform trees
