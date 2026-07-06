@@ -6,5 +6,5 @@ enum DiagnosticSeverity:
 case class UsingDirectiveDiagnostic(
   message: String,
   severity: DiagnosticSeverity,
-  position: Option[Position] = None
+  position: Position
 )

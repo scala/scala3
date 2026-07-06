@@ -160,7 +160,7 @@ Two accessors reconstruct the text:
 
 ## Diagnostics
 
-Diagnostics are returned as `UsingDirectiveDiagnostic(message, severity, position?)`.
+Diagnostics are returned as `UsingDirectiveDiagnostic(message, severity, position)`.
 
 | Severity    | When                                                                   |
 |-------------|------------------------------------------------------------------------|
