@@ -1,8 +1,7 @@
-import scala.annotation.tailrec
 type |@[F[+_], G[+_]] = [a] =>> F[a] | G[a]
 
-object Fix: // error
-  opaque type T[+F[+_]] = ApplyFix.T[F]
+object Fix: // error Cyclic reference involving type T
+  opaque type T[+F[+_]] = ApplyFix.T[F] // error
 
   def apply[F[+_]](f: F[Fix[F]]): T[F] = ApplyFix(f) // error // error
 
