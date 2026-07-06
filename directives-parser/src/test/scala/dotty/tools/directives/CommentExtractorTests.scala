@@ -295,9 +295,20 @@ class CommentExtractorTests:
     assertEquals(19, r.codeOffset)
   }
 
-  @Test def tab_after_emits_a_warning(): Unit = {
+  @Test def tab_after_is_accepted(): Unit = {
     val src =
       """//>	using scala 3
+        |val x = 1
+        |""".stripMargin
+    val r = extract(src)
+    assertEquals(1, r.directiveLines.length)
+    assertEquals(0, r.directiveLines.head.lineNum)
+    assertEquals(18, r.codeOffset)
+  }
+
+  @Test def nbsp_after_is_accepted(): Unit = {
+    val src =
+      """//> using scala 3
         |val x = 1
         |""".stripMargin
     val r = extract(src)

@@ -110,7 +110,7 @@ object CommentExtractor:
         if offset < length && content(offset) == '\n' then offset += 1
         lineNum += 1
       else if trimmed.startsWith("//>") then
-        val withoutLeading = trimmed.drop(3).dropWhile(c => c == ' ' || c == '\t')
+        val withoutLeading = trimmed.drop(3).dropWhile(c => Character.isWhitespace(c) || Character.isSpaceChar(c))
         if withoutLeading.startsWith("using") then
           val adjustedOffset = lineStart + lineContent.indexOf("//>") + bomOffset
           // Normalize the result to have exactly one space.
