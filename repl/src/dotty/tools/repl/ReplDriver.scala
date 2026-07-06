@@ -116,8 +116,16 @@ class ReplDriver(settings: Array[String],
       case Some((files, ictx)) => inContext(ictx) {
         shouldStart = true
         if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
-        ictx.base.initialize()
-        ictx
+        val finalCtx =
+          // If the user hasn't configured warnings, enable -deprecation and -feature by default
+          if !ctx.settings.Wconf.wasSetByUser && !ctx.settings.Wall.wasSetByUser then
+            val c = ictx.fresh
+            if !ctx.settings.deprecation.wasSetByUser then c.setSetting(c.settings.deprecation, true)
+            if !ctx.settings.feature.wasSetByUser then c.setSetting(c.settings.feature, true)
+            c
+          else ictx
+        finalCtx.base.initialize()
+        finalCtx
       }
       case None =>
         shouldStart = false
