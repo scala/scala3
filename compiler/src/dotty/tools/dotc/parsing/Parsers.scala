@@ -190,10 +190,12 @@ object Parsers {
         }
     }
   }
+  /** Parse given interval in the sourcefile, or the whole source file if the
+   *  interval is not defined.
+   */
+  class Parser(source: SourceFile, startFrom: Offset = 0, limit: Offset = -1)(using Context) extends ParserCommon(source) {
 
-  class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
-
-    val in: Scanner = new Scanner(source, profile = Profile.current)
+    val in: Scanner = new Scanner(source, startFrom, limit, profile = Profile.current)
     // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
 
     /** This is the general parse entry point.
@@ -1501,7 +1503,7 @@ object Parsers {
                 patch(source, Span(in.charOffset - 1), "\")")
             atSpan(in.skipToken()) { SymbolLit(in.strVal.nn) }
         else if in.token == INTERPOLATIONID then
-          interpolatedString(inPattern, in.name.nn == nme.SPEC)
+          interpolatedString(inPattern)
         else {
           val t = literalOf(in.token)
           in.nextToken()
@@ -1512,7 +1514,7 @@ object Parsers {
 
     private val interpolatorsFromAny = Set(nme.toString_, nme.hashCode_, nme.getClass_, nme.synchronized_, nme.eq, nme.ne)
 
-    private def interpolatedString(inPattern: Boolean, isSpec: Boolean): Tree = atSpan(in.offset) {
+    private def interpolatedString(inPattern: Boolean): Tree = atSpan(in.offset) {
       val segmentBuf = new ArrayBuffer[Tree]
       val interpolator = in.name.nn
       val startOffset = in.charOffset
@@ -1552,7 +1554,8 @@ object Parsers {
         segmentBuf += literal(in.offset + offsetCorrection, inPattern = inPattern, inStringInterpolation = true)
         if dedentWidth != null then
           for i <- 0 until segmentBuf.length do
-            segmentBuf(i) = trim(segmentBuf(i), dedentWidth, isFirst = i == 0, isLast = i == segmentBuf.length - 1, isSpec)
+            segmentBuf(i) = trim(segmentBuf(i), dedentWidth,
+              isFirst = i == 0, isLast = i == segmentBuf.length - 1, isSpec = interpolator == nme.SPEC)
 
       if interpolatorsFromAny(interpolator) then
         report.warning(UseOfAnyMethodAsInterpolator(interpolator), source.atSpan(Span(startOffset, in.charOffset)))
@@ -1586,9 +1589,8 @@ object Parsers {
       /** Trim the start of a '''-literal, up to and including the first \n.
        *  This must be all whitespace.
        */
-      private def trimStart(cs: Array[Char], strOffset: Int, isSpec: Boolean): List[Cut] =
+      private def trimStart(cs: Array[Char], strOffset: Int): List[Cut] =
         var i = 0
-        if isSpec then i += "spec".length
         while i < cs.length && isWhitespace(cs(i)) do i += 1
         if i < cs.length && cs(i) == Chars.LF then
           Cut(0, i + 1) :: Nil
@@ -1637,8 +1639,8 @@ object Parsers {
         in.indentWidth(cs.length, cs)
 
       private def trimAll(cs: Array[Char], width: IndentWidth, strOffset: Int,
-                          isFirst: Boolean, isLast: Boolean, isSpec: Boolean): String =
-        val startCuts = if isFirst then trimStart(cs, strOffset, isSpec) else Nil
+                          isFirst: Boolean, isLast: Boolean): String =
+        val startCuts = if isFirst then trimStart(cs, strOffset) else Nil
         var leftCuts = trimLeft(cs, width, strOffset)
         if isLast then
           leftCuts = leftCuts.dropRight(1) // last trimLeft overlaps with trimEnd
@@ -1650,14 +1652,21 @@ object Parsers {
        */
       def apply(str: String, strOffset: Int): String =
         val cs = str.toCharArray()
-        trimAll(cs, lastIndent(cs), strOffset, isFirst = true, isLast = true, isSpec = false)
+        trimAll(cs, lastIndent(cs), strOffset, isFirst = true, isLast = true)
 
       /** Trim part of '''-enclosed interpolated string literal */
       def apply(tree: Tree, width: IndentWidth, isFirst: Boolean, isLast: Boolean, isSpec: Boolean): Tree = tree match
         case Thicket(lit :: rest) =>
           Thicket(apply(lit, width, isFirst, isLast, isSpec) :: rest)
         case Literal(Constant(str: String)) =>
-          val trimmed = trimAll(str.toCharArray, width, tree.span.start, isFirst, isLast, isSpec)
+          val trimmed =
+            if isSpec then
+              if isFirst then
+                // just replace the leading "spec" with spaces, keeping positions unchanged
+                str.patch(0, "    ", 4)
+              else str
+            else
+              trimAll(str.toCharArray, width, tree.span.start, isFirst, isLast)
           cpy.Literal(tree)(Constant(trimmed))
     }
 
