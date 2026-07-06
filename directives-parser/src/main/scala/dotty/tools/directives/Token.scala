@@ -16,9 +16,6 @@ enum Token:
   /** Boolean literal `true` or `false`. */
   case BoolLit(value: Boolean, pos: Position)
 
-  /** Dot separator in dotted keys. */
-  case Dot(pos: Position)
-
   /** Comma – accepted as a deprecated value separator. */
   case Comma(pos: Position)
 

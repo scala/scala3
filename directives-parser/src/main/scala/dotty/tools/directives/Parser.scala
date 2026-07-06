@@ -16,18 +16,6 @@ import scala.annotation.tailrec
   */
 object Parser:
 
-  private def tokenKindName(t: Token): String =
-    t match
-      case _: Token.Using     => "Using"
-      case _: Token.Ident     => "Ident"
-      case _: Token.StringLit => "StringLit"
-      case _: Token.BoolLit   => "BoolLit"
-      case _: Token.Dot       => "Dot"
-      case _: Token.Comma     => "Comma"
-      case _: Token.Newline   => "Newline"
-      case _: Token.Eof       => "Eof"
-      case _: Token.LexError  => "LexError"
-
   def parse(tokens: Seq[Token]): (Seq[UsingDirective], Seq[UsingDirectiveDiagnostic]) =
     val diagnostics = scala.collection.mutable.ArrayBuffer.empty[UsingDirectiveDiagnostic]
     val directives  = scala.collection.mutable.ArrayBuffer.empty[UsingDirective]
@@ -102,10 +90,6 @@ object Parser:
             error(s"Lexer error: $msg", p)
             advance()
             loop()
-          case t =>
-            error(s"Unexpected token in directive values: ${tokenKindName(t)}", t.pos)
-            skipToNewline()
-            values.toSeq
 
       loop()
 
@@ -149,7 +133,7 @@ object Parser:
               parseDirectives()
 
             case t =>
-              error(s"Expected a key after `using`, found: ${tokenKindName(t)}", t.pos)
+              error(s"Expected a key after `using`, found: ${t.productPrefix}", t.pos)
               skipToNewline()
               parseDirectives()
 
@@ -159,7 +143,7 @@ object Parser:
           parseDirectives()
 
         case t =>
-          error(s"Unexpected token: ${tokenKindName(t)}", t.pos)
+          error(s"Unexpected token: ${t.productPrefix}", t.pos)
           skipToNewline()
           parseDirectives()
 
