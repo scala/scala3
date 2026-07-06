@@ -53,7 +53,11 @@ abstract class BasePcDefinitionSuite extends BasePCSuite:
         )
       else
         val filename = location.getUri()
-        val comment = s"/*$filename*/"
+        // relativize jar files (reported as `jar:file:/absolute/cache/path.jar!/entry/path`)
+        val relativized = filename.lastIndexOf("!/") match
+          case -1 => filename
+          case idx => filename.substring(idx + 2)
+        val comment = s"/*$relativized*/"
         List(new TextEdit(offsetRange, comment))
     }
     val obtained = TextEdits.applyEdits(cleanedCode, edits)
