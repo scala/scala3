@@ -137,11 +137,7 @@ object FileWriters {
   object FileWriter {
     def apply(file: AbstractFile, jarManifest: Seq[(Attributes.Name, String)], jarCompressionLevel: Int = Deflater.DEFAULT_COMPRESSION): FileWriter = file match
       case jar: JarArchive =>
-        // Writing to non-empty JAR might be an undefined behaviour, e.g. in case if other files where
-        // created using `AbstractFile.bufferedOutputStream` instead of JarWriter
-        val jarFile = jar.underlyingSource.getOrElse {
-          throw new IllegalStateException("No underlying source for jar")
-        }
+        val jarFile = jar.underlyingSource
         assert(jar.iterator.isEmpty, s"Unsafe writing to non-empty JAR: $jarFile")
         new JarEntryWriter(jarFile, jarManifest, jarCompressionLevel)
       case _ if file.isVirtual => new VirtualFileWriter(file)

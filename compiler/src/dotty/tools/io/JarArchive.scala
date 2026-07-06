@@ -9,34 +9,13 @@ import scala.jdk.CollectionConverters.*
  * This class implements an [[AbstractFile]] backed by a jar
  * that be can used as the compiler's output directory.
  */
-class JarArchive private (val jarPath: Path, root: Directory) extends PlainDirectory(root) {
+class JarArchive private (val jarPath: Path, root: Directory, path: Path) extends PlainDirectory(root) {
   def close(): Unit = this.synchronized(jpath.getFileSystem().close())
 
   override def exists: Boolean = jpath.getFileSystem().isOpen() && super.exists
 
-  def underlyingSource: Option[AbstractFile] = {
-    val fileSystem = jpath.getFileSystem
-    fileSystem.provider().getScheme match {
-      case "jar" =>
-        val fileStores = fileSystem.getFileStores.iterator()
-        if (fileStores.hasNext) {
-          val jarPath = fileStores.next().name
-          try {
-            Some(new PlainFile(new Path(Paths.get(jarPath.stripSuffix(fileSystem.getSeparator)))))
-          } catch {
-            case _: InvalidPathException =>
-              None
-          }
-        } else None
-      case "jrt" =>
-        if (jpath.getNameCount > 2 && jpath.startsWith("/modules")) {
-          // TODO limit this to OpenJDK based JVMs?
-          val moduleName = jpath.getName(1)
-          Some(new PlainFile(new Path(Paths.get(System.getProperty("java.home"), "jmods", moduleName.toString + ".jmod"))))
-        } else None
-      case _ => None
-    }
-  }
+  def underlyingSource: AbstractFile =
+    new PlainFile(path)
 
   override def toString: String = jarPath.toString
 }
@@ -64,7 +43,7 @@ object JarArchive {
       }
     }
     val root = fs.getRootDirectories().iterator.next()
-    new JarArchive(path, Directory(root))
+    new JarArchive(path, Directory(root), path)
   }
 
   // See http://download.java.net/jdk7/docs/api/java/nio/file/Path.html
