@@ -5541,23 +5541,18 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     /** Extension methods of `SourceFile`. */
     trait SourceFileMethods {
       extension (self: SourceFile)
-        /** Path to this source file. May be `null` for virtual files such as in the REPL. */
-        @deprecated("Use getJPath, name, or path instead of jpath", "3.0.2")
+        /** Path to this source file. May be `null` for virtual files such as in an IDE or in the REPL. */
+        @deprecated("This will return `null` for files that are not on disk, such as in an IDE or in the REPL.", "3.9.0")
         def jpath: java.nio.file.Path
 
-        /** Path to this source file. May be `None` for virtual files such as in the REPL. */
+        /** Path to this source file. May be `None` for virtual files such as in an IDE or in the REPL. */
+        @deprecated("This will return `None` for files that are not on disk, such as in an IDE or in the REPL.", "3.9.0")
         def getJPath: Option[java.nio.file.Path]
 
         /** Name of the source file. */
         def name: String
 
-        /** Path of the source file.
-         *
-         *  It does not necessarily point to a path in the filesystem, it could be the path of a virtual file.
-         *  Use `getJPath` to get paths to the filesystem.
-         *
-         *  @return the path string of this source file
-         */
+        /** Path of the source file, if the file exists on disk. Otherwise, the path will be for a virtual file. */
         def path: String
 
         /** Content of this source file. */

@@ -64,6 +64,7 @@ object SymOps:
       }
       else None
 
+    @scala.annotation.nowarn
     def source =
       val path = sym.pos.flatMap(_.sourceFile.getJPath).map(_.toAbsolutePath)
       path.map(TastyMemberSource(_, sym.pos.get.startLine))
