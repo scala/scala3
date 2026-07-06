@@ -233,8 +233,8 @@ class CommentExtractorTests:
         |""".stripMargin
     val r = extract(src)
     val w = r.diagnostics.head
-    assertEquals(Some(1), w.position.map(_.line))
-    assertEquals(Some(10), w.position.map(_.offset))
+    assertEquals(1, w.position.line)
+    assertEquals(10, w.position.offset)
   }
 
   @Test def mix_of_valid_directives_and_post_code_directives(): Unit = {

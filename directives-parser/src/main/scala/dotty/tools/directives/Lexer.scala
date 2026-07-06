@@ -137,36 +137,8 @@ object Lexer:
             case "true"  => buf += Token.BoolLit(true, pos(startCol))
             case "false" => buf += Token.BoolLit(false, pos(startCol))
             case _       =>
-              // Check if this looks like a dotted key segment (may have internal dots)
-              // We emit Dot tokens for '.' characters between identifiers in key position;
-              // the Parser handles the distinction between key and value contexts.
-              // For simplicity, emit the whole bare token as Ident — the Parser splits on dots.
+              // Bare tokens (including dotted keys like `test.dep`) are emitted as a single Ident.
               buf += Token.Ident(text, pos(startCol))
 
     buf += Token.Newline(pos(length))
     buf.toSeq
-
-  /** Tokenize a directive line and split dotted key parts into separate Ident + Dot tokens.
-    *
-    * This is used by the [[Parser]] to handle keys like `test.dep` where each segment is a separate
-    * Ident token joined by Dot tokens, while keeping values (which may contain `.`) as single Ident
-    * tokens.
-    *
-    * This method re-tokenizes an Ident that appears immediately after `using` (or after another
-    * Ident+Dot sequence) into its dotted components.
-    */
-  def splitDottedIdent(ident: String, startPos: Position): Seq[Token] =
-    val parts = ident.split('.').toSeq
-    if parts.length <= 1 then Seq(Token.Ident(ident, startPos))
-    else
-      val buf    = scala.collection.mutable.ArrayBuffer.empty[Token]
-      var offset = 0
-      parts.zipWithIndex.foreach: (part, i) =>
-        val partPos = Position(startPos.line, startPos.column + offset, startPos.offset + offset)
-        buf += Token.Ident(part, partPos)
-        offset += part.length
-        if i < parts.length - 1 then
-          buf +=
-            Token.Dot(Position(startPos.line, startPos.column + offset, startPos.offset + offset))
-          offset += 1
-      buf.toSeq

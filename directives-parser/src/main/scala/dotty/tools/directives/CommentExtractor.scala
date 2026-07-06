@@ -126,7 +126,7 @@ object CommentExtractor:
           if offset < length && content(offset) == '\n' then offset += 1
           lineNum += 1
         else if UsingDirectiveRegex.findFirstIn(withoutLeading).isDefined then
-          val linePos = Some(Position(lineNum, leadingLen, lineStart + leadingLen + bomOffset))
+          val linePos = Position(lineNum, leadingLen, lineStart + leadingLen + bomOffset)
           val msg     =
             s"Using directive must use the exact prefix `//> using`. Invalid prefix in: ${withoutLeading.trim}"
           diagnostics += UsingDirectiveDiagnostic(msg, DiagnosticSeverity.Warning, linePos)
@@ -163,7 +163,7 @@ object CommentExtractor:
           if offset < length && content(offset) == '\n' then offset += 1
           ln += 1
         else
-          val linePos = Some(Position(ln, 0, lineStart + bomOffset))
+          val linePos = Position(ln, 0, lineStart + bomOffset)
           if trimmed.startsWith("//> using") then
             val msg = s"Ignoring using directive found after Scala code: ${trimmed.trim}"
             diagnostics += UsingDirectiveDiagnostic(msg, DiagnosticSeverity.Warning, linePos)
