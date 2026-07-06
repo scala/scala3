@@ -52,10 +52,10 @@ object Parser:
         case _                => ()
 
     def error(msg: String, p: Position): Unit =
-      diagnostics += UsingDirectiveDiagnostic(msg, DiagnosticSeverity.Error, Some(p))
+      diagnostics += UsingDirectiveDiagnostic(msg, DiagnosticSeverity.Error, p)
 
     def warn(msg: String, p: Position): Unit =
-      diagnostics += UsingDirectiveDiagnostic(msg, DiagnosticSeverity.Warning, Some(p))
+      diagnostics += UsingDirectiveDiagnostic(msg, DiagnosticSeverity.Warning, p)
 
     def parseValues(): Seq[DirectiveValue] =
       val values = scala.collection.mutable.ArrayBuffer.empty[DirectiveValue]
