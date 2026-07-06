@@ -3401,9 +3401,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given SourceFileMethods: SourceFileMethods with
       extension (self: SourceFile)
-        @deprecated("This may return `null` for files that are not on disk, such as in an IDE or in the REPL, and will be removed in a future version.", "3.9.0")
+        @deprecated("This will return `null` for files that are not on disk, such as in an IDE or in the REPL.", "3.9.0")
         def jpath: java.nio.file.Path = self.file.jpath.asInstanceOf[java.nio.file.Path]
-        @deprecated("This may return `None` for files that are not on disk, such as in an IDE or in the REPL, and will be removed in a future version.", "3.9.0")
+        @deprecated("This will return `None` for files that are not on disk, such as in an IDE or in the REPL.", "3.9.0")
         def getJPath: Option[java.nio.file.Path] = Option(self.file.jpath)
         def name: String = self.name
         def path: String = self.path

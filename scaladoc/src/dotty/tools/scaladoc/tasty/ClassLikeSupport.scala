@@ -308,12 +308,12 @@ trait ClassLikeSupport:
         (tree, symbol) => LinkToType(tree.asSignature(c, c.symbol, skipThisTypePrefix = true), symbol.dri, bareClasslikeKind(symbol))
       }
 
+    @scala.annotation.nowarn
     def getParentsAsTreeSymbolTuples: List[(Tree, Symbol)] =
-      def isOnDisk(p: String): Boolean = try { java.nio.file.Path.of(p); true } catch case _ => false
       if noPosClassDefs.contains(c.symbol) then Nil
       else for
-        // TODO: add exists function to position methods in Quotes and replace the condition here for checking the path
-        parentTree <- c.parents if isOnDisk(parentTree.pos.sourceFile.path) && parentTree.pos.start != parentTree.pos.end // We assume here that order is correct
+        // TODO: add exists function to position methods in Quotes and replace the condition here for checking the JPath
+        parentTree <- c.parents if parentTree.pos.sourceFile.getJPath.isDefined && parentTree.pos.start != parentTree.pos.end // We assume here that order is correct
         parentSymbol = parentTree match
           case t: TypeTree => t.tpe.typeSymbol
           case tree if tree.symbol.isClassConstructor => tree.symbol.owner
