@@ -25,3 +25,5 @@
 *.png     binary
 *.class   binary
 *.jar     binary
+
+*.mill linguist-language=Scala

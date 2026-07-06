@@ -1,0 +1,34 @@
+package build.staging
+
+import scala3build.*
+
+import mill.*
+
+trait Staging extends CrossScala3Module:
+  def moduleDeps = Seq(
+    build.compiler()
+  )
+
+  def testResources = Task.Sources("test-resources")
+
+  object test extends Scala3Tests:
+    def moduleDeps = super.moduleDeps ++ Seq(
+      // not sure why, the sbt build only has a dependency on the compiler tests here
+      // but depending on the repl tests is required for compilation for us
+      build.repl().test
+    )
+    def resources = super.resources() ++ testResources()
+
+    def forkArgs: T[Seq[String]] = Task {
+      super.forkArgs() ++
+        build.compiler().test.compilerTestForkArgs() ++
+        build.repl().test.replTestForkArgs()
+    }
+
+    def testArgsDefault = Task {
+      val bootstrapOnlyArgs = if (mode == Mode.NonBootstrapped) Seq("--exclude-categories=dotty.BootstrappedOnlyTests") else Nil
+      super.testArgsDefault() ++ bootstrapOnlyArgs
+    }
+
+object `package` extends Staging, CrossHelper[Staging]:
+  object `non-bootstrapped` extends Staging, CrossHelper.NonBootstrapped

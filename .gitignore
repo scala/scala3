@@ -20,6 +20,9 @@ project/local-plugins.sbt
 .sbt-scripted/
 local.sbt
 
+# Mill specific
+out/
+
 # npm
 node_modules
 
@@ -54,7 +57,7 @@ tests/locks/
 bench/tests-generated
 
 # Ignore output files but keep the directory
-out/
+output/
 build/
 !out/.keep
 testlogs/

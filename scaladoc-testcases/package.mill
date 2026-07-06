@@ -1,0 +1,25 @@
+package build.`scaladoc-testcases`
+
+import scala3build.*
+
+import mill.*
+
+trait ScaladocTestcases extends CrossScala3Module, mill.scala3buildhelper.CompileClassesPathHelper:
+  def moduleDeps = Seq(
+    build.compiler()
+  )
+  def mainSources = Task.Source("src")
+  def sources = Task {
+    val baseSources = super.sources()
+    assert(baseSources.exists(_.path == mainSources().path))
+    baseSources
+  }
+
+object `package` extends ScaladocTestcases, CrossHelper[ScaladocTestcases]:
+  object `non-bootstrapped` extends ScaladocTestcases, CrossHelper.NonBootstrapped {
+    def allSourceFiles = Task {
+      super.allSourceFiles().filter { ref =>
+        !os.read(ref.path).contains("initially")
+      }
+    }
+  }
