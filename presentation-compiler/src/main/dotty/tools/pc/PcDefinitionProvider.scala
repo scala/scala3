@@ -156,14 +156,14 @@ class PcDefinitionProvider(
       else
         val file = symbol.associatedFile
         if file != null then
-          file.underlyingSource match
-            case Some(jar: ZipArchive) if jar.jpath != null =>
+          file match
+            case entry: ZipArchive#Entry =>
               val classFile =
                 if file.ext.isTasty then file.resolveSiblingWithExtension(FileExtension.Class)
                 else file
               if classFile != null then
                 List(new Location(
-                  s"jar:${jar.jpath.toUri}!/${classFile.path}",
+                  s"jar:${entry.underlyingSource.jpath.toUri}!/${classFile.path}",
                   new Range(new Position(0, 0), new Position(0, 0))
                 ))
               else Nil
