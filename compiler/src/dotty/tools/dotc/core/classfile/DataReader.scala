@@ -3,57 +3,56 @@ package dotc
 package core
 package classfile
 
-trait DataReader {
+import java.io.{DataInputStream, InputStream}
+import java.nio.ByteBuffer
 
-  def bp: Int
-  def bp_=(i: Int): Unit
+final class DataReader(file: dotty.tools.io.AbstractFile) {
+  private val bb: ByteBuffer = ByteBuffer.wrap(file.toByteArray)
+  private val reader: DataInputStream = {
+    val stream = new InputStream {
+      override def read(): Int =
+        bb.get & 0xff
+      override def read(b: Array[Byte], off: Int, len: Int): Int =
+        bb.get(b, off, len)
+        len // ByteBuffer will throw if `len` bytes are not available
+    }
+    new DataInputStream(stream)
+  }
 
-  /** read a byte
-    */
-  @throws(classOf[IndexOutOfBoundsException])
-  def nextByte: Byte
+  def nextByte: Byte = bb.get
 
-  /** read some bytes
-    */
-  def nextBytes(len: Int): Array[Byte]
+  def nextBytes(len: Int): Array[Byte] = {
+    val result = new Array[Byte](len)
+    bb.get(result, 0, result.length)
+    result
+  }
 
-  /** read a character
-    */
-  def nextChar: Char
+  def nextChar: Char = bb.getChar()
+  def nextInt: Int = bb.getInt()
 
-  /** read an integer
-    */
-  def nextInt: Int
+  def getChar(mybp: Int): Char = bb.getChar(mybp)
+  def getInt(mybp: Int): Int = bb.getInt(mybp)
+  def getLong(mybp: Int): Long = bb.getLong(mybp)
+  def getFloat(mybp: Int): Float = bb.getFloat(mybp)
+  def getDouble(mybp: Int): Double = bb.getDouble(mybp)
 
-  /** extract a character at position bp from buf
-    */
-  def getChar(mybp: Int): Char
+  def skip(n: Int): Unit = bb.position(bb.position() + n)
 
-  /** extract an integer at position bp from buf
-    */
-  def getByte(mybp: Int): Byte
+  def bp: Int = bb.position()
+  def bp_=(i: Int): Unit = bb.position(i)
 
-  def getBytes(mybp: Int, bytes: Array[Byte]): Unit
+  def getByte(mybp: Int): Byte = bb.get(mybp)
+  def getBytes(mybp: Int, bytes: Array[Byte]): Unit = bb.get(mybp, bytes, 0, bytes.length)
 
-  /** extract an integer at position bp from buf
-    */
-  def getInt(mybp: Int): Int
-
-  /** extract a long integer at position bp from buf
-    */
-  def getLong(mybp: Int): Long
-
-  /** extract a float at position bp from buf
-    */
-  def getFloat(mybp: Int): Float
-
-  /** extract a double at position bp from buf
-    */
-  def getDouble(mybp: Int): Double
-
-  def getUTF(mybp: Int, len: Int): String
-
-  /** skip next 'n' bytes
-    */
-  def skip(n: Int): Unit
+  def getUTF(mybp: Int, len: Int): String = {
+    val saved = bb.position()
+    val savedLimit = bb.limit()
+    bb.position(mybp)
+    bb.limit(mybp + len)
+    try reader.readUTF()
+    finally {
+      bb.limit(savedLimit)
+      bb.position(saved)
+    }
+  }
 }
