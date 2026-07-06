@@ -42,7 +42,7 @@ object ScaladocSupport:
     parser.parse(preparsed)
 
   def parseComment(using Quotes, DocContext)(docstring: String, tree: reflect.Tree): Option[Comment] =
-    val commentString: String =
+    val (commentString: String, commentOwner: reflect.Symbol) =
       if tree.symbol.isClassDef || tree.symbol.owner.isClassDef then
         import dotty.tools.dotc
         import dotty.tools.dotc.core.Comments.docCtx
@@ -52,9 +52,18 @@ object ScaladocSupport:
 
         val sym = tree.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
 
-        docCtx.templateExpander.expand(sym, sym.owner)
+        /** A member without a docstring of its own inherits the comment of the nearest overridden symbol that has one.
+         *  @see [[dotty.tools.dotc.core.Comments.CommentExpander CommentExpander.superComment]]
+         */
+        def hasDocstring(s: dotc.core.Symbols.Symbol) = docCtx.docstring(s).exists(_.raw.nonEmpty)
+
+        val commentSym =
+          if hasDocstring(sym) || !sym.denot.owner.isClass then sym
+          else sym.denot.allOverriddenSymbols.find(hasDocstring).getOrElse(sym)
+
+        (docCtx.templateExpander.expand(sym, sym.owner), commentSym.asInstanceOf[reflect.Symbol])
       else
-        docstring
+        (docstring, tree.symbol)
     if commentString == ""
     then None
-    else Some(parseCommentString(commentString, tree.symbol, Some(tree.pos)))
+    else Some(parseCommentString(commentString, commentOwner, Some(tree.pos)))
