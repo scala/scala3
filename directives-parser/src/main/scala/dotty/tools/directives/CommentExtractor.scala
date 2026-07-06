@@ -19,19 +19,12 @@ case class ExtractorResult(
 
 /** Phase 1: scans a source file and extracts `//> using` directive lines.
   *
-  * Rules:
-  *   - Lines beginning with `#!` (shebang) are allowed only as the very first line.
-  *   - Blank lines are allowed anywhere in the directive region.
-  *   - Line comments (`//` not `//> `) are allowed and skipped.
-  *   - Block comments (`/* ... */`, including multi-line) are allowed and skipped.
-  *   - The first line that is none of the above marks the start of code (`codeOffset`).
-  *   - Any `//> using` lines that appear after `codeOffset` are NOT included in the result, but a
-  *     warning diagnostic is emitted for each one.
-  *   - Directives inside block comments are NOT parsed.
+  * The accepted syntax is specified in the module README, which is the single source of truth.
+  * However, the result of extraction always has exactly one space between `//>` and `using`
   */
 object CommentExtractor:
 
-  private val UsingDirectiveRegex = """^//>\s+using(?:\s|$)""".r
+  private val UsingDirectiveRegex = """^//>\s*using(?:\s|$)""".r
 
   def extract(rawContent: IndexedSeq[Char]): ExtractorResult =
     val content =
@@ -117,23 +110,14 @@ object CommentExtractor:
         if offset < length && content(offset) == '\n' then offset += 1
         lineNum += 1
       else if trimmed.startsWith("//>") then
-        val withoutLeading = lineContent.dropWhile(c => c == ' ' || c == '\t')
-        val leadingLen     = lineContent.length - withoutLeading.length
-        if withoutLeading.startsWith("//> using") then
-          val adjustedOffset = lineStart + leadingLen + bomOffset
-          directives += DirectiveLine(withoutLeading, lineNum, adjustedOffset)
+        val withoutLeading = trimmed.drop(3).dropWhile(c => Character.isWhitespace(c) || Character.isSpaceChar(c))
+        if withoutLeading.startsWith("using") then
+          val adjustedOffset = lineStart + lineContent.indexOf("//>") + bomOffset
+          // Normalize the result to have exactly one space.
+          directives += DirectiveLine("//> " + withoutLeading, lineNum, adjustedOffset)
           offset = lineStart + lineContent.length
           if offset < length && content(offset) == '\n' then offset += 1
           lineNum += 1
-        else if UsingDirectiveRegex.findFirstIn(withoutLeading).isDefined then
-          val linePos = Position(lineNum, leadingLen, lineStart + leadingLen + bomOffset)
-          val msg     =
-            s"Using directive must use the exact prefix `//> using`. Invalid prefix in: ${withoutLeading.trim}"
-          diagnostics += UsingDirectiveDiagnostic(msg, DiagnosticSeverity.Warning, linePos)
-          offset = lineStart + lineContent.length
-          if offset < length && content(offset) == '\n' then offset += 1
-          lineNum += 1
-          codeStart = offset
         else
           codeStart = lineStart
       else
