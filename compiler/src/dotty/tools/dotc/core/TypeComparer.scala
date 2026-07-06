@@ -45,6 +45,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     GADTused = false
     recCount = 0
     needsGc = false
+    frozenConstraint = false
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
