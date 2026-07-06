@@ -258,7 +258,7 @@ class CommentExtractorTests:
     val r = extract(src)
     assertEquals(1, r.directiveLines.length)
     val dl = r.directiveLines.head
-    assertEquals(dl.content, "//> using scala 3")
+    assertEquals("//> using scala 3", dl.content)
     assertEquals(2, dl.lineStartOffset)
     assertEquals(0, r.diagnostics.length)
   }
@@ -269,50 +269,59 @@ class CommentExtractorTests:
         |""".stripMargin
     val r = extract(src)
     assertEquals(1, r.directiveLines.length)
-    assertEquals(r.directiveLines.head.content, "//> using scala 3")
+    assertEquals("//> using scala 3", r.directiveLines.head.content)
     assertEquals(0, r.diagnostics.length)
   }
 
-  @Test def using_without_space_is_treated_as_code(): Unit = {
+  @Test def using_without_space_is_accepted(): Unit = {
     val src =
       """//>using scala 3
         |val x = 1
         |""".stripMargin
     val r = extract(src)
-    assertEquals(0, r.directiveLines.length)
-    assertEquals(0, r.codeOffset)
+    assertEquals(1, r.directiveLines.length)
+    assertEquals(0, r.directiveLines.head.lineNum)
+    assertEquals(17, r.codeOffset)
   }
 
-  @Test def multiple_spaces_after_emits_a_warning(): Unit = {
+  @Test def multiple_spaces_after_is_accepted(): Unit = {
     val src =
       """//>  using scala 3
         |val x = 1
         |""".stripMargin
     val r = extract(src)
-    assertEquals(0, r.directiveLines.length)
-    val ws = r.diagnostics.filter(_.severity == DiagnosticSeverity.Warning)
-    assertEquals(1, ws.length)
-    assertTrue(ws.head.message.contains("exact prefix"))
-    assertTrue(ws.head.message.contains("//>  using scala 3"))
+    assertEquals(1, r.directiveLines.length)
+    assertEquals(0, r.directiveLines.head.lineNum)
+    assertEquals(19, r.codeOffset)
   }
 
-  @Test def tab_after_emits_a_warning(): Unit = {
+  @Test def tab_after_is_accepted(): Unit = {
     val src =
       """//>	using scala 3
         |val x = 1
         |""".stripMargin
     val r = extract(src)
-    assertEquals(0, r.directiveLines.length)
-    val ws = r.diagnostics.filter(_.severity == DiagnosticSeverity.Warning)
-    assertEquals(1, ws.length)
-    assertTrue(ws.head.message.contains("exact prefix"))
+    assertEquals(1, r.directiveLines.length)
+    assertEquals(0, r.directiveLines.head.lineNum)
+    assertEquals(18, r.codeOffset)
+  }
+
+  @Test def nbsp_after_is_accepted(): Unit = {
+    val src =
+      """//> using scala 3
+        |val x = 1
+        |""".stripMargin
+    val r = extract(src)
+    assertEquals(1, r.directiveLines.length)
+    assertEquals(0, r.directiveLines.head.lineNum)
+    assertEquals(18, r.codeOffset)
   }
 
   @Test def CRLF_line_endings_parse_correctly(): Unit = {
     val src = "//> using scala 3\r\nval x = 1\r\n"
     val r   = extract(src)
     assertEquals(1, r.directiveLines.length)
-    assertEquals(r.directiveLines.head.content, "//> using scala 3\r")
+    assertEquals("//> using scala 3\r", r.directiveLines.head.content)
     assertEquals(19, r.codeOffset) // includes \r\n
   }
 
