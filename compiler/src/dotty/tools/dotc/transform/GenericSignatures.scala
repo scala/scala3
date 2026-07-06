@@ -36,7 +36,6 @@ object GenericSignatures {
     if (sym0.isLocal && !sym0.isClass) None
     else atPhase(erasurePhase)(javaSig0(sym0, info))
 
-  @noinline
   private final def javaSig0(sym0: Symbol, info: Type)(using Context): Option[String] = {
     val builder = new StringBuilder(64)
     val isTraitSignature = sym0.enclosingClass.is(Trait)
@@ -172,9 +171,8 @@ object GenericSignatures {
     }
 
     def classSig(sym: Symbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
-      @tailrec
       def argSig(tp: Type): Unit =
-        tp match {
+        tp.dealias match {
           case bounds: TypeBounds =>
             if (!(defn.AnyType <:< bounds.hi)) {
               builder.append('+')
@@ -185,10 +183,26 @@ object GenericSignatures {
               boxedSig(bounds.lo)
             }
             else builder.append('*')
-          case EtaExpansion(tp) =>
-            argSig(tp)
-          case _: HKTypeLambda =>
-            builder.append('*')
+          case hkt: HKTypeLambda =>
+            hkt.resultType match
+              case a: AppliedType =>
+                if hkt.paramInfos.forall(i => i.lo.isNothingType && i.hi.isAny) then
+                  // For unbounded arguments, instead of emitting `X<j.l.Object>`,
+                  // emit just `X` as a raw type if it's a class;
+                  // this helps with Java compat in cases where the exact generic arguments were erased
+                  if a.tycon.dealias.typeSymbol.isClass then
+                    jsig(a.tycon)
+                  else
+                    // but if it's an HKT, we cannot represent that in a Java generic signature, so emit a wildcard
+                    builder.append("*")
+                else
+                  // For bounded arguments, we can't translate it cleanly so emit an erased type
+                  jsig(erasure(a.tycon))
+              case res if res.isPrimitiveValueType =>
+                // value classes cannot appear as generic arguments
+                jsig(defn.boxedType(res))
+              case res =>
+                jsig(res)
           case _ =>
             boxedSig(tp.widenDealias.widenNullaryMethod)
               // `tp` might be a singleton type referring to a getter.
@@ -233,7 +247,6 @@ object GenericSignatures {
     enum ValueClassBoxing:
       case Box, Unbox, UnboxOnlyPrimitives
 
-    @noinline
     def jsig(tp0: Type, toplevel: Boolean = false, vcBoxing: ValueClassBoxing = ValueClassBoxing.Unbox): Unit = {
       inline def jsig1(tp0: Type): Unit = jsig(tp0)
 
