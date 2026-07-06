@@ -62,9 +62,6 @@ object TestConfiguration {
       Properties.dottyRepl,
       Properties.jlineTerminal,
       Properties.jlineReader,
-      Properties.fansi,
-      Properties.pprint,
-      Properties.sourcecode,
       Properties.scalaXml
   ))
 

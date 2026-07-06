@@ -927,9 +927,6 @@ object Build {
           s"-Ddotty.tests.classes.jlineReader=${findArtifactPath(externalDeps, "jline-reader")}",
           s"-Ddotty.tests.classes.dottyStaging=${(LocalProject("scala3-staging") / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.dottyTastyInspector=${(LocalProject("scala3-tasty-inspector") / Compile / packageBin).value}",
-          s"-Ddotty.tests.classes.pprint=${findArtifactPath(externalDeps, "pprint_3")}",
-          s"-Ddotty.tests.classes.fansi=${findArtifactPath(externalDeps, "fansi_3")}",
-          s"-Ddotty.tests.classes.sourcecode=${findArtifactPath(externalDeps, "sourcecode_3")}",
           s"-Ddotty.tests.classes.scalaXml=${findArtifactPath(testExternalDeps, "scala-xml_2.13")}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
