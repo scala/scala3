@@ -18,7 +18,7 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.typer.Applications.*
 import dotty.tools.dotc.util.{NoSourcePosition, SrcPos}
 import dotty.tools.io
-import dotty.tools.io.{AbstractFile, FileExtension, NoAbstractFile, PlainFile, ZipArchive}
+import dotty.tools.io.{AbstractFile, FileExtension, PlainFile, ZipArchive}
 import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext.*
@@ -502,7 +502,7 @@ class DependencyRecorder {
   /** Send the collected dependency information to Zinc and clear the local caches. */
   def sendToZinc()(using Context): Unit =
     ctx.withIncCallback: cb =>
-      val siblingClassfiles = new mutable.HashMap[PlainFile, Path]
+      val siblingClassfiles = new mutable.HashMap[AbstractFile, Path]
       _foundDeps.iterator.foreach:
         case (clazz, foundDeps) =>
           val className = classNameAsString(clazz)
@@ -526,7 +526,7 @@ class DependencyRecorder {
    *  run) or from class file and calls respective callback method.
    */
   private def recordClassDependency(cb: interfaces.IncrementalCallback, fromClass: Symbol, toClass: Symbol,
-      depCtx: DependencyContext, siblingClassfiles: mutable.Map[PlainFile, Path])(using Context): Unit = {
+      depCtx: DependencyContext, siblingClassfiles: mutable.Map[AbstractFile, Path])(using Context): Unit = {
     val fromClassName = classNameAsString(fromClass)
     val sourceFile = ctx.compilationUnit.source
 
@@ -567,7 +567,7 @@ class DependencyRecorder {
         depFile match {
           case ze: ZipArchive#Entry => // The dependency comes from a JAR
             ze.underlyingSource match
-              case Some(zip) if zip.jpath != null =>
+              case zip if zip.jpath != null =>
                 binaryDependency(zip.jpath, binaryClassName)
               case _ =>
           case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem

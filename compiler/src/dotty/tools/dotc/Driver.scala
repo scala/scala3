@@ -96,7 +96,7 @@ class Driver {
                 report.error(em"Not a reporter: ${ctx.settings.Yreporter.value}")
           catch case e: ReflectiveOperationException =>
             report.error(em"Could not create reporter ${ctx.settings.Yreporter.value}: $e")
-        val files = fileNames.map(ctx.getFile)
+        val files = fileNames.flatMap(ctx.getFile)
         (files, fromTastySetup(files))
       )
   }
