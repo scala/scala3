@@ -679,7 +679,7 @@ private class ExtractAPICollector(using Context) extends ThunkHolder {
     // we simply skip over, and inline body annotations which are handled above).
     s.annotations.foreach { annot =>
       val sym = annot.symbol
-      if sym.exists && sym != defn.BodyAnnot then
+      if sym.exists && sym != defn.BodyAnnot && !sym.typeRef.isAny then
         annots += apiAnnotation(annot)
     }
 
