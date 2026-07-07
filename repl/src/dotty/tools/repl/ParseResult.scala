@@ -9,6 +9,7 @@ import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
 import dotc.reporting.{Diagnostic, StoreReporter}
 import dotc.util.SourceFile
+import dotty.tools.directives.UsingDirectivesParser
 
 import scala.annotation.internal.sharable
 
@@ -270,6 +271,11 @@ object ParseResult {
       case CommandExtract(_, _) => true
       case _ => false
 
+  /** True if `sourceCode` contains one or more leading `//> using` directives and no code yet. */
+  private def onlyDirectivesSoFar(sourceCode: String): Boolean =
+    val extracted = UsingDirectivesParser.extractLines(sourceCode.toIndexedSeq)
+    extracted.directiveLines.nonEmpty && extracted.codeOffset >= sourceCode.length
+
   /** Check if the input is incomplete.
    *
    *  This can be used in order to check if a newline can be inserted without
@@ -278,6 +284,7 @@ object ParseResult {
   def isIncomplete(sourceCode: String)(using Context): Boolean =
     sourceCode match {
       case CommandExtract(_, _) | "" => false
+      case _ if onlyDirectivesSoFar(sourceCode) && !sourceCode.endsWith("\n") => true
       case _ => {
         val reporter = newStoreReporter
         val source   = SourceFile.virtual("<incomplete-handler>", sourceCode)

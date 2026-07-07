@@ -381,7 +381,11 @@ class ReplDriver(settings: Array[String],
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
       case parsed: Parsed if parsed.source.content().mkString.startsWith("//>") =>
-        interpretDirectives(parsed.source.content().mkString)
+        val stateAfterDirectives = interpretDirectives(parsed.source.content().mkString)
+        if parsed.trees.nonEmpty then
+          propagateLanguageImports(parsed.trees)
+          compile(parsed, stateAfterDirectives)
+        else stateAfterDirectives
 
       case parsed: Parsed if parsed.trees.nonEmpty =>
         propagateLanguageImports(parsed.trees)
