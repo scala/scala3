@@ -1,1 +1,1 @@
-public <B> B Foo.bar(B)
+public <B> java.lang.Object Foo.bar(B)
