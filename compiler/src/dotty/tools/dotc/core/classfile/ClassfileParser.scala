@@ -1039,6 +1039,15 @@ final class ClassfileParser(
             res.permittedSubclasses ::= childName
           }
 
+        case tpnme.RecordATTR =>
+          val components = List.fill(in.nextChar):
+            val name = pool.getName(in.nextChar).value
+            val _ = in.nextChar
+            skipAttributes()
+            name
+
+          ctx.base.javaRecordsFields.put(classRoot.symbol, components)
+
         case _ =>
           in.skip(attrLen)
       }
