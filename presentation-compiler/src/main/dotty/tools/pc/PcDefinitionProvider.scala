@@ -21,7 +21,6 @@ import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.io.FileExtension
-import dotty.tools.io.ZipArchive
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j.Location
@@ -156,14 +155,14 @@ class PcDefinitionProvider(
       else
         val file = symbol.associatedFile
         if file != null then
-          file match
-            case entry: ZipArchive#Entry =>
+          file.enclosing match
+            case Some(underlyingSource) =>
               val classFile =
                 if file.ext.isTasty then file.resolveSiblingWithExtension(FileExtension.Class)
                 else file
               if classFile != null then
                 List(new Location(
-                  s"jar:${entry.underlyingSource.jpath.toUri}!/${classFile.path}",
+                  s"jar:${underlyingSource.jpath.nn.toUri}!/${classFile.path}",
                   new Range(new Position(0, 0), new Position(0, 0))
                 ))
               else Nil
