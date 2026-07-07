@@ -198,6 +198,11 @@ case object Help extends Command {
       |:settings <options>      update compiler options, if possible
       |:silent                  disable/enable automatic printing of results
       |:dep <group>::<artifact>:<version>     Resolve a dependency and make it available in the REPL
+      |
+      |Scala CLI `//> using dep` directives are also supported and behave like `:dep`, e.g.:
+      |  //> using dep <group>::<artifact>:<version>
+      |Directives must appear before any Scala code in the input; code on following lines is
+      |evaluated as usual. Other `//> using` directives are not (yet) supported in the REPL.
     """.stripMargin
 }
 
