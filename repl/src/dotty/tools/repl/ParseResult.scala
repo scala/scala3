@@ -36,43 +36,68 @@ case object SigKill extends ParseResult
  *  ```
  *  The `Command` trait denotes these commands
  */
-sealed trait Command extends ParseResult
+sealed trait Command extends ParseResult:
+  def replayLine: Option[String]
 
 /** An unknown command that will not be handled by the REPL */
-case class UnknownCommand(cmd: String) extends Command
+case class UnknownCommand(cmd: String) extends Command:
+  override def replayLine = None
 
-case class Dep(dep: String) extends Command
+case class Dep(dep: String) extends Command:
+  override def replayLine = Some(s"${Dep.command} $dep")
 object Dep {
   val command: String = ":dep"
 }
 /** An ambiguous prefix that matches multiple commands */
-case class AmbiguousCommand(cmd: String, matchingCommands: List[String]) extends Command
+case class AmbiguousCommand(cmd: String, matchingCommands: List[String]) extends Command:
+  override def replayLine = None
+
+case class Save(path: String) extends Command:
+  override def replayLine = None
+
+object Save {
+  val command: String = ":save"
+
+  /** `:load` treats a file as a session only when it starts with this header.
+   * any other file is a plain source loaded as one compilation unit.
+   */
+  val sessionHeader: String = "/* Scala REPL session */"
+
+  /** Written before each saved entry so that `:load` can replay every entry as
+   *  a single compilation unit.
+   */
+  val entrySeparator: String = "/* ---- entry ---- */"
+}
 
 /** `:load <path>` interprets a scala file as if entered line-by-line into
  *  the REPL
  */
-case class Load(path: String) extends Command
+case class Load(path: String) extends Command:
+  override def replayLine = Some(s"${Load.command} $path")
 object Load {
   val command: String = ":load"
 }
 
 /** `:require` is a deprecated alias for :jar`
  */
-case class Require(path: String) extends Command
+case class Require(path: String) extends Command:
+  override def replayLine = Some(s"${Require.command} $path")
 object Require {
   val command: String = ":require"
 }
 
 /** `:jar <path>` adds a jar to the classpath
  */
-case class JarCmd(path: String) extends Command
+case class JarCmd(path: String) extends Command:
+  override def replayLine = Some(s"${JarCmd.command} $path")
 object JarCmd {
   val command: String = ":jar"
 }
 
 /** `:kind <type>` display the kind of a type. see also :help kind
  */
-case class KindOf(expr: String) extends Command
+case class KindOf(expr: String) extends Command:
+  override def replayLine = Some(s"${KindOf.command} $expr")
 object KindOf {
   val command: String = ":kind"
 }
@@ -84,7 +109,8 @@ object KindOf {
  * String
  * ```
  */
-case class TypeOf(expr: String) extends Command
+case class TypeOf(expr: String) extends Command:
+  override def replayLine = Some(s"${TypeOf.command} $expr")
 object TypeOf {
   val command: String = ":type"
 }
@@ -93,7 +119,8 @@ object TypeOf {
  * A command that is used to display the documentation associated with
  * the given expression.
  */
-case class DocOf(expr: String) extends Command
+case class DocOf(expr: String) extends Command:
+  override def replayLine = Some(s"${DocOf.command} $expr")
 object DocOf {
   val command: String = ":doc"
 }
@@ -102,10 +129,12 @@ object DocOf {
  *  session
  */
 case object Imports extends Command {
+  override def replayLine = Some(command)
   val command: String = ":imports"
 }
 
-case class Settings(arg: String) extends Command
+case class Settings(arg: String) extends Command:
+  override def replayLine = Some(s"${Settings.command} $arg")
 object Settings {
   val command: String = ":settings"
 }
@@ -113,34 +142,40 @@ object Settings {
 /** Reset the session to the initial state from when the repl program was
  *  started
  */
-case class Reset(arg: String) extends Command
+case class Reset(arg: String) extends Command:
+  override def replayLine = Some(s"${Reset.command} $arg")
 object Reset {
   val command: String = ":reset"
 }
 
 /** `:sh <command line>` run a shell command (result is implicitly => List[String]) */
-case class Sh(expr: String) extends Command
+case class Sh(expr: String) extends Command:
+  override def replayLine = Some(s"${Sh.command} $expr")
 object Sh {
   val command: String = ":sh"
 }
 
 /** Toggle automatic printing of results */
 case object Silent extends Command:
+  override def replayLine = Some(command)
   val command: String = ":silent"
 
 /** `:quit` exits the repl */
 case object Quit extends Command {
+  override def replayLine = None
   val command: String = ":quit"
   val alias: String = ":exit"
 }
 
 /** `:help` shows the different commands implemented by the Dotty repl */
 case object Help extends Command {
+  override def replayLine = Some(command)
   val command: String = ":help"
   val text: String =
     """The REPL has several commands available:
       |
       |:help                    print this summary
+      |:save <path>             save replayable session to a file
       |:load <path>             interpret lines in a file
       |:quit                    exit the interpreter
       |:type <expression>       evaluate the type of the given expression
@@ -174,6 +209,7 @@ object ParseResult {
     Imports.command -> (_  => Imports),
     JarCmd.command -> (arg => JarCmd(arg)),
     KindOf.command -> (arg => KindOf(arg)),
+    Save.command -> (arg => Save(arg)),
     Load.command -> (arg => Load(arg)),
     Require.command -> (arg => Require(arg)),
     Dep.command -> (arg => Dep(arg)),
@@ -215,6 +251,11 @@ object ParseResult {
   def apply(sourceCode: String)(using state: State): ParseResult =
     apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode))
 
+  def isCommand(line: String): Boolean =
+    line match
+      case CommandExtract(_, _) => true
+      case _ => false
+
   /** Check if the input is incomplete.
    *
    *  This can be used in order to check if a newline can be inserted without
@@ -222,7 +263,7 @@ object ParseResult {
    */
   def isIncomplete(sourceCode: String)(using Context): Boolean =
     sourceCode match {
-      case CommandExtract(_) | "" => false
+      case CommandExtract(_, _) | "" => false
       case _ => {
         val reporter = newStoreReporter
         val source   = SourceFile.virtual("<incomplete-handler>", sourceCode)
