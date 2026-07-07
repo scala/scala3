@@ -15,6 +15,12 @@ import dotty.tools.directives.{DirectiveValue, UsingDirectivesParser}
 /** Handles dependency resolution using Coursier for the REPL */
 object DependencyResolver:
 
+  /** Result of classifying `//> using` directives in REPL input. */
+  case class ClassifiedDirectives(deps: List[String], unsupportedKeys: List[String])
+
+  /** Directive keys the REPL knows how to handle. Extend as more directives gain REPL support. */
+  lazy val supportedDirectives: Set[String] = Set("dep")
+
   /** Parse a dependency string of the form `org::artifact:version` or `org:artifact:version`
    *  and return the (organization, artifact, version) triple if successful.
    *
@@ -30,23 +36,19 @@ object DependencyResolver:
         System.err.println("Unable to parse dependency \"" + dep + "\"")
         None
 
-  /** Extract all dependencies from using directives in source code */
-  def extractDependencies(sourceCode: String): List[String] =
+  /** Classify `//> using` directives in REPL input into dependency coordinates and unsupported keys. */
+  def classifyDirectives(sourceCode: String): ClassifiedDirectives =
     try
       val result = UsingDirectivesParser.parse(sourceCode)
-      result.directives.flatMap: directive =>
-        if directive.key == "dep" then
-          directive.values.flatMap:
-            case DirectiveValue.StringVal(value, _, _) => List(value)
-            case value =>
-              System.err.println("Unrecognized directive value " + value)
-              Nil
-        else
-          System.err.println("Unrecognized directive " + directive.key)
-          Nil
-      .toList
+      val (supported, unsupported) = result.directives.partition(d => supportedDirectives.contains(d.key))
+      val deps =
+        supported
+          .flatMap(_.values.collect { case DirectiveValue.StringVal(value, _, _) => value })
+          .toList
+      val unsupportedKeys = unsupported.map(_.key).distinct.toList
+      ClassifiedDirectives(deps, unsupportedKeys)
     catch
-      case NonFatal(_) => Nil // If parsing fails, fall back to empty list
+      case NonFatal(_) => ClassifiedDirectives(Nil, Nil)
 
   /** Resolve dependencies using Coursier Interface and return the classpath as a list of File objects */
   def resolveDependencies(dependencies: List[(String, String, String)]): Either[String, List[File]] =
