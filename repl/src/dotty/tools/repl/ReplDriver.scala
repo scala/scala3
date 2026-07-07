@@ -725,6 +725,10 @@ class ReplDriver(settings: Array[String],
       out.println(s"""The :sh command is deprecated. Use `import scala.sys.process._` and `"command".!` instead.""")
       state
 
+    case Paste =>
+      out.println("The :paste command is deprecated. It is no longer needed, since the REPL supports multiline editing.")
+      state
+
     case Settings(arg) => arg match
       case "" =>
         given ctx: Context = state.context
