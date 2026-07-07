@@ -40,7 +40,7 @@ object GenericSignatures {
   private def mayNeedSignature(sym0: Symbol, info: Type)(using Context) = {
     def mayNeedSignature(t: Type): Boolean = t match
       case ExprType(e) => mayNeedSignature(e)
-      case MethodTpe(_, ps, res) => (!sym0.isConstructor && mayNeedSignature(res)) || ps.exists(mayNeedSignature)
+      case MethodTpe(_, ps, res) => mayNeedSignature(res) || ps.exists(mayNeedSignature)
       case _: TypeRef => !t.isAny && !t.isAnyRef && !t.isRef(defn.StringClass, skipRefined = false) && !t.isPrimitiveValueType
       case _ => true
 
