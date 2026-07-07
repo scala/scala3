@@ -213,6 +213,27 @@ class SaveTests extends ReplTest {
       assertEquals(List(s"""val res0: String = "$sep""""), lines())
     }
 
+  @Test def roundTripsWithCaptureChecking =
+    val target = tempFile()
+    initially {
+      run("import language.experimental.captureChecking")
+    } andThen {
+      run("import caps.*")
+    } andThen {
+      run("class File extends SharedCapability")
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      storedOutput()
+      run(s":load $target")
+    } andThen {
+      storedOutput()
+      run("class Logger(f: File^) extends SharedCapability")
+      assertEquals("// defined class Logger", storedOutput().trim)
+    }
+
   @Test def skipsThrowingVal =
     val target = tempFile()
     initially {
