@@ -3132,7 +3132,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val canBeInvalidated: Boolean =
       sym.is(Synthetic)
       && (desugar.isRetractableCaseClassMethodName(sym.name) ||
-         (sym.owner.is(JavaDefined) && sym.owner.derivesFrom(defn.JavaRecordClass) && sym.is(Method)))
+         (sym.owner.isJavaRecord && sym.is(Method)))
     assert(canBeInvalidated)
     sym.owner.info.decls.openForMutations.unlink(sym)
     EmptyTree
@@ -3562,6 +3562,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
       for (deriver <- cdef.removeAttachment(AttachedDeriver))
         cdef1.putAttachment(AttachedDeriver, deriver)
+
+      for (recordFields <- cdef.removeAttachment(untpd.JavaRecordFields))
+        ctx.base.javaRecordsFields.put(cls, recordFields)
 
       cdef1
     }

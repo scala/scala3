@@ -1056,6 +1056,9 @@ object Contexts {
      */
     private[core] val errorTypeMsg: mutable.Map[Types.ErrorType, Message] = mutable.Map()
 
+    /** A map from Java records symbols to their fields names */
+    private[dotc] val javaRecordsFields: mutable.Map[Symbol, List[String]] = mutable.Map()
+
     // Phases state
 
     private[core] var phasesPlan: List[List[Phase]] = uninitialized
