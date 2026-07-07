@@ -13,7 +13,7 @@ import util.SourceFile
 import dotty.tools.dotc.reporting.{Diagnostic, Reporter}
 import dotty.tools.dotc.printing.Formatting.ShownDef.Shown.runCtxShow
 
-/** Spec strings a representation of programmer's intent that guides
+/** Spec strings are a representation of programmer's intent that guides
  *  completions by coding agents. They are enabled under the experimental
  *  `magic` language import:
  *
