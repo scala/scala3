@@ -29,6 +29,43 @@ class ReplDirectiveTests extends ReplTest:
   @Test def `plain comment is complete`: Unit = contextually:
     assertFalse(ParseResult.isIncomplete("// just a comment"))
 
+  @Test def `lone command is incomplete until code follows`: Unit = contextually:
+    assertTrue(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3"))
+
+  @Test def `command with code is complete`: Unit = contextually:
+    assertFalse(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
+
+  @Test def `lone command with trailing newline is complete`: Unit = contextually:
+    assertFalse(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3\n"))
+
+  @Test def `command with trailing code parses as CommandThenCode`: Unit = initially:
+    ParseResult(":type \"hello\"\nval x = 5") match
+      case CommandThenCode(TypeOf("\"hello\""), _: Parsed) => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `command with trailing code evaluates both`: Unit =
+    initially:
+      run(":type \"hello\"\nval x = 5")
+      val output = storedOutput()
+      assertTrue(output, output.contains("String"))
+      assertTrue(output, output.contains("val x: Int = 5"))
+
+  @Test def `lone command with trailing newline parses as command`: Unit = initially:
+    ParseResult(":type 1\n") match
+      case TypeOf("1") => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `repeated lone commands with trailing newline work`: Unit =
+    initially:
+      run(":type 1\n")
+      val first = storedOutput()
+      assertTrue(first, first.contains("Int"))
+      assertFalse(first, first.contains("Illegal start of statement"))
+      run(":type 2\n")
+      val second = storedOutput()
+      assertTrue(second, second.contains("Int"))
+      assertFalse(second, second.contains("Illegal start of statement"))
+
   @Test def `unsupported options directive warns`: Unit =
     initially:
       run("//> using options -Werror")

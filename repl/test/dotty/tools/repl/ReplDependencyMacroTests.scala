@@ -78,6 +78,26 @@ class ReplDependencyMacroTests extends ReplTest:
       assertNoMacroFailure(output)
       assertTrue(output, output.contains("val p: String ="))
 
+  @Test def `i21654 dep command before code resolves and evaluates`: Unit =
+    initially:
+      run(":dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd.toString")
+      val output = storedOutput()
+      assertTrue(output, output.contains("Resolved 1 dependencies"))
+      assertNoMacroFailure(output)
+      assertTrue(output, output.contains("val p: String ="))
+
+  @Test def `i21654 repeated dep commands with trailing newline resolve`: Unit =
+    initially:
+      run(":dep com.lihaoyi::os-lib:0.11.3\n")
+      val first = storedOutput()
+      assertTrue(first, first.contains("Resolved 1 dependencies"))
+      assertNoMacroFailure(first)
+      run(":dep com.lihaoyi::upickle:4.4.3\n")
+      val second = storedOutput()
+      assertTrue(second, second.contains("Resolved 1 dependencies"))
+      assertNoMacroFailure(second)
+      assertFalse(second, second.contains("Illegal start of statement"))
+
   @Test def `i25291 derives ReadWriter after :dep`: Unit =
     initially:
       resolveUpickle()

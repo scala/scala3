@@ -394,6 +394,10 @@ class ReplDriver(settings: Array[String],
       case SyntaxErrors(_, errs, _) =>
         displayErrors(errs, state)
 
+      case CommandThenCode(cmd, code) =>
+        val stateAfterCommand = interpretCommand(cmd)
+        interpret(code)(using stateAfterCommand)
+
       case cmd: Command =>
         val next = interpretCommand(cmd)
         cmd.replayLine.fold(next)(line => next.recordInput(line.strip))

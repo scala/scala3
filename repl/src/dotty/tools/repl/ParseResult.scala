@@ -40,6 +40,15 @@ case object SigKill extends ParseResult
 sealed trait Command extends ParseResult:
   def replayLine: Option[String]
 
+/** A command on the first line followed by Scala code, e.g.
+ *  ```none
+ *  :dep <coords>
+ *  println("Hello")
+ *  ```
+ *  The command is interpreted first, then code is evaluated.
+ */
+case class CommandThenCode(command: Command, code: ParseResult) extends ParseResult
+
 /** An unknown command that will not be handled by the REPL */
 case class UnknownCommand(cmd: String) extends Command:
   override def replayLine = None
@@ -240,30 +249,57 @@ object ParseResult {
     Silent.command -> (_ => Silent),
   )
 
+  /** Resolve a `:command` name (which may be a prefix) and its argument into a `Command`. */
+  private def command(cmd: String, arg: String): Command =
+    commands.filter((command, _) => command.startsWith(cmd)) match {
+      case Nil => UnknownCommand(cmd)
+      case (_, f) :: Nil =>
+        f(arg) match {
+          case matched: Command => matched
+          case _ => UnknownCommand(cmd)
+        }
+      case multiple => AmbiguousCommand(cmd, multiple.map(_._1))
+    }
+
+  /** If `sourceCode`'s first line is a `:command`, split it into
+   *  `(commandName, commandArg, remainingText)`. `remainingText` may be blank.
+   */
+  private def leadingCommand(sourceCode: String): Option[(String, String, String)] =
+    sourceCode.indexOf('\n') match {
+      case -1 => None // single-line commands are handled by the CommandExtract fast path
+      case nl =>
+        val firstLineRaw = sourceCode.substring(0, nl)
+        val firstLine = if firstLineRaw.endsWith("\r") then firstLineRaw.dropRight(1) else firstLineRaw
+        val rest = sourceCode.substring(nl + 1)
+        firstLine match {
+          case CommandExtract(cmd: String, arg: String) => Some((cmd, arg, rest))
+          case _ => None
+        }
+    }
+
   def apply(source: SourceFile)(using state: State): ParseResult = {
     val sourceCode = source.content().mkString
     sourceCode match {
       case "" => Newline
-      case CommandExtract(cmd: String, arg: String) => {
-        val matchingCommands = commands.filter((command, _) => command.startsWith(cmd))
-        matchingCommands match {
-          case Nil => UnknownCommand(cmd)
-          case (_, f) :: Nil => f(arg)
-          case multiple => AmbiguousCommand(cmd, multiple.map(_._1))
-        }
-      }
+      case CommandExtract(cmd: String, arg: String) => command(cmd, arg)
       case _ =>
-        inContext(state.context) {
-          val reporter = newStoreReporter
-          val stats = parseStats(using state.context.fresh.setReporter(reporter).withSource(source))
+        leadingCommand(sourceCode) match {
+          case Some((cmd, arg, rest)) =>
+            if rest.exists(!_.isWhitespace) then CommandThenCode(command(cmd, arg), apply(rest))
+            else command(cmd, arg)
+          case None =>
+            inContext(state.context) {
+              val reporter = newStoreReporter
+              val stats = parseStats(using state.context.fresh.setReporter(reporter).withSource(source))
 
-          if (reporter.hasErrors)
-            SyntaxErrors(
-              sourceCode,
-              reporter.removeBufferedMessages,
-              stats)
-          else
-            Parsed(source, stats, reporter)
+              if (reporter.hasErrors)
+                SyntaxErrors(
+                  sourceCode,
+                  reporter.removeBufferedMessages,
+                  stats)
+              else
+                Parsed(source, stats, reporter)
+            }
         }
     }
   }
@@ -281,6 +317,10 @@ object ParseResult {
     val extracted = UsingDirectivesParser.extractLines(sourceCode.toIndexedSeq)
     extracted.directiveLines.nonEmpty && extracted.codeOffset >= sourceCode.length
 
+  /** True if `sourceCode` is a single `:command` line and no code yet. */
+  private def onlyCommandSoFar(sourceCode: String): Boolean =
+    !sourceCode.contains('\n') && CommandExtract.matches(sourceCode)
+
   /** Check if the input is incomplete.
    *
    *  This can be used in order to check if a newline can be inserted without
@@ -288,8 +328,12 @@ object ParseResult {
    */
   def isIncomplete(sourceCode: String)(using Context): Boolean =
     sourceCode match {
-      case CommandExtract(_, _) | "" => false
-      case _ if onlyDirectivesSoFar(sourceCode) && !sourceCode.endsWith("\n") => true
+      case "" => false
+      // A lone directive or command line defers until the following pasted code arrives,
+      // so the whole block is submitted (and evaluated) as a single input. The trailing
+      // newline of the paste, or a second Enter, completes a directive/command on its own.
+      case _ if (onlyDirectivesSoFar(sourceCode) || onlyCommandSoFar(sourceCode)) && !sourceCode.endsWith("\n") => true
+      case CommandExtract(_, _) => false
       case _ => {
         val reporter = newStoreReporter
         val source   = SourceFile.virtual("<incomplete-handler>", sourceCode)
