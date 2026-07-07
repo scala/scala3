@@ -13,6 +13,8 @@ import StackTraceOps.*
 import scala.compiletime.uninitialized
 import scala.util.control.NonFatal
 
+import dotty.vendored.fansi
+
 /** This rendering object uses `ClassLoader`s to accomplish crossing the 4th
  *  wall (i.e. fetching back values from the compiled class files put into a
  *  specific class loader capable of loading from memory) and rendering them.
@@ -27,19 +29,16 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   var myClassLoader: AbstractFileClassLoader = uninitialized
 
-  // Temporary fix for https://github.com/scala/scala3/issues/25116
-  // until `pprint` special-cases these.
+  // Temporary fix until `pprint` special-cases these.
   // (We cannot use, e.g., `isInstanceOf[LazyList]` because we're not in the same classloader)
   private val forcedToStringClasses = Set(
-    "scala.collection.immutable.LazyList",
-    "scala.collection.immutable.LazyListIterable",
     "scala.collection.mutable.StringBuilder", // not technically needed but quite ugly to print as an iterable of characters
-    "scala.xml.Elem" // Temporary fix for https://github.com/scala/scala3/issues/25691
+    "scala.xml.Elem" // is a Seq that contains itself, https://github.com/scala/scala3/issues/25691
   )
 
   private def pprintRender(value: Any, width: Int, height: Int, initialOffset: Int)(using Context): String = {
     def fallback() =
-      pprint.PPrinter.Color
+      dotty.vendored.pprint.PPrinter.Color
         .apply(value, width = width, height = height, initialOffset = initialOffset)
         .plainText
     try
@@ -55,8 +54,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       // Due to the possible interruption instrumentation, it is unlikely that we can get
       // rid of reflection here.
       val cl = classLoader()
-      val pprintCls = Class.forName("pprint.PPrinter$Color$", false, cl)
-      val fansiStrCls = Class.forName("fansi.Str", false, cl)
+      val pprintCls = Class.forName("dotty.vendored.pprint.PPrinter$Color$", false, cl)
+      val fansiStrCls = Class.forName("dotty.vendored.fansi.Str", false, cl)
       val Color = pprintCls.getField("MODULE$").get(null)
       val Color_apply = pprintCls.getMethod("apply",
         classOf[Any],     // value
