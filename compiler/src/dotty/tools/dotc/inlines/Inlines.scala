@@ -11,7 +11,7 @@ import NameKinds.BodyRetainerName
 import SymDenotations.SymDenotation
 import config.Printers.inlining
 import ErrorReporting.errorTree
-import dotty.tools.dotc.util.{SourceFile, SourcePosition, SrcPos}
+import dotty.tools.dotc.util.{SourceFile, SourcePosition, SrcPos, Property}
 import dotty.tools.dotc.transform.*
 import dotty.tools.dotc.transform.MegaPhase
 import dotty.tools.dotc.transform.MegaPhase.MiniPhase
@@ -23,12 +23,20 @@ import cc.CleanupRetains
 import collection.mutable
 import reporting.{NotConstant, trace}
 import util.Spans.Span
-import dotty.tools.dotc.core.Periods.PhaseId
+import dotty.tools.dotc.core.Periods.{Nowhere, Period, PhaseId}
 import dotty.tools.dotc.util.chaining.*
 
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
   import tpd.*
+
+  private val RetainsCleanPeriodKey = Property.Key[Period]()
+
+  private def isRetainsClean(tree: Tree)(using Context): Boolean =
+    tree.attachmentOrElse(RetainsCleanPeriodKey, Nowhere) == ctx.period
+
+  private def markRetainsClean(tree: Tree)(using Context): Unit =
+    tree.putAttachment(RetainsCleanPeriodKey, ctx.period)
 
   /** An exception signalling that an inline info cannot be computed due to a
    *  cyclic reference. i14772.scala shows a case where this happens.
@@ -103,18 +111,53 @@ object Inlines:
   def inlineCall(tree: Tree)(using Context): Tree = ctx.profiler.onInlineCall(tree.symbol):
 
     /** Strip @retains annotations from inferred types in the call tree */
-    val stripRetains = CleanupRetains()
-    val stripper = new TreeTypeMap(
-      treeMap = {
-        case tree: InferredTypeTree =>
-          val stripped = stripRetains(tree.tpe)
-          if stripped ne tree.tpe then tree.withType(stripped)
-          else tree
-        case tree => tree
-      }
-    )
+    def hasRetainsToClean(tree: Tree): Boolean =
+      val stripRetains = CleanupRetains()
+      val finder = new TreeAccumulator[Boolean]:
+        override def apply(found: Boolean, trees: List[Tree])(using Context): Boolean =
+          var found1 = found
+          var rest = trees
+          while !found1 && rest.nonEmpty do
+            found1 = apply(found1, rest.head)
+            rest = rest.tail
+          found1
 
-    val tree0 = stripper.transform(tree)
+        def apply(found: Boolean, tree: Tree)(using Context): Boolean =
+          found || (tree match
+            case tree: InferredTypeTree =>
+              stripRetains(tree.tpe) ne tree.tpe
+            case tree: Inlined if isRetainsClean(tree) =>
+              false
+            case tree: Inlined =>
+              val found = foldOver(false, tree)
+              if !found then markRetainsClean(tree)
+              found
+            case _ =>
+              foldOver(false, tree)
+          )
+
+      finder(false, tree)
+
+    def stripRetainsFromInferredTypes(tree: Tree): Tree =
+      val stripRetains = CleanupRetains()
+      val stripper = new TreeTypeMap(
+        treeMap = {
+          case tree: InferredTypeTree =>
+            val stripped = stripRetains(tree.tpe)
+            if stripped ne tree.tpe then tree.withType(stripped)
+            else tree
+          case tree => tree
+        }
+      ):
+        override def transformInlined(tree: Inlined)(using Context): Tree =
+          if isRetainsClean(tree) then tree
+          else super.transformInlined(tree)
+
+      stripper.transform(tree)
+
+    val tree0 =
+      if hasRetainsToClean(tree) then stripRetainsFromInferredTypes(tree)
+      else tree
 
     if tree0.symbol.denot.exists
       && tree0.symbol.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass

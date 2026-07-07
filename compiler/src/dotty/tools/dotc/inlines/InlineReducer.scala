@@ -17,7 +17,7 @@ import collection.mutable
 /** A utility class offering methods for rewriting inlined code */
 class InlineReducer(inliner: Inliner)(using Context):
   import tpd.*
-  import Inliner.{isElideableExpr, DefBuffer}
+  import Inliner.{isElideableExpr, BindingDef, DefBuffer}
   import inliner.{call, newSym, tryInlineArg, paramBindingDef}
 
   extension (tp: Type)
@@ -132,21 +132,35 @@ class InlineReducer(inliner: Inliner)(using Context):
     *   - reduce its rhs if it is a projection and adjust its type accordingly,
     *   - record symbol -> rhs in the InlineBindings context propery.
     */
-  def normalizeBinding(binding: ValOrDefDef)(using Context) = {
+  private def normalizeBindingTree(binding: ValOrDefDef)(using Context): (ValOrDefDef, Boolean) = {
+    var rhsChanged = false
     val binding1 = binding match {
       case binding: ValDef =>
         val rhs1 = reduceProjection(binding.rhs)
         binding.symbol.defTree = rhs1
         if (rhs1 `eq` binding.rhs) binding
         else {
+          rhsChanged = true
           binding.symbol.info = rhs1.tpe
           cpy.ValDef(binding)(tpt = TypeTree(rhs1.tpe), rhs = rhs1)
         }
       case _ =>
         binding
     }
-    binding1.withSpan(call.span)
+    (binding1.withSpan(call.span), rhsChanged)
   }
+
+  def normalizeBinding(binding: ValOrDefDef)(using Context): ValOrDefDef =
+    normalizeBindingTree(binding)._1
+
+  def normalizeBinding(binding: BindingDef)(using Context): BindingDef =
+    val (binding1, rhsChanged) = normalizeBindingTree(binding.tree)
+    val memberDefs =
+      if rhsChanged then null
+      else
+        val known = binding.memberDefs
+        if known == null then null else known.withFirst(binding1)
+    BindingDef(binding1, memberDefs)
 
   /** The result type of reducing a match. It consists optionally of a list of bindings
    *  for the pattern-bound variables and the RHS of the selected case.
@@ -453,4 +467,3 @@ class InlineReducer(inliner: Inliner)(using Context):
       (bindings1, cleanupUnusable.transform(expr))
   }
 end InlineReducer
-
