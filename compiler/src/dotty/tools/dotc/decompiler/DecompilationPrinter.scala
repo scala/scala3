@@ -4,11 +4,8 @@ package decompiler
 import java.io.{OutputStream, PrintStream}
 import java.nio.charset.StandardCharsets
 
-import scala.io.Codec
-
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.io.File
 
 import scala.quoted.runtime.impl.QuotesImpl
 
@@ -27,7 +24,7 @@ class DecompilationPrinter extends Phase {
       var os: OutputStream|Null = null
       var ps: PrintStream|Null = null
       try {
-        os = File(outputDir.fileNamed("decompiled.scala").path)(using Codec.UTF8).outputStream(append = true)
+        os = outputDir.fileNamed("decompiled.scala").output(append = true)
         ps = new PrintStream(os, /* autoFlush = */ false, StandardCharsets.UTF_8.name)
         printToOutput(ps)
       }

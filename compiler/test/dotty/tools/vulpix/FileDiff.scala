@@ -67,8 +67,10 @@ object FileDiff {
   }
 
   def dump(path: String, content: Seq[String]): Unit = {
-    val outFile = dotty.tools.io.File(path)
-    outFile.writeAll(content.mkString("", EOL, EOL))
+    val outFile = dotty.tools.io.AbstractFile.getFile(path).nn
+    val output = outFile.output()
+    try output.write(content.mkString("", EOL, EOL).getBytes(StandardCharsets.UTF_8))
+    finally output.close()
   }
 
   def checkAndDumpOrUpdate(sourceTitle: String, actualLines: Seq[String], checkFilePath: String): Boolean = {

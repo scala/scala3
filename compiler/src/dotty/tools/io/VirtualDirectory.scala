@@ -29,7 +29,7 @@ class VirtualDirectory private[io] (val name: String, maybeContainer: Option[Vir
   override def jpath: JPath | Null = null
   override def toURL: Option[URL] = None
   override def input: InputStream = sys.error("directories cannot be read")
-  override def output: OutputStream = sys.error("directories cannot be written")
+  override def output(append: Boolean = false): OutputStream = sys.error("directories cannot be written")
 
   private val files = mutable.Map.empty[String, AbstractFile]
 

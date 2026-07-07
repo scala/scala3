@@ -287,7 +287,7 @@ object FileWriters {
     }
 
     private def writeBytes(outFile: AbstractFile, bytes: Array[Byte]): Unit = {
-      val out = outFile.output
+      val out = outFile.output()
       try out.write(bytes, 0, bytes.length)
       finally out.close()
     }

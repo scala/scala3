@@ -19,7 +19,7 @@ class AbstractFileClassLoaderTest:
 
   def closing[T <: Closeable, U](stream: T)(f: T => U): U = try f(stream) finally stream.close()
 
-  extension (f: AbstractFile) def writeContent(s: String): Unit = closing(new BufferedOutputStream(f.output))(_.write(s.getBytes(UTF8.charSet)))
+  extension (f: AbstractFile) def writeContent(s: String): Unit = closing(new BufferedOutputStream(f.output()))(_.write(s.getBytes(UTF8.charSet)))
   def slurp(inputStream: => InputStream)(implicit codec: Codec): String = closing(Source.fromInputStream(inputStream)(using codec))(_.mkString)
   def slurp(url: URL)(implicit codec: Codec): String = slurp(url.openStream())
 

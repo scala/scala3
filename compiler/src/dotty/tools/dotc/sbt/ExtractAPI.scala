@@ -20,13 +20,15 @@ import transform.ValueClasses
 import transform.Pickler
 import dotty.tools.io.{File, FileExtension}
 import util.{Property, SourceFile}
-import java.io.PrintWriter
 
+import java.io.PrintWriter
 import ExtractAPI.NonLocalClassSymbolsInCurrentUnits
 
 import scala.collection.mutable
 import scala.util.hashing.MurmurHash3
 import dotty.tools.dotc.util.chaining.*
+
+import java.nio.charset.StandardCharsets
 
 /** This phase sends a representation of the API of classes to sbt via callbacks.
  *
@@ -134,13 +136,10 @@ class ExtractAPI extends Phase {
 
     if (ctx.settings.YdumpSbtInc.value) {
       // Append to existing file that should have been created by ExtractDependencies
-      val sourceFileJPath = sourceFile.file.jpath
-      assert(sourceFileJPath != null, s"unexpected null jpath for $sourceFile")
-      val pw = new PrintWriter(File(sourceFileJPath).changeExtension(FileExtension.Inc).toFile
-        .bufferedWriter(append = true), true)
-      try {
-        classes.foreach(source => pw.println(DefaultShowAPI(source)))
-      } finally pw.close()
+      val container = sourceFile.file.container.getOrElse(throw new AssertionError(s"unexpected lack of parent for $sourceFile"))
+      val pw = new PrintWriter(container.fileNamed(sourceFile.file.nameWithoutExtension + FileExtension.Inc.withDot).output(append = true), true, StandardCharsets.UTF_8)
+      try classes.foreach(source => pw.println(DefaultShowAPI(source)))
+      finally pw.close()
     }
 
     ctx.withIncCallback: cb =>

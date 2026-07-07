@@ -40,11 +40,12 @@ class VirtualFile(override val path: String, initialContents: Array[Byte]) exten
 
   override def input: InputStream = new ByteArrayInputStream(content)
 
-  override def output: OutputStream =
+  override def output(append: Boolean = false): OutputStream =
     new ByteArrayOutputStream() {
       override def close(): Unit = {
         super.close()
-        content = toByteArray()
+        val written = toByteArray
+        content = if append then content ++ written else written
       }
     }
 

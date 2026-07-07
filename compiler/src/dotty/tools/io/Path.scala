@@ -34,13 +34,6 @@ object Path {
     else FileExtension.from(name.substring(i + 1))
   }
 
-  /** strip anything after and including trailing the extension */
-  def fileName(name: String): String = {
-    val i = name.lastIndexOf('.')
-    if (i < 0) name
-    else name.substring(0, i)
-  }
-
   def apply(path: String): Path = apply(new java.io.File(path).toPath)
   def apply(jpath: JPath): Path = try {
     if (Files.isRegularFile(jpath)) new File(jpath)
@@ -137,22 +130,6 @@ class Path private[io] (val jpath: JPath) {
   }
 
   def ext: FileExtension = Path.fileExtension(name)
-
-  // returns the Path with the extension.
-  def addExtension(ext: String): Path = new Path(jpath.resolveSibling(name + ext))
-
-  // changes the existing extension out for a new one, or adds it
-  // if the current path has none.
-  def changeExtension(ext: FileExtension): Path =
-    changeExtension(ext.toLowerCase)
-
-  // changes the existing extension out for a new one, or adds it
-  // if the current path has none.
-  def changeExtension(ext: String): Path =
-    val name0 = name
-    val dropExtension = Path.fileName(name0)
-    if dropExtension eq name0 then addExtension(ext)
-    else new Path(jpath.resolveSibling(dropExtension + "." + ext))
 
   // Boolean tests
   def exists: Boolean = try Files.exists(jpath)  catch { case ex: SecurityException => false }

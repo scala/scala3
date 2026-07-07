@@ -7,14 +7,8 @@ import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.parsing.Parsers
 import dotty.tools.dotc.report
-import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.dotc.util.SourceFile
-import dotty.tools.dotc.util.SourcePosition
-import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.dotc.util.SrcPos
-import dotty.tools.io.VirtualFile
-
-import java.nio.charset.StandardCharsets
 
 /**
   * This phase inserts the expression being evaluated at the line of the breakpoint

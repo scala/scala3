@@ -3,11 +3,13 @@ package dotty.tools.dotc.typer
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
+import dotty.tools.inTempDirectory
 import dotty.tools.io.{Directory, File}
 import dotty.tools.vulpix.TestConfiguration
-
 import org.junit.Test
 import org.junit.Assert.{assertFalse, assertTrue}
+
+import java.nio.charset.StandardCharsets
 
 /** Regression test for https://github.com/scala/scala3/issues/23043
   *
@@ -33,21 +35,22 @@ import org.junit.Assert.{assertFalse, assertTrue}
 class NamerRecompileTest:
 
   @Test def spuriousPackageDirectoryDoesNotConflictWithObject(): Unit =
-    Directory.inTempDirectory { tmp =>
-      val srcFile = tmp./(File("Test.scala")).toAbsolute
-      srcFile.writeAll(
-        """package testpkg
-          |
-          |object Scope:
-          |  enum MyEnum:
-          |    case A
-          |    case B(x: Int)
-          |""".stripMargin
-      )
+    inTempDirectory { tmp =>
+      val srcFile = tmp.fileNamed("Test.scala")
+      val srcOut = srcFile.output()
+      try srcOut.write(
+            """package testpkg
+              |
+              |object Scope:
+              |  enum MyEnum:
+              |    case A
+              |    case B(x: Int)
+              |""".stripMargin.getBytes(StandardCharsets.UTF_8)
+          )
+      finally srcOut.close()
 
-      val out = tmp./("out")
-      out.createDirectory()
-      val outPath = out.toAbsolute.toString
+      val out = tmp.subdirectoryNamed("out")
+      val outPath = out.path
 
       val baseOptions = TestConfiguration.defaultOptions
         .and("-d", outPath)
@@ -64,10 +67,11 @@ class NamerRecompileTest:
       //   val dir   = parts.init.foldLeft(out)(_.subdirectoryNamed(_))
       //   dir.fileNamed(parts.last + ".sir")
       // will create  testpkg/Scope/  which the classpath scanner sees as a package.
-      val pluginDir = out./("testpkg")./("Scope")
-      pluginDir.createDirectory()
-      val pluginFile = pluginDir./(File("MyEnum.sir")).toAbsolute
-      pluginFile.writeAll("plugin data")
+      val pluginDir = out.subdirectoryNamed("testpkg").subdirectoryNamed("Scope")
+      val pluginFile = pluginDir.fileNamed("MyEnum.sir")
+      val pluginFileOut = pluginFile.output()
+      try pluginFileOut.write("plugin data".getBytes(StandardCharsets.UTF_8))
+      finally pluginFileOut.close()
       assertTrue("Plugin directory should exist", pluginDir.isDirectory)
 
       // Second compilation with output on classpath (as sbt does):

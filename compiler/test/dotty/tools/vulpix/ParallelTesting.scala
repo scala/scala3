@@ -1620,7 +1620,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   def compileTastyInDir(f: String, flags0: TestFlags, fromTastyFilter: FileFilter)(implicit testGroup: TestGroup): TastyCompilationTest = {
     val outDir = new JFile(defaultOutputDir, testGroup.name)
     val flags = flags0 `and` "-Yretain-trees"
-    val sourceDir = new JFile(f)
+    val sourceDir = TestSources.getPath(f).toFile
     checkRequirements(f, sourceDir, outDir)
 
     val (dirs, files) = compilationTargets(sourceDir, fromTastyFilter)
@@ -1773,7 +1773,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     val bestEffortFlag = "-Ybest-effort"
     val semanticDbFlag = "-Xsemanticdb"
     val withBetastyFlag = "-Ywith-best-effort-tasty"
-    val sourceDir = new JFile(f)
+    val sourceDir = TestSources.getPath(f).toFile
     val dirs = sourceDir.listFiles.toList
     assert(dirs.forall(_.isDirectory), s"All files in $f have to be directories.")
 
@@ -1871,7 +1871,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    */
   def compileShallowFilesInDir(f: String, flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
     val outDir = new JFile(defaultOutputDir, testGroup.name)
-    val sourceDir = new JFile(f)
+    val sourceDir = TestSources.getPath(f).toFile
     checkRequirements(f, sourceDir, outDir)
 
     val (_, files) = compilationTargets(sourceDir)

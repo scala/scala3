@@ -325,7 +325,7 @@ class JSCodeGen()(using genCtx: Context) {
 
   private def genIRFile(cunit: CompilationUnit, tree: ir.Trees.ClassDef): Unit = {
     val outfile = getFileFor(cunit, tree.name.name, ".sjsir")
-    val output = new BufferedOutputStream(outfile.output)
+    val output = new BufferedOutputStream(outfile.output())
     try {
       ir.Serializers.serialize(output, tree)
     } finally {

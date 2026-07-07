@@ -32,7 +32,7 @@ class PlainFile(givenPath: Path) extends AbstractFile {
 
   override def container: Option[AbstractFile] = Some(new PlainFile(givenPath.parent))
   override def input: InputStream = givenPath.toFile.inputStream()
-  override def output: OutputStream = givenPath.toFile.outputStream()
+  override def output(append: Boolean = false): OutputStream = givenPath.toFile.outputStream(append)
   override def sizeOption: Option[Int] = Some(givenPath.length.toInt)
   override def toURL: Option[URL] = Some(jpath.toUri.toURL)
 

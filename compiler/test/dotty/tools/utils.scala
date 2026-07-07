@@ -15,6 +15,7 @@ import scala.util.control.{ControlThrowable, NonFatal}
 
 import dotc.config.CommandLineParser
 import dotty.tools.directives.{DirectiveValue, UsingDirectivesParser}
+import dotty.tools.io.AbstractFile
 
 object Dummy
 
@@ -30,6 +31,13 @@ def scriptsDir(path: String): File = {
   val dir = new File(Dummy.getClass.getResource(path).getPath)
   assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
   dir
+}
+
+def inTempDirectory[T](fn: AbstractFile => T): T = {
+  val underlying = Files.createTempDirectory("temp")
+  val temp = AbstractFile.getDirectory(underlying, "").nn
+  try fn(temp)
+  finally dotty.tools.io.Path(underlying).deleteRecursively()
 }
 
 extension (f: File) def absPath: String =

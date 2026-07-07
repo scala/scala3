@@ -3,7 +3,6 @@ package transform
 
 
 import java.util.Arrays
-
 import dotty.tools.io
 import ast.tpd
 import ast.Trees.*
@@ -19,10 +18,12 @@ import DenotTransformers.IdentityDenotTransformer
 import MacroAnnotations.hasMacroAnnotation
 import inlines.Inlines
 import quoted.*
-import sbt.{ AbstractExtractDependenciesCollector, DependencyRecorder }
+import sbt.{AbstractExtractDependenciesCollector, DependencyRecorder}
 import staging.StagingLevel
 import util.Property
 
+import java.io.PrintWriter
+import java.nio.charset.StandardCharsets
 import scala.collection.mutable
 import scala.io.Codec
 
@@ -60,7 +61,9 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
 
       unit.source.file.jpath match
         case jpath: io.JPath =>
-          val pw = io.File(jpath)(using Codec.UTF8).changeExtension(io.FileExtension.Inc).toFile.printWriter()
+          val file = io.AbstractFile.getFile(jpath).nn
+          val container = file.container.getOrElse(throw new AssertionError(s"Unexpected lack of parent for $jpath"))
+          val pw = new PrintWriter(container.fileNamed(file.nameWithoutExtension + io.FileExtension.Inc.withDot).output(), true, StandardCharsets.UTF_8)
           // val pw = Console.out
           try
             pw.println("Used Names:")

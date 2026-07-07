@@ -22,7 +22,7 @@ object NoAbstractFile extends AbstractFile {
   override def lastModified: Long = 0L
   override def lookupName(name: String, directory: Boolean): AbstractFile | Null = null
   override def name: String = ""
-  override def output: java.io.OutputStream = throw UnsupportedOperationException("NoAbstractFile.output")
+  override def output(append: Boolean = false): java.io.OutputStream = throw UnsupportedOperationException("NoAbstractFile.output")
   override def path: String = ""
   override def toURL: Option[URL] = None
   override def toString(): String = "<no file>"

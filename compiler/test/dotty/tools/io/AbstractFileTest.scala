@@ -1,8 +1,10 @@
 package dotty.tools.io
 
-import org.junit.Test
+import dotty.tools.inTempDirectory
 
+import org.junit.Test
 import dotty.tools.io.AbstractFile
+
 import java.nio.file.Files.*
 import java.nio.file.attribute.PosixFilePermissions
 
@@ -14,14 +16,14 @@ class AbstractFileTest {
   // but d.fileNamed and d.subdirectoryNamed also Files.createDirectories
   // for prefixes, which may optionally fail on an existing symbolic link.
   //
-  private def exerciseSymbolicLinks(temp: Directory): Unit = {
+  private def exerciseSymbolicLinks(temp: AbstractFile): Unit = {
     val base = {
       val permissions = PosixFilePermissions.fromString("rwxrwxrwx")
       val attributes = PosixFilePermissions.asFileAttribute(permissions)
       // Specifying the 'attributes' parameter on Windows prevents a
       // FileSystemException "A required privilege is not held by the client".
       val target = createTempDirectory(temp.jpath, "real", attributes)
-      val link   = temp.jpath.resolve("link")
+      val link   = temp.jpath.nn.resolve("link")
       createSymbolicLink(link, target)     // may bail early if unsupported
       AbstractFile.getDirectory(link, "").nn
     }
@@ -41,7 +43,7 @@ class AbstractFileTest {
     assert(dir.subdirectoryNamed("link").exists)
   }
   @Test def t6450(): Unit =
-    try Directory.inTempDirectory(exerciseSymbolicLinks)
+    try inTempDirectory(exerciseSymbolicLinks)
     catch { case _: UnsupportedOperationException => () }
 }
 

@@ -2,10 +2,9 @@ package dotty.tools.dotc
 package core
 package tasty
 
-import java.nio.file.{Path as JPath, Files as JFiles}
+import java.nio.file.{Files as JFiles, Path as JPath}
 import java.nio.channels.ClosedByInterruptException
-import java.io.DataOutputStream
-import dotty.tools.io.{File, PlainFile}
+import dotty.tools.io.{Path, PlainFile}
 import dotty.tools.dotc.core.Contexts.Context
 
 object BestEffortTastyWriter:
@@ -17,11 +16,11 @@ object BestEffortTastyWriter:
       unit.pickled.foreach { (clz, binary) =>
         val parts = clz.fullName.mangledString.split('.')
         val outPath = outputPath(parts.toList, dir)
-        val outTastyFile = new File(outPath)
-        val outstream = new PlainFile(outTastyFile).output
+        val outTastyFile = PlainFile(Path(outPath))
+        val outstream = outTastyFile.output()
         try outstream.write(binary())
         catch case ex: ClosedByInterruptException =>
-          outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
+          JFiles.delete(outPath) // don't leave an empty or half-written tastyfile around after an interrupt
           throw ex
         finally outstream.close()
       }

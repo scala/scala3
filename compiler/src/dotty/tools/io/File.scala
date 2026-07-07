@@ -48,30 +48,7 @@ class File(jpath: JPath)(implicit constructorCodec: Codec) extends Path(jpath) {
   def inputStream(): InputStream = Files.newInputStream(jpath)
 
   /** Obtains a OutputStream. */
-  def outputStream(append: Boolean = false): OutputStream =
+  private[io] def outputStream(append: Boolean = false): OutputStream =
     if (append) Files.newOutputStream(jpath, CREATE, APPEND)
     else Files.newOutputStream(jpath, CREATE, TRUNCATE_EXISTING)
-
-  /** Obtains an OutputStreamWriter wrapped around a FileOutputStream.
-   *  This should behave like a less broken version of java.io.FileWriter,
-   *  in that unlike the java version you can specify the encoding.
-   */
-  private def writer(append: Boolean, codec: Codec): OutputStreamWriter =
-    new OutputStreamWriter(outputStream(append), codec.charSet)
-
-  /** Wraps a BufferedWriter around the result of writer().
-   */
-  def bufferedWriter(): BufferedWriter = bufferedWriter(append = false)
-  def bufferedWriter(append: Boolean): BufferedWriter = bufferedWriter(append, constructorCodec)
-  def bufferedWriter(append: Boolean, codec: Codec): BufferedWriter =
-    new BufferedWriter(writer(append, codec))
-
-  def printWriter(): PrintWriter = new PrintWriter(bufferedWriter(), true)
-
-  /** Creates a new file and writes all the Strings to it. */
-  def writeAll(strings: String*): Unit = {
-    val out = bufferedWriter()
-    try strings.foreach(out.write(_))
-    finally out.close()
-  }
 }

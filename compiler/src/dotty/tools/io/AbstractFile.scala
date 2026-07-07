@@ -68,6 +68,13 @@ abstract class AbstractFile extends dotty.tools.dotc.interfaces.AbstractFile {
   /** Returns the name of this abstract file. */
   def name: String
 
+  /** strip anything after and including trailing the extension */
+  def nameWithoutExtension: String = {
+    val i = name.lastIndexOf('.')
+    if (i < 0) name
+    else name.substring(0, i)
+  }
+
   /** Returns the path of this abstract file. */
   def path: String
 
@@ -114,7 +121,7 @@ abstract class AbstractFile extends dotty.tools.dotc.interfaces.AbstractFile {
   def input: InputStream
 
   /** Returns an output stream for writing the file */
-  def output: OutputStream
+  def output(append: Boolean = false): OutputStream
 
   /** size of this file if available. */
   def sizeOption: Option[Int] = None
@@ -179,7 +186,7 @@ abstract class AbstractFile extends dotty.tools.dotc.interfaces.AbstractFile {
     container.map(_.lookupName(name, directory = false)).orNull
 
   final def resolveSiblingWithExtension(extension: FileExtension): AbstractFile | Null =
-    resolveSibling(Path.fileName(name) + "." + extension)
+    resolveSibling(nameWithoutExtension + "." + extension)
 
   private def fileOrSubdirectoryNamed(name: String, isDir: Boolean): AbstractFile =
     lookupName(name, isDir) match {

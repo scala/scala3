@@ -46,7 +46,7 @@ private[io] abstract class ZipArchive(override val jpath: JPath) extends Abstrac
   self =>
 
   override def isDirectory: Boolean = true
-  override def output: OutputStream    = unsupported()
+  override def output(append: Boolean = false): OutputStream    = unsupported()
   override def toURL: Option[URL] = Some(jpath.toUri.toURL)
 
   /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
