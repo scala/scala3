@@ -6,6 +6,8 @@ import scala.util.control.NonFatal
 
 import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.util.regex.Pattern
 
 import dotc.ast.Trees.*
 import dotc.ast.{tpd, untpd}
@@ -76,8 +78,11 @@ case class State(objectIndex: Int,
                  imports: Map[Int, List[tpd.Import]],
                  invalidObjectIndexes: Set[Int],
                  quiet: Boolean,
-                 context: Context):
+                 context: Context,
+                 pastInputs: List[String] = Nil):
   def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
+
+  def recordInput(input: String): State = copy(pastInputs = input :: pastInputs)
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
@@ -139,7 +144,7 @@ class ReplDriver(settings: Array[String],
     val combinedScript = initScript.trim() match
       case "" => extraPredef
       case script => s"$extraPredef\n$script"
-    run(combinedScript)(using emptyState)
+    run(combinedScript)(using emptyState).copy(pastInputs = Nil)
 
   /** Reset state of repl to the initial state
    *
@@ -387,7 +392,8 @@ class ReplDriver(settings: Array[String],
         displayErrors(errs, state)
 
       case cmd: Command =>
-        interpretCommand(cmd)
+        val next = interpretCommand(cmd)
+        cmd.replayLine.fold(next)(line => next.recordInput(line.strip))
 
       case SigKill => // TODO
         state
@@ -453,7 +459,8 @@ class ReplDriver(settings: Array[String],
                 .sorted
                 .foreach(printDiagnostic)
 
-              updatedState
+              if updatedState.invalidObjectIndexes.contains(updatedState.objectIndex) then updatedState
+              else updatedState.recordInput(parsed.source.content().mkString)
             }
         }
       )
@@ -552,6 +559,16 @@ class ReplDriver(settings: Array[String],
     }
   }
 
+  /** Replay a file saved by `:save`: each entry runs as its own compilation unit. */
+  private def loadSavedEntries(contents: String, state: State): State =
+    val separatorLine = s"(?m)^${Pattern.quote(Save.entrySeparator)}$$"
+    val entries = contents.stripPrefix(Save.sessionHeader).split(separatorLine).toList
+      .map(_.strip).filter(_.nonEmpty)
+    entries.foldLeft(state) { (st, entry) =>
+      if ParseResult.isCommand(entry) then interpret(ParseResult(entry)(using st))(using st)
+      else run(entry)(using st)
+    }
+
   /** Interpret `cmd` to action and propagate potentially new `state` */
   private def interpretCommand(cmd: Command)(using state: State): State = cmd match {
     case UnknownCommand(cmd) =>
@@ -586,11 +603,28 @@ class ReplDriver(settings: Array[String],
       } out.println(imp.show(using state.context))
       state
 
+    case Save(path) =>
+      if path.isEmpty then
+        out.println("File name is required.")
+      else if state.pastInputs.isEmpty then
+        out.println("Nothing to save.")
+      else
+        try
+          val body = state.pastInputs.reverse.map(entry => s"${Save.entrySeparator}\n$entry").mkString("\n")
+          val content = s"${Save.sessionHeader}\n$body"
+          Files.writeString(new JFile(path).toPath, content, StandardCharsets.UTF_8)
+        catch case NonFatal(e) =>
+          out.println(s"""Couldn't save session to "$path": ${e.getMessage}""")
+      state
+
     case Load(path) =>
       val file = new JFile(path)
       if (file.exists) {
         val contents = Using(scala.io.Source.fromFile(file, StandardCharsets.UTF_8.name))(_.mkString).get
-        run(contents)
+        val loaded =
+          if contents.linesIterator.nextOption().contains(Save.sessionHeader) then loadSavedEntries(contents, state)
+          else run(contents)(using state)
+        loaded.copy(pastInputs = state.pastInputs)
       }
       else {
         out.println(s"""Couldn't find file "${file.getCanonicalPath}"""")
@@ -703,13 +737,14 @@ class ReplDriver(settings: Array[String],
 
     case Silent => state.copy(quiet = !state.quiet)
     case Dep(dep) =>
-      val depStrings = List(dep)
-      if depStrings.nonEmpty then
-        val deps = depStrings.flatMap(DependencyResolver.parseDependency)
-        if deps.nonEmpty then
-          DependencyResolver.resolveDependencies(deps) match
-            case Right(files) =>
-              if files.nonEmpty then
+      def jarCount(fileSize: Int): String =
+        if fileSize == 1 then "1 JAR" else s"$fileSize JARs"
+
+      if dep.nonEmpty then
+        DependencyResolver.parseDependency(dep) match
+          case Some(d) =>
+            DependencyResolver.resolveDependencies(List(d)) match
+              case Right(files) if files.nonEmpty =>
                 inContext(state.context):
                   // Update both compiler classpath and classloader
                   val prevOutputDir = ctx.settings.outputDir.value
@@ -719,9 +754,13 @@ class ReplDriver(settings: Array[String],
                     prevClassLoader,
                     prevOutputDir
                   )
-                  out.println(s"Resolved ${deps.size} dependencies (${files.size} JARs)")
-            case Left(error) =>
-              out.println(s"Error resolving dependencies: $error")
+                  out.println(s"Resolved a dependency (${jarCount(files.size)})")
+              case Right(_) =>
+              case Left(error) =>
+                out.println(s"Error resolving a dependency: $error")
+          case None =>
+      else
+        out.println("No dependency specified.")
       state
 
     case Quit =>
