@@ -149,7 +149,7 @@ class LabelBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn   = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
 

@@ -21,7 +21,7 @@ class StringInterpolatorOptTest extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn   = lookupClass(dir, "Foo.class")
       val clsNode = loadClassNode(clsIn)
       val meth1   = getMethod(clsNode, "meth1")
       val meth2   = getMethod(clsNode, "meth2")
@@ -49,7 +49,7 @@ class StringInterpolatorOptTest extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn   = lookupClass(dir, "Foo.class")
       val clsNode = loadClassNode(clsIn)
       val meth1   = getMethod(clsNode, "meth1")
       val meth2   = getMethod(clsNode, "meth2")

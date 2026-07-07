@@ -89,6 +89,9 @@ trait DottyBytecodeTest {
     files(outDir)
   }
 
+  protected def lookupClass(dir: AbstractFile, name: String): InputStream =
+    dir.lookupName(name, directory = false).nn.input
+
   protected def loadClassNode(input: InputStream, skipDebugInfo: Boolean = true): ClassNode = {
     val cr = new ClassReader(input)
     val cn = new ClassNode()
@@ -98,7 +101,7 @@ trait DottyBytecodeTest {
 
   /** Finds a class with `cls` as name in `dir`, throws if it can't find it */
   def findClass(cls: String, dir: AbstractFile) = {
-    val clsIn = dir.lookupName(s"$cls.class", directory = false).input
+    val clsIn = lookupClass(dir, s"$cls.class")
     val clsNode = loadClassNode(clsIn)
     assert(clsNode.name == cls, s"inspecting wrong class: ${clsNode.name}")
     clsNode
