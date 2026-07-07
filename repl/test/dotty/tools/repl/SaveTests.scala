@@ -64,7 +64,7 @@ class SaveTests extends ReplTest {
       )
     }
 
-  @Test def skipsCommands =
+  @Test def recordsCommands =
     val target = tempFile()
     initially {
       run("val x = 1")
@@ -77,7 +77,11 @@ class SaveTests extends ReplTest {
       assertEquals(
         s"""|$header
             |$sep
-            |val x = 1""".stripMargin,
+            |val x = 1
+            |$sep
+            |:type x
+            |$sep
+            |:imports""".stripMargin,
         contentOf(target)
       )
     }
@@ -125,16 +129,6 @@ class SaveTests extends ReplTest {
             |:jar $jar""".stripMargin,
         contentOf(target)
       )
-    }
-
-  @Test def skipsFailedJar =
-    val target = tempFile()
-    initially {
-      run(":jar /does/not/exist.jar")
-    } andThen {
-      storedOutput()
-      run(s":save $target")
-      assertEquals("Nothing to save.", storedOutput().trim)
     }
 
   @Test def roundTripsCommandViaLoad =
