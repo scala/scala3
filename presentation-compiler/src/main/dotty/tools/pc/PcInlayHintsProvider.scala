@@ -67,6 +67,16 @@ class PcInlayHintsProvider(
       tree: Tree,
       parent: Option[Tree]
   ): InlayHints =
+    // Skip trees positioned outside the analyzed file (inlined expansions from
+    // other sources). See [[dotty.tools.pc.tests.inlayHints.InlayHintsInlinedDependencySuite]].
+    if tree.source.path != source.path then inlayHints
+    else collectDecorationsImpl(inlayHints, tree, parent)
+
+  private def collectDecorationsImpl(
+      inlayHints: InlayHints,
+      tree: Tree,
+      parent: Option[Tree]
+  ): InlayHints =
     /*
       XRay hints and closing labels are not mutually exclusive with other hints,
       so they must be matched separately
@@ -564,9 +574,11 @@ object XRayModeHint:
 
   private def isEndOfLine(pos: SourcePosition): Boolean =
     if pos.exists then
-      val source = pos.source
+      // Bound on `content().length`, not `source.length`: a TASTy-only source has
+      // empty `content()` but a non-zero `length`. See InlayHintsInlinedDependencySuite.
+      val content = pos.source.content()
       val end = pos.end
-      end >= source.length || source(end) == '\n' || source(end) == '\r'
+      end >= content.length || content(end) == '\n' || content(end) == '\r'
     else false
 
 end XRayModeHint
@@ -594,5 +606,8 @@ object ClosingLabel:
 
   private def endsWithBrace(tree: Tree)(using Context): Boolean =
     val pos = tree.sourcePos
-    pos.exists && !pos.span.isZeroExtent && pos.source(pos.end - 1) == '}'
+    // Bound on `content().length` before indexing: a TASTy-only source has empty
+    // `content()` but a non-zero span. See InlayHintsInlinedDependencySuite.
+    pos.exists && !pos.span.isZeroExtent &&
+    pos.end - 1 < pos.source.content().length && pos.source(pos.end - 1) == '}'
 end ClosingLabel

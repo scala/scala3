@@ -126,6 +126,7 @@ private[immutable] abstract class LongMapIterator[V, T](it: LongMap[V]) extends 
   /** What value do we assign to a tip?
    *
    *  @param tip the leaf node to extract a value from
+   *  @return the element of type `T` (e.g. the key, the value, or the key-value pair) extracted from `tip`
    */
   def valueOf(tip: LongMap.Tip[V]): T
 

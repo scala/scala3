@@ -5,7 +5,8 @@
 
 package dotty.tools.io
 
-import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream }
+import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream}
+import java.net.{URI, URL}
 
 /** This class implements an in-memory file.
  *
@@ -14,108 +15,48 @@ import java.io.{ ByteArrayInputStream, ByteArrayOutputStream, InputStream, Outpu
  *
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
-class VirtualFile(val name: String, override val path: String) extends AbstractFile {
+class VirtualFile(override val path: String, initialContents: Array[Byte]) extends AbstractFile {
+  private var content = initialContents
 
-  /**
-   * Initializes this instance with the specified name and an
-   * identical path.
-   *
-   * @param name the name of the virtual file to be created
-   * @return     the created virtual file
-   */
-  def this(name: String) = this(name, name)
-
-  /**
-    * Initializes this instance with the specified path
-    * and a name taken from the last path element.
-    *
-    * @param path the path of the virtual file to be created
-    * @param content the initial contents of the virtual file
-    * @return     the created virtual file
-    */
-  def this(path: String, content: Array[Byte]) = {
-    this(VirtualFile.nameOf(path), path)
-    this.content = content
+  override val name: String = {
+    // We support fake names like "<example>" even on Windows where Path.of would throw.
+    // TODO: Proper path support for VirtualFile, should be integrated with VirtualDirectory...
+    if path.startsWith("<") then path
+    else
+      val fileName = java.nio.file.Path.of(path).getFileName
+      if fileName == null then ""
+      else fileName.toString
   }
 
-  /**
-    * Initializes this instance with the specified path
-    * and a name taken from the last path element.
-    *
-    * @param path the path of the virtual file to be created
-    * @param content the initial contents of the virtual file
-    * @return     the created virtual file
-    */
-  def this(path: JPath, content: Array[Byte]) = {
-    this(path.getFileName().toString(), path.toString())
-    this.content = content
-    this.jpath_ = path
-  }
-
-  private var content = Array.emptyByteArray
-
-  private var jpath_ : JPath | Null = null
-
-  def absolute: AbstractFile = this
-
-  /** Returns path, which might be a non-existing file or null. */
-  def jpath: JPath | Null = jpath_
+  // For compatibility, until we remove `AbstractFile.jpath`.
+  override def jpath: JPath | Null = try java.nio.file.Path.of(path) catch case _: Exception => null
 
   override def sizeOption: Option[Int] = Some(content.length)
+
+  override def toURL: Option[URL] = None
 
   /** Always returns true, even if jpath is a non-existing file. */
   override def exists: Boolean = true
 
-  def input : InputStream = new ByteArrayInputStream(content)
+  override def input: InputStream = new ByteArrayInputStream(content)
 
-  override def output: OutputStream = {
+  override def output: OutputStream =
     new ByteArrayOutputStream() {
-      override def close() = {
+      override def close(): Unit = {
         super.close()
         content = toByteArray()
       }
     }
-  }
-
-  def container: AbstractFile = NoAbstractFile
 
   /** Is this abstract file a directory? */
-  def isDirectory: Boolean = false
+  override def isDirectory: Boolean = false
 
   /** @inheritdoc */
   override def isVirtual: Boolean = true
 
-  // private var _lastModified: Long = 0
-  // _lastModified
+  override def lastModified: Long = 0
 
-  /** Returns the time that this abstract file was last modified. */
-  // !!! Except it doesn't - it's private and never set - so I replaced it
-  // with constant 0 to save the field.
-  def lastModified: Long = 0
+  override def iterator: Iterator[AbstractFile] = unsupported()
 
-  /** Returns all abstract subfiles of this abstract directory. */
-  def iterator: Iterator[AbstractFile] = {
-    assert(isDirectory, "not a directory '" + this + "'")
-    Iterator.empty
-  }
-
-  /**
-   * Returns the abstract file in this abstract directory with the
-   * specified name. If there is no such file, returns null. The
-   * argument "directory" tells whether to look for a directory or
-   * or a regular file.
-   */
-  def lookupName(name: String, directory: Boolean): AbstractFile | Null = {
-    assert(isDirectory, "not a directory '" + this + "'")
-    null
-  }
-
-  /** Returns an abstract file with the given name. It does not
-   *  check that it exists.
-   */
-  def lookupNameUnchecked(name: String, directory: Boolean): AbstractFile = unsupported()
+  override def lookupName(name: String, directory: Boolean): AbstractFile | Null = unsupported()
 }
-object VirtualFile:
-  private def nameOf(path: String): String =
-    val i = path.lastIndexOf('/')
-    if i >= 0 && i < path.length - 1 then path.substring(i + 1) else path

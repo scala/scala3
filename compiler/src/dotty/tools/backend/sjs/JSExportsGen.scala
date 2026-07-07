@@ -944,11 +944,11 @@ final class JSExportsGen(jsCodeGen: JSCodeGen)(using Context) {
           case jstpe.FloatType   => PrimitiveTypeTest(jstpe.FloatType, 7)
           case jstpe.DoubleType  => PrimitiveTypeTest(jstpe.DoubleType, 8)
 
-          case jstpe.ClassType(jswkn.BoxedUnitClass, _)   => PrimitiveTypeTest(jstpe.UndefType, 0)
-          case jstpe.ClassType(jswkn.BoxedStringClass, _) => PrimitiveTypeTest(jstpe.StringType, 9)
-          case jstpe.ClassType(_, _)                      => InstanceOfTypeTest(tpe)
+          case jstpe.ClassType(jswkn.BoxedUnitClass, _, _)   => PrimitiveTypeTest(jstpe.UndefType, 0)
+          case jstpe.ClassType(jswkn.BoxedStringClass, _, _) => PrimitiveTypeTest(jstpe.StringType, 9)
+          case jstpe.ClassType(_, _, _)                      => InstanceOfTypeTest(tpe)
 
-          case jstpe.ArrayType(_, _) => InstanceOfTypeTest(tpe)
+          case jstpe.ArrayType(_, _, _) => InstanceOfTypeTest(tpe)
         }
     }
   }

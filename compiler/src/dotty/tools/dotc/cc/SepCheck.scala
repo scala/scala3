@@ -352,9 +352,10 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   private def formalCaptures(arg: Tree)(using Context): Refs =
     arg.formalType.orElse(arg.nuType).spanCaptureSet.elems
 
-   /** The span capture set of the type of `tree` */
-  private def spanCaptures(tree: Tree)(using Context): Refs =
-   tree.nuType.spanCaptureSet.elems
+   /** The span capture set of the type of `tree`. */
+  private def spanCaptures(tree: Tree)(using Context): Refs = tree.nuType.widen match
+    case _: MethodOrPoly if tree.symbol.is(Method) => tree.symbol.useSet.elems
+    case _ => tree.nuType.spanCaptureSet.elems
 
    /** The deep capture set of the type of `tree` */
   private def deepCaptures(tree: Tree)(using Context): Refs =
@@ -511,7 +512,8 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   private def checkApply(fn: Tree, args: List[Tree], app: Tree, deps: collection.Map[Tree, List[Tree]], resultPeaks: Refs)(using Context): Unit =
     val (qual, fnCaptures) = methPart(fn) match
       case Select(qual, _) => (qual, qual.nuType.captureSet)
-      case _ => (fn, CaptureSet.empty)
+      case fn1 if fn1.symbol.is(Method) => (fn1, fn1.symbol.useSet)
+      case fn1 => (fn1, CaptureSet.empty)
     var currentPeaks = PeaksPair(fnCaptures.elems.allPeaks, emptyRefs)
     val partsWithPeaks = mutable.ListBuffer[(Tree, PeaksPair)]() += (qual -> currentPeaks)
 

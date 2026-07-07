@@ -2,8 +2,6 @@ package dotty
 package tools
 package dotc
 
-import scala.language.unsafeNulls
-
 import java.nio.file.{Files, Paths}
 import scala.util.Try
 import dotty.tools.dotc.coverage.Serializer

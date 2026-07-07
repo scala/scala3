@@ -554,8 +554,7 @@ object desugar {
     case ValDefs(head @ (fst :: _)) :: rest if fst.mods.isOneOf(GivenOrImplicit) =>
       val paramTpts = head.map(_.tpt)
       val paramNames = head.map(_.name)
-      val paramsErased = head.map(_.mods.flags.is(Erased))
-      makeContextualFunction(paramTpts, paramNames, functionsOf(rest, rhs), paramsErased).withSpan(rhs.span)
+      makeContextualFunction(paramTpts, Nil, paramNames, functionsOf(rest, rhs)).withSpan(rhs.span)
     case ValDefs(head) :: rest =>
       Function(head, functionsOf(rest, rhs))
     case TypeDefs(head) :: rest =>
@@ -1335,30 +1334,19 @@ object desugar {
       case _ => body
     cpy.PolyFunction(tree)(tree.targs, stripped(tree.body)).asInstanceOf[PolyFunction]
 
-  /** Apply function-level parameter flags such as `given` and `erased` to term parameters. */
-  private def addFunctionParamFlags(params: List[ValDef], funFlags: FlagSet, erasedParams: List[Boolean])(using Context): List[ValDef] =
-    val commonFlags = funFlags.toTermFlags & GivenOrImplicit
-    params.zipWithConserve(erasedParams): (param, isErased) =>
-      val flags = commonFlags | (if isErased then Erased else EmptyFlags)
-      if flags.isEmpty then param else param.withAddedFlags(flags)
-
   /** Desugar [T_1, ..., T_M] => (P_1, ..., P_N) => R
    *  Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
    */
   def makePolyFunctionType(tree: PolyFunction)(using Context): RefinedTypeTree = (tree: @unchecked) match
-    case PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(vparamTypes, res)) =>
-      val vparams0 = vparamTypes.zipWithIndex.map {
-        case (p: ValDef, _) => p
-        case (p, n) => makeSyntheticParameter(n + 1, p)
-      }.toList
-      val vparams = fun match
-        case fun: FunctionWithMods =>
-          // TODO: make use of this in the desugaring when pureFuns is enabled.
-          // val isImpure = funFlags.is(Impure)
-          addFunctionParamFlags(vparams0, fun.mods.flags, fun.erasedParams)
+    case PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(formals, res)) =>
+      var vparams = formals match
+        case (p: ValDef) :: _ => formals.asInstanceOf[List[ValDef]]
+        case _ => formals.zipWithIndex.map: (p, n) =>
+          makeSyntheticParameter(n + 1, p)
+      fun match
+        case fun: FunctionWithMods if fun.mods.is(Given) =>
+          vparams = vparams.map(_.withAddedFlags(Given))
         case _ =>
-          vparams0
-
       RefinedTypeTree(ref(defn.PolyFunctionType), List(
         DefDef(nme.apply, tparams :: vparams :: Nil, res, EmptyTree)
           .withFlags(Synthetic)
@@ -2060,16 +2048,19 @@ object desugar {
       .collect:
         case vd: ValDef => vd
 
-  def makeContextualFunction(formals: List[Tree], paramNamesOrNil: List[TermName], body: Tree, erasedParams: List[Boolean], augmenting: Boolean = false)(using Context): Function =
+  def makeContextualFunction(formalTpts: List[Tree], formalTypesOrNil: List[Type], paramNamesOrNil: List[TermName], body: Tree, augmenting: Boolean = false)(using Context): Function =
     val paramNames =
       if paramNamesOrNil.nonEmpty then
         if augmenting then paramNamesOrNil.map(ContextFunctionParamName.fresh(_))
         else paramNamesOrNil
-      else List.fill(formals.length)(ContextFunctionParamName.fresh())
-    val params0 = for (tpt, pname) <- formals.zip(paramNames) yield
-      ValDef(pname, tpt, EmptyTree).withFlags(Param)
-    val params = addFunctionParamFlags(params0, Given, erasedParams)
-    FunctionWithMods(params, body, Modifiers(Given), erasedParams)
+      else List.fill(formalTpts.length)(ContextFunctionParamName.fresh())
+    var params = for (tpt, pname) <- formalTpts.lazyZip(paramNames) yield
+      ValDef(pname, tpt, EmptyTree).withFlags(Given | Param)
+    if formalTypesOrNil.nonEmpty then
+      params = params.zipWithConserve(formalTypesOrNil): (param, formal) =>
+        if formal.hasAnnotation(defn.ErasedParamAnnot) then param.withAddedFlags(Erased)
+        else param
+    FunctionWithMods(params, body, Modifiers(Given))
 
   private def derivedValDef(originalSpan: Span, named: NameTree, tpt: Tree, rhs: Tree, mods: Modifiers)(using Context) =
     val vdef = ValDef(named.name.asTermName, tpt, rhs)
@@ -2425,8 +2416,6 @@ object desugar {
         flatTree(pats1.map(makePatDef(tree, _, rhs)))
       case ext: ExtMethods =>
         Block(List(ext), syntheticUnitLiteral.withSpan(ext.span))
-      case f: FunctionWithMods if f.hasErasedParams =>
-        makeFunctionWithValDefs(f, pt)
       case CapturesAndResult(_, parent) =>
         assert(ctx.reporter.errorsReported)
         parent
@@ -2526,7 +2515,7 @@ object desugar {
    *  gets converted to
    *      FunctionWithMods(List(ValDef(x$1, A), ValDef(x$2, B)), body, mods, erasedParams)
    */
-  def makeFunctionWithValDefs(tree: Function, pt: Type)(using Context): Function = {
+  def makeFunctionWithValDefs(tree: Function)(using Context): Function = {
     val Function(args, result) = tree
     args match {
       case (_ : ValDef) :: _ => tree // ValDef case can be easily handled

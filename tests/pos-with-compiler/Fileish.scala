@@ -4,11 +4,9 @@ package dotty.tools
 package io
 
 import java.io.InputStream
-import java.util.jar.JarEntry
 import language.postfixOps
 
 /** A common interface for File-based things and Stream-based things.
- *  (In particular, io.File and JarEntry.)
  */
 class Fileish(val path: Path, val input: () => InputStream) {
   def inputStream() = input()

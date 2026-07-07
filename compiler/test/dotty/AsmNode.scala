@@ -2,7 +2,6 @@ package dotty
 
 import java.lang.reflect.Modifier
 import scala.jdk.CollectionConverters.*
-import scala.language.unsafeNulls
 import scala.tools.asm
 import scala.tools.asm.*
 import scala.tools.asm.tree.*

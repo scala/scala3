@@ -34,7 +34,9 @@ import dotc.util.Spans.Span
 import dotc.util.{SourceFile, SourcePosition}
 import dotc.{CompilationUnit, Driver}
 import dotc.config.{CompilerCommand, Feature}
+import dotty.tools.io
 import dotty.tools.io.{AbstractFileClassLoader => _, *}
+import dotty.tools.dotc.classpath.FileUtils.isClassContainer
 import dotty.tools.repl.ScalaClassLoader.*
 
 import org.jline.reader.*
@@ -114,8 +116,16 @@ class ReplDriver(settings: Array[String],
       case Some((files, ictx)) => inContext(ictx) {
         shouldStart = true
         if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
-        ictx.base.initialize()
-        ictx
+        val finalCtx =
+          // If the user hasn't configured warnings, enable -deprecation and -feature by default
+          if !ctx.settings.Wconf.wasSetByUser && !ctx.settings.Wall.wasSetByUser then
+            val c = ictx.fresh
+            if !ctx.settings.deprecation.wasSetByUser then c.setSetting(c.settings.deprecation, true)
+            if !ctx.settings.feature.wasSetByUser then c.setSetting(c.settings.feature, true)
+            c
+          else ictx
+        finalCtx.base.initialize()
+        finalCtx
       }
       case None =>
         shouldStart = false
@@ -141,7 +151,7 @@ class ReplDriver(settings: Array[String],
     rootCtx = initialCtx(settings)
     if (rootCtx.settings.outputDir.isDefault(using rootCtx))
       rootCtx = rootCtx.fresh
-        .setSetting(rootCtx.settings.outputDir, new VirtualDirectory("<REPL compilation output>"))
+        .setSetting(rootCtx.settings.outputDir, io.virtualDirectory("<REPL compilation output>"))
     compiler = new ReplCompiler
     rendering = new Rendering(classLoader)
   }
@@ -269,7 +279,7 @@ class ReplDriver(settings: Array[String],
   }
 
   final def run(input: String)(using state: State): State = runBody {
-    interpret(ParseResult.complete(input))
+    interpret(ParseResult(input))
   }
 
   protected def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
@@ -348,7 +358,7 @@ class ReplDriver(settings: Array[String],
       compiler
         .typeCheck(expr, errorsAllowed = true)
         .map { (untpdTree, tpdTree) =>
-          val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
+          val file = SourceFile.virtual("<completions>", expr)
           val unit = CompilationUnit(file)(using state.context)
           unit.untpdTree = untpdTree
           unit.tpdTree = tpdTree
@@ -592,7 +602,7 @@ class ReplDriver(settings: Array[String],
       state
 
     case JarCmd(path) =>
-      val jarFile = AbstractFile.getDirectory(path)
+      val jarFile = AbstractFile.getDirectory(path, state.context.settings.javaOutputVersion.value(using state.context))
       if (jarFile == null)
         out.println(s"""Cannot add "$path" to classpath.""")
         state
@@ -741,4 +751,4 @@ class ReplDriver(settings: Array[String],
 
 end ReplDriver
 object ReplDriver:
-  def pprintImport = "import pprint.pprintln\n"
+  def pprintImport = "import dotty.vendored.pprint.pprintln\n"

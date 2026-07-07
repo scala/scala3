@@ -24,7 +24,7 @@ import scala.PartialFunction.condOpt
 import typer.ImportInfo.withRootImports
 
 import dotty.tools.dotc.{semanticdb => s}
-import dotty.tools.io.{AbstractFile, JarArchive}
+import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.semanticdb.DiagnosticOps.*
 import scala.util.{Using, Failure, Success}
 import java.nio.file.Path
@@ -53,7 +53,7 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
 
   override def isRunnable(using Context) =
     import ExtractSemanticDB.{semanticdbTarget, outputDirectory}
-    def writesToOutputJar = semanticdbTarget.isEmpty && outputDirectory.isInstanceOf[JarArchive]
+    def writesToOutputJar = semanticdbTarget.isEmpty && outputDirectory.ext.isJar
     (super.isRunnable || ctx.isBestEffort) && ctx.settings.Xsemanticdb.value && !writesToOutputJar
 
   // Check not needed since it does not transform trees
@@ -679,7 +679,11 @@ private[semanticdb] object ExtractSemanticDB:
           val symkinds =
             getters.get(vparam.name).fold(SymbolKind.emptySet)(getter =>
               if getter.mods.is(Mutable) then SymbolKind.VarSet else SymbolKind.ValSet)
-          registerSymbol(vparam.symbol, symkinds)
+          // Emit a definition occurrence for the constructor parameter at its name span (and
+          // record the symbol; registerDefinition calls registerSymbol internally). The param
+          // symbol `C#<init>().(x)` then shares the name range with the param-accessor
+          // occurrence emitted from the template body.
+          registerDefinition(vparam.symbol, vparam.nameSpan, symkinds, vparam.source)
         traverse(vparam.tpt)
       tparams.foreach(tp => traverse(tp.rhs))
   end Extractor

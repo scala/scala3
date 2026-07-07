@@ -1,6 +1,6 @@
 package example
 
-abstract class Vals/*<-example::Vals#*/(p/*<-example::Vals#p.*/: Int/*->scala::Int#*/, val xp/*<-example::Vals#xp.*/: Int/*->scala::Int#*/, var yp/*<-example::Vals#yp().*/: Int/*->scala::Int#*/) {
+abstract class Vals/*<-example::Vals#*/(p/*<-example::Vals#p.*//*<-example::Vals#`<init>`().(p)*/: Int/*->scala::Int#*/, val xp/*<-example::Vals#xp.*//*<-example::Vals#`<init>`().(xp)*/: Int/*->scala::Int#*/, var yp/*<-example::Vals#yp().*//*<-example::Vals#`<init>`().(yp)*/: Int/*->scala::Int#*/) {
   val xm/*<-example::Vals#xm.*/: Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/
   val xam/*<-example::Vals#xam.*/: Int/*->scala::Int#*/
   private[this] val xlm/*<-example::Vals#xlm.*/: Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/

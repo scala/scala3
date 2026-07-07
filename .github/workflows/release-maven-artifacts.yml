@@ -18,7 +18,7 @@ jobs:
       NEWNIGHTLY            : ${{ vars.NEWNIGHTLY }}
       NIGHTLYBUILD          : ${{ vars.NIGHTLYBUILD }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           distribution: 'adopt'
@@ -57,7 +57,7 @@ jobs:
       NEWNIGHTLY            : ${{ vars.NEWNIGHTLY }}
       NIGHTLYBUILD          : ${{ vars.NIGHTLYBUILD }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           repository: scala/scala3-lts
           ref: lts-3.3

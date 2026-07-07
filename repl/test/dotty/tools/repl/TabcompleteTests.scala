@@ -113,7 +113,7 @@ class TabcompleteTests extends ReplTest {
     val comp = tabComplete("(null: AnyRef).")
     assertEquals(
       List("!=", "##", "->", "==", "asInstanceOf", "ensuring", "eq", "equals", "formatted",
-          "getClass", "hashCode", "isInstanceOf", "ne", "nn", "notify", "notifyAll", "runtimeChecked", "synchronized", "toString", "wait", "→"),
+          "getClass", "hashCode", "isInstanceOf", "ne", "nn", "notify", "notifyAll", "runtimeChecked", "synchronized", "toString", "wait"),
       comp.distinct.sorted)
   }
 
@@ -169,8 +169,7 @@ class TabcompleteTests extends ReplTest {
         "toString",
         "valueOf",
         "values",
-        "wait",
-        "→"
+        "wait"
       ),
       tabComplete("""|enum Foo:
                      |  case `back-tick`

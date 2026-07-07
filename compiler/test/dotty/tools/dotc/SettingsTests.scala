@@ -1,16 +1,13 @@
 package dotty.tools
 package dotc
 
-import reporting.StoreReporter
 import vulpix.TestConfiguration
 
-import core.Contexts.{Context, ContextBase}
 import dotty.tools.Useables.given
 import dotty.tools.dotc.config.Settings.*
 import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
 import dotty.tools.dotc.config.ScalaSettingCategories.*
 import dotty.tools.dotc.config.ScalaSettings
-import dotty.tools.vulpix.TestConfiguration.mkClasspath
 import dotty.tools.io.PlainDirectory
 import dotty.tools.io.Directory
 import dotty.tools.dotc.config.ScalaVersion
@@ -254,7 +251,6 @@ class SettingsTests:
     assertTrue(summary.warnings.forall(_.contains("updated")))
 
   @Test def `dir option also warns`: Unit =
-    val abc: PlainFile = Paths.get("a", "b", "c").toPlainFile
     object Settings extends SettingGroup:
       val option = OutputSetting(RootSetting, "option", "out", "A file", Paths.get("a", "b", "c").toPlainFile)
     Using.resource(createTempDirectory("i13887")) { dir =>

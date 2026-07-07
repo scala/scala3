@@ -2,8 +2,6 @@ package dotty
 package tools
 package scripting
 
-import scala.language.unsafeNulls
-
 import java.io.File
 import java.nio.file.Path
 
@@ -40,7 +38,7 @@ class ScriptingTests:
         ),
         scriptFile = scriptFile,
         scriptArgs = scriptArgs
-      ).compileAndRun { (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
+      ).compileAndRun { ctx ?=> (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
         printf("mainClass from ScriptingDriver: %s\n", mainClass)
         true // call compiled script main method
       }
@@ -58,7 +56,7 @@ class ScriptingTests:
 
       sys.props("script.path") = scriptFile.absPath
       val mainArgs: Array[String] = Array(
-        "-classpath", TestConfiguration.basicClasspath.toString,
+        "-classpath", TestConfiguration.basicClasspath,
         "-script", scriptFile.toString,
       ) ++ scriptArgs
 
@@ -106,7 +104,7 @@ class ScriptingTests:
       compilerArgs = Array("-classpath", TestConfiguration.basicClasspath),
       scriptFile = scriptFile,
       scriptArgs = Array.empty[String]
-    ).compileAndRun { (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
+    ).compileAndRun { ctx ?=> (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
       printf("success: no call to main method in mainClass: %s\n", mainClass)
       false // no call to compiled script main method
     }
@@ -119,7 +117,7 @@ class ScriptingTests:
       compilerArgs = Array("-classpath", TestConfiguration.basicClasspath),
       scriptFile = scriptFile,
       scriptArgs = Array.empty[String]
-    ).compileAndRun { (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
+    ).compileAndRun { ctx ?=> (path:java.nio.file.Path, classpathEntries:Seq[Path], mainClass:String) =>
       printf("call main method in mainClass: %s\n", mainClass)
       true // call compiled script main method, create touchedFile
     }
@@ -139,7 +137,7 @@ class ScriptingTests:
     val expectedJar = script2jar(scriptFile)
     sys.props("script.path") = scriptFile.absPath
     val mainArgs: Array[String] = Array(
-      "-classpath", TestConfiguration.basicClasspath.toString,
+      "-classpath", TestConfiguration.basicClasspath,
       "-save",
       "-script", scriptFile.toString,
       "-compile-only"

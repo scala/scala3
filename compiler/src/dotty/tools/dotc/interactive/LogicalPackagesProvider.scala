@@ -11,10 +11,6 @@ import dotty.tools.io.ClassPath
 import dotty.tools.io.FileExtension
 import dotty.tools.io.Path
 
-import java.io.File
-import scala.collection.mutable
-import dotty.tools.dotc.core.Contexts
-
 /**
  * A compiler component that adds support for parsing Scala and Java source files and finding out
  * the logical package structure of the whole source path.
@@ -50,21 +46,20 @@ class LogicalPackagesProvider(sourcePath: String){
       rootPackage: ParsedLogicalPackage
   ): Unit =
     val fileName = sourceFile.path
-    if fileName.endsWith(".scala") then
-      parseScalaSourceFile(sourceFile, fileName, rootPackage)
-    else if fileName.endsWith(".java") then
-      parseJavaSourceFile(sourceFile, fileName, rootPackage)
+    if sourceFile.file.ext ==  FileExtension.Scala then
+      parseScalaSourceFile(sourceFile, rootPackage)
+    else if sourceFile.file.ext == FileExtension.Java then
+      parseJavaSourceFile(sourceFile, rootPackage)
 
   private def parseScalaSourceFile(
       sourceFile: SourceFile,
-      fileName: String,
       rootPackage: ParsedLogicalPackage
   ): Unit =
     try
       // Use OutlineParser for fast parsing that skips method bodies
       val parser = new Parsers.OutlineParser(sourceFile)
       val tree = parser.parse()
-      val traverser = new SourceFileTraverser(fileName, rootPackage)
+      val traverser = new SourceFileTraverser(sourceFile, rootPackage)
       traverser.traverse(tree)
     catch
       case e: Exception =>
@@ -72,7 +67,6 @@ class LogicalPackagesProvider(sourcePath: String){
 
   private def parseJavaSourceFile(
       sourceFile: SourceFile,
-      fileName: String,
       rootPackage: ParsedLogicalPackage
   ): Unit =
     try
@@ -81,7 +75,7 @@ class LogicalPackagesProvider(sourcePath: String){
       val tree = parser.parse()
 
       // Traverse the tree to extract package info
-      val traverser = new SourceFileTraverser(fileName, rootPackage)
+      val traverser = new SourceFileTraverser(sourceFile, rootPackage)
       traverser.traverse(tree)
     catch
       case e: Exception =>
@@ -91,7 +85,7 @@ class LogicalPackagesProvider(sourcePath: String){
    * Traverse an untyped AST to extract package and class definitions.
    */
   private class SourceFileTraverser(
-      fileName: String,
+      sourceFile: SourceFile,
       rootPackage: ParsedLogicalPackage
   ) {
     private var currentPackage = rootPackage
@@ -103,7 +97,7 @@ class LogicalPackagesProvider(sourcePath: String){
         traversePackageDef(pkg)
       case _: untpd.MemberDef =>
         // Top-level class or object in default package
-        currentPackage.enterSource(fileName)
+        currentPackage.enterSource(sourceFile.file)
       case _ =>
 
     private def traversePackageDef(pkg: untpd.PackageDef): Unit = {
@@ -140,9 +134,9 @@ class LogicalPackagesProvider(sourcePath: String){
    * Return all Scala and Java sources from the given sourcepath string.
    */
   private def allSources(srcPath: String): Seq[AbstractFile] = {
-    val entries = ClassPath.split(srcPath).map(Path(_))
-    def isRelevantFile(path: Path) =
-      path.ext == FileExtension.Scala || path.ext == FileExtension.Java
+    val entries = ClassPath.split(srcPath)
+    def isRelevantFile(path: String) =
+      path.endsWith(FileExtension.Scala.withDot) || path.endsWith(FileExtension.Java.withDot)
     // avoid using IO operation, assume standard extensions, Metals sends files so no sense checking for directories eagerly
     val rootDirs = entries.filter(f => !isRelevantFile(f))
     val rootFiles = for {
@@ -151,7 +145,7 @@ class LogicalPackagesProvider(sourcePath: String){
       f <- Option(AbstractFile.getFile(e))
     } yield f
     rootFiles ++ rootDirs.flatMap{ dir =>
-      Option(AbstractFile.getDirectory(dir)).toSeq.flatMap(sourcesIn(_, "scala", "java"))
+      Option(AbstractFile.getDirectory(dir, ctx.settings.javaOutputVersion.value)).toSeq.flatMap(sourcesIn(_, FileExtension.Scala.toLowerCase, FileExtension.Java.toLowerCase))
     }
   }
 

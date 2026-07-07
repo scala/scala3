@@ -39,6 +39,7 @@ import scala.runtime.Statics
  *  @tparam V the type of the values associated with the keys
  *  @param initialCapacity the initial capacity of the internal hash table
  *  @param loadFactor the load factor for the hash table, used to determine when to resize
+ *  @param ordering the `Ordering` used to compare keys within a bucket's red-black tree
  */
 final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double)(implicit ordering: Ordering[K])
   extends AbstractMap[K, V]
@@ -714,6 +715,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
    *  @param _root the root of the red-black tree
    *  @param to the node to be replaced in the tree
    *  @param from the node that replaces `to`
+   *  @return the (possibly updated) root of the tree, which differs from `_root` only when `to` was the root
    */
   private def transplant(_root: RBNode, to: RBNode, from: RBNode): RBNode = {
     var root = _root
@@ -859,6 +861,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
    *  @tparam A the key type of the tree nodes
    *  @tparam B the value type of the tree nodes
    *  @param node the node whose successor is to be found
+   *  @return the in-order successor of `node`, or `null` if `node` is the last node in the traversal
    */
   private def successor[A, B](node: RBNode[A, B]): RBNode[A, B] | Null = {
     if (node.right ne null) minNodeNonNull(node.right)

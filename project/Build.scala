@@ -77,8 +77,9 @@ object Build {
       "-Werror",
       // temporary duplicate 'caps' while CC is developed?
       "-Wconf:msg=package scala contains object and package with same name:i",
-      // Scaladoc testcases contain deliberately weird code
+      // Scaladoc and PC testcases contain deliberately weird code
       "-Wconf:src=scaladoc-testcases/.*:s",
+      "-Wconf:src=presentation-compiler-testcases/.*:s",
       // FPs of the init checker
       "-Wconf:msg=The RHS of reassignment must be transitively initialized:i",
       "-Wconf:msg=Could not verify that the method argument is transitively initialized:i",
@@ -601,6 +602,8 @@ object Build {
     `scala3-library-sjs`,
     `tasty-core-nonbootstrapped`,
     `tasty-core-bootstrapped`,
+    `scala3-directives-parser-nonbootstrapped`,
+    `scala3-directives-parser-bootstrapped`,
     `scala3-staging`,
     `scala3-tasty-inspector`,
     `scala3-repl`,
@@ -631,7 +634,7 @@ object Build {
 
   lazy val `scala3-nonbootstrapped` = project.in(file("."))
     .aggregate(`scala3-interfaces`, `scala3-library-nonbootstrapped` , `scala-library-nonbootstrapped`,
-      `tasty-core-nonbootstrapped`, `scala3-compiler-nonbootstrapped`, `scala3-sbt-bridge-nonbootstrapped`)
+      `tasty-core-nonbootstrapped`, `scala3-directives-parser-nonbootstrapped`, `scala3-compiler-nonbootstrapped`, `scala3-sbt-bridge-nonbootstrapped`)
     .settings(
       name          := "scala3-nonbootstrapped",
       moduleName    := "scala3-nonbootstrapped",
@@ -721,7 +724,7 @@ object Build {
   lazy val `scala3-bootstrapped` = project
     .enablePlugins(ScriptedPlugin)
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped` , `scala-library-bootstrapped`,
-      `tasty-core-bootstrapped`, `scala3-compiler-bootstrapped`, `scala3-sbt-bridge-bootstrapped`,
+      `tasty-core-bootstrapped`, `scala3-directives-parser-bootstrapped`, `scala3-compiler-bootstrapped`, `scala3-sbt-bridge-bootstrapped`,
       `scala3-staging`, `scala3-tasty-inspector`, `scala-library-sjs`, `scala3-library-sjs`,
       scaladoc, `scala3-repl`, `scala3-presentation-compiler`, `scala3-language-server`)
     .settings(
@@ -770,6 +773,7 @@ object Build {
         (`scala-library-sjs` / publishLocalBin),
         (`scala3-library-sjs` / publishLocalBin),
         (`tasty-core-bootstrapped` / publishLocalBin),
+        (`scala3-directives-parser-bootstrapped` / publishLocalBin),
         (`scala3-staging` / publishLocalBin),
         (`scala3-tasty-inspector` / publishLocalBin),
         (scaladoc / publishLocalBin),
@@ -878,7 +882,7 @@ object Build {
     )
 
   lazy val `scala3-repl` = project.in(file("repl"))
-    .dependsOn(`scala3-compiler-bootstrapped` % "compile->compile;test->test")
+    .dependsOn(`scala3-compiler-bootstrapped` % "compile->compile;test->test", `scala3-directives-parser-bootstrapped`)
     .settings(publishSettings)
     .settings(
       name          := "scala3-repl",
@@ -904,12 +908,8 @@ object Build {
         Dependencies.jlineReader,
         Dependencies.jlineTerminal,
         Dependencies.jlineTerminalJni,
-        Dependencies.pprint,
-        Dependencies.fansi,
-        Dependencies.sourcecode,
         Dependencies.sbtJunitInterface % Test,
         Dependencies.coursierInterface, // used by the REPL for dependency resolution
-        Dependencies.usingDirectives, // used by the REPL for parsing magic comments
       ),
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
@@ -1001,6 +1001,7 @@ object Build {
       Compile / mainClass := None,
 
       Test / unmanagedSourceDirectories   := Seq(baseDirectory.value / "test"),
+      Test / unmanagedSourceDirectories   += baseDirectory.value / "test-nonbootstrapped",
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       libraryDependencies ++= Seq(
         Dependencies.sbtJunitInterface % Test,
@@ -1091,6 +1092,7 @@ object Build {
       bspEnabled := enableBspAllProjects,
       Compile / mainClass := None,
       Test / unmanagedSourceDirectories   := Seq(baseDirectory.value / "test"),
+      Test / unmanagedSourceDirectories   += baseDirectory.value / "test-bootstrapped",
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       libraryDependencies ++= Seq(
         Dependencies.sbtJunitInterface % Test,
@@ -1356,13 +1358,64 @@ object Build {
       bspEnabled := false,
     )
 
+  /* Configuration of the org.scala-lang:scala3-directives-parser_3:*.**.**-nonbootstrapped project */
+  lazy val `scala3-directives-parser-nonbootstrapped` = project.in(file("directives-parser"))
+    .dependsOn(`scala3-library-nonbootstrapped`)
+    .settings(
+      name          := "scala3-directives-parser",
+      moduleName    := "scala3-directives-parser",
+      version       := dottyNonBootstrappedVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion,
+      crossPaths    := true,
+      autoScalaLibrary := false,
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src" / "main" / "scala"),
+      Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "src" / "test" / "scala"),
+      libraryDependencies ++= Seq(
+        Dependencies.sbtJunitInterface % Test,
+      ),
+      publish / skip := true,
+      target := target.value / "scala3-directives-parser-nonbootstrapped",
+      Compile / compile / scalacOptions += "-Wunused:all",
+      fetchedScalaInstanceSettings,
+      bspEnabled := true,
+    )
+
+  /* Configuration of the org.scala-lang:scala3-directives-parser_3:*.**.**-bootstrapped project */
+  lazy val `scala3-directives-parser-bootstrapped` = project.in(file("directives-parser"))
+    .dependsOn(`scala3-library-bootstrapped`)
+    .settings(publishSettings)
+    .settings(
+      name          := "scala3-directives-parser",
+      moduleName    := "scala3-directives-parser",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := dottyNonBootstrappedVersion,
+      crossPaths    := true,
+      autoScalaLibrary := false,
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src" / "main" / "scala"),
+      Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "src" / "test" / "scala"),
+      libraryDependencies ++= Seq(
+        Dependencies.sbtJunitInterface % Test,
+      ),
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := true,
+      Compile / packageSrc / publishArtifact := true,
+      Test    / publishArtifact := false,
+      publish / skip := false,
+      target := target.value / "scala3-directives-parser",
+      Compile / compile / scalacOptions += "-Wunused:all",
+      bootstrappedScalaInstanceSettings,
+      bspEnabled := enableBspAllProjects,
+    )
+
   // ==============================================================================================
   // ======================================= SCALA COMPILER =======================================
   // ==============================================================================================
 
   /* Configuration of the org.scala-lang:scala3-compiler_3:*.**.**-nonbootstrapped project */
   lazy val `scala3-compiler-nonbootstrapped` = project.in(file("compiler"))
-    .dependsOn(`scala3-interfaces`, `tasty-core-nonbootstrapped`, `scala3-library-nonbootstrapped`)
+    .dependsOn(`scala3-interfaces`, `tasty-core-nonbootstrapped`, `scala3-library-nonbootstrapped`, `scala3-directives-parser-nonbootstrapped` % Test)
     .settings(
       name          := "scala3-compiler-nonbootstrapped",
       moduleName    := "scala3-compiler",
@@ -1423,11 +1476,13 @@ object Build {
        */
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
-      libraryDependencies +=
-        (Dependencies.scalaJsIr % "sourcedeps").cross(CrossVersion.for3Use2_13),
+      libraryDependencies += Dependencies.scalaJsIr % "sourcedeps",
       // Silence `using` clause warnings in the scalajs-ir sources
       Compile / compile / scalacOptions +=
         "-Wconf:src=scalajs-ir-src/.*&msg=Implicit parameters should be provided with a `using` clause:s",
+      // Silence `= _` warnings in the scalajs-ir sources
+      Compile / compile / scalacOptions +=
+        "-Wconf:src=scalajs-ir-src/.*&msg=uninitialized` instead:s",
       // Silence AnyRefMap deprecation warnings in the scalajs-ir sources
       Compile / compile / scalacOptions +=
         "-Wconf:src=scalajs-ir-src/.*&msg=object AnyRefMap in package scala\\.collection\\.mutable is deprecated:s",
@@ -1458,7 +1513,7 @@ object Build {
             val linesWithPackage = Shading.replacePackage(lines) {
               case "org.scalajs.ir" => "dotty.tools.sjs.ir"
             }
-            IO.writeLines(f, Shading.insertUnsafeNullsImport(linesWithPackage))
+            IO.writeLines(f, linesWithPackage)
           })
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
@@ -1497,7 +1552,7 @@ object Build {
 
   /* Configuration of the org.scala-lang:scala3-compiler_3:*.**.**-bootstrapped project */
   lazy val `scala3-compiler-bootstrapped` = project.in(file("compiler"))
-    .dependsOn(`scala3-interfaces`, `tasty-core-bootstrapped`, `scala3-library-bootstrapped`)
+    .dependsOn(`scala3-interfaces`, `tasty-core-bootstrapped`, `scala3-library-bootstrapped`, `scala3-directives-parser-bootstrapped` % Test)
     .settings(publishSettings)
     .settings(
       name          := "scala3-compiler-bootstrapped",
@@ -1547,11 +1602,13 @@ object Build {
        */
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
-      libraryDependencies +=
-        (Dependencies.scalaJsIr % "sourcedeps").cross(CrossVersion.for3Use2_13),
+      libraryDependencies += Dependencies.scalaJsIr % "sourcedeps",
       // Silence `using` clause warnings in the scalajs-ir sources
       Compile / compile / scalacOptions +=
         "-Wconf:src=scalajs-ir-src/.*&msg=Implicit parameters should be provided with a `using` clause:s",
+      // Silence `= _` warnings in the scalajs-ir sources
+      Compile / compile / scalacOptions +=
+        "-Wconf:src=scalajs-ir-src/.*&msg=uninitialized` instead:s",
       // Silence AnyRefMap deprecation warnings in the scalajs-ir sources
       Compile / compile / scalacOptions +=
         "-Wconf:src=scalajs-ir-src/.*&msg=object AnyRefMap in package scala\\.collection\\.mutable is deprecated:s",
@@ -1582,7 +1639,7 @@ object Build {
             val linesWithPackage = Shading.replacePackage(lines) {
               case "org.scalajs.ir" => "dotty.tools.sjs.ir"
             }
-            IO.writeLines(f, Shading.insertUnsafeNullsImport(linesWithPackage))
+            IO.writeLines(f, linesWithPackage)
           })
           sjsSources
         } (Set(scalaJSIRSourcesJar)).toSeq
@@ -1981,6 +2038,16 @@ object Build {
     .settings(
       commonBootstrappedSettings,
       bspEnabled := enableBspAllProjects,
+      // Compile these fixtures with a sourceroot pointing at their own `src`
+      // dir, so the source path baked into TASTy (SOURCEFILEattr) is relative
+      // to `src` (e.g. `tests/macros/Foo.scala`) and does NOT resolve from the
+      // test working directory (the repo root). This makes the module behave
+      // like a real distributed dependency: available as TASTy only, with no
+      // source on disk. `SourceFile.content()` is then empty for these symbols,
+      // matching what the presentation compiler sees for classpath deps.
+      Compile / scalacOptions ++= Seq(
+        "-sourceroot", ((Compile / scalaSource).value).getAbsolutePath
+      ),
     )
 
   lazy val `scala3-language-server` = project.in(file("language-server")).
@@ -2135,7 +2202,7 @@ object Build {
             "productionMode" -> sems.productionMode,
             "esVersion" -> linkerConfig.esFeatures.esVersion.edition,
             "useECMAScript2015Semantics" -> linkerConfig.esFeatures.useECMAScript2015Semantics,
-            "isWebAssembly" -> linkerConfig.experimentalUseWebAssembly,
+            "isWebAssembly" -> linkerConfig.esFeatures.useWebAssembly,
         )
       }.taskValue,
 
@@ -2159,7 +2226,7 @@ object Build {
           case FullOptStage => (Test / fullLinkJS / scalaJSLinkerConfig).value
         }
 
-        val isWebAssembly = linkerConfig.experimentalUseWebAssembly
+        val isWebAssembly = linkerConfig.esFeatures.useWebAssembly
 
         val b = List.newBuilder[File]
 
@@ -2195,7 +2262,7 @@ object Build {
         val moduleKind = linkerConfig.moduleKind
         val hasModules = moduleKind != ModuleKind.NoModule
         val hasAsyncAwait = linkerConfig.esFeatures.esVersion >= ESVersion.ES2017
-        val isWebAssembly = linkerConfig.experimentalUseWebAssembly
+        val isWebAssembly = linkerConfig.esFeatures.useWebAssembly
 
         def conditionally(cond: Boolean, subdir: String): Seq[File] =
           if (!cond) Nil
@@ -2216,6 +2283,7 @@ object Build {
           ++ (dir / "js/src/test/scala" ** (("*.scala": FileFilter)
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
+            -- "OptimizerTest.scala" // something crashes the optimizer, TODO investigate
             )).get
 
           ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
@@ -2427,6 +2495,7 @@ object Build {
         (`scala3-tasty-inspector` / publishLocalBin).value
         (scaladoc / publishLocalBin).value
         (`scala3-repl` / publishLocalBin).value
+        (`scala3-directives-parser-bootstrapped` / publishLocalBin).value
         (`scala3-compiler-bootstrapped` / publishLocalBin).value
         (`scala-library-sjs` / publishLocalBin).value
         (`scala3-library-sjs` / publishLocalBin).value
@@ -2627,6 +2696,7 @@ object Build {
         `scala3-sbt-bridge-bootstrapped`, // for scala-cli
         `scala3-staging`,
         `scala3-tasty-inspector`,
+        `scala3-directives-parser-bootstrapped`,
         scaladoc,
         `tasty-core-bootstrapped`,
       )

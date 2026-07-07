@@ -1,13 +1,9 @@
 # Todo List
 Differences between scalameta implementation and dotc.
 
-- Generally put all zero length method calls or arguments in Synthetics section
-  - Pattern val defs -- [unapply|unapplySeq is zero-length]
-  - For comprehensions -- [map|flatMap|withFilter|foreach etc is zero-length].
-  - Implicit conversions -- [span of Apply node is same as its single argument (which has a length)].
-  - Implicit arguments -- [span of argument is zero length].
-- Record signature information in Symbols section.
-- Record access modifier information in Symbols section.
+- Emit for-comprehension desugaring (map|flatMap|withFilter|foreach) in the Synthetics section.
+  These calls are currently skipped (see `SyntheticsExtractor.isForSynthetic`); Scala 2 emits the
+  full desugared tree as a synthetic.
 
 ## Completed
 
@@ -22,3 +18,11 @@ Differences between scalameta implementation and dotc.
 - [x] Avoid symbols with volatile names. - [$1$, $2$, etc].
 - [x] Skip module val
 - [x] Add metac printer.
+- [x] Emit a definition occurrence for primary-constructor parameters, so the accessor and the
+      constructor parameter share the parameter's name range (parity with scalameta#4650; closes the
+      dotc side of scalameta#1327).
+- [x] Emit synthetics for pattern val definitions (unapply|unapplySeq, zero-length).
+- [x] Emit synthetics for implicit conversions.
+- [x] Emit synthetics for implicit|given arguments.
+- [x] Record signature information in Symbols section.
+- [x] Record access modifier information in Symbols section.

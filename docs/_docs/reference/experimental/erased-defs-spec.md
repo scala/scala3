@@ -28,14 +28,13 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs
 
 4. `erased` can also be used in a function type, e.g.
 
-   * `(erased T1, T2) => R`
-   * `(x: T1, y: erased T2) ?=> T`
+   * `(x: T1, erased y: T2) ?=> T`
 
-   Note that there is no subtype relation between `(erased T) => R` and `T => R` (or `(erased T) ?=> R` and `T ?=> R`). The `erased` parameters must match exactly in their respective positions.
+   Note that there is no subtype relation between `(erased x: T) => R` and `T => R` (or `(erased x: T) ?=> R` and `T ?=> R`). The `erased` parameters must match exactly in their respective positions.
 
 5. Eta expansion
 
-   if `def f(erased x: T): U` then `f: (erased T) => U`.
+   if `def f(erased x: T): U` then `f: (erased x: T) => U`.
 
 6. Erasure semantics
    * All `erased` parameters are removed from the function
@@ -53,3 +52,17 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/erased-defs
 
 9. Type Restrictions
    * Polymorphic function literals with erased parameters are currently not supported, and will be rejected by the compiler. This is purely an implementation restriction, and might be lifted in the future.
+
+## Syntax
+
+```ebnf
+LocalModifier     ::=  ...
+                    |  ‘erased’
+
+TypedFunParam     ::=  [`erased`] id ‘:’ Type
+DefTermParam      ::=  {Annotation} TermParamMods Param
+TermParamMods     ::=  [‘erased‘] [‘inline’] | [‘consume‘]
+
+Binding           ::=  [`erased`] (id | ‘_’) [‘:’ Type]
+```
+
