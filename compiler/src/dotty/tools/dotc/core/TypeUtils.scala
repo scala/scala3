@@ -89,6 +89,9 @@ class TypeUtils:
             if tp.termSymbol == defn.EmptyTupleModule then Some(Nil)
             else if normalize then recur(tp.widen, bound)
             else None
+          case tp: TypeProxy if !tp.typeSymbol.isClass =>
+            if normalize && (tp.superType ne tp) then recur(tp.superType, bound)
+            else None
           case _ =>
             if defn.isTupleClass(tp.typeSymbol) && !normalize then Some(tp.dealias.argInfos)
             else None
