@@ -10,8 +10,6 @@ import dotc.parsing.Tokens
 import dotc.reporting.{Diagnostic, StoreReporter}
 import dotc.util.SourceFile
 
-import java.util.regex.Pattern
-
 import scala.annotation.internal.sharable
 
 /** A parsing result from string input */
@@ -69,18 +67,6 @@ object Save {
    *  a single compilation unit.
    */
   val entrySeparator: String = "/* ---- entry ---- */"
-
-  private val separatorLikeLine = Pattern.quote(entrySeparator)
-
-  def escapeEntry(entry: String): String =
-    entry.linesIterator
-      .map(line => if line.matches("""\\*""" + separatorLikeLine) then "\\" + line else line)
-      .mkString("\n")
-
-  def unescapeEntry(entry: String): String =
-    entry.linesIterator
-      .map(line => if line.matches("""\\+""" + separatorLikeLine) then line.stripPrefix("\\") else line)
-      .mkString("\n")
 }
 
 /** `:load <path>` interprets a scala file as if entered line-by-line into

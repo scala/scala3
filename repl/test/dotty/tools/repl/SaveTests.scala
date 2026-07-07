@@ -213,23 +213,6 @@ class SaveTests extends ReplTest {
       assertEquals(List(s"""val res0: String = "$sep""""), lines())
     }
 
-  @Test def roundTripsSeparatorLineInStringViaLoad =
-    val target = tempFile()
-    initially {
-      run(s"val s = \"\"\"\n$sep\n\"\"\"")
-    } andThen {
-      run(s":save $target")
-    }
-    resetToInitial()
-    initially {
-      storedOutput()
-      run(s":load $target")
-    } andThen {
-      storedOutput()
-      run("s.trim")
-      assertEquals(List(s"""val res0: String = "$sep""""), lines())
-    }
-
   @Test def skipsThrowingVal =
     val target = tempFile()
     initially {

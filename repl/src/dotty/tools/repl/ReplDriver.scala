@@ -563,7 +563,7 @@ class ReplDriver(settings: Array[String],
   private def loadSavedEntries(contents: String, state: State): State =
     val separatorLine = s"(?m)^${Pattern.quote(Save.entrySeparator)}$$"
     val entries = contents.stripPrefix(Save.sessionHeader).split(separatorLine).toList
-      .map(_.strip).filter(_.nonEmpty).map(Save.unescapeEntry)
+      .map(_.strip).filter(_.nonEmpty)
     entries.foldLeft(state) { (st, entry) =>
       if ParseResult.isCommand(entry) then interpret(ParseResult(entry)(using st))(using st)
       else run(entry)(using st)
@@ -610,7 +610,7 @@ class ReplDriver(settings: Array[String],
         out.println("Nothing to save.")
       else
         try
-          val body = state.pastInputs.reverse.map(entry => s"${Save.entrySeparator}\n${Save.escapeEntry(entry)}").mkString("\n")
+          val body = state.pastInputs.reverse.map(entry => s"${Save.entrySeparator}\n$entry").mkString("\n")
           val content = s"${Save.sessionHeader}\n$body"
           Files.writeString(new JFile(path).toPath, content, StandardCharsets.UTF_8)
         catch case NonFatal(e) =>
