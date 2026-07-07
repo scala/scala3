@@ -14,7 +14,9 @@
   |    Declaration of method foo not allowed here: only classes can have declared but undefined members
 -- [E050] Type Error: tests/neg/19087.scala:13:22 ----------------------------------------------------------------------
 13 |        foo(state.copy(x = 5): // Missing ")" // error: method copy in class State does not take more parameters
-   |            ^^^^^^^^^^^^^^^^^
+   |            ^
    |            method copy in class State does not take more parameters
+   |
+14 |          println("a")
    |
    | longer explanation available when compiling with `-explain`
