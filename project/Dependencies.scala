@@ -66,6 +66,4 @@ object Dependencies {
   val scalaJsJunitTestRuntime = "org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion
   val scalaJsLibrary = "org.scala-js" %% "scalajs-library" % scalaJSVersion
   val scalaJsLinker = "org.scala-js" %% "scalajs-linker" % scalaJSVersion
-
-  val usingDirectives = "org.virtuslab" % "using_directives" % "1.1.4"
 }
