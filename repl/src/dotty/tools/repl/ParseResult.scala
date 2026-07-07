@@ -53,7 +53,7 @@ case class AmbiguousCommand(cmd: String, matchingCommands: List[String]) extends
   override def replayLine = None
 
 case class Save(path: String) extends Command:
-  override def replayLine = Some(s"${Save.command} $path")
+  override def replayLine = None
 
 object Save {
   val command: String = ":save"
@@ -162,7 +162,7 @@ case object Silent extends Command:
 
 /** `:quit` exits the repl */
 case object Quit extends Command {
-  override def replayLine = Some(command)
+  override def replayLine = None
   val command: String = ":quit"
   val alias: String = ":exit"
 }
