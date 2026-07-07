@@ -150,7 +150,7 @@ object Plugin {
     // List[(jar, Try(descriptor))] in dir
     def scan(d: Directory) =
       d.files.toList
-        .filter(JarArchive.isJarOrZip(_))
+        .filter(_.ext.isJarOrZip)
         .sortBy(_.name)
         .map(j => (j, loadDescriptionFromJar(j)))
 

@@ -22,7 +22,7 @@ trait ZipArchiveFileLookup[FileEntryType] extends ClassPath {
 
   override def asURLs: Seq[URL] = Seq(zipFile.toURI.toURL)
 
-  private val archive = new FileZipArchive(zipFile.toPath, Some(release))
+  private val archive = AbstractFile.getDirectory(zipFile.toPath, release).nn
 
   override def packages(inPackage: String): Seq[PackageEntry] =
     findDirEntry(inPackage) match {

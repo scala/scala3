@@ -9,36 +9,16 @@ import scala.jdk.CollectionConverters.*
  * This class implements an [[AbstractFile]] backed by a jar
  * that be can used as the compiler's output directory.
  */
-class JarArchive private (val jarPath: Path, root: Directory) extends PlainDirectory(root) {
+class JarArchive private (underlying: Path, root: Directory) extends PlainDirectory(root) {
   def close(): Unit = this.synchronized(jpath.getFileSystem().close())
+
+  override val path: String = underlying.path
+  override def ext: FileExtension = underlying.ext
 
   override def exists: Boolean = jpath.getFileSystem().isOpen() && super.exists
 
-  def underlyingSource: Option[AbstractFile] = {
-    val fileSystem = jpath.getFileSystem
-    fileSystem.provider().getScheme match {
-      case "jar" =>
-        val fileStores = fileSystem.getFileStores.iterator()
-        if (fileStores.hasNext) {
-          val jarPath = fileStores.next().name
-          try {
-            Some(new PlainFile(new Path(Paths.get(jarPath.stripSuffix(fileSystem.getSeparator)))))
-          } catch {
-            case _: InvalidPathException =>
-              None
-          }
-        } else None
-      case "jrt" =>
-        if (jpath.getNameCount > 2 && jpath.startsWith("/modules")) {
-          // TODO limit this to OpenJDK based JVMs?
-          val moduleName = jpath.getName(1)
-          Some(new PlainFile(new Path(Paths.get(System.getProperty("java.home"), "jmods", moduleName.toString + ".jmod"))))
-        } else None
-      case _ => None
-    }
-  }
-
-  override def toString: String = jarPath.toString
+  def underlyingSource: AbstractFile =
+    new PlainFile(underlying)
 }
 
 object JarArchive {
@@ -49,8 +29,12 @@ object JarArchive {
     open(path, create = true)
   }
 
-  /** Create a jar file. */
-  def open(path: Path, create: Boolean = false): JarArchive = {
+  /** Opens a jar file. */
+  def open(path: Path): JarArchive =
+    open(path, create = false)
+
+  /** Opens or creates a jar file. */
+  private def open(path: Path, create: Boolean): JarArchive = {
     require(path.ext.isJar)
 
     // creating a new zip file system by using the JAR URL syntax:
@@ -66,50 +50,4 @@ object JarArchive {
     val root = fs.getRootDirectories().iterator.next()
     new JarArchive(path, Directory(root))
   }
-
-  // See http://download.java.net/jdk7/docs/api/java/nio/file/Path.html
-  // for some ideas.
-  private val ZipMagicNumber = List[Byte](80, 75, 3, 4)
-  private def magicNumberIsZip(f: Path) = f.isFile && {
-    val in = f.toFile.inputStream()
-    try
-      val first4 = in.readNBytes(4)
-      first4.toList == ZipMagicNumber
-    finally
-      in.close()
-  }
-
-  def isJarOrZip(f: Path): Boolean =
-    f.ext.isJarOrZip || magicNumberIsZip(f)
-
-  /** Expand manifest jar classpath entries: these are either urls, or paths
-   *  relative to the location of the jar.
-   */
-  def expandManifestPath(jarPath: String): List[URL] =
-    def specToURL(spec: String, basedir: Directory): Option[URL] =
-      try
-        val uri = new URI(spec)
-        if uri.isAbsolute then Some(uri.toURL)
-        else Some(basedir.resolve(Path(spec)).toURL)
-      catch
-        case _: MalformedURLException | _: URISyntaxException => None
-
-    val file = File(jarPath)
-    if !file.isFile then
-      return Nil
-
-    val baseDir = file.parent
-    val in = new JarInputStream(file.inputStream())
-    val manifest =
-      try Option(in.getManifest)
-      finally in.close()
-
-    manifest match
-      case None => Nil
-      case Some(m) =>
-        val attrs = m.getMainAttributes.asInstanceOf[java.util.Map[Attributes.Name, String]]
-        attrs.get(Attributes.Name.CLASS_PATH) match
-          case cp: String if cp.trim().nonEmpty =>
-            cp.split("\\s+").toList.map(elem => specToURL(elem, baseDir).getOrElse((baseDir / elem).toURL))
-          case _ => Nil
 }

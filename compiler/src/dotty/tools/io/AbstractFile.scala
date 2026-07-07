@@ -40,7 +40,7 @@ object AbstractFile {
    */
   private def getDirectory(path: Path, jarVersion: String): AbstractFile | Null =
     if (path.isDirectory) new PlainFile(path)
-    else if (path.isFile && path.ext.isJarOrZip) new FileZipArchive(path.jpath, Some(jarVersion))
+    else if (path.isFile && path.ext.isJarOrZip) new FileZipArchive(path.jpath, jarVersion)
     else null
 }
 
@@ -76,6 +76,9 @@ abstract class AbstractFile extends dotty.tools.dotc.interfaces.AbstractFile {
 
   /** Returns the containing directory of this abstract file, if any */
   def container: Option[AbstractFile] = None
+
+  /** Gets the file that encloses this file, such as an archive, if this file is enclosed. */
+  def enclosing: Option[AbstractFile] = None
 
   /** Returns the underlying File if any and null otherwise. */
   def file: JFile | Null = try {

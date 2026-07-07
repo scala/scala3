@@ -534,9 +534,13 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       def scalacOptions = toolArgs.getOrElse(ToolName.Scalac, Nil)
       def javacOptions  = toolArgs.getOrElse(ToolName.Javac, Nil)
 
-      var flags = flags0
+      // Allow tests to override -d, e.g., for testing in the Playground
+      val flags1 =
+        if flags0.options.contains("-d") then flags0
+        else flags0.and("-d", targetDir.getPath)
+
+      var flags = flags1
         .and(scalacOptions*)
-        .and("-d", targetDir.getPath)
         .withClasspath(targetDir.getPath)
 
       // We must set -sourceroot for SemanticDB extraction to work properly inside an IDE,
