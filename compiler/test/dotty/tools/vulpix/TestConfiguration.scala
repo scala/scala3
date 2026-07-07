@@ -2,7 +2,6 @@ package dotty
 package tools
 package vulpix
 
-import scala.language.unsafeNulls
 import scala.util.Properties.javaSpecVersion
 
 import java.io.File

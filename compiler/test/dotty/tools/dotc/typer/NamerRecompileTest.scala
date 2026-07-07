@@ -1,7 +1,5 @@
 package dotty.tools.dotc.typer
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
