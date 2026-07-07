@@ -2,7 +2,6 @@ package dotty.tools.dotc
 
 import dotty.DottyBytecodeTest
 
-import scala.language.unsafeNulls
 import org.junit.Assert.*
 import org.junit.Test
 import dotty.tools.dotc.config.CompilerCommand

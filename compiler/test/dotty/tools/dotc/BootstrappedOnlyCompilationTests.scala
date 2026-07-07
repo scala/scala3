@@ -2,8 +2,6 @@ package dotty
 package tools
 package dotc
 
-import scala.language.unsafeNulls
-
 import org.junit.{AfterClass, Ignore, Test}
 import org.junit.experimental.categories.Category
 

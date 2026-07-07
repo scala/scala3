@@ -1,7 +1,5 @@
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
 import java.io.IOException
 import java.net.{URI, URL, URLClassLoader}
 import java.nio.file.{Files, Path, Paths}

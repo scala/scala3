@@ -1,14 +1,8 @@
 package dotty
 
-import scala.language.unsafeNulls
-import dotty.tools.dotc.core.Contexts.{Context, ContextBase, ctx}
-import dotty.tools.dotc.core.Comments.{ContextDoc, ContextDocstrings}
-import dotty.tools.dotc.core.Phases.Phase
-import dotty.tools.dotc.Compiler
 import dotty.tools.dotc.Compiler
 import dotty.tools.dotc.core.Comments.{ContextDoc, ContextDocstrings}
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase, ctx}
-import dotty.tools.io.{AbstractFile, VirtualDirectory, VirtualDirectory as Directory}
 import dotty.tools.vulpix.TestConfiguration
 
 import scala.tools.asm
@@ -18,7 +12,7 @@ import dotty.tools.io
 import dotty.tools.io.AbstractFile
 
 import scala.jdk.CollectionConverters.*
-import java.io.{InputStream, File as JFile}
+import java.io.InputStream
 import org.junit.Assert.*
 
 trait DottyBytecodeTest {
