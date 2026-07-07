@@ -20,9 +20,13 @@ import dotty.tools.dotc.interactive.Interactive.Include
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.io.FileExtension
+import dotty.tools.io.ZipArchive
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j.Location
+import org.eclipse.lsp4j.Position
+import org.eclipse.lsp4j.Range
 
 class PcDefinitionProvider(
     driver: InteractiveDriver,
@@ -146,7 +150,25 @@ class PcDefinitionProvider(
         case srcTree if srcTree.namePos.exists =>
           new Location(params.uri().toString(), srcTree.namePos.toLsp)
       .toList
-    else search.definition(semanticdbSymbol, uri).asScala.toList
+    else
+      val fromSearch = search.definition(semanticdbSymbol, uri).asScala.toList
+      if fromSearch.nonEmpty then fromSearch
+      else
+        val file = symbol.associatedFile
+        if file != null then
+          file match
+            case entry: ZipArchive#Entry =>
+              val classFile =
+                if file.ext.isTasty then file.resolveSiblingWithExtension(FileExtension.Class)
+                else file
+              if classFile != null then
+                List(new Location(
+                  s"jar:${entry.underlyingSource.jpath.toUri}!/${classFile.path}",
+                  new Range(new Position(0, 0), new Position(0, 0))
+                ))
+              else Nil
+            case _ => Nil
+        else Nil
 
   def semanticSymbolsSorted(
       syms: List[Symbol]
