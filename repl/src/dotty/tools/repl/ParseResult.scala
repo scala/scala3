@@ -157,6 +157,7 @@ object Sh {
 
 /** `:paste` is deprecated; JLine supports multiline editing so it is not needed */
 case object Paste extends Command:
+  override def replayLine = Some(command)
   val command: String = ":paste"
 
 /** Toggle automatic printing of results */
