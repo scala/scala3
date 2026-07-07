@@ -1,15 +1,13 @@
 package dotty.tools
 
-import scala.language.unsafeNulls
-
-import javax.tools._
-import java.io._
-import java.nio.file._
+import javax.tools.*
+import java.io.*
+import java.nio.file.*
 import java.net.URI
-import scala.jdk.CollectionConverters._
-import dotty.tools.dotc._
-import core._
-import core.Contexts._
+import scala.jdk.CollectionConverters.*
+import dotty.tools.dotc.*
+import core.*
+import core.Contexts.*
 import dotc.core.Comments.{ContextDoc, ContextDocstrings}
 
 /** Initialize a compiler context with the given `classpath`, compile all
@@ -43,7 +41,7 @@ def withJavaCompiled[T](javaSources: JavaFileObject*)(op: Path => T): T =
   try
     val javac = ToolProvider.getSystemJavaCompiler()
     val options = List("-d", javaOutputDir.toString)
-    javac.getTask(null, null, null, options.asJava, null, javaSources.asJava).call();
+    javac.getTask(null, null, null, options.asJava, null, javaSources.asJava).call()
     op(javaOutputDir)
   finally
     deleteDirectory(javaOutputDir.toFile)

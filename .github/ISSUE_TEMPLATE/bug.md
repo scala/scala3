@@ -1,6 +1,6 @@
 ---
 name: "\U0001F41B Bug report"
-about: Report a bug about the Dotty Compiler
+about: Report a bug about the Scala 3 compiler
 title: ''
 labels: itype:bug, stat:needs triage
 assignees: ''

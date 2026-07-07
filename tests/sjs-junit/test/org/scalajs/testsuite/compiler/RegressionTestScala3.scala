@@ -11,11 +11,31 @@ import scala.scalajs.js.annotation._
 
 import org.scalajs.junit.async._
 
-import org.scalajs.testsuite.jsinterop.ExportLoopback
 import org.scalajs.testsuite.utils.Platform._
 
 class RegressionTestScala3 {
   import RegressionTestScala3.*
+
+  /** The namespace in which top-level exports are stored. */
+  private lazy val exportsNamespace: Future[js.Dynamic] = {
+    import scala.scalajs.LinkingInfo._
+
+    linkTimeIf[Future[js.Dynamic]](moduleKind == ModuleKind.NoModule) {
+      throw new AssertionError("attempted to get exportsNamsepace in NoModule mode")
+    } {
+      linkTimeIf[Future[js.Dynamic]](moduleKind == ModuleKind.ESModule) {
+        js.`import`("./main.js").toFuture
+      } {
+        linkTimeIf[Future[js.Dynamic]](moduleKind == ModuleKind.CommonJSModule) {
+          js.Promise.resolve[Unit](())
+            .`then`[js.Dynamic](_ => js.Dynamic.global.require("./main.js"))
+            .toFuture
+        } {
+          throw new AssertionError(s"unknown module kind: ${moduleKind}")
+        }
+      }
+    }
+  }
 
   @Test def testRegressionDoubleDefinitionOfOuterPointerIssue10177(): Unit = {
     assertEquals(6, new OuterClassIssue10177().foo(5))
@@ -124,7 +144,7 @@ class RegressionTestScala3 {
         assertEquals((), global.RegressionTestScala3_Issue14168_unitField)
       }
     } else {
-      for (exports <- ExportLoopback.exportsNamespace) yield {
+      for (exports <- exportsNamespace) yield {
         assertEquals("string", exports.RegressionTestScala3_Issue14168_stringField)
         assertEquals(null, exports.RegressionTestScala3_Issue14168_nullField)
         assertEquals((), exports.RegressionTestScala3_Issue14168_unitField)
@@ -155,6 +175,46 @@ class RegressionTestScala3 {
 
     val c = Array.ofDim[Unit](0, 0)
     assertSame(classOf[Array[Array[Unit]]], c.getClass())
+  }
+
+  @Test def issue25097(): Unit = {
+    val foo: Any = 1.0
+    assertTrue(foo.isInstanceOf[Int])
+
+    // should not get constant-folded incorrectly earlier in the pipeline:
+    // (which is why we cannot use fancier asserts here, having the specific 'constant.isInstanceOf[Number]' shape is the point)
+
+    assertTrue("1.0 instanceof Byte", 1.0.isInstanceOf[Byte])
+    assertTrue("1.0 instanceof Short", 1.0.isInstanceOf[Short])
+    assertTrue("1.0 instanceof Int", 1.0.isInstanceOf[Int])
+    assertTrue("1.0 instanceof Float", 1.0.isInstanceOf[Float])
+    assertTrue("1.0 instanceof Double", 1.0.isInstanceOf[Double])
+
+    assertFalse("128 instanceof Byte", 128.isInstanceOf[Byte])
+    assertTrue("128 instanceof Short", 128.isInstanceOf[Short])
+    assertTrue("128 instanceof Int", 128.isInstanceOf[Int])
+    assertTrue("128 instanceof Float", 128.isInstanceOf[Float])
+    assertTrue("128 instanceof Double", 128.isInstanceOf[Double])
+
+    assertFalse("32768 instanceof Byte", 32768.isInstanceOf[Byte])
+    assertFalse("32768 instanceof Short", 32768.isInstanceOf[Short])
+    assertTrue("32768 instanceof Int", 32768.isInstanceOf[Int])
+    assertTrue("32768 instanceof Float", 32768.isInstanceOf[Float])
+    assertTrue("32768 instanceof Double", 32768.isInstanceOf[Double])
+
+    assertFalse("2147483647 instanceof Byte", 2147483647.isInstanceOf[Byte])
+    assertFalse("2147483647 instanceof Short", 2147483647.isInstanceOf[Short])
+    assertTrue("2147483647 instanceof Int", 2147483647.isInstanceOf[Int])
+    assertFalse("2147483647 instanceof Float", 2147483647.isInstanceOf[Float]) // cannot be represented exactly as a float
+    assertTrue("2147483647 instanceof Double", 2147483647.isInstanceOf[Double])
+
+    assertFalse("2147483648.0 instanceof Byte", 2147483648.0.isInstanceOf[Byte])
+    assertFalse("2147483648.0 instanceof Short", 2147483648.0.isInstanceOf[Short])
+    assertFalse("2147483648.0 instanceof Int", 2147483648.0.isInstanceOf[Int])
+    assertTrue("2147483648.0 instanceof Float", 2147483648.0.isInstanceOf[Float])
+    assertTrue("2147483648.0 instanceof Double", 2147483648.0.isInstanceOf[Double])
+
+    assertTrue("1: jl.Integer instanceof jl.Double", (1: java.lang.Integer).isInstanceOf[java.lang.Double]) // ensure the target being boxed also works
   }
 }
 

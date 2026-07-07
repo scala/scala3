@@ -41,7 +41,7 @@ import caps.unsafe.untrackedCaptures
  *
  *  Consider this example for safe and unsafe use:
  *
- *  ```
+ *  ```scala sc:compile
  *  def f[A](it: Iterator[A]) = {
  *   if (it.hasNext) {            // Safe to reuse "it" after "hasNext"
  *     it.next()                  // Safe to reuse "it" after "next"
@@ -74,6 +74,8 @@ import caps.unsafe.untrackedCaptures
  *  is undefined, subject to change, and may result in changes to the new
  *  iterators as well.
  *  @define coll iterator
+ *
+ *  @tparam A the element type of the iterator
  */
 trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Iterator[A]] {
   self: Iterator[A]^ =>
@@ -157,6 +159,11 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *
    *  A `GroupedIterator` is yielded by `grouped` and by `sliding`,
    *  where the `step` may differ from the group `size`.
+   *
+   *  @tparam B the element type of the sequences produced by the grouped iterator, a supertype of `A`
+   *  @param self the underlying iterator to group
+   *  @param size the number of elements per group
+   *  @param step the distance between the first elements of successive groups
    */
   class GroupedIterator[B >: A](self: Iterator[B]^, size: Int, step: Int) extends AbstractIterator[immutable.Seq[B]] {
 
@@ -226,6 +233,8 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
      *  If unable to deliver size, then pad if padding enabled, otherwise drop segment.
      *  Returns true if successful in delivering `count` elements,
      *  or padded segment, or partial segment.
+     *
+     *  @return `true` if a segment was successfully buffered, `false` otherwise
      */
     private def fulfill(): Boolean = {
       val builder = newBuilder
@@ -346,6 +355,13 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *  ```
    *
    *  @note Reuse: $consumesAndProducesIterator
+   *
+   *  @tparam B the element type of the sequences produced by the grouped iterator, a supertype of `A`
+   *  @param size the number of elements per group
+   *  @return a `GroupedIterator` producing `Seq[B]`s of size `size`, except the
+   *          last segment (which may be the only segment) will be truncated
+   *          if there are fewer than `size` elements remaining to be grouped.
+   *          The truncation behavior can be overridden via `withPartial` or `withPadding`.
    */
   def grouped[B >: A](size: Int): GroupedIterator[B]^{this} =
     new GroupedIterator[B](self, size, size)
@@ -373,6 +389,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *    (1 to 5).iterator.sliding(4, 3).withPadding(it2.next).toList
    *  ```
    *
+   *  @tparam B the element type of the sequences produced by the grouped iterator, a supertype of `A`
    *  @param size the number of elements per group
    *  @param step the distance between the first elements of successive
    *         groups
@@ -444,6 +461,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *  object in this iterable object.
    *  $mayNotTerminateInf
    *
+   *  @tparam B the type of the element to search for, a supertype of `A`
    *  @param  elem  element to search for.
    *  @return the index of the first occurrence of `elem` in the values produced by this iterator,
    *          or -1 if such an element does not exist until the end of the iterator is reached.
@@ -455,6 +473,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *  after or at some start index.
    *  $mayNotTerminateInf
    *
+   *  @tparam B the type of the element to search for, a supertype of `A`
    *  @param elem element to search for.
    *  @param from the start index
    *  @return the index `>= from` of the first occurrence of `elem` in the values produced by this
@@ -692,6 +711,11 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
   /** @inheritdoc
    *
    *  @note    Reuse: $consumesOneAndProducesTwoIterators
+   *
+   *  @param p the predicate used to partition elements into the leading and trailing iterators
+   *  @return a pair of iterators: the longest prefix of this iterator whose
+   *          elements all satisfy `p`, and the remainder of this iterator
+   *          starting with the first element that does not satisfy `p`
    */
   def span(p: A => Boolean): (Iterator[A]^{this, p}, Iterator[A]^{this, p}) = {
     /*
@@ -794,7 +818,14 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
 
   def slice(from: Int, until: Int): Iterator[A]^{this} = sliceIterator(from, until max 0)
 
-  /** Creates an optionally bounded slice, unbounded if `until` is negative. */
+  /** Creates an optionally bounded slice, unbounded if `until` is negative.
+   *
+   *  @param from the index of the first element in the slice
+   *  @param until the index of the first element following the slice, or negative for unbounded
+   *  @return an iterator producing the elements of this iterator from index
+   *          `from` (inclusive) up to index `until` (exclusive), or to the end
+   *          of this iterator if `until` is negative
+   */
   protected def sliceIterator(from: Int, until: Int): Iterator[A]^{this} = {
     val lo = from max 0
     val rest =
@@ -910,9 +941,12 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *  Patching at indices at or larger than the length of the original iterator appends the patch to the end.
    *  If more values are replaced than actually exist, the excess is ignored.
    *
+   *  @tparam B the element type of the returned iterator, a supertype of `A`
    *  @param from       The start index from which to patch
    *  @param patchElems The iterator of patch values
    *  @param replaced   The number of values in the original iterator that are replaced by the patch.
+   *  @return an iterator that yields the elements of this iterator with `replaced`
+   *          elements starting at position `from` substituted by the elements of `patchElems`
    *  @note           Reuse: $consumesTwoAndProducesOneIterator
    */
   def patch[B >: A](from: Int, patchElems: Iterator[B]^, replaced: Int): Iterator[B]^{this, patchElems} =
@@ -999,7 +1033,12 @@ object Iterator extends IterableFactory[Iterator] {
    */
   override def from[A](source: IterableOnce[A]^): Iterator[A]^{source} = source.iterator
 
-  /** The iterator which produces no values. */
+  /** The iterator which produces no values.
+   *
+   *  @tparam T the element type of the empty iterator
+   *  @return an iterator that produces no values, whose `hasNext` always
+   *          returns `false` and whose `next()` always throws `NoSuchElementException`
+   */
   @`inline` final def empty[T]: Iterator[T] = _empty
 
   def single[A](a: A): Iterator[A] = new AbstractIterator[A] {
@@ -1024,6 +1063,7 @@ object Iterator extends IterableFactory[Iterator] {
 
   /** Creates iterator that produces the results of some element computation a number of times.
    *
+   *  @tparam A the element type of the iterator
    *  @param   len  the number of elements returned by the iterator.
    *  @param   elem the element computation
    *  @return  An iterator that produces the results of `n` evaluations of `elem`.
@@ -1039,6 +1079,7 @@ object Iterator extends IterableFactory[Iterator] {
 
   /** Creates an iterator producing the values of a given function over a range of integer values starting from 0.
    *
+   *  @tparam A the element type of the iterator
    *  @param  end The number of elements returned by the iterator
    *  @param  f   The function computing element values
    *  @return An iterator that produces the values `f(0), ..., f(n -1)`.
@@ -1111,6 +1152,7 @@ object Iterator extends IterableFactory[Iterator] {
 
   /** Creates an infinite iterator that repeatedly applies a given function to the previous result.
    *
+   *  @tparam T the element type of the iterator
    *  @param start the start value of the iterator
    *  @param f     the function that's repeatedly applied
    *  @return      the iterator producing the infinite sequence of values `start, f(start), f(f(start)), ...`
@@ -1142,6 +1184,7 @@ object Iterator extends IterableFactory[Iterator] {
   /** Creates an infinite-length iterator returning the results of evaluating an expression.
    *  The expression is recomputed for every element.
    *
+   *  @tparam A the element type of the iterator
    *  @param elem the element computation.
    *  @return the iterator containing an infinite number of results of evaluating `elem`.
    */
@@ -1152,6 +1195,9 @@ object Iterator extends IterableFactory[Iterator] {
 
   /** Creates an iterator to which other iterators can be appended efficiently.
    *  Nested ConcatIterators are merged to avoid blowing the stack.
+   *
+   *  @tparam A the element type of the iterator
+   *  @param from the initial iterator to concatenate, or `null` if starting empty
    */
   private final class ConcatIterator[+A](val from: (Iterator[A @uncheckedVariance]^) | Null) extends AbstractIterator[A] {
     @annotation.stableNull
@@ -1174,7 +1220,7 @@ object Iterator extends IterableFactory[Iterator] {
         @tailrec def merge(): Unit =
           if (current.isInstanceOf[ConcatIterator[?]]) {
             val c = current.asInstanceOf[ConcatIterator[A]^{from}]
-            current = c.current
+            current = c.current.asInstanceOf
             currentHasNextChecked = c.currentHasNextChecked
             if (c.tail != null) {
               if (last == null) last = c.last
@@ -1234,6 +1280,11 @@ object Iterator extends IterableFactory[Iterator] {
 
   /** Creates a delegating iterator capped by a limit count. Negative limit means unbounded.
    *  Lazily skip to start on first evaluation.  Avoids daisy-chained iterators due to slicing.
+   *
+   *  @tparam A the element type of the iterator
+   *  @param underlying the source iterator to slice
+   *  @param start the number of leading elements to drop
+   *  @param limit the maximum number of elements to return, or negative for unbounded
    */
   private[scala] final class SliceIterator[A](val underlying: Iterator[A]^, start: Int, limit: Int) extends AbstractIterator[A] {
     private var remaining = limit
@@ -1293,6 +1344,13 @@ object Iterator extends IterableFactory[Iterator] {
 
   /** Creates an iterator that uses a function `f` to produce elements of
    *  type `A` and update an internal state of type `S`.
+   *
+   *  @tparam A the element type produced by the iterator
+   *  @tparam S the type of the internal state
+   *  @param init the initial state value
+   *  @param f a function that, given the current state, returns `Some((nextElement, nextState))`
+   *           to produce the next element and updated state, or `None` to signal
+   *           the end of the iteration
    */
   private final class UnfoldIterator[A, S](init: S)(f: S => Option[(A, S)]) extends AbstractIterator[A] {
     private var state: S = init
@@ -1321,5 +1379,8 @@ object Iterator extends IterableFactory[Iterator] {
   }
 }
 
-/** Explicit instantiation of the `Iterator` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Iterator` trait to reduce class file size in subclasses.
+ *
+ *  @tparam A the element type of the iterator
+ */
 abstract class AbstractIterator[+A] extends Iterator[A]

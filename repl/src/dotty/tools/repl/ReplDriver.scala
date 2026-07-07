@@ -2,6 +2,7 @@ package dotty.tools
 package repl
 
 import scala.language.unsafeNulls
+import scala.util.control.NonFatal
 
 import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
@@ -33,7 +34,9 @@ import dotc.util.Spans.Span
 import dotc.util.{SourceFile, SourcePosition}
 import dotc.{CompilationUnit, Driver}
 import dotc.config.{CompilerCommand, Feature}
+import dotty.tools.io
 import dotty.tools.io.{AbstractFileClassLoader => _, *}
+import dotty.tools.dotc.classpath.FileUtils.isClassContainer
 import dotty.tools.repl.ScalaClassLoader.*
 
 import org.jline.reader.*
@@ -45,7 +48,6 @@ import scala.collection.mutable
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.ClassReader
-import scala.util.control.NonFatal
 import scala.util.Using
 
 /** The state of the REPL contains necessary bindings instead of having to have
@@ -79,7 +81,7 @@ case class State(objectIndex: Int,
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
-                 out: PrintStream = Console.out,
+                 out: PrintStream = System.out,
                  classLoader: Option[ClassLoader] = None,
                  extraPredef: String = "") extends Driver:
 
@@ -114,8 +116,16 @@ class ReplDriver(settings: Array[String],
       case Some((files, ictx)) => inContext(ictx) {
         shouldStart = true
         if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
-        ictx.base.initialize()
-        ictx
+        val finalCtx =
+          // If the user hasn't configured warnings, enable -deprecation and -feature by default
+          if !ctx.settings.Wconf.wasSetByUser && !ctx.settings.Wall.wasSetByUser then
+            val c = ictx.fresh
+            if !ctx.settings.deprecation.wasSetByUser then c.setSetting(c.settings.deprecation, true)
+            if !ctx.settings.feature.wasSetByUser then c.setSetting(c.settings.feature, true)
+            c
+          else ictx
+        finalCtx.base.initialize()
+        finalCtx
       }
       case None =>
         shouldStart = false
@@ -141,7 +151,7 @@ class ReplDriver(settings: Array[String],
     rootCtx = initialCtx(settings)
     if (rootCtx.settings.outputDir.isDefault(using rootCtx))
       rootCtx = rootCtx.fresh
-        .setSetting(rootCtx.settings.outputDir, new VirtualDirectory("<REPL compilation output>"))
+        .setSetting(rootCtx.settings.outputDir, io.virtualDirectory("<REPL compilation output>"))
     compiler = new ReplCompiler
     rendering = new Rendering(classLoader)
   }
@@ -249,7 +259,15 @@ class ReplDriver(settings: Array[String],
               System.exit(130)  // Standard exit code for SIGINT
             }
         ) {
-          interpret(res)
+          val savedIn = System.in
+          val replIn = terminal.userInputStream
+          try
+            System.setIn(replIn)
+            scala.Console.withIn(replIn) {
+              interpret(res)
+            }
+          finally
+            System.setIn(savedIn)
         }
 
         loop(using newState)()
@@ -261,7 +279,7 @@ class ReplDriver(settings: Array[String],
   }
 
   final def run(input: String)(using state: State): State = runBody {
-    interpret(ParseResult.complete(input))
+    interpret(ParseResult(input))
   }
 
   protected def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
@@ -340,13 +358,16 @@ class ReplDriver(settings: Array[String],
       compiler
         .typeCheck(expr, errorsAllowed = true)
         .map { (untpdTree, tpdTree) =>
-          val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
+          val file = SourceFile.virtual("<completions>", expr)
           val unit = CompilationUnit(file)(using state.context)
           unit.untpdTree = untpdTree
           unit.tpdTree = tpdTree
           given Context = state.context.fresh.setCompilationUnit(unit)
           val srcPos = SourcePosition(file, Span(cursor))
-          try Completion.completions(srcPos)._2 catch case NonFatal(_) => Nil
+          try
+            Completion.completions(srcPos)._2
+          catch case NonFatal(_) =>
+            List(Completion("<Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues>", "", Nil))
         }
         .getOrElse(Nil)
   end completions
@@ -581,7 +602,7 @@ class ReplDriver(settings: Array[String],
       state
 
     case JarCmd(path) =>
-      val jarFile = AbstractFile.getDirectory(path)
+      val jarFile = AbstractFile.getDirectory(path, state.context.settings.javaOutputVersion.value(using state.context))
       if (jarFile == null)
         out.println(s"""Cannot add "$path" to classpath.""")
         state
@@ -642,10 +663,13 @@ class ReplDriver(settings: Array[String],
       expr match {
         case "" => out.println(s":type <expression>")
         case _  =>
-          compiler.typeOf(expr)(using newRun(state)).fold(
-            errs => displayErrors(errs, state),
-            res => out.println(res)  // result has some highlights
-          )
+          try
+            compiler.typeOf(expr)(using newRun(state)).fold(
+              errs => displayErrors(errs, state),
+              res => out.println(res)  // result has some highlights
+            )
+          catch case NonFatal(ex) =>
+            out.println(s"Error: ${ex.getMessage}")
       }
       state
 
@@ -653,10 +677,13 @@ class ReplDriver(settings: Array[String],
       expr match {
         case "" => out.println(s":doc <expression>")
         case _  =>
-          compiler.docOf(expr)(using newRun(state)).fold(
-            errs => displayErrors(errs, state),
-            res => out.println(res)
-          )
+          try
+            compiler.docOf(expr)(using newRun(state)).fold(
+              errs => displayErrors(errs, state),
+              res => out.println(res)
+            )
+          catch case NonFatal(ex) =>
+            out.println(s"Error: ${ex.getMessage}")
       }
       state
 
@@ -724,4 +751,4 @@ class ReplDriver(settings: Array[String],
 
 end ReplDriver
 object ReplDriver:
-  def pprintImport = "import pprint.pprintln\n"
+  def pprintImport = "import dotty.vendored.pprint.pprintln\n"

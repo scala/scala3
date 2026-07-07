@@ -4,7 +4,7 @@ package transform
 
 import org.junit.Test
 
-import dotty.tools.backend.jvm.DottyBytecodeTest
+import dotty.DottyBytecodeTest
 
 import scala.jdk.CollectionConverters.*
 

@@ -1,42 +1,22 @@
-<!-- Fixes #XYZ (where XYZ is the issue number from the issue tracker) -->
+Fixes #XYZ
 
-<!-- TODO description of the change -->
-<!-- Ideally should have a title like "Fix #XYZ: Short fix description" -->
+<!-- where #XYZ is the issue number; create as draft if this is not in a reviewable state yet;
+     do not paste LLM output here, describe the PR in your own words;
+     if in doubt about your contribution, refer to: https://github.com/scala/scala3/blob/main/CONTRIBUTING.md;
+     don't forget to sign the CLA: https://contribute.akka.io/contribute/cla/scala -->
 
-<!--
-  TODO first sign the CLA
-  https://contribute.akka.io/cla/scala
--->
+## Have you relied on LLM-based tools in this contribution?
 
-<!-- if the PR is still a WIP, create it as a draft PR (or convert it into one) -->
+<!-- Pick one; "running tests" is not enough; refer to https://github.com/scala/scala3/blob/main/LLM_POLICY.md for details -->
 
-## How much have you relied on LLM-based tools in this contribution?
-
-<!-- 
-  State clearly in the pull request description, 
-  whether LLM-based tools were used and to what extent 
-
-  (extensively/moderately/minimally/not at all)
--->
-
-<!--
-  Refer to our [LLM usage policy](https://github.com/scala/scala3/blob/main/LLM_POLICY.md) for rules and guidelines
-  regarding usage of LLM-based tools in contributions.
--->
+Yes, and I checked the output by ...
+No
 
 ## How was the solution tested?
 
-<!-- 
-  If automated tests are included, mention it.
-  If they are not, explain why and how the solution was tested.
--->
+<!-- Pick one; exceptions must have a very good reason -->
 
-## Additional notes
-
-<!-- Placeholder for any extra context regarding this contribution. -->
-
-<!--
-  When in doubt, and for support regarding contributions to a particular component of the compiler, 
-  refer to [our contribution guide](https://github.com/scala/scala3/blob/main/CONTRIBUTING.md),
-  and feel free to tag the maintainers listed there for the area(s) you are modifying.
--->
+New automated tests (including the issue's reproducer, if applicable)
+Covered by existing tests (this is a refactoring)
+Non-code change, no tests needed
+Manual tests because writing automated tests is impractical, described below (in detail)

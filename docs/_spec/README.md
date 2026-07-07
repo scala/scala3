@@ -10,7 +10,7 @@ Third, we'd like to support different output formats. An html page per chapter w
 
 ## Editing
 
-We are using Jekyll and [Redcarpet](https://github.com/vmg/redcarpet) to generate the html.
+We are using Jekyll to generate the html.
 
 Check `Gemfile` for the current versions.
 
@@ -18,19 +18,13 @@ We aim to track the configuration GitHub Pages uses but differences may arise as
 
 ## Building
 
-<!-- TODO: Check nothing else is needed -->
 To preview locally, run the following commands in the docs/_spec subfolder:
 
 ```
 env UID="$(id -u)" GID="$(id -g)" docker-compose up
 ```
 
-and open http://0.0.0.0:4000/files/archive/spec/3.4/ to view the spec. Jekyll will rebuild as you edit the markdown, but make sure to restart it when you change `_config.yml`.
-<!--
-To preview locally, run the following commands in the root of your checkout scala/scala:
-`bundle install` to install Jekyll and `bundle exec jekyll serve -d build/spec/ -s spec/ -w --baseurl=""` to start it,
-and open http://0.0.0.0:4000/ to view the spec. Jekyll will rebuild as you edit the markdown, but make sure to restart it when you change `_config.yml`.
--->
+and open http://localhost:4000/files/archive/spec/3.4/ to view the spec. Jekyll will rebuild as you edit the markdown, but make sure to restart it when you change `_config.yml`.
 
 ## General Advice for editors
 

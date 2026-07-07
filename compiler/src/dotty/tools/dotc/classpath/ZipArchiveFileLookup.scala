@@ -9,63 +9,47 @@ import java.net.URL
 
 import dotty.tools.io.{ AbstractFile, FileZipArchive }
 import FileUtils.*
-import dotty.tools.io.{EfficientClassPath, ClassRepresentation}
+import dotty.tools.io.ClassPath
 
 /**
  * A trait allowing to look for classpath entries of given type in zip and jar files.
  * It provides common logic for classes handling class and source files.
  * It's aware of things like e.g. META-INF directory which is correctly skipped.
  */
-trait ZipArchiveFileLookup[FileEntryType <: ClassRepresentation] extends EfficientClassPath {
+trait ZipArchiveFileLookup[FileEntryType] extends ClassPath {
   val zipFile: File
-  def release: Option[String]
-
-  assert(zipFile ne null, "Zip file in ZipArchiveFileLookup cannot be null")
+  val release: String
 
   override def asURLs: Seq[URL] = Seq(zipFile.toURI.toURL)
-  override def asClassPathStrings: Seq[String] = Seq(zipFile.getPath)
 
-  private val archive = new FileZipArchive(zipFile.toPath, release)
+  private val archive = new FileZipArchive(zipFile.toPath, Some(release))
 
-  override private[dotty] def packages(inPackage: PackageName): Seq[PackageEntry] = {
-    for {
-      dirEntry <- findDirEntry(inPackage).toSeq
-      entry <- dirEntry.iterator if entry.isPackage
+  override def packages(inPackage: String): Seq[PackageEntry] =
+    findDirEntry(inPackage) match {
+      case None =>
+        Seq.empty
+      case Some(dirEntry) =>
+        dirEntry.iterator.filter(_.isPackage).map(e => PackageEntry(PackageNameUtils.entryName(inPackage, e.name))).toSeq
     }
-    yield PackageEntryImpl(inPackage.entryName(entry.name))
+
+  protected def files(inPackage: String): Seq[FileEntryType] =
+    findDirEntry(inPackage) match {
+      case None =>
+        Seq.empty
+      case Some(dirEntry) =>
+        dirEntry.iterator.filter(isRequiredFileType).map(createFileEntry).toSeq
+    }
+
+  protected def file(className: String): Option[FileEntryType] =
+    // no "isRequiredFileType" filter, we know exactly what we want
+    archive.lookupPath(className, '.', lastSuffix = ".class", directory = false).map(createFileEntry)
+
+  override def hasPackage(pkg: String) = findDirEntry(pkg).isDefined
+
+  private def findDirEntry(pkg: String): Option[AbstractFile] = {
+    archive.lookupPath(pkg, '.', directory = true)
   }
 
-  protected def files(inPackage: PackageName): Seq[FileEntryType] =
-    for {
-      dirEntry <- findDirEntry(inPackage).toSeq
-      entry <- dirEntry.iterator if isRequiredFileType(entry)
-    }
-    yield createFileEntry(entry)
-
-  protected def file(inPackage: PackageName, name: String): Option[FileEntryType] =
-    for {
-      dirEntry <- findDirEntry(inPackage)
-      entry <- Option(dirEntry.lookupName(name, directory = false))
-      // no "if isRequiredFileType(entry)" check, we know exactly what we want
-    }
-    yield createFileEntry(entry)
-
-  override def hasPackage(pkg: PackageName) = findDirEntry(pkg).isDefined
-  def list(inPackage: PackageName, onPackageEntry: PackageEntry => Unit, onClassesAndSources: ClassRepresentation => Unit): Unit =
-    findDirEntry(inPackage) match {
-      case Some(dirEntry) =>
-        for (entry <- dirEntry.iterator) {
-          if (entry.isPackage)
-            onPackageEntry(PackageEntryImpl(inPackage.entryName(entry.name)))
-          else if (isRequiredFileType(entry))
-            onClassesAndSources(createFileEntry(entry))
-        }
-      case None =>
-    }
-
-  private def findDirEntry(pkg: PackageName): Option[archive.DirEntry] =
-    archive.allDirs.get(pkg.dirPathTrailingSlashJar)
-
-  protected def createFileEntry(file: FileZipArchive#Entry): FileEntryType
+  protected def createFileEntry(file: AbstractFile): FileEntryType
   protected def isRequiredFileType(file: AbstractFile): Boolean
 }

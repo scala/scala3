@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package transform
 
-import scala.language.unsafeNulls
-
 import ast.tpd
 import ast.Trees.*
 import config.Printers.macroAnnot as debug
@@ -15,9 +13,8 @@ import core.MacroClassLoader
 import core.Symbols.*
 import core.Types.*
 import quoted.*
-import util.SrcPos
-import scala.quoted.runtime.impl.{QuotesImpl, SpliceScope}
 
+import scala.quoted.runtime.impl.{QuotesImpl, SpliceScope}
 import scala.quoted.Quotes
 import scala.util.control.NonFatal
 
@@ -135,6 +132,8 @@ object MacroAnnotations:
             (List(tree), companion)
           case Interpreter.MissingClassValidInCurrentRun(sym, origin) =>
             Interpreter.suspendOnMissing(sym, origin, annot.tree)
+          // We're dealing with user-thrown things here, so we must use NonFatal to catch anything realistic,
+          // including `Error`s like `NotImplementedError`
           case NonFatal(ex) =>
             val stack0 = ex.getStackTrace.takeWhile(_.getClassName != this.getClass().getName())
             val stack = stack0.take(1 + stack0.lastIndexWhere(_.getMethodName == "transform"))

@@ -1,16 +1,13 @@
 package dotty.tools
 package dotc
 
-import reporting.StoreReporter
 import vulpix.TestConfiguration
 
-import core.Contexts.{Context, ContextBase}
 import dotty.tools.Useables.given
 import dotty.tools.dotc.config.Settings.*
 import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
 import dotty.tools.dotc.config.ScalaSettingCategories.*
 import dotty.tools.dotc.config.ScalaSettings
-import dotty.tools.vulpix.TestConfiguration.mkClasspath
 import dotty.tools.io.PlainDirectory
 import dotty.tools.io.Directory
 import dotty.tools.dotc.config.ScalaVersion
@@ -197,7 +194,7 @@ class SettingsTests:
   @Test def `Allow IntSetting's to be set with a colon`: Unit =
     object Settings extends SettingGroup:
       val foo = IntSetting(RootSetting, "foo", "foo", 80)
-    import Settings._
+    import Settings.*
 
     def check(args: List[String]) = {
       val summary = processArguments(args, processAll = true)
@@ -254,7 +251,6 @@ class SettingsTests:
     assertTrue(summary.warnings.forall(_.contains("updated")))
 
   @Test def `dir option also warns`: Unit =
-    val abc: PlainFile = Paths.get("a", "b", "c").toPlainFile
     object Settings extends SettingGroup:
       val option = OutputSetting(RootSetting, "option", "out", "A file", Paths.get("a", "b", "c").toPlainFile)
     Using.resource(createTempDirectory("i13887")) { dir =>
@@ -273,7 +269,7 @@ class SettingsTests:
       val bar = BooleanSetting(RootSetting, "bar", "bar", initialValue = true)
       val baz = BooleanSetting(RootSetting, "baz", "baz", initialValue = false)
       val qux = BooleanSetting(RootSetting, "qux", "qux", initialValue = false)
-    import Settings._
+    import Settings.*
 
     val args = List("-foo:true", "-bar:false", "-baz", "-qux:true", "-qux:false")
     val summary = processArguments(args, processAll = true)
@@ -288,7 +284,7 @@ class SettingsTests:
   @Test def `flag can't be set with separate arg`: Unit =
     object Settings extends SettingGroup:
       val foo = BooleanSetting(RootSetting, "foo", "foo", initialValue = false)
-    import Settings._
+    import Settings.*
 
     val args = List("-foo", "false")
     val summary = processArguments(args, processAll = true)
@@ -309,7 +305,7 @@ class SettingsTests:
       val args = List(s"-testOutput:${file.toString}")
       val summary = processArguments(args, processAll = true)
 
-      assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overriden")
+      assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overridden")
 
   @Test def `Output setting respects previous setting`: Unit =
     val result = Using.resources(
@@ -319,7 +315,7 @@ class SettingsTests:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true)
 
-      import Settings._
+      import Settings.*
 
       Files.write(file1, "test1".getBytes())
       Files.write(file2, "test2".getBytes())
@@ -342,7 +338,7 @@ class SettingsTests:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
 
-      import Settings._
+      import Settings.*
 
       Files.write(file, "test".getBytes())
       val fileStateBefore = String(Files.readAllBytes(file))
@@ -368,7 +364,7 @@ class SettingsTests:
       val phasesSetting = PhasesSetting(RootSetting, "phasesSetting", "phasesSetting", "all")
       val versionSetting= VersionSetting(RootSetting, "versionSetting", "versionSetting")
 
-    import Settings._
+    import Settings.*
     Using.resource(Files.createTempDirectory("testDir")): dir =>
 
       val args = List(

@@ -119,6 +119,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |tabulate[A](n: Int)(f: Int => A): List[A]
          |unapplySeq[A](x: List[A] @uncheckedVariance): UnapplySeqWrapper[A]
          |unfold[A, S](init: S)(f: S => Option[(A, S)]): List[A]
+         |->[B](inline that: B): (List.type, B)
          |fromSpecific(from: Any)(it: IterableOnce[Nothing]): List[Nothing]
          |fromSpecific(it: IterableOnce[Nothing]): List[Nothing]
          |toFactory(from: Any): Factory[Nothing, List[Nothing]]
@@ -130,7 +131,6 @@ class CompletionSuite extends BaseCompletionSuite:
          |isInstanceOf[X0]: Boolean
          |synchronized[X0](x$0: X0): X0
          |toString(): String
-         |->[B](y: B): (List.type, B)
          |ensuring(cond: Boolean): List.type
          |ensuring(cond: List.type => Boolean): List.type
          |ensuring(cond: Boolean, msg: => Any): List.type
@@ -138,7 +138,6 @@ class CompletionSuite extends BaseCompletionSuite:
          |nn: List.type
          |runtimeChecked scala.collection.immutable
          |formatted(fmtstr: String): String
-         |→[B](y: B): (List.type, B)
          |""".stripMargin
     )
 
@@ -1940,8 +1939,8 @@ class CompletionSuite extends BaseCompletionSuite:
         |  extension [T: Orde@@]
         |}
         |""".stripMargin,
-      """Ordered[T] scala.math
-        |Ordering[T] scala.math
+      """Ordered scala.math
+        |Ordering scala.math
         |""".stripMargin,
       topLines = Some(2)
     )
@@ -1953,8 +1952,8 @@ class CompletionSuite extends BaseCompletionSuite:
         |  extension [T: Ordering: Orde@@]
         |}
         |""".stripMargin,
-      """Ordered[T] scala.math
-        |Ordering[T] scala.math
+      """Ordered scala.math
+        |Ordering scala.math
         |""".stripMargin,
       topLines = Some(2)
     )
@@ -2321,4 +2320,24 @@ class CompletionSuite extends BaseCompletionSuite:
         |case class Miau(y: Int) derives Ordering, CanEqu@@
         |""".stripMargin,
       "CanEqual scala"
+    )
+
+  @Test def `context-bound-no-square-brackets` =
+    check(
+      """|trait Applicative[F[_]]
+         |trait Monadic[F[_]]
+         |
+         |def demo[F[_]: Applicative: Mona@@]: Unit = ???
+         |""".stripMargin,
+      "Monadic test"
+    )
+
+  @Test def `context-bound-no-square-brackets-multi` =
+    check(
+      """|trait Applicative[F[_]]
+         |trait Monadic[F[_]]
+         |
+         |def demo[F[_]: {Applicative, Mona@@}]: Unit = ???
+         |""".stripMargin,
+      "Monadic test"
     )

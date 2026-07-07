@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/safemode-5.scala:5:32 ---------------------------------------------------------
+5 |  def h(x: Any) = x.asInstanceOf[String] // error
+  |                  ^^^^^^^^^^^^^^^^^^^^^^
+  |                  Cannot use asInstanceOf in safe mode

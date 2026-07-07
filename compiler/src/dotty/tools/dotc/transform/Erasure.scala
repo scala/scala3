@@ -702,13 +702,10 @@ object Erasure {
           assignType(untpd.cpy.Select(tree)(qual, tree.name.primitiveArrayOp), qual)
 
       def adaptIfSuper(qual: Tree): Tree = qual match {
-        case Super(thisQual, untpd.EmptyTypeIdent) =>
-          val SuperType(thisType, supType) = qual.tpe: @unchecked
-          if (sym.owner.is(Flags.Trait))
-            cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
-              .withType(SuperType(thisType, sym.owner.typeRef))
-          else
-            qual.withType(SuperType(thisType, thisType.firstParent.typeConstructor))
+        case Super(thisQual, untpd.EmptyTypeIdent) if sym.owner.is(Flags.Trait) =>
+          val SuperType(thisType, _) = qual.tpe: @unchecked
+          cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
+            .withType(SuperType(thisType, sym.owner.typeRef))
         case _ =>
           qual
       }
@@ -804,8 +801,9 @@ object Erasure {
       val Apply(fun, args) = tree
       val origFun = fun.asInstanceOf[tpd.Tree]
       val origFunType = origFun.tpe.widen(using preErasureCtx)
+      val insideBridge = ctx.owner.ownersIterator.exists(_.is(Flags.Bridge))
       val ownArgs = origFunType match
-        case mt: MethodType if mt.hasErasedParams =>
+        case mt: MethodType if mt.hasErasedParams && !insideBridge =>
           args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
             if isErased then
               checkPureErased(arg, isArgument = true,
@@ -886,6 +884,14 @@ object Erasure {
       else trace(i"erasing $vdef"):
         super.typedValDef(untpd.cpy.ValDef(vdef)(
           tpt = untpd.TypedSplice(TypeTree(sym.info).withSpan(vdef.tpt.span))), sym)
+
+    /** Type check assignments, erasing those to erased variables. */
+    override def typedAssign(tree: untpd.Assign, pt: Type)(using Context): Tree =
+      val untpd.Assign(lhs, rhs) = tree
+      if lhs.symbol.is(Flags.Erased) then
+        checkPureErased(rhs, isArgument = false)
+        EmptyTree
+      else super.typedAssign(tree, pt)
 
     /** Besides normal typing, this function also compacts anonymous functions
      *  with more than `MaxImplementedFunctionArity` parameters to use a single
@@ -972,7 +978,7 @@ object Erasure {
      *  to parameters of f$retainedBody are changed to references of
      *  corresponding parameters in f.
      *
-     *  `f$retainedBody` is subseqently mapped to the empty tree in `typedDefDef`
+     *  `f$retainedBody` is subsequently mapped to the empty tree in `typedDefDef`
      *  which is then dropped in `typedStats`.
      */
     private def addRetainedInlineBodies(stats: List[untpd.Tree])(using Context): List[untpd.Tree] =

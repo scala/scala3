@@ -252,6 +252,15 @@ class SymUtils:
       else if (self.exists) self.owner.enclosingMethodOrClass
       else NoSymbol
 
+    /** The closest enclosing method, class or object of this symbol.
+     *  Module references get mapped to their moduleClasses.
+     */
+    @tailrec final def enclosingMethodOrClassOrObject(using Context): Symbol =
+      if self.is(Method) || self.isClass then self
+      else if self.is(ModuleVal) then self.moduleClass
+      else if self.exists then self.owner.enclosingMethodOrClassOrObject
+      else NoSymbol
+
     /** Apply symbol/symbol substitution to this symbol */
     def subst(from: List[Symbol], to: List[Symbol]): Symbol = {
       @tailrec def loop(from: List[Symbol], to: List[Symbol]): Symbol =

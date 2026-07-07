@@ -547,15 +547,28 @@ trait TypesSupport:
       case ReachCapability(c)     => emitCapability(c, skipThisTypePrefix) :+ Keyword("*")
       case ReadOnlyCapability(c)  => emitCapability(c, skipThisTypePrefix) :+ Keyword(".rd")
       case OnlyCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("only"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
-      case ThisType(_)            => List(Keyword("this"))
+      case t @ ThisType(tpe)      =>
+        // Render `this` for self-references and `EnclosingClass.this` otherwise.
+        // We deliberately call `inner` without `inCC` in scope so the enclosing
+        // class name renders as a clickable Type element rather than Plain
+        // (see the `tpe(symbol)` helper, which collapses to Plain when inCC is set).
+        if skipPrefix(t, elideThis, originalOwner, skipThisTypePrefix) then List(Keyword("this"))
+        else inner(tpe, skipThisTypePrefix) ++ plain(".").l ++ List(Keyword("this"))
       case t                      => inner(t, skipThisTypePrefix)(using skipTypeSuffix = true, inCC = Some(Nil))
 
   protected def emitCaptureRefsSignature(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean = false)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
+    emitUseRefsSignature(refs.map(_ -> false), skipThisTypePrefix)
+
+  protected def emitUseRefsSignature(using Quotes)(refs: List[(reflect.TypeRepr, Boolean)], skipThisTypePrefix: Boolean = false)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     refs match
       case Nil => Nil
       case _ =>
+        def emitRef(ref: reflect.TypeRepr, initially: Boolean) =
+          val csig = emitCapability(ref, skipThisTypePrefix)
+          if initially then csig ++ List(plain(" "), Keyword("initially"))
+          else csig
         refs
-          .map(emitCapability(_, skipThisTypePrefix))
+          .map((r, init) => emitRef(r, init))
           .reduce((left, right) => left ++ (Plain(", ") :: right))
 
   private def emitCaptureSet(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean, omitCap: Boolean = true)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =

@@ -5,12 +5,8 @@ package core
 import java.io.{IOException, File}
 import java.nio.channels.ClosedByInterruptException
 
-import scala.util.control.NonFatal
-
-import dotty.tools.dotc.classpath.{ ClassPathFactory, PackageNameUtils }
-import dotty.tools.dotc.classpath.FileUtils.{hasTastyExtension, hasBetastyExtension}
+import dotty.tools.dotc.classpath.PackageNameUtils
 import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile, NoAbstractFile }
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
 import NameOps.*
@@ -153,7 +149,9 @@ object SymbolLoaders {
       def enterScanned(unit: CompilationUnit)(using Context) = {
 
         def checkPathMatches(path: List[TermName], what: String, tree: NameTree): Boolean = {
-          val ok = filePath == path
+          // Ignore empty packages if necessary so we don't warn on top-level package objects
+          // (such as `package object scala` in the top-level "package.scala" of the standard library)
+          val ok = filePath == path || filePath == path.filter(_ != nme.EMPTY_PACKAGE)
           if (!ok)
             report.warning(i"""$what ${tree.name} is in the wrong directory.
                            |It was declared to be in package ${path.reverse.mkString(".")}
@@ -220,7 +218,7 @@ object SymbolLoaders {
         enterToplevelsFromSource(owner, nameOf(classRep), src)
       case (Some(bin), _) =>
         val completer =
-          if bin.hasTastyExtension || bin.hasBetastyExtension then ctx.platform.newTastyLoader(bin)
+          if bin.ext.isTasty || bin.ext.isBetasty then ctx.platform.newTastyLoader(bin)
           else ctx.platform.newClassLoader(bin)
         enterClassAndModule(owner, nameOf(classRep), completer)
     }
@@ -229,7 +227,12 @@ object SymbolLoaders {
     src.lastModified >= bin.lastModified
 
   private def nameOf(classRep: ClassRepresentation)(using Context): TermName =
-    classRep.fileName.sliceToTermName(0, classRep.nameLength)
+    // avoid forcing `classRep.name` when we just need the length
+    val nameLength = {
+      val ix = classRep.fileName.lastIndexOf('.')
+      if (ix < 0) classRep.fileName.length else ix
+    }
+    classRep.fileName.sliceToTermName(0, nameLength)
 
   /** Load contents of a package
    */
@@ -300,7 +303,7 @@ object SymbolLoaders {
         !root.unforcedDecls.lookup(classRep.name.toTypeName).exists
 
       if (!root.isRoot) {
-        val classReps = classPath.list(packageName).classesAndSources
+        val classReps = classPath.classes(packageName) ++ classPath.sources(packageName)
 
         for (classRep <- classReps)
           if (!maybeModuleClass(classRep) && hasFlatName(classRep) == flat &&
@@ -341,7 +344,8 @@ object SymbolLoaders {
           // definitions. See #23043.
           val hasConflict = currentDecls.lookup(name.toTermName) != NoSymbol
           if !hasConflict
-            || classPath.list(fullName).classesAndSources.nonEmpty
+            || classPath.classes(fullName).nonEmpty
+            || classPath.sources(fullName).nonEmpty
             || classPath.packages(fullName).nonEmpty
           then
             enterPackage(root.symbol, name.toTermName,
@@ -436,16 +440,14 @@ abstract class SymbolLoader extends LazyType { self =>
       report.informTime("loaded " + description, start)
     }
     catch {
-      case ex: InterruptedException =>
-        throw ex
       case ex: ClosedByInterruptException =>
         throw new InterruptedException
       case ex: IOException =>
         signalError(ex)
-      case NonFatal(ex: TypeError) =>
+      case ex: TypeError =>
         println(s"exception caught when loading $root: ${ex.toMessage}")
         throw ex
-      case NonFatal(ex) =>
+      case ex: Exception =>
         println(s"exception caught when loading $root: $ex")
         throw ex
     }
@@ -504,18 +506,14 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
 }
 
 class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
-  val isBestEffortTasty = tastyFile.hasBetastyExtension
-
-  lazy val tastyBytes = tastyFile.toByteArray
+  val isBestEffortTasty = tastyFile.ext.isBetasty
 
   private lazy val unpickler: tasty.DottyUnpickler =
     handleUnpicklingExceptions:
-      new tasty.DottyUnpickler(tastyFile, tastyBytes, isBestEffortTasty) // reads header and name table
+      new tasty.DottyUnpickler(tastyFile, isBestEffortTasty) // reads header and name table
 
   val compilationUnitInfo: CompilationUnitInfo =
-    new CompilationUnitInfo:
-      def associatedFile: AbstractFile = tastyFile
-      def tastyInfo: Option[TastyInfo] = unpickler.compilationUnitInfo.tastyInfo
+    CompilationUnitInfo(tastyFile, unpickler.compilationUnitInfo.tastyInfo)
 
   def description(using Context): String =
     if isBestEffortTasty then "Best Effort TASTy file " + tastyFile.toString
@@ -530,7 +528,7 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
           classRoot.classSymbol.rootTreeOrProvider = unpickler
           moduleRoot.classSymbol.rootTreeOrProvider = unpickler
         if isBestEffortTasty then
-          checkBeTastyUUID(tastyFile, tastyBytes)
+          checkBeTastyUUID(tastyFile)
           ctx.setUsedBestEffortTasty()
         else
           checkTastyUUID()
@@ -543,10 +541,10 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
       val tastyType = if (isBestEffortTasty) "Best Effort TASTy" else "TASTy"
       val message = e match
         case e: UnpickleException =>
-          s"""$tastyType file ${tastyFile.canonicalPath} could not be read, failing with:
+          s"""$tastyType file ${tastyFile.path} could not be read, failing with:
             |  ${Option(e.getMessage).getOrElse("")}""".stripMargin
         case _ =>
-          s"""$tastyFile file ${tastyFile.canonicalPath} is broken, reading aborted with ${e.getClass}
+          s"""$tastyFile file ${tastyFile.path} is broken, reading aborted with ${e.getClass}
             |  ${Option(e.getMessage).getOrElse("")}""".stripMargin
       throw IOException(message, e)
 
@@ -559,12 +557,11 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
       val tastyUUID = unpickler.unpickler.header.uuid
       new ClassfileTastyUUIDParser(classfile)(ctx).checkTastyUUID(tastyUUID)
     else
-      // This will be the case in any of our tests that compile with `-Youtput-only-tasty`, or when
-      // tasty file compiled by `-Xearly-tasty-output-write` comes from an early output jar.
+      // This will be the case when a tasty file compiled by `-Xearly-tasty-output-write` comes from an early output jar.
       report.inform(s"No classfiles found for $tastyFile when checking TASTy UUID")
 
-  private def checkBeTastyUUID(tastyFile: AbstractFile, tastyBytes: Array[Byte])(using Context): Unit =
-    new BestEffortTastyHeaderUnpickler(tastyBytes).readHeader()
+  private def checkBeTastyUUID(tastyFile: AbstractFile)(using Context): Unit =
+    new BestEffortTastyHeaderUnpickler(tastyFile.toByteArray).readHeader()
 
   private def mayLoadTreesFromTasty(using Context): Boolean =
     ctx.settings.YretainTrees.value || ctx.settings.fromTasty.value

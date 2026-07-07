@@ -17,7 +17,12 @@ package mutable
 import scala.language.`2.13`
 import language.experimental.captureChecking
 
-/** Reusable builder for immutable collections */
+/** Reusable builder for immutable collections
+ *
+ *  @tparam A the element type of the collection being built
+ *  @tparam C the type of the immutable collection to build (must be a subtype of `IterableOnce[?]`)
+ *  @param empty the empty collection used as the initial value and reset target when the builder is cleared
+ */
 abstract class ImmutableBuilder[-A, C <: IterableOnce[?]](empty: C)
   extends ReusableBuilder[A, C] {
 

@@ -13,9 +13,9 @@
 package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.PostProcessorFrontendAccess.Lazy
-import dotty.tools.backend.jvm.opt.{BCodeRepository, ClassNotFound, InlineInfo, MethodInlineInfo, NoClassBTypeInfo, OptimizerWarning}
+import dotty.tools.backend.jvm.opt.{BCodeRepository, ClassNotFound, NoClassBTypeInfo, OptimizerWarning}
 import dotty.tools.backend.jvm.*
+import dotty.tools.dotc.core.StdNames.nme
 
 import scala.annotation.{switch, unused}
 import scala.collection.mutable
@@ -23,7 +23,7 @@ import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes
 import scala.tools.asm.tree.{ClassNode, InnerClassNode, ModuleNode}
 
-class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBTypes) {
+class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTypeLoader) extends InlineInfoLoader {
 
   /**
    * Obtain the BType for a type descriptor or internal name. For class descriptors, the ClassBType
@@ -31,7 +31,7 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
    *
    * Some JVM operations use either a full descriptor or only an internal name. Example:
    *   ANEWARRAY java/lang/String    // a new array of strings (internal name for the String class)
-   *   ANEWARRAY [Ljava/lang/String; // a new array of array of string (full descriptor for the String class)
+   *   ANEWARRAY [Ljava/lang/String; // a new array of arrays of string (full descriptor for the String class)
    *
    * This method supports both descriptors and internal names.
    */
@@ -42,18 +42,19 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
   }
 
   def bTypeForDescriptorFromClassfile(desc: String): Either[OptimizerWarning, BType] = (desc(0): @switch) match {
-    case 'V'                     => Right(UNIT)
-    case 'Z'                     => Right(BOOL)
-    case 'C'                     => Right(CHAR)
-    case 'B'                     => Right(BYTE)
-    case 'S'                     => Right(SHORT)
-    case 'I'                     => Right(INT)
-    case 'F'                     => Right(FLOAT)
-    case 'J'                     => Right(LONG)
-    case 'D'                     => Right(DOUBLE)
-    case '['                     => bTypeForDescriptorFromClassfile(desc.substring(1)).map(ArrayBType.apply)
-    case 'L' if desc.last == ';' => classBTypeFromParsedClassfile(desc.substring(1, desc.length - 1))
-    case _                       => throw new IllegalArgumentException(s"Not a descriptor: $desc")
+    case 'V' => Right(UNIT)
+    case 'Z' => Right(BOOL)
+    case 'C' => Right(CHAR)
+    case 'B' => Right(BYTE)
+    case 'S' => Right(SHORT)
+    case 'I' => Right(INT)
+    case 'F' => Right(FLOAT)
+    case 'J' => Right(LONG)
+    case 'D' => Right(DOUBLE)
+    case '[' => bTypeForDescriptorFromClassfile(desc.substring(1)).map(ArrayBType.apply)
+    case 'L' => if desc.last == ';' then classBTypeFromParsedClassfile(desc.substring(1, desc.length - 1))
+                else throw new IllegalArgumentException(s"Invalid class-like descriptor: $desc")
+    case _   => throw new IllegalArgumentException(s"Not a descriptor: $desc")
   }
 
   /**
@@ -61,10 +62,7 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
    * be found in the `byteCodeRepository`, the `info` of the resulting ClassBType is undefined.
    */
   def classBTypeFromParsedClassfile(internalName: InternalName): Either[OptimizerWarning, ClassBType] = {
-    // JLS §4.1 "There is also a special null type, the type of the expression null [...]
-    //           In practice, the programmer can ignore the null type and just pretend that null is merely a special literal that can be of any reference type."
-    if internalName == "null" then Right(ts.ObjectRef)
-    else ts.classBType(internalName) { _ =>
+    bTypeLoader.classBType(internalName) { _ =>
       byteCodeRepository.classNode(internalName) match {
         case Left(msg) => Left(NoClassBTypeInfo(msg))
         case Right(c, m) => computeClassInfoFromClassNode(c, m)
@@ -76,7 +74,7 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
    * Construct the [[BTypes.ClassBType]] for a parsed classfile.
    */
   def classBTypeFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): Either[OptimizerWarning, ClassBType] = {
-    ts.classBType(classNode.name) { _ =>
+    bTypeLoader.classBType(classNode.name) { _ =>
       computeClassInfoFromClassNode(classNode, moduleNode)
     }
   }
@@ -84,7 +82,7 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
   private def computeClassInfoFromClassNode(classNode: ClassNode, moduleNode: Option[ModuleNode]): Either[OptimizerWarning, ClassInfo] = {
     val superClass = classNode.superName match {
       case null =>
-        assert(classNode.name == ts.ObjectRef.internalName, s"class with missing super type: ${classNode.name}")
+        assert(classNode.name == ClassBType.javaLangObjectInternalName, s"class with missing super type: ${classNode.name}")
         Right(None)
       case superName =>
         classBTypeFromParsedClassfile(superName).map(Some.apply)
@@ -151,10 +149,64 @@ class BTypesFromClassfile(val byteCodeRepository: BCodeRepository, ts: CoreBType
     val interfaces = collect(classNode.interfaces.asScala.iterator.map(classBTypeFromParsedClassfile))
 
     (superClass, interfaces, nestedClasses, nestedInfo) match
-      case (Right(sc), Right(is), Right(ncs), Right(ni)) => Right(ClassInfo(sc, is, flags, ncs, ni, ClassInfoSource.Classfile(classNode, moduleNode)))
+      case (Right(sc), Right(is), Right(ncs), Right(ni)) => Right(ClassInfo(sc, is, flags, ncs, ni, inlineInfoFromClassfile(classNode, moduleNode)))
       case (Left(l), _, _, _) => Left(l)
       case (_, Left(l), _, _) => Left(l)
       case (_, _, Left(l), _) => Left(l)
       case (_, _, _, Left(l)) => Left(l)
+  }
+
+  def loadInlineInfoFor(name: InternalName): InlineInfo =
+    if OptimizerUtils.isSCoverage(name) then InlineInfo.empty
+    else byteCodeRepository.classNode(name) match {
+      case Right(classNode, moduleNode) =>
+        inlineInfoFromClassfile(classNode, moduleNode)
+      case Left(missingClass) =>
+        InlineInfo.empty.copy(warning = Some(ClassNotFoundWhenBuildingInlineInfoFromSymbol(missingClass)))
+    }
+
+  /**
+   * Build the InlineInfo for a class. For Scala classes, the information is stored in the
+   * ScalaInlineInfo attribute. If the attribute is missing, the InlineInfo is built using the
+   * metadata available in the classfile (ACC_FINAL flags, etc.).
+   */
+  private def inlineInfoFromClassfile(classNode: ClassNode, moduleNode: Option[ModuleNode]): InlineInfo = {
+    def fromClassfileAttribute: Option[InlineInfo] = {
+      if (classNode.attrs == null) None
+      else classNode.attrs.asScala.collectFirst { case a: InlineInfoAttribute => a.inlineInfo }
+    }
+
+    def fromClassfileWithoutAttribute = {
+      val warning = {
+        val isScala = classNode.attrs != null && classNode.attrs.asScala.exists(a => a.`type` == nme.ScalaATTR.toString || a.`type` == nme.ScalaSignatureATTR.toString)
+        if (isScala) Some(NoInlineInfoAttribute(classNode.name))
+        else None
+      }
+      // when building MethodInlineInfos for the members of a ClassSymbol, we exclude those methods
+      // in scalaPrimitives. This is necessary because some of them have non-erased types, which would
+      // require special handling. Excluding is OK because they are never inlined.
+      // Here we are parsing from a classfile and we don't need to do anything special. Many of these
+      // primitives don't even exist, for example Any.isInstanceOf.
+      val methodInfos = new mutable.TreeMap[(String, String), MethodInlineInfo]()
+      val isFinalClass = BCodeUtils.isFinalClass(classNode)
+      classNode.methods.forEach(methodNode => {
+        val info = MethodInlineInfo(effectivelyFinal = isFinalClass || BCodeUtils.isFinalMethod(methodNode))
+        methodInfos((methodNode.name, methodNode.desc)) = info
+      })
+
+      // We only want an approximation of SAMs for inlining heuristics, no need to check FunctionalInterface annotations or such
+      val abstractMethods = classNode.methods.asScala.filter(m => (m.access & Opcodes.ACC_ABSTRACT) != 0)
+      val sam = if abstractMethods.size == 1 then Some(abstractMethods.head.name + abstractMethods.head.desc) else None
+
+      // No module => always accessible
+      val isAccessible = moduleNode.forall(m =>
+        val nodePackageName = classNode.name.substring(0, classNode.name.lastIndexOf('/'))
+        m.exports.asScala.exists(e => (e.modules == null || e.modules.size == 0) && e.packaze == nodePackageName)
+      )
+
+      InlineInfo(isFinalClass, sam, methodInfos, warning, isAccessible)
+    }
+
+    fromClassfileAttribute.getOrElse(fromClassfileWithoutAttribute)
   }
 }

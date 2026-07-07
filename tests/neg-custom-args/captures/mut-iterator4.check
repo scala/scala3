@@ -11,7 +11,7 @@
    |
    |Note that capability `any` cannot flow into capture set {it, f}.
    |
-   |where:    any is a root capability created in method mappedIterator when constructing instance Object with Iterator[U] {...}
+   |where:    any is a root capability created in method mappedIterator when constructing instance Object with (Iterator[U]^{any².rd}) {...}
    |
 22 |  def hasNext = it.hasNext
 23 |  update def next() = f(it.next())

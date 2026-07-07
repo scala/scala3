@@ -6,7 +6,7 @@ import language.experimental.captureChecking
 object long:
   /** Successor of a natural number where zero is the type 0 and successors are reduced as if the definition was:
    *
-   *  ```scala
+  *  ```scala sc:compile
    *  type S[N <: Long] <: Long = N match {
    *    case 0L => 1L
    *    case 1L => 2L
@@ -21,10 +21,10 @@ object long:
   type S[N <: Long] <: Long
 
   /** Addition of two `Long` singleton types.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-plus-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-plus-imports
    *  val sum: 2L + 2L = 4L
    *  ```
    *  @syntax markdown
@@ -32,10 +32,10 @@ object long:
   infix type +[X <: Long, Y <: Long] <: Long
 
   /** Subtraction of two `Long` singleton types.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-minus-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-minus-imports
    *  val sub: 4L - 2L = 2L
    *  ```
    *  @syntax markdown
@@ -43,10 +43,10 @@ object long:
   infix type -[X <: Long, Y <: Long] <: Long
 
   /** Multiplication of two `Long` singleton types.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-times-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-times-imports
    *  val mul: 4L * 2L = 8L
    *  ```
    *  @syntax markdown
@@ -54,10 +54,10 @@ object long:
   infix type *[X <: Long, Y <: Long] <: Long
 
   /** Integer division of two `Long` singleton types.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-div-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-div-imports
    *  val div: 5L / 2L = 2L
    *  ```
    *  @syntax markdown
@@ -65,10 +65,10 @@ object long:
   infix type /[X <: Long, Y <: Long] <: Long
 
   /** Remainder of the division of `X` by `Y`.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-mod-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-mod-imports
    *  val mod: 5L % 2L = 1L
    *  ```
    *  @syntax markdown
@@ -76,10 +76,10 @@ object long:
   infix type %[X <: Long, Y <: Long] <: Long
 
   /** Binary left shift of `X` by `Y`.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-lshift-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-lshift-imports
    *  val lshift: 1L << 2L = 4L
    *  ```
    *  @syntax markdown
@@ -87,10 +87,10 @@ object long:
   infix type <<[X <: Long, Y <: Long] <: Long
 
   /** Binary right shift of `X` by `Y`.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-rshift-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-rshift-imports
    *  val rshift: 10L >> 1L = 5L
    *  ```
    *  @syntax markdown
@@ -98,10 +98,10 @@ object long:
   infix type >>[X <: Long, Y <: Long] <: Long
 
   /** Binary right shift of `X` by `Y`, filling the left with zeros.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-urshift-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-urshift-imports
    *  val rshiftzero: 10L >>> 1L = 5L
    *  ```
    *  @syntax markdown
@@ -109,10 +109,10 @@ object long:
   infix type >>>[X <: Long, Y <: Long] <: Long
 
   /** Bitwise xor of `X` and `Y`.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-xor-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-xor-imports
    *  val xor: 10L ^ 30L = 20L
    *  ```
    *  @syntax markdown
@@ -120,10 +120,10 @@ object long:
   infix type ^[X <: Long, Y <: Long] <: Long
 
   /** Less-than comparison of two `Long` singleton types.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-lt-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-lt-imports
    *  val lt1: 4L < 2L = false
    *  val lt2: 2L < 4L = true
    *  ```
@@ -132,10 +132,10 @@ object long:
   infix type <[X <: Long, Y <: Long] <: Boolean
 
   /** Greater-than comparison of two `Long` singleton types.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-gt-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-gt-imports
    *  val gt1: 4L > 2L = true
    *  val gt2: 2L > 2L = false
    *  ```
@@ -144,10 +144,10 @@ object long:
   infix type >[X <: Long, Y <: Long] <: Boolean
 
   /** Greater-or-equal comparison of two `Long` singleton types.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-ge-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-ge-imports
    *  val ge1: 4L >= 2L = true
    *  val ge2: 2L >= 3L = false
    *  ```
@@ -156,10 +156,10 @@ object long:
   infix type >=[X <: Long, Y <: Long] <: Boolean
 
   /** Less-or-equal comparison of two `Long` singleton types.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-le-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-le-imports
    *  val lt1: 4L <= 2L = false
    *  val lt2: 2L <= 2L = true
    *  ```
@@ -168,10 +168,10 @@ object long:
   infix type <=[X <: Long, Y <: Long] <: Boolean
 
   /** Bitwise and of `X` and `Y`.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-bitwiseand-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-bitwiseand-imports
    *  val and1: BitwiseAnd[4L, 4L] = 4L
    *  val and2: BitwiseAnd[10L, 5L] = 0L
    *  ```
@@ -180,10 +180,10 @@ object long:
   type BitwiseAnd[X <: Long, Y <: Long] <: Long
 
   /** Bitwise or of `X` and `Y`.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-bitwiseor-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-bitwiseor-imports
    *  val or: BitwiseOr[10L, 11L] = 11L
    *  ```
    *  @syntax markdown
@@ -191,10 +191,10 @@ object long:
   type BitwiseOr[X <: Long, Y <: Long] <: Long
 
   /** Absolute value of an `Long` singleton type.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-abs-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-abs-imports
    *  val abs: Abs[-1L] = 1L
    *  ```
    *  @syntax markdown
@@ -202,10 +202,10 @@ object long:
   type Abs[X <: Long] <: Long
 
   /** Negation of an `Long` singleton type.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-negate-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-negate-imports
    *  val neg1: Negate[-1L] = 1L
    *  val neg2: Negate[1L] = -1L
    *  ```
@@ -214,10 +214,10 @@ object long:
   type Negate[X <: Long] <: Long
 
   /** Minimum of two `Long` singleton types.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-min-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-min-imports
    *  val min: Min[-1L, 1L] = -1L
    *  ```
    *  @syntax markdown
@@ -225,10 +225,10 @@ object long:
   type Min[X <: Long, Y <: Long] <: Long
 
   /** Maximum of two `Long` singleton types.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-max-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-max-imports
    *  val max: Max[-1L, 1L] = 1L
    *  ```
    *  @syntax markdown
@@ -239,10 +239,10 @@ object long:
    * one-bit in the two's complement binary representation of the specified `Long` singleton type.
    * Returns 64 if the specified singleton type has no one-bits in its two's complement representation,
    * in other words if it is equal to zero.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-long-leadingzeros-imports
    *  import compiletime.ops.long.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-long-leadingzeros-imports
    *  val zero_lzc: NumberOfLeadingZeros[0L] = 64
    *  val eight_lzc: NumberOfLeadingZeros[8L] = 60
    *  type Log2[N <: Long] = int.-[63, NumberOfLeadingZeros[N]]
@@ -253,10 +253,10 @@ object long:
   type NumberOfLeadingZeros[X <: Long] <: Int
 
   /** Int conversion of a `Long` singleton type.
-   *  ```scala
-   *  //{
-   *  import compiletime.ops.long.*
-   *  //}
+    *  ```scala sc-hidden sc-name:ops-long-toint-imports
+    *  import compiletime.ops.long.*
+    *  ```
+    *  ```scala sc:compile sc-compile-with:ops-long-toint-imports
    *  val x: ToInt[1L] = 1
    *  ```
    *  @syntax markdown
@@ -264,10 +264,10 @@ object long:
   type ToInt[X <: Long] <: Int
 
   /** Float conversion of a `Long` singleton type.
-   *  ```scala
-   *  //{
-   *  import compiletime.ops.long.*
-   *  //}
+    *  ```scala sc-hidden sc-name:ops-long-tofloat-imports
+    *  import compiletime.ops.long.*
+    *  ```
+    *  ```scala sc:compile sc-compile-with:ops-long-tofloat-imports
    *  val x: ToFloat[1L] = 1.0f
    *  ```
    *  @syntax markdown
@@ -275,10 +275,10 @@ object long:
   type ToFloat[X <: Long] <: Float
 
   /** Double conversion of a `Long` singleton type.
-   *  ```scala
-   *  //{
-   *  import compiletime.ops.long.*
-   *  //}
+    *  ```scala sc-hidden sc-name:ops-long-todouble-imports
+    *  import compiletime.ops.long.*
+    *  ```
+    *  ```scala sc:compile sc-compile-with:ops-long-todouble-imports
    *  val x: ToDouble[1L] = 1.0
    *  ```
    *  @syntax markdown

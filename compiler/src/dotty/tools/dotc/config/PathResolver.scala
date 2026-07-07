@@ -10,18 +10,13 @@ import PartialFunction.condOpt
 import core.Contexts.*
 import Settings.*
 import dotty.tools.io.File
+import dotty.tools.dotc.interactive.LogicalPackage
 
 object PathResolver {
 
   // Imports property/environment functions which suppress
   // security exceptions.
   import AccessControl.*
-
-  def firstNonEmpty(xs: String*): String = xs find (_ != "") getOrElse ""
-
-  /** Map all classpath elements to absolute paths and reconstruct the classpath.
-   */
-  def makeAbsolute(cp: String): String = ClassPath.map(cp, x => Path(x).toAbsolute.path)
 
   /** pretty print class path
    */
@@ -33,7 +28,7 @@ object PathResolver {
 
   /** Values found solely by inspecting environment or property variables.
    */
-  object Environment {
+  private object Environment {
     private def searchForBootClasspath = {
       import scala.jdk.CollectionConverters.*
       val props = System.getProperties
@@ -162,17 +157,17 @@ object PathResolver {
 
       pr.result match {
         case cp: AggregateClassPath =>
-          println(s"ClassPath has ${cp.aggregates.size} entries and results in:\n${cp.asClassPathStrings}")
+          println(s"ClassPath has ${cp.aggregates.size} entries and results in:\n${cp.asURLs}")
       }
     }
 }
 
 import PathResolver.{Defaults, ppcp}
 
-class PathResolver(using c: Context) {
+class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(using c: Context) {
   import c.base.settings
 
-  private val classPathFactory = new ClassPathFactory
+  private val classPathFactory = new ClassPathFactory(precomputedSourcePackages)
 
   private def cmdLineOrElse(name: String, alt: String) =
     commandLineFor(name) match {
@@ -252,10 +247,8 @@ class PathResolver(using c: Context) {
       )
   }
 
-  def containers: List[ClassPath] = Calculated.containers
-
   lazy val result: ClassPath = {
-    val cp = AggregateClassPath(containers.toIndexedSeq)
+    val cp = AggregateClassPath(Calculated.containers)
 
     if (settings.YlogClasspath.value) {
       Console.println("Classpath built from " + settings.toConciseString(ctx.settingsState))
@@ -268,6 +261,4 @@ class PathResolver(using c: Context) {
     }
     cp
   }
-
-  def asURLs: Seq[java.net.URL] = result.asURLs
 }

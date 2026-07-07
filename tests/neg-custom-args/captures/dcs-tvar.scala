@@ -1,4 +1,3 @@
-import caps.use
 
 def runOps[C^](xs: List[() ->{C} Unit]): Unit = ???
 

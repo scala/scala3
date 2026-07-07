@@ -251,8 +251,7 @@ object Inferencing {
           }
         case tp => foldOver(x, tp)
       }
-      catch case ex: Throwable =>
-        handleRecursive("check fully defined", tp.showSummary(20), ex)
+      catch case ex: Throwable => handleRecursive("check fully defined", tp.showSummary(20), ex)
     }
 
     def process(tp: Type): Boolean =

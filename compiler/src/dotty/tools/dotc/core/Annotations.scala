@@ -26,7 +26,11 @@ object Annotations {
 
     def hasSymbol(sym: Symbol)(using Context) = symbol == sym
 
-    def matches(cls: Symbol)(using Context): Boolean = symbol.derivesFrom(cls)
+    def matches(cls: Symbol)(using Context): Boolean =
+      // No annotation matches `AnyClass`. This is necessary since `AnyClass`
+      // is returned if a requiredClass call fails, and we want to be
+      // conservative in this case.
+      (cls ne defn.AnyClass) && symbol.derivesFrom(cls)
 
     def appliesToModule: Boolean = true // for now; see remark in SymDenotations
 
@@ -347,6 +351,17 @@ object Annotations {
           Some(arg.symbol)
         }
         else None
+    }
+
+    /** Like `Child`, but yields `None` instead of throwing `StaleSymbol` when
+     *  the annotation refers to a child symbol from a previous run that is no
+     *  longer valid (e.g. after compilation was suspended and the child class
+     *  has been re-typechecked in the current run; see tests/pos/i24414).
+     */
+    object NonStaleChild {
+      def unapply(ann: Annotation)(using Context): Option[Symbol] =
+        try Child.unapply(ann)
+        catch case _: Denotations.StaleSymbol => None
     }
   }
 

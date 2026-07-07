@@ -33,7 +33,7 @@ private[scala] object language:
 
     /** Experimental support for named type arguments.
       *
-      * @see [[https://nightly.scala-lang.org/docs/reference/other-new-features/named-typeargs]]
+      * @see [[https://docs.scala-lang.org/scala3/reference/experimental/named-typeargs.html]]
       */
     @compileTimeOnly("`namedTypeArguments` can only be used at compile time in import statements")
     object namedTypeArguments
@@ -57,6 +57,7 @@ private[scala] object language:
      * @see [[https://github.com/scala/improvement-proposals/pull/97]]
      */
     @compileTimeOnly("`strictEqualityPatternMatching` can only be used at compile time in import statements")
+    @deprecated("`strictEqualityPatternMatching` is now standard, no language import is needed", since = "3.10")
     object strictEqualityPatternMatching
 
     /** Experimental support for using indentation for arguments

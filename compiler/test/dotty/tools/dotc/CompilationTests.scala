@@ -4,35 +4,26 @@ package dotc
 
 import scala.language.unsafeNulls
 
-import org.junit.{ Test, BeforeClass, AfterClass, Ignore }
-import org.junit.Assert._
-import org.junit.Assume._
-import org.junit.experimental.categories.Category
+import org.junit.{Test, AfterClass}
+import org.junit.Assume.*
 
-import java.io.File
-import java.nio.file._
-import java.util.stream.{ Stream => JStream }
-import scala.jdk.CollectionConverters._
-import scala.util.matching.Regex
-import scala.concurrent.duration._
-import TestSources.sources
-import TestSources.scoverageIgnoreExcludelisted
-import reporting.TestReporter
-import vulpix._
-import dotty.tools.dotc.config.ScalaSettings
-import dotty.tools.dotc.coverage.Serializer
+import java.nio.file.*
+import scala.concurrent.duration.*
+
+import dotty.tools.dotc.reporting.TestReporter
+import dotty.tools.vulpix.*
 
 class CompilationTests {
-  import ParallelTesting._
-  import TestConfiguration._
-  import CompilationTests._
+  import ParallelTesting.*
+  import TestConfiguration.*
+  import CompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
   // Positive tests ------------------------------------------------------------
 
   @Test def pos: Unit = {
-    implicit val testGroup: TestGroup = TestGroup("compilePos")
-    var tests = List(
+    given TestGroup = TestGroup("compilePos")
+    val tests = List(
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Wunused:all", "-Wshadow:private-shadow", "-Wshadow:type-parameter-shadow"), FileFilter.include(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init"), FileFilter.exclude(TestSources.posLintingAllowlist)),
       compileFilesInDir("tests/pos-deep-subtype", allowDeepSubtypes),
@@ -44,6 +35,7 @@ class CompilationTests {
       compileFile("tests/pos-special/utf16encoded.scala", defaultOptions.and("-encoding", "UTF16")),
       compileDir("tests/pos-special/i18589", defaultOptions.and("-Wsafe-init").without("-Ycheck:all")),
       compileDir("tests/pos-special/i24547", defaultOptions.without("-Ycheck:all")),
+      compileDir("tests/pos-special/i24719", defaultOptions.without("-Ycheck:all")),
       // Run tests for legacy lazy vals
       compileFilesInDir("tests/pos", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.posLazyValsAllowlist)),
       compileDir("tests/pos-special/java-param-names", defaultOptions.withJavacOnlyOptions("-parameters")),
@@ -66,6 +58,7 @@ class CompilationTests {
       compileFile("tests/rewrites/i21394.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/uninitialized-var.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/with-type-operator.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
+      compileFile("tests/rewrites/i26013.scala", defaultOptions.and("-rewrite", "-source", "3.4-migration")),
       compileFile("tests/rewrites/private-this.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/alphanumeric-infix-operator.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/filtering-fors.scala", defaultOptions.and("-rewrite", "-source", "3.2-migration")),
@@ -93,6 +86,8 @@ class CompilationTests {
       compileFile("tests/rewrites/i24103.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
       compileFile("tests/rewrites/i24103b.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
       compileFile("tests/rewrites/i24213.scala", defaultOptions.and("-rewrite", "-source:3.4-migration")),
+      compileFile("tests/rewrites/i18234.scala", defaultOptions.and("-rewrite", "-source:3.8-migration")),
+      compileFile("tests/rewrites/unary-minus.scala", defaultOptions.and("-rewrite")),
     )).checkRewrites()
   }
 
@@ -171,6 +166,16 @@ class CompilationTests {
     compileFilesInDir("tests/fuzzy", defaultOptions).checkNoCrash()
   }
 
+  @Test def negSpecial: Unit =
+    special(
+      defaultOptions,
+      "tests/neg-special/22459",
+      expectError = true,
+      o => compileFile("tests/neg-special/22459/A.scala", o),
+      ("A/22459/A/", o => compileFile("tests/neg-special/22459/B.scala", o)),
+      ("B/22459/B/", o => compileFile("tests/neg-special/22459/C.scala", o))
+    )
+
   // Run tests -----------------------------------------------------------------
 
   @Test def runAll: Unit = {
@@ -242,6 +247,14 @@ class CompilationTests {
     ))
     runWithCoverageOrFallback[PosTestWithCoverage](compilationTest, "Pos")
 
+    special(
+      explicitNullsOptions.and("-Yforce-sbt-phases"),
+      "tests/explicit-nulls/special/i25722",
+      expectError = false,
+      o => compileFile("tests/explicit-nulls/special/25722/jstubs/jstubs/org/jetbrains/annotations/Nullable.java", o),
+      ("Nullable/annotations/Nullable/", o => compileFile("tests/explicit-nulls/special/25722/jstubs/jstubs/lib/Foo.java", o)),
+      ("Foo/lib/Foo", o => compileDir("tests/explicit-nulls/special/25722/scala", o))
+    )
     // locally {
     //   val tests = List(
     //     compileFile("tests/explicit-nulls/flexible-unpickle/pos/Unsafe_1.scala", explicitNullsOptions without "-Yexplicit-nulls"),
@@ -279,13 +292,18 @@ class CompilationTests {
     locally {
       val group = TestGroup("checkInitGlobal/tastySource")
       val tastSourceOptions = defaultOptions.and("-Ysafe-init-global")
-      val outDirLib = defaultOutputDir + group + "/A/tastySource/A"
+      val outDirLib = Paths.get(defaultOutputDir.getAbsolutePath, group.name,"A", "tastySource", "A").toString
 
       // Set -sourceroot such that the source code cannot be found by the compiler
       val libOptions = tastSourceOptions.and("-sourceroot", "tests/init-global/special")
-      val lib = compileFile("tests/init-global/special/tastySource/A.scala", libOptions)(using group).keepOutput.checkCompile()
+      val lib = compileFile("tests/init-global/special/tastySource/A.scala", libOptions)
+        (using group)
+        .keepOutput
+        .checkCompile()
 
-      compileFile("tests/init-global/special/tastySource/B.scala", tastSourceOptions.withClasspath(outDirLib))(using group).checkWarnings()
+      compileFile("tests/init-global/special/tastySource/B.scala", tastSourceOptions.withClasspath(outDirLib))
+        (using group)
+        .checkWarnings()
 
       lib.delete()
     }
@@ -302,26 +320,14 @@ class CompilationTests {
     runWithCoverageOrFallback[PosTestWithCoverage](initPosTest, "Pos")
     val initCrashTest = withCoverage(compileFilesInDir("tests/init/crash", options.without("-Werror")))
     runWithCoverageOrFallback[PosTestWithCoverage](initCrashTest, "Pos")
-    // The regression test for i12128 has some atypical classpath requirements.
-    // The test consists of three files: (a) Reflect_1  (b) Macro_2  (c) Test_3
-    // which must be compiled separately. In addition:
-    //   - the output from (a) must be on the classpath while compiling (b)
-    //   - the output from (b) must be on the classpath while compiling (c)
-    //   - the output from (a) _must not_ be on the classpath while compiling (c)
-    locally {
-      val i12128Group = TestGroup("checkInit/i12128")
-      val i12128Options = options.without("-Werror")
-      val outDir1 = defaultOutputDir + i12128Group + "/Reflect_1/i12128/Reflect_1"
-      val outDir2 = defaultOutputDir + i12128Group + "/Macro_2/i12128/Macro_2"
-
-      val tests = List(
-        withCoverage(compileFile("tests/init/special/i12128/Reflect_1.scala", i12128Options)(using i12128Group).keepOutput),
-        withCoverage(compileFile("tests/init/special/i12128/Macro_2.scala", i12128Options.withClasspath(outDir1))(using i12128Group).keepOutput),
-        withCoverage(compileFile("tests/init/special/i12128/Test_3.scala", options.withClasspath(outDir2))(using i12128Group).keepOutput)
-      )
-      tests.foreach(t => runWithCoverageOrFallback[PosTestWithCoverage](t, "Pos"))
-      tests.foreach(_.delete())
-    }
+    special(
+      options.without("-Werror"),
+      "checkInit/i12128",
+      expectError = false,
+      o => compileFile("tests/init/special/i12128/Reflect_1.scala", o),
+      ("Reflect_1/i12128/Reflect_1", o => compileFile("tests/init/special/i12128/Macro_2.scala", o)),
+      ("Macro_2/i12128/Macro_2", o => compileFile("tests/init/special/i12128/Test_3.scala", o))
+    )
 
     /* This tests for errors in the program's TASTy trees.
      * The test consists of three files: (a) v1/A, (b) v1/B, and (c) v0/A. (a) and (b) are
@@ -331,9 +337,9 @@ class CompilationTests {
       val tastyErrorGroup = TestGroup("checkInit/tasty-error/val-or-defdef")
       val tastyErrorOptions = options.without("-Werror")
 
-      val classA0 = defaultOutputDir + tastyErrorGroup + "/A/v0/A"
-      val classA1 = defaultOutputDir + tastyErrorGroup + "/A/v1/A"
-      val classB1 = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
+      val classA0 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v0", "A").toString
+      val classA1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v1", "A").toString
+      val classB1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "B", "v1", "B").toString
 
       val tests = List(
         withCoverage(compileFile("tests/init/tasty-error/val-or-defdef/v1/A.scala", tastyErrorOptions)(using tastyErrorGroup).keepOutput),
@@ -355,10 +361,10 @@ class CompilationTests {
       val tastyErrorGroup = TestGroup("checkInit/tasty-error/typedef")
       val tastyErrorOptions = options.without("-Werror").without("-Ycheck:all")
 
-      val classC = defaultOutputDir + tastyErrorGroup + "/C/typedef/C"
-      val classA0 = defaultOutputDir + tastyErrorGroup + "/A/v0/A"
-      val classA1 = defaultOutputDir + tastyErrorGroup + "/A/v1/A"
-      val classB1 = defaultOutputDir + tastyErrorGroup + "/B/v1/B"
+      val classC =  Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "C", "typedef", "C").toString
+      val classA0 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v0", "A").toString
+      val classA1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v1", "A").toString
+      val classB1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "B", "v1", "B").toString
 
       val tests = List(
         withCoverage(compileFile("tests/init/tasty-error/typedef/C.scala", tastyErrorOptions)(using tastyErrorGroup).keepOutput),
@@ -405,6 +411,44 @@ class CompilationTests {
     ).checkRuns()
 
   }
+
+  /**
+   * Runs a "special" test for test cases that need files compiled such that file N is on the classpath for file N+1 but not for file N+2.
+   * For instance, with three files (a), (b), and (c):
+   * - the output from (a) must be on the classpath while compiling (b)
+   * - the output from (b) must be on the classpath while compiling (c)
+   * - the output from (a) _must not_ be on the classpath while compiling (c)
+   *
+   * @param options Test options to use
+   * @param groupName Group name to use
+   * @param first Function of the form o => compileFile("...some path...", o)
+   * @param rest Same as first, but also with the output dir for the previous item
+   */
+  private def special(options: TestFlags, groupName: String,
+                      expectError: Boolean,
+                      first: TestFlags => TestGroup ?=> CompilationTest,
+                      rest: (String, TestFlags => TestGroup ?=> CompilationTest)*): Unit = {
+    var allTests = List[CompilationTest]()
+    def run(t: CompilationTest, expectError: Boolean): Unit = {
+      if expectError then
+        t.checkExpectedErrors()
+      else
+        runWithCoverageOrFallback[PosTestWithCoverage](t, "Pos")
+      allTests ::= t
+    }
+    try
+      val thisGroup = TestGroup(groupName)
+      val firstTest = withCoverage(first(options)(using thisGroup).keepOutput)
+      run(firstTest, false)
+      var i = 0
+      for (path, func) <- rest do
+        i += 1
+        val outDir = Paths.get(defaultOutputDir.getAbsolutePath, groupName, path)
+        val test = withCoverage(func(options.withClasspath(outDir.toString))(using thisGroup).keepOutput)
+        run(test, expectError && i == rest.length)
+    finally
+      allTests.foreach(_.delete())
+  }
 }
 
 object CompilationTests extends ParallelTesting with CoverageSupport {
@@ -418,7 +462,8 @@ object CompilationTests extends ParallelTesting with CoverageSupport {
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
   def failedTests = TestReporter.lastRunFailedTests
 
-  implicit val summaryReport: SummaryReporting = new SummaryReport
+  given summaryReport: SummaryReporting = new SummaryReport
+
   @AfterClass def tearDown(): Unit = {
     super.cleanup()
     summaryReport.echoSummary()

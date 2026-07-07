@@ -1,7 +1,7 @@
-//> using scala 3.8.2
-//> using dep org.scala-lang::scala3-compiler:3.8.2
+//> using scala 3.8.3
+//> using dep org.scala-lang::scala3-compiler:3.8.3
 //> using dep com.vladsch.flexmark:flexmark-all:0.64.8
-//> using toolkit default
+//> using toolkit 0.9.2
 //> using option -Wunused:all
 //> using mainClass checkErrorCodeSnippets
 
@@ -641,7 +641,7 @@ object SnippetCompiler:
     val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
     // Create virtual source file
-    val virtualFile = VirtualFile("snippet.scala", code.getBytes("UTF-8"))
+    val virtualFile = new VirtualFile("snippet.scala", code.getBytes("UTF-8"))
     val sourceFile = dotty.tools.dotc.util.SourceFile(virtualFile, scala.io.Codec.UTF8)
 
     // Process all options

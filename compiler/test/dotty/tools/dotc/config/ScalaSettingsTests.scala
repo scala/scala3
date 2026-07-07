@@ -2,11 +2,14 @@ package dotty.tools.dotc
 package config
 
 import CommandLineParser.tokenize
-import Settings._
+import Settings.*
 import dotty.tools.Useables.given
-import dotty.tools.dotc.config.ScalaSettingCategories._
+import dotty.tools.dotc.config.ScalaSettingCategories.*
+import dotty.tools.dotc.reporting.StoreReporter
+import core.Contexts.{Context, ContextBase}
+import dotty.tools.vulpix.TestConfiguration
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 import core.Decorators.toMessage
 import dotty.tools.io.{Path, PlainFile}
 
@@ -97,23 +100,9 @@ class ScalaSettingsTests:
       s"${oldSetting.name}$value" -> newSetting
 
     val settings = ScalaSettings
-    List(
-      createTestCase(settings.YtermConflict         , settings.XtermConflict, ":package"),
-      createTestCase(settings.YnoGenericSig         , settings.XnoGenericSig),
-      createTestCase(settings.Ydumpclasses          , settings.Xdumpclasses,":./"),
-      createTestCase(settings.YjarCompressionLevel  , settings.XjarCompressionLevel,":0"),
-      createTestCase(settings.YkindProjector        , settings.XkindProjector, ":underscores"),
-      createTestCase(settings.YdropComments         , settings.XdropComments),
-      createTestCase(settings.YcookComments         , settings.XcookComments),
-      createTestCase(settings.YreadComments         , settings.XreadComments),
-      createTestCase(settings.YnoDecodeStacktraces  , settings.XnoEnrichErrorMessages),
-      createTestCase(settings.YnoEnrichErrorMessages, settings.XnoEnrichErrorMessages),
-      createTestCase(settings.YdebugMacros          , settings.XdebugMacros),
-      // createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
-      // createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
-      // createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
-      createTestCase(settings.YcheckInit            , settings.WsafeInit),
-      // createTestCase(settings.Xlint                 , settings.Wshadow, ":all"), // this setting is not going to be mapped to replacement. Read more in the commit message
+    List[(String, Setting[?])](
+      // Fill this with newly-deprecated options, optionally with a value:
+      createTestCase(settings.YkindProjector         , settings.XkindProjector, ":underscores"),
     ).map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
       val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
@@ -126,60 +115,21 @@ class ScalaSettingsTests:
       s"${oldSetting.name}:$value" -> newSetting
 
     val settings = ScalaSettings
-    List(
-      createTestCase(settings.YtermConflict         , settings.XtermConflict),
-      createTestCase(settings.YnoGenericSig         , settings.XnoGenericSig),
-      createTestCase(settings.Ydumpclasses          , settings.Xdumpclasses, ""),
-      createTestCase(settings.YjarCompressionLevel  , settings.XjarCompressionLevel),
-      createTestCase(settings.YkindProjector        , settings.XkindProjector),
-      createTestCase(settings.YdropComments         , settings.XdropComments),
-      createTestCase(settings.YcookComments         , settings.XcookComments),
-      createTestCase(settings.YreadComments         , settings.XreadComments),
-      createTestCase(settings.YnoDecodeStacktraces  , settings.XnoEnrichErrorMessages),
-      createTestCase(settings.YnoEnrichErrorMessages, settings.XnoEnrichErrorMessages),
-      createTestCase(settings.YdebugMacros          , settings.XdebugMacros),
-      // createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
-      // createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput),
-      // createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
-      createTestCase(settings.YcheckInit            , settings.WsafeInit),
-      createTestCase(settings.Xlint                 , settings.Wshadow),
+    List[(String, Setting[?])](
+      // Fill this with newly-deprecated options:
+      createTestCase(settings.YkindProjector         , settings.XkindProjector),
     ).map: (deprecatedArgument, newSetting) =>
       val args = List(deprecatedArgument)
       val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
       val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
       assert(newSetting.isDefaultIn(conf.sstate), s"Setting $deprecatedArgument was forwarded to ${newSetting.name}, when it should be ignored because first option was erroreus")
 
-  // -Xlint was handled in a special way when it was added, making in hard to deprecate it.
-  // For now on we will retain old behavior, in next version we will emit deprecation warning.
-  // It is also scheduled for removal in future versions.
-  @Test def `Make Xlint to ignore invalid args`: Unit =
-    val settings = ScalaSettings
-    val args = List("-Xlint:-unused,_")
-    val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
-    val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
-    assert(conf.warnings.contains("Option -Xlint is deprecated: Use -Wshadow to enable shadowing lints. Scheduled for removal."))
-    assert(conf.errors.isEmpty)
-
   @nowarn("cat=deprecation")
   @Test def `Aliases of deprecated options are correctly mapped to their replacements`: Unit =
     val settings = ScalaSettings
-    val tests = List(
-      settings.YtermConflict          -> settings.XtermConflict :* "package",
-      settings.YnoGenericSig          -> settings.XnoGenericSig,
-      settings.Ydumpclasses           -> settings.Xdumpclasses :* "./",
-      settings.YjarCompressionLevel   -> settings.XjarCompressionLevel :* "0",
-      settings.YkindProjector         -> settings.XkindProjector :* "underscores",
-      settings.YdropComments          -> settings.XdropComments,
-      settings.YcookComments          -> settings.XcookComments,
-      settings.YreadComments          -> settings.XreadComments,
-      settings.YnoDecodeStacktraces   -> settings.XnoEnrichErrorMessages,
-      settings.YnoEnrichErrorMessages -> settings.XnoEnrichErrorMessages,
-      settings.YdebugMacros           -> settings.XdebugMacros,
-      settings.YcheckInit             -> settings.WsafeInit,
-      // createTestCase(settings.YjavaTasty            , settings.XjavaTasty),
-      // createTestCase(settings.YearlyTastyOutput     , settings.XearlyTastyOutput, ":./"),
-      // createTestCase(settings.YallowOutlineFromTasty, settings.XallowOutlineFromTasty),
-      // createTestCase(settings.Xlint                 , settings.Wshadow, ":all"), // this setting is not going to be mapped to replacement. Read more in the commit message
+    val tests = List[Setting[?] *: Setting[?] *: Tuple](
+      // Fill this with newly-deprecated options, optionally with a value:
+      settings.YkindProjector          -> settings.XkindProjector :* ":underscores",
     )
     for
       test <- tests
@@ -317,6 +267,46 @@ class ScalaSettingsTests:
     assertEquals(2, result.warnings.length)
     assertEquals("Option -Xfatal-warnings is a deprecated alias: use -Werror instead", result.warnings.head)
     assertEquals(0, result.errors.length)
+
+  private def deprecatedLanguageSettingWarnings(deprecation: Boolean): (Int, List[String]) =
+    val rep = new StoreReporter()
+    val base = new ContextBase {}
+    given Context = base.initialCtx.fresh
+      .setReporter(rep)
+      .setSetting(ScalaSettings.classpath, TestConfiguration.basicClasspath)
+      .setSetting(ScalaSettings.language, List("experimental.strictEqualityPatternMatching").asInstanceOf)
+      .setSetting(ScalaSettings.deprecation, deprecation)
+    base.initialize()(using summon[Context])
+    Feature.checkDeprecatedSettingFeatures
+    (rep.warningCount, rep.removeBufferedMessages.map(_.message))
+
+  @Test def `deprecated -language features warn with option name when -deprecation is on`: Unit =
+    val (count, messages) = deprecatedLanguageSettingWarnings(deprecation = true)
+    assertEquals(1, count)
+    assertEquals(
+      "Option -language:experimental.strictEqualityPatternMatching is deprecated: `strictEqualityPatternMatching` is now standard, no language import is needed",
+      messages.head,
+    )
+
+  @Test def `deprecated -language features are summarized when -deprecation is off`: Unit =
+    val (count, _) = deprecatedLanguageSettingWarnings(deprecation = false)
+    assertEquals(0, count)
+
+  @Test def `deprecated -language fewerBraces warns with option name when -deprecation is on`: Unit =
+    val rep = new StoreReporter()
+    val base = new ContextBase {}
+    given Context = base.initialCtx.fresh
+      .setReporter(rep)
+      .setSetting(ScalaSettings.classpath, TestConfiguration.basicClasspath)
+      .setSetting(ScalaSettings.language, List("experimental.fewerBraces").asInstanceOf)
+      .setSetting(ScalaSettings.deprecation, true)
+    base.initialize()(using summon[Context])
+    Feature.checkDeprecatedSettingFeatures
+    assertEquals(1, rep.warningCount)
+    assertEquals(
+      "Option -language:experimental.fewerBraces is deprecated: `fewerBraces` is now standard, no language import is needed",
+      rep.removeBufferedMessages.head.message,
+    )
 
   // see sbt-test/pipelining/pipelining-test/test
   @Test def `-Xearly-tasty-output preferPrevious does not warn on change of value`: Unit =

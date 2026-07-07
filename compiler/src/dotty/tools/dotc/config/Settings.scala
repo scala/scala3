@@ -136,7 +136,7 @@ object Settings:
     def valueIn(state: SettingsState): T = state.value(idx).asInstanceOf[T]
 
     def updateIn(state: SettingsState, x: Any): SettingsState = x match
-      case _: T => state.update(idx, x)
+      case "help" | _: T => state.update(idx, x) // always ok to store "help" because we'll exit after printing help text
       case _ => throw IllegalArgumentException(s"found: $x of type ${x.getClass.getName}, required: $ct")
 
     def isDefaultIn(state: SettingsState): Boolean = valueIn(state) == default
@@ -239,7 +239,7 @@ object Settings:
       def setOutput(arg: String, args: List[String])(using ArgsSummary) =
         val path = Directory(arg)
         val isJar = path.ext.isJar
-        if (!isJar && !path.isDirectory) then
+        if !isJar && !path.isDirectory then
           state.fail(s"'$arg' does not exist or is not a directory or .jar file", args)
         else
           /* Side effect, do not change this method to evaluate eagerly */
@@ -255,28 +255,29 @@ object Settings:
           val msg = s"missing argument for option $name"
           if ignoreInvalidArgs then state.warn(s"$msg, the tag was ignored", args) else state.fail(msg, args)
 
-        if ct == BooleanTag then setBoolean(argRest, args)
-        else if ct == OptionTag then update(Some(propertyClass.get.getConstructor().newInstance()), "", args)
-        else
-          // `-option:v` or `-option v`
-          val (arg1, args1) =
-            val argInArgRest = useArg || !argRest.isEmpty || legacyArgs
+        // `-option:v` or `-option v`
+        val (arg1, args1) =
+          if acceptsNoArg then (argRest, args)
+          else
+            val argInArgRest = useArg || argRest.nonEmpty || legacyArgs
             val useNextArg = !argInArgRest && args.nonEmpty && (ct == IntTag || !args.head.startsWith("-"))
             if argInArgRest then (argRest, args)
             else if useNextArg then (args.head, args.tail)
             else return missingArg
-          def doSet(arg: String, args: List[String]) =
-            ct match
-            case _ if preferPrevious && changed =>
-              if ignoreInvalidArgs then state.shifted(args)
-              else state.warn(s"Ignoring update of option $name", args)
-            case ListTag => setMultivalue(arg, args)
-            case StringTag => setString(arg, args)
-            case OutputTag => setOutput(arg, args)
-            case IntTag => setInt(arg, args)
-            case VersionTag => setVersion(arg, args)
-            case _ => state.fail(s"unknown $ct", args)
-          doSet(arg1, args1)
+
+        if arg1 == "help" then update(arg1, arg1, args1)
+        else if ct == BooleanTag then setBoolean(arg1, args1)
+        else if ct == OptionTag then update(Some(propertyClass.get.getConstructor().newInstance()), "", args1)
+        else if preferPrevious && changed then
+          if ignoreInvalidArgs then state.shifted(args1)
+          else state.warn(s"Ignoring update of option $name", args1)
+        else ct match
+          case ListTag => setMultivalue(arg1, args1)
+          case StringTag => setString(arg1, args1)
+          case OutputTag => setOutput(arg1, args1)
+          case IntTag => setInt(arg1, args1)
+          case VersionTag => setVersion(arg1, args1)
+          case _ => state.fail(s"unknown $ct", args1)
       end doSet
 
       def setVersion(arg: String, args: List[String])(using ArgsSummary) =
@@ -319,8 +320,6 @@ object Settings:
       if matches then
         given ArgsSummary = state0
         deprecation match
-        case Some(Deprecation(msg, _)) if ignoreInvalidArgs => // a special case for Xlint
-          state.warn(s"Option $name is deprecated: $msg", args)
         case _ =>
           prefix match
           case Some(prefix) =>
@@ -343,8 +342,10 @@ object Settings:
   object Setting:
     extension [T](setting: Setting[T])
       def value(using Context): T = setting.valueIn(ctx.settingsState)
+      def valueSetByUser(using Context): Option[T] = Option(setting.value).filter(_ != setting.default)
       def update(x: T)(using Context): SettingsState = setting.updateIn(ctx.settingsState, x)
       def isDefault(using Context): Boolean = setting.isDefaultIn(ctx.settingsState)
+      def wasSetByUser(using Context): Boolean = ctx.settingsState.wasChanged(setting.idx)
 
     /**
      * A choice with help description.

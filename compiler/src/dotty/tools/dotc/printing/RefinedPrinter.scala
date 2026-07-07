@@ -179,7 +179,9 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     val (printPure, refsText) =
       if refs == null then (isPure, Str(""))
       else if isElidableUniversal(refs) then (false, Str(""))
-      else (isPure, toTextGeneralCaptureSet(refs))
+      else refs match
+        case cs: CaptureSet if cs.isConst && cs.elems.isEmpty => (true, Str(""))
+        case _ => (isPure, toTextGeneralCaptureSet(refs))
     arrow(isContextual, printPure) ~ refsText
 
   private def toTextFunction(args: List[Type], res: Type, fn: MethodType | AppliedType,
@@ -340,7 +342,7 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         toText(elemtp) ~ "[]"
       case tp: LazyRef if !printDebug =>
         try toText(tp.ref)
-        catch case ex: Throwable => "..."
+        catch case _: Exception => "..."
       case sel: cc.PathSelectionProto =>
         "?.{ " ~ toText(sel.selector) ~ "}"
       case AnySelectionProto =>
@@ -503,13 +505,12 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         optDotPrefix(tree) ~ keywordStr("this") ~ idText(tree)
       case Super(qual: This, mix) =>
         optDotPrefix(qual) ~ keywordStr("super") ~ optText(mix)("[" ~ _ ~ "]")
+      case BinaryOp(l, op, r) if isInfix(op) && op.name.endsWith(":") =>
+        toTextLocal(l) ~ "." ~ toText(op.name) ~ "(" ~ toText(r) ~ ")"
       case BinaryOp(l, op, r) if isInfix(op) =>
-        val isRightAssoc = op.name.endsWith(":")
         val opPrec = parsing.precedence(op.name)
-        val leftPrec = if isRightAssoc then opPrec + 1 else opPrec
-        val rightPrec = if !isRightAssoc then opPrec + 1 else opPrec
         changePrec(opPrec):
-          atPrec(leftPrec)(toText(l))  ~ " " ~ toText(op.name) ~ " " ~ atPrec(rightPrec)(toText(r))
+          atPrec(opPrec)(toText(l)) ~ " " ~ toText(op.name) ~ " " ~ atPrec(opPrec + 1)(toText(r))
       case app @ Apply(fun, args) =>
         if (fun.hasType && fun.symbol == defn.throwMethod)
           changePrec (GlobalPrec) {
@@ -746,27 +747,20 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
       case fn @ Function(args, body) =>
         var implicitSeen: Boolean = false
         var isGiven: Boolean = false
-        val erasedParams = fn match {
-          case fn: FunctionWithMods => fn.erasedParams
-          case _ => fn.args.map(_ => false)
-        }
-        def argToText(arg: Tree, isErased: Boolean) = arg match {
+        def argToText(arg: Tree) = arg match {
           case arg @ ValDef(name, tpt, _) =>
             val implicitText =
               if ((arg.mods.is(Given))) { isGiven = true; "" }
               else if ((arg.mods.is(Implicit)) && !implicitSeen) { implicitSeen = true; keywordStr("implicit ") }
               else ""
-            val erasedText = if isErased then keywordStr("erased ") else ""
+            val erasedText = if arg.mods.is(Erased) then keywordStr("erased ") else ""
             implicitText ~ erasedText ~ toText(name) ~ optAscription(tpt)
           case _ =>
             toText(arg)
         }
         val argsText = args match {
-          case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg, erasedParams(0))
-          case _ =>
-            "("
-            ~ Text(args.zip(erasedParams).map(argToText), ", ")
-            ~ ")"
+          case (arg @ ValDef(_, tpt, _)) :: Nil if tpt.isEmpty => argToText(arg)
+          case _ => "(" ~ Text(args.map(argToText), ", ") ~ ")"
         }
         val isPure =
           Feature.pureFunsEnabled
@@ -857,6 +851,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         prefix ~~ idx.toString ~~ "|" ~~ tpeText ~~ "|" ~~ argsText ~~ "|" ~~ contentText ~~ postfix
       case CapturesAndResult(refs, parent) =>
         changePrec(GlobalPrec)("^{" ~ Text(refs.map(toText), ", ") ~ "}" ~ toText(parent))
+      case UseRef(ref, initially) =>
+        toText(ref) ~~ (Str("initially") `provided` initially)
       case ContextBoundTypeTree(tycon, pname, ownName) =>
         toText(pname) ~ " : " ~ toText(tycon) ~ (" as " ~ toText(ownName) `provided` !ownName.isEmpty)
       case _ =>

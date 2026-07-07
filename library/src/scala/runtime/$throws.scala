@@ -11,4 +11,4 @@ import annotation.experimental
  *  Used in desugar.throws.
  */
 @experimental
-infix type $throws[R, +E <: Exception] = CanThrow[E] ?=> R
+infix type `$throws`[R, +E <: Exception] = CanThrow[E] ?=> R

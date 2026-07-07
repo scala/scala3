@@ -1,0 +1,16 @@
+-- Error: tests/neg-custom-args/captures/sep-primer-examples.scala:37:6 ------------------------------------------------
+37 |  par(incr, current) // error
+   |      ^^^^
+   |Separation failure: argument of type  () ->{counter} Int
+   |to method par: (p: () => Int, q: () => Int): Unit
+   |corresponds to capture-polymorphic formal parameter p of type  () => Int
+   |and hides capabilities  {counter}.
+   |Some of these overlap with the captures of the second argument with type  () ->{counter.rd} Int.
+   |
+   |  Hidden set of current argument        : {counter}
+   |  Hidden footprint of current argument  : {counter}
+   |  Capture set of second argument        : {counter.rd}
+   |  Footprint set of second argument      : {counter.rd}
+   |  The two sets overlap at               : {counter}
+   |
+   |where:    => refers to a root capability created in method test when checking argument to parameter p of method par

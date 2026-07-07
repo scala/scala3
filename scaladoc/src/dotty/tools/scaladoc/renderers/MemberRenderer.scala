@@ -19,7 +19,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
 
   def tableRow(name: String, content: TagArg*) = Seq(dt(cls := "body-small")(name), dd(cls := "body-medium")(content*))
 
-  def defintionClasses(m: Member) = m.origin match
+  def definitionClasses(m: Member) = m.origin match
     case Origin.Overrides(defs) =>
       def renderDef(d: Overridden): Seq[TagArg] =
         Seq(" -> ", signatureRenderer.renderLink(d.name, d.dri))
@@ -116,7 +116,7 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       companion(m),
       deprecation(m),
       experimental(m),
-      defintionClasses(m),
+      definitionClasses(m),
       inheritedFrom(m),
       source(m),
       classLikeInfo

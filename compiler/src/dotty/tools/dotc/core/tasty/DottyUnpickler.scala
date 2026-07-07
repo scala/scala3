@@ -3,8 +3,6 @@ package dotc
 package core
 package tasty
 
-import scala.language.unsafeNulls
-
 import Contexts.*, SymDenotations.*,  Decorators.*
 import dotty.tools.dotc.ast.tpd
 import TastyUnpickler.*
@@ -51,20 +49,18 @@ object DottyUnpickler {
 
 /** A class for unpickling Tasty trees and symbols.
  *  @param tastyFile         tasty file from which we unpickle (used for CompilationUnitInfo)
- *  @param bytes             the bytearray containing the Tasty file from which we unpickle
  *  @param isBestEffortTasty specifies whether file should be unpickled as a Best Effort TASTy
  *  @param mode              the tasty file contains package (TopLevel), an expression (Term) or a type (TypeTree)
  */
 class DottyUnpickler(
   tastyFile: AbstractFile,
-  bytes: Array[Byte],
   isBestEffortTasty: Boolean,
   mode: UnpickleMode = UnpickleMode.TopLevel
 ) extends ClassfileParser.Embedded with tpd.TreeProvider {
   import tpd.*
   import DottyUnpickler.*
 
-  val unpickler: TastyUnpickler = new TastyUnpickler(bytes, isBestEffortTasty)
+  val unpickler: TastyUnpickler = new TastyUnpickler(tastyFile.toByteArray, isBestEffortTasty)
 
   val tastyAttributes: Attributes =
     unpickler.unpickle(new AttributesSectionUnpickler)
@@ -94,7 +90,7 @@ class DottyUnpickler(
 
   protected def computeRootTrees(using Context): List[Tree] = treeUnpickler.unpickle(mode)
 
-  private var ids: Array[String] = null
+  private var ids: Array[String] | Null = null
 
   override def mightContain(id: String)(using Context): Boolean = {
     if (ids == null)
@@ -102,6 +98,6 @@ class DottyUnpickler(
         unpickler.nameAtRef.contents.toArray.collect {
           case name: SimpleName => name.toString
         }.sorted
-    ids.binarySearch(id) >= 0
+    ids.nn.binarySearch(id) >= 0
   }
 }

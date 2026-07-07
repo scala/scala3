@@ -3,10 +3,15 @@ package tools
 package vulpix
 
 import scala.language.unsafeNulls
+import scala.util.Properties.javaSpecVersion
 
 import java.io.File
 
+import dotc.config.ScalaSettingsProperties.supportedReleaseVersions
+
 object TestConfiguration {
+
+  val usingBaselineJava = javaSpecVersion.startsWith(supportedReleaseVersions.headOption.getOrElse("17"))
 
   val pageWidth = 120
 
@@ -31,7 +36,7 @@ object TestConfiguration {
 
   val basicClasspath = mkClasspath(List(Properties.scalaLibrary))
 
-  val withCompilerClasspath = mkClasspath(List(
+  lazy val withCompilerClasspath = mkClasspath(List(
     Properties.scalaLibrary,
     Properties.scalaAsm,
     Properties.compilerInterface,
@@ -52,19 +57,6 @@ object TestConfiguration {
     Properties.scalaJSLibrary,
   ))
 
-  lazy val replClassPath =
-    withCompilerClasspath + File.pathSeparator + mkClasspath(List(
-      Properties.dottyRepl,
-      Properties.jlineTerminal,
-      Properties.jlineReader,
-      Properties.fansi,
-      Properties.pprint,
-      Properties.sourcecode
-  ))
-
-  lazy val replWithStagingClasspath = 
-    replClassPath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
-
   def mkClasspath(classpaths: List[String]): String =
     classpaths.map({ p =>
       val file = new java.io.File(p)
@@ -74,16 +66,14 @@ object TestConfiguration {
 
   val yCheckOptions = Array("-Ycheck:all")
 
-  val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions ++ silenceOptions
   val noYcheckCommonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions
+  val commonOptions = noYcheckCommonOptions ++ yCheckOptions ++ silenceOptions
   val defaultOptions = TestFlags(basicClasspath, commonOptions)
   val noYcheckOptions = TestFlags(basicClasspath, noYcheckCommonOptions)
   val bestEffortBaselineOptions = TestFlags(basicClasspath, noCheckOptions)
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)
-  val withCompilerOptions =
-    defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
-  lazy val withReplOptions =
-    defaultOptions.withRunClasspath(replClassPath)
+  lazy val withCompilerOptions =
+    defaultOptions.and("-Yexplicit-nulls").withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
   lazy val withStagingOptions =
     defaultOptions.withClasspath(withStagingClasspath).withRunClasspath(withStagingClasspath)
   lazy val withTastyInspectorOptions =
@@ -98,10 +88,13 @@ object TestConfiguration {
     "-Yprint-pos",
     "-Yprint-pos-syms"
   )
-  val picklingWithCompilerOptions =
-    picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+  lazy val picklingWithCompilerOptions =
+    picklingOptions.and("-Yexplicit-nulls").withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
 
   val explicitNullsOptions = defaultOptions `and` "-Yexplicit-nulls"
+
+  val oldSyntax = defaultOptions `and` "-old-syntax"
+  val newSyntax = defaultOptions `and` "-new-syntax"
 
   /** Default target of the generated class files */
   private def defaultTarget: String = "17"

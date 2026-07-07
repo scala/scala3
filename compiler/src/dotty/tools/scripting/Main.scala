@@ -3,6 +3,9 @@ package dotty.tools.scripting
 import java.io.File
 import java.nio.file.{Path, Paths}
 import dotty.tools.dotc.config.Properties.isWin
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.io.{FileWriters, JarArchive}
+import java.util.jar.Attributes.Name
 
 /** Main entry point to the Scripting execution engine */
 object Main:
@@ -34,12 +37,12 @@ object Main:
   def process(args: Array[String]): Option[Throwable] =
     val (compilerArgs, scriptFile, scriptArgs, saveJar, invokeFlag) = distinguishArgs(args)
     val driver = ScriptingDriver(compilerArgs, scriptFile, scriptArgs)
-    driver.compileAndRun { (outDir:Path, classpathEntries:Seq[Path], mainClass: String) =>
-      // write expanded classpath to java.class.path property, so called script can see it
+    driver.compileAndRun { ctx ?=> (outDir:Path, classpathEntries:Seq[Path], mainClass: String) =>
+      // write expanded classpath to java.class.path property, so the called script can see it
       sys.props("java.class.path") = classpathEntries.map(_.toString).mkString(pathsep)
       if saveJar then
         // write a standalone jar to the script parent directory
-        writeJarfile(outDir, scriptFile, scriptArgs, classpathEntries, mainClass)
+        writeJarfile(outDir, scriptFile, scriptArgs, classpathEntries, mainClass)(using ctx)
       invokeFlag
     }
 
@@ -50,7 +53,7 @@ object Main:
    }.foreach(_ => System.exit(1))
 
   private def writeJarfile(outDir: Path, scriptFile: File, scriptArgs:Array[String],
-      classpathEntries:Seq[Path], mainClassName: String): Unit =
+      classpathEntries:Seq[Path], mainClassName: String)(using Context): Unit =
 
     val jarTargetDir: Path = Option(scriptFile.toPath.toAbsolutePath.getParent) match {
       case None => sys.error(s"no parent directory for script file [$scriptFile]")
@@ -62,18 +65,21 @@ object Main:
 
     val cpPaths = classpathEntries.map { _.toString.toUrl }
 
-    import java.util.jar.Attributes.Name
     val cpString:String = cpPaths.distinct.mkString(" ")
     val manifestAttributes:Seq[(Name, String)] = Seq(
       (Name.MANIFEST_VERSION, "1.0"),
       (Name.MAIN_CLASS, mainClassName),
       (Name.CLASS_PATH, cpString),
     )
-    import dotty.tools.io.{Jar, Directory}
-    val jar = new Jar(jarPath)
-    val writer = jar.jarWriter(manifestAttributes*)
+    val jarArchive = JarArchive.open(dotty.tools.io.Path(jarPath), create = true)
+    val writer = FileWriters.FileWriter(jarArchive, manifestAttributes)
     try
-      writer.writeAllFrom(Directory(outDir))
+      dotty.tools.io.AbstractFile.getDirectory(outDir, "").nn.deepIterator.foreach(f => {
+        val input = f.input
+        val path = outDir.relativize(f.jpath).toString
+        try writer.writeFile(path, input.readAllBytes())
+        finally input.close()
+      })
     finally
       writer.close()
   end writeJarfile

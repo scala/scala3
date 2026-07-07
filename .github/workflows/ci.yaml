@@ -1,4 +1,4 @@
-name: Dotty
+name: Scala 3
 
 on:
   push:
@@ -74,7 +74,7 @@ jobs:
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Git Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Test
         run: sbt ";scala3-bootstrapped/compile ;scala3-compiler-bootstrapped/test"
@@ -113,13 +113,13 @@ jobs:
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Add SBT proxy repositories
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
@@ -272,9 +272,22 @@ jobs:
   scalafmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.12.5
-      - run: scala-cli format --check
+      - uses: VirtusLab/scala-cli-setup@v1.15
+      - name: Check formatting
+        run: |
+          if ! scala-cli format --check; then
+            echo ""
+            echo "========================================"
+            echo "Formatting check failed!"
+            echo "To fix this, run the following command in the root of the project:"
+            echo ""
+            echo "  scala-cli format"
+            echo ""
+            echo "Then commit the changes."
+            echo "========================================"
+            exit 1
+          fi

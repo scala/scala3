@@ -11,7 +11,6 @@ import Symbols.*
 import Names.*
 import NameKinds.UniqueName
 import util.Spans.*
-import util.Property
 import collection.mutable
 import Trees.*
 
@@ -50,7 +49,11 @@ abstract class Lifter {
 
   /** Type assigned to a lifted temporary symbol. */
   protected def liftedExprType(expr: Tree)(using Context): Type =
-    expr.tpe.widen.deskolemized
+    val tp = expr.tpe.deskolemized
+    if tp.isStable then tp else tp.widen
+
+  /** Hook for lifters that need to record or mark freshly created lifted defs. */
+  protected def onLiftedDef(tree: Tree)(using Context): Unit = ()
 
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
@@ -63,10 +66,12 @@ abstract class Lifter {
         // Lifted definitions will be added to a local block, so they need to be
         // at a higher nesting level to prevent leaks. See tests/pos/i15174.scala
         nestingLevel = ctx.nestingLevel + 1)
-      defs += liftedDef(lifted, expr)
+      val liftedTree = liftedDef(lifted, expr)
         .withSpan(expr.span)
         .changeNonLocalOwners(lifted)
         .setDefTree
+      onLiftedDef(liftedTree)
+      defs += liftedTree
       ref(lifted.termRef).withSpan(expr.span.focus)
     }
 
@@ -156,7 +161,7 @@ abstract class Lifter {
    *     val x0 = pre
    *     x0.f(...)
    *
-   *  unless `pre` is idempotent reference, a `this` reference, a literal value, or a or the prefix of an `init` (`New` tree).
+   *  unless `pre` is idempotent reference, a `this` reference, a literal value, or the prefix of an `init` (`New` tree).
    *
    *  Note that default arguments will refer to the prefix, we do not want
    *  to re-evaluate a complex expression each time we access a getter.
@@ -187,53 +192,6 @@ class LiftComplex extends Lifter {
 }
 object LiftComplex extends LiftComplex
 
-/** Lift impure + lift the prefixes */
-object LiftCoverage extends LiftImpure {
-
-  // Property indicating whether we're currently lifting the arguments of an application
-  private val LiftingArgs = new Property.Key[Boolean]
-
-  private inline def liftingArgs(using Context): Boolean =
-    ctx.property(LiftingArgs).contains(true)
-
-  private def liftingArgsContext(using Context): Context =
-    ctx.fresh.setProperty(LiftingArgs, true)
-
-  /** Variant of `noLift` for the arguments of applications.
-   *  To produce the right coverage information (especially in case of exceptions), we must lift:
-   *  - all the applications, except the erased ones
-   *  - all the impure arguments
-   *
-   * There's no need to lift the other arguments.
-   */
-  private def noLiftArg(arg: tpd.Tree)(using Context): Boolean =
-    arg match
-      case a: tpd.Apply => a.symbol.is(Erased) // don't lift erased applications, but lift all others
-      case tpd.Block(stats, expr) => stats.forall(noLiftArg) && noLiftArg(expr)
-      case tpd.Inlined(_, bindings, expr) => noLiftArg(expr)
-      case tpd.Typed(expr, _) => noLiftArg(expr)
-      case _ => super.noLift(arg)
-
-  override def noLift(expr: tpd.Tree)(using Context) =
-    if liftingArgs then noLiftArg(expr) else super.noLift(expr)
-
-  /** Preserve singleton precision for lifted coverage temps when the underlying value is a
-   *  compile-time constant (same notion ConstFold uses), so constant re-folding after lifting
-   *  still matches the original inferred singleton type. Everything else uses the base widen.
-   */
-  override protected def liftedExprType(expr: tpd.Tree)(using Context): Type =
-    val dealiased = expr.tpe.dealias.deskolemized
-    dealiased.widenTermRefExpr.normalized.simplified match
-      case _: ConstantType => dealiased
-      case _ => super.liftedExprType(expr)
-
-  def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) = {
-    val liftedFun = liftApp(defs, tree.fun)
-    val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
-    tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
-  }
-}
-
 /** Lifter for eta expansion */
 object EtaExpansion extends LiftImpure {
   import tpd.*
@@ -258,7 +216,7 @@ object EtaExpansion extends LiftImpure {
    *
    *         { val xs = es; (x1: T1, ..., xn: Tn) => expr(x1, ..., xn) _ }
    *
-   *  where `T1, ..., Tn` are the paremeter types of the expanded method.
+   *  where `T1, ..., Tn` are the parameter types of the expanded method.
    *  If `expr` has implicit function type, the arguments are passed with `given`.
    *  E.g. for (1):
    *
@@ -301,22 +259,22 @@ object EtaExpansion extends LiftImpure {
       case _ => true
     }
     val paramTypes: List[Tree] =
-      if (isLastApplication && mt.paramInfos.length == xarity) mt.paramInfos map (_ => TypeTree())
-      else mt.paramInfos map TypeTree
+      if (isLastApplication && mt.paramInfos.length == xarity) mt.paramInfos.map(_ => TypeTree())
+      else mt.paramInfos.map(TypeTree)
     var paramFlag = SyntheticParam
     if (mt.isContextualMethod) paramFlag |= Given
     else if (mt.isImplicitMethod) paramFlag |= Implicit
-    val params = mt.paramNames.lazyZip(paramTypes).map((name, tpe) =>
-      ValDef(name, tpe, EmptyTree).withFlags(paramFlag).withSpan(tree.span.startPos))
-    var ids: List[Tree] = mt.paramNames map (name => Ident(name).withSpan(tree.span.startPos))
+    val params = mt.paramNames.lazyZip(paramTypes).lazyZip(mt.paramInfos).map: (name, tpe, pinfo) =>
+      val erased = if pinfo.hasAnnotation(defn.ErasedParamAnnot) then Erased else EmptyFlags
+      ValDef(name, tpe, EmptyTree).withFlags(paramFlag | erased).withSpan(tree.span.startPos)
+    var ids: List[Tree] = mt.paramNames.map(name => Ident(name).withSpan(tree.span.startPos))
     if (mt.paramInfos.nonEmpty && mt.paramInfos.last.isRepeatedParam)
       ids = ids.init :+ repeated(ids.last)
     val body = Apply(lifted, ids)
     if (mt.isContextualMethod) body.setApplyKind(ApplyKind.Using)
     val fn =
-      if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given), mt.paramErasureStatuses)
-      else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit), mt.paramErasureStatuses)
-      else if (mt.hasErasedParams) new untpd.FunctionWithMods(params, body, Modifiers(), mt.paramErasureStatuses)
+      if (mt.isContextualMethod) new untpd.FunctionWithMods(params, body, Modifiers(Given))
+      else if (mt.isImplicitMethod) new untpd.FunctionWithMods(params, body, Modifiers(Implicit))
       else untpd.Function(params, body)
     if (defs.nonEmpty) untpd.Block(defs.toList map (untpd.TypedSplice(_)), fn) else fn
   }

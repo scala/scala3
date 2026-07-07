@@ -8,8 +8,12 @@ import dotc.core.Contexts.*
 import dotc.core.CompilationUnitInfo
 import dotc.core.Decorators.*
 import dotc.core.Flags.*
+import dotc.core.NameKinds.SimpleNameKind
 import dotc.core.Names.*
-import dotc.core.Phases.Phase
+import dotc.core.NameKinds.ReplAssignName
+import dotc.core.Phases.{Phase, checkCapturesPhase}
+import dotc.core.Contexts.atPhase
+import dotc.config.Feature
 import dotc.core.StdNames.*
 import dotc.core.Symbols.*
 import dotc.reporting.Diagnostic
@@ -96,17 +100,63 @@ class ReplCompiler extends Compiler:
   end compile
 
   final def typeOf(expr: String)(using state: State): Either[List[Diagnostic], String] =
-    typeCheck(expr).map { (_, tpdTree) =>
-      given Context = state.context
-      tpdTree.rhs match {
-        case Block(xs, _) => xs.last.tpe.widen.show
-        case _ =>
-          """Couldn't compute the type of your expression, so sorry :(
-            |
-            |Please report this to my masters at github.com/lampepfl/dotty
-          """.stripMargin
+    if Feature.ccEnabledSomewhere(using state.context) && checkCapturesPhase(using state.context).exists then
+      typeOfWithCC(expr)
+    else
+      typeCheck(expr).map { (_, tpdTree) =>
+        given Context = state.context
+        tpdTree.rhs match {
+          case Block(xs, _) => xs.last.tpe.widen.show
+          case _ =>
+            """Couldn't compute the type of your expression, so sorry :(
+              |
+              |Please report this to my masters at github.com/lampepfl/dotty
+            """.stripMargin
+        }
       }
-    }
+
+  /** Compute the type of `expr` using the full compilation pipeline,
+   *  until the capture checking phases. This ensures that the
+   *  displayed type reflects capture annotations.
+   */
+  private def typeOfWithCC(expr: String)(using state: State): Either[List[Diagnostic], String] =
+    val src = SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), expr)
+    ParseResult(src) match
+      case parsed: Parsed =>
+        // Stop after CC — we only need types, not bytecode.
+        val ccCtx = state.context.fresh
+          .setSource(parsed.source)
+          .setSetting(state.context.settings.YstopAfter, List("cc"))
+        val compileState = state.copy(context = ccCtx)
+        compile(parsed)(using compileState).fold(
+          (errs, _) => Left(errs),
+          (unit, newState) =>
+            given Context = newState.context
+            atPhase(checkCapturesPhase) {
+              // Find the result val in the wrapper module
+              val wrapperName = (str.REPL_SESSION_LINE + newState.objectIndex).toTermName
+              val wrapperSym = defn.RootClass.info.member(nme.EMPTY_PACKAGE).symbol
+                .info.member(wrapperName).symbol
+              if wrapperSym.exists then
+                val fields = wrapperSym.info.fields
+                  .filterNot(_.symbol.isOneOf(ParamAccessor | Private | Synthetic | Artifact | Module))
+                  .filter(_.symbol.name.is(SimpleNameKind))
+                fields.lastOption match
+                  case Some(field) => Right(field.symbol.info.widen.show)
+                  case None =>
+                    Left(List(new Diagnostic.Error(
+                      s"Couldn't compute the type of your expression",
+                      src.atSpan(Span(0, expr.length)))))
+              else
+                Left(List(new Diagnostic.Error(
+                  s"Couldn't compute the type of your expression",
+                  src.atSpan(Span(0, expr.length)))))
+            }
+        )
+      case SyntaxErrors(_, errs, _) => Left(errs)
+      case _ => Left(List(new Diagnostic.Error(
+        s"Couldn't parse '$expr' to valid scala",
+        src.atSpan(Span(0, expr.length)))))
 
   def docOf(expr: String)(using state: State): Either[List[Diagnostic], String] = inContext(state.context) {
 
@@ -304,7 +354,7 @@ class ReplPhase extends Phase:
       case expr @ Assign(id: Ident, _) =>
         // special case simple reassignment (e.g. x = 3)
         // in order to print the new value in the REPL
-        val assignName = (id.name ++ str.REPL_ASSIGN_SUFFIX).toTermName
+        val assignName = ReplAssignName(id.name.toTermName)
         val assign = ValDef(assignName, TypeTree(), id).withSpan(expr.span)
         defs += expr += assign
       case expr if expr.isTerm =>

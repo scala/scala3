@@ -27,7 +27,7 @@ import scala.util.hashing.MurmurHash3
  *  It's a special case of an indexed sequence.
  *  For example:
  *
- *  ```
+ *  ```scala sc:compile
  *     val r1 = 0 until 10
  *     val r2 = r1.start until r1.end by r1.step + 1
  *     println(r2.length) // = 5
@@ -101,9 +101,9 @@ sealed abstract class Range(
    *
    *  If the range is empty, `numRangeElements` does not have a meaningful value.
    *
-   *  Otherwise, `numRangeElements` is interpreted in the range [1, 2^32],
+   *  Otherwise, `numRangeElements` is interpreted in the range [1, 2<sup>32</sup>],
    *  respecting modular arithmetics wrt. the unsigned interpretation.
-   *  In other words, it is 0 if the mathematical value should be 2^32, and the
+   *  In other words, it is 0 if the mathematical value should be 2<sup>32</sup>, and the
    *  standard unsigned int encoding of the mathematical value otherwise.
    *
    *  This interpretation allows to represent all values with the correct
@@ -138,6 +138,9 @@ sealed abstract class Range(
    *
    *  If the mathematical result is not within this Range, the result won't
    *  make sense, but won't error out.
+   *
+   *  @param n the number of steps from `start`, interpreted as an unsigned integer
+   *  @return the element at position `n` in this range, i.e., `start + step * n`
    */
   @inline
   private def locationAfterN(n: Int): Int = {
@@ -222,6 +225,7 @@ sealed abstract class Range(
   /** Creates a new range with the `start` and `end` values of this range and
    *  a new `step`.
    *
+   *  @param step the new step value for the range; must be non-zero
    *  @return a new range with a different step
    */
   final def by(step: Int): Range = copy(start, end, step)
@@ -299,6 +303,9 @@ sealed abstract class Range(
    *  in this non-empty range?
    *
    *  This method returns nonsensical results if `n < 0` or if `this.isEmpty`.
+   *
+   *  @param n the non-negative value to compare against the number of elements
+   *  @return `true` if `n` is greater than or equal to the number of elements in this range
    */
   @inline private def greaterEqualNumRangeElements(n: Int): Boolean =
     (n ^ Int.MinValue) > ((numRangeElements - 1) ^ Int.MinValue) // unsigned comparison
@@ -326,6 +333,9 @@ sealed abstract class Range(
   /** Creates a new range consisting of the last `n` elements of the range.
    *
    *  $doesNotUseBuilders
+   *
+   *  @param n the number of elements to take from the right
+   *  @return a new range consisting of the last `n` elements, or an empty range if `n <= 0`, or the entire range if `n` is greater than its length
    */
   final override def takeRight(n: Int): Range = {
     if (n <= 0 || isEmpty) newEmptyRange(start)
@@ -336,6 +346,9 @@ sealed abstract class Range(
   /** Creates a new range consisting of the initial `length - n` elements of the range.
    *
    *  $doesNotUseBuilders
+   *
+   *  @param n the number of elements to drop from the right
+   *  @return a new range consisting of all elements except the last `n`, or this range unchanged if `n <= 0`, or an empty range if `n` is greater than its length
    */
   final override def dropRight(n: Int): Range = {
     if (n <= 0 || isEmpty) this
@@ -585,6 +598,12 @@ object Range {
    *  precondition:  step != 0
    *  If the size of the range exceeds Int.MaxValue, the
    *  result will be negative.
+   *
+   *  @param start the start value of the range
+   *  @param end the end value of the range (exclusive or inclusive depending on `isInclusive`)
+   *  @param step the step value between consecutive elements, must be non-zero
+   *  @param isInclusive whether `end` is included in the range
+   *  @return the number of elements in the range, `0` if the range is empty, or a negative value (modular wrap) if the count exceeds `Int.MaxValue`
    */
   def count(start: Int, end: Int, step: Int, isInclusive: Boolean): Int = {
     if (step == 0)
@@ -617,18 +636,38 @@ object Range {
 
   /** Makes a range from `start` until `end` (exclusive) with given step value.
    *  @note step != 0
+   *
+   *  @param start the start value of the range
+   *  @param end the exclusive end value of the range
+   *  @param step the step value between consecutive elements, must be non-zero
+   *  @return a new exclusive `Range` from `start` (inclusive) to `end` (exclusive) with the given `step`
    */
   def apply(start: Int, end: Int, step: Int): Range.Exclusive = new Range.Exclusive(start, end, step)
 
-  /** Makes a range from `start` until `end` (exclusive) with step value 1. */
+  /** Makes a range from `start` until `end` (exclusive) with step value 1.
+   *
+   *  @param start the start value of the range
+   *  @param end the exclusive end value of the range
+   *  @return a new exclusive `Range` from `start` (inclusive) to `end` (exclusive) with step `1`
+   */
   def apply(start: Int, end: Int): Range.Exclusive = new Range.Exclusive(start, end, 1)
 
   /** Makes an inclusive range from `start` to `end` with given step value.
    *  @note step != 0
+   *
+   *  @param start the start value of the range
+   *  @param end the inclusive end value of the range
+   *  @param step the step value between consecutive elements, must be non-zero
+   *  @return a new inclusive `Range` from `start` to `end` (with `end` included only if reachable by `step` from `start`) with the given `step`
    */
   def inclusive(start: Int, end: Int, step: Int): Range.Inclusive = new Range.Inclusive(start, end, step)
 
-  /** Makes an inclusive range from `start` to `end` with step value 1. */
+  /** Makes an inclusive range from `start` to `end` with step value 1.
+   *
+   *  @param start the start value of the range
+   *  @param end the inclusive end value of the range
+   *  @return a new inclusive `Range` from `start` to `end` (both inclusive) with step `1`
+   */
   def inclusive(start: Int, end: Int): Range.Inclusive = new Range.Inclusive(start, end, 1)
 
   @SerialVersionUID(4L)
@@ -696,7 +735,7 @@ private class RangeIterator(
   step: Int,
   lastElement: Int,
   initiallyEmpty: Boolean
-) extends AbstractIterator[Int] with Serializable { self =>
+) extends AbstractIterator[Int] with Serializable { self: RangeIterator =>
   private var _hasNext: Boolean = !initiallyEmpty
   private var _next: Int = start
   override def knownSize: Int = if (_hasNext) (lastElement - _next) / step + 1 else 0

@@ -141,7 +141,8 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-as  consume  derives  end  erased  extension  infix  inline  opaque  open  throws  tracked  transparent  update  using  |  *  +  -
+as  consume  derives  end  erased  extension  infix  initially  inline
+opaque  open  throws  tracked  transparent  update  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](../reference/soft-modifier.md) for additional
@@ -160,7 +161,7 @@ SimpleLiteral     ::=  [‘-’] integerLiteral
                     |  characterLiteral
                     |  stringLiteral
 Literal           ::=  SimpleLiteral
-                    |  interpolatedStringLiteral
+                    |  interpolatedString
                     |  symbolLiteral
                     |  ‘null’
 
@@ -181,7 +182,7 @@ Type              ::=  FunType
                     |  FunParamClause ‘=>>’ Type                                TermLambdaTypeTree(ps, t)
                     |  MatchType
                     |  InfixType
-FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type                          Function(ts, t) | FunctionWithMods(ts, t, mods, erasedParams)
+FunType           ::=  FunTypeArgs (‘=>’ | ‘?=>’) Type                          Function(ts, t) | FunctionWithMods(ts, t, mods)
                     |  FunTypeArgs (‘->’ | ‘?->’) [CaptureSet] Type             -- under pureFunctions and captureChecking
                     |  TypTypeParamClause ‘=>’ Type                             PolyFunction(ps, t)
                     |  TypTypeParamClause ‘->’ [CaptureSet] Type                -- under pureFunctions and captureChecking
@@ -235,7 +236,7 @@ TypeBound         ::=  Type
 NamesAndTypes     ::=  NameAndType {‘,’ NameAndType}
 NameAndType       ::=  id ':' Type
 CaptureSet        ::=  '{' CaptureRef {',' CaptureRef} '}'                      -- under captureChecking
-CaptureRef        ::=  { SimpleRef '.' } SimpleRef ['*'] [CapFilter] ['.' 'rd'] -- under captureChecking
+CaptureRef        ::=  { SimpleRef '.' } SimpleRef [CapFilter] ['.' 'rd']       -- under captureChecking
 CapFilter         ::=  '.' 'only' '[' QualId ']'                                -- under captureChecking
 ```
 
@@ -520,13 +521,13 @@ ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
 Template          ::=  InheritClauses [TemplateBody]
 InheritClauses    ::=  [‘extends’ ConstrApps]
                        [‘derives’ QualId {‘,’ QualId}]
-                       [‘uses’ CaptureRef {‘,’ CaptureRef}]
-                       [‘uses_init’ CaptureRef {‘,’ CaptureRef}]
+                       [‘uses’ UseRef {‘,’ UseRef}]
 ConstrApps        ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
 ConstrApp         ::=  SimpleType1 {Annotation} {ParArgumentExprs}
 ConstrExpr        ::=  SelfInvocation
                     |  <<< SelfInvocation {semi BlockStat} >>>
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
+UseRef            ::=  CaptureRef [‘initially’]
 
 WithTemplateBody  ::=  <<< [SelfType] TemplateStat {semi TemplateStat} >>>
 TemplateBody      ::=  :<<< [SelfType] TemplateStat {semi TemplateStat} >>>

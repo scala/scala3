@@ -21,17 +21,15 @@ import scala.jdk.CollectionConverters.*
 import scala.tools.asm.Opcodes.*
 import scala.tools.asm.Type
 import scala.tools.asm.tree.*
-import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.BackendUtils.*
-import dotty.tools.backend.jvm.BackendReporting.*
-import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
+import dotty.tools.backend.jvm.analysis.{AnalysisUtils, AsmAnalyzer, ProdConsAnalyzer}
 import BCodeUtils.*
 
-class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUtils,
+class ClosureOptimizer(optimizerUtils: OptimizerUtils,
                        byteCodeRepository: BCodeRepository, callGraph: CallGraph,
-                       ts: CoreBTypes, bTypesFromClassfile: BTypesFromClassfile) {
+                       ts: OptimizerKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
+                       settings: OptimizerSettings) {
 
   import ClosureOptimizer.*
 
@@ -86,7 +84,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
    *                instantiations.
    * @return The changed methods. The order of the resulting sequence is deterministic.
    */
-  def rewriteClosureApplyInvocations(methods: Option[Iterable[MethodNode]], inlinerState: mutable.Map[MethodNode, MethodInlinerState]): mutable.LinkedHashSet[MethodNode] = {
+  def rewriteClosureApplyInvocations(methods: Option[Iterable[MethodNode]], inlinerState: mutable.Map[MethodNode, MethodInlinerState], issueSink: OptimizerIssue => Unit): mutable.LinkedHashSet[MethodNode] = {
 
     // sort all closure invocations to rewrite to ensure bytecode stability
     given Ordering[ClosureInstantiation] = closureInitOrdering
@@ -98,27 +96,27 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
 
     // the `toList` prevents modifying closureInstantiations while iterating it.
     // minimalRemoveUnreachableCode (called in the loop) removes elements
-    val methodsToRewrite = methods.getOrElse(callGraph.closureInstantiations.get.keysIterator.toList)
+    val methodsToRewrite = methods.getOrElse(callGraph.closureInstantiations.keysIterator.toList)
 
     // For each closure instantiation find callsites of the closure and add them to the toRewrite
     // buffer (cannot change a method's bytecode while still looking for further invocations to
     // rewrite, the frame indices of the ProdCons analysis would get out of date). If a callsite
     // cannot be rewritten, e.g., because the lambda body method is not accessible, issue a warning.
-    for (method <- methodsToRewrite if Limits.sizeOKForBasicValue(method)) callGraph.closureInstantiations.get.get(method) match {
+    for (method <- methodsToRewrite if Limits.sizeOKForBasicValue(method)) callGraph.closureInstantiations.get(method) match {
       case Some(closureInitsBeforeDCE) if closureInitsBeforeDCE.nonEmpty =>
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
-        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, backendUtils)
+        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, optimizerUtils)
 
-        if (Limits.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get.get(method) match {
+        if (Limits.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get(method) match {
           case Some(closureInits) =>
             // A lazy val to ensure the analysis only runs if necessary (the value is passed by name to `closureCallsites`)
             lazy val prodCons = new ProdConsAnalyzer(method, ownerClass)
 
             for (init <- closureInits.valuesIterator) closureCallsites(init, prodCons) foreach {
               case Left(warning) =>
-                ppa.backendReporting.optimizerWarning(em"${warning.toString}", ppa.backendReporting.siteString(ownerClass, method.name), warning.pos)
+                issueSink(OptimizerIssue(warning.toString, OptimizerUtils.siteString(ownerClass, method.name), warning.pos))
 
               case Right((invocation, stackHeight)) =>
                 addRewrite(init, invocation, stackHeight)
@@ -143,7 +141,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
       if (closureInit.ownerMethod != previousMethod) {
         previousMethod = closureInit.ownerMethod
         changedMethods += previousMethod.nn
-        val state = inlinerState.getOrElseUpdate(previousMethod.nn, new MethodInlinerState(ppa.compilerSettings.optLogInline))
+        val state = inlinerState.getOrElseUpdate(previousMethod.nn, new MethodInlinerState(settings.optLogInline))
         state.inlineLog.logClosureRewrite(closureInit, invocations, invocations.headOption.flatMap(p => state.outerCallsite(p._1)))
       }
     }
@@ -192,10 +190,10 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
           declClassBType              <- bTypesFromClassfile.classBTypeFromParsedClassfile(declClass)
           lambdaOwnerBType            <- bTypesFromClassfile.classBTypeFromParsedClassfile(lambdaBodyHandle.getOwner)
         } yield {
-          InlineInfo.memberIsAccessible(bodyMethodNode.access, declClassBType, lambdaOwnerBType, ownerClass)
+          Inliner.memberIsAccessible(bodyMethodNode.access, declClassBType, lambdaOwnerBType, ownerClass)
         }
 
-        def pos = callGraph.callsites.get(ownerMethod).get(invocation).map(_.callsitePosition).getOrElse(NoSourcePosition)
+        def pos = callGraph.callsites(ownerMethod).get(invocation).map(_.callsitePosition).getOrElse(NoSourcePosition)
         val stackSize: Either[RewriteClosureApplyToClosureBodyFailed, Int] = bodyAccessible match {
           case Left(w)      => Left(RewriteClosureAccessCheckFailed(pos, w))
           case Right(false) => Left(RewriteClosureIllegalAccess(pos, ownerClass.internalName))
@@ -303,9 +301,9 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
         if (invokeArgTypes(i) == implMethodArgTypes(i)) {
           res(i) = None
         } else if (isPrimitiveType(implMethodArgTypes(i)) && invokeArgTypes(i).getDescriptor == ts.ObjectRef.descriptor) {
-          res(i) = Some(backendUtils.getScalaUnbox(implMethodArgTypes(i)))
+          res(i) = Some(optimizerUtils.getScalaUnbox(implMethodArgTypes(i)))
         } else if (isPrimitiveType(invokeArgTypes(i)) && implMethodArgTypes(i).getDescriptor == ts.ObjectRef.descriptor) {
-          res(i) = Some(backendUtils.getScalaBox(invokeArgTypes(i)))
+          res(i) = Some(optimizerUtils.getScalaBox(invokeArgTypes(i)))
         } else {
           assert(!isPrimitiveType(invokeArgTypes(i)), invokeArgTypes(i))
           assert(!isPrimitiveType(implMethodArgTypes(i)), implMethodArgTypes(i))
@@ -390,12 +388,12 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
       if (isPrimitiveType(invocationReturnType) && bodyReturnType.getDescriptor == ts.ObjectRef.descriptor) {
         val op =
           if (invocationReturnType.getSort == Type.VOID) getPop(1)
-          else backendUtils.getScalaUnbox(invocationReturnType)
+          else optimizerUtils.getScalaUnbox(invocationReturnType)
         ownerMethod.instructions.insertBefore(invocation, op)
       } else if (isPrimitiveType(bodyReturnType) && invocationReturnType.getDescriptor == ts.ObjectRef.descriptor) {
         val op =
-          if (bodyReturnType.getSort == Type.VOID) backendUtils.getBoxedUnit
-          else backendUtils.getScalaBox(bodyReturnType)
+          if (bodyReturnType.getSort == Type.VOID) optimizerUtils.getBoxedUnit
+          else optimizerUtils.getScalaBox(bodyReturnType)
         ownerMethod.instructions.insertBefore(invocation, op)
       } else {
         // see comment of that method
@@ -410,7 +408,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
 
     // the method node is needed for building the call graph entry
     val bodyMethod = byteCodeRepository.methodNode(lambdaBodyHandle.getOwner, lambdaBodyHandle.getName, lambdaBodyHandle.getDesc)
-    val sourceFilePath = byteCodeRepository.compilingClasses.get.get(lambdaBodyHandle.getOwner).map(_._2)
+    val sourceFilePath = byteCodeRepository.compilingClasses.get(lambdaBodyHandle.getOwner).map(_._2)
     val callee = bodyMethod.flatMap({
       case (bodyMethodNode, bodyMethodDeclClass) =>
         bTypesFromClassfile.classBTypeFromParsedClassfile(bodyMethodDeclClass).flatMap(bodyDeclClassType =>
@@ -460,7 +458,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
 
     // Rewriting a closure invocation may render code unreachable. For example, the body method of
     // (x: T) => ??? has return type Nothing$, and an ATHROW is added (see fixLoadedNothingOrNullValue).
-    BackendUtils.clearDceDone(ownerMethod)
+    OptimizerUtils.clearDceDone(ownerMethod)
   }
 
   /**
@@ -519,11 +517,11 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
   /**
    * A list of local variables. Each local stores information about its type, see class [[Local]].
    */
-  case class LocalsList(locals: List[Local]) {
+  private case class LocalsList(locals: List[Local]) {
     val size = locals.iterator.map(_.size).sum
   }
 
-  object LocalsList {
+  private object LocalsList {
     /**
      * A list of local variables starting at `firstLocal` that can hold values of the types in the
      * `types` parameter.
@@ -553,7 +551,7 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
    * The xLOAD / xSTORE opcodes are in the following sequence: I, L, F, D, A, so the offset for
    * a local variable holding a reference (`A`) is 4. See also method `getOpcode` in [[scala.tools.asm.Type]].
    */
-  case class Local(local: Int, opcodeOffset: Int) {
+  private case class Local(local: Int, opcodeOffset: Int) {
     def size = if (loadOpcode == LLOAD || loadOpcode == DLOAD) 2  else 1
 
     def loadOpcode = ILOAD + opcodeOffset
@@ -562,6 +560,6 @@ class ClosureOptimizer(ppa: PostProcessorFrontendAccess, backendUtils: BackendUt
 }
 
 object ClosureOptimizer {
-  val primitives = "BSIJCFDZV"
-  val specializationSuffix = s"(\\$$mc[$primitives]+\\$$sp)".r
+  private val primitives = "BSIJCFDZV"
+  private val specializationSuffix = s"(\\$$mc[$primitives]+\\$$sp)".r
 }

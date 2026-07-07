@@ -1,9 +1,8 @@
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
-import java.nio.file.{FileSystemAlreadyExistsException, FileSystems}
-
+import java.net.{MalformedURLException, URI, URISyntaxException, URL}
+import java.nio.file.{FileSystemAlreadyExistsException, FileSystems, InvalidPathException, Paths}
+import java.util.jar.{Attributes, JarInputStream}
 import scala.jdk.CollectionConverters.*
 
 /**
@@ -12,9 +11,32 @@ import scala.jdk.CollectionConverters.*
  */
 class JarArchive private (val jarPath: Path, root: Directory) extends PlainDirectory(root) {
   def close(): Unit = this.synchronized(jpath.getFileSystem().close())
+
   override def exists: Boolean = jpath.getFileSystem().isOpen() && super.exists
-  def allFileNames(): Iterator[String] =
-    java.nio.file.Files.walk(jpath).iterator().asScala.map(_.toString)
+
+  def underlyingSource: Option[AbstractFile] = {
+    val fileSystem = jpath.getFileSystem
+    fileSystem.provider().getScheme match {
+      case "jar" =>
+        val fileStores = fileSystem.getFileStores.iterator()
+        if (fileStores.hasNext) {
+          val jarPath = fileStores.next().name
+          try {
+            Some(new PlainFile(new Path(Paths.get(jarPath.stripSuffix(fileSystem.getSeparator)))))
+          } catch {
+            case _: InvalidPathException =>
+              None
+          }
+        } else None
+      case "jrt" =>
+        if (jpath.getNameCount > 2 && jpath.startsWith("/modules")) {
+          // TODO limit this to OpenJDK based JVMs?
+          val moduleName = jpath.getName(1)
+          Some(new PlainFile(new Path(Paths.get(System.getProperty("java.home"), "jmods", moduleName.toString + ".jmod"))))
+        } else None
+      case _ => None
+    }
+  }
 
   override def toString: String = jarPath.toString
 }
@@ -44,4 +66,50 @@ object JarArchive {
     val root = fs.getRootDirectories().iterator.next()
     new JarArchive(path, Directory(root))
   }
+
+  // See http://download.java.net/jdk7/docs/api/java/nio/file/Path.html
+  // for some ideas.
+  private val ZipMagicNumber = List[Byte](80, 75, 3, 4)
+  private def magicNumberIsZip(f: Path) = f.isFile && {
+    val in = f.toFile.inputStream()
+    try
+      val first4 = in.readNBytes(4)
+      first4.toList == ZipMagicNumber
+    finally
+      in.close()
+  }
+
+  def isJarOrZip(f: Path): Boolean =
+    f.ext.isJarOrZip || magicNumberIsZip(f)
+
+  /** Expand manifest jar classpath entries: these are either urls, or paths
+   *  relative to the location of the jar.
+   */
+  def expandManifestPath(jarPath: String): List[URL] =
+    def specToURL(spec: String, basedir: Directory): Option[URL] =
+      try
+        val uri = new URI(spec)
+        if uri.isAbsolute then Some(uri.toURL)
+        else Some(basedir.resolve(Path(spec)).toURL)
+      catch
+        case _: MalformedURLException | _: URISyntaxException => None
+
+    val file = File(jarPath)
+    if !file.isFile then
+      return Nil
+
+    val baseDir = file.parent
+    val in = new JarInputStream(file.inputStream())
+    val manifest =
+      try Option(in.getManifest)
+      finally in.close()
+
+    manifest match
+      case None => Nil
+      case Some(m) =>
+        val attrs = m.getMainAttributes.asInstanceOf[java.util.Map[Attributes.Name, String]]
+        attrs.get(Attributes.Name.CLASS_PATH) match
+          case cp: String if cp.trim().nonEmpty =>
+            cp.split("\\s+").toList.map(elem => specToURL(elem, baseDir).getOrElse((baseDir / elem).toURL))
+          case _ => Nil
 }

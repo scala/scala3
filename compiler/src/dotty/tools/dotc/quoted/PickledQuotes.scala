@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter, TreePickler, Attributes }
+import dotty.tools.dotc.core.tasty.{Attributes, PositionPickler, TastyPickler, TastyPrinter, TreePickler}
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 import dotty.tools.dotc.report
@@ -17,11 +17,9 @@ import dotty.tools.dotc.reporting.Message
 
 import scala.quoted.Quotes
 import scala.quoted.runtime.impl.*
-
 import scala.collection.mutable
-
 import QuoteUtils.*
-import dotty.tools.io.NoAbstractFile
+import dotty.tools.io.VirtualFile
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 
 object PickledQuotes {
@@ -182,7 +180,17 @@ object PickledQuotes {
         class ReplaceSplicedTyped extends TypeMap() {
           override def apply(tp: Type): Type = tp match {
             case tp: ClassInfo =>
-              tp.derivedClassInfo(declaredParents = tp.declaredParents.map(apply))
+              val parents = tp.declaredParents.map(apply)
+              // If a decl of this class references a spliced type, force a different
+              // ClassInfo instance so that `mapSymbols` makes a copy of the class and
+              // remaps its decls. Otherwise members whose infos reference splice type
+              // symbols are left un-remapped, leading to unsound erased signatures
+              val declsReferenceSplicedType = tp.decls.exists: d =>
+                d.info.existsPart(t => typeSpliceMap.contains(t.typeSymbol))
+              if declsReferenceSplicedType then
+                tp.derivedClassInfo(declaredParents = parents, decls = tp.decls.cloneScope)
+              else
+                tp.derivedClassInfo(declaredParents = parents)
             case tp: TypeRef =>
               typeSpliceMap.get(tp.symbol) match
                 case Some(t) if tp.typeSymbol.hasAnnotation(defn.QuotedRuntime_SplicedTypeAnnot) => mapOver(t)
@@ -223,11 +231,9 @@ object PickledQuotes {
     treePkl.pickle(tree :: Nil)
     treePkl.compactify()
     if tree.span.exists then
-      val positionWarnings = new mutable.ListBuffer[Message]()
       val reference = ctx.settings.sourceroot.value
       PositionPickler.picklePositions(pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
-        ctx.compilationUnit.source, tree :: Nil, positionWarnings)
-      positionWarnings.foreach(report.warning(_))
+        ctx.compilationUnit.source, tree :: Nil)
 
     val pickled = pickler.assembleParts()
     quotePickling.println(s"**** pickled quote\n${TastyPrinter.showContents(pickled, ctx.settings.color.value == "never", isBestEffortTasty = false)}")
@@ -272,7 +278,7 @@ object PickledQuotes {
           quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never", isBestEffortTasty = false)}")
 
           val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
-          val unpickler = new DottyUnpickler(NoAbstractFile, bytes, isBestEffortTasty = false, mode)
+          val unpickler = new DottyUnpickler(new VirtualFile("bytes", bytes), isBestEffortTasty = false, mode)
           unpickler.enter(Set.empty)
 
           val tree = unpickler.tree
