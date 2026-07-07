@@ -134,15 +134,6 @@ object Capabilities:
   extends DerivedCapability:
     def newLikeThis(c: Capability) = Classified(c.asInstanceOf, only, except)
 
-  /** Build a cached `Classified(ref, only, except)`, except for `GlobalCap` refs
-   *  which do not support caching.
-   */
-  private def classifiedNode(ref: CoreCapability | RootCapability, only: ClassSymbol, except: List[ClassSymbol]): Classified =
-    val node = Classified(ref, only, except)
-    ref match
-      case _: GlobalCap => node
-      case _ => ref.cached(node)
-
   /** Build the normal form of `ref.only[only].except[rawExcept...]`:
    *   - collapse to empty (`only = NothingClass`) if `only` is empty or some exclusion
    *     covers the whole `only` subtree;
@@ -152,7 +143,7 @@ object Capabilities:
    */
   def mkClassified(ref: CoreCapability | RootCapability, only: ClassSymbol, rawExcept: List[ClassSymbol])(using Context): CoreCapability | RootCapability | Classified =
     if only == defn.NothingClass || rawExcept.exists(e => only.isSubClass(e)) then
-      classifiedNode(ref, defn.NothingClass, Nil)
+      ref.cached(Classified(ref, defn.NothingClass, Nil))
     else
       // `e == only` and any `e` above `only` were already collapsed to empty above,
       // so every surviving exclusion is strictly inside the `only` subtree.
@@ -160,7 +151,7 @@ object Capabilities:
       val maximal = inside.filter(e => !inside.exists(o => (o ne e) && e.isSubClass(o)))
       val canon = maximal.sortBy(_.fullName.toString)
       if only == defn.AnyClass && canon.isEmpty then ref
-      else classifiedNode(ref, only, canon)
+      else ref.cached(Classified(ref, only, canon))
 
   /** A class for the global root capabilities referenced as `caps.any` and `caps.fresh`.
    *  They do not subsume other capabilities, except in arguments of `withCapAsRoot` calls.
@@ -173,7 +164,7 @@ object Capabilities:
     override def exclude(cls: ClassSymbol)(using Context) = mkClassified(this, defn.AnyClass, cls :: Nil)
     override def singletonCaptureSet(using Context) = CaptureSet.universal
     override def captureSetOfInfo(using Context) = singletonCaptureSet
-    private[Capabilities] override def cached[C <: DerivedCapability](newRef: C): C = unsupported("cached")
+    private[Capabilities] override def cached[C <: DerivedCapability](newRef: C): C = newRef
     override def invalidateCaches() = ()
 
   /** The global root capability referenced as `caps.any` */
@@ -671,7 +662,7 @@ object Capabilities:
       case self: LocalCap => f(self.hiddenSet.elems)
       case Classified(elem1, only, except) =>
         elem1.computeHiddenSet(f).map: r =>
-          except.foldLeft(if only == defn.AnyClass then r else r.restrict(only))((c, e) => c.exclude(e))
+          except.foldLeft(r.restrict(only))(_.exclude(_))
       case ReadOnly(elem1) => elem1.computeHiddenSet(f).map(_.readOnly)
       case _ => emptyRefs
 
