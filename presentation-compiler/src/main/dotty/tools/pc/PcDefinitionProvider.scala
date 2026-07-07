@@ -162,7 +162,7 @@ class PcDefinitionProvider(
                 else file
               if classFile != null then
                 List(new Location(
-                  s"jar:${underlyingSource.jpath.toUri}!/${classFile.path}",
+                  s"jar:${underlyingSource.jpath.nn.toUri}!/${classFile.path}",
                   new Range(new Position(0, 0), new Position(0, 0))
                 ))
               else Nil
