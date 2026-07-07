@@ -200,7 +200,8 @@ class Namer { typer: Typer =>
       || flags.isOneOf(Synthetic | Accessor | CaseAccessor) // check the case param not the accessor
       || flags.is(Param) && ctx.owner.is(Synthetic)
       || isDollars
-    if !exempt && (isModule || !name.toTermName.isInstanceOf[DerivedName]) then
+    // no point in warning about $ in Java, there are no backticks to insert nor other ways to suppress such a warning
+    if !flags.is(JavaDefined) && !exempt && (isModule || !name.toTermName.isInstanceOf[DerivedName]) then
       val simple = name.toSimpleName
       val max = if isModule then simple.length - 1 else simple.length
       val last = simple.lastIndexOf('$', start = max - 1)
