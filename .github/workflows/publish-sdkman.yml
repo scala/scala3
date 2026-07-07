@@ -24,7 +24,7 @@ on:
       CONSUMER-KEY:
         required: true
       CONSUMER-TOKEN:
-        required: true 
+        required: true
 
 env:
   RELEASE-URL: 'https://github.com/scala/scala3/releases/download/${{ inputs.version }}'
@@ -46,7 +46,7 @@ jobs:
           - platform: WINDOWS_64
             archive : 'scala3-${{ inputs.version }}-x86_64-pc-win32.zip'
     steps:
-      - uses: sdkman/sdkman-release-action@f93e93c50d5c60902d0bf87b58aaa58c027094da
+      - uses: sdkman/sdkman-release-action@3eb9347b254fc89b9af3a1ed08b874228f3dcd1f # v0.2.0
         with:
           CONSUMER-KEY   : ${{ secrets.CONSUMER-KEY }}
           CONSUMER-TOKEN : ${{ secrets.CONSUMER-TOKEN }}
@@ -54,12 +54,12 @@ jobs:
           VERSION        : ${{ inputs.version }}
           URL            : '${{ env.RELEASE-URL }}/${{ matrix.archive }}'
           PLATFORM       : ${{ matrix.platform }}
-  
+
   default:
     runs-on: ubuntu-latest
     needs: publish
     steps:
-      - uses: sdkman/sdkman-default-action@b3f991bd109e40155af1b13a4c6fc8e8ccada65e
+      - uses: sdkman/sdkman-default-action@38ca710dbacfada85ccfb609953e4c92a717e557
         with:
           CONSUMER-KEY   : ${{ secrets.CONSUMER-KEY }}
           CONSUMER-TOKEN : ${{ secrets.CONSUMER-TOKEN }}
