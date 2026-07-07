@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 class A {
   def foo1[T]: Unit = {}
   def foo2[T](): Unit = {}

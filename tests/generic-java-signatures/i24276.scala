@@ -1,6 +1,3 @@
-// scalajs: --skip
-// (JVM-only, generic signatures)
-
 class Box[A](value: A) extends AnyVal
 class IBox(value: Int) extends AnyVal
 class SBox(value: String) extends AnyVal

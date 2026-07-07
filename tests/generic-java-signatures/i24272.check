@@ -1,0 +1,1 @@
+public <B> B Foo.bar(B)
