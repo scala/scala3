@@ -82,7 +82,7 @@ case class State(objectIndex: Int,
                  pastInputs: List[String] = Nil):
   def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
 
-  def recordInput(input: String): State = copy(pastInputs = pastInputs :+ input)
+  def recordInput(input: String): State = copy(pastInputs = input :: pastInputs)
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
@@ -610,7 +610,7 @@ class ReplDriver(settings: Array[String],
         out.println("Nothing to save.")
       else
         try
-          val body = state.pastInputs.map(entry => s"${Save.entrySeparator}\n${Save.escapeEntry(entry)}").mkString("\n")
+          val body = state.pastInputs.reverse.map(entry => s"${Save.entrySeparator}\n${Save.escapeEntry(entry)}").mkString("\n")
           val content = s"${Save.sessionHeader}\n$body"
           Files.writeString(new JFile(path).toPath, content, StandardCharsets.UTF_8)
         catch case NonFatal(e) =>
