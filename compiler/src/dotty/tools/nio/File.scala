@@ -37,11 +37,13 @@ object File:
 abstract class File extends FileSystemEntry:
   /** Name of the file without the extension nor the period. */
   def nameWithoutExtension: String =
-    val idx = name.lastIndexOf('.')
+    val idx = name.indexOf('.')
     if idx == -1 then name else name.substring(0, idx)
 
   /** Extension of this file. */
-  def extension: FileExtension
+  def extension: FileExtension =
+    val idx = name.indexOf('.')
+    if idx == -1 then FileExtension.Empty else FileExtension.from(name.substring(idx + 1))
 
   /** Timestamp at which this file was last modified. Arbitrary but comparable across entries. */
   def lastModified(): Long

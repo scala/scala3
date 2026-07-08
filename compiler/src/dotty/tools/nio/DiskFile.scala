@@ -29,13 +29,8 @@ private[nio] object DiskFile:
 
 // Invariant: `underlying` is normalized
 private final class DiskFile(private val underlying: JPath) extends File:
-  override val name: String =
+  override def name: String =
     underlying.getFileName.toString
-
-  override val extension: FileExtension = {
-    val idx = name.lastIndexOf('.')
-    if idx == -1 then FileExtension.Empty else FileExtension.from(name.substring(idx + 1))
-  }
 
   override def path: String =
     underlying.toString

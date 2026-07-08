@@ -4,8 +4,11 @@ import dotty.tools.io.FileExtension
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream}
 
-private[nio] final class MemoryFile(override val parent: FileContainer, override val name: String, override val extension: FileExtension) extends File:
+private[nio] final class MemoryFile(override val parent: FileContainer, override val nameWithoutExtension: String, override val extension: FileExtension) extends File:
   private var contents: Array[Byte] = Array.emptyByteArray
+
+  override def name: String =
+    nameWithoutExtension + extension.withDot
 
   override def path: String =
     parent.path + FileSystemEntry.separator + name
