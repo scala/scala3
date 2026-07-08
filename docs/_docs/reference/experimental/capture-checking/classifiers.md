@@ -161,7 +161,7 @@ The last rule holds since excluding a larger classifier `A` removes more capabil
 
 #### The top classifier
 
-A projection can also name the top above all classifiers, with either `caps.Capability` or `Any`. Neither is itself a classifier trait, but both are accepted as the argument of `.only` and `.except`, where they stand for all capabilities. This gives two limiting cases:
+A projection can also name `Any`, the top above all classifiers. `Any` is not itself a classifier trait, but it is accepted as the argument of `.only` and `.except`, where it stands for all capabilities. This gives two limiting cases:
 
- - `c.only[Any]` (equivalently `c.only[Capability]`) is the _identity_ restriction: it keeps all of `c`, so `{c.only[Any]}` is the same as `{c}`.
- - `c.except[Any]` (equivalently `c.except[Capability]`) is the _empty_ exclusion: it removes all of `c`, so `{c.except[Any]}` is the empty capture set. Like any projection that comes out empty (for instance `c.only[A].except[A]`), it is allowed, not an error.
+ - `c.only[Any]` is the _identity_ restriction: it keeps all of `c`, so `{c.only[Any]}` is the same as `{c}`.
+ - `c.except[Any]` is the _empty_ exclusion: it removes all of `c`, so `{c.except[Any]}` is the empty capture set.

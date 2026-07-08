@@ -446,7 +446,9 @@ sealed abstract class CaptureSet extends Showable:
 
   def maybe(using Context): CaptureSet = map(MaybeMap())
 
-  def restrict(cls: ClassSymbol)(using Context): CaptureSet = map(RestrictMap(cls))
+  def restrict(cls: ClassSymbol)(using Context): CaptureSet =
+    if cls.isTopClassifier then this // identity, as in Capability.restrict
+    else map(RestrictMap(cls))
 
   def exclude(cls: ClassSymbol)(using Context): CaptureSet = map(ExceptMap(cls))
 
@@ -1763,7 +1765,7 @@ object CaptureSet:
     case c @ Classified(c1, only, except) =>
       if c.isKnownEmpty then CaptureSet.empty
       else
-        val cs0 = if only == defn.AnyClass then c1.captureSetOfInfo else c1.captureSetOfInfo.restrict(only)
+        val cs0 = if only.isTopClassifier then c1.captureSetOfInfo else c1.captureSetOfInfo.restrict(only)
         except.foldLeft(cs0)((s, e) => s.exclude(e))
     case ReadOnly(c1) =>
       c1.captureSetOfInfo.readOnly
