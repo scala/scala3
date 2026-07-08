@@ -73,6 +73,30 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.SymbolModule.newBoundedType",
   "scala.quoted.Quotes.reflectModule.SymbolModule.newTypeAlias",
 
+  // New API: experimental capture-checking reflection
+  // Can be stabilized when capture checking is stabilized.
+  "scala.quoted.Quotes.reflectModule.CapturingType",
+  "scala.quoted.Quotes.reflectModule.CapturingTypeTypeTest",
+  "scala.quoted.Quotes.reflectModule.CapturingTypeModule",
+  "scala.quoted.Quotes.reflectModule.CapturingTypeMethods",
+  "scala.quoted.Quotes.reflectModule.ReadOnlyCapability",
+  "scala.quoted.Quotes.reflectModule.ReadOnlyCapabilityModule",
+  "scala.quoted.Quotes.reflectModule.OnlyCapability",
+  "scala.quoted.Quotes.reflectModule.OnlyCapabilityModule",
+  "scala.quoted.Quotes.reflectModule.ExceptCapability",
+  "scala.quoted.Quotes.reflectModule.ExceptCapabilityModule",
+  "scala.quoted.Quotes.reflectModule.RetainingAnnotation",
+  "scala.quoted.Quotes.reflectModule.RetainingAnnotationModule",
+  "scala.quoted.Quotes.reflectModule.SymbolMethods.isPureClass",
+  "scala.quoted.Quotes.reflectModule.defnModule.Caps_Capability",
+  "scala.quoted.Quotes.reflectModule.defnModule.Caps_CapSet",
+  "scala.quoted.Quotes.reflectModule.defnModule.Caps_any",
+  "scala.quoted.Quotes.reflectModule.defnModule.Caps_fresh",
+  "scala.quoted.Quotes.reflectModule.defnModule.ConsumeAnnot",
+  "scala.quoted.Quotes.reflectModule.defnModule.isFunctionClass",
+  "scala.quoted.Quotes.reflectModule.defnModule.isContextFunctionClass",
+  "scala.quoted.Quotes.reflectModule.defnModule.isImpureFunctionClass",
+
   // New feature: functions with erased parameters.
   // Need erasedDefinitions enabled.
   "scala.quoted.Quotes.reflectModule.MethodTypeMethods.erasedParams",

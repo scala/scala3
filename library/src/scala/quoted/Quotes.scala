@@ -216,7 +216,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *               +- SuperType
    *               +- Refinement
    *               +- AppliedType
-   *               +- AnnotatedType
+   *               +- AnnotatedType -+- CapturingType
    *               +- AndOrType -+- AndType
    *               |             +- OrType
    *               +- MatchType
@@ -3470,6 +3470,144 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       end extension
     end AnnotatedTypeMethods
 
+    // ----- Capture checking ------------------------------------------------
+
+    /** A type with a retained capture set: `T^{c1, ..., cn}`.
+     *
+     *  Under capture checking (`language.experimental.captureChecking`), such types
+     *  are encoded as annotated types whose annotation is one of
+     *  `scala.annotation.retains`, `scala.annotation.retainsCap` (for `T^`), or
+     *  `scala.annotation.retainsByName` (for by-name parameter types `->{cs} T`).
+     *
+     *  @note Since `CapturingType` is a subtype of `AnnotatedType`, in pattern
+     *        matches the case for `CapturingType` should come before the case for
+     *        `AnnotatedType` to avoid matching capturing types as plain annotated
+     *        types.
+     *  @note Capture annotations are preserved in unpickled signatures, but they are
+     *        erased whenever a type is transformed (for example by `substituteTypes`
+     *        or `TypeRepr.memberType`) unless capture checking is enabled in the
+     *        current compilation.
+     */
+    @experimental
+    type CapturingType <: AnnotatedType
+
+    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `CapturingType`. */
+    @experimental
+    given CapturingTypeTypeTest: TypeTest[TypeRepr, CapturingType]
+
+    /** Module object of `type CapturingType`. */
+    @experimental
+    val CapturingType: CapturingTypeModule
+
+    /** Methods of the module object `val CapturingType`. */
+    @experimental
+    trait CapturingTypeModule { this: CapturingType.type =>
+      /** Creates the type `parent^{refs}`, encoded as `parent` annotated with `@retains[...]`.
+       *  An empty list of refs creates a type with an empty capture set, `parent^{}`.
+       *
+       *  The refs are not validated or normalized: unlike the types created by the
+       *  capture checker itself, the result may for example retain an explicit
+       *  empty capture set or nested capturing types.
+       *
+       *  @note The result is always encoded with a `retains` annotation. In particular,
+       *        rebuilding a matched by-name capture annotation (`retainsByName`) with
+       *        this method does not restore the by-name encoding.
+       */
+      def apply(parent: TypeRepr, refs: List[TypeRepr]): CapturingType
+      /** Decomposes a capturing type into its parent type and its retained capture references.
+       *  The union-type encoding of the capture set is flattened into a list of atomic
+       *  references, so `apply` followed by `unapply` is not an exact round-trip for
+       *  structured capture sets. The universal capture set `^` yields the reference
+       *  to `scala.caps.any`.
+       */
+      def unapply(x: CapturingType): (TypeRepr, List[TypeRepr])
+    }
+
+    /** Makes extension methods on `CapturingType` available without any imports. */
+    @experimental
+    given CapturingTypeMethods: CapturingTypeMethods
+
+    /** Extension methods of `CapturingType`. */
+    @experimental
+    trait CapturingTypeMethods:
+      extension (self: CapturingType)
+        /** The retained capture references. The parent type to which they apply
+         *  is available as `underlying`.
+         */
+        def retainedElements: List[TypeRepr]
+      end extension
+    end CapturingTypeMethods
+
+    /** Extractor for read-only capabilities `x.rd`, encoded as the type of `x`
+     *  annotated with `scala.annotation.internal.readOnlyCapability`.
+     */
+    @experimental
+    val ReadOnlyCapability: ReadOnlyCapabilityModule
+
+    /** Methods of the module object `val ReadOnlyCapability`. */
+    @experimental
+    trait ReadOnlyCapabilityModule { this: ReadOnlyCapability.type =>
+      /** Creates the read-only capability `tp.rd`. */
+      def apply(tp: TypeRepr): TypeRepr
+      /** Matches a read-only capability `tp.rd` and returns `tp`. */
+      def unapply(tp: TypeRepr): Option[TypeRepr]
+    }
+
+    /** Extractor for capabilities restricted to a classifier, `x.only[C]`, encoded
+     *  as the type of `x` annotated with `scala.annotation.internal.onlyCapability[C]`.
+     */
+    @experimental
+    val OnlyCapability: OnlyCapabilityModule
+
+    /** Methods of the module object `val OnlyCapability`. */
+    @experimental
+    trait OnlyCapabilityModule { this: OnlyCapability.type =>
+      /** Creates the restricted capability `tp.only[C]` for the given classifier class `C`.
+       *  The classifier must be a class symbol.
+       */
+      def apply(tp: TypeRepr, classifier: Symbol): TypeRepr
+      /** Matches a restricted capability `tp.only[C]` and returns `tp` and the classifier class `C`. */
+      def unapply(tp: TypeRepr): Option[(TypeRepr, Symbol)]
+    }
+
+    /** Extractor for capabilities with an excluded classifier, `x.except[C]`, encoded
+     *  as the type of `x` annotated with `scala.annotation.internal.exceptCapability[C]`.
+     */
+    @experimental
+    val ExceptCapability: ExceptCapabilityModule
+
+    /** Methods of the module object `val ExceptCapability`. */
+    @experimental
+    trait ExceptCapabilityModule { this: ExceptCapability.type =>
+      /** Creates the capability `tp.except[C]` for the given classifier class `C`.
+       *  The classifier must be a class symbol.
+       */
+      def apply(tp: TypeRepr, classifier: Symbol): TypeRepr
+      /** Matches a capability `tp.except[C]` and returns `tp` and the excluded classifier class `C`. */
+      def unapply(tp: TypeRepr): Option[(TypeRepr, Symbol)]
+    }
+
+    /** Extractor for annotations of the classes `scala.annotation.retains`,
+     *  `scala.annotation.retainsCap` and `scala.annotation.retainsByName`, which
+     *  carry the capture sets of capturing types. Such annotations can also occur
+     *  on symbols, for example on a class to express its `uses` clause.
+     */
+    @experimental
+    val RetainingAnnotation: RetainingAnnotationModule
+
+    /** Methods of the module object `val RetainingAnnotation`. */
+    @experimental
+    trait RetainingAnnotationModule { this: RetainingAnnotation.type =>
+      /** Matches an annotation tree of class `retains`, `retainsCap` or `retainsByName`
+       *  and returns the retained capture references.
+       *
+       *  @note The shape of retains annotation trees is unspecified; they may appear
+       *        as synthetic type trees whose only meaningful part is their type.
+       *        Use this extractor instead of matching the annotation tree structure.
+       */
+      def unapply(annot: Tree): Option[List[TypeRepr]]
+    }
+
 
     /** Intersection type `T & U` or an union type `T | U`. */
     type AndOrType <: TypeRepr
@@ -4935,6 +5073,23 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         /** Is this the definition of a ClassDef tree? */
         def isClassDef: Boolean
 
+        /** Under capture checking: is this a class whose values never retain
+         *  capabilities? A class is pure if one of its base classes is a subclass of
+         *  `Throwable` or derives from `scala.caps.Pure`, or has an explicitly
+         *  declared self type with an empty capture set; or if it is a value class
+         *  or one of `Nothing`, `Null` or `String`. Values of a pure class type
+         *  never have a non-empty capture set. Returns `false` for symbols that
+         *  are not classes.
+         *
+         *  @note This is an approximation based on the declared (pickled) types:
+         *        the self-type rule applies only to base classes that were compiled
+         *        under capture checking, and self types whose capture sets were
+         *        inferred by the capture checker count as pure, since inferred
+         *        capture sets are not pickled.
+         */
+        @experimental
+        def isPureClass: Boolean
+
         /** Is this the definition of a TypeDef tree. */
         def isTypeDef: Boolean
 
@@ -5388,6 +5543,64 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *   - Char
        */
       def ScalaNumericValueClasses: List[Symbol]
+
+      // ----- Capture checking ---------------------------------------------
+
+      /** The class symbol of class `scala.caps.Capability`. */
+      @experimental
+      def Caps_Capability: Symbol
+
+      /** The class symbol of class `scala.caps.CapSet`. */
+      @experimental
+      def Caps_CapSet: Symbol
+
+      /** The symbol of the object `scala.caps.any`, the universal capability.
+       *  A reference to it is the sole element of the capture set of types written `T^`.
+       */
+      @experimental
+      def Caps_any: Symbol
+
+      /** The symbol of the object `scala.caps.fresh`, the capability that stands
+       *  for a fresh, existentially bound capability in function results.
+       */
+      @experimental
+      def Caps_fresh: Symbol
+
+      /** The class symbol of the annotation class `scala.caps.internal.consume`. */
+      @experimental
+      def ConsumeAnnot: Symbol
+
+      /** Is `sym` one of the function classes or function type aliases
+       *  `scala.FunctionN`, `scala.ContextFunctionN`, `scala.ImpureFunctionN`,
+       *  `scala.ImpureContextFunctionN` or `scala.FunctionXXL`?
+       *
+       *  The test is by name, without dealiasing. In particular, under capture
+       *  checking, impure function types `A => B` appear as applications of the
+       *  type aliases `scala.ImpureFunctionN`, which dealias to `FunctionN[...]^`.
+       *  This test recognizes them, whereas `TypeRepr.isFunctionType` works on
+       *  the dealiased type and cannot distinguish impure from pure functions.
+       */
+      @experimental
+      def isFunctionClass(sym: Symbol): Boolean
+
+      /** Is `sym` one of the context function classes `scala.ContextFunctionN` or
+       *  one of the type aliases `scala.ImpureContextFunctionN`? The test is by
+       *  name, without dealiasing.
+       *
+       *  @see `isFunctionClass`
+       */
+      @experimental
+      def isContextFunctionClass(sym: Symbol): Boolean
+
+      /** Is `sym` one of the impure function type aliases `scala.ImpureFunctionN`
+       *  or `scala.ImpureContextFunctionN`? Under capture checking, these encode
+       *  the function types `A => B` and `A ?=> B` and dealias to `FunctionN[...]^`
+       *  and `ContextFunctionN[...]^`. The test is by name, without dealiasing.
+       *
+       *  @see `isFunctionClass`
+       */
+      @experimental
+      def isImpureFunctionClass(sym: Symbol): Boolean
 
     }
 

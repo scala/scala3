@@ -26,6 +26,15 @@ object MiMaFilters {
       // Breaking changes since last reference version
       Versions.mimaPreviousDottyVersion -> Seq(
 
+        // New @experimental capture-checking reflection API.
+        // Quotes is only implemented by the compiler (QuotesImpl), which is
+        // versioned together with the library, so adding abstract members is safe.
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.CapturingType"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.ReadOnlyCapability"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.OnlyCapability"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.ExceptCapability"),
+        ProblemFilters.exclude[ReversedMissingMethodProblem]("scala.quoted.Quotes#reflectModule.RetainingAnnotation"),
+
         // scala/scala3#26100
         ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyList"),
         ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyList$MidEvaluation$"),

@@ -18,6 +18,7 @@ import dotty.tools.dotc.quoted.PickledQuotes
 import dotty.tools.dotc.quoted.QuotePatterns
 import dotty.tools.dotc.quoted.reflect.*
 
+import scala.annotation.experimental
 import scala.quoted.runtime.{QuoteUnpickler, QuoteMatching}
 import scala.quoted.runtime.impl.printers.*
 
@@ -2148,6 +2149,89 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       end extension
     end AnnotatedTypeMethods
 
+    type CapturingType = dotc.core.Types.AnnotatedType
+
+    /** The refs of a capture set carried by a retains-like annotation with the given
+     *  annotation type, flattening the union-type encoding into atomic references.
+     */
+    private def retainedCaptureRefs(annotType: Types.Type): List[Types.Type] =
+      if annotType.typeSymbol == dotc.core.Symbols.defn.RetainsCapAnnot then
+        dotc.core.Symbols.defn.Caps_any.termRef :: Nil
+      else annotType.argInfos match
+        case refs :: Nil => dotc.cc.retainedElementsRaw(refs)
+        case _ => Nil
+
+    object CapturingTypeTypeTest extends TypeTest[TypeRepr, CapturingType]:
+      def unapply(x: TypeRepr): Option[CapturingType & x.type] = x match
+        case tpe: (Types.AnnotatedType & x.type) if dotc.cc.isRetainsLike(tpe.annot.symbol) => Some(tpe)
+        case _ => None
+    end CapturingTypeTypeTest
+
+    @experimental
+    object CapturingType extends CapturingTypeModule:
+      def apply(parent: TypeRepr, refs: List[TypeRepr]): CapturingType =
+        val refsType = refs.reduceRightOption(Types.OrType(_, _, soft = false))
+          .getOrElse(dotc.core.Symbols.defn.NothingType)
+        Types.AnnotatedType(parent,
+          dotc.cc.RetainingAnnotation(dotc.core.Symbols.defn.RetainsAnnot, refsType))
+      def unapply(x: CapturingType): (TypeRepr, List[TypeRepr]) =
+        (x.underlying.stripTypeVar, retainedCaptureRefs(x.annot.tree.tpe))
+    end CapturingType
+
+    @experimental
+    given CapturingTypeMethods: CapturingTypeMethods with
+      extension (self: CapturingType)
+        def retainedElements: List[TypeRepr] = retainedCaptureRefs(self.annot.tree.tpe)
+      end extension
+    end CapturingTypeMethods
+
+    @experimental
+    object ReadOnlyCapability extends ReadOnlyCapabilityModule:
+      def apply(tp: TypeRepr): TypeRepr = dotc.cc.ReadOnlyCapability(tp)
+      def unapply(tp: TypeRepr): Option[TypeRepr] = tp match
+        case tp: Types.AnnotatedType => dotc.cc.ReadOnlyCapability.unapply(tp)
+        case _ => None
+    end ReadOnlyCapability
+
+    @experimental
+    object OnlyCapability extends OnlyCapabilityModule:
+      def apply(tp: TypeRepr, classifier: Symbol): TypeRepr =
+        dotc.cc.OnlyCapability(tp, classifier.asClass)
+      def unapply(tp: TypeRepr): Option[(TypeRepr, Symbol)] = tp match
+        case Types.AnnotatedType(parent, ann)
+        if ann.hasSymbol(dotc.core.Symbols.defn.OnlyCapabilityAnnot) =>
+          ann.tree.tpe.argTypes match
+            case classifier :: Nil =>
+              classifier.dealias.typeSymbol match
+                case cls if cls.isClass => Some((parent, cls))
+                case _ => None
+            case _ => None
+        case _ => None
+    end OnlyCapability
+
+    @experimental
+    object ExceptCapability extends ExceptCapabilityModule:
+      def apply(tp: TypeRepr, classifier: Symbol): TypeRepr =
+        dotc.cc.ExceptCapability(tp, classifier.asClass)
+      def unapply(tp: TypeRepr): Option[(TypeRepr, Symbol)] = tp match
+        case Types.AnnotatedType(parent, ann)
+        if ann.hasSymbol(dotc.core.Symbols.defn.ExceptCapabilityAnnot) =>
+          ann.tree.tpe.argTypes match
+            case classifier :: Nil =>
+              classifier.dealias.typeSymbol match
+                case cls if cls.isClass => Some((parent, cls))
+                case _ => None
+            case _ => None
+        case _ => None
+    end ExceptCapability
+
+    @experimental
+    object RetainingAnnotation extends RetainingAnnotationModule:
+      def unapply(annot: Tree): Option[List[TypeRepr]] =
+        if dotc.cc.isRetainsLike(annot.tpe.typeSymbol) then Some(retainedCaptureRefs(annot.tpe))
+        else None
+    end RetainingAnnotation
+
     type AndOrType = dotc.core.Types.AndOrType
 
     object AndOrTypeTypeTest extends TypeTest[TypeRepr, AndOrType]:
@@ -3022,6 +3106,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def isTerm: Boolean = self.isTerm
         def isPackageDef: Boolean = self.is(dotc.core.Flags.Package)
         def isClassDef: Boolean = self.isClass
+        def isPureClass: Boolean = dotc.cc.isDeclaredPureClass(self)
         def isTypeDef: Boolean =
           self.isType && !self.isClass && !self.is(dotc.core.Flags.Case)
         def isValDef: Boolean =
@@ -3270,6 +3355,18 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         UnitClass :: BooleanClass :: ScalaNumericValueClasses
       def ScalaNumericValueClasses: List[Symbol] =
         ByteClass :: ShortClass :: IntClass :: LongClass :: FloatClass :: DoubleClass :: CharClass :: Nil
+
+      def Caps_Capability: Symbol = dotc.core.Symbols.defn.Caps_Capability
+      def Caps_CapSet: Symbol = dotc.core.Symbols.defn.Caps_CapSet
+      def Caps_any: Symbol = dotc.core.Symbols.defn.Caps_any
+      def Caps_fresh: Symbol = dotc.core.Symbols.defn.Caps_fresh
+      def ConsumeAnnot: Symbol = dotc.core.Symbols.defn.ConsumeAnnot
+      def isFunctionClass(sym: Symbol): Boolean =
+        dotc.core.Symbols.defn.isFunctionSymbol(sym)
+      def isContextFunctionClass(sym: Symbol): Boolean =
+        dotc.core.Symbols.defn.isFunctionSymbol(sym) && sym.name.isContextFunction
+      def isImpureFunctionClass(sym: Symbol): Boolean =
+        dotc.core.Symbols.defn.isFunctionSymbol(sym) && sym.name.isImpureFunction
     end defn
 
     type Flags = dotc.core.Flags.FlagSet

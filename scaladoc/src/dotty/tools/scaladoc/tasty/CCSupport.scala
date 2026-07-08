@@ -1,15 +1,15 @@
 package dotty.tools.scaladoc
-
-package cc
+package tasty
 
 import scala.quoted._
 
 /** Scaladoc-specific helpers for rendering capture-checked signatures.
  *
  *  The extractors for capturing types and capabilities live in the experimental
- *  quotes reflect API: see `CapturingType`, `ReadOnlyCapability`, `OnlyCapability`,
- *  `RetainingAnnotation`, `Symbol.isPureClass` and the capture-checking members of
- *  `defn`. This file only keeps glue that is specific to how scaladoc renders
+ *  `cc` module of the quotes reflect API: see `cc.CapturingType`,
+ *  `cc.ReadOnlyCapability`, `cc.OnlyCapability`, `cc.RetainingAnnotation`, as
+ *  well as `Symbol.isPureClass` and the capture-checking members of `defn`.
+ *  This file only keeps glue that is specific to how scaladoc renders
  *  capture-checked code.
  */
 object CaptureDefs:
@@ -43,13 +43,13 @@ extension (using qctx: Quotes)(tpe: qctx.reflect.TypeRepr)
   def isCapSetPure: Boolean =
     import qctx.reflect._
     tpe.isCapSet && tpe.match
-      case CapturingType(_, refs) => refs.isEmpty
+      case cc.CapturingType(_, refs) => refs.isEmpty
       case _ => true
 
   def isCapSetCap: Boolean =
     import qctx.reflect._
     tpe.isCapSet && tpe.match
-      case CapturingType(_, List(ref)) => ref.isCaptureRoot
+      case cc.CapturingType(_, List(ref)) => ref.isCaptureRoot
       case _ => false
 
   /** Is this a type whose values never retain capabilities? Resolves the type

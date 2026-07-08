@@ -668,6 +668,31 @@ extension (sym: Symbol) {
     case _ =>
       false
 
+  /** An approximation of `isPureClass` that does not depend on capture-checker
+   *  state, usable outside the capture checking phases, e.g. when inspecting
+   *  unpickled TASTY through the reflection API. A class counts as pure if
+   *   - it is one of the pure simple classes (Nothing, Null, String, value classes), or
+   *   - one of its base classes is Throwable or caps.Pure, or
+   *   - one of its base classes was capture-checked, is not a module class, and has
+   *     an explicitly declared self type whose declared capture set is empty.
+   *  Unlike `isPureClass`, this does not take strict mutability into account, and
+   *  self types whose capture sets were inferred count as pure, since inferred
+   *  capture sets are not pickled.
+   */
+  def isDeclaredPureClass(using Context): Boolean = sym match
+    case cls: ClassSymbol =>
+      defn.pureSimpleClasses.contains(cls)
+      || cls.baseClasses.exists: bc =>
+          defn.pureBaseClasses.contains(bc)
+          || bc.is(CaptureChecked) && !bc.is(ModuleClass)
+              && bc.givenSelfType.dealiasKeepAnnots.match
+                case AnnotatedType(_, ann: RetainingAnnotation) =>
+                  ann.retainedType.retainedElementsRaw.isEmpty
+                case selfType =>
+                  selfType.exists
+    case _ =>
+      false
+
   /** Does this symbol allow results carrying the universal capability?
    *  Currently this is true only for function type applies (since their
    *  results are unboxed) and `caps.{$internal,unsafe}.erasedValue` since
