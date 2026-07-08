@@ -72,6 +72,7 @@ import scala.util.Using
  *  @param invalidObjectIndexes the set of object indexes that failed to initialize
  *  @param quiet       whether we print evaluation results
  *  @param context     the latest compiler context
+ *  @param pastInputs  the replayable inputs of the session, most recent first
  */
 case class State(objectIndex: Int,
                  valIndex: Int,
@@ -564,6 +565,9 @@ class ReplDriver(settings: Array[String],
     val separatorLine = s"(?m)^${Pattern.quote(Save.entrySeparator)}$$"
     val entries = contents.stripPrefix(Save.sessionHeader).split(separatorLine).toList
       .map(_.strip).filter(_.nonEmpty)
+    replayEntries(entries, state)
+
+  private def replayEntries(entries: List[String], state: State): State =
     entries.foldLeft(state) { (st, entry) =>
       if ParseResult.isCommand(entry) then interpret(ParseResult(entry)(using st))(using st)
       else run(entry)(using st)
@@ -595,6 +599,19 @@ class ReplDriver(settings: Array[String],
 
       resetToInitial(tokens)
       initialState
+
+    case Replay(arg) =>
+      val tokens = tokenize(arg)
+
+      if tokens.nonEmpty then
+        out.println(s"""|Replaying REPL session with the following settings:
+                        |  ${tokens.mkString("\n  ")}
+                        |""".stripMargin)
+      else
+        out.println("Replaying REPL session.")
+
+      resetToInitial(tokens)
+      replayEntries(state.pastInputs.reverse, initialState)
 
     case Imports =>
       for {

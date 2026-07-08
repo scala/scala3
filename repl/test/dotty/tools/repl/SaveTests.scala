@@ -3,32 +3,15 @@ package repl
 
 import scala.language.unsafeNulls
 
-import java.io.FileOutputStream
-import java.nio.file.{Path, Files}
-import java.util.jar.JarOutputStream
+import java.nio.file.Files
 
 import org.junit.Test
 import org.junit.Assert.assertEquals
 
-class SaveTests extends ReplTest {
-
-  private def tempFile(suffix: String = ".scala"): Path =
-    val file = Files.createTempFile("repl_save", suffix)
-    file.toFile.deleteOnExit()
-    file
-
-  private def emptyJar(): Path =
-    val jar = tempFile(".jar")
-    new JarOutputStream(new FileOutputStream(jar.toFile)).close()
-    jar
-
-  private def contentOf(f: Path): String = Files.readString(f)
+class SaveTests extends ReplTest, SessionFileHelpers {
 
   private def lines() =
       storedOutput().trim.linesIterator.toList
-
-  private val header = Save.sessionHeader
-  private val sep = Save.entrySeparator
 
   @Test def savesSuccessfulInputs =
     val target = tempFile()
