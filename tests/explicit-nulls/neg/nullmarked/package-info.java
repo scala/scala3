@@ -1,4 +1,2 @@
-@NullMarked
+@org.jspecify.annotations.NullMarked
 package test;
-
-import org.jspecify.annotations.*;

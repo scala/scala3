@@ -1136,23 +1136,26 @@ object JavaParsers {
       if buf.isEmpty then
         while (in.token == IMPORT)
           buf ++= importDecl()
-      while (in.token != EOF && in.token != RBRACE) {
-        while (in.token == SEMI) in.nextToken()
-        if (in.token != EOF) {
-          val start = in.offset
-          val mods = modifiers(inInterface = false)
-          adaptRecordIdentifier() // needed for typeDecl
-          buf ++= typeDeclOrCompact(start, mods)
+      // expect nothing when the file is named "package-info.java"
+      if (!source.file.path.endsWith("package-info.java")) {
+        while (in.token != EOF && in.token != RBRACE) {
+          while (in.token == SEMI) in.nextToken()
+          if (in.token != EOF) {
+            val start = in.offset
+            val mods = modifiers(inInterface = false)
+            adaptRecordIdentifier() // needed for typeDecl
+            buf ++= typeDeclOrCompact(start, mods)
+          }
         }
       }
       val unit =
-        if leadingAnnots.nonEmpty && pkg != Ident(nme.EMPTY_PACKAGE) then
-          atSpan(start):
+        atSpan(start):
+          if leadingAnnots.nonEmpty && pkg != Ident(nme.EMPTY_PACKAGE) then
             leadingAnnots.foldLeft[Tree](PackageDef(pkg, buf.toList)): (base, annot) =>
               Annotated(base, annot)
+          else
+            PackageDef(pkg, buf.toList)
 
-        else
-          atSpan(start) { PackageDef(pkg, buf.toList) }
       accept(EOF)
       if (compact) EmptyTree
       else unit match
