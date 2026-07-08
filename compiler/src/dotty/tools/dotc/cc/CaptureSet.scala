@@ -1762,8 +1762,9 @@ object CaptureSet:
 
   /** The capture set of the type underlying the capability `c` */
   def ofInfo(c: Capability)(using Context): CaptureSet = c match
-    case c @ Classified(c1, only, except) =>
-      if c.isKnownEmpty then CaptureSet.empty
+    case Classified(c1, only, except) =>
+      // cheap check; classifier-dependent empties are dropped per-element downstream
+      if only == defn.NothingClass then CaptureSet.empty
       else
         val cs0 = if only.isTopClassifier then c1.captureSetOfInfo else c1.captureSetOfInfo.restrict(only)
         except.foldLeft(cs0)((s, e) => s.exclude(e))
