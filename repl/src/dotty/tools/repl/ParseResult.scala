@@ -321,6 +321,17 @@ object ParseResult {
   private def onlyCommandSoFar(sourceCode: String): Boolean =
     !sourceCode.contains('\n') && CommandExtract.matches(sourceCode)
 
+  /** A lone leading directive block or a single `:command` line with no trailing
+   *  code yet. During a paste we keep reading so following code joins this input;
+   *  on a single interactive ENTER (nothing pending) it is submitted as-is. */
+  private[repl] def awaitsTrailingCode(sourceCode: String): Boolean =
+    !sourceCode.endsWith("\n") && (onlyDirectivesSoFar(sourceCode) || onlyCommandSoFar(sourceCode))
+
+  /** Whether JLine should accept the current buffer as a complete submission. */
+  private[repl] def shouldAcceptLine(sourceCode: String, hasPendingInput: Boolean)(using Context): Boolean =
+    if awaitsTrailingCode(sourceCode) then !hasPendingInput
+    else !isIncomplete(sourceCode)
+
   /** Check if the input is incomplete.
    *
    *  This can be used in order to check if a newline can be inserted without
@@ -329,10 +340,6 @@ object ParseResult {
   def isIncomplete(sourceCode: String)(using Context): Boolean =
     sourceCode match {
       case "" => false
-      // A lone directive or command line defers until the following pasted code arrives,
-      // so the whole block is submitted (and evaluated) as a single input. The trailing
-      // newline of the paste, or a second Enter, completes a directive/command on its own.
-      case _ if (onlyDirectivesSoFar(sourceCode) || onlyCommandSoFar(sourceCode)) && !sourceCode.endsWith("\n") => true
       case CommandExtract(_, _) => false
       case _ => {
         val reporter = newStoreReporter

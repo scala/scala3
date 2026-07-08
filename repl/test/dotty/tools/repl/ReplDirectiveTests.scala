@@ -7,35 +7,47 @@ import org.junit.Test
 class ReplDirectiveTests extends ReplTest:
 
   @Test def `lone dep directive is incomplete until code follows`: Unit = contextually:
-    assertTrue(ParseResult.isIncomplete("//> using dep com.lihaoyi::os-lib:0.11.3"))
+    assertTrue(ParseResult.awaitsTrailingCode("//> using dep com.lihaoyi::os-lib:0.11.3"))
+    assertFalse(ParseResult.isIncomplete("//> using dep com.lihaoyi::os-lib:0.11.3"))
 
   @Test def `dep directive with code is complete`: Unit = contextually:
+    assertFalse(ParseResult.awaitsTrailingCode("//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
     assertFalse(ParseResult.isIncomplete("//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
 
   @Test def `lone dep directive with trailing newline is complete`: Unit = contextually:
+    assertFalse(ParseResult.awaitsTrailingCode("//> using dep com.lihaoyi::os-lib:0.11.3\n"))
     assertFalse(ParseResult.isIncomplete("//> using dep com.lihaoyi::os-lib:0.11.3\n"))
 
   @Test def `multiple dep directives without code are incomplete`: Unit = contextually:
-    assertTrue(ParseResult.isIncomplete(
+    assertTrue(ParseResult.awaitsTrailingCode(
+      "//> using dep com.lihaoyi::upickle:4.4.3\n//> using dep com.lihaoyi::os-lib:0.11.3"))
+    assertFalse(ParseResult.isIncomplete(
       "//> using dep com.lihaoyi::upickle:4.4.3\n//> using dep com.lihaoyi::os-lib:0.11.3"))
 
   @Test def `multiple dep directives with code are complete`: Unit = contextually:
+    assertFalse(ParseResult.awaitsTrailingCode(
+      "//> using dep com.lihaoyi::upickle:4.4.3\n//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
     assertFalse(ParseResult.isIncomplete(
       "//> using dep com.lihaoyi::upickle:4.4.3\n//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
 
   @Test def `unsupported directive with code is complete`: Unit = contextually:
+    assertFalse(ParseResult.awaitsTrailingCode("//> using options -Werror\nval x = 1"))
     assertFalse(ParseResult.isIncomplete("//> using options -Werror\nval x = 1"))
 
   @Test def `plain comment is complete`: Unit = contextually:
+    assertFalse(ParseResult.awaitsTrailingCode("// just a comment"))
     assertFalse(ParseResult.isIncomplete("// just a comment"))
 
   @Test def `lone command is incomplete until code follows`: Unit = contextually:
-    assertTrue(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3"))
+    assertTrue(ParseResult.awaitsTrailingCode(":dep com.lihaoyi::os-lib:0.11.3"))
+    assertFalse(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3"))
 
   @Test def `command with code is complete`: Unit = contextually:
+    assertFalse(ParseResult.awaitsTrailingCode(":dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
     assertFalse(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
 
   @Test def `lone command with trailing newline is complete`: Unit = contextually:
+    assertFalse(ParseResult.awaitsTrailingCode(":dep com.lihaoyi::os-lib:0.11.3\n"))
     assertFalse(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3\n"))
 
   @Test def `command with trailing code parses as CommandThenCode`: Unit = initially:

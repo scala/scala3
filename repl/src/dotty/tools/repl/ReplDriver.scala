@@ -774,8 +774,8 @@ class ReplDriver(settings: Array[String],
     val classified = DependencyResolver.classifyDirectives(sourceCode)
     classified.unsupportedKeys.foreach: key =>
       out.println(
-        s"[warn] The `using $key` directive is not supported in the REPL. " +
-        "To use it, re-run with the `scala` command and pass the directive inside an input."
+        s"""[warn] The `using $key` directive is not supported in the REPL.
+           |To use it, re-run with the `scala` command and pass the directive inside an input.""".stripMargin
       )
     resolveAndAddDeps(classified.deps)
 
