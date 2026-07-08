@@ -160,7 +160,7 @@ class ParserTests:
     assertEquals(0, kp.line)
     assertEquals(10, kp.column)
     assertEquals(10, kp.offset)
-    val vp = ds.head.values.head.pos
+    val vp = ds.head.values.head.position
     assertEquals(16, vp.column)
   }
 

@@ -1392,6 +1392,7 @@ object Build {
       ),
       publish / skip := true,
       target := target.value / "scala3-directives-parser-nonbootstrapped",
+      Compile / compile / scalacOptions += "-Wunused:all",
       fetchedScalaInstanceSettings,
       bspEnabled := true,
     )
@@ -1419,6 +1420,7 @@ object Build {
       Test    / publishArtifact := false,
       publish / skip := false,
       target := target.value / "scala3-directives-parser",
+      Compile / compile / scalacOptions += "-Wunused:all",
       bootstrappedScalaInstanceSettings,
       bspEnabled := enableBspAllProjects,
     )

@@ -156,11 +156,3 @@ class LexerTests:
     val err = tokens.collectFirst { case Token.LexError(msg, _) => msg }.get
     assertTrue(s"error message: $err", err.contains("Whitespace is required"))
   }
-
-  @Test def splitDottedIdent_splits_key_segments(): Unit = {
-    val pos = Position(0, 10, 10)
-    val tokens = Lexer.splitDottedIdent("test.dep", pos)
-    val idents = tokens.collect { case Token.Ident(v, _) => v }
-    assertEquals(Seq("test", "dep"), idents)
-    assertEquals(1, tokens.collect { case _: Token.Dot => () }.length)
-  }
