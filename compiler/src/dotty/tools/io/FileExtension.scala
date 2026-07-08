@@ -18,8 +18,8 @@ enum FileExtension(val toLowerCase: String):
   /** represents an empty file extension. */
   def isEmpty: Boolean = this == Empty
 
-  /** the full extension including a leading dot */
-  val withDot: String = "." + toLowerCase
+  /** the full extension including a leading dot if not empty */
+  val withDot: String = if isEmpty then "" else "." + toLowerCase
 
   override def toString: String = toLowerCase
 
