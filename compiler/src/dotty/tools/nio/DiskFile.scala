@@ -46,8 +46,11 @@ private final class DiskFile(private val underlying: JPath) extends File:
   override def enclosing: Option[File] =
     None
 
-  override def lastModified: Long =
+  override def lastModified(): Long =
     JFiles.getLastModifiedTime(underlying).toMillis
+
+  override def size(): Long =
+    JFiles.size(underlying)
 
   override def delete(): Unit =
     JFiles.deleteIfExists(underlying)

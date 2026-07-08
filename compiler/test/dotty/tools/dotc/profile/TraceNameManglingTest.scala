@@ -1,28 +1,27 @@
 package dotty.tools.dotc.profile
 
-import org.junit.Assert.*
 import org.junit.*
 
-import scala.annotation.tailrec
 import dotty.tools.DottyTest
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.core.Contexts.FreshContext
-import java.nio.file.Files
+import dotty.tools.nio.*
+import dotty.tools.io.FileExtension
 import java.util.Locale
 
 class TraceNameManglingTest extends DottyTest {
 
   override protected def initializeCtx(fc: FreshContext): Unit = {
     super.initializeCtx(fc)
-    val tmpDir = Files.createTempDirectory("trace_name_mangling_test").nn
+    val tmpDir = FileContainer.createTemporaryOnDisk("trace_name_mangling_test")
     fc.setSetting(fc.settings.YprofileEnabled, true)
     fc.setSetting(
       fc.settings.YprofileTrace,
-      tmpDir.resolve("trace.json").nn.toAbsolutePath().toString()
+      tmpDir.getOrCreateFile("trace", FileExtension.from("json")).path
     )
     fc.setSetting(
       fc.settings.YprofileDestination,
-      tmpDir.resolve("profiler.out").nn.toAbsolutePath().toString()
+      tmpDir.getOrCreateFile("profiler", FileExtension.from("out")).path
     )
   }
 

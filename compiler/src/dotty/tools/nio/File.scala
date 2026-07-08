@@ -44,7 +44,10 @@ abstract class File extends FileSystemEntry:
   def extension: FileExtension
 
   /** Timestamp at which this file was last modified. Arbitrary but comparable across entries. */
-  def lastModified: Long
+  def lastModified(): Long
+
+  /** Size of the file in bytes. */
+  def size(): Long
 
   /** Opens an input stream to read from this file. Only use if other methods are not appropriate. */
   def input(): InputStream

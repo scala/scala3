@@ -13,8 +13,11 @@ private[nio] final class MemoryFile(override val parent: FileContainer, override
   override def enclosing: Option[File] =
     None
 
-  override def lastModified: Long =
+  override def lastModified(): Long =
     0 // we do not track this
+
+  override def size(): Long =
+    contents.length
 
   override def delete(): Unit =
     contents = Array.emptyByteArray
