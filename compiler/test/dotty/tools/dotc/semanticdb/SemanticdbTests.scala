@@ -1,7 +1,6 @@
 package dotty.tools.dotc.semanticdb
 
 import java.util.regex.Pattern
-import java.io.ByteArrayOutputStream
 import java.nio.file.*
 import java.nio.charset.StandardCharsets
 import java.util.stream.Collectors
@@ -149,11 +148,7 @@ end SemanticdbTests
 
 object SemanticdbTests:
   def printTextDocument(doc: TextDocument): String =
-    val byteStream = new ByteArrayOutputStream()
-    val out = SemanticdbOutputStream.newInstance(byteStream)
-    doc.writeTo(out)
-    out.flush()
-    DocumentPrinter.textDocumentPrettyPrint(byteStream.toByteArray.nn)
+    DocumentPrinter.textDocumentPrettyPrint(doc.toByteArray)
   end printTextDocument
 
 

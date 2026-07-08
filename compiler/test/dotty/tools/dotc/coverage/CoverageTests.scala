@@ -9,12 +9,12 @@ import dotty.{BootstrappedOnlyTests, Properties}
 import dotty.tools.vulpix.*
 import dotty.tools.vulpix.TestConfiguration.*
 import dotty.tools.dotc.reporting.TestReporter
+import dotty.tools.nio.FileSystemEntry
 
 import java.nio.file.{FileSystems, Files, Path, Paths, StandardCopyOption}
 import scala.jdk.CollectionConverters.*
 import scala.util.Properties.userDir
 import scala.collection.mutable.Buffer
-
 import java.nio.charset.StandardCharsets
 import java.util.stream.Collectors
 
@@ -40,8 +40,7 @@ class CoverageTests:
   def checkCoverageIn(dir: Path, run: Boolean)(using TestGroup): Unit =
     /** Converts \\ (escaped \) to / on windows, to make the tests pass without changing the serialization. */
     def fixWindowsPaths(lines: Buffer[String]): Buffer[String] =
-      val separator = java.io.File.separatorChar
-      if separator == '\\' then
+      if FileSystemEntry.separator == '\\' then
         val escapedSep = "\\\\"
         lines.map(_.replace(escapedSep, "/"))
       else

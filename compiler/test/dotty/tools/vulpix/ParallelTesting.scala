@@ -2,20 +2,20 @@ package dotty
 package tools
 package vulpix
 
-import java.io.{File as JFile, PrintStream}
+import java.io.{PrintStream, File as JFile}
 import java.lang.management.ManagementFactory
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Paths}
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.{HashMap, Timer, TimerTask}
-import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
-
-import scala.collection.mutable, mutable.ArrayBuffer, mutable.ListBuffer
+import java.util.concurrent.{TimeUnit, TimeoutException, Executors as JExecutors}
+import scala.collection.mutable
+import mutable.ArrayBuffer
+import mutable.ListBuffer
 import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Random, Try, Using}
 import scala.util.Properties.{isJavaAtLeast, javaSpecVersion}
-
 import dotc.{Compiler, Driver}
 import dotty.tools.dotc.CoverageSupport
 import dotc.core.Contexts.*
@@ -23,8 +23,8 @@ import dotc.report
 import dotc.interfaces.Diagnostic.{ERROR, WARNING}
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
-import dotc.util.{SourceFile, SourcePosition, Spans, NoSourcePosition}
-import io.AbstractFile
+import dotc.util.{NoSourcePosition, SourceFile, SourcePosition, Spans}
+import io.{AbstractFile, ClassPath}
 import util.chaining.*
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
@@ -73,7 +73,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         .flatMap(base => Iterator(new JFile(s"$base.$testPlatform.check"), new JFile(s"$base.check")))
         .find(_.exists())
 
-    def runClassPath: String = outDir.getPath + JFile.pathSeparator + flags.runClassPath
+    def runClassPath: String = outDir.getPath + ClassPath.pathSeparator + flags.runClassPath
 
     def title: String = self match {
       case self: JointCompilationSource =>
@@ -670,7 +670,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         Fetch()
           .addDependencies(dep)
           .run()
-          .mkString(JFile.pathSeparator)
+          .mkString(ClassPath.pathSeparator)
 
       val pageWidth = TestConfiguration.pageWidth - 20
 
@@ -737,7 +737,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       val reporter = mkReporter
       val driver = new Driver
 
-      val args = Array("-classpath", flags.defaultClassPath + JFile.pathSeparator + bestEffortDir.toString) ++ flags.options
+      val args = Array("-classpath", flags.defaultClassPath + ClassPath.pathSeparator + bestEffortDir.toString) ++ flags.options
 
       driver.process(args ++ files0.map(_.toString), reporter = reporter)
 

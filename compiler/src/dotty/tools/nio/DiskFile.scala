@@ -7,6 +7,11 @@ import dotty.tools.io.FileExtension
 import scala.io.Codec
 
 private[nio] object DiskFile:
+  def get(path: String): Option[File] =
+    val jpath = JPath.of(path)
+    if JFiles.exists(jpath) then Some(new DiskFile(jpath))
+    else None
+
   def getOrCreate(path: String): File =
     val jpath = JPath.of(path)
     if !JFiles.exists(jpath) then

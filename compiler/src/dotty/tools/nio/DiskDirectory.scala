@@ -14,6 +14,9 @@ private[nio] object DiskDirectory:
       JFiles.createDirectory(jpath)
     new DiskDirectory(jpath)
 
+  def createTemporary(nameHint: String): FileContainer =
+    new DiskDirectory(JFiles.createTempDirectory(nameHint))
+
 private[nio] final class DiskDirectory(underlying: JPath) extends FileContainer:
   override val name: String =
     underlying.getFileName.toString

@@ -1,34 +1,27 @@
 package dotty.tools.dotc.core.tasty
 
-import java.io.{File => JFile}
-import java.nio.file.{Files, NoSuchFileException}
-
 import scala.sys.process.*
-
 import org.junit.Test
-import org.junit.Assert.{assertTrue, assertFalse}
-
+import org.junit.Assert.{assertFalse, assertTrue}
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
-import dotty.tools.io.{Path, JarArchive}
-
+import dotty.tools.io.{JarArchive, Path}
+import dotty.tools.nio.FileContainer
 import dotty.tools.vulpix.TestConfiguration
 
 class PathPicklingTest {
 
   @Test def test(): Unit = {
-    val out = JFile("out/testPathPickling")
-    val cwd = JFile("").getAbsolutePath()
-    delete(out)
-    out.mkdirs()
+    FileContainer.getOrCreateOnDisk("out/testPathPickling", "").deleteRecursively()
+    val out = FileContainer.getOrCreateOnDisk("out/testPathPickling", "")
 
     locally {
       val ignorantProcessLogger = ProcessLogger(_ => ())
       val options = TestConfiguration.defaultOptions
         .and("-d", s"$out/out.jar")
         .and("-sourceroot", "tests/pos")
-        .and(s"$cwd/tests/pos/i10430/lib.scala", s"$cwd/tests/pos/i10430/app.scala")
+        .and(s"tests/pos/i10430/lib.scala", s"tests/pos/i10430/app.scala")
       val reporter = TestReporter.reporter(System.out, logLevel = ERROR)
       val rep = Main.process(options.all, reporter)
       assertFalse("Compilation failed.", rep.hasErrors)
@@ -52,13 +45,5 @@ class PathPicklingTest {
     assertTrue(printedTasty.contains("[i10430/app.scala]"))
     assertFalse(printedTasty.contains(": i10430\\app.scala"))
     assertFalse(printedTasty.contains("[i10430\\app.scala]"))
-  }
-
-  private def delete(file: JFile): Unit = {
-    if (file.isDirectory) file.listFiles.foreach(delete)
-    try Files.delete(file.toPath)
-    catch {
-      case _: NoSuchFileException => // already deleted, everything's fine
-    }
   }
 }

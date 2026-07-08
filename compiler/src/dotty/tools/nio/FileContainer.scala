@@ -4,10 +4,14 @@ import dotty.tools.io.FileExtension
 
 object FileContainer:
   /** Gets or creates a file container at the given path on disk, using the given JAR version if necessary. */
-  def getOrCreateFromDisk(path: String, jarVersion: String): FileContainer =
+  def getOrCreateOnDisk(path: String, jarVersion: String): FileContainer =
     if path.endsWith(FileExtension.Jar.withDot) then new JarContainer(DiskFile.getOrCreate(path), jarVersion)
     else if path.endsWith(FileExtension.Zip.withDot) then new ZipContainer(DiskFile.getOrCreate(path))
     else DiskDirectory.getOrCreate(path)
+
+  /** Creates a temporary file container on disk. */
+  def createTemporaryOnDisk(nameHint: String): FileContainer =
+    DiskDirectory.createTemporary(nameHint)
 
   /** Creates a new in-memory file container with the given name. Does not conflict with other in-memory containers with the same name. */
   def createInMemory(name: String): FileContainer =

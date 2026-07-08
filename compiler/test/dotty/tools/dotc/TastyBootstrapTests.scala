@@ -12,6 +12,8 @@ import TestSources.sources
 import vulpix.*
 import reporting.TestReporter
 
+import dotty.tools.io.ClassPath
+
 class TastyBootstrapTests {
   import ParallelTesting.*
   import TestConfiguration.*
@@ -43,7 +45,7 @@ class TastyBootstrapTests {
         // and the other compiler dependencies:
         Properties.compilerInterface, Properties.scalaLibrary, Properties.scalaAsm,
         Properties.dottyInterfaces, Properties.jlineTerminal, Properties.jlineReader,
-      ).mkString(File.pathSeparator),
+      ).mkString(ClassPath.pathSeparator),
       Array("-Ycheck-reentrant", "-language:postfixOps", "-Xsemanticdb")
     )
 

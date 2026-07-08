@@ -6,8 +6,12 @@ import java.io.{BufferedReader, BufferedWriter, InputStream, InputStreamReader, 
 import scala.io.Codec
 
 object File:
+  /** Gets a file on disk at the given path, if it exists. */
+  def getOnDisk(path: String): Option[File] =
+    DiskFile.get(path)
+
   /** Gets or creates a file on disk at the given path. */
-  def getOrCreateFromDisk(path: String): File =
+  def getOrCreateOnDisk(path: String): File =
     DiskFile.getOrCreate(path)
 
   /** If the given file is also a container, such as an archive, opens it as such and returns it, using the given JAR version if necessary. Otherwise, returns None. */
