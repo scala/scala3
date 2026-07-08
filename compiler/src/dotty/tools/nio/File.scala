@@ -3,6 +3,7 @@ package dotty.tools.nio
 import dotty.tools.io.FileExtension
 
 import java.io.{BufferedReader, BufferedWriter, InputStream, InputStreamReader, OutputStream, OutputStreamWriter}
+import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.io.Codec
 
 // TODO we should find "leaks" ie undeleted files
@@ -62,6 +63,12 @@ abstract class File extends FileSystemEntry:
   def readText(codec: Codec): String =
     new String(readBytes(), codec.charSet)
 
+  /** Reads all lines from this file using the given codec. */
+  def readLines(codec: Codec): Iterable[String] = new Iterable[String] {
+    def iterator: Iterator[String] =
+      reader(codec).lines().iterator().asScala
+  }
+
   /** Opens an output stream to write into this file, optionally appending. Only use if other methods are not appropriate. */
   def output(append: Boolean = false): OutputStream
 
@@ -80,6 +87,10 @@ abstract class File extends FileSystemEntry:
     val out = output(append)
     try out.write(str.getBytes(codec.charSet))
     finally out.close()
+
+  /** Copies this file to the given file. */
+  def copyTo(other: File): Unit =
+    input().transferTo(other.output())
 
   /** Deletes this file. */
   def delete(): Unit

@@ -9,11 +9,11 @@ import scala.jdk.CollectionConverters.*
 
 private[nio] object DiskDirectory:
   def get(path: String): Option[FileContainer] =
-    val jpath = JPath.of(path)
+    val jpath = JPath.of(path).normalize()
     Option.when(JFiles.isDirectory(jpath))(new DiskDirectory(jpath))
 
   def getOrCreate(path: String): FileContainer =
-    val jpath = JPath.of(path)
+    val jpath = JPath.of(path).normalize()
     if !JFiles.isDirectory(jpath) then
       JFiles.createDirectories(jpath)
     new DiskDirectory(jpath)

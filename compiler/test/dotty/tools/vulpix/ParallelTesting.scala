@@ -162,7 +162,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     }
 
     final override def toString: String = sourceFiles match {
-      case Array(f) => f.getPath
+      case Array(f) => 
+        f.getPath
       case _        => outDir.getPath.stripPrefix(defaultOutputDirName).stripPrefix(name).stripPrefix("/")
     }
   }

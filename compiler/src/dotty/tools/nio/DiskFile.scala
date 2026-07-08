@@ -3,16 +3,17 @@ package dotty.tools.nio
 import java.io.{BufferedReader, BufferedWriter, InputStream, OutputStream}
 import java.nio.file.{OpenOption, StandardOpenOption, Files as JFiles, Path as JPath}
 import dotty.tools.io.FileExtension
+import scala.jdk.CollectionConverters.IterableHasAsScala
 
 import scala.io.Codec
 
 private[nio] object DiskFile:
   def get(path: String): Option[File] =
-    val jpath = JPath.of(path)
+    val jpath = JPath.of(path).normalize()
     Option.when(JFiles.isRegularFile(jpath))(new DiskFile(jpath))
 
   def getOrCreate(path: String): File =
-    val jpath = JPath.of(path)
+    val jpath = JPath.of(path).normalize()
     if !JFiles.isRegularFile(jpath) then {
       JFiles.createDirectories(jpath.getParent)
       JFiles.createFile(jpath)
@@ -33,7 +34,7 @@ private[nio] final class DiskFile(underlying: JPath) extends File:
 
   override val extension: FileExtension = {
     val idx = name.lastIndexOf('.')
-    if idx == -1 then FileExtension.Empty else FileExtension.from(name.substring(idx))
+    if idx == -1 then FileExtension.Empty else FileExtension.from(name.substring(idx + 1))
   }
 
   override def path: String =
@@ -59,6 +60,9 @@ private[nio] final class DiskFile(underlying: JPath) extends File:
 
   override def readText(codec: Codec): String =
     JFiles.readString(underlying, codec.charSet)
+
+  override def readLines(codec: Codec): Iterable[String] =
+    JFiles.readAllLines(underlying, codec.charSet).asScala
 
   override def output(append: Boolean): OutputStream =
     JFiles.newOutputStream(underlying, DiskFile.options(append)*)

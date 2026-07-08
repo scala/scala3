@@ -26,6 +26,13 @@ abstract class FileContainer extends FileSystemEntry:
   /** All file system entries directly contained by this container. */
   def entries: Iterable[FileSystemEntry]
 
+  /** All file system entries recursively contained by this container, not including itself. */
+  def recursiveEntries: Iterable[FileSystemEntry] =
+    entries.flatMap {
+      case c: FileContainer => Iterable.single(c) ++ c.recursiveEntries
+      case e => Iterable.single(e)
+    }
+
   /** Gets the file in this container at the given path if it exists, with the given extension, and optionally using the given path separator. */
   final def getFile(path: String, extension: FileExtension, separator: Char = FileSystemEntry.separator): Option[File] =
     lookupPath(path, separator, create = false, isFile = true, extension = extension).map(_.asInstanceOf[File])
