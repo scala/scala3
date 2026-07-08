@@ -2,13 +2,12 @@ package dotty
 package tools
 package scripting
 
-import java.nio.file.Paths
-import org.junit.{Test, Ignore, AfterClass}
+import org.junit.{AfterClass, Ignore, Test}
 import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeFalse
 import org.junit.experimental.categories.Category
-
 import ScriptTestEnv.*
+import dotty.tools.nio.*
 
 /** Verifies correct handling of command line arguments by `dist/bin/scala` and `dist/bin/scalac`.
  *   +. arguments following a script path must be treated as script arguments
@@ -22,10 +21,7 @@ object BashScriptsTests:
 
   @AfterClass def cleanup: Unit = {
     cleanupScalaCLIDirs()
-
-    val af = argsfile.toFile
-    if af.exists then
-      af.delete()
+    File.getOnDisk(argsfile).foreach(_.delete())
   }
 
   printf("osname[%s]\n", osname)
@@ -60,7 +56,7 @@ object BashScriptsTests:
         ff
       case None =>
         printf("test file [%s] not found!\n", name)
-        name.absPath
+        name
     }
     file
 
@@ -117,12 +113,12 @@ class BashScriptsTests:
   /* verify that `dist/bin/scala` can set system properties via -D when executing compiled script via -jar envtest.jar */
   @Test def saveAndRunWithDProperty =
     assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
-    val libOut = envtestScala.relpath.stripSuffix(".scala") + ".jar"
+    val libOut = envtestScala.stripSuffix(".scala") + ".jar"
     val commandline = Seq(
-      "SCALA_OPTS= ", scalaPath.relpath, "--power", "package", envtestScala.relpath, "-o", libOut, "--library", "--offline", "--server=false").mkString(" ")
+      "SCALA_OPTS= ", scalaPath, "--power", "package", envtestScala, "-o", libOut, "--library", "--offline", "--server=false").mkString(" ")
     val (_, _, _, _) = bashCommand(commandline) // compile jar, discard output
     val testJar = testFile("envtest.jar") // jar is created by the previous bashCommand()
-    if (testJar.isFile){
+    if (File.getOnDisk(testJar).nonEmpty){
       printf("compiled envtest.scala to %s\n", testJar.norm)
     } else {
       sys.error(s"error: unable to compile envtest.scala to ${testJar.norm}")
@@ -130,7 +126,7 @@ class BashScriptsTests:
 
     val tag = "World5"
     val commandline2 = Seq(
-      "SCALA_OPTS= ", scalaPath.relpath, "run", s"-Dkey=$tag", "-classpath", testJar.relpath, "--power", "--offline", "--server=false")
+      "SCALA_OPTS= ", scalaPath, "run", s"-Dkey=$tag", "-classpath", testJar, "--power", "--offline", "--server=false")
     printf("cmd[%s]\n", commandline2.mkString(" "))
     val (validTest, exitCode, stdout, stderr) = bashCommand(commandline2.mkString(" "))
     assertEquals(s"Hello $tag", stdout.mkString("/n"))
@@ -221,8 +217,7 @@ class BashScriptsTests:
     val scriptBase = "sqlDateError_scalacli"
     val scriptFile = testFiles.find(_.getName == s"$scriptBase.sc").get
     val testJar = testFile(s"$scriptBase.jar") // jar should not be created when scriptFile runs
-    val tj = Paths.get(testJar).toFile
-    if tj.isFile then tj.delete() // discard residual debris from previous test
+    File.getOnDisk(testJar).foreach(_.delete()) // discard residual debris from previous test
     printf("===> verify '-save' is cancelled by '-nosave' in script hashbang.`\n")
     val (validTest, exitCode, stdout, stderr) = bashCommand(s"SCALA_OPTS=-save ${scriptFile.absPath}")
     printf("stdout: %s\n", stdout.mkString("\n","\n",""))
@@ -235,7 +230,7 @@ class BashScriptsTests:
         stderr.foreach { printf("stderr[%s]\n", _) }
       if valid then printf(s"\n===> success: scripts can override -save via -nosave\n")
       assert(valid, s"script ${scriptFile.absPath} reported unexpected value for java.sql.Date ${stdout.mkString("\n")}")
-      assert(!testJar.exists,s"unexpected, jar file [$testJar] was created")
+      assert(File.getOnDisk(testJar).isEmpty, s"unexpected, jar file [$testJar] was created")
 
 
   /*

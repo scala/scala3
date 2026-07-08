@@ -2,10 +2,9 @@ package dotty
 package tools
 package scripting
 
-import java.io.File
-
-import org.junit.{Test, Ignore, AfterClass}
+import org.junit.{AfterClass, Ignore, Test}
 import ScriptTestEnv.*
+import dotty.tools.nio.File
 
 object ClasspathTests:
   @AfterClass def cleanup: Unit = {
@@ -29,7 +28,7 @@ class ClasspathTests:
       case None => sys.error(s"test script not found: ${testScriptName}")
       case Some(file) => file
 
-    val relpath = testScript.toPath.relpath.norm
+    val relpath = testScript.toPath.toString.norm
     printf("===> hashbangClasspathVerifyTest for script [%s]\n", relpath)
     printf("bash is [%s]\n", bashExe)
 
@@ -49,7 +48,7 @@ class ClasspathTests:
       val scriptCp = findTaggedLine("classpath", scriptOutput) // the value tagged "classpath: "
 
       // convert scriptCp to a list of files
-      val hashbangJars: List[File] = scriptCp.split(psep).map { _.toFile }.toList
+      val hashbangJars: List[File] = scriptCp.split(psep).map(File.getOrCreateOnDisk).toList
       val hashbangClasspathJars = hashbangJars.map { _.name }.sorted.distinct // get jar basenames, remove duplicates
       val packlibDir: String = ??? /* ??? was s"$scriptCwd/$packLibDir" */ // classpathReport_scalacli.sc specifies a wildcard classpath in this directory
       val packlibJars: List[File] = listJars(packlibDir) // classpath entries expected to have been reported by the script
@@ -66,9 +65,9 @@ class ClasspathTests:
       // (a minimal subset of jars below dist*/target/universal/stage/lib are always be in the classpath)
       val missingClasspathEntries = if hashbangClasspathJars.size != packlibJars.size then
         printf("packlib dir [%s]\n", packlibDir)
-        printf("hashbangClasspathJars: %s\n", hashbangJars.map { _.relpath.norm }.mkString("\n ", "\n ", ""))
+        printf("hashbangClasspathJars: %s\n", hashbangJars.map { _.path }.mkString("\n ", "\n ", ""))
         printf("# %s\n", msg)
-        diff.foreach { (f: File) => printf(" %s\n", f.relpath.norm) }
+        diff.foreach { (f: File) => printf(" %s\n", f.path) }
       else
         Set.empty[String]
 

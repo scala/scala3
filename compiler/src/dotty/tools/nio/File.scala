@@ -5,7 +5,12 @@ import dotty.tools.io.FileExtension
 import java.io.{BufferedReader, BufferedWriter, InputStream, InputStreamReader, OutputStream, OutputStreamWriter}
 import scala.io.Codec
 
+// TODO we should find "leaks" ie undeleted files
+// TODO simpler equals/hashcode for DiskFile / DiskDirectory via normalize + intern?
+
 object File:
+  // There is no "create an in-memory file" here. All files must have a container, so create a container first!
+
   /** Gets a file on disk at the given path, if it exists. */
   def getOnDisk(path: String): Option[File] =
     DiskFile.get(path)
@@ -20,13 +25,20 @@ object File:
     else if file.ext == FileExtension.Zip then Some(new ZipContainer(file))
     else None
 
+  /** Creates a temporary file on disk. */
+  def createTemporaryOnDisk(nameHint: String): File =
+    DiskFile.createTemporary(nameHint)
+
   /** Gets a file that does not exist, used to avoid the need for Option or nullables throughout the compiler. (This is kind a hack.) */
   def none(): File =
     NoFile
 
-  // There is no "create an in-memory file" here. All files must have a container, so create a container first!
-
 abstract class File extends FileSystemEntry:
+  /** Name of the file without the extension nor the period. */
+  def nameWithoutExt: String =
+    val idx = name.lastIndexOf('.')
+    if idx == -1 then name else name.substring(0, idx)
+
   /** Extension of this file. */
   def ext: FileExtension
 

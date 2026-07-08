@@ -8,10 +8,14 @@ import java.nio.file.{FileVisitResult, SimpleFileVisitor, Files as JFiles, Path 
 import scala.jdk.CollectionConverters.*
 
 private[nio] object DiskDirectory:
+  def get(path: String): Option[FileContainer] =
+    val jpath = JPath.of(path)
+    Option.when(JFiles.isDirectory(jpath))(new DiskDirectory(jpath))
+
   def getOrCreate(path: String): FileContainer =
     val jpath = JPath.of(path)
-    if !JFiles.exists(jpath) then
-      JFiles.createDirectory(jpath)
+    if !JFiles.isDirectory(jpath) then
+      JFiles.createDirectories(jpath)
     new DiskDirectory(jpath)
 
   def createTemporary(nameHint: String): FileContainer =
@@ -50,12 +54,12 @@ private[nio] final class DiskDirectory(underlying: JPath) extends FileContainer:
   /** Gets the file in this container with the given name and extension if it exists. */
   protected override def getFile(name: String, extension: FileExtension): Option[File] =
     val res = underlying.resolve(name)
-    if JFiles.isRegularFile(res) then Some(new DiskFile(res)) else None
+    Option.when(JFiles.isRegularFile(res))(new DiskFile(res))
 
   /** Gets the container in this container with the given name if it exists. */
   protected override def getContainer(name: String): Option[FileContainer] =
     val res = underlying.resolve(name)
-    if JFiles.isDirectory(res) then Some(new DiskDirectory(res)) else None
+    Option.when(JFiles.isDirectory(res))(new DiskDirectory(res))
 
   /** Creates a file in this container with the given name and extension. */
   protected override def createFile(name: String, extension: FileExtension): File =

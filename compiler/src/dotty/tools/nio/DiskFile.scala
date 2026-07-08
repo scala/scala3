@@ -9,14 +9,18 @@ import scala.io.Codec
 private[nio] object DiskFile:
   def get(path: String): Option[File] =
     val jpath = JPath.of(path)
-    if JFiles.exists(jpath) then Some(new DiskFile(jpath))
-    else None
+    Option.when(JFiles.isRegularFile(jpath))(new DiskFile(jpath))
 
   def getOrCreate(path: String): File =
     val jpath = JPath.of(path)
-    if !JFiles.exists(jpath) then
+    if !JFiles.isRegularFile(jpath) then {
+      JFiles.createDirectories(jpath.getParent)
       JFiles.createFile(jpath)
+    }
     new DiskFile(jpath)
+
+  def createTemporary(nameHint: String): File =
+    new DiskFile(JFiles.createTempFile(nameHint, "temp"))
 
   private val appendOptions: Array[OpenOption] = Array(StandardOpenOption.APPEND, StandardOpenOption.CREATE)
   private val overwriteOptions: Array[OpenOption] = Array(StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)

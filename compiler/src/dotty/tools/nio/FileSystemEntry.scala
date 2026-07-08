@@ -5,7 +5,7 @@ object FileSystemEntry:
   val separator: Char = java.io.File.separatorChar
 
 abstract class FileSystemEntry:
-  /** Name of this entry, without extension nor separating dot if it's a file. */
+  /** Name of this entry, without extension nor separating period if it's a file. */
   def name: String
 
   /** Full path of this entry. If the entry exists on disk, this path is usable as such. */
@@ -16,3 +16,7 @@ abstract class FileSystemEntry:
 
   /** If this entry is enclosed in an archive, returns that archive. Otherwise, returns None. */
   def enclosing: Option[File]
+
+  /** Describes this file. Deliberately not `path` to catch misuse. */
+  final override def toString: String =
+    s"<file system entry at $path>"

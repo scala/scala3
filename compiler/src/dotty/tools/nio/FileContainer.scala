@@ -3,6 +3,11 @@ package dotty.tools.nio
 import dotty.tools.io.FileExtension
 
 object FileContainer:
+  def getOnDisk(path: String, jarVersion: String): Option[FileContainer] =
+    if path.endsWith(FileExtension.Jar.withDot) then DiskFile.get(path).map(new JarContainer(_, jarVersion))
+    else if path.endsWith(FileExtension.Zip.withDot) then DiskFile.get(path).map(new ZipContainer(_))
+    else DiskDirectory.get(path)
+  
   /** Gets or creates a file container at the given path on disk, using the given JAR version if necessary. */
   def getOrCreateOnDisk(path: String, jarVersion: String): FileContainer =
     if path.endsWith(FileExtension.Jar.withDot) then new JarContainer(DiskFile.getOrCreate(path), jarVersion)
