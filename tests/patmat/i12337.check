@@ -1,2 +1,16 @@
-8: Pattern Match Exhaustivity: Foo(Inactive)
-17: Pattern Match Exhaustivity: Foo(Status.Active(_))
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i12337.scala:8:26 ---
+8 |def bar(foo: Foo): Unit = foo match {
+  |                          ^^^
+  |                          match may not be exhaustive.
+  |
+  |                          It would fail on pattern case: Foo(Inactive)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i12337.scala:17:26 --
+17 |def baz(foo: Foo): Unit = foo match {
+   |                          ^^^
+   |                    match may not be exhaustive.
+   |
+   |                    It would fail on pattern case: Foo(Status.Active(_))
+   |
+   | longer explanation available when compiling with `-explain`

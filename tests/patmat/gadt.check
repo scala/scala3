@@ -1,4 +1,32 @@
-13: Pattern Match Exhaustivity: IntLit(_)
-22: Pattern Match Exhaustivity: Or(_, _)
-45: Pattern Match Exhaustivity: IntLit(_), BooleanLit(_)
-55: Pattern Match Exhaustivity: Sum(_, _)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/gadt.scala:13:28 ----
+13 |  def foo1b(x: Expr[Int]) = x match {
+   |                            ^
+   |                            match may not be exhaustive.
+   |
+   |                            It would fail on pattern case: IntLit(_)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/gadt.scala:22:32 ----
+22 |  def foo2b(x: Expr[Boolean]) = x match {
+   |                                ^
+   |                                match may not be exhaustive.
+   |
+   |                                It would fail on pattern case: Or(_, _)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/gadt.scala:45:26 ----
+45 |  def foo4b(x: Expr[?]) = x match {
+   |                          ^
+   |                 match may not be exhaustive.
+   |
+   |                 It would fail on pattern case: IntLit(_), BooleanLit(_)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/gadt.scala:55:36 ----
+55 |  def foo5b[T <: Int](x: Expr[T]) = x match {
+   |                                    ^
+   |                                match may not be exhaustive.
+   |
+   |                                It would fail on pattern case: Sum(_, _)
+   |
+   | longer explanation available when compiling with `-explain`

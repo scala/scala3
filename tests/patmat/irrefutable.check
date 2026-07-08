@@ -1,2 +1,16 @@
-22: Pattern Match Exhaustivity: _: A, _: B, C(_, _)
-65: Pattern Match Exhaustivity: _: M
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/irrefutable.scala:22:22 
+22 |  def test(b: Base) = b match {  // warning
+   |                      ^
+   |                      match may not be exhaustive.
+   |
+   |                      It would fail on pattern case: _: A, _: B, C(_, _)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/irrefutable.scala:65:19 
+65 |  def test(m: M) = m match {  // warning
+   |                   ^
+   |                   match may not be exhaustive.
+   |
+   |                   It would fail on pattern case: _: M
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,1 +1,8 @@
-7: Pattern Match Exhaustivity: (IntExpr(_), AddExpr(_, _))
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/gadt-nontrivial.scala:7:51 
+7 |  def join[T](e1: Expr[T], e2: Expr[T]): Expr[T] = (e1, e2) match {
+  |                                                   ^^^^^^^^
+  |                match may not be exhaustive.
+  |
+  |                It would fail on pattern case: (IntExpr(_), AddExpr(_, _))
+  |
+  | longer explanation available when compiling with `-explain`
