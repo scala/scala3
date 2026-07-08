@@ -11,12 +11,10 @@ import dotty.tools.vulpix.TestConfiguration
 import org.junit.Test
 import org.junit.Assert.*
 import core.Decorators.toMessage
-import dotty.tools.io.{Path, PlainFile}
+import dotty.tools.io.FileExtension
+import dotty.tools.nio.{File, FileContainer}
 
 import java.net.URI
-import java.nio.file.Files
-import scala.util.Using
-
 import scala.annotation.nowarn
 
 class ScalaSettingsTests:
@@ -193,34 +191,38 @@ class ScalaSettingsTests:
     assertEquals(Right(reporting.Action.Default), result)
 
   @Test def `WConf src filter silences warnings from a matching path for real file`: Unit =
-    val result = Using.resource(Files.createTempFile("myfile", ".scala").nn) { file =>
-      wconfSrcFilterTest(
-        argsStr = "-Wconf:src=myfile.*?\\.scala:s",
-        warning = reporting.Diagnostic.Warning(
-          "A warning".toMessage,
-          util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
-            span = util.Spans.Span(1L)
+    val file = File.createTemporaryOnDisk("myfile", FileExtension.Scala)
+    try
+      val result =
+        wconfSrcFilterTest(
+          argsStr = "-Wconf:src=myfile.*?\\.scala:s",
+          warning = reporting.Diagnostic.Warning(
+            "A warning".toMessage,
+            util.SourcePosition(
+              source = util.SourceFile(new dotty.tools.io.PlainFile(dotty.tools.io.Path(file.path)), "UTF-8"),
+              span = util.Spans.Span(1L)
+            )
           )
         )
-      )
-    }(using Files.deleteIfExists(_))
-    assertEquals(result, Right(reporting.Action.Silent))
+      assertEquals(result, Right(reporting.Action.Silent))
+    finally file.delete()
 
   @Test def `WConf src filter doesn't silence warnings from a non-matching path for real file`: Unit =
-    val result = Using.resource(Files.createTempFile("myfile", ".scala").nn) { file =>
-      wconfSrcFilterTest(
-        argsStr = "-Wconf:src=another.*?\\.scala:s",
-        warning = reporting.Diagnostic.Warning(
-          "A warning".toMessage,
-          util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
-            span = util.Spans.Span(1L)
+    val file = File.createTemporaryOnDisk("myfile", FileExtension.Scala)
+    try
+      val result =
+        wconfSrcFilterTest(
+          argsStr = "-Wconf:src=another.*?\\.scala:s",
+          warning = reporting.Diagnostic.Warning(
+            "A warning".toMessage,
+            util.SourcePosition(
+              source = util.SourceFile(new dotty.tools.io.PlainFile(dotty.tools.io.Path(file.path)), "UTF-8"),
+              span = util.Spans.Span(1L)
+            )
           )
         )
-      )
-    }(using Files.deleteIfExists(_))
-    assertEquals(Right(reporting.Action.Default), result)
+      assertEquals(Right(reporting.Action.Default), result)
+    finally file.delete()
 
   @Test def `WConf src filter reports an error on an invalid regex`: Unit =
     val result = wconfSrcFilterTest(
@@ -311,12 +313,14 @@ class ScalaSettingsTests:
   // see sbt-test/pipelining/pipelining-test/test
   @Test def `-Xearly-tasty-output preferPrevious does not warn on change of value`: Unit =
     val settings = ScalaSettings
-    val conf = Using.resource(Files.createTempDirectory("testDir")): dir =>
-      val args = List("-Ypickle-write", s"$dir/foo.jar", "-Ypickle-write", s"$dir/bar.jar")
+    val dir = FileContainer.createTemporaryOnDisk("testDir")
+    try
+      val args = List("-Ypickle-write", s"${dir.path}/foo.jar", "-Ypickle-write", s"${dir.path}/bar.jar")
       val argSummary = ArgsSummary(settings.defaultState, args, errors = Nil, warnings = Nil)
-      settings.processArguments(argSummary, processAll = true, skipped = Nil)
-    assert(conf.warnings.isEmpty, s"WARN: ${conf.warnings}")
-    assert(conf.errors.isEmpty, s"ERROR: ${conf.errors}")
+      val conf = settings.processArguments(argSummary, processAll = true, skipped = Nil)
+      assert(conf.warnings.isEmpty, s"WARN: ${conf.warnings}")
+      assert(conf.errors.isEmpty, s"ERROR: ${conf.errors}")
+    finally dir.deleteRecursively()
 
   @Test def `-Xjava-tasty preferPrevious warns on change of value`: Unit =
     val settings = ScalaSettings

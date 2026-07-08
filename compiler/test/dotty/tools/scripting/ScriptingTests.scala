@@ -161,7 +161,7 @@ class ScriptingTests:
 
   def script2jar(scriptFile: java.io.File) =
     val f = File.getOnDisk(scriptFile.getPath).get
-    f.parent.getOrCreateFile(f.nameWithoutExt, FileExtension.Jar)
+    f.parent.getOrCreateFile(f.nameWithoutExtension, FileExtension.Jar)
 
   def showScriptUnderTest(name: String): Unit =
     printf("===> test script name [%s]\n", name)

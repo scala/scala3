@@ -185,7 +185,7 @@ object ScriptTestEnv {
   def listJars(dir: String): List[File] =
     FileContainer.getOnDisk(dir, "") match
       case Some(d) =>
-        d.entries.collect { case f: File if f.ext == FileExtension.Jar => f }.toList
+        d.entries.collect { case f: File if f.extension == FileExtension.Jar => f }.toList
       case _ =>
         Nil
 
@@ -206,7 +206,7 @@ object ScriptTestEnv {
   def exec(cmd: String *): Seq[String] = Process(cmd).lazyLines_!.toList
 
   def script2jar(scriptFile: File) =
-    scriptFile.parent.getOrCreateFile(scriptFile.nameWithoutExt, FileExtension.Jar)
+    scriptFile.parent.getOrCreateFile(scriptFile.nameWithoutExtension, FileExtension.Jar)
 
   def showScriptUnderTest(scriptFile: File): Unit =
     printf("===> test script name [%s]\n", scriptFile.name)
@@ -221,7 +221,7 @@ object ScriptTestEnv {
   ////////////////////////////////////////////////////////////////////////////////
 
   def createArgsFile(): String =
-    val path = File.createTemporaryOnDisk("scriptingTest")
+    val path = File.createTemporaryOnDisk("scriptingTest", FileExtension.from("args"))
     val text = s"-classpath $workingDirectory"
     path.writeText(text, Codec.UTF8)
     path.path

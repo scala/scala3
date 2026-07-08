@@ -9,7 +9,7 @@ private[nio] object NoFile extends File:
   override def path: String = name
   override def parent: FileContainer = NoFileContainer
   override def enclosing: Option[File] = None
-  override def ext: FileExtension = FileExtension.Empty
+  override def extension: FileExtension = FileExtension.Empty
   override def lastModified: Long = 0
   override def input(): InputStream = throw new IOException("Cannot open NoFile for reading")
   override def output(append: Boolean = false): OutputStream = throw new IOException("Cannot open NoFile for writing")

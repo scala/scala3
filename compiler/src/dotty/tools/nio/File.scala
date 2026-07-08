@@ -21,13 +21,13 @@ object File:
 
   /** If the given file is also a container, such as an archive, opens it as such and returns it, using the given JAR version if necessary. Otherwise, returns None. */
   def openAsArchive(file: File, jarVersion: String): Option[FileContainer] =
-    if file.ext == FileExtension.Jar then Some(new JarContainer(file, jarVersion))
-    else if file.ext == FileExtension.Zip then Some(new ZipContainer(file))
+    if file.extension == FileExtension.Jar then Some(new JarContainer(file, jarVersion))
+    else if file.extension == FileExtension.Zip then Some(new ZipContainer(file))
     else None
 
   /** Creates a temporary file on disk. */
-  def createTemporaryOnDisk(nameHint: String): File =
-    DiskFile.createTemporary(nameHint)
+  def createTemporaryOnDisk(nameHint: String, extension: FileExtension): File =
+    DiskFile.createTemporary(nameHint, extension)
 
   /** Gets a file that does not exist, used to avoid the need for Option or nullables throughout the compiler. (This is kind a hack.) */
   def none(): File =
@@ -35,12 +35,12 @@ object File:
 
 abstract class File extends FileSystemEntry:
   /** Name of the file without the extension nor the period. */
-  def nameWithoutExt: String =
+  def nameWithoutExtension: String =
     val idx = name.lastIndexOf('.')
     if idx == -1 then name else name.substring(0, idx)
 
   /** Extension of this file. */
-  def ext: FileExtension
+  def extension: FileExtension
 
   /** Timestamp at which this file was last modified. Arbitrary but comparable across entries. */
   def lastModified: Long

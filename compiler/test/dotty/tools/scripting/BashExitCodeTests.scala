@@ -2,8 +2,6 @@ package dotty
 package tools
 package scripting
 
-import java.nio.file.Files
-import java.nio.charset.StandardCharsets.UTF_8
 import org.junit.{After, Ignore, Test}
 import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeFalse

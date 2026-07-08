@@ -19,8 +19,8 @@ private[nio] object DiskFile:
     }
     new DiskFile(jpath)
 
-  def createTemporary(nameHint: String): File =
-    new DiskFile(JFiles.createTempFile(nameHint, "temp"))
+  def createTemporary(nameHint: String, extension: FileExtension): File =
+    new DiskFile(JFiles.createTempFile(nameHint, extension.withDot))
 
   private val appendOptions: Array[OpenOption] = Array(StandardOpenOption.APPEND, StandardOpenOption.CREATE)
   private val overwriteOptions: Array[OpenOption] = Array(StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.CREATE)
@@ -31,7 +31,7 @@ private[nio] final class DiskFile(underlying: JPath) extends File:
   override val name: String =
     underlying.getFileName.toString
 
-  override val ext: FileExtension = {
+  override val extension: FileExtension = {
     val idx = name.lastIndexOf('.')
     if idx == -1 then FileExtension.Empty else FileExtension.from(name.substring(idx))
   }
