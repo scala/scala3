@@ -192,8 +192,8 @@ case object Help extends Command {
       |:type <expression>       evaluate the type of the given expression
       |:doc <expression>        print the documentation for the given expression
       |:imports                 show import history
-      |:reset [options]         reset the REPL to its initial state, forgetting all session entries
-      |:replay [options]        reset the REPL and replay all previous commands
+      |:reset [options]         clear the session and start fresh with the given compiler options
+      |:replay [options]        reset, then re-run the session with the given compiler options
       |:settings <options>      update compiler options, if possible
       |:silent                  disable/enable automatic printing of results
       |:dep <group>::<artifact>:<version>     Resolve a dependency and make it available in the REPL
