@@ -149,7 +149,7 @@ def onUnclassified(proc: () => Unit)    = runOnNewThread(() => proc())          
 def onShared(shared: SharedCapability^) = runOnNewThread(() => shared.toString) // error
 ```
 
-Restriction and exclusion can be combined: `c.only[A].except[B]` keeps those capabilities of `c` that are classified as `A` but not as `B`. If `B` covers all of `A`, the result is the empty capture set. Currently at most one `except` clause can be given per capture reference. <!--  TODO: fix in implementation -->
+Restriction and exclusion can be combined: `c.only[A].except[B]` keeps those capabilities of `c` that are classified as `A` but not as `B`. If `B` covers all of `A`, the result is the empty capture set. Several exclusions can be chained — `c.except[A].except[B]` removes both — and their order does not matter.
 
 Subcapturing relates excluded capabilities as follows, where `B` is a subtrait of classifier trait `A`:
 ```
