@@ -1,8 +1,6 @@
 package dotty.tools
 package repl
 
-import scala.language.unsafeNulls
-
 import dotc.*, core.*
 import Contexts.*, Decorators.*, Denotations.*, Flags.*, NameOps.*, StdNames.*, Symbols.*
 import printing.ReplPrinter
@@ -65,19 +63,21 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
      * after return
      */
     private trait BorrowContext {
-      private var borrowed: Context = uninitialized
+      private var borrowed: Context | Null = null
 
       def useContext[T](op: Context ?=> T): T = synchronized {
-        require(borrowed != null, "BorrowContext.access called without a borrowed context")
-        op(using borrowed)
+        val localCtx = borrowed
+        assert(localCtx != null, "BorrowContext.access called without a borrowed context")
+        op(using localCtx)
       }
 
       def borrow[T](ctx: Context)(op: => T): T = synchronized {
-        if borrowed == null then
+        val oldCtx = borrowed
+        try
           borrowed = ctx
-          try op
-          finally borrowed = null
-        else op
+          op
+        finally
+          borrowed = oldCtx
       }
     }
 
@@ -112,69 +112,15 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       catch case NonFatal(_) => None
 
     private def hasRuntimeUserDefinedToString(declaringClass: Class[?]): Boolean =
-      try
-        // Some classpath-local products do not resolve back to their TASTy symbol.
-        // Reject synthesized case-class toString by cracking its bytecode.
-        !isScalaRunTimeProductToString(declaringClass)
-      catch case NonFatal(_) => false
-
-    private def isScalaRunTimeProductToString(clazz: Class[?]): Boolean =
-      def classBytes: Array[Byte] | Null =
-        val resourceName = clazz.getName.replace('.', '/') + ".class"
-        val loader = clazz.getClassLoader
-        val stream =
-          if loader == null then ClassLoader.getSystemResourceAsStream(resourceName)
-          else loader.getResourceAsStream(resourceName)
-        if stream == null then null
-        else
-          try stream.readAllBytes()
-          finally stream.close()
-
-      def isScalaRunTimeModule(insn: AbstractInsnNode): Boolean = insn match
-        case insn: FieldInsnNode =>
-          insn.getOpcode == GETSTATIC
-            && insn.owner == "scala/runtime/ScalaRunTime$"
-            && insn.name == "MODULE$"
-        case _ => false
-
-      def isLoadThis(insn: AbstractInsnNode): Boolean = insn match
-        case insn: VarInsnNode => insn.getOpcode == ALOAD && insn.`var` == 0
-        case _ => false
-
-      def isScalaRunTimeToString(insn: AbstractInsnNode): Boolean = insn match
-        case insn: MethodInsnNode =>
-          (insn.getOpcode == INVOKEVIRTUAL || insn.getOpcode == INVOKESTATIC)
-            && (insn.owner == "scala/runtime/ScalaRunTime$" || insn.owner == "scala/runtime/ScalaRunTime")
-            && insn.name == "_toString"
-            && insn.desc == "(Lscala/Product;)Ljava/lang/String;"
-        case _ => false
-
-      def isReturn(insn: AbstractInsnNode): Boolean =
-        insn.getOpcode == ARETURN
-
-      def isSynthesizedToString(method: MethodNode): Boolean =
-        method.instructions.iterator.asScala.filter(_.getOpcode >= 0).toList match
-          case List(module, loadThis, call, ret) =>
-            isScalaRunTimeModule(module) && isLoadThis(loadThis) && isScalaRunTimeToString(call) && isReturn(ret)
-          case List(loadThis, call, ret) =>
-            isLoadThis(loadThis) && isScalaRunTimeToString(call) && isReturn(ret)
-          case _ => false
-
-      val bytes = classBytes
-      if bytes == null then false
-      else
-        val classNode = ClassNode()
-        ClassReader(bytes).accept(classNode, ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES)
-        classNode.methods.asScala.exists: method =>
-          method.name == "toString"
-            && method.desc == "()Ljava/lang/String;"
-            && isSynthesizedToString(method)
+      // Some classpath-local products do not resolve back to their TASTy symbol.
+      // Reject synthesized case-class toString by cracking its bytecode.
+      !ReplBytecodeAnalysis.isScalaRunTimeProductToString(declaringClass)
 
     private def runtimeClassSymbol(clazz: Class[?])(using Context): Symbol = {
       def getClassFromName(className: String | Null): Symbol =
         if className == null then NoSymbol
         else
-          val name = className.nn.toTypeName
+          val name = className.toTypeName
           val direct = getClassIfDefined(name)
           if direct.exists then direct
           else getClassIfDefined(name.unmangleClassName)
