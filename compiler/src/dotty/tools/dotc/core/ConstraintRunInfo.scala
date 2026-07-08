@@ -3,6 +3,8 @@ package core
 
 import Contexts.*
 import config.Printers.{default, typr}
+import dotty.tools.dotc.util.NoSourcePosition
+
 import scala.compiletime.uninitialized
 
 trait ConstraintRunInfo { self: Run =>
@@ -17,8 +19,8 @@ trait ConstraintRunInfo { self: Run =>
     if maxSize > 0 then
       val printer = if ctx.settings.YdetailedStats.value then default else typr
       printer.println(s"max constraint size: $maxSize")
-      try printer.println(s"max constraint = ${maxConstraint.nn.show}")
-      catch case ex: StackOverflowError => printer.println("max constraint cannot be printed due to stack overflow")
+      ctx.handleRecursive("printing max constraint of size", () => maxSize.toString):
+        printer.println(s"max constraint = ${maxConstraint.nn.show}")
 
   protected def reset(): Unit = maxConstraint = null
 }

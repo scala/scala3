@@ -14,30 +14,27 @@ import Uniques.*
 import ast.Trees.*
 import Flags.ParamAccessor
 import ast.untpd
-import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance, WrappedSourceFile}
-import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
+import util.{HashSet, NoSource, ReusableInstance, SimpleIdentityMap, SourceFile, SrcPos, Store, WrappedSourceFile}
+import typer.{Implicits, ImportInfo, Nullables, SearchHistory, SearchRoot, TypeAssigner, Typer}
 import inlines.Inliner
 import Nullables.*
 import Implicits.ContextualImplicits
 import config.Settings.*
 import config.Config
 import reporting.*
-import io.{AbstractFile, NoAbstractFile, PlainFile, Path}
+import io.{AbstractFile, NoAbstractFile, Path, PlainFile}
 import scala.io.Codec
 import collection.mutable
 import printing.*
-import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
+import config.{JavaPlatform, Platform, SJSPlatform, ScalaSettings}
 import classfile.ReusableDataReader
 import StdNames.nme
 import compiletime.uninitialized
-
 import scala.annotation.internal.sharable
-
 import DenotTransformers.DenotTransformer
 import dotty.tools.dotc.profile.Profiler
 import dotty.tools.dotc.sbt.interfaces.{IncrementalCallback, ProgressCallback}
 import util.Property.Key
-import util.Store
 import plugins.*
 import java.nio.file.InvalidPathException
 import dotty.tools.dotc.coverage.Coverage
@@ -514,6 +511,34 @@ object Contexts {
     final def withUncommittedTyperState: Context =
       withTyperState(typerState.uncommittedAncestor)
 
+    /**
+     * Ensures recursive operations obey the fuel limit, and throws user-friendly errors when they do not.
+     *
+     * If a position is meaningful, pass one.
+     * If not, make sure this is called in a stack where a previous call had a meaningful position,
+     * or the final error won't have one.
+     */
+    final inline def handleRecursive[T](title: String, details: RecursiveOperationDetails, pos: SrcPos | Null = null, weight: Int = 1)(inline block: T): T =
+      // This method is hot, as it must be called every so often in potentially recursive operations
+      // to catch stack overflows before they actually happen.
+      // Thus, it's important for it not to allocate or do any unnecessary work,
+      // which is why `base.recursiveOperations` is a preallocated array of mutable classes in which we can copy the arguments.
+      // We use the fact that `base.recursiveOperations.length` is set to the max fuel to not have to explicitly load it.
+      // Also, we support `-Xno-enrich-error-messages` by setting `base.recursiveDepth` to `Int.MinValue`, ensuring the throw check never fires.
+      // These two checks don't add overhead because accessing `ops` needs `depth` to be bounds-checked anyway.
+      val depth = base.recursiveDepth
+      val ops = base.recursiveOperations
+      if depth >= ops.length then
+        throw RecursionOverflow(ops, title, details, pos, weight)
+      if depth >= 0 then
+        base.recursiveDepth = depth + 1
+        ops(depth).title = title
+        ops(depth).details = details
+        ops(depth).pos = pos
+        ops(depth).weight = weight
+      try block
+      finally base.recursiveDepth = depth
+
     final def withProperty[T](key: Key[T], value: Option[T]): Context =
       if (property(key) == value) this
       else value match {
@@ -930,7 +955,7 @@ object Contexts {
     usePhases(List(SomePhase), FreshContext(this))
 
     /** Initializes the `ContextBase` with a starting context.
-     *  This initializes the `platform` and the `definitions`.
+     *  This initializes the `platform`, the `recursiveOperations` based on max fuel, and the `definitions`.
      */
     def initialize()(using Context): Unit = {
       // In interactive mode (REPL/IDE), preserve the existing platform if already initialized.
@@ -940,6 +965,9 @@ object Contexts {
       if _platform == null || !ctx.mode.is(Mode.Interactive) then
         _platform = newPlatform
       platform.init()
+      // See `Context.handleRecursive` for an explanation of these values
+      recursiveOperations = Array.fill[RecursiveOperation](ctx.settings.XmaxFuel.value)(RecursiveOperation.blank())
+      recursiveDepth = if ctx.settings.XnoEnrichErrorMessages.value then Int.MinValue else 0
       definitions.init()
     }
 
@@ -1011,6 +1039,12 @@ object Contexts {
      * We need this information to be persisted across different runs, so it's stored here.
      */
     private[dotc] var coverage: Coverage | Null = null
+
+    // The array will be initialized with a number of slots corresponding to the max fuel,
+    // for now give it 10 slots so a few calls to handleRecursive work for trivial things
+    // before the compiler has really started
+    private[dotc] var recursiveDepth: Int = 0
+    private[dotc] var recursiveOperations: Array[RecursiveOperation] = Array.fill(10)(RecursiveOperation.blank())
 
     // Types state
     /** A table for hash consing unique types */

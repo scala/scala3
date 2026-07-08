@@ -3859,7 +3859,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  @param locked      the set of type variables of the current typer state that cannot be interpolated
    *                     at the present time
    */
-  def typedUnadapted(initTree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
+  def typedUnadapted(initTree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = ctx.handleRecursive("typing", initTree, initTree) {
     record("typedUnadapted")
     val xtree = expanded(initTree)
     xtree.removeAttachment(TypedAhead) match {

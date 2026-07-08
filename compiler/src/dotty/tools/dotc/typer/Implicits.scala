@@ -653,7 +653,7 @@ trait ImplicitRunInfo:
       private var parts: mutable.LinkedHashSet[Type] = uninitialized
       private val partSeen = util.HashSet[Type]()
 
-      def traverse(t: Type) = try
+      def traverse(t: Type) = ctx.handleRecursive("collectParts of", t):
         if partSeen.contains(t) then ()
         else if implicitScopeCache.contains(t) then parts += t
         else
@@ -685,7 +685,6 @@ trait ImplicitRunInfo:
               traverseChildren(t)
             case t =>
               traverseChildren(t)
-      catch case ex: Throwable => handleRecursive("collectParts of", t.show, ex)
 
       def apply(tp: Type): collection.Set[Type] =
         parts = mutable.LinkedHashSet()

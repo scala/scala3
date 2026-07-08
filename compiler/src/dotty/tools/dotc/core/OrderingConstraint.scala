@@ -341,20 +341,19 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       if newSet.isEmpty then deps.remove(referenced)
       else deps.updated(referenced, newSet)
 
-    def traverse(t: Type) = try
+    def traverse(t: Type) = ctx.handleRecursive("adjust", t):
       t match
-      case param: TypeParamRef =>
-        if hasBounds(param) then
-          if variance >= 0 then coDeps = update(coDeps, param)
-          if variance <= 0 then contraDeps = update(contraDeps, param)
-        else
-          traverse(entry(param))
-      case tp: LazyRef =>
-        if !seen.contains(tp) then
-          seen += tp
-          traverse(tp.ref)
-      case _ => traverseChildren(t)
-    catch case ex: Throwable => handleRecursive("adjust", t.show, ex)
+        case param: TypeParamRef =>
+          if hasBounds(param) then
+            if variance >= 0 then coDeps = update(coDeps, param)
+            if variance <= 0 then contraDeps = update(contraDeps, param)
+          else
+            traverse(entry(param))
+        case tp: LazyRef =>
+          if !seen.contains(tp) then
+            seen += tp
+            traverse(tp.ref)
+        case _ => traverseChildren(t)
   end Adjuster
 
   /** Adjust dependencies to account for the delta of previous entry `prevEntry`
