@@ -14,10 +14,9 @@ private[nio] object DiskFile:
 
   def getOrCreate(path: String): File =
     val jpath = JPath.of(path).normalize()
-    if !JFiles.isRegularFile(jpath) then {
+    if !JFiles.isRegularFile(jpath) then
       JFiles.createDirectories(jpath.getParent)
       JFiles.createFile(jpath)
-    }
     new DiskFile(jpath)
 
   def createTemporary(nameHint: String, extension: FileExtension): File =
@@ -28,7 +27,8 @@ private[nio] object DiskFile:
   private def options(append: Boolean): Array[OpenOption] =
     if append then appendOptions else overwriteOptions
 
-private[nio] final class DiskFile(underlying: JPath) extends File:
+// Invariant: `underlying` is normalized
+private final class DiskFile(private val underlying: JPath) extends File:
   override val name: String =
     underlying.getFileName.toString
 
@@ -72,3 +72,14 @@ private[nio] final class DiskFile(underlying: JPath) extends File:
 
   override def writeText(str: String, codec: Codec, append: Boolean): Unit =
     JFiles.writeString(underlying, str, codec.charSet, DiskFile.options(append)*)
+
+  override def copyTo(other: File): Unit = other match
+    case otherDiskFile: DiskFile => JFiles.copy(underlying, otherDiskFile.underlying)
+    case _ => super.copyTo(other)
+
+  override def hashCode(): Int =
+    underlying.hashCode()
+
+  override def equals(obj: Any): Boolean = obj match
+    case otherDiskFile: DiskFile => underlying.equals(otherDiskFile.underlying)
+    case _ => false

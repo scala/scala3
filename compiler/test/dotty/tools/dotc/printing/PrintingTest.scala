@@ -7,35 +7,28 @@ import vulpix.FileDiff
 import vulpix.TestConfiguration
 import vulpix.ParallelTesting
 import reporting.TestReporter
-
-import java.io.*
-import java.nio.file.{Path => JPath}
-import java.nio.charset.StandardCharsets
-
 import interfaces.Diagnostic.INFO
-import dotty.tools.io.Directory
-
-import scala.io.Source
+import dotty.tools.nio.*
 import org.junit.Test
-import scala.util.Using
-import java.io.File
+
+import java.io.{ByteArrayOutputStream, PrintStream}
+import scala.io.Codec
 
 class PrintingTest {
 
   def options(phase: String, flags: List[String]) =
-    val outDir = new File(ParallelTesting.defaultOutputDir, "printing")
-    outDir.mkdirs()
-    List(s"-Vprint:$phase", "-color:never", "-nowarn", "-d", outDir.getAbsolutePath, "-classpath", TestConfiguration.basicClasspath) ::: flags
+    val outDir = FileContainer.getOrCreateOnDisk(ParallelTesting.defaultOutputDir.getPath, "").getOrCreateContainer("printing")
+    List(s"-Vprint:$phase", "-color:never", "-nowarn", "-d", outDir.path, "-classpath", TestConfiguration.basicClasspath) ::: flags
 
-  private def compileFile(path: JPath, phase: String): Boolean = {
+  private def compileFile(path: File, phase: String): Boolean = {
     val baseFilePath  = path.toString.stripSuffix(".scala").stripSuffix(".java")
     val checkFilePath = baseFilePath + ".check"
     val flagsFilePath = baseFilePath + ".flags"
     val byteStream    = new ByteArrayOutputStream()
     val reporter = TestReporter.reporter(new PrintStream(byteStream), INFO)
-    val flags =
-      if (!(new File(flagsFilePath)).exists) Nil
-      else Using(Source.fromFile(flagsFilePath, StandardCharsets.UTF_8.name))(_.getLines().toList).get
+    val flags = File.getOnDisk(baseFilePath + "flags") match
+      case Some(f) => f.readLines(Codec.UTF8).toList
+      case None => Nil
 
     try {
       Main.process((path.toString :: options(phase, flags)).toArray, reporter, null)
@@ -46,20 +39,20 @@ class PrintingTest {
         throw e
     }
 
-    val actualLines = byteStream.toString(StandardCharsets.UTF_8.name).linesIterator
+    val actualLines = byteStream.toString(Codec.UTF8.charSet).linesIterator
     FileDiff.checkAndDumpOrUpdate(path.toString, actualLines.toIndexedSeq, checkFilePath)
   }
 
   def testIn(testsDir: String, phase: String) =
-    val res = Directory(testsDir).list.toList
-      .filter(_.ext.isSourceExtension)
-      .map(f => compileFile(f.jpath, phase))
+    val res = FileContainer.getOnDisk(testsDir, "").get.entries.collect {
+      case f: File if f.extension.isSourceExtension => compileFile(f, phase)
+    }.toList
 
     val failed = res.filter(!_)
 
     val msg = s"Pass: ${res.length - failed.length}, Failed: ${failed.length}"
 
-    assert(failed.length == 0, msg)
+    assert(failed.isEmpty, msg)
 
     println(msg)
 

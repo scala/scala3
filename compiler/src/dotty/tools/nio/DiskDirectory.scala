@@ -21,7 +21,8 @@ private[nio] object DiskDirectory:
   def createTemporary(nameHint: String): FileContainer =
     new DiskDirectory(JFiles.createTempDirectory(nameHint))
 
-private[nio] final class DiskDirectory(underlying: JPath) extends FileContainer:
+// Invariant: `underlying` is normalized
+private final class DiskDirectory(private val underlying: JPath) extends FileContainer:
   override val name: String =
     underlying.getFileName.toString
 
@@ -58,7 +59,7 @@ private[nio] final class DiskDirectory(underlying: JPath) extends FileContainer:
 
   /** Gets the container in this container with the given name if it exists. */
   protected override def getContainer(name: String): Option[FileContainer] =
-    val res = underlying.resolve(name)
+    val res = underlying.resolve(name).normalize()
     Option.when(JFiles.isDirectory(res))(new DiskDirectory(res))
 
   /** Creates a file in this container with the given name and extension. */
@@ -67,4 +68,11 @@ private[nio] final class DiskDirectory(underlying: JPath) extends FileContainer:
 
   /** Creates a container in this container with the given name. */
   protected override def createContainer(name: String): FileContainer =
-    new DiskDirectory(JFiles.createDirectory(underlying.resolve(name)))
+    new DiskDirectory(JFiles.createDirectory(underlying.resolve(name).normalize()))
+
+  override def hashCode(): Int =
+    underlying.hashCode()
+
+  override def equals(obj: Any): Boolean = obj match
+    case otherDiskDirectory: DiskDirectory => underlying.equals(otherDiskDirectory.underlying)
+    case _ => false
