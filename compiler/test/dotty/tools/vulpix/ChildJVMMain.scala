@@ -1,7 +1,5 @@
 package dotty.tools.vulpix
 
-import dotty.tools.io.ClassPath
-
 import java.io.{BufferedReader, File, InputStreamReader}
 import java.net.{URL, URLClassLoader}
 import java.util.ArrayList
@@ -13,7 +11,7 @@ object ChildJVMMain:
   def runMain(dir: String): Unit = {
     def meth =
       val jcp = System.getProperty("java.class.path")
-      val sep = ClassPath.pathSeparator
+      val sep = File.pathSeparator
       System.setProperty("java.class.path", if jcp == null then dir else dir + sep + jcp)
 
       val loader =
