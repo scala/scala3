@@ -249,10 +249,10 @@ trait Migrations:
   object AppToMain:
     private val mainHeader = "def main(args: Array[String]): Unit ="
 
-    /** @param impl   the untyped template, used for body shape and source spans
-     *  @param impl1  the typed template, used for the semantic safety checks
+    /** @param impl       the untyped template, used for the parent list and self type
+     *  @param typedImpl  the typed template, used for the body split and semantic checks
      */
-    def rewrite(cdef: untpd.TypeDef, impl: untpd.Template, impl1: tpd.Template, cls: ClassSymbol)(using Context): Unit =
+    def rewrite(cdef: untpd.TypeDef, impl: untpd.Template, typedImpl: tpd.Template, cls: ClassSymbol)(using Context): Unit =
       if !ctx.settings.YappToMain.value then return
       // Candidates are everything inheriting the deprecated `App`/`DelayedInit`,
       // so that even indirect inheritance is surfaced; only a direct `App` parent
@@ -276,7 +276,7 @@ trait Migrations:
               |Migrate it by hand, preferably to a `@main` method: https://docs.scala-lang.org/scala3/book/methods-main-methods.html""",
           cdef.srcPos)
 
-      val directApp = impl1.parents.exists(_.tpe.classSymbol == defn.AppClass)
+      val directApp = typedImpl.parents.exists(_.tpe.classSymbol == defn.AppClass)
       // Objects carry a synthetic `_: Foo.type` self; a user-written `self =>`
       // would have a real name and sits inside the body, so it is out of scope.
       if !directApp then
@@ -288,40 +288,30 @@ trait Migrations:
       else if impl.parents.lengthIs != 1 then
         cannot("`App` is mixed with other parents")
       else
-        // Use the *untyped* body for the source layout: the typed body has
-        // compiler-synthesized members (e.g. inline accessors) appended, which carry
-        // source spans and would corrupt the split. The typed body is consulted only
-        // to resolve symbols for the semantic checks.
-        val sourceStats = impl.body.filter(_.span.exists)
-        val typedAt = impl1.body.iterator
-          .filter(t => t.span.exists && !t.symbol.is(Synthetic))
-          .map(t => t.span.start -> t)
-          .toMap
-        def typedOf(u: untpd.Tree): Option[tpd.Tree] = typedAt.get(u.span.start)
+        // Keep only the user-written statements: an empty `{}` desugars to a spanless
+        // synthetic `()`, and an inline def appends a synthetic accessor to the body;
+        // filtering both leaves exactly the source layout the user wrote.
+        val stmts = typedImpl.body.filter(t => t.span.exists && !t.symbol.is(Synthetic))
 
         // A safe split keeps a leading run of template members as object members and
         // moves the trailing statements into `main`. Besides definitions, `import`
         // and `export` are template-level constructs (exports add client-visible
         // members) and must stay in the object, never move into `main`.
-        def isTemplateMember(t: untpd.Tree) =
-          t.isInstanceOf[untpd.MemberDef] || t.isInstanceOf[untpd.ImportOrExport]
+        def isTemplateMember(t: tpd.Tree) =
+          t.isInstanceOf[tpd.MemberDef] || t.isInstanceOf[tpd.ImportOrExport]
+        val (leadingDefs, rest) = stmts.span(isTemplateMember)
+
         // A preserved member is unsafe if it references `App`-only API (where even
         // `args` is unavailable outside `main`) or overrides an `App`/`DelayedInit`
         // member (the `override` would dangle once the parent is dropped). Statements
         // moved into `main` may use the `args` parameter freely.
-        def unsafeMember(u: untpd.Tree): Boolean =
-          typedOf(u).fold(true)(t => usesAppMember(t, allowArgs = false) || overridesAppApi(t))
-        def unsafeStatement(u: untpd.Tree): Boolean =
-          typedOf(u).fold(true)(t => usesAppMember(t, allowArgs = true))
-
-        val (leadingDefs, rest) = sourceStats.span(isTemplateMember)
         if rest.exists(isTemplateMember) then
           cannot("its definitions, imports or exports are interleaved with statements, which would change their meaning")
-        else if leadingDefs.exists(unsafeMember) then
+        else if leadingDefs.exists(d => usesAppMember(d, allowArgs = false) || overridesAppApi(d)) then
           cannot("a member it keeps uses or overrides `App`-specific API such as `args`, `delayedInit` or `executionStart`")
-        else if rest.exists(unsafeStatement) then
+        else if rest.exists(usesAppMember(_, allowArgs = true)) then
           cannot("its body uses `App`-specific API such as `executionStart`")
-        else if sourceStats.nonEmpty && rest.isEmpty then
+        else if stmts.nonEmpty && rest.isEmpty then
           cannot("its body has no statements to run in `main`")
         else
           // `rest` is the statements to wrap (empty only when the whole body is empty).
@@ -352,7 +342,7 @@ trait Migrations:
      *  Returns `None` on success or `Some(reason)` if the source layout is not
      *  supported, so the caller can report it instead of silently doing nothing.
      */
-    private def wrapIntoMain(cdef: untpd.TypeDef, appParent: untpd.Tree, stmts: List[untpd.Tree])(using Context): Option[String] =
+    private def wrapIntoMain(cdef: untpd.TypeDef, appParent: untpd.Tree, stmts: List[tpd.Tree])(using Context): Option[String] =
       val src = ctx.source
       val content = src.content()
       val appStart = appParent.span.start
@@ -384,8 +374,9 @@ trait Migrations:
           while s > 0 && content(s - 1).isWhitespace do s -= 1
           s
 
+      // A directly `App`-extending object always has an `extends` keyword in source.
       val delStart = extendsStart
-      if delStart < 0 then return Some("its `extends` clause could not be located in the source")
+      assert(delStart >= 0, i"missing `extends` clause for $appParent")
 
       // First non-horizontal-space character after `App` decides the body style.
       var afterApp = appEnd
@@ -415,6 +406,9 @@ trait Migrations:
 
       val firstStmt = stmts.head.span.start
       val lastStmt = stmts.last.span.end
+      // We insert the `main` header at the first statement's line start and re-indent
+      // by line, so a single-line body (`extends App { stmt }` / `extends App: stmt`,
+      // where the statement shares its line with the brace/colon) is not supported.
       if !startsOwnLine(firstStmt) then
         return Some("its statements are not laid out on their own lines")
 
