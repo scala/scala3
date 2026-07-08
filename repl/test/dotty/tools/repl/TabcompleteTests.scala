@@ -219,6 +219,7 @@ class TabcompleteTests extends ReplTest {
         ":load",
         ":paste",
         ":quit",
+        ":replay",
         ":require",
         ":reset",
         ":save",

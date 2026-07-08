@@ -148,6 +148,12 @@ object Reset {
   val command: String = ":reset"
 }
 
+case class Replay(arg: String) extends Command:
+  override def replayLine = None
+object Replay {
+  val command: String = ":replay"
+}
+
 /** `:sh <command line>` run a shell command (result is implicitly => List[String]) */
 case class Sh(expr: String) extends Command:
   override def replayLine = Some(s"${Sh.command} $expr")
@@ -186,7 +192,8 @@ case object Help extends Command {
       |:type <expression>       evaluate the type of the given expression
       |:doc <expression>        print the documentation for the given expression
       |:imports                 show import history
-      |:reset [options]         reset the repl to its initial state, forgetting all session entries
+      |:reset [options]         clear the session and start fresh with the given compiler options
+      |:replay [options]        reset, then re-run the session with the given compiler options
       |:settings <options>      update compiler options, if possible
       |:silent                  disable/enable automatic printing of results
       |:dep <group>::<artifact>:<version>     Resolve a dependency and make it available in the REPL
@@ -211,6 +218,7 @@ object ParseResult {
     Quit.alias -> (_ => Quit),
     Help.command -> (_  => Help),
     Reset.command -> (arg  => Reset(arg)),
+    Replay.command -> (arg => Replay(arg)),
     Imports.command -> (_  => Imports),
     JarCmd.command -> (arg => JarCmd(arg)),
     KindOf.command -> (arg => KindOf(arg)),
