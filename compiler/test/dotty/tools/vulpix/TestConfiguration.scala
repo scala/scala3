@@ -5,7 +5,6 @@ package vulpix
 import scala.util.Properties.javaSpecVersion
 import java.io.File
 import dotc.config.ScalaSettingsProperties.supportedReleaseVersions
-import dotty.tools.io.ClassPath
 
 object TestConfiguration {
 
@@ -44,10 +43,10 @@ object TestConfiguration {
   ))
 
   lazy val withStagingClasspath =
-    withCompilerClasspath + ClassPath.pathSeparator + mkClasspath(List(Properties.dottyStaging))
+    withCompilerClasspath + File.pathSeparator + mkClasspath(List(Properties.dottyStaging))
 
   lazy val withTastyInspectorClasspath =
-    withCompilerClasspath + ClassPath.pathSeparator + mkClasspath(List(Properties.dottyTastyInspector))
+    withCompilerClasspath + File.pathSeparator + mkClasspath(List(Properties.dottyTastyInspector))
 
   lazy val scalaJSClasspath = mkClasspath(List(
     Properties.scalaJSJavalib,
@@ -57,10 +56,10 @@ object TestConfiguration {
 
   def mkClasspath(classpaths: List[String]): String =
     classpaths.map({ p =>
-      val file = new java.io.File(p)
+      val file = new File(p)
       assert(file.exists, s"File $p couldn't be found.")
       file.getAbsolutePath
-    }).mkString(ClassPath.pathSeparator)
+    }).mkString(File.pathSeparator)
 
   val yCheckOptions = Array("-Ycheck:all")
 

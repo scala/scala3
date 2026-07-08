@@ -53,7 +53,7 @@ private[nio] final class DiskDirectory(underlying: JPath) extends FileContainer:
 
   /** Gets the file in this container with the given name and extension if it exists. */
   protected override def getFile(name: String, extension: FileExtension): Option[File] =
-    val res = underlying.resolve(name)
+    val res = underlying.resolve(name + extension.withDot)
     Option.when(JFiles.isRegularFile(res))(new DiskFile(res))
 
   /** Gets the container in this container with the given name if it exists. */
@@ -63,7 +63,7 @@ private[nio] final class DiskDirectory(underlying: JPath) extends FileContainer:
 
   /** Creates a file in this container with the given name and extension. */
   protected override def createFile(name: String, extension: FileExtension): File =
-    new DiskFile(JFiles.createFile(underlying.resolve(name)))
+    new DiskFile(JFiles.createFile(underlying.resolve(name + extension.withDot)))
 
   /** Creates a container in this container with the given name. */
   protected override def createContainer(name: String): FileContainer =

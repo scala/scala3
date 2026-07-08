@@ -22,7 +22,7 @@ class AnnotationsTest:
         "public @interface Annot { String[] values() default {}; }"),
       VirtualJavaSource("A.java",
         "@Annot(values = {}) public class A {}")) { javaOutputDir =>
-      inCompilerContext(javaOutputDir.toString + ClassPath.pathSeparator + TestConfiguration.basicClasspath) {
+      inCompilerContext(javaOutputDir.path + ClassPath.pathSeparator + TestConfiguration.basicClasspath) {
         val defn = ctx.definitions
         val cls = requiredClass("A")
         val annotCls = requiredClass("Annot")
@@ -57,7 +57,7 @@ class AnnotationsTest:
       VirtualJavaSource("A.java",
         "@Annot1() @Annot2() public class A {}")) { javaOutputDir =>
       javaOutputDir.getFile("Annot1", FileExtension.Class).get.delete()
-      inCompilerContext(javaOutputDir.toString + ClassPath.pathSeparator + TestConfiguration.basicClasspath) {
+      inCompilerContext(javaOutputDir.path + ClassPath.pathSeparator + TestConfiguration.basicClasspath) {
         val cls = requiredClass("A")
         val annots = cls.annotations.map(_.tree)
         assert(annots.length == 1,
@@ -77,10 +77,10 @@ class AnnotationsTest:
         """|package a.b;
            |@Outer.Value.Immutable abstract class Baz {}""".stripMargin)
     ) { javaOutputDir =>
-      javaOutputDir.getFile("a/b/Outer", FileExtension.Class).get.delete()
-      javaOutputDir.getFile("a/b/Outer$Value", FileExtension.Class).get.delete()
-      javaOutputDir.getFile("a/b/Outer$Value$Immutable", FileExtension.Class).get.delete()
-      inCompilerContext(javaOutputDir.toString + ClassPath.pathSeparator + TestConfiguration.basicClasspath) {
+      javaOutputDir.getContainer("a").get.getContainer("b").get.getFile("Outer", FileExtension.Class).get.delete()
+      javaOutputDir.getContainer("a").get.getContainer("b").get.getFile("Outer$Value", FileExtension.Class).get.delete()
+      javaOutputDir.getContainer("a").get.getContainer("b").get.getFile("Outer$Value$Immutable", FileExtension.Class).get.delete()
+      inCompilerContext(javaOutputDir.path + ClassPath.pathSeparator + TestConfiguration.basicClasspath) {
         val cls = requiredClass("a.b.Baz")
         val annots = cls.annotations.map(_.tree)
         assert(annots == Nil,

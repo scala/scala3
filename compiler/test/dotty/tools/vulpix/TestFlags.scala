@@ -1,7 +1,5 @@
 package dotty.tools.vulpix
 
-import dotty.tools.io.ClassPath
-
 import java.io.File as JFile
 
 final case class TestFlags(
@@ -17,10 +15,10 @@ final case class TestFlags(
     TestFlags(defaultClassPath, runClassPath, options diff flags, javacOptions)
 
   def withClasspath(classPath: String): TestFlags =
-    TestFlags(s"$defaultClassPath${ClassPath.pathSeparator}$classPath", runClassPath, options, javacOptions)
+    TestFlags(s"$defaultClassPath${JFile.pathSeparator}$classPath", runClassPath, options, javacOptions)
 
   def withRunClasspath(classPath: String): TestFlags =
-    TestFlags(defaultClassPath, s"$runClassPath${ClassPath.pathSeparator}$classPath", options, javacOptions)
+    TestFlags(defaultClassPath, s"$runClassPath${JFile.pathSeparator}$classPath", options, javacOptions)
 
   def withJavacOnlyOptions(flags: String*): TestFlags =
     TestFlags(defaultClassPath, runClassPath, options, javacOptions ++ flags)
