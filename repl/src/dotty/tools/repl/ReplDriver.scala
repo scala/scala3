@@ -381,11 +381,12 @@ class ReplDriver(settings: Array[String],
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
       case parsed: Parsed if parsed.source.content().mkString.startsWith("//>") =>
-        val stateAfterDirectives = interpretDirectives(parsed.source.content().mkString)
+        val directiveSource = parsed.source.content().mkString
+        val stateAfterDirectives = interpretDirectives(directiveSource)
         if parsed.trees.nonEmpty then
           propagateLanguageImports(parsed.trees)
           compile(parsed, stateAfterDirectives)
-        else stateAfterDirectives
+        else stateAfterDirectives.recordInput(directiveSource.strip)
 
       case parsed: Parsed if parsed.trees.nonEmpty =>
         propagateLanguageImports(parsed.trees)
@@ -396,7 +397,8 @@ class ReplDriver(settings: Array[String],
 
       case CommandThenCode(cmd, code) =>
         val stateAfterCommand = interpretCommand(cmd)
-        interpret(code)(using stateAfterCommand)
+        val recorded = cmd.replayLine.fold(stateAfterCommand)(line => stateAfterCommand.recordInput(line.strip))
+        interpret(code)(using recorded)
 
       case cmd: Command =>
         val next = interpretCommand(cmd)
