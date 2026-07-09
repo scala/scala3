@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 package i10846 {
   final class V(val x: Int) extends AnyVal
   object V { def get: Option[V] = null }

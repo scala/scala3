@@ -1,6 +1,3 @@
-// scalajs: --skip
-// (JVM-only test about signatures)
-
 import scala.annotation.unchecked.uncheckedVariance
 
 trait SubFlowDef[+F[+_]]

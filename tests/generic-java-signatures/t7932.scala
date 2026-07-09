@@ -1,6 +1,3 @@
-// scalajs: --skip
-// (JVM-only test about generic signatures)
-
 import scala.language.higherKinds
 
 class Category[M[_, _]]
@@ -9,6 +6,8 @@ trait M1[F] {
   type X[a, b] = F
   def category: Category[X] = null
   def category1: Category[Tuple2] = null
+  type Tuple2Alias = Tuple2
+  def category1b: Category[Tuple2Alias] = null
 }
 
 // The second trait is needed to make sure there's a forwarder generated in C.

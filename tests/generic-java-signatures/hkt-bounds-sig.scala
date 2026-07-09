@@ -1,6 +1,3 @@
-// scalajs: --skip
-// (JVM-only test about generic signatures)
-
 case class Box[A](value: A)
 
 class Category1Hi[F[_ <: AnyRef]]

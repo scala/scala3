@@ -1,5 +1,4 @@
 //> using options -language:experimental.erasedDefinitions
-// scalajs: --skip
 
 object MyErased {
   def f1[U](erased a: Int): Int = 0
