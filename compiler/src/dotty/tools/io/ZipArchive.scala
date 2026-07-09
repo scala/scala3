@@ -121,7 +121,6 @@ private[io] final class FileZipArchive(jpath: JPath, release: String) extends Zi
         override def close(): Unit = { zipFile.close() }
       }
     }
-    override def sizeOption: Option[Int] = Some(size) // could be stale
   }
 
   // keeps a file handle open to ZipFile, which forbids file mutation
@@ -135,7 +134,6 @@ private[io] final class FileZipArchive(jpath: JPath, release: String) extends Zi
   ) extends Entry(zipEntry.getName, parent) {
     override def lastModified: Long = zipEntry.getTime
     override def input: InputStream = zipFile.getInputStream(zipEntry)
-    override def sizeOption: Option[Int] = Some(zipEntry.getSize.toInt)
   }
 
   private lazy val (root: DirEntry, allDirs: collection.Map[String, DirEntry]) = {
@@ -190,7 +188,6 @@ private[io] final class FileZipArchive(jpath: JPath, release: String) extends Zi
   override def input: InputStream = Files.newInputStream(jpath)
   override def lastModified: Long = Files.getLastModifiedTime(jpath).toMillis
 
-  override def sizeOption: Option[Int] = Some(Files.size(jpath).toInt)
   override def canEqual(other: Any): Boolean = other.isInstanceOf[FileZipArchive]
   override def hashCode(): Int = jpath.hashCode
   override def equals(that: Any): Boolean = that match {

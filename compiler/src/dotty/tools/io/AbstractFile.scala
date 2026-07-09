@@ -116,9 +116,6 @@ abstract class AbstractFile extends dotty.tools.dotc.interfaces.AbstractFile {
   /** Returns an output stream for writing the file */
   def output: OutputStream
 
-  /** size of this file if available. */
-  def sizeOption: Option[Int] = None
-
   /** URL of the file if available. */
   def toURL: Option[URL]
 

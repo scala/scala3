@@ -26,8 +26,8 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
   private var pool: ConstantPool = uninitialized // the classfile's constant pool
   private var classfileVersion: Header.Version = Header.Version.Unknown
 
-  def checkTastyUUID(tastyUUID: UUID)(using Context): Unit = try ctx.base.reusableDataReader.withInstance { reader =>
-    implicit val reader2 = reader.reset(classfile)
+  def checkTastyUUID(tastyUUID: UUID)(using Context): Unit = try {
+    implicit val reader = new DataReader(classfile)
     this.classfileVersion = ClassfileParser.parseHeader(classfile)
     this.pool = new ConstantPool
     checkTastyAttr(tastyUUID)
@@ -52,10 +52,8 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
     skipMembers() // fields
     skipMembers() // methods
     val attrs = in.nextChar
-    val attrbp = in.bp
 
     def scan(target: TypeName): Boolean = {
-      in.bp = attrbp
       var i = 0
       while (i < attrs && pool.getName(in.nextChar).name.toTypeName != target) {
         val attrLen = in.nextInt

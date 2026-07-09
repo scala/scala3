@@ -14,7 +14,7 @@ import Uniques.*
 import ast.Trees.*
 import Flags.ParamAccessor
 import ast.untpd
-import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance, WrappedSourceFile}
+import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, WrappedSourceFile}
 import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import inlines.Inliner
 import Nullables.*
@@ -27,7 +27,6 @@ import scala.io.Codec
 import collection.mutable
 import printing.*
 import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
-import classfile.ReusableDataReader
 import StdNames.nme
 import compiletime.uninitialized
 
@@ -1095,8 +1094,6 @@ object Contexts {
     private[Contexts] var comparersInUse: Int = 0
 
     private var charArray = new Array[Char](256)
-
-    private[core] val reusableDataReader = ReusableInstance(new ReusableDataReader())
 
     private[dotc] var wConfCache: (List[String], WConf) = uninitialized
 
