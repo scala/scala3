@@ -26,8 +26,10 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
 
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
+  private val myIsJava: Boolean = source.file.ext.isJava // `source` and `ext` are immutable, so cache the answer
+
   /** Is this the compilation unit of a Java file */
-  def isJava: Boolean = source.file.ext.isJava
+  def isJava: Boolean = myIsJava
 
   /** Is this the compilation unit of a Java file, or TASTy derived from a Java file */
   def typedAsJava =
