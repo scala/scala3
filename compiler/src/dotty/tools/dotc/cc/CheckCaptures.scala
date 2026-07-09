@@ -1514,6 +1514,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       finally
         if cls.is(ModuleClass) then
           interpolate(cls.sourceModule.info, cls.sourceModule)
+        else
+          capt.println(i"Use set of $cls = ${cls.useSet}, self type: ${cls.classInfo.selfType}")
         completed += cls
         curEnv = saved
     end recheckClassDef
