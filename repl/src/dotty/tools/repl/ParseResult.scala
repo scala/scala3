@@ -9,7 +9,7 @@ import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
 import dotc.reporting.{Diagnostic, StoreReporter}
 import dotc.util.SourceFile
-import dotty.tools.directives.UsingDirectivesParser
+import dotty.tools.directives.{ExtractorResult, UsingDirectivesParser}
 
 import scala.annotation.internal.sharable
 
@@ -261,21 +261,27 @@ object ParseResult {
       case multiple => AmbiguousCommand(cmd, multiple.map(_._1))
     }
 
-  /** If `sourceCode`'s first line is a `:command`, split it into
-   *  `(commandName, commandArg, remainingText)`. `remainingText` may be blank.
+  private def extractDirectives(sourceCode: String): ExtractorResult =
+    UsingDirectivesParser.extractLines(sourceCode.toIndexedSeq)
+
+  /** If `sourceCode`'s first significant line (after comments/blank lines) is a
+   *  `:command`, split it into `(commandName, commandArg, remainingText)`.
+   *  `remainingText` may be blank.
    */
-  private def leadingCommand(sourceCode: String): Option[(String, String, String)] =
-    sourceCode.indexOf('\n') match {
-      case -1 => None // single-line commands are handled by the CommandExtract fast path
-      case nl =>
-        val firstLineRaw = sourceCode.substring(0, nl)
+  private def leadingCommand(sourceCode: String, extractedDirectives: ExtractorResult): Option[(String, String, String)] =
+    if extractedDirectives.directiveLines.nonEmpty then None // directive blocks are handled as Parsed input
+    else
+      val start = extractedDirectives.codeOffset
+      if start >= sourceCode.length then None
+      else
+        val significant = sourceCode.substring(start)
+        val (firstLineRaw, rest) = significant.indexOf('\n') match
+          case -1 => (significant, "")
+          case nl => (significant.substring(0, nl), significant.substring(nl + 1))
         val firstLine = if firstLineRaw.endsWith("\r") then firstLineRaw.dropRight(1) else firstLineRaw
-        val rest = sourceCode.substring(nl + 1)
-        firstLine match {
+        firstLine match
           case CommandExtract(cmd: String, arg: String) => Some((cmd, arg, rest))
           case _ => None
-        }
-    }
 
   def apply(source: SourceFile)(using state: State): ParseResult = {
     val sourceCode = source.content().mkString
@@ -283,7 +289,7 @@ object ParseResult {
       case "" => Newline
       case CommandExtract(cmd: String, arg: String) => command(cmd, arg)
       case _ =>
-        leadingCommand(sourceCode) match {
+        leadingCommand(sourceCode, extractDirectives(sourceCode)) match {
           case Some((cmd, arg, rest)) =>
             if rest.exists(!_.isWhitespace) then CommandThenCode(command(cmd, arg), apply(rest))
             else command(cmd, arg)
@@ -313,33 +319,38 @@ object ParseResult {
       case _ => false
 
   /** True if `sourceCode` contains one or more leading `//> using` directives and no code yet. */
-  private def onlyDirectivesSoFar(sourceCode: String): Boolean =
-    val extracted = UsingDirectivesParser.extractLines(sourceCode.toIndexedSeq)
-    extracted.directiveLines.nonEmpty && extracted.codeOffset >= sourceCode.length
+  private def onlyDirectivesSoFar(sourceCode: String, extractedDirectives: ExtractorResult): Boolean =
+    extractedDirectives.directiveLines.nonEmpty && extractedDirectives.codeOffset >= sourceCode.length
 
   /** True if `sourceCode` is a single `:command` line and no code yet. */
-  private def onlyCommandSoFar(sourceCode: String): Boolean =
-    !sourceCode.contains('\n') && CommandExtract.matches(sourceCode)
+  private def onlyCommandSoFar(sourceCode: String, extractedDirectives: ExtractorResult): Boolean =
+    leadingCommand(sourceCode, extractedDirectives) match
+      case Some((_, _, rest)) => rest.forall(_.isWhitespace)
+      case None => false
 
   /** A lone leading directive block or a single `:command` line with no trailing
    *  code yet. During a paste we keep reading so following code joins this input;
    *  on a single interactive ENTER (nothing pending) it is submitted as-is. */
   private[repl] def awaitsTrailingCode(sourceCode: String): Boolean =
-    !sourceCode.endsWith("\n") && (onlyDirectivesSoFar(sourceCode) || onlyCommandSoFar(sourceCode))
+    awaitsTrailingCode(sourceCode, extractDirectives(sourceCode))
+
+  private def awaitsTrailingCode(sourceCode: String, extractedDirectives: ExtractorResult): Boolean =
+    !sourceCode.endsWith("\n") && (onlyDirectivesSoFar(sourceCode, extractedDirectives) || onlyCommandSoFar(sourceCode, extractedDirectives))
 
   /** Whether JLine should accept the current buffer as a complete submission. */
   private[repl] def shouldAcceptLine(sourceCode: String, hasPendingInput: Boolean)(using Context): Boolean =
-    if awaitsTrailingCode(sourceCode) then !hasPendingInput
-    else !isIncomplete(sourceCode)
+    val extractedDirectives = extractDirectives(sourceCode)
+    if awaitsTrailingCode(sourceCode, extractedDirectives) then !hasPendingInput
+    else !isIncomplete(sourceCode, extractedDirectives)
 
   /** The trailing code after any leading `:command` lines. Only this part decides
    *  whether the whole input is complete: a `:command` is complete on its own, and
    *  parsing its line as Scala would raise a spurious error (`:` is illegal) that
    *  would otherwise make unfinished trailing code look complete and submit early.
    */
-  private def codeAfterLeadingCommands(sourceCode: String): String =
-    leadingCommand(sourceCode) match
-      case Some((_, _, rest)) => codeAfterLeadingCommands(rest)
+  private def codeAfterLeadingCommands(sourceCode: String, extractedDirectives: ExtractorResult): String =
+    leadingCommand(sourceCode, extractedDirectives) match
+      case Some((_, _, rest)) => codeAfterLeadingCommands(rest, extractDirectives(rest))
       case None => sourceCode
 
   /** Check if the input is incomplete.
@@ -348,11 +359,14 @@ object ParseResult {
    *  having to evaluate the expression.
    */
   def isIncomplete(sourceCode: String)(using Context): Boolean =
+    isIncomplete(sourceCode, extractDirectives(sourceCode))
+
+  private def isIncomplete(sourceCode: String, extractedDirectives: ExtractorResult)(using Context): Boolean =
     sourceCode match {
       case "" => false
       case CommandExtract(_, _) => false
       case _ =>
-        val code = codeAfterLeadingCommands(sourceCode)
+        val code = codeAfterLeadingCommands(sourceCode, extractedDirectives)
         code.nonEmpty && {
           val reporter = newStoreReporter
           val source   = SourceFile.virtual("<incomplete-handler>", code)

@@ -16,7 +16,7 @@ import dotty.tools.directives.{DirectiveValue, UsingDirectivesParser}
 object DependencyResolver:
 
   /** Result of classifying `//> using` directives in REPL input. */
-  case class ClassifiedDirectives(deps: List[String], unsupportedKeys: List[String])
+  case class ClassifiedDirectives(deps: List[String], unsupportedKeys: List[String], hasDirectives: Boolean)
 
   /** Directive keys the REPL knows how to handle. Extend as more directives gain REPL support. */
   val supportedDirectives: Set[String] = Set("dep")
@@ -46,9 +46,9 @@ object DependencyResolver:
           .flatMap(_.values.collect { case DirectiveValue.StringVal(value, _, _) => value })
           .toList
       val unsupportedKeys = unsupported.map(_.key).distinct.toList
-      ClassifiedDirectives(deps, unsupportedKeys)
+      ClassifiedDirectives(deps, unsupportedKeys, result.directives.nonEmpty)
     catch
-      case NonFatal(_) => ClassifiedDirectives(Nil, Nil)
+      case NonFatal(_) => ClassifiedDirectives(Nil, Nil, false)
 
   /** Resolve dependencies using Coursier Interface and return the classpath as a list of File objects */
   def resolveDependencies(dependencies: List[(String, String, String)]): Either[String, List[File]] =
