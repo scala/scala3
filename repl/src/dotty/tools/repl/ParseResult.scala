@@ -332,6 +332,16 @@ object ParseResult {
     if awaitsTrailingCode(sourceCode) then !hasPendingInput
     else !isIncomplete(sourceCode)
 
+  /** The trailing code after any leading `:command` lines. Only this part decides
+   *  whether the whole input is complete: a `:command` is complete on its own, and
+   *  parsing its line as Scala would raise a spurious error (`:` is illegal) that
+   *  would otherwise make unfinished trailing code look complete and submit early.
+   */
+  private def codeAfterLeadingCommands(sourceCode: String): String =
+    leadingCommand(sourceCode) match
+      case Some((_, _, rest)) => codeAfterLeadingCommands(rest)
+      case None => sourceCode
+
   /** Check if the input is incomplete.
    *
    *  This can be used in order to check if a newline can be inserted without
@@ -341,18 +351,20 @@ object ParseResult {
     sourceCode match {
       case "" => false
       case CommandExtract(_, _) => false
-      case _ => {
-        val reporter = newStoreReporter
-        val source   = SourceFile.virtual("<incomplete-handler>", sourceCode)
-        val unit     = CompilationUnit(source, mustExist = false)
-        val localCtx = ctx.fresh
-                          .setCompilationUnit(unit)
-                          .setReporter(reporter)
-        var needsMore = false
-        reporter.withIncompleteHandler((_, _) => needsMore = true) {
-          parseStats(using localCtx)
+      case _ =>
+        val code = codeAfterLeadingCommands(sourceCode)
+        code.nonEmpty && {
+          val reporter = newStoreReporter
+          val source   = SourceFile.virtual("<incomplete-handler>", code)
+          val unit     = CompilationUnit(source, mustExist = false)
+          val localCtx = ctx.fresh
+                            .setCompilationUnit(unit)
+                            .setReporter(reporter)
+          var needsMore = false
+          reporter.withIncompleteHandler((_, _) => needsMore = true) {
+            parseStats(using localCtx)
+          }
+          !reporter.hasErrors && needsMore
         }
-        !reporter.hasErrors && needsMore
-      }
     }
 }

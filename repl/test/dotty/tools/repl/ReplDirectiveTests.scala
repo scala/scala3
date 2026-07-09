@@ -50,6 +50,22 @@ class ReplDirectiveTests extends ReplTest:
     assertFalse(ParseResult.awaitsTrailingCode(":dep com.lihaoyi::os-lib:0.11.3\n"))
     assertFalse(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3\n"))
 
+  @Test def `command with incomplete trailing code is incomplete`: Unit = contextually:
+    assertTrue(ParseResult.isIncomplete(":settings -deprecation\nif true then"))
+    assertFalse(ParseResult.shouldAcceptLine(":settings -deprecation\nif true then", hasPendingInput = false))
+
+  @Test def `command with complete trailing code is complete`: Unit = contextually:
+    assertFalse(ParseResult.isIncomplete(":settings -deprecation\nif true then ()"))
+    assertTrue(ParseResult.shouldAcceptLine(":settings -deprecation\nif true then ()", hasPendingInput = false))
+
+  @Test def `code with incomplete trailing expression is incomplete`: Unit = contextually:
+    assertTrue(ParseResult.isIncomplete("val x = 5\nif x == 5 then"))
+    assertFalse(ParseResult.shouldAcceptLine("val x = 5\nif x == 5 then", hasPendingInput = false))
+
+  @Test def `code with complete trailing expression is complete`: Unit = contextually:
+    assertFalse(ParseResult.isIncomplete("val x = 5\nif x == 5 then 1"))
+    assertTrue(ParseResult.shouldAcceptLine("val x = 5\nif x == 5 then 1", hasPendingInput = false))
+
   @Test def `command with trailing code parses as CommandThenCode`: Unit = initially:
     ParseResult(":type \"hello\"\nval x = 5") match
       case CommandThenCode(TypeOf("\"hello\""), _: Parsed) => // expected

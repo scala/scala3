@@ -97,3 +97,40 @@ class ReplInteractiveTests:
     assertEquals(
       "//> using dep com.lihaoyi::os-lib:0.11.8\nval x = 1",
       readPastedLine("//> using dep com.lihaoyi::os-lib:0.11.8\nval x = 1\n"))
+
+  /** What a single `readLine` submits for `input`, or `waitsForMore` if it keeps
+   *  reading (the input was treated as incomplete). On timeout the piped input is
+   *  closed so the blocked reader unwinds cleanly and never wedges the suite.
+   */
+  private val waitsForMore = "<waits-for-more>"
+  private def submittedOrWaiting(input: String, timeoutMs: Long = 4000L): String =
+    val pos = new PipedOutputStream
+    val pis = new PipedInputStream(pos)
+    val sink = new ByteArrayOutputStream
+    val terminal =
+      TerminalBuilder.builder().system(false).streams(pis, sink).dumb(true).build()
+    val jlt = new JLineTerminal(terminal)
+    val executor = Executors.newSingleThreadExecutor: r =>
+      val t = new Thread(r, "repl-interactive-test")
+      t.setDaemon(true)
+      t
+    try
+      val future = executor.submit(() => jlt.readLine(noopCompleter)(using context))
+      pos.write(input.getBytes(StandardCharsets.UTF_8))
+      pos.flush()
+      try future.get(timeoutMs, TimeUnit.MILLISECONDS)
+      catch case _: TimeoutException =>
+        pos.close() // EOF lets the blocked reader finish so cleanup does not hang
+        try future.get(2000, TimeUnit.MILLISECONDS) catch case _: Exception => ()
+        waitsForMore
+    finally
+      executor.shutdownNow()
+      try jlt.close() catch case _: Throwable => ()
+
+  @Test def `command then incomplete code is not submitted as one line`(): Unit =
+    val incomplete = ":settings -deprecation\nif true then"
+    assertNotEquals(incomplete, submittedOrWaiting(incomplete + "\n"))
+
+  @Test def `code with incomplete trailing expression is not submitted as one line`(): Unit =
+    val incomplete = "val x = 5\nif x == 5 then"
+    assertNotEquals(incomplete, submittedOrWaiting(incomplete + "\n"))

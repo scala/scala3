@@ -19,7 +19,7 @@ object DependencyResolver:
   case class ClassifiedDirectives(deps: List[String], unsupportedKeys: List[String])
 
   /** Directive keys the REPL knows how to handle. Extend as more directives gain REPL support. */
-  lazy val supportedDirectives: Set[String] = Set("dep")
+  val supportedDirectives: Set[String] = Set("dep")
 
   /** Parse a dependency string of the form `org::artifact:version` or `org:artifact:version`
    *  and return the (organization, artifact, version) triple if successful.
