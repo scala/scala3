@@ -19,7 +19,7 @@ private[nio] object DiskDirectory:
     new DiskDirectory(jpath)
 
   def workingDirectory(): FileContainer =
-    new DiskDirectory(JPath.of(".").normalize())
+    new DiskDirectory(JPath.of(".").toAbsolutePath.normalize())
 
   def createTemporary(nameHint: String): FileContainer =
     new DiskDirectory(JFiles.createTempDirectory(nameHint))

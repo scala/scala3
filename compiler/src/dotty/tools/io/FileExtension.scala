@@ -19,7 +19,10 @@ enum FileExtension(val toLowerCase: String):
   def isEmpty: Boolean = this == Empty
 
   /** the full extension including a leading dot if not empty */
-  val withDot: String = if isEmpty then "" else "." + toLowerCase
+  val withDot: String =
+    if toLowerCase == "" // can't use `isEmpty` since Empty isn't initialized when this gets evaluated for Empty itself
+    then ""
+    else "." + toLowerCase
 
   override def toString: String = toLowerCase
 

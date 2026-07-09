@@ -1,7 +1,5 @@
 package dotty
 
-import java.nio.file.*
-
 /** Runtime properties from defines or environmnent */
 object Properties {
 
@@ -17,11 +15,6 @@ object Properties {
 
   /** Are we running on the CI? */
   val isRunByCI: Boolean = sys.env.isDefinedAt("DOTTY_CI_RUN")
-
-  val testCache: Path =
-    sys.env.get("DOTTY_TEST_CACHE").map(Paths.get(_)).getOrElse {
-      Paths.get(sys.props("user.home"), ".cache", "dotty", "test")
-    }
 
   /** Tests should run interactive? */
   val testsInteractive: Boolean = propIsNullOrTrue("dotty.tests.interactive")
@@ -53,7 +46,7 @@ object Properties {
   val testsInstrumentCoverage: Boolean = propIsTrue("dotty.tests.instrumentCoverage")
 
   /** Extra directory containing sources for the compiler */
-  def dottyCompilerManagedSources: Path = Paths.get(sys.props("dotty.tests.dottyCompilerManagedSources"))
+  def dottyCompilerManagedSources: String = sys.props("dotty.tests.dottyCompilerManagedSources").nn
 
   /** dotty-interfaces jar */
   def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces").nn

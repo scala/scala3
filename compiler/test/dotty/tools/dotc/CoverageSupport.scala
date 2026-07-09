@@ -8,7 +8,6 @@ import dotty.tools.nio.*
 import vulpix.*
 import reporting.TestReporter
 import TestSources.scoverageIgnoreExcludelisted
-import dotty.tools.io.FileExtension
 
 trait CoverageSupport:
   this: ParallelTesting =>
@@ -127,7 +126,7 @@ trait CoverageSupport:
         val fileMatches = sourceFiles.exists(matchesIgnoreList)
 
         // Also check the basename of the test title (covers SeparateCompilationSource directory targets)
-        val titleMatches = ignoreList.contains(new java.io.File(target.title).getName)
+        val titleMatches = ignoreList.contains(File.getOrCreateOnDisk(target.title).name)
 
         val shouldInclude = !fileMatches && !titleMatches
         if (!shouldInclude) {
