@@ -15,7 +15,7 @@ class ReplDependencyMacroTests extends ReplTest:
   private def resolveUpickle()(using State): Unit =
     run(":dep com.lihaoyi::upickle:4.4.3")
     val output = storedOutput()
-    assertTrue(output, output.contains("Resolved a dependency"))
+    assertTrue(output, output.contains("Resolved 1 dependencies"))
     assertNoMacroFailure(output)
 
   private def addUpickleViaJar()(using State): Unit =
@@ -41,6 +41,62 @@ class ReplDependencyMacroTests extends ReplTest:
       val output = storedOutput()
       assertTrue(output, output.contains("Added"))
       assertNoMacroFailure(output)
+
+  private def resolveUpickleViaDirective()(using State): Unit =
+    run("//> using dep com.lihaoyi::upickle:4.4.3")
+    val output = storedOutput()
+    assertTrue(output, output.contains("Resolved 1 dependencies"))
+    assertNoMacroFailure(output)
+
+  @Test def `i21654 using dep directive resolves like :dep`: Unit =
+    initially:
+      resolveUpickleViaDirective()
+
+  @Test def `i21654 using dep directive before code resolves and compiles`: Unit =
+    initially:
+      run("//> using dep com.lihaoyi::upickle:4.4.3\ncase class FooCombined(x: Int) derives upickle.default.ReadWriter")
+      val output = storedOutput()
+      assertTrue(output, output.contains("Resolved 1 dependencies"))
+      assertNoMacroFailure(output)
+      assertTrue(output, output.contains("// defined case class FooCombined"))
+
+  @Test def `i21654 multiple dep directives before code resolve together`: Unit =
+    initially:
+      run("""//> using dep com.lihaoyi::upickle:4.4.3
+            |//> using dep com.lihaoyi::os-lib:0.11.3
+            |val combined = (upickle.default.write(1), os.pwd.toString)""".stripMargin)
+      val output = storedOutput()
+      assertTrue(output, output.contains("Resolved 2 dependencies"))
+      assertNoMacroFailure(output)
+      assertTrue(output, output.contains("val combined:"))
+
+  @Test def `i21654 os-lib directive before code resolves and evaluates`: Unit =
+    initially:
+      run("//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd.toString")
+      val output = storedOutput()
+      assertTrue(output, output.contains("Resolved 1 dependencies"))
+      assertNoMacroFailure(output)
+      assertTrue(output, output.contains("val p: String ="))
+
+  @Test def `i21654 dep command before code resolves and evaluates`: Unit =
+    initially:
+      run(":dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd.toString")
+      val output = storedOutput()
+      assertTrue(output, output.contains("Resolved 1 dependencies"))
+      assertNoMacroFailure(output)
+      assertTrue(output, output.contains("val p: String ="))
+
+  @Test def `i21654 repeated dep commands with trailing newline resolve`: Unit =
+    initially:
+      run(":dep com.lihaoyi::os-lib:0.11.3\n")
+      val first = storedOutput()
+      assertTrue(first, first.contains("Resolved 1 dependencies"))
+      assertNoMacroFailure(first)
+      run(":dep com.lihaoyi::upickle:4.4.3\n")
+      val second = storedOutput()
+      assertTrue(second, second.contains("Resolved 1 dependencies"))
+      assertNoMacroFailure(second)
+      assertFalse(second, second.contains("Illegal start of statement"))
 
   @Test def `i25291 derives ReadWriter after :dep`: Unit =
     initially:

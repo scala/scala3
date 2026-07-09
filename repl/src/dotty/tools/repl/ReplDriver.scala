@@ -381,9 +381,12 @@ class ReplDriver(settings: Array[String],
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
       case parsed: Parsed if parsed.source.content().mkString.startsWith("//>") =>
-        // Check for magic comments specifying dependencies
-        println("Please use `:dep com.example::artifact:version` to add dependencies in the REPL")
-        state
+        val directiveSource = parsed.source.content().mkString
+        val stateAfterDirectives = interpretDirectives(directiveSource)
+        if parsed.trees.nonEmpty then
+          propagateLanguageImports(parsed.trees)
+          compile(parsed, stateAfterDirectives)
+        else stateAfterDirectives.recordInput(directiveSource.strip)
 
       case parsed: Parsed if parsed.trees.nonEmpty =>
         propagateLanguageImports(parsed.trees)
@@ -391,6 +394,11 @@ class ReplDriver(settings: Array[String],
 
       case SyntaxErrors(_, errs, _) =>
         displayErrors(errs, state)
+
+      case CommandThenCode(cmd, code) =>
+        val stateAfterCommand = interpretCommand(cmd)
+        val recorded = cmd.replayLine.fold(stateAfterCommand)(line => stateAfterCommand.recordInput(line.strip))
+        interpret(code)(using recorded)
 
       case cmd: Command =>
         val next = interpretCommand(cmd)
@@ -757,37 +765,43 @@ class ReplDriver(settings: Array[String],
         state.copy(context = rootCtx)
 
     case Silent => state.copy(quiet = !state.quiet)
-    case Dep(dep) =>
-      def jarCount(fileSize: Int): String =
-        if fileSize == 1 then "1 JAR" else s"$fileSize JARs"
-
-      if dep.nonEmpty then
-        DependencyResolver.parseDependency(dep) match
-          case Some(d) =>
-            DependencyResolver.resolveDependencies(List(d)) match
-              case Right(files) if files.nonEmpty =>
-                inContext(state.context):
-                  // Update both compiler classpath and classloader
-                  val prevOutputDir = ctx.settings.outputDir.value
-                  val prevClassLoader = rendering.classLoader()
-                  rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
-                    files,
-                    prevClassLoader,
-                    prevOutputDir
-                  )
-                  out.println(s"Resolved a dependency (${jarCount(files.size)})")
-              case Right(_) =>
-              case Left(error) =>
-                out.println(s"Error resolving a dependency: $error")
-          case None =>
-      else
-        out.println("No dependency specified.")
-      state
+    case Dep(dep) => resolveAndAddDeps(List(dep))
 
     case Quit =>
       // end of the world!
       state
   }
+
+  private def interpretDirectives(sourceCode: String)(using state: State): State =
+    val classified = DependencyResolver.classifyDirectives(sourceCode)
+    classified.unsupportedKeys.foreach: key =>
+      out.println(
+        s"""[warn] The `using $key` directive is not supported in the REPL.
+           |To use it, re-run with the `scala` command and pass the directive inside an input.""".stripMargin
+      )
+    resolveAndAddDeps(classified.deps)
+
+  private def resolveAndAddDeps(depStrings: List[String])(using state: State): State =
+    if depStrings.isEmpty then state
+    else
+      val deps = depStrings.flatMap(DependencyResolver.parseDependency)
+      if deps.isEmpty then state
+      else
+        DependencyResolver.resolveDependencies(deps) match
+          case Right(files) =>
+            if files.nonEmpty then
+              inContext(state.context):
+                val prevOutputDir = ctx.settings.outputDir.value
+                val prevClassLoader = rendering.classLoader()
+                rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
+                  files,
+                  prevClassLoader,
+                  prevOutputDir
+                )
+                out.println(s"Resolved ${deps.size} dependencies (${files.size} JARs)")
+          case Left(error) =>
+            out.println(s"Error resolving dependencies: $error")
+        state
 
   /** shows all errors nicely formatted */
   private def displayErrors(errs: Seq[Diagnostic], state: State): State = {

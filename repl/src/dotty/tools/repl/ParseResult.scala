@@ -9,6 +9,7 @@ import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
 import dotc.reporting.{Diagnostic, StoreReporter}
 import dotc.util.SourceFile
+import dotty.tools.directives.UsingDirectivesParser
 
 import scala.annotation.internal.sharable
 
@@ -38,6 +39,15 @@ case object SigKill extends ParseResult
  */
 sealed trait Command extends ParseResult:
   def replayLine: Option[String]
+
+/** A command on the first line followed by Scala code, e.g.
+ *  ```none
+ *  :dep <coords>
+ *  println("Hello")
+ *  ```
+ *  The command is interpreted first, then code is evaluated.
+ */
+case class CommandThenCode(command: Command, code: ParseResult) extends ParseResult
 
 /** An unknown command that will not be handled by the REPL */
 case class UnknownCommand(cmd: String) extends Command:
@@ -197,6 +207,11 @@ case object Help extends Command {
       |:settings <options>      update compiler options, if possible
       |:silent                  disable/enable automatic printing of results
       |:dep <group>::<artifact>:<version>     Resolve a dependency and make it available in the REPL
+      |
+      |Scala CLI `//> using dep` directives are also supported and behave like `:dep`, e.g.:
+      |  //> using dep <group>::<artifact>:<version>
+      |Directives must appear before any Scala code in the input; code on following lines is
+      |evaluated as usual. Other `//> using` directives are not (yet) supported in the REPL.
     """.stripMargin
 }
 
@@ -234,30 +249,57 @@ object ParseResult {
     Silent.command -> (_ => Silent),
   )
 
+  /** Resolve a `:command` name (which may be a prefix) and its argument into a `Command`. */
+  private def command(cmd: String, arg: String): Command =
+    commands.filter((command, _) => command.startsWith(cmd)) match {
+      case Nil => UnknownCommand(cmd)
+      case (_, f) :: Nil =>
+        f(arg) match {
+          case matched: Command => matched
+          case _ => UnknownCommand(cmd)
+        }
+      case multiple => AmbiguousCommand(cmd, multiple.map(_._1))
+    }
+
+  /** If `sourceCode`'s first line is a `:command`, split it into
+   *  `(commandName, commandArg, remainingText)`. `remainingText` may be blank.
+   */
+  private def leadingCommand(sourceCode: String): Option[(String, String, String)] =
+    sourceCode.indexOf('\n') match {
+      case -1 => None // single-line commands are handled by the CommandExtract fast path
+      case nl =>
+        val firstLineRaw = sourceCode.substring(0, nl)
+        val firstLine = if firstLineRaw.endsWith("\r") then firstLineRaw.dropRight(1) else firstLineRaw
+        val rest = sourceCode.substring(nl + 1)
+        firstLine match {
+          case CommandExtract(cmd: String, arg: String) => Some((cmd, arg, rest))
+          case _ => None
+        }
+    }
+
   def apply(source: SourceFile)(using state: State): ParseResult = {
     val sourceCode = source.content().mkString
     sourceCode match {
       case "" => Newline
-      case CommandExtract(cmd: String, arg: String) => {
-        val matchingCommands = commands.filter((command, _) => command.startsWith(cmd))
-        matchingCommands match {
-          case Nil => UnknownCommand(cmd)
-          case (_, f) :: Nil => f(arg)
-          case multiple => AmbiguousCommand(cmd, multiple.map(_._1))
-        }
-      }
+      case CommandExtract(cmd: String, arg: String) => command(cmd, arg)
       case _ =>
-        inContext(state.context) {
-          val reporter = newStoreReporter
-          val stats = parseStats(using state.context.fresh.setReporter(reporter).withSource(source))
+        leadingCommand(sourceCode) match {
+          case Some((cmd, arg, rest)) =>
+            if rest.exists(!_.isWhitespace) then CommandThenCode(command(cmd, arg), apply(rest))
+            else command(cmd, arg)
+          case None =>
+            inContext(state.context) {
+              val reporter = newStoreReporter
+              val stats = parseStats(using state.context.fresh.setReporter(reporter).withSource(source))
 
-          if (reporter.hasErrors)
-            SyntaxErrors(
-              sourceCode,
-              reporter.removeBufferedMessages,
-              stats)
-          else
-            Parsed(source, stats, reporter)
+              if (reporter.hasErrors)
+                SyntaxErrors(
+                  sourceCode,
+                  reporter.removeBufferedMessages,
+                  stats)
+              else
+                Parsed(source, stats, reporter)
+            }
         }
     }
   }
@@ -270,6 +312,36 @@ object ParseResult {
       case CommandExtract(_, _) => true
       case _ => false
 
+  /** True if `sourceCode` contains one or more leading `//> using` directives and no code yet. */
+  private def onlyDirectivesSoFar(sourceCode: String): Boolean =
+    val extracted = UsingDirectivesParser.extractLines(sourceCode.toIndexedSeq)
+    extracted.directiveLines.nonEmpty && extracted.codeOffset >= sourceCode.length
+
+  /** True if `sourceCode` is a single `:command` line and no code yet. */
+  private def onlyCommandSoFar(sourceCode: String): Boolean =
+    !sourceCode.contains('\n') && CommandExtract.matches(sourceCode)
+
+  /** A lone leading directive block or a single `:command` line with no trailing
+   *  code yet. During a paste we keep reading so following code joins this input;
+   *  on a single interactive ENTER (nothing pending) it is submitted as-is. */
+  private[repl] def awaitsTrailingCode(sourceCode: String): Boolean =
+    !sourceCode.endsWith("\n") && (onlyDirectivesSoFar(sourceCode) || onlyCommandSoFar(sourceCode))
+
+  /** Whether JLine should accept the current buffer as a complete submission. */
+  private[repl] def shouldAcceptLine(sourceCode: String, hasPendingInput: Boolean)(using Context): Boolean =
+    if awaitsTrailingCode(sourceCode) then !hasPendingInput
+    else !isIncomplete(sourceCode)
+
+  /** The trailing code after any leading `:command` lines. Only this part decides
+   *  whether the whole input is complete: a `:command` is complete on its own, and
+   *  parsing its line as Scala would raise a spurious error (`:` is illegal) that
+   *  would otherwise make unfinished trailing code look complete and submit early.
+   */
+  private def codeAfterLeadingCommands(sourceCode: String): String =
+    leadingCommand(sourceCode) match
+      case Some((_, _, rest)) => codeAfterLeadingCommands(rest)
+      case None => sourceCode
+
   /** Check if the input is incomplete.
    *
    *  This can be used in order to check if a newline can be inserted without
@@ -277,19 +349,22 @@ object ParseResult {
    */
   def isIncomplete(sourceCode: String)(using Context): Boolean =
     sourceCode match {
-      case CommandExtract(_, _) | "" => false
-      case _ => {
-        val reporter = newStoreReporter
-        val source   = SourceFile.virtual("<incomplete-handler>", sourceCode)
-        val unit     = CompilationUnit(source, mustExist = false)
-        val localCtx = ctx.fresh
-                          .setCompilationUnit(unit)
-                          .setReporter(reporter)
-        var needsMore = false
-        reporter.withIncompleteHandler((_, _) => needsMore = true) {
-          parseStats(using localCtx)
+      case "" => false
+      case CommandExtract(_, _) => false
+      case _ =>
+        val code = codeAfterLeadingCommands(sourceCode)
+        code.nonEmpty && {
+          val reporter = newStoreReporter
+          val source   = SourceFile.virtual("<incomplete-handler>", code)
+          val unit     = CompilationUnit(source, mustExist = false)
+          val localCtx = ctx.fresh
+                            .setCompilationUnit(unit)
+                            .setReporter(reporter)
+          var needsMore = false
+          reporter.withIncompleteHandler((_, _) => needsMore = true) {
+            parseStats(using localCtx)
+          }
+          !reporter.hasErrors && needsMore
         }
-        !reporter.hasErrors && needsMore
-      }
     }
 }

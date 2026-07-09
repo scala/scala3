@@ -266,4 +266,100 @@ class SaveTests extends ReplTest, SessionFileHelpers {
       run("isEven(10)")
       assertEquals(List("val res0: Boolean = true"), lines())
     }
+
+  @Test def savesCommandThenCode =
+    val target = tempFile()
+    initially {
+      run(":type \"hi\"\nval x = 5")
+    } andThen {
+      run(s":save $target")
+      assertEquals(
+        s"""|$header
+            |$sep
+            |:type "hi"
+            |$sep
+            |val x = 5""".stripMargin,
+        contentOf(target)
+      )
+    }
+
+  @Test def roundTripsCommandThenCodeViaLoad =
+    val target = tempFile()
+    initially {
+      run(":type \"hi\"\nval x = 5")
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      storedOutput()
+      run(s":load $target")
+    } andThen {
+      storedOutput()
+      run("x")
+      assertEquals(List("val res0: Int = 5"), lines())
+    }
+
+  @Test def savesLoneDirective =
+    val target = tempFile()
+    initially {
+      run("//> using options -Werror")
+    } andThen {
+      run(s":save $target")
+      assertEquals(
+        s"""|$header
+            |$sep
+            |//> using options -Werror""".stripMargin,
+        contentOf(target)
+      )
+    }
+
+  @Test def savesDirectiveThenCode =
+    val target = tempFile()
+    initially {
+      run("//> using options -Werror\nval x = 1")
+    } andThen {
+      run(s":save $target")
+      assertEquals(
+        s"""|$header
+            |$sep
+            |//> using options -Werror
+            |val x = 1""".stripMargin,
+        contentOf(target)
+      )
+    }
+
+  @Test def roundTripsMultipleDirectivesThenCodeViaLoad =
+    val target = tempFile()
+    initially {
+      run("//> using options -Werror\n//> using scala 3.3.1\nval z = 3")
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      storedOutput()
+      run(s":load $target")
+    } andThen {
+      storedOutput()
+      run("z")
+      assertEquals(List("val res0: Int = 3"), lines())
+    }
+
+  @Test def roundTripsDepDirectiveViaLoad =
+    val target = tempFile()
+    initially {
+      run("//> using dep com.lihaoyi::os-lib:0.11.8\nval p = os.pwd.toString.nonEmpty")
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      storedOutput()
+      run(s":load $target")
+    } andThen {
+      storedOutput()
+      run("os.pwd.toString.nonEmpty")
+      assertEquals(List("val res0: Boolean = true"), lines())
+    }
 }
