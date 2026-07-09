@@ -427,10 +427,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       val cur = ctxs.next()
       if cur.owner.userSymbol == sym && !sym.is(Package) then
         enclosed = true // found enclosing definition, don't record the reference
-      if cur.isImportContext then
-        val sel = matchingSelector(cur.importInfo.nn)
+      val importInfo = cur.importInfoIfImportContext
+      if importInfo `ne` null then
+        val sel = matchingSelector(importInfo)
         if sel != null then
-          if cur.importInfo.nn.isRootImport then
+          if importInfo.isRootImport then
             if precedence.weakerThan(OtherUnit) then
               precedence = OtherUnit
               candidate = cur
@@ -474,23 +475,24 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     val ctxs = ctx.outersIterator
     while !done && ctxs.hasNext do
       val cur = ctxs.next()
+      val importInfo = cur.importInfoIfImportContext
       val implicitRefs: List[ImplicitRef] =
         if (cur.isClassDefContext) cur.owner.thisType.implicitMembers
-        else if (cur.isImportContext) cur.importInfo.nn.importedImplicits
+        else if (importInfo `ne` null) importInfo.importedImplicits
         else if (cur.isNonEmptyScopeContext) cur.scope.implicitDecls
         else Nil
       implicitRefs.find(ref => ref.underlyingRef.widen <:< tp) match
       case Some(found: TermRef) =>
         refUsage(found.denot.symbol, pos)
-        if cur.isImportContext then
-          cur.importInfo.nn.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
+        if importInfo `ne` null then
+          importInfo.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
           case Some(sel) =>
             refInfos.sels.put(sel, ())
           case _ =>
         return
-      case Some(found: RenamedImplicitRef) if cur.isImportContext =>
+      case Some(found: RenamedImplicitRef) if importInfo `ne` null =>
         refUsage(found.underlyingRef.denot.symbol, pos)
-        cur.importInfo.nn.selectors.find(sel => sel.rename == found.implicitName) match
+        importInfo.selectors.find(sel => sel.rename == found.implicitName) match
         case Some(sel) =>
           refInfos.sels.put(sel, ())
         case _ =>
