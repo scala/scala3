@@ -69,7 +69,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     final def checkFile: Option[File] =
       checkFileBasePathCandidates
-        .flatMap(base => Array(s"$base.$testPlatform.check", s"$base.check"))
+        .flatMap(base => List(s"$base.$testPlatform.check", s"$base.check"))
         .flatMap(File.getOnDisk)
         .headOption
 
@@ -539,7 +539,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       // We must set -sourceroot for SemanticDB extraction to work properly inside an IDE,
       // but we have many existing coverage tests that assume it is not set, so as a workaround:
       if !flags.all.contains("-coverage-out") then
-        flags = flags.and("-sourceroot", TestSources.rootPath().toAbsolutePath.toString)
+        flags = flags.and("-sourceroot", TestSources.rootPath().path)
 
       def compileWithJavac(fs: List[String]) = if (fs.nonEmpty) {
         val fullArgs = Array(
@@ -742,7 +742,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     }
 
     protected def compileFromTasty(flags0: TestFlags, targetDir: FileContainer): TestReporter = {
-      val tastyOutput = FileContainer.getOrCreateOnDisk(targetDir.path + "_from-tasty", "")
+      val tastyOutput = targetDir.getOrCreateContainer("_from-tasty")
       val flags = flags0 `and` ("-d", tastyOutput.path) `and` "-from-tasty"
 
       val classes = flattenFiles(targetDir).filter(_.extension.isTasty).map(_.toString)
@@ -950,7 +950,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       else
         runMain(runClassPath, allToolArgs) match
           case Success(output) =>
-            for file <- checkFile if file.exists do
+            for file <- checkFile do
               diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
           case Failure("") =>
             echo(s"Test '$title' failed with no output")
@@ -1351,14 +1351,21 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
              "  - generic failure (see test output)"
         .mkString(s"encountered ${test.failureCount} test failure(s):\n", "\n", "")
 
-    /** Copies `file` to `dir` - taking into account if `file` is a directory,
-     *  and if so copying recursively
-     */
-    private def copyToDir[T <: FileSystemEntry](dir: FileContainer, file: T): T = {
-      val target = Paths.get(dir.path, file.name)
-      Files.copy(file.toPath, target, REPLACE_EXISTING)
-      if (file.isDirectory) file.listFiles.map(copyToDir(target.toFile, _))
-      target.toFile
+    /** Copies `file` to `dir` */
+    private def copyToDir(dir: FileContainer, file: File): File = {
+      val res = dir.getOrCreateFile(file.name)
+      file.copyTo(res)
+      res
+    }
+
+    /** Copies `other` to `dir` recursively */
+    private def copyToDir(dir: FileContainer, other: FileContainer): FileContainer = {
+      val res = dir.getOrCreateContainer(other.name)
+      for e <- other.entries do
+        e match
+          case f: File => copyToDir(res, f)
+          case c: FileContainer => copyToDir(res, c)
+      res
     }
 
     /** Builds a `CompilationTest` which performs the compilation `i` times on
@@ -1456,7 +1463,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
   /** Compiles a single file from the string path `f` using the supplied flags */
   def compileFile(f: String, flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
-    val sourceFile = File.getOnDisk(TestSources.getPath(f)).getOrElse(throw new AssertionError(s"Source file: $f, didn't exist"))
+    val sourceFile = TestSources.rootPath().getFile(f).getOrElse(throw new AssertionError(s"Source file: $f, didn't exist"))
     val parent = sourceFile.parent
     val outDir = defaultOutputDir.getOrCreateContainer(testGroup.name).getOrCreateContainer(sourceFile.name.substring(0, sourceFile.name.lastIndexOf('.')))
 
@@ -1478,7 +1485,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    */
   def compileDir(f: String, flags: TestFlags, randomOrder: Option[Int] = None, recursive: Boolean = true)(using testGroup: TestGroup): CompilationTest = {
     val outDir = defaultOutputDir.getOrCreateContainer(testGroup.name)
-    val sourceDir = FileContainer.getOnDisk(TestSources.getPath(f), "").get
+    val sourceDir = TestSources.rootPath().getContainer(f).get
 
     // Sort files either alphabetically or randomly using the provided seed:
     val sortedFiles = (if recursive then sourceDir.recursiveEntries else sourceDir.entries).collect { case f: File => f }.toList.sortBy(_.path)
@@ -1529,7 +1536,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    */
   def compileFilesInDir(f: String, flags: TestFlags, fileFilter: FileFilter = FileFilter.NoFilter)(implicit testGroup: TestGroup): CompilationTest = {
     val outDir = defaultOutputDir.getOrCreateContainer(testGroup.name)
-    val sourceDir = FileContainer.getOnDisk(TestSources.getPath(f), "").get
+    val sourceDir = TestSources.rootPath().getContainer(f).get
 
     val (dirs, files) = compilationTargets(sourceDir, fileFilter)
 
@@ -1576,7 +1583,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
   def compileTastyInDir(f: String, flags0: TestFlags, fromTastyFilter: FileFilter)(implicit testGroup: TestGroup): TastyCompilationTest = {
     val outDir = defaultOutputDir.getOrCreateContainer(testGroup.name)
     val flags = flags0 `and` "-Yretain-trees"
-    val sourceDir = FileContainer.getOrCreateOnDisk(f, "")
+    val sourceDir = TestSources.rootPath().getContainer(f).get
 
     val (dirs, files) = compilationTargets(sourceDir, fromTastyFilter)
 
@@ -1638,7 +1645,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     assert(!flags.options.contains(bestEffortFlag), "Best effort compilation flag should not be added manually")
 
     val outDir = defaultOutputDir.getOrCreateContainer(testGroup.name)
-    val sourceDir = FileContainer.getOnDisk(TestSources.getPath(f), "").get
+    val sourceDir = TestSources.rootPath().getContainer(f).get
 
     val (dirsStep1, filteredPicklingFiles) = compilationTargets(sourceDir, picklingFilter)
     val (dirsStep2, filteredUnpicklingFiles) = compilationTargets(sourceDir, unpicklingFilter)
@@ -1724,7 +1731,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     val bestEffortFlag = "-Ybest-effort"
     val semanticDbFlag = "-Xsemanticdb"
     val withBetastyFlag = "-Ywith-best-effort-tasty"
-    val sourceDir = FileContainer.getOnDisk(f, "").get
+    val sourceDir = TestSources.rootPath().getContainer(f).get
     val dirs = sourceDir.entries.collect {
       case c: FileContainer => c
       case _ => throw new AssertionError(s"All entries in $f have to be directories.")
@@ -1821,7 +1828,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    */
   def compileShallowFilesInDir(f: String, flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
     val outDir = defaultOutputDir.getOrCreateContainer(testGroup.name)
-    val sourceDir = FileContainer.getOnDisk(TestSources.getPath(f), "").get
+    val sourceDir = TestSources.rootPath().getContainer(f).get
 
     val (_, files) = compilationTargets(sourceDir)
 
@@ -1846,7 +1853,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 object ParallelTesting:
 
   def defaultOutputDirName: String = "out" + FileSystemEntry.separator
-  def defaultOutputDir: FileContainer = FileContainer.getOrCreateOnDisk(TestSources.getPath(defaultOutputDirName), "")
+  def defaultOutputDir: FileContainer = TestSources.rootPath().getOrCreateContainer(defaultOutputDirName)
 
   extension (pos: SourcePosition)
     private def adjustedAtEOF: SourcePosition =

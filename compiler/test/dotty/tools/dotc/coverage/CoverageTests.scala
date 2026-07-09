@@ -20,7 +20,7 @@ import scala.io.Codec
 class CoverageTests:
   import CoverageTests.{*, given}
 
-  private val rootSrc = FileContainer.getOnDisk(TestSources.rootPath().toString, "").get.getContainer("tests").get.getContainer("coverage").get
+  private val rootSrc = TestSources.rootPath().getContainer("tests").get.getContainer("coverage").get
 
   @Test
   def checkCoverageStatements(): Unit =
@@ -56,11 +56,11 @@ class CoverageTests:
         case d: FileContainer =>
           assert(d.recursiveEntries.collect { case f: File if f.extension == FileExtension.Scala => f }.nonEmpty, s"No scala files found in test directory: ${path.path}")
           val targetDir = computeCoverageInTmp(d, isDirectory = true, dir, run)
-          (targetDir, d.getOrCreateFile("test.scoverage", FileExtension.from("check")), d.getFile("test.measurement", FileExtension.from("check")))
+          (targetDir, d.getOrCreateFile("test.scoverage.check"), d.getFile("test.measurement.check"))
         case f: File =>
           val fileName = f.nameWithoutExtension
           val targetDir = computeCoverageInTmp(f, isDirectory = false, dir, run)
-          (targetDir, f.parent.getOrCreateFile(s"$fileName.scoverage", FileExtension.from("check")), f.parent.getFile(s"$fileName.measurement", FileExtension.from("check")))
+          (targetDir, f.parent.getOrCreateFile(s"$fileName.scoverage.check"), f.parent.getFile(s"$fileName.measurement.check"))
 
       val targetFile = targetDir.getFile("scoverage", FileExtension.from("coverage")).get
 
@@ -98,9 +98,6 @@ class CoverageTests:
     if run then
       val path = if isDirectory then inputFile.path else inputFile.parent.path
       val test = compileDir(path, options)
-      // a checkFile exists by construction; perhaps this intends to assert that target.checkFile.isDefined
-      for target <- test.targets; checkFile <- target.checkFile do
-        assert(checkFile.exists, s"Expected checkfile for $path $checkFile does not exist.")
       test.checkRuns()
     else
       val test =
@@ -139,7 +136,7 @@ class CoverageTests:
     val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", coverageOut.path, "-sourceroot", sourceRoot.path)
     compileFile(sourceFile1.path, options).checkCompile()
 
-    val scoverageFile = coverageOut.getFile("scoverage", FileExtension.from("coverage"))
+    val scoverageFile = coverageOut.getFile("scoverage.coverage")
     assert(scoverageFile.nonEmpty, s"Expected scoverage file to exist at ${coverageOut.path}")
 
     locally {
@@ -170,7 +167,7 @@ class CoverageTests:
     val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", coverageOut.path, "-sourceroot", sourceRoot.path)
     compileFile(sourceFile1.path, options).checkCompile()
 
-    val scoverageFile = coverageOut.getFile("scoverage", FileExtension.from("coverage"))
+    val scoverageFile = coverageOut.getFile("scoverage.coverage")
     assert(scoverageFile.nonEmpty, s"Expected scoverage file to exist at ${coverageOut.path}")
 
     locally {

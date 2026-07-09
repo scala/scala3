@@ -1,16 +1,16 @@
 package dotty.tools.debug
 
 import com.sun.jdi.*
-import dotty.tools.io.*
+import dotty.tools.nio.*
 import dotty.tools.vulpix.TestFlags
 
 import scala.jdk.CollectionConverters.*
 
 class ExpressionEvaluator(
-  sources: Map[String, JPath],
+  sources: Map[String, java.nio.file.Path],
   options: Array[String],
   classPath: String,
-  outputDir: JPath
+  outputDir: java.nio.file.Path
 ):
   private val compiler = ExpressionCompilerBridge()
   private var uniqueID: Int = 1
@@ -224,11 +224,11 @@ object ExpressionEvaluator:
 
 
   def apply(
-    sources: Array[JFile],
+    sources: List[File],
     flags: TestFlags,
     classPath: String,
-    outputDir: JFile
+    outputDir: FileContainer
   ): ExpressionEvaluator =
-    val sourceMap = sources.map(s => s.getName -> s.toPath).toMap
+    val sourceMap = sources.map(s => s.name -> java.nio.file.Path.of(s.path)).toMap
     val filteredOptions = flags.options.filterNot(_ == "-Ycheck:all")
-    new ExpressionEvaluator(sourceMap, filteredOptions, classPath, outputDir.toPath)
+    new ExpressionEvaluator(sourceMap, filteredOptions, classPath, java.nio.file.Path.of(outputDir.path))

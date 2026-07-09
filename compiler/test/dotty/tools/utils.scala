@@ -10,7 +10,7 @@ import dotty.tools.directives.{DirectiveValue, UsingDirectivesParser}
 import dotty.tools.nio.*
 import scala.io.Codec
 
-object Dummy
+private object Dummy
 
 def scripts(path: String): Array[FileSystemEntry] = {
   val dir = scriptsDir(path)

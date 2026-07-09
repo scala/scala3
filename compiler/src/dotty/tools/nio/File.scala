@@ -92,6 +92,10 @@ abstract class File extends FileSystemEntry:
     try out.write(str.getBytes(codec.charSet))
     finally out.close()
 
+  /** Writes the given lines using the given codec into this file, optionally appending. */
+  def writeLines(lines: Iterable[String], codec: Codec, append: Boolean = false): Unit =
+    writeText(lines.mkString(System.lineSeparator()) + System.lineSeparator(), codec, append)
+
   /** Copies this file to the given file. */
   def copyTo(other: File): Unit =
     val in = input()

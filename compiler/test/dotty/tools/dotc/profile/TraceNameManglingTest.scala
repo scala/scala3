@@ -17,11 +17,11 @@ class TraceNameManglingTest extends DottyTest {
     fc.setSetting(fc.settings.YprofileEnabled, true)
     fc.setSetting(
       fc.settings.YprofileTrace,
-      tmpDir.getOrCreateFile("trace", FileExtension.from("json")).path
+      tmpDir.getOrCreateFile("trace.json").path
     )
     fc.setSetting(
       fc.settings.YprofileDestination,
-      tmpDir.getOrCreateFile("profiler", FileExtension.from("out")).path
+      tmpDir.getOrCreateFile("profiler.out").path
     )
   }
 

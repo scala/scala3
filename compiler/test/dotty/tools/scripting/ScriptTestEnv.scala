@@ -34,7 +34,7 @@ object ScriptTestEnv {
     scriptingDir.getContainer(".scala-build").foreach(_.deleteRecursively())
     dottyDir.getContainer(".scala-build").foreach(_.deleteRecursively())
     dottyDir.getContainer(".bsp").foreach(d =>
-      d.getFile("scala", FileExtension.from("json")).foreach(_.delete())
+      d.getFile("scala.json").foreach(_.delete())
       if d.entries.isEmpty then d.deleteRecursively()
     )
   }
@@ -176,13 +176,6 @@ object ScriptTestEnv {
         sys.error(s"no $packVersionFile found")
   }
 
-  def listJars(dir: String): List[File] =
-    FileContainer.getOnDisk(dir, "") match
-      case Some(d) =>
-        d.entries.collect { case f: File if f.extension == FileExtension.Jar => f }.toList
-      case _ =>
-        Nil
-
   // script output expected as "<tag>: <value>"
   def findTaggedLine(tag: String, lines: Seq[String]): String =
     lines.map { stripColors(_) }.find { _.startsWith(tag) } match
@@ -230,7 +223,7 @@ object ScriptTestEnv {
     def norm: String = s.replace('\\', '/') // bash expects forward slash
   }
 
-  lazy val cwd: FileContainer = FileContainer.getOnDisk(".", "").get
+  lazy val cwd: FileContainer = FileContainer.workingDirectory()
 
   lazy val (scalacPath: String, scalaPath: String) = {
     val scalac = s"$workingDirectory/$packBinDir/scalac"

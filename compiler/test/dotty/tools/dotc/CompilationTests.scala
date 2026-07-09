@@ -5,7 +5,6 @@ package dotc
 import org.junit.{Test, AfterClass}
 import org.junit.Assume.*
 
-import java.nio.file.*
 import scala.concurrent.duration.*
 
 import dotty.tools.dotc.reporting.TestReporter
@@ -290,7 +289,7 @@ class CompilationTests {
     locally {
       val group = TestGroup("checkInitGlobal/tastySource")
       val tastSourceOptions = defaultOptions.and("-Ysafe-init-global")
-      val outDirLib = Paths.get(defaultOutputDir.getAbsolutePath, group.name,"A", "tastySource", "A").toString
+      val outDirLib = defaultOutputDir.getOrCreateContainer(group.name).getOrCreateContainer("A").getOrCreateContainer("tastySource").getOrCreateContainer("A").path
 
       // Set -sourceroot such that the source code cannot be found by the compiler
       val libOptions = tastSourceOptions.and("-sourceroot", "tests/init-global/special")
@@ -335,9 +334,9 @@ class CompilationTests {
       val tastyErrorGroup = TestGroup("checkInit/tasty-error/val-or-defdef")
       val tastyErrorOptions = options.without("-Werror")
 
-      val classA0 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v0", "A").toString
-      val classA1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v1", "A").toString
-      val classB1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "B", "v1", "B").toString
+      val classA0 = defaultOutputDir.getOrCreateContainer(tastyErrorGroup.name).getOrCreateContainer("A").getOrCreateContainer("v0").getOrCreateContainer("A").path
+      val classA1 = defaultOutputDir.getOrCreateContainer(tastyErrorGroup.name).getOrCreateContainer("A").getOrCreateContainer("v1").getOrCreateContainer("A").path
+      val classB1 = defaultOutputDir.getOrCreateContainer(tastyErrorGroup.name).getOrCreateContainer("B").getOrCreateContainer("v1").getOrCreateContainer("B").path
 
       val tests = List(
         withCoverage(compileFile("tests/init/tasty-error/val-or-defdef/v1/A.scala", tastyErrorOptions)(using tastyErrorGroup).keepOutput),
@@ -359,10 +358,10 @@ class CompilationTests {
       val tastyErrorGroup = TestGroup("checkInit/tasty-error/typedef")
       val tastyErrorOptions = options.without("-Werror").without("-Ycheck:all")
 
-      val classC =  Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "C", "typedef", "C").toString
-      val classA0 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v0", "A").toString
-      val classA1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v1", "A").toString
-      val classB1 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "B", "v1", "B").toString
+      val classC =  defaultOutputDir.getOrCreateContainer(tastyErrorGroup.name).getOrCreateContainer("C").getOrCreateContainer("typedef").getOrCreateContainer("C").path
+      val classA0 = defaultOutputDir.getOrCreateContainer(tastyErrorGroup.name).getOrCreateContainer("A").getOrCreateContainer("v0").getOrCreateContainer("A").path
+      val classA1 = defaultOutputDir.getOrCreateContainer(tastyErrorGroup.name).getOrCreateContainer("A").getOrCreateContainer("v1").getOrCreateContainer("A").path
+      val classB1 = defaultOutputDir.getOrCreateContainer(tastyErrorGroup.name).getOrCreateContainer("B").getOrCreateContainer("v1").getOrCreateContainer("B").path
 
       val tests = List(
         withCoverage(compileFile("tests/init/tasty-error/typedef/C.scala", tastyErrorOptions)(using tastyErrorGroup).keepOutput),
@@ -441,7 +440,7 @@ class CompilationTests {
       var i = 0
       for (path, func) <- rest do
         i += 1
-        val outDir = Paths.get(defaultOutputDir.getAbsolutePath, groupName, path)
+        val outDir = defaultOutputDir.getOrCreateContainer(groupName).getOrCreateContainer(path)
         val test = withCoverage(func(options.withClasspath(outDir.toString))(using thisGroup).keepOutput)
         run(test, expectError && i == rest.length)
     finally

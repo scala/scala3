@@ -32,7 +32,7 @@ class IdempotencyTests {
     val orderIdempotency = {
       val tests =
         for {
-          testDir <- FileContainer.getOnDisk("tests/order-idempotency", "").get.entries.collect { case c: FileContainer => c }.toList
+          testDir <- TestSources.rootPath().getContainer("tests/order-idempotency").get.entries.collect { case c: FileContainer => c }.toList
         } yield {
           val sources = TestSources.sources(testDir)
           aggregateTests(

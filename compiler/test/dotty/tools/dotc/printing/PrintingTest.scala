@@ -17,7 +17,7 @@ import scala.io.Codec
 class PrintingTest {
 
   def options(phase: String, flags: List[String]) =
-    val outDir = FileContainer.getOrCreateOnDisk(ParallelTesting.defaultOutputDir.getPath, "").getOrCreateContainer("printing")
+    val outDir = ParallelTesting.defaultOutputDir.getOrCreateContainer("printing")
     List(s"-Vprint:$phase", "-color:never", "-nowarn", "-d", outDir.path, "-classpath", TestConfiguration.basicClasspath) ::: flags
 
   private def compileFile(path: File, phase: String): Boolean = {
@@ -44,7 +44,7 @@ class PrintingTest {
   }
 
   def testIn(testsDir: String, phase: String) =
-    val res = FileContainer.getOnDisk(testsDir, "").get.entries.collect {
+    val res = TestSources.rootPath().getContainer(testsDir).get.entries.collect {
       case f: File if f.extension.isSourceExtension => compileFile(f, phase)
     }.toList
 

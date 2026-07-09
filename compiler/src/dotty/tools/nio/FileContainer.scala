@@ -3,6 +3,11 @@ package dotty.tools.nio
 import dotty.tools.io.FileExtension
 
 object FileContainer:
+  /** Gets the current working directory on disk. */
+  def workingDirectory(): FileContainer =
+    DiskDirectory.workingDirectory()
+
+  /** Gets a file container at the given path on disk if it exists, using the given JAR version if necessary. */
   def getOnDisk(path: String, jarVersion: String): Option[FileContainer] =
     if path.endsWith(FileExtension.Jar.withDot) then DiskFile.get(path).map(new JarContainer(_, jarVersion))
     else if path.endsWith(FileExtension.Zip.withDot) then DiskFile.get(path).map(new ZipContainer(_))
@@ -33,15 +38,15 @@ abstract class FileContainer extends FileSystemEntry:
       case e => Iterable.single(e)
     }
 
-  /** Gets the file in this container at the given path if it exists, with the given extension, and optionally using the given path separator. */
-  final def getFile(path: String, extension: FileExtension, separator: Char = FileSystemEntry.separator): Option[File] =
+  /** Gets the file in this container at the given path if it exists, optionally with the given extension and using the given path separator. */
+  final def getFile(path: String, extension: FileExtension = FileExtension.Empty, separator: Char = FileSystemEntry.separator): Option[File] =
     lookupPath(path, separator, create = false, isFile = true, extension = extension).map(_.asInstanceOf[File])
   /** Gets the container in this container at the given path if it exists, optionally using the given path separator. */
   final def getContainer(path: String, separator: Char = FileSystemEntry.separator): Option[FileContainer] =
     lookupPath(path, separator, create = false, isFile = false, extension = FileExtension.Empty).map(_.asInstanceOf[FileContainer])
 
-  /** Gets or creates a file in this container at the given path, with the given extension, and optionally using the given path separator. */
-  def getOrCreateFile(path: String, extension: FileExtension, separator: Char = FileSystemEntry.separator): File =
+  /** Gets or creates a file in this container at the given path, optionally with the given extension and using the given path separator. */
+  def getOrCreateFile(path: String, extension: FileExtension = FileExtension.Empty, separator: Char = FileSystemEntry.separator): File =
     lookupPath(path, separator, create = true, isFile = true, extension = extension).get.asInstanceOf[File]
   /** Gets or creates a container in this container at the given path, optionally using the given path separator. */
   def getOrCreateContainer(path: String, separator: Char = FileSystemEntry.separator): FileContainer =

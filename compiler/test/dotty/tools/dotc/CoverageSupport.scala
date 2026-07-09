@@ -80,13 +80,12 @@ trait CoverageSupport:
     if (idx >= 0 && idx + 1 < flags.length)
       val coverageDir = FileContainer.getOrCreateOnDisk(flags(idx + 1), "")
       try
-        val coverageFile = coverageDir.getFile("scoverage", FileExtension.from("coverage"))
+        val coverageFile = coverageDir.getFile("scoverage.coverage")
           .getOrElse(throw new AssertionError(s"Coverage file missing in ${coverageDir.path} for test ${testSource.title}"))
         assert(coverageFile.size() > 0, s"Coverage file is empty: $coverageFile for test ${testSource.title}")
 
         // Verify file can be deserialized (valid format)
-        val sourceRoot = Paths.get(".").toAbsolutePath.toString
-        assert(Try(Serializer.deserialize(coverageFile, sourceRoot)).isSuccess, s"Coverage file has invalid format: $coverageFile for test ${testSource.title}")
+        assert(Try(Serializer.deserialize(java.nio.file.Path.of(coverageFile.path), ".")).isSuccess, s"Coverage file has invalid format: $coverageFile for test ${testSource.title}")
       finally
         // Cleanup temporary directory even if exceptions are thrown
         coverageDir.deleteRecursively()
@@ -141,14 +140,13 @@ trait CoverageSupport:
 
       val modifiedTargets = filteredTargets.map { target =>
         val coverageDir = FileContainer.createTemporaryOnDisk("coverage")
-        val sourceRoot = Paths.get(".").toAbsolutePath.toString
         val targetWithFlags =
           if target.sourceFiles.exists(file => ycheckExemptList.contains(file.name)) then target.withoutFlags("-Ycheck:all")
           else target
 
         targetWithFlags.withFlags(
           "-coverage-out", coverageDir.path,
-          "-sourceroot", sourceRoot
+          "-sourceroot", "."
         )
       }
       test.copy(targets = modifiedTargets)

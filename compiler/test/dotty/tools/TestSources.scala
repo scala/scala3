@@ -7,20 +7,12 @@ import scala.io.Codec
 
 object TestSources {
 
-  private val isWorkingDirectoryInsideCompiler = FileContainer.getOnDisk(".", "").get.name == "compiler"
+  private val isWorkingDirectoryInsideCompiler = FileContainer.workingDirectory().name == "compiler"
 
   def rootPath(): FileContainer =
     if isWorkingDirectoryInsideCompiler
-    then FileContainer.getOnDisk("..", "").get
-    else FileContainer.getOnDisk(".", "").get
-
-  def getPath(relative: String): String =
-    if isWorkingDirectoryInsideCompiler
-    then Paths.get("..", relative).toString
-    // important to not do `get(".", relative)` (or equivalently `rootPath().resolve(relative)`),
-    // the rest of the testing framework depends on exact paths,
-    // so "error in ./x.scala" and "error in x.scala" aren't considered equivalent.
-    else Paths.get(relative).toString
+    then FileContainer.workingDirectory().parent
+    else FileContainer.workingDirectory()
 
   // pos tests lists
 
@@ -97,7 +89,7 @@ object TestSources {
   // load lists
 
   private def loadList(path: String): List[String] = {
-    val list = File.getOnDisk(getPath(path)).get.readLines(Codec.UTF8)
+    val list = rootPath().getFile(path).get.readLines(Codec.UTF8)
       .map(_.trim)                     // allow indentation
       .filterNot(_.startsWith("#"))    // allow comment lines prefixed by #
       .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line

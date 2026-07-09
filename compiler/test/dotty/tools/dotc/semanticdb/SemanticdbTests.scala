@@ -40,16 +40,16 @@ import scala.io.Codec
   val semanticdbPath = inputFile()
   val doc = SemanticdbTests.loadTextDocumentUnsafe(sourceSrc, semanticdbPath)
   SemanticdbTests.metac(doc, doc.uri)(using metacSb)
-  rootSrc.getOrCreateFile("metac", FileExtension.from("expect")).writeText(metacSb.toString, Codec.UTF8)
+  rootSrc.getOrCreateFile("metac.expect").writeText(metacSb.toString, Codec.UTF8)
 
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class SemanticdbTests:
   val expectExt = FileExtension.from("expect.scala")
-  val rootSrc: FileContainer = FileContainer.getOnDisk(TestSources.rootPath().toString, "").get.getContainer("tests").get.getContainer("semanticdb").get
+  val rootSrc: FileContainer = TestSources.rootPath().getContainer("tests").get.getContainer("semanticdb").get
   val expectSrc: FileContainer = rootSrc.getOrCreateContainer("expect")
   val javaRoot: FileContainer = rootSrc.getOrCreateContainer("javacp")
-  val metacExpectFile: File = rootSrc.getOrCreateFile("metac", FileExtension.from("expect"))
+  val metacExpectFile: File = rootSrc.getOrCreateFile("metac.expect")
 
   @Category(Array(classOf[dotty.SlowTests]))
   @Test def expectTests: Unit = if (!scala.util.Properties.isWin) runExpectTest(updateExpectFiles = false)

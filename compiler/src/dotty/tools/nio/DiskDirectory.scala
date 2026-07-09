@@ -18,6 +18,9 @@ private[nio] object DiskDirectory:
       JFiles.createDirectories(jpath)
     new DiskDirectory(jpath)
 
+  def workingDirectory(): FileContainer =
+    new DiskDirectory(JPath.of(".").normalize())
+
   def createTemporary(nameHint: String): FileContainer =
     new DiskDirectory(JFiles.createTempDirectory(nameHint))
 
