@@ -19,12 +19,6 @@ object File:
   def getOrCreateOnDisk(path: String): File =
     DiskFile.getOrCreate(path)
 
-  /** If the given file is also a container, such as an archive, opens it as such and returns it, using the given JAR version if necessary. Otherwise, returns None. */
-  def openAsArchive(file: File, jarVersion: String): Option[FileContainer] =
-    if file.extension == FileExtension.Jar then Some(new JarContainer(file, jarVersion))
-    else if file.extension == FileExtension.Zip then Some(new ZipContainer(file))
-    else None
-
   /** Creates a temporary file on disk. */
   def createTemporaryOnDisk(nameHint: String, extension: FileExtension): File =
     DiskFile.createTemporary(nameHint, extension)

@@ -6,7 +6,6 @@ import org.junit.Assert.{assertFalse, assertTrue}
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
-import dotty.tools.io.{JarArchive, Path}
 import dotty.tools.nio.*
 import dotty.tools.vulpix.TestConfiguration
 
@@ -29,10 +28,10 @@ class PathPicklingTest {
 
     val printedTasty =
       val sb = new StringBuffer
-      val jar = JarArchive.open(Path(out.path))
+      val jar = FileContainer.getFromFile(out, "").get
       try
-        for file <- jar.iterator if file.name.endsWith(".tasty") do
-          sb.append(TastyPrinter.showContents(file.toByteArray, noColor = true, isBestEffortTasty = false))
+        for file <- jar.entries.collect { case f: File if f.extension.isTasty => f } do
+          sb.append(TastyPrinter.showContents(file.readBytes(), noColor = true, isBestEffortTasty = false))
       finally jar.close()
       sb.toString()
 

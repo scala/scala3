@@ -2,7 +2,11 @@ package dotty.tools.nio
 
 import dotty.tools.io.FileExtension
 
-private[nio] final class ZipContainer(underlying: File) extends FileContainer:
+object ZipContainer:
+  def open(underlying: File): FileContainer =
+    new ZipContainer(underlying)
+
+private final class ZipContainer private(underlying: File) extends FileContainer:
   override def name: String =
     underlying.name
 
@@ -20,6 +24,9 @@ private[nio] final class ZipContainer(underlying: File) extends FileContainer:
 
   override def deleteRecursively(): Unit =
     underlying.delete()
+
+  override def close(): Unit =
+    ???
 
   protected override def getFile(name: String, extension: FileExtension): Option[File] =
     ???
