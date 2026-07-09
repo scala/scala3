@@ -19,9 +19,9 @@ class VirtualFile(override val path: String, initialContents: Array[Byte]) exten
   private var content = initialContents
 
   override val name: String = {
-    // We support fake names like "<example>" even on Windows where Path.of would throw.
+    // We support fake names like `<example>` and `"example"` even on Windows where Path.of would throw.
     // TODO: Proper path support for VirtualFile, should be integrated with VirtualDirectory...
-    if path.startsWith("<") then path
+    if path.startsWith("<") || path.startsWith("\"") then path
     else
       val fileName = java.nio.file.Path.of(path).getFileName
       if fileName == null then ""
