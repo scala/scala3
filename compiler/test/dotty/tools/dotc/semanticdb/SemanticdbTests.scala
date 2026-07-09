@@ -7,12 +7,14 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.experimental.categories.Category
 import dotty.BootstrappedOnlyTests
+import dotty.tools.TestSources
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.Scala3.given
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.nio.*
 import dotty.tools.io.FileExtension
+
 import scala.io.Codec
 
 @main def updateExpect =
@@ -37,14 +39,14 @@ import scala.io.Codec
   val metacSb: StringBuilder = StringBuilder(5000)
   val semanticdbPath = inputFile()
   val doc = SemanticdbTests.loadTextDocumentUnsafe(sourceSrc, semanticdbPath)
-  SemanticdbTests.metac(doc, File.getOrCreateOnDisk(doc.uri))(using metacSb)
+  SemanticdbTests.metac(doc, doc.uri)(using metacSb)
   rootSrc.getOrCreateFile("metac", FileExtension.from("expect")).writeText(metacSb.toString, Codec.UTF8)
 
 
-//@Category(Array(classOf[BootstrappedOnlyTests]))
+@Category(Array(classOf[BootstrappedOnlyTests]))
 class SemanticdbTests:
   val expectExt = FileExtension.from("expect.scala")
-  val rootSrc: FileContainer = FileContainer.getOrCreateOnDisk(System.getProperty("dotty.tools.dotc.semanticdb.test"), "")
+  val rootSrc: FileContainer = FileContainer.getOnDisk(TestSources.rootPath().toString, "").get.getContainer("tests").get.getContainer("semanticdb").get
   val expectSrc: FileContainer = rootSrc.getOrCreateContainer("expect")
   val javaRoot: FileContainer = rootSrc.getOrCreateContainer("javacp")
   val metacExpectFile: File = rootSrc.getOrCreateFile("metac", FileExtension.from("expect"))
@@ -63,20 +65,16 @@ class SemanticdbTests:
       else
         val expected = expectPath.readText(Codec.UTF8)
         val expectName = expectPath.name
-        //val relExpect = rootSrc.relativize(expectPath)
         if expected.trim != obtained.trim then
           expectPath.parent.getOrCreateFile(expectName, FileExtension.from("out")).writeText(obtained, Codec.UTF8)
           errors += expectPath
-    for source <- inputFiles().sortBy(_.name) do
+    for source <- inputFiles().sortBy(_.path) do
       val filename = source.name
-      //val relpath = expectSrc.relativize(source)
-      val semanticdbPath = target
-        .getOrCreateContainer("META-INF")
-        .getOrCreateContainer("semanticdb")
-        .getOrCreateFile(filename, FileExtension.from("semanticdb"))
+      val relativeSource = source.path.substring(expectSrc.path.length)
+      val semanticdbPath = s"${target.path}${FileSystemEntry.separator}META-INF${FileSystemEntry.separator}semanticdb$relativeSource.semanticdb"
       val expectPath = source.parent.getOrCreateFile(source.nameWithoutExtension, expectExt)
-      val doc = SemanticdbTests.loadTextDocument(expectSrc, source, semanticdbPath)
-      SemanticdbTests.metac(doc, source)(using metacSb)
+      val doc = SemanticdbTests.loadTextDocument(expectSrc, source, File.getOrCreateOnDisk(semanticdbPath))
+      SemanticdbTests.metac(doc, expectSrc.name + relativeSource)(using metacSb)
       val obtained = trimTrailingWhitespace(SemanticdbTests.printTextDocument(doc))
       collectErrorOrUpdate(expectPath, obtained)
     collectErrorOrUpdate(metacExpectFile, metacSb.toString)
@@ -86,9 +84,9 @@ class SemanticdbTests:
       val outPath = expect.parent.getOrCreateFile(expect.name, FileExtension.from("out")).path
       println(s"""[${red("error")}] check file ${blue(expect.path)} does not match generated.
       |If you meant to make a change, replace the expect file by:
-      |  mv $outPath $expect
+      |  mv $outPath ${expect.path}
       |inspect with:
-      |  diff $expect $outPath
+      |  diff ${expect.path} $outPath
       |Or else update all expect files with
       |  sbt 'scala3-compiler-bootstrapped/Test/runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
     target.deleteRecursively()
@@ -180,10 +178,9 @@ object SemanticdbTests:
     TextDocuments.parseFrom(bytes)
 
 
-  def metac(doc: TextDocument, realPath: File)(using sb: StringBuilder): StringBuilder =
+  def metac(doc: TextDocument, realURI: String)(using sb: StringBuilder): StringBuilder =
     val symtab = PrinterSymtab.fromTextDocument(doc)
     val symPrinter = SymbolInformationPrinter(symtab)
-    val realURI = realPath.path
     given sourceFile: SourceFile = SourceFile.virtual(doc.uri, doc.text)
     val synthPrinter = SyntheticPrinter(symtab, sourceFile)
     sb.append(realURI).nl
