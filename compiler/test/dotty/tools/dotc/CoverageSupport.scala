@@ -126,7 +126,7 @@ trait CoverageSupport:
         val fileMatches = sourceFiles.exists(matchesIgnoreList)
 
         // Also check the basename of the test title (covers SeparateCompilationSource directory targets)
-        val titleMatches = ignoreList.contains(File.getOrCreateOnDisk(target.title).name)
+        val titleMatches = ignoreList.contains(target.title.split(FileSystemEntry.separator).last)
 
         val shouldInclude = !fileMatches && !titleMatches
         if (!shouldInclude) {
