@@ -59,7 +59,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
     testScript(name, str.linesIterator.toList).foreach(fail)
 
   private def testFile(f: JFile): Option[String] =
-    testScript(f.toString, java.nio.file.Files.readAllLines(f.toPath).asScala, Some(f))
+    testScript(f.toString, java.nio.file.Files.readAllLines(f.toPath).asScala.toList, Some(f))
 
   /** Returns failures: None if all is well, Some for an error */
   private def testScript(name: => String, lines: List[String], scriptFile: Option[JFile] = None): Option[String] = {

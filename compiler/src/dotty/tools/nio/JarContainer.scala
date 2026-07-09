@@ -45,12 +45,14 @@ private final class JarContainer private(val underlying: File, version: String) 
     jarFile.close()
     underlying.delete()
 
-  override def close(): Unit = {
+  override def close(): Boolean = {
     if modifications.nonEmpty then
       ??? // TODO add entries and write
     jarFile.close()
+    true
   }
 
+  // TODO share logic between this + sub-container
   protected override def getFile(name: String, extension: FileExtension): Option[File] =
     ???
 

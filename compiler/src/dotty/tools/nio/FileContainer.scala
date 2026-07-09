@@ -33,7 +33,7 @@ object FileContainer:
   def createInMemory(name: String): FileContainer =
     new MemoryContainer(None, name)
 
-abstract class FileContainer extends FileSystemEntry with AutoCloseable:
+abstract class FileContainer extends FileSystemEntry:
   /** All file system entries directly contained by this container. */
   def entries: Iterable[FileSystemEntry]
 
@@ -61,9 +61,9 @@ abstract class FileContainer extends FileSystemEntry with AutoCloseable:
   /** Deletes this file container and its contents. */
   def deleteRecursively(): Unit
 
-  /** Closes this file container, if necessary. */
-  def close(): Unit =
-    ()
+  /** Closes this file container if necessary, and returns true if it was. */
+  def close(): Boolean =
+    false
 
   /** Gets the file in this container with the given name and extension if it exists. */
   protected def getFile(name: String, extension: FileExtension): Option[File]

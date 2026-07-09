@@ -25,8 +25,10 @@ private final class ZipContainer private(underlying: File) extends FileContainer
   override def deleteRecursively(): Unit =
     underlying.delete()
 
-  override def close(): Unit =
+  override def close(): Boolean = {
     ???
+    true
+  }
 
   protected override def getFile(name: String, extension: FileExtension): Option[File] =
     ???
