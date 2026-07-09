@@ -6,17 +6,22 @@ import org.junit.Test
 import vulpix.TestConfiguration
 import ScriptTestEnv.*
 import dotty.tools.io.FileExtension
-import dotty.tools.nio.File
+import dotty.tools.nio.*
 import org.junit.Assume.assumeFalse
+
+import scala.io.Codec
 
 /** Runs all tests contained in `compiler/test-resources/scripting/` */
 class ScriptingTests:
+  extension (e: FileSystemEntry) {
+    def absPath: String = e.path.replace('\\', '/')
+  }
   // classpath tests managed by scripting.ClasspathTests.scala
   def testFiles = scripts("/scripting").filter { sc =>
-    val name = sc.getName.toLowerCase
+    val name = sc.name.toLowerCase
     !name.contains("classpath")
     && !name.contains("_scalacli")
-  }
+  }.collect { case f: File => f }
 
   /*
    * Call .scala scripts without -save option, verify no jar created
@@ -24,7 +29,7 @@ class ScriptingTests:
   @Test def scriptingDriverTests =
     assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".scala") do
-      showScriptUnderTest(scriptFile.getName)
+      showScriptUnderTest(scriptFile.name)
       val unexpectedJar = script2jar(scriptFile)
       unexpectedJar.delete()
 
@@ -33,7 +38,7 @@ class ScriptingTests:
         compilerArgs = Array(
           "-classpath", TestConfiguration.basicClasspath
         ),
-        scriptFile = scriptFile,
+        scriptFile = java.io.File(scriptFile.path),
         scriptArgs = scriptArgs
       ).compileAndRun { ctx ?=> (path, classpathEntries, mainClass) =>
         printf("mainClass from ScriptingDriver: %s\n", mainClass)
@@ -47,7 +52,7 @@ class ScriptingTests:
   @Test def scriptingMainTests =
     assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc") do
-      showScriptUnderTest(scriptFile.getName)
+      showScriptUnderTest(scriptFile.name)
       val unexpectedJar = script2jar(scriptFile)
       unexpectedJar.delete()
 
@@ -66,7 +71,7 @@ class ScriptingTests:
   @Test def scriptingJarTest =
     assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     for (scriptFile, scriptArgs) <- scalaFilesWithArgs(".sc") do
-      showScriptUnderTest(scriptFile.getName)
+      showScriptUnderTest(scriptFile.name)
       val expectedJar = script2jar(scriptFile)
       expectedJar.delete()
 
@@ -91,14 +96,14 @@ class ScriptingTests:
   @Test def scriptCompileOnlyTests =
     assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val scriptFile = touchFileScript
-    showScriptUnderTest(scriptFile.getName)
+    showScriptUnderTest(scriptFile.name)
 
     // verify main method not called when false is returned
     printf("testing script compile, with no call to script main method.\n")
     File.getOnDisk(touchedFileName).foreach(_.delete())
     ScriptingDriver(
       compilerArgs = Array("-classpath", TestConfiguration.basicClasspath),
-      scriptFile = scriptFile,
+      scriptFile = java.io.File(scriptFile.path),
       scriptArgs = Array.empty[String]
     ).compileAndRun { ctx ?=> (path, classpathEntries, mainClass) =>
       printf("success: no call to main method in mainClass: %s\n", mainClass)
@@ -110,7 +115,7 @@ class ScriptingTests:
     printf("testing script compile, with call to script main method.\n")
     ScriptingDriver(
       compilerArgs = Array("-classpath", TestConfiguration.basicClasspath),
-      scriptFile = scriptFile,
+      scriptFile = java.io.File(scriptFile.path),
       scriptArgs = Array.empty[String]
     ).compileAndRun { ctx ?=> (path, classpathEntries, mainClass) =>
       printf("call main method in mainClass: %s\n", mainClass)
@@ -129,7 +134,7 @@ class ScriptingTests:
   @Test def scriptingNoCompileJar: Unit =
     assumeFalse("Scripts do not yet support Scala 2 library TASTy", Properties.usingScalaLibraryTasty)
     val scriptFile = touchFileScript
-    showScriptUnderTest(scriptFile.getName)
+    showScriptUnderTest(scriptFile.name)
     val expectedJar = script2jar(scriptFile)
     sys.props("script.path") = scriptFile.absPath
     val mainArgs: Array[String] = Array(
@@ -155,13 +160,12 @@ class ScriptingTests:
         throw new AssertionError(s"expected to find file ${touchedFileName}" )
 
 ///////////////////////////////////
-  def touchFileScript = testFiles.find(_.getName == "touchFile.sc").get
+  def touchFileScript = testFiles.find(_.name == "touchFile.sc").get
 
   val touchedFileName = "touchedFile.out"
 
-  def script2jar(scriptFile: java.io.File) =
-    val f = File.getOnDisk(scriptFile.getPath).get
-    f.parent.getOrCreateFile(f.nameWithoutExtension, FileExtension.Jar)
+  def script2jar(scriptFile: File) =
+    scriptFile.parent.getOrCreateFile(scriptFile.nameWithoutExtension, FileExtension.Jar)
 
   def showScriptUnderTest(name: String): Unit =
     printf("===> test script name [%s]\n", name)
@@ -169,22 +173,22 @@ class ScriptingTests:
   def argss: Map[String, Array[String]] = (
     for
       argFile <- testFiles
-      if argFile.getName.endsWith(".args")
-      name = argFile.getName.dropExtension
-      scriptArgs = readLines(argFile).toArray
+      if argFile.name.endsWith(".args")
+      name = argFile.nameWithoutExtension
+      scriptArgs = argFile.readLines(Codec.UTF8).toArray
     yield name -> scriptArgs).toMap
 
   def scalaFilesWithArgs(extension: String) = (
     for
       scriptFile <- testFiles
-      if scriptFile.getName.endsWith(extension)
-      name = scriptFile.getName.dropExtension
+      if scriptFile.name.endsWith(extension)
+      name = scriptFile.nameWithoutExtension
       scriptArgs = argss.getOrElse(name, Array.empty[String])
-    yield scriptFile -> scriptArgs).toList.sortBy { (file, args) => file.getName }
+    yield scriptFile -> scriptArgs).toList.sortBy { (file, args) => file.name }
 
-  def callExecutableJar(script: java.io.File, jar: File, scriptArgs: Array[String] = Array.empty[String]) = {
+  def callExecutableJar(script: File, jar: File, scriptArgs: Array[String] = Array.empty[String]) = {
     import scala.sys.process.*
-    val cmd = Array("java", s"-Dscript.path=${script.getName}", "-jar", jar.path)
+    val cmd = Array("java", s"-Dscript.path=${script.name}", "-jar", jar.path)
       ++ scriptArgs
     Process(cmd).lazyLines_!.foreach { println }
   }

@@ -7,7 +7,6 @@ import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.io.Codec
 
 // TODO we should find "leaks" ie undeleted files
-// TODO simpler equals/hashcode for DiskFile / DiskDirectory via normalize + intern?
 
 object File:
   // There is no "create an in-memory file" here. All files must have a container, so create a container first!
@@ -69,10 +68,10 @@ abstract class File extends FileSystemEntry:
     new String(readBytes(), codec.charSet)
 
   /** Reads all lines from this file using the given codec. */
-  def readLines(codec: Codec): Iterable[String] = new Iterable[String] {
-    def iterator: Iterator[String] =
-      reader(codec).lines().iterator().asScala
-  }
+  def readLines(codec: Codec): Iterable[String] =
+    val r = reader(codec)
+    try r.lines().iterator().asScala.toList
+    finally r.close()
 
   /** Opens an output stream to write into this file, optionally appending. Only use if other methods are not appropriate. */
   def output(append: Boolean = false): OutputStream
@@ -95,7 +94,13 @@ abstract class File extends FileSystemEntry:
 
   /** Copies this file to the given file. */
   def copyTo(other: File): Unit =
-    input().transferTo(other.output())
+    val in = input()
+    val out = other.output()
+    try
+      in.transferTo(out)
+    finally
+      in.close()
+      out.close()
 
   /** Deletes this file. */
   def delete(): Unit

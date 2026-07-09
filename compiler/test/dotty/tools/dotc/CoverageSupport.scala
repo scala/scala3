@@ -2,12 +2,13 @@ package dotty
 package tools
 package dotc
 
-import java.nio.file.{Files, Paths}
 import scala.util.Try
 import dotty.tools.dotc.coverage.Serializer
+import dotty.tools.nio.*
 import vulpix.*
 import reporting.TestReporter
 import TestSources.scoverageIgnoreExcludelisted
+import dotty.tools.io.FileExtension
 
 trait CoverageSupport:
   this: ParallelTesting =>
@@ -34,7 +35,7 @@ trait CoverageSupport:
 
   final class RewriteTestWithCoverage(
     testSources: List[TestSource],
-    checkFiles: Map[java.io.File, java.io.File],
+    checkFiles: Map[File, File],
     times: Int,
     threadLimit: Option[Int],
     suppressAllOutput: Boolean
@@ -77,24 +78,18 @@ trait CoverageSupport:
     val flags = testSource.flags.options
     val idx = flags.indexOf("-coverage-out")
     if (idx >= 0 && idx + 1 < flags.length)
-      val coverageDir = Paths.get(flags(idx + 1))
-      val coverageFile = coverageDir.resolve("scoverage.coverage")
-
+      val coverageDir = FileContainer.getOrCreateOnDisk(flags(idx + 1), "")
       try
-        assert(Files.exists(coverageFile), s"Coverage file missing: $coverageFile for test ${testSource.title}")
-        assert(Files.size(coverageFile) > 0, s"Coverage file is empty: $coverageFile for test ${testSource.title}")
+        val coverageFile = coverageDir.getFile("scoverage", FileExtension.from("coverage"))
+          .getOrElse(throw new AssertionError(s"Coverage file missing in ${coverageDir.path} for test ${testSource.title}"))
+        assert(coverageFile.size() > 0, s"Coverage file is empty: $coverageFile for test ${testSource.title}")
 
         // Verify file can be deserialized (valid format)
         val sourceRoot = Paths.get(".").toAbsolutePath.toString
         assert(Try(Serializer.deserialize(coverageFile, sourceRoot)).isSuccess, s"Coverage file has invalid format: $coverageFile for test ${testSource.title}")
       finally
         // Cleanup temporary directory even if exceptions are thrown
-        try
-          Files.walk(coverageDir)
-            .sorted(java.util.Comparator.reverseOrder())
-            .forEach(Files.delete)
-        catch
-          case _: Exception => // Ignore cleanup errors
+        coverageDir.deleteRecursively()
       end try
     end if
   end verifyCoverageFile
@@ -119,14 +114,14 @@ trait CoverageSupport:
       val filteredTargets = test.targets.filter { target =>
         val sourceFiles = target.sourceFiles
 
-        def matchesIgnoreList(file: java.io.File): Boolean = {
+        def matchesIgnoreList(file: File): Boolean = {
           // Match by:
           // - file name (e.g. i10848a.scala)
           // - parent directory name (e.g. i18589 for tests/pos-special/i18589/test_1.scala)
           // This makes `compileDir(".../iNNNNN")` skippable even when the directory contains
           // a single `test_1.scala` file (in that case, the target title becomes the file path).
-          val nameMatch = ignoreList.contains(file.getName)
-          val parentMatch = Option(file.getParentFile).exists(p => ignoreList.contains(p.getName))
+          val nameMatch = ignoreList.contains(file.name)
+          val parentMatch = ignoreList.contains(file.parent.name)
           nameMatch || parentMatch
         }
 
@@ -138,21 +133,21 @@ trait CoverageSupport:
         val shouldInclude = !fileMatches && !titleMatches
         if (!shouldInclude) {
           // Log skipped test for visibility
-          val testName = if (sourceFiles.length == 1) sourceFiles.head.getName else target.title
+          val testName = if (sourceFiles.length == 1) sourceFiles.head.name else target.title
           println(s"[Scoverage] Skipping test: $testName (matches scoverage ignore excludelist)")
         }
         shouldInclude
       }
 
       val modifiedTargets = filteredTargets.map { target =>
-        val coverageDir = Files.createTempDirectory("coverage")
+        val coverageDir = FileContainer.createTemporaryOnDisk("coverage")
         val sourceRoot = Paths.get(".").toAbsolutePath.toString
         val targetWithFlags =
-          if target.sourceFiles.exists(file => ycheckExemptList.contains(file.getName)) then target.withoutFlags("-Ycheck:all")
+          if target.sourceFiles.exists(file => ycheckExemptList.contains(file.name)) then target.withoutFlags("-Ycheck:all")
           else target
 
         targetWithFlags.withFlags(
-          "-coverage-out", coverageDir.toString,
+          "-coverage-out", coverageDir.path,
           "-sourceroot", sourceRoot
         )
       }

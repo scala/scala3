@@ -1,26 +1,26 @@
 package dotty.tools
 
-import java.nio.file.*
-
-import scala.jdk.CollectionConverters.*
 import dotty.Properties
+import dotty.tools.nio.{File, FileContainer}
+
+import scala.io.Codec
 
 object TestSources {
 
-  private val isWorkingDirectoryInsideCompiler = Paths.get(".").toAbsolutePath.normalize.endsWith("compiler")
+  private val isWorkingDirectoryInsideCompiler = FileContainer.getOnDisk(".", "").get.name == "compiler"
 
-  def rootPath(): Path =
+  def rootPath(): FileContainer =
     if isWorkingDirectoryInsideCompiler
-    then Paths.get("..")
-    else Paths.get(".")
+    then FileContainer.getOnDisk("..", "").get
+    else FileContainer.getOnDisk(".", "").get
 
-  def getPath(relative: String): Path =
+  def getPath(relative: String): String =
     if isWorkingDirectoryInsideCompiler
-    then Paths.get("..", relative)
+    then Paths.get("..", relative).toString
     // important to not do `get(".", relative)` (or equivalently `rootPath().resolve(relative)`),
     // the rest of the testing framework depends on exact paths,
     // so "error in ./x.scala" and "error in x.scala" aren't considered equivalent.
-    else Paths.get(relative)
+    else Paths.get(relative).toString
 
   // pos tests lists
 
@@ -97,9 +97,7 @@ object TestSources {
   // load lists
 
   private def loadList(path: String): List[String] = {
-    val list = Files.readAllLines(getPath(path))
-      .iterator()
-      .asScala
+    val list = File.getOnDisk(getPath(path)).get.readLines(Codec.UTF8)
       .map(_.trim)                     // allow indentation
       .filterNot(_.startsWith("#"))    // allow comment lines prefixed by #
       .map(_.takeWhile(_ != '#').trim) // allow comments in the end of line
@@ -113,25 +111,14 @@ object TestSources {
   }
 
   /** Retrieve sources from a directory */
-  def sources(path: Path, excludedFiles: List[String] = Nil, shallow: Boolean = false): List[String] = {
-    def fileFilter(path: Path) = {
-      val fileName = path.getFileName.toString
-      (fileName.endsWith(".scala") || fileName.endsWith(".java")) && !excludedFiles.contains(fileName)
-    }
+  def sources(path: FileContainer, excludedFiles: List[String] = Nil, shallow: Boolean = false): List[String] = {
+    def fileFilter(f: File) =
+      f.extension.isSourceExtension && !excludedFiles.contains(f.name)
 
-    assert(Files.isDirectory(path), s"Not a directory: $path")
-    val files = if (shallow) Files.list(path) else Files.walk(path)
-    try {
-      val sources = files
-        .filter(fileFilter)
-        .sorted // make compilation order deterministic
-        .iterator()
-        .asScala
-        .map(_.toString)
-        .toList
-
-      sources
-    }
-    finally files.close()
+    val files = (if shallow then path.entries else path.recursiveEntries).collect { case f: File => f }.toList
+    files
+      .filter(fileFilter)
+      .map(_.path)
+      .sorted // make compilation order deterministic
   }
 }

@@ -3,7 +3,6 @@ package config
 
 import CommandLineParser.tokenize
 import Settings.*
-import dotty.tools.Useables.given
 import dotty.tools.dotc.config.ScalaSettingCategories.*
 import dotty.tools.dotc.reporting.StoreReporter
 import core.Contexts.{Context, ContextBase}

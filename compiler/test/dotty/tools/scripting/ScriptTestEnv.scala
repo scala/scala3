@@ -9,7 +9,6 @@ import dotty.tools.nio.*
 
 import scala.io.Codec
 import scala.sys.process.*
-import scala.jdk.CollectionConverters.*
 
 /**
  * Common Code for supporting scripting tests.
@@ -28,21 +27,16 @@ object ScriptTestEnv {
   def whichBash: String = whichExe("bash")
 
   def cleanupScalaCLIDirs(): Unit = {
-    val scriptingDir = io.Directory(scriptsDir("/scripting").getPath)
-    val dottyDir = io.Directory(workingDirectory)
+    val scriptingDir = scriptsDir("/scripting")
+    val dottyDir = FileContainer.getOnDisk(workingDirectory, "").get
 
-    val residueDirs = Seq(
-      (scriptingDir / ".bsp"),
-      (scriptingDir / ".scala-build"),
-      (dottyDir / ".scala-build")
+    scriptingDir.getContainer(".bsp").foreach(_.deleteRecursively())
+    scriptingDir.getContainer(".scala-build").foreach(_.deleteRecursively())
+    dottyDir.getContainer(".scala-build").foreach(_.deleteRecursively())
+    dottyDir.getContainer(".bsp").foreach(d =>
+      d.getFile("scala", FileExtension.from("json")).foreach(_.delete())
+      if d.entries.isEmpty then d.deleteRecursively()
     )
-
-    for f <- residueDirs do
-      f.deleteRecursively()
-
-    val bspDir = dottyDir / ".bsp"
-    (bspDir / "scala.json").delete()
-    if bspDir.walk.isEmpty then bspDir.delete()
   }
 
   lazy val nativePackDir: Option[String] = {

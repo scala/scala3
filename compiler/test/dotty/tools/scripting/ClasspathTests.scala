@@ -24,11 +24,11 @@ class ClasspathTests:
   @Test def hashbangClasspathVerifyTest = {
     // only interested in classpath test scripts
     val testScriptName = "classpathReport_scalacli.sc"
-    val testScript = scripts("/scripting").find { _.getName.matches(testScriptName) } match
+    val testScript = scripts("/scripting").find { _.name.matches(testScriptName) } match
       case None => sys.error(s"test script not found: ${testScriptName}")
       case Some(file) => file
 
-    val relpath = testScript.toPath.toString.norm
+    val relpath = testScript.path
     printf("===> hashbangClasspathVerifyTest for script [%s]\n", relpath)
     printf("bash is [%s]\n", bashExe)
 
