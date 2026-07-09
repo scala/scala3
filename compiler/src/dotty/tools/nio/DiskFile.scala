@@ -1,10 +1,10 @@
 package dotty.tools.nio
 
 import java.io.{BufferedReader, BufferedWriter, InputStream, OutputStream}
-import java.nio.file.{OpenOption, StandardOpenOption, Files as JFiles, Path as JPath}
+import java.nio.file.{OpenOption, StandardCopyOption, StandardOpenOption, Files as JFiles, Path as JPath}
 import dotty.tools.io.FileExtension
-import scala.jdk.CollectionConverters.IterableHasAsScala
 
+import scala.jdk.CollectionConverters.IterableHasAsScala
 import scala.io.Codec
 
 private[nio] object DiskFile:
@@ -72,7 +72,7 @@ private final class DiskFile(private val underlying: JPath) extends File:
     JFiles.writeString(underlying, str, codec.charSet, DiskFile.options(append)*)
 
   override def copyTo(other: File): Unit = other match
-    case otherDiskFile: DiskFile => JFiles.copy(underlying, otherDiskFile.underlying)
+    case otherDiskFile: DiskFile => JFiles.copy(underlying, otherDiskFile.underlying, StandardCopyOption.REPLACE_EXISTING)
     case _ => super.copyTo(other)
 
   override def hashCode(): Int =

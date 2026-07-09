@@ -19,7 +19,7 @@ private[nio] object DiskDirectory:
     new DiskDirectory(jpath)
 
   def workingDirectory(): FileContainer =
-    new DiskDirectory(JPath.of(".").toAbsolutePath.normalize())
+    new DiskDirectory(JPath.of(".").normalize())
 
   def createTemporary(nameHint: String): FileContainer =
     new DiskDirectory(JFiles.createTempDirectory(nameHint))
@@ -46,14 +46,17 @@ private final class DiskDirectory(private val underlying: JPath) extends FileCon
   }
 
   override def deleteRecursively(): Unit =
-    JFiles.walkFileTree(underlying, new SimpleFileVisitor[JPath]() {
-      override def visitFile(file: JPath, attrs: BasicFileAttributes): FileVisitResult =
-        JFiles.delete(file)
-        FileVisitResult.CONTINUE
-      override def postVisitDirectory(dir: JPath, exc: IOException): FileVisitResult =
-        JFiles.delete(dir)
-        FileVisitResult.CONTINUE
-    })
+    try
+      JFiles.walkFileTree(underlying, new SimpleFileVisitor[JPath]() {
+        override def visitFile(file: JPath, attrs: BasicFileAttributes): FileVisitResult =
+          JFiles.delete(file)
+          FileVisitResult.CONTINUE
+        override def postVisitDirectory(dir: JPath, exc: IOException): FileVisitResult =
+          JFiles.delete(dir)
+          FileVisitResult.CONTINUE
+      })
+    catch
+      case _: IOException => () // we don't care if something doesn't exist, that's the point
 
   /** Gets the file in this container with the given name and extension if it exists. */
   protected override def getFile(name: String, extension: FileExtension): Option[File] =

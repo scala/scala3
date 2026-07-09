@@ -11,7 +11,7 @@ import mutable.ArrayBuffer
 import mutable.ListBuffer
 import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
-import scala.util.{Random, Try, Using}
+import scala.util.{Random, Try}
 import scala.util.Properties.{isJavaAtLeast, javaSpecVersion}
 import dotc.{Compiler, Driver}
 import dotty.tools.dotc.CoverageSupport
@@ -22,10 +22,8 @@ import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
 import dotc.util.{NoSourcePosition, SourceFile, SourcePosition, Spans}
 import io.{ClassPath, FileExtension}
-import util.chaining.*
 import dotty.tools.nio.*
-
-import java.nio.charset.{Charset, StandardCharsets}
+import java.nio.charset.Charset
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
@@ -717,7 +715,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     end compileWithOtherCompiler
 
     protected def compileFromBestEffortTasty(flags0: TestFlags, targetDir: FileContainer): TestReporter = {
-      val classes = flattenFiles(targetDir).filter(_.extension.isBetasty).map(_.toString)
+      val classes = flattenFiles(targetDir).filter(_.extension.isBetasty).map(_.path)
       val flags = flags0 `and` "-from-tasty" `and` "-Ywith-best-effort-tasty"
       val reporter = mkReporter
       val driver = new Driver
@@ -734,9 +732,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       val reporter = mkReporter
       val driver = new Driver
 
-      val args = Array("-classpath", flags.defaultClassPath + ClassPath.pathSeparator + bestEffortDir.toString) ++ flags.options
+      val args = Array("-classpath", flags.defaultClassPath + ClassPath.pathSeparator + bestEffortDir.path) ++ flags.options
 
-      driver.process(args ++ files0.map(_.toString), reporter = reporter)
+      driver.process(args ++ files0.map(_.path), reporter = reporter)
 
       reporter
     }
@@ -745,7 +743,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       val tastyOutput = targetDir.getOrCreateContainer("_from-tasty")
       val flags = flags0 `and` ("-d", tastyOutput.path) `and` "-from-tasty"
 
-      val classes = flattenFiles(targetDir).filter(_.extension.isTasty).map(_.toString)
+      val classes = flattenFiles(targetDir).filter(_.extension.isTasty).map(_.path)
 
       val reporter = mkReporter
 
@@ -899,10 +897,10 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       def sawDiagnostic(d: Diagnostic): Unit =
         val srcpos = d.pos.nonInlined
         if srcpos.exists then
-          val key = s"${relativize(srcpos.source.file.toString())}:${srcpos.line + 1}"
+          val key = s"${relativize(srcpos.source.file.path)}:${srcpos.line + 1}"
           if !seenAt(key) then unexpected += key
         else
-          if !seenAt("nopos") then unexpected += relativize(srcpos.source.file.toString)
+          if !seenAt("nopos") then unexpected += relativize(srcpos.source.file.path)
 
       reporterWarnings.foreach(sawDiagnostic)
 
@@ -1051,7 +1049,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         case n => errorMap.put(key, n - 1); true
       def sawDiagnostic(d: Diagnostic): Unit =
         val srcpos = d.pos.nonInlined.adjustedAtEOF
-        val path = srcpos.source.file.toString
+        val path = srcpos.source.file.path
         if srcpos.exists then
           val key = s"$path:${srcpos.line + 1}"
           if !seenAt(key) then unexpected += key

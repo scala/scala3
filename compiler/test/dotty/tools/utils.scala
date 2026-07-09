@@ -72,7 +72,7 @@ def platformAndToolArgsFor(files: List[File], codec: Codec = Codec.UTF8): (Platf
   files.foldLeft(Map.empty[TestPlatform, List[String]] -> Map.empty[ToolName, List[String]]) { (res, path) =>
     val lines = path.readLines(codec).take(10).toList
     val content = path.readText(codec)
-    val toolargs = toolArgsParse(lines, content, Some(path.toString))
+    val toolargs = toolArgsParse(lines, content, Some(path.path))
     toolargs.foldLeft(res) {
       case ((plat, acc), (tool, args)) =>
         val name = ToolName.named(tool)
@@ -80,7 +80,7 @@ def platformAndToolArgsFor(files: List[File], codec: Codec = Codec.UTF8): (Platf
 
         val plat1 = if name eq ToolName.Target then
           val testPlatform = TestPlatform.named(tokens.head)
-          val fileName = path.toString
+          val fileName = path.path
           plat.updatedWith(testPlatform)(_.map(fileName :: _).orElse(Some(fileName :: Nil)))
         else
           plat

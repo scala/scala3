@@ -441,7 +441,7 @@ class CompilationTests {
       for (path, func) <- rest do
         i += 1
         val outDir = defaultOutputDir.getOrCreateContainer(groupName).getOrCreateContainer(path)
-        val test = withCoverage(func(options.withClasspath(outDir.toString))(using thisGroup).keepOutput)
+        val test = withCoverage(func(options.withClasspath(outDir.path))(using thisGroup).keepOutput)
         run(test, expectError && i == rest.length)
     finally
       allTests.foreach(_.delete())

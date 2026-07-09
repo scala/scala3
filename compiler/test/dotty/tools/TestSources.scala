@@ -7,11 +7,11 @@ import scala.io.Codec
 
 object TestSources {
 
-  private val isWorkingDirectoryInsideCompiler = FileContainer.workingDirectory().name == "compiler"
+  private val isWorkingDirectoryInsideCompiler = FileContainer.workingDirectory().getFile("tests/pos/HelloWorld.scala").isEmpty
 
   def rootPath(): FileContainer =
     if isWorkingDirectoryInsideCompiler
-    then FileContainer.workingDirectory().parent
+    then FileContainer.getOnDisk("..", "").get // HACK: the API isn't meant to let you go above the working dir from a relative path, but it works
     else FileContainer.workingDirectory()
 
   // pos tests lists
