@@ -69,6 +69,8 @@ extension (tp: Type)
       tp1.toCapability.readOnly
     case OnlyCapability(tp1, cls) =>
       tp1.toCapability.restrict(cls)
+    case ExceptCapability(tp1, cls) =>
+      tp1.toCapability.exclude(cls)
     case ref: TermRef if ref.isCapsAnyRef =>
       GlobalAny
     case ref: TermRef if ref.isCapsFreshRef =>
@@ -108,6 +110,8 @@ extension (tp: Type)
       elem match
         case CapturingType(parent, refs) if parent.derivesFromCapSet =>
           refs.elems.toList
+        case ExceptCapability(_, cls) if cls.isTopClassifier =>
+          Nil // empty projection
         case _ =>
           elem.toCapability :: Nil
 
@@ -287,8 +291,8 @@ extension (tp: Type)
       case tp: OrType => tp.tp1.isBoxedCapturing || tp.tp2.isBoxedCapturing
       case _ => false
 
-  /** Is the box status of `tp` and `tp2` compatible? I.ee  they are
-   *  box boxed, or both unboxed, or one of them has an empty capture set.
+  /** Is the box status of `tp` and `tp2` compatible? I.e. they are
+   *  both boxed, or both unboxed, or one of them has an empty capture set.
    */
   def isBoxCompatibleWith(tp2: Type)(using Context): Boolean =
     isBoxedCapturing == tp2.isBoxedCapturing
@@ -467,7 +471,7 @@ extension (tp: Type)
     clsfier match
     case clsfier: ClassSymbol =>
       val lcap = LocalCap(Origin.NewInstance(tp, contributing))
-      if clsfier != defn.AnyClass then
+      if !clsfier.isTopClassifier then
         lcap.hiddenSet.adoptClassifier(clsfier)
       (if readOnly then lcap.readOnly else lcap).singletonCaptureSet
     case _ =>
@@ -541,6 +545,11 @@ extension (cls: ClassSymbol) {
 
   def isClassifiedCapabilityClass(using Context): Boolean =
     cls.derivesFromCapability && cls.parentSyms.contains(defn.Caps_Classifier)
+
+  /** `Any`, the top of the classifier tree: not a classifier class, but accepted as a
+   *  projection argument (`only[Any]` = identity, `except[Any]` = empty). */
+  def isTopClassifier(using Context): Boolean =
+    cls == defn.AnyClass
 
   def classifier(using Context): ClassSymbol =
     if cls.derivesFromCapability then
@@ -897,18 +906,31 @@ object ReadOnlyCapability extends AnnotatedCapability(defn.ReadOnlyCapabilityAnn
  */
 object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
 
-object OnlyCapability:
+/** A base class for extractors that match annotated types carrying a classifier
+ *  class as type argument of their annotation.
+ */
+abstract class ClassifiedCapability(annotCls: Context ?=> ClassSymbol):
   def apply(tp: Type, cls: ClassSymbol)(using Context): AnnotatedType =
     AnnotatedType(tp,
-      Annotation(defn.OnlyCapabilityAnnot.typeRef.appliedTo(cls.typeRef), Nil, util.Spans.NoSpan))
+      Annotation(annotCls.typeRef.appliedTo(cls.typeRef), Nil, util.Spans.NoSpan))
 
   def unapply(tree: AnnotatedType)(using Context): Option[(Type, ClassSymbol)] = tree match
-    case AnnotatedType(parent: Type, ann) if ann.hasSymbol(defn.OnlyCapabilityAnnot) =>
+    case AnnotatedType(parent: Type, ann) if ann.hasSymbol(annotCls) =>
       ann.tree.tpe.argTypes.head.dealias.typeSymbol match
         case cls: ClassSymbol => Some((parent, cls))
         case _ => None
     case _ => None
-end OnlyCapability
+end ClassifiedCapability
+
+/** An extractor for `ref @onlyCapability[C]`, which is used to express
+ *  the restricted capability `ref.only[C]` as a type.
+ */
+object OnlyCapability extends ClassifiedCapability(defn.OnlyCapabilityAnnot)
+
+/** An extractor for `ref @exceptCapability[C]`, which is used to express
+ *  the excluded capability `ref.except[C]` as a type.
+ */
+object ExceptCapability extends ClassifiedCapability(defn.ExceptCapabilityAnnot)
 
 /** An extractor for all kinds of function types as well as method and poly types.
  *  It includes aliases of function types such as `=>`. TODO: Can we do without?
