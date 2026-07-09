@@ -8,8 +8,9 @@ private[nio] final class MemoryContainer(realParent: Option[MemoryContainer], ov
   private val files: mutable.Map[String, MemoryFile] = mutable.Map.empty
   private val containers: mutable.Map[String, MemoryContainer] = mutable.Map.empty
 
-  override def path: String =
-    parent.path + FileSystemEntry.separator + name
+  override def path: String = realParent match
+    case Some(p) => p.path + FileSystemEntry.separator + name
+    case None => "memory:" + name
 
   override def parent: FileContainer =
     realParent.getOrElse(this)

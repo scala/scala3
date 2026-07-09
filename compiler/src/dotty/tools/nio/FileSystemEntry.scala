@@ -1,11 +1,11 @@
 package dotty.tools.nio
 
 object FileSystemEntry:
-  /** Separator between file and folder names on disk. The separator for other kinds of paths is not defined. */
+  /** Separator between names in paths. */
   val separator: Char = java.io.File.separatorChar
 
 abstract class FileSystemEntry:
-  /** Name of this entry, without extension nor separating period if it's a file. */
+  /** Name of this entry, including any extension and separating period if it's a file. */
   def name: String
 
   /** Full path of this entry. If the entry exists on disk, this path is usable as such. */
