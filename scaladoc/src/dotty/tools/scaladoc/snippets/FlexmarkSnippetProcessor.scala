@@ -29,7 +29,7 @@ object FlexmarkSnippetProcessor:
             case Right(flags) => Some(flags)
             case Left(error) =>
               report.warning(
-                s"""|Error occured during parsing flags in snippet:
+                s"""|Error occurred during parsing flags in snippet:
                     |$error""".stripMargin
               )
               None
@@ -62,7 +62,7 @@ object FlexmarkSnippetProcessor:
             val snippet = snippetMap.get(id)
             if snippet.isEmpty then
               report.warning(
-                s"""|Error occured during parsing compile-with in snippet:
+                s"""|Error occurred during parsing compile-with in snippet:
                     |Snippet with id: $id not found.
                     |Remember that you cannot use forward reference to snippets""".stripMargin
               )

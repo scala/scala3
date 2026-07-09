@@ -92,7 +92,7 @@ class HtmlRenderer(rootPackage: Member, members: Map[DRI, Member])(using ctx: Do
               .map(from => Resource.File(resourceFile.toPath.relativize(from).toString, from))
           }.fold (
             { t =>
-              report.warn(s"Error occured while processing _assets file.", t)
+              report.warn(s"Error occurred while processing _assets file.", t)
               Seq.empty
             },
             identity
