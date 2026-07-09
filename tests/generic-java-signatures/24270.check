@@ -3,4 +3,4 @@ public static java.lang.Object bar.foo(java.lang.Object)
 public static <A> A bar.foo(A)
 bar$:
 public java.lang.Object bar$.foo(java.lang.Object)
-public <A> A bar$.foo(A)
+public java.lang.Object bar$.foo(java.lang.Object)
