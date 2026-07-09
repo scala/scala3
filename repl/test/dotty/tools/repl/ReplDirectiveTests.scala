@@ -144,3 +144,75 @@ class ReplDirectiveTests extends ReplTest:
       assertTrue(output, output.contains("using scala"))
       assertTrue(output, output.contains("not supported in the REPL"))
       assertTrue(output, output.contains("val z: Int = 3"))
+
+  @Test def `line comment before directive warns and evaluates code`: Unit =
+    initially:
+      run("// a comment\n//> using scala 3.3.1\nval x = 1")
+      val output = storedOutput()
+      assertTrue(output, output.contains("using scala"))
+      assertTrue(output, output.contains("not supported in the REPL"))
+      assertTrue(output, output.contains("val x: Int = 1"))
+
+  @Test def `block comment before directive warns and evaluates code`: Unit =
+    initially:
+      run("/* block */\n//> using options -Werror\nval x = 1")
+      val output = storedOutput()
+      assertTrue(output, output.contains("using options"))
+      assertTrue(output, output.contains("not supported in the REPL"))
+      assertTrue(output, output.contains("val x: Int = 1"))
+
+  @Test def `blank lines before directive warn and evaluate code`: Unit =
+    initially:
+      run("\n\n//> using options -Werror\nval x = 1")
+      val output = storedOutput()
+      assertTrue(output, output.contains("using options"))
+      assertTrue(output, output.contains("not supported in the REPL"))
+      assertTrue(output, output.contains("val x: Int = 1"))
+
+  @Test def `comment between directives warns and evaluates code`: Unit =
+    initially:
+      run("//> using options -Werror\n// c\n//> using scala 3.3.1\nval z = 3")
+      val output = storedOutput()
+      assertTrue(output, output.contains("using options"))
+      assertTrue(output, output.contains("using scala"))
+      assertTrue(output, output.contains("not supported in the REPL"))
+      assertTrue(output, output.contains("val z: Int = 3"))
+
+  @Test def `line comment before command evaluates both`: Unit =
+    initially:
+      run("// c\n:type \"hi\"\nval x = 5")
+      val output = storedOutput()
+      assertTrue(output, output.contains("String"))
+      assertTrue(output, output.contains("val x: Int = 5"))
+
+  @Test def `block comment before command evaluates both`: Unit =
+    initially:
+      run("/* c */\n:type \"hi\"\nval x = 5")
+      val output = storedOutput()
+      assertTrue(output, output.contains("String"))
+      assertTrue(output, output.contains("val x: Int = 5"))
+
+  @Test def `comment between commands evaluates all`: Unit =
+    initially:
+      run(":type \"hi\"\n// c\n:type 42\nval y = 1")
+      val output = storedOutput()
+      assertTrue(output, output.contains("String"))
+      assertTrue(output, output.contains("Int"))
+      assertTrue(output, output.contains("val y: Int = 1"))
+
+  @Test def `command after comment with incomplete code is incomplete`: Unit = contextually:
+    assertTrue(ParseResult.isIncomplete("// c\n:settings -deprecation\nif true then"))
+    assertFalse(ParseResult.shouldAcceptLine("// c\n:settings -deprecation\nif true then", hasPendingInput = false))
+
+  @Test def `lone command after comment awaits trailing code`: Unit = contextually:
+    assertTrue(ParseResult.awaitsTrailingCode("// c\n:dep x"))
+    assertFalse(ParseResult.awaitsTrailingCode("// c\n:dep x\n"))
+
+  @Test def `lone directive after block comment awaits trailing code`: Unit = contextually:
+    assertTrue(ParseResult.awaitsTrailingCode("/* c */\n//> using dep x"))
+    assertFalse(ParseResult.awaitsTrailingCode("/* c */\n//> using dep x\n"))
+
+  @Test def `comment between commands parses as nested CommandThenCode`: Unit = initially:
+    ParseResult(":type 1\n// c\n:type 2\nval x = 5") match
+      case CommandThenCode(TypeOf("1"), CommandThenCode(TypeOf("2"), _: Parsed)) => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")

@@ -380,17 +380,19 @@ class ReplDriver(settings: Array[String],
 
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
-      case parsed: Parsed if parsed.source.content().mkString.startsWith("//>") =>
-        val directiveSource = parsed.source.content().mkString
-        val stateAfterDirectives = interpretDirectives(directiveSource)
-        if parsed.trees.nonEmpty then
+      case parsed: Parsed =>
+        val src = parsed.source.content().mkString
+        val classified = DependencyResolver.classifyDirectives(src)
+        if classified.hasDirectives then
+          val stateAfterDirectives = interpretDirectives(classified)
+          if parsed.trees.nonEmpty then
+            propagateLanguageImports(parsed.trees)
+            compile(parsed, stateAfterDirectives)
+          else stateAfterDirectives.recordInput(src.strip)
+        else if parsed.trees.nonEmpty then
           propagateLanguageImports(parsed.trees)
-          compile(parsed, stateAfterDirectives)
-        else stateAfterDirectives.recordInput(directiveSource.strip)
-
-      case parsed: Parsed if parsed.trees.nonEmpty =>
-        propagateLanguageImports(parsed.trees)
-        compile(parsed, state)
+          compile(parsed, state)
+        else state
 
       case SyntaxErrors(_, errs, _) =>
         displayErrors(errs, state)
@@ -772,8 +774,7 @@ class ReplDriver(settings: Array[String],
       state
   }
 
-  private def interpretDirectives(sourceCode: String)(using state: State): State =
-    val classified = DependencyResolver.classifyDirectives(sourceCode)
+  private def interpretDirectives(classified: DependencyResolver.ClassifiedDirectives)(using state: State): State =
     classified.unsupportedKeys.foreach: key =>
       out.println(
         s"""[warn] The `using $key` directive is not supported in the REPL.
