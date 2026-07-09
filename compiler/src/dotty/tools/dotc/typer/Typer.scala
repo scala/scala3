@@ -1173,7 +1173,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
   def typedThis(tree: untpd.This)(using Context): Tree = {
     record("typedThis")
     val res = assignType(tree)
-    if res.tpe.typeSymbol.name.isTopLevelPackageObjectName && !ctx.owner.is(ExtensionMethod) then
+    if res.tpe.typeSymbol.name.isTopLevelPackageObjectName then
       report.error(em"Top-level definitions cannot refer to ${Formatting.hl("this")}", tree)
     res
   }
