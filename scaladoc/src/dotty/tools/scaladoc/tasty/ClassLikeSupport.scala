@@ -3,7 +3,6 @@ package dotty.tools.scaladoc.tasty
 import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 
-import dotty.tools.scaladoc.cc.*
 
 import scala.quoted._
 
@@ -77,7 +76,7 @@ trait ClassLikeSupport:
     def refsFrom(symbol: Symbol, initially: Boolean): List[(qctx.reflect.TypeRepr, Boolean)] =
       val pairs =
         for
-          refs <- symbol.annotations.collectFirst { case RetainingAnnotation(refs) => refs }
+          refs <- symbol.annotations.collectFirst { case cc.RetainingAnnotation(refs) => refs }
           if refs.nonEmpty
         yield refs.map(_ -> initially)
       pairs.getOrElse(Nil)

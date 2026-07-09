@@ -7,6 +7,7 @@ object CCProbe:
 
   def checksImpl(using Quotes): Expr[Unit] =
     import quotes.reflect.*
+    import cc.*
 
     def check(cond: Boolean, msg: String): Unit =
       if !cond then report.errorAndAbort(s"CC reflect check failed: $msg")
@@ -141,6 +142,10 @@ object CCProbe:
       case _ => check(false, "CapturingType round-trip shape")
     CapturingType(TypeRepr.of[String], Nil) match
       case CapturingType(_, refs) => check(refs.isEmpty, "empty CapturingType round-trip")
+    CapturingType(TypeRepr.of[String], List(defn.Caps_any.termRef, defn.Caps_fresh.termRef)) match
+      case CapturingType(_, refs) =>
+        check(refs.map(_.termSymbol) == List(defn.Caps_any, defn.Caps_fresh),
+          "multi-ref CapturingType apply/unapply flattens the union encoding")
     check(
       ReadOnlyCapability.unapply(ReadOnlyCapability(defn.Caps_any.termRef))
         .exists(_.termSymbol == defn.Caps_any),

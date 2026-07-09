@@ -75,18 +75,8 @@ val experimentalDefinitionInLibrary = Set(
 
   // New API: experimental capture-checking reflection
   // Can be stabilized when capture checking is stabilized.
-  "scala.quoted.Quotes.reflectModule.CapturingType",
-  "scala.quoted.Quotes.reflectModule.CapturingTypeTypeTest",
-  "scala.quoted.Quotes.reflectModule.CapturingTypeModule",
-  "scala.quoted.Quotes.reflectModule.CapturingTypeMethods",
-  "scala.quoted.Quotes.reflectModule.ReadOnlyCapability",
-  "scala.quoted.Quotes.reflectModule.ReadOnlyCapabilityModule",
-  "scala.quoted.Quotes.reflectModule.OnlyCapability",
-  "scala.quoted.Quotes.reflectModule.OnlyCapabilityModule",
-  "scala.quoted.Quotes.reflectModule.ExceptCapability",
-  "scala.quoted.Quotes.reflectModule.ExceptCapabilityModule",
-  "scala.quoted.Quotes.reflectModule.RetainingAnnotation",
-  "scala.quoted.Quotes.reflectModule.RetainingAnnotationModule",
+  "scala.quoted.Quotes.reflectModule.cc",
+  "scala.quoted.Quotes.reflectModule.ccModule",
   "scala.quoted.Quotes.reflectModule.SymbolMethods.isPureClass",
   "scala.quoted.Quotes.reflectModule.defnModule.Caps_Capability",
   "scala.quoted.Quotes.reflectModule.defnModule.Caps_CapSet",

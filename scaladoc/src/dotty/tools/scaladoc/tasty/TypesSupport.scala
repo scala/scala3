@@ -6,7 +6,6 @@ import scala.jdk.CollectionConverters.*
 import scala.quoted.*
 import scala.util.control.NonFatal
 
-import dotty.tools.scaladoc.cc.*
 
 import NameNormalizer._
 import SyntheticsSupport._
@@ -120,7 +119,7 @@ trait TypesSupport:
         inParens(inner(left, skipThisTypePrefix), shouldWrapInParens(left, tp, true))
         ++ keyword(" & ").l
         ++ inParens(inner(right, skipThisTypePrefix), shouldWrapInParens(right, tp, false))
-      case ByNameType(CapturingType(tpe, refs)) =>
+      case ByNameType(cc.CapturingType(tpe, refs)) =>
         emitByNameArrow(using qctx)(Some(refs), skipThisTypePrefix) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))
       case ByNameType(tpe) =>
         emitByNameArrow(using qctx)(None, skipThisTypePrefix) ++ (plain(" ") :: inner(tpe, skipThisTypePrefix))
@@ -134,7 +133,7 @@ trait TypesSupport:
         inner(tpe, skipThisTypePrefix) :+ plain("*")
       case AppliedType(repeatedClass, Seq(tpe)) if isRepeated(repeatedClass) =>
         inner(tpe, skipThisTypePrefix) :+ plain("*")
-      case CapturingType(base, refs) if ccEnabled =>
+      case cc.CapturingType(base, refs) if ccEnabled =>
         base match
           case t @ AppliedType(base, args) if t.isFunctionType =>
             functionType(base, args, skipThisTypePrefix)(using inCC = Some(refs))
@@ -228,21 +227,21 @@ trait TypesSupport:
         // fresh inside type arguments, e.g. `() -> AnyRef^{fresh}` stored as
         // `Function0[AnyRef^{fresh}]`).
         def resultHasFresh(tp: TypeRepr): Boolean = tp match
-          case CapturingType(parent, refs) => refs.exists(_.isFreshCap) || resultHasFresh(parent)
+          case cc.CapturingType(parent, refs) => refs.exists(_.isFreshCap) || resultHasFresh(parent)
           case AppliedType(_, args) => args.exists(resultHasFresh)
           case _ => false
 
         // A parameter typed `T^` carries a fresh capability that is existentially
         // scoped by the function type, so the dependent (parameter-naming) form is
         // semantically significant even if the result does not mention the parameter.
-        // Like isCapturedInContext, look through capability wrappers (`.rd`, `.only[C]`).
+        // Like isCapturedInContext, look through capability wrappers (`.rd`, `.only[C]`, `.except[C]`).
         def isRootLikeCap(ref: TypeRepr): Boolean = ref match
-          case ReadOnlyCapability(c) => isRootLikeCap(c)
-          case OnlyCapability(c, _)  => isRootLikeCap(c)
-          case ExceptCapability(c, _) => isRootLikeCap(c)
+          case cc.ReadOnlyCapability(c) => isRootLikeCap(c)
+          case cc.OnlyCapability(c, _)  => isRootLikeCap(c)
+          case cc.ExceptCapability(c, _) => isRootLikeCap(c)
           case r => r.isCaptureRoot || r.isFreshCap
         def paramHasFreshCap(tp: TypeRepr): Boolean = tp match
-          case CapturingType(_, refs) => refs.exists(isRootLikeCap)
+          case cc.CapturingType(_, refs) => refs.exists(isRootLikeCap)
           case _ => false
 
         def parseDependentFunctionType(info: TypeRepr): SSignature = info match {
@@ -565,9 +564,9 @@ trait TypesSupport:
   private def emitCapability(using Quotes)(ref: reflect.TypeRepr, skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._
     ref match
-      case ReadOnlyCapability(c)  => emitCapability(c, skipThisTypePrefix) :+ Keyword(".rd")
-      case OnlyCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("only"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
-      case ExceptCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("except"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
+      case cc.ReadOnlyCapability(c)  => emitCapability(c, skipThisTypePrefix) :+ Keyword(".rd")
+      case cc.OnlyCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("only"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
+      case cc.ExceptCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("except"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
       case t @ ThisType(tpe)      =>
         // Render `this` for self-references and `EnclosingClass.this` otherwise.
         // We deliberately call `inner` without `inCC` in scope so the enclosing
@@ -617,9 +616,9 @@ trait TypesSupport:
     ref match
       case t if t.isCaptureRoot   => true
       case t if t.isFreshCap      => true
-      case ReadOnlyCapability(c)  => isCapturedInContext(c)
-      case OnlyCapability(c, _)   => isCapturedInContext(c)
-      case ExceptCapability(c, _) => isCapturedInContext(c)
+      case cc.ReadOnlyCapability(c)  => isCapturedInContext(c)
+      case cc.OnlyCapability(c, _)   => isCapturedInContext(c)
+      case cc.ExceptCapability(c, _) => isCapturedInContext(c)
       case ThisType(tr)           => !elideThis.symbol.typeRef.isPureClass(elideThis)
       case t                      => !t.isPureClass(elideThis)
 

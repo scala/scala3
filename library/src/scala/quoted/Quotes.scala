@@ -216,7 +216,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
    *               +- SuperType
    *               +- Refinement
    *               +- AppliedType
-   *               +- AnnotatedType -+- CapturingType
+   *               +- AnnotatedType -+- CapturingType (in `cc`, experimental)
    *               +- AndOrType -+- AndType
    *               |             +- OrType
    *               +- MatchType
@@ -3472,140 +3472,159 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
     // ----- Capture checking ------------------------------------------------
 
-    /** A type with a retained capture set: `T^{c1, ..., cn}`.
+    /** Module for experimental capture-checking reflection: extractors for
+     *  capturing types and capabilities as they appear in the signatures of
+     *  code compiled under `language.experimental.captureChecking`.
      *
-     *  Under capture checking (`language.experimental.captureChecking`), such types
-     *  are encoded as annotated types whose annotation is one of
-     *  `scala.annotation.retains`, `scala.annotation.retainsCap` (for `T^`), or
-     *  `scala.annotation.retainsByName` (for by-name parameter types `->{cs} T`).
+     *  It mirrors the compiler's capture-checker internals
+     *  (`dotty.tools.dotc.cc`). The corresponding capture-checking definitions
+     *  are available in `defn` as `Caps_Capability`, `Caps_CapSet`, `Caps_any`,
+     *  `Caps_fresh` and `ConsumeAnnot`, functions can be classified syntactically
+     *  with `defn.isFunctionClass`, `defn.isContextFunctionClass` and
+     *  `defn.isImpureFunctionClass`, and pure classes can be recognized with
+     *  `Symbol.isPureClass`.
      *
-     *  @note Since `CapturingType` is a subtype of `AnnotatedType`, in pattern
-     *        matches the case for `CapturingType` should come before the case for
-     *        `AnnotatedType` to avoid matching capturing types as plain annotated
-     *        types.
-     *  @note Capture annotations are preserved in unpickled signatures, but they are
-     *        erased whenever a type is transformed (for example by `substituteTypes`
-     *        or `TypeRepr.memberType`) unless capture checking is enabled in the
-     *        current compilation.
+     *  Usage:
+     *  ```scala sc:nocompile
+     *  import quotes.reflect.*
+     *  import cc.*
+     *  tpe match
+     *    case CapturingType(parent, refs) => ...
+     *  ```
      */
     @experimental
-    type CapturingType <: AnnotatedType
+    val cc: ccModule
 
-    /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `CapturingType`. */
+    /** Methods of the module object `val cc`. */
     @experimental
-    given CapturingTypeTypeTest: TypeTest[TypeRepr, CapturingType]
+    trait ccModule { self: cc.type =>
 
-    /** Module object of `type CapturingType`. */
-    @experimental
-    val CapturingType: CapturingTypeModule
-
-    /** Methods of the module object `val CapturingType`. */
-    @experimental
-    trait CapturingTypeModule { this: CapturingType.type =>
-      /** Creates the type `parent^{refs}`, encoded as `parent` annotated with `@retains[...]`.
-       *  An empty list of refs creates a type with an empty capture set, `parent^{}`.
+      /** A type with a retained capture set: `T^{c1, ..., cn}`.
        *
-       *  The refs are not validated or normalized: unlike the types created by the
-       *  capture checker itself, the result may for example retain an explicit
-       *  empty capture set or nested capturing types.
+       *  Under capture checking (`language.experimental.captureChecking`), such types
+       *  are encoded as annotated types whose annotation is one of
+       *  `scala.annotation.retains`, `scala.annotation.retainsCap` (for `T^`), or
+       *  `scala.annotation.retainsByName` (for by-name parameter types `->{cs} T`).
        *
-       *  @note The result is always encoded with a `retains` annotation. In particular,
-       *        rebuilding a matched by-name capture annotation (`retainsByName`) with
-       *        this method does not restore the by-name encoding.
+       *  @note Since `CapturingType` is a subtype of `AnnotatedType`, in pattern
+       *        matches the case for `CapturingType` should come before the case for
+       *        `AnnotatedType` to avoid matching capturing types as plain annotated
+       *        types.
+       *  @note Capture annotations are preserved in unpickled signatures, but they are
+       *        erased whenever a type is transformed (for example by `substituteTypes`
+       *        or `TypeRepr.memberType`) unless capture checking is enabled in the
+       *        current compilation.
        */
-      def apply(parent: TypeRepr, refs: List[TypeRepr]): CapturingType
-      /** Decomposes a capturing type into its parent type and its retained capture references.
-       *  The union-type encoding of the capture set is flattened into a list of atomic
-       *  references, so `apply` followed by `unapply` is not an exact round-trip for
-       *  structured capture sets. The universal capture set `^` yields the reference
-       *  to `scala.caps.any`.
-       */
-      def unapply(x: CapturingType): (TypeRepr, List[TypeRepr])
-    }
+      type CapturingType <: AnnotatedType
 
-    /** Makes extension methods on `CapturingType` available without any imports. */
-    @experimental
-    given CapturingTypeMethods: CapturingTypeMethods
+      /** `TypeTest` that allows testing at runtime in a pattern match if a `TypeRepr` is a `CapturingType`. */
+      given CapturingTypeTypeTest: TypeTest[TypeRepr, CapturingType]
 
-    /** Extension methods of `CapturingType`. */
-    @experimental
-    trait CapturingTypeMethods:
-      extension (self: CapturingType)
-        /** The retained capture references. The parent type to which they apply
-         *  is available as `underlying`.
+      /** Module object of `type CapturingType`. */
+      val CapturingType: CapturingTypeModule
+
+      /** Methods of the module object `val CapturingType`. */
+      trait CapturingTypeModule { this: CapturingType.type =>
+        /** Creates the type `parent^{refs}`, encoded as `parent` annotated with `@retains[...]`.
+         *  An empty list of refs creates a type with an empty capture set, `parent^{}`.
+         *
+         *  The refs are not validated or normalized: unlike the types created by the
+         *  capture checker itself, the result may for example retain an explicit
+         *  empty capture set or nested capturing types.
+         *
+         *  @note The result is always encoded with a `retains` annotation. In particular,
+         *        rebuilding a matched by-name capture annotation (`retainsByName`) with
+         *        this method does not restore the by-name encoding.
          */
-        def retainedElements: List[TypeRepr]
-      end extension
-    end CapturingTypeMethods
+        def apply(parent: TypeRepr, refs: List[TypeRepr]): CapturingType
+        /** Decomposes a capturing type into its parent type and its retained capture references.
+         *  The union-type encoding of the capture set is flattened into a list of atomic
+         *  references, so `apply` followed by `unapply` is not an exact round-trip for
+         *  structured capture sets. The universal capture set `^` yields the reference
+         *  to `scala.caps.any`.
+         *
+         *  @note The returned references are the syntactic elements of the capture set
+         *        as pickled, not the normalized capture set the capture checker computes
+         *        (for example, empty projections such as `x.except[Any]` are kept).
+         */
+        def unapply(x: CapturingType): (TypeRepr, List[TypeRepr])
+      }
 
-    /** Extractor for read-only capabilities `x.rd`, encoded as the type of `x`
-     *  annotated with `scala.annotation.internal.readOnlyCapability`.
-     */
-    @experimental
-    val ReadOnlyCapability: ReadOnlyCapabilityModule
+      /** Makes extension methods on `CapturingType` available without any imports. */
+      given CapturingTypeMethods: CapturingTypeMethods
 
-    /** Methods of the module object `val ReadOnlyCapability`. */
-    @experimental
-    trait ReadOnlyCapabilityModule { this: ReadOnlyCapability.type =>
-      /** Creates the read-only capability `tp.rd`. */
-      def apply(tp: TypeRepr): TypeRepr
-      /** Matches a read-only capability `tp.rd` and returns `tp`. */
-      def unapply(tp: TypeRepr): Option[TypeRepr]
-    }
+      /** Extension methods of `CapturingType`. */
+      trait CapturingTypeMethods:
+        extension (self: CapturingType)
+          /** The retained capture references. The parent type to which they apply
+           *  is available as `underlying`.
+           */
+          def retainedElements: List[TypeRepr]
+        end extension
+      end CapturingTypeMethods
 
-    /** Extractor for capabilities restricted to a classifier, `x.only[C]`, encoded
-     *  as the type of `x` annotated with `scala.annotation.internal.onlyCapability[C]`.
-     */
-    @experimental
-    val OnlyCapability: OnlyCapabilityModule
-
-    /** Methods of the module object `val OnlyCapability`. */
-    @experimental
-    trait OnlyCapabilityModule { this: OnlyCapability.type =>
-      /** Creates the restricted capability `tp.only[C]` for the given classifier class `C`.
-       *  The classifier must be a class symbol.
+      /** Extractor for read-only capabilities `x.rd`, encoded as the type of `x`
+       *  annotated with `scala.annotation.internal.readOnlyCapability`.
        */
-      def apply(tp: TypeRepr, classifier: Symbol): TypeRepr
-      /** Matches a restricted capability `tp.only[C]` and returns `tp` and the classifier class `C`. */
-      def unapply(tp: TypeRepr): Option[(TypeRepr, Symbol)]
-    }
+      val ReadOnlyCapability: ReadOnlyCapabilityModule
 
-    /** Extractor for capabilities with an excluded classifier, `x.except[C]`, encoded
-     *  as the type of `x` annotated with `scala.annotation.internal.exceptCapability[C]`.
-     */
-    @experimental
-    val ExceptCapability: ExceptCapabilityModule
+      /** Methods of the module object `val ReadOnlyCapability`. */
+      trait ReadOnlyCapabilityModule { this: ReadOnlyCapability.type =>
+        /** Creates the read-only capability `tp.rd`. */
+        def apply(tp: TypeRepr): TypeRepr
+        /** Matches a read-only capability `tp.rd` and returns `tp`. */
+        def unapply(tp: TypeRepr): Option[TypeRepr]
+      }
 
-    /** Methods of the module object `val ExceptCapability`. */
-    @experimental
-    trait ExceptCapabilityModule { this: ExceptCapability.type =>
-      /** Creates the capability `tp.except[C]` for the given classifier class `C`.
-       *  The classifier must be a class symbol.
+      /** Extractor for capabilities restricted to a classifier, `x.only[C]`, encoded
+       *  as the type of `x` annotated with `scala.annotation.internal.onlyCapability[C]`.
        */
-      def apply(tp: TypeRepr, classifier: Symbol): TypeRepr
-      /** Matches a capability `tp.except[C]` and returns `tp` and the excluded classifier class `C`. */
-      def unapply(tp: TypeRepr): Option[(TypeRepr, Symbol)]
-    }
+      val OnlyCapability: OnlyCapabilityModule
 
-    /** Extractor for annotations of the classes `scala.annotation.retains`,
-     *  `scala.annotation.retainsCap` and `scala.annotation.retainsByName`, which
-     *  carry the capture sets of capturing types. Such annotations can also occur
-     *  on symbols, for example on a class to express its `uses` clause.
-     */
-    @experimental
-    val RetainingAnnotation: RetainingAnnotationModule
+      /** Methods of the module object `val OnlyCapability`. */
+      trait OnlyCapabilityModule { this: OnlyCapability.type =>
+        /** Creates the restricted capability `tp.only[C]` for the given classifier class `C`.
+         *  The classifier must be a class symbol.
+         */
+        def apply(tp: TypeRepr, classifier: Symbol): TypeRepr
+        /** Matches a restricted capability `tp.only[C]` and returns `tp` and the classifier class `C`. */
+        def unapply(tp: TypeRepr): Option[(TypeRepr, Symbol)]
+      }
 
-    /** Methods of the module object `val RetainingAnnotation`. */
-    @experimental
-    trait RetainingAnnotationModule { this: RetainingAnnotation.type =>
-      /** Matches an annotation tree of class `retains`, `retainsCap` or `retainsByName`
-       *  and returns the retained capture references.
-       *
-       *  @note The shape of retains annotation trees is unspecified; they may appear
-       *        as synthetic type trees whose only meaningful part is their type.
-       *        Use this extractor instead of matching the annotation tree structure.
+      /** Extractor for capabilities with an excluded classifier, `x.except[C]`, encoded
+       *  as the type of `x` annotated with `scala.annotation.internal.exceptCapability[C]`.
        */
-      def unapply(annot: Tree): Option[List[TypeRepr]]
+      val ExceptCapability: ExceptCapabilityModule
+
+      /** Methods of the module object `val ExceptCapability`. */
+      trait ExceptCapabilityModule { this: ExceptCapability.type =>
+        /** Creates the capability `tp.except[C]` for the given classifier class `C`.
+         *  The classifier must be a class symbol.
+         */
+        def apply(tp: TypeRepr, classifier: Symbol): TypeRepr
+        /** Matches a capability `tp.except[C]` and returns `tp` and the excluded classifier class `C`. */
+        def unapply(tp: TypeRepr): Option[(TypeRepr, Symbol)]
+      }
+
+      /** Extractor for annotations of the classes `scala.annotation.retains`,
+       *  `scala.annotation.retainsCap` and `scala.annotation.retainsByName`, which
+       *  carry the capture sets of capturing types. Such annotations can also occur
+       *  on symbols, for example on a class to express its `uses` clause.
+       */
+      val RetainingAnnotation: RetainingAnnotationModule
+
+      /** Methods of the module object `val RetainingAnnotation`. */
+      trait RetainingAnnotationModule { this: RetainingAnnotation.type =>
+        /** Matches an annotation tree of class `retains`, `retainsCap` or `retainsByName`
+         *  and returns the retained capture references.
+         *
+         *  @note The shape of retains annotation trees is unspecified; they may appear
+         *        as synthetic type trees whose only meaningful part is their type.
+         *        Use this extractor instead of matching the annotation tree structure.
+         */
+        def unapply(annot: Tree): Option[List[TypeRepr]]
+      }
+
     }
 
 
@@ -5083,9 +5102,11 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
          *
          *  @note This is an approximation based on the declared (pickled) types:
          *        the self-type rule applies only to base classes that were compiled
-         *        under capture checking, and self types whose capture sets were
-         *        inferred by the capture checker count as pure, since inferred
-         *        capture sets are not pickled.
+         *        under capture checking, it only inspects the declared retains
+         *        annotation of the self type (a self type of a capability class
+         *        without a written capture set counts as pure), and self types whose
+         *        capture sets were inferred by the capture checker count as pure,
+         *        since inferred capture sets are not pickled.
          */
         @experimental
         def isPureClass: Boolean
