@@ -10,6 +10,7 @@ import scala.jdk.CollectionConverters.MapHasAsScala
 
 // TODO unify with ZipFile? only diff is having a version I think?
 // TODO tests! including compression level == minimum to see if we need the STORED special casing currently in FileWriters
+// TODO: think of how the compiler opens its output -- what's the correct API? even if it makes tests a little uglier
 /* TODO: when we output a JAR from the compiler,
   manifest:
     Name.MANIFEST_VERSION -> "1.0"

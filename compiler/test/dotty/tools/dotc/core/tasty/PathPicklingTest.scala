@@ -28,7 +28,7 @@ class PathPicklingTest {
 
     val printedTasty =
       val sb = new StringBuffer
-      val jar = FileContainer.getOnDisk(outPath).get
+      val jar = FileContainer.getFromFile(File.getOnDisk(outPath).get, "", 0).get
       try
         for file <- jar.entries.collect { case f: File if f.extension.isTasty => f } do
           sb.append(TastyPrinter.showContents(file.readBytes(), noColor = true, isBestEffortTasty = false))
