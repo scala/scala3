@@ -114,8 +114,7 @@ class CoverageTests:
     dir.entries.collect { case f: File if runOnFile(f) => f }.foreach { path =>
       val target = FileContainer.createTemporaryOnDisk("coverage-warning")
       val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", target.path, "-sourceroot", rootSrc.path)
-      //val relativePath = Paths.get(userDir).relativize(path).toString
-      compileFile(path.path, options).checkWarnings()
+      compileFile(path, options).checkWarnings()
     }
 
   private def findMeasurementFile(targetDir: FileContainer): File = {
@@ -134,7 +133,7 @@ class CoverageTests:
 
     val coverageOut = target.getOrCreateContainer("coverage-out")
     val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", coverageOut.path, "-sourceroot", sourceRoot.path)
-    compileFile(sourceFile1.path, options).checkCompile()
+    compileFile(sourceFile1, options).checkCompile()
 
     val scoverageFile = coverageOut.getFile("scoverage.coverage")
     assert(scoverageFile.nonEmpty, s"Expected scoverage file to exist at ${coverageOut.path}")
@@ -148,7 +147,7 @@ class CoverageTests:
     val sourceFile2 = sourceRoot.getOrCreateFile("file2", FileExtension.Scala)
     sourceFile2.writeText("def file2() = 2", Codec.UTF8)
 
-    compileFile(sourceFile2.path, options).checkCompile()
+    compileFile(sourceFile2, options).checkCompile()
     locally {
       val coverage = Serializer.deserialize(java.nio.file.Path.of(scoverageFile.get.path), sourceRoot.path)
       val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
@@ -165,7 +164,7 @@ class CoverageTests:
 
     val coverageOut = target.getOrCreateContainer("coverage-out")
     val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", coverageOut.path, "-sourceroot", sourceRoot.path)
-    compileFile(sourceFile1.path, options).checkCompile()
+    compileFile(sourceFile1, options).checkCompile()
 
     val scoverageFile = coverageOut.getFile("scoverage.coverage")
     assert(scoverageFile.nonEmpty, s"Expected scoverage file to exist at ${coverageOut.path}")
@@ -181,7 +180,7 @@ class CoverageTests:
 
     sourceFile1.delete()
 
-    compileFile(sourceFile2.path, options).checkCompile()
+    compileFile(sourceFile2, options).checkCompile()
     locally {
       val coverage = Serializer.deserialize(java.nio.file.Path.of(scoverageFile.get.path), sourceRoot.path)
       val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet

@@ -1461,7 +1461,11 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
   /** Compiles a single file from the string path `f` using the supplied flags */
   def compileFile(f: String, flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
-    val sourceFile = TestSources.rootPath().getFile(f).getOrElse(throw new IllegalArgumentException(s"Source file: $f, didn't exist"))
+    val sourceFile = TestSources.rootPath().getFile(f).getOrElse(throw new IllegalArgumentException(s"Source file: $f didn't exist"))
+    compileFile(sourceFile, flags)
+  }
+
+  def compileFile(sourceFile: File, flags: TestFlags)(implicit testGroup: TestGroup): CompilationTest = {
     val parent = sourceFile.parent
     val outDir = defaultOutputDir.getOrCreateContainer(testGroup.name).getOrCreateContainer(sourceFile.name.substring(0, sourceFile.name.lastIndexOf('.')))
 
