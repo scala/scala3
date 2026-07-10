@@ -7,6 +7,7 @@ import scala.jdk.CollectionConverters.IteratorHasAsScala
 import scala.io.Codec
 
 // TODO we should find "leaks" ie undeleted files
+// TODO fast path for "the separator happens to be the same as the filesystem" in get[OrCreate]File[Container] ?
 
 object File:
   // There is no "create an in-memory file" here. All files must have a container, so create a container first!
