@@ -98,7 +98,7 @@ class SemanticdbTests:
 
   def inputFiles(): List[File] =
     val files = expectSrc.recursiveEntries.collect {
-      case f: File if f.extension == FileExtension.Scala => f
+      case f: File if f.extension == FileExtension.Scala && !f.nameWithoutExtension.endsWith(".expect") => f
     }.toList
     require(files.nonEmpty, s"No input files! ${expectSrc.path}")
     files
