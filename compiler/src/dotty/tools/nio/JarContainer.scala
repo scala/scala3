@@ -8,8 +8,7 @@ import java.util.stream.Collectors
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.MapHasAsScala
 
-// TODO JAR compression level ... we can't ask it for every opening of a FileContainer in addition to jarVersion, can we? need a better solution...
-// - FileContainer.openFromFile seems unneeded (the test that uses it could directly use getOnDisk)
+// TODO JAR compression level ... ask it for every opening of a FileContainer in addition to jarVersion? depends on what the compiler needs
 
 // TODO unify with ZipFile? only diff is having a version I think?
 
