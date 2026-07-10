@@ -276,14 +276,17 @@ trait Migrations:
               |Migrate it by hand, preferably to a `@main` method: https://docs.scala-lang.org/scala3/book/methods-main-methods.html""",
           cdef.srcPos)
 
-      val directApp = typedImpl.parents.exists(_.tpe.classSymbol == defn.AppClass)
+      val appParent = typedImpl.parents.find(_.tpe.classSymbol == defn.AppClass)
       // Objects carry a synthetic `_: Foo.type` self; a user-written `self =>`
       // would have a real name and sits inside the body, so it is out of scope.
-      if !directApp then
+      // The untyped `impl` is only needed for the parent count: `typedImpl.parents`
+      // includes the synthesized superclass (`Object`, as `App` is a trait), so it
+      // cannot tell a sole `App` parent from `App with X`.
+      if appParent.isEmpty then
         cannot("only an `object` that directly extends `App` can be rewritten")
       else if !cls.is(ModuleClass) then
         cannot("only an `object` can be rewritten")
-      else if impl.self.name != nme.WILDCARD then
+      else if typedImpl.self.name != nme.WILDCARD then
         cannot("it declares a self type")
       else if impl.parents.lengthIs != 1 then
         cannot("`App` is mixed with other parents")
@@ -315,7 +318,7 @@ trait Migrations:
           cannot("its body has no statements to run in `main`")
         else
           // `rest` is the statements to wrap (empty only when the whole body is empty).
-          wrapIntoMain(cdef, impl.parents.head, rest).foreach(cannot)
+          wrapIntoMain(cdef, appParent.get, rest).foreach(cannot)
 
     /** Does `tree` reference an inherited `App` member that would no longer be
      *  available after the rewrite? When `allowArgs` is set, an unqualified `args`
@@ -342,7 +345,7 @@ trait Migrations:
      *  Returns `None` on success or `Some(reason)` if the source layout is not
      *  supported, so the caller can report it instead of silently doing nothing.
      */
-    private def wrapIntoMain(cdef: untpd.TypeDef, appParent: untpd.Tree, stmts: List[tpd.Tree])(using Context): Option[String] =
+    private def wrapIntoMain(cdef: untpd.TypeDef, appParent: tpd.Tree, stmts: List[tpd.Tree])(using Context): Option[String] =
       val src = ctx.source
       val content = src.content()
       val appStart = appParent.span.start
