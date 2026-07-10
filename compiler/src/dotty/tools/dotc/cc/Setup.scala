@@ -1069,9 +1069,13 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             && !ref.coreType.derivesFromCapSet
         then
           if ref.captureSetOfInfo.elems.isEmpty then
-            // an empty projection of a tracked ref denotes {}; only an untracked core is vacuous
-            if !ref.core.isTracked then
-              report.error(em"$ref cannot be tracked since its capture set is empty", pos)
+            ref match
+              case ref: DerivedCapability if ref.core.isTracked =>
+                // an empty projection (`.only[C]`/`.except[C]`) of a tracked ref denotes {}
+              case _ =>
+                // a plain reference with an empty capture set, or a projection
+                // of an untracked core, is vacuous
+                report.error(em"$ref cannot be tracked since its capture set is empty", pos)
           else
             check(parent.captureSet, parent)
 
