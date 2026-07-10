@@ -27,8 +27,8 @@ import scala.io.Codec
  *  @param source the single source file producing the semanticdb
  */
 @main def metac(root: String, source: String): Unit =
-  val rootSrc = FileContainer.getOrCreateOnDisk(root, "")
-  val sourceSrc = File.getOrCreateOnDisk(source)
+  val rootSrc = FileContainer.getOnDisk(root, "").get
+  val sourceSrc = File.getOnDisk(source).get
   val semanticExt = FileExtension.from("semanticdb")
   def inputFile(): File =
     val files = rootSrc.getOrCreateContainer("META-INF").getOrCreateContainer("semanticdb").entries.collect {

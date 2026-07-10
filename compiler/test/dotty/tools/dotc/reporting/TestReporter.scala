@@ -106,8 +106,7 @@ object TestReporter {
     val date = new Date
     val df0 = new SimpleDateFormat("yyyy-MM-dd")
     val df1 = new SimpleDateFormat("yyyy-MM-dd-'T'HH-mm-ss")
-    val folder = FileContainer.getOrCreateOnDisk(s"$testLogsDirName/tests-${df0.format(date)}", "")
-    outFile = folder.getOrCreateFile(s"tests-${df1.format(date)}.log")
+    outFile = File.getOrCreateOnDisk(s"$testLogsDirName/tests-${df0.format(date)}/tests-${df1.format(date)}.log")
     logWriter = new PrintWriter(outFile.output(append = true))
     failedTestsWriter = new PrintWriter(failedTestsFile.output())
   }

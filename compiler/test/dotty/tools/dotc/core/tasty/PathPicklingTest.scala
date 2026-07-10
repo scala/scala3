@@ -12,13 +12,13 @@ import dotty.tools.vulpix.TestConfiguration
 class PathPicklingTest {
 
   @Test def test(): Unit = {
-    FileContainer.getOrCreateOnDisk("out/testPathPickling", "").deleteRecursively()
-    val out = File.getOrCreateOnDisk("out/testPathPickling/out.jar")
+    FileContainer.getOnDisk("out/testPathPickling", "").foreach(_.deleteRecursively())
+    val outPath = "out/testPathPickling/out.jar"
 
     locally {
       val ignorantProcessLogger = ProcessLogger(_ => ())
       val options = TestConfiguration.defaultOptions
-        .and("-d", out.path)
+        .and("-d", outPath)
         .and("-sourceroot", "tests/pos")
         .and(s"tests/pos/i10430/lib.scala", s"tests/pos/i10430/app.scala")
       val reporter = TestReporter.reporter(System.out, logLevel = ERROR)
@@ -28,7 +28,7 @@ class PathPicklingTest {
 
     val printedTasty =
       val sb = new StringBuffer
-      val jar = FileContainer.getFromFile(out, "").get
+      val jar = FileContainer.getOnDisk(outPath, "").get
       try
         for file <- jar.entries.collect { case f: File if f.extension.isTasty => f } do
           sb.append(TastyPrinter.showContents(file.readBytes(), noColor = true, isBestEffortTasty = false))

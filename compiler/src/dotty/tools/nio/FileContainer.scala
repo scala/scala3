@@ -19,12 +19,6 @@ object FileContainer:
     else if path.endsWith(FileExtension.Zip.withDot) then ZipContainer.open(DiskFile.getOrCreate(path))
     else DiskDirectory.getOrCreate(path)
 
-  /** If the given file is also a container, such as an archive, opens it as such and returns it, using the given JAR version if necessary. Otherwise, returns None. */
-  def getFromFile(file: File, jarVersion: String): Option[FileContainer] =
-    if file.extension == FileExtension.Jar then Some(JarContainer.open(file, jarVersion))
-    else if file.extension == FileExtension.Zip then Some(ZipContainer.open(file))
-    else None
-
   /** Creates a temporary file container on disk. */
   def createTemporaryOnDisk(nameHint: String): FileContainer =
     DiskDirectory.createTemporary(nameHint)
