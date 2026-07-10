@@ -5,32 +5,39 @@
  * copyright Greg Allen 2014
  * MIT License
 */
-(function($) {
-var verboseIdCache = {};
-$.fn.toc = function(options) {
-  var self = this;
-  var opts = $.extend({}, jQuery.fn.toc.defaults, options);
 
-  var container = $(opts.container);
-  var headings = $(opts.selectors, container);
+/* The following ports the jquery plugin to modern javascript. */
+
+/***
+ * Add table of contents links to the given TOC container.
+ * @param {HTMLElement} domElement - The DOM element to manipulate
+ * @param {Object} options - A list of options to change TOC_DEFAULTS.
+ * @return {HTMLElement} - The same tocContainer for chaining.
+ */
+function addTOC(tocContainer, options) {
+  var verboseIdCache = {};
+  // Since options are only one level of nesting deep,
+  // we use the spread syntax to merge.
+  var opts = {...TOC_DEFAULTS, ...options};
+  var container = document.querySelector(opts.container);
+  var headings = container.querySelectorAll(opts.selectors);
   var headingOffsets = [];
   var activeClassName = opts.activeClass;
-
   var scrollTo = function(e, callback) {
-    $('li', self).removeClass(activeClassName);
-    $(e.target).parent().addClass(activeClassName);
+    tocContainer.querySelectorAll('li').forEach(function (element) {
+      element.classList.remove(activeClassName);
+    });
+    e.parentNode.classList.add(activeClassName);
   };
 
-  //highlight on scroll
   var timeout;
   var highlightOnScroll = function(e) {
     if (timeout) {
       clearTimeout(timeout);
     }
     timeout = setTimeout(function() {
-      var top = $(window).scrollTop(),
+      var top = window.pageYOffset,
         highlighted, closest = Number.MAX_VALUE, index = 0;
-      
       for (var i = 0, c = headingOffsets.length; i < c; i++) {
         var currentClosest = Math.abs(headingOffsets[i] - top);
         if (currentClosest < closest) {
@@ -38,57 +45,54 @@ $.fn.toc = function(options) {
           closest = currentClosest;
         }
       }
-      
-      $('li', self).removeClass(activeClassName);
-      highlighted = $('li:eq('+ index +')', self).addClass(activeClassName);
-      opts.onHighlight(highlighted);      
+      tocContainer.querySelectorAll('li').forEach(function (element) {
+        element.classList.remove(activeClassName);
+      });
+      highlighted = tocContainer.querySelector('li:nth-child(' + index + ')')
+      if (highlighted != null) { highlighted.classList.add(activeClassName); }
+      opts.onHighlight(highlighted);
     }, 50);
   };
+
   if (opts.highlightOnScroll) {
-    $(window).on('scroll', highlightOnScroll);
+    window.addEventListener('scroll', highlightOnScroll);
     highlightOnScroll();
   }
 
-  return this.each(function() {
-    //build TOC
-    var el = $(this);
-    var ul = $(opts.listType);
+  const listTypeRegex = new RegExp("<(.*)/>");
+  const listTypeToTagName = listTypeRegex.exec(opts.listType);
+  if (listTypeToTagName == null) { return tocContainer; }
+  var ul = document.createElement(listTypeToTagName[1]);
+  headings.forEach(function(heading, i) {
+    headingOffsets.push(heading.getBoundingClientRect().top - opts.highlightOffset);
+    var anchorName = opts.anchorName(i, heading, opts.prefix);
+    if(heading.id !== anchorName) {
+      var anchor = document.createElement("span");
+      anchor.setAttribute('id', anchorName);
+      heading.parentNode.insertBefore(anchor, heading);
+    }
 
-    headings.each(function(i, heading) {
-      var $h = $(heading);
-      headingOffsets.push($h.offset().top - opts.highlightOffset);
-
-      var anchorName = opts.anchorName(i, heading, opts.prefix);
-
-      //add anchor
-      if(heading.id !== anchorName) {
-        var anchor = $('<span/>').attr('id', anchorName).insertBefore($h);
-      }
-
-      //build TOC item
-      var a = $('<a/>')
-        .text(opts.headerText(i, heading, $h))
-        .attr('href', '#' + anchorName)
-        .on('click', function(e) {
-          $(window).off('scroll', highlightOnScroll);
-          scrollTo(e, function() {
-            $(window).on('scroll', highlightOnScroll);
-          });
-          el.trigger('selected', $(this).attr('href'));
-        });
-
-      var li = $('<li/>')
-        .addClass(opts.itemClass(i, heading, $h, opts.prefix))
-        .append(a);
-
-      ul.append(li);
+    var a = document.createElement("a");
+    a.textContent = opts.headerText(i, heading);
+    a.setAttribute('href', '#' + anchorName);
+    a.addEventListener('click', () => {
+      window.removeEventListener('scroll', highlightOnScroll);
+      scrollTo(a, function() {
+        // Kept bug from jquery version: callback isn't called, so scroll event listener not re-attached.
+        window.addEventListener('scroll', highlightOnScroll);
+      });
+      // Research suggests this is a now unused custom event. Won't translate.
+      // el.trigger('selected', $(this).attr('href'))
     });
-    el.html(ul);
+    var li = document.createElement('li');
+    li.classList.add(opts.itemClass(i, heading, opts.prefix));
+    li.append(a);
+    ul.append(li);
   });
-};
+  tocContainer.replaceChildren(ul);
+}
 
-
-jQuery.fn.toc.defaults = {
+const TOC_DEFAULTS = {
   container: 'body',
   listType: '<ul/>',
   selectors: 'h1,h2,h3',
@@ -101,28 +105,22 @@ jQuery.fn.toc.defaults = {
     if(heading.id.length) {
       return heading.id;
     }
-
-    var candidateId = $(heading).text().replace(/[^a-z0-9]/ig, ' ').replace(/\s+/g, '-').toLowerCase();
+    var candidateId = heading.innerText.replace(/[^a-z0-9]/ig, ' ').replace(/\s+/g, '-').toLowerCase();
     if (verboseIdCache[candidateId]) {
       var j = 2;
-      
       while(verboseIdCache[candidateId + j]) {
         j++;
       }
       candidateId = candidateId + '-' + j;
-      
     }
     verboseIdCache[candidateId] = true;
-
     return prefix + '-' + candidateId;
   },
-  headerText: function(i, heading, $heading) {
-    return $heading.text();
+  headerText: function(i, heading) {
+    return heading.innerText();
   },
-  itemClass: function(i, heading, $heading, prefix) {
-    return prefix + '-' + $heading[0].tagName.toLowerCase();
+  itemClass: function(i, heading, prefix) {
+    return prefix + '-' + heading.tagName.toLowerCase();
   }
 
 };
-
-})(jQuery);
