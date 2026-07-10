@@ -8,19 +8,23 @@ import java.util.stream.Collectors
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.MapHasAsScala
 
-// TODO JAR compression level ... ask it for every opening of a FileContainer in addition to jarVersion? depends on what the compiler needs
-
 // TODO unify with ZipFile? only diff is having a version I think?
+// TODO tests! including compression level == minimum to see if we need the STORED special casing currently in FileWriters
+/* TODO: when we output a JAR from the compiler,
+  manifest:
+    Name.MANIFEST_VERSION -> "1.0"
+    Properties.ScalaCompilerVersion -> Properties.versionNumberString
+ */
 
 // General implementation note: ZipEntry.getName is what we'd call its path, not just its filename
 
 object JarContainer:
-  def open(file: File, version: String): FileContainer = file match
-    case disk: DiskFile => new JarContainer(disk, version)
+  def open(file: File, version: String, compressionLevel: Int, manifest: Map[String, String]): FileContainer = file match
+    case disk: DiskFile => new JarContainer(disk, version, compressionLevel, manifest)
     // TODO: Use JarInputStream... but then we have to handle multi-versioning ourselves
     case _ => throw new UnsupportedOperationException("Loading JARs from outside the disk is not supported yet.")
 
-private final class JarContainer private(val underlying: File, version: String) extends FileContainer, JarEntryContainerBase(""):
+private final class JarContainer private(val underlying: File, version: String, compressionLevel: Int, manifest: Map[String, String]) extends FileContainer, JarEntryContainerBase(""):
   lazy val jarFile = new JarFile(
     new java.io.File(underlying.path),
     true, // default
@@ -58,7 +62,10 @@ private final class JarContainer private(val underlying: File, version: String) 
 
   override def close(): Boolean = {
     if jarModified then
-      val output = new JarOutputStream(underlying.output())
+      val outputManifest = jarFile.getManifest
+      manifest.foreach((k, v) => outputManifest.getMainAttributes.putValue(k, v))
+      val output = new JarOutputStream(underlying.output(), outputManifest)
+      output.setLevel(compressionLevel)
       for (_, entry) <- jarEntries do
         output.putNextEntry(entry.entry)
         entry match

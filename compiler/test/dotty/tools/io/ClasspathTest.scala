@@ -20,7 +20,7 @@ class ClasspathTest {
     val outDir = FileContainer.createTemporaryOnDisk("classpath-test")
     try
       val compilerLib = s"${if isWindows then "dist-win-x86_64" else "dist"}/target/pack/lib"
-      FileContainer.getOnDisk(compilerLib, "") match
+      FileContainer.getOnDisk(compilerLib) match
         case Some(libdir) =>
           val libjarFiles = libdir.entries.collect{ case f: File => f }.toList.take(5)
           for src <- libjarFiles do

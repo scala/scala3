@@ -28,7 +28,7 @@ object ScriptTestEnv {
 
   def cleanupScalaCLIDirs(): Unit = {
     val scriptingDir = scriptsDir("/scripting")
-    val dottyDir = FileContainer.getOnDisk(workingDirectory, "").get
+    val dottyDir = FileContainer.getOnDisk(workingDirectory).get
 
     scriptingDir.getContainer(".bsp").foreach(_.deleteRecursively())
     scriptingDir.getContainer(".scala-build").foreach(_.deleteRecursively())
@@ -67,7 +67,7 @@ object ScriptTestEnv {
       userDir // userDir, if TEST_CWD not set
 
     // issue warning if things don't look right
-    val test = FileContainer.getOnDisk(s"$dirstr/$packBinDir", "")
+    val test = FileContainer.getOnDisk(s"$dirstr/$packBinDir")
     if test.isEmpty then
       printf("warning: not found below working directory: %s\n", s"$dirstr/$packBinDir")
 
@@ -104,7 +104,7 @@ object ScriptTestEnv {
     var out = ""
     // must not use adjusted path here! (causes recursive call / stack overflow)
     envPathEntries.find { entry =>
-      FileContainer.getOnDisk(entry, "") match
+      FileContainer.getOnDisk(entry) match
         case Some(it) =>
           val testpath = s"$it/$str".norm
           if File.getOnDisk(testpath).nonEmpty then

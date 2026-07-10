@@ -12,7 +12,7 @@ import dotty.tools.vulpix.TestConfiguration
 class PathPicklingTest {
 
   @Test def test(): Unit = {
-    FileContainer.getOnDisk("out/testPathPickling", "").foreach(_.deleteRecursively())
+    FileContainer.getOnDisk("out/testPathPickling").foreach(_.deleteRecursively())
     val outPath = "out/testPathPickling/out.jar"
 
     locally {
@@ -28,7 +28,7 @@ class PathPicklingTest {
 
     val printedTasty =
       val sb = new StringBuffer
-      val jar = FileContainer.getOnDisk(outPath, "").get
+      val jar = FileContainer.getOnDisk(outPath).get
       try
         for file <- jar.entries.collect { case f: File if f.extension.isTasty => f } do
           sb.append(TastyPrinter.showContents(file.readBytes(), noColor = true, isBestEffortTasty = false))

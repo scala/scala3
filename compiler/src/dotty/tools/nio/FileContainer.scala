@@ -7,17 +7,19 @@ object FileContainer:
   def workingDirectory(): FileContainer =
     DiskDirectory.workingDirectory()
 
-  /** Gets a file container at the given path on disk if it exists, using the given JAR version if necessary. */
-  def getOnDisk(path: String, jarVersion: String): Option[FileContainer] =
-    if path.endsWith(FileExtension.Jar.withDot) then DiskFile.get(path).map(JarContainer.open(_, jarVersion))
-    else if path.endsWith(FileExtension.Zip.withDot) then DiskFile.get(path).map(ZipContainer.open)
-    else DiskDirectory.get(path)
+  /** Gets a disk directory at the given path if it exists. */
+  def getOnDisk(path: String): Option[FileContainer] =
+    DiskDirectory.get(path)
 
-  /** Gets or creates a file container at the given path on disk, using the given JAR version if necessary. */
-  def getOrCreateOnDisk(path: String, jarVersion: String): FileContainer =
-    if path.endsWith(FileExtension.Jar.withDot) then JarContainer.open(DiskFile.getOrCreate(path), jarVersion)
-    else if path.endsWith(FileExtension.Zip.withDot) then ZipContainer.open(DiskFile.getOrCreate(path))
-    else DiskDirectory.getOrCreate(path)
+  /** Gets or creates a disk directory at the given path on disk. */
+  def getOrCreateOnDisk(path: String): FileContainer =
+    DiskDirectory.getOrCreate(path)
+
+  /** If the given file is also a container, such as an archive, opens it as such and returns it, using the given JAR version if necessary. Otherwise, returns None. */
+  def getFromFile(file: File, jarVersion: String, compressionLevel: Int, manifest: Map[String, String] = Map.empty): Option[FileContainer] =
+    if file.extension == FileExtension.Jar then Some(JarContainer.open(file, jarVersion, compressionLevel, manifest))
+    else if file.extension == FileExtension.Zip then Some(ZipContainer.open(file))
+    else None
 
   /** Creates a temporary file container on disk. */
   def createTemporaryOnDisk(nameHint: String): FileContainer =

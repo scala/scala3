@@ -77,7 +77,7 @@ trait CoverageSupport:
     val flags = testSource.flags.options
     val idx = flags.indexOf("-coverage-out")
     if (idx >= 0 && idx + 1 < flags.length)
-      val coverageDir = FileContainer.getOnDisk(flags(idx + 1), "")
+      val coverageDir = FileContainer.getOnDisk(flags(idx + 1))
         .getOrElse(throw new AssertionError(s"Coverage directory missing in ${flags(idx + 1)} for test ${testSource.title}"))
       try
         val coverageFile = coverageDir.getFile("scoverage.coverage")

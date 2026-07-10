@@ -21,7 +21,7 @@ def scripts(path: String): Array[FileSystemEntry] = {
 }
 
 def scriptsDir(path: String): FileContainer =
-  FileContainer.getOnDisk(Dummy.getClass.getResource(path).getPath, "").getOrElse(throw new AssertionError("Couldn't load scripts dir"))
+  FileContainer.getOnDisk(Dummy.getClass.getResource(path).getPath).getOrElse(throw new AssertionError("Couldn't load scripts dir"))
 
 private object Unthrown extends ControlThrowable
 
