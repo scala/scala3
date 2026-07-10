@@ -1401,6 +1401,7 @@ object Scanners {
         case 'n'  => putChar('\n')
         case 'f'  => putChar('\f')
         case 'r'  => putChar('\r')
+        case 's'  => putChar(' ')
         case '\"' => putChar('\"')
         case '\'' => putChar('\'')
         case '\\' => putChar('\\')
