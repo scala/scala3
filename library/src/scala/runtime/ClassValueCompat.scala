@@ -16,7 +16,7 @@ import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.runtime.ClassValueCompat._
 
-private[scala] abstract class ClassValueCompat[T] extends ClassValueInterface[T] { self =>
+private[scala] abstract class ClassValueCompat[T] extends ClassValueInterface[T] { self: ClassValueCompat[T] =>
   private val instance: ClassValueInterface[T] =
     if (classValueAvailable) new JavaClassValue()
     else new FallbackClassValue()
