@@ -11,7 +11,6 @@ import interfaces.Diagnostic.{ERROR, WARNING}
 import io.AbstractFile
 import util.SourcePosition
 import Diagnostic.*
-import dotty.tools.io.FileExtension
 import dotty.tools.nio.*
 
 import java.io.{PrintStream, PrintWriter, StringWriter}
@@ -97,7 +96,7 @@ class TestConsoleReporter(writer: PrintWriter) extends ConsoleReporter(null, wri
 object TestReporter {
   private val testLogsDirName: String = "testlogs"
   private val failedTestsFileName: String = "last-failed.log"
-  private val failedTestsFile: Option[File] = File.getOnDisk(s"$testLogsDirName/$failedTestsFileName")
+  private val failedTestsFile: File = File.getOrCreateOnDisk(s"$testLogsDirName/$failedTestsFileName")
 
   private var outFile: File = uninitialized
   private var logWriter: PrintWriter = uninitialized
@@ -110,7 +109,7 @@ object TestReporter {
     val folder = FileContainer.getOrCreateOnDisk(s"$testLogsDirName/tests-${df0.format(date)}", "")
     outFile = folder.getOrCreateFile(s"tests-${df1.format(date)}.log")
     logWriter = new PrintWriter(outFile.output(append = true))
-    failedTestsFile.foreach(f => failedTestsWriter = new PrintWriter(f.output()))
+    failedTestsWriter = new PrintWriter(failedTestsFile.output())
   }
 
   def logPrintln(str: String) = {
@@ -161,11 +160,12 @@ object TestReporter {
     rep
   }
 
-  def lastRunFailedTests: Option[List[String]] = failedTestsFile match
-    case Some(f) if Properties.rerunFailed =>
-      Some(f.readText(Codec.UTF8).split(System.lineSeparator()).toList)
-    case _ =>
-      None
+  def lastRunFailedTests: Option[List[String]] =
+    if Properties.rerunFailed then
+      val lines = failedTestsFile.readLines(Codec.UTF8).toList
+      if lines.nonEmpty then Some(lines)
+      else None
+    else None
 
   def writeFailedTests(tests: List[String]): Unit =
     initLog()

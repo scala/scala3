@@ -89,18 +89,18 @@ abstract class FileContainer extends FileSystemEntry:
         case Some(c) =>
           container = c
         case None if create =>
-          container = createContainer(name)
+          container = container.createContainer(name)
         case None =>
           return None
     val finalName = path.substring(idx)
     if isFile then
       container.getFile(finalName, extension) match
         case s @ Some(_) => s
-        case None if create => Some(createFile(finalName, extension))
+        case None if create => Some(container.createFile(finalName, extension))
         case None => None
     else
       if finalName == "" then Some(container)
       else container.getContainer(finalName) match
         case s @ Some(_) => s
-        case None if create => Some(createContainer(finalName))
+        case None if create => Some(container.createContainer(finalName))
         case None => None

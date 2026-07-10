@@ -168,7 +168,7 @@ object ScriptTestEnv {
   def packScalaVersion: String = {
     File.getOnDisk(packVersionFile) match
       case Some(f) =>
-        val lines = f.readText(Codec.UTF8).split(System.lineSeparator())
+        val lines = f.readLines(Codec.UTF8)
         lines.find { _.startsWith("version:=") } match
           case Some(line) => line.drop(9)
           case None => sys.error(s"no version:= found in $packVersionFile")
