@@ -7,6 +7,8 @@ import java.util.jar.*
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.IteratorHasAsScala
 
+// TODO unify with ZipFile? only diff is having a version I think?
+
 object JarContainer:
   def open(file: File, version: String): FileContainer = file match
     case disk: DiskFile => new JarContainer(disk, version)
