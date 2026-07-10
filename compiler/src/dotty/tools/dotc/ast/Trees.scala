@@ -1683,7 +1683,7 @@ object Trees {
           case Nil => x
         fold(x, trees)
 
-      def foldOver(x: X, tree: Tree)(using Context): X =
+      def foldOver(x: X, tree: Tree)(using Context): X = ctx.handleRecursive("folding over", tree):
         if (tree.source != ctx.source && tree.source.exists)
           foldOver(x, tree)(using ctx.withSource(tree.source))
         else {
