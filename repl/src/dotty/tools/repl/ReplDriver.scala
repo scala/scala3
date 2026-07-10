@@ -799,7 +799,8 @@ class ReplDriver(settings: Array[String],
                   prevClassLoader,
                   prevOutputDir
                 )
-                out.println(s"Resolved ${deps.size} dependencies (${files.size} JARs)")
+                val depsDescription = if deps.size == 1 then "a dependency" else s"${deps.size} dependencies"
+                out.println(s"Resolved $depsDescription (${files.size} JARs)")
           case Left(error) =>
             out.println(s"Error resolving dependencies: $error")
         state

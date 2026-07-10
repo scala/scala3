@@ -15,7 +15,7 @@ class ReplDependencyMacroTests extends ReplTest:
   private def resolveUpickle()(using State): Unit =
     run(":dep com.lihaoyi::upickle:4.4.3")
     val output = storedOutput()
-    assertTrue(output, output.contains("Resolved 1 dependencies"))
+    assertTrue(output, output.contains("Resolved a dependency"))
     assertNoMacroFailure(output)
 
   private def addUpickleViaJar()(using State): Unit =
@@ -45,7 +45,7 @@ class ReplDependencyMacroTests extends ReplTest:
   private def resolveUpickleViaDirective()(using State): Unit =
     run("//> using dep com.lihaoyi::upickle:4.4.3")
     val output = storedOutput()
-    assertTrue(output, output.contains("Resolved 1 dependencies"))
+    assertTrue(output, output.contains("Resolved a dependency"))
     assertNoMacroFailure(output)
 
   @Test def `i21654 using dep directive resolves like :dep`: Unit =
@@ -56,7 +56,7 @@ class ReplDependencyMacroTests extends ReplTest:
     initially:
       run("//> using dep com.lihaoyi::upickle:4.4.3\ncase class FooCombined(x: Int) derives upickle.default.ReadWriter")
       val output = storedOutput()
-      assertTrue(output, output.contains("Resolved 1 dependencies"))
+      assertTrue(output, output.contains("Resolved a dependency"))
       assertNoMacroFailure(output)
       assertTrue(output, output.contains("// defined case class FooCombined"))
 
@@ -74,7 +74,7 @@ class ReplDependencyMacroTests extends ReplTest:
     initially:
       run("//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd.toString")
       val output = storedOutput()
-      assertTrue(output, output.contains("Resolved 1 dependencies"))
+      assertTrue(output, output.contains("Resolved a dependency"))
       assertNoMacroFailure(output)
       assertTrue(output, output.contains("val p: String ="))
 
@@ -82,7 +82,7 @@ class ReplDependencyMacroTests extends ReplTest:
     initially:
       run(":dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd.toString")
       val output = storedOutput()
-      assertTrue(output, output.contains("Resolved 1 dependencies"))
+      assertTrue(output, output.contains("Resolved a dependency"))
       assertNoMacroFailure(output)
       assertTrue(output, output.contains("val p: String ="))
 
@@ -90,11 +90,11 @@ class ReplDependencyMacroTests extends ReplTest:
     initially:
       run(":dep com.lihaoyi::os-lib:0.11.3\n")
       val first = storedOutput()
-      assertTrue(first, first.contains("Resolved 1 dependencies"))
+      assertTrue(first, first.contains("Resolved a dependency"))
       assertNoMacroFailure(first)
       run(":dep com.lihaoyi::upickle:4.4.3\n")
       val second = storedOutput()
-      assertTrue(second, second.contains("Resolved 1 dependencies"))
+      assertTrue(second, second.contains("Resolved a dependency"))
       assertNoMacroFailure(second)
       assertFalse(second, second.contains("Illegal start of statement"))
 
