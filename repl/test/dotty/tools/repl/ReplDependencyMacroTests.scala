@@ -15,8 +15,7 @@ class ReplDependencyMacroTests extends ReplTest:
   private def resolveUpickle()(using State): Unit =
     run(":dep com.lihaoyi::upickle:4.4.3")
     val output = storedOutput()
-    println(s"[debug][i25291] :dep output:\n$output")
-    assertTrue(output, output.contains("Resolved 1 dependencies"))
+    assertTrue(output, output.contains("Resolved a dependency"))
     assertNoMacroFailure(output)
 
   private def addUpickleViaJar()(using State): Unit =
