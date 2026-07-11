@@ -1,0 +1,25 @@
+// https://github.com/scala/scala3/issues/26004
+//> using options -source:3.4-migration
+
+class Bundle
+
+object PseudoLenses:
+  implicit class RicherFHIRComponent[C <: Bundle](c: C):
+    def modifyNestedFieldUnsafe[T](nestingPath: String*)(modify: T => T): C = c
+
+object Repro:
+  import PseudoLenses.RicherFHIRComponent
+  def test(bundle: Bundle): Bundle =
+    def subjectLens(b: Bundle) = b.modifyNestedFieldUnsafe[Option[String]]("entry", "resource", "subject")
+    subjectLens(bundle)(p => Some("foo"))
+
+class A:
+  def m[T](path: String)(modify: T => T): A = this
+
+def f(a: A) = a.m[Int]("x")
+
+object Foo:
+  def varargs(xs: Int*): Int = xs.sum
+  // varargs single-arg method: dropping `_` would not auto-eta-expand and
+  // wrapping in `(() => …)` would change the shape, so leave it untouched.
+  val g = varargs _
