@@ -685,11 +685,19 @@ object Parsers {
         ts.toList
       else leading :: Nil
 
-    def maybeNamed(op: () => Tree): () => Tree = () =>
+    def maybeNamed(location: Location, op: () => Tree): () => Tree = () =>
       if isIdent && in.lookahead.token == EQUALS && sourceVersion.enablesNamedTuples then
         atSpan(in.offset):
           val name = ident()
           in.nextToken()
+          // Named pattern arguments don't support indented blocks,
+          // so drop the indent region added after '=' and ignore the indent token.
+          if location.inPattern && in.token == INDENT && !in.currentRegion.isOutermost then
+            in.currentRegion match
+              case Indented(_, EQUALS, outer) =>
+                in.currentRegion = outer.nn // we already checked !isOutermost
+                in.nextToken()
+              case _ =>
           NamedArg(name, op())
       else op()
 
@@ -3136,7 +3144,7 @@ object Parsers {
           if isErased then isFormalParams = true
           if isFormalParams then binding(Modifiers())
           else
-            val t = maybeNamed(exprInParens)()
+            val t = maybeNamed(Location.InParens, exprInParens)()
             if t.isInstanceOf[ValDef] then isFormalParams = true
             t
         commaSeparatedRest(exprOrBinding(), exprOrBinding)
@@ -3616,8 +3624,8 @@ object Parsers {
      *                      |  NamedPattern {‘,’ NamedPattern}
      *  NamedPattern      ::=  id '=' Pattern
      */
-    def patterns(location: Location = Location.InPattern): List[Tree] =
-      commaSeparated(maybeNamed(() => pattern(location)))
+    def patterns(location: Location = Location.InPattern): List[Tree] = // default used from Markup
+      commaSeparated(maybeNamed(location, () => pattern(location)))
         // check that patterns are all named or all unnamed is done at desugaring
 
     def patternsOpt(location: Location = Location.InPattern): List[Tree] =
