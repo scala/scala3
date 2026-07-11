@@ -161,9 +161,9 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- helper utils for generating classes and fields ---------------- */
 
-    def genPlainClass(cd0: TypeDef)(using Context): ClassNode1 = (cd0: @unchecked) match {
+    def genPlainClass(cd0: TypeDef, topLevel: Boolean = false)(using Context): ClassNode1 = (cd0: @unchecked) match {
       case TypeDef(_, impl: Template) =>
-      assert(cnode == null, "GenBCode detected nested methods.")
+      assert(topLevel || cnode == null, "GenBCode detected nested methods.")
 
       claszSymbol       = cd0.symbol
       isCZStaticModule  = claszSymbol.isStaticModuleClass

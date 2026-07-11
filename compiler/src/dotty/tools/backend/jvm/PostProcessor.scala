@@ -1,5 +1,7 @@
 package dotty.tools.backend.jvm
 
+import dotty.tools.backend.jvm.BTypes.InternalName
+
 import java.util.concurrent.ConcurrentHashMap
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.io.AbstractFile
@@ -25,7 +27,7 @@ import scala.util.chaining.scalaUtilChainingOps
  *
  * This base class doesn't do optimizations, use the subclass for that if they're enabled.
  */
-class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context) {
+class PostProcessor(classBTypeCache: ClassBType.Cache, bTypes: KnownBTypes)(using Context) {
 
   private val classfileWriter: FileWriters.ClassfileWriter = {
     val dumpClassesPath =
@@ -105,8 +107,29 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
 
   private def setInnerClasses(classNode: ClassNode): Unit = {
     classNode.innerClasses.nn.clear()
-    val (declared, referred) = bTypeLoader.collectNestedClasses(classNode)
+    val (declared, referred) = collectNestedClasses(classNode)
     addInnerClasses(classNode, declared, referred)
+  }
+
+  /**
+   * Visit the class node and collect all referenced nested classes.
+   */
+  private def collectNestedClasses(classNode: ClassNode): (Iterable[ClassBType], Iterable[ClassBType]) = {
+    val c = new NestedClassesCollector[ClassBType](nestedOnly = true) {
+      def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
+        classBTypeCache.previouslyConstructedClassBType(internalName).get.info.nestedClasses
+
+      def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
+        val c = classBTypeCache.previouslyConstructedClassBType(internalName).get
+        Option.when(c.isNestedClass)(c)
+      }
+
+      def raiseError(msg: String, sig: String, e: Option[Throwable]): Unit = {
+        // don't crash on invalid generic signatures
+      }
+    }
+    c.visit(classNode)
+    (c.declaredInnerClasses, c.referredInnerClasses)
   }
 
   private def serializeClass(classNode: ClassNode): Array[Byte] = {
@@ -247,8 +270,8 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
     override def getCommonSuperClass(inameA: String, inameB: String): String = {
       // All types that appear in a class node need to have their ClassBType cached,
       // i.e., have been loaded either from symbols or from class files.
-      val a = bTypeLoader.previouslyConstructedClassBType(inameA).get
-      val b = bTypeLoader.previouslyConstructedClassBType(inameB).get
+      val a = classBTypeCache.previouslyConstructedClassBType(inameA).get
+      val b = classBTypeCache.previouslyConstructedClassBType(inameB).get
       val lub = a.jvmWiseLUB(b, bTypes.ObjectRef)
       val lubName = lub.internalName
       assert(lubName != "scala/Any")
@@ -257,14 +280,14 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
   }
 }
 
-final class PostProcessorWithOptimizations(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
-                                           callGraph: CallGraph, optimizerUtils: OptimizerUtils,
-                                           bTypeLoader: BTypeLoader, bTypes: OptimizerKnownBTypes)(using Context) extends PostProcessor(bTypeLoader, bTypes) {
+final class PostProcessorWithOptimizations(classBTypeCache: ClassBType.Cache, byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile,
+                                           callGraph: OptimizerCallGraph, indyTracker: IndyLambdaImplTracker,
+                                           bTypes: OptimizerKnownBTypes)(using Context) extends PostProcessor(classBTypeCache, bTypes) {
   private val optSettings         = new OptimizerSettings()
-  private val closureOptimizer    = new ClosureOptimizer(optimizerUtils, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
-  private val heuristics          = new InlinerHeuristics(optimizerUtils, byteCodeRepository, callGraph, bTypes, optSettings)
-  private val inliner             = new Inliner(optimizerUtils, callGraph, bTypeLoader, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
-  private val localOpt            = new LocalOpt(optimizerUtils, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
+  private val closureOptimizer    = new ClosureOptimizer(indyTracker, byteCodeRepository, callGraph, bTypes, bTypesFromClassfile, optSettings)
+  private val heuristics          = new InlinerHeuristics(byteCodeRepository, callGraph, bTypes, optSettings)
+  private val inliner             = new InlinerImpl(indyTracker, callGraph, classBTypeCache, bTypesFromClassfile, byteCodeRepository, heuristics, closureOptimizer, optSettings)
+  private val localOpt            = new LocalOpt(indyTracker, callGraph, inliner, bTypes, bTypesFromClassfile, optSettings)
 
   override def runGlobalOptimizations(generatedUnits: Iterable[GeneratedCompilationUnit]): Unit = {
     // add classes to the bytecode repo before building the call graph: the latter needs to
@@ -278,7 +301,7 @@ final class PostProcessorWithOptimizations(byteCodeRepository: BCodeRepository, 
         if !c.isArtifact // skip call graph for mirror / bean: we don't inline into them, and they are not referenced from other classes
     do
       callGraph.addClass(c.classNode)
-    inliner.runInlinerAndClosureOptimizer(i => report.optimizerWarning(i.msg, i.site, i.pos))
+    inliner.run(i => report.optimizerWarning(i.msg, i.site, i.pos))
   }
 
   protected override def runLocalOptimizations(classNode: ClassNode): Unit =

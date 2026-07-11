@@ -25,9 +25,10 @@ import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.{AnalysisUtils, AsmAnalyzer, ProdConsAnalyzer}
 import BCodeUtils.*
+import OptimizerUtils.*
 
-class ClosureOptimizer(optimizerUtils: OptimizerUtils,
-                       byteCodeRepository: BCodeRepository, callGraph: CallGraph,
+class ClosureOptimizer(indyTracker: IndyLambdaImplTracker,
+                       byteCodeRepository: BCodeRepository, callGraph: OptimizerCallGraph,
                        ts: OptimizerKnownBTypes, bTypesFromClassfile: BTypesFromClassfile,
                        settings: OptimizerSettings) {
 
@@ -96,21 +97,21 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
 
     // the `toList` prevents modifying closureInstantiations while iterating it.
     // minimalRemoveUnreachableCode (called in the loop) removes elements
-    val methodsToRewrite = methods.getOrElse(callGraph.closureInstantiations.keysIterator.toList)
+    val methodsToRewrite = methods.getOrElse(callGraph.methodsWithClosureInstantiations())
 
     // For each closure instantiation find callsites of the closure and add them to the toRewrite
     // buffer (cannot change a method's bytecode while still looking for further invocations to
     // rewrite, the frame indices of the ProdCons analysis would get out of date). If a callsite
     // cannot be rewritten, e.g., because the lambda body method is not accessible, issue a warning.
-    for (method <- methodsToRewrite if Limits.sizeOKForBasicValue(method)) callGraph.closureInstantiations.get(method) match {
-      case Some(closureInitsBeforeDCE) if closureInitsBeforeDCE.nonEmpty =>
+    for (method <- methodsToRewrite if Limits.sizeOKForBasicValue(method)) callGraph.getClosureInstantiations(method) match {
+      case closureInitsBeforeDCE if closureInitsBeforeDCE.nonEmpty =>
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
-        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, optimizerUtils)
+        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, indyTracker)
 
-        if (Limits.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get(method) match {
-          case Some(closureInits) =>
+        if (Limits.sizeOKForSourceValue(method)) {
+          val closureInits = callGraph.getClosureInstantiations(method)
             // A lazy val to ensure the analysis only runs if necessary (the value is passed by name to `closureCallsites`)
             lazy val prodCons = new ProdConsAnalyzer(method, ownerClass)
 
@@ -121,8 +122,6 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
               case Right((invocation, stackHeight)) =>
                 addRewrite(init, invocation, stackHeight)
             }
-
-          case _ =>
         }
 
       case _ =>
@@ -193,7 +192,7 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
           Inliner.memberIsAccessible(bodyMethodNode.access, declClassBType, lambdaOwnerBType, ownerClass)
         }
 
-        def pos = callGraph.callsites(ownerMethod).get(invocation).map(_.callsitePosition).getOrElse(NoSourcePosition)
+        def pos = callGraph.getCallsite(ownerMethod, invocation).map(_.callsitePosition).getOrElse(NoSourcePosition)
         val stackSize: Either[RewriteClosureApplyToClosureBodyFailed, Int] = bodyAccessible match {
           case Left(w)      => Left(RewriteClosureAccessCheckFailed(pos, w))
           case Right(false) => Left(RewriteClosureIllegalAccess(pos, ownerClass.internalName))
@@ -301,9 +300,9 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
         if (invokeArgTypes(i) == implMethodArgTypes(i)) {
           res(i) = None
         } else if (isPrimitiveType(implMethodArgTypes(i)) && invokeArgTypes(i).getDescriptor == ts.ObjectRef.descriptor) {
-          res(i) = Some(optimizerUtils.getScalaUnbox(implMethodArgTypes(i)))
+          res(i) = Some(ts.getScalaUnbox(implMethodArgTypes(i)))
         } else if (isPrimitiveType(invokeArgTypes(i)) && implMethodArgTypes(i).getDescriptor == ts.ObjectRef.descriptor) {
-          res(i) = Some(optimizerUtils.getScalaBox(invokeArgTypes(i)))
+          res(i) = Some(ts.getScalaBox(invokeArgTypes(i)))
         } else {
           assert(!isPrimitiveType(invokeArgTypes(i)), invokeArgTypes(i))
           assert(!isPrimitiveType(implMethodArgTypes(i)), implMethodArgTypes(i))
@@ -388,12 +387,12 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
       if (isPrimitiveType(invocationReturnType) && bodyReturnType.getDescriptor == ts.ObjectRef.descriptor) {
         val op =
           if (invocationReturnType.getSort == Type.VOID) getPop(1)
-          else optimizerUtils.getScalaUnbox(invocationReturnType)
+          else ts.getScalaUnbox(invocationReturnType)
         ownerMethod.instructions.insertBefore(invocation, op)
       } else if (isPrimitiveType(bodyReturnType) && invocationReturnType.getDescriptor == ts.ObjectRef.descriptor) {
         val op =
-          if (bodyReturnType.getSort == Type.VOID) optimizerUtils.getBoxedUnit
-          else optimizerUtils.getScalaBox(bodyReturnType)
+          if (bodyReturnType.getSort == Type.VOID) ts.getBoxedUnit
+          else ts.getScalaBox(bodyReturnType)
         ownerMethod.instructions.insertBefore(invocation, op)
       } else {
         // see comment of that method

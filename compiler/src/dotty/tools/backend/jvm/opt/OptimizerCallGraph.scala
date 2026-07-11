@@ -20,15 +20,13 @@ import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.tree.*
 import scala.tools.asm.{Opcodes, Type}
-import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.TypeFlowInterpreter.{LMFValue, ParamValue}
 import dotty.tools.backend.jvm.analysis.{AnalysisUtils, *}
 import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
-import dotty.tools.dotc.ast.Positioned
 
-class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile) {
+class OptimizerCallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypesFromClassfile) extends CallGraph {
 
   /**
    * The call graph contains the callsites in the program being compiled.
@@ -50,7 +48,7 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
    * The call graph is less problematic because only methods being called are kept alive, not entire
    * classes. But we should keep an eye on this.
    */
-  val callsites: mutable.Map[MethodNode, Map[MethodInsnNode, Callsite]] = concurrent.TrieMap.empty withDefaultValue Map.empty
+  private val callsites: mutable.Map[MethodNode, Map[MethodInsnNode, Callsite]] = concurrent.TrieMap.empty withDefaultValue Map.empty
 
   /**
    * Closure instantiations in the program being compiled.
@@ -59,13 +57,13 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
    * optimizer: finding callsites to re-write requires running a producers-consumers analysis on
    * the method. Here the closure instantiations are already grouped by method.
    */
-  val closureInstantiations: mutable.Map[MethodNode, Map[InvokeDynamicInsnNode, ClosureInstantiation]] = concurrent.TrieMap.empty withDefaultValue Map.empty
+  private val closureInstantiations: mutable.Map[MethodNode, Map[InvokeDynamicInsnNode, ClosureInstantiation]] = concurrent.TrieMap.empty withDefaultValue Map.empty
 
   /**
    * Store the position of every MethodInsnNode during code generation. This allows each callsite
    * in the call graph to remember its source position, which is required for inliner warnings.
    */
-  val callsitePositions: concurrent.Map[MethodInsnNode, SourcePosition] = TrieMap.empty
+  private val callsitePositions: concurrent.Map[MethodInsnNode, SourcePosition] = TrieMap.empty
 
   /**
    * Stores callsite instructions of invocations annotated `f(): @inline/noinline`.
@@ -79,14 +77,20 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
 
   // Contains `INVOKESPECIAL` instructions that were cloned by the inliner and need to be resolved
   // statically by the call graph. See Inliner.maybeInlinedLater.
-  val staticallyResolvedInvokespecial: mutable.Set[MethodInsnNode] = mutable.Set.empty
+  private val staticallyResolvedInvokespecial: mutable.Set[MethodInsnNode] = mutable.Set.empty
 
-  def isStaticCallsite(call: MethodInsnNode): Boolean = {
+  private def isStaticCallsite(call: MethodInsnNode): Boolean = {
     val opc = call.getOpcode
     opc == Opcodes.INVOKESTATIC || opc == Opcodes.INVOKESPECIAL && staticallyResolvedInvokespecial(call)
   }
 
-  def removeCallsite(invocation: MethodInsnNode, methodNode: MethodNode): Option[Callsite] = {
+  def getCallsites(methodNode: MethodNode): Iterable[Callsite] =
+    callsites(methodNode).values
+
+  def getCallsite(methodNode: MethodNode, invocation: MethodInsnNode): Option[Callsite] =
+    callsites(methodNode).get(invocation)
+
+  override def removeCallsite(invocation: MethodInsnNode, methodNode: MethodNode): Option[Callsite] = {
     val methodCallsites = callsites(methodNode)
     val newCallsites = methodCallsites - invocation
     if (newCallsites.isEmpty) callsites.subtractOne(methodNode)
@@ -99,17 +103,22 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
     callsites(callsite.callsiteMethod) = methodCallsites + (callsite.callsiteInstruction -> callsite)
   }
 
-  def recordCallsitePosition(m: MethodInsnNode, pos: SourcePosition): Unit =
+  override def recordCallsitePosition(m: MethodInsnNode, pos: SourcePosition): Unit =
     callsitePositions(m) = pos
 
   def containsCallsite(callsite: Callsite): Boolean = callsites(callsite.callsiteMethod).contains(callsite.callsiteInstruction)
 
-  def removeClosureInstantiation(indy: InvokeDynamicInsnNode, methodNode: MethodNode): Option[ClosureInstantiation] = {
+  def methodsWithClosureInstantiations(): List[MethodNode] =
+    closureInstantiations.keysIterator.toList // toList clones it so it's safe to update the call graph while iterating over this
+
+  def getClosureInstantiations(methodNode: MethodNode): Map[InvokeDynamicInsnNode, ClosureInstantiation] =
+    closureInstantiations.getOrElse(methodNode, Map.empty)
+
+  override def removeClosureInstantiation(indy: InvokeDynamicInsnNode, methodNode: MethodNode): Unit = {
     val methodClosureInits = closureInstantiations(methodNode)
     val newClosureInits = methodClosureInits - indy
     if (newClosureInits.isEmpty) closureInstantiations.subtractOne(methodNode)
     else closureInstantiations(methodNode) = newClosureInits
-    methodClosureInits.get(indy)
   }
 
   def addClass(classNode: ClassNode): Unit = {
@@ -126,7 +135,7 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
     addMethod(methodNode, definingClass)
   }
 
-  def addMethod(methodNode: MethodNode, definingClass: ClassBType): Unit = {
+  private def addMethod(methodNode: MethodNode, definingClass: ClassBType): Unit = {
     if (!BCodeUtils.isAbstractMethod(methodNode) && !BCodeUtils.isNativeMethod(methodNode) && Limits.sizeOKForBasicValue(methodNode)) {
       lazy val typeAnalyzer = new NonLubbingTypeFlowAnalyzer(methodNode, definingClass.internalName)
 
@@ -234,6 +243,35 @@ class CallGraph(byteCodeRepository: BCodeRepository, bTypesFromClassfile: BTypes
       callsites(methodNode) = methodCallsites
       closureInstantiations(methodNode) = methodClosureInstantiations
     }
+  }
+
+  // True if all instructions (they would cause an IllegalAccessError otherwise) can potentially be
+  // inlined in a later inlining round.
+  // Note that this method has a side effect. It allows inlining `INVOKESPECIAL` calls of static
+  // super accessors that we emit in traits. The inlined calls are marked in the call graph as
+  // `staticallyResolvedInvokespecial`. When looking up the MethodNode for the cloned `INVOKESPECIAL`,
+  // the call graph will always return the corresponding method in the trait.
+  def maybeInlinedLater(callsite: KnownCallsite, insns: List[AbstractInsnNode]): Boolean = {
+    insns.forall({
+      case mi: MethodInsnNode =>
+        (mi.getOpcode != Opcodes.INVOKESPECIAL) || {
+          // Special handling for invokespecial T.f that appears within T, and T defines f.
+          // Such an instruction can be inlined into a different class, but it needs to be inlined in
+          // turn in a later inlining round.
+          // The call graph needs to treat it specially: the normal dynamic lookup needs to be
+          // avoided, it needs to resolve to T.f, no matter in which class the invocation appears.
+          def hasMethod(c: ClassNode): Boolean = {
+            val r = c.methods.iterator.asScala.exists(m => m.name == mi.name && m.desc == mi.desc)
+            if (r) staticallyResolvedInvokespecial += mi
+            r
+          }
+
+          mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME &&
+            mi.owner == callsite.callee.calleeDeclarationClass.internalName &&
+            byteCodeRepository.classNode(mi.owner).map((c, _) => hasMethod(c)).getOrElse(false) // TODO bubble up warning instead
+        }
+      case _ => false
+    })
   }
 
 
