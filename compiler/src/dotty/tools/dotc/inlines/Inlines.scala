@@ -203,7 +203,7 @@ object Inlines:
           tree,
           em"""|Maximal number of $reason (${setting.value}) exceeded,
                |Maybe this is caused by a recursive inline method?
-               |You can use ${setting.name} to change the limit.""",
+               |You can use ${setting.name} to change the limit""",
           (tree :: enclosingInlineds).last.srcPos
         )
     // if tree0 (inline call tree before expansion) is transparent
@@ -545,8 +545,13 @@ object Inlines:
           inContext(evCtx) {
             val evidence = evTyper.inferImplicitArg(tpe, callTypeArgs.head.span)
             evidence.tpe match
+              case fail: Implicits.LateMismatchedImplicit =>
+                val addendum = fail.errors match
+                  case Nil  => ""
+                  case errs => errs.map(_.msg).mkString("a search with errors:\n  ", "\n  ", "")
+                errorTree(call, evTyper.missingArgMsg(evidence, tpe, addendum))
               case fail: Implicits.SearchFailureType =>
-                errorTree(call, evTyper.missingArgMsg(evidence, tpe, ""))
+                errorTree(call, evTyper.missingArgMsg(evidence, tpe, where = ""))
               case _ =>
                 evidence
           }
