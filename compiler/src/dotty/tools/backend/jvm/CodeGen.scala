@@ -5,7 +5,6 @@ import dotty.tools.dotc.ast.Trees.{PackageDef, ValDef}
 import dotty.tools.dotc.ast.tpd
 
 import scala.collection.mutable
-import dotty.tools.dotc.{CompilationUnit, interfaces, report, util}
 import dotty.tools.dotc.sbt.ExtractDependencies
 import dotty.tools.dotc.core.*
 import Contexts.*
@@ -18,40 +17,26 @@ import dotty.tools.dotc.core.tasty.TastyUnpickler
 import scala.tools.asm.tree.*
 import tpd.*
 import dotty.tools.io.AbstractFile
-import dotty.tools.dotc.ast.Positioned
-import dotty.tools.dotc.util.NoSourcePosition
-import SymbolUtils.given
-import dotty.tools.backend.ScalaPrimitives
 import dotty.tools.dotc.interfaces.CompilerCallback
-import opt.{OptimizerUtils, CallGraph}
+import dotty.tools.dotc.report
+import dotty.tools.dotc.util.SourceFile
 
-class CodeGen(val primitives: ScalaPrimitives,
-              val callGraph: Option[CallGraph], val bTypeLoader: BTypeLoader, val knownBTypes: KnownBTypes,
-              val generatedClassHandler: GeneratedClassHandler) {
-  private class Impl extends BCodeIdiomatic(callGraph), BCodeHelpers(bTypeLoader), BCodeBodyBuilder(primitives, knownBTypes), BCodeSyncAndTry
-  private val impl = new Impl()
-
-  private lazy val mirrorCodeGen = impl.JMirrorBuilder()
+class CodeGen(impl: BCodeSyncAndTry) {
+  private val mirrorBuilder = new impl.JMirrorBuilder()
 
   /**
-   * Generate ASM ClassNodes for classes found in the context's compilation unit. The resulting classes are
-   * passed to the `generatedClassHandler`.
+   * Generate ASM ClassNodes for classes found in the context's compilation unit.
    */
-  def genUnit()(using ctx: Context): Unit = {
+  def genUnit()(using ctx: Context): GeneratedCompilationUnit = {
     val generatedClasses = mutable.ListBuffer.empty[GeneratedClass]
     val generatedTasty = mutable.ListBuffer.empty[GeneratedTasty]
 
     def genClassDef(cd: TypeDef): Unit =
       try
         val sym = cd.symbol
-        val sourceFile = ctx.compilationUnit.source.file
-        val mainClassNode = genClass(cd)
-        val mirrorClassNode =
-          if !sym.isTopLevelModuleClass then null
-          else if sym.companionClass == NoSymbol then mirrorCodeGen.genMirrorClass(sym)
-          else
-            report.log(s"No mirror class for module with linked class: ${sym.fullName}", NoSourcePosition)
-            null
+        // This builder cannot be shared as it includes per-class mutable state that is not reset
+        val mainClassNode = new impl.SyncAndTryBuilder().genPlainClass(cd)
+        val mirrorClassNode = mirrorBuilder.genMirrorClassIfNeeded(sym)
 
         if sym.isClass then
           val tastyAttrNode = if (mirrorClassNode ne null) mirrorClassNode else mainClassNode
@@ -100,18 +85,16 @@ class CodeGen(val primitives: ScalaPrimitives,
       }
 
     genClassDefs(ctx.compilationUnit.tpdTree)
-    generatedClassHandler.process(
-      GeneratedCompilationUnit(ctx.compilationUnit.source.file, generatedClasses.toList, generatedTasty.toList)
-    )
+    GeneratedCompilationUnit(ctx.compilationUnit.source.file, generatedClasses.toList, generatedTasty.toList)
   }
 
   // Creates a callback that will be evaluated in PostProcessor after creating a file
-  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: util.SourceFile)(using Context): AbstractFile => Unit = {
+  private def onFileCreated(cls: ClassNode, claszSymbol: Symbol, sourceFile: SourceFile)(using Context): AbstractFile => Unit = {
     val isLocal = atPhase(sbtExtractDependenciesPhase) {
       claszSymbol.isLocal
     }
+    val className = cls.name.replace('/', '.')
     clsFile => {
-      val className = cls.name.replace('/', '.')
       ctx.compilerCallback match
         case cb: CompilerCallback => cb.onClassGenerated(sourceFile, clsFile, className)
         case null => ()
@@ -127,10 +110,4 @@ class CodeGen(val primitives: ScalaPrimitives,
           cb.generatedNonLocalClass(sourceFile, clsFile.jpath, className, fullClassName)
     }
   }
-
-  private def genClass(cd: TypeDef)(using Context): ClassNode = {
-    val b = new impl.SyncAndTryBuilder
-    b.genPlainClass(cd)
-  }
-
 }
