@@ -3,6 +3,7 @@ package pprint
 import scala.collection.mutable.ArraySeq
 import scala.collection.immutable.HashMap
 import scala.collection.immutable.HashSet
+import java.util.function.Predicate
 
 /**
   * A lazy AST representing pretty-printable text. Models `foo(a, b)`
@@ -56,7 +57,19 @@ abstract class Walker{
   )
 
   def additionalHandlers: PartialFunction[Any, Tree]
-  def treeify(x: Any, escapeUnicode: Boolean, showFieldNames: Boolean): Tree = additionalHandlers.lift(x).getOrElse{
+  def treeify(x: Any, escapeUnicode: Boolean, showFieldNames: Boolean): Tree =
+    treeify(x, escapeUnicode, showFieldNames, ProductSupport.neverUseProductToString)
+
+  def treeify(x: Any, escapeUnicode: Boolean, showFieldNames: Boolean, useProductToString: Any => Boolean): Tree = additionalHandlers.lift(x).getOrElse{
+    def toStringTree(x: Any) = Tree.Lazy(ctx =>
+      Iterator(
+        x.toString.asInstanceOf[String | Null] match{
+          case null => "null"
+          case s => s
+        }
+      )
+    )
+
     x match{
 
       case null => Tree.Literal("null")
@@ -78,7 +91,7 @@ abstract class Walker{
         if (x.exists(c => c == '\n' || c == '\r')) Tree.Literal("\"\"\"" + x + "\"\"\"")
         else Tree.Literal(Util.literalize(x, escapeUnicode))
 
-      case x: StringBuilder => treeify(x.toString, escapeUnicode, showFieldNames)
+      case x: StringBuilder => treeify(x.toString, escapeUnicode, showFieldNames, useProductToString)
 
       case x: Symbol => Tree.Literal("'" + x.name)
 
@@ -91,7 +104,7 @@ abstract class Walker{
             case _ => StringPrefix(x)
           },
           x.iterator.flatMap { case (k, v) =>
-            Seq(Tree.Infix(treeify(k, escapeUnicode, showFieldNames), "->", treeify(v, escapeUnicode, showFieldNames)))
+            Seq(Tree.Infix(treeify(k, escapeUnicode, showFieldNames, useProductToString), "->", treeify(v, escapeUnicode, showFieldNames, useProductToString)))
           }
         )
 
@@ -108,7 +121,7 @@ abstract class Walker{
             case _: HashSet[_] => "Set"
             case _ => StringPrefix(x)
           },
-          x.iterator.map(x => treeify(x, escapeUnicode, showFieldNames))
+          x.iterator.map(x => treeify(x, escapeUnicode, showFieldNames, useProductToString))
         )
 
       case None => Tree.Literal("None")
@@ -120,37 +133,31 @@ abstract class Walker{
         else
           Tree.Literal("non-empty iterator")
 
-      case x: Array[_] => Tree.Apply("Array", x.iterator.map(x => treeify(x, escapeUnicode, showFieldNames)))
+      case x: Array[_] => Tree.Apply("Array", x.iterator.map(x => treeify(x, escapeUnicode, showFieldNames, useProductToString)))
 
       case x: Product =>
         val className = x.getClass.getName
         if (x.productArity == 0) Tree.Lazy(ctx => Iterator(x.toString))
+        else if (!className.startsWith(tuplePrefix) && useProductToString(x)) toStringTree(x)
         else if(x.productArity == 2 && Util.isOperator(x.productPrefix)){
           Tree.Infix(
-            treeify(x.productElement(0), escapeUnicode, showFieldNames),
+            treeify(x.productElement(0), escapeUnicode, showFieldNames, useProductToString),
 
             x.productPrefix,
-            treeify(x.productElement(1), escapeUnicode, showFieldNames)
+            treeify(x.productElement(1), escapeUnicode, showFieldNames, useProductToString)
           )
         } else (className.startsWith(tuplePrefix), className.lift(tuplePrefix.length)) match{
           // leave out tuple1, so it gets printed as Tuple1(foo) instead of (foo)
           // Don't check the whole suffix, because of specialization there may be
           // funny characters after the digit
           case (true, Some('2' | '3' | '4' | '5' | '6' | '7' | '8' | '9')) =>
-            Tree.Apply("", x.productIterator.map(x => treeify(x, escapeUnicode, showFieldNames)))
+            Tree.Apply("", x.productIterator.map(x => treeify(x, escapeUnicode, showFieldNames, useProductToString)))
 
           case _ =>
-            Tree.Apply(x.productPrefix, ProductSupport.treeifyProductElements(x, this, escapeUnicode, showFieldNames))
+            Tree.Apply(x.productPrefix, ProductSupport.treeifyProductElements(x, this, escapeUnicode, showFieldNames, useProductToString))
         }
 
-      case x => Tree.Lazy(ctx =>
-        Iterator(
-          x.toString.asInstanceOf[String | Null] match{
-            case null => "null"
-            case s =>s
-          }
-        )
-      )
+      case x => toStringTree(x)
     }
   }
 

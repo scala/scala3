@@ -1,7 +1,11 @@
 package dotty.vendored
 package pprint
 
+import java.util.function.Predicate
+
 object ProductSupport {
+
+  private[pprint] val neverUseProductToString: Any => Boolean = Function.const(false)
 
   private def isIdentifier(name: String) = {
     def isStart(c: Char) = (c == '_') || (c == '$') || Character.isUnicodeIdentifierStart(c)
@@ -17,22 +21,23 @@ object ProductSupport {
   def treeifyProductElements(x: Product,
                              walker: Walker,
                              escapeUnicode: Boolean,
-                             showFieldNames: Boolean): Iterator[Tree] = {
+                             showFieldNames: Boolean,
+                             useProductToString: Any => Boolean): Iterator[Tree] = {
     if (!showFieldNames || x.productArity < 2) {
-      x.productIterator.map(x => walker.treeify(x, escapeUnicode, showFieldNames))
+      x.productIterator.map(x => walker.treeify(x, escapeUnicode, showFieldNames, useProductToString))
     }
     else x.productElementNames
       .zipWithIndex
       .map {
         case (name, i) =>
-          val key = 
+          val key =
             if(!isIdentifier(name)) {
               s"`$name`"
-            } else {
-              name
-            }
+          } else {
+            name
+          }
           val elem = x.productElement(i)
-          Tree.KeyValue(key, walker.treeify(elem, escapeUnicode, showFieldNames))
+          Tree.KeyValue(key, walker.treeify(elem, escapeUnicode, showFieldNames, useProductToString))
       }
   }
 

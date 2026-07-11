@@ -2,6 +2,7 @@ package dotty.vendored
 package pprint
 
 import java.io.PrintStream
+import java.util.function.Predicate
 
 /**
   *
@@ -62,7 +63,7 @@ case class PPrinter(defaultWidth: Int = 100,
   }
 
   /**
-    * A base version of `pprint.log` or `pprint.err.log` that lets you specify where 
+    * A base version of `pprint.log` or `pprint.err.log` that lets you specify where
     * you want to log the debug message to
     */
   def logTo[T](x: sourcecode.Text[T],
@@ -113,15 +114,36 @@ case class PPrinter(defaultWidth: Int = 100,
             initialOffset: Int = 0,
             escapeUnicode: Boolean = defaultEscapeUnicode,
             showFieldNames: Boolean = defaultShowFieldNames): fansi.Str = {
+    applyWithProductToString(
+      x,
+      width,
+      height,
+      indent,
+      initialOffset,
+      escapeUnicode,
+      showFieldNames,
+      ProductSupport.neverUseProductToString
+    )
+  }
+
+  def applyWithProductToString(x: Any,
+                               width: Int,
+                               height: Int,
+                               indent: Int,
+                               initialOffset: Int,
+                               escapeUnicode: Boolean,
+                               showFieldNames: Boolean,
+                               useProductToString: Any => Boolean): fansi.Str = {
     fansi.Str.join(
-      this.tokenize(
+      this.tokenizeWithProductToString(
         x,
         width,
         height,
         indent,
         initialOffset,
         escapeUnicode = escapeUnicode,
-        showFieldNames = showFieldNames
+        showFieldNames = showFieldNames,
+        useProductToString = useProductToString
       ).toSeq
     )
   }
@@ -159,11 +181,30 @@ case class PPrinter(defaultWidth: Int = 100,
                initialOffset: Int = 0,
                escapeUnicode: Boolean = defaultEscapeUnicode,
                showFieldNames: Boolean = defaultShowFieldNames): Iterator[fansi.Str] = {
+    tokenizeWithProductToString(
+      x,
+      width,
+      height,
+      indent,
+      initialOffset,
+      escapeUnicode,
+      showFieldNames,
+      ProductSupport.neverUseProductToString
+    )
+  }
 
+  def tokenizeWithProductToString(x: Any,
+                                  width: Int,
+                                  height: Int,
+                                  indent: Int,
+                                  initialOffset: Int,
+                                  escapeUnicode: Boolean,
+                                  showFieldNames: Boolean,
+                                  useProductToString: Any => Boolean): Iterator[fansi.Str] = {
     // The three stages within the pretty-printing process:
 
     // Convert the Any into a lazy Tree of `Apply`, `Infix` and `Lazy`/`Strict` literals
-    val tree = this.treeify(x, escapeUnicode, showFieldNames)
+    val tree = this.treeify(x, escapeUnicode, showFieldNames, useProductToString)
     // Render the `Any` into a stream of tokens, properly indented and wrapped
     // at the given width
     val renderer = new Renderer(width, colorApplyPrefix, colorLiteral, indent)
