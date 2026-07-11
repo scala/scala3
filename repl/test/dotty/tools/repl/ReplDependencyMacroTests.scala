@@ -84,7 +84,7 @@ class ReplDependencyMacroTests extends ReplTest:
     initially:
       run(":dep com.lihaoyi::ujson:4.4.3")
       val depOutput = storedOutput()
-      assertTrue(depOutput, depOutput.contains("Resolved a dependency"))
+      assertTrue(depOutput, depOutput.contains("Resolved 1 dependencies"))
       assertNoMacroFailure(depOutput)
 
       run("ujson.Num(3.5)")
