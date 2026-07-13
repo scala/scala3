@@ -546,9 +546,20 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         res
 
       case tp1 @ CapturingType(parent1, refs1) =>
+        // If `tp2` has a split capture set, i.e. is of the form `(A^s)^` then its normal
+        // capture set will be a cs variable with `any` in it. Then, if we add elements
+        // we avoid the `any` and add them to the variable instead. But that risks adding
+        // to much. See i26539.scala for an example. So we try a different strategy in this
+        // case: Add capabilities from tp1 to the hidden set of the outer `^`, so that the
+        // capset variable stays small. Only if that fails try to add them to the variable.
+        def compCaptures =
+          if tp2.hasSplitCaptureSet then
+            compareCaptures(tp1, refs1, tp2, tp2.separatedCaptureSet)
+            || compareCaptures(tp1, refs1, tp2, tp2.captureSet)
+          else compareCaptures(tp1, refs1, tp2, tp2.captureSet)
         def compareCapturing =
           if tp2.isAny then true
-          else if compareCaptures(tp1, refs1, tp2, tp2.captureSet)
+          else if compCaptures
             || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
             || parent1.isSingleton && refs1.elems.forall(parent1 eq _)
           then

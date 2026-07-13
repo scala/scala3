@@ -1169,7 +1169,6 @@ object CaptureSet:
 
     if debugVars && id == debugTarget then
       println(i"variable $id is derived from $source")
-      assert(false)
 
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if origin eq source then
@@ -1781,12 +1780,15 @@ object CaptureSet:
     case c: TermRef if isAssumedPure(c.symbol) =>
       CaptureSet.empty
     case c: CoreCapability =>
-      ofType(c.underlying, followResult = ccConfig.useSpanCapset)
+      ofType(c.underlying, followResult = ccConfig.useSpanCapset, separated = false)
 
   /** Capture set of a type
    *  @param followResult  If true, also include capture sets of function results.
+   *  @param separated     If true, given a capturring type (P^cs1)^cs2 don't merge
+   *                       cs1 and cs2 if cs1 is a capset variable and cs2 contains
+   *                       terminal capabilities. This is needed to fix #26539.
    */
-  def ofType(tp: Type, followResult: Boolean)(using Context): CaptureSet =
+  def ofType(tp: Type, followResult: Boolean, separated: Boolean)(using Context): CaptureSet =
     def recur(tp: Type): CaptureSet = trace(i"ofType $tp, ${tp.getClass} $followResult", show = true):
       tp.dealiasKeepAnnots match
         case tp: TermRef =>
@@ -1797,9 +1799,11 @@ object CaptureSet:
           if tp.derivesFromCapSet then tp.captureSet
           else empty
         case CapturingOrRetainsType(parent, refs) =>
-          recur(parent) ++ refs
+          val pcs = recur(parent)
+          if separated && !pcs.isConst && refs.containsTerminalCapability then refs
+          else pcs ++ refs
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodOrPoly) if followResult =>
-          ofType(tpd.parent, followResult = false)            // pick up capture set from parent type
+          ofType(tpd.parent, followResult = false, separated)            // pick up capture set from parent type
           ++ recur(rinfo.resType).freeInResult(rinfo)         // add capture set of result
         case tpd @ AppliedType(tycon, args) =>
           if followResult && defn.isNonRefinedFunction(tpd) then

@@ -145,13 +145,29 @@ extension (tp: Type)
     *     just the reference, provided the underlying capture set of their info is not empty.
     *   - For other capabilities: The capture set of their info
     *   - For all other types: The result of CaptureSet.ofType
+    * The separated variant does not merge nested capture sets in some cases.
+    * See explanation of `separated` parameter in `CaptureSet.ofType`.
     */
-  final def captureSet(using Context): CaptureSet = tp match
+  final def captureSet(using Context): CaptureSet = captureSet(separated = false)
+  final def separatedCaptureSet(using Context): CaptureSet = captureSet(separated = true)
+
+  final def captureSet(separated: Boolean)(using Context) = tp match
     case tp: CoreCapability if tp.isTrackableRef =>
       val cs = tp.captureSetOfInfo
       if cs.isAlwaysEmpty then cs else tp.singletonCaptureSet
     case tp: ObjectCapability => tp.captureSetOfInfo
-    case _ => CaptureSet.ofType(tp, followResult = false)
+    case _ => CaptureSet.ofType(tp, followResult = false, separated)
+
+  /** Does this type have a "split capture set", which means the type is of the form
+   *  `{T^cs1}^cs2` where `cs1` is a capset variable and `cs2` contains terminal capabilities.
+   */
+  def hasSplitCaptureSet(using Context): Boolean = tp.dealiasKeepAnnots match
+    case CapturingOrRetainsType(parent, refs) =>
+      !parent.captureSet.isConst && refs.containsTerminalCapability
+    case tp: TypeProxy =>
+      tp.superType.hasSplitCaptureSet
+    case _ =>
+      false
 
   /** Compute a captureset by traversing parts of this type. This is by default the union of all
    *  covariant capture sets embedded in the widened type, as computed by

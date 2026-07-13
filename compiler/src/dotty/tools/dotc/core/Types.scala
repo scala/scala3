@@ -6402,7 +6402,7 @@ object Types extends TypeUtils {
         if ref1 != null then ref1
         else
           val isLiteral = tp1.typeSymbol == defn.Caps_CapSet
-          val cs = CaptureSet.ofType(tp1, followResult = false)
+          val cs = CaptureSet.ofType(tp1, followResult = false, separated = false)
           (cs, isLiteral)
 
     /** Utility method. Maps the supertype of a type proxy. Returns the
