@@ -430,6 +430,17 @@ jobs:
       - name: Run SBT scripted tests
         run: ./project/scripts/sbt scala3-bootstrapped/scripted
 
+  test-bisect-script:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: coursier/cache-action@v8
+      - uses: VirtusLab/scala-cli-setup@v1.15
+        with:
+          jvm: temurin:17
+      - name: Run bisect script tests
+        run: scala-cli test project/scripts/bisect.test.scala
+
   community_build_a:
     runs-on: ubuntu-latest
     steps:
