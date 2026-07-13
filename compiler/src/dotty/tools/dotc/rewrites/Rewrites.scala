@@ -42,7 +42,7 @@ object Rewrites {
       def p(other: Span): Boolean = span.start == other.start || span.end == other.end
       pbuf.filterInPlace(x => !p(x.span))
 
-    def apply(cs: Array[Char]): Array[Char] = {
+    def apply(cs: String, writer: OutputStreamWriter): Unit = {
       val patches = pbuf.toList.distinct.sortBy(_.span.start)
       val delta = patches.map(_.delta).sum
       if (patches.nonEmpty)
@@ -50,31 +50,26 @@ object Rewrites {
           assert(p1.span.end <= p2.span.start, s"overlapping patches in $source: $p1 and $p2")
           p2
         }
-      val ds = new Array[Char](cs.length + delta)
-      @tailrec def loop(ps: List[Patch], inIdx: Int, outIdx: Int): Unit = {
-        def copy(upTo: Int): Int = {
+      @tailrec def loop(ps: List[Patch], inIdx: Int): Unit = {
+        def copy(upTo: Int): Unit = {
           val untouched = upTo - inIdx
-          System.arraycopy(cs, inIdx, ds, outIdx, untouched)
-          outIdx + untouched
+          writer.write(cs, inIdx, untouched)
         }
         ps match {
           case patch @ Patch(span, replacement) :: ps1 =>
-            val outNew = copy(span.start)
-            replacement.copyToArray(ds, outNew)
-            loop(ps1, span.end, outNew + replacement.length)
+            copy(span.start)
+            writer.write(replacement)
+            loop(ps1, span.end)
           case Nil =>
-            val outNew = copy(cs.length)
-            assert(outNew == ds.length, s"$outNew != ${ds.length}")
+            copy(cs.length)
         }
       }
-      loop(patches, 0, 0)
-      ds
+      loop(patches, 0)
     }
 
     def writeBack(): Unit =
-      val chars = apply(source.content)
       val osw = OutputStreamWriter(source.file.output, UTF_8)
-      try osw.write(chars, 0, chars.length)
+      try apply(source.content(), osw)
       finally osw.close()
   }
 

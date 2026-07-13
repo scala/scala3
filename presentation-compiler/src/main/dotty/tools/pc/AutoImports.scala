@@ -243,7 +243,7 @@ object AutoImports:
         // for worksheets, we need to remove 2 whitespaces, because it ends up being wrapped in an object
         // see WorksheetProvider.worksheetScala3AdjustmentsForPC
         val indent =
-          if pos.source.path.isWorksheet &&
+          if pos.source.file.path.isWorksheet &&
             editPos.getStart().nn.getCharacter() == 0
           then indent0.drop(2)
           else indent0
@@ -375,7 +375,7 @@ object AutoImports:
       }
     end forScript
 
-    val path = pos.source.path
+    val path = pos.source.file.path
 
     def fileStart =
       AutoImportPosition(

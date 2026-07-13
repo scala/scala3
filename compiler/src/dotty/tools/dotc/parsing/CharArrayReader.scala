@@ -8,7 +8,7 @@ import scala.compiletime.uninitialized
 
 abstract class CharArrayReader { self =>
 
-  val buf: Array[Char]
+  val buf: String
   protected def startFrom: Int = 0
 
   /** Switch whether unicode should be decoded */
@@ -121,7 +121,7 @@ abstract class CharArrayReader { self =>
   def lookaheadChar(): Char = lookaheadReader().getc()
 
   class CharArrayLookaheadReader extends CharArrayReader {
-    val buf: Array[Char] = self.buf
+    val buf: String = self.buf
     charOffset = self.charOffset
     ch = self.ch
     override def decodeUni: Boolean = self.decodeUni

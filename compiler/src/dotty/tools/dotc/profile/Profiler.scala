@@ -283,7 +283,7 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
     assert(mainThread eq Thread.currentThread())
     if chromeTrace != null then
       traceThreadSnapshotCounters()
-      traceDurationStart(Category.File, escapeSpecialChars(unit.source.name))
+      traceDurationStart(Category.File, escapeSpecialChars(unit.source.file.name))
     else TracedEventId.Empty
   }
 

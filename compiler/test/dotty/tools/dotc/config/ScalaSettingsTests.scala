@@ -16,8 +16,8 @@ import dotty.tools.io.{Path, PlainFile}
 import java.net.URI
 import java.nio.file.Files
 import scala.util.Using
-
 import scala.annotation.nowarn
+import scala.io.Codec
 
 class ScalaSettingsTests:
 
@@ -199,7 +199,7 @@ class ScalaSettingsTests:
         warning = reporting.Diagnostic.Warning(
           "A warning".toMessage,
           util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
+            source = util.SourceFile(new PlainFile(Path(file)), Codec.UTF8),
             span = util.Spans.Span(1L)
           )
         )
@@ -214,7 +214,7 @@ class ScalaSettingsTests:
         warning = reporting.Diagnostic.Warning(
           "A warning".toMessage,
           util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
+            source = util.SourceFile(new PlainFile(Path(file)), Codec.UTF8),
             span = util.Spans.Span(1L)
           )
         )

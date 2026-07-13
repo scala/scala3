@@ -166,7 +166,7 @@ trait Migrations:
     val ptSpan = pt.args.head.span
     ptSpan.exists
     && tree.span.exists
-    && ctx.source.content
+    && ctx.source.content()
       .slice(tree.span.end, ptSpan.start)
       .exists(_ == '(')
 

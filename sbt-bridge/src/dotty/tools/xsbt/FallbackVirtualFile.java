@@ -16,20 +16,16 @@ public class FallbackVirtualFile extends xsbti.BasicVirtualFileRef implements xs
   protected final SourceFile sourceFile;
 
   public FallbackVirtualFile(SourceFile sourceFile) {
-    super(sourceFile.path());
+    super(sourceFile.file().path());
     this.sourceFile = sourceFile;
   }
 
-  private static byte[] toBytes(char[] chars) {
-    return new String(chars).getBytes(StandardCharsets.UTF_8);
-  }
-
   public InputStream input() {
-    return new java.io.ByteArrayInputStream(toBytes(sourceFile.content()));
+    return new java.io.ByteArrayInputStream(sourceFile.content().getBytes(StandardCharsets.UTF_8));
   }
 
   public long contentHash() {
-    int murmurHash3 = scala.util.hashing.MurmurHash3$.MODULE$.bytesHash(toBytes(sourceFile.content()));
+    int murmurHash3 = scala.util.hashing.MurmurHash3$.MODULE$.stringHash(sourceFile.content());
     return (long) murmurHash3;
   }
 

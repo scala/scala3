@@ -21,6 +21,6 @@ object JavaChecks {
 
   /** Scan a tree and check it. */
   def check(tree: Tree)(using Context): Unit =
-    report.debuglog("checking type bounds in " + ctx.compilationUnit.source.name)
+    report.debuglog("checking type bounds in " + ctx.compilationUnit.source.file.name)
     AppliedTypeChecker.traverse(tree)
 }

@@ -205,9 +205,7 @@ object ClassfileParser {
 
     private def getSubArray(bytes: Array[Byte]): Array[Byte] = {
       val decodedLength = ByteCodecs.decode(bytes)
-      val arr           = new Array[Byte](decodedLength)
-      System.arraycopy(bytes, 0, arr, 0, decodedLength)
-      arr
+      Array.copyOf(bytes, decodedLength)
     }
 
     def getBytes(index: Int)(using in: DataReader): Array[Byte] = {
@@ -217,8 +215,7 @@ object ClassfileParser {
         val start = starts(index)
         if (in.getByte(start).toInt != CONSTANT_UTF8) errorBadTag(start)
         val len   = in.getChar(start + 1)
-        val bytes = new Array[Byte](len)
-        in.getBytes(start + 3, bytes)
+        val bytes = in.getBytes(start + 3, len)
         value = getSubArray(bytes)
         values(index) = value
       }
@@ -226,20 +223,26 @@ object ClassfileParser {
     }
 
     def getBytes(indices: List[Int])(using in: DataReader): Array[Byte] = {
-      assert(!indices.isEmpty, indices)
+      assert(indices.nonEmpty, indices)
       var value = values(indices.head).asInstanceOf[Array[Byte]]
       if (value eq null) {
-        val bytesBuffer = ArrayBuffer.empty[Byte]
+        val offsetsAndLengths = new ArrayBuffer[(Int, Int)](indices.length)
+        var totalLength = 0
         for (index <- indices) {
           if (index <= 0 || AbstractConstantPool.this.len <= index) errorBadIndex(index)
           val start = starts(index)
           if (in.getByte(start).toInt != CONSTANT_UTF8) errorBadTag(start)
           val len = in.getChar(start + 1)
-          val buf = new Array[Byte](len)
-          in.getBytes(start + 3, buf)
-          bytesBuffer ++= buf
+          offsetsAndLengths.addOne((start + 3, len))
+          totalLength += len
         }
-        value = getSubArray(bytesBuffer.toArray)
+        val bytes = new Array[Byte](totalLength)
+        var currentOffset = 0
+        for ((offset, len) <- offsetsAndLengths) {
+          in.getBytes(offset, bytes, currentOffset, len)
+          currentOffset += len
+        }
+        value = getSubArray(bytes)
         values(indices.head) = value
       }
       value
@@ -1112,7 +1115,7 @@ final class ClassfileParser(
    *  Restores the old `bp`.
    *  @return Some(unpickler) iff classfile is from Scala, so no Java info needs to be read.
    */
-  def unpickleOrParseInnerClasses()(using ctx: Context, in: DataReader): Option[Embedded] = {
+  private def unpickleOrParseInnerClasses()(using ctx: Context, in: DataReader): Option[Embedded] = {
     val oldbp = in.bp
     try {
       skipSuperclasses()

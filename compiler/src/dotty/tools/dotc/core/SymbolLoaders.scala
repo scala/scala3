@@ -232,7 +232,7 @@ object SymbolLoaders {
       val ix = classRep.fileName.lastIndexOf('.')
       if (ix < 0) classRep.fileName.length else ix
     }
-    classRep.fileName.sliceToTermName(0, nameLength)
+    termName(classRep.fileName, 0, nameLength)
 
   /** Load contents of a package
    */

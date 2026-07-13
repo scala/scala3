@@ -237,8 +237,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       _.matcher(fqn).matches
     )
 
-  private def isFileIncluded(file: SourceFile)(using Context): Boolean =
-    val normalizedPath = file.path.replace(".scala", "")
+  private def isFileIncluded(source: SourceFile)(using Context): Boolean =
+    val normalizedPath = source.file.path.replace(".scala", "")
     coverageExcludeFilePatterns.isEmpty || !coverageExcludeFilePatterns.exists(
       _.matcher(normalizedPath).matches
     )
@@ -295,7 +295,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // +1 to account for the line number starting at 1
         // the internal line number is 0-base https://github.com/scala/scala3/blob/18ada516a85532524a39a962b2ddecb243c65376/compiler/src/dotty/tools/dotc/util/SourceFile.scala#L173-L176
         line = pos.line + 1,
-        desc = sourceFile.content.slice(pos.start, pos.end).mkString,
+        desc = sourceFile.content().substring(pos.start, pos.end),
         symbolName = tree.symbol.name.toSimpleName.show,
         treeName = tree.getClass.getSimpleName,
         branch,

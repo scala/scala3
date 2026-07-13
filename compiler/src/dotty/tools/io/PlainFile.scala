@@ -9,6 +9,7 @@ package io
 import java.io.{InputStream, OutputStream}
 import java.net.URL
 import java.nio.file.{InvalidPathException, Paths}
+import scala.io.Codec
 
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
 class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
@@ -32,6 +33,7 @@ class PlainFile(givenPath: Path) extends AbstractFile {
 
   override def container: Option[AbstractFile] = Some(new PlainFile(givenPath.parent))
   override def input: InputStream = givenPath.toFile.inputStream()
+  override def readAsString(codec: Codec): String = java.nio.file.Files.readString(givenPath.jpath, codec.charSet)
   override def output: OutputStream = givenPath.toFile.outputStream()
   override def toURL: Option[URL] = Some(jpath.toUri.toURL)
 

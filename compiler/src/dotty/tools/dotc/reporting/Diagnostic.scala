@@ -121,7 +121,7 @@ class Diagnostic(
     this
 
   override def position: Optional[interfaces.SourcePosition] =
-    if (pos.exists && pos.source.exists) Optional.of(pos) else Optional.empty()
+    if pos.exists && pos.source.exists then Optional.of(SourcePosition.toInterface(pos)) else Optional.empty()
   override def message: String =
     msg.message.replaceAll("\u001B\\[[;\\d]*m", "")
   override def diagnosticRelatedInformation: JList[interfaces.DiagnosticRelatedInformation] =

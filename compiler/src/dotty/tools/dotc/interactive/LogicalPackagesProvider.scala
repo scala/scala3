@@ -11,6 +11,8 @@ import dotty.tools.io.ClassPath
 import dotty.tools.io.FileExtension
 import dotty.tools.io.Path
 
+import scala.io.Codec
+
 /**
  * A compiler component that adds support for parsing Scala and Java source files and finding out
  * the logical package structure of the whole source path.
@@ -21,7 +23,7 @@ class LogicalPackagesProvider(sourcePath: String){
   private given Context = new ContextBase().initialCtx
 
   private lazy val sourceRoots: Seq[SourceFile] =
-    allSources(sourcePath).map(f => SourceFile(f, f.toCharArray))
+    allSources(sourcePath).map(f => SourceFile(f, Codec.default)) // TODO: plumb compiler settings through here to use the right codec
 
   lazy val root: LogicalPackage = parseSourcePath()
 
@@ -45,7 +47,7 @@ class LogicalPackagesProvider(sourcePath: String){
       sourceFile: SourceFile,
       rootPackage: ParsedLogicalPackage
   ): Unit =
-    val fileName = sourceFile.path
+    val fileName = sourceFile.file.path
     if sourceFile.file.ext ==  FileExtension.Scala then
       parseScalaSourceFile(sourceFile, rootPackage)
     else if sourceFile.file.ext == FileExtension.Java then

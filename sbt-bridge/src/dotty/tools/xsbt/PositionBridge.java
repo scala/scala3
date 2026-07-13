@@ -55,7 +55,7 @@ public class PositionBridge implements Position {
 
   @Override
   public Optional<Integer> line() {
-    if (src.content().length == 0)
+    if (src.content().isEmpty())
       return Optional.empty();
 
     int line = pos.line();
@@ -65,7 +65,7 @@ public class PositionBridge implements Position {
 
   @Override
   public String lineContent() {
-    if (src.content().length == 0)
+    if (src.content().isEmpty())
       return "";
 
     String lineContent = pos.lineContent();
@@ -96,7 +96,7 @@ public class PositionBridge implements Position {
 
   @Override
   public Optional<Integer> pointer() {
-    if (src.content().length == 0) return Optional.empty();
+    if (src.content().isEmpty()) return Optional.empty();
     return Optional.of(pos.point() - src.startOfLine(pos.point()));
   }
 
@@ -127,7 +127,7 @@ public class PositionBridge implements Position {
 
   @Override
   public Optional<Integer> startOffset() {
-    if (src.content().length == 0)
+    if (src.content().isEmpty())
       return Optional.empty();
     else
       return Optional.of(pos.start());
@@ -135,7 +135,7 @@ public class PositionBridge implements Position {
 
   @Override
   public Optional<Integer> endOffset() {
-    if (src.content().length == 0)
+    if (src.content().isEmpty())
       return Optional.empty();
     else
       return Optional.of(pos.end());
@@ -143,7 +143,7 @@ public class PositionBridge implements Position {
 
   @Override
   public Optional<Integer> startLine() {
-    if (src.content().length == 0)
+    if (src.content().isEmpty())
       return Optional.empty();
     else
       return Optional.of(pos.startLine() + 1);
@@ -151,7 +151,7 @@ public class PositionBridge implements Position {
 
   @Override
   public Optional<Integer> endLine() {
-    if (src.content().length == 0)
+    if (src.content().isEmpty())
       return Optional.empty();
     else
       return Optional.of(pos.endLine() + 1);
@@ -159,7 +159,7 @@ public class PositionBridge implements Position {
 
   @Override
   public Optional<Integer> startColumn() {
-    if (src.content().length == 0)
+    if (src.content().isEmpty())
       return Optional.empty();
     else
       return Optional.of(pos.startColumn());
@@ -167,7 +167,7 @@ public class PositionBridge implements Position {
 
   @Override
   public Optional<Integer> endColumn() {
-    if (src.content().length == 0)
+    if (src.content().isEmpty())
       return Optional.empty();
     else
       return Optional.of(pos.endColumn());
