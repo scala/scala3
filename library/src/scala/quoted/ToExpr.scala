@@ -1,20 +1,20 @@
 package scala.quoted
 
 import language.experimental.captureChecking
-
+import scala.annotation.nowarn
 import scala.reflect.ClassTag
 
 /** A type class for types that can convert a value of `T` into `quoted.Expr[T]`
- *  an expression that, when evaluated, produces a value equal to the original.
+ * an expression that, when evaluated, produces a value equal to the original.
  *
- *  @tparam T the type of the value to be lifted into an `Expr[T]`
+ * @tparam T the type of the value to be lifted into an `Expr[T]`
  */
 trait ToExpr[T] {
 
   /** Lift a value into an expression containing the construction of that value.
    *
-   *  @param x the value to lift into a quoted expression
-   *  @return an `Expr[T]` that, when evaluated, produces a value equal to `x`
+   * @param x the value to lift into a quoted expression
+   * @return an `Expr[T]` that, when evaluated, produces a value equal to `x`
    */
   def apply(x: T)(using Quotes): Expr[T]
 
@@ -23,8 +23,32 @@ trait ToExpr[T] {
 /** Default given instances of `ToExpr`. */
 object ToExpr {
 
+  import scala.deriving.Mirror
+  import scala.quoted.*
+
+  inline def derived[T: Mirror.Of as m]: ToExpr[T] =
+    type Elems = m.MirroredElemTypes
+    val elemInstances = compiletime.summonAll[Tuple.Map[Elems, ToExpr]].toList.asInstanceOf[List[ToExpr[Any]]]
+    m match
+      case given Mirror.ProductOf[T] => derivedProduct[T](elemInstances)
+      case given Mirror.SumOf[T] => derivedSum[T](elemInstances)
+  
+  @nowarn("msg=duplicated at each inline site") // T required for Type.of[T]
+  private inline def derivedProduct[T: Mirror.ProductOf](elemInstances: List[ToExpr[Any]]): ToExpr[T] = new ToExpr[T]:
+    def apply(x: T)(using Quotes): Expr[T] =
+      val mirrorExpr = Expr.summon[Mirror.ProductOf[T]].get
+      val elemVals = x.asInstanceOf[Product].productIterator.toList
+      val elemExprs = elemInstances.zip(elemVals).map(_.apply(_))
+      val tupleExpr = Expr.ofTupleFromSeq(elemExprs)
+      '{ $mirrorExpr.fromProduct($tupleExpr) }
+
+  private def derivedSum[T: Mirror.SumOf as m](elemInstances: List[ToExpr[Any]]): ToExpr[T] = new ToExpr[T]:
+    def apply(x: T)(using Quotes): Expr[T] = elemInstances(m.ordinal(x)).apply(x).asInstanceOf[Expr[T]]
   // IMPORTANT Keep in sync with tests/run-staging/liftables.scala
 
+  given ValueOfToExpr: [T: {ValueOf, Type}] => ToExpr[T]:
+    def apply(x: T)(using Quotes): Expr[T] = '{ valueOf[T] }
+  
   /** Default implementation of `ToExpr[Boolean]`. */
   given BooleanToExpr[T <: Boolean]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =
