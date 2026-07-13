@@ -69,7 +69,7 @@ import scala.util.Using
  *  @param objectIndex the index of the next wrapper
  *  @param valIndex    the index of next value binding for free expressions
  *  @param imports     a map from object index to the list of user defined imports
- *  @param invalidObjectIndexes the set of object indexes that failed to initialize
+ *  @param invalidObjectIndexes the set of object indexes that failed to compile or initialize
  *  @param quiet       whether we print evaluation results
  *  @param context     the latest compiler context
  *  @param pastInputs  the replayable inputs of the session, most recent first
@@ -84,6 +84,12 @@ case class State(objectIndex: Int,
   def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
 
   def recordInput(input: String): State = copy(pastInputs = input :: pastInputs)
+
+  def invalidateCurrentObject: State =
+    copy(invalidObjectIndexes = invalidObjectIndexes + objectIndex)
+
+  def afterFailedCompilation(failedObjectIndex: Int): State =
+    copy(objectIndex = failedObjectIndex).invalidateCurrentObject
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
@@ -437,7 +443,10 @@ class ReplDriver(settings: Array[String],
     compiler
       .compile(parsed)
       .fold(
-        displayErrors,
+        (errs, errState) =>
+          displayErrors(errs, errState)
+          istate.afterFailedCompilation(errState.objectIndex)
+        ,
         {
           case (unit: CompilationUnit, newState: State) =>
             val newestWrapper = extractNewestWrapper(unit.untpdTree)
@@ -528,7 +537,7 @@ class ReplDriver(settings: Array[String],
         // We limit the returned diagnostics here to `renderedVals`, which will contain the rendered error
         // for the val which failed to initialize. Since any other defs, aliases, imports, etc. from this
         // input line will be inaccessible, we avoid rendering those so as not to confuse the user.
-        (state.copy(invalidObjectIndexes = state.invalidObjectIndexes + state.objectIndex), renderedVals)
+        (state.invalidateCurrentObject, renderedVals)
       else
         val formattedMembers =
           typeAliases.map(rendering.renderTypeAlias)
