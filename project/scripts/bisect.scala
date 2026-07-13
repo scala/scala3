@@ -50,6 +50,13 @@ val usageMessage = """
   |* --should-fail
   |    Expect the validation command to fail rather that succeed. This can be used e.g. to find out when some illegal code started to compile.
   |
+  |* --with-bloop
+  |    Use Bloop/build server for scala-cli reproduction scripts (omit --server=false).
+  |    Implies --with-cleaning, because incremental compilation may interfere with bisection.
+  |
+  |* --with-cleaning
+  |    Run `scala-cli clean <input>` before each validation invocation.
+  |
   |Warning: The bisect script should not be run multiple times in parallel because of a potential race condition while publishing artifacts locally.
 
 """.stripMargin
@@ -61,7 +68,10 @@ val usageMessage = """
       case _ =>
         sys.error(s"Wrong script parameters.\n${usageMessage}")
 
-  val validationScript = scriptOptions.validationCommand.validationScript
+  val validationScript = scriptOptions.validationCommand.validationScript(
+    withBloop = scriptOptions.withBloop,
+    withCleaning = scriptOptions.withCleaning
+  )
   val releases = Releases.fromRange(scriptOptions.releasesRange)
   val releaseBisect = ReleaseBisect(validationScript, shouldFail = scriptOptions.shouldFail, releases)
 
@@ -77,7 +87,15 @@ val usageMessage = """
     commitBisect.bisect()
 
 
-case class ScriptOptions(validationCommand: ValidationCommand, dryRun: Boolean, bootstrapped: Boolean, releasesRange: ReleasesRange, shouldFail: Boolean)
+case class ScriptOptions(
+    validationCommand: ValidationCommand,
+    dryRun: Boolean,
+    bootstrapped: Boolean,
+    releasesRange: ReleasesRange,
+    shouldFail: Boolean,
+    withBloop: Boolean,
+    withCleaning: Boolean
+)
 object ScriptOptions:
   def fromArgs(args: Seq[String]) =
     val defaultOptions = ScriptOptions(
@@ -85,9 +103,15 @@ object ScriptOptions:
       dryRun = false,
       bootstrapped = false,
       ReleasesRange(first = None, last = None),
-      shouldFail = false
+      shouldFail = false,
+      withBloop = false,
+      withCleaning = false
     )
-    parseArgs(args, defaultOptions)
+    val options = parseArgs(args, defaultOptions)
+    if options.withBloop && !options.withCleaning then
+      println("--with-bloop implies --with-cleaning: enabling cleaning because incremental compilation may interfere with bisection")
+      options.copy(withCleaning = true)
+    else options
 
   private def parseArgs(args: Seq[String], options: ScriptOptions): ScriptOptions =
     args match
@@ -97,6 +121,8 @@ object ScriptOptions:
         val range = ReleasesRange.tryParse(argsRest.head).get
         parseArgs(argsRest.tail, options.copy(releasesRange = range))
       case "--should-fail" :: argsRest => parseArgs(argsRest, options.copy(shouldFail = true))
+      case "--with-bloop" :: argsRest => parseArgs(argsRest, options.copy(withBloop = true))
+      case "--with-cleaning" :: argsRest => parseArgs(argsRest, options.copy(withCleaning = true))
       case _ =>
         val command = ValidationCommand.fromArgs(args)
         options.copy(validationCommand = command)
@@ -107,15 +133,11 @@ enum ValidationCommand:
   case Test(args: Seq[String])
   case CustomValidationScript(scriptFile: File)
 
-  def validationScript: File = this match
-    case Compile(args) =>
-      ValidationScript.tmpScalaCliScript(command = "compile", args)
-    case Run(args) =>
-      ValidationScript.tmpScalaCliScript(command = "run", args)
-    case Test(args) =>
-      ValidationScript.tmpScalaCliScript(command = "test", args)
-    case CustomValidationScript(scriptFile) =>
-      ValidationScript.copiedFrom(scriptFile)
+  def validationScript(withBloop: Boolean, withCleaning: Boolean): File = this match
+    case Compile(args) => ValidationScript.tmpScalaCliScript(command = "compile", args, withBloop, withCleaning)
+    case Run(args) => ValidationScript.tmpScalaCliScript(command = "run", args, withBloop, withCleaning)
+    case Test(args) => ValidationScript.tmpScalaCliScript(command = "test", args, withBloop, withCleaning)
+    case CustomValidationScript(scriptFile) => ValidationScript.copiedFrom(scriptFile)
 
 object ValidationCommand:
   def fromArgs(args: Seq[String]) = args match
@@ -130,12 +152,17 @@ object ValidationScript:
     val fileContent = scala.io.Source.fromFile(file).mkString
     tmpScript(fileContent)
 
-  def tmpScalaCliScript(command: String, args: Seq[String]): File = tmpScript(s"""
-    |#!/usr/bin/env bash
-    |export JAVA_HOME=${sys.props("java.home")}
-    |scala-cli ${command} -S "$$1" --server=false ${args.mkString(" ")}
-    |""".stripMargin
-  )
+  def tmpScalaCliScript(command: String, args: Seq[String], withBloop: Boolean, withCleaning: Boolean): File =
+    val argsString = args.mkString(" ")
+    val serverModifier = if withBloop then "" else "--server=false "
+    val cleanCommand = if withCleaning then s"scala-cli clean ${argsString}" else ""
+    tmpScript(s"""
+      |#!/usr/bin/env bash
+      |export JAVA_HOME=${sys.props("java.home")}
+      |${cleanCommand}
+      |scala-cli ${command} -S "$$1" ${serverModifier}${argsString}
+      |""".stripMargin
+    )
 
   private def tmpScript(content: String): File =
     val executableAttr = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-xr-x"))
