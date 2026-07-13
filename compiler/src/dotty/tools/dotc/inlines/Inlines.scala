@@ -127,8 +127,10 @@ object Inlines:
     if tree0.symbol.denot.exists
       && tree0.symbol.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass
     then
-      if (tree0.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree0)
-      if (tree0.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree0)
+      if (tree0.symbol == defn.CompiletimeTesting_typeChecks
+          || tree0.symbol == defn.CompiletimeTesting_typeChecksStopAfter) return Intrinsics.typeChecks(tree0)
+      if (tree0.symbol == defn.CompiletimeTesting_typeCheckErrors
+          || tree0.symbol == defn.CompiletimeTesting_typeCheckErrorsStopAfter) return Intrinsics.typeCheckErrors(tree0)
 
     if ctx.isAfterTyper then
       // During typer we wait with cross version checks until PostTyper, in order
@@ -365,7 +367,11 @@ object Inlines:
       case Parser, Typer
 
     private def compileForErrors(tree: Tree)(using Context): List[(ErrorKind, Error)] =
-      assert(tree.symbol == defn.CompiletimeTesting_typeChecks || tree.symbol == defn.CompiletimeTesting_typeCheckErrors)
+      assert(
+        tree.symbol == defn.CompiletimeTesting_typeChecks
+        || tree.symbol == defn.CompiletimeTesting_typeChecksStopAfter
+        || tree.symbol == defn.CompiletimeTesting_typeCheckErrors
+        || tree.symbol == defn.CompiletimeTesting_typeCheckErrorsStopAfter)
       def stripTyped(t: Tree): Tree = t match {
         case Typed(t2, _) => stripTyped(t2)
         case Block(Nil, t2) => stripTyped(t2)
@@ -373,7 +379,15 @@ object Inlines:
         case _ => t
       }
 
-      val Apply(_, codeArg :: Nil) = tree: @unchecked
+      // The two-argument overloads additionally carry the name of the compiler
+      // phase up to (and including) which the code should be checked.
+      val (codeArg, stopAfterPhase) = (tree: @unchecked) match
+        case Apply(_, codeArg :: stopAfterArg :: Nil) =>
+          val stopAfterName = ConstFold(stripTyped(stopAfterArg.underlying)).tpe.widenTermRefExpr match
+            case ConstantType(Constant(phase: String)) if phase.nonEmpty => Some(phase)
+            case _ => None
+          (codeArg, stopAfterName)
+        case Apply(_, codeArg :: Nil) => (codeArg, None)
       val codeArg1 = stripTyped(codeArg.underlying)
       val underlyingCodeArg =
         if Inlines.isInlineable(codeArg1.symbol) then stripTyped(Inlines.inlineCall(codeArg1))
@@ -418,6 +432,30 @@ object Inlines:
           else Some(MegaPhaseWithCustomPhaseId(newMegaPhasePhases.toArray, phaseIds.head, phaseIds.last))
         )
 
+      // When a `stopAfterPhase` is requested, additionally reconstruct the enabled
+      // compiler-plugin phases (`PluginPhase`s registered via `-Xplugin`) that are
+      // scheduled at or before that phase, so that diagnostics they emit are surfaced.
+      // Plugins are re-initialized here to obtain fresh phase instances (as required by
+      // the `StandardPlugin` contract), which are wrapped in single-phase MegaPhases and
+      // run after the reconstructed transform phases above. Each plugin phase is run at
+      // its real phase id so denotation lookups match the actual pipeline.
+      lazy val reconstructedPluginPhases: List[MegaPhaseWithCustomPhaseId] =
+        stopAfterPhase match
+          case None => Nil
+          case Some(stopName) =>
+            val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan).flatten
+            // Only run plugin phases when the requested phase actually exists in the
+            // (plugin-augmented) plan; an unknown name runs nothing rather than silently
+            // running every plugin phase.
+            val cutoff = pluginPlan.indexWhere(_.phaseName == stopName)
+            pluginPlan.iterator.zipWithIndex.collect {
+              case (p: dotty.tools.dotc.plugins.PluginPhase, i) if i <= cutoff => p
+            }.flatMap { pluginPhase =>
+              ctx.base.phases
+                .find(phase => phase.phaseName == pluginPhase.phaseName)
+                .map(realPhase => MegaPhaseWithCustomPhaseId(Array(pluginPhase), realPhase.id, realPhase.id))
+            }.toList
+
       ConstFold(underlyingCodeArg).tpe.widenTermRefExpr match {
         case ConstantType(Constant(code: String)) =>
           val unitName = "tasty-reflect"
@@ -456,9 +494,10 @@ object Inlines:
                       ctx.base.inliningPhase match
                         case inlining: Inlining if noErrors =>
                           val tpdTree4 = atPhase(inlining) { inlining.newTransformer.transform(tpdTree3) }
-                          if noErrors && reconstructedTransformPhases.nonEmpty then
+                          val transformPhasesToRun = reconstructedTransformPhases ::: reconstructedPluginPhases
+                          if noErrors && transformPhasesToRun.nonEmpty then
                             var transformTree = tpdTree4
-                            for phase <- reconstructedTransformPhases do
+                            for phase <- transformPhasesToRun do
                               if noErrors then
                                 transformTree = atPhase(phase.end + 1)(phase.transformUnit(transformTree))
                         case _ =>

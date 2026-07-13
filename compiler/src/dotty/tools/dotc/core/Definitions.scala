@@ -266,8 +266,15 @@ class Definitions {
     @tu lazy val Compiletime_summonInline : Symbol = CompiletimePackageClass.requiredMethod("summonInline")
     @tu lazy val Compiletime_summonAll    : Symbol = CompiletimePackageClass.requiredMethod("summonAll")
   @tu lazy val CompiletimeTestingPackage: Symbol = requiredPackage("scala.compiletime.testing")
-    @tu lazy val CompiletimeTesting_typeChecks: Symbol = CompiletimeTestingPackage.requiredMethod("typeChecks")
-    @tu lazy val CompiletimeTesting_typeCheckErrors: Symbol = CompiletimeTestingPackage.requiredMethod("typeCheckErrors")
+    @tu lazy val CompiletimeTestingPackageClass: Symbol = CompiletimeTestingPackage.moduleClass
+    @tu lazy val CompiletimeTesting_typeChecks: Symbol =
+      CompiletimeTestingPackageClass.requiredMethod("typeChecks", List(StringType))
+    @tu lazy val CompiletimeTesting_typeChecksStopAfter: Symbol =
+      CompiletimeTestingPackageClass.requiredMethod("typeChecks", List(StringType, StringType))
+    @tu lazy val CompiletimeTesting_typeCheckErrors: Symbol =
+      CompiletimeTestingPackageClass.requiredMethod("typeCheckErrors", List(StringType))
+    @tu lazy val CompiletimeTesting_typeCheckErrorsStopAfter: Symbol =
+      CompiletimeTestingPackageClass.requiredMethod("typeCheckErrors", List(StringType, StringType))
     @tu lazy val CompiletimeTesting_ErrorClass: ClassSymbol = requiredClass("scala.compiletime.testing.Error")
     @tu lazy val CompiletimeTesting_Error: Symbol = requiredModule("scala.compiletime.testing.Error")
       @tu lazy val CompiletimeTesting_Error_apply = CompiletimeTesting_Error.requiredMethod(nme.apply)
