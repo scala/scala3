@@ -1,104 +1,64 @@
 import scala.quoted.*
 
-// Product derivation: plain case class with primitive fields. Also derives `ToExpr`, so
-// this doubles as the round-trip test type below.
+// Plain product, primitives
 case class Point(x: Int, y: Int) derives ToExpr, FromExpr
 
-// Product derivation: case class with a variety of primitive field kinds. Also derives
-// `ToExpr`, to exercise the round-trip test at an arity (3) beyond the smallest cases.
+// Product, mixed field kinds
 case class Mixed(name: String, flag: Boolean, ratio: Double) derives ToExpr, FromExpr
 
-// Same shape (one Int field) as each other, but nominally distinct types: proves the
-// `fromProduct` recognition branch checks the receiver is specifically `Mirror.ProductOf[T]`
-// rather than accepting any same-arity `fromProduct` call (which would let a `Meters` tree
-// be silently misread as a `Seconds` value, since field-level extraction alone can't catch
-// the mismatch when the field types happen to coincide too).
+// Same shape, different types (wrong-mirror guard)
 case class Meters(value: Int) derives ToExpr, FromExpr
 case class Seconds(value: Int) derives ToExpr, FromExpr
 
-// `Mirror.ProductOf` exists for tuple types too, so `derived` works when `T` itself is a
-// tuple -- not just when a tuple shows up as the argument to some other type's
-// `fromProduct` call. Named explicitly (rather than via `derives`, which isn't valid syntax
-// on a type alias) to avoid shadowing/ambiguity with the library's own hand-written
-// `Tuple2FromExpr`/`Tuple5FromExpr` givens when summoned generically elsewhere.
+// `derived` on a tuple type directly
 given tuple2FromExpr: FromExpr[(Int, String)] = FromExpr.derived
 given tuple2ToExpr: ToExpr[(Int, String)] = ToExpr.derived
 given tuple5FromExpr: FromExpr[(Int, String, Boolean, Double, Char)] = FromExpr.derived
 given tuple5ToExpr: ToExpr[(Int, String, Boolean, Double, Char)] = ToExpr.derived
 
-// Product derivation: nested case classes, one nested inside another object's companion.
+// Nested products, cross-object
 case class Address(city: String, zip: Int) derives FromExpr
 object Namespace:
   case class Person(name: String, address: Address) derives FromExpr
 
-// Three levels of nesting, to make sure recursion isn't hardcoded to depth 1-2.
+// Three levels of nesting
 case class Company(hq: Address, ceo: Namespace.Person) derives FromExpr
 
-// Product derivation: case object (singleton). Matches a bare reference to the module,
-// not a call. Also derives `ToExpr`, for the round-trip test below.
+// Singleton (case object)
 case object Singleton derives ToExpr, FromExpr
 
-// Product derivation: generic case class. Just like `ToExpr`, `derives` only adds a
-// `FromExpr[A]` bound (not `Type[A]`), so a generic class needs an explicit given. Also
-// given a `ToExpr`, for the round-trip test below.
+// Generic product (needs an explicit Type/instance bound)
 case class Box[A](value: A)
-given boxFromExpr[A: Type: FromExpr]: FromExpr[Box[A]] = FromExpr.derived
-given boxToExpr[A: Type: ToExpr]: ToExpr[Box[A]] = ToExpr.derived
+given [A: {Type, ToExpr}] => ToExpr[Box[A]] = ToExpr.derived
+given [A: {Type, FromExpr}] => FromExpr[Box[A]] = FromExpr.derived
 
-// Sum derivation: sealed hierarchy of case classes and case objects, nested inside the
-// sealed trait's own companion object. Only the sealed trait itself needs `derives` -- its
-// own cases are derived automatically since none of them already has an instance in scope;
-// the sum type's own instance just tries each case's `unapply` in turn.
-// Also derives `ToExpr` on the sum type, for the round-trip test below.
+// Sum: sealed trait + cases, auto-derived
 sealed trait Shape derives ToExpr, FromExpr
 object Shape:
   case class Circle(r: Double) extends Shape
   case class Rect(w: Double, h: Double) extends Shape
   case object Origin extends Shape
 
-// Sum derivation over an enum with a mix of singleton and parameterized cases (mirrors
-// the equivalent test in the ToExpr suite). Only the enum itself needs `derives` -- an
-// enum singleton's `Type[T]` is `TermRef`-encoded (see the fix in `FromExpr.derivedProduct`),
-// distinct from a real case object's `TypeRef`-encoded module class, but that doesn't
-// change anything about deriving its cases automatically.
+// Sum: enum, singleton + parameterized cases
 enum Color derives ToExpr, FromExpr:
   case Red, Green
   case Custom(hex: String)
 
-// Product derivation with a sum-typed field: composes `derivedProduct` (for `Container`)
-// and `derivedSum` (for its `shape` field) within a single derivation. Also derives
-// `ToExpr`, so the round-trip test below exercises this composition recursively (the
-// outer `fromProduct`-tuple contains an inner field that is itself either another
-// `fromProduct` call, for `Circle`/`Rect`, or a bare singleton reference, for `Origin`).
+// Product with a sum-typed field
 case class Container(name: String, shape: Shape) derives ToExpr, FromExpr
 
-// Product derivation: zero-arg case class. Distinct from a singleton (`Singleton` above):
-// this is matched via the `Apply(fun, Nil)` branch (constructor-call recognition), not the
-// bare-module-reference branch. Also derives `ToExpr`: `ToExpr.derived` produces
-// `mirror.fromProduct(Tuple())` for `Blank` just as it does for a real singleton, so the
-// round-trip test below confirms this correctly takes the tuple-unwrap branch rather than
-// being mistaken for a singleton reference.
+// Zero-arg product (not a singleton)
 case class Blank() derives ToExpr, FromExpr
 
-// Sum derivation over a generic sealed trait (mirrors the equivalent test in the ToExpr
-// suite): combines the generics-need-an-explicit-given constraint (see `Box` above) with
-// sum dispatch (see `Shape` above). The sealed trait itself still needs the explicit
-// `Type[A]`/instance-bound given (`derives` alone can't add it, same reason as `Box`), but
-// its cases (`Ok`, `Fail`) no longer need one of their own -- they're derived automatically
-// as part of deriving `Result[A]`, with `A`'s own `Type`/`FromExpr` bound already in scope
-// from the outer given.
+// Generic sum (explicit bound on the trait; cases auto-derived)
 sealed trait Result[+A]
 object Result:
   case class Ok[A](value: A) extends Result[A]
   case object Fail extends Result[Nothing]
+given [A: {Type, FromExpr}] => FromExpr[Result[A]] = FromExpr.derived
+given [A: {Type, ToExpr}] => ToExpr[Result[A]] = ToExpr.derived
 
-given resultFromExpr[A: Type: FromExpr]: FromExpr[Result[A]] = FromExpr.derived
-given resultToExpr[A: Type: ToExpr]: ToExpr[Result[A]] = ToExpr.derived
-
-// Sum derivation nested two levels deep: a sealed trait whose own case is ITSELF a sealed
-// trait with further cases, to confirm dispatch recurses through nested sums -- each level
-// only needs its own `derives`, the auto-derivation cascades down through as many levels
-// of `Mirror.SumOf` as needed. Also derives `ToExpr`, for the round-trip test below.
+// Nested sum hierarchy, two levels of dispatch
 sealed trait Vehicle derives ToExpr, FromExpr
 object Vehicle:
   sealed trait Motorized extends Vehicle
@@ -107,20 +67,10 @@ object Vehicle:
     case class Motorcycle(cc: Int) extends Motorized
   case class Bicycle(gears: Int) extends Vehicle
 
-// NOTE: a genuinely recursive sum (a case whose own field type is the enclosing sum, e.g.
-// `enum Arith { case Add(l: Arith, r: Arith) }`) is deliberately NOT covered here. Deriving
-// both the sum's own instance and each case's instance as separate top-level givens creates
-// a circular value dependency between them (the sum's instance needs the case's instance,
-// which needs the sum's instance back) -- and Scala 3's thread-safe lazy val implementation
-// does not tolerate this: it deadlocks waiting on its own `CountDownLatch`, confirmed via a
-// thread dump (not a hypothetical). This is a Scala-level limitation of recursive Mirror
-// derivation via separate top-level givens, not something fixable from this library's code.
+// NOTE: a genuinely recursive sum (e.g. `Add(l: Arith, r: Arith)`) deadlocks during
+// derivation (circular top-level given initialization) -- out of scope, see SLC.
 
-// A case class whose arity (25) exceeds `Tuple22`: `Expr.ofTupleFromSeq` produces a
-// `Tuple.fromIArray(...).asInstanceOf[...]` shape for these, which `FromExpr.derived`'s
-// tuple-unwrap branch does not recognize (`TupleN.apply` matching only covers arity 0-22).
-// This is a known, deliberate limitation, not a crash -- pinned down by a dedicated test
-// below rather than left undocumented.
+// Arity > 22 (known limitation, not a crash)
 case class Big25(
   f1: Int, f2: Int, f3: Int, f4: Int, f5: Int, f6: Int, f7: Int, f8: Int, f9: Int, f10: Int,
   f11: Int, f12: Int, f13: Int, f14: Int, f15: Int, f16: Int, f17: Int, f18: Int, f19: Int, f20: Int,
@@ -128,8 +78,7 @@ case class Big25(
 ) derives ToExpr, FromExpr
 
 object Macro:
-  // Matches "calls to `new X` or `X.apply`" (as `FromExpr`'s own contract puts it) --
-  // both spellings of a case class construction should be recognized.
+  // Constructor-call recognition: `apply` and `new`
   inline def matchApplyPoint: Boolean = ${ Macro.matchApplyPointImpl }
   inline def matchNewPoint: Boolean = ${ Macro.matchNewPointImpl }
   inline def matchNegativePoint: Boolean = ${ Macro.matchNegativePointImpl }
@@ -153,54 +102,35 @@ object Macro:
   inline def matchVehicleCar: Boolean = ${ Macro.matchVehicleCarImpl }
   inline def matchVehicleMotorcycle: Boolean = ${ Macro.matchVehicleMotorcycleImpl }
   inline def matchVehicleBicycle: Boolean = ${ Macro.matchVehicleBicycleImpl }
-  // A `Car` tree read back as a `Motorcycle`: both are cases of the same nested `Motorized`
-  // sum, so this exercises the wrong-variant check one level deeper than `wrongSumVariantIsNone`.
+  // Nested-sum wrong-variant guard
   inline def wrongNestedVariantIsNone: Boolean = ${ Macro.wrongNestedVariantIsNoneImpl }
 
-  // A tree wrapped in a `Typed` node (as produced by a type ascription) must be
-  // unwrapped before the underlying constructor call is recognized.
+  // `Typed` node unwrapping
   inline def matchAscribedPoint: Boolean = ${ Macro.matchAscribedPointImpl }
 
-  // A tree wrapped in a `Block(Nil, ...)` node (as produced by explicit braces around a
-  // value, real user-reachable syntax -- not merely a defensive-only case) must likewise
-  // be unwrapped.
+  // `Block(Nil, ...)` node unwrapping
   inline def matchBracedPoint: Boolean = ${ Macro.matchBracedPointImpl }
 
-  // Not a direct constructor call: no `FromExpr` should extract a value from this.
+  // Not a constructor call
   inline def nonMatchingIsNone: Boolean = ${ Macro.nonMatchingIsNoneImpl }
-  // Same field count as `Point`, but a different type: arity alone must not be enough.
+  // Same arity, wrong type
   inline def wrongTypeIsNone: Boolean = ${ Macro.wrongTypeIsNoneImpl }
-  // A `Circle` tree read back as a `Rect`: same sum type, wrong variant.
+  // Wrong sum variant
   inline def wrongSumVariantIsNone: Boolean = ${ Macro.wrongSumVariantIsNoneImpl }
-  // A 2-element tuple (from a `Point`'s `fromProduct` call) read back as a `Mixed`
-  // (arity 3): the tuple-unwrap branch must reject the arity mismatch, not crash.
+  // Wrong arity
   inline def wrongArityIsNone: Boolean = ${ Macro.wrongArityIsNoneImpl }
-  // `Big25`'s `ToExpr.derived` output uses the `Tuple.fromIArray(...)` shape (arity > 22),
-  // which the tuple-unwrap branch doesn't recognize -- a documented limitation, not a
-  // crash.
+  // Arity > 22, documented limitation
   inline def roundTripBig25IsNone: Boolean = ${ Macro.roundTripBig25IsNoneImpl }
-  // A `Meters`-shaped `fromProduct` tree read back as `Seconds`: same arity, same field
-  // type, so only the receiver-mirror check (not field-level extraction) can catch this.
+  // Wrong mirror, same arity/field type
   inline def wrongMirrorIsNone: Boolean = ${ Macro.wrongMirrorIsNoneImpl }
 
-  // `derived` applied directly to a tuple type: matches a literal tuple-literal quote
-  // (arity 2), and round-trips through `ToExpr.derived` at a higher arity (5).
+  // `derived` on a tuple type directly
   inline def matchTuple2: Boolean = ${ Macro.matchTuple2Impl }
   inline def roundTripTuple5: Boolean = ${ Macro.roundTripTuple5Impl }
 
-  // Round trip: a value lifted to code via `ToExpr.derived` must be readable back via
-  // `FromExpr.derived` on the same type. `ToExpr.derived` always produces a
-  // `mirror.fromProduct(tuple)`-shaped tree (never a `T(args*)`/`new T(args*)` call), so
-  // this exercises the dedicated recognition branch for that shape: a product at several
-  // arities, a singleton (both a real case object and a `TermRef`-encoded enum case), a
-  // zero-arg non-singleton, a sum type, a generic type, and a product with a sum-typed
-  // field (composing the recognition recursively).
+  // ToExpr.derived -> FromExpr.derived round trip, all cases above
   inline def roundTrips: Boolean = ${ Macro.roundTripsImpl }
 
-  // Shared by (almost) every scenario above: extract `expr` via `T`'s `FromExpr` and
-  // compare against the value it's expected to produce (or, for `checkNone`, expect
-  // extraction to fail). Factored out since the comparison itself is always the same --
-  // only the quoted syntax and type under test vary per scenario.
   private def check[T: Type: FromExpr](expr: Expr[T], expected: T)(using Quotes): Expr[Boolean] =
     Expr(summon[FromExpr[T]].unapply(expr) == Some(expected))
 
@@ -246,9 +176,6 @@ object Macro:
     check[Vehicle]('{ Vehicle.Bicycle(21) }, Vehicle.Bicycle(21))
 
   def wrongNestedVariantIsNoneImpl(using Quotes): Expr[Boolean] =
-    // `Car`/`Motorcycle` no longer have their own top-level `FromExpr` (they're derived
-    // automatically as part of `Vehicle`'s own dispatch, not exposed standalone), so derive
-    // one locally just to check this specific leaf-to-leaf mismatch.
     given FromExpr[Vehicle.Motorized.Motorcycle] = FromExpr.derived
     val e: Expr[Vehicle.Motorized.Car] = '{ Vehicle.Motorized.Car(4) }
     checkNone(e.asInstanceOf[Expr[Vehicle.Motorized.Motorcycle]])
@@ -264,7 +191,6 @@ object Macro:
     checkNone(e.asInstanceOf[Expr[Address]])
 
   def wrongSumVariantIsNoneImpl(using Quotes): Expr[Boolean] =
-    // `Rect` no longer has its own top-level `FromExpr` (see `wrongNestedVariantIsNoneImpl`).
     given FromExpr[Shape.Rect] = FromExpr.derived
     val e: Expr[Shape.Circle] = '{ Shape.Circle(1.0) }
     checkNone(e.asInstanceOf[Expr[Shape.Rect]])
