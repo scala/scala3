@@ -995,6 +995,31 @@ class CheckCaptures extends Recheck, SymTransformer:
       res
     }
 
+    /** Check that capture set of type argument subcaptures capture set of bounds.
+     *  We don't check if
+     *   - the bound is excatly any since that is capture polymorphic top, or
+     *   - the bound is singleton, since that's not a "real" bound, or
+     *   - the bound capture set has terminal capabilities, since we don't
+     *     want to upper-bound capsets by GlobalAny, or
+     *   - the bound refers to parameters in the same clause, since we can't
+     *     properly check F-bounded occurrences.
+     */
+    override def recheckTypeArg(arg: Tree, formal: Type, binder: PolyType)(using Context): Type =
+      val argType = super.recheckTypeArg(arg, formal, binder)
+      val argRefs = argType.captureSet
+      val hiBound = formal.bounds.hi
+      val boundRefs = hiBound.captureSet
+      val canCheck =
+        !hiBound.isExactlyAny && !hiBound.isRef(defn.SingletonClass)
+        && !boundRefs.elems.exists:
+          case ref: TypeParamRef => ref.binder == binder // F-bounded
+          case ref => ref.isTerminalCapability // GlobalCaps cannot constrain arguments
+      if canCheck then
+        capt.println(i"constrain $arg: ${argType} with $hiBound: $boundRefs")
+        checkSubset(argRefs, boundRefs, arg.srcPos,
+          provenance = i"\nof the type parameter bound ${formal.bounds.hi}")
+      argType
+
     /** Faced with a tree of form `caps.contansImpl[CS, r.type]`, check that `R` is a tracked
      *  capability and assert that `{r} <: CS`.
      */
@@ -1469,7 +1494,6 @@ class CheckCaptures extends Recheck, SymTransformer:
       for parent <- impl.parents do // (1)
         checkSubset(parent.tpe.classSymbol.useSet, localSet, parent.srcPos,
           provenance = i"\nof the references allowed to be captured by $cls")
-
 
       val saved = curEnv
       curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
