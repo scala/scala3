@@ -936,6 +936,19 @@ class ReplUnrollTests extends ReplTest(ReplTest.defaultOptions ++ Seq("-preview"
         normalizedOutput.contains(normalizedDefn)
       )
 
+class ReplInferUnionTests extends ReplTest(ReplTest.defaultOptions :+ "-Wall"):
+  @Test def i25991: Unit = initially:
+    run("""Some(42).contains("answer")""")
+    val expected =
+      """#1 warning found
+         #-- [E225] Type Warning: --------------------------------------------------------
+         #1 |Some(42).contains("answer")
+         #  |^^^^^^^^^^^^^^^^^
+         #  |A type argument was inferred to be union type Int | String
+         #  |This may indicate a programming error.
+         #val res0: Boolean = false""".stripMargin('#')
+    assertEquals(expected, storedOutput().trim())
+
 class ReplPrintDimentionsTests extends ReplTest(ReplTest.defaultOptions) {
   private def runTest(settings: List[String], expected: String): Unit =
     resetToInitial(settings)
