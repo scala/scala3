@@ -51,7 +51,9 @@ object ToExprFactory:
         import quotes.reflect.*
         val idx = m.ordinal(x)
         val caseSym = TypeRepr.of[T].typeSymbol.children(idx)
-        caseSym.typeRef.asType match
+        // Parameterless enum cases (`case Red, Green`) are terms, not types; use termRef for those.
+        val ref = if caseSym.isTerm then caseSym.termRef else caseSym.typeRef
+        ref.asType match
           case '[c] => elems(idx).asInstanceOf[ToExprFactory[c]].apply().apply(x.asInstanceOf[c]).asInstanceOf[Expr[T]]
 
   /** Bridges any type that already has a plain `ToExpr` (e.g. `Int`, `String`) into `ToExprFactory`. */

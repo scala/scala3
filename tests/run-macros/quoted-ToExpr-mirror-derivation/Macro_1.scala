@@ -1,51 +1,49 @@
 import scala.quoted.*
 
 // Plain product, primitives
-case class Point(x: Int, y: Int) derives ToExpr
+case class Point(x: Int, y: Int) derives ToExprFactory
 
 // Nested products, cross-object
-case class Address(city: String, zip: Int) derives ToExpr
+case class Address(city: String, zip: Int) derives ToExprFactory
 object Namespace:
-  case class Person(name: String, address: Address) derives ToExpr
+  case class Person(name: String, address: Address) derives ToExprFactory
 
 // Singleton (case object)
-case object Singleton derives ToExpr
+case object Singleton derives ToExprFactory
 
 // Generic product (needs an explicit Type/instance bound)
-case class Box[A](value: A)
-given [A: {Type, ToExpr}] => ToExpr[Box[A]] = ToExpr.derived
+case class Box[A](value: A) derives ToExprFactory
 
 // Product, mixed field kinds
-case class Mixed(name: String, flag: Boolean, ratio: Double) derives ToExpr
+case class Mixed(name: String, flag: Boolean, ratio: Double) derives ToExprFactory
 
 // Field type (List[Int]) whose ToExpr needs Quotes ambient, not just Type/instance
 case class Tagged(tags: List[Int])
-given taggedToExpr(using Quotes): ToExpr[Tagged] = ToExpr.derived
+given taggedToExpr(using Quotes): ToExpr[Tagged] = ToExprFactory.derived[Tagged].apply()
 
 // Sum: sealed trait + cases, auto-derived
-sealed trait Shape derives ToExpr
+sealed trait Shape derives ToExprFactory
 object Shape:
   case class Circle(r: Double) extends Shape
   case class Rect(w: Double, h: Double) extends Shape
   case object Origin extends Shape
 
 // Sum: enum, singleton + parameterized cases
-enum Color derives ToExpr:
+enum Color derives ToExprFactory:
   case Red, Green
   case Custom(hex: String)
 
 // Product with a sum-typed field
-case class Container(name: String, shape: Shape) derives ToExpr
+case class Container(name: String, shape: Shape) derives ToExprFactory
 
 // Zero-arg product (not a singleton)
-case class Blank() derives ToExpr
+case class Blank() derives ToExprFactory
 
 // Generic sum (explicit bound on the trait; cases auto-derived)
-sealed trait Result[+A]
+sealed trait Result[+A] derives ToExprFactory
 object Result:
   case class Ok[A](value: A) extends Result[A]
   case object Fail extends Result[Nothing]
-given [A: {Type, ToExpr}] => ToExpr[Result[A]] = ToExpr.derived
 
 // Non-case singleton, lifted via valueOf[T] (no `derives`)
 object Marker
@@ -85,7 +83,7 @@ object Macro:
   def liftTaggedImpl(using Quotes): Expr[Tagged] = Expr(Tagged(List(1, 2, 3)))
   def liftCircleImpl(using Quotes): Expr[Shape.Circle] =
     // `Circle` has no standalone top-level `ToExpr` (auto-derived via `Shape`), so derive locally
-    given ToExpr[Shape.Circle] = ToExpr.derived
+    given ToExpr[Shape.Circle] = ToExprFactory.derived[Shape.Circle].apply()
     Expr(Shape.Circle(1.0))
   def liftShapeCircleImpl(using Quotes): Expr[Shape] = Expr[Shape](Shape.Circle(2.0))
   def liftShapeRectImpl(using Quotes): Expr[Shape] = Expr[Shape](Shape.Rect(1.0, 2.0))

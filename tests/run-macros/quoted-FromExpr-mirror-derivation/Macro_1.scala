@@ -1,65 +1,61 @@
 import scala.quoted.*
 
 // Plain product, primitives
-case class Point(x: Int, y: Int) derives ToExpr, FromExpr
+case class Point(x: Int, y: Int) derives ToExprFactory, FromExprFactory
 
 // Product, mixed field kinds
-case class Mixed(name: String, flag: Boolean, ratio: Double) derives ToExpr, FromExpr
+case class Mixed(name: String, flag: Boolean, ratio: Double) derives ToExprFactory, FromExprFactory
 
 // Same shape, different types (wrong-mirror guard)
-case class Meters(value: Int) derives ToExpr, FromExpr
-case class Seconds(value: Int) derives ToExpr, FromExpr
+case class Meters(value: Int) derives ToExprFactory, FromExprFactory
+case class Seconds(value: Int) derives ToExprFactory, FromExprFactory
 
 // `derived` on a tuple type directly
-given tuple2FromExpr: FromExpr[(Int, String)] = FromExpr.derived
-given tuple2ToExpr: ToExpr[(Int, String)] = ToExpr.derived
-given tuple5FromExpr: FromExpr[(Int, String, Boolean, Double, Char)] = FromExpr.derived
-given tuple5ToExpr: ToExpr[(Int, String, Boolean, Double, Char)] = ToExpr.derived
+given tuple2FromExpr(using Quotes): FromExpr[(Int, String)] = FromExprFactory.derived[(Int, String)].apply()
+given tuple2ToExpr(using Quotes): ToExpr[(Int, String)] = ToExprFactory.derived[(Int, String)].apply()
+given tuple5FromExpr(using Quotes): FromExpr[(Int, String, Boolean, Double, Char)] = FromExprFactory.derived[(Int, String, Boolean, Double, Char)].apply()
+given tuple5ToExpr(using Quotes): ToExpr[(Int, String, Boolean, Double, Char)] = ToExprFactory.derived[(Int, String, Boolean, Double, Char)].apply()
 
 // Nested products, cross-object
-case class Address(city: String, zip: Int) derives FromExpr
+case class Address(city: String, zip: Int) derives FromExprFactory
 object Namespace:
-  case class Person(name: String, address: Address) derives FromExpr
+  case class Person(name: String, address: Address) derives FromExprFactory
 
 // Three levels of nesting
-case class Company(hq: Address, ceo: Namespace.Person) derives FromExpr
+case class Company(hq: Address, ceo: Namespace.Person) derives FromExprFactory
 
 // Singleton (case object)
-case object Singleton derives ToExpr, FromExpr
+case object Singleton derives ToExprFactory, FromExprFactory
 
 // Generic product (needs an explicit Type/instance bound)
-case class Box[A](value: A)
-given [A: {Type, ToExpr}] => ToExpr[Box[A]] = ToExpr.derived
-given [A: {Type, FromExpr}] => FromExpr[Box[A]] = FromExpr.derived
+case class Box[A](value: A) derives FromExprFactory, ToExprFactory
 
 // Sum: sealed trait + cases, auto-derived
-sealed trait Shape derives ToExpr, FromExpr
+sealed trait Shape derives ToExprFactory, FromExprFactory
 object Shape:
   case class Circle(r: Double) extends Shape
   case class Rect(w: Double, h: Double) extends Shape
   case object Origin extends Shape
 
 // Sum: enum, singleton + parameterized cases
-enum Color derives ToExpr, FromExpr:
+enum Color derives ToExprFactory, FromExprFactory:
   case Red, Green
   case Custom(hex: String)
 
 // Product with a sum-typed field
-case class Container(name: String, shape: Shape) derives ToExpr, FromExpr
+case class Container(name: String, shape: Shape) derives ToExprFactory, FromExprFactory
 
 // Zero-arg product (not a singleton)
-case class Blank() derives ToExpr, FromExpr
+case class Blank() derives ToExprFactory, FromExprFactory
 
 // Generic sum (explicit bound on the trait; cases auto-derived)
-sealed trait Result[+A]
+sealed trait Result[+A] derives FromExprFactory, ToExprFactory
 object Result:
   case class Ok[A](value: A) extends Result[A]
   case object Fail extends Result[Nothing]
-given [A: {Type, FromExpr}] => FromExpr[Result[A]] = FromExpr.derived
-given [A: {Type, ToExpr}] => ToExpr[Result[A]] = ToExpr.derived
 
 // Nested sum hierarchy, two levels of dispatch
-sealed trait Vehicle derives ToExpr, FromExpr
+sealed trait Vehicle derives ToExprFactory, FromExprFactory
 object Vehicle:
   sealed trait Motorized extends Vehicle
   object Motorized:
@@ -68,7 +64,7 @@ object Vehicle:
   case class Bicycle(gears: Int) extends Vehicle
 
 // Recursive sum: a case's own field is the enclosing type
-enum Arith derives ToExpr, FromExpr:
+enum Arith derives ToExprFactory, FromExprFactory:
   case Lit(n: Int)
   case Add(l: Arith, r: Arith)
   case Neg(e: Arith)
@@ -78,7 +74,7 @@ case class Big25(
   f1: Int, f2: Int, f3: Int, f4: Int, f5: Int, f6: Int, f7: Int, f8: Int, f9: Int, f10: Int,
   f11: Int, f12: Int, f13: Int, f14: Int, f15: Int, f16: Int, f17: Int, f18: Int, f19: Int, f20: Int,
   f21: Int, f22: Int, f23: Int, f24: Int, f25: Int
-) derives ToExpr, FromExpr
+) derives ToExprFactory, FromExprFactory
 
 object Macro:
   // Constructor-call recognition: `apply` and `new`
@@ -134,7 +130,7 @@ object Macro:
   inline def matchTuple2: Boolean = ${ Macro.matchTuple2Impl }
   inline def roundTripTuple5: Boolean = ${ Macro.roundTripTuple5Impl }
 
-  // ToExpr.derived -> FromExpr.derived round trip, all cases above
+  // ToExpr -> FromExpr round trip, all cases above
   inline def roundTrips: Boolean = ${ Macro.roundTripsImpl }
 
   private def check[T: Type: FromExpr](expr: Expr[T], expected: T)(using Quotes): Expr[Boolean] =
@@ -182,7 +178,7 @@ object Macro:
     check[Vehicle]('{ Vehicle.Bicycle(21) }, Vehicle.Bicycle(21))
 
   def wrongNestedVariantIsNoneImpl(using Quotes): Expr[Boolean] =
-    given FromExpr[Vehicle.Motorized.Motorcycle] = FromExpr.derived
+    given FromExpr[Vehicle.Motorized.Motorcycle] = FromExprFactory.derived[Vehicle.Motorized.Motorcycle].apply()
     val e: Expr[Vehicle.Motorized.Car] = '{ Vehicle.Motorized.Car(4) }
     checkNone(e.asInstanceOf[Expr[Vehicle.Motorized.Motorcycle]])
 
@@ -203,7 +199,7 @@ object Macro:
     checkNone(e.asInstanceOf[Expr[Address]])
 
   def wrongSumVariantIsNoneImpl(using Quotes): Expr[Boolean] =
-    given FromExpr[Shape.Rect] = FromExpr.derived
+    given FromExpr[Shape.Rect] = FromExprFactory.derived[Shape.Rect].apply()
     val e: Expr[Shape.Circle] = '{ Shape.Circle(1.0) }
     checkNone(e.asInstanceOf[Expr[Shape.Rect]])
 

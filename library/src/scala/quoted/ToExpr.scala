@@ -20,7 +20,13 @@ trait ToExpr[T] {
 
 }
 
-private[quoted] trait LowPriorityToExpr:
+// Lowest priority: only used when nothing more specific (including a derived
+// ToExprFactory instance) is found, e.g. a non-case singleton like `object Marker`.
+private[quoted] trait LowestPriorityToExpr:
+  given ValueOfToExpr: [T: {ValueOf, Type}] => ToExpr[T]:
+    def apply(x: T)(using Quotes): Expr[T] = '{ valueOf[T] }
+
+private[quoted] trait LowPriorityToExpr extends LowestPriorityToExpr:
   given fromFactory: [T: Type] => (f: ToExprFactory[T]) => ToExpr[T] = f.apply()
 
 /** Default given instances of `ToExpr`. */
@@ -28,9 +34,6 @@ object ToExpr extends LowPriorityToExpr {
 
   // IMPORTANT Keep in sync with tests/run-staging/liftables.scala
 
-  given ValueOfToExpr: [T: {ValueOf, Type}] => ToExpr[T]:
-    def apply(x: T)(using Quotes): Expr[T] = '{ valueOf[T] }
-  
   /** Default implementation of `ToExpr[Boolean]`. */
   given BooleanToExpr[T <: Boolean]: ToExpr[T] with {
     def apply(x: T)(using Quotes) =

@@ -85,7 +85,9 @@ object FromExprFactory:
         val caseSyms = TypeRepr.of[T].typeSymbol.children
         val resolvedElems: List[FromExpr[Any]] = elems.zip(caseSyms).map:
           case (factory, caseSym) =>
-            caseSym.typeRef.asType match
+            // Parameterless enum cases (`case Red, Green`) are terms, not types; use termRef for those.
+            val ref = if caseSym.isTerm then caseSym.termRef else caseSym.typeRef
+            ref.asType match
               case '[c] => factory.asInstanceOf[FromExprFactory[c]].apply().asInstanceOf[FromExpr[Any]]
         resolvedElems.iterator.map(_.unapply(x)).collectFirst { case Some(v) => v.asInstanceOf[T] }
 
