@@ -34,17 +34,22 @@ object FromExpr {
 
   import scala.deriving.Mirror
 
-  /** Derives a `FromExpr[T]` using its `Mirror`; also recognizes `ToExpr.derived`'s own
-   *  `mirror.fromProduct(tuple)` output, so deriving both on the same type round-trips.
-   */
-  inline def derived[T: Mirror.Of as m]: FromExpr[T] =
-    val elemInstances = compiletime.summonAll[Tuple.Map[m.MirroredElemTypes, FromExpr]].toList.asInstanceOf[List[FromExpr[Any]]]
-    inline m match
-      case given Mirror.ProductOf[T] => derivedProduct[T](elemInstances)
-      case given Mirror.SumOf[T] => derivedSum[T](elemInstances)
+  inline def derived[T: Mirror.Of as m]: FromExpr[T] = inline m match
+    case given Mirror.ProductOf[T] =>
+      derivedProduct[T](compiletime.summonAll[Tuple.Map[m.MirroredElemTypes, FromExpr]].toList.asInstanceOf[List[FromExpr[Any]]])
+    case given Mirror.SumOf[T] =>
+      derivedSum[T](summonAllOrDerive[m.MirroredElemTypes])
+
+  private inline def summonAllOrDerive[Elems <: Tuple]: List[FromExpr[Any]] = inline compiletime.erasedValue[Elems] match
+    case _: EmptyTuple => Nil
+    case _: (h *: t) => summonOrDerive[h].asInstanceOf[FromExpr[Any]] :: summonAllOrDerive[t]
+
+  private inline def summonOrDerive[C]: FromExpr[C] = compiletime.summonFrom:
+    case fe: FromExpr[C] => fe
+    case given Mirror.Of[C] => derived[C]
 
   @nowarn("msg=duplicated at each inline site") // T required for Type.of[T]
-  private inline def derivedProduct[T](elemInstances: List[FromExpr[Any]])(using m: Mirror.ProductOf[T]): FromExpr[T] = new FromExpr[T]:
+  private inline def derivedProduct[T: Mirror.ProductOf as m](elemInstances: List[FromExpr[Any]]): FromExpr[T] = new FromExpr[T]:
     def unapply(x: Expr[T])(using quotes: Quotes): Option[T] =
       import quotes.reflect.*
       val tpe = TypeRepr.of[T]

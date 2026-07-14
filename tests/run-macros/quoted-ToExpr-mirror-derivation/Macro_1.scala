@@ -32,25 +32,20 @@ case class Tagged(tags: List[Int])
 given taggedToExpr(using Quotes): ToExpr[Tagged] = ToExpr.derived
 
 // Sum derivation: sealed hierarchy of case classes and case objects, nested inside the
-// sealed trait's own companion object. The sum's derived instance only dispatches by
-// ordinal, it does not recursively derive instances for its cases, so each case needs
-// its own `ToExpr` instance too.
+// sealed trait's own companion object. Only the sealed trait itself needs `derives` -- its
+// own cases are derived automatically since none of them already has an instance in scope;
+// the sum's derived instance just dispatches by ordinal to whichever case it picks up.
 sealed trait Shape derives ToExpr
 object Shape:
-  case class Circle(r: Double) extends Shape derives ToExpr
-  case class Rect(w: Double, h: Double) extends Shape derives ToExpr
-  case object Origin extends Shape derives ToExpr
+  case class Circle(r: Double) extends Shape
+  case class Rect(w: Double, h: Double) extends Shape
+  case object Origin extends Shape
 
-// Sum derivation over an enum with a mix of singleton and parameterized cases. `derives`
-// on the enum doesn't propagate to individual cases, so each case still needs its own
-// (explicit) `ToExpr` given.
+// Sum derivation over an enum with a mix of singleton and parameterized cases. Only the
+// enum itself needs `derives` -- its cases are derived automatically, the same as `Shape`.
 enum Color derives ToExpr:
   case Red, Green
   case Custom(hex: String)
-
-given ToExpr[Color.Red.type] = ToExpr.derived
-given ToExpr[Color.Green.type] = ToExpr.derived
-given ToExpr[Color.Custom] = ToExpr.derived
 
 // Product derivation with a sum-typed field: composes `derivedProduct` (for `Container`)
 // and `derivedSum` (for its `shape` field) within a single derivation.
@@ -62,14 +57,15 @@ case class Container(name: String, shape: Shape) derives ToExpr
 case class Blank() derives ToExpr
 
 // Sum derivation over a generic sealed trait: combines the generics-need-an-explicit-given
-// constraint (see `Box` above) with sum dispatch (see `Shape` above).
+// constraint (see `Box` above) with sum dispatch (see `Shape` above). The sealed trait
+// itself still needs the explicit `Type[A]`/instance-bound given, but its cases (`Ok`,
+// `Fail`) no longer need one of their own -- `A`'s own bound is already in scope from the
+// outer given.
 sealed trait Result[+A]
 object Result:
   case class Ok[A](value: A) extends Result[A]
   case object Fail extends Result[Nothing]
 
-given resultOkToExpr[A: Type: ToExpr]: ToExpr[Result.Ok[A]] = ToExpr.derived
-given ToExpr[Result.Fail.type] = ToExpr.derived
 given resultToExpr[A: Type: ToExpr]: ToExpr[Result[A]] = ToExpr.derived
 
 // ConstToExpr: an arbitrary (non-case) object singleton type, lifted directly via
@@ -111,7 +107,12 @@ object Macro:
   def liftBoxBoxImpl(using Quotes): Expr[Box[Box[Int]]] = Expr(Box(Box(1)))
   def liftMixedImpl(using Quotes): Expr[Mixed] = Expr(Mixed("m", true, 1.5))
   def liftTaggedImpl(using Quotes): Expr[Tagged] = Expr(Tagged(List(1, 2, 3)))
-  def liftCircleImpl(using Quotes): Expr[Shape.Circle] = Expr(Shape.Circle(1.0))
+  def liftCircleImpl(using Quotes): Expr[Shape.Circle] =
+    // `Circle` no longer has its own top-level `ToExpr` (it's derived automatically as part
+    // of `Shape`'s own dispatch, not exposed standalone), so derive one locally to lift it
+    // directly (as opposed to `liftShapeCircleImpl` below, which goes through `Shape`).
+    given ToExpr[Shape.Circle] = ToExpr.derived
+    Expr(Shape.Circle(1.0))
   def liftShapeCircleImpl(using Quotes): Expr[Shape] = Expr[Shape](Shape.Circle(2.0))
   def liftShapeRectImpl(using Quotes): Expr[Shape] = Expr[Shape](Shape.Rect(1.0, 2.0))
   def liftShapeOriginImpl(using Quotes): Expr[Shape] = Expr[Shape](Shape.Origin)

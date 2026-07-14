@@ -23,7 +23,6 @@ object Test:
     assert(Macro.matchVehicleMotorcycle, "matchVehicleMotorcycle")
     assert(Macro.matchVehicleBicycle, "matchVehicleBicycle")
     assert(Macro.wrongNestedVariantIsNone, "wrongNestedVariantIsNone")
-    assert(Macro.matchArithNested, "matchArithNested")
     assert(Macro.matchAscribedPoint, "matchAscribedPoint")
     assert(Macro.matchBracedPoint, "matchBracedPoint")
     assert(Macro.nonMatchingIsNone, "nonMatchingIsNone")

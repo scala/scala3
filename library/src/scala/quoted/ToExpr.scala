@@ -26,13 +26,20 @@ object ToExpr {
   import scala.deriving.Mirror
   import scala.quoted.*
 
-  inline def derived[T: Mirror.Of as m]: ToExpr[T] =
-    type Elems = m.MirroredElemTypes
-    val elemInstances = compiletime.summonAll[Tuple.Map[Elems, ToExpr]].toList.asInstanceOf[List[ToExpr[Any]]]
-    m match
-      case given Mirror.ProductOf[T] => derivedProduct[T](elemInstances)
-      case given Mirror.SumOf[T] => derivedSum[T](elemInstances)
-  
+  inline def derived[T: Mirror.Of as m]: ToExpr[T] = inline m match
+    case given Mirror.ProductOf[T] => 
+      derivedProduct[T](compiletime.summonAll[Tuple.Map[m.MirroredElemTypes, ToExpr]].toList.asInstanceOf[List[ToExpr[Any]]])
+    case given Mirror.SumOf[T] => 
+      derivedSum[T](summonAllOrDerive[m.MirroredElemTypes])
+
+  private inline def summonAllOrDerive[Elems <: Tuple]: List[ToExpr[Any]] = inline compiletime.erasedValue[Elems] match
+    case _: EmptyTuple => Nil
+    case _: (h *: t) => summonOrDerive[h].asInstanceOf[ToExpr[Any]] :: summonAllOrDerive[t]
+
+  private inline def summonOrDerive[C]: ToExpr[C] = compiletime.summonFrom:
+    case te: ToExpr[C] => te
+    case given Mirror.Of[C] => derived[C]
+
   @nowarn("msg=duplicated at each inline site") // T required for Type.of[T]
   private inline def derivedProduct[T: Mirror.ProductOf](elemInstances: List[ToExpr[Any]]): ToExpr[T] = new ToExpr[T]:
     def apply(x: T)(using Quotes): Expr[T] =
