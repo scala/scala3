@@ -101,6 +101,34 @@ given resultOkToExpr[A: Type: ToExpr]: ToExpr[Result.Ok[A]] = ToExpr.derived
 given ToExpr[Result.Fail.type] = ToExpr.derived
 given resultToExpr[A: Type: ToExpr]: ToExpr[Result[A]] = ToExpr.derived
 
+// Sum derivation nested two levels deep: a sealed trait whose own case is ITSELF a sealed
+// trait with further cases, to confirm dispatch recurses through nested sums (each level
+// just needs the next level's own derived instance) rather than only a single level of
+// `Mirror.SumOf`. Also derives `ToExpr`, for the round-trip test below.
+sealed trait Vehicle derives ToExpr, FromExpr
+object Vehicle:
+  sealed trait Motorized extends Vehicle derives ToExpr, FromExpr
+  object Motorized:
+    case class Car(wheels: Int) extends Motorized derives ToExpr, FromExpr
+    case class Motorcycle(cc: Int) extends Motorized derives ToExpr, FromExpr
+  case class Bicycle(gears: Int) extends Vehicle derives ToExpr, FromExpr
+
+// Recursive sum: a case's own field refers back to the enum being derived, so deriving
+// must tolerate this self/mutually-recursive summon (the generated given for `Arith`
+// itself, and the per-case givens below that need `FromExpr[Arith]` for their `Arith`-typed
+// fields, resolve each other regardless of declaration order). Also derives `ToExpr`, for
+// the round-trip test below.
+enum Arith derives ToExpr, FromExpr:
+  case Lit(n: Int)
+  case Add(l: Arith, r: Arith)
+  case Neg(e: Arith)
+
+given ToExpr[Arith.Lit] = ToExpr.derived
+given ToExpr[Arith.Add] = ToExpr.derived
+given ToExpr[Arith.Neg] = ToExpr.derived
+given FromExpr[Arith.Lit] = FromExpr.derived
+given FromExpr[Arith.Add] = FromExpr.derived
+given FromExpr[Arith.Neg] = FromExpr.derived
 // A case class whose arity (25) exceeds `Tuple22`: `Expr.ofTupleFromSeq` produces a
 // `Tuple.fromIArray(...).asInstanceOf[...]` shape for these, which `FromExpr.derived`'s
 // tuple-unwrap branch does not recognize (`TupleN.apply` matching only covers arity 0-22).
@@ -134,6 +162,15 @@ object Macro:
   inline def matchBlankNew: Boolean = ${ Macro.matchBlankNewImpl }
   inline def matchResultOk: Boolean = ${ Macro.matchResultOkImpl }
   inline def matchResultFail: Boolean = ${ Macro.matchResultFailImpl }
+
+  inline def matchVehicleCar: Boolean = ${ Macro.matchVehicleCarImpl }
+  inline def matchVehicleMotorcycle: Boolean = ${ Macro.matchVehicleMotorcycleImpl }
+  inline def matchVehicleBicycle: Boolean = ${ Macro.matchVehicleBicycleImpl }
+  // A `Car` tree read back as a `Motorcycle`: both are cases of the same nested `Motorized`
+  // sum, so this exercises the wrong-variant check one level deeper than `wrongSumVariantIsNone`.
+  inline def wrongNestedVariantIsNone: Boolean = ${ Macro.wrongNestedVariantIsNoneImpl }
+
+  inline def matchArithNested: Boolean = ${ Macro.matchArithNestedImpl }
 
   // A tree wrapped in a `Typed` node (as produced by a type ascription) must be
   // unwrapped before the underlying constructor call is recognized.
@@ -215,6 +252,24 @@ object Macro:
   def matchBlankNewImpl(using Quotes): Expr[Boolean] = check('{ new Blank() }, Blank())
   def matchResultOkImpl(using Quotes): Expr[Boolean] = check[Result[Int]]('{ Result.Ok(5) }, Result.Ok(5))
   def matchResultFailImpl(using Quotes): Expr[Boolean] = check[Result[Int]]('{ Result.Fail }, Result.Fail)
+
+  def matchVehicleCarImpl(using Quotes): Expr[Boolean] =
+    check[Vehicle]('{ Vehicle.Motorized.Car(4) }, Vehicle.Motorized.Car(4))
+  def matchVehicleMotorcycleImpl(using Quotes): Expr[Boolean] =
+    check[Vehicle]('{ Vehicle.Motorized.Motorcycle(650) }, Vehicle.Motorized.Motorcycle(650))
+  def matchVehicleBicycleImpl(using Quotes): Expr[Boolean] =
+    check[Vehicle]('{ Vehicle.Bicycle(21) }, Vehicle.Bicycle(21))
+
+  def wrongNestedVariantIsNoneImpl(using Quotes): Expr[Boolean] =
+    val e: Expr[Vehicle.Motorized.Car] = '{ Vehicle.Motorized.Car(4) }
+    checkNone(e.asInstanceOf[Expr[Vehicle.Motorized.Motorcycle]])
+
+  def matchArithNestedImpl(using Quotes): Expr[Boolean] =
+    check[Arith](
+      '{ Arith.Add(Arith.Lit(1), Arith.Neg(Arith.Add(Arith.Lit(2), Arith.Lit(3)))) },
+      Arith.Add(Arith.Lit(1), Arith.Neg(Arith.Add(Arith.Lit(2), Arith.Lit(3))))
+    )
+
   def matchAscribedPointImpl(using Quotes): Expr[Boolean] = check('{ (Point(1, 2): Point) }, Point(1, 2))
   def matchBracedPointImpl(using Quotes): Expr[Boolean] = check('{ { Point(1, 2) } }, Point(1, 2))
 
@@ -264,4 +319,7 @@ object Macro:
         && roundTrip[Result[Int]](Result.Fail)
         && roundTrip[Color](Color.Red)
         && roundTrip[Color](Color.Custom("#fff"))
+        && roundTrip[Vehicle](Vehicle.Motorized.Car(4))
+        && roundTrip[Vehicle](Vehicle.Bicycle(21))
+        && roundTrip(Arith.Add(Arith.Lit(1), Arith.Neg(Arith.Add(Arith.Lit(2), Arith.Lit(3)))))
     )
