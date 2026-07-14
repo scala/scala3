@@ -173,6 +173,7 @@
 [submodule "community-build/community-projects/izumi-reflect"]
 	path = community-build/community-projects/izumi-reflect
 	url = https://github.com/dotty-staging/izumi-reflect.git
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/perspective"]
 	path = community-build/community-projects/perspective
 	url = https://github.com/dotty-staging/perspective.git
