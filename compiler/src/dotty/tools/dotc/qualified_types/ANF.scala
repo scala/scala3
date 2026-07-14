@@ -147,6 +147,11 @@ class ANF extends MacroTransform, IdentityDenotTransformer:
    *  reparents definitions owned by the enclosing block, not by a sibling.
    */
   private def hoist(expr: Tree, fromOwner: Symbol)(using Context): (List[Tree], Tree) =
+    // Nothing to lift: leave the tree alone. Descending into `liftApplication`
+    // here would let `LiftComplex` lift ordinary complex subexpressions with no
+    // skolem to substitute — e.g. eta-lifting the `isInstanceOf` poly-method out
+    // of a skolem-free `runtimeChecked` guard into an ill-typed `val`.
+    if !hasSkolemArg(expr) then return (Nil, expr)
     expr match
       case If(cond, thenp, elsep) =>
         val (defs, cond1) = hoist(cond, fromOwner)
