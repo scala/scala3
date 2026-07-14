@@ -2,7 +2,7 @@ sealed trait Xa[T]
 sealed trait Mu[T] extends Xa[T]
 object Xa {
   // bad
-  implicit def convertMu[X[x] <: Xa[x], A, B](implicit t: X[A] with Xa[A]): X[B] = t.asInstanceOf[X[B]]
+  implicit def convertMu[X[x] <: Xa[x], A, B](implicit t: X[A] & Xa[A]): X[B] = t.asInstanceOf[X[B]]
   // good
 //  implicit def convertMu[X[x] <: Xa[x], A, B](implicit t: X[A] with Mu[A]): X[B] = t.asInstanceOf[X[B]]
 }

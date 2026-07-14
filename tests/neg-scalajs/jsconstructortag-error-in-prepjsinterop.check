@@ -1,17 +1,3 @@
--- [E003] Syntax Warning: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:16:42 ------------------------
-16 |  val c = js.constructorTag[NativeJSClass with NativeJSTrait] // error
-   |                                          ^^^^
-   |                             with as a type operator has been deprecated; use & instead
-   |                             This construct can be rewritten automatically under -rewrite -source 3.4-migration.
-   |
-   | longer explanation available when compiling with `-explain`
--- [E003] Syntax Warning: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:22:36 ------------------------
-22 |  val g = js.constructorTag[JSClass with JSTrait] // error
-   |                                    ^^^^
-   |                             with as a type operator has been deprecated; use & instead
-   |                             This construct can be rewritten automatically under -rewrite -source 3.4-migration.
-   |
-   | longer explanation available when compiling with `-explain`
 -- Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:13:42 ----------------------------------------
 13 |  val a = js.constructorTag[NativeJSTrait] // error
    |                                          ^
@@ -22,10 +8,10 @@
    |                                                NativeJSObject.type is not a class type
    |
    | longer explanation available when compiling with `-explain`
--- [E170] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:16:61 ----------------------------
-16 |  val c = js.constructorTag[NativeJSClass with NativeJSTrait] // error
-   |                                                             ^
-   |                                                             NativeJSClass & NativeJSTrait is not a class type
+-- [E170] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:16:58 ----------------------------
+16 |  val c = js.constructorTag[NativeJSClass & NativeJSTrait] // error
+   |                                                          ^
+   |                                                          NativeJSClass & NativeJSTrait is not a class type
    |
    | longer explanation available when compiling with `-explain`
 -- [E170] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:17:59 ----------------------------
@@ -44,10 +30,10 @@
    |                                          JSObject.type is not a class type
    |
    | longer explanation available when compiling with `-explain`
--- [E170] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:22:49 ----------------------------
-22 |  val g = js.constructorTag[JSClass with JSTrait] // error
-   |                                                 ^
-   |                                                 JSClass & JSTrait is not a class type
+-- [E170] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:22:46 ----------------------------
+22 |  val g = js.constructorTag[JSClass & JSTrait] // error
+   |                                              ^
+   |                                              JSClass & JSTrait is not a class type
    |
    | longer explanation available when compiling with `-explain`
 -- [E170] Type Error: tests/neg-scalajs/jsconstructortag-error-in-prepjsinterop.scala:23:53 ----------------------------

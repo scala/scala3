@@ -1,5 +1,5 @@
 object G {
-    trait Wizzle[L <: Int with Singleton] {
+    trait Wizzle[L <: Int & Singleton] {
         type Bar[A] = A match {
             case 0 => String
             case L => Int

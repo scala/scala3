@@ -1,8 +1,8 @@
 trait Universe {
-  type Symbol >: Null <: AnyRef with SymbolApi
+  type Symbol >: Null <: AnyRef & SymbolApi
   trait SymbolApi
 
-  type TypeSymbol >: Null <: TypeSymbolApi with Symbol
+  type TypeSymbol >: Null <: TypeSymbolApi & Symbol
   trait TypeSymbolApi
 
   implicit class CompatibleSymbol(sym: Symbol) {

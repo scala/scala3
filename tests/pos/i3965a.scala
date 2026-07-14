@@ -7,7 +7,7 @@ class TreeSet[A]
     with SortedSetOps[A, TreeSet, TreeSet[A]]
 
 class Test {
-  def optionSequence1[CC[X] <: SortedSet[X] with SortedSetOps[X, CC, CC[X]], A : Ordering](xs: CC[A]): Unit = ()
+  def optionSequence1[CC[X] <: SortedSet[X] & SortedSetOps[X, CC, CC[X]], A : Ordering](xs: CC[A]): Unit = ()
 
   def test(xs2: TreeSet[String]) = {
     optionSequence1(xs2)
