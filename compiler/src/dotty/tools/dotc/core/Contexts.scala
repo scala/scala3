@@ -58,6 +58,8 @@ object Contexts {
 
   private val initialStore = store11
 
+  private val emptyMoreProps: Array[AnyRef] = new Array[AnyRef](0)
+
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
 
@@ -150,11 +152,66 @@ object Contexts {
 
     /** A map in which more contextual properties can be stored
      *  Typically used for attributes that are read and written only in special situations.
+     *  Backed by a flat `Array[AnyRef]` of interleaved `[key0, value0, key1, value1, ...]`
+     *  to avoid `HashMap.updated` allocations on the hot `setProperty` path; keys use
+     *  identity equality (`Property.Key` has no overridden `equals`).
      */
-    def moreProperties: Map[Key[Any], Any]
+    def moreProperties: Map[Key[Any], Any] =
+      val arr = morePropertiesArr
+      if arr.length == 0 then Map.empty
+      else
+        val b = Map.newBuilder[Key[Any], Any]
+        var i = 0
+        while i < arr.length do
+          b += ((arr(i).asInstanceOf[Key[Any]], arr(i + 1)))
+          i += 2
+        b.result()
+
+    /** Raw interleaved `[key, value, ...]` array backing storage for properties. */
+    private[Contexts] def morePropertiesArr: Array[AnyRef]
 
     def property[T](key: Key[T]): Option[T] =
-      moreProperties.get(key).asInstanceOf[Option[T]]
+      val arr = morePropertiesArr
+      var i = 0
+      val len = arr.length
+      while i < len do
+        if arr(i) eq key then return Some(arr(i + 1).asInstanceOf[T])
+        i += 2
+      None
+
+    /** Like `property`, but returns the raw stored value (or `null` if absent)
+     *  without allocating a `Some` wrapper. Use this on hot paths where the
+     *  caller immediately tests presence / extracts the value.
+     */
+    def propertyRaw[T](key: Key[T]): T | Null =
+      val arr = morePropertiesArr
+      var i = 0
+      val len = arr.length
+      while i < len do
+        if arr(i) eq key then return arr(i + 1).asInstanceOf[T]
+        i += 2
+      null
+
+    def propertyOrElse[T](key: Key[T], default: => T): T =
+      val arr = morePropertiesArr
+      var i = 0
+      val len = arr.length
+      while i < len do
+        if arr(i) eq key then return arr(i + 1).asInstanceOf[T]
+        i += 2
+      default
+
+    private[dotc] def propertyIndex(key: Key[?]): Int =
+      val arr = morePropertiesArr
+      var i = 0
+      val len = arr.length
+      while i < len do
+        if arr(i) eq key then return i
+        i += 2
+      -1
+
+    private[dotc] def propertyAt[T](index: Int): T =
+      morePropertiesArr(index + 1).asInstanceOf[T]
 
     /** A store that can be used by sub-components.
      *  Typically used for attributes that are defined only once per compilation unit.
@@ -409,9 +466,20 @@ object Contexts {
      *    from constructor parameters to class parameter accessors.
      */
     def superCallContext: Context =
-      val locals = owner.typeParams
+      def filteredLocals =
+        owner.typeParams
           ++ owner.asClass.unforcedDecls.filter: sym =>
-              sym.is(ParamAccessor) || sym.isContextBoundCompanion || sym.isDummyCaptureParam
+            sym.is(ParamAccessor) || sym.isContextBoundCompanion || sym.isDummyCaptureParam
+      val locals =
+        if isAfterTyper then
+          val cache = base.superCallLocalsAfterTyper
+          val cached = cache.lookup(owner)
+          if cached != null then cached
+          else
+            val locals = filteredLocals
+            cache.update(owner, locals)
+            locals
+        else filteredLocals
       superOrThisCallContext(owner.primaryConstructor, newScopeWith(locals*))
 
     /** The context for the arguments of a this(...) constructor call.
@@ -498,14 +566,20 @@ object Contexts {
     def tolerateErrorsForBestEffort = isBestEffort || usedBestEffortTasty
 
     /** A fresh clone of this context embedded in this context. */
-    def fresh: FreshContext = freshOver(this)
+    def fresh: FreshContext = FreshContext(base).fastInit(this)
 
     /** A fresh clone of this context embedded in the specified `outer` context. */
     def freshOver(outer: Context): FreshContext =
-      FreshContext(base).init(outer, this).setTyperState(this.typerState)
+      val fresh = FreshContext(base)
+      if outer eq this then fresh.fastInit(this)
+      else fresh.init(outer, this).setTyperState(this.typerState)
+
+    /** A fresh clone of this context with only the owner changed. */
+    private[Contexts] def freshWithOwner(owner: Symbol): FreshContext =
+      FreshContext(base).fastInitWithOwner(this, owner)
 
     final def withOwner(owner: Symbol): Context =
-      if (owner ne this.owner) fresh.setOwner(owner) else this
+      if (owner ne this.owner) freshWithOwner(owner) else this
 
     final def withTyperState(typerState: TyperState): Context =
       if typerState ne this.typerState then fresh.setTyperState(typerState) else this
@@ -601,8 +675,8 @@ object Contexts {
     private var _source: SourceFile = uninitialized
     final def source: SourceFile = _source
 
-    private var _moreProperties: Map[Key[Any], Any] = uninitialized
-    final def moreProperties: Map[Key[Any], Any] = _moreProperties
+    private var _morePropertiesArr: Array[AnyRef] = emptyMoreProps
+    final def morePropertiesArr: Array[AnyRef] = _morePropertiesArr
 
     private var _store: Store = uninitialized
     final def store: Store = _store
@@ -621,7 +695,47 @@ object Contexts {
       _gadtState = origin.gadtState
       _searchHistory = origin.searchHistory
       _source = origin.source
-      _moreProperties = origin.moreProperties
+      _morePropertiesArr = origin.morePropertiesArr
+      _store = origin.store
+      this
+    }
+
+    /** Fast path for `freshOver(this)`: outer and origin are the same context,
+     *  and the typerState is the origin's typerState (fused setTyperState). */
+    private[Contexts] def fastInit(origin: Context): this.type = {
+      _outer = origin
+      _period = origin.period
+      _mode = origin.mode
+      _owner = origin.owner
+      _tree = origin.tree
+      _scope = origin.scope
+      _typerState = origin.typerState
+      _gadtState = origin.gadtState
+      _searchHistory = origin.searchHistory
+      _source = origin.source
+      _morePropertiesArr = origin.morePropertiesArr
+      _store = origin.store
+      this
+    }
+
+    /** Fast path for owner-only context changes. */
+    private[Contexts] def fastInitWithOwner(origin: Context, owner: Symbol): this.type = {
+      assert(owner != NoSymbol)
+      initWithOwner(origin, origin, owner)
+    }
+
+    private[Contexts] def initWithOwner(outer: Context, origin: Context, owner: Symbol): this.type = {
+      _outer = outer
+      _period = origin.period
+      _mode = origin.mode
+      _owner = owner
+      _tree = origin.tree
+      _scope = origin.scope
+      _typerState = origin.typerState
+      _gadtState = origin.gadtState
+      _searchHistory = origin.searchHistory
+      _source = origin.source
+      _morePropertiesArr = origin.morePropertiesArr
       _store = origin.store
       this
     }
@@ -629,6 +743,10 @@ object Contexts {
     def reuseIn(outer: Context): this.type =
       resetCaches()
       init(outer, outer)
+
+    private[Contexts] def reuseInWithOwner(outer: Context, owner: Symbol): this.type =
+      resetCaches()
+      initWithOwner(outer, outer, owner)
 
     def setPeriod(period: Period): this.type =
       util.Stats.record("Context.setPeriod")
@@ -692,9 +810,9 @@ object Contexts {
       this._source = source
       this
 
-    private def setMoreProperties(moreProperties: Map[Key[Any], Any]): this.type =
+    private def setMorePropertiesArr(arr: Array[AnyRef]): this.type =
       util.Stats.record("Context.setMoreProperties")
-      this._moreProperties = moreProperties
+      this._morePropertiesArr = arr
       this
 
     private def setStore(store: Store): this.type =
@@ -727,10 +845,73 @@ object Contexts {
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = updateStore(typeAssignerLoc, typeAssigner)
 
     def setProperty[T](key: Key[T], value: T): this.type =
-      setMoreProperties(moreProperties.updated(key, value))
+      val arr = morePropertiesArr
+      val oldLen = arr.length
+      var i = 0
+      while i < oldLen do
+        if arr(i) eq key then
+          val copy = new Array[AnyRef](oldLen)
+          System.arraycopy(arr, 0, copy, 0, oldLen)
+          copy(i + 1) = value.asInstanceOf[AnyRef]
+          return setMorePropertiesArr(copy)
+        i += 2
+      val copy = new Array[AnyRef](oldLen + 2)
+      if oldLen > 0 then System.arraycopy(arr, 0, copy, 0, oldLen)
+      copy(oldLen) = key.asInstanceOf[AnyRef]
+      copy(oldLen + 1) = value.asInstanceOf[AnyRef]
+      setMorePropertiesArr(copy)
+
+    private[dotc] def replacePropertyAt[T](index: Int, key: Key[T], value: T): this.type =
+      val arr = morePropertiesArr
+      val oldLen = arr.length
+      if index >= 0 && (index & 1) == 0 && index + 1 < oldLen && (arr(index) eq key) then
+        val copy = new Array[AnyRef](oldLen)
+        System.arraycopy(arr, 0, copy, 0, oldLen)
+        copy(index + 1) = value.asInstanceOf[AnyRef]
+        setMorePropertiesArr(copy)
+      else setProperty(key, value)
+
+    def setProperties[T, U](key1: Key[T], value1: T, key2: Key[U], value2: U): this.type =
+      if key1 eq key2 then return setProperty(key2, value2)
+
+      val arr = morePropertiesArr
+      val oldLen = arr.length
+      var idx1 = -1
+      var idx2 = -1
+      var i = 0
+      while i < oldLen do
+        val key = arr(i)
+        if key eq key1 then idx1 = i
+        else if key eq key2 then idx2 = i
+        i += 2
+
+      val newLen = oldLen + (if idx1 < 0 then 2 else 0) + (if idx2 < 0 then 2 else 0)
+      val copy = new Array[AnyRef](newLen)
+      if oldLen > 0 then System.arraycopy(arr, 0, copy, 0, oldLen)
+      if idx1 >= 0 then copy(idx1 + 1) = value1.asInstanceOf[AnyRef]
+      else
+        copy(oldLen) = key1.asInstanceOf[AnyRef]
+        copy(oldLen + 1) = value1.asInstanceOf[AnyRef]
+      if idx2 >= 0 then copy(idx2 + 1) = value2.asInstanceOf[AnyRef]
+      else
+        val idx = if idx1 < 0 then oldLen + 2 else oldLen
+        copy(idx) = key2.asInstanceOf[AnyRef]
+        copy(idx + 1) = value2.asInstanceOf[AnyRef]
+      setMorePropertiesArr(copy)
 
     def dropProperty(key: Key[?]): this.type =
-      setMoreProperties(moreProperties - key)
+      val arr = morePropertiesArr
+      val oldLen = arr.length
+      var i = 0
+      while i < oldLen do
+        if arr(i) eq key then
+          if oldLen == 2 then return setMorePropertiesArr(emptyMoreProps)
+          val copy = new Array[AnyRef](oldLen - 2)
+          if i > 0 then System.arraycopy(arr, 0, copy, 0, i)
+          if i + 2 < oldLen then System.arraycopy(arr, i + 2, copy, i, oldLen - i - 2)
+          return setMorePropertiesArr(copy)
+        i += 2
+      this
 
     def addLocation[T](initial: T): Store.Location[T] = {
       val (loc, store1) = store.newLocation(initial)
@@ -766,7 +947,7 @@ object Contexts {
       c._typerState = TyperState.initialState()
       c._owner = NoSymbol
       c._tree = untpd.EmptyTree
-      c._moreProperties = Map(MessageLimiter -> DefaultMessageLimiter())
+      c._morePropertiesArr = Array[AnyRef](MessageLimiter, DefaultMessageLimiter())
       c._scope = EmptyScope
       c._source = NoSource
       c._store = initialStore
@@ -841,10 +1022,10 @@ object Contexts {
   inline def runWithOwner[T](owner: Symbol)(inline op: Context ?=> T)(using Context): T =
     if Config.reuseOwnerContexts then
       val pool = ctx.base.generalContextPool
-      try op(using pool.next().setOwner(owner).setTyperState(ctx.typerState))
+      try op(using pool.nextWithOwner(owner))
       finally pool.free()
     else
-      op(using ctx.fresh.setOwner(owner))
+      op(using ctx.freshWithOwner(owner))
 
   /** The type comparer of the kind created by `maker` to be used.
    *  This is the currently active type comparer CMP if
@@ -950,6 +1131,9 @@ object Contexts {
     protected def fresh()(using Context): FreshContext =
       FreshContext(ctx.base).init(ctx, ctx)
 
+    protected def freshWithOwner(owner: Symbol)(using Context): FreshContext =
+      FreshContext(ctx.base).fastInitWithOwner(ctx, owner)
+
     private var inUse: Int = 0
     private var pool = new mutable.ArrayBuffer[FreshContext]
 
@@ -961,6 +1145,19 @@ object Contexts {
           pool(inUse).reuseIn(ctx)
         else
           val c = fresh()
+          pool += c
+          c
+      inUse += 1
+      nestedCtx
+
+    def nextWithOwner(owner: Symbol)(using Context): FreshContext =
+      val base = ctx.base
+      import base.*
+      val nestedCtx =
+        if inUse < pool.size then
+          pool(inUse).reuseInWithOwner(ctx, owner)
+        else
+          val c = freshWithOwner(owner)
           pool += c
           c
       inUse += 1
@@ -1047,6 +1244,12 @@ object Contexts {
      */
     private[core] val errorTypeMsg: mutable.Map[Types.ErrorType, Message] = mutable.Map()
 
+    /** The filtered locals used by super-call contexts after typer.
+     *  These class declaration subsets are stable after typer, but the returned
+     *  context still receives a fresh mutable scope on every call.
+     */
+    private[core] val superCallLocalsAfterTyper: MutableSymbolMap[List[Symbol]] = MutableSymbolMap()
+
     // Phases state
 
     private[core] var phasesPlan: List[List[Phase]] = uninitialized
@@ -1110,6 +1313,7 @@ object Contexts {
       emptyWildcardBounds = null
       errorsToBeReported = false
       errorTypeMsg.clear()
+      superCallLocalsAfterTyper.clear()
       sources.clear()
       files.clear()
       comparers.clear()  // forces re-evaluation of top and bottom classes in TypeComparer
