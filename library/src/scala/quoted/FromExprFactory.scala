@@ -1,6 +1,7 @@
 package scala.quoted
 
 import language.experimental.captureChecking
+import scala.annotation.tailrec
 import scala.deriving.Mirror
 
 /** A factory that, given a `Type[T]`, produces a `FromExpr[T]`.
@@ -33,13 +34,48 @@ object FromExprFactory:
       def unapply(x: Expr[T])(using quotes: Quotes): Option[T] =
         import quotes.reflect.*
         val tpe = TypeRepr.of[T]
-        val fieldSyms = tpe.typeSymbol.caseFields
+        val sym = tpe.typeSymbol
+        val fieldSyms = sym.caseFields
         val resolvedElems = elems.zip(fieldSyms).map:
           case (factory, fieldSym) =>
             tpe.memberType(fieldSym).asType match
               case '[t] => factory.asInstanceOf[FromExprFactory[t]].apply().asInstanceOf[FromExpr[Any]]
 
-        unapplyProduct[T](resolvedElems)(x)
+        @tailrec def stripWrappers(t: Term): Term = t match
+          case Inlined(_, Nil, e) => stripWrappers(e)
+          case Block(Nil, e) => stripWrappers(e)
+          case Typed(e, _) => stripWrappers(e)
+          case _ => t
+
+        // `new T(args*)` (primary ctor) or `T(args*)` (companion `apply`).
+        def isOwnConstructor(fun: Term): Boolean =
+          fun.symbol == sym.primaryConstructor
+            || (fun.symbol.name == "apply" && fun.symbol.owner == sym.companionModule.moduleClass)
+
+        // defn.TupleClass does not work :/
+        def tupleModuleClass =
+          Symbol.requiredModule(if resolvedElems.isEmpty then "scala.Tuple" else s"scala.Tuple${elems.size}").moduleClass
+
+        def extractArgs(args: List[Term]) = resolvedElems.zip(args).foldRight(Option(List.empty[Any])):
+          case (_, None) => None
+          case ((fe, arg), Some(acc)) => fe.unapply(arg.asExprOf[Any]).map(_ :: acc)
+
+        val args = stripWrappers(x.asTerm) match
+          case Apply(fun, args) if args.length == resolvedElems.size && isOwnConstructor(fun) =>
+            extractArgs(args)
+          // case '{ type tuple <: Tuple; { $mirror : Mirror.ProductOf[T] }.fromProduct($tuple : tuple ) } => on x does not work :/
+          case Apply(Select(recv, "fromProduct"), List(tupleArg)) if recv.tpe <:< TypeRepr.of[deriving.Mirror.ProductOf[T]] =>
+            stripWrappers(tupleArg) match
+              case Apply(fun, args)
+                if fun.symbol.name == "apply" && fun.symbol.owner == tupleModuleClass && args.length == resolvedElems.size =>
+                extractArgs(args)
+              case _ => None
+          // A bare reference to a singleton (case object/enum case), not a call. TermRef for an explicit given/enum case, TypeRef (via companion) for `derives`.
+          case t if resolvedElems.isEmpty && t.symbol == (if tpe.termSymbol.exists then tpe.termSymbol else sym.companionModule) =>
+            extractArgs(Nil)
+          case _ => None
+
+        args.map(vs => m.fromProduct(Tuple.fromArray(vs.toArray)))
 
   private def derivedSum[T: Mirror.SumOf](elemInstances: -> List[FromExprFactory[Any]]): FromExprFactory[T] = new FromExprFactory[T]:
     private lazy val elems = elemInstances
@@ -51,11 +87,8 @@ object FromExprFactory:
           case (factory, caseSym) =>
             caseSym.typeRef.asType match
               case '[c] => factory.asInstanceOf[FromExprFactory[c]].apply().asInstanceOf[FromExpr[Any]]
-        unapplySum[T](resolvedElems)(x)
+        resolvedElems.iterator.map(_.unapply(x)).collectFirst { case Some(v) => v.asInstanceOf[T] }
 
   /** Bridges any type that already has a plain `FromExpr` (e.g. `Int`, `String`) into `FromExprFactory`. */
   given [T] => (fe: FromExpr[T]) => FromExprFactory[T]:
     def apply()(using Type[T]): FromExpr[T] = fe
-
-private[quoted] trait LowPriorityFromExpr:
-  given [T: Type] => (f: FromExprFactory[T]) => FromExpr[T] = f.apply()

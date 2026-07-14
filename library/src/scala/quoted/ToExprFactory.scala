@@ -5,9 +5,9 @@ import scala.deriving.Mirror
 
 /** A factory that, given a `Type[T]`, produces a `ToExpr[T]`.
  *
- *  Unlike `ToExpr.derived`, `ToExprFactory.derived` also routes each field/case through
- *  `ToExprFactory` recursively, so `derives ToExprFactory` on a generic type does not
- *  require a manual `given [A: {Type, ToExpr}] => ToExpr[Box[A]]` for its type parameters.
+ *  `ToExprFactory.derived` routes each field/case through `ToExprFactory` recursively, so
+ *  `derives ToExprFactory` on a generic type does not require a manual
+ *  `given [A: {Type, ToExpr}] => ToExpr[Box[A]]` for its type parameters.
  */
 trait ToExprFactory[T]:
   def apply()(using Type[T]): ToExpr[T]
@@ -38,7 +38,11 @@ object ToExprFactory:
           case (factory, fieldSym) =>
             tpe.memberType(fieldSym).asType match
               case '[t] => factory.asInstanceOf[ToExprFactory[t]].apply().asInstanceOf[ToExpr[Any]]
-        applyProduct[T](resolvedElems)(x)
+        val mirrorExpr = Expr.summon[Mirror.ProductOf[T]].get
+        val elemVals = x.asInstanceOf[Product].productIterator.toList
+        val elemExprs = resolvedElems.zip(elemVals).map(_.apply(_))
+        val tupleExpr = Expr.ofTupleFromSeq(elemExprs)
+        '{ $mirrorExpr.fromProduct($tupleExpr) }
 
   private def derivedSum[T: Mirror.SumOf as m](elemInstances: -> List[ToExprFactory[Any]]): ToExprFactory[T] = new ToExprFactory[T]:
     private lazy val elems = elemInstances
@@ -53,6 +57,3 @@ object ToExprFactory:
   /** Bridges any type that already has a plain `ToExpr` (e.g. `Int`, `String`) into `ToExprFactory`. */
   given [T] => (te: ToExpr[T]) => ToExprFactory[T]:
     def apply()(using Type[T]): ToExpr[T] = te
-
-private[quoted] trait LowPriorityToExpr:
-  given [T: Type] => (f: ToExprFactory[T]) => ToExpr[T] = f.apply()

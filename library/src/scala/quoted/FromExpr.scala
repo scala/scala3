@@ -30,33 +30,11 @@ trait FromExpr[T] {
 }
 
 
+private[quoted] trait LowPriorityFromExpr:
+  given fromFactory: [T: Type] => (f: FromExprFactory[T]) => FromExpr[T] = f.apply()
+
 /** Default given instances of `FromExpr`. */
 object FromExpr extends LowPriorityFromExpr:
-
-  import scala.deriving.Mirror
-
-  inline def derived[T: Mirror.Of as m]: FromExpr[T] = inline m match
-    case given Mirror.ProductOf[T] =>
-      derivedProduct[T](compiletime.summonAll[Tuple.Map[m.MirroredElemTypes, FromExpr]].toList.asInstanceOf[List[FromExpr[Any]]])
-    case given Mirror.SumOf[T] =>
-      derivedSum[T](summonAllOrDerive[m.MirroredElemTypes])
-
-  private inline def summonAllOrDerive[Elems <: Tuple]: List[FromExpr[Any]] = inline compiletime.erasedValue[Elems] match
-    case _: EmptyTuple => Nil
-    case _: (h *: t) => summonOrDerive[h].asInstanceOf[FromExpr[Any]] :: summonAllOrDerive[t]
-
-  private inline def summonOrDerive[T]: FromExpr[T] = compiletime.summonFrom:
-    case fe: FromExpr[T] => fe
-    case given Mirror.Of[T] => derived[T]
-
-  @nowarn("msg=duplicated at each inline site") // T required for Type.of[T]
-  private inline def derivedProduct[T: Mirror.ProductOf as m](elemInstances: => List[FromExpr[Any]]): FromExpr[T] = new FromExpr[T]:
-    private lazy val elems = elemInstances
-    def unapply(x: Expr[T])(using quotes: Quotes): Option[T] = unapplyProduct[T](elems)(x)
-
-  private def derivedSum[T: Mirror.SumOf](elemInstances: -> List[FromExpr[Any]]): FromExpr[T] = new FromExpr[T]:
-    private lazy val elems = elemInstances
-    def unapply(x: Expr[T])(using Quotes): Option[T] = unapplySum[T](elems)(x)
 
   /** Default implementation of `FromExpr[Boolean]`
    *  - Transform `'{true}` into `Some(true)`
