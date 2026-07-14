@@ -1,0 +1,48 @@
+package scala.quoted
+
+import language.experimental.captureChecking
+import scala.deriving.Mirror
+
+/** A factory that, given a `Type[T]`, produces a `ToExpr[T]`.
+ *
+ *  Unlike `ToExpr.derived`, `ToExprFactory.derived` also routes each field/case through
+ *  `ToExprFactory` recursively, so `derives ToExprFactory` on a generic type does not
+ *  require a manual `given [A: {Type, ToExpr}] => ToExpr[Box[A]]` for its type parameters.
+ */
+trait ToExprFactory[T]:
+  def apply()(using Type[T]): ToExpr[T]
+
+object ToExprFactory:
+  inline def derived[T: Mirror.Of as m]: ToExprFactory[T] = inline m match
+    case given Mirror.ProductOf[T] =>
+      derivedProduct[T](compiletime.summonAll[Tuple.Map[m.MirroredElemTypes, ToExprFactory]].toList.asInstanceOf[List[ToExprFactory[Any]]])
+    case given Mirror.SumOf[T] =>
+      derivedSum[T](summonAllOrDerive[m.MirroredElemTypes, ToExprFactory]([A] => () => derived[A]))
+
+  private def derivedProduct[T: Mirror.ProductOf](elemInstances: -> List[ToExprFactory[Any]]): ToExprFactory[T] = new ToExprFactory[T]:
+    private lazy val elems = elemInstances
+    def apply()(using Type[T]): ToExpr[T] = new ToExpr[T]:
+      def apply(x: T)(using Quotes): Expr[T] =
+        import quotes.reflect.*
+        val tpe = TypeRepr.of[T]
+        val fieldSyms = tpe.typeSymbol.caseFields
+        val resolvedElems: List[ToExpr[Any]] = elems.zip(fieldSyms).map:
+          case (factory, fieldSym) =>
+            tpe.memberType(fieldSym).asType match
+              case '[t] => factory.asInstanceOf[ToExprFactory[t]].apply().asInstanceOf[ToExpr[Any]]
+        applyProduct[T](resolvedElems)(x)
+
+  private def derivedSum[T: Mirror.SumOf as m](elemInstances: -> List[ToExprFactory[Any]]): ToExprFactory[T] = new ToExprFactory[T]:
+    private lazy val elems = elemInstances
+    def apply()(using Type[T]): ToExpr[T] = new ToExpr[T]:
+      def apply(x: T)(using Quotes): Expr[T] =
+        import quotes.reflect.*
+        TypeRepr.typeConstructorOf(x.getClass).asType match
+          case '[c] => elems(m.ordinal(x)).asInstanceOf[ToExprFactory[c]].apply().apply(x.asInstanceOf[c]).asInstanceOf[Expr[T]]
+
+  /** Bridges any type that already has a plain `ToExpr` (e.g. `Int`, `String`) into `ToExprFactory`. */
+  given [T] => (te: ToExpr[T]) => ToExprFactory[T]:
+    def apply()(using Type[T]): ToExpr[T] = te
+
+private[quoted] trait LowPriorityToExpr:
+  given [T: Type] => (f: ToExprFactory[T]) => ToExpr[T] = f.apply()

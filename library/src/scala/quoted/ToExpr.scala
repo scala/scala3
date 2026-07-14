@@ -21,39 +21,26 @@ trait ToExpr[T] {
 }
 
 /** Default given instances of `ToExpr`. */
-object ToExpr {
+object ToExpr extends LowPriorityToExpr {
 
   import scala.deriving.Mirror
-  import scala.quoted.*
 
   inline def derived[T: Mirror.Of as m]: ToExpr[T] = inline m match
     case given Mirror.ProductOf[T] =>
       derivedProduct[T](compiletime.summonAll[Tuple.Map[m.MirroredElemTypes, ToExpr]].toList.asInstanceOf[List[ToExpr[Any]]])
-    case given Mirror.SumOf[T] => 
-      derivedSum[T](summonAllOrDerive[m.MirroredElemTypes])
-
-  private inline def summonAllOrDerive[Elems <: Tuple]: List[ToExpr[Any]] = inline compiletime.erasedValue[Elems] match
-    case _: EmptyTuple => Nil
-    case _: (h *: t) => summonOrDerive[h].asInstanceOf[ToExpr[Any]] :: summonAllOrDerive[t]
-
-  private inline def summonOrDerive[C]: ToExpr[C] = compiletime.summonFrom:
-    case te: ToExpr[C] => te
-    case given Mirror.Of[C] => derived[C]
+    case given Mirror.SumOf[T] =>
+      derivedSum[T](summonAllOrDerive[m.MirroredElemTypes, ToExpr]([A] => () => derived[A]))
 
   @nowarn("msg=duplicated at each inline site") // T required for Type.of[T]
   private inline def derivedProduct[T: Mirror.ProductOf](elemInstances: -> List[ToExpr[Any]]): ToExpr[T] = new ToExpr[T]:
     private lazy val elems = elemInstances
 
-    def apply(x: T)(using Quotes): Expr[T] =
-      val mirrorExpr = Expr.summon[Mirror.ProductOf[T]].get
-      val elemVals = x.asInstanceOf[Product].productIterator.toList
-      val elemExprs = elems.zip(elemVals).map(_.apply(_))
-      val tupleExpr = Expr.ofTupleFromSeq(elemExprs)
-      '{ $mirrorExpr.fromProduct($tupleExpr) }
+    def apply(x: T)(using Quotes): Expr[T] = applyProduct(elems)(x)
 
   private def derivedSum[T: Mirror.SumOf as m](elemInstances: -> List[ToExpr[Any]]): ToExpr[T] = new ToExpr[T]:
     private lazy val elems = elemInstances
     def apply(x: T)(using Quotes): Expr[T] = elems(m.ordinal(x)).apply(x).asInstanceOf[Expr[T]]
+
   // IMPORTANT Keep in sync with tests/run-staging/liftables.scala
 
   given ValueOfToExpr: [T: {ValueOf, Type}] => ToExpr[T]:

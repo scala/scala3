@@ -29,8 +29,9 @@ trait FromExpr[T] {
 
 }
 
+
 /** Default given instances of `FromExpr`. */
-object FromExpr {
+object FromExpr extends LowPriorityFromExpr:
 
   import scala.deriving.Mirror
 
@@ -38,64 +39,16 @@ object FromExpr {
     case given Mirror.ProductOf[T] =>
       derivedProduct[T](compiletime.summonAll[Tuple.Map[m.MirroredElemTypes, FromExpr]].toList.asInstanceOf[List[FromExpr[Any]]])
     case given Mirror.SumOf[T] =>
-      derivedSum[T](summonAllOrDerive[m.MirroredElemTypes])
-
-  private inline def summonAllOrDerive[Elems <: Tuple]: List[FromExpr[Any]] = inline compiletime.erasedValue[Elems] match
-    case _: EmptyTuple => Nil
-    case _: (h *: t) => summonOrDerive[h].asInstanceOf[FromExpr[Any]] :: summonAllOrDerive[t]
-
-  private inline def summonOrDerive[C]: FromExpr[C] = compiletime.summonFrom:
-    case fe: FromExpr[C] => fe
-    case given Mirror.Of[C] => derived[C]
+      derivedSum[T](summonAllOrDerive[m.MirroredElemTypes, FromExpr]([A] => () => derived[A]))
 
   @nowarn("msg=duplicated at each inline site") // T required for Type.of[T]
-  private inline def derivedProduct[T: Mirror.ProductOf as m](elemInstances: -> List[FromExpr[Any]]): FromExpr[T] = new FromExpr[T]:
+  private inline def derivedProduct[T: Mirror.ProductOf as m](elemInstances: => List[FromExpr[Any]]): FromExpr[T] = new FromExpr[T]:
     private lazy val elems = elemInstances
-
-    def unapply(x: Expr[T])(using quotes: Quotes): Option[T] =
-      import quotes.reflect.*
-      val tpe = TypeRepr.of[T]
-      val sym = tpe.typeSymbol
-
-      @tailrec def stripWrappers(t: Term): Term = t match
-        case Inlined(_, Nil, e) => stripWrappers(e)
-        case Block(Nil, e) => stripWrappers(e)
-        case Typed(e, _) => stripWrappers(e)
-        case _ => t
-
-      // `new T(args*)` (primary ctor) or `T(args*)` (companion `apply`).
-      def isOwnConstructor(fun: Term): Boolean =
-        fun.symbol == sym.primaryConstructor
-        || (fun.symbol.name == "apply" && fun.symbol.owner == sym.companionModule.moduleClass)
-
-      // defn.TupleClass does not work :/
-      def tupleModuleClass =
-        Symbol.requiredModule(if elems.isEmpty then "scala.Tuple" else s"scala.Tuple${elems.length}").moduleClass
-
-      def extractArgs(args: List[Term]): Option[T] = elems.zip(args).foldRight(Option(List.empty[Any])):
-        case (_, None) => None
-        case ((fe, arg), Some(acc)) =>
-          fe.unapply(arg.asExprOf[Any]).map(_ :: acc)
-      .map(vs => m.fromProduct(Tuple.fromArray(vs.toArray)))
-
-      stripWrappers(x.asTerm) match
-        case Apply(fun, args) if args.length == elems.length && isOwnConstructor(fun) =>
-          extractArgs(args)
-        // case '{ type tuple <: Tuple; { $mirror : Mirror.ProductOf[T] }.fromProduct($tuple : tuple ) } => on x does not work :/
-        case Apply(Select(recv, "fromProduct"), List(tupleArg)) if recv.tpe <:< TypeRepr.of[Mirror.ProductOf[T]] =>
-          stripWrappers(tupleArg) match
-            case Apply(fun, args) if fun.symbol.name == "apply" && fun.symbol.owner == tupleModuleClass && args.length == elems.length => extractArgs(args)
-            case _ => None
-        // A bare reference to a singleton (case object/enum case), not a call. TermRef for an explicit given/enum case, TypeRef (via companion) for `derives`.
-        case t if elems.isEmpty && t.symbol == (if tpe.termSymbol.exists then tpe.termSymbol else sym.companionModule) =>
-          Some(m.fromProduct(EmptyTuple))
-        case _ => None
+    def unapply(x: Expr[T])(using quotes: Quotes): Option[T] = unapplyProduct[T](elems)(x)
 
   private def derivedSum[T: Mirror.SumOf](elemInstances: -> List[FromExpr[Any]]): FromExpr[T] = new FromExpr[T]:
     private lazy val elems = elemInstances
-    def unapply(x: Expr[T])(using Quotes): Option[T] =
-      elems.iterator.map(_.unapply(x)).collectFirst { case Some(v) => v.asInstanceOf[T] }
-  
+    def unapply(x: Expr[T])(using Quotes): Option[T] = unapplySum[T](elems)(x)
 
   /** Default implementation of `FromExpr[Boolean]`
    *  - Transform `'{true}` into `Some(true)`
@@ -603,5 +556,3 @@ object FromExpr {
       case _ => None
     }
   }
-
-}
