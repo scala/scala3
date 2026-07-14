@@ -43,10 +43,12 @@ object ToExprFactory:
   private def derivedSum[T: Mirror.SumOf as m](elemInstances: -> List[ToExprFactory[Any]]): ToExprFactory[T] = new ToExprFactory[T]:
     private lazy val elems = elemInstances
     def apply()(using Type[T]): ToExpr[T] = new ToExpr[T]:
-      def apply(x: T)(using Quotes): Expr[T] =
+      def apply(x: T)(using quotes: Quotes): Expr[T] =
         import quotes.reflect.*
-        TypeRepr.typeConstructorOf(x.getClass).asType match
-          case '[c] => elems(m.ordinal(x)).asInstanceOf[ToExprFactory[c]].apply().apply(x.asInstanceOf[c]).asInstanceOf[Expr[T]]
+        val idx = m.ordinal(x)
+        val caseSym = TypeRepr.of[T].typeSymbol.children(idx)
+        caseSym.typeRef.asType match
+          case '[c] => elems(idx).asInstanceOf[ToExprFactory[c]].apply().apply(x.asInstanceOf[c]).asInstanceOf[Expr[T]]
 
   /** Bridges any type that already has a plain `ToExpr` (e.g. `Int`, `String`) into `ToExprFactory`. */
   given [T] => (te: ToExpr[T]) => ToExprFactory[T]:
