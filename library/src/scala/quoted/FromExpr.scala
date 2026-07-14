@@ -49,7 +49,9 @@ object FromExpr {
     case given Mirror.Of[C] => derived[C]
 
   @nowarn("msg=duplicated at each inline site") // T required for Type.of[T]
-  private inline def derivedProduct[T: Mirror.ProductOf as m](elemInstances: List[FromExpr[Any]]): FromExpr[T] = new FromExpr[T]:
+  private inline def derivedProduct[T: Mirror.ProductOf as m](elemInstances: -> List[FromExpr[Any]]): FromExpr[T] = new FromExpr[T]:
+    private lazy val elems = elemInstances
+
     def unapply(x: Expr[T])(using quotes: Quotes): Option[T] =
       import quotes.reflect.*
       val tpe = TypeRepr.of[T]
@@ -68,30 +70,31 @@ object FromExpr {
 
       // defn.TupleClass does not work :/
       def tupleModuleClass =
-        Symbol.requiredModule(if elemInstances.isEmpty then "scala.Tuple" else s"scala.Tuple${elemInstances.length}").moduleClass
+        Symbol.requiredModule(if elems.isEmpty then "scala.Tuple" else s"scala.Tuple${elems.length}").moduleClass
 
-      def extractArgs(args: List[Term]): Option[T] = elemInstances.zip(args).foldRight(Option(List.empty[Any])):
+      def extractArgs(args: List[Term]): Option[T] = elems.zip(args).foldRight(Option(List.empty[Any])):
         case (_, None) => None
         case ((fe, arg), Some(acc)) =>
           fe.unapply(arg.asExprOf[Any]).map(_ :: acc)
       .map(vs => m.fromProduct(Tuple.fromArray(vs.toArray)))
 
       stripWrappers(x.asTerm) match
-        case Apply(fun, args) if args.length == elemInstances.length && isOwnConstructor(fun) =>
+        case Apply(fun, args) if args.length == elems.length && isOwnConstructor(fun) =>
           extractArgs(args)
         // case '{ type tuple <: Tuple; { $mirror : Mirror.ProductOf[T] }.fromProduct($tuple : tuple ) } => on x does not work :/
         case Apply(Select(recv, "fromProduct"), List(tupleArg)) if recv.tpe <:< TypeRepr.of[Mirror.ProductOf[T]] =>
           stripWrappers(tupleArg) match
-            case Apply(fun, args) if fun.symbol.name == "apply" && fun.symbol.owner == tupleModuleClass && args.length == elemInstances.length => extractArgs(args)
+            case Apply(fun, args) if fun.symbol.name == "apply" && fun.symbol.owner == tupleModuleClass && args.length == elems.length => extractArgs(args)
             case _ => None
         // A bare reference to a singleton (case object/enum case), not a call. TermRef for an explicit given/enum case, TypeRef (via companion) for `derives`.
-        case t if elemInstances.isEmpty && t.symbol == (if tpe.termSymbol.exists then tpe.termSymbol else sym.companionModule) =>
+        case t if elems.isEmpty && t.symbol == (if tpe.termSymbol.exists then tpe.termSymbol else sym.companionModule) =>
           Some(m.fromProduct(EmptyTuple))
         case _ => None
 
-  private def derivedSum[T: Mirror.SumOf](elemInstances: List[FromExpr[Any]]): FromExpr[T] = new FromExpr[T]:
+  private def derivedSum[T: Mirror.SumOf](elemInstances: -> List[FromExpr[Any]]): FromExpr[T] = new FromExpr[T]:
+    private lazy val elems = elemInstances
     def unapply(x: Expr[T])(using Quotes): Option[T] =
-      elemInstances.iterator.map(_.unapply(x.asInstanceOf[Expr[Any]])).collectFirst { case Some(v) => v.asInstanceOf[T] }
+      elems.iterator.map(_.unapply(x)).collectFirst { case Some(v) => v.asInstanceOf[T] }
   
 
   /** Default implementation of `FromExpr[Boolean]`

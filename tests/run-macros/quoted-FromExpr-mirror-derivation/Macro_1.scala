@@ -67,8 +67,11 @@ object Vehicle:
     case class Motorcycle(cc: Int) extends Motorized
   case class Bicycle(gears: Int) extends Vehicle
 
-// NOTE: a genuinely recursive sum (e.g. `Add(l: Arith, r: Arith)`) deadlocks during
-// derivation (circular top-level given initialization) -- out of scope, see SLC.
+// Recursive sum: a case's own field is the enclosing type
+enum Arith derives ToExpr, FromExpr:
+  case Lit(n: Int)
+  case Add(l: Arith, r: Arith)
+  case Neg(e: Arith)
 
 // Arity > 22 (known limitation, not a crash)
 case class Big25(
@@ -104,6 +107,9 @@ object Macro:
   inline def matchVehicleBicycle: Boolean = ${ Macro.matchVehicleBicycleImpl }
   // Nested-sum wrong-variant guard
   inline def wrongNestedVariantIsNone: Boolean = ${ Macro.wrongNestedVariantIsNoneImpl }
+
+  // Recursive ADT, several levels deep
+  inline def matchArithNested: Boolean = ${ Macro.matchArithNestedImpl }
 
   // `Typed` node unwrapping
   inline def matchAscribedPoint: Boolean = ${ Macro.matchAscribedPointImpl }
@@ -180,6 +186,12 @@ object Macro:
     val e: Expr[Vehicle.Motorized.Car] = '{ Vehicle.Motorized.Car(4) }
     checkNone(e.asInstanceOf[Expr[Vehicle.Motorized.Motorcycle]])
 
+  def matchArithNestedImpl(using Quotes): Expr[Boolean] =
+    check[Arith](
+      '{ Arith.Add(Arith.Lit(1), Arith.Neg(Arith.Add(Arith.Lit(2), Arith.Lit(3)))) },
+      Arith.Add(Arith.Lit(1), Arith.Neg(Arith.Add(Arith.Lit(2), Arith.Lit(3))))
+    )
+
   def matchAscribedPointImpl(using Quotes): Expr[Boolean] = check('{ (Point(1, 2): Point) }, Point(1, 2))
   def matchBracedPointImpl(using Quotes): Expr[Boolean] = check('{ { Point(1, 2) } }, Point(1, 2))
 
@@ -232,4 +244,5 @@ object Macro:
         && roundTrip[Color](Color.Custom("#fff"))
         && roundTrip[Vehicle](Vehicle.Motorized.Car(4))
         && roundTrip[Vehicle](Vehicle.Bicycle(21))
+        && roundTrip(Arith.Add(Arith.Lit(1), Arith.Neg(Arith.Add(Arith.Lit(2), Arith.Lit(3)))))
     )

@@ -27,7 +27,7 @@ object ToExpr {
   import scala.quoted.*
 
   inline def derived[T: Mirror.Of as m]: ToExpr[T] = inline m match
-    case given Mirror.ProductOf[T] => 
+    case given Mirror.ProductOf[T] =>
       derivedProduct[T](compiletime.summonAll[Tuple.Map[m.MirroredElemTypes, ToExpr]].toList.asInstanceOf[List[ToExpr[Any]]])
     case given Mirror.SumOf[T] => 
       derivedSum[T](summonAllOrDerive[m.MirroredElemTypes])
@@ -41,16 +41,19 @@ object ToExpr {
     case given Mirror.Of[C] => derived[C]
 
   @nowarn("msg=duplicated at each inline site") // T required for Type.of[T]
-  private inline def derivedProduct[T: Mirror.ProductOf](elemInstances: List[ToExpr[Any]]): ToExpr[T] = new ToExpr[T]:
+  private inline def derivedProduct[T: Mirror.ProductOf](elemInstances: -> List[ToExpr[Any]]): ToExpr[T] = new ToExpr[T]:
+    private lazy val elems = elemInstances
+
     def apply(x: T)(using Quotes): Expr[T] =
       val mirrorExpr = Expr.summon[Mirror.ProductOf[T]].get
       val elemVals = x.asInstanceOf[Product].productIterator.toList
-      val elemExprs = elemInstances.zip(elemVals).map(_.apply(_))
+      val elemExprs = elems.zip(elemVals).map(_.apply(_))
       val tupleExpr = Expr.ofTupleFromSeq(elemExprs)
       '{ $mirrorExpr.fromProduct($tupleExpr) }
 
-  private def derivedSum[T: Mirror.SumOf as m](elemInstances: List[ToExpr[Any]]): ToExpr[T] = new ToExpr[T]:
-    def apply(x: T)(using Quotes): Expr[T] = elemInstances(m.ordinal(x)).apply(x).asInstanceOf[Expr[T]]
+  private def derivedSum[T: Mirror.SumOf as m](elemInstances: -> List[ToExpr[Any]]): ToExpr[T] = new ToExpr[T]:
+    private lazy val elems = elemInstances
+    def apply(x: T)(using Quotes): Expr[T] = elems(m.ordinal(x)).apply(x).asInstanceOf[Expr[T]]
   // IMPORTANT Keep in sync with tests/run-staging/liftables.scala
 
   given ValueOfToExpr: [T: {ValueOf, Type}] => ToExpr[T]:
