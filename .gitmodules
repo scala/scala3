@@ -40,6 +40,7 @@
 [submodule "community-build/community-projects/intent"]
 	path = community-build/community-projects/intent
 	url = https://github.com/dotty-staging/intent
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/utest"]
 	path = community-build/community-projects/utest
 	url = https://github.com/dotty-staging/utest-new.git
@@ -52,6 +53,7 @@
 [submodule "community-build/community-projects/upickle"]
 	path = community-build/community-projects/upickle
 	url = https://github.com/dotty-staging/upickle.git
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/sconfig"]
 	path = community-build/community-projects/sconfig
 	url = https://github.com/dotty-staging/sconfig.git
@@ -96,6 +98,7 @@
 [submodule "community-build/community-projects/PPrint"]
 	path = community-build/community-projects/PPrint
 	url = https://github.com/dotty-staging/PPrint.git
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/requests"]
 	path = community-build/community-projects/requests
 	url = https://github.com/dotty-staging/requests.git
