@@ -1169,7 +1169,6 @@ object CaptureSet:
 
     if debugVars && id == debugTarget then
       println(i"variable $id is derived from $source")
-      assert(false)
 
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if origin eq source then
@@ -1242,23 +1241,44 @@ object CaptureSet:
     addAsDependentTo(cs2)
     mutability = cs1.mutability | cs2.mutability
 
+    // If we have a union of a constant capture set C that contains a terminal
+    // capability `cap` and a variable capture set V, there is no uniformly best
+    // strategy for including a new element `elem`. By default, if the variable
+    // state admits additions to capset variables (i.e. vs.isOpen is true), `elem`
+    // goes into `V`. But it could also go into the hidden set of `cap`. The default
+    // can add too much to `V`, as was seen in #26539. We now use a finer distinction:
+    // If `elem` is a `consume` capability it now goes into the hidden set of `cap`
+    // instead of `V`. This makes i26539.scala compile.
+    private def subsumesConsuming(cs: CaptureSet, elem: Capability)(using Context, VarState): Boolean =
+      elem match
+        case elem: TermRef =>
+          elem.symbol.isConsume
+          && varState.isOpen
+          && cs.isConst
+          && cs.elems.exists(_.maxSubsumes(elem, canAddHidden = true))
+        case _ =>
+          false
+
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if accountsFor(elem) then true
       else
         TypeComparer.atomicOp:
-          val res = super.tryInclude(elem, origin)
-          // If this is the union of a constant and a variable,
-          // propagate `elem` to the variable part to avoid slack
-          // between the operands and the union.
-          if res && (origin ne cs1) && (origin ne cs2) then
-            try
-              if cs1.isConst then cs2.tryInclude(elem, origin)
-              else if cs2.isConst then cs1.tryInclude(elem, origin)
-              else res
-            catch case ex: AssertionError =>
-              println(i"err while tryinclude $elem in $cs1 | $cs2, ${cs1.isConst}, ${cs2.isConst}")
-              throw ex
-          else res
+          if subsumesConsuming(cs1, elem) || subsumesConsuming(cs2, elem) then
+            true
+          else
+            val res = super.tryInclude(elem, origin)
+            // If this is the union of a constant and a variable,
+            // propagate `elem` to the variable part to avoid slack
+            // between the operands and the union.
+            if res && (origin ne cs1) && (origin ne cs2) then
+              try
+                if cs1.isConst then cs2.tryInclude(elem, origin)
+                else if cs2.isConst then cs1.tryInclude(elem, origin)
+                else res
+              catch case ex: AssertionError =>
+                println(i"err while tryinclude $elem in $cs1 | $cs2, ${cs1.isConst}, ${cs2.isConst}")
+                throw ex
+            else res
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)
