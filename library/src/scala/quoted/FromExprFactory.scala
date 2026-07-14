@@ -17,7 +17,15 @@ object FromExprFactory:
     case given Mirror.ProductOf[T] =>
       derivedProduct[T](compiletime.summonAll[Tuple.Map[m.MirroredElemTypes, FromExprFactory]].toList.asInstanceOf[List[FromExprFactory[Any]]])
     case given Mirror.SumOf[T] =>
-      derivedSum[T](summonAllOrDerive[m.MirroredElemTypes, FromExprFactory]([A] => () => derived[A]))
+      derivedSum[T](summonAllOrDerive[m.MirroredElemTypes])
+
+  private inline def summonAllOrDerive[Elems <: Tuple]: List[FromExprFactory[Any]] = inline compiletime.erasedValue[Elems] match
+    case _: EmptyTuple => Nil
+    case _: (h *: t) => summonOrDerive[h].asInstanceOf[FromExprFactory[Any]] :: summonAllOrDerive[t]
+
+  private inline def summonOrDerive[T]: FromExprFactory[T] = compiletime.summonFrom:
+    case fe: FromExprFactory[T] => fe
+    case given Mirror.Of[T] => derived[T]
 
   private def derivedProduct[T: Mirror.ProductOf as m](elemInstances: -> List[FromExprFactory[Any]]): FromExprFactory[T] = new FromExprFactory[T]:
     private lazy val elems = elemInstances

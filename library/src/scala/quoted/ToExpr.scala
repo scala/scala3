@@ -29,7 +29,15 @@ object ToExpr extends LowPriorityToExpr {
     case given Mirror.ProductOf[T] =>
       derivedProduct[T](compiletime.summonAll[Tuple.Map[m.MirroredElemTypes, ToExpr]].toList.asInstanceOf[List[ToExpr[Any]]])
     case given Mirror.SumOf[T] =>
-      derivedSum[T](summonAllOrDerive[m.MirroredElemTypes, ToExpr]([A] => () => derived[A]))
+      derivedSum[T](summonAllOrDerive[m.MirroredElemTypes])
+
+  private inline def summonAllOrDerive[Elems <: Tuple]: List[ToExpr[Any]] = inline compiletime.erasedValue[Elems] match
+    case _: EmptyTuple => Nil
+    case _: (h *: t) => summonOrDerive[h].asInstanceOf[ToExpr[Any]] :: summonAllOrDerive[t]
+
+  private inline def summonOrDerive[T]: ToExpr[T] = compiletime.summonFrom:
+    case te: ToExpr[T] => te
+    case given Mirror.Of[T] => derived[T]
 
   @nowarn("msg=duplicated at each inline site") // T required for Type.of[T]
   private inline def derivedProduct[T: Mirror.ProductOf](elemInstances: -> List[ToExpr[Any]]): ToExpr[T] = new ToExpr[T]:

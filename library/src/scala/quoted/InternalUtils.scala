@@ -53,11 +53,3 @@ private[quoted] def applyProduct[T: Type](elems: List[ToExpr[Any]])(x: T)(using 
   val elemExprs = elems.zip(elemVals).map(_.apply(_))
   val tupleExpr = Expr.ofTupleFromSeq(elemExprs)
   '{ $mirrorExpr.fromProduct($tupleExpr) }
-
-private[quoted] inline def summonAllOrDerive[Elems <: Tuple, F[_]](inline derived: [A:Mirror.Of] => () => F[A]): List[F[Any]] = inline compiletime.erasedValue[Elems] match
-    case _: EmptyTuple => Nil
-    case _: (h *: t) => summonOrDerive[h, F](derived).asInstanceOf[F[Any]] :: summonAllOrDerive[t, F](derived)
-
-private[quoted] inline def summonOrDerive[T, F[_]](inline derived: [A:Mirror.Of] => () => F[A]): F[T] = compiletime.summonFrom:
-    case te: F[T] => te
-    case given Mirror.Of[T] => derived[T]()
