@@ -7,6 +7,7 @@
 [submodule "community-build/community-projects/ScalaPB"]
 	path = community-build/community-projects/ScalaPB
 	url = https://github.com/dotty-staging/ScalaPB
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/scalatest"]
 	path = community-build/community-projects/scalatest
 	url = https://github.com/dotty-staging/scalatest
@@ -19,6 +20,7 @@
 [submodule "community-build/community-projects/fastparse"]
 	path = community-build/community-projects/fastparse
 	url = https://github.com/dotty-staging/fastparse
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/stdLib213"]
 	path = community-build/community-projects/stdLib213
 	url = https://github.com/dotty-staging/scala213
@@ -28,6 +30,7 @@
 [submodule "community-build/community-projects/scala-xml"]
 	path = community-build/community-projects/scala-xml
 	url = https://github.com/dotty-staging/scala-xml
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/xml-interpolator"]
 	path = community-build/community-projects/xml-interpolator
 	url = https://github.com/dotty-staging/xml-interpolator.git
@@ -52,6 +55,7 @@
 [submodule "community-build/community-projects/sconfig"]
 	path = community-build/community-projects/sconfig
 	url = https://github.com/dotty-staging/sconfig.git
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/zio"]
 	path = community-build/community-projects/zio
 	url = https://github.com/dotty-staging/zio.git
@@ -69,6 +73,7 @@
 [submodule "community-build/community-projects/scala-parser-combinators"]
 	path = community-build/community-projects/scala-parser-combinators
 	url = https://github.com/dotty-staging/scala-parser-combinators.git
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/dotty-cps-async"]
 	path = community-build/community-projects/dotty-cps-async
 	url = https://github.com/dotty-staging/dotty-cps-async.git
@@ -78,6 +83,7 @@
 [submodule "community-build/community-projects/scalaz"]
 	path = community-build/community-projects/scalaz
 	url = https://github.com/dotty-staging/scalaz.git
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/endpoints"]
 	path = community-build/community-projects/endpoints4s
 	url = https://github.com/dotty-staging/endpoints.git
@@ -100,7 +106,7 @@
 [submodule "community-build/community-projects/scala-parallel-collections"]
 	path = community-build/community-projects/scala-parallel-collections
 	url = https://github.com/dotty-staging/scala-parallel-collections.git
-	branch = serialisation-stability-fix
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/scala-collection-compat"]
 	path = community-build/community-projects/scala-collection-compat
 	url = https://github.com/dotty-staging/scala-collection-compat.git
@@ -122,6 +128,7 @@
 [submodule "community-build/community-projects/cats"]
 	path = community-build/community-projects/cats
 	url = https://github.com/dotty-staging/cats.git
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/cats-mtl"]
 	path = community-build/community-projects/cats-mtl
 	url = https://github.com/dotty-staging/cats-mtl.git
@@ -155,9 +162,11 @@
 [submodule "community-build/community-projects/Lucre"]
 	path = community-build/community-projects/Lucre
 	url = https://github.com/dotty-staging/Lucre.git
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/scala-stm"]
 	path = community-build/community-projects/scala-stm
 	url = https://github.com/dotty-staging/scala-stm.git
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/scalatestplus-junit"]
 	path = community-build/community-projects/scalatestplus-junit
 	url = https://github.com/dotty-staging/scalatestplus-junit.git
@@ -167,7 +176,7 @@
 [submodule "community-build/community-projects/perspective"]
 	path = community-build/community-projects/perspective
 	url = https://github.com/dotty-staging/perspective.git
-	branch = dotty/nightly
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/akka"]
 	path = community-build/community-projects/akka
 	url = https://github.com/dotty-staging/akka.git
@@ -201,12 +210,14 @@
 [submodule "community-build/community-projects/libretto"]
 	path = community-build/community-projects/libretto
 	url = https://github.com/dotty-staging/libretto.git
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/jackson-module-scala"]
 	path = community-build/community-projects/jackson-module-scala
 	url = https://github.com/dotty-staging/jackson-module-scala.git
 [submodule "community-build/community-projects/scala-java8-compat"]
 	path = community-build/community-projects/scala-java8-compat
 	url = https://github.com/dotty-staging/scala-java8-compat.git
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/specs2"]
 	path = community-build/community-projects/specs2
 	url = https://github.com/dotty-staging/specs2.git
@@ -219,6 +230,7 @@
 [submodule "community-build/community-projects/parboiled2"]
 	path = community-build/community-projects/parboiled2
 	url = https://github.com/dotty-staging/parboiled2.git
+	branch = with-type-operator-error
 [submodule "community-build/community-projects/shapeless-3"]
 	path = community-build/community-projects/shapeless-3
 	url = https://github.com/dotty-staging/shapeless-3.git
