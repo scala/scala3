@@ -997,7 +997,7 @@ class CheckCaptures extends Recheck, SymTransformer:
 
     /** Check that capture set of type argument subcaptures capture set of bounds.
      *  We don't check if
-     *   - the bound is excatly any since that is capture polymorphic top, or
+     *   - the bound is exactly any since that is capture polymorphic top, or
      *   - the bound is singleton, since that's not a "real" bound, or
      *   - the bound capture set has terminal capabilities, since we don't
      *     want to upper-bound capsets by GlobalAny, or
