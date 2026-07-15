@@ -1225,6 +1225,17 @@ class Definitions {
     "io.reactivex.rxjava3.annotations.Nullable" ::
     "org.jspecify.annotations.Nullable" :: Nil)
 
+  // Scope-level markers (JSpecify) that flip the implicit-nulls default within their scope:
+  // inside a `@NullMarked` module/package/class/method, unannotated reference types are non-null,
+  // and only an explicit `@Nullable` reintroduces nullability. `@NullUnmarked` re-enables the
+  // implicit-nulls default within an enclosing `@NullMarked` scope. As with the other null
+  // annotations, we don't require these to be on the class path.
+  @tu lazy val NullMarkedAnnots: List[ClassSymbol] = getClassesIfDefined(
+    "org.jspecify.annotations.NullMarked" :: Nil)
+
+  @tu lazy val NullUnmarkedAnnots: List[ClassSymbol] = getClassesIfDefined(
+    "org.jspecify.annotations.NullUnmarked" :: Nil)
+
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
   def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
