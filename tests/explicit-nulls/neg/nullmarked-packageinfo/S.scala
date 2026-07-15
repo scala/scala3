@@ -1,3 +1,5 @@
+//> using options -Yno-flexible-types
+
 import nmpkg.J
 
 // `get` result is non-null because the package is `@NullMarked`.
