@@ -57,10 +57,11 @@ scala-cli format compiler/src/dotty/tools/dotc/qualified_types
 
 ## Development guidelines
 
-- Commands in "Tests" and "Formatting" above must be run and successfully pass before every commit.
+- Commands in "Tests" and "Formatting" above must successfully pass before every commit.
 - Markdown must be used in commit titles and messages.
 - Doc comments must be concise. They must document high-level behavior and design decisions, not implementation details.
 - Add LLM as co-author only if it made significant design decisions (e.g.
   "investigate #12345 and fix it"), not for mechanical work (e.g. "use a type
   accumulator in `containsQualifier`"). When in doubt, include it.
 - Keep the implementation self-contained in the `qualified_types` package. Outside of it, add only minimal _hooks_ that delegate to the package, and avoid comments.
+- Don't use wildcard imports; enumerate the imported members explicitly.

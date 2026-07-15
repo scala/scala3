@@ -4,7 +4,23 @@ package qualified_types
 import scala.collection.mutable.ListBuffer
 
 import dotty.tools.dotc.ast.TreeTypeMap
-import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.ast.tpd.{
+  cpy,
+  Annotated,
+  Apply,
+  Block,
+  CaseDef,
+  DefDef,
+  If,
+  Match,
+  MemberDef,
+  Select,
+  Tree,
+  TreeOps,
+  TypeApply,
+  Typed,
+  ValDef
+}
 import dotty.tools.dotc.core.Contexts.{ctx, Context}
 import dotty.tools.dotc.core.DenotTransformers.IdentityDenotTransformer
 import dotty.tools.dotc.core.Symbols.{defn, Symbol}

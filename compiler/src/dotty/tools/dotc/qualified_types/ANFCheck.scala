@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package qualified_types
 
-import dotty.tools.dotc.ast.tpd.*
+import dotty.tools.dotc.ast.tpd.{MemberDef, Tree, TreeTraverser}
 import dotty.tools.dotc.core.Contexts.{ctx, Context}
 import dotty.tools.dotc.core.Decorators.em
 import dotty.tools.dotc.core.Phases.Phase
