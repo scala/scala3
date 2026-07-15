@@ -21,6 +21,7 @@ import reporting.{Suppression, Action, Profile, ActiveProfile, MessageFilter, No
 import reporting.Diagnostic, Diagnostic.Warning
 import rewrites.Rewrites
 import profile.Profiler
+import quoted.QuotesCache
 import printing.XprintMode
 import typer.ImplicitRunInfo
 import config.Feature
@@ -377,6 +378,14 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
     val runCtx = ctx.fresh
     runCtx.setProfiler(Profiler())
+    // Cache unpickled quote templates for the whole run. The cache is keyed by
+    // the pickled TASTY bytes, which are stable per quote-site, so a macro that
+    // expands many times (heavy in inline/typeclass-macro code) unpickles each
+    // of its quotes once per run rather than once per expansion. Holes are
+    // spliced after unpickling and the cache-hit path re-owns templates, so the
+    // cached tree is expansion-independent. Previously initialized per macro
+    // expansion in `MacroExpansion.context`, which defeated reuse across expansions.
+    QuotesCache.init(runCtx)
 
     val pluginPlan = ctx.base.addPluginPhases(ctx.base.phasePlan)
     val phases = ctx.base.fusePhases(pluginPlan,
