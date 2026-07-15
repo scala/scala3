@@ -135,18 +135,14 @@ object FileWriters {
   }
 
   object FileWriter {
-    def apply(file: AbstractFile, jarManifest: Seq[(Attributes.Name, String)], jarCompressionLevel: Int = Deflater.DEFAULT_COMPRESSION): FileWriter =
-      if file.isInstanceOf[JarArchive] then
-        // Writing to non-empty JAR might be an undefined behaviour, e.g. in case if other files where
-        // created using `AbstractFile.bufferedOutputStream` instead of JarWriter
-        val jarFile = file.underlyingSource.getOrElse {
-          throw new IllegalStateException("No underlying source for jar")
-        }
-        assert(file.isEmpty, s"Unsafe writing to non-empty JAR: $jarFile")
+    def apply(file: AbstractFile, jarManifest: Seq[(Attributes.Name, String)], jarCompressionLevel: Int = Deflater.DEFAULT_COMPRESSION): FileWriter = file match
+      case jar: JarArchive =>
+        val jarFile = jar.underlyingSource
+        assert(jar.iterator.isEmpty, s"Unsafe writing to non-empty JAR: $jarFile")
         new JarEntryWriter(jarFile, jarManifest, jarCompressionLevel)
-      else if file.isVirtual then new VirtualFileWriter(file)
-      else if file.isDirectory then new DirEntryWriter(file.file.nn.toPath)
-      else throw new IllegalStateException(s"don't know how to handle an output of $file [${file.getClass}]")
+      case _ if file.isVirtual => new VirtualFileWriter(file)
+      case _ if file.isDirectory => new DirEntryWriter(file.file.nn.toPath)
+      case _ => throw new IllegalStateException(s"don't know how to handle an output of $file [${file.getClass}]")
   }
 
   private final class JarEntryWriter(file: AbstractFile, extraManifest: Seq[(Attributes.Name, String)], compressionLevel: Int) extends FileWriter {
@@ -195,7 +191,7 @@ object FileWriters {
       val pathInJar =
         if java.io.File.separatorChar == '/' then relativePath
         else relativePath.replace('/', java.io.File.separatorChar)
-      PlainFile.toPlainFile(Paths.get(s"${file.absolutePath}!$pathInJar"))
+      PlainFile.toPlainFile(Paths.get(s"${file.path}!$pathInJar"))
     }
 
     override def close(): Unit = this.synchronized(jarWriter.close())
@@ -291,7 +287,7 @@ object FileWriters {
     }
 
     private def writeBytes(outFile: AbstractFile, bytes: Array[Byte]): Unit = {
-      val out = new DataOutputStream(outFile.bufferedOutput)
+      val out = outFile.output
       try out.write(bytes, 0, bytes.length)
       finally out.close()
     }

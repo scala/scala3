@@ -23,7 +23,6 @@ import util.Spans.*
 import util.chaining.*
 import Constants.*
 import Symbols.NoSymbol
-import ScriptParsers.*
 import Decorators.*
 import util.Chars
 import rewrites.Rewrites.{overlapsPatch, patch, unpatch}
@@ -89,13 +88,6 @@ object Parsers {
       case x: Thicket => buf ++= x.trees
       case x => buf += x
     }
-
-  /** The parse starting point depends on whether the source file is self-contained:
-   *  if not, the AST will be supplemented.
-   */
-  def parser(source: SourceFile)(using Context): Parser =
-    if source.isSelfContained then new ScriptParser(source)
-    else new Parser(source)
 
   private val InCase: Region => Region = Scanners.InCase(_)
   private val InCond: Region => Region = Scanners.InParens(LPAREN, _)
@@ -1789,8 +1781,9 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [CapFilter] [`.` `rd`] -- under captureChecking
-     *  CapFilter   ::=  `.` `only` `[` QualId `]`
+    /** CaptureRef    ::=  { SimpleRef `.` } SimpleRef [`*`] [OnlyFilter] {ExceptFilter} [`.` `rd`] -- under captureChecking
+     *  OnlyFilter    ::=  `.` `only` `[` QualId `]`
+     *  ExceptFilter  ::=  `.` `except` `[` QualId `]`
      */
     def captureRef(): Tree =
 
@@ -1808,6 +1801,15 @@ object Parsers {
             Annotated(ref, makeOnlyAnnot(inBrackets(convertToTypeId(qualId()))))
         else ref
 
+      def exceptOpt(ref: Tree): Tree =
+        if in.token == DOT && in.lookahead.isIdent(nme.except) then
+          val ref1 = atSpan(startOffset(ref)):
+            in.nextToken()
+            in.nextToken()
+            Annotated(ref, makeExceptAnnot(inBrackets(convertToTypeId(qualId()))))
+          exceptOpt(ref1)
+        else ref
+
       def readOnlyOpt(ref: Tree): Tree =
         if in.token == DOT && in.lookahead.isIdent(nme.rd) then
           atSpan(startOffset(ref)):
@@ -1817,7 +1819,7 @@ object Parsers {
         else ref
 
       def recur(ref: Tree): Tree =
-        val ref1 = readOnlyOpt(restrictedOpt(reachOpt(ref)))
+        val ref1 = readOnlyOpt(exceptOpt(restrictedOpt(reachOpt(ref))))
         if (ref1 eq ref) && in.token == DOT then
           in.nextToken()
           recur(selector(ref))

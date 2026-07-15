@@ -267,9 +267,16 @@ class JLineTerminal(providedTerminal: org.jline.terminal.Terminal | Null = null)
         null
       }
 
+      // A lone directive/command must defer (and assemble) when pasted code is already
+      // arriving, but submit on one ENTER when typed.
+      // A short bounded peek waits just long enough for the pump to surface
+      // already-arriving paste bytes; the wait only applies when submitting a bare
+      // directive/command line.
+      def hasPendingInput: Boolean = terminal.reader().peek(5) >= 0
+
       def acceptLine = {
         val onLastLine = !input.substring(cursor).contains(System.lineSeparator)
-        onLastLine && !ParseResult.isIncomplete(input)
+        onLastLine && ParseResult.shouldAcceptLine(input, hasPendingInput)
       }
 
       context match {

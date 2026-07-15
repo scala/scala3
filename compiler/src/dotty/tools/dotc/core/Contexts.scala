@@ -14,7 +14,7 @@ import Uniques.*
 import ast.Trees.*
 import Flags.ParamAccessor
 import ast.untpd
-import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance, WrappedSourceFile}
+import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, WrappedSourceFile}
 import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import inlines.Inliner
 import Nullables.*
@@ -27,7 +27,6 @@ import scala.io.Codec
 import collection.mutable
 import printing.*
 import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
-import classfile.ReusableDataReader
 import StdNames.nme
 import compiletime.uninitialized
 
@@ -258,30 +257,22 @@ object Contexts {
       base.sources.getOrElseUpdate(file, SourceFile(file, codec))
     }
 
-    /** SourceFile with given path name, memoized */
-    def getSource(path: TermName): SourceFile = getFile(path) match
-      case NoAbstractFile => NoSource
-      case file => getSource(file)
-
     /** SourceFile with given path, memoized */
-    def getSource(path: String): SourceFile = getSource(path.toTermName)
-
-    /** AbstractFile with given path name, memoized */
-    def getFile(name: TermName): AbstractFile = base.files.get(name) match
-      case Some(file) =>
-        file
-      case None =>
-        try
-          val file = new PlainFile(Path(name.toString))
-          base.files(name) = file
-          file
-        catch
-          case ex: InvalidPathException =>
-            report.error(em"invalid file path: ${ex.getMessage}")
-            NoAbstractFile
+    def getSource(path: String): SourceFile = getFile(path) match
+      case None => NoSource
+      case Some(file) => getSource(file)
 
     /** AbstractFile with given path, memoized */
-    def getFile(name: String): AbstractFile = getFile(name.toTermName)
+    def getFile(path: String): Option[AbstractFile] = base.files.get(path).orElse(
+      try
+        val file = new PlainFile(Path(path))
+        base.files(path) = file
+        Some(file)
+      catch
+        case ex: InvalidPathException =>
+          report.error(em"invalid file path: ${ex.getMessage}")
+          None
+    )
 
     private var related: SimpleIdentityMap[Phase | SourceFile, Context] | Null = null
 
@@ -1006,7 +997,7 @@ object Contexts {
 
     /** Sources and Files that were loaded */
     val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
-    val files: util.HashMap[TermName, AbstractFile] = util.HashMap()
+    val files: util.HashMap[String, AbstractFile] = util.HashMap()
 
     /** Cache for magic offset header lookups, scoped to this compiler instance
      *  so that concurrent compilers in the same classloader don't share stale entries. */
@@ -1103,8 +1094,6 @@ object Contexts {
     private[Contexts] var comparersInUse: Int = 0
 
     private var charArray = new Array[Char](256)
-
-    private[core] val reusableDataReader = ReusableInstance(new ReusableDataReader())
 
     private[dotc] var wConfCache: (List[String], WConf) = uninitialized
 

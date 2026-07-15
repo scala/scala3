@@ -1139,6 +1139,7 @@ class Definitions {
   @tu lazy val DeclaredAnnot = requiredClass("scala.caps.internal.declared")
   @tu lazy val ReadOnlyCapabilityAnnot = requiredClass("scala.annotation.internal.readOnlyCapability")
   @tu lazy val OnlyCapabilityAnnot = requiredClass("scala.annotation.internal.onlyCapability")
+  @tu lazy val ExceptCapabilityAnnot = requiredClass("scala.annotation.internal.exceptCapability")
   @tu lazy val RequiresCapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.internal.requiresCapability")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
   @tu lazy val RetainsCapAnnot: ClassSymbol = requiredClass("scala.annotation.retainsCap")

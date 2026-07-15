@@ -13,7 +13,6 @@ import dotty.tools.dotc.reporting.TestReporter
 import java.nio.file.{FileSystems, Files, Path, Paths, StandardCopyOption}
 import scala.jdk.CollectionConverters.*
 import scala.util.Properties.userDir
-import scala.language.unsafeNulls
 import scala.collection.mutable.Buffer
 
 import java.nio.charset.StandardCharsets

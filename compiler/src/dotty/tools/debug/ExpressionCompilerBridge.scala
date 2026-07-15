@@ -4,6 +4,8 @@ import java.nio.file.Path
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.Driver
 
+// IMPORTANT: This is a public class used externally, e.g., scala-debug-adapter instantiates it
+//            and calls `run` via reflection!
 class ExpressionCompilerBridge:
   def run(
       outputDir: Path,

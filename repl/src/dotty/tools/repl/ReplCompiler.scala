@@ -17,7 +17,7 @@ import dotc.config.Feature
 import dotc.core.StdNames.*
 import dotc.core.Symbols.*
 import dotc.reporting.Diagnostic
-import dotc.transform.{CheckUnused, CheckShadowing, PostTyper, UnrollDefinitions}
+import dotc.transform.{CheckUnused, CheckShadowing, PostTyper, UnrollDefinitions, WInferUnion}
 import dotc.typer.ImportInfo.{withRootImports, RootRef}
 import dotc.typer.TyperPhase
 import dotc.util.Spans.*
@@ -41,7 +41,7 @@ class ReplCompiler extends Compiler:
     List(Parser()),
     List(ReplPhase()),
     List(TyperPhase(addRootImports = false)),
-    List(CheckUnused.PostTyper(), CheckShadowing()),
+    List(WInferUnion(), CheckUnused.PostTyper(), CheckShadowing()),
     List(CollectTopLevelImports()),
     List(PostTyper()),
     List(UnrollDefinitions()),

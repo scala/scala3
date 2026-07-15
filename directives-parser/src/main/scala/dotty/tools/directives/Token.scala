@@ -1,6 +1,9 @@
 package dotty.tools.directives
 
 enum Token:
+  /** Absolute position of this token in the source file. */
+  def pos: Position
+
   /** The `using` keyword. */
   case Using(pos: Position)
 
@@ -13,9 +16,6 @@ enum Token:
   /** Boolean literal `true` or `false`. */
   case BoolLit(value: Boolean, pos: Position)
 
-  /** Dot separator in dotted keys. */
-  case Dot(pos: Position)
-
   /** Comma – accepted as a deprecated value separator. */
   case Comma(pos: Position)
 
@@ -27,16 +27,3 @@ enum Token:
 
   /** A lexer error. */
   case LexError(message: String, pos: Position)
-
-object Token:
-  extension (t: Token)
-    def pos: Position = t match
-      case Using(p)        => p
-      case Ident(_, p)     => p
-      case StringLit(_, p) => p
-      case BoolLit(_, p)   => p
-      case Dot(p)          => p
-      case Comma(p)        => p
-      case Newline(p)      => p
-      case Eof(p)          => p
-      case LexError(_, p)  => p

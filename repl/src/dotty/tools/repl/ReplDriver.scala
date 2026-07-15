@@ -6,6 +6,8 @@ import scala.util.control.NonFatal
 
 import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.util.regex.Pattern
 
 import dotc.ast.Trees.*
 import dotc.ast.{tpd, untpd}
@@ -34,7 +36,9 @@ import dotc.util.Spans.Span
 import dotc.util.{SourceFile, SourcePosition}
 import dotc.{CompilationUnit, Driver}
 import dotc.config.{CompilerCommand, Feature}
+import dotty.tools.io
 import dotty.tools.io.{AbstractFileClassLoader => _, *}
+import dotty.tools.dotc.classpath.FileUtils.isClassContainer
 import dotty.tools.repl.ScalaClassLoader.*
 
 import org.jline.reader.*
@@ -65,17 +69,27 @@ import scala.util.Using
  *  @param objectIndex the index of the next wrapper
  *  @param valIndex    the index of next value binding for free expressions
  *  @param imports     a map from object index to the list of user defined imports
- *  @param invalidObjectIndexes the set of object indexes that failed to initialize
+ *  @param invalidObjectIndexes the set of object indexes that failed to compile or initialize
  *  @param quiet       whether we print evaluation results
  *  @param context     the latest compiler context
+ *  @param pastInputs  the replayable inputs of the session, most recent first
  */
 case class State(objectIndex: Int,
                  valIndex: Int,
                  imports: Map[Int, List[tpd.Import]],
                  invalidObjectIndexes: Set[Int],
                  quiet: Boolean,
-                 context: Context):
+                 context: Context,
+                 pastInputs: List[String] = Nil):
   def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
+
+  def recordInput(input: String): State = copy(pastInputs = input :: pastInputs)
+
+  def invalidateCurrentObject: State =
+    copy(invalidObjectIndexes = invalidObjectIndexes + objectIndex)
+
+  def afterFailedCompilation(failedObjectIndex: Int): State =
+    copy(objectIndex = failedObjectIndex).invalidateCurrentObject
 
 /** Main REPL instance, orchestrating input, compilation and presentation */
 class ReplDriver(settings: Array[String],
@@ -114,8 +128,16 @@ class ReplDriver(settings: Array[String],
       case Some((files, ictx)) => inContext(ictx) {
         shouldStart = true
         if files.nonEmpty then out.println(i"Ignoring spurious arguments: $files%, %")
-        ictx.base.initialize()
-        ictx
+        val finalCtx =
+          // If the user hasn't configured warnings, enable -deprecation and -feature by default
+          if !ctx.settings.Wconf.wasSetByUser && !ctx.settings.Wall.wasSetByUser then
+            val c = ictx.fresh
+            if !ctx.settings.deprecation.wasSetByUser then c.setSetting(c.settings.deprecation, true)
+            if !ctx.settings.feature.wasSetByUser then c.setSetting(c.settings.feature, true)
+            c
+          else ictx
+        finalCtx.base.initialize()
+        finalCtx
       }
       case None =>
         shouldStart = false
@@ -129,7 +151,7 @@ class ReplDriver(settings: Array[String],
     val combinedScript = initScript.trim() match
       case "" => extraPredef
       case script => s"$extraPredef\n$script"
-    run(combinedScript)(using emptyState)
+    run(combinedScript)(using emptyState).copy(pastInputs = Nil)
 
   /** Reset state of repl to the initial state
    *
@@ -141,7 +163,7 @@ class ReplDriver(settings: Array[String],
     rootCtx = initialCtx(settings)
     if (rootCtx.settings.outputDir.isDefault(using rootCtx))
       rootCtx = rootCtx.fresh
-        .setSetting(rootCtx.settings.outputDir, new VirtualDirectory("<REPL compilation output>"))
+        .setSetting(rootCtx.settings.outputDir, io.virtualDirectory("<REPL compilation output>"))
     compiler = new ReplCompiler
     rendering = new Rendering(classLoader)
   }
@@ -269,7 +291,7 @@ class ReplDriver(settings: Array[String],
   }
 
   final def run(input: String)(using state: State): State = runBody {
-    interpret(ParseResult.complete(input))
+    interpret(ParseResult(input))
   }
 
   protected def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
@@ -348,7 +370,7 @@ class ReplDriver(settings: Array[String],
       compiler
         .typeCheck(expr, errorsAllowed = true)
         .map { (untpdTree, tpdTree) =>
-          val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
+          val file = SourceFile.virtual("<completions>", expr)
           val unit = CompilationUnit(file)(using state.context)
           unit.untpdTree = untpdTree
           unit.tpdTree = tpdTree
@@ -364,20 +386,31 @@ class ReplDriver(settings: Array[String],
 
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
-      case parsed: Parsed if parsed.source.content().mkString.startsWith("//>") =>
-        // Check for magic comments specifying dependencies
-        println("Please use `:dep com.example::artifact:version` to add dependencies in the REPL")
-        state
-
-      case parsed: Parsed if parsed.trees.nonEmpty =>
-        propagateLanguageImports(parsed.trees)
-        compile(parsed, state)
+      case parsed: Parsed =>
+        val src = parsed.source.content().mkString
+        val classified = DependencyResolver.classifyDirectives(src)
+        if classified.hasDirectives then
+          val stateAfterDirectives = interpretDirectives(classified)
+          if parsed.trees.nonEmpty then
+            propagateLanguageImports(parsed.trees)
+            compile(parsed, stateAfterDirectives)
+          else stateAfterDirectives.recordInput(src.strip)
+        else if parsed.trees.nonEmpty then
+          propagateLanguageImports(parsed.trees)
+          compile(parsed, state)
+        else state
 
       case SyntaxErrors(_, errs, _) =>
         displayErrors(errs, state)
 
+      case CommandThenCode(cmd, code) =>
+        val stateAfterCommand = interpretCommand(cmd)
+        val recorded = cmd.replayLine.fold(stateAfterCommand)(line => stateAfterCommand.recordInput(line.strip))
+        interpret(code)(using recorded)
+
       case cmd: Command =>
-        interpretCommand(cmd)
+        val next = interpretCommand(cmd)
+        cmd.replayLine.fold(next)(line => next.recordInput(line.strip))
 
       case SigKill => // TODO
         state
@@ -410,7 +443,10 @@ class ReplDriver(settings: Array[String],
     compiler
       .compile(parsed)
       .fold(
-        displayErrors,
+        (errs, errState) =>
+          displayErrors(errs, errState)
+          istate.afterFailedCompilation(errState.objectIndex)
+        ,
         {
           case (unit: CompilationUnit, newState: State) =>
             val newestWrapper = extractNewestWrapper(unit.untpdTree)
@@ -443,7 +479,8 @@ class ReplDriver(settings: Array[String],
                 .sorted
                 .foreach(printDiagnostic)
 
-              updatedState
+              if updatedState.invalidObjectIndexes.contains(updatedState.objectIndex) then updatedState
+              else updatedState.recordInput(parsed.source.content().mkString)
             }
         }
       )
@@ -500,7 +537,7 @@ class ReplDriver(settings: Array[String],
         // We limit the returned diagnostics here to `renderedVals`, which will contain the rendered error
         // for the val which failed to initialize. Since any other defs, aliases, imports, etc. from this
         // input line will be inaccessible, we avoid rendering those so as not to confuse the user.
-        (state.copy(invalidObjectIndexes = state.invalidObjectIndexes + state.objectIndex), renderedVals)
+        (state.invalidateCurrentObject, renderedVals)
       else
         val formattedMembers =
           typeAliases.map(rendering.renderTypeAlias)
@@ -542,6 +579,19 @@ class ReplDriver(settings: Array[String],
     }
   }
 
+  /** Replay a file saved by `:save`: each entry runs as its own compilation unit. */
+  private def loadSavedEntries(contents: String, state: State): State =
+    val separatorLine = s"(?m)^${Pattern.quote(Save.entrySeparator)}$$"
+    val entries = contents.stripPrefix(Save.sessionHeader).split(separatorLine).toList
+      .map(_.strip).filter(_.nonEmpty)
+    replayEntries(entries, state)
+
+  private def replayEntries(entries: List[String], state: State): State =
+    entries.foldLeft(state) { (st, entry) =>
+      if ParseResult.isCommand(entry) then interpret(ParseResult(entry)(using st))(using st)
+      else run(entry)(using st)
+    }
+
   /** Interpret `cmd` to action and propagate potentially new `state` */
   private def interpretCommand(cmd: Command)(using state: State): State = cmd match {
     case UnknownCommand(cmd) =>
@@ -569,6 +619,19 @@ class ReplDriver(settings: Array[String],
       resetToInitial(tokens)
       initialState
 
+    case Replay(arg) =>
+      val tokens = tokenize(arg)
+
+      if tokens.nonEmpty then
+        out.println(s"""|Replaying REPL session with the following settings:
+                        |  ${tokens.mkString("\n  ")}
+                        |""".stripMargin)
+      else
+        out.println("Replaying REPL session.")
+
+      resetToInitial(tokens)
+      replayEntries(state.pastInputs.reverse, initialState)
+
     case Imports =>
       for {
         objectIndex <- state.validObjectIndexes
@@ -576,11 +639,28 @@ class ReplDriver(settings: Array[String],
       } out.println(imp.show(using state.context))
       state
 
+    case Save(path) =>
+      if path.isEmpty then
+        out.println("File name is required.")
+      else if state.pastInputs.isEmpty then
+        out.println("Nothing to save.")
+      else
+        try
+          val body = state.pastInputs.reverse.map(entry => s"${Save.entrySeparator}\n$entry").mkString("\n")
+          val content = s"${Save.sessionHeader}\n$body"
+          Files.writeString(new JFile(path).toPath, content, StandardCharsets.UTF_8)
+        catch case NonFatal(e) =>
+          out.println(s"""Couldn't save session to "$path": ${e.getMessage}""")
+      state
+
     case Load(path) =>
       val file = new JFile(path)
       if (file.exists) {
         val contents = Using(scala.io.Source.fromFile(file, StandardCharsets.UTF_8.name))(_.mkString).get
-        run(contents)
+        val loaded =
+          if contents.linesIterator.nextOption().contains(Save.sessionHeader) then loadSavedEntries(contents, state)
+          else run(contents)(using state)
+        loaded.copy(pastInputs = state.pastInputs)
       }
       else {
         out.println(s"""Couldn't find file "${file.getCanonicalPath}"""")
@@ -681,6 +761,10 @@ class ReplDriver(settings: Array[String],
       out.println(s"""The :sh command is deprecated. Use `import scala.sys.process._` and `"command".!` instead.""")
       state
 
+    case Paste =>
+      out.println("The :paste command is deprecated. It is no longer needed, since the REPL supports multiline editing.")
+      state
+
     case Settings(arg) => arg match
       case "" =>
         given ctx: Context = state.context
@@ -692,32 +776,43 @@ class ReplDriver(settings: Array[String],
         state.copy(context = rootCtx)
 
     case Silent => state.copy(quiet = !state.quiet)
-    case Dep(dep) =>
-      val depStrings = List(dep)
-      if depStrings.nonEmpty then
-        val deps = depStrings.flatMap(DependencyResolver.parseDependency)
-        if deps.nonEmpty then
-          DependencyResolver.resolveDependencies(deps) match
-            case Right(files) =>
-              if files.nonEmpty then
-                inContext(state.context):
-                  // Update both compiler classpath and classloader
-                  val prevOutputDir = ctx.settings.outputDir.value
-                  val prevClassLoader = rendering.classLoader()
-                  rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
-                    files,
-                    prevClassLoader,
-                    prevOutputDir
-                  )
-                  out.println(s"Resolved ${deps.size} dependencies (${files.size} JARs)")
-            case Left(error) =>
-              out.println(s"Error resolving dependencies: $error")
-      state
+    case Dep(dep) => resolveAndAddDeps(List(dep))
 
     case Quit =>
       // end of the world!
       state
   }
+
+  private def interpretDirectives(classified: DependencyResolver.ClassifiedDirectives)(using state: State): State =
+    classified.unsupportedKeys.foreach: key =>
+      out.println(
+        s"""[warn] The `using $key` directive is not supported in the REPL.
+           |To use it, re-run with the `scala` command and pass the directive inside an input.""".stripMargin
+      )
+    resolveAndAddDeps(classified.deps)
+
+  private def resolveAndAddDeps(depStrings: List[String])(using state: State): State =
+    if depStrings.isEmpty then state
+    else
+      val deps = depStrings.flatMap(DependencyResolver.parseDependency)
+      if deps.isEmpty then state
+      else
+        DependencyResolver.resolveDependencies(deps) match
+          case Right(files) =>
+            if files.nonEmpty then
+              inContext(state.context):
+                val prevOutputDir = ctx.settings.outputDir.value
+                val prevClassLoader = rendering.classLoader()
+                rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
+                  files,
+                  prevClassLoader,
+                  prevOutputDir
+                )
+                val depsDescription = if deps.size == 1 then "a dependency" else s"${deps.size} dependencies"
+                out.println(s"Resolved $depsDescription (${files.size} JARs)")
+          case Left(error) =>
+            out.println(s"Error resolving dependencies: $error")
+        state
 
   /** shows all errors nicely formatted */
   private def displayErrors(errs: Seq[Diagnostic], state: State): State = {

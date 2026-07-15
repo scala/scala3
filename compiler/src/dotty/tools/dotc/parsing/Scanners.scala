@@ -787,10 +787,8 @@ object Scanners {
           if lastToken == IDENTIFIER && lastName != null && isIdentifierStart(lastName.head)
               || colonEOLPredecessors.contains(lastToken)
           then token = COLONfollow
-        case RBRACE | RPAREN | RBRACKET =>
+        case RBRACE | RPAREN | RBRACKET | EOF =>
           closeIndented()
-        case EOF =>
-          if !source.maybeIncomplete then closeIndented()
         case _ =>
       }
     }
@@ -1403,6 +1401,7 @@ object Scanners {
         case 'n'  => putChar('\n')
         case 'f'  => putChar('\f')
         case 'r'  => putChar('\r')
+        case 's'  => putChar(' ')
         case '\"' => putChar('\"')
         case '\'' => putChar('\'')
         case '\\' => putChar('\\')

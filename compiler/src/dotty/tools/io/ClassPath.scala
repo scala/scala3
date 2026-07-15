@@ -43,7 +43,7 @@ object ClassPath {
 
     /* Get all subdirectories, jars, zips out of a directory. */
     def lsDir(dir: Directory, filt: String => Boolean = _ => true) =
-      dir.list.filter(x => filt(x.name) && (x.isDirectory || JarArchive.isJarOrZip(x))).map(_.path).toList
+      dir.list.filter(x => filt(x.name) && (x.isDirectory || x.ext.isJarOrZip)).map(_.path).toList
 
     if (pattern == "*") lsDir(Directory("."))
     // On Windows the JDK supports forward slash or backslash in classpath entries
@@ -72,13 +72,4 @@ trait ClassRepresentation {
   def name: String
   def binary: Option[AbstractFile]
   def source: Option[AbstractFile]
-
-  /** returns the length of `name` by stripping the extension of `fileName`
-   *
-   *  Used to avoid creating String instance of `name`.
-   */
-  final def nameLength: Int = {
-    val ix = fileName.lastIndexOf('.')
-    if (ix < 0) fileName.length else ix
-  }
 }

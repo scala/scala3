@@ -14,6 +14,9 @@ object FileUtils {
   extension (file: AbstractFile) {
     def isPackage: Boolean = file.isDirectory && mayBeValidPackage(file.name)
 
+    /** Does this abstract file represent something which can contain classfiles? */
+    def isClassContainer: Boolean = file.isDirectory || file.ext.isJarOrZip
+
     /**
      * Returns if there is an existing sibling `.tasty` file.
      */
@@ -53,8 +56,6 @@ object FileUtils {
     ends(fileName, FileExtension.Scala.withDot) || ends(fileName, FileExtension.Java.withDot)
 
   def dirPath(forPackage: String): String = forPackage.replace('.', JFile.separatorChar)
-
-  def dirPathInJar(forPackage: String): String = forPackage.replace('.', '/')
 
   inline private def ends (filename:String, suffix:String) = filename.endsWith(suffix) && filename.length > suffix.length
 

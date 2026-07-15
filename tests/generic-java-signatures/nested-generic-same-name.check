@@ -1,6 +1,6 @@
-Outer$_setter_$same_$eq
-Outer$Same<A>
-public abstract void Outer.Outer$_setter_$same_$eq(Outer$Same<A>)
 Outer$_setter_$diff_$eq
 Outer$Diff<A>
 public abstract void Outer.Outer$_setter_$diff_$eq(Outer$Diff<A>)
+Outer$_setter_$same_$eq
+Outer$Same<A>
+public abstract void Outer.Outer$_setter_$same_$eq(Outer$Same<A>)

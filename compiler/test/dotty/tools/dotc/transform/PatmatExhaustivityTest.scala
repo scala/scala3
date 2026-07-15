@@ -3,8 +3,6 @@ package tools
 package dotc
 package transform
 
-import scala.language.unsafeNulls
-
 import vulpix.FileDiff
 import vulpix.TestConfiguration
 import reporting.TestReporter

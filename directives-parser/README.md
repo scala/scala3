@@ -49,12 +49,12 @@ original file where code begins.
 
 ### Prefix requirement
 
-The exact prefix `//> using` is required (with a single space after `>`):
+The prefix `//> using` is required, with zero or more whitespace characters after `>`:
 
 - `//> using scala 3` — valid
-- `//>using scala 3` — treated as code (no space after `>`)
-- `//>  using scala 3` — warning: invalid prefix; treated as code
-- `//>	using scala 3` — warning: tab after `>` is invalid; treated as code
+- `//>using scala 3` — valid
+- `//>  using scala 3` — valid
+- `//>	using scala 3` (with a tab) — valid
 - `//> notUsing foo` — treated as code
 
 ## Grammar
@@ -160,7 +160,7 @@ Two accessors reconstruct the text:
 
 ## Diagnostics
 
-Diagnostics are returned as `UsingDirectiveDiagnostic(message, severity, position?)`.
+Diagnostics are returned as `UsingDirectiveDiagnostic(message, severity, position)`.
 
 | Severity    | When                                                                   |
 |-------------|------------------------------------------------------------------------|
@@ -201,10 +201,6 @@ val x = 1
 ```scala
 package x
 //> using scala 3                   // ignored: code (package) before directive
-```
-
-```scala
-//>  using scala 3                  // invalid prefix (extra space); treated as code
 ```
 
 ### Errors

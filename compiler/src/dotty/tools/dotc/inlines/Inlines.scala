@@ -22,6 +22,7 @@ import cc.CleanupRetains
 
 import collection.mutable
 import reporting.{NotConstant, trace}
+import util.Property
 import util.Spans.Span
 import dotty.tools.dotc.core.Periods.PhaseId
 import dotty.tools.dotc.util.chaining.*
@@ -29,6 +30,13 @@ import dotty.tools.dotc.util.chaining.*
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
   import tpd.*
+
+  /** Method name of the transparent inline call.
+   *
+   *  Used for reporting type errors on the expansion, to add a note that
+   *  precise type isn't available in transparent inline call inside an inline method.
+   */
+  private[dotc] val TransparentInlinedCall: Property.Key[String] = new Property.Key
 
   /** An exception signalling that an inline info cannot be computed due to a
    *  cyclic reference. i14772.scala shows a case where this happens.
@@ -198,11 +206,15 @@ object Inlines:
                |You can use ${setting.name} to change the limit.""",
           (tree :: enclosingInlineds).last.srcPos
         )
+    // if tree0 (inline call tree before expansion) is transparent
+    // attach the method name to the tree2 (expanded tree)
+    val tree3 =
+      if tree0.symbol.is(Transparent) then tree2.withAttachment(TransparentInlinedCall, tree0.symbol.show) else tree2
     if ctx.base.stopInlining && enclosingInlineds.isEmpty then
       ctx.base.stopInlining = false
         // we have completely backed out of the call that overflowed;
         // reset so that further inline calls can be expanded
-    tree2
+    tree3
   end inlineCall
 
   /** Try to inline a pattern with an inline unapply method. Fail with error if the maximal

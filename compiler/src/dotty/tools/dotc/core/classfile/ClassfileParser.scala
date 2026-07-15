@@ -289,10 +289,10 @@ final class ClassfileParser(
   private def currentIsTopLevel(using Context) = classRoot.owner.is(Flags.PackageClass)
 
   private def mismatchError(className: SimpleName) =
-    throw new IOException(s"class file '${classfile.canonicalPath}' has location not matching its contents: contains class $className")
+    throw new IOException(s"class file '${classfile.path}' has location not matching its contents: contains class $className")
 
-  def run()(using Context): Option[Embedded] = try ctx.base.reusableDataReader.withInstance { reader =>
-    implicit val reader2 = reader.reset(classfile)
+  def run()(using Context): Option[Embedded] = try {
+    implicit val reader = new DataReader(classfile)
     report.debuglog("[class] >> " + classRoot.fullName)
     classfileVersion = parseHeader(classfile)
     this.pool = new ConstantPool
@@ -307,7 +307,7 @@ final class ClassfileParser(
         case _: UnpickleException => ""
         case _ => Header.Version.brokenVersionAddendum(classfileVersion)
       throw new IOException(
-        i"""  class file ${classfile.canonicalPath} is broken$addendum,
+        i"""  class file ${classfile.path} is broken$addendum,
           |  reading aborted with ${e.getClass}:
           |  ${Option(e.getMessage).getOrElse("")}""")
   }
@@ -393,7 +393,7 @@ final class ClassfileParser(
     end parseParents
 
     val result = unpickleOrParseInnerClasses()
-    if !result.isDefined then
+    if (result.isEmpty) {
       var classInfo: Type = TempClassInfoType(parseParents, instanceScope, classRoot.symbol)
       // might be reassigned by later parseAttributes
       val staticInfo = TempClassInfoType(List(), staticScope, moduleRoot.symbol)
@@ -426,11 +426,11 @@ final class ClassfileParser(
 
       setClassInfo(classRoot, classInfo, fromScala2 = false)
       NamerOps.addConstructorProxies(moduleRoot.classSymbol)
-    else if result == Some(NoEmbedded) then
-      for sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol) do
+    } else if (result.contains(NoEmbedded))
+      for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
         classRoot.owner.asClass.delete(sym)
         sym.markAbsent()
-
+      }
     result
   end parseClass
 
@@ -986,7 +986,6 @@ final class ClassfileParser(
     def parseAttribute(): Unit = {
       val attrName = pool.getName(in.nextChar).name.toTypeName
       val attrLen = in.nextInt
-      val end = in.bp + attrLen
       attrName match {
         case tpnme.SignatureATTR =>
           val sig = pool.getExternalName(in.nextChar)
@@ -1022,6 +1021,7 @@ final class ClassfileParser(
 
         case tpnme.AnnotationDefaultATTR =>
           sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil, sym.span))
+          in.skip(attrLen) // we don't actually parse the value
 
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
         case tpnme.RuntimeVisibleAnnotationATTR
@@ -1055,8 +1055,8 @@ final class ClassfileParser(
           }
 
         case _ =>
+          in.skip(attrLen)
       }
-      in.bp = end
     }
 
     /**
@@ -1115,7 +1115,7 @@ final class ClassfileParser(
   /** Enter own inner classes in the right scope. It needs the scopes to be set up,
    *  and implicitly current class' superclasses.
    */
-  private def enterOwnInnerClasses()(using Context, DataReader): Unit = {
+  private def enterOwnInnerClasses()(using Context): Unit = {
     def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) =
       SymbolLoaders.enterClassAndModule(
         getOwner(jflags),

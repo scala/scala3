@@ -2,8 +2,6 @@ package dotty
 package tools
 package vulpix
 
-import scala.language.unsafeNulls
-
 import java.io.{File as JFile, PrintStream}
 import java.lang.management.ManagementFactory
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
@@ -16,8 +14,6 @@ import scala.collection.mutable, mutable.ArrayBuffer, mutable.ListBuffer
 import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Random, Try, Using}
-import scala.util.control.NonFatal
-import scala.util.matching.Regex
 import scala.util.Properties.{isJavaAtLeast, javaSpecVersion}
 
 import dotc.{Compiler, Driver}
@@ -209,8 +205,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       def groupFor(file: JFile): Group =
         val groupSuffix = file.getName.dropWhile(_ != '_').stripSuffix(".scala").stripSuffix(".java")
         val groupSuffixParts = groupSuffix.split("_")
-        val ordinal = groupSuffixParts.collectFirst { case GroupOrdinal(n) => n.toInt }.getOrElse(Int.MinValue)
-        val compiler = groupSuffixParts.collectFirst { case CompilerVersion(c) => c }.getOrElse("")
+        val ordinal = groupSuffixParts.collectFirst { case GroupOrdinal(n) => n.nn.toInt }.getOrElse(Int.MinValue)
+        val compiler = groupSuffixParts.collectFirst { case CompilerVersion(c) => c.nn }.getOrElse("")
         Group(ordinal, compiler)
 
       dir.listFiles
@@ -269,7 +265,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
               if testSource.sourceFiles.length == 1 then
                 testSource.sourceFiles(0).getName match
                   case SeparateCompilationSource.HasCompilerVersion(version) =>
-                    val compiler = version.stripSuffix(".")
+                    val compiler = version.nn.stripSuffix(".")
                     compileWithOtherCompiler(compiler, testSource.sourceFiles, flags, outDir)
                   case _ => compile(testSource.sourceFiles, flags, outDir)
               else
@@ -527,16 +523,20 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       val spec = raw"(\d+)(\+)?".r
       val testIsFiltered = toolArgs.get(ToolName.Test) match
         case Some("-jvm" :: spec(n, more) :: Nil) =>
-          if more == "+" then isJavaAtLeast(n) else javaSpecVersion == n
+          if more == "+" then isJavaAtLeast(n.nn) else javaSpecVersion == n
         case Some(args) => throw new IllegalStateException(args.mkString("unknown test option: ", ", ", ""))
         case None => true
 
       def scalacOptions = toolArgs.getOrElse(ToolName.Scalac, Nil)
       def javacOptions  = toolArgs.getOrElse(ToolName.Javac, Nil)
 
-      var flags = flags0
+      // Allow tests to override -d, e.g., for testing in the Playground
+      val flags1 =
+        if flags0.options.contains("-d") then flags0
+        else flags0.and("-d", targetDir.getPath)
+
+      var flags = flags1
         .and(scalacOptions*)
-        .and("-d", targetDir.getPath)
         .withClasspath(targetDir.getPath)
 
       // We must set -sourceroot for SemanticDB extraction to work properly inside an IDE,
@@ -629,9 +629,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
             inError = false
           case error @ errorPattern(filePath, line, column) =>
             inError = true
-            val lineNum = line.toInt
-            val columnNum = column.toInt
-            val abstractFile = AbstractFile.getFile(filePath)
+            val lineNum = line.nn.toInt
+            val columnNum = column.nn.toInt
+            val abstractFile = AbstractFile.getFile(filePath.nn).nn
             val sourceFile = SourceFile(abstractFile, Codec.UTF8)
             val offset = sourceFile.lineToOffset(lineNum - 1) + columnNum - 1
             val span = Spans.Span(offset)
@@ -674,7 +674,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
       val pageWidth = TestConfiguration.pageWidth - 20
 
-      val fileArgs = files.map(_.getAbsolutePath)
+      val fileArgs = files.map(_.getPath)
 
       def scala2Command(): Array[String] = {
         assert(!flags.options.contains("-scalajs"),
@@ -913,7 +913,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       reporterWarnings.foreach(sawDiagnostic)
 
       val splitter = raw"(?:[^:]*):(\d+)".r
-      val unfulfilled = expected.asScala.keys.toList.sortBy { case splitter(n) => n.toInt case _ => -1 }
+      val unfulfilled = expected.asScala.keys.toList.sortBy { case splitter(n) => n.nn.toInt case _ => -1 }
       (unfulfilled, unexpected.toList)
     end getMissingExpectedWarnings
   end WarnTest
@@ -1040,7 +1040,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
           source.getLines().zipWithIndex.foreach: (line, lineNbr) =>
             comment.findAllMatchIn(line).foreach: m =>
               m.group(2) match
-              case prefix if m.group(1).isEmpty =>
+              case prefix if m.group(1).nn.isEmpty =>
                 val what = Option(prefix).getOrElse("")
                 echo(s"Warning: ${file.getCanonicalPath}:${lineNbr}: found `//${what}error` but expected `// ${what}error`, skipping comment")
               case "nopos-" => bump("nopos")
@@ -1055,8 +1055,6 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     // to obviate `anypos-error` in that case.
     def getMissingExpectedErrors(errorMap: HashMap[String, Integer], reporterErrors: Iterator[Diagnostic]): (List[String], List[String]) =
       val unexpected, unpositioned = ListBuffer.empty[String]
-      // For some reason, absolute paths leak from the compiler itself...
-      def relativize(path: String): String = path.split(JFile.separatorChar).dropWhile(_ != "tests").mkString(JFile.separator)
       def seenAt(key: String): Boolean =
         errorMap.get(key) match
         case null => false
@@ -1064,12 +1062,12 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         case n => errorMap.put(key, n - 1); true
       def sawDiagnostic(d: Diagnostic): Unit =
         val srcpos = d.pos.nonInlined.adjustedAtEOF
-        val relatively = relativize(srcpos.source.file.toString)
+        val path = srcpos.source.file.toString
         if srcpos.exists then
-          val key = s"${relatively}:${srcpos.line + 1}"
+          val key = s"$path:${srcpos.line + 1}"
           if !seenAt(key) then unexpected += key
         else
-          if !seenAt("nopos") then unpositioned += relatively
+          if !seenAt("nopos") then unpositioned += path
 
       reporterErrors.foreach(sawDiagnostic)
 

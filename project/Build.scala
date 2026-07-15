@@ -77,8 +77,9 @@ object Build {
       "-Werror",
       // temporary duplicate 'caps' while CC is developed?
       "-Wconf:msg=package scala contains object and package with same name:i",
-      // Scaladoc testcases contain deliberately weird code
+      // Scaladoc and PC testcases contain deliberately weird code
       "-Wconf:src=scaladoc-testcases/.*:s",
+      "-Wconf:src=presentation-compiler-testcases/.*:s",
       // FPs of the init checker
       "-Wconf:msg=The RHS of reassignment must be transitively initialized:i",
       "-Wconf:msg=Could not verify that the method argument is transitively initialized:i",
@@ -1375,6 +1376,7 @@ object Build {
       ),
       publish / skip := true,
       target := target.value / "scala3-directives-parser-nonbootstrapped",
+      Compile / compile / scalacOptions += "-Wunused:all",
       fetchedScalaInstanceSettings,
       bspEnabled := true,
     )
@@ -1402,6 +1404,7 @@ object Build {
       Test    / publishArtifact := false,
       publish / skip := false,
       target := target.value / "scala3-directives-parser",
+      Compile / compile / scalacOptions += "-Wunused:all",
       bootstrappedScalaInstanceSettings,
       bspEnabled := enableBspAllProjects,
     )

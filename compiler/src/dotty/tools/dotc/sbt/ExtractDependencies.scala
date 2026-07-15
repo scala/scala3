@@ -18,7 +18,7 @@ import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.typer.Applications.*
 import dotty.tools.dotc.util.{NoSourcePosition, SrcPos}
 import dotty.tools.io
-import dotty.tools.io.{AbstractFile, FileExtension, NoAbstractFile, PlainFile, ZipArchive}
+import dotty.tools.io.AbstractFile
 import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext.*
@@ -502,7 +502,7 @@ class DependencyRecorder {
   /** Send the collected dependency information to Zinc and clear the local caches. */
   def sendToZinc()(using Context): Unit =
     ctx.withIncCallback: cb =>
-      val siblingClassfiles = new mutable.HashMap[PlainFile, Path]
+      val siblingClassfiles = new mutable.HashMap[AbstractFile, Path]
       _foundDeps.iterator.foreach:
         case (clazz, foundDeps) =>
           val className = classNameAsString(clazz)
@@ -526,7 +526,7 @@ class DependencyRecorder {
    *  run) or from class file and calls respective callback method.
    */
   private def recordClassDependency(cb: interfaces.IncrementalCallback, fromClass: Symbol, toClass: Symbol,
-      depCtx: DependencyContext, siblingClassfiles: mutable.Map[PlainFile, Path])(using Context): Unit = {
+      depCtx: DependencyContext, siblingClassfiles: mutable.Map[AbstractFile, Path])(using Context): Unit = {
     val fromClassName = classNameAsString(fromClass)
     val sourceFile = ctx.compilationUnit.source
 
@@ -546,9 +546,9 @@ class DependencyRecorder {
      * FIXME: we still need a way to resolve the correct classfile when we split tasty and classes between
      * different outputs (e.g. scala2-library-bootstrapped).
      */
-    def cachedSiblingClass(pf: PlainFile): Path =
+    def cachedSiblingClass(pf: AbstractFile): Path =
       siblingClassfiles.getOrElseUpdate(pf, {
-        val jpath = pf.jpath
+        val jpath = pf.jpath.nn
         jpath.getParent.resolve(jpath.getFileName.toString.stripSuffix(".tasty") + ".class")
       })
 
@@ -564,17 +564,13 @@ class DependencyRecorder {
 
       def processExternalDependency() = {
         val binaryClassName = depClass.binaryClassName
-        depFile match {
-          case ze: ZipArchive#Entry => // The dependency comes from a JAR
-            ze.underlyingSource match
-              case Some(zip) if zip.jpath != null =>
-                binaryDependency(zip.jpath, binaryClassName)
-              case _ =>
-          case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem
-            binaryDependency(if isTastyOrSig then cachedSiblingClass(pf) else pf.jpath, binaryClassName)
+        depFile.enclosing match
+          case Some(archive) if archive.jpath != null => // The dependency comes from a JAR
+            binaryDependency(archive.jpath.nn, binaryClassName)
+          case _ if depFile.jpath != null =>
+            binaryDependency(if isTastyOrSig then cachedSiblingClass(depFile) else depFile.jpath.nn, binaryClassName)
           case _ =>
-            internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", fromClass.srcPos)
-        }
+            internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}", fromClass.srcPos)
       }
 
       if isTastyOrSig || depFile.ext.isClass then

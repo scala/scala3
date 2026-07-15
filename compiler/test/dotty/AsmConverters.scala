@@ -1,7 +1,6 @@
 package dotty
 
 import scala.jdk.CollectionConverters.*
-import scala.language.unsafeNulls
 import scala.tools.asm
 import scala.tools.asm.*
 import scala.tools.asm.tree.*

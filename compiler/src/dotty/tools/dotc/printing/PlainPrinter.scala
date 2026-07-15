@@ -461,7 +461,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toTextCapability(c: Capability): Text = c match
     case ReadOnly(c1) => toTextCapability(c1) ~ ".rd"
-    case Restricted(c1, cls) => toTextCapability(c1) ~ s".only[${nameString(cls)}]"
+    case Classified(c1, only, except) =>
+      val withOnly =
+        if only == defn.AnyClass then toTextCapability(c1)
+        else toTextCapability(c1) ~ s".only[${nameString(only)}]"
+      except.foldLeft(withOnly)((t, e) => t ~ s".except[${nameString(e)}]")
     case Maybe(c1) => toTextCapability(c1) ~ "?"
     case GlobalAny => "any"
     case GlobalFresh => "fresh"
