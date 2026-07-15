@@ -35,3 +35,5 @@ object Test:
     assert(Macro.matchTuple2, "matchTuple2")
     assert(Macro.roundTripTuple5, "roundTripTuple5")
     assert(Macro.roundTrips, "roundTrips")
+    assert(Macro.roundTripsContainers, "roundTripsContainers")
+    assert(Macro.roundTripsTupleFactories, "roundTripsTupleFactories")

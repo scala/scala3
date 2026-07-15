@@ -30,6 +30,15 @@ case object Singleton derives ToExprFactory, FromExprFactory
 // Generic product (needs an explicit Type/instance bound)
 case class Box[A](value: A) derives FromExprFactory, ToExprFactory
 
+// Container-typed fields, now handled by dedicated container Factory instances
+case class Tagged(tags: List[Int]) derives ToExprFactory, FromExprFactory
+case class WithOpt(o: Option[String]) derives ToExprFactory, FromExprFactory
+case class WithEither(e: Either[Int, String]) derives ToExprFactory, FromExprFactory
+case class WithMap(m: Map[String, Int]) derives ToExprFactory, FromExprFactory
+case class WithSet(s: Set[Long]) derives ToExprFactory, FromExprFactory
+case class WithArray(a: Array[Int]) derives ToExprFactory, FromExprFactory
+case class WithTuple(a: (Int, List[String])) derives ToExprFactory, FromExprFactory
+
 // Sum: sealed trait + cases, auto-derived
 sealed trait Shape derives ToExprFactory, FromExprFactory
 object Shape:
@@ -133,11 +142,17 @@ object Macro:
   // ToExpr -> FromExpr round trip, all cases above
   inline def roundTrips: Boolean = ${ Macro.roundTripsImpl }
 
-  private def check[T: Type: FromExpr](expr: Expr[T], expected: T)(using Quotes): Expr[Boolean] =
-    Expr(summon[FromExpr[T]].unapply(expr) == Some(expected))
+  // Container-typed fields, round trip without any ambient Quotes given
+  inline def roundTripsContainers: Boolean = ${ Macro.roundTripsContainersImpl }
 
-  private def checkNone[T: Type: FromExpr](expr: Expr[T])(using Quotes): Expr[Boolean] =
-    Expr(summon[FromExpr[T]].unapply(expr).isEmpty)
+  // Direct coverage of tuple1ToExprFactory..tuple22ToExprFactory / tuple1FromExprFactory..tuple22FromExprFactory
+  inline def roundTripsTupleFactories: Boolean = ${ Macro.roundTripsTupleFactoriesImpl }
+
+  private def check[T: {Type, FromExpr as fe}](expr: Expr[T], expected: T)(using Quotes): Expr[Boolean] =
+    Expr(fe.unapply(expr) == Some(expected))
+
+  private def checkNone[T: {Type, FromExpr as fe}](expr: Expr[T])(using Quotes): Expr[Boolean] =
+    Expr(fe.unapply(expr).isEmpty)
 
   def matchApplyPointImpl(using Quotes): Expr[Boolean] = check('{ Point(1, 2) }, Point(1, 2))
   def matchNewPointImpl(using Quotes): Expr[Boolean] = check('{ new Point(1, 2) }, Point(1, 2))
@@ -204,8 +219,7 @@ object Macro:
     checkNone(e.asInstanceOf[Expr[Shape.Rect]])
 
   def wrongArityIsNoneImpl(using Quotes): Expr[Boolean] =
-    val e: Expr[Point] = Expr(Point(1, 2))
-    checkNone(e.asInstanceOf[Expr[Mixed]])
+    checkNone(Expr(Point(1, 2)).asInstanceOf[Expr[Mixed]])
 
   def roundTripBig25IsNoneImpl(using Quotes): Expr[Boolean] =
     val original = Big25(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
@@ -223,8 +237,8 @@ object Macro:
     Expr(tuple5FromExpr.unapply(tuple5ToExpr(original)) == Some(original))
 
   def roundTripsImpl(using Quotes): Expr[Boolean] =
-    def roundTrip[T: Type: ToExpr: FromExpr](original: T): Boolean =
-      summon[FromExpr[T]].unapply(Expr(original)) == Some(original)
+    def roundTrip[T: {Type, ToExpr, FromExpr as fe}](original: T): Boolean =
+      fe.unapply(Expr(original)) == Some(original)
     Expr(
       roundTrip(Point(1, 2))
         && roundTrip(Mixed("m", true, 1.5))
@@ -241,4 +255,50 @@ object Macro:
         && roundTrip[Vehicle](Vehicle.Motorized.Car(4))
         && roundTrip[Vehicle](Vehicle.Bicycle(21))
         && roundTrip(Arith.Add(Arith.Lit(1), Arith.Neg(Arith.Add(Arith.Lit(2), Arith.Lit(3)))))
+    )
+
+  def roundTripsContainersImpl(using Quotes): Expr[Boolean] =
+    def roundTrip[T: {Type, ToExpr, FromExpr as fe}](original: T): Boolean =
+      fe.unapply(Expr(original)) == Some(original)
+    val arrayBack = summon[FromExpr[WithArray]].unapply(Expr(WithArray(Array(1, 2, 3))))
+    Expr(
+      roundTrip(Tagged(List(1, 2, 3)))
+        && roundTrip(WithOpt(Some("hi")))
+        && roundTrip(WithOpt(None))
+        && roundTrip(WithEither(Left(5): Either[Int, String]))
+        && roundTrip(WithEither(Right("r"): Either[Int, String]))
+        && roundTrip(WithMap(Map("a" -> 1, "b" -> 2)))
+        && roundTrip(WithSet(Set(1L, 2L)))
+        && roundTrip(WithTuple((1, List("a", "b"))))
+        && arrayBack.exists(_.a.sameElements(Array(1, 2, 3)))
+    )
+
+  def roundTripsTupleFactoriesImpl(using Quotes): Expr[Boolean] =
+    def roundTripFactory[T: {Type, ToExprFactory as tef, FromExprFactory as fef}](original: T): Boolean =
+      val te = tef.apply()
+      val fe = fef.apply()
+      fe.unapply(te.apply(original)) == Some(original)
+    Expr(
+      roundTripFactory(Tuple1(1))
+        && roundTripFactory((1, 2))
+        && roundTripFactory((1, 2, 3))
+        && roundTripFactory((1, 2, 3, 4))
+        && roundTripFactory((1, 2, 3, 4, 5))
+        && roundTripFactory((1, 2, 3, 4, 5, 6))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9, 10))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21))
+        && roundTripFactory((1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22))
     )

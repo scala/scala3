@@ -115,14 +115,8 @@ object FromExpr extends LowPriorityFromExpr:
    *  - Transform `'{None}` into `Some(None)`
    *  - Otherwise returns `None`
    */
-  given OptionFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Option[T]] with {
-    def unapply(x: Expr[Option[T]])(using Quotes) = x match {
-      case '{ Option[T](${Expr(y)}: T) } => Some(Option(y))
-      case '{ None } => Some(None)
-      case '{ ${Expr(opt)} : Some[T] } => Some(opt)
-      case _ => None
-    }
-  }
+  given OptionFromExpr: [T: {Type, FromExpr}] => FromExpr[Option[T]]:
+    def unapply(x: Expr[Option[T]])(using Quotes): Option[Option[T]] = summon[FromExprFactory[Option[T]]].apply().unapply(x)
 
   /** Default implementation of `FromExpr[None]`
    *  - Transform `'{None}` into `Some(None)`
@@ -139,13 +133,8 @@ object FromExpr extends LowPriorityFromExpr:
    *  - Transform `'{Some(x)}` into `Some(Some(x))` if `x` can be transformed using `FromExpr[T]`
    *  - Otherwise returns `None`
    */
-  given SomeFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Some[T]] with {
-    def unapply(x: Expr[Some[T]])(using Quotes) = x match {
-      case '{ new Some[T](${Expr(y)}) } => Some(Some(y))
-      case '{     Some[T](${Expr(y)}) } => Some(Some(y))
-      case _ => None
-    }
-  }
+  given SomeFromExpr: [T: {Type, FromExpr}] => FromExpr[Some[T]]:
+    def unapply(x: Expr[Some[T]])(using Quotes): Option[Some[T]] = summon[FromExprFactory[Some[T]]].apply().unapply(x)
 
   /** Default implementation of `FromExpr[StringContext]`
    *  - Transform `'{StringContext(args*)}` into `Some(StringContext(args*))` if `args` is explicit and each one is liftable
@@ -440,15 +429,8 @@ object FromExpr extends LowPriorityFromExpr:
    *  - Transform sequences that come out of varargs
    *  - Otherwise returns `None`
    */
-  given SeqFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Seq[T]] with {
-    def unapply(x: Expr[Seq[T]])(using Quotes) = x match {
-      case Varargs(Exprs(elems)) => Some(elems)
-      case '{ scala.Seq[T](${Varargs(Exprs(elems))}*) } => Some(elems)
-      case '{ scala.collection.immutable.Seq[T](${Varargs(Exprs(elems))}*) } => Some(elems)
-      case '{  ${Expr(x)}: List[T] } => Some(x)
-      case _ => None
-    }
-  }
+  given SeqFromExpr: [T: {Type, FromExpr}] => FromExpr[Seq[T]]:
+    def unapply(x: Expr[Seq[T]])(using Quotes): Option[Seq[T]] = summon[FromExprFactory[Seq[T]]].apply().unapply(x)
 
   /** Default implementation of `FromExpr[Nil]`
    *  - Transform `'{Nil}` into `Some(Nil)`
@@ -467,78 +449,43 @@ object FromExpr extends LowPriorityFromExpr:
    *  - Transform `'{Nil}` into `Some(Nil)`
    *  - Otherwise returns `None`
    */
-  given ListFromExpr[T](using Type[T], FromExpr[T]): FromExpr[List[T]] with {
-    def unapply(x: Expr[List[T]])(using Quotes) = x match {
-      case '{ scala.List[T](${Varargs(Exprs(elems))}*) } => Some(elems.toList)
-      case '{ scala.List.empty[T] } => Some(Nil)
-      case '{ Nil } => Some(Nil)
-      case '{ scala.collection.immutable.List[T](${Varargs(Exprs(elems))}*) } => Some(elems.toList)
-      case '{ scala.collection.immutable.List.empty[T] } => Some(Nil)
-      case _ => None
-    }
-  }
+  given ListFromExpr: [T: {Type, FromExpr}] => FromExpr[List[T]]:
+    def unapply(x: Expr[List[T]])(using Quotes): Option[List[T]] = summon[FromExprFactory[List[T]]].apply().unapply(x)
 
   /** Default implementation of `FromExpr[Set]`
    *  - Transform `'{Set(x1, ..., xn)}` into `Some(Set(x1, ..., xn))` if all `xi` can be transformed using `FromExpr[Ti]`
    *  - Transform `'{Set.empty}` into `Some(Set())`
    *  - Otherwise returns `None`
    */
-  given SetFromExpr[T](using Type[T], FromExpr[T]): FromExpr[Set[T]] with {
-    def unapply(x: Expr[Set[T]])(using Quotes) = x match {
-      case '{ Set[T](${Varargs(Exprs(elems))}*) } => Some(elems.toSet)
-      case '{ Set.empty[T] } => Some(Set.empty[T])
-      case '{ scala.collection.immutable.Set[T](${Varargs(Exprs(elems))}*) } => Some(elems.toSet)
-      case '{ scala.collection.immutable.Set.empty[T] } => Some(Set.empty[T])
-      case _ => None
-    }
-  }
+  given SetFromExpr: [T: {Type, FromExpr}] => FromExpr[Set[T]]:
+    def unapply(x: Expr[Set[T]])(using Quotes): Option[Set[T]] = summon[FromExprFactory[Set[T]]].apply().unapply(x)
 
   /** Default implementation of `FromExpr[Map]`
    *  - Transform `'{Map(x1, ..., xn)}` into `Some(Map(x1, ..., xn))` if all `xi` can be transformed using `FromExpr[Ti]`
    *  - Transform `'{Map.empty}` into `Some(Map())`
    *  - Otherwise returns `None`
    */
-  given MapFromExpr[T, U](using Type[T], Type[U], FromExpr[T], FromExpr[U]): FromExpr[Map[T, U]] with {
-    def unapply(x: Expr[Map[T, U]])(using Quotes) = x match {
-      case '{ Map[T, U](${Varargs(Exprs(elems))}*) } => Some(elems.toMap)
-      case '{ Map.empty[T, U] } => Some(Map.empty)
-      case '{ scala.collection.immutable.Map[T, U](${Varargs(Exprs(elems))}*) } => Some(elems.toMap)
-      case '{ scala.collection.immutable.Map.empty[T, U] } => Some(Map.empty)
-      case _ => None
-    }
-  }
+  given MapFromExpr: [T: {Type, FromExpr}, U: {Type, FromExpr}] => FromExpr[Map[T, U]]:
+    def unapply(x: Expr[Map[T, U]])(using Quotes): Option[Map[T, U]] = summon[FromExprFactory[Map[T, U]]].apply().unapply(x)
 
   /** Default implementation of `FromExpr[Either]`
    *  - Transform `'{Left(x)}` into `Some(Left(x))` if `x` can be transformed using `FromExpr[L]`
    *  - Transform `'{Right(x)}` into `Some(Right(x))` if `x` can be transformed using `FromExpr[R]`
    *  - Otherwise returns `None`
    */
-  given EitherFromExpr[L, R](using Type[L], Type[R], FromExpr[L], FromExpr[R]): FromExpr[Either[L, R]] with {
-    def unapply(x: Expr[Either[L, R]])(using Quotes) = x match {
-      case '{ $x: Left[L, R] } => x.value
-      case '{ $x: Right[L, R] } => x.value
-      case _ => None
-    }
-  }
+  given EitherFromExpr: [L: {Type, FromExpr}, R: {Type, FromExpr}] => FromExpr[Either[L, R]]:
+    def unapply(x: Expr[Either[L, R]])(using Quotes): Option[Either[L, R]] = summon[FromExprFactory[Either[L, R]]].apply().unapply(x)
 
   /** Default implementation of `FromExpr[Left]`
    *  - Transform `'{Left(x)}` into `Some(Left(x))` if `x` can be transformed using `FromExpr[L]`
    *  - Otherwise returns `None`
    */
-  given LeftFromExpr[L, R](using Type[L], Type[R], FromExpr[L]): FromExpr[Left[L, R]] with {
-    def unapply(x: Expr[Left[L, R]])(using Quotes) = x match {
-      case '{ Left[L, R](${Expr(x)}) } => Some(Left(x))
-      case _ => None
-    }
-  }
+  given LeftFromExpr: [L: {Type, FromExpr}, R: Type] => FromExpr[Left[L, R]]:
+    def unapply(x: Expr[Left[L, R]])(using Quotes): Option[Left[L, R]] = summon[FromExprFactory[Left[L, R]]].apply().unapply(x)
 
   /** Default implementation of `FromExpr[Right]`
    *  - Transform `'{Right(x)}` into `Some(Right(x))` if `x` can be transformed using `FromExpr[R]`
    *  - Otherwise returns `None`
    */
-  given RightFromExpr[L, R](using Type[L], Type[R], FromExpr[R]): FromExpr[Right[L, R]] with {
-    def unapply(x: Expr[Right[L, R]])(using Quotes) = x match {
-      case '{ Right[L, R](${Expr(x)}) } => Some(Right(x))
-      case _ => None
-    }
-  }
+  given RightFromExpr: [L: Type, R: {Type, FromExpr}] => FromExpr[Right[L, R]]:
+    def unapply(x: Expr[Right[L, R]])(using Quotes): Option[Right[L, R]] = summon[FromExprFactory[Right[L, R]]].apply().unapply(x)

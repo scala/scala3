@@ -105,17 +105,13 @@ object ToExpr extends LowPriorityToExpr {
     }
   }
 
-  /** Default implementation of `ToExpr[ClassTag[T]]`. */
-  given ClassTagToExpr[T: Type]: ToExpr[ClassTag[T]] with {
-    def apply(ct: ClassTag[T])(using Quotes): Expr[ClassTag[T]] =
-      '{ ClassTag[T](${Expr(ct.runtimeClass.asInstanceOf[Class[T]])}) }
-  }
+  /** Default implementation of `ToExpr[ClassTag[T]]`. Proxies to `ToExprFactory.classTagToExprFactory`. */
+  given ClassTagToExpr: [T: Type] => ToExpr[ClassTag[T]]:
+    def apply(ct: ClassTag[T])(using Quotes): Expr[ClassTag[T]] = summon[ToExprFactory[ClassTag[T]]].apply().apply(ct)
 
-  /** Default implementation of `ToExpr[Array[T]]`. */
-  given ArrayToExpr[T: Type: ToExpr: ClassTag]: ToExpr[Array[T]] with {
-    def apply(arr: Array[T])(using Quotes): Expr[Array[T]] =
-      '{ Array[T](${Expr(arr.toSeq)}*)(using ${Expr(summon[ClassTag[T]])}) }
-  }
+  /** Default implementation of `ToExpr[Array[T]]`. Proxies to `ToExprFactory.arrayToExprFactory`. */
+  given ArrayToExpr: [T: {Type, ToExpr, ClassTag}] => ToExpr[Array[T]]:
+    def apply(arr: Array[T])(using Quotes): Expr[Array[T]] = summon[ToExprFactory[Array[T]]].apply().apply(arr)
 
   /** Default implementation of `ToExpr[Array[Boolean]]`. */
   given ArrayOfBooleanToExpr: ToExpr[Array[Boolean]] with {
@@ -179,17 +175,13 @@ object ToExpr extends LowPriorityToExpr {
       '{ ${ltArray.apply(iarray.asInstanceOf[Array[T]])}.asInstanceOf[IArray[T]] }
   }
 
-  /** Default implementation of `ToExpr[Seq[T]]`. */
-  given SeqToExpr[T: Type: ToExpr]: ToExpr[Seq[T]] with {
-    def apply(xs: Seq[T])(using Quotes): Expr[Seq[T]] =
-      Expr.ofSeq(xs.map(summon[ToExpr[T]].apply))
-  }
+  /** Default implementation of `ToExpr[Seq[T]]`. Proxies to `ToExprFactory.seqToExprFactory`. */
+  given SeqToExpr: [T: {Type, ToExpr}] => ToExpr[Seq[T]]:
+    def apply(xs: Seq[T])(using Quotes): Expr[Seq[T]] = summon[ToExprFactory[Seq[T]]].apply().apply(xs)
 
-  /** Default implementation of `ToExpr[List[T]]`. */
-  given ListToExpr[T: Type: ToExpr]: ToExpr[List[T]] with {
-    def apply(xs: List[T])(using Quotes): Expr[List[T]] =
-      Expr.ofList(xs.map(summon[ToExpr[T]].apply))
-  }
+  /** Default implementation of `ToExpr[List[T]]`. Proxies to `ToExprFactory.listToExprFactory`. */
+  given ListToExpr: [T: {Type, ToExpr}] => ToExpr[List[T]]:
+    def apply(xs: List[T])(using Quotes): Expr[List[T]] = summon[ToExprFactory[List[T]]].apply().apply(xs)
 
   /** Default implementation of `ToExpr[Nil.type]`. */
   given NilToExpr: ToExpr[Nil.type] with {
@@ -197,31 +189,21 @@ object ToExpr extends LowPriorityToExpr {
       '{ Nil }
   }
 
-  /** Default implementation of `ToExpr[Set[T]]`. */
-  given SetToExpr[T: Type: ToExpr]: ToExpr[Set[T]] with {
-    def apply(set: Set[T])(using Quotes): Expr[Set[T]] =
-      '{ Set(${Expr(set.toSeq)}*) }
-  }
+  /** Default implementation of `ToExpr[Set[T]]`. Proxies to `ToExprFactory.setToExprFactory`. */
+  given SetToExpr: [T: {Type, ToExpr}] => ToExpr[Set[T]]:
+    def apply(xs: Set[T])(using Quotes): Expr[Set[T]] = summon[ToExprFactory[Set[T]]].apply().apply(xs)
 
-  /** Default implementation of `ToExpr[Map[T, U]]`. */
-  given MapToExpr[T: Type: ToExpr, U: Type: ToExpr]: ToExpr[Map[T, U]] with {
-    def apply(map: Map[T, U])(using Quotes): Expr[Map[T, U]] =
-    '{ Map(${Expr(map.toSeq)}*) }
-  }
+  /** Default implementation of `ToExpr[Map[T, U]]`. Proxies to `ToExprFactory.mapToExprFactory`. */
+  given MapToExpr: [T: {Type, ToExpr}, U: {Type, ToExpr}] => ToExpr[Map[T, U]]:
+    def apply(m: Map[T, U])(using Quotes): Expr[Map[T, U]] = summon[ToExprFactory[Map[T, U]]].apply().apply(m)
 
-  /** Default implementation of `ToExpr[Option[T]]`. */
-  given OptionToExpr[T: Type: ToExpr]: ToExpr[Option[T]] with {
-    def apply(x: Option[T])(using Quotes): Expr[Option[T]] = x match {
-      case x: Some[T] => Expr(x)
-      case None => Expr(None)
-    }
-  }
+  /** Default implementation of `ToExpr[Option[T]]`. Proxies to `ToExprFactory.optionToExprFactory`. */
+  given OptionToExpr: [T: {Type, ToExpr}] => ToExpr[Option[T]]:
+    def apply(x: Option[T])(using Quotes): Expr[Option[T]] = summon[ToExprFactory[Option[T]]].apply().apply(x)
 
-  /** Default implementation of `ToExpr[Some[T]]`. */
-  given SomeToExpr[T: Type: ToExpr]: ToExpr[Some[T]] with {
-    def apply(x: Some[T])(using Quotes): Expr[Some[T]] =
-      '{ Some[T](${Expr(x.get)}) }
-  }
+  /** Default implementation of `ToExpr[Some[T]]`. Proxies to `ToExprFactory.someToExprFactory`. */
+  given SomeToExpr: [T: {Type, ToExpr}] => ToExpr[Some[T]]:
+    def apply(x: Some[T])(using Quotes): Expr[Some[T]] = summon[ToExprFactory[Some[T]]].apply().apply(x)
 
   /** Default implementation of `ToExpr[None.type]`. */
   given NoneToExpr: ToExpr[None.type] with {
@@ -229,24 +211,17 @@ object ToExpr extends LowPriorityToExpr {
       '{ None }
   }
 
-  /** Default implementation of `ToExpr[Either[L, R]]`. */
-  given EitherToExpr[L: Type: ToExpr, R: Type: ToExpr]: ToExpr[Either[L, R]] with {
-    def apply(x: Either[L, R])(using Quotes): Expr[Either[L, R]] = x match
-      case x: Left[L, R] => Expr(x)
-      case x: Right[L, R] => Expr(x)
-  }
+  /** Default implementation of `ToExpr[Either[L, R]]`. Proxies to `ToExprFactory.eitherToExprFactory`. */
+  given EitherToExpr: [L: {Type, ToExpr}, R: {Type, ToExpr}] => ToExpr[Either[L, R]]:
+    def apply(x: Either[L, R])(using Quotes): Expr[Either[L, R]] = summon[ToExprFactory[Either[L, R]]].apply().apply(x)
 
-  /** Default implementation of `ToExpr[Left[L, R]]`. */
-  given LeftToExpr[L: Type: ToExpr, R: Type]: ToExpr[Left[L, R]] with {
-    def apply(x: Left[L, R])(using Quotes): Expr[Left[L, R]] =
-      '{ Left[L, R](${Expr(x.value)}) }
-  }
+  /** Default implementation of `ToExpr[Left[L, R]]`. Proxies to `ToExprFactory.leftToExprFactory`. */
+  given LeftToExpr: [L: {Type, ToExpr}, R: Type] => ToExpr[Left[L, R]]:
+    def apply(x: Left[L, R])(using Quotes): Expr[Left[L, R]] = summon[ToExprFactory[Left[L, R]]].apply().apply(x)
 
-  /** Default implementation of `ToExpr[Right[L, R]]`. */
-  given RightToExpr[L: Type, R: Type: ToExpr]: ToExpr[Right[L, R]] with {
-    def apply(x: Right[L, R])(using Quotes): Expr[Right[L, R]] =
-      '{ Right[L, R](${Expr(x.value)}) }
-  }
+  /** Default implementation of `ToExpr[Right[L, R]]`. Proxies to `ToExprFactory.rightToExprFactory`. */
+  given RightToExpr: [L: Type, R: {Type, ToExpr}] => ToExpr[Right[L, R]]:
+    def apply(x: Right[L, R])(using Quotes): Expr[Right[L, R]] = summon[ToExprFactory[Right[L, R]]].apply().apply(x)
 
   /** Default implementation of `ToExpr[EmptyTuple.type]`. */
   given EmptyTupleToExpr: ToExpr[EmptyTuple.type] with {
