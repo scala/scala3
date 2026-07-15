@@ -112,7 +112,9 @@ object ImplicitNullInterop:
     sym.ownersIterator.map(ownerNullMarking).collectFirst { case Some(marked) => marked }.getOrElse(false)
 
   /** The scope marking declared directly on `owner`, if any: `Some(true)` for `@NullMarked`,
-   *  `Some(false)` for `@NullUnmarked`, `None` if `owner` declares neither.
+   *  `Some(false)` for `@NullUnmarked`, `None` if `owner` declares neither. Per JSpecify, a
+   *  declaration carrying *both* markers behaves as if it carried neither, so we return `None` and
+   *  let an enclosing scope decide.
    *
    *  For packages the marker is placed on `package-info` (from `package-info.java` /
    *  `package-info.class`), which is loaded as a synthetic `package-info` member of the package.
@@ -121,15 +123,19 @@ object ImplicitNullInterop:
    *  still be under construction during classfile loading / unpickling.
    */
   private def ownerNullMarking(owner: Symbol)(using Context): Option[Boolean] =
-    if owner.is(Package) then
-      val packageInfo = owner.info.decl(typeName("package-info")).symbol
-      if !packageInfo.exists then None
-      else if defn.NullMarkedAnnots.exists(packageInfo.hasAnnotation(_)) then Some(true)
-      else if defn.NullUnmarkedAnnots.exists(packageInfo.hasAnnotation(_)) then Some(false)
-      else None
-    else if defn.NullMarkedAnnots.exists(owner.unforcedAnnotation(_).isDefined) then Some(true)
-    else if defn.NullUnmarkedAnnots.exists(owner.unforcedAnnotation(_).isDefined) then Some(false)
-    else None
+    val (carrier, forced) =
+      // For packages the marker lives on the synthetic `package-info` member, which we force.
+      if owner.is(Package) then (owner.info.decl(typeName("package-info")).symbol, true)
+      else (owner, false)
+    if !carrier.exists then None
+    else
+      def has(annots: List[ClassSymbol]): Boolean =
+        if forced then annots.exists(carrier.hasAnnotation(_))
+        else annots.exists(carrier.unforcedAnnotation(_).isDefined)
+      val marked = has(defn.NullMarkedAnnots)
+      val unmarked = has(defn.NullUnmarkedAnnots)
+      if marked == unmarked then None // both or neither present: behave as if neither
+      else Some(marked)
 
   private def hasNotNullAnnot(sym: Symbol)(using Context): Boolean =
     defn.NotNullAnnots.exists(sym.unforcedAnnotation(_).isDefined)
