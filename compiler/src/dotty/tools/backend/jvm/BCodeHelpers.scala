@@ -603,9 +603,28 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       // value types. This is needed to fix #7416.
       null
     } else {
-      val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
-      if (jsOpt != null && ctx.settings.XverifySignatures.value) {
-        verifySignature(sym, jsOpt.toString)
+      val referencedNestedClasses = mutable.ListBuffer.empty[ClassSymbol]
+      // Collect only nested classes: top-level ones need no InnerClasses entry,
+      // and special classes like AnyKind have no ClassBType at all. The test
+      // must run at erasurePhase explicitly: the closure captures the caller's
+      // context, and getStaticForwarderGenericSignature calls this helper at
+      // genBCode phase, where Flatten has re-owned nested classes to packages.
+      val jsOpt = GenericSignatures.javaSig(sym, memberTpe,
+        cls => if (!atPhase(erasurePhase)(cls.isTopLevelClass)) referencedNestedClasses += cls)
+      if (jsOpt != null) {
+        // PostProcessor computes the InnerClasses attribute by resolving names
+        // in the emitted signature strings against the run's ClassBType cache,
+        // so a class referenced only from a generic signature must be
+        // registered here or its entry is lost (issue #26552). This must run
+        // at flattenPhase.next, where classSig computes the names it writes;
+        // the caller is inside atPhase(erasurePhase), where nested classes
+        // still have unflattened binary names.
+        atPhase(flattenPhase.next) {
+          referencedNestedClasses.foreach(bTypeLoader.classBTypeFromSymbol(_))
+        }
+        if (ctx.settings.XverifySignatures.value) {
+          verifySignature(sym, jsOpt.toString)
+        }
       }
       jsOpt
     }
