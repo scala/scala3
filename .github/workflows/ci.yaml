@@ -50,9 +50,29 @@ env:
 # text on stderr and so can break tests which check the output of a program).
 
 jobs:
-  # Run stdlib tests before publishing a release
+  # Run tests before publishing a release
   stdlib-tests:
     uses: ./.github/workflows/stdlib.yaml
+    if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
+    secrets: inherit
+
+  mima-tests:
+    uses: ./.github/workflows/mima.yaml
+    if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
+    secrets: inherit
+
+  compiler-tests:
+    uses: ./.github/workflows/compiler-tests.yaml
+    if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
+    secrets: inherit
+
+  community-build-tests:
+    uses: ./.github/workflows/community-build.yaml
+    if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
+    secrets: inherit
+
+  misc-tests:
+    uses: ./.github/workflows/misc-tests.yaml
     if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
     secrets: inherit
 
@@ -84,7 +104,7 @@ jobs:
     permissions:
       contents: write  # for GH CLI to create a release
     runs-on: [self-hosted, Linux]
-    needs: [stdlib-tests]
+    needs: [stdlib-tests, mima-tests, compiler-tests, community-build-tests, misc-tests]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096

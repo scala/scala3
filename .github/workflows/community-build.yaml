@@ -1,4 +1,4 @@
-name: Compile Full Standard Library
+name: Community Build
 
 on:
   push:
@@ -15,48 +15,59 @@ env:
 
 jobs:
 
-  test-scala-library-nonbootstrapped:
-    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
-    name: Non-Bootstrapped Library Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: 17
-          cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
-      - run: ./project/scripts/sbt scala-library-nonbootstrapped/test
-
-  test-scala-library-bootstrapped:
-    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
-    name: Bootstrapped Library Unit Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: 17
-          cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
-      - run: ./project/scripts/sbt scala-library-bootstrapped/test
-
-  scala-library-docs:
+  community_build_a:
     if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
-      - name: Git Checkout
+      - name: Checkout cleanup script
         uses: actions/checkout@v7
-
+        with:
+          submodules: true
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-
       - uses: sbt/setup-sbt@v1
-      - name: Generate Documentation of the Standard Library
-        run: ./project/scripts/sbt scala-library-bootstrapped/doc
+      - name: Run Community Build A
+        run: |
+          ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestA"
+
+  community_build_b:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout cleanup script
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Run Community Build B
+        run: |
+          ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestB"
+
+  community_build_c:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout cleanup script
+        uses: actions/checkout@v7
+        with:
+          submodules: true
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Run Community Build C
+        run: |
+          ./project/scripts/sbt "community-build/testOnly dotty.communitybuild.CommunityBuildTestC"
