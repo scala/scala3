@@ -4,6 +4,7 @@ package core
 import Annotations.Annotation
 import Contexts.*
 import Flags.*
+import Names.typeName
 import StdNames.nme
 import Symbols.*
 import Types.*
@@ -105,14 +106,30 @@ object ImplicitNullInterop:
 
   /** Is `sym` in a JSpecify `@NullMarked` scope? We walk the owner chain (starting at `sym`
    *  itself) and let the nearest scope marking win: `@NullMarked` enables the non-null default,
-   *  `@NullUnmarked` re-enables the implicit-nulls default. We use `unforcedAnnotation` to avoid
-   *  forcing symbols that may still be under construction during classfile loading / unpickling.
+   *  `@NullUnmarked` re-enables the implicit-nulls default.
    */
   private def isNullMarked(sym: Symbol)(using Context): Boolean =
-    sym.ownersIterator.collectFirst {
-      case owner if defn.NullMarkedAnnots.exists(owner.unforcedAnnotation(_).isDefined) => true
-      case owner if defn.NullUnmarkedAnnots.exists(owner.unforcedAnnotation(_).isDefined) => false
-    }.getOrElse(false)
+    sym.ownersIterator.map(ownerNullMarking).collectFirst { case Some(marked) => marked }.getOrElse(false)
+
+  /** The scope marking declared directly on `owner`, if any: `Some(true)` for `@NullMarked`,
+   *  `Some(false)` for `@NullUnmarked`, `None` if `owner` declares neither.
+   *
+   *  For packages the marker is placed on `package-info` (from `package-info.java` /
+   *  `package-info.class`), which is loaded as a synthetic `package-info` member of the package.
+   *  We force that member to read its annotations (safe: it only depends on the annotation
+   *  classes). For all other owners we use `unforcedAnnotation` to avoid forcing symbols that may
+   *  still be under construction during classfile loading / unpickling.
+   */
+  private def ownerNullMarking(owner: Symbol)(using Context): Option[Boolean] =
+    if owner.is(Package) then
+      val packageInfo = owner.info.decl(typeName("package-info")).symbol
+      if !packageInfo.exists then None
+      else if defn.NullMarkedAnnots.exists(packageInfo.hasAnnotation(_)) then Some(true)
+      else if defn.NullUnmarkedAnnots.exists(packageInfo.hasAnnotation(_)) then Some(false)
+      else None
+    else if defn.NullMarkedAnnots.exists(owner.unforcedAnnotation(_).isDefined) then Some(true)
+    else if defn.NullUnmarkedAnnots.exists(owner.unforcedAnnotation(_).isDefined) then Some(false)
+    else None
 
   private def hasNotNullAnnot(sym: Symbol)(using Context): Boolean =
     defn.NotNullAnnots.exists(sym.unforcedAnnotation(_).isDefined)
