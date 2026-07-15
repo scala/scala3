@@ -106,12 +106,12 @@ object ToExpr extends LowPriorityToExpr {
   }
 
   /** Default implementation of `ToExpr[ClassTag[T]]`. Proxies to `ToExprFactory.classTagToExprFactory`. */
-  given ClassTagToExpr: [T: Type] => ToExpr[ClassTag[T]]:
-    def apply(ct: ClassTag[T])(using Quotes): Expr[ClassTag[T]] = summon[ToExprFactory[ClassTag[T]]].apply().apply(ct)
+  given ClassTagToExpr: [T: Type] => (factory: ToExprFactory[ClassTag[T]]) => ToExpr[ClassTag[T]]:
+    def apply(ct: ClassTag[T])(using Quotes): Expr[ClassTag[T]] = factory.apply().apply(ct)
 
   /** Default implementation of `ToExpr[Array[T]]`. Proxies to `ToExprFactory.arrayToExprFactory`. */
-  given ArrayToExpr: [T: {Type, ToExpr, ClassTag}] => ToExpr[Array[T]]:
-    def apply(arr: Array[T])(using Quotes): Expr[Array[T]] = summon[ToExprFactory[Array[T]]].apply().apply(arr)
+  given ArrayToExpr: [T: {Type, ToExpr, ClassTag}] => (factory: ToExprFactory[Array[T]]) => ToExpr[Array[T]]:
+    def apply(arr: Array[T])(using Quotes): Expr[Array[T]] = factory.apply().apply(arr)
 
   /** Default implementation of `ToExpr[Array[Boolean]]`. */
   given ArrayOfBooleanToExpr: ToExpr[Array[Boolean]] with {
@@ -176,12 +176,12 @@ object ToExpr extends LowPriorityToExpr {
   }
 
   /** Default implementation of `ToExpr[Seq[T]]`. Proxies to `ToExprFactory.seqToExprFactory`. */
-  given SeqToExpr: [T: {Type, ToExpr}] => ToExpr[Seq[T]]:
-    def apply(xs: Seq[T])(using Quotes): Expr[Seq[T]] = summon[ToExprFactory[Seq[T]]].apply().apply(xs)
+  given SeqToExpr: [T: {Type, ToExpr}] => (factory: ToExprFactory[Seq[T]]) => ToExpr[Seq[T]]:
+    def apply(xs: Seq[T])(using Quotes): Expr[Seq[T]] = factory.apply().apply(xs)
 
   /** Default implementation of `ToExpr[List[T]]`. Proxies to `ToExprFactory.listToExprFactory`. */
-  given ListToExpr: [T: {Type, ToExpr}] => ToExpr[List[T]]:
-    def apply(xs: List[T])(using Quotes): Expr[List[T]] = summon[ToExprFactory[List[T]]].apply().apply(xs)
+  given ListToExpr: [T: {Type, ToExpr}] => (factory: ToExprFactory[List[T]]) => ToExpr[List[T]]:
+    def apply(xs: List[T])(using Quotes): Expr[List[T]] = factory.apply().apply(xs)
 
   /** Default implementation of `ToExpr[Nil.type]`. */
   given NilToExpr: ToExpr[Nil.type] with {
@@ -190,20 +190,20 @@ object ToExpr extends LowPriorityToExpr {
   }
 
   /** Default implementation of `ToExpr[Set[T]]`. Proxies to `ToExprFactory.setToExprFactory`. */
-  given SetToExpr: [T: {Type, ToExpr}] => ToExpr[Set[T]]:
-    def apply(xs: Set[T])(using Quotes): Expr[Set[T]] = summon[ToExprFactory[Set[T]]].apply().apply(xs)
+  given SetToExpr: [T: {Type, ToExpr}] => (factory: ToExprFactory[Set[T]]) => ToExpr[Set[T]]:
+    def apply(xs: Set[T])(using Quotes): Expr[Set[T]] = factory.apply().apply(xs)
 
   /** Default implementation of `ToExpr[Map[T, U]]`. Proxies to `ToExprFactory.mapToExprFactory`. */
-  given MapToExpr: [T: {Type, ToExpr}, U: {Type, ToExpr}] => ToExpr[Map[T, U]]:
-    def apply(m: Map[T, U])(using Quotes): Expr[Map[T, U]] = summon[ToExprFactory[Map[T, U]]].apply().apply(m)
+  given MapToExpr: [T: {Type, ToExpr}, U: {Type, ToExpr}] => (factory: ToExprFactory[Map[T, U]]) => ToExpr[Map[T, U]]:
+    def apply(m: Map[T, U])(using Quotes): Expr[Map[T, U]] = factory.apply().apply(m)
 
   /** Default implementation of `ToExpr[Option[T]]`. Proxies to `ToExprFactory.optionToExprFactory`. */
-  given OptionToExpr: [T: {Type, ToExpr}] => ToExpr[Option[T]]:
-    def apply(x: Option[T])(using Quotes): Expr[Option[T]] = summon[ToExprFactory[Option[T]]].apply().apply(x)
+  given OptionToExpr: [T: {Type, ToExpr}] => (factory: ToExprFactory[Option[T]]) => ToExpr[Option[T]]:
+    def apply(x: Option[T])(using Quotes): Expr[Option[T]] = factory.apply().apply(x)
 
   /** Default implementation of `ToExpr[Some[T]]`. Proxies to `ToExprFactory.someToExprFactory`. */
-  given SomeToExpr: [T: {Type, ToExpr}] => ToExpr[Some[T]]:
-    def apply(x: Some[T])(using Quotes): Expr[Some[T]] = summon[ToExprFactory[Some[T]]].apply().apply(x)
+  given SomeToExpr: [T: {Type, ToExpr}] => (factory: ToExprFactory[Some[T]]) => ToExpr[Some[T]]:
+    def apply(x: Some[T])(using Quotes): Expr[Some[T]] = factory.apply().apply(x)
 
   /** Default implementation of `ToExpr[None.type]`. */
   given NoneToExpr: ToExpr[None.type] with {
@@ -212,16 +212,16 @@ object ToExpr extends LowPriorityToExpr {
   }
 
   /** Default implementation of `ToExpr[Either[L, R]]`. Proxies to `ToExprFactory.eitherToExprFactory`. */
-  given EitherToExpr: [L: {Type, ToExpr}, R: {Type, ToExpr}] => ToExpr[Either[L, R]]:
-    def apply(x: Either[L, R])(using Quotes): Expr[Either[L, R]] = summon[ToExprFactory[Either[L, R]]].apply().apply(x)
+  given EitherToExpr: [L: {Type, ToExpr}, R: {Type, ToExpr}] => (factory: ToExprFactory[Either[L, R]]) => ToExpr[Either[L, R]]:
+    def apply(x: Either[L, R])(using Quotes): Expr[Either[L, R]] = factory.apply().apply(x)
 
   /** Default implementation of `ToExpr[Left[L, R]]`. Proxies to `ToExprFactory.leftToExprFactory`. */
-  given LeftToExpr: [L: {Type, ToExpr}, R: Type] => ToExpr[Left[L, R]]:
-    def apply(x: Left[L, R])(using Quotes): Expr[Left[L, R]] = summon[ToExprFactory[Left[L, R]]].apply().apply(x)
+  given LeftToExpr: [L: {Type, ToExpr}, R: Type] => (factory: ToExprFactory[Left[L, R]]) => ToExpr[Left[L, R]]:
+    def apply(x: Left[L, R])(using Quotes): Expr[Left[L, R]] = factory.apply().apply(x)
 
   /** Default implementation of `ToExpr[Right[L, R]]`. Proxies to `ToExprFactory.rightToExprFactory`. */
-  given RightToExpr: [L: Type, R: {Type, ToExpr}] => ToExpr[Right[L, R]]:
-    def apply(x: Right[L, R])(using Quotes): Expr[Right[L, R]] = summon[ToExprFactory[Right[L, R]]].apply().apply(x)
+  given RightToExpr: [L: Type, R: {Type, ToExpr}] => (factory: ToExprFactory[Right[L, R]]) => ToExpr[Right[L, R]]:
+    def apply(x: Right[L, R])(using Quotes): Expr[Right[L, R]] = factory.apply().apply(x)
 
   /** Default implementation of `ToExpr[EmptyTuple.type]`. */
   given EmptyTupleToExpr: ToExpr[EmptyTuple.type] with {
@@ -229,181 +229,97 @@ object ToExpr extends LowPriorityToExpr {
       '{ EmptyTuple }
   }
 
-  /** Default implementation of `ToExpr[Tuple1[T1]]`. */
-  given Tuple1ToExpr[T1: Type: ToExpr]: ToExpr[Tuple1[T1]] with {
-    def apply(tup: Tuple1[T1])(using Quotes) =
-      '{ Tuple1(${Expr(tup._1)}) }
-  }
+  /** Default implementation of `ToExpr[Tuple1[T1]]`. Proxies to `ToExprFactory.tuple1ToExprFactory`. */
+  given Tuple1ToExpr: [T1: {Type, ToExpr}] => (factory: ToExprFactory[Tuple1[T1]]) => ToExpr[Tuple1[T1]]:
+    def apply(tup: Tuple1[T1])(using Quotes): Expr[Tuple1[T1]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple2[T1, T2]]`. */
-  given Tuple2ToExpr[T1: Type: ToExpr, T2: Type: ToExpr]: ToExpr[Tuple2[T1, T2]] with {
-    def apply(tup: Tuple2[T1, T2])(using Quotes) =
-      '{ (${Expr(tup._1)}, ${Expr(tup._2)}) }
-  }
+  /** Default implementation of `ToExpr[Tuple2[T1, T2]]`. Proxies to `ToExprFactory.tuple2ToExprFactory`. */
+  given Tuple2ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}] => (factory: ToExprFactory[Tuple2[T1, T2]]) => ToExpr[Tuple2[T1, T2]]:
+    def apply(tup: Tuple2[T1, T2])(using Quotes): Expr[Tuple2[T1, T2]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple3[T1, T2, T3]]`. */
-  given Tuple3ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr]: ToExpr[Tuple3[T1, T2, T3]] with {
-    def apply(tup: Tuple3[T1, T2, T3])(using Quotes) =
-      '{ (${Expr(tup._1)}, ${Expr(tup._2)}, ${Expr(tup._3)}) }
-  }
+  /** Default implementation of `ToExpr[Tuple3[T1, T2, T3]]`. Proxies to `ToExprFactory.tuple3ToExprFactory`. */
+  given Tuple3ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}] => (factory: ToExprFactory[Tuple3[T1, T2, T3]]) => ToExpr[Tuple3[T1, T2, T3]]:
+    def apply(tup: Tuple3[T1, T2, T3])(using Quotes): Expr[Tuple3[T1, T2, T3]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple4[T1, T2, T3, T4]]`. */
-  given Tuple4ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr]: ToExpr[Tuple4[T1, T2, T3, T4]] with {
-    def apply(tup: Tuple4[T1, T2, T3, T4])(using Quotes) =
-      '{ (${Expr(tup._1)}, ${Expr(tup._2)}, ${Expr(tup._3)}, ${Expr(tup._4)}) }
-  }
+  /** Default implementation of `ToExpr[Tuple4[T1, T2, T3, T4]]`. Proxies to `ToExprFactory.tuple4ToExprFactory`. */
+  given Tuple4ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}] => (factory: ToExprFactory[Tuple4[T1, T2, T3, T4]]) => ToExpr[Tuple4[T1, T2, T3, T4]]:
+    def apply(tup: Tuple4[T1, T2, T3, T4])(using Quotes): Expr[Tuple4[T1, T2, T3, T4]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple5[T1, T2, T3, T4, T5]]`. */
-  given Tuple5ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr]: ToExpr[Tuple5[T1, T2, T3, T4, T5]] with {
-    def apply(tup: Tuple5[T1, T2, T3, T4, T5])(using Quotes) = {
-      val (x1, x2, x3, x4, x5) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple5[T1, T2, T3, T4, T5]]`. Proxies to `ToExprFactory.tuple5ToExprFactory`. */
+  given Tuple5ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}] => (factory: ToExprFactory[Tuple5[T1, T2, T3, T4, T5]]) => ToExpr[Tuple5[T1, T2, T3, T4, T5]]:
+    def apply(tup: Tuple5[T1, T2, T3, T4, T5])(using Quotes): Expr[Tuple5[T1, T2, T3, T4, T5]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple6[T1, T2, T3, T4, T5, T6]]`. */
-  given Tuple6ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr]: ToExpr[Tuple6[T1, T2, T3, T4, T5, T6]] with {
-    def apply(tup: Tuple6[T1, T2, T3, T4, T5, T6])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple6[T1, T2, T3, T4, T5, T6]]`. Proxies to `ToExprFactory.tuple6ToExprFactory`. */
+  given Tuple6ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}] => (factory: ToExprFactory[Tuple6[T1, T2, T3, T4, T5, T6]]) => ToExpr[Tuple6[T1, T2, T3, T4, T5, T6]]:
+    def apply(tup: Tuple6[T1, T2, T3, T4, T5, T6])(using Quotes): Expr[Tuple6[T1, T2, T3, T4, T5, T6]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple7[T1, T2, T3, T4, T5, T6, T7]]`. */
-  given Tuple7ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr]: ToExpr[Tuple7[T1, T2, T3, T4, T5, T6, T7]] with {
-    def apply(tup: Tuple7[T1, T2, T3, T4, T5, T6, T7])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple7[T1, T2, T3, T4, T5, T6, T7]]`. Proxies to `ToExprFactory.tuple7ToExprFactory`. */
+  given Tuple7ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}] => (factory: ToExprFactory[Tuple7[T1, T2, T3, T4, T5, T6, T7]]) => ToExpr[Tuple7[T1, T2, T3, T4, T5, T6, T7]]:
+    def apply(tup: Tuple7[T1, T2, T3, T4, T5, T6, T7])(using Quotes): Expr[Tuple7[T1, T2, T3, T4, T5, T6, T7]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]]`. */
-  given Tuple8ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr]: ToExpr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]] with {
-    def apply(tup: Tuple8[T1, T2, T3, T4, T5, T6, T7, T8])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]]`. Proxies to `ToExprFactory.tuple8ToExprFactory`. */
+  given Tuple8ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}] => (factory: ToExprFactory[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]]) => ToExpr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]]:
+    def apply(tup: Tuple8[T1, T2, T3, T4, T5, T6, T7, T8])(using Quotes): Expr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]]`. */
-  given Tuple9ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr]: ToExpr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]] with {
-    def apply(tup: Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]]`. Proxies to `ToExprFactory.tuple9ToExprFactory`. */
+  given Tuple9ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}] => (factory: ToExprFactory[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]]) => ToExpr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]]:
+    def apply(tup: Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9])(using Quotes): Expr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]]`. */
-  given Tuple10ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr]: ToExpr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]] with {
-    def apply(tup: Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]]`. Proxies to `ToExprFactory.tuple10ToExprFactory`. */
+  given Tuple10ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}] => (factory: ToExprFactory[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]]) => ToExpr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]]:
+    def apply(tup: Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10])(using Quotes): Expr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]]`. */
-  given Tuple11ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr]: ToExpr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]] with {
-    def apply(tup: Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]]`. Proxies to `ToExprFactory.tuple11ToExprFactory`. */
+  given Tuple11ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}] => (factory: ToExprFactory[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]]) => ToExpr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]]:
+    def apply(tup: Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11])(using Quotes): Expr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]]`. */
-  given Tuple12ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr]: ToExpr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]] with {
-    def apply(tup: Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]]`. Proxies to `ToExprFactory.tuple12ToExprFactory`. */
+  given Tuple12ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}] => (factory: ToExprFactory[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]]) => ToExpr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]]:
+    def apply(tup: Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12])(using Quotes): Expr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]]`. */
-  given Tuple13ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr]: ToExpr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]] with {
-    def apply(tup: Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]]`. Proxies to `ToExprFactory.tuple13ToExprFactory`. */
+  given Tuple13ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}] => (factory: ToExprFactory[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]]) => ToExpr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]]:
+    def apply(tup: Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13])(using Quotes): Expr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]]`. */
-  given Tuple14ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr]: ToExpr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]] with {
-    def apply(tup: Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]]`. Proxies to `ToExprFactory.tuple14ToExprFactory`. */
+  given Tuple14ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}] => (factory: ToExprFactory[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]]) => ToExpr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]]:
+    def apply(tup: Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14])(using Quotes): Expr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]]`. */
-  given Tuple15ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr]: ToExpr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]] with {
-    def apply(tup: Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]]`. Proxies to `ToExprFactory.tuple15ToExprFactory`. */
+  given Tuple15ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}] => (factory: ToExprFactory[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]]) => ToExpr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]]:
+    def apply(tup: Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15])(using Quotes): Expr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]]`. */
-  given Tuple16ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr]: ToExpr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]] with {
-    def apply(tup: Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]]`. Proxies to `ToExprFactory.tuple16ToExprFactory`. */
+  given Tuple16ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}] => (factory: ToExprFactory[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]]) => ToExpr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]]:
+    def apply(tup: Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16])(using Quotes): Expr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]]`. */
-  given Tuple17ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr, T17: Type: ToExpr]: ToExpr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]] with {
-    def apply(tup: Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}, ${Expr(x17)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]]`. Proxies to `ToExprFactory.tuple17ToExprFactory`. */
+  given Tuple17ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}] => (factory: ToExprFactory[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]]) => ToExpr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]]:
+    def apply(tup: Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17])(using Quotes): Expr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]]`. */
-  given Tuple18ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr, T17: Type: ToExpr, T18: Type: ToExpr]: ToExpr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]] with {
-    def apply(tup: Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}, ${Expr(x17)}, ${Expr(x18)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]]`. Proxies to `ToExprFactory.tuple18ToExprFactory`. */
+  given Tuple18ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}] => (factory: ToExprFactory[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]]) => ToExpr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]]:
+    def apply(tup: Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18])(using Quotes): Expr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]]`. */
-  given Tuple19ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr, T17: Type: ToExpr, T18: Type: ToExpr, T19: Type: ToExpr]: ToExpr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]] with {
-    def apply(tup: Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}, ${Expr(x17)}, ${Expr(x18)}, ${Expr(x19)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]]`. Proxies to `ToExprFactory.tuple19ToExprFactory`. */
+  given Tuple19ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}, T19: {Type, ToExpr}] => (factory: ToExprFactory[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]]) => ToExpr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]]:
+    def apply(tup: Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19])(using Quotes): Expr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]]`. */
-  given Tuple20ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr, T17: Type: ToExpr, T18: Type: ToExpr, T19: Type: ToExpr, T20: Type: ToExpr]: ToExpr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]] with {
-    def apply(tup: Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}, ${Expr(x17)}, ${Expr(x18)}, ${Expr(x19)}, ${Expr(x20)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]]`. Proxies to `ToExprFactory.tuple20ToExprFactory`. */
+  given Tuple20ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}, T19: {Type, ToExpr}, T20: {Type, ToExpr}] => (factory: ToExprFactory[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]]) => ToExpr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]]:
+    def apply(tup: Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20])(using Quotes): Expr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]]`. */
-  given Tuple21ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr, T17: Type: ToExpr, T18: Type: ToExpr, T19: Type: ToExpr, T20: Type: ToExpr, T21: Type: ToExpr]: ToExpr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]] with {
-    def apply(tup: Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}, ${Expr(x17)}, ${Expr(x18)}, ${Expr(x19)}, ${Expr(x20)}, ${Expr(x21)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]]`. Proxies to `ToExprFactory.tuple21ToExprFactory`. */
+  given Tuple21ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}, T19: {Type, ToExpr}, T20: {Type, ToExpr}, T21: {Type, ToExpr}] => (factory: ToExprFactory[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]]) => ToExpr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]]:
+    def apply(tup: Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21])(using Quotes): Expr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]]`. */
-  given Tuple22ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr, T17: Type: ToExpr, T18: Type: ToExpr, T19: Type: ToExpr, T20: Type: ToExpr, T21: Type: ToExpr, T22: Type: ToExpr]: ToExpr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]] with {
-    def apply(tup: Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}, ${Expr(x17)}, ${Expr(x18)}, ${Expr(x19)}, ${Expr(x20)}, ${Expr(x21)}, ${Expr(x22)}) }
-    }
-  }
+  /** Default implementation of `ToExpr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]]`. Proxies to `ToExprFactory.tuple22ToExprFactory`. */
+  given Tuple22ToExpr: [T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}, T19: {Type, ToExpr}, T20: {Type, ToExpr}, T21: {Type, ToExpr}, T22: {Type, ToExpr}] => (factory: ToExprFactory[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]]) => ToExpr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]]:
+    def apply(tup: Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22])(using Quotes): Expr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]] = factory.apply().apply(tup)
 
-  /** Default implementation of `ToExpr[H *: T]`. */
-  given TupleConsToExpr [H: Type: ToExpr, T <: Tuple: Type: ToExpr]: ToExpr[H *: T] with {
-    def apply(tup: H *: T)(using Quotes): Expr[H *: T] =
-      val head = Expr[H](tup.head)
-      val tail = Expr[T](tup.tail)
-      '{ $head *: $tail }
-  }
+  /** Default implementation of `ToExpr[H *: T]`. Proxies to `ToExprFactory.tupleConsToExprFactory`. */
+  given TupleConsToExpr: [H: {Type, ToExpr}, T <: Tuple: {Type, ToExpr}] => (factory: ToExprFactory[H *: T]) => ToExpr[H *: T]:
+    def apply(tup: H *: T)(using Quotes): Expr[H *: T] = factory.apply().apply(tup)
 
   /** Default implementation of `ToExpr[BigInt]`. */
   given BigIntToExpr: ToExpr[BigInt] with {
