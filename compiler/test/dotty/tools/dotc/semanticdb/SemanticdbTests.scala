@@ -1,23 +1,21 @@
 package dotty.tools.dotc.semanticdb
 
 import java.util.regex.Pattern
-import java.io.ByteArrayOutputStream
-import java.nio.file.*
-import java.nio.charset.StandardCharsets
-import java.util.stream.Collectors
-import java.util.Comparator
 import scala.collection.mutable
-import scala.jdk.CollectionConverters.*
 import javax.tools.ToolProvider
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.experimental.categories.Category
 import dotty.BootstrappedOnlyTests
+import dotty.tools.TestSources
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.Scala3.given
-import dotty.tools.dotc.semanticdb.internal.SemanticdbOutputStream
 import dotty.tools.dotc.util.SourceFile
+import dotty.tools.nio.*
+import dotty.tools.io.FileExtension
+
+import scala.io.Codec
 
 @main def updateExpect =
   SemanticdbTests().runExpectTest(updateExpectFiles = true)
@@ -29,118 +27,109 @@ import dotty.tools.dotc.util.SourceFile
  *  @param source the single source file producing the semanticdb
  */
 @main def metac(root: String, source: String): Unit =
-  val rootSrc = Paths.get(root)
-  val sourceSrc = Paths.get(source)
-  val semanticFile = FileSystems.getDefault.getPathMatcher("glob:**.semanticdb")
-  def inputFile(): Path =
-    val ls = Files.walk(rootSrc.resolve("META-INF").resolve("semanticdb"))
-    val files =
-      try ls.filter(p => semanticFile.matches(p)).collect(Collectors.toList).asScala
-      finally ls.close()
-    require(files.sizeCompare(1) == 0, s"No semanticdb files! $rootSrc")
+  val rootSrc = FileContainer.getOnDisk(root).get
+  val sourceSrc = File.getOnDisk(source).get
+  val semanticExt = FileExtension.from("semanticdb")
+  def inputFile(): File =
+    val files = rootSrc.getOrCreateContainer("META-INF").getOrCreateContainer("semanticdb").entries.collect {
+      case f: File if f.extension == semanticExt => f
+    }.toList
+    require(files.sizeCompare(1) == 0, s"No semanticdb files! ${rootSrc.path}")
     files.head
   val metacSb: StringBuilder = StringBuilder(5000)
   val semanticdbPath = inputFile()
-  val doc = SemanticdbTests.loadTextDocumentUnsafe(sourceSrc.toAbsolutePath, semanticdbPath)
-  SemanticdbTests.metac(doc, Paths.get(doc.uri))(using metacSb)
-  Files.write(rootSrc.resolve("metac.expect"), metacSb.toString.getBytes(StandardCharsets.UTF_8))
+  val doc = SemanticdbTests.loadTextDocumentUnsafe(sourceSrc, semanticdbPath)
+  SemanticdbTests.metac(doc, doc.uri)(using metacSb)
+  rootSrc.getOrCreateFile("metac.expect").writeText(metacSb.toString, Codec.UTF8)
 
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class SemanticdbTests:
-  val javaFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.java")
-  val scalaFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.scala")
-  val expectFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
-  val rootSrc: Path = Paths.get(System.getProperty("dotty.tools.dotc.semanticdb.test"))
-  val expectSrc: Path = rootSrc.resolve("expect")
-  val javaRoot: Path = rootSrc.resolve("javacp")
-  val metacExpectFile: Path = rootSrc.resolve("metac.expect")
+  val expectExt = FileExtension.from("expect.scala")
+  val rootSrc: FileContainer = TestSources.rootPath().getContainer("tests").get.getContainer("semanticdb").get
+  val expectSrc: FileContainer = rootSrc.getOrCreateContainer("expect")
+  val javaRoot: FileContainer = rootSrc.getOrCreateContainer("javacp")
+  val metacExpectFile: File = rootSrc.getOrCreateFile("metac.expect")
 
   @Category(Array(classOf[dotty.SlowTests]))
   @Test def expectTests: Unit = if (!scala.util.Properties.isWin) runExpectTest(updateExpectFiles = false)
 
   def runExpectTest(updateExpectFiles: Boolean): Unit =
     val target = generateSemanticdb()
-    val errors = mutable.ArrayBuffer.empty[Path]
+    val errors = mutable.ArrayBuffer.empty[File]
     val metacSb: StringBuilder = StringBuilder(5000)
-    def collectErrorOrUpdate(expectPath: Path, obtained: String) =
+    def collectErrorOrUpdate(expectPath: File, obtained: String) =
       if updateExpectFiles then
-        Files.write(expectPath, obtained.getBytes(StandardCharsets.UTF_8))
+        expectPath.writeText(obtained, Codec.UTF8)
         println("updated: " + expectPath)
       else
-        val expected = new String(Files.readAllBytes(expectPath), StandardCharsets.UTF_8)
-        val expectName = expectPath.getFileName
-        val relExpect = rootSrc.relativize(expectPath)
+        val expected = expectPath.readText(Codec.UTF8)
+        val expectName = expectPath.name
         if expected.trim != obtained.trim then
-          Files.write(expectPath.resolveSibling("" + expectName + ".out"), obtained.getBytes(StandardCharsets.UTF_8))
+          expectPath.parent.getOrCreateFile(expectName, FileExtension.from("out")).writeText(obtained, Codec.UTF8)
           errors += expectPath
-    for source <- inputFiles().sorted do
-      val filename = source.getFileName.toString
-      val relpath = expectSrc.relativize(source)
-      val semanticdbPath = target
-        .resolve("META-INF")
-        .resolve("semanticdb")
-        .resolve(relpath)
-        .resolveSibling(filename + ".semanticdb")
-      val expectPath = source.resolveSibling(filename.replace(".scala", ".expect.scala"))
-      val doc = SemanticdbTests.loadTextDocument(source, relpath, semanticdbPath)
-      SemanticdbTests.metac(doc, rootSrc.relativize(source))(using metacSb)
+    for source <- inputFiles().sortBy(_.path) do
+      val filename = source.name
+      val relativeSource = source.path.substring(expectSrc.path.length)
+      val semanticdbPath = s"${target.path}${FileSystemEntry.separator}META-INF${FileSystemEntry.separator}semanticdb$relativeSource.semanticdb"
+      val expectPath = source.parent.getOrCreateFile(source.nameWithoutExtension, expectExt)
+      val doc = SemanticdbTests.loadTextDocument(expectSrc, source, File.getOrCreateOnDisk(semanticdbPath))
+      SemanticdbTests.metac(doc, expectSrc.name + relativeSource)(using metacSb)
       val obtained = trimTrailingWhitespace(SemanticdbTests.printTextDocument(doc))
       collectErrorOrUpdate(expectPath, obtained)
     collectErrorOrUpdate(metacExpectFile, metacSb.toString)
     for expect <- errors do
       def red(msg: String) = Console.RED + msg + Console.RESET
       def blue(msg: String) = Console.BLUE + msg + Console.RESET
-      println(s"""[${red("error")}] check file ${blue(expect.toString)} does not match generated.
+      val outPath = expect.parent.getOrCreateFile(expect.name, FileExtension.from("out")).path
+      println(s"""[${red("error")}] check file ${blue(expect.path)} does not match generated.
       |If you meant to make a change, replace the expect file by:
-      |  mv ${expect.resolveSibling("" + expect.getFileName + ".out")} $expect
+      |  mv $outPath ${expect.path}
       |inspect with:
-      |  diff $expect ${expect.resolveSibling("" + expect.getFileName + ".out")}
+      |  diff ${expect.path} $outPath
       |Or else update all expect files with
       |  sbt 'scala3-compiler-bootstrapped/Test/runMain dotty.tools.dotc.semanticdb.updateExpect'""".stripMargin)
-    Files.walk(target).sorted(Comparator.reverseOrder).forEach(Files.delete)
+    target.deleteRecursively()
     if errors.nonEmpty then
       fail(s"${errors.size} errors in expect test.")
 
   def trimTrailingWhitespace(s: String): String =
     Pattern.compile(" +$", Pattern.MULTILINE).matcher(s).replaceAll("")
 
-  def inputFiles(): List[Path] =
-    val ls = Files.walk(expectSrc)
-    val files =
-      try ls.filter(p => scalaFile.matches(p) && !expectFile.matches(p)).collect(Collectors.toList).asScala
-      finally ls.close()
-    require(files.nonEmpty, s"No input files! $expectSrc")
-    files.toList
+  def inputFiles(): List[File] =
+    val files = expectSrc.recursiveEntries.collect {
+      case f: File if f.extension == FileExtension.Scala && !f.nameWithoutExtension.endsWith(".expect") => f
+    }.toList
+    require(files.nonEmpty, s"No input files! ${expectSrc.path}")
+    files
 
-  def javaFiles(): List[Path] =
-    val ls = Files.walk(javaRoot)
-    val files =
-      try ls.filter(p => javaFile.matches(p)).collect(Collectors.toList).asScala
-      finally ls.close()
-    require(files.nonEmpty, s"No input files! $expectSrc")
-    files.toList
+  def javaFiles(): List[File] =
+    val files = javaRoot.recursiveEntries.collect {
+      case f: File if f.extension == FileExtension.Java => f
+    }.toList
+    require(files.nonEmpty, s"No input files! ${javaRoot.path}")
+    files
 
-  def generateSemanticdb(): Path =
-    val target = Files.createTempDirectory("semanticdb")
-    val javaArgs = Array("-d", target.toString) ++ javaFiles().map(_.toString)
+  def generateSemanticdb(): FileContainer =
+    val target = FileContainer.createTemporaryOnDisk("semanticdb")
+    val javaArgs = Array("-d", target.path) ++ javaFiles().map(_.path)
     val javac = ToolProvider.getSystemJavaCompiler
     val exitJava = javac.run(null, null, null, javaArgs*)
     assert(exitJava == 0, "java compiler has errors")
     val args = Array(
       "-Xsemanticdb",
-      "-d", target.toString,
+      "-d", target.path,
       "-feature",
       "-deprecation",
       // "-Ydebug-flags",
       // "-Vprint:extractSemanticDB",
-      "-sourceroot", expectSrc.toString,
-      "-classpath", target.toString,
+      "-sourceroot", expectSrc.path,
+      "-classpath", target.path,
       "-Xignore-scala2-macros",
       "-usejavacp",
       "-Wunused:all",
       "-Yreporter:dotty.tools.dotc.reporting.Reporter$SilentReporter",
-    ) ++ inputFiles().map(_.toString)
+    ) ++ inputFiles().map(_.path)
     val exit = Main.process(args)
     assertFalse(s"dotc errors: ${exit.errorCount}", exit.hasErrors)
     target
@@ -149,55 +138,49 @@ end SemanticdbTests
 
 object SemanticdbTests:
   def printTextDocument(doc: TextDocument): String =
-    val byteStream = new ByteArrayOutputStream()
-    val out = SemanticdbOutputStream.newInstance(byteStream)
-    doc.writeTo(out)
-    out.flush()
-    DocumentPrinter.textDocumentPrettyPrint(byteStream.toByteArray.nn)
+    DocumentPrinter.textDocumentPrettyPrint(doc.toByteArray)
   end printTextDocument
 
 
   /** Load SemanticDB TextDocument for a single Scala source file
    *
-   * @param scalaAbsolutePath      Absolute path to a Scala source file.
-   * @param scalaRelativePath      scalaAbsolutePath relativized by the sourceroot.
-   * @param semanticdbAbsolutePath Absolute path to the SemanticDB file.
+   * @parma srcRoot        Source root for the Scala file
+   * @param scalaPath      Scala file
+   * @param semanticdbPath SemanticDB file.
    */
-  def loadTextDocument(
-                        scalaAbsolutePath: Path,
-                        scalaRelativePath: Path,
-                        semanticdbAbsolutePath: Path
+  def loadTextDocument( srcRoot: FileContainer,
+                        scalaPath: File,
+                        semanticdbAbsolutePath: File
                       ): TextDocument =
-    val reluri = Tools.mkURIstring(scalaRelativePath)
+    val reluri = Tools.mkURIstring(java.nio.file.Path.of(scalaPath.path.substring(srcRoot.path.length)))
     val sdocs = parseTextDocuments(semanticdbAbsolutePath)
     sdocs.documents.find(_.uri == reluri) match
-      case None => throw new NoSuchElementException(s"$scalaRelativePath")
+      case None => throw new NoSuchElementException(s"$reluri ($scalaPath) not found in ${sdocs.documents.map(_.uri).mkString("[", ", ", "]")} from $semanticdbAbsolutePath")
       case Some(document) =>
-        val text = new String(Files.readAllBytes(scalaAbsolutePath), StandardCharsets.UTF_8)
+        val text = scalaPath.readText(Codec.UTF8)
         // Assert the SemanticDB payload is in-sync with the contents of the Scala file on disk.
         val md5FingerprintOnDisk = internal.MD5.compute(text)
         if document.md5 != md5FingerprintOnDisk then
-          throw new IllegalArgumentException(s"stale semanticdb: $scalaRelativePath")
+          throw new IllegalArgumentException(s"stale semanticdb: $scalaPath")
         else
           // Update text document to include full text contents of the file.
           document.copy(text = text)
   end loadTextDocument
 
-  def loadTextDocumentUnsafe(scalaAbsolutePath: Path, semanticdbAbsolutePath: Path): TextDocument =
+  def loadTextDocumentUnsafe(scalaAbsolutePath: File, semanticdbAbsolutePath: File): TextDocument =
     val docs = parseTextDocuments(semanticdbAbsolutePath).documents
     assert(docs.length == 1)
-    docs.head.copy(text = new String(Files.readAllBytes(scalaAbsolutePath), StandardCharsets.UTF_8))
+    docs.head.copy(text = scalaAbsolutePath.readText(Codec.UTF8))
 
   /** Parses SemanticDB text documents from an absolute path to a `*.semanticdb` file. */
-  private def parseTextDocuments(path: Path): TextDocuments =
-    val bytes = Files.readAllBytes(path).nn // NOTE: a semanticdb file is a TextDocuments message, not TextDocument
+  private def parseTextDocuments(path: File): TextDocuments =
+    val bytes = path.readBytes() // NOTE: a semanticdb file is a TextDocuments message, not TextDocument
     TextDocuments.parseFrom(bytes)
 
 
-  def metac(doc: TextDocument, realPath: Path)(using sb: StringBuilder): StringBuilder =
+  def metac(doc: TextDocument, realURI: String)(using sb: StringBuilder): StringBuilder =
     val symtab = PrinterSymtab.fromTextDocument(doc)
     val symPrinter = SymbolInformationPrinter(symtab)
-    val realURI = realPath.toString
     given sourceFile: SourceFile = SourceFile.virtual(doc.uri, doc.text)
     val synthPrinter = SyntheticPrinter(symtab, sourceFile)
     sb.append(realURI).nl

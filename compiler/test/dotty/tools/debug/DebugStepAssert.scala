@@ -1,10 +1,10 @@
 package dotty.tools.debug
 
 import com.sun.jdi.Location
-import dotty.tools.io.JPath
-import dotty.tools.readLines
+import dotty.tools.nio.*
 
 import scala.annotation.tailrec
+import scala.io.Codec
 
 /**
  * A debug step and an associated assertion to validate the step.
@@ -15,7 +15,7 @@ private[debug] case class DebugStepAssert[T](step: DebugStep[T], assertion: T =>
 )
 
 /** A location in the check file */
-private[debug] case class CheckFileLocation(checkFile: JPath, line: Int):
+private[debug] case class CheckFileLocation(checkFile: File, line: Int):
   override def toString: String = s"$checkFile:$line"
 
 /** When a DebugStepAssert fails it throws a DebugStepException */
@@ -41,8 +41,8 @@ private[debug] object DebugStepAssert:
   private val multiLineError = s"error$trailing".r
 
   import DebugStep.*
-  def parseCheckFile(checkFile: JPath): Seq[DebugStepAssert[?]] =
-    val allLines = readLines(checkFile.toFile)
+  def parseCheckFile(checkFile: File): Seq[DebugStepAssert[?]] =
+    val allLines = checkFile.readLines(Codec.UTF8).toList
 
     @tailrec
     def loop(lines: List[String], acc: List[DebugStepAssert[?]]): List[DebugStepAssert[?]] =

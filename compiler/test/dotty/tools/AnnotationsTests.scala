@@ -1,9 +1,7 @@
 package dotty.tools
 
 import vulpix.TestConfiguration
-
 import org.junit.Test
-
 import dotc.ast.Trees.*
 import dotc.ast.tpd
 import dotc.core.Decorators.*
@@ -12,12 +10,11 @@ import dotc.core.Constants.*
 import dotc.core.Phases.*
 import dotc.core.Types.*
 import dotc.core.Symbols.*
-
-import java.io.File
-import java.nio.file.*
+import dotty.tools.io.{ClassPath, FileExtension}
+import dotty.tools.nio.FileContainer
 
 class AnnotationsTest:
-  def augmentedClassPath(path: Path) = s"${path}${File.pathSeparator}${TestConfiguration.basicClasspath}"
+  def augmentedClassPath(dir: FileContainer) = s"${dir.path}${ClassPath.pathSeparator}${TestConfiguration.basicClasspath}"
 
   @Test def annotTreeNotErased: Unit =
     withJavaCompiled(
@@ -25,7 +22,7 @@ class AnnotationsTest:
         "public @interface Annot { String[] values() default {}; }"),
       VirtualJavaSource("A.java",
         "@Annot(values = {}) public class A {}")) { javaOutputDir =>
-      inCompilerContext(javaOutputDir.toString + File.pathSeparator + TestConfiguration.basicClasspath) {
+      inCompilerContext(javaOutputDir.path + ClassPath.pathSeparator + TestConfiguration.basicClasspath) {
         val defn = ctx.definitions
         val cls = requiredClass("A")
         val annotCls = requiredClass("Annot")
@@ -59,8 +56,8 @@ class AnnotationsTest:
         "public @interface Annot2 {}"),
       VirtualJavaSource("A.java",
         "@Annot1() @Annot2() public class A {}")) { javaOutputDir =>
-      Files.delete(javaOutputDir.resolve("Annot1.class"))
-      inCompilerContext(javaOutputDir.toString + File.pathSeparator + TestConfiguration.basicClasspath) {
+      javaOutputDir.getFile("Annot1", FileExtension.Class).get.delete()
+      inCompilerContext(javaOutputDir.path + ClassPath.pathSeparator + TestConfiguration.basicClasspath) {
         val cls = requiredClass("A")
         val annots = cls.annotations.map(_.tree)
         assert(annots.length == 1,
@@ -80,10 +77,10 @@ class AnnotationsTest:
         """|package a.b;
            |@Outer.Value.Immutable abstract class Baz {}""".stripMargin)
     ) { javaOutputDir =>
-      Files.delete(javaOutputDir.resolve("a/b/Outer.class"))
-      Files.delete(javaOutputDir.resolve("a/b/Outer$Value.class"))
-      Files.delete(javaOutputDir.resolve("a/b/Outer$Value$Immutable.class"))
-      inCompilerContext(javaOutputDir.toString + File.pathSeparator + TestConfiguration.basicClasspath) {
+      javaOutputDir.getContainer("a").get.getContainer("b").get.getFile("Outer", FileExtension.Class).get.delete()
+      javaOutputDir.getContainer("a").get.getContainer("b").get.getFile("Outer$Value", FileExtension.Class).get.delete()
+      javaOutputDir.getContainer("a").get.getContainer("b").get.getFile("Outer$Value$Immutable", FileExtension.Class).get.delete()
+      inCompilerContext(javaOutputDir.path + ClassPath.pathSeparator + TestConfiguration.basicClasspath) {
         val cls = requiredClass("a.b.Baz")
         val annots = cls.annotations.map(_.tree)
         assert(annots == Nil,

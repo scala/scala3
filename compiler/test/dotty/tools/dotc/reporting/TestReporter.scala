@@ -3,22 +3,20 @@ package tools
 package dotc
 package reporting
 
-import java.io.{File as JFile, *}
-import java.nio.file.Files.readAllLines
 import java.text.SimpleDateFormat
 import java.util.Date
-
 import core.Contexts.*
 import core.Decorators.*
 import interfaces.Diagnostic.{ERROR, WARNING}
 import io.AbstractFile
 import util.SourcePosition
 import Diagnostic.*
+import dotty.tools.nio.*
 
+import java.io.{PrintStream, PrintWriter, StringWriter}
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 import scala.io.Codec
-import scala.jdk.CollectionConverters.*
 
 class TestReporter protected (outWriter: PrintWriter, logLevel: Int)
 extends Reporter with UniqueMessagePositions with HideNonSensicalMessages with MessageRendering {
@@ -98,9 +96,9 @@ class TestConsoleReporter(writer: PrintWriter) extends ConsoleReporter(null, wri
 object TestReporter {
   private val testLogsDirName: String = "testlogs"
   private val failedTestsFileName: String = "last-failed.log"
-  private val failedTestsFile: JFile = new JFile(s"$testLogsDirName/$failedTestsFileName")
+  private val failedTestsFile: File = File.getOrCreateOnDisk(s"$testLogsDirName/$failedTestsFileName")
 
-  private var outFile: JFile = uninitialized
+  private var outFile: File = uninitialized
   private var logWriter: PrintWriter = uninitialized
   private var failedTestsWriter: PrintWriter = uninitialized
 
@@ -108,11 +106,9 @@ object TestReporter {
     val date = new Date
     val df0 = new SimpleDateFormat("yyyy-MM-dd")
     val df1 = new SimpleDateFormat("yyyy-MM-dd-'T'HH-mm-ss")
-    val folder = s"$testLogsDirName/tests-${df0.format(date)}"
-    new JFile(folder).mkdirs()
-    outFile = new JFile(s"$folder/tests-${df1.format(date)}.log")
-    logWriter = new PrintWriter(new FileOutputStream(outFile, true))
-    failedTestsWriter = new PrintWriter(new FileOutputStream(failedTestsFile, false))
+    outFile = File.getOrCreateOnDisk(s"$testLogsDirName/tests-${df0.format(date)}/tests-${df1.format(date)}.log")
+    logWriter = new PrintWriter(outFile.output(append = true))
+    failedTestsWriter = new PrintWriter(failedTestsFile.output())
   }
 
   def logPrintln(str: String) = {
@@ -131,7 +127,7 @@ object TestReporter {
 
   def logPath: String = {
     initLog()
-    outFile.getCanonicalPath
+    outFile.path
   }
 
   def reporter(ps: PrintStream, logLevel: Int): TestReporter =
@@ -164,11 +160,11 @@ object TestReporter {
   }
 
   def lastRunFailedTests: Option[List[String]] =
-    Option.when(
-      Properties.rerunFailed &&
-        failedTestsFile.exists() &&
-        failedTestsFile.isFile
-    )(readAllLines(failedTestsFile.toPath).asScala.toList)
+    if Properties.rerunFailed then
+      val lines = failedTestsFile.readLines(Codec.UTF8).toList
+      if lines.nonEmpty then Some(lines)
+      else None
+    else None
 
   def writeFailedTests(tests: List[String]): Unit =
     initLog()
@@ -176,7 +172,7 @@ object TestReporter {
     failedTestsWriter.flush()
 
   def renderPath(file: AbstractFile): String =
-    if JFile.separatorChar == '\\' then
+    if FileSystemEntry.separator == '\\' then
       file.path.replace('\\', '/')
     else
       file.path

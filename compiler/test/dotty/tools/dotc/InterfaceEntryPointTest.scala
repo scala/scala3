@@ -6,7 +6,6 @@ import org.junit.Assert.*
 import org.junit.experimental.categories.Category
 import interfaces.*
 import scala.collection.mutable.ListBuffer
-import java.nio.file.*
 
 /** Test that demonstrates how to use dotty-interfaces
  *
@@ -23,14 +22,11 @@ import java.nio.file.*
 class InterfaceEntryPointTest {
   @Test def runCompilerFromInterface = {
     val sources =
-      List("tests/pos/HelloWorld.scala").map(p => Paths.get(p).toAbsolutePath().toString)
-    val out = Paths.get("out/").toAbsolutePath()
-    if (Files.notExists(out))
-      Files.createDirectory(out)
+      List("tests/pos/HelloWorld.scala")
 
     val args = sources ++ List(
       "-d",
-      out.toString,
+      "out",
       "-classpath", "", // Avoid the default "."
       "-usejavacp"
     )
