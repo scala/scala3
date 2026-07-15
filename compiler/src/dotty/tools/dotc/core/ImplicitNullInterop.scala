@@ -81,6 +81,12 @@ object ImplicitNullInterop:
       then Some(NullMode.Default)
       else None
 
+    def checkPackage(clazz: Symbol): Option[NullMode] =
+      val packageClass = clazz.enclosingPackageClass
+      packageClass.children.find(it => it.isType && it.asType.name == StdNames.nme.CANONICAL_PACKAGE).flatMap: canonicalPackage =>
+        println("Hi")
+        checkOne(canonicalPackage)
+
     def checkEnclosingClasses(clazz: Symbol): Option[NullMode] =
       checkOne(clazz).orElse:
         // use "lexically enclosing class" to _not_ skip static members
@@ -93,7 +99,7 @@ object ImplicitNullInterop:
     // TODO: also check the java module
     checkEnclosingClasses(sym.lexicallyEnclosingClass)
       // check package
-      .orElse(checkOne(sym.enclosingPackageClass))
+      .orElse(checkPackage(sym))
       .getOrElse(NullMode.Default)
 
   /** Transforms the type `tp` of a member `sym` that originates from a source without explicit nulls.

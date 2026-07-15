@@ -1113,6 +1113,12 @@ object JavaParsers {
       val pkg: RefTree =
         if in.token == PACKAGE then
           if leadingAnnots.nonEmpty then
+            // Invent a fake "canonical package" type?
+            val canonicalPackage = TypeDef(tpnme.CANONICAL_PACKAGE, Ident(jtpnme.Object))
+
+            buf +=
+              leadingAnnots.foldLeft[Tree](canonicalPackage): (base, annot) =>
+                Annotated(base, annot)
             start = in.offset
           accept(PACKAGE)
           val pkg = qualId()
@@ -1150,11 +1156,7 @@ object JavaParsers {
       }
       val unit =
         atSpan(start):
-          if leadingAnnots.nonEmpty && pkg != Ident(nme.EMPTY_PACKAGE) then
-            leadingAnnots.foldLeft[Tree](PackageDef(pkg, buf.toList)): (base, annot) =>
-              Annotated(base, annot)
-          else
-            PackageDef(pkg, buf.toList)
+          PackageDef(pkg, buf.toList)
 
       accept(EOF)
       if (compact) EmptyTree

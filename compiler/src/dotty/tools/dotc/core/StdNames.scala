@@ -192,6 +192,7 @@ object StdNames {
     final val WILDCARD_STAR: N                  = "_*"
     final val REIFY_TREECREATOR_PREFIX: N       = "$treecreator"
     final val REIFY_TYPECREATOR_PREFIX: N       = "$typecreator"
+    final val CANONICAL_PACKAGE: N              = "<annotated java package>"
 
     final val Any: N                 = "Any"
     final val AnyKind: N             = "AnyKind"
