@@ -1,4 +1,5 @@
 // Test that `@NullMarked` / `@NullUnmarked` are read from class files.
+//> using options -Yno-flexible-types
 
 import org.jspecify.annotations.J_2
 

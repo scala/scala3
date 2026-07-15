@@ -1,3 +1,5 @@
+//> using options -Yno-flexible-types
+
 import nullmarked.J
 
 // `get` result is non-null in a `@NullMarked` class.

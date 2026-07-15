@@ -1,6 +1,7 @@
 // Test that a package-level `@NullMarked` (from `package-info.class`) is read from class files.
 // The Java sources above are compiled first (round 0); this file is compiled separately and reads
 // `nmpkg.J` through ClassfileParser.
+//> using options -Yno-flexible-types
 
 import nmpkg.J
 
