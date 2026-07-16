@@ -897,7 +897,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     false
                 singletonOK
                 || compareCaptures(tp1, refs1, tp2, refs2)
-                    && (recur(tp1.widen.stripCapturing, parent2)
+                    && (recur(tp1.widen.stripOneCapturing, parent2)
                       || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
                           // this alternative is needed in case the right hand side is a
                           // capturing type that contains the lhs as an alternative of a union type.
@@ -1931,7 +1931,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   // to the argument type. If subCapturesRange returns true we know that arg1's'
                   // capture set can be unified with arg2's capture set, so it only remains to
                   // check the underlying types with `isSubArg`.
-                  && isSubArg(arg1.hi.stripCapturing, arg2.stripCapturing)
+                  && isSubArg(arg1.hi.stripOneCapturing, arg2.stripOneCapturing)
                 || compareCaptured(arg1, arg2)
               case ExprType(arg1res)
               if ctx.phaseId > elimByNamePhase.id && !ctx.erasedTypes
@@ -2967,8 +2967,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         case (level, CaptureSet.MutAdaptFailure(cs, NoType, NoType)) :: rest =>
           errorNotes = (level, CaptureSet.MutAdaptFailure(cs, tp1, tp2)) :: rest
         case _ =>
-    subc
-    && (tp1.isBoxCompatibleWith(tp2) || healBoxDifference(tp1, tp2))
+    subc && (tp1.isBoxCompatibleWith(tp2) || healBoxDifference(tp1, tp2))
 
   /** Try to heal a box difference of `tp1` with another type `tp2` by forcing all capture
    *  capture sets in `tp1` with a box difference to `tp2` to be empty.
