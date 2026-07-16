@@ -235,7 +235,16 @@ object GenericSignatures {
               boxedSig(tp.widenDealias.widenNullaryMethod)
         }
 
-      pre.widenDealias match {
+      // when generating a java generic signature that includes
+      // a selection of an inner class p.I, (p = `pre`, I = `cls`) must
+      // rewrite to p'.I, where p' refers to the class that directly defines
+      // the nested class I. see:
+      // https://github.com/scala/scala3/issues/26532
+      // https://github.com/scala/bug/issues/2585
+      val reboundPre =
+        if pre.exists then pre.baseType(sym.owner)
+        else pre
+      reboundPre.widenDealias match {
         // If the class is an inner class of a generic class, we must emit the outer generic class with its parameters
         // (see test `inner-of-generic` for an example of Java compatibility)
         case RefOrAppliedType(preSym: ClassSymbol, prePre, preArgs) if preArgs.nonEmpty =>
