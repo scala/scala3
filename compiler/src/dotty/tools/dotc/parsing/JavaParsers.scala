@@ -1146,7 +1146,7 @@ object JavaParsers {
       if packageAnnots.nonEmpty then
         buf += atSpan(start) {
           TypeDef(
-            typeName("package-info"),
+            defn.PackageInfoName,
             makeTemplate(List(ObjectTpt()), Nil, Nil, needsDummyConstr = true)
           ).withMods(Modifiers(Flags.JavaDefined).withAnnotations(packageAnnots))
         }

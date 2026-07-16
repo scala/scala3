@@ -1236,6 +1236,13 @@ class Definitions {
   @tu lazy val NullUnmarkedAnnots: List[ClassSymbol] = getClassesIfDefined(
     "org.jspecify.annotations.NullUnmarked" :: Nil)
 
+  /** The name of the synthetic member that carries a package's annotations, loaded from
+   *  `package-info.java` / `package-info.class` (`package-info` is not a legal Java identifier,
+   *  so it never collides with a real member). Used by the explicit-nulls interop to read a
+   *  package-level `@NullMarked` / `@NullUnmarked`.
+   */
+  val PackageInfoName: TypeName = typeName("package-info")
+
   // convenient one-parameter method types
   def methOfAny(tp: Type): MethodType = MethodType(List(AnyType), tp)
   def methOfAnyVal(tp: Type): MethodType = MethodType(List(AnyValType), tp)
