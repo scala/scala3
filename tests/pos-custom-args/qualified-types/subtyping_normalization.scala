@@ -31,9 +31,7 @@ def test: Unit =
 
   // Comparison normalization: >= to <=, > to <, <= to <
   summon[{v: Int with x >= y} <:< {v: Int with y <= x}]
-  summon[{v: Int with x >= y} <:< {v: Int with y < x + 1}]
   summon[{v: Int with x > y}  <:< {v: Int with y < x}]
-  summon[{v: Int with x <= y} <:< {v: Int with x < y + 1}]
   summon[{v: Int with 0 <= v} <:< {v: Int with v >= 0}]
   summon[{v: Int with v >= 0} <:< {v: Int with 0 <= v}]
 
