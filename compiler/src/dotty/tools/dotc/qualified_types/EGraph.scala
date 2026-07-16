@@ -453,6 +453,10 @@ final class EGraph(_ctx: Context):
         else
           val sorted = args.sortBy(idOf.apply)
           constFoldBinaryOp[Any, Boolean](op, sorted, _ == _)
+      case Op.NotEqual =>
+        assert(args.size == 2, s"Expected 2 arguments for not-equal, got $args")
+        val eqNode = unique(normalizeOp(Op.Equal, args))
+        normalizeOp(Op.Not, List(eqNode))
       case Op.And =>
         assert(args.size == 2, s"Expected 2 arguments for conjunction, got $args")
         if (args(0) eq falseNode) || (args(1) eq falseNode) then falseNode
@@ -489,15 +493,10 @@ final class EGraph(_ctx: Context):
       case Op.IntDiv => constFoldBinaryOp[Int, Int](op, args, _ / _)
       case Op.IntMod => constFoldBinaryOp[Int, Int](op, args, _ % _)
       case Op.IntLessThan => constFoldBinaryOp[Int, Boolean](op, args, _ < _)
-      case Op.NotEqual =>
-        assert(args.size == 2, s"Expected 2 arguments for not-equal, got $args")
-        val eqNode = unique(normalizeOp(Op.Equal, args))
-        normalizeOp(Op.Not, List(eqNode))
       case Op.IntGreaterThan => normalizeOp(Op.IntLessThan, args.reverse)
-      // Rewrite a <= b as a < b + 1 and a >= b as b < a + 1
       case Op.IntLessEqual =>
-        val rhsPlusOne = unique(normalizeOp(Op.IntSum, List(args(1), oneIntNode)))
-        normalizeOp(Op.IntLessThan, List(args(0), rhsPlusOne))
+        if args(0) eq args(1) then trueNode
+        else constFoldBinaryOp[Int, Boolean](op, args, _ <= _)
       case Op.IntGreaterEqual => normalizeOp(Op.IntLessEqual, args.reverse)
       case Op.IfThenElse =>
         assert(args.size == 3, s"Expected 3 arguments for if-then-else, got $args")
