@@ -527,10 +527,3 @@ class DeterminismTester {
     finally stream.close()
 }
 
-/** A reporter that collects diagnostics so they can be included in assertion
- *  messages instead of being interleaved with the parallel test output.
- */
-private class CollectingReporter extends Reporter {
-  val messages: mutable.Buffer[String] = mutable.ListBuffer.empty[String]
-  def doReport(dia: Diagnostic)(using Context): Unit = messages += dia.toString
-}
