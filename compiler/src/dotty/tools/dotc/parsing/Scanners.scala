@@ -104,7 +104,7 @@ object Scanners {
 
   abstract class ScannerCommon(source: SourceFile, limit: Offset = -1)(using Context) extends CharArrayReader with TokenData {
     val buf: Array[Char] = source.content
-    val endIdx = if limit >= 0 then limit else buf.length
+    val endIdx = if limit >= 0 && limit < buf.length then limit else buf.length
     def nextToken(): Unit
 
     // Errors -----------------------------------------------------------------
@@ -1352,9 +1352,10 @@ object Scanners {
 
     def isSpecString(): Boolean =
       var i = charOffset
-      while buf(i) == '\'' do
+      while i < endIdx && buf(i) == '\'' do
         i += 1
       Feature.magicEnabled
+      && i + 4 < endIdx
       && i - charOffset >= 2
       && buf(i) == 's' && buf(i + 1) == 'p' && buf(i + 2) == 'e' && buf(i + 3) == 'c'
       && (isWhitespace(buf(i + 4)) || buf(i + 4) == LF)

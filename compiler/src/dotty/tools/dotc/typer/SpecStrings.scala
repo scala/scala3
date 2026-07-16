@@ -55,11 +55,11 @@ import dotty.tools.dotc.printing.Formatting.ShownDef.Shown.runCtxShow
  *         "    \n   Parse date string into `",
  *         "` structure. The string is in the format given by `",
  *         "`.\n    "
- *       )(scala.compiletime.$wrappeType[Date], formatString)
+ *       )(scala.compiletime.$wrappedType[Date], formatString)
  *
  *  Notes:
  *
- *    - The compiler can parse single line or mutli-line code blocks
+ *    - The compiler can parse single line or multi-line code blocks
  *    - Each code block is first attempted to be parsed and typechecked
  *      as the contents of a `{...}` block. If that succeeds, the expression
  *      if treated as interpolated argument. E.g. formatString in the previous
@@ -134,11 +134,11 @@ trait SpecStrings { this: Typer =>
         val startOffset = strLit.span.start
         val startParse = startOffset + opening + nquotes
         val endParse = startOffset + closing
-        println(s"str /$str/ starting at ${ctx.compilationUnit.source.content().slice(startOffset, startOffset + 10).mkString("[",",","]")}")
-        println(s"starting $nquotes at ${ctx.compilationUnit.source.content().slice(startParse, startParse + 10).mkString("[",",","]")}")
+        //println(s"str /$str/ starting at ${ctx.compilationUnit.source.content().slice(startOffset, startOffset + 10).mkString("[",",","]")}")
+        //println(s"starting $nquotes at ${ctx.compilationUnit.source.content().slice(startParse, startParse + 10).mkString("[",",","]")}")
 
         def extract(tree: untpd.Tree) =
-          val prefix = Literal(Constant(str.take(opening + 1)))
+          val prefix = Literal(Constant(str.take(opening + nquotes)))
               .withSpan(strLit.span.withEnd(startOffset + opening + nquotes))
           val suffix = Literal(Constant(str.drop(closing)))
               .withSpan(strLit.span.withStart(startOffset + closing))
