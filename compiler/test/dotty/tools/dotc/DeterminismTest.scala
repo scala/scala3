@@ -1,11 +1,9 @@
 package dotty.tools.dotc
 
-import java.io.{PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, StandardCopyOption}
 import javax.tools.{DiagnosticCollector, JavaFileObject, ToolProvider}
 
-import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
@@ -13,8 +11,6 @@ import org.junit.{Ignore, Test}
 import org.junit.Assert.*
 
 import dotty.tools.deleteDirectory
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.reporting.{Diagnostic, Reporter}
 import dotty.tools.vulpix.TestConfiguration
 
 /** Tests that the compiler produces byte-for-byte identical class files and
@@ -296,6 +292,7 @@ class DeterminismTest {
     test(code :: Nil)
   }
 
+  // TODO: fix compiler determinism for this to pass
   @Ignore("TASTy differs under separate compilation (TreePickler SHAREDtype addresses), see scala/scala3#26551")
   @Test def testAnonymousGivens(): Unit = {
     def code = List(
@@ -319,6 +316,7 @@ class DeterminismTest {
     test(List(code))
   }
 
+  // TODO: fix compiler determinism for this to pass
   @Ignore("TASTy of synthesized Mirror differs under separate compilation, see scala/scala3#26551")
   @Test def testMirrorSynthesis(): Unit = {
     def code = List(
@@ -476,12 +474,7 @@ class DeterminismTester {
   }
 
   private def textify(bytes: Array[Byte]): List[String] =
-    import scala.tools.asm.ClassReader
-    import scala.tools.asm.util.TraceClassVisitor
-    val sw = new StringWriter
-    import dotty.tools.backend.jvm.TraceUtils.readClass
-    readClass(bytes).accept(new TraceClassVisitor(new PrintWriter(sw)))
-    sw.toString.linesIterator.toList
+    dotty.tools.backend.jvm.TraceUtils.traceClassToString(bytes).linesIterator.toList
 
   private def diffClassFiles(bytes1: Array[Byte], bytes2: Array[Byte]): String =
     diffLines(textify(bytes1), textify(bytes2), "(byte-level difference only, e.g. constant pool order or TASTY attribute)")
