@@ -272,6 +272,7 @@ class DeterminismTest {
     test(List(code))
   }
 
+  // TODO: fix compiler determinism for this to pass
   @Ignore("classfile member order and InnerClasses attribute differ under separate compilation, see scala/scala3#26552")
   @Test def testReferenceToInnerClassMadeNonPrivate(): Unit = {
     def code = List(
