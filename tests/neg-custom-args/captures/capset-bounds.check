@@ -1,0 +1,12 @@
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/capset-bounds.scala:15:19 ------------------------------
+15 |    val z2 = mkAbs[Ref^{r6}](r6, r7)  // error
+   |                   ^^^^^^^^
+   |                   Reference `r6` is not included in the allowed capture set {}
+   |                   of the type parameter bound Any^{}.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/capset-bounds.scala:16:19 ------------------------------
+16 |    val z3 = mkAbs[Ref](r6, r7)     // error
+   |                   ^^^
+   |                   Reference `any.rd` is not included in the allowed capture set {}
+   |                   of the type parameter bound Any^{}.
+   |
+   |                   where:    any is a root capability classified as Unscoped created in value z3

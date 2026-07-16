@@ -1244,21 +1244,12 @@ object CaptureSet:
 
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if accountsFor(elem) then true
+      else if (origin eq cs1) || (origin eq cs2) then
+        super.tryInclude(elem, origin)
       else
-        TypeComparer.atomicOp:
-          val res = super.tryInclude(elem, origin)
-          // If this is the union of a constant and a variable,
-          // propagate `elem` to the variable part to avoid slack
-          // between the operands and the union.
-          if res && (origin ne cs1) && (origin ne cs2) then
-            try
-              if cs1.isConst then cs2.tryInclude(elem, origin)
-              else if cs2.isConst then cs1.tryInclude(elem, origin)
-              else res
-            catch case ex: AssertionError =>
-              println(i"err while tryinclude $elem in $cs1 | $cs2, ${cs1.isConst}, ${cs2.isConst}")
-              throw ex
-          else res
+           !cs1.isConst && cs1.tryInclude(elem, origin)
+        || !cs2.isConst && cs2.tryInclude(elem, origin)
+        || addIfHiddenOrFail(elem)
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)
