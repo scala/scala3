@@ -162,7 +162,7 @@ extension (tp: Type)
    *  @param includeBoxed     if true, include capture sets found in boxed parts of this type
    */
   def computeDeepCaptureSet(includeTypevars: Boolean, includeBoxed: Boolean = true)(using Context): CaptureSet =
-    tp.captureSet ++ CaptureSet.ofTypeDeeply(tp.widen.stripCapturing, includeTypevars, includeBoxed)
+    tp.captureSet ++ CaptureSet.ofTypeDeeply(tp.widen.stripOneCapturing, includeTypevars, includeBoxed)
 
   /** The deep capture set of a type. This is by default the union of all
    *  covariant capture sets embedded in the widened type, as computed by
@@ -319,10 +319,21 @@ extension (tp: Type)
    *  via dealising are also stripped.
    */
   def stripCapturing(using Context): Type = tp.dealiasKeepAnnots match
-    case CapturingType(parent, _) =>
+    case tp @ CapturingType(parent, _) =>
       parent.stripCapturing
     case atd @ AnnotatedType(parent, annot) =>
       atd.derivedAnnotatedType(parent.stripCapturing, annot)
+    case _ =>
+      tp
+
+  /** Strip capture set of type, leaving possible boxed nested capture sets in place.
+   */
+  def stripOneCapturing(using Context): Type = tp.dealiasKeepAnnots match
+    case tp @ CapturingType(parent, _) =>
+      if parent.isBoxedCapturing && !tp.isBoxed then parent
+      else parent.stripOneCapturing
+    case atd @ AnnotatedType(parent, annot) =>
+      atd.derivedAnnotatedType(parent.stripOneCapturing, annot)
     case _ =>
       tp
 
