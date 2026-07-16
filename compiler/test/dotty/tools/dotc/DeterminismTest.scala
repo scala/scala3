@@ -398,12 +398,12 @@ class DeterminismTester {
           compilerOptions
             ++ List("-classpath", classpath, "-d", output.toString, "-sourceroot", srcDir.toString)
             ++ paths.map(_.toString)
-        val reporter = new CollectingReporter
+        val reporter = new dotty.tools.dotc.reporting.Reporter.SilentReporter
         try Main.process(args.toArray, reporter)
         catch case NonFatal(ex) =>
           throw new AssertionError(s"compiler crash while compiling ${sources.map(_.name)}", ex)
         assertFalse(
-          s"compilation of ${sources.map(_.name)} failed:\n${reporter.messages.mkString("\n")}",
+          s"compilation of ${sources.map(_.name)} failed:\n${reporter.allErrors.mkString("\n")}",
           reporter.hasErrors)
       if javaSources.nonEmpty then
         val javac = ToolProvider.getSystemJavaCompiler
