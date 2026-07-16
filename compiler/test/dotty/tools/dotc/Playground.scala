@@ -19,7 +19,7 @@ import org.junit.Ignore
     // or `RunTestWithCoverage` for "run" tests with output, or `WarnTestWithCoverage` for "warn" tests with warnings
     type TestKind = PosTestWithCoverage
     val compilationTest = withCoverage(aggregateTests(test))
-    runWithCoverageOrFallback[TestKind](compilationTest, testGroup.name)
+    runWithCoverageOrFallback[TestKind](compilationTest)
 
   @Test def bestEffortTasty(): Unit =
     given testGroup: TestGroup = TestGroup("single-test")

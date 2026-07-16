@@ -1,3 +1,24 @@
-9: Pattern Match Exhaustivity: _: A
-18: Pattern Match Exhaustivity: (_, _)
-29: Pattern Match Exhaustivity: (_, _)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9351.scala:9:4 -----
+9 |    a match {
+  |    ^
+  |    match may not be exhaustive.
+  |
+  |    It would fail on pattern case: _: A
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9351.scala:18:4 ----
+18 |    (a, o) match {
+   |    ^^^^^^
+   |    match may not be exhaustive.
+   |
+   |    It would fail on pattern case: (_, _)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9351.scala:29:4 ----
+29 |    (a, b) match {
+   |    ^^^^^^
+   |    match may not be exhaustive.
+   |
+   |    It would fail on pattern case: (_, _)
+   |
+   | longer explanation available when compiling with `-explain`

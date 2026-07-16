@@ -137,32 +137,6 @@ object TestReporter {
   def reporter(ps: PrintStream, logLevel: Int): TestReporter =
     new TestReporter(new PrintWriter(ps, true), logLevel)
 
-  def simplifiedReporter(writer: PrintWriter): TestReporter = {
-    val rep = new TestReporter(writer, WARNING) {
-      /** Prints the message with the given position indication in a simplified manner */
-      override def printMessageAndPos(dia: Diagnostic, extra: String)(using Context): Unit = {
-        def report() = {
-          val msg = s"${dia.pos.line + 1}: " + dia.msg.kind.message + extra
-          val extraInfo = inlineInfo(dia.pos)
-
-          writer.println(msg)
-          _messageBuf.append(msg)
-
-          if (extraInfo.nonEmpty) {
-            writer.println(extraInfo)
-            _messageBuf.append(extraInfo)
-          }
-        }
-        dia match {
-          case dia: Error => report()
-          case dia: Warning => report()
-          case _ => ()
-        }
-      }
-    }
-    rep
-  }
-
   def lastRunFailedTests: Option[List[String]] =
     Option.when(
       Properties.rerunFailed &&

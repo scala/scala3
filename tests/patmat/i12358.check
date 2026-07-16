@@ -1,1 +1,9 @@
-3: Pattern Match Exhaustivity: List(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _*), List(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _), List(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _), List(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _), List(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _), List(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i12358.scala:3:2 ----
+3 |  x match
+  |  ^
+  |match may not be exhaustive.
+  |
+  |It would fail on pattern case: List(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _*), List(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _), List(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _), List(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _), List(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _), List(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _)
+  |(More unmatched cases are elided)
+  |
+  | longer explanation available when compiling with `-explain`

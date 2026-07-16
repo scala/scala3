@@ -1,1 +1,4 @@
-9: Match case Unreachable
+-- [E030] Match case Unreachable Warning: tests/patmat/i4314b.scala:9:9 --------
+9 |    case Bar() =>
+  |         ^^^^^
+  |         Unreachable case

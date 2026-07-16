@@ -1,1 +1,8 @@
-8: Pattern Match Exhaustivity: Bar()
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmat-lazy-nothing-not-exhaustive.scala:8:2 
+8 |  x match { // warn
+  |  ^
+  |  match may not be exhaustive.
+  |
+  |  It would fail on pattern case: Bar()
+  |
+  | longer explanation available when compiling with `-explain`
