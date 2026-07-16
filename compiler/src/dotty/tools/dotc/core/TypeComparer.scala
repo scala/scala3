@@ -548,19 +548,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       case tp1 @ CapturingType(parent1, refs1) =>
         def compareCapturing =
           if tp2.isAny then true
-          else if compareCaptures(tp1, refs1, tp2, tp2.captureSet)
+          else if compareCaptures(tp1, refs1, tp2)
             || !ctx.mode.is(Mode.CheckBoundsOrSelfType) && tp1.isAlwaysPure
             || parent1.isSingleton && refs1.elems.forall(parent1 eq _)
           then
-            def remainsBoxed1 = parent1.isBoxedCapturing || parent1.dealias.match
+            def remainsBoxed1 = parent1.hasBoxedCapset || parent1.dealias.match
               case parent1: TypeRef =>
-                parent1.superType.isBoxedCapturing
+                parent1.superType.hasBoxedCapset
                 // When comparing a type parameter with boxed upper bound on the left
                 // we should not strip the box on the right. See i24543.scala.
               case _ =>
                 false
             val tp2a =
-              if tp1.isBoxedCapturing && !remainsBoxed1 then tp2.unboxed else tp2
+              if tp1.hasBoxedCapset && !remainsBoxed1 then tp2.unboxed else tp2
             recur(parent1, tp2a)
           else thirdTry
         compareCapturing
@@ -682,12 +682,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   && isSubInfo(info1.resultType, info2.resultType.subst(info2, info1))
                 case (info1 @ CapturingType(parent1, refs1), info2: Type)
                 if info2.stripCapturing.isInstanceOf[MethodOrPoly] =>
-                  compareCaptures(info1, refs1, info2, info2.captureSet)
+                  compareCaptures(info1, refs1, info2)
                     && isSubInfo(parent1, info2)
-                case (info1: Type, CapturingType(parent2, refs2))
+                case (info1: Type, CapturingType(parent2, _))
                 if info1.stripCapturing.isInstanceOf[MethodOrPoly] =>
                   val refs1 = info1.captureSet
-                  (refs1.isAlwaysEmpty || compareCaptures(info1, refs1, info2, refs2))
+                  (refs1.isAlwaysEmpty || compareCaptures(info1, refs1, info2))
                     && isSubInfo(info1, parent2)
                 case _ =>
                   isSubType(info1, info2)
@@ -896,7 +896,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                   case _ =>
                     false
                 singletonOK
-                || compareCaptures(tp1, refs1, tp2, refs2)
+                || compareCaptures(tp1, refs1, tp2)
                     && (recur(tp1.widen.stripOneCapturing, parent2)
                       || tp1.isInstanceOf[SingletonType] && recur(tp1, parent2)
                           // this alternative is needed in case the right hand side is a
@@ -2956,12 +2956,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    *    whether the capture set `refs1` of `tp1` is subcapture of the empty set?
    *    In the latter case, boxing status does not matter.
    */
-  protected def compareCaptures(tp1: Type, refs1: CaptureSet, tp2: Type, refs2: CaptureSet): Boolean =
+  protected def compareCaptures(tp1: Type, refs1: CaptureSet, tp2: Type): Boolean =
     val refs1Adapted =
       if tp1.derivesFromStateful && !tp2.derivesFromStateful
       then refs1.readOnly
       else refs1
-    val subc = subCaptures(refs1Adapted, refs2)
+    val subc = subCaptures(refs1Adapted, tp2.captureSet)
     if !subc then
       errorNotes match
         case (level, CaptureSet.MutAdaptFailure(cs, NoType, NoType)) :: rest =>
@@ -2974,9 +2974,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
    */
   private def healBoxDifference(tp1: Type, tp2: Type)(using Context): Boolean = tp1.dealias match
     case tp1 @ CapturingType(parent, refs) =>
-      (  !tp1.isBoxed || tp2.isBoxedCapturing
+      (  !tp1.isBoxed || tp2.isBoxed
       || refs.subCaptures(CaptureSet.EmptyOfBoxed(tp1, tp2), makeVarState())
-      || { capt.println(i"box mismatch for $tp1 <:< $tp2, ${tp1.isBoxedCapturing}")
+      || { capt.println(i"box mismatch for $tp1 <:< $tp2, ${tp1.hasBoxedCapset}")
            false
          }
       ) && healBoxDifference(parent, tp2)

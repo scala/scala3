@@ -748,9 +748,9 @@ class CheckCaptures extends Recheck, SymTransformer:
       //   - if the selection is of a parameterless method capturing a ResultCap
       if noWiden(selType, pt)
           || tree.hasAttachment(NoWiden)
-          || qualType.isBoxedCapturing
-          || selType.isBoxedCapturing
-          || selWiden.isBoxedCapturing
+          || qualType.hasBoxedCapset
+          || selType.hasBoxedCapset
+          || selWiden.hasBoxedCapset
           || selType.isTrackableRef
           || selWiden.captureSet.isAlwaysEmpty
           || capturesResult
@@ -853,7 +853,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             case (nuType @ CapturingType(_, _), arg: Tree)
             if arg.tpe.isStable            // stable --> there might be path dependent types with arg as prefix
                && arg.tpe.isTrackableRef   // isTrackableRef --> we can get back original capture set by adaptation
-               && !nuType.isBoxedCapturing // !isBoxed --> no risk of losing uses when unboxing in result
+               && !nuType.hasBoxedCapset // !isBoxed --> no risk of losing uses when unboxing in result
               => arg.tpe
             case (nuType, _) => nuType
           if argTypes1 ne argTypes then
@@ -867,8 +867,8 @@ class CheckCaptures extends Recheck, SymTransformer:
       appType match
         case appType @ CapturingType(appType1, refs)
         if qualType.exists
-            && !qualType.isBoxedCapturing
-            && !resultType.isBoxedCapturing
+            && !qualType.hasBoxedCapset
+            && !resultType.hasBoxedCapset
             && !tree.fun.symbol.isConstructor
             && !resultType.captureSet.containsResultCapability
 
@@ -1628,7 +1628,7 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def recheck(tree: Tree, pt: Type = WildcardType)(using Context): Type =
       val saved = curEnv
       tree match
-        case _: RefTree | closureDef(_) if pt.isBoxedCapturing =>
+        case _: RefTree | closureDef(_) if pt.isBoxed =>
           curEnv = Env(curEnv.owner, EnvKind.Boxed,
             CaptureSet.Var(curEnv.owner), curEnv)
         case _ =>
@@ -1643,7 +1643,7 @@ class CheckCaptures extends Recheck, SymTransformer:
           println(i"error while rechecking $tree against $pt")
           throw ex
         finally curEnv = saved
-      if tree.isTerm && !pt.isBoxedCapturing && pt != LhsProto then
+      if tree.isTerm && !pt.isBoxed && pt != LhsProto then
         markFree(res.boxedCaptureSet, tree)
       res
     end recheck
@@ -1709,7 +1709,7 @@ class CheckCaptures extends Recheck, SymTransformer:
       case _: SingletonType => findImpureUpperBound(tp.widen)
       case tp: TypeRef if tp.symbol.isAbstractOrParamType =>
         tp.info match
-          case TypeBounds(_, hi) if hi.isBoxedCapturing => hi
+          case TypeBounds(_, hi) if hi.isBoxed => hi
           case TypeBounds(_, hi) => findImpureUpperBound(hi)
           case _ => NoType
       case _ => NoType
@@ -1967,10 +1967,14 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         // Decompose the actual type into the inner shape type, the capture set and the box status
         val actualShape = if actual.isFromJavaObject then actual else actual.stripCapturing
-        val actualIsBoxed = actual.isBoxedCapturing
+        val actualIsBoxed = actual.hasBoxedCapset
+          // We also need to do adapation if acual has nested boxed capture sets
+          // See neg-custom-args/captures/box-adapt-cov.scala for a test case where
+          // there would be a spurious 3rd error if we only adapt if the toplevel capset of
+          // actual is boxed.
 
         // A box/unbox should be inserted, if the actual box status mismatches with the expectation
-        val needsAdaptation = actualIsBoxed != expected.isBoxedCapturing
+        val needsAdaptation = actualIsBoxed != expected.isBoxed
         // Whether to insert a box or an unbox?
         val insertBox = needsAdaptation && covariant != actualIsBoxed
 
@@ -2096,7 +2100,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               case TypeAlias(_) =>
                 otherTp match
                   case otherTp: RealTypeBounds =>
-                    if otherTp.hi.isBoxedCapturing || otherTp.lo.isBoxedCapturing then
+                    if otherTp.hi.isBoxed || otherTp.lo.isBoxed then
                       Some((memberTp, otherTp.unboxed))
                     else otherTp.hi match
                       case hi @ CapturingType(parent: TypeRef, refs)
@@ -2413,7 +2417,7 @@ class CheckCaptures extends Recheck, SymTransformer:
               case tl: PolyType =>
                 val normArgs = args.lazyZip(tl.paramInfos).map: (arg, bounds) =>
                   arg.withType(arg.nuType.forceBoxStatus(
-                    bounds.hi.isBoxedCapturing | bounds.lo.isBoxedCapturing))
+                    bounds.hi.isBoxed | bounds.lo.isBoxed))
                 withCollapsedLocalCaps: // OK? We need this since bounds use GlobalAny instead of LocalCap
                   // TODO Do bounds still contain GlobalAny?
                   checkBounds(normArgs, tl)
