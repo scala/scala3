@@ -598,7 +598,7 @@ object Inlines:
 
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.
-      val inlined = tpd.Inlined(call, bindings, expansion)
+      val inlined0 = tpd.Inlined(call, bindings, expansion)
 
       val hasOpaquesInResultFromCallWithTransparentContext =
         val owners = call.symbol.ownersIterator.toSet
@@ -625,6 +625,36 @@ object Inlines:
                   TermRef(apply(prefix), tref.symbol.companionModule)
                 case _ => mapOver(t)
         ).typeMap(tpe)
+
+      /** Argument proxies may be typed with the skolems (see Inliner#callValueSkolemss).
+       *  For example:
+       *  {{{
+       *    transparent inline def apply[T](using m: Mirror) =
+       *      new Generic[T] { type Repr = Box[m.type] }
+       *    Generic.apply[Foo](using mkMirror())
+       *    // expands to:
+       *    val m$proxy: (?1 : Mirror) = mkMirror().$asInstanceOf[?1]
+       *    new Generic[Foo] { type Repr = Box[m$proxy.type] }
+       *  }}}
+       *  Normally, `TypeOps.avoid` avoids `m$proxy` to `?1` (since `m$proxy.type =:= ?1`).
+       *  However, TASTy pickles skolem type as its underlying type, so it's pickled as
+       *  `{ type Repr = Box[Mirror] }`. Later, unpickler reads from TASTy as
+       *  `{ type Repr = Box[Mirror] }` and `TypeOps.avoid` to `{ type Repr <: Box[? <: Mirror] }`
+       *  (because `m$proxy.type =:= Mirror` doesn't hold).
+       *  This breaks the roundtrip property of pickle/unpickle (`-Ytest-pickler`).
+       *
+       *  To let pickle/unpickle know the skolem should be typed as its underlying type,
+       *  here we insert a no-op cast on the expansion tree.
+       *  `(... { type Repr = Box[m$proxy.type] }).asInstanceOf[... { type Repr = Box[Mirror]} ]`.
+       */
+      val inlined =
+        val proxySkolems = bindings.map(_.symbol.info.widenExpr).collect { case sk: SkolemType => sk }
+        if proxySkolems.nonEmpty && inlined0.tpe.existsPart(proxySkolems.contains) then
+          val sealedExpansion =
+            inContext(ctx.withSource(expansion.source)):
+              expansion.cast(inlined0.tpe).withSpan(expansion.span)
+          tpd.Inlined(call, bindings, sealedExpansion)
+        else inlined0
 
       if !hasOpaqueProxies && !hasOpaquesInResultFromCallWithTransparentContext then inlined
       else
