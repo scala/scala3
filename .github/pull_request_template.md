@@ -3,7 +3,7 @@ Fixes #XYZ
 <!-- where #XYZ is the issue number; create as draft if this is not in a reviewable state yet;
      do not paste LLM output here, describe the PR in your own words;
      if in doubt about your contribution, refer to: https://github.com/scala/scala3/blob/main/CONTRIBUTING.md;
-     don't forget to sign the CLA: https://contribute.akka.io/contribute/cla/scala -->
+     don't forget to sign the CLA: https://cla.scala-lang.org/scala/scala3 -->
 
 ## Have you relied on LLM-based tools in this contribution?
 
