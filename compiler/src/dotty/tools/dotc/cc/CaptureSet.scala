@@ -1169,7 +1169,6 @@ object CaptureSet:
 
     if debugVars && id == debugTarget then
       println(i"variable $id is derived from $source")
-      assert(false)
 
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if origin eq source then
@@ -1787,8 +1786,9 @@ object CaptureSet:
         case tp: (TypeRef | TypeParamRef) =>
           if tp.derivesFromCapSet then tp.captureSet
           else empty
-        case CapturingOrRetainsType(parent, refs) =>
-          recur(parent) ++ refs
+        case tp @ CapturingOrRetainsType(parent, refs) =>
+          if parent.isBoxedCapturing && !tp.isBoxed then refs
+          else recur(parent) ++ refs
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodOrPoly) if followResult =>
           ofType(tpd.parent, followResult = false)            // pick up capture set from parent type
           ++ recur(rinfo.resType).freeInResult(rinfo)         // add capture set of result
