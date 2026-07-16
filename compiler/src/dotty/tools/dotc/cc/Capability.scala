@@ -181,9 +181,13 @@ object Capabilities:
    *  @param owner   the owner of the context in which the LocalCap was created
    *  @param origin  an indication where and why the LocalCap was created, used
    *                 for diagnostics
+   *  @param atInvariantPos  the LocalCap was created for a `caps.any` at an invariant
+   *                 position; such roots are not adopted into closure parameter
+   *                 types, see `localCapToGlobal`
    */
   case class LocalCap(val prefix: Type)
-      (val owner: Symbol, val origin: Origin, origHidden: CaptureSet.HiddenSet | Null)
+      (val owner: Symbol, val origin: Origin, origHidden: CaptureSet.HiddenSet | Null,
+       val atInvariantPos: Boolean = false)
       (using @constructorOnly ctx: Context)
   extends RootCapability:
     val hiddenSet =
@@ -197,7 +201,7 @@ object Capabilities:
         hiddenSet.owningCap
       else
         hiddenSet.derivedCaps
-          .getOrElseUpdate(newPrefix, LocalCap(newPrefix)(owner, origin, hiddenSet))
+          .getOrElseUpdate(newPrefix, LocalCap(newPrefix)(owner, origin, hiddenSet, atInvariantPos))
 
     /** A map from context owners to skolem TermRefs that were created by ensurePath
      *  TypeMap's mapCapability.
@@ -258,12 +262,16 @@ object Capabilities:
       i"a root capability$classifierStr$originStr"
 
   object LocalCap:
+    def apply(owner: Symbol, prefix: Type, origin: Origin, atInvariantPos: Boolean)(using Context): LocalCap =
+      new LocalCap(prefix)(owner, origin, null, atInvariantPos)
     def apply(owner: Symbol, prefix: Type, origin: Origin)(using Context): LocalCap =
-      new LocalCap(prefix)(owner, origin, null)
+      apply(owner, prefix, origin, atInvariantPos = false)
     def apply(owner: Symbol, origin: Origin)(using Context): LocalCap =
       apply(owner, owner.skipStrictValDef.thisType, origin)
     def apply(origin: Origin)(using Context): LocalCap =
       apply(ctx.owner, origin)
+    def apply(origin: Origin, atInvariantPos: Boolean)(using Context): LocalCap =
+      apply(ctx.owner, ctx.owner.skipStrictValDef.thisType, origin, atInvariantPos)
 
   /** A root capability associated with a function type. These are conceptually
    *  existentially quantified over the function's result type.
@@ -1174,6 +1182,9 @@ object Capabilities:
   class GlobalCapToLocal(origin: Origin)(using Context) extends BiTypeMap, FollowAliasesMap:
     thisMap =>
 
+    /** Should the inverse map `c` back to `caps.any`? Overridden in `localCapToGlobal`. */
+    protected def globalizes(c: LocalCap): Boolean = true
+
     override def apply(t: Type) =
       if variance < 0 then t
       else t match
@@ -1192,7 +1203,13 @@ object Capabilities:
           mapFollowingAliases(t)
 
     override def mapCapability(c: Capability): Capability = c match
-      case GlobalAny => LocalCap(origin)
+      case GlobalAny =>
+        // Roots at invariant positions are not adopted into closure parameter
+        // types, see `localCapToGlobal`. This revives the reach capability era
+        // rule that `withReachCaptures` narrowed only covariant occurrences of
+        // `cap` to reach capabilities, so invariant occurrences were never
+        // connected to their environment.
+        LocalCap(origin, atInvariantPos = variance == 0)
       case _ => super.mapCapability(c)
 
     override def fuse(next: BiTypeMap)(using Context) = next match
@@ -1207,7 +1224,7 @@ object Capabilities:
         case _ => mapFollowingAliases(t)
 
       override def mapCapability(c: Capability): Capability = c match
-        case _: LocalCap => GlobalAny
+        case c: LocalCap if globalizes(c) => GlobalAny
         case _ => super.mapCapability(c)
 
       def inverse = thisMap
@@ -1227,9 +1244,18 @@ object Capabilities:
     ccState.withNoVarsMapped:
       GlobalCapToLocal(origin)(tp)
 
-  /** Maps all LocalCap instances to caps.any */
+  /** Maps LocalCap instances created within `param`'s method to `caps.any`.
+   *  LocalCaps adopted from the environment are kept, so that inferred
+   *  parameter types of closures stay connected to the expected type (i26347).
+   *  Exception: environment roots created at invariant positions are also
+   *  mapped to `caps.any`; like reach capabilities, adoption is covariant-only.
+   */
   def localCapToGlobal(param: Symbol, tp: Type)(using Context): Type =
-    GlobalCapToLocal(Origin.Parameter(param)).inverse(tp)
+    val meth = param.owner
+    val map = new GlobalCapToLocal(Origin.Parameter(param)):
+      override def globalizes(c: LocalCap): Boolean =
+        c.owner.isContainedIn(meth) || c.atInvariantPos
+    map.inverse(tp)
 
   /** The local dual of a result type of a closure type.
    *  @param binder  the method type of the anonymous function whose result is mapped
