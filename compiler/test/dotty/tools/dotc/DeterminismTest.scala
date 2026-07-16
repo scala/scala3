@@ -479,7 +479,8 @@ class DeterminismTester {
     import scala.tools.asm.ClassReader
     import scala.tools.asm.util.TraceClassVisitor
     val sw = new StringWriter
-    new ClassReader(bytes).accept(new TraceClassVisitor(new PrintWriter(sw)), 0)
+    import dotty.tools.backend.jvm.TraceUtils.readClass
+    readClass(bytes).accept(new TraceClassVisitor(new PrintWriter(sw)))
     sw.toString.linesIterator.toList
 
   private def diffClassFiles(bytes1: Array[Byte], bytes2: Array[Byte]): String =
