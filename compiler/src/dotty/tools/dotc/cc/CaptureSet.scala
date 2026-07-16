@@ -1475,7 +1475,7 @@ object CaptureSet:
         case cs: EmptyOfBoxed =>
           trailing:
             val (boxed, unboxed) =
-              if cs.tp1.isBoxedCapturing then (cs.tp1, cs.tp2) else (cs.tp2, cs.tp1)
+              if cs.tp1.isBoxed then (cs.tp1, cs.tp2) else (cs.tp2, cs.tp1)
             i"${cs.tp1} does not conform to ${cs.tp2} because $boxed is boxed but $unboxed is not"
         case _ =>
           def why =
@@ -1787,7 +1787,7 @@ object CaptureSet:
           if tp.derivesFromCapSet then tp.captureSet
           else empty
         case tp @ CapturingOrRetainsType(parent, refs) =>
-          if parent.isBoxedCapturing && !tp.isBoxed then refs
+          if parent.isBoxed && !tp.isBoxed then refs
           else recur(parent) ++ refs
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodOrPoly) if followResult =>
           ofType(tpd.parent, followResult = false)            // pick up capture set from parent type

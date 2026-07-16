@@ -435,7 +435,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
      */
     def stripImpliedCaptureSet(tp: Type): Type = tp match
       case tp @ CapturingType(parent, refs)
-      if refs.isInstanceOf[CaptureSet.CSImpliedByCapability] && !tp.isBoxedCapturing =>
+      if refs.isInstanceOf[CaptureSet.CSImpliedByCapability] && !tp.isBoxed =>
         parent
       case tp: AliasingBounds =>
         tp.derivedAlias(stripImpliedCaptureSet(tp.alias))
