@@ -4,7 +4,6 @@ package core
 import Annotations.Annotation
 import Contexts.*
 import Flags.*
-import Names.typeName
 import StdNames.nme
 import Symbols.*
 import Types.*
@@ -125,7 +124,7 @@ object ImplicitNullInterop:
   private def ownerNullMarking(owner: Symbol)(using Context): Option[Boolean] =
     val (carrier, forced) =
       // For packages the marker lives on the synthetic `package-info` member, which we force.
-      if owner.is(Package) then (owner.info.decl(typeName("package-info")).symbol, true)
+      if owner.is(Package) then (owner.info.decl(defn.PackageInfoName).symbol, true)
       else (owner, false)
     if !carrier.exists then None
     else
