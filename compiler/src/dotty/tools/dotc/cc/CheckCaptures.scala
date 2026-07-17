@@ -25,7 +25,7 @@ import CaptureSet.{withCaptureSetsExplained, IncludeFailure, MutAdaptFailure, Va
 import CCState.*
 import StdNames.nme
 import NameKinds.{DefaultGetterName, WildcardParamName, UniqueNameKind}
-import NameOps.isReplWrapperName
+import NameOps.{isReplWrapperName, isSelectorName, selectorIndex}
 import reporting.*
 import reporting.Message.Note
 import Annotations.Annotation
@@ -701,6 +701,19 @@ class CheckCaptures extends Recheck, SymTransformer:
     override def selectionProto(tree: Select, pt: Type)(using Context): Type =
       if tree.symbol.is(Package) then super.selectionProto(tree, pt)
       else PathSelectionProto(tree.symbol, pt, tree)
+
+    /** Before rechecking a select, map case class selectors `c._i` to the
+     *  corresponding parameter accessors.
+     */
+    override def recheckSelect(tree: Select, pt: Type)(using Context): Type =
+      var normTree = tree
+      val cls = tree.symbol.maybeOwner
+      if cls.is(CaseClass) && tree.symbol.name.isSelectorName then
+        tree.symbol.name.selectorIndex match
+          case Some(idx) if idx >= 0 && idx < cls.caseAccessors.length =>
+            normTree = tree.qualifier.select(cls.caseAccessors(idx)).withSpan(tree.span)
+          case _ =>
+      super.recheckSelect(normTree, pt)
 
     /** A specialized implementation of the selection rule.
      *
