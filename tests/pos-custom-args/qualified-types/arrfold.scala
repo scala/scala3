@@ -1,9 +1,9 @@
 object Foo {
-  type NonNeg = { v: Int with v >= 0 }
+  type NonNeg = {v: Int with v >= 0}
   class IntArray(val length: NonNeg, init: Int) {
     private val data = Array.fill(length)(init)
 
-    def access(i: { v: Int with 0 <= v && v < this.length }): Int =
+    def access(i: {v: NonNeg with v < this.length}): Int =
       data(i)
   }
 
@@ -17,7 +17,7 @@ object Foo {
   def arrSum(arr: IntArray): Int =
     arrFold[Int](_ + _, arr, 0)
 
-  transparent inline def max(x: Int, y: Int): { v: Int with v >= x && v >= y } =
+  def max(x: Int, y: Int): {v: Int with v >= x && v >= y} =
     if (x > y) x else y
 
   def arrMax(arr: IntArray): NonNeg =
