@@ -485,7 +485,7 @@ enum ENode extends Showable:
         case OpApply(op, args) =>
           def unaryOp(symbol: Symbol): tpd.Tree =
             require(args.length == 1)
-            args(0).toTreeRec(paramRefs).select(symbol).appliedToNone
+            args(0).toTreeRec(paramRefs).select(symbol)
           def binaryOp(symbol: Symbol): tpd.Tree =
             require(args.length == 2)
             args(0).toTreeRec(paramRefs).select(symbol).appliedTo(args(1).toTreeRec(paramRefs))
@@ -723,6 +723,8 @@ object ENode:
           constructorNode(tree.symbol)
         case tree: tpd.Select if isCaseClassApply(tree.symbol) =>
           constructorNode(tree.symbol.owner.linkedClass.primaryConstructor)
+        case tpd.Select(qual, _) if tree.symbol == d.Boolean_! =>
+          unaryOpNode(ENode.Op.Not, qual)
         case tpd.Select(qual, name) =>
           for qualNode <- rec(qual) yield Select(qualNode, tree.symbol)
         case BinaryOp(lhs, sym, rhs) if isValidEqual(sym, lhs, rhs) => binaryOpNode(ENode.Op.Equal, lhs, rhs)
