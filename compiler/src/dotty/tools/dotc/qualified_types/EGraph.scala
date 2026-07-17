@@ -495,8 +495,10 @@ final class EGraph(_ctx: Context):
       case Op.IntLessThan => constFoldBinaryOp[Int, Boolean](op, args, _ < _)
       case Op.IntGreaterThan => normalizeOp(Op.IntLessThan, args.reverse)
       case Op.IntLessEqual =>
-        if args(0) eq args(1) then trueNode
-        else constFoldBinaryOp[Int, Boolean](op, args, _ <= _)
+        unique(normalizeOp(Op.Or, List(
+          unique(normalizeOp(Op.IntLessThan, args)),
+          unique(normalizeOp(Op.Equal, args))))
+        )
       case Op.IntGreaterEqual => normalizeOp(Op.IntLessEqual, args.reverse)
       case Op.IfThenElse =>
         assert(args.size == 3, s"Expected 3 arguments for if-then-else, got $args")
