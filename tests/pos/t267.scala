@@ -41,7 +41,7 @@ trait Show extends Base {
   trait Exp1 extends Exp {
     def show: String
   }
-  class Num1(v: Int) extends Num(v) with Exp1 { self: exp with Num1 =>
+  class Num1(v: Int) extends Num(v) with Exp1 { self: exp & Num1 =>
     def show = value.toString()
   }
 }
@@ -49,7 +49,7 @@ trait Show extends Base {
 /** Operation extension: An extension of `BasePlus' with 'show' methods.
  */
 trait ShowPlus extends BasePlus with Show {
-  class Plus1(l: exp, r: exp) extends Plus(l, r) with Exp1 { self: exp with Plus1 =>
+  class Plus1(l: exp, r: exp) extends Plus(l, r) with Exp1 { self: exp & Plus1 =>
     def show = left.show + " + " + right.show
   }
 }

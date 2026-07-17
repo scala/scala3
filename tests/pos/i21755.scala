@@ -5,7 +5,7 @@ trait GraphTraversal  {
     def root: NodeT
   }
 
-  abstract protected class TraverserMethods[A, +CC <: TraverserMethods[A, CC]]  { this: CC with Properties =>
+  abstract protected class TraverserMethods[A, +CC <: TraverserMethods[A, CC]]  { this: CC & Properties =>
     def root: NodeT
   }
 }

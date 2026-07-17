@@ -6,7 +6,7 @@ object _main { // don't do this at home
 
   trait ColorImpl extends Impl { def color = "red" }
 
-  type Both = SizeImpl with ColorImpl
+  type Both = SizeImpl & ColorImpl
 
   def info(x:Impl) = x match {
     case x:Both      => "size  " + x.size +" color "+ x.color // you wish
@@ -16,7 +16,7 @@ object _main { // don't do this at home
   }
 
   def info2(x:Impl) = x match {
-    case x:SizeImpl with ColorImpl  => "size  " + x.size +" color "+ x.color // you wish
+    case x:(SizeImpl & ColorImpl)  => "size  " + x.size +" color "+ x.color // you wish
     case x:SizeImpl  => "size  " + x.size
     case x:ColorImpl => "color " + x.color
     case _           => "n.a."

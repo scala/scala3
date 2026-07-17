@@ -140,7 +140,7 @@ class InfoSuite extends BasePCSuite {
          |trait C
          |trait A { def aa: Unit }
          |trait B {
-         | this : A with C =>
+         | this : A & C =>
          |  override def aa: Unit = ()
          |}
          |""".stripMargin

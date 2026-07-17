@@ -124,7 +124,7 @@ object Iter2 {
     }
   }
 */
-  implicit class IterableTransforms[A, C[X] <: Iterable[X]](val c: Iterable[A] with FromIterator[C]) extends AnyVal {
+  implicit class IterableTransforms[A, C[X] <: Iterable[X]](val c: Iterable[A] & FromIterator[C]) extends AnyVal {
     def map[B](f: A => B): C[B] = c.fromIterator(c.buildIterator.map(f))
     def flatMap[B](f: A => IterableOnce[B]): C[B] = c.fromIterator(c.buildIterator.flatMap(f(_).buildIterator))
     def ++[B >: A](xs: IterableOnce[B]): C[B] = c.fromIterator(c.buildIterator ++ xs.buildIterator)
@@ -133,7 +133,7 @@ object Iter2 {
     def zip[B](xs: IterableOnce[B]): C[(A, B)] = c.fromIterator(c.iterator.zip(xs.iterator))
   }
 
-  implicit class SeqTransforms[SA, C[X] <: Seq[X]](val c: Seq[SA] with FromIterator[C]) extends AnyVal {
+  implicit class SeqTransforms[SA, C[X] <: Seq[X]](val c: Seq[SA] & FromIterator[C]) extends AnyVal {
     def reverse: C[SA] = {
       val elems = new Array[AnyRef](c.length)
       var i = elems.length

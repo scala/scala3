@@ -3735,8 +3735,7 @@ Uri => Selfs.scala
 Text => empty
 Language => Scala
 Symbols => 13 entries
-Occurrences => 22 entries
-Diagnostics => 1 entries
+Occurrences => 23 entries
 
 Symbols:
 local0 => selfparam self: C1
@@ -3771,15 +3770,12 @@ Occurrences:
 [10:17..10:17): <- selfs/C3#`<init>`().
 [10:21..10:25): self <- local2
 [10:27..10:28): B -> selfs/B#
-[10:34..10:36): C1 -> selfs/C1#
+[10:29..10:30): & -> scala/`&`#
+[10:31..10:33): C1 -> selfs/C1#
 [13:6..13:8): C6 <- selfs/C6#
 [13:17..13:18): B -> selfs/B#
 [13:17..13:17): <- selfs/C6#`<init>`().
 [13:27..13:28): B -> selfs/B#
-
-Diagnostics:
-[10:29..10:33): [warning] with as a type operator has been deprecated; use & instead
-This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 
 expect/ShadowedParameters.scala
 -------------------------------
@@ -5717,8 +5713,8 @@ Uri => semanticdb-Types.scala
 Text => empty
 Language => Scala
 Symbols => 143 entries
-Occurrences => 251 entries
-Diagnostics => 4 entries
+Occurrences => 253 entries
+Diagnostics => 2 entries
 Synthetics => 1 entries
 
 Symbols:
@@ -5983,14 +5979,16 @@ Occurrences:
 [61:40..61:43): ??? -> scala/Predef.`???`().
 [62:8..62:21): compoundType2 <- types/Test.C#compoundType2.
 [62:23..62:24): M -> types/Test.M#
-[62:30..62:31): N -> types/Test.N#
-[62:34..62:37): ??? -> scala/Predef.`???`().
+[62:25..62:26): & -> scala/`&`#
+[62:27..62:28): N -> types/Test.N#
+[62:31..62:34): ??? -> scala/Predef.`???`().
 [63:8..63:21): compoundType3 <- types/Test.C#compoundType3.
 [63:23..63:24): M -> types/Test.M#
-[63:30..63:31): N -> types/Test.N#
-[63:38..63:39): k <- local1
-[63:41..63:44): Int -> scala/Int#
-[63:49..63:52): ??? -> scala/Predef.`???`().
+[63:25..63:26): & -> scala/`&`#
+[63:27..63:28): N -> types/Test.N#
+[63:35..63:36): k <- local1
+[63:38..63:41): Int -> scala/Int#
+[63:46..63:49): ??? -> scala/Predef.`???`().
 [64:8..64:21): compoundType4 <- types/Test.C#compoundType4.
 [64:24..64:24): <- local3
 [64:34..64:35): k <- local2
@@ -6120,10 +6118,6 @@ Occurrences:
 [119:39..119:42): Int -> scala/Int#
 
 Diagnostics:
-[62:25..62:29): [warning] with as a type operator has been deprecated; use & instead
-This construct can be rewritten automatically under -rewrite -source 3.4-migration.
-[63:25..63:29): [warning] with as a type operator has been deprecated; use & instead
-This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [71:31..71:31): [warning] `_` is deprecated for wildcard arguments of types: use `?` instead
 This construct can be rewritten automatically under -rewrite -source 3.4-migration.
 [96:13..96:14): [warning] unused explicit parameter

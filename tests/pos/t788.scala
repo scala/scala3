@@ -3,11 +3,11 @@ package test;
 trait Test {
   type Node <: NodeImpl;
   trait NodeImpl;
-  type Expression <: Node with ExpressionImpl;
+  type Expression <: Node & ExpressionImpl;
   trait ExpressionImpl extends NodeImpl {
     def self : Expression;
   }
-  type Named <: Node with NamedImpl;
+  type Named <: Node & NamedImpl;
   trait NamedImpl extends NodeImpl {
     def self : Named;
   }

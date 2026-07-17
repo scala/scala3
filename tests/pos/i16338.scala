@@ -3,7 +3,7 @@ package de.sciss.kollflitz
 import scala.collection.*
 
 type Tagged[U]  = { type Tag  = U }
-type @@ [+T, U] = T with Tagged[U]
+type @@ [+T, U] = T & Tagged[U]
 private val anyTagger = new Tagger[Any]
 final class Tagger[U] private[kollflitz] {
   def apply[T](t : T): T @@ U = t.asInstanceOf[T @@ U]

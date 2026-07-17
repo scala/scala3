@@ -1,28 +1,28 @@
 // A bunch of ridiculous seeming tests until you realize much
 // of this didn't work until the commit which accompanies this.
 object Test {
-  def f1(x: AnyRef with Singleton): AnyRef with Singleton = x
-  def f2[T <: AnyRef with Singleton](x: T): T = x
+  def f1(x: AnyRef & Singleton): AnyRef & Singleton = x
+  def f2[T <: AnyRef & Singleton](x: T): T = x
 
-  val x1: AnyRef with Singleton = "abc"
+  val x1: AnyRef & Singleton = "abc"
   val x2 = "def"
   final val x3 = "ghi"
   val x4: String = "jkl"
 
   // compiles...
-  def narrow1(x: AnyRef): AnyRef with Singleton = x
+  def narrow1(x: AnyRef): AnyRef & Singleton = x
 
   // compiles, still doesn't help.
-  def narrow2(x: AnyRef): AnyRef with Singleton = x.asInstanceOf[x.type]
+  def narrow2(x: AnyRef): AnyRef & Singleton = x.asInstanceOf[x.type]
 
   // fails, wait, what? This fails and narrow1 compiles?
-  def narrow3(x: AnyRef): AnyRef with Singleton = x.asInstanceOf[AnyRef with Singleton]
+  def narrow3(x: AnyRef): AnyRef & Singleton = x.asInstanceOf[AnyRef & Singleton]
 
   // ok
-  def narrow4[T <: AnyRef](x: T): AnyRef with Singleton = x
+  def narrow4[T <: AnyRef](x: T): AnyRef & Singleton = x
 
   object imp {
-    implicit def narrow4[T <: AnyRef](x: T): AnyRef with Singleton = x
+    implicit def narrow4[T <: AnyRef](x: T): AnyRef & Singleton = x
     val x5: String = "mno"
     def imp1 = f1(x5)
 

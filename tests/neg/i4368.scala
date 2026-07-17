@@ -41,7 +41,7 @@ object Test3 {
   }
 
   object App {
-    type Z = X with Y
+    type Z = X & Y
     val z: Z = z
     val a: z.A = a // error: too deep
   }
