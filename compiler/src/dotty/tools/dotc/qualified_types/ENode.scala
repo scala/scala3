@@ -879,7 +879,7 @@ object ENode:
       node match
         case n: Atom => typeAssumptions(n.tp)
         case n: Constructor => Nil
-        case n: Select => assumptions(n.qual)
+        case n: Select => selectAssumptions(n) ++ assumptions(n.qual)
         case n: Apply => resultTypeAssumptions(n) ++ assumptions(n.fn) ++ n.args.flatMap(assumptions)
         case n: OpApply => n.args.flatMap(assumptions)
         case n: TypeApply => assumptions(n.fn)
@@ -920,6 +920,41 @@ object ENode:
         case _ => Nil
     trace(i"typeAssumptions($rootTp)", Printers.qualifiedTypes):
       rec(rootTp)
+
+  /** For a Select node, extract assumptions from the qualifiers of the
+   *  selected member's type. The member is viewed as a `TermRef` at the
+   *  prefix type, so that `asSeenFrom` resolves all `this`-references in the
+   *  qualifier. Compound prefixes are skolemized, with an equality fact
+   *  connecting the skolem to the prefix node through congruence.
+   *
+   *  No assumptions are extracted while checking the member's own definition:
+   *  a selfified qualifier mentions the member itself, so its facts would
+   *  circularly discharge the very obligation that establishes them.
+   */
+  private def selectAssumptions(node: Select)(using Context): List[ENode] =
+    trace(i"selectAssumptions($node)", Printers.qualifiedTypes):
+      def facts(rootTp: TermRef): List[ENode] =
+        def rec(tp: Type): List[ENode] =
+          tp match
+            case QualifiedType(parent, qualifier) =>
+              qualifier.body.substEParamRefs(0, List(rootTp)) :: rec(parent)
+            case AndType(tp1, tp2) => rec(tp1) ++ rec(tp2)
+            case tp: TypeProxy => rec(tp.underlying)
+            case _ => Nil
+        rec(rootTp.underlying)
+      if !node.member.exists || ctx.owner.ownersIterator.contains(node.member) then Nil
+      else
+        node.qual match
+          case Atom(preTp) =>
+            facts(TermRef(preTp, node.member.asTerm))
+          case _ =>
+            val preTp = node.qual.resultType
+            if !preTp.exists || (preTp eq NoPrefix) then Nil
+            else
+              val sk = SkolemType(preTp)
+              facts(TermRef(sk, node.member.asTerm)) match
+                case Nil => Nil
+                case fs => OpApply(Op.Equal, List(Atom(skolemFor(sk)), node.qual)) :: fs
 
   /** For an Apply node, extract assumptions from the function's return type qualifier.
    *  If the function has a qualified return type like `{res: T with qualifier(res)}`,
