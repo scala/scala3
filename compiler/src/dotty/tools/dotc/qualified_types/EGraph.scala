@@ -93,6 +93,12 @@ final class EGraph(_ctx: Context):
   /** `intStrictLowerBounds(b)` contains all `a` such that `a < b` is known true. */
   private val intStrictLowerBounds: EqHashMap[ENode, mutable.Set[ENode]] = EqHashMap()
 
+  /** `intWeakUpperBounds(a)` contains all `b` such that `a <= b` is known true. */
+  private val intWeakUpperBounds: EqHashMap[ENode, mutable.Set[ENode]] = EqHashMap()
+
+  /** `intWeakLowerBounds(b)` contains all `a` such that `a <= b` is known true. */
+  private val intWeakLowerBounds: EqHashMap[ENode, mutable.Set[ENode]] = EqHashMap()
+
   val trueNode: ENode.Atom = constant(true)
   val falseNode: ENode.Atom = constant(false)
   val zeroIntNode: ENode.Atom = constant(0)
@@ -238,6 +244,16 @@ final class EGraph(_ctx: Context):
           merge(arg, trueNode)
         case ENode.OpApply(Op.IntLessThan, List(a, b)) if newRepr eq trueNode =>
           propagateIntLessThan(a, b)
+        case ENode.OpApply(Op.IntLessThan, List(a, b)) if newRepr eq falseNode =>
+          // Totality of the integer order: when `a < b` becomes false, `b <= a` becomes true
+          merge(unique(normalizeOp(Op.IntLessEqual, List(representant(b), representant(a)))), trueNode)
+        case ENode.OpApply(Op.IntLessEqual, List(a, b)) if newRepr eq trueNode =>
+          propagateIntLessEqual(a, b)
+        case ENode.OpApply(Op.IntLessEqual, List(a, b)) if newRepr eq falseNode =>
+          // Totality of the integer order: when `a <= b` becomes false, `b < a` becomes true
+          merge(unique(normalizeOp(Op.IntLessThan, List(representant(b), representant(a)))), trueNode)
+        case ENode.OpApply(Op.Equal, List(a, b)) if newRepr eq falseNode =>
+          propagateNotEqual(a, b)
         case _ =>
           ()
 
@@ -246,21 +262,67 @@ final class EGraph(_ctx: Context):
         worklist.enqueueAll(oldusages)
         ()
 
-  /** When `a < b` becomes true, propagate transitivity:
-   *  - For each `c` where `b < c` is known: merge `a < c` with true
-   *  - For each `d` where `d < a` is known: merge `d < b` with true
+  /** When `a < b` becomes true, propagate:
+   *  - asymmetry and irreflexivity: `b < a`, `b <= a` and `a == b` become false
+   *  - weakening: `a <= b` becomes true
+   *  - transitivity, chaining through both strict and weak bounds
    */
   private def propagateIntLessThan(a: ENode, b: ENode): Unit =
     val aRepr = representant(a)
     val bRepr = representant(b)
     intStrictUpperBounds.getOrElseUpdate(aRepr, mutable.Set.empty) += bRepr
     intStrictLowerBounds.getOrElseUpdate(bRepr, mutable.Set.empty) += aRepr
-    for c <- intStrictUpperBounds.getOrElse(bRepr, mutable.Set.empty) do
-      val ltNode = unique(normalizeOp(Op.IntLessThan, List(aRepr, c)))
-      merge(ltNode, trueNode)
-    for d <- intStrictLowerBounds.getOrElse(aRepr, mutable.Set.empty) do
-      val ltNode = unique(normalizeOp(Op.IntLessThan, List(d, bRepr)))
-      merge(ltNode, trueNode)
+    merge(unique(normalizeOp(Op.IntLessThan, List(bRepr, aRepr))), falseNode)
+    merge(unique(normalizeOp(Op.IntLessEqual, List(bRepr, aRepr))), falseNode)
+    merge(unique(normalizeOp(Op.Equal, List(aRepr, bRepr))), falseNode)
+    merge(unique(normalizeOp(Op.IntLessEqual, List(aRepr, bRepr))), trueNode)
+    for c <- intStrictUpperBounds.getOrElse(bRepr, mutable.Set.empty).toList do
+      merge(unique(normalizeOp(Op.IntLessThan, List(aRepr, c))), trueNode)
+    for c <- intWeakUpperBounds.getOrElse(bRepr, mutable.Set.empty).toList do
+      merge(unique(normalizeOp(Op.IntLessThan, List(aRepr, c))), trueNode)
+    for d <- intStrictLowerBounds.getOrElse(aRepr, mutable.Set.empty).toList do
+      merge(unique(normalizeOp(Op.IntLessThan, List(d, bRepr))), trueNode)
+    for d <- intWeakLowerBounds.getOrElse(aRepr, mutable.Set.empty).toList do
+      merge(unique(normalizeOp(Op.IntLessThan, List(d, bRepr))), trueNode)
+
+  /** When `a <= b` becomes true, propagate:
+   *  - antisymmetry: if `b <= a` is known, `a` and `b` are equal
+   *  - asymmetry: `b < a` becomes false
+   *  - strengthening: if `a != b` is known, `a < b` becomes true
+   *  - transitivity, chaining through both strict and weak bounds
+   */
+  private def propagateIntLessEqual(a: ENode, b: ENode): Unit =
+    val aRepr = representant(a)
+    val bRepr = representant(b)
+    if aRepr eq bRepr then return
+    if intWeakUpperBounds.getOrElse(bRepr, mutable.Set.empty).contains(aRepr) then
+      merge(aRepr, bRepr)
+      return
+    intWeakUpperBounds.getOrElseUpdate(aRepr, mutable.Set.empty) += bRepr
+    intWeakLowerBounds.getOrElseUpdate(bRepr, mutable.Set.empty) += aRepr
+    merge(unique(normalizeOp(Op.IntLessThan, List(bRepr, aRepr))), falseNode)
+    val eqNode = normalizeOp(Op.Equal, List(aRepr, bRepr))
+    if index.contains(eqNode) && (representant(index(eqNode)) eq falseNode) then
+      merge(unique(normalizeOp(Op.IntLessThan, List(aRepr, bRepr))), trueNode)
+    for c <- intStrictUpperBounds.getOrElse(bRepr, mutable.Set.empty).toList do
+      merge(unique(normalizeOp(Op.IntLessThan, List(aRepr, c))), trueNode)
+    for c <- intWeakUpperBounds.getOrElse(bRepr, mutable.Set.empty).toList do
+      merge(unique(normalizeOp(Op.IntLessEqual, List(aRepr, c))), trueNode)
+    for d <- intStrictLowerBounds.getOrElse(aRepr, mutable.Set.empty).toList do
+      merge(unique(normalizeOp(Op.IntLessThan, List(d, bRepr))), trueNode)
+    for d <- intWeakLowerBounds.getOrElse(aRepr, mutable.Set.empty).toList do
+      merge(unique(normalizeOp(Op.IntLessEqual, List(d, bRepr))), trueNode)
+
+  /** When `a == b` becomes false, strengthen known weak bounds between `a`
+   *  and `b` to strict ones.
+   */
+  private def propagateNotEqual(a: ENode, b: ENode): Unit =
+    val aRepr = representant(a)
+    val bRepr = representant(b)
+    if intWeakUpperBounds.getOrElse(aRepr, mutable.Set.empty).contains(bRepr) then
+      merge(unique(normalizeOp(Op.IntLessThan, List(aRepr, bRepr))), trueNode)
+    if intWeakUpperBounds.getOrElse(bRepr, mutable.Set.empty).contains(aRepr) then
+      merge(unique(normalizeOp(Op.IntLessThan, List(bRepr, aRepr))), trueNode)
 
   private def order(a: ENode, b: ENode): (ENode, ENode) =
     _ctx.base.qualifiedTypesStats.record("EGraph.order"):
@@ -476,6 +538,11 @@ final class EGraph(_ctx: Context):
         else
           args(0) match
             case ENode.OpApply(Op.Not, List(inner)) => inner
+            // Totality of the integer order: `!(a < b)` is `b <= a` and `!(a <= b)` is `b < a`
+            case ENode.OpApply(Op.IntLessThan, List(a, b)) =>
+              normalizeOp(Op.IntLessEqual, List(b, a))
+            case ENode.OpApply(Op.IntLessEqual, List(a, b)) =>
+              normalizeOp(Op.IntLessThan, List(b, a))
             case _ => ENode.OpApply(op, args)
       case Op.IntSum =>
         val (const, nonConsts) = decomposeIntSum(args)
@@ -495,10 +562,8 @@ final class EGraph(_ctx: Context):
       case Op.IntLessThan => constFoldBinaryOp[Int, Boolean](op, args, _ < _)
       case Op.IntGreaterThan => normalizeOp(Op.IntLessThan, args.reverse)
       case Op.IntLessEqual =>
-        unique(normalizeOp(Op.Or, List(
-          unique(normalizeOp(Op.IntLessThan, args)),
-          unique(normalizeOp(Op.Equal, args))))
-        )
+        if args(0) eq args(1) then trueNode
+        else constFoldBinaryOp[Int, Boolean](op, args, _ <= _)
       case Op.IntGreaterEqual => normalizeOp(Op.IntLessEqual, args.reverse)
       case Op.IfThenElse =>
         assert(args.size == 3, s"Expected 3 arguments for if-then-else, got $args")

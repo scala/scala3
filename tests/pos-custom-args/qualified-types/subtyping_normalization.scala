@@ -35,6 +35,20 @@ def test: Unit =
   summon[{v: Int with 0 <= v} <:< {v: Int with v >= 0}]
   summon[{v: Int with v >= 0} <:< {v: Int with 0 <= v}]
 
+  // Totality of the order: !(a < b) is b <= a, !(a <= b) is b < a
+  summon[{v: Int with !(x < y)} <:< {v: Int with y <= x}]
+  summon[{v: Int with y <= x} <:< {v: Int with !(x < y)}]
+  summon[{v: Int with !(x <= y)} <:< {v: Int with y < x}]
+  summon[{v: Int with y < x} <:< {v: Int with !(x <= y)}]
+
+  // Transitivity of <=, mixed chains, weakening, antisymmetry, strengthening
+  summon[{v: Int with x <= y && y <= z} <:< {v: Int with x <= z}]
+  summon[{v: Int with x <= y && y < z} <:< {v: Int with x < z}]
+  summon[{v: Int with x < y && y <= z} <:< {v: Int with x < z}]
+  summon[{v: Int with x < y} <:< {v: Int with x <= y}]
+  summon[{v: Int with x <= y && y <= x} <:< {v: Int with x == y}]
+  summon[{v: Int with x <= y && x != y} <:< {v: Int with x < y}]
+
   // Transitivity of <
   summon[{v: Int with x < y && y < z} <:< {v: Int with x < z}]
   // Chained transitivity: a < b, b < c, c < d => a < d
@@ -49,6 +63,5 @@ def test: Unit =
   // Transitivity with paths
   val b: Box = ???
   summon[{v: Int with v < b.size && b.size < x} <:< {v: Int with v < x}]
-  // Reflexive/cyclic cases don't loop
+  // Reflexive cases don't loop
   summon[{v: Int with x < x} <:< {v: Int with x < x}]
-  summon[{v: Int with x < y && y < x} <:< {v: Int with x < x}]
