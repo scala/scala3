@@ -1,4 +1,4 @@
--Xss1m
+-Xss2m
 -Xms1024m
 -Xmx8192m
 -XX:MaxInlineLevel=35

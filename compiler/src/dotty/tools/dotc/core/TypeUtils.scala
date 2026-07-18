@@ -222,14 +222,21 @@ class TypeUtils:
           tpe
       self match
       case tpe: NamedType =>
-        if tpe.symbol.isRoot then
-          tpe
+        if tpe.prefix.refersToPackage then
+          tryInsert(tpe, tpe.prefix.packageClass)
         else
-          tpe.prefix match
-            case pre: ThisType if pre.cls.is(Package) => tryInsert(tpe, pre.cls)
-            case pre: TermRef if pre.symbol.is(Package) => tryInsert(tpe, pre.symbol.moduleClass)
-            case _ => tpe
+          tpe
       case tpe => tpe
+
+    /** If this type refers to a package, the class representing that package,
+     *  otherwise NoSymbol.
+     */
+    def packageClass(using Context): Symbol = self.stripped match
+      case self: ThisType if self.cls.is(Package) => self.cls
+      case self: TermRef if self.symbol.is(Package) => self.symbol.moduleClass
+      case _ => NoSymbol
+
+    def refersToPackage(using Context): Boolean = packageClass.exists
 
     /** Strip all outer refinements off this type */
     def stripRefinement: Type = self match
@@ -264,5 +271,19 @@ class TypeUtils:
       case self: SingletonType => ctx.printer.toTextRef(self).show
       case _ => self.show
 
+    /** True if `tp` is a method or poly type whose term parameter names are
+     *  worth surfacing in printed types and capture sets — they are
+     *  user-given (not all `x$N` synthetic, not all `_$N` wildcard) and there
+     *  is at least one of them.
+     */
+    def hasMeaningfulParamNames(using Context): Boolean = self match
+      case mt: MethodType =>
+        mt.paramNames.nonEmpty
+        && !mt.allParamNamesSynthetic
+        && !mt.paramNames.forall(_.is(NameKinds.WildcardParamName))
+      case pt: PolyType =>
+        pt.resType.hasMeaningfulParamNames
+      case _ =>
+        false
 end TypeUtils
 

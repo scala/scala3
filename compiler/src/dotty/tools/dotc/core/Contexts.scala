@@ -14,7 +14,7 @@ import Uniques.*
 import ast.Trees.*
 import Flags.ParamAccessor
 import ast.untpd
-import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, ReusableInstance}
+import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, WrappedSourceFile}
 import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import inlines.Inliner
 import Nullables.*
@@ -27,7 +27,6 @@ import scala.io.Codec
 import collection.mutable
 import printing.*
 import config.{JavaPlatform, SJSPlatform, Platform, ScalaSettings}
-import classfile.ReusableDataReader
 import StdNames.nme
 import compiletime.uninitialized
 
@@ -39,14 +38,13 @@ import dotty.tools.dotc.sbt.interfaces.{IncrementalCallback, ProgressCallback}
 import util.Property.Key
 import util.Store
 import plugins.*
-import java.util.concurrent.atomic.AtomicInteger
 import java.nio.file.InvalidPathException
 import dotty.tools.dotc.coverage.Coverage
 import scala.annotation.tailrec
 
 object Contexts {
 
-  private val (compilerCallbackLoc,  store1) = Store.empty.newLocation[CompilerCallback]()
+  private val (compilerCallbackLoc,  store1) = Store.empty.newLocation[CompilerCallback | Null]()
   private val (incCallbackLoc,       store2) = store1.newLocation[IncrementalCallback | Null]()
   private val (printerFnLoc,         store3) = store2.newLocation[Context => Printer](new RefinedPrinter(_))
   private val (settingsStateLoc,     store4) = store3.newLocation[SettingsState]()
@@ -166,7 +164,7 @@ object Contexts {
     def store: Store
 
     /** The compiler callback implementation, or null if no callback will be called. */
-    def compilerCallback: CompilerCallback = store(compilerCallbackLoc)
+    def compilerCallback: CompilerCallback | Null = store(compilerCallbackLoc)
 
     /** The Zinc callback implementation if we are run from Zinc, null otherwise */
     def incCallback: IncrementalCallback | Null = store(incCallbackLoc)
@@ -181,7 +179,7 @@ object Contexts {
       val local = incCallback
       local != null && local.enabled || forceRun
 
-    /** The Zinc compile progress callback implementation if we are run from Zinc, null otherwise */
+    /** The Zinc compile progress callback implementation if we are run from Zinc or used by presentation compiler, null otherwise */
     def progressCallback: ProgressCallback | Null = store(progressCallbackLoc)
 
     /** Run `op` if there exists a Zinc progress callback */
@@ -234,7 +232,7 @@ object Contexts {
             else Nil
           val outerImplicits =
             if (isImportContext && importInfo.nn.unimported.exists)
-              outer.implicits exclude importInfo.nn.unimported
+              outer.implicits.exclude(importInfo.nn.unimported)
             else
               outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
@@ -259,30 +257,22 @@ object Contexts {
       base.sources.getOrElseUpdate(file, SourceFile(file, codec))
     }
 
-    /** SourceFile with given path name, memoized */
-    def getSource(path: TermName): SourceFile = getFile(path) match
-      case NoAbstractFile => NoSource
-      case file => getSource(file)
-
     /** SourceFile with given path, memoized */
-    def getSource(path: String): SourceFile = getSource(path.toTermName)
-
-    /** AbstractFile with given path name, memoized */
-    def getFile(name: TermName): AbstractFile = base.files.get(name) match
-      case Some(file) =>
-        file
-      case None =>
-        try
-          val file = new PlainFile(Path(name.toString))
-          base.files(name) = file
-          file
-        catch
-          case ex: InvalidPathException =>
-            report.error(em"invalid file path: ${ex.getMessage}")
-            NoAbstractFile
+    def getSource(path: String): SourceFile = getFile(path) match
+      case None => NoSource
+      case Some(file) => getSource(file)
 
     /** AbstractFile with given path, memoized */
-    def getFile(name: String): AbstractFile = getFile(name.toTermName)
+    def getFile(path: String): Option[AbstractFile] = base.files.get(path).orElse(
+      try
+        val file = new PlainFile(Path(path))
+        base.files(path) = file
+        Some(file)
+      catch
+        case ex: InvalidPathException =>
+          report.error(em"invalid file path: ${ex.getMessage}")
+          None
+    )
 
     private var related: SimpleIdentityMap[Phase | SourceFile, Context] | Null = null
 
@@ -355,7 +345,7 @@ object Contexts {
 
     final def phase: Phase = base.phases(period.firstPhaseId)
     final def runId = period.runId
-    final def phaseId = period.phaseId
+    final def phaseId = period.firstPhaseId
 
     final def lastPhaseId = base.phases.length - 1
 
@@ -367,6 +357,7 @@ object Contexts {
 
     /** Is current phase after TyperPhase? */
     final def isAfterTyper = base.isAfterTyper(phase)
+    final def isAfterInlining = base.isAfterInlining(phase)
     final def isTyper = base.isTyper(phase)
 
     /** Is this a context for the members of a class definition? */
@@ -377,7 +368,7 @@ object Contexts {
     def isImportContext: Boolean =
       (this ne NoContext)
       && (outer ne NoContext)
-      && (this.importInfo nen outer.importInfo)
+      && (this.importInfo ne outer.importInfo)
 
     /** Is this a context that introduces a non-empty scope? */
     def isNonEmptyScopeContext: Boolean =
@@ -402,8 +393,8 @@ object Contexts {
      *
      *  - as owner: The primary constructor of the class
      *  - as outer context: The context enclosing the class context
-     *  - as scope: type parameters, the parameter accessors, and
-     *    the context bound companions in the class context,
+     *  - as scope: type parameters, the parameter accessors,
+     *    the dummy capture parameters and the context bound companions in the class context,
      *
      *  The reasons for this peculiar choice of attributes are as follows:
      *
@@ -420,7 +411,7 @@ object Contexts {
     def superCallContext: Context =
       val locals = owner.typeParams
           ++ owner.asClass.unforcedDecls.filter: sym =>
-              sym.is(ParamAccessor) || sym.isContextBoundCompanion
+              sym.is(ParamAccessor) || sym.isContextBoundCompanion || sym.isDummyCaptureParam
       superOrThisCallContext(owner.primaryConstructor, newScopeWith(locals*))
 
     /** The context for the arguments of a this(...) constructor call.
@@ -439,6 +430,14 @@ object Contexts {
         .fresh
         .setScope(this.scope)
     }
+
+    /** Is this a super call context?
+     *  This is the case if we are in a primary constructor and
+     *  the outer context has as owner the owner of the enclosing class.
+     *  The enclosing class is `owner.owner`, hence `outer.owner == owner.owner.owner`.
+     */
+    def isSuperCallContext: Boolean =
+      owner.isPrimaryConstructor && outer.owner == owner.owner.owner
 
     /** The super- or this-call context with given owner and locals. */
     private def superOrThisCallContext(owner: Symbol, locals: Scope): FreshContext = {
@@ -479,6 +478,9 @@ object Contexts {
 
     /** Is the flexible types option set? */
     def flexibleTypes: Boolean = base.settings.YexplicitNulls.value && !base.settings.YnoFlexibleTypes.value
+
+    /** Is the flexify tasty option set? */
+    def flexifyTasty: Boolean = base.settings.YexplicitNulls.value && base.settings.YflexifyTasty.value
 
     /** Is the best-effort option set? */
     def isBestEffort: Boolean = base.settings.YbestEffort.value
@@ -807,11 +809,11 @@ object Contexts {
     final def addMode(mode: Mode): c.type = c.setMode(c.mode | mode)
     final def retractMode(mode: Mode): c.type = c.setMode(c.mode &~ mode)
 
-  /** Run `op` with a pool-allocated context that has an ExporeTyperState. */
+  /** Run `op` with a pool-allocated context that has an ExploreTyperState. */
   inline def explore[T](inline op: Context ?=> T)(using Context): T =
     exploreInFreshCtx(op)
 
-  /** Run `op` with a pool-allocated FreshContext that has an ExporeTyperState. */
+  /** Run `op` with a pool-allocated FreshContext that has an ExploreTyperState. */
   inline def exploreInFreshCtx[T](inline op: FreshContext ?=> T)(using Context): T =
     val pool = ctx.base.exploreContextPool
     val nestedCtx = pool.next()
@@ -884,13 +886,13 @@ object Contexts {
     finally ctx.base.comparersInUse = saved
   end comparing
 
-  @sharable val NoContext: Context = new FreshContext((null: ContextBase | Null).uncheckedNN) {
+  @sharable val NoContext: Context = new FreshContext(null.asInstanceOf[ContextBase]) {
     override val implicits: ContextualImplicits = new ContextualImplicits(Nil, null, false)(this: @unchecked)
     setSource(NoSource)
   }
 
   /** A context base defines state and associated methods that exist once per
-   *  compiler run.
+   *  logical compiler instance.
    */
   class ContextBase extends ContextState
                        with Phases.PhasesBase
@@ -902,7 +904,7 @@ object Contexts {
     val initialCtx: Context = FreshContext.initial(this: @unchecked, settings)
 
     /** The platform, initialized by `initPlatform()`. */
-    private var _platform: Platform | Null = uninitialized
+    private var _platform: Platform | Null = null
 
     /** The platform */
     def platform: Platform = {
@@ -930,7 +932,13 @@ object Contexts {
      *  This initializes the `platform` and the `definitions`.
      */
     def initialize()(using Context): Unit = {
-      _platform = newPlatform
+      // In interactive mode (REPL/IDE), preserve the existing platform if already initialized.
+      // This is important because :dep/:jar commands add JARs to the platform's classpath,
+      // and we must not lose those when a new Run is created for each input.
+      // In non-interactive mode, always create a fresh platform to preserve original behavior.
+      if _platform == null || !ctx.mode.is(Mode.Interactive) then
+        _platform = newPlatform
+      platform.init()
       definitions.init()
     }
 
@@ -989,7 +997,11 @@ object Contexts {
 
     /** Sources and Files that were loaded */
     val sources: util.HashMap[AbstractFile, SourceFile] = util.HashMap[AbstractFile, SourceFile]()
-    val files: util.HashMap[TermName, AbstractFile] = util.HashMap()
+    val files: util.HashMap[String, AbstractFile] = util.HashMap()
+
+    /** Cache for magic offset header lookups, scoped to this compiler instance
+     *  so that concurrent compilers in the same classloader don't share stale entries. */
+    private[dotc] val magicHeaderCache: util.HashMap[SourceFile, WrappedSourceFile.MagicHeaderInfo] = util.HashMap()
 
     /** Was best effort file used during compilation? */
     private[core] var usedBestEffortTasty = false
@@ -1046,7 +1058,7 @@ object Contexts {
     private[core] var fusedPhases: Array[Phase] = Array.empty[Phase]
 
     /** Next denotation transformer id */
-    private[core] var nextDenotTransformerId: Array[Int] = uninitialized
+    private[core] var nextDenotTransformerId: Array[Periods.PhaseId] = uninitialized
 
     private[core] var denotTransformers: Array[DenotTransformer] = uninitialized
 
@@ -1082,8 +1094,6 @@ object Contexts {
     private[Contexts] var comparersInUse: Int = 0
 
     private var charArray = new Array[Char](256)
-
-    private[core] val reusableDataReader = ReusableInstance(new ReusableDataReader())
 
     private[dotc] var wConfCache: (List[String], WConf) = uninitialized
 

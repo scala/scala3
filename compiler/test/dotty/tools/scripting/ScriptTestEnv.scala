@@ -2,8 +2,6 @@ package dotty
 package tools
 package scripting
 
-import scala.language.unsafeNulls
-
 import java.io.File
 import java.util.Locale
 import java.nio.file.{Path, Paths, Files}
@@ -20,9 +18,9 @@ import scala.jdk.CollectionConverters.*
  * Test scripts run in a bash env, so paths are converted to forward slash via .norm.
  */
 object ScriptTestEnv {
-  def osname: String = sys.props("os.name").toLowerCase
-  def psep: String = sys.props("path.separator")
-  def userDir: String = sys.props("user.dir").norm
+  def osname: String = sys.props("os.name").nn.toLowerCase
+  def psep: String = sys.props("path.separator").nn
+  def userDir: String = sys.props("user.dir").nn.norm
   def testCwd = envOrElse("TEST_CWD", "").norm // optional working directory TEST_CWD
   def verbose = envOrElse("VERBOSE", "").nonEmpty
 
@@ -44,7 +42,7 @@ object ScriptTestEnv {
 
     val bspDir = dottyDir / ".bsp"
     (bspDir / "scala.json").delete()
-    if bspDir.isEmpty then bspDir.delete()
+    if bspDir.walk.isEmpty then bspDir.delete()
   }
 
   lazy val nativePackDir: Option[String] = {
@@ -217,7 +215,7 @@ object ScriptTestEnv {
     printf("===> test script name [%s]\n", scriptFile.getName)
 
   def callExecutableJar(script: File, jar: File, scriptArgs: Array[String] = Array.empty[String]) = {
-    import scala.sys.process._
+    import scala.sys.process.*
     val cmd = Array("java", s"-Dscript.path=${script.getName}", "-jar", jar.absPath)
       ++ scriptArgs
     Process(cmd).lazyLines_!.foreach { println }
@@ -282,7 +280,7 @@ object ScriptTestEnv {
   }
 
   extension(f: File) {
-    def name = f.getName
+    def name: String = f.getName
     def norm: String = f.toPath.normalize.norm
     def absPath: String = f.getAbsolutePath.norm
     def relpath: Path = f.toPath.relpath
@@ -305,7 +303,7 @@ object ScriptTestEnv {
   //    dist[*]/target/universal/stage, if present
   //    else, SCALA_HOME if defined
   //    else, not defined
-  lazy val envScalaHome =
+  lazy val envScalaHome: String =
     printf("scalacPath: %s\n", scalacPath.norm)
     if scalacPath.isFile then scalacPath.replaceAll("/bin/scalac", "")
     else envOrElse("SCALA_HOME", "not-found").norm

@@ -13,6 +13,7 @@ import Decorators.*
 import Denotations.*, SymDenotations.*
 import DenotTransformers.*
 import NullOpsDecorator.*
+import util.Spans.Span
 
 object ElimRepeated {
   val name: String = "elimRepeated"
@@ -183,7 +184,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         .get
         .symbol.asTerm
       // Generate the method
-      val forwarderDef = DefDef(forwarderSym, prefss => {
+      val forwarderDef = DefDef(forwarderSym, prefss =>
         val init :+ (last :+ vararg) = prefss: @unchecked
         // Can't call `.argTypes` here because the underlying array type is of the
         // form `Array[? <: SomeType]`, so we need `.argInfos` to get the `TypeBounds`.
@@ -191,7 +192,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
         ref(sym.termRef)
           .appliedToArgss(init)
           .appliedToTermArgs(last :+ wrapArray(vararg, elemtp))
-        })
+          .withSpan(Span(tree.span.start))
+      ).withSpan(tree.span.toSynthetic)
       Thicket(tree, forwarderDef)
     else
       tree
@@ -216,7 +218,8 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
       throw new Exception("Match error in @varargs checks. This should not happen, please open an issue " + tp)
 
   /** Add the symbol of a Java varargs forwarder to the scope.
-   *  It retains all the flags of the original method.
+   *  It retains the flags of the original method except `Deferred`,
+   *  since the forwarder's body is synthesized in `transformDefDef`.
    *
    *  @param original the original method symbol
    *  @param isBridge true if we are generating a "bridge" (synthetic override forwarder)
@@ -239,7 +242,7 @@ class ElimRepeated extends MiniPhase with InfoTransformer { thisPhase =>
 
     // For simplicity we always set the varargs flag,
     // although it's not strictly necessary for overrides.
-    val flags = original.flags | JavaVarargs
+    val flags = (original.flags &~ Deferred) | JavaVarargs
 
     // The java-compatible forwarder symbol
     val forwarder =

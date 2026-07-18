@@ -4,4 +4,6 @@
   |                   Found:    (x1 : (Foo[T] & Foo[Any])^{io})
   |                   Required: Foo[T]
   |
+  |                   Note that capability `io` cannot flow into capture set {}.
+  |
   | longer explanation available when compiling with `-explain`

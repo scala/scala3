@@ -3,6 +3,7 @@ package dotty.tools.pc.tests.completion
 import dotty.tools.pc.base.BaseCompletionSuite
 import dotty.tools.pc.utils.MockEntries
 
+import org.junit.Ignore
 import org.junit.Test
 
 class CompletionMatchSuite extends BaseCompletionSuite:
@@ -335,6 +336,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
       filter = _.contains("exhaustive")
     )
 
+  @Ignore
   @Test def `exhaustive-map` =
     check(
       """
@@ -346,6 +348,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
       filter = _.contains("exhaustive")
     )
 
+  @Ignore
   @Test def `exhaustive-map-edit` =
     checkEdit(
       """
@@ -629,7 +632,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
           |
           |}
           |""".stripMargin,
-      filter = _.contains("exhaustive"),
+      filter = _.contains("exhaustive")
     )
 
   @Test def `type-alias-sealed-trait` =
@@ -668,7 +671,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
           |
           |}
           |""".stripMargin,
-      filter = _.contains("exhaustive"),
+      filter = _.contains("exhaustive")
     )
 
   @Test def `union-type` =

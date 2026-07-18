@@ -1,67 +1,94 @@
 package scala
 
+import language.experimental.captureChecking
 import annotation.showAsInfix
 import compiletime.*
 import compiletime.ops.int.*
 
-/** Tuple of arbitrary arity */
+/** Tuple of arbitrary arity. */
 sealed trait Tuple extends Product {
   import Tuple.*
 
-  /** Create a copy of this tuple as an Array */
+  /** Creates a copy of this tuple as an Array. */
   inline def toArray: Array[Object] =
     runtime.Tuples.toArray(this)
 
-  /** Create a copy of this tuple as a List */
+  /** Creates a copy of this tuple as a List. */
   inline def toList: List[Union[this.type]] =
     this.productIterator.toList
       .asInstanceOf[List[Union[this.type]]]
 
-  /** Create a copy of this tuple as an IArray */
+  /** Creates a copy of this tuple as an IArray. */
   inline def toIArray: IArray[Object] =
     runtime.Tuples.toIArray(this)
 
-  /** Return a copy of `this` tuple with an element appended */
+  /** Returns a copy of `this` tuple with an element appended. */
   inline def :* [This >: this.type <: Tuple, L] (x: L): This :* L =
     runtime.Tuples.append(x, this).asInstanceOf[This :* L]
 
-  /** Return a new tuple by prepending the element to `this` tuple.
+  /** Returns a new tuple by prepending the element to `this` tuple.
    *  This operation is O(this.size)
    */
   inline def *: [H, This >: this.type <: Tuple] (x: H): H *: This =
     runtime.Tuples.cons(x, this).asInstanceOf[H *: This]
 
-  /** Get the i-th element of this tuple.
+  /** Gets the i-th element of this tuple.
    *  Equivalent to productElement but with a precise return type.
+   *
+   *  @tparam This the exact type of this tuple
+   *  @param n the zero-based index of the element to retrieve
+   *  @return the element at position `n`, with its precise static type `Elem[This, n.type]`
    */
   inline def apply[This >: this.type <: Tuple](n: Int): Elem[This, n.type] =
     runtime.Tuples.apply(this, n).asInstanceOf[Elem[This, n.type]]
 
-  /** Get the head of this tuple */
+  /** Gets the head of this tuple.
+   *
+   *  @tparam This the exact type of this tuple
+   *  @return the first element of this tuple, with its precise static type `Head[This]`
+   */
   inline def head[This >: this.type <: Tuple]: Head[This] =
     runtime.Tuples.apply(this, 0).asInstanceOf[Head[This]]
 
-  /** Get the initial part of the tuple without its last element */
+  /** Gets the initial part of the tuple without its last element.
+   *
+   *  @tparam This the exact type of this tuple
+   *  @return a new tuple containing all elements of this tuple except the last one
+   */
   inline def init[This >: this.type <: Tuple]: Init[This] =
     runtime.Tuples.init(this).asInstanceOf[Init[This]]
 
-  /** Get the last of this tuple */
+  /** Gets the last of this tuple.
+   *
+   *  @tparam This the exact type of this tuple
+   *  @return the last element of this tuple, with its precise static type `Last[This]`
+   */
   inline def last[This >: this.type <: Tuple]: Last[This] =
     runtime.Tuples.last(this).asInstanceOf[Last[This]]
 
-  /** Get the tail of this tuple.
+  /** Gets the tail of this tuple.
    *  This operation is O(this.size)
+   *
+   *  @tparam This the exact type of this tuple
+   *  @return a new tuple containing all elements of this tuple except the first one
    */
   inline def tail[This >: this.type <: Tuple]: Tail[This] =
     runtime.Tuples.tail(this).asInstanceOf[Tail[This]]
 
-  /** Return a new tuple by concatenating `this` tuple with `that` tuple.
+  /** Returns a new tuple by concatenating `this` tuple with `that` tuple.
    *  This operation is O(this.size + that.size)
+   *
+   *  @tparam This the exact type of this tuple
+   *  @param that the tuple to append to this tuple
    */
   inline def ++ [This >: this.type <: Tuple](that: Tuple): This ++ that.type =
     runtime.Tuples.concat(this, that).asInstanceOf[This ++ that.type]
 
-  /** Return the size (or arity) of the tuple */
+  /** Returns the size (or arity) of the tuple.
+   *
+   *  @tparam This the exact type of this tuple
+   *  @return the arity of this tuple, returned as an `Int` whose precise static type is the singleton `Size[This]`
+   */
   inline def size[This >: this.type <: Tuple]: Size[This] =
     runtime.Tuples.size(this).asInstanceOf[Size[This]]
 
@@ -71,27 +98,42 @@ sealed trait Tuple extends Product {
    *  The result is typed as `((A1, B1), ..., (An, Bn))` if at least one of the
    *  tuple types has a `EmptyTuple` tail. Otherwise the result type is
    *  `(A1, B1) *: ... *: (Ai, Bi) *: Tuple`
+   *
+   *  @tparam This the exact type of this tuple
+   *  @tparam T2 the type of the other tuple to zip with
+   *  @param t2 the tuple to zip with this tuple
+   *  @return a tuple of pairs formed from corresponding elements of this tuple and `t2`, truncated to the length of the shorter tuple
    */
   inline def zip[This >: this.type <: Tuple, T2 <: Tuple](t2: T2): Zip[This, T2] =
     runtime.Tuples.zip(this, t2).asInstanceOf[Zip[This, T2]]
 
   /** Called on a tuple `(a1, ..., an)`, returns a new tuple `(f(a1), ..., f(an))`.
    *  The result is typed as `(F[A1], ..., F[An])` if the tuple type is fully known.
-   *  If the tuple is of the form `a1 *: ... *: Tuple` (that is, the tail is not known
-   *  to be the cons type.
+   *  Otherwise the result type is `F[A1] *: Tuple`.
+   *
+   *  @tparam F the type constructor applied to each element type
+   *  @param f the polymorphic function to apply to each element, mapping a value of type `t` to a value of type `F[t]`
+   *  @return a new tuple containing the result of applying `f` to each element of this tuple
    */
-  inline def map[F[_]](f: [t] => t => F[t]): Map[this.type, F] =
+  inline def map[F[_]](f: [t] -> t -> F[t]): Map[this.type, F] =
     runtime.Tuples.map(this, f).asInstanceOf[Map[this.type, F]]
 
   /** Given a tuple `(a1, ..., am)`, returns the tuple `(a1, ..., an)` consisting
    *  of its first n elements.
+   *
+   *  @tparam This the exact type of this tuple
+   *  @param n the number of elements to take from the beginning
+   *  @return a tuple containing the first `n` elements of this tuple
    */
   inline def take[This >: this.type <: Tuple](n: Int): Take[This, n.type] =
     runtime.Tuples.take(this, n).asInstanceOf[Take[This, n.type]]
 
-
   /** Given a tuple `(a1, ..., am)`, returns the tuple `(an+1, ..., am)` consisting
    *  all its elements except the first n ones.
+   *
+   *  @tparam This the exact type of this tuple
+   *  @param n the number of elements to drop from the beginning
+   *  @return a tuple containing all elements of this tuple after the first `n` elements
    */
   inline def drop[This >: this.type <: Tuple](n: Int): Drop[This, n.type] =
     runtime.Tuples.drop(this, n).asInstanceOf[Drop[This, n.type]]
@@ -99,12 +141,19 @@ sealed trait Tuple extends Product {
   /** Given a tuple `(a1, ..., am)`, returns a pair of the tuple `(a1, ..., an)`
    *  consisting of the first n elements, and the tuple `(an+1, ..., am)` consisting
    *  of the remaining elements.
+   *
+   *  @tparam This the exact type of this tuple
+   *  @param n the number of elements in the first part of the split
+   *  @return a pair of tuples, the first containing the first `n` elements of this tuple, and the second containing the remaining elements
    */
   inline def splitAt[This >: this.type <: Tuple](n: Int): Split[This, n.type] =
     runtime.Tuples.splitAt(this, n).asInstanceOf[Split[This, n.type]]
 
   /** Given a tuple `(a1, ..., am)`, returns the reversed tuple `(am, ..., a1)`
    *  consisting all its elements.
+   *
+   *  @tparam This the exact type of this tuple
+   *  @return a new tuple containing the elements of this tuple in reverse order
    */
   inline def reverse[This >: this.type <: Tuple]: Reverse[This] =
     runtime.Tuples.reverse(this).asInstanceOf[Reverse[This]]
@@ -112,48 +161,48 @@ sealed trait Tuple extends Product {
 
 object Tuple {
 
-  /** Type of a tuple with an element appended */
+  /** Type of a tuple with an element appended. */
   type Append[X <: Tuple, Y] <: NonEmptyTuple = X match {
     case EmptyTuple => Y *: EmptyTuple
     case x *: xs => x *: Append[xs, Y]
   }
 
-  /** An infix shorthand for `Append[X, Y]` */
+  /** An infix shorthand for `Append[X, Y]`. */
   infix type :*[X <: Tuple, Y] = Append[X, Y]
 
-  /** Type of the head of a tuple */
+  /** Type of the head of a tuple. */
   type Head[X <: Tuple] = X match {
     case x *: _ => x
   }
 
-  /** Type of the initial part of the tuple without its last element */
+  /** Type of the initial part of the tuple without its last element. */
   type Init[X <: Tuple] <: Tuple = X match {
     case _ *: EmptyTuple => EmptyTuple
     case x *: xs =>
       x *: Init[xs]
   }
 
-  /** Type of the tail of a tuple */
+  /** Type of the tail of a tuple. */
   type Tail[X <: Tuple] <: Tuple = X match {
     case _ *: xs => xs
   }
 
-  /** Type of the last element of a tuple */
+  /** Type of the last element of a tuple. */
   type Last[X <: Tuple] = X match {
     case x *: EmptyTuple => x
     case _ *: xs => Last[xs]
   }
 
-  /** Type of the concatenation of two tuples */
+  /** Type of the concatenation of two tuples. */
   type Concat[X <: Tuple, +Y <: Tuple] <: Tuple = X match {
     case EmptyTuple => Y
     case x1 *: xs1 => x1 *: Concat[xs1, Y]
   }
 
-  /** An infix shorthand for `Concat[X, Y]` */
+  /** An infix shorthand for `Concat[X, Y]`. */
   infix type ++[X <: Tuple, +Y <: Tuple] = Concat[X, Y]
 
-  /** Type of the element at position N in the tuple X */
+  /** Type of the element at position N in the tuple X. */
   type Elem[X <: Tuple, N <: Int] = X match {
     case x *: xs =>
       N match {
@@ -162,24 +211,24 @@ object Tuple {
       }
   }
 
-  /** Literal constant Int size of a tuple */
+  /** Literal constant Int size of a tuple. */
   type Size[X <: Tuple] <: Int = X match {
     case EmptyTuple => 0
     case x *: xs => S[Size[xs]]
   }
 
-  /** Fold a tuple `(T1, ..., Tn)` into `F[T1, F[... F[Tn, Z]...]]]` */
+  /** Folds a tuple `(T1, ..., Tn)` into `F[T1, F[... F[Tn, Z]...]]]`. */
   type Fold[Tup <: Tuple, Z, F[_, _]] = Tup match
     case EmptyTuple => Z
     case h *: t => F[h, Fold[t, Z, F]]
 
-  /** Converts a tuple `(T1, ..., Tn)` to `(F[T1], ..., F[Tn])` */
+  /** Converts a tuple `(T1, ..., Tn)` to `(F[T1], ..., F[Tn])`. */
   type Map[Tup <: Tuple, F[_ <: Union[Tup]]] <: Tuple = Tup match {
     case EmptyTuple => EmptyTuple
     case h *: t => F[h] *: Map[t, F]
   }
 
-  /** Converts a tuple `(T1, ..., Tn)` to a flattened `(..F[T1], ..., ..F[Tn])` */
+  /** Converts a tuple `(T1, ..., Tn)` to a flattened `(..F[T1], ..., ..F[Tn])`. */
   type FlatMap[Tup <: Tuple, F[_ <: Union[Tup]] <: Tuple] <: Tuple = Tup match {
     case EmptyTuple => EmptyTuple
     case h *: t => Concat[F[h], FlatMap[t, F]]
@@ -213,7 +262,7 @@ object Tuple {
     case _ => EmptyTuple
   }
 
-  /** Converts a tuple `(F[T1], ..., F[Tn])` to `(T1,  ... Tn)` */
+  /** Converts a tuple `(F[T1], ..., F[Tn])` to `(T1,  ... Tn)`. */
   type InverseMap[X <: Tuple, F[_]] <: Tuple = X match {
     case F[x] *: t => x *: InverseMap[t, F]
     case EmptyTuple => EmptyTuple
@@ -226,10 +275,10 @@ object Tuple {
    */
   type IsMappedBy[F[_]] = [X <: Tuple] =>> X =:= Map[InverseMap[X, F], F]
 
-  /** Type of the reversed tuple */
+  /** Type of the reversed tuple. */
   type Reverse[X <: Tuple] = ReverseOnto[X, EmptyTuple]
 
-  /** Prepends all elements of a tuple in reverse order onto the other tuple */
+  /** Prepends all elements of a tuple in reverse order onto the other tuple. */
   type ReverseOnto[From <: Tuple, +To <: Tuple] <: Tuple = From match
     case x *: xs => ReverseOnto[xs, x *: To]
     case EmptyTuple => To
@@ -253,7 +302,7 @@ object Tuple {
   }
 
   /** Splits a tuple (T1, ..., Tn) into a pair of two tuples `(T1, ..., Ti)` and
-   * `(Ti+1, ..., Tn)`.
+   *  `(Ti+1, ..., Tn)`.
    */
   type Split[T <: Tuple, N <: Int] = (Take[T, N], Drop[T, N])
 
@@ -281,16 +330,30 @@ object Tuple {
       case false => Disjoint[xs, Y]
     case EmptyTuple => true
 
-  /** Empty tuple */
+  /** Empty tuple. */
   def apply(): EmptyTuple = EmptyTuple
 
-  /** Tuple with one element */
+  /** Tuple with one element.
+   *
+   *  @tparam T the type of the element
+   *  @param x the single element of the tuple
+   *  @return a `Tuple1` containing `x` as its only element
+   */
   def apply[T](x: T): T *: EmptyTuple = Tuple1(x)
 
-  /** Matches an empty tuple. */
+  /** Matches an empty tuple.
+   *
+   *  @param x the empty tuple to match
+   *  @return `true`, indicating a successful match against the empty tuple
+   */
   def unapply(x: EmptyTuple): true = true
 
-  /** Convert an array into a tuple of unknown arity and types */
+  /** Converts an array into a tuple of unknown arity and types.
+   *
+   *  @tparam T the element type of the array
+   *  @param xs the array to convert into a tuple
+   *  @return a tuple whose elements are the elements of `xs` in order
+   */
   def fromArray[T](xs: Array[T]): Tuple = {
     val xs2 = xs match {
       case xs: Array[Object] => xs
@@ -299,7 +362,12 @@ object Tuple {
     runtime.Tuples.fromArray(xs2)
   }
 
-  /** Convert an immutable array into a tuple of unknown arity and types */
+  /** Converts an immutable array into a tuple of unknown arity and types.
+   *
+   *  @tparam T the element type of the immutable array
+   *  @param xs the immutable array to convert into a tuple
+   *  @return a tuple whose elements are the elements of `xs` in order
+   */
   def fromIArray[T](xs: IArray[T]): Tuple = {
     val xs2: IArray[Object] = xs match {
       case xs: IArray[Object] @unchecked => xs
@@ -309,7 +377,11 @@ object Tuple {
     runtime.Tuples.fromIArray(xs2)
   }
 
-  /** Convert a Product into a tuple of unknown arity and types */
+  /** Converts a Product into a tuple of unknown arity and types.
+   *
+   *  @param product the product to convert into a tuple
+   *  @return a tuple whose elements are the elements of `product` in declaration order
+   */
   def fromProduct(product: Product): Tuple =
     runtime.Tuples.fromProduct(product)
 
@@ -322,7 +394,7 @@ object Tuple {
   ): CanEqual[H1 *: T1, H2 *: T2] = CanEqual.derived
 }
 
-/** A tuple of 0 elements */
+/** A tuple of 0 elements. */
 type EmptyTuple = EmptyTuple.type
 
 /** A tuple of 0 elements. */
@@ -330,7 +402,7 @@ case object EmptyTuple extends Tuple {
   override def toString(): String = "()"
 }
 
-/** Tuple of arbitrary non-zero arity */
+/** Tuple of arbitrary non-zero arity. */
 sealed trait NonEmptyTuple extends Tuple
 
 @showAsInfix

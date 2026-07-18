@@ -20,6 +20,7 @@ import core.Decorators.*
 import core.Constants.*
 import core.Definitions.*
 import core.Annotations.BodyAnnotation
+import core.MissingType
 import typer.NoChecking
 import inlines.Inlines
 import typer.ProtoTypes.*
@@ -49,7 +50,7 @@ class Erasure extends Phase with DenotTransformer {
   override def changesMembers: Boolean = true // the phase adds bridges
   override def changesParents: Boolean = true // the phase drops Any
 
-  def transform(ref: SingleDenotation)(using Context): SingleDenotation = ref match {
+  def transform(ref: SingleDenotation)(using Context): SingleDenotation = try ref match {
     case ref: SymDenotation =>
       def isCompacted(symd: SymDenotation) =
         symd.isAnonymousFunction && {
@@ -130,11 +131,14 @@ class Erasure extends Phase with DenotTransformer {
         ref.symbol, transformInfo(ref.symbol, ref.symbol.info), currentStablePeriod, ref.prefix)
     case _ =>
       ref.derivedSingleDenotation(ref.symbol, transformInfo(ref.symbol, ref.symbol.info))
-  }
+  } catch case ex: MissingType =>
+    // Handle missing types from dependencies (e.g., JDK version mismatch)
+    report.error(ex.toMessage, ref.symbol.srcPos)
+    ref  // Keep old denotation on error
 
   private val eraser = new Erasure.Typer(this)
 
-  def run(using Context): Unit = {
+  protected def run(using Context): Unit = {
     val unit = ctx.compilationUnit
     unit.tpdTree = eraser.typedExpr(unit.tpdTree)(using ctx.fresh.setTyper(eraser).setPhase(this.next))
   }
@@ -187,11 +191,12 @@ class Erasure extends Phase with DenotTransformer {
       tp.typeSymbol == cls && ctx.compilationUnit.source.file.name == sourceName
     assert(
       isErasedType(tp)
+      || isAllowed(defn.AnyValClass, "AnyVal.scala")
       || isAllowed(defn.ArrayClass, "Array.scala")
       || isAllowed(defn.TupleClass, "Tuple.scala")
       || isAllowed(defn.NonEmptyTupleClass, "Tuple.scala")
       || isAllowed(defn.PairClass, "Tuple.scala")
-      || isAllowed(defn.PureClass, "Pure.scala"),
+      || isAllowed(defn.PureClass, /* caps/ */ "Pure.scala"),
       i"The type $tp - ${tp.toString} of class ${tp.getClass} of tree $tree : ${tree.tpe} / ${tree.getClass} is illegal after erasure, phase = ${ctx.phase.prev}")
   }
 }
@@ -296,19 +301,17 @@ object Erasure {
           // "Unboxing" null to underlying is equivalent to doing null.asInstanceOf[underlying]
           // See tests/pos/valueclasses/nullAsInstanceOfVC.scala for cases where this might happen.
           val tree1 =
-            if (tree.tpe isRef defn.NullClass)
+            if tree.tpe.isRef(defn.NullClass) then
               adaptToType(tree, underlying)
-            else if (!(tree.tpe <:< tycon)) {
+            else if !(tree.tpe <:< tycon) then
               assert(!(tree.tpe.typeSymbol.isPrimitiveValueClass))
               val nullTree = nullLiteral
               val unboxedNull = adaptToType(nullTree, underlying)
 
-              evalOnce(tree) { t =>
+              evalOnce(tree): t =>
                 If(t.select(defn.Object_eq).appliedTo(nullTree),
                   unboxedNull,
                   unboxedTree(t))
-              }
-            }
             else unboxedTree(tree)
 
           cast(tree1, pt)
@@ -334,7 +337,7 @@ object Erasure {
         ref(evt2u(tycon.typeSymbol.asClass)).appliedTo(tree)
 
       assert(!pt.isInstanceOf[SingletonType], pt)
-      if (pt isRef defn.UnitClass) unbox(tree, pt)
+      if pt.isRef(defn.UnitClass) then unbox(tree, pt)
       else (tree.tpe.widen, pt) match {
         // Convert primitive arrays into reference arrays, this path is only
         // needed to handle repeated arguments, see
@@ -454,39 +457,9 @@ object Erasure {
       val samParamTypes = sam.paramInfos
       val samResultType = sam.resultType
 
-      /** Can the implementation parameter type `tp` be auto-adapted to a different
-       *  parameter type in the SAM?
-       *
-       *  For derived value classes, we always need to do the bridging manually.
-       *  For primitives, we cannot rely on auto-adaptation on the JVM because
-       *  the Scala spec requires null to be "unboxed" to the default value of
-       *  the value class, but the adaptation performed by LambdaMetaFactory
-       *  will throw a `NullPointerException` instead. See `lambda-null.scala`
-       *  for test cases.
-       *
-       *  @see [LambdaMetaFactory](https://docs.oracle.com/javase/8/docs/api/java/lang/invoke/LambdaMetafactory.html)
-       */
-      def autoAdaptedParam(tp: Type) =
-        !tp.isErasedValueType && !tp.isPrimitiveValueType
-
-      /** Can the implementation result type be auto-adapted to a different result
-       *  type in the SAM?
-       *
-       *  For derived value classes, it's the same story as for parameters.
-       *  For non-Unit primitives, we can actually rely on the `LambdaMetaFactory`
-       *  adaptation, because it only needs to box, not unbox, so no special
-       *  handling of null is required.
-       */
-      def autoAdaptedResult =
-        !implResultType.isErasedValueType && !implReturnsUnit
-
-      def sameClass(tp1: Type, tp2: Type) = tp1.classSymbol == tp2.classSymbol
-
-      val paramAdaptationNeeded =
-        implParamTypes.lazyZip(samParamTypes).exists((implType, samType) =>
-          !sameClass(implType, samType) && !autoAdaptedParam(implType))
-      val resultAdaptationNeeded =
-        !sameClass(implResultType, samResultType) && !autoAdaptedResult
+      // Check if bridging is needed using the common function from TypeErasure
+      val (paramAdaptationNeeded, resultAdaptationNeeded) =
+        additionalAdaptationNeeded(implParamTypes, implResultType, samParamTypes, samResultType)
 
       if paramAdaptationNeeded || resultAdaptationNeeded then
         // Instead of instantiating `scala.FunctionN`, see if we can instantiate
@@ -562,15 +535,15 @@ object Erasure {
           report.error(msg, tree.srcPos)
         tree.symbol.getAnnotation(defn.CompileTimeOnlyAnnot) match
           case Some(annot) =>
-            val message = annot.argumentConstant(0) match
-              case Some(c) =>
+            val message = annot.argumentConstantString(0) match
+              case Some(msg) =>
                 val addendum = tree match
                   case tree: RefTree
                   if tree.symbol == defn.Compiletime_deferred && tree.name != nme.deferred =>
                     i".\nNote that `deferred` can only be used under its own name when implementing a given in a trait; `${tree.name}` is not accepted."
                   case _ =>
                     ""
-                (c.stringValue ++ addendum).toMessage
+                (msg + addendum).toMessage
               case _ =>
                 em"""Reference to ${tree.symbol.showLocated} should not have survived,
                     |it should have been processed and eliminated during expansion of an enclosing macro or term erasure."""
@@ -729,13 +702,10 @@ object Erasure {
           assignType(untpd.cpy.Select(tree)(qual, tree.name.primitiveArrayOp), qual)
 
       def adaptIfSuper(qual: Tree): Tree = qual match {
-        case Super(thisQual, untpd.EmptyTypeIdent) =>
-          val SuperType(thisType, supType) = qual.tpe: @unchecked
-          if (sym.owner.is(Flags.Trait))
-            cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
-              .withType(SuperType(thisType, sym.owner.typeRef))
-          else
-            qual.withType(SuperType(thisType, thisType.firstParent.typeConstructor))
+        case Super(thisQual, untpd.EmptyTypeIdent) if sym.owner.is(Flags.Trait) =>
+          val SuperType(thisType, _) = qual.tpe: @unchecked
+          cpy.Super(qual)(thisQual, untpd.Ident(sym.owner.asClass.name))
+            .withType(SuperType(thisType, sym.owner.typeRef))
         case _ =>
           qual
       }
@@ -747,13 +717,8 @@ object Erasure {
         // Scala classes are always emitted as public, unless the
         // `private` modifier is used, but a non-private class can never
         // extend a private class, so such a class will never be a cast target.
-        !cls.is(Flags.JavaDefined) || {
-          // We can't rely on `isContainedWith` here because packages are
-          // not nested from the JVM point of view.
-          val boundary = cls.accessBoundary(cls.owner)(using preErasureCtx)
-          (boundary eq defn.RootClass) ||
-          (ctx.owner.enclosingPackageClass eq boundary)
-        }
+        !cls.is(Flags.JavaDefined) ||
+          cls.isAccessibleFrom(cls.owner.thisType)(using preErasureCtx)
 
       @tailrec
       def recur(qual: Tree): Tree =
@@ -836,8 +801,9 @@ object Erasure {
       val Apply(fun, args) = tree
       val origFun = fun.asInstanceOf[tpd.Tree]
       val origFunType = origFun.tpe.widen(using preErasureCtx)
+      val insideBridge = ctx.owner.ownersIterator.exists(_.is(Flags.Bridge))
       val ownArgs = origFunType match
-        case mt: MethodType if mt.hasErasedParams =>
+        case mt: MethodType if mt.hasErasedParams && !insideBridge =>
           args.lazyZip(mt.paramErasureStatuses).flatMap: (arg, isErased) =>
             if isErased then
               checkPureErased(arg, isArgument = true,
@@ -918,6 +884,14 @@ object Erasure {
       else trace(i"erasing $vdef"):
         super.typedValDef(untpd.cpy.ValDef(vdef)(
           tpt = untpd.TypedSplice(TypeTree(sym.info).withSpan(vdef.tpt.span))), sym)
+
+    /** Type check assignments, erasing those to erased variables. */
+    override def typedAssign(tree: untpd.Assign, pt: Type)(using Context): Tree =
+      val untpd.Assign(lhs, rhs) = tree
+      if lhs.symbol.is(Flags.Erased) then
+        checkPureErased(rhs, isArgument = false)
+        EmptyTree
+      else super.typedAssign(tree, pt)
 
     /** Besides normal typing, this function also compacts anonymous functions
      *  with more than `MaxImplementedFunctionArity` parameters to use a single
@@ -1004,7 +978,7 @@ object Erasure {
      *  to parameters of f$retainedBody are changed to references of
      *  corresponding parameters in f.
      *
-     *  `f$retainedBody` is subseqently mapped to the empty tree in `typedDefDef`
+     *  `f$retainedBody` is subsequently mapped to the empty tree in `typedDefDef`
      *  which is then dropped in `typedStats`.
      */
     private def addRetainedInlineBodies(stats: List[untpd.Tree])(using Context): List[untpd.Tree] =

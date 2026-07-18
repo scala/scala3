@@ -1,6 +1,48 @@
-23: Pattern Match Exhaustivity: _: Trait & OpenTrait, _: Clazz & OpenTrait, _: AbstractClass & OpenTrait
-27: Pattern Match Exhaustivity: _: Trait & OpenTrait & OpenTrait2, _: Clazz & OpenTrait & OpenTrait2, _: AbstractClass & OpenTrait & OpenTrait2
-31: Pattern Match Exhaustivity: _: Trait & OpenClass
-35: Pattern Match Exhaustivity: _: Trait & OpenTrait & OpenClass
-43: Pattern Match Exhaustivity: _: Trait & OpenAbstractClass
-47: Pattern Match Exhaustivity: _: Trait & OpenClass & (OpenTrait & OpenClassSubclass)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype-opentype-interaction.scala:23:30 
+23 |  def m1a(s: T & OpenTrait) = s match {
+   |                              ^
+   |match may not be exhaustive.
+   |
+   |It would fail on pattern case: _: Trait & OpenTrait, _: Clazz & OpenTrait, _: AbstractClass & OpenTrait
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype-opentype-interaction.scala:27:43 
+27 |  def m1b(s: T & OpenTrait & OpenTrait2) = s match {
+   |                                           ^
+   |match may not be exhaustive.
+   |
+   |It would fail on pattern case: _: Trait & OpenTrait & OpenTrait2, _: Clazz & OpenTrait & OpenTrait2, _: AbstractClass & OpenTrait & OpenTrait2
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype-opentype-interaction.scala:31:29 
+31 |  def m2(s: T & OpenClass) = s match {
+   |                             ^
+   |                     match may not be exhaustive.
+   |
+   |                     It would fail on pattern case: _: Trait & OpenClass
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype-opentype-interaction.scala:35:42 
+35 |  def m2b(s: T & OpenTrait & OpenClass) = s match {
+   |                                          ^
+   |         match may not be exhaustive.
+   |
+   |         It would fail on pattern case: _: Trait & OpenTrait & OpenClass
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype-opentype-interaction.scala:43:37 
+43 |  def m3(s: T & OpenAbstractClass) = s match {
+   |                                     ^
+   |             match may not be exhaustive.
+   |
+   |             It would fail on pattern case: _: Trait & OpenAbstractClass
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/andtype-opentype-interaction.scala:47:65 
+47 |  def m4(s: (T & OpenClass) & (OpenTrait & OpenClassSubclass)) = s match {
+   |                                                                 ^
+   |match may not be exhaustive.
+   |
+   |It would fail on pattern case: _: Trait & OpenClass & (OpenTrait & OpenClassSubclass)
+   |
+   | longer explanation available when compiling with `-explain`

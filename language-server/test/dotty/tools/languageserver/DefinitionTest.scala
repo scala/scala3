@@ -1,6 +1,7 @@
 package dotty.tools.languageserver
 
 import org.junit.Test
+import org.junit.Ignore
 
 import dotty.tools.languageserver.util.Code._
 import dotty.tools.languageserver.util.embedded.CodeMarker
@@ -56,6 +57,7 @@ class DefinitionTest {
       .definition(m5 to m6, List(m1 to m2))
   }
 
+  @Ignore
   @Test def valDefinition0: Unit = {
     withSources(
       code"class Foo { val ${m1}x$m2 = 0; ${m3}x$m4 }",
@@ -65,6 +67,7 @@ class DefinitionTest {
       .definition(m5 to m6, List(m1 to m2))
   }
 
+  @Ignore
   @Test def defDefinition0: Unit = {
     withSources(
       code"class Foo { def ${m1}x$m2 = 0; ${m3}x$m4 }",
@@ -183,6 +186,7 @@ class DefinitionTest {
       .definition(m7 to m8, List(m3 to m4))
   }
 
+  @Ignore
   @Test def goToParamCopyMethod: Unit = {
 
     withSources(

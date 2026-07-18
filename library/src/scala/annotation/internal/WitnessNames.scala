@@ -1,6 +1,8 @@
 package scala.annotation
 package internal
 
+import language.experimental.captureChecking
+
 /** An annotation that is used for marking type definitions that should get
  *  context bound companions. The scheme is as follows:
  *
@@ -47,6 +49,8 @@ package internal
  *  select the `map` method of `Functor`.
  *
  *  4. At PostTyper, issue an error when encountering any reference to a CB companion.
+ *
+ *  @param names the string names (n_1, ..., n_k) of the witness values generated for the context bounds of the annotated type
  */
 @experimental
 class WitnessNames(names: String*) extends StaticAnnotation

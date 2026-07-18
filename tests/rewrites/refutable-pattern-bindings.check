@@ -2,26 +2,26 @@ val xs: List[Any] = ???
 
 val hd :: tl = (xs match
   case Nil => null :: xs
-  case _   => xs): @unchecked
+  case _   => xs).runtimeChecked
 
-val h :: t = xs: @unchecked
+val h :: t = xs.runtimeChecked
 
 val a :: b =
   (if xs.isEmpty then null :: xs
-  else xs): @unchecked
+  else xs).runtimeChecked
 
 val c :: d =
   (try xs.head :: xs
-  catch case _: NoSuchElementException => null :: xs): @unchecked
+  catch case _: NoSuchElementException => null :: xs).runtimeChecked
 
 val e :: f =
   {val zero = null :: Nil
   if xs.isEmpty then zero
-  else xs}: @unchecked
+  else xs}.runtimeChecked
 
 val j :: k =
   (for
     case (x: String) <- xs
-  yield x): @unchecked
+  yield x).runtimeChecked
 
-val (_: Int | _: AnyRef) = (??? : AnyRef): @unchecked
+val (_: Int | _: AnyRef) = (??? : AnyRef).runtimeChecked

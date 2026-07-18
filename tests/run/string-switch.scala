@@ -2,7 +2,7 @@
 import annotation.switch
 import util.Try
 
-object Test extends App {
+@main def Test =
 
   def species(name: String) = (name.toLowerCase : @switch) match {
     case "fido"                     => "dog"
@@ -66,4 +66,3 @@ object Test extends App {
   List("Ea", "FB", "cC", "xx", null).foreach { s =>
     println(s"$s ${s.##} ${Try(onceOnly(Iterator(s)))}")
   }
-}

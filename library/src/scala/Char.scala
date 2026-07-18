@@ -10,20 +10,17 @@
  * additional information regarding copyright ownership.
  */
 
-// DO NOT EDIT, CHANGES WILL BE LOST
-// This auto-generated code can be modified in "project/GenerateAnyVals.scala".
-// Afterwards, running "sbt generateSources" regenerates this source file.
-
 package scala
 
 import scala.language.`2.13`
+
+import scala.collection.immutable.NumericRange
 
 /** `Char`, a 16-bit unsigned integer (equivalent to Java's `char` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Char` are not
  *  represented by an object in the underlying runtime system.
  *
- *  There is an implicit conversion from [[scala.Char]] => [[scala.runtime.RichChar]]
- *  which provides useful non-primitive operations.
+ *  The companion object provides useful non-primitive operations as extension methods.
  */
 final abstract class Char private extends AnyVal {
   def toByte: Byte
@@ -34,14 +31,13 @@ final abstract class Char private extends AnyVal {
   def toFloat: Float
   def toDouble: Double
 
-  /**
- * Returns the bitwise negation of this value.
- * @example {{{
- * ~5 == -6
- * // in binary: ~00000101 ==
- * //             11111010
- * }}}
- */
+  /** Returns the bitwise negation of this value.
+   *  @example ```
+   *  ~5 == -6
+   *  // in binary: ~00000101 ==
+   *  //             11111010
+   *  ```
+   */
   def unary_~ : Int
   /** Returns this value, unmodified. */
   def unary_+ : Int
@@ -51,63 +47,69 @@ final abstract class Char private extends AnyVal {
   @deprecated("Adding a number and a String is deprecated. Use the string interpolation `s\"$num$str\"`", "2.13.0")
   def +(x: String): String
 
-  /**
-  * Returns this value bit-shifted left by the specified number of bits,
-  *         filling in the new right bits with zeroes.
-  * @example {{{ 6 << 3 == 48 // in binary: 0110 << 3 == 0110000 }}}
-  */
+  /** Returns this value bit-shifted left by the specified number of bits,
+   *         filling in the new right bits with zeroes.
+   *  @example
+   *  ```
+   *  6 << 3 == 48 // in binary: 0110 << 3 == 0110000
+   *  ```
+   *
+   *  @param x the number of bits to shift left
+   */
   def <<(x: Int): Int
-  /**
-  * Returns this value bit-shifted left by the specified number of bits,
-  *         filling in the new right bits with zeroes.
-  * @example {{{ 6 << 3 == 48 // in binary: 0110 << 3 == 0110000 }}}
-  */
+  /** Returns this value bit-shifted left by the specified number of bits,
+   *         filling in the new right bits with zeroes.
+   *  @example
+   *  ```
+   *  6 << 3 == 48 // in binary: 0110 << 3 == 0110000
+   *  ```
+   */
   @deprecated("shifting a value by a `Long` argument is deprecated (except when the value is a `Long`).\nCall `toInt` on the argument to maintain the current behavior and avoid the deprecation warning.", "2.12.7")
   def <<(x: Long): Int
-  /**
-  * Returns this value bit-shifted right by the specified number of bits,
-  *         filling the new left bits with zeroes.
-  * @example {{{ 21 >>> 3 == 2 // in binary: 010101 >>> 3 == 010 }}}
-  * @example {{{
-  * -21 >>> 3 == 536870909
-  * // in binary: 11111111 11111111 11111111 11101011 >>> 3 ==
-  * //            00011111 11111111 11111111 11111101
-  * }}}
-  */
+  /** Returns this value bit-shifted right by the specified number of bits,
+   *         filling the new left bits with zeroes.
+   *  @example ``` 21 >>> 3 == 2 // in binary: 010101 >>> 3 == 010 ```
+   *  @example ```
+   *  -21 >>> 3 == 536870909
+   *  // in binary: 11111111 11111111 11111111 11101011 >>> 3 ==
+   *  //            00011111 11111111 11111111 11111101
+   *  ```
+   *
+   *  @param x the number of bits to shift right
+   */
   def >>>(x: Int): Int
-  /**
-  * Returns this value bit-shifted right by the specified number of bits,
-  *         filling the new left bits with zeroes.
-  * @example {{{ 21 >>> 3 == 2 // in binary: 010101 >>> 3 == 010 }}}
-  * @example {{{
-  * -21 >>> 3 == 536870909
-  * // in binary: 11111111 11111111 11111111 11101011 >>> 3 ==
-  * //            00011111 11111111 11111111 11111101
-  * }}}
-  */
+  /** Returns this value bit-shifted right by the specified number of bits,
+   *         filling the new left bits with zeroes.
+   *  @example ``` 21 >>> 3 == 2 // in binary: 010101 >>> 3 == 010 ```
+   *  @example ```
+   *  -21 >>> 3 == 536870909
+   *  // in binary: 11111111 11111111 11111111 11101011 >>> 3 ==
+   *  //            00011111 11111111 11111111 11111101
+   *  ```
+   */
   @deprecated("shifting a value by a `Long` argument is deprecated (except when the value is a `Long`).\nCall `toInt` on the argument to maintain the current behavior and avoid the deprecation warning.", "2.12.7")
   def >>>(x: Long): Int
-  /**
-  * Returns this value bit-shifted right by the specified number of bits,
-  *         filling in the left bits with the same value as the left-most bit of this.
-  *         The effect of this is to retain the sign of the value.
-  * @example {{{
-  * -21 >> 3 == -3
-  * // in binary: 11111111 11111111 11111111 11101011 >> 3 ==
-  * //            11111111 11111111 11111111 11111101
-  * }}}
-  */
+  /** Returns this value bit-shifted right by the specified number of bits,
+   *         filling in the left bits with the same value as the left-most bit of this.
+   *         The effect of this is to retain the sign of the value.
+   *  @example ```
+   *  -21 >> 3 == -3
+   *  // in binary: 11111111 11111111 11111111 11101011 >> 3 ==
+   *  //            11111111 11111111 11111111 11111101
+   *  ```
+   *
+   *  @param x the number of bits to shift right
+   */
   def >>(x: Int): Int
-  /**
-  * Returns this value bit-shifted right by the specified number of bits,
-  *         filling in the left bits with the same value as the left-most bit of this.
-  *         The effect of this is to retain the sign of the value.
-  * @example {{{
-  * -21 >> 3 == -3
-  * // in binary: 11111111 11111111 11111111 11101011 >> 3 ==
-  * //            11111111 11111111 11111111 11111101
-  * }}}
-  */
+  /** Returns this value bit-shifted right by the specified number of bits,
+   *         filling in the left bits with the same value as the left-most bit of this.
+   *         The effect of this is to retain the sign of the value.
+   *  @example ```
+   *  -21 >> 3 == -3
+   *  // in binary: 11111111 11111111 11111111 11101011 >> 3 ==
+   *  //            11111111 11111111 11111111 11111101
+   *  ```
+   */
   @deprecated("shifting a value by a `Long` argument is deprecated (except when the value is a `Long`).\nCall `toInt` on the argument to maintain the current behavior and avoid the deprecation warning.", "2.12.7")
   def >>(x: Long): Int
 
@@ -141,19 +143,40 @@ final abstract class Char private extends AnyVal {
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
   def !=(x: Double): Boolean
 
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Byte): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Short): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Char): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Int): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Long): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Float): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Double): Boolean
 
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
@@ -171,19 +194,40 @@ final abstract class Char private extends AnyVal {
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
   def <=(x: Double): Boolean
 
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Byte): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Short): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Char): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Int): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Long): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Float): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Double): Boolean
 
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
@@ -201,251 +245,369 @@ final abstract class Char private extends AnyVal {
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
   def >=(x: Double): Boolean
 
-  /**
-  * Returns the bitwise OR of this value and `x`.
-  * @example {{{
-  * (0xf0 | 0xaa) == 0xfa
-  * // in binary:   11110000
-  * //            | 10101010
-  * //              --------
-  * //              11111010
-  * }}}
-  */
+  /** Returns the bitwise OR of this value and `x`.
+   *  @example ```
+   *  (0xf0 | 0xaa) == 0xfa
+   *  // in binary:   11110000
+   *  //            | 10101010
+   *  //              --------
+   *  //              11111010
+   *  ```
+   *
+   *  @param x the value to OR with this value
+   */
   def |(x: Byte): Int
-  /**
-  * Returns the bitwise OR of this value and `x`.
-  * @example {{{
-  * (0xf0 | 0xaa) == 0xfa
-  * // in binary:   11110000
-  * //            | 10101010
-  * //              --------
-  * //              11111010
-  * }}}
-  */
+  /** Returns the bitwise OR of this value and `x`.
+   *  @example ```
+   *  (0xf0 | 0xaa) == 0xfa
+   *  // in binary:   11110000
+   *  //            | 10101010
+   *  //              --------
+   *  //              11111010
+   *  ```
+   *
+   *  @param x the value to OR with this value
+   */
   def |(x: Short): Int
-  /**
-  * Returns the bitwise OR of this value and `x`.
-  * @example {{{
-  * (0xf0 | 0xaa) == 0xfa
-  * // in binary:   11110000
-  * //            | 10101010
-  * //              --------
-  * //              11111010
-  * }}}
-  */
+  /** Returns the bitwise OR of this value and `x`.
+   *  @example ```
+   *  (0xf0 | 0xaa) == 0xfa
+   *  // in binary:   11110000
+   *  //            | 10101010
+   *  //              --------
+   *  //              11111010
+   *  ```
+   *
+   *  @param x the value to OR with this value
+   */
   def |(x: Char): Int
-  /**
-  * Returns the bitwise OR of this value and `x`.
-  * @example {{{
-  * (0xf0 | 0xaa) == 0xfa
-  * // in binary:   11110000
-  * //            | 10101010
-  * //              --------
-  * //              11111010
-  * }}}
-  */
+  /** Returns the bitwise OR of this value and `x`.
+   *  @example ```
+   *  (0xf0 | 0xaa) == 0xfa
+   *  // in binary:   11110000
+   *  //            | 10101010
+   *  //              --------
+   *  //              11111010
+   *  ```
+   *
+   *  @param x the value to OR with this value
+   */
   def |(x: Int): Int
-  /**
-  * Returns the bitwise OR of this value and `x`.
-  * @example {{{
-  * (0xf0 | 0xaa) == 0xfa
-  * // in binary:   11110000
-  * //            | 10101010
-  * //              --------
-  * //              11111010
-  * }}}
-  */
+  /** Returns the bitwise OR of this value and `x`.
+   *  @example ```
+   *  (0xf0 | 0xaa) == 0xfa
+   *  // in binary:   11110000
+   *  //            | 10101010
+   *  //              --------
+   *  //              11111010
+   *  ```
+   *
+   *  @param x the value to OR with this value
+   */
   def |(x: Long): Long
 
-  /**
-  * Returns the bitwise AND of this value and `x`.
-  * @example {{{
-  * (0xf0 & 0xaa) == 0xa0
-  * // in binary:   11110000
-  * //            & 10101010
-  * //              --------
-  * //              10100000
-  * }}}
-  */
+  /** Returns the bitwise AND of this value and `x`.
+   *  @example ```
+   *  (0xf0 & 0xaa) == 0xa0
+   *  // in binary:   11110000
+   *  //            & 10101010
+   *  //              --------
+   *  //              10100000
+   *  ```
+   *
+   *  @param x the value to AND with this value
+   */
   def &(x: Byte): Int
-  /**
-  * Returns the bitwise AND of this value and `x`.
-  * @example {{{
-  * (0xf0 & 0xaa) == 0xa0
-  * // in binary:   11110000
-  * //            & 10101010
-  * //              --------
-  * //              10100000
-  * }}}
-  */
+  /** Returns the bitwise AND of this value and `x`.
+   *  @example ```
+   *  (0xf0 & 0xaa) == 0xa0
+   *  // in binary:   11110000
+   *  //            & 10101010
+   *  //              --------
+   *  //              10100000
+   *  ```
+   *
+   *  @param x the value to AND with this value
+   */
   def &(x: Short): Int
-  /**
-  * Returns the bitwise AND of this value and `x`.
-  * @example {{{
-  * (0xf0 & 0xaa) == 0xa0
-  * // in binary:   11110000
-  * //            & 10101010
-  * //              --------
-  * //              10100000
-  * }}}
-  */
+  /** Returns the bitwise AND of this value and `x`.
+   *  @example ```
+   *  (0xf0 & 0xaa) == 0xa0
+   *  // in binary:   11110000
+   *  //            & 10101010
+   *  //              --------
+   *  //              10100000
+   *  ```
+   *
+   *  @param x the value to AND with this value
+   */
   def &(x: Char): Int
-  /**
-  * Returns the bitwise AND of this value and `x`.
-  * @example {{{
-  * (0xf0 & 0xaa) == 0xa0
-  * // in binary:   11110000
-  * //            & 10101010
-  * //              --------
-  * //              10100000
-  * }}}
-  */
+  /** Returns the bitwise AND of this value and `x`.
+   *  @example ```
+   *  (0xf0 & 0xaa) == 0xa0
+   *  // in binary:   11110000
+   *  //            & 10101010
+   *  //              --------
+   *  //              10100000
+   *  ```
+   *
+   *  @param x the value to AND with this value
+   */
   def &(x: Int): Int
-  /**
-  * Returns the bitwise AND of this value and `x`.
-  * @example {{{
-  * (0xf0 & 0xaa) == 0xa0
-  * // in binary:   11110000
-  * //            & 10101010
-  * //              --------
-  * //              10100000
-  * }}}
-  */
+  /** Returns the bitwise AND of this value and `x`.
+   *  @example ```
+   *  (0xf0 & 0xaa) == 0xa0
+   *  // in binary:   11110000
+   *  //            & 10101010
+   *  //              --------
+   *  //              10100000
+   *  ```
+   *
+   *  @param x the value to AND with this value
+   */
   def &(x: Long): Long
 
-  /**
-  * Returns the bitwise XOR of this value and `x`.
-  * @example {{{
-  * (0xf0 ^ 0xaa) == 0x5a
-  * // in binary:   11110000
-  * //            ^ 10101010
-  * //              --------
-  * //              01011010
-  * }}}
-  */
+  /** Returns the bitwise XOR of this value and `x`.
+   *  @example ```
+   *  (0xf0 ^ 0xaa) == 0x5a
+   *  // in binary:   11110000
+   *  //            ^ 10101010
+   *  //              --------
+   *  //              01011010
+   *  ```
+   *
+   *  @param x the value to XOR with this value
+   */
   def ^(x: Byte): Int
-  /**
-  * Returns the bitwise XOR of this value and `x`.
-  * @example {{{
-  * (0xf0 ^ 0xaa) == 0x5a
-  * // in binary:   11110000
-  * //            ^ 10101010
-  * //              --------
-  * //              01011010
-  * }}}
-  */
+  /** Returns the bitwise XOR of this value and `x`.
+   *  @example ```
+   *  (0xf0 ^ 0xaa) == 0x5a
+   *  // in binary:   11110000
+   *  //            ^ 10101010
+   *  //              --------
+   *  //              01011010
+   *  ```
+   *
+   *  @param x the value to XOR with this value
+   */
   def ^(x: Short): Int
-  /**
-  * Returns the bitwise XOR of this value and `x`.
-  * @example {{{
-  * (0xf0 ^ 0xaa) == 0x5a
-  * // in binary:   11110000
-  * //            ^ 10101010
-  * //              --------
-  * //              01011010
-  * }}}
-  */
+  /** Returns the bitwise XOR of this value and `x`.
+   *  @example ```
+   *  (0xf0 ^ 0xaa) == 0x5a
+   *  // in binary:   11110000
+   *  //            ^ 10101010
+   *  //              --------
+   *  //              01011010
+   *  ```
+   *
+   *  @param x the value to XOR with this value
+   */
   def ^(x: Char): Int
-  /**
-  * Returns the bitwise XOR of this value and `x`.
-  * @example {{{
-  * (0xf0 ^ 0xaa) == 0x5a
-  * // in binary:   11110000
-  * //            ^ 10101010
-  * //              --------
-  * //              01011010
-  * }}}
-  */
+  /** Returns the bitwise XOR of this value and `x`.
+   *  @example ```
+   *  (0xf0 ^ 0xaa) == 0x5a
+   *  // in binary:   11110000
+   *  //            ^ 10101010
+   *  //              --------
+   *  //              01011010
+   *  ```
+   *
+   *  @param x the value to XOR with this value
+   */
   def ^(x: Int): Int
-  /**
-  * Returns the bitwise XOR of this value and `x`.
-  * @example {{{
-  * (0xf0 ^ 0xaa) == 0x5a
-  * // in binary:   11110000
-  * //            ^ 10101010
-  * //              --------
-  * //              01011010
-  * }}}
-  */
+  /** Returns the bitwise XOR of this value and `x`.
+   *  @example ```
+   *  (0xf0 ^ 0xaa) == 0x5a
+   *  // in binary:   11110000
+   *  //            ^ 10101010
+   *  //              --------
+   *  //              01011010
+   *  ```
+   *
+   *  @param x the value to XOR with this value
+   */
   def ^(x: Long): Long
 
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Byte): Int
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Short): Int
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Char): Int
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Int): Int
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Long): Long
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Float): Float
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Double): Double
 
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Byte): Int
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Short): Int
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Char): Int
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Int): Int
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Long): Long
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Float): Float
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Double): Double
 
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Byte): Int
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Short): Int
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Char): Int
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Int): Int
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Long): Long
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Float): Float
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Double): Double
 
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Byte): Int
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Short): Int
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Char): Int
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Int): Int
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Long): Long
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Float): Float
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Double): Double
 
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Byte): Int
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Short): Int
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Char): Int
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Int): Int
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Long): Long
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Float): Float
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Double): Double
 
-  // Provide a more specific return type for Scaladoc
-  override def getClass(): Class[Char] = ???
 }
 
 object Char extends AnyValCompanion {
@@ -455,34 +617,158 @@ object Char extends AnyValCompanion {
   /** The largest value representable as a Char. */
   final val MaxValue = java.lang.Character.MAX_VALUE
 
-  /** Transform a value type into a boxed reference type.
+  /** Transforms a value type into a boxed reference type.
    *
-   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToCharacter`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
+   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.boxToCharacter`. See [src/library/scala/runtime/BoxesRunTime.java](https://github.com/scala/scala).
    *
    *  @param  x   the Char to be boxed
    *  @return     a java.lang.Character offering `x` as its underlying value.
    */
   def box(x: Char): java.lang.Character = ???
 
-  /** Transform a boxed type into a value type.  Note that this
+  /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a java.lang.Character.
    *
-   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.unboxToChar`. See [[https://github.com/scala/scala src/library/scala/runtime/BoxesRunTime.java]].
+   *  Runtime implementation determined by `scala.runtime.BoxesRunTime.unboxToChar`. See [src/library/scala/runtime/BoxesRunTime.java](https://github.com/scala/scala).
    *
    *  @param  x   the java.lang.Character to be unboxed.
-   *  @throws     ClassCastException  if the argument is not a java.lang.Character
    *  @return     the Char resulting from calling charValue() on `x`
+   *  @throws     ClassCastException  if the argument is not a java.lang.Character
    */
   def unbox(x: java.lang.Object): Char = ???
 
-  /** The String representation of the scala.Char companion object. */
-  override def toString = "object scala.Char"
-  /** Language mandated coercions from Char to "wider" types. */
+  /** The `String` representation of the `scala.Char` companion object. */
+  override def toString() = "object scala.Char"
+  /** Language mandated coercions from `Char` to "wider" types.
+   *
+   *  @param x the `Char` value to convert
+   *  @return the value of `x` widened to the corresponding numeric type
+   */
   import scala.language.implicitConversions
   implicit def char2int(x: Char): Int = x.toInt
   implicit def char2long(x: Char): Long = x.toLong
   implicit def char2float(x: Char): Float = x.toFloat
   implicit def char2double(x: Char): Double = x.toDouble
-}
 
+  extension (self: Char) {
+
+    /** Returns `'''true'''` if this number has no decimal component.
+      * Always `'''true'''` for `RichInt`.
+      */
+    @deprecated("isWhole on Char is always true", "2.12.15")
+    def isWhole: Boolean = true
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Char]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    @deprecated("isValidChar on Char is always true", since = "3.10.0")
+    def isValidChar: Boolean = true
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Byte]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidByte: Boolean = self.toInt <= Byte.MaxValue.toInt
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Short]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidShort: Boolean = self.toInt <= Short.MaxValue.toInt
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Int]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    @deprecated("isValidInt on Char is always true", since = "3.10.0")
+    def isValidInt: Boolean = true
+
+    /** Returns the absolute value of `this`. */
+    @deprecated("Char's are never negative; abs is redundant and can be removed", since = "3.10.0")
+    def abs: Char = self
+
+    /** Returns `this` if `this > that` or `that` otherwise. */
+    def max(that: Char): Char = java.lang.Math.max(self.toInt, that.toInt).toChar
+
+    /** Returns `this` if `this < that` or `that` otherwise. */
+    def min(that: Char): Char = java.lang.Math.min(self.toInt, that.toInt).toChar
+
+    /** Returns the sign of `this`.
+      *
+      * zero if the argument is zero, -zero if the argument is -zero,
+      * one if the argument is greater than zero, -one if the argument is less than zero,
+      * and NaN if the argument is NaN where applicable.
+      */
+    @deprecated("since Char's are never negative, compare to '\\u0000' instead", since = "3.10.0")
+    def sign: Char = java.lang.Integer.signum(self.toInt).toChar
+
+    /** Returns the signum of `this`. */
+    @deprecated("use `sign` method instead", since = "2.13.0")
+    def signum: Int = self.sign
+
+    /** Compares `this` to `that` according to the standard total ordering.
+      *
+      * Returns:
+      * - a positive value if `this > that`
+      * - a negative value if `this < that`
+      * - `0` if `this == that`
+      */
+    def compare(that: Char): Int = java.lang.Character.compare(self, that)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def until(end: Char): NumericRange.Exclusive[Char] = NumericRange(self, end, '\u0001')
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def until(end: Char, step: Char): NumericRange.Exclusive[Char] = NumericRange(self, end, step)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def to(end: Char): NumericRange.Inclusive[Char] = NumericRange.inclusive(self, end, '\u0001')
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def to(end: Char, step: Char): NumericRange.Inclusive[Char] = NumericRange.inclusive(self, end, step)
+
+    // ------------------------------------
+    // Unicode properties
+
+    def asDigit: Int                      = Character.digit(self, Character.MAX_RADIX)
+
+    def isControl: Boolean                = Character.isISOControl(self)
+    def isDigit: Boolean                  = Character.isDigit(self)
+    def isLetter: Boolean                 = Character.isLetter(self)
+    def isLetterOrDigit: Boolean          = Character.isLetterOrDigit(self)
+    def isWhitespace: Boolean             = Character.isWhitespace(self)
+    def isSpaceChar: Boolean              = Character.isSpaceChar(self)
+    def isHighSurrogate: Boolean          = Character.isHighSurrogate(self)
+    def isLowSurrogate: Boolean           = Character.isLowSurrogate(self)
+    def isSurrogate: Boolean              = isHighSurrogate || isLowSurrogate
+    def isUnicodeIdentifierStart: Boolean = Character.isUnicodeIdentifierStart(self)
+    def isUnicodeIdentifierPart: Boolean  = Character.isUnicodeIdentifierPart(self)
+    def isIdentifierIgnorable: Boolean    = Character.isIdentifierIgnorable(self)
+    def isMirrored: Boolean               = Character.isMirrored(self)
+
+    def isLower: Boolean                  = Character.isLowerCase(self)
+    def isUpper: Boolean                  = Character.isUpperCase(self)
+    def isTitleCase: Boolean              = Character.isTitleCase(self)
+
+    def toLower: Char                     = Character.toLowerCase(self)
+    def toUpper: Char                     = Character.toUpperCase(self)
+    def toTitleCase: Char                 = Character.toTitleCase(self)
+
+    def getType: Int                      = Character.getType(self)
+    def getNumericValue: Int              = Character.getNumericValue(self)
+    def getDirectionality: Byte           = Character.getDirectionality(self)
+    def reverseBytes: Char                = Character.reverseBytes(self)
+  }
+}

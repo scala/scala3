@@ -3,7 +3,6 @@ package dotc
 package parsing
 package xml
 
-import scala.language.unsafeNulls
 import scala.compiletime.uninitialized
 
 import scala.collection.mutable
@@ -78,8 +77,9 @@ object MarkupParsers {
 
     import parser.{ symbXMLBuilder => handle }
 
-    def curOffset : Int = input.charOffset - 1
-    var tmppos : Span = NoSpan
+    def curOffset: Int = input.lastCharOffset
+
+    var tmppos: Span = NoSpan
     def ch: Char = input.ch
     /** this method assign the next character to ch and advances in input */
     def nextch(): Unit = { input.nextChar() }
@@ -170,10 +170,8 @@ object MarkupParsers {
       xTakeUntil(handle.charData, () => Span(start, curOffset, mid), "]]>")
     }
 
-    def xUnparsed: Tree = {
-      val start = curOffset
+    def xUnparsed(start: Int): Tree =
       xTakeUntil(handle.unparsed, () => Span(start, curOffset, start), "</xml:unparsed>")
-    }
 
     /** Comment ::= '<!--' ((Char - '-') | ('-' (Char - '-')))* '-->'
      *
@@ -277,7 +275,7 @@ object MarkupParsers {
      *                | xmlTag1 '/' '>'
      */
     def element: Tree = {
-      val start = curOffset // FIXME should be `curOffset - 1` (scalatest and tests/neg/i19100.scala must be updated)
+      val start = curOffset - 1 // include <
       val (qname, attrMap) = xTag(())
       if (ch == '/') { // empty element
         xToken("/>")
@@ -286,7 +284,7 @@ object MarkupParsers {
       else { // handle content
         xToken('>')
         if (qname == "xml:unparsed")
-          return xUnparsed
+          return xUnparsed(start)
 
         debugLastStartElement = (start, qname) :: debugLastStartElement
         val ts = content
@@ -364,7 +362,7 @@ object MarkupParsers {
         handle.isPattern = false
 
         val ts = new ArrayBuffer[Tree]
-        val start = curOffset
+        val start = curOffset - 1 // include <, start == parser.in.offset
         tmppos = Span(curOffset)    // Iuli: added this line, as it seems content_LT uses tmppos when creating trees
         content_LT(ts)
 
@@ -376,7 +374,7 @@ object MarkupParsers {
             content_LT(ts)
             charComingAfter(xSpaceOpt()) == '<'
           } do ()
-          handle.makeXMLseq(Span(start, curOffset, start), ts)
+          handle.makeXMLseq(Span(start, curOffset, start), ts, toVector = false)
         }
         else {
           assert(ts.length == 1, "Require one tree")
@@ -435,7 +433,7 @@ object MarkupParsers {
      *                  | Name [S] '/' '>'
      */
     def xPattern: Tree = {
-      var start = curOffset // FIXME should be `curOffset - 1` (scalatest and tests/neg/i19100.scala must be updated)
+      val start = curOffset - 1 // include <
       val qname = xName
       debugLastStartElement = (start, qname) :: debugLastStartElement
       xSpaceOpt()

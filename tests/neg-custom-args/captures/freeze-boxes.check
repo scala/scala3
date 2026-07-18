@@ -1,0 +1,12 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/freeze-boxes.scala:22:4 ----------------------------------
+21 |  val xs: Box[Ref^{}] = freeze:
+22 |    Box(a)  // error
+   |                        ^
+   |                        Found:    Box[Ref^{a.rd}]^{}
+   |                        Required: Box[Ref^{}]^{any.rd}
+   |
+   |                        Note that capability `a.rd` cannot flow into capture set {}.
+   |
+   |                        where:    any is a root capability classified as Unscoped in the type of value xs
+   |
+   | longer explanation available when compiling with `-explain`

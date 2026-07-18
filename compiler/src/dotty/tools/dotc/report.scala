@@ -20,6 +20,9 @@ object report:
   private def issueWarning(warning: Warning)(using Context): Unit =
     ctx.reporter.report(warning)
 
+  def configurationWarning(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
+    issueWarning(ConfigurationWarning(msg, pos.sourcePos))
+
   def deprecationWarning(msg: Message, pos: SrcPos, origin: String = "")(using Context): Unit =
     issueWarning(DeprecationWarning(msg, addInlineds(pos), origin))
 
@@ -52,6 +55,9 @@ object report:
     else issueWarning(new FeatureWarning(msg, pos.sourcePos))
   end featureWarning
 
+  def optimizerWarning(msg: String, site: String, pos: SrcPos)(using Context): Unit =
+    issueWarning(new OptimizerWarning(em"$msg", site, addInlineds(pos)))
+  
   def warning(msg: Message, pos: SrcPos, origin: String)(using Context): Unit =
     issueWarning(LintWarning(msg, addInlineds(pos), origin))
 
@@ -66,7 +72,7 @@ object report:
 
   def error(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     val fullPos = addInlineds(pos)
-    ctx.reporter.report(new Error(msg, fullPos))
+    ctx.reporter.report(Error(msg, fullPos))
     if ctx.settings.YdebugError.value then Thread.dumpStack()
 
   def error(msg: => String, pos: SrcPos)(using Context): Unit =
@@ -95,19 +101,21 @@ object report:
           |Cause:
           | ${ex.toString.replace("\n", "\n ")}
           |${stackTrace}"""
-    ctx.reporter.report(new Error(fullMsg, NoSourcePosition))
+    ctx.reporter.report(Error(fullMsg, NoSourcePosition))
 
   def errorOrMigrationWarning(msg: Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
-    if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
-      if sourceVersion != migrationVersion.errorFrom.prevMigrating then error(msg, pos)
-      else if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
-    else if sourceVersion.isAtLeast(migrationVersion.warnFrom) then warning(msg, pos)
+    if sourceVersion != SourceVersion.`2.13` then
+      // ignore errors or warningsfor Scala 2 stdlib sources
+      if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
+        if sourceVersion != migrationVersion.errorFrom.prevMigrating then error(msg, pos)
+        else if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
+      else if sourceVersion.isAtLeast(migrationVersion.warnFrom) then warning(msg, pos)
 
   def restrictionError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
     error(msg.mapMsg("Implementation restriction: " + _), pos)
 
   def incompleteInputError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
-    ctx.reporter.incomplete(new Error(msg, pos.sourcePos))
+    ctx.reporter.incomplete(Error(msg, pos.sourcePos))
 
   /** Log msg if settings.log contains the current phase.
    *  See [[config.CompilerCommand#explainAdvanced]] for the exact meaning of
@@ -144,13 +152,11 @@ object report:
       case Nil => pos
     recur(pos.sourcePos, tpd.enclosingInlineds)
 
-  private object messageRendering extends MessageRendering
-
   // Should only be called from Run#enrichErrorMessage.
   def enrichErrorMessage(errorMessage: String)(using Context): String =
     if ctx.settings.XnoEnrichErrorMessages.value then errorMessage
     else try enrichErrorMessage1(errorMessage)
-    catch case _: Throwable => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
+    catch case _: Exception => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
 
   private def enrichErrorMessage1(errorMessage: String)(using Context): String = {
     import untpd.*, config.Settings.*

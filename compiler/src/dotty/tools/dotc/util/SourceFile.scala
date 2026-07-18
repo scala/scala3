@@ -2,94 +2,86 @@ package dotty.tools
 package dotc
 package util
 
-import scala.language.unsafeNulls
-
 import dotty.tools.io.*
 import Spans.*
 import core.Contexts.*
+import core.Decorators.*
 
 import scala.io.Codec
 import Chars.*
 import scala.annotation.internal.sharable
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.compiletime.uninitialized
-import dotty.tools.dotc.util.chaining.*
 
 import java.io.File.separator
 import java.net.URI
 import java.nio.charset.StandardCharsets
-import java.nio.file.{FileSystemException, NoSuchFileException, Paths}
+import java.nio.file.{FileSystemException, Paths}
 import java.util.Optional
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.regex.Pattern
 
-object ScriptSourceFile {
-  @sharable private val headerPattern = Pattern.compile("""^(::)?!#.*(\r|\n|\r\n)""", Pattern.MULTILINE)
-  private val headerStarts  = List("#!", "::#!")
+object WrappedSourceFile:
+  enum MagicHeaderInfo:
+    case HasHeader(offset: Int, originalFile: SourceFile)
+    case NoHeader
+  import MagicHeaderInfo.*
 
-  /** Return true if has a script header */
-  def hasScriptHeader(content: Array[Char]): Boolean =
-    headerStarts.exists(content.startsWith(_))
+  /** Convert a (source, span) pair into a SourcePosition, remapping through the
+   *  magic offset header if applicable. */
+  def sourcePos(sourceFile: SourceFile, span: Span)(using Context): SourcePosition =
+    lookupMagicHeader(sourceFile) match
+      case HasHeader(offset, originalFile) if span.exists && span.start >= offset =>
+        originalFile.atSpan(span.shift(-offset))
+      case _ => sourceFile.atSpan(span)
 
-  def apply(file: AbstractFile, content: Array[Char]): SourceFile = {
-    /** Length of the script header from the given content, if there is one.
-     *  The header begins with "#!" or "::#!" and is either a single line,
-     *  or it ends with a line starting with "!#" or "::!#", if present.
-     */
-    val headerLength =
-      if (headerStarts exists (content startsWith _)) {
-        val matcher = headerPattern matcher content.mkString
-        if (matcher.find) matcher.end
-        else content.indexOf('\n') // end of first line
-      }
-      else 0
+  private def lookupMagicHeader(sourceFile: SourceFile)(using Context): MagicHeaderInfo =
+    val cache = ctx.base.magicHeaderCache
+    cache.lookup(sourceFile) match
+      case null =>
+        val magicHeader = ctx.settings.YmagicOffsetHeader.value
+        val result =
+          if magicHeader.isEmpty then NoHeader
+          else
+            val text = new String(sourceFile.content)
+            val headerQuoted = java.util.regex.Pattern.quote("///" + magicHeader)
+            val regex = s"(?m)^$headerQuoted:(.+)$$".r
+            regex.findFirstMatchIn(text) match
+              case Some(m) =>
+                val sourceStartOffset = sourceFile.nextLine(m.start)
+                val name = m.group(1).nn
+                val src = ctx.getSource(name)
+                if src.file.exists then
+                  HasHeader(sourceStartOffset, src)
+                else
+                  report.warning(em"original source file not found: $name")
+                  NoHeader
+              case None => NoHeader
+        cache(sourceFile) = result
+        result
+      case result => result
 
-    // overwrite hash-bang lines with all spaces to preserve line numbers
-    val hashBangLines = content.take(headerLength).mkString.split("\\r?\\n")
-    if hashBangLines.nonEmpty then
-      for i <- 0 until headerLength do
-        content(i) match {
-          case '\r' | '\n' =>
-          case _ =>
-            content(i) = ' '
-        }
-
-    new SourceFile(file, content) {
-      override val underlying = new SourceFile(this.file, this.content)
-    }
-  }
-}
-
-class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
-  import SourceFile.*
-
+class SourceFile private[util] (val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
   private var myContent: Array[Char] | Null = null
 
   /** The contents of the original source file. Note that this can be empty, for example when
    * the source is read from Tasty. */
   def content(): Array[Char] = {
     if (myContent == null) myContent = computeContent
-    myContent
+    myContent.nn
   }
-
-  private var _maybeInComplete: Boolean = false
-
-  def maybeIncomplete: Boolean = _maybeInComplete
 
   override def name: String = file.name
   override def path: String = file.path
-  override def jfile: Optional[JFile] = Optional.ofNullable(file.file)
+  override def jfile: Optional[JFile] = file.jfile
 
   override def equals(that: Any): Boolean =
     (this `eq` that.asInstanceOf[AnyRef]) || {
       that match {
-        case that : SourceFile => file == that.file && start == that.start
+        case that : SourceFile => file == that.file
         case _ => false
       }
     }
 
-  override def hashCode: Int = file.hashCode * 41 + start.hashCode
+  override def hashCode: Int = file.hashCode
 
   def apply(idx: Int): Char = content().apply(idx)
 
@@ -103,24 +95,9 @@ class SourceFile(val file: AbstractFile, computeContent: => Array[Char]) extends
   /** true for all source files except `NoSource` */
   def exists: Boolean = true
 
-  /** The underlying source file */
-  def underlying: SourceFile = this
-
-  /** The start of this file in the underlying source file */
-  def start: Int = 0
-
   def atSpan(span: Span): SourcePosition =
-    if (span.exists) SourcePosition(underlying, span)
+    if (span.exists) SourcePosition(this, span)
     else NoSourcePosition
-
-  def isSelfContained: Boolean = underlying eq this
-
-  /** Map a position to a position in the underlying source file.
-   *  For regular source files, simply return the argument.
-   */
-  def positionInUltimateSource(position: SourcePosition): SourcePosition =
-    if isSelfContained then position // return the argument
-    else SourcePosition(underlying, position.span shift start)
 
   private def calculateLineIndicesFromContents() = {
     val cs = content()
@@ -218,22 +195,20 @@ object SourceFile {
 
   implicit def fromContext(using Context): SourceFile = ctx.source
 
-  /** A source file with an underlying virtual file. The name is taken as a file system path
+  /** A source file with an underlying virtual file. The path is taken as a file system path
    *  with the local separator converted to "/". The last element of the path will be the simple name of the file.
    */
-  def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
-    SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
-      .tap(_._maybeInComplete = maybeIncomplete)
+  def virtual(name: String, content: String) =
+    new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
 
   /** A helper method to create a virtual source file for given URI.
-   *  It relies on SourceFile#virtual implementation to create the virtual file.
    */
   def virtual(uri: URI, content: String): SourceFile =
-    SourceFile(new VirtualFile(Paths.get(uri), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
+    virtual(java.nio.file.Path.of(uri).toString, content)
 
   /** Returns the relative path of `source` within the `reference` path
    *
-   *  It returns the absolute path of `source` if it is not contained in `reference`.
+   *  It returns the current path under `source.file.jpath` if it is not contained in `reference`.
    */
   def relativePath(source: SourceFile, reference: String): String = {
     val file = source.file
@@ -264,29 +239,18 @@ object SourceFile {
         val path = refPath.relativize(sourcePath)
         path.iterator.asScala.mkString("/")
       else
-        sourcePath.toString
+        jpath.toString
   }
 
-  /** Return true if file is a script:
-   *  if filename extension is not .scala and has a script header.
-   */
-  def isScript(file: AbstractFile | Null, content: Array[Char]): Boolean =
-    ScriptSourceFile.hasScriptHeader(content)
-
-  def apply(file: AbstractFile | Null, codec: Codec): SourceFile =
-    // Files.exists is slow on Java 8 (https://rules.sonarsource.com/java/tag/performance/RSPEC-3725),
-    // so cope with failure.
+  def apply(file: AbstractFile, codec: Codec): SourceFile =
     val chars =
       try new String(file.toByteArray, codec.charSet).toCharArray
-      catch
-        case _: FileSystemException => Array.empty[Char]
+      catch case _: FileSystemException => Array.empty[Char]
 
-    if isScript(file, chars) then
-      ScriptSourceFile(file, chars)
-    else
-      SourceFile(file, chars)
+    new SourceFile(file, chars)
 
-  def apply(file: AbstractFile | Null, computeContent: => Array[Char]): SourceFile = new SourceFile(file, computeContent)
+  def apply(file: AbstractFile, contents: => Array[Char]): SourceFile =
+    new SourceFile(file, contents)
 }
 
 @sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {

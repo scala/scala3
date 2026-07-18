@@ -27,22 +27,26 @@ import Decorators.i
 object CapturingType:
 
   /** Smart constructor that
-   *   - drops empty capture sets
+   *   - drops empty capture sets, except on Any
    *   - fuses compatible capturing types.
    *  An outer type capturing type A can be fused with an inner capturing type B if their
    *  boxing status is the same or if A is boxed.
    */
   def apply(parent: Type, refs: CaptureSet, boxed: Boolean = false)(using Context): Type =
-    assert(!boxed || !parent.derivesFrom(defn.Caps_CapSet))
-    if refs.isAlwaysEmpty && !refs.keepAlways then parent
+    assert(!boxed || !parent.derivesFromCapSet)
+    if refs.isAlwaysEmpty && !parent.isAny && !refs.keepAlways && !parent.derivesFromCapability then
+      parent
     else parent match
+      case parent @ CapturingType(parent1, refs1) if refs == CaptureSet.Fluid =>
+        // <fluid> displaces existing capture sets whether boxed or not
+        apply(parent1, refs, boxed)
       case parent @ CapturingType(parent1, refs1) if boxed || !parent.isBoxed =>
         apply(parent1, refs ++ refs1, boxed)
       case _ =>
-        if parent.derivesFromMutable then refs.setMutable()
-        val classifier = parent.classifier
-        refs.adoptClassifier(parent.classifier)
-        AnnotatedType(parent, CaptureAnnotation(refs, boxed)(defn.RetainsAnnot))
+        val refs1 =
+          if parent.derivesFromStateful then refs.associateWithStateful() else refs
+        refs1.adoptClassifier(parent.inheritedClassifier)
+        AnnotatedType(parent, CaptureAnnotation(refs1, boxed)(defn.RetainsAnnot))
 
   /** An extractor for CapturingTypes. Capturing types are recognized if
    *   - the annotation is a CaptureAnnotation and we are not past CheckCapturingPhase, or
@@ -59,7 +63,7 @@ object CapturingType:
     case AnnotatedType(parent, ann: CaptureAnnotation)
     if isCaptureCheckingOrSetup =>
       Some((parent, ann.refs))
-    case AnnotatedType(parent, ann) if ann.symbol.isRetains && alsoRetains =>
+    case AnnotatedType(parent, ann: RetainingAnnotation) if ann.isStrict && alsoRetains =>
       // There are some circumstances where we cannot map annotated types
       // with retains annotations to capturing types, so this second recognizer
       // path still has to exist. One example is when checking capture sets
@@ -74,7 +78,7 @@ object CapturingType:
       //
       // TODO In other situations we expect that the type is already transformed to a
       // CapturingType and we should crash if this not the case.
-      try Some((parent, ann.tree.toCaptureSet))
+      try Some((parent, ann.toCaptureSet))
       catch case ex: IllegalCaptureRef => None
     case _ =>
       None

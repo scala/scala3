@@ -31,4 +31,5 @@
 33 |class D extends A:  // error
    |^
    |No given instance of type Singleton{type Self = D.this.Elem} was found for inferring the implementation of the deferred given instance given_Singleton_Elem in trait A. Failed to synthesize an instance of type Singleton{type Self = D.this.Elem}: D.this.Elem is not a singleton
+   |
 34 |  type Elem = Int

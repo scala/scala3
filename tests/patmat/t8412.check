@@ -1,1 +1,8 @@
-7: Pattern Match Exhaustivity: Lit(_)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t8412.scala:7:4 -----
+7 |    tree match {
+  |    ^^^^
+  |    match may not be exhaustive.
+  |
+  |    It would fail on pattern case: Lit(_)
+  |
+  | longer explanation available when compiling with `-explain`

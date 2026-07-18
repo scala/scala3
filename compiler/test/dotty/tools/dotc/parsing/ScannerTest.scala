@@ -2,10 +2,10 @@ package dotty.tools
 package dotc
 package parsing
 
-import dotty.tools.io._
+import dotty.tools.io.*
 import scala.io.Codec
-import util._
-import Tokens._, Scanners._
+import util.*
+import Tokens.*, Scanners.*
 import org.junit.Test
 
 class ScannerTest extends DottyTest {
@@ -33,12 +33,12 @@ class ScannerTest extends DottyTest {
   def scanDir(path: String): Unit = scanDir(Directory(path))
 
   def scanDir(dir: Directory): Unit = {
-    if (excluded exists (dir.jpath.toString endsWith _))
+    if excluded.exists(dir.jpath.toString.endsWith(_)) then
       println(s"excluded package: ${dir.toAbsolute.jpath}")
     else
       for (f <- dir.files)
         if (f.name.endsWith(".scala"))
-          if (excluded exists (f.jpath.toString endsWith _))
+          if excluded.exists(f.jpath.toString.endsWith(_)) then
             println(s"excluded file: ${f.toAbsolute.jpath}")
           else
             scan(new PlainFile(f))
@@ -48,7 +48,6 @@ class ScannerTest extends DottyTest {
 
   @Test
   def scanList() = {
-    println(System.getProperty("user.dir"))
     scan("compiler/src/dotty/tools/dotc/core/Symbols.scala")
     scan("compiler/src/dotty/tools/dotc/core/Symbols.scala")
   }

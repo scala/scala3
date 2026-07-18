@@ -1,13 +1,14 @@
 package scala.compiletime
 package testing
 
+import language.experimental.captureChecking
+
 /** Whether the code type checks in the current context?
  *
  *  An inline definition with a call to `typeChecks` should be transparent.
  *
- *  @param code The code to be type checked
- *
- *  @return false if the code has syntax error or type error in the current context, otherwise returns true.
+ *  @param code a string literal containing the Scala code to type-check at compile time
+ *  @return `true` if the code type-checks successfully, `false` if the code has a syntax or type error in the current context.
  *
  *  The code should be a sequence of expressions or statements that may appear in a block.
  */
@@ -24,9 +25,8 @@ transparent inline def typeChecks(inline code: String): Boolean =
  *
  *  An inline definition with a call to `typeCheckErrors` should be transparent.
  *
- *  @param code The code to be type checked
- *
- *  @return a list of errors encountered during parsing and typechecking.
+ *  @param code a string literal containing the Scala code to type-check at compile time
+ *  @return an empty list if the code type-checks successfully, or a list of `Error` values describing the errors encountered during parsing and type-checking.
  *
  *  The code should be a sequence of expressions or statements that may appear in a block.
  */

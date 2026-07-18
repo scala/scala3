@@ -1,0 +1,12 @@
+-- [E173] Reference Error: tests/neg/i8194.scala:5:22 ------------------------------------------------------------------
+5 |@main def main = Test.foo // error
+  |                 ^^^^^^^^
+  |   class A cannot be accessed as a member of (Test : Test.type) from the top-level definitions in package <empty>.
+  |     private class A can only be accessed from object Test.
+  |---------------------------------------------------------------------------------------------------------------------
+  |Inline stack trace
+  |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+  |This location contains code that was inlined from i8194.scala:3
+3 |  inline def foo: Int = A().test
+  |                        ^
+   ---------------------------------------------------------------------------------------------------------------------

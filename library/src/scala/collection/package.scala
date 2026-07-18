@@ -13,6 +13,7 @@
 package scala
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 package object collection {
   @deprecated("Use Iterable instead of Traversable", "2.13.0")
@@ -63,9 +64,14 @@ package object collection {
   /** An extractor used to head/tail deconstruct sequences. */
   object +: {
     /** Splits a sequence into head +: tail.
-      * @return Some((head, tail)) if sequence is non-empty. None otherwise.
-      */
-    def unapply[A, CC[_] <: Seq[_], C <: SeqOps[A, CC, C]](t: C with SeqOps[A, CC, C]): Option[(A, C)] =
+     *
+     *  @tparam A the element type of the sequence
+     *  @tparam CC the type constructor of the sequence (e.g., `List`, `Vector`)
+     *  @tparam C the concrete sequence type, providing `SeqOps[A, CC, C]` for `head`/`tail` operations
+     *  @param t the sequence to deconstruct into its head and tail
+     *  @return `Some((head, tail))` if the sequence is non-empty, `None` otherwise
+     */
+    def unapply[A, CC[_] <: Seq[?], C <: SeqOps[A, CC, C]](t: (C & SeqOps[A, CC, C])^): Option[(A, C^{t})] =
       if(t.isEmpty) None
       else Some(t.head -> t.tail)
   }
@@ -73,9 +79,14 @@ package object collection {
   /** An extractor used to init/last deconstruct sequences. */
   object :+ {
     /** Splits a sequence into init :+ last.
-      * @return Some((init, last)) if sequence is non-empty. None otherwise.
-      */
-    def unapply[A, CC[_] <: Seq[_], C <: SeqOps[A, CC, C]](t: C with SeqOps[A, CC, C]): Option[(C, A)] =
+     *
+     *  @tparam A the element type of the sequence
+     *  @tparam CC the type constructor of the sequence (e.g., `List`, `Vector`)
+     *  @tparam C the concrete sequence type, providing `SeqOps[A, CC, C]` for `init`/`last` operations
+     *  @param t the sequence to deconstruct into its init and last element
+     *  @return `Some((init, last))` if the sequence is non-empty, `None` otherwise
+     */
+    def unapply[A, CC[_] <: Seq[?], C <: SeqOps[A, CC, C]](t: (C & SeqOps[A, CC, C])^): Option[(C^{t}, A)] =
       if(t.isEmpty) None
       else Some(t.init -> t.last)
   }

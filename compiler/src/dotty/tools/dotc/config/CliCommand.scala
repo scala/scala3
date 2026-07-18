@@ -4,6 +4,7 @@ package config
 import Settings.*
 import core.Contexts.*
 import printing.Highlighting
+import reporting.NoExplanation
 
 import dotty.tools.dotc.util.chaining.*
 import scala.PartialFunction.cond
@@ -43,7 +44,7 @@ trait CliCommand:
 
     // expand out @filename to the contents of that filename
     def expandedArguments = args.toList flatMap {
-      case x if x startsWith "@"  => CommandLineParser.expandArg(x)
+      case x if x.startsWith("@") => CommandLineParser.expandArg(x)
       case x                      => List(x)
     }
 
@@ -51,7 +52,7 @@ trait CliCommand:
   end distill
 
   /** Creates a help message for a subset of options based on cond */
-  protected def availableOptionsMsg(p: Setting[?] => Boolean, showArgFileMsg: Boolean = true)(using settings: ConcreteSettings)(using SettingsState): String =
+  protected def availableOptionsMsg(p: Setting[?] => Boolean, shortDescription: Boolean = true, showArgFileMsg: Boolean = true)(using settings: ConcreteSettings)(using SettingsState): String =
     // result is (Option Name, descrption\ndefault: value\nchoices: x, y, z
     def help(s: Setting[?]): (String, String) =
       // For now, skip the default values that do not make sense for the end user, such as 'false' for the version command.
@@ -59,7 +60,10 @@ trait CliCommand:
         case _: Int | _: String => s.default.toString
         case _ => ""
       val deprecationMessage = s.deprecation.map(d => s"Option deprecated.\n${d.msg}").getOrElse("")
-      val info = List(deprecationMessage, shortHelp(s), if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices : ${s.legalChoices}" else "")
+      val descr =
+        if shortDescription then s.description.linesIterator.next()
+        else s.description
+      val info = List(deprecationMessage, descr, if defaultValue.nonEmpty then s"Default $defaultValue" else "", if s.legalChoices.nonEmpty then s"Choices: ${s.legalChoices}" else "")
       (s.name, info.filter(_.nonEmpty).mkString("\n"))
     end help
 
@@ -93,8 +97,6 @@ trait CliCommand:
     s.name.startsWith("-X") && s.name != "-X"
   protected def isPrivate(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
     s.name.startsWith("-Y") && s.name != "-Y"
-  protected def shortHelp(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): String =
-    s.description.linesIterator.next()
   protected def isHelping(s: Setting[?])(using settings: ConcreteSettings)(using SettingsState): Boolean =
     cond(s.value) {
       case ss: List[?] if s.isMultivalue => ss.contains("help")
@@ -125,7 +127,8 @@ trait CliCommand:
    */
   def checkUsage(summary: ArgsSummary, sourcesRequired: Boolean)(using settings: ConcreteSettings)(using SettingsState, Context): Option[List[String]] =
     // Print all warnings encountered during arguments parsing
-    summary.warnings.foreach(report.warning(_))
+    for warning <- summary.warnings; message = NoExplanation(warning) do
+      report.configurationWarning(message)
 
     if summary.errors.nonEmpty then
       summary.errors foreach (report.error(_))

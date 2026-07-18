@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings -deprecation -feature
+//> using options -Werror -deprecation -feature
 
 object Unapply {
   def unapply(a: Any): Option[(Int, Int)] =

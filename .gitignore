@@ -39,6 +39,10 @@ metals.sbt
 .scala-build
 sbt-launch.jar
 
+.claude
+.cursor
+.cursorrules
+
 # Partest
 dotty.jar
 dotty-lib.jar
@@ -61,12 +65,13 @@ testlogs/
 /.cache-tests
 
 # Put local stuff here
-local/
+/local/
 
 /bin/.cp
 
 before-pickling.txt
 after-pickling.txt
+after-printing.txt
 bench/compile.txt
 
 community-build/scala3-bootstrapped.version
@@ -100,3 +105,6 @@ docs/_spec/.jekyll-metadata
 
 # scaladoc related
 scaladoc/output/
+
+# only used in local development
+.enable_bsp_all_projects

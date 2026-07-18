@@ -1,4 +1,7 @@
 package scala.runtime
+
+import language.experimental.captureChecking
+
 import annotation.experimental
 
 /** A helper type to allow syntax like
@@ -8,4 +11,4 @@ import annotation.experimental
  *  Used in desugar.throws.
  */
 @experimental
-infix type $throws[R, +E <: Exception] = CanThrow[E] ?=> R
+infix type `$throws`[R, +E <: Exception] = CanThrow[E] ?=> R

@@ -1,8 +1,6 @@
 package dotty
 
-import scala.language.unsafeNulls
-
-import java.nio.file._
+import java.nio.file.*
 
 /** Runtime properties from defines or environmnent */
 object Properties {
@@ -51,60 +49,54 @@ object Properties {
    */
   val testsSafeMode: Boolean = sys.props.isDefinedAt("dotty.tests.safemode")
 
+  /** Enable Scoverage instrumentation for compilation tests */
+  val testsInstrumentCoverage: Boolean = propIsTrue("dotty.tests.instrumentCoverage")
+
   /** Extra directory containing sources for the compiler */
   def dottyCompilerManagedSources: Path = Paths.get(sys.props("dotty.tests.dottyCompilerManagedSources"))
 
   /** dotty-interfaces jar */
-  def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces")
-
-  /** dotty-library jar */
-  def dottyLibrary: String = sys.props("dotty.tests.classes.dottyLibrary")
-
-  /** dotty-library-js jar */
-  def dottyLibraryJS: String = sys.props("dotty.tests.classes.dottyLibraryJS")
+  def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces").nn
 
   /** dotty-compiler jar */
-  def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler")
+  def dottyCompiler: String = sys.props("dotty.tests.classes.dottyCompiler").nn
 
   /** dotty-staging jar */
-  def dottyStaging: String = sys.props("dotty.tests.classes.dottyStaging")
+  def dottyStaging: String = sys.props("dotty.tests.classes.dottyStaging").nn
 
   /** dotty-tasty-inspector jar */
-  def dottyTastyInspector: String = sys.props("dotty.tests.classes.dottyTastyInspector")
+  def dottyTastyInspector: String = sys.props("dotty.tests.classes.dottyTastyInspector").nn
 
   /** tasty-core jar */
-  def tastyCore: String = sys.props("dotty.tests.classes.tastyCore")
+  def tastyCore: String = sys.props("dotty.tests.classes.tastyCore").nn
 
   /** compiler-interface jar */
-  def compilerInterface: String = sys.props("dotty.tests.classes.compilerInterface")
+  def compilerInterface: String = sys.props("dotty.tests.classes.compilerInterface").nn
 
   /** scala-library jar */
-  def scalaLibrary: String = sys.props("dotty.tests.classes.scalaLibrary")
+  def scalaLibrary: String = sys.props("dotty.tests.classes.scalaLibrary").nn
 
-  /** scala-library TASTy jar */
-  def scalaLibraryTasty: Option[String] = sys.props.get("dotty.tests.tasties.scalaLibrary")
+  // TODO: Remove this once we migrate the test suite
+  def usingScalaLibraryCCTasty: Boolean = true
 
-  /** If we are using the scala-library TASTy jar */
-  def usingScalaLibraryTasty: Boolean = scalaLibraryTasty.isDefined
-  /** If we are using the scala-library TASTy jar */
-
-  def usingScalaLibraryCCTasty: Boolean = scalaLibraryTasty.exists(_.contains("scala2-library-cc-tasty"))
+  // TODO: Remove this once we migrate the test suite
+  def usingScalaLibraryTasty: Boolean = true
 
   /** scala-asm jar */
-  def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm")
+  def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm").nn
 
   /** jline-terminal jar */
-  def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal")
+  def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal").nn
 
   /** jline-reader jar */
-  def jlineReader: String = sys.props("dotty.tests.classes.jlineReader")
+  def jlineReader: String = sys.props("dotty.tests.classes.jlineReader").nn
 
   /** scalajs-javalib jar */
-  def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib")
+  def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib").nn
 
   /** scalajs-scalalib jar */
-  def scalaJSScalalib: String = sys.props("dotty.tests.classes.scalaJSScalalib")
+  def scalaJSScalalib: String = sys.props("dotty.tests.classes.scalaJSScalalib").nn
 
   /** scalajs-library jar */
-  def scalaJSLibrary: String = sys.props("dotty.tests.classes.scalaJSLibrary")
+  def scalaJSLibrary: String = sys.props("dotty.tests.classes.scalaJSLibrary").nn
 }

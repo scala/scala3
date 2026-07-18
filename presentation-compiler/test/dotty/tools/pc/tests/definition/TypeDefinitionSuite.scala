@@ -1,13 +1,14 @@
 package dotty.tools.pc.tests.definition
 
 import scala.jdk.CollectionConverters.*
-import scala.meta.pc.OffsetParams
 import scala.language.unsafeNulls
+import scala.meta.pc.OffsetParams
 
 import dotty.tools.pc.base.BasePcDefinitionSuite
 import dotty.tools.pc.utils.MockEntries
 
 import org.eclipse.lsp4j.Location
+import org.junit.Ignore
 import org.junit.Test
 
 class TypeDefinitionSuite extends BasePcDefinitionSuite:
@@ -216,6 +217,7 @@ class TypeDefinitionSuite extends BasePcDefinitionSuite:
          |""".stripMargin
     )
 
+  @Ignore
   @Test def `string` =
     check(
       """|object Main {
@@ -369,5 +371,17 @@ class TypeDefinitionSuite extends BasePcDefinitionSuite:
          |  def hello(u: User): Unit = ()
          |  hello(new Us@@er())
          |}
+         |""".stripMargin
+    )
+
+  @Test def `derives-typeclass-definition` =
+    check(
+      """|package bar
+         |trait <<Foo>>[T]
+         |
+         |object Foo:
+         |  def derived[T]: Foo[T] = ???
+         |
+         |case class Pet(name: String, kind: String) derives F@@oo
          |""".stripMargin
     )

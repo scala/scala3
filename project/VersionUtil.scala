@@ -1,3 +1,5 @@
+package dotty.tools.sbtplugin
+
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
 import org.eclipse.jgit.lib.{Constants, ObjectId, Ref, Repository}
 import org.eclipse.jgit.revwalk.{RevCommit, RevWalk}
@@ -30,6 +32,9 @@ object VersionUtil {
       .build()
     new JGit(repo)
   }
+
+  /** Full SHA hash of the current commit */
+  def gitHashFull: String = git.headCommitSha
 
   /** Seven letters of the SHA hash is considered enough to uniquely identify a
    *  commit, albeit extremely large projects - such as the Linux kernel - need

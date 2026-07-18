@@ -1,4 +1,3 @@
-import language.experimental.into
 import Conversion.into
 
 class Text(str: String)

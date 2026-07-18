@@ -1,5 +1,7 @@
 package scala
 
+import language.experimental.captureChecking
+
 /* (EXPERIMENTAL) NEW DOCUMENTATION: This should be used when we stabilize erased definitions or other generalize other function types.
  *
  * Marker trait for many (poly) function types.

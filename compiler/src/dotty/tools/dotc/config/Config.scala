@@ -66,13 +66,6 @@ object Config {
    */
   inline val checkNoSkolemsInInfo = false
 
-  /** Check that Name#toString is not called directly from backend by analyzing
-   *  the stack trace of each toString call on names. This is very expensive,
-   *  so not suitable for continuous testing. But it can be used to find a problem
-   *  when running a specific test.
-   */
-  inline val checkBackendNames = false
-
   /** Check that re-used type comparers are in their initialization state */
   inline val checkTypeComparerReset = false
 

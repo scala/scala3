@@ -296,7 +296,7 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|TestClass()
          |TestClass
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `multiple-extra-new-constructors-class-1` =
@@ -418,7 +418,6 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
          |""".stripMargin,
       includeCompletionKind = true
     )
-
 
   // TODO We first need to detect support when to add additional braces / colon
   // missing:
@@ -558,4 +557,3 @@ class CompletionExtraConstructorSuite extends BaseCompletionSuite:
       """|TestObject test
          |""".stripMargin
     )
-

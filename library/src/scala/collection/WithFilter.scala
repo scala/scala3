@@ -13,6 +13,7 @@
 package scala.collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 /** A template trait that contains just the `map`, `flatMap`, `foreach` and `withFilter` methods
   * of trait `Iterable`.
@@ -34,7 +35,7 @@ abstract class WithFilter[+A, +CC[_]] extends Serializable {
     *                the given function `f` to each element of the filtered outer $coll
     *                and collecting the results.
     */
-  def map[B](f: A => B): CC[B]
+  def map[B](f: A => B): CC[B]^{this, f}
 
   /** Builds a new collection by applying a function to all elements of the
     * `filtered` outer $coll containing this `WithFilter` instance that satisfy
@@ -46,7 +47,7 @@ abstract class WithFilter[+A, +CC[_]] extends Serializable {
     *                of the filtered outer $coll and
     *                concatenating the results.
     */
-  def flatMap[B](f: A => IterableOnce[B]): CC[B]
+  def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f}
 
   /** Applies a function `f` to all elements of the `filtered` outer $coll.
     *
@@ -67,6 +68,6 @@ abstract class WithFilter[+A, +CC[_]] extends Serializable {
     *             All these operations apply to those elements of this $coll which
     *             also satisfy both `p` and `q` predicates.
     */
-  def withFilter(q: A => Boolean): WithFilter[A, CC]
+  def withFilter(q: A => Boolean): WithFilter[A, CC]^{this, q}
 
 }

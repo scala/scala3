@@ -32,4 +32,4 @@ Hence, dependent projects also have to be experimental.
 Some experimental language features that are still in research and development can be enabled with special compiler options. These include
 
 * [`-Yexplicit-nulls`](./explicit-nulls.md). Enable support for tracking null references in the type system.
-* [`-Ycc`](./cc.md). Enable support for capture checking.
+* [`-Ycc`](./capture-checking/cc.md). Enable support for capture checking.

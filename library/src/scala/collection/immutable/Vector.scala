@@ -14,6 +14,8 @@ package scala.collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.lang.Math.{abs, max => mmax, min => mmin}
 import java.util.Arrays.{copyOf, copyOfRange}
 import java.util.{Arrays, Spliterator}
@@ -25,18 +27,18 @@ import scala.collection.generic.{CommonErrors, DefaultSerializable}
 import scala.collection.immutable.VectorInline._
 import scala.collection.immutable.VectorStatics._
 import scala.collection.mutable.ReusableBuilder
-
+import scala.runtime.ScalaRunTime.nullForGC
 
 /** $factoryInfo
-  * @define Coll `Vector`
-  * @define coll vector
-  */
+ *  @define Coll `Vector`
+ *  @define coll vector
+ */
 @SerialVersionUID(3L)
 object Vector extends StrictOptimizedSeqFactory[Vector] {
 
   def empty[A]: Vector[A] = Vector0
 
-  def from[E](it: collection.IterableOnce[E]): Vector[E] =
+  def from[E](it: collection.IterableOnce[E]^): Vector[E] =
     it match {
       case v: Vector[E] => v
       case _ =>
@@ -44,9 +46,9 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
         if (knownSize == 0) empty[E]
         else if (knownSize > 0 && knownSize <= WIDTH) {
           val a1: Arr1 = it match {
-            case as: ArraySeq.ofRef[_] if as.elemTag.runtimeClass == classOf[AnyRef] =>
+            case as: ArraySeq.ofRef[?] if as.elemTag.runtimeClass == classOf[AnyRef] =>
               as.unsafeArray.asInstanceOf[Arr1]
-            case it: Iterable[E] =>
+            case it: Iterable[E @unchecked] =>
               val a1 = new Arr1(knownSize)
               @annotation.unused val copied = it.copyToArray(a1.asInstanceOf[Array[Any]])
               //assert(copied == knownSize)
@@ -65,12 +67,17 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
 
   def newBuilder[A]: ReusableBuilder[A, Vector[A]] = new VectorBuilder[A]
 
-  /** Create a Vector with the same element at each index.
-    *
-    * Unlike `fill`, which takes a by-name argument for the value and can thereby
-    * compute different values for each index, this method guarantees that all
-    * elements are identical. This allows sparse allocation in O(log n) time and space.
-    */
+  /** Creates a Vector with the same element at each index.
+   *
+   *  Unlike `fill`, which takes a by-name argument for the value and can thereby
+   *  compute different values for each index, this method guarantees that all
+   *  elements are identical. This allows sparse allocation in O(log n) time and space.
+   *
+   *  @tparam A the element type of the vector
+   *  @param n the number of elements in the vector
+   *  @param elem the element to fill every position with
+   *  @return a new vector of size `n` with each element set to `elem`
+   */
   private[collection] def fillSparse[A](n: Int)(elem: A): Vector[A] = {
     //TODO Make public; this method is private for now because it is not forward binary compatible
     if(n <= 0) Vector0
@@ -94,26 +101,28 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
 
 
 /** Vector is a general-purpose, immutable data structure.  It provides random access and updates
-  * in O(log n) time, as well as very fast append/prepend/tail/init (amortized O(1), worst case O(log n)).
-  * Because vectors strike a good balance between fast random selections and fast random functional updates,
-  * they are currently the default implementation of immutable indexed sequences.
-  *
-  * Vectors are implemented by radix-balanced finger trees of width 32. There is a separate subclass
-  * for each level (0 to 6, with 0 being the empty vector and 6 a tree with a maximum width of 64 at the
-  * top level).
-  *
-  * Tree balancing:
-  * - Only the first dimension of an array may have a size < WIDTH
-  * - In a `data` (central) array the first dimension may be up to WIDTH-2 long, in `prefix1` and `suffix1` up
-  *   to WIDTH, and in other `prefix` and `suffix` arrays up to WIDTH-1
-  * - `prefix1` and `suffix1` are never empty
-  * - Balancing does not cross the main data array (i.e. prepending never touches the suffix and appending never touches
-  *   the prefix). The level is increased/decreased when the affected side plus main data is already full/empty
-  * - All arrays are left-aligned and truncated
-  *
-  * In addition to the data slices (`prefix1`, `prefix2`, ..., `dataN`, ..., `suffix2`, `suffix1`) we store a running
-  * count of elements after each prefix for more efficient indexing without having to dereference all prefix arrays.
-  */
+ *  in O(log n) time, as well as very fast append/prepend/tail/init (amortized O(1), worst case O(log n)).
+ *  Because vectors strike a good balance between fast random selections and fast random functional updates,
+ *  they are currently the default implementation of immutable indexed sequences.
+ *
+ *  Vectors are implemented by radix-balanced finger trees of width 32. There is a separate subclass
+ *  for each level (0 to 6, with 0 being the empty vector and 6 a tree with a maximum width of 64 at the
+ *  top level).
+ *
+ *  Tree balancing:
+ *  - Only the first dimension of an array may have a size < WIDTH
+ *  - In a `data` (central) array the first dimension may be up to WIDTH-2 long, in `prefix1` and `suffix1` up
+ *   to WIDTH, and in other `prefix` and `suffix` arrays up to WIDTH-1
+ *  - `prefix1` and `suffix1` are never empty
+ *  - Balancing does not cross the main data array (i.e. prepending never touches the suffix and appending never touches
+ *   the prefix). The level is increased/decreased when the affected side plus main data is already full/empty
+ *  - All arrays are left-aligned and truncated
+ *
+ *  In addition to the data slices (`prefix1`, `prefix2`, ..., `dataN`, ..., `suffix2`, `suffix1`) we store a running
+ *  count of elements after each prefix for more efficient indexing without having to dereference all prefix arrays.
+ *
+ *  @tparam A the element type of the vector
+ */
 sealed abstract class Vector[+A] private[immutable] (private[immutable] final val prefix1: Arr1)
   extends AbstractSeq[A]
     with IndexedSeq[A]
@@ -125,7 +134,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
   override def iterableFactory: SeqFactory[Vector] = Vector
 
   override final def length: Int =
-    if(this.isInstanceOf[BigVector[_]]) this.asInstanceOf[BigVector[_]].length0
+    if(this.isInstanceOf[BigVector[?]]) this.asInstanceOf[BigVector[?]].length0
     else prefix1.length
 
   override final def iterator: Iterator[A] =
@@ -149,7 +158,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
         }
         val newLen = i + java.lang.Integer.bitCount(bitmap)
 
-        if(this.isInstanceOf[BigVector[_]]) {
+        if(this.isInstanceOf[BigVector[?]]) {
           val b = new VectorBuilder[A]
           var k = 0
           while(k < i) {
@@ -183,7 +192,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
       }
       i += 1
     }
-    if(this.isInstanceOf[BigVector[_]]) {
+    if(this.isInstanceOf[BigVector[?]]) {
       val b = new VectorBuilder[A]
       b.initFrom(prefix1)
       this.asInstanceOf[BigVector[A]].foreachRest { v => if(pred(v) != isFlipped) b.addOne(v) }
@@ -195,21 +204,21 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
   override def updated[B >: A](index: Int, elem: B): Vector[B] = super.updated(index, elem)
   override def appended[B >: A](elem: B): Vector[B] = super.appended(elem)
   override def prepended[B >: A](elem: B): Vector[B] = super.prepended(elem)
-  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]): Vector[B] = {
+  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]^): Vector[B] = {
     val k = prefix.knownSize
     if (k == 0) this
     else if (k < 0) super.prependedAll(prefix)
     else prependedAll0(prefix, k)
   }
 
-  override final def appendedAll[B >: A](suffix: collection.IterableOnce[B]): Vector[B] = {
+  override final def appendedAll[B >: A](suffix: collection.IterableOnce[B]^): Vector[B] = {
     val k = suffix.knownSize
     if (k == 0) this
     else if (k < 0) super.appendedAll(suffix)
     else appendedAll0(suffix, k)
   }
 
-  protected[this] def prependedAll0[B >: A](prefix: collection.IterableOnce[B], k: Int): Vector[B] = {
+  protected def prependedAll0[B >: A](prefix: collection.IterableOnce[B]^, k: Int): Vector[B] = {
     // k >= 0, k = prefix.knownSize
     val tinyAppendLimit = 4 + vectorSliceCount
     if (k < tinyAppendLimit /*|| k < (this.size >>> Log2ConcatFaster)*/) {
@@ -217,7 +226,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
       val it           = IndexedSeq.from(prefix).reverseIterator
       while (it.hasNext) v = it.next() +: v
       v
-    } else if (this.size < (k >>> Log2ConcatFaster) && prefix.isInstanceOf[Vector[_]]) {
+    } else if (this.size < (k >>> Log2ConcatFaster) && prefix.isInstanceOf[Vector[?]]) {
       var v  = prefix.asInstanceOf[Vector[B]]
       val it = this.iterator
       while (it.hasNext) v = v :+ it.next()
@@ -227,22 +236,22 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
     } else super.prependedAll(prefix)
   }
 
-  protected[this] def appendedAll0[B >: A](suffix: collection.IterableOnce[B], k: Int): Vector[B] = {
+  protected def appendedAll0[B >: A](suffix: collection.IterableOnce[B]^, k: Int): Vector[B] = {
     // k >= 0, k = suffix.knownSize
     val tinyAppendLimit = 4 + vectorSliceCount
     if (k < tinyAppendLimit) {
       var v: Vector[B] = this
       suffix match {
-        case it: Iterable[_] => it.asInstanceOf[Iterable[B]].foreach(x => v = v.appended(x))
+        case it: Iterable[?] => it.asInstanceOf[Iterable[B]].foreach(x => v = v.appended(x))
         case _ => suffix.iterator.foreach(x => v = v.appended(x))
       }
       v
-    } else if (this.size < (k >>> Log2ConcatFaster) && suffix.isInstanceOf[Vector[_]]) {
+    } else if (this.size < (k >>> Log2ConcatFaster) && suffix.isInstanceOf[Vector[?]]) {
       var v = suffix.asInstanceOf[Vector[B]]
       val ri = this.reverseIterator
       while (ri.hasNext) v = v.prepended(ri.next())
       v
-    } else if (this.size < k - AlignToFaster && suffix.isInstanceOf[Vector[_]]) {
+    } else if (this.size < k - AlignToFaster && suffix.isInstanceOf[Vector[?]]) {
       val v = suffix.asInstanceOf[Vector[B]]
       new VectorBuilder[B].alignTo(this.size, v).addAll(this).addAll(v).result()
     } else new VectorBuilder[B].initFrom(this).addAll(suffix).result()
@@ -257,14 +266,27 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
   override def tail: Vector[A] = slice(1, length)
   override def init: Vector[A] = slice(0, length-1)
 
-  /** Like slice but parameters must be 0 <= lo < hi < length */
-  protected[this] def slice0(lo: Int, hi: Int): Vector[A]
+  /** Like slice but parameters must be `0 <= lo < hi <= length`.
+   *
+   *  @param lo the lowest index to include (inclusive), must satisfy `0 <= lo < hi`
+   *  @param hi the exclusive upper bound index, must satisfy `lo < hi <= length`
+   *  @return a new vector containing the elements from index `lo` (inclusive) to `hi` (exclusive)
+   */
+  protected def slice0(lo: Int, hi: Int): Vector[A]
 
-  /** Number of slices */
+  /** Number of slices. */
   protected[immutable] def vectorSliceCount: Int
-  /** Slice at index */
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef]
-  /** Length of all slices up to and including index */
+  /** Slices at index.
+   *
+   *  @param idx the zero-based slice index
+   *  @return the underlying data array (of dimension matching the slice level) for the slice at position `idx`
+   */
+  protected[immutable] def vectorSlice(idx: Int): Array[? <: AnyRef | Null]
+  /** Length of all slices up to and including index.
+   *
+   *  @param idx the zero-based slice index
+   *  @return the cumulative number of elements in all slices from `0` up to and including `idx`
+   */
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int
 
   override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = iterator.copyToArray(xs, start, len)
@@ -273,17 +295,17 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
 
   override protected def applyPreferredMaxLength: Int = Vector.defaultApplyPreferredMaxLength
 
-  override def stepper[S <: Stepper[_]](implicit shape: StepperShape[A, S]): S with EfficientSplit = {
+  override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     val s = shape.shape match {
       case StepperShape.IntShape    => new IntVectorStepper(iterator.asInstanceOf[NewVectorIterator[Int]])
       case StepperShape.LongShape   => new LongVectorStepper(iterator.asInstanceOf[NewVectorIterator[Long]])
       case StepperShape.DoubleShape => new DoubleVectorStepper(iterator.asInstanceOf[NewVectorIterator[Double]])
       case _                        => shape.parUnbox(new AnyVectorStepper[A](iterator.asInstanceOf[NewVectorIterator[A]]))
     }
-    s.asInstanceOf[S with EfficientSplit]
+    s.asInstanceOf[S & EfficientSplit]
   }
 
-  protected[this] def ioob(index: Int): IndexOutOfBoundsException =
+  protected def ioob(index: Int): IndexOutOfBoundsException =
     CommonErrors.indexOutOfBounds(index = index, max = length - 1)
 
   override final def head: A =
@@ -291,8 +313,8 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
     else prefix1(0).asInstanceOf[A]
 
   override final def last: A = {
-    if(this.isInstanceOf[BigVector[_]]) {
-      val suffix = this.asInstanceOf[BigVector[_]].suffix1
+    if(this.isInstanceOf[BigVector[?]]) {
+      val suffix = this.asInstanceOf[BigVector[?]].suffix1
       if(suffix.length == 0) throw new NoSuchElementException("empty.tail")
       else suffix(suffix.length-1)
     } else prefix1(prefix1.length-1)
@@ -315,7 +337,11 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
 }
 
 
-/** This class only exists because we cannot override `slice` in `Vector` in a binary-compatible way */
+/** This class only exists because we cannot override `slice` in `Vector` in a binary-compatible way.
+ *
+ *  @tparam A the element type of the vector
+ *  @param _prefix1 the leading data array containing the leftmost elements
+ */
 private sealed abstract class VectorImpl[+A](_prefix1: Arr1) extends Vector[A](_prefix1) {
 
   override final def slice(from: Int, until: Int): Vector[A] = {
@@ -328,7 +354,13 @@ private sealed abstract class VectorImpl[+A](_prefix1: Arr1) extends Vector[A](_
 }
 
 
-/** Vector with suffix and length fields; all Vector subclasses except Vector1 extend this */
+/** Vector with suffix and length fields; all Vector subclasses except Vector1 extend this.
+ *
+ *  @tparam A the element type of the vector
+ *  @param suffix1 the last data array containing the rightmost elements
+ *  @param length0 the total number of elements in this vector
+ *  @param _prefix1 the leading data array containing the leftmost elements
+ */
 private sealed abstract class BigVector[+A](_prefix1: Arr1, private[immutable] val suffix1: Arr1, private[immutable] val length0: Int) extends VectorImpl[A](_prefix1) {
 
   protected[immutable] final def foreachRest[U](f: A => U): Unit = {
@@ -342,7 +374,7 @@ private sealed abstract class BigVector[+A](_prefix1: Arr1, private[immutable] v
 }
 
 
-/** Empty vector */
+/** Empty vector. */
 private object Vector0 extends BigVector[Nothing](empty1, empty1, 0) {
 
   def apply(index: Int): Nothing = throw ioob(index)
@@ -359,31 +391,35 @@ private object Vector0 extends BigVector[Nothing](empty1, empty1, 0) {
 
   override def init: Vector[Nothing] = throw new UnsupportedOperationException("empty.init")
 
-  protected[this] def slice0(lo: Int, hi: Int): Vector[Nothing] = this
+  protected def slice0(lo: Int, hi: Int): Vector[Nothing] = this
 
   protected[immutable] def vectorSliceCount: Int = 0
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = null
+  protected[immutable] def vectorSlice(idx: Int): Array[? <: AnyRef | Null] = null.asInstanceOf[Array[? <: AnyRef | Null]]
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int = 0
 
   override def equals(o: Any): Boolean = {
     if(this eq o.asInstanceOf[AnyRef]) true
     else o match {
-      case that: Vector[_] => false
+      case that: Vector[?] => false
       case o => super.equals(o)
     }
   }
 
-  override protected[this]def prependedAll0[B >: Nothing](prefix: collection.IterableOnce[B], k: Int): Vector[B] =
+  override protected def prependedAll0[B >: Nothing](prefix: collection.IterableOnce[B]^, k: Int): Vector[B] =
     Vector.from(prefix)
 
-  override protected[this]def appendedAll0[B >: Nothing](suffix: collection.IterableOnce[B], k: Int): Vector[B] =
+  override protected def appendedAll0[B >: Nothing](suffix: collection.IterableOnce[B]^, k: Int): Vector[B] =
     Vector.from(suffix)
 
-  override protected[this] def ioob(index: Int): IndexOutOfBoundsException =
+  override protected def ioob(index: Int): IndexOutOfBoundsException =
     new IndexOutOfBoundsException(s"$index is out of bounds (empty vector)")
 }
 
-/** Flat ArraySeq-like structure */
+/** Flat ArraySeq-like structure.
+ *
+ *  @tparam A the element type of the vector
+ *  @param _data1 the single data array holding all elements of this vector (between 1 and `WIDTH` entries, since `Vector0` handles the empty case)
+ */
 private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
 
   @inline def apply(index: Int): A = {
@@ -412,7 +448,7 @@ private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
 
   override def map[B](f: A => B): Vector[B] = new Vector1(mapElems1(prefix1, f))
 
-  protected[this] def slice0(lo: Int, hi: Int): Vector[A] =
+  protected def slice0(lo: Int, hi: Int): Vector[A] =
     new Vector1(copyOfRange(prefix1, lo, hi))
 
   override def tail: Vector[A] =
@@ -424,16 +460,16 @@ private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
     else new Vector1(copyInit(prefix1))
 
   protected[immutable] def vectorSliceCount: Int = 1
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = prefix1
+  protected[immutable] def vectorSlice(idx: Int): Array[? <: AnyRef | Null] = prefix1
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int = prefix1.length
 
-  override protected[this] def prependedAll0[B >: A](prefix: collection.IterableOnce[B], k: Int): Vector[B] =
+  override protected def prependedAll0[B >: A](prefix: collection.IterableOnce[B]^, k: Int): Vector[B] =
     prepend1IfSpace(prefix1, prefix) match {
       case null => super.prependedAll0(prefix, k)
       case data1b => new Vector1(data1b)
     }
 
-  override protected[this] def appendedAll0[B >: A](suffix: collection.IterableOnce[B], k: Int): Vector[B] = {
+  override protected def appendedAll0[B >: A](suffix: collection.IterableOnce[B]^, k: Int): Vector[B] = {
     val data1b = append1IfSpace(prefix1, suffix)
     if(data1b ne null) new Vector1(data1b)
     else super.appendedAll0(suffix, k)
@@ -441,13 +477,21 @@ private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
 }
 
 
-/** 2-dimensional radix-balanced finger tree */
+/** 2-dimensional radix-balanced finger tree.
+ *
+ *  @tparam A the element type of the vector
+ *  @param len1 the number of elements in `prefix1`
+ *  @param data2 the central 2-dimensional data array
+ *  @param _prefix1 the leading data array containing the leftmost elements
+ *  @param _suffix1 the last data array containing the rightmost elements
+ *  @param _length0 the total number of elements in this vector
+ */
 private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val data2: Arr2,
                                  _suffix1: Arr1,
                                  _length0: Int) extends BigVector[A](_prefix1, _suffix1, _length0) {
 
-  @inline private[this] def copy(prefix1: Arr1 = prefix1, len1: Int = len1,
+  @inline private def copy(prefix1: Arr1 = prefix1, len1: Int = len1,
                                  data2: Arr2 = data2,
                                  suffix1: Arr1 = suffix1,
                                  length0: Int = length0) =
@@ -494,7 +538,7 @@ private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int
   override def map[B](f: A => B): Vector[B] =
     copy(prefix1 = mapElems1(prefix1, f), data2 = mapElems(2, data2, f), suffix1 = mapElems1(suffix1, f))
 
-  protected[this] def slice0(lo: Int, hi: Int): Vector[A] = {
+  protected def slice0(lo: Int, hi: Int): Vector[A] = {
     val b = new VectorSliceBuilder(lo, hi)
     b.consider(1, prefix1)
     b.consider(2, data2)
@@ -511,7 +555,7 @@ private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int
     else slice0(0, length0-1)
 
   protected[immutable] def vectorSliceCount: Int = 3
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = (idx: @switch) match {
+  protected[immutable] def vectorSlice(idx: Int): Array[? <: AnyRef | Null] = (idx: @switch) match {
     case 0 => prefix1
     case 1 => data2
     case 2 => suffix1
@@ -522,7 +566,7 @@ private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int
     case 2 => length0
   }
 
-  override protected[this] def prependedAll0[B >: A](prefix: collection.IterableOnce[B], k: Int): Vector[B] =
+  override protected def prependedAll0[B >: A](prefix: collection.IterableOnce[B]^, k: Int): Vector[B] =
     prepend1IfSpace(prefix1, prefix) match {
       case null => super.prependedAll0(prefix, k)
       case prefix1b =>
@@ -533,7 +577,7 @@ private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int
         )
     }
 
-  override protected[this] def appendedAll0[B >: A](suffix: collection.IterableOnce[B], k: Int): Vector[B] = {
+  override protected def appendedAll0[B >: A](suffix: collection.IterableOnce[B]^, k: Int): Vector[B] = {
     val suffix1b = append1IfSpace(suffix1, suffix)
     if(suffix1b ne null) copy(suffix1 = suffix1b, length0 = length0-suffix1.length+suffix1b.length)
     else super.appendedAll0(suffix, k)
@@ -541,14 +585,25 @@ private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 3-dimensional radix-balanced finger tree */
+/** 3-dimensional radix-balanced finger tree.
+ *
+ *  @tparam A the element type of the vector
+ *  @param len1 the number of elements in `prefix1`
+ *  @param prefix2 the 2nd-level prefix data arrays
+ *  @param len12 the combined number of elements in `prefix1` and `prefix2`
+ *  @param data3 the central 3-dimensional data array
+ *  @param suffix2 the 2nd-level suffix data arrays
+ *  @param _prefix1 the leading data array containing the leftmost elements
+ *  @param _suffix1 the last data array containing the rightmost elements
+ *  @param _length0 the total number of elements in this vector
+ */
 private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val data3: Arr3,
                                  private[immutable] val suffix2: Arr2, _suffix1: Arr1,
                                  _length0: Int) extends BigVector[A](_prefix1, _suffix1, _length0) {
 
-  @inline private[this] def copy(prefix1: Arr1 = prefix1, len1: Int = len1,
+  @inline private def copy(prefix1: Arr1 = prefix1, len1: Int = len1,
                                  prefix2: Arr2 = prefix2, len12: Int = len12,
                                  data3: Arr3 = data3,
                                  suffix2: Arr2 = suffix2, suffix1: Arr1 = suffix1,
@@ -610,7 +665,7 @@ private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int
       data3 = mapElems(3, data3, f),
       suffix2 = mapElems(2, suffix2, f), suffix1 = mapElems1(suffix1, f))
 
-  protected[this] def slice0(lo: Int, hi: Int): Vector[A] = {
+  protected def slice0(lo: Int, hi: Int): Vector[A] = {
     val b = new VectorSliceBuilder(lo, hi)
     b.consider(1, prefix1)
     b.consider(2, prefix2)
@@ -629,7 +684,7 @@ private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int
     else slice0(0, length0-1)
 
   protected[immutable] def vectorSliceCount: Int = 5
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = (idx: @switch) match {
+  protected[immutable] def vectorSlice(idx: Int): Array[? <: AnyRef | Null] = (idx: @switch) match {
     case 0 => prefix1
     case 1 => prefix2
     case 2 => data3
@@ -644,7 +699,7 @@ private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int
     case 4 => length0
   }
 
-  override protected[this] def prependedAll0[B >: A](prefix: collection.IterableOnce[B], k: Int): Vector[B] =
+  override protected def prependedAll0[B >: A](prefix: collection.IterableOnce[B]^, k: Int): Vector[B] =
     prepend1IfSpace(prefix1, prefix) match {
       case null => super.prependedAll0(prefix, k)
       case prefix1b =>
@@ -656,7 +711,7 @@ private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int
         )
     }
 
-  override protected[this] def appendedAll0[B >: A](suffix: collection.IterableOnce[B], k: Int): Vector[B] = {
+  override protected def appendedAll0[B >: A](suffix: collection.IterableOnce[B]^, k: Int): Vector[B] = {
     val suffix1b = append1IfSpace(suffix1, suffix)
     if(suffix1b ne null) copy(suffix1 = suffix1b, length0 = length0-suffix1.length+suffix1b.length)
     else super.appendedAll0(suffix, k)
@@ -664,7 +719,21 @@ private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 4-dimensional radix-balanced finger tree */
+/** 4-dimensional radix-balanced finger tree.
+ *
+ *  @tparam A the element type of the vector
+ *  @param len1 the number of elements in `prefix1`
+ *  @param prefix2 the 2nd-level prefix data arrays
+ *  @param len12 the combined number of elements in `prefix1` and `prefix2`
+ *  @param prefix3 the 3rd-level prefix data arrays
+ *  @param len123 the combined number of elements in `prefix1` through `prefix3`
+ *  @param data4 the central 4-dimensional data array
+ *  @param suffix3 the 3rd-level suffix data arrays
+ *  @param suffix2 the 2nd-level suffix data arrays
+ *  @param _prefix1 the leading data array containing the leftmost elements
+ *  @param _suffix1 the last data array containing the rightmost elements
+ *  @param _length0 the total number of elements in this vector
+ */
 private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val prefix3: Arr3, private[immutable] val len123: Int,
@@ -672,7 +741,7 @@ private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int
                                  private[immutable] val suffix3: Arr3, private[immutable] val suffix2: Arr2, _suffix1: Arr1,
                                  _length0: Int) extends BigVector[A](_prefix1, _suffix1, _length0) {
 
-  @inline private[this] def copy(prefix1: Arr1 = prefix1, len1: Int = len1,
+  @inline private def copy(prefix1: Arr1 = prefix1, len1: Int = len1,
                                  prefix2: Arr2 = prefix2, len12: Int = len12,
                                  prefix3: Arr3 = prefix3, len123: Int = len123,
                                  data4: Arr4 = data4,
@@ -747,7 +816,7 @@ private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int
       data4 = mapElems(4, data4, f),
       suffix3 = mapElems(3, suffix3, f), suffix2 = mapElems(2, suffix2, f), suffix1 = mapElems1(suffix1, f))
 
-  protected[this] def slice0(lo: Int, hi: Int): Vector[A] = {
+  protected def slice0(lo: Int, hi: Int): Vector[A] = {
     val b = new VectorSliceBuilder(lo, hi)
     b.consider(1, prefix1)
     b.consider(2, prefix2)
@@ -768,7 +837,7 @@ private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int
     else slice0(0, length0-1)
 
   protected[immutable] def vectorSliceCount: Int = 7
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = (idx: @switch) match {
+  protected[immutable] def vectorSlice(idx: Int): Array[? <: AnyRef | Null] = (idx: @switch) match {
     case 0 => prefix1
     case 1 => prefix2
     case 2 => prefix3
@@ -787,7 +856,7 @@ private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int
     case 6 => length0
   }
 
-  override protected[this] def prependedAll0[B >: A](prefix: collection.IterableOnce[B], k: Int): Vector[B] =
+  override protected def prependedAll0[B >: A](prefix: collection.IterableOnce[B]^, k: Int): Vector[B] =
     prepend1IfSpace(prefix1, prefix) match {
       case null => super.prependedAll0(prefix, k)
       case prefix1b =>
@@ -800,7 +869,7 @@ private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int
         )
     }
 
-  override protected[this] def appendedAll0[B >: A](suffix: collection.IterableOnce[B], k: Int): Vector[B] = {
+  override protected def appendedAll0[B >: A](suffix: collection.IterableOnce[B]^, k: Int): Vector[B] = {
     val suffix1b = append1IfSpace(suffix1, suffix)
     if(suffix1b ne null) copy(suffix1 = suffix1b, length0 = length0-suffix1.length+suffix1b.length)
     else super.appendedAll0(suffix, k)
@@ -808,7 +877,24 @@ private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 5-dimensional radix-balanced finger tree */
+/** 5-dimensional radix-balanced finger tree.
+ *
+ *  @tparam A the element type of the vector
+ *  @param len1 the number of elements in `prefix1`
+ *  @param prefix2 the 2nd-level prefix data arrays
+ *  @param len12 the combined number of elements in `prefix1` and `prefix2`
+ *  @param prefix3 the 3rd-level prefix data arrays
+ *  @param len123 the combined number of elements in `prefix1` through `prefix3`
+ *  @param prefix4 the 4th-level prefix data arrays
+ *  @param len1234 the combined number of elements in `prefix1` through `prefix4`
+ *  @param data5 the central 5-dimensional data array
+ *  @param suffix4 the 4th-level suffix data arrays
+ *  @param suffix3 the 3rd-level suffix data arrays
+ *  @param suffix2 the 2nd-level suffix data arrays
+ *  @param _prefix1 the leading data array containing the leftmost elements
+ *  @param _suffix1 the last data array containing the rightmost elements
+ *  @param _length0 the total number of elements in this vector
+ */
 private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val prefix3: Arr3, private[immutable] val len123: Int,
@@ -817,7 +903,7 @@ private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int
                                  private[immutable] val suffix4: Arr4, private[immutable] val suffix3: Arr3, private[immutable] val suffix2: Arr2, _suffix1: Arr1,
                                  _length0: Int) extends BigVector[A](_prefix1, _suffix1, _length0) {
 
-  @inline private[this] def copy(prefix1: Arr1 = prefix1, len1: Int = len1,
+  @inline private def copy(prefix1: Arr1 = prefix1, len1: Int = len1,
                                  prefix2: Arr2 = prefix2, len12: Int = len12,
                                  prefix3: Arr3 = prefix3, len123: Int = len123,
                                  prefix4: Arr4 = prefix4, len1234: Int = len1234,
@@ -905,7 +991,7 @@ private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int
       data5 = mapElems(5, data5, f),
       suffix4 = mapElems(4, suffix4, f), suffix3 = mapElems(3, suffix3, f), suffix2 = mapElems(2, suffix2, f), suffix1 = mapElems1(suffix1, f))
 
-  protected[this] def slice0(lo: Int, hi: Int): Vector[A] = {
+  protected def slice0(lo: Int, hi: Int): Vector[A] = {
     val b = new VectorSliceBuilder(lo, hi)
     b.consider(1, prefix1)
     b.consider(2, prefix2)
@@ -928,7 +1014,7 @@ private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int
     else slice0(0, length0-1)
 
   protected[immutable] def vectorSliceCount: Int = 9
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = (idx: @switch) match {
+  protected[immutable] def vectorSlice(idx: Int): Array[? <: AnyRef | Null] = (idx: @switch) match {
     case 0 => prefix1
     case 1 => prefix2
     case 2 => prefix3
@@ -951,7 +1037,7 @@ private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int
     case 8 => length0
   }
 
-  override protected[this] def prependedAll0[B >: A](prefix: collection.IterableOnce[B], k: Int): Vector[B] =
+  override protected def prependedAll0[B >: A](prefix: collection.IterableOnce[B]^, k: Int): Vector[B] =
     prepend1IfSpace(prefix1, prefix) match {
       case null => super.prependedAll0(prefix, k)
       case prefix1b =>
@@ -965,7 +1051,7 @@ private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int
         )
     }
 
-  override protected[this] def appendedAll0[B >: A](suffix: collection.IterableOnce[B], k: Int): Vector[B] = {
+  override protected def appendedAll0[B >: A](suffix: collection.IterableOnce[B]^, k: Int): Vector[B] = {
     val suffix1b = append1IfSpace(suffix1, suffix)
     if(suffix1b ne null) copy(suffix1 = suffix1b, length0 = length0-suffix1.length+suffix1b.length)
     else super.appendedAll0(suffix, k)
@@ -973,7 +1059,27 @@ private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int
 }
 
 
-/** 6-dimensional radix-balanced finger tree */
+/** 6-dimensional radix-balanced finger tree.
+ *
+ *  @tparam A the element type of the vector
+ *  @param len1 the number of elements in `prefix1`
+ *  @param prefix2 the 2nd-level prefix data arrays
+ *  @param len12 the combined number of elements in `prefix1` and `prefix2`
+ *  @param prefix3 the 3rd-level prefix data arrays
+ *  @param len123 the combined number of elements in `prefix1` through `prefix3`
+ *  @param prefix4 the 4th-level prefix data arrays
+ *  @param len1234 the combined number of elements in `prefix1` through `prefix4`
+ *  @param prefix5 the 5th-level prefix data arrays
+ *  @param len12345 the combined number of elements in `prefix1` through `prefix5`
+ *  @param data6 the central 6-dimensional data array
+ *  @param suffix5 the 5th-level suffix data arrays
+ *  @param suffix4 the 4th-level suffix data arrays
+ *  @param suffix3 the 3rd-level suffix data arrays
+ *  @param suffix2 the 2nd-level suffix data arrays
+ *  @param _prefix1 the leading data array containing the leftmost elements
+ *  @param _suffix1 the last data array containing the rightmost elements
+ *  @param _length0 the total number of elements in this vector
+ */
 private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
                                  private[immutable] val prefix3: Arr3, private[immutable] val len123: Int,
@@ -983,7 +1089,7 @@ private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int
                                  private[immutable] val suffix5: Arr5, private[immutable] val suffix4: Arr4, private[immutable] val suffix3: Arr3, private[immutable] val suffix2: Arr2, _suffix1: Arr1,
                                  _length0: Int) extends BigVector[A](_prefix1, _suffix1, _length0) {
 
-  @inline private[this] def copy(prefix1: Arr1 = prefix1, len1: Int = len1,
+  @inline private def copy(prefix1: Arr1 = prefix1, len1: Int = len1,
                                  prefix2: Arr2 = prefix2, len12: Int = len12,
                                  prefix3: Arr3 = prefix3, len123: Int = len123,
                                  prefix4: Arr4 = prefix4, len1234: Int = len1234,
@@ -1084,7 +1190,7 @@ private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int
       data6 = mapElems(6, data6, f),
       suffix5 = mapElems(5, suffix5, f), suffix4 = mapElems(4, suffix4, f), suffix3 = mapElems(3, suffix3, f), suffix2 = mapElems(2, suffix2, f), suffix1 = mapElems1(suffix1, f))
 
-  protected[this] def slice0(lo: Int, hi: Int): Vector[A] = {
+  protected def slice0(lo: Int, hi: Int): Vector[A] = {
     val b = new VectorSliceBuilder(lo, hi)
     b.consider(1, prefix1)
     b.consider(2, prefix2)
@@ -1109,7 +1215,7 @@ private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int
     else slice0(0, length0-1)
 
   protected[immutable] def vectorSliceCount: Int = 11
-  protected[immutable] def vectorSlice(idx: Int): Array[_ <: AnyRef] = (idx: @switch) match {
+  protected[immutable] def vectorSlice(idx: Int): Array[? <: AnyRef | Null] = (idx: @switch) match {
     case 0 => prefix1
     case 1 => prefix2
     case 2 => prefix3
@@ -1136,7 +1242,7 @@ private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int
     case 10 => length0
   }
 
-  override protected[this] def prependedAll0[B >: A](prefix: collection.IterableOnce[B], k: Int): Vector[B] =
+  override protected def prependedAll0[B >: A](prefix: collection.IterableOnce[B]^, k: Int): Vector[B] =
     prepend1IfSpace(prefix1, prefix) match {
       case null => super.prependedAll0(prefix, k)
       case prefix1b =>
@@ -1151,7 +1257,7 @@ private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int
         )
     }
 
-  override protected[this] def appendedAll0[B >: A](suffix: collection.IterableOnce[B], k: Int): Vector[B] = {
+  override protected def appendedAll0[B >: A](suffix: collection.IterableOnce[B]^, k: Int): Vector[B] = {
     val suffix1b = append1IfSpace(suffix1, suffix)
     if(suffix1b ne null) copy(suffix1 = suffix1b, length0 = length0-suffix1.length+suffix1b.length)
     else super.appendedAll0(suffix, k)
@@ -1160,19 +1266,22 @@ private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int
 
 
 /** Helper class for vector slicing. It is initialized with the validated start and end index,
-  * then the vector slices are added in succession with `consider`. No matter what the dimension
-  * of the originating vector is or where the cut is performed, this always results in a
-  * structure with the highest-dimensional data in the middle and fingers of decreasing dimension
-  * at both ends, which can be turned into a new vector with very little rebalancing.
-  */
+ *  then the vector slices are added in succession with `consider`. No matter what the dimension
+ *  of the originating vector is or where the cut is performed, this always results in a
+ *  structure with the highest-dimensional data in the middle and fingers of decreasing dimension
+ *  at both ends, which can be turned into a new vector with very little rebalancing.
+ *
+ *  @param lo the start index (inclusive) of the slice
+ *  @param hi the end index (exclusive) of the slice
+ */
 private final class VectorSliceBuilder(lo: Int, hi: Int) {
   //println(s"***** VectorSliceBuilder($lo, $hi)")
 
-  private[this] val slices = new Array[Array[AnyRef]](11)
-  private[this] var len, pos, maxDim = 0
+  private val slices = new Array[Array[AnyRef] | Null](11)
+  private var len, pos, maxDim = 0
 
-  @inline private[this] def prefixIdx(n: Int) = n-1
-  @inline private[this] def suffixIdx(n: Int) = 11-n
+  @inline private def prefixIdx(n: Int) = n-1
+  @inline private def suffixIdx(n: Int) = 11-n
 
   def consider[T <: AnyRef](n: Int, a: Array[T]): Unit = {
     //println(s"*****   consider($n, /${a.length})")
@@ -1186,7 +1295,7 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
     pos += count
   }
 
-  private[this] def addSlice[T <: AnyRef](n: Int, a: Array[T], lo: Int, hi: Int): Unit = {
+  private def addSlice[T <: AnyRef](n: Int, a: Array[T], lo: Int, hi: Int): Unit = {
     //println(s"*****     addSlice($n, /${a.length}, $lo, $hi)")
     if(n == 1) {
       add(1, copyOrUse(a, lo, hi))
@@ -1221,7 +1330,7 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
     }
   }
 
-  private[this] def add[T <: AnyRef](n: Int, a: Array[T]): Unit = {
+  private def add[T <: AnyRef](n: Int, a: Array[T]): Unit = {
     //println(s"*****       add($n, /${a.length})")
     val idx =
       if(n <= maxDim) suffixIdx(n)
@@ -1270,11 +1379,11 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
           // A single highest-dimensional slice could have length WIDTH-1 if it came from a prefix or suffix but we
           // only allow WIDTH-2 for the main data, so increase the dimension in this case
           val one = if(pre ne null) pre else suf
-          if(one.length > WIDTH-2) resultDim += 1
+          if(one.nn.length > WIDTH-2) resultDim += 1
         }
       }
-      val prefix1 = slices(prefixIdx(1))
-      val suffix1 = slices(suffixIdx(1))
+      val prefix1 = slices(prefixIdx(1)).nn
+      val suffix1 = slices(suffixIdx(1)).nn
       val len1 = prefix1.length
       val res = (resultDim: @switch) match {
         case 2 =>
@@ -1327,17 +1436,17 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
     }
   }
 
-  @inline private[this] def prefixOr[T <: AnyRef](n: Int, a: Array[T]): Array[T] = {
+  @inline private def prefixOr[T <: AnyRef](n: Int, a: Array[T]): Array[T] = {
     val p = slices(prefixIdx(n))
     if(p ne null) p.asInstanceOf[Array[T]] else a
   }
 
-  @inline private[this] def suffixOr[T <: AnyRef](n: Int, a: Array[T]): Array[T] = {
+  @inline private def suffixOr[T <: AnyRef](n: Int, a: Array[T]): Array[T] = {
     val s = slices(suffixIdx(n))
     if(s ne null) s.asInstanceOf[Array[T]] else a
   }
 
-  @inline private[this] def dataOr[T <: AnyRef](n: Int, a: Array[T]): Array[T] = {
+  @inline private def dataOr[T <: AnyRef](n: Int, a: Array[T]): Array[T] = {
     val p = slices(prefixIdx(n))
     if(p ne null) p.asInstanceOf[Array[T]]
     else {
@@ -1346,8 +1455,11 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
     }
   }
 
-  /** Ensure prefix is not empty */
-  private[this] def balancePrefix(n: Int): Unit = {
+  /** Ensures prefix is not empty.
+   *
+   *  @param n the dimension level (1 through `maxDim`) at which to ensure the prefix is non-empty
+   */
+  private def balancePrefix(n: Int): Unit = {
     if(slices(prefixIdx(n)) eq null) {
       if(n == maxDim) {
         slices(prefixIdx(n)) = slices(suffixIdx(n))
@@ -1367,8 +1479,11 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
     }
   }
 
-  /** Ensure suffix is not empty */
-  private[this] def balanceSuffix(n: Int): Unit = {
+  /** Ensures suffix is not empty.
+   *
+   *  @param n the dimension level (1 through `maxDim`) at which to ensure the suffix is non-empty
+   */
+  private def balanceSuffix(n: Int): Unit = {
     if(slices(suffixIdx(n)) eq null) {
       if(n == maxDim) {
         slices(suffixIdx(n)) = slices(prefixIdx(n))
@@ -1388,26 +1503,26 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
     }
   }
 
-  override def toString: String =
+  override def toString(): String =
     s"VectorSliceBuilder(lo=$lo, hi=$hi, len=$len, pos=$pos, maxDim=$maxDim)"
 
-  private[immutable] def getSlices: Array[Array[AnyRef]] = slices
+  private[immutable] def getSlices: Array[Array[AnyRef] | Null] = slices
 }
 
 
 final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
 
-  private[this] var a6: Arr6 = _
-  private[this] var a5: Arr5 = _
-  private[this] var a4: Arr4 = _
-  private[this] var a3: Arr3 = _
-  private[this] var a2: Arr2 = _
-  private[this] var a1: Arr1 = new Arr1(WIDTH)
-  private[this] var len1, lenRest, offset = 0
-  private[this] var prefixIsRightAligned = false
-  private[this] var depth = 1
+  private var a6: Arr6 = compiletime.uninitialized
+  private var a5: Arr5 = compiletime.uninitialized
+  private var a4: Arr4 = compiletime.uninitialized
+  private var a3: Arr3 = compiletime.uninitialized
+  private var a2: Arr2 = compiletime.uninitialized
+  private var a1: Arr1 = new Arr1(WIDTH)
+  private var len1, lenRest, offset = 0
+  private var prefixIsRightAligned = false
+  private var depth = 1
 
-  @inline private[this] final def setLen(i: Int): Unit = {
+  @inline private final def setLen(i: Int): Unit = {
     len1 = i & MASK
     lenRest = i - len1
   }
@@ -1419,11 +1534,11 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
   @inline def nonEmpty: Boolean = knownSize != 0
 
   def clear(): Unit = {
-    a6 = null
-    a5 = null
-    a4 = null
-    a3 = null
-    a2 = null
+    a6 = nullForGC[Arr6]
+    a5 = nullForGC[Arr5]
+    a4 = nullForGC[Arr4]
+    a3 = nullForGC[Arr3]
+    a2 = nullForGC[Arr2]
     a1 = new Arr1(WIDTH)
     len1 = 0
     lenRest = 0
@@ -1469,16 +1584,16 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     }
   }
 
-  private[immutable] def initFrom(v: Vector[_]): this.type = {
+  private[immutable] def initFrom(v: Vector[?]): this.type = {
     (v.vectorSliceCount: @switch) match {
       case 0 =>
       case 1 =>
-        val v1 = v.asInstanceOf[Vector1[_]]
+        val v1 = v.asInstanceOf[Vector1[?]]
         depth = 1
         setLen(v1.prefix1.length)
         a1 = copyOrUse(v1.prefix1, 0, WIDTH)
       case 3 =>
-        val v2 = v.asInstanceOf[Vector2[_]]
+        val v2 = v.asInstanceOf[Vector2[?]]
         val d2 = v2.data2
         a1 = copyOrUse(v2.suffix1, 0, WIDTH)
         depth = 2
@@ -1489,7 +1604,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         System.arraycopy(d2, 0, a2, 1, d2.length)
         a2(d2.length+1) = a1
       case 5 =>
-        val v3 = v.asInstanceOf[Vector3[_]]
+        val v3 = v.asInstanceOf[Vector3[?]]
         val d3 = v3.data3
         val s2 = v3.suffix2
         a1 = copyOrUse(v3.suffix1, 0, WIDTH)
@@ -1503,7 +1618,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         a3(d3.length+1) = a2
         a2(s2.length) = a1
       case 7 =>
-        val v4 = v.asInstanceOf[Vector4[_]]
+        val v4 = v.asInstanceOf[Vector4[?]]
         val d4 = v4.data4
         val s3 = v4.suffix3
         val s2 = v4.suffix2
@@ -1520,7 +1635,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         a3(s3.length) = a2
         a2(s2.length) = a1
       case 9 =>
-        val v5 = v.asInstanceOf[Vector5[_]]
+        val v5 = v.asInstanceOf[Vector5[?]]
         val d5 = v5.data5
         val s4 = v5.suffix4
         val s3 = v5.suffix3
@@ -1540,7 +1655,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
         a3(s3.length) = a2
         a2(s2.length) = a1
       case 11 =>
-        val v6 = v.asInstanceOf[Vector6[_]]
+        val v6 = v.asInstanceOf[Vector6[?]]
         val d6 = v6.data6
         val s5 = v6.suffix5
         val s4 = v6.suffix4
@@ -1577,12 +1692,12 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
       throw new UnsupportedOperationException("A non-empty VectorBuilder cannot be aligned retrospectively. Please call .reset() or use a new VectorBuilder.")
     val (prefixLength, maxPrefixLength) = bigVector match {
       case Vector0 => (0, 1)
-      case v1: Vector1[_] => (0, 1)
-      case v2: Vector2[_] => (v2.len1, WIDTH)
-      case v3: Vector3[_] => (v3.len12, WIDTH2)
-      case v4: Vector4[_] => (v4.len123, WIDTH3)
-      case v5: Vector5[_] => (v5.len1234, WIDTH4)
-      case v6: Vector6[_] => (v6.len12345, WIDTH5)
+      case v1: Vector1[?] => (0, 1)
+      case v2: Vector2[?] => (v2.len1, WIDTH)
+      case v3: Vector3[?] => (v3.len12, WIDTH2)
+      case v4: Vector4[?] => (v4.len123, WIDTH3)
+      case v5: Vector5[?] => (v5.len1234, WIDTH4)
+      case v6: Vector6[?] => (v6.len12345, WIDTH5)
     }
     if (maxPrefixLength == 1) return this // does not really make sense to align for <= 32 element-vector
     val overallPrefixLength = (before + prefixLength) % maxPrefixLength
@@ -1594,26 +1709,25 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     this
   }
 
-  /**
-   * Removes `offset` leading `null`s in the prefix.
-   * This is needed after calling `alignTo` and subsequent additions,
-   * directly before the result is used for creating a new Vector.
-   * Note that the outermost array keeps its length to keep the
-   * Builder re-usable.
+  /** Removes `offset` leading `null`s in the prefix.
+   *  This is needed after calling `alignTo` and subsequent additions,
+   *  directly before the result is used for creating a new Vector.
+   *  Note that the outermost array keeps its length to keep the
+   *  Builder re-usable.
    *
-   * example:
+   *  example:
    *     a2 = Array(null, ..., null, Array(null, .., null, 0, 1, .., x), Array(x+1, .., x+32), ...)
-   * becomes
+   *  becomes
    *     a2 = Array(Array(0, 1, .., x), Array(x+1, .., x+32), ..., ?, ..., ?)
    */
-  private[this] def leftAlignPrefix(): Unit = {
+  private def leftAlignPrefix(): Unit = {
     @inline def shrinkOffsetIfToLarge(width: Int): Unit = {
       val newOffset = offset % width
       lenRest -= offset - newOffset
       offset = newOffset
     }
-    var a: Array[AnyRef] = null // the array we modify
-    var aParent: Array[AnyRef] = null // a's parent, so aParent(0) == a
+    var a: Array[AnyRef] = null.asInstanceOf[Array[AnyRef]] // the array we modify
+    var aParent: Array[AnyRef] = null.asInstanceOf[Array[AnyRef]] // a's parent, so aParent(0) == a
     if (depth >= 6) {
       a = a6.asInstanceOf[Array[AnyRef]]
       val i = offset >>> BITS5
@@ -1706,7 +1820,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     this
   }
 
-  private[this] def addArr1(data: Arr1): Unit = {
+  private def addArr1(data: Arr1): Unit = {
     val dl = data.length
     if(dl > 0) {
       if(len1 == WIDTH) advance()
@@ -1722,7 +1836,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     }
   }
 
-  private[this] def addArrN(slice: Array[AnyRef], dim: Int): Unit = {
+  private def addArrN(slice: Array[AnyRef], dim: Int): Unit = {
 //    assert(dim >= 2)
 //    assert(lenRest % WIDTH == 0)
 //    assert(len1 == 0 || len1 == WIDTH)
@@ -1802,7 +1916,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     }
   }
 
-  private[this] def addVector(xs: Vector[A]): this.type = {
+  private def addVector(xs: Vector[A]): this.type = {
     val sliceCount = xs.vectorSliceCount
     var sliceIdx = 0
     while(sliceIdx < sliceCount) {
@@ -1818,15 +1932,15 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     this
   }
 
-  override def addAll(xs: IterableOnce[A]): this.type = xs match {
-    case v: Vector[_] =>
+  override def addAll(xs: IterableOnce[A]^): this.type = xs match {
+    case v: Vector[?] =>
       if(len1 == 0 && lenRest == 0 && !prefixIsRightAligned) initFrom(v)
       else addVector(v.asInstanceOf[Vector[A]])
     case _ =>
       super.addAll(xs)
   }
 
-  private[this] def advance(): Unit = {
+  private def advance(): Unit = {
     val idx = lenRest + WIDTH
     val xor = idx ^ lenRest
     lenRest = idx
@@ -1834,7 +1948,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     advance1(idx, xor)
   }
 
-  private[this] def advanceN(n: Int): Unit = if (n > 0) {
+  private def advanceN(n: Int): Unit = if (n > 0) {
     // assert(n % 32 == 0)
     val idx = lenRest + n
     val xor = idx ^ lenRest
@@ -1843,7 +1957,7 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     advance1(idx, xor)
   }
 
-  private[this] def advance1(idx: Int, xor: Int): Unit = {
+  private def advance1(idx: Int, xor: Int): Unit = {
     if (xor <= 0) {            // level = 6 or something very unexpected happened
       throw new IllegalArgumentException(s"advance1($idx, $xor): a1=$a1, a2=$a2, a3=$a3, a4=$a4, a5=$a5, a6=$a6, depth=$depth")
     } else if (xor < WIDTH2) { // level = 1
@@ -1979,13 +2093,13 @@ final class VectorBuilder[A] extends ReusableBuilder[A, Vector[A]] {
     }
   }
 
-  override def toString: String =
+  override def toString(): String =
     s"VectorBuilder(len1=$len1, lenRest=$lenRest, offset=$offset, depth=$depth)"
 
-  private[immutable] def getData: Array[Array[_]] = Array[Array[AnyRef]](
+  private[immutable] def getData: Array[Array[?]] = Array[Array[AnyRef]](
     a1, a2.asInstanceOf[Array[AnyRef]], a3.asInstanceOf[Array[AnyRef]], a4.asInstanceOf[Array[AnyRef]],
     a5.asInstanceOf[Array[AnyRef]], a6.asInstanceOf[Array[AnyRef]]
-  ).asInstanceOf[Array[Array[_]]]
+  ).asInstanceOf[Array[Array[?]]]
 }
 
 
@@ -2014,7 +2128,12 @@ private[immutable] object VectorInline {
   type Arr5 = Array[Array[Array[Array[Array[AnyRef]]]]]
   type Arr6 = Array[Array[Array[Array[Array[Array[AnyRef]]]]]]
 
-  /** Dimension of the slice at index */
+  /** Dimension of the slice at index.
+   *
+   *  @param count the total number of slices
+   *  @param idx the zero-based slice index
+   *  @return the dimension (1-based level) of the slice at position `idx`: rises from 1 at the outermost prefix slice up to `count/2 + 1` at the central data array, then falls back to 1 at the outermost suffix slice
+   */
   @inline def vectorSliceDim(count: Int, idx: Int): Int = {
     val c = count/2
     c+1-abs(idx-c)
@@ -2118,7 +2237,7 @@ private object VectorStatics {
   final val empty5: Arr5 = new Array(0)
   final val empty6: Arr6 = new Array(0)
 
-  final def foreachRec[T <: AnyRef, A, U](level: Int, a: Array[T], f: A => U): Unit = {
+  final def foreachRec[T <: AnyRef | Null, A, U](level: Int, a: Array[T], f: A => U): Unit = {
     var i = 0
     val len = a.length
     if(level == 0) {
@@ -2129,7 +2248,7 @@ private object VectorStatics {
     } else {
       val l = level-1
       while(i < len) {
-        foreachRec(l, a(i).asInstanceOf[Array[AnyRef]], f)
+        foreachRec(l, a(i).asInstanceOf[Array[AnyRef | Null]], f)
         i += 1
       }
     }
@@ -2187,8 +2306,8 @@ private object VectorStatics {
     ac.asInstanceOf[Array[T]]
   }
 
-  final def prepend1IfSpace(prefix1: Arr1, xs: IterableOnce[_]): Arr1 = xs match {
-    case it: Iterable[_] =>
+  final def prepend1IfSpace(prefix1: Arr1, xs: IterableOnce[?]^): Arr1 | Null = xs match {
+    case it: Iterable[?] =>
       if(it.sizeCompare(WIDTH-prefix1.length) <= 0) {
         it.size match {
           case 0 => null
@@ -2212,8 +2331,8 @@ private object VectorStatics {
       } else null
   }
 
-  final def append1IfSpace(suffix1: Arr1, xs: IterableOnce[_]): Arr1 = xs match {
-    case it: Iterable[_] =>
+  final def append1IfSpace(suffix1: Arr1, xs: IterableOnce[?]^): Arr1 | Null = xs match {
+    case it: Iterable[?] =>
       if(it.sizeCompare(WIDTH-suffix1.length) <= 0) {
         it.size match {
           case 0 => null
@@ -2237,25 +2356,25 @@ private object VectorStatics {
 }
 
 
-private final class NewVectorIterator[A](v: Vector[A], private[this] var totalLength: Int, private[this] val sliceCount: Int) extends AbstractIterator[A] with java.lang.Cloneable {
+private final class NewVectorIterator[A](v: Vector[A], private var totalLength: Int, private val sliceCount: Int) extends AbstractIterator[A] with java.lang.Cloneable {
 
-  private[this] var a1: Arr1 = v.prefix1
-  private[this] var a2: Arr2 = _
-  private[this] var a3: Arr3 = _
-  private[this] var a4: Arr4 = _
-  private[this] var a5: Arr5 = _
-  private[this] var a6: Arr6 = _
-  private[this] var a1len = a1.length
-  private[this] var i1 = 0 // current index in a1
-  private[this] var oldPos = 0
-  private[this] var len1 = totalLength // remaining length relative to a1
+  private var a1: Arr1 = v.prefix1
+  private var a2: Arr2 = compiletime.uninitialized
+  private var a3: Arr3 = compiletime.uninitialized
+  private var a4: Arr4 = compiletime.uninitialized
+  private var a5: Arr5 = compiletime.uninitialized
+  private var a6: Arr6 = compiletime.uninitialized
+  private var a1len = a1.length
+  private var i1 = 0 // current index in a1
+  private var oldPos = 0
+  private var len1 = totalLength // remaining length relative to a1
 
-  private[this] var sliceIdx = 0
-  private[this] var sliceDim = 1
-  private[this] var sliceStart = 0 // absolute position
-  private[this] var sliceEnd = a1len // absolute position
+  private var sliceIdx = 0
+  private var sliceDim = 1
+  private var sliceStart = 0 // absolute position
+  private var sliceEnd = a1len // absolute position
 
-  //override def toString: String =
+  //override def toString(): String =
   //  s"NewVectorIterator(v=$v, totalLength=$totalLength, sliceCount=$sliceCount): a1len=$a1len, len1=$len1, i1=$i1, sliceEnd=$sliceEnd"
 
   @inline override def knownSize = len1 - i1
@@ -2269,10 +2388,10 @@ private final class NewVectorIterator[A](v: Vector[A], private[this] var totalLe
     r.asInstanceOf[A]
   }
 
-  private[this] def advanceSlice(): Unit = {
+  private def advanceSlice(): Unit = {
     if(!hasNext) Iterator.empty.next()
     sliceIdx += 1
-    var slice: Array[_ <: AnyRef] = v.vectorSlice(sliceIdx)
+    var slice: Array[? <: AnyRef | Null] = v.vectorSlice(sliceIdx)
     while(slice.length == 0) {
       sliceIdx += 1
       slice = v.vectorSlice(sliceIdx)
@@ -2292,7 +2411,7 @@ private final class NewVectorIterator[A](v: Vector[A], private[this] var totalLe
     if(sliceDim > 1) oldPos = (1 << (BITS*sliceDim))-1
   }
 
-  private[this] def advance(): Unit = {
+  private def advance(): Unit = {
     val pos = i1-len1+totalLength
     if(pos == sliceEnd) advanceSlice()
     if(sliceDim > 1) {
@@ -2306,7 +2425,7 @@ private final class NewVectorIterator[A](v: Vector[A], private[this] var totalLe
     i1 = 0
   }
 
-  private[this] def advanceA(io: Int, xor: Int): Unit = {
+  private def advanceA(io: Int, xor: Int): Unit = {
     if(xor < WIDTH2) {
       a1 = a2((io >>> BITS) & MASK)
     } else if(xor < WIDTH3) {
@@ -2330,7 +2449,7 @@ private final class NewVectorIterator[A](v: Vector[A], private[this] var totalLe
     }
   }
 
-  private[this] def setA(io: Int, xor: Int): Unit = {
+  private def setA(io: Int, xor: Int): Unit = {
     if(xor < WIDTH2) {
       a1 = a2((io >>> BITS) & MASK)
     } else if(xor < WIDTH3) {
@@ -2429,10 +2548,10 @@ private final class NewVectorIterator[A](v: Vector[A], private[this] var totalLe
 }
 
 
-private abstract class VectorStepperBase[A, Sub >: Null <: Stepper[A], Semi <: Sub](it: NewVectorIterator[A])
+private abstract class VectorStepperBase[A, Sub <: Stepper[A], Semi <: Sub](it: NewVectorIterator[A])
   extends Stepper[A] with EfficientSplit {
 
-  protected[this] def build(it: NewVectorIterator[A]): Semi
+  protected def build(it: NewVectorIterator[A]): Semi
 
   final def hasStep: Boolean = it.hasNext
 
@@ -2440,7 +2559,7 @@ private abstract class VectorStepperBase[A, Sub >: Null <: Stepper[A], Semi <: S
 
   final def estimateSize: Long = it.knownSize
 
-  def trySplit(): Sub = {
+  def trySplit(): Sub | Null = {
     val len = it.knownSize
     if(len > 1) build(it.split(len >>> 1))
     else null
@@ -2451,32 +2570,32 @@ private abstract class VectorStepperBase[A, Sub >: Null <: Stepper[A], Semi <: S
 
 private class AnyVectorStepper[A](it: NewVectorIterator[A])
   extends VectorStepperBase[A, AnyStepper[A], AnyVectorStepper[A]](it) with AnyStepper[A] {
-  protected[this] def build(it: NewVectorIterator[A]) = new AnyVectorStepper(it)
+  protected def build(it: NewVectorIterator[A]) = new AnyVectorStepper(it)
   def nextStep(): A = it.next()
 }
 
 private class DoubleVectorStepper(it: NewVectorIterator[Double])
   extends VectorStepperBase[Double, DoubleStepper, DoubleVectorStepper](it) with DoubleStepper {
-  protected[this] def build(it: NewVectorIterator[Double]) = new DoubleVectorStepper(it)
+  protected def build(it: NewVectorIterator[Double]) = new DoubleVectorStepper(it)
   def nextStep(): Double = it.next()
 }
 
 private class IntVectorStepper(it: NewVectorIterator[Int])
   extends VectorStepperBase[Int, IntStepper, IntVectorStepper](it) with IntStepper {
-  protected[this] def build(it: NewVectorIterator[Int]) = new IntVectorStepper(it)
+  protected def build(it: NewVectorIterator[Int]) = new IntVectorStepper(it)
   def nextStep(): Int = it.next()
 }
 
 private class LongVectorStepper(it: NewVectorIterator[Long])
   extends VectorStepperBase[Long, LongStepper, LongVectorStepper](it) with LongStepper {
-  protected[this] def build(it: NewVectorIterator[Long]) = new LongVectorStepper(it)
+  protected def build(it: NewVectorIterator[Long]) = new LongVectorStepper(it)
   def nextStep(): Long = it.next()
 }
 
 
 // The following definitions are needed for binary compatibility with ParVector
-private[collection] class VectorIterator[+A](_startIndex: Int, private[this] var endIndex: Int) extends AbstractIterator[A] {
-  private[immutable] var it: NewVectorIterator[A @uncheckedVariance] = _
+private[collection] class VectorIterator[+A](_startIndex: Int, private var endIndex: Int) extends AbstractIterator[A] {
+  private[immutable] var it: NewVectorIterator[A @uncheckedVariance] = compiletime.uninitialized
   def hasNext: Boolean = it.hasNext
   def next(): A = it.next()
   private[collection] def remainingElementCount: Int = it.size

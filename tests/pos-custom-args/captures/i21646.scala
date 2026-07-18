@@ -1,7 +1,7 @@
 import language.experimental.captureChecking
-import caps.Capability
+import caps.{Capability, SharedCapability}
 
-trait File extends Capability
+trait File extends SharedCapability
 
 class Resource[T <: Capability](gen: T):
   def use[U](f: T => U): U =

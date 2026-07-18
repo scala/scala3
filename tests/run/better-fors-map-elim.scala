@@ -1,65 +1,46 @@
-//> using options -preview
-// import scala.language.experimental.betterFors
+enum MyOption[+A]:
+  case MySome(x: A)
+  case MyNone
 
-class myOptionModule(doOnMap: => Unit) {
-  sealed trait MyOption[+A] {
-    def map[B](f: A => B): MyOption[B] = this match {
-      case MySome(x) => {
-        doOnMap
-        MySome(f(x))
-      }
-      case MyNone => MyNone
-    }
-    def flatMap[B](f: A => MyOption[B]): MyOption[B] = this match {
-      case MySome(x) => f(x)
-      case MyNone => MyNone
-    }
-  }
-  case class MySome[A](x: A) extends MyOption[A]
-  case object MyNone extends MyOption[Nothing]
-  object MyOption {
-    def apply[A](x: A): MyOption[A] = MySome(x)
-  }
-}
+  def map[B](f: A => B): MyOption[B] =
+    this match
+    case MySome(x) => ???  //MySome(f(x))
+    case MyNone => ??? //MyNone
+  def flatMap[B](f: A => MyOption[B]): MyOption[B] =
+    this match
+    case MySome(x) => f(x)
+    case MyNone => MyNone
+object MyOption:
+  def apply[A](x: A): MyOption[A] = MySome(x)
 
-object Test extends App {
+@main def Test =
 
-  val myOption = new myOptionModule(println("map called"))
+  val _ =
+    for
+      a <- MyOption(1)
+      b <- MyOption(())
+    yield ()
 
-  import myOption.*
+  val _ =
+    for
+      a <- MyOption(1)
+      b <- MyOption(2)
+    yield b
 
-  def portablePrintMyOption(opt: MyOption[Any]): Unit =
-    if opt == MySome(()) then
-      println("MySome(())")
-    else
-      println(opt)
+  val _ =
+    for
+      a <- MyOption(1)
+      (b, c) <- MyOption((2, 3))
+    yield (b, c)
 
-  val z = for {
-    a <- MyOption(1)
-    b <- MyOption(())
-  } yield ()
+  val _ =
+    for
+      a <- MyOption(1)
+      (b, (c, d)) <- MyOption((2, (3, 4)))
+    yield (b, (c, d))
 
-  portablePrintMyOption(z)
+  extension (i: Int) def map[A](f: Int => A): A = ???
 
-  val z2 = for {
-    a <- MyOption(1)
-    b <- MyOption(2)
-  } yield b
+  val _ = for j <- 42 yield j
 
-  portablePrintMyOption(z2)
-
-  val z3 = for {
-    a <- MyOption(1)
-    (b, c) <- MyOption((2, 3))
-  } yield (b, c)
-
-  portablePrintMyOption(z3)
-
-  val z4 = for {
-    a <- MyOption(1)
-    (b, (c, d)) <- MyOption((2, (3, 4)))
-  } yield (b, (c, d))
-
-  portablePrintMyOption(z4)
-
-}
+  val _ = for x = 42; x <- MyOption(x) yield x

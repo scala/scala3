@@ -14,6 +14,7 @@ package scala
 package collection.mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.annotation.tailrec
 
 /** This trait forms part of collections that can be reduced
@@ -21,6 +22,8 @@ import scala.annotation.tailrec
  *
  *  @define coll shrinkable collection
  *  @define Coll `Shrinkable`
+ *
+ *  @tparam A the type of elements that can be removed from this collection
  */
 trait Shrinkable[-A] {
 
@@ -31,7 +34,7 @@ trait Shrinkable[-A] {
    */
   def subtractOne(elem: A): this.type
 
-  /** Alias for `subtractOne` */
+  /** Alias for `subtractOne`. */
   @`inline` final def -= (elem: A): this.type = subtractOne(elem)
 
   /** Removes two or more elements from this $coll.
@@ -53,7 +56,7 @@ trait Shrinkable[-A] {
    *  @param xs   the iterator producing the elements to remove.
    *  @return the $coll itself
    */
-  def subtractAll(xs: collection.IterableOnce[A]): this.type = {
+  def subtractAll(xs: collection.IterableOnce[A]^): this.type = {
     @tailrec def loop(xs: collection.LinearSeq[A]): Unit = {
       if (xs.nonEmpty) {
         subtractOne(xs.head)
@@ -67,14 +70,14 @@ trait Shrinkable[-A] {
       }
     } else {
       xs match {
-        case xs: collection.LinearSeq[A] => loop(xs)
+        case xs: collection.LinearSeq[A @unchecked] => loop(xs)
         case xs => xs.iterator.foreach(subtractOne)
       }
     }
     this
   }
 
-  /** Alias for `subtractAll` */
-  @`inline` final def --= (xs: collection.IterableOnce[A]): this.type = subtractAll(xs)
+  /** Alias for `subtractAll`. */
+  @`inline` final def --= (xs: collection.IterableOnce[A]^): this.type = subtractAll(xs)
 
 }

@@ -12,9 +12,8 @@ import core.Names.*
 import core.NameKinds.TempResultName
 import core.Constants.*
 import util.Store
-import dotty.tools.uncheckedNN
+import dotty.tools.initialize
 import ast.tpd.*
-import compiletime.uninitialized
 
 /** This phase translates variables that are captured in closures to
  *  heap-allocated refs.
@@ -47,10 +46,8 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
   }
 
   private var myRefInfo: RefInfo | Null = null
-  private def refInfo(using Context): RefInfo = {
-    if (myRefInfo == null) myRefInfo = new RefInfo()
-    myRefInfo.uncheckedNN
-  }
+  private def refInfo(using Context): RefInfo =
+    initialize(myRefInfo, myRefInfo = _, new RefInfo())
 
   override def prepareForUnit(tree: Tree)(using Context): Context =
     captured.clear()
@@ -67,17 +64,15 @@ class CapturedVars extends MiniPhase with IdentityDenotTransformer:
     else refMap(defn.ObjectClass)
   }
 
-  override def prepareForValDef(vdef: ValDef)(using Context): Context = {
+  override def prepareForValDef(vdef: ValDef)(using Context): Context =
     val sym = atPhase(thisPhase)(vdef.symbol)
-    if (captured contains sym) {
+    if captured.contains(sym) then
       val newd = atPhase(thisPhase)(sym.denot).copySymDenotation(
         info = refClass(sym.info.classSymbol, sym.hasAnnotation(defn.VolatileAnnot)).typeRef,
         initFlags = sym.flags &~ Mutable)
       newd.removeAnnotation(defn.VolatileAnnot)
       newd.installAfter(thisPhase)
-    }
     ctx
-  }
 
   override def transformValDef(vdef: ValDef)(using Context): Tree = {
     val vble = vdef.symbol

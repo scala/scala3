@@ -4,9 +4,8 @@ package core
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
-import scala.util.control.NonFatal
 
-import Contexts.*, Names.*, Phases.*, Symbols.*
+import Contexts.*, Names.*, Phases.*, Symbols.*, Types.*
 import printing.{ Printer, Showable }, printing.Formatting.*, printing.Texts.*
 import transform.MegaPhase
 import reporting.{Message, NoExplanation}
@@ -80,6 +79,24 @@ object Decorators {
       }
       NoSymbol
     }
+
+  extension (tp: Type)
+    /** Replace synthetic parameter names (`x$0`, `x$1`, ...) of any method
+     *  type group in `tp` (recursing through curried `MethodType`s and
+     *  through `PolyType` result types) with dollar-free names (`x0`,
+     *  `x1`, ...). Lets a printed signature be reused as a valid Scala
+     *  identifier - e.g. in stub implementations or "method is not
+     *  defined" diagnostics.
+     */
+    def withCleanParamNames(using Context): Type = tp match
+      case mt: MethodType if mt.allParamNamesSynthetic =>
+        val newNames = mt.paramNames.zipWithIndex.map((_, i) => termName("x" + i))
+        mt.derivedLambdaType(newNames, mt.paramInfos, mt.resType.withCleanParamNames)
+      case mt: MethodType =>
+        mt.derivedLambdaType(mt.paramNames, mt.paramInfos, mt.resType.withCleanParamNames)
+      case pt: PolyType =>
+        pt.derivedLambdaType(pt.paramNames, pt.paramInfos, pt.resType.withCleanParamNames)
+      case _ => tp
 
   inline val MaxFilterRecursions = 10
 
@@ -245,7 +262,7 @@ object Decorators {
   end extension
 
   extension (text: Text)
-    def show(using Context): String = text.mkString(ctx.settings.pageWidth.value, ctx.settings.printLines.value)
+    def show(using Context): String = text.mkString(ctx.settings.pageWidth.value)
 
   /** Test whether a list of strings representing phases contains
    *  a given phase. See [[config.CompilerCommand#explainAdvanced]] for the
@@ -286,7 +303,7 @@ object Decorators {
         try x.show
         catch
           case ex: CyclicReference => "... (caught cyclic reference) ..."
-          case NonFatal(ex)
+          case ex: Exception
           if !ctx.settings.YshowPrintErrors.value =>
             s"... (cannot display due to ${ex.className} ${ex.getMessage}) ..."
       case _ => String.valueOf(x)

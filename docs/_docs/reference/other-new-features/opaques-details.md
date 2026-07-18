@@ -109,6 +109,45 @@ object obj:
 ```
 The opaque type alias `A` is transparent in its scope, which includes the definition of `x`, but not the definitions of `obj` and `y`.
 
+## Opaque Types in Transparent Inline Methods
+
+Additional care is required if an opaque type is returned from a transparent inline method, located inside a context where that opaque type is defined.
+Since the typechecking and type inference of the body of the method is done from the perspective of that context, the returned types might contain dealiased opaque types. Generally, this means that calls to those transparent methods will return a `DECLARED & ACTUAL`, where `DECLARED` is the return type defined in the method declaration, and `ACTUAL` is the type returned after the inlining, which might include dealiased opaque types.
+
+API designers can ensure that the correct type is returned by explicitly annotating it inside of the method body with `: ExpectedType` or by explicitly passing type parameters to the method being returned. Explicitly annotating like this will help for the outermost transparent inline method calls, but will not affect the nested calls, as, from the perspective of the new context into which we are inlining, those might still have to be dealiased to avoid compilation errors:
+
+```scala
+object Time:
+  opaque type Time = String
+  opaque type Seconds <: Time = String
+
+  // opaque type aliases have to be dealiased in nested calls,
+  // otherwise the resulting program might not be typed correctly
+  // in the below methods this will be typed as Seconds & String despite
+  // the explicit type declaration
+  transparent inline def sec(n: Double): Seconds =
+    s"${n}s": Seconds
+
+  transparent inline def testInference(): List[Time] =
+    List(sec(5)) // infers List[String] and returns List[Time] & List[String], not List[Seconds]
+  transparent inline def testGuarded(): List[Time] =
+    List(sec(5)): List[Seconds] // returns List[Seconds]
+  transparent inline def testExplicitTime(): List[Time] =
+    List[Seconds](sec(5)) // returns List[Seconds]
+  transparent inline def testExplicitString(): List[Time] =
+    List[String](sec(5)) // returns List[Time] & List[String]
+
+end Time
+
+@main def main() =
+  val t1: List[String] = Time.testInference() // returns List[Time.Time] & List[String]
+  val t2: List[Time.Seconds] = Time.testGuarded() // returns List[Time.Seconds]
+  val t3: List[Time.Seconds] = Time.testExplicitTime() // returns List[Time.Seconds]
+  val t4: List[String] = Time.testExplicitString() // returns List[Time.Time] & List[String]
+```
+
+Be careful especially if what is being inlined depends on the type of those nested transparent calls.
+```
 
 ## Relationship to SIP 35
 

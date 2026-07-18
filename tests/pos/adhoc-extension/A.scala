@@ -1,4 +1,4 @@
-//> using options -source future -deprecation -Xfatal-warnings
+//> using options -source future -deprecation -Werror
 
 package adhoc
 class A

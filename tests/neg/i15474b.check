@@ -3,4 +3,4 @@
   |                                   ^^^^^^^^^^
   |                                   Infinite loop in function body
   |                                   Test1.c.apply(from).toInt
-No warnings can be incurred under -Werror (or -Xfatal-warnings)
+No warnings can be incurred under -Werror

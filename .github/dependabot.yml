@@ -4,16 +4,11 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
-    assignees:
-      - hamzaremmal
     reviewers:
-      - hamzaremmal
+      - scala/infrastructure-maintainers
   - package-ecosystem: bundler
     directory: '/docs/_spec'
     schedule:
       interval: weekly
-    assignees:
-      - hamzaremmal
     reviewers:
-      - hamzaremmal
-      
+      - scala/infrastructure-maintainers

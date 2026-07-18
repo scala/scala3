@@ -1,0 +1,40 @@
+-- [E006] Not Found Error: tests/neg/i4935.scala:2:7 -------------------------------------------------------------------
+2 |  val (A, B) = () // error // error
+  |       ^
+  |       Not found: A
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i4935.scala:2:10 ------------------------------------------------------------------
+2 |  val (A, B) = () // error // error
+  |          ^
+  |          Not found: B
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i4935.scala:3:7 -------------------------------------------------------------------
+3 |  val (`a`, `b`) = () // error // error
+  |       ^^^
+  |       Not found: a
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg/i4935.scala:3:12 ------------------------------------------------------------------
+3 |  val (`a`, `b`) = () // error // error
+  |            ^^^
+  |            Not found: b
+  |
+  | longer explanation available when compiling with `-explain`
+-- Warning: tests/neg/i4935.scala:2:15 ---------------------------------------------------------------------------------
+2 |  val (A, B) = () // error // error
+  |               ^^
+  |       pattern's type (Any, Any) does not match the right hand side expression's type Unit
+  |
+  |       If the narrowing is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
+  |       which may result in a MatchError at runtime.
+  |       This patch can be rewritten automatically under -rewrite -source 3.8-migration.
+-- Warning: tests/neg/i4935.scala:3:19 ---------------------------------------------------------------------------------
+3 |  val (`a`, `b`) = () // error // error
+  |                   ^^
+  |       pattern's type (Any, Any) does not match the right hand side expression's type Unit
+  |
+  |       If the narrowing is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
+  |       which may result in a MatchError at runtime.
+  |       This patch can be rewritten automatically under -rewrite -source 3.8-migration.

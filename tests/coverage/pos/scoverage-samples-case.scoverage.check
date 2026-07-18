@@ -24,6 +24,23 @@ org.scoverage.samples
 PriceEngine
 Class
 org.scoverage.samples.PriceEngine
+<init>
+293
+298
+14
+<none>
+Literal
+false
+0
+false
+"abc"
+
+1
+scoverage-samples-case.scala
+org.scoverage.samples
+PriceEngine
+Class
+org.scoverage.samples.PriceEngine
 $anonfun
 362
 368
@@ -35,7 +52,7 @@ false
 false
 stop()
 
-1
+2
 scoverage-samples-case.scala
 org.scoverage.samples
 PriceEngine
@@ -52,7 +69,7 @@ true
 false
 =>\n      stop()
 
-2
+3
 scoverage-samples-case.scala
 org.scoverage.samples
 PriceEngine
@@ -69,7 +86,7 @@ false
 false
 stop()
 
-3
+4
 scoverage-samples-case.scala
 org.scoverage.samples
 PriceEngine
@@ -86,7 +103,7 @@ true
 false
 =>\n      stop()
 
-4
+5
 scoverage-samples-case.scala
 org.scoverage.samples
 PriceEngine
@@ -103,7 +120,24 @@ false
 false
 def receive
 
-5
+6
+scoverage-samples-case.scala
+org.scoverage.samples
+PriceEngine
+Class
+org.scoverage.samples.PriceEngine
+stop
+443
+462
+25
+!=
+Apply
+false
+0
+false
+cancellable != null
+
+7
 scoverage-samples-case.scala
 org.scoverage.samples
 PriceEngine
@@ -120,7 +154,7 @@ false
 false
 println("stop")
 
-6
+8
 scoverage-samples-case.scala
 org.scoverage.samples
 PriceEngine
@@ -137,7 +171,7 @@ true
 false
 println("stop")
 
-7
+9
 scoverage-samples-case.scala
 org.scoverage.samples
 PriceEngine
@@ -154,7 +188,7 @@ true
 false
 
 
-8
+10
 scoverage-samples-case.scala
 org.scoverage.samples
 PriceEngine

@@ -7,22 +7,13 @@ import config.{Feature, SourceVersion}
 
 object ccConfig:
 
-  /** If enabled, use a special path in recheckClosure for closures
-   *  to compare the result tpt of the anonymous functon with the expected
-   *  result type. This can narrow the scope of error messages.
-   */
-  inline val preTypeClosureResults = false
+  /** If enabled, cache capture sets of infos of capabilities */
+  inline val cacheCaptureSetOfInfo = false
 
   /** If this and `preTypeClosureResults` are both enabled, disable `preTypeClosureResults`
    *  for eta expansions. This can improve some error messages.
    */
   inline val handleEtaExpansionsSpecially = true
-
-  /** Don't require @use for reach capabilities that are accessed
-   *  only in a nested closure. This is unsound without additional
-   *  mitigation measures, as shown by unsound-reach-5.scala.
-   */
-  inline val deferredReaches = false
 
   /** Check that if a type map (which is not a BiTypeMap) maps initial capture
    *  set variable elements to themselves it will not map any elements added in
@@ -46,16 +37,24 @@ object ccConfig:
    */
   inline val postCheckCapturesets = false
 
-  /** If true, do level checking for FreshCap instances */
-  def useFreshLevels(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
+  /** If true take as the underlying capture set of a capability of function type
+   *  the capture set along the span, including capture sets of function results.
+   */
+  inline val useSpanCapset = false
 
-  /** If true, turn on separation checking */
-  def useSepChecks(using Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.8`)
+  /** If true, do level checking for LocalCap instances */
+  def useLocalCapLevels(using Context): Boolean =
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
 
   /** Not used currently. Handy for trying out new features */
   def newScheme(using ctx: Context): Boolean =
-    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.7`)
+    Feature.sourceVersion.stable.isAtLeast(SourceVersion.`3.10`)
+
+  /** Treat arrays as mutable types and force all mutable fields to be in Stateful
+   *  classes, unless they are annotated with @untrackedCaptures.
+   *  Enabled under separation checking
+   */
+  def strictMutability(using Context): Boolean =
+    Feature.enabled(Feature.separationChecking) || Feature.enabled(Feature.safe)
 
 end ccConfig

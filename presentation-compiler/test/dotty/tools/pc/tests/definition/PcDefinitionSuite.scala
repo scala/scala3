@@ -1,16 +1,32 @@
 package dotty.tools.pc.tests.definition
 
+import java.nio.file.Path
+
+import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.pc.OffsetParams
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BasePcDefinitionSuite
 import dotty.tools.pc.utils.MockEntries
 
+import coursierapi.{Dependency, Fetch}
 import org.eclipse.lsp4j.Location
 import org.junit.{Ignore, Test}
 
 class PcDefinitionSuite extends BasePcDefinitionSuite:
+
+  override protected def additionalClasspath: Seq[Path] =
+    // we purposefully don't request/attach the -sources.jar here
+    fetchJar("com.lihaoyi", "sourcecode_3", "0.4.2")
+
+  private def fetchJar(organization: String, artifact: String, version: String): Seq[Path] =
+    Fetch
+      .create()
+      .withDependencies(Dependency.of(organization, artifact, version))
+      .fetch()
+      .asScala
+      .map(_.toPath)
+      .toSeq
 
   override def mockEntries = new MockEntries:
     override def definitions = Map[String, List[Location]](
@@ -29,7 +45,7 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
       MockLocation("scala/Predef.Ensuring#ensuring(+3).", "Predef.scala"),
       MockLocation("scala/collection/immutable/List#`::`().", "List.scala"),
       MockLocation("scala/package.List.", "package.scala"),
-      MockLocation("scala/collection/immutable/Vector.", "Vector.scala"),
+      MockLocation("scala/collection/immutable/Vector.", "Vector.scala")
     )
 
   override def definitions(offsetParams: OffsetParams): List[Location] =
@@ -530,7 +546,7 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
          |  extension (i: MyIntOut) def <<uneven>> = i.value % 2 == 1
          |
          |val a = MyIntOut(1).un@@even
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `named-tuples` =
@@ -645,5 +661,45 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
       """|package a
          |object Repro:
          |    export scala.collection.immutable.V/*scala/collection/immutable/Vector. Vector.scala*/@@ector
+         |""".stripMargin
+    )
+
+  @Test def i7763 =
+    check(
+      """|case class MyItem(<<name>>: String)
+         |
+         |def handle(item: MyItem) =
+         |  item match {
+         |    case MyItem(na@@me = n2) => println(n2)
+         |  }
+         |""".stripMargin
+    )
+
+  @Test def `i7763-neg` =
+    check(
+      """|object MyItem:
+        |  def unapply(name: String): Option[Int] = ???
+        |
+        |def handle(item: String) =
+        |  item match {
+        |    case MyItem(na@@me = n2) => println(n2)
+        |  }
+        |""".stripMargin
+    )
+
+  @Test def `i7763-apply` =
+    check(
+      """|case class MyItem(<<name>>: String)
+         |
+         |def handle(item: String) = MyItem(na@@me = item)
+         |""".stripMargin
+    )
+
+  @Test def `dep-no-source-jar` =
+    check(
+      """|import sourcecode.Name
+         |object Main {
+         |  def foo: /*sourcecode/Name.class*/@@Name = ???
+         |}
          |""".stripMargin
     )

@@ -20,9 +20,13 @@ import scala.collection.mutable.StringBuilder
 
 /** This object provides convenience methods to create an iterable
  *  representation of a source file.
+ *
+ *  @param inputStream the underlying input stream to read characters from
+ *  @param bufferSize the size, in characters, of the internal buffer used for reading
+ *  @param codec the `Codec` used to decode bytes from the input stream into characters
  */
 class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val codec: Codec) extends Source {
-  def this(inputStream: InputStream)(implicit codec: Codec) = this(inputStream, DefaultBufSize)(codec)
+  def this(inputStream: InputStream)(implicit codec: Codec) = this(inputStream, DefaultBufSize)(using codec)
   def reader() = new InputStreamReader(inputStream, codec.decoder)
   def bufferedReader() = new BufferedReader(reader(), bufferSize)
 
@@ -31,8 +35,8 @@ class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val cod
   // block of data to be read from the stream, which will then be lost
   // to getLines if it creates a new reader, even though next() was
   // never called on the original.
-  private[this] var charReaderCreated = false
-  private[this] lazy val charReader = {
+  private var charReaderCreated = false
+  private lazy val charReader = {
     charReaderCreated = true
     bufferedReader()
   }
@@ -58,7 +62,7 @@ class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val cod
     // immediately on the source.
     if (charReaderCreated && iter.hasNext) {
       val pb = new PushbackReader(charReader)
-      pb unread iter.next().toInt
+      pb.unread(iter.next().toInt)
       new BufferedReader(pb, bufferSize)
     }
     else charReader
@@ -66,8 +70,8 @@ class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val cod
 
 
   class BufferedLineIterator extends AbstractIterator[String] with Iterator[String] {
-    private[this] val lineReader = decachedReader
-    var nextLine: String = null
+    private val lineReader = decachedReader
+    @annotation.stableNull var nextLine: String | Null = null
 
     override def hasNext = {
       if (nextLine == null)
@@ -91,6 +95,12 @@ class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val cod
    *
    *  Note: This function may temporarily load the entire buffer into
    *  memory.
+   *
+   *  @param sb the string builder to append to
+   *  @param start the string to prepend before the first element
+   *  @param sep the separator string inserted between elements; passing an empty string enables the efficient bulk-read path
+   *  @param end the string to append after the last element
+   *  @return the string builder `sb` with all elements appended
    */
   override def addString(sb: StringBuilder, start: String, sep: String, end: String): sb.type =
     if (sep.isEmpty) {

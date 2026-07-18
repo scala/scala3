@@ -23,6 +23,7 @@ PROG_HOME="$DIST_DIR/target/universal/stage"
 
 SOURCE="$ROOT/tests/pos/HelloWorld.scala"
 SOURCE_VERSION="$ROOT/project/scripts/native-integration/reportScalaVersion.scala"
+SOURCE_TEST_BOOTSTRAPPED="$ROOT/project/scripts/native-integration/testBootstrappedLibrary.scala"
 
 clear_cli_dotfiles()
 {
@@ -81,4 +82,35 @@ echo "testing run command (-with-compiler)"
 std_output=$("$PROG_HOME/bin/scala" run "$SOURCE_VERSION" -with-compiler --power --offline --server=false)
 test "$SCALA_VERSION" = "$std_output"
 clear_cli_dotfiles "$ROOT/project/scripts/native-integration"
+
+echo "testing REPL direct invocation with -repl-init-script"
+# Use scalac with REPL options to verify REPL functionality
+# -repl-init-script runs code on startup, -repl-quit-after-init exits after init
+std_output=$("$PROG_HOME/bin/scala" -repl-init-script 'println("REPL_INIT_OK"); assert(scala.util.Properties.versionNumberString.startsWith("3."))' -repl-quit-after-init --power --offline --server=false 2>&1)
+echo "$std_output" | grep -q "REPL_INIT_OK" || die "REPL init script test failed, output: $std_output"
+clear_cli_dotfiles "$ROOT"
+
+echo "testing bootstrapped standard library (scala-library-bootstrapped)"
+std_output=$("$PROG_HOME/bin/scala" run "$SOURCE_TEST_BOOTSTRAPPED" --power --offline --server=false)
+echo "$std_output" | grep -q "BOOTSTRAPPED_LIBRARY_TEST_PASSED" || die "Bootstrapped library test failed, output: $std_output"
+clear_cli_dotfiles "$ROOT/project/scripts/native-integration"
+
+echo "testing REPL does not emit legacy lazy vals warnings on JDK 25 (scala/scala3#25508)"
+# The vendored pprint/fansi/sourcecode must be compiled with the new lazy vals
+# scheme, otherwise scala.runtime.LazyVals$ calls sun.misc.Unsafe::objectFieldOffset,
+# which the JVM reports as a terminally deprecated method starting with JDK 24+
+std_output=$("$PROG_HOME/bin/scala" --jvm 25 --server=false -repl-init-script 'val replCheck = 1 + 1' -repl-quit-after-init 2>&1)
+echo "$std_output" | grep -q "replCheck" || die "REPL init script did not run on JDK 25, output: $std_output"
+if echo "$std_output" | grep "has been called by scala.runtime.LazyVals" | grep -qv "scala-cli"; then
+  die "REPL emitted a legacy lazy vals warning on JDK 25, output: $std_output"
+fi
+clear_cli_dotfiles "$ROOT"
+
+echo "testing REPL coexists with a user dependency on fansi (shaded internally)"
+# The REPL vendors pprint/fansi/sourcecode shaded under dotty.vendored.*,
+# so a user can depend on the original (unshaded, possibly different-versioned)
+# libraries without clashing with the REPL's internal copy.
+std_output=$("$PROG_HOME/bin/scala" --server=false --dependency com.lihaoyi::fansi:0.4.0 -repl-init-script 'println(fansi.Color.Red("COEXIST_OK").plainText)' -repl-quit-after-init 2>&1)
+echo "$std_output" | grep -q "COEXIST_OK" || die "REPL failed to use a user-provided fansi dependency, output: $std_output"
+clear_cli_dotfiles "$ROOT"
 

@@ -1,8 +1,6 @@
 package scala.quoted
 package runtime.impl
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
@@ -255,7 +253,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           throw new RuntimeException(
             "Symbols necessary for creation of the ClassDef tree could not be found."
           )
-        val paramsAccessDefs: List[untpd.ParamClause] =
+        val paramsAccessDefs: List[ParamClause] =
           cls.primaryConstructor.paramSymss.map { paramSym =>
             if paramSym.headOption.map(_.isType).getOrElse(false) then
               paramSym.map { symm =>
@@ -283,7 +281,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         (cdef.name.toString, cdef.constructor, cdef.parents, cdef.self, rhs.body)
 
       def module(module: Symbol, parents: List[Tree /* Term | TypeTree */], body: List[Statement]): (ValDef, ClassDef) = {
-        if xCheckMacro then TreeChecker.checkParents(module.moduleClass.asClass, parents)
+        if xCheckMacro then TreeChecker.checkParents(module.moduleClass.asClass, parents, xCheckMacroAssert)
         val cls = module.moduleClass
         val clsDef = ClassDef(cls, parents, body)
         val newCls = Apply(Select(New(TypeIdent(cls)), cls.primaryConstructor), Nil)
@@ -368,6 +366,12 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         tpd.cpy.ValDef(original)(name.toTermName, tpt, xCheckedMacroOwners(xCheckMacroValidExpr(rhs), original.symbol).getOrElse(tpd.EmptyTree))
       def unapply(vdef: ValDef): (String, TypeTree, Option[Term]) =
         (vdef.name.toString, vdef.tpt, optional(vdef.rhs))
+
+      def let(owner: Symbol, name: String, rhs: Term, flags: Flags)(body: Ref => Term): Term =
+        Symbol.checkValidFlags(flags.toTermFlags, Flags.validValInLetFlags)
+        val vdef = tpd.SyntheticValDef(name.toTermName, rhs, flags)(using ctx.withOwner(owner))
+        val ref = tpd.ref(vdef.symbol).asInstanceOf[Ref]
+        Block(List(vdef), body(ref))
 
       def let(owner: Symbol, name: String, rhs: Term)(body: Ref => Term): Term =
         val vdef = tpd.SyntheticValDef(name.toTermName, rhs)(using ctx.withOwner(owner))
@@ -478,6 +482,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
           argss.foldLeft(self: Term)(Apply(_, _))
         def appliedToNone: Apply =
           self.appliedToArgs(Nil)
+        def ensureApplied: Term =
+          def isParameterless(tpe: TypeRepr): Boolean = !tpe.isInstanceOf[MethodType]
+          if (isParameterless(self.tpe.widen)) self else self.appliedToNone
         def appliedToType(targ: TypeRepr): Term =
           self.appliedToTypes(targ :: Nil)
         def appliedToTypes(targs: List[TypeRepr]): Term =
@@ -570,7 +577,22 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def overloaded(qualifier: Term, name: String, targs: List[TypeRepr], args: List[Term], returnType: TypeRepr): Term =
         withDefaultPos(tpd.applyOverloaded(qualifier, name.toTermName, args, targs, returnType))
       def copy(original: Tree)(qualifier: Term, name: String): Select =
-        tpd.cpy.Select(original)(qualifier, name.toTermName)
+        original match
+          case original: tpd.Select if original.name.toString == name =>
+            // Name unchanged: preserve original Name object and use tpd.cpy.Select
+            // which correctly handles qualifier type changes via derivedSelect
+            tpd.cpy.Select(original)(qualifier, original.name)
+          case _ =>
+            // Name changed: resolve the name and create a fresh Select with proper type
+            val simpleName = name.toTermName
+            val resolvedName =
+              val member = qualifier.tpe.member(simpleName)
+              if member.exists then simpleName
+              else
+                val unmangled = simpleName.unmangle(NameKinds.Scala2MethodNameKinds)
+                if (unmangled ne simpleName) && qualifier.tpe.member(unmangled).exists then unmangled
+                else simpleName
+            tpd.Select(qualifier, resolvedName)
       def unapply(x: Select): (Term, String) =
         (x.qualifier, x.name.toString)
     end Select
@@ -883,7 +905,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     object Closure extends ClosureModule:
       def apply(meth: Term, tpe: Option[TypeRepr]): Closure =
+        xCheckMacroAssert(meth.symbol.isAnonymousFunction, "Closures must refer to anonymous functions")
         withDefaultPos(tpd.Closure(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree)))
+
       def copy(original: Tree)(meth: Tree, tpe: Option[TypeRepr]): Closure =
         tpd.cpy.Closure(original)(Nil, meth, tpe.map(tpd.TypeTree(_)).getOrElse(tpd.EmptyTree))
       def unapply(x: Closure): (Term, Option[TypeRepr]) =
@@ -1238,6 +1262,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end TypeProjectionTypeTest
 
     object TypeProjection extends TypeProjectionModule:
+      def apply(qualifier: TypeTree, name: String): TypeProjection =
+        withDefaultPos(tpd.Select(qualifier, name.toTypeName))
       def copy(original: Tree)(qualifier: TypeTree, name: String): TypeProjection =
         tpd.cpy.Select(original)(qualifier, name.toTypeName)
       def unapply(x: TypeProjection): (TypeTree, String) =
@@ -1283,6 +1309,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     end RefinedTypeTest
 
     object Refined extends RefinedModule:
+      def apply(tpt: TypeTree, refinements: List[Definition], refineCls: Symbol): Refined = // Symbol of the class being refined, according to which the refinements are typed
+        assert(refineCls.isClass, "refineCls must be a class/trait/object")
+        withDefaultPos(tpd.RefinedTypeTree(tpt, refinements, refineCls.asClass).asInstanceOf[tpd.RefinedTypeTree])
       def copy(original: Tree)(tpt: TypeTree, refinements: List[Definition]): Refined =
         tpd.cpy.RefinedTypeTree(original)(tpt, refinements)
       def unapply(x: Refined): (TypeTree, List[Definition]) =
@@ -1579,6 +1608,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         withDefaultPos(tpd.Bind(sym, pattern))
       def copy(original: Tree)(name: String, pattern: Tree): Bind =
         withDefaultPos(tpd.cpy.Bind(original)(name.toTermName, pattern))
+          .withSpan(original.span)
       def unapply(pattern: Bind): (String, Tree) =
         (pattern.name.toString, pattern.pattern)
     end Bind
@@ -1670,7 +1700,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       def apply(params: List[ValDef]): TermParamClause =
         if xCheckMacro then
           val implicitParams = params.count(_.symbol.is(dotc.core.Flags.Implicit))
-          assert(implicitParams == 0 || implicitParams == params.size, "Expected all or non of parameters to be implicit")
+          xCheckMacroAssert(implicitParams == 0 || implicitParams == params.size, "Expected all or none of the parameters to be implicit")
         params
       def unapply(x: TermParamClause): Some[List[ValDef]] = Some(x)
     end TermParamClause
@@ -1866,15 +1896,62 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def termSymbol: Symbol = self.termSymbol
         def isSingleton: Boolean = self.isSingleton
         def memberType(member: Symbol): TypeRepr =
+          // This check only fails if no owner of the passed member symbol is related to the `self` type.
+          // Ideally we would just check if the symbol is a member of
+          // the type (with self.derivesFrom(member.owner)), but:
+          //  A) the children of enums are not members of those enums, which is unintuitive
+          //  B) this check was added late, risking major hard to fix regressions
+          //     (and failed dotty compilation tests)
+          // Additionally, it can be useful to be able to learn a type of a symbol using some indirect prefix,
+          // even if that symbol is not a direct member of that prefix, but a nested one.
+          def isTypeRelatedToThePassedMember =
+            import scala.util.boundary
+            // the symbol for `self` will not exist for LambdaTypes,
+            // which don't seem to be supported by asSeenFrom anyway
+            // (but also don't seem to cause crashes, and return no-op member.info,
+            // which we might not be able to access otherwise, so we need to allow this).
+            val isLambdaType = self.isInstanceOf[LambdaType]
+            isLambdaType || boundary {
+              var checked: Symbol = member
+              while(checked.exists) {
+                if self.derivesFrom(checked)
+                || self.typeSymbol.declarations.contains(checked)
+                || self.typeSymbol.companionClass.declarations.contains(checked) then
+                  boundary.break(true)
+                checked = checked.owner
+              }
+              boundary.break(false)
+            }
+
+          xCheckMacroAssert(isTypeRelatedToThePassedMember, s"$member is not a member of ${self.show}")
+
           // we replace thisTypes here to avoid resolving otherwise unstable prefixes into Nothing
           val memberInfo =
             if self.typeSymbol.isClassDef then
               member.info.substThis(self.classSymbol.asClass, self)
             else
               member.info
-          memberInfo
-            .asSeenFrom(self, member.owner)
+          
+          // We treat the constructor type parameters as if they were the same as corresponding type members.
+          // That's how Scala 2 symbols are unpickled to begin with.
+          val memberInfoSubstituted =
+            if member.owner.isConstructor then
+              self match
+                case dotc.core.Types.AppliedType(_, args) =>
+                  val ctorTypeParams = member.owner.paramSymss.flatten.filter(_.isType)
+                  if ctorTypeParams.length == args.length then
+                    memberInfo.subst(ctorTypeParams, args)
+                  else
+                    memberInfo
+                case _ => memberInfo
+            else memberInfo
 
+          memberInfoSubstituted.asSeenFrom(self, member.owner) match
+            case dotc.core.Types.ClassInfo(prefix, sym, _, _, _) =>
+              // We do not want to expose ClassInfo in the reflect API, instead we change it to a TypeRef,
+              // see issue #22395
+              prefix.select(sym)
+            case other => other
         def baseClasses: List[Symbol] = self.baseClasses
         def baseType(cls: Symbol): TypeRepr = self.baseType(cls)
         def derivesFrom(cls: Symbol): Boolean = self.derivesFrom(cls)
@@ -1905,6 +1982,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
         def typeArgs: List[TypeRepr] = self match
           case AppliedType(_, args) => args
+          case AnnotatedType(parent, _) => parent.typeArgs
+          case FlexibleType(underlying) => underlying.typeArgs
           case _ => List.empty
       end extension
     end TypeReprMethods
@@ -2817,7 +2896,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         cls
 
       def newModule(owner: Symbol, name: String, modFlags: Flags, clsFlags: Flags, parents: Symbol => List[TypeRepr], decls: Symbol => List[Symbol], privateWithin: Symbol): Symbol =
-        assert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
+        xCheckMacroAssert(!privateWithin.exists || privateWithin.isType, "privateWithin must be a type symbol or `Symbol.noSymbol`")
         val mod = dotc.core.Symbols.newNormalizedModuleSymbol(
           owner,
           name.toTermName,
@@ -2863,7 +2942,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
       def noSymbol: Symbol = dotc.core.Symbols.NoSymbol
 
-      private inline def checkValidFlags(inline flags: Flags, inline valid: Flags): Unit =
+      private[QuotesImpl] inline def checkValidFlags(inline flags: Flags, inline valid: Flags): Unit =
         xCheckMacroAssert(
           flags <= valid,
           s"Received invalid flags. Expected flags ${flags.show} to only contain a subset of ${valid.show}."
@@ -3018,7 +3097,33 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def memberTypes: List[Symbol] =
           self.typeRef.decls.filter(_.isType)
         def typeMembers: List[Symbol] =
-          lookupPrefix.typeMembers.map(_.symbol).toList
+          // lookupPrefix.typeMembers currently returns a Set wrapped into a unsorted Seq,
+          // so we try to sort that here (see discussion: https://github.com/scala/scala3/issues/22472),
+          // without adding too much of a performance hit.
+          // It first sorts by parents, then for type params by their positioning, then for members
+          // derived from declarations it sorts them by their name lexicographically
+          val parentsMap = lookupPrefix.sortedParents.map(_.typeSymbol).zipWithIndex.toList.toMap
+          val unsortedTypeMembers = lookupPrefix.typeMembers.map(_.symbol).filter(_.exists).toList
+          unsortedTypeMembers.sortWith {
+            case (typeA, typeB) =>
+              val msg = "Unknown type member found. Please consider reporting the issue to the compiler. "
+              assert(parentsMap.contains(typeA.owner), msg)
+              assert(parentsMap.contains(typeB.owner), msg)
+              val parentPlacementA = parentsMap(typeA.owner)
+              val parentPlacementB = parentsMap(typeB.owner)
+              if (parentPlacementA == parentPlacementB) then
+                if typeA.isTypeParam && typeB.isTypeParam then
+                  // put type params at the beginning (and sort them by declaration order)
+                  val pl = typeA.owner
+                  val typeParamPositionMap = pl.typeParams.map(_.asInstanceOf[Symbol]).zipWithIndex.toMap
+                  typeParamPositionMap(typeA) < typeParamPositionMap(typeB)
+                else if typeA.isTypeParam then true
+                else if typeB.isTypeParam then false
+                else
+                  // sort by name lexicographically
+                  typeA.name.toString().compareTo(typeB.name.toString()) < 0
+              else parentPlacementA < parentPlacementB
+          }.map(_.asInstanceOf[Symbol])
 
         def declarations: List[Symbol] =
           self.typeRef.info.decls.toList
@@ -3224,7 +3329,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
       private[QuotesImpl] def validMethodFlags: Flags = Private | Protected | Override | Deferred | Final | Method | Implicit | Given | Local | AbsOverride | JavaStatic | Synthetic | Artifact // Flags that could be allowed: Synthetic | ExtensionMethod | Exported | Erased | Infix | Invisible
       // Keep: aligned with Quotes's `newVal` doc
       private[QuotesImpl] def validValFlags: Flags = Private | Protected | Override | Deferred | Final | Param | Implicit | Lazy | Mutable | Local | ParamAccessor | Module | Package | Case | CaseAccessor | Given | Enum | AbsOverride | JavaStatic | Synthetic | Artifact // Flags that could be added: Synthetic | Erased | Invisible
-
+      // Keep: aligned with Quotes's `let` doc
+      private[QuotesImpl] def validValInLetFlags: Flags = Final | Implicit | Lazy | Mutable | Given | Synthetic
       // Keep: aligned with Quotes's `newBind` doc
       private[QuotesImpl] def validBindFlags: Flags = Case // Flags that could be allowed: Implicit | Given | Erased
 
@@ -3295,13 +3401,13 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
 
     given SourceFileMethods: SourceFileMethods with
       extension (self: SourceFile)
-        def jpath: java.nio.file.Path = self.file.jpath
+        @deprecated("This will return `null` for files that are not on disk, such as in an IDE or in the REPL.", "3.9.0")
+        def jpath: java.nio.file.Path = self.file.jpath.asInstanceOf[java.nio.file.Path]
+        @deprecated("This will return `None` for files that are not on disk, such as in an IDE or in the REPL.", "3.9.0")
         def getJPath: Option[java.nio.file.Path] = Option(self.file.jpath)
         def name: String = self.name
         def path: String = self.path
-        def content: Option[String] =
-          // TODO detect when we do not have a source and return None
-          Some(new String(self.content()))
+        def content: Option[String] = Option.when(self.exists)(new String(self.content()))
       end extension
     end SourceFileMethods
 
@@ -3360,7 +3466,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     private def optional[T <: dotc.ast.Trees.Tree[?]](tree: T): Option[tree.type] =
       if tree.isEmpty then None else Some(tree)
 
-    private def withDefaultPos[T <: Tree](fn: Context ?=> T): T =
+    private def withDefaultPos[T <: untpd.Tree](fn: Context ?=> T): T =
       fn(using ctx.withSource(Position.ofMacroExpansion.source)).withSpan(Position.ofMacroExpansion.span)
 
     /** Checks that all definitions in this tree have the expected owner.
@@ -3462,7 +3568,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         // start stack trace at the place where the user called the reflection method
         error.setStackTrace(
           error.getStackTrace
-            .dropWhile(_.getClassName().startsWith("scala.quoted.runtime.impl")))
+            .dropWhile(l => l.getClassName().startsWith("scala.quoted.runtime.impl") || l.getClassName().startsWith("dotty.tools.dotc")))
       throw error
 
     object Printer extends PrinterModule:
@@ -3515,7 +3621,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     val tree = PickledQuotes.unpickleTerm(pickled, PickledQuotes.TypeHole.V1(typeHole), PickledQuotes.ExprHole.V1(termHole))
     new ExprImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Expr[T]]
 
-  def unpickleExprV2[T](pickled: String | List[String], types: Seq[Type[?]], termHole: Null | ((Int, Seq[Type[?] | Expr[Any]], Quotes) => Expr[?])): scala.quoted.Expr[T] =
+  def unpickleExprV2[T](pickled: String | List[String], types: Null | Seq[Type[?]], termHole: Null | ((Int, Seq[Type[?] | Expr[Any]], Quotes) => Expr[?])): scala.quoted.Expr[T] =
     val tree = PickledQuotes.unpickleTerm(pickled, PickledQuotes.TypeHole.V2(types), PickledQuotes.ExprHole.V2(termHole))
     new ExprImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Expr[T]]
 
@@ -3523,7 +3629,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
     val tree = PickledQuotes.unpickleTypeTree(pickled, PickledQuotes.TypeHole.V1(typeHole))
     new TypeImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Type[T]]
 
-  def unpickleTypeV2[T <: AnyKind](pickled: String | List[String], types: Seq[Type[?]]): scala.quoted.Type[T] =
+  def unpickleTypeV2[T <: AnyKind](pickled: String | List[String], types: Null | Seq[Type[?]]): scala.quoted.Type[T] =
     val tree = PickledQuotes.unpickleTypeTree(pickled, PickledQuotes.TypeHole.V2(types))
     new TypeImpl(tree, SpliceScope.getCurrent).asInstanceOf[scala.quoted.Type[T]]
 

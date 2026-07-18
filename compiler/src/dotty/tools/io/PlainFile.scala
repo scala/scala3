@@ -6,9 +6,8 @@
 package dotty.tools
 package io
 
-import scala.language.unsafeNulls
-
 import java.io.{InputStream, OutputStream}
+import java.net.URL
 import java.nio.file.{InvalidPathException, Paths}
 
 /** ''Note:  This library is considered experimental and should not be used unless you know what you are doing.'' */
@@ -21,69 +20,35 @@ class PlainDirectory(givenPath: Directory) extends PlainFile(givenPath) {
  *
  * ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
-class PlainFile(val givenPath: Path) extends AbstractFile {
-  assert(path ne null)
-
+class PlainFile(givenPath: Path) extends AbstractFile {
   dotc.util.Stats.record("new PlainFile")
 
-  def jpath: JPath = givenPath.jpath
+  override def jpath: JPath = givenPath.jpath
 
-  override def underlyingSource  = {
-    val fileSystem = jpath.getFileSystem
-    fileSystem.provider().getScheme match {
-      case "jar" =>
-        val fileStores = fileSystem.getFileStores.iterator()
-        if (fileStores.hasNext) {
-          val jarPath = fileStores.next().name
-          try {
-            Some(new PlainFile(new Path(Paths.get(jarPath.stripSuffix(fileSystem.getSeparator)))))
-          } catch {
-            case _: InvalidPathException =>
-              None
-          }
-        } else None
-      case "jrt" =>
-        if (jpath.getNameCount > 2 && jpath.startsWith("/modules")) {
-          // TODO limit this to OpenJDK based JVMs?
-          val moduleName = jpath.getName(1)
-          Some(new PlainFile(new Path(Paths.get(System.getProperty("java.home"), "jmods", moduleName.toString + ".jmod"))))
-        } else None
-      case _ => None
-    }
-  }
+  override def name: String = givenPath.name
 
+  // Interned for fast hashcode and equals
+  override val path: String = givenPath.normalize.path.intern
 
-  /** Returns the name of this abstract file. */
-  def name: String = givenPath.name
-
-  /** Returns the path of this abstract file. */
-  def path: String = givenPath.path
-
-  /** Returns the absolute path of this abstract file as an interned string. */
-  override val absolutePath: String = givenPath.toAbsolute.toString.intern
-
-  /** The absolute file. */
-  def absolute: PlainFile = new PlainFile(givenPath.toAbsolute)
-
-  override def container: AbstractFile = new PlainFile(givenPath.parent)
+  override def container: Option[AbstractFile] = Some(new PlainFile(givenPath.parent))
   override def input: InputStream = givenPath.toFile.inputStream()
   override def output: OutputStream = givenPath.toFile.outputStream()
-  override def sizeOption: Option[Int] = Some(givenPath.length.toInt)
+  override def toURL: Option[URL] = Some(jpath.toUri.toURL)
 
-  override def hashCode(): Int = System.identityHashCode(absolutePath)
+  override def hashCode(): Int = System.identityHashCode(path)
   override def equals(that: Any): Boolean = that match {
-    case x: PlainFile => absolutePath `eq` x.absolutePath
+    case x: PlainFile => path `eq` x.path
     case _            => false
   }
 
   /** Is this abstract file a directory? */
-  val isDirectory: Boolean = givenPath.isDirectory // cached for performance on Windows
+  override val isDirectory: Boolean = givenPath.isDirectory // cached for performance on Windows
 
   /** Returns the time that this abstract file was last modified. */
-  def lastModified: Long = givenPath.lastModified.toMillis
+  override def lastModified: Long = givenPath.lastModified.toMillis
 
   /** Returns all abstract subfiles of this abstract directory. */
-  def iterator: Iterator[AbstractFile] = {
+  override def iterator: Iterator[AbstractFile] = {
     // Optimization: Assume that the file was not deleted and did not have permissions changed
     // between the call to `list` and the iteration. This saves a call to `exists`.
     def existsFast(path: Path) = path match {
@@ -99,7 +64,7 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
    * argument "directory" tells whether to look for a directory or
    * or a regular file.
    */
-  def lookupName(name: String, directory: Boolean): AbstractFile = {
+  override def lookupName(name: String, directory: Boolean): AbstractFile | Null = {
     val child = givenPath / name
     if directory then
       if child.isDirectory /* IO! */ then
@@ -112,11 +77,8 @@ class PlainFile(val givenPath: Path) extends AbstractFile {
       null
   }
 
-  /** Returns a plain file with the given name. It does not
-   *  check that it exists.
-   */
-  def lookupNameUnchecked(name: String, directory: Boolean): AbstractFile =
-    new PlainFile(givenPath / name)
+  // preserve whatever we got as input
+  override def toString(): String = givenPath.toString()
 }
 
 object PlainFile {

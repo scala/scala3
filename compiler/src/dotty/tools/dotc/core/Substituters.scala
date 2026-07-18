@@ -1,7 +1,7 @@
 package dotty.tools.dotc
 package core
 
-import Types.*, Symbols.*, Contexts.*
+import Types.*, Symbols.*, Contexts.*, Decorators.i
 import cc.Capabilities.{Capability, ResultCap}
 
 /** Substitution operations on types. See the corresponding `subst` and
@@ -82,7 +82,7 @@ object Substituters:
         var ts = to
         while (fs.nonEmpty) {
           if (fs.head eq sym)
-            return substSym(tp.prefix, from, to, theMap) select ts.head
+            return substSym(tp.prefix, from, to, theMap).select(ts.head)
           fs = fs.tail
           ts = ts.tail
         }
@@ -165,17 +165,20 @@ object Substituters:
 
   final class SubstBindingMap[BT <: BindingType](val from: BT, val to: BT)(using Context) extends DeepTypeMap, BiTypeMap {
     def apply(tp: Type): Type = subst(tp, from, to, this)(using mapCtx)
-    override def mapCapability(c: Capability, deep: Boolean = false) = c match
-      case c @ ResultCap(binder: MethodType) if binder eq from =>
-        c.derivedResult(to.asInstanceOf[MethodType])
+    override def mapCapability(c: Capability) = c match
+      case c @ ResultCap(binder) if binder eq from =>
+        c.derivedResult(to.asInstanceOf[MethodicType])
       case _ =>
-        super.mapCapability(c, deep)
+        super.mapCapability(c)
 
     override def fuse(next: BiTypeMap)(using Context) = next match
       case next: SubstBindingMap[_] =>
         if next.from eq to then Some(SubstBindingMap(from, next.to))
         else Some(SubstBindingsMap(Array(from, next.from), Array(to, next.to)))
       case _ => None
+
+    override def summarize(using Context) = i"SubstBinding[$from --> $to]"
+
     def inverse = SubstBindingMap(to, from)
   }
 
@@ -189,13 +192,13 @@ object Substituters:
       case _ =>
         mapOver(tp)
 
-    override def mapCapability(c: Capability, deep: Boolean = false) = c match
+    override def mapCapability(c: Capability) = c match
       case c @ ResultCap(binder: MethodType) =>
         var i = 0
         while i < from.length && (from(i) ne binder) do i += 1
         if i < from.length then c.derivedResult(to(i).asInstanceOf[MethodType]) else c
       case _ =>
-        super.mapCapability(c, deep)
+        super.mapCapability(c)
 
     override def fuse(next: BiTypeMap)(using Context) = next match
       case next: SubstBindingMap[_] =>

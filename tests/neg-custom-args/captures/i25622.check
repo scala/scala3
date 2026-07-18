@@ -1,0 +1,5 @@
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/i25622.scala:8:25 --------------------------------------
+8 |    def callIO(): Unit = io.println() // error
+  |                         ^^
+  |                         Reference `io` is not included in the allowed capture set 's1
+  |                         of the enclosing class A.

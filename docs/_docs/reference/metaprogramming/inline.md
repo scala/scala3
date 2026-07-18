@@ -247,8 +247,19 @@ trait InlineConstants:
   inline val myShort: Short
 
 object Constants extends InlineConstants:
-  inline val myShort/*: Short(4)*/ = 4
+  inline val myShort/*: (4 : Short)*/ = 4
 ```
+<!-- Test case: tests/pos/inline-val-short.scala -->
+
+Inline values that are inside inline methods are only required to be constant _after inlining_. Therefore, the following is valid:
+
+```scala
+inline def double(inline x: Int): Int = x * 2
+inline def eight: Int =
+  inline val res = double(4)
+  res
+```
+<!-- Test case: tests/pos/inline-val-in-inline-method.scala -->
 
 ## Transparent Inline Methods
 
@@ -388,4 +399,5 @@ val intTwo: 2 = natTwo
 
 ## Reference
 
-For more information about the semantics of `inline`, see the [Scala 2020: Semantics-preserving inlining for metaprogramming](https://dl.acm.org/doi/10.1145/3426426.3428486) paper.
+For more information about the semantics of `inline`, see the [Scala 2020: Semantics-preserving inlining for metaprogramming](https://infoscience.epfl.ch/server/api/core/bitstreams/fe5a7e31-ecd8-4aa7-96f7-d107341871f9/content) paper,
+also available [here](https://dl.acm.org/doi/10.1145/3426426.3428486).

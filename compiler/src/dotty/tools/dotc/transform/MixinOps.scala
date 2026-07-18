@@ -2,8 +2,10 @@ package dotty.tools.dotc
 package transform
 
 import core.*
-import Symbols.*, Types.*, Contexts.*, DenotTransformers.*, Flags.*
+import Decorators.*, Symbols.*, Types.*, Contexts.*, DenotTransformers.*, Flags.*
+import NameKinds.*
 import util.Spans.*
+import util.chaining.*
 
 import StdNames.*, NameOps.*
 import typer.Nullables
@@ -18,15 +20,21 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
     map(n => getClassIfDefined("org.junit." + n)).
     filter(_.exists)
 
-  def mkForwarderSym(member: TermSymbol, extraFlags: FlagSet = EmptyFlags): TermSymbol = {
-    val res = member.copy(
+  def mkForwarderSym(member: TermSymbol, extraFlags: FlagSet = EmptyFlags): TermSymbol =
+    member.copy(
       owner = cls,
       name = member.name.stripScala2LocalSuffix,
       flags = member.flags &~ Deferred &~ Module | Synthetic | extraFlags,
-      info = cls.thisType.memberInfo(member)).enteredAfter(thisPhase).asTerm
-    res.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
-    res
-  }
+      info = cls.thisType.memberInfo(member)
+    )
+    .enteredAfter(thisPhase)
+    .asTerm.tap: forwarder =>
+      forwarder.addAnnotations(member.annotations.filter(_.symbol != defn.TailrecAnnot))
+      val paramSymss = forwarder.paramSymss // compute once; different from rawParamss
+      forwarder.setParamss(paramSymss)
+      atPhaseBeforeTransforms:
+        for (src, dst) <- member.paramSymss.flatten.filter(!_.isType).zip(paramSymss.flatten) do
+          dst.addAnnotations(src.annotations)
 
   def superRef(target: Symbol, span: Span = cls.span): Tree = {
     val sup = if (target.isConstructor && !target.owner.is(Trait))
@@ -47,35 +55,59 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       cls.info.nonPrivateMember(sym.name).hasAltWith(_.symbol == sym)
     }
 
-  /** Does `method` need a forwarder to in  class `cls`
-   *  Method needs a forwarder in those cases:
-   *   - there's a class defining a method with same signature
-   *   - there are multiple traits defining method with same signature
+  /**
+   * `meth` needs a forwarder in class `cls` if
+   * - A non-trait base class defines matching method. Example:
+   *   class C {def f: Int}; trait T extends C {def f = 1}; class D extends T
+   *   Even if C.f is abstract, the forwarder in D is needed, otherwise the JVM would
+   *   resolve `D.f` to `C.f`, see jvms-6.5.invokevirtual.
+   *
+   * - There exists another concrete, matching method in any of the base classes, and
+   *   the `mixinClass` does not itself extend that base class. In this case the
+   *   forwarder is needed to disambiguate. Example:
+   *     trait T1 {def f = 1}; trait T2 extends T1 {override def f = 2}; class C extends T2
+   *   In C we don't need a forwarder for f because T2 extends T1, so the JVM resolves
+   *   C.f to T2.f non-ambiguously. See jvms-5.4.3.3, "maximally-specific method".
+   *     trait U1 {def f = 1}; trait U2 {self:U1 => override def f = 2}; class D extends U2
+   *   In D the forwarder is needed, the interfaces U1 and U2 are unrelated at the JVM level.
    */
-  def needsMixinForwarder(meth: Symbol): Boolean = {
-    lazy val competingMethods = competingMethodsIterator(meth).toList
-
-    def needsDisambiguation = competingMethods.exists(x=> !x.is(Deferred)) // multiple implementations are available
-    def hasNonInterfaceDefinition = competingMethods.exists(!_.owner.is(Trait)) // there is a definition originating from class
+  def needsMixinForwarder(mixin: ClassSymbol, meth: Symbol): Boolean =
+    lazy val competingMethods =
+      cls.baseClasses.iterator
+        .filter(_ ne meth.owner)
+        .map(base => meth.overriddenSymbol(base, cls))
+        .filter(_.exists)
+    lazy val mixinSuperTraits = mixin.baseClasses.filter(_.is(Trait))
+    lazy val needsForwarder = competingMethods.exists(m => {
+      !m.owner.is(Trait) ||
+        (!m.is(Deferred) && !mixinSuperTraits.contains(m.owner))
+    })
 
     // JUnit 4 won't recognize annotated default methods, so always generate a forwarder for them.
     def generateJUnitForwarder: Boolean =
-      meth.annotations.nonEmpty && JUnit4Annotations.exists(annot => meth.hasAnnotation(annot)) &&
+      meth.annotations.nonEmpty && JUnit4Annotations.exists(meth.hasAnnotation) &&
         ctx.settings.mixinForwarderChoices.isAtLeastJunit
 
     // Similarly, Java serialization won't take into account a readResolve/writeReplace default method.
     def generateSerializationForwarder: Boolean =
        (meth.name == nme.readResolve || meth.name == nme.writeReplace) && meth.info.paramNamess.flatten.isEmpty
 
-    !meth.isConstructor &&
-    meth.is(Method, butNot = PrivateOrAccessorOrDeferred) &&
-    (ctx.settings.mixinForwarderChoices.isTruthy || meth.owner.is(Scala2x) || needsDisambiguation || hasNonInterfaceDefinition ||
-     generateJUnitForwarder || generateSerializationForwarder) &&
-    isInImplementingClass(meth)
-  }
+    !meth.isConstructor
+    && meth.is(Method, butNot = PrivateOrAccessorOrDeferred)
+    && (!meth.is(JavaDefined) || !meth.owner.is(Sealed) || meth.owner.children.contains(cls))
+    && (
+         ctx.settings.mixinForwarderChoices.isTruthy
+      || meth.owner.is(Scala2x)
+      || needsForwarder
+      || generateJUnitForwarder
+      || generateSerializationForwarder
+    )
+    && isInImplementingClass(meth)
+    && !meth.name.is(InlineAccessorName)
+  end needsMixinForwarder
 
-  final val PrivateOrAccessor: FlagSet = Private | Accessor
-  final val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
+  private val PrivateOrAccessor: FlagSet = Private | Accessor
+  private val PrivateOrAccessorOrDeferred: FlagSet = Private | Accessor | Deferred
 
   def forwarderRhsFn(target: Symbol): List[List[Tree]] => Tree =
     prefss =>
@@ -95,10 +127,4 @@ class MixinOps(cls: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
         // unsafe-nulls to construct the rhs.
         Block(Nullables.importUnsafeNulls :: Nil, rhs)
       else rhs
-
-  private def competingMethodsIterator(meth: Symbol): Iterator[Symbol] =
-    cls.baseClasses.iterator
-      .filter(_ ne meth.owner)
-      .map(base => meth.overriddenSymbol(base, cls))
-      .filter(_.exists)
 }

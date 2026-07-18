@@ -1,0 +1,14 @@
+-- [E172] Type Error: tests/neg/i18670.scala:11:38 ---------------------------------------------------------------------
+11 |case class Summary() extends Payload() // error
+   |                                      ^
+   |      No given instance of type TC[A] was found for a context parameter of constructor Payload in class Payload.
+   |      I found:
+   |
+   |          TC.derived[A](/* missing */summon[scala.deriving.Mirror.Of[A]])
+   |
+   |      But Failed to synthesize an instance of type scala.deriving.Mirror.Of[A]:
+   |      	* class Nothing is not a generic product because it is not a case class
+   |      	* class Nothing is not a generic sum because it is not a sealed class
+   |
+   |      where:    A is a type variable with constraint <: Payload[A]
+   |      .

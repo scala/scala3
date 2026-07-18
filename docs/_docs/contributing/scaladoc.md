@@ -46,21 +46,15 @@ More information about specific scaladoc flags you can find inside [Usage docs](
 
 ## Developing
 
-For every PR named with prefix `scaladoc/`, we build documentation for scaladoc and Dotty. For example, for
-PR `scaladoc/update-docs` you can find them at:
-
-- <https://scala3doc.virtuslab.com/pr-update-docs/self/main/index.html>
-- <https://scala3doc.virtuslab.com/pr-update-docs/scala3/main/index.html>
-- <https://scala3doc.virtuslab.com/pr-update-docs/testcases/main/index.html>
-
-Note that these correspond to the contents of `output` directory - that's
-precisely what they are.
-
-You can also find the result of building the same sites for latest `master` at:
-
-- <https://scala3doc.virtuslab.com/master/self/main/index.html>
-- <https://scala3doc.virtuslab.com/master/scala3/main/index.html>
-- <https://scala3doc.virtuslab.com/master/testcases/main/index.html>
+For every PR named with prefix `scaladoc/`, we build documentation for scaladoc and Dotty.
+These can be build locally using:
+```sh
+sbt scaladoc/generateSelfDocumentation
+sbt scaladoc/generateTestcasesDocumentation
+sbt scaladoc/generateScalaDocumentation
+sbt scaladoc/generateReferenceDocumentation
+```
+Note that these correspond to the contents of `output` directory.
 
 You can run the Scaladoc tool from the sbt prompt as a user would run it
 with `scaladoc/run`, passing `-d <directory>` and some `.tasty` files as
@@ -71,11 +65,11 @@ input on the command line.
 From the sbt prompt, `scaladoc/test` runs the tests.
 
 You can also run specific signature tests with `testOnly`,
-for example `scaladoc/test *scaladoc.signatures.MarkdownCode`.
+for example `scaladoc/testOnly *scaladoc.signatures.MarkdownCode`.
 
 Most tests rely on comparing signatures (of classes, methods, objects etc.) extracted from the generated documentation
-to signatures found in source files (extracted using Scalameta). Such tests are defined using [SignatureTest](test/dotty/tools/scaladoc/signatures/SignatureTest.scala) class
-and its subtypes (such as [TranslatableSignaturesTestCases](test/dotty/tools/scaladoc/signatures/TranslatableSignaturesTestCases.scala)). In this style of test, it's not necessary for expected output to be included, because the test is its own specification.
+to signatures found in source files (extracted using Scalameta). Such tests are defined using [SignatureTest](https://github.com/scala/scala3/blob/main/scaladoc/test/dotty/tools/scaladoc/signatures/SignatureTest.scala) class
+and its subtypes (such as [TranslatableSignaturesTestCases](https://github.com/scala/scala3/blob/main/scaladoc/test/dotty/tools/scaladoc/signatures/TranslatableSignaturesTestCases.scala)). In this style of test, it's not necessary for expected output to be included, because the test is its own specification.
 
 WARNING: As the classes mentioned above are likely to evolve, the description below might easily get out of date.
 In case of any discrepancies rely on the source files instead.
@@ -84,7 +78,7 @@ In case of any discrepancies rely on the source files instead.
 the names of directories containing corresponding TASTY files
 and the kinds of signatures from source files (corresponding to keywords used to declare them like `def`, `class`, `object` etc.)
 whose presence in the generated documentation will be checked (other signatures, when missing, will be ignored).
-The mentioned source files should be located directly inside [](../scaladoc-testcases/src/tests) directory
+The mentioned source files should be located directly inside the [scaladoc-testcases](https://github.com/scala/scala3/tree/main/scaladoc-testcases) directory
 but the file names passed as parameters should contain neither this path prefix nor `.scala` suffix.
 
 By default it's expected that all signatures from the source files will be present in the documentation
@@ -140,4 +134,4 @@ Tasty Reflect is the dedicated way in Scala 3 of accessing this information.
 
 ## Credits
 
-- [Flatart](https://www.iconfinder.com/Flatart) - Gitter icon
+- Flatart - Gitter icon

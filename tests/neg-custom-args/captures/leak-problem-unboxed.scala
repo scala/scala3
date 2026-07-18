@@ -1,5 +1,4 @@
 import language.experimental.captureChecking
-import caps.use
 
 // Some capabilities that should be used locally
 trait Async:
@@ -9,24 +8,20 @@ def usingAsync[X](op: Async^ => X): X = ???
 
 case class Box[+T](get: T)
 
-def useBoxedAsync(@use x: Box[Async^]): Unit =
+def useBoxedAsync[C^](x: Box[Async^{C}]): Unit =
   val t0 = x
   val t1 = t0.get // ok
   t1.read()
 
-def useBoxedAsync1(@use x: Box[Async^]): Unit = x.get.read() // ok
+def useBoxedAsync1[C^](x: Box[Async^{C}]): Unit = x.get.read() // ok
 
 def test(): Unit =
 
-  val f: Box[Async^] => Unit = (x:  Box[Async^]) => useBoxedAsync(x) // error
-  val t1: Box[Async^] => Unit = useBoxedAsync(_) // error
-  val t2: Box[Async^] => Unit = useBoxedAsync // error
-  val t3 = useBoxedAsync(_) // was error, now ok
-  val t4 = useBoxedAsync // was error, now ok
+  val f3 = useBoxedAsync(_) // was error, now ok, but bang below fails
 
-  def boom(x: Async^): () ->{f} Unit =
-    () => f(Box(x))
+  def bang(x: Async^) =
+    () => f3(Box(x)) // error
 
-  val leaked = usingAsync[() ->{f} Unit](boom)
+  def bang2(x: Async^) =
+    () => f3(Box(x)) // error
 
-  leaked()  // scope violation

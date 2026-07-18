@@ -13,12 +13,10 @@
 package scala.sys.process
 
 import scala.language.`2.13`
-import processInternal._
-
+import processInternal.*
 import java.util.concurrent.LinkedBlockingQueue
 import java.io.{PipedInputStream, PipedOutputStream}
-
-import scala.annotation.tailrec
+import scala.annotation.{nowarn, tailrec}
 
 private[process] trait ProcessImpl {
   self: Process.type =>
@@ -75,7 +73,7 @@ private[process] trait ProcessImpl {
     evaluateSecondProcess: Int => Boolean
   ) extends CompoundProcess {
 
-    protected[this] override def runAndExitValue() = {
+    protected override def runAndExitValue() = {
       val first = a.run(io)
       runInterruptible(first.exitValue())(first.destroy()) flatMap { codeA =>
         if (evaluateSecondProcess(codeA)) {
@@ -97,7 +95,7 @@ private[process] trait ProcessImpl {
     def exitValue() = futureValue() getOrElse scala.sys.error("No exit code: process destroyed.")
     def start()     = { futureThread ;() }
 
-    protected lazy val (processThread, (futureThread, futureValue), destroyer) = {
+    protected lazy val (processThread, (futureThread, futureValue: (() => Option[Int])), destroyer) = {
       val code = new LinkedBlockingQueue[Option[Int]](1)
       val thread = Spawn("CompoundProcess") {
         var value: Option[Int] = None
@@ -120,10 +118,10 @@ private[process] trait ProcessImpl {
       )
     }
 
-    /** Start and block until the exit value is available and then return it in Some.  Return None if destroyed (use 'run')*/
-    protected[this] def runAndExitValue(): Option[Int]
+    /** Starts and blocks until the exit value is available and then returns it in Some.  Returns None if destroyed (use 'run'). */
+    protected def runAndExitValue(): Option[Int]
 
-    protected[this] def runInterruptible[T](action: => T)(destroyImpl: => Unit): Option[T] = {
+    protected def runInterruptible[T](action: => T)(destroyImpl: => Unit): Option[T] = {
       try   Some(action)
       catch onInterrupt { destroyImpl; None }
     }
@@ -132,8 +130,8 @@ private[process] trait ProcessImpl {
   private[process] class PipedProcesses(a: ProcessBuilder, b: ProcessBuilder, defaultIO: ProcessIO, toError: Boolean) extends CompoundProcess {
     protected def newSource: PipeSource = new PipeSource(a.toString)
     protected def newSink:   PipeSink   = new PipeSink(b.toString)
-    protected[this] override def runAndExitValue() = runAndExitValue(newSource, newSink)
-    protected[this] def runAndExitValue(source: PipeSource, sink: PipeSink): Option[Int] = {
+    protected override def runAndExitValue() = runAndExitValue(newSource, newSink)
+    protected def runAndExitValue(source: PipeSource, sink: PipeSink): Option[Int] = {
       source connectOut sink
       source.start()
       sink.start()
@@ -193,10 +191,11 @@ private[process] trait ProcessImpl {
     private def ioHandler(e: IOException): Unit = e.printStackTrace()
   }
 
+  @nowarn("msg=Calling the external method .*Name") // setName+getName are safe to call in a constructor
   private[process] class PipeSource(label: => String) extends PipeThread(isSink = false, () => label) {
     setName(s"PipeSource($label)-$getName")
-    protected[this] val pipe = new PipedOutputStream
-    protected[this] val source = new LinkedBlockingQueue[Option[InputStream]](1)
+    protected val pipe = new PipedOutputStream
+    protected val source = new LinkedBlockingQueue[Option[InputStream]](1)
     override final def run(): Unit = {
       @tailrec def go(): Unit =
         source.take() match {
@@ -216,10 +215,11 @@ private[process] trait ProcessImpl {
     }
     def done() = source.put(None)
   }
+  @nowarn("msg=Calling the external method .*Name") // setName+getName are safe to call in a constructor
   private[process] class PipeSink(label: => String) extends PipeThread(isSink = true, () => label) {
     setName(s"PipeSink($label)-$getName")
-    protected[this] val pipe = new PipedInputStream
-    protected[this] val sink = new LinkedBlockingQueue[Option[OutputStream]](1)
+    protected val pipe = new PipedInputStream
+    protected val sink = new LinkedBlockingQueue[Option[OutputStream]](1)
     override def run(): Unit = {
       @tailrec def go(): Unit =
         sink.take() match {
@@ -231,7 +231,7 @@ private[process] trait ProcessImpl {
       finally BasicIO close pipe
     }
     def connectOut(out: OutputStream): Unit = sink.put(Some(out))
-    def connectIn(pipeOut: PipedOutputStream): Unit = pipe connect pipeOut
+    def connectIn(pipeOut: PipedOutputStream): Unit = pipe.connect(pipeOut)
     def release(): Unit = {
       interrupt()
       done()
@@ -242,9 +242,11 @@ private[process] trait ProcessImpl {
 
   /** A thin wrapper around a java.lang.Process.  `ioThreads` are the Threads created to do I/O.
    *  The implementation of `exitValue` waits until these threads die before returning.
+   *
+   *  @param action the by-name computation whose result will be used as the exit value
    */
   private[process] class DummyProcess(action: => Int) extends Process {
-    private[this] val (thread, value) = Future(action)
+    private val (thread, value) = Future(action)
     override def isAlive() = thread.isAlive()
     override def exitValue() = value()
     override def destroy(): Unit = { }
@@ -260,8 +262,12 @@ private[process] trait ProcessImpl {
    *
    *  The implementation of `exitValue` interrupts `inputThread`
    *  and then waits until all I/O threads die before returning.
+   *
+   *  @param p the underlying `java.lang.Process` being wrapped
+   *  @param inputThread the thread writing to the process's stdin, or null if stdin was inherited
+   *  @param outputThreads the threads reading from the process's stdout and stderr streams
    */
-  private[process] class SimpleProcess(p: JProcess, inputThread: Thread, outputThreads: List[Thread]) extends Process {
+  private[process] class SimpleProcess(p: JProcess, inputThread: Thread | Null, outputThreads: List[Thread]) extends Process {
     override def isAlive() = p.isAlive()
     override def exitValue() = {
       try p.waitFor()                   // wait for the process to terminate
@@ -278,7 +284,7 @@ private[process] trait ProcessImpl {
       finally interrupt()
     }
     // we interrupt the input thread to notify it that it can terminate
-    private[this] def interrupt(): Unit = if (inputThread != null) inputThread.interrupt()
+    private def interrupt(): Unit = if (inputThread != null) inputThread.interrupt()
   }
   private[process] final class ThreadProcess(thread: Thread, success: LinkedBlockingQueue[Boolean]) extends Process {
     override def isAlive()   = thread.isAlive()

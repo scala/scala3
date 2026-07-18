@@ -27,7 +27,7 @@ class CompletionTest {
 
   @Test def completionFromNewScalaPredef: Unit = {
     code"class Foo { val foo = summ${m1} }"
-      .completion(("summon", Method, "[T](using x: T): x.type"))
+      .completion(("summon", Method, "[T](using x: T): (x : T)"))
   }
 
   @Test def completionFromScalaPackage: Unit = {
@@ -944,7 +944,7 @@ class CompletionTest {
     code"""object A {
           |  Array.concat${m1}
           |}"""
-      .completion(("concat", Method, "[T](xss: Array[T]*)(implicit evidence$11: scala.reflect.ClassTag[T]): Array[T]"))
+      .completion(("concat", Method, "[T](xss: Array[T]*)(using evidence$1: scala.reflect.ClassTag[T]): Array[T]"))
   }
 
   @Test def i12465_hkt: Unit =
@@ -1040,11 +1040,10 @@ class CompletionTest {
         ("hashCode", Method, "(): Int"),
         ("notifyAll", Method, "(): Unit"),
         ("values", Method, "=> Array[Foo.Bar]"),
-        ("→", Method, "[B](y: B): (Foo.Bar.type, B)"),
         ("!=", Method, "(x$0: Any): Boolean"),
         ("fromOrdinal", Method, "(ordinal: Int): Foo.Bar"),
         ("asInstanceOf", Method, "[X0]: X0"),
-        ("->", Method, "[B](y: B): (Foo.Bar.type, B)"),
+        ("->", Method, "[B](that: B): (Foo.Bar.type, B)"),
         ("wait", Method, "(x$0: Long, x$1: Int): Unit"),
         ("`back-tick`", Field, "Foo.Bar"),
         ("notify", Method, "(): Unit"),
@@ -1306,7 +1305,7 @@ class CompletionTest {
           |
           |val quux = new Quux:
           |  def aaa: Foo = ???
-          |  def bbb: Bar = ??? // overriden signature
+          |  def bbb: Bar = ??? // overridden signature
           |  def ccc(s: String): String = ???
           |  def ccc(i: Int): Int = ??? // overloaded
           |  private def ddd(): Boolean = ???
@@ -1346,7 +1345,7 @@ class CompletionTest {
           |
           |val quux = new Quux:
           |  def aaa: Foo = ???
-          |  def bbb: Bar = ??? // overriden signature
+          |  def bbb: Bar = ??? // overridden signature
           |  def ccc(s: String): String = ???
           |  def ccc(i: Int): Int = ??? // overloaded
           |  private def ddd(): Boolean = ???
@@ -1488,8 +1487,8 @@ class CompletionTest {
           |  1 match { case foo if fo${m1} => }
           |  1 match { case foo => fo${m2} }
           """
-      .completion(m1, Set(("foo", Field, "Int")))
-      .completion(m2, Set(("foo", Field, "Int")))
+      .completion(m1, Set(("foo", Field, "(1 : Int)")))
+      .completion(m2, Set(("foo", Field, "(1 : Int)")))
   }
 
   @Test def patternGuardCompletionsUnApply: Unit = {

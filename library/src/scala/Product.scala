@@ -38,8 +38,8 @@ transparent trait Product extends Any with Equals {
    *  @return     in the default implementation, an `Iterator[Any]`
    */
   def productIterator: Iterator[Any] = new scala.collection.AbstractIterator[Any] {
-    private[this] var c: Int = 0
-    private[this] val cmax = productArity
+    private var c: Int = 0
+    private val cmax = productArity
     def hasNext: Boolean = c < cmax
     def next(): Any = { val result = productElement(c); c += 1; result }
   }
@@ -66,8 +66,8 @@ transparent trait Product extends Any with Equals {
   /** An iterator over the names of all the elements of this product.
    */
   def productElementNames: Iterator[String] = new scala.collection.AbstractIterator[String] {
-    private[this] var c: Int = 0
-    private[this] val cmax = productArity
+    private var c: Int = 0
+    private val cmax = productArity
     def hasNext: Boolean = c < cmax
     def next(): String = { val result = productElementName(c); c += 1; result }
   }

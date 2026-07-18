@@ -1,7 +1,7 @@
 package dotty.tools.pc.utils
 
-import scala.meta.internal.pc.HoverMarkup
 import scala.language.unsafeNulls
+import scala.meta.internal.pc.HoverMarkup
 
 import dotty.tools.pc.utils.TestExtensions.*
 
@@ -62,7 +62,7 @@ trait TestHovers:
 
   private def codeFence(code: String, language: String): String =
     val trimmed = code.trim
-    if (trimmed.isEmpty) ""
+    if trimmed.isEmpty then ""
     else
       new StringBuilder()
         .append("```")

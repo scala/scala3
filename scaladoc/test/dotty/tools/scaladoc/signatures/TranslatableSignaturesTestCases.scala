@@ -28,7 +28,7 @@ class FieldsSignatures extends SignatureTest("fieldsSignatures", SignatureTest.a
 
 class NestedSignatures extends SignatureTest("nested", SignatureTest.all)
 
-class TypeAppliacneSignatures extends SignatureTest("typeAppliance", SignatureTest.all)
+class TypeApplianceSignatures extends SignatureTest("typeAppliance", SignatureTest.all)
 
 class CompanionObjectSignatures extends SignatureTest("companionObjectSignatures", SignatureTest.all)
 
@@ -130,3 +130,7 @@ class RightAssocExtension extends SignatureTest("rightAssocExtension", Signature
 class NamedTuples extends SignatureTest("namedTuples", SignatureTest.all)
 
 class InnerClasses extends SignatureTest("innerClasses", SignatureTest.all)
+
+class OptionalParams extends SignatureTest("optionalParams", SignatureTest.all)
+
+class I25529 extends SignatureTest("i25529", Seq("class", "object"))

@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 @Fork(value = 16) class HasFork
 
 object Test {

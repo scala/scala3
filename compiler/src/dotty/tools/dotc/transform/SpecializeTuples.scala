@@ -20,7 +20,6 @@ class SpecializeTuples extends MiniPhase:
 
   override def phaseName: String                 = SpecializeTuples.name
   override def description: String               = SpecializeTuples.description
-  override def isEnabled(using Context): Boolean = !ctx.settings.scalajs.value
 
   override def transformApply(tree: Apply)(using Context): Tree = tree match
     case Apply(TypeApply(fun: NameTree, targs), args)
@@ -41,7 +40,8 @@ class SpecializeTuples extends MiniPhase:
       qual.tpe.widenDealias match
         case AppliedType(tycon, args) if defn.isSpecializableTuple(tycon.classSymbol, args) =>
           val argIdx = if name == nme._1 then 0 else 1
-          Select(qual, name.specializedName(args(argIdx) :: Nil))
+          // Keep the specialized accessor for performance, then adapt back to the original expected type.
+          Select(qual, name.specializedName(args(argIdx) :: Nil)).ensureConforms(tree.tpe)
         case _ =>
           tree
     case _ => tree

@@ -13,19 +13,19 @@ Syntactically, unions follow the same rules as intersections, but have a lower p
 `|` is also used in pattern matching to separate pattern alternatives and has
 lower precedence than `:` as used in typed patterns, this means that:
 
-```scala
+```scala sc:nocompile
 case _: A | B => ...
 ```
 
 is still equivalent to:
 
-```scala
+```scala sc:nocompile
 case (_: A) | B => ...
 ```
 
 and not to:
 
-```scala
+```scala sc:nocompile
 case _: (A | B) => ...
 ```
 
@@ -36,15 +36,42 @@ case _: (A | B) => ...
 - Like `&`, `|` is commutative and associative:
 
   ```scala
-  A | B =:= B | A
-  A | (B | C) =:= (A | B) | C
+  // A | B =:= B |A
+  def commutative[A,B] = summon[(A|B) =:= (B|A)]
+  // A | (B | C) =:= (A | B) | C
+  def associative[A,B,C] = summon[(A | (B | C)) =:= ((A | B) | C)] 
   ```
 
 - `&` is distributive over `|`:
 
   ```scala
-  A & (B | C) =:= A & B | A & C
+  // A & (B | C) =:= A & B | A & C
+  def distributive[A,B,C] = summon[(A & (B | C)) =:= (A & B | A & C)]
   ```
+
+When `C` is covariant, `C[A] | C[B] <: C[A | B]` can be derived:
+
+```
+    A <: A                  B <: B
+  ----------               ---------
+  A <: A | B               B <: A | B
+----------------         ----------------
+C[A] <: C[A | B]         C[B] <: C[A | B]
+-----------------------------------------
+      C[A] | C[B] <: C[A | B]
+```
+
+When `C` is contravariant, `C[A] | C[B] <: C[A & B]` can be derived:
+
+```
+    A <: A                    B <: B
+  ----------                ----------
+  A & B <: A                A & B <: B
+----------------         ----------------
+C[A] <: C[A & B]         C[B] <: C[A & B]
+-----------------------------------------
+      C[A] | C[B] <: C[A & B]
+```
 
 From these rules it follows that the _least upper bound_ (LUB) of a set of types
 is the union of these types. This replaces the
@@ -95,18 +122,21 @@ The join of `A | B` is `C[A | B] & D & X` and the visible join of `A | B` is `C[
 
 We distinguish between hard and soft union types. A _hard_ union type is a union type that's explicitly
 written in the source. For instance, in
-```scala
-val x: Int | String = ...
+```scala sc-name:hardunion
+val x: Int | String = ???
 ```
 `Int | String` would be a hard union type. A _soft_ union type is a type that arises from type checking
 an alternative of expressions. For instance, the type of the expression
-```scala
+```scala sc-name:softunion
 val x = 1
 val y = "abc"
-if cond then x else y
+//{
+val cond: Boolean = ???
+//}
+val xy = if cond then x else y
 ```
-is the soft unon type `Int | String`. Similarly for match expressions. The type of
-```scala
+is the soft union type `Int | String`. Similarly for match expressions. The type of
+```scala sc-compile-with:softunion
 x match
   case 1 => x
   case 2 => "abc"
@@ -152,7 +182,7 @@ The members of a union type are the members of its join.
 The following code does not typecheck, because method `hello` is not a member of
 `AnyRef` which is the join of `A | B`.
 
-```scala
+```scala sc:nocompile
 trait A { def hello: String }
 trait B { def hello: String }
 
@@ -162,6 +192,10 @@ def test(x: A | B) = x.hello // error: value `hello` is not a member of A | B
 On the other hand, the following would be allowed
 
 ```scala
+//{
+trait D
+trait E
+//}
 trait C { def hello: String }
 trait A extends C with D
 trait B extends C with E

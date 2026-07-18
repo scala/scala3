@@ -1,5 +1,4 @@
 import language.experimental.captureChecking
-import caps.use
 
 class Test:
   class Runner(ops: List[() => Unit]):
@@ -10,8 +9,8 @@ class Test:
 
 
 class Test2:
-  class Runner(@use ops: List[() => Unit]):
+  class Runner[C^](ops: List[() ->{C} Unit]):
     def execute: Unit = ops.foreach(f => f()) //ok
 
-  private def Runner2(@use ops: List[() => Unit]) =
+  private def Runner2[C^](ops: List[() ->{C} Unit]) =
     () => ops.foreach(f => f()) // ok

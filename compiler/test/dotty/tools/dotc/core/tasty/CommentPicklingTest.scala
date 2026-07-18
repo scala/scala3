@@ -1,14 +1,11 @@
 package dotty.tools.dotc.core.tasty
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.TreeOps
 import dotty.tools.dotc.{Driver, Main}
 import dotty.tools.dotc.core.Comments.docCtx
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Decorators.{toTermName, toTypeName}
-import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
@@ -22,7 +19,7 @@ import dotty.tools.io.AbstractFile
 
 class CommentPicklingTest {
 
-  val compileOptions = TestConfiguration.defaultOptions and "-Ykeep-comments" and "-Yemit-tasty"
+  val compileOptions = TestConfiguration.defaultOptions `and` "-Ykeep-comments" `and` "-Yemit-tasty"
   val unpickleOptions = TestConfiguration.defaultOptions
 
   @Test def commentOnDef: Unit = {
@@ -98,7 +95,7 @@ class CommentPicklingTest {
       Main.process(options.all, reporter)
       assertFalse("Compilation failed.", reporter.hasErrors)
 
-      val tastyFiles = Path.onlyFiles(out.walkFilter(_.ext.isTasty)).toList
+      val tastyFiles = out.walkFilter(f => f.isFile && f.ext.isTasty).map(_.toFile).toList
       val unpicklingOptions = unpickleOptions
         .withClasspath(out.toAbsolute.toString)
         .and("dummy") // Need to pass a dummy source file name
@@ -117,7 +114,7 @@ class CommentPicklingTest {
       implicit val ctx: Context = setup(args, initCtx).map(_._2).getOrElse(initCtx)
       ctx.initialize()
       val trees = files.flatMap { f =>
-        val unpickler = new DottyUnpickler(AbstractFile.getFile(f.jpath), f.toByteArray(), isBestEffortTasty = false)
+        val unpickler = new DottyUnpickler(AbstractFile.getFile(f.jpath).nn, isBestEffortTasty = false)
         unpickler.enter(roots = Set.empty)
         unpickler.rootTrees(using ctx)
       }

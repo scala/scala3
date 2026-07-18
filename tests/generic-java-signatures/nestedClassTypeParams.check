@@ -1,0 +1,4 @@
+noShadow: public scala.Tuple3<T, U, V> Outer$Middle$Inner.noShadow(T,U,V)
+shadowOuter: public <T1> T Outer$Middle$Inner.shadowOuter()
+shadowMiddle: public <U1> U Outer$Middle$Inner.shadowMiddle()
+shadowInner: public <V1> V Outer$Middle$Inner.shadowInner()

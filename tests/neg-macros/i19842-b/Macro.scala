@@ -1,5 +1,3 @@
-//> using options -experimental
-
 import scala.annotation.{experimental, targetName}
 import scala.quoted.*
 import scala.util.Try

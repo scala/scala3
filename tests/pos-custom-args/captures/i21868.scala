@@ -12,5 +12,5 @@ trait Abstract1:
   def f(): U^{C}
 
 trait Abstract2:
-  type C^ <: {cap}
+  type C^ <: {any}
   def f(): U^{C}

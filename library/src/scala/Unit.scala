@@ -10,10 +10,6 @@
  * additional information regarding copyright ownership.
  */
 
-// DO NOT EDIT, CHANGES WILL BE LOST
-// This auto-generated code can be modified in "project/GenerateAnyVals.scala".
-// Afterwards, running "sbt generateSources" regenerates this source file.
-
 package scala
 
 import scala.language.`2.13`
@@ -23,15 +19,12 @@ import scala.language.`2.13`
  *  runtime system. A method with return type `Unit` is analogous to a Java
  *  method which is declared `void`.
  */
-final abstract class Unit private extends AnyVal {
-  // Provide a more specific return type for Scaladoc
-  override def getClass(): Class[Unit] = ???
-}
+final abstract class Unit private extends AnyVal
 
 @scala.annotation.compileTimeOnly("`Unit` companion object is not allowed in source; instead, use `()` for the unit value")
 object Unit extends AnyValCompanion {
 
-  /** Transform a value type into a boxed reference type.
+  /** Transforms a value type into a boxed reference type.
    *
    *  This method is not intended for use in source code.
    *  The runtime representation of this value is platform specific.
@@ -41,7 +34,7 @@ object Unit extends AnyValCompanion {
    */
   def box(x: Unit): scala.runtime.BoxedUnit = scala.runtime.BoxedUnit.UNIT
 
-  /** Transform a boxed type into a value type.  Note that this
+  /** Transforms a boxed type into a value type.  Note that this
    *  method is not typesafe: it accepts any Object, but will throw
    *  an exception if the argument is not a scala.runtime.BoxedUnit.
    *
@@ -49,12 +42,12 @@ object Unit extends AnyValCompanion {
    *  The result of successfully unboxing a value is `()`.
    *
    *  @param  x   the scala.runtime.BoxedUnit to be unboxed.
-   *  @throws     ClassCastException  if the argument is not a scala.runtime.BoxedUnit
    *  @return     the Unit value ()
+   *  @throws     ClassCastException  if the argument is not a scala.runtime.BoxedUnit
    */
   def unbox(x: java.lang.Object): Unit = x.asInstanceOf[scala.runtime.BoxedUnit]
 
-  /** The String representation of the scala.Unit companion object. */
-  override def toString = "object scala.Unit"
+  /** The `String` representation of the `scala.Unit` companion object. */
+  override def toString() = "object scala.Unit"
 }
 

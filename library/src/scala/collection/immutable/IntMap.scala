@@ -14,14 +14,15 @@ package scala.collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.collection.generic.{BitOperations, DefaultSerializationProxy}
 import scala.collection.mutable.{Builder, ImmutableBuilder}
 import scala.annotation.tailrec
 import scala.annotation.unchecked.uncheckedVariance
 import scala.language.implicitConversions
 
-/** Utility class for integer maps.
-  */
+/** Utility class for integer maps. */
 private[immutable] object IntMapUtils extends BitOperations.Int {
   def branchMask(i: Int, j: Int) = highestOneBit(i ^ j)
 
@@ -42,9 +43,9 @@ private[immutable] object IntMapUtils extends BitOperations.Int {
 import IntMapUtils.{Int => _, _}
 
 /** A companion object for integer maps.
-  *
-  *  @define Coll  `IntMap`
-  */
+ *
+ *  @define Coll  `IntMap`
+ */
 object IntMap {
   def empty[T] : IntMap[T]  = IntMap.Nil
 
@@ -53,7 +54,7 @@ object IntMap {
   def apply[T](elems: (Int, T)*): IntMap[T] =
     elems.foldLeft(empty[T])((x, y) => x.updated(y._1, y._2))
 
-  def from[V](coll: IterableOnce[(Int, V)]): IntMap[V] =
+  def from[V](coll: IterableOnce[(Int, V)]^): IntMap[V] =
     newBuilder[V].addAll(coll).result()
 
   private[immutable] case object Nil extends IntMap[Nothing] {
@@ -63,7 +64,7 @@ object IntMap {
     // careful handling.
     override def equals(that : Any) = that match {
       case _: this.type => true
-      case _: IntMap[_] => false // The only empty IntMaps are eq Nil
+      case _: IntMap[?] => false // The only empty IntMaps are eq Nil
       case _            => super.equals(that)
     }
   }
@@ -89,19 +90,19 @@ object IntMap {
   implicit def toFactory[V](dummy: IntMap.type): Factory[(Int, V), IntMap[V]] = ToFactory.asInstanceOf[Factory[(Int, V), IntMap[V]]]
 
   @SerialVersionUID(3L)
-  private[this] object ToFactory extends Factory[(Int, AnyRef), IntMap[AnyRef]] with Serializable {
-    def fromSpecific(it: IterableOnce[(Int, AnyRef)]): IntMap[AnyRef] = IntMap.from[AnyRef](it)
+  private object ToFactory extends Factory[(Int, AnyRef), IntMap[AnyRef]] with Serializable {
+    def fromSpecific(it: IterableOnce[(Int, AnyRef)]^): IntMap[AnyRef] = IntMap.from[AnyRef](it)
     def newBuilder: Builder[(Int, AnyRef), IntMap[AnyRef]] = IntMap.newBuilder[AnyRef]
   }
 
   implicit def toBuildFrom[V](factory: IntMap.type): BuildFrom[Any, (Int, V), IntMap[V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (Int, V), IntMap[V]]]
-  private[this] object ToBuildFrom extends BuildFrom[Any, (Int, AnyRef), IntMap[AnyRef]] {
-    def fromSpecific(from: Any)(it: IterableOnce[(Int, AnyRef)]) = IntMap.from(it)
+  private object ToBuildFrom extends BuildFrom[Any, (Int, AnyRef), IntMap[AnyRef]] {
+    def fromSpecific(from: Any)(it: IterableOnce[(Int, AnyRef)]^) = IntMap.from(it)
     def newBuilder(from: Any) = IntMap.newBuilder[AnyRef]
   }
 
   implicit def iterableFactory[V]: Factory[(Int, V), IntMap[V]] = toFactory(this)
-  implicit def buildFromIntMap[V]: BuildFrom[IntMap[_], (Int, V), IntMap[V]] = toBuildFrom(this)
+  implicit def buildFromIntMap[V]: BuildFrom[IntMap[?], (Int, V), IntMap[V]] = toBuildFrom(this)
 }
 
 // Iterator over a non-empty IntMap.
@@ -125,9 +126,11 @@ private[immutable] abstract class IntMapIterator[V, T](it: IntMap[V]) extends Ab
   }
   push(it)
 
-  /**
-    * What value do we assign to a tip?
-    */
+  /** What value do we assign to a tip?
+   *
+   *  @param tip the leaf node to extract a value from
+   *  @return the iterator element derived from `tip` (e.g. the key, the value, or the key/value pair, as determined by the concrete subclass)
+   */
   def valueOf(tip: IntMap.Tip[V]): T
 
   def hasNext = index != 0
@@ -165,25 +168,25 @@ private[immutable] class IntMapKeyIterator[V](it: IntMap[V]) extends IntMapItera
 import IntMap._
 
 /** Specialised immutable map structure for integer keys, based on
-  *  [[https://ittc.ku.edu/~andygill/papers/IntMap98.pdf Fast Mergeable Integer Maps]]
-  *  by Okasaki and Gill. Essentially a trie based on binary digits of the integers.
-  *
-  *  '''Note:''' This class is as of 2.8 largely superseded by HashMap.
-  *
-  *  @tparam T    type of the values associated with integer keys.
-  *
-  *  @define Coll `immutable.IntMap`
-  *  @define coll immutable integer map
-  *  @define mayNotTerminateInf
-  *  @define willNotTerminateInf
-  */
+ *  [Fast Mergeable Integer Maps](https://www.researchgate.net/publication/2806412_Fast_Mergeable_Integer_Maps)
+ *  by Okasaki and Gill. Essentially a trie based on binary digits of the integers.
+ *
+ *  **Note:** This class is as of 2.8 largely superseded by HashMap.
+ *
+ *  @tparam T    type of the values associated with integer keys.
+ *
+ *  @define Coll `immutable.IntMap`
+ *  @define coll immutable integer map
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
   with StrictOptimizedMapOps[Int, T, Map, IntMap[T]]
   with Serializable {
 
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[(Int, T) @uncheckedVariance]): IntMap[T] =
+  override protected def fromSpecific(coll: scala.collection.IterableOnce[(Int, T) @uncheckedVariance]^): IntMap[T] =
     intMapFrom[T](coll)
-  protected def intMapFrom[V2](coll: scala.collection.IterableOnce[(Int, V2)]): IntMap[V2] = {
+  protected def intMapFrom[V2](coll: scala.collection.IterableOnce[(Int, V2)]^): IntMap[V2] = {
     val b = IntMap.newBuilder[V2]
     b.sizeHint(coll)
     b.addAll(coll)
@@ -202,19 +205,20 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
     buffer.toList
   }
 
-  /**
-    * Iterator over key, value pairs of the map in unsigned order of the keys.
-    *
-    * @return an iterator over pairs of integer keys and corresponding values.
-    */
+  /** Iterator over key, value pairs of the map in unsigned order of the keys.
+   *
+   *  @return an iterator over pairs of integer keys and corresponding values.
+   */
   def iterator: Iterator[(Int, T)] = this match {
     case IntMap.Nil => Iterator.empty
     case _ => new IntMapEntryIterator(this)
   }
 
-  /**
-    * Loops over the key, value pairs of the map in unsigned order of the keys.
-    */
+  /** Loops over the key, value pairs of the map in unsigned order of the keys.
+   *
+   *  @tparam U the return type of the function `f`, used only for side effects
+   *  @param f the function applied to each key-value pair in the map
+   */
   override final def foreach[U](f: ((Int, T)) => U): Unit = this match {
     case IntMap.Bin(_, _, left, right) => { left.foreach(f); right.foreach(f) }
     case IntMap.Tip(key, value) => f((key, value))
@@ -232,12 +236,12 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
     case _ => new IntMapKeyIterator(this)
   }
 
-  /**
-    * Loop over the keys of the map. The same as `keys.foreach(f)`, but may
-    * be more efficient.
-    *
-    * @param f The loop body
-    */
+  /** Loop over the keys of the map. The same as `keys.foreach(f)`, but may
+   *  be more efficient.
+   *
+   *  @tparam U the return type of the function `f`, used only for side effects
+   *  @param f The loop body
+   */
   final def foreachKey[U](f: Int => U): Unit = this match {
     case IntMap.Bin(_, _, left, right) => { left.foreachKey(f); right.foreachKey(f) }
     case IntMap.Tip(key, _) => f(key)
@@ -249,19 +253,19 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
     case _ => new IntMapValueIterator(this)
   }
 
-  /**
-    * Loop over the values of the map. The same as `values.foreach(f)`, but may
-    * be more efficient.
-    *
-    * @param f The loop body
-    */
+  /** Loop over the values of the map. The same as `values.foreach(f)`, but may
+   *  be more efficient.
+   *
+   *  @tparam U the return type of the function `f`, used only for side effects
+   *  @param f The loop body
+   */
   final def foreachValue[U](f: T => U): Unit = this match {
     case IntMap.Bin(_, _, left, right) => { left.foreachValue(f); right.foreachValue(f) }
     case IntMap.Tip(_, value) => f(value)
     case IntMap.Nil =>
   }
 
-  override protected[this] def className = "IntMap"
+  override protected def className = "IntMap"
 
   override def isEmpty = this eq IntMap.Nil
   override def knownSize: Int = if (isEmpty) 0 else super.knownSize
@@ -326,33 +330,38 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
 
   def map[V2](f: ((Int, T)) => (Int, V2)): IntMap[V2] = intMapFrom(new View.Map(this, f))
 
-  def flatMap[V2](f: ((Int, T)) => IterableOnce[(Int, V2)]): IntMap[V2] = intMapFrom(new View.FlatMap(this, f))
+  def flatMap[V2](f: ((Int, T)) => IterableOnce[(Int, V2)]^): IntMap[V2] = intMapFrom(new View.FlatMap(this, f))
 
-  override def concat[V1 >: T](that: collection.IterableOnce[(Int, V1)]): IntMap[V1] =
+  override def concat[V1 >: T](that: collection.IterableOnce[(Int, V1)]^): IntMap[V1] =
     super.concat(that).asInstanceOf[IntMap[V1]] // Already has correct type but not declared as such
 
-  override def ++ [V1 >: T](that: collection.IterableOnce[(Int, V1)]): IntMap[V1] = concat(that)
+  override def ++ [V1 >: T](that: collection.IterableOnce[(Int, V1)]^): IntMap[V1] = concat(that)
 
   def collect[V2](pf: PartialFunction[(Int, T), (Int, V2)]): IntMap[V2] =
     strictOptimizedCollect(IntMap.newBuilder[V2], pf)
 
-  /**
-    * Updates the map, using the provided function to resolve conflicts if the key is already present.
-    *
-    * Equivalent to:
-    * {{{
-    *   this.get(key) match {
-    *     case None => this.update(key, value)
-    *     case Some(oldvalue) => this.update(key, f(oldvalue, value)
-    *   }
-    * }}}
-    *
-    * @tparam S     The supertype of values in this `LongMap`.
-    * @param key    The key to update
-    * @param value  The value to use if there is no conflict
-    * @param f      The function used to resolve conflicts.
-    * @return       The updated map.
-    */
+  /** Updates the map, using the provided function to resolve conflicts if the key is already present.
+   *
+   *  Equivalent to:
+   *  ```scala sc-name:updateWithExampleContext sc-hidden
+   *  val map = IntMap(1 -> "one", 2 -> "two")
+   *  val key = 2
+   *  val value = "deux"
+   *  val f = (oldValue: String, newValue: String) => oldValue + "-" + newValue
+   *  ```
+   *  ```scala sc-compile-with:updateWithExampleContext
+   *   map.get(key) match {
+   *     case None => map.updated(key, value)
+   *     case Some(oldvalue) => map.updated(key, f(oldvalue, value))
+   *   }
+   *  ```
+   *
+   *  @tparam S     the supertype of values in this `IntMap`.
+   *  @param key    The key to update
+   *  @param value  The value to use if there is no conflict
+   *  @param f      The function used to resolve conflicts.
+   *  @return       The updated map.
+   */
   def updateWith[S >: T](key: Int, value: S, f: (T, S) => S): IntMap[S] = this match {
     case IntMap.Bin(prefix, mask, left, right) =>
       if (!hasMatch(key, prefix, mask)) join(key, IntMap.Tip(key, value), prefix, this)
@@ -375,15 +384,14 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
     case IntMap.Nil => IntMap.Nil
   }
 
-  /**
-    * A combined transform and filter function. Returns an `IntMap` such that
-    * for each `(key, value)` mapping in this map, if `f(key, value) == None`
-    * the map contains no mapping for key, and if `f(key, value)`.
-    *
-    * @tparam S  The type of the values in the resulting `LongMap`.
-    * @param f   The transforming function.
-    * @return    The modified map.
-    */
+  /** A combined transform and filter function. Returns an `IntMap` such that
+   *  for each `(key, value)` mapping in this map, if `f(key, value) == None`
+   *  the map contains no mapping for key, and if `f(key, value)`.
+   *
+   *  @tparam S  the type of the values in the resulting `IntMap`.
+   *  @param f   The transforming function.
+   *  @return    The modified map.
+   */
   def modifyOrRemove[S](f: (Int, T) => Option[S]): IntMap[S] = this match {
     case IntMap.Bin(prefix, mask, left, right) =>
       val newleft = left.modifyOrRemove(f)
@@ -402,14 +410,13 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
       IntMap.Nil
   }
 
-  /**
-    * Forms a union map with that map, using the combining function to resolve conflicts.
-    *
-    * @tparam S      The type of values in `that`, a supertype of values in `this`.
-    * @param that    The map to form a union with.
-    * @param f       The function used to resolve conflicts between two mappings.
-    * @return        Union of `this` and `that`, with identical key conflicts resolved using the function `f`.
-    */
+  /** Forms a union map with that map, using the combining function to resolve conflicts.
+   *
+   *  @tparam S      The type of values in `that`, a supertype of values in `this`.
+   *  @param that    The map to form a union with.
+   *  @param f       The function used to resolve conflicts between two mappings.
+   *  @return        Union of `this` and `that`, with identical key conflicts resolved using the function `f`.
+   */
   def unionWith[S >: T](that: IntMap[S], f: (Int, S, S) => S): IntMap[S] = (this, that) match{
     case (IntMap.Bin(p1, m1, l1, r1), that@(IntMap.Bin(p2, m2, l2, r2))) =>
       if (shorter(m1, m2)) {
@@ -431,17 +438,16 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
     case (x, IntMap.Nil) => x
   }
 
-  /**
-    * Forms the intersection of these two maps with a combining function. The
-    * resulting map is a map that has only keys present in both maps and has
-    * values produced from the original mappings by combining them with `f`.
-    *
-    * @tparam S      The type of values in `that`.
-    * @tparam R      The type of values in the resulting `LongMap`.
-    * @param that    The map to intersect with.
-    * @param f       The combining function.
-    * @return        Intersection of `this` and `that`, with values for identical keys produced by function `f`.
-    */
+  /** Forms the intersection of these two maps with a combining function. The
+   *  resulting map is a map that has only keys present in both maps and has
+   *  values produced from the original mappings by combining them with `f`.
+   *
+   *  @tparam S      The type of values in `that`.
+   *  @tparam R      the type of values in the resulting `IntMap`.
+   *  @param that    The map to intersect with.
+   *  @param f       The combining function.
+   *  @return        Intersection of `this` and `that`, with values for identical keys produced by function `f`.
+   */
   def intersectionWith[S, R](that: IntMap[S], f: (Int, T, S) => R): IntMap[R] = (this, that) match {
     case (IntMap.Bin(p1, m1, l1, r1), that@IntMap.Bin(p2, m2, l2, r2)) =>
       if (shorter(m1, m2)) {
@@ -465,23 +471,20 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
     case (_, _) => IntMap.Nil
   }
 
-  /**
-    * Left biased intersection. Returns the map that has all the same mappings
-    * as this but only for keys which are present in the other map.
-    *
-    * @tparam R      The type of values in `that`.
-    * @param that    The map to intersect with.
-    * @return        A map with all the keys both in `this` and `that`, mapped to corresponding values from `this`.
-    */
+  /** Left biased intersection. Returns the map that has all the same mappings
+   *  as this but only for keys which are present in the other map.
+   *
+   *  @tparam R      The type of values in `that`.
+   *  @param that    The map to intersect with.
+   *  @return        A map with all the keys both in `this` and `that`, mapped to corresponding values from `this`.
+   */
   def intersection[R](that: IntMap[R]): IntMap[T] =
     this.intersectionWith(that, (key: Int, value: T, value2: R) => value)
 
   def ++[S >: T](that: IntMap[S]) =
     this.unionWith[S](that, (key, x, y) => y)
 
-  /**
-    * The entry with the lowest key value considered in unsigned order.
-    */
+  /** The entry with the lowest key value considered in unsigned order. */
   @tailrec
   final def firstKey: Int = this match {
     case Bin(_, _, l, r) => l.firstKey
@@ -489,9 +492,7 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
     case IntMap.Nil => throw new IllegalStateException("Empty set")
   }
 
-  /**
-    * The entry with the highest key value considered in unsigned order.
-    */
+  /** The entry with the highest key value considered in unsigned order. */
   @tailrec
   final def lastKey: Int = this match {
     case Bin(_, _, l, r) => r.lastKey
@@ -499,5 +500,5 @@ sealed abstract class IntMap[+T] extends AbstractMap[Int, T]
     case IntMap.Nil => throw new IllegalStateException("Empty set")
   }
 
-  protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(IntMap.toFactory[T](IntMap), this)
+  protected def writeReplace(): AnyRef = new DefaultSerializationProxy(IntMap.toFactory[T](IntMap), this)
 }

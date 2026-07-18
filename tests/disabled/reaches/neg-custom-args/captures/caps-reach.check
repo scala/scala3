@@ -1,0 +1,20 @@
+-- [E040] Syntax Error: tests/neg-custom-args/captures/caps-reach.scala:9:46 -------------------------------------------
+9 |  val consumers4 = ListBuffer.empty[() ->{f.rd*} Unit] // error
+  |                                              ^
+  |                                              '}' expected, but identifier found
+-- [E040] Syntax Error: tests/neg-custom-args/captures/caps-reach.scala:10:46 ------------------------------------------
+10 |  val consumers5 = ListBuffer.empty[() ->{f.rd.rd} Unit] // error
+   |                                              ^
+   |                                              '}' expected, but '.' found
+-- [E040] Syntax Error: tests/neg-custom-args/captures/caps-reach.scala:11:46 ------------------------------------------
+11 |  val consumers6 = ListBuffer.empty[() ->{f * *} Unit] // error
+   |                                              ^
+   |                                              '}' expected, but identifier found
+-- Error: tests/neg-custom-args/captures/caps-reach.scala:6:42 ---------------------------------------------------------
+6 |  val consumers1 = ListBuffer.empty[() ->{caps.any*} Unit]  // error
+  |                                          ^^^^^^^^^
+  |                                          Cannot form a reach capability from `any`
+-- Error: tests/neg-custom-args/captures/caps-reach.scala:7:42 ---------------------------------------------------------
+7 |  val consumers2 = ListBuffer.empty[() ->{caps.any*.rd} Unit] // error
+  |                                          ^^^^^^^^^^^^
+  |                                          Cannot form a reach capability from `any`

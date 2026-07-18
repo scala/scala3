@@ -1,0 +1,13 @@
+-- [E007] Type Mismatch Error: tests/neg-macros/i22616b.scala:17:18 ----------------------------------------------------
+17 |      case '{ Foo($y: t) } => // error
+   |                  ^^^^^
+   |                  Found:    t
+   |                  Required: String
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E006] Not Found Error: tests/neg-macros/i22616b.scala:18:19 --------------------------------------------------------
+18 |        '{type S = t; ()} // error
+   |                   ^
+   |                   Not found: type t
+   |
+   | longer explanation available when compiling with `-explain`

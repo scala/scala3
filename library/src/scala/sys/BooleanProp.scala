@@ -16,8 +16,7 @@ package sys
 import scala.language.`2.13`
 import scala.language.implicitConversions
 
-/** A few additional conveniences for Boolean properties.
- */
+/** A few additional conveniences for Boolean properties. */
 trait BooleanProp extends Prop[Boolean] {
   /** The semantics of value are determined at Prop creation.  See methods
    *  `valueIsTrue` and `keyExists` in object BooleanProp for examples.
@@ -68,6 +67,8 @@ object BooleanProp {
    *  the value be equal to the String "true", case insensitively.  This method
    *  creates a BooleanProp instance which adheres to that definition.
    *
+   *  @tparam T unused type parameter, retained for API compatibility
+   *  @param key the name of the system property to look up
    *  @return   A BooleanProp which acts like java's Boolean.getBoolean
    */
   def valueIsTrue[T](key: String): BooleanProp = new BooleanPropImpl(key, _.toLowerCase == "true")
@@ -77,11 +78,17 @@ object BooleanProp {
    *  compared case-insensitively, or the empty string.  This way -Dmy.property
    *  results in a true-valued property, but -Dmy.property=false does not.
    *
+   *  @tparam T unused type parameter, retained for API compatibility
+   *  @param key the name of the system property to look up
    *  @return   A BooleanProp with a liberal truth policy
    */
   def keyExists[T](key: String): BooleanProp = new BooleanPropImpl(key, s => s == "" || s.equalsIgnoreCase("true"))
 
   /** A constant true or false property which ignores all method calls.
+   *
+   *  @param key the name of the system property
+   *  @param isOn whether the constant property is true or false
+   *  @return a BooleanProp whose value is fixed and whose mutating operations are no-ops
    */
   def constant(key: String, isOn: Boolean): BooleanProp = new ConstantImpl(key, isOn)
 

@@ -1,20 +1,21 @@
 package dotty.tools.pc.utils
 
-import dotty.tools.dotc.ast.untpd.*
-import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.pc.CompilerSearchVisitor
-import dotty.tools.pc.utils.InteractiveEnrichments.decoded
-
 import java.io.File
 import java.nio.file.Paths
+
 import scala.collection.mutable
 import scala.language.unsafeNulls
 import scala.meta.internal.metals.CompilerVirtualFileParams
 import scala.meta.internal.metals.Fuzzy
 import scala.meta.internal.metals.WorkspaceSymbolQuery
 import scala.meta.pc.SymbolSearchVisitor
+
+import dotty.tools.dotc.ast.untpd.*
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.core.Flags
+import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.pc.CompilerSearchVisitor
+import dotty.tools.pc.utils.InteractiveEnrichments.decoded
 
 import TestingWorkspaceSearch.*
 
@@ -34,7 +35,7 @@ object TestingWorkspaceSearch:
     private def isMethod = symbol.lastOption.exists(_.suffix.endsWith(")."))
     private def isInit = symbol.lastOption.exists(_.name == "<init>")
     private def filePackage = SymbolPart(fileName, "$package.")
-    private def member(part: SymbolPart)=
+    private def member(part: SymbolPart) =
       if isPackage then Some(symbol :+ filePackage :+ part)
       else if isMethod then
         if isInit then Some(symbol.dropRight(1) :+ part)
@@ -118,11 +119,15 @@ class TestingWorkspaceSearch(classpath: Seq[String]):
           driver.run(uri, text)
           val run = driver.currentCtx.run
           val unit = run.units.head
-          val symbols = SymbolCollector().traverse(Nil, unit.untpdTree, ParentSymbol.empty(nio.getFileName().toString().stripSuffix(".scala")))
+          val symbols = SymbolCollector().traverse(
+            Nil,
+            unit.untpdTree,
+            ParentSymbol.empty(nio.getFileName().toString().stripSuffix(".scala"))
+          )
           symbols.foreach: sym =>
             val name = sym.last.name
             if Fuzzy.matches(query.query, name)
             then
-              val symbolsString = sym.map{ case SymbolPart(name, suffix) => name ++ suffix}.mkString
+              val symbolsString = sym.map { case SymbolPart(name, suffix) => name ++ suffix }.mkString
               visitor.visitWorkspaceSymbol(Paths.get(""), symbolsString, null, null)
       case _ =>

@@ -1,3 +1,2 @@
-
 error overriding method toString in class Foo of type (): String;
   method toString of type (): String cannot override final member method toString in class Foo

@@ -1,27 +1,21 @@
 package dotty.tools.backend.jvm
 
-import scala.language.unsafeNulls
+import dotty.DottyBytecodeTest
 
-import org.junit.Assert._
 import org.junit.Test
 
-import scala.tools.asm
-import asm._
-import asm.tree._
-
 import scala.tools.asm.Opcodes
-import scala.jdk.CollectionConverters._
-import Opcodes._
+import Opcodes.*
 
 class LabelBytecodeTests extends DottyBytecodeTest {
-  import ASMConverters._
+  import dotty.AsmConverters.*
 
    @Test def localLabelBreak = {
     testLabelBytecodeEquals(
       """val local = boundary.Label[Long]()
         |try break(5L)(using local)
         |catch case ex: boundary.Break[Long] @unchecked =>
-        |  if ex.label eq local then ex.value
+        |  if ex.isSameLabelAs(local) then ex.value
         |  else throw ex
       """.stripMargin,
       "Long",
@@ -155,7 +149,7 @@ class LabelBytecodeTests extends DottyBytecodeTest {
       """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Test.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val method  = getMethod(clsNode, "test")
 

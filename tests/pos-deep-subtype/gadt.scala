@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 sealed trait Exp[T]
 case class Num(n: Int) extends Exp[Int]

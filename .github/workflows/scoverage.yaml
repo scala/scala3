@@ -1,0 +1,259 @@
+name: Scoverage
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'  # Every day at 3 AM
+  push:
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - main
+
+# This workflow compiles a subset of the Scala 3 projects with
+# scoverage enabled to test robustness of scoverage.
+#
+# Triggers:
+# - Nightly at 3 AM
+# - Push to tags
+# - PRs to main with [test_coverage] marker in the body
+# - Manual workflow dispatch
+#
+# Project scoverage compilation status:
+#
+# Compiles with scoverage + Ycheck:
+#   - tasty-core-bootstrapped
+#   - scala3-repl
+#   - scala3-presentation-compiler
+#   - scala3-language-server
+#   - scala3-staging
+#   - scala3-tasty-inspector
+#   - scala3-sbt-bridge-bootstrapped
+#
+# Compiles with scoverage (no Ycheck, -Werror disabled):
+#   - scala3-compiler-nonbootstrapped
+#   - scaladoc
+#
+# Coverage test suite:
+#   - scala3-bootstrapped (testCompilation --enable-coverage-phase)
+#
+# Does not compile with scoverage (omitted):
+#   - scala-library-bootstrapped
+
+jobs:
+  # Projects that compile with coverage + Ycheck
+  tasty-core-bootstrapped-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile with coverage and Ycheck
+        run: |
+          ./project/scripts/sbt '
+          set `tasty-core-bootstrapped` / Compile / compile / scalacOptions ++= Seq(
+            "-Ycheck:instrumentCoverage",
+            "-coverage-out", "tasty/target/tasty-core-bootstrapped/coverage-ycheck",
+            "-sourceroot", "${{ github.workspace }}"
+          );
+          tasty-core-bootstrapped/clean;
+          tasty-core-bootstrapped/compile'
+
+  scala3-repl-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile with coverage and Ycheck
+        run: |
+          ./project/scripts/sbt '
+          set `scala3-repl` / Compile / compile / scalacOptions ++= Seq(
+            "-Ycheck:instrumentCoverage",
+            "-coverage-out", "repl/target/scala3-repl/coverage-ycheck",
+            "-sourceroot", "${{ github.workspace }}"
+          );
+          scala3-repl/clean;
+          scala3-repl/compile'
+
+  scala3-presentation-compiler-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile with coverage and Ycheck
+        run: |
+          ./project/scripts/sbt '
+          set `scala3-presentation-compiler` / Compile / compile / scalacOptions ++= Seq(
+            "-Ycheck:instrumentCoverage",
+            "-coverage-out", "presentation-compiler/target/scala3-presentation-compiler/coverage-ycheck",
+            "-sourceroot", "${{ github.workspace }}"
+          );
+          scala3-presentation-compiler/clean;
+          scala3-presentation-compiler/compile'
+
+  scala3-language-server-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile with coverage and Ycheck
+        run: |
+          ./project/scripts/sbt '
+          set `scala3-language-server` / Compile / compile / scalacOptions ++= Seq(
+            "-Ycheck:instrumentCoverage",
+            "-coverage-out", "language-server/target/scala3-language-server/coverage-ycheck",
+            "-sourceroot", "${{ github.workspace }}"
+          );
+          scala3-language-server/clean;
+          scala3-language-server/compile'
+
+  scala3-staging-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile with coverage and Ycheck
+        run: |
+          ./project/scripts/sbt '
+          set `scala3-staging` / Compile / compile / scalacOptions ++= Seq(
+            "-Ycheck:instrumentCoverage",
+            "-coverage-out", "staging/target/scala3-staging/coverage-ycheck",
+            "-sourceroot", "${{ github.workspace }}"
+          );
+          scala3-staging/clean;
+          scala3-staging/compile'
+
+  scala3-tasty-inspector-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile with coverage and Ycheck
+        run: |
+          ./project/scripts/sbt '
+          set `scala3-tasty-inspector` / Compile / compile / scalacOptions ++= Seq(
+            "-Ycheck:instrumentCoverage",
+            "-coverage-out", "tasty-inspector/target/scala3-tasty-inspector/coverage-ycheck",
+            "-sourceroot", "${{ github.workspace }}"
+          );
+          scala3-tasty-inspector/clean;
+          scala3-tasty-inspector/compile'
+
+  scala3-sbt-bridge-bootstrapped-coverage-ycheck:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile with coverage and Ycheck
+        run: |
+          ./project/scripts/sbt '
+          set `scala3-sbt-bridge-bootstrapped` / Compile / compile / scalacOptions ++= Seq(
+            "-Ycheck:instrumentCoverage",
+            "-coverage-out", "sbt-bridge/target/scala3-sbt-bridge-bootstrapped/coverage-ycheck",
+            "-sourceroot", "${{ github.workspace }}"
+          );
+          scala3-sbt-bridge-bootstrapped/clean;
+          scala3-sbt-bridge-bootstrapped/compile'
+
+  # Projects that compile with coverage but without Ycheck
+  scala3-compiler-nonbootstrapped-coverage:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile with coverage
+        run: |
+          ./project/scripts/sbt '
+          set `scala3-compiler-nonbootstrapped` / Compile / compile / scalacOptions ~= (_.filterNot(_ == "-Werror"));
+          set `scala3-compiler-nonbootstrapped` / Compile / compile / scalacOptions ++= Seq(
+            "-coverage-out", "compiler/target/scala3-compiler-nonbootstrapped/coverage",
+            "-sourceroot", "${{ github.workspace }}"
+          );
+          scala3-compiler-nonbootstrapped/clean;
+          scala3-compiler-nonbootstrapped/compile'
+
+  scaladoc-coverage:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Compile with coverage
+        run: |
+          ./project/scripts/sbt '
+          set scaladoc / Compile / compile / scalacOptions ~= (_.filterNot(_ == "-Werror"));
+          set scaladoc / Compile / compile / scalacOptions ++= Seq(
+            "-coverage-out", "scaladoc/target/scaladoc-coverage",
+            "-sourceroot", "${{ github.workspace }}"
+          );
+          scaladoc/clean;
+          scaladoc/compile'
+
+  # Coverage test suite
+  scala3-bootstrapped-compilation-coverage:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Run coverage compilation tests
+        run: ./project/scripts/sbt 'scala3-bootstrapped/testCompilation --enable-coverage-phase'
+

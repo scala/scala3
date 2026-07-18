@@ -39,7 +39,7 @@
 	url = https://github.com/dotty-staging/intent
 [submodule "community-build/community-projects/utest"]
 	path = community-build/community-projects/utest
-	url = https://github.com/dotty-staging/utest.git
+	url = https://github.com/dotty-staging/utest-new.git
 [submodule "community-build/community-projects/os-lib"]
 	path = community-build/community-projects/os-lib
 	url = https://github.com/dotty-staging/os-lib.git
@@ -90,9 +90,9 @@
 [submodule "community-build/community-projects/PPrint"]
 	path = community-build/community-projects/PPrint
 	url = https://github.com/dotty-staging/PPrint.git
-[submodule "community-build/community-projects/requests-scala"]
-	path = community-build/community-projects/requests-scala
-	url = https://github.com/dotty-staging/requests-scala.git
+[submodule "community-build/community-projects/requests"]
+	path = community-build/community-projects/requests
+	url = https://github.com/dotty-staging/requests.git
 [submodule "community-build/community-projects/cats-effect-3"]
 	path = community-build/community-projects/cats-effect-3
 	url = https://github.com/dotty-staging/cats-effect.git
@@ -100,6 +100,7 @@
 [submodule "community-build/community-projects/scala-parallel-collections"]
 	path = community-build/community-projects/scala-parallel-collections
 	url = https://github.com/dotty-staging/scala-parallel-collections.git
+	branch = serialisation-stability-fix
 [submodule "community-build/community-projects/scala-collection-compat"]
 	path = community-build/community-projects/scala-collection-compat
 	url = https://github.com/dotty-staging/scala-collection-compat.git

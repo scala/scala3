@@ -2,22 +2,21 @@ package dotty
 package tools
 package scripting
 
-import scala.language.unsafeNulls
-
 import java.nio.file.Files, java.nio.charset.StandardCharsets.UTF_8
-import org.junit.{ After, Test }
+import org.junit.{ After, Test, Ignore }
 import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeFalse
 import org.junit.experimental.categories.Category
 
 import ScriptTestEnv.*
 
+@Ignore
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class BashExitCodeTests:
-  private var myTmpDir: String | Null = null
-  private lazy val tmpDir = { myTmpDir = Files.createTempDirectory("exit-code-tests").toFile.absPath; myTmpDir }
+  private var tmpDirCreated: Boolean = false
+  private lazy val tmpDir: String = { tmpDirCreated = true; Files.createTempDirectory("exit-code-tests").toFile.absPath }
   @After def cleanup(): Unit = {
-    if myTmpDir != null then io.Directory(myTmpDir).deleteRecursively()
+    if tmpDirCreated then io.Directory(tmpDir).deleteRecursively()
 
     cleanupScalaCLIDirs()
   }

@@ -1,5 +1,5 @@
 //> using options -feature -Werror
-import scala.language.experimental.into
+
 import Conversion.into
 
 case class Foo(x: Int)

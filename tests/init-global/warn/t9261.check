@@ -4,5 +4,11 @@
   |            Cyclic initialization: object Buy -> object Sell -> object Buy. Calling trace:
   |            ├── case object Buy extends OrderType(Sell) // warn	[ t9261.scala:2 ]
   |            │                                     ^^^^
-  |            └── case object Sell extends OrderType(Buy)	[ t9261.scala:3 ]
+  |            └── case object Sell extends OrderType(Buy) // warn	[ t9261.scala:3 ]
   |                                                   ^^^
+-- Warning: tests/init-global/warn/t9261.scala:3:35 --------------------------------------------------------------------
+3 |case object Sell extends OrderType(Buy) // warn
+  |                                   ^^^
+  |                   Accessing module class Buy$ before the super constructor of the object finishes! Calling trace:
+  |                   └── case object Sell extends OrderType(Buy) // warn	[ t9261.scala:3 ]
+  |                                                          ^^^

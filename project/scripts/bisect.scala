@@ -1,4 +1,4 @@
-//> using jvm 17 // Maximal JDK version which can be used with all Scala 3 versions, can be overriden via command line arguments '--jvm=21'
+//> using jvm 17
 /*
 This script will bisect a problem with the compiler based on success/failure of the validation script passed as an argument.
 It starts with a fast bisection on released nightly builds.
@@ -33,7 +33,9 @@ val usageMessage = """
   |If you want to use one of the example scripts - use a copy of the file instead of modifying it in place because that might mess up the checkout.
   |
   |The optional <bisect-options> may be any combination of:
-  |* --dry-run
+  |Boolean flags accept an optional =true|false value; the bare form means true.
+  |
+  |* --dry-run[=true|false]
   |    Don't try to bisect - just make sure the validation command works correctly
   |
   |* --releases <releases-range>
@@ -44,11 +46,19 @@ val usageMessage = """
   |    * ...3.3.0-RC1-bin-20221124-e25362d-NIGHTLY
   |    The ranges are treated as inclusive.
   |
-  |* --bootstrapped
-  |    Publish locally and test a bootstrapped compiler rather than a nonboostrapped one.
+  |* --bootstrapped[=true|false]
+  |    Publish locally and test a bootstrapped compiler rather than a nonbootstrapped one.
   |
-  |* --should-fail
+  |* --should-fail[=true|false]
   |    Expect the validation command to fail rather that succeed. This can be used e.g. to find out when some illegal code started to compile.
+  |
+  |* --with-bloop[=true|false]
+  |    Use Bloop/build server for scala-cli reproduction scripts (omit --server=false).
+  |    Implies --with-cleaning, because incremental compilation may interfere with bisection.
+  |
+  |* --with-cleaning[=true|false]
+  |    Run `scala-cli clean <input>` before each validation invocation.
+  |    Enabled by default when --with-bloop is set; pass --with-cleaning=false to disable it even with --with-bloop.
   |
   |Warning: The bisect script should not be run multiple times in parallel because of a potential race condition while publishing artifacts locally.
 
@@ -61,7 +71,10 @@ val usageMessage = """
       case _ =>
         sys.error(s"Wrong script parameters.\n${usageMessage}")
 
-  val validationScript = scriptOptions.validationCommand.validationScript
+  val validationScript = scriptOptions.validationCommand.validationScript(
+    withBloop = scriptOptions.withBloop,
+    withCleaning = scriptOptions.withCleaning
+  )
   val releases = Releases.fromRange(scriptOptions.releasesRange)
   val releaseBisect = ReleaseBisect(validationScript, shouldFail = scriptOptions.shouldFail, releases)
 
@@ -77,29 +90,70 @@ val usageMessage = """
     commitBisect.bisect()
 
 
-case class ScriptOptions(validationCommand: ValidationCommand, dryRun: Boolean, bootstrapped: Boolean, releasesRange: ReleasesRange, shouldFail: Boolean)
+case class ScriptOptions(
+    validationCommand: ValidationCommand,
+    dryRun: Boolean,
+    bootstrapped: Boolean,
+    releasesRange: ReleasesRange,
+    shouldFail: Boolean,
+    withBloop: Boolean,
+    withCleaning: Boolean,
+    withCleaningExplicit: Option[Boolean] = None
+)
 object ScriptOptions:
+  private object BooleanFlag:
+    def unapply(arg: String): Option[(String, Boolean)] =
+      arg match
+        case name @ ("--dry-run" | "--bootstrapped" | "--should-fail" | "--with-bloop" | "--with-cleaning") =>
+          Some((name, true))
+        case s"$name=$value" if name == "--dry-run" || name == "--bootstrapped" || name == "--should-fail" || name == "--with-bloop" || name == "--with-cleaning" =>
+          Some((name, value.toBooleanOption.getOrElse(sys.error(s"Invalid boolean value for $name: $value"))))
+        case _ => None
+
   def fromArgs(args: Seq[String]) =
     val defaultOptions = ScriptOptions(
       validationCommand = null,
       dryRun = false,
       bootstrapped = false,
       ReleasesRange(first = None, last = None),
-      shouldFail = false
+      shouldFail = false,
+      withBloop = false,
+      withCleaning = false
     )
-    parseArgs(args, defaultOptions)
+    val options = parseArgs(args, defaultOptions)
+    val resolvedCleaning = options.withCleaningExplicit match
+      case Some(value) => value
+      case None =>
+        if options.withBloop then
+          println("--with-bloop implies --with-cleaning: enabling cleaning because incremental compilation may interfere with bisection")
+          true
+        else false
+    options.copy(withCleaning = resolvedCleaning)
 
   private def parseArgs(args: Seq[String], options: ScriptOptions): ScriptOptions =
-    args match
-      case "--dry-run" :: argsRest => parseArgs(argsRest, options.copy(dryRun = true))
-      case "--bootstrapped" :: argsRest => parseArgs(argsRest, options.copy(bootstrapped = true))
-      case "--releases" :: argsRest =>
-        val range = ReleasesRange.tryParse(argsRest.head).get
-        parseArgs(argsRest.tail, options.copy(releasesRange = range))
-      case "--should-fail" :: argsRest => parseArgs(argsRest, options.copy(shouldFail = true))
-      case _ =>
-        val command = ValidationCommand.fromArgs(args)
-        options.copy(validationCommand = command)
+    args.toList match
+      case arg :: argsRest =>
+        BooleanFlag.unapply(arg) match
+          case Some((name, value)) =>
+            name match
+              case "--dry-run" => parseArgs(argsRest, options.copy(dryRun = value))
+              case "--bootstrapped" => parseArgs(argsRest, options.copy(bootstrapped = value))
+              case "--should-fail" => parseArgs(argsRest, options.copy(shouldFail = value))
+              case "--with-bloop" => parseArgs(argsRest, options.copy(withBloop = value))
+              case "--with-cleaning" => parseArgs(argsRest, options.copy(withCleaningExplicit = Some(value)))
+              case other => sys.error(s"Unexpected boolean flag: $other")
+          case None =>
+            arg match
+              case "--releases" =>
+                val range = ReleasesRange.tryParse(argsRest.head).get
+                parseArgs(argsRest.tail, options.copy(releasesRange = range))
+              case _ if options.validationCommand == null =>
+                val command = ValidationCommand.fromArgs(args)
+                options.copy(validationCommand = command)
+              case _ =>
+                options
+      case Nil =>
+        options
 
 enum ValidationCommand:
   case Compile(args: Seq[String])
@@ -107,15 +161,11 @@ enum ValidationCommand:
   case Test(args: Seq[String])
   case CustomValidationScript(scriptFile: File)
 
-  def validationScript: File = this match
-    case Compile(args) =>
-      ValidationScript.tmpScalaCliScript(command = "compile", args)
-    case Run(args) =>
-      ValidationScript.tmpScalaCliScript(command = "run", args)
-    case Test(args) =>
-      ValidationScript.tmpScalaCliScript(command = "test", args)
-    case CustomValidationScript(scriptFile) =>
-      ValidationScript.copiedFrom(scriptFile)
+  def validationScript(withBloop: Boolean, withCleaning: Boolean): File = this match
+    case Compile(args) => ValidationScript.tmpScalaCliScript(command = "compile", args, withBloop, withCleaning)
+    case Run(args) => ValidationScript.tmpScalaCliScript(command = "run", args, withBloop, withCleaning)
+    case Test(args) => ValidationScript.tmpScalaCliScript(command = "test", args, withBloop, withCleaning)
+    case CustomValidationScript(scriptFile) => ValidationScript.copiedFrom(scriptFile)
 
 object ValidationCommand:
   def fromArgs(args: Seq[String]) = args match
@@ -130,12 +180,17 @@ object ValidationScript:
     val fileContent = scala.io.Source.fromFile(file).mkString
     tmpScript(fileContent)
 
-  def tmpScalaCliScript(command: String, args: Seq[String]): File = tmpScript(s"""
-    |#!/usr/bin/env bash
-    |export JAVA_HOME=${sys.props("java.home")}
-    |scala-cli ${command} -S "$$1" --server=false ${args.mkString(" ")}
-    |""".stripMargin
-  )
+  def tmpScalaCliScript(command: String, args: Seq[String], withBloop: Boolean, withCleaning: Boolean): File =
+    val argsString = args.mkString(" ")
+    val serverModifier = if withBloop then "" else "--server=false "
+    val cleanCommand = if withCleaning then s"scala-cli clean ${argsString}" else ""
+    tmpScript(s"""
+      |#!/usr/bin/env bash
+      |export JAVA_HOME=${sys.props("java.home")}
+      |${cleanCommand}
+      |scala-cli ${command} -S "$$1" ${serverModifier}${argsString}
+      |""".stripMargin
+    )
 
   private def tmpScript(content: String): File =
     val executableAttr = PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rwxr-xr-x"))
@@ -156,7 +211,7 @@ case class ReleasesRange(first: Option[String], last: Option[String]):
   def filter(releases: Seq[Release]) =
     def releaseIndex(version: String): Int =
       val index = releases.indexWhere(_.version == version)
-      assert(index > 0, s"${version} matches no nightly compiler release")
+      assert(index >= 0, s"${version} matches no nightly compiler release")
       index
     val startIdx = first.map(releaseIndex(_)).getOrElse(0)
     val endIdx = last.map(releaseIndex(_) + 1).getOrElse(releases.length)
@@ -179,18 +234,23 @@ object Releases:
   lazy val allReleases: Vector[Release] =
     val re = raw"<version>(.+-bin-\d{8}-\w{7}-NIGHTLY)</version>".r
     val xml = io.Source.fromURL(
-      "https://repo1.maven.org/maven2/org/scala-lang/scala3-compiler_3/maven-metadata.xml"
+      "https://repo.scala-lang.org/artifactory/maven-nightlies/org/scala-lang/scala3-compiler_3/maven-metadata.xml"
     )
     re.findAllMatchIn(xml.mkString)
       .flatMap{ m => Option(m.group(1)).map(Release.apply) }
       .toVector
       .sortBy: release =>
-        (release.version, release.date)
+        (release.semanticVersion, release.date)
 
   def fromRange(range: ReleasesRange): Vector[Release] = range.filter(allReleases)
 
 case class Release(version: String):
   private val re = raw".+-bin-(\d{8})-(\w{7})-NIGHTLY".r
+  val semanticVersion: (major: Int, minor: Int, patch: Int) = version match 
+    case s"$major.$minor.$patch-$_" => (major.toInt, minor.toInt, patch.toInt)
+    case s"$major.$minor.$patch" => (major.toInt, minor.toInt, patch.toInt)
+    case _ => sys.error(s"Could not extract semantic version from release name: $version")
+    
   def date: LocalDate = LocalDate.parse(dateString, DateTimeFormatter.BASIC_ISO_DATE)
   def dateString: String =
     version match
@@ -244,22 +304,37 @@ class ReleaseBisect(validationScript: File, shouldFail: Boolean, allReleases: Ve
       isGood
     })
 
-class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Boolean, lastGoodHash: String, fistBadHash: String):
+class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Boolean, lastGoodHash: String, firstBadHash: String):
   def bisect(): Unit =
-    println(s"Starting bisecting commits $lastGoodHash..$fistBadHash\n")
+    println(s"Starting bisecting commits $lastGoodHash..$firstBadHash\n")
     val scala3CompilerProject = if bootstrapped then "scala3-compiler-bootstrapped" else "scala3-compiler"
     val scala3Project = if bootstrapped then "scala3-bootstrapped" else "scala3"
     val validationCommandStatusModifier = if shouldFail then "! " else "" // invert the process status if failure was expected
+    val sbtPublishRecipe = Seq(
+      "clean",
+      """set every doc := new File("unused")""",
+      s"set scaladoc/Compile/resourceGenerators := (`$scala3Project`/Compile/resourceGenerators).value",
+      s"$scala3Project/publishLocal",
+    ).mkString("; ")
+
     val bisectRunScript = raw"""
       |scalaVersion=$$(sbt "print ${scala3CompilerProject}/version" | tail -n1)
       |rm -rf out
       |export JAVA_HOME=${sys.props("java.home")}
-      |(sbt "clean; set every doc := new File(\"unused\"); set scaladoc/Compile/resourceGenerators := (\`${scala3Project}\`/Compile/resourceGenerators).value; ${scala3Project}/publishLocal" \
-      |  || (echo "Failed to build compiler, skip $$scalaVersion"; git bisect skip) \
-      |) && ${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
+      |sbt_build_log=$$(mktemp)
+      |echo 'Running sbt publish recipe: sbt "$sbtPublishRecipe"'
+      |if sbt '$sbtPublishRecipe' >"$$sbt_build_log" 2>&1; then
+      |  rm -f "$$sbt_build_log"
+      |  ${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
+      |else
+      |  echo "Failed to build compiler, skip $$scalaVersion"
+      |  cat "$$sbt_build_log"
+      |  rm -f "$$sbt_build_log"
+      |  git bisect skip
+      |fi
     """.stripMargin
     "git bisect start".!
-    s"git bisect bad $fistBadHash".!
+    s"git bisect bad $firstBadHash".!
     s"git bisect good $lastGoodHash".!
     Seq("git", "bisect", "run", "sh", "-c", bisectRunScript).!
     s"git bisect reset".!

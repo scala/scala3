@@ -3,6 +3,7 @@ package dotc
 package transform
 
 import MegaPhase.*
+import ast.tpd.*
 import core.DenotTransformers.*
 import core.Symbols.*
 import core.Contexts.*
@@ -14,11 +15,10 @@ import core.StdNames.nme
 import core.Names.*
 import core.NameOps.*
 import core.NameKinds.SuperArgName
+import inlines.Inlines
 
-import dotty.tools.dotc.ast.tpd
-
-import collection.mutable
 import scala.annotation.tailrec
+import scala.collection.mutable
 
 /** This phase adds outer accessors to classes and traits that need them.
  *  Compared to Scala 2.x, it tries to minimize the set of classes
@@ -36,7 +36,6 @@ import scala.annotation.tailrec
  */
 class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
   import ExplicitOuter.*
-  import ast.tpd.*
 
   override def phaseName: String = ExplicitOuter.name
 
@@ -64,7 +63,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
    *  Furthermore, if a parent trait might have an outer accessor,
    *  provide an implementation for the outer accessor by computing the parent's
    *  outer from the parent type prefix. If the trait ends up not having an outer accessor
-   *  after all, the implementation is redundant, but does not harm.
+   *  after all, the implementation is redundant, but does no harm.
    *  The same logic is not done for non-trait parent classes because for them the outer
    *  pointer is passed in the super constructor, which will be implemented later in
    *  a separate phase which needs to run after erasure. However, we make sure here
@@ -111,7 +110,7 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
     else impl
   }
 
-  override def transformClosure(tree: Closure)(using Context): tpd.Tree = {
+  override def transformClosure(tree: Closure)(using Context): Tree = {
     if (tree.tpt ne EmptyTree) {
       val cls = tree.tpt.asInstanceOf[TypeTree].tpe.classSymbol
       if (cls.exists && hasOuter(cls.asClass))
@@ -122,7 +121,6 @@ class ExplicitOuter extends MiniPhase with InfoTransformer { thisPhase =>
 }
 
 object ExplicitOuter {
-  import ast.tpd.*
 
   val name: String = "explicitOuter"
   val description: String = "add accessors to outer classes from nested ones"
@@ -215,13 +213,16 @@ object ExplicitOuter {
    *  the class needs an outer pointer if referenced and one of the following holds:
    *  - we might not know at all instantiation sites whether outer is referenced or not
    *  - we need to potentially pass along outer to a parent class or trait
+   *  - it is a module whose inline members reference its outer (see below)
    */
   private def needsOuterAlways(cls: ClassSymbol)(using Context): Boolean =
-    needsOuterIfReferenced(cls) &&
-    (!hasOnlyLocalInstantiation(cls) || // needs outer because we might not know whether outer is referenced or not
-     cls.mixins.exists(needsOuterIfReferenced) || // needs outer for parent traits
-     cls.info.parents.exists(parent => // needs outer to potentially pass along to parent
-       needsOuterIfReferenced(parent.classSymbol.asClass)))
+       needsOuterIfReferenced(cls)
+    && (!hasOnlyLocalInstantiation(cls) // needs outer because we might not know whether outer is referenced or not
+        || cls.mixins.exists(needsOuterIfReferenced) // needs outer for parent traits
+        || cls.info.parents.exists: parent => // needs outer to potentially pass along to parent
+             needsOuterIfReferenced(parent.classSymbol.asClass)
+        || referencesOuterViaInlineMembers(cls) // needs outer to be reachable from inlined references in other units
+    )
 
   /** Class is only instantiated in the compilation unit where it is defined */
   private def hasOnlyLocalInstantiation(cls: ClassSymbol)(using Context): Boolean =
@@ -229,6 +230,19 @@ object ExplicitOuter {
     // in which case they will be instantiated in the classes that mix in the trait.
     if cls.is(Module) then !cls.owner.is(Trait)
     else cls.isLocalToCompilationUnit
+
+  /** Does a module `cls` have an inline member whose body references its outer this?
+   *
+   *  Inline method bodies can be expanded in downstream units.
+   *  If that body needs an access to outer, the module's outer
+   *  accessor must be reconstructed in the downstream unit as well.
+   */
+  private def referencesOuterViaInlineMembers(cls: ClassSymbol)(using Context): Boolean =
+    cls.is(Module)
+    && cls.info.decls.toList.exists: mbr =>
+         mbr.isInlineMethod
+         && Inlines.hasBodyToInline(mbr)
+         && referencesOuter(cls, Inlines.bodyToInline(mbr))
 
   /** The outer parameter accessor of cass `cls` */
   private def outerParamAccessor(cls: ClassSymbol)(using Context): TermSymbol =
@@ -247,8 +261,8 @@ object ExplicitOuter {
    */
   def outerAccessor(cls: ClassSymbol)(using Context): Symbol =
     if (cls.isStatic) NoSymbol // fast return to avoid scanning package decls
-    else cls.info.member(outerAccName(cls)).suchThat(_.is(OuterAccessor)).symbol orElse
-      cls.info.decls.find(_.is(OuterAccessor))
+    else cls.info.member(outerAccName(cls)).suchThat(_.is(OuterAccessor)).symbol
+      `orElse` cls.info.decls.find(_.is(OuterAccessor))
 
   /** Class has an outer accessor. Can be called only after phase ExplicitOuter. */
   private def hasOuter(cls: ClassSymbol)(using Context): Boolean =
@@ -301,10 +315,15 @@ object ExplicitOuter {
         case _ => false
 
       def containsOuterRefsAnywhere(tp: Type): Boolean =
-        tp.existsPart({
+        def hasOuterRef(t: Type) =
+          { t match
             case t: SingletonType => isOuterRef(t)
             case _ => false
-          }, StopAt.Static)
+          } || {
+            val t1 = t.dealias
+            (t1 ne t) && containsOuterRefsAnywhere(t1)
+          }
+        tp.existsPart(hasOuterRef, StopAt.Static)
 
       def containsOuterRefs(t: Tree): Boolean = t match
         case _: This | _: Ident => isOuterRef(t.tpe)
@@ -322,7 +341,7 @@ object ExplicitOuter {
           containsOuterRefsAtTopLevel(app.args.head.tpe.dealias)
         case t: TypeTree if inInline =>
           // Expansions of inline methods must be able to address outer types
-          containsOuterRefsAnywhere(t.tpe.dealias)
+          containsOuterRefsAnywhere(t.tpe)
         case _ =>
           false
 

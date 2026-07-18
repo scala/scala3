@@ -6,6 +6,11 @@ object Macros {
   def buildStringCode(using Quotes): Expr[String] = {
     import quotes.reflect.*
     val str: String = null
-    Expr(str)
+    try
+      Expr(str)
+    catch
+      case error: java.lang.IllegalArgumentException =>
+        error.setStackTrace(Array[StackTraceElement]())
+        throw error
   }
 }

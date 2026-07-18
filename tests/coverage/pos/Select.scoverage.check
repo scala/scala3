@@ -195,23 +195,6 @@ Select$package
 Object
 covtest.Select$package
 test
-263
-273
-19
-instance
-Select
-false
-0
-false
-a.instance
-
-11
-Select.scala
-covtest
-Select$package
-Object
-covtest.Select$package
-test
 345
 354
 20
@@ -222,7 +205,7 @@ false
 false
 a.print()
 
-12
+11
 Select.scala
 covtest
 Select$package

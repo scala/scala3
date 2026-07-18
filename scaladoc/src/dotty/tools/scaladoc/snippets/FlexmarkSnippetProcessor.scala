@@ -3,7 +3,6 @@ package snippets
 
 import com.vladsch.flexmark.util.{ast => mdu, sequence}
 import com.vladsch.flexmark.{ast => mda}
-import com.vladsch.flexmark.formatter.Formatter
 import scala.jdk.CollectionConverters._
 
 import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
@@ -17,11 +16,12 @@ object FlexmarkSnippetProcessor:
       case fcb: mda.FencedCodeBlock => fcb
     }.toList
 
-    nodes.foldLeft[Map[String, String]](Map()) { (snippetMap, node) =>
+    nodes.foldLeft[Map[String, SnippetSource]](Map()) { (snippetMap, node) =>
       val lineOffset = node.getStartLineNumber + preparsed.fold(0)(_.strippedLinesBeforeNo)
-      val info = node.getInfo.toString.split(" ")
+      val codeStartLine = lineOffset + SnippetChecker.codeFenceContentLineOffset
+      val info = node.getInfo.toString.split(" ").filter(_.nonEmpty)
       if info.contains("scala") then {
-        val argOverride = info
+        val flagOverride = info
           .find(_.startsWith("sc:"))
           .map(_.stripPrefix("sc:"))
           .map(SCFlagsParser.parse)
@@ -29,11 +29,26 @@ object FlexmarkSnippetProcessor:
             case Right(flags) => Some(flags)
             case Left(error) =>
               report.warning(
-                s"""|Error occured during parsing flags in snippet:
+                s"""|Error occurred during parsing flags in snippet:
                     |$error""".stripMargin
               )
               None
           })
+
+        val scalacOptions: Seq[String] = info
+          .toIndexedSeq
+          .filter(_.startsWith("sc-opts:"))
+          .flatMap(_.stripPrefix("sc-opts:").split(",").map(_.trim).toSeq)
+
+        val isHidden = info.contains("sc-hidden")
+
+        val argOverride: Option[SnippetCompilerArg] =
+          (flagOverride, scalacOptions) match {
+            case (None, Seq()) => None
+            case (Some(flag), opts) => Some(SnippetCompilerArg(flag, opts))
+            case (None, opts) => Some(SnippetCompilerArg(SCFlags.Compile, opts))
+          }
+
         val id = info
           .find(_.startsWith("sc-name:"))
           .map(_.stripPrefix("sc-name:"))
@@ -47,42 +62,41 @@ object FlexmarkSnippetProcessor:
             val snippet = snippetMap.get(id)
             if snippet.isEmpty then
               report.warning(
-                s"""|Error occured during parsing compile-with in snippet:
+                s"""|Error occurred during parsing compile-with in snippet:
                     |Snippet with id: $id not found.
                     |Remember that you cannot use forward reference to snippets""".stripMargin
               )
-            snippet
-          }.mkString("\n")
+            snippet.toList
+          }
+          .foldLeft(SnippetSource.empty)(_.append(_))
 
         val snippet = node.getContentChars.toString
+        val visibleSnippet = SnippetSource(snippet, codeStartLine)
+        // `sc-compile-with` prepends hidden preambles before compilation, so we keep
+        // their line origins in the merged snippet instead of reconstructing offsets later.
+        val fullSnippet = visibleSnippet.withPreamble(snippetImports)
 
-        extension (n: mdu.Node)
-          def setContentString(str: String): Unit =
-            val s = sequence.BasedSequence.EmptyBasedSequence()
-              .append(str)
-              .append(sequence.BasedSequence.EOL)
-            val content = mdu.BlockContent()
-            content.add(s, 0)
-            node.setContent(content)
+        def setContentString(str: String): Unit =
+          val s = sequence.BasedSequence.EmptyBasedSequence()
+            .append(str)
+            .append(sequence.BasedSequence.EOL)
+          val content = mdu.BlockContent()
+          content.add(s, 0)
+          node.setContent(content)
 
-        val fullSnippet = Seq(snippetImports, snippet).mkString("\n").stripPrefix("\n")
-        val snippetCompilationResult = cf(fullSnippet, lineOffset, argOverride) match {
-          case Some(result @ SnippetCompilationResult(wrapped, _, _, messages)) =>
-            node.setContentString(fullSnippet)
-            Some(result)
-          case result =>
-            node.setContentString(fullSnippet)
-            result
-        }
+        val snippetCompilationResult = cf(fullSnippet, argOverride)
+        setContentString(fullSnippet.snippet)
 
-        node.insertBefore(ExtendedFencedCodeBlock(id, node, snippetCompilationResult))
+        if isHidden && id.isEmpty then
+          report.warning("Snippet with sc-hidden should also have sc-name: to be useful as a preamble for other snippets")
+
+        val extendedNode = ExtendedFencedCodeBlock(id, node, snippetCompilationResult)
+        if !isHidden then node.insertBefore(extendedNode)
         node.unlink()
+
         id.fold(snippetMap)(id =>
-          val snippetAsImport = s"""|//{i:$id
-                                    |$snippet
-                                    |//i}""".stripMargin
-          val entry = (id, Seq(snippetImports, snippetAsImport).mkString("\n"))
-          snippetMap + entry
+          val entry = visibleSnippet.wrapAsImport(id).withPreamble(snippetImports)
+          snippetMap + (id -> entry)
         )
       } else snippetMap
     }

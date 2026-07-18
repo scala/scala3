@@ -3,6 +3,8 @@ package dotty.tools.scaladoc.tasty
 import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 
+import dotty.tools.scaladoc.cc.*
+
 import scala.quoted._
 
 import SymOps._
@@ -18,6 +20,17 @@ trait ClassLikeSupport:
   import qctx.reflect._
 
   private given qctx.type = qctx
+
+  extension (symbol: Symbol) {
+    def getExtraModifiers(): Seq[Modifier] =
+      var mods = SymOps.getExtraModifiers(symbol)()
+      if ccEnabled && symbol.flags.is(Flags.Mutable) then
+        if symbol.hasAnnotation(cc.CaptureDefs.ConsumeAnnot) then
+          mods :+= Modifier.Consume
+        else
+          mods :+= Modifier.Update
+      mods
+  }
 
   private def bareClasslikeKind(using Quotes)(symbol: reflect.Symbol): Kind =
     import reflect._
@@ -59,6 +72,25 @@ trait ClassLikeSupport:
     else if classDef.symbol.flags.is(Flags.Enum) && classDef.symbol.flags.is(Flags.Case) then Kind.EnumCase(Kind.Class(typeArgs, args))
     else if classDef.symbol.flags.is(Flags.Enum) then Kind.Enum(typeArgs, args)
     else Kind.Class(typeArgs, args)
+
+  private def usesClauseFor(classDef: ClassDef): Option[UsesClause] =
+    def refsFrom(symbol: Symbol, initially: Boolean): List[(qctx.reflect.TypeRepr, Boolean)] =
+      val pairs =
+        for
+          annot <- symbol.annotations.find(_.tpe.typeSymbol.isRetains)
+          refs <- retainedCaptureRefs(annot)
+          if refs.nonEmpty
+        yield refs.map(_ -> initially)
+      pairs.getOrElse(Nil)
+
+    if !ccEnabled then None
+    else
+      val constrUses = refsFrom(classDef.constructor.symbol, initially = true)
+      val classUses = refsFrom(classDef.symbol, initially = false)
+      val allRefs = constrUses ++ classUses
+      Option.unless(allRefs.isEmpty)(
+        UsesClause(emitUseRefsSignature(using qctx)(allRefs)(using classDef, classDef.symbol))
+      )
 
   def mkClass(classDef: ClassDef)(
     dri: DRI = classDef.symbol.dri,
@@ -114,7 +146,7 @@ trait ClassLikeSupport:
       getSupertypesGraph(LinkToType(selfSignature, classDef.symbol.dri, bareClasslikeKind(classDef.symbol)), unpackTreeToClassDef(classDef).parents)
     )
 
-    val kind = if intrinsicClassDefs.contains(classDef.symbol) then Kind.Class(Nil, Nil) else kindForClasslike(classDef)
+    val kind = if intrinsicClassDefs.contains(classDef.symbol) then bareClasslikeKind(classDef.symbol) else kindForClasslike(classDef)
 
     val baseMember = mkMember(classDef.symbol, kind, selfSignature)(
       modifiers = modifiers,
@@ -124,12 +156,13 @@ trait ClassLikeSupport:
     ).copy(
       directParents = classDef.getParentsAsLinkToTypes,
       parents = supertypes,
+      usesClause = usesClauseFor(classDef)
     )
 
     if summon[DocContext].args.generateInkuire then doInkuireStuff(classDef)
 
     if signatureOnly then baseMember else baseMember.copy(
-        members = classDef.extractPatchedMembers.sortBy(m => (m.name, m.kind.name)),
+        members = classDef.extractMembers.sortBy(m => (m.name, m.kind.name)),
         selfType = selfType,
         companion = classDef.getCompanion
     )
@@ -165,7 +198,7 @@ trait ClassLikeSupport:
       // First one doesn't always work because .tpe in some cases causes type lambda reductions, eg:
       //   def foo[T : ([X] =>> String)]
       // after desugaring:
-      //   def foo[T](implicit ecidence$1 : ([X] =>> String)[T])
+      //   def foo[T](implicit evidence$1 : ([X] =>> String)[T])
       // tree for this evidence looks like: ([X] =>> String)[T]
       // but type repr looks like: String
       // (see scaladoc-testcases/src/tests/contextBounds.scala)
@@ -267,31 +300,6 @@ trait ClassLikeSupport:
         inherited.flatMap(s => parseInheritedMember(c)(s))
     }
 
-    /** Extracts members while taking Dotty logic for patching the stdlib into account. */
-    def extractPatchedMembers: Seq[Member] = {
-      val ownMembers = c.extractMembers
-      def extractPatchMembers(sym: Symbol) = {
-        // NOTE for some reason scala.language$.experimental$ class doesn't show up here, so we manually add the name
-        val ownMemberDRIs = ownMembers.iterator.map(_.name).toSet + "experimental$"
-        sym.tree.asInstanceOf[ClassDef]
-          .membersToDocument.filterNot(m => ownMemberDRIs.contains(m.symbol.name))
-          .flatMap(parseMember(c))
-      }
-      c.symbol.fullName match {
-        case "scala.Predef$" =>
-          ownMembers ++
-          extractPatchMembers(qctx.reflect.Symbol.requiredClass("scala.runtime.stdLibPatches.Predef$"))
-        case "scala.language$" =>
-          ownMembers ++
-          extractPatchMembers(qctx.reflect.Symbol.requiredModule("scala.runtime.stdLibPatches.language").moduleClass)
-        case "scala.language$.experimental$" =>
-          ownMembers ++
-          extractPatchMembers(qctx.reflect.Symbol.requiredModule("scala.runtime.stdLibPatches.language.experimental").moduleClass)
-        case _ => ownMembers
-      }
-
-    }
-
     def getTreeOfFirstParent: Option[Tree] =
       c.getParentsAsTreeSymbolTuples.headOption.map(_._1)
 
@@ -300,6 +308,7 @@ trait ClassLikeSupport:
         (tree, symbol) => LinkToType(tree.asSignature(c, c.symbol, skipThisTypePrefix = true), symbol.dri, bareClasslikeKind(symbol))
       }
 
+    @scala.annotation.nowarn
     def getParentsAsTreeSymbolTuples: List[(Tree, Symbol)] =
       if noPosClassDefs.contains(c.symbol) then Nil
       else for
@@ -309,7 +318,7 @@ trait ClassLikeSupport:
           case t: TypeTree => t.tpe.typeSymbol
           case tree if tree.symbol.isClassConstructor => tree.symbol.owner
           case tree => tree.symbol
-        if parentSymbol != defn.ObjectClass && parentSymbol != defn.AnyClass && !parentSymbol.isHiddenByVisibility
+        if parentSymbol != defn.ObjectClass && !parentSymbol.isHiddenByVisibility
       yield (parentTree, parentSymbol)
 
     def getConstructors: List[Symbol] = c.membersToDocument.collect {
@@ -441,16 +450,18 @@ trait ClassLikeSupport:
   ) =
     val symbol = argument.symbol
     val inlinePrefix = if symbol.flags.is(Flags.Inline) then "inline " else ""
+    val comsumePrefix = if self.ccEnabled && symbol.hasAnnotation(cc.CaptureDefs.ConsumeAnnot) then "consume " else ""
     val name = symbol.normalizedName
     val nameIfNotSynthetic = Option.when(!symbol.flags.is(Flags.Synthetic))(name)
+    val defaultValue = Option.when(symbol.flags.is(Flags.HasDefault))(Plain(" = ..."))
     api.TermParameter(
       symbol.getAnnotations(),
-      inlinePrefix + prefix(symbol),
+      comsumePrefix + inlinePrefix + prefix(symbol),
       nameIfNotSynthetic,
       symbol.dri,
-      argument.tpt.asSignature(classDef, symbol.owner),
-      isExtendedSymbol,
-      isGrouped
+      argument.tpt.asSignature(classDef, symbol.owner) :++ defaultValue,
+      isExtendedSymbol = isExtendedSymbol,
+      isGrouped = isGrouped
     )
 
   def mkTypeArgument(
@@ -465,6 +476,8 @@ trait ClassLikeSupport:
       else ""
 
     val name = symbol.normalizedName
+    val isCaptureVar = ccEnabled && argument.derivesFromCapSet
+
     val normalizedName = if name.matches("_\\$\\d*") then "_" else name
     val boundsSignature = argument.rhs.asSignature(classDef, symbol.owner)
     val signature = boundsSignature ++ contextBounds.flatMap(tr =>
@@ -479,7 +492,8 @@ trait ClassLikeSupport:
       variancePrefix,
       normalizedName,
       symbol.dri,
-      signature
+      signature,
+      isCaptureVar,
     )
 
   def parseTypeDef(typeDef: TypeDef, classDef: ClassDef): Member =
@@ -489,6 +503,11 @@ trait ClassLikeSupport:
       case LambdaTypeTree(params, body) => isTreeAbstract(body)
       case _ => false
     }
+
+    // Detect capture-set type members (type Cap^), which are represented as
+    // type Cap >: CapSet <: CapSet^{...} in the compiler.
+    val isCaptureVar = ccEnabled && typeDef.derivesFromCapSet
+
     val (generics, tpeTree) = typeDef.rhs match
       case LambdaTypeTree(params, body) => (params.map(mkTypeArgument(_, classDef)), body)
       case tpe => (Nil, tpe)
@@ -497,6 +516,11 @@ trait ClassLikeSupport:
     val kind = if symbol.flags.is(Flags.Enum) then Kind.EnumCase(defaultKind)
       else defaultKind
 
+    // For capset members, prepend ^ to the signature (the bounds rendering
+    // already elides the CapSet lower/upper defaults, so we just need the caret).
+    val sig = tpeTree.asSignature(classDef, symbol.owner)
+    val sigWithCaret = if isCaptureVar then Plain("^") :: sig else sig
+
     if symbol.flags.is(Flags.Exported)
     then {
       val origin = Some(tpeTree).flatMap {
@@ -504,13 +528,13 @@ trait ClassLikeSupport:
           Some(Link(l.tpe.typeSymbol.owner.name, l.tpe.typeSymbol.owner.dri))
         case _ => None
       }
-      mkMember(symbol, Kind.Exported(kind), tpeTree.asSignature(classDef, symbol.owner))(
+      mkMember(symbol, Kind.Exported(kind), sigWithCaret)(
         deprecated = symbol.isDeprecated(),
         origin = Origin.ExportedFrom(origin),
         experimental = symbol.isExperimental()
       )
     }
-    else mkMember(symbol, kind, tpeTree.asSignature(classDef, symbol.owner))(deprecated = symbol.isDeprecated())
+    else mkMember(symbol, kind, sigWithCaret)(deprecated = symbol.isDeprecated())
 
   def parseValDef(c: ClassDef, valDef: ValDef): Member =
     val symbol = valDef.symbol
@@ -528,7 +552,10 @@ trait ClassLikeSupport:
       case _ => symbol.getExtraModifiers()
 
     mkMember(symbol, kind, sig)(
-      modifiers = modifiers,
+      // Due to how capture checking encodes update methods (recycling the mutable flag for methods),
+      // we need to filter out the update modifier here. Otherwise, mutable fields will
+      // be documented as having the update modifier, which is not correct.
+      modifiers = modifiers.filterNot(_ == Modifier.Update),
       deprecated = symbol.isDeprecated(),
       experimental = symbol.isExperimental()
     )
@@ -548,6 +575,7 @@ trait ClassLikeSupport:
     visibility = symbol.getVisibility(),
     modifiers = modifiers,
     annotations = symbol.getAnnotations(),
+    usesClause = None,
     signature = signature,
     sources = symbol.source,
     origin = origin,

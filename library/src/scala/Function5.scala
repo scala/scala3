@@ -10,17 +10,27 @@
  * additional information regarding copyright ownership.
  */
 
-// GENERATED CODE: DO NOT EDIT. See scala.Function0 for timestamp.
-
 package scala
 
 import scala.language.`2.13`
 
 /** A function of 5 parameters.
  *
+ *  @tparam T1 the type of the 1st argument
+ *  @tparam T2 the type of the 2nd argument
+ *  @tparam T3 the type of the 3rd argument
+ *  @tparam T4 the type of the 4th argument
+ *  @tparam T5 the type of the 5th argument
+ *  @tparam R the return type of this function
  */
-trait Function5[-T1, -T2, -T3, -T4, -T5, +R] extends AnyRef { self =>
-  /** Apply the body of this function to the arguments.
+trait Function5[-T1, -T2, -T3, -T4, -T5, +R] extends AnyRef {
+  /** Applies the body of this function to the arguments.
+   *
+   *  @param v1 the 1st argument
+   *  @param v2 the 2nd argument
+   *  @param v3 the 3rd argument
+   *  @param v4 the 4th argument
+   *  @param v5 the 5th argument
    *  @return   the result of function application.
    */
   def apply(v1: T1, v2: T2, v3: T3, v4: T4, v5: T5): R
@@ -29,7 +39,7 @@ trait Function5[-T1, -T2, -T3, -T4, -T5, +R] extends AnyRef { self =>
    *  @return   a function `f` such that `f(x1)(x2)(x3)(x4)(x5) == apply(x1, x2, x3, x4, x5)`
    */
   @annotation.unspecialized def curried: T1 => T2 => T3 => T4 => T5 => R = {
-    (x1: T1) => ((x2: T2, x3: T3, x4: T4, x5: T5) => self.apply(x1, x2, x3, x4, x5)).curried
+    (x1: T1) => ((x2: T2, x3: T3, x4: T4, x5: T5) => this.apply(x1, x2, x3, x4, x5)).curried
   }
   /** Creates a tupled version of this function: instead of 5 arguments,
    *  it accepts a single [[scala.Tuple5]] argument.

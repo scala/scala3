@@ -11,9 +11,9 @@ import NameOps.*
 import collection.mutable
 import reporting.*
 import Checking.{checkNoPrivateLeaks, checkNoWildcard}
-import cc.CaptureSet
 import util.Property
 import transform.Splicer
+import config.Feature
 
 trait TypeAssigner {
   import tpd.*
@@ -176,12 +176,14 @@ trait TypeAssigner {
     val qualType = qual.tpe.widenIfUnstable
     def kind = if tree.isType then "type" else "value"
     val foundWithoutNull = qualType match
-      case OrNull(qualType1) if qualType1 <:< defn.ObjectType =>
+      case OrNull(qualType1) if ctx.explicitNulls && qualType1 <:< defn.ObjectType =>
         val name = tree.name
         val pre = maybeSkolemizePrefix(qualType1, name)
         reallyExists(qualType1.findMember(name, pre))
       case _ => false
-    def addendum = err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum, foundWithoutNull)
+    def addendum =
+      err.selectErrorAddendum(tree, qual, qualType, importSuggestionAddendum, foundWithoutNull)
+      ++ err.transparentInlineSelectAddendum(qual)
     val msg: Message =
       if tree.name == nme.CONSTRUCTOR then em"$qualType does not have a constructor"
       else NotAMember(qualType, tree.name, kind, proto, addendum)
@@ -191,7 +193,7 @@ trait TypeAssigner {
     if tpe.isError then tpe
     else errorType(CannotBeAccessed(tpe, superAccess), pos)
 
-  def processAppliedType(tree: untpd.Tree, tp: Type)(using Context): Type = tp match
+  def processAppliedType(tp: Type)(using Context): Type = tp match
     case AppliedType(tycon, args) =>
       val constr = tycon.typeSymbol
       if constr == defn.andType then AndType(args(0), args(1))
@@ -441,7 +443,30 @@ trait TypeAssigner {
           case pt: PolyType =>
             pt.derivedLambdaType(resType = methTypeWithoutEnv(pt.resType))
         val methodicType = if tree.env.isEmpty then meth.tpe.widen else methTypeWithoutEnv(meth.tpe.widen)
-        methodicType.toFunctionType(isJava = meth.symbol.is(JavaDefined))
+        // Gross hack to support bootstrapping with 3.8.4:
+        // PickleQuotes expected a quote closure to be of FunctionN form.
+        // This is now fixed, but 3.8.4 still has the old behavior. So we cannot
+        // generate closures with RefinedTypes under 3.8.4.
+        // TODO: Remove quotesException once we bootstrap with 3.10.
+        val quotesException = meth.tpe.widen match
+          case mt: MethodType =>
+            mt.paramInfos.exists: pinfo =>
+              pinfo.typeSymbol == defn.QuotesClass
+          case _ =>
+            false
+        // When capture checking is on, we want a closure's inferred type to
+        // expose its user-written parameter names as a dependent function
+        // type, so they print and appear in capture sets as written. We do
+        // this only for closures that actually carry meaningful names
+        // originating from user source.
+        val keepsParamNamesUnderCC =
+          Feature.ccEnabled
+          && !ctx.erasedTypes                       // RefinedType is invalid after erasure
+          && methodicType.hasMeaningfulParamNames   // skip empty/synthetic/wildcard/contextual params
+          && !quotesException                       // TODO drop once we bootstrap with 3.10
+        methodicType.toFunctionType(
+          isJava = meth.symbol.is(JavaDefined),
+          alwaysDependent = keepsParamNamesUnderCC)
       else target.tpe)
 
   def assignType(tree: untpd.CaseDef, pat: Tree, body: Tree)(using Context): CaseDef = {
@@ -507,7 +532,7 @@ trait TypeAssigner {
     val tparams = tycon.tpe.typeParams
     val ownType =
       if tparams.hasSameLengthAs(args) then
-        processAppliedType(tree, tycon.tpe.appliedTo(args.tpes))
+        processAppliedType(tycon.tpe.appliedTo(args.tpes))
       else
         wrongNumberOfTypeArgs(tycon.tpe, tparams, args, tree.srcPos)
     tree.withType(ownType)
@@ -570,10 +595,14 @@ trait TypeAssigner {
   def assignType(tree: untpd.Export)(using Context): Export =
     tree.withType(defn.UnitType)
 
-  def assignType(tree: untpd.Annotated, arg: Tree, annot: Tree)(using Context): Annotated = {
+  def assignType(tree: untpd.Annotated, arg: Tree, annotTree: Tree)(using Context): Annotated =
     assert(tree.isType) // annotating a term is done via a Typed node, can't use Annotate directly
-    tree.withType(AnnotatedType(arg.tpe, Annotation(annot)))
-  }
+    if annotClass(annotTree).exists then
+      tree.withType(AnnotatedType(arg.tpe, Annotation(annotTree)))
+    else
+      // this can happen if cyclic reference errors occurred when typing the annotation
+      tree.withType(
+        errorType(em"Malformed annotation $tree, will be ignored", annotTree.srcPos))
 
   def assignType(tree: untpd.PackageDef, pid: Tree)(using Context): PackageDef =
     tree.withType(pid.symbol.termRef)

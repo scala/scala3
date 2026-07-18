@@ -6,7 +6,7 @@ type Top  = Any^
 
 def handle[E <: Exception, T <: Top](op: (lcap: caps.Capability) ?-> CT[E]^{lcap} ?=> T)(handler: E => T): T =
   val x: CT[E] = ???
-  try op(using caps.cap)(using x)
+  try op(using caps.any)(using x)
   catch case ex: E => handler(ex)
 
 def raise[E <: Exception](ex: E)(using CanThrow[E]): Nothing =

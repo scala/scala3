@@ -31,7 +31,7 @@ def main2(x: C^) : () -> Int =
     0
 
 def main3(x: C^) =
-  def c : C^ = new C(x) // error separation
+  def c : C^ = new C(x) // sep error
   val boxed2 : Observe[C]^ = box2(c) // error
   boxed2((cap: C^) => unsafe(c))
   0
@@ -41,6 +41,6 @@ trait File:
 
 def main(io: Any^) =
   val sayHello: ((File^{io}) => Unit) = (file: File^{io}) => file.write("Hello World!\r\n")
-  val filesList : List[File]^{io} = ???
+  val filesList : List[File]^{io} = ??? // error
   val x = () => filesList.foreach(sayHello)
   x: (() -> Unit) // error

@@ -1,7 +1,6 @@
-[[syntax trees at end of MegaPhase{dropOuterAccessors, dropParentRefinements, checkNoSuperThis, flatten, transformWildcards, moveStatic, expandPrivate, restoreScopes, selectStatic, Collect entry points, collectSuperCalls, repeatableAnnotations}]] // tests/printing/transformed/lazy-vals-legacy.scala
+[[syntax trees at end of MegaPhase{dropOuterAccessors, dropParentRefinements, checkNoSuperThis, flatten, transformWildcards, moveStatic, expandPrivate, restoreScopes, selectStatic, repeatableAnnotations}]] // tests/printing/transformed/lazy-vals-legacy.scala
 package <empty> {
-  @SourceFile("tests/printing/transformed/lazy-vals-legacy.scala") final module
-    class A extends Object {
+  final module class A extends Object {
     def <init>(): Unit =
       {
         super()

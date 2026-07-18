@@ -1,0 +1,16 @@
+object Test {
+  def a[T](x: T, y: T) = x == y
+  def b[T](x: T, y: T) = x != y
+
+  def main(args: Array[String]): Unit = {
+    val dn = Double.NaN
+    val dres = a(n, n) :: a(n, 0) :: a (0, n) :: !b(n, n) :: !b(n, 0) :: !b(0, n) :: Nil
+    for dr <- dres if dr do
+      println("FAIL")
+
+    val fn = $tp.NaN
+    val fres = a(n, n) :: a(n, 0) :: a (0, n) :: !b(n, n) :: !b(n, 0) :: !b(0, n) :: Nil
+    for fr <- fres if fr do
+      println("FAIL")
+  }
+}

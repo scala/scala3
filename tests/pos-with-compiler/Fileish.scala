@@ -4,18 +4,16 @@ package dotty.tools
 package io
 
 import java.io.InputStream
-import java.util.jar.JarEntry
 import language.postfixOps
 
 /** A common interface for File-based things and Stream-based things.
- *  (In particular, io.File and JarEntry.)
  */
-class Fileish(val path: Path, val input: () => InputStream) extends Streamable.Chars {
+class Fileish(val path: Path, val input: () => InputStream) {
   def inputStream() = input()
+  def lines(): Iterable[String] = ???
 
   def parent       = path.parent
   def name         = path.name
-  def isSourceFile = path.hasExtension("java", "scala")
 
   private lazy val pkgLines = lines() collect { case x if x startsWith "package " => x stripPrefix "package" trim }
   lazy val pkgFromPath      = parent.path.replaceAll("""[/\\]""", ".")
@@ -23,12 +21,12 @@ class Fileish(val path: Path, val input: () => InputStream) extends Streamable.C
 
   override def toString = path.path
 }
-class Fileish2(val path: Path, val input: () => InputStream) extends Streamable.Chars {
+class Fileish2(val path: Path, val input: () => InputStream) {
   def inputStream() = input()
+  def lines(): Iterable[String] = ???
 
   def parent       = path.parent
   def name         = path.name
-  def isSourceFile = path.hasExtension("java", "scala")
 
   private val pkgLines = lines() collect { case x if x startsWith "package " => x stripPrefix "package" trim }
   lazy val pkgFromPath      = parent.path.replaceAll("""[/\\]""", ".")
@@ -37,12 +35,12 @@ class Fileish2(val path: Path, val input: () => InputStream) extends Streamable.
   override def toString = path.path
 }
 
-class Fileish3(val path: Path, val input: () => InputStream) extends Streamable.Chars {
+class Fileish3(val path: Path, val input: () => InputStream) {
   def inputStream() = input()
+  def lines(): Iterable[String] = ???
 
   def parent       = path.parent
   def name         = path.name
-  def isSourceFile = path.hasExtension("java", "scala")
 
   private val pkgLines = lines() collect { case x if x startsWith "package " => x stripPrefix "package" trim }
   private val pkgFromPath      = parent.path.replaceAll("""[/\\]""", ".")

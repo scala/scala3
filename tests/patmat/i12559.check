@@ -1,2 +1,8 @@
-10: Match case Unreachable
-27: Match case Unreachable
+-- [E030] Match case Unreachable Warning: tests/patmat/i12559.scala:10:11 ------
+10 |      case e: LogEventWithMarker => 2
+   |           ^^^^^^^^^^^^^^^^^^^^^
+   |           Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/i12559.scala:27:11 ------
+27 |      case e: LogEventWithMarker => 2
+   |           ^^^^^^^^^^^^^^^^^^^^^
+   |           Unreachable case

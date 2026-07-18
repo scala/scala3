@@ -85,7 +85,7 @@ val c = new C()
 // c.f == "field is null"
 ```
 
-The unsoundness above can be caught by the compiler with the option `-Ysafe-init`.
+The unsoundness above can be caught by the compiler with the option `-Wsafe-init`.
 More details can be found in [safe initialization](../other-new-features/safe-initialization.md).
 
 ## Equality
@@ -540,4 +540,4 @@ Our strategy for binary compatibility with Scala binaries that predate explicit 
 and new libraries compiled without `-Yexplicit-nulls` is to leave the types unchanged
 and be compatible but unsound.
 
-[More details](https://dotty.epfl.ch/docs/internals/explicit-nulls.html)
+[More details](https://nightly.scala-lang.org/docs/internals/explicit-nulls.html)

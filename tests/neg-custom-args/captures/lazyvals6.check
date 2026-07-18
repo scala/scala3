@@ -1,0 +1,99 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals6.scala:7:22 -------------------------------------
+7 |  val _: () -> Unit = x                 // error
+  |                      ^
+  |                      Found:    (C.this.x : () ->{C.this.io} Unit)
+  |                      Required: () -> Unit
+  |
+  |                      Note that capability `C.this.io` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals6.scala:12:22 ------------------------------------
+12 |  val _: () -> Unit = l1                // error
+   |                      ^^
+   |                      Found:    (C.this.l1 : () ->{C.this.c.io} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `C.this.c.io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals6.scala:16:22 ------------------------------------
+16 |  val _: () -> Unit = l2                // error
+   |                      ^^
+   |                      Found:    (C.this.l2 : () ->{C.this.io} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `C.this.io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals6.scala:20:22 ------------------------------------
+20 |  val _: () -> Unit = s1                // error
+   |                      ^^
+   |                      Found:    (C.this.s1 : () ->{C.this.c.io} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `C.this.c.io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals6.scala:24:22 ------------------------------------
+24 |  val _: () -> Unit = s2                // error
+   |                      ^^
+   |                      Found:    (C.this.s2 : () ->{C.this.io} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `C.this.io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals6.scala:32:22 ------------------------------------
+32 |  val _: () -> Unit = l11               // error
+   |                      ^^^
+   |                      Found:    (C.this.l11 : () ->{C.this} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `C.this.io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals6.scala:36:22 ------------------------------------
+36 |  val _: () -> Unit = l12               // error
+   |                      ^^^
+   |                      Found:    (C.this.l12 : () ->{C.this.io} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `C.this.io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals6.scala:41:22 ------------------------------------
+41 |  val _: () -> Unit = s11               // error
+   |                      ^^^
+   |                      Found:    (C.this.s11 : () ->{C.this} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `C.this.io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals6.scala:45:22 ------------------------------------
+45 |  val _: () -> Unit = s12               // error
+   |                      ^^^
+   |                      Found:    (C.this.s12 : () ->{C.this.io} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `C.this.io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals6.scala:50:22 ------------------------------------
+50 |  val _: () -> Unit = x                 // error
+   |                      ^
+   |                      Found:    (x : () ->{io} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals6.scala:55:22 ------------------------------------
+55 |  val _: () -> Unit = z                 // error
+   |                      ^
+   |                      Found:    (z : () ->{c.io} Unit)
+   |                      Required: () -> Unit
+   |
+   |                      Note that capability `c.io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`

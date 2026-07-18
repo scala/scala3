@@ -1,0 +1,11 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25320a.scala:6:9 ----------------------------------------
+6 |    case Box(y) => y  // error
+  |         ^^^^^^^^^^^
+  |         Found:    A^{y, any}
+  |         Required: A
+  |
+  |         Note that capability `y` cannot flow into capture set {}.
+  |
+  |         where:    any is a root capability in the type of value x7
+  |
+  | longer explanation available when compiling with `-explain`

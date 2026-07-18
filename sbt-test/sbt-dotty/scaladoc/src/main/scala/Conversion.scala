@@ -3,7 +3,7 @@ package example
 import scala.language.implicitConversions
 
 /**
-  *  Conversions: http://dotty.epfl.ch/docs/reference/contextual/conversions.html
+  *  Conversions: https://nightly.scala-lang.org/docs/reference/contextual/conversions.html
   */
 object Conversion {
 

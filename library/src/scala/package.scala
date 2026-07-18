@@ -40,7 +40,7 @@ package object scala {
 
   // A dummy used by the specialization annotation.
   val AnyRef = new Specializable {
-    override def toString = "object AnyRef"
+    override def toString() = "object AnyRef"
   }
 
   @deprecated("Use IterableOnce instead of TraversableOnce", "2.13.0")

@@ -1,4 +1,6 @@
-import scala.language.experimental.into
+// placeholder for directives line
+//
+
 import Conversion.into
 
 import scala.deriving.Mirror
@@ -14,7 +16,7 @@ case class Baz(foo: MyInto[Foo])
 
 given Conversion[Int, Foo] = Foo(_)
 
-into enum Color: // error
+into enum Color: // ok
   case Red, Green
 
 def test =

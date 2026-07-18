@@ -1,13 +1,13 @@
-import caps.{cap, consume}
+import caps.any
 import language.future
 import language.experimental.captureChecking
 
 def par(op1: () => Unit)(op2: () => Unit): Unit = ()
 
-def f(@consume io: Object^): () => Unit =
+def f(consume io: Object^): () => Unit =
   () => println(io)
 
-def g(@consume io: Object^): () => Unit = f(io) // ok
+def g(consume io: Object^): () => Unit = f(io) // ok
 
 def bad(io: Object^): () => Unit = f(io) // error
 

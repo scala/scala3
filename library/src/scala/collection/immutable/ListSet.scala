@@ -15,36 +15,37 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import mutable.{Builder, ImmutableBuilder}
 import scala.annotation.tailrec
 import scala.collection.generic.DefaultSerializable
 
-/**
-  * This class implements immutable sets using a list-based data structure. List set iterators and
-  * traversal methods visit elements in the order they were first inserted.
-  *
-  * Elements are stored internally in reversed insertion order, which means the newest element is at
-  * the head of the list. As such, methods such as `head` and `tail` are O(n), while `last` and
-  * `init` are O(1). Other operations, such as inserting or removing entries, are also O(n), which
-  * makes this collection suitable only for a small number of elements.
-  *
-  * Instances of `ListSet` represent empty sets; they can be either created by calling the
-  * constructor directly, or by applying the function `ListSet.empty`.
-  *
-  * @tparam A the type of the elements contained in this list set
-  *
-  * @define Coll ListSet
-  * @define coll list set
-  * @define mayNotTerminateInf
-  * @define willNotTerminateInf
-  */
+/** This class implements immutable sets using a list-based data structure. List set iterators and
+ *  traversal methods visit elements in the order they were first inserted.
+ *
+ *  Elements are stored internally in reversed insertion order, which means the newest element is at
+ *  the head of the list. As such, methods such as `head` and `tail` are O(n), while `last` and
+ *  `init` are O(1). Other operations, such as inserting or removing entries, are also O(n), which
+ *  makes this collection suitable only for a small number of elements.
+ *
+ *  Instances of `ListSet` represent empty sets; they can be either created by calling the
+ *  constructor directly, or by applying the function `ListSet.empty`.
+ *
+ *  @tparam A the type of the elements contained in this list set
+ *
+ *  @define Coll ListSet
+ *  @define coll list set
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 sealed class ListSet[A]
   extends AbstractSet[A]
     with StrictOptimizedSetOps[A, ListSet, ListSet[A]]
     with IterableFactoryDefaults[A, ListSet]
     with DefaultSerializable {
 
-  override protected[this] def className: String = "ListSet"
+  override protected def className: String = "ListSet"
 
   override def size: Int = 0
   override def knownSize: Int = 0
@@ -70,14 +71,15 @@ sealed class ListSet[A]
 
   override def iterableFactory: IterableFactory[ListSet] = ListSet
 
-  /**
-    * Represents an entry in the `ListSet`.
-    */
+  /** Represents an entry in the `ListSet`.
+   *
+   *  @param elem the element contained in this node of the list set
+   */
   protected class Node(override protected val elem: A) extends ListSet[A] {
 
     override def size = sizeInternal(this, 0)
     override def knownSize: Int = -1
-    @tailrec private[this] def sizeInternal(n: ListSet[A], acc: Int): Int =
+    @tailrec private def sizeInternal(n: ListSet[A], acc: Int): Int =
       if (n.isEmpty) acc
       else sizeInternal(n.next, acc + 1)
 
@@ -85,14 +87,14 @@ sealed class ListSet[A]
 
     override def contains(e: A): Boolean = containsInternal(this, e)
 
-    @tailrec private[this] def containsInternal(n: ListSet[A], e: A): Boolean =
+    @tailrec private def containsInternal(n: ListSet[A], e: A): Boolean =
       !n.isEmpty && (n.elem == e || containsInternal(n.next, e))
 
     override def incl(e: A): ListSet[A] = if (contains(e)) this else new Node(e)
 
     override def excl(e: A): ListSet[A] = removeInternal(e, this, Nil)
 
-    @tailrec private[this] def removeInternal(k: A, cur: ListSet[A], acc: List[ListSet[A]]): ListSet[A] =
+    @tailrec private def removeInternal(k: A, cur: ListSet[A], acc: List[ListSet[A]]): ListSet[A] =
       if (cur.isEmpty) acc.last
       else if (k == cur.elem) acc.foldLeft(cur.next)((t, h) => new t.Node(h.elem))
       else removeInternal(k, cur.next, cur :: acc)
@@ -105,21 +107,20 @@ sealed class ListSet[A]
   }
 }
 
-/**
-  * $factoryInfo
-  *
-  * Note that each element insertion takes O(n) time, which means that creating a list set with
-  * n elements will take O(n^2^) time. This makes the builder suitable only for a small number of
-  * elements.
-  *
-  * @define Coll ListSet
-  * @define coll list set
-  */
+/** $factoryInfo
+ *
+ *  Note that each element insertion takes O(n) time, which means that creating a list set with
+ *  n elements will take O(n^2^) time. This makes the builder suitable only for a small number of
+ *  elements.
+ *
+ *  @define Coll ListSet
+ *  @define coll list set
+ */
 @SerialVersionUID(3L)
 object ListSet extends IterableFactory[ListSet] {
 
-  def from[E](it: scala.collection.IterableOnce[E]): ListSet[E] =
-    it match {
+  def from[E](it: scala.collection.IterableOnce[E]^): ListSet[E] =
+    (it: @unchecked) match {
       case ls: ListSet[E] => ls
       case _ if it.knownSize == 0 => empty[E]
       case _ => (newBuilder[E] ++= it).result()

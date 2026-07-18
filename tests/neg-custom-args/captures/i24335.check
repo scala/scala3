@@ -1,0 +1,17 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i24335.scala:7:22 ----------------------------------------
+7 |  val _: () -> Unit = l1 // error
+  |                      ^^
+  |                      Found:    (C.this.l1 : () ->{C.this.c.io} Unit)
+  |                      Required: () -> Unit
+  |
+  |                      Note that capability `C.this.c.io` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/i24335.scala:13:7 -------------------------------------------------------------
+13 |  val r = Ref() // error
+   |       ^
+   |       value r needs an explicit type because it captures a root capability in its type Ref^.
+   |       Fields capturing a root capability need to be given an explicit type unless the capability is already
+   |       subsumed by the computed capability of the enclosing class.
+   |
+   |       where:    ^ refers to a root capability classified as Unscoped in the type of value r
