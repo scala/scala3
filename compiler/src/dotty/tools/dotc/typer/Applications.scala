@@ -567,10 +567,10 @@ trait Applications extends Compatibility {
      */
     protected def makeVarArg(n: Int, elemFormal: Type): Unit
 
-    /** Hook for adjusting `arg` (the `n`-th argument) for qualified-type
+    /** Hook for adjusting `arg` (typed against `formal`) for qualified-type
      *  support. No-op by default; overridden by `TypedApply`.
      */
-    protected def maybeWrapQualifiedArg(arg: TypedArg, n: Int): TypedArg = arg
+    protected def maybeWrapQualifiedArg(arg: TypedArg, formal: Type): TypedArg = arg
 
     /** If all `args` have primitive numeric types, make sure it's the same one */
     protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
@@ -844,7 +844,7 @@ trait Applications extends Compatibility {
            */
           def addTyped(arg: Arg): List[Type] =
             if !formal.isRepeatedParam then checkNoVarArg(arg)
-            val argTyped = maybeWrapQualifiedArg(typedArg(arg, formal), n)
+            val argTyped = maybeWrapQualifiedArg(typedArg(arg, formal), formal)
             addArg(argTyped, formal)
             if methodType.looksParamDependent
                   // need to handle also false dependencies since we generate TypeTrees from
@@ -1129,37 +1129,39 @@ trait Applications extends Compatibility {
     def typeOfArg(arg: tpd.Tree): Type = arg.tpe
 
     /** Wrap unstable args with `@QualifierSkolemIndex(n)` so each arg's
-     *  skolem identity is stable across TASTy round-trips. Skipped when
-     *  the signature has no qualified type depending on an argument ([[methodHasQualifier]]).
+     *  skolem identity is stable across TASTy round-trips. Needed when the
+     *  arg is checked against a qualified formal, or when a qualifier in the
+     *  signature refers to a method parameter ([[hasDependentQualifier]]).
      */
-    override protected def maybeWrapQualifiedArg(arg: Tree, n: Int): Tree =
+    override protected def maybeWrapQualifiedArg(arg: Tree, formal: Type): Tree =
       if Feature.qualifiedTypesEnabled
          && !arg.tpe.isStable
+         && (hasDependentQualifier || qualified_types.QualifiedTypes.containsQualifier(formal))
          && !isInAnnotationDeep
-         && methodHasQualifier
       then qualified_types.QualifiedTypes.wrapWithSkolemIndex(arg)
       else arg
 
-    /** True iff the method's signature contains a qualified type dependent on
-     *  an argument. */
-    private lazy val methodHasQualifier: Boolean = methType match
-      case mt: MethodType =>
-        if mt.paramInfos.exists(qualified_types.QualifiedTypes.containsQualifier) then
-          true
-        else
-          var found = false
-          def scan(tp: Type): Unit =
-            if !found then
-              tp.foreachPart:
-                case qualified_types.QualifiedType(_, qualifier) =>
-                  qualifier.foreachType: qtp =>
-                    if !found then qtp.foreachPart:
-                      case TermParamRef(`mt`, _) => found = true
-                      case _ =>
-                case _ => ()
-          mt.paramInfos.foreach(scan)
-          if !found then scan(mt.resultType)
-          found
+    /** True iff the method's signature contains a qualifier that refers to one
+     *  of the method's parameters via `TermParamRef`. Prefiltered by the cached
+     *  dependency status: `QualifiedAnnotation.refersToParamOf` feeds
+     *  `depStatus`, so a param-referring qualifier always implies a dependent
+     *  method type, and the scan only runs for dependent methods.
+     */
+    private lazy val hasDependentQualifier: Boolean = methType match
+      case mt: MethodType if mt.isParamDependent || mt.isResultDependent =>
+        var found = false
+        def scan(tp: Type): Unit =
+          if !found then
+            tp.foreachPart:
+              case qualified_types.QualifiedType(_, qualifier) =>
+                qualifier.foreachType: qtp =>
+                  if !found then qtp.foreachPart:
+                    case TermParamRef(`mt`, _) => found = true
+                    case _ =>
+              case _ => ()
+        mt.paramInfos.foreach(scan)
+        if !found then scan(mt.resultType)
+        found
       case _ => false
 
     /** Check if any enclosing context has `Mode.InAnnotation` set. This is
