@@ -557,8 +557,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             val curImport = ctx.importInfo
             def updateUnimported() =
               if (curImport.nn.unimported ne NoSymbol) unimported += curImport.nn.unimported
-            if (curOwner.is(Package) && curImport != null && curImport.isRootImport
-                && (curImport ne outer.importInfo) && previous.exists)
+            if (curOwner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
               previous // no more conflicts possible in this case
             else if (isPossibleImport(NamedImport) && curImport != null && (curImport ne outer.importInfo)) {
               val namedImp = namedImportRef(curImport)
@@ -4141,8 +4140,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case none =>
             val newCtx = if (ctx.owner.isTerm && adaptCreationContext(mdef)) ctx
               else ctx.withNotNullInfos(initialNotNullInfos)
-            val typedMdef = typed(mdef)(using newCtx)
-            typedMdef match
+            typed(mdef)(using newCtx) match
               case mdef1: DefDef
               if mdef1.symbol.is(Inline, butNot = Deferred) && !Inlines.bodyToInline(mdef1.symbol).isEmpty =>
                 buf ++= inlineExpansion(mdef1)
@@ -4155,7 +4153,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 // clashing synthetic case methods are converted to empty trees, drop them here
               case mdef1 =>
                 buf += mdef1
-            traverse(rest)(using QualifierContext.afterMemberContext(typedMdef))
+            traverse(rest)
         }
       case Thicket(stats) :: rest =>
         traverse(stats ::: rest)
