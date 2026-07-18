@@ -103,8 +103,9 @@ jobs:
   publish_release:
     permissions:
       contents: write  # for GH CLI to create a release
-    runs-on: [self-hosted, Linux]
-    needs: [stdlib-tests, mima-tests, compiler-tests, community-build-tests, misc-tests]
+    # Forks have no self-hosted runners, so the release runs on a normal GitHub runner
+    runs-on: ${{ github.repository == 'scala/scala3' && fromJSON('["self-hosted", "Linux"]') || 'ubuntu-latest' }}
+    needs: [stdlib-tests, mima-tests, compiler-tests, community-build-tests, misc-tests, build-msi-package]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
@@ -116,6 +117,16 @@ jobs:
 
     env:
       RELEASEBUILD: yes
+      # IS_ORIGIN routes how we publish:
+      #
+      # - External channels like Maven Central are only used on scala/scala3.
+      # - On forks all the artifacts are built, signed and staged, but are only
+      #   published to fork-local targets (GitHub releases, workflow artifacts).
+      #
+      # Setting the FORK_SIMULATE_ORIGIN repo variable lets a fork walk the
+      # origin code path to test that the external-publish guards fire.
+      IS_ORIGIN: ${{ github.repository == 'scala/scala3' || vars.FORK_SIMULATE_ORIGIN == 'true' }}
+      HAS_SIGNING_KEY: ${{ secrets.PGP_SECRET != '' }}
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
       PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
       SONATYPE_PW: ${{ secrets.SONATYPE_PW_ORGSCALALANG }}
@@ -142,6 +153,8 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Add SBT proxy repositories
+        # The proxies are EPFL-internal Artifactory, forks resolve from Maven Central
+        if: env.IS_ORIGIN == 'true'
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       # Extract the release tag
@@ -155,7 +168,10 @@ jobs:
           echo "This build version: ${version}"
           if [ "${version}" != "${{ env.RELEASE_TAG }}" ]; then
             echo "Compiler version for this build '${version}', does not match tag: ${{ env.RELEASE_TAG }}"
-            exit 1
+            if [ "${IS_ORIGIN}" = "true" ]; then
+              exit 1
+            fi
+            echo "::warning::Continuing build, fork test tags may not match the built version"
           fi
 
       - name: Prepare the SDKs
@@ -210,10 +226,16 @@ jobs:
           # We need to config safe.directory in every step that might reference git
           # It is not persisted between steps
           git config --global --add safe.directory $GITHUB_WORKSPACE
+          notesFile="./changelogs/${{ env.RELEASE_TAG }}.md"
+          notesArgs=(--notes-file "${notesFile}")
+          if [ "${IS_ORIGIN}" != "true" ] && [ ! -f "${notesFile}" ]; then
+            # Fork test tags have no changelog entry
+            notesArgs=(--generate-notes)
+          fi
           gh release create \
           --draft \
           --title "${{ env.RELEASE_TAG }}" \
-          --notes-file ./changelogs/${{ env.RELEASE_TAG }}.md \
+          "${notesArgs[@]}" \
           --latest=${{ !contains(env.RELEASE_TAG, '-RC') }} \
           --prerelease=${{ contains(env.RELEASE_TAG, '-RC') }} \
           --verify-tag ${{ env.RELEASE_TAG }} \
@@ -223,10 +245,14 @@ jobs:
           scala3-${{ env.RELEASE_TAG }}.msi
 
       # Each namespace needs to be published separately
+      # On forks, the artifacts are signed and staged (target/sona-staging) but the
+      # upload to Maven Central is skipped and the staged bundle is archived instead.
+      # A fork without a signing key configured skips these steps entirely.
       - name: Publish Release (org.scala-lang)
+        if: env.IS_ORIGIN == 'true' || env.HAS_SIGNING_KEY == 'true'
         run: |
           rm -rf ./target/sona-staging/
-          ./project/scripts/sbtPublish " \
+          publishCommand=" \
             all \
               scala-library-bootstrapped/publishSigned \
               scala3-compiler-bootstrapped/publishSigned \
@@ -242,13 +268,36 @@ jobs:
               scala3-tasty-inspector/publishSigned \
               scaladoc/publishSigned \
               tasty-core-bootstrapped/publishSigned \
-            ;sonaUpload"
+            "
+          if [ "${IS_ORIGIN}" = "true" ]; then
+            publishCommand="${publishCommand} ;sonaUpload"
+          fi
+          ./project/scripts/sbtPublish "${publishCommand}"
+
+      - name: Upload staged bundle (org.scala-lang, fork only)
+        if: env.IS_ORIGIN != 'true' && env.HAS_SIGNING_KEY == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: sona-staging-org-scala-lang
+          path: target/sona-staging/
 
       - name: Publish Release (org.scala-js)
+        if: env.IS_ORIGIN == 'true' || env.HAS_SIGNING_KEY == 'true'
         run: |
           # Ensure the staging does not contain any stale artifacts
           rm -rf ./target/sona-staging/
-          ./project/scripts/sbtPublish "scala-library-sjs/publishSigned ;sonaUpload"
+          publishCommand="scala-library-sjs/publishSigned"
+          if [ "${IS_ORIGIN}" = "true" ]; then
+            publishCommand="${publishCommand} ;sonaUpload"
+          fi
+          ./project/scripts/sbtPublish "${publishCommand}"
+
+      - name: Upload staged bundle (org.scala-js, fork only)
+        if: env.IS_ORIGIN != 'true' && env.HAS_SIGNING_KEY == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: sona-staging-org-scala-js
+          path: target/sona-staging/
 
   build-msi-package:
    uses: ./.github/workflows/build-msi.yml
