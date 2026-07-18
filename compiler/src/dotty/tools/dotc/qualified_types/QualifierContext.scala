@@ -1,17 +1,20 @@
 package dotty.tools.dotc.qualified_types
 
 import dotty.tools.dotc.ast.tpd
-import dotty.tools.dotc.ast.tpd.{Tree, Typed, TypeTree, ValDef, given}
+import dotty.tools.dotc.ast.tpd.{Tree, Typed, TypeTree, given}
 import dotty.tools.dotc.config.Feature
 import dotty.tools.dotc.core.Contexts.{ctx, Context}
 import dotty.tools.dotc.core.Types.{SingletonType, Type}
 import dotty.tools.dotc.util.Property
 
-/** Recorded facts, to be used by the [[QualifierSolver]]. */
+/** Recorded facts, to be used by the [[QualifierSolver]].
+ *
+ *  Only flow-sensitive knowledge is recorded here; facts about values are
+ *  pulled on demand from the types of the references occurring in a goal
+ *  (see `ENode.assumptions`), which is order-independent and therefore
+ *  compatible with out-of-order typing. See `TODO.md`.
+ */
 private enum Fact:
-
-  /** Value fact: the value defined by `tree` is in scope. */
-  case Value(tree: ValDef)
 
   /** Condition fact: the condition `tree` is known to be `pos`. */
   case Condition(tree: Tree, pos: Boolean)
@@ -22,8 +25,6 @@ private enum Fact:
   /** The [[ENode]] representation of this fact, if it can be converted. */
   def toENode(using Context): Option[ENode] =
     this match
-      case Value(vdef) =>
-        None // TODO
       case Condition(cond, pos) =>
         val base = ENode.fromTree(cond)
         if pos then base
@@ -42,16 +43,13 @@ object QualifierContext:
   def facts(using Context): List[Fact] =
     ctx.property(key).getOrElse(Nil)
 
-  inline def afterMemberContext(member: Tree)(using Context): Context =
-    member match
-      case vdef: ValDef => withFact(Fact.Value(vdef))
-      case _ => ctx
-
   inline def caseContext(scrutinee: Tree, pattern: Tree)(using Context): Context =
-    withFact(Fact.Case(scrutinee, pattern, pos = true))
+    // withFact(Fact.Case(scrutinee, pattern, pos = true))
+    ctx
 
   inline def afterCaseContext(scrutinee: Tree, pattern: Tree)(using Context): Context =
-    withFact(Fact.Case(scrutinee, pattern, pos = false))
+    // withFact(Fact.Case(scrutinee, pattern, pos = false))
+    ctx
 
   inline def trueContext(fact: Tree)(using Context): Context =
     withFact(Fact.Condition(fact, pos = true))
