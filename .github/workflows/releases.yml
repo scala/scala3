@@ -22,8 +22,12 @@ on:
 
 jobs:
   # TODO: ADD JOB TO SWITCH THE GITHUB RELEASE FROM DRAFT TO LATEST
+  # The publish-* jobs push to external package managers and channels so we only
+  # run then on scala/scala3. Forks running this workflow still build and test
+  # the packages.
   publish-sdkman:
     uses:  ./.github/workflows/publish-sdkman.yml
+    if: github.repository == 'scala/scala3'
     with:
       version: ${{ inputs.version }}
     secrets:
@@ -32,7 +36,7 @@ jobs:
 
   publish-winget:
     uses: ./.github/workflows/publish-winget.yml
-    if: false # TODO: Requires setting up initial WinGet package
+    if: false && github.repository == 'scala/scala3' # TODO: Requires setting up initial WinGet package (keep the repository guard when enabling)
     with:
       version: ${{ inputs.version }}
     secrets:
@@ -48,7 +52,8 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          curl -o artifact.zip -L "https://github.com/scala/scala3/releases/download/$VERSION/scala3-$VERSION-x86_64-pc-win32.zip"
+          # TODO(puerco): Verify provenance of this artifact
+          curl -o artifact.zip -L "https://github.com/${{ github.repository }}/releases/download/$VERSION/scala3-$VERSION-x86_64-pc-win32.zip"
           echo "digest=$(sha256sum artifact.zip | cut -d " " -f 1)" >> "$GITHUB_OUTPUT"
 
   build-chocolatey:
@@ -56,7 +61,7 @@ jobs:
     needs: compute-digest
     with:
       version: ${{ inputs.version }}
-      url    : 'https://github.com/scala/scala3/releases/download/${{ inputs.version }}/scala3-${{ inputs.version }}-x86_64-pc-win32.zip'
+      url    : 'https://github.com/${{ github.repository }}/releases/download/${{ inputs.version }}/scala3-${{ inputs.version }}-x86_64-pc-win32.zip'
       digest : ${{ needs.compute-digest.outputs.digest }}
   test-chocolatey:
     uses: ./.github/workflows/test-chocolatey.yml
@@ -66,6 +71,7 @@ jobs:
       java-version: 17
   publish-chocolatey:
     uses: ./.github/workflows/publish-chocolatey.yml
+    if: github.repository == 'scala/scala3'
     needs: [ build-chocolatey, test-chocolatey ]
     with:
       version: ${{ inputs.version }}
