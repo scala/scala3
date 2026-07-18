@@ -46,6 +46,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   def init(c: Context): Unit =
     myContext = c
+    myQualifierSolver = qualified_types.QualifierSolver.reuse(myQualifierSolver, c)
     state = c.typerState
     monitored = false
     GADTused = false
@@ -3379,7 +3380,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   protected def explainingTypeComparer(short: Boolean) = ExplainingTypeComparer(comparerContext, short)
   protected def matchReducer = MatchReducer(comparerContext)
-  protected def qualifierSolver() = qualified_types.QualifierSolver(using comparerContext)
+  private var myQualifierSolver: qualified_types.QualifierSolver | Null = null
+  protected def qualifierSolver(): qualified_types.QualifierSolver =
+    val s = myQualifierSolver
+    if s != null then s
+    else
+      val s1 = qualified_types.QualifierSolver(using comparerContext)
+      myQualifierSolver = s1
+      s1
 
   private def inSubComparer[T, Cmp <: TypeComparer](comparer: Cmp)(op: Cmp => T): T =
     val saved = myInstance
