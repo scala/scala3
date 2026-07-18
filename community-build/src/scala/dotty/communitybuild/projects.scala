@@ -689,7 +689,7 @@ object projects:
 
   lazy val parboiled2 = SbtCommunityProject(
     project = "parboiled2",
-    sbtTestCommand = "parboiledCoreJVM/test; parboiledJVM/test",
+    sbtTestCommand = "parboiledCoreJVM3/test; parboiledJVM3/test",
     sbtPublishCommand = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
   )

@@ -18,8 +18,7 @@ import scala.language.`2.13`
  *  subtype of [[scala.AnyVal]]. Instances of `Short` are not
  *  represented by an object in the underlying runtime system.
  *
- *  There is an implicit conversion from [[scala.Short]] => [[scala.runtime.RichShort]]
- *  which provides useful non-primitive operations.
+ *  The companion object provides useful non-primitive operations as extension methods.
  */
 final abstract class Short private extends AnyVal {
   def toByte: Byte
@@ -649,5 +648,62 @@ object Short extends AnyValCompanion {
   implicit def short2long(x: Short): Long = x.toLong
   implicit def short2float(x: Short): Float = x.toFloat
   implicit def short2double(x: Short): Double = x.toDouble
-}
 
+  extension (self: Short) {
+    /** Returns `'''true'''` if this number has no decimal component.
+      * Always `'''true'''` for `Short`.
+      */
+    @deprecated("isWhole on Short is always true", "2.12.15")
+    def isWhole: Boolean = true
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Char]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidChar: Boolean = self >= 0
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Byte]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidByte: Boolean = self.toByte.toInt == self.toInt
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Short]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    @deprecated("isValidShort on Short is always true", since = "3.10.0")
+    def isValidShort: Boolean = true
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Int]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    @deprecated("isValidInt on Short is always true", since = "3.10.0")
+    def isValidInt: Boolean = true
+
+    /** Returns the absolute value of `this`. */
+    def abs: Short = java.lang.Math.abs(self.toInt).toShort
+
+    /** Returns `this` if `this > that` or `that` otherwise. */
+    def max(that: Short): Short = java.lang.Math.max(self.toInt, that.toInt).toShort
+
+    /** Returns `this` if `this < that` or `that` otherwise. */
+    def min(that: Short): Short = java.lang.Math.min(self.toInt, that.toInt).toShort
+
+    /** Returns the sign of `this`.
+      *
+      * `0` if `this == 0`, `-1` if `this < 0` and `1` if `this > 0`.
+      */
+    def sign: Short = java.lang.Integer.signum(self.toInt).toShort
+
+    /** Returns the signum of `this`. */
+    @deprecated("use `sign` method instead", since = "2.13.0")
+    def signum: Int = self.sign.toInt
+
+    /** Compares `this` to `that` according to the standard total ordering.
+      *
+      * Returns:
+      * - a positive value if `this > that`
+      * - a negative value if `this < that`
+      * - `0` if `this == that`
+      */
+    def compare(that: Short): Int = java.lang.Short.compare(self, that)
+  }
+}

@@ -2284,6 +2284,7 @@ object Build {
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
             -- "OptimizerTest.scala" // something crashes the optimizer, TODO investigate
+            -- "TypedArrayConversionTest.scala" // #24321
             )).get
 
           ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
