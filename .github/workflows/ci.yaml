@@ -79,7 +79,7 @@ jobs:
   test_windows_full:
     runs-on: [self-hosted, Windows]
     if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || github.event_name == 'push'
+         || github.event_name == 'push' && github.repository == 'scala/scala3'
          || (
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
