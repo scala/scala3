@@ -27,7 +27,9 @@ on:
         required: true
 
 jobs:
+  # Never push to Chocolatey from a fork, regardless of how this workflow is called
   publish:
+    if: github.repository == 'scala/scala3'
     runs-on: windows-latest
     steps:
       - name: Fetch the Chocolatey package from GitHub
