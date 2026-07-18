@@ -1,6 +1,3 @@
-//> using options -preview
-// import scala.language.experimental.betterFors
-
 class myOptionModule(doOnMap: => Unit) {
   sealed trait MyOption[+A] {
     def map[B](f: A => B): MyOption[B] = this match {

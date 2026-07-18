@@ -185,7 +185,7 @@ object SepCheck:
         case newElem :: newElems1 =>
           if seen.contains(newElem) then
             recur(seen, acc, newElems1)
-          else newElem.stripReadOnly match
+          else newElem.stripRestricted.stripReadOnly match
             case elem: FreshCap =>
               if elem.hiddenSet.deps.isEmpty then recur(seen + newElem, acc + newElem, newElems1)
               else
@@ -197,7 +197,7 @@ object SepCheck:
               if newElem.isTerminalCapability
                 //|| newElem.isInstanceOf[TypeRef | TypeParamRef]
               then recur(seen + newElem, acc, newElems1)
-              else recur(seen + newElem, acc, newElem.captureSetOfInfo.elems.toList ++ newElems1)
+              else recur(seen + newElem, acc, newElem.captureSetOfInfo.dropEmpties().elems.toList ++ newElems1)
         case Nil => acc
       recur(emptyRefs, emptyRefs, refs.toList)
 
@@ -256,6 +256,7 @@ object SepCheck:
 
       def hiddenByElem(elem: Capability): Refs = elem match
         case elem: FreshCap => elem.hiddenSet.elems ++ recur(elem.hiddenSet.elems)
+        case Restricted(elem1, cls) => hiddenByElem(elem1).map(_.restrict(cls))
         case ReadOnly(elem1) => hiddenByElem(elem1).map(_.readOnly)
         case _ => emptyRefs
 
@@ -597,7 +598,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *   - If the reference is to a this type of the enclosing class, the
    *     access must be in a @consume method.
    *
-   *  References that extend SharedCapability are excluded from checking.
+   *  References that extend caps.Sharable are excluded from checking.
    *  As a side effect, add all checked references with the given position `pos`
    *  to the global `consumed` map.
    *
@@ -611,7 +612,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val badParams = mutable.ListBuffer[Symbol]()
     def currentOwner = role.dclSym.orElse(ctx.owner)
     for hiddenRef <- refsToCheck.deductSymRefs(role.dclSym).deduct(explicitRefs(tpe)) do
-      if !hiddenRef.derivesFromSharedCapability then
+      if !hiddenRef.derivesFromSharable then
         hiddenRef.pathRoot match
           case ref: TermRef =>
             val refSym = ref.symbol
@@ -648,7 +649,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     role match
       case _: TypeRole.Argument | _: TypeRole.Qualifier =>
         for ref <- refsToCheck do
-          if !ref.derivesFromSharedCapability then
+          if !ref.derivesFromSharable then
             consumed.put(ref, pos)
       case _ =>
   end checkConsumedRefs

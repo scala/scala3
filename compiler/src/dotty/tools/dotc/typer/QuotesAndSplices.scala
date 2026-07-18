@@ -222,7 +222,7 @@ trait QuotesAndSplices {
         if ctx.mode.is(Mode.InPatternAlternative) then
           report.error(IllegalVariableInPatternAlternative(tree.name), tree.srcPos)
         val typeSym = inContext(quotePatternOuterContext(ctx)) {
-          newSymbol(ctx.owner, tree.name.toTypeName, Case, typeSymInfo, NoSymbol, tree.span)
+          newSymbol(ctx.owner, tree.name.toTypeName, Synthetic | Case, typeSymInfo, NoSymbol, tree.span)
         }
         addQuotedPatternTypeVariable(typeSym)
         Bind(typeSym, untpd.Ident(nme.WILDCARD).withType(typeSymInfo)).withSpan(tree.span)

@@ -375,13 +375,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         else fntpe
 
       /** 1. Check that parents of capturing types are not pure.
-       *  2. Check that types extending SharedCapability don't have a `cap` in their capture set.
-       *     TODO This is not enough.
+       *  2. Check that types extending caps.Sharable don't have a `cap` in their capture set.
+       *     TODO: Is this enough?
        *     We need to also track that we cannot get exclusive capabilities in paths
-       *     where some prefix derives from SharedCapability. Also, can we just
+       *     where some prefix derives from Sharable. Also, can we just
        *     exclude `cap`, or do we have to extend this to all exclusive capabilties?
        *     The problem is that we know what is exclusive in general only after capture
        *     checking, not before.
+       *     But maybe the rules for classification already cover these cases.
        */
       def checkRetainsOK(tp: Type): tp.type =
         tp match
@@ -393,7 +394,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
               // will be ignored anyway.
               fail(em"$parent is a pure type, it makes no sense to add a capture set to it")
             else if refs.isUniversal && parent.derivesFromSharedCapability then
-              fail(em"$tp extends SharedCapability, so it cannot capture `cap`")
+              fail(em"$tp extends Sharable, so it cannot capture `cap`")
           case _ =>
         tp
 
@@ -696,6 +697,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case tree: TypeDef =>
         tree.symbol match
           case cls: ClassSymbol =>
+            checkClassifiedInheritance(cls)
             ccState.inNestedLevelUnless(cls.is(Module)):
               val cinfo @ ClassInfo(prefix, _, ps, decls, selfInfo) = cls.classInfo
 
@@ -911,6 +913,18 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
    */
   def setupUnit(tree: Tree, checker: CheckerAPI)(using Context): Unit =
     setupTraverser(checker).traverse(tree)(using ctx.withPhase(thisPhase))
+
+  // ------ Checks to run at Setup ----------------------------------------
+
+  private def checkClassifiedInheritance(cls: ClassSymbol)(using Context): Unit =
+    def recur(cs: List[ClassSymbol]): Unit = cs match
+      case c :: cs1 =>
+        for c1 <- cs1 do
+          if !c.derivesFrom(c1) && !c1.derivesFrom(c) then
+            report.error(i"$cls inherits two unrelated classifier traits: $c and $c1", cls.srcPos)
+        recur(cs1)
+      case Nil =>
+    recur(cls.baseClasses.filter(_.isClassifiedCapabilityClass).distinct)
 
   // ------ Checks to run after main capture checking --------------------------
 

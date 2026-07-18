@@ -815,3 +815,39 @@ class HoverTermSuite extends BaseHoverSuite:
          |""".stripMargin,
          "def substring(x$0: Int, x$1: Int): String".hover
     )
+
+  @Test def `multiple-valdefs-1` =
+    check(
+      """|object O {
+         |  val x@@x, yy, zz = 1
+         |}
+         |""".stripMargin,
+      "val xx: Int".hover
+    )
+
+  @Test def `multiple-valdefs-2` =
+    check(
+      """|object O {
+         |  val xx, y@@y, zz = 1
+         |}
+         |""".stripMargin,
+      "val yy: Int".hover
+    )
+
+  @Test def `multiple-valdefs-3` =
+    check(
+      """|object O {
+         |  val xx, yy, z@@z = 1
+         |}
+         |""".stripMargin,
+      "val zz: Int".hover
+    )
+
+  @Test def `multiple-valdefs-4` =
+    check(
+      """|object O {
+         |  val xx, thisIsAVeryLongNa@@me, zz = 1
+         |}
+         |""".stripMargin,
+      "val thisIsAVeryLongName: Int".hover
+    )

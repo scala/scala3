@@ -6,9 +6,6 @@ import java.nio.file.Path
 import org.junit.Test
 
 class SemanticTokensSuite extends BaseSemanticTokensSuite:
-  // -preview required for `for-comprehension` test
-  override protected def scalacOptions(classpath: Seq[Path]): Seq[String] =
-    super.scalacOptions(classpath) ++ Seq("-preview")
 
   @Test def `class, object, var, val(readonly), method, type, parameter, String(single-line)` =
     check(

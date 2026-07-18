@@ -23,7 +23,7 @@
    |              ^  refers to the universal root capability
    |
    |    Note that the existential capture root in () => Unit
-   |    cannot subsume the capability x$0.type since that capability is not a SharedCapability
+   |    cannot subsume the capability x$0.type since that capability is not a `Sharable` capability
 16 |      (c1: Capp^) => () => { c1.use() }
 17 |    }
    |

@@ -471,6 +471,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toTextCapability(c: Capability): Text = c match
     case ReadOnly(c1) => toTextCapability(c1) ~ ".rd"
+    case Restricted(c1, cls) => toTextCapability(c1) ~ s".only[${nameString(cls)}]"
     case Reach(c1) => toTextCapability(c1) ~ "*"
     case Maybe(c1) => toTextCapability(c1) ~ "?"
     case GlobalCap => "cap"
@@ -484,7 +485,10 @@ class PlainPrinter(_ctx: Context) extends Printer {
       vbleText ~ Str(hashStr(c.binder)).provided(printDebug) ~ Str(idStr).provided(showUniqueIds)
     case c: FreshCap =>
       val idStr = if showUniqueIds then s"#${c.rootId}" else ""
-      if ccVerbose then s"<fresh$idStr in ${c.ccOwner} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ ">"
+      def classified =
+        if c.hiddenSet.classifier == defn.AnyClass then ""
+        else s" classified as ${c.hiddenSet.classifier.name.show}"
+      if ccVerbose then s"<fresh$idStr in ${c.ccOwner} hiding " ~ toTextCaptureSet(c.hiddenSet) ~ classified ~ ">"
       else "cap"
     case tp: TypeProxy =>
       homogenize(tp) match

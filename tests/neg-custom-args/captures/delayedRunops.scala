@@ -12,18 +12,18 @@ import caps.{use, consume}
 
   // unsound: impure operation pretended pure
   def delayedRunOps1(ops: List[() => Unit]): () ->{} Unit =
-    () =>
+    () => // error
       val ops1 = ops
-      runOps(ops1)  // error
+      runOps(ops1)
 
   // unsound: impure operation pretended pure
   def delayedRunOps2(@consume ops: List[() => Unit]): () ->{} Unit =
     () =>
       val ops1: List[() => Unit] = ops // error
-      runOps(ops1)  // was error
+      runOps(ops1)  // error
 
   // unsound: impure operation pretended pure
   def delayedRunOps3(ops: List[() => Unit]): () ->{} Unit =
-    () =>
+    () => // error
       val ops1: List[() ->{ops*} Unit] = ops
-      runOps(ops1)  // error
+      runOps(ops1)

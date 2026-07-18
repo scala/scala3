@@ -1015,7 +1015,9 @@ class Definitions {
     @tu lazy val Caps_ContainsModule: Symbol = requiredModule("scala.caps.Contains")
     @tu lazy val Caps_containsImpl: TermSymbol = Caps_ContainsModule.requiredMethod("containsImpl")
     @tu lazy val Caps_Mutable: ClassSymbol = requiredClass("scala.caps.Mutable")
-    @tu lazy val Caps_SharedCapability: ClassSymbol = requiredClass("scala.caps.SharedCapability")
+    @tu lazy val Caps_Sharable: ClassSymbol = requiredClass("scala.caps.Sharable")
+    @tu lazy val Caps_Control: ClassSymbol = requiredClass("scala.caps.Control")
+    @tu lazy val Caps_Classifier: ClassSymbol = requiredClass("scala.caps.Classifier")
 
   @tu lazy val PureClass: ClassSymbol = requiredClass("scala.Pure")
 
@@ -1048,7 +1050,6 @@ class Definitions {
   @tu lazy val NowarnAnnot: ClassSymbol = requiredClass("scala.annotation.nowarn")
   @tu lazy val UnusedAnnot: ClassSymbol = requiredClass("scala.annotation.unused")
   @tu lazy val UnrollAnnot: ClassSymbol = requiredClass("scala.annotation.unroll")
-  @tu lazy val TransparentTraitAnnot: ClassSymbol = requiredClass("scala.annotation.transparentTrait")
   @tu lazy val NativeAnnot: ClassSymbol = requiredClass("scala.native")
   @tu lazy val RepeatedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Repeated")
   @tu lazy val RuntimeCheckedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.RuntimeChecked")
@@ -1093,12 +1094,14 @@ class Definitions {
   @tu lazy val ReachCapabilityAnnot = requiredClass("scala.annotation.internal.reachCapability")
   @tu lazy val RootCapabilityAnnot = requiredClass("scala.caps.internal.rootCapability")
   @tu lazy val ReadOnlyCapabilityAnnot = requiredClass("scala.annotation.internal.readOnlyCapability")
+  @tu lazy val OnlyCapabilityAnnot = requiredClass("scala.annotation.internal.onlyCapability")
   @tu lazy val RequiresCapabilityAnnot: ClassSymbol = requiredClass("scala.annotation.internal.requiresCapability")
   @tu lazy val RetainsAnnot: ClassSymbol = requiredClass("scala.annotation.retains")
   @tu lazy val RetainsCapAnnot: ClassSymbol = requiredClass("scala.annotation.retainsCap")
   @tu lazy val RetainsByNameAnnot: ClassSymbol = requiredClass("scala.annotation.retainsByName")
   @tu lazy val PublicInBinaryAnnot: ClassSymbol = requiredClass("scala.annotation.publicInBinary")
   @tu lazy val WitnessNamesAnnot: ClassSymbol = requiredClass("scala.annotation.internal.WitnessNames")
+  @tu lazy val StableNullAnnot: ClassSymbol = requiredClass("scala.annotation.stableNull")
 
   @tu lazy val JavaRepeatableAnnot: ClassSymbol = requiredClass("java.lang.annotation.Repeatable")
 
@@ -2136,7 +2139,7 @@ class Definitions {
     Caps_Capability, // TODO: Remove when Capability is stabilized
     RequiresCapabilityAnnot,
     captureRoot, Caps_CapSet, Caps_ContainsTrait, Caps_ContainsModule, Caps_ContainsModule.moduleClass, UseAnnot,
-    Caps_Mutable, Caps_SharedCapability, ConsumeAnnot,
+    Caps_Mutable, Caps_Sharable, Caps_Control, Caps_Classifier, ConsumeAnnot,
     CapsUnsafeModule, CapsUnsafeModule.moduleClass,
     CapsInternalModule, CapsInternalModule.moduleClass,
     RetainsAnnot, RetainsCapAnnot, RetainsByNameAnnot)

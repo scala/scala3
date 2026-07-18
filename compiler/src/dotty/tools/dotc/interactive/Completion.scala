@@ -615,8 +615,9 @@ object Completion:
 
       // 1. The extension method is visible under a simple name, by being defined or inherited or imported in a scope enclosing the reference.
       val extMethodsInScope = scopeCompletions.names.toList.flatMap:
-        case (name, denots) => denots.collect:
-          case d: SymDenotation if d.isTerm && d.termRef.symbol.is(Extension) => (d.termRef, name.asTermName)
+        case (name, denots) =>
+          denots.collect:
+            case d if d.isTerm && d.symbol.is(Extension) => (d.symbol.termRef, name.asTermName)
 
       // 2. The extension method is a member of some given instance that is visible at the point of the reference.
       val givensInScope = ctx.implicits.eligible(defn.AnyType).map(_.implicitRef.underlyingRef)

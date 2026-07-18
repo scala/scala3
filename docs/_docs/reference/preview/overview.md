@@ -21,5 +21,4 @@ This flag enables the use of all preview language feature in the project.
 
 ## List of available preview features
 
-* [`better-fors`](./better-fors.md): Enables new for-comprehension behaviour under SIP-62 under `-source:3.7` or later
-
+Currently there are no available preview features.

@@ -4,7 +4,7 @@ title: "Better fors"
 nightlyOf: https://docs.scala-lang.org/scala3/reference/preview/better-fors.html
 ---
 
-Starting in Scala `3.7` under `-preview` mode, the usability of `for`-comprehensions is improved.
+Starting in Scala `3.8` or under `-preview` mode using Scala `3.7`, the usability of `for`-comprehensions has improved.
 
 The biggest user facing change is the new ability to start `for`-comprehensions with aliases. This means that the following previously invalid code is now valid:
 

@@ -343,7 +343,13 @@ object PatternMatcher {
               receiver.ensureConforms(defn.NonEmptyTupleTypeRef), // If scrutinee is a named tuple, cast to underlying tuple
               Literal(Constant(i)))
 
-        if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length)
+        def getOfGetMatch(gm: Tree) = gm.select(nme.get, _.info.isParameterless)
+        // Disable Scala2Unapply optimization if the argument is a named argument for a single-element named tuple to
+        // enable selecting the field. See i23131.scala for test cases.
+        val wasUnaryNamedTupleSelectArgForNamedTuple =
+          args.length == 1 && args.head.removeAttachment(FirstTransform.WasNamedArg).isDefined &&
+            isGetMatch(unappType) && getOfGetMatch(unapp).tpe.widenDealias.isNamedTupleType
+        if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length && !wasUnaryNamedTupleSelectArgForNamedTuple)
           def tupleSel(sym: Symbol) =
             // If scrutinee is a named tuple, cast to underlying tuple, so that we can
             // continue to select with _1, _2, ...
@@ -376,7 +382,7 @@ object PatternMatcher {
             else {
               assert(isGetMatch(unappType))
               val argsPlan = {
-                val get = ref(unappResult).select(nme.get, _.info.isParameterless)
+                val get = getOfGetMatch(ref(unappResult))
                 val arity = productArity(get.tpe.stripNamedTuple, unapp.srcPos)
                 if (isUnapplySeq)
                   letAbstract(get) { getResult =>
@@ -386,9 +392,6 @@ object PatternMatcher {
                   }
                 else
                   letAbstract(get) { getResult =>
-                    def isUnaryNamedTupleSelectArg(arg: Tree) =
-                      get.tpe.widenDealias.isNamedTupleType
-                      && arg.removeAttachment(FirstTransform.WasNamedArg).isDefined
                     // Special case: Normally, we pull out the argument wholesale if
                     // there is only one. But if the argument is a named argument for
                     // a single-element named tuple, we have to select the field instead.
@@ -396,7 +399,7 @@ object PatternMatcher {
                     // of patterns we add a WasNamedArg attachment, which is used to guide the
                     // logic here. See i22900.scala for test cases.
                     val selectors = args match
-                      case arg :: Nil if !isUnaryNamedTupleSelectArg(arg) =>
+                      case arg :: Nil if !wasUnaryNamedTupleSelectArgForNamedTuple =>
                         ref(getResult) :: Nil
                       case _ =>
                         productSelectors(getResult.info).map(ref(getResult).select(_))

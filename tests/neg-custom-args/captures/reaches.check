@@ -75,7 +75,7 @@
    |                            ^² refers to a root capability associated with the result type of (x: File^): File^²
    |
    |                  Note that the existential capture root in File^
-   |                  cannot subsume the capability x.type since that capability is not a SharedCapability
+   |                  cannot subsume the capability x.type since that capability is not a `Sharable` capability
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:70:38 --------------------------------------
@@ -90,11 +90,16 @@
 72 |    f1
    |
    | longer explanation available when compiling with `-explain`
--- Error: tests/neg-custom-args/captures/reaches.scala:88:10 -----------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:88:10 --------------------------------------
 88 |  ps.map((x, y) => compose1(x, y)) // error
-   |          ^
-   |          Local reach capability ps* leaks into capture scope of method mapCompose.
-   |          To allow this, the parameter ps should be declared with a @use annotation
+   |          ^^^^^^^^^^^^^^^^^^^^^^^
+   |Found:    (x$1: (A^ ->? A^?, A^ ->? A^?)^?) ->? A^? ->? A^?
+   |Required: ((A ->{ps*} A, A ->{ps*} A)) => A^? ->? A^?
+   |
+   |where:    => refers to a fresh root capability created in method mapCompose when checking argument to parameter f of method map
+   |          ^  refers to the universal root capability
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/reaches.scala:91:10 --------------------------------------
 91 |  ps.map((x, y) => compose1(x, y)) // error
    |          ^^^^^^^^^^^^^^^^^^^^^^^
@@ -105,3 +110,8 @@
    |          ^  refers to the universal root capability
    |
    | longer explanation available when compiling with `-explain`
+-- Error: tests/neg-custom-args/captures/reaches.scala:39:31 -----------------------------------------------------------
+39 |    val next: () => Unit = cur.head   // error
+   |                           ^^^^^^^^
+   |                           Local reach capability xs* leaks into capture scope of method runAll2.
+   |                           To allow this, the parameter xs should be declared with a @use annotation

@@ -5,7 +5,7 @@
    |  @consume parameter or was used as a prefix to a @consume method on line 18
    |  and therefore is no longer available.
    |
-   |  where:    ^ refers to a fresh root capability in the type of parameter x
+   |  where:    ^ refers to a fresh root capability classified as Mutable in the type of parameter x
 -- Error: tests/neg-custom-args/captures/sep-consume.scala:21:16 -------------------------------------------------------
 21 |  par(rx, () => x.put(42))  // error
    |                ^
@@ -13,7 +13,7 @@
    |                @consume parameter or was used as a prefix to a @consume method on line 18
    |                and therefore is no longer available.
    |
-   |                where:    ^ refers to a fresh root capability in the type of parameter x
+   |                where:    ^ refers to a fresh root capability classified as Mutable in the type of parameter x
 -- Error: tests/neg-custom-args/captures/sep-consume.scala:26:16 -------------------------------------------------------
 26 |  def foo = bad(f) // error
    |                ^

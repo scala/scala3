@@ -2102,7 +2102,19 @@ object desugar {
           val matchCheckMode =
             if (gen.checkMode == GenCheckMode.Check || gen.checkMode == GenCheckMode.CheckAndFilter) MatchCheck.IrrefutableGenFrom
             else MatchCheck.None
-          makeCaseLambda(CaseDef(gen.pat, EmptyTree, body) :: Nil, matchCheckMode)
+          val pat = gen.pat.match
+            case Tuple(pats) if pats.length > Definitions.MaxImplementedFunctionArity =>
+              /* The pattern case is a tupleXXL, because we have bound > 21 variables in the comprehension.
+               * In this case, we need to mark all the typed patterns as @unchecked, or get loads of warnings.
+               * Cf. warn test i23164.scala */
+              Tuple:
+                pats.map:
+                  case t @ Bind(name, tp @ Typed(id, tpt)) =>
+                    val annotated = Annotated(tpt, New(ref(defn.UncheckedAnnot.typeRef)))
+                    cpy.Bind(t)(name, cpy.Typed(tp)(id, annotated)).withMods(t.mods)
+                  case t => t
+            case _ => gen.pat
+          makeCaseLambda(CaseDef(pat, EmptyTree, body) :: Nil, matchCheckMode)
       }
 
       def hasGivenBind(pat: Tree): Boolean = pat.existsSubTree {
@@ -2321,10 +2333,6 @@ object desugar {
             Annotated(
               AppliedTypeTree(ref(defn.SeqType), t),
               New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
-        else if op.name == nme.CC_REACH then
-          Annotated(t, New(ref(defn.ReachCapabilityAnnot.typeRef), Nil :: Nil))
-        else if op.name == nme.CC_READONLY then
-          Annotated(t, New(ref(defn.ReadOnlyCapabilityAnnot.typeRef), Nil :: Nil))
         else
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)

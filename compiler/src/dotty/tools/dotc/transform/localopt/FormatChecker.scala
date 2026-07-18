@@ -228,8 +228,20 @@ class TypedFormatChecker(partsElems: List[Tree], parts: List[String], args: List
       case _ => true
 
     def lintToString(arg: Type): Unit =
-      if ctx.settings.Whas.toStringInterpolated && kind == StringXn && !(arg.widen =:= defn.StringType) && !arg.isPrimitiveValueType
-      then warningAt(CC)("interpolation uses toString")
+      def checkIsStringify(tp: Type): Boolean = tp.widen match
+        case OrType(tp1, tp2) =>
+          checkIsStringify(tp1) || checkIsStringify(tp2)
+        case tp =>
+          !(tp =:= defn.StringType)
+          && {
+              tp =:= defn.UnitType
+              && { warningAt(CC)("interpolated Unit value"); true }
+            ||
+              !tp.isPrimitiveValueType
+              && { warningAt(CC)("interpolation uses toString"); true }
+          }
+      if ctx.settings.Whas.toStringInterpolated && kind == StringXn then
+        checkIsStringify(arg): Unit
 
     // what arg type if any does the conversion accept
     def acceptableVariants: List[Type] =
