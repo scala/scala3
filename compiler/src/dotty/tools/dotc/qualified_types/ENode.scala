@@ -74,6 +74,13 @@ enum ENode extends Showable:
   //    case _ => true
   // )
 
+  /** Cached structural hash. E-Nodes are immutable and constantly probed in
+   *  hash maps (E-Graph interning, solver memoization); caching makes each
+   *  probe O(arity) instead of O(subtree size). Declared concrete here so no
+   *  per-case synthetic `hashCode` is generated.
+   */
+  override val hashCode: Int = scala.runtime.ScalaRunTime._hashCode(this)
+
   def prettyString(printFullPaths: Boolean = false): String =
 
     def rec(n: ENode): String =
