@@ -26,7 +26,7 @@ object Dynamic {
     name == nme.applyDynamic || name == nme.selectDynamic || name == nme.updateDynamic || name == nme.applyDynamicNamed
 
   /** Is `tree` a reference over `Dynamic` that should be expanded to a
-   *  dyanmic `applyDynamic`, `selectDynamic`, `updateDynamic`, or `applyDynamicNamed` call?
+   *  dynamic `applyDynamic`, `selectDynamic`, `updateDynamic`, or `applyDynamicNamed` call?
    */
   def isDynamicExpansion(tree: untpd.RefTree)(using Context): Boolean =
     isDynamicMethod(tree.name)
@@ -43,9 +43,9 @@ object DynamicUnapply {
   def unapply(tree: tpd.Tree): Option[List[tpd.Tree]] = tree match
     case TypeApply(Select(qual, name), _) if name == nme.asInstanceOfPM =>
       unapply(qual)
-    case Apply(Apply(Select(selectable, fname), Literal(Constant(name)) :: ctag :: Nil), _ :: implicits)
+    case Apply(Apply(Select(selectable, fname), Literal(Constant(name)) :: restArgs), _ :: implicits)
     if fname == nme.applyDynamic && (name == "unapply" || name == "unapplySeq") =>
-      Some(selectable :: ctag :: implicits)
+      Some(selectable :: (restArgs ::: implicits))
     case _ =>
       None
 }
@@ -136,8 +136,11 @@ trait Dynamic {
         typedDynamicAssign(qual, name, sel.span, Nil)
       case TypeApply(sel @ Select(qual, name), targs) if !isDynamicMethod(name) =>
         typedDynamicAssign(qual, name, sel.span, targs)
-      case _ =>
-        errorTree(tree, ReassignmentToVal(tree.lhs.symbol.name))
+      case lhs =>
+        val name = lhs match
+          case nt: NameTree => nt.name
+          case _ => lhs.symbol.name
+        errorTree(tree, ReassignmentToVal(name, pt))
     }
   }
 
@@ -242,7 +245,7 @@ trait Dynamic {
           if tpe.classSymbol.isDerivedValueClass && qual.tpe <:< defn.ReflectSelectableTypeRef then
             val genericUnderlying = ValueClasses.valueClassUnbox(tpe.classSymbol.asClass)
             val underlying = tpe.select(genericUnderlying).widen.resultType
-            New(tpe.widen, tree.cast(underlying) :: Nil)
+            New(tpe.widen.dealias, tree.cast(underlying) :: Nil)
           else
             tree
         maybeBoxed.cast(tpe)
@@ -264,11 +267,16 @@ trait Dynamic {
         if (isDependentMethod(tpe))
           fail(i"has a method type with inter-parameter dependencies")
         else {
+          // The erasure of an `Array[T]` parameter is a `JavaArrayType`, which is not a
+          // Scala type expressible at the source level and cannot be pickled in a
+          // class-literal constant. Rewrite it back to the Scala `Array[T]` form, which
+          // re-erases to the same JVM class at code generation time.
           def classOfs =
             if tpe.paramInfoss.nestedExists(!TypeErasure.hasStableErasure(_)) then
               fail(i"has a parameter type with an unstable erasure") :: Nil
             else
-              TypeErasure.erasure(tpe).asInstanceOf[MethodType].paramInfos.map(clsOf(_))
+              TypeErasure.erasure(tpe).asInstanceOf[MethodType].paramInfos
+                .map(p => clsOf(TypeErasure.escapeJavaArray(p)))
           structuralCall(nme.applyDynamic, classOfs).maybeBoxingCast(tpe.finalResultType)
         }
 

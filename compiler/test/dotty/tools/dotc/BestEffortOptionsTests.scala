@@ -6,7 +6,6 @@ import dotty.tools.vulpix.*
 import reporting.TestReporter
 
 import scala.concurrent.duration.*
-import scala.language.unsafeNulls
 
 import java.io.{File => JFile}
 import org.junit.{AfterClass, Test}
@@ -42,7 +41,7 @@ class BestEffortOptionsTests {
 
 object BestEffortOptionsTests extends ParallelTesting {
   def maxDuration = 45.seconds
-  def numberOfSlaves = Runtime.getRuntime.availableProcessors()
+  def numberOfWorkers = Runtime.getRuntime.availableProcessors()
   def safeMode = Properties.testsSafeMode
   def isInteractive = SummaryReport.isInteractive
   def testFilter = Properties.testsFilter

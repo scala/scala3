@@ -1,0 +1,272 @@
+name: Compiler Tests
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  DOTTY_CI_RUN: true
+
+jobs:
+
+  test-scala3-compiler-nonbootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+
+      - uses: sbt/setup-sbt@v1
+
+      - name: Test `scala3-compiler-nonbootstrapped`
+        run: ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
+
+      - name: Cmd Tests
+        run: |
+          ./project/scripts/sbt scala3-nonbootstrapped/publishLocal
+          ./project/scripts/cmdTests
+
+  test-scala3-compiler-bootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+
+      - uses: sbt/setup-sbt@v1
+
+      - name: Test `scala3-compiler-bootstrapped`
+        run: ./project/scripts/sbt scala3-compiler-bootstrapped/test
+
+      - name: Cmd Tests
+        run: |
+          ./project/scripts/sbt scala3-bootstrapped/publishLocal
+          ./project/scripts/bootstrappedOnlyCmdTests
+
+  test-scala3-sbt-bridge-nonbootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test `scala3-sbt-bridge-nonbootstrapped`
+        run: ./project/scripts/sbt scala3-sbt-bridge-nonbootstrapped/test
+
+  test-scala3-sbt-bridge-bootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test `scala3-sbt-bridge-bootstrapped`
+        run: ./project/scripts/sbt scala3-sbt-bridge-bootstrapped/test
+
+  test-tasty-core-nonbootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test `tasty-core-nonbootstrapped`
+        run: ./project/scripts/sbt tasty-core-nonbootstrapped/test
+
+  test-tasty-core-bootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test `tasty-core-bootstrapped`
+        run: ./project/scripts/sbt tasty-core-bootstrapped/test
+
+  test-scala3-directives-parser-nonbootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test `scala3-directives-parser-nonbootstrapped`
+        run: ./project/scripts/sbt scala3-directives-parser-nonbootstrapped/test
+
+  test-scala3-directives-parser-bootstrapped:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test `scala3-directives-parser-bootstrapped`
+        run: ./project/scripts/sbt scala3-directives-parser-bootstrapped/test
+
+  test-scala-js:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+      - uses: sbt/setup-sbt@v1
+      - name: Scala.js compiler tests
+        run: ./project/scripts/sbt "sjsCompilerTests/test"
+      - name: Scala.js sandbox
+        run: ./project/scripts/sbt ";sjsSandbox/run ;sjsSandbox/test"
+      - name: Scala.js JUnit tests
+        run: ./project/scripts/sbt ";sjsJUnitTests/test ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToESModules ;sjsJUnitTests/test"
+      - name: Scala.js JUnit tests with latest ES version
+        run: ./project/scripts/sbt ";sjsJUnitTests/clean ;set sjsJUnitTests/scalaJSLinkerConfig ~= switchToLatestESVersion ;sjsJUnitTests/test"
+      - name: Scala.js JUnit tests with WebAssembly
+        run: ./project/scripts/sbt ";sjsJUnitTests/clean ;set Global/enableWebAssembly := true; sjsJUnitTests/test"
+  # TODO Scala.js on Windows
+
+  test-repl:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test REPL
+        run: ./project/scripts/sbt scala3-repl/test
+
+  test-repl-jdk:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        jdk: [25, 26]
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+      - name: Set up JDK ${{ matrix.jdk }} (REPL subprocess)
+        id: jdk
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: ${{ matrix.jdk }}
+      - name: Set up JDK 17 (build, default)
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test REPL lazy vals warning and shading on JDK ${{ matrix.jdk }}
+        env:
+          DOTTY_REPL_TEST_JAVA_HOME: ${{ steps.jdk.outputs.path }}
+        run: ./project/scripts/sbt "scala3-repl/testOnly *LazyValsWarningTest *ShadingTest"
+
+  test-presentation-compiler:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test Presentation Compiler
+        run: ./project/scripts/sbt scala3-presentation-compiler/test
+
+  test-language-server:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Git Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'sbt'
+      - uses: sbt/setup-sbt@v1
+      - name: Test Language Server
+        run: ./project/scripts/sbt scala3-language-server/test

@@ -11,7 +11,7 @@ import dotty.tools.dotc.interfaces.Diagnostic.INFO
   * This class implements a Reporter that displays messages on a text console
   */
 class ConsoleReporter(
-  reader: BufferedReader = Console.in,
+  reader: BufferedReader | Null = Console.in,
   writer: PrintWriter = new PrintWriter(Console.err, true),
   echoer: PrintWriter = new PrintWriter(Console.out, true)
 ) extends ConsoleReporter.AbstractConsoleReporter {
@@ -23,9 +23,9 @@ class ConsoleReporter(
     super.doReport(dia)
     if ctx.settings.Xprompt.value then
       dia match
-        case _: Error                                        => Reporter.displayPrompt(reader, writer)
-        case _: Warning if ctx.settings.XfatalWarnings.value => Reporter.displayPrompt(reader, writer)
-        case _                                               =>
+        case _: Error   => Reporter.displayPrompt(reader, writer)
+        case _: Warning => if ctx.settings.Werror.value then Reporter.displayPrompt(reader, writer)
+        case _          =>
   }
 }
 

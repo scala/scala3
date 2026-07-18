@@ -8,6 +8,7 @@ import Feature.isPreviewEnabled
 import util.Property
 
 enum SourceVersion:
+
   case `3.0-migration`, `3.0`
   case `3.1-migration`, `3.1`
   case `3.2-migration`, `3.2`
@@ -18,8 +19,10 @@ enum SourceVersion:
   case `3.7-migration`, `3.7`
   case `3.8-migration`, `3.8`
   case `3.9-migration`, `3.9`
+  case `3.10-migration`, `3.10`
+  case `3.11-migration`, `3.11`
   // Add 3.x-migration and 3.x here
-  // !!! Keep in sync with scala.runtime.stdlibPatches.language !!!
+  // !!! Keep in sync with scala.language !!!
   case `2.13`
   case `future-migration`, `future`
 
@@ -44,13 +47,16 @@ enum SourceVersion:
   def enablesNewGivens = isAtLeast(`3.6`)
   def enablesNamedTuples = isAtLeast(`3.7`)
   def enablesBetterFors(using Context) = isAtLeast(`3.8`) || (isAtLeast(`3.7`) && isPreviewEnabled)
+  /** See PR #23441 and tests/neg/i23435-min */
+  def enablesDistributeAnd = !isAtLeast(`future`)
+  def enablesCompactAnnotation = isAtLeast(`3.9`) && this != `2.13`
 
   def requiresNewSyntax = isAtLeast(future)
 
 object SourceVersion extends Property.Key[SourceVersion]:
 
   /* The default source version used by the built compiler */
-  val defaultSourceVersion = `3.8`
+  val defaultSourceVersion = `3.10`
 
   /* Illegal source versions that may not appear in the settings `-source:<...>` */
   val illegalInSettings = List(`2.13`, `3.1-migration`, `never`)

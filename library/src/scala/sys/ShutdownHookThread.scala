@@ -19,21 +19,24 @@ import scala.language.`2.13`
  *  how to unregister itself.
  */
 class ShutdownHookThread private (runnable: Runnable, name: String) extends Thread(runnable, name) {
-  def remove() = Runtime.getRuntime removeShutdownHook this
+  def remove() = Runtime.getRuntime.removeShutdownHook(this)
 }
 
 object ShutdownHookThread {
-  private[this] var hookNameCount: Int = 0
+  private var hookNameCount: Int = 0
   private def hookName(): String = synchronized {
     hookNameCount += 1
     "shutdownHook" + hookNameCount
   }
   /** Creates, names, and registers a shutdown hook to run the
    *  given code.
+   *
+   *  @param body the code to execute when the JVM shuts down
+   *  @return the newly created and registered `ShutdownHookThread`
    */
   def apply(body: => Unit): ShutdownHookThread = {
     val t = new ShutdownHookThread(() => body, hookName())
-    Runtime.getRuntime addShutdownHook t
+    Runtime.getRuntime.addShutdownHook(t)
     t
   }
 }

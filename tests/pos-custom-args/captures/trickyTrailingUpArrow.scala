@@ -1,5 +1,5 @@
  class STR
- object Test:
+ object Test extends caps.Stateful:
   var x = 0
   type FreshContext = STR^
   x += 1

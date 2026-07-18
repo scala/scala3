@@ -1,7 +1,7 @@
 package dotty.tools.dotc.typer
 
 import dotty.tools.DottyTest
-import dotty.tools.dotc.core.Contexts._
+import dotty.tools.dotc.core.Contexts.*
 
 import org.junit.Test
 import org.junit.Assert.{ assertTrue, fail }
@@ -50,8 +50,8 @@ class DivergenceCheckerTests extends DottyTest {
           1,
           1,
           1,
-          3,
-          5
+          4,
+          6
         )
 
         tpes.lazyZip(expectedSizes).lazyZip(expectedCoveringSets).foreach {

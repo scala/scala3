@@ -179,7 +179,7 @@ object NameKinds {
     def apply(qual: TermName, num: Int): TermName =
       qual.derived(new NumberedInfo(num))
     def unapply(name: DerivedName): Option[(TermName, Int)] = name match {
-      case DerivedName(underlying, info: this.NumberedInfo) => Some((underlying, info.num))
+      case DerivedName(underlying, info: this.NumberedInfo) if info.kind.tag == this.tag => Some((underlying, info.num))
       case _ => None
     }
     protected def skipSeparatorAndNum(name: SimpleName, separator: String): Int =
@@ -303,12 +303,18 @@ object NameKinds {
   /** The name of an inferred contextual function parameter:
    *
    *      val x: A ?=> B = b
+   *      val f: (x: A) ?=> B = b
    *
    *  becomes:
    *
    *      val x: A ?=> B = (contextual$1: A) ?=> b
+   *      val f: (x: A) ?=> B = (xcontextual$1: A) ?=> b
    */
-  val ContextFunctionParamName: UniqueNameKind = new UniqueNameKind("contextual$")
+  val ContextFunctionParamName: UniqueNameKind =
+    new UniqueNameKind("contextual$"):
+      override def mkString(underlying: TermName, info: ThisInfo): String =
+        if !underlying.isEmpty then str.sanitize(underlying.toString)
+        else separator + info.num
 
   /** Other unique names */
   val CanThrowEvidenceName: UniqueNameKind   = new UniqueNameKind("canThrow$")
@@ -328,6 +334,7 @@ object NameKinds {
   val ExceptionBinderName: UniqueNameKind    = new UniqueNameKind("ex")
   val ExistentialBinderName: UniqueNameKind  = new UniqueNameKind("ex$")
   val SkolemName: UniqueNameKind             = new UniqueNameKind("?")
+  val CapsetName: UniqueNameKind             = new UniqueNameKind("'s")
   val SuperArgName: UniqueNameKind           = new UniqueNameKind("$superArg$")
   val DocArtifactName: UniqueNameKind        = new UniqueNameKind("$doc")
   val UniqueInlineName: UniqueNameKind       = new UniqueNameKind("$i")
@@ -399,6 +406,8 @@ object NameKinds {
   val DirectMethName: SuffixNameKind = new SuffixNameKind(DIRECT, "$direct")
   val AdaptedClosureName: SuffixNameKind = new SuffixNameKind(ADAPTEDCLOSURE, "$adapted") { override def definesNewName = true }
   val SyntheticSetterName: SuffixNameKind = new SuffixNameKind(SETTER, "_$eq")
+  val LazyVarHandleName: SuffixNameKind = new SuffixNameKind(LAZYVALVARHANDLE, "$lzyHandle")
+  val ReplAssignName: SuffixNameKind = new SuffixNameKind(REPL_ASSIGN, str.REPL_ASSIGN_SUFFIX)
 
   /** A name together with a signature. Used in Tasty trees. */
   object SignedName extends NameKind(SIGNED) {

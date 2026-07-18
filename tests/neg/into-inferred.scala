@@ -1,5 +1,4 @@
-//> using options  -feature
-import language.experimental.into
+//> using options -feature
 import Conversion.{into, underlying}
 
 trait Token
@@ -33,5 +32,3 @@ object Test:
   val l = List(ifKW)
   val l1: List[into[Keyword]] = l :+ "then" :+ "else"  // error
   val l2: List[into[Keyword]] = l ++ List("then", "else")  // warn // warn
-
-

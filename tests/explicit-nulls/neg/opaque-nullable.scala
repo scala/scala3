@@ -7,6 +7,7 @@ object Nullables {
 
   object Nullable:
     def apply[A <: AnyRef](x: A | Null): Nullable[A] = x
+    def apply(x: Boolean): Nullable[java.lang.Boolean] = x
 
     def some[A <: AnyRef](x: A): Nullable[A] = x
     def none: Nullable[Nothing] = null
@@ -29,7 +30,7 @@ object Nullables {
     val s4: Nullable[String] = null
 
     s1.isEmpty
-    s1.flatMap((x) => true)
+    s1.flatMap((x) => Nullable(true))
 
     assert(s2 != null)
 }

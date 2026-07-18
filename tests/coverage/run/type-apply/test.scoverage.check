@@ -59,17 +59,51 @@ test$package
 Object
 <empty>.test$package
 Test
-171
-182
+176
+177
 5
-apply
-Apply
+<none>
+Literal
 false
 0
 false
-List(1,2,3)
+1
 
 3
+type-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+178
+179
+5
+<none>
+Literal
+false
+0
+false
+2
+
+4
+type-apply/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+180
+181
+5
+<none>
+Literal
+false
+0
+false
+3
+
+5
 type-apply/test.scala
 <empty>
 test$package
@@ -86,7 +120,7 @@ false
 false
 List(a)
 
-4
+6
 type-apply/test.scala
 <empty>
 test$package

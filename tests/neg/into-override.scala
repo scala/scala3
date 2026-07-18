@@ -1,6 +1,5 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
-import language.experimental.into
 import Conversion.into
 
 class Text(val str: String)
@@ -20,5 +19,3 @@ class D[X] extends B[X], C[X] // error
 
 trait E[X] extends C[X]: // error
   override def f(x: X) = super.f(x)
-
-

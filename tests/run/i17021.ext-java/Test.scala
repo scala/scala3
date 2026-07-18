@@ -1,4 +1,3 @@
-// scalajs: --skip
 // Derives from run/i17021.defs
 // but with a Java protected member
 // and fixed calling code, that uses super

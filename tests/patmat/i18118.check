@@ -1,5 +1,16 @@
-12: Pattern Match
-21: Pattern Match
-32: Pattern Match
-41: Pattern Match
-0: No Kind
+-- [E121] Pattern Match Warning: tests/patmat/i18118.scala:10:9 ----------------
+10 |    case _ => // warning
+   |         ^
+   |Unreachable case except for null (if this is intentional, consider writing case null => instead).
+-- [E121] Pattern Match Warning: tests/patmat/i18118.scala:19:9 ----------------
+19 |    case _ => // warning // was: no "unreachable but for null" warning
+   |         ^
+   |Unreachable case except for null (if this is intentional, consider writing case null => instead).
+-- [E121] Pattern Match Warning: tests/patmat/i18118.scala:30:9 ----------------
+30 |    case _ => // warning
+   |         ^
+   |Unreachable case except for null (if this is intentional, consider writing case null => instead).
+-- [E121] Pattern Match Warning: tests/patmat/i18118.scala:39:9 ----------------
+39 |    case _ => // warning
+   |         ^
+   |Unreachable case except for null (if this is intentional, consider writing case null => instead).

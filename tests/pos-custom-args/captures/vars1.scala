@@ -1,7 +1,7 @@
 import caps.unsafe.*
 import annotation.unchecked.uncheckedCaptures
 
-object Test:
+object Test extends caps.Stateful:
   type ErrorHandler = (Int, String) => Unit
 
   @uncheckedCaptures

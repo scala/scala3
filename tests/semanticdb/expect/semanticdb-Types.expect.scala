@@ -3,7 +3,7 @@ package types
 import scala.language/*->scala::language.*/.existentials/*->scala::language.existentials.*/
 import scala.language/*->scala::language.*/.higherKinds/*->scala::language.higherKinds.*/
 
-class ann/*<-types::ann#*/[T/*<-types::ann#[T]*/](x/*<-types::ann#x.*/: T/*->types::ann#[T]*/) extends scala.annotation.StaticAnnotation/*->scala::annotation::StaticAnnotation#*/
+class ann/*<-types::ann#*/[T/*<-types::ann#[T]*/](x/*<-types::ann#x.*//*<-types::ann#`<init>`().(x)*/: T/*->types::ann#[T]*/) extends scala.annotation.StaticAnnotation/*->scala::annotation::StaticAnnotation#*/
 class ann1/*<-types::ann1#*/ extends scala.annotation.StaticAnnotation/*->scala::annotation::StaticAnnotation#*/
 class ann2/*<-types::ann2#*/ extends scala.annotation.StaticAnnotation/*->scala::annotation::StaticAnnotation#*/
 
@@ -23,7 +23,7 @@ class T/*<-types::T#*/ {
   val x/*<-types::T#x.*/ = new X/*->types::T#X#*/
 }
 
-case class Foo/*<-types::Foo#*/(s/*<-types::Foo#s.*/: "abc")
+case class Foo/*<-types::Foo#*/(s/*<-types::Foo#s.*//*<-types::Foo#`<init>`().(s)*/: "abc")
 
 object Foo/*<-types::Foo.*/ {
   val x/*<-types::Foo.x.*/: "abc" @deprecated/*->scala::deprecated#*/ = "abc"
@@ -70,8 +70,8 @@ object Test/*<-types::Test.*/ {
     val annType2/*<-types::Test.C#annType2.*/: T/*->types::T#*/ @ann1/*->types::ann1#*/ @ann2/*->types::ann2#*/ = ???/*->scala::Predef.`???`().*/
 
     val existentialType2/*<-types::Test.C#existentialType2.*/: List/*->scala::package.List#*/[_] = ???/*->scala::Predef.`???`().*/
-    val existentialType3/*<-types::Test.C#existentialType3.*/ = Class/*->java::lang::Class#*/.forName/*->java::lang::Class#forName().*/("foo.Bar")
-    val existentialType4/*<-types::Test.C#existentialType4.*/ = Class/*->java::lang::Class#*/.forName/*->java::lang::Class#forName().*/("foo.Bar")
+    val existentialType3/*<-types::Test.C#existentialType3.*/: Class/*->scala::Predef.Class#*/[?] = Class/*->java::lang::Class#*/.forName/*->java::lang::Class#forName().*/("foo.Bar")
+    val existentialType4/*<-types::Test.C#existentialType4.*/: Class/*->scala::Predef.Class#*/[?] = Class/*->java::lang::Class#*/.forName/*->java::lang::Class#forName().*/("foo.Bar")
 
     def typeLambda1/*<-types::Test.C#typeLambda1().*/[M/*<-types::Test.C#typeLambda1().[M]*/[_]] = ???/*->scala::Predef.`???`().*/
     typeLambda1/*->types::Test.C#typeLambda1().*/[({ type L/*<-local11*/[T/*<-local10*/] = List/*->scala::package.List#*/[T/*->local10*/] })#L]
@@ -93,7 +93,7 @@ object Test/*<-types::Test.*/ {
       def m1/*<-types::Test.C#ByNameType.m1().*/(x/*<-types::Test.C#ByNameType.m1().(x)*/: => Int/*->scala::Int#*/): Int/*->scala::Int#*/ = ???/*->scala::Predef.`???`().*/
     }
 
-    case class RepeatedType/*<-types::Test.C#RepeatedType#*/(s/*<-types::Test.C#RepeatedType#s.*/: String/*->scala::Predef.String#*/*) {
+    case class RepeatedType/*<-types::Test.C#RepeatedType#*/(s/*<-types::Test.C#RepeatedType#s.*//*<-types::Test.C#RepeatedType#`<init>`().(s)*/: String/*->scala::Predef.String#*/*) {
       def m1/*<-types::Test.C#RepeatedType#m1().*/(x/*<-types::Test.C#RepeatedType#m1().(x)*/: Int/*->scala::Int#*/*): Int/*->scala::Int#*/ = s/*->types::Test.C#RepeatedType#s.*/.length/*->scala::collection::SeqOps#length().*/
     }
 

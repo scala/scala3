@@ -1,0 +1,14 @@
+-- [E190] Potential Issue Warning: tests/neg/no-unit.scala:7:2 ---------------------------------------------------------
+7 |  Unit // error
+  |  ^^^^
+  |  Discarded non-Unit value of type object Unit. Add `: Unit` to discard silently.
+  |
+  | longer explanation available when compiling with `-explain`
+-- Error: tests/neg/no-unit.scala:1:8 ----------------------------------------------------------------------------------
+1 |val u = Unit // error
+  |        ^^^^
+  |        `Unit` companion object is not allowed in source; instead, use `()` for the unit value
+-- Error: tests/neg/no-unit.scala:7:2 ----------------------------------------------------------------------------------
+7 |  Unit // error
+  |  ^^^^
+  |  `Unit` companion object is not allowed in source; instead, use `()` for the unit value

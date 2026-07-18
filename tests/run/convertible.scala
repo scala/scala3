@@ -1,6 +1,5 @@
-//> using options -feature -Xfatal-warnings
+//> using options -feature -Werror
 
-import language.experimental.into
 import Conversion.into
 
 class Text(val str: String)
@@ -27,5 +26,3 @@ trait C[X]:
 class D[X] extends C[X]
 
 def f = new D[Text].f("abc")
-
-

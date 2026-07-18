@@ -28,6 +28,8 @@ object TyperState {
 
   opaque type Snapshot = (Constraint, TypeVars, LevelMap)
 
+  class BadTyperStateAssertion(msg: String) extends AssertionError(msg)
+
   extension (ts: TyperState)
     def snapshot()(using Context): Snapshot =
       (ts.constraint, ts.ownedVars, ts.upLevels)
@@ -43,12 +45,12 @@ object TyperState {
 }
 
 class TyperState() {
-  import TyperState.LevelMap
+  import TyperState.{LevelMap, BadTyperStateAssertion}
 
   private var myId: Int = uninitialized
   def id: Int = myId
 
-  private var previous: TyperState | Null = uninitialized
+  private var previous: TyperState | Null = null
 
   private var myReporter: Reporter = uninitialized
 
@@ -78,7 +80,9 @@ class TyperState() {
     this
 
   def isGlobalCommittable: Boolean =
-    isCommittable && (previous == null || previous.uncheckedNN.isGlobalCommittable)
+    isCommittable && (previous match
+      case null => true
+      case p => p.isGlobalCommittable)
 
   private var isCommitted: Boolean = uninitialized
 
@@ -137,7 +141,10 @@ class TyperState() {
    *  which is not yet committed, or which does not have a parent.
    */
   def uncommittedAncestor: TyperState =
-    if (isCommitted && previous != null) previous.uncheckedNN.uncommittedAncestor else this
+    previous match
+      case null => this
+      case p if isCommitted => p.uncommittedAncestor
+      case _ => this
 
   /** Commit `this` typer state by copying information into the current typer state,
    *  where "current" means contextual, so meaning `ctx.typerState`.
@@ -269,13 +276,17 @@ class TyperState() {
    */
   private def includeVar(tvar: TypeVar)(using Context): Unit =
     val oldState = tvar.owningState.nn.get
-    assert(oldState == null || !oldState.isCommittable,
-      i"$this attempted to take ownership of $tvar which is already owned by committable $oldState")
+
+    if oldState != null && oldState.isCommittable then
+      throw BadTyperStateAssertion(
+        i"$this attempted to take ownership of $tvar which is already owned by committable $oldState")
     tvar.owningState = new WeakReference(this)
     ownedVars += tvar
 
   private def isOwnedAnywhere(ts: TyperState, tvar: TypeVar): Boolean =
-    ts.ownedVars.contains(tvar) || ts.previous != null && isOwnedAnywhere(ts.previous.uncheckedNN, tvar)
+    ts.ownedVars.contains(tvar) || (ts.previous match
+      case null => false
+      case tp => isOwnedAnywhere(tp, tvar))
 
   /** Make type variable instances permanent by assigning to `inst` field if
    *  type variable instantiation cannot be retracted anymore. Then, remove
@@ -287,7 +298,7 @@ class TyperState() {
       val toCollect = new mutable.ListBuffer[TypeLambda]
       for tvar <- ownedVars do
         val tvarState = tvar.owningState.nn.get
-        assert(tvarState eqn this, s"Inconsistent state in $this: it owns $tvar whose owningState is ${tvarState}")
+        assert(tvarState eq this, s"Inconsistent state in $this: it owns $tvar whose owningState is ${tvarState}")
         assert(!tvar.isPermanentlyInstantiated, s"Inconsistent state in $this: it owns $tvar which is already instantiated")
         val inst = constraint.instType(tvar)
         if inst.exists then
@@ -300,9 +311,9 @@ class TyperState() {
   override def toString: String = {
     def ids(state: TyperState): List[String] =
       s"${state.id}${if (state.isCommittable) "" else "X"}" ::
-        (if (state.previous == null) Nil else ids(state.previous.uncheckedNN))
+        (state.previous match { case null => Nil; case sp => ids(sp) })
     s"TS[${ids(this).mkString(", ")}]"
   }
 
-  def stateChainStr: String = s"$this${if (previous == null) "" else previous.uncheckedNN.stateChainStr}"
+  def stateChainStr: String = s"$this${previous match { case null => ""; case p => p.stateChainStr }}"
 }

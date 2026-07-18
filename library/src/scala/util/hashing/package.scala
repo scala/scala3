@@ -18,6 +18,9 @@ import scala.language.`2.13`
 package object hashing {
 
   /** Fast multiplicative hash with a nice distribution.
+   *
+   *  @param v the 32-bit `Int` value to hash
+   *  @return a well-distributed 32-bit hash of `v`
    */
   def byteswap32(v: Int): Int = {
     var hc = v * 0x9e3775cd
@@ -27,6 +30,9 @@ package object hashing {
 
   /** Fast multiplicative hash with a nice distribution
    *  for 64-bit values.
+   *
+   *  @param v the 64-bit `Long` value to hash
+   *  @return a well-distributed 64-bit hash of `v`
    */
   def byteswap64(v: Long): Long = {
     var hc = v * 0x9e3775cd9e3775cdL

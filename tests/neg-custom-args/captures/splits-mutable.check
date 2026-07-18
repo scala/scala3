@@ -1,0 +1,44 @@
+-- Error: tests/neg-custom-args/captures/splits-mutable.scala:32:24 ----------------------------------------------------
+32 |    val elem2: Ref^ = x.snd  // error separation because fst and snd cannot be shown to be separate
+   |                      ^^^^^
+   |Separation failure: Illegal access to {r2} which is hidden by the previous definition
+   |of value elem1 with type M.Ref^.
+   |This type hides capabilities  {any, r2, any²}
+   |
+   |where:    ^    refers to a root capability classified as Unscoped in the type of value elem1
+   |          any  is a root capability classified as Unscoped in the type of variable r1
+   |          any² is a root capability classified as Unscoped created in variable r1 when constructing instance M.Ref
+-- Error: tests/neg-custom-args/captures/splits-mutable.scala:37:19 ----------------------------------------------------
+37 |    val z = mkConc(r5, r5)  // error separation, as expected
+   |                   ^^
+   |Separation failure: argument of type  (r5 : M.Ref^)
+   |to method mkConc: (consume x: M.Ref^, consume y: M.Ref^): M.Conc^{fresh}
+   |corresponds to capture-polymorphic formal parameter x of type  M.Ref^²
+   |and hides capabilities  {r5}.
+   |Some of these overlap with the captures of the second argument with type  (r5 : M.Ref^).
+   |
+   |  Hidden set of current argument        : {r5}
+   |  Hidden footprint of current argument  : {r5}
+   |  Capture set of second argument        : {r5}
+   |  Footprint set of second argument      : {r5}
+   |  The two sets overlap at               : {r5}
+   |
+   |where:    ^  refers to a root capability classified as Unscoped in the type of value r5
+   |          ^² refers to a root capability classified as Unscoped created in value z when checking argument to parameter x of method mkConc
+-- Error: tests/neg-custom-args/captures/splits-mutable.scala:39:20 ----------------------------------------------------
+39 |    val z1 = mkConc(r5a, r5a)  // error separation, as expected
+   |                    ^^^
+   |Separation failure: argument of type  (r5a : M.Ref^)
+   |to method mkConc: (consume x: M.Ref^, consume y: M.Ref^): M.Conc^{fresh}
+   |corresponds to capture-polymorphic formal parameter x of type  M.Ref^²
+   |and hides capabilities  {r5a}.
+   |Some of these overlap with the captures of the second argument with type  (r5a : M.Ref^).
+   |
+   |  Hidden set of current argument        : {r5a}
+   |  Hidden footprint of current argument  : {r5a}
+   |  Capture set of second argument        : {r5a}
+   |  Footprint set of second argument      : {r5a}
+   |  The two sets overlap at               : {r5a}
+   |
+   |where:    ^  refers to a root capability classified as Unscoped in the type of value r5a
+   |          ^² refers to a root capability classified as Unscoped created in value z1 when checking argument to parameter x of method mkConc

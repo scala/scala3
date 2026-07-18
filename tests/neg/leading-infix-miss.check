@@ -12,4 +12,6 @@
   |        Found:    Unit
   |        Required: Boolean
   |
+  |        Maybe the enclosing block is missing a final expression after the definition of `x`?
+  |
   | longer explanation available when compiling with `-explain`

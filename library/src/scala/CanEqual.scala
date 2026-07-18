@@ -1,5 +1,7 @@
 package scala
 
+import language.experimental.captureChecking
+
 import annotation.implicitNotFound
 import scala.collection.{Seq, Set, Map}
 
@@ -19,6 +21,9 @@ object CanEqual {
    *  Even though this method is not declared as given, the compiler will
    *  synthesize implicit arguments as solutions to `CanEqual[T, U]` queries if
    *  the rules of multiversal equality require it.
+   *
+   *  @tparam L the left-hand comparison type
+   *  @tparam R the right-hand comparison type
    */
   def canEqualAny[L, R]: CanEqual[L, R] = derived
 

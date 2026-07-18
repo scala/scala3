@@ -3,7 +3,7 @@ package dotc
 package printing
 
 import core.*
-import Texts.*, ast.Trees.*
+import Texts.{*, given}, ast.Trees.*
 import Types.{Type, SingletonType, LambdaParam, LambdaType, NamedType, RefinedType},
        Symbols.Symbol, Scopes.Scope, Constants.Constant,
        Names.Name, Denotations._, Annotations.Annotation, Contexts.Context
@@ -189,7 +189,7 @@ abstract class Printer {
 
   /** Render elements alternating with `sep` string */
   def toText(elems: Iterable[Showable], sep: String): Text =
-    Text(elems map (_ toText this), sep)
+    Text(elems.map(_.toText(this)), sep)
 
   /** Render elements within highest precedence */
   def toTextLocal(elems: Iterable[Showable], sep: String): Text =

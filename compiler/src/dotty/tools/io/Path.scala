@@ -5,13 +5,11 @@
 
 package dotty.tools.io
 
-import java.io.RandomAccessFile
 import java.nio.file.*
 import java.net.{URI, URL}
 import java.nio.file.attribute.{BasicFileAttributes, FileTime}
 import java.io.IOException
 import scala.jdk.CollectionConverters.*
-import scala.util.Random.alphanumeric
 
 /** An abstraction for filesystem paths.  The differences between
  *  Path, File, and Directory are primarily to communicate intent.
@@ -30,15 +28,11 @@ import scala.util.Random.alphanumeric
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 object Path {
-  def isExtensionJarOrZip(jpath: JPath): Boolean = isExtensionJarOrZip(jpath.getFileName.toString)
-  def isExtensionJarOrZip(name: String): Boolean = fileExtension(name).isJarOrZip
   def fileExtension(name: String): FileExtension = {
     val i = name.lastIndexOf('.')
     if (i < 0) FileExtension.Empty
     else FileExtension.from(name.substring(i + 1))
   }
-  @deprecated("use fileExtension instead.")
-  def extension(name: String): String = fileExtension(name).toLowerCase
 
   /** strip anything after and including trailing the extension */
   def fileName(name: String): String = {
@@ -47,22 +41,12 @@ object Path {
     else name.substring(0, i)
   }
 
-  def onlyDirs(xs: Iterator[Path]): Iterator[Directory] = xs.filter(_.isDirectory).map(_.toDirectory)
-  def onlyDirs(xs: List[Path]): List[Directory] = xs.filter(_.isDirectory).map(_.toDirectory)
-  def onlyFiles(xs: Iterator[Path]): Iterator[File] = xs.filter(_.isFile).map(_.toFile)
-
-  def roots: List[Path] = FileSystems.getDefault.getRootDirectories.iterator().asScala.map(Path.apply).toList
-
   def apply(path: String): Path = apply(new java.io.File(path).toPath)
   def apply(jpath: JPath): Path = try {
     if (Files.isRegularFile(jpath)) new File(jpath)
     else if (Files.isDirectory(jpath)) new Directory(jpath)
     else new Path(jpath)
   } catch { case ex: SecurityException => new Path(jpath) }
-
-  /** Avoiding any shell/path issues by only using alphanumerics. */
-  private[io] def randomPrefix: String = alphanumeric take 6 mkString ""
-  private[io] def fail(msg: String): Nothing = throw FileOperationException(msg)
 }
 import Path.*
 
@@ -72,8 +56,6 @@ import Path.*
  *  ''Note:  This library is considered experimental and should not be used unless you know what you are doing.''
  */
 class Path private[io] (val jpath: JPath) {
-  val separator: Char = java.io.File.separatorChar
-  val separatorStr: String = java.io.File.separator
 
   // conversions
   def toFile: File = new File(jpath)
@@ -82,11 +64,6 @@ class Path private[io] (val jpath: JPath) {
   def toCanonical: Path = normalize.toAbsolute
   def toURI: URI = jpath.toUri()
   def toURL: URL = toURI.toURL()
-
-  /** If this path is absolute, returns it: otherwise, returns an absolute
-   *  path made up of root / this.
-   */
-  def toAbsoluteWithRoot(root: Path): Path = if (isAbsolute) this else root.toAbsolute / this
 
   /** Creates a new Path with the specified path appended.  Assumes
    *  the type of the new component implies the type of the result.
@@ -105,8 +82,8 @@ class Path private[io] (val jpath: JPath) {
    *  Iterator, and all sub-subdirectories are recursively evaluated
    */
   def walkFilter(cond: Path => Boolean): Iterator[Path] =
-    if (isFile) toFile walkFilter cond
-    else if (isDirectory) toDirectory.walkFilter(cond)
+    if isFile then toFile.walkFilter(cond)
+    else if isDirectory then toDirectory.walkFilter(cond)
     else Iterator.empty
 
   /** Equivalent to walkFilter(_ => true).
@@ -122,9 +99,6 @@ class Path private[io] (val jpath: JPath) {
   def normalize: Path = new Path(jpath.normalize)
 
   def resolve(other: Path): Path = new Path(jpath.resolve(other.jpath))
-  def relativize(other: Path): Path = new Path(jpath.relativize(other.jpath))
-
-  def segments: List[String] = (path split separator).toList filterNot (_.length == 0)
 
   /**
    * @return The path of the parent directory, or root if path is already root
@@ -133,7 +107,7 @@ class Path private[io] (val jpath: JPath) {
     // We don't call JPath#normalize here because it may result in resolving
     // to a different path than intended, such as when the given path contains
     // a `..` component and the preceding name is a symbolic link.
-    // https://docs.oracle.com/javase/8/docs/api/java/nio/file/Path.html#normalize--
+    // https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/nio/file/Path.html#normalize()
     //
     // Paths ending with `..` or `.` are handled specially here as
     // JPath#getParent wants to simply strip away that last element.
@@ -159,23 +133,11 @@ class Path private[io] (val jpath: JPath) {
   }
   def parents: List[Directory] = {
     val p = parent
-    if (p isSame this) Nil else p :: p.parents
+    if p.toCanonical == this.toCanonical then Nil else p :: p.parents
   }
 
   def ext: FileExtension = Path.fileExtension(name)
 
-  // if name ends with an extension (e.g. "foo.jpg") returns the extension ("jpg"), otherwise ""
-  @deprecated("use ext instead.")
-  def extension: String = ext.toLowerCase
-
-  // compares against extensions in a CASE INSENSITIVE way.
-  @deprecated("consider using queries on ext instead.")
-  def hasExtension(ext: String, exts: String*): Boolean = {
-    val lower = ext.toLowerCase
-    lower.equalsIgnoreCase(ext) || exts.exists(lower.equalsIgnoreCase)
-  }
-  // returns the filename without the extension.
-  def stripExtension: String = Path.fileName(name)
   // returns the Path with the extension.
   def addExtension(ext: String): Path = new Path(jpath.resolveSibling(name + ext))
 
@@ -192,51 +154,29 @@ class Path private[io] (val jpath: JPath) {
     if dropExtension eq name0 then addExtension(ext)
     else new Path(jpath.resolveSibling(dropExtension + "." + ext))
 
-  // conditionally execute
-  def ifFile[T](f: File => T): Option[T] = if (isFile) Some(f(toFile)) else None
-  def ifDirectory[T](f: Directory => T): Option[T] = if (isDirectory) Some(f(toDirectory)) else None
-
   // Boolean tests
-  def canRead: Boolean = Files.isReadable(jpath)
-  def canWrite: Boolean = Files.isWritable(jpath)
   def exists: Boolean = try Files.exists(jpath)  catch { case ex: SecurityException => false }
   def isFile: Boolean = try Files.isRegularFile(jpath)  catch { case ex: SecurityException => false }
   def isDirectory: Boolean =
     try Files.isDirectory(jpath)
     catch { case ex: SecurityException => jpath.toString == "." }
   def isAbsolute: Boolean = jpath.isAbsolute()
-  def isEmpty: Boolean = path.length == 0
 
   // Information
   def lastModified: FileTime = Files.getLastModifiedTime(jpath)
   def length: Long = Files.size(jpath)
 
-  // Boolean path comparisons
-  def endsWith(other: Path): Boolean = segments endsWith other.segments
-  def isSame(other: Path): Boolean = toCanonical == other.toCanonical
-  def isFresher(other: Path): Boolean = lastModified.compareTo(other.lastModified) > 0
-
   // creations
-  def createDirectory(force: Boolean = true, failIfExists: Boolean = false): Directory = {
-    val res = tryCreate(if (force) Files.createDirectories(jpath) else Files.createDirectory(jpath))
-    if (!res && failIfExists && exists) fail("Directory '%s' already exists." format name)
-    else if (isDirectory) toDirectory
+  def createDirectory(): Directory = {
+    try Files.createDirectories(jpath)
+    catch case _: FileAlreadyExistsException => ()
+    if (isDirectory) toDirectory
     else new Directory(jpath)
   }
-  def createFile(failIfExists: Boolean = false): File = {
-    val res = tryCreate(Files.createFile(jpath))
-    Files.createFile(jpath)
-    if (!res && failIfExists && exists) fail("File '%s' already exists." format name)
-    else if (isFile) toFile
-    else new File(jpath)
-  }
-
-  private def tryCreate(create: => JPath): Boolean =
-    try { create; true } catch { case _: FileAlreadyExistsException => false }
 
   // deletions
   def delete(): Unit =
-    try { Files.deleteIfExists(jpath) } catch { case _: DirectoryNotEmptyException => }
+    try { Files.deleteIfExists(jpath) } catch { case _: java.io.IOException => }
 
   /** Deletes the path recursively. Returns false on failure.
    *  Use with caution!
@@ -245,12 +185,12 @@ class Path private[io] (val jpath: JPath) {
     if (!exists) false
     else {
       Files.walkFileTree(jpath, new SimpleFileVisitor[JPath]() {
-        override def visitFile(file: JPath, attrs: BasicFileAttributes) = {
+        override def visitFile(file: JPath, attrs: BasicFileAttributes): FileVisitResult = {
           Files.delete(file)
           FileVisitResult.CONTINUE
         }
 
-        override def postVisitDirectory(dir: JPath, exc: IOException) = {
+        override def postVisitDirectory(dir: JPath, exc: IOException): FileVisitResult = {
           Files.delete(dir)
           FileVisitResult.CONTINUE
         }
@@ -258,14 +198,6 @@ class Path private[io] (val jpath: JPath) {
       true
     }
   }
-
-  def truncate(): Boolean =
-    isFile && {
-      val raf = new RandomAccessFile(jpath.toFile, "rw")
-      raf setLength 0
-      raf.close()
-      length == 0
-    }
 
   override def toString(): String = path
   override def equals(other: Any): Boolean = other match {

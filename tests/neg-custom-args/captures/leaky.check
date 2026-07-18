@@ -1,32 +1,27 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leaky.scala:14:2 -----------------------------------------
-14 |  val f: Any ->{a} Any = _ =>  // error
-   |  ^
-   |  Found:    test.runnable.Transform{val fun: Any ->{a} Any}^{a}
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leaky.scala:17:11 ----------------------------------------
+17 |  Transform(f)  // error
+   |  ^^^^^^^^^^^^
+   |  Found:    test.runnable.Transform{val fun: (f : Any ->{a} Any)}^{f}
    |  Required: test.runnable.Transform
-15 |    a.print()
-16 |    ()
-17 |  Transform(f)
+   |
+   |  Note that capability `f` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leaky.scala:20:2 -----------------------------------------
-20 |  val f: Any ->{a} Any = _ => // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leaky.scala:24:2 -----------------------------------------
+24 |  x  // error
    |  ^
-   |  Found:    test.runnable.Transform{val fun: Any ->{a} Any}^{a}
+   |  Found:    test.runnable.Transform{val fun: Any ->{f} Any}^{x}
    |  Required: test.runnable.Transform
-21 |    a.print()
-22 |    ()
-23 |  val x = Transform(f)
-24 |  x
+   |
+   |  Note that capability `x` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leaky.scala:27:2 -----------------------------------------
-27 |  val f: Any ->{a} Any = _ =>  // error
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/leaky.scala:31:2 -----------------------------------------
+31 |  x  // error
    |  ^
-   |  Found:    test.runnable.Transform{val fun: Any ->{a} Any}^{a}
+   |  Found:    test.runnable.Transform{val fun: Any ->{f} Any}^{x}
    |  Required: test.runnable.Transform
-28 |    a.print()
-29 |    ()
-30 |  val x = Transform.app(f)
-31 |  x
+   |
+   |  Note that capability `x` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`

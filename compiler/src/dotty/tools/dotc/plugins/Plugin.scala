@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package plugins
 
-import scala.language.unsafeNulls
-
 import core.*
 import Contexts.*
 import Phases.*
@@ -11,8 +9,7 @@ import transform.MegaPhase.MiniPhase
 
 import java.io.InputStream
 import java.util.Properties
-
-import scala.util.{ Try, Success, Failure }
+import scala.util.{Failure, Success, Try}
 import scala.annotation.nowarn
 
 trait PluginPhase extends MiniPhase {
@@ -103,15 +100,13 @@ object Plugin {
   /** Use a class loader to load the plugin class.
    */
   def load(classname: String, loader: ClassLoader): Try[AnyClass] = {
-    import scala.util.control.NonFatal
     try
-      Success[AnyClass](loader loadClass classname)
-    catch {
-      case NonFatal(e) =>
+      Success[AnyClass](loader.loadClass(classname))
+    catch
+      case e: Exception =>
         Failure(new PluginLoadException(classname, s"Error: unable to load class $classname: ${e.getMessage}"))
       case e: NoClassDefFoundError =>
         Failure(new PluginLoadException(classname, s"Error: class not found: ${e.getMessage} required by $classname"))
-    }
   }
 
   /** Load all plugins specified by the arguments.
@@ -144,17 +139,20 @@ object Plugin {
 
     def loadDescriptionFromJar(jarp: Path): Try[String] = {
       // XXX Return to this once we have more ARM support
-      def read(is: InputStream) =
+      def read(is: InputStream | Null) =
         if (is == null) throw new PluginLoadException(jarp.path, s"Missing $PluginFile in $jarp")
         else fromFile(is, jarp)
 
-      val fileEntry = new java.util.jar.JarEntry(PluginFile)
-      Try(read(new Jar(jarp.jpath.toFile).getEntryStream(fileEntry)))
+      val jarArchive = JarArchive.open(jarp)
+      Try(read(jarArchive.fileNamed(PluginFile).input))
     }
 
     // List[(jar, Try(descriptor))] in dir
     def scan(d: Directory) =
-      d.files.toList sortBy (_.name) filter (Jar isJarOrZip _) map (j => (j, loadDescriptionFromJar(j)))
+      d.files.toList
+        .filter(_.ext.isJarOrZip)
+        .sortBy(_.name)
+        .map(j => (j, loadDescriptionFromJar(j)))
 
     type PDResults = List[Try[(String, ClassLoader)]]
 
@@ -171,8 +169,8 @@ object Plugin {
       def loop(qs: List[Path]): Try[String] = qs match {
         case Nil       => Failure(new MissingPluginException(ps))
         case p :: rest =>
-          if (p.isDirectory) loadDescriptionFromDir(p.toDirectory) orElse loop(rest)
-          else if (p.isFile) loadDescriptionFromJar(p.toFile) orElse loop(rest)
+          if (p.isDirectory) loadDescriptionFromDir(p.toDirectory) `orElse` loop(rest)
+          else if (p.isFile) loadDescriptionFromJar(p.toFile) `orElse` loop(rest)
           else loop(rest)
       }
       loop(ps)
@@ -207,7 +205,7 @@ object Plugin {
   def instantiate(clazz: AnyClass): Plugin = clazz.getConstructor().newInstance().asInstanceOf[Plugin]
 }
 
-class PluginLoadException(val path: String, message: String, cause: Exception) extends Exception(message, cause) {
+class PluginLoadException(val path: String, message: String, cause: Exception | Null) extends Exception(message, cause) {
   def this(path: String, message: String) = this(path, message, null)
 }
 

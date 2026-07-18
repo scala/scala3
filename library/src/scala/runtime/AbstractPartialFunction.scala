@@ -15,6 +15,8 @@ package runtime
 
 import scala.language.`2.13`
 
+import language.experimental.captureChecking
+
 /** `AbstractPartialFunction` reformulates all operations of its supertrait `PartialFunction`
  *  in terms of `isDefinedAt` and `applyOrElse`.
  *
@@ -26,7 +28,7 @@ import scala.language.`2.13`
  *
  *  This trait is used as a basis for implementation of all partial function literals.
  */
-abstract class AbstractPartialFunction[@specialized(Specializable.Arg) -T1, @specialized(Specializable.Return) +R] extends Function1[T1, R] with PartialFunction[T1, R] { self =>
+abstract class AbstractPartialFunction[@specialized(Specializable.Arg) -T1, @specialized(Specializable.Return) +R] extends Function1[T1, R] with PartialFunction[T1, R] {
   // this method must be overridden for better performance,
   // for backwards compatibility, fall back to the one inherited from PartialFunction
   // this assumes the old-school partial functions override the apply method, though

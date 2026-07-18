@@ -23,7 +23,7 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags) extends Scaladoc
 
   val source = Source.fromFile(s"${BuildInfo.test_testcasesSourceRoot}/tests/$testName.scala")
 
-  val snippetsCount = source.getLines.filter(_.indexOf("```scala") != -1).size
+  val snippetsCount = source.getLines().filter(l => l.indexOf("```scala") != -1 && !l.contains("sc-hidden")).size
 
   def report(str: String) = s"""|In test $testName:
                                 |$str""".stripMargin
@@ -146,7 +146,7 @@ object SnippetsE2eTest:
   case class Message(level: MessageLevel, offset: Offset)
   object SnippetInfo:
     def apply(str: String): SnippetInfo = str match {
-      case snippetInfoRegex(ol, oc, il, ic) => SnippetInfo(
+      case snippetInfoRegex(ol: String, oc: String, il: String, ic: String) => SnippetInfo(
         Offset(ol.toInt, oc.toInt),
         Offset(il.toInt, ic.toInt)
       )
@@ -154,8 +154,8 @@ object SnippetsE2eTest:
 
   object Message:
     def apply(str: String): Message = str match {
-      case errorRegex(ln, cl) => Message(MessageLevel.Error, Offset(ln.toInt, cl.toInt))
-      case warningRegex(ln, cl) => Message(MessageLevel.Warning, Offset(ln.toInt, cl.toInt))
+      case errorRegex(ln: String, cl: String) => Message(MessageLevel.Error, Offset(ln.toInt, cl.toInt))
+      case warningRegex(ln: String, cl: String) => Message(MessageLevel.Warning, Offset(ln.toInt, cl.toInt))
     }
   val snippetInfoRegex = (raw"SNIPPET\(" +
     raw"OUTERLINEOFFSET:(\d+),OUTERCOLUMNOFFSET:(\d+)," +

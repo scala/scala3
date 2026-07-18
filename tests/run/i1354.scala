@@ -1,3 +1,6 @@
+// scalajs: --skip
+// (because scala.js has special semantics for numbers)
+
 object Test {
   def foo(a: Int | Double) = a match {
     case a: (Float | Boolean) => 1

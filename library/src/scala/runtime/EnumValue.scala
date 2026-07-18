@@ -1,5 +1,7 @@
 package scala.runtime
 
+import language.experimental.captureChecking
+
 transparent trait EnumValue extends Product, Serializable:
   override def canEqual(that: Any) = this eq that.asInstanceOf[AnyRef]
   override def productArity: Int = 0

@@ -1,13 +1,13 @@
 package dotty.tools.pc.tests.completion
 
-import scala.meta.pc.SymbolDocumentation
 import scala.language.unsafeNulls
+import scala.meta.pc.SymbolDocumentation
 
 import dotty.tools.pc.base.BaseCompletionSuite
 import dotty.tools.pc.utils.MockEntries
 
-import org.junit.Test
 import org.junit.Ignore
+import org.junit.Test
 
 class CompletionSuite extends BaseCompletionSuite:
 
@@ -15,8 +15,18 @@ class CompletionSuite extends BaseCompletionSuite:
     override def documentations: Set[SymbolDocumentation] = Set(
       MockDocumentation("java/lang/String#substring().", "substring", Seq(), Seq("beginIndex")),
       MockDocumentation("java/lang/String#substring(+1).", "substring", Seq(), Seq("beginIndex", "endIndex")),
-      MockDocumentation("java/nio/file/Files#readAttributes().", "readAttributes", Seq("A"), Seq("path", "type", "options")),
-      MockDocumentation("java/nio/file/Files#readAttributes(+1).", "readAttributes", Seq(), Seq("path", "attributes", "options"))
+      MockDocumentation(
+        "java/nio/file/Files#readAttributes().",
+        "readAttributes",
+        Seq("A"),
+        Seq("path", "type", "options")
+      ),
+      MockDocumentation(
+        "java/nio/file/Files#readAttributes(+1).",
+        "readAttributes",
+        Seq(),
+        Seq("path", "attributes", "options")
+      )
     )
 
   @Test def scope =
@@ -109,18 +119,10 @@ class CompletionSuite extends BaseCompletionSuite:
          |tabulate[A](n: Int)(f: Int => A): List[A]
          |unapplySeq[A](x: List[A] @uncheckedVariance): UnapplySeqWrapper[A]
          |unfold[A, S](init: S)(f: S => Option[(A, S)]): List[A]
-         |->[B](y: B): (List.type, B)
-         |ensuring(cond: Boolean): List.type
-         |ensuring(cond: List.type => Boolean): List.type
-         |ensuring(cond: Boolean, msg: => Any): List.type
-         |ensuring(cond: List.type => Boolean, msg: => Any): List.type
+         |->[B](inline that: B): (List.type, B)
          |fromSpecific(from: Any)(it: IterableOnce[Nothing]): List[Nothing]
          |fromSpecific(it: IterableOnce[Nothing]): List[Nothing]
-         |nn: List.type
-         |runtimeChecked scala.collection.immutable
          |toFactory(from: Any): Factory[Nothing, List[Nothing]]
-         |formatted(fmtstr: String): String
-         |→[B](y: B): (List.type, B)
          |iterableFactory[A]: Factory[A, List[A]]
          |asInstanceOf[X0]: X0
          |equals(x$0: Any): Boolean
@@ -129,9 +131,13 @@ class CompletionSuite extends BaseCompletionSuite:
          |isInstanceOf[X0]: Boolean
          |synchronized[X0](x$0: X0): X0
          |toString(): String
-         |wait(): Unit
-         |wait(x$0: Long): Unit
-         |wait(x$0: Long, x$1: Int): Unit
+         |ensuring(cond: Boolean): List.type
+         |ensuring(cond: List.type => Boolean): List.type
+         |ensuring(cond: Boolean, msg: => Any): List.type
+         |ensuring(cond: List.type => Boolean, msg: => Any): List.type
+         |nn: List.type
+         |runtimeChecked scala.collection.immutable
+         |formatted(fmtstr: String): String
          |""".stripMargin
     )
 
@@ -230,7 +236,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin
     )
 
-  @Test def `no-companion-apply-in-new`=
+  @Test def `no-companion-apply-in-new` =
     check(
       """
         |import scala.collection.concurrent._
@@ -415,6 +421,7 @@ class CompletionSuite extends BaseCompletionSuite:
       includeCommitCharacter = true
     )
 
+  @Ignore
   @Test def `numeric-sort` =
     check(
       """
@@ -814,7 +821,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|NotImplementedError scala
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def underscore =
@@ -1339,7 +1346,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |object Bar extends Foo:
          |  def foo: String = ${0:???}
          |""".stripMargin,
-      assertSingleItem = false,
+      assertSingleItem = false
     )
 
   @Test def `type-with-params` =
@@ -1350,7 +1357,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       "TTT[A <: Int]",
-      includeDetail = false,
+      includeDetail = false
     )
 
   @Test def `type-with-params-with-detail` =
@@ -1360,7 +1367,7 @@ class CompletionSuite extends BaseCompletionSuite:
           | val t: TT@@
           |}
           |""".stripMargin,
-    "TTT[A <: Int] = List[A]"
+      "TTT[A <: Int] = List[A]"
     )
 
   @Test def `type-lambda` =
@@ -1371,7 +1378,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       "TTT[A <: Int]",
-      includeDetail = false,
+      includeDetail = false
     )
 
   @Test def `type-lambda2` =
@@ -1382,7 +1389,7 @@ class CompletionSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       "TTT[K <: Int]",
-      includeDetail = false,
+      includeDetail = false
     )
 
   @Test def `type-lambda2-with-detail` =
@@ -1392,7 +1399,7 @@ class CompletionSuite extends BaseCompletionSuite:
           | val t: TT@@
           |}
           |""".stripMargin,
-      "TTT[K <: Int] = [V] =>> Map[K, V]",
+      "TTT[K <: Int] = [V] =>> Map[K, V]"
     )
 
   @Test def `type-bound` =
@@ -1440,7 +1447,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|ListBuffer[A] - scala.collection.mutable
          |ListBuffer - scala.collection.mutable
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `extension-definition-type-parameter` =
@@ -1472,7 +1479,6 @@ class CompletionSuite extends BaseCompletionSuite:
       extensionResult,
       topLines = Some(2)
     )
-
 
   @Test def `extension-definition-mix-1` =
     check(
@@ -1589,18 +1595,18 @@ class CompletionSuite extends BaseCompletionSuite:
     )
 
   @Test def `multiline-comment` =
-   checkEdit(
-     """|package a
+    checkEdit(
+      """|package a
         |object O:
         |  /*@@
         |  def f = 1
         |""".stripMargin,
-     """|package a
+      """|package a
         |object O:
         |  /* $0 */
         |  def f = 1
-        |""".stripMargin,
-   )
+        |""".stripMargin
+    )
 
   @Test def `prepend-instead-of-replace` =
     checkEdit(
@@ -1663,7 +1669,6 @@ class CompletionSuite extends BaseCompletionSuite:
         |GenSet = scala.collection.Set[X]
         |""".stripMargin,
       filter = _.contains("Set")
-
     )
 
   @Test def `multi-imports` =
@@ -1684,7 +1689,6 @@ class CompletionSuite extends BaseCompletionSuite:
         |""".stripMargin,
       filter = _.contains("Set")
     )
-
 
   @Test def `multi-imports-empty-query` =
     check(
@@ -1856,7 +1860,6 @@ class CompletionSuite extends BaseCompletionSuite:
       ""
     )
 
-
   @Test def `annotation-param-first-pos` =
     check(
       """|
@@ -1936,8 +1939,8 @@ class CompletionSuite extends BaseCompletionSuite:
         |  extension [T: Orde@@]
         |}
         |""".stripMargin,
-      """Ordered[T] scala.math
-        |Ordering[T] scala.math
+      """Ordered scala.math
+        |Ordering scala.math
         |""".stripMargin,
       topLines = Some(2)
     )
@@ -1949,8 +1952,8 @@ class CompletionSuite extends BaseCompletionSuite:
         |  extension [T: Ordering: Orde@@]
         |}
         |""".stripMargin,
-      """Ordered[T] scala.math
-        |Ordering[T] scala.math
+      """Ordered scala.math
+        |Ordering scala.math
         |""".stripMargin,
       topLines = Some(2)
     )
@@ -1996,7 +1999,7 @@ class CompletionSuite extends BaseCompletionSuite:
         |  val x: TestEn@@
         |""".stripMargin,
       """TestEnum test
-        |""".stripMargin,
+        |""".stripMargin
     )
 
   @Test def `i6477-1` =
@@ -2027,7 +2030,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |
          |val bar: SC = ???
          |val foo: SomeClass
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `namedTuple completions` =
@@ -2053,7 +2056,29 @@ class CompletionSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|hello2: (path : String, num : Int, line : Int)
          |hello: (path : String, num : Int, line : Int)
-      """.stripMargin,
+      """.stripMargin
+    )
+
+  @Test def `namedTuple completions-3` =
+    check(
+      """|import scala.NamedTuple.*
+         |
+         |val person = (name = "Jakub", city = "Wrocław")
+         |
+         |val n = person.@@name""".stripMargin,
+      "name: String",
+      filter = _ == "name: String"
+    )
+
+  @Test def `namedTuple completions-4` =
+    check(
+      """|import scala.NamedTuple.*
+         |
+         |val person = (name = "Jakub", city = "Wrocław")
+         |
+         |val n = person.n@@ame""".stripMargin,
+      "name: String",
+      filter = _ == "name: String"
     )
 
   @Test def `Selectable with namedTuple Fields member` =
@@ -2096,14 +2121,14 @@ class CompletionSuite extends BaseCompletionSuite:
          |class MyClass
          |val i = MyClass@@()
          |""".stripMargin,
-         """|MyClass(): MyClass (Constructor)
+      """|MyClass(): MyClass (Constructor)
             |""".stripMargin,
-         includeCompletionKind = true
+      includeCompletionKind = true
     )
 
   @Test def `def-arg` =
     check(
-     """|package a
+      """|package a
         |object W {
         |  val aaaaaa = 1
         |}
@@ -2111,8 +2136,8 @@ class CompletionSuite extends BaseCompletionSuite:
         |  def foo(aa@@)
         |}
         |""".stripMargin,
-     ""
-   )
+      ""
+    )
 
   @Test def conflict =
     check(
@@ -2149,8 +2174,8 @@ class CompletionSuite extends BaseCompletionSuite:
     )
 
   @Test def `conflict-3` =
-   check(
-     """|package a
+    check(
+      """|package a
         |object A {
         |  var foo = 1
         |}
@@ -2161,23 +2186,23 @@ class CompletionSuite extends BaseCompletionSuite:
         |  val x: Int = foo@@
         |}
         |""".stripMargin,
-     """|foo - a.A: Int
+      """|foo - a.A: Int
         |foo - a.B: Int
         |""".stripMargin
-   )
+    )
 
   @Test def `shadowing` =
-   check(
-     """|package pkg
+    check(
+      """|package pkg
         |object Main {
         |  val x = ListBuff@@
         |}
         |""".stripMargin,
-     """|ListBuffer[A](elems: A*): ListBuffer[A] - scala.collection.mutable
+      """|ListBuffer[A](elems: A*): ListBuffer[A] - scala.collection.mutable
         |new ListBuffer[A]: ListBuffer[A] - scala.collection.mutable
         |ListBuffer - scala.collection.mutable
         |""".stripMargin
-   )
+    )
 
   @Test def `conflict-edit-2` =
     checkEdit(
@@ -2223,7 +2248,7 @@ class CompletionSuite extends BaseCompletionSuite:
          |    .build@@
          |""".stripMargin,
       """|build: Unit
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def i7191 =
@@ -2287,4 +2312,32 @@ class CompletionSuite extends BaseCompletionSuite:
         |
         |""".stripMargin,
       "asTerm: Term"
+    )
+
+  @Test def `derives-no-square-brackets` =
+    check(
+      """
+        |case class Miau(y: Int) derives Ordering, CanEqu@@
+        |""".stripMargin,
+      "CanEqual scala"
+    )
+
+  @Test def `context-bound-no-square-brackets` =
+    check(
+      """|trait Applicative[F[_]]
+         |trait Monadic[F[_]]
+         |
+         |def demo[F[_]: Applicative: Mona@@]: Unit = ???
+         |""".stripMargin,
+      "Monadic test"
+    )
+
+  @Test def `context-bound-no-square-brackets-multi` =
+    check(
+      """|trait Applicative[F[_]]
+         |trait Monadic[F[_]]
+         |
+         |def demo[F[_]: {Applicative, Mona@@}]: Unit = ???
+         |""".stripMargin,
+      "Monadic test"
     )

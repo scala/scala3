@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/safemode-3.scala:7:21 ---------------------------------------------------------
+7 |    case x: List[Int @unchecked] => x.head // error
+  |                     ^^^^^^^^^^
+  |                    Cannot refer to class unchecked in package scala from safe code since it is tagged @rejectSafe

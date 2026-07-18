@@ -3,8 +3,6 @@ package dotc
 package core
 package tasty
 
-import scala.language.unsafeNulls
-
 import Comments.docCtx
 import Contexts.*
 import Symbols.*
@@ -96,7 +94,7 @@ class TreeUnpickler(reader: TastyReader,
   /** The root symbol denotation which are defined by the Tasty file associated with this
    *  TreeUnpickler. Set by `enterTopLevel`.
    */
-  private var roots: Set[SymDenotation] = null
+  private var roots: Set[SymDenotation] = uninitialized
 
   /** The root symbols that are defined in this Tasty file. This
    *  is a subset of `roots.map(_.symbol)`.
@@ -188,7 +186,7 @@ class TreeUnpickler(reader: TastyReader,
       if (tag >= firstLengthTreeTag) goto(readEnd())
       else if (tag >= firstNatASTTreeTag) { readNat(); skipTree() }
       else if (tag >= firstASTTreeTag) skipTree()
-      else if (tag >= firstNatTreeTag) readNat()
+      else if (tag >= firstNatTreeTag) readLongInt()
     }
     def skipTree(): Unit = skipTree(readByte())
 
@@ -225,7 +223,7 @@ class TreeUnpickler(reader: TastyReader,
           if (mode == MemberDefsOnly) skipTree(tag)
           else if (tag >= firstLengthTreeTag) {
             val end = readEnd()
-            var nrefs = numRefs(tag)
+            val nrefs = numRefs(tag)
             if (nrefs < 0) {
               for (i <- nrefs until 0) scanTree(buf)
               goto(end)
@@ -241,7 +239,7 @@ class TreeUnpickler(reader: TastyReader,
           }
           else if (tag >= firstNatASTTreeTag) { readNat(); scanTree(buf) }
           else if (tag >= firstASTTreeTag) scanTree(buf)
-          else if (tag >= firstNatTreeTag) readNat()
+          else if (tag >= firstNatTreeTag) readLongInt()
       }
     }
 
@@ -265,6 +263,11 @@ class TreeUnpickler(reader: TastyReader,
     }
 
     def readName(): TermName = nameAtRef(readNameRef())
+
+    /** Can `tag` start a type argument of a CompactAnnotation? */
+    def isCompactAnnotTypeTag(tag: Int): Boolean = tag match
+      case APPLIEDtype | SHAREDtype | TYPEREF | TYPEREFdirect | TYPEREFsymbol | TYPEREFin => true
+      case _ => false
 
 // ------ Reading types -----------------------------------------------------
 
@@ -420,7 +423,12 @@ class TreeUnpickler(reader: TastyReader,
                 val hi = readVariances(readType())
                 createNullableTypeBounds(lo, hi)
             case ANNOTATEDtype =>
-              AnnotatedType(readType(), Annotation(readTree()))
+              val parent = readType()
+              val ann =
+                if isCompactAnnotTypeTag(nextByte)
+                then CompactAnnotation(readType())
+                else Annotation(readTree())
+              AnnotatedType(parent, ann)
             case ANDtype =>
               AndType(readType(), readType())
             case ORtype =>
@@ -651,7 +659,7 @@ class TreeUnpickler(reader: TastyReader,
         if (flags.is(Module)) adjustModuleCompleter(completer, name) else completer
       val coord = coordAt(start)
       val sym =
-        roots.find(root => (root.owner eq ctx.owner) && root.name == name) match {
+        roots.find(root => root.exists && (root.owner eq ctx.owner) && root.name == name) match {
           case Some(rootd) =>
             pickling.println(i"overwriting ${rootd.symbol} # ${rootd.hashCode}")
             rootd.symbol.coord = coord
@@ -668,14 +676,10 @@ class TreeUnpickler(reader: TastyReader,
             else
               newSymbol(ctx.owner, name, flags, completer, privateWithin, coord)
         }
+      registerSym(start, sym)
       val annotOwner =
         if sym.owner.isClass then newLocalDummy(sym.owner) else sym.owner
-      var annots = annotFns.map(_(annotOwner))
-      if annots.exists(_.hasSymbol(defn.SilentIntoAnnot)) then
-        // Temporary measure until we can change TastyFormat to include an INTO tag
-        sym.setFlag(Into)
-        annots = annots.filterNot(_.symbol == defn.SilentIntoAnnot)
-      sym.annotations = annots
+      sym.annotations = annotFns.map(_(annotOwner))
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
       ctx.owner match {
@@ -690,7 +694,6 @@ class TreeUnpickler(reader: TastyReader,
           cls.enter(sym)
         case _ =>
       }
-      registerSym(start, sym)
       if (isClass) {
         if sym.owner.is(Package) && withCaptureChecks then
           sym.setFlag(CaptureChecked)
@@ -765,6 +768,7 @@ class TreeUnpickler(reader: TastyReader,
           case TRANSPARENT => addFlag(Transparent)
           case INFIX => addFlag(Infix)
           case TRACKED => addFlag(Tracked)
+          case INTO => addFlag(Into)
           case PRIVATEqualified =>
             readByte()
             privateWithin = readWithin
@@ -772,7 +776,10 @@ class TreeUnpickler(reader: TastyReader,
             addFlag(Protected)
             privateWithin = readWithin
           case ANNOTATION =>
-            annotFns = readAnnot :: annotFns
+            val annotFn =
+              val annot = readAnnot
+              (sym: Symbol) => annot.complete(sym)
+            annotFns = annotFn :: annotFns
           case tag =>
             assert(false, s"illegal modifier tag $tag at $currentAddr, end = $end")
         }
@@ -782,21 +789,32 @@ class TreeUnpickler(reader: TastyReader,
 
     private def readWithin(using Context): Symbol = readType().typeSymbol
 
-    private def readAnnot(using Context): Symbol => Annotation =
+    private def readAnnot(using Context): Trees.Lazy[Symbol => Annotation] =
       readByte()
       val end = readEnd()
-      val tp = readType()
-      val lazyAnnotTree = readLaterWithOwner(end, _.readTree())
-      owner =>
-        new DeferredSymAndTree(tp.typeSymbol, lazyAnnotTree(owner).complete):
-          // Only force computation of symbol if it has the right name. This added
-          // amount of laziness is sometimes necessary to avid cycles. Test case pos/i15980.
-          override def hasSymbol(sym: Symbol)(using Context) = tp match
-            case tp: TypeRef =>
-              tp.designator match
-                case name: Name => name == sym.name && tp.symbol == sym
-                case _ => tp.symbol == sym
-            case _ => this.symbol == sym
+      readLater(end, reader =>
+        val tp = reader.readType()
+        def readAnnotTree(rdr: TreeReader)(using Context) =
+          if isCompactAnnotTypeTag(rdr.reader.nextByte) then TypeTree(rdr.readType())
+          // Annotation trees may be inspected by macros via `annot.tree` and
+          // spliced into a macro expansion; the re-typer of that expansion
+          // requires every untyped tree to have a span (Typer.assertPositioned).
+          // For incremental compilation the enclosing unpickling does not use
+          // Mode.ReadPositions, so without this the deserialized annotation
+          // tree has no spans and the re-typer crashes (issue #21383).
+          else rdr.readTree()(using ctx.addMode(Mode.ReadPositions))
+        val lazyAnnotTree = reader.readLaterWithOwner(end, readAnnotTree(_))
+        owner =>
+          new DeferredSymAndTree(tp.typeSymbol, lazyAnnotTree(owner).complete):
+            // Only force computation of symbol if it has the right name. This added
+            // amount of laziness is sometimes necessary to avoid cycles. Test case pos/i15980.
+            override def hasSymbol(sym: Symbol)(using Context) = tp match
+              case tp: TypeRef =>
+                tp.designator match
+                  case name: Name => name == sym.name && tp.symbol == sym
+                  case _ => tp.symbol == sym
+              case _ => this.symbol == sym
+      )
 
     /** Create symbols for the definitions in the statement sequence between
      *  current address and `end`.
@@ -813,8 +831,8 @@ class TreeUnpickler(reader: TastyReader,
             if (sym.isTerm && !sym.isOneOf(DeferredOrLazyOrMethod))
               initsFlags = EmptyFlags
             else if (sym.isClass ||
-              sym.is(Method, butNot = Deferred) && !sym.isConstructor)
-              initsFlags &= NoInits
+              sym.isOneOf(Lazy | Method, butNot = Deferred) && !sym.isConstructor)
+              initsFlags &= NoInits // i.e. initsFlags &~= PureInterface
           case IMPORT | EXPORT =>
             skipTree()
           case PACKAGE =>
@@ -921,6 +939,12 @@ class TreeUnpickler(reader: TastyReader,
 
       def ta = ctx.typeAssigner
 
+      // If explicit nulls and `Yflexify-tasty` is enabled, and the source file did not have explicit
+      // nulls enabled, nullify the member to allow for compatibility.
+      def nullify(sym: Symbol) =
+        if (ctx.flexifyTasty && !explicitNulls) then
+          sym.info = ImplicitNullInterop.nullifyMember(sym, sym.info, sym.is(Enum))
+
       val name = readName()
       pickling.println(s"reading def of $name at $start")
       val tree: MemberDef = tag match {
@@ -937,10 +961,12 @@ class TreeUnpickler(reader: TastyReader,
             else
               tpt.tpe
           sym.info = methodType(paramss, resType)
+          nullify(sym)
           DefDef(paramDefss, tpt)
         case VALDEF =>
           val tpt = readTpt()(using localCtx)
           sym.info = tpt.tpe.suppressIntoIfParam(sym)
+          nullify(sym)
           ValDef(tpt)
         case TYPEDEF | TYPEPARAM =>
           if (sym.isClass) {
@@ -978,6 +1004,9 @@ class TreeUnpickler(reader: TastyReader,
               sym.typeRef.recomputeDenot() // make sure we see the new bounds from now on
             else
               sym.info = info
+              if (tag == TYPEPARAM) {
+                nullify(sym)
+              }
 
             sym.resetFlag(Provisional)
             TypeDef(rhs)
@@ -986,6 +1015,7 @@ class TreeUnpickler(reader: TastyReader,
           val tpt = readTpt()(using localCtx)
           assert(nothingButMods(end))
           sym.info = tpt.tpe.suppressIntoIfParam(sym)
+          nullify(sym)
           ValDef(tpt)
       }
       goto(end)
@@ -1145,7 +1175,6 @@ class TreeUnpickler(reader: TastyReader,
         val stats = rdr.readIndexedStats(localDummy, end)
         tparams ++ vparams ++ stats
       })
-      defn.patchStdLibClass(cls)
       NamerOps.addConstructorProxies(cls)
       NamerOps.addContextBoundCompanions(cls)
       setSpan(start,
@@ -1268,6 +1297,8 @@ class TreeUnpickler(reader: TastyReader,
         readType() match {
           case path: TypeRef => TypeTree(path)
           case path: TermRef => ref(path)
+          case path @ AndType(_: TermRef, _: TypeRef) => TypeTree(path)
+          case path @ AndType(_: TypeRef, _: TermRef) => TypeTree(path)
           case path: ThisType => untpd.This(untpd.EmptyTypeIdent).withType(path)
           case path: ConstantType => Literal(path.value)
           case path: ErrorType if isBestEffortTasty => TypeTree(path)
@@ -1362,7 +1393,7 @@ class TreeUnpickler(reader: TastyReader,
        *  Otherwise, adapt calls where class has only using clauses from old to new scheme.
        *  or class has mixed using clauses and other clauses.
        *  Old: leading (), new: nothing, or trailing () if all clauses are using clauses.
-       *  This is neccessary so that we can read pre-3.2 Tasty correctly. There,
+       *  This is necessary so that we can read pre-3.2 Tasty correctly. There,
        *  constructor calls use the old scheme, but constructor definitions already
        *  use the new scheme, since they are reconstituted with normalizeIfConstructor.
        */
@@ -1487,6 +1518,7 @@ class TreeUnpickler(reader: TastyReader,
               else if fn.symbol == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args) // decode pre 3.5.0 encoding
               else if fn.symbol == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args) // decode pre 3.5.0 encoding
               else if fn.symbol == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args) // decode pre 3.5.0 encoding
+              else if isSpuriousApply(fn, args) then fn
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
               tpd.TypeApply(readTree(), until(end)(readTpt()))
@@ -1539,6 +1571,9 @@ class TreeUnpickler(reader: TastyReader,
                   readByte()
                   InlineMatch(readTree(), readCases(end))
                 }
+                else if nextByte == SUBMATCH then
+                  readByte()
+                  SubMatch(readTree(), readCases(end))
                 else Match(readTree(), readCases(end)))
             case RETURN =>
               val from = readSymRef()
@@ -1633,7 +1668,7 @@ class TreeUnpickler(reader: TastyReader,
               val tycon = readTpt()
               val args = until(end)(readTpt())
               val tree = untpd.AppliedTypeTree(tycon, args)
-              val ownType = ctx.typeAssigner.processAppliedType(tree, tycon.tpe.safeAppliedTo(args.tpes))
+              val ownType = ctx.typeAssigner.processAppliedType(tycon.tpe.safeAppliedTo(args.tpes))
               tree.withType(ownType)
             case ANNOTATEDtpt =>
               Annotated(readTpt(), readTree())
@@ -1849,7 +1884,7 @@ class TreeUnpickler(reader: TastyReader,
    */
   class OwnerTree(val addr: Addr, tag: Int, reader: TreeReader, val end: Addr) {
 
-    private var myChildren: List[OwnerTree] = null
+    private var myChildren: List[OwnerTree] | Null = null
 
     /** All definitions that have the definition at `addr` as closest enclosing definition */
     def children: List[OwnerTree] = {
@@ -1858,7 +1893,7 @@ class TreeUnpickler(reader: TastyReader,
         reader.scanTrees(buf, end, if (tag == TEMPLATE) NoMemberDefs else AllDefs)
         buf.toList
       }
-      myChildren
+      myChildren.nn
     }
 
     /** Find the owner of definition at `addr` */
@@ -1891,7 +1926,8 @@ class TreeUnpickler(reader: TastyReader,
     }
 
     override def toString: String =
-      s"OwnerTree(${addr.index}, ${end.index}, ${if (myChildren == null) "?" else myChildren.mkString(" ")})"
+      val children = myChildren
+      s"OwnerTree(${addr.index}, ${end.index}, ${if (children == null) "?" else children.mkString(" ")})"
   }
 }
 

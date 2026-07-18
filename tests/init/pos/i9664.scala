@@ -2,7 +2,7 @@ object Wrap1 {
   class E
   object E {
     final val A = E()
-    val $values = Array(A)
+    val `$values` = Array(A)
   }
 }
 object Wrap2 {

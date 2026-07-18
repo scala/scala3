@@ -332,7 +332,7 @@ object Nullables:
       case Apply(fn, args) =>
         val argsInfo = args.map(_.notNullInfo)
         val fnInfo = fn.notNullInfo
-        argsInfo.foldLeft(fnInfo)(_ seq _)
+        argsInfo.foldLeft(fnInfo)(_.seq(_))
       case TypeApply(fn, _) =>
         fn.notNullInfo
       case _ =>

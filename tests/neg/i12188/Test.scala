@@ -1,4 +1,4 @@
-//> using options -Xfatal-warnings
+//> using options -Werror
 
 sealed trait P
 case class PC1(a: String) extends P

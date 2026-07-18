@@ -1,7 +1,7 @@
 import language.experimental.captureChecking
 import caps.*
 
-trait Label extends Capability:
+trait Label extends SharedCapability:
   type Fv^ // the capability set occurring freely in the `block` passed to `boundary` below.
 
 def boundary[T, C^](block: Label{type Fv = {C} } ->{C} T): T = ??? // link label and block capture set
@@ -15,7 +15,7 @@ def test =
       val z = 3
       val w = suspend(outer) {() => z} // ok
       val v = suspend(inner) {() => y} // ok
-      val u = suspend(inner): () =>
+      val u = suspend(inner): () =>  // error, was OK (???)
         suspend(outer) {() => y} // ok
         suspend(outer) {() => y} // ok
         y

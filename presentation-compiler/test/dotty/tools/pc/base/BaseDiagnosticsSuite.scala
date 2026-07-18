@@ -1,0 +1,83 @@
+package dotty.tools.pc.base
+
+import java.net.URI
+
+import scala.meta.internal.jdk.CollectionConverters.*
+import scala.meta.internal.metals.EmptyCancelToken
+import scala.meta.pc.CancelToken
+import scala.meta.pc.VirtualFileParams
+
+import dotty.tools.pc.RawScalaPresentationCompiler
+import dotty.tools.pc.ScalaPresentationCompiler
+import dotty.tools.pc.base.TestResources
+import dotty.tools.pc.utils.PcAssertions
+import dotty.tools.pc.utils.TestExtensions.getOffset
+
+import org.eclipse.lsp4j.Diagnostic
+import org.eclipse.lsp4j.DiagnosticSeverity
+
+trait DiagnosticTestHelpers extends PcAssertions {
+
+  case class TestDiagnostic(
+      startIndex: Int,
+      endIndex: Int,
+      msg: String,
+      severity: DiagnosticSeverity
+  )
+
+  case class TestVirtualFileParams(uri: URI, text: String)
+      extends VirtualFileParams {
+    override def shouldReturnDiagnostics: Boolean = true
+    override def token: CancelToken = EmptyCancelToken
+  }
+
+  def getDiagnostics(text: String): List[Diagnostic]
+
+  def diagnosticMessageAsString(d: Diagnostic): String = {
+    val msg = d.getMessage()
+    if msg == null then ""
+    else if msg.isLeft then msg.getLeft
+    else msg.getRight.getValue
+  }
+
+  def check(
+      text: String,
+      expected: List[TestDiagnostic],
+      additionalChecks: List[Diagnostic] => Unit = identity
+  ): Unit =
+    val diagnostics = getDiagnostics(text)
+
+    val actual = diagnostics.map(d =>
+      TestDiagnostic(
+        d.getRange().getStart().getOffset(text),
+        d.getRange().getEnd().getOffset(text),
+        diagnosticMessageAsString(d),
+        d.getSeverity()
+      )
+    )
+    assertEquals(
+      expected,
+      actual,
+      s"Expected [${expected.mkString(", ")}] but got [${actual.mkString(", ")}]"
+    )
+    additionalChecks(diagnostics.toList)
+}
+
+class BaseDiagnosticsSuite extends PcAssertions with DiagnosticTestHelpers:
+
+  def options: List[String] = Nil
+
+  val pc = RawScalaPresentationCompiler().newInstance(
+    "",
+    TestResources.classpath.asJava,
+    options.asJava
+  )
+
+  def getDiagnostics(text: String): List[Diagnostic] = {
+    pc
+      .didChange(
+        TestVirtualFileParams(URI.create("file:/Diagnostic.scala"), text)
+      )
+      .asScala
+      .toList
+  }

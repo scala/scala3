@@ -42,6 +42,23 @@ Vals
 Class
 <empty>.Vals
 <init>
+27
+28
+2
+<none>
+Literal
+false
+0
+false
+1
+
+2
+lifting/test.scala
+<empty>
+Vals
+Class
+<empty>.Vals
+<init>
 41
 57
 3
@@ -52,24 +69,58 @@ false
 false
 l :: List(1,2,3)
 
-2
+3
 lifting/test.scala
 <empty>
 Vals
 Class
 <empty>.Vals
 <init>
-46
-57
+51
+52
 3
-apply
-Apply
+<none>
+Literal
 false
 0
 false
-List(1,2,3)
+1
 
+4
+lifting/test.scala
+<empty>
+Vals
+Class
+<empty>.Vals
+<init>
+53
+54
 3
+<none>
+Literal
+false
+0
+false
+2
+
+5
+lifting/test.scala
+<empty>
+Vals
+Class
+<empty>.Vals
+<init>
+55
+56
+3
+<none>
+Literal
+false
+0
+false
+3
+
+6
 lifting/test.scala
 <empty>
 A
@@ -86,57 +137,6 @@ false
 false
 "string" + a + "." + b + "." + c
 
-4
-lifting/test.scala
-<empty>
-A
-Class
-<empty>.A
-msg
-104
-132
-6
-+
-Apply
-false
-0
-false
-"string" + a + "." + b + "."
-
-5
-lifting/test.scala
-<empty>
-A
-Class
-<empty>.A
-msg
-104
-126
-6
-+
-Apply
-false
-0
-false
-"string" + a + "." + b
-
-6
-lifting/test.scala
-<empty>
-A
-Class
-<empty>.A
-msg
-104
-122
-6
-+
-Apply
-false
-0
-false
-"string" + a + "."
-
 7
 lifting/test.scala
 <empty>
@@ -145,14 +145,14 @@ Class
 <empty>.A
 msg
 104
-116
+112
 6
-+
-Apply
+<none>
+Literal
 false
 0
 false
-"string" + a
+"string"
 
 8
 lifting/test.scala
@@ -178,6 +178,23 @@ A
 Class
 <empty>.A
 integer
+158
+159
+7
+<none>
+Literal
+false
+0
+false
+0
+
+10
+lifting/test.scala
+<empty>
+A
+Class
+<empty>.A
+integer
 139
 150
 7
@@ -188,7 +205,7 @@ false
 false
 def integer
 
-10
+11
 lifting/test.scala
 <empty>
 A
@@ -205,7 +222,7 @@ false
 false
 def ex
 
-11
+12
 lifting/test.scala
 <empty>
 test$package
@@ -222,7 +239,41 @@ false
 false
 A()
 
-12
+13
+lifting/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+235
+238
+13
+<none>
+Literal
+false
+0
+false
+123
+
+14
+lifting/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+f
+251
+253
+14
+<none>
+Literal
+false
+0
+false
+-1
+
+15
 lifting/test.scala
 <empty>
 test$package
@@ -239,7 +290,7 @@ false
 false
 def f
 
-13
+16
 lifting/test.scala
 <empty>
 test$package
@@ -256,7 +307,24 @@ false
 false
 a.msg(i, 0, a.integer)
 
-14
+17
+lifting/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+273
+274
+15
+<none>
+Literal
+false
+0
+false
+0
+
+18
 lifting/test.scala
 <empty>
 test$package
@@ -273,7 +341,7 @@ false
 false
 a.integer
 
-15
+19
 lifting/test.scala
 <empty>
 test$package
@@ -290,7 +358,7 @@ false
 false
 println(x)
 
-16
+20
 lifting/test.scala
 <empty>
 test$package
@@ -307,24 +375,24 @@ false
 false
 a.ex.msg(i, 0, a.ex.integer)
 
-17
+21
 lifting/test.scala
 <empty>
 test$package
 Object
 <empty>.test$package
 Test
-306
-310
+318
+319
 17
-ex
-Select
+<none>
+Literal
 false
 0
 false
-a.ex
+0
 
-18
+22
 lifting/test.scala
 <empty>
 test$package
@@ -341,7 +409,7 @@ false
 false
 a.ex
 
-19
+23
 lifting/test.scala
 <empty>
 test$package
@@ -358,7 +426,7 @@ false
 false
 a.ex.integer
 
-20
+24
 lifting/test.scala
 <empty>
 test$package
@@ -375,7 +443,7 @@ false
 false
 println(x)
 
-21
+25
 lifting/test.scala
 <empty>
 test$package
@@ -392,7 +460,7 @@ false
 false
 a.msg(f(), 0, i)
 
-22
+26
 lifting/test.scala
 <empty>
 test$package
@@ -409,7 +477,24 @@ false
 false
 f()
 
-23
+27
+lifting/test.scala
+<empty>
+test$package
+Object
+<empty>.test$package
+Test
+365
+366
+19
+<none>
+Literal
+false
+0
+false
+0
+
+28
 lifting/test.scala
 <empty>
 test$package
@@ -426,7 +511,7 @@ false
 false
 println(x)
 
-24
+29
 lifting/test.scala
 <empty>
 test$package

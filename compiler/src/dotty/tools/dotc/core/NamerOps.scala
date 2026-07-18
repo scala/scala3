@@ -5,6 +5,8 @@ package core
 import Contexts.*, Symbols.*, Types.*, Flags.*, Scopes.*, Decorators.*, Names.*, NameOps.*
 import SymDenotations.{LazyType, SymDenotation}, StdNames.nme
 import ContextOps.enter
+import config.Feature
+import reporting.AlreadyDefined
 import TypeApplications.EtaExpansion
 import collection.mutable
 import config.Printers.typr
@@ -52,7 +54,7 @@ object NamerOps:
    */
   def addParamRefinements(resType: Type, paramss: List[List[Symbol]])(using Context): Type =
     paramss.flatten.foldLeft(resType): (rt, param) =>
-      if param.is(Tracked) then RefinedType(rt, param.name, param.termRef)
+      if param.is(Tracked) then RefinedType.precise(rt, param.name, param.termRef)
       else rt
 
   /** Split dependent class refinements off parent type. Add them to `refinements`,
@@ -223,8 +225,9 @@ object NamerOps:
     companion
 
   def typeConstructorCompanion(tsym: Symbol, prefix: Type, proxy: Symbol)(using Context): TermSymbol =
-    newSymbol(tsym.owner, tsym.name.toTermName,
-        ConstructorCompanionFlags | StableRealizable | Method, ExprType(prefix.select(proxy)), coord = tsym.coord)
+    inline def core = ConstructorCompanionFlags | StableRealizable | Method
+    inline def flags = if tsym.is(Exported) then core | Exported else core
+    newSymbol(tsym.owner, tsym.name.toTermName, flags, ExprType(prefix.select(proxy)), coord = tsym.coord)
 
   /** Add all necessary constructor proxy symbols for members of class `cls`. This means:
    *
@@ -307,7 +310,7 @@ object NamerOps:
    *  The context-bound companion has as name the name of `tsym` translated to
    *  a term name. We create a synthetic val of the form
    *
-   *    val A: `<context-bound-companion>`[witnessRef1 | ... | witnessRefN]
+   *    val A: `<context-bound-companion>`[witnessRef1] & ... & `<context-bound-companion>`[witnessRefN]
    *
    *  where
    *
@@ -325,8 +328,7 @@ object NamerOps:
             prefix.select(params.find(_.name == witnessName).get)
       else
         witnessNames.map(TermRef(prefix, _))
-    val cbtype = defn.CBCompanion.typeRef.appliedTo:
-      witnessRefs.reduce[Type](OrType(_, _, soft = false))
+    val cbtype = witnessRefs.map(defn.CBCompanion.typeRef.appliedTo).reduce(AndType.apply)
     val cbc = newSymbol(
         ctx.owner, companionName,
         (tsym.flagsUNSAFE & (AccessFlags)).toTermFlags | Synthetic,
@@ -358,10 +360,14 @@ object NamerOps:
    */
   def addDummyTermCaptureParam(param: Symbol)(using Context): Unit =
     val name = param.name.toTermName
-    val flags = (param.flagsUNSAFE & AccessFlags).toTermFlags | CaptureParam
-    val dummy = newSymbol(param.owner, name, flags, param.typeRef)
-    typr.println(i"Adding dummy term symbol $dummy for $param, flags = $flags")
-    ctx.enter(dummy)
+    val preExisting = ctx.effectiveScope.lookup(name)
+    if preExisting.exists then
+      report.error(AlreadyDefined(name, param.owner, preExisting, addingCaptureSet = true), param.srcPos)
+    else
+      val flags = (param.flagsUNSAFE & AccessFlags).toTermFlags | CaptureParam
+      val dummy = newSymbol(param.owner, name, flags, param.typeRef)
+      typr.println(i"Adding dummy term symbol $dummy for $param, flags = $flags")
+      ctx.enter(dummy)
 
   /** if `sym` is a term parameter or parameter accessor, map all occurrences of
    *  `into[T]` in its type to `T @$into`.

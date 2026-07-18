@@ -14,6 +14,8 @@ package scala.collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import java.lang.IllegalStateException
 
 import scala.collection.generic.{BitOperations, DefaultSerializationProxy}
@@ -22,8 +24,7 @@ import scala.annotation.tailrec
 import scala.annotation.unchecked.uncheckedVariance
 import scala.language.implicitConversions
 
-/** Utility class for long maps.
-  */
+/** Utility class for long maps. */
 private[immutable] object LongMapUtils extends BitOperations.Long {
   def branchMask(i: Long, j: Long) = highestOneBit(i ^ j)
 
@@ -44,16 +45,16 @@ private[immutable] object LongMapUtils extends BitOperations.Long {
 import LongMapUtils.{Long => _, _}
 
 /** A companion object for long maps.
-  *
-  *  @define Coll  `LongMap`
-  */
+ *
+ *  @define Coll  `LongMap`
+ */
 object LongMap {
   def empty[T]: LongMap[T]  = LongMap.Nil
   def singleton[T](key: Long, value: T): LongMap[T] = LongMap.Tip(key, value)
   def apply[T](elems: (Long, T)*): LongMap[T] =
     elems.foldLeft(empty[T])((x, y) => x.updated(y._1, y._2))
 
-  def from[V](coll: IterableOnce[(Long, V)]): LongMap[V] =
+  def from[V](coll: IterableOnce[(Long, V)]^): LongMap[V] =
     newBuilder[V].addAll(coll).result()
 
   def newBuilder[V]: Builder[(Long, V), LongMap[V]] =
@@ -65,7 +66,7 @@ object LongMap {
     // Important, don't remove this! See IntMap for explanation.
     override def equals(that : Any) = that match {
       case _: this.type  => true
-      case _: LongMap[_] => false // The only empty LongMaps are eq Nil
+      case _: LongMap[?] => false // The only empty LongMaps are eq Nil
       case _             => super.equals(that)
     }
   }
@@ -86,19 +87,19 @@ object LongMap {
   implicit def toFactory[V](dummy: LongMap.type): Factory[(Long, V), LongMap[V]] = ToFactory.asInstanceOf[Factory[(Long, V), LongMap[V]]]
 
   @SerialVersionUID(3L)
-  private[this] object ToFactory extends Factory[(Long, AnyRef), LongMap[AnyRef]] with Serializable {
-    def fromSpecific(it: IterableOnce[(Long, AnyRef)]): LongMap[AnyRef] = LongMap.from[AnyRef](it)
+  private object ToFactory extends Factory[(Long, AnyRef), LongMap[AnyRef]] with Serializable {
+    def fromSpecific(it: IterableOnce[(Long, AnyRef)]^): LongMap[AnyRef] = LongMap.from[AnyRef](it)
     def newBuilder: Builder[(Long, AnyRef), LongMap[AnyRef]] = LongMap.newBuilder[AnyRef]
   }
 
   implicit def toBuildFrom[V](factory: LongMap.type): BuildFrom[Any, (Long, V), LongMap[V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (Long, V), LongMap[V]]]
-  private[this] object ToBuildFrom extends BuildFrom[Any, (Long, AnyRef), LongMap[AnyRef]] {
-    def fromSpecific(from: Any)(it: IterableOnce[(Long, AnyRef)]) = LongMap.from(it)
+  private object ToBuildFrom extends BuildFrom[Any, (Long, AnyRef), LongMap[AnyRef]] {
+    def fromSpecific(from: Any)(it: IterableOnce[(Long, AnyRef)]^) = LongMap.from(it)
     def newBuilder(from: Any) = LongMap.newBuilder[AnyRef]
   }
 
   implicit def iterableFactory[V]: Factory[(Long, V), LongMap[V]] = toFactory(this)
-  implicit def buildFromLongMap[V]: BuildFrom[LongMap[_], (Long, V), LongMap[V]] = toBuildFrom(this)
+  implicit def buildFromLongMap[V]: BuildFrom[LongMap[?], (Long, V), LongMap[V]] = toBuildFrom(this)
 }
 
 // Iterator over a non-empty LongMap.
@@ -122,9 +123,11 @@ private[immutable] abstract class LongMapIterator[V, T](it: LongMap[V]) extends 
   }
   push(it)
 
-  /**
-    * What value do we assign to a tip?
-    */
+  /** What value do we assign to a tip?
+   *
+   *  @param tip the leaf node to extract a value from
+   *  @return the element of type `T` (e.g. the key, the value, or the key-value pair) extracted from `tip`
+   */
   def valueOf(tip: LongMap.Tip[V]): T
 
   def hasNext = index != 0
@@ -159,25 +162,24 @@ private[immutable] class LongMapKeyIterator[V](it: LongMap[V]) extends LongMapIt
   def valueOf(tip: LongMap.Tip[V]) = tip.key
 }
 
-/**
-  *  Specialised immutable map structure for long keys, based on
-  *  [[https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.37.5452 Fast Mergeable Long Maps]]
-  *  by Okasaki and Gill. Essentially a trie based on binary digits of the integers.
-  *
-  *  Note: This class is as of 2.8 largely superseded by HashMap.
-  *
-  *  @tparam T      type of the values associated with the long keys.
-  *
-  *  @define Coll `immutable.LongMap`
-  *  @define coll immutable long integer map
-  *  @define mayNotTerminateInf
-  *  @define willNotTerminateInf
-  */
+/** Specialised immutable map structure for long keys, based on
+ *  [Fast Mergeable Long Maps](https://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.37.5452)
+ *  by Okasaki and Gill. Essentially a trie based on binary digits of the integers.
+ *
+ *  Note: This class is as of 2.8 largely superseded by HashMap.
+ *
+ *  @tparam T      type of the values associated with the long keys.
+ *
+ *  @define Coll `immutable.LongMap`
+ *  @define coll immutable long integer map
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ */
 sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
   with StrictOptimizedMapOps[Long, T, Map, LongMap[T]]
   with Serializable {
 
-  override protected def fromSpecific(coll: scala.collection.IterableOnce[(Long, T)] @uncheckedVariance): LongMap[T] = {
+  override protected def fromSpecific(coll: (scala.collection.IterableOnce[(Long, T)]^) @uncheckedVariance): LongMap[T] = {
     //TODO should this be the default implementation of this method in StrictOptimizedIterableOps?
     val b = newSpecificBuilder
     b.sizeHint(coll)
@@ -197,19 +199,20 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
     buffer.toList
   }
 
-  /**
-    * Iterator over key, value pairs of the map in unsigned order of the keys.
-    *
-    * @return an iterator over pairs of long keys and corresponding values.
-    */
+  /** Iterator over key, value pairs of the map in unsigned order of the keys.
+   *
+   *  @return an iterator over pairs of long keys and corresponding values.
+   */
   def iterator: Iterator[(Long, T)] = this match {
     case LongMap.Nil => Iterator.empty
     case _ => new LongMapEntryIterator(this)
   }
 
-  /**
-    * Loops over the key, value pairs of the map in unsigned order of the keys.
-    */
+  /** Loops over the key, value pairs of the map in unsigned order of the keys.
+   *
+   *  @tparam U the return type of the function `f`, used only for side effects
+   *  @param f the function applied to each key-value pair in the map
+   */
   override final def foreach[U](f: ((Long, T)) => U): Unit = this match {
     case LongMap.Bin(_, _, left, right) => { left.foreach(f); right.foreach(f) }
     case LongMap.Tip(key, value) => f((key, value))
@@ -227,12 +230,12 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
     case _ => new LongMapKeyIterator(this)
   }
 
-  /**
-    * Loop over the keys of the map. The same as keys.foreach(f), but may
-    * be more efficient.
-    *
-    * @param f The loop body
-    */
+  /** Loop over the keys of the map. The same as keys.foreach(f), but may
+   *  be more efficient.
+   *
+   *  @tparam U the return type of the function `f`, used only for side effects
+   *  @param f The loop body
+   */
   final def foreachKey[U](f: Long => U): Unit = this match {
     case LongMap.Bin(_, _, left, right) => { left.foreachKey(f); right.foreachKey(f) }
     case LongMap.Tip(key, _) => f(key)
@@ -244,19 +247,19 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
     case _ => new LongMapValueIterator(this)
   }
 
-  /**
-    * Loop over the values of the map. The same as values.foreach(f), but may
-    * be more efficient.
-    *
-    * @param f The loop body
-    */
+  /** Loop over the values of the map. The same as values.foreach(f), but may
+   *  be more efficient.
+   *
+   *  @tparam U the return type of the function `f`, used only for side effects
+   *  @param f The loop body
+   */
   final def foreachValue[U](f: T => U): Unit = this match {
     case LongMap.Bin(_, _, left, right) => { left.foreachValue(f); right.foreachValue(f) }
     case LongMap.Tip(_, value) => f(value)
     case LongMap.Nil =>
   }
 
-  override protected[this] def className = "LongMap"
+  override protected def className = "LongMap"
 
   override def isEmpty = this eq LongMap.Nil
   override def knownSize: Int = if (isEmpty) 0 else super.knownSize
@@ -319,23 +322,28 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
     case LongMap.Nil => LongMap.Tip(key, value)
   }
 
-  /**
-    * Updates the map, using the provided function to resolve conflicts if the key is already present.
-    *
-    * Equivalent to
-    * {{{
-    *   this.get(key) match {
-    *     case None => this.update(key, value)
-    *     case Some(oldvalue) => this.update(key, f(oldvalue, value)
-    *   }
-    * }}}
-    *
-    * @tparam S     The supertype of values in this `LongMap`.
-    * @param key    The key to update.
-    * @param value  The value to use if there is no conflict.
-    * @param f      The function used to resolve conflicts.
-    * @return       The updated map.
-    */
+  /** Updates the map, using the provided function to resolve conflicts if the key is already present.
+   *
+   *  Equivalent to
+   *  ```scala sc-name:updateWithExampleContext sc-hidden
+   *  val map = LongMap(1L -> "one", 2L -> "two")
+   *  val key = 2L
+   *  val value = "deux"
+   *  val f = (oldValue: String, newValue: String) => oldValue + "-" + newValue
+   *  ```
+   *  ```scala sc-compile-with:updateWithExampleContext
+   *   map.get(key) match {
+   *     case None => map.updated(key, value)
+   *     case Some(oldvalue) => map.updated(key, f(oldvalue, value))
+   *   }
+   *  ```
+   *
+   *  @tparam S     The supertype of values in this `LongMap`.
+   *  @param key    The key to update.
+   *  @param value  The value to use if there is no conflict.
+   *  @param f      The function used to resolve conflicts.
+   *  @return       The updated map.
+   */
   def updateWith[S >: T](key: Long, value: S, f: (T, S) => S): LongMap[S] = this match {
     case LongMap.Bin(prefix, mask, left, right) =>
       if (!hasMatch(key, prefix, mask)) join(key, LongMap.Tip(key, value), prefix, this)
@@ -358,15 +366,14 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
     case LongMap.Nil => LongMap.Nil
   }
 
-  /**
-    * A combined transform and filter function. Returns an `LongMap` such that
-    * for each `(key, value)` mapping in this map, if `f(key, value) == None`
-    * the map contains no mapping for key, and if `f(key, value)`.
-    *
-    * @tparam S    The type of the values in the resulting `LongMap`.
-    * @param f     The transforming function.
-    * @return      The modified map.
-    */
+  /** A combined transform and filter function. Returns an `LongMap` such that
+   *  for each `(key, value)` mapping in this map, if `f(key, value) == None`
+   *  the map contains no mapping for key, and if `f(key, value)`.
+   *
+   *  @tparam S    The type of the values in the resulting `LongMap`.
+   *  @param f     The transforming function.
+   *  @return      The modified map.
+   */
   def modifyOrRemove[S](f: (Long, T) => Option[S]): LongMap[S] = this match {
     case LongMap.Bin(prefix, mask, left, right) => {
       val newleft = left.modifyOrRemove(f)
@@ -384,14 +391,13 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
     case LongMap.Nil => LongMap.Nil
   }
 
-  /**
-    * Forms a union map with that map, using the combining function to resolve conflicts.
-    *
-    * @tparam S      The type of values in `that`, a supertype of values in `this`.
-    * @param that    The map to form a union with.
-    * @param f       The function used to resolve conflicts between two mappings.
-    * @return        Union of `this` and `that`, with identical key conflicts resolved using the function `f`.
-    */
+  /** Forms a union map with that map, using the combining function to resolve conflicts.
+   *
+   *  @tparam S      The type of values in `that`, a supertype of values in `this`.
+   *  @param that    The map to form a union with.
+   *  @param f       The function used to resolve conflicts between two mappings.
+   *  @return        Union of `this` and `that`, with identical key conflicts resolved using the function `f`.
+   */
   def unionWith[S >: T](that: LongMap[S], f: (Long, S, S) => S): LongMap[S] = (this, that) match{
     case (LongMap.Bin(p1, m1, l1, r1), that@(LongMap.Bin(p2, m2, l2, r2))) =>
       if (shorter(m1, m2)) {
@@ -413,17 +419,16 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
     case (x, LongMap.Nil) => x
   }
 
-  /**
-    * Forms the intersection of these two maps with a combining function. The
-    * resulting map is a map that has only keys present in both maps and has
-    * values produced from the original mappings by combining them with `f`.
-    *
-    * @tparam S      The type of values in `that`.
-    * @tparam R      The type of values in the resulting `LongMap`.
-    * @param that    The map to intersect with.
-    * @param f       The combining function.
-    * @return        Intersection of `this` and `that`, with values for identical keys produced by function `f`.
-    */
+  /** Forms the intersection of these two maps with a combining function. The
+   *  resulting map is a map that has only keys present in both maps and has
+   *  values produced from the original mappings by combining them with `f`.
+   *
+   *  @tparam S      The type of values in `that`.
+   *  @tparam R      The type of values in the resulting `LongMap`.
+   *  @param that    The map to intersect with.
+   *  @param f       The combining function.
+   *  @return        Intersection of `this` and `that`, with values for identical keys produced by function `f`.
+   */
   def intersectionWith[S, R](that: LongMap[S], f: (Long, T, S) => R): LongMap[R] = (this, that) match {
     case (LongMap.Bin(p1, m1, l1, r1), that@LongMap.Bin(p2, m2, l2, r2)) =>
       if (shorter(m1, m2)) {
@@ -447,14 +452,13 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
     case (_, _) => LongMap.Nil
   }
 
-  /**
-    * Left biased intersection. Returns the map that has all the same mappings as this but only for keys
-    * which are present in the other map.
-    *
-    * @tparam R      The type of values in `that`.
-    * @param that    The map to intersect with.
-    * @return        A map with all the keys both in `this` and `that`, mapped to corresponding values from `this`.
-    */
+  /** Left biased intersection. Returns the map that has all the same mappings as this but only for keys
+   *  which are present in the other map.
+   *
+   *  @tparam R      The type of values in `that`.
+   *  @param that    The map to intersect with.
+   *  @return        A map with all the keys both in `this` and `that`, mapped to corresponding values from `this`.
+   */
   def intersection[R](that: LongMap[R]): LongMap[T] =
     this.intersectionWith(that, (key: Long, value: T, value2: R) => value)
 
@@ -477,15 +481,15 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
 
   def map[V2](f: ((Long, T)) => (Long, V2)): LongMap[V2] = LongMap.from(new View.Map(coll, f))
 
-  def flatMap[V2](f: ((Long, T)) => IterableOnce[(Long, V2)]): LongMap[V2] = LongMap.from(new View.FlatMap(coll, f))
+  def flatMap[V2](f: ((Long, T)) => IterableOnce[(Long, V2)]^): LongMap[V2] = LongMap.from(new View.FlatMap(coll, f))
 
-  override def concat[V1 >: T](that: scala.collection.IterableOnce[(Long, V1)]): LongMap[V1] =
+  override def concat[V1 >: T](that: scala.collection.IterableOnce[(Long, V1)]^): LongMap[V1] =
     super.concat(that).asInstanceOf[LongMap[V1]] // Already has correct type but not declared as such
 
-  override def ++ [V1 >: T](that: scala.collection.IterableOnce[(Long, V1)]): LongMap[V1] = concat(that)
+  override def ++ [V1 >: T](that: scala.collection.IterableOnce[(Long, V1)]^): LongMap[V1] = concat(that)
 
   def collect[V2](pf: PartialFunction[(Long, T), (Long, V2)]): LongMap[V2] =
     strictOptimizedCollect(LongMap.newBuilder[V2], pf)
 
-  protected[this] def writeReplace(): AnyRef = new DefaultSerializationProxy(LongMap.toFactory[T](LongMap), this)
+  protected def writeReplace(): AnyRef = new DefaultSerializationProxy(LongMap.toFactory[T](LongMap), this)
 }

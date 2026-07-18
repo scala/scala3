@@ -1,4 +1,4 @@
-import caps.{Capability, Sharable}
+import caps.{SharedCapability, Capability, fresh}
 
 def f1(c: Capability): () ->{c} c.type = () => c // ok
 
@@ -14,7 +14,7 @@ def f3: Int =
   x
 
 def foo() =
-  val x: Sharable = ???
+  val x: SharedCapability = ???
   val y: Capability = x
   val x2: () ->{x} Capability = ???
   val y2: () ->{x} Capability = x2
@@ -22,8 +22,8 @@ def foo() =
   val z1: () => Capability = f1(x)
   def h[X](a: X)(b: X) = a
 
-  val z2: (y: Unit) ->{x} Capability^ =
-    if x == null then (y: Unit) => x else (y: Unit) => new Capability() {}
+  val z2: (y: Unit) ->{x} Capability^{fresh} =
+    if x == null then (y: Unit) => x else (y: Unit) => new SharedCapability() {}
   // z2's type cannot be inferred, see neg test
   //val z3 =
   //  if x == null then (y: Unit) => x else (y: Unit) => new Capability() {}

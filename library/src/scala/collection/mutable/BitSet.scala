@@ -15,25 +15,28 @@ package collection
 package mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.collection.immutable.Range
 import BitSetOps.{LogWL, MaxSize}
 import scala.annotation.implicitNotFound
 
-/**
-  * A class for mutable bitsets.
-  *
-  * $bitsetinfo
-  *
-  * @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#mutable-bitsets "Scala's Collection Library overview"]]
-  * section on `Mutable Bitsets` for more information.
-  *
-  * @define Coll `BitSet`
-  * @define coll bitset
-  * @define orderDependent
-  * @define orderDependentFold
-  * @define mayNotTerminateInf
-  * @define willNotTerminateInf
-  */
+/** A class for mutable bitsets.
+ *
+ *  $bitsetinfo
+ *
+ *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-mutable-collection-classes.html#mutable-bitsets)
+ *  section on `Mutable Bitsets` for more information.
+ *
+ *  @define Coll `BitSet`
+ *  @define coll bitset
+ *  @define orderDependent
+ *  @define orderDependentFold
+ *  @define mayNotTerminateInf
+ *  @define willNotTerminateInf
+ *
+ *  @param protected[collection] final var elems the underlying array of `Long` words storing the bits; used directly without copying, so external mutations will affect this bitset
+ */
 class BitSet(protected[collection] final var elems: Array[Long])
   extends AbstractSet[Int]
     with SortedSet[Int]
@@ -48,7 +51,7 @@ class BitSet(protected[collection] final var elems: Array[Long])
 
   def this() = this(0)
 
-  override protected def fromSpecific(coll: IterableOnce[Int]): BitSet = bitSetFactory.fromSpecific(coll)
+  override protected def fromSpecific(coll: IterableOnce[Int]^): BitSet = bitSetFactory.fromSpecific(coll)
   override protected def newSpecificBuilder: Builder[Int, BitSet] = bitSetFactory.newBuilder
   override def empty: BitSet = bitSetFactory.empty
 
@@ -106,10 +109,10 @@ class BitSet(protected[collection] final var elems: Array[Long])
   def unconstrained: collection.Set[Int] = this
 
   /** Updates this bitset to the union with another bitset by performing a bitwise "or".
-    *
-    *  @param   other  the bitset to form the union with.
-    *  @return  the bitset itself.
-    */
+   *
+   *  @param   other  the bitset to form the union with.
+   *  @return  the bitset itself.
+   */
   def |= (other: collection.BitSet): this.type = {
     ensureCapacity(other.nwords - 1)
     var i = 0
@@ -121,10 +124,10 @@ class BitSet(protected[collection] final var elems: Array[Long])
     this
   }
   /** Updates this bitset to the intersection with another bitset by performing a bitwise "and".
-    *
-    *  @param   other  the bitset to form the intersection with.
-    *  @return  the bitset itself.
-    */
+   *
+   *  @param   other  the bitset to form the intersection with.
+   *  @return  the bitset itself.
+   */
   def &= (other: collection.BitSet): this.type = {
     // Different from other operations: no need to ensure capacity because
     // anything beyond the capacity is 0.  Since we use other.word which is 0
@@ -138,10 +141,10 @@ class BitSet(protected[collection] final var elems: Array[Long])
     this
   }
   /** Updates this bitset to the symmetric difference with another bitset by performing a bitwise "xor".
-    *
-    *  @param   other  the bitset to form the symmetric difference with.
-    *  @return  the bitset itself.
-    */
+   *
+   *  @param   other  the bitset to form the symmetric difference with.
+   *  @return  the bitset itself.
+   */
   def ^= (other: collection.BitSet): this.type = {
     ensureCapacity(other.nwords - 1)
     var i = 0
@@ -154,10 +157,10 @@ class BitSet(protected[collection] final var elems: Array[Long])
     this
   }
   /** Updates this bitset to the difference with another bitset by performing a bitwise "and-not".
-    *
-    *  @param   other  the bitset to form the difference with.
-    *  @return  the bitset itself.
-    */
+   *
+   *  @param   other  the bitset to form the difference with.
+   *  @return  the bitset itself.
+   */
   def &~= (other: collection.BitSet): this.type = {
     var i = 0
     val max = Math.min(nwords, other.nwords)
@@ -176,19 +179,19 @@ class BitSet(protected[collection] final var elems: Array[Long])
   override def map[B](f: Int => B)(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
     super[StrictOptimizedSortedSetOps].map(f)
 
-  override def flatMap(f: Int => IterableOnce[Int]): BitSet = strictOptimizedFlatMap(newSpecificBuilder, f)
-  override def flatMap[B](f: Int => IterableOnce[B])(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
+  override def flatMap(f: Int => IterableOnce[Int]^): BitSet = strictOptimizedFlatMap(newSpecificBuilder, f)
+  override def flatMap[B](f: Int => IterableOnce[B]^)(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
     super[StrictOptimizedSortedSetOps].flatMap(f)
 
-  override def collect(pf: PartialFunction[Int, Int]): BitSet = strictOptimizedCollect(newSpecificBuilder, pf)
-  override def collect[B](pf: scala.PartialFunction[Int, B])(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
+  override def collect(pf: PartialFunction[Int, Int]^): BitSet = strictOptimizedCollect(newSpecificBuilder, pf)
+  override def collect[B](pf: scala.PartialFunction[Int, B]^)(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
     super[StrictOptimizedSortedSetOps].collect(pf)
 
   // necessary for disambiguation
-  override def zip[B](that: IterableOnce[B])(implicit @implicitNotFound(collection.BitSet.zipOrdMsg) ev: Ordering[(Int, B)]): SortedSet[(Int, B)] =
+  override def zip[B](that: IterableOnce[B]^)(implicit @implicitNotFound(collection.BitSet.zipOrdMsg) ev: Ordering[(Int, B)]): SortedSet[(Int, B)] =
     super.zip(that)
 
-  override def addAll(xs: IterableOnce[Int]): this.type = xs match {
+  override def addAll(xs: IterableOnce[Int]^): this.type = xs match {
     case bs: collection.BitSet =>
       this |= bs
     case range: Range =>
@@ -214,7 +217,7 @@ class BitSet(protected[collection] final var elems: Array[Long])
       }
       this
 
-    case sorted: collection.SortedSet[Int] =>
+    case sorted: collection.SortedSet[Int @unchecked] =>
       // if `sorted` is using the regular Int ordering, ensure capacity for the largest
       // element up front to avoid multiple resizing allocations
       if (sorted.nonEmpty) {
@@ -261,12 +264,12 @@ class BitSet(protected[collection] final var elems: Array[Long])
       super.subsetOf(other)
   }
 
-  override def subtractAll(xs: IterableOnce[Int]): this.type = xs match {
+  override def subtractAll(xs: IterableOnce[Int]^): this.type = xs match {
     case bs: collection.BitSet => this &~= bs
     case other => super.subtractAll(other)
   }
 
-  protected[this] def writeReplace(): AnyRef = new BitSet.SerializationProxy(this)
+  protected def writeReplace(): AnyRef = new BitSet.SerializationProxy(this)
 
   override def diff(that: collection.Set[Int]): BitSet = that match {
     case bs: collection.BitSet =>
@@ -327,7 +330,7 @@ class BitSet(protected[collection] final var elems: Array[Long])
     // * over-allocating -- the resulting array will be exactly the right size
     // * multiple resizing allocations -- the array is allocated one time, not log(n) times.
     var i = nwords - 1
-    var newArray: Array[Long] = null
+    var newArray: Array[Long] | Null = null
     while (i >= 0) {
       val w = BitSetOps.computeWordForFilter(pred, isFlipped, word(i), i)
       if (w != 0L) {
@@ -361,13 +364,17 @@ class BitSet(protected[collection] final var elems: Array[Long])
 @SerialVersionUID(3L)
 object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
-  def fromSpecific(it: scala.collection.IterableOnce[Int]): BitSet = Growable.from(empty, it)
+  def fromSpecific(it: scala.collection.IterableOnce[Int]^): BitSet = Growable.from(empty, it)
 
   def empty: BitSet = new BitSet()
 
   def newBuilder: Builder[Int, BitSet] = new GrowableBuilder(empty)
 
-  /** A bitset containing all the bits in an array */
+  /** A bitset containing all the bits in an array.
+   *
+   *  @param elems the array of `Long` words representing the bits; a defensive copy is made
+   *  @return a new bitset backed by a copy of `elems`
+   */
   def fromBitMask(elems: Array[Long]): BitSet = {
     val len = elems.length
     if (len == 0) empty
@@ -378,8 +385,11 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
   }
 
   /** A bitset containing all the bits in an array, wrapping the existing
-    *  array without copying.
-    */
+   *  array without copying.
+   *
+   *  @param elems the array of `Long` words representing the bits, used directly without copying; the caller must not mutate the array afterward
+   *  @return a new bitset backed directly by `elems`
+   */
   def fromBitMaskNoCopy(elems: Array[Long]): BitSet = {
     val len = elems.length
     if (len == 0) empty
@@ -388,6 +398,6 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   @SerialVersionUID(3L)
   private final class SerializationProxy(coll: BitSet) extends scala.collection.BitSet.SerializationProxy(coll) {
-    protected[this] def readResolve(): Any = BitSet.fromBitMaskNoCopy(elems)
+    protected def readResolve(): Any = BitSet.fromBitMaskNoCopy(elems)
   }
 }

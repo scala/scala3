@@ -11,9 +11,11 @@ import NameOps.*
 import util.Spans.NoSpan
 import util.SrcPos
 import config.Feature
+import inlines.Inlines
 import reporting.*
+import Message.Note
 import collection.mutable
-
+import cc.isCaptureChecking
 
 object ErrorReporting {
 
@@ -70,15 +72,6 @@ object ErrorReporting {
           case tp: MatchType => MatchTypeTrace.record(tp.tryNormalize)
           case _ => foldOver(s, tp)
     tps.foldLeft("")(collectMatchTrace)
-
-  /** A mixin trait that can produce added elements for an error message */
-  trait Addenda:
-    self =>
-    def toAdd(using Context): List[String] = Nil
-    def ++ (follow: Addenda) = new Addenda:
-      override def toAdd(using Context) = self.toAdd ++ follow.toAdd
-
-  object NothingToAdd extends Addenda
 
   class Errors(using Context) {
 
@@ -176,7 +169,7 @@ object ErrorReporting {
 
     def patternConstrStr(tree: Tree): String = ???
 
-    def typeMismatch(tree: Tree, pt: Type, addenda: Addenda = NothingToAdd): Tree = {
+    def typeMismatch(tree: Tree, pt: Type, notes: List[Note] = Nil): Tree = {
       val normTp = normalize(tree.tpe, pt)
       val normPt = normalize(pt, pt)
 
@@ -193,13 +186,44 @@ object ErrorReporting {
         // use normalized types if that also shows an error, and both sides stripped
         // the same number of context functions. Use original types otherwise.
 
-      def missingElse = tree match
+      def moreNotes = tree match
         case If(_, _, elsep @ Literal(Constant(()))) if elsep.span.isSynthetic =>
-          "\nMaybe you are missing an else part for the conditional?"
-        case _ => ""
+          Note("\n\nMaybe you are missing an else part for the conditional?") :: Nil
+        case Literal(Constant(())) if tree.span.isZeroExtent =>
+          ctx.tree match
+            case Block(stats, EmptyTree) if stats.nonEmpty =>
+              def after = stats.last match
+                case stat: MemberDef => i" after the definition of `${stat.name}`"
+                case _ => ""
+              Note(i"\n\nMaybe the enclosing block is missing a final expression$after?") :: Nil
+            case _ =>
+              Nil
+        case _ if tree.span.isZeroExtent && isCaptureChecking =>
+          def synthText =
+            if tree.isInstanceOf[DefTree]
+            then i"definition of ${tree.symbol} in:  $tree"
+            else i"tree:  $tree"
+          Note(i"\n\nThe error occurred for a synthesized $synthText") :: Nil
+        case _ if tree.hasAttachment(Inlines.TransparentInlinedCall) =>
+          tree.getAttachment(Inlines.TransparentInlinedCall).map(transparentInlineExpansionNote).toList
+        case _ =>
+          Nil
 
-      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), (addenda.toAdd :+ missingElse)*))
+      errorTree(tree, TypeMismatch(treeTp, expectedTp, Some(tree), notes ++ moreNotes))
     }
+
+    def transparentInlineExpansionNote(inlined: String)(using Context): Note =
+      Note:
+        i"""
+           |
+           |Note: `$inlined` is transparent inline, but its precise type may not be available here.
+           |This can happen when:
+           |- It is used inside another inline body.
+           |- Its result type depends on another inline expansion or on an inline parameter."""
+
+    def transparentInlineSelectAddendum(qual: Tree)(using Context): String =
+      if qual.symbol.is(Transparent) then transparentInlineExpansionNote(qual.symbol.show).render
+      else ""
 
     /** A subtype log explaining why `found` does not conform to `expected` */
     def whyNoMatchStr(found: Type, expected: Type): String =

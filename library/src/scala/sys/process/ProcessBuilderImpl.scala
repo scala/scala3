@@ -28,37 +28,49 @@ import scala.util.control.NonFatal
 private[process] trait ProcessBuilderImpl {
   self: ProcessBuilder.type =>
 
-  private[process] class DaemonBuilder(underlying: ProcessBuilder) extends AbstractBuilder {
-    final def run(io: ProcessIO): Process = underlying.run(io.daemonized())
+  private[process] final class DaemonBuilder(underlying: ProcessBuilder) extends AbstractBuilder {
+    override def run(io: ProcessIO): Process = underlying.run(io.daemonized())
   }
 
-  private[process] class Dummy(override val toString: String, exitValue: => Int) extends AbstractBuilder {
+  private[process] final class Dummy(override val toString: String, exitValue: => Int) extends AbstractBuilder {
     override def run(io: ProcessIO): Process = new DummyProcess(exitValue)
     override def canPipeTo = true
   }
 
-  private[process] class URLInput(url: URL) extends IStreamBuilder(url.openStream(), url.toString)
-  private[process] class FileInput(file: File) extends IStreamBuilder(new FileInputStream(file), file.getAbsolutePath)
-  private[process] class FileOutput(file: File, append: Boolean) extends OStreamBuilder(new FileOutputStream(file, append), file.getAbsolutePath)
-
-  private[process] class OStreamBuilder(
-    stream: => OutputStream,
-    label: String
-  ) extends ThreadBuilder(label, _ writeInput protect(stream)) {
+  private[process] final class URLInput(url: URL) extends ThreadBuilder(url.toString) {
     override def hasExitValue = false
+    override def runImpl(io: ProcessIO): Unit = io.processOutput(protect(url.openStream()))
   }
 
-  private[process] class IStreamBuilder(
-    stream: => InputStream,
-    label: String
-  ) extends ThreadBuilder(label, _ processOutput protect(stream)) {
+  // Because the argument must be call-by-name to re-create the stream every time,
+  // this class should not be reused in a context where the call-by-name argument does something sensitive,
+  // like `url.openStream()`, since otherwise there is a hypothetical possibility of a Java deserialization gadget chain.
+  private[process] final class IStreamBuilder(stream: => InputStream, label: String) extends ThreadBuilder(label) {
     override def hasExitValue = false
+    override def runImpl(io: ProcessIO): Unit = io.processOutput(protect(stream))
+  }
+
+  private[process] final class FileInput(file: File) extends ThreadBuilder(file.getAbsolutePath) {
+    override def hasExitValue = false
+    override def runImpl(io: ProcessIO): Unit = io.processOutput(protect(new FileInputStream(file)))
+  }
+
+  // Same remark as IStreamBuilder
+  private[process] final class OStreamBuilder(stream: => OutputStream, label: String) extends ThreadBuilder(label) {
+    override def hasExitValue = false
+    override def runImpl(io: ProcessIO): Unit = io.writeInput(protect(stream))
+  }
+
+  private[process] final class FileOutput(file: File, append: Boolean) extends ThreadBuilder(file.getAbsolutePath) {
+    override def hasExitValue = false
+    override def runImpl(io: ProcessIO): Unit = io.writeInput(protect(new FileOutputStream(file, append)))
   }
 
   private[process] abstract class ThreadBuilder(
-    override val toString: String,
-    runImpl: ProcessIO => Unit
+    override val toString: String
   ) extends AbstractBuilder {
+
+    def runImpl(io: ProcessIO): Unit
 
     override def run(io: ProcessIO): Process = {
       val success = new LinkedBlockingQueue[Boolean](1)
@@ -74,7 +86,10 @@ private[process] trait ProcessBuilderImpl {
     }
   }
 
-  /** Represents a simple command without any redirection or combination. */
+  /** Represents a simple command without any redirection or combination.
+   *
+   *  @param p the underlying `java.lang.ProcessBuilder` used to start the external process
+   */
   private[process] class Simple(p: JProcessBuilder) extends AbstractBuilder {
     override def run(io: ProcessIO): Process = {
       import java.lang.ProcessBuilder.Redirect.{INHERIT => Inherit}
@@ -86,7 +101,7 @@ private[process] trait ProcessBuilderImpl {
       val process = p.start() // start the external process
 
       // spawn threads that process the input, output, and error streams using the functions defined in `io`
-      val inThread =
+      val inThread: Thread | Null =
         if (inherit || (writeInput eq BasicIO.connectNoOp)) null
         else Spawn("Simple-input", daemon = true)(writeInput(process.getOutputStream))
       val outThread = Spawn("Simple-output", daemonizeThreads)(processOutput(process.getInputStream()))
@@ -96,7 +111,7 @@ private[process] trait ProcessBuilderImpl {
 
       new SimpleProcess(process, inThread, outThread :: errorThread)
     }
-    override def toString = p.command.toString
+    override def toString() = p.command.toString
     override def canPipeTo = true
   }
 
@@ -104,7 +119,7 @@ private[process] trait ProcessBuilderImpl {
     protected def toSource: AbstractBuilder = this
     protected def toSink: AbstractBuilder = this
 
-    private[this] val defaultStreamCapacity = 4096
+    private val defaultStreamCapacity = 4096
 
     def #|(other: ProcessBuilder): ProcessBuilder  = {
       require(other.canPipeTo, "Piping to multiple processes is not supported.")
@@ -154,10 +169,12 @@ private[process] trait ProcessBuilderImpl {
      *
      *  Note: not in the public API because it's not fully baked, but I need the capability
      *  for fsc.
+     *
+     *  @return a new `ProcessBuilder` that runs this command with all I/O threads daemonized
      */
     def daemonized(): ProcessBuilder = new DaemonBuilder(this)
 
-    private[this] def slurp(log: Option[ProcessLogger], withIn: Boolean): String = {
+    private def slurp(log: Option[ProcessLogger], withIn: Boolean): String = {
       val buffer = new StringBuffer
       val code   = this ! BasicIO(withIn, buffer, log)
 
@@ -165,7 +182,7 @@ private[process] trait ProcessBuilderImpl {
       else scala.sys.error("Nonzero exit value: " + code)
     }
 
-    private[this] def lazyLines(
+    private def lazyLines(
       withInput: Boolean,
       nonZeroException: Boolean,
       log: Option[ProcessLogger],
@@ -189,7 +206,7 @@ private[process] trait ProcessBuilderImpl {
     }
 
     @deprecated("internal", since = "2.13.4")
-    private[this] def lineStream(
+    private def lineStream(
       withInput: Boolean,
       nonZeroException: Boolean,
       log: Option[ProcessLogger],
@@ -202,7 +219,7 @@ private[process] trait ProcessBuilderImpl {
       streamed.stream()
     }
 
-    private[this] def runBuffered(log: ProcessLogger, connectInput: Boolean) =
+    private def runBuffered(log: ProcessLogger, connectInput: Boolean) =
       log buffer run(log, connectInput).exitValue()
 
     def canPipeTo = false
@@ -223,13 +240,13 @@ private[process] trait ProcessBuilderImpl {
   }
 
   private[process] abstract class BasicBuilder extends AbstractBuilder {
-    protected[this] def checkNotThis(a: ProcessBuilder) = require(a != this, "Compound process '" + a + "' cannot contain itself.")
+    protected def checkNotThis(a: ProcessBuilder) = require(a != this, "Compound process '" + a + "' cannot contain itself.")
     final def run(io: ProcessIO): Process = {
       val p = createProcess(io)
       p.start()
       p
     }
-    protected[this] def createProcess(io: ProcessIO): BasicProcess
+    protected def createProcess(io: ProcessIO): BasicProcess
   }
 
   private[process] abstract class SequentialBuilder(
@@ -240,7 +257,7 @@ private[process] trait ProcessBuilderImpl {
 
     checkNotThis(a)
     checkNotThis(b)
-    override def toString = " ( " + a + " " + operatorString + " " + b + " ) "
+    override def toString() = " ( " + a + " " + operatorString + " " + b + " ) "
   }
 
   private[process] class PipedBuilder(

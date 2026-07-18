@@ -8,6 +8,7 @@ import Symbols.*
 import SymDenotations.LazyType
 import Decorators.*
 import util.Stats.*
+import config.Feature.sourceVersion
 import Names.*
 import StdNames.nme
 import Flags.{Module, Provisional}
@@ -16,6 +17,42 @@ import dotty.tools.dotc.config.Config
 object TypeApplications {
 
   type TypeParamInfo = ParamInfo.Of[TypeName]
+
+  /** If `tr` is an alias that expands - possibly through further alias
+   *  applications - to a match type, the underlying match-alias `TypeRef`;
+   *  otherwise `NoType`. E.g. `Decode` -> `Decode`,
+   *  `type DecodeAlias = Decode[S]` -> `Decode`,
+   *  `type IAnyType[T] = Tuple.Fold[T, Any, F]` -> `Tuple.Fold`.
+   */
+  private def underlyingMatchAlias(tr: TypeRef)(using Context): Type =
+    tr.info match
+      case ab: AliasingBounds if ab.isMatchAlias =>
+        tr
+      case ab: AliasingBounds =>
+        val body = ab.alias match
+          case alias: HKTypeLambda => alias.resType
+          case alias => alias
+        body match
+          case AppliedType(tycon: TypeRef, _) => underlyingMatchAlias(tycon)
+          case _ => NoType
+      case _ =>
+        NoType
+
+  /** True if `tr` expands to a match alias whose body does not refer back to it,
+   *  so keeping `tr`'s application in `AppliedType` form is sound and terminating.
+   *  Preserves the alias tycon for structural subtyping, including
+   *  indirections like `type DecodeAlias = Decode`. Recursive match aliases
+   *  (`Tuple.Fold`, `type IAnyType = Tuple.Fold[...]`) are excluded so their
+   *  reduced applied form hash-conses and subtyping terminates.
+   */
+  def isNonRecursiveMatchAlias(tr: TypeRef)(using Context): Boolean =
+    underlyingMatchAlias(tr) match
+      case underlying: TypeRef =>
+        underlying.info match
+          case ab: AliasingBounds => !ab.alias.existsPart(_.typeSymbol eq underlying.symbol)
+          case _ => false
+      case _ =>
+        false
 
   /** Assert type is not a TypeBounds instance and return it unchanged */
   def noBounds(tp: Type): Type = tp match {
@@ -392,31 +429,36 @@ class TypeApplications(val self: Type) extends AnyVal {
                 case _ => false
               }
             }
-            if ((dealiased eq stripped) || followAlias)
-              try
-                val instantiated = dealiased.instantiate(args)
-                if (followAlias) instantiated.normalized else instantiated
-              catch
-                case ex: IndexOutOfBoundsException =>
-                  AppliedType(self, args)
-                case ex: Throwable =>
-                  handleRecursive("try to instantiate", i"$dealiased[$args%, %]", ex)
+            if (dealiased eq stripped) || followAlias then
+              val paramsWithoutArg = dealiased.typeParams.drop(args.length).map(_.paramRef)
+              val hasParamsWithoutArg = paramsWithoutArg.nonEmpty && dealiased.resType.existsPart(paramsWithoutArg.contains, forceLazy = false)
+              if hasParamsWithoutArg then
+                AppliedType(self, args)
+              else
+                try
+                  val instantiated = dealiased.instantiate(args)
+                  if (followAlias) instantiated.normalized else instantiated
+                catch
+                  case ex: Throwable => handleRecursive("try to instantiate", i"$dealiased[$args%, %]", ex)
 
             else AppliedType(self, args)
           }
-          else dealiased.resType match {
-            case AppliedType(tycon, args1) if tycon.safeDealias ne tycon =>
-              // In this case we should always dealias since we cannot handle
-              // higher-kinded applications to wildcard arguments.
-              dealiased
-                .derivedLambdaType(resType = tycon.safeDealias.appliedTo(args1))
-                .appliedTo(args)
+          else stripped match
+            case tr: TypeRef if tr.info.isMatchAlias =>
+              AppliedType(stripped, args)
+            case tr: TypeRef if isNonRecursiveMatchAlias(tr) =>
+              dealiased.instantiate(args).normalized
             case _ =>
-              val reducer = new Reducer(dealiased, args)
-              val reduced = reducer(dealiased.resType)
-              if (reducer.allReplaced) reduced
-              else AppliedType(dealiased, args)
-          }
+              dealiased.resType match
+                case AppliedType(tycon, args1) if tycon.safeDealias ne tycon =>
+                  dealiased
+                    .derivedLambdaType(resType = tycon.safeDealias.appliedTo(args1))
+                    .appliedTo(args)
+                case _ =>
+                  val reducer = new Reducer(dealiased, args)
+                  val reduced = reducer(dealiased.resType)
+                  if reducer.allReplaced then reduced
+                  else AppliedType(dealiased, args)
         tryReduce
       case dealiased: PolyType =>
         dealiased.instantiate(args)
@@ -475,13 +517,20 @@ class TypeApplications(val self: Type) extends AnyVal {
       self.derivedExprType(tp.translateParameterized(from, to))
     case _ =>
       if (self.derivesFrom(from)) {
+        // NOTE: we assume the `To` class is covariant s.t.
+        // `To[T] X To[U] <:< To[T | U]` where X ::= `&` | `|`
         def elemType(tp: Type): Type = tp.widenDealias match
           case tp: OrType =>
             if tp.tp1.isBottomType then elemType(tp.tp2)
             else if tp.tp2.isBottomType then elemType(tp.tp1)
             else tp.derivedOrType(elemType(tp.tp1), elemType(tp.tp2))
-          case tp: AndType => tp.derivedAndType(elemType(tp.tp1), elemType(tp.tp2))
-          case _ => tp.baseType(from).argInfos.headOption.getOrElse(defn.NothingType)
+          case tp @ AndType(tp1, tp2) =>
+            if sourceVersion.enablesDistributeAnd
+            then tp.derivedAndType(elemType(tp1), elemType(tp2))
+            else OrType(elemType(tp1), elemType(tp2), soft = false)
+          case _ =>
+            tp.baseType(from).argInfos.headOption.getOrElse(defn.NothingType)
+        end elemType
         val arg = elemType(self)
         val arg1 = if (wildcardArg) TypeBounds.upper(arg) else arg
         to.typeRef.appliedTo(arg1)

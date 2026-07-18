@@ -15,7 +15,6 @@ import ast.TreeTypeMap
 import NameKinds.*
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.untpd
-import dotty.tools.dotc.config.ScalaRelease.*
 
 import dotty.tools.dotc.core.Annotations.*
 import dotty.tools.dotc.core.StdNames.*
@@ -86,7 +85,7 @@ class PickleQuotes extends MacroTransform {
         assert(Inlines.inInlineMethod)
       case _ =>
 
-  override def run(using Context): Unit =
+  override protected def run(using Context): Unit =
     if (ctx.compilationUnit.needsStaging) super.run
 
   protected def newTransformer(using Context): Transformer = new Transformer {
@@ -326,7 +325,7 @@ object PickleQuotes {
               defn.QuotedExprClass.typeRef.appliedTo(defn.AnyType)),
             args =>
               val cases = holeContents.zipWithIndex.map { case (splice, idx) =>
-                val defn.FunctionNOf(argTypes, defn.FunctionNOf(quotesType :: _, _, _), _) = splice.tpe: @unchecked
+                val defn.FunctionOf(argTypes, defn.FunctionOf(quotesType :: _, _, _), _) = splice.tpe: @unchecked
                 val rhs = {
                   val spliceArgs = argTypes.zipWithIndex.map { (argType, i) =>
                     args(1).select(nme.apply).appliedTo(Literal(Constant(i))).asInstance(argType)

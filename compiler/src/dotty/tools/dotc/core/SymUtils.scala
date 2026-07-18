@@ -42,8 +42,8 @@ class SymUtils:
     }
 
     /** All traits implemented by a class, except for those inherited through the superclass.
-    *  The empty list if `self` is a trait.
-    */
+     *  The empty list if `self` is a trait.
+     */
     def mixins(using Context): List[ClassSymbol] =
       if (self.is(Trait)) Nil
       else directlyInheritedTraits
@@ -88,10 +88,10 @@ class SymUtils:
     }
 
     def isContextBoundCompanion(using Context): Boolean =
-      self.is(Synthetic) && self.infoOrCompleter.typeSymbol == defn.CBCompanion
+      self.is(Synthetic) && self.infoOrCompleter.isContextBoundCompanion
 
     def isDummyCaptureParam(using Context): Boolean =
-      self.isAllOf(CaptureParam) && !(self.isClass || self.is(Method))
+      self.is(PhantomSymbol) && self.infoOrCompleter.typeSymbol != defn.CBCompanion
 
     /** Is this a case class for which a product mirror is generated?
     *  Excluded are value classes, abstract classes and case classes with more than one
@@ -126,6 +126,8 @@ class SymUtils:
         i"constructor of ${self.owner.sanitizedDescription}"
       else if self.isAnonymousFunction then
         i"anonymous function of type ${self.info}"
+      else if self.is(ModuleClass) then
+        self.sourceModule.sanitizedDescription
       else if self.name.toString.contains('$') then
         self.owner.sanitizedDescription
       else
@@ -250,6 +252,15 @@ class SymUtils:
       else if (self.exists) self.owner.enclosingMethodOrClass
       else NoSymbol
 
+    /** The closest enclosing method, class or object of this symbol.
+     *  Module references get mapped to their moduleClasses.
+     */
+    @tailrec final def enclosingMethodOrClassOrObject(using Context): Symbol =
+      if self.is(Method) || self.isClass then self
+      else if self.is(ModuleVal) then self.moduleClass
+      else if self.exists then self.owner.enclosingMethodOrClassOrObject
+      else NoSymbol
+
     /** Apply symbol/symbol substitution to this symbol */
     def subst(from: List[Symbol], to: List[Symbol]): Symbol = {
       @tailrec def loop(from: List[Symbol], to: List[Symbol]): Symbol =
@@ -313,7 +324,7 @@ class SymUtils:
       }
 
     def isField(using Context): Boolean =
-      self.isTerm && !self.is(Method)
+      self.isTerm && !self.isOneOf(Method | PhantomSymbol | NonMember | Package)
 
     def isEnumCase(using Context): Boolean =
       self.isAllOf(EnumCase, butNot = JavaDefined)

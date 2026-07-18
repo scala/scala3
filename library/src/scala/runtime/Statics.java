@@ -12,11 +12,6 @@
 
 package scala.runtime;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.lang.reflect.Field;
-
 /** Not for public consumption.  Usage by the runtime only.
  */
 
@@ -102,7 +97,7 @@ public final class Statics {
    * to preserve equals/hashCode alignment without compromising
    * the hashCode distribution, so Floats are only guaranteed
    * to have the same hashCode for whole Floats in the range
-   * Short.MinValue to Short.MaxValue (2^16 total.)
+   * Short.MinValue to Short.MaxValue (2<sup>16</sup> total.)
    *
    * Double has its hashCode altered to match the entire Int range,
    * but is not guaranteed beyond that.  (But could/should it be?
@@ -130,61 +125,22 @@ public final class Statics {
   private static int anyHashNumber(Number x) {
     if (x instanceof java.lang.Long)
       return longHash(((java.lang.Long)x).longValue());
-  
+
     if (x instanceof java.lang.Double)
       return doubleHash(((java.lang.Double)x).doubleValue());
-  
+
     if (x instanceof java.lang.Float)
       return floatHash(((java.lang.Float)x).floatValue());
 
     return x.hashCode();
   }
 
-  /** Used as a marker object to return from PartialFunctions */
+  /** Used as a marker object to return from `PartialFunction`s. */
   public static final Object pfMarker = new Object();
 
   // @ForceInline would be nice here.
   public static void releaseFence() throws Throwable {
-    VM.RELEASE_FENCE.invoke();
-  }
-
-  final static class VM {
-      static final MethodHandle RELEASE_FENCE;
-
-      static {
-          RELEASE_FENCE = mkHandle();
-      }
-
-      private static MethodHandle mkHandle() {
-          MethodHandles.Lookup lookup = MethodHandles.lookup();
-          try {
-              return lookup.findStatic(Class.forName("java.lang.invoke.VarHandle"), "releaseFence", MethodType.methodType(Void.TYPE));
-          } catch (NoSuchMethodException | ClassNotFoundException e) {
-              try {
-                  Class<?> unsafeClass = Class.forName("sun.misc.Unsafe");
-                  return lookup.findVirtual(unsafeClass, "storeFence", MethodType.methodType(void.class)).bindTo(findUnsafe(unsafeClass));
-              } catch (NoSuchMethodException | ClassNotFoundException | IllegalAccessException e1) {
-                  ExceptionInInitializerError error = new ExceptionInInitializerError(e1);
-                  error.addSuppressed(e);
-                  throw error;
-              }
-          } catch (IllegalAccessException e) {
-              throw new ExceptionInInitializerError(e);
-          }
-      }
-
-      private static Object findUnsafe(Class<?> unsafeClass) throws IllegalAccessException {
-          Object found = null;
-          for (Field field : unsafeClass.getDeclaredFields()) {
-              if (field.getType() == unsafeClass) {
-                  field.setAccessible(true);
-                  found = field.get(null);
-                  break;
-              }
-          }
-          if (found == null) throw new IllegalStateException("No instance of Unsafe found");
-          return found;
-      }
+    java.lang.invoke.VarHandle.releaseFence();
   }
 
   /**
@@ -192,6 +148,7 @@ public final class Statics {
    * Used by the synthetic `productElement` and `productElementName` methods in case classes.
    * Delegating the exception-throwing to this function reduces the bytecode size of the case class.
    */
+  @Deprecated
   public static final <T> T ioobe(int n) throws IndexOutOfBoundsException {
     throw new IndexOutOfBoundsException(String.valueOf(n));
   }

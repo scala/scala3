@@ -1,22 +1,24 @@
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
-import java.nio.file.{FileSystemAlreadyExistsException, FileSystems}
-
+import java.net.{MalformedURLException, URI, URISyntaxException, URL}
+import java.nio.file.{FileSystemAlreadyExistsException, FileSystems, InvalidPathException, Paths}
+import java.util.jar.{Attributes, JarInputStream}
 import scala.jdk.CollectionConverters.*
 
 /**
  * This class implements an [[AbstractFile]] backed by a jar
  * that be can used as the compiler's output directory.
  */
-class JarArchive private (val jarPath: Path, root: Directory) extends PlainDirectory(root) {
+class JarArchive private (underlying: Path, root: Directory) extends PlainDirectory(root) {
   def close(): Unit = this.synchronized(jpath.getFileSystem().close())
-  override def exists: Boolean = jpath.getFileSystem().isOpen() && super.exists
-  def allFileNames(): Iterator[String] =
-    java.nio.file.Files.walk(jpath).iterator().asScala.map(_.toString)
 
-  override def toString: String = jarPath.toString
+  override val path: String = underlying.path
+  override def ext: FileExtension = underlying.ext
+
+  override def exists: Boolean = jpath.getFileSystem().isOpen() && super.exists
+
+  def underlyingSource: AbstractFile =
+    new PlainFile(underlying)
 }
 
 object JarArchive {
@@ -27,8 +29,12 @@ object JarArchive {
     open(path, create = true)
   }
 
-  /** Create a jar file. */
-  def open(path: Path, create: Boolean = false): JarArchive = {
+  /** Opens a jar file. */
+  def open(path: Path): JarArchive =
+    open(path, create = false)
+
+  /** Opens or creates a jar file. */
+  private def open(path: Path, create: Boolean): JarArchive = {
     require(path.ext.isJar)
 
     // creating a new zip file system by using the JAR URL syntax:

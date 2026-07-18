@@ -2,26 +2,132 @@ package dotty.tools.dotc
 package transform
 
 import java.io.File
+import java.nio.file.{Files, Path}
 
+import ast.tpd
 import ast.tpd.*
+import ast.desugar.TrailingForMap
 import collection.mutable
+import core.Comments.Comment
 import core.Flags.*
 import core.Contexts.{Context, ctx, inContext}
 import core.DenotTransformers.IdentityDenotTransformer
 import core.Symbols.{defn, Symbol}
 import core.Constants.Constant
+import core.NameKinds.DefaultGetterName
 import core.NameOps.isContextFunction
 import core.StdNames.nme
 import core.Types.*
 import core.Decorators.*
 import coverage.*
-import typer.LiftCoverage
-import util.{SourcePosition, SourceFile}
+import typer.LiftImpure
+import util.{Property, SourcePosition, SourceFile}
 import util.Spans.Span
 import localopt.StringInterpolatorOpt
 import inlines.Inlines
 import scala.util.matching.Regex
 import java.util.regex.Pattern
+
+/** Lift impure + lift the prefixes for coverage instrumentation. */
+object LiftCoverage extends LiftImpure:
+
+  // Property indicating whether we're currently lifting the arguments of an application
+  private val LiftingArgs = new Property.Key[Boolean]
+  private val SelectedReceiverApply = Property.StickyKey[tpd.Apply]()
+  val CoverageLiftedTemp = Property.StickyKey[Unit]()
+
+  private inline def liftingArgs(using Context): Boolean =
+    ctx.property(LiftingArgs).contains(true)
+
+  private def liftingArgsContext(using Context): Context =
+    ctx.fresh.setProperty(LiftingArgs, true)
+
+  /** Variant of `noLift` for the arguments of applications.
+   *  To produce the right coverage information (especially in case of exceptions), we must lift:
+   *  - all the applications, except the erased ones
+   */
+  private def noLiftArg(arg: tpd.Tree)(using Context): Boolean =
+    arg match
+      case arg if isUnsafeAssumeSeparate(arg) => true
+      case a: tpd.Apply => a.symbol.is(Erased) // don't lift erased applications, but lift all others
+      case tpd.Block((meth: tpd.DefDef) :: Nil, closure: tpd.Closure)
+          if meth.symbol == closure.meth.symbol && closure.env.forall(noLiftArg) => true
+      case tpd.Block(stats, expr) => stats.forall(noLiftArg) && noLiftArg(expr)
+      case tpd.Inlined(_, bindings, expr) => noLiftArg(expr)
+      case tpd.Typed(expr, _) => noLiftArg(expr)
+      case _ => super.noLift(arg)
+
+  def isUnsafeAssumeSeparate(tree: tpd.Tree)(using Context): Boolean = tree match
+    case tree: tpd.Apply =>
+      tree.symbol == defn.Caps_unsafeAssumeSeparate
+      || isUnsafeAssumeSeparate(tree.fun)
+    case tpd.Select(qual, _) => isUnsafeAssumeSeparate(qual)
+    case tpd.Block(_, expr) => isUnsafeAssumeSeparate(expr)
+    case tpd.Inlined(_, _, expr) => isUnsafeAssumeSeparate(expr)
+    case tpd.Typed(expr, _) => isUnsafeAssumeSeparate(expr)
+    case _ => false
+
+  def isCoverageLiftedTemp(sym: Symbol)(using Context): Boolean =
+    sym.defTree.hasAttachment(CoverageLiftedTemp)
+
+  def selectedReceiverApply(tree: tpd.Tree)(using Context): Option[tpd.Apply] =
+    tree.getAttachment(SelectedReceiverApply)
+
+  def markSelectedReceiverApply(tree: tpd.Apply)(using Context): Unit =
+    tree.putAttachment(SelectedReceiverApply, tree)
+
+  override protected def onLiftedDef(tree: tpd.Tree)(using Context): Unit =
+    tree.putAttachment(CoverageLiftedTemp, ())
+
+  override def noLift(expr: tpd.Tree)(using Context) =
+    if liftingArgs then noLiftArg(expr)
+    else isUnsafeAssumeSeparate(expr) || super.noLift(expr)
+
+  /** Preserve precision for lifted coverage temps when widening would break later checks:
+   *  compile-time constants and stable singleton types need their singleton precision,
+   *  and capture-converted types need their local TypeBox#CAP references.
+   */
+  override protected def liftedExprType(expr: tpd.Tree)(using Context): Type =
+    val dealiased = expr.tpe.dealias
+    val deskolemized = dealiased.deskolemized
+    val valueType = dealiased match
+      case ref: TermRef if ref.prefix.exists && ref.underlying.isInstanceOf[ExprType] =>
+        ref.prefix.memberInfo(ref.symbol).widenExpr
+      case _ =>
+        dealiased
+    valueType.widenTermRefExpr.normalized.simplified match
+      case _: ConstantType => deskolemized
+      case _ if dealiased.isInstanceOf[SingletonType] && dealiased.isStable => dealiased
+      case _ if valueType.existsPart(_.typeSymbol == defn.TypeBox_CAP) => valueType
+      case _ => super.liftedExprType(expr)
+
+  private def markSelectedReceiverDef(
+    defs: mutable.ListBuffer[tpd.Tree],
+    from: Int,
+    selectedReceiver: tpd.Apply
+  )(using Context): Unit =
+    if defs.length > from then
+      defs.last match
+        case stat: tpd.ValDef => stat.putAttachment(SelectedReceiverApply, selectedReceiver)
+        case _ => ()
+
+  def liftForCoverage(defs: mutable.ListBuffer[tpd.Tree], tree: tpd.Apply)(using Context) =
+    def recur(tree: tpd.Apply): tpd.Tree =
+      val liftedFun = tree.fun match
+        case sel @ tpd.Select(app: tpd.Apply, name) if selectedReceiverApply(app).nonEmpty =>
+          val selectedReceiver = tpd.cpy.Select(sel)(recur(app), name)
+          val defsBeforeReceiver = defs.length
+          val liftedReceiver = liftApp(defs, selectedReceiver)
+          markSelectedReceiverDef(defs, defsBeforeReceiver, app)
+          liftedReceiver
+        case _ =>
+          liftApp(defs, tree.fun)
+      val liftedArgs = liftArgs(defs, tree.fun.tpe, tree.args)(using liftingArgsContext)
+      tpd.cpy.Apply(tree)(liftedFun, liftedArgs)
+    end recur
+
+    recur(tree)
+  end liftForCoverage
 
 /** Implements code coverage by inserting calls to scala.runtime.coverage.Invoker
   * ("instruments" the source code).
@@ -40,32 +146,90 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
   private var coverageExcludeClasslikePatterns: List[Pattern] = Nil
   private var coverageExcludeFilePatterns: List[Pattern] = Nil
+  private val coverageLocalExclusions: mutable.Map[String, List[Span]] = mutable.Map.empty
 
-  override def run(using ctx: Context): Unit =
+  override def runOn(units: List[CompilationUnit])(using ctx: Context): List[CompilationUnit] =
     val outputPath = ctx.settings.coverageOutputDir.value
 
-    // Ensure the dir exists
+    // Ensure the dir exists (once per batch, not per unit)
     val dataDir = File(outputPath)
     val newlyCreated = dataDir.mkdirs()
 
     if !newlyCreated then
-      // If the directory existed before, let's clean it up.
-      dataDir.listFiles
-        .filter(_.getName.startsWith("scoverage"))
-        .foreach(_.delete())
+      // If the directory existed before, clean measurement files.
+      val files = dataDir.listFiles
+      if files != null then
+        files
+          .filter(_.getName.startsWith("scoverage.measurements."))
+          .foreach(_.delete())
     end if
 
-    // Initialise a coverage object if it does not exist yet
-    if ctx.base.coverage == null then
-      ctx.base.coverage = Coverage()
+    // Deserialize previous coverage once at the start
+    val coverageFilePath = Serializer.coverageFilePath(outputPath)
+    val previousCoverage =
+      if Files.exists(coverageFilePath) then
+        Serializer.deserialize(coverageFilePath, ctx.settings.sourceroot.value)
+      else Coverage()
 
+    // Initialize coverage patterns once
     coverageExcludeClasslikePatterns = ctx.settings.coverageExcludeClasslikes.value.map(_.r.pattern)
     coverageExcludeFilePatterns = ctx.settings.coverageExcludeFiles.value.map(_.r.pattern)
 
-    ctx.base.coverage.nn.removeStatementsFromFile(ctx.compilationUnit.source.file.absolute.jpath)
-    super.run
+    // Initialize coverage object
+    ctx.base.coverage = Coverage()
+    ctx.base.coverage.nn.setNextStatementId(previousCoverage.nextStatementId())
 
-    Serializer.serialize(ctx.base.coverage.nn, outputPath, ctx.settings.sourceroot.value)
+    // Process each unit to extract local coverage exclusions from comments
+    units.foreach { unit =>
+      val excludedSpans = mutable.ListBuffer[Span]()
+      var currentStartingComment: Option[Comment] = None
+
+      unit.comments.foreach {
+        case comment if InstrumentCoverage.scoverageLocalOff.matches(comment.raw) && currentStartingComment.isEmpty =>
+          currentStartingComment = Some(comment)
+        case comment if InstrumentCoverage.scoverageLocalOn.matches(comment.raw) =>
+          currentStartingComment.foreach { start =>
+            currentStartingComment = None
+            excludedSpans += start.span.withEnd(comment.span.end)
+          }
+        case _ =>
+      }
+
+      currentStartingComment.foreach { start =>
+        excludedSpans += start.span.withEnd(unit.source.length - 1)
+      }
+
+      if excludedSpans.nonEmpty then
+        coverageLocalExclusions(unit.source.file.path) = excludedSpans.toList
+    }
+
+    // Run the transformation on all units
+    val result = super.runOn(units)
+
+    // Serialize once at the end with merged coverage
+    val mergedCoverage = Coverage()
+    val currentFiles = units.map(_.source.file.jpath.nn.toAbsolutePath)
+
+    // Add statements from previous coverage that aren't from recompiled files
+    // and whose source files still exist
+    previousCoverage.statements
+      .filterNot(stmt =>
+        val source = stmt.location.sourcePath
+        currentFiles.contains(source) || !Files.exists(source)
+      )
+      .foreach(mergedCoverage.addStatement)
+
+    // Add all new statements from this compilation
+    ctx.base.coverage.nn.statements.foreach(mergedCoverage.addStatement)
+
+    Serializer.serialize(mergedCoverage, outputPath, ctx.settings.sourceroot.value)
+
+    result
+
+  private def treeSize(tree: Tree)(using Context): Int =
+    var count = 0
+    tree.foreachSubTree(_ => count += 1)
+    count
 
   private def isClassIncluded(sym: Symbol)(using Context): Boolean =
     val fqn = sym.fullName.toText(ctx.printerFn(ctx)).show
@@ -79,12 +243,23 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       _.matcher(normalizedPath).matches
     )
 
+  private def isTreeExcluded(tree: Tree)(using Context): Boolean =
+    val sourceFile = ctx.source.file.path
+    coverageLocalExclusions.get(sourceFile).exists: excludedSpans =>
+      excludedSpans.exists(_.contains(tree.span))
+
   override protected def newTransformer(using Context) =
     CoverageTransformer(ctx.settings.coverageOutputDir.value)
 
   /** Transforms trees to insert calls to Invoker.invoked to compute the coverage when the code is called */
   private class CoverageTransformer(outputPath: String) extends Transformer:
     private val ConstOutputPath = Constant(outputPath)
+
+    private def warnSkippedLargeTreeCoverage(tree: MemberDef, subject: String, nodeCount: Int)(using Context): Unit =
+      report.warning(
+        s"Skipping coverage instrumentation for large $subject ($nodeCount tree nodes exceeds threshold ${InstrumentCoverage.MaxInstrumentableTreeNodes}); compilation will continue but no coverage data will be recorded for it.",
+        tree.srcPos
+      )
 
     /** Generates the tree for:
       * ```
@@ -123,7 +298,8 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         desc = sourceFile.content.slice(pos.start, pos.end).mkString,
         symbolName = tree.symbol.name.toSimpleName.show,
         treeName = tree.getClass.getSimpleName,
-        branch
+        branch,
+        ignored = isTreeExcluded(tree)
       )
       ctx.base.coverage.nn.addStatement(statement)
       id
@@ -145,6 +321,49 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       val span = pos.span.toSynthetic
       invokeCall(statementId, span)
 
+    private def erasedParamStatuses(app: Apply)(using Context): List[Boolean] =
+      app.fun.tpe.widen match
+        case mt: MethodType if mt.hasErasedParams => mt.paramErasureStatuses
+        case _ => Nil
+
+    private def transformApplyArgs(trees: List[Tree], erasedArgs: List[Boolean] = Nil)(using Context): List[Tree] =
+      if allConstArgs(trees) then trees
+      else if erasedArgs.isEmpty then transform(trees)
+      else trees.lazyZip(erasedArgs).map { (arg, isErased) =>
+        if isErased then arg else transform(arg)
+      }.toList
+
+    private def transformInnerApply(tree: Tree)(using Context): Tree = tree match
+      case a: Apply if a.fun.symbol == defn.StringContextModule_apply =>
+        a
+      case a: Apply =>
+        cpy.Apply(a)(
+          transformInnerApply(a.fun),
+          transformApplyArgs(a.args, erasedParamStatuses(a))
+        )
+      case a: TypeApply =>
+        cpy.TypeApply(a)(
+          transformInnerApply(a.fun),
+          transformApplyArgs(a.args)
+        )
+      case s: Select =>
+        cpy.Select(s)(transformInnerApply(s.qualifier), s.name)
+      case i: (Ident | This) => i
+      case t: Typed =>
+        cpy.Typed(t)(transformInnerApply(t.expr), t.tpt)
+      case other    => transform(other)
+
+    private def allConstArgs(args: List[Tree]) =
+      args.forall(arg => arg.isInstanceOf[Literal] || arg.isInstanceOf[Ident])
+
+    private def withSelectedReceiverProbes(stats: List[Tree])(using Context): List[Tree] =
+      stats.flatMap: stat =>
+        LiftCoverage.selectedReceiverApply(stat) match
+          case Some(app) =>
+            createInvokeCall(app, app.sourcePos) :: stat :: Nil
+          case _ =>
+            stat :: Nil
+
     /**
       * Tries to instrument an `Apply`.
       * These "tryInstrument" methods are useful to tweak the generation of coverage instrumentation,
@@ -154,29 +373,37 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       * @return instrumentation result, with the preparation statement, coverage call and tree separated
       */
     private def tryInstrument(tree: Apply)(using Context): InstrumentedParts =
-      if canInstrumentApply(tree) then
+      if LiftCoverage.isUnsafeAssumeSeparate(tree) then
+        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
+        InstrumentedParts.notCovered(transformed)
+      else if canInstrumentApply(tree) then
         // Create a call to Invoker.invoked(coverageDirectory, newStatementId)
         val coverageCall = createInvokeCall(tree, tree.sourcePos)
 
-        if needsLift(tree) then
-          // Transform args and fun, i.e. instrument them if needed (and if possible)
-          val app = cpy.Apply(tree)(transform(tree.fun), tree.args.map(transform))
+        // Transform args and fun, i.e. instrument them if needed (and if possible)
+        val app =
+          if tree.fun.symbol eq defn.throwMethod then tree
+          else cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
 
+        if needsLift(app) then
           // Lifts the arguments. Note that if only one argument needs to be lifted, we lift them all.
           // Also, tree.fun can be lifted too.
           // See LiftCoverage for the internal working of this lifting.
           val liftedDefs = mutable.ListBuffer[Tree]()
           val liftedApp = LiftCoverage.liftForCoverage(liftedDefs, app)
+          val prefix =
+            if tree.hasAttachment(TrailingForMap) then liftedDefs.toList
+            else withSelectedReceiverProbes(liftedDefs.toList)
 
-          InstrumentedParts(liftedDefs.toList, coverageCall, liftedApp)
+          InstrumentedParts(prefix, coverageCall, liftedApp)
         else
           // Instrument without lifting
-          val transformed = cpy.Apply(tree)(transform(tree.fun), transform(tree.args))
-          InstrumentedParts.singleExpr(coverageCall, transformed)
+          InstrumentedParts.singleExpr(coverageCall, app)
       else
         // Transform recursively but don't instrument the tree itself
-        val transformed = cpy.Apply(tree)(transform(tree.fun), transform(tree.args))
+        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
         InstrumentedParts.notCovered(transformed)
+    end tryInstrument
 
     private def tryInstrument(tree: Ident)(using Context): InstrumentedParts =
       val sym = tree.symbol
@@ -187,9 +414,19 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       else
         InstrumentedParts.notCovered(tree)
 
+    private def tryInstrument(tree: Literal)(using Context): InstrumentedParts =
+      val coverageCall = createInvokeCall(tree, tree.sourcePos)
+      InstrumentedParts.singleExpr(coverageCall, tree)
+
     private def tryInstrument(tree: Select)(using Context): InstrumentedParts =
       val sym = tree.symbol
-      val transformed = cpy.Select(tree)(transform(tree.qualifier), tree.name)
+      val transformedQual = transform(tree.qualifier)
+      val qual =
+        if tree.qualifier.symbol.exists && canInstrumentParameterless(tree.qualifier.symbol) then
+          transformedQual
+        else
+          transformedQual.ensureConforms(tree.qualifier.tpe)
+      val transformed = cpy.Select(tree)(qual, tree.name)
       if canInstrumentParameterless(sym) then
         // call to a parameterless method
         val coverageCall = createInvokeCall(tree, tree.sourcePos)
@@ -202,6 +439,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       tree match
         case t: Apply => tryInstrument(t)
         case t: Ident => tryInstrument(t)
+        case t: Literal => tryInstrument(t)
         case t: Select => tryInstrument(t)
         case _ => InstrumentedParts.notCovered(transform(tree))
 
@@ -210,6 +448,13 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      * If the tree is empty, return itself and don't instrument.
      */
     private def transformBranch(tree: Tree)(using Context): Tree =
+      transformBranchWithInherited(tree, inheritedProbes = Nil)
+
+    /** Like [[transformBranch]], but runs `inheritedProbes` before the branch probe
+      *  and the transformed body. Used for sub-cases: ancestor case-arm probes are
+      *  emitted at the same successful leaves; see [[instrumentSubMatchWithProbes]].
+      */
+    private def transformBranchWithInherited(tree: Tree, inheritedProbes: List[Apply])(using Context): Tree =
       if tree.isEmpty then
         // - If t.isEmpty then `transform(t) == t` always hold,
         //   so we can avoid calling transform in that case.
@@ -217,15 +462,30 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       else
         val transformed = transform(tree)
         val coverageCall = createInvokeCall(tree, tree.sourcePos, branch = true)
-        InstrumentedParts.singleExprTree(coverageCall, transformed)
+        val allProbes = inheritedProbes :+ coverageCall
+        allProbes match
+          case single :: Nil => InstrumentedParts.singleExprTree(single, transformed)
+          case multiple => InstrumentCoverage.blockWithExprSpan(multiple, transformed)
+
+    private def transformCondition(tree: Tree)(using Context): Tree = tree match
+      case Literal(Constant(_: Boolean)) => tree
+      case _ => transform(tree)
 
     override def transform(tree: Tree)(using Context): Tree =
       inContext(transformCtx(tree)) { // necessary to position inlined code properly
         tree match
           // simple cases
-          case tree: (Import | Export | Literal | This | Super | New) => tree
+          case tree: (Import | Export | This | Super | New) => tree
           case tree if tree.isEmpty || tree.isType => tree // empty Thicket, Ident (referring to a type), TypeTree, ...
           case tree if !tree.span.exists || tree.span.isZeroExtent => tree // no meaningful position
+
+          case tree: ValDef if !tree.rhs.isEmpty && treeSize(tree.rhs) > InstrumentCoverage.MaxInstrumentableTreeNodes =>
+            warnSkippedLargeTreeCoverage(tree, s"value initializer `${tree.name.show}`", treeSize(tree.rhs))
+            tree
+
+          case tree: Literal =>
+            val rest = tryInstrument(tree).toTree
+            rest
 
           // identifier
           case tree: Ident =>
@@ -234,7 +494,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           // branches
           case tree: If =>
             cpy.If(tree)(
-              cond = transform(tree.cond),
+              cond = transformCondition(tree.cond),
               thenp = transformBranch(tree.thenp),
               elsep = transformBranch(tree.elsep)
             )
@@ -268,7 +528,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
               // This is especially important for trees like (expr[T])(args),
               // for which the wrong transformation crashes the compiler.
               // See tests/coverage/pos/PolymorphicExtensions.scala
-              Block(
+              InstrumentCoverage.blockWithExprSpan(
                 pre :+ coverageCall,
                 cpy.TypeApply(tree)(expr, args)
               )
@@ -280,9 +540,11 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           case tree: CaseDef =>
             transformCaseDef(tree)
 
+          case tree: ValDef if tree.symbol.is(Inline) =>
+            tree // transforming inline vals will result in `inline value must be pure` errors
+
           case tree: ValDef =>
-            // only transform the rhs
-            val rhs = transform(tree.rhs)
+            val rhs = if tree.symbol.isEffectivelyErased then tree.rhs else transform(tree.rhs)
             cpy.ValDef(tree)(rhs = rhs)
 
           case tree: DefDef =>
@@ -290,8 +552,10 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
           case tree: PackageDef =>
             if isFileIncluded(tree.srcPos.sourcePos.source) && isClassIncluded(tree.symbol) then
-              // only transform the statements of the package
-              cpy.PackageDef(tree)(tree.pid, transform(tree.stats))
+              // Use transformStats (not transform) to process statements with updated context.
+              // This ensures language imports like `scala.language.unsafeNulls` are properly
+              // processed for subsequent statements in the package.
+              cpy.PackageDef(tree)(tree.pid, transformStats(tree.stats, tree.symbol))
             else
               tree
 
@@ -302,8 +566,10 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
               tree
 
           case tree: Assign =>
-            // only transform the rhs
-            cpy.Assign(tree)(tree.lhs, transform(tree.rhs))
+            if tree.lhs.symbol.is(Erased) then tree
+            else
+              // only transform the rhs
+              cpy.Assign(tree)(tree.lhs, transform(tree.rhs))
 
           case tree: Return =>
             // only transform the expr, because `from` is a "pointer"
@@ -323,13 +589,13 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             )
 
           case tree: Inlined =>
-            // Ideally, tree.call would provide precise information about the inlined call,
-            // and we would use this information for the coverage report.
-            // But PostTyper simplifies tree.call, so we can't report the actual method that was inlined.
-            // In any case, the subtrees need to be repositioned right now, otherwise the
-            // coverage statement will point to a potentially unreachable source file.
-            val dropped = Inlines.dropInlined(tree) // drop and reposition
-            transform(dropped) // transform the content of the Inlined
+            // Inlined code contents might come from another file (or project),
+            // which means that we cannot clearly designate which part of the inlined code
+            // was run using the API we are given.
+            // At best, we can show that the Inlined tree itself was reached.
+            // Additionally, Scala 2's coverage ignores macro calls entirely,
+            // so let's do that here too, also for regular inlined calls.
+            tree
 
           // For everything else just recurse and transform
           case _ =>
@@ -350,6 +616,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // Inline and erased definitions will not be in the generated code and therefore do not need to be instrumented.
         // (Note that a retained inline method will have a `$retained` variant that will be instrumented.)
         tree
+      else if !tree.rhs.isEmpty && treeSize(tree.rhs) > InstrumentCoverage.MaxInstrumentableTreeNodes then
+        warnSkippedLargeTreeCoverage(tree, s"method body `${tree.name.show}`", treeSize(tree.rhs))
+        tree
       else
         // Only transform the params (for the default values) and the rhs, not the name and tpt.
         val transformedParamss = transformParamss(tree.paramss)
@@ -358,7 +627,9 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
             tree.rhs
           else if sym.isClassConstructor then
             instrumentSecondaryCtor(tree)
-          else if !sym.isOneOf(Accessor | Artifact | Synthetic) then
+          else if !sym.isOneOf(Accessor | Artifact | Synthetic)
+               && !LiftCoverage.isUnsafeAssumeSeparate(tree.rhs)
+          then
             // If the body can be instrumented, do it (i.e. insert a "coverage call" at the beginning)
             // This is useful because methods can be stored and called later, or called by reflection,
             // and if the rhs is too simple to be instrumented (like `def f = this`),
@@ -369,20 +640,54 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
         cpy.DefDef(tree)(tree.name, transformedParamss, tree.tpt, transformedRhs)
 
+    /** Span for coverage UI: end at the guard if present, else the pattern. */
+    private def caseDefUserEndPos(cdef: CaseDef)(using Context): SourcePosition =
+      val pat = cdef.pat
+      val guard = cdef.guard
+      val friendlyEnd = if guard.span.exists then guard.span.end else pat.span.end
+      cdef.sourcePos(using ctx).withSpan(cdef.span.withEnd(friendlyEnd))
+
+    /** Re-instrument a [[SubMatch]] while keeping it a direct sub-match tree.
+      *  Downstream, [[dotty.tools.dotc.transform.PatternMatcher]] matches on
+      *  `CaseDef.body: SubMatch` and [[CaseDef.maybePartial]] checks `isInstanceOf[SubMatch]`;
+      *  wrapping the body in a [[Block]] (as in [[transformBranch]]) would break that.
+      *
+      *  Branch coverage for each case arm is recorded by `inheritedProbes` plus, for each
+      *  sub-case, a probe for that arm; we attach those probes to successful sub-match leaves
+      *  so they do not run when a partial sub-match falls through to the next outer case.
+      */
+    private def instrumentSubMatchWithProbes(sm: SubMatch, inheritedProbes: List[Apply])(using Context): SubMatch =
+      val newSelector = transform(sm.selector)
+      val newCases = sm.cases.map(cdef => transformSubMatchCaseDef(cdef, inheritedProbes))
+      cpy.Match(sm)(newSelector, newCases).asInstanceOf[SubMatch]
+
+    private def transformSubMatchCaseDef(cdef: CaseDef, inheritedProbes: List[Apply])(using Context): CaseDef =
+      val pos = caseDefUserEndPos(cdef)
+      val transformedGuard = transform(cdef.guard)
+      val newBody: Tree = cdef.body match
+        case sm: SubMatch =>
+          val p = createInvokeCall(sm, pos, branch = true)
+          instrumentSubMatchWithProbes(sm, p :: inheritedProbes)
+        case b =>
+          transformBranchWithInherited(b, inheritedProbes)
+      cpy.CaseDef(cdef)(cdef.pat, transformedGuard, newBody)
+
     /** Transforms a `case ...` and instruments the parts that can be. */
     private def transformCaseDef(tree: CaseDef)(using Context): CaseDef =
       val pat = tree.pat
       val guard = tree.guard
-
-      // compute a span that makes sense for the user that will read the coverage results
-      val friendlyEnd = if guard.span.exists then guard.span.end else pat.span.end
-      val pos = tree.sourcePos.withSpan(tree.span.withEnd(friendlyEnd)) // user-friendly span
+      val pos = caseDefUserEndPos(tree)
 
       // recursively transform the guard, but keep the pat
       val transformedGuard = transform(guard)
 
-      // ensure that the body is always instrumented as a branch
-      val instrumentedBody = transformBranch(tree.body)
+      // Sub-case bodies are [[SubMatch]]: keep that shape; see [[instrumentSubMatchWithProbes]].
+      val instrumentedBody: Tree = tree.body match
+        case sm: SubMatch =>
+          val p = createInvokeCall(sm, pos, branch = true)
+          instrumentSubMatchWithProbes(sm, p :: Nil)
+        case b =>
+          transformBranch(b)
 
       cpy.CaseDef(tree)(pat, transformedGuard, instrumentedBody)
 
@@ -390,8 +695,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     private def transformTemplateParents(parents: List[Tree])(using Context): List[Tree] =
       def transformParent(parent: Tree): Tree = parent match
         case tree: Apply =>
-          // only instrument the args, not the constructor call
-          cpy.Apply(tree)(tree.fun, tree.args.mapConserve(transform))
+          cpy.Apply(tree)(tree.fun, transformApplyArgs(tree.args, erasedParamStatuses(tree)))
         case tree: TypeApply =>
           // args are types, instrument the fun with transformParent
           cpy.TypeApply(tree)(transformParent(tree.fun), tree.args)
@@ -470,6 +774,32 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
      * should not be changed to {val $x = f(); T($x)}(1) but to {val $x = f(); val $y = 1; T($x)($y)}
      */
     private def needsLift(tree: Apply)(using Context): Boolean =
+      def hasSelectedApply(fun: Tree): Boolean = fun match
+        case Select(app: Apply, _) =>
+          val nestedNeedsProbe = hasSelectedApply(app.fun)
+          val needsProbe = selectedReceiverNeedsProbe(app)
+          if needsProbe then LiftCoverage.markSelectedReceiverApply(app)
+          nestedNeedsProbe || needsProbe
+        case TypeApply(fn, _) => hasSelectedApply(fn)
+        case _ => false
+      end hasSelectedApply
+
+      def applicationEvaluationNeedsLift(tree: Apply): Boolean =
+          val fun = tree.fun
+          val nestedApplyNeedsLift = fun match
+            case a: Apply => applicationEvaluationNeedsLift(a)
+            case _ => false
+
+          nestedApplyNeedsLift ||
+          !isUnliftableFun(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+      end applicationEvaluationNeedsLift
+
+      def selectedReceiverNeedsProbe(tree: Apply): Boolean =
+        !LiftCoverage.isUnsafeAssumeSeparate(tree)
+        && canInstrumentApply(tree)
+        && applicationEvaluationNeedsLift(tree)
+      end selectedReceiverNeedsProbe
+
       def isShortCircuitedOp(sym: Symbol) =
         sym == defn.Boolean_&& || sym == defn.Boolean_||
 
@@ -497,7 +827,12 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         case _ => false
 
       nestedApplyNeedsLift ||
-      !isUnliftableFun(fun) && !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+      !isUnliftableFun(fun)
+      && (
+        !tree.hasAttachment(TrailingForMap) && hasSelectedApply(fun)
+        || !tree.args.isEmpty && !tree.args.forall(LiftCoverage.noLift)
+      )
+    end needsLift
 
     private def isContextFunctionApply(fun: Tree)(using Context): Boolean =
       fun match
@@ -507,14 +842,17 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     /** Check if an Apply can be instrumented. Prevents this phase from generating incorrect code. */
     private def canInstrumentApply(tree: Apply)(using Context): Boolean =
-      def isSecondaryCtorDelegateCall: Boolean = tree.fun match
+      def isSecondaryCtorDelegateCall(fun: Tree): Boolean = fun match
         case Select(This(_), nme.CONSTRUCTOR) => true
+        case Apply(fn, _)                     => isSecondaryCtorDelegateCall(fn)
+        case TypeApply(fn, _)                 => isSecondaryCtorDelegateCall(fn)
         case _                                => false
 
       val sym = tree.symbol
       !sym.isOneOf(ExcludeMethodFlags)
       && !isCompilerIntrinsicMethod(sym)
-      && !(sym.isClassConstructor && isSecondaryCtorDelegateCall)
+      && !(sym.isClassConstructor && isSecondaryCtorDelegateCall(tree.fun))
+      && !sym.name.is(DefaultGetterName) // https://github.com/scala/scala3/issues/20255
       && (tree.typeOpt match
         case AppliedType(tycon: NamedType, _) =>
           /* If the last expression in a block is a context function, we'll try to
@@ -551,23 +889,58 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       && sym.info.isParameterless
       && !isCompilerIntrinsicMethod(sym)
       && !sym.info.typeSymbol.name.isContextFunction // exclude context functions like in canInstrumentApply
+      && !sym.name.is(DefaultGetterName) // https://github.com/scala/scala3/issues/20255
 
     /** Does sym refer to a "compiler intrinsic" method, which only exist during compilation,
       * like Any.isInstanceOf?
-      * If this returns true, the call souldn't be instrumented.
+      * If this returns true, the call shouldn't be instrumented.
       */
     private def isCompilerIntrinsicMethod(sym: Symbol)(using Context): Boolean =
       val owner = sym.maybeOwner
       owner.exists && (
-        owner.eq(defn.AnyClass) ||
-        owner.isPrimitiveValueClass ||
+        (owner.eq(defn.AnyClass) && (sym == defn.Any_asInstanceOf || sym == defn.Any_isInstanceOf)) ||
         owner.maybeOwner == defn.CompiletimePackageClass
       )
 
 object InstrumentCoverage:
   val name: String = "instrumentCoverage"
   val description: String = "instrument code for coverage checking"
-  val ExcludeMethodFlags: FlagSet = Synthetic | Artifact | Erased
+  val ExcludeMethodFlags: FlagSet = Artifact | Erased
+
+  /** Maximum number of tree nodes in a method body for coverage instrumentation.
+    * Beyond this threshold, the instrumented bytecode risks exceeding the JVM's 64KB
+    * method size limit. The per-statement overhead of `Invoker.invoked()` is ~15 bytes,
+    * so roughly half of the tree nodes in a large body would each add that overhead. */
+  val MaxInstrumentableTreeNodes: Int = 3000
+  val scoverageLocalOn: Regex = """^\s*//\s*\$COVERAGE-ON\$""".r
+  val scoverageLocalOff: Regex = """^\s*//\s*\$COVERAGE-OFF\$""".r
+
+  /** Coverage probes are synthetic bookkeeping calls that should be transparent to
+   *  later warning logic and should not steal source positions from the user tree
+   *  they wrap.
+   */
+  def isCoverageProbe(tree: Tree)(using Context): Boolean = tree match
+    case Apply(fun, Literal(Constant(_: Int)) :: Literal(Constant(_: String)) :: Nil) =>
+      fun.symbol == defn.InvokedMethodRef.symbol
+    case _ =>
+      false
+
+  /** Remove leading synthetic coverage wrappers to recover the user-written tree. */
+  def stripLeadingCoverage(tree: Tree)(using Context): Tree = tree match
+    case Typed(expr, _) =>
+      stripLeadingCoverage(expr)
+    case Inlined(_, Nil, expr) =>
+      stripLeadingCoverage(expr)
+    case Block(stats, expr) if stats.forall(isCoverageProbe) =>
+      stripLeadingCoverage(expr)
+    case _ =>
+      tree
+
+  /** Keep wrapper blocks pointed at the wrapped expression span so later warnings
+   *  still highlight user code instead of synthetic `Invoker.invoked` scaffolding.
+   */
+  def blockWithExprSpan(stats: List[Tree], expr: Tree)(using Context): Tree =
+    Block(stats, expr).withSpan(expr.span)
 
   /**
    * An instrumented Tree, in 3 parts.
@@ -581,8 +954,8 @@ object InstrumentCoverage:
     /** Turns this into an actual Tree. */
     def toTree(using Context): Tree =
       if invokeCall.isEmpty then expr
-      else if pre.isEmpty then Block(invokeCall :: Nil, expr)
-      else Block(pre :+ invokeCall, expr)
+      else if pre.isEmpty then blockWithExprSpan(invokeCall :: Nil, expr)
+      else blockWithExprSpan(pre :+ invokeCall, expr)
 
   object InstrumentedParts:
     def notCovered(expr: Tree) = InstrumentedParts(Nil, EmptyTree, expr)
@@ -590,4 +963,4 @@ object InstrumentCoverage:
 
     /** Shortcut for `singleExpr(call, expr).toTree` */
     def singleExprTree(invokeCall: Apply, expr: Tree)(using Context): Tree =
-      Block(invokeCall :: Nil, expr)
+      blockWithExprSpan(invokeCall :: Nil, expr)

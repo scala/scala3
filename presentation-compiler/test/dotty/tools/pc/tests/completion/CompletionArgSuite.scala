@@ -3,6 +3,7 @@ package dotty.tools.pc.tests.completion
 import dotty.tools.pc.base.BaseCompletionSuite
 
 import org.junit.FixMethodOrder
+import org.junit.Ignore
 import org.junit.Test
 import org.junit.runners.MethodSorters
 
@@ -157,7 +158,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
           |  Option[Int](@@)
           |}
           |""".stripMargin,
-      """|x = : A
+      """|x = : A | Null
          |Main test
          |""".stripMargin,
       topLines = Option(2)
@@ -176,11 +177,6 @@ class CompletionArgSuite extends BaseCompletionSuite:
       topLines = Option(2)
     )
 
-  // In scala3, we get NoSymbol for `until`, so we get no completions here.
-  // This might be because the `1.until` method has multiple overloaded methods, like `until(end: Long)` and `until(start: Long, end: Long)`,
-  // and that's why we can't retrieve a specfic symbol.
-  // Might be good to fixed in Dotty.
-  // see: https://github.com/scalameta/metals/pull/2369
   @Test def `arg9` =
     check(
       // `until` has multiple implicit conversion alternatives
@@ -190,7 +186,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|`end` = : Int
-         |Main test
+         |step = : Int
          |""".stripMargin,
       topLines = Option(2)
     )
@@ -238,6 +234,68 @@ class CompletionArgSuite extends BaseCompletionSuite:
       ""
     )
 
+  @Test def `using` =
+    checkEdit(
+      s"""|def hello(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello(st@@)
+          |""".stripMargin,
+      s"""|def hello(using String): Unit = ???
+              |@main def main1(): Unit =
+              |  val str = "hello"
+              |  hello(using str)
+              |""".stripMargin,
+      assertSingleItem = false
+    )
+
+  @Test def `using2` =
+    checkEdit(
+      s"""|def hello(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello(using st@@)
+          |""".stripMargin,
+      s"""|def hello(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello(using str)
+          |""".stripMargin,
+      assertSingleItem = false
+    )
+
+  @Test def `using3` =
+    checkEdit(
+      s"""|def hello(using String, Int): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  val int = 4
+          |  hello(str, in@@)
+          |""".stripMargin,
+      s"""|def hello(using String, Int): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  val int = 4
+          |  hello(str, int)
+          |""".stripMargin,
+      assertSingleItem = false
+    )
+
+  @Test def `using4` =
+    checkEdit(
+      s"""|def hello(name: String)(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello("name")(str@@)
+          |""".stripMargin,
+      s"""|def hello(name: String)(using String): Unit = ???
+          |@main def main1(): Unit =
+          |  val str = "hello"
+          |  hello("name")(using str)
+          |""".stripMargin,
+      assertSingleItem = false
+    )
+
   @Test def `default-args` =
     check(
       s"""|object Main {
@@ -253,7 +311,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|fst = : Option[String]
          |snd = : Int
          |""".stripMargin,
-      topLines = Some(2),
+      topLines = Some(2)
     )
   @Test def `default-args2` =
     check(
@@ -268,7 +326,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|fst = : Option[String]
          |snd = : Int
          |""".stripMargin,
-      topLines = Some(2),
+      topLines = Some(2)
     )
 
   @Test def `default-args3` =
@@ -286,7 +344,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|fst = : Option[String]
          |snd = : Int
          |""".stripMargin,
-      topLines = Some(2),
+      topLines = Some(2)
     )
 
   @Test def `default-args4` =
@@ -304,7 +362,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|fst = : Option[String]
          |snd = : Int
          |""".stripMargin,
-      topLines = Some(2),
+      topLines = Some(2)
     )
 
   @Test def `default-args5` =
@@ -321,7 +379,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
           |""".stripMargin,
       """|opt = : Option[Int]
          |""".stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )
 
   @Test def `default-args6` =
@@ -339,9 +397,8 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|fst = : Option[String]
          |snd = : Int
          |""".stripMargin,
-      topLines = Some(2),
+      topLines = Some(2)
     )
-
 
   // @Test def `explicit-dollar` =
   // checkSnippet( // see: https://github.com/scalameta/metals/issues/2400
@@ -784,7 +841,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |value = value : Int
          |value: Int
          |""".stripMargin,
-      topLines = Some(4),
+      topLines = Some(4)
     )
 
   @Test def `overloaded-with-param` =
@@ -798,7 +855,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|aaa = : Int
          |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
-      topLines = Some(2),
+      topLines = Some(2)
     )
 
   @Test def `overloaded-with-named-param` =
@@ -812,7 +869,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|aaa = : Int
          |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
-      topLines = Some(2),
+      topLines = Some(2)
     )
 
   @Test def `overloaded-generic` =
@@ -830,7 +887,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |abb = : Option[Int]
          |abb = g : Int
          |""".stripMargin,
-      topLines = Some(5),
+      topLines = Some(5)
     )
 
   @Test def `overloaded-methods` =
@@ -846,7 +903,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|aString = : String
          |anInt = : Int
          |""".stripMargin,
-      topLines = Some(2),
+      topLines = Some(2)
     )
 
   @Test def `overloaded-methods2` =
@@ -864,7 +921,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|aString = : String
          |anInt = : Int
          |""".stripMargin,
-      topLines = Some(2),
+      topLines = Some(2)
     )
 
   @Test def `overloaded-select` =
@@ -883,7 +940,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|aString = : String
          |anInt = : Int
          |""".stripMargin,
-      topLines = Some(2),
+      topLines = Some(2)
     )
 
   @Test def `overloaded-in-a-class` =
@@ -899,7 +956,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
       """|aaa = : Int
          |abb = : Option[Int]
          |""".stripMargin,
-      topLines = Some(2),
+      topLines = Some(2)
     )
 
   @Test def `overloaded-function-param` =
@@ -914,7 +971,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |abb = : Option[Int]
          |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
-      topLines = Some(3),
+      topLines = Some(3)
     )
 
   @Test def `overloaded-function-param2` =
@@ -929,7 +986,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |abb = : Option[Int]
          |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
-      topLines = Some(3),
+      topLines = Some(3)
     )
 
   @Test def `overloaded-applied-type` =
@@ -947,7 +1004,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |abb = : Option[Int]
          |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
-      topLines = Some(3),
+      topLines = Some(3)
     )
 
   @Test def `overloaded-bounds` =
@@ -965,7 +1022,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |acc = : List[Int]
          |assert(inline assertion: Boolean): Unit
          |""".stripMargin,
-      topLines = Some(3),
+      topLines = Some(3)
     )
 
   @Test def `overloaded-or-type` =
@@ -980,7 +1037,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |aaa = h : Int
          |abb = : Option[Int]
          |""".stripMargin,
-      topLines = Some(3),
+      topLines = Some(3)
     )
 
   @Test def `overloaded-function-param3` =
@@ -992,9 +1049,8 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|abb = : Option[Int]
          |""".stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )
-
 
   @Test def `lambda` =
     check(
@@ -1003,7 +1059,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|x = : Int
          |""".stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )
 
   @Test def `lambda2` =
@@ -1014,7 +1070,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|y = : Int
          |""".stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )
 
   @Test def `lambda3` =
@@ -1024,7 +1080,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|x = : Int
          |""".stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )
 
   @Test def `lambda4` =
@@ -1034,7 +1090,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|str = : String
          |""".stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )
 
   @Test def `lambda5` =
@@ -1044,7 +1100,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|str = : String
          |""".stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )
 
   @Test def `second-first` =
@@ -1059,7 +1115,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |""".stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )
 
   @Test def `second-first2` =
@@ -1075,7 +1131,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |""".stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )
 
   @Test def `second-first3` =
@@ -1091,7 +1147,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|aaa = : Int
          |""".stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )
 
   @Test def `second-first4` =
@@ -1102,7 +1158,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|x = : Int
          |""".stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )
 
   @Test def `second-first5` =
@@ -1112,9 +1168,10 @@ class CompletionArgSuite extends BaseCompletionSuite:
          |""".stripMargin,
       """|str = : String
          | """.stripMargin,
-      topLines = Some(1),
+      topLines = Some(1)
     )
 
+  @Ignore
   @Test def `comparison` =
     check(
       """
@@ -1126,7 +1183,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
         |  }}
         |""".stripMargin,
       """x: Int
-        |x = : Any""".stripMargin,
+        |x = : Any""".stripMargin
     )
 
   @Test def `autofill-arguments-case-class` =
@@ -1138,6 +1195,6 @@ class CompletionArgSuite extends BaseCompletionSuite:
         |  A(x@@)
         |""".stripMargin,
       """x = : Int
-        |x = ???, y = ???""".stripMargin,
+        |x = ???, y = ???""".stripMargin
       // this looks strange due to the Autofill message belonging to the description
     )

@@ -33,4 +33,4 @@ jobs:
           installers-regex: '\.msi$'
           release-tag     : ${{ inputs.version }}
           fork-user       : dottybot
-          token           : ${{ secrets.DOTTYBOT-WINGET-TOKEN }}
+          token           : ${{ secrets.DOTTYBOT-TOKEN }}

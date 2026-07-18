@@ -1,3 +1,24 @@
-13: Pattern Match Exhaustivity: Node2()
-17: Pattern Match Exhaustivity: Node1(_), Node2()
-21: Pattern Match Exhaustivity: Node1(Foo()), Node2()
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9232.scala:13:39 ---
+13 |  def transformTree(tree: Tree): Any = tree match {
+   |                                       ^^^^
+   |                                  match may not be exhaustive.
+   |
+   |                                  It would fail on pattern case: Node2()
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9232.scala:17:40 ---
+17 |  def transformTree2(tree: Tree): Any = tree match {
+   |                                        ^^^^
+   |                        match may not be exhaustive.
+   |
+   |                        It would fail on pattern case: Node1(_), Node2()
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9232.scala:21:40 ---
+21 |  def transformTree3(tree: Tree): Any = tree match {
+   |                                        ^^^^
+   |                    match may not be exhaustive.
+   |
+   |                    It would fail on pattern case: Node1(Foo()), Node2()
+   |
+   | longer explanation available when compiling with `-explain`

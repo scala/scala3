@@ -67,9 +67,9 @@ object NameOps {
 
     def isConstructorName: Boolean = name == CONSTRUCTOR || name == TRAIT_CONSTRUCTOR
     def isStaticConstructorName: Boolean = name == STATIC_CONSTRUCTOR
-    def isLocalDummyName: Boolean = name startsWith str.LOCALDUMMY_PREFIX
-    def isReplWrapperName: Boolean = name.toString contains str.REPL_SESSION_LINE
-    def isReplAssignName: Boolean = name.toString contains str.REPL_ASSIGN_SUFFIX
+    def isLocalDummyName: Boolean = name.startsWith(str.LOCALDUMMY_PREFIX)
+    def isReplWrapperName: Boolean = name.toString.contains(str.REPL_SESSION_LINE)
+    def isReplAssignName: Boolean = name.toString.contains(str.REPL_ASSIGN_SUFFIX)
     def isSetterName: Boolean = name.endsWith(str.SETTER_SUFFIX) || name.is(SyntheticSetterName)
     def isScala2LocalSuffix: Boolean = testSimple(_.endsWith(" "))
     def isSelectorName: Boolean = testSimple(n => n.startsWith("_") && n.drop(1).forall(_.isDigit))
@@ -89,7 +89,7 @@ object NameOps {
           // Ends with operator characters
           while i >= 0 && isOperatorPart(name(i)) do i -= 1
           if i == -1 then return true
-          // Optionnally prefixed with alpha-numeric characters followed by `_`
+          // Optionally prefixed with alpha-numeric characters followed by `_`
           if name(i) != '_' then return false
           while i >= 0 && isIdentifierPart(name(i)) do i -= 1
           i == -1

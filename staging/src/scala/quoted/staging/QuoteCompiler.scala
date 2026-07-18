@@ -25,6 +25,7 @@ import dotty.tools.io.{Path, VirtualFile}
 import scala.quoted.runtime.impl._
 
 import scala.annotation.tailrec
+import scala.compiletime.uninitialized
 import scala.concurrent.Promise
 import scala.quoted.{Expr, Quotes, Type}
 
@@ -34,7 +35,7 @@ import scala.quoted.{Expr, Quotes, Type}
 private class QuoteCompiler extends Compiler:
 
   /** Either `Left` with name of the classfile generated or `Right` with the value contained in the expression */
-  private var result: Either[String, Any] = null
+  private var result: Either[String, Any] = uninitialized
 
   override protected def frontendPhases: List[List[Phase]] =
     List(List(new QuotedFrontend))
@@ -72,7 +73,7 @@ private class QuoteCompiler extends Compiler:
           implicit val unitCtx: Context = SpliceScope.setSpliceScope(new RunScope)(using ctx1)
 
           val pos = Span(0)
-          val compUnitInfo = CompilationUnitInfo(new VirtualFile("<quote>"))
+          val compUnitInfo = CompilationUnitInfo(new VirtualFile("<quote>", Array.emptyByteArray))
 
           // Places the contents of expr in a compilable tree for a class with the following format.
           // `package __root__ { class ' { def apply: Any = <expr> } }`

@@ -1,6 +1,6 @@
 object test:
 
-  class FileSystem extends caps.Capability
+  class FileSystem extends caps.SharedCapability
 
   def foo(fs: FileSystem) =
 

@@ -1,7 +1,5 @@
 package dotty.tools.pc
 
-import dotty.tools.pc.PcSymbolSearch.*
-
 import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.ast.tpd
@@ -14,10 +12,10 @@ import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
+import dotty.tools.pc.PcSymbolSearch.*
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 trait PcSymbolSearch:
@@ -42,7 +40,7 @@ trait PcSymbolSearch:
   lazy val path = rawPath match
     // For type it will sometimes go into the wrong tree since TypeTree also contains the same span
     // https://github.com/lampepfl/dotty/issues/15937
-    case TypeApply(sel: Select, _) :: tail if sel.span.contains(pos.span) =>
+    case TypeApply(sel: Select, _) :: _ if sel.span.contains(pos.span) =>
       Interactive.pathTo(sel, pos.span) ::: rawPath
     case _ => rawPath
 
@@ -59,34 +57,44 @@ trait PcSymbolSearch:
           if id.symbol
             .is(Flags.Param) && id.symbol.owner.is(Flags.ExtensionMethod) =>
         Some(findAllExtensionParamSymbols(id.sourcePos, id.name, id.symbol))
-      /**
-       * Workaround for missing symbol in:
-       * class A[T](a: T)
-       * val x = new <<A>>(1)
+
+      /** Workaround for missing symbol in:
+       *  ```
+       *  class A[T](a: T)
+       *  val x = new <<A>>(1)
+       *  ```
        */
-      case t :: (n: New) :: (sel: Select) :: _
+      case t :: (_: New) :: (sel: Select) :: _
           if t.symbol == NoSymbol && sel.symbol.isConstructor =>
         Some(symbolAlternatives(sel.symbol.owner), namePos(t))
-      /**
-       * Workaround for missing symbol in:
-       * class A[T](a: T)
-       * val x = <<A>>[Int](1)
+
+      /** Workaround for missing symbol in:
+       *  ```
+       *  class A[T](a: T)
+       *  val x = <<A>>[Int](1)
+       *  ```
        */
       case (sel @ Select(New(t), _)) :: (_: TypeApply) :: _
           if sel.symbol.isConstructor =>
         Some(symbolAlternatives(sel.symbol.owner), namePos(t))
       /* simple identifier:
-       * val a = val@@ue + value
+       *  ```
+       *  val a = val@@ue + value
+       *  ```
        */
       case (id: Ident) :: _ =>
         Some(symbolAlternatives(id.symbol), id.sourcePos)
       /* simple selector:
-       * object.val@@ue
+       *  ```
+       *  object.val@@ue
+       *  ```
        */
       case (sel: Select) :: _ if selectNameSpan(sel).contains(pos.span) =>
         Some(symbolAlternatives(sel.symbol), pos.withSpan(sel.nameSpan))
       /* named argument:
-       * foo(nam@@e = "123")
+       *  ```
+       *  foo(nam@@e = "123")
+       *  ```
        */
       case (arg: NamedArg) :: (appl: Apply) :: _ =>
         val realName = arg.name.stripModuleClassSuffix.lastPart
@@ -109,31 +117,37 @@ trait PcSymbolSearch:
                   s.owner.owner.info.member(s.name).symbol
                 )
                   .filter(_ != NoSymbol),
-                pos,
+                pos
               )
             else (Set(s), pos)
           }
         else None
-        end if
       /* all definitions:
-       * def fo@@o = ???
-       * class Fo@@o = ???
+       *  ```
+       *  def fo@@o = ???
+       *  class Fo@@o = ???
+       *  ```
        * etc.
        */
       case (df: NamedDefTree) :: _
           if df.nameSpan.contains(pos.span) && !isGeneratedGiven(df, sourceText) =>
         Some(symbolAlternatives(df.symbol), pos.withSpan(df.nameSpan))
       /* enum cases with params
-       * enum Foo:
-       *  case B@@ar[A](i: A)
+       *  ```
+       *  enum Foo:
+       *   case B@@ar[A](i: A)
+       *  ```
        */
       case (df: NamedDefTree) :: Template(_, _, self, _) :: _
           if (df.name == nme.apply || df.name == nme.unapply) && df.nameSpan.isZeroExtent =>
         Some(symbolAlternatives(self.tpt.symbol), self.sourcePos)
-      /**
-       * For traversing annotations:
-       * @JsonNo@@tification("")
-       * def params() = ???
+
+      /** For traversing annotations:
+       *
+       *  ```
+       *  @JsonNo@@tification("")
+       *  def params() = ???
+       *  ```
        */
       case (df: MemberDef) :: _ if df.span.contains(pos.span) =>
         val annotTree = df.mods.annotations.find { t =>
@@ -146,7 +160,7 @@ trait PcSymbolSearch:
         }.headOption
 
       /* Import selectors:
-       * import scala.util.Tr@@y
+       * `import scala.util.Tr@@y`
        */
       case (imp: ImportOrExport) :: _ if imp.span.contains(pos.span) =>
         imp
@@ -164,21 +178,19 @@ trait PcSymbolSearch:
   private def seekInExtensionParameters() =
     def collectParams(
         extMethods: ExtMethods
-    ): Option[ExtensionParamOccurence] =
+    ): Option[ExtensionParamOccurrence] =
       NavigateAST
-        .pathTo(pos.span, extMethods.paramss.flatten)(using
-          compilatonUnitContext
-        )
+        .pathTo(pos.span, extMethods.paramss.flatten)(using compilatonUnitContext)
         .collectFirst {
           case v: untpd.ValOrTypeDef =>
-            ExtensionParamOccurence(
+            ExtensionParamOccurrence(
               v.name,
               v.namePos,
               v.symbol,
               extMethods.methods
             )
           case i: untpd.Ident =>
-            ExtensionParamOccurence(
+            ExtensionParamOccurrence(
               i.name,
               i.sourcePos,
               i.symbol,
@@ -188,25 +200,24 @@ trait PcSymbolSearch:
 
     for
       extensionMethodScope <- extensionMethods
-      occurrence <- collectParams(extensionMethodScope)
-      symbols <- collectAllExtensionParamSymbols(
+      occurrence           <- collectParams(extensionMethodScope)
+      symbols              <- collectAllExtensionParamSymbols(
         path.headOption.getOrElse(unit.tpdTree),
         occurrence
       )
     yield symbols
-  end seekInExtensionParameters
 
   private def collectAllExtensionParamSymbols(
       tree: tpd.Tree,
-      occurrence: ExtensionParamOccurence,
+      occurrence: ExtensionParamOccurrence
   ): Option[(Set[Symbol], SourcePosition)] =
     occurrence match
-      case ExtensionParamOccurence(_, namePos, symbol, _)
+      case ExtensionParamOccurrence(_, namePos, symbol, _)
           if symbol != NoSymbol && !symbol.isError && !symbol.owner.is(
             Flags.ExtensionMethod
           ) =>
         Some((symbolAlternatives(symbol), namePos))
-      case ExtensionParamOccurence(name, namePos, _, methods) =>
+      case ExtensionParamOccurrence(name, namePos, _, methods) =>
         val symbols =
           for
             method <- methods.toSet
@@ -227,18 +238,17 @@ trait PcSymbolSearch:
   private def findAllExtensionParamSymbols(
       pos: SourcePosition,
       name: Name,
-      sym: Symbol,
+      sym: Symbol
   ) =
     val symbols =
       for
         methods <- extensionMethods.map(_.methods)
         symbols <- collectAllExtensionParamSymbols(
           unit.tpdTree,
-          ExtensionParamOccurence(name, pos, sym, methods),
+          ExtensionParamOccurrence(name, pos, sym, methods)
         )
       yield symbols
     symbols.getOrElse((symbolAlternatives(sym), pos))
-  end findAllExtensionParamSymbols
 end PcSymbolSearch
 
 object PcSymbolSearch:
@@ -268,8 +278,7 @@ object PcSymbolSearch:
     val nameSpan = df.nameSpan
     df.symbol.is(Flags.Given) && sourceText.substring(
       nameSpan.start,
-      nameSpan.end,
+      nameSpan.end
     ) != df.name.toString()
 
 end PcSymbolSearch
-

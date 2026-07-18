@@ -3,15 +3,15 @@ package dotc
 package ast
 
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
-import dotc.core.Contexts._
+import dotc.core.Contexts.*
 import dotc.parsing.Parsers.Parser
 import dotc.util.SourceFile
 
 class UntpdTreeMapTest extends DottyTest {
 
-  import untpd._
+  import untpd.*
 
   def parse(code: String): Tree = {
     val (_, stats) = new Parser(SourceFile.virtual("<meta>", code)).templateStatSeq()

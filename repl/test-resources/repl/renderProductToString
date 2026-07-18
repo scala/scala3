@@ -1,0 +1,26 @@
+scala> case class Plain(i: Int, s: String)
+// defined case class Plain
+scala> Plain(1, "x")
+val res0: Plain = Plain(i = 1, s = "x")
+scala> (1, "x")
+val res1: (Int, String) = (1, "x")
+scala> case class Fancy(i: Int, s: String) { override def toString = s"Fancy($i)" }
+// defined case class Fancy
+scala> Fancy(1, "x")
+val res2: Fancy = Fancy(1)
+scala> val widened: Product = Fancy(2, "y")
+val widened: Product = Fancy(2)
+scala> case class Box(value: Product)
+// defined case class Box
+scala> Box(Fancy(3, "z"))
+val res3: Box = Box(Fancy(3))
+scala> class CustomProduct(val x: Int) extends Product { def canEqual(that: Any) = that.isInstanceOf[CustomProduct]; def productArity = 1; def productElement(n: Int): Any = if n == 0 then x else throw new IndexOutOfBoundsException(n.toString); override def productPrefix = "CustomProduct"; override def toString = s"custom($x)" }
+// defined class CustomProduct
+scala> new CustomProduct(4)
+val res4: CustomProduct = custom(4)
+scala> trait BaseProductString { override def toString = "from-base" }
+// defined trait BaseProductString
+scala> case class InheritedString(i: Int) extends BaseProductString
+// defined case class InheritedString
+scala> InheritedString(5)
+val res5: InheritedString = from-base

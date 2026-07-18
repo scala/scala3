@@ -1,1 +1,8 @@
-2: Pattern Match Exhaustivity: List(_, _*)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/virtpatmat_apply.scala:2:6 
+2 |  List(1, 2, 3) match {
+  |  ^^^^^^^^^^^^^
+  |  match may not be exhaustive.
+  |
+  |  It would fail on pattern case: List(_, _*)
+  |
+  | longer explanation available when compiling with `-explain`

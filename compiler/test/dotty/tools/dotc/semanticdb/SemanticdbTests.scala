@@ -1,27 +1,22 @@
 package dotty.tools.dotc.semanticdb
 
-import scala.language.unsafeNulls
-
-import java.net.URLClassLoader
 import java.util.regex.Pattern
-import java.io.File
-import java.nio.file._
+import java.io.ByteArrayOutputStream
+import java.nio.file.*
 import java.nio.charset.StandardCharsets
 import java.util.stream.Collectors
 import java.util.Comparator
-import scala.util.control.NonFatal
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
-
+import scala.jdk.CollectionConverters.*
 import javax.tools.ToolProvider
-
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 import org.junit.experimental.categories.Category
-
 import dotty.BootstrappedOnlyTests
 import dotty.tools.dotc.Main
+import dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.Scala3.given
+import dotty.tools.dotc.semanticdb.internal.SemanticdbOutputStream
 import dotty.tools.dotc.util.SourceFile
 
 @main def updateExpect =
@@ -33,7 +28,7 @@ import dotty.tools.dotc.util.SourceFile
  *  only 1 semanticdb file should be present
  *  @param source the single source file producing the semanticdb
  */
-@main def metac(root: String, source: String) =
+@main def metac(root: String, source: String): Unit =
   val rootSrc = Paths.get(root)
   val sourceSrc = Paths.get(source)
   val semanticFile = FileSystems.getDefault.getPathMatcher("glob:**.semanticdb")
@@ -46,20 +41,20 @@ import dotty.tools.dotc.util.SourceFile
     files.head
   val metacSb: StringBuilder = StringBuilder(5000)
   val semanticdbPath = inputFile()
-  val doc = Tools.loadTextDocumentUnsafe(sourceSrc.toAbsolutePath, semanticdbPath)
-  Tools.metac(doc, Paths.get(doc.uri))(using metacSb)
+  val doc = SemanticdbTests.loadTextDocumentUnsafe(sourceSrc.toAbsolutePath, semanticdbPath)
+  SemanticdbTests.metac(doc, Paths.get(doc.uri))(using metacSb)
   Files.write(rootSrc.resolve("metac.expect"), metacSb.toString.getBytes(StandardCharsets.UTF_8))
 
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class SemanticdbTests:
-  val javaFile = FileSystems.getDefault.getPathMatcher("glob:**.java")
-  val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
-  val expectFile = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
-  val rootSrc = Paths.get(System.getProperty("dotty.tools.dotc.semanticdb.test"))
-  val expectSrc = rootSrc.resolve("expect")
-  val javaRoot = rootSrc.resolve("javacp")
-  val metacExpectFile = rootSrc.resolve("metac.expect")
+  val javaFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.java")
+  val scalaFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.scala")
+  val expectFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
+  val rootSrc: Path = Paths.get(System.getProperty("dotty.tools.dotc.semanticdb.test"))
+  val expectSrc: Path = rootSrc.resolve("expect")
+  val javaRoot: Path = rootSrc.resolve("javacp")
+  val metacExpectFile: Path = rootSrc.resolve("metac.expect")
 
   @Category(Array(classOf[dotty.SlowTests]))
   @Test def expectTests: Unit = if (!scala.util.Properties.isWin) runExpectTest(updateExpectFiles = false)
@@ -88,8 +83,8 @@ class SemanticdbTests:
         .resolve(relpath)
         .resolveSibling(filename + ".semanticdb")
       val expectPath = source.resolveSibling(filename.replace(".scala", ".expect.scala"))
-      val doc = Tools.loadTextDocument(source, relpath, semanticdbPath)
-      Tools.metac(doc, rootSrc.relativize(source))(using metacSb)
+      val doc = SemanticdbTests.loadTextDocument(source, relpath, semanticdbPath)
+      SemanticdbTests.metac(doc, rootSrc.relativize(source))(using metacSb)
       val obtained = trimTrailingWhitespace(SemanticdbTests.printTextDocument(doc))
       collectErrorOrUpdate(expectPath, obtained)
     collectErrorOrUpdate(metacExpectFile, metacSb.toString)
@@ -143,7 +138,8 @@ class SemanticdbTests:
       "-classpath", target.toString,
       "-Xignore-scala2-macros",
       "-usejavacp",
-      "-Wunused:all"
+      "-Wunused:all",
+      "-Yreporter:dotty.tools.dotc.reporting.Reporter$SilentReporter",
     ) ++ inputFiles().map(_.toString)
     val exit = Main.process(args)
     assertFalse(s"dotc errors: ${exit.errorCount}", exit.hasErrors)
@@ -152,41 +148,146 @@ class SemanticdbTests:
 end SemanticdbTests
 
 object SemanticdbTests:
-  /** Prettyprint a text document with symbol occurrences next to each resolved identifier.
-   *
-   * Useful for testing purposes to ensure that SymbolOccurrence values make sense and are correct.
-   * Example output (NOTE, slightly modified to avoid "unclosed comment" errors):
-   * {{{
-   *   class Example *example/Example#*  {
-   *     val a *example/Example#a.* : String *scala/Predef.String#* = "1"
-   *   }
-   * }}}
-   **/
   def printTextDocument(doc: TextDocument): String =
-    val symtab = doc.symbols.iterator.map(info => info.symbol -> info).toMap
-    val sb = StringBuilder(1000)
-    val sourceFile = SourceFile.virtual(doc.uri, doc.text)
-    var offset = 0
-    for occ <- doc.occurrences.sorted do
-      val range = occ.range.get
-      val end = math.max(
-        offset,
-        sourceFile.lineToOffset(range.endLine) + range.endCharacter
-      )
-      val isPrimaryConstructor =
-        symtab.get(occ.symbol).exists(_.isPrimary)
-      if !occ.symbol.isPackage && !isPrimaryConstructor then
-        assert(end <= doc.text.length,
-          s"doc is only ${doc.text.length} - offset=$offset, end=$end , symbol=${occ.symbol} in source ${sourceFile.name}")
-        sb.append(doc.text.substring(offset, end))
-        sb.append("/*")
-          .append(if (occ.role.isDefinition) "<-" else "->")
-          .append(occ.symbol.replace("/", "::"))
-          .append("*/")
-        offset = end
-    assert(offset <= doc.text.length, s"absurd offset = $offset when doc is length ${doc.text.length}")
-    sb.append(doc.text.substring(offset))
-    sb.toString
+    val byteStream = new ByteArrayOutputStream()
+    val out = SemanticdbOutputStream.newInstance(byteStream)
+    doc.writeTo(out)
+    out.flush()
+    DocumentPrinter.textDocumentPrettyPrint(byteStream.toByteArray.nn)
   end printTextDocument
+
+
+  /** Load SemanticDB TextDocument for a single Scala source file
+   *
+   * @param scalaAbsolutePath      Absolute path to a Scala source file.
+   * @param scalaRelativePath      scalaAbsolutePath relativized by the sourceroot.
+   * @param semanticdbAbsolutePath Absolute path to the SemanticDB file.
+   */
+  def loadTextDocument(
+                        scalaAbsolutePath: Path,
+                        scalaRelativePath: Path,
+                        semanticdbAbsolutePath: Path
+                      ): TextDocument =
+    val reluri = Tools.mkURIstring(scalaRelativePath)
+    val sdocs = parseTextDocuments(semanticdbAbsolutePath)
+    sdocs.documents.find(_.uri == reluri) match
+      case None => throw new NoSuchElementException(s"$scalaRelativePath")
+      case Some(document) =>
+        val text = new String(Files.readAllBytes(scalaAbsolutePath), StandardCharsets.UTF_8)
+        // Assert the SemanticDB payload is in-sync with the contents of the Scala file on disk.
+        val md5FingerprintOnDisk = internal.MD5.compute(text)
+        if document.md5 != md5FingerprintOnDisk then
+          throw new IllegalArgumentException(s"stale semanticdb: $scalaRelativePath")
+        else
+          // Update text document to include full text contents of the file.
+          document.copy(text = text)
+  end loadTextDocument
+
+  def loadTextDocumentUnsafe(scalaAbsolutePath: Path, semanticdbAbsolutePath: Path): TextDocument =
+    val docs = parseTextDocuments(semanticdbAbsolutePath).documents
+    assert(docs.length == 1)
+    docs.head.copy(text = new String(Files.readAllBytes(scalaAbsolutePath), StandardCharsets.UTF_8))
+
+  /** Parses SemanticDB text documents from an absolute path to a `*.semanticdb` file. */
+  private def parseTextDocuments(path: Path): TextDocuments =
+    val bytes = Files.readAllBytes(path).nn // NOTE: a semanticdb file is a TextDocuments message, not TextDocument
+    TextDocuments.parseFrom(bytes)
+
+
+  def metac(doc: TextDocument, realPath: Path)(using sb: StringBuilder): StringBuilder =
+    val symtab = PrinterSymtab.fromTextDocument(doc)
+    val symPrinter = SymbolInformationPrinter(symtab)
+    val realURI = realPath.toString
+    given sourceFile: SourceFile = SourceFile.virtual(doc.uri, doc.text)
+    val synthPrinter = SyntheticPrinter(symtab, sourceFile)
+    sb.append(realURI).nl
+    sb.append("-" * realURI.length).nl
+    sb.nl
+    sb.append("Summary:").nl
+    sb.append("Schema => ").append(schemaString(doc.schema)).nl
+    sb.append("Uri => ").append(doc.uri).nl
+    sb.append("Text => empty").nl
+    sb.append("Language => ").append(languageString(doc.language)).nl
+    sb.append("Symbols => ").append(doc.symbols.length).append(" entries").nl
+    sb.append("Occurrences => ").append(doc.occurrences.length).append(" entries").nl
+    if doc.diagnostics.nonEmpty then
+      sb.append("Diagnostics => ").append(doc.diagnostics.length).append(" entries").nl
+    if doc.synthetics.nonEmpty then
+      sb.append("Synthetics => ").append(doc.synthetics.length).append(" entries").nl
+    sb.nl
+    sb.append("Symbols:").nl
+    doc.symbols.sorted.foreach(s => processSymbol(s, symPrinter))
+    sb.nl
+    sb.append("Occurrences:").nl
+    doc.occurrences.sorted.foreach(processOccurrence)
+    sb.nl
+    if doc.diagnostics.nonEmpty then
+      sb.append("Diagnostics:").nl
+      doc.diagnostics.sorted.foreach(d => processDiag(d))
+      sb.nl
+    if doc.synthetics.nonEmpty then
+      sb.append("Synthetics:").nl
+      doc.synthetics.sorted.foreach(s => processSynth(s, synthPrinter))
+      sb.nl
+    sb
+  end metac
+
+  private def schemaString(schema: Schema) =
+    import Schema.*
+    schema match
+      case SEMANTICDB3 => "SemanticDB v3"
+      case SEMANTICDB4 => "SemanticDB v4"
+      case LEGACY => "SemanticDB legacy"
+      case Unrecognized(_) => "unknown"
+  end schemaString
+
+  private def languageString(language: Language) =
+    import Language.*
+    language match
+      case SCALA => "Scala"
+      case JAVA => "Java"
+      case UNKNOWN_LANGUAGE | Unrecognized(_) => "unknown"
+  end languageString
+
+  private def processSymbol(info: SymbolInformation, printer: SymbolInformationPrinter)(using sb: StringBuilder): Unit =
+    sb.append(printer.pprintSymbolInformation(info)).nl
+
+  private def processSynth(synth: Synthetic, printer: SyntheticPrinter)(using sb: StringBuilder): Unit =
+    sb.append(printer.pprint(synth)).nl
+
+  private def processDiag(d: Diagnostic)(using sb: StringBuilder): Unit =
+    d.range match
+      case Some(range) => processRange(sb, range)
+      case _ => sb.append("[):")
+    sb.append(" ")
+    d.severity match
+      case Diagnostic.Severity.ERROR => sb.append("[error]")
+      case Diagnostic.Severity.WARNING => sb.append("[warning]")
+      case Diagnostic.Severity.INFORMATION => sb.append("[info]")
+      case _ => sb.append("[unknown]")
+    sb.append(" ")
+    sb.append(d.message)
+    sb.nl
+
+  private def processOccurrence(occ: SymbolOccurrence)(using sb: StringBuilder, sourceFile: SourceFile): Unit =
+    occ.range match
+      case Some(range) =>
+        processRange(sb, range)
+        if range.endLine == range.startLine
+          && range.startCharacter != range.endCharacter
+          && !(occ.symbol.isConstructor && occ.role.isDefinition) then
+          val line = sourceFile.lineContent(sourceFile.lineToOffset(range.startLine))
+          assert(range.startCharacter <= line.length && range.endCharacter <= line.length,
+            s"Line is only ${line.length} - start line was ${range.startLine} in source ${sourceFile.file.name}"
+          )
+          sb.append(" ").append(line.substring(range.startCharacter, range.endCharacter))
+      case _ =>
+        sb.append("[):")
+    end match
+    sb.append(if occ.role.isReference then " -> " else " <- ").append(occ.symbol).nl
+  end processOccurrence
+
+  extension (sb: StringBuilder)
+    private inline def nl = sb.append(System.lineSeparator)
 
 end SemanticdbTests

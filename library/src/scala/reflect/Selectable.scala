@@ -1,5 +1,7 @@
 package scala.reflect
 
+import language.experimental.captureChecking
+
 /** A class that implements structural selections using Java reflection.
  *
  *  It can be used as a supertrait of a class or be made available
@@ -17,7 +19,10 @@ trait Selectable extends scala.Selectable:
   protected def selectedValue: Any = this
 
   // The Scala.js codegen relies on this method being final for correctness
-  /** Select member with given name */
+  /** Selects member with given name.
+   *
+   *  @param name the name of the structural member (field or no-arg method) to select
+   */
   final def selectDynamic(name: String): Any =
     val rcls = selectedValue.getClass
     try
@@ -28,10 +33,10 @@ trait Selectable extends scala.Selectable:
       applyDynamic(name)()
 
   // The Scala.js codegen relies on this method being final for correctness
-  /** Select method and apply to arguments.
-   *  @param name       The name of the selected method
-   *  @param paramTypes The class tags of the selected method's formal parameter types
-   *  @param args       The arguments to pass to the selected method
+  /** Selects method and applies to arguments.
+   *  @param name       the name of the selected method
+   *  @param paramTypes the `Class` instances representing the selected method's formal parameter types
+   *  @param args       the arguments to pass to the selected method
    */
   final def applyDynamic(name: String, paramTypes: Class[?]*)(args: Any*): Any =
     val rcls = selectedValue.getClass
@@ -43,6 +48,8 @@ object Selectable:
 
   /** An implicit conversion that turns a value into a Selectable
    *  such that structural selections are performed on that value.
+   *
+   *  @param x the value to wrap in a `Selectable` for reflection-based structural member access
    */
   implicit def reflectiveSelectable(x: Any): Selectable =
     new DefaultSelectable(x)

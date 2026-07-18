@@ -1,6 +1,6 @@
 package dotty.tools.pc.completions
 
-import scala.util.Try
+import scala.annotation.tailrec
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
@@ -9,16 +9,14 @@ import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import dotty.tools.dotc.core.Names.Name
-import dotty.tools.dotc.core.StdNames.*
-import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Symbols.Symbol
+import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.Types.*
-import dotty.tools.pc.IndexedContext
-import dotty.tools.pc.utils.InteractiveEnrichments.*
-import scala.annotation.tailrec
 import dotty.tools.pc.ApplyArgsExtractor
-import dotty.tools.pc.ParamSymbol
 import dotty.tools.pc.ApplyExtractor
+import dotty.tools.pc.IndexedContext
+import dotty.tools.pc.ParamSymbol
+import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 object NamedArgCompletions:
 
@@ -26,7 +24,7 @@ object NamedArgCompletions:
       path: List[Tree],
       untypedPath: List[untpd.Tree],
       indexedContext: IndexedContext,
-      clientSupportsSnippets: Boolean,
+      clientSupportsSnippets: Boolean
   )(using ctx: Context): List[CompletionValue] =
     path match
       case (ident: Ident) :: ApplyExtractor(app) =>
@@ -34,17 +32,13 @@ object NamedArgCompletions:
           ident,
           app,
           indexedContext,
-          clientSupportsSnippets,
+          clientSupportsSnippets
         )
-      case (app: Apply) :: _ =>
-        /**
-         * def foo(aaa: Int, bbb: Int, ccc: Int) = ???
-         * val x = foo(
-         *  bbb = 123,
+      case (_: Apply) :: _ =>
+        /** def foo(aaa: Int, bbb: Int, ccc: Int) = ??? val x = foo( bbb = 123,
          *  ccc = 123,
-         *  @@
-         * )
-         * In this case, typed path doesn't contain already provided arguments
+         *  @@ ) In this case, typed path doesn't contain already provided
+         *    arguments
          */
         untypedPath match
           case (ident: Ident) :: (app: Apply) :: _ =>
@@ -52,20 +46,19 @@ object NamedArgCompletions:
               ident,
               app,
               indexedContext,
-              clientSupportsSnippets,
+              clientSupportsSnippets
             )
           case _ =>
             Nil
       case _ =>
         Nil
     end match
-  end contribute
 
   private def contribute(
       ident: Ident,
       apply: Apply,
       indexedContext: IndexedContext,
-      clientSupportsSnippets: Boolean,
+      clientSupportsSnippets: Boolean
   )(using context: Context): List[CompletionValue] =
     def isUselessLiteral(arg: Tree): Boolean =
       arg match
@@ -80,7 +73,7 @@ object NamedArgCompletions:
     )
 
     val allParams = argsAndParams.flatMap { case (baseArgs, baseParams) =>
-      val args = baseArgs.filterNot( a => a == ident || isUselessLiteral(a))
+      val args = baseArgs.filterNot(a => a == ident || isUselessLiteral(a))
 
       @tailrec
       def isDefaultArg(t: Tree): Boolean = t match
@@ -117,8 +110,8 @@ object NamedArgCompletions:
 
     val prefix =
       ident.name.toString
-      .replace(Cursor.value, "")
-      .nn
+        .replace(Cursor.value, "")
+        .nn
 
     val params: List[ParamSymbol] =
       allParams
@@ -168,12 +161,10 @@ object NamedArgCompletions:
         List(
           CompletionValue.Autofill(
             editText,
-            labelText,
+            labelText
           )
         )
       else List.empty
-      end if
-    end fillAllFields
 
     def findPossibleDefaults(): List[CompletionValue] =
       params.flatMap { param =>
@@ -183,7 +174,7 @@ object NamedArgCompletions:
             param.nameBackticked + " = " + memberName + " "
           CompletionValue.namedArg(
             label = editText,
-            param,
+            param
           )
         }
       }
@@ -191,7 +182,7 @@ object NamedArgCompletions:
     params.map(p =>
       CompletionValue.namedArg(
         s"${p.nameBackticked} = ",
-        p,
+        p
       )
     ) ::: findPossibleDefaults() ::: fillAllFields()
   end contribute

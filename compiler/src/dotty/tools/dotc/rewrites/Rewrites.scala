@@ -7,7 +7,7 @@ import core.Contexts.*
 import collection.mutable
 import scala.annotation.tailrec
 import dotty.tools.dotc.reporting.Reporter
-import dotty.tools.dotc.util.SourcePosition;
+import dotty.tools.dotc.util.SourcePosition
 
 import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets.UTF_8
@@ -43,8 +43,8 @@ object Rewrites {
       pbuf.filterInPlace(x => !p(x.span))
 
     def apply(cs: Array[Char]): Array[Char] = {
-      val delta = pbuf.map(_.delta).sum
-      val patches = pbuf.toList.sortBy(_.span.start)
+      val patches = pbuf.toList.distinct.sortBy(_.span.start)
+      val delta = patches.map(_.delta).sum
       if (patches.nonEmpty)
         patches.reduceLeft {(p1, p2) =>
           assert(p1.span.end <= p2.span.start, s"overlapping patches in $source: $p1 and $p2")
@@ -72,7 +72,7 @@ object Rewrites {
     }
 
     def writeBack(): Unit =
-      val chars = apply(source.underlying.content)
+      val chars = apply(source.content)
       val osw = OutputStreamWriter(source.file.output, UTF_8)
       try osw.write(chars, 0, chars.length)
       finally osw.close()

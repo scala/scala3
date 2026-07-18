@@ -7,7 +7,6 @@ import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.parsing.Parsers
 import dotty.tools.dotc.report
-import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
@@ -46,6 +45,10 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
   override def phaseName: String = InsertExpression.name
   override def isCheckable: Boolean = false
 
+  private val (indexCheck, returnTypeCheck) = if config.oldSyntax
+    then ("if (idx == -1) throw new NoSuchElementException(name)", """if (returnTypeName == "void") { () } else { res }""")
+    else ("if idx == -1 then throw new NoSuchElementException(name)", """if returnTypeName == "void" then () else res""")
+
   // TODO move reflection methods (callMethod, getField, etc) to scala3-library
   // under scala.runtime (or scala.debug?) to avoid recompiling them again and again
   private val expressionClassSource =
@@ -60,13 +63,13 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
         |
         |  def getLocalValue(name: String): Any = {
         |    val idx = names.indexOf(name)
-        |    if idx == -1 then throw new NoSuchElementException(name)
+        |    $indexCheck
         |    else values(idx)
         |  }
         |
         |  def setLocalValue(name: String, value: Any): Any = {
         |    val idx = names.indexOf(name)
-        |    if idx == -1 then throw new NoSuchElementException(name)
+        |    $indexCheck
         |    else values(idx) = value
         |  }
         |
@@ -81,7 +84,7 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
         |      .getOrElse(throw new NoSuchMethodException(methodName))
         |    method.setAccessible(true)
         |    val res = unwrapException(method.invoke(obj, args*))
-        |    if returnTypeName == "void" then () else res
+        |    $returnTypeCheck
         |  }
         |
         |  def callConstructor(className: String, paramTypesNames: Array[String], args: Array[Object]): Any = {
@@ -140,7 +143,7 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
         |}
         |""".stripMargin
 
-  override def run(using Context): Unit =
+  protected def run(using Context): Unit =
     val inserter = Inserter(parseExpression, parseExpressionClass)
     ctx.compilationUnit.untpdTree = inserter.transform(ctx.compilationUnit.untpdTree)
 
@@ -188,41 +191,23 @@ private class InsertExpression(config: ExpressionCompilerConfig) extends Phase:
         case tree => super.transform(tree)
 
   private def parseExpression(using Context): Tree =
-    val prefix =
-      s"""|object Expression:
-          |  {
-          |    """.stripMargin
-    // don't use stripMargin on wrappedExpression because expression can contain a line starting with `  |`
-    val wrappedExpression = prefix + config.expression + "\n  }\n"
-    val expressionFile = SourceFile.virtual("<expression>", config.expression)
-    val contentBytes = wrappedExpression.getBytes(StandardCharsets.UTF_8)
-    val wrappedExpressionFile =
-      new VirtualFile("<wrapped-expression>", contentBytes)
-    val sourceFile =
-      new SourceFile(wrappedExpressionFile, wrappedExpression.toArray):
-        override def start: Int = -prefix.size
-        override def underlying: SourceFile = expressionFile
-        override def atSpan(span: Span): SourcePosition =
-          if (span.exists) SourcePosition(this, span)
-          else NoSourcePosition
-
+    val sourceFile = SourceFile.virtual("<expression>", config.expression)
     parse(sourceFile)
-      .asInstanceOf[PackageDef]
-      .stats
-      .head
-      .asInstanceOf[ModuleDef]
-      .impl
-      .body
-      .head
 
   private def parseExpressionClass(using Context): Seq[Tree] =
     val sourceFile = SourceFile.virtual("<expression class>", expressionClassSource)
-    parse(sourceFile).asInstanceOf[PackageDef].stats
+    val newCtx = ctx.fresh.setSource(sourceFile)
+    val parser = Parsers.Parser(sourceFile)(using newCtx)
+    parser.parse().asInstanceOf[PackageDef].stats
 
   private def parse(sourceFile: SourceFile)(using Context): Tree =
     val newCtx = ctx.fresh.setSource(sourceFile)
     val parser = Parsers.Parser(sourceFile)(using newCtx)
-    parser.parse()
+    val stats = parser.blockStatSeq(outermost = true)
+    if stats.length > 1 then
+      Block(stats.take(stats.length - 1), stats.last)
+    else
+      stats.head
 
   private def isOnBreakpoint(tree: Tree)(using Context): Boolean =
     val startLine =

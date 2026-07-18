@@ -15,8 +15,11 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import scala.annotation.unchecked.uncheckedVariance
 import scala.annotation.tailrec
+import scala.annotation.publicInBinary
 import mutable.{Builder, ListBuffer}
 import scala.collection.generic.{CommonErrors, DefaultSerializable}
 import scala.runtime.Statics.releaseFence
@@ -31,20 +34,20 @@ import scala.runtime.Statics.releaseFence
  *  This class is optimal for last-in-first-out (LIFO), stack-like access patterns. If you need another access
  *  pattern, for example, random access or FIFO, consider using a collection more suited to this than `List`.
  *
- *  ==Performance==
- *  '''Time:''' `List` has `O(1)` prepend and head/tail access. Most other operations are `O(n)` on the number of elements in the list.
+ *  ## Performance
+ *  **Time:** `List` has `O(1)` prepend and head/tail access. Most other operations are `O(n)` on the number of elements in the list.
  *  This includes the index-based lookup of elements, `length`, `append` and `reverse`.
  *
- *  '''Space:''' `List` implements '''structural sharing''' of the tail list. This means that many operations are either
+ *  **Space:** `List` implements **structural sharing** of the tail list. This means that many operations are either
  *  zero- or constant-memory cost.
- *  {{{
+ *  ```scala sc:compile
  *  val mainList = List(3, 2, 1)
  *  val with4 =    4 :: mainList  // re-uses mainList, costs one :: instance
  *  val with42 =   42 :: mainList // also re-uses mainList, cost one :: instance
  *  val shorter =  mainList.tail  // costs nothing as it uses the same 2::1::Nil instances as mainList
- *  }}}
+ *  ```
  *
- *  @example {{{
+ *  @example ```scala sc:compile
  *  // Make a list via the companion object factory
  *  val days = List("Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday")
  *
@@ -58,7 +61,7 @@ import scala.runtime.Statics.releaseFence
  *    case Nil =>
  *      println("There don't seem to be any week days.")
  *  }
- *  }}}
+ *  ```
  *
  *  @note The functional list is characterized by persistence and structural sharing, thus offering considerable
  *        performance and space consumption benefits in some scenarios if used correctly.
@@ -89,23 +92,27 @@ sealed abstract class List[+A]
   override def iterableFactory: SeqFactory[List] = List
 
   /** Adds an element at the beginning of this list.
-    *  @param elem the element to prepend.
-    *  @return  a list which contains `x` as first element and
-    *           which continues with this list.
-    *  Example:
-    *  {{{1 :: List(2, 3) = List(2, 3).::(1) = List(1, 2, 3)}}}
-    */
+   *  @param elem the element to prepend.
+   *  @return  a list which contains `x` as first element and
+   *           which continues with this list.
+   *  Example:
+   *  ```scala sc:compile
+   *  1 :: List(2, 3) = List(2, 3).::(1) = List(1, 2, 3)
+   *  ```
+   */
   def :: [B >: A](elem: B): List[B] =  new ::(elem, this)
 
   /** Adds the elements of a given list in front of this list.
-    *
-    * Example:
-    * {{{List(1, 2) ::: List(3, 4) = List(3, 4).:::(List(1, 2)) = List(1, 2, 3, 4)}}}
-    *
-    *  @param prefix  The list elements to prepend.
-    *  @return a list resulting from the concatenation of the given
-    *    list `prefix` and this list.
-    */
+   *
+   *  Example:
+   *  ```scala sc:compile
+   *  List(1, 2) ::: List(3, 4) == List(3, 4).:::(List(1, 2)) // List(1, 2, 3, 4)
+   *  ```
+   *
+   *  @param prefix  The list elements to prepend.
+   *  @return a list resulting from the concatenation of the given
+   *    list `prefix` and this list.
+   */
   def ::: [B >: A](prefix: List[B]): List[B] =
     if (isEmpty) prefix
     else if (prefix.isEmpty) this
@@ -124,12 +131,12 @@ sealed abstract class List[+A]
     }
 
   /** Adds the elements of a given list in reverse order in front of this list.
-    *  `xs reverse_::: ys` is equivalent to
-    *  `xs.reverse ::: ys` but is more efficient.
-    *
-    *  @param prefix the prefix to reverse and then prepend
-    *  @return       the concatenation of the reversed prefix and the current list.
-    */
+   *  `xs reverse_::: ys` is equivalent to
+   *  `xs.reverse ::: ys` but is more efficient.
+   *
+   *  @param prefix the prefix to reverse and then prepend
+   *  @return       the concatenation of the reversed prefix and the current list.
+   */
   def reverse_:::[B >: A](prefix: List[B]): List[B] = {
     var these: List[B] = this
     var pres = prefix
@@ -144,7 +151,7 @@ sealed abstract class List[+A]
 
   override def prepended[B >: A](elem: B): List[B] = elem :: this
 
-  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]): List[B] = prefix match {
+  override def prependedAll[B >: A](prefix: collection.IterableOnce[B]^): List[B] = (prefix: @unchecked) match {
     case xs: List[B] => xs ::: this
     case _ if prefix.knownSize == 0 => this
     case b: ListBuffer[B] if this.isEmpty => b.toList
@@ -166,7 +173,7 @@ sealed abstract class List[+A]
   }
 
   // When calling appendAll with another list `suffix`, avoid copying `suffix`
-  override def appendedAll[B >: A](suffix: collection.IterableOnce[B]): List[B] = suffix match {
+  override def appendedAll[B >: A](suffix: collection.IterableOnce[B]^): List[B] = suffix match {
     case xs: List[B] => this ::: xs
     case _ => super.appendedAll(suffix)
   }
@@ -187,17 +194,6 @@ sealed abstract class List[+A]
     h
   }
 
-  /** @inheritdoc
-    *
-    *  @example {{{
-    *  // Given a list
-    *  val letters = List('a','b','c','d','e')
-    *
-    *  // `slice` returns all elements beginning at index `from` and afterwards,
-    *  // up until index `until` (excluding index `until`.)
-    *  letters.slice(1,3) // Returns List('b','c')
-    *  }}}
-    */
   override def slice(from: Int, until: Int): List[A] = {
     val lo = scala.math.max(from, 0)
     if (until <= lo || isEmpty) Nil
@@ -259,10 +255,10 @@ sealed abstract class List[+A]
     }
   }
 
-  final override def collect[B](pf: PartialFunction[A, B]): List[B] = {
+  final override def collect[B](pf: PartialFunction[A, B]^): List[B] = {
     if (this eq Nil) Nil else {
       var rest = this
-      var h: ::[B] = null
+      var h: ::[B] | Null = null
       var x: Any = null
       // Special case for first element
       while (h eq null) {
@@ -287,10 +283,10 @@ sealed abstract class List[+A]
     }
   }
 
-  final override def flatMap[B](f: A => IterableOnce[B]): List[B] = {
+  final override def flatMap[B](f: A => IterableOnce[B]^): List[B] = {
     var rest = this
-    var h: ::[B] = null
-    var t: ::[B] = null
+    var h: ::[B] | Null = null
+    var t: ::[B] | Null = null
     while (rest ne Nil) {
       val it = f(rest.head).iterator
       while (it.hasNext) {
@@ -432,7 +428,7 @@ sealed abstract class List[+A]
   }
 
   override def corresponds[B](that: collection.Seq[B])(p: (A, B) => Boolean): Boolean = that match {
-    case that: LinearSeq[B] =>
+    case that: LinearSeq[B @unchecked] =>
       var i = this
       var j = that
       while (!(i.isEmpty || j.isEmpty)) {
@@ -446,26 +442,26 @@ sealed abstract class List[+A]
       super.corresponds(that)(p)
   }
 
-  override protected[this] def className = "List"
+  override protected def className = "List"
 
   /** Builds a new list by applying a function to all elements of this list.
-    *  Like `xs map f`, but returns `xs` unchanged if function
-    *  `f` maps all elements to themselves (as determined by `eq`).
-    *
-    *  @param f      the function to apply to each element.
-    *  @tparam B     the element type of the returned collection.
-    *  @return       a list resulting from applying the given function
-    *                `f` to each element of this list and collecting the results.
-    */
+   *  Like `xs map f`, but returns `xs` unchanged if function
+   *  `f` maps all elements to themselves (as determined by `eq`).
+   *
+   *  @tparam B     the element type of the returned collection.
+   *  @param f      the function to apply to each element.
+   *  @return       a list resulting from applying the given function
+   *                `f` to each element of this list and collecting the results.
+   */
   @`inline` final def mapConserve[B >: A <: AnyRef](f: A => B): List[B] = {
     // Note to developers: there exists a duplication between this function and `reflect.internal.util.Collections#map2Conserve`.
     // If any successful optimization attempts or other changes are made, please rehash them there too.
     @tailrec
-    def loop(mappedHead: List[B], mappedLast: ::[B], unchanged: List[A], pending: List[A]): List[B] = {
+    def loop(mappedHead: List[B] | Null, mappedLast: ::[B] | Null, unchanged: List[A], pending: List[A]): List[B] = {
       if (pending.isEmpty) {
         if (mappedHead eq null) unchanged
         else {
-          mappedLast.next = (unchanged: List[B])
+          mappedLast.nn.next = (unchanged: List[B])
           mappedHead
         }
       }
@@ -477,8 +473,8 @@ sealed abstract class List[+A]
           loop(mappedHead, mappedLast, unchanged, pending.tail)
         else {
           var xc = unchanged
-          var mappedHead1: List[B] = mappedHead
-          var mappedLast1: ::[B] = mappedLast
+          var mappedHead1: List[B] | Null = mappedHead
+          var mappedLast1: ::[B] | Null = mappedLast
           while (xc ne pending) {
             val next = new ::[B](xc.head, Nil)
             if (mappedHead1 eq null) mappedHead1 = next
@@ -505,7 +501,7 @@ sealed abstract class List[+A]
 
   override def filterNot(p: A => Boolean): List[A] = filterCommon(p, isFlipped = true)
 
-  private[this] def filterCommon(p: A => Boolean, isFlipped: Boolean): List[A] = {
+  private def filterCommon(p: A => Boolean, isFlipped: Boolean): List[A] = {
 
     // everything seen so far so far is not included
     @tailrec def noneIn(l: List[A]): List[A] = {
@@ -598,7 +594,7 @@ sealed abstract class List[+A]
 
   // Override for performance
   override def equals(o: scala.Any): Boolean = {
-    @tailrec def listEq(a: List[_], b: List[_]): Boolean =
+    @tailrec def listEq(a: List[?], b: List[?]): Boolean =
       (a eq b) || {
         val aEmpty = a.isEmpty
         val bEmpty = b.isEmpty
@@ -611,7 +607,7 @@ sealed abstract class List[+A]
       }
 
     o match {
-      case that: List[_] => listEq(this, that)
+      case that: List[?] => listEq(this, that)
       case _ => super.equals(o)
     }
   }
@@ -659,7 +655,8 @@ final case class :: [+A](override val head: A, private[scala] var next: List[A @
   override def headOption: Some[A] = Some(head)
   override def tail: List[A] = next
 
-  def next$access$1 = next
+  @publicInBinary
+  private[::] def `next$access$1` = next
 
 }
 
@@ -671,22 +668,21 @@ case object Nil extends List[Nothing] {
   override def init: Nothing = throw new UnsupportedOperationException("init of empty list")
   override def knownSize: Int = 0
   override def iterator: Iterator[Nothing] = Iterator.empty
-  override def unzip[A1, A2](implicit asPair: Nothing => (A1, A2)): (List[A1], List[A2]) = EmptyUnzip
+  override def unzip[A1, A2](implicit asPair: Nothing -> (A1, A2)): (List[A1], List[A2]) = EmptyUnzip
 
   @transient
-  private[this] val EmptyUnzip = (Nil, Nil)
+  private val EmptyUnzip = (Nil, Nil)
 }
 
-/**
-  * $factoryInfo
-  * @define coll list
-  * @define Coll `List`
-  */
+/** $factoryInfo
+ *  @define coll list
+ *  @define Coll `List`
+ */
 @SerialVersionUID(3L)
 object List extends StrictOptimizedSeqFactory[List] {
   private val TupleOfNil = (Nil, Nil)
 
-  def from[B](coll: collection.IterableOnce[B]): List[B] = Nil.prependedAll(coll)
+  def from[B](coll: collection.IterableOnce[B]^): List[B] = Nil.prependedAll(coll)
 
   def newBuilder[A]: Builder[A, List[A]] = new ListBuffer()
 

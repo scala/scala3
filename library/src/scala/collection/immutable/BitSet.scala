@@ -15,18 +15,20 @@ package collection
 package immutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+
 import BitSetOps.{LogWL, updateArray}
 import mutable.Builder
 import scala.annotation.{implicitNotFound, nowarn}
 
 /** A class for immutable bitsets.
-  *  $bitsetinfo
-  *  @see [[https://docs.scala-lang.org/overviews/collections-2.13/concrete-immutable-collection-classes.html#immutable-bitsets "Scala's Collection Library overview"]]
-  *  section on `Immutable BitSets` for more information.
-  *
-  *  @define Coll `immutable.BitSet`
-  *  @define coll immutable bitset
-  */
+ *  $bitsetinfo
+ *  @see ["Scala's Collection Library overview"](https://docs.scala-lang.org/overviews/collections-2.13/concrete-immutable-collection-classes.html#immutable-bitsets)
+ *  section on `Immutable BitSets` for more information.
+ *
+ *  @define Coll `immutable.BitSet`
+ *  @define coll immutable bitset
+ */
 sealed abstract class BitSet
   extends AbstractSet[Int]
     with SortedSet[Int]
@@ -38,7 +40,7 @@ sealed abstract class BitSet
 
   override def unsorted: Set[Int] = this
 
-  override protected def fromSpecific(coll: IterableOnce[Int]): BitSet = bitSetFactory.fromSpecific(coll)
+  override protected def fromSpecific(coll: IterableOnce[Int]^): BitSet = bitSetFactory.fromSpecific(coll)
   override protected def newSpecificBuilder: Builder[Int, BitSet] = bitSetFactory.newBuilder
   override def empty: BitSet = bitSetFactory.empty
 
@@ -63,39 +65,42 @@ sealed abstract class BitSet
     } else this
   }
 
-  /** Update word at index `idx`; enlarge set if `idx` outside range of set.
-    */
+  /** Updates word at index `idx`; enlarges set if `idx` outside range of set.
+   *
+   *  @param idx the index of the word to update
+   *  @param w the new value for the word at index `idx`
+   *  @return a new bitset with the word at `idx` set to `w`, growing the underlying storage if needed
+   */
   protected def updateWord(idx: Int, w: Long): BitSet
 
   override def map(f: Int => Int): BitSet = strictOptimizedMap(newSpecificBuilder, f)
   override def map[B](f: Int => B)(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
     super[StrictOptimizedSortedSetOps].map(f)
 
-  override def flatMap(f: Int => IterableOnce[Int]): BitSet = strictOptimizedFlatMap(newSpecificBuilder, f)
-  override def flatMap[B](f: Int => IterableOnce[B])(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
+  override def flatMap(f: Int => IterableOnce[Int]^): BitSet = strictOptimizedFlatMap(newSpecificBuilder, f)
+  override def flatMap[B](f: Int => IterableOnce[B]^)(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
     super[StrictOptimizedSortedSetOps].flatMap(f)
 
-  override def collect(pf: PartialFunction[Int, Int]): BitSet = strictOptimizedCollect(newSpecificBuilder, pf)
-  override def collect[B](pf: scala.PartialFunction[Int, B])(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
+  override def collect(pf: PartialFunction[Int, Int]^): BitSet = strictOptimizedCollect(newSpecificBuilder, pf)
+  override def collect[B](pf: scala.PartialFunction[Int, B]^)(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
     super[StrictOptimizedSortedSetOps].collect(pf)
 
   // necessary for disambiguation
-  override def zip[B](that: scala.IterableOnce[B])(implicit @implicitNotFound(collection.BitSet.zipOrdMsg) ev: Ordering[(Int, B)]): SortedSet[(Int, B)] =
+  override def zip[B](that: scala.IterableOnce[B]^)(implicit @implicitNotFound(collection.BitSet.zipOrdMsg) ev: Ordering[(Int, B)]): SortedSet[(Int, B)] =
     super.zip(that)
 
-  protected[this] def writeReplace(): AnyRef = new BitSet.SerializationProxy(this)
+  protected def writeReplace(): AnyRef = new BitSet.SerializationProxy(this)
 }
 
-/**
-  * $factoryInfo
-  * @define Coll `immutable.BitSet`
-  * @define coll immutable bitset
-  */
+/** $factoryInfo
+ *  @define Coll `immutable.BitSet`
+ *  @define coll immutable bitset
+ */
 @nowarn("cat=deprecation&msg=Implementation classes of BitSet should not be accessed directly")
 @SerialVersionUID(3L)
 object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
-  def fromSpecific(it: scala.collection.IterableOnce[Int]): BitSet =
+  def fromSpecific(it: scala.collection.IterableOnce[Int]^): BitSet =
     it match {
       case bs: BitSet => bs
       case _          => (newBuilder ++= it).result()
@@ -108,7 +113,11 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   private def createSmall(a: Long, b: Long): BitSet = if (b == 0L) new BitSet1(a) else new BitSet2(a, b)
 
-  /** A bitset containing all the bits in an array */
+  /** A bitset containing all the bits in an array.
+   *
+   *  @param elems the array of `Long` words representing the bits; the array is defensively copied
+   *  @return a new immutable bitset containing the bits represented by `elems`
+   */
   def fromBitMask(elems: Array[Long]): BitSet = {
     val len = elems.length
     if (len == 0) empty
@@ -121,8 +130,11 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
   }
 
   /** A bitset containing all the bits in an array, wrapping the existing
-    *  array without copying.
-    */
+   *  array without copying.
+   *
+   *  @param elems the array of `Long` words representing the bits; the caller must not modify the array after this call
+   *  @return a new immutable bitset backed by the given `elems` array
+   */
   def fromBitMaskNoCopy(elems: Array[Long]): BitSet = {
     val len = elems.length
     if (len == 0) empty
@@ -371,6 +383,6 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   @SerialVersionUID(3L)
   private final class SerializationProxy(coll: BitSet) extends scala.collection.BitSet.SerializationProxy(coll) {
-    protected[this] def readResolve(): Any = BitSet.fromBitMaskNoCopy(elems)
+    protected def readResolve(): Any = BitSet.fromBitMaskNoCopy(elems)
   }
 }

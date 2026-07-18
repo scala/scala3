@@ -18,15 +18,13 @@ import java.util.Objects
 import scala.util.control.NonFatal
 import scala.annotation.{switch, tailrec}
 
-/**
- * Marker trait to indicate that a Runnable is Batchable by BatchingExecutors
- */
+/** Marker trait to indicate that a Runnable is Batchable by BatchingExecutors */
 trait Batchable {
   self: Runnable =>
 }
 
 private[concurrent] object BatchingExecutorStatics {
-  final val emptyBatchArray: Array[Runnable] = new Array[Runnable](0)
+  final val emptyBatchArray: Array[Runnable | Null] = new Array[Runnable | Null](0)
 
   // Max number of Runnables executed nested before starting to batch (to prevent stack exhaustion)
   final val syncPreBatchDepth = 16
@@ -40,67 +38,77 @@ private[concurrent] object BatchingExecutorStatics {
   }
 }
 
-/**
- * Mixin trait for an Executor
- * which groups multiple nested `Runnable.run()` calls
- * into a single Runnable passed to the original
- * Executor. This can be a useful optimization
- * because it bypasses the original context's task
- * queue and keeps related (nested) code on a single
- * thread which may improve CPU affinity. However,
- * if tasks passed to the Executor are blocking
- * or expensive, this optimization can prevent work-stealing
- * and make performance worse.
- * A batching executor can create deadlocks if code does
- * not use `scala.concurrent.blocking` when it should,
- * because tasks created within other tasks will block
- * on the outer task completing.
- * This executor may run tasks in any order, including LIFO order.
- * There are no ordering guarantees.
+/** Mixin trait for an Executor
+ *  which groups multiple nested `Runnable.run()` calls
+ *  into a single Runnable passed to the original
+ *  Executor. This can be a useful optimization
+ *  because it bypasses the original context's task
+ *  queue and keeps related (nested) code on a single
+ *  thread which may improve CPU affinity. However,
+ *  if tasks passed to the Executor are blocking
+ *  or expensive, this optimization can prevent work-stealing
+ *  and make performance worse.
+ *  A batching executor can create deadlocks if code does
+ *  not use `scala.concurrent.blocking` when it should,
+ *  because tasks created within other tasks will block
+ *  on the outer task completing.
+ *  This executor may run tasks in any order, including LIFO order.
+ *  There are no ordering guarantees.
  *
- * WARNING: Only use *EITHER* `submitAsyncBatched` OR `submitSyncBatched`!!
+ *  WARNING: Only use *EITHER* `submitAsyncBatched` OR `submitSyncBatched`!!
  *
- * When you implement this trait for async executors like thread pools,
- * you're going to need to implement it something like the following:
+ *  When you implement this trait for async executors like thread pools,
+ *  you're going to need to implement it something like the following:
  *
- * {{{
- *  final override def submitAsync(runnable: Runnable): Unit =
- *    super[SuperClass].execute(runnable) // To prevent reentrancy into `execute`
+ *  ```scala sc:compile
+ *  import java.util.concurrent.Executor
  *
- *  final override def execute(runnable: Runnable): Unit =
- *    if (runnable.isInstanceOf[Batchable]) // Or other logic
- *      submitAsyncBatched(runnable)
- *    else
- *      submitAsync(runnable)
+ *  final class AsyncBatchingExecutor(delegate: Executor)
+ *      extends ExecutionContextExecutor
+ *      with BatchingExecutor {
+ *    final override def submitForExecution(runnable: Runnable): Unit =
+ *      delegate.execute(runnable)
  *
- *  final override def reportFailure(cause: Throwable): Unit = …
- *  }}}
+ *    final override def execute(runnable: Runnable): Unit =
+ *      if (runnable.isInstanceOf[Batchable])
+ *        submitAsyncBatched(runnable)
+ *      else
+ *        submitForExecution(runnable)
+ *
+ *    final override def reportFailure(cause: Throwable): Unit = ()
+ *  }
+ *  ```
  *
  *  And if you want to implement if for a sync, trampolining, executor you're
  *  going to implement it something like this:
  *
- * {{{
- *  final override def submitAsync(runnable: Runnable): Unit = ()
+ *  ```scala sc:compile
+ *  final class TrampoliningExecutor extends ExecutionContextExecutor with BatchingExecutor {
+ *    final override def submitForExecution(runnable: Runnable): Unit = ()
  *
- *  final override def execute(runnable: Runnable): Unit =
- *    submitSyncBatched(runnable) // You typically will want to batch everything
+ *    final override def execute(runnable: Runnable): Unit =
+ *      submitSyncBatched(runnable)
  *
- *  final override def reportFailure(cause: Throwable): Unit =
- *    ExecutionContext.defaultReporter(cause) // Or choose something more fitting
- * }}}
- *
+ *    final override def reportFailure(cause: Throwable): Unit =
+ *      ExecutionContext.defaultReporter(cause)
+ *  }
+ *  ```
  */
 private[concurrent] trait BatchingExecutor extends Executor {
-  private[this] final val _tasksLocal = new ThreadLocal[AnyRef]()
+  private final val _tasksLocal = new ThreadLocal[AnyRef]()
 
   /*
    * Batch implements a LIFO queue (stack) and is used as a trampolining Runnable.
    * In order to conserve allocations, the first element in the batch is stored "unboxed" in
    * the `first` field. Subsequent Runnables are stored in the array called `other`.
   */
-  private[this] sealed abstract class AbstractBatch protected (protected final var first: Runnable, protected final var other: Array[Runnable], protected final var size: Int) {
+  private sealed abstract class AbstractBatch protected (
+    @annotation.stableNull protected final var first: Runnable | Null,
+    protected final var other: Array[Runnable | Null],
+    protected final var size: Int
+  ) {
 
-    private[this] final def ensureCapacity(curSize: Int): Array[Runnable] = {
+    private final def ensureCapacity(curSize: Int): Array[Runnable | Null] = {
       val curOther = this.other
       val curLen = curOther.length
       if (curSize <= curLen) curOther
@@ -108,7 +116,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
         val newLen = if (curLen == 0) 4 else curLen << 1
 
         if (newLen <= curLen) throw new StackOverflowError("Space limit of asynchronous stack reached: " + curLen)
-        val newOther = new Array[Runnable](newLen)
+        val newOther = new Array[Runnable | Null](newLen)
         System.arraycopy(curOther, 0, newOther, 0, curLen)
         this.other = newOther
         newOther
@@ -129,14 +137,14 @@ private[concurrent] trait BatchingExecutor extends Executor {
         (this.size: @switch) match {
           case 0 =>
           case 1 =>
-            val next = this.first
+            val next = this.first.nn
             this.first = null
             this.size = 0
             next.run()
             runN(n - 1)
           case sz =>
             val o = this.other
-            val next = o(sz - 2)
+            val next = o(sz - 2).nn
             o(sz - 2) = null
             this.size = sz - 1
             next.run()
@@ -144,8 +152,8 @@ private[concurrent] trait BatchingExecutor extends Executor {
           }
   }
 
-  private[this] final class AsyncBatch private(_first: Runnable, _other: Array[Runnable], _size: Int) extends AbstractBatch(_first, _other, _size) with Runnable with BlockContext with (BlockContext => Throwable) {
-    private[this] final var parentBlockContext: BlockContext = BatchingExecutorStatics.MissingParentBlockContext
+  private final class AsyncBatch private(_first: Runnable | Null, _other: Array[Runnable | Null], _size: Int) extends AbstractBatch(_first, _other, _size) with Runnable with BlockContext with (BlockContext => Throwable | Null) {
+    private final var parentBlockContext: BlockContext = BatchingExecutorStatics.MissingParentBlockContext
 
     final def this(runnable: Runnable) = this(runnable, BatchingExecutorStatics.emptyBatchArray, 1)
 
@@ -159,7 +167,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
     }
 
     /* LOGIC FOR ASYNCHRONOUS BATCHES */
-    override final def apply(prevBlockContext: BlockContext): Throwable = try {
+    override final def apply(prevBlockContext: BlockContext): Throwable | Null = try {
       parentBlockContext = prevBlockContext
       runN(BatchingExecutorStatics.runLimit)
       null
@@ -175,7 +183,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
      * Only attempt to resubmit when there are `Runnables` left to process.
      * Note that `cause` can be `null`.
      */
-    private[this] final def resubmit(cause: Throwable): Throwable =
+    private final def resubmit(cause: Throwable | Null): Throwable | Null =
       if (this.size > 0) {
         try { submitForExecution(this); cause } catch {
           case inner: Throwable =>
@@ -187,7 +195,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
         }
       } else cause // TODO: consider if NonFatals should simply be `reportFailure`:ed rather than rethrown
 
-    private[this] final def cloneAndClear(): AsyncBatch = {
+    private final def cloneAndClear(): AsyncBatch = {
       val newBatch = new AsyncBatch(this.first, this.other, this.size)
       this.first = null
       this.other = BatchingExecutorStatics.emptyBatchArray
@@ -204,7 +212,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
     }
   }
 
-  private[this] final class SyncBatch(runnable: Runnable) extends AbstractBatch(runnable, BatchingExecutorStatics.emptyBatchArray, 1) with Runnable {
+  private final class SyncBatch(runnable: Runnable) extends AbstractBatch(runnable, BatchingExecutorStatics.emptyBatchArray, 1) with Runnable {
     @tailrec override final def run(): Unit = {
       try runN(BatchingExecutorStatics.runLimit) catch {
         case ie: InterruptedException =>
@@ -219,19 +227,24 @@ private[concurrent] trait BatchingExecutor extends Executor {
   }
 
   /** MUST throw a NullPointerException when `runnable` is null
-   * When implementing a sync BatchingExecutor, it is RECOMMENDED
-   * to implement this method as `runnable.run()`
-  */
+   *  When implementing a sync BatchingExecutor, it is RECOMMENDED
+   *  to implement this method as `runnable.run()`
+   *
+   *  @param runnable the `Runnable` to submit for execution; must not be null
+   */
   protected def submitForExecution(runnable: Runnable): Unit
 
   /** Reports that an asynchronous computation failed.
    *  See `ExecutionContext.reportFailure(throwable: Throwable)`
-  */
+   *
+   *  @param throwable the `Throwable` that caused the computation to fail
+   */
   protected def reportFailure(throwable: Throwable): Unit
 
-  /**
-   * WARNING: Never use both `submitAsyncBatched` and `submitSyncBatched` in the same
-   * implementation of `BatchingExecutor`
+  /** WARNING: Never use both `submitAsyncBatched` and `submitSyncBatched` in the same
+   *  implementation of `BatchingExecutor`
+   *
+   *  @param runnable the `Runnable` to add to the current async batch, or to submit as a new batch if no batch is active
    */
   protected final def submitAsyncBatched(runnable: Runnable): Unit = {
     val b = _tasksLocal.get
@@ -239,9 +252,10 @@ private[concurrent] trait BatchingExecutor extends Executor {
     else submitForExecution(new AsyncBatch(runnable))
   }
 
-  /**
-   * WARNING: Never use both `submitAsyncBatched` and `submitSyncBatched` in the same
-   * implementation of `BatchingExecutor`
+  /** WARNING: Never use both `submitAsyncBatched` and `submitSyncBatched` in the same
+   *  implementation of `BatchingExecutor`
+   *
+   *  @param runnable the `Runnable` to submit for synchronous execution, either directly or via a sync batch; must not be null
    */
   protected final def submitSyncBatched(runnable: Runnable): Unit = {
     Objects.requireNonNull(runnable, "runnable is null")

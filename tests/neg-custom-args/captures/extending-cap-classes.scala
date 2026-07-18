@@ -1,5 +1,5 @@
 class C1
-class C2 extends C1, caps.Capability
+class C2 extends C1, caps.SharedCapability
 class C3 extends C2
 
 def test =
@@ -9,6 +9,8 @@ def test =
 
   val y2: C2 = new C2
   val y3: C3 = new C3
+  val y2ok: C2^{} = new C2 // error
 
   val z2: C1 = y2 // error
+  val z2ok: C1 = y2ok
 

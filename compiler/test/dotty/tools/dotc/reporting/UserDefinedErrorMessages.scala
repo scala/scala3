@@ -3,7 +3,7 @@ package dotc
 package reporting
 
 import dotty.tools.dotc.core.Contexts.Context
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 class UserDefinedErrorMessages extends ErrorMessagesTest {

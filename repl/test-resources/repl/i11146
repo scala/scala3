@@ -1,0 +1,25 @@
+scala> class Appendable { def foo = println("Appendable.foo") }
+// defined class Appendable
+
+scala> (new Appendable).foo
+Appendable.foo
+
+scala> def assert(x: Boolean) = println(if x then "not asserted" else "asserted")
+def assert(x: Boolean): Unit
+
+scala> assert(false)
+asserted
+
+scala> class Option; object Option { val baz = 42 }
+// defined class Option
+// defined object Option
+
+scala> Option.baz
+val res0: Int = 42
+
+scala> object fs2 { class Stream[T] { override def toString = "fs2.Stream(..)" }; object Stream { def apply[T](x: T) = new Stream[T] }}
+// defined object fs2
+
+scala> import fs2.Stream
+scala> Stream(1)
+val res1: Stream[Int] = fs2.Stream(..)

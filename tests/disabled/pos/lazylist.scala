@@ -34,7 +34,7 @@ object LazyNil extends LazyList[Nothing]:
 def map[A, B](xs: {*} LazyList[A], f: {*} A => B): {f, xs} LazyList[B] =
   xs.map(f)
 
-class Cap extends caps.Capability
+class Cap extends caps.SharedCapability
 
 def test(cap1: Cap, cap2: Cap, cap3: Cap) =
   def f[T](x: LazyList[T]): LazyList[T] = if cap1 == cap1 then x else LazyNil

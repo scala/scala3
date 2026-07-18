@@ -10,8 +10,9 @@ import dotty.tools.dotc.core.Mode.GadtConstraintInference
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.util.optional
 import dotty.tools.dotc.ast.TreeTypeMap
+
+import scala.util.boundary
 
 /** Matches a quoted tree against a quoted pattern tree.
  *  A quoted pattern tree may have type and term holes in addition to normal terms.
@@ -88,7 +89,7 @@ import dotty.tools.dotc.ast.TreeTypeMap
  *   '{ e.super } =?= '{ p.super }   ===>   '{e} =?= '{p}
  *
  *   /* Match varargs */
- *   '{ e: _* } =?= '{ p: _* }   ===>   '{e} =?= '{p}
+ *   '{ e* } =?= '{ p* }   ===>   '{e} =?= '{p}
  *
  *   /* Match val */
  *   '{ val x: T = e1; e2 } =?= '{ val y: P = p1; p2 }   ===>   withEnv(x -> y)('[T] =?= '[P] &&& '{e1} =?= '{p1} &&& '{e2} =?= '{p2})
@@ -115,14 +116,17 @@ class QuoteMatcher(debug: Boolean) {
    */
   private type MatchingExprs = Seq[MatchResult]
 
+  /** Return type that indicates that the method returns a T or aborts to the enclosing boundary with a `None` */
+  private type optional[T] = boundary.Label[None.type] ?=> T
+
   /** TODO-18271: update
-    * A map relating equivalent symbols from the scrutinee and the pattern
-    *  For example in
-    *  ```
-    *  '{val a = 4; a * a} match case '{ val x = 4; x * x }
-    *  ```
-    *  when matching `a * a` with `x * x` the environment will contain `Map(a -> x)`.
-    */
+   *  A map relating equivalent symbols from the scrutinee and the pattern
+   *  For example in
+   *  ```
+   *  '{val a = 4; a * a} match case '{ val x = 4; x * x }
+   *  ```
+   *  when matching `a * a` with `x * x` the environment will contain `Map(a -> x)`.
+   */
   private case class Env(val termEnv: Map[Symbol, Symbol], val typeEnv: Map[Symbol, Symbol])
 
   private def withEnv[T](env: Env)(body: Env ?=> T): T = body(using env)
@@ -133,10 +137,10 @@ class QuoteMatcher(debug: Boolean) {
   def treeMatch(scrutinee: Tree, pattern: Tree)(using Context): Option[Tuple] = {
     val (pat1, typeHoles, ctx1) = instrumentTypeHoles(pattern)
     inContext(ctx1) {
-      optional {
+      boundary(Some {
         given Env = new Env(Map.empty, Map.empty)
         scrutinee =?= pat1
-      }.map { matchings =>
+      }).map { matchings =>
         lazy val spliceScope = SpliceScope.getCurrent
         // After matching and doing all subtype checks, we have to approximate all the type bindings
         // that we have found, seal them in a quoted.Type and add them to the result
@@ -198,14 +202,14 @@ class QuoteMatcher(debug: Boolean) {
   extension (scrutinee0: Tree)
 
     /** Check that the trees match and return the contents from the pattern holes.
-      *  Return a sequence containing all the contents in the holes.
-      *  If it does not match, continues to the `optional` with `None`.
-      *
-      *  @param scrutinee The tree being matched
-      *  @param pattern The pattern tree that the scrutinee should match. Contains `patternHole` holes.
-      *  @param `summon[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
-      *  @return The sequence with the contents of the holes of the matched expression.
-      */
+     *  Return a sequence containing all the contents in the holes.
+     *  If it does not match, continues to the `optional` with `None`.
+     *
+     *  @param scrutinee The tree being matched
+     *  @param pattern The pattern tree that the scrutinee should match. Contains `patternHole` holes.
+     *  @param `summon[Env]` Set of tuples containing pairs of symbols (s, p) where s defines a symbol in `scrutinee` which corresponds to symbol p in `pattern`.
+     *  @return The sequence with the contents of the holes of the matched expression.
+     */
     private def =?= (pattern0: Tree)(using Env, Context): optional[MatchingExprs] =
 
       /* Match block flattening */ // TODO move to cases
@@ -238,19 +242,19 @@ class QuoteMatcher(debug: Boolean) {
           case _ => None
       end TypeTreeTypeTest
 
-      /* Some of method symbols in arguments of higher-order term hole are eta-expanded.
-        * e.g.
-        * g: (Int) => Int
-        * => {
-        *   def $anonfun(y: Int): Int = g(y)
-        *   closure($anonfun)
-        * }
-        *
-        * f: (using Int) => Int
-        * => f(using x)
-        * This function restores the symbol of the original method from
-        * the eta-expanded function.
-        */
+      /** Some of method symbols in arguments of higher-order term hole are eta-expanded.
+       *  e.g.
+       *  g: (Int) => Int
+       *  => {
+       *    def $anonfun(y: Int): Int = g(y)
+       *    closure($anonfun)
+       *  }
+       *
+       *  f: (using Int) => Int
+       *  => f(using x)
+       *  This function restores the symbol of the original method from
+       *  the eta-expanded function.
+       */
       def getCapturedIdent(arg: Tree)(using Context): Ident =
         arg match
           case id: Ident => id
@@ -463,7 +467,7 @@ class QuoteMatcher(debug: Boolean) {
                       if sclo.tpe.isNothingType && schi.tpe.isAny =>
                       pttypedef match
                         case TypeDef(_, TypeBoundsTree(ptlo, pthi, EmptyTree))
-                          if sclo.tpe.isNothingType && schi.tpe.isAny =>
+                          if ptlo.tpe.isNothingType && pthi.tpe.isAny =>
                           matched
                         case _ => notMatched
                     case _ => notMatched
@@ -550,10 +554,10 @@ class QuoteMatcher(debug: Boolean) {
   end extension
 
   /** Does the scrutinee symbol match the pattern symbol? It matches if:
-    *   - They are the same symbol
-    *   - The scrutinee has is in the environment and they are equivalent
-    *   - The scrutinee overrides the symbol of the pattern
-    */
+   *    - They are the same symbol
+   *    - The scrutinee is in the environment and they are equivalent
+   *    - The scrutinee overrides the symbol of the pattern
+   */
   private def symbolMatch(scrutineeTree: Tree, patternTree: Tree)(using Env, Context): Boolean =
     val scrutinee = scrutineeTree.symbol
 
@@ -673,11 +677,10 @@ class QuoteMatcher(debug: Boolean) {
             treeMap = new TreeMap {
               override def transform(tree: Tree)(using Context): Tree =
                 tree match
-                  /*
-                  * When matching a method call `f(0)` against a HOAS pattern `p(g)` where
-                  * f has a method type `(x: Int): Int` and  `f` maps to `g`, `p` should hold
-                  * `g.apply(0)` because the type of `g` is `Int => Int` due to eta expansion.
-                  */
+                  /* When matching a method call `f(0)` against a HOAS pattern `p(g)` where
+                   * f has a method type `(x: Int): Int` and  `f` maps to `g`, `p` should hold
+                   * `g.apply(0)` because the type of `g` is `Int => Int` due to eta expansion.
+                   */
                   case Apply(fun, args) if termEnv.contains(tree.symbol) => transform(fun).select(nme.apply).appliedToArgs(args.map(transform))
                   case tree: Ident => termEnv.get(tree.symbol).flatMap(argsMap.get).getOrElse(tree)
                   case tree => super.transform(tree)
@@ -690,7 +693,7 @@ class QuoteMatcher(debug: Boolean) {
         new ExprImpl(hoasClosure, spliceScope)
 
   private inline def notMatched[T]: optional[T] =
-    optional.break()
+    boundary.break(None)
 
   private inline def matched: MatchingExprs =
     Seq.empty

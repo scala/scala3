@@ -33,9 +33,9 @@ final class DoubleAccumulator
 
   private[jdk] def cumulative(i: Int) = { val x = history(i); x(x.length-1).toLong }
 
-  override protected[this] def className: String = "DoubleAccumulator"
+  override protected def className: String = "DoubleAccumulator"
 
-  def efficientStepper[S <: Stepper[_]](implicit shape: StepperShape[Double, S]): S with EfficientSplit = {
+  def efficientStepper[S <: Stepper[?]](implicit shape: StepperShape[Double, S]): S & EfficientSplit = {
     val st = new DoubleAccumulatorStepper(this)
     val r =
       if (shape.shape == StepperShape.DoubleShape) st
@@ -43,7 +43,7 @@ final class DoubleAccumulator
         assert(shape.shape == StepperShape.ReferenceShape, s"unexpected StepperShape: $shape")
         AnyStepper.ofParDoubleStepper(st)
       }
-    r.asInstanceOf[S with EfficientSplit]
+    r.asInstanceOf[S & EfficientSplit]
   }
 
   private def expand(): Unit = {
@@ -62,7 +62,11 @@ final class DoubleAccumulator
     else history = java.util.Arrays.copyOf(history, history.length << 1)
   }
 
-  /** Appends an element to this `DoubleAccumulator`. */
+  /** Appends an element to this `DoubleAccumulator`.
+   *
+   *  @param a the `Double` value to append
+   *  @return this `DoubleAccumulator` (to allow chaining of operations)
+   */
   def addOne(a: Double): this.type = {
     totalSize += 1
     if (index+1 >= current.length) expand()
@@ -74,7 +78,10 @@ final class DoubleAccumulator
   /** Result collection consisting of all elements appended so far. */
   override def result(): DoubleAccumulator = this
 
-  /** Removes all elements from `that` and appends them to this `DoubleAccumulator`. */
+  /** Removes all elements from `that` and appends them to this `DoubleAccumulator`.
+   *
+   *  @param that the `DoubleAccumulator` to drain elements from; it will be empty after this operation
+   */
   def drain(that: DoubleAccumulator): Unit = {
     var h = 0
     var prev = 0L
@@ -137,7 +144,11 @@ final class DoubleAccumulator
     history = DoubleAccumulator.emptyDoubleArrayArray
   }
 
-  /** Retrieves the `ix`th element. */
+  /** Retrieves the `ix`th element.
+   *
+   *  @param ix the zero-based index of the element to retrieve
+   *  @return the `Double` value stored at position `ix`
+   */
   def apply(ix: Long): Double = {
     if (totalSize - ix <= index || hIndex == 0) current((ix - (totalSize - index)).toInt)
     else {
@@ -146,7 +157,11 @@ final class DoubleAccumulator
     }
   }
 
-  /** Retrieves the `ix`th element, using an `Int` index. */
+  /** Retrieves the `ix`th element, using an `Int` index.
+   *
+   *  @param i the zero-based index of the element to retrieve (converted to `Long` internally)
+   *  @return the `Double` value stored at position `i`
+   */
   def apply(i: Int): Double = apply(i.toLong)
 
   def update(idx: Long, elem: Double): Unit = {
@@ -237,7 +252,7 @@ final class DoubleAccumulator
     r
   }
 
-  /** Copies the elements in this `DoubleAccumulator` into an `Array[Double]` */
+  /** Copies the elements in this `DoubleAccumulator` into an `Array[Double]`. */
   @nowarn // cat=lint-overload see toArray[B: ClassTag]
   def toArray: Array[Double] = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for an array: "+totalSize.toString)
@@ -259,7 +274,7 @@ final class DoubleAccumulator
     a
   }
 
-  /** Copies the elements in this `DoubleAccumulator` to a `List` */
+  /** Copies the elements in this `DoubleAccumulator` to a `List`. */
   override def toList: List[Double] = {
     var ans: List[Double] = Nil
     var i = index - 1
@@ -280,10 +295,13 @@ final class DoubleAccumulator
     ans
   }
 
-  /**
-   * Copy the elements in this `DoubleAccumulator` to a specified collection.
-   * Note that the target collection is not specialized.
-   * Usage example: `acc.to(Vector)`
+  /** Copies the elements in this `DoubleAccumulator` to a specified collection.
+   *  Note that the target collection is not specialized.
+   *  Usage example: `acc.to(Vector)`
+   *
+   *  @tparam C1 the result type of the target collection (e.g., `Vector[Double]`)
+   *  @param factory the factory for creating the target collection from elements
+   *  @return a new collection of type `C1` containing all elements of this `DoubleAccumulator`
    */
   override def to[C1](factory: Factory[Double, C1]): C1 = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for a Scala collection: "+totalSize.toString)
@@ -338,7 +356,7 @@ object DoubleAccumulator extends collection.SpecificIterableFactory[Double, Doub
   override def newBuilder: DoubleAccumulator = new DoubleAccumulator
 
   class SerializationProxy[A](@transient private val acc: DoubleAccumulator) extends Serializable {
-    @transient private var result: DoubleAccumulator = _
+    @transient private var result: DoubleAccumulator = compiletime.uninitialized
 
     private def writeObject(out: ObjectOutputStream): Unit = {
       out.defaultWriteObject()
@@ -406,7 +424,7 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
       ans
     }
 
-  def trySplit(): DoubleStepper =
+  def trySplit(): DoubleStepper | Null =
     if (N <= 1) null
     else {
       val half = N >> 1
@@ -444,7 +462,7 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
       }
 
     // Overridden for efficiency
-    override def tryAdvance(c: Consumer[_ >: jl.Double]): Boolean = (c: AnyRef) match {
+    override def tryAdvance(c: Consumer[? >: jl.Double]): Boolean = (c: AnyRef) match {
       case ic: DoubleConsumer => tryAdvance(ic)
       case _ =>
         if (N <= 0) false
@@ -471,7 +489,7 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
       }
 
     // Overridden for efficiency
-    override def forEachRemaining(c: Consumer[_ >: jl.Double]): Unit = (c: AnyRef) match {
+    override def forEachRemaining(c: Consumer[? >: jl.Double]): Unit = (c: AnyRef) match {
       case ic: DoubleConsumer => forEachRemaining(ic)
       case _ =>
         while (N > 0) {

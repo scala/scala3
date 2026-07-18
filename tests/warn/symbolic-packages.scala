@@ -1,4 +1,4 @@
-
+//> using options -Wconf:id=E222:w
 
 package `with spaces` { // warn
   class Foo

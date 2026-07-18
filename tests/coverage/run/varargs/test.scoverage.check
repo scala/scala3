@@ -25,6 +25,23 @@ test_1$package
 Object
 <empty>.test_1$package
 repeated
+75
+77
+4
+<none>
+Literal
+false
+0
+false
+()
+
+1
+varargs/test_1.scala
+<empty>
+test_1$package
+Object
+<empty>.test_1$package
+repeated
 48
 60
 4
@@ -35,7 +52,7 @@ false
 false
 def repeated
 
-1
+2
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -52,7 +69,7 @@ false
 false
 def f
 
-2
+3
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -69,7 +86,7 @@ false
 false
 repeated()
 
-3
+4
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -86,7 +103,7 @@ false
 false
 repeated(f(""), "b")
 
-4
+5
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -103,7 +120,24 @@ false
 false
 f("")
 
-5
+6
+varargs/test_1.scala
+<empty>
+test_1$package
+Object
+<empty>.test_1$package
+Test
+149
+152
+11
+<none>
+Literal
+false
+0
+false
+"b"
+
+7
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -120,7 +154,7 @@ false
 false
 JavaVarargs_1.method()
 
-6
+8
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -137,7 +171,24 @@ false
 false
 JavaVarargs_1.method("")
 
-7
+9
+varargs/test_1.scala
+<empty>
+test_1$package
+Object
+<empty>.test_1$package
+Test
+202
+204
+13
+<none>
+Literal
+false
+0
+false
+""
+
+10
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -154,7 +205,24 @@ false
 false
 JavaVarargs_1.multiple("first")
 
-8
+11
+varargs/test_1.scala
+<empty>
+test_1$package
+Object
+<empty>.test_1$package
+Test
+240
+247
+15
+<none>
+Literal
+false
+0
+false
+"first"
+
+12
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -171,7 +239,7 @@ false
 false
 println(m)
 
-9
+13
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -188,7 +256,7 @@ false
 false
 JavaVarargs_1.multiple(f("first"))
 
-10
+14
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -205,7 +273,7 @@ false
 false
 f("first")
 
-11
+15
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -222,7 +290,7 @@ false
 false
 println(m)
 
-12
+16
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -239,7 +307,7 @@ false
 false
 JavaVarargs_1.multiple(f("first"), "a", "b", "c")
 
-13
+17
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -256,7 +324,58 @@ false
 false
 f("first")
 
-14
+18
+varargs/test_1.scala
+<empty>
+test_1$package
+Object
+<empty>.test_1$package
+Test
+357
+360
+19
+<none>
+Literal
+false
+0
+false
+"a"
+
+19
+varargs/test_1.scala
+<empty>
+test_1$package
+Object
+<empty>.test_1$package
+Test
+362
+365
+19
+<none>
+Literal
+false
+0
+false
+"b"
+
+20
+varargs/test_1.scala
+<empty>
+test_1$package
+Object
+<empty>.test_1$package
+Test
+367
+370
+19
+<none>
+Literal
+false
+0
+false
+"c"
+
+21
 varargs/test_1.scala
 <empty>
 test_1$package
@@ -273,7 +392,7 @@ false
 false
 println(m)
 
-15
+22
 varargs/test_1.scala
 <empty>
 test_1$package

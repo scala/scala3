@@ -260,8 +260,7 @@
 }
 
 #content a.anchor::before {
-  content: "\f0c1";
-  font-family: "Font Awesome 5 Free";
+  content: "🔗";
   font-weight: 900;
   font-size: 20px;
 }
@@ -277,7 +276,7 @@
 
 #content :not(pre) > code {
   color: var(--code-props-content);
-  font-family: "FiraCode-Regular";
+  font-family: 'DejaVu Sans Mono', monospace;
   border: 1px solid var(--code-props-border);
   padding: 3px 5px 1px 5px;
   border-radius: 4px;

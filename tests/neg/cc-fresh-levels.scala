@@ -15,5 +15,5 @@ def test1(a: IO^, b: IO^, c: IO^): Unit =
   r.put(c) // ok
   runIO: (innerIO: IO^) =>
     r.put(innerIO)  // error
-  runIO: innerIO =>  // error
-    r.put(innerIO)
+  runIO: innerIO =>
+    r.put(innerIO) // error

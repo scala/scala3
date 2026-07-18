@@ -27,6 +27,8 @@ object DropBreaks:
     /** The number of other references to associated label */
     var otherRefs: Int = 0
 
+    override def toString() = s"LabelUsage($goto, $enclMeth, returnRefs = $returnRefs, otherRefs = $otherRefs)"
+
   private val LabelUsages = new Property.Key[Map[Symbol, LabelUsage]]
   private val ShadowedLabels = new Property.Key[Set[Symbol]]
 
@@ -63,12 +65,21 @@ class DropBreaks extends MiniPhase:
        */
       def unapply(expr: Tree)(using Context): Option[(Symbol, Symbol)] = stripTyped(expr) match
         case If(
-          Apply(Select(Select(ex: Ident, label), eq), (lbl @ Ident(local)) :: Nil),
+          Apply(Select(ex: Ident, isSameLabelAs), (lbl @ Ident(local)) :: Nil),
           Select(ex2: Ident, value),
           Apply(throww, (ex3: Ident) :: Nil))
-        if label == nme.label && eq == nme.eq && local == nme.local && value == nme.value
+        if isSameLabelAs == nme.isSameLabelAs && local == nme.local && value == nme.value
             && throww.symbol == defn.throwMethod
             && ex.symbol == ex2.symbol && ex.symbol == ex3.symbol =>
+          Some((ex.symbol, lbl.symbol))
+        case If(
+          Apply(Select(ex: Ident, isSameLabelAs), (lbl @ Ident(local)) :: Nil),
+          Literal(_), // in the case where the value is constant folded
+          Apply(throww, (ex3: Ident) :: Nil))
+        if isSameLabelAs == nme.isSameLabelAs && local == nme.local
+            && throww.symbol == defn.throwMethod
+            && ex.symbol == ex3.symbol
+            && expr.tpe.isSingleton =>
           Some((ex.symbol, lbl.symbol))
         case _ =>
           None

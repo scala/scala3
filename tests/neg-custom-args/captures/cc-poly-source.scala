@@ -1,16 +1,15 @@
 import language.experimental.captureChecking
 import annotation.experimental
-import caps.{CapSet, Capability}
-import caps.use
+import caps.{CapSet, SharedCapability}
 
 @experimental object Test:
 
-  class Label //extends Capability
+  class Label //extends SharedCapability
 
   class Listener
 
   class Source[X^]:
-    private var listeners: Set[Listener^{X}] = Set.empty
+    @caps.unsafe.untrackedCaptures private var listeners: Set[Listener^{X}] = Set.empty
     def register(x: Listener^{X}): Unit =
       listeners += x
 
@@ -25,16 +24,16 @@ import caps.use
     val ls = src.allListeners
     val _: Set[Listener^{lbl1, lbl2}] = ls
 
-  def test2(@use lbls: List[Label^]) =
+  def test2[C^](lbls: List[Label^{C}]) =
     def makeListener(lbl: Label^): Listener^{lbl} = ???
     val listeners = lbls.map(makeListener) // error
       // we get an error here because we no longer allow contravariant cap
       // to subsume other capabilities. The problem can be solved by declaring
-      // Label a Sharable, see cc-poly-source-capability.scala
-    val src = Source[{lbls*}]
+      // Label a SharedCapability, see cc-poly-source-capability.scala
+    val src = Source[{C}]
     for l <- listeners do
       src.register(l)
     val ls = src.allListeners
-    val _: Set[Listener^{lbls*}] = ls
+    val _: Set[Listener^{C}] = ls
 
 

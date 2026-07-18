@@ -1,0 +1,34 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ref-with-file.scala:18:12 --------------------------------
+18 |  withFile: f => // error
+   |            ^
+   |Capability `fresh` outlives its scope: it leaks into outer capture set 's1 which is owned by method Test.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (f: File^) ->'s2 Ref[File^{f}]^{fresh²}
+   |Required: (f: File^) => Ref[File^'s3]^'s1
+   |
+   |where:    =>     refers to a root capability created in method Test when checking argument to parameter op of method withFile
+   |          ^      refers to the root capability caps.any
+   |          fresh  is a root capability associated with the result type of (f: File^): T
+   |          fresh² is a root capability associated with the result type of (f: File^): Ref[File^{f}]^{fresh²}
+   |
+19 |    val r = Ref(f)
+20 |    r
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/ref-with-file.scala:25:18 --------------------------------
+25 |  withFileAndRef: (f, r: Ref[String]^) => // error
+   |                  ^
+   |Capability `any` outlives its scope: it leaks into outer capture set 's4 which is owned by method Test.
+   |The leakage occurred when trying to match the following types:
+   |
+   |Found:    (f: File^{any}, r: Ref[String]^{any}) ->'s5 Ref[String]^{any}
+   |Required: (f: File^{any}, r: Ref[String]^{any}) => Ref[String]^'s4
+   |
+   |where:    =>  refers to a root capability created in method Test when checking argument to parameter op of method withFileAndRef
+   |          any is the root capability caps.any
+   |
+26 |    r.put(f.read())
+27 |    r
+   |
+   | longer explanation available when compiling with `-explain`

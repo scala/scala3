@@ -2,6 +2,8 @@ package dotty.tools
 package dotc
 package core
 
+import scala.reflect.Typeable
+
 import Types.*, Contexts.*, Symbols.*, Constants.*, Decorators.*
 import config.Printers.typr
 import reporting.trace
@@ -26,33 +28,22 @@ object TypeEval:
             if tp1.isStable then tp1.fixForEvaluation else tp
           case tp => tp
 
-      def constValue(tp: Type): Option[Any] = tp.fixForEvaluation match
-        case ConstantType(Constant(n)) => Some(n)
-        case _ => None
+      extension (tp: Type) def constant[T: Typeable]: Option[T] =
+        TypeComparer.constValue(tp.fixForEvaluation).collect { case Constant(c: T) => c }
 
-      def boolValue(tp: Type): Option[Boolean] = tp.fixForEvaluation match
-        case ConstantType(Constant(n: Boolean)) => Some(n)
-        case _ => None
+      def constValue(tp: Type): Option[Any] = tp.constant[Any]
 
-      def intValue(tp: Type): Option[Int] = tp.fixForEvaluation match
-        case ConstantType(Constant(n: Int)) => Some(n)
-        case _ => None
+      def boolValue(tp: Type): Option[Boolean] = tp.constant[Boolean]
 
-      def longValue(tp: Type): Option[Long] = tp.fixForEvaluation match
-        case ConstantType(Constant(n: Long)) => Some(n)
-        case _ => None
+      def intValue(tp: Type): Option[Int] = tp.constant[Int]
 
-      def floatValue(tp: Type): Option[Float] = tp.fixForEvaluation match
-        case ConstantType(Constant(n: Float)) => Some(n)
-        case _ => None
+      def longValue(tp: Type): Option[Long] = tp.constant[Long]
 
-      def doubleValue(tp: Type): Option[Double] = tp.fixForEvaluation match
-        case ConstantType(Constant(n: Double)) => Some(n)
-        case _ => None
+      def floatValue(tp: Type): Option[Float] = tp.constant[Float]
 
-      def stringValue(tp: Type): Option[String] = tp.fixForEvaluation match
-        case ConstantType(Constant(n: String)) => Some(n)
-        case _ => None
+      def doubleValue(tp: Type): Option[Double] = tp.constant[Double]
+
+      def stringValue(tp: Type): Option[String] = tp.constant[String]
 
       // Returns Some(true) if the type is a constant.
       // Returns Some(false) if the type is not a constant.
@@ -90,12 +81,12 @@ object TypeEval:
 
       // Runs the op and returns the result as a constant type.
       // If the op throws an exception, then this exception is converted into a type error.
-      def runConstantOp(op: => Any): Type =
+      def runConstantOp[T](op: => T)(using Constant.ValueToConstant[T]): Type =
         val result =
           try op
-          catch case e: Throwable =>
-            throw TypeError(em"${e.getMessage}")
-        ConstantType(Constant(result))
+          catch case ex: Exception =>
+            throw TypeError(em"${ex.getMessage}")
+        ConstantType(Constant.fromValue(result))
 
       def fieldsOf: Option[Type] =
         expectArgsNum(1)
@@ -122,25 +113,25 @@ object TypeEval:
               case _ => None
           case _ => None
 
-      def constantFold1[T](extractor: Type => Option[T], op: T => Any): Option[Type] =
+      def constantFold1[T, U: Constant.ValueToConstant](extractor: Type => Option[T], op: T => U): Option[Type] =
         expectArgsNum(1)
         extractor(tp.args.head).map(a => runConstantOp(op(a)))
 
-      def constantFold2[T](extractor: Type => Option[T], op: (T, T) => Any): Option[Type] =
+      def constantFold2[T, U: Constant.ValueToConstant](extractor: Type => Option[T], op: (T, T) => U): Option[Type] =
         constantFold2AB(extractor, extractor, op)
 
-      def constantFold2AB[TA, TB](extractorA: Type => Option[TA], extractorB: Type => Option[TB], op: (TA, TB) => Any): Option[Type] =
+      def constantFold2AB[TA, TB, U: Constant.ValueToConstant](extractorA: Type => Option[TA], extractorB: Type => Option[TB], op: (TA, TB) => U): Option[Type] =
         expectArgsNum(2)
         for
           a <- extractorA(tp.args(0))
           b <- extractorB(tp.args(1))
         yield runConstantOp(op(a, b))
 
-      def constantFold3[TA, TB, TC](
+      def constantFold3[TA, TB, TC, U: Constant.ValueToConstant](
         extractorA: Type => Option[TA],
         extractorB: Type => Option[TB],
         extractorC: Type => Option[TC],
-        op: (TA, TB, TC) => Any
+        op: (TA, TB, TC) => U
       ): Option[Type] =
         expectArgsNum(3)
         for
@@ -256,11 +247,15 @@ object TypeEval:
           else if owner == defn.CompiletimeOpsStringModuleClass then name match
             case tpnme.Plus       => constantFold2(stringValue, _ + _)
             case tpnme.Length     => constantFold1(stringValue, _.length)
-            case tpnme.Matches    => constantFold2(stringValue, _ matches _)
+            case tpnme.Matches    => constantFold2(stringValue, _.matches(_))
             case tpnme.Substring  =>
               constantFold3(stringValue, intValue, intValue, (s, b, e) => s.substring(b, e))
             case tpnme.CharAt     =>
-              constantFold2AB(stringValue, intValue, _ charAt _)
+              constantFold2AB(stringValue, intValue, _.charAt(_))
+            case tpnme.LT         => constantFold2(stringValue, _ < _)
+            case tpnme.GT         => constantFold2(stringValue, _ > _)
+            case tpnme.LE         => constantFold2(stringValue, _ <= _)
+            case tpnme.GE         => constantFold2(stringValue, _ >= _)
             case _ => None
           else if owner == defn.CompiletimeOpsBooleanModuleClass then name match
             case tpnme.Not        => constantFold1(boolValue, x => !x)

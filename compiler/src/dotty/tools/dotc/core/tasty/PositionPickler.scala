@@ -37,25 +37,24 @@ object PositionPickler:
       relativePathReference: String,
       source: SourceFile,
       roots: List[Tree],
-      warnings: mutable.ListBuffer[Message],
       buf: TastyBuffer = new TastyBuffer(5000),
       pickledIndices: mutable.BitSet = new mutable.BitSet) =
 
     pickler.newSection(PositionsSection, buf)
 
-    /** Pickle the number of lines followed by the length of each line */
-    def pickleLineOffsets(): Unit = {
+    /** Pickle the number of lines followed by the size of each line */
+    def pickleLinesSizes(): Unit = {
       val content = source.content()
       buf.writeNat(content.count(_ == '\n') + 1) // number of lines
-      var lastIndex = content.indexOf('\n', 0)
-      buf.writeNat(lastIndex) // size of first line
+      var lastIndex = content.indexOf('\n')
+      buf.writeNat(if lastIndex != -1 then lastIndex else content.length) // size of first line
       while lastIndex != -1 do
         val nextIndex = content.indexOf('\n', lastIndex + 1)
         val end = if nextIndex != -1 then nextIndex else content.length
         buf.writeNat(end - lastIndex - 1) // size of the next line
         lastIndex = nextIndex
     }
-    pickleLineOffsets()
+    pickleLinesSizes()
 
     var lastIndex = 0
     var lastSpan = Span(0, 0)

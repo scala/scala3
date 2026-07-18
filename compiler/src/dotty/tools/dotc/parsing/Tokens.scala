@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package parsing
 
-import scala.language.unsafeNulls
-
 import collection.immutable.BitSet
 import core.Decorators.*
 import core.StdNames.nme
@@ -16,7 +14,7 @@ abstract class TokensCommon {
 
   def tokenRange(lo: Int, hi: Int): TokenSet = BitSet(lo to hi *)
 
-  val tokenString, debugString: Array[String] = new Array[String](maxToken + 1)
+  val tokenString, debugString: Array[String | Null] = new Array[String | Null](maxToken + 1)
 
   def enter(token: Int, str: String, debugStr: String = ""): Unit = {
     assert(tokenString(token) == null)
@@ -128,7 +126,7 @@ abstract class TokensCommon {
   inline val lastParen = OUTDENT
 
   def buildKeywordArray(keywords: TokenSet): (Int, Array[Int]) = {
-    def start(tok: Token) = tokenString(tok).toTermName.asSimpleName.start
+    def start(tok: Token) = tokenString(tok).nn.toTermName.asSimpleName.start
     def sourceKeywords = keywords.toList.filter { (kw: Token) =>
       val ts = tokenString(kw)
       (ts != null) && !ts.contains(' ')
@@ -203,8 +201,10 @@ object Tokens extends TokensCommon {
     // A `:` recognized as starting an indentation block
   inline val SELFARROW = 90;        enter(SELFARROW, "=>") // reclassified ARROW following self-type
 
+  inline val ENDlambda = 99;        enter(ENDlambda, "end of single-line lambda")
+
   /** XML mode */
-  inline val XMLSTART = 99;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
+  inline val XMLSTART = 100;         enter(XMLSTART, "$XMLSTART$<") // TODO: deprecate
 
   final val alphaKeywords: TokenSet = tokenRange(IF, END)
   final val symbolicKeywords: TokenSet = tokenRange(USCORE, CTXARROW)
@@ -267,7 +267,7 @@ object Tokens extends TokensCommon {
   final val canStartStatTokens3: TokenSet = canStartExprTokens3 | mustStartStatTokens | BitSet(
     AT, CASE, END)
 
-  final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT)
+  final val canEndStatTokens: TokenSet = atomicExprTokens | BitSet(TYPE, GIVEN, RPAREN, RBRACE, RBRACKET, OUTDENT, ENDlambda)
 
   /** Tokens that stop a lookahead scan search for a `<-`, `then`, or `do`.
    *  Used for disambiguating between old and new syntax.
@@ -280,6 +280,8 @@ object Tokens extends TokensCommon {
   final val statCtdTokens: BitSet = BitSet(THEN, ELSE, DO, CATCH, FINALLY, YIELD, MATCH)
 
   final val closingRegionTokens = BitSet(RBRACE, RPAREN, RBRACKET, CASE) | statCtdTokens
+
+  final val acceptOutdentTokens = BitSet(RBRACE, RPAREN, RBRACKET) | statCtdTokens
 
   final val canStartIndentTokens: BitSet =
     statCtdTokens | BitSet(COLONeol, WITH, EQUALS, ARROW, CTXARROW, LARROW, WHILE, TRY, FOR, IF, THROW, RETURN)
@@ -299,12 +301,13 @@ object Tokens extends TokensCommon {
 
   final val closingParens = BitSet(RPAREN, RBRACKET, RBRACE)
 
-  final val softModifierNames = Set(nme.inline, nme.into, nme.opaque, nme.open, nme.transparent, nme.infix, nme.update)
+  final val softModifierNames = Set(nme.inline, nme.into, nme.opaque, nme.open, nme.transparent, nme.infix)
+    // Note: update, consume and erased are missing here since they are only modifiers under some import
 
-  def showTokenDetailed(token: Int): String = debugString(token)
+  def showTokenDetailed(token: Int): String = debugString(token).nn
 
   def showToken(token: Int): String = {
-    val str = tokenString(token)
+    val str = tokenString(token).nn
     if isKeyword(token) || token == COLONfollow || token == COLONeol then s"'$str'" else str
   }
 }

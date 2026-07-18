@@ -19,34 +19,27 @@ import java.lang.ref.{WeakReference => jWeakReference}
 import scala.annotation.{implicitNotFound, nowarn}
 import scala.runtime.ClassValueCompat
 
-/**
+/** A `ClassTag[T]` stores the erased class of a given type `T`, accessible via the `runtimeClass`
+ *  field. This is particularly useful for instantiating `Array`s whose element types are unknown
+ *  at compile time.
  *
- * A `ClassTag[T]` stores the erased class of a given type `T`, accessible via the `runtimeClass`
- * field. This is particularly useful for instantiating `Array`s whose element types are unknown
- * at compile time.
+ *  `ClassTag`s wrap only the runtime class of a given type, without necessarily knowing all of
+ *  its argument types. This runtime information is enough for runtime `Array` creation.
  *
- * `ClassTag`s are a weaker special case of [[scala.reflect.api.TypeTags.TypeTag]]s, in that they
- * wrap only the runtime class of a given type, whereas a `TypeTag` contains all static type
- * information. That is, `ClassTag`s are constructed from knowing only the top-level class of a
- * type, without necessarily knowing all of its argument types. This runtime information is enough
- * for runtime `Array` creation.
+ *  For example:
+ *  ```scala sc:compile
+ *  import scala.reflect.ClassTag
  *
- * For example:
- * {{{
- *   scala> def mkArray[T : ClassTag](elems: T*) = Array[T](elems: _*)
- *   mkArray: [T](elems: T*)(implicit evidence\$1: scala.reflect.ClassTag[T])Array[T]
+ *  def mkArray[T: ClassTag](elems: T*): Array[T] = Array[T](elems*)
  *
- *   scala> mkArray(42, 13)
- *   res0: Array[Int] = Array(42, 13)
+ *  val ints = mkArray(42, 13)
+ *  val strings = mkArray("Japan", "Brazil", "Germany")
+ *  ```
  *
- *   scala> mkArray("Japan","Brazil","Germany")
- *   res1: Array[String] = Array(Japan, Brazil, Germany)
- * }}}
- *
- * See [[scala.reflect.api.TypeTags]] for more examples, or the
- * [[https://docs.scala-lang.org/overviews/reflection/typetags-manifests.html Reflection Guide: TypeTags]]
- * for more details.
- *
+ *  For compile-time type information in macros, see the facilities in the
+ *  [[scala.quoted]] package.
+ *  For limited runtime type checks beyond what `Class[?]` provides, see
+ *  [[scala.reflect.TypeTest]] and [[scala.reflect.Typeable]].
  */
 @nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifestDeprecatedApis""")
 @implicitNotFound(msg = "No ClassTag available for ${T}")
@@ -57,46 +50,50 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
   /** A class representing the type `U` to which `T` would be erased.
    *  Note that there is no subtyping relationship between `T` and `U`.
    */
-  def runtimeClass: jClass[_]
+  def runtimeClass: jClass[?]
 
-  /** Produces a `ClassTag` that knows how to instantiate an `Array[Array[T]]` */
+  /** Produces a `ClassTag` that knows how to instantiate an `Array[Array[T]]`. */
   def wrap: ClassTag[Array[T]] = ClassTag[Array[T]](arrayClass(runtimeClass))
 
-  /** Produces a new array with element type `T` and length `len` */
+  /** Produces a new array with element type `T` and length `len`.
+   *
+   *  @param len the length of the new array
+   */
   def newArray(len: Int): Array[T] =
     java.lang.reflect.Array.newInstance(runtimeClass, len).asInstanceOf[Array[T]]
 
   /** A ClassTag[T] can serve as an extractor that matches only objects of type T.
    *
-   * The compiler tries to turn unchecked type tests in pattern matches into checked ones
-   * by wrapping a `(_: T)` type pattern as `ct(_: T)`, where `ct` is the `ClassTag[T]` instance.
-   * Type tests necessary before calling other extractors are treated similarly.
-   * `SomeExtractor(...)` is turned into `ct(SomeExtractor(...))` if `T` in `SomeExtractor.unapply(x: T)`
-   * is uncheckable, but we have an instance of `ClassTag[T]`.
+   *  The compiler tries to turn unchecked type tests in pattern matches into checked ones
+   *  by wrapping a `(_: T)` type pattern as `ct(_: T)`, where `ct` is the `ClassTag[T]` instance.
+   *  Type tests necessary before calling other extractors are treated similarly.
+   *  `SomeExtractor(...)` is turned into `ct(SomeExtractor(...))` if `T` in `SomeExtractor.unapply(x: T)`
+   *  is uncheckable, but we have an instance of `ClassTag[T]`.
+   *
+   *  @param x the value to match against the runtime class of `T`
+   *  @return `Some(x)` if `x` is an instance of `T`, `None` otherwise
    */
   def unapply(x: Any): Option[T] =
     if (runtimeClass.isInstance(x)) Some(x.asInstanceOf[T])
     else None
 
   // case class accessories
-  override def canEqual(x: Any) = x.isInstanceOf[ClassTag[_]]
-  override def equals(x: Any) = x.isInstanceOf[ClassTag[_]] && this.runtimeClass == x.asInstanceOf[ClassTag[_]].runtimeClass
-  override def hashCode = runtimeClass.##
-  override def toString = {
-    def prettyprint(clazz: jClass[_]): String =
+  override def canEqual(x: Any) = x.isInstanceOf[ClassTag[?]]
+  override def equals(x: Any) = x.isInstanceOf[ClassTag[?]] && this.runtimeClass == x.asInstanceOf[ClassTag[?]].runtimeClass
+  override def hashCode() = runtimeClass.##
+  override def toString() = {
+    def prettyprint(clazz: jClass[?]): String =
       if (clazz.isArray) s"Array[${prettyprint(clazz.getComponentType)}]" else
       clazz.getName
     prettyprint(runtimeClass)
   }
 }
 
-/**
- * Class tags corresponding to primitive types and constructor/extractor for ClassTags.
- */
+/** Class tags corresponding to primitive types and constructor/extractor for ClassTags. */
 object ClassTag {
-  private[this] val ObjectTYPE = classOf[java.lang.Object]
-  private[this] val NothingTYPE = classOf[scala.runtime.Nothing$]
-  private[this] val NullTYPE = classOf[scala.runtime.Null$]
+  private val ObjectTYPE = classOf[java.lang.Object]
+  private val NothingTYPE = classOf[scala.runtime.Nothing$]
+  private val NullTYPE = classOf[scala.runtime.Null$]
 
   import ManifestFactory._
 
@@ -117,11 +114,11 @@ object ClassTag {
   val Null    : ClassTag[scala.Null]       = Manifest.Null
 
   private val cacheDisabled = java.lang.Boolean.getBoolean("scala.reflect.classtag.cache.disable")
-  private[this] object cache extends ClassValueCompat[jWeakReference[ClassTag[_]]] {
-    override def computeValue(runtimeClass: jClass[_]): jWeakReference[ClassTag[_]] =
+  private object cache extends ClassValueCompat[jWeakReference[ClassTag[?]]] {
+    override def computeValue(runtimeClass: jClass[?]): jWeakReference[ClassTag[?]] =
       new jWeakReference(computeTag(runtimeClass))
 
-    def computeTag(runtimeClass: jClass[_]): ClassTag[_] =
+    def computeTag(runtimeClass: jClass[?]): ClassTag[?] =
       runtimeClass match {
         case x if x.isPrimitive => primitiveClassTag(runtimeClass)
         case ObjectTYPE         => ClassTag.Object
@@ -130,7 +127,7 @@ object ClassTag {
         case _                  => new GenericClassTag[AnyRef](runtimeClass)
      }
 
-    private def primitiveClassTag[T](runtimeClass: Class[_]): ClassTag[_] =
+    private def primitiveClassTag[T](runtimeClass: Class[?]): ClassTag[?] =
       (runtimeClass: @unchecked) match {
         case java.lang.Byte.TYPE      => ClassTag.Byte
         case java.lang.Short.TYPE     => ClassTag.Short
@@ -145,13 +142,13 @@ object ClassTag {
   }
 
   @SerialVersionUID(1L)
-  private class GenericClassTag[T](val runtimeClass: jClass[_]) extends ClassTag[T] {
+  private class GenericClassTag[T](val runtimeClass: jClass[?]) extends ClassTag[T] {
     override def newArray(len: Int): Array[T] = {
       java.lang.reflect.Array.newInstance(runtimeClass, len).asInstanceOf[Array[T]]
     }
   }
 
-  def apply[T](runtimeClass1: jClass[_]): ClassTag[T] = {
+  def apply[T](runtimeClass1: jClass[?]): ClassTag[T] = {
     if (cacheDisabled) {
       cache.computeTag(runtimeClass1).asInstanceOf[ClassTag[T]]
     } else {
@@ -165,5 +162,5 @@ object ClassTag {
     }
   }
 
-  def unapply[T](ctag: ClassTag[T]): Option[Class[_]] = Some(ctag.runtimeClass)
+  def unapply[T](ctag: ClassTag[T]): Option[Class[?]] = Some(ctag.runtimeClass)
 }

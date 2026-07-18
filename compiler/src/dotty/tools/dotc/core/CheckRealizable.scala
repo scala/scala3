@@ -173,7 +173,7 @@ class CheckRealizable(using Context) {
     baseProblems.foldLeft(
       refinementProblems.foldLeft(
         memberProblems.foldLeft(
-          Realizable: Realizability)(_ andAlso _))(_ andAlso _))(_ andAlso _)
+          Realizable: Realizability)(_ `andAlso` _))(_ `andAlso` _))(_ `andAlso` _)
   }
 
   /** `Realizable` if all of `tp`'s non-strict fields have realizable types,

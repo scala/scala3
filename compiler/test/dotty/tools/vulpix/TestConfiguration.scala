@@ -2,11 +2,15 @@ package dotty
 package tools
 package vulpix
 
-import scala.language.unsafeNulls
+import scala.util.Properties.javaSpecVersion
 
 import java.io.File
 
+import dotc.config.ScalaSettingsProperties.supportedReleaseVersions
+
 object TestConfiguration {
+
+  val usingBaselineJava = javaSpecVersion.startsWith(supportedReleaseVersions.headOption.getOrElse("17"))
 
   val pageWidth = 120
 
@@ -25,21 +29,17 @@ object TestConfiguration {
     "-Xverify-signatures"
   )
 
-  val basicClasspath = mkClasspath(
-    Properties.scalaLibraryTasty.toList ::: List(
-    Properties.scalaLibrary,
-    Properties.dottyLibrary
-  ))
+  val silenceOptions = Array(
+    "-Wconf:id=E222:s", // name=EncodedPackageName don't warn about file names with hyphens
+  )
 
-  val withCompilerClasspath = mkClasspath(
-    Properties.scalaLibraryTasty.toList ::: List(
+  val basicClasspath = mkClasspath(List(Properties.scalaLibrary))
+
+  lazy val withCompilerClasspath = mkClasspath(List(
     Properties.scalaLibrary,
     Properties.scalaAsm,
-    Properties.jlineTerminal,
-    Properties.jlineReader,
     Properties.compilerInterface,
     Properties.dottyInterfaces,
-    Properties.dottyLibrary,
     Properties.tastyCore,
     Properties.dottyCompiler
   ))
@@ -54,7 +54,6 @@ object TestConfiguration {
     Properties.scalaJSJavalib,
     Properties.scalaJSScalalib,
     Properties.scalaJSLibrary,
-    Properties.dottyLibraryJS
   ))
 
   def mkClasspath(classpaths: List[String]): String =
@@ -66,37 +65,36 @@ object TestConfiguration {
 
   val yCheckOptions = Array("-Ycheck:all")
 
-  val commonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions
   val noYcheckCommonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions
+  val commonOptions = noYcheckCommonOptions ++ yCheckOptions ++ silenceOptions
   val defaultOptions = TestFlags(basicClasspath, commonOptions)
   val noYcheckOptions = TestFlags(basicClasspath, noYcheckCommonOptions)
   val bestEffortBaselineOptions = TestFlags(basicClasspath, noCheckOptions)
   val unindentOptions = TestFlags(basicClasspath, Array("-no-indent") ++ checkOptions ++ noCheckOptions ++ yCheckOptions)
-  val withCompilerOptions =
-    defaultOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+  lazy val withCompilerOptions =
+    defaultOptions.and("-Yexplicit-nulls").withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
   lazy val withStagingOptions =
     defaultOptions.withClasspath(withStagingClasspath).withRunClasspath(withStagingClasspath)
   lazy val withTastyInspectorOptions =
     defaultOptions.withClasspath(withTastyInspectorClasspath).withRunClasspath(withTastyInspectorClasspath)
   lazy val scalaJSOptions =
     defaultOptions.and("-scalajs").withClasspath(scalaJSClasspath).withRunClasspath(scalaJSClasspath)
-  val allowDeepSubtypes = defaultOptions without "-Yno-deep-subtypes"
-  val allowDoubleBindings = defaultOptions without "-Yno-double-bindings"
-  val picklingOptions = defaultOptions and (
+  val allowDeepSubtypes = defaultOptions `without` "-Yno-deep-subtypes"
+  val allowDoubleBindings = defaultOptions `without` "-Yno-double-bindings"
+  val picklingOptions = defaultOptions `and` (
     "-Xprint-types",
     "-Ytest-pickler",
     "-Yprint-pos",
     "-Yprint-pos-syms"
   )
-  val picklingWithCompilerOptions =
-    picklingOptions.withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
+  lazy val picklingWithCompilerOptions =
+    picklingOptions.and("-Yexplicit-nulls").withClasspath(withCompilerClasspath).withRunClasspath(withCompilerClasspath)
 
-  val explicitNullsOptions = defaultOptions and "-Yexplicit-nulls"
+  val explicitNullsOptions = defaultOptions `and` "-Yexplicit-nulls"
+
+  val oldSyntax = defaultOptions `and` "-old-syntax"
+  val newSyntax = defaultOptions `and` "-new-syntax"
 
   /** Default target of the generated class files */
-  private def defaultTarget: String = {
-    import scala.util.Properties.isJavaAtLeast
-
-    if isJavaAtLeast("9") then "9" else "8"
-  }
+  private def defaultTarget: String = "17"
 }

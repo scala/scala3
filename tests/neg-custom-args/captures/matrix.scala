@@ -1,5 +1,5 @@
 import caps.Mutable
-import caps.cap
+import caps.any
 
 trait Rdr[T]:
   def get: T
@@ -19,7 +19,7 @@ class Matrix(nrows: Int, ncols: Int) extends IMatrix, Mutable:
 
 
 def mul(x: Matrix, y: Matrix, z: Matrix^): Unit = ???
-def mul1(x: Matrix^{cap.rd}, y: Matrix^{cap.rd}, z: Matrix^): Unit = ???
+def mul1(x: Matrix^{any.rd}, y: Matrix^{any.rd}, z: Matrix^): Unit = ???
 
 def Test(c: Object^): Unit =
   val m1 = Matrix(10, 10)
@@ -32,5 +32,5 @@ def Test(c: Object^): Unit =
 
   def f2(): Matrix^ = Matrix(10, 10)
 
-  val i1: IMatrix^{cap.rd} = m1
-  val i2: IMatrix^{cap.rd} = f2()
+  val i1: IMatrix^{any.rd} = m1
+  val i2: IMatrix^{any.rd} = f2()

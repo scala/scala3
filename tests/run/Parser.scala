@@ -1,4 +1,3 @@
-import language.experimental.into
 import Conversion.into
 
 type Input = List[String]

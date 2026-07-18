@@ -1,6 +1,6 @@
 import annotation.constructorOnly
 
-class FileSystem extends caps.Capability
+class FileSystem extends caps.SharedCapability
 
 class NullLogger(using @constructorOnly fs: FileSystem)
 

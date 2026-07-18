@@ -1,0 +1,6 @@
+-- [E050] Type Error: tests/neg/24782.scala:4:28 -----------------------------------------------------------------------
+4 |  def f(using pure: Pure) = S(s => pure(s)) // error (but no compiler crash / stack overflow)
+  |                            ^
+  |                            expression does not take more parameters
+  |
+  | longer explanation available when compiling with `-explain`

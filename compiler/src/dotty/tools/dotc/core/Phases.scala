@@ -4,7 +4,6 @@ package core
 
 import Periods.*
 import Contexts.*
-import dotty.tools.backend.jvm.GenBCode
 import DenotTransformers.*
 import Denotations.*
 import Decorators.*
@@ -12,7 +11,6 @@ import config.Printers.config
 import scala.collection.mutable.ListBuffer
 import dotty.tools.dotc.transform.MegaPhase.*
 import dotty.tools.dotc.transform.*
-import Periods.*
 import parsing.Parser
 import printing.XprintMode
 import typer.{TyperPhase, RefChecks}
@@ -20,7 +18,6 @@ import cc.CheckCaptures
 import typer.ImportInfo.withRootImports
 import ast.{tpd, untpd}
 import scala.annotation.internal.sharable
-import scala.util.control.NonFatal
 import scala.compiletime.uninitialized
 
 object Phases {
@@ -31,7 +28,7 @@ object Phases {
   @sharable object NoPhase extends Phase {
     override def exists: Boolean = false
     def phaseName: String = "<no phase>"
-    def run(using Context): Unit = unsupported("run")
+    protected def run(using Context): Unit = unsupported("run")
     def transform(ref: SingleDenotation)(using Context): SingleDenotation = unsupported("transform")
   }
 
@@ -41,18 +38,30 @@ object Phases {
     // drop NoPhase at beginning
     def allPhases: Array[Phase] = (if (fusedPhases.nonEmpty) fusedPhases else phases).tail
 
+    private var myRecheckPhaseIds: Long = 0
+
+    /** A bitset of the ids of the phases extending `transform.Recheck`.
+     *  Recheck phases must have id 63 or less.
+     */
+    def recheckPhaseIds: Long = myRecheckPhaseIds
+
+    def recordRecheckPhase(phase: Recheck): Unit =
+      val id = phase.id
+      assert(id < 64, s"Recheck phase with id $id outside range 0..63, cannot use Long bits encoding")
+      myRecheckPhaseIds |= (1L << id)
+
     object SomePhase extends Phase {
       def phaseName: String = "<some phase>"
-      def run(using Context): Unit = unsupported("run")
+      protected def run(using Context): Unit = unsupported("run")
     }
 
     /** A sentinel transformer object */
     class TerminalPhase extends DenotTransformer {
       def phaseName: String = "terminal"
-      def run(using Context): Unit = unsupported("run")
+      protected def run(using Context): Unit = unsupported("run")
       def transform(ref: SingleDenotation)(using Context): SingleDenotation =
         unsupported("transform")
-      override def lastPhaseId(using Context): Int = id
+      override def lastPhaseId(using Context): PhaseId = id
     }
 
     final def phasePlan: List[List[Phase]] = this.phasesPlan
@@ -65,7 +74,6 @@ object Phases {
     final def fusePhases(phasess: List[List[Phase]],
                            phasesToSkip: List[String],
                            stopBeforePhases: List[String],
-                           stopAfterPhases: List[String],
                            YCheckAfter: List[String])(using Context): List[Phase] = {
       val fusedPhases = ListBuffer[Phase]()
       var prevPhases: Set[String] = Set.empty
@@ -80,7 +88,7 @@ object Phases {
 
       val filteredPhases = phasess.map(_.filter { p =>
         try isEnabled(p)
-        finally stop |= stopBeforePhases.contains(p.phaseName) | stopAfterPhases.contains(p.phaseName)
+        finally stop |= stopBeforePhases.contains(p.phaseName)
       })
 
       var i = 0
@@ -127,7 +135,7 @@ object Phases {
      *  if fusion is enabled, phases in same subgroup will be fused to single phase.
      */
     final def usePhases(phasess: List[Phase], runCtx: FreshContext, fuse: Boolean = true): Unit = {
-
+      myRecheckPhaseIds = 0L
       val flatPhases = collection.mutable.ListBuffer[Phase]()
 
       phasess.foreach(p => p match {
@@ -141,7 +149,7 @@ object Phases {
       nextDenotTransformerId = new Array[Int](phases.length)
       denotTransformers = new Array[DenotTransformer](phases.length)
 
-      var phaseId = 0
+      var phaseId: PhaseId = 0
       def nextPhaseId = {
         phaseId += 1
         phaseId // starting from 1 as NoPhase is 0
@@ -204,6 +212,9 @@ object Phases {
       else
         this.fusedPhases = this.phases
 
+      if myCheckCapturesPhase.exists then
+        myCheckCapturesPhaseId = myCheckCapturesPhase.id
+
       config.println(s"Phases = ${phases.toList}")
       config.println(s"nextDenotTransformerId = ${nextDenotTransformerId.toList}")
     }
@@ -239,10 +250,14 @@ object Phases {
     private var myErasurePhase: Phase = uninitialized
     private var myElimErasedValueTypePhase: Phase = uninitialized
     private var myLambdaLiftPhase: Phase = uninitialized
+    private var myMixinPhase: Phase = uninitialized
     private var myCountOuterAccessesPhase: Phase = uninitialized
     private var myFlattenPhase: Phase = uninitialized
-    private var myGenBCodePhase: Phase = uninitialized
     private var myCheckCapturesPhase: Phase = uninitialized
+
+    private var myCheckCapturesPhaseId: PhaseId = -2
+      // -1 means undefined, 0 means NoPhase, we make sure that we don't get a false hit
+      // if ctx.phaseId is either of these.
 
     final def parserPhase: Phase = myParserPhase
     final def typerPhase: Phase = myTyperPhase
@@ -266,11 +281,12 @@ object Phases {
     final def gettersPhase: Phase = myGettersPhase
     final def erasurePhase: Phase = myErasurePhase
     final def elimErasedValueTypePhase: Phase = myElimErasedValueTypePhase
+    final def mixinPhase: Phase = myMixinPhase
     final def lambdaLiftPhase: Phase = myLambdaLiftPhase
     final def countOuterAccessesPhase = myCountOuterAccessesPhase
     final def flattenPhase: Phase = myFlattenPhase
-    final def genBCodePhase: Phase = myGenBCodePhase
     final def checkCapturesPhase: Phase = myCheckCapturesPhase
+    final def checkCapturesPhaseId: PhaseId = myCheckCapturesPhaseId
 
     private def setSpecificPhases() = {
       def phaseOfClass(pclass: Class[?]) = phases.find(pclass.isInstance).getOrElse(NoPhase)
@@ -295,16 +311,18 @@ object Phases {
       myErasurePhase = phaseOfClass(classOf[Erasure])
       myElimErasedValueTypePhase = phaseOfClass(classOf[ElimErasedValueType])
       myPatmatPhase = phaseOfClass(classOf[PatternMatcher])
+      myMixinPhase = phaseOfClass(classOf[Mixin])
       myLambdaLiftPhase = phaseOfClass(classOf[LambdaLift])
       myCountOuterAccessesPhase = phaseOfClass(classOf[CountOuterAccesses])
       myFlattenPhase = phaseOfClass(classOf[Flatten])
       myExplicitOuterPhase = phaseOfClass(classOf[ExplicitOuter])
       myGettersPhase = phaseOfClass(classOf[Getters])
-      myGenBCodePhase = phaseOfClass(classOf[GenBCode])
       myCheckCapturesPhase = phaseOfClass(classOf[CheckCaptures])
     }
 
     final def isAfterTyper(phase: Phase): Boolean = phase.id > typerPhase.id
+    final def isAfterInlining(phase: Phase): Boolean =
+      inliningPhase != NoPhase && phase.id > inliningPhase.id
     final def isTyper(phase: Phase): Boolean = phase.id == typerPhase.id
   }
 
@@ -363,8 +381,11 @@ object Phases {
       val lastJavaPhase = if ctx.settings.XjavaTasty.value then sbtExtractAPIPhase else typerPhase
       lastJavaPhase <= this
 
-    /** @pre `isRunnable` returns true */
-    def run(using Context): Unit
+    /**
+     * Run for each compilation unit by `runOn`.
+     * @pre `isRunnable` returns true
+     */
+    protected def run(using Context): Unit
 
     /** @pre `isRunnable` returns true */
     def runOn(units: List[CompilationUnit])(using runCtx: Context): List[CompilationUnit] =
@@ -375,6 +396,7 @@ object Phases {
       val doCheckJava = skipIfJava && !isAfterLastJavaPhase
       for unit <- units do ctx.profiler.onUnit(this, unit):
         given unitCtx: Context = runCtx.fresh.setPhase(this.start).setCompilationUnit(unit).withRootImports
+        val previousTyperState = unitCtx.typerState.snapshot()
         if ctx.run.enterUnit(unit) then
           try
             if doCheckJava && unit.typedAsJava then
@@ -384,7 +406,8 @@ object Phases {
             buf += unitCtx.compilationUnit
           catch
             case _: CompilationUnit.SuspendException => // this unit will be run again in `Run#compileSuspendedUnits`
-            case ex: Throwable if !ctx.run.enrichedErrorMessage =>
+              unitCtx.typerState.resetTo(previousTyperState)
+            case ex: Exception if !ctx.run.enrichedErrorMessage =>
               println(ctx.run.enrichErrorMessage(s"unhandled exception while running $phaseName on $unit"))
               throw ex
           finally ctx.run.advanceUnit()
@@ -431,7 +454,7 @@ object Phases {
      */
     def printingContext(ctx: Context): Context = ctx
 
-    private var myPeriod: Period = Periods.InvalidPeriod
+    private var myPeriod: Period = Nowhere
     private var myBase: ContextBase = uninitialized
     private var myErasedTypes = false
     private var myFlatClasses = false
@@ -447,11 +470,11 @@ object Phases {
      * is reserved for NoPhase and the first real phase is at position 1.
      * -1 if the phase is not installed in the context.
      */
-    def id: Int = myPeriod.firstPhaseId
+    def id: PhaseId = myPeriod.firstPhaseId
 
     def period: Period = myPeriod
-    def start: Int = myPeriod.firstPhaseId
-    def end: Periods.PhaseId = myPeriod.lastPhaseId
+    def start: PhaseId = myPeriod.firstPhaseId
+    def end: PhaseId = myPeriod.lastPhaseId
 
     final def erasedTypes: Boolean = myErasedTypes   // Phase is after erasure
     final def flatClasses: Boolean = myFlatClasses   // Phase is after flatten
@@ -459,17 +482,17 @@ object Phases {
     final def lambdaLifted: Boolean = myLambdaLifted // Phase is after LambdaLift
     final def patternTranslated: Boolean = myPatternTranslated // Phase is after PatternMatcher
 
-    final def sameMembersStartId: Int = mySameMembersStartId
+    final def sameMembersStartId: PhaseId = mySameMembersStartId
       // id of first phase where all symbols are guaranteed to have the same members as in this phase
-    final def sameParentsStartId: Int = mySameParentsStartId
+    final def sameParentsStartId: PhaseId = mySameParentsStartId
       // id of first phase where all symbols are guaranteed to have the same parents as in this phase
-    final def sameBaseTypesStartId: Int = mySameBaseTypesStartId
+    final def sameBaseTypesStartId: PhaseId = mySameBaseTypesStartId
       // id of first phase where all symbols are guaranteed to have the same base tpyes as in this phase
 
-    protected[Phases] def init(base: ContextBase, start: Int, end: Int): Unit = {
+    protected[Phases] def init(base: ContextBase, start: PhaseId, end: PhaseId): Unit = {
       if (start >= FirstPhaseId)
-        assert(myPeriod == Periods.InvalidPeriod, s"phase $this has already been used once; cannot be reused")
-      assert(start <= Periods.MaxPossiblePhaseId, s"Too many phases, Period bits overflow")
+        assert(myPeriod == Nowhere, s"phase $this has already been used once; cannot be reused")
+      assert(start <= MaxPossiblePhaseId, s"Too many phases, Period bits overflow")
       myBase = base
       myPeriod = Period(NoRunId, start, end)
       myErasedTypes  = prev.getClass == classOf[Erasure]    || prev.erasedTypes
@@ -482,7 +505,7 @@ object Phases {
       mySameBaseTypesStartId = if (changesBaseTypes) id else prev.sameBaseTypesStartId
     }
 
-    protected[Phases] def init(base: ContextBase, id: Int): Unit = init(base, id, id)
+    protected[Phases] def init(base: ContextBase, id: PhaseId): Unit = init(base, id, id)
 
     final def <=(that: Phase): Boolean =
       exists && id <= that.id
@@ -508,7 +531,7 @@ object Phases {
       ctx.run.enterUnit(ctx.compilationUnit)
       && {
         try {body; true}
-        catch case NonFatal(ex) if !ctx.run.enrichedErrorMessage =>
+        catch case ex: Exception if !ctx.run.enrichedErrorMessage =>
           report.echo(ctx.run.enrichErrorMessage(s"exception occurred while $doing ${ctx.compilationUnit}"))
           throw ex
         finally ctx.run.advanceUnit()
@@ -550,10 +573,11 @@ object Phases {
   def gettersPhase(using Context): Phase                = ctx.base.gettersPhase
   def erasurePhase(using Context): Phase                = ctx.base.erasurePhase
   def elimErasedValueTypePhase(using Context): Phase    = ctx.base.elimErasedValueTypePhase
+  def mixinPhase(using Context): Phase                  = ctx.base.mixinPhase
   def lambdaLiftPhase(using Context): Phase             = ctx.base.lambdaLiftPhase
   def flattenPhase(using Context): Phase                = ctx.base.flattenPhase
-  def genBCodePhase(using Context): Phase               = ctx.base.genBCodePhase
   def checkCapturesPhase(using Context): Phase          = ctx.base.checkCapturesPhase
+  def checkCapturesPhaseId(using Context): PhaseId      = ctx.base.checkCapturesPhaseId
 
   def unfusedPhases(using Context): Array[Phase] = ctx.base.phases
 

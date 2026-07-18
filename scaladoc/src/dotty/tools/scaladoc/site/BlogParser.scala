@@ -1,23 +1,23 @@
 package dotty.tools.scaladoc.site
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.dataformat.yaml.YAMLFactory
-import com.fasterxml.jackson.databind.DeserializationFeature
+import _root_.tools.jackson.databind.DeserializationFeature
+import _root_.tools.jackson.dataformat.yaml.YAMLMapper
 import java.io.File
 import scala.beans.{BooleanBeanProperty, BeanProperty}
 import scala.util.Try
 
 case class BlogConfig(
-  @BeanProperty input: String,
-  @BeanProperty output: String,
+  @BeanProperty input: String | Null,
+  @BeanProperty output: String | Null,
   @BooleanBeanProperty hidden: Boolean
 ):
   def this() = this(null, null, false)
 
 object BlogParser:
   def readYml(content: File | String): BlogConfig =
-    val mapper = ObjectMapper(YAMLFactory())
-      .findAndRegisterModules()
+    val mapper = YAMLMapper.builder()
+      .disable(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES)
+      .build()
 
     content match
       case f: File =>

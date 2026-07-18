@@ -195,6 +195,18 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
       val encClass = local.owner.enclosingClass
       // When to prefer the enclosing class over the enclosing package:
       val preferEncClass =
+          ctx.settings.scalajs.value
+            // In Scala.js, never hoist anything. This is particularly important for:
+            // - members of DynamicImportThunk subclasses: moving code across the
+            //   boundaries of a DynamicImportThunk changes the dynamic and static
+            //   dependencies between ES modules, which is forbidden by spec; and
+            // - anonymous function defs (and their adapted variants): the backend
+            //   must be able to find them in the same class as the corresponding
+            //   Closure nodes, because it forcibly inlines them in the generated
+            //   js.Closure's.
+            // We let the Scala.js optimizer deal with removing unneeded captured
+            // references, such as `this` pointers.
+        ||
           encClass.isStatic
             // If class is not static, we try to hoist the method out of
             // the class to avoid the outer pointer.
@@ -216,13 +228,6 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
             // object or class constructor to be static since that can cause again deadlocks
             // by its interaction with class initialization. See run/deadlock.scala, which works
             // in Scala 3 but deadlocks in Scala 2.
-        ||
-          /* Scala.js: Never move any member beyond the boundary of a DynamicImportThunk.
-           * DynamicImportThunk subclasses are boundaries between the eventual ES modules
-           * that can be dynamically loaded. Moving members across that boundary changes
-           * the dynamic and static dependencies between ES modules, which is forbidden.
-           */
-          ctx.settings.scalajs.value && encClass.isSubClass(jsdefn.DynamicImportThunkClass)
 
       logicOwner(sym) = if preferEncClass then encClass else local.enclosingPackageClass
 
@@ -238,6 +243,13 @@ abstract class Dependencies(root: ast.tpd.Tree, @constructorOnly rootContext: Co
         captureImplicitThis(tree.tpe)
       case tree: Select =>
         if isExpr(sym) && isLocal(sym) then markCalled(sym, enclosure)
+        else if sym.isConstructor && tree.qualifier.isInstanceOf[Super] then
+          // Super-call to a parent constructor (e.g. `super(args)` in the body of a
+          // local class's primary constructor, after Constructors phase has moved
+          // parent constructor calls into the constructor body). We track this as
+          // a call edge so that free variables of the parent constructor are
+          // propagated to this constructor. See i25943.
+          symSet(called, enclosure) += sym
       case tree: New =>
         val constr = tree.tpe.typeSymbol.primaryConstructor
         if constr.exists then

@@ -5,8 +5,9 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.Driver
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase, FreshContext}
 import dotty.tools.dotc.quoted.QuotesCache
-import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, VirtualDirectory}
-import dotty.tools.repl.AbstractFileClassLoader
+import dotty.tools.io
+import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
+import dotty.tools.io.AbstractFileClassLoader
 import dotty.tools.dotc.reporting._
 import dotty.tools.dotc.config.Settings.Setting.value
 import dotty.tools.dotc.util.ClasspathFromClassloader
@@ -32,7 +33,7 @@ private class QuoteDriver(appClassloader: ClassLoader) extends Driver:
           dir.createDirectory()
           new PlainDirectory(Directory(out))
         case None =>
-          new VirtualDirectory("<quote compilation output>")
+          io.virtualDirectory("<quote compilation output>")
     end outDir
 
     val ctx = {

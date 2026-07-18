@@ -18,3 +18,54 @@
 # - description (can be multi-line)
 # '' sign
 # ------------------------------------------
+0
+EnumJava.scala
+covtest
+covtest
+Object
+covtest.covtest
+<init>
+90
+100
+4
+<init>
+Apply
+false
+0
+false
+MyLogLevel
+
+1
+EnumJava.scala
+covtest
+covtest
+Object
+covtest.covtest
+<init>
+122
+132
+5
+<init>
+Apply
+false
+0
+false
+MyLogLevel
+
+2
+EnumJava.scala
+covtest
+covtest
+Object
+covtest.covtest
+<init>
+154
+164
+6
+<init>
+Apply
+false
+0
+false
+MyLogLevel
+

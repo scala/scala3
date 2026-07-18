@@ -73,7 +73,7 @@ abstract class AccessProxies {
 
     /** The name of the accessor for definition with given `name` in given `site` */
     def accessorNameOf(name: TermName, site: Symbol)(using Context): TermName
-    def needsAccessor(sym: Symbol)(using Context): Boolean
+    def needsAccessor(refTree: RefTree | Apply | TypeApply)(using Context): Boolean
 
     def ifNoHost(reference: RefTree)(using Context): Tree = {
       assert(false, i"no host found for $reference with ${reference.symbol.showLocated} from ${ctx.owner}")
@@ -85,6 +85,7 @@ abstract class AccessProxies {
       val sym = newSymbol(owner, name, Synthetic | Method, info, coord = accessed.span).entered
       if accessed.is(Private) then sym.setFlag(Final)
       else if sym.allOverriddenSymbols.exists(!_.is(Deferred)) then sym.setFlag(Override)
+      if accessed.is(Erased) then sym.setFlag(Erased)
       ExperimentalAnnotation.copy(accessed).foreach(sym.addAnnotation)
       sym
     }
@@ -132,7 +133,6 @@ abstract class AccessProxies {
       *  access with a reference to the accessor.
       *
       *  @param reference    The original reference to the non-public symbol
-      *  @param onLHS        The reference is on the left-hand side of an assignment
       */
     def useAccessor(reference: RefTree)(using Context): Tree = {
       val accessed = reference.symbol.asTerm
@@ -141,13 +141,8 @@ abstract class AccessProxies {
         if accessorClass.is(Package) then
           accessorClass = ctx.owner.topLevelClass
         val accessorName = accessorNameOf(accessed.name, accessorClass)
-        val mappedInfo = accessed.info match
-          // TypeRef pointing to module class seems to not be stable, so we remap that to a TermRef
-          // see test i22593.scala (and issue #i22593)
-          case tref @ TypeRef(prefix, _) if tref.symbol.is(Module) => TermRef(prefix, tref.symbol.companionModule)
-          case other => other
         val accessorInfo =
-          mappedInfo.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
+          accessed.info.ensureMethodic.asSeenFrom(accessorClass.thisType, accessed.owner)
         val accessor = accessorSymbol(accessorClass, accessorName, accessorInfo, accessed)
         rewire(reference, accessor)
       }
@@ -156,7 +151,7 @@ abstract class AccessProxies {
 
     /** Replace tree with a reference to an accessor if needed */
     def accessorIfNeeded(tree: Tree)(using Context): Tree = tree match {
-      case tree: RefTree if needsAccessor(tree.symbol) =>
+      case tree: RefTree if needsAccessor(tree) =>
         if (tree.symbol.isConstructor) {
           report.error("Cannot use private constructors in inline methods. You can use @publicInBinary to make constructor accessible in inline methods.", tree.srcPos)
           tree // TODO: create a proper accessor for the private constructor
@@ -174,8 +169,8 @@ object AccessProxies {
   def hostForAccessorOf(accessed: Symbol)(using Context): Symbol = {
     def recur(cls: Symbol): Symbol =
       if (!cls.exists) NoSymbol
-      else if cls.derivesFrom(accessed.owner)
-              || cls.companionModule.moduleClass == accessed.owner
+      else if ((cls.derivesFrom(accessed.owner) && !(accessed.is(Private) && (cls ne accessed.owner)))
+              || cls.companionModule.moduleClass == accessed.owner)
       then cls
       else recur(cls.owner)
     recur(ctx.owner)

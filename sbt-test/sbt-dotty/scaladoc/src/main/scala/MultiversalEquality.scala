@@ -3,7 +3,7 @@ package example
 import scala.language.strictEquality
 
 /**
-  * Multiversal Equality: https://dotty.epfl.ch/docs/reference/contextual/multiversal-equality.html
+  * Multiversal Equality: https://nightly.scala-lang.org/docs/reference/contextual/multiversal-equality.html
   * scala.Eq definition: https://github.com/scala/scala3/blob/master/library/src/scala/CanEqual.scala
   */
 object MultiversalEquality {

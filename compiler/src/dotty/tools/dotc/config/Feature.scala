@@ -13,6 +13,7 @@ import NameKinds.QualifiedName
 import Annotations.ExperimentalAnnotation
 import Annotations.PreviewAnnotation
 import Settings.Setting.ChoiceWithHelp
+import ast.untpd
 
 object Feature:
 
@@ -28,6 +29,7 @@ object Feature:
 
   val dependent = experimental("dependent")
   val erasedDefinitions = experimental("erasedDefinitions")
+  val strictEqualityPatternMatching = experimental("strictEqualityPatternMatching")
   val symbolLiterals = deprecated("symbolLiterals")
   val saferExceptions = experimental("saferExceptions")
   val pureFunctions = experimental("pureFunctions")
@@ -36,12 +38,23 @@ object Feature:
   val into = experimental("into")
   val modularity = experimental("modularity")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
-  val packageObjectValues = experimental("packageObjectValues")
+  val multiSpreads = experimental("multiSpreads")
+  val subCases = experimental("subCases")
+  val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
+  val safe = experimental("safe")
+  val dedentedStringLiterals = experimental("dedentedStringLiterals")
+  val magic = experimental("magic")
 
+  val nonViralExperimentalFeatures: Set[TermName] =
+    Set(captureChecking, separationChecking, safe)
+
+  /** Experimental language imports that imply that the importing unit
+   *  is experimental.
+   */
   def experimentalAutoEnableFeatures(using Context): List[TermName] =
     defn.languageExperimentalFeatures
       .map(sym => experimental(sym.name))
-      .filterNot(sym => sym == captureChecking || sym == separationChecking) // TODO is this correct?
+      .filterNot(nonViralExperimentalFeatures.contains(_))
 
   val values = List(
     (nme.help, "Display all available features"),
@@ -61,11 +74,54 @@ object Feature:
     (saferExceptions, "Enable safer exceptions"),
     (pureFunctions, "Enable pure functions for capture checking"),
     (captureChecking, "Enable experimental capture checking"),
-    (separationChecking, "Enable experimental separation checking (requires captureChecking)"),
-    (into, "Allow into modifier on parameter types"),
+    (separationChecking, "Enable experimental separation checking (implies captureChecking)"),
     (modularity, "Enable experimental modularity features"),
-    (packageObjectValues, "Enable experimental package objects as values"),
+    (multiSpreads, "Enable experimental varargs with multi-spreads"),
+    (subCases, "Enable experimental match expressions with sub-cases"),
+    (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
+    (safe, "Require safe mode"),
+    (dedentedStringLiterals, "Enable experimental dedented string literals"),
+    (magic, "Enable extensions for working with coding agents"),
   )
+
+  /** Features that are now standard; the language import / -language choice is
+   *  still accepted but deprecated and has no effect. name -> deprecation message. */
+  val deprecatedFeatures: List[(TermName, String)] = List(
+    (strictEqualityPatternMatching,
+     "`strictEqualityPatternMatching` is now standard, no language import is needed"),
+    (experimental("fewerBraces"),
+     "`fewerBraces` is now standard, no language import is needed"),
+    (experimental("relaxedExtensionImports"),
+     "`experimental.relaxedExtensionImports` is now standard, no language import is needed"),
+    (experimental("clauseInterleaving"),
+     "`clauseInterleaving` is now standard, no language import is needed"),
+    (experimental("betterMatchTypeExtractors"),
+     "`experimental.betterMatchTypeExtractors` is now standard, no language import is needed"),
+    (experimental("namedTuples"),
+     "`experimental.namedTuples` is now standard, no language import is needed"),
+    (experimental("betterFors"),
+     "`experimental.betterFors` is now standard, no language import is needed"),
+    (into,
+     "The `into` language import is no longer needed; the `into` modifier is now in preview and can be enabled with the -preview flag"),
+    (experimental("packageObjectValues"),
+     "The `experimental.packageObjectValues` language import is no longer needed; the feature is now in preview and can be enabled with the -preview flag"),
+  )
+
+  /** Deprecated features that were enabled via the -language command-line setting. */
+  def deprecatedSettingFeatures(using Context): List[(TermName, String)] =
+    deprecatedFeatures.filter((n, _) => enabledBySetting(n))
+
+  /** Emit a deprecation warning for each deprecated feature enabled via -language. */
+  def checkDeprecatedSettingFeatures(using Context): Unit =
+    for (name, msg) <- deprecatedSettingFeatures do
+      report.deprecationWarning(em"Option -language:$name is deprecated: $msg", NoSourcePosition)
+
+  /** Warn when a deprecated language feature is imported. */
+  def warnDeprecatedLanguageImports(prefix: TermName, selectors: List[untpd.ImportSelector])(using Context): Unit =
+    for sel <- selectors if !sel.isWildcard && !sel.isUnimport do
+      val feature = QualifiedName(prefix, sel.name)
+      deprecatedFeatures.collectFirst:
+        case (`feature`, msg) => report.deprecationWarning(em"$msg", sel.srcPos)
 
   // legacy language features from Scala 2 that are no longer supported.
   val legacyFeatures = List(
@@ -132,10 +188,31 @@ object Feature:
     || ctx.compilationUnit.knowsPureFuns
     || ccEnabled
 
-  /** Is captureChecking enabled for this compilation unit? */
-  def ccEnabled(using Context) =
+  /** Is capture checking enabled by a command-line setting? */
+  def ccEnabledBySetting(using Context): Boolean =
     enabledBySetting(captureChecking)
+    || enabledBySetting(separationChecking)
+    || enabledBySetting(safe)
+
+  /** Is capture checking enabled for this compilation unit? */
+  def ccEnabled(using Context) =
+    ccEnabledBySetting
     || ctx.originalCompilationUnit.needsCaptureChecking
+
+  /** Is separation checking enabled for this compilation unit? */
+  def sepChecksEnabled(using Context) =
+    enabledBySetting(separationChecking)
+    || ctx.originalCompilationUnit.needsSeparationChecking
+
+  /** Is safe mode set for this compilation unit? */
+  def safeEnabled(using Context) =
+    enabledBySetting(safe)
+    || ctx.originalCompilationUnit.safeMode
+
+  /** Is magic enabled for this compilation unit? */
+  def magicEnabled(using Context) =
+    enabledBySetting(magic)
+    || ctx.originalCompilationUnit.magic
 
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */
   def pureFunsEnabledSomewhere(using Context) =
@@ -146,7 +223,7 @@ object Feature:
   /** Is captureChecking enabled for any of the currently compiled compilation units? */
   def ccEnabledSomewhere(using Context) =
     if ctx.run != null then ctx.run.nn.ccEnabledSomewhere
-    else enabledBySetting(captureChecking)
+    else ccEnabled
 
   def sourceVersionSetting(using Context): SourceVersion =
     SourceVersion.valueOf(ctx.settings.source.value)
@@ -180,7 +257,8 @@ object Feature:
       report.error(experimentalUseSite(which) + note, srcPos)
 
   private def ccException(sym: Symbol)(using Context): Boolean =
-    ccEnabled && defn.ccExperimental.contains(sym)
+    ccEnabledSomewhere && (defn.ccExperimental.contains(sym)
+      || sym.exists && defn.ccExperimental.contains(sym.owner))
 
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
     val experimentalSym =
@@ -216,23 +294,43 @@ object Feature:
   def isExperimentalEnabledByImport(using Context): Boolean =
     experimentalAutoEnableFeatures.exists(enabledByImport)
 
-  /** Handle language import `import language.<prefix>.<imported>` if it is one
-   *  of the global imports `pureFunctions` or `captureChecking`. In this case
-   *  make the compilation unit's and current run's fields accordingly.
-   *  @return true iff import that was handled
+  /** Global language imports that affect parsing and must be handled specially.
+   *  These need per-compilation-unit flags (set in `handleGlobalLanguageImport`)
+   *  and also require propagation to rootCtx in the REPL and hoisting in the
+   *  snippet compiler so they take effect across inputs (i16250).
+   */
+  val globalLanguageImports: Set[TermName] =
+    Set(pureFunctions, captureChecking, separationChecking, safe)
+
+  /** Handle a global language import `import language.<prefix>.<imported>`.
+   *  Sets the compilation unit's and current run's fields accordingly.
+   *  @return true iff the import was handled
    */
   def handleGlobalLanguageImport(prefix: TermName, imported: Name)(using Context): Boolean =
-    val fullFeatureName = QualifiedName(prefix, imported.asTermName)
-    if fullFeatureName == pureFunctions then
-      ctx.compilationUnit.knowsPureFuns = true
-      if ctx.run != null then ctx.run.nn.pureFunsImportEncountered = true
-      true
-    else if fullFeatureName == captureChecking then
-      ctx.compilationUnit.needsCaptureChecking = true
-      if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
-      true
-    else
-      false
+    QualifiedName(prefix, imported.asTermName) match
+      case `pureFunctions` =>
+        ctx.compilationUnit.knowsPureFuns = true
+        if ctx.run != null then ctx.run.nn.pureFunsImportEncountered = true
+        true
+      case `captureChecking` =>
+        ctx.compilationUnit.needsCaptureChecking = true
+        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
+        true
+      case `separationChecking` =>
+        ctx.compilationUnit.needsCaptureChecking = true
+        ctx.compilationUnit.needsSeparationChecking = true
+        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
+        true
+      case `safe` =>
+        ctx.compilationUnit.needsCaptureChecking = true
+        ctx.compilationUnit.safeMode = true
+        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
+        true
+      case `magic` =>
+        ctx.compilationUnit.magic = true
+        true
+      case _ =>
+        false
 
   def isPreviewEnabled(using Context): Boolean =
     ctx.settings.preview.value

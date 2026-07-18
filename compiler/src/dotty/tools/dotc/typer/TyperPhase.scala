@@ -112,7 +112,7 @@ class TyperPhase(addRootImports: Boolean = true) extends Phase {
     ctx.run.nn.checkSuspendedUnits(newUnits)
     newUnits
 
-  def run(using Context): Unit = unsupported("run")
+  protected def run(using Context): Unit = unsupported("run")
 }
 
 object TyperPhase {

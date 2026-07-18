@@ -1,1 +1,8 @@
-21: Pattern Match Exhaustivity: Two(_, A2)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9129.scala:21:24 ---
+21 |  def foo(c: C): Unit = c match {
+   |                        ^
+   |                        match may not be exhaustive.
+   |
+   |                        It would fail on pattern case: Two(_, A2)
+   |
+   | longer explanation available when compiling with `-explain`

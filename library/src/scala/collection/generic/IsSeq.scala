@@ -14,29 +14,38 @@ package scala.collection
 package generic
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
+import caps.unsafe.untrackedCaptures
+
 import scala.reflect.ClassTag
 
 /** Type class witnessing that a collection representation type `Repr` has
-  * elements of type `A` and has a conversion to `SeqOps[A, Iterable, C]`, for
-  * some types `A` and `C`.
-  *
-  * This type enables simple enrichment of `Seq`s with extension methods which
-  * can make full use of the mechanics of the Scala collections framework in
-  * their implementation.
-  *
-  * @see [[scala.collection.generic.IsIterable]]
-  */
+ *  elements of type `A` and has a conversion to `SeqOps[A, Iterable, C]`, for
+ *  some types `A` and `C`.
+ *
+ *  This type enables simple enrichment of `Seq`s with extension methods which
+ *  can make full use of the mechanics of the Scala collections framework in
+ *  their implementation.
+ *
+ *  @see [[scala.collection.generic.IsIterable]]
+ *
+ *  @tparam Repr the collection representation type that is witnessed to have sequence-like operations
+ */
 transparent trait IsSeq[Repr] extends IsIterable[Repr] {
 
   @deprecated("'conversion' is now a method named 'apply'", "2.13.0")
+  @untrackedCaptures
   override val conversion: Repr => SeqOps[A, Iterable, C] = apply(_)
 
   /** A conversion from the type `Repr` to `SeqOps[A, Iterable, C]`
-    *
-    * @note The second type parameter of the returned `SeqOps` value is
-    *       still `Iterable` (and not `Seq`) because `SeqView[A]` only
-    *       extends `SeqOps[A, View, View[A]]`.
-    */
+   *
+   *  @note The second type parameter of the returned `SeqOps` value is
+   *       still `Iterable` (and not `Seq`) because `SeqView[A]` only
+   *       extends `SeqOps[A, View, View[A]]`.
+   *
+   *  @param coll the collection to convert
+   *  @return a `SeqOps` instance that provides sequence operations on `coll`
+   */
   def apply(coll: Repr): SeqOps[A, Iterable, C]
 }
 
@@ -68,11 +77,11 @@ object IsSeq {
           def length: Int = s.length
           def apply(i: Int): Char = s.charAt(i)
           def toIterable: Iterable[Char] = new immutable.WrappedString(s)
-          protected[this] def coll: String = s
-          protected[this] def fromSpecific(coll: IterableOnce[Char]): String = coll.iterator.mkString
+          protected def coll: String = s
+          protected def fromSpecific(coll: IterableOnce[Char]^): String = coll.iterator.mkString
           def iterableFactory: IterableFactory[immutable.ArraySeq] = immutable.ArraySeq.untagged
           override def empty: String = ""
-          protected[this] def newSpecificBuilder: mutable.Builder[Char, String] = new StringBuilder
+          protected def newSpecificBuilder: mutable.Builder[Char, String] = new StringBuilder
           def iterator: Iterator[Char] = s.iterator
         }
     }
@@ -94,10 +103,28 @@ object IsSeq {
           def length: Int = a.length
           def toIterable: Iterable[A] = mutable.ArraySeq.make(a)
           protected def coll: Array[A] = a
-          protected def fromSpecific(coll: IterableOnce[A]): Array[A] = Array.from(coll)
+          protected def fromSpecific(coll: IterableOnce[A]^): Array[A] = Array.from(coll)
           def iterableFactory: IterableFactory[mutable.ArraySeq] = mutable.ArraySeq.untagged
           override def empty: Array[A] = Array.empty[A]
           protected def newSpecificBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder
+          def iterator: Iterator[A] = a.iterator
+        }
+    }
+
+  given iarrayIsSeq[A0 : ClassTag]: (IsSeq[IArray[A0]] { type A = A0; type C = IArray[A0] }) =
+    new IsSeq[IArray[A0]] {
+      type A = A0
+      type C = IArray[A0]
+      def apply(a: IArray[A0]): SeqOps[A0, immutable.IndexedSeq, IArray[A0]] =
+        new SeqOps[A, immutable.ArraySeq, IArray[A]] {
+          def apply(i: Int): A = a.apply(i)
+          def length: Int = a.length
+          def toIterable: Iterable[A] = IArray.genericWrapArray(a)
+          protected def coll: IArray[A] = a
+          protected def fromSpecific(coll: IterableOnce[A]^): IArray[A] = IArray.from(coll)
+          def iterableFactory: IterableFactory[immutable.ArraySeq] = immutable.ArraySeq.untagged
+          override def empty: IArray[A] = IArray.empty[A]
+          protected def newSpecificBuilder: mutable.Builder[A, IArray[A]] = IArray.newBuilder[A]
           def iterator: Iterator[A] = a.iterator
         }
     }

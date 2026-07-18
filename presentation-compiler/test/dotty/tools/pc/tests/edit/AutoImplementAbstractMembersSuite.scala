@@ -2,9 +2,9 @@ package dotty.tools.pc.tests.edit
 
 import java.net.URI
 
+import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.metals.CompilerOffsetParams
-import scala.language.unsafeNulls
 
 import dotty.tools.pc.base.BaseCodeActionSuite
 import dotty.tools.pc.utils.TextEdits
@@ -92,7 +92,7 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |
          |  override def foo: Unit = ???
          |
-         |}""".stripMargin,
+         |}""".stripMargin
     )
 
   @Test def `empty-lines-between-members` =
@@ -1256,7 +1256,7 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |  end Concrete
          |
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `end-marker2` =
@@ -1287,7 +1287,7 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
          |  end Concrete
          |
          |}
-         |""".stripMargin,
+         |""".stripMargin
     )
 
   @Test def `braceless-case-class` =
@@ -1336,7 +1336,7 @@ class AutoImplementAbstractMembersSuite extends BaseCodeActionSuite:
     val (code, _, offset) = params(original)
     val result = presentationCompiler
       .implementAbstractMembers(
-        CompilerOffsetParams(URI.create(filename), code, offset, cancelToken)
+        CompilerOffsetParams(URI.create("file:///" + filename), code, offset, cancelToken)
       )
       .get()
     result.asScala.toList

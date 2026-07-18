@@ -1,0 +1,84 @@
+-- [E007] Type Mismatch Error: tests/neg/t4727.scala:10:8 --------------------------------------------------------------
+10 |    new C[Int] // error
+   |        ^^^^^^
+   |        Found:    Null
+   |        Required: Int
+   |        Error occurred in an application involving default arguments.
+   |        Note that implicit conversions were not tried because the result of an implicit conversion
+   |        must be more specific than Int
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |
+   | Tree:
+   |
+   | C.$lessinit$greater$default$1[Int]
+   |
+   | I tried to show that
+   |   Null
+   | conforms to
+   |   Int
+   | but none of the attempts shown below succeeded:
+   |
+   |   ==> Null  <:  Int  = false
+   |
+   | The tests were made under the empty constraint
+   |
+   | Expanded application: new C[Int](C.$lessinit$greater$default$1[Int])
+    --------------------------------------------------------------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/t4727.scala:11:4 --------------------------------------------------------------
+11 |    f[Int]() // error
+   |    ^^^^^^
+   |    Found:    Null
+   |    Required: Int
+   |    Error occurred in an application involving default arguments.
+   |    Note that implicit conversions were not tried because the result of an implicit conversion
+   |    must be more specific than Int
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |
+   | Tree:
+   |
+   | t4727$package.f$default$1[Int]
+   |
+   | I tried to show that
+   |   Null
+   | conforms to
+   |   Int
+   | but none of the attempts shown below succeeded:
+   |
+   |   ==> Null  <:  Int  = false
+   |
+   | The tests were made under the empty constraint
+   |
+   | Expanded application: f[Int](t4727$package.f$default$1[Int])
+    --------------------------------------------------------------------------------------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/t4727.scala:12:4 --------------------------------------------------------------
+12 |    g[Int, Int](42)(y = 27) // error
+   |    ^^^^^^^^^^^^^^^
+   |    Found:    Null
+   |    Required: Int
+   |    Error occurred in an application involving default arguments.
+   |    Note that implicit conversions were not tried because the result of an implicit conversion
+   |    must be more specific than Int
+   |--------------------------------------------------------------------------------------------------------------------
+   | Explanation (enabled by `-explain`)
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |
+   | Tree:
+   |
+   | t4727$package.g$default$2[Int, Int](42)
+   |
+   | I tried to show that
+   |   Null
+   | conforms to
+   |   Int
+   | but none of the attempts shown below succeeded:
+   |
+   |   ==> Null  <:  Int  = false
+   |
+   | The tests were made under the empty constraint
+   |
+   | Expanded application: g[Int, Int](42)(t4727$package.g$default$2[Int, Int](42), y = 27)
+    --------------------------------------------------------------------------------------------------------------------

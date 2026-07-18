@@ -64,7 +64,7 @@ So far, we have found the following useful:
 
   Don't use `.nn` on mutable variables directly, because it may introduce an unknown type into the type of the variable.
 
-- An [`unsafeNulls`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$unsafeNulls$.html) language feature.
+- An [`unsafeNulls`](https://scala-lang.org/api/3.x/scala/language$$unsafeNulls$.html) language feature.
 
   When imported, `T | Null` can be used as `T`, similar to regular Scala (without explicit nulls).
 
@@ -457,6 +457,31 @@ See [more examples](https://github.com/scala/scala3/blob/main/tests/explicit-nul
 Currently, we are unable to track paths with a mutable variable prefix.
 For example, `x.a` if `x` is mutable.
 
+### Tracking Mutable Fields with `@stableNull`
+
+By default, mutable class fields (`var`) are not tracked by flow typing, because a concurrent
+assignment could set the field to `null` between the null check and its subsequent use.
+To opt into flow typing for a mutable field, annotate it with
+`scala.annotation.stableNull`.
+The field will then be tracked whenever it is accessed through a stable prefix.
+
+```scala
+import scala.annotation.stableNull
+
+class A:
+  @stableNull private var s: String | Null = null
+  def getS: String =
+    if s == null then s = ""
+    s // s: String
+```
+
+**Warning:** `@stableNull` can break null safety. The compiler assumes the field stays
+non-nullable after a null check, but nothing prevents another thread, a reentrant call, or
+unrelated code reachable from the same reference from reassigning it to `null` in between.
+We recommend only using it to manage a mutable nullable state *locally* within a class.
+A typical case is a field where `null` represents an uninitialized value that is assigned
+once on first access.
+
 ### Unsupported Idioms
 
 We don't support:
@@ -474,10 +499,10 @@ We don't support:
 
 ### UnsafeNulls
 
-It is difficult to work with many nullable values, we introduce a language feature [`unsafeNulls`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$unsafeNulls$.html).
+It is difficult to work with many nullable values, we introduce a language feature [`unsafeNulls`](https://scala-lang.org/api/3.x/scala/language$$unsafeNulls$.html).
 Inside this "unsafe" scope, all `T | Null` values can be used as `T`.
 
-Users can import [`scala.language.unsafeNulls`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$unsafeNulls$.html) to create such scopes, or use `-language:unsafeNulls` to enable this feature globally (for migration purpose only).
+Users can import [`scala.language.unsafeNulls`](https://scala-lang.org/api/3.x/scala/language$$unsafeNulls$.html) to create such scopes, or use `-language:unsafeNulls` to enable this feature globally (for migration purpose only).
 
 Assume `T` is a reference type (a subtype of `AnyRef`), the following unsafe operation rules are
 applied in this unsafe-nulls scope:
@@ -496,7 +521,7 @@ can be used as `T2` if `T1` is a subtype of `T2` using regular subtyping rules
 
 Addtionally, `null` can be used as `AnyRef` (`Object`), which means you can select `.eq` or `.toString` on it.
 
-The program in [`unsafeNulls`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$unsafeNulls$.html) will have a **similar** semantic as regular Scala, but not **equivalent**.
+The program in [`unsafeNulls`](https://scala-lang.org/api/3.x/scala/language$$unsafeNulls$.html) will have a **similar** semantic as regular Scala, but not **equivalent**.
 
 For example, the following code cannot be compiled even using unsafe nulls. Because of the
 Java interoperation, the type of the get method becomes `T | Null`.
@@ -509,7 +534,7 @@ Since the compiler doesn’t know whether `T` is a reference type, it is unable 
 to `T`. A `.nn` need to be inserted after `xs.get(0)` by user manually to fix the error, which
 strips the `Null` from its type.
 
-The intention of this [`unsafeNulls`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$unsafeNulls$.html) is to give users a better migration path for explicit nulls.
+The intention of this [`unsafeNulls`](https://scala-lang.org/api/3.x/scala/language$$unsafeNulls$.html) is to give users a better migration path for explicit nulls.
 Projects for Scala 2 or regular Scala 3 can try this by adding `-Yexplicit-nulls -language:unsafeNulls`
 to the compile options. A small number of manual modifications are expected. To migrate to the full
 explicit nulls feature in the future, `-language:unsafeNulls` can be dropped and add
@@ -540,9 +565,9 @@ class C[T >: Null <: String] // define a type bound with unsafe conflict bound
 val n = nullOf[String] // apply a type bound unsafely
 ```
 
-Without the [`unsafeNulls`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$unsafeNulls$.html), all these unsafe operations will not be type-checked.
+Without the [`unsafeNulls`](https://scala-lang.org/api/3.x/scala/language$$unsafeNulls$.html), all these unsafe operations will not be type-checked.
 
-[`unsafeNulls`](https://scala-lang.org/api/3.x/scala/runtime/stdLibPatches/language$$unsafeNulls$.html) also works for extension methods and implicit search.
+[`unsafeNulls`](https://scala-lang.org/api/3.x/scala/language$$unsafeNulls$.html) also works for extension methods and implicit search.
 
 ```scala
 import scala.language.unsafeNulls
@@ -561,4 +586,4 @@ Our strategy for binary compatibility with Scala binaries that predate explicit 
 and new libraries compiled without `-Yexplicit-nulls` is to leave the types unchanged
 and be compatible but unsound.
 
-[Implementation details](https://dotty.epfl.ch/docs/internals/explicit-nulls.html)
+[Implementation details](https://nightly.scala-lang.org/docs/internals/explicit-nulls.html)

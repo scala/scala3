@@ -25,15 +25,15 @@ CreditEngine
 Class
 org.scoverage.samples.CreditEngine
 $anonfun
-263
-276
-11
-!
+245
+255
+10
+<
 Apply
 false
 0
 false
-"if 1" ! "xd"
+req < 2000
 
 1
 scoverage-samples-implicit-class.scala
@@ -43,14 +43,14 @@ Class
 org.scoverage.samples.CreditEngine
 $anonfun
 263
-269
+276
 11
-StringOpssssss
+!
 Apply
 false
 0
 false
-"if 1"
+"if 1" ! "xd"
 
 2
 scoverage-samples-implicit-class.scala
@@ -161,23 +161,6 @@ StringOpssssss
 Class
 org.scoverage.samples.StringOpssssss
 !
-160
-167
-5
-+
-Apply
-false
-0
-false
-s + "!"
-
-9
-scoverage-samples-implicit-class.scala
-org.scoverage.samples
-StringOpssssss
-Class
-org.scoverage.samples.StringOpssssss
-!
 124
 129
 5
@@ -188,7 +171,7 @@ false
 false
 def !
 
-10
+9
 scoverage-samples-implicit-class.scala
 org.scoverage.samples
 scoverage-samples-implicit-class$package

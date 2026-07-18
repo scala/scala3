@@ -25,6 +25,23 @@ Klass2
 Class
 covtest.Klass2
 abs
+202
+207
+15
+>
+Apply
+false
+0
+false
+i > 0
+
+1
+ExcludeClass.scala
+covtest
+Klass2
+Class
+covtest.Klass2
+abs
 219
 220
 16
@@ -35,7 +52,24 @@ true
 false
 i
 
-1
+2
+ExcludeClass.scala
+covtest
+Klass2
+Class
+covtest.Klass2
+abs
+236
+238
+18
+unary_-
+Select
+false
+0
+false
+-i
+
+3
 ExcludeClass.scala
 covtest
 Klass2
@@ -52,7 +86,7 @@ true
 false
 -i
 
-2
+4
 ExcludeClass.scala
 covtest
 Klass2

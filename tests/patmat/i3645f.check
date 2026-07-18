@@ -1,1 +1,8 @@
-30: Pattern Match Exhaustivity: K1
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i3645f.scala:30:32 --
+30 |    def test(k: K[Foo]): Unit = k match {
+   |                                ^
+   |                                match may not be exhaustive.
+   |
+   |                                It would fail on pattern case: K1
+   |
+   | longer explanation available when compiling with `-explain`

@@ -1,5 +1,7 @@
 package scala.annotation
 
+import language.experimental.captureChecking
+
 /** An annotation that indicates capture of a set of references under capture checking.
  *
  *      T @retains[x.type | y.type | z.type]
@@ -10,12 +12,13 @@ package scala.annotation
  *
  *  The annotation can also be written explicitly if one wants to avoid the
  *  non-standard capturing type syntax.
+ *
+ *  @tparam Elems a union of singleton `.type` references representing the captured capabilities (e.g., `x.type | y.type | z.type`)
  */
 @experimental
 class retains[Elems] extends annotation.StaticAnnotation
 
-/** Equivalent in meaning to `@retains[cap.type]`, but consumes less bytecode.
- */
+/** Equivalent in meaning to `@retains[any.type]`, but consumes less bytecode. */
 @experimental
 class retainsCap extends annotation.StaticAnnotation
   // This special case is needed to be able to load standard library modules without

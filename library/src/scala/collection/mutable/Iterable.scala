@@ -13,6 +13,7 @@
 package scala.collection.mutable
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 import scala.collection.{IterableFactory, IterableFactoryDefaults}
 
 trait Iterable[A]
@@ -23,13 +24,15 @@ trait Iterable[A]
   override def iterableFactory: IterableFactory[Iterable] = Iterable
 }
 
-/**
-  * $factoryInfo
-  * @define coll mutable collection
-  * @define Coll `mutable.Iterable`
-  */
+/** $factoryInfo
+ *  @define coll mutable collection
+ *  @define Coll `mutable.Iterable`
+ */
 @SerialVersionUID(3L)
 object Iterable extends IterableFactory.Delegate[Iterable](ArrayBuffer)
 
-/** Explicit instantiation of the `Iterable` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Iterable` trait to reduce class file size in subclasses.
+ *
+ *  @tparam A the element type of the `Iterable`
+ */
 abstract class AbstractIterable[A] extends scala.collection.AbstractIterable[A] with Iterable[A]

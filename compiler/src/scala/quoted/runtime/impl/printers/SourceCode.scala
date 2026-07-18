@@ -1,7 +1,12 @@
 package scala.quoted
 package runtime.impl.printers
 
+import dotty.tools.dotc.util.Chars
+
 import scala.annotation.switch
+import scala.collection.mutable
+
+import java.lang.StringBuilder
 
 /** Printer for fully elaborated representation of the source code */
 object SourceCode {
@@ -97,7 +102,7 @@ object SourceCode {
       this += lineBreak() += "}"
     }
 
-    def result(): String = sb.result()
+    def result(): String = sb.toString
 
     private def lineBreak(): String = "\n" + ("  " * indent)
     private def doubleLineBreak(): String = "\n\n" + ("  " * indent)
@@ -147,12 +152,12 @@ object SourceCode {
         if (flags.is(Flags.Case)) this += highlightKeyword("case ")
 
         if (name == "package$") {
-          this += highlightKeyword("package object ") += highlightTypeDef(cdef.symbol.owner.name.stripSuffix("$"))
+          this += highlightKeyword("package object ") += highlightType(cdef.symbol.owner.name.stripSuffix("$"))
         }
-        else if (flags.is(Flags.Module)) this += highlightKeyword("object ") += highlightTypeDef(name.stripSuffix("$"))
-        else if (flags.is(Flags.Trait)) this += highlightKeyword("trait ") += highlightTypeDef(name)
-        else if (flags.is(Flags.Abstract)) this += highlightKeyword("abstract class ") += highlightTypeDef(name)
-        else this += highlightKeyword("class ") += highlightTypeDef(name)
+        else if (flags.is(Flags.Module)) this += highlightKeyword("object ") += highlightType(name.stripSuffix("$"))
+        else if (flags.is(Flags.Trait)) this += highlightKeyword("trait ") += highlightType(name)
+        else if (flags.is(Flags.Abstract)) this += highlightKeyword("abstract class ") += highlightType(name)
+        else this += highlightKeyword("class ") += highlightType(name)
 
         if (!flags.is(Flags.Module)) {
           for paramClause <- paramss do
@@ -232,7 +237,7 @@ object SourceCode {
               val Some(ValDef(name, tpt, _)) = self: @unchecked
               indented {
                 val name1 = if (name == "_") "this" else name
-                this += " " += highlightValDef(name1) += ": "
+                this += " " += highlightDefinition(name1) += ": "
                 printTypeTree(tpt)(using Some(cdef.symbol))
                 this += " =>"
               }
@@ -274,7 +279,7 @@ object SourceCode {
         else this += highlightKeyword("val ")
 
         val name1 = splicedName(vdef.symbol).getOrElse(name)
-        this += highlightValDef(name1) += ": "
+        this += highlightDefinition(name1) += ": "
         printTypeTree(tpt)
         rhs match {
           case Some(tree) =>
@@ -310,7 +315,7 @@ object SourceCode {
         printProtectedOrPrivate(ddef)
 
         val name1: String = if (isConstructor) "this" else splicedName(ddef.symbol).getOrElse(name)
-        this += highlightKeyword("def ") += highlightValDef(name1)
+        this += highlightKeyword("def ") += highlightDefinition(name1)
         for clause <-  paramss do
           clause match
             case TermParamClause(params) => printMethdArgsDefs(params)
@@ -332,7 +337,7 @@ object SourceCode {
 
       case tree: Ident =>
         splicedName(tree.symbol) match {
-          case Some(name) => this += highlightTypeDef(name)
+          case Some(name) => this += highlightType(name)
           case _ => printType(tree.tpe)
         }
 
@@ -433,12 +438,12 @@ object SourceCode {
             printTree(term)
             term match {
               case Repeated(_, _) | Inlined(None, Nil, Repeated(_, _))  => this
-              case _ => this += ": " += highlightTypeDef("_*")
+              case _ => this += ": " += highlightType("_*")
             }
           case _ =>
             inParens {
               printTree(term)
-              this += (if (dotty.tools.dotc.util.Chars.isOperatorPart(sb.last)) " : " else ": ")
+              this += (if Chars.isOperatorPart(sb.charAt(sb.length - 1)) then " : " else ": ")
               def printTypeOrAnnots(tpe: TypeRepr): Unit = tpe match {
                 case AnnotatedType(tp, annot) if tp == term.tpe =>
                   printAnnotation(annot)
@@ -759,9 +764,9 @@ object SourceCode {
 
       if (isDef) {
         if (argDef.symbol.flags.is(Flags.Covariant)) {
-          this += highlightValDef("+")
+          this += highlightDefinition("+")
         } else if (argDef.symbol.flags.is(Flags.Contravariant)) {
-          this += highlightValDef("-")
+          this += highlightDefinition("-")
         }
       }
 
@@ -868,18 +873,18 @@ object SourceCode {
                 printedPrefix = true
               }
               printedPrefix  |= printProtectedOrPrivate(vdef)
-              if (vdef.symbol.flags.is(Flags.Mutable)) this += highlightValDef("var ")
-              else if (printedPrefix || !vdef.symbol.flags.is(Flags.CaseAccessor)) this += highlightValDef("val ")
+              if (vdef.symbol.flags.is(Flags.Mutable)) this += highlightDefinition("var ")
+              else if (printedPrefix || !vdef.symbol.flags.is(Flags.CaseAccessor)) this += highlightDefinition("val ")
             }
         }
       end if
 
-      this += highlightValDef(name) += ": "
+      this += highlightDefinition(name) += ": "
       printTypeTree(arg.tpt)
     }
 
     private def printCaseDef(caseDef: CaseDef): this.type = {
-      this += highlightValDef("case ")
+      this += highlightDefinition("case ")
       printPattern(caseDef.pattern)
       caseDef.guard match {
         case Some(t) =>
@@ -887,7 +892,7 @@ object SourceCode {
           printTree(t)
         case None =>
       }
-      this += highlightValDef(" =>")
+      this += highlightDefinition(" =>")
       indented {
         caseDef.rhs match {
           case Block(stats, expr) =>
@@ -901,9 +906,9 @@ object SourceCode {
     }
 
     private def printTypeCaseDef(caseDef: TypeCaseDef): this.type = {
-      this += highlightValDef("case ")
+      this += highlightDefinition("case ")
       printTypeTree(caseDef.pattern)
-      this += highlightValDef(" => ")
+      this += highlightDefinition(" => ")
       printTypeTree(caseDef.rhs)
       this
     }
@@ -916,7 +921,7 @@ object SourceCode {
         this += name
 
       case Bind(name, Typed(Wildcard(), tpt)) =>
-        this += highlightValDef(name) += ": "
+        this += highlightDefinition(name) += ": "
         printTypeTree(tpt)
 
       case Bind(name, pattern) =>
@@ -957,9 +962,6 @@ object SourceCode {
 
     }
 
-    inline private val qc  = '\''
-    inline private val qSc = '"'
-
     def printConstant(const: Constant): this.type = const match {
       case UnitConstant() => this += highlightLiteral("()")
       case NullConstant() => this += highlightLiteral("null")
@@ -970,8 +972,8 @@ object SourceCode {
       case LongConstant(v) => this += highlightLiteral(v.toString + "L")
       case FloatConstant(v) => this += highlightLiteral(v.toString + "f")
       case DoubleConstant(v) => this += highlightLiteral(v.toString)
-      case CharConstant(v) => this += highlightString(s"${qc}${escapedChar(v)}${qc}")
-      case StringConstant(v) => this += highlightString(s"${qSc}${escapedString(v)}${qSc}")
+      case CharConstant(v) => this += highlightLiteral(Chars.escapedChar(v))
+      case StringConstant(v) => this += highlightLiteral(Chars.escapedString(v, quoted = true))
       case ClassOfConstant(v) =>
         this += "classOf"
         inSquare(printType(v))
@@ -1025,10 +1027,10 @@ object SourceCode {
         printType(tree.tpe)
 
       case TypeSelect(qual, name) =>
-        printTree(qual) += "." += highlightTypeDef(name)
+        printTree(qual) += "." += highlightType(name)
 
       case TypeProjection(qual, name) =>
-        printTypeTree(qual) += "#" += highlightTypeDef(name)
+        printTypeTree(qual) += "#" += highlightType(name)
 
       case Singleton(ref) =>
         printTree(ref)
@@ -1051,7 +1053,7 @@ object SourceCode {
           case tpe: TypeRef if tpe.typeSymbol == Symbol.requiredClass("scala.annotation.internal.Repeated") =>
             val Types.Sequence(tp) = tpt.tpe: @unchecked
             printType(tp)
-            this += highlightTypeDef("*")
+            this += highlightType("*")
           case _ =>
             printTypeTree(tpt)
             this += " "
@@ -1064,16 +1066,16 @@ object SourceCode {
         inBlock(printTypeCases(cases, lineBreak()))
 
       case ByName(result) =>
-        this += highlightTypeDef("=> ")
+        this += highlightType("=> ")
         printTypeTree(result)
 
       case LambdaTypeTree(tparams, body) =>
         printTargsDefs(tparams.zip(tparams), isDef = false)
-        this += highlightTypeDef(" =>> ")
+        this += highlightType(" =>> ")
         printTypeOrBoundsTree(body)
 
       case TypeBind(name, _) =>
-        this += highlightTypeDef(name)
+        this += highlightType(name)
 
       case TypeBlock(_, tpt) =>
         printTypeTree(tpt)
@@ -1119,23 +1121,23 @@ object SourceCode {
               printType(prefix)
               this += "."
           }
-        this += highlightTypeDef(sym.name.stripSuffix("$"))
+        this += highlightType(sym.name.stripSuffix("$"))
 
       case TermRef(prefix, name) =>
         if fullNames then
           prefix match {
             case NoPrefix() =>
-                this += highlightTypeDef(name)
+                this += highlightType(name)
             case ThisType(tp) if tp.typeSymbol == defn.RootClass || tp.typeSymbol == defn.EmptyPackageClass =>
-                this += highlightTypeDef(name)
+                this += highlightType(name)
             case _ =>
               printType(prefix)
               if (name != "package")
-                this += "." += highlightTypeDef(name)
+                this += "." += highlightType(name)
               this
           }
         else
-          this += highlightTypeDef(name)
+          this += highlightType(name)
 
       case tpe @ Refinement(_, _, _) =>
         printRefinement(tpe)
@@ -1173,12 +1175,12 @@ object SourceCode {
 
       case AndType(left, right) =>
         printType(left)
-        this += highlightTypeDef(" & ")
+        this += highlightType(" & ")
         printType(right)
 
       case OrType(left, right) =>
         printType(left)
-        this += highlightTypeDef(" | ")
+        this += highlightType(" | ")
         printType(right)
 
       case MatchType(bound, scrutinee, cases) =>
@@ -1187,14 +1189,14 @@ object SourceCode {
         inBlock(printTypes(cases, lineBreak()))
 
       case ByNameType(tp) =>
-        this += highlightTypeDef(" => ")
+        this += highlightType(" => ")
         printType(tp)
 
       case ThisType(tp) =>
         tp match {
           case tp: TypeRef if !tp.typeSymbol.flags.is(Flags.Module) =>
             printFullClassName(tp)
-            this += highlightTypeDef(".this")
+            this += highlightType(".this")
           case TypeRef(prefix, name) if name.endsWith("$") =>
             if (fullNames){
               prefix match {
@@ -1205,18 +1207,18 @@ object SourceCode {
                   this += "."
               }
             }
-            this += highlightTypeDef(name.stripSuffix("$"))
+            this += highlightType(name.stripSuffix("$"))
           case _ =>
             printType(tp)
         }
 
       case SuperType(thistpe, supertpe) =>
         printType(thistpe)
-        this += highlightTypeDef(".super")
+        this += highlightType(".super")
 
       case TypeLambda(paramNames, tparams, body) =>
         inSquare(printMethodicTypeParams(paramNames, tparams))
-        this += highlightTypeDef(" =>> ")
+        this += highlightType(" =>> ")
         printType(body)
 
       case ParamRef(lambda, idx) =>
@@ -1230,7 +1232,7 @@ object SourceCode {
         printType(tpe)
 
       case RecursiveThis(_) =>
-        this += highlightTypeDef("this")
+        this += highlightType("this")
 
       case tpe: MethodType =>
         this += "("
@@ -1281,10 +1283,10 @@ object SourceCode {
     }
 
     private def printDefinitionName(tree: Definition): this.type = tree match {
-      case ValDef(name, _, _) => this += highlightValDef(name)
-      case DefDef(name, _, _, _) => this += highlightValDef(name)
-      case ClassDef(name, _, _, _, _) => this += highlightTypeDef(name.stripSuffix("$"))
-      case TypeDef(name, _) => this += highlightTypeDef(name)
+      case ValDef(name, _, _) => this += highlightDefinition(name)
+      case DefDef(name, _, _, _) => this += highlightDefinition(name)
+      case ClassDef(name, _, _, _, _) => this += highlightType(name.stripSuffix("$"))
+      case TypeDef(name, _) => this += highlightType(name)
     }
 
     private def printAnnotation(annot: Term)(using elideThis: Option[Symbol]): this.type = {
@@ -1334,13 +1336,13 @@ object SourceCode {
             this += lineBreak()
             info match {
               case info: TypeBounds =>
-                this += highlightKeyword("type ") += highlightTypeDef(name)
+                this += highlightKeyword("type ") += highlightType(name)
                 printBounds(info)
               case ByNameType(_) | MethodType(_, _, _) | TypeLambda(_, _, _) =>
-                this += highlightKeyword("def ") += highlightTypeDef(name)
+                this += highlightKeyword("def ") += highlightType(name)
                 printMethodicType(info)
               case info: TypeRepr =>
-                this += highlightKeyword("val ") += highlightValDef(name)
+                this += highlightKeyword("val ") += highlightDefinition(name)
                 printMethodicType(info)
             }
           }
@@ -1445,22 +1447,8 @@ object SourceCode {
     private def +=(x: Char): this.type = { sb.append(x); this }
     private def +=(x: String): this.type = { sb.append(x); this }
 
-    private def escapedChar(ch: Char): String = (ch: @switch) match {
-      case '\b' => "\\b"
-      case '\t' => "\\t"
-      case '\n' => "\\n"
-      case '\f' => "\\f"
-      case '\r' => "\\r"
-      case '"' => "\\\""
-      case '\'' => "\\\'"
-      case '\\' => "\\\\"
-      case _ => if ch.isControl then f"${"\\"}u${ch.toInt}%04x" else String.valueOf(ch)
-    }
-
-    private def escapedString(str: String): String = str flatMap escapedChar
-
-    private val names = collection.mutable.Map.empty[Symbol, String]
-    private val namesIndex = collection.mutable.Map.empty[String, Int]
+    private val names = mutable.Map.empty[Symbol, String]
+    private val namesIndex = mutable.Map.empty[String, Int]
 
     private def splicedName(sym: Symbol): Option[String] = {
       if sym.owner.isClassDef then None

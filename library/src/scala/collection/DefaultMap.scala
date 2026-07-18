@@ -14,6 +14,7 @@ package scala
 package collection
 
 import scala.language.`2.13`
+import language.experimental.captureChecking
 
 /** A default map which builds a default `immutable.Map` implementation for all
   * transformations.
