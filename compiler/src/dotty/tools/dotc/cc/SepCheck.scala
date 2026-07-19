@@ -996,9 +996,15 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           checkApply(tree, argss.flatten, app, deps, resultPeaks)
     recur(app, Nil)
 
-  /** Is `tree` an application of `caps.unsafe.unsafeAssumeSeparate`? */
-  def isUnsafeAssumeSeparate(tree: Tree)(using Context): Boolean = tree match
-    case tree: Apply => tree.symbol == defn.Caps_unsafeAssumeSeparate
+  /** Is `tree` an application of caps.unsafe.unsafeAssumeSeparate?
+   *  or a synthetic application of throw new MatchError(...)?
+   */
+  def isAssumedSeparate(tree: Tree)(using Context): Boolean = tree match
+    case tree: Apply =>
+      tree.symbol == defn.Caps_unsafeAssumeSeparate
+      || tree.symbol == defn.throwMethod
+          && tree.span.isZeroExtent
+          && tree.args.head.tpe.classSymbol == defn.MatchErrorClass
     case _ => false
 
   def pushDef(tree: ValOrDefDef, hiddenByDef: Refs)(using Context): Unit =
@@ -1016,7 +1022,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val sym = tree.symbol
     if !sym.isOneOf(TermParamOrAccessor)
        && !sym.needsResultRefinement
-       && !isUnsafeAssumeSeparate(tree.rhs)
+       && !isAssumedSeparate(tree.rhs)
        && !isCoverageLiftedTemp(tree)
     then
       capt.println(i"sep check def $sym: ${tree.tpt.nuType} with ${spanCaptures(tree.tpt).transHiddenSet.directFootprint}")
@@ -1051,7 +1057,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   /** Traverse `tree` and perform separation checks everywhere */
   def traverse(tree: Tree)(using Context): Unit =
-    if !isUnsafeAssumeSeparate(tree) then trace(i"checking separate $tree"):
+    if !isAssumedSeparate(tree) then trace(i"checking separate $tree"):
       checkUse(tree)
       tree match
         case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.isConsume =>

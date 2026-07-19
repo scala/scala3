@@ -10,7 +10,7 @@ trait FreshList[+A] { this: FreshList[A]^ =>
   consume def decons: FreshCons[A]^
 }
 
-case class FreshCons[+A](val head: A^, val tail: FreshList[A]^) extends FreshList[A] {
+case class FreshCons[+A](consume val head: A^, consume val tail: FreshList[A]^) extends FreshList[A] {
   def isEmpty = false
   consume def decons: FreshCons[A]^ = this
 }
@@ -40,8 +40,16 @@ def Test2 =
     val xs3: FreshList[Ref^{}]^ = xs2
 
 def Test3 =
-    val xs = FreshCons(Ref(), FreshCons(Ref(), FreshNil))
+    val xs: FreshList[Ref^{}]^ = FreshCons(Ref(), FreshCons(Ref(), FreshNil))
     val FreshCons(h, t) = xs.decons
     val xs2 = FreshCons(h, t)
     val xs3: FreshList[Ref^{}]^ = xs2
+
+def Test4 =
+    val xs: FreshList[Ref^{}]^ = FreshCons(Ref(), FreshCons(Ref(), FreshNil))
+    xs match
+      case FreshCons(h, t) =>
+        val xs2 = FreshCons(h, t)
+        val xs3: FreshList[Ref^{}]^ = xs2
+      case _ =>
 
