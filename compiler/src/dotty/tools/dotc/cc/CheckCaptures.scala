@@ -947,11 +947,9 @@ class CheckCaptures extends Recheck, SymTransformer:
 
       /** First half of result pair:
        *  Refine the type of a constructor call `new C(t_1, ..., t_n)`
-       *  to C{val x_1: @refineOverride T_1, ..., x_m: @refineOverride T_m}
+       *  to C{val x_1: T_1, ..., x_m: T_m}
        *  where x_1, ..., x_m are the tracked parameters of C and
-       *  T_1, ..., T_m are the types of the corresponding arguments. The @refineOveride
-       *  annotations avoid problematic intersections of capture sets when those
-       *  parameters are selected.
+       *  T_1, ..., T_m are the types of the corresponding arguments.
        *
        *  Second half: union of initial capture set, all capture sets of arguments
        *  to tracked parameters, and the capture set implied by the fields of the class.
@@ -2160,14 +2158,16 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         override def checkInheritedTraitParameters: Boolean = false
 
-        /** Check that overrides don't change the @consume status of their parameters */
+        /** Check that overrides don't override a normal parameter or method with a
+         *  consume parameter or method
+         */
         override def additionalChecks(member: Symbol, other: Symbol)(using Context): Unit =
-          def checkConsume(sym1: Symbol, sym2: Symbol) =
-            if sym1.isConsume != sym2.isConsume then
+          def checkConsume(mbr: Symbol, oth: Symbol) =
+            if mbr.isConsume && !oth.isConsume then
               val msg =
-                if sym1.is(Param)
-                then i"has a parameter ${sym1.name} with different consume status than the corresponding parameter in the overridden definition"
-                else i"has a different consume status than the overridden definition"
+                if mbr.is(Param)
+                then i"has a consume parameter ${mbr.name} but the corresponding parameter in the overridden definition is not marked consume"
+                else i"is a consume method, but the overridden definition is not marked consume"
               report.error(
                 OverrideError(msg, self, member, other, self.memberInfo(member), self.memberInfo(other)),
                 if member.owner == clazz then member.srcPos else clazz.srcPos)
