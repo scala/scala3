@@ -10,7 +10,7 @@ trait FreshList[+A] { this: FreshList[A]^ =>
   consume def decons: FreshCons[A]^
 }
 
-case class FreshCons[+A](consume val head: A^, consume val tail: FreshList[A]^) extends FreshList[A] {
+case class FreshCons[+A](consume head: A^, consume tail: FreshList[A]^) extends FreshList[A] {
   def isEmpty = false
   consume def decons: FreshCons[A]^ = this
 }
