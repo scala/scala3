@@ -867,6 +867,7 @@ object CaptureSet:
       if !elems.contains(elem) then
         if debugVars && id == debugTarget then
           println(i"###INCLUDE $elem in $this")
+          //new Error().printStackTrace()
         elems += elem
         TypeComparer.logUndoAction: () =>
           elems -= elem
