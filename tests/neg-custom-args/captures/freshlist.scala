@@ -31,13 +31,11 @@ def Test =
     val h = c.head
     par(h, c.head) // error separation
 
-/*
 def Test4 =
     val xs: FreshList[Ref^{}]^ = FreshCons(Ref(), FreshCons(Ref(), FreshNil))
     val ys = xs match
       case FreshCons(h, t) => FreshCons(h, t)
     val zs = ys match
       case FreshCons(h, t) => FreshCons(h, t)
-    val err = xs match // should be error
-      case FreshCons(h, t) => FreshCons(h, t)
-*/
+    val err = xs match // error separation
+      case FreshCons(h, t) => FreshCons(h, t) // error separation // error separation
