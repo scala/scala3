@@ -83,7 +83,9 @@ object Synthetics:
       case _ =>
         info
 
-    /** Augment an unapply of type `(x: C): D` to `(x: C^{any}): D^{x}` */
+    /** Augment an unapply of type `(x: C): D` to `(x: C^{any}): x.type`
+     *  and an unapply of type `(consume x: C): D` to `(consume x: C^{any}): D^{any}`
+     */
     def transformUnapplyCaptures(info: Type)(using Context): Type = info match
       case info: MethodType =>
         val paramInfo :: Nil = info.paramInfos: @unchecked
@@ -93,7 +95,9 @@ object Synthetics:
           case tp: MethodOrPoly =>
             tp.derivedLambdaType(resType = newResult(tp.resType))
           case _ =>
-            CapturingType(tp, CaptureSet(trackedParam))
+            if paramInfo.hasAnnotation(defn.ConsumeAnnot)
+            then CapturingType(tp, CaptureSet.universal)
+            else trackedParam
         info.derivedLambdaType(paramInfos = newParamInfo :: Nil, resType = newResult(info.resType))
           .showing(i"augment unapply type $info to $result", capt)
       case info: PolyType =>
