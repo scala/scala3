@@ -3,7 +3,6 @@ package dotty.tools.scaladoc.tasty
 import dotty.tools.scaladoc._
 import dotty.tools.scaladoc.{Signature => DSignature}
 
-import dotty.tools.scaladoc.cc.*
 
 import scala.quoted._
 
@@ -25,7 +24,7 @@ trait ClassLikeSupport:
     def getExtraModifiers(): Seq[Modifier] =
       var mods = SymOps.getExtraModifiers(symbol)()
       if ccEnabled && symbol.flags.is(Flags.Mutable) then
-        if symbol.hasAnnotation(cc.CaptureDefs.ConsumeAnnot) then
+        if symbol.hasAnnotation(defn.ConsumeAnnot) then
           mods :+= Modifier.Consume
         else
           mods :+= Modifier.Update
@@ -77,8 +76,7 @@ trait ClassLikeSupport:
     def refsFrom(symbol: Symbol, initially: Boolean): List[(qctx.reflect.TypeRepr, Boolean)] =
       val pairs =
         for
-          annot <- symbol.annotations.find(_.tpe.typeSymbol.isRetains)
-          refs <- retainedCaptureRefs(annot)
+          refs <- symbol.annotations.collectFirst { case cc.RetainingAnnotation(refs) => refs }
           if refs.nonEmpty
         yield refs.map(_ -> initially)
       pairs.getOrElse(Nil)
@@ -450,7 +448,7 @@ trait ClassLikeSupport:
   ) =
     val symbol = argument.symbol
     val inlinePrefix = if symbol.flags.is(Flags.Inline) then "inline " else ""
-    val comsumePrefix = if self.ccEnabled && symbol.hasAnnotation(cc.CaptureDefs.ConsumeAnnot) then "consume " else ""
+    val comsumePrefix = if self.ccEnabled && symbol.hasAnnotation(defn.ConsumeAnnot) then "consume " else ""
     val name = symbol.normalizedName
     val nameIfNotSynthetic = Option.when(!symbol.flags.is(Flags.Synthetic))(name)
     val defaultValue = Option.when(symbol.flags.is(Flags.HasDefault))(Plain(" = ..."))

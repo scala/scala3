@@ -243,7 +243,7 @@ object NameOps {
 
     /** Same as `funArity`, except that it returns -1 if the prefix
      *  is not one of a (possibly empty) concatenation of a subset of
-     *  "Impure" (only under pureFunctions), "Erased" and "Context" (in that order).
+     *  "Impure" and "Context" (in that order).
      */
     private def checkedFunArity(suffixStart: Int)(using Context): Int =
       if isFunctionPrefix(suffixStart) then funArity(suffixStart) else -1
