@@ -2162,20 +2162,22 @@ class CheckCaptures extends Recheck, SymTransformer:
 
         /** Check that overrides don't change the @consume status of their parameters */
         override def additionalChecks(member: Symbol, other: Symbol)(using Context): Unit =
+          def checkConsume(sym1: Symbol, sym2: Symbol) =
+            if sym1.isConsume != sym2.isConsume then
+              val msg =
+                if sym1.is(Param)
+                then i"has a parameter ${sym1.name} with different consume status than the corresponding parameter in the overridden definition"
+                else i"has a different consume status than the overridden definition"
+              report.error(
+                OverrideError(msg, self, member, other, self.memberInfo(member), self.memberInfo(other)),
+                if member.owner == clazz then member.srcPos else clazz.srcPos)
+
+          checkConsume(member, other)
           for
             (params1, params2) <- member.rawParamss.lazyZip(other.rawParamss)
             (param1, param2) <- params1.lazyZip(params2)
           do
-            def checkAnnot(cls: ClassSymbol) =
-              if param1.hasAnnotation(cls) != param2.hasAnnotation(cls) then
-                report.error(
-                  OverrideError(
-                      i"has a parameter ${param1.name} with different @${cls.name} status than the corresponding parameter in the overridden definition",
-                      self, member, other, self.memberInfo(member), self.memberInfo(other)
-                    ),
-                  if member.owner == clazz then member.srcPos else clazz.srcPos)
-
-            checkAnnot(defn.ConsumeAnnot)
+            checkConsume(param1, param2)
       end OverridingPairsCheckerCC
 
       def traverse(t: Tree)(using Context) =
