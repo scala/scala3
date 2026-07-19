@@ -363,6 +363,15 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   // ---- Error reporting TODO Once these are stabilized, move to messages -----" +
 
+  def synthNote(tree: Tree)(using Context): String =
+    if tree.span.isZeroExtent then
+      def synthText =
+        if tree.isInstanceOf[DefTree]
+        then i"definition of ${tree.symbol} in:  $tree"
+        else i"tree:  $tree"
+      i"\n\nThe error occurred for a synthesized $synthText"
+    else ""
+
   def overlapStr(hiddenSet: Refs, clashSet: Refs)(using Context): String =
     val hiddenFootprint = hiddenSet.directFootprint
     val clashFootprint = clashSet.directFootprint
@@ -448,7 +457,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       report.error(
         em"""Separation failure: Illegal access to ${overlapStr(hidden, used)} which is hidden by the previous definition
             |of ${clashingDef.symbol} with$resultStr type ${clashingDef.tpt.nuType}.
-            |This type hides capabilities  ${CaptureSet(hidden)}""",
+            |This type hides capabilities  ${CaptureSet(hidden)}${synthNote(tree)}""",
         tree.srcPos)
     else
       report.error(
