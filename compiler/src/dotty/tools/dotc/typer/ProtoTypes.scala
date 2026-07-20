@@ -710,7 +710,11 @@ object ProtoTypes {
     override def eql(that: Type): Boolean = that match
       case that: ViewProto => (argType eq that.argType) && (resType eq that.resType)
       case _ => false
+
     // equals comes from case class; no need to redefine
+
+    override def fold[T](x: T, ta: TypeAccumulator[T])(using Context): T =
+      ta(x, argType)
   }
 
   object ViewProto {
