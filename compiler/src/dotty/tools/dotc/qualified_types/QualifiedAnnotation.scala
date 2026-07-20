@@ -7,7 +7,7 @@ import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.{ctx, Context}
 import dotty.tools.dotc.core.Decorators.i
 import dotty.tools.dotc.core.Symbols.defn
-import dotty.tools.dotc.core.Types.{AppliedType, ConstantType, TermLambda, TermParamRef, Type, TypeMap}
+import dotty.tools.dotc.core.Types.{AppliedType, ConstantType, RefinedType, TermLambda, TermParamRef, Type, TypeMap}
 import dotty.tools.dotc.printing.Printer
 import dotty.tools.dotc.printing.Texts.{Text, given}
 import dotty.tools.dotc.report
@@ -32,9 +32,13 @@ case class QualifiedAnnotation(qualifier: ENode.Lambda) extends Annotation:
    */
   override def tree(using Context): Tree =
     val lambdaTree = qualifier.toTree()
-    // Type of `lambdaTree` is `Function1[?, Boolean]`.
+    // Type of `lambdaTree` is `Function1[?, Boolean]`, possibly refined with
+    // the parameter name under capture checking.
     // The parameter type is the qualified type's parent type.
-    val AppliedType(_, List(paramTp, _)) = lambdaTree.tpe.widen.runtimeChecked
+    def stripRefinements(tp: Type): Type = tp match
+      case tp: RefinedType => stripRefinements(tp.parent)
+      case tp => tp
+    val AppliedType(_, List(paramTp, _)) = stripRefinements(lambdaTree.tpe.widen).runtimeChecked
     val annotTp = defn.QualifiedAnnot.typeRef.appliedTo(List(paramTp))
     tpd.New(annotTp, List(lambdaTree))
 
