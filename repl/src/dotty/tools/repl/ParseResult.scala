@@ -12,6 +12,7 @@ import dotc.util.SourceFile
 import dotty.tools.directives.{ExtractorResult, UsingDirectivesParser}
 
 import scala.annotation.internal.sharable
+import scala.annotation.tailrec
 
 /** A parsing result from string input */
 sealed trait ParseResult
@@ -48,6 +49,9 @@ sealed trait Command extends ParseResult:
  *  The command is interpreted first, then code is evaluated.
  */
 case class CommandThenCode(command: Command, code: ParseResult) extends ParseResult
+
+/** Input that mixes `:` commands and `//> using` directives in a single block */
+case object MixedCommandsAndDirectives extends ParseResult
 
 /** An unknown command that will not be handled by the REPL */
 case class UnknownCommand(cmd: String) extends Command:
@@ -264,6 +268,53 @@ object ParseResult {
   private def extractDirectives(sourceCode: String): ExtractorResult =
     UsingDirectivesParser.extractLines(sourceCode.toIndexedSeq)
 
+  private val UsingDirectivePrefix = """^//>\s*using(?:\s|$)""".r
+
+  /** Skip a block comment (with nesting). Returns offset after closing star-slash. */
+  private def skipBlockComment(src: String, start: Int): Int =
+    @tailrec
+    def loop(off: Int, depth: Int): Int =
+      if off >= src.length - 1 || depth == 0 then off
+      else if src(off) == '/' && src(off + 1) == '*' then loop(off + 2, depth + 1)
+      else if src(off) == '*' && src(off + 1) == '/' then loop(off + 2, depth - 1)
+      else loop(off + 1, depth)
+    loop(start + 2, 1)
+
+  /** Detect if the leading prefix (before Scala code) contains both `:` commands
+   *  and `//> using` directives. Skips blank lines, line comments, and block comments
+   *  (with nesting support matching the Scala compiler).
+   */
+  private def mixesCommandsAndDirectives(sourceCode: String): Boolean =
+    @tailrec
+    def scan(offset: Int, hasCommand: Boolean, hasDirective: Boolean): Boolean =
+      if offset >= sourceCode.length then hasCommand && hasDirective
+      else
+        val lineEnd = sourceCode.indexOf('\n', offset) match
+          case -1 => sourceCode.length
+          case nl => nl
+        val line = sourceCode.substring(offset, lineEnd)
+        val trimmed = line.stripLeading()
+
+        if trimmed.isEmpty then
+          scan(lineEnd + 1, hasCommand, hasDirective)
+        else if trimmed.startsWith("/*") then
+          val afterBlock = skipBlockComment(sourceCode, offset + line.indexOf("/*"))
+          scan(afterBlock, hasCommand, hasDirective)
+        else if trimmed.startsWith("//") then
+          if UsingDirectivePrefix.findFirstIn(trimmed).isDefined then
+            if hasCommand then true else scan(lineEnd + 1, hasCommand, hasDirective = true)
+          else
+            scan(lineEnd + 1, hasCommand, hasDirective)
+        else trimmed match
+          case CommandExtract(_, _) =>
+            if hasDirective then true else scan(lineEnd + 1, hasCommand = true, hasDirective)
+          case _ =>
+            hasCommand && hasDirective
+    end scan
+
+    scan(0, hasCommand = false, hasDirective = false)
+  end mixesCommandsAndDirectives
+
   /** If `sourceCode`'s first significant line (after comments/blank lines) is a
    *  `:command`, split it into `(commandName, commandArg, remainingText)`.
    *  `remainingText` may be blank.
@@ -287,6 +338,7 @@ object ParseResult {
     val sourceCode = source.content().mkString
     sourceCode match {
       case "" => Newline
+      case _ if mixesCommandsAndDirectives(sourceCode) => MixedCommandsAndDirectives
       case CommandExtract(cmd: String, arg: String) => command(cmd, arg)
       case _ =>
         leadingCommand(sourceCode, extractDirectives(sourceCode)) match {

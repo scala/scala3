@@ -408,6 +408,12 @@ class ReplDriver(settings: Array[String],
         val recorded = cmd.replayLine.fold(stateAfterCommand)(line => stateAfterCommand.recordInput(line.strip))
         interpret(code)(using recorded)
 
+      case MixedCommandsAndDirectives =>
+        out.println(
+          """Cannot mix `:` commands and `//> using` directives in the same REPL input.
+            |Submit them as separate inputs.""".stripMargin)
+        state
+
       case cmd: Command =>
         val next = interpretCommand(cmd)
         cmd.replayLine.fold(next)(line => next.recordInput(line.strip))
