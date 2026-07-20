@@ -244,6 +244,9 @@ object QualifiedTypes:
    */
   def substParamInQualifiers(tp: Type, pref: ParamRef, argType: Type, argTree: tpd.Tree | Null)(using Context): Type =
     if argTree == null || !Feature.qualifiedTypesEnabled then return tp
+    // Without a qualifier anywhere in `tp`, both branches below are the
+    // identity; skip the skolem-index allocation and the traversals.
+    if !containsQualifier(tp) then return tp
     // A dependent call appearing *inside a qualifier predicate* (an annotation):
     // the predicate's `ENode` is built structurally from the tree, so this call's
     // own result qualifier is unused, and skolemizing its unstable argument would
@@ -476,8 +479,21 @@ object QualifiedTypes:
       case QualifiedTypesMode.Error =>
         EmptyTree
 
+  /** Does `tp` contain a qualified type, possibly behind aliases? Memoized per
+   *  type instance: the underlying scan (`existsPart` with `dealiasKeepAnnots`
+   *  per part, forcing denotations) is expensive and runs on hot typer paths
+   *  (branch adaptation, argument wrapping), where the same type instances
+   *  recur. Provisional types are not cached: instantiation can change the
+   *  answer.
+   */
   def containsQualifier(tp: Type)(using Context): Boolean =
-    tp.existsPart: tp =>
-      tp.dealiasKeepAnnots match
-        case QualifiedType(_, _) => true
-        case _ => false
+    val cache = ctx.base.containsQualifierCache
+    val cached = cache.lookup(tp)
+    if cached != null then cached.booleanValue
+    else
+      val res = tp.existsPart: p =>
+        p.dealiasKeepAnnots match
+          case QualifiedType(_, _) => true
+          case _ => false
+      if !tp.isProvisional then cache(tp) = res
+      res
