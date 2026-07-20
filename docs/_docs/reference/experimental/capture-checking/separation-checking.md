@@ -356,7 +356,8 @@ Specifically, expanding a linear case class propagates `consume` as follows:
  case class parameters are marked `consume`.
  - If the case class is linear, its `copy` and `unapply` methods are marked `consume`.
 
-There is still a loophole in that the `productElement` method defined in `Product` cannot be marked `consume`. Hence, linear case class elements can be extracted multiple times using this method. The logical fix is that linear case classes should not extend `Product` (since `Product` implies multiple accesses), but this is not yet implemented.
+Note that the `productElement` and `productIterator` methods that are declared in `Product` and inherited by each case class cannot be marked `consume`. Hence, linear case class elements can be extracted multiple times using these methods, but only at type `Any`. This constitutes no breach of capability safety, since `Any` is not a `Matchable` type and therefore cannot be safely downcast to
+a type that would be able to exploit the leaked capabilities.
 
 ## The `freeze` Wrapper
 
