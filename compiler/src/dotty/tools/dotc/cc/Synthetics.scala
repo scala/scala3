@@ -35,7 +35,7 @@ object Synthetics:
    *  looking at the definitions's RHS
    */
   def needsTransform(symd: SymDenotation)(using Context): Boolean =
-       isSyntheticCompanionMethod(symd, nme.unapply)
+       isSyntheticCompanionMethod(symd, nme.unapply, nme.fromProduct)
     || isSyntheticCopyDefaultGetterMethod(symd)
     || (symd.symbol eq defn.Object_eq)
     || (symd.symbol eq defn.Object_ne)
@@ -88,7 +88,7 @@ object Synthetics:
      */
     def transformUnapplyCaptures(info: Type)(using Context): Type = info match
       case info: MethodType =>
-        val paramInfo :: Nil = info.paramInfos: @unchecked
+        val paramInfo :: Nil = info.paramInfos.runtimeChecked
         val newParamInfo = CapturingType(paramInfo, CaptureSet.universal)
         val trackedParam = info.paramRefs.head
         def newResult(tp: Type): Type = tp match
@@ -103,18 +103,23 @@ object Synthetics:
       case info: PolyType =>
         info.derivedLambdaType(resType = transformUnapplyCaptures(info.resType))
 
+    /** fromProduct(x: Product): this.MirroredMonoType^ */
+    def transformFromProductCaptures(info: Type) =
+      val (mt: MethodType) = info.runtimeChecked
+      mt.derivedLambdaType(resType = CapturingType(mt.resType, CaptureSet.universal))
+
     def transformComposeCaptures(info: Type, owner: Symbol) =
-      val (pt: PolyType) = info: @unchecked
-      val (mt: MethodType) = pt.resType: @unchecked
-      val (enclThis: ThisType) = owner.thisType: @unchecked
+      val (pt: PolyType) = info.runtimeChecked
+      val (mt: MethodType) = pt.resType.runtimeChecked
+      val (enclThis: ThisType) = owner.thisType.runtimeChecked
       val paramCaptures = CaptureSet(enclThis, GlobalAny)
       pt.derivedLambdaType(resType = MethodType(mt.paramNames)(
         mt1 => mt.paramInfos.map(_.capturing(paramCaptures)),
         mt1 => CapturingType(mt.resType, CaptureSet(enclThis, mt1.paramRefs.head))))
 
     def transformCurriedTupledCaptures(info: Type, owner: Symbol) =
-      val (et: ExprType) = info: @unchecked
-      val (enclThis: ThisType) = owner.thisType: @unchecked
+      val (et: ExprType) = info.runtimeChecked
+      val (enclThis: ThisType) = owner.thisType.runtimeChecked
       def mapFinalResult(tp: Type, f: Type => Type): Type = tp match
         case FunctionOrMethod(args, res) =>
           tp.derivedFunctionOrMethod(args, mapFinalResult(res, f))
@@ -123,7 +128,7 @@ object Synthetics:
       ExprType(mapFinalResult(et.resType, CapturingType(_, CaptureSet(enclThis))))
 
     def transformCompareCaptures =
-      val (enclThis: ThisType) = symd.owner.thisType: @unchecked
+      val (enclThis: ThisType) = symd.owner.thisType.runtimeChecked
       MethodType(
         defn.ObjectType.capturing(CaptureSet(GlobalAny, enclThis)) :: Nil,
         defn.BooleanType)
@@ -133,6 +138,8 @@ object Synthetics:
         transformDefaultGetterCaptures(info, symd.owner, n)
       case nme.unapply =>
         transformUnapplyCaptures(info)
+      case nme.fromProduct =>
+        transformFromProductCaptures(info)
       case nme.andThen | nme.compose =>
         transformComposeCaptures(info, symd.owner)
       case nme.curried | nme.tupled =>
