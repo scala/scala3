@@ -285,6 +285,28 @@ object ParseResult {
       else loop(off + 1, depth)
     loop(start + 2, 1)
 
+  /** Find offset of first significant content (past blank lines, line comments, block comments). */
+  private def skipLeadingCommentsAndBlanks(src: String): Int =
+    @tailrec
+    def scan(offset: Int): Int =
+      if offset >= src.length then offset
+      else
+        val lineEnd = src.indexOf('\n', offset) match
+          case -1 => src.length
+          case nl => nl
+        val line = src.substring(offset, lineEnd)
+        val trimmed = line.stripLeading()
+
+        if trimmed.isEmpty then
+          scan(lineEnd + 1)
+        else if trimmed.startsWith("/*") then
+          scan(skipBlockComment(src, offset + line.indexOf("/*")))
+        else if trimmed.startsWith("//") then
+          scan(lineEnd + 1)
+        else
+          offset + line.indexOf(trimmed.head)
+    scan(0)
+
   /** Detect if the leading prefix (before Scala code) contains both `:` commands
    *  and `//> using` directives. Skips blank lines, line comments, and block comments
    *  (with nesting support matching the Scala compiler).
@@ -407,9 +429,17 @@ object ParseResult {
    *  would otherwise make unfinished trailing code look complete and submit early.
    */
   private def codeAfterLeadingCommands(sourceCode: String, extractedDirectives: ExtractorResult): String =
-    leadingCommand(sourceCode, extractedDirectives) match
-      case Some((_, _, rest)) => codeAfterLeadingCommands(rest, extractDirectives(rest))
-      case None => sourceCode
+    // After the first command there are no directives (would have been detected earlier),
+    // so subsequent steps skip comments/blanks without re-running extractDirectives.
+    @tailrec
+    def skipCommands(src: String, extracted: ExtractorResult): String =
+      leadingCommand(src, extracted) match
+        case Some((_, _, rest)) =>
+          val offset = skipLeadingCommentsAndBlanks(rest)
+          val significant = if offset < rest.length then rest.substring(offset) else ""
+          skipCommands(significant, ExtractorResult.empty)
+        case None => src
+    skipCommands(sourceCode, extractedDirectives)
 
   /** Check if the input is incomplete.
    *
