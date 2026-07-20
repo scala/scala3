@@ -166,6 +166,7 @@ jobs:
         run : |
           version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
           echo "This build version: ${version}"
+          echo "BUILD_VERSION=${version}" >> $GITHUB_ENV
           if [ "${version}" != "${{ env.RELEASE_TAG }}" ]; then
             echo "Compiler version for this build '${version}', does not match tag: ${{ env.RELEASE_TAG }}"
             if [ "${IS_ORIGIN}" = "true" ]; then
@@ -186,11 +187,15 @@ jobs:
             ./project/scripts/sbt "all ${sbtProject}/Universal/packageBin ${sbtProject}/Universal/packageZipTarball"
 
             artifactName="scala3-${{ env.RELEASE_TAG }}${distroSuffix}"
+            # sbt names the archives after the built version. On scala/scala3 the
+            # version check guarantees it equals the tag; on forks a test tag may
+            # differ, so rename the archives to the tag the release will use.
+            builtName="scala3-${{ env.BUILD_VERSION }}${distroSuffix}"
 
             # Caluclate SHA for each of archive files
-            for file in "${artifactName}.zip" "${artifactName}.tar.gz"; do
-              mv ${distDir}/target/universal/$file $file
-              sha256sum "${file}" > "${file}.sha256"
+            for ext in "zip" "tar.gz"; do
+              mv "${distDir}/target/universal/${builtName}.${ext}" "${artifactName}.${ext}"
+              sha256sum "${artifactName}.${ext}" > "${artifactName}.${ext}.sha256"
             done
           }
           prepareSDK ""                      "dist"               "./dist/"
