@@ -995,7 +995,7 @@ class Definitions {
   def TupleClass(using Context): ClassSymbol = TupleTypeRef.symbol.asClass
     @tu lazy val Tuple_cons: Symbol = TupleClass.requiredMethod("*:")
   @tu lazy val TupleModule: Symbol = requiredModule("scala.Tuple")
-    @tu lazy val Tuple_Elem: Symbol = TupleModule.requiredType("Elem")
+    @tu lazy val Tuple_Elem: TypeSymbol = TupleModule.requiredType("Elem")
   @tu lazy val EmptyTupleClass: Symbol = requiredClass("scala.EmptyTuple")
   @tu lazy val EmptyTupleModule: Symbol = requiredModule("scala.EmptyTuple")
   @tu lazy val NonEmptyTupleTypeRef: TypeRef = requiredClassRef("scala.NonEmptyTuple")

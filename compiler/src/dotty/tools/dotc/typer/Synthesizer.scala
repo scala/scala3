@@ -130,7 +130,8 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     formal match
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
         def doesFunctionTupleInto(baseFun: Type, mt: MethodType, tupled: Type) =
-          tupled =:= constructDependentTupleType(mt, defn.isContextFunctionType(baseFun))
+          val constructedTupleInator = constructDependentTupleType(mt, defn.isContextFunctionType(baseFun))
+          tupled =:= constructedTupleInator
         def doesFunctionUntupleTo(baseFun: Type, actualArgs: List[Type],
             actualRet: Type, untupled: Type) =
               untupled =:= untupleDependentTupleType(actualArgs, actualRet, defn.isContextFunctionType(baseFun))
@@ -167,7 +168,10 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                 def apply(tp: Type): Type =
                   tp match
                     case TermParamRef(binder, paramNum) =>
-                      newMt.paramRefs(0).select(nme.selectorName(paramNum))
+                      if mt.paramInfos.size > Definitions.MaxTupleArity then
+                        AppliedType(defn.Tuple_Elem.typeRef, newMt.paramRefs(0) :: ConstantType(Constant(paramNum)) :: Nil)
+                      else
+                        newMt.paramRefs(0).select(nme.selectorName(paramNum))
                     case _ =>
                       mapOver(tp)
               tpeMap(mt.resultType)
