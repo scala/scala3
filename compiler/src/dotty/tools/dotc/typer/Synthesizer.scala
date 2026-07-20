@@ -130,8 +130,7 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
     formal match
       case AppliedType(_, funArgs @ fun :: tupled :: Nil) =>
         def doesFunctionTupleInto(baseFun: Type, mt: MethodType, tupled: Type) =
-          val constructedTupleInator = constructDependentTupleType(mt, defn.isContextFunctionType(baseFun))
-          tupled =:= constructedTupleInator
+          tupled =:= constructDependentTupleType(mt, defn.isContextFunctionType(baseFun))
         def doesFunctionUntupleTo(baseFun: Type, actualArgs: List[Type],
             actualRet: Type, untupled: Type) =
               untupled =:= untupleDependentTupleType(actualArgs, actualRet, defn.isContextFunctionType(baseFun))
