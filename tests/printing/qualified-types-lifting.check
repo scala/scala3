@@ -37,7 +37,7 @@ package example {
             (if ev$3.isInstanceOf[Int with boundArg(0) > 0] then
               ev$3.asInstanceOf[Int with boundArg(0) > 0] else
               throw new IllegalArgumentException())
-          }:Int with (boundArg(0) > 0) @QualifierSkolemIndex(8)
+          }:Int with (boundArg(0) > 0) @QualifierSkolemIndex(7)
         )
       }
   }
