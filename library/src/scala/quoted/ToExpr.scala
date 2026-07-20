@@ -2,6 +2,7 @@ package scala.quoted
 
 import language.experimental.captureChecking
 
+import scala.annotation.publicInBinary
 import scala.reflect.ClassTag
 
 /** A type class for types that can convert a value of `T` into `quoted.Expr[T]`
@@ -20,8 +21,17 @@ trait ToExpr[T] {
 
 }
 
+// Lowest priority: only used when nothing more specific (including a derived
+// ToExprFactory instance) is found, e.g. a non-case singleton like `object Marker`.
+private[quoted] trait LowestPriorityToExpr:
+  given ValueOfToExpr: [T: {ValueOf, Type}] => ToExpr[T]:
+    def apply(x: T)(using Quotes): Expr[T] = '{ valueOf[T] }
+
+private[quoted] trait LowPriorityToExpr extends LowestPriorityToExpr:
+  given fromFactory: [T: Type] => (f: ToExprFactory[T]) => ToExpr[T] = f.apply()
+
 /** Default given instances of `ToExpr`. */
-object ToExpr {
+object ToExpr extends LowPriorityToExpr {
 
   // IMPORTANT Keep in sync with tests/run-staging/liftables.scala
 
@@ -97,16 +107,18 @@ object ToExpr {
   }
 
   /** Default implementation of `ToExpr[ClassTag[T]]`. */
-  given ClassTagToExpr[T: Type]: ToExpr[ClassTag[T]] with {
-    def apply(ct: ClassTag[T])(using Quotes): Expr[ClassTag[T]] =
-      '{ ClassTag[T](${Expr(ct.runtimeClass.asInstanceOf[Class[T]])}) }
-  }
+  class ClassTagToExpr[T: Type] @publicInBinary private[quoted] extends ToExpr[ClassTag[T]]:
+    def apply(x: ClassTag[T])(using Quotes): Expr[ClassTag[T]] =
+      ToExprFactory.classTagToExprFactory[T].apply().apply(x)
+
+  @publicInBinary private[quoted] final def ClassTagToExpr[T: Type]: ClassTagToExpr[T] = new ClassTagToExpr[T]
 
   /** Default implementation of `ToExpr[Array[T]]`. */
-  given ArrayToExpr[T: Type: ToExpr: ClassTag]: ToExpr[Array[T]] with {
-    def apply(arr: Array[T])(using Quotes): Expr[Array[T]] =
-      '{ Array[T](${Expr(arr.toSeq)}*)(using ${Expr(summon[ClassTag[T]])}) }
-  }
+  class ArrayToExpr[T: {Type, ToExpr, ClassTag}] @publicInBinary private[quoted] extends ToExpr[Array[T]]:
+    def apply(x: Array[T])(using Quotes): Expr[Array[T]] =
+      ToExprFactory.arrayToExprFactory[T].apply().apply(x)
+
+  @publicInBinary private[quoted] final def ArrayToExpr[T: {Type, ToExpr, ClassTag}]: ArrayToExpr[T] = new ArrayToExpr[T]
 
   /** Default implementation of `ToExpr[Array[Boolean]]`. */
   given ArrayOfBooleanToExpr: ToExpr[Array[Boolean]] with {
@@ -171,16 +183,18 @@ object ToExpr {
   }
 
   /** Default implementation of `ToExpr[Seq[T]]`. */
-  given SeqToExpr[T: Type: ToExpr]: ToExpr[Seq[T]] with {
-    def apply(xs: Seq[T])(using Quotes): Expr[Seq[T]] =
-      Expr.ofSeq(xs.map(summon[ToExpr[T]].apply))
-  }
+  class SeqToExpr[T: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Seq[T]]:
+    def apply(x: Seq[T])(using Quotes): Expr[Seq[T]] =
+      ToExprFactory.seqToExprFactory[T].apply().apply(x)
+
+  @publicInBinary private[quoted] final def SeqToExpr[T: {Type, ToExpr}]: SeqToExpr[T] = new SeqToExpr[T]
 
   /** Default implementation of `ToExpr[List[T]]`. */
-  given ListToExpr[T: Type: ToExpr]: ToExpr[List[T]] with {
-    def apply(xs: List[T])(using Quotes): Expr[List[T]] =
-      Expr.ofList(xs.map(summon[ToExpr[T]].apply))
-  }
+  class ListToExpr[T: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[List[T]]:
+    def apply(x: List[T])(using Quotes): Expr[List[T]] =
+      ToExprFactory.listToExprFactory[T].apply().apply(x)
+
+  @publicInBinary private[quoted] final def ListToExpr[T: {Type, ToExpr}]: ListToExpr[T] = new ListToExpr[T]
 
   /** Default implementation of `ToExpr[Nil.type]`. */
   given NilToExpr: ToExpr[Nil.type] with {
@@ -189,30 +203,32 @@ object ToExpr {
   }
 
   /** Default implementation of `ToExpr[Set[T]]`. */
-  given SetToExpr[T: Type: ToExpr]: ToExpr[Set[T]] with {
-    def apply(set: Set[T])(using Quotes): Expr[Set[T]] =
-      '{ Set(${Expr(set.toSeq)}*) }
-  }
+  class SetToExpr[T: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Set[T]]:
+    def apply(x: Set[T])(using Quotes): Expr[Set[T]] =
+      ToExprFactory.setToExprFactory[T].apply().apply(x)
+
+  @publicInBinary private[quoted] final def SetToExpr[T: {Type, ToExpr}]: SetToExpr[T] = new SetToExpr[T]
 
   /** Default implementation of `ToExpr[Map[T, U]]`. */
-  given MapToExpr[T: Type: ToExpr, U: Type: ToExpr]: ToExpr[Map[T, U]] with {
-    def apply(map: Map[T, U])(using Quotes): Expr[Map[T, U]] =
-    '{ Map(${Expr(map.toSeq)}*) }
-  }
+  class MapToExpr[T: {Type, ToExpr}, U: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Map[T, U]]:
+    def apply(x: Map[T, U])(using Quotes): Expr[Map[T, U]] =
+      ToExprFactory.mapToExprFactory[T, U].apply().apply(x)
+
+  @publicInBinary private[quoted] final def MapToExpr[T: {Type, ToExpr}, U: {Type, ToExpr}]: MapToExpr[T, U] = new MapToExpr[T, U]
 
   /** Default implementation of `ToExpr[Option[T]]`. */
-  given OptionToExpr[T: Type: ToExpr]: ToExpr[Option[T]] with {
-    def apply(x: Option[T])(using Quotes): Expr[Option[T]] = x match {
-      case x: Some[T] => Expr(x)
-      case None => Expr(None)
-    }
-  }
+  class OptionToExpr[T: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Option[T]]:
+    def apply(x: Option[T])(using Quotes): Expr[Option[T]] =
+      ToExprFactory.optionToExprFactory[T].apply().apply(x)
+
+  @publicInBinary private[quoted] final def OptionToExpr[T: {Type, ToExpr}]: OptionToExpr[T] = new OptionToExpr[T]
 
   /** Default implementation of `ToExpr[Some[T]]`. */
-  given SomeToExpr[T: Type: ToExpr]: ToExpr[Some[T]] with {
+  class SomeToExpr[T: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Some[T]]:
     def apply(x: Some[T])(using Quotes): Expr[Some[T]] =
-      '{ Some[T](${Expr(x.get)}) }
-  }
+      ToExprFactory.someToExprFactory[T].apply().apply(x)
+
+  @publicInBinary private[quoted] final def SomeToExpr[T: {Type, ToExpr}]: SomeToExpr[T] = new SomeToExpr[T]
 
   /** Default implementation of `ToExpr[None.type]`. */
   given NoneToExpr: ToExpr[None.type] with {
@@ -221,23 +237,25 @@ object ToExpr {
   }
 
   /** Default implementation of `ToExpr[Either[L, R]]`. */
-  given EitherToExpr[L: Type: ToExpr, R: Type: ToExpr]: ToExpr[Either[L, R]] with {
-    def apply(x: Either[L, R])(using Quotes): Expr[Either[L, R]] = x match
-      case x: Left[L, R] => Expr(x)
-      case x: Right[L, R] => Expr(x)
-  }
+  class EitherToExpr[L: {Type, ToExpr}, R: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Either[L, R]]:
+    def apply(x: Either[L, R])(using Quotes): Expr[Either[L, R]] =
+      ToExprFactory.eitherToExprFactory[L, R].apply().apply(x)
+
+  @publicInBinary private[quoted] final def EitherToExpr[L: {Type, ToExpr}, R: {Type, ToExpr}]: EitherToExpr[L, R] = new EitherToExpr[L, R]
 
   /** Default implementation of `ToExpr[Left[L, R]]`. */
-  given LeftToExpr[L: Type: ToExpr, R: Type]: ToExpr[Left[L, R]] with {
+  class LeftToExpr[L: {Type, ToExpr}, R: Type] @publicInBinary private[quoted] extends ToExpr[Left[L, R]]:
     def apply(x: Left[L, R])(using Quotes): Expr[Left[L, R]] =
-      '{ Left[L, R](${Expr(x.value)}) }
-  }
+      ToExprFactory.leftToExprFactory[L, R].apply().apply(x)
+
+  @publicInBinary private[quoted] final def LeftToExpr[L: {Type, ToExpr}, R: Type]: LeftToExpr[L, R] = new LeftToExpr[L, R]
 
   /** Default implementation of `ToExpr[Right[L, R]]`. */
-  given RightToExpr[L: Type, R: Type: ToExpr]: ToExpr[Right[L, R]] with {
+  class RightToExpr[L: Type, R: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Right[L, R]]:
     def apply(x: Right[L, R])(using Quotes): Expr[Right[L, R]] =
-      '{ Right[L, R](${Expr(x.value)}) }
-  }
+      ToExprFactory.rightToExprFactory[L, R].apply().apply(x)
+
+  @publicInBinary private[quoted] final def RightToExpr[L: Type, R: {Type, ToExpr}]: RightToExpr[L, R] = new RightToExpr[L, R]
 
   /** Default implementation of `ToExpr[EmptyTuple.type]`. */
   given EmptyTupleToExpr: ToExpr[EmptyTuple.type] with {
@@ -246,180 +264,165 @@ object ToExpr {
   }
 
   /** Default implementation of `ToExpr[Tuple1[T1]]`. */
-  given Tuple1ToExpr[T1: Type: ToExpr]: ToExpr[Tuple1[T1]] with {
-    def apply(tup: Tuple1[T1])(using Quotes) =
-      '{ Tuple1(${Expr(tup._1)}) }
-  }
+  class Tuple1ToExpr[T1: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple1[T1]]:
+    def apply(x: Tuple1[T1])(using Quotes): Expr[Tuple1[T1]] =
+      ToExprFactory.tuple1ToExprFactory[T1].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple1ToExpr[T1: {Type, ToExpr}]: Tuple1ToExpr[T1] = new Tuple1ToExpr[T1]
 
   /** Default implementation of `ToExpr[Tuple2[T1, T2]]`. */
-  given Tuple2ToExpr[T1: Type: ToExpr, T2: Type: ToExpr]: ToExpr[Tuple2[T1, T2]] with {
-    def apply(tup: Tuple2[T1, T2])(using Quotes) =
-      '{ (${Expr(tup._1)}, ${Expr(tup._2)}) }
-  }
+  class Tuple2ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple2[T1, T2]]:
+    def apply(x: Tuple2[T1, T2])(using Quotes): Expr[Tuple2[T1, T2]] =
+      ToExprFactory.tuple2ToExprFactory[T1, T2].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple2ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}]: Tuple2ToExpr[T1, T2] = new Tuple2ToExpr[T1, T2]
 
   /** Default implementation of `ToExpr[Tuple3[T1, T2, T3]]`. */
-  given Tuple3ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr]: ToExpr[Tuple3[T1, T2, T3]] with {
-    def apply(tup: Tuple3[T1, T2, T3])(using Quotes) =
-      '{ (${Expr(tup._1)}, ${Expr(tup._2)}, ${Expr(tup._3)}) }
-  }
+  class Tuple3ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple3[T1, T2, T3]]:
+    def apply(x: Tuple3[T1, T2, T3])(using Quotes): Expr[Tuple3[T1, T2, T3]] =
+      ToExprFactory.tuple3ToExprFactory[T1, T2, T3].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple3ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}]: Tuple3ToExpr[T1, T2, T3] = new Tuple3ToExpr[T1, T2, T3]
 
   /** Default implementation of `ToExpr[Tuple4[T1, T2, T3, T4]]`. */
-  given Tuple4ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr]: ToExpr[Tuple4[T1, T2, T3, T4]] with {
-    def apply(tup: Tuple4[T1, T2, T3, T4])(using Quotes) =
-      '{ (${Expr(tup._1)}, ${Expr(tup._2)}, ${Expr(tup._3)}, ${Expr(tup._4)}) }
-  }
+  class Tuple4ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple4[T1, T2, T3, T4]]:
+    def apply(x: Tuple4[T1, T2, T3, T4])(using Quotes): Expr[Tuple4[T1, T2, T3, T4]] =
+      ToExprFactory.tuple4ToExprFactory[T1, T2, T3, T4].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple4ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}]: Tuple4ToExpr[T1, T2, T3, T4] = new Tuple4ToExpr[T1, T2, T3, T4]
 
   /** Default implementation of `ToExpr[Tuple5[T1, T2, T3, T4, T5]]`. */
-  given Tuple5ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr]: ToExpr[Tuple5[T1, T2, T3, T4, T5]] with {
-    def apply(tup: Tuple5[T1, T2, T3, T4, T5])(using Quotes) = {
-      val (x1, x2, x3, x4, x5) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}) }
-    }
-  }
+  class Tuple5ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple5[T1, T2, T3, T4, T5]]:
+    def apply(x: Tuple5[T1, T2, T3, T4, T5])(using Quotes): Expr[Tuple5[T1, T2, T3, T4, T5]] =
+      ToExprFactory.tuple5ToExprFactory[T1, T2, T3, T4, T5].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple5ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}]: Tuple5ToExpr[T1, T2, T3, T4, T5] = new Tuple5ToExpr[T1, T2, T3, T4, T5]
 
   /** Default implementation of `ToExpr[Tuple6[T1, T2, T3, T4, T5, T6]]`. */
-  given Tuple6ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr]: ToExpr[Tuple6[T1, T2, T3, T4, T5, T6]] with {
-    def apply(tup: Tuple6[T1, T2, T3, T4, T5, T6])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}) }
-    }
-  }
+  class Tuple6ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple6[T1, T2, T3, T4, T5, T6]]:
+    def apply(x: Tuple6[T1, T2, T3, T4, T5, T6])(using Quotes): Expr[Tuple6[T1, T2, T3, T4, T5, T6]] =
+      ToExprFactory.tuple6ToExprFactory[T1, T2, T3, T4, T5, T6].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple6ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}]: Tuple6ToExpr[T1, T2, T3, T4, T5, T6] = new Tuple6ToExpr[T1, T2, T3, T4, T5, T6]
 
   /** Default implementation of `ToExpr[Tuple7[T1, T2, T3, T4, T5, T6, T7]]`. */
-  given Tuple7ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr]: ToExpr[Tuple7[T1, T2, T3, T4, T5, T6, T7]] with {
-    def apply(tup: Tuple7[T1, T2, T3, T4, T5, T6, T7])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}) }
-    }
-  }
+  class Tuple7ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple7[T1, T2, T3, T4, T5, T6, T7]]:
+    def apply(x: Tuple7[T1, T2, T3, T4, T5, T6, T7])(using Quotes): Expr[Tuple7[T1, T2, T3, T4, T5, T6, T7]] =
+      ToExprFactory.tuple7ToExprFactory[T1, T2, T3, T4, T5, T6, T7].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple7ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}]: Tuple7ToExpr[T1, T2, T3, T4, T5, T6, T7] = new Tuple7ToExpr[T1, T2, T3, T4, T5, T6, T7]
 
   /** Default implementation of `ToExpr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]]`. */
-  given Tuple8ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr]: ToExpr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]] with {
-    def apply(tup: Tuple8[T1, T2, T3, T4, T5, T6, T7, T8])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}) }
-    }
-  }
+  class Tuple8ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]]:
+    def apply(x: Tuple8[T1, T2, T3, T4, T5, T6, T7, T8])(using Quotes): Expr[Tuple8[T1, T2, T3, T4, T5, T6, T7, T8]] =
+      ToExprFactory.tuple8ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple8ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}]: Tuple8ToExpr[T1, T2, T3, T4, T5, T6, T7, T8] = new Tuple8ToExpr[T1, T2, T3, T4, T5, T6, T7, T8]
 
   /** Default implementation of `ToExpr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]]`. */
-  given Tuple9ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr]: ToExpr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]] with {
-    def apply(tup: Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}) }
-    }
-  }
+  class Tuple9ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]]:
+    def apply(x: Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9])(using Quotes): Expr[Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9]] =
+      ToExprFactory.tuple9ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple9ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}]: Tuple9ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9] = new Tuple9ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9]
 
   /** Default implementation of `ToExpr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]]`. */
-  given Tuple10ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr]: ToExpr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]] with {
-    def apply(tup: Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}) }
-    }
-  }
+  class Tuple10ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]]:
+    def apply(x: Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10])(using Quotes): Expr[Tuple10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]] =
+      ToExprFactory.tuple10ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple10ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}]: Tuple10ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10] = new Tuple10ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10]
 
   /** Default implementation of `ToExpr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]]`. */
-  given Tuple11ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr]: ToExpr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]] with {
-    def apply(tup: Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}) }
-    }
-  }
+  class Tuple11ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]]:
+    def apply(x: Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11])(using Quotes): Expr[Tuple11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]] =
+      ToExprFactory.tuple11ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple11ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}]: Tuple11ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11] = new Tuple11ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]
 
   /** Default implementation of `ToExpr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]]`. */
-  given Tuple12ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr]: ToExpr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]] with {
-    def apply(tup: Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}) }
-    }
-  }
+  class Tuple12ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]]:
+    def apply(x: Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12])(using Quotes): Expr[Tuple12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]] =
+      ToExprFactory.tuple12ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple12ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}]: Tuple12ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12] = new Tuple12ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]
 
   /** Default implementation of `ToExpr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]]`. */
-  given Tuple13ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr]: ToExpr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]] with {
-    def apply(tup: Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}) }
-    }
-  }
+  class Tuple13ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]]:
+    def apply(x: Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13])(using Quotes): Expr[Tuple13[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]] =
+      ToExprFactory.tuple13ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple13ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}]: Tuple13ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13] = new Tuple13ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13]
 
   /** Default implementation of `ToExpr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]]`. */
-  given Tuple14ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr]: ToExpr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]] with {
-    def apply(tup: Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}) }
-    }
-  }
+  class Tuple14ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]]:
+    def apply(x: Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14])(using Quotes): Expr[Tuple14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]] =
+      ToExprFactory.tuple14ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple14ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}]: Tuple14ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14] = new Tuple14ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14]
 
   /** Default implementation of `ToExpr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]]`. */
-  given Tuple15ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr]: ToExpr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]] with {
-    def apply(tup: Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}) }
-    }
-  }
+  class Tuple15ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]]:
+    def apply(x: Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15])(using Quotes): Expr[Tuple15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]] =
+      ToExprFactory.tuple15ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple15ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}]: Tuple15ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15] = new Tuple15ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15]
 
   /** Default implementation of `ToExpr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]]`. */
-  given Tuple16ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr]: ToExpr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]] with {
-    def apply(tup: Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}) }
-    }
-  }
+  class Tuple16ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]]:
+    def apply(x: Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16])(using Quotes): Expr[Tuple16[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]] =
+      ToExprFactory.tuple16ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple16ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}]: Tuple16ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16] = new Tuple16ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16]
 
   /** Default implementation of `ToExpr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]]`. */
-  given Tuple17ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr, T17: Type: ToExpr]: ToExpr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]] with {
-    def apply(tup: Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}, ${Expr(x17)}) }
-    }
-  }
+  class Tuple17ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]]:
+    def apply(x: Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17])(using Quotes): Expr[Tuple17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]] =
+      ToExprFactory.tuple17ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple17ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}]: Tuple17ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17] = new Tuple17ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]
 
   /** Default implementation of `ToExpr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]]`. */
-  given Tuple18ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr, T17: Type: ToExpr, T18: Type: ToExpr]: ToExpr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]] with {
-    def apply(tup: Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}, ${Expr(x17)}, ${Expr(x18)}) }
-    }
-  }
+  class Tuple18ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]]:
+    def apply(x: Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18])(using Quotes): Expr[Tuple18[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]] =
+      ToExprFactory.tuple18ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple18ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}]: Tuple18ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18] = new Tuple18ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18]
 
   /** Default implementation of `ToExpr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]]`. */
-  given Tuple19ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr, T17: Type: ToExpr, T18: Type: ToExpr, T19: Type: ToExpr]: ToExpr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]] with {
-    def apply(tup: Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}, ${Expr(x17)}, ${Expr(x18)}, ${Expr(x19)}) }
-    }
-  }
+  class Tuple19ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}, T19: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]]:
+    def apply(x: Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19])(using Quotes): Expr[Tuple19[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]] =
+      ToExprFactory.tuple19ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple19ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}, T19: {Type, ToExpr}]: Tuple19ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19] = new Tuple19ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19]
 
   /** Default implementation of `ToExpr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]]`. */
-  given Tuple20ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr, T17: Type: ToExpr, T18: Type: ToExpr, T19: Type: ToExpr, T20: Type: ToExpr]: ToExpr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]] with {
-    def apply(tup: Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}, ${Expr(x17)}, ${Expr(x18)}, ${Expr(x19)}, ${Expr(x20)}) }
-    }
-  }
+  class Tuple20ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}, T19: {Type, ToExpr}, T20: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]]:
+    def apply(x: Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20])(using Quotes): Expr[Tuple20[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]] =
+      ToExprFactory.tuple20ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple20ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}, T19: {Type, ToExpr}, T20: {Type, ToExpr}]: Tuple20ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20] = new Tuple20ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20]
 
   /** Default implementation of `ToExpr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]]`. */
-  given Tuple21ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr, T17: Type: ToExpr, T18: Type: ToExpr, T19: Type: ToExpr, T20: Type: ToExpr, T21: Type: ToExpr]: ToExpr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]] with {
-    def apply(tup: Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}, ${Expr(x17)}, ${Expr(x18)}, ${Expr(x19)}, ${Expr(x20)}, ${Expr(x21)}) }
-    }
-  }
+  class Tuple21ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}, T19: {Type, ToExpr}, T20: {Type, ToExpr}, T21: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]]:
+    def apply(x: Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21])(using Quotes): Expr[Tuple21[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]] =
+      ToExprFactory.tuple21ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple21ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}, T19: {Type, ToExpr}, T20: {Type, ToExpr}, T21: {Type, ToExpr}]: Tuple21ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21] = new Tuple21ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21]
 
   /** Default implementation of `ToExpr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]]`. */
-  given Tuple22ToExpr[T1: Type: ToExpr, T2: Type: ToExpr, T3: Type: ToExpr, T4: Type: ToExpr, T5: Type: ToExpr, T6: Type: ToExpr, T7: Type: ToExpr, T8: Type: ToExpr, T9: Type: ToExpr, T10: Type: ToExpr, T11: Type: ToExpr, T12: Type: ToExpr, T13: Type: ToExpr, T14: Type: ToExpr, T15: Type: ToExpr, T16: Type: ToExpr, T17: Type: ToExpr, T18: Type: ToExpr, T19: Type: ToExpr, T20: Type: ToExpr, T21: Type: ToExpr, T22: Type: ToExpr]: ToExpr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]] with {
-    def apply(tup: Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22])(using Quotes) = {
-      val (x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22) = tup
-      '{ (${Expr(x1)}, ${Expr(x2)}, ${Expr(x3)}, ${Expr(x4)}, ${Expr(x5)}, ${Expr(x6)}, ${Expr(x7)}, ${Expr(x8)}, ${Expr(x9)}, ${Expr(x10)}, ${Expr(x11)}, ${Expr(x12)}, ${Expr(x13)}, ${Expr(x14)}, ${Expr(x15)}, ${Expr(x16)}, ${Expr(x17)}, ${Expr(x18)}, ${Expr(x19)}, ${Expr(x20)}, ${Expr(x21)}, ${Expr(x22)}) }
-    }
-  }
+  class Tuple22ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}, T19: {Type, ToExpr}, T20: {Type, ToExpr}, T21: {Type, ToExpr}, T22: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]]:
+    def apply(x: Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22])(using Quotes): Expr[Tuple22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]] =
+      ToExprFactory.tuple22ToExprFactory[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22].apply().apply(x)
+
+  @publicInBinary private[quoted] final def Tuple22ToExpr[T1: {Type, ToExpr}, T2: {Type, ToExpr}, T3: {Type, ToExpr}, T4: {Type, ToExpr}, T5: {Type, ToExpr}, T6: {Type, ToExpr}, T7: {Type, ToExpr}, T8: {Type, ToExpr}, T9: {Type, ToExpr}, T10: {Type, ToExpr}, T11: {Type, ToExpr}, T12: {Type, ToExpr}, T13: {Type, ToExpr}, T14: {Type, ToExpr}, T15: {Type, ToExpr}, T16: {Type, ToExpr}, T17: {Type, ToExpr}, T18: {Type, ToExpr}, T19: {Type, ToExpr}, T20: {Type, ToExpr}, T21: {Type, ToExpr}, T22: {Type, ToExpr}]: Tuple22ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22] = new Tuple22ToExpr[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22]
 
   /** Default implementation of `ToExpr[H *: T]`. */
-  given TupleConsToExpr [H: Type: ToExpr, T <: Tuple: Type: ToExpr]: ToExpr[H *: T] with {
-    def apply(tup: H *: T)(using Quotes): Expr[H *: T] =
-      val head = Expr[H](tup.head)
-      val tail = Expr[T](tup.tail)
-      '{ $head *: $tail }
-  }
+  class TupleConsToExpr [H: {Type, ToExpr}, T <: Tuple: {Type, ToExpr}] @publicInBinary private[quoted] extends ToExpr[H *: T]:
+    def apply(x: H *: T)(using Quotes): Expr[H *: T] =
+      ToExprFactory.tupleConsToExprFactory[H, T].apply().apply(x)
+
+  @publicInBinary private[quoted] final def TupleConsToExpr [H: {Type, ToExpr}, T <: Tuple: {Type, ToExpr}]: TupleConsToExpr[H, T] = new TupleConsToExpr[H, T]
 
   /** Default implementation of `ToExpr[BigInt]`. */
   given BigIntToExpr: ToExpr[BigInt] with {
