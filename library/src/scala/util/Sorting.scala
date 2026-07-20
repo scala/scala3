@@ -13,6 +13,8 @@
 package scala
 package util
 
+// Context bounds cannot carry a capture set
+// import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.reflect.ClassTag
 import scala.math.Ordering
@@ -289,7 +291,7 @@ object Sorting {
    *  @param a the array to sort in place
    *  @param f a function that returns `true` if its first argument is less than its second
    */
-  @`inline` def stableSort[K](a: Array[K], f: (K, K) => Boolean): Unit = stableSort(a, f, 0, a.length)
+  @`inline` def stableSort[K](a: Array[K], f: (K, K) -> Boolean): Unit = stableSort(a, f, 0, a.length)
 
   // TODO: make this fast for primitive K (could be specialized if it didn't go through Ordering)
   /** Sorts array `a` or a part of it using function `f` that computes the less-than relation for each element.
@@ -301,7 +303,7 @@ object Sorting {
    *  @param from the first index in the array to sort
    *  @param until the last index (exclusive) in the array to sort
    */
-  def stableSort[K](a: Array[K], f: (K, K) => Boolean, from: Int, until: Int): Unit = sort(a, from, until, Ordering fromLessThan f)
+  def stableSort[K](a: Array[K], f: (K, K) -> Boolean, from: Int, until: Int): Unit = sort(a, from, until, Ordering fromLessThan f)
 
   /** A sorted Array, using the Ordering for the elements in the sequence `a`.  Uses `java.util.Arrays.sort` unless `K` is a primitive type.
    *
@@ -323,7 +325,7 @@ object Sorting {
    *  @param f a function that returns `true` if its first argument is less than its second
    *  @return a new array containing the elements of `a` sorted according to the less-than relation `f`
    */
-  def stableSort[K: ClassTag](a: scala.collection.Seq[K], f: (K, K) => Boolean): Array[K] = {
+  def stableSort[K: ClassTag](a: scala.collection.Seq[K], f: (K, K) -> Boolean): Array[K] = {
     val ret = a.toArray
     sort(ret, 0, ret.length, Ordering fromLessThan f)
     ret
@@ -337,7 +339,7 @@ object Sorting {
    *  @param f a function that extracts a comparable key from each element
    *  @return a new array containing the elements of `a` sorted by comparing the keys produced by `f`
    */
-  def stableSort[K: ClassTag, M: Ordering](a: scala.collection.Seq[K], f: K => M): Array[K] = {
+  def stableSort[K: ClassTag, M: Ordering](a: scala.collection.Seq[K], f: K -> M): Array[K] = {
     val ret = a.toArray
     sort(ret, 0, ret.length, Ordering[M] on f)
     ret

@@ -12,6 +12,7 @@
 
 package scala
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 
 /** `Short`, a 16-bit signed integer (equivalent to Java's `short` primitive type) is a

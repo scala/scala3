@@ -146,8 +146,9 @@ object SeqView {
     def this(underlying: SomeSeqOps[A]^, ord: Ordering[B]) = this(underlying, underlying.length, ord)
 
     @SerialVersionUID(3L)
-    private class ReverseSorted extends SeqView[A] {
+    private class ReverseSorted extends SeqView[A] uses Sorted.this initially, Sorted.this {
       private lazy val _reversed = new SeqView.Reverse(_sorted)
+      private val original: Sorted[A, B]^{Sorted.this} = outer
 
       def apply(i: Int): A = _reversed.apply(i)
       def length: Int = len
@@ -159,9 +160,9 @@ object SeqView {
       override protected def reversed: Iterable[A]^{outer} = outer
 
       override def sorted[B1 >: A](implicit ord1: Ordering[B1]): SeqView[A]^{this} =
-        if (ord1 == Sorted.this.ord) outer
+        if (ord1 == Sorted.this.ord) original
         else if (ord1.isReverseOf(Sorted.this.ord)) this
-        else new Sorted(elems, len, ord1)
+        else new Sorted(original.elems, len, ord1)
     }
 
     @volatile private var evaluated = false
