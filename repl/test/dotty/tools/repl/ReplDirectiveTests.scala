@@ -305,3 +305,18 @@ class ReplDirectiveTests extends ReplTest:
     ParseResult("//> using scala 3.3.1\n:type 1") match
       case MixedCommandsAndDirectives => // expected
       case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `post-code directive warning printed exactly once`: Unit =
+    initially:
+      run("val x = 1\n//> using dep foo::bar:1.0")
+      val output = storedOutput()
+      val count = "Ignoring using directive".r.findAllIn(output).length
+      org.junit.Assert.assertEquals("warning should appear exactly once", 1, count)
+      assertTrue(output, output.contains("val x: Int = 1"))
+
+  @Test def `post-code directive diagnostic is surfaced`: Unit =
+    initially:
+      run("val y = 2\n//> using options -Werror")
+      val output = storedOutput()
+      assertTrue(output, output.contains("Ignoring using directive"))
+      assertTrue(output, output.contains("val y: Int = 2"))

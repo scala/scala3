@@ -9,7 +9,7 @@ import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
 import dotc.reporting.{Diagnostic, StoreReporter}
 import dotc.util.SourceFile
-import dotty.tools.directives.{ExtractorResult, UsingDirectivesParser}
+import dotty.tools.directives.{ExtractorResult, UsingDirectiveDiagnostic, UsingDirectivesParser}
 
 import scala.annotation.internal.sharable
 import scala.annotation.tailrec
@@ -18,7 +18,12 @@ import scala.annotation.tailrec
 sealed trait ParseResult
 
 /** An error free parsing resulting in a list of untyped trees */
-case class Parsed(source: SourceFile, trees: List[untpd.Tree], reporter: StoreReporter) extends ParseResult
+case class Parsed(
+  source: SourceFile,
+  trees: List[untpd.Tree],
+  reporter: StoreReporter,
+  directiveDiagnostics: Seq[UsingDirectiveDiagnostic] = Nil
+) extends ParseResult
 
 /** A parsing result containing syntax `errors` */
 case class SyntaxErrors(sourceCode: String,
@@ -341,7 +346,8 @@ object ParseResult {
       case _ if mixesCommandsAndDirectives(sourceCode) => MixedCommandsAndDirectives
       case CommandExtract(cmd: String, arg: String) => command(cmd, arg)
       case _ =>
-        leadingCommand(sourceCode, extractDirectives(sourceCode)) match {
+        val extracted = extractDirectives(sourceCode)
+        leadingCommand(sourceCode, extracted) match {
           case Some((cmd, arg, rest)) =>
             if rest.exists(!_.isWhitespace) then CommandThenCode(command(cmd, arg), apply(rest))
             else command(cmd, arg)
@@ -356,7 +362,7 @@ object ParseResult {
                   reporter.removeBufferedMessages,
                   stats)
               else
-                Parsed(source, stats, reporter)
+                Parsed(source, stats, reporter, extracted.diagnostics)
             }
         }
     }

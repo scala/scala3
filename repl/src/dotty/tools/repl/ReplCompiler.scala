@@ -220,7 +220,7 @@ class ReplCompiler extends Compiler:
       }
 
       ParseResult(sourceFile) match {
-        case Parsed(_, trees, _) =>
+        case Parsed(_, trees, _, _) =>
           Right(wrap(trees))
         case SyntaxErrors(_, reported, trees) =>
           if (errorsAllowed) Right(wrap(trees))

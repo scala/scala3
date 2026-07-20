@@ -387,6 +387,8 @@ class ReplDriver(settings: Array[String],
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
       case parsed: Parsed =>
+        for diag <- parsed.directiveDiagnostics do
+          out.println(s"[warn] ${diag.message}")
         val src = parsed.source.content().mkString
         val classified = DependencyResolver.classifyDirectives(src)
         if classified.hasDirectives then
