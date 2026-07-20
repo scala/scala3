@@ -1015,6 +1015,12 @@ object Contexts {
     val qualifierSkolemForSkolemType: collection.mutable.HashMap[Types.SkolemType, (Symbols.Symbol, Int)] =
       collection.mutable.HashMap()
 
+    /** Memoizes `QualifiedTypes.containsQualifier` per type instance (skipping
+     *  provisional types). Cleared per run in `initialize()`.
+     */
+    val containsQualifierCache: util.EqHashMap[Types.Type, java.lang.Boolean] =
+      util.EqHashMap()
+
     /** The standard definitions */
     val definitions: Definitions = new Definitions
 
@@ -1038,6 +1044,7 @@ object Contexts {
       qualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = ctx.settings.YqualifiedTypesStats.value)
       qualifierSkolemIndexCounterByOwner.clear()
       qualifierSkolemForSkolemType.clear()
+      containsQualifierCache.clear()
       definitions.init()
     }
 
