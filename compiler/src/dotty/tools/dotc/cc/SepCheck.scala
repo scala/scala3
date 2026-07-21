@@ -620,13 +620,17 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     case tree: Ident => tree.symbol.exists && LiftCoverage.isCoverageLiftedTemp(tree.symbol)
     case _ => false
 
+  private def isPatmatCast(tree: Tree)(using Context): Boolean = tree match
+    case tree: TypeApply => tree.symbol == defn.Any_typeCast
+    case _ => false
+
   /** 1. Check that the capabilities used at `tree` don't overlap with
    *     capabilities hidden by a previous definition.
    *  2. Also check that none of the used capabilities was consumed before.
    */
   def checkUse(tree: Tree)(using Context): Unit =
     val used = tree.markedFree.elems
-    if !used.isEmpty && !isCoverageLiftedTemp(tree) then
+    if !used.isEmpty && !isCoverageLiftedTemp(tree) && !isPatmatCast(tree) then
       capt.println(i"check use $tree: $used")
       val usedPeaks = used.allPeaks
       if !defsShadow.allPeaks.sharedPeaks(usedPeaks).isEmpty then

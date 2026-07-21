@@ -1069,8 +1069,9 @@ object CaptureSet:
           def fail = i"attempting to add $elem to $this"
 
           def hideIn(ac: LocalCap): Boolean =
-            assert(elem.tryClassifyAs(ac.hiddenSet.classifier), fail)
-            if isRefining then
+            if !elem.tryClassifyAs(ac.hiddenSet.classifier) then
+              false
+            else if isRefining then
               // If a variable is added by addCaptureRefinements in a synthetic
               // refinement of a class type, don't do level checking. The problem is
               // that the variable might be matched against a type that does not have

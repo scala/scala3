@@ -970,10 +970,21 @@ class CheckCaptures extends Recheck, SymTransformer:
                 // an operation to work on the declared constructor types. We would miss the necessary unboxed that way.
               if getter.hasAnnotation(defn.ConsumeAnnot) then
                 () // We make sure in checkClassDef, point (6), that consume parameters don't
-                    // contribute to the class capture set
+                    // contribute to the class capture set ???
               else allCaptures ++= argType.captureSet
             else
               allCaptures ++= cls.mapClassCaptures(core, getter.info.captureSet)
+          else
+            // consume parameers are not refining, since we do not want to keep the
+            // argument reference in the class instance type. But we still need to
+            // account for them in the capture set. Therefore we add the non-terminal
+            // parts of the capset of their infos to the class instance capset. Terminal
+            // parts are already accounted for in capturesImpliedByFields since
+            // contributesLocalCapsToClass is true for consume parameters.
+            val consumeGetter = cls.consumeGetterNamed(getterName)
+            if consumeGetter.exists then
+              allCaptures ++= cls.mapClassCaptures(core,
+                consumeGetter.info.captureSet.filter(!_.isTerminalCapability))
         (refined, allCaptures)
 
       /** Augment result type of constructor with refinements and captures.
