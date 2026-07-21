@@ -190,6 +190,10 @@ object Applications {
       case Some(fields) => fields.map(termName)
       case None => assert(false, "Invariant violation - Java record is missing fields information")
 
+  def javaRecordTypes(tp: Type)(using Context): List[Type] =
+    javaRecordFields(tp).map: name =>
+      tp.member(name).suchThat(_.paramSymss == List(Nil)).info.resultType
+
   /** A utility class that matches results of unapplys with patterns. Two queriable members:
    *     val argTypes: List[Type]
    *     def typedPatterns(qual: untpd.Tree, typer: Typer): List[Tree]
