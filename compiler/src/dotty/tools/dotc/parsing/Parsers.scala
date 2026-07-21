@@ -319,6 +319,13 @@ object Parsers {
       if in.token == token then in.nextToken()
       offset
 
+    def accept(token: Int, help: String): Int =
+      val offset = in.offset
+      if in.token != token then
+        syntaxErrorOrIncomplete(ExpectedTokenButFound(token, in.token, suffix = help))
+      if in.token == token then in.nextToken()
+      offset
+
     def accept(name: Name): Int = {
       val offset = in.offset
       if !isIdent(name) then
@@ -671,9 +678,7 @@ object Parsers {
           if in.isNewLine && !(nextIndentWidth < startIndentWidth) then
             warning(
               if startIndentWidth <= nextIndentWidth then
-                em"""Line is indented too far to the right, or a `{` is missing before:
-                  |
-                  |${t.tryToShow}"""
+                IndentationWarning(missing = LBRACE, before = t.tryToShow)
               else
                 in.spaceTabMismatchMsg(startIndentWidth, nextIndentWidth),
               in.next.offset
@@ -688,7 +693,7 @@ object Parsers {
       if in.isNewLine then
         val nextIndentWidth = in.indentWidth(in.next.offset)
         if in.currentRegion.indentWidth < nextIndentWidth && in.currentRegion.closedBy == OUTDENT then
-          warning(em"Line is indented too far to the right, or a `{` or `:` is missing", in.next.offset)
+          warning(IndentationWarning(missing = Seq(LBRACE, COLONop)*), in.next.offset)
 
 /* -------- REWRITES ----------------------------------------------------------- */
 
@@ -3505,6 +3510,18 @@ object Parsers {
 /* -------- DEFS ------------------------------------------- */
 
     def finalizeDef(md: MemberDef, mods: Modifiers, start: Int): md.ThisTree[Untyped] =
+      def checkName(): Unit =
+        def checkName(name: Name): Unit =
+          if !name.isEmpty
+          && !Chars.isOperatorPart(name.firstCodePoint) // warn a_: not ::
+          && name.endsWith(":")
+          then
+            report.warning(AmbiguousTemplateName(md), md.namePos)
+        md match
+          case md @ TypeDef(name, impl: Template) if impl.body.isEmpty && !md.isBackquoted => checkName(name)
+          case md @ ModuleDef(name, impl) if impl.body.isEmpty && !md.isBackquoted => checkName(name)
+          case _ =>
+      checkName()
       md.withMods(mods).setComment(in.getDocComment(start))
 
     type ImportConstr = (Tree, List[ImportSelector]) => Tree
@@ -3707,7 +3724,14 @@ object Parsers {
       val tpt = typedOpt()
       val rhs =
         if tpt.isEmpty || in.token == EQUALS then
-          accept(EQUALS)
+          if tpt.isEmpty && in.token != EQUALS then
+            lhs match
+            case Ident(name) :: Nil if name.endsWith(":") =>
+              val help = i"; identifier ends in colon, did you mean `${name.toSimpleName.dropRight(1)}`: in backticks?"
+              accept(EQUALS, help)
+            case _ => accept(EQUALS)
+          else
+            accept(EQUALS)
           val rhsOffset = in.offset
           subExpr() match
             case rhs0 @ Ident(name) if placeholderParams.nonEmpty && name == placeholderParams.head.name
@@ -3807,6 +3831,10 @@ object Parsers {
             tpt = scalaUnit
             if (in.token == LBRACE) expr()
             else EmptyTree
+          else if in.token == IDENTIFIER && paramss.isEmpty && name.endsWith(":") then
+            val help = i"; identifier ends in colon, did you mean `${name.toSimpleName.dropRight(1)}`: in backticks?"
+            accept(EQUALS, help)
+            EmptyTree
           else
             if (!isExprIntro) syntaxError(MissingReturnType(), in.lastOffset)
             accept(EQUALS)
@@ -3925,11 +3953,12 @@ object Parsers {
     /** ClassDef ::= id ClassConstr TemplateOpt
      */
     def classDef(start: Offset, mods: Modifiers): TypeDef =
-      atSpan(start, nameStart):
+      val td = atSpan(start, nameStart):
         val name = ident().toTypeName
         val constr = classConstr(if mods.is(Case) then ParamOwner.CaseClass else ParamOwner.Class)
         val templ = templateOpt(constr)
-        finalizeDef(TypeDef(name, templ), mods, start)
+        TypeDef(name, templ)
+      finalizeDef(td, mods, start)
 
     /** ClassConstr ::= [ClsTypeParamClause] [ConstrMods] ClsTermParamClauses
      */
@@ -3947,11 +3976,15 @@ object Parsers {
 
     /** ObjectDef       ::= id TemplateOpt
      */
-    def objectDef(start: Offset, mods: Modifiers): ModuleDef = atSpan(start, nameStart) {
-      val name = ident()
-      val templ = templateOpt(emptyConstructor)
-      finalizeDef(ModuleDef(name, templ), mods, start)
-    }
+    def objectDef(start: Offset, mods: Modifiers): ModuleDef =
+      val md = atSpan(start, nameStart):
+        val nameIdent = termIdent()
+        val templ = templateOpt(emptyConstructor)
+        ModuleDef(nameIdent.name.asTermName, templ)
+          .tap: md =>
+            if nameIdent.isBackquoted then
+              md.pushAttachment(Backquoted, ())
+      finalizeDef(md, mods, start)
 
     private def checkAccessOnly(mods: Modifiers, where: String): Modifiers =
       val mods1 = mods & (AccessFlags | Enum)
