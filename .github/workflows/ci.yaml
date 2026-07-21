@@ -1,4 +1,4 @@
-name: Dotty
+name: Scala 3
 
 on:
   push:
