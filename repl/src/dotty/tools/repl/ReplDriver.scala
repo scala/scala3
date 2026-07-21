@@ -408,7 +408,7 @@ class ReplDriver(settings: Array[String],
       case CommandThenCode(cmd, code) =>
         val stateAfterCommand = interpretCommand(cmd)
         val recorded = cmd.replayLine.fold(stateAfterCommand)(line => stateAfterCommand.recordInput(line.strip))
-        interpret(code)(using recorded)
+        interpret(ParseResult(code)(using recorded))(using recorded)
 
       case MixedCommandsAndDirectives =>
         out.println(

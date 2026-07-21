@@ -51,9 +51,11 @@ sealed trait Command extends ParseResult:
  *  :dep <coords>
  *  println("Hello")
  *  ```
- *  The command is interpreted first, then code is evaluated.
+ *  The command is interpreted first, then the trailing `code` is parsed and
+ *  evaluated under the (possibly updated) state. Parsing is deferred so that
+ *  settings-changing commands such as `:settings` affect the trailing code.
  */
-case class CommandThenCode(command: Command, code: ParseResult) extends ParseResult
+case class CommandThenCode(command: Command, code: String) extends ParseResult
 
 /** Input that mixes `:` commands and `//> using` directives in a single block */
 case object MixedCommandsAndDirectives extends ParseResult
@@ -380,7 +382,7 @@ object ParseResult {
         val extracted = extractDirectives(sourceCode)
         leadingCommand(sourceCode, extracted) match {
           case Some((cmd, arg, rest)) =>
-            if rest.exists(!_.isWhitespace) then CommandThenCode(command(cmd, arg), apply(rest))
+            if rest.exists(!_.isWhitespace) then CommandThenCode(command(cmd, arg), rest)
             else command(cmd, arg)
           case None =>
             inContext(state.context) {

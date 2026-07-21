@@ -68,7 +68,7 @@ class ReplDirectiveTests extends ReplTest:
 
   @Test def `command with trailing code parses as CommandThenCode`: Unit = initially:
     ParseResult(":type \"hello\"\nval x = 5") match
-      case CommandThenCode(TypeOf("\"hello\""), _: Parsed) => // expected
+      case CommandThenCode(TypeOf("\"hello\""), code) if code.contains("val x = 5") => // expected
       case other => org.junit.Assert.fail(s"unexpected parse result: $other")
 
   @Test def `command with trailing code evaluates both`: Unit =
@@ -77,6 +77,40 @@ class ReplDirectiveTests extends ReplTest:
       val output = storedOutput()
       assertTrue(output, output.contains("String"))
       assertTrue(output, output.contains("val x: Int = 5"))
+
+  @Test def `settings command affects trailing code`: Unit =
+    initially:
+      run(":settings -old-syntax\nif true then 1 else 2")
+      val output = storedOutput()
+      assertTrue(output, output.contains("This construct is not allowed under -old-syntax"))
+
+  @Test def `settings command affects subsequent separate input`: Unit =
+    initially {
+      run(":settings -old-syntax")
+    } andThen {
+      storedOutput()
+      run("if true then 1 else 2")
+      val output = storedOutput()
+      assertTrue(output, output.contains("This construct is not allowed under -old-syntax"))
+    }
+
+  @Test def `settings then another command then code uses updated settings`: Unit =
+    initially:
+      run(":settings -old-syntax\n:type 1\nif true then 1 else 2")
+      val output = storedOutput()
+      assertTrue(output, output.contains("Int"))
+      assertTrue(output, output.contains("This construct is not allowed under -old-syntax"))
+
+  @Test def `settings can disable old-syntax for trailing code`: Unit =
+    initially {
+      run(":settings -old-syntax")
+    } andThen {
+      storedOutput()
+      run(":settings -old-syntax:false\nif true then 1 else 2")
+      val output = storedOutput()
+      assertTrue(output, output.contains("val res0: Int = 1"))
+      assertFalse(output, output.contains("This construct is not allowed under -old-syntax"))
+    }
 
   @Test def `lone command with trailing newline parses as command`: Unit = initially:
     ParseResult(":type 1\n") match
@@ -214,7 +248,7 @@ class ReplDirectiveTests extends ReplTest:
 
   @Test def `comment between commands parses as nested CommandThenCode`: Unit = initially:
     ParseResult(":type 1\n// c\n:type 2\nval x = 5") match
-      case CommandThenCode(TypeOf("1"), CommandThenCode(TypeOf("2"), _: Parsed)) => // expected
+      case CommandThenCode(TypeOf("1"), rest) if rest.contains(":type 2") && rest.contains("val x = 5") => // expected
       case other => org.junit.Assert.fail(s"unexpected parse result: $other")
 
   @Test def `command then directive parses as mixed`: Unit = initially:
@@ -257,17 +291,17 @@ class ReplDirectiveTests extends ReplTest:
 
   @Test def `command with directive-like string is not mixed`: Unit = initially:
     ParseResult(":type 1\nval s = \"//> using dep x\"") match
-      case CommandThenCode(TypeOf("1"), _: Parsed) => // expected
+      case CommandThenCode(TypeOf("1"), code) if code.contains("val s =") => // expected
       case other => org.junit.Assert.fail(s"unexpected parse result: $other")
 
   @Test def `block comment between commands parses as nested CommandThenCode`: Unit = initially:
     ParseResult(":type 1\n/* c */\n:type 2\nval x = 5") match
-      case CommandThenCode(TypeOf("1"), CommandThenCode(TypeOf("2"), _: Parsed)) => // expected
+      case CommandThenCode(TypeOf("1"), rest) if rest.contains(":type 2") && rest.contains("val x = 5") => // expected
       case other => org.junit.Assert.fail(s"unexpected parse result: $other")
 
   @Test def `multiline block comment between commands parses as nested CommandThenCode`: Unit = initially:
     ParseResult(":type 1\n/* multi\n line\n comment */\n:type 2\nval x = 5") match
-      case CommandThenCode(TypeOf("1"), CommandThenCode(TypeOf("2"), _: Parsed)) => // expected
+      case CommandThenCode(TypeOf("1"), rest) if rest.contains(":type 2") && rest.contains("val x = 5") => // expected
       case other => org.junit.Assert.fail(s"unexpected parse result: $other")
 
   @Test def `block comment between command and directive parses as mixed`: Unit = initially:
@@ -333,7 +367,7 @@ class ReplDirectiveTests extends ReplTest:
 
   @Test def `shebang with command only parses as command`: Unit = initially:
     ParseResult("#!/usr/bin/env scala\n:type 1\nval x = 5") match
-      case CommandThenCode(TypeOf("1"), _: Parsed) => // expected
+      case CommandThenCode(TypeOf("1"), code) if code.contains("val x = 5") => // expected
       case other => org.junit.Assert.fail(s"unexpected parse result: $other")
 
   @Test def `shebang with directive only evaluates normally`: Unit = initially:
