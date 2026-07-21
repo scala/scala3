@@ -159,7 +159,7 @@ you're PR will be merged in!
 
 [pull-request]: https://docs.github.com/en?query=pull+requests
 [lampepfl/dotty]: https://github.com/lampepfl/dotty
-[cla]: https://contribute.akka.io/contribute/cla/scala
+[cla]: https://cla.scala-lang.org/scala/scala3
 [issues]: https://github.com/scala/scala3/issues
 [full-list]: https://github.com/scala/scala3/blob/master/CONTRIBUTING.md
 [discord]: https://discord.gg/TSmY9zkHar
