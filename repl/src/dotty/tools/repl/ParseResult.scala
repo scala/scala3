@@ -275,6 +275,20 @@ object ParseResult {
 
   private val UsingDirectivePrefix = """^//>\s*using(?:\s|$)""".r
 
+  /** Extract line bounds and trimmed content starting at offset.
+   *  Returns `(lineEnd, line, trimmed)` where:
+   *  - `lineEnd`: index of `'\n'` or `src.length`
+   *  - `line`: the raw line content (without newline)
+   *  - `trimmed`: `line` with leading whitespace stripped
+   */
+  private def extractLine(src: String, offset: Int): (Int, String, String) =
+    val lineEnd = src.indexOf('\n', offset) match
+      case -1 => src.length
+      case nl => nl
+    val line = src.substring(offset, lineEnd)
+    val trimmed = line.stripLeading()
+    (lineEnd, line, trimmed)
+
   /** Skip a block comment (with nesting). Returns offset after closing star-slash. */
   private def skipBlockComment(src: String, start: Int): Int =
     @tailrec
@@ -291,11 +305,7 @@ object ParseResult {
     def scan(offset: Int): Int =
       if offset >= src.length then offset
       else
-        val lineEnd = src.indexOf('\n', offset) match
-          case -1 => src.length
-          case nl => nl
-        val line = src.substring(offset, lineEnd)
-        val trimmed = line.stripLeading()
+        val (lineEnd, line, trimmed) = extractLine(src, offset)
 
         if trimmed.isEmpty then
           scan(lineEnd + 1)
@@ -308,21 +318,20 @@ object ParseResult {
     scan(0)
 
   /** Detect if the leading prefix (before Scala code) contains both `:` commands
-   *  and `//> using` directives. Skips blank lines, line comments, and block comments
-   *  (with nesting support matching the Scala compiler).
+   *  and `//> using` directives. Skips blank lines, a leading shebang, line comments,
+   *  and block comments (with nesting support matching the Scala compiler).
    */
   private def mixesCommandsAndDirectives(sourceCode: String): Boolean =
     @tailrec
     def scan(offset: Int, hasCommand: Boolean, hasDirective: Boolean): Boolean =
       if offset >= sourceCode.length then hasCommand && hasDirective
       else
-        val lineEnd = sourceCode.indexOf('\n', offset) match
-          case -1 => sourceCode.length
-          case nl => nl
-        val line = sourceCode.substring(offset, lineEnd)
-        val trimmed = line.stripLeading()
+        val (lineEnd, line, trimmed) = extractLine(sourceCode, offset)
 
         if trimmed.isEmpty then
+          scan(lineEnd + 1, hasCommand, hasDirective)
+        else if offset == 0 && trimmed.startsWith("#!") then
+          // Shebang: skip only on the very first line (matches CommentExtractor)
           scan(lineEnd + 1, hasCommand, hasDirective)
         else if trimmed.startsWith("/*") then
           val afterBlock = skipBlockComment(sourceCode, offset + line.indexOf("/*"))

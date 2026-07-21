@@ -320,3 +320,23 @@ class ReplDirectiveTests extends ReplTest:
       val output = storedOutput()
       assertTrue(output, output.contains("Ignoring using directive"))
       assertTrue(output, output.contains("val y: Int = 2"))
+
+  @Test def `shebang with command then directive parses as mixed`: Unit = initially:
+    ParseResult("#!/usr/bin/env scala\n:dep a::b:1\n//> using dep c::d:2") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `shebang with directive then command parses as mixed`: Unit = initially:
+    ParseResult("#!/usr/bin/env scala\n//> using dep c::d:2\n:dep a::b:1") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `shebang with command only parses as command`: Unit = initially:
+    ParseResult("#!/usr/bin/env scala\n:type 1\nval x = 5") match
+      case CommandThenCode(TypeOf("1"), _: Parsed) => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `shebang with directive only evaluates normally`: Unit = initially:
+    ParseResult("#!/usr/bin/env scala\n//> using dep x::y:1\nval x = 1") match
+      case _: Parsed => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
