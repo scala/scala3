@@ -17,6 +17,9 @@ case class ExtractorResult(
   diagnostics: Seq[UsingDirectiveDiagnostic]
 )
 
+object ExtractorResult:
+  val empty: ExtractorResult = ExtractorResult(Nil, 0, Nil)
+
 /** Phase 1: scans a source file and extracts `//> using` directive lines.
   *
   * The accepted syntax is specified in the module README, which is the single source of truth.

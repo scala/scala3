@@ -387,6 +387,8 @@ class ReplDriver(settings: Array[String],
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
       case parsed: Parsed =>
+        for diag <- parsed.directiveDiagnostics do
+          out.println(s"[warn] ${diag.message}")
         val src = parsed.source.content().mkString
         val classified = DependencyResolver.classifyDirectives(src)
         if classified.hasDirectives then
@@ -407,6 +409,12 @@ class ReplDriver(settings: Array[String],
         val stateAfterCommand = interpretCommand(cmd)
         val recorded = cmd.replayLine.fold(stateAfterCommand)(line => stateAfterCommand.recordInput(line.strip))
         interpret(code)(using recorded)
+
+      case MixedCommandsAndDirectives =>
+        out.println(
+          """Cannot mix `:` commands and `//> using` directives in the same REPL input.
+            |Submit them as separate inputs.""".stripMargin)
+        state
 
       case cmd: Command =>
         val next = interpretCommand(cmd)

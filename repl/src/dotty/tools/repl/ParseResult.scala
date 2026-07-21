@@ -9,15 +9,21 @@ import dotc.parsing.Parsers.Parser
 import dotc.parsing.Tokens
 import dotc.reporting.{Diagnostic, StoreReporter}
 import dotc.util.SourceFile
-import dotty.tools.directives.{ExtractorResult, UsingDirectivesParser}
+import dotty.tools.directives.{ExtractorResult, UsingDirectiveDiagnostic, UsingDirectivesParser}
 
 import scala.annotation.internal.sharable
+import scala.annotation.tailrec
 
 /** A parsing result from string input */
 sealed trait ParseResult
 
 /** An error free parsing resulting in a list of untyped trees */
-case class Parsed(source: SourceFile, trees: List[untpd.Tree], reporter: StoreReporter) extends ParseResult
+case class Parsed(
+  source: SourceFile,
+  trees: List[untpd.Tree],
+  reporter: StoreReporter,
+  directiveDiagnostics: Seq[UsingDirectiveDiagnostic] = Nil
+) extends ParseResult
 
 /** A parsing result containing syntax `errors` */
 case class SyntaxErrors(sourceCode: String,
@@ -48,6 +54,9 @@ sealed trait Command extends ParseResult:
  *  The command is interpreted first, then code is evaluated.
  */
 case class CommandThenCode(command: Command, code: ParseResult) extends ParseResult
+
+/** Input that mixes `:` commands and `//> using` directives in a single block */
+case object MixedCommandsAndDirectives extends ParseResult
 
 /** An unknown command that will not be handled by the REPL */
 case class UnknownCommand(cmd: String) extends Command:
@@ -264,6 +273,84 @@ object ParseResult {
   private def extractDirectives(sourceCode: String): ExtractorResult =
     UsingDirectivesParser.extractLines(sourceCode.toIndexedSeq)
 
+  private val UsingDirectivePrefix = """^//>\s*using(?:\s|$)""".r
+
+  /** Extract line bounds and trimmed content starting at offset.
+   *  Returns `(lineEnd, line, trimmed)` where:
+   *  - `lineEnd`: index of `'\n'` or `src.length`
+   *  - `line`: the raw line content (without newline)
+   *  - `trimmed`: `line` with leading whitespace stripped
+   */
+  private def extractLine(src: String, offset: Int): (Int, String, String) =
+    val lineEnd = src.indexOf('\n', offset) match
+      case -1 => src.length
+      case nl => nl
+    val line = src.substring(offset, lineEnd)
+    val trimmed = line.stripLeading()
+    (lineEnd, line, trimmed)
+
+  /** Skip a block comment (with nesting). Returns offset after closing star-slash. */
+  private def skipBlockComment(src: String, start: Int): Int =
+    @tailrec
+    def loop(off: Int, depth: Int): Int =
+      if off >= src.length - 1 || depth == 0 then off
+      else if src(off) == '/' && src(off + 1) == '*' then loop(off + 2, depth + 1)
+      else if src(off) == '*' && src(off + 1) == '/' then loop(off + 2, depth - 1)
+      else loop(off + 1, depth)
+    loop(start + 2, 1)
+
+  /** Find offset of first significant content (past blank lines, line comments, block comments). */
+  private def skipLeadingCommentsAndBlanks(src: String): Int =
+    @tailrec
+    def scan(offset: Int): Int =
+      if offset >= src.length then offset
+      else
+        val (lineEnd, line, trimmed) = extractLine(src, offset)
+
+        if trimmed.isEmpty then
+          scan(lineEnd + 1)
+        else if trimmed.startsWith("/*") then
+          scan(skipBlockComment(src, offset + line.indexOf("/*")))
+        else if trimmed.startsWith("//") then
+          scan(lineEnd + 1)
+        else
+          offset + line.indexOf(trimmed.head)
+    scan(0)
+
+  /** Detect if the leading prefix (before Scala code) contains both `:` commands
+   *  and `//> using` directives. Skips blank lines, a leading shebang, line comments,
+   *  and block comments (with nesting support matching the Scala compiler).
+   */
+  private def mixesCommandsAndDirectives(sourceCode: String): Boolean =
+    @tailrec
+    def scan(offset: Int, hasCommand: Boolean, hasDirective: Boolean): Boolean =
+      if offset >= sourceCode.length then hasCommand && hasDirective
+      else
+        val (lineEnd, line, trimmed) = extractLine(sourceCode, offset)
+
+        if trimmed.isEmpty then
+          scan(lineEnd + 1, hasCommand, hasDirective)
+        else if offset == 0 && trimmed.startsWith("#!") then
+          // Shebang: skip only on the very first line (matches CommentExtractor)
+          scan(lineEnd + 1, hasCommand, hasDirective)
+        else if trimmed.startsWith("/*") then
+          val afterBlock = skipBlockComment(sourceCode, offset + line.indexOf("/*"))
+          scan(afterBlock, hasCommand, hasDirective)
+        else if trimmed.startsWith("//") then
+          if UsingDirectivePrefix.findFirstIn(trimmed).isDefined then
+            if hasCommand then true else scan(lineEnd + 1, hasCommand, hasDirective = true)
+          else
+            scan(lineEnd + 1, hasCommand, hasDirective)
+        else trimmed match
+          case CommandExtract(_, _) =>
+            if hasDirective then true else scan(lineEnd + 1, hasCommand = true, hasDirective)
+          case _ =>
+            hasCommand && hasDirective
+    end scan
+
+    scan(0, hasCommand = false, hasDirective = false)
+  end mixesCommandsAndDirectives
+
   /** If `sourceCode`'s first significant line (after comments/blank lines) is a
    *  `:command`, split it into `(commandName, commandArg, remainingText)`.
    *  `remainingText` may be blank.
@@ -287,9 +374,11 @@ object ParseResult {
     val sourceCode = source.content().mkString
     sourceCode match {
       case "" => Newline
+      case _ if mixesCommandsAndDirectives(sourceCode) => MixedCommandsAndDirectives
       case CommandExtract(cmd: String, arg: String) => command(cmd, arg)
       case _ =>
-        leadingCommand(sourceCode, extractDirectives(sourceCode)) match {
+        val extracted = extractDirectives(sourceCode)
+        leadingCommand(sourceCode, extracted) match {
           case Some((cmd, arg, rest)) =>
             if rest.exists(!_.isWhitespace) then CommandThenCode(command(cmd, arg), apply(rest))
             else command(cmd, arg)
@@ -304,7 +393,7 @@ object ParseResult {
                   reporter.removeBufferedMessages,
                   stats)
               else
-                Parsed(source, stats, reporter)
+                Parsed(source, stats, reporter, extracted.diagnostics)
             }
         }
     }
@@ -349,9 +438,17 @@ object ParseResult {
    *  would otherwise make unfinished trailing code look complete and submit early.
    */
   private def codeAfterLeadingCommands(sourceCode: String, extractedDirectives: ExtractorResult): String =
-    leadingCommand(sourceCode, extractedDirectives) match
-      case Some((_, _, rest)) => codeAfterLeadingCommands(rest, extractDirectives(rest))
-      case None => sourceCode
+    // After the first command there are no directives (would have been detected earlier),
+    // so subsequent steps skip comments/blanks without re-running extractDirectives.
+    @tailrec
+    def skipCommands(src: String, extracted: ExtractorResult): String =
+      leadingCommand(src, extracted) match
+        case Some((_, _, rest)) =>
+          val offset = skipLeadingCommentsAndBlanks(rest)
+          val significant = if offset < rest.length then rest.substring(offset) else ""
+          skipCommands(significant, ExtractorResult.empty)
+        case None => src
+    skipCommands(sourceCode, extractedDirectives)
 
   /** Check if the input is incomplete.
    *

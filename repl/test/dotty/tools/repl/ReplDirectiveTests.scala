@@ -216,3 +216,127 @@ class ReplDirectiveTests extends ReplTest:
     ParseResult(":type 1\n// c\n:type 2\nval x = 5") match
       case CommandThenCode(TypeOf("1"), CommandThenCode(TypeOf("2"), _: Parsed)) => // expected
       case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `command then directive parses as mixed`: Unit = initially:
+    ParseResult(":dep a::b:1\n//> using dep c::d:2\nval x = 1") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `directive then command parses as mixed`: Unit = initially:
+    ParseResult("//> using dep c::d:2\n:dep a::b:1\nval x = 1") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `command then directive without trailing code parses as mixed`: Unit = initially:
+    ParseResult(":dep a::b:1\n//> using dep c::d:2") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `multiple commands then directive parses as mixed`: Unit = initially:
+    ParseResult(":type 1\n:type 2\n//> using dep c::d:2\nval x = 1") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `command then directive with interspersed comment parses as mixed`: Unit = initially:
+    ParseResult(":dep a::b:1\n// c\n//> using dep c::d:2") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `directive then command with blank line parses as mixed`: Unit = initially:
+    ParseResult("//> using dep c::d:2\n\n:dep a::b:1") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `mixing commands and directives is rejected without executing`: Unit =
+    initially:
+      run(":dep some.bogus::coords:1\n//> using dep other.bogus::coords:2\nval x = 1")
+      val output = storedOutput()
+      assertTrue(output, output.contains("Cannot mix"))
+      assertFalse(output, output.contains("Resolved"))
+      assertFalse(output, output.contains("val x: Int = 1"))
+
+  @Test def `command with directive-like string is not mixed`: Unit = initially:
+    ParseResult(":type 1\nval s = \"//> using dep x\"") match
+      case CommandThenCode(TypeOf("1"), _: Parsed) => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `block comment between commands parses as nested CommandThenCode`: Unit = initially:
+    ParseResult(":type 1\n/* c */\n:type 2\nval x = 5") match
+      case CommandThenCode(TypeOf("1"), CommandThenCode(TypeOf("2"), _: Parsed)) => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `multiline block comment between commands parses as nested CommandThenCode`: Unit = initially:
+    ParseResult(":type 1\n/* multi\n line\n comment */\n:type 2\nval x = 5") match
+      case CommandThenCode(TypeOf("1"), CommandThenCode(TypeOf("2"), _: Parsed)) => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `block comment between command and directive parses as mixed`: Unit = initially:
+    ParseResult(":dep a::b:1\n/* c */\n//> using dep c::d:2") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `multiline block comment between command and directive parses as mixed`: Unit = initially:
+    ParseResult(":dep a::b:1\n/* multi\n line */\n//> using dep c::d:2") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `mixed input is not incomplete`: Unit = contextually:
+    assertFalse(ParseResult.isIncomplete(":dep a::b:1\n//> using dep c::d:2\nval x = 1"))
+    assertFalse(ParseResult.isIncomplete("//> using dep c::d:2\n:dep a::b:1\nval x = 1"))
+
+  @Test def `mixed input accepts line`: Unit = contextually:
+    assertTrue(ParseResult.shouldAcceptLine(":dep a::b:1\n//> using dep c::d:2\nval x = 1", hasPendingInput = false))
+    assertTrue(ParseResult.shouldAcceptLine("//> using dep c::d:2\n:dep a::b:1\nval x = 1", hasPendingInput = false))
+
+  @Test def `directive first mixing is rejected without executing`: Unit =
+    initially:
+      run("//> using dep other.bogus::coords:2\n:dep some.bogus::coords:1\nval x = 1")
+      val output = storedOutput()
+      assertTrue(output, output.contains("Cannot mix"))
+      assertFalse(output, output.contains("Resolved"))
+      assertFalse(output, output.contains("val x: Int = 1"))
+
+  @Test def `unsupported directive with command parses as mixed`: Unit = initially:
+    ParseResult(":dep a::b:1\n//> using options -Werror") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `unsupported directive then command parses as mixed`: Unit = initially:
+    ParseResult("//> using scala 3.3.1\n:type 1") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `post-code directive warning printed exactly once`: Unit =
+    initially:
+      run("val x = 1\n//> using dep foo::bar:1.0")
+      val output = storedOutput()
+      val count = "Ignoring using directive".r.findAllIn(output).length
+      org.junit.Assert.assertEquals("warning should appear exactly once", 1, count)
+      assertTrue(output, output.contains("val x: Int = 1"))
+
+  @Test def `post-code directive diagnostic is surfaced`: Unit =
+    initially:
+      run("val y = 2\n//> using options -Werror")
+      val output = storedOutput()
+      assertTrue(output, output.contains("Ignoring using directive"))
+      assertTrue(output, output.contains("val y: Int = 2"))
+
+  @Test def `shebang with command then directive parses as mixed`: Unit = initially:
+    ParseResult("#!/usr/bin/env scala\n:dep a::b:1\n//> using dep c::d:2") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `shebang with directive then command parses as mixed`: Unit = initially:
+    ParseResult("#!/usr/bin/env scala\n//> using dep c::d:2\n:dep a::b:1") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `shebang with command only parses as command`: Unit = initially:
+    ParseResult("#!/usr/bin/env scala\n:type 1\nval x = 5") match
+      case CommandThenCode(TypeOf("1"), _: Parsed) => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `shebang with directive only evaluates normally`: Unit = initially:
+    ParseResult("#!/usr/bin/env scala\n//> using dep x::y:1\nval x = 1") match
+      case _: Parsed => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
