@@ -581,6 +581,7 @@ private sealed trait YSettings:
   val Yinstrument: Setting[Boolean] = BooleanSetting(ForkSetting, "Yinstrument", "Add instrumentation code that counts allocations and closure creations.")
   val YinstrumentDefs: Setting[Boolean] = BooleanSetting(ForkSetting, "Yinstrument-defs", "Add instrumentation code that counts method calls; needs -Yinstrument to be set, too.")
   val YimplicitToGiven: Setting[Boolean] = BooleanSetting(ForkSetting, "Yimplicit-to-given", "Allows to rewrite the implicit keywords to their scala-3 given counterparts. Does not adjust imports. Use in conjunction with --rewrite.")
+  val YappToMain: Setting[Boolean] = BooleanSetting(ForkSetting, "Yapp-to-main", "Rewrite `object X extends App { ... }` to an object with an explicit `main` method. Use in conjunction with --rewrite.")
 
   // Should be removed but causes a lot of breakage in practice, e.g., with old versions of the sbt-typelevel plugin
   @deprecated(message = "Lifted to -X, Scheduled for removal.", since = "3.5.0")
