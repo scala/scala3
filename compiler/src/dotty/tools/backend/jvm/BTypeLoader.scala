@@ -135,8 +135,11 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
         previouslyConstructedClassBType(internalName).get.info.nestedClasses
 
       def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
-        val c = previouslyConstructedClassBType(internalName).get
-        Option.when(c.isNestedClass)(c)
+        // A miss must not throw: the exception would be swallowed by the
+        // signature parser's `raiseError` below, dropping this entry and
+        // truncating the scan. Codegen registers a ClassBType for every class
+        // it references, including signature-only ones (see getGenericSignatureHelper).
+        previouslyConstructedClassBType(internalName).filter(_.isNestedClass)
       }
 
       def raiseError(msg: String, sig: String, e: Option[Throwable]): Unit = {

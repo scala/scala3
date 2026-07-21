@@ -29,12 +29,15 @@ object GenericSignatures {
   /** Generate the signature for `sym0`, with type `info`, as defined in
    *  the Java Virtual Machine Specification, §4.3.4
    *
-   *  @param sym0 The symbol for which to define the signature
-   *  @param info The type of the symbol
+   *  @param sym0       The symbol for which to define the signature
+   *  @param info       The type of the symbol
+   *  @param onClassRef Invoked for every class whose name is written into the
+   *                    signature, so that nested ones can be registered in the
+   *                    ClassBType cache for the InnerClasses attribute (#26552).
    *  @return The signature if it could be generated, `null` otherwise.
    */
-  def javaSig(sym0: Symbol, info: Type)(using Context): StringBuilder | Null =
-    if mayNeedSignature(sym0, info) then atPhase(erasurePhase)(javaSig0(sym0, info))
+  def javaSig(sym0: Symbol, info: Type, onClassRef: ClassSymbol => Unit)(using Context): StringBuilder | Null =
+    if mayNeedSignature(sym0, info) then atPhase(erasurePhase)(javaSig0(sym0, info, onClassRef))
     else null
 
   private def mayNeedSignature(sym0: Symbol, info: Type)(using Context) = {
@@ -49,7 +52,7 @@ object GenericSignatures {
     else mayNeedSignature(info)
   }
 
-  private def javaSig0(sym0: Symbol, info: Type)(using Context): StringBuilder | Null = {
+  private def javaSig0(sym0: Symbol, info: Type, onClassRef: ClassSymbol => Unit)(using Context): StringBuilder | Null = {
     // This works as long as mangled names are always valid Java identifiers (see git history of this method).
     def sanitizeName(name: Name): String = name.mangledString
 
@@ -195,6 +198,7 @@ object GenericSignatures {
     }
 
     def classSig(sym: ClassSymbol, pre: Type = NoType, args: List[Type] = Nil): Unit = {
+      onClassRef(sym)
       def argSig(tp: Type): Unit =
         tp.dealias match {
           case bounds: TypeBounds =>
