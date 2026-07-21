@@ -175,9 +175,11 @@ class InlineReducer(inliner: Inliner)(using Context):
 
     val unusable: util.EqHashSet[Symbol] = util.EqHashSet()
 
-    // Check if a symbol is truly erased (not just a macro which happens to have the Erased flag).
-    // Macros like StringContext.s are marked Erased but are not truly erased values.
-    // See issue #24588.
+    /** Check if a symbol is truly erased.
+     *  Scala 2-based macro declarations like StringContext.s are marked Erased & Macro to reuse
+     *  flag bits (isScala2MacroInScala3 in SymDenotations) but are not truly erased values.
+     *  See issue #24588.
+     */
     def isTrulyErased(sym: Symbol): Boolean =
       sym.isErased && !sym.is(Macro)
 
