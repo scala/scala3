@@ -1259,7 +1259,7 @@ object Build {
       libraryDependencies += ("org.scalameta" % "mtags-shared_2.13.16" % mtagsVersion % SourceDeps),
       ivyConfigurations += SourceDeps.hide,
       transitiveClassifiers := Seq("sources"),
-      scalacOptions ++= Seq("-source", "3.3"), // To avoid fatal migration warnings
+      scalacOptions ++= Seq("-source", "3.3", "-Wconf:msg=Type ascriptions after patterns other than:i"), // To avoid fatal migration warnings
       publishLocal := publishLocal.dependsOn( // It is best to publish all together. It is not rare to make changes in both compiler / presentation compiler and it can get misaligned
         `scala3-compiler-bootstrapped` / publishLocal,
         `scala3-library-bootstrapped` / publishLocal,
