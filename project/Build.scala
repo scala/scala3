@@ -110,7 +110,7 @@ object Build {
   val baseVersion = s"$developedVersion-RC1"
 
   /** The version of TASTY that should be emitted, checked in runtime test
-   *  For defails on how TASTY version should be set see related discussions:
+   *  For details on how TASTY version should be set see related discussions:
    *    - https://github.com/scala/scala3/issues/13447#issuecomment-912447107
    *    - https://github.com/scala/scala3/issues/14306#issuecomment-1069333516
    *    - https://github.com/scala/scala3/pull/19321
@@ -125,7 +125,7 @@ object Build {
    *      - in main (NIGHTLY) is always experimental
    *      - in LTS branch (NIGHTLY) is always non-experimental
    *      - in release candidate branch is experimental if {patch == 0}
-   *      - in stable release is always non-experimetnal
+   *      - in stable release is always non-experimental
    */
   val expectedTastyVersion = "28.3"
   checkReleasedTastyVersion()
@@ -139,7 +139,7 @@ object Build {
   def isRelease = sys.env.get("RELEASEBUILD").contains("yes")
   def isNightly = sys.env.get("NIGHTLYBUILD").contains("yes")
 
-  /** Version calculate for `nonbootstrapped` projects */
+  /** Version calculated for `nonbootstrapped` projects */
   val dottyNonBootstrappedVersion = {
     // Make sure sbt always computes the scalaBinaryVersion correctly
     val bin = if (!dottyVersion.contains("-bin")) "-bin" else ""
@@ -300,7 +300,7 @@ object Build {
   )
 
   lazy val disableDocSetting =
-      // This is a legacy settings, we should reevalute generating javadocs
+      // This is a legacy settings, we should reevaluate generating javadocs
       Compile / doc / sources := Seq()
 
   lazy val commonSettings = publishSettings ++ Seq(
@@ -1205,7 +1205,7 @@ object Build {
       Compile / sources := Seq(),
       Test / scalaSource := baseDirectory.value,
       Test / javaSource := baseDirectory.value,
-      libraryDependencies += ("org.scala-sbt" %% "zinc-apiinfo" % "1.8.0" % Test).cross(CrossVersion.for3Use2_13)
+      libraryDependencies += ("org.scala-sbt" %% "zinc-apiinfo" % "1.12.0" % Test).cross(CrossVersion.for3Use2_13)
     )
 
   lazy val `scala3-presentation-compiler` = project.in(file("presentation-compiler"))
