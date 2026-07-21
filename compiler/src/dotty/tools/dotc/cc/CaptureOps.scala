@@ -661,6 +661,11 @@ extension (cls: ClassSymbol) {
 
   def refiningGetterNamed(name: Name)(using Context): Symbol =
     cls.info.decls.lookup(name).suchThat(_.isRefiningParamAccessor).symbol
+
+  def consumeGetterNamed(name: Name)(using Context): Symbol =
+    cls.info.decls.lookup(name).suchThat: sym =>
+        sym.is(ParamAccessor) && sym.isConsume
+      .symbol
 }
 
 extension (sym: Symbol) {
@@ -842,12 +847,14 @@ extension (sym: Symbol) {
 
   /** Do terminal capabilities in the type of this symbol contribute to the capture set
    *  of the enclosing class? This is the case for concrete, non-parameter fields
-   *  that are not marked with @uncheckedCapturs.
+   *  that are not marked with @uncheckedCapturs. Also included are consume parameter
+   *  fields.
    */
   def contributesLocalCapsToClass(using Context): Boolean =
-    sym.isField
-    && !sym.isOneOf(DeferredOrTermParamOrAccessor)
-    && !sym.hasAnnotation(defn.UntrackedCapturesAnnot)
+    def isExempt =
+      if sym.is(ParamAccessor) then !sym.isConsume
+      else sym.isOneOf(DeferredOrTermParamOrAccessor)
+    sym.isField && !isExempt && !sym.hasAnnotation(defn.UntrackedCapturesAnnot)
 
   /** The terminal capabilities that this symbol contributes to the capture set of the
    *  enclosing class.
