@@ -58,24 +58,23 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
-  /** Tracks the (tycon, other, fromBelow) tuples currently being compared by
-   *  `compareAppliedTypeParamRef` to guard against infinite recursion where
-   *  `canInstantiate` in `compareAppliedType1`/`compareAppliedType2` calls back
-   *  into `compareAppliedTypeParamRef` with the same parameters.
+  /** Tracks the `(tycon, args, other, fromBelow, constraint)` tuples currently
+   *  being compared by [[compareAppliedTypeParamRef]] to guard against infinite recursion.
+   *  See https://github.com/scala/scala3/issues/24537.
    */
-  private val pendingAppliedTypeParamRefs =
-    mutable.Set.empty[(TypeParamRef, AppliedType, Boolean)]
+  private var pendingAppliedTypeParamRefs:
+    util.MutableSet[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)] | Null = null
 
-  /** Run `op` unless a `compareAppliedTypeParamRef` call with the same key is
-   *  already in progress, in which case return false to break the cycle.
-   */
   private inline def guardAppliedTypeParamRef(
-      tycon: TypeParamRef, other: AppliedType, fromBelow: Boolean)(inline op: Boolean): Boolean =
-    val key = (tycon, other, fromBelow)
-    !pendingAppliedTypeParamRefs.contains(key) && {
-      pendingAppliedTypeParamRefs += key
-      try op finally pendingAppliedTypeParamRefs -= key
+      tycon: TypeParamRef, args: List[Type], other: AppliedType, fromBelow: Boolean)(inline op: Boolean): Boolean =
+    if pendingAppliedTypeParamRefs == null then
+      pendingAppliedTypeParamRefs = util.HashSet[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)]()
+    val key = (tycon, args, other, fromBelow, constraint)
+    !pendingAppliedTypeParamRefs.nn.contains(key) && {
+      pendingAppliedTypeParamRefs.nn += key
+      try op finally pendingAppliedTypeParamRefs.nn -= key
     }
+
   private var recCount = 0
   private var monitored = false
 
@@ -129,7 +128,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     pendingSubTypes match
       case null => ()
       case ps => assert(ps.isEmpty)
-    assert(pendingAppliedTypeParamRefs.isEmpty)
+    pendingAppliedTypeParamRefs match
+      case null => ()
+      case ps => assert(ps.isEmpty)
     assert(canCompareAtoms == true)
     assert(successCount == 0)
     assert(totalCount == 0)
@@ -1292,12 +1293,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 tl => otherTycon.appliedTo(bodyArgs(tl)))
             else
               otherTycon
-          // Guard against infinite recursion through `canInstantiate` in
-          // `compareAppliedType1`/`compareAppliedType2`, which calls back into
-          // `compareAppliedTypeParamRef` with the same (tycon, other, fromBelow),
-          // looping indefinitely when the constraint solver can't converge on a
-          // valid instantiation. See i24537.
-          guardAppliedTypeParamRef(tycon, other, fromBelow):
+          /** Break the i24537 cycle when neither the comparison nor its constraint changes. */
+          guardAppliedTypeParamRef(tycon, args, other, fromBelow):
             rollbackConstraintsUnless:
               (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon))
                 && directionalRecur(adaptedTycon.appliedTo(args), other)
