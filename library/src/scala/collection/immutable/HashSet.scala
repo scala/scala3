@@ -1438,7 +1438,8 @@ private final class BitmapIndexedSetNode[A](
   override def hashCode(): Int =
     throw new UnsupportedOperationException("Trie nodes do not support hashing.")
 
-  override def toString(): String = f"BitmapIndexedSetNode(size=$size, dataMap=$dataMap%x, nodeMap=$nodeMap%x)" // content=${scala.runtime.ScalaRunTime.stringOf(content)}
+  override def toString(): String =
+    s"BitmapIndexedSetNode(size=$size, dataMap=${dataMap.toHexString}, nodeMap=${nodeMap.toHexString})" // content=${scala.runtime.ScalaRunTime.stringOf(content)}
 
   override def copy(): BitmapIndexedSetNode[A] = {
     val contentClone = content.clone()
@@ -1986,7 +1987,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
 
   /** The last given out HashSet as a return value of `result()`, if any, otherwise null.
    *  Indicates that on next add, the elements should be copied to an identical structure, before continuing
-   *  mutations. 
+   *  mutations.
    */
   @annotation.stableNull
   private var aliased: HashSet[A] | Null = null
