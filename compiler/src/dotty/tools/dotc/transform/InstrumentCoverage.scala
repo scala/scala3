@@ -851,6 +851,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       val sym = tree.symbol
       !sym.isOneOf(ExcludeMethodFlags)
       && !isCompilerIntrinsicMethod(sym)
+      && sym != defn.Caps_unsafeDiscardUses
       && !(sym.isClassConstructor && isSecondaryCtorDelegateCall(tree.fun))
       && !sym.name.is(DefaultGetterName) // https://github.com/scala/scala3/issues/20255
       && (tree.typeOpt match
