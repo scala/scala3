@@ -328,7 +328,7 @@ This code is equivalent to functional append with `+`, and is at the same time m
 
 Case classes with consume parameters in their first parameter section are called _linear case classes_. They differ in some aspects from other case classes. Here is an example:
 
-```scala
+```scala sc:nocompile
 trait FreshList[+A]
 
 case class FreshCons[+A](consume head: A^, consume tail: FreshList[A]^) extends FreshList[A]
@@ -336,7 +336,7 @@ case class FreshCons[+A](consume head: A^, consume tail: FreshList[A]^) extends 
 object FreshNil extends FreshList[Nothing]
 ```
 As implied by `consume`, arguments to linear case class constructors are consumed in the constrictor call. Furthermore, extracting arguments with an `unapply` is also linear. So one can do the following
-```scala
+```scala sc:nocompile
 class Ref extends Mutable
 
 val xs: FreshList[Ref^{}]^ = FreshCons(Ref(), FreshCons(Ref(), FreshNil))

@@ -20,6 +20,8 @@ object FreshNil extends FreshList[Nothing] {
   consume def decons = ???
 }
 
+def par[A, B](x: A^, y: B^): Unit = ()
+
 def Test =
     val r1 = Ref()
     val r2 = Ref()
@@ -52,4 +54,18 @@ def Test4 =
         val xs2 = FreshCons(h, t)
         val xs3: FreshList[Ref^{}]^ = xs2
       case _ =>
+
+def Test5 =
+    val xs: FreshList[Ref^{}]^ = FreshCons(Ref(), FreshCons(Ref(), FreshNil))
+    xs match
+      case FreshCons(h, FreshCons(h2, t)) =>
+        par(h, h2)
+      case _ =>
+
+def Test6 =
+  val xs: FreshList[Ref^{}]^ = FreshCons(Ref(), FreshCons(Ref(), FreshNil))
+  val c = xs.decons
+  val h1 = c.head
+  val h2 = c.tail.decons.head
+  par(h1, h2)
 
