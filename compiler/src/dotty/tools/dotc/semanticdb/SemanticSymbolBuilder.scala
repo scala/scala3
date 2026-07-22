@@ -55,13 +55,18 @@ private[semanticdb] class SemanticSymbolBuilder:
         addLocalSymName(b)
     b.toString
 
-  def funParamSymbol(sym: Symbol)(using Context): Name => String =
+  def funParamSymbol(sym: Symbol)(using Context): Name => Option[String] =
     if sym.isGlobal then
       val funSymbol = symbolName(sym)
-      name => s"$funSymbol($name)"
+      name => Some(s"$funSymbol($name)")
     else
-      name => locals.keys.find(local => local.isTerm && local.owner == sym && local.name == name)
-                    .fold("<?>")(Symbols.LocalPrefix + locals(_))
+      // Fall back to paramSymss: synthetic apply params of local case classes may not be in
+      // `locals` yet (https://github.com/scala/scala3/issues/26521).
+      name =>
+        locals.keys.find(local => local.isTerm && local.owner == sym && local.name == name)
+          .map(local => Symbols.LocalPrefix + locals(local))
+          .orElse(sym.paramSymss.flatten.find(p => p.isTerm && p.name == name).map(symbolName))
+
 
   private def addLocalSymName(b: StringBuilder): Unit =
     val idx = nextLocalIdx

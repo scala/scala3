@@ -383,14 +383,16 @@ private[semanticdb] object ExtractSemanticDB:
           val member = extractRefinement(qualTpe, memberName)
           member.foreach(sym => registerUse(sym.symbolName, sel.nameSpan, tree.source))
         case tree: Apply if tree.fun.symbol.exists =>
-          @tu lazy val genParamSymbol: Name => String = tree.fun.symbol.funParamSymbol
+          @tu lazy val genParamSymbol: Name => Option[String] = tree.fun.symbol.funParamSymbol
           traverse(tree.fun)
           synth.tryFindSynthetic(tree).foreach(synthetics.addOne)
           for arg <- tree.args do
             arg match
               case tree @ NamedArg(name, arg) =>
                 traverse(localBodies.get(arg.symbol).getOrElse(arg))
-                registerUse(genParamSymbol(name), tree.span.startPos.withEnd(tree.span.start + name.toString.length), tree.source)
+                genParamSymbol(name).foreach(
+                  registerUse(_, tree.span.startPos.withEnd(tree.span.start + name.toString.length), tree.source)
+                )
               case _ => traverse(arg)
         case tree: Assign =>
           val qualSym = condOpt(tree.lhs) { case Select(qual, _) if qual.symbol.exists => qual.symbol }
