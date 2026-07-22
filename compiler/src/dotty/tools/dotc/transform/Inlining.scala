@@ -112,12 +112,21 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
      */
     private val newTopClasses = MutableSymbolMap[mutable.ListBuffer[Tree]]()
 
+    /** `Inlined` nodes already handed to `collector`, deduplicated by identity.
+     *  `transform` runs `inlineFinder` on every node's result, so an `Inlined`
+     *  subtree is otherwise re-collected once per non-`Inlined` ancestor on the
+     *  path up to it - O(depth) redundant traversals of the (often very large)
+     *  inlined types. Dependency recording is idempotent (it feeds sets), so
+     *  collecting each `Inlined` exactly once is equivalent and far cheaper.
+     */
+    private val collectedInlined = util.EqHashSet[Tree]()
+
     val inlineFinder = new tpd.TreeTraverser:
       override def traverse(tree: Tree)(using Context): Unit =
         try
           tree match
             case tree: Inlined =>
-              collector.traverse(tree)
+              if collectedInlined.add(tree) then collector.traverse(tree)
             case vd: ValDef if vd.symbol.is(ModuleVal) =>
               // Don't visit module val
             case t: Template if t.symbol.owner.is(ModuleClass) =>
