@@ -8,6 +8,14 @@ on:
   pull_request:
     branches-ignore:
       - 'language-reference-stable'
+    paths:
+      - 'docs/**'
+      - 'scaladoc*/**'
+      - 'compiler/src/dotty/tools/dotc/reporting/**' # When error codes or messages are updated, we need to update the documentation
+      - 'project/scripts/checkSidebarDocs.scala'
+      - 'project/scripts/validateScaladocLinks.sh'
+      - 'project/scripts/checkErrorCodeSnippets*.scala'
+      - '.github/workflows/scaladoc.yaml'
   merge_group:
 permissions:
   contents: read
