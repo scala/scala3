@@ -27,6 +27,7 @@ import NameKinds.WildcardParamName
 import MatchTypes.isConcrete
 import reporting.Message.Note
 import scala.util.boundary, boundary.break
+import qualified_types.{QualifiedType, QualifiedTypes}
 
 /** Provides methods to compare types.
  */
@@ -45,6 +46,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   def init(c: Context): Unit =
     myContext = c
+    myQualifierSolver = qualified_types.QualifierSolver.reuse(myQualifierSolver, c)
     state = c.typerState
     monitored = false
     GADTused = false
@@ -906,6 +908,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             println(i"assertion failed while compare captured $tp1 <:< $tp2")
             throw ex
         compareCapturing || fourthTry
+      case QualifiedType(parent2, qualifier2) =>
+        recur(tp1, parent2) && QualifiedTypes.typeImplies(tp1, qualifier2, qualifierSolver())
       case tp2: AnnotatedType if tp2.isRefining =>
         (tp1.derivesAnnotWith(tp2.annot.sameAnnotation) || tp1.isBottomType) &&
         recur(tp1, tp2.parent)
@@ -3376,6 +3380,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
   protected def explainingTypeComparer(short: Boolean) = ExplainingTypeComparer(comparerContext, short)
   protected def matchReducer = MatchReducer(comparerContext)
+  private var myQualifierSolver: qualified_types.QualifierSolver | Null = null
+  protected def qualifierSolver(): qualified_types.QualifierSolver =
+    val s = myQualifierSolver
+    if s != null then s
+    else
+      val s1 = qualified_types.QualifierSolver(using comparerContext)
+      myQualifierSolver = s1
+      s1
 
   private def inSubComparer[T, Cmp <: TypeComparer](comparer: Cmp)(op: Cmp => T): T =
     val saved = myInstance
@@ -4051,7 +4063,7 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
       lastForwardGoal = null
 
   override def traceIndented[T](str: String)(op: => T): T =
-    val str1 = str.replace('\n', ' ')
+    val str1 = str
     if short && str1 == lastForwardGoal then
       op // repeated goal, skip for clarity
     else
@@ -4119,6 +4131,11 @@ class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeCompa
     traceIndented(i"subcaptures $refs1 <:< $refs2 in ${vs.toString}") {
       super.subCaptures(refs1, refs2, vs)
     }
+
+  override def qualifierSolver() =
+    new qualified_types.ExplainingQualifierSolver(using comparerContext):
+      override def traceIndented[T](str: => String)(op: => T): T =
+        ExplainingTypeComparer.this.traceIndented(str)(op)
 
   def lastTrace(header: String): String = header + { try b.toString finally b.clear() }
 }

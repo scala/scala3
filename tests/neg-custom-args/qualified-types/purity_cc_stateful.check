@@ -1,0 +1,8 @@
+-- Error: tests/neg-custom-args/qualified-types/purity_cc_stateful.scala:9:10 ------------------------------------------
+9 |  val v1: Int with v1 == getAndBump() = getAndBump() // error
+  |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |          Qualified type predicate is not pure: call to method getAndBump, which uses capabilities {c}
+-- Error: tests/neg-custom-args/qualified-types/purity_cc_stateful.scala:15:10 -----------------------------------------
+15 |  val v2: Int with v2 == get() = get() // error
+   |          ^^^^^^^^^^^^^^^^^^^^
+   |          Qualified type predicate is not pure: call to method get, which uses capabilities {c.rd}

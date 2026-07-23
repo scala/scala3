@@ -2436,6 +2436,9 @@ class CheckCaptures extends Recheck, SymTransformer:
           ccState.inSepCheck:
             SepCheck(this).traverse(unit)
 
+        if Feature.qualifiedTypesEnabled then
+          qualified_types.PurityCheck.check(unit)
+
       if !ctx.reporter.errorsReported then
         // We dont report errors here if previous errors were reported, because other
         // errors often result in bad applied types, but flagging these bad types gives

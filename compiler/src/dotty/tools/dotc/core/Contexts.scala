@@ -922,6 +922,49 @@ object Contexts {
     /** The loader that loads the members of _root_ */
     def rootLoader(root: TermSymbol)(using Context): SymbolLoader = platform.rootLoader(root)
 
+    /** Qualified types stats, initialized in `initialize()`. */
+    var qualifiedTypesStats: qualified_types.QualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = false)
+
+    /** Per-owner counters for allocating skolem indices used inside
+     *  qualifiers. Each owner symbol has its own counter, so indices are
+     *  local to the owner (a function symbol or class symbol). The
+     *  allocated index is stamped onto the bearer (the argument tree's
+     *  type via `@QualifierSkolemIndex(n)`, or the symbol's annotations
+     *  for EtaExpansion-lifted vals) so it stays stable across
+     *  re-type-checks and TASTy round-trips. Cleared per run in `initialize()`.
+     */
+    val qualifierSkolemIndexCounterByOwner: collection.mutable.HashMap[Symbols.Symbol, qualified_types.QualifierSkolemIndexCounter] =
+      collection.mutable.HashMap()
+
+    /** Allocate a fresh skolem index local to the given owner. */
+    def freshSkolemIndex(owner: Symbols.Symbol): Int =
+      qualifierSkolemIndexCounterByOwner
+        .getOrElseUpdate(owner, qualified_types.QualifierSkolemIndexCounter())
+        .fresh()
+
+    /** The `(owner, idx)` assigned to a `SkolemType` the first time it
+     *  is demoted to an `ENodeVar.Skolem` in an ENode atom. Keyed by
+     *  `SkolemType` reference identity, so every encounter of the same
+     *  skolem instance during this run resolves to the same
+     *  `ENodeVar.Skolem` — important when one `asSeenFrom` call places
+     *  the same `QualSkolemType` in multiple positions of a qualifier
+     *  body (e.g., `sk.from` and `sk.until` must unify in the EGraph
+     *  as the same receiver).
+     *
+     *  Identity is not preserved across pickle/unpickle (`SkolemType`s
+     *  are themselves freshly created per `asSeenFrom` call), so the
+     *  cache only matters within a single compilation run. Cleared per
+     *  run in `initialize()`.
+     */
+    val qualifierSkolemForSkolemType: collection.mutable.HashMap[Types.SkolemType, (Symbols.Symbol, Int)] =
+      collection.mutable.HashMap()
+
+    /** Memoizes `QualifiedTypes.containsQualifier` per type instance (skipping
+     *  provisional types). Cleared per run in `initialize()`.
+     */
+    val containsQualifierCache: util.EqHashMap[Types.Type, java.lang.Boolean] =
+      util.EqHashMap()
+
     /** The standard definitions */
     val definitions: Definitions = new Definitions
 
@@ -939,6 +982,10 @@ object Contexts {
       if _platform == null || !ctx.mode.is(Mode.Interactive) then
         _platform = newPlatform
       platform.init()
+      qualifiedTypesStats = qualified_types.QualifiedTypesStats(enabled = ctx.settings.YqualifiedTypesStats.value)
+      qualifierSkolemIndexCounterByOwner.clear()
+      qualifierSkolemForSkolemType.clear()
+      containsQualifierCache.clear()
       definitions.init()
     }
 

@@ -1925,7 +1925,11 @@ class Namer { typer: Typer =>
    */
   def valOrDefDefSig(mdef: ValOrDefDef, sym: Symbol, paramss: List[List[Symbol]], paramFn: Type => Type)(using Context): Type = {
 
-    def inferredType = inferredResultType(mdef, sym, paramss, paramFn, WildcardType)
+    def inferredType =
+      val raw = inferredResultType(mdef, sym, paramss, paramFn, WildcardType)
+      if sym.is(Method) || sym.owner.isClass then
+        qualified_types.QualifiedTypes.avoidQualifierVars(raw)
+      else raw
 
     val tptProto = mdef.tpt match {
       case _: untpd.DerivedTypeTree =>
@@ -1989,6 +1993,18 @@ class Namer { typer: Typer =>
             && sym.maybeOwner.is(Trait) =>
           sym.resetFlag(Final)
           sym.setFlag(Deferred | HasDefault)
+        case _ =>
+
+    // If the return type is a qualified type, pre-install a provisional method type
+    // with just the parent type (without the qualifier) to break cyclic references.
+    // This is analogous to how TypeDefCompleter pre-installs dummy info for F-bounds.
+    // E.g., for `def fib(n: Int): {res: Int with res == fib(n - 1) + fib(n - 2)} = ...`
+    // the provisional type is `(Int) => Int`, allowing the qualifier to resolve `fib`.
+    if Feature.qualifiedTypesEnabled then
+      mdef.tpt match
+        case QualifiedTypeTree(parent, _, _) =>
+          val parentTpe = typedAheadType(parent, tptProto).tpe
+          sym.info = methodType(paramss, parentTpe)
         case _ =>
 
     val mbrTpe = paramFn(checkSimpleKinded(typedAheadType(mdef.tpt, tptProto)).tpe)

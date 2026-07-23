@@ -638,11 +638,14 @@ class Definitions {
     @tu lazy val Int_-  : Symbol = IntClass.requiredMethod(nme.MINUS, List(IntType))
     @tu lazy val Int_+  : Symbol = IntClass.requiredMethod(nme.PLUS, List(IntType))
     @tu lazy val Int_/  : Symbol = IntClass.requiredMethod(nme.DIV, List(IntType))
+    @tu lazy val Int_%  : Symbol = IntClass.requiredMethod(nme.MOD, List(IntType))
     @tu lazy val Int_*  : Symbol = IntClass.requiredMethod(nme.MUL, List(IntType))
     @tu lazy val Int_== : Symbol = IntClass.requiredMethod(nme.EQ, List(IntType))
+    @tu lazy val Int_!= : Symbol = IntClass.requiredMethod(nme.NE, List(IntType))
     @tu lazy val Int_>= : Symbol = IntClass.requiredMethod(nme.GE, List(IntType))
     @tu lazy val Int_<= : Symbol = IntClass.requiredMethod(nme.LE, List(IntType))
     @tu lazy val Int_>  : Symbol = IntClass.requiredMethod(nme.GT, List(IntType))
+    @tu lazy val Int_<  : Symbol = IntClass.requiredMethod(nme.LT, List(IntType))
   @tu lazy val LongType: TypeRef = valueTypeRef("scala.Long", java.lang.Long.TYPE, LongEnc, nme.specializedTypeNames.Long)
   def LongClass(using Context): ClassSymbol = LongType.symbol.asClass
     @tu lazy val Long_+ : Symbol = LongClass.requiredMethod(nme.PLUS, List(LongType))
@@ -685,6 +688,7 @@ class Definitions {
   @tu lazy val StringClass: ClassSymbol = requiredClass("java.lang.String")
   def StringType: Type = StringClass.typeRef
   @tu lazy val StringModule: Symbol = StringClass.linkedClass
+    @tu lazy val String_== : TermSymbol = enterMethod(StringClass, nme.EQ, methOfAnyRef(BooleanType), Final)
     @tu lazy val String_+ : TermSymbol = enterMethod(StringClass, nme.raw.PLUS, methOfAny(StringType), Final)
     @tu lazy val String_valueOf_Object: Symbol = StringModule.info.member(nme.valueOf).suchThat(_.info.firstParamTypes match {
       case List(pt) => pt.isAny || pt.stripNull().isAnyRef
@@ -853,6 +857,7 @@ class Definitions {
   @tu lazy val LanguageModuleClass: Symbol = LanguageModule.moduleClass.asClass
   @tu lazy val LanguageExperimentalModule: Symbol = requiredModule("scala.language.experimental")
   @tu lazy val LanguageDeprecatedModule: Symbol = requiredModule("scala.language.deprecated")
+  @tu lazy val LanguageExperimentalQualifiedTypesModule: Symbol = requiredModule("scala.language.experimental.qualifiedTypes")
   @tu lazy val NonLocalReturnControlClass: ClassSymbol = requiredClass("scala.runtime.NonLocalReturnControl")
   @tu lazy val SelectableClass: ClassSymbol = requiredClass("scala.Selectable")
   @tu lazy val WithoutPreciseParameterTypesClass: Symbol = requiredClass("scala.Selectable.WithoutPreciseParameterTypes")
@@ -1079,6 +1084,7 @@ class Definitions {
   @tu lazy val BodyAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Body")
   @tu lazy val ChildAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Child")
   @tu lazy val ContextResultCountAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ContextResultCount")
+  @tu lazy val QualifierSkolemIndexAnnot: ClassSymbol = requiredClass("scala.annotation.internal.QualifierSkolemIndex")
   @tu lazy val ProvisionalSuperClassAnnot: ClassSymbol = requiredClass("scala.annotation.internal.ProvisionalSuperClass")
   @tu lazy val DeprecatedAnnot: ClassSymbol = requiredClass("scala.deprecated")
   @tu lazy val DeprecatedOverridingAnnot: ClassSymbol = requiredClass("scala.deprecatedOverriding")
@@ -1095,6 +1101,9 @@ class Definitions {
   @tu lazy val UnusedAnnot: ClassSymbol = requiredClass("scala.annotation.unused")
   @tu lazy val UnrollAnnot: ClassSymbol = requiredClass("scala.annotation.unroll")
   @tu lazy val NativeAnnot: ClassSymbol = requiredClass("scala.native")
+  @tu lazy val QualifiedAnnot: ClassSymbol = requiredClass("scala.annotation.qualified")
+  @tu lazy val QualifiedTypesInternalModule: Symbol = requiredModule("scala.qualifiedTypes.internal")
+  @tu lazy val QualifiedTypesInternal_skolem: Symbol = QualifiedTypesInternalModule.requiredMethod("skolem")
   @tu lazy val RepeatedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.Repeated")
   @tu lazy val RuntimeCheckedAnnot: ClassSymbol = requiredClass("scala.annotation.internal.RuntimeChecked")
   @tu lazy val SourceFileAnnot: ClassSymbol = requiredClass("scala.annotation.internal.SourceFile")

@@ -427,7 +427,7 @@ class TreeUnpickler(reader: TastyReader,
               val ann =
                 if isCompactAnnotTypeTag(nextByte)
                 then CompactAnnotation(readType())
-                else Annotation(readTree())
+                else Annotation(readTree()(using ctx.withOwner(ctx.owner.topLevelClass)))
               AnnotatedType(parent, ann)
             case ANDtype =>
               AndType(readType(), readType())

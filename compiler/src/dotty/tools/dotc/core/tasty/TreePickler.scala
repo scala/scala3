@@ -932,6 +932,8 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       val annotTree = ann match
         case ann: CompactAnnotation =>
           if sourceVersion.enablesCompactAnnotation then ann.tree else ann.oldTree
+        case ann if ann.symbol == defn.QualifiedAnnot =>
+          ann.tree(using ctx.withOwner(ctx.owner.topLevelClass))
         case _ =>
           ann.tree
       withLength { pickleType(ann.symbol.typeRef); pickleTree(annotTree) }
