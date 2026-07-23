@@ -393,6 +393,11 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
 
   val RetainsAnnot: Property.StickyKey[Unit] = Property.StickyKey()
 
+  /** Store fields for Java records from JavaParsers until
+   *  they can be moved into ctx.base.javaRecordsFields 
+   */
+  val JavaRecordFields: Property.StickyKey[List[String]] = Property.StickyKey()
+
   // ------ Creation methods for untyped only -----------------
 
   def Ident(name: Name)(implicit src: SourceFile): Ident = new Ident(name)
