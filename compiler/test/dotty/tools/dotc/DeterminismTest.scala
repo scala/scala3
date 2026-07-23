@@ -292,8 +292,6 @@ class DeterminismTest {
     test(code :: Nil)
   }
 
-  // TODO: fix compiler determinism for this to pass
-  @Ignore("TASTy differs under separate compilation (TreePickler SHAREDtype addresses), see scala/scala3#26551")
   @Test def testAnonymousGivens(): Unit = {
     def code = List(
       source("a.scala",
@@ -316,8 +314,6 @@ class DeterminismTest {
     test(List(code))
   }
 
-  // TODO: fix compiler determinism for this to pass
-  @Ignore("TASTy of synthesized Mirror differs under separate compilation, see scala/scala3#26551")
   @Test def testMirrorSynthesis(): Unit = {
     def code = List(
       source("a.scala",

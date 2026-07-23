@@ -169,7 +169,16 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     case _ =>
 
   def pickleType(tpe0: Type, richTypes: Boolean = false)(using Context): Unit = {
-    val tpe = tpe0.stripTypeVar
+    val tpe = tpe0.stripTypeVar match
+      // ThisType(pkg) and TermRef(pkg) pickle to the same TERMREFpkg bytes but
+      // are distinct instances for the identity-based `pickledTypes` map, and
+      // unpickling always recreates the TermRef form. Canonicalize to the
+      // hash-consed TermRef so that the SHAREDtype topology (and with it the
+      // pickled bytes and the TASTy UUID) does not depend on whether the
+      // types were created by the typer or the unpickler (see issue #26551).
+      case t: ThisType if t.cls.is(Flags.Package) && !t.cls.isEffectiveRoot && t.cls.sourceModule.exists =>
+        t.cls.sourceModule.termRef
+      case t => t
     try {
       val prev: Addr | Null = pickledTypes.lookup(tpe)
       if (prev == null) {
