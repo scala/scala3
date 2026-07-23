@@ -228,6 +228,7 @@ class Definitions {
     cls.info.decls.openForMutations.useSynthesizer(
       name =>
         if (name.isTypeName && name.isSyntheticFunction) newFunctionNType(name.asTypeName)
+        else if (name == tpnme.Null) synthesizeNullClass()
         else NoSymbol)
     cls
   }
@@ -488,12 +489,21 @@ class Definitions {
   @tu lazy val NothingClass: ClassSymbol = enterCompleteClassSymbol(
     ScalaPackageClass, tpnme.Nothing, AbstractFinal, List(AnyType))
   def NothingType: TypeRef = NothingClass.typeRef
-  @tu lazy val NullClass: ClassSymbol = {
-    // When explicit-nulls is enabled, Null becomes a direct subtype of Any and Matchable
-    val parents = if ctx.explicitNulls then AnyType :: MatchableType :: Nil else ObjectType :: Nil
-    enterCompleteClassSymbol(ScalaPackageClass, tpnme.Null, AbstractFinal, parents)
-  }
+  @tu lazy val NullClass: ClassSymbol = requiredClass("scala.Null")
   def NullType: TypeRef = NullClass.typeRef
+
+  private def synthesizeNullClass(): ClassSymbol = {
+    // When explicit-nulls is enabled, Null becomes a direct subtype of AnyVal
+    val completer = new LazyType {
+      def complete(denot: SymDenotation)(using Context): Unit = {
+        val cls = denot.asClass.classSymbol
+        val parents = if ctx.explicitNulls then AnyValType :: Nil else ObjectType :: Nil
+        val decls = newScope
+        denot.info = ClassInfo(ScalaPackageClass.thisType, cls, parents, decls)
+      }
+    }
+    newPermanentClassSymbol(ScalaPackageClass, tpnme.Null, AbstractFinal, completer)
+  }
 
   @tu lazy val RuntimeNothingClass: Symbol = requiredClass(RuntimeNothingName)
   @tu lazy val RuntimeNullClass: Symbol = requiredClass(RuntimeNullName)
@@ -2192,7 +2202,6 @@ class Definitions {
       orType,
       RepeatedParamClass,
       ByNameParamClass2x,
-      NullClass,
       NothingClass,
       SingletonClass,
       CBCompanion,
@@ -2206,7 +2215,7 @@ class Definitions {
   @tu lazy val syntheticCoreMethods: List[TermSymbol] =
     AnyMethods ++ ObjectMethods ++ List(String_+, throwMethod, spreadMethod)
 
-  @tu lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet
+  @tu lazy val reservedScalaClassNames: Set[Name] = syntheticScalaClasses.map(_.name).toSet + tpnme.Null
 
   private var isInitialized = false
 
