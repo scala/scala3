@@ -66,6 +66,10 @@ object Inlines:
   def inInlineMethod(using Context): Boolean =
     ctx.owner.ownersIterator.exists(_.isInlineMethod)
 
+  /** Are we in an inline val body? */
+  def inInlineVal(using Context): Boolean =
+    ctx.owner.ownersIterator.exists(_.isInlineVal)
+
   /** Can a call to method `meth` be inlined? */
   def isInlineable(meth: Symbol)(using Context): Boolean =
     meth.is(Inline) && meth.hasAnnotation(defn.BodyAnnot) && !inInlineMethod
