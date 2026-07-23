@@ -7,48 +7,56 @@ import org.junit.Test
 class ReplDirectiveTests extends ReplTest:
 
   @Test def `lone dep directive is incomplete until code follows`: Unit = contextually:
-    assertTrue(ParseResult.awaitsTrailingCode("//> using dep com.lihaoyi::os-lib:0.11.3"))
+    assertTrue(ParseResult.onlyPreambleSoFar("//> using dep com.lihaoyi::os-lib:0.11.3"))
     assertFalse(ParseResult.isIncomplete("//> using dep com.lihaoyi::os-lib:0.11.3"))
 
   @Test def `dep directive with code is complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode("//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
+    assertFalse(ParseResult.onlyPreambleSoFar("//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
     assertFalse(ParseResult.isIncomplete("//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
 
   @Test def `lone dep directive with trailing newline is complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode("//> using dep com.lihaoyi::os-lib:0.11.3\n"))
+    assertTrue(ParseResult.shouldAcceptLine("//> using dep com.lihaoyi::os-lib:0.11.3\n", hasPendingInput = false))
     assertFalse(ParseResult.isIncomplete("//> using dep com.lihaoyi::os-lib:0.11.3\n"))
 
   @Test def `multiple dep directives without code are incomplete`: Unit = contextually:
-    assertTrue(ParseResult.awaitsTrailingCode(
+    assertTrue(ParseResult.onlyPreambleSoFar(
       "//> using dep com.lihaoyi::upickle:4.4.3\n//> using dep com.lihaoyi::os-lib:0.11.3"))
     assertFalse(ParseResult.isIncomplete(
       "//> using dep com.lihaoyi::upickle:4.4.3\n//> using dep com.lihaoyi::os-lib:0.11.3"))
 
   @Test def `multiple dep directives with code are complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode(
+    assertFalse(ParseResult.onlyPreambleSoFar(
       "//> using dep com.lihaoyi::upickle:4.4.3\n//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
     assertFalse(ParseResult.isIncomplete(
       "//> using dep com.lihaoyi::upickle:4.4.3\n//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
 
   @Test def `unsupported directive with code is complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode("//> using options -Werror\nval x = 1"))
+    assertFalse(ParseResult.onlyPreambleSoFar("//> using options -Werror\nval x = 1"))
     assertFalse(ParseResult.isIncomplete("//> using options -Werror\nval x = 1"))
 
   @Test def `plain comment is complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode("// just a comment"))
+    assertFalse(ParseResult.onlyPreambleSoFar("// just a comment"))
     assertFalse(ParseResult.isIncomplete("// just a comment"))
 
   @Test def `lone command is incomplete until code follows`: Unit = contextually:
-    assertTrue(ParseResult.awaitsTrailingCode(":dep com.lihaoyi::os-lib:0.11.3"))
+    assertTrue(ParseResult.onlyPreambleSoFar(":dep com.lihaoyi::os-lib:0.11.3"))
     assertFalse(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3"))
 
   @Test def `command with code is complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode(":dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
+    assertFalse(ParseResult.onlyPreambleSoFar(":dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
     assertFalse(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
 
   @Test def `lone command with trailing newline is complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode(":dep com.lihaoyi::os-lib:0.11.3\n"))
+    assertTrue(ParseResult.shouldAcceptLine(":dep com.lihaoyi::os-lib:0.11.3\n", hasPendingInput = false))
     assertFalse(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3\n"))
+
+  @Test def `command lines with newline still defer when paste is pending`: Unit = contextually:
+    assertFalse(ParseResult.shouldAcceptLine(":settings -old-syntax:false\n", hasPendingInput = true))
+    assertTrue(ParseResult.shouldAcceptLine(":settings -old-syntax:false\n", hasPendingInput = false))
+    assertFalse(ParseResult.shouldAcceptLine(
+      ":settings -old-syntax:false\n:settings -old-syntax:true\n", hasPendingInput = true))
+    assertTrue(ParseResult.shouldAcceptLine(
+      ":settings -old-syntax:false\n:settings -old-syntax:true\n", hasPendingInput = false))
 
   @Test def `command with incomplete trailing code is incomplete`: Unit = contextually:
     assertTrue(ParseResult.isIncomplete(":settings -deprecation\nif true then"))
@@ -110,6 +118,58 @@ class ReplDirectiveTests extends ReplTest:
       val output = storedOutput()
       assertTrue(output, output.contains("val res0: Int = 1"))
       assertFalse(output, output.contains("This construct is not allowed under -old-syntax"))
+    }
+
+  @Test def `conflicting settings in same block apply to trailing code`: Unit =
+    initially:
+      run(":settings -old-syntax:false\n:settings -old-syntax:true\nif true then println(\"REPL_SETTINGS_MARKER\")")
+      val output = storedOutput()
+      assertTrue(
+        s"trailing code should be rejected under conflicting -old-syntax:true, got:\n$output",
+        output.contains("This construct is not allowed under -old-syntax"))
+      assertFalse(
+        s"trailing code should not run, got:\n$output",
+        output.linesIterator.map(_.trim).contains("REPL_SETTINGS_MARKER"))
+
+  @Test def `conflicting settings in same block stay applied on next input`: Unit =
+    initially {
+      run(":settings -old-syntax:false\n:settings -old-syntax:true\nif true then println(\"REPL_SETTINGS_MARKER\")")
+    } andThen {
+      storedOutput()
+      run("if true then println(\"REPL_SETTINGS_MARKER\")")
+      val output = storedOutput()
+      assertTrue(
+        s"subsequent input should still be rejected under -old-syntax, got:\n$output",
+        output.contains("This construct is not allowed under -old-syntax"))
+      assertFalse(
+        s"subsequent input should not run, got:\n$output",
+        output.linesIterator.map(_.trim).contains("REPL_SETTINGS_MARKER"))
+    }
+
+  @Test def `conflicting settings alone update state immediately`: Unit =
+    initially {
+      val state = run(":settings -old-syntax:false\n:settings -old-syntax:true")
+      assertTrue(
+        "oldSyntax should be true after conflicting :settings in the same block",
+        state.context.settings.oldSyntax.value(using state.context))
+    }
+
+  /** Simulates JLine accepting the first `:settings` line alone, then a follow-up
+   *  paste/submission that contains the conflicting `:settings` plus trailing code.
+   */
+  @Test def `conflicting settings after prior settings apply to trailing code`: Unit =
+    initially {
+      run(":settings -old-syntax:false")
+    } andThen {
+      storedOutput()
+      run(":settings -old-syntax:true\nif true then println(\"REPL_SETTINGS_MARKER\")")
+      val output = storedOutput()
+      assertTrue(
+        s"trailing code should be rejected under conflicting -old-syntax:true, got:\n$output",
+        output.contains("This construct is not allowed under -old-syntax"))
+      assertFalse(
+        s"trailing code should not run, got:\n$output",
+        output.linesIterator.map(_.trim).contains("REPL_SETTINGS_MARKER"))
     }
 
   @Test def `lone command with trailing newline parses as command`: Unit = initially:
@@ -239,12 +299,12 @@ class ReplDirectiveTests extends ReplTest:
     assertFalse(ParseResult.shouldAcceptLine("// c\n:settings -deprecation\nif true then", hasPendingInput = false))
 
   @Test def `lone command after comment awaits trailing code`: Unit = contextually:
-    assertTrue(ParseResult.awaitsTrailingCode("// c\n:dep x"))
-    assertFalse(ParseResult.awaitsTrailingCode("// c\n:dep x\n"))
+    assertTrue(ParseResult.onlyPreambleSoFar("// c\n:dep x"))
+    assertTrue(ParseResult.shouldAcceptLine("// c\n:dep x\n", hasPendingInput = false))
 
   @Test def `lone directive after block comment awaits trailing code`: Unit = contextually:
-    assertTrue(ParseResult.awaitsTrailingCode("/* c */\n//> using dep x"))
-    assertFalse(ParseResult.awaitsTrailingCode("/* c */\n//> using dep x\n"))
+    assertTrue(ParseResult.onlyPreambleSoFar("/* c */\n//> using dep x"))
+    assertTrue(ParseResult.shouldAcceptLine("/* c */\n//> using dep x\n", hasPendingInput = false))
 
   @Test def `comment between commands parses as nested CommandThenCode`: Unit = initially:
     ParseResult(":type 1\n// c\n:type 2\nval x = 5") match

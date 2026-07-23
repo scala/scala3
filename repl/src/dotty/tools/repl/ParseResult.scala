@@ -413,25 +413,24 @@ object ParseResult {
   private def onlyDirectivesSoFar(sourceCode: String, extractedDirectives: ExtractorResult): Boolean =
     extractedDirectives.directiveLines.nonEmpty && extractedDirectives.codeOffset >= sourceCode.length
 
-  /** True if `sourceCode` is a single `:command` line and no code yet. */
-  private def onlyCommandSoFar(sourceCode: String, extractedDirectives: ExtractorResult): Boolean =
-    leadingCommand(sourceCode, extractedDirectives) match
-      case Some((_, _, rest)) => rest.forall(_.isWhitespace)
-      case None => false
+  /** True if the buffer so far is only leading directives and/or `:command`s, with no Scala
+   *  code yet. Ignores whether the buffer ends with a newline — paste lines typically arrive
+   *  with trailing newlines, and [[shouldAcceptLine]] still defers while more paste input is
+   *  pending so settings-changing commands stay with their code.
+   */
+  private[repl] def onlyPreambleSoFar(sourceCode: String): Boolean =
+    onlyPreambleSoFar(sourceCode, extractDirectives(sourceCode))
 
-  /** A lone leading directive block or a single `:command` line with no trailing
-   *  code yet. During a paste we keep reading so following code joins this input;
-   *  on a single interactive ENTER (nothing pending) it is submitted as-is. */
-  private[repl] def awaitsTrailingCode(sourceCode: String): Boolean =
-    awaitsTrailingCode(sourceCode, extractDirectives(sourceCode))
-
-  private def awaitsTrailingCode(sourceCode: String, extractedDirectives: ExtractorResult): Boolean =
-    !sourceCode.endsWith("\n") && (onlyDirectivesSoFar(sourceCode, extractedDirectives) || onlyCommandSoFar(sourceCode, extractedDirectives))
+  private def onlyPreambleSoFar(sourceCode: String, extractedDirectives: ExtractorResult): Boolean =
+    if onlyDirectivesSoFar(sourceCode, extractedDirectives) then true
+    else
+      val code = codeAfterLeadingCommands(sourceCode, extractedDirectives)
+      code.forall(_.isWhitespace) && leadingCommand(sourceCode, extractedDirectives).isDefined
 
   /** Whether JLine should accept the current buffer as a complete submission. */
   private[repl] def shouldAcceptLine(sourceCode: String, hasPendingInput: Boolean)(using Context): Boolean =
     val extractedDirectives = extractDirectives(sourceCode)
-    if awaitsTrailingCode(sourceCode, extractedDirectives) then !hasPendingInput
+    if onlyPreambleSoFar(sourceCode, extractedDirectives) then !hasPendingInput
     else !isIncomplete(sourceCode, extractedDirectives)
 
   /** The trailing code after any leading `:command` lines. Only this part decides
