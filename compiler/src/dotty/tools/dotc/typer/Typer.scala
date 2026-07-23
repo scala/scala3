@@ -4591,6 +4591,26 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     def adaptNoArgsImplicitMethod(wtp: MethodType): Tree = {
       assert(wtp.isImplicitMethod)
       val tvarsToInstantiate = tvarsInParams(tree, locked).distinct
+
+      // Pin type vars fixed by a bottom-typed argument (e.g. `???`) to Nothing,
+      // so the implicit search below can't unify them with something else.
+      def bottomBoundTVars(t: Tree): List[TypeVar] =
+        if ctx.reporter.hasErrors then Nil
+        else t match
+          case Apply(fn, args) =>
+            val fromArgs = fn.tpe.widen match
+              case mt: MethodType =>
+                mt.paramInfos.lazyZip(args).flatMap: (formal, arg) =>
+                  if arg.tpe.widen.isBottomType then
+                    tvarsToInstantiate.filter(tv => formal.existsPart(_ eq tv))
+                  else Nil
+              case _ => Nil
+            fromArgs ++ bottomBoundTVars(fn)
+          case _ => Nil
+
+      for tvar <- bottomBoundTVars(tree) do
+        if !tvar.isInstantiated then tvar.instantiate(fromBelow = true)
+
       def instantiate(tp: Type): Unit = {
         instantiateSelected(tp, tvarsToInstantiate)
         replaceSingletons(tp)
