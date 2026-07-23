@@ -58,6 +58,23 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     if Config.checkTypeComparerReset then checkReset()
 
   private var pendingSubTypes: util.MutableSet[(Type, Type)] | Null = null
+  /** Tracks the `(tycon, args, other, fromBelow, constraint)` tuples currently
+   *  being compared by [[compareAppliedTypeParamRef]] to guard against infinite recursion.
+   *  See https://github.com/scala/scala3/issues/24537.
+   */
+  private var pendingAppliedTypeParamRefs:
+    util.MutableSet[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)] | Null = null
+
+  private inline def guardAppliedTypeParamRef(
+      tycon: TypeParamRef, args: List[Type], other: AppliedType, fromBelow: Boolean)(inline op: Boolean): Boolean =
+    if pendingAppliedTypeParamRefs == null then
+      pendingAppliedTypeParamRefs = util.HashSet[(TypeParamRef, List[Type], AppliedType, Boolean, Constraint)]()
+    val key = (tycon, args, other, fromBelow, constraint)
+    !pendingAppliedTypeParamRefs.nn.contains(key) && {
+      pendingAppliedTypeParamRefs.nn += key
+      try op finally pendingAppliedTypeParamRefs.nn -= key
+    }
+
   private var recCount = 0
   private var monitored = false
 
@@ -109,6 +126,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
   override def checkReset() =
     super.checkReset()
     pendingSubTypes match
+      case null => ()
+      case ps => assert(ps.isEmpty)
+    pendingAppliedTypeParamRefs match
       case null => ()
       case ps => assert(ps.isEmpty)
     assert(canCompareAtoms == true)
@@ -1273,9 +1293,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 tl => otherTycon.appliedTo(bodyArgs(tl)))
             else
               otherTycon
-          rollbackConstraintsUnless:
-            (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon))
-              && directionalRecur(adaptedTycon.appliedTo(args), other)
+          /** Break the i24537 cycle when neither the comparison nor its constraint changes. */
+          guardAppliedTypeParamRef(tycon, args, other, fromBelow):
+            rollbackConstraintsUnless:
+              (assumedTrue(tycon) || directionalIsSubType(tycon, adaptedTycon))
+                && directionalRecur(adaptedTycon.appliedTo(args), other)
         }
       }
     end compareAppliedTypeParamRef
