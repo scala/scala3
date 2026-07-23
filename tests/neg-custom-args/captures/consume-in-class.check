@@ -1,0 +1,22 @@
+-- Error: tests/neg-custom-args/captures/consume-in-class.scala:9:2 ----------------------------------------------------
+9 |  a.dealloc()  // error
+  |  ^
+  |  Separation failure: call prefix of consume method dealloc refers to enclosing instance of class class FreshRef.
+  |  The access must be in a consume method to allow this.
+-- Error: tests/neg-custom-args/captures/consume-in-class.scala:15:9 ---------------------------------------------------
+15 |  val r: Ref^ = a // error
+   |         ^^^^
+   |         Separation failure: value r's type Ref^ hides enclosing instance of class class FreshRef1.
+   |         The access must be in a consume method to allow this.
+-- Error: tests/neg-custom-args/captures/consume-in-class.scala:18:2 ---------------------------------------------------
+18 |  a.dealloc()  // error
+   |  ^
+   |  Separation failure: call prefix of consume method dealloc refers to parameter a.
+   |  The parameter needs to be annotated with consume to allow this.
+-- Error: tests/neg-custom-args/captures/consume-in-class.scala:19:2 ---------------------------------------------------
+19 |  a.dealloc()  // error
+   |  ^
+   |  Separation failure: Illegal access to (a : Ref^), which was used as a prefix to consume method dealloc
+   |  on line 18 and therefore is no longer available.
+   |
+   |  where:    ^ refers to a root capability classified as Unscoped in the type of parameter a

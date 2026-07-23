@@ -702,7 +702,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def checkConsumedRefs(refsToCheck: Refs, tpe: Type, role: TypeRole, descr: => String, pos: SrcPos)(using Context) =
     val badParams = mutable.ListBuffer[Symbol]()
     def currentOwner = role.dclSym.orElse(ctx.owner)
-    for hiddenRef <- refsToCheck.deduct(explicitRefs(tpe)) do
+    for hiddenRef <- refsToCheck do
       if !hiddenRef.stripReadOnly.isKnownClassifiedAs(defn.Caps_SharedCapability) then
         hiddenRef.pathRoot match
           case ref: TermRef if ref.symbol != role.dclSym =>
@@ -716,13 +716,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
               badParams += refSym
           case ref: ThisType =>
             val encl = currentOwner.enclosingMethodOrClassOrObject
-            if encl.isProperlyContainedIn(ref.cls)
-                && !encl.is(Synthetic)
-                && !encl.hasAnnotation(defn.ConsumeAnnot)
-                && !encl.isStaticOwner // no restrictions for globals
-            then
+            if !encl.is(Synthetic) && !encl.hasAnnotation(defn.ConsumeAnnot) then
               report.error(
-                em"""Separation failure: $descr non-local this of class ${ref.cls}.
+                em"""Separation failure: $descr enclosing instance of class ${ref.cls}.
                     |The access must be in a consume method to allow this.""",
                 pos)
           case _ =>
