@@ -85,7 +85,7 @@ object LiftCoverage extends LiftImpure:
 
   /** Preserve precision for lifted coverage temps when widening would break later checks:
    *  compile-time constants and stable singleton types need their singleton precision,
-   *  and capture-converted types need their local TypeBox#CAP references.
+   *  and capture-converted or skolem-prefixed type selections need their local references.
    */
   override protected def liftedExprType(expr: tpd.Tree)(using Context): Type =
     val dealiased = expr.tpe.dealias
@@ -99,6 +99,10 @@ object LiftCoverage extends LiftImpure:
       case _: ConstantType => deskolemized
       case _ if dealiased.isInstanceOf[SingletonType] && dealiased.isStable => dealiased
       case _ if valueType.existsPart(_.typeSymbol == defn.TypeBox_CAP) => valueType
+      case _ if valueType.existsPart {
+        case ref: TypeRef => ref.prefix.isInstanceOf[SkolemType]
+        case _ => false
+      } => valueType
       case _ => super.liftedExprType(expr)
 
   private def markSelectedReceiverDef(
