@@ -1169,7 +1169,6 @@ object CaptureSet:
 
     if debugVars && id == debugTarget then
       println(i"variable $id is derived from $source")
-      assert(false)
 
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if origin eq source then
@@ -1476,7 +1475,7 @@ object CaptureSet:
         case cs: EmptyOfBoxed =>
           trailing:
             val (boxed, unboxed) =
-              if cs.tp1.isBoxedCapturing then (cs.tp1, cs.tp2) else (cs.tp2, cs.tp1)
+              if cs.tp1.isBoxed then (cs.tp1, cs.tp2) else (cs.tp2, cs.tp1)
             i"${cs.tp1} does not conform to ${cs.tp2} because $boxed is boxed but $unboxed is not"
         case _ =>
           def why =
@@ -1787,8 +1786,9 @@ object CaptureSet:
         case tp: (TypeRef | TypeParamRef) =>
           if tp.derivesFromCapSet then tp.captureSet
           else empty
-        case CapturingOrRetainsType(parent, refs) =>
-          recur(parent) ++ refs
+        case tp @ CapturingOrRetainsType(parent, refs) =>
+          if parent.isBoxed && !tp.isBoxed then refs
+          else recur(parent) ++ refs
         case tpd @ defn.RefinedFunctionOf(rinfo: MethodOrPoly) if followResult =>
           ofType(tpd.parent, followResult = false)            // pick up capture set from parent type
           ++ recur(rinfo.resType).freeInResult(rinfo)         // add capture set of result
