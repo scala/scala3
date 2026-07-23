@@ -243,6 +243,13 @@ object language {
     @compileTimeOnly("`erasedDefinitions` can only be used at compile time in import statements")
     object erasedDefinitions
 
+    /** Experimental support for specialized traits
+     * 
+     * @see [[docs/_docs/internals/specialized-traits.md]]
+     */
+    @compileTimeOnly("`specializedTraits` can only be used at compile time in import statements")
+    object specializedTraits
+
     /** Experimental support for relaxed CanEqual checks for ADT pattern matching
      *
      * @see [[https://github.com/scala/improvement-proposals/pull/97]]
@@ -391,6 +398,11 @@ object language {
     @compileTimeOnly("`magic` can only be used at compile time in import statements")
     object magic
 
+    
+    /** Experimental support for inline traits
+      */
+    @compileTimeOnly("`inlineTraits` can only be used at compile time in import statements")
+    object inlineTraits
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

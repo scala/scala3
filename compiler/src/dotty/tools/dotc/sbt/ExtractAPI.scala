@@ -818,10 +818,14 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
         p match
           case ref: RefTree @unchecked =>
             val sym = ref.symbol
-            if sym.is(Inline, butNot = Param) && !seenInlineCache.contains(sym) then
+            if sym.is(Inline, butNot = Param | Trait) && !seenInlineCache.contains(sym) then
               // An inline method that calls another inline method will eventually inline the call
               // at a non-inline callsite, in this case if the implementation of the nested call
               // changes, then the callsite will have a different API, we should hash the definition
+              // In contrast, if an inline trait A extends an inline trait B, B's body is inlined into
+              // A, so a change to B will cause a change to A directly, so we can skip this, and if 
+              // an inline method accesses a parameter of an inline trait it doesn't care about the definition
+              // of the trait.
               h = MurmurHash3.mix(h, apiDefinition(sym, inlineOrigin).hashCode)
           case _ =>
 

@@ -1177,8 +1177,26 @@ class TreeUnpickler(reader: TastyReader,
       })
       NamerOps.addConstructorProxies(cls)
       NamerOps.addContextBoundCompanions(cls)
+      
+      // Because opaque types can appear in inline traits and these are only allowed to be completed once (otherwise cyclic reference error)
+      // we need to force the body stats now if we have an inline trait so that we don't complete them twice, once in the LazyBodyAnnot and once
+      // in the main code.
+      val strictOrLazyStats = 
+        if cls.isInlineTrait then
+          val strictStats = lazyStats.complete
+          cls.addAnnotation(LazyBodyAnnotation { (ctx0: Context) ?=>
+            val ctx1 = localContext(cls)(using ctx0).addMode(Mode.ReadPositions)
+            inContext(sourceChangeContext(Addr(0))(using ctx1)) {
+              // avoids space leaks by not capturing the current context
+              val inlinedMembers = strictStats.filter(member => inlines.Inlines.isInlineableFromInlineTrait(cls, member))
+              Block(inlinedMembers, unitLiteral).withSpan(cls.span)
+            }
+          })
+          strictStats
+        else
+          lazyStats
       setSpan(start,
-        untpd.Template(constr, mappedParents, self, lazyStats)
+        untpd.Template(constr, mappedParents, self, strictOrLazyStats)
           .withType(localDummy.termRef))
     }
 

@@ -37,6 +37,7 @@ import core.Mode
 import util.Property
 import reporting.*
 import scala.annotation.tailrec
+import dotty.tools.dotc.ast.tpd.*
 
 class Erasure extends Phase with DenotTransformer {
 
@@ -729,6 +730,12 @@ object Erasure {
           erasure(
             inContext(preErasureCtx):
               tree.qualifier.typeOpt.widen.finalResultType)
+              
+        def hasImmediateInlineParent: Boolean = {
+          owner.isInlineTrait && 
+            (qual1.tpe.widenDealias.classSymbol ne sym.owner) &&
+            qual1.tpe.widenDealias.classSymbol.info.parents.exists(_.classSymbol eq sym.owner)
+        }
 
         if qualIsPrimitive && !symIsPrimitive || qual.tpe.widenDealias.isErasedValueType then
           recur(box(qual))
@@ -740,6 +747,17 @@ object Erasure {
           adaptIfSuper(qual) match
             case qual1: Super =>
               select(qual1, sym)
+            case qual1 if hasImmediateInlineParent =>
+              // If A is an inline trait and A.foo was inlined into B, references to b.foo (val b = B()) will still
+              // point to A.foo until now. We want them to point to B.foo so we get the benefit of specialization. 
+              // We fix that here rather than in a separate phase because
+              // it needs to happen coordinated with erasure of Specialized traits, so that:
+              //    a) we see the erased A$sp$Int traits and can point at their members
+              //    b) we make the replacement before boxing in case A.foo is typed with T and B.foo specializes this to e.g. Int
+              //       Otherwise we will end up with Int.unbox(B.foo) instead of directly B.foo which won't typecheck.  
+              val specializedInterfaceSym = qual1.tpe.widenDealias.classSymbol.asClass
+              val newSym = inContext(preErasureCtx) { sym.overridingSymbol(specializedInterfaceSym) }
+              qual1.select(newSym)
             case qual1 if !isJvmAccessible(qual1.tpe.typeSymbol)
                 || !qual1.tpe.derivesFrom(sym.owner) =>
               val castTarget = // Avoid inaccessible cast targets, see i8661
@@ -788,6 +806,35 @@ object Erasure {
         case _ => typedExpr(ntree, pt)
       }
     }
+
+    /* Erase anonymous instances of specialized traits to $impl$ classes */
+    override def typedBlock(tree: untpd.Block, pt: Type)(using Context): Tree = tree.asInstanceOf[Block] match 
+      case AnonymousClassInstance(anon) =>
+        inContext(preErasureCtx) {
+          Specialization.unapply(anon.typeTree.tpe, anon.typeTree.span).flatMap(spec => {
+            anon.parentCalls match {
+              case (obj :: parentsOfSpecTrait) if (spec.isSpecialized || spec.isFullySpecializedToTopClassesOrNothing) && (obj.symbol.owner == ctx.definitions.ObjectClass) && (parentsOfSpecTrait.forall(x => spec.traitSymbol.asClass.baseClasses.exists(p => p == x.symbol.owner))) =>
+                val app: Tree = parentsOfSpecTrait.find(p => p.symbol.owner == spec.traitSymbol).get
+                assert(app.isInstanceOf[Apply]) // At the very least we pass the Specialized instance.
+                val targetImplName = DesugarSpecializedTraits.newImplementationClassName(spec)
+                val implClass = spec.traitSymbol.enclosingPackageClass.info.decls.lookup(targetImplName)
+                assert(implClass.exists && implClass.isClass)
+                val erased = inContext(ctx.withSource(anon.typeTree.source)) {
+                    Typed(
+                        Select(New(ref(implClass)), anon.ctor)
+                                .appliedToTypeTrees(spec.unspecializedTypeArgs)
+                                .appliedToArgss(tpd.allArgss(app).tail.nestedMap(_.changeNonLocalOwners(anon.symbol.owner))) // Skip the type params which are not needed
+                            , anon.typeTree)
+                }.withSpan(anon.typeTree.span)
+                Some(erased)
+              case _ => None
+          }})
+        } match {
+          case Some(erased) => typedTyped(erased, anon.typeTree.tpe)
+          case None         => super.typedBlock(tree, pt)
+        }
+      case _ => super.typedBlock(tree, pt)
+
 
     override def typedBind(tree: untpd.Bind, pt: Type)(using Context): Bind =
       atPhase(erasurePhase):
@@ -1023,7 +1070,41 @@ object Erasure {
       EmptyTree
 
     override def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree =
-      val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef, cls): @unchecked
+      // drop Foo[Int] leading to duplicate Foo$sp$Int
+      val TypeDef(_, implInit: Template) = cdef: @unchecked
+
+      // Match corresponding class info erasure in TypeErasure::apply ClassInfo case
+      val cdef1 = 
+        val oldParents = implInit.asInstanceOf[Template].parents
+        val superCtxNoSpec = disallowSpecializedCtx(using ctx.superCallContext)
+        val newParents = 
+          if cls.isSpecializedTraitInterface then // {source: Bar, Foo both specialized traits} inline trait Bar$sp$Int extends Object, Bar, Foo$sp$Int
+            val (obj :: originalTrait :: inheritedParents) = oldParents : @unchecked
+            obj :: typedType(originalTrait)(using superCtxNoSpec) :: inheritedParents
+          else if cls.isSpecializedTraitImplementationClass && !cls.isRawSpecializedTraitImplementationClass then // {source: Bar, Foo both specialized traits} class Bar$impl$Int extends Object, Bar$sp$Int, Bar(10)
+            val (objectParent :: traitSpParent :: originalTraitSpecializedParent :: Nil) = oldParents : @unchecked
+            val newParent = originalTraitSpecializedParent match {
+              case _: untpd.Apply => typedExpr(originalTraitSpecializedParent)(using superCtxNoSpec)
+              case _ => typedType(originalTraitSpecializedParent)(using superCtxNoSpec)
+            }
+            objectParent :: traitSpParent :: newParent :: Nil
+          else 
+             inContext(preErasureCtx) {
+                val extraSpTraits = oldParents.filter(p => p.symbol.isPrimaryConstructor && p.symbol.owner.isSpecializedTrait).map(p => p.tpe.resultType)
+  
+                // {source: class Bar extends Foo[Int](10) with Baz[Int](10)}
+                // class Bar extends Object, Foo(10), Bar(10), Foo$sp$Int, Bar$sp$Int
+                oldParents.map { tp => 
+                  if tp.symbol.isPrimaryConstructor && tp.symbol.owner.isSpecializedTrait then 
+                    typedExpr(tp)(using superCtxNoSpec)
+                  else
+                    tp
+                } ::: extraSpTraits.map(sym => TypeTree(sym))
+            }
+
+        cpy.TypeDef(cdef.asInstanceOf[TypeDef])(rhs = cpy.Template(implInit.asInstanceOf[Template])(parents = newParents))
+
+      val typedTree@TypeDef(name, impl @ Template(constr, _, self, _)) = super.typedClassDef(cdef1, cls): @unchecked
       // In the case where a trait extends a class, we need to strip any non trait class from the signature
       // and accept the first one (see tests/run/mixins.scala)
       val newTraits = impl.parents.tail.filterConserve: tree =>

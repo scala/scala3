@@ -3945,3 +3945,69 @@ class UseOfAnyMethodAsInterpolator(interpolator: Name)(using Context)
        |which can target methods declared by ${hl("Any")} such as ${hl(i"$interpolator")}.
        |This is unlikely to be what you intended."""
 }
+
+final class IllegalUseOfSpecialized(using Context)
+    extends SyntaxMsg(IllegalUseOfSpecializedID):
+  override protected def msg(using Context): String =
+    i"Specialized may only be used as a context bound"
+  override protected def explain(using Context): String =
+    i"""Specialized allows for a performance improvement by specializing generic type parameters
+        to avoid boxing/unboxing. It should only be used as a context (typeclass) bound on a
+        generic type in inline traits or inline methods:
+
+        inline trait Vec[T: Specialized](val x: T)
+
+        inline def foo[T: Specialized](v: Vec[T]) = v.x
+
+        In this instance it was used in a way which is unsupported, such as
+        trying to create a type synonym or a value with explicit type Specialized[X].  
+      """
+
+/** Shows up as a TypeError (in the notes field) if variance is attempted
+ *  in a way which is incompatible with specialized traits. */
+final class IllegalVarianceInSpecializedTraitsNote(using Context) extends Note:
+  def render(using Context): String =
+    i"""
+    This use of variance is incompatible with specialized traits.
+
+    Specialized traits achieve a performance gain through a special erasure.
+    - Primitives are specialized: Foo[Int] erases to Foo$$sp$$Int
+    - Reference types are specialized to the highest non-top class: Foo[Lion] erases to Foo$$sp$$Animal
+    - Top classes are erased normally: Foo[Any] / Foo[AnyVal] / Foo[Object] / Foo[AnyRef] erase to Foo.
+    This means that variance patterns that cross these erasure categories will fail at 
+    runtime due to a ClassCastException, so they are not permitted.
+
+    Please see the docs for more information on how specialized traits are erased.
+    Suggested fixes:
+      - Make the type of the target site more general e.g. Foo[Object] instead of Foo[Animal].
+      - Reconsider if you really need to use Nothing / Object / Any / AnyRef / AnyVal in your code. 
+      - Remove Specialized from the definition of the corresponding parameter.
+    """
+
+  override def covers(other: Note)(using Context): Boolean =    
+    other.isInstanceOf[IllegalVarianceInSpecializedTraitsNote]
+
+final class VarianceInSpecializedTraitsLimitation(using Context)
+    extends Message(VarianceInSpecializedTraitsLimitationID):
+  override def kind = MessageKind.PotentialIssue
+  override protected def msg(using Context): String =
+    i"Type parameter is both Specialized and variant. This imposes additional typing restrictions."
+  override protected def explain(using Context): String =
+    i"""Specialized traits achieve a performance gain through a special erasure.
+    - Primitives are specialized: Foo[Int] erases to Foo$$sp$$Int
+    - Reference types are specialized to the highest non-top class: Foo[Lion] erases to Foo$$sp$$Animal
+    - Top classes are erased normally: Foo[Any] / Foo[AnyVal] / Foo[Object] / Foo[AnyRef] erase to Foo.
+    This means that certain variance patterns that cross these erasure categories will fail at 
+    runtime due to a ClassCastException, so they are not permitted.
+    
+    For example, treating Foo[Any] as Foo[Animal] via contravariance is not allowed with Specialized. 
+
+    Please see the docs for more information on how specialized traits are erased.
+
+    If you accept this limitation you can silence this warning with @nowarn. For example:
+    
+    @nowarn("id=E${VarianceInSpecializedTraitsLimitationID.errorNumber}")
+    inline trait Foo[-T: Specialized]:
+ 
+    Otherwise, remove Specialized, or remove the variance.
+    """

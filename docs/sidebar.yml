@@ -197,6 +197,8 @@ subsection:
       - page: reference/experimental/sub-cases.md
       - page: reference/experimental/dedented-string-literals.md
       - page: reference/experimental/spec-strings.md
+      - page: reference/experimental/inline-traits.md
+      - page: reference/experimental/specialized-traits.md
   - page: reference/syntax.md
   - title: Language Versions
     index: reference/language-versions/language-versions.md
@@ -440,4 +442,5 @@ subsection:
       - page: reference/error-codes/E230.md
       - page: reference/error-codes/E231.md
       - page: reference/error-codes/E232.md
-
+      - page: reference/error-codes/E233.md
+      - page: reference/error-codes/E234.md
