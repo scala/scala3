@@ -5286,7 +5286,6 @@ object Types extends TypeUtils {
           end traverse
 
           traverse(scrutinee)
-          deep = false
           cases.foreach(traverse)
           reductionContext = util.HashMap()
           for tp <- footprint do
