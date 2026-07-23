@@ -8,8 +8,13 @@ set -e
 RELEASE_CMD="${1:?Missing publish command}"
 
 # Make sure required environment variable are set
-: "${SONATYPE_USER:?not set}"
-: "${SONATYPE_PW:?not set}"
+# Sonatype credentials are only used by sonaUpload. If run by itself, publishSigned
+# only stages locally so runs that only sign and don't push (like when you run in
+# a forkm) don't need the Sonatype account creds.
+if [[ "$RELEASE_CMD" == *sonaUpload* ]]; then
+  : "${SONATYPE_USER:?not set}"
+  : "${SONATYPE_PW:?not set}"
+fi
 : "${PGP_PW:?not set}"
 : "${PGP_SECRET:?is not set}"
 

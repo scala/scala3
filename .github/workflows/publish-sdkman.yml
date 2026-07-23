@@ -27,10 +27,14 @@ on:
         required: true
 
 env:
-  RELEASE-URL: 'https://github.com/scala/scala3/releases/download/${{ inputs.version }}'
+  # The download URLs handed to sdkman point at the releases of the repository
+  # that ran the workflow. Only the scala/scala3 releases are real sdkman targets.
+  RELEASE-URL: 'https://github.com/${{ github.repository }}/releases/download/${{ inputs.version }}'
 
 jobs:
+  # Never push to SDKMAN! from a fork, regardless of how this workflow is called
   publish:
+    if: github.repository == 'scala/scala3'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -56,6 +60,7 @@ jobs:
           PLATFORM       : ${{ matrix.platform }}
 
   default:
+    if: github.repository == 'scala/scala3'
     runs-on: ubuntu-latest
     needs: publish
     steps:

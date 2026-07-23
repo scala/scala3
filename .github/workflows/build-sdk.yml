@@ -111,5 +111,5 @@ jobs:
       - name: Compute SHA256 of the uploaded artifact (win x86-64)
         id  : win-x86_64-digest
         run : |
-          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o artifact.zip -L https://api.github.com/repos/scala/scala3/actions/artifacts/${{ steps.win-x86_64.outputs.artifact-id }}/zip
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o artifact.zip -L https://api.github.com/repos/${{ github.repository }}/actions/artifacts/${{ steps.win-x86_64.outputs.artifact-id }}/zip
           echo "digest=$(sha256sum artifact.zip | cut -d " " -f 1)" >> "$GITHUB_OUTPUT"
