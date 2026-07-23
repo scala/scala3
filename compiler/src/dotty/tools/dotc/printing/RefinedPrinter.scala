@@ -894,7 +894,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
         case tp => tp
       }
       val tp2 = {
-        val tp = tp1.tryNormalize
+        // Printing must never crash on a failed `compiletime.ops` fold (e.g. `1 / 0`).
+        val tp = try tp1.tryNormalize catch case _: TypeError => NoType
         if (tp != NoType) tp else tp1
       }
       val tp3 =
