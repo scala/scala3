@@ -19,7 +19,7 @@ import typer.Inferencing.*
 import typer.IfBottom
 import reporting.TestingReporter
 import Annotations.Annotation
-import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed, isBoxedCapturing}
+import cc.{CapturingType, derivedCapturingType, CaptureSet, captureSet, isBoxed}
 import CaptureSet.{IdentityCaptRefMap, VarState}
 
 import scala.annotation.internal.sharable
@@ -165,7 +165,7 @@ object TypeOps:
       case tp @ CapturingType(parent, refs) =>
         if !ctx.mode.is(Mode.Type)
             && refs.subCaptures(parent.captureSet, VarState.Separate)
-            && (tp.isBoxed || !parent.isBoxedCapturing)
+            && (tp.isBoxed || !parent.isBoxed)
               // fuse types with same boxed status and outer boxed with any type
         then
           simplify(parent, theMap)

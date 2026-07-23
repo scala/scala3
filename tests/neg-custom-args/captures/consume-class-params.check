@@ -1,0 +1,152 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:25:14 -------------------------
+25 |  val _: A1 = a1  // error
+   |              ^^
+   |              Found:    (a1 : A1{val x: C^{c}}^{c})
+   |              Required: A1
+   |
+   |              Note that capability `c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:27:14 -------------------------
+27 |  val _: A2 = a2  // error
+   |              ^^
+   |              Found:    (a2 : A2{val x0: C^{c}}^{c})
+   |              Required: A2
+   |
+   |              Note that capability `c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:29:14 -------------------------
+29 |  val _: A3 = a3  // error
+   |              ^^
+   |              Found:    (a3 : A3{val x0: C^{c}}^{c})
+   |              Required: A3
+   |
+   |              Note that capability `c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:31:14 -------------------------
+31 |  val _: A4 = a4  // error
+   |              ^^
+   |              Found:    (a4 : A4{val x0: C^{c}}^{c})
+   |              Required: A4
+   |
+   |              Note that capability `c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:33:14 -------------------------
+33 |  val _: B1 = b1  // error
+   |              ^^
+   |              Found:    (b1 : B1^{any})
+   |              Required: B1
+   |
+   |              Note that capability `any` cannot flow into capture set {}.
+   |
+   |              where:    any is a root capability in the type of value b1 with contributing field val x
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:35:14 -------------------------
+35 |  val _: B2 = b2  // error
+   |              ^^
+   |              Found:    (b2 : B2^{any})
+   |              Required: B2
+   |
+   |              Note that capability `any` cannot flow into capture set {}.
+   |
+   |              where:    any is a root capability in the type of value b2 with contributing field val x0
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:37:14 -------------------------
+37 |  val _: B3 = b3  // error
+   |              ^^
+   |              Found:    (b3 : B3^{any})
+   |              Required: B3
+   |
+   |              Note that capability `any` cannot flow into capture set {}.
+   |
+   |              where:    any is a root capability in the type of value b3 with contributing field val x0
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:39:14 -------------------------
+39 |  val _: B4 = b4  // error
+   |              ^^
+   |              Found:    (b4 : B4^{any})
+   |              Required: B4
+   |
+   |              Note that capability `any` cannot flow into capture set {}.
+   |
+   |              where:    any is a root capability in the type of value b4 with contributing field val x0
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:67:16 -------------------------
+67 |    val _: A1 = a1  // error
+   |                ^^
+   |                Found:    (a1 : A1{val x: C^{c}}^{c})
+   |                Required: A1
+   |
+   |                Note that capability `c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:69:16 -------------------------
+69 |    val _: A2 = a2  // error
+   |                ^^
+   |                Found:    (a2 : A2{val x0: C^{c}}^{c})
+   |                Required: A2
+   |
+   |                Note that capability `c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:71:16 -------------------------
+71 |    val _: A3 = a3  // error
+   |                ^^
+   |                Found:    (a3 : A3{val x0: C^{c}}^{c})
+   |                Required: A3
+   |
+   |                Note that capability `c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:73:16 -------------------------
+73 |    val _: A4 = a4  // error
+   |                ^^
+   |                Found:    (a4 : A4{val x0: C^{c}}^{c})
+   |                Required: A4
+   |
+   |                Note that capability `c` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:75:16 -------------------------
+75 |    val _: B1 = b1  // error
+   |                ^^
+   |                Found:    (b1 : B1^{io})
+   |                Required: B1
+   |
+   |                Note that capability `io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:77:16 -------------------------
+77 |    val _: B2 = b2  // error
+   |                ^^
+   |                Found:    (b2 : B2^{io})
+   |                Required: B2
+   |
+   |                Note that capability `io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:79:16 -------------------------
+79 |    val _: B3 = b3  // error
+   |                ^^
+   |                Found:    (b3 : B3^{io})
+   |                Required: B3
+   |
+   |                Note that capability `io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/consume-class-params.scala:81:16 -------------------------
+81 |    val _: B4 = b4  // error
+   |                ^^
+   |                Found:    (b4 : B4^{io})
+   |                Required: B4
+   |
+   |                Note that capability `io` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`

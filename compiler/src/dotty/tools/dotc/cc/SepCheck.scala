@@ -363,6 +363,15 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   // ---- Error reporting TODO Once these are stabilized, move to messages -----" +
 
+  def synthNote(tree: Tree)(using Context): String =
+    if tree.span.isZeroExtent then
+      def synthText =
+        if tree.isInstanceOf[DefTree]
+        then i"definition of ${tree.symbol} in:  $tree"
+        else i"tree:  $tree"
+      i"\n\nThe error occurred for a synthesized $synthText"
+    else ""
+
   def overlapStr(hiddenSet: Refs, clashSet: Refs)(using Context): String =
     val hiddenFootprint = hiddenSet.directFootprint
     val clashFootprint = clashSet.directFootprint
@@ -448,7 +457,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
       report.error(
         em"""Separation failure: Illegal access to ${overlapStr(hidden, used)} which is hidden by the previous definition
             |of ${clashingDef.symbol} with$resultStr type ${clashingDef.tpt.nuType}.
-            |This type hides capabilities  ${CaptureSet(hidden)}""",
+            |This type hides capabilities  ${CaptureSet(hidden)}${synthNote(tree)}""",
         tree.srcPos)
     else
       report.error(
@@ -611,13 +620,17 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     case tree: Ident => tree.symbol.exists && LiftCoverage.isCoverageLiftedTemp(tree.symbol)
     case _ => false
 
+  private def isPatmatCast(tree: Tree)(using Context): Boolean = tree match
+    case tree: TypeApply => tree.symbol == defn.Any_typeCast
+    case _ => false
+
   /** 1. Check that the capabilities used at `tree` don't overlap with
    *     capabilities hidden by a previous definition.
    *  2. Also check that none of the used capabilities was consumed before.
    */
   def checkUse(tree: Tree)(using Context): Unit =
     val used = tree.markedFree.elems
-    if !used.isEmpty && !isCoverageLiftedTemp(tree) then
+    if !used.isEmpty && !isCoverageLiftedTemp(tree) && !isPatmatCast(tree) then
       capt.println(i"check use $tree: $used")
       val usedPeaks = used.allPeaks
       if !defsShadow.allPeaks.sharedPeaks(usedPeaks).isEmpty then
@@ -689,7 +702,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def checkConsumedRefs(refsToCheck: Refs, tpe: Type, role: TypeRole, descr: => String, pos: SrcPos)(using Context) =
     val badParams = mutable.ListBuffer[Symbol]()
     def currentOwner = role.dclSym.orElse(ctx.owner)
-    for hiddenRef <- refsToCheck.deduct(explicitRefs(tpe)) do
+    for hiddenRef <- refsToCheck do
       if !hiddenRef.stripReadOnly.isKnownClassifiedAs(defn.Caps_SharedCapability) then
         hiddenRef.pathRoot match
           case ref: TermRef if ref.symbol != role.dclSym =>
@@ -703,13 +716,9 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
               badParams += refSym
           case ref: ThisType =>
             val encl = currentOwner.enclosingMethodOrClassOrObject
-            if encl.isProperlyContainedIn(ref.cls)
-                && !encl.is(Synthetic)
-                && !encl.hasAnnotation(defn.ConsumeAnnot)
-                && !encl.isStaticOwner // no restrictions for globals
-            then
+            if !encl.is(Synthetic) && !encl.hasAnnotation(defn.ConsumeAnnot) then
               report.error(
-                em"""Separation failure: $descr non-local this of class ${ref.cls}.
+                em"""Separation failure: $descr enclosing instance of class ${ref.cls}.
                     |The access must be in a consume method to allow this.""",
                 pos)
           case _ =>
@@ -996,9 +1005,15 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           checkApply(tree, argss.flatten, app, deps, resultPeaks)
     recur(app, Nil)
 
-  /** Is `tree` an application of `caps.unsafe.unsafeAssumeSeparate`? */
-  def isUnsafeAssumeSeparate(tree: Tree)(using Context): Boolean = tree match
-    case tree: Apply => tree.symbol == defn.Caps_unsafeAssumeSeparate
+  /** Is `tree` an application of caps.unsafe.unsafeAssumeSeparate?
+   *  or a synthetic application of throw new MatchError(...)?
+   */
+  def isAssumedSeparate(tree: Tree)(using Context): Boolean = tree match
+    case tree: Apply =>
+      tree.symbol == defn.Caps_unsafeAssumeSeparate
+      || tree.symbol == defn.throwMethod
+          && tree.span.isZeroExtent
+          && tree.args.head.tpe.classSymbol == defn.MatchErrorClass
     case _ => false
 
   def pushDef(tree: ValOrDefDef, hiddenByDef: Refs)(using Context): Unit =
@@ -1016,7 +1031,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
     val sym = tree.symbol
     if !sym.isOneOf(TermParamOrAccessor)
        && !sym.needsResultRefinement
-       && !isUnsafeAssumeSeparate(tree.rhs)
+       && !isAssumedSeparate(tree.rhs)
        && !isCoverageLiftedTemp(tree)
     then
       capt.println(i"sep check def $sym: ${tree.tpt.nuType} with ${spanCaptures(tree.tpt).transHiddenSet.directFootprint}")
@@ -1051,7 +1066,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
 
   /** Traverse `tree` and perform separation checks everywhere */
   def traverse(tree: Tree)(using Context): Unit =
-    if !isUnsafeAssumeSeparate(tree) then trace(i"checking separate $tree"):
+    if !isAssumedSeparate(tree) then trace(i"checking separate $tree"):
       checkUse(tree)
       tree match
         case tree @ Select(qual, _) if tree.symbol.is(Method) && tree.symbol.isConsume =>
