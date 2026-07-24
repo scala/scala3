@@ -485,25 +485,6 @@ class TreeUnpickler(reader: TastyReader,
       }
     }
 
-    /** If `tpe` refers to a type that is not present on the classpath
-     *  (e.g. a transitive dependency was removed), fall back to a stub
-     *  class symbol so that downstream code sees a `ClassSymbol` and
-     *  reports `BadSymbolicReference` on first use, rather than crashing
-     *  with an internal assertion. See scala/scala3#20010.
-     *
-     *  The replacement is only performed when the prefix is a
-     *  package or a module, for which member lookup is deterministic –
-     *  this avoids converting transient lookup failures into spurious
-     *  stubs during the incremental completion of in-flight symbols.
-     */
-    private def ensureResolvable(tpe: TypeRef, pre: Type, name: TypeName)(using Context): Type =
-      if tpe.symbol.exists then tpe
-      else
-        val preSym = pre.termSymbol
-        if preSym.is(Package) || preSym.is(Module) then
-          newStubSymbol(preSym.moduleClass, name).typeRef
-        else tpe
-
     private def readPackageRef()(using Context): TermSymbol = {
       val name = readName()
       if (name == nme.ROOT || name == nme.ROOTPKG) defn.RootPackage
@@ -1211,9 +1192,7 @@ class TreeUnpickler(reader: TastyReader,
         var qualType = qual.tpe.widenIfUnstable
         val owner = denot.symbol.maybeOwner
         val tpe0 = name match
-          case name: TypeName =>
-            val ref = TypeRef(qualType, name, denot)
-            ensureResolvable(ref, qualType, name)
+          case name: TypeName => TypeRef(qualType, name, denot)
           case name: TermName => TermRef(qualType, name, denot)
         val tpe = tpe0.makePackageObjPrefixExplicit
         ConstFold.Select(untpd.Select(qual, name).withType(tpe))

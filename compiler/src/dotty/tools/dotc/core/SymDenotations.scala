@@ -1817,6 +1817,13 @@ object SymDenotations {
     private var baseDataCache: BaseData = BaseData.None
     private var memberNamesCache: MemberNames = MemberNames.None
 
+    /** Set of parent types for which a `BadSymbolicReference` has already
+     *  been reported by `computeBaseData`. Used so the same diagnostic is
+     *  not emitted multiple times when `baseData` is recomputed (e.g. from
+     *  a separate `derivesFrom` invocation). See scala/scala3#20010.
+     */
+    private var reportedMissingParents: Set[Type] = Set.empty
+
     private def memberCache(using Context): EqHashMap[Name, PreDenotation] = {
       if (myMemberCachePeriod != ctx.period) {
         myMemberCache = EqHashMap()
@@ -1999,7 +2006,29 @@ object SymDenotations {
         case p :: parents1 =>
           p.classSymbol match {
             case pcls: ClassSymbol => builder.addAll(pcls.baseClasses)
-            case _ => assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
+            case _ =>
+              // The parent type couldn't be resolved to a class, e.g.
+              // because a transitive dependency was removed from the
+              // classpath. Report a BadSymbolicReference-style error
+              // rather than crashing with an internal assertion. See
+              // scala/scala3#20010.
+              if p.typeSymbol == NoSymbol && !isRefinementClass && !p.isError
+                 && !ctx.mode.is(Mode.Interactive)
+              then
+                if !reportedMissingParents.contains(p) then
+                  reportedMissingParents = reportedMissingParents + p
+                  val file = symbol.associatedFile
+                  val (location, src) =
+                    if file != null then (i" in $file", file.toString)
+                    else ("", "the signature")
+                  report.error(
+                    em"""Bad symbolic reference. A signature$location
+                        |refers to ${p.show} as a parent of ${symbol.showLocated}, but it is not available.
+                        |It may be completely missing from the current classpath, or the version on
+                        |the classpath might be incompatible with the version used when compiling $src.""",
+                    symbol.srcPos)
+              else
+                assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive), s"$this has non-class parent: $p")
           }
           traverse(parents1)
         case nil =>
@@ -2357,6 +2386,11 @@ object SymDenotations {
             case pcls: ClassSymbol =>
               for name <- pcls.memberNames(keepOnly) do
                 maybeAdd(name)
+            case _ =>
+              // Parent failed to resolve to a class (the missing
+              // reference has been reported by computeBaseData).
+              // Skip here to avoid a secondary MatchError.
+              // See scala/scala3#20010.
         val ownSyms =
           if (keepOnly eq implicitFilter)
             if (this.is(Package)) Iterator.empty
