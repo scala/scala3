@@ -686,7 +686,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
    *  @param descr         a textual description of the type and its relationship with the checked reference
    *  @param pos           position for error reporting
    */
-  def checkConsumedRefs(refsToCheck: Refs, tpe: Type, role: TypeRole, descr: => String, pos: SrcPos)(using Context) =
+  def checkConsumedRefs(refsToCheck: Refs, tpe: Type, role: TypeRole, descr: => String, pos: SrcPos)(using Context) = {
     val badParams = mutable.ListBuffer[Symbol]()
     def currentOwner = role.dclSym.orElse(ctx.owner)
     for hiddenRef <- refsToCheck.deduct(explicitRefs(tpe)) do
@@ -731,7 +731,7 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
           if !ref.stripReadOnly.isKnownClassifiedAs(defn.Caps_SharedCapability) then
             consumed.put(ref, (pos, role))
       case _ =>
-  end checkConsumedRefs
+  }
 
   /** Check separation conditions of type `tpe` that appears in `role`.
    *   1. Check that the parts of type `tpe` are mutually separated, as defined in
