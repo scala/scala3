@@ -4,5 +4,9 @@ source "https://rubygems.org"
 gem "jekyll", "3.6.3"
 gem "webrick"
 gem "rouge"
+<<<<<<< backport-lts-3.3-25963
 # gem 's3_website'
 gem "redcarpet", "3.6.0"
+=======
+gem "jekyll-sass-converter", "~> 3.0"
+>>>>>>> 842728f Bump jekyll-sass-converter from 2.2.0 to 3.0.0 in /docs/_spec (#25963)
