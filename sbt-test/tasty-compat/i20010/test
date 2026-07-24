@@ -1,0 +1,10 @@
+# compile library a (defines parent.ParsingTest)
+> a/compile
+# compile library b (defines child.ValidatingTest extends parent.ParsingTest)
+> b/compile
+# compile c without a on the classpath.
+# This used to crash the compiler with an internal `non-class parent` assertion.
+# After the fix it must fail with a clean `Bad symbolic reference` error.
+> resetMessages
+-> c/compile
+> assertCleanMissingRefError
