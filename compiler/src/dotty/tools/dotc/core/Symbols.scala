@@ -148,7 +148,11 @@ object Symbols extends SymUtils {
       */
     final def isDefinedInSource(using Context): Boolean =
       span.exists && isValidInCurrentRun && associatedFileMatches(_.extension != "class")
-
+   
+    /** Is this symbol valid in the current run, but comes from the classpath? */
+    final def isDefinedInBinary(using Context): Boolean =
+      isValidInCurrentRun && associatedFileMatches(file => file.extension == "class" || file.extension == "tasty")
+    
     /** Is symbol valid in current run? */
     final def isValidInCurrentRun(using Context): Boolean =
       (lastDenot.validFor.runId == ctx.runId || stillValid(lastDenot)) &&
