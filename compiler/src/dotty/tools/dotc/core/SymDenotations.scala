@@ -2005,11 +2005,11 @@ object SymDenotations {
               // classpath. Report a `BadSymbolicReference` (mirroring the
               // pattern used by `StubInfo.complete` above) rather than
               // crashing with an internal assertion. See scala/scala3#20010.
+              def ignoreBadParent =
+                isRefinementClass || p.isError
+                  || ctx.mode.is(Mode.Interactive)
               p match
-                case p: TypeRef
-                  if p.symbol == NoSymbol
-                    && !isRefinementClass && !p.isError
-                    && !ctx.mode.is(Mode.Interactive) =>
+                case p: TypeRef if p.symbol == NoSymbol && !ignoreBadParent =>
                   val stubOwner =
                     p.prefix.classSymbol
                       .orElse(p.prefix.termSymbol.moduleClass)
@@ -2017,8 +2017,7 @@ object SymDenotations {
                   val stub = newStubSymbol(stubOwner, p.name, CompilationUnitInfo(symbol.associatedFile))
                   report.error(BadSymbolicReference(stub.denot), symbol.srcPos)
                 case _ =>
-                  assert(isRefinementClass || p.isError || ctx.mode.is(Mode.Interactive),
-                         s"$this has non-class parent: $p")
+                  assert(ignoreBadParent, s"$this has non-class parent: $p")
           }
           traverse(parents1)
         case nil =>
