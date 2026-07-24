@@ -322,7 +322,7 @@ class Completions(
     def hasNonSyntheticConstructor = sym.name.isTypeName && sym.isClass
       && !sym.is(ModuleClass) && !sym.is(Trait) && !sym.is(Abstract) && !sym.is(Flags.JavaDefined)
 
-    val (extraMethodDenots, skipOriginalDenot): (List[SingleDenotation], Boolean) =
+    val (extraMethodDenots, skipOriginalDenot) =
       if shouldAddSnippet && isNew && hasNonSyntheticConstructor then
         val constructors = safeConstructorMembers(sym).map(_.asSingleDenotation)
           .filter(_.symbol.isAccessibleFrom(denot.info))
