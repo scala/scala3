@@ -471,14 +471,22 @@ class Namer { typer: Typer =>
    */
   final def addChild(cls: Symbol, child: Symbol)(using Context): Unit = {
     val childStart = if (child.span.exists) child.span.start else -1
+    // A Child annotation that is currently being forced cannot be safely
+    // inspected here (forcing it again would trigger an assertion in
+    // `LazyAnnotation.tree`). This can happen when adding a child causes
+    // completion of another class that itself needs to be added as a child of
+    // the same parent (see tests/pos-special/i24719). In that case, fall back
+    // to just prepending the new Child annotation.
+    def isReady(ann: Annotation): Boolean =
+      ann.symbol == defn.ChildAnnot && !ann.isEvaluating
     def insertInto(annots: List[Annotation]): List[Annotation] =
-      annots.find(_.symbol == defn.ChildAnnot) match {
+      annots.find(isReady) match {
         case Some(Annotation.Child(other)) if other.span.exists && childStart <= other.span.start =>
           if (child == other)
             annots // can happen if a class has several inaccessible children
           else {
             assert(childStart != other.span.start || child.source != other.source, i"duplicate child annotation $child / $other")
-            val (prefix, otherAnnot :: rest) = annots.span(_.symbol != defn.ChildAnnot): @unchecked
+            val (prefix, otherAnnot :: rest) = annots.span(ann => !isReady(ann)): @unchecked
             prefix ::: otherAnnot :: insertInto(rest)
           }
         case _ =>
