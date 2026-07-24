@@ -1,0 +1,13 @@
+package build.`presentation-compiler-testcases`
+
+import scala3build.*
+
+import mill.*
+
+trait PresentationCompilerTestcases extends CrossScala3Module, mill.scala3buildhelper.CompileClassesPathHelper:
+  def moduleDeps = Seq(
+    build.compiler()
+  )
+
+object `package` extends PresentationCompilerTestcases, CrossHelper[PresentationCompilerTestcases]:
+  object `non-bootstrapped` extends PresentationCompilerTestcases, CrossHelper.NonBootstrapped

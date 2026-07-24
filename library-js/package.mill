@@ -1,0 +1,163 @@
+package build.`library-js`
+
+import scala3build.*
+
+import mill.*
+import mill.api.BuildCtx
+import mill.scala3buildhelper.CompileClassesPathHelper
+import mill.scalalib.*
+import mill.util.Jvm
+import org.scalajs.ir.ScalaJSVersions
+
+trait LibraryJs extends SharedLibrarySettings with Scala3JsModule with Scala3Mima with CompileClassesPathHelper {
+  def isJS = true
+  def moduleDeps = Seq(
+    build.library()
+  )
+  def compileMvnDeps = Seq(
+    mvn"org.scala-js::scalajs-library:${ScalaJSVersions.current}"
+      .withDottyCompat(scalaVersion())
+      .exclude(("org.scala-lang", "scala-library"))
+  )
+  def mvnDeps = Seq(
+    mvn"org.scala-js:scalajs-javalib:${ScalaJSVersions.current}"
+  )
+  def pomSettings = super.pomSettings().copy(
+    organization = "org.scala-js"
+  )
+  def artifactName = "scalajs-scalalib" + (if (mode == Mode.NonBootstrapped) "-non-bootstrapped" else "")
+  // Original sbt build comment:
+  // This is very tricky here since this is a Scala 3 project, but to be able to smoothly
+  // migrate the ecosystem, we need to be able to evict the Scala 2 library from the classpath.
+  // The problem is that the Scala 2 library for Scala.js has a _2.13 in the module's name, so we need
+  // to release Scala 3 for Scala.js with the same _2.13 instead of the _3.
+  // Yes, I know, this is weird and feels wrong.
+  def artifactId = artifactName() + "_2.13"
+
+  def sources = Task {
+    val baseSources = super.sources()
+    val expandedBaseSources = baseSources.flatMap { ref =>
+      if (os.isDir(ref.path))
+        os.walk(ref.path)
+          .filter(os.isFile)
+          .filter(_.last.endsWith(".scala"))
+      else
+        Nil
+    }
+    val expandedRelativeBaseSourcesSet = baseSources
+      .flatMap { ref =>
+        if (os.isDir(ref.path))
+          os.walk(ref.path)
+            .filter(os.isFile)
+            .filter(_.last.endsWith(".scala"))
+            .map(_.subRelativeTo(ref.path))
+        else
+          Nil
+      }
+      .toSet
+    val excludedBaseSourcesSet = Set(
+      os.sub / "scala/runtime/BoxesRunTime.java",
+      os.sub / "scala/math/ScalaNumber.java"
+    )
+    val librarySources = build.library().sources().flatMap { ref =>
+      if (os.isDir(ref.path))
+        os.walk(ref.path)
+          .filter(os.isFile)
+          .filter { f =>
+            val subPath = f.subRelativeTo(ref.path)
+            !expandedRelativeBaseSourcesSet.contains(subPath) &&
+              !excludedBaseSourcesSet.contains(subPath)
+          }
+          .map(PathRef(_))
+      else
+        Seq(ref)
+    }
+
+    val filteredExpandedBaseSources = expandedBaseSources.filter { f =>
+      // Excluding those feels like a typo in project/Build.scala, in the original sbt build
+      // but keeping BoxesRunTime.scala makes some sjs-compiler-tests fail
+      f.last != "BoxesRunTime.scala" &&
+        f.last != "ScalaNumber.scala"
+    }
+    filteredExpandedBaseSources.map(PathRef(_)) ++ librarySources
+  }
+  def scalacOptions = Task {
+    val mapSourceOpt =
+      if (Versions.isRelease) {
+        val baseURI = BuildCtx.workspaceRoot.toNIO.toUri.toASCIIString
+        val dottyVersion = publishVersion()
+        Seq(s"-scalajs-mapSourceURI:$baseURI->${Constants.dottyGithubRawUserContentUrl}/$dottyVersion/")
+      }
+      else
+        Nil
+    super.scalacOptions() ++ Seq("-Wconf:any:s") ++ mapSourceOpt
+  }
+
+  def patches = Task {
+    val cp = defaultResolver().classpath(
+      Seq(
+        mvn"org.scala-js:scalajs-scalalib_2.13:${Versions.scala2Version}+${ScalaJSVersions.current}"
+          .exclude(("org.scala-js", "scalajs-javalib"))
+      )
+    )
+
+    assert(cp.length == 2)
+
+    cp
+  }
+
+  /** Same as `localClasspath`, but we only keep .sjsir files, and class and tasty files of some specific classes */
+  def localClassPathForJar = Task {
+    val destDir = Task.dest
+    val localCp = localClasspath()
+    for (entry <- localCp if os.isDir(entry.path); f <- os.walk(entry.path) if os.isFile(f)) {
+      val keep = f.last.endsWith(".sjsir") ||
+        f.last == "UnitOps.tasty" ||
+        f.last == "UnitOps.class" ||
+        f.last == "UnitOps$.class" ||
+        f.last == "AnonFunctionXXL.tasty" ||
+        f.last == "AnonFunctionXXL.class"
+      if (keep) {
+        val subPath = f.subRelativeTo(entry.path)
+        val dest = destDir / subPath
+        if (!os.exists(dest))
+          os.copy(f, dest, createFolders = true)
+      }
+    }
+    PathRef(destDir)
+  }
+
+  def jarName = Task {
+    s"scalajs-scalalib_2.13-${publishVersion()}.jar"
+  }
+
+  // Ensuring the JAR name has a shape expected by tools that consume it
+  def jar: T[PathRef] = Task {
+    val jar = Task.dest / jarName()
+    Jvm.createJar(jar, Seq(localClassPathForJar().path), manifest())
+    PathRef(jar)
+  }
+
+  def mimaForwardIssueFilters =
+    MiMaFilters.ScalaLibrarySJS.ForwardsBreakingChanges
+  def mimaBackwardIssueFilters =
+    MiMaFilters.ScalaLibrarySJS.BackwardsBreakingChanges
+
+  def enableBsp = Scala3JavaModule.enableBspForNonCoreModules && Scala3JavaModule.enableBspForScalaJsModules
+}
+
+object `package` extends LibraryJs with CrossHelper[LibraryJs] {
+  object `non-bootstrapped` extends LibraryJs with CrossHelper.NonBootstrapped
+
+  // this module is empty / has no sources
+  trait Library3 extends CrossScala3Module with Scala3JsModule {
+    def artifactName = "scala3-library" + (if (mode == Mode.NonBootstrapped) "-non-bootstrapped" else "")
+    def moduleDeps = Seq(
+      build.`library-js`()
+    )
+  }
+
+  object `library-3` extends Library3 with CrossHelper[Library3] {
+    object `non-bootstrapped` extends Library3 with CrossHelper.NonBootstrapped
+  }
+}

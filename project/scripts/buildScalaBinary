@@ -4,9 +4,14 @@ set -e
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/../.."
 SBT="$ROOT/project/scripts/sbt" # if run on CI
+MILL="$ROOT/mill"
 
 # set the $DIST_PROJECT and $DIST_DIR variables
 source "$ROOT/bin/common-platform"
 
 # build the scala/scalac/scaladoc binary, where scala is native for the current platform.
-"$SBT" "$DIST_PROJECT/Universal/stage"
+if [ "z${DIST_USE_MILL:-}" != "z" ]; then
+  "$MILL" "dist.$DIST_MILL_PROJECT"
+else
+  "$SBT" "$DIST_PROJECT/Universal/stage"
+fi
