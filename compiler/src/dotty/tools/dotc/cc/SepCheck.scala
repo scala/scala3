@@ -689,7 +689,12 @@ class SepCheck(checker: CheckCaptures.CheckerAPI) extends tpd.TreeTraverser:
   def checkConsumedRefs(refsToCheck: Refs, tpe: Type, role: TypeRole, descr: => String, pos: SrcPos)(using Context) =
     val badParams = mutable.ListBuffer[Symbol]()
     def currentOwner = role.dclSym.orElse(ctx.owner)
-    for hiddenRef <- refsToCheck.deduct(explicitRefs(tpe)) do
+    val refsToCheck1 = role match
+      case _: TypeRole.Qualifier =>
+        // When this is a consume method call on a receiver, no need to exclude explicit captures
+        refsToCheck
+      case _ => refsToCheck.deduct(explicitRefs(tpe))
+    for hiddenRef <- refsToCheck1 do
       if !hiddenRef.stripReadOnly.isKnownClassifiedAs(defn.Caps_SharedCapability) then
         hiddenRef.pathRoot match
           case ref: TermRef if ref.symbol != role.dclSym =>
