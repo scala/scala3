@@ -828,6 +828,8 @@ class Definitions {
     @tu lazy val EnumValueSerializationProxyConstructor: TermSymbol =
       EnumValueSerializationProxyClass.requiredMethod(nme.CONSTRUCTOR, List(ClassType(TypeBounds.empty), IntType))
 
+  @tu lazy val AppClass: ClassSymbol = requiredClass("scala.App")
+  @tu lazy val DelayedInitClass: ClassSymbol = requiredClass("scala.DelayedInit")
   @tu lazy val ProductClass: ClassSymbol = requiredClass("scala.Product")
     @tu lazy val Product_canEqual          : Symbol = ProductClass.requiredMethod(nme.canEqual_)
     @tu lazy val Product_productArity      : Symbol = ProductClass.requiredMethod(nme.productArity)
