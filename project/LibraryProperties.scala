@@ -1,3 +1,5 @@
+// This file is used in the Mill build too. Do not modify this comment.
+
 object LibraryProperties {
   private val shellBanner: String =
     """%n      ________ ___   / /  ___

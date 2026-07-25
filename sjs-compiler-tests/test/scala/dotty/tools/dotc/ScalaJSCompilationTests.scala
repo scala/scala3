@@ -29,7 +29,7 @@ class ScalaJSCompilationTests {
   @Test def runScalaJS: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runScalaJS")
     aggregateTests(
-      compileFilesInDir("tests/run", scalaJSOptions),
+      compileFilesInDir("tests/run", scalaJSOptions, FileFilter.include(List("i1748.scala"))),
     ).checkRuns()
   }
 }

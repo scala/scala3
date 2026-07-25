@@ -1,0 +1,11 @@
+package build.interfaces
+
+import scala3build.*
+
+// definition of the interfaces module
+object `package` extends Scala3JavaModule, Scala3Mima:
+  def isCoreModule = true
+  def mimaForwardIssueFilters =
+    MiMaFilters.Interfaces.ForwardsBreakingChanges
+  def mimaBackwardIssueFilters =
+    MiMaFilters.Interfaces.BackwardsBreakingChanges

@@ -1,0 +1,199 @@
+#!/usr/bin/env sh
+
+set -e
+
+if [ -z "${DEFAULT_MILL_VERSION}" ] ; then DEFAULT_MILL_VERSION="1.1.3"; fi
+
+if [ -z "${GITHUB_RELEASE_CDN}" ] ; then GITHUB_RELEASE_CDN=""; fi
+
+if [ -z "$MILL_MAIN_CLI" ] ; then MILL_MAIN_CLI="${0}"; fi
+
+MILL_REPO_URL="https://github.com/com-lihaoyi/mill"
+
+MILL_BUILD_SCRIPT=""
+
+if [ -f "build.mill" ] ; then
+  MILL_BUILD_SCRIPT="build.mill"
+elif [ -f "build.mill.scala" ] ; then
+  MILL_BUILD_SCRIPT="build.mill.scala"
+elif [ -f "build.sc" ] ; then
+  MILL_BUILD_SCRIPT="build.sc"
+fi
+
+# `s/.*://`:
+#   This is a greedy match that removes everything from the beginning of the line up to (and including) the last
+#   colon (:). This effectively isolates the value part of the declaration.
+#
+#  `s/#.*//`:
+#    This removes any comments at the end of the line.
+#
+#  `s/['\"]//g`:
+#    This removes all single and double quotes from the string, wherever they appear (g is for "global").
+#
+#  `s/^[[:space:]]*//; s/[[:space:]]*$//`:
+#    These two expressions trim any leading or trailing whitespace ([[:space:]] matches spaces and tabs).
+TRIM_VALUE_SED="s/.*://; s/#.*//; s/['\"]//g; s/^[[:space:]]*//; s/[[:space:]]*$//"
+
+if [ -z "${MILL_VERSION}" ] ; then
+  if [ -f ".mill-version" ] ; then
+    MILL_VERSION="$(tr '\r' '\n' < .mill-version | head -n 1 2> /dev/null)"
+  elif [ -f ".config/mill-version" ] ; then
+    MILL_VERSION="$(tr '\r' '\n' < .config/mill-version | head -n 1 2> /dev/null)"
+  elif [ -f "build.mill.yaml" ] ; then
+    MILL_VERSION="$(grep -E "mill-version:" "build.mill.yaml" | sed -E "$TRIM_VALUE_SED")"
+  elif [ -n "${MILL_BUILD_SCRIPT}" ] ; then
+    MILL_VERSION="$(grep -E "//\|.*mill-version" "${MILL_BUILD_SCRIPT}" | sed -E "$TRIM_VALUE_SED")"
+  fi
+fi
+
+if [ -z "${MILL_VERSION}" ] ; then MILL_VERSION="${DEFAULT_MILL_VERSION}"; fi
+
+MILL_USER_CACHE_DIR="${XDG_CACHE_HOME:-${HOME}/.cache}/mill"
+
+if [ -z "${MILL_FINAL_DOWNLOAD_FOLDER}" ] ; then MILL_FINAL_DOWNLOAD_FOLDER="${MILL_USER_CACHE_DIR}/download"; fi
+
+MILL_NATIVE_SUFFIX="-native"
+MILL_JVM_SUFFIX="-jvm"
+ARTIFACT_SUFFIX=""
+
+# Check if GLIBC version is at least the required version
+# Returns 0 (true) if GLIBC >= required version, 1 (false) otherwise
+check_glibc_version() {
+  required_version="2.39"
+  required_major=$(echo "$required_version" | cut -d. -f1)
+  required_minor=$(echo "$required_version" | cut -d. -f2)
+  # Get GLIBC version from ldd --version (first line contains version like "ldd (GNU libc) 2.31")
+  glibc_version=$(ldd --version 2>/dev/null | head -n 1 | grep -oE '[0-9]+\.[0-9]+$' || echo "")
+  if [ -z "$glibc_version" ]; then
+    # If we can't determine GLIBC version, assume it's too old
+    return 1
+  fi
+  glibc_major=$(echo "$glibc_version" | cut -d. -f1)
+  glibc_minor=$(echo "$glibc_version" | cut -d. -f2)
+  if [ "$glibc_major" -gt "$required_major" ]; then
+    return 0
+  elif [ "$glibc_major" -eq "$required_major" ] && [ "$glibc_minor" -ge "$required_minor" ]; then
+    return 0
+  else
+    return 1
+  fi
+}
+
+set_artifact_suffix() {
+  if [ "$(uname -s 2>/dev/null | cut -c 1-5)" = "Linux" ]; then
+    # Native binaries require new enough GLIBC; fall back to JVM launcher if older
+    if ! check_glibc_version; then
+      return
+    fi
+    if [ "$(uname -m)" = "aarch64" ]; then ARTIFACT_SUFFIX="-native-linux-aarch64"
+    else ARTIFACT_SUFFIX="-native-linux-amd64"; fi
+  elif [ "$(uname)" = "Darwin" ]; then
+    if [ "$(uname -m)" = "arm64" ]; then ARTIFACT_SUFFIX="-native-mac-aarch64"
+    else ARTIFACT_SUFFIX="-native-mac-amd64"; fi
+  else
+    echo "This native mill launcher supports only Linux and macOS." 1>&2
+    exit 1
+  fi
+}
+
+case "$MILL_VERSION" in
+  *"$MILL_NATIVE_SUFFIX")
+    MILL_VERSION=${MILL_VERSION%"$MILL_NATIVE_SUFFIX"}
+    set_artifact_suffix
+    ;;
+
+  *"$MILL_JVM_SUFFIX")
+    MILL_VERSION=${MILL_VERSION%"$MILL_JVM_SUFFIX"}
+    ;;
+
+  *)
+    case "$MILL_VERSION" in
+      0.1.* | 0.2.* | 0.3.* | 0.4.* | 0.5.* | 0.6.* | 0.7.* | 0.8.* | 0.9.* | 0.10.* | 0.11.* | 0.12.*)
+        ;;
+      *)
+        set_artifact_suffix
+        ;;
+    esac
+    ;;
+esac
+
+MILL="${MILL_FINAL_DOWNLOAD_FOLDER}/$MILL_VERSION$ARTIFACT_SUFFIX"
+
+# If not already downloaded, download it
+if [ ! -s "${MILL}" ] || [ "$MILL_TEST_DRY_RUN_LAUNCHER_SCRIPT" = "1" ] ; then
+  case $MILL_VERSION in
+    0.0.* | 0.1.* | 0.2.* | 0.3.* | 0.4.*)
+      MILL_DOWNLOAD_SUFFIX=""
+      MILL_DOWNLOAD_FROM_MAVEN=0
+      ;;
+    0.5.* | 0.6.* | 0.7.* | 0.8.* | 0.9.* | 0.10.* | 0.11.0-M*)
+      MILL_DOWNLOAD_SUFFIX="-assembly"
+      MILL_DOWNLOAD_FROM_MAVEN=0
+      ;;
+    *)
+      MILL_DOWNLOAD_SUFFIX="-assembly"
+      MILL_DOWNLOAD_FROM_MAVEN=1
+      ;;
+  esac
+  case $MILL_VERSION in
+    0.12.0 | 0.12.1 | 0.12.2 | 0.12.3 | 0.12.4 | 0.12.5 | 0.12.6 | 0.12.7 | 0.12.8 | 0.12.9 | 0.12.10 | 0.12.11)
+      MILL_DOWNLOAD_EXT="jar"
+      ;;
+    0.12.*)
+      MILL_DOWNLOAD_EXT="exe"
+      ;;
+    0.*)
+      MILL_DOWNLOAD_EXT="jar"
+      ;;
+    *)
+      MILL_DOWNLOAD_EXT="exe"
+      ;;
+  esac
+
+  MILL_TEMP_DOWNLOAD_FILE="${MILL_OUTPUT_DIR:-out}/mill-temp-download"
+  mkdir -p "$(dirname "${MILL_TEMP_DOWNLOAD_FILE}")"
+
+  if [ "$MILL_DOWNLOAD_FROM_MAVEN" = "1" ] ; then
+    MILL_DOWNLOAD_URL="https://repo1.maven.org/maven2/com/lihaoyi/mill-dist${ARTIFACT_SUFFIX}/${MILL_VERSION}/mill-dist${ARTIFACT_SUFFIX}-${MILL_VERSION}.${MILL_DOWNLOAD_EXT}"
+  else
+    MILL_VERSION_TAG=$(echo "$MILL_VERSION" | sed -E 's/([^-]+)(-M[0-9]+)?(-.*)?/\1\2/')
+    MILL_DOWNLOAD_URL="${GITHUB_RELEASE_CDN}${MILL_REPO_URL}/releases/download/${MILL_VERSION_TAG}/${MILL_VERSION}${MILL_DOWNLOAD_SUFFIX}"
+    unset MILL_VERSION_TAG
+  fi
+
+
+  if [ "$MILL_TEST_DRY_RUN_LAUNCHER_SCRIPT" = "1" ] ; then
+    echo "$MILL_DOWNLOAD_URL"
+    echo "$MILL"
+    exit 0
+  fi
+
+  echo "Downloading mill ${MILL_VERSION} from ${MILL_DOWNLOAD_URL} ..." 1>&2
+  curl -f -L -o "${MILL_TEMP_DOWNLOAD_FILE}" "${MILL_DOWNLOAD_URL}"
+
+  chmod +x "${MILL_TEMP_DOWNLOAD_FILE}"
+
+  mkdir -p "${MILL_FINAL_DOWNLOAD_FOLDER}"
+  mv "${MILL_TEMP_DOWNLOAD_FILE}" "${MILL}"
+
+  unset MILL_TEMP_DOWNLOAD_FILE
+  unset MILL_DOWNLOAD_SUFFIX
+fi
+
+MILL_FIRST_ARG=""
+if [ "$1" = "--bsp" ] || [ "${1#"-i"}" != "$1" ] || [ "$1" = "--interactive" ] || [ "$1" = "--no-server" ] || [ "$1" = "--no-daemon" ] || [ "$1" = "--help" ] ; then
+  # Need to preserve the first position of those listed options
+  MILL_FIRST_ARG=$1
+  shift
+fi
+
+unset MILL_FINAL_DOWNLOAD_FOLDER
+unset MILL_OLD_DOWNLOAD_PATH
+unset OLD_MILL
+unset MILL_VERSION
+unset MILL_REPO_URL
+
+# -D mill.main.cli is for compatibility with Mill 0.10.9 - 0.13.0-M2
+# We don't quote MILL_FIRST_ARG on purpose, so we can expand the empty value without quotes
+# shellcheck disable=SC2086
+exec "${MILL}" $MILL_FIRST_ARG -D "mill.main.cli=${MILL_MAIN_CLI}" "$@"

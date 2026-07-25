@@ -1,3 +1,5 @@
+// This file is used in the Mill build too. Do not modify this comment.
+
 import scala.annotation.tailrec
 
 import sbt._

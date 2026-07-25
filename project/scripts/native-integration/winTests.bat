@@ -2,10 +2,14 @@
 setlocal
 
 @rem paths are relative to the root project directory
-set "_PREFIX=dist\win-x86_64\target\universal\stage"
+if "%DIST_USE_MILL%"=="true" (
+    set "_PREFIX=out\dist\win-x86_64.dest"
+) else (
+    set "_PREFIX=dist\win-x86_64\target\universal\stage"
+)
 set "_SOURCE=tests\pos\HelloWorld.scala"
 set "_SOURCE_TEST_BOOTSTRAPPED=project\scripts\native-integration\testBootstrappedLibrary.scala"
-set "_OUT_DIR=out"
+set "_OUT_DIR=output"
 
 @rem if-tests mimic the non-existing bash instruction 'set -e'.
 call "%_PREFIX%\bin\scalac.bat" "@project\scripts\options" "%_SOURCE%"

@@ -1,0 +1,67 @@
+package build.repl
+
+import scala3build.*
+
+import mill.*
+import mill.api.BuildCtx
+import mill.scalalib.*
+
+trait Repl extends CrossScala3Module, DefaultTaskModule:
+  outer =>
+  def testResources = Task.Source("test-resources")
+
+  def moduleDeps = Seq(
+    build.compiler(),
+    build.`directives-parser`()
+  )
+  def mvnDeps = Seq(
+    mvn"org.jline:jline-reader:4.0.14",
+    mvn"org.jline:jline-terminal:4.0.14",
+    mvn"org.jline:jline-terminal-jni:4.0.14",
+    mvn"io.get-coursier:interface:1.0.29-M4" // Original comment: used by the REPL for dependency resolution
+      // temporary, until this is fixed in coursier/interface
+      .exclude(("org.scala-lang", "scala-library"))
+  )
+  def defaultTask() = "run"
+  /** Runs the REPL - should be run in interactive mode (./mill -i) */
+  def run(args: Task[mill.api.Args] = Task.Anon(mill.api.Args())): Task.Command[Unit] =
+    val runTask = super.run(Task.Anon(mill.api.Args("-usejavacp", args().value)))
+    Task.Command(exclusive = true) {
+      runTask()
+    }
+  object test extends Scala3Tests:
+    def moduleDeps = super.moduleDeps ++ Seq(
+      build.compiler().test
+    )
+    def compileResources =
+      // Getting
+      //     Could not detect the parent class of task repl.non-bootstrapped.test.compileResources.super.test. Please report this at https://github.com/com-lihaoyi/mill/issues/new/choose .
+      // when adding
+      //     super[JavaModule].compileResources() ++
+      Seq(testResources())
+    def mvnDeps = Seq(
+      mvn"com.github.sbt:junit-interface:0.13.3"
+    )
+
+    def forkWorkingDir = BuildCtx.workspaceRoot / "repl"
+    def replTestForkArgs = Task {
+      def findArtifactPath(name: String) =
+        compileClasspath().map(_.path).find(_.last.startsWith(name)).getOrElse {
+          Task.fail(s"Cannot find $name in repl class path")
+        }
+      Seq(
+        s"-Ddotty.tests.classes.dottyRepl=${outer.jar().path}",
+        s"-Ddotty.tests.classes.jlineTerminal=${findArtifactPath("jline-terminal")}",
+        s"-Ddotty.tests.classes.jlineReader=${findArtifactPath("jline-reader")}",
+        s"-Ddotty.tests.classes.scalaXml=${findArtifactPath("scala-xml_2.13")}"
+      )
+    }
+
+    def forkArgs: T[Seq[String]] = Task {
+      super.forkArgs() ++
+        build.compiler().test.compilerTestForkArgs() ++
+        replTestForkArgs()
+    }
+
+object `package` extends Repl, CrossHelper[Repl]:
+  object `non-bootstrapped` extends Repl, CrossHelper.NonBootstrapped

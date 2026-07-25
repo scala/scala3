@@ -1,0 +1,254 @@
+package build.dist
+
+import scala3build.*
+
+import coursier.cache.{ArchiveCache, Cache}
+import coursier.core.Dependency
+import coursier.maven.{MavenRepository, MavenRepositoryLike}
+import coursier.util.Artifact
+import coursier.version.VersionConstraint
+import mill.*
+import mill.api.BuildCtx
+import mill.javalib.CoursierModule
+import mill.util.Jvm
+
+import scala.util.Properties
+
+object `package` extends CoursierModule {
+
+  def binDir = Task.Source("bin")
+  def libexecDir = Task.Source("libexec")
+  def libexecNativeOverridesFiles = Task.Source("libexec-native-overrides")
+
+  def jvm = Task {
+    makeDist()()
+  }
+
+  def `mac-x86_64` = Task {
+    makeDist(
+      nativeOverrides = true,
+      nativeScalaCliLauncherUrl = Some(ver => s"https://github.com/VirtusLab/scala-cli/releases/download/v$ver/scala-cli-x86_64-apple-darwin.gz!")
+    )()
+  }
+
+  def `mac-aarch64` = Task {
+    makeDist(
+      nativeOverrides = true,
+      nativeScalaCliLauncherUrl = Some(ver => s"https://github.com/VirtusLab/scala-cli/releases/download/v$ver/scala-cli-x86_64-apple-darwin.gz!")
+    )()
+  }
+
+  def `win-x86_64` = Task {
+    makeDist(
+      nativeOverrides = true,
+      nativeScalaCliLauncherUrl = Some(ver => s"https://github.com/VirtusLab/scala-cli/releases/download/v$ver/scala-cli-x86_64-pc-win32.zip!scala-cli.exe")
+    )()
+  }
+
+  def `linux-x86_64` = Task {
+    makeDist(
+      nativeOverrides = true,
+      nativeScalaCliLauncherUrl = Some(ver => s"https://github.com/VirtusLab/scala-cli/releases/download/v$ver/scala-cli-x86_64-pc-linux.gz!")
+    )()
+  }
+
+  def `linux-aarch64` = Task {
+    makeDist(
+      nativeOverrides = true,
+      nativeScalaCliLauncherUrl = Some(ver => s"https://github.com/VirtusLab/scala-cli/releases/download/v$ver/scala-cli-aarch64-pc-linux.gz!")
+    )()
+  }
+
+  /**
+   * Builds a Scala distribution directory
+   */
+  private def makeDist(
+    nativeOverrides: Boolean = false,
+    nativeScalaCliLauncherUrl: Option[(version: String) => String] = None
+  ): Task[PathRef] = {
+
+    val projects0 = build.projects(using Mode.Bootstrapped)
+
+    // Staged repositories for the POMs / JARs built by each module of projects0
+    val projectReposTask = Task.traverse(projects0)(_.publishLocalTestRepo)
+
+    // Result of dependency resolution for each module of projects0
+    val projectDependenciesTask = Task.traverse(projects0) { proj =>
+      Task.Anon {
+        proj.millResolver().fetchArtifacts(
+          Seq(proj.coursierDependencyTask())
+        )
+      }
+    }
+
+    Task.Anon {
+      val dest = Task.dest
+      os.copy(binDir().path, dest / "bin")
+      os.copy(libexecDir().path, dest / "libexec")
+
+      if (nativeOverrides)
+        for (elem <- os.list(libexecNativeOverridesFiles().path))
+          os.copy.into(elem, dest / "libexec", createFolders = true, mergeFolders = true, replaceExisting = true)
+
+      // Downloads the passed url via the coursier archive cache
+      // When passed a simple URL, this downloads it.
+      // When passed a simple URL followed by "!" (for simple compression formats like gzip),
+      // this downloads it and extracts it in the coursier archive cache.
+      // When passed a simple URL followed by "!" and a sub-path (for zip files or tar archives),
+      // this downloads it and extracts it in the coursier archive cache, and finds the sub-path in it.
+      def get(url: String): os.Path =
+        if (url.contains("!")) {
+          val archiveCache = ArchiveCache()
+          val f = archiveCache.get(Artifact(url))
+            .unsafeRun(true)(using archiveCache.cache.ec)
+            .left.map(throw _)
+            .merge
+          os.Path(f)
+        }
+        else {
+          val cache = Cache.default
+          val f = cache.file(Artifact(url))
+            .run
+            .unsafeRun(true)(using cache.ec)
+            .left.map(throw _)
+            .merge
+          os.Path(f)
+        }
+
+      nativeScalaCliLauncherUrl match {
+        case Some(f) =>
+          val file = get(f(Versions.scalaCliLauncherVersion))
+          val ext = if (Properties.isWin) ".exe" else ""
+          val dest0 = dest / "libexec" / s"scala-cli$ext"
+          os.copy(file, dest0)
+          if (!Properties.isWin)
+            dest0.toIO.setExecutable(true)
+        case None =>
+          val scalaCliJar = get(s"https://github.com/VirtusLab/scala-cli/releases/download/v${Versions.scalaCliLauncherVersion}/scala-cli.jar")
+          os.copy(scalaCliJar, dest / "libexec/scala-cli.jar")
+      }
+
+      Dist.generateVersionFile(
+        BuildCtx.workspaceRoot.toIO,
+        dest.toIO,
+        build.library.publishVersion(),
+        System.err.println(_)
+      )
+
+      val repo = dest / "maven2"
+
+      // Copy JARs and POMs for modules built in this repo
+      for (projectRepo <- projectReposTask(); f <- os.list(projectRepo.path))
+        os.copy.into(f, repo, mergeFolders = true, createFolders = true)
+
+      // Copy JARs for dependencies
+      for (res <- projectDependenciesTask(); (dep, _, _, fOpt) <- res.fullDetailedArtifacts0; f <- fOpt) {
+        val dest0 = repo / dep.module.organization.value.split('.').toSeq / dep.module.name.value /
+          dep.versionConstraint.asString /
+          s"${dep.module.name.value}-${dep.versionConstraint.asString}.jar"
+        if (!os.exists(dest0))
+          os.copy(os.Path(f), dest0, mergeFolders = true, createFolders = true)
+      }
+
+      // Copy POMs for dependencies (including POM files of BOMs and parent POMs, that don't have corresponding JARs)
+      val allArtifactsRes0 = {
+
+        val cache = Cache.default
+
+        val allArtifacts = projectDependenciesTask()
+          .flatMap { res =>
+            res.resolution.projectCache0
+              .flatMap {
+                case ((mod, _), (repo: MavenRepositoryLike, proj)) =>
+                  val path = os.sub / mod.organization.value.split('.').toSeq / mod.name.value / proj.version0.asString / s"${mod.name.value}-${proj.version0.asString}.pom"
+                  Seq((path, repo.artifactFor(repo.urlFor(path.segments, false), false)))
+                case ((mod, _), _) if mod.organization.value == "mill-internal" =>
+                  Nil
+                case other =>
+                  sys.error(s"$other")
+              }
+              .toVector
+          }
+          .distinct
+          .sortBy(_._1)
+
+        val allArtifactsTasks = coursier.util.Task.gather.gather {
+          allArtifacts.map {
+            case (path, art) =>
+              cache.file(art).map((path, _)).run
+          }
+        }
+
+        val allArtifactsRes = allArtifactsTasks.unsafeRun(true)(using cache.ec)
+        val errors = allArtifactsRes.collect {
+          case Left(err) => err
+        }
+        if (errors.nonEmpty) {
+          val err = new Exception(errors.head)
+          for (err0 <- errors.tail)
+            err.addSuppressed(err0)
+          throw err
+        }
+
+        allArtifactsRes.collect {
+          case Right(elem) => elem
+        }
+      }
+
+      for ((path, f) <- allArtifactsRes0)
+        os.copy.over(os.Path(f), repo / path, createFolders = true, replaceExisting = true)
+
+      // Ensures some Scala 3 modules can be downloaded entirely via the dist offline repo,
+      // and creates some JAR archives out of them, put in the dist under lib/ (some of
+      // the dist scripts expect them at this location).
+      val dottyVer = VersionConstraint(Versions.dottyVersion)
+      def depFor(name: String) =
+        coursier.Dependency(
+          coursier.Module(coursier.Organization("org.scala-lang"), coursier.ModuleName(name), Map()),
+          dottyVer
+        )
+      val scalaDeps = Seq(
+        depFor("scala3-interfaces"),
+        depFor("scala3-compiler_3"),
+        depFor("scala3-library_3"),
+        depFor("scala-library"),
+        depFor("tasty-core_3"),
+        depFor("scala3-repl_3")
+      )
+      val compilerDeps = Seq(
+        depFor("scala3-staging_3"),
+        depFor("scala3-tasty-inspector_3"),
+        depFor("scala3-repl_3")
+      )
+      val scaladocDeps = Seq(
+        depFor("scala3-interfaces"),
+        depFor("scala3-compiler_3"),
+        depFor("scala3-library_3"),
+        depFor("scala-library"),
+        depFor("tasty-core_3"),
+        depFor("scala3-tasty-inspector_3"),
+        depFor("scaladoc_3")
+      )
+      def localRepoFilesFor(deps: Seq[Dependency]): Seq[os.Path] =
+        coursier.Fetch()
+          .withRepositories(Seq(MavenRepository(repo.toNIO.toUri.toASCIIString)))
+          .withDependencies(deps)
+          .run()
+          .map(os.Path(_))
+      val scalaFiles = localRepoFilesFor(scalaDeps)
+      val compilerFiles = localRepoFilesFor(scalaDeps ++ compilerDeps).filterNot(scalaFiles.toSet)
+      val scaladocFiles = localRepoFilesFor(scaladocDeps)
+
+      assert(scalaFiles.forall(_.startsWith(repo)))
+      assert(compilerFiles.forall(_.startsWith(repo)))
+      assert(scaladocFiles.forall(_.startsWith(repo)))
+
+      Jvm.createClasspathPassingJar(dest / "lib/scala.jar", scalaFiles)
+      Jvm.createClasspathPassingJar(dest / "lib/with_compiler.jar", compilerFiles)
+      Jvm.createClasspathPassingJar(dest / "lib/scaladoc.jar", scaladocFiles)
+
+      PathRef(dest)
+    }
+  }
+
+}

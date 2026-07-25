@@ -1,3 +1,5 @@
+// This file is used in the Mill build too. Do not modify this comment.
+
 package build
 
 // This file is an exact copy of the file of the same name in scala-js/scala-js

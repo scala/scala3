@@ -8,18 +8,24 @@ set -eux
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/../../.."
 
-SBT="$ROOT/project/scripts/sbt" # if run on CI
-# SBT="sbt" # if run locally
-
 # set the $DIST_PROJECT and $DIST_DIR variables
 source "$ROOT/bin/common-platform"
+
+if [ "z${DIST_USE_MILL:-}" != "z" ]; then
+  MILL="$ROOT/mill"
+
+  PROG_HOME="out/dist/$DIST_MILL_PROJECT.dest" # we could get that with jq from the Mill command below
+else
+  SBT="$ROOT/project/scripts/sbt" # if run on CI
+  # SBT="sbt" # if run locally
+
+  PROG_HOME="$DIST_DIR/target/universal/stage"
+fi
 
 die () {
     echo >&2 "$@"
     exit 1
 }
-
-PROG_HOME="$DIST_DIR/target/universal/stage"
 
 SOURCE="$ROOT/tests/pos/HelloWorld.scala"
 SOURCE_VERSION="$ROOT/project/scripts/native-integration/reportScalaVersion.scala"
@@ -43,7 +49,11 @@ clear_cli_dotfiles()
 # *---------------*/
 
 # build the distribution
-"$SBT" "$DIST_PROJECT/Universal/stage"
+if [ "z${DIST_USE_MILL:-}" != "z" ]; then
+  "$MILL" "dist.$DIST_MILL_PROJECT"
+else
+  "$SBT" "$DIST_PROJECT/Universal/stage"
+fi
 
 SCALA_VERSION=""
 # iterate through lines in VERSION_SRC

@@ -1,0 +1,86 @@
+package build.`community-build`
+
+import scala3build.*
+
+import mill.*
+import mill.api.BuildCtx
+import mill.javalib.testrunner.TestResult
+import org.scalajs.ir.ScalaJSVersions
+
+// community-build module definition
+object `package` extends Scala3Module {
+  // NonBootstrapped mode, so that we can import that module in IDEs seamlessly
+  def mode = Mode.NonBootstrapped
+  def moduleDeps = Seq(
+    build.library.`non-bootstrapped`
+  )
+
+  def prepareCommunityBuildDocs(): Task.Command[Unit] = Task.Command {
+    build.`sbt-bridge`.docJar()
+    build.interfaces.docJar()
+    build.tasty.docJar()
+    build.library.docJar()
+    build.library.`library-3`.docJar()
+    build.`tasty-inspector`.docJar()
+    build.scaladoc.docJar()
+    build.repl.docJar()
+    build.compiler.docJar()
+    build.`library-js`.docJar()
+    build.`library-js`.`library-3`.docJar()
+    ()
+  }
+
+  def prepareCommunityBuild(): Task.Command[Unit] = Task.Command {
+    build.`sbt-bridge`.publishLocal()()
+    build.interfaces.publishLocal()()
+    build.tasty.publishLocal()()
+    build.library.publishLocal()()
+    build.library.`library-3`.publishLocal()()
+    build.`tasty-inspector`.publishLocal()()
+    build.scaladoc.publishLocal()()
+    build.`directives-parser`.publishLocal()()
+    build.repl.publishLocal()()
+    build.compiler.publishLocal()()
+    build.`library-js`.publishLocal()()
+    build.`library-js`.`library-3`.publishLocal()()
+
+    val sbtInjectPluginsFile = test.forkWorkingDir() / "sbt-injected-plugins"
+    os.write.over(
+      sbtInjectPluginsFile,
+      s"""addSbtPlugin("org.scala-js" % "sbt-scalajs" % "${ScalaJSVersions.current}")"""
+    )
+    System.err.println(s"Wrote $sbtInjectPluginsFile")
+    val scalaVersionFile = test.forkWorkingDir() / "scala3-bootstrapped.version"
+    os.write.over(scalaVersionFile, Versions.dottyVersion)
+    System.err.println(s"Wrote $scalaVersionFile")
+  }
+
+  def run(args: Task[Args]) = Task.Command[Unit] {
+    prepareCommunityBuild()()
+    super.run(args)()
+  }
+
+  object test extends Scala3Tests {
+    def forkWorkingDir = Task {
+      BuildCtx.workspaceRoot / "community-build"
+    }
+
+    def testArgsDefault = super.testArgsDefault() ++ Seq(
+      "--include-categories=dotty.communitybuild.TestCategory",
+      "--run-listener=dotty.communitybuild.FailureSummarizer"
+    )
+
+    // Ensuring prepareCommunityBuild runs before running tests
+    def testForked(args: String*): Task.Command[(msg: String, results: Seq[TestResult])] = {
+      val argsTask = Task.Anon {
+        // putting this one here to be sure it runs before Mill actually runs the tests
+        prepareCommunityBuild()()
+
+        testArgsDefault() ++ args
+      }
+      Task.Command {
+        testTask(argsTask, Task.Anon { Seq.empty[String] })()
+      }
+    }
+  }
+}

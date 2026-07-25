@@ -1,7 +1,9 @@
-import sbt.*
-import dotty.tools.sbtplugin.Versions
+// This file is used in the Mill build too. Do not modify this comment.
 
-import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
+package dotty.tools.sbtplugin
+
+import sbt.*
+
 import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
 /**
@@ -14,7 +16,7 @@ object Dependencies {
   val coursier = "io.get-coursier" %% "coursier" % "2.1.24"
   val coursierInterface = "io.get-coursier" % "interface" % "1.0.29-M4"
 
-  private val flexmarkVersion = "0.64.8"
+  val flexmarkVersion = "0.64.8"
   val flexmarkDeps = Seq(
     "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-util-ast" % flexmarkVersion,
@@ -32,7 +34,7 @@ object Dependencies {
 
   val guava = "com.google.guava" % "guava" % "33.6.0-jre"
 
-  private val jacksonVersion = "3.1.2"
+  val jacksonVersion = "3.1.2"
   val jacksonDatabind = "tools.jackson.core" % "jackson-databind" % jacksonVersion
   val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
@@ -49,7 +51,7 @@ object Dependencies {
 
   val lz4 = "org.lz4" % "lz4-java" % "1.8.1"
 
-  private val mtagsVersion = "1.6.7"
+  val mtagsVersion = "1.6.7"
   val mtagsInterfaces = "org.scalameta" % "mtags-interfaces" % mtagsVersion
   val mtagsShared = "org.scalameta" % s"mtags-shared_${Versions.scala2Version}" % mtagsVersion
 

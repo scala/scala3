@@ -1,0 +1,27 @@
+package build.tasty
+
+import scala3build.*
+
+import mill.*
+
+trait Tasty extends CrossScala3Module, Scala3Mima:
+  def artifactName = "tasty-core"
+
+  def moduleDeps = Seq(
+    build.library.`library-3`()
+  )
+
+  def mimaForwardIssueFilters =
+    MiMaFilters.TastyCore.ForwardsBreakingChanges
+  def mimaBackwardIssueFilters =
+    MiMaFilters.TastyCore.BackwardsBreakingChanges
+
+  def isCoreModule = true
+
+  object test extends Scala3Tests:
+    def forkEnv = super.forkEnv() ++ Seq(
+      "EXPECTED_TASTY_VERSION" -> Versions.expectedTastyVersion
+    )
+
+object `package` extends Tasty, CrossHelper[Tasty]:
+  object `non-bootstrapped` extends Tasty, CrossHelper.NonBootstrapped

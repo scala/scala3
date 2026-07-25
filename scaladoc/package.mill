@@ -1,0 +1,311 @@
+package build.scaladoc
+
+import scala3build.*
+
+import mill.*
+import mill.api.{BuildCtx, TaskCtx}
+import mill.javalib.api.JvmWorkerUtil
+import mill.javalib.RunModule.Runner
+import mill.scalalib.*
+
+trait Scaladoc extends CrossScala3Module:
+  scaladoc =>
+  def artifactName = "scaladoc"
+  def moduleDeps = Seq(
+    build.compiler(),
+    build.`tasty-inspector`(),
+  )
+
+  def `test-documentations` = Task.Source("test-documentations")
+
+  def buildInfoSources = Task {
+    val dir = Task.dest
+    os.write(
+      dir / "dotty/tools/scaladoc/BuildInfo.scala",
+      s"""package dotty.tools.scaladoc
+         |
+         |object BuildInfo {
+         |  def version = "${Versions.dottyVersion}"
+         |}
+         |""".stripMargin,
+      createFolders = true
+    )
+    PathRef(dir)
+  }
+
+  def generatedSources = Task {
+    super.generatedSources() ++ Seq(buildInfoSources())
+  }
+  def scalacOptions = super.scalacOptions() ++ Seq(
+    "-experimental"
+  )
+  def mvnDeps = Seq(
+    mvn"com.vladsch.flexmark:flexmark:${Dependencies.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-util-ast:${Dependencies.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-util-data:${Dependencies.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-util-html:${Dependencies.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-anchorlink:${Dependencies.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-autolink:${Dependencies.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-emoji:${Dependencies.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-gfm-strikethrough:${Dependencies.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-gfm-tasklist:${Dependencies.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-wikilink:${Dependencies.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-tables:${Dependencies.flexmarkVersion}",
+    mvn"com.vladsch.flexmark:flexmark-ext-yaml-front-matter:${Dependencies.flexmarkVersion}",
+    mvn"nl.big-o:liqp:0.9.2.3",
+    mvn"org.jsoup:jsoup:1.22.2", // Original comment: Needed to process .html files for static site
+    mvn"tools.jackson.dataformat:jackson-dataformat-yaml:${Dependencies.jacksonVersion}"
+  )
+  def mainClass = Some("dotty.tools.scaladoc.Main")
+
+
+  /** Expected class directory of scaladoc-testcases module - for source generate, this doesn't trigger its compilation */
+  def scaladocTestcasesCompileClassesPath(taskDest: os.Path): os.Path =
+    build.`scaladoc-testcases`().compileClassesPath0(taskDest)
+
+  def scaladocTestcasesCompile: T[mill.javalib.api.CompilationResult] =
+    build.`scaladoc-testcases`().compile
+
+  def buildInfoTestSources = Task {
+    val dir = Task.dest
+    val tq = "\"\"\""
+    os.write(
+      dir / "dotty/tools/scaladoc/test/BuildInfo.scala",
+      s"""package dotty.tools.scaladoc.test
+         |
+         |object BuildInfo {
+         |  def test_testcasesOutputDir: Seq[String] = Seq($tq${scaladocTestcasesCompileClassesPath(Task.dest)}$tq)
+         |  def test_testcasesSourceRoot: String = $tq${build.`scaladoc-testcases`().mainSources().path}$tq
+         |  def testDocumentationRoot: String = $tq${`test-documentations`().path}$tq
+         |}
+         |""".stripMargin,
+      createFolders = true
+    )
+    PathRef(dir)
+  }
+
+  def mainResourceDir = Task.Source("resources")
+
+  def bundleCssResources = Task {
+    val cssSubDir = os.sub / "dotty_res/styles/theme"
+    val cssDir = mainResourceDir().path / cssSubDir
+
+    for (dir <- os.walk(cssDir, includeTarget = true).filter(os.isDir)) {
+      val subPath = dir.subRelativeTo(cssDir)
+      val cssFiles = os.list(dir).filter(_.last.endsWith(".css")).filter(os.isFile)
+      val bundleContent = geny.Generator.from(cssFiles).map(os.read.bytes)
+      val bundlePath = Task.dest / cssSubDir / subPath / "bundle.css"
+      os.write(bundlePath, bundleContent, createFolders = true)
+    }
+
+    PathRef(Task.dest)
+  }
+
+  def websiteAssets = Task {
+    val dest = Task.dest
+    // Beware this has side-effects (writing stuff under _project-root_ / scaladoc-testcases/docs/_assets)
+    // We'd refactor that further in a Mill-only repo
+    BuildCtx.withFilesystemCheckerDisabled {
+      DocumentationWebsite.generateStaticAssets(
+        build.`scaladoc-js`.contributors().fullLinkJS().dest.path.toIO,
+        build.`scaladoc-js`.main().fullLinkJS().dest.path.toIO,
+        build.`scaladoc-js`.contributors().css().path.toIO,
+        build.`scaladoc-js`.common().css().path.toIO,
+        dest.toIO
+      )
+    }
+    PathRef(dest)
+  }
+
+  def resources =
+    if (Util.isBsp)
+      super.resources
+    else
+      Task {
+        super.resources() ++ Seq(
+          bundleCssResources(),
+          websiteAssets()
+        )
+      }
+
+  private def splitSerializedScaladocGeneration(input: String): Seq[String] = {
+    val sep = "\""
+    def helper(s: String, acc: List[String]): List[String] =
+      if (s.isEmpty) acc
+      else if (s.startsWith(sep)) {
+        val endIdx = s.indexOf(sep, sep.length)
+        if (endIdx < 0) sys.error(s"Cannot happen. Remaining: '$s'")
+        else
+          helper(s.drop(endIdx + sep.length), s.substring(sep.length, endIdx) :: acc)
+      }
+      else if (s.head == ' ')
+        helper(s.dropWhile(_ == ' '), acc)
+      else {
+        val spaceIdx = s.indexOf(' ')
+        assert(spaceIdx != 0) // handled just above
+        if (spaceIdx >= 0)
+          helper(s.drop(spaceIdx + 1), s.take(spaceIdx) :: acc)
+        else
+          s :: acc
+      }
+
+    helper(input, Nil).reverse
+  }
+
+  private def generateDocumentation(
+    config: ScaladocGeneration.GenerationConfig,
+    runner: Runner,
+    mainClass: String
+  )(implicit ctx: TaskCtx): Unit = {
+    for (outDir <- config.get[ScaladocGeneration.OutputDir])
+      os.makeDir.all(os.Path(outDir.value, BuildCtx.workspaceRoot))
+    runner.run(
+      splitSerializedScaladocGeneration(config.serialize),
+      mainClass,
+      workingDir = BuildCtx.workspaceRoot
+    )
+  }
+
+  def generateSelfDocumentation(): Task.Command[os.Path] = Task.Command {
+    val config = ScaladocConfigs0.Scaladoc(publishVersion(), compile().classes.path.toIO)
+    generateDocumentation(
+      config,
+      runner(),
+      finalMainClass()
+    )
+    os.Path(config.get[ScaladocGeneration.OutputDir].get.value, BuildCtx.workspaceRoot)
+  }
+
+  def generateTestcasesDocumentation(): Task.Command[os.Path] = Task.Command {
+    val config = ScaladocConfigs0.Testcases(
+      publishVersion(),
+      Seq(build.`scaladoc-testcases`().compile().classes.path.toString)
+    )
+    generateDocumentation(
+      config,
+      runner(),
+      finalMainClass()
+    )
+    os.Path(config.get[ScaladocGeneration.OutputDir].get.value, BuildCtx.workspaceRoot)
+  }
+
+  private def baseConfig = Task.Anon {
+    ScaladocConfigs0.Scala3(
+      publishVersion(),
+      BuildCtx.workspaceRoot.toNIO,
+      build.library().moduleDir.toNIO,
+      Seq(build.library().jar().path.toString)
+    ).add(ScaladocGeneration.UseJavacp(true))
+  }
+
+  def generateReferenceDocumentation(
+    noRegenerateExpectedLinks: Boolean = false
+  ) = Task.Command[os.Path] {
+    websiteAssets()
+
+    // sbt build comment: Move all the source files to a temporary directory and apply some changes specific to the reference documentation
+    val docs = Task.dest / "docs"
+
+    ScaladocGeneration.prepareReferenceDocumentationDir(docs.toIO)
+
+    val languageReferenceConfig = {
+      ScaladocGeneration.languageReferenceConfig(docs.toIO, baseConfig())
+    }
+
+    generateDocumentation(
+      languageReferenceConfig,
+      runner(),
+      finalMainClass()
+    )
+
+    if (!noRegenerateExpectedLinks) {
+      val cmd = ScaladocGeneration.expectedLinksRegenerationCommand()
+      os.proc(cmd).call(
+        cwd = BuildCtx.workspaceRoot,
+        stdin = os.Inherit,
+        stdout = os.Inherit,
+        check = true
+      )
+    }
+
+    docs
+  }
+
+  def generateScalaDocumentation(newDir: String = "", justAPI: Boolean = false): Task.Command[os.Path] = {
+
+    val outputDirOverride =
+      if (newDir.isEmpty)
+        identity[ScaladocGeneration.GenerationConfig]
+      else
+        (config: ScaladocGeneration.GenerationConfig) => config.add(ScaladocGeneration.OutputDir(newDir))
+
+    def justAPIOverride(config: ScaladocGeneration.GenerationConfig): ScaladocGeneration.GenerationConfig =
+      if (!justAPI) config
+      else {
+        val siteRoot = os.temp.dir()
+        config.add(ScaladocGeneration.SiteRoot(siteRoot.toString))
+      }
+
+    val docs = BuildCtx.workspaceRoot / "docs"
+
+    val configTask = Task.Anon {
+      justAPIOverride(outputDirOverride(baseConfig()))
+    }
+
+    Task.Command {
+
+      val majorVersion = JvmWorkerUtil.scalaBinaryVersion(build.library().scalaVersion())
+
+      BuildCtx.withFilesystemCheckerDisabled {
+        val sourcePatches = if (justAPI) Nil else Seq(
+          ScaladocGeneration.sidebarSourcePatch(docs.toIO),
+          ScaladocGeneration.nightlyVersionNoteSourcePatch(docs.toIO)
+        )
+
+        System.err.println(s"Generating snapshot scaladoc, applying patches to ${sourcePatches.map(_.file)}")
+        sourcePatches.foreach(_.apply())
+
+        try generateDocumentation(configTask(), runner(), finalMainClass())
+        finally sourcePatches.foreach(_.revert())
+
+        val dest = os.Path(configTask().get[ScaladocGeneration.OutputDir].get.value, BuildCtx.workspaceRoot)
+        if (!justAPI) {
+          os.write(dest / "versions" / "latest-nightly-base", majorVersion, createFolders = true)
+          // sbt build command: This file is used by GitHub Pages when the page is available in a custom domain
+          os.write(dest / "CNAME", "nightly.scala-lang.org", createFolders = true)
+        }
+
+        dest
+      }
+    }
+  }
+
+  object test extends Scala3Tests:
+    def generatedSources = Task {
+      super.generatedSources() ++ Seq(scaladoc.buildInfoTestSources())
+    }
+    def runClasspath = Task {
+      // Ensure scaladoc-testcases is compiled, so that the directory
+      // we refer to via scaladocTestcasesCompileClassesPath exists
+      val fromCompile = scaladocTestcasesCompile().classes.path
+      val beforeCompile = scaladocTestcasesCompileClassesPath(Task.dest)
+      if (fromCompile == beforeCompile)
+        super.runClasspath()
+      else
+        Task.fail(
+          "Warning: scaladoc-testcases compilation output dir calculation mismatch: " +
+          s"pre-computed value $beforeCompile differs from actual value $fromCompile."
+        )
+    }
+
+  def testSourceLinksSrc = Task.Source("test-source-links")
+  object `test-source-links` extends Scala3Tests:
+    def moduleDeps = super.moduleDeps ++ Seq(
+      build.scaladoc().test
+    )
+    def sources = Task {
+      Seq(testSourceLinksSrc())
+    }
+
+object `package` extends Scaladoc, CrossHelper[Scaladoc]:
+  object `non-bootstrapped` extends Scaladoc, CrossHelper.NonBootstrapped

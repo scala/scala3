@@ -5,6 +5,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" >& /dev/null && pwd)/../.."
 SBT="$ROOT/project/scripts/sbt" # if run on CI
 # SBT="sbt" # if run locally
 
+MILL="$ROOT/mill"
+
 SOURCE="tests/pos/HelloWorld.scala"
 MAIN="HelloWorld"
 TASTY="HelloWorld.tasty"

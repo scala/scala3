@@ -1,3 +1,5 @@
+// This file is used in the Mill build too. Do not modify this comment.
+
 package dotty.tools.sbtplugin
 
 import com.typesafe.tools.mima.core._

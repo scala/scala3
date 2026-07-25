@@ -1,0 +1,50 @@
+package build.`sjs-compiler-tests`
+
+import scala3build.*
+
+import mill.*
+import mill.scalalib.*
+import org.scalajs.ir.ScalaJSVersions
+
+trait SjsCompilerTests extends CrossScala3Module {
+  def moduleDeps = Seq(
+    build.library()
+  )
+
+  object test extends Scala3Tests {
+    def moduleDeps = super.moduleDeps ++ Seq(
+      build.compiler().test
+    )
+    def mvnDeps = Seq(
+      mvn"org.scala-js:scalajs-linker_2.13:${ScalaJSVersions.current}"
+        .exclude(("org.scala-lang", "scala-library")),
+      mvn"org.scala-js:scalajs-env-nodejs_2.13:1.5.0"
+        .exclude(("org.scala-lang", "scala-library"))
+    )
+    def forkArgs = Task {
+
+      val libraryJsClassPath = build.`library-js`().compileClasspath().map(_.path)
+      def libraryJsArtifactFor(moduleName: String): os.Path =
+        libraryJsClassPath
+          .iterator
+          .filter(os.isFile)
+          .filter(_.last.endsWith(".jar"))
+          .find(_.last.startsWith(moduleName + "-"))
+          .getOrElse {
+            Task.fail(s"No JAR found for $moduleName in library-js class path $libraryJsClassPath")
+          }
+
+      super.forkArgs() ++
+        build.compiler().test.compilerTestForkArgs() ++
+        Seq(
+          s"-Ddotty.tests.classes.scalaJSScalalib=${build.`library-js`().jar().path}",
+          s"-Ddotty.tests.classes.scalaJSJavalib=${libraryJsArtifactFor("scalajs-javalib")}",
+          s"-Ddotty.tests.classes.scalaJSLibrary=${libraryJsArtifactFor("scalajs-library_2.13")}"
+        )
+    }
+  }
+}
+
+object `package` extends SjsCompilerTests with CrossHelper[SjsCompilerTests] {
+  object `non-bootstrapped` extends SjsCompilerTests with CrossHelper.NonBootstrapped
+}

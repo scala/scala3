@@ -1,0 +1,25 @@
+package build.`sbt-bridge`
+
+import scala3build.*
+
+import mill.*
+import mill.scalalib.*
+
+trait SbtBridge extends CrossScala3Module:
+  def artifactId = artifactName()
+  def moduleDeps = Seq(build.compiler()) ++
+    (if (mode == Mode.NonBootstrapped) Nil else Seq(build.repl()))
+  def mvnDeps = Seq(
+    mvn"org.scala-sbt:compiler-interface:1.12.0"
+  )
+
+  def isCoreModule = true
+
+  object test extends Scala3Tests:
+    def mvnDeps = Seq(
+      mvn"org.scala-sbt:zinc-apiinfo_2.13:1.12.0"
+        .exclude(("org.scala-lang", "*"))
+    )
+
+object `package` extends SbtBridge, CrossHelper[SbtBridge]:
+  object `non-bootstrapped` extends SbtBridge, CrossHelper.NonBootstrapped

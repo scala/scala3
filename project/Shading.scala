@@ -1,3 +1,5 @@
+// This file is used in the Mill build too. Do not modify this comment.
+
 object Shading {
   /** Replace package names in package definitions, for shading.
    * It assumes the full package def is written on a single line.

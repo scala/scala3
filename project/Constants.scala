@@ -1,3 +1,5 @@
+// This file is used in the Mill build too. Do not modify this comment.
+
 object Constants {
   val homepageUrl = "https://scala-lang.org/"
   val dottyOrganization = "org.scala-lang"

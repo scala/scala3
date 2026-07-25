@@ -1,0 +1,25 @@
+package build.`directives-parser`
+
+import scala3build.*
+
+import mill.*
+
+// The directives parser used by the REPL (and elsewhere) to read `//> using` directives
+trait DirectivesParser extends CrossScala3Module:
+  def artifactName = "scala3-directives-parser"
+
+  def moduleDeps = Seq(
+    build.library.`library-3`()
+  )
+
+  // Sources use the Maven-style layout rather than the default one
+  def sourcesFolders = Seq("src/main/scala")
+
+  def scalacOptions = super.scalacOptions() ++ Seq("-Wunused:all")
+
+  def testSources = Task.Source("src/test/scala")
+
+  object test extends Scala3Tests
+
+object `package` extends DirectivesParser, CrossHelper[DirectivesParser]:
+  object `non-bootstrapped` extends DirectivesParser, CrossHelper.NonBootstrapped
