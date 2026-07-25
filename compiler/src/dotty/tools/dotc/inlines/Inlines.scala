@@ -187,7 +187,10 @@ object Inlines:
     val tree1 = liftBindings(tree0, identity)
     val tree2  =
       if bindings.nonEmpty then
-        cpy.Block(tree0)(bindings.toList, inlineCall(tree1))
+        val expansion = inlineCall(tree1)
+        val cleaned = dropUnusedLiftedBindings(bindings.toList, expansion)
+        if cleaned.isEmpty then expansion
+        else cpy.Block(tree0)(cleaned, expansion)
       else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
         val body =
           try bodyToInline(tree0.symbol) // can typecheck the tree and thereby produce errors
@@ -216,6 +219,45 @@ object Inlines:
         // reset so that further inline calls can be expanded
     tree3
   end inlineCall
+
+  /** Drop bindings that are no longer referenced in `expansion` and whose rhs is
+   *  pure (so their evaluation can be safely elided). This iterates to a fixpoint
+   *  because dropping one binding may make a previously-referenced binding unused.
+   *  This is needed for bindings that were lifted out of an inlined receiver in
+   *  `liftBindings` but became orphaned after the resulting inline call was
+   *  further reduced. See i15830.
+   */
+  private def dropUnusedLiftedBindings(bindings: List[Tree], expansion: Tree)(using Context): List[Tree] =
+    def isElideableBinding(b: Tree): Boolean = b match
+      case vdef: ValDef => Inliner.isElideableExpr(vdef.rhs)
+      case ddef: DefDef if ddef.paramss.isEmpty => Inliner.isElideableExpr(ddef.rhs)
+      case _ => false
+
+    def countRefsIn(t: Tree, refs: mutable.HashMap[Symbol, Int]): Unit =
+      t.foreachSubTree {
+        case t: RefTree =>
+          if refs.contains(t.symbol) then refs(t.symbol) = refs(t.symbol) + 1
+        case _ =>
+      }
+
+    var current = bindings
+    var changed = true
+    while changed do
+      changed = false
+      val refs = mutable.HashMap.empty[Symbol, Int]
+      for b <- current if isElideableBinding(b) do refs(b.symbol) = 0
+      countRefsIn(expansion, refs)
+      for b <- current do countRefsIn(b, refs)
+      val pruned = current.filterConserve { b =>
+        refs.get(b.symbol) match
+          case Some(0) => false
+          case _ => true
+      }
+      if pruned ne current then
+        current = pruned
+        changed = true
+    current
+  end dropUnusedLiftedBindings
 
   /** Try to inline a pattern with an inline unapply method. Fail with error if the maximal
    *  inline depth is exceeded.
