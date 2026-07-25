@@ -469,3 +469,19 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
          |export <<Test>>/*class*/.<<methodA>>/*method*/
          |""".stripMargin
     )
+
+  @Test def `named-tuple-members` =
+    check(
+      """|object <<A>>/*class*/:
+         |  type <<PersonNN>>/*type,definition*/ = (name: <<String>>/*type*/, age: <<Int>>/*class,abstract*/)
+         |  final case class <<PersonCC>>/*class*/(<<name>>/*variable,declaration,readonly*/: <<String>>/*type*/, <<age>>/*variable,declaration,readonly*/: <<Int>>/*class,abstract*/)
+         |
+         |  val <<pNN>>/*variable,definition,readonly*/: <<PersonNN>>/*type*/ = (name = "John", age = 30)
+         |  val <<pCC>>/*variable,definition,readonly*/: <<PersonCC>>/*class*/ = <<PersonCC>>/*class*/(<<name>>/*parameter,readonly*/ = "John", <<age>>/*parameter,readonly*/ = 30)
+         |
+         |  val <<nn>>/*variable,definition,readonly*/ = <<pNN>>/*variable,readonly*/.<<name>>/*variable,readonly*/
+         |  val <<cc>>/*variable,definition,readonly*/ = <<pCC>>/*variable,readonly*/.<<name>>/*variable,readonly*/
+         |  val <<ccAge>>/*variable,definition,readonly*/ = <<pNN>>/*variable,readonly*/.<<age>>/*variable,readonly*/
+         |  val <<ccAge>>/*variable,definition,readonly*/ = <<pCC>>/*variable,readonly*/.<<age>>/*variable,readonly*/
+         |""".stripMargin
+    )

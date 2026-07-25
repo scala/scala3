@@ -6,6 +6,7 @@ import scala.meta.pc.VirtualFileParams
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.ImportSelector
+import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameOps.*
@@ -170,6 +171,29 @@ trait PcCollector[T]:
           ) { case (set, tree) =>
             traverser(set, tree)
           }
+
+        /** Named tuple field access such as:
+         *  ```
+         *  val x: (name: String) = ???
+         *  x.<<name>>
+         *  ```
+         *  Named tuple selections are desugared to `NamedTuple.apply[N, V](qual)(idx)`.
+         */
+        case app @ Apply(
+              Apply(TypeApply(fun, List(t1, t2)), List(qual)),
+              List(Literal(Constant(i: Int)))
+            )
+            if fun.symbol.exists && fun.symbol.name == nme.apply
+              && fun.symbol.owner.exists
+              && fun.symbol.owner == defn.NamedTupleModule.moduleClass
+              && app.span.isCorrect =>
+          val fieldOccurrence =
+            namedTupleFieldSymbol(app, t1, t2, i)
+              .map: sym =>
+                collect(app, pos.withSpan(app.span.withStart(app.span.point)), Some(sym))
+          val traverser =
+            new PcCollector.DeepFolderWithParent[Set[T]](collectNamesWithParent)
+          traverser(occurrences ++ fieldOccurrence, qual)
 
         /* Named parameters don't have symbol so we need to check the owner
          *  ```
