@@ -361,7 +361,10 @@ object Tuple {
       case Varargs(elements) => Expr.ofTupleFromSeq(elements)
       case _ => quotes.reflect.report.errorAndAbort("Expected literal varargs")
 
-  /** Matches a tuple while preserving its precise element types.
+  /** Matches an empty tuple. */
+  def unapply(x: EmptyTuple): true = true
+
+  /** Matches a non-empty tuple while preserving its precise element types.
    *
    *  Example:
    *  {{{
@@ -369,7 +372,7 @@ object Tuple {
    *    case Tuple(number, name) => s"$number: $name"
    *  }}}
    */
-  inline def unapply[T <: Tuple](x: T): x.type = x
+  inline def unapply[T <: NonEmptyTuple](x: T): x.type = x
 
   /** Fallback for abstract Tuple types - provides runtime arity matching. */
   def unapplySeq(x: Tuple): Option[Seq[Any]] = Some(x.productIterator.toSeq)

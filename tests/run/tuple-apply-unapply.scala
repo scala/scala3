@@ -76,18 +76,31 @@ object Test extends App {
       val checkC: Double = c
       println(s"Tuple3: $a, $b, $c (typed)")
 
-  // Abstract Tuple - unapplySeq fallback (elements are Any)
+  // Abstract Tuple - unapplySeq fallback
   println("=== Abstract Tuple (unapplySeq) ===")
-  val abstractTuple: Tuple = (1, "hello", 3.14)
-  abstractTuple match
-    case Tuple(a, b, c) => println(s"Abstract 3-tuple: $a, $b, $c")
-    case _ => assert(false, "Should have matched")
+  def describe(tuple: Tuple): String = tuple match
+    case Tuple() => "empty"
+    case Tuple(value) => s"one: $value"
+    case Tuple(first, second) => s"two: $first, $second"
+    case Tuple(first, second, rest*) =>
+      val anyFirst: Any = first
+      val anySecond: Any = second
+      val anyRest: Seq[Any] = rest
+      s"many: $anyFirst, $anySecond; rest=${anyRest.size}"
 
-  // Arity mismatch - should not match
-  abstractTuple match
-    case Tuple(a, b) => assert(false, "Should not match wrong arity")
-    case Tuple(a, b, c) => println("Correct arity matched")
-    case _ => assert(false, "Should have matched")
+  def nonEmptyArity(tuple: NonEmptyTuple): Int = tuple match
+    case Tuple(_, _) => 2
+    case _ => -1
+
+  assert(describe(EmptyTuple) == "empty")
+  assert(describe(Tuple(1)) == "one: 1")
+  assert(describe((1, "hello")) == "two: 1, hello")
+  val abstractNonEmpty: NonEmptyTuple = (1, "hello")
+  assert(describe(abstractNonEmpty) == "two: 1, hello")
+  assert(nonEmptyArity(abstractNonEmpty) == 2)
+  assert(describe((1, "hello", 3.14)) == "many: 1, hello; rest=1")
+  assert(describe(t23) == "many: 1, 2; rest=21")
+  println("Abstract Tuple unapplySeq: OK")
 
   println("=== All tests passed ===")
 }
