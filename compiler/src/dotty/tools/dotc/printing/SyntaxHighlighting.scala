@@ -42,7 +42,8 @@ object SyntaxHighlighting {
       val colorAt = Array.fill(in.length)(NoColor)
 
       def highlightRange(from: Int, to: Int, color: String) =
-        Arrays.fill(colorAt.asInstanceOf[Array[AnyRef]], from, to, color)
+        if from < to then
+          Arrays.fill(colorAt.asInstanceOf[Array[AnyRef]], from, to, color)
 
       def highlightPosition(span: Span, color: String) = if (span.exists)
         if (span.start < 0 || span.end > in.length) {

@@ -11,9 +11,25 @@ jobs:
     uses: ./.github/workflows/stdlib.yaml
     secrets: inherit
 
+  mima-tests:
+    uses: ./.github/workflows/mima.yaml
+    secrets: inherit
+
+  compiler-tests:
+    uses: ./.github/workflows/compiler-tests.yaml
+    secrets: inherit
+
+  community-build-tests:
+    uses: ./.github/workflows/community-build.yaml
+    secrets: inherit
+
+  misc-tests:
+    uses: ./.github/workflows/misc-tests.yaml
+    secrets: inherit
+
   release-maven-artifacts:
     uses: ./.github/workflows/release-maven-artifacts.yml
-    needs: [stdlib-tests]
+    needs: [stdlib-tests, mima-tests, compiler-tests, community-build-tests, misc-tests]
     with:
       environment: release-nightly
     secrets: inherit

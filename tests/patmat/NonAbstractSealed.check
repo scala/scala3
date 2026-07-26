@@ -1,1 +1,8 @@
-6: Pattern Match Exhaustivity: _: A
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/NonAbstractSealed.scala:6:3 
+6 |  (null: A) match {
+  |   ^^^^^^^
+  |   match may not be exhaustive.
+  |
+  |   It would fail on pattern case: _: A
+  |
+  | longer explanation available when compiling with `-explain`

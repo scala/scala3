@@ -75,8 +75,11 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   /** Will be set to true if the unit contains a captureChecking language import */
   var needsSeparationChecking: Boolean = false
 
-  /** Will be set to true is unit was compiled with `safe` language import. */
+  /** Will be set to true if unit was compiled with `safe` language import. */
   var safeMode: Boolean = false
+
+  /** Will be set to true if unit was compiled with `magic` language import. */
+  var magic: Boolean = false
 
   /** Will be set to true if the unit contains a pureFunctions language import */
   var knowsPureFuns: Boolean = false

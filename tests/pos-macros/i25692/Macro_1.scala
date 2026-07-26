@@ -27,7 +27,8 @@ package internal.stacktracer:
 
   object Macros:
     def autoTraceImpl(using Quotes): Expr[Tracer.instance.Type] =
-      Expr("trace").asInstanceOf[Expr[Tracer.instance.Type]]
+      // Upstream code changed in https://github.com/zio/zio/pull/10725
+      '{"trace".asInstanceOf[Tracer.instance.Type]}
 
 package internal.macros:
   import zio.*

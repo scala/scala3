@@ -110,7 +110,7 @@ class BootstrappedOnlyCompilationTests {
   @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
     val compilationTest = withCoverage(compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"), FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyExcludelisted)))
-    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
+    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
   @Test def runWithCompiler: Unit = {
@@ -125,7 +125,7 @@ class BootstrappedOnlyCompilationTests {
       else compileDir("tests/old-tasty-interpreter-prototype", withTastyInspectorOptions) :: basicTests
 
     val compilationTest = withCoverage(aggregateTests(tests*))
-    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
+    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
   @Ignore @Test def runScala2LibraryFromTasty: Unit = {
@@ -143,7 +143,7 @@ class BootstrappedOnlyCompilationTests {
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/run-bootstrapped", withCompilerOptions),
     ))
-    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
+    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
   // Pickling Tests ------------------------------------------------------------

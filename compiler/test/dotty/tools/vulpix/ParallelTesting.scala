@@ -918,6 +918,14 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     end getMissingExpectedWarnings
   end WarnTest
 
+  // Like a WarnTest but without // warning;
+  // these tests were originally written outside of this infrastructure and lack such annotations.
+  protected class PatmatTest(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
+    extends Test(testSources, times, threadLimit, suppressAllOutput):
+    override def suppressErrors = true
+    override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
+      diffCheckfile(testSource, reporters, logger)
+
   protected class RewriteTest(testSources: List[TestSource], checkFiles: Map[JFile, JFile], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using SummaryReporting)
   extends Test(testSources, times, threadLimit, suppressAllOutput) {
     private def verifyOutput(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) = {
@@ -1239,6 +1247,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     def checkWarnings()(using SummaryReporting): this.type =
       checkPass(new WarnTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput))
+
+    def checkPatmat()(using SummaryReporting): this.type =
+      checkPass(new PatmatTest(targets, times, threadLimit, shouldFail || shouldSuppressOutput))
 
     /** Creates a "neg" test run, which makes sure that each test manages successful
      *  best-effort compilation, without any errors related to pickling/unpickling

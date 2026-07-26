@@ -1,3 +1,24 @@
-15: Pattern Match Exhaustivity: (Up, Down)
-33: Pattern Match Exhaustivity: Down
-51: Pattern Match Exhaustivity: (Up, Down)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t7285.scala:15:6 ----
+15 |      (d1, d2) match {
+   |      ^^^^^^^^
+   |      match may not be exhaustive.
+   |
+   |      It would fail on pattern case: (Up, Down)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t7285.scala:33:7 ----
+33 |      (d1) match {
+   |       ^^
+   |       match may not be exhaustive.
+   |
+   |       It would fail on pattern case: Down
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t7285.scala:51:4 ----
+51 |    (d1, d2) match {
+   |    ^^^^^^^^
+   |    match may not be exhaustive.
+   |
+   |    It would fail on pattern case: (Up, Down)
+   |
+   | longer explanation available when compiling with `-explain`

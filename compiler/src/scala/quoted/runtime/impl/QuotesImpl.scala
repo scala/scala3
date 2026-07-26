@@ -3005,7 +3005,8 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def annotations: List[Term] =
           self.denot.annotations.flatMap {
             case _: dotc.core.Annotations.BodyAnnotation => Nil
-            case annot => annot.tree :: Nil
+            case annot if annot.symbol.exists => annot.tree :: Nil
+            case _ => Nil
           }
 
         def isDefinedInCurrentRun: Boolean =

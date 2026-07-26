@@ -2968,8 +2968,21 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           errorNotes = (level, CaptureSet.MutAdaptFailure(cs, tp1, tp2)) :: rest
         case _ =>
     subc
-    && (tp1.isBoxedCapturing == tp2.isBoxedCapturing
-        || refs1.subCaptures(CaptureSet.EmptyOfBoxed(tp1, tp2), makeVarState()))
+    && (tp1.isBoxCompatibleWith(tp2) || healBoxDifference(tp1, tp2))
+
+  /** Try to heal a box difference of `tp1` with another type `tp2` by forcing all capture
+   *  capture sets in `tp1` with a box difference to `tp2` to be empty.
+   */
+  private def healBoxDifference(tp1: Type, tp2: Type)(using Context): Boolean = tp1.dealias match
+    case tp1 @ CapturingType(parent, refs) =>
+      (  tp1.isBoxed == tp2.isBoxedCapturing
+      || refs.subCaptures(CaptureSet.EmptyOfBoxed(tp1, tp2), makeVarState())
+      || { capt.println(i"box mismatch for $tp1 <:< $tp2, ${tp1.isBoxedCapturing}")
+           false
+         }
+      ) && healBoxDifference(parent, tp2)
+    case _ =>
+      true
 
   protected def logUndoAction(action: () => Unit) =
     undoLog += action

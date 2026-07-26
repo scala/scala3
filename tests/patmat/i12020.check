@@ -1,1 +1,8 @@
-19: Pattern Match Exhaustivity: _: x$1.reflect.TypeDef
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i12020.scala:19:4 ---
+19 |    param match {
+   |    ^^^^^
+   |    match may not be exhaustive.
+   |
+   |    It would fail on pattern case: _: x$1.reflect.TypeDef
+   |
+   | longer explanation available when compiling with `-explain`

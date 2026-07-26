@@ -134,7 +134,7 @@ class ActiveProfile(details: Int) extends Profile:
       do
         val methProfile = new ActiveProfile(0)
         val methCtx = ctx.fresh.setCompilationUnit(unit)
-        val s = Scanner(meth.source, span.start, methProfile)(using methCtx)
+        val s = Scanner(meth.source, span.start, profile = methProfile)(using methCtx)
         while s.offset < span.end do s.nextToken()
         val info = methProfile.unitProfile(unit)
         info.lineCount += 1

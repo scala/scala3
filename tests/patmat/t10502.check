@@ -1,4 +1,32 @@
-6: Pattern Match Exhaustivity: Perhaps(None)
-16: Pattern Match Exhaustivity: Nil
-32: Pattern Match Exhaustivity: Multi(None, _)
-45: Pattern Match Exhaustivity: Prod(None, _)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t10502.scala:6:8 ----
+6 |  Option("hello") match {
+  |  ^^^^^^^^^^^^^^^
+  |  match may not be exhaustive.
+  |
+  |  It would fail on pattern case: Perhaps(None)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t10502.scala:16:6 ---
+16 |  List(Option("hello")) match {
+   |  ^^^^^^^^^^^^^^^^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: Nil
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t10502.scala:32:2 ---
+32 |  "hello" match {
+   |  ^^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: Multi(None, _)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t10502.scala:45:2 ---
+45 |  "hello" match {
+   |  ^^^^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: Prod(None, _)
+   |
+   | longer explanation available when compiling with `-explain`

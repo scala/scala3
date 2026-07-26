@@ -106,9 +106,20 @@ object CheckCaptures:
   }
 
   /** Check that a @retains annotation only mentions references that can be tracked.
-   *  This check is performed at Typer.
+   *  Also reject a postfix `^` on a capture-set variable (`CS^`, where `CS` is a
+   *  capture-set parameter or member): `^` adds the root capability `caps.any`,
+   *  which is most likely unintended -- `CS` already stands for a capture set.
+   *  See issue #24088. This check is performed at Typer.
    */
   def checkWellformedRetains(parent: Tree, ann: Tree)(using Context): Unit =
+    if ann.symbol.maybeOwner == defn.RetainsCapAnnot
+        && parent.tpe.derivesFromCapSet
+        && parent.tpe.dealias.typeSymbol != defn.Caps_CapSet
+    then
+      report.error(
+        em"""Postfix `^` is not allowed on the capture-set variable ${parent.tpe};
+            |it adds the root capability `caps.any`. Write `${parent.tpe}` or `{${parent.tpe}}` to refer to its capture set.""",
+        parent.srcPos)
     def check(elem: Type): Unit = elem match
       case ref: TypeRef =>
         val refSym = ref.symbol
@@ -995,6 +1006,31 @@ class CheckCaptures extends Recheck, SymTransformer:
       res
     }
 
+    /** Check that capture set of type argument subcaptures capture set of bounds.
+     *  We don't check if
+     *   - the bound is exactly any since that is capture polymorphic top, or
+     *   - the bound is singleton, since that's not a "real" bound, or
+     *   - the bound capture set has terminal capabilities, since we don't
+     *     want to upper-bound capsets by GlobalAny, or
+     *   - the bound refers to parameters in the same clause, since we can't
+     *     properly check F-bounded occurrences.
+     */
+    override def recheckTypeArg(arg: Tree, formal: Type, binder: PolyType)(using Context): Type =
+      val argType = super.recheckTypeArg(arg, formal, binder)
+      val argRefs = argType.captureSet
+      val hiBound = formal.bounds.hi
+      val boundRefs = hiBound.captureSet
+      val canCheck =
+        !hiBound.isExactlyAny && !hiBound.isRef(defn.SingletonClass)
+        && !boundRefs.elems.exists:
+          case ref: TypeParamRef => ref.binder == binder // F-bounded
+          case ref => ref.isTerminalCapability // GlobalCaps cannot constrain arguments
+      if canCheck then
+        capt.println(i"constrain $arg: ${argType} with $hiBound: $boundRefs")
+        checkSubset(argRefs, boundRefs, arg.srcPos,
+          provenance = i"\nof the type parameter bound ${formal.bounds.hi}")
+      argType
+
     /** Faced with a tree of form `caps.contansImpl[CS, r.type]`, check that `R` is a tracked
      *  capability and assert that `{r} <: CS`.
      */
@@ -1470,7 +1506,6 @@ class CheckCaptures extends Recheck, SymTransformer:
         checkSubset(parent.tpe.classSymbol.useSet, localSet, parent.srcPos,
           provenance = i"\nof the references allowed to be captured by $cls")
 
-
       val saved = curEnv
       curEnv = Env(cls, EnvKind.Regular, localSet, curEnv)
       try
@@ -1657,10 +1692,17 @@ class CheckCaptures extends Recheck, SymTransformer:
      *  where local capture roots are instantiated to root variables.
      */
     override def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: List[Note])(using Context): Type =
-      try testAdapted(actual, expected, tree, notes)(err.typeMismatch)
+      val saved = ccState.ignoreClassifiers
+      try
+        tree match
+          case tree: TypeApply if tree.symbol == defn.Any_typeCast => ccState.ignoreClassifiers = true
+          case _ =>
+        testAdapted(actual, expected, tree, notes)(err.typeMismatch)
       catch case ex: AssertionError =>
         println(i"error while checking $tree: $actual against $expected")
         throw ex
+      finally
+        ccState.ignoreClassifiers = saved
 
     @annotation.tailrec
     private def findImpureUpperBound(tp: Type)(using Context): Type = tp match
@@ -2301,8 +2343,15 @@ class CheckCaptures extends Recheck, SymTransformer:
                 c.origin match
                   case Origin.Parameter(param) if !param.isCapsetParam =>
                     badUseUnlessBoxed(c, param.owner)
-                  case Origin.InDecl(param, _) if param.is(Param) && !param.isCapsetParam =>
-                     badUseUnlessBoxed(c, param.owner)
+                  case Origin.InDecl(sym, _) if !sym.isCapsetParam
+                      && (sym.is(Param)
+                          || sym.is(ParamAccessor) && env.owner.isContainedIn(sym.owner)) =>
+                     // Also covers class parameter fields, but only for uses inside the
+                     // class itself. This replaces the reach-capability era check that
+                     // `x*` of a field `x` may not leak into the class's capture scope.
+                     // Local vals are excluded, their roots may be used within their
+                     // scope (i26347).
+                     badUseUnlessBoxed(c, sym.owner)
                   case _ =>
                     check(c.hiddenSet)
               case _ =>

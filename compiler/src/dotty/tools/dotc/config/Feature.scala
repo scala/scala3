@@ -43,6 +43,7 @@ object Feature:
   val relaxedLambdaSyntax = experimental("relaxedLambdaSyntax")
   val safe = experimental("safe")
   val dedentedStringLiterals = experimental("dedentedStringLiterals")
+  val magic = experimental("magic")
 
   val nonViralExperimentalFeatures: Set[TermName] =
     Set(captureChecking, separationChecking, safe)
@@ -80,6 +81,7 @@ object Feature:
     (relaxedLambdaSyntax, "Enable experimental relaxed lambda syntax"),
     (safe, "Require safe mode"),
     (dedentedStringLiterals, "Enable experimental dedented string literals"),
+    (magic, "Enable extensions for working with coding agents"),
   )
 
   /** Features that are now standard; the language import / -language choice is
@@ -207,6 +209,11 @@ object Feature:
     enabledBySetting(safe)
     || ctx.originalCompilationUnit.safeMode
 
+  /** Is magic enabled for this compilation unit? */
+  def magicEnabled(using Context) =
+    enabledBySetting(magic)
+    || ctx.originalCompilationUnit.magic
+
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */
   def pureFunsEnabledSomewhere(using Context) =
     enabledBySetting(pureFunctions)
@@ -318,6 +325,9 @@ object Feature:
         ctx.compilationUnit.needsCaptureChecking = true
         ctx.compilationUnit.safeMode = true
         if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
+        true
+      case `magic` =>
+        ctx.compilationUnit.magic = true
         true
       case _ =>
         false

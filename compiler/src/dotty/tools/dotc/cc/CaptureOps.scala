@@ -186,7 +186,9 @@ extension (tp: Type)
    *  the two capture sets are combined.
    */
   def capturing(cs: CaptureSet)(using Context): Type =
-    if (cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(tp.captureSet, VarState.Separate))
+    if (cs.isAlwaysEmpty && !tp.isAny
+        || cs.isConst && cs.subCaptures(tp.captureSet, VarState.Separate)
+        )
         && !cs.keepAlways
     then tp
     else tp match

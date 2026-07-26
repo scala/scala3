@@ -258,13 +258,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       val saved = isTopLevel
       if variance < 0 then isTopLevel = false
       try tp match
-        case defn.RefinedFunctionOf(rinfo: MethodType) =>
-          val rinfo1 = apply(rinfo)
-          if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
-          else tp
-        case _ =>
-          innerApply(tp)
+        case defn.RefinedFunctionOf(rinfo: MethodType) => mapRefinedFunction(tp, rinfo)
+        case _ => innerApply(tp)
       finally isTopLevel = saved
+
+    def mapRefinedFunction(tp: Type, rinfo: MethodType): Type =
+      val rinfo1 = apply(rinfo)
+      if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
+      else tp
 
     override def mapArg(arg: Type, tparam: ParamInfo): Type =
       super.mapArg(Recheck.mapExprType(arg), tparam)
@@ -375,21 +376,23 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             case _ => tp
         case _ => tp
 
-      def innerApply(tp: Type) = {
+      /** Normalize `tp1` and add a capture set variable to it if necessary. */
+      def addVar(tp1: Type, orig: Type) =
+        decorate(
+          addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, orig))),
+          CaptureSet.VarInTypeTree(ctx.owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining = inCaptureRefinement),
+          transformExplicitType(_, sym, initialVariance = variance),
+          typeArgFormal)
 
-        /** Normalize `tp` and add a capture set variable to it if necessary. */
-        def addVar(tp1: Type) =
-          decorate(
-            addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, tp))),
-            CaptureSet.VarInTypeTree(ctx.owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining = inCaptureRefinement),
-            transformExplicitType(_, sym, initialVariance = variance),
-            typeArgFormal)
+      override def mapRefinedFunction(tp: Type, rinfo: MethodType): Type =
+        addVar(super.mapRefinedFunction(tp, rinfo), tp)
 
+      def innerApply(tp: Type) =
         tp match
           case AnnotatedType(parent, annot)
           if annot.symbol.isRetains || annot.symbol == defn.InferredAnnot =>
             // Drop explicit retains and @inferred annotations
-            addVar(apply(parent))
+            addVar(apply(parent), tp)
           case AnnotatedType(parent, annot)
           if annot.symbol == defn.DeclaredAnnot =>
             transformExplicitType(parent, sym, initialVariance = variance)
@@ -397,10 +400,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             val saved = refiningNames
             refiningNames += rname
             val parent1 = try this(parent) finally refiningNames = saved
-            addVar(tp.derivedRefinedType(parent1, rname, this(rinfo)))
+            addVar(tp.derivedRefinedType(parent1, rname, this(rinfo)), tp)
           case _ =>
-            addVar(mapFollowingAliases(tp))
-      }
+            addVar(mapFollowingAliases(tp), tp)
     }
 
     try

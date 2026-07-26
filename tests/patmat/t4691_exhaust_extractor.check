@@ -1,3 +1,24 @@
-17: Pattern Match Exhaustivity: _: Bar3
-23: Pattern Match Exhaustivity: _: Bar3
-29: Pattern Match Exhaustivity: _: Bar3
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t4691_exhaust_extractor.scala:17:19 
+17 |  def f1(x: Foo) = x match {
+   |                   ^
+   |                   match may not be exhaustive.
+   |
+   |                   It would fail on pattern case: _: Bar3
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t4691_exhaust_extractor.scala:23:19 
+23 |  def f2(x: Foo) = x match {
+   |                   ^
+   |                   match may not be exhaustive.
+   |
+   |                   It would fail on pattern case: _: Bar3
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t4691_exhaust_extractor.scala:29:19 
+29 |  def f3(x: Foo) = x match {
+   |                   ^
+   |                   match may not be exhaustive.
+   |
+   |                   It would fail on pattern case: _: Bar3
+   |
+   | longer explanation available when compiling with `-explain`
