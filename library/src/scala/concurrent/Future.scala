@@ -453,7 +453,7 @@ trait Future[+T] extends Awaitable[T] {
    *  @group Transformations
    */
   def zipWith[U, R](that: Future[U])(f: (T, U) => R)(implicit executor: ExecutionContext): Future[R] = {
-    // This is typically overriden by the implementation in DefaultPromise, which provides
+    // This is typically overridden by the implementation in DefaultPromise, which provides
     // symmetric fail-fast behavior regardless of which future fails first.
     //
     // TODO: remove this implementation and make Future#zipWith abstract

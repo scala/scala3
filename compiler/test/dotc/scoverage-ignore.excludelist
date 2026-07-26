@@ -25,3 +25,5 @@ sub-cases-exhaustivity.scala
 sub-cases-reachability.scala
 tailrec.scala
 traitParams.scala
+optimizer-warnings.scala
+i10174b.scala

@@ -111,6 +111,24 @@ object IsSeq {
         }
     }
 
+  given iarrayIsSeq[A0 : ClassTag]: (IsSeq[IArray[A0]] { type A = A0; type C = IArray[A0] }) =
+    new IsSeq[IArray[A0]] {
+      type A = A0
+      type C = IArray[A0]
+      def apply(a: IArray[A0]): SeqOps[A0, immutable.IndexedSeq, IArray[A0]] =
+        new SeqOps[A, immutable.ArraySeq, IArray[A]] {
+          def apply(i: Int): A = a.apply(i)
+          def length: Int = a.length
+          def toIterable: Iterable[A] = IArray.genericWrapArray(a)
+          protected def coll: IArray[A] = a
+          protected def fromSpecific(coll: IterableOnce[A]^): IArray[A] = IArray.from(coll)
+          def iterableFactory: IterableFactory[immutable.ArraySeq] = immutable.ArraySeq.untagged
+          override def empty: IArray[A] = IArray.empty[A]
+          protected def newSpecificBuilder: mutable.Builder[A, IArray[A]] = IArray.newBuilder[A]
+          def iterator: Iterator[A] = a.iterator
+        }
+    }
+
   // `Range` can not be unified with the `CC0` parameter of the
   // `seqOpsIsSeq` definition because it does not take a type parameter.
   // Hence the need for a separate case:

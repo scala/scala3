@@ -603,6 +603,7 @@ object Range {
    *  @param end the end value of the range (exclusive or inclusive depending on `isInclusive`)
    *  @param step the step value between consecutive elements, must be non-zero
    *  @param isInclusive whether `end` is included in the range
+   *  @return the number of elements in the range, `0` if the range is empty, or a negative value (modular wrap) if the count exceeds `Int.MaxValue`
    */
   def count(start: Int, end: Int, step: Int, isInclusive: Boolean): Int = {
     if (step == 0)
@@ -639,6 +640,7 @@ object Range {
    *  @param start the start value of the range
    *  @param end the exclusive end value of the range
    *  @param step the step value between consecutive elements, must be non-zero
+   *  @return a new exclusive `Range` from `start` (inclusive) to `end` (exclusive) with the given `step`
    */
   def apply(start: Int, end: Int, step: Int): Range.Exclusive = new Range.Exclusive(start, end, step)
 
@@ -646,6 +648,7 @@ object Range {
    *
    *  @param start the start value of the range
    *  @param end the exclusive end value of the range
+   *  @return a new exclusive `Range` from `start` (inclusive) to `end` (exclusive) with step `1`
    */
   def apply(start: Int, end: Int): Range.Exclusive = new Range.Exclusive(start, end, 1)
 
@@ -655,6 +658,7 @@ object Range {
    *  @param start the start value of the range
    *  @param end the inclusive end value of the range
    *  @param step the step value between consecutive elements, must be non-zero
+   *  @return a new inclusive `Range` from `start` to `end` (with `end` included only if reachable by `step` from `start`) with the given `step`
    */
   def inclusive(start: Int, end: Int, step: Int): Range.Inclusive = new Range.Inclusive(start, end, step)
 
@@ -662,6 +666,7 @@ object Range {
    *
    *  @param start the start value of the range
    *  @param end the inclusive end value of the range
+   *  @return a new inclusive `Range` from `start` to `end` (both inclusive) with step `1`
    */
   def inclusive(start: Int, end: Int): Range.Inclusive = new Range.Inclusive(start, end, 1)
 

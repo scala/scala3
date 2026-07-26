@@ -252,6 +252,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
    *  will be returned instead.
    *
    *  @param key the key to look up
+   *  @return the value associated with `key`, or the result of `defaultEntry(key)` if not present
    */
   override def apply(key: Long): V = {
     if (key == -key) {
@@ -379,6 +380,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
    *
    *  @param key the key to add
    *  @param value the value to associate with `key`
+   *  @return this map after the entry has been added
    */
   @inline final def addOne(key: Long, value: V): this.type = { update(key, value); this }
 
@@ -555,6 +557,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
    *
    *  @tparam V1 the type of the values in the resulting map
    *  @param f the transformation function applied to each value
+   *  @return a new `LongMap` with the same keys, where each value is the result of applying `f` to the corresponding value in this map
    */
   def mapValuesNow[V1](f: V => V1): LongMap[V1] = {
     val zv = if ((extraKeys & 1) == 1) f(zeroValue.asInstanceOf[V]).asInstanceOf[AnyRef | Null] else null
@@ -585,6 +588,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
    *  Note: the default, if any,  is not transformed.
    *
    *  @param f the transformation function applied to each value
+   *  @return this map after each value has been replaced by `f` applied to it
    */
   def transformValuesInPlace(f: V => V): this.type = {
     if ((extraKeys & 1) == 1) zeroValue = f(zeroValue.asInstanceOf[V]).asInstanceOf[AnyRef | Null]
@@ -605,6 +609,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
    *
    *  @tparam V2 the value type of the resulting map
    *  @param f the mapping function
+   *  @return a new `LongMap` containing the key/value pairs produced by applying `f` to each entry of this map
    */
   def map[V2](f: ((Long, V)) => (Long, V2)): LongMap[V2] = LongMap.from(new View.Map(coll, f))
 
@@ -612,6 +617,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
    *
    *  @tparam V2 the value type of the resulting map
    *  @param f the mapping function
+   *  @return a new `LongMap` containing the concatenation of the key/value pairs produced by applying `f` to each entry of this map
    */
   def flatMap[V2](f: ((Long, V)) => IterableOnce[(Long, V2)]^): LongMap[V2] = LongMap.from(new View.FlatMap(coll, f))
 
@@ -619,6 +625,7 @@ final class LongMap[V] private[collection] (defaultEntry: Long -> V, initialBuff
    *
    *  @tparam V2 the value type of the resulting map
    *  @param pf the partial function to apply to matching elements
+   *  @return a new `LongMap` containing the key/value pairs produced by `pf` for the entries on which it is defined
    */
   def collect[V2](pf: PartialFunction[(Long, V), (Long, V2)]): LongMap[V2] =
     strictOptimizedCollect(LongMap.newBuilder[V2], pf)
@@ -657,6 +664,7 @@ object LongMap {
    *
    *  @tparam V the type of the values
    *  @param elems the key/value pairs to initialize the map with
+   *  @return a new `LongMap` populated with the given `elems`
    */
   def apply[V](elems: (Long, V)*): LongMap[V] = buildFromIterableOnce(elems)
 
@@ -672,6 +680,7 @@ object LongMap {
   /** Creates a new empty `LongMap`.
    *
    *  @tparam V the type of the values
+   *  @return a new empty `LongMap` whose value type is `V`
    */
   def empty[V]: LongMap[V] = new LongMap[V]
 
@@ -679,6 +688,7 @@ object LongMap {
    *
    *  @tparam V the type of the values
    *  @param default the function mapping keys to default values
+   *  @return a new empty `LongMap` that uses `default` to supply values for missing keys
    */
   def withDefault[V](default: Long -> V): LongMap[V] = new LongMap[V](default)
 
@@ -702,6 +712,7 @@ object LongMap {
    *  @tparam V the type of the values
    *  @param keys the array of `Long` keys
    *  @param values the array of values corresponding to each key
+   *  @return a new `LongMap` pairing each key in `keys` with the value at the same index in `values`, up to the shorter of the two
    */
   def fromZip[V](keys: Array[Long], values: Array[V]): LongMap[V] = {
     val sz = math.min(keys.length, values.length)
@@ -718,6 +729,7 @@ object LongMap {
    *  @tparam V the type of the values
    *  @param keys the iterable of `Long` keys
    *  @param values the iterable of values corresponding to each key
+   *  @return a new `LongMap` pairing each key from `keys` with the value at the same position in `values`, up to the shorter of the two iterables
    */
   def fromZip[V](keys: scala.collection.Iterable[Long], values: scala.collection.Iterable[V]): LongMap[V] = {
     val sz = math.min(keys.size, values.size)

@@ -62,6 +62,12 @@ object Scanners {
     /** the base of a number */
     var base: Int = 0
 
+    /** the delimiter character of a string, relevant only for STRINGLIT tokens */
+    var delimChar: Char = 0
+
+    /** the number of leading delimiters of a string, relevant only for STRINGLIT tokens */
+    var delimCount = 0
+
     def copyFrom(td: TokenData): Unit = {
       this.token = td.token
       this.offset = td.offset
@@ -70,6 +76,8 @@ object Scanners {
       this.name = td.name
       this.strVal = td.strVal
       this.base = td.base
+      this.delimChar = td.delimChar
+      this.delimCount = td.delimCount
     }
 
     def isNewLine = token == NEWLINE || token == NEWLINES
@@ -94,8 +102,9 @@ object Scanners {
       token == ARROW || token == CTXARROW
   }
 
-  abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
+  abstract class ScannerCommon(source: SourceFile, limit: Offset = -1)(using Context) extends CharArrayReader with TokenData {
     val buf: Array[Char] = source.content
+    val endIdx = if limit >= 0 && limit < buf.length then limit else buf.length
     def nextToken(): Unit
 
     // Errors -----------------------------------------------------------------
@@ -175,7 +184,8 @@ object Scanners {
         errorButContinue(em"trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile, allowIndent: Boolean = true)(using Context) extends ScannerCommon(source) {
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0, limit: Offset = -1, profile: Profile = NoProfile, allowIndent: Boolean = true)(using Context)
+      extends ScannerCommon(source, limit) {
     val keepComments = !ctx.settings.XdropComments.value
 
     /** A switch whether operators at the start of lines can be infix operators */
@@ -215,6 +225,9 @@ object Scanners {
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
     def trackedEnabled = featureEnabled(Feature.modularity)
+    def dedentedStringLiteralsEnabled =
+         featureEnabled(Feature.dedentedStringLiterals)
+      || Feature.magicEnabled
 
     private var postfixOpsEnabledCache = false
     private var postfixOpsEnabledCtx: Context = NoContext
@@ -329,17 +342,9 @@ object Scanners {
     /** Are we directly in a multiline string interpolation expression?
      *  @pre inStringInterpolation
      */
-    private def inMultiLineInterpolation = currentRegion match {
-      case InString(multiLine, _) => multiLine
+    private def inMultiLineInterpolation = currentRegion match
+      case InString(_, delimCount, _) => delimCount >= 3
       case _ => false
-    }
-
-    /** Are we in a `${ }` block? such that RBRACE exits back into multiline string. */
-    private def inMultiLineInterpolatedExpression =
-      currentRegion match {
-        case InBraces(InString(true, _)) => true
-        case _ => false
-      }
 
     /** read next token and return last offset
      */
@@ -376,7 +381,7 @@ object Scanners {
           case _ =>
       case STRINGLIT =>
         currentRegion match {
-          case InString(_, outer) => currentRegion = outer
+          case InString(_, _, outer) => currentRegion = outer
           case _ =>
         }
       case _ =>
@@ -387,7 +392,7 @@ object Scanners {
       if next.token == EMPTY then
         lastOffset = lastCharOffset
         currentRegion match
-          case InString(multiLine, _) if lastToken != STRINGPART => fetchStringPart(multiLine)
+          case r: InString if lastToken != STRINGPART => fetchStringPart(r)
           case _ => fetchToken()
         if token == ERROR then adjustSepRegions(STRINGLIT) // make sure we exit enclosing string literal
       else
@@ -488,7 +493,7 @@ object Scanners {
       }
 
     /** The indentation width of the given offset. */
-    def indentWidth(offset: Offset): IndentWidth =
+    def indentWidth(offset: Offset, buf: Array[Char] = this.buf): IndentWidth =
       import IndentWidth.{Run, Conc}
       def recur(idx: Int, ch: Char, n: Int, k: IndentWidth => IndentWidth): IndentWidth =
         if (idx < 0) k(Run(ch, n))
@@ -613,7 +618,7 @@ object Scanners {
       // can emit OUTDENT if line is not non-empty blank line at EOF
       inline def isTrailingBlankLine: Boolean =
         token == EOF && {
-          val end = buf.length - 1 // take terminal NL as empty last line
+          val end = endIdx - 1 // take terminal NL as empty last line
           val prev = buf.lastIndexWhere(!isWhitespace(_), end = end)
           prev < 0 || end - prev > 0 && isLineBreakChar(buf(prev))
         }
@@ -787,10 +792,8 @@ object Scanners {
           if lastToken == IDENTIFIER && lastName != null && isIdentifierStart(lastName.head)
               || colonEOLPredecessors.contains(lastToken)
           then token = COLONfollow
-        case RBRACE | RPAREN | RBRACKET =>
+        case RBRACE | RPAREN | RBRACKET | EOF =>
           closeIndented()
-        case EOF =>
-          if !source.maybeIncomplete then closeIndented()
         case _ =>
       }
     }
@@ -866,6 +869,10 @@ object Scanners {
         }
       }
 
+    inline def recognizeInterpolationId() =
+      if (ch == '"' || ch == '\'') && token == IDENTIFIER then
+        token = INTERPOLATIONID
+
     /** read next token, filling TokenData fields of Scanner.
      */
     protected final def fetchToken(): Unit = {
@@ -891,8 +898,7 @@ object Scanners {
           putChar(ch)
           nextChar()
           getIdentRest()
-          if (ch == '"' && token == IDENTIFIER)
-            token = INTERPOLATIONID
+          recognizeInterpolationId()
         case '<' => // is XMLSTART?
           def fetchLT() = {
             val last = if (charOffset >= 2) buf(charOffset - 2) else ' '
@@ -926,54 +932,17 @@ object Scanners {
         case '`' =>
           getBackquotedIdent()
         case '\"' =>
-          def stringPart(multiLine: Boolean) = {
-            getStringPart(multiLine)
-            currentRegion = InString(multiLine, currentRegion)
-          }
-          def fetchDoubleQuote() =
-            if (token == INTERPOLATIONID) {
-              nextRawChar()
-              if (ch == '\"') {
-                if (lookaheadChar() == '\"') {
-                  nextRawChar()
-                  nextRawChar()
-                  stringPart(multiLine = true)
-                }
-                else {
-                  nextChar()
-                  token = STRINGLIT
-                  strVal = ""
-                }
-              }
-              else {
-                stringPart(multiLine = false)
-              }
-            }
-            else {
-              nextChar()
-              if (ch == '\"') {
-                nextChar()
-                if (ch == '\"') {
-                  nextRawChar()
-                  getRawStringLit()
-                }
-                else {
-                  token = STRINGLIT
-                  strVal = ""
-                }
-              }
-              else
-                getStringLit()
-            }
-          fetchDoubleQuote()
+          delimChar = '"'
+          delimCount = 1
+          fetchString()
         case '\'' =>
-          def fetchSingleQuote(): Unit = {
+          def fetchCharLit(): Unit =
             nextChar()
             if isIdentifierStart(ch) then
               charLitOr { getIdentRest(); QUOTEID }
             else if isOperatorPart(ch) && ch != '\\' then
               charLitOr { getOperatorRest(); QUOTEID }
-            else ch match {
+            else ch match
               case '{' | '[' | ' ' | '\t' if lookaheadChar() != '\'' =>
                 token = QUOTE
               case _ if !isAtEnd && ch != SU && ch != CR && ch != LF =>
@@ -987,9 +956,12 @@ object Scanners {
                 else error(em"unclosed character literal")
               case _ =>
                 error(em"unclosed character literal")
-            }
-          }
-          fetchSingleQuote()
+
+          if lookaheadChar() == '\'' && dedentedStringLiteralsEnabled then
+            delimChar = '\''
+            delimCount = 1
+            fetchString()
+          else fetchCharLit()
         case '.' =>
           nextChar()
           if ('0' <= ch && ch <= '9') {
@@ -1008,7 +980,9 @@ object Scanners {
         case ')' =>
           nextChar(); token = RPAREN
         case '}' =>
-          if (inMultiLineInterpolatedExpression) nextRawChar() else nextChar()
+          currentRegion match
+            case InBraces(InString('"', count, _)) if count >= 3 => nextRawChar()
+            case _ => nextChar()
           token = RBRACE
         case '[' =>
           nextChar(); token = LBRACKET
@@ -1032,14 +1006,14 @@ object Scanners {
               putChar(ch)
               nextChar()
               getIdentRest()
-              if ch == '"' && token == IDENTIFIER then token = INTERPOLATIONID
+              recognizeInterpolationId()
             else if isSpecial(ch) then
               putChar(ch)
               nextChar()
               getOperatorRest()
             else if isSupplementary(ch, isUnicodeIdentifierStart) then
               getIdentRest()
-              if ch == '"' && token == IDENTIFIER then token = INTERPOLATIONID
+              recognizeInterpolationId()
             else if isSupplementary(ch, isSpecial) then
               getOperatorRest()
             else
@@ -1237,63 +1211,60 @@ object Scanners {
     def canStartExprTokens =
       if migrateTo3 then canStartExprTokens2 else canStartExprTokens3
 
-// Literals -----------------------------------------------------------------
+// String Parsing -----------------------------------------------------------------
 
-    private def getStringLit() = {
+    def multiline = delimCount >= 3
+
+    def nextStrChar() =
+      if delimChar == '"' then nextRawChar() else nextChar()
+
+    private def getStringLit() =
       getLitChars('"')
-      if (ch == '"') {
+      if ch == '"' then
         setStrVal()
         nextChar()
         token = STRINGLIT
-      }
       else error(em"unclosed string literal")
-    }
 
-    private def getRawStringLit(): Unit =
-      if (ch == '\"') {
-        nextRawChar()
-        if (isTripleQuote()) {
+    private def getMultilineStringLit(): Unit =
+      if ch == delimChar then
+        nextStrChar()
+        if isClosingQuote() then
           setStrVal()
           token = STRINGLIT
-        }
         else
-          getRawStringLit()
-      }
-      else if (ch == SU)
+          getMultilineStringLit()
+      else if ch == SU then
         incompleteInputError(em"unclosed multi-line string literal")
-      else {
+      else
         putChar(ch)
-        nextRawChar()
-        getRawStringLit()
-      }
+        nextStrChar()
+        getMultilineStringLit()
 
     // for interpolated strings
-    @tailrec private def getStringPart(multiLine: Boolean): Unit =
-      if (ch == '"')
-        if (multiLine) {
-          nextRawChar()
-          if (isTripleQuote()) {
+    @tailrec final def getStringPart(): Unit = {
+      if ch == delimChar then
+        if multiline then
+          nextStrChar()
+          if isClosingQuote() then
             setStrVal()
             token = STRINGLIT
-          }
           else
-            getStringPart(multiLine)
-        }
-        else {
+            getStringPart()
+        else
           nextChar()
           setStrVal()
           token = STRINGLIT
-        }
-      else if (ch == '\\' && !multiLine) {
+      else if ch == '\\' && !multiline then
         putChar(ch)
         nextRawChar()
-        if (ch == '"' || ch == '\\')
+        if ch == '"' || ch == '\\' then
           putChar(ch)
           nextRawChar()
-        getStringPart(multiLine)
-      }
-      else if (ch == '$') {
-        def getInterpolatedIdentRest(hasSupplement: Boolean): Unit =
+        getStringPart()
+      else if ch == '$' then
+        def getInterpolatedIdentRest(hasSupplement: Boolean): Unit = {
+
           @tailrec def loopRest(): Unit =
             if ch != SU && isUnicodeIdentifierPart(ch) then
               putChar(ch) ; nextRawChar()
@@ -1304,7 +1275,7 @@ object Scanners {
               loopRest()
             else
               finishNamedToken(IDENTIFIER, target = next)
-          end loopRest
+
           setStrVal()
           token = STRINGPART
           next.lastOffset = charOffset - 1
@@ -1313,68 +1284,120 @@ object Scanners {
           if hasSupplement then
             putChar(ch) ; nextRawChar()
           loopRest()
-        end getInterpolatedIdentRest
+        }
 
         nextRawChar()
-        if (ch == '$' || ch == '"') {
+        if ch == '$' || ch == delimChar then
           putChar(ch)
           nextRawChar()
-          getStringPart(multiLine)
-        }
-        else if (ch == '{') {
+          getStringPart()
+        else if ch == '{' then
           setStrVal()
           token = STRINGPART
-        }
         else if isUnicodeIdentifierStart(ch) || ch == '_' then
           getInterpolatedIdentRest(hasSupplement = false)
         else if atSupplementary(ch, isUnicodeIdentifierStart) then
           getInterpolatedIdentRest(hasSupplement = true)
         else
-          error("invalid string interpolation: `$$`, `$\"`, `$`ident or `$`BlockExpr expected".toMessage, off = charOffset - 2)
+          error(em"invalid string interpolation: `$$$$`, `$$${delimChar}`, `$$`ident or `$$`BlockExpr expected", off = charOffset - 2)
           putChar('$')
-          getStringPart(multiLine)
-      }
-      else {
-        val isUnclosedLiteral = !isUnicodeEscape && (ch == SU || (!multiLine && (ch == CR || ch == LF)))
-        if (isUnclosedLiteral)
-          if (multiLine)
+          getStringPart()
+      else
+        val isUnclosedLiteral = !isUnicodeEscape && (ch == SU || (!multiline && (ch == CR || ch == LF)))
+        if isUnclosedLiteral then
+          if multiline then
             incompleteInputError(em"unclosed multi-line string literal")
           else
             error(em"unclosed string literal")
-        else {
+        else
           putChar(ch)
-          nextRawChar()
-          getStringPart(multiLine)
-        }
-      }
-    end getStringPart
-
-    private def fetchStringPart(multiLine: Boolean) = {
-      offset = charOffset - 1
-      getStringPart(multiLine)
+          nextStrChar()
+          getStringPart()
     }
 
-    private def isTripleQuote(): Boolean =
-      if (ch == '"') {
-        nextRawChar()
-        if (ch == '"') {
+    private def isClosingQuote(): Boolean =
+      assert(multiline)
+      var seenQuotes = 1
+      while seenQuotes < delimCount && ch == delimChar do
+        seenQuotes += 1
+        if seenQuotes == delimCount then nextChar() else nextStrChar()
+      if seenQuotes >= delimCount then
+        while ch == delimChar do
+          putChar(delimChar)
           nextChar()
-          while (ch == '"') {
-            putChar('"')
-            nextChar()
-          }
-          true
-        }
-        else {
-          putChar('"')
-          putChar('"')
-          false
-        }
-      }
-      else {
-        putChar('"')
+        true
+      else
+        while seenQuotes > 0 do
+          putChar(delimChar)
+          seenQuotes -= 1
         false
-      }
+
+    private def stringPart() =
+      getStringPart()
+      currentRegion = InString(delimChar, delimCount, currentRegion)
+
+    private def emptyString() =
+      if delimChar == '\'' then
+        error(em"empty character literal (use '\\'' for single quote)")
+      else
+        token = STRINGLIT
+        strVal = ""
+
+    def eatExtraQuotes() =
+      delimCount = 3
+      if delimChar == '\'' then
+        while ch == delimChar do
+          delimCount += 1
+          nextChar()
+
+    def isSpecString(): Boolean =
+      var i = charOffset
+      while i < endIdx && buf(i) == '\'' do
+        i += 1
+      Feature.magicEnabled
+      && i + 4 < endIdx
+      && i - charOffset >= 2
+      && buf(i) == 's' && buf(i + 1) == 'p' && buf(i + 2) == 'e' && buf(i + 3) == 'c'
+      && (isWhitespace(buf(i + 4)) || buf(i + 4) == LF)
+
+    def fetchString() =
+      delimCount = 1
+      if token == INTERPOLATIONID then
+        nextStrChar()
+        if ch == delimChar then
+          if lookaheadChar() == delimChar then
+            nextStrChar()
+            nextStrChar()
+            eatExtraQuotes()
+            stringPart()
+          else
+            nextChar()
+            emptyString()
+        else
+          stringPart()
+      else if delimChar == '\'' && isSpecString() then
+        token = INTERPOLATIONID
+        name = nme.SPEC.asSimpleName
+      else
+        nextChar()
+        if ch == delimChar then
+          nextChar()
+          if ch == delimChar then
+            nextStrChar()
+            eatExtraQuotes()
+            getMultilineStringLit()
+          else
+            emptyString()
+        else
+          getStringLit()
+
+    def fetchStringPart(r: InString) =
+      delimChar = r.delimChar
+      delimCount = r.delimCount
+      offset = charOffset - 1
+      getStringPart()
+
+// Literals -----------------------------------------------------------------
 
     /** Copy current character into cbuf, interpreting any escape sequences,
      *  and advance to next character. Surrogate pairs are consumed (see check
@@ -1396,6 +1419,7 @@ object Scanners {
         case 'n'  => putChar('\n')
         case 'f'  => putChar('\f')
         case 'r'  => putChar('\r')
+        case 's'  => putChar(' ')
         case '\"' => putChar('\"')
         case '\'' => putChar('\'')
         case '\\' => putChar('\\')
@@ -1690,7 +1714,7 @@ object Scanners {
       toList.map(r => s"(${r.indentWidth}, ${r.delimiter})").mkString(" in ")
   end Region
 
-  case class InString(multiLine: Boolean, outer: Region) extends Region(RBRACE)
+  case class InString(delimChar: Char, delimCount: Int, outer: Region) extends Region(RBRACE)
   case class InParens(prefix: Token, outer: Region) extends Region(prefix + 1)
   case class InBraces(outer: Region) extends Region(RBRACE)
   case class InCase(outer: Region) extends Region(OUTDENT)
@@ -1729,6 +1753,18 @@ object Scanners {
     }
 
     def < (that: IndentWidth): Boolean = this <= that && !(that <= this)
+
+    final def advance(buf: Array[Char], start: Int): Int = this match
+      case Run(ch, n) =>
+        if start + n > buf.length then -1
+        else
+          var i = 0
+          while i < n && buf(start + i) == ch do i += 1
+          if i < n then -1 else n
+      case Conc(w1, w2) =>
+        val len1 = w1.advance(buf, start)
+        if len1 < 0 then len1
+        else w2.advance(buf, start + len1)
 
     /** Does `this` differ from `that` by not more than a single space? */
     def isClose(that: IndentWidth): Boolean = this match

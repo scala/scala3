@@ -8,6 +8,6 @@ jobs:
     name: Update Dependency Graph
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: sbt/setup-sbt@v1
       - uses: scalacenter/sbt-dependency-submission@v3

@@ -247,10 +247,8 @@ class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(usi
       )
   }
 
-  def containers: List[ClassPath] = Calculated.containers
-
   lazy val result: ClassPath = {
-    val cp = AggregateClassPath(containers.toIndexedSeq)
+    val cp = AggregateClassPath(Calculated.containers)
 
     if (settings.YlogClasspath.value) {
       Console.println("Classpath built from " + settings.toConciseString(ctx.settingsState))
@@ -263,6 +261,4 @@ class PathResolver(precomputedSourcePackages: Option[LogicalPackage] = None)(usi
     }
     cp
   }
-
-  def asURLs: Seq[java.net.URL] = result.asURLs
 }

@@ -1,0 +1,16 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t8700a/Bar.scala:2:23 
+2 |  def bar1(foo: Foo) = foo match {
+  |                       ^^^
+  |                       match may not be exhaustive.
+  |
+  |                       It would fail on pattern case: B
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t8700a/Bar.scala:6:23 
+6 |  def bar2(foo: Baz) = foo match {
+  |                       ^^^
+  |                       match may not be exhaustive.
+  |
+  |                       It would fail on pattern case: B
+  |
+  | longer explanation available when compiling with `-explain`

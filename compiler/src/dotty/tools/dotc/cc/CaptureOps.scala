@@ -65,12 +65,12 @@ extension (tree: Tree)
 extension (tp: Type)
 
   def toCapability(using Context): Capability = tp match
-    case ReachCapability(tp1) =>
-      tp1.toCapability.reach
     case ReadOnlyCapability(tp1) =>
       tp1.toCapability.readOnly
     case OnlyCapability(tp1, cls) =>
       tp1.toCapability.restrict(cls)
+    case ExceptCapability(tp1, cls) =>
+      tp1.toCapability.exclude(cls)
     case ref: TermRef if ref.isCapsAnyRef =>
       GlobalAny
     case ref: TermRef if ref.isCapsFreshRef =>
@@ -110,14 +110,16 @@ extension (tp: Type)
       elem match
         case CapturingType(parent, refs) if parent.derivesFromCapSet =>
           refs.elems.toList
+        case ExceptCapability(_, cls) if cls.isTopClassifier =>
+          Nil // empty projection
         case _ =>
           elem.toCapability :: Nil
 
   /** Is this type a Capability that can be tracked?
    *  This is true for
-   *    - all ThisTypes and all TermParamRef,
+   *    - all ThisTypes and all TermParamRefs,
    *    - stable TermRefs with NoPrefix or ThisTypes as prefixes,
-   *    - annotated types that represent reach or maybe capabilities
+   *    - TypeRefs with CapSet bounds
    */
   final def isTrackableRef(using Context): Boolean = tp match
     case _: (ThisType | TermParamRef) => true
@@ -153,26 +155,18 @@ extension (tp: Type)
 
   /** Compute a captureset by traversing parts of this type. This is by default the union of all
    *  covariant capture sets embedded in the widened type, as computed by
-   *  `CaptureSet.ofTypeDeeply`. If that set is nonempty, and the type is
-   *  a singleton capability `x` or a reach capability `x*`, the deep capture
-   *  set can be narrowed to`{x*}`.
+   *  `CaptureSet.ofTypeDeeply`.
    *  @param includeTypevars  if true, return a new LocalCap for every type parameter
    *                          or abstract type with an Any upper bound. Types with
    *                          defined upper bound are always mapped to the dcs of their bound
    *  @param includeBoxed     if true, include capture sets found in boxed parts of this type
    */
   def computeDeepCaptureSet(includeTypevars: Boolean, includeBoxed: Boolean = true)(using Context): CaptureSet =
-    val dcs = CaptureSet.ofTypeDeeply(tp.widen.stripCapturing, includeTypevars, includeBoxed)
-    if dcs.isAlwaysEmpty then tp.captureSet
-    else tp match
-      case tp: ObjectCapability if tp.isTrackableRef => tp.reach.singletonCaptureSet
-      case _ => tp.captureSet ++ dcs
+    tp.captureSet ++ CaptureSet.ofTypeDeeply(tp.widen.stripCapturing, includeTypevars, includeBoxed)
 
   /** The deep capture set of a type. This is by default the union of all
    *  covariant capture sets embedded in the widened type, as computed by
-   *  `CaptureSet.ofTypeDeeply`. If that set is nonempty, and the type is
-   *  a singleton capability `x` or a reach capability `x*`, the deep capture
-   *  set can be narrowed to`{x*}`.
+   *  `CaptureSet.ofTypeDeeply`.
    */
   def deepCaptureSet(using Context): CaptureSet =
     computeDeepCaptureSet(includeTypevars = false)
@@ -192,7 +186,9 @@ extension (tp: Type)
    *  the two capture sets are combined.
    */
   def capturing(cs: CaptureSet)(using Context): Type =
-    if (cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(tp.captureSet, VarState.Separate))
+    if (cs.isAlwaysEmpty && !tp.isAny
+        || cs.isConst && cs.subCaptures(tp.captureSet, VarState.Separate)
+        )
         && !cs.keepAlways
     then tp
     else tp match
@@ -277,14 +273,7 @@ extension (tp: Type)
     def getBoxed(tp: Type, pre: Type): CaptureSet = tp match
       case tp @ CapturingType(parent, refs) =>
         val pcs = getBoxed(parent, pre)
-        if !tp.isBoxed then
-          pcs
-        else pre match
-          case pre: ObjectCapability if refs.containsTerminalCapability =>
-            val reachRef = if refs.isReadOnly then pre.reach.readOnly else pre.reach
-            pcs ++ reachRef.singletonCaptureSet
-          case _ =>
-            pcs ++ refs
+        if !tp.isBoxed then pcs else pcs ++ refs
       case ref: Capability if ref.isTracked && !pre.exists => getBoxed(ref, ref)
       case tp: TypeRef if tp.symbol.isAbstractOrParamType => CaptureSet.empty
       case tp: TypeProxy => getBoxed(tp.superType, pre)
@@ -304,8 +293,8 @@ extension (tp: Type)
       case tp: OrType => tp.tp1.isBoxedCapturing || tp.tp2.isBoxedCapturing
       case _ => false
 
-  /** Is the box status of `tp` and `tp2` compatible? I.ee  they are
-   *  box boxed, or both unboxed, or one of them has an empty capture set.
+  /** Is the box status of `tp` and `tp2` compatible? I.e. they are
+   *  both boxed, or both unboxed, or one of them has an empty capture set.
    */
   def isBoxCompatibleWith(tp2: Type)(using Context): Boolean =
     isBoxedCapturing == tp2.isBoxedCapturing
@@ -419,41 +408,6 @@ extension (tp: Type)
           mapOver(t)
     tm(tp)
 
-  /** If `x` is a capability, replace all no-flip covariant occurrences of `any`
-   *  in type `tp` with `x*`.
-   */
-  def withReachCaptures(ref: Type)(using Context): Type = ref match
-    case ref: ObjectCapability if ref.isTrackableRef =>
-      object narrowCaps extends TypeMap:
-        var change = false
-        def apply(t: Type) =
-          if variance <= 0 then t
-          else t.dealias match
-            case t @ CapturingType(p, cs) if cs.containsGlobalOrLocalCap =>
-              val reachRef = if cs.isReadOnly then ref.reach.readOnly else ref.reach
-              if reachRef.singletonCaptureSet.mightSubcapture(cs) then
-                change = true
-                t.derivedCapturingType(apply(p), reachRef.singletonCaptureSet)
-              else
-                t
-            case t @ AnnotatedType(parent, ann) =>
-              // Don't map annotations, which includes capture sets
-              t.derivedAnnotatedType(this(parent), ann)
-            case t @ FunctionOrMethod(args, res) =>
-              t.derivedFunctionOrMethod(args, apply(res))
-            case _ =>
-              mapOver(t)
-      end narrowCaps
-      val tp1 = narrowCaps(tp)
-      if narrowCaps.change then
-        capt.println(i"narrow $tp of $ref to $tp1")
-        tp1
-      else
-        tp
-    case _ =>
-      tp
-  end withReachCaptures
-
   private def containsGlobal(c: GlobalCap, directly: Boolean)(using Context): Boolean =
     val search = new TypeAccumulator[Boolean]:
       def apply(x: Boolean, t: Type) =
@@ -482,9 +436,6 @@ extension (tp: Type)
 
   def refinedOverride(name: Name, rinfo: Type)(using Context): Type =
     RefinedType.precise(tp, name, rinfo)
-
-  def dropUseAndConsumeAnnots(using Context): Type =
-    tp.dropAnnot(defn.UseAnnot).dropAnnot(defn.ConsumeAnnot)
 
   /** If `tp` is a function or method, a type of the same kind with the given
    *  argument and result types.
@@ -522,7 +473,7 @@ extension (tp: Type)
     clsfier match
     case clsfier: ClassSymbol =>
       val lcap = LocalCap(Origin.NewInstance(tp, contributing))
-      if clsfier != defn.AnyClass then
+      if !clsfier.isTopClassifier then
         lcap.hiddenSet.adoptClassifier(clsfier)
       (if readOnly then lcap.readOnly else lcap).singletonCaptureSet
     case _ =>
@@ -596,6 +547,11 @@ extension (cls: ClassSymbol) {
 
   def isClassifiedCapabilityClass(using Context): Boolean =
     cls.derivesFromCapability && cls.parentSyms.contains(defn.Caps_Classifier)
+
+  /** `Any`, the top of the classifier tree: not a classifier class, but accepted as a
+   *  projection argument (`only[Any]` = identity, `except[Any]` = empty). */
+  def isTopClassifier(using Context): Boolean =
+    cls == defn.AnyClass
 
   def classifier(using Context): ClassSymbol =
     if cls.derivesFromCapability then
@@ -768,33 +724,13 @@ extension (sym: Symbol) {
   def hasTrackedParts(using Context): Boolean =
     !CaptureSet.ofTypeDeeply(sym.info).isAlwaysEmpty
 
-  /** Until 3.7:
-   *    `sym` itself or its info is annotated @use or it is a type parameter with a matching
-   *    @use-annotated term parameter that contains `sym` in its deep capture set.
-   *  From 3.8:
-   *    `sym` is a capset parameter without a `@reserve` annotation that
-   *      - belongs to a class in a class, or
-   *      - belongs to a method where it appears in a the deep capture set of a following term parameter of the same method.
+  /** `sym` is a capset parameter
    */
-  def isUseParam(using Context): Boolean =
-    sym.hasAnnotation(defn.UseAnnot)
-    || sym.info.hasAnnotation(defn.UseAnnot)
-    || sym.is(TypeParam)
-        && !sym.info.hasAnnotation(defn.ReserveAnnot)
-        && (sym.owner.isClass
-            || sym.owner.rawParamss.nestedExists: param =>
-                param.is(TermParam)
-                && (!ccConfig.allowUse || param.hasAnnotation(defn.UseAnnot))
-                && param.info.deepCaptureSet.elems.exists:
-                    case c: TypeRef => c.symbol == sym
-                    case _ => false
-            || {
-              //println(i"not is use param $sym")
-              false
-            })
+  def isCapsetParam(using Context): Boolean =
+    sym.is(TypeParam) && sym.info.derivesFromCapSet
 
   /** `sym` or its info is annotated with `@consume`. */
-  def isConsumeParam(using Context): Boolean =
+  def isConsume(using Context): Boolean =
     sym.hasAnnotation(defn.ConsumeAnnot)
     || sym.info.hasAnnotation(defn.ConsumeAnnot)
 
@@ -967,28 +903,36 @@ end AnnotatedCapability
  */
 object ReadOnlyCapability extends AnnotatedCapability(defn.ReadOnlyCapabilityAnnot)
 
-/** An extractor for `ref @reachCapability`, which is used to express
- *  the reach capability `ref*` as a type.
- */
-object ReachCapability extends AnnotatedCapability(defn.ReachCapabilityAnnot)
-
 /** An extractor for `ref @amaybeCapability`, which is used to express
  *  the maybe capability `ref?` as a type.
  */
 object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
 
-object OnlyCapability:
+/** A base class for extractors that match annotated types carrying a classifier
+ *  class as type argument of their annotation.
+ */
+abstract class ClassifiedCapability(annotCls: Context ?=> ClassSymbol):
   def apply(tp: Type, cls: ClassSymbol)(using Context): AnnotatedType =
     AnnotatedType(tp,
-      Annotation(defn.OnlyCapabilityAnnot.typeRef.appliedTo(cls.typeRef), Nil, util.Spans.NoSpan))
+      Annotation(annotCls.typeRef.appliedTo(cls.typeRef), Nil, util.Spans.NoSpan))
 
   def unapply(tree: AnnotatedType)(using Context): Option[(Type, ClassSymbol)] = tree match
-    case AnnotatedType(parent: Type, ann) if ann.hasSymbol(defn.OnlyCapabilityAnnot) =>
+    case AnnotatedType(parent: Type, ann) if ann.hasSymbol(annotCls) =>
       ann.tree.tpe.argTypes.head.dealias.typeSymbol match
         case cls: ClassSymbol => Some((parent, cls))
         case _ => None
     case _ => None
-end OnlyCapability
+end ClassifiedCapability
+
+/** An extractor for `ref @onlyCapability[C]`, which is used to express
+ *  the restricted capability `ref.only[C]` as a type.
+ */
+object OnlyCapability extends ClassifiedCapability(defn.OnlyCapabilityAnnot)
+
+/** An extractor for `ref @exceptCapability[C]`, which is used to express
+ *  the excluded capability `ref.except[C]` as a type.
+ */
+object ExceptCapability extends ClassifiedCapability(defn.ExceptCapabilityAnnot)
 
 /** An extractor for all kinds of function types as well as method and poly types.
  *  It includes aliases of function types such as `=>`. TODO: Can we do without?
@@ -1024,13 +968,7 @@ object ContainsParam:
           case _ => None
       case _ => None
 
-/** A class encapsulating the assumulator logic needed for `CaptureSet.ofTypeDeeply`
- *  and `derivesFromCapTraitDeeply`.
- *  NOTE: The traversal logic needs to be in sync with narrowCaps in CaptureOps, which
- *  replaces caps with reach capabilties. There are two exceptions, however.
- *   - First, invariant arguments. These have to be included to be conservative
- *     in dcs but must be excluded in narrowCaps.
- *   - Second, unconstrained type variables are handled specially in `ofTypeDeeply`.
+/** A class encapsulating the accumulator logic needed for `CaptureSet.ofTypeDeeply`.
  */
 abstract class DeepTypeAccumulator[T](using Context) extends TypeAccumulator[T]:
   val seen = util.HashSet[Symbol]()

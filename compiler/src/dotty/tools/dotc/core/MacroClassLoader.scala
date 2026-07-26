@@ -38,7 +38,7 @@ object MacroClassLoader {
             settingsUrls
       else
         settingsUrls
-    val out = Option(ctx.settings.outputDir.value.toURL) // to find classes in case of suspended compilation
+    val out = ctx.settings.outputDir.value.toURL // to find classes in case of suspended compilation
     new java.net.URLClassLoader((urls ++ out.toList).toArray, getClass.getClassLoader)
   }
 }

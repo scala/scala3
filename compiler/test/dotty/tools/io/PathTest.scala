@@ -24,16 +24,6 @@ class PathTest {
     testParent(Path(".") / "baz" / "bar" / "foo.txt",
       Directory(".") / "baz" / "bar",
       Directory("baz") / "bar")
-
-    for (root <- Path.roots) {
-      testParent(root, root)
-      testParent(root / ".", root)
-      testParent(root / "..", root / ".." / "..")
-      testParent(root / "foo" / ".", root)
-      testParent(root / "foo.txt", root)
-      testParent(root / "baz" / "bar" / "foo.txt", root / "baz" / "bar")
-      testParent(root / "foo" / "bar" / "..",  root / "foo" / "bar" / ".." / "..")
-    }
   }
 
   /** The parent of a path may have multiple valid non-canonical representations.

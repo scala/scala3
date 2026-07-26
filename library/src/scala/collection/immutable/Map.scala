@@ -71,6 +71,7 @@ trait Map[K, +V]
  *  @tparam K the type of the keys in this map
  *  @tparam V the type of the values associated with the keys
  *  @tparam CC the type constructor of the resulting map (e.g., `Map`, `HashMap`)
+ *  @tparam C the type of the map itself, used as the return type of operations that preserve the concrete map type
  */
 transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K, V, CC, C]]
   extends IterableOps[(K, V), Iterable, C]

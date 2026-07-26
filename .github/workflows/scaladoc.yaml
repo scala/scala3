@@ -8,6 +8,14 @@ on:
   pull_request:
     branches-ignore:
       - 'language-reference-stable'
+    paths:
+      - 'docs/**'
+      - 'scaladoc*/**'
+      - 'compiler/src/dotty/tools/dotc/reporting/**' # When error codes or messages are updated, we need to update the documentation
+      - 'project/scripts/checkSidebarDocs.scala'
+      - 'project/scripts/validateScaladocLinks.sh'
+      - 'project/scripts/checkErrorCodeSnippets*.scala'
+      - '.github/workflows/scaladoc.yaml'
   merge_group:
 permissions:
   contents: read
@@ -25,7 +33,7 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -67,23 +75,25 @@ jobs:
           path: scaladoc/output/scala3
 
   validate-docs:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.14
+      - uses: VirtusLab/scala-cli-setup@v1.15
 
       - name: Validate docs sidebars
         run: scala-cli ./project/scripts/checkSidebarDocs.scala
 
   validate-generated-docs:
     needs: build
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -132,7 +142,7 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
@@ -144,11 +154,12 @@ jobs:
         run: true # ./project/scripts/sbt scaladoc/sourceLinksIntegrationTest:test
 
   check-error-code-snippets:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.14
+      - uses: VirtusLab/scala-cli-setup@v1.15
         with:
           jvm: temurin:17
           apps: sbt

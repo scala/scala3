@@ -6,7 +6,6 @@ import dotty.tools.vulpix.*
 import reporting.TestReporter
 
 import scala.concurrent.duration.*
-import scala.language.unsafeNulls
 
 import java.io.{File => JFile}
 import org.junit.{AfterClass, Test}

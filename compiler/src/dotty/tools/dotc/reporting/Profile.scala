@@ -112,7 +112,7 @@ class ActiveProfile(details: Int) extends Profile:
       for unit <- units do
         val file = unit.source.file
         val info = unitProfile(unit)
-        printInfo(layout, file.name, info, file.container.path)
+        printInfo(layout, file.name, info, file.container.map(_.path).getOrElse("<no file>"))
         agg.lineCount += info.lineCount
         agg.tokenCount += info.tokenCount
         agg.tastySize += info.tastySize
@@ -134,14 +134,14 @@ class ActiveProfile(details: Int) extends Profile:
       do
         val methProfile = new ActiveProfile(0)
         val methCtx = ctx.fresh.setCompilationUnit(unit)
-        val s = Scanner(meth.source, span.start, methProfile)(using methCtx)
+        val s = Scanner(meth.source, span.start, profile = methProfile)(using methCtx)
         while s.offset < span.end do s.nextToken()
         val info = methProfile.unitProfile(unit)
         info.lineCount += 1
         info.tastySize = size
         val file = meth.source.file
         val header = s"%-${sourceNameWidth}s %-${methNameWidth}s".format(file.name, meth.name)
-        printInfo(layout, header, info, file.container.path)
+        printInfo(layout, header, info, file.container.map(_.path).getOrElse("<no file>"))
 
     val agg = printAndAggregateSourceInfos()
     if details > 0 then printDetails(agg)

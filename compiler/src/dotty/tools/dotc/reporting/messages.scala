@@ -2817,7 +2817,7 @@ class IllegalCyclicTypeReference(val ex: CyclicReference, sym: Symbol, where: St
 
 class ErasedTypesCanOnlyBeFunctionTypes()(using Context)
   extends SyntaxMsg(ErasedTypesCanOnlyBeFunctionTypesID) {
-  def msg(using Context) = "Types with erased keyword can only be function types `(erased ...) => ...`"
+  def msg(using Context) = "Types with erased keyword can only be function types `(erased x: T ...) => ...`"
   def explain(using Context) = ""
 }
 

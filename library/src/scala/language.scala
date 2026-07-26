@@ -248,6 +248,7 @@ object language {
      * @see [[https://github.com/scala/improvement-proposals/pull/97]]
      */
     @compileTimeOnly("`strictEqualityPatternMatching` can only be used at compile time in import statements")
+    @deprecated("`strictEqualityPatternMatching` is now standard, no language import is needed", since = "3.10")
     object strictEqualityPatternMatching
 
     /** Experimental support for using indentation for arguments
@@ -378,6 +379,18 @@ object language {
      */
     @compileTimeOnly("`safe` can only be used at compile time in import statements")
     object safe
+
+    /** Experimental support for dedented string literals (SIP 72)
+     */
+    @compileTimeOnly("`dedentedStringLiterals` can only be used at compile time in import statements")
+    object dedentedStringLiterals
+
+    /** Experimental support for magic (Modular AGent Interface Code), enabling extensions
+     *  for coding agents.
+     */
+    @compileTimeOnly("`magic` can only be used at compile time in import statements")
+    object magic
+
   end experimental
 
   /** The deprecated object contains features that are no longer officially suypported in Scala.

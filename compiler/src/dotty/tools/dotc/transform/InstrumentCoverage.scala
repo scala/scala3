@@ -208,7 +208,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     // Serialize once at the end with merged coverage
     val mergedCoverage = Coverage()
-    val currentFiles = units.map(_.source.file.absolute.jpath)
+    val currentFiles = units.map(_.source.file.jpath.nn.toAbsolutePath)
 
     // Add statements from previous coverage that aren't from recompiled files
     // and whose source files still exist
@@ -851,6 +851,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       val sym = tree.symbol
       !sym.isOneOf(ExcludeMethodFlags)
       && !isCompilerIntrinsicMethod(sym)
+      && sym != defn.Caps_unsafeDiscardUses
       && !(sym.isClassConstructor && isSecondaryCtorDelegateCall(tree.fun))
       && !sym.name.is(DefaultGetterName) // https://github.com/scala/scala3/issues/20255
       && (tree.typeOpt match

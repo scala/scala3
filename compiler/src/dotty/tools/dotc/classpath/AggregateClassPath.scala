@@ -6,7 +6,6 @@ package dotc.classpath
 
 import java.net.URL
 import scala.collection.mutable.ArrayBuffer
-import scala.collection.immutable.ArraySeq
 import dotc.util
 
 import dotty.tools.io.{ AbstractFile, ClassPath, ClassRepresentation }

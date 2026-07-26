@@ -41,13 +41,6 @@ class GenBCode extends Phase { self =>
     _optimizerUtils.nn
   }
 
-  private var _frontendAccess: PostProcessorFrontendAccess | Null = null
-  def frontendAccess(using Context): PostProcessorFrontendAccess = {
-    if _frontendAccess eq null then
-      _frontendAccess = PostProcessorFrontendAccess(ctx)
-    _frontendAccess.nn
-  }
-
   private var _primitives: ScalaPrimitives | Null = null
   def primitives(using Context): ScalaPrimitives = {
     if _primitives eq null then
@@ -98,7 +91,7 @@ class GenBCode extends Phase { self =>
   private var _callGraph: CallGraph | Null = null
   def callGraph(using Context): CallGraph = {
     if _callGraph eq null then
-      _callGraph = new CallGraph(frontendAccess, byteCodeRepository, bTypesFromClassfile)
+      _callGraph = new CallGraph(byteCodeRepository, bTypesFromClassfile)
     _callGraph.nn
   }
 
@@ -106,7 +99,7 @@ class GenBCode extends Phase { self =>
   def postProcessor(using Context): PostProcessor = {
     if _postProcessor eq null then
       if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations then
-        _postProcessor = new PostProcessorWithOptimizations(frontendAccess, byteCodeRepository, bTypesFromClassfile, callGraph, optimizerUtils, bTypeLoader, optimizerKnownBTypes)
+        _postProcessor = new PostProcessorWithOptimizations(byteCodeRepository, bTypesFromClassfile, callGraph, optimizerUtils, bTypeLoader, optimizerKnownBTypes)
       else
         _postProcessor = new PostProcessor(bTypeLoader, knownBTypes)
     _postProcessor.nn

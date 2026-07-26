@@ -641,7 +641,7 @@ object SnippetCompiler:
     val reporter = new StoreReporter(null) with UniqueMessagePositions with HideNonSensicalMessages
 
     // Create virtual source file
-    val virtualFile = VirtualFile("snippet.scala", code.getBytes("UTF-8"))
+    val virtualFile = new VirtualFile("snippet.scala", code.getBytes("UTF-8"))
     val sourceFile = dotty.tools.dotc.util.SourceFile(virtualFile, scala.io.Codec.UTF8)
 
     // Process all options

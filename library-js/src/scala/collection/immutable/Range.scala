@@ -548,6 +548,7 @@ object Range {
    *  @param end the end boundary of the range (inclusive or exclusive depending on `isInclusive`)
    *  @param step the increment between successive elements; must be non-zero
    *  @param isInclusive whether `end` is included in the range
+   *  @return the number of elements in the range, or `-1` if the count exceeds `Int.MaxValue`
    */
   def count(start: Int, end: Int, step: Int, isInclusive: Boolean): Int = {
     if (step == 0)
@@ -581,6 +582,7 @@ object Range {
    *  @param start the first element of the range
    *  @param end the exclusive upper bound of the range
    *  @param step the increment between successive elements; must be non-zero
+   *  @return an exclusive `Range` from `start` to `end` stepping by `step`
    */
   def apply(start: Int, end: Int, step: Int): Range.Exclusive = new Range.Exclusive(start, end, step)
 
@@ -588,6 +590,7 @@ object Range {
    *
    *  @param start the first element of the range
    *  @param end the exclusive upper bound of the range
+   *  @return an exclusive `Range` from `start` to `end` with step `1`
    */
   def apply(start: Int, end: Int): Range.Exclusive = new Range.Exclusive(start, end, 1)
 
@@ -597,6 +600,7 @@ object Range {
    *  @param start the first element of the range
    *  @param end the inclusive upper bound of the range
    *  @param step the increment between successive elements; must be non-zero
+   *  @return an inclusive `Range` from `start` to `end` stepping by `step`
    */
   def inclusive(start: Int, end: Int, step: Int): Range.Inclusive = new Range.Inclusive(start, end, step)
 
@@ -604,6 +608,7 @@ object Range {
    *
    *  @param start the first element of the range
    *  @param end the inclusive upper bound of the range
+   *  @return an inclusive `Range` from `start` to `end` with step `1`
    */
   def inclusive(start: Int, end: Int): Range.Inclusive = new Range.Inclusive(start, end, 1)
 

@@ -12,7 +12,7 @@ def m5/*<-example::RecOrRefined$package.m5().*/[Z/*<-example::RecOrRefined$packa
 
 type m6/*<-example::RecOrRefined$package.m6#*/ = [X/*<-example::RecOrRefined$package.m6#[X]*/] =>> PolyHolder/*->example::PolyHolder#*/ { def foo/*<-example::RecOrRefined$package.m6#foo().*/[T/*<-example::RecOrRefined$package.m6#foo().[T]*/](t/*<-example::RecOrRefined$package.m6#foo().(t)*/: T/*->example::RecOrRefined$package.m6#foo().[T]*/): T/*->example::RecOrRefined$package.m6#foo().[T]*/ }
 
-class Record/*<-example::Record#*/(elems/*<-example::Record#elems.*/: (String/*->scala::Predef.String#*/, Any/*->scala::Any#*/)*) extends Selectable/*->scala::Selectable#*/:
+class Record/*<-example::Record#*/(elems/*<-example::Record#elems.*//*<-example::Record#`<init>`().(elems)*/: (String/*->scala::Predef.String#*/, Any/*->scala::Any#*/)*) extends Selectable/*->scala::Selectable#*/:
   private val fields/*<-example::Record#fields.*/ = elems/*->example::Record#elems.*/.toMap/*->scala::collection::IterableOnceOps#toMap().*/
   def selectDynamic/*<-example::Record#selectDynamic().*/(name/*<-example::Record#selectDynamic().(name)*/: String/*->scala::Predef.String#*/): Any/*->scala::Any#*/ = fields/*->example::Record#fields.*/(name/*->example::Record#selectDynamic().(name)*/)
 

@@ -50,7 +50,7 @@ grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tm
 # check that `sbt scalac -print-tasty` runs
 echo "testing sbt scalac -print-tasty from file"
 ./bin/scalac -print-tasty -color:never "$OUT/$TASTY" | tee "$tmp"
-grep -qe "118:           STRINGconst 32 \[hello world\]" "$tmp"
+grep -qe "117:           STRINGconst 32 \[hello world\]" "$tmp"
 
 echo "testing loading tasty from .tasty file in jar"
 clear_out "$OUT"
@@ -60,7 +60,7 @@ grep -qe "def main(args: scala.Array\[scala.Predef.String\]): scala.Unit =" "$tm
 
 echo "testing printing tasty from .tasty file in jar"
 ./bin/scalac -print-tasty -color:never "$OUT/out.jar" | tee "$tmp"
-grep -qe "118:           STRINGconst 32 \[hello world\]" "$tmp"
+grep -qe "117:           STRINGconst 32 \[hello world\]" "$tmp"
 
 echo "testing -script from scalac"
 clear_out "$OUT"

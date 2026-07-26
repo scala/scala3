@@ -97,6 +97,7 @@ class ListBuffer[A]
   /** Prepends the elements of this buffer to a given list
    *
    *  @param xs   the list to which elements are prepended
+   *  @return a list consisting of the elements of this buffer followed by `xs`, or `xs` itself if this buffer is empty
    */
   def prependToList(xs: List[A]): List[A] = {
     if (isEmpty) xs

@@ -109,6 +109,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
   /** Overloaded version of `addAll` that takes a string.
    *
    *  @param s the string to append to this builder
+   *  @return this `StringBuilder`
    */
   def addAll(s: String): this.type = { underlying.append(s); this }
 
@@ -423,6 +424,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
    *
    *  @param  index   the index to modify.
    *  @param  ch      the new Char.
+   *  @return         this `StringBuilder`.
    *  @throws IndexOutOfBoundsException  if the index is out of bounds.
    */
   def setCharAt(index: Int, ch: Char): this.type = {
@@ -459,6 +461,7 @@ final class StringBuilder(val underlying: java.lang.StringBuilder) extends Abstr
    *
    *  @param start the beginning index, inclusive
    *  @param end the ending index, exclusive
+   *  @return the subsequence between `start` and `end` as a `CharSequence`
    */
   def subSequence(start: Int, end: Int): java.lang.CharSequence =
     underlying.substring(start, end)

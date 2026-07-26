@@ -835,9 +835,10 @@ final class StringOps(private val s: String) extends AnyVal { self =>
   @deprecated("Use `s.replace` as an exact replacement", "2.13.2")
   def replaceAllLiterally(literal: String, replacement: String): String = s.replace(literal, replacement)
 
-  /** For every line in this string:
+  /** Strips a prefix of every line in this string.
    *
-   *  Strip a leading prefix consisting of blanks or control characters
+   *  For every line in this string,
+   *  strips a prefix consisting of blanks or control characters
    *  followed by `marginChar` from the line.
    *
    *  @param marginChar the character used as a margin delimiter
@@ -857,9 +858,10 @@ final class StringOps(private val s: String) extends AnyVal { self =>
     sb.toString
   }
 
-  /** For every line in this string:
+  /** Strips a prefix of every line in this string.
    *
-   *  Strip a leading prefix consisting of blanks or control characters
+   *  For every line in this string,
+   *  strips a prefix consisting of blanks or control characters
    *  followed by `|` from the line.
    *
    *  @return the string with leading `|` margin characters and preceding whitespace removed from each line
@@ -872,20 +874,17 @@ final class StringOps(private val s: String) extends AnyVal { self =>
       (ch >= '0' && ch <= '9')) ch.toString
   else "\\" + ch
 
-  /** Splits this string around the separator character
+  /** Splits this string around the separator character, equivalent to calling <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html#split(java.lang.String)">String.split(regex: String)</a> with the separator escaped.
    *
    *  If this string is the empty string, returns an array of strings
    *  that contains a single empty string.
    *
    *  If this string is not the empty string, returns an array containing
    *  the substrings terminated by the start of the string, the end of the
-   *  string or the separator character, excluding empty trailing substrings
+   *  string or the separator character, excluding empty trailing substrings.
    *
    *  If the separator character is a surrogate character, only split on
-   *  matching surrogate characters if they are not part of a surrogate pair
-   *
-   *  The behaviour follows, and is implemented in terms of <a href="https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/String.html#split(java.lang.String)">String.split(re: String)</a>
-   *
+   *  matching surrogate characters if they are not part of a surrogate pair.
    *
    *  @example ```scala sc:compile
    *  "a.b".split('.') // Array("a", "b")
@@ -913,7 +912,60 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *
    *  @return an array of strings computed by splitting this string around occurrences of the separator character
    */
-  def split(separator: Char): Array[String] = s.split(escape(separator))
+  def split(separator: Char): Array[String] = {
+    val first = s.indexOf(separator)
+    if (first == -1)
+      return Array(s)
+
+    var end = s.length
+    while (end > first && s(end - 1) == separator)
+      end -= 1
+    if (end == 0)
+      return Array.empty
+
+    if (!separator.isSurrogate) {
+      if (first == end) Array(s.substring(0, end))
+      else {
+        val builder = Array.newBuilder[String]
+        builder += s.substring(0, first)
+
+        @annotation.tailrec
+        def collect(start: Int): Unit = {
+          val idx = s.indexOf(separator, start)
+          if (idx == -1 || idx == end) {
+            builder += s.substring(start, end)
+          } else {
+            builder += s.substring(start, idx)
+            collect(idx + 1)
+          }
+        }
+        collect(first + 1)
+        builder.result()
+      }
+    } else {
+      val builder = Array.newBuilder[String]
+      // If we over-trimmed the rightmost low surrogate, put it back
+      val isLowSurrogate = separator.isLowSurrogate
+      if (isLowSurrogate && end != s.length && s(end - 1).isHighSurrogate) end += 1
+
+      @annotation.tailrec
+      def collect(start: Int, searchFrom: Int): Unit = {
+        val idx = s.indexOf(separator, searchFrom)
+        if (idx == -1 || idx == end) {
+          builder += s.substring(start, end)
+        } else if (isLowSurrogate && idx != 0 && s(idx - 1).isHighSurrogate) {
+          collect(start, idx + 1) // skip this match
+        } else if (!isLowSurrogate && s(idx + 1).isLowSurrogate) {
+          collect(start, idx + 2) // skip this match
+        } else {
+          builder += s.substring(start, idx)
+          collect(idx + 1, idx + 1)
+        }
+      }
+      collect(0, 0)
+      builder.result()
+    }
+  }
 
   @throws(classOf[java.util.regex.PatternSyntaxException])
   def split(separators: Array[Char]): Array[String] = {

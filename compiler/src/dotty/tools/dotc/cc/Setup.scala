@@ -258,13 +258,14 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       val saved = isTopLevel
       if variance < 0 then isTopLevel = false
       try tp match
-        case defn.RefinedFunctionOf(rinfo: MethodType) =>
-          val rinfo1 = apply(rinfo)
-          if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
-          else tp
-        case _ =>
-          innerApply(tp)
+        case defn.RefinedFunctionOf(rinfo: MethodType) => mapRefinedFunction(tp, rinfo)
+        case _ => innerApply(tp)
       finally isTopLevel = saved
+
+    def mapRefinedFunction(tp: Type, rinfo: MethodType): Type =
+      val rinfo1 = apply(rinfo)
+      if rinfo1 ne rinfo then rinfo1.toFunctionType(alwaysDependent = true)
+      else tp
 
     override def mapArg(arg: Type, tparam: ParamInfo): Type =
       super.mapArg(Recheck.mapExprType(arg), tparam)
@@ -375,21 +376,23 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             case _ => tp
         case _ => tp
 
-      def innerApply(tp: Type) = {
+      /** Normalize `tp1` and add a capture set variable to it if necessary. */
+      def addVar(tp1: Type, orig: Type) =
+        decorate(
+          addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, orig))),
+          CaptureSet.VarInTypeTree(ctx.owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining = inCaptureRefinement),
+          transformExplicitType(_, sym, initialVariance = variance),
+          typeArgFormal)
 
-        /** Normalize `tp` and add a capture set variable to it if necessary. */
-        def addVar(tp1: Type) =
-          decorate(
-            addCaptureRefinements(normalizeCaptures(normalizeFunctions(tp1, tp))),
-            CaptureSet.VarInTypeTree(ctx.owner, _, nestedOK = !ctx.mode.is(Mode.CCPreciseOwner), isRefining = inCaptureRefinement),
-            transformExplicitType(_, sym, initialVariance = variance),
-            typeArgFormal)
+      override def mapRefinedFunction(tp: Type, rinfo: MethodType): Type =
+        addVar(super.mapRefinedFunction(tp, rinfo), tp)
 
+      def innerApply(tp: Type) =
         tp match
           case AnnotatedType(parent, annot)
           if annot.symbol.isRetains || annot.symbol == defn.InferredAnnot =>
             // Drop explicit retains and @inferred annotations
-            addVar(apply(parent))
+            addVar(apply(parent), tp)
           case AnnotatedType(parent, annot)
           if annot.symbol == defn.DeclaredAnnot =>
             transformExplicitType(parent, sym, initialVariance = variance)
@@ -397,10 +400,9 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             val saved = refiningNames
             refiningNames += rname
             val parent1 = try this(parent) finally refiningNames = saved
-            addVar(tp.derivedRefinedType(parent1, rname, this(rinfo)))
+            addVar(tp.derivedRefinedType(parent1, rname, this(rinfo)), tp)
           case _ =>
-            addVar(mapFollowingAliases(tp))
-      }
+            addVar(mapFollowingAliases(tp), tp)
     }
 
     try
@@ -708,7 +710,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
           traverseChildren(tree)
 
       postProcess(tree)
-      checkProperUseOrConsume(tree)
+      checkProperConsume(tree)
     end traverse
 
     /** Processing done on node `tree` after its children are traversed */
@@ -864,11 +866,10 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
       case _ =>
     end postProcess
 
-    /** Check that @use and @consume annotations only appear on parameters and not on
-     *  anonymous function parameters. Check that @use annotations don't appear
-     *  at all from 3.8 on.
+    /** Check that @consume annotations only appear on parameters and not on
+     *  anonymous function parameters.
      */
-    def checkProperUseOrConsume(tree: Tree)(using Context): Unit = tree match
+    def checkProperConsume(tree: Tree)(using Context): Unit = tree match
       case tree: MemberDef =>
         val sym = tree.symbol
         def isMethodParam = (sym.is(Param) || sym.is(ParamAccessor))
@@ -883,24 +884,8 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
                 em"""consume cannot be used here. Only member methods and their term parameters
                     |can have a consume modifier.""",
                 tree.srcPos)
-          else if annotCls == defn.UseAnnot then
-            if !ccConfig.allowUse then
-              if sym.is(TypeParam) then
-                report.error(
-                  em"""@use is redundant here and should no longer be written explicitly.
-                      |Capset variables are always implicitly used, unless they are annotated with @caps.preserve.""",
-                  tree.srcPos)
-              else
-                report.error(
-                  em"""@use is no longer supported. Instead of @use you can introduce capset
-                      |variables for the polymorphic parts of parameter types.""",
-                  tree.srcPos)
-            else if !isMethodParam then
-              report.error(
-                em"@use cannot be used here. Only method parameters can have @use annotations.",
-                tree.srcPos)
       case _ =>
-    end checkProperUseOrConsume
+
   end setupTraverser
 
 // --------------- Adding capture set variables ----------------------------------
@@ -942,6 +927,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         val sym = tp.typeSymbol
         if sym.isClass then
           !sym.isPureClass && sym != defn.AnyClass
+          && sym != defn.MatchCaseClass
         else
           val tp1 = tp.dealiasKeepAnnotsAndOpaques
           if tp1 ne tp then needsVariable(tp1)
@@ -1085,18 +1071,24 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             && !ref.coreType.derivesFromCapSet
         then
           if ref.captureSetOfInfo.elems.isEmpty then
-            val deepStr = if ref.isReach then " deep" else ""
-            report.error(em"$ref cannot be tracked since its$deepStr capture set is empty", pos)
-          check(parent.captureSet, parent)
+            ref match
+              case ref: DerivedCapability if ref.core.isTracked =>
+                // an empty projection (`.only[C]`/`.except[C]`) of a tracked ref denotes {}
+              case _ =>
+                // a plain reference with an empty capture set, or a projection
+                // of an untracked core, is vacuous
+                report.error(em"$ref cannot be tracked since its capture set is empty", pos)
+          else
+            check(parent.captureSet, parent)
 
-          val others =
-            for
-              j <- 0 until retained.length if j != i
-              r = retained(j)
-              if !r.isTerminalCapability
-            yield r
-          val remaining = CaptureSet(others*)
-          check(remaining, remaining)
+            val others =
+              for
+                j <- 0 until retained.length if j != i
+                r = retained(j)
+                if !r.isTerminalCapability
+              yield r
+            val remaining = CaptureSet(others*)
+            check(remaining, remaining)
       end for
     catch case ex: IllegalCaptureRef =>
       report.error(em"Illegal capture reference: ${ex.getMessage}", tpt.srcPos)

@@ -1049,15 +1049,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
         def tp1widened =
           val tp1w = tp1.underlying.widenExpr
-          if isCaptureCheckingOrSetup then
-            tp1
-              .match
-                case tp1: Capability if isCaptureCheckingOrSetup && tp1.isTracked =>
-                  CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
-                case _ =>
-                  tp1w
-              .withReachCaptures(tp1)
-          else tp1w
+          tp1 match
+            case tp1: Capability if isCaptureCheckingOrSetup && tp1.isTracked =>
+              CapturingType(tp1w.stripCapturing, tp1.singletonCaptureSet)
+            case _ =>
+              tp1w
 
         comparePaths || isSubType(tp1widened, tp2, approx.addLow)
       case tp1: RefinedType =>
@@ -1450,7 +1446,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
        *    tp1 <:< app2   using isSubType (this might instantiate params in tp2)
        */
       def compareLower(tycon2bounds: TypeBounds, tyconIsTypeRef: Boolean): Boolean =
-        if ((tycon2bounds.lo `eq` tycon2bounds.hi) && !tycon2bounds.isMatchAlias)
+        val tyconKeepsMatchAlias =
+          if tyconIsTypeRef then
+            tycon2 match
+              case tycon2ref: TypeRef => TypeApplications.isNonRecursiveMatchAlias(tycon2ref)
+              case _ => false
+          else
+            tycon2bounds.isMatchAlias
+        if ((tycon2bounds.lo `eq` tycon2bounds.hi) && !tyconKeepsMatchAlias)
           if (tyconIsTypeRef) recur(tp1, tp2.superTypeNormalized) && recordGadtUsageIf(MatchType.thatReducesUsingGadt(tp2))
           else isSubApproxHi(tp1, tycon2bounds.lo.applyIfParameterized(args2))
         else
@@ -2965,8 +2968,21 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           errorNotes = (level, CaptureSet.MutAdaptFailure(cs, tp1, tp2)) :: rest
         case _ =>
     subc
-    && (tp1.isBoxedCapturing == tp2.isBoxedCapturing
-        || refs1.subCaptures(CaptureSet.EmptyOfBoxed(tp1, tp2), makeVarState()))
+    && (tp1.isBoxCompatibleWith(tp2) || healBoxDifference(tp1, tp2))
+
+  /** Try to heal a box difference of `tp1` with another type `tp2` by forcing all capture
+   *  capture sets in `tp1` with a box difference to `tp2` to be empty.
+   */
+  private def healBoxDifference(tp1: Type, tp2: Type)(using Context): Boolean = tp1.dealias match
+    case tp1 @ CapturingType(parent, refs) =>
+      (  tp1.isBoxed == tp2.isBoxedCapturing
+      || refs.subCaptures(CaptureSet.EmptyOfBoxed(tp1, tp2), makeVarState())
+      || { capt.println(i"box mismatch for $tp1 <:< $tp2, ${tp1.isBoxedCapturing}")
+           false
+         }
+      ) && healBoxDifference(parent, tp2)
+    case _ =>
+      true
 
   protected def logUndoAction(action: () => Unit) =
     undoLog += action
@@ -4011,7 +4027,7 @@ class MatchReducer(initctx: Context) extends TypeComparer(initctx) {
 }
 
 /** A type comparer that can record traces of subtype operations
- *  @param short  if true print only failing forward traces; never print succesful
+ *  @param short  if true print only failing forward traces; never print successful
  *                subtraces; never print backtraces starting with `<==`.
  */
 class ExplainingTypeComparer(initctx: Context, short: Boolean) extends TypeComparer(initctx) {

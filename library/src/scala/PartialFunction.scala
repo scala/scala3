@@ -211,7 +211,9 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
    *  Applies fallback function where this partial function is not defined.
    *
    *  Note that expression `pf.applyOrElse(x, default)` is equivalent to
-   *  ``` if(pf isDefinedAt x) pf(x) else default(x) ```
+   *  ```
+   *  if(pf isDefinedAt x) pf(x) else default(x)
+   *  ```
    *  except that `applyOrElse` method can be implemented more efficiently.
    *  For all partial function literals the compiler generates an `applyOrElse` implementation which
    *  avoids double evaluation of pattern matchers and guards.
@@ -242,7 +244,9 @@ trait PartialFunction[-A, +B] extends Function1[A, B] { self: PartialFunction[A,
    *  The action function is invoked only for its side effects; its result is ignored.
    *
    *  Note that expression `pf.runWith(action)(x)` is equivalent to
-   *  ``` if(pf isDefinedAt x) { action(pf(x)); true } else false ```
+   *  ```
+   *  if(pf isDefinedAt x) { action(pf(x)); true } else false
+   *  ```
    *  except that `runWith` is implemented via `applyOrElse` and thus potentially more efficient.
    *  Using `runWith` avoids double evaluation of pattern matchers and guards for partial function literals.
    *  @see `applyOrElse`.

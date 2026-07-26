@@ -334,7 +334,7 @@ end Message
   * @param errorId a unique id identifying the message, this will be
   *                used to reference documentation online
   *
-  * Messages modify the rendendering of interpolated strings in several ways:
+  * Messages modify the rendering of interpolated strings in several ways:
   *
   *  1. The size of the printed code is limited with a MessageLimiter. If the message
   *    would get too large or too deeply nested, a `...` is printed instead.
@@ -349,7 +349,7 @@ end Message
   *
   *  Messages inheriting from the NoDisambiguation trait or returned from the
   *  `noDisambiguation()` method skip point (3) above. This makes sense if the
-  *  message already exolains where different occurrences of the same identifier
+  *  message already explains where different occurrences of the same identifier
   *  are located. Examples are NamingMsgs such as double definition errors,
   *  overriding errors, and ambiguous implicit errors.
   *

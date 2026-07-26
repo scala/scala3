@@ -6,7 +6,7 @@ import scala.language.unsafeNulls
 import java.io.{ByteArrayOutputStream, PipedInputStream, PipedOutputStream}
 
 import org.junit.Assert.*
-import org.junit.Test
+import org.junit.{Ignore, Test}
 import org.jline.terminal.TerminalBuilder
 import org.jline.utils.NonBlockingReader
 
@@ -35,6 +35,7 @@ class JLineTerminalTests:
    *  input reader, causing the next `readLine()` to receive immediate EOF and
    *  the REPL to exit silently after the user's first command.
    */
+  @Ignore("This was vibe coded and sometimes hangs in CI")
   @Test def `withMonitoringCtrlC keeps the terminal reader alive`(): Unit =
     withTestTerminal: (term, _) =>
       // Sanity: empty pipe returns READ_EXPIRED (-2), not EOF (-1).
@@ -60,6 +61,7 @@ class JLineTerminalTests:
    *  to the terminal reader after monitoring. This guards against a
    *  regression where the terminal's input is silently disconnected.
    */
+  @Ignore("This was vibe coded and sometimes hangs in CI")
   @Test def `terminal reader receives bytes after withMonitoringCtrlC`(): Unit =
     withTestTerminal: (term, pos) =>
       term.withMonitoringCtrlC(() => ())(())

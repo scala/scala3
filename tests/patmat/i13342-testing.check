@@ -1,5 +1,24 @@
-13: Match case Unreachable
-13: Match case Unreachable
-14: Match case Unreachable
-14: Match case Unreachable
-15: Pattern Match Exhaustivity: Thu, Fri
+-- [E030] Match case Unreachable Warning: tests/patmat/i13342-testing.scala:13:54 
+13 |  def t5 = Day.Mon match { case Day.Mon => 1 case Day.Tue => 2 case Day.Wed => 3 }
+   |                                                  ^^^^^^^
+   |                                                  Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/i13342-testing.scala:13:72 
+13 |  def t5 = Day.Mon match { case Day.Mon => 1 case Day.Tue => 2 case Day.Wed => 3 }
+   |                                                                    ^^^^^^^
+   |                                                        Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/i13342-testing.scala:14:54 
+14 |  def t6 = monday  match { case Day.Mon => 1 case Day.Tue => 2 case Day.Wed => 3 }
+   |                                                  ^^^^^^^
+   |                                                  Unreachable case
+-- [E030] Match case Unreachable Warning: tests/patmat/i13342-testing.scala:14:72 
+14 |  def t6 = monday  match { case Day.Mon => 1 case Day.Tue => 2 case Day.Wed => 3 }
+   |                                                                    ^^^^^^^
+   |                                                        Unreachable case
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i13342-testing.scala:15:11 
+15 |  def t7 = someday match { case Day.Mon => 1 case Day.Tue => 2 case Day.Wed => 3 }
+   |           ^^^^^^^
+   |           match may not be exhaustive.
+   |
+   |           It would fail on pattern case: Thu, Fri
+   |
+   | longer explanation available when compiling with `-explain`

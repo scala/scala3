@@ -3,8 +3,6 @@ package tools
 package dotc
 package printing
 
-import scala.language.unsafeNulls
-
 import vulpix.FileDiff
 import vulpix.TestConfiguration
 import vulpix.ParallelTesting

@@ -47,7 +47,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
          """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val meth1 = getMethod(clsNode, "actual")
       val meth2 = getMethod(clsNode, "expected")
@@ -72,7 +72,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
          """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
       val meth = getMethod(clsNode, "test")
       val instructions = instructionsFromMethod(meth)
@@ -565,7 +565,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
         |}
       """.stripMargin
     checkBCode(source) { dir =>
-      val clsIn = dir.lookupName("C.class", directory = false).nn.input
+      val clsIn = lookupClass(dir, "C.class")
       val clsNode = loadClassNode(clsIn)
       val meth1a = getMethod(clsNode, "t1a")
       val meth1b = getMethod(clsNode, "t1b")
@@ -752,7 +752,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
          """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn = lookupClass(dir, "Foo.class")
       val clsNode = loadClassNode(clsIn)
       val meth1 = getMethod(clsNode, "foo")
 
@@ -774,7 +774,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
          """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn = lookupClass(dir, "Test.class")
       val clsNode = loadClassNode(clsIn)
 
       for m <- List(getMethod(clsNode, "bad")) do

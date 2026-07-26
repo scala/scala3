@@ -27,7 +27,7 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Replace the version placeholder
         uses: richardrigutins/replace-in-files@v3
         with:

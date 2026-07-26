@@ -1,5 +1,0 @@
-./tests/patmat/aladdin1055/Test_1.scala:2: warning: match may not be exhaustive.
-It would fail on the following input: (_ : this.<local child>)
-  def foo(t: A.T) = t match {
-                    ^
-one warning found

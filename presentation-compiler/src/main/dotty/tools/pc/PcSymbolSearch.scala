@@ -178,19 +178,19 @@ trait PcSymbolSearch:
   private def seekInExtensionParameters() =
     def collectParams(
         extMethods: ExtMethods
-    ): Option[ExtensionParamOccurence] =
+    ): Option[ExtensionParamOccurrence] =
       NavigateAST
         .pathTo(pos.span, extMethods.paramss.flatten)(using compilatonUnitContext)
         .collectFirst {
           case v: untpd.ValOrTypeDef =>
-            ExtensionParamOccurence(
+            ExtensionParamOccurrence(
               v.name,
               v.namePos,
               v.symbol,
               extMethods.methods
             )
           case i: untpd.Ident =>
-            ExtensionParamOccurence(
+            ExtensionParamOccurrence(
               i.name,
               i.sourcePos,
               i.symbol,
@@ -209,15 +209,15 @@ trait PcSymbolSearch:
 
   private def collectAllExtensionParamSymbols(
       tree: tpd.Tree,
-      occurrence: ExtensionParamOccurence
+      occurrence: ExtensionParamOccurrence
   ): Option[(Set[Symbol], SourcePosition)] =
     occurrence match
-      case ExtensionParamOccurence(_, namePos, symbol, _)
+      case ExtensionParamOccurrence(_, namePos, symbol, _)
           if symbol != NoSymbol && !symbol.isError && !symbol.owner.is(
             Flags.ExtensionMethod
           ) =>
         Some((symbolAlternatives(symbol), namePos))
-      case ExtensionParamOccurence(name, namePos, _, methods) =>
+      case ExtensionParamOccurrence(name, namePos, _, methods) =>
         val symbols =
           for
             method <- methods.toSet
@@ -245,7 +245,7 @@ trait PcSymbolSearch:
         methods <- extensionMethods.map(_.methods)
         symbols <- collectAllExtensionParamSymbols(
           unit.tpdTree,
-          ExtensionParamOccurence(name, pos, sym, methods)
+          ExtensionParamOccurrence(name, pos, sym, methods)
         )
       yield symbols
     symbols.getOrElse((symbolAlternatives(sym), pos))

@@ -340,7 +340,7 @@ object Signatures {
    * @param resultType Function result type
    * @param denot      Function denotation
    *
-   * @return List of lists of names of parameters if `resultType` is case class without overriden unapply
+   * @return List of lists of names of parameters if `resultType` is case class without overridden unapply
    */
   private def extractParamNamess(resultType: Type, denot: Denotation)(using Context): List[List[Name]] =
     if resultType.typeSymbol.flags.is(Flags.CaseClass) && denot.symbol.flags.is(Flags.Synthetic) then

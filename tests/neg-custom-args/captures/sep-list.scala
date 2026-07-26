@@ -35,5 +35,5 @@ def par(x: Ref^, y: Ref^): Unit = ()
 def test =
   val xs = listFresh(10)
   val h1 = xs.head
-  val h2 = xs.head
+  val h2 = xs.head // error after reach drop
   par(h1, h2) // error

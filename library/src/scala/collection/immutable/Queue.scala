@@ -143,6 +143,7 @@ sealed class Queue[+A] protected(protected val in: List[A], protected val out: L
    *
    *  @tparam B the element type of the returned queue, a supertype of `A`
    *  @param  elem        the element to insert
+   *  @return a new queue with `elem` appended at the end
    */
   def enqueue[B >: A](elem: B): Queue[B] = new Queue(elem :: in, out)
 

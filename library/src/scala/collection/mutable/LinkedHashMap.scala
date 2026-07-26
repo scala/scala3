@@ -193,6 +193,7 @@ class LinkedHashMap[K, V]
   /** Computes the improved hash of an original (`any.##`) hash.
    *
    *  @param originalHash the original hash code obtained from `any.##`
+   *  @return the improved hash code with better bit distribution
    */
   @`inline` private def improveHash(originalHash: Int): Int = {
     originalHash ^ (originalHash >>> 16)
@@ -202,6 +203,7 @@ class LinkedHashMap[K, V]
   /** Computes the improved hash of this key.
    *
    *  @param o the key whose improved hash to compute
+   *  @return the improved hash code of `o`, suitable for indexing into the hash table
    */
   @`inline` private def computeHash(o: K): Int = improveHash(o.##)
 

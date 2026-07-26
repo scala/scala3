@@ -167,7 +167,16 @@ object JSEncoding {
   def encodeFieldSym(sym: Symbol)(implicit ctx: Context, pos: ir.Position): js.FieldIdent =
     js.FieldIdent(FieldName(encodeClassName(sym.owner), SimpleFieldName(encodeFieldSymAsString(sym))))
 
-  def encodeFieldSymAsStringLiteral(sym: Symbol)(implicit ctx: Context, pos: ir.Position): js.StringLiteral =
+  /** Turns a FieldIdent for a private field an anon JS class into a string literal.
+   *
+   *  Since we only do that for anon JS classes, which cannot be extended, we
+   *  can ignore the `className` qualifier of the field ident.
+   */
+  def anonJSClassFieldIdentToStringLiteral(ident: js.FieldIdent): js.StringLiteral =
+    js.StringLiteral(ident.name.simpleName.nameString)(using ident.pos)
+
+  /** Shortcut for `anonJSClassFieldIdentToStringLiteral(encodeFieldSym(sym))`. */
+  def encodeAnonJSClassFieldSymAsStringLiteral(sym: Symbol)(using ctx: Context, pos: ir.Position): js.StringLiteral =
     js.StringLiteral(encodeFieldSymAsString(sym))
 
   private def encodeFieldSymAsString(sym: Symbol)(using Context): String = {
@@ -255,7 +264,7 @@ object JSEncoding {
     else {
       assert(sym != defn.ArrayClass,
           "encodeClassType() cannot be called with ArrayClass")
-      jstpe.ClassType(encodeClassName(sym), nullable = true)
+      jstpe.ClassType(encodeClassName(sym), nullable = true, exact = false)
     }
   }
 
@@ -318,10 +327,10 @@ object JSEncoding {
         else if (sym == defn.NullClass)
           jstpe.NullType
         else
-          jstpe.ClassType(typeRef.className, nullable = true)
+          jstpe.ClassType(typeRef.className, nullable = true, exact = false)
 
       case typeRef: jstpe.ArrayTypeRef =>
-        jstpe.ArrayType(typeRef, nullable = true)
+        jstpe.ArrayType(typeRef, nullable = true, exact = false)
 
       case typeRef: jstpe.TransientTypeRef =>
         throw AssertionError(s"Unexpected transient type ref $typeRef for ${typeRefInternal._2}")

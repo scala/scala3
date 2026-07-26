@@ -1,10 +1,10 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unsound-reach-6.scala:13:22 ------------------------------
 13 |  val _: () -> Unit = x // error
    |                      ^
-   |                      Found:    (x : () ->{ys*} Unit)
+   |                      Found:    (x : () ->{io} Unit)
    |                      Required: () -> Unit
    |
-   |                      Note that capability `ys*` cannot flow into capture set {}.
+   |                      Note that capability `io` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/unsound-reach-6.scala:21:22 ------------------------------

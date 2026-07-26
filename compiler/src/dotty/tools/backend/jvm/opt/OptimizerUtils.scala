@@ -298,4 +298,9 @@ object OptimizerUtils {
     if (method.isEmpty) c
     else s"$c.$method"
   }
+
+  // No point in trying to load SCoverage runtime counters, we shouldn't and can't inline them,
+  // and warning about it is also not productive.
+  def isSCoverage(classInternalName: InternalName): Boolean =
+    classInternalName.startsWith("scala/runtime/coverage/")
 }

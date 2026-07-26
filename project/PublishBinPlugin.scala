@@ -1,11 +1,9 @@
 package sbt
 
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{ FileAlreadyExistsException, Files }
 
-import org.apache.ivy.core.module.id.ModuleRevisionId
 import sbt.Keys._
-import sbt.internal.librarymanagement.{ IvySbt, IvyXml }
+import sbt.internal.librarymanagement.IvyXml
 
 /** This local plugin provides ways of publishing just the binary jar. */
 object PublishBinPlugin extends AutoPlugin {

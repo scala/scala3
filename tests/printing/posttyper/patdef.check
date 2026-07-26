@@ -1,8 +1,8 @@
 [[syntax trees at end of                 posttyper]] // tests/printing/posttyper/patdef.scala
 package <empty> {
   final lazy module val patdef$package: patdef$package = new patdef$package()
-  @SourceFile("tests/printing/posttyper/patdef.scala") final module class
-    patdef$package() extends Object() { this: patdef$package.type =>
+  final module class patdef$package() extends Object() {
+    this: patdef$package.type =>
     private def writeReplace(): AnyRef =
       new scala.runtime.ModuleSerializationProxy(classOf[patdef$package.type])
     val a: Int =

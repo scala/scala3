@@ -22,6 +22,7 @@ object Option {
    *
    *  @tparam A the element type of the option
    *  @param xo the option to convert to an iterable
+   *  @return a single-element `Iterable` containing the option's value if nonempty, or an empty `Iterable` if empty
    */
   implicit def option2Iterable[A](xo: Option[A]): Iterable[A] =
     if (xo.isEmpty) Iterable.empty else Iterable.single(xo.get)
@@ -39,6 +40,7 @@ object Option {
    *  the collections hierarchy.
    *
    *  @tparam A the type of the option's value
+   *  @return `None` typed as `Option[A]`
    */
   def empty[A] : Option[A] = None
 
@@ -49,6 +51,7 @@ object Option {
    *  @tparam A the type of the value
    *  @param cond the condition to evaluate
    *  @param a the value to wrap in `Some` when `cond` is true (evaluated lazily)
+   *  @return `Some(a)` if `cond` is true, otherwise `None`
    */
   def when[A](cond: Boolean)(a: => A): Option[A] =
     if (cond) Some(a) else None
@@ -59,6 +62,7 @@ object Option {
    *  @tparam A the type of the value
    *  @param cond the condition to evaluate
    *  @param a the value to wrap in `Some` when `cond` is false (evaluated lazily)
+   *  @return `Some(a)` if `cond` is false, otherwise `None`
    */
   @inline def unless[A](cond: Boolean)(a: => A): Option[A] =
     when(!cond)(a)
@@ -396,6 +400,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  [[scala.collection.Iterable]] in `for` comprehensions.
    *
    *  @param p the predicate used to test elements
+   *  @return a `WithFilter` that applies `p` to this option before subsequent `map`, `flatMap`, `foreach`, or `withFilter` operations
    */
   @inline final def withFilter(p: A => Boolean): WithFilter = new WithFilter(p)
 

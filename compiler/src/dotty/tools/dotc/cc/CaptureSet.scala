@@ -446,7 +446,11 @@ sealed abstract class CaptureSet extends Showable:
 
   def maybe(using Context): CaptureSet = map(MaybeMap())
 
-  def restrict(cls: ClassSymbol)(using Context): CaptureSet = map(RestrictMap(cls))
+  def restrict(cls: ClassSymbol)(using Context): CaptureSet =
+    if cls.isTopClassifier then this // identity, as in Capability.restrict
+    else map(RestrictMap(cls))
+
+  def exclude(cls: ClassSymbol)(using Context): CaptureSet = map(ExceptMap(cls))
 
   def readOnly(using Context): CaptureSet =
     val res = map(ReadOnlyMap())
@@ -463,6 +467,20 @@ sealed abstract class CaptureSet extends Showable:
       elemClassifiers
     else
       UnknownClassifier
+
+  /** Is every element of this set provably free of parts classified under `cls`?
+   *  Like `transClassifiers`, refuses to answer for unsolved variables, whose
+   *  elements can still grow.
+   */
+  def isKnownDisjointFrom(cls: ClassSymbol)(using Context): Boolean =
+    def elemsDisjoint = elems.forall(_.isKnownDisjointFrom(cls))
+    if ccState.isSepCheck then
+      dropEmpties()
+      elemsDisjoint
+    else if isConst then
+      elemsDisjoint
+    else
+      false
 
   def tryClassifyAs(cls: ClassSymbol)(using Context): Boolean =
     elems.forall(_.tryClassifyAs(cls))
@@ -1226,21 +1244,12 @@ object CaptureSet:
 
     override def tryInclude(elem: Capability, origin: CaptureSet)(using Context, VarState): Boolean =
       if accountsFor(elem) then true
+      else if (origin eq cs1) || (origin eq cs2) then
+        super.tryInclude(elem, origin)
       else
-        TypeComparer.atomicOp:
-          val res = super.tryInclude(elem, origin)
-          // If this is the union of a constant and a variable,
-          // propagate `elem` to the variable part to avoid slack
-          // between the operands and the union.
-          if res && (origin ne cs1) && (origin ne cs2) then
-            try
-              if cs1.isConst then cs2.tryInclude(elem, origin)
-              else if cs2.isConst then cs1.tryInclude(elem, origin)
-              else res
-            catch case ex: AssertionError =>
-              println(i"err while tryinclude $elem in $cs1 | $cs2, ${cs1.isConst}, ${cs2.isConst}")
-              throw ex
-          else res
+           !cs1.isConst && cs1.tryInclude(elem, origin)
+        || !cs2.isConst && cs2.tryInclude(elem, origin)
+        || addIfHiddenOrFail(elem)
 
     override def mutableToReader(origin: CaptureSet)(using Context): Boolean =
       super.mutableToReader(origin)
@@ -1613,7 +1622,7 @@ object CaptureSet:
      *  In effect this means that no new elements or dependent sets can be added
      *  in these states (since the previous state cannot be recorded in a snapshot)
      *  On the other hand, these states do allow by default local roots to
-     *  subsume arbitary types, which are then recorded in their hidden sets.
+     *  subsume arbitrary types, which are then recorded in their hidden sets.
      */
     class Closed extends VarState:
       override def canRecord = false
@@ -1676,13 +1685,13 @@ object CaptureSet:
     protected def isSameMap(other: BiTypeMap) = other.getClass == getClass
 
     override def fuse(next: BiTypeMap)(using Context) = next match
-      case next: Inverse if next.inverse.getClass == getClass => Some(IdentityTypeMap)
-      case next: NarrowingCapabilityMap if next.getClass == getClass => Some(this)
+      case next: Inverse if isSameMap(next.inverse) => Some(IdentityTypeMap)
+      case next: NarrowingCapabilityMap if isSameMap(next) => Some(this)
       case _ => None
 
     class Inverse extends BiTypeMap:
       def apply(t: Type) = t // since f(c) <: c, this is the best inverse
-      override def mapCapability(c: Capability, deep: Boolean): Capability = c
+      override def mapCapability(c: Capability): Capability = c
       def inverse = NarrowingCapabilityMap.this
       override def toString = NarrowingCapabilityMap.this.toString ++ ".inverse"
       override def fuse(next: BiTypeMap)(using Context) = next match
@@ -1695,19 +1704,29 @@ object CaptureSet:
 
   /** Maps `x` to `x?` */
   private class MaybeMap(using Context) extends NarrowingCapabilityMap:
-    override def mapCapability(c: Capability, deep: Boolean) = c.maybe
+    override def mapCapability(c: Capability) = c.maybe
     override def toString = "Maybe"
 
   /** Maps `x` to `x.rd` */
   private class ReadOnlyMap(using Context) extends NarrowingCapabilityMap:
-    override def mapCapability(c: Capability, deep: Boolean) = c.readOnly
+    override def mapCapability(c: Capability) = c.readOnly
     override def toString = "ReadOnly"
 
   private class RestrictMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
-    override def mapCapability(c: Capability, deep: Boolean) = c.restrict(cls)
+    override def mapCapability(c: Capability) = c.restrict(cls)
     override def toString = "Restrict"
     override def isSameMap(other: BiTypeMap) = other match
       case other: RestrictMap => cls == other.cls
+      case _ => false
+
+  /** Maps `x` to `x.except[cls]` */
+  private class ExceptMap(val cls: ClassSymbol)(using Context) extends NarrowingCapabilityMap:
+    override def mapCapability(c: Capability) = c.exclude(cls)
+    override def toString = "Except"
+    // TODO: once except carries a list of classes, fuse except[A] ∘ except[B] into one map;
+    // distinct-cls excepts don't fuse today (sound, just unoptimized).
+    override def isSameMap(other: BiTypeMap) = other match
+      case other: ExceptMap => cls == other.cls
       case _ => false
 
   /* Not needed:
@@ -1734,12 +1753,12 @@ object CaptureSet:
 
   /** The capture set of the type underlying the capability `c` */
   def ofInfo(c: Capability)(using Context): CaptureSet = c match
-    case Reach(c1) =>
-      c1.widen.computeDeepCaptureSet(includeTypevars = true)
-        .showing(i"Deep capture set of $c: ${c1.widen} = ${result}", capt)
-    case Restricted(c1, cls) =>
-      if cls == defn.NothingClass then CaptureSet.empty
-      else c1.captureSetOfInfo.restrict(cls) // todo: should we simplify using subsumption here?
+    case Classified(c1, only, except) =>
+      // cheap check; classifier-dependent empties are dropped per-element downstream
+      if only == defn.NothingClass then CaptureSet.empty
+      else
+        val cs0 = if only.isTopClassifier then c1.captureSetOfInfo else c1.captureSetOfInfo.restrict(only)
+        except.foldLeft(cs0)((s, e) => s.exclude(e))
     case ReadOnly(c1) =>
       c1.captureSetOfInfo.readOnly
     case Maybe(c1) =>

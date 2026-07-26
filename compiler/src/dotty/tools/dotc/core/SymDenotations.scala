@@ -768,8 +768,7 @@ object SymDenotations {
            val thatFile = other.associatedFile
            (  thisFile == null
            || thatFile == null
-           || thisFile.path == thatFile.path // Cheap possibly wrong check, then expensive normalization
-           || thisFile.canonicalPath == thatFile.canonicalPath
+           || thisFile == thatFile
            )
          }
       )
@@ -2081,7 +2080,8 @@ object SymDenotations {
                     p.prefix.classSymbol
                       .orElse(p.prefix.termSymbol.moduleClass)
                       .orElse(defn.RootClass)
-                  val stub = newStubSymbol(stubOwner, p.name, CompilationUnitInfo(symbol.associatedFile))
+                  val assocFile = symbol.associatedFile
+                  val stub = newStubSymbol(stubOwner, p.name, if assocFile == null then null else CompilationUnitInfo(assocFile))
                   report.error(BadSymbolicReference(stub.denot), symbol.srcPos)
                 case _ =>
                   assert(ignoreBadParent, s"$this has non-class parent: $p")

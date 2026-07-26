@@ -317,7 +317,11 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
       mixinSetters.map(setter => {
         val copied = transformFollowing(DefDef(mkForwarderSym(setter.asTerm), unitLiteral.withSpan(cls.span)))
         mixinGenericInfos.get(setter) match
-          case Some(gi) => mixinGenericInfos(copied.symbol) = gi
+          case Some(gi) =>
+            mixinGenericInfos(copied.symbol) = atPhase(erasurePhase) {
+              val mixinArgs = mixin.typeParams.map(_.typeRef.asSeenFrom(cls.thisType, mixin))
+              gi.subst(mixin.typeParams, mixinArgs)
+            }
           case None => ()
         copied
       })

@@ -73,7 +73,7 @@ private class QuoteCompiler extends Compiler:
           implicit val unitCtx: Context = SpliceScope.setSpliceScope(new RunScope)(using ctx1)
 
           val pos = Span(0)
-          val compUnitInfo = CompilationUnitInfo(new VirtualFile("<quote>"))
+          val compUnitInfo = CompilationUnitInfo(new VirtualFile("<quote>", Array.emptyByteArray))
 
           // Places the contents of expr in a compilable tree for a class with the following format.
           // `package __root__ { class ' { def apply: Any = <expr> } }`

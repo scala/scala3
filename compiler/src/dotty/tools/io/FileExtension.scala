@@ -13,7 +13,7 @@ enum FileExtension(val toLowerCase: String):
   case Empty extends FileExtension("")
 
   /** Fallback extension */
-  case External(override val toLowerCase: String) extends FileExtension(toLowerCase)
+  private case External(override val toLowerCase: String) extends FileExtension(toLowerCase)
 
   /** represents an empty file extension. */
   def isEmpty: Boolean = this == Empty

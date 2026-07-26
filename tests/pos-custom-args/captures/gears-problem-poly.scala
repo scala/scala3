@@ -1,6 +1,3 @@
-import language.experimental.captureChecking
-import caps.{use, CapSet}
-
 trait Future[+T]:
   def await: T
 

@@ -31,7 +31,7 @@ import scala.reflect.ClassTag
  *  @tparam A Type of elements (e.g. `Int`, `Boolean`, etc.)
  *  @tparam C Type of collection (e.g. `List[Int]`, `TreeMap[Int, String]`, etc.)
  */
-trait Factory[-A, +C] extends Any { self: Factory[A, C] =>
+into trait Factory[-A, +C] extends Any { self: Factory[A, C] =>
 
   /**
    *  @param it the source of elements to include in the collection
@@ -68,6 +68,15 @@ object Factory {
       b.result()
     }
     def newBuilder: Builder[A, Array[A]] = mutable.ArrayBuilder.make[A]
+  }
+
+  given IArrayFactory[A: ClassTag]: Factory[A, IArray[A]] = {
+    @SerialVersionUID(3L)
+    class ConcreteIArrayFactory[A: ClassTag] extends Factory[A, IArray[A]] with Serializable {
+      def fromSpecific(it: IterableOnce[A]^): IArray[A] = IArray.from(it)
+      def newBuilder: Builder[A, IArray[A]] = IArray.newBuilder[A]
+    }
+    ConcreteIArrayFactory[A]
   }
 
 }

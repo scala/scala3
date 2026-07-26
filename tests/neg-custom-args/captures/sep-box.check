@@ -1,16 +1,20 @@
 -- Error: tests/neg-custom-args/captures/sep-box.scala:41:9 ------------------------------------------------------------
 41 |  par(h1.value, h2.value) // error
    |      ^^^^^^^^
-   |Separation failure: argument of type  Ref^{xs*}
+   |Separation failure: argument of type  Ref^
    |to method par: (x: Ref^, y: Ref^): Unit
-   |corresponds to capture-polymorphic formal parameter x of type  Ref^
-   |and hides capabilities  {xs*}.
-   |Some of these overlap with the captures of the second argument with type  Ref^{xs*}.
+   |corresponds to capture-polymorphic formal parameter x of type  Ref^²
+   |and hides capabilities  {any, any², any³}.
+   |Some of these overlap with the captures of the second argument with type  Ref^.
    |
-   |  Hidden set of current argument        : {xs*}
-   |  Hidden footprint of current argument  : {xs*}
-   |  Capture set of second argument        : {xs*}
-   |  Footprint set of second argument      : {xs*}
-   |  The two sets overlap at               : {xs*}
+   |  Hidden set of current argument        : {any, any², any³}
+   |  Hidden footprint of current argument  : {}
+   |  Capture set of second argument        : {any⁴}
+   |  Footprint set of second argument      : {}
+   |  The two sets overlap at               : {`any` of value xs}
    |
-   |where:    ^ refers to a root capability classified as Unscoped created in method test when checking argument to parameter x of method par
+   |where:    ^ and any refer to a root capability classified as Unscoped in the type of value h1
+   |          ^²        refers to a root capability classified as Unscoped created in method test when checking argument to parameter x of method par
+   |          any²      is a root capability classified as Unscoped in the type of value xs
+   |          any³      is a root capability classified as Unscoped created in value xs when instantiating method listFresh's type (n: Int): LIST[Box[Ref^{fresh}]]
+   |          any⁴      is a root capability classified as Unscoped in the type of value h2

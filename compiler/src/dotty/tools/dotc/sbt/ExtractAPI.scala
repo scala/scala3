@@ -18,7 +18,7 @@ import NameOps.*
 import inlines.Inlines
 import transform.ValueClasses
 import transform.Pickler
-import dotty.tools.io.{File, FileExtension, JarArchive}
+import dotty.tools.io.{File, FileExtension}
 import util.{Property, SourceFile}
 import java.io.PrintWriter
 
@@ -94,16 +94,15 @@ class ExtractAPI extends Phase {
     def registerProductNames(fullClassName: String, binaryClassName: String) =
       val pathToClassFile = s"${binaryClassName.replace('.', java.io.File.separatorChar)}.class"
 
+      val outDir = ctx.settings.outputDir.value
       val classFile = {
-        ctx.settings.outputDir.value match {
-          case jar: JarArchive =>
+        if outDir.ext.isJar then
             // important detail here, even on Windows, Zinc expects the separator within the jar
             // to be the system default, (even if in the actual jar file the entry always uses '/').
             // see https://github.com/sbt/zinc/blob/dcddc1f9cfe542d738582c43f4840e17c053ce81/internal/compiler-bridge/src/main/scala/xsbt/JarUtils.scala#L47
-            new java.io.File(s"$jar!$pathToClassFile")
-          case outputDir =>
-            new java.io.File(outputDir.file, pathToClassFile)
-        }
+            new java.io.File(s"${outDir.path}!$pathToClassFile")
+        else
+            new java.io.File(outDir.file, pathToClassFile)
       }
 
       cb.generatedNonLocalClass(sourceFile, classFile.toPath(), binaryClassName, fullClassName)

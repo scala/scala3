@@ -2,7 +2,6 @@ package dotty.tools
 package io
 
 import java.io.InputStream
-import java.util.jar.JarEntry
 import dotty.tools.dotc.core.Definitions
 import language.postfixOps
 import dotty.tools.dotc.core.Contexts.*

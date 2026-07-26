@@ -25,9 +25,11 @@ import vulpix.{TestConfiguration, TestFlags}
  *  and running scripted REPL tests with them on the claspath.
  */
 object ShadowingTests:
-  def classpath = TestConfiguration.replClassPath + File.pathSeparator + shadowDir
-  def options = ReplTest.commonOptions ++ Array("-classpath", classpath)
+  // The directory on the classpath containing artifacts to be shadowed
+  private var dir: Path = null
+
   def shadowDir = dir.toAbsolutePath.toString
+  def options = ReplTest.createOptions(shadowDir)
 
   def createSubDir(name: String): Path =
     val subdir = dir.resolve(name)
@@ -35,9 +37,6 @@ object ShadowingTests:
     catch case _: java.nio.file.FileAlreadyExistsException =>
       assert(Files.isDirectory(subdir), s"failed to create shadowed subdirectory $subdir")
     subdir
-
-  // The directory on the classpath containing artifacts to be shadowed
-  private var dir: Path = null
 
   @BeforeClass def setupDir: Unit =
     dir = Files.createTempDirectory("repl-shadow")
@@ -99,13 +98,13 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
          |1 error found
          |
          |scala> new C(13).c
-         |val res1: Int = 13
+         |val res0: Int = 13
          |
          |scala> class C { val c = 42 }
          |// defined class C
          |
          |scala> new C().c
-         |val res2: Int = 42
+         |val res1: Int = 42
          |""".stripMargin
   )
 

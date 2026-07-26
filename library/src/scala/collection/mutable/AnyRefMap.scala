@@ -222,6 +222,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    *  `defaultEntry` was supplied.
    *
    *  @param key the key to look up
+   *  @return the value associated with `key`, or the result of `defaultEntry(key)` if the key is not present
    */
   override def apply(key: K): V = {
     val i = seekEntry(hashOf(key), key)
@@ -232,6 +233,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    *  exception if no other default behavior was specified.
    *
    *  @param key the key to look up a default value for
+   *  @return the default value supplied by `defaultEntry` for `key`, or throws if no `defaultEntry` was provided
    */
   override def default(key: K): V = defaultEntry(key)
 
@@ -328,6 +330,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    *
    *  @param key the key to add
    *  @param value the value to associate with `key`
+   *  @return this map after the entry has been added
    */
   @inline final def addOne(key: K, value: V): this.type = { update(key, value); this }
 
@@ -476,6 +479,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    *
    *  @tparam V1 the new value type
    *  @param f the transformation function to apply to each value
+   *  @return a new `AnyRefMap` with the same keys and values transformed by `f`
    */
   def mapValuesNow[V1](f: V => V1): AnyRefMap[K, V1] = {
     val arm = new AnyRefMap[K,V1](AnyRefMap.exceptionDefault, 1, initBlank = false)
@@ -505,6 +509,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    *  Note: the default, if any,  is not transformed.
    *
    *  @param f the transformation function to apply to each value
+   *  @return this map after each stored value has been replaced by `f` applied to it
    */
   def transformValuesInPlace(f: V => V): this.type = {
     var i,j = 0
@@ -527,6 +532,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    *  @tparam V2 the value type of the resulting map
    *  @param f the function mapping each key-value pair to a new key-value pair; the resulting key must be an `AnyRef`
    *  @param dummy implicit parameter used to distinguish this overload from the inherited version after erasure
+   *  @return a new `AnyRefMap` containing the key-value pairs produced by applying `f` to each entry of this map
    */
   def map[K2 <: AnyRef, V2](f: ((K, V)) => (K2, V2))(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
     AnyRefMap.from(new View.Map(this, f))
@@ -536,6 +542,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    *  @tparam V2 the value type of the resulting map
    *  @param f the function mapping each key-value pair to a collection of new key-value pairs; the resulting keys must be `AnyRef`s
    *  @param dummy implicit parameter used to distinguish this overload from the inherited version after erasure
+   *  @return a new `AnyRefMap` containing all the key-value pairs produced by applying `f` to each entry of this map
    */
   def flatMap[K2 <: AnyRef, V2](f: ((K, V)) => IterableOnce[(K2, V2)]^)(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
     AnyRefMap.from(new View.FlatMap(this, f))
@@ -545,6 +552,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    *  @tparam V2 the value type of the resulting map
    *  @param pf the partial function mapping key-value pairs to new key-value pairs; the resulting key must be an `AnyRef`
    *  @param dummy implicit parameter used to distinguish this overload from the inherited version after erasure
+   *  @return a new `AnyRefMap` containing the key-value pairs produced by applying `pf` to each entry on which it is defined
    */
   def collect[K2 <: AnyRef, V2](pf: PartialFunction[(K, V), (K2, V2)])(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
     strictOptimizedCollect(AnyRefMap.newBuilder[K2, V2], pf)
@@ -599,6 +607,7 @@ object AnyRefMap {
    *  @tparam K the type of keys, must be a subtype of `AnyRef`
    *  @tparam V the type of values
    *  @param elems the key-value pairs to initialize the map with
+   *  @return a new `AnyRefMap` containing the given key-value pairs
    */
   def apply[K <: AnyRef, V](elems: (K, V)*): AnyRefMap[K, V] = buildFromIterableOnce(elems)
 
@@ -617,6 +626,7 @@ object AnyRefMap {
    *
    *  @tparam K the type of keys, must be a subtype of `AnyRef`
    *  @tparam V the type of values
+   *  @return a new empty `AnyRefMap`
    */
   def empty[K <: AnyRef, V]: AnyRefMap[K, V] = new AnyRefMap[K, V]
 
@@ -625,6 +635,7 @@ object AnyRefMap {
    *  @tparam K the type of keys, must be a subtype of `AnyRef`
    *  @tparam V the type of values
    *  @param default the function mapping keys to default values
+   *  @return a new empty `AnyRefMap` that uses `default` to supply values for missing keys
    */
   def withDefault[K <: AnyRef, V](default: K -> V): AnyRefMap[K, V] = new AnyRefMap[K, V](default)
 
@@ -648,6 +659,7 @@ object AnyRefMap {
    *  @tparam V the type of values
    *  @param keys the array of keys
    *  @param values the array of values, paired positionally with `keys`
+   *  @return a new `AnyRefMap` containing entries `keys(i) -> values(i)` for indices up to the shorter array's length
    */
   def fromZip[K <: AnyRef, V](keys: Array[K], values: Array[V]): AnyRefMap[K, V] = {
     val sz = math.min(keys.length, values.length)
@@ -665,6 +677,7 @@ object AnyRefMap {
    *  @tparam V the type of values
    *  @param keys the collection of keys
    *  @param values the collection of values, paired positionally with `keys`
+   *  @return a new `AnyRefMap` containing the entries formed by pairing each key with the value at the same position, up to the shorter collection's size
    */
   def fromZip[K <: AnyRef, V](keys: Iterable[K], values: Iterable[V]): AnyRefMap[K, V] = {
     val sz = math.min(keys.size, values.size)

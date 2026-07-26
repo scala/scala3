@@ -10,27 +10,33 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:22:35 --------------------------------------
 22 |  val ref2c: LazyRef[Int]^{cap2} = ref2 // error
    |                                   ^^^^
-   |                                   Found:    LazyRef[Int]{val elem: () ->{ref2*} Int}^{ref2}
+   |                                   Found:    (ref2 : LazyRef[Int]{val elem: () => Int}^{cap2, ref1})
    |                                   Required: LazyRef[Int]^{cap2}
    |
-   |                                   Note that capability `ref2` cannot flow into capture set {cap2}.
+   |                                   Note that capability `ref1` cannot flow into capture set {cap2}.
+   |
+   |                                   where:    => refers to a root capability in the type of value elem
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:24:35 --------------------------------------
 24 |  val ref3c: LazyRef[Int]^{ref1} = ref3 // error
    |                                   ^^^^
-   |                                   Found:    LazyRef[Int]{val elem: () ->{ref3*} Int}^{ref3}
+   |                                   Found:    (ref3 : LazyRef[Int]{val elem: () => Int}^{cap2, ref1})
    |                                   Required: LazyRef[Int]^{ref1}
    |
-   |                                   Note that capability `ref3` cannot flow into capture set {ref1}.
+   |                                   Note that capability `cap2` cannot flow into capture set {ref1}.
+   |
+   |                                   where:    => refers to a root capability in the type of value elem
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyref.scala:30:35 --------------------------------------
 30 |  val ref4c: LazyRef[Int]^{cap1} = ref4 // error
    |                                   ^^^^
-   |                                   Found:    LazyRef[Int]{val elem: () ->{ref4*} Int}^{ref4}
+   |                                   Found:    (ref4 : LazyRef[Int]{val elem: () => Int}^{cap2, cap1})
    |                                   Required: LazyRef[Int]^{cap1}
    |
-   |                                   Note that capability `ref4` cannot flow into capture set {cap1}.
+   |                                   Note that capability `cap2` cannot flow into capture set {cap1}.
+   |
+   |                                   where:    => refers to a root capability in the type of value elem
    |
    | longer explanation available when compiling with `-explain`

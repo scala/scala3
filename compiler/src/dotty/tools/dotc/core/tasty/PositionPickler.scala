@@ -37,7 +37,6 @@ object PositionPickler:
       relativePathReference: String,
       source: SourceFile,
       roots: List[Tree],
-      warnings: mutable.ListBuffer[Message],
       buf: TastyBuffer = new TastyBuffer(5000),
       pickledIndices: mutable.BitSet = new mutable.BitSet) =
 

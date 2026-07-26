@@ -308,6 +308,7 @@ trait ClassLikeSupport:
         (tree, symbol) => LinkToType(tree.asSignature(c, c.symbol, skipThisTypePrefix = true), symbol.dri, bareClasslikeKind(symbol))
       }
 
+    @scala.annotation.nowarn
     def getParentsAsTreeSymbolTuples: List[(Tree, Symbol)] =
       if noPosClassDefs.contains(c.symbol) then Nil
       else for

@@ -5,7 +5,7 @@ class CT[E <: Exception]
 type CanThrow[E <: Exception] = CT[E] @retains[caps.any.type]
 type Top  = Any @retains[caps.any.type]
 
-infix type throws[R, E <: Exception] = (erased CanThrow[E]) ?=> R
+infix type throws[R, E <: Exception] = (erased ct: CanThrow[E]) ?=> R
 
 class Fail extends Exception
 

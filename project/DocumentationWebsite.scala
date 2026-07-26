@@ -21,21 +21,17 @@ object DocumentationWebsite {
     val mainDestinationFile = baseDest / "dotty_res" / "scripts" / "scaladoc-scalajs.js"
     sbt.IO.copyFile(mainFile, mainDestinationFile)
 
-    val cssCodeSnippetsDesitnationFile = baseDest / "dotty_res" / "styles" / "code-snippets.css"
-    val cssCodeSnippetsSourceFile = cssSourceFileBase / "code-snippets.css"
-    sbt.IO.copyFile(cssCodeSnippetsSourceFile, cssCodeSnippetsDesitnationFile)
-
-    val cssContentContributorsTestcasesDesitnationFile = Paths.get("scaladoc-testcases", "docs", "_assets", "css", "content-contributors.css").toFile
-    val cssContentContributorsDesitnationFile = baseDest / "dotty_res" / "styles" / "content-contributors.css"
+    val cssContentContributorsTestcasesDestinationFile = Paths.get("scaladoc-testcases", "docs", "_assets", "css", "content-contributors.css").toFile
+    val cssContentContributorsDestinationFile = baseDest / "dotty_res" / "styles" / "content-contributors.css"
     val cssContentContributorsSourceFile = cssContentContributorsSourceBaseFile / "content-contributors.css"
-    sbt.IO.copyFile(cssContentContributorsSourceFile, cssContentContributorsTestcasesDesitnationFile)
-    sbt.IO.copyFile(cssContentContributorsSourceFile, cssContentContributorsDesitnationFile)
+    sbt.IO.copyFile(cssContentContributorsSourceFile, cssContentContributorsTestcasesDestinationFile)
+    sbt.IO.copyFile(cssContentContributorsSourceFile, cssContentContributorsDestinationFile)
 
-    val dests = Seq("searchbar.css", "social-links.css", "ux.css", "versions-dropdown.css").map { file =>
-      val cssDesitnationFile = baseDest / "dotty_res" / "styles" / file
+    val dests = Seq("searchbar.css", "social-links.css", "versions-dropdown.css").map { file =>
+      val cssDestinationFile = baseDest / "dotty_res" / "styles" / file
       val cssSourceFile = cssSourceFileBase / file
-      sbt.IO.copyFile(cssSourceFile, cssDesitnationFile)
-      cssDesitnationFile
+      sbt.IO.copyFile(cssSourceFile, cssDestinationFile)
+      cssDestinationFile
     }
 
     import _root_.scala.sys.process._
@@ -76,8 +72,7 @@ object DocumentationWebsite {
       inkuireDestinationFile,
       mainDestinationFile,
       contributorsDestinationFile,
-      cssContentContributorsDesitnationFile,
-      cssCodeSnippetsDesitnationFile,
+      cssContentContributorsDestinationFile,
     ) ++ dests
   }
 }

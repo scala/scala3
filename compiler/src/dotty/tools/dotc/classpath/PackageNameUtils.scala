@@ -36,14 +36,8 @@ object PackageNameUtils {
     else inPackage == ""
   }
 
-  def dirPathTrailingSlashJar(pkg: String): String =
-    FileUtils.dirPathInJar(pkg) + "/"
-
   def dirPathTrailingSlash(pkg: String): String =
-    if (java.io.File.separatorChar == '/')
-      dirPathTrailingSlashJar(pkg)
-    else
-      FileUtils.dirPath(pkg) + java.io.File.separator
+    FileUtils.dirPath(pkg) + java.io.File.separator
 
   def entryName(pkg: String, entry: String): String = {
     if (pkg == ClassPath.RootPackage) entry else {

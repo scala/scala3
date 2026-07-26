@@ -80,7 +80,7 @@ class Constructors extends MiniPhase with IdentityDenotTransformer { thisPhase =
             }
           // restriction on module because lambdalift doesn't transform correctly (to do)
           val inConstructor =
-               (method.isPrimaryConstructor || !sym.owner.is(Module) && checkAnonFun(method))
+               (method.isPrimaryConstructor || !sym.owner.is(Module) && !sym.is(Mutable) && checkAnonFun(method))
             && ctx.owner.enclosingClass == sym.owner
           val noField =
                inConstructor

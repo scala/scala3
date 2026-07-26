@@ -177,11 +177,6 @@ class CompletionArgSuite extends BaseCompletionSuite:
       topLines = Option(2)
     )
 
-  // In scala3, we get NoSymbol for `until`, so we get no completions here.
-  // This might be because the `1.until` method has multiple overloaded methods, like `until(end: Long)` and `until(start: Long, end: Long)`,
-  // and that's why we can't retrieve a specfic symbol.
-  // Might be good to fixed in Dotty.
-  // see: https://github.com/scalameta/metals/pull/2369
   @Test def `arg9` =
     check(
       // `until` has multiple implicit conversion alternatives
@@ -191,7 +186,7 @@ class CompletionArgSuite extends BaseCompletionSuite:
           |}
           |""".stripMargin,
       """|`end` = : Int
-         |Main test
+         |step = : Int
          |""".stripMargin,
       topLines = Option(2)
     )

@@ -4,27 +4,26 @@ package sbt
 import java.io.File
 import java.nio.file.Path
 import java.util.EnumSet
-
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Phases.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types.*
-
-import dotty.tools.dotc.util.{SrcPos, NoSourcePosition}
+import dotty.tools.dotc.typer.Applications.*
+import dotty.tools.dotc.util.{NoSourcePosition, SrcPos}
 import dotty.tools.io
-import dotty.tools.io.{AbstractFile, PlainFile, ZipArchive, NoAbstractFile, FileExtension}
+import dotty.tools.io.AbstractFile
 import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext.*
 
 import scala.jdk.CollectionConverters.*
-
 import scala.collection.{Set, mutable}
 import scala.compiletime.uninitialized
 
@@ -264,6 +263,37 @@ trait AbstractExtractDependenciesCollector(rec: DependencyRecorder) extends tpd.
         addInheritanceDependencies(t)
       case t: Template =>
         addInheritanceDependencies(t)
+      case UnApply(fun, _, _) =>
+        // PatternMatcher (which runs after this phase) lowers case-class patterns
+        // to direct product-selector calls (_1, _2, …) or case-accessor calls.
+        // Those calls are never present in the typed tree seen here, so they would
+        // not normally be recorded as used names.
+
+        // Always record both unapply and unapplySeq on the extractor so that adding
+        // one alongside the other triggers recompilation.  The typer tries unapply
+        // first and falls back to unapplySeq (see trySelectUnapply); if the set of
+        // available methods changes the winner can change.  The class dependency on
+        // the extractor owner is already established by traversal of `fun`.
+        rec.addUsedRawName(nme.unapply)
+        rec.addUsedRawName(nme.unapplySeq)
+
+        // For a *synthetic* case-class unapply (`def unapply(x: C): C = x`), record
+        // the primary constructor of C.  Its zinc-mangled name (`C;init;`) encodes
+        // the full parameter list: any change to parameter types, arity, or names
+        // changes the name hash and triggers recompilation.
+        val linkedCls = fun.symbol.owner.linkedClass
+        if fun.symbol.is(Synthetic) && linkedCls.is(Case) then
+          addMemberRefDependency(linkedCls.primaryConstructor)
+        else
+          // For other extractors that return a product type, record the _N selectors
+          // so that return-type changes trigger recompilation.  Also record the
+          // selector one past the current arity (_N+1) so that a new member being
+          // added to the product type is detected.  The class dependency needed to
+          // make that raw-name watch effective is established by the selector loop.
+          val selectors = productSelectors(fun.tpe.widen.finalResultType)
+          selectors.foreach(addMemberRefDependency)
+          if selectors.nonEmpty then
+            rec.addUsedRawName(nme.selectorName(selectors.length))
       case _ => ()
 
   /**Reused EqHashSet, safe to use as each TypeDependencyTraverser is used atomically
@@ -472,7 +502,7 @@ class DependencyRecorder {
   /** Send the collected dependency information to Zinc and clear the local caches. */
   def sendToZinc()(using Context): Unit =
     ctx.withIncCallback: cb =>
-      val siblingClassfiles = new mutable.HashMap[PlainFile, Path]
+      val siblingClassfiles = new mutable.HashMap[AbstractFile, Path]
       _foundDeps.iterator.foreach:
         case (clazz, foundDeps) =>
           val className = classNameAsString(clazz)
@@ -496,7 +526,7 @@ class DependencyRecorder {
    *  run) or from class file and calls respective callback method.
    */
   private def recordClassDependency(cb: interfaces.IncrementalCallback, fromClass: Symbol, toClass: Symbol,
-      depCtx: DependencyContext, siblingClassfiles: mutable.Map[PlainFile, Path])(using Context): Unit = {
+      depCtx: DependencyContext, siblingClassfiles: mutable.Map[AbstractFile, Path])(using Context): Unit = {
     val fromClassName = classNameAsString(fromClass)
     val sourceFile = ctx.compilationUnit.source
 
@@ -516,9 +546,9 @@ class DependencyRecorder {
      * FIXME: we still need a way to resolve the correct classfile when we split tasty and classes between
      * different outputs (e.g. scala2-library-bootstrapped).
      */
-    def cachedSiblingClass(pf: PlainFile): Path =
+    def cachedSiblingClass(pf: AbstractFile): Path =
       siblingClassfiles.getOrElseUpdate(pf, {
-        val jpath = pf.jpath
+        val jpath = pf.jpath.nn
         jpath.getParent.resolve(jpath.getFileName.toString.stripSuffix(".tasty") + ".class")
       })
 
@@ -534,17 +564,13 @@ class DependencyRecorder {
 
       def processExternalDependency() = {
         val binaryClassName = depClass.binaryClassName
-        depFile match {
-          case ze: ZipArchive#Entry => // The dependency comes from a JAR
-            ze.underlyingSource match
-              case Some(zip) if zip.jpath != null =>
-                binaryDependency(zip.jpath, binaryClassName)
-              case _ =>
-          case pf: PlainFile => // The dependency comes from a class file, Zinc handles JRT filesystem
-            binaryDependency(if isTastyOrSig then cachedSiblingClass(pf) else pf.jpath, binaryClassName)
+        depFile.enclosing match
+          case Some(archive) if archive.jpath != null => // The dependency comes from a JAR
+            binaryDependency(archive.jpath.nn, binaryClassName)
+          case _ if depFile.jpath != null =>
+            binaryDependency(if isTastyOrSig then cachedSiblingClass(depFile) else depFile.jpath.nn, binaryClassName)
           case _ =>
-            internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}}", fromClass.srcPos)
-        }
+            internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}", fromClass.srcPos)
       }
 
       if isTastyOrSig || depFile.ext.isClass then

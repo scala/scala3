@@ -1040,11 +1040,10 @@ class CompletionTest {
         ("hashCode", Method, "(): Int"),
         ("notifyAll", Method, "(): Unit"),
         ("values", Method, "=> Array[Foo.Bar]"),
-        ("→", Method, "[B](y: B): (Foo.Bar.type, B)"),
         ("!=", Method, "(x$0: Any): Boolean"),
         ("fromOrdinal", Method, "(ordinal: Int): Foo.Bar"),
         ("asInstanceOf", Method, "[X0]: X0"),
-        ("->", Method, "[B](y: B): (Foo.Bar.type, B)"),
+        ("->", Method, "[B](that: B): (Foo.Bar.type, B)"),
         ("wait", Method, "(x$0: Long, x$1: Int): Unit"),
         ("`back-tick`", Field, "Foo.Bar"),
         ("notify", Method, "(): Unit"),
@@ -1306,7 +1305,7 @@ class CompletionTest {
           |
           |val quux = new Quux:
           |  def aaa: Foo = ???
-          |  def bbb: Bar = ??? // overriden signature
+          |  def bbb: Bar = ??? // overridden signature
           |  def ccc(s: String): String = ???
           |  def ccc(i: Int): Int = ??? // overloaded
           |  private def ddd(): Boolean = ???
@@ -1346,7 +1345,7 @@ class CompletionTest {
           |
           |val quux = new Quux:
           |  def aaa: Foo = ???
-          |  def bbb: Bar = ??? // overriden signature
+          |  def bbb: Bar = ??? // overridden signature
           |  def ccc(s: String): String = ???
           |  def ccc(i: Int): Int = ??? // overloaded
           |  private def ddd(): Boolean = ???

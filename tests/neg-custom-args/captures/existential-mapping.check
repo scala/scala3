@@ -1,142 +1,164 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:9:25 ---------------------------
 9 |  val _:  (x: C^) -> C = x1 // error
   |                         ^^
-  |                         Found:    (x: C^) -> C^{x1*}
+  |                         Found:    (x1 : (x: C^) -> C^{any})
   |                         Required: (x: C^) -> C
   |
-  |                         Note that capability `x1*` cannot flow into capture set {}.
+  |                         Note that capability `any` cannot flow into capture set {}.
   |
-  |                         where:    ^ refers to the root capability caps.any
+  |                         where:    ^   refers to the root capability caps.any
+  |                                   any is a root capability in the type of value x1
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:12:20 --------------------------
 12 |  val _:  C^ -> C = x2 // error
    |                    ^^
-   |                    Found:    C^ -> C^{x2*}
+   |                    Found:    (x2 : C^ -> C^{any})
    |                    Required: C^ -> C
    |
-   |                    Note that capability `x2*` cannot flow into capture set {}.
+   |                    Note that capability `any` cannot flow into capture set {}.
    |
-   |                    where:    ^ refers to the root capability caps.any
+   |                    where:    ^   refers to the root capability caps.any
+   |                              any is a root capability in the type of value x2
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:15:30 --------------------------
 15 |  val _: A^ -> (x: C^) -> C = x3 // error
    |                              ^^
-   |                              Found:    A^ -> (x: C^) -> C^{x3*}
+   |                              Found:    (x3 : A^ -> (x: C^) -> C^{any})
    |                              Required: A^ -> (x: C^) -> C
    |
-   |                              Note that capability `x3*` cannot flow into capture set {}.
+   |                              Note that capability `any` cannot flow into capture set {}.
    |
-   |                              where:    ^ refers to the root capability caps.any
+   |                              where:    ^   refers to the root capability caps.any
+   |                                        any is a root capability in the type of value x3
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:18:25 --------------------------
 18 |  val _: A^ -> C^ -> C = x4 // error
    |                         ^^
-   |                         Found:    A^ -> C^ -> C^{x4*}
+   |                         Found:    (x4 : A^ -> C^ -> C^{any})
    |                         Required: A^ -> C^ -> C
    |
-   |                         Note that capability `x4*` cannot flow into capture set {}.
+   |                         Note that capability `any` cannot flow into capture set {}.
    |
-   |                         where:    ^ refers to the root capability caps.any
+   |                         where:    ^   refers to the root capability caps.any
+   |                                   any is a root capability in the type of value x4
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:21:30 --------------------------
 21 |  val _: A^ -> (x: C^) -> C = x5 // error
    |                              ^^
-   |                              Found:    A^ -> (x: C^) -> C^{x5*}
+   |                              Found:    (x5 : A^ -> (x: C^) -> C^{any})
    |                              Required: A^ -> (x: C^) -> C
    |
-   |                              Note that capability `x5*` cannot flow into capture set {}.
+   |                              Note that capability `any` cannot flow into capture set {}.
    |
-   |                              where:    ^ refers to the root capability caps.any
+   |                              where:    ^   refers to the root capability caps.any
+   |                                        any is a root capability in the type of value x5
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:24:30 --------------------------
 24 |  val _: A^ -> (x: C^) => C = x6 // error
    |                              ^^
-   |                              Found:    A^ -> (x: C^) ->{x6*} C^{x6*}
-   |                              Required: A^ -> (x: C^) => C
+   |                              Found:    (x6 : A^ -> (x: C^) => C^{any})
+   |                              Required: A^ -> (x: C^) =>² C
    |
-   |                              Note that capability `x6*` cannot flow into capture set {}.
+   |                              Note that capability `any` cannot flow into capture set {}.
    |
-   |                              where:    => refers to a root capability in the type of value _$6
-   |                                        ^  refers to the root capability caps.any
+   |                              where:    =>  refers to a root capability in the type of value x6
+   |                                        =>² refers to a root capability in the type of value _$6
+   |                                        ^   refers to the root capability caps.any
+   |                                        any is a root capability in the type of value x6
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:27:25 --------------------------
 27 |  val _:  (x: C^) => C = y1 // error
    |                         ^^
-   |                         Found:    (x: C^) ->{y1} C^{y1*}
-   |                         Required: (x: C^) => C
+   |                         Found:    (y1 : (x: C^) ->{any} C^²)
+   |                         Required: (x: C^) ->{any²} C
    |
-   |                         Note that capability `y1*` cannot flow into capture set {}.
+   |                         Note that capability `any` cannot flow into capture set {any²}.
    |
-   |                         where:    => refers to a root capability in the type of value _$7
-   |                                   ^  refers to the root capability caps.any
+   |                         where:    ^    refers to the root capability caps.any
+   |                                   ^²   refers to a root capability in the type of value y1
+   |                                   any  is a root capability in the type of value y1
+   |                                   any² is a root capability in the type of value _$7
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:30:20 --------------------------
 30 |  val _:  C^ => C = y2 // error
    |                    ^^
-   |                    Found:    C^ ->{y2} C^{y2*}
-   |                    Required: C^ => C
+   |                    Found:    (y2 : C^ ->{any} C^²)
+   |                    Required: C^ ->{any²} C
    |
-   |                    Note that capability `y2*` cannot flow into capture set {}.
+   |                    Note that capability `any` cannot flow into capture set {any²}.
    |
-   |                    where:    => refers to a root capability in the type of value _$8
-   |                              ^  refers to the root capability caps.any
+   |                    where:    ^    refers to the root capability caps.any
+   |                              ^²   refers to a root capability in the type of value y2
+   |                              any  is a root capability in the type of value y2
+   |                              any² is a root capability in the type of value _$8
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:33:30 --------------------------
 33 |  val _: A^ => (x: C^) => C = y3 // error
    |                              ^^
-   |                              Found:    A^ ->{y3} (x: C^) ->{y3*} C^{y3*}
-   |                              Required: A^ => (x: C^) =>² C
+   |                              Found:    (y3 : A^ ->{any} (x: C^) => C^²)
+   |                              Required: A^ ->{any²} (x: C^) =>² C
    |
-   |                              Note that capability `y3*` cannot flow into capture set {}.
+   |                              Note that capability `any` cannot flow into capture set {any²}.
    |
-   |                              where:    =>  refers to a root capability in the type of value _$9
-   |                                        =>² refers to a root capability in the type of value _$9
-   |                                        ^   refers to the root capability caps.any
+   |                              where:    =>   refers to a root capability in the type of value y3
+   |                                        =>²  refers to a root capability in the type of value _$9
+   |                                        ^    refers to the root capability caps.any
+   |                                        ^²   refers to a root capability in the type of value y3
+   |                                        any  is a root capability in the type of value y3
+   |                                        any² is a root capability in the type of value _$9
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:36:25 --------------------------
 36 |  val _: A^ => C^ => C = y4 // error
    |                         ^^
-   |                         Found:    A^ ->{y4} C^ ->{y4*} C^{y4*}
-   |                         Required: A^ => C^ =>² C
+   |                         Found:    (y4 : A^ ->{any} C^ => C^²)
+   |                         Required: A^ ->{any²} C^ =>² C
    |
-   |                         Note that capability `y4*` cannot flow into capture set {}.
+   |                         Note that capability `any` cannot flow into capture set {any²}.
    |
-   |                         where:    =>  refers to a root capability in the type of value _$10
-   |                                   =>² refers to a root capability in the type of value _$10
-   |                                   ^   refers to the root capability caps.any
+   |                         where:    =>   refers to a root capability in the type of value y4
+   |                                   =>²  refers to a root capability in the type of value _$10
+   |                                   ^    refers to the root capability caps.any
+   |                                   ^²   refers to a root capability in the type of value y4
+   |                                   any  is a root capability in the type of value y4
+   |                                   any² is a root capability in the type of value _$10
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:39:30 --------------------------
 39 |  val _: A^ => (x: C^) -> C = y5 // error
    |                              ^^
-   |                              Found:    A^ ->{y5} (x: C^) -> C^{y5*}
-   |                              Required: A^ => (x: C^) -> C
+   |                              Found:    (y5 : A^ ->{any} (x: C^) -> C^²)
+   |                              Required: A^ ->{any²} (x: C^) -> C
    |
-   |                              Note that capability `y5*` cannot flow into capture set {}.
+   |                              Note that capability `any` cannot flow into capture set {any²}.
    |
-   |                              where:    => refers to a root capability in the type of value _$11
-   |                                        ^  refers to the root capability caps.any
+   |                              where:    ^    refers to the root capability caps.any
+   |                                        ^²   refers to a root capability in the type of value y5
+   |                                        any  is a root capability in the type of value y5
+   |                                        any² is a root capability in the type of value _$11
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/existential-mapping.scala:42:30 --------------------------
 42 |  val _: A^ => (x: C^) => C = y6 // error
    |                              ^^
-   |                              Found:    A^ ->{y6} (x: C^) ->{y6*} C^{y6*}
-   |                              Required: A^ => (x: C^) =>² C
+   |                              Found:    (y6 : A^ ->{any} (x: C^) => C^²)
+   |                              Required: A^ ->{any²} (x: C^) =>² C
    |
-   |                              Note that capability `y6*` cannot flow into capture set {}.
+   |                              Note that capability `any` cannot flow into capture set {any²}.
    |
-   |                              where:    =>  refers to a root capability in the type of value _$12
-   |                                        =>² refers to a root capability in the type of value _$12
-   |                                        ^   refers to the root capability caps.any
+   |                              where:    =>   refers to a root capability in the type of value y6
+   |                                        =>²  refers to a root capability in the type of value _$12
+   |                                        ^    refers to the root capability caps.any
+   |                                        ^²   refers to a root capability in the type of value y6
+   |                                        any  is a root capability in the type of value y6
+   |                                        any² is a root capability in the type of value _$12
    |
    | longer explanation available when compiling with `-explain`

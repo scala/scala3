@@ -45,7 +45,6 @@ trait Arrows:
   def pathDependent2(n: Nested^)(g: AnyRef^{n.next.c} => Any): Any
   def pathDependent3(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): Any
   def pathDependent4(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): AnyRef^{n.next.next.c}
-  def pathDependent5(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): AnyRef^{n.next.next.c*, n.c, any}
 
   def contextPure(f: AnyRef^{a} ?-> Int): Int
   def contextImpure(f: AnyRef^{a} ?=> Int): Int
@@ -134,6 +133,14 @@ trait Control extends SharedCapability, Classifier
 trait ClassifierExamples:
   def restricted(f: () ->{any.only[Control]} Unit): Unit //expected: def restricted(f: () ->{any.only[Control]} Unit): Unit
   def sharedOnly: AnyRef^{any.only[Control]} //expected: def sharedOnly: AnyRef^{any.only[Control]}
+
+// .except[Classifier] excluded capabilities
+trait ExceptExamples:
+  val a: AnyRef^
+  def excluded(f: () ->{any.except[Control]} Unit): Unit //expected: def excluded(f: () ->{any.except[Control]} Unit): Unit
+  def sharedExcept: AnyRef^{any.except[Control]} //expected: def sharedExcept: AnyRef^{any.except[Control]}
+  def pathExcept: AnyRef^{a.except[Control]} //expected: def pathExcept: AnyRef^{a.except[Control]}
+  def onlyThenExcept: AnyRef^{a.only[Control].except[Control]} //expected: def onlyThenExcept: AnyRef^{a.only[Control].except[Control]}
 
 // --- Capture set variables and capability members ---
 

@@ -2,7 +2,6 @@ package dotty.tools.dotc
 
 import dotty.DottyBytecodeTest
 
-import scala.language.unsafeNulls
 import org.junit.Assert.*
 import org.junit.Test
 import dotty.tools.dotc.config.CompilerCommand
@@ -62,7 +61,7 @@ class ConstantFoldingTests extends DottyBytecodeTest {
     import dotty.AsmConverters.*
 
     checkBCode(conditionSrc) { dir =>
-      val clsIn   = dir.lookupName(s"Test.class", directory = false).input
+      val clsIn   = lookupClass(dir, "Test.class")
       val methods = loadClassNode(clsIn).methods.asScala
 
       val whenTrue = methods.find(_.name == "whenTrue").get

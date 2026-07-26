@@ -4,7 +4,7 @@ title: Time in the Compiler
 ---
 
 In the [compiler overview](lifecycle.md) section, we saw that `dotc` is an interactive compiler,
-and so can answer questions about entities as they come into existance and change throughout time,
+and so can answer questions about entities as they come into existence and change throughout time,
 for example:
 - which new definitions were added in a REPL session?
 - which definitions were replaced in an incremental build?

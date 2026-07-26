@@ -62,10 +62,10 @@ class CanSerialize[T]
 inline given CanSerialize[String] = CanSerialize()
 inline given [T: CanSerialize] => CanSerialize[List[T]] = CanSerialize()
 
-def safeWriteObject[T <: java.io.Serializable](out: java.io.ObjectOutputStream, x: T)(using erased CanSerialize[T]) =
+def safeWriteObject[T <: java.io.Serializable](out: java.io.ObjectOutputStream, x: T)(using erased cs: CanSerialize[T]) =
   out.writeObject(x)
 
-def writeList[T](out: java.io.ObjectOutputStream, xs: List[T])(using erased CanSerialize[T]) =
+def writeList[T](out: java.io.ObjectOutputStream, xs: List[T])(using erased cs: CanSerialize[T]) =
   safeWriteObject(out, xs)
 
 @main def Test(out: java.io.ObjectOutputStream) =
@@ -103,7 +103,7 @@ in front of each erased parameter (like `inline`).
 ```scala
 def methodWithErasedEv(erased ev: Ev, x: Int): Int = x + 2
 
-val lambdaWithErasedEv: (erased Ev, Int) => Int =
+val lambdaWithErasedEv: (erased e: Ev, i: Int) => Int =
   (erased ev, x) => x + 2
 ```
 
@@ -198,8 +198,8 @@ object IsOn:
 
 class Machine[S <: State]:
   // ev will disappear from both functions
-  def turnOn(using erased IsOff[S]): Machine[On] = new Machine[On]
-  def turnOff(using erased IsOn[S]): Machine[Off] = new Machine[Off]
+  def turnOn(using erased s: IsOff[S]): Machine[On] = new Machine[On]
+  def turnOff(using erased s: IsOn[S]): Machine[Off] = new Machine[Off]
 
 @main def test =
   val m = Machine[Off]()

@@ -59,7 +59,7 @@ class IincTest extends DottyBytecodeTest {
        """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn   = dir.lookupName("Increment.class", directory = false).nn.input
+      val clsIn   = lookupClass(dir, "Increment.class")
       val clsNode = loadClassNode(clsIn)
       val meth   = getMethod(clsNode, "test")
 

@@ -1,5 +1,4 @@
 import language.experimental.captureChecking
-import caps.use
 
 class List[+A]:
   def head: A = ???

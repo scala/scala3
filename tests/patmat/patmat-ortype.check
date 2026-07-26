@@ -1,3 +1,24 @@
-8: Pattern Match Exhaustivity: _: String
-18: Pattern Match Exhaustivity: None, Some(_: String)
-36: Pattern Match Exhaustivity: Some(_: String)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmat-ortype.scala:8:40 
+8 |  def foo2a(x: Int | Double | String) = x match { // _: String not matched
+  |                                        ^
+  |                                  match may not be exhaustive.
+  |
+  |                                  It would fail on pattern case: _: String
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmat-ortype.scala:18:47 
+18 |  def foo3(x: Option[Int | Double | String]) = x match { // warning: None, Some(_: String) not matched
+   |                                               ^
+   |                    match may not be exhaustive.
+   |
+   |                    It would fail on pattern case: Some(_: String), None
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmat-ortype.scala:36:48 
+36 |  def foo5b(x: Option[Int | Double | String]) = x match { // warning: Some(_: String) not matched
+   |                                                ^
+   |                          match may not be exhaustive.
+   |
+   |                          It would fail on pattern case: Some(_: String)
+   |
+   | longer explanation available when compiling with `-explain`

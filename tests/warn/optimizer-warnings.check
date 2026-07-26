@@ -1,0 +1,30 @@
+-- Warning: tests/warn/optimizer-warnings.scala:3:7 --------------------------------------------------------------------
+3 |object Test: // warn
+  |       ^
+  |  there was a problem determining if method <init> can be inlined: 
+  |  The inline information for scala/runtime/ModuleSerializationProxy::<init>(Ljava/lang/Class;)V may be incomplete:
+  |  The Scala classfile scala/runtime/ModuleSerializationProxy does not have a ScalaInlineInfo attribute.
+-- Warning: tests/warn/optimizer-warnings.scala:5:37 -------------------------------------------------------------------
+5 |    val (a, b) = n match { case 0 => (1, 2); case _ => (3, 4) }; a + b // warn // warn // warn // warn
+  |                                     ^^^^^^
+  |                               there was a problem determining if method <init> can be inlined: 
+  |                               The inline information for scala/Tuple2$mcII$sp::<init>(II)V may be incomplete:
+  |                               The Scala classfile scala/Tuple2$mcII$sp does not have a ScalaInlineInfo attribute.
+-- Warning: tests/warn/optimizer-warnings.scala:5:55 -------------------------------------------------------------------
+5 |    val (a, b) = n match { case 0 => (1, 2); case _ => (3, 4) }; a + b // warn // warn // warn // warn
+  |                                                       ^^^^^^
+  |                               there was a problem determining if method <init> can be inlined: 
+  |                               The inline information for scala/Tuple2$mcII$sp::<init>(II)V may be incomplete:
+  |                               The Scala classfile scala/Tuple2$mcII$sp does not have a ScalaInlineInfo attribute.
+-- Warning: tests/warn/optimizer-warnings.scala:5:9 --------------------------------------------------------------------
+5 |    val (a, b) = n match { case 0 => (1, 2); case _ => (3, 4) }; a + b // warn // warn // warn // warn
+  |         ^
+  |         there was a problem determining if method _1$mcI$sp can be inlined: 
+  |         The inline information for scala/Tuple2$mcII$sp::_1$mcI$sp()I may be incomplete:
+  |         The Scala classfile scala/Tuple2$mcII$sp does not have a ScalaInlineInfo attribute.
+-- Warning: tests/warn/optimizer-warnings.scala:5:12 -------------------------------------------------------------------
+5 |    val (a, b) = n match { case 0 => (1, 2); case _ => (3, 4) }; a + b // warn // warn // warn // warn
+  |            ^
+  |            there was a problem determining if method _2$mcI$sp can be inlined: 
+  |            The inline information for scala/Tuple2$mcII$sp::_2$mcI$sp()I may be incomplete:
+  |            The Scala classfile scala/Tuple2$mcII$sp does not have a ScalaInlineInfo attribute.

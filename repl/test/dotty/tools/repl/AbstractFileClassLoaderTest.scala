@@ -8,17 +8,18 @@ import org.junit.Test
 
 class AbstractFileClassLoaderTest:
 
-  import dotty.tools.io.{AbstractFile, VirtualDirectory}
+  import dotty.tools.io
+  import dotty.tools.io.AbstractFile
   import scala.collection.mutable.ArrayBuffer
   import scala.io.{Codec, Source}, Codec.UTF8
-  import java.io.{BufferedInputStream, Closeable, InputStream}
+  import java.io.{BufferedInputStream, BufferedOutputStream, Closeable, InputStream}
   import java.net.{URLClassLoader, URL}
 
   given `we love utf8`: Codec = UTF8
 
   def closing[T <: Closeable, U](stream: T)(f: T => U): U = try f(stream) finally stream.close()
 
-  extension (f: AbstractFile) def writeContent(s: String): Unit = closing(f.bufferedOutput)(_.write(s.getBytes(UTF8.charSet)))
+  extension (f: AbstractFile) def writeContent(s: String): Unit = closing(new BufferedOutputStream(f.output))(_.write(s.getBytes(UTF8.charSet)))
   def slurp(inputStream: => InputStream)(implicit codec: Codec): String = closing(Source.fromInputStream(inputStream)(using codec))(_.mkString)
   def slurp(url: URL)(implicit codec: Codec): String = slurp(url.openStream())
 
@@ -43,14 +44,14 @@ class AbstractFileClassLoaderTest:
 
   // virtual dir "fuzz" and "fuzz/buzz/booz.class"
   def fuzzBuzzBooz: (AbstractFile, AbstractFile) =
-    val fuzz = new VirtualDirectory("fuzz", None)
+    val fuzz = io.virtualDirectory("fuzz")
     val buzz = fuzz.subdirectoryNamed("buzz")
     val booz = buzz.fileNamed("booz.class")
     (fuzz, booz)
 
   @Test def afclGetsParent(): Unit =
     val p = new URLClassLoader(Array.empty[URL])
-    val d = new VirtualDirectory("vd", None)
+    val d = io.virtualDirectory("vd")
     val x = new AbstractFileClassLoader(d, p)
     assertSame(p, x.getParent)
 
@@ -74,7 +75,7 @@ class AbstractFileClassLoaderTest:
     assertEquals("hello, world", slurp(res))
 
   @Test def afclGetsResourceInDefaultPackage(): Unit =
-    val fuzz = new VirtualDirectory("fuzz", None)
+    val fuzz = io.virtualDirectory("fuzz")
     val booz = fuzz.fileNamed("booz.class")
     val bass = fuzz.fileNamed("bass")
     booz.writeContent("hello, world")

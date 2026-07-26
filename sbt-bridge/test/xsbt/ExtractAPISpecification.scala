@@ -1,5 +1,6 @@
 package xsbt
 
+import xsbti.UseScope
 import xsbti.api._
 import xsbt.api.SameAPI
 
@@ -166,6 +167,106 @@ class ExtractAPISpecification {
     val apis = compilerForTesting.extractApiFromSrc(src).map(a => a.name -> a).toMap
     assertEquals(Set("A", "A.AA", "B", "B.AA"), apis.keySet)
     assertNotEquals(apis("A.AA"), apis("B.AA"))
+  }
+
+  // Tests for https://github.com/scala/scala3/issues/26231
+  // Undercompilation when a case class field type changes and another file pattern-matches on it.
+
+  /** Returns the declared members of the API for a named class/module in a given source. */
+  private def declaredMembers(src: String, className: String, defType: DefinitionType): Array[ClassDefinition] = {
+    val apis = new ScalaCompilerForUnitTesting().extractApiFromSrc(src)
+    val cls = apis.find(c => c.name() == className && c.definitionType() == defType).get
+    cls.structure().declared()
+  }
+
+  @Test
+  def caseClassSelectorMethodApiChangesWhenFieldTypeChanges = {
+    // `_1` is the product selector called at the bytecode level after pattern matching.
+    // Its return type should change when the case class field type changes.
+    val withNumber = declaredMembers(
+      "case class Customer2(state: Number = java.lang.Integer.valueOf(1))",
+      "Customer2", DefinitionType.ClassDef
+    )
+    val withString = declaredMembers(
+      """case class Customer2(state: String = "")""",
+      "Customer2", DefinitionType.ClassDef
+    )
+
+    val selector1WithNumber = withNumber.find(_.name() == "_1").get
+    val selector1WithString = withString.find(_.name() == "_1").get
+
+    assertFalse(
+      "_1 API must differ between Number and String field type",
+      SameAPI(selector1WithNumber, selector1WithString)
+    )
+  }
+
+  @Test
+  def companionUnapplyApiUnchangedWhenCaseClassFieldTypeChanges = {
+    // In Scala 3, the compiler generates `def unapply(x: Customer2): Customer2 = x` for
+    // case classes. Its signature is always `(Customer2): Customer2` regardless of field
+    // types, so its API hash never changes when a field type changes.
+    //
+    // This is one half of the undercompilation bug: the dependent file (Test.scala) records
+    // a used-name dependency on `unapply`, but `unapply`'s hash doesn't change, so Zinc
+    // doesn't recompile Test.scala even though _1's return type changed.
+    val unapplyWithNumber = declaredMembers(
+      "case class Customer2(state: Number = java.lang.Integer.valueOf(1))",
+      "Customer2", DefinitionType.Module
+    ).find(_.name() == "unapply").get
+
+    val unapplyWithString = declaredMembers(
+      """case class Customer2(state: String = "")""",
+      "Customer2", DefinitionType.Module
+    ).find(_.name() == "unapply").get
+
+    assertTrue(
+      "unapply API is unchanged between Number and String field types (the stable signature that hides the change from Zinc)",
+      SameAPI(unapplyWithNumber, unapplyWithString)
+    )
+  }
+
+  @Test
+  def caseClassPatternMatchRecordsConstructorAsUsedName = {
+    // The other half of the undercompilation bug: when Test.scala does
+    //   case Customer2(x) => x
+    // the compiler emits a call to Customer2._1() in the bytecode. But
+    // ExtractDependencies only records `unapply` as a used name (from the
+    // UnApply tree node), never `_1`. Since `unapply`'s hash doesn't change
+    // when field types change, Zinc won't recompile Test.scala.
+    //
+    // This test asserts the DESIRED (fixed) behaviour: the primary constructor
+    // of Customer2 must appear in the used names so that any change to case
+    // class parameters (type, arity, name) triggers recompilation.
+    // Zinc mangles constructor names as `ClassName;init;`.
+    val caseClassSrc =
+      "case class Customer2(state: Number = java.lang.Integer.valueOf(1))"
+    val patternMatchSrc =
+      """|object Test {
+         |  def test(c: Option[Customer2]): Any = c match {
+         |    case Some(Customer2(x)) => x
+         |    case None               => null
+         |  }
+         |}""".stripMargin
+
+    // compileSrcs returns used names for all classes across all source files
+    val output = new ScalaCompilerForUnitTesting()
+      .compileSrcs(caseClassSrc, patternMatchSrc)
+    val usedNames = output.analysis.usedNames
+
+    // `unapply` is recorded because the typed UnApply tree references Customer2.unapply.
+    assertTrue("unapply must be a used name in Test",
+      usedNames("Test").contains("unapply"))
+
+    // `unapplySeq` must also be recorded so that adding a unapplySeq alongside
+    // an existing unapply (or vice versa) triggers recompilation.
+    assertTrue("unapplySeq must be a used name in Test",
+      usedNames("Test").contains("unapplySeq"))
+
+    // The primary constructor must be recorded so that field type/arity/name
+    // changes trigger recompilation.  Zinc uses the mangled name `Customer2;init;`.
+    assertTrue("Customer2;init; must be a used name in Test",
+      usedNames("Test").contains("Customer2;init;"))
   }
 
   @Test

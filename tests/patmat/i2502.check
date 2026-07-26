@@ -1,1 +1,8 @@
-5: Pattern Match Exhaustivity: _: BTypes.this.ClassBType
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i2502.scala:5:35 ----
+5 |    def classOrArrayType: String = this match {
+  |                                   ^^^^
+  |                  match may not be exhaustive.
+  |
+  |                  It would fail on pattern case: _: BTypes.this.ClassBType
+  |
+  | longer explanation available when compiling with `-explain`

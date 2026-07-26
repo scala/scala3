@@ -190,7 +190,7 @@ class SearchbarComponent(engine: PageSearchEngine, inkuireEngine: InkuireJSSearc
       }.isEmpty
     }
     if matching.nonEmpty then {
-      resultsDiv.appendChild(createKindSeparator("Recently searched", "fas fa-clock re-icon"))
+      resultsDiv.appendChild(createKindSeparator("Recently searched", ""))
       matching.map(_.toHTML).foreach(resultsDiv.appendChild)
     }
   }
