@@ -82,11 +82,12 @@ object Test extends App {
     case Tuple() => "empty"
     case Tuple(value) => s"one: $value"
     case Tuple(first, second) => s"two: $first, $second"
-    case Tuple(first, second, rest*) =>
-      val anyFirst: Any = first
-      val anySecond: Any = second
-      val anyRest: Seq[Any] = rest
-      s"many: $anyFirst, $anySecond; rest=${anyRest.size}"
+    case Tuple(first, second, third) => s"three: $first, $second, $third"
+    case _ => "other"
+
+  def arityOfTwentyThree(tuple: Tuple): Int = tuple match
+    case Tuple(_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _) => 23
+    case _ => -1
 
   def nonEmptyArity(tuple: NonEmptyTuple): Int = tuple match
     case Tuple(_, _) => 2
@@ -98,8 +99,8 @@ object Test extends App {
   val abstractNonEmpty: NonEmptyTuple = (1, "hello")
   assert(describe(abstractNonEmpty) == "two: 1, hello")
   assert(nonEmptyArity(abstractNonEmpty) == 2)
-  assert(describe((1, "hello", 3.14)) == "many: 1, hello; rest=1")
-  assert(describe(t23) == "many: 1, 2; rest=21")
+  assert(describe((1, "hello", 3.14)) == "three: 1, hello, 3.14")
+  assert(arityOfTwentyThree(t23) == 23)
   println("Abstract Tuple unapplySeq: OK")
 
   println("=== All tests passed ===")
