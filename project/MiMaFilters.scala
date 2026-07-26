@@ -19,8 +19,6 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.exceptCapability"),
         // scala/scala3#24874 - Uniform Tuple.apply and Tuple.unapply for SIP-NN
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply*"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.TupleMacros"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.TupleMacros$"),
     ))
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(

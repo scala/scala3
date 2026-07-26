@@ -4,6 +4,7 @@ import language.experimental.captureChecking
 import annotation.{showAsInfix, targetName}
 import compiletime.*
 import compiletime.ops.int.*
+import quoted.{Expr, Quotes, Varargs}
 
 /** Tuple of arbitrary arity. */
 sealed trait Tuple extends Product {
@@ -353,7 +354,12 @@ object Tuple {
    *  Tuple(1, "a", 2.0)   // (Int, String, Double)
    *  }}}
    */
-  transparent inline def apply(inline args: Any*): Tuple = ${ TupleMacros.applyImpl('args) }
+  transparent inline def apply(inline args: Any*): Tuple = ${ applyImpl('args) }
+
+  private def applyImpl(args: Expr[Seq[Any]])(using quotes: Quotes): Expr[Tuple] =
+    args match
+      case Varargs(elements) => Expr.ofTupleFromSeq(elements)
+      case _ => quotes.reflect.report.errorAndAbort("Expected literal varargs")
 
   /** Matches a tuple while preserving its precise element types.
    *
