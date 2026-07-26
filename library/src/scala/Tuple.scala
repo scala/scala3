@@ -361,9 +361,8 @@ object Tuple {
       case Varargs(elements) => Expr.ofTupleFromSeq(elements)
       case _ => quotes.reflect.report.errorAndAbort("Expected literal varargs")
 
-  /** Binary compatibility bridge for the 3.9.0-RC1 empty-tuple extractor. */
-  @targetName("unapply")
-  def unapplyLegacy(x: EmptyTuple): true = true
+  /** Matches an empty tuple. */
+  def unapply(x: EmptyTuple): true = true
 
   // These overloads cannot be replaced by a generic `unapply[T <: Tuple](x: T): x.type`.
   // Such an extractor is selected for an abstract `Tuple`, whose product shape is not
