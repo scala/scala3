@@ -134,13 +134,8 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
       def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
         previouslyConstructedClassBType(internalName).get.info.nestedClasses
 
-      def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
+      def getClassIfNested(internalName: InternalName): Option[ClassBType] =
         previouslyConstructedClassBType(internalName).filter(_.isNestedClass)
-      }
-
-      def raiseError(msg: String, sig: String, e: Option[Throwable]): Unit = {
-        // don't crash on invalid generic signatures
-      }
     }
     c.visit(classNode)
     (c.declaredInnerClasses, c.referredInnerClasses)
