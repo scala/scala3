@@ -248,7 +248,7 @@ object desugar {
   def caseDef(cdef: CaseDef)(using Context): CaseDef =
     if Feature.qualifiedTypesEnabled then
       val CaseDef(pat, guard, body) = cdef
-      val pat1 = DesugarQualifiedTypesInPatternMap().transform(pat)
+      val pat1 = desugarQualifiedTypesInPatternMap.transform(pat)
       cpy.CaseDef(cdef)(pat1, guard, body)
     else
       cdef
@@ -2656,7 +2656,7 @@ object desugar {
     else
       tpt
 
-  private class DesugarQualifiedTypesInPatternMap extends UntypedTreeMap:
+  private val desugarQualifiedTypesInPatternMap: UntypedTreeMap = new UntypedTreeMap:
     override def transform(tree: Tree)(using Context): Tree =
       tree match
         case Typed(ident @ Ident(name: TermName), tpt) =>
