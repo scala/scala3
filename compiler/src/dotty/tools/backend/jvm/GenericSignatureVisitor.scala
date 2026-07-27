@@ -105,7 +105,6 @@ abstract class GenericSignatureVisitor(nestedOnly: Boolean) {
 
         while (current == '.') {
           skip()
-          assert(!names.isEmpty)
           names.append('$')
           appendUntil(names, isClassNameEnd)
           visitInternalName(names.toString)
