@@ -1828,6 +1828,19 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     def paramBounds(tparam: Symbol): TypeBounds =
       tparam.info.substApprox(tparams2.asInstanceOf[List[Symbol]], args2).bounds
 
+    /** Does `bound` refer to `tparam`? Keeps the widening branches below off a
+     *  recursive `paramBounds(tparam)`; `LazyRef` counts as recursive to avoid
+     *  forcing class-header initialization.
+     */
+    def hasRecursiveBound(bound: Type, tparam: Symbol): Boolean =
+      val acc = new TypeAccumulator[Boolean]:
+        def apply(x: Boolean, tp: Type): Boolean =
+          x || (tp match
+            case _: LazyRef => true
+            case tp: TypeRef => tp.symbol eq tparam
+            case _ => foldOver(x, tp))
+      acc(false, bound)
+
     /** Test all arguments. Incomplete argument tests (according to isIncomplete) are deferred in
      *  the first run and picked up in the second.
      */
@@ -1895,10 +1908,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 // The captured reference could be illegal and cause a
                 // TypeError to be thrown in argDenot
                 false
-            else if (v > 0)
-              isSubType(paramBounds(tparam).hi, arg2)
-            else if (v < 0)
-              isSubType(arg2, paramBounds(tparam).lo)
+            // Existential widening (#16018): for covariant `F`, `F[? <: hi] <: F[hi]`
+            // (dually contravariant). Use the wildcard's own bound intersected
+            // (resp. unioned) with the declared one; recursive declared bounds
+            // stay on the conservative path.
+            else if v > 0 then
+              if hasRecursiveBound(tparam.info.bounds.hi, tparam) then false
+              else isSubType(arg1.hi & paramBounds(tparam).hi, arg2)
+            else if v < 0 then
+              if hasRecursiveBound(tparam.info.bounds.lo, tparam) then false
+              else isSubType(arg2, arg1.lo | paramBounds(tparam).lo)
             else
               false
           case _ =>
