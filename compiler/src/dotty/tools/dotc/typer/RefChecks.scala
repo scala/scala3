@@ -11,6 +11,7 @@ import util.Spans.*
 import scala.collection.{mutable, immutable}
 import ast.*
 import MegaPhase.*
+import inlines.Inlines
 import config.Printers.{checks, noPrinter, capt}
 import Decorators.*
 import OverridingPairs.isOverridingPair
@@ -281,6 +282,33 @@ object RefChecks {
     // Disabled for capture checking since traits can get different parameter refinements
     def checkInheritedTraitParameters: Boolean = true
   end OverridingPairsChecker
+
+  def implementationOf(clazz: ClassSymbol, mbr: Symbol)(using Context): PreDenotation =
+    val mbrDenot = mbr.asSeenFrom(clazz.thisType)
+    def isConcrete(sym: Symbol) = sym.exists && !sym.isOneOf(NotConcrete)
+    clazz.nonPrivateMembersNamed(mbr.name)
+      .filterWithPredicate(
+        impl => isConcrete(impl.symbol)
+          && withMode(Mode.IgnoreCaptures)(mbrDenot.matchesLoosely(impl, alwaysCompareTypes = true)))
+
+  def hasJavaErasedOverriding(clazz: ClassSymbol, sym: Symbol)(using Context): Boolean =
+    !erasurePhase.exists || // can't do the test, assume the best
+      atPhase(erasurePhase.next) {
+        clazz.info.nonPrivateMember(sym.name).hasAltWith { alt =>
+          alt.symbol.is(JavaDefined, butNot = Deferred) &&
+            !sym.owner.derivesFrom(alt.symbol.owner) &&
+            alt.matches(sym)
+        }
+    }
+
+  def ignoreDeferred(clazz: ClassSymbol, mbr: Symbol)(using Context): Boolean =
+    mbr.isType
+    || mbr.isSuperAccessor // not yet synthesized
+    || mbr.is(JavaDefined) && hasJavaErasedOverriding(clazz, mbr)
+    || mbr.is(Tracked)
+      // Tracked members correspond to existing val parameters, so they don't
+      // count as deferred. The val parameter could not implement the tracked
+      // refinement since it usually has a wider type.
 
   /** 1. Check all members of class `clazz` for overriding conditions.
    *  That is for overriding member M and overridden member O:
@@ -687,33 +715,9 @@ object RefChecks {
         else abstractErrors += msg
       }
 
-      def hasJavaErasedOverriding(sym: Symbol): Boolean =
-        !erasurePhase.exists || // can't do the test, assume the best
-          atPhase(erasurePhase.next) {
-            clazz.info.nonPrivateMember(sym.name).hasAltWith { alt =>
-              alt.symbol.is(JavaDefined, butNot = Deferred) &&
-                !sym.owner.derivesFrom(alt.symbol.owner) &&
-                alt.matches(sym)
-            }
-        }
+      def ignoreDeferred(mbr: Symbol): Boolean = RefChecks.ignoreDeferred(clazz, mbr)
 
-      def ignoreDeferred(mbr: Symbol) =
-        mbr.isType
-        || mbr.isSuperAccessor // not yet synthesized
-        || mbr.is(JavaDefined) && hasJavaErasedOverriding(mbr)
-        || mbr.is(Tracked)
-          // Tracked members correspond to existing val parameters, so they don't
-          // count as deferred. The val parameter could not implement the tracked
-          // refinement since it usually has a wider type.
-
-      def isImplemented(mbr: Symbol) =
-        val mbrDenot = mbr.asSeenFrom(clazz.thisType)
-        def isConcrete(sym: Symbol) = sym.exists && !sym.isOneOf(NotConcrete)
-        clazz.nonPrivateMembersNamed(mbr.name)
-          .filterWithPredicate(
-            impl => isConcrete(impl.symbol)
-              && withMode(Mode.IgnoreCaptures)(mbrDenot.matchesLoosely(impl, alwaysCompareTypes = true)))
-          .exists
+      def isImplemented(mbr: Symbol) = implementationOf(clazz, mbr).exists
 
       /** Filter out symbols from `syms` that are overridden by a symbol appearing later in the list.
        *  Symbols that are not overridden are kept. */
@@ -1434,6 +1438,61 @@ object RefChecks {
     }
   }
 
+  /** For every abstract member `sym` of `clazz` that is only implemented indirectly by an inline
+   *  method `impl` from an unrelated base class, synthesize a concrete override of `sym` in `clazz`
+   *  whose body inline-expands a call to `impl`.
+   *  Example case:
+   *  
+   *  ```scala
+   *  trait Settings:
+   *    inline def switch: Boolean = true
+   *
+   *  trait Inner:
+   *    def switch: Boolean
+   *    def go: String = if switch then "Yes" else "No" 
+   *  
+   *  object Outer extends Inner, Settings
+   *  ``` 
+   *
+   *  Without this, `switch`'s inline body is erased entirely (it doesn't override anything from `Settings`'s own
+   *  point of view), leaving `Outer` without any real implementation of `switch` and causing an
+   *  `AbstractMethodError` at runtime.
+   */
+  private def copyIndirectlyOverriddenInlineMethods(clazz: ClassSymbol, tree: Template)(using Context) = {
+    def retainedOverrideFor(clazz: ClassSymbol, sym: Symbol, impl: Symbol)(using Context): DefDef =
+      val newSym = impl.asTerm.copy(
+        owner = clazz,
+        name = sym.name.asTermName,
+        flags = (impl.flags &~ (Inline | Macro | Override | AbsOverride | Protected | Private))
+          | Override | (sym.flags & Protected),
+        info = sym.info.asSeenFrom(clazz.thisType, sym.owner),
+        privateWithin = sym.privateWithin,
+        coord = clazz.coord
+      ).asTerm.entered
+      val result = DefDef(newSym, prefss =>
+        atPhase(inliningPhase):
+          Inlines.inlineCall(This(clazz).select(impl).appliedToArgss(prefss).withSpan(clazz.span))(using ctx.withOwner(newSym)))
+      println(i"""--- retainedOverrideFor($clazz, $sym, $impl):
+              |${result.show}
+              |--- (raw tree) ---
+              |${result.toString}""")
+      result
+
+    val indirectInlineOverrides =
+      for
+        bc <- clazz.baseClasses
+        sym <- bc.info.decls.toList
+        if sym.is(DeferredTerm) && !ignoreDeferred(clazz, sym)
+        impl = implementationOf(clazz, sym).toDenot(clazz.thisType).symbol
+        if impl.exists
+          && !impl.owner.flags.is(Flags.Inline) // let's not interfere with how inline traits handle things
+          && !impl.allOverriddenSymbols.contains(sym)
+          && impl.isInlineMethod
+      yield retainedOverrideFor(clazz, sym, impl)
+
+    if indirectInlineOverrides.isEmpty then tree
+    else cpy.Template(tree)(body = tree.body ++ indirectInlineOverrides)
+  }
 
 }
 import RefChecks.*
@@ -1464,7 +1523,13 @@ import RefChecks.*
  *  Unlike in Scala 2.x not-private members keep their name. It is
  *  up to the backend to find a unique expanded name for them. The
  *  rationale to do name changes that late is that they are very fragile.
-
+ *  
+ *  5. It copies the implementation of inline methods that only indirectly override                                 
+ *    an abstract member (i.e. only when combined with an unrelated base class/trait in some other                               
+ *    class), since such methods are otherwise erased entirely, leaving no implementation in the                                 
+ *    classfile. The implementation is added to the first class in which the indirect
+ *    override becomes detectable.
+ * 
  *  todo: But RefChecks is not done yet. It's still a somewhat dirty port from the Scala 2 version.
  *  todo: move untrivial logic to their own mini-phases
  */
@@ -1520,7 +1585,7 @@ class RefChecks extends MiniPhase { thisPhase =>
     checkCompanionNameClashes(cls)
     checkAllOverrides(cls)
     checkImplicitNotFoundAnnotation.template(cls.classDenot)
-    tree
+    copyIndirectlyOverriddenInlineMethods(cls, tree)
   } catch {
     case ex: TypeError =>
       report.error(ex, tree.srcPos)
