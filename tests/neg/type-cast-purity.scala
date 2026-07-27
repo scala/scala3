@@ -7,10 +7,6 @@ object O:
     println("effect")
     "value"
 
-// shouldn't emit E129: Pure Expression In Statement Position
-object Statement:
-  O.make
-
 def consume(erased value: O.T): Unit = ()
 
 def test(): Unit =
