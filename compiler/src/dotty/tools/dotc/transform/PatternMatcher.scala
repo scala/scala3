@@ -373,7 +373,7 @@ object PatternMatcher {
       def unapplyPlan(unapp: Tree, args: List[Tree]): Plan = {
         def caseClass = unapp.symbol.owner.linkedClass
         lazy val caseAccessors = caseClass.caseAccessors
-        val unappType = unapp.tpe.widen.stripNamedTuple
+        val unappType = unapp.tpe.widen.stripNamedTuple.simplified
 
         def isSyntheticScala2Unapply(sym: Symbol) =
           sym.is(Synthetic) && sym.owner.is(Scala2x)
