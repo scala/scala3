@@ -384,7 +384,7 @@ abstract class Source extends Iterator[Char] with Closeable {
     val line  = Position line pos
     val col   = Position column pos
 
-    out.println("%s:%d:%d: %s%s%s^".format(descr, line, col, msg, lineNum(line), spaces(col - 1)))
+    out.println(s"$descr:$line:$col: $msg${lineNum(line)}${spaces(col - 1)}^")
   }
 
   /**
