@@ -467,15 +467,9 @@ object GenericSignatures {
   }
 
 
-  // only refer to type params that will actually make it into the sig, this excludes:
-  // * type parameters appearing in method parameters
-  // * type members not visible in an enclosing template
+  // only refer to type params that will actually make it into the sig, i.e., where `sym` is declared by `initialSymbol` or by one of its owners
   private def isTypeParameterInSig(sym: Symbol, initialSymbol: Symbol)(using Context) =
-    !sym.maybeOwner.isTypeParam &&
-      sym.isTypeParam && (
-      sym.isContainedIn(initialSymbol.topLevelClass) ||
-        (initialSymbol.is(Method) && initialSymbol.typeParams.contains(sym))
-      )
+    sym.isTypeParam && initialSymbol.ownersIterator.exists(_.typeRef <:< sym.owner.typeRef)
 
   // @M #2585 when generating a java generic signature that includes
   // a selection of an inner class p.I, (p = `pre`, I = `cls`) must

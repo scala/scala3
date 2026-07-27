@@ -1,4 +1,4 @@
 public scala.PartialFunction MyAbstract.MyTrait$$handler()
 public scala.PartialFunction MyAbstract.MyTrait$$handler()
 public void MyAbstract.MyTrait$_setter_$MyTrait$$handler_$eq(scala.PartialFunction)
-public void MyAbstract.MyTrait$_setter_$MyTrait$$handler_$eq(scala.PartialFunction<MyTrait$Event<java.lang.Object>, MyTrait$State<java.lang.Object, java.lang.Object>>)
+public void MyAbstract.MyTrait$_setter_$MyTrait$$handler_$eq(scala.PartialFunction<MyTrait$Event<D>, MyTrait$State<S, D>>)
