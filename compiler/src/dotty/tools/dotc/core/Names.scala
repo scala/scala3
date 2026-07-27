@@ -33,6 +33,16 @@ object Names {
     /** A type for names of the same kind as this name */
     type ThisName <: Name
 
+    /** A packed encoding of this name's function-name classification
+     *  (FunctionN, ContextFunctionN, ImpureFunctionN, ...), computed and
+     *  decoded by NameOps. 0 means not yet computed. The classification is
+     *  a pure function of the name and names are interned for the lifetime
+     *  of the process, so the cache can never go stale; racy initialization
+     *  is benign since all threads compute the same value.
+     */
+    @sharable // because it's just a cache for performance
+    private[core] var myFunKind: Int = 0
+
     /** Is this name a type name? */
     def isTypeName: Boolean
 
@@ -225,7 +235,7 @@ object Names {
 
     override def is(kind: NameKind): Boolean = {
       val thisKind = this.info.kind
-      thisKind == kind ||
+      (thisKind eq kind) || // `eq` since NameKind has no `equals` override; avoids the virtual dispatch on this hot path
       !shadows(thisKind, kind) && underlying.is(kind)
     }
 
@@ -541,6 +551,29 @@ object Names {
           enterIfNew(cs, offset, len)
       }
 
+    def enterIfNewAscii(bs: Array[Byte], offset: Int, len: Int): SimpleName =
+      Stats.record(statsItem("put"))
+      val myTable = currentTable // could be outdated under parallel execution
+      var idx = hashValueAscii(bs, offset, len) & (myTable.length - 1)
+      var name: SimpleName | Null = myTable(idx).asInstanceOf[SimpleName | Null]
+      while name != null do
+        if name.nn.length == len && Names.equalsAscii(name.nn.start, bs, offset, len) then
+          return name.nn
+        Stats.record(statsItem("miss"))
+        idx = (idx + 1) & (myTable.length - 1)
+        name = myTable(idx).asInstanceOf[SimpleName | Null]
+      Stats.record(statsItem("addEntryAt"))
+      synchronized {
+        if (myTable eq currentTable) && myTable(idx) == null then
+          name = SimpleName(nc, len)
+          ensureCapacity(nc + len)
+          copyAscii(bs, offset, chrs, nc, len)
+          nc += len
+          addEntryAt(idx, name.nn)
+        else
+          enterIfNewAscii(bs, offset, len)
+      }
+
     addEntryAt(0, EmptyTermName: @unchecked)
   end NameTable
 
@@ -559,6 +592,17 @@ object Names {
     hash
   }
 
+  /** The hash of an ASCII name made from bytes bs[offset..offset+len-1]. */
+  private def hashValueAscii(bs: Array[Byte], offset: Int, len: Int): Int = {
+    var i = offset
+    var hash = 0
+    while (i < len + offset) {
+      hash = 31 * hash + bs(i)
+      i += 1
+    }
+    hash
+  }
+
   /** Is (the ASCII representation of) name at given index equal to
    *  cs[offset..offset+len-1]?
    */
@@ -567,6 +611,30 @@ object Names {
     while ((i < len) && (chrs(index + i) == cs(offset + i)))
       i += 1
     i == len
+  }
+
+  /** Is name at given index equal to the ASCII bytes bs[offset..offset+len-1]? */
+  private def equalsAscii(index: Int, bs: Array[Byte], offset: Int, len: Int): Boolean = {
+    var i = 0
+    while ((i < len) && (chrs(index + i) == bs(offset + i).toChar))
+      i += 1
+    i == len
+  }
+
+  /** Are all bytes in bs[offset..offset+len-1] single-byte UTF-8 characters? */
+  private def isAscii(bs: Array[Byte], offset: Int, len: Int): Boolean = {
+    var i = offset
+    while (i < len + offset && bs(i) >= 0) i += 1
+    i == len + offset
+  }
+
+  /** Copy ASCII bytes to chars without UTF-8 decoding. */
+  private def copyAscii(bs: Array[Byte], offset: Int, dst: Array[Char], dstOffset: Int, len: Int): Unit = {
+    var i = 0
+    while (i < len) {
+      dst(dstOffset + i) = bs(offset + i).toChar
+      i += 1
+    }
   }
 
   /** Create a term name from the characters in cs[offset..offset+len-1].
@@ -585,8 +653,10 @@ object Names {
    *  Assume they are already encoded.
    */
   def termName(bs: Array[Byte], offset: Int, len: Int): SimpleName = {
-    val chars = Codec.fromUTF8(bs, offset, len)
-    termName(chars, 0, chars.length)
+    if isAscii(bs, offset, len) then nameTable.enterIfNewAscii(bs, offset, len)
+    else
+      val chars = Codec.fromUTF8(bs, offset, len)
+      termName(chars, 0, chars.length)
   }
 
   /** Create a type name from the UTF8 encoded bytes in bs[offset..offset+len-1].

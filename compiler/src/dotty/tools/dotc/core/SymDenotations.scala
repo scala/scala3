@@ -1328,14 +1328,18 @@ object SymDenotations {
      */
     final def companionModule(using Context): Symbol =
       if (is(Module)) sourceModule
-      else if registeredCompanion.isAbsent() then NoSymbol
-      else registeredCompanion.sourceModule
+      else
+        val companion = registeredCompanion.denot
+        if companion.isAbsent() then NoSymbol
+        else companion.sourceModule
 
     private def companionType(using Context): Symbol =
       if (is(Package)) NoSymbol
       else if (is(ModuleVal)) moduleClass.denot.companionType
-      else if registeredCompanion.isAbsent() then NoSymbol
-      else registeredCompanion
+      else
+        val companion = registeredCompanion.denot
+        if companion.isAbsent() then NoSymbol
+        else companion.symbol
 
     /** The class with the same (type-) name as this module or module class,
      *  and which is also defined in the same scope and compilation unit.

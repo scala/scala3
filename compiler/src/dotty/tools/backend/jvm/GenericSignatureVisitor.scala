@@ -274,28 +274,32 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
 
   // we are only interested in the class references in the descriptor, so we can skip over
   // primitives and the brackets of array descriptors
-  def visitDescriptor(desc: String): Unit = (desc.charAt(0): @switch) match {
-    case '(' =>
-      var i = 1
-      while (i < desc.length) {
-        if (desc.charAt(i) == 'L') {
-          val start = i + 1 // skip the L
-          var seenDollar = false
-          while ({val ch = desc.charAt(i); seenDollar ||= (ch == '$'); ch != ';'}) i += 1
-          if (seenDollar)
-            visitInternalName(desc, start, i)
+  def visitDescriptor(desc: String): Unit = {
+    if (desc.indexOf('$') < 0) return
+
+    (desc.charAt(0): @switch) match {
+      case '(' =>
+        var i = 1
+        while (i < desc.length) {
+          if (desc.charAt(i) == 'L') {
+            val start = i + 1 // skip the L
+            var seenDollar = false
+            while ({val ch = desc.charAt(i); seenDollar ||= (ch == '$'); ch != ';'}) i += 1
+            if (seenDollar)
+              visitInternalName(desc, start, i)
+          }
+          // skips over '[', ')', primitives
+          i += 1
         }
-        // skips over '[', ')', primitives
-        i += 1
-      }
 
-    case 'L' =>
-      visitInternalName(desc, 1, desc.length - 1)
+      case 'L' =>
+        visitInternalName(desc, 1, desc.length - 1)
 
-    case '[' =>
-      visitInternalNameOrArrayReference(desc)
+      case '[' =>
+        visitInternalNameOrArrayReference(desc)
 
-    case _ => // skip over primitive types
+      case _ => // skip over primitive types
+    }
   }
 
   def visitConstant(const: AnyRef): Unit = const match {
@@ -320,4 +324,3 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
     visitDescriptor(handle.getDesc)
   }
 }
-

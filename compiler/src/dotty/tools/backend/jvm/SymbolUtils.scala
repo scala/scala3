@@ -5,6 +5,7 @@ import dotty.tools.dotc.core.*
 import Contexts.*
 import Symbols.*
 import Phases.*
+import SymDenotations.*
 import NameKinds.{LazyBitMapName, LazyLocalName}
 import dotty.tools.dotc.core.Names.TermName
 import dotty.tools.dotc.core.StdNames.nme
@@ -36,27 +37,31 @@ object SymbolUtils:
        *  TODO: remove the special handing of `LazyBitMapName` once we swtich to
        *        the new lazy val encoding: https://github.com/scala/scala3/issues/7140
        */
-      private def isStaticModuleField(using Context): Boolean =
-        sym.owner.isStaticModuleClass && sym.isField && !sym.name.is(LazyBitMapName) && !sym.name.is(LazyLocalName)
+      private def isStaticModuleField(denot: SymDenotation)(using Context): Boolean =
+        denot.owner.isStaticModuleClass && isField(denot) && !denot.name.is(LazyBitMapName) && !denot.name.is(LazyLocalName)
 
       def isStaticMember(using Context): Boolean =
         // guard against no symbol cause this code is executed to select which call type(static\dynamic) to use to call array.clone
         (sym ne NoSymbol) &&
-        (sym.is(JavaStatic) || sym.isScalaStatic || sym.isStaticModuleField)
+        {
+          val denot = sym.denot
+          denot.is(JavaStatic) || sym.isScalaStatic || isStaticModuleField(denot)
+        }
 
       /**
       * True for module classes of modules that are top-level or owned only by objects. Module classes
       * for such objects will get a MODULE$ flag and a corresponding static initializer.
       */
       def isStaticModuleClass(using Context): Boolean =
-        sym.is(Module) && {
+        val denot = sym.denot
+        denot.is(Module) && {
           // scalac uses atPickling here
           // this would not work if modules are created after pickling
           // for example by specialization
-          val original = toDenot(sym).initial
+          val original = denot.initial
           val validity = original.validFor
           atPhase(validity.lastPhaseId) {
-            toDenot(sym).isStatic
+            original.isStatic
           }
         }
       
@@ -64,9 +69,10 @@ object SymbolUtils:
         // used to populate the EnclosingMethod attribute.
         // it is very tricky in presence of classes(and anonymous classes) defined inside supper calls.
         if (sym.exists) {
-          val validity = toDenot(sym).initial.validFor
+          val original = sym.denot.initial
+          val validity = original.validFor
           atPhase(validity.lastPhaseId) {
-            toDenot(sym).lexicallyEnclosingClass
+            original.lexicallyEnclosingClass
           }
         } else NoSymbol
 
@@ -75,7 +81,10 @@ object SymbolUtils:
       * such objects.
       */
       def isTopLevelModuleClass(using Context): Boolean =
-        sym.is(ModuleClass) &&
+        sym.denot.is(ModuleClass) &&
         atPhase(flattenPhase) {
-          toDenot(sym).owner.is(PackageClass)
+          sym.denot.owner.denot.is(PackageClass)
         }
+
+      private def isField(denot: SymDenotation)(using Context): Boolean =
+        denot.isTerm && !denot.isOneOf(Method | PhantomSymbol | NonMember | Package)

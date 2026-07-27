@@ -17,6 +17,15 @@ class NameBuffer extends TastyBuffer(10000) {
   import NameBuffer.*
 
   private val nameRefs = new mutable.LinkedHashMap[Name, NameRef]
+  private val stringLiteralRefs = new mutable.HashMap[String, NameRef]
+  private val utf8NameRefs = new mutable.HashMap[String, NameRef]
+  private val nameEntries = new mutable.ArrayBuffer[Name | String]
+
+  private def addEntry(entry: Name | String): NameRef = {
+    val ref = NameRef(nameEntries.size)
+    nameEntries += entry
+    ref
+  }
 
   def nameIndex(name: Name): NameRef = {
     val name1 = name.toTermName
@@ -43,15 +52,42 @@ class NameBuffer extends TastyBuffer(10000) {
             nameIndex(original)
           case _ =>
         }
-        val ref = NameRef(nameRefs.size)
+        val ref = name1 match
+          case name: SimpleName =>
+            val value = simpleNameValue(name)
+            stringLiteralRefs.get(value) match
+              case Some(ref) => ref
+              case None =>
+                val ref = addEntry(name1)
+                utf8NameRefs(value) = ref
+                ref
+          case _ =>
+            addEntry(name1)
         nameRefs(name1) = ref
         ref
     }
   }
 
-  def utf8Index(value: String): NameRef =
-    import Decorators.toTermName
-    nameIndex(value.toTermName)
+  /** Reserve a UTF8 name-table entry for a raw string, keyed by the string
+   *  itself rather than by an interned `Name`. Source paths (`utf8Index`,
+   *  `PositionPickler.pickleSource`) and TASTy string constants all funnel
+   *  through here so that, e.g., the `@SourceFile` annotation argument, the
+   *  position source path, and the `SOURCEFILEattr` value still collapse to a
+   *  single entry without allocating a global `TermName`.
+   */
+  def stringLiteralIndex(value: String): NameRef =
+    stringLiteralRefs.get(value) match
+      case Some(ref) => ref
+      case None =>
+        val ref = utf8NameRefs.getOrElse(value, {
+          val ref = addEntry(value)
+          utf8NameRefs(value) = ref
+          ref
+        })
+        stringLiteralRefs(value) = ref
+        ref
+
+  def utf8Index(value: String): NameRef = stringLiteralIndex(value)
 
   private inline def withLength(inline op: Unit, lengthWidth: Int = 1): Unit = {
     val lengthAddr = currentAddr
@@ -75,6 +111,15 @@ class NameBuffer extends TastyBuffer(10000) {
         -paramSig
     }
     writeInt(encodedValue)
+  }
+
+  private def pickleUtf8String(value: String): Unit = {
+    writeByte(NameTags.UTF8)
+    val bytes =
+      if value.isEmpty then new Array[Byte](0)
+      else Codec.toUTF8(value)
+    writeNat(bytes.length)
+    writeBytes(bytes, bytes.length)
   }
 
   def pickleNameContents(name: Name): Unit = {
@@ -118,11 +163,21 @@ class NameBuffer extends TastyBuffer(10000) {
 
   override def assemble(): Unit = {
     var i = 0
-    for (name, ref) <- nameRefs do
-      val ref = nameRefs(name)
-      assert(ref.index == i)
+    for entry <- nameEntries do
+      entry match
+        case name: Name =>
+          assert(nameRefs(name).index == i)
+          pickleNameContents(name)
+        case value: String =>
+          assert(stringLiteralRefs(value).index == i)
+          pickleUtf8String(value)
       i += 1
-      pickleNameContents(name)
+    assert(i == nameEntries.size)
+    val refs = new mutable.HashSet[Int]
+    refs.sizeHint(nameRefs.size + stringLiteralRefs.size)
+    nameRefs.valuesIterator.foreach(ref => refs += ref.index)
+    stringLiteralRefs.valuesIterator.foreach(ref => refs += ref.index)
+    assert(refs.size == nameEntries.size)
   }
 }
 
@@ -130,4 +185,8 @@ object NameBuffer {
   private val maxIndexWidth = 3  // allows name indices up to 2^21.
   private val payloadBitsPerByte = 7 // determined by nat encoding in TastyBuffer
   private val maxNumInByte = (1 << payloadBitsPerByte) - 1
+
+  private def simpleNameValue(name: SimpleName): String =
+    if name.length == 0 then ""
+    else new String(chrs, name.start, name.length)
 }

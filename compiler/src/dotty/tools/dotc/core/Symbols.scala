@@ -94,6 +94,21 @@ object Symbols extends SymUtils {
     private var lastDenot: SymDenotation = uninitialized
     private var checkedPeriod: Period = Nowhere
 
+    /** A cache for `SourceLanguage(this)`, which is stable for a whole run:
+     *  the language a symbol was defined in does not change between phases
+     *  (see the comment in `SourceLanguage.apply`). Keyed by run id since the
+     *  symbol can be re-completed with different flags in a later run.
+     */
+    private var mySourceLanguage: SourceLanguage | Null = null
+    private var mySourceLanguageRunId: RunId = NoRunId
+
+    private[core] final def cachedSourceLanguage(runId: RunId): SourceLanguage | Null =
+      if mySourceLanguageRunId == runId then mySourceLanguage else null
+
+    private[core] final def setCachedSourceLanguage(language: SourceLanguage, runId: RunId): Unit =
+      mySourceLanguage = language
+      mySourceLanguageRunId = runId
+
     private[core] def invalidateDenotCache(): Unit = { checkedPeriod = Nowhere }
 
     /** Set the denotation of this symbol
@@ -108,7 +123,7 @@ object Symbols extends SymUtils {
     /** The current denotation of this symbol */
     final def denot(using Context): SymDenotation = {
       util.Stats.record("Symbol.denot")
-      if checkedPeriod == ctx.period then lastDenot
+      if checkedPeriod.contains(ctx.period) then lastDenot
       else computeDenot(lastDenot)
     }
 
@@ -117,14 +132,25 @@ object Symbols extends SymUtils {
       // the JIT (reputedly, cutoff is at 35 bytes)
       util.Stats.record("Symbol.computeDenot")
       val now = ctx.period
-      checkedPeriod = now
-      if lastd.validFor.contains(now) then lastd else recomputeDenot(lastd)
+      val vf = lastd.validFor
+      if vf.contains(now) then { checkedPeriod = vf; lastd }
+      else { checkedPeriod = now; recomputeDenot(lastd) }
+    }
+
+    protected final def validLastDenot(using Context): SymDenotation | Null = {
+      val lastd = lastDenot
+      val vf = lastd.validFor
+      if vf.contains(ctx.period) then { checkedPeriod = vf; lastd }
+      else null
     }
 
     /** Overridden in NoSymbol */
     protected def recomputeDenot(lastd: SymDenotation)(using Context): SymDenotation = {
       util.Stats.record("Symbol.recomputeDenot")
-      val newd = lastd.current.asInstanceOf[SymDenotation]
+      val fast = lastd.nextInRunIfFast(ctx.period)
+      val newd =
+        if fast == null then lastd.current.asInstanceOf[SymDenotation]
+        else fast.asInstanceOf[SymDenotation]
       if newd.exists || lastd.initial.validFor.firstPhaseId <= ctx.phaseId then
         lastDenot = newd
       else
@@ -181,10 +207,8 @@ object Symbols extends SymUtils {
         // periods check out OK. But once a package member is overridden it is not longer
         // valid. If the option would be removed, the check would be no longer needed.
 
-    final def isTerm(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isTerm
-    final def isType(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isType
+    final def isTerm(using Context): Boolean = lastDenot.isTerm
+    final def isType(using Context): Boolean = lastDenot.isType
     final def asTerm(using Context): TermSymbol = {
       assert(isTerm, s"asTerm called on not-a-Term $this" );
       asInstanceOf[TermSymbol]
@@ -541,7 +565,9 @@ object Symbols extends SymUtils {
     }
 
     final def classDenot(using Context): ClassDenotation =
-      denot.asInstanceOf[ClassDenotation]
+      val lastd = validLastDenot
+      if lastd == null then denot.asInstanceOf[ClassDenotation]
+      else lastd.asInstanceOf[ClassDenotation]
 
     override protected def prefixString: String = "ClassSymbol"
   }
