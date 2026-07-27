@@ -1,3 +1,4 @@
+// test: -jvm 17+
 package tests.warn.i22298_separ;
 
 public sealed abstract class AbstractSealed_1 permits A, B, C {}
