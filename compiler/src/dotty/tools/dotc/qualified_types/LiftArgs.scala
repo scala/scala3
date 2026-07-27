@@ -23,13 +23,13 @@ final class LiftArgs extends MiniPhase:
   override def isRunnable(using Context) = super.isRunnable && Feature.qualifiedTypesEnabled
 
   override def transformApply(tree: Apply)(using Context): Tree =
+    if !tree.args.exists(QualifiedTypes.readSkolemIndexAnnot(_).isDefined) then
+      return tree
+
     val skolemOwner = QualifiedTypes.skolemOwner
     val argSkolemIds: List[Option[(Symbol, Int)]] =
       tree.args.map: arg =>
         QualifiedTypes.readSkolemIndexAnnot(arg).map((skolemOwner, _))
-
-    if argSkolemIds.forall(_.isEmpty) then
-      return tree
 
     val usedSkolemIds = mutable.Set[(Symbol, Int)]()
     tree.args.foreach: arg =>
