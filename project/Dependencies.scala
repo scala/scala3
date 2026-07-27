@@ -10,7 +10,8 @@ object Dependencies {
   val `jackson-dataformat-yaml` =
     "com.fasterxml.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
-  private val flexmarkVersion = "0.64.8"
+  // Freeze on 0.62.x as 0.64.0 requires Java 11
+  private val flexmarkVersion = "0.62.2"
 
   val flexmarkDeps = Seq(
     "com.vladsch.flexmark" % "flexmark" % flexmarkVersion,
