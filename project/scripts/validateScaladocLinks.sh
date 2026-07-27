@@ -41,8 +41,9 @@ IGNORE_URLS="${IGNORE_URLS},/dl.acm.org/"
 # nightlyOf links to potentially not yet existing pages
 IGNORE_URLS="${IGNORE_URLS},/docs.scala-lang.org\/scala3\/reference\//"
 
-# Status code 0 = timeouts, connection refused, DNS errors; ignore so CI does not flake
-IGNORE_STATUS_CODES="0"
+# Status code 0 = timeouts, connection refused, DNS errors; ignore so CI does not flake.
+# 502/503 = transient upstream errors (valid pages that occasionally fail under load).
+IGNORE_STATUS_CODES="0,502,503"
 
 # Takes too much time (~30 min) to validate all subdirs in api/scala; only package scala is checked
 IGNORE_FILES='/api\/scala\/[^/]+\//'
