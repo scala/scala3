@@ -18,3 +18,10 @@ Known design debts to pay off:
 4. **Two notions of "a type's qualifier facts".** `selectAssumptions.facts` is a near-copy of `typeAssumptions.rec` minus selfification, prefix recursion, and term assumptions. Unify into one parameterized traversal so the rule set lives in one place.
 
 Suggested end state: write the environment judgment as a small set of inference rules (declared-qualifier, skolem-equality, rhs-transparency, result-type, prefix, minus in-progress) and shape the code so each rule is one function.
+
+## Always-on overhead
+
+1. **Shave the remaining always-on hook cost for qualifier-free code.** After the 2026-07-27 prefilter fixes, all measured compile-time benchmarks are at parity with upstream; what remains is a +0.2–0.5% allocation excess and suspects below the local measurement floor (same-jar flag A/B has a ~±1.5% JIT code-layout noise floor, so only CI can price these). Candidate sub-items, roughly by expected payoff:
+   - **Per-run monotonic gating** (`ccEnabledSomewhere`-style): skip all gated hooks — most importantly `QualifierContext.withFact`'s per-`if`-branch `ctx.fresh` — until any qualifier has been seen in the run (source syntax, language import, or unpickled `QualifiedAnnotation`). Caveat: a run whose *first* qualifier contact happens while typing an `if` branch (e.g. forcing a qualified signature from the branch body) would miss that branch's guard fact and could report a spurious unprovable-qualifier error; flipping the flag during Namer indexing / import completion shrinks the window but does not close it.
+   - **`TreeUnpickler` annotation owner contexts**: every `ANNOTATEDtype` read allocates `ctx.withOwner(ctx.owner.topLevelClass)` plus an owner-chain walk (TreeUnpickler +46% relative in tastyQuery profiles, though invisible in wall time even on scalaz). Memoize the rebased context per unpickler while (source, mode, top-level class) are unchanged, or rebase only for `@qualified` annotation trees if the class can be peeked before reading.
+   - **Merge `withFact` with `nullableContextIf`'s fresh context** in `typedIf`, so a branch allocates at most one wrapper context instead of up to two.
