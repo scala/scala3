@@ -10,10 +10,10 @@ import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.toTermName
 import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, Private, Trait}
-import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
+import dotty.tools.dotc.core.Phases.{Phase, erasurePhase, flattenPhase, lambdaLiftPhase, picklerPhase}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.{StdNames, Types}
-import dotty.tools.dotc.core.Types.{JavaArrayType, Type, TypeRef, abstractTermNameFilter}
+import dotty.tools.dotc.core.Types.{AppliedType, JavaArrayType, Type, TypeRef, abstractTermNameFilter}
 
 import scala.annotation.tailrec
 import scala.tools.asm
@@ -135,7 +135,10 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
         previouslyConstructedClassBType(internalName).get.info.nestedClasses
 
       def getClassIfNested(internalName: InternalName): Option[ClassBType] =
-        previouslyConstructedClassBType(internalName).filter(_.isNestedClass)
+        // It's important to call `.get` here instead of using `.filter`,
+        // since a missing ClassBType means we did something wrong!
+        val c = previouslyConstructedClassBType(internalName).get
+        Option.when(c.isNestedClass)(c)
     }
     c.visit(classNode)
     (c.declaredInnerClasses, c.referredInnerClasses)
@@ -172,6 +175,20 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     // if `C` inherits from `non-sealed A` which itself inherits from `sealed B permits A`, then having `C` inherit from `B` directly is illegal.
     val allBaseClasses = classSym.directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
     val interfaces = classSym.directlyInheritedTraits.filter(!allBaseClasses(_)).map(classBTypeFromSymbol)
+
+    // We need to make sure the symbol->BType cache contains all classes, including unused type parameters that are only emitted in signatures,
+    // otherwise we won't be able to parse our own signatures when emitting inner class attributes.
+    // This bit of code could be removed if we collected inner class attributes as we emit code rather than at the end,
+    // and thus didn't need to parse the signatures we emit, but that adds its own complications.
+    val unerasedParents = atPhase(erasurePhase) { classSym.info.parents }
+    unerasedParents.foreach {
+      case AppliedType(_, args) => args.foreach(tp =>
+        val argSym = tp.classSymbol
+        if argSym != NoSymbol && !argSym.isPrimitiveValueClass && !defn.NotRuntimeClasses.contains(argSym) && argSym != defn.ArrayClass then
+          classBTypeFromSymbol(argSym)
+      )
+      case _ => ()
+    }
 
     val flags = BCodeUtils.javaFlags(classSym)
 
