@@ -135,10 +135,11 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
         previouslyConstructedClassBType(internalName).get.info.nestedClasses
 
       def getClassIfNested(internalName: InternalName): Option[ClassBType] =
-        // It's important to call `.get` here instead of using `.filter`,
-        // since a missing ClassBType means we did something wrong!
-        val c = previouslyConstructedClassBType(internalName).get
-        Option.when(c.isNestedClass)(c)
+        // A missing ClassBType here means we did something wrong!
+        previouslyConstructedClassBType(internalName) match
+          case Some(c) => if c.isNestedClass then Some(c) else None
+          case None =>
+            throw new AssertionError("Unknown name while collecting nested classes: " + internalName)
     }
     c.visit(classNode)
     (c.declaredInnerClasses, c.referredInnerClasses)
@@ -180,14 +181,14 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     // otherwise we won't be able to parse our own signatures when emitting inner class attributes.
     // This bit of code could be removed if we collected inner class attributes as we emit code rather than at the end,
     // and thus didn't need to parse the signatures we emit, but that adds its own complications.
+    def force(tp: Type) =
+      val argSym = tp.classSymbol
+      if argSym != NoSymbol && !argSym.isPrimitiveValueClass && !defn.NotRuntimeClasses.contains(argSym) && argSym != defn.ArrayClass then
+        classBTypeFromSymbol(argSym)
     val unerasedParents = atPhase(erasurePhase) { classSym.info.parents }
     unerasedParents.foreach {
-      case AppliedType(_, args) => args.foreach(tp =>
-        val argSym = tp.classSymbol
-        if argSym != NoSymbol && !argSym.isPrimitiveValueClass && !defn.NotRuntimeClasses.contains(argSym) && argSym != defn.ArrayClass then
-          classBTypeFromSymbol(argSym)
-      )
-      case _ => ()
+      case a @ AppliedType(_, args) => args.foreach(force)
+      case t => ()
     }
 
     val flags = BCodeUtils.javaFlags(classSym)
