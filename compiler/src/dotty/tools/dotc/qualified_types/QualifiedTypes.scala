@@ -344,6 +344,7 @@ object QualifiedTypes:
    *  to a constant and the qualifier is dropped, falling back to the parent.
    */
   private def avoidInQualifiers(tp: Type)(avoid: Type => Boolean)(using Context): Type =
+    if !containsQualifier(tp) then return tp
     val avoidMap = new ApproximatingTypeMap:
       def apply(t: Type): Type = t match
         case QualifiedType(parent, qualifier) =>
