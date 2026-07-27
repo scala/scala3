@@ -135,8 +135,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
         previouslyConstructedClassBType(internalName).get.info.nestedClasses
 
       def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
-        val c = previouslyConstructedClassBType(internalName).get
-        Option.when(c.isNestedClass)(c)
+        previouslyConstructedClassBType(internalName).filter(_.isNestedClass)
       }
 
       def raiseError(msg: String, sig: String, e: Option[Throwable]): Unit = {

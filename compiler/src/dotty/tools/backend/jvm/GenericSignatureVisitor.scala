@@ -106,26 +106,31 @@ abstract class GenericSignatureVisitor(nestedOnly: Boolean) {
 
     @tailrec private def referenceTypeSignature(): Unit = getCurrentAndSkip() match {
       case 'L' =>
-        var names: java.lang.StringBuilder | Null = null
-
         val start = index
         var seenDollar = false
         while (!isClassNameEnd(current)) {
           seenDollar ||= current == '$'
           index += 1
         }
+
+        // OPT: avoid allocations when only a top-level class is encountered
+        val topLevelIndex = index
+        lazy val names = {
+          val n = new java.lang.StringBuilder(32)
+          n.append(sig, start, topLevelIndex)
+          n
+        }
+
         if ((current == '.' || seenDollar) || !nestedOnly) {
-          // OPT: avoid allocations when only a top-level class is encountered
-          names = new java.lang.StringBuilder(32)
-          names.append(sig, start, index)
           visitInternalName(names.toString)
         }
         typeArguments()
 
         while (current == '.') {
           skip()
-          names.nn.append('$')
-          appendUntil(names.nn, isClassNameEnd)
+          assert(!names.isEmpty)
+          names.append('$')
+          appendUntil(names, isClassNameEnd)
           visitInternalName(names.toString)
           typeArguments()
         }
