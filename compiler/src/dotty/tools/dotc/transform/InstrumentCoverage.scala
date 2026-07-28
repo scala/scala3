@@ -83,23 +83,10 @@ object LiftCoverage extends LiftImpure:
     if liftingArgs then noLiftArg(expr)
     else isUnsafeAssumeSeparate(expr) || super.noLift(expr)
 
-  /** Coverage lifting runs after type checking, so preserve the already valid type of
-   *  ordinary values. Methodic types and unstable singleton types still require the
-   *  usual lifting adaptation.
-   */
+  /** Coverage runs post-typer, so skip deskolemization and preserve valid skolems. */
   override protected def liftedExprType(expr: tpd.Tree)(using Context): Type =
-    val dealiased = expr.tpe.dealias
-    val valueType = dealiased match
-      case ref: TermRef if ref.prefix.exists && ref.underlying.isInstanceOf[ExprType] =>
-        ref.prefix.memberInfo(ref.symbol).widenExpr
-      case singleton: SingletonType if singleton.isStable =>
-        singleton
-      case _: SingletonType =>
-        NoType
-      case _ =>
-        expr.tpe
-    if valueType.isValueType then valueType
-    else super.liftedExprType(expr)
+    val tp = expr.tpe
+    if tp.isStable then tp else tp.widen
 
   private def markSelectedReceiverDef(
     defs: mutable.ListBuffer[tpd.Tree],
