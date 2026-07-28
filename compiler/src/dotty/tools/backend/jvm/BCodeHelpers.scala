@@ -603,7 +603,13 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
       // value types. This is needed to fix #7416.
       null
     } else {
-      val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
+      // We must ensure all classes used in generic signatures are known to the loader so they can later be resolved
+      // if necessary; and to do so, we must have a context with flattened names, because the callback is called with an erasure-time context.
+      // The one exception is `scala.Array`, which can end up in a signature like `class C extends T[Array]` with `trait T[C[_]]`.
+      val loadingCtx = ctx.withPhase(flattenPhase.next)
+      val jsOpt = GenericSignatures.javaSig(sym, memberTpe, c => {
+        if c != defn.ArrayClass then bTypeLoader.classBTypeFromSymbol(c)(using loadingCtx)
+      })
       if (jsOpt != null && ctx.settings.XverifySignatures.value) {
         verifySignature(sym, jsOpt.toString)
       }

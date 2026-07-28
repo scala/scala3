@@ -76,7 +76,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     assert(
       classSym != defn.NothingClass && classSym != defn.NullClass,
       s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
-    assert(classSym != defn.ArrayClass || compilingArray, classSym)
+    assert(classSym != defn.ArrayClass || compilingArray, s"Found $classSym while compiling ${ctx.compilationUnit.source.file.name}")
     assert(!classSym.isPrimitiveValueClass || compilingPrimitive, s"Found $classSym while compiling ${ctx.compilationUnit.source.file.name}")
 
     classBType(classSym.javaBinaryName)(ct => createClassInfo(ct, classSym.asClass))
@@ -158,7 +158,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
       else t
     }
     assert(
-      if (classSym == defn.ObjectClass)
+      if (classSym == defn.ObjectClass || classSym == defn.AnyKindClass)
         superClassSym == NoSymbol
       else if (classSym.is(Trait))
         superClassSym == defn.ObjectClass
@@ -176,20 +176,6 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     // if `C` inherits from `non-sealed A` which itself inherits from `sealed B permits A`, then having `C` inherit from `B` directly is illegal.
     val allBaseClasses = classSym.directlyInheritedTraits.iterator.flatMap(_.asClass.baseClasses.drop(1)).toSet
     val interfaces = classSym.directlyInheritedTraits.filter(!allBaseClasses(_)).map(classBTypeFromSymbol)
-
-    // We need to make sure the symbol->BType cache contains all classes, including unused type parameters that are only emitted in signatures,
-    // otherwise we won't be able to parse our own signatures when emitting inner class attributes.
-    // This bit of code could be removed if we collected inner class attributes as we emit code rather than at the end,
-    // and thus didn't need to parse the signatures we emit, but that adds its own complications.
-    def force(tp: Type) =
-      val argSym = tp.classSymbol
-      if argSym != NoSymbol && !argSym.isPrimitiveValueClass && !defn.NotRuntimeClasses.contains(argSym) && argSym != defn.ArrayClass then
-        classBTypeFromSymbol(argSym)
-    val unerasedParents = atPhase(erasurePhase) { classSym.info.parents }
-    unerasedParents.foreach {
-      case a @ AppliedType(_, args) => args.foreach(force)
-      case t => ()
-    }
 
     val flags = BCodeUtils.javaFlags(classSym)
 
