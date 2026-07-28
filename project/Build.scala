@@ -2274,6 +2274,7 @@ object Build {
             -- "UTF16Test.scala" // refutable pattern match
             -- "CharsetTest.scala" // bogus @tailrec that Scala 2 ignores but Scala 3 flags as an error
             -- "ClassDiffersOnlyInCaseTest.scala" // looks like the Scala 3 compiler itself does not deal with that
+            -- "RangesTest.scala" // overrides Numeric#toInt/toLong/toFloat/toDouble as regular methods, which no longer override the extension methods in scala.math.Numeric
             )).get
 
           ++ (dir / "shared/src/test/require-sam" ** "*.scala").get
