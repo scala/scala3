@@ -10,7 +10,7 @@ object Outer extends Inner, Settings:
   def test1 = go1
   def test2 = go2
 
-@main def main(): Unit =
+@main def Test(): Unit =
   println(Outer.test1)
   println(Outer.test2)
   val a: Inner = Outer
