@@ -11,7 +11,7 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 object Dependencies {
   val asm = "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1"
 
-  val coursier = "io.get-coursier" %% "coursier" % "2.1.24"
+  val coursier = "io.get-coursier" %% "coursier" % "2.1.25-M26"
   val coursierInterface = "io.get-coursier" % "interface" % "1.0.29-M4"
 
   private val flexmarkVersion = "0.64.8"
@@ -32,11 +32,11 @@ object Dependencies {
 
   val guava = "com.google.guava" % "guava" % "33.6.0-jre"
 
-  private val jacksonVersion = "3.1.2"
+  private val jacksonVersion = "3.2.1"
   val jacksonDatabind = "tools.jackson.core" % "jackson-databind" % jacksonVersion
   val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
-  private val jlineVersion = "4.0.14"
+  private val jlineVersion = "4.3.1"
   val jlineReader = "org.jline" % "jline-reader" % jlineVersion
   val jlineTerminal = "org.jline" % "jline-terminal" % jlineVersion
   val jlineTerminalJni = "org.jline" % "jline-terminal-jni" % jlineVersion
@@ -49,7 +49,7 @@ object Dependencies {
 
   val lz4 = "org.lz4" % "lz4-java" % "1.8.1"
 
-  private val mtagsVersion = "1.6.7"
+  private val mtagsVersion = "1.6.8"
   val mtagsInterfaces = "org.scalameta" % "mtags-interfaces" % mtagsVersion
   val mtagsShared = "org.scalameta" % s"mtags-shared_${Versions.scala2Version}" % mtagsVersion
 
