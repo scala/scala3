@@ -2638,6 +2638,12 @@ object Build {
     )
     .settings(
       Windows / name := "scala",
+      // Windows/packageName feeds the WiX core-feature id: WindowsPlugin truncates
+      // the sanitized id to its last 38 chars, and with the default long name
+      // (e.g. scala3-3.10.0-RC1-x86_64-pc-win32) the truncation can leave an id
+      // starting with a digit, which WiX rejects (error CNDL0014). A short stable
+      // name keeps the id legal and version-independent.
+      Windows / packageName := "scala3",
       // Windows/version is used to create ProductInfo - it requires a version without any -RC suffixes
       // If not explicitly overridden it would try to use `dottyVersion` assigned to `dist-win-x86_64/version`
       Windows / version    := developedVersion,
