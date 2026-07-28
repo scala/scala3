@@ -32,3 +32,35 @@ class MyBase extends Base:
   type Value = Int
 
 val _: ExtractValue[MyBase] = 42
+
+// Captured and fixed (ordinary, non-captured) refinements mixed freely
+trait SomeTrait:
+  type Concrete
+  type Abstract
+
+type MT2[x <: SomeTrait] = x match
+  case SomeTrait { type Concrete = Int; type Abstract = a } => a
+
+class ConcreteIntTrait extends SomeTrait:
+  type Concrete = Int
+  type Abstract = Boolean
+
+val _: MT2[ConcreteIntTrait] = true
+
+// A captured name shadows a same-named type from the enclosing scope
+// instead of being resolved against it (matches the pre-existing var-pattern
+// behavior for type-argument position, e.g. `case List[c] => c`).
+type c = Int
+
+type ShadowElem[X] = X match
+  case List[c] => c
+
+val _: ShadowElem[List[Boolean]] = true // `c` is captured fresh as Boolean, not type-tested against `c = Int`
+
+type ShadowMT[x <: X] = x match
+  case X { type A = c } => c
+
+class MyXBoolean extends X:
+  type A = Boolean
+
+val _: ShadowMT[MyXBoolean] = true // same shadowing behavior for refinement captures
