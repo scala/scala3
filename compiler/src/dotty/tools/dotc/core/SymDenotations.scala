@@ -2014,7 +2014,7 @@ object SymDenotations {
                     p.prefix.classSymbol
                       .orElse(p.prefix.termSymbol.moduleClass)
                       .orElse(defn.RootClass)
-                  val stub = newStubSymbol(stubOwner, p.name, CompilationUnitInfo(symbol.associatedFile))
+                  val stub = newStubSymbol(stubOwner, p.name)
                   report.error(BadSymbolicReference(stub.denot), symbol.srcPos)
                 case _ =>
                   assert(ignoreBadParent, s"$this has non-class parent: $p")
