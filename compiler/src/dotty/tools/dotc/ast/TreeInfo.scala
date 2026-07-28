@@ -479,6 +479,21 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case _ => false
   }
 
+  def isConsumeAnnot(tree: Tree)(using Context): Boolean = unsplice(tree) match
+    case Apply(
+      Select(
+        New(
+          Select(
+            Select(
+              Select(
+                Select(
+                  Ident(nme.ROOTPKG),
+                  nme.scala),
+                nme.caps),
+              nme.internal),
+            tpnme.consume)), _), _) => true
+    case _ => false
+
   /**  The largest subset of {NoInits, PureInterface} that a
    *   trait or class enclosing this statement can have as flags.
    */
