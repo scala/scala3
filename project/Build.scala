@@ -669,7 +669,7 @@ object Build {
         "org.jline" % "jline-reader" % "3.29.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.29.0",
         "org.jline" % "jline-terminal-jni" % "3.29.0", // needed for Windows
-        ("io.get-coursier" %% "coursier" % "2.0.16" % Test).cross(CrossVersion.for3Use2_13),
+        ("io.get-coursier" %% "coursier" % "2.1.24" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
       // For convenience, change the baseDirectory when running the compiler
@@ -1250,7 +1250,7 @@ object Build {
     Seq(
       libraryDependencies ++= Seq(
         "org.lz4" % "lz4-java" % "1.8.1",
-        "io.get-coursier" % "interface" % "1.0.18",
+        "io.get-coursier" % "interface" % "1.0.29-M4",
         ("org.scalameta" % "mtags-interfaces" % mtagsVersion)
           .exclude("org.eclipse.lsp4j","org.eclipse.lsp4j")
           .exclude("org.eclipse.lsp4j","org.eclipse.lsp4j.jsonrpc"),
@@ -1551,7 +1551,7 @@ object Build {
 
       libraryDependencies ++= Seq(
         "org.scala-js" %% "scalajs-linker" % scalaJSVersion % Test cross CrossVersion.for3Use2_13,
-        "org.scala-js" %% "scalajs-env-nodejs" % "1.3.0" % Test cross CrossVersion.for3Use2_13,
+        "org.scala-js" %% "scalajs-env-nodejs" % "1.5.0" % Test cross CrossVersion.for3Use2_13,
       ),
 
       // Change the baseDirectory when running the tests
@@ -1604,7 +1604,7 @@ object Build {
   lazy val `scaladoc-js-common` = project.in(file("scaladoc-js/common")).
     enablePlugins(DottyJSPlugin).
     dependsOn(`scala3-library-bootstrappedJS`).
-    settings(libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0"))
+    settings(libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.1"))
 
   lazy val `scaladoc-js-main` = project.in(file("scaladoc-js/main")).
     enablePlugins(DottyJSPlugin).
@@ -1620,7 +1620,7 @@ object Build {
     settings(
       Test / fork := false,
       scalaJSUseMainModuleInitializer := true,
-      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.0")
+      libraryDependencies += ("org.scala-js" %%% "scalajs-dom" % "2.8.1")
     )
 
   def generateDocumentation(configTask: Def.Initialize[Task[GenerationConfig]]) =
@@ -1679,8 +1679,8 @@ object Build {
         bundleCSS.taskValue
       ),
       libraryDependencies ++= Dependencies.flexmarkDeps ++ Seq(
-        "nl.big-o" % "liqp" % "0.8.2",
-        "org.jsoup" % "jsoup" % "1.17.2", // Needed to process .html files for static site
+        "nl.big-o" % "liqp" % "0.9.2.3",
+        "org.jsoup" % "jsoup" % "1.22.2", // Needed to process .html files for static site
         Dependencies.`jackson-dataformat-yaml`,
 
         "com.github.sbt" % "junit-interface" % "0.13.3" % Test,
