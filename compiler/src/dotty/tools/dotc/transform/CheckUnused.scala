@@ -329,7 +329,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
    *  Also check that every enclosing element is not a synthetic member
    *  of the sym's case class companion module.
    *
-   *  The LHS of a current Assign is never recorded as a reference (that is, a usage).
+   *  A reference to the LHS of a current Assign is not recorded as a usage, nor is a reference
+   *  in its RHS that does not escape into a call that might observe the value.
    */
   def refUsage(sym: Symbol, pos: SrcPos)(using Context): Unit =
     if !refInfos.hasRef(sym) then
@@ -342,10 +343,20 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
            && owner.is(Synthetic)
            && owner.owner.eq(sym.companionModule.moduleClass)
         || outer.tree.match
-           case Assign(lhs, _) => lhs.symbol.eq(sym) && outer.tree.srcPos.sourcePos.contains(pos.sourcePos)
+           case Assign(lhs, rhs) =>
+                lhs.symbol.eq(sym)
+             && outer.tree.srcPos.sourcePos.contains(pos.sourcePos)
+             && !mightObserve(rhs.asInstanceOf[tpd.Tree], pos)
            case _ => false
       then
         refInfos.addRef(sym)
+
+  private def mightObserve(rhs: tpd.Tree, pos: SrcPos)(using Context): Boolean =
+    rhs.existsSubTree: t =>
+      t.srcPos.sourcePos.contains(pos.sourcePos) && t.match
+        case t: GenericApply => !isKnownPureOp(funPart(t).symbol)
+        case _: DefDef => true
+        case _ => false
 
   /** Look up a reference in enclosing contexts to determine whether it was introduced by a definition or import.
    *  The binding of highest precedence must then be correct.

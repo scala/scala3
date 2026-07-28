@@ -687,15 +687,16 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       cls.is(Case) && cls.isNoInitsRealClass
     }
 
+  /** True for operations known not to observe their arguments, such as primitive arithmetic. */
+  def isKnownPureOp(sym: Symbol)(using Context): Boolean =
+    sym.owner.isPrimitiveValueClass
+    || sym.owner == defn.StringClass
+    || defn.pureMethods.contains(sym)
+
   /** Is the application `tree` with function part `fn` known to be pure?
    *  Function value and arguments can still be impure.
    */
   def isPureApply(tree: Tree, fn: Tree)(using Context): Boolean =
-    def isKnownPureOp(sym: Symbol) =
-      sym.owner.isPrimitiveValueClass
-      || sym.owner == defn.StringClass
-      || defn.pureMethods.contains(sym)
-
     tree.tpe.isInstanceOf[ConstantType] && tree.symbol != NoSymbol && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
     || fn.symbol.isStableMember && fn.symbol.isConstructor // constructors of no-inits classes are stable
     || isPureSyntheticCaseApply(fn.symbol)
