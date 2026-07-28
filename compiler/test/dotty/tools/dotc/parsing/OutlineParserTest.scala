@@ -20,14 +20,11 @@ class OutlineParserTest extends DottyTest {
   }
 
   @Test def `outline parser handles simple string interpolation`: Unit = {
-    // Simple $name works because it's just an identifier, not a block expression
     val code = """val x = s"hello $name""""
     parseOutline(code)
   }
 
   @Test def `outline parser handles string interpolation with block expression`: Unit = {
-    // This fails because ${...} is parsed as a block expression,
-    // and OutlineParser.blockExpr() returns EmptyTree
     val code = """val x = s"hello ${name.toString}""""
     parseOutline(code)
   }
