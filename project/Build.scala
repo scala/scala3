@@ -669,7 +669,7 @@ object Build {
         "org.jline" % "jline-reader" % "3.29.0",   // used by the REPL
         "org.jline" % "jline-terminal" % "3.29.0",
         "org.jline" % "jline-terminal-jni" % "3.29.0", // needed for Windows
-        ("io.get-coursier" %% "coursier" % "2.1.24" % Test).cross(CrossVersion.for3Use2_13),
+        ("io.get-coursier" %% "coursier" % "2.1.25-M25" % Test).cross(CrossVersion.for3Use2_13),
       ),
 
       // For convenience, change the baseDirectory when running the compiler
