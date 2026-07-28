@@ -6123,7 +6123,7 @@ object Types extends TypeUtils {
         approxWildcardArgs(tp)
     end samParent
 
-    def samClass(tp: Type)(using Context): Symbol = tp match
+    private def samClass(tp: Type, ignoreFinalOrSealed: Boolean)(using Context): Symbol = tp match
       case tp: ClassInfo =>
         val cls = tp.cls
         def takesNoArgs(tp: Type) =
@@ -6135,28 +6135,32 @@ object Types extends TypeUtils {
           takesNoArgs(tp)
           && (!cls.is(Trait) || takesNoArgs(tp.parents.head))
         def isInstantiable =
-          !cls.isOneOf(FinalOrSealed) && (tp.appliedRef <:< tp.selfType)
+          (ignoreFinalOrSealed || !cls.isOneOf(FinalOrSealed)) && (tp.appliedRef <:< tp.selfType)
         if noArgsNeeded && isInstantiable then cls
         else NoSymbol
       case tp: AppliedType =>
-        samClass(tp.superType)
+        samClass(tp.superType, ignoreFinalOrSealed)
       case tp: TypeRef =>
-        samClass(tp.underlying)
+        samClass(tp.underlying, ignoreFinalOrSealed)
       case tp: RefinedType =>
-        samClass(tp.underlying)
+        samClass(tp.underlying, ignoreFinalOrSealed)
       case tp: TypeBounds =>
-        samClass(tp.underlying)
+        samClass(tp.underlying, ignoreFinalOrSealed)
       case tp: TypeVar =>
-        samClass(tp.underlying)
+        samClass(tp.underlying, ignoreFinalOrSealed)
       case tp: AnnotatedType =>
-        samClass(tp.underlying)
+        samClass(tp.underlying, ignoreFinalOrSealed)
       case tp: FlexibleType =>
-        samClass(tp.underlying)
+        samClass(tp.underlying, ignoreFinalOrSealed)
       case _ =>
         NoSymbol
 
     def unapply(tp: Type)(using Context): Option[(MethodType, Type)] =
-      val cls = samClass(tp)
+      unapply(tp, false)
+
+    /** Optionally ignores `final` and `sealed`, so that error messages can point to this specific problem. */
+    def unapply(tp: Type, ignoreFinalOrSealed: Boolean)(using Context): Option[(MethodType, Type)] =
+      val cls = samClass(tp, ignoreFinalOrSealed)
       if cls.exists then
         val absMems =
           if tp.isRef(defn.PartialFunctionClass) then
