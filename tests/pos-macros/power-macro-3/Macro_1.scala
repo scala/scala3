@@ -9,15 +9,11 @@ private def powerCode[Num: Type](x: Expr[Num], n: Expr[Int])(using Expr[Numeric[
 private def powerCode[Num: Type](x: Expr[Num], n: Int)(using num: Expr[Numeric[Num]])(using Quotes): Expr[Num] =
   if (n == 0) '{ $num.one }
   else if (n % 2 == 0) '{
-    withGiven($num) {
-      val y = $num.times($x, $x)
-      ${ powerCode('y, n / 2) }
-    }
+    given Numeric[Num] = $num
+    val y = $x * $x
+    ${ powerCode('y, n / 2) }
   }
   else '{
-    withGiven($num) {
-      $num.times($x, ${powerCode(x, n - 1)})
-    }
+    given Numeric[Num] = $num
+    $x * ${powerCode(x, n - 1)}
   }
-
-inline def withGiven[U, T](inline x: T)(inline body: T ?=> U): U = body(using x)
