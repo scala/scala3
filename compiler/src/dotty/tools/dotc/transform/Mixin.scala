@@ -164,8 +164,13 @@ class Mixin extends MiniPhase with SymTransformer { thisPhase =>
           val setter = makeTraitSetter(decl.asTerm)
           setter.validFor = thisPhase.validFor // validity of setter = next phase up to next transformer afterwards
           decls1.enter(setter)
-          // Re-create the setter from the unerased getter so we can have its unerased form for generic signatures
-          mixinGenericInfos(setter) = atPhase(erasurePhase) { makeTraitSetter(decl.asTerm).info }
+          // Only populate generic infos for non-private decls, since private ones may refer to private types,
+          // and are anyway not useful as only Scala code can access them
+          atPhase(erasurePhase) {
+            if !decl.is(Private) then
+              // Re-create the setter from the unerased getter so we can have its unerased form for generic signatures
+              mixinGenericInfos(setter) = makeTraitSetter(decl.asTerm).info
+          }
           modified = true
       if modified then
         sym.copySymDenotation(

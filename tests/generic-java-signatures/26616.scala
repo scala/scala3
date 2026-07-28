@@ -11,9 +11,16 @@ trait MyTrait[S, D]:
 
 abstract class MyAbstract[S, D] extends MyTrait[S, D]
 
+abstract class MyAbstract2[A, B] extends MyTrait[A, B]
+
 object Test:
   def main(args: Array[String]): Unit =
     classOf[MyAbstract[String, String]].getMethods.sortBy(_.getName).filter(_.getName.contains("handler")).foreach(m => {
       println(m)
       println(m.toGenericString)
     })
+    classOf[MyAbstract2[String, String]].getMethods.sortBy(_.getName).filter(_.getName.contains("handler")).foreach(m => {
+      println(m)
+      println(m.toGenericString)
+    })
+
