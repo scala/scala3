@@ -565,7 +565,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |    def should(right: => Unit)(implicit config: SRF): Unit = ()
         |    def in(f: => Unit)(implicit pos: Position): Unit = ()
         |  }
-        |  implicit def instancesString: Eq[String] with Semigroup[String] = ???
+        |  implicit def instancesString: Eq[String] & Semigroup[String] = ???
         |}
         |
         |trait Eq[A]
@@ -602,7 +602,7 @@ class InlayHintsSuite extends BaseInlayHintsSuite {
         |    def should(right: => Unit)(implicit config: SRF): Unit = ()
         |    def in(f: => Unit)(implicit pos: Position): Unit = ()
         |  }
-        |  implicit def instancesString: Eq[String] with Semigroup[String] = ???
+        |  implicit def instancesString: Eq[String] & Semigroup[String] = ???
         |}
         |
         |trait Eq[A]

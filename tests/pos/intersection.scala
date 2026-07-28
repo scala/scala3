@@ -33,10 +33,10 @@ object Test {
     def f: Any = ""
   }
 
-  val bc: B with C = new C with B {}
+  val bc: B & C = new C with B {}
 
-  def fooAB = (??? : A with B).f
+  def fooAB = (??? : A & B).f
   def fooAB1: Int = fooAB
-  def fooBA = (??? : B with A).f
+  def fooBA = (??? : B & A).f
   def fooBA1: Int = fooBA
 }
