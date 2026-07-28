@@ -5,21 +5,15 @@
 # Empty lines are ignored
 
 16583.scala
-applied_constructor_types.scala
 capt1.scala
-capture.scala
 colltest5
 gadt-ycheck.scala
 help.scala
 i10889.scala
 i11247.scala
-i11556.scala
 i12739.scala
 i14947.scala
 i15165.scala
-i15864.scala
-i18263.orig.scala
-i18263.scala
 i18589
 i19955a.scala
 i19955b.scala
@@ -30,9 +24,7 @@ i23179.scala
 i23489.scala
 i24039.scala
 i5039.scala
-i8623.scala
 i8900a3.scala
-i9228.scala
 minicheck.scala
 minicheck-toplevel.scala
 mt-scrutinee-widen3.scala
