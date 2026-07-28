@@ -197,13 +197,6 @@ object Symbols extends SymUtils {
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
-    /** Test whether symbol is private. This
-     *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
-     *  is a class that is not yet read.
-     */
-    final def isPrivate(using Context): Boolean =
-      lastDenot.flagsUNSAFE.is(Private)
-
     /** Is the symbol a pattern bound symbol?
      */
     final def isPatternBound(using Context): Boolean =
@@ -244,7 +237,7 @@ object Symbols extends SymUtils {
             if (this.is(Module)) this.moduleClass.validFor |= InitialPeriod
           }
           else owner.ensureFreshScopeAfter(phase)
-          assert(isPrivate || phase.changesMembers, i"$this entered in $owner at undeclared phase $phase")
+          assert(this.is(Private) || phase.changesMembers, i"$this entered in $owner at undeclared phase $phase")
           entered
         case _ => this
       }
@@ -265,7 +258,7 @@ object Symbols extends SymUtils {
       else {
         assert (!this.owner.is(Package))
         this.owner.asClass.ensureFreshScopeAfter(phase)
-        assert(isPrivate || phase.changesMembers, i"$this deleted in ${this.owner} at undeclared phase $phase")
+        assert(this.is(Private) || phase.changesMembers, i"$this deleted in ${this.owner} at undeclared phase $phase")
         drop()
       }
 

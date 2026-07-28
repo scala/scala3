@@ -9,7 +9,7 @@ import dotty.tools.backend.jvm.SymbolUtils.symExtensions
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.toTermName
-import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, Trait}
+import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, Private, Trait}
 import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.{StdNames, Types}
@@ -353,7 +353,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     else
       val staticForwarders = if classSym.is(Trait) then
         // !!! This logic duplicates PlainSkelBuilder::makeStaticForwarder, copy changes there !!!
-        classSym.info.decls.filter(s => s.isTerm && !s.isPrivate && !s.isStaticMember && s.name != nme.TRAIT_CONSTRUCTOR).map(s => {
+        classSym.info.decls.filter(s => s.isTerm && !s.is(Private) && !s.isStaticMember && s.name != nme.TRAIT_CONSTRUCTOR).map(s => {
           SymbolUtils.makeStatifiedDefSymbol(s.asTerm, SymbolUtils.traitSuperAccessorName(s).toTermName)
         })
       else Nil
