@@ -788,7 +788,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           // scala/bug#10290: qual can be `this.$outer()` (not just `this`), so we call genLoad (not just ALOAD_0)
           val superQualTK = genLoad(superQual)
           stack.push(superQualTK)
-          genLoadArguments(args, paramTKs(app))
+          genLoadArguments(args, if args.isEmpty then Nil else paramTKs(app))
           stack.pop()
           // The receiver in bytecode should be based on the call site qualifier type,
           // instead of method declaration owner class
@@ -826,7 +826,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
               bc.dup(generatedType)
               stack.push(rt)
               stack.push(rt)
-              genLoadArguments(args, paramTKs(app))
+              genLoadArguments(args, if args.isEmpty then Nil else paramTKs(app))
               stack.pop(2)
               genCallMethod(ctor, InvokeStyle.Special, app)
 
@@ -864,7 +864,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
             val savedStackSize = stack.recordSize()
             if invokeStyle.hasInstance then
               stack.push(genLoadQualifier(fun))
-            genLoadArguments(args, paramTKs(app))
+            genLoadArguments(args, if args.isEmpty then Nil else paramTKs(app))
             stack.restoreSize(savedStackSize)
 
             val DesugaredSelect(qual, name) = fun: @unchecked // fun is a Select, also checked in genLoadQualifier
@@ -1840,20 +1840,25 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       // scala/bug#10334: make sure that a lambda object for `T => U` has a method `apply(T)U`, not only the `(Object)Object`
       // version. Using the lambda a structural type `{def apply(t: T): U}` causes a reflective lookup for this method.
       val needsGenericBridge = samMethodType != instantiatedMethodType
-      val bridgeMethods = atPhase(erasurePhase){
-        samMethod.allOverriddenSymbols.toList
+      val bridgeMethods = atPhase(erasurePhase) {
+        val overridden = samMethod.allOverriddenSymbols
+        if overridden.hasNext then overridden.toList else Nil
       }
-      val overriddenMethodTypes = bridgeMethods.map(b => bTypeLoader.methodBTypeFromSymbol(b).toASMType)
 
       // any methods which `samMethod` overrides need bridges made for them
       // this is done automatically during erasure for classes we generate, but LMF needs to have them explicitly mentioned
       // so we have to compute them at this relatively late point.
-      val bridgeTypes = (
-        if (needsGenericBridge)
-          instantiatedMethodType +: overriddenMethodTypes
+      val bridgeTypes =
+        if bridgeMethods.isEmpty then
+          if needsGenericBridge then instantiatedMethodType :: Nil else Nil
         else
-          overriddenMethodTypes
-      ).distinct.filterNot(_ == samMethodType)
+          val overriddenMethodTypes = bridgeMethods.map(b => bTypeLoader.methodBTypeFromSymbol(b).toASMType)
+          (
+            if (needsGenericBridge)
+              instantiatedMethodType +: overriddenMethodTypes
+            else
+              overriddenMethodTypes
+          ).distinct.filterNot(_ == samMethodType)
 
       val needsBridges = bridgeTypes.nonEmpty
 

@@ -222,12 +222,18 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       currentTrace = after
     }
 
+    var lineNumberCleanupNeeded = OptimizerUtils.isDceDone(method)
+    var labelReachabilityCleanupNeeded = false
+
     /*
      * Runs the optimizations that depend on each other in a loop until reaching a fixpoint. See
      * comment in class [[LocalOpt]].
      *
      * Returns a pair of booleans (codeChanged, requireEliminateUnusedLocals).
      */
+    var dceCheckedLineNumbers = false
+    var hasLineNumbers = false
+
     def removalRound(
         requestNullness: Boolean,
         requestDCE: Boolean,
@@ -253,7 +259,17 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       val runDCE = (settings.optUnreachableCode && (requestDCE || nullnessOptChanged)) ||
         settings.optBoxUnbox ||
         settings.optCopyPropagation
-      val codeRemoved = if (runDCE) LocalOptImpls.removeUnreachableCodeImpl(method, ownerClassName, callGraph, optimizerUtils) else false
+      if (runDCE && !method.tryCatchBlocks.isEmpty)
+        labelReachabilityCleanupNeeded = true
+      val dceResult =
+        if (runDCE) {
+          val result = LocalOptImpls.removeUnreachableCodeImplResult(method, ownerClassName, callGraph, optimizerUtils)
+          dceCheckedLineNumbers = true
+          hasLineNumbers ||= LocalOptImpls.dceSawLineNumbers(result)
+          result
+        }
+        else 0
+      val codeRemoved = LocalOptImpls.dceRemovedCode(dceResult)
       traceIfChanged("dce")
 
       // BOX-UNBOX
@@ -326,7 +342,14 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
         storeLoadRemoved ||
         removeHandlersResult.handlerRemoved
 
-      val codeChanged = nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged || storesRemoved || intrinsicRewrittenByStaleStores || callInlinedByStaleStores || typeInsnChanged || intrinsicRewrittenByCasts || pushPopRemoved || storeLoadRemoved || removeHandlersResult.handlerRemoved || jumpsChanged
+      val removedOrRewrittenInstructions =
+        nullnessOptChanged || codeRemoved || boxUnboxChanged || copyPropChanged || storesRemoved ||
+        intrinsicRewrittenByStaleStores || callInlinedByStaleStores || typeInsnChanged ||
+        intrinsicRewrittenByCasts || pushPopRemoved || storeLoadRemoved || jumpsChanged
+      if (removedOrRewrittenInstructions)
+        lineNumberCleanupNeeded = true
+
+      val codeChanged = removedOrRewrittenInstructions || removeHandlersResult.handlerRemoved
       (codeChanged, requireEliminateUnusedLocals)
     }
 
@@ -351,10 +374,12 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       else false
     traceIfChanged("localVariables")
 
-    // The asm.MethodWriter writes redundant line numbers 1:1 to the classfile, so we filter them out
-    // Note that this traversal also cleans up `LABEL_REACHABLE_STATUS` flags that were added to Label's
-    // `stats` fields during `removeUnreachableCodeImpl`
-    val lineNumbersRemoved = removeEmptyLineNumbers(method)
+    // The asm.MethodWriter writes redundant line numbers 1:1 to the classfile, so we filter them out.
+    val lineNumbersRemoved =
+      if (lineNumberCleanupNeeded && (!dceCheckedLineNumbers || hasLineNumbers)) removeEmptyLineNumbers(method)
+      else
+        if (labelReachabilityCleanupNeeded) clearLabelReachableFlags(method)
+        false
     traceIfChanged("lineNumbers")
 
     // assert that local variable annotations are empty (we don't emit them) - otherwise we'd have
@@ -642,6 +667,11 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
 }
 
 object LocalOptImpls {
+  private final val DceCodeRemoved = 1
+  private final val DceLineNumbersSeen = 2
+
+  def dceRemovedCode(result: Int): Boolean = (result & DceCodeRemoved) != 0
+  def dceSawLineNumbers(result: Int): Boolean = (result & DceLineNumbersSeen) != 0
 
   /**
    * Remove unreachable code from a method.
@@ -650,7 +680,7 @@ object LocalOptImpls {
    * interpreter. This ensures that future analyses will not produce `null` frames. The inliner
    * depends on this property.
    *
-   * @return A set containing the eliminated instructions
+   * @return `true` if any instructions were removed
    */
   def minimalRemoveUnreachableCode(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph, optimizerUtils: OptimizerUtils): Boolean = {
     // In principle, for the inliner, a single removeUnreachableCodeImpl would be enough. But that
@@ -663,13 +693,13 @@ object LocalOptImpls {
     // handlers, see scaladoc of def methodOptimizations. Removing a live handler may render more
     // code unreachable and therefore requires running another round.
     def removalRound(): Boolean = {
-      val insnsRemoved = removeUnreachableCodeImpl(method, ownerClassName, callGraph, optimizerUtils)
+      val dceResult = removeUnreachableCodeImplResult(method, ownerClassName, callGraph, optimizerUtils)
+      val insnsRemoved = dceRemovedCode(dceResult)
       if (insnsRemoved) {
         val removeHandlersResult = removeEmptyExceptionHandlers(method)
         if (removeHandlersResult.liveHandlerRemoved) removalRound()
       }
-      // Note that `removeUnreachableCodeImpl` adds `LABEL_REACHABLE_STATUS` to label.status fields. We don't clean up
-      // this flag here (in `minimalRemoveUnreachableCode`), we rely on that being done later in `methodOptimizations`.
+      else clearExceptionHandlerStartReachability(method)
       insnsRemoved
     }
 
@@ -680,12 +710,16 @@ object LocalOptImpls {
   }
 
   /**
-   * Removes unreachable basic blocks, returns `true` if instructions were removed.
+   * Removes unreachable basic blocks and returns a bitset describing what the traversal found.
    *
-   * When this method returns, each `labelNode.getLabel` has a status set whether the label is live
-   * or not. This can be queried using `OptimizerUtils.isLabelReachable`.
+   * When this method returns, each try-block start label has a status set whether the label is live
+   * or not. This can be queried using `OptimizerUtils.isLabelReachable` until
+   * `removeEmptyExceptionHandlers` consumes and clears it.
    */
-  def removeUnreachableCodeImpl(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph, optimizerUtils: OptimizerUtils): Boolean = {
+  def removeUnreachableCodeImpl(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph, optimizerUtils: OptimizerUtils): Boolean =
+    dceRemovedCode(removeUnreachableCodeImplResult(method, ownerClassName, callGraph, optimizerUtils))
+
+  def removeUnreachableCodeImplResult(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph, optimizerUtils: OptimizerUtils): Int = {
     val size = method.instructions.size
 
     // queue of instruction indices where analysis should start
@@ -707,9 +741,12 @@ object LocalOptImpls {
     }
 
     val handlers = new Array[mutable.ArrayBuffer[TryCatchBlockNode]](size)
+    var handlerStarts: java.util.IdentityHashMap[LabelNode, java.lang.Boolean] | Null = null
     val tcbIt = method.tryCatchBlocks.iterator()
     while (tcbIt.hasNext) {
       val tcb = tcbIt.next()
+      if (handlerStarts == null) handlerStarts = new java.util.IdentityHashMap[LabelNode, java.lang.Boolean]()
+      handlerStarts.put(tcb.start, java.lang.Boolean.TRUE)
       var i = method.instructions.indexOf(tcb.start)
       val e = method.instructions.indexOf(tcb.end)
       while (i < e) {
@@ -791,9 +828,10 @@ object LocalOptImpls {
         insnHandlers.foreach(h => enqInsn(h.handler))
     }
 
-    def dce(): Boolean = {
+    def dce(): Int = {
       var i = 0
       var changed = false
+      var lineNumbersSeen = false
       val itr = method.instructions.iterator()
       while (itr.hasNext) {
         val insn = itr.next()
@@ -801,10 +839,13 @@ object LocalOptImpls {
 
         insn match {
           case l: LabelNode =>
-            // label nodes are not removed: they might be referenced for example in a LocalVariableNode
-            if (isLive) OptimizerUtils.setLabelReachable(l) else OptimizerUtils.clearLabelReachable(l)
+            // Label nodes are not removed: they might be referenced for example in a LocalVariableNode.
+            // removeEmptyExceptionHandlers only needs reachability for try-block start labels.
+            if (handlerStarts != null && handlerStarts.nn.containsKey(l))
+              if (isLive) OptimizerUtils.setLabelReachable(l) else OptimizerUtils.clearLabelReachable(l)
 
           case _: LineNumberNode =>
+            lineNumbersSeen = true
 
           case _ =>
             if (!isLive || insn.getOpcode == NOP) {
@@ -823,7 +864,7 @@ object LocalOptImpls {
         }
         i += 1
       }
-      changed
+      (if (changed) DceCodeRemoved else 0) | (if (lineNumbersSeen) DceLineNumbersSeen else 0)
     }
 
     dce()
@@ -864,11 +905,19 @@ object LocalOptImpls {
         if (!result.handlerRemoved) result = RemoveHandlersResult.HandlerRemoved
         if (!result.liveHandlerRemoved && OptimizerUtils.isLabelReachable(handler.start))
           result = RemoveHandlersResult.LiveHandlerRemoved
+        OptimizerUtils.clearLabelReachable(handler.start)
         handlersIter.remove()
       }
     }
+    clearExceptionHandlerStartReachability(method)
 
     result
+  }
+
+  private def clearExceptionHandlerStartReachability(method: MethodNode): Unit = {
+    val remainingHandlersIter = method.tryCatchBlocks.iterator
+    while (remainingHandlersIter.hasNext)
+      OptimizerUtils.clearLabelReachable(remainingHandlersIter.next().start)
   }
 
   sealed abstract class RemoveHandlersResult {
@@ -991,39 +1040,53 @@ object LocalOptImpls {
     }
   }
 
+  def clearLabelReachableFlags(method: MethodNode): Unit = {
+    val iterator = method.instructions.iterator
+    while (iterator.hasNext) {
+      iterator.next match {
+        case label: LabelNode => OptimizerUtils.clearLabelReachable(label)
+        case _ =>
+      }
+    }
+  }
+
   /**
    * Removes LineNumberNodes that don't describe any executable instructions.
-   *
-   * As a side effect, this traversal removes the `LABEL_REACHABLE_STATUS` flag from all label's
-   * `status` fields.
    *
    * This method expects (and asserts) that the `start` label of each LineNumberNode is the
    * lexically preceding label declaration.
    */
   def removeEmptyLineNumbers(method: MethodNode): Boolean = {
-    @tailrec
-    def isEmpty(node: AbstractInsnNode): Boolean = node.getNext match {
-      case null => true
-      case _: LineNumberNode => true
-      case n if n.getOpcode >= 0 => false
-      case n => isEmpty(n)
-    }
-
-    val initialSize = method.instructions.size
-    val iterator = method.instructions.iterator
+    var changed = false
     var previousLabel: LabelNode | Null = null
-    while (iterator.hasNext) {
-      iterator.next match {
+    var pendingLine: LineNumberNode | Null = null
+    var insn = method.instructions.getFirst
+    while (insn != null) {
+      val next = insn.getNext
+      insn match {
         case label: LabelNode =>
-          OptimizerUtils.clearLabelReachable(label)
           previousLabel = label
-        case line: LineNumberNode if isEmpty(line) =>
+
+        case line: LineNumberNode =>
           assert(line.start == previousLabel)
-          iterator.remove()
+          if (pendingLine != null) {
+            method.instructions.remove(pendingLine)
+            changed = true
+          }
+          pendingLine = line
+
+        case n if n.getOpcode >= 0 =>
+          pendingLine = null
+
         case _ =>
       }
+      insn = next
     }
-    method.instructions.size != initialSize
+    if (pendingLine != null) {
+      method.instructions.remove(pendingLine)
+      changed = true
+    }
+    changed
   }
 
   /**

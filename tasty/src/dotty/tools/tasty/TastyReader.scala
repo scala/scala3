@@ -61,7 +61,31 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   /** Read a 31-bit natural (nonnegative) integer number in big endian format, base 128, each digit being a byte.
    *  All bytes except the last one have bit 0x80 unset.
    */
-  def readNat(): Int = {
+  def readNat(): Int = readNatInt()
+
+  private def readNatInt(): Int = {
+    val ogBp = bp
+    var b = bytes(bp)
+    var x = b & 0x7f
+    bp += 1
+    if ((b & 0x80) != 0) return x
+
+    b = bytes(bp)
+    x = (x << 7) | (b & 0x7f)
+    bp += 1
+    if ((b & 0x80) != 0) return x
+
+    b = bytes(bp)
+    x = (x << 7) | (b & 0x7f)
+    bp += 1
+    if ((b & 0x80) != 0) return x
+
+    b = bytes(bp)
+    x = (x << 7) | (b & 0x7f)
+    bp += 1
+    if ((b & 0x80) != 0) return x
+
+    bp = ogBp
     val l = readLongNat()
     if (l > Int.MaxValue) {
       throw new UnpickleException(s"Expected a 31-bit nat, got: $l")
@@ -72,7 +96,31 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   /** Read a 32-bit integer number in 2's complement big endian format, base 128, each digit being a byte.
    *  All bytes except the last one have bit 0x80 unset.
    */
-  def readInt(): Int = {
+  def readInt(): Int = readInt32()
+
+  private def readInt32(): Int = {
+    val ogBp = bp
+    var b = bytes(bp)
+    var x = (b << 1).toByte >> 1 // sign extend with bit 6.
+    bp += 1
+    if ((b & 0x80) != 0) return x
+
+    b = bytes(bp)
+    x = (x << 7) | (b & 0x7f)
+    bp += 1
+    if ((b & 0x80) != 0) return x
+
+    b = bytes(bp)
+    x = (x << 7) | (b & 0x7f)
+    bp += 1
+    if ((b & 0x80) != 0) return x
+
+    b = bytes(bp)
+    x = (x << 7) | (b & 0x7f)
+    bp += 1
+    if ((b & 0x80) != 0) return x
+
+    bp = ogBp
     val l = readLongInt()
     val i = l.toInt
     if (i.toLong != l) {
@@ -138,7 +186,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   }
 
   /** Read a natural number and return as a NameRef */
-  def readNameRef(): NameRef = NameRef(readNat())
+  def readNameRef(): NameRef = NameRef(readNatInt())
 
   /** Read a natural number and return as an address */
   def readAddr(): Addr = Addr(readNat())
@@ -146,7 +194,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   /** Read a length number and return the absolute end address implied by it,
    *  given as <address following length field> + <length-value-read>.
    */
-  def readEnd(): Addr = addr(readNat() + bp)
+  def readEnd(): Addr = addr(readNatInt() + bp)
 
   /** Set read position to the one pointed to by `addr` */
   def goto(addr: Addr): Unit =

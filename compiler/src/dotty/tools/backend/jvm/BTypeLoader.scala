@@ -14,6 +14,7 @@ import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, pickl
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.{StdNames, Types}
 import dotty.tools.dotc.core.Types.{JavaArrayType, Type, TypeRef, abstractTermNameFilter}
+import dotty.tools.dotc.util.EqHashMap
 
 import scala.annotation.tailrec
 import scala.tools.asm
@@ -60,10 +61,32 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     specialBTypes.nn.getOrElse(sym, classBTypeFromSymbol(sym))
   }
 
+  /** Identity-keyed front cache for `classBTypeFromSymbol`. The method is called hundreds of
+   *  thousands of times per compile but resolves only a few thousand distinct class symbols,
+   *  and every call rebuilds `javaBinaryName` (a fresh string), hashes it, and probes the
+   *  string-keyed `classBTypeCache`. Caching the result by symbol identity skips all of that
+   *  on hits. Keyed by the symbol as passed in (before the JavaDefined-module normalization
+   *  below), so the linkedClass mapping is baked into the cached value, which is
+   *  deterministic within a run. A plain (non-concurrent) map is fine: unlike
+   *  `classBTypeCache`, this cache is only touched from the single-threaded code generation
+   *  path; the class writer threads computing stack map frames never call this method.
+   *  The lifetime is per-Run because BTypeLoader itself is a per-Run field of GenBCode.
+   */
+  private val symbolClassBTypeCache = new EqHashMap[Symbol, ClassBType](initialCapacity = 2048)
+
   /**
    * The ClassBType for a class symbol `sym`.
    */
   def classBTypeFromSymbol(classSym0: Symbol)(using Context): ClassBType = {
+    val cached = symbolClassBTypeCache.lookup(classSym0)
+    if cached != null then cached
+    else
+      val result = computeClassBTypeFromSymbol(classSym0)
+      symbolClassBTypeCache(classSym0) = result
+      result
+  }
+
+  private def computeClassBTypeFromSymbol(classSym0: Symbol)(using Context): ClassBType = {
     // For each java class, the scala compiler creates a class and a module (thus a module class).
     // If the symbol is a java module class, we use the java class instead. This ensures that the
     // ClassBType is created from the main class (instead of the module class).
