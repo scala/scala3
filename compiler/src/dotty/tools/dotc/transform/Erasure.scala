@@ -14,7 +14,7 @@ import core.Names.*
 import core.StdNames.*
 import core.NameOps.*
 import core.Periods.currentStablePeriod
-import core.NameKinds.{AdaptedClosureName, BodyRetainerName, DirectMethName}
+import core.NameKinds.{AdaptedClosureName, BodyRetainerName, DirectMethName, IndirectBodyRetainerSuffix}
 import core.Scopes.newScopeWith
 import core.Decorators.*
 import core.Constants.*
@@ -898,7 +898,8 @@ object Erasure {
      *  parameter of type `[]Object`.
      */
     override def typedDefDef(ddef: untpd.DefDef, sym: Symbol)(using Context): Tree =
-      if sym.isEffectivelyErased || sym.name.is(BodyRetainerName) then
+      if sym.isEffectivelyErased || sym.name.is(BodyRetainerName)
+         || sym.name.toString.endsWith(IndirectBodyRetainerSuffix) then
         erasedDef(sym)
       else
         val restpe = if sym.isConstructor then defn.UnitType else sym.info.resultType
@@ -1043,13 +1044,54 @@ object Erasure {
 
     override def typedStats(stats: List[untpd.Tree], exprOwner: Symbol)(using Context): (List[Tree], Context) = {
       // discard Imports first, since Bridges will use tree's symbol
-      val stats0 = addRetainedInlineBodies(stats.filter(!_.isInstanceOf[untpd.Import]))(using preErasureCtx)
+      val stats00 = stats.filter(!_.isInstanceOf[untpd.Import])
+      val stats0 = addRetainedInlineBodies(implementIndirectlyOverriddenInlines(stats00))(using preErasureCtx)
       val stats1 =
         if (takesBridges(ctx.owner)) new Bridges(ctx.owner.asClass, erasurePhase).add(stats0)
         else stats0
       val (stats2, finalCtx) = super.typedStats(stats1, exprOwner)
       (stats2.filterConserve(!_.isEmpty), finalCtx)
     }
+
+    /** For every stat that is a private `$indirectRetainedBody`-named helper, create the actual public,
+     *  concrete override of the abstract member it corresponds to, splicing in the helper's
+     *  already-fully-resolved body. Mirrors `addRetainedInlineBodies`, except the target method
+     *  doesn't exist yet as a statement here and must be created, not just matched by name.
+     *
+     *  The helper itself is subsequently mapped to the empty tree in `typedDefDef`, same as an
+     *  ordinary `$retainedBody` retainer.
+     */
+    private def implementIndirectlyOverriddenInlines(stats: List[untpd.Tree])(using Context): List[untpd.Tree] =
+      val newOverrides = stats.collect {
+        case stat: DefDef if stat.symbol.name.toString.endsWith(IndirectBodyRetainerSuffix) =>
+          val helperSym = stat.symbol
+          val cls = helperSym.owner.asClass
+          val origName = helperSym.name.toString.stripSuffix(IndirectBodyRetainerSuffix).toTermName
+          val sym =
+            cls.baseClasses.iterator
+              .map(_.info.decl(origName).symbol)
+              .find(s => s.exists && s.is(Flags.Deferred))
+              .getOrElse(NoSymbol)
+          if !sym.exists then
+            assert(false, i"illegal state - $stat retainer doesn't have a corresponding method")
+          else
+            val newSym = helperSym.asTerm.copy(
+              owner = cls,
+              name = origName,
+              flags = (helperSym.flags &~ Flags.Private) | Flags.Override | (sym.flags & Flags.Protected),
+              info = sym.info.asSeenFrom(cls.thisType, sym.owner),
+              privateWithin = sym.privateWithin,
+              coord = cls.coord
+            ).asTerm.entered
+            Some(DefDef(newSym, prefss =>
+              val mapBody = TreeTypeMap(
+                oldOwners = helperSym :: Nil,
+                newOwners = newSym :: Nil,
+                substFrom = untpd.allParamSyms(stat),
+                substTo   = prefss.flatten.map(_.symbol))
+              mapBody.transform(stat.rhs)))
+      }.flatten
+      stats ++ newOverrides
 
     /** Finally drops all (language-) imports in erasure.
      *  Since some of the language imports change the subtyping,
