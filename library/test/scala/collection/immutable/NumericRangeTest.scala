@@ -435,17 +435,19 @@ object NumericRangeTest {
       override def parseString(str: String): Option[NumericWrapper[T]] =
         tNum.parseString(str).map(NumericWrapper.apply)
 
-      override def toInt(x: NumericWrapper[T]): Int =
-        tNum.toInt(x.value)
+      extension (x: NumericWrapper[T]) {
+        override def toInt: Int =
+          tNum.toInt(x.value)
 
-      override def toLong(x: NumericWrapper[T]): Long =
-        tNum.toLong(x.value)
+        override def toLong: Long =
+          tNum.toLong(x.value)
 
-      override def toFloat(x: NumericWrapper[T]): Float =
-        tNum.toFloat(x.value)
+        override def toFloat: Float =
+          tNum.toFloat(x.value)
 
-      override def toDouble(x: NumericWrapper[T]): Double =
-        tNum.toDouble(x.value)
+        override def toDouble: Double =
+          tNum.toDouble(x.value)
+      }
 
       override def compare(x: NumericWrapper[T], y: NumericWrapper[T]): Int = tNum.compare(x.value, y.value)
     }

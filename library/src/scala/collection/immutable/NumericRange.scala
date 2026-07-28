@@ -556,7 +556,7 @@ object NumericRange {
 
   @SerialVersionUID(3L)
   private final class NumericRangeIterator[T](self: NumericRange[T], num: Integral[T]) extends AbstractIterator[T] with Serializable {
-    import num.mkNumericOps
+    import num.*
 
     private var _hasNext = !self.isEmpty
     private var _next: T = self.start
