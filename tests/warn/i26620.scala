@@ -47,3 +47,10 @@ object LocalDefEscape:
       def h = i
       sink(h)
       0
+
+object DifferentVarInRhs extends Parent:
+  private var spanFtIdx: Int = 0 // warn, mutated but never read
+  private var otherVar: Int = 0 // nowarn, mutated and read as argument
+  def advanceSpanTo(): Unit =
+    spanFtIdx = super.advanceSpanRange(otherVar)
+    otherVar = 1
