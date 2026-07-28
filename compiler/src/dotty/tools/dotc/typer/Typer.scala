@@ -2960,6 +2960,19 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val packageObjectName = desugar.packageObjectName(ctx.source)
           val topLevelClassSymbol = pkg.moduleClass.info.decls.lookup(packageObjectName.moduleClassName)
           topLevelClassSymbol.ensureCompleted()
+          // When sibling files in this package come from the classpath (TASTy),
+          // force their `<src>$package` classes now to avoid cross-unit cycles
+          // as in #25894: otherwise the first lookup on this package (e.g. an
+          // import qualifier at the top of this file) forces them during the
+          // import's completer, and their unpickling can chain through source
+          // exports back to the import itself.
+          if !pkg.isEffectiveRoot && pkg != defn.EmptyPackageVal then
+            pkg.moduleClass.denot match
+              case pcd: SymDenotations.PackageClassDenotation =>
+                for pobj <- pcd.packageObjs do
+                  if pobj.symbol.isDefinedInBinary then
+                    pobj.symbol.ensureCompleted()
+              case _ =>
           var stats1 = typedStats(tree.stats, pkg.moduleClass)._1
           if (!ctx.isAfterTyper)
             stats1 = stats1 ++ typedBlockStats(MainProxies.proxies(stats1))._1
