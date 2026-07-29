@@ -567,7 +567,7 @@ class TastyLoader(tastyFile: AbstractFile) extends SymbolLoader {
     ctx.settings.YretainTrees.value || ctx.settings.fromTasty.value
 }
 
-class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
+class SourcefileLoader(srcfile: AbstractFile) extends SymbolLoader {
   def description(using Context): String = "source file " + srcfile.toString
   def compilationUnitInfo: CompilationUnitInfo | Null = CompilationUnitInfo(srcfile)
   def doComplete(root: SymDenotation)(using Context): Unit =
