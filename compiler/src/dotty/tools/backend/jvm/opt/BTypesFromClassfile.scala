@@ -167,7 +167,7 @@ class BTypesFromClassfile(byteCodeRepository: BCodeRepository, bTypeLoader: BTyp
 
   /**
    * Build the InlineInfo for a class. For Scala classes, the information is stored in the
-   * ScalaInlineInfo attribute. If the attribute is missing, the InlineInfo is built using the
+   * inline info attribute. If the attribute is missing, the InlineInfo is built using the
    * metadata available in the classfile (ACC_FINAL flags, etc.).
    */
   private def inlineInfoFromClassfile(classNode: ClassNode, moduleNode: Option[ModuleNode]): InlineInfo = {
