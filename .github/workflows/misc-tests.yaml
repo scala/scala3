@@ -16,12 +16,17 @@ env:
 jobs:
 
   scripted-tests:
+    name: scripted-tests (${{ matrix.jdk }})
     if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        jdk: [17, 25]
+        include:
+          - jdk: 17
+            command: scala3-bootstrapped/scripted
+          - jdk: 25
+            command: scala3-bootstrapped/scripted sbt-bridge/main-discovery sbt-bridge/main-discovery-scalajs
     steps:
       - name: Git Checkout
         uses: actions/checkout@v7
@@ -34,7 +39,7 @@ jobs:
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Run SBT scripted tests
-        run: ./project/scripts/sbt scala3-bootstrapped/scripted
+        run: ./project/scripts/sbt "${{ matrix.command }}"
 
   test-bisect-script:
     runs-on: ubuntu-latest
