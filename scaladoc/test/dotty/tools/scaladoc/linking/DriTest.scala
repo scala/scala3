@@ -10,7 +10,7 @@ abstract class DriTest(testName: String) extends ScaladocTest(testName):
   def assertOnDRIs(dris: Seq[DRI]): Unit = ()
 
   override def runTest = withModule { module =>
-    val dris = module.members.keys.toSeq
+    val dris = collectFrom(module.rootPackage).map(_.dri)
 
     val grouping = dris.groupMapReduce(identity)(const(1))(_+_)
     val duplicates = grouping.filter { (_, v )=> v > 1 }
