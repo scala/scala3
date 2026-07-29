@@ -606,7 +606,7 @@ private[semanticdb] object ExtractSemanticDB:
         body.collect({
           case tree: ValDef
           if ctorParams.contains(tree.name)
-          && !tree.symbol.isPrivate =>
+          && !tree.symbol.is(Private) =>
             tree.name -> tree
         }).toMap
     end findGetters
