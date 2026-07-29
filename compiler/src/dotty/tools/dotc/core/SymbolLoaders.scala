@@ -359,7 +359,6 @@ object SymbolLoaders {
     jarClasspath: ClassPath, fullClasspath: ClassPath,
   )(using Context): Unit =
     val hasClasses = jarClasspath.classes(fullPackageName).nonEmpty
-    val hasPackages = jarClasspath.packages(fullPackageName).nonEmpty
 
     if hasClasses then
       // if the package contains classes in jarClasspath, the package is invalidated (or removed if there are no more classes in it)
@@ -383,13 +382,12 @@ object SymbolLoaders {
     // This is needed when a package has BOTH classes AND sub-packages,
     // e.g. scala-parallel-collections adds both classes to scala.collection
     // and the new scala.collection.parallel sub-package.
-    if hasPackages then
-      for p <- jarClasspath.packages(fullPackageName) do
-        val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
-        val subPackage = packageClass.info.decl(subPackageName).orElse:
-          // package does not exist in symbol table, create a new symbol
-          enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))
-        mergeNewEntries(subPackage.asSymDenotation.moduleClass.asClass, p.name, jarClasspath, fullClasspath)
+    for p <- jarClasspath.packages(fullPackageName) do
+      val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
+      val subPackage = packageClass.info.decl(subPackageName).orElse:
+        // package does not exist in symbol table, create a new symbol
+        enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))
+      mergeNewEntries(subPackage.asSymDenotation.moduleClass.asClass, p.name, jarClasspath, fullClasspath)
   end mergeNewEntries
 }
 
