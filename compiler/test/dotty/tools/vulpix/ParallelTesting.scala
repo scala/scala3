@@ -25,6 +25,7 @@ import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
 import dotc.util.{SourceFile, SourcePosition, Spans, NoSourcePosition}
 import io.AbstractFile
+import coursier.version.VersionConstraint
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
@@ -615,7 +616,7 @@ trait ParallelTesting extends RunnerOrchestration:
             ModuleName(moduleName),
             attributes = Map.empty
           ),
-          version = compiler
+          version = VersionConstraint(compiler)
         )
         Fetch()
           .addDependencies(dep)
