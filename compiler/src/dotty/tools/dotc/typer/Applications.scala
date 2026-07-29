@@ -185,6 +185,15 @@ object Applications {
     (0 until argsNum).map(i => if (i < arity - 1) selectorTypes(i) else elemTp).toList
   end seqSelectors
 
+  def javaRecordFields(tp: Type)(using Context): List[Name] =
+    ctx.base.javaRecordsFields.get(tp.typeSymbol) match
+      case Some(fields) => fields.map(termName)
+      case None => assert(false, "Invariant violation - Java record is missing fields information")
+
+  def javaRecordTypes(tp: Type)(using Context): List[Type] =
+    javaRecordFields(tp).map: name =>
+      tp.member(name).suchThat(_.paramSymss == List(Nil)).info.resultType
+
   /** A utility class that matches results of unapplys with patterns. Two queriable members:
    *     val argTypes: List[Type]
    *     def typedPatterns(qual: untpd.Tree, typer: Typer): List[Tree]
@@ -282,6 +291,8 @@ object Applications {
             productSelectorTypes(unapplyResult, pos)
               // this will cause a "wrong number of arguments in pattern" error later on,
               // which is better than the message in `fail`.
+          else if unapplyResult.classSymbol.isJavaRecord then
+            javaRecordTypes(unapplyResult)
           else fail
 
     /** The typed pattens of this unapply */
@@ -1863,6 +1874,52 @@ trait Applications extends Compatibility {
       }
     }
 
+    // If `qual` denotes a Java record class, its class symbol, otherwise None
+    def javaRecordClass(qual: untpd.Tree): Option[ClassSymbol] = qual match
+      case qual: untpd.RefTree =>
+        val nestedCtx = ctx.fresh.setNewTyperState()
+        val typeTree = typedType(untpd.rename(qual, qual.name.toTypeName))(using nestedCtx)
+        typeTree.tpe.classSymbol match
+          case cls: ClassSymbol if cls.isJavaRecord && !nestedCtx.reporter.hasErrors => Some(cls)
+          case _ => None
+      case _ => None
+
+    /** For Java record, generate synthetic unapply:
+     *  ```
+     *    {
+     *      class $anon:
+     *        def unapply[...](x: JavaRecord[...]): JavaRecord[...] = x
+     *      new $anon
+     *    }.unapply
+     *  ```
+     */
+    def javaRecordUnapply(recCls: ClassSymbol): Tree =
+      def methType(t: Type) = MethodType(List(nme.x_0), List(t), t)
+
+      val recType = recCls.typeRef
+      val tparams = recCls.typeParams
+      val unapplyInfo =
+        if tparams.isEmpty then
+          methType(recType)
+        else
+          PolyType(tparams.map(_.name))(
+            pt => tparams.map(_.info.subst(tparams, pt.paramRefs).bounds),
+            pt => methType(recType.appliedTo(pt.paramRefs))
+          )
+      val anon = AnonClass(ctx.owner, List(defn.ObjectType), coord = tree.span) { cls =>
+        val unapplySym = newSymbol(cls, nme.unapply, Synthetic | Method, unapplyInfo, coord = tree.span).entered
+        val unapplyDef = DefDef(unapplySym.asTerm, _.last.last)
+        List(unapplyDef)
+      }
+
+      trySelectUnapply(untpd.TypedSplice(anon)):
+        (sel, state) => reportErrors(sel, state)
+
+    def tryJavaRecordUnapply(qual: untpd.Tree)(fallback: => Tree): Tree =
+      javaRecordClass(qual) match
+        case Some(recCls) => javaRecordUnapply(recCls)
+        case None => fallback
+
     /** Produce a typed qual.unapply or qual.unapplySeq tree, or
      *  else if this fails follow a type alias and try again.
      */
@@ -1870,9 +1927,9 @@ trait Applications extends Compatibility {
       trySelectUnapply(qual) {
         (sel, state) =>
           val qual1 = followTypeAlias(qual)
-          if (qual1.isEmpty) reportErrors(sel, state)
+          if (qual1.isEmpty) tryJavaRecordUnapply(qual)(reportErrors(sel, state))
           else trySelectUnapply(qual1) {
-            (_, state) => reportErrors(sel, state)
+            (_, state) => tryJavaRecordUnapply(qual)(reportErrors(sel, state))
           }
       }
 

@@ -322,6 +322,7 @@ object SpaceEngine {
     || (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))  // scala2 compatibility
     || unapplySeqTypeElemTp(unappResult).exists // only for unapplySeq
     || isProductMatch(unappResult.stripNamedTuple, argLen)
+    || unappResult.classSymbol.isJavaRecord // for java records
     || extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition) <:< ConstantType(Constant(false))
     || unappResult.derivesFrom(defn.NonEmptyTupleClass)
     || unapp.symbol == defn.TupleXXL_unapplySeq // Fixes TupleXXL.unapplySeq which returns Some but declares Option
@@ -555,9 +556,17 @@ object SpaceEngine {
     def isStable(tp: TermRef) =
       !tp.symbol.is(ExtensionMethod) // The "prefix" of an extension method may be, but the receiver isn't, so exclude
       && tp.prefix.isStable
-    // always assume two TypeTest[S, T].unapply are the same if they are equal in types
-    (isStable(tp1) && isStable(tp2) || tp1.symbol == defn.TypeTest_unapply)
-    && tp1 =:= tp2
+    def isRecordUnapply(tp: TermRef) =
+      tp.symbol.is(Synthetic) && tp.widen.finalResultType.classSymbol.isJavaRecord
+    // The synthetic extractor of a Java record lives in a fresh anonymous class for
+    // each pattern, so its prefix is neither stable nor equal across patterns. Treat
+    // two such extractors as the same when they unapply the same record type.
+    if isRecordUnapply(tp1) && isRecordUnapply(tp2) then
+      tp1.widen.finalResultType =:= tp2.widen.finalResultType
+    else
+      // always assume two TypeTest[S, T].unapply are the same if they are equal in types
+      (isStable(tp1) && isStable(tp2) || tp1.symbol == defn.TypeTest_unapply)
+      && tp1 =:= tp2
   }
 
   /** Return term parameter types of the extractor `unapp`.
@@ -605,9 +614,10 @@ object SpaceEngine {
     // Case unapply:
     // 1. return types of constructor fields if the extractor is synthesized for Scala2 case classes & length match
     // 2. return Nil if unapply returns Boolean  (boolean pattern)
-    // 3. return product selector types if unapply returns a product type (product pattern)
-    // 4. return product selectors of `T` where `def get: T` is a member of the return type of unapply & length match (named-based pattern)
-    // 5. otherwise, return `T` where `def get: T` is a member of the return type of unapply
+    // 3. return the component types of a Java record if unapply returns that record (record pattern)
+    // 4. return product selector types if unapply returns a product type (product pattern)
+    // 5. return product selectors of `T` where `def get: T` is a member of the return type of unapply & length match (named-based pattern)
+    // 6. otherwise, return `T` where `def get: T` is a member of the return type of unapply
     //
     // Case unapplySeq:
     // 1. return the type `List[T]` where `T` is the element type of the unapplySeq return type `Seq[T]`
@@ -632,6 +642,8 @@ object SpaceEngine {
             sels.init :+ defn.ListType.appliedTo(sels.last)
           }
         }
+        else if (resTp.classSymbol.isJavaRecord)
+          javaRecordTypes(resTp)
         else {
           val arity = productArity(resTp, unappSym.srcPos)
           if (arity > 0)
@@ -891,6 +903,8 @@ object SpaceEngine {
         else if tp.isRef(defn.ConsType.symbol) then
           val body = params.map(doShow(_, flattenList = true)).filter(_.nonEmpty).mkString(", ")
           if flattenList then body else s"List($body)"
+        else if tp.classSymbol.isJavaRecord then
+          tp.typeConstructor.show + params.map(doShow(_)).mkString("(", ", ", ")")
         else
           val isUnapplySeq = fun.symbol.name eq nme.unapplySeq
           val paramsStr = params.map(doShow(_, flattenList = isUnapplySeq)).mkString("(", ", ", ")")
@@ -922,7 +936,7 @@ object SpaceEngine {
       }) ||
       tpw.isRef(defn.BooleanClass) ||
       classSym.isAllOf(JavaEnum) ||
-      classSym.is(Case) || tpw.isNamedTupleType ||
+      classSym.is(Case) || classSym.isJavaRecord || tpw.isNamedTupleType ||
       (tpw.isInstanceOf[TypeRef] && {
         val tref = tpw.asInstanceOf[TypeRef]
         tref.isUpperBoundedAbstract && isCheckable(tref.info.hiBound)
