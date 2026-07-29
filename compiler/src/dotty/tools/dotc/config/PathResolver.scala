@@ -129,13 +129,6 @@ object PathResolver {
       )
   }
 
-  def fromPathString(path: String)(using Context): ClassPath = {
-    val settings = ctx.settings.classpath.update(path)
-    inContext(ctx.fresh.setSettings(settings)) {
-      new PathResolver().result
-    }
-  }
-
   /** Show values in Environment and Defaults when no argument is provided.
    *  Otherwise, show values in Calculated as if those options had been given
    *  to a scala runner.
