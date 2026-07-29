@@ -505,15 +505,17 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     classfileParser.run()
 }
 
-class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
-  val isBestEffortTasty = tastyFile.ext.isBetasty
+class TastyLoader(tastyFile: AbstractFile) extends SymbolLoader {
+  private val isBestEffortTasty = tastyFile.ext.isBetasty
 
   private lazy val unpickler: tasty.DottyUnpickler =
     handleUnpicklingExceptions:
       new tasty.DottyUnpickler(tastyFile, isBestEffortTasty) // reads header and name table
 
-  val compilationUnitInfo: CompilationUnitInfo =
-    CompilationUnitInfo(tastyFile, unpickler.compilationUnitInfo.tastyInfo)
+  def compilationUnitInfo: CompilationUnitInfo =
+    // It's important for performance that we only materialize `unpickler` if tasty info is actually requested,
+    // not for every compilation unit info
+    CompilationUnitInfo(tastyFile, () => unpickler.compilationUnitInfo.tastyInfo)
 
   def description(using Context): String =
     if isBestEffortTasty then "Best Effort TASTy file " + tastyFile.toString
