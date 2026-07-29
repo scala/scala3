@@ -399,7 +399,7 @@ private sealed trait OptimizerSettings:
       ChoiceWithHelp("any-inline-failed", "A detailed warning for every callsite that was chosen for inlining by the heuristics, but could not be inlined."),
       ChoiceWithHelp("no-inline-mixed", "In mixed compilation, warn at callsites methods defined in java sources (the inlining decision cannot be made without bytecode)."),
       ChoiceWithHelp("no-inline-missing-bytecode", "Warn if an inlining decision cannot be made because a the bytecode of a class or member cannot be found on the compilation classpath."),
-      ChoiceWithHelp("no-inline-missing-attribute", "Warn if an inlining decision cannot be made because a Scala classfile does not have a ScalaInlineInfo attribute.")
+      ChoiceWithHelp("no-inline-missing-attribute", "Warn if an inlining decision cannot be made because a Scala classfile does not have an inline info attribute.")
     ),
     default = Nil
   )
