@@ -18,36 +18,23 @@ jobs:
   scripted-tests:
     if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        jdk: [17, 25]
     steps:
       - name: Git Checkout
         uses: actions/checkout@v7
 
-      - name: Set up JDK 17
+      - name: Set up JDK ${{ matrix.jdk }}
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
-          java-version: 17
+          java-version: ${{ matrix.jdk }}
           cache: 'sbt'
       - uses: sbt/setup-sbt@v1
       - name: Run SBT scripted tests
         run: ./project/scripts/sbt scala3-bootstrapped/scripted
-
-  main-discovery-tests-java-25:
-    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Git Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up JDK 25
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'temurin'
-          java-version: 25
-          cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
-      - name: Run main discovery tests
-        run: ./project/scripts/sbt "scala3-bootstrapped/scripted sbt-bridge/main-discovery sbt-bridge/main-discovery-scalajs"
 
   test-bisect-script:
     runs-on: ubuntu-latest
