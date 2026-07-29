@@ -665,7 +665,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
             ModuleName(moduleName),
             attributes = Map.empty
           ),
-          version = compiler
+          VersionConstraint(compiler)
         )
         Fetch()
           .addDependencies(dep)
