@@ -148,3 +148,21 @@ class BisectOptionsTest extends munit.FunSuite:
     val compileIdx = body.indexOf("scala-cli compile")
     assert(cleanIdx >= 0 && compileIdx > cleanIdx)
   }
+
+class BisectReleasesTest extends munit.FunSuite:
+  // Maven Central holds older nightlies; Artifactory nightlies has builds since ~2025-08.
+  // Both must be queried so ranges spanning the migration remain usable.
+  private val mavenCentralNightly = "3.4.1-RC1-bin-20240125-453658b-NIGHTLY"
+  private val artifactoryNightly = "3.10.0-RC1-bin-20260729-8526f78-NIGHTLY"
+
+  test("nightly releases include Maven Central and Artifactory nightlies") {
+    val versions = Releases.allReleases.map(_.version).toSet
+    assert(versions.contains(mavenCentralNightly), s"missing Maven Central nightly: $mavenCentralNightly")
+    assert(versions.contains(artifactoryNightly), s"missing Artifactory nightly: $artifactoryNightly")
+  }
+
+  test("releases range spanning Maven Central and Artifactory nightlies") {
+    val releases = Releases.fromRange(ReleasesRange(Some(mavenCentralNightly), Some(artifactoryNightly)))
+    assertEquals(releases.head.version, mavenCentralNightly)
+    assertEquals(releases.last.version, artifactoryNightly)
+  }

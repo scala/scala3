@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import scala.util.Using
 
 val usageMessage = """
   |Usage:
@@ -231,13 +232,23 @@ object ReleasesRange:
 class Releases(val releases: Vector[Release])
 
 object Releases:
+  /* Nightlies used to be published to Maven Central and are published to the Artifactory nightlies
+   * repository since 2025-08. Neither repository holds the full history on its own, so both are queried. */
+  private val metadataUrls = Seq(
+    "https://repo1.maven.org/maven2/org/scala-lang/scala3-compiler_3/maven-metadata.xml",
+    "https://repo.scala-lang.org/artifactory/maven-nightlies/org/scala-lang/scala3-compiler_3/maven-metadata.xml"
+  )
+
   lazy val allReleases: Vector[Release] =
     val re = raw"<version>(.+-bin-\d{8}-\w{7}-NIGHTLY)</version>".r
-    val xml = io.Source.fromURL(
-      "https://repo.scala-lang.org/artifactory/maven-nightlies/org/scala-lang/scala3-compiler_3/maven-metadata.xml"
-    )
-    re.findAllMatchIn(xml.mkString)
-      .flatMap{ m => Option(m.group(1)).map(Release.apply) }
+    metadataUrls
+      .flatMap: url =>
+        val xml =
+          try Using.resource(Source.fromURL(url))(_.mkString)
+          catch case ex: Exception => sys.error(s"Could not fetch the list of nightly releases from ${url}: ${ex}")
+        re.findAllMatchIn(xml).map(_.group(1))
+      .distinct
+      .map(Release.apply)
       .toVector
       .sortBy: release =>
         (release.semanticVersion, release.date)
