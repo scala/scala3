@@ -23,6 +23,7 @@ import scala.language.`2.13`
 final case class Tuple2[@specialized(Int, Long, Double, Char, Boolean/*, AnyRef*/) +T1, @specialized(Int, Long, Double, Char, Boolean/*, AnyRef*/) +T2](_1: T1, _2: T2)
   extends Product2[T1, T2]
 {
+  /** Returns a string representation of this tuple, with the two elements separated by a comma and enclosed in parentheses, as in `(1,two)`. */
   override def toString(): String = "(" + _1 + "," + _2 + ")"
   
   /** Swaps the elements of this `Tuple`.

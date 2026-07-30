@@ -29,6 +29,7 @@ import scala.language.`2.13`
 final case class Tuple4[+T1, +T2, +T3, +T4](_1: T1, _2: T2, _3: T3, _4: T4)
   extends Product4[T1, T2, T3, T4]
 {
+  /** Returns a string representation of this tuple, with the four elements separated by commas and enclosed in parentheses, as in `(1,two,3.0,four)`. */
   override def toString(): String = "(" + _1 + "," + _2 + "," + _3 + "," + _4 + ")"
   
 }

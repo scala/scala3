@@ -15,6 +15,23 @@ package scala
 import scala.language.`2.13`
 
 object Product11 {
+  /** Returns the given product wrapped in a [[scala.Some]], making `Product11` usable
+   *  as an extractor in a pattern match. The extraction always succeeds.
+   *
+   *  @tparam T1 the type of the 1st component of the product
+   *  @tparam T2 the type of the 2nd component of the product
+   *  @tparam T3 the type of the 3rd component of the product
+   *  @tparam T4 the type of the 4th component of the product
+   *  @tparam T5 the type of the 5th component of the product
+   *  @tparam T6 the type of the 6th component of the product
+   *  @tparam T7 the type of the 7th component of the product
+   *  @tparam T8 the type of the 8th component of the product
+   *  @tparam T9 the type of the 9th component of the product
+   *  @tparam T10 the type of the 10th component of the product
+   *  @tparam T11 the type of the 11th component of the product
+   *  @param x the product to extract from
+   *  @return `x` wrapped in a [[scala.Some]]
+   */
   def unapply[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11](x: Product11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]): Option[Product11[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11]] =
     Some(x)
 }
