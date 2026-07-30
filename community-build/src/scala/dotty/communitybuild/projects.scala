@@ -11,8 +11,6 @@ lazy val compilerVersion: String =
   new String(Files.readAllBytes(file), UTF_8)
 
 lazy val sbtPluginFilePath: String =
-  // Workaround for https://github.com/sbt/sbt/issues/4395
-  new File(sys.props("user.home") + "/.sbt/1.0/plugins").mkdirs()
   communitybuildDir.resolve("sbt-injected-plugins").toAbsolutePath().toString()
 
 def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
