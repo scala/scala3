@@ -117,7 +117,7 @@ final case class SbtCommunityProject(
     val sbtProps = Option(System.getProperty("sbt.ivy.home")) match
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
-    extraSbtArgs ++ sbtProps ++ List("-Dsbt.supershell=false")
+    extraSbtArgs ++ sbtProps ++ List("-Dsbt.supershell=false", s"--addPluginSbtFile=$sbtPluginFilePath")
 
 object SbtCommunityProject:
   def scalacOptions = List(
