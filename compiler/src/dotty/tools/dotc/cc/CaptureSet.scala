@@ -393,8 +393,9 @@ sealed abstract class CaptureSet extends Showable:
    *      the same transformation is applied to all future additions of new elements.
    *      We try to fuse with previous maps to avoid long paths of BiTypeMapped sets.
    *    - If the map is a BiTypeMap, and CCState.mapVars is false,
-   *      we return the original capture set. In this case any elements that are
-   *      already in the set must be invariant under the mapping. This mode is
+   *      return the original capture set if all current elements are invariant
+   *      under the mapping; otherwise freeze the set (i.e. make it provisionally
+   *      solved) and return the mapped elements as a constant set,  This mode is
    *      necessary for bootstrap when we create capset variables the first time.
    *    - If the map is some other map that maps the current set of elements
    *      to itself, return the current var. We implicitly assume that the map
@@ -424,9 +425,13 @@ sealed abstract class CaptureSet extends Showable:
               case Some(fused: BiTypeMap) => BiMapped(self.source, fused, mappedElems)
               case _ => unfused
             case _ => unfused
+        else if mappedElems == elems then this
         else
-          assert(mappedElems == elems)
-          this
+          // The map changes existing elements but cannot be installed for future
+          // additions (mapVars == false). Freeze the set and return the mapped
+          // elements as a constant set.
+          asVar.markSolved(provisional = true)
+          Const(mappedElems)
       case tm: IdentityCaptRefMap =>
         this
       case tm: AvoidMap if this.isInstanceOf[HiddenSet] =>
