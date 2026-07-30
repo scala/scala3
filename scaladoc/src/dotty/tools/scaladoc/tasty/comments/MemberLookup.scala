@@ -72,6 +72,7 @@ trait MemberLookup {
               case query =>
                 val ql = query.asList
                 toplevelLookup(ql)
+                .orElse(downwardLookup(ql, nearestPkg))
                 .orElse(relativeLookup(ql, nearest))
                 .map(memberLookupResult(_, query.join, _))
             }
