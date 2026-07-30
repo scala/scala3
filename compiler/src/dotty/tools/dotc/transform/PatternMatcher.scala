@@ -403,7 +403,7 @@ object PatternMatcher {
             if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(_, ref(scrutinee)))
             else caseAccessors.map(tupleSel)
           matchArgsPlan(components, args, onSuccess)
-        else if unappType.isRef(defn.BooleanClass) then
+        else if unappType.derivesFrom(defn.BooleanClass) then
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
         else
           letAbstract(unapp) { unappResult =>

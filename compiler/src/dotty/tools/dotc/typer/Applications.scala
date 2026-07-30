@@ -185,7 +185,7 @@ object Applications {
     (0 until argsNum).map(i => if (i < arity - 1) selectorTypes(i) else elemTp).toList
   end seqSelectors
 
-  /** A utility class that matches results of unapplys with patterns. Two queriable members:
+  /** A utility class that matches results of unapplys with patterns. Two queryable members:
    *     val argTypes: List[Type]
    *     def typedPatterns(qual: untpd.Tree, typer: Typer): List[Tree]
    *  TODO: Move into Applications trait. No need to keep it outside. But it's a large
@@ -263,7 +263,7 @@ object Applications {
             case _ => None
         case _ => None
 
-    /** The computed argument types which will be the scutinees of the sub-patterns. */
+    /** The computed argument types which will be the scrutinees of the sub-patterns. */
     val argTypes: List[Type] =
       if unapplyName == nme.unapplySeq then
         unapplySeq(unapplyResult):
