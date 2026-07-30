@@ -10,10 +10,11 @@ import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.toTermName
 import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, Private, Trait}
-import dotty.tools.dotc.core.Phases.{Phase, erasurePhase, flattenPhase, lambdaLiftPhase, picklerPhase}
+import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.{StdNames, Types}
-import dotty.tools.dotc.core.Types.{AppliedType, JavaArrayType, Type, TypeRef, abstractTermNameFilter}
+import dotty.tools.dotc.core.Types.{JavaArrayType, Type, TypeRef, abstractTermNameFilter}
+import dotty.tools.dotc.util.EqHashMap
 
 import scala.annotation.tailrec
 import scala.tools.asm
@@ -23,6 +24,12 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
   // Concurrent map because stack map frames are computed when in the class writer, which
   // might run on multiple classes concurrently.
   private val classBTypeCache = new ConcurrentHashMap[InternalName, ClassBType]
+
+  // Cache only for `classBTypeFromSymbol`, since it is heavily called.
+  // Its values are all also values of the main cache.
+  // Does not need to be concurrent because that method takes a Context,
+  // and thus can only be called from the main thread anyway.
+  private val classBTypeCacheBySymbol = new EqHashMap[Symbol, ClassBType]
 
   /** Maps special symbols, including primitive types, to their corresponding BType. */
   // It's OK to cache this because all Contexts that go through here share their defns.
@@ -63,23 +70,27 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
   /**
    * The ClassBType for a class symbol `sym`.
    */
-  def classBTypeFromSymbol(classSym0: Symbol)(using Context): ClassBType = {
-    // For each java class, the scala compiler creates a class and a module (thus a module class).
-    // If the symbol is a java module class, we use the java class instead. This ensures that the
-    // ClassBType is created from the main class (instead of the module class).
-    // The two symbols have the same name, so the resulting internalName is the same.
-    val classSym = if classSym0.isAllOf(JavaDefined | ModuleClass, butNot = PackageClass)
-                   then classSym0.linkedClass
-                   else classSym0
+  def classBTypeFromSymbol(classSym0: Symbol)(using Context): ClassBType = classBTypeCacheBySymbol.get(classSym0) match {
+    case Some(t) => t
+    case None =>
+      // For each java class, the scala compiler creates a class and a module (thus a module class).
+      // If the symbol is a java module class, we use the java class instead. This ensures that the
+      // ClassBType is created from the main class (instead of the module class).
+      // The two symbols have the same name, so the resulting internalName is the same.
+      val classSym = if classSym0.isAllOf(JavaDefined | ModuleClass, butNot = PackageClass)
+                     then classSym0.linkedClass
+                     else classSym0
 
-    assert(classSym.isClass, s"Cannot create ClassBType from non-class symbol $classSym") // also covers the NoSymbol case
-    assert(
-      classSym != defn.NothingClass && classSym != defn.NullClass,
-      s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
-    assert(classSym != defn.ArrayClass || compilingArray, s"Found $classSym while compiling ${ctx.compilationUnit.source.file.name}")
-    assert(!classSym.isPrimitiveValueClass || compilingPrimitive, s"Found $classSym while compiling ${ctx.compilationUnit.source.file.name}")
+      assert(classSym.isClass, s"Cannot create ClassBType from non-class symbol $classSym") // also covers the NoSymbol case
+      assert(
+        classSym != defn.NothingClass && classSym != defn.NullClass,
+        s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
+      assert(classSym != defn.ArrayClass || compilingArray, s"Found $classSym while compiling ${ctx.compilationUnit.source.file.name}")
+      assert(!classSym.isPrimitiveValueClass || compilingPrimitive, s"Found $classSym while compiling ${ctx.compilationUnit.source.file.name}")
 
-    classBType(classSym.javaBinaryName)(ct => createClassInfo(ct, classSym.asClass))
+      val result = classBType(classSym.javaBinaryName)(ct => createClassInfo(ct, classSym.asClass))
+      classBTypeCacheBySymbol.update(classSym0, result)
+      result
   }
 
   def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol)(using Context): ClassBType = {
