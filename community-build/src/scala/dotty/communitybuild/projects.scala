@@ -11,6 +11,8 @@ lazy val compilerVersion: String =
   new String(Files.readAllBytes(file), UTF_8)
 
 lazy val sbtPluginFilePath: String =
+  // Workaround for https://github.com/sbt/sbt/issues/4395
+  new File(sys.props("user.home") + "/.sbt/1.0/plugins").mkdirs()
   communitybuildDir.resolve("sbt-injected-plugins").toAbsolutePath().toString()
 
 def log(msg: String) = println(Console.GREEN + msg + Console.RESET)
@@ -87,7 +89,6 @@ final case class SbtCommunityProject(
     sbtDocCommand: String = null,
     scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
     override val environment: Map[String, String] = Map.empty,
-    sbtVersionOverride: Option[String] = None
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
@@ -116,7 +117,7 @@ final case class SbtCommunityProject(
     val sbtProps = Option(System.getProperty("sbt.ivy.home")) match
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
-    extraSbtArgs ++ sbtProps ++ List("-sbt-version", sbtVersionOverride.getOrElse("1.12.1"), "-Dsbt.supershell=false", s"--addPluginSbtFile=$sbtPluginFilePath")
+    extraSbtArgs ++ sbtProps ++ List("-sbt-version", "1.12.1", "-Dsbt.supershell=false", s"--addPluginSbtFile=$sbtPluginFilePath")
 
 object SbtCommunityProject:
   def scalacOptions = List(
@@ -686,13 +687,13 @@ object projects:
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
   )
 
-  lazy val parboiled2 = SbtCommunityProject(
+  // Disabled because it requires SBT 2
+  /*lazy val parboiled2 = SbtCommunityProject(
     project = "parboiled2",
     sbtTestCommand = "parboiledCoreJVM3/test; parboiledJVM3/test",
     sbtPublishCommand = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
-    sbtVersionOverride = Some("2.0.4")
-  )
+  )*/
 
 end projects
 
@@ -773,7 +774,7 @@ def allProjects = List(
   projects.specs2,
   projects.spire,
   projects.http4s,
-  projects.parboiled2,
+  //projects.parboiled2,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)
