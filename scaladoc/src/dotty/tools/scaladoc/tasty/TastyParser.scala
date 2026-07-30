@@ -5,7 +5,7 @@ package tasty
 import java.util.regex.Pattern
 
 import scala.util.{Try, Success, Failure}
-import scala.tasty.inspector.{ScaladocInternalTastyInspector, Inspector, Tasty}
+import scala.tasty.inspector.{TastyInspector, Inspector, Tasty}
 import scala.quoted._
 
 import dotty.tools.dotc
@@ -159,9 +159,6 @@ object ScaladocTastyInspector:
 
     for invalidPath <- invalidPaths do
       report.error("File extension is not `tasty` or `jar`: " + invalidPath)
-
-    if tastyPaths.nonEmpty then
-      ScaladocInternalTastyInspector.inspectAllTastyFilesInContext(tastyPaths, jarPaths, classpath)(inspector)(using ctx.compilerContext)
 
     val all = inspector.topLevels.result()
     all.groupBy(_._1).map { case (pckName, members) =>
