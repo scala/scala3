@@ -878,7 +878,7 @@ object Build {
       publish / skip := false,
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
-      bspEnabled := false,
+      bspEnabled := enableBspAllProjects,
     )
 
   lazy val `scala3-repl` = project.in(file("repl"))
