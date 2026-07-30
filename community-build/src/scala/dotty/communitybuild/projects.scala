@@ -87,6 +87,7 @@ final case class SbtCommunityProject(
     sbtDocCommand: String = null,
     scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
     override val environment: Map[String, String] = Map.empty,
+    sbtVersionOverride: Option[String] = None
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
@@ -115,7 +116,7 @@ final case class SbtCommunityProject(
     val sbtProps = Option(System.getProperty("sbt.ivy.home")) match
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
-    extraSbtArgs ++ sbtProps ++ List("-Dsbt.supershell=false", s"--addPluginSbtFile=$sbtPluginFilePath")
+    extraSbtArgs ++ sbtProps ++ List("-sbt-version", sbtVersionOverride.getOrElse("1.12.1"), "-Dsbt.supershell=false", s"--addPluginSbtFile=$sbtPluginFilePath")
 
 object SbtCommunityProject:
   def scalacOptions = List(
@@ -690,6 +691,7 @@ object projects:
     sbtTestCommand = "parboiledCoreJVM3/test; parboiledJVM3/test",
     sbtPublishCommand = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
+    sbtVersionOverride = Some("2.0.4")
   )
 
 end projects
