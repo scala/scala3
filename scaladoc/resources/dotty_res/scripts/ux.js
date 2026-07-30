@@ -150,56 +150,6 @@ function attachAllListeners() {
     });
   });
 
-  document.querySelectorAll("a").forEach((el) => {
-    const href = el.href;
-    if (href === "") {
-      return;
-    }
-    const url = new URL(href);
-    if (attachedElements.has(el)) return;
-    attachedElements.add(el);
-    el.addEventListener("click", (e) => {
-      if (
-        url.href.replace(/#.*/, "") === window.location.href.replace(/#.*/, "")
-      ) {
-        return;
-      }
-      if (url.origin !== window.location.origin) {
-        return;
-      }
-      // ISSUE-19208, treat as normal link when lacking HTTP server,
-      // otherwise GET request blocked by CORS protections.
-      if (window.location.protocol.startsWith("file")) {
-        return;
-      }
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
-        return;
-      }
-      e.preventDefault();
-      e.stopPropagation();
-      $.get(href, function (data) {
-        const oldLoc = getRawLoc();
-        if (window.history.state === null) {
-          window.history.replaceState(savePageState(document), "");
-        }
-        const parser = new DOMParser();
-        const parsedDocument = parser.parseFromString(data, "text/html");
-        const state = savePageState(parsedDocument);
-        window.history.pushState(state, "", href);
-        loadPageState(document, state);
-        const newLoc = getRawLoc();
-        if (dynamicSideMenu) {
-          updateMenu(oldLoc, newLoc);
-        }
-
-        window.dispatchEvent(new Event(DYNAMIC_PAGE_LOAD));
-        document
-          .querySelector("#main")
-          .scrollTo({ top: 0, left: 0, behavior: "instant" });
-      });
-    });
-  });
-
   document.querySelectorAll('.ar').forEach((el) => {
     if (attachedElements.has(el)) return;
     attachedElements.add(el);
