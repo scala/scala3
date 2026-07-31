@@ -48,7 +48,8 @@ abstract class Lifter {
 
   /** Type assigned to a lifted temporary symbol. */
   protected def liftedExprType(expr: Tree)(using Context): Type =
-    expr.tpe.widen.deskolemized
+    val tp = expr.tpe.deskolemized
+    if tp.isStable then tp else tp.widen
 
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
