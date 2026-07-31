@@ -56,6 +56,17 @@ abstract class FileContainer extends FileSystemEntry:
   def getOrCreateContainer(path: String, separator: Char = FileSystemEntry.separator): FileContainer =
     lookupPath(path, separator, create = true, isFile = false, extension = FileExtension.Empty).get.asInstanceOf[FileContainer]
 
+  /** Copies all contents of this container to the given container, overwriting existing entries if necessary. */
+  def copyRecursivelyTo(other: FileContainer): Unit =
+    entries.foreach {
+      case f: File =>
+        val newFile = other.getOrCreateFile(f.name)
+        f.copyTo(newFile)
+      case c: FileContainer =>
+        val newContainer = other.getOrCreateContainer(c.name)
+        c.copyRecursivelyTo(newContainer)
+    }
+
   /** Deletes this file container and its contents. */
   def deleteRecursively(): Unit
 
