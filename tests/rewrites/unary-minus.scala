@@ -1,0 +1,8 @@
+
+import util.chaining.*
+
+def f = - 42
+def g = -42.abs
+def h = - 42.abs
+def i = - 42
+  .pipe(_.abs)
