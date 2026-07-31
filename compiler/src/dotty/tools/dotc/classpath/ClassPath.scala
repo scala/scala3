@@ -36,6 +36,7 @@ trait ClassPath {
 
 object ClassPath {
   val RootPackage: String = ""
+  val pathSeparator: String = java.io.File.pathSeparator
 
   /** Expand single path entry */
   private def expandS(pattern: String): List[String] = {
