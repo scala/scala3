@@ -71,11 +71,13 @@ private final class DiskDirectory(private val underlying: JPath) extends FileCon
 
   /** Creates a file in this container with the given name and extension. */
   protected override def createFile(name: String, extension: FileExtension): File =
-    new DiskFile(JFiles.createFile(underlying.resolve(name + extension.withDot)))
+    try new DiskFile(JFiles.createFile(underlying.resolve(name + extension.withDot)))
+    catch case _: FileAlreadyExistsException => throw new IllegalArgumentException(s"$name${extension.withDot} already exists in $path but is not a file")
 
   /** Creates a container in this container with the given name. */
   protected override def createContainer(name: String): FileContainer =
-    new DiskDirectory(JFiles.createDirectory(underlying.resolve(name).normalize()))
+    try new DiskDirectory(JFiles.createDirectory(underlying.resolve(name).normalize()))
+    catch case _: FileAlreadyExistsException => throw new IllegalArgumentException(s"$name already exists in $path but is not a directory")
 
   override def hashCode(): Int =
     underlying.hashCode()
