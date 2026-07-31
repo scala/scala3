@@ -243,7 +243,7 @@ object SourceFile {
   }
 
   def apply(file: AbstractFile, codec: Codec): SourceFile =
-    val chars =
+    def chars =
       try new String(file.toByteArray, codec.charSet).toCharArray
       catch case _: FileSystemException => Array.empty[Char]
 
