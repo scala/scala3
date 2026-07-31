@@ -1699,6 +1699,7 @@ object Build {
       // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
       autoScalaLibrary := false,
       Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src"),
+      Compile / unmanagedSourceDirectories += (baseDirectory.value / ".." / "tasty-inspector" / "src"),
       Compile / resourceDirectory := baseDirectory.value / "resources",
       // Add all the necessary resource generators
       Compile / resourceGenerators ++= Seq(
