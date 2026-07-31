@@ -34,14 +34,6 @@ jobs:
       CONSUMER-KEY: ${{ secrets.SDKMAN_KEY }}
       CONSUMER-TOKEN: ${{ secrets.SDKMAN_TOKEN }}
 
-  publish-winget:
-    uses: ./.github/workflows/publish-winget.yml
-    if: false && github.repository == 'scala/scala3' # TODO: Requires setting up initial WinGet package (keep the repository guard when enabling)
-    with:
-      version: ${{ inputs.version }}
-    secrets:
-      DOTTYBOT-TOKEN: ${{ secrets.DOTTYBOT_WINGET_TOKEN }}
-
   compute-digest:
     runs-on: ubuntu-latest
     outputs:
