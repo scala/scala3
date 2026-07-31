@@ -2,8 +2,7 @@ package dotty
 package tools
 package dotc
 
-import java.io.{File => JFile}
-
+import dotty.tools.nio.FileContainer
 import org.junit.{AfterClass, Test}
 import org.junit.experimental.categories.Category
 
@@ -33,12 +32,12 @@ class IdempotencyTests {
     val orderIdempotency = {
       val tests =
         for {
-          testDir <- new JFile("tests/order-idempotency").listFiles() if testDir.isDirectory
+          testDir <- TestSources.rootPath().getContainer("tests/order-idempotency").get.entries.collect { case c: FileContainer => c }.toList
         } yield {
-          val sources = TestSources.sources(testDir.toPath)
+          val sources = TestSources.sources(testDir)
           aggregateTests(
-            compileList(testDir.getName, sources, opt)(using TestGroup("idempotency/orderIdempotency1")),
-            compileList(testDir.getName, sources.reverse, opt)(using TestGroup("idempotency/orderIdempotency2"))
+            compileList(testDir.name, sources, opt)(using TestGroup("idempotency/orderIdempotency1")),
+            compileList(testDir.name, sources.reverse, opt)(using TestGroup("idempotency/orderIdempotency2"))
           )
         }
       aggregateTests(tests*)

@@ -1,24 +1,24 @@
 package dotty.tools.dotc.profile
 
-import java.io.*
-
 import org.junit.Assert.*
 import org.junit.*
-import java.nio.file.Files
-import java.nio.charset.StandardCharsets
-import java.util.concurrent.locks.LockSupport
+
 import scala.concurrent.duration.*
+import dotty.tools.nio.*
+import dotty.tools.io.FileExtension
+
+import scala.io.Codec
 
 class ChromeTraceTest:
   private def testTraceOutputs(generator: ChromeTrace => Unit)(checkContent: PartialFunction[List[String], Unit]): Unit = {
-    val outfile = Files.createTempFile("trace-", ".json").nn
-    val tracer = new ChromeTrace(outfile)
+    val outfile = File.createTemporaryOnDisk("trace-", FileExtension.from("json"))
+    val tracer = new ChromeTrace(java.nio.file.Path.of(outfile.path))
     try generator(tracer)
     finally tracer.close()
-    val contentLines = scala.io.Source.fromFile(outfile.toFile().nn).getLines().toList
+    val contentLines = outfile.readLines(Codec.UTF8).toList
     checkContent.applyOrElse(
       contentLines,
-      content => fail(s"Invalid output lines: ${content.mkString(System.lineSeparator().nn)}")
+      content => fail(s"Invalid output lines: ${content.mkString(System.lineSeparator())}")
     )
   }
 

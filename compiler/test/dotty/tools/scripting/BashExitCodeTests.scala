@@ -2,21 +2,23 @@ package dotty
 package tools
 package scripting
 
-import java.nio.file.Files, java.nio.charset.StandardCharsets.UTF_8
-import org.junit.{ After, Test, Ignore }
+import org.junit.{After, Ignore, Test}
 import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeFalse
 import org.junit.experimental.categories.Category
-
 import ScriptTestEnv.*
+import dotty.tools.io.FileExtension
+import dotty.tools.nio.*
+
+import scala.io.Codec
 
 @Ignore
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class BashExitCodeTests:
   private var tmpDirCreated: Boolean = false
-  private lazy val tmpDir: String = { tmpDirCreated = true; Files.createTempDirectory("exit-code-tests").toFile.absPath }
+  private lazy val tmpDir: FileContainer = { tmpDirCreated = true; FileContainer.createTemporaryOnDisk("exit-code-tests") }
   @After def cleanup(): Unit = {
-    if tmpDirCreated then io.Directory(tmpDir).deleteRecursively()
+    if tmpDirCreated then tmpDir.deleteRecursively()
 
     cleanupScalaCLIDirs()
   }
@@ -34,16 +36,19 @@ class BashExitCodeTests:
   // Helpers for running scala, scalac and repl without the output directory ("raw")
   def scala(args: String*)     = verifyExit(scalaPath, ("--power" +: args :+ "--offline" :+ "--server=false")*)
   def scalacRaw(args: String*) = verifyExit(scalacPath, args*)
-  def scalac(args: String*)    = scalacRaw(("-d" +: tmpDir +: args)*)
+  def scalac(args: String*)    = scalacRaw(("-d" +: tmpDir.path +: args)*)
   def repl(args: String*)      = verifyExit(scalaPath, ("--power" +: "repl" +: "--offline" +: "--" +: args)*)
 
   /** The path to the test file for this class. */
-  def f(body: String, suffix: String = ".scala"): String =
-    Files.write(Files.createTempFile(tmpDir.toPath, getClass.getSimpleName, suffix), body.getBytes(UTF_8)).absPath
+  def f(body: String, suffix: String = ".scala"): String = {
+    val temp = tmpDir.getOrCreateFile(getClass.getSimpleName, FileExtension.from(suffix))
+    temp.writeText(body, Codec.UTF8)
+    temp.path
+  }
 
   @Test def neg = scalac(f("@main def Test = prin"))(1)
-  @Test def run = scalac(f("@main def Test = ???"))(0) & scala("-classpath", tmpDir, "-M", "Test")(1)
-  @Test def pos = scalac(f("@main def Test = ()"))(0) & scala("-classpath", tmpDir, "-M", "Test")(0)
+  @Test def run = scalac(f("@main def Test = ???"))(0) & scala("-classpath", tmpDir.path, "-M", "Test")(1)
+  @Test def pos = scalac(f("@main def Test = ()"))(0) & scala("-classpath", tmpDir.path, "-M", "Test")(0)
 
   @Test def runNeg_script = scala(f("prin", ".sc"))(1)
   @Test def runRun_script = scala(f("???", ".sc"))(1)
