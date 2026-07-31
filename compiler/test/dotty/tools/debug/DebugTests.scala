@@ -3,7 +3,7 @@ package dotty.tools.debug
 import com.sun.jdi.*
 import dotty.Properties
 import dotty.tools.dotc.reporting.TestReporter
-import dotty.tools.io.JFile
+import dotty.tools.nio.*
 import dotty.tools.vulpix.*, Status.{Failure, Success, Timeout}
 import org.junit.AfterClass
 import org.junit.Test
@@ -38,7 +38,7 @@ object DebugTests extends ParallelTesting:
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
       verifyDebug(testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
 
-    private def verifyDebug(dir: JFile, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) =
+    private def verifyDebug(dir: FileContainer, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) =
       val checkFile = testSource.checkFile.getOrElse(throw new Exception("Missing check file")).toPath
       val debugSteps = DebugStepAssert.parseCheckFile(checkFile)
       val expressionEvaluator =
