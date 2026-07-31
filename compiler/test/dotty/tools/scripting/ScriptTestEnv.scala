@@ -2,14 +2,13 @@ package dotty
 package tools
 package scripting
 
-import java.io.File
 import java.util.Locale
-import java.nio.file.{Path, Paths, Files}
-
 import dotty.tools.dotc.config.Properties.*
+import dotty.tools.io.FileExtension
+import dotty.tools.nio.*
 
+import scala.io.Codec
 import scala.sys.process.*
-import scala.jdk.CollectionConverters.*
 
 /**
  * Common Code for supporting scripting tests.
@@ -28,21 +27,16 @@ object ScriptTestEnv {
   def whichBash: String = whichExe("bash")
 
   def cleanupScalaCLIDirs(): Unit = {
-    val scriptingDir = io.Directory(scriptsDir("/scripting").getPath)
-    val dottyDir = io.Directory(workingDirectory)
+    val scriptingDir = scriptsDir("/scripting")
+    val dottyDir = FileContainer.getOnDisk(workingDirectory).get
 
-    val residueDirs = Seq(
-      (scriptingDir / ".bsp"),
-      (scriptingDir / ".scala-build"),
-      (dottyDir / ".scala-build")
+    scriptingDir.getContainer(".bsp").foreach(_.deleteRecursively())
+    scriptingDir.getContainer(".scala-build").foreach(_.deleteRecursively())
+    dottyDir.getContainer(".scala-build").foreach(_.deleteRecursively())
+    dottyDir.getContainer(".bsp").foreach(d =>
+      d.getFile("scala.json").foreach(_.delete())
+      if d.entries.isEmpty then d.deleteRecursively()
     )
-
-    for f <- residueDirs do
-      f.deleteRecursively()
-
-    val bspDir = dottyDir / ".bsp"
-    (bspDir / "scala.json").delete()
-    if bspDir.walk.isEmpty then bspDir.delete()
   }
 
   lazy val nativePackDir: Option[String] = {
@@ -73,9 +67,9 @@ object ScriptTestEnv {
       userDir // userDir, if TEST_CWD not set
 
     // issue warning if things don't look right
-    val test = Paths.get(s"$dirstr/$packBinDir").normalize
-    if !test.isDirectory then
-      printf("warning: not found below working directory: %s\n", test.norm)
+    val test = FileContainer.getOnDisk(s"$dirstr/$packBinDir")
+    if test.isEmpty then
+      printf("warning: not found below working directory: %s\n", s"$dirstr/$packBinDir")
 
     if verbose then printf("working directory is [%s]\n", dirstr)
     dirstr
@@ -110,21 +104,19 @@ object ScriptTestEnv {
     var out = ""
     // must not use adjusted path here! (causes recursive call / stack overflow)
     envPathEntries.find { entry =>
-      val it = Paths.get(entry).toAbsolutePath.normalize
-      it.toFile.isDirectory && {
-        var testpath = s"$it/$str".norm
-        val test = Paths.get(testpath)
-        if test.toFile.exists then
-          out = testpath
-          true
-        else
-          val test = Paths.get(s"$it/$str.exe".norm)
-          if test.toFile.exists then
+      FileContainer.getOnDisk(entry) match
+        case Some(it) =>
+          val testpath = s"$it/$str".norm
+          if File.getOnDisk(testpath).nonEmpty then
             out = testpath
             true
           else
-            false
-        }
+            if File.getOnDisk(s"$it/$str.exe".norm).nonEmpty then
+              out = testpath
+              true
+            else
+              false
+        case None => false
       }
     out
 
@@ -140,7 +132,7 @@ object ScriptTestEnv {
    */
   def bashCommand(cmdstr: String, additionalEnvPairs: List[(String, String)] = Nil): (Boolean, Int, Seq[String], Seq[String]) = {
     var (stdout, stderr) = (List.empty[String], List.empty[String])
-    if bashExe.toFile.exists then
+    if File.getOnDisk(bashExe).nonEmpty then
       def q = "\""
       printf("bashCmd: %s -c %s\n", bashExe, s"$q$cmdstr$q")
       val cmd = Seq(bashExe, "-c", cmdstr)
@@ -171,25 +163,18 @@ object ScriptTestEnv {
   // def packLibDir = s"$packDir/lib" // replaced by packMavenDir
   def packMavenDir = s"$packDir/maven2"
   def packVersionFile = s"$packDir/VERSION"
-  def packBinScalaExists: Boolean = Files.exists(Paths.get(s"$packBinDir/scala"))
+  def packBinScalaExists: Boolean = File.getOnDisk(s"$packBinDir/scala").nonEmpty
 
   def packScalaVersion: String = {
-    val versionFile = Paths.get(packVersionFile)
-    if Files.exists(versionFile) then
-      val lines = Files.readAllLines(versionFile).asScala
-      lines.find { _.startsWith("version:=") } match
-        case Some(line) => line.drop(9)
-        case None => sys.error(s"no version:= found in $packVersionFile")
-    else
-      sys.error(s"no $packVersionFile found")
+    File.getOnDisk(packVersionFile) match
+      case Some(f) =>
+        val lines = f.readLines(Codec.UTF8)
+        lines.find { _.startsWith("version:=") } match
+          case Some(line) => line.drop(9)
+          case None => sys.error(s"no version:= found in $packVersionFile")
+      case None =>
+        sys.error(s"no $packVersionFile found")
   }
-
-  def listJars(dir: String): List[File] =
-    val packlibDir = Paths.get(dir).toFile
-    if packlibDir.isDirectory then
-      packlibDir.listFiles.toList.filter { _.getName.endsWith(".jar") }
-    else
-      Nil
 
   // script output expected as "<tag>: <value>"
   def findTaggedLine(tag: String, lines: Seq[String]): String =
@@ -208,15 +193,14 @@ object ScriptTestEnv {
   def exec(cmd: String *): Seq[String] = Process(cmd).lazyLines_!.toList
 
   def script2jar(scriptFile: File) =
-    val jarName = s"${scriptFile.getName.dropExtension}.jar"
-    File(scriptFile.getParent, jarName)
+    scriptFile.parent.getOrCreateFile(scriptFile.nameWithoutExtension, FileExtension.Jar)
 
   def showScriptUnderTest(scriptFile: File): Unit =
-    printf("===> test script name [%s]\n", scriptFile.getName)
+    printf("===> test script name [%s]\n", scriptFile.name)
 
   def callExecutableJar(script: File, jar: File, scriptArgs: Array[String] = Array.empty[String]) = {
     import scala.sys.process.*
-    val cmd = Array("java", s"-Dscript.path=${script.getName}", "-jar", jar.absPath)
+    val cmd = Array("java", s"-Dscript.path=${script.name}", "-jar", jar.path)
       ++ scriptArgs
     Process(cmd).lazyLines_!.foreach { println }
   }
@@ -224,11 +208,10 @@ object ScriptTestEnv {
   ////////////////////////////////////////////////////////////////////////////////
 
   def createArgsFile(): String =
-    val utfCharset = java.nio.charset.StandardCharsets.UTF_8.name
-    val path = Files.createTempFile("scriptingTest", ".args")
-    val text = s"-classpath ${workingDirectory.absPath}"
-    Files.write(path, text.getBytes(utfCharset))
-    path.toFile.getAbsolutePath.norm
+    val path = File.createTemporaryOnDisk("scriptingTest", FileExtension.from("args"))
+    val text = s"-classpath $workingDirectory"
+    path.writeText(text, Codec.UTF8)
+    path.path
 
   def fixHome(s: String): String =
     s.startsWith("~") match {
@@ -238,61 +221,13 @@ object ScriptTestEnv {
 
   extension(s: String) {
     def norm: String = s.replace('\\', '/') // bash expects forward slash
-    def noDrive = if s.secondChar == ":" then s.drop(2).norm else s.norm
-    def toPath: Path = Paths.get(fixHome(s)) // .toAbsolutePath
-    def toFile: File = File(s)
-    def absPath: String = s.toFile.absPath
-    def relpath: String = s.norm.replaceFirst(s"${cwd.norm}/","")
-    def isFile: Boolean = s.toFile.isFile
-    def isDirectory: Boolean = s.toFile.isDirectory
-    def exists: Boolean = s.toFile.exists
-    def name: String = s.toFile.getName
-    def getName: String = s.toFile.getName
-    def dropExtension: String = s.reverse.dropWhile(_ != '.').drop(1).reverse
-    def parent(up: Int): String = s.norm.split("/").reverse.drop(up).reverse.mkString("/")
-    def secondChar: String = s.take(2).drop(1).mkString("")
   }
 
-  extension(p: Path) {
-    def norm: String = p.normalize.toString.replace('\\', '/')
-    def noDrive = p.norm match {
-      case str if str.drop(1).take(1) == ":" => str.drop(2)
-      case str => str
-    }
-    def name: String = p.toFile.getName
-    def relpath: Path = cwd.relativize(p).normalize
-    def files: Seq[File] = p.toFile.files
-    def parent: String = norm.replaceAll("/[^/]*$", "")
-
-    // convert to absolute path relative to cwd.
-    def absPath: String = if (p.isAbsolute) p.norm else Paths.get(userDir, p.norm).norm
-
-    def isDir: Boolean = Files.isDirectory(p)
-    def isDirectory: Boolean = p.toFile.isDirectory
-    def isFile: Boolean = p.toFile.isFile
-
-    def toUrl: String = Paths.get(absPath).toUri.toURL.toString
-
-    // Used to be an extension on String
-    // Treat norm paths with a leading '/' as absolute (Windows java.io.File#isAbsolute treats them as relative)
-    //@annotation.nowarn // hidden by Path#isAbsolute
-    //def isAbsolute = p.norm.startsWith("/") || (isWin && p.norm.secondChar == ":")
-  }
-
-  extension(f: File) {
-    def name: String = f.getName
-    def norm: String = f.toPath.normalize.norm
-    def absPath: String = f.getAbsolutePath.norm
-    def relpath: Path = f.toPath.relpath
-    def files: Seq[File] = f.listFiles.toList
-    def parentDir: Path = f.toPath.getParent
-  }
-
-  lazy val cwd: Path = Paths.get(".").toAbsolutePath.normalize
+  lazy val cwd: FileContainer = FileContainer.workingDirectory()
 
   lazy val (scalacPath: String, scalaPath: String) = {
-    val scalac = s"$workingDirectory/$packBinDir/scalac".toPath.normalize
-    val scala = s"$workingDirectory/$packBinDir/scala".toPath.normalize
+    val scalac = s"$workingDirectory/$packBinDir/scalac"
+    val scala = s"$workingDirectory/$packBinDir/scala"
     (scalac.norm, scala.norm)
   }
 
@@ -305,10 +240,10 @@ object ScriptTestEnv {
   //    else, not defined
   lazy val envScalaHome: String =
     printf("scalacPath: %s\n", scalacPath.norm)
-    if scalacPath.isFile then scalacPath.replaceAll("/bin/scalac", "")
+    if File.getOnDisk(scalacPath).nonEmpty then scalacPath.replaceAll("/bin/scalac", "")
     else envOrElse("SCALA_HOME", "not-found").norm
 
-  lazy val javaParent: String = whichJava.parent(2)
+  lazy val javaParent: String = File.getOnDisk(whichJava).get.parent.parent.path
   lazy val envJavaHome: String = envOrElse("JAVA_HOME", javaParent)
   lazy val cyghome = envOrElse("CYGWIN", "")
   lazy val msyshome = envOrElse("MSYS", "")

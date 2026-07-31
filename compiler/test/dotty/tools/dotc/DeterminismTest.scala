@@ -1,16 +1,14 @@
 package dotty.tools.dotc
 
+import dotty.tools.nio.FileContainer
+
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, StandardCopyOption}
 import javax.tools.{DiagnosticCollector, JavaFileObject, ToolProvider}
-
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
-
 import org.junit.{Ignore, Test}
 import org.junit.Assert.*
-
-import dotty.tools.deleteDirectory
 import dotty.tools.vulpix.TestConfiguration
 
 /** Tests that the compiler produces byte-for-byte identical class files and
@@ -474,10 +472,10 @@ class DeterminismTester {
       copyRecursive(referenceOutput, recompileOutput)
       compile(recompileOutput, permutation)
       assertDirectorySame(referenceOutput, recompileOutput, permutation.map(_.name).mkString("recompile of [", ", ", "]"))
-      deleteDirectory(recompileOutput.toFile)
+      FileContainer.getOnDisk(recompileOutput.toString).foreach(_.deleteRecursively())
 
-    deleteDirectory(referenceOutput.toFile)
-    deleteDirectory(srcDir.toFile)
+    FileContainer.getOnDisk(referenceOutput.toString).foreach(_.deleteRecursively())
+    FileContainer.getOnDisk(srcDir.toString).foreach(_.deleteRecursively())
   }
 
   def permutationsWithSubsets[A](as: List[A]): List[List[A]] =

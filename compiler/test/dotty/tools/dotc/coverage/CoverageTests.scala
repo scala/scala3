@@ -1,204 +1,192 @@
 package dotty.tools.dotc.coverage
 
+import dotty.tools.TestSources
 import org.junit.Test
 import org.junit.AfterClass
 import org.junit.Assert.*
-import org.junit.Assume.*
 import org.junit.experimental.categories.Category
 import dotty.{BootstrappedOnlyTests, Properties}
 import dotty.tools.vulpix.*
 import dotty.tools.vulpix.TestConfiguration.*
 import dotty.tools.dotc.reporting.TestReporter
+import dotty.tools.nio.FileSystemEntry
 
-import java.nio.file.{FileSystems, Files, Path, Paths, StandardCopyOption}
-import scala.jdk.CollectionConverters.*
-import scala.util.Properties.userDir
-import scala.collection.mutable.Buffer
+import dotty.tools.nio.*
+import dotty.tools.io.FileExtension
 
-import java.nio.charset.StandardCharsets
-import java.util.stream.Collectors
+import scala.io.Codec
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class CoverageTests:
   import CoverageTests.{*, given}
 
-  private val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
-  private val rootSrc = Paths.get(userDir, "tests", "coverage")
+  private val rootSrc = TestSources.rootPath().getContainer("tests").get.getContainer("coverage").get
 
   @Test
   def checkCoverageStatements(): Unit =
-    checkCoverageIn(rootSrc.resolve("pos"), false)
+    checkCoverageIn(rootSrc.getContainer("pos").get, false)
 
   @Test
   def checkInstrumentedRuns(): Unit =
-    checkCoverageIn(rootSrc.resolve("run"), true)
+    checkCoverageIn(rootSrc.getContainer("run").get, true)
 
   @Test
   def checkCoverageWarnings(): Unit =
-    checkCoverageWarningsIn(rootSrc.resolve("warn"))
+    checkCoverageWarningsIn(rootSrc.getContainer("warn").get)
 
-  def checkCoverageIn(dir: Path, run: Boolean)(using TestGroup): Unit =
-    /** Converts \\ (escaped \) to / on windows, to make the tests pass without changing the serialization. */
-    def fixWindowsPaths(lines: Buffer[String]): Buffer[String] =
-      val separator = java.io.File.separatorChar
-      if separator == '\\' then
+  def checkCoverageIn(dir: FileContainer, run: Boolean)(using TestGroup): Unit =
+    /** Converts \\ (escaped \) to / on Windows, to make the tests pass without changing the serialization. */
+    def fixWindowsPaths(lines: Iterable[String]): Iterable[String] =
+      if FileSystemEntry.separator == '\\' then
         val escapedSep = "\\\\"
         lines.map(_.replace(escapedSep, "/"))
       else
         lines
     end fixWindowsPaths
 
-    def runOnFileOrDir(p: Path): Boolean =
-      (scalaFile.matches(p) || Files.isDirectory(p))
+    def runOnFileOrDir(p: FileSystemEntry): Boolean =
+      (p.isInstanceOf[FileContainer] || p.path.endsWith(".scala"))
       && (p != dir)
-      && (Properties.testsFilter.isEmpty || Properties.testsFilter.exists(p.toString.contains))
+      && (Properties.testsFilter.isEmpty || Properties.testsFilter.exists(p.path.contains))
 
-    Files.walk(dir, 1).filter(runOnFileOrDir).forEach(path => {
+    dir.entries.filter(runOnFileOrDir).foreach(path => {
       // measurement files only exist in the "run" category
       // as these are generated at runtime by the scala.runtime.coverage.Invoker
-      val (targetDir, expectFile, expectMeasurementFile) =
-        if Files.isDirectory(path) then
-          val dirName = path.getFileName().toString
-          assert(!Files.walk(path).filter(scalaFile.matches(_)).toArray.isEmpty, s"No scala files found in test directory: ${path}")
-          val targetDir = computeCoverageInTmp(path, isDirectory = true, dir, run)
-          (targetDir, path.resolve(s"test.scoverage.check"), path.resolve(s"test.measurement.check"))
-        else
-          val fileName = path.getFileName.toString.stripSuffix(".scala")
-          val targetDir = computeCoverageInTmp(path, isDirectory = false, dir, run)
-          (targetDir, path.resolveSibling(s"${fileName}.scoverage.check"), path.resolveSibling(s"${fileName}.measurement.check"))
+      val (targetDir, expectFile, expectMeasurementFile) = path match
+        case d: FileContainer =>
+          assert(d.recursiveEntries.collect { case f: File if f.extension == FileExtension.Scala => f }.nonEmpty, s"No scala files found in test directory: ${path.path}")
+          val targetDir = computeCoverageInTmp(d, isDirectory = true, dir, run)
+          (targetDir, d.getOrCreateFile("test.scoverage.check"), d.getFile("test.measurement.check"))
+        case f: File =>
+          val fileName = f.nameWithoutExtension
+          val targetDir = computeCoverageInTmp(f, isDirectory = false, dir, run)
+          (targetDir, f.parent.getOrCreateFile(s"$fileName.scoverage.check"), f.parent.getFile(s"$fileName.measurement.check"))
 
-      val targetFile = targetDir.resolve(s"scoverage.coverage")
+      val targetFile = targetDir.getFile("scoverage", FileExtension.from("coverage")).get
 
       if updateCheckFiles then
-        Files.copy(targetFile, expectFile, StandardCopyOption.REPLACE_EXISTING)
+        targetFile.copyTo(expectFile)
       else
-        val expected = fixWindowsPaths(Files.readAllLines(expectFile).asScala)
-        val obtained = fixWindowsPaths(Files.readAllLines(targetFile).asScala)
+        val expected = fixWindowsPaths(expectFile.readLines(Codec.UTF8))
+        val obtained = fixWindowsPaths(targetFile.readLines(Codec.UTF8))
         if expected != obtained then
-          val instructions = FileDiff.diffMessage(expectFile.toString, targetFile.toString)
+          val instructions = FileDiff.diffMessage(expectFile.path, targetFile.path)
           fail(s"Coverage report differs from expected data.\n$instructions")
 
-      if run && Files.exists(expectMeasurementFile) then
-
-        // Note that this assumes that the test invoked was single threaded,
-        // if that is not the case then this will have to be adjusted
-        val targetMeasurementFile = findMeasurementFile(targetDir)
-
-        if updateCheckFiles then
-          Files.copy(targetMeasurementFile, expectMeasurementFile, StandardCopyOption.REPLACE_EXISTING)
-
-        else
+      expectMeasurementFile match
+        case Some(expectMeasurementFile) if run =>
+          // Note that this assumes that the test invoked was single threaded,
+          // if that is not the case then this will have to be adjusted
           val targetMeasurementFile = findMeasurementFile(targetDir)
-          val expectedMeasurements = fixWindowsPaths(Files.readAllLines(expectMeasurementFile).asScala)
-          val obtainedMeasurements = fixWindowsPaths(Files.readAllLines(targetMeasurementFile).asScala)
-          if expectedMeasurements != obtainedMeasurements then
-            val instructions = FileDiff.diffMessage(expectMeasurementFile.toString, targetMeasurementFile.toString)
-            fail(s"Measurement report differs from expected data.\n$instructions")
+          if updateCheckFiles then
+            targetMeasurementFile.copyTo(expectMeasurementFile)
+          else
+            val targetMeasurementFile = findMeasurementFile(targetDir)
+            val expectedMeasurements = fixWindowsPaths(expectMeasurementFile.readLines(Codec.UTF8))
+            val obtainedMeasurements = fixWindowsPaths(targetMeasurementFile.readLines(Codec.UTF8))
+            if expectedMeasurements != obtainedMeasurements then
+              val instructions = FileDiff.diffMessage(expectMeasurementFile.path, targetMeasurementFile.path)
+              fail(s"Measurement report differs from expected data.\n$instructions")
+        case _ => ()
       ()
     })
 
   /** Generates the coverage report for the given input file, in a temporary directory. */
-  def computeCoverageInTmp(inputFile: Path, isDirectory: Boolean, sourceRoot: Path, run: Boolean)(using TestGroup): Path =
-    val target = Files.createTempDirectory("coverage")
-    val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", target.toString, "-sourceroot", sourceRoot.toString)
+  def computeCoverageInTmp(inputFile: FileSystemEntry, isDirectory: Boolean, sourceRoot: FileContainer, run: Boolean)(using TestGroup): FileContainer =
+    val target = FileContainer.createTemporaryOnDisk("coverage")
+    val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", target.path, "-sourceroot", sourceRoot.path)
     if run then
-      val path = if isDirectory then inputFile.toString else inputFile.getParent.toString
+      val path = if isDirectory then inputFile.path else inputFile.parent.path
       val test = compileDir(path, options)
-      // a checkFile exists by construction; perhaps this intends to assert that target.checkFile.isDefined
-      for target <- test.targets; checkFile <- target.checkFile do
-        assert(checkFile.exists, s"Expected checkfile for $path $checkFile does not exist.")
       test.checkRuns()
     else
       val test =
-        if isDirectory then compileDir(inputFile.toString, options)
-        else compileFile(inputFile.toString, options)
+        if isDirectory then compileDir(inputFile.path, options)
+        else compileFile(inputFile.path, options)
       test.checkCompile()
     target
 
-  def checkCoverageWarningsIn(dir: Path)(using TestGroup): Unit =
-    def runOnFile(p: Path): Boolean =
-      scalaFile.matches(p)
-      && (Properties.testsFilter.isEmpty || Properties.testsFilter.exists(p.toString.contains))
+  def checkCoverageWarningsIn(dir: FileContainer)(using TestGroup): Unit =
+    def runOnFile(p: File): Boolean =
+      p.extension == FileExtension.Scala
+      && (Properties.testsFilter.isEmpty || Properties.testsFilter.exists(p.path.contains))
 
-    Files.walk(dir, 1).filter(runOnFile).forEach { path =>
-      val target = Files.createTempDirectory("coverage-warning")
-      val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", target.toString, "-sourceroot", rootSrc.toString)
-      val relativePath = Paths.get(userDir).relativize(path).toString
-      compileFile(relativePath, options).checkWarnings()
+    dir.entries.collect { case f: File if runOnFile(f) => f }.foreach { path =>
+      val target = FileContainer.createTemporaryOnDisk("coverage-warning")
+      val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", target.path, "-sourceroot", rootSrc.path)
+      compileFile(path, options).checkWarnings()
     }
 
-  private def findMeasurementFile(targetDir: Path): Path = {
-    val allFilesInTarget = Files.list(targetDir).collect(Collectors.toList).asScala
-    allFilesInTarget.filter(_.getFileName.toString.startsWith("scoverage.measurements.")).headOption.getOrElse(
-      throw new AssertionError(s"Expected to find measurement file in targetDir [${targetDir}] but none were found.")
+  private def findMeasurementFile(targetDir: FileContainer): File = {
+    val allFilesInTarget = targetDir.entries.collect { case f: File => f }.toList
+    allFilesInTarget.find(_.name.startsWith("scoverage.measurements.")).getOrElse(
+      throw new AssertionError(s"Expected to find measurement file in targetDir [${targetDir.path}] but none were found.")
     )
   }
 
   @Test
   def checkIncrementalCoverage(): Unit =
-    val target = Files.createTempDirectory("coverage")
-    val sourceRoot = target.resolve("src")
-    Files.createDirectory(sourceRoot)
-    val sourceFile1 = sourceRoot.resolve("file1.scala")
-    Files.write(sourceFile1, "def file1() = 1".getBytes(StandardCharsets.UTF_8))
+    val target = FileContainer.createTemporaryOnDisk("coverage")
+    val sourceRoot = target.getOrCreateContainer("src")
+    val sourceFile1 = sourceRoot.getOrCreateFile("file1", FileExtension.Scala)
+    sourceFile1.writeText("def file1() = 1", Codec.UTF8)
 
-    val coverageOut = target.resolve("coverage-out")
-    Files.createDirectory(coverageOut)
-    val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", coverageOut.toString, "-sourceroot", sourceRoot.toString)
-    compileFile(sourceFile1.toString, options).checkCompile()
+    val coverageOut = target.getOrCreateContainer("coverage-out")
+    val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", coverageOut.path, "-sourceroot", sourceRoot.path)
+    compileFile(sourceFile1, options).checkCompile()
 
-    val scoverageFile = coverageOut.resolve("scoverage.coverage")
-    assert(Files.exists(scoverageFile), s"Expected scoverage file to exist at $scoverageFile")
+    val scoverageFile = coverageOut.getFile("scoverage.coverage")
+    assert(scoverageFile.nonEmpty, s"Expected scoverage file to exist at ${coverageOut.path}")
 
     locally {
-      val coverage = Serializer.deserialize(scoverageFile, sourceRoot.toString())
+      val coverage = Serializer.deserialize(java.nio.file.Path.of(scoverageFile.get.path), sourceRoot.path)
       val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
       assertEquals(Set("file1.scala"), filesWithCoverage)
     }
 
-    val sourceFile2 = sourceRoot.resolve("file2.scala")
-    Files.write(sourceFile2, "def file2() = 2".getBytes(StandardCharsets.UTF_8))
+    val sourceFile2 = sourceRoot.getOrCreateFile("file2", FileExtension.Scala)
+    sourceFile2.writeText("def file2() = 2", Codec.UTF8)
 
-    compileFile(sourceFile2.toString, options).checkCompile()
+    compileFile(sourceFile2, options).checkCompile()
     locally {
-      val coverage = Serializer.deserialize(scoverageFile, sourceRoot.toString())
+      val coverage = Serializer.deserialize(java.nio.file.Path.of(scoverageFile.get.path), sourceRoot.path)
       val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
       assertEquals(Set("file1.scala", "file2.scala"), filesWithCoverage)
     }
+    target.deleteRecursively()
 
   @Test
   def `deleted source files should not be kept in incremental coverage`(): Unit =
-    val target = Files.createTempDirectory("coverage")
-    val sourceRoot = target.resolve("src")
-    Files.createDirectory(sourceRoot)
-    val sourceFile1 = sourceRoot.resolve("file1.scala")
-    Files.write(sourceFile1, "def file1() = 1".getBytes(StandardCharsets.UTF_8))
+    val target = FileContainer.createTemporaryOnDisk("coverage")
+    val sourceRoot = target.getOrCreateContainer("src")
+    val sourceFile1 = sourceRoot.getOrCreateFile("file1", FileExtension.Scala)
+    sourceFile1.writeText("def file1() = 1", Codec.UTF8)
 
-    val coverageOut = target.resolve("coverage-out")
-    Files.createDirectory(coverageOut)
-    val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", coverageOut.toString, "-sourceroot", sourceRoot.toString)
-    compileFile(sourceFile1.toString, options).checkCompile()
+    val coverageOut = target.getOrCreateContainer("coverage-out")
+    val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", coverageOut.path, "-sourceroot", sourceRoot.path)
+    compileFile(sourceFile1, options).checkCompile()
 
-    val scoverageFile = coverageOut.resolve("scoverage.coverage")
-    assert(Files.exists(scoverageFile), s"Expected scoverage file to exist at $scoverageFile")
+    val scoverageFile = coverageOut.getFile("scoverage.coverage")
+    assert(scoverageFile.nonEmpty, s"Expected scoverage file to exist at ${coverageOut.path}")
 
     locally {
-      val coverage = Serializer.deserialize(scoverageFile, sourceRoot.toString())
+      val coverage = Serializer.deserialize(java.nio.file.Path.of(scoverageFile.get.path), sourceRoot.path)
       val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
       assertEquals(Set("file1.scala"), filesWithCoverage)
     }
 
-    val sourceFile2 = sourceRoot.resolve("file2.scala")
-    Files.write(sourceFile2, "def file2() = 2".getBytes(StandardCharsets.UTF_8))
+    val sourceFile2 = sourceRoot.getOrCreateFile("file2", FileExtension.Scala)
+    sourceFile2.writeText("def file2() = 2", Codec.UTF8)
 
-    Files.delete(sourceFile1)
+    sourceFile1.delete()
 
-    compileFile(sourceFile2.toString, options).checkCompile()
+    compileFile(sourceFile2, options).checkCompile()
     locally {
-      val coverage = Serializer.deserialize(scoverageFile, sourceRoot.toString())
+      val coverage = Serializer.deserialize(java.nio.file.Path.of(scoverageFile.get.path), sourceRoot.path)
       val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
       assertEquals(Set("file2.scala"), filesWithCoverage)
     }
+    target.deleteRecursively()
 
 object CoverageTests extends ParallelTesting:
   import scala.concurrent.duration.*

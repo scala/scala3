@@ -2,18 +2,17 @@ package dotty
 package tools
 package vulpix
 
-import java.io.{File as JFile, InputStreamReader, IOException, BufferedReader, PrintStream}
+import java.io.{BufferedReader, IOException, InputStreamReader, PrintStream}
 import java.nio.file.Paths
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.TimeoutException
-
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.collection.mutable
-
 import ChildJVMMain.{MessageEnd, MessageStart}
 import Status.*
+import dotty.tools.io.ClassPath
 
 /** Vulpix spawns JVM subprocesses (`numberOfWorkers`) in order to run tests
  *  without compromising the main JVM
@@ -178,7 +177,7 @@ trait RunnerOrchestration:
      */
     private def createProcess(): RunnerProcess =
       val url = classOf[ChildJVMMain.type].getProtectionDomain.getCodeSource.getLocation
-      val cp = Paths.get(url.toURI).toString + JFile.pathSeparator + Properties.scalaLibrary
+      val cp = Paths.get(url.toURI).toString + ClassPath.pathSeparator + Properties.scalaLibrary
       val javaBin = Paths.get(sys.props("java.home"), "bin", "java").toString
       val args = Seq("-ea", "-Dfile.encoding=UTF-8", "-Duser.language=en", "-Duser.country=US", "-Xmx1g", "-cp", cp) ++
         (if debugMode then Seq("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,quiet=n") else Seq.empty)

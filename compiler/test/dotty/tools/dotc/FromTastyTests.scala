@@ -6,8 +6,6 @@ import org.junit.{AfterClass, Test}
 import reporting.TestReporter
 import vulpix.*
 
-import java.io.{File => JFile}
-
 import scala.concurrent.duration.*
 
 class FromTastyTests {
@@ -20,7 +18,7 @@ class FromTastyTests {
     // > scalac -Ythrough-tasty -Ycheck:all <source>
 
     implicit val testGroup: TestGroup = TestGroup("posTestFromTasty")
-    compileTastyInDir(s"tests${JFile.separator}pos", defaultOptions,
+    compileTastyInDir("tests/pos", defaultOptions,
       fromTastyFilter = FileFilter.exclude(TestSources.posFromTastyExcludelisted)
     ).checkCompile()
   }
@@ -32,7 +30,7 @@ class FromTastyTests {
     // > scala Test
 
     implicit val testGroup: TestGroup = TestGroup("runTestFromTasty")
-    compileTastyInDir(s"tests${JFile.separator}run", defaultOptions,
+    compileTastyInDir("tests/run", defaultOptions,
       fromTastyFilter = FileFilter.exclude(TestSources.runFromTastyExcludelisted)
     ).checkRuns()
   }

@@ -1,34 +1,26 @@
 package dotty.tools.dotc.core.tasty
 
-import java.io.{File => JFile}
-import java.nio.file.{Files, NoSuchFileException}
-
 import scala.sys.process.*
-
 import org.junit.Test
-import org.junit.Assert.{assertTrue, assertFalse}
-
+import org.junit.Assert.{assertFalse, assertTrue}
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.interfaces.Diagnostic.ERROR
 import dotty.tools.dotc.reporting.TestReporter
-import dotty.tools.io.{Path, JarArchive}
-
+import dotty.tools.nio.*
 import dotty.tools.vulpix.TestConfiguration
 
 class PathPicklingTest {
 
   @Test def test(): Unit = {
-    val out = JFile("out/testPathPickling")
-    val cwd = JFile("").getAbsolutePath()
-    delete(out)
-    out.mkdirs()
+    FileContainer.getOnDisk("out/testPathPickling").foreach(_.deleteRecursively())
+    val outPath = "out/testPathPickling/out.jar"
 
     locally {
       val ignorantProcessLogger = ProcessLogger(_ => ())
       val options = TestConfiguration.defaultOptions
-        .and("-d", s"$out/out.jar")
+        .and("-d", outPath)
         .and("-sourceroot", "tests/pos")
-        .and(s"$cwd/tests/pos/i10430/lib.scala", s"$cwd/tests/pos/i10430/app.scala")
+        .and(s"tests/pos/i10430/lib.scala", s"tests/pos/i10430/app.scala")
       val reporter = TestReporter.reporter(System.out, logLevel = ERROR)
       val rep = Main.process(options.all, reporter)
       assertFalse("Compilation failed.", rep.hasErrors)
@@ -36,10 +28,10 @@ class PathPicklingTest {
 
     val printedTasty =
       val sb = new StringBuffer
-      val jar = JarArchive.open(Path(s"$out/out.jar"))
+      val jar = FileContainer.getFromFile(File.getOnDisk(outPath).get, "", 0).get
       try
-        for file <- jar.iterator if file.name.endsWith(".tasty") do
-          sb.append(TastyPrinter.showContents(file.toByteArray, noColor = true, isBestEffortTasty = false))
+        for file <- jar.entries.collect { case f: File if f.extension.isTasty => f } do
+          sb.append(TastyPrinter.showContents(file.readBytes(), noColor = true, isBestEffortTasty = false))
       finally jar.close()
       sb.toString()
 
@@ -52,13 +44,5 @@ class PathPicklingTest {
     assertTrue(printedTasty.contains("[i10430/app.scala]"))
     assertFalse(printedTasty.contains(": i10430\\app.scala"))
     assertFalse(printedTasty.contains("[i10430\\app.scala]"))
-  }
-
-  private def delete(file: JFile): Unit = {
-    if (file.isDirectory) file.listFiles.foreach(delete)
-    try Files.delete(file.toPath)
-    catch {
-      case _: NoSuchFileException => // already deleted, everything's fine
-    }
   }
 }

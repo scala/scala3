@@ -2,23 +2,17 @@ package dotty.tools
 package dotc
 
 import vulpix.TestConfiguration
-
-import dotty.tools.Useables.given
 import dotty.tools.dotc.config.Settings.*
 import dotty.tools.dotc.config.Settings.Setting.ChoiceWithHelp
 import dotty.tools.dotc.config.ScalaSettingCategories.*
 import dotty.tools.dotc.config.ScalaSettings
-import dotty.tools.io.PlainDirectory
-import dotty.tools.io.Directory
+import dotty.tools.io.{Directory, FileExtension, PlainDirectory}
 import dotty.tools.dotc.config.ScalaVersion
-import io.PlainFile, PlainFile.*
-
-import java.nio.file.*, Files.*
-
+import dotty.tools.nio.{File, FileContainer}
 import org.junit.Test
 import org.junit.Assert.{assertEquals, assertFalse, assertNotEquals, assertTrue}
 
-import scala.util.Using
+import scala.io.Codec
 
 class SettingsTests:
 
@@ -49,19 +43,22 @@ class SettingsTests:
   @Test def `output jar file is created eagerly`: Unit =
     import TestConfiguration.basicClasspath
     val source = "tests/pos/Foo.scala"
-    val out = Paths.get("out/jarredFoo.jar").normalize
-    if Files.exists(out) then Files.delete(out)
-    val args = List("-Xmain-class", "Jarred", "-classpath", basicClasspath, "-d", out.toString, source)
+    val out = "out/jarredFoo.jar"
+    File.getOnDisk(out).foreach(_.delete())
+    val args = List("-Xmain-class", "Jarred", "-classpath", basicClasspath, "-d", out, source)
     val summary = ScalaSettings.processArguments(args, processAll = true)
     assertEquals(0, summary.errors.size)
-    assertTrue(Files.exists(out))
+    assertTrue(File.getOnDisk(out).nonEmpty)
 
   @Test def `t8124 Don't crash on missing argument`: Unit =
-    Using.resource(Files.createTempDirectory("testDir")): dir =>
-      val source = Paths.get("tests/pos/Foo.scala").normalize
-      val args  = List("-encoding", "-d", dir.toString, source.toString) // -encoding takes an arg!
+    val dir = FileContainer.createTemporaryOnDisk("testDir")
+    try
+      val source = File.getOnDisk("tests/pos/Foo.scala").get
+      val args  = List("-encoding", "-d", dir.path, source.path) // -encoding takes an arg!
       val summary = ScalaSettings.processArguments(args, processAll = true)
       assertEquals(1, summary.errors.size)
+    finally
+      dir.deleteRecursively()
 
   @Test def acceptUnconstrained: Unit =
     object Settings extends SettingGroup:
@@ -104,7 +101,7 @@ class SettingsTests:
     assertTrue(summary.warnings.head.contains("was updated"))
     assertEquals(0, summary.arguments.size)
     withProcessedArgs(summary) {
-      assertEquals("5999", Settings.option.value.toString)
+      assertEquals("5999", Settings.option.value)
     }
 
   @Test def `bad option warning consumes an arg`: Unit =
@@ -251,17 +248,19 @@ class SettingsTests:
     assertTrue(summary.warnings.forall(_.contains("updated")))
 
   @Test def `dir option also warns`: Unit =
-    object Settings extends SettingGroup:
-      val option = OutputSetting(RootSetting, "option", "out", "A file", Paths.get("a", "b", "c").toPlainFile)
-    Using.resource(createTempDirectory("i13887")) { dir =>
-      val target = createDirectory(dir.resolve("x"))
-      val mistake = createDirectory(dir.resolve("y"))
-      val args = List("-option", target.toString, "-option", mistake.toString)
+    val dir = FileContainer.createTemporaryOnDisk("i13887")
+    try
+      object Settings extends SettingGroup:
+        val option = OutputSetting(RootSetting, "option", "out", "A file", io.PlainFile(io.File("a/b/c")))
+      val target = dir.getOrCreateContainer("x")
+      val mistake = dir.getOrCreateContainer("y")
+      val args = List("-option", target.path, "-option", mistake.path)
       val summary = Settings.processArguments(args, processAll = true)
       assertTrue("Multiple options is not an error", summary.errors.isEmpty)
       assertFalse("Multiple conflicting options is a warning", summary.warnings.isEmpty)
       assertTrue(summary.warnings.forall(_.contains("updated")))
-    }
+    finally
+      dir.deleteRecursively()
 
   @Test def `Set BooleanSettings correctly`: Unit =
     object Settings extends SettingGroup:
@@ -294,59 +293,67 @@ class SettingsTests:
       assertEquals(true, foo.value)
 
   @Test def `Output setting is overriding existing jar`: Unit =
-    val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>
+    val file = File.createTemporaryOnDisk("myfile", FileExtension.Jar)
+    try
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir)
 
       import Settings.*
-      Files.write(file, "test".getBytes())
-      val fileStateBefore = String(Files.readAllBytes(file))
-      val args = List(s"-testOutput:${file.toString}")
+      file.writeText("test", Codec.UTF8)
+      val fileStateBefore = file.readText(Codec.UTF8)
+      val args = List(s"-testOutput:${file.path}")
       val summary = processArguments(args, processAll = true)
 
-      assertNotEquals(fileStateBefore, String(Files.readAllBytes(file)), "Jar should have been overridden")
+      assertNotEquals(fileStateBefore, file.readText(Codec.UTF8), "Jar should have been overridden")
+    finally
+      file.delete()
 
   @Test def `Output setting respects previous setting`: Unit =
-    val result = Using.resources(
-      Files.createTempFile("myfile", ".jar"), Files.createTempFile("myfile2", ".jar")
-    ): (file1, file2) =>
+    val file1 = File.createTemporaryOnDisk("myfile", FileExtension.Jar)
+    val file2 = File.createTemporaryOnDisk("myfile2", FileExtension.Jar)
+    try
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true)
 
       import Settings.*
 
-      Files.write(file1, "test1".getBytes())
-      Files.write(file2, "test2".getBytes())
+      file1.writeText("test1", Codec.UTF8)
+      file2.writeText("test2", Codec.UTF8)
 
-      val file1StateBefore = String(Files.readAllBytes(file1))
-      val file2StateBefore = String(Files.readAllBytes(file2))
+      val file1StateBefore = file1.readText(Codec.UTF8)
+      val file2StateBefore = file2.readText(Codec.UTF8)
 
-      val creationTime = Files.getLastModifiedTime(file1)
-      val args = List(s"-testOutput:${file1.toString}", s"-testOutput:${file2.toString}")
+      val creationTime = file1.lastModified()
+      val args = List(s"-testOutput:${file1.path}", s"-testOutput:${file2.path}")
       val summary = processArguments(args, processAll = true)
 
       // The output is a new filesystem without information of original path
       // We can't check the `testOutput.value` as in other tests.
-      assertNotEquals(file1StateBefore, String(Files.readAllBytes(file1)))
-      assertEquals(file2StateBefore, String(Files.readAllBytes(file2)))
+      assertNotEquals(file1StateBefore, file1.readText(Codec.UTF8))
+      assertEquals(file2StateBefore, file2.readText(Codec.UTF8))
+    finally
+      file1.delete()
+      file2.delete()
 
   @Test def `Output side effect is not present when setting is deprecated`: Unit =
-    val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>
+    val file = File.createTemporaryOnDisk("myfile", FileExtension.Jar)
+    try
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
 
       import Settings.*
 
-      Files.write(file, "test".getBytes())
-      val fileStateBefore = String(Files.readAllBytes(file))
+      file.writeText("test", Codec.UTF8)
+      val fileStateBefore = file.readText(Codec.UTF8)
 
-      val args = List(s"-testOutput:${file.toString}")
+      val args = List(s"-testOutput:${file.path}")
       val summary = processArguments(args, processAll = true)
 
-      assertEquals(fileStateBefore, String(Files.readAllBytes(file)))
+      assertEquals(fileStateBefore, file.readText(Codec.UTF8))
+    finally file.delete()
 
   @Test def `Arguments of options are correctly parsed with either ":" or " " separators`: Unit =
     val Help = "" // i.e. help = Help
@@ -365,7 +372,8 @@ class SettingsTests:
       val versionSetting= VersionSetting(RootSetting, "versionSetting", "versionSetting")
 
     import Settings.*
-    Using.resource(Files.createTempDirectory("testDir")): dir =>
+    val dir = FileContainer.createTemporaryOnDisk("testDir")
+    try
 
       val args = List(
         List("-booleanSetting", "true"), // `-b false` does not mean `-b:false`
@@ -376,8 +384,8 @@ class SettingsTests:
         List("-intSetting", "42"),
         List("-intChoiceSetting", "2"),
         List("-multiStringSetting", "a,b"),
-        List("-outputSetting", dir.toString),
-        List("-pathSetting", dir.toString),
+        List("-outputSetting", dir.path),
+        List("-pathSetting", dir.path),
         List("-phasesSetting", "parser,typer"),
         List("-versionSetting", "1.0.0"),
       )
@@ -392,8 +400,8 @@ class SettingsTests:
           assertEquals(42, intSetting.value)
           assertEquals(2, intChoiceSetting.value)
           assertEquals(List("a", "b"), multiStringSetting.value)
-          assertEquals(dir.toString, outputSetting.value.path)
-          assertEquals(dir.toString, pathSetting.value)
+          assertEquals(dir.path, outputSetting.value.path)
+          assertEquals(dir.path, pathSetting.value)
           assertEquals(List("parser", "typer"), phasesSetting.value)
           assertEquals(ScalaVersion.parse("1.0.0").get, versionSetting.value)
 
@@ -401,6 +409,8 @@ class SettingsTests:
       val summaryWhitespace = processArguments(args.flatten, processAll = true)
       testValues(summary = summaryColon)
       testValues(summary = summaryWhitespace)
+    finally
+      dir.deleteRecursively()
 
   @Test def `prefix option requires nonempty suffix`: Unit =
     object Settings extends SettingGroup:
@@ -473,20 +483,23 @@ class SettingsTests:
     object Settings extends SettingGroup:
       val foo = BooleanSetting(RootSetting, "foo", "foo", ignoreInvalidArgs = true, preferPrevious = true)
       val bar = BooleanSetting(RootSetting, "bar", "bar")
-      val baz = OutputSetting(RootSetting, "out", "dir", "A file", default = Paths.get("out", "baz").toPlainFile,
+      val baz = OutputSetting(RootSetting, "out", "dir", "A file", default = io.PlainFile(io.File("out/baz")),
         ignoreInvalidArgs = true, preferPrevious = true)
     import Settings.*
-    Using.resource(createTempDirectory("testDir")): dir =>
-      val out = createDirectory(dir.resolve("x"))
-      val args = List("-out", out.toString, "-out", s"$dir/y", "-foo:true", "-foo:false", "-bar:true")
+    val dir = FileContainer.createTemporaryOnDisk("testDir")
+    try
+      val out = dir.getOrCreateContainer("x")
+      val args = List("-out", out.path, "-out", s"${dir.path}/y", "-foo:true", "-foo:false", "-bar:true")
       val summary = processArguments(args, processAll = true)
       assertTrue(summary.errors.mkString(","), summary.errors.isEmpty)
       assertEquals(1, summary.warnings.size)
       assertEquals("Ignoring conflicting value for Boolean flag -foo", summary.warnings.head)
-      assertEquals(1L, Files.list(dir).count) // second -out is ignored, no dir/y exists
+      assertEquals(1L, dir.entries.size) // second -out is ignored, no dir/y exists
       withProcessedArgs(summary):
         assertTrue(foo.value)
         assertTrue(bar.value)
+    finally
+      dir.deleteRecursively()
 
   // use the supplied summary for evaluating settings
   private def withProcessedArgs(summary: ArgsSummary)(f: SettingsState ?=> Unit) = f(using summary.sstate)
