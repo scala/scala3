@@ -11,4 +11,5 @@ import language.experimental.captureChecking
  *  @param message an explanation of the preview status or migration guidance
  */
 private[scala] final class preview(message: String) extends StaticAnnotation:
+  /** Creates a `preview` annotation with no explanatory message. */
   def this() = this("")

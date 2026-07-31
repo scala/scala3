@@ -51,5 +51,6 @@ object Conversion:
 
   /** Unwraps an `into`. */
   extension [T](x: into[T])
+    /** Returns `x` viewed at its underlying type `T`, revealing the opaque `into[T]` alias. */
     def underlying: T = x
 end Conversion
