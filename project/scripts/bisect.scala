@@ -315,37 +315,123 @@ class ReleaseBisect(validationScript: File, shouldFail: Boolean, allReleases: Ve
       isGood
     })
 
-class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Boolean, lastGoodHash: String, firstBadHash: String):
-  def bisect(): Unit =
-    println(s"Starting bisecting commits $lastGoodHash..$firstBadHash\n")
-    val scala3CompilerProject = if bootstrapped then "scala3-compiler-bootstrapped" else "scala3-compiler"
+/** What the build-and-validate script should do when the compiler cannot be built. */
+enum BuildFailureAction(val exitCode: Int):
+  /** Tell `git bisect run` that this commit cannot be tested. */
+  case SkipCommit extends BuildFailureAction(CommitBisectScripts.skipExitCode)
+  /** Abort, because there is no bisection in progress that could skip the commit. */
+  case AbortBisect extends BuildFailureAction(CommitBisectScripts.abortExitCode)
+
+object CommitBisectScripts:
+  /** `git bisect run` treats this status as "this commit cannot be tested". */
+  val skipExitCode = 125
+  /** `git bisect run` aborts on statuses of 128 and above instead of recording a verdict. */
+  val abortExitCode = 128
+
+  def sbtPublishRecipe(bootstrapped: Boolean): String =
     val scala3Project = if bootstrapped then "scala3-bootstrapped" else "scala3"
-    val validationCommandStatusModifier = if shouldFail then "! " else "" // invert the process status if failure was expected
-    val sbtPublishRecipe = Seq(
+    Seq(
       "clean",
       """set every doc := new File("unused")""",
       s"set scaladoc/Compile/resourceGenerators := (`$scala3Project`/Compile/resourceGenerators).value",
       s"$scala3Project/publishLocal",
     ).mkString("; ")
 
-    val bisectRunScript = raw"""
-      |scalaVersion=$$(sbt "print ${scala3CompilerProject}/version" | tail -n1)
+  /** A script that publishes the compiler built from the currently checked out commit
+   *  and validates it, exiting with a status that `git bisect run` understands.
+   */
+  def buildAndValidateScript(
+      validationScriptPath: String,
+      shouldFail: Boolean,
+      bootstrapped: Boolean,
+      onBuildFailure: BuildFailureAction
+  ): String =
+    val scala3CompilerProject = if bootstrapped then "scala3-compiler-bootstrapped" else "scala3-compiler"
+    val validationCommandStatusModifier = if shouldFail then "! " else "" // invert the process status if failure was expected
+    val publishRecipe = sbtPublishRecipe(bootstrapped)
+    raw"""
+      |commit=$$(git rev-parse --short HEAD)
+      |echo "Testing commit $$commit"
+      |scalaVersion=$$(sbt "print ${scala3CompilerProject}/version" | tr -d '\r' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+' | tail -n1)
+      |if [ -z "$$scalaVersion" ]; then
+      |  echo "Could not read the ${scala3CompilerProject} version at $$commit, aborting the bisection"
+      |  exit ${abortExitCode}
+      |fi
+      |echo "Compiler version at $$commit: $$scalaVersion"
       |rm -rf out
       |export JAVA_HOME=${sys.props("java.home")}
       |sbt_build_log=$$(mktemp)
-      |echo 'Running sbt publish recipe: sbt "$sbtPublishRecipe"'
-      |if sbt '$sbtPublishRecipe' >"$$sbt_build_log" 2>&1; then
+      |echo 'Running sbt publish recipe: sbt "$publishRecipe"'
+      |if sbt '$publishRecipe' >"$$sbt_build_log" 2>&1; then
       |  rm -f "$$sbt_build_log"
-      |  ${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
+      |  ${validationCommandStatusModifier}${validationScriptPath} "$$scalaVersion"
       |else
-      |  echo "Failed to build compiler, skip $$scalaVersion"
+      |  echo "Failed to build the compiler at $$commit"
       |  cat "$$sbt_build_log"
       |  rm -f "$$sbt_build_log"
-      |  git bisect skip
+      |  exit ${onBuildFailure.exitCode}
       |fi
     """.stripMargin
+
+class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Boolean, lastGoodHash: String, firstBadHash: String):
+  def bisect(): Unit =
+    println(s"Starting bisecting commits $lastGoodHash..$firstBadHash\n")
+    verifyEdgeCommits()
+
+    val bisectRunScript = buildAndValidateScript(BuildFailureAction.SkipCommit)
     "git bisect start".!
     s"git bisect bad $firstBadHash".!
     s"git bisect good $lastGoodHash".!
     Seq("git", "bisect", "run", "sh", "-c", bisectRunScript).!
     s"git bisect reset".!
+
+  private def buildAndValidateScript(onBuildFailure: BuildFailureAction): String =
+    CommitBisectScripts.buildAndValidateScript(
+      validationScript.getAbsolutePath,
+      shouldFail = shouldFail,
+      bootstrapped = bootstrapped,
+      onBuildFailure = onBuildFailure
+    )
+
+  /** Build and validate both ends of the bisected range before bisecting it.
+   *  The release bisection already established that the compiler changed its behaviour
+   *  between them, so a verdict that disagrees means the validation is not measuring the
+   *  locally built compiler, and bisecting would report an arbitrary commit as the culprit.
+   */
+  private def verifyEdgeCommits(): Unit =
+    val originalRef = currentRef()
+    try
+      verifyEdgeCommit(lastGoodHash, expectedGood = true)
+      verifyEdgeCommit(firstBadHash, expectedGood = false)
+      println("Both edge commits behave as expected\n")
+    finally
+      println(s"Checking out $originalRef again")
+      Seq("git", "checkout", originalRef).!
+
+  private def verifyEdgeCommit(hash: String, expectedGood: Boolean): Unit =
+    val expected = if expectedGood then "good" else "bad"
+    println(s"Verifying the '$expected' commit $hash by building it and validating the result")
+    if Seq("git", "checkout", "--detach", hash).! != 0 then
+      sys.error(s"Could not check out $hash. Make sure the working tree is clean before bisecting.")
+
+    val status = Seq("sh", "-c", buildAndValidateScript(BuildFailureAction.AbortBisect)).!
+    if status == CommitBisectScripts.abortExitCode then
+      sys.error(s"Could not build and validate the compiler at $hash, see the output above.")
+
+    val actual = if status == 0 then "good" else "bad"
+    println(s"Test result: $hash is a $actual commit\n")
+    if actual != expected then
+      sys.error(
+        s"""|The validation command reported that $hash is a '$actual' commit,
+            |but the release bisection determined that it is a '$expected' one. The validation command
+            |is not measuring the compiler that was just built from that commit. Common causes are:
+            |* the reproduction files are not present in the working tree after `git checkout`
+            |  (keep them outside of the repository or in a gitignored directory like `local/`),
+            |* the validation command fails for a reason unrelated to the compiler,
+            |* the locally published compiler is not the one picked up by the validation command.
+            |Run the validation command manually at $hash to see what happens.""".stripMargin
+      )
+
+  private def currentRef(): String =
+    val branch = scala.util.Try(Process(Seq("git", "symbolic-ref", "--quiet", "--short", "HEAD")).!!.trim).toOption
+    branch.filter(_.nonEmpty).getOrElse(Process(Seq("git", "rev-parse", "HEAD")).!!.trim)
