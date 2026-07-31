@@ -53,7 +53,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -75,7 +75,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -97,7 +97,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -119,7 +119,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -141,7 +141,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -163,7 +163,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -185,7 +185,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -208,7 +208,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Compile with coverage
         run: |
           ./project/scripts/sbt '
@@ -230,7 +230,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Compile with coverage
         run: |
           ./project/scripts/sbt '
@@ -253,7 +253,7 @@ jobs:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Run coverage compilation tests
         run: ./project/scripts/sbt 'scala3-bootstrapped/testCompilation --enable-coverage-phase'
 

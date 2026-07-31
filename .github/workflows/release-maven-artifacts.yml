@@ -24,7 +24,7 @@ jobs:
           distribution: 'adopt'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Import Scala PGP Key
         uses: crazy-max/ghaction-import-gpg@v7
         with:
@@ -66,7 +66,7 @@ jobs:
           distribution: 'temurin'
           java-version: 8
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Setup PGP Key
         run: |
           echo -n "$PGP_SECRET" | gpg --batch --import

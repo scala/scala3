@@ -29,7 +29,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Report MiMa issues in `scala-library-nonbootstrapped`
         run: ./project/scripts/sbt scala-library-nonbootstrapped/mimaReportBinaryIssues
 
@@ -47,7 +47,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Report MiMa issues in `scala3-interfaces`
         run: ./project/scripts/sbt scala3-interfaces/mimaReportBinaryIssues
 
@@ -65,7 +65,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Report MiMa issues in `tasty-core-nonbootstrapped`
         run: ./project/scripts/sbt tasty-core-nonbootstrapped/mimaReportBinaryIssues
 
@@ -83,7 +83,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Report MiMa issues in `scala-library-bootstrapped`
         run: ./project/scripts/sbt scala-library-bootstrapped/mimaReportBinaryIssues
 
@@ -104,7 +104,7 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Report MiMa issues in `tasty-core-bootstrapped`
         run: ./project/scripts/sbt tasty-core-bootstrapped/mimaReportBinaryIssues
 
@@ -122,6 +122,6 @@ jobs:
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@v1.5.5
       - name: Report MiMa issues in `scala-library-sjs`
         run: ./project/scripts/sbt scala-library-sjs/mimaReportBinaryIssues
