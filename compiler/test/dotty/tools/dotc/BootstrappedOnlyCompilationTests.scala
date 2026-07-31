@@ -9,7 +9,7 @@ import scala.concurrent.duration.*
 import reporting.TestReporter
 import vulpix.*
 
-import java.nio.file.*
+import dotty.tools.nio.*
 
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class BootstrappedOnlyCompilationTests {
@@ -184,15 +184,15 @@ class BootstrappedOnlyCompilationTests {
     // 1. hack with absolute path for -Xplugin
     // 2. copy `pluginFile` to destination
     def compileFilesInDir(dir: String, run: Boolean = false): CompilationTest = {
-      val outDir = new java.io.File(defaultOutputDir, "testPlugins")
-      val sourceDir = new java.io.File(dir)
+      val outDir = defaultOutputDir.getOrCreateContainer("testPlugins")
+      val sourceDir = TestSources.rootPath().getContainer(dir).get
 
-      val dirs = sourceDir.listFiles.toList.filter(_.isDirectory)
+      val dirs = sourceDir.entries.collect{ case c: FileContainer => c }.toList
       val targets = dirs.map { dir =>
         val compileDir = createOutputDirsForDir(dir, sourceDir, outDir)
-        Files.copy(dir.toPath.resolve(pluginFile), compileDir.toPath.resolve(pluginFile), StandardCopyOption.REPLACE_EXISTING)
+        dir.getFile(pluginFile).get.copyTo(compileDir.getOrCreateFile(pluginFile))
         val flags = {
-          val base = TestFlags(withCompilerClasspath, noCheckOptions).and("-Xplugin:" + compileDir.getAbsolutePath)
+          val base = TestFlags(withCompilerClasspath, noCheckOptions).and("-Xplugin:" + compileDir.path)
           if run then base.withRunClasspath(withCompilerClasspath) else base
         }
         SeparateCompilationSource("testPlugins", dir, flags, compileDir)

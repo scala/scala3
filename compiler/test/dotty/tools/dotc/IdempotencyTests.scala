@@ -2,13 +2,10 @@ package dotty
 package tools
 package dotc
 
-import java.io.File as JFile
-import java.nio.file.{ Files as JFiles, Path as JPath, Paths as JPaths }
-import java.util.stream.Stream as JStream
-
 import scala.jdk.CollectionConverters.*
 
-import org.junit.Test
+import dotty.tools.nio.*
+import org.junit.{AfterClass, Test}
 import org.junit.experimental.categories.Category
 
 import vulpix.*
@@ -39,34 +36,29 @@ class IdempotencyTests {
 object IdempotencyTests extends ParallelTesting
 
 object IdempotencyCheck {
-  def checkIdempotency(dir1: String, dir2: String): Unit = {
+  def checkIdempotency(first: String, second: String): Unit = {
     var failed = 0
     var total = 0
-    val dir1Path = JPaths.get(dir1)
-    val dir2Path = JPaths.get(dir2)
-    val dir1String = dir1Path.toString
-    val dir2String= dir2Path.toString
+    val dir1 = FileContainer.getOnDisk(first).get
+    val dir2 = FileContainer.getOnDisk(second).get
 
-    val groupedBytecodeFiles: List[(JPath, JPath, JPath, JPath)] = {
+    val groupedBytecodeFiles: Iterable[(File, File, File, File)] = {
       val bytecodeFiles = {
-        def bytecodeFiles(paths: JStream[JPath], dir: String): List[(String, JPath)] = {
-          def isBytecode(file: String) = file.endsWith(".class") || file.endsWith(".tasty")
-          def tupleWithName(f: JPath) = (f.toString.substring(dir.length, f.toString.length - 6), f)
-          paths.iterator.asScala.filter(path => isBytecode(path.toString)).map(tupleWithName).toList
-        }
-        bytecodeFiles(JFiles.walk(dir1Path), dir1String) ++ bytecodeFiles(JFiles.walk(dir2Path), dir2String)
+        def bytecodeFiles(paths: Iterable[FileSystemEntry], dir: String): Iterable[(String, File)] =
+          paths.collect{ case f: File if f.extension.isClass || f.extension.isTasty => (f.nameWithoutExtension, f) }
+        bytecodeFiles(dir1.recursiveEntries, dir1.path) ++ bytecodeFiles(dir2.recursiveEntries, dir2.path)
       }
       val groups = bytecodeFiles.groupBy(_._1).view.mapValues(_.map(_._2))
 
       groups.iterator.flatMap { g =>
-        def pred(f: JPath, dir: String, isTasty: Boolean) =
-          f.toString.contains(dir) && f.toString.endsWith(if (isTasty) ".tasty" else ".class")
-        val class1 = g._2.find(f => pred(f, dir1String, isTasty = false))
-        val class2 = g._2.find(f => pred(f, dir2String, isTasty = false))
-        val tasty1 = g._2.find(f => pred(f, dir1String, isTasty = true))
-        val tasty2 = g._2.find(f => pred(f, dir2String, isTasty = true))
-        assert(class1.isDefined, s"Could not find class in ${dir1} for ${g._1}")
-        assert(class2.isDefined, s"Could not find class in ${dir2} for ${g._1}")
+        def pred(f: File, dir: String, isTasty: Boolean) =
+          f.path.contains(dir) && (if isTasty then f.extension.isTasty else f.extension.isClass)
+        val class1 = g._2.find(f => pred(f, dir1.path, isTasty = false))
+        val class2 = g._2.find(f => pred(f, dir2.path, isTasty = false))
+        val tasty1 = g._2.find(f => pred(f, dir1.path, isTasty = true))
+        val tasty2 = g._2.find(f => pred(f, dir2.path, isTasty = true))
+        assert(class1.isDefined, s"Could not find class in ${dir1.path} for ${g._1}")
+        assert(class2.isDefined, s"Could not find class in ${dir2.path} for ${g._1}")
         if (tasty1.isEmpty || tasty2.isEmpty) Nil
         else List(Tuple4(class1.get, tasty1.get, class2.get, tasty2.get))
       }.toList
@@ -74,12 +66,12 @@ object IdempotencyCheck {
 
     for ((class1, tasty1, class2, tasty2) <- groupedBytecodeFiles) {
       total += 1
-      val bytes1 = JFiles.readAllBytes(class1)
-      val bytes2 = JFiles.readAllBytes(class2)
+      val bytes1 = class1.readBytes()
+      val bytes2 = class2.readBytes()
       if (!java.util.Arrays.equals(bytes1, bytes2)) {
         failed += 1
-        val tastyBytes1 = JFiles.readAllBytes(tasty1)
-        val tastyBytes2 = JFiles.readAllBytes(tasty2)
+        val tastyBytes1 = tasty1.readBytes()
+        val tastyBytes2 = tasty2.readBytes()
         if (java.util.Arrays.equals(tastyBytes1, tastyBytes2))
           println(s"Idempotency test failed between $class1 and $class2 (same tasty)")
         else
