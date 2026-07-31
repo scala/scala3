@@ -2707,7 +2707,9 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedType(rhs)
     checkFullyAppliedType(rhs1)
     if sym.isOpaqueAlias then checkNoContextFunctionType(rhs1)
-    assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
+    val res = assignType(cpy.TypeDef(tdef)(name, rhs1), sym)
+    res.ensureHasSym(sym)
+    res
   }
 
   def typedClassDef(cdef: untpd.TypeDef, cls: ClassSymbol)(using Context): Tree = ctx.profiler.onTypedDef(cls) {
