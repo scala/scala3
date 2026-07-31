@@ -2,17 +2,14 @@ package dotty.tools.dotc
 
 import org.junit.Test
 import org.junit.Assert.*
-import org.junit.Rule
-import org.junit.rules.TemporaryFolder
 import dotty.tools.dotc.config.Settings.*
 import core.Contexts.{Context, ContextBase}
+import dotty.tools.io.FileExtension
+import dotty.tools.nio.{File, FileContainer}
+
+import scala.io.Codec
 
 class ScalaCommandTest:
-
-  private val _temporaryFolder = new TemporaryFolder
-
-  @Rule
-  def temporaryFolder = _temporaryFolder
 
   @Test def `Simple one parameter`: Unit = inContext {
     val settings = config.ScalaSettings
@@ -25,13 +22,13 @@ class ScalaCommandTest:
 
   @Test def `Unfold @file`: Unit = inContext {
     val settings = config.ScalaSettings
-    val file = temporaryFolder.newFile("config")
-    val sourceRoot = temporaryFolder.newFolder("src")
-    val writer = java.io.FileWriter(file);
-    writer.write(s"-sourceroot $sourceRoot someMoreFiles");
-    writer.close();
-    val args = s"-cp path/to/classes1:other/path/to/classes2 @${file} someFiles".split(" ")
+    val tempDir = FileContainer.createTemporaryOnDisk("scala-command-test")
+    val file = tempDir.getOrCreateFile("config")
+    val sourceRoot = tempDir.getOrCreateContainer("src")
+    file.writeText(s"-sourceroot ${sourceRoot.path} someMoreFiles", Codec.UTF8)
+    val args = Array("-cp", "path/to/classes1:other/path/to/classes2", file.path, "someFiles")
     val summary = ScalacCommand.distill(args, settings)()
+    file.delete()
 
     given SettingsState = summary.sstate
     assertEquals("path/to/classes1:other/path/to/classes2", settings.classpath.value)

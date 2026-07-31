@@ -1,65 +1,27 @@
 package dotty
 package tools
 
-import java.io.File
-import java.nio.charset.Charset
-import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.{Files, Path => JPath}
-
-import scala.io.Source
-import scala.jdk.StreamConverters.*
 import scala.reflect.ClassTag
 import scala.util.Using.{Releasable, resource}
 import scala.util.chaining.given
 import scala.util.control.{ControlThrowable, NonFatal}
-
 import dotc.config.CommandLineParser
 import dotty.tools.directives.{DirectiveValue, UsingDirectivesParser}
+import dotty.tools.nio.*
+import scala.io.Codec
 
-object Dummy
+private object Dummy
 
-def scripts(path: String): Array[File] = {
+def scripts(path: String): Array[FileSystemEntry] = {
   val dir = scriptsDir(path)
-  dir.listFiles.filter { f =>
-    val path = if f.isDirectory then f.getPath + "/" else f.getPath
+  dir.entries.filter { f =>
+    val path = if f.isInstanceOf[FileContainer] then f.path + "/" else f.path
     Properties.testsFilter.isEmpty || Properties.testsFilter.exists(path.contains)
-  }
+  }.toArray
 }
 
-def scriptsDir(path: String): File = {
-  val dir = new File(Dummy.getClass.getResource(path).getPath)
-  assert(dir.exists && dir.isDirectory, "Couldn't load scripts dir")
-  dir
-}
-
-extension (f: File) def absPath: String =
-  f.getAbsolutePath.replace('\\', '/')
-
-extension (str: String) def dropExtension =
-  str.reverse.dropWhile(_ != '.').drop(1).reverse
-
-private
-def withFile[T](file: File)(action: Source => T): T = resource(Source.fromFile(file, UTF_8.name))(action)
-def readLines(f: File): List[String]                = withFile(f)(_.getLines().toList)
-def readFile(f: File): String                       = withFile(f)(_.mkString)
-
-// Make common types useable with Using.
-object Useables:
-  import java.io.IOException
-  import java.nio.file.{FileVisitResult, SimpleFileVisitor}, FileVisitResult.CONTINUE as Continue
-  import java.nio.file.attribute.*
-  import scala.util.Properties
-
-  // delete the result of createTempDirectory
-  given Releasable[JPath] with
-    override def release(released: JPath) = if !Properties.isWin then remove(released)
-  private def remove(path: JPath): Unit = if Files.isDirectory(path) then removeRecursively(path) else Files.delete(path)
-  private def removeRecursively(path: JPath): Unit = Files.walkFileTree(path, ZappingFileVisitor())
-  private class ZappingFileVisitor extends SimpleFileVisitor[JPath]:
-    private def zap(path: JPath) = { Files.delete(path) ; Continue }
-    override def postVisitDirectory(path: JPath, e: IOException): FileVisitResult = if e != null then throw e else zap(path)
-    override def visitFile(path: JPath, attrs: BasicFileAttributes): FileVisitResult = zap(path)
-end Useables
+def scriptsDir(path: String): FileContainer =
+  FileContainer.getOnDisk(Dummy.getClass.getResource(path).getPath).getOrElse(throw new AssertionError("Couldn't load scripts dir"))
 
 private object Unthrown extends ControlThrowable
 
@@ -98,19 +60,19 @@ type PlatformFiles = Map[TestPlatform, List[String]]
 /** Take a prefix of each file, extract tool args, parse, and combine.
  *  Arg parsing respects quotation marks. Result is a map from ToolName to the combined tokens.
  */
-def toolArgsFor(files: List[JPath], charset: Charset = UTF_8): ToolArgs =
-  val (_, toolArgs) = platformAndToolArgsFor(files, charset)
+def toolArgsFor(files: List[File], codec: Codec = Codec.UTF8): ToolArgs =
+  val (_, toolArgs) = platformAndToolArgsFor(files, codec)
   toolArgs
 
 /** Take a prefix of each file, extract tool args, parse, and combine.
  *  Arg parsing respects quotation marks. Result is a map from ToolName to the combined tokens.
  *  If the ToolName is Target, then also accumulate the file name associated with the given platform.
  */
-def platformAndToolArgsFor(files: List[JPath], charset: Charset = UTF_8): (PlatformFiles, ToolArgs) =
+def platformAndToolArgsFor(files: List[File], codec: Codec = Codec.UTF8): (PlatformFiles, ToolArgs) =
   files.foldLeft(Map.empty[TestPlatform, List[String]] -> Map.empty[ToolName, List[String]]) { (res, path) =>
-    val lines = resource(Files.lines(path, charset))(_.limit(10).toScala(List))
-    val content = Files.readString(path, charset)
-    val toolargs = toolArgsParse(lines, content, Some(path.toString))
+    val lines = path.readLines(codec).take(10).toList
+    val content = path.readText(codec)
+    val toolargs = toolArgsParse(lines, content, Some(path.path))
     toolargs.foldLeft(res) {
       case ((plat, acc), (tool, args)) =>
         val name = ToolName.named(tool)
@@ -118,7 +80,7 @@ def platformAndToolArgsFor(files: List[JPath], charset: Charset = UTF_8): (Platf
 
         val plat1 = if name eq ToolName.Target then
           val testPlatform = TestPlatform.named(tokens.head)
-          val fileName = path.toString
+          val fileName = path.path
           plat.updatedWith(testPlatform)(_.map(fileName :: _).orElse(Some(fileName :: Nil)))
         else
           plat
