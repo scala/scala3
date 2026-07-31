@@ -509,7 +509,7 @@ var transform;
 function showGraph() {
   document.getElementById("inheritance-diagram").classList.add("shown");
   const graph = document.querySelector("svg#graph");
-  if (graph != null && graph.children().length == 0) {
+  if (graph != null && graph.children.length == 0) {
     var dotNode = document.querySelector("#dot");
 
     if (dotNode) {
