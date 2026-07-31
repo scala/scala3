@@ -4,6 +4,12 @@ package repl
 import org.junit.Assert.*
 import org.junit.Test
 
+import dotty.tools.nio.{File, FileContainer}
+import scala.collection.mutable.ArrayBuffer
+import scala.io.{Codec, Source}
+import java.io.{BufferedInputStream, BufferedOutputStream, Closeable, InputStream}
+import java.net.{URLClassLoader, URL}
+
 import AbstractFileClassLoader.InterruptInstrumentation
 import AbstractFileClassLoader.InterruptInstrumentation.*
 
@@ -11,18 +17,10 @@ class InterruptProbe
 
 class AbstractFileClassLoaderTest:
 
-  import dotty.tools.io
-  import dotty.tools.io.AbstractFile
-  import scala.collection.mutable.ArrayBuffer
-  import scala.io.{Codec, Source}, Codec.UTF8
-  import java.io.{BufferedInputStream, BufferedOutputStream, Closeable, InputStream}
-  import java.net.{URLClassLoader, URL}
-
-  given `we love utf8`: Codec = UTF8
+  given `we love utf8`: Codec = Codec.UTF8
 
   def closing[T <: Closeable, U](stream: T)(f: T => U): U = try f(stream) finally stream.close()
 
-  extension (f: AbstractFile) def writeContent(s: String): Unit = closing(new BufferedOutputStream(f.output))(_.write(s.getBytes(UTF8.charSet)))
   def slurp(inputStream: => InputStream)(implicit codec: Codec): String = closing(Source.fromInputStream(inputStream)(using codec))(_.mkString)
   def slurp(url: URL)(implicit codec: Codec): String = slurp(url.openStream())
 
@@ -49,24 +47,24 @@ class AbstractFileClassLoaderTest:
   val noResourcesParent: ClassLoader = ScalaClassLoader.fromURLsParallelCapable(Nil)
 
   val defaultJavaVersion = ""
-  private def newClassLoader(root: AbstractFile, parent: ClassLoader) = AbstractFileClassLoader(root, defaultJavaVersion, parent, InterruptInstrumentation.fromString("true"))
+  private def newClassLoader(root: FileContainer, parent: ClassLoader) = AbstractFileClassLoader(root, defaultJavaVersion, parent, InterruptInstrumentation.fromString("true"))
 
   // virtual dir "fuzz" and "fuzz/buzz/booz.class"
-  def fuzzBuzzBooz: (AbstractFile, AbstractFile) =
-    val fuzz = io.virtualDirectory("fuzz")
-    val buzz = fuzz.subdirectoryNamed("buzz")
-    val booz = buzz.fileNamed("booz.class")
+  def fuzzBuzzBooz: (FileContainer, File) =
+    val fuzz = FileContainer.createInMemory("fuzz")
+    val buzz = fuzz.getOrCreateContainer("buzz")
+    val booz = buzz.getOrCreateFile("booz.class")
     (fuzz, booz)
 
   @Test def afclGetsParent(): Unit =
     val p = new URLClassLoader(Array.empty[URL])
-    val d = io.virtualDirectory("vd")
+    val d = FileContainer.createInMemory("vd")
     val x = newClassLoader(d, p)
     assertSame(p, x.getParent)
 
   @Test def afclGetsResource(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
-    booz.writeContent("hello, world")
+    booz.writeText("hello, world", Codec.UTF8)
     val sut = newClassLoader(fuzz, noResourcesParent)
     val res = sut.getResource("buzz/booz.class")
     assertNotNull("Find buzz/booz.class", res)
@@ -75,8 +73,8 @@ class AbstractFileClassLoaderTest:
   @Test def afclGetsResourceFromParent(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     val (fuzz_, booz_) = fuzzBuzzBooz
-    booz.writeContent("hello, world")
-    booz_.writeContent("hello, world_")
+    booz.writeText("hello, world", Codec.UTF8)
+    booz_.writeText("hello, world_", Codec.UTF8)
     val p = newClassLoader(fuzz, noResourcesParent)
     val sut = newClassLoader(fuzz_, p)
     val res = sut.getResource("buzz/booz.class")
@@ -84,11 +82,11 @@ class AbstractFileClassLoaderTest:
     assertEquals("hello, world", slurp(res))
 
   @Test def afclGetsResourceInDefaultPackage(): Unit =
-    val fuzz = io.virtualDirectory("fuzz")
-    val booz = fuzz.fileNamed("booz.class")
-    val bass = fuzz.fileNamed("bass")
-    booz.writeContent("hello, world")
-    bass.writeContent("lo tone")
+    val fuzz = FileContainer.createInMemory("fuzz")
+    val booz = fuzz.getOrCreateFile("booz.class")
+    val bass = fuzz.getOrCreateFile("bass")
+    booz.writeText("hello, world", Codec.UTF8)
+    bass.writeText("lo tone", Codec.UTF8)
     val sut = newClassLoader(fuzz, noResourcesParent)
     val res = sut.getResource("booz.class")
     assertNotNull(res)
@@ -98,7 +96,7 @@ class AbstractFileClassLoaderTest:
   // scala/bug#8843
   @Test def afclGetsResources(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
-    booz.writeContent("hello, world")
+    booz.writeText("hello, world", Codec.UTF8)
     val sut = newClassLoader(fuzz, noResourcesParent)
     val e = sut.getResources("buzz/booz.class")
     assertTrue("At least one buzz/booz.class", e.hasMoreElements)
@@ -108,8 +106,8 @@ class AbstractFileClassLoaderTest:
   @Test def afclGetsResourcesFromParent(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     val (fuzz_, booz_) = fuzzBuzzBooz
-    booz.writeContent("hello, world")
-    booz_.writeContent("hello, world_")
+    booz.writeText("hello, world", Codec.UTF8)
+    booz_.writeText("hello, world_", Codec.UTF8)
     val p = newClassLoader(fuzz, noResourcesParent)
     val x = newClassLoader(fuzz_, p)
     val e = x.getResources("buzz/booz.class")
@@ -121,7 +119,7 @@ class AbstractFileClassLoaderTest:
 
   @Test def afclGetsResourceAsStream(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
-    booz.writeContent("hello, world")
+    booz.writeText("hello, world", Codec.UTF8)
     val x = newClassLoader(fuzz, noResourcesParent)
     val r = x.getResourceAsStream("buzz/booz.class")
     assertNotNull(r)
@@ -129,29 +127,29 @@ class AbstractFileClassLoaderTest:
 
   @Test def afclGetsClassBytes(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
-    booz.writeContent("hello, world")
+    booz.writeText("hello, world", Codec.UTF8)
     val sut = newClassLoader(fuzz, noResourcesParent)
     val b = sut.classBytes("buzz/booz.class")
-    assertEquals("hello, world", new String(b, UTF8.charSet))
+    assertEquals("hello, world", new String(b, Codec.UTF8.charSet))
 
   @Test def afclGetsClassBytesFromParent(): Unit =
     val (fuzz, booz) = fuzzBuzzBooz
     val (fuzz_, booz_) = fuzzBuzzBooz
-    booz.writeContent("hello, world")
-    booz_.writeContent("hello, world_")
+    booz.writeText("hello, world", Codec.UTF8)
+    booz_.writeText("hello, world_", Codec.UTF8)
     val p = newClassLoader(fuzz, noResourcesParent)
     val sut = newClassLoader(fuzz_, p)
     val b = sut.classBytes("buzz/booz.class")
-    assertEquals("hello, world", new String(b, UTF8.charSet))
+    assertEquals("hello, world", new String(b, Codec.UTF8.charSet))
 
   def probeIsInterruptible(
       mode: InterruptInstrumentation,
       parent: ClassLoader = classOf[InterruptProbe].getClassLoader
   ): Boolean =
     val name = classOf[InterruptProbe].getName
-    val root = io.virtualDirectory("replout")
-    val dir = name.split('.').init.foldLeft(root)(_.subdirectoryNamed(_))
-    closing(dir.fileNamed("InterruptProbe.class").output)(_.write(classOf[InterruptProbe].getClassLoader.classBytes(name)))
+    val root = FileContainer.createInMemory("replout")
+    val dir = root.getOrCreateContainer(name, separator = '.')
+    closing(dir.getOrCreateFile("InterruptProbe.class").output())(_.write(classOf[InterruptProbe].getClassLoader.classBytes(name)))
     val loader = new AbstractFileClassLoader(root, defaultJavaVersion, parent, mode)
     ReplBytecodeInstrumentation.setStopFlag(loader, true)
     try

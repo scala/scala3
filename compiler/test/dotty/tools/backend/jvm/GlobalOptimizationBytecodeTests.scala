@@ -538,12 +538,10 @@ class GlobalOptimizationBytecodeTests extends OptimizationBytecodeTest {
         |}
       """.stripMargin
     checkBCode(source) { dir =>
-      val cIn = dir.lookupName("C.class", directory = false).nn.input
-      val cNode = loadClassNode(cIn)
+      val cNode = findClass("C", dir)
       val hInstrs = instructionsFromMethod(getMethod(cNode, "h"))
 
-      val dIn = dir.lookupName("D.class", directory = false).nn.input
-      val dNode = loadClassNode(dIn)
+      val dNode = findClass("D", dir)
       val tInstrs = instructionsFromMethod(getMethod(dNode, "t"))
 
       assert(hInstrs.exists(isCall("C", "f")), hInstrs.mkString("\n"))
@@ -565,8 +563,7 @@ class GlobalOptimizationBytecodeTests extends OptimizationBytecodeTest {
         |}
       """.stripMargin
     checkBCode(source) { dir =>
-      val dIn = dir.lookupName("b", directory = true).nn.lookupName("D.class", directory = false).nn.input
-      val dNode = loadClassNode(dIn)
+      val dNode = findClass("D", dir.getContainer("b").get)
       val hInstrs = instructionsFromMethod(getMethod(dNode, "h"))
 
       assert(hInstrs.exists(isCall("a/C", "g")), hInstrs.mkString("\n"))
@@ -594,8 +591,7 @@ class GlobalOptimizationBytecodeTests extends OptimizationBytecodeTest {
         |}
       """.stripMargin
     checkBCode(source) { dir =>
-      val cIn = dir.lookupName("C.class", directory = false).nn.input
-      val cNode = loadClassNode(cIn)
+      val cNode = findClass("C", dir)
       val mInstrs = instructionsFromMethod(getMethod(cNode, "m"))
 
       assert(mInstrs.exists(isCall("A", "foo")), mInstrs.mkString("\n"))

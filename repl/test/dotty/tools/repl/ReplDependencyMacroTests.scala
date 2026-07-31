@@ -28,7 +28,7 @@ class ReplDependencyMacroTests extends ReplTest:
 
     val filesToAdd =
       files.filterNot: file =>
-        val name = file.getName
+        val name = file.name
         name.startsWith("scala3-library_3-")
           || name.startsWith("scala-library-")
           || name.startsWith("scala3-interfaces-")
@@ -37,7 +37,7 @@ class ReplDependencyMacroTests extends ReplTest:
     assertTrue("No JAR files available to add via :jar", filesToAdd.nonEmpty)
 
     filesToAdd.foreach: file =>
-      run(s":jar ${file.getAbsolutePath}")
+      run(s":jar ${file.path}")
       val output = storedOutput()
       assertTrue(output, output.contains("Added"))
       assertNoMacroFailure(output)

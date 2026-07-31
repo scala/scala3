@@ -25,7 +25,7 @@ import Constants.Constant
 import Variances.Variance
 import reporting.Message
 import collection.mutable
-import io.AbstractFile
+import nio.*
 import util.{SourceFile, NoSource, Property, SourcePosition, SrcPos, EqHashMap, WrappedSourceFile}
 
 import scala.annotation.internal.sharable
@@ -39,6 +39,7 @@ import scala.reflect.ClassTag
 object Symbols extends SymUtils {
 
   implicit def eqSymbol: CanEqual[Symbol, Symbol] = CanEqual.derived
+  private def isScalaBinary(ext: FileExtension) = ext.isClass || ext.isTasty
 
   /** Tree attachment containing the identifiers in a tree as a sorted array */
   val Ids: Property.Key[Array[String]] = new Property.Key
@@ -149,7 +150,7 @@ object Symbols extends SymUtils {
     private[dotc] def defRunId: RunId =
       lastDenot.validFor.runId
 
-    private inline def associatedFileMatches(inline filter: AbstractFile => Boolean)(using Context): Boolean =
+    private inline def associatedFileMatches(inline filter: File => Boolean)(using Context): Boolean =
       try
         val file = associatedFile
         file != null && filter(file)
@@ -166,11 +167,11 @@ object Symbols extends SymUtils {
       * symbols defined by the user in a prior run of the REPL, that are still valid.
       */
     final def isDefinedInSource(using Context): Boolean =
-      span.exists && isValidInCurrentRun && associatedFileMatches(!_.ext.isScalaBinary)
+      span.exists && isValidInCurrentRun && associatedFileMatches(f => !isScalaBinary(f.extension))
 
     /** Is this symbol valid in the current run, but comes from the classpath? */
     final def isDefinedInBinary(using Context): Boolean =
-      isValidInCurrentRun && associatedFileMatches(_.ext.isScalaBinary)
+      isValidInCurrentRun && associatedFileMatches(f => isScalaBinary(f.extension))
 
     /** Is symbol valid in current run? */
     final def isValidInCurrentRun(using Context): Boolean =
@@ -275,7 +276,7 @@ object Symbols extends SymUtils {
      *  Note that the returned classfile might be from the top-level class
      *  containing this symbol instead of the directly enclosing class.
      */
-    def associatedFile(using Context): AbstractFile | Null =
+    def associatedFile(using Context): File | Null =
       val compUnitInfo = compilationUnitInfo
       if compUnitInfo == null then null
       else compUnitInfo.associatedFile
@@ -295,9 +296,9 @@ object Symbols extends SymUtils {
       else compUnitInfo.tastyInfo
 
     /** The class file from which this class was generated, null if not applicable. */
-    final def binaryFile(using Context): AbstractFile | Null = {
+    final def binaryFile(using Context): File | Null = {
       val file = associatedFile
-      if file != null && file.ext.isScalaBinary then file else null
+      if file != null && isScalaBinary(file.extension) then file else null
     }
 
     /** A trap to avoid calling x.symbol on something that is already a symbol.
@@ -309,7 +310,7 @@ object Symbols extends SymUtils {
 
     final def source(using Context): SourceFile = {
       def valid(src: SourceFile): SourceFile =
-        if (src.exists && !src.ext.isScalaBinary) src
+        if (src.exists && !isScalaBinary(src.ext)) src
         else NoSource
 
       if (!denot.exists) NoSource
@@ -512,7 +513,7 @@ object Symbols extends SymUtils {
       if !mySource.exists && !denot.is(Package) then
         // this allows sources to be added in annotations after `sourceOfClass` is first called
         val file = associatedFile
-        if file != null && !file.ext.isScalaBinary then
+        if file != null && !isScalaBinary(file.extension) then
           mySource = ctx.getSource(file)
         else if !mySource.exists then
           val compUnitInfo = compilationUnitInfo

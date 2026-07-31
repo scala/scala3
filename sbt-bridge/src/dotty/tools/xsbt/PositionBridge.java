@@ -7,12 +7,10 @@ package dotty.tools.xsbt;
 
 import dotty.tools.dotc.util.SourceFile;
 import dotty.tools.dotc.util.SourcePosition;
-import dotty.tools.io.AbstractFile;
 import xsbti.Position;
 
 import java.io.File;
 import java.util.Optional;
-import java.util.function.Function;
 
 public class PositionBridge implements Position {
   private final SourcePosition pos;

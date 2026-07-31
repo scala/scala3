@@ -1,6 +1,7 @@
 package dotty.tools
 package dotc
 
+import dotty.tools.nio.*
 import core.Comments.docCtx
 import core.Contexts.*
 import vulpix.TestConfiguration
@@ -8,8 +9,8 @@ import vulpix.TestConfiguration
 import org.junit.Test
 import org.junit.Assert.*
 
-import java.nio.file.Files
 import scala.collection.mutable.ArrayBuffer
+import scala.io.Codec
 
 /** A long-lived driver (REPL, IDE, compile server) reuses one root context
  *  for many runs. State that a run leaves in the root context retains that run
@@ -59,10 +60,15 @@ class MultiRunRetentionTest:
   )
 
   @Test def noStateFromEarlierRuns(): Unit =
-    val dir = Files.createTempDirectory("multi-run-retention")
-    val out = Files.createDirectories(dir.resolve("out"))
-    val files = for (name, content) <- sources yield
-      Files.writeString(dir.resolve(name), content).toString
+    val dir = FileContainer.createTemporaryOnDisk("multi-run-retention")
+    val out = dir.getOrCreateContainer("out")
+    val files =
+      for
+        (name, content) <- sources
+        f = dir.getOrCreateFile(name)
+      yield
+        f.writeText(content, Codec.UTF8)
+        f.path
 
     object driver extends Driver:
       var lastRun: Run | Null = null
@@ -72,7 +78,7 @@ class MultiRunRetentionTest:
           lastRun = run
           run
       def compileRepeatedly(n: Int): Unit =
-        val args = Array("-classpath", TestConfiguration.basicClasspath, "-d", out.toString) ++ files
+        val args = Array("-classpath", TestConfiguration.basicClasspath, "-d", out.path) ++ files
         val Some((sourceFiles, rootCtx)) = setup(args, initCtx.fresh): @unchecked
         val compiler = newCompiler(using rootCtx)
         val docstringCounts = ArrayBuffer.empty[Int]

@@ -19,6 +19,7 @@ class MultiReleaseJarTest extends DottyBytecodeTest {
   def mrJar(): Unit = {
 
     // The test fails if the same jar file gets reused. This might be a caching problem in our classpath implementation
+    // TODO: is the above still true?
 
     val jar1 = Files.createTempFile("mr-jar-test-", ".jar")
     val jar3 = Files.createTempFile("mr-jar-test-", ".jar")
@@ -41,7 +42,7 @@ class MultiReleaseJarTest extends DottyBytecodeTest {
       ctx.initialize()
       val classNames = Seq("p1.Foo",  "p2.Bar")
       val classFiles = classNames.flatMap(ctx.platform.classPath.findClassFile)
-      val classNodes = classFiles.map(classFile => loadClassNode(classFile.input))
+      val classNodes = classFiles.map(classFile => loadClassNode(classFile.input()))
       val methodNames = classNodes.flatMap(_.methods.asScala).map(_.name)
       methodNames.filter(_ != "<init>").toSet
     }

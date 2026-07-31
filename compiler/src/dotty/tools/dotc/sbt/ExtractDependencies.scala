@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package sbt
 
-import java.nio.file.Path
-import java.util.EnumSet
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.*
@@ -16,12 +14,13 @@ import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.typer.Applications.*
 import dotty.tools.dotc.util.{NoSourcePosition, SrcPos}
-import dotty.tools.{io, printOnAssertionError}
-import dotty.tools.io.AbstractFile
+import dotty.tools.printOnAssertionError
+import dotty.tools.nio.*
 import xsbti.UseScope
 import xsbti.api.DependencyContext
 import xsbti.api.DependencyContext.*
 
+import java.util.EnumSet
 import scala.jdk.CollectionConverters.*
 import scala.collection.mutable
 import scala.io.Codec
@@ -91,8 +90,8 @@ object ExtractDependencies {
   def classNameAsString(sym: Symbol)(using Context): String =
     def isJava(sym: Symbol)(using Context): Boolean =
       Option(sym.source) match
-        case Some(src) => src.toString.endsWith(".java")
-        case None      => false
+        case Some(src) if src.file != null => src.file.extension.isJava
+        case _                             => false
     def classNameAsString0(sym: Symbol)(using Context): String =
       sym.fullName.stripModuleClassSuffix.toString
     def javaClassNameAsString(sym: Symbol)(using Context): String =
@@ -505,7 +504,7 @@ class DependencyRecorder {
   def sendToZinc()(using Context): Unit =
     if ctx.settings.YdumpSbtInc.value then dumpInc()
     ctx.withIncCallback: cb =>
-      val siblingClassfiles = mutable.Map.empty[AbstractFile, Path]
+      val siblingClassfiles = mutable.Map.empty[File, File]
       _foundDeps.iterator.foreach:
         case (clazz, foundDeps) =>
           val className = classNameAsString(clazz)
@@ -518,19 +517,18 @@ class DependencyRecorder {
 
   /** Write the dependencies to a `.inc` file next to the source, for `-Ydump-sbt-inc`. */
   private def dumpInc()(using Context): Unit =
-    ctx.compilationUnit.source.jfile.ifPresent(jpath => {
+    val file = ctx.compilationUnit.source.file
+    if file != null then
       val sortedDeps = _foundDeps.iterator.map { case (clazz, found) => (clazz.toString, found) }.toList.sortBy(_._1)
-      val pw = io.File(jpath.toPath)(using Codec.UTF8).changeExtension(io.FileExtension.Inc).toFile.printWriter()
-      try
-        pw.println("Used Names:")
-        pw.println("===========")
-        sortedDeps.foreach { case (clazz, found) => pw.println(s"$clazz: ${found.classesString}") }
-        pw.println()
-        pw.println("Dependencies:")
-        pw.println("=============")
-        sortedDeps.foreach { case (clazz, found) => pw.println(s"$clazz: ${found.namesString}") }
-      finally pw.close()
-    })
+      val lines = new mutable.ArrayBuffer[String]()
+      lines += "Used Names:"
+      lines += "==========="
+      lines ++= sortedDeps.map { case (clazz, found) => s"$clazz: ${found.classesString}" }
+      lines += ""
+      lines += "Dependencies:"
+      lines += "============="
+      lines ++= sortedDeps.map { case (clazz, found) => s"$clazz: ${found.namesString}" }
+      file.getOrCreateSiblingWithExtension("inc").writeLines(lines, Codec.UTF8)
 
    /** Clear all state. */
   def clear(): Unit =
@@ -545,7 +543,7 @@ class DependencyRecorder {
    *  run) or from class file and calls respective callback method.
    */
   private def recordClassDependency(cb: interfaces.IncrementalCallback, fromClass: Symbol, toClass: Symbol,
-      depCtx: DependencyContext, siblingClassfiles: mutable.Map[AbstractFile, Path])(using Context): Unit = {
+      depCtx: DependencyContext, siblingClassfiles: mutable.Map[File, File])(using Context): Unit = {
     val fromClassName = classNameAsString(fromClass)
     val sourceFile = ctx.compilationUnit.source
 
@@ -565,35 +563,32 @@ class DependencyRecorder {
      * FIXME: we still need a way to resolve the correct classfile when we split tasty and classes between
      * different outputs (e.g. scala2-library-bootstrapped).
      */
-    def cachedSiblingClass(pf: AbstractFile): Path =
+    def cachedSiblingClass(pf: File): File =
       siblingClassfiles.getOrElseUpdate(pf, {
-        val jpath = pf.jpath.nn
         val moduleSuffix = if fromClass.is(Module) then str.MODULE_SUFFIX else ""
-        jpath.getParent.resolve(jpath.getFileName.toString.stripSuffix(".tasty") + moduleSuffix + ".class")
+        pf.parent.getOrCreateFile(pf.nameWithoutExtension + moduleSuffix + ".class")
       })
 
-    def binaryDependency(path: Path, binaryClassName: String): Unit =
-      cb.binaryDependency(path, binaryClassName, fromClassName, sourceFile, depCtx)
+    def binaryDependency(path: String, binaryClassName: String): Unit =
+      cb.binaryDependency(java.nio.file.Path.of(path), binaryClassName, fromClassName, sourceFile, depCtx)
 
     val depClass = toClass
     val depFile = depClass.associatedFile
     if depFile != null then {
       // Cannot ignore inheritance relationship coming from the same source (see sbt/zinc#417)
       def allowLocal = depCtx == DependencyByInheritance || depCtx == LocalDependencyByInheritance
-      val isTasty = depFile.ext.isTasty
+      val isTasty = depFile.extension.isTasty
 
       def processExternalDependency(): Unit = {
         val binaryClassName = depClass.binaryClassName
         depFile.enclosing match
-          case Some(archive) if archive.jpath != null => // The dependency comes from a JAR
-            binaryDependency(archive.jpath.nn, binaryClassName)
-          case _ if depFile.jpath != null =>
-            binaryDependency(if isTasty then cachedSiblingClass(depFile) else depFile.jpath.nn, binaryClassName)
+          case Some(archive) => // The dependency comes from a JAR
+            binaryDependency(archive.path, binaryClassName)
           case _ =>
-            internalError(s"Ignoring dependency $depFile of unknown class ${depFile.getClass}", fromClass.srcPos)
+            binaryDependency(if isTasty then cachedSiblingClass(depFile).path else depFile.path, binaryClassName)
       }
 
-      if isTasty || depFile.ext.isClass || depFile.ext.isSig then
+      if isTasty || depFile.extension.isClass || depFile.extension.isSig then
         processExternalDependency()
       else if allowLocal || depFile != sourceFile.file then
         // We cannot ignore dependencies coming from the same source file because

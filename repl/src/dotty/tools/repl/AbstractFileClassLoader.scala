@@ -14,13 +14,12 @@ package dotty.tools
 package repl
 
 import dotty.tools.dotc.config.ScalaSettings
-
-import io.AbstractFile
+import nio.*
 
 import java.net.{URL, URLConnection, URLStreamHandler}
 import java.util.Collections
-
 import AbstractFileClassLoader.InterruptInstrumentation
+import dotty.tools.nio.AbstractFileClassLoader
 
 
 object AbstractFileClassLoader:
@@ -40,8 +39,8 @@ object AbstractFileClassLoader:
       case _ => throw new IllegalArgumentException(s"Invalid interrupt instrumentation value: $string")
     }
 
-class AbstractFileClassLoader(root: AbstractFile, jarVersion: String, parent: ClassLoader, interruptInstrumentation: InterruptInstrumentation)
-  extends io.AbstractFileClassLoader(root, jarVersion, parent):
+class AbstractFileClassLoader(root: FileContainer, jarVersion: String, parent: ClassLoader, interruptInstrumentation: InterruptInstrumentation)
+  extends nio.AbstractFileClassLoader(root, jarVersion, parent):
   private val stopReplName = classOf[StopRepl].getName
 
   override protected def defineClass(name: String, bytes: Array[Byte]): Class[?] =

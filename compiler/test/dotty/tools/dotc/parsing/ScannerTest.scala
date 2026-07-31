@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package parsing
 
-import dotty.tools.io.*
+import dotty.tools.nio.*
 import scala.io.Codec
 import util.*
 import Tokens.*, Scanners.*
@@ -15,11 +15,11 @@ class ScannerTest extends DottyTest {
       "/scaladoc/scala/tools/nsc/doc/html/page/Template.scala"
     )
 
-  def scan(name: String): Unit = scan(new PlainFile(File(name)))
+  def scan(name: String): Unit = scan(File.getOnDisk(name).get)
 
-  def scan(file: PlainFile): Unit = {
+  def scan(file: File): Unit = {
     //println("***** scanning " + file)
-    val source = SourceFile(file, new PlainDirectory(Directory(".")), Codec.UTF8)
+    val source = SourceFile(file, FileContainer.getOnDisk(".").get, Codec.UTF8)
     val scanner = new Scanner(source)
     var i = 0
     while (scanner.token != EOF) {
@@ -30,19 +30,19 @@ class ScannerTest extends DottyTest {
     }
   }
 
-  def scanDir(path: String): Unit = scanDir(Directory(path))
+  def scanDir(path: String): Unit = scanDir(FileContainer.getOnDisk(path).get)
 
-  def scanDir(dir: Directory): Unit = {
-    if excluded.exists(dir.jpath.toString.endsWith(_)) then
-      println(s"excluded package: ${dir.toAbsolute.jpath}")
+  def scanDir(dir: FileContainer): Unit = {
+    if excluded.exists(dir.path.endsWith(_)) then
+      println(s"excluded package: ${dir.path}")
     else
-      for (f <- dir.files)
-        if (f.name.endsWith(".scala"))
-          if excluded.exists(f.jpath.toString.endsWith(_)) then
-            println(s"excluded file: ${f.toAbsolute.jpath}")
+      for (f <- dir.entries.collect { case f: File => f })
+        if (f.extension.isScala)
+          if excluded.exists(f.path.endsWith(_)) then
+            println(s"excluded file: ${f.path}")
           else
-            scan(new PlainFile(f))
-    for (d <- dir.dirs)
+            scan(f)
+    for (d <- dir.entries.collect { case fc: FileContainer => fc })
       scanDir(d.path)
   }
 

@@ -11,9 +11,9 @@ import dotty.tools.dotc.ScalacCommand;
 import dotty.tools.dotc.config.Properties;
 import dotty.tools.dotc.core.Contexts;
 import dotty.tools.dotc.util.SourceFile;
-import dotty.tools.io.AbstractFile;
-import dotty.tools.io.PlainFile;
-import dotty.tools.io.Path;
+import dotty.tools.nio.File;
+import dotty.tools.nio.FileContainer;
+import dotty.tools.nio.FileSystemEntry;
 import scala.collection.mutable.ListBuffer;
 import xsbti.Problem;
 import xsbti.*;
@@ -21,12 +21,8 @@ import xsbti.compile.Output;
 import xsbti.compile.CompileProgress;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.Comparator;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.Arrays;
 
 public class CompilerBridgeDriver extends Driver {
@@ -59,7 +55,7 @@ public class CompilerBridgeDriver extends Driver {
   }
 
   private static VirtualFile asVirtualFile(SourceFile sourceFile, DelegatingReporter reporter,
-      HashMap<AbstractFile, VirtualFile> lookup) {
+      HashMap<File, VirtualFile> lookup) {
     return lookup.computeIfAbsent(sourceFile.file(), path -> {
       reportMissingFile(reporter, sourceFile);
       var pathBasedFile = sourceFile.jfile();
@@ -87,14 +83,14 @@ public class CompilerBridgeDriver extends Driver {
     System.arraycopy(sources, 0, sortedSources, 0, sources.length);
     Arrays.sort(sortedSources, (x0, x1) -> x0.id().compareTo(x1.id()));
 
-    ListBuffer<AbstractFile> sourcesBuffer = new ListBuffer<>();
-    HashMap<AbstractFile, VirtualFile> lookup = new HashMap<>(sources.length, 0.25f);
+    ListBuffer<File> sourcesBuffer = new ListBuffer<>();
+    HashMap<File, VirtualFile> lookup = new HashMap<>(sources.length, 0.25f);
 
     for (int i = 0; i < sources.length; i++) {
       VirtualFile source = sortedSources[i];
-      AbstractFile abstractFile = asDottyFile(source);
-      sourcesBuffer.append(abstractFile);
-      lookup.put(abstractFile, source);
+      File dottyFile = asDottyFile(source);
+      sourcesBuffer.append(dottyFile);
+      lookup.put(dottyFile, source);
     }
 
     DelegatingReporter reporter = new DelegatingReporter(delegate, sourceFile -> {
@@ -170,14 +166,16 @@ public class CompilerBridgeDriver extends Driver {
     }
   }
 
-  private static AbstractFile asDottyFile(VirtualFile virtualFile) {
+  private static File asDottyFile(VirtualFile virtualFile) {
     if (virtualFile instanceof PathBasedFile pathBasedFile) {
-      java.nio.file.Path path = pathBasedFile.toPath();
-      return new PlainFile(new Path(path));
+      return File.getOnDisk(pathBasedFile.toPath().toString()).get();
     }
 
     try (java.io.InputStream input = virtualFile.input()) {
-      return new dotty.tools.io.VirtualFile(virtualFile.id(), input.readAllBytes());
+      var root = FileContainer.createInMemory("<virtual-root>");
+      var result = root.getOrCreateFile(virtualFile.id(), "", FileSystemEntry.separator());
+      result.writeBytes(input.readAllBytes(), false);
+      return result;
     } catch (IOException e) {
       throw new IllegalArgumentException("invalid file " + virtualFile.name(), e);
     }

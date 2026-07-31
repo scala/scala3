@@ -1,6 +1,6 @@
 package dotty.tools.dotc.core.tasty
 
-import dotty.tools.io.VirtualFile
+import dotty.tools.nio.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.ast.*
 import dotty.tools.dotc.ast.tpd.*
@@ -13,8 +13,11 @@ class TastyUnpickerTest {
     val base = new ContextBase
     given Context = base.initialCtx.fresh
     val bytesArray = bytes.map(_.toByte).toArray
+    val root = FileContainer.createInMemory("test")
+    val file = root.getOrCreateFile("bytes.tasty")
+    file.writeBytes(bytesArray)
     val dotty = new DottyUnpickler(
-      tastyFile = new VirtualFile("bytes.tasty", bytesArray),
+      tastyFile = file,
       isBestEffortTasty = false
     )
     dotty.enter(roots = Set.empty)

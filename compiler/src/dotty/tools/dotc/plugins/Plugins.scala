@@ -5,7 +5,6 @@ import core.*
 import Contexts.*
 import Decorators.em
 import config.PathResolver
-import dotty.tools.io.*
 import dotty.tools.dotc.classpath.ClassPath
 import Phases.*
 import config.Printers.plugins.{ println => debug }
@@ -29,10 +28,10 @@ trait Plugins {
     def asPath(p: String) = ClassPath.split(p)
     val paths  = ctx.settings.plugin.value
       .filter (_ != "")
-      .map(s => asPath(s).map(Path.apply))
+      .map(s => asPath(s))
     val dirs   = {
       def injectDefault(s: String) = if (s.isEmpty) PathResolver.Defaults.scalaPluginPath else s
-      asPath(ctx.settings.pluginsDir.value) map injectDefault map Path.apply
+      asPath(ctx.settings.pluginsDir.value) map injectDefault
     }
     val maybes = Plugin.loadAllFrom(paths, dirs, ctx.settings.disable.value)
     val (goods, errors) = maybes partition (_.isSuccess)

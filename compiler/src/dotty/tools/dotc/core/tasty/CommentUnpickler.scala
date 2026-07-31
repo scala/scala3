@@ -8,8 +8,6 @@ import scala.collection.mutable
 import dotty.tools.tasty.{TastyReader, TastyBuffer}
 import TastyBuffer.Addr
 
-import java.nio.charset.StandardCharsets
-
 class CommentUnpickler(reader: TastyReader) {
   import reader.*
 

@@ -1,32 +1,32 @@
 package dotty.tools.dotc.profile
 
 import scala.annotation.*
-import java.io.{FileWriter, PrintWriter}
-import java.nio.file.Paths
-import java.lang.management.{ManagementFactory, GarbageCollectorMXBean, RuntimeMXBean, MemoryMXBean, ClassLoadingMXBean, CompilationMXBean}
+import java.lang.management.{ClassLoadingMXBean, CompilationMXBean, GarbageCollectorMXBean, ManagementFactory, MemoryMXBean, RuntimeMXBean}
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import javax.management.openmbean.CompositeData
 import javax.management.{Notification, NotificationEmitter, NotificationListener}
-
 import dotty.tools.dotc.core.Phases.Phase
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Types.Type
-import dotty.tools.dotc.core.Symbols.{Symbol, NoSymbol}
+import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
 import dotty.tools.dotc.core.Flags
-import dotty.tools.io.AbstractFile
+import dotty.tools.nio.*
 import annotation.internal.sharable
 import dotty.tools.dotc.core.Periods.InitialRunId
+
+import java.io.BufferedWriter
 import scala.collection.mutable.UnrolledBuffer
 import scala.jdk.CollectionConverters.*
+import scala.io.Codec
 
 object Profiler {
   def apply()(using Context): Profiler =
     if (!ctx.settings.YprofileEnabled.value) NoOpProfiler
     else {
       val reporter = if (ctx.settings.YprofileDestination.value != "")
-        new StreamProfileReporter(new PrintWriter(new FileWriter(ctx.settings.YprofileDestination.value, true)))
+        new StreamProfileReporter(File.getOrCreateOnDisk(ctx.settings.YprofileDestination.value).writer(Codec.UTF8, true))
       else ConsoleProfileReporter
       new RealProfiler(reporter)
     }
@@ -186,14 +186,14 @@ private [profile] class RealProfiler(reporter : ProfileReporter)(using Context) 
       // FIXME: The first assigned runId is equal to 2 instead of 1 (InitialRunId).
       // Fix me when bug described in Compiler.runId is resolved by removing +/- 1 adjustments
       val suffix = if ctx.runId > InitialRunId + 1 then s".${ctx.runId - 1}" else ""
-      ChromeTrace(Paths.get(s"$filename$suffix"))
+      ChromeTrace(File.getOrCreateOnDisk(s"$filename$suffix"))
 
   private val compilerRunEvent: TracedEventId = traceDurationStart(Category.Run, s"scalac-$id")
 
   def completeBackground(threadRange: ProfileRange): Unit =
     reporter.reportBackground(this, threadRange)
 
-  def outDir: AbstractFile = ctx.settings.outputDir.value
+  def outDir: FileContainer = ctx.settings.outputDir.value
 
   @nowarn
   private def doGC(): Unit = {
@@ -400,11 +400,11 @@ private [profile] object ConsoleProfileReporter extends ProfileReporter {
     println(s"Profiler GC reported ${data.gcEndMillis - data.gcStartMillis}ms")
 }
 
-private [profile] class StreamProfileReporter(out:PrintWriter) extends ProfileReporter {
+private [profile] class StreamProfileReporter(out: BufferedWriter) extends ProfileReporter {
   override def header(profiler: RealProfiler): Unit = {
-    out.println(s"info, ${profiler.id}, version, 2, output, ${profiler.outDir}")
-    out.println(s"header(main/background),startNs,endNs,runId,phaseId,phaseName,purpose,task-count,threadId,threadName,runNs,idleNs,cpuTimeNs,userTimeNs,allocatedByte,heapSize")
-    out.println(s"header(GC),startNs,endNs,startMs,endMs,name,action,cause,threads")
+    out.append(s"info, ${profiler.id}, version, 2, output, ${profiler.outDir}\n")
+    out.append(s"header(main/background),startNs,endNs,runId,phaseId,phaseName,purpose,task-count,threadId,threadName,runNs,idleNs,cpuTimeNs,userTimeNs,allocatedByte,heapSize\n")
+    out.append(s"header(GC),startNs,endNs,startMs,endMs,name,action,cause,threads\n")
   }
 
   override def reportBackground(profiler: RealProfiler, threadRange: ProfileRange): Unit =
@@ -413,12 +413,12 @@ private [profile] class StreamProfileReporter(out:PrintWriter) extends ProfileRe
     reportCommon(EventType.MAIN, profiler, threadRange)
   @nowarn("cat=deprecation")
   private def reportCommon(tpe:EventType, profiler: RealProfiler, threadRange: ProfileRange): Unit =
-    out.println(s"$tpe,${threadRange.start.snapTimeNanos},${threadRange.end.snapTimeNanos},${profiler.id},${threadRange.phase.id},${threadRange.phase.phaseName.replace(',', ' ')},${threadRange.purpose},${threadRange.taskCount},${threadRange.thread.getId},${threadRange.thread.getName},${threadRange.runNs},${threadRange.idleNs},${threadRange.cpuNs},${threadRange.userNs},${threadRange.allocatedBytes},${threadRange.end.heapBytes} ")
+    out.append(s"$tpe,${threadRange.start.snapTimeNanos},${threadRange.end.snapTimeNanos},${profiler.id},${threadRange.phase.id},${threadRange.phase.phaseName.replace(',', ' ')},${threadRange.purpose},${threadRange.taskCount},${threadRange.thread.getId},${threadRange.thread.getName},${threadRange.runNs},${threadRange.idleNs},${threadRange.cpuNs},${threadRange.userNs},${threadRange.allocatedBytes},${threadRange.end.heapBytes} \n")
 
   override def reportGc(data: GcEventData): Unit = {
     val duration = TimeUnit.MILLISECONDS.toNanos(data.gcEndMillis - data.gcStartMillis + 1)
     val start = data.reportTimeNs - duration
-    out.println(s"${EventType.GC},$start,${data.reportTimeNs},${data.gcStartMillis}, ${data.gcEndMillis},${data.name},${data.action},${data.cause},${data.threads}")
+    out.append(s"${EventType.GC},$start,${data.reportTimeNs},${data.gcStartMillis}, ${data.gcEndMillis},${data.name},${data.action},${data.cause},${data.threads}\n")
   }
 
   override def close(profiler: RealProfiler): Unit = {

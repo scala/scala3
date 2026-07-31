@@ -12,6 +12,8 @@ import dotty.tools.tasty.TastyHeaderUnpickler
 import dotty.tools.tasty.TastyVersion
 import dotty.tools.tasty.UnpicklerConfig
 
+import java.nio.charset.StandardCharsets
+
 class TastyHeaderUnpicklerTest {
 
   import TastyHeaderUnpicklerTest.*
@@ -265,7 +267,7 @@ class TastyHeaderUnpicklerTest {
 object TastyHeaderUnpicklerTest {
 
   def fillHeader(maj: Int, min: Int, exp: Int, compiler: String): TastyBuffer = {
-    val compilerBytes = compiler.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+    val compilerBytes = compiler.getBytes(StandardCharsets.UTF_8)
     val buf = new TastyBuffer(header.length + 32 + compilerBytes.length)
     for (ch <- header) buf.writeByte(ch.toByte)
     buf.writeNat(maj)

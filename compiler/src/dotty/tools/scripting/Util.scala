@@ -1,52 +1,43 @@
 package dotty.tools.scripting
 
-import java.nio.file.Path
-import java.io.File
-import dotty.tools.io.AbstractFileClassLoader
-import dotty.tools.io.PlainFile.toPlainFile
 import java.lang.reflect.{ Modifier, Method }
+import dotty.tools.nio.*
+import dotty.tools.dotc.classpath.ClassPath
 
 object Util:
-  def deleteFile(target: File): Unit =
-    if target.isDirectory then
-      for member <- target.listFiles.toList
-      do deleteFile(member)
-    target.delete()
-  end deleteFile
-
   def detectMainClassAndMethod(
-    outDir: Path,
+    outDir: FileContainer,
     jarVersion: String,
-    classpathEntries: Seq[Path],
+    classpathEntries: Seq[String],
     srcFile: String
   ): Either[Throwable, (String, Method)] =
-    val classpathDirs = (classpathEntries :+ outDir).map { _.toPlainFile }
-    val cl = AbstractFileClassLoader(classpathDirs, jarVersion, ClassLoader.getSystemClassLoader)
+    val cl = AbstractFileClassLoader(classpathEntries :+ outDir, jarVersion, ClassLoader.getSystemClassLoader)
 
-    def collectMainMethods(target: File, path: String): List[(String, Method)] =
-      val nameWithoutExtension = target.getName.takeWhile(_ != '.')
-      val targetPath =
-        if path.nonEmpty then s"${path}.${nameWithoutExtension}"
-        else nameWithoutExtension
-
-      if target.isDirectory then
+    def collectMainMethods(entry: FileSystemEntry, path: String): List[(String, Method)] = entry match {
+      case c: FileContainer =>
+        val targetPath =
+          if path.nonEmpty then s"$path.${c.name}"
+          else c.name
         for
-          packageMember <- target.listFiles.toList
+          packageMember <- c.entries.toList
           membersMainMethod <- collectMainMethods(packageMember, targetPath)
         yield membersMainMethod
-      else if target.getName.endsWith(".class") then
+      case f: File if f.extension.isClass =>
+        val targetPath =
+          if path.nonEmpty then s"$path.${f.nameWithoutExtension}"
+          else f.nameWithoutExtension
         val cls = cl.loadClass(targetPath)
         try
           val method = cls.getMethod("main", classOf[Array[String]])
           if Modifier.isStatic(method.getModifiers) then List((cls.getName, method)) else Nil
         catch
           case _: java.lang.NoSuchMethodException => Nil
-      else Nil
-    end collectMainMethods
+      case _ => Nil
+    }
 
     val mains = for
-      file <- outDir.toFile.listFiles.toList
-      method <- collectMainMethods(file, "")
+      entry <- outDir.entries
+      method <- collectMainMethods(entry, "")
     yield method
 
     mains match
@@ -58,7 +49,7 @@ object Util:
     end match
   end detectMainClassAndMethod
 
-  def pathsep: String = sys.props("path.separator").nn
+  def pathsep: String = ClassPath.pathSeparator
 
 end Util
 

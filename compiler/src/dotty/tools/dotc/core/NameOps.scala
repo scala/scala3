@@ -3,7 +3,7 @@ package dotc
 package core
 
 import java.security.MessageDigest
-import java.nio.CharBuffer
+import java.nio.charset.StandardCharsets
 import scala.io.Codec
 import Int.MaxValue
 import Names.*, StdNames.*, Contexts.*, Symbols.*, Flags.*, NameKinds.*, Types.*
@@ -42,8 +42,7 @@ object NameOps {
         val prefix = s.take(edge)
         val suffix = s.takeRight(edge)
 
-        val cs = s.toArray
-        val bytes = Codec.toUTF8(CharBuffer.wrap(cs))
+        val bytes = s.getBytes(StandardCharsets.UTF_8)
         md5.update(bytes)
         val md5chars = md5.digest().map(b => (b & 0xFF).toHexString).mkString
 
