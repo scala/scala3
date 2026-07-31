@@ -40,5 +40,12 @@ final class MatchError(@transient obj: Any) extends RuntimeException {
     this
   }
 
+  /** Returns a detail message describing the object that failed to match any pattern.
+   *  The message is the object's `toString` representation followed by its class name
+   *  in parentheses, as in `5 (of class java.lang.Integer)`. If the object is `null`,
+   *  the message is just `"null"`; if invoking `toString` on it throws, the message
+   *  omits the representation and is `"an instance of class "` followed by the class
+   *  name.
+   */
   override def getMessage(): String = objString
 }

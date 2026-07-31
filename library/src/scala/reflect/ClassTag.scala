@@ -78,9 +78,24 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
     else None
 
   // case class accessories
+  /** Returns `true` if `x` is a `ClassTag`, making it eligible for comparison with this one.
+   *
+   *  @param x the value to test for comparability with this class tag
+   */
   override def canEqual(x: Any) = x.isInstanceOf[ClassTag[?]]
+  /** Returns `true` if `x` is a `ClassTag` whose `runtimeClass` is the same as this class tag's.
+   *
+   *  Note that the type arguments of the two tags play no part in the comparison, since only
+   *  the erased class is stored.
+   *
+   *  @param x the value to compare with this class tag
+   */
   override def equals(x: Any) = x.isInstanceOf[ClassTag[?]] && this.runtimeClass == x.asInstanceOf[ClassTag[?]].runtimeClass
+  /** Returns a hash code derived from `runtimeClass`, consistent with `equals`. */
   override def hashCode() = runtimeClass.##
+  /** Returns the name of `runtimeClass`, rendering array classes as `Array[...]` instead of in
+   *  the form returned by `Class.getName`, such as `[Ljava.lang.String;`.
+   */
   override def toString() = {
     def prettyprint(clazz: jClass[?]): String =
       if (clazz.isArray) s"Array[${prettyprint(clazz.getComponentType)}]" else
@@ -115,9 +130,20 @@ object ClassTag {
 
   private val cacheDisabled = java.lang.Boolean.getBoolean("scala.reflect.classtag.cache.disable")
   private object cache extends ClassValueCompat[jWeakReference[ClassTag[?]]] {
+    /** Computes the cache entry for `runtimeClass`, holding its `ClassTag` only weakly so that a
+     *  cached entry does not by itself keep the tag alive.
+     *
+     *  @param runtimeClass the class for which a `ClassTag` is being cached
+     *  @return a weak reference to the `ClassTag` for `runtimeClass`
+     */
     override def computeValue(runtimeClass: jClass[?]): jWeakReference[ClassTag[?]] =
       new jWeakReference(computeTag(runtimeClass))
 
+    /** Returns the `ClassTag` for `runtimeClass`, reusing the predefined tags for the primitive
+     *  types and for `Object`, `Nothing` and `Null`, and creating a generic tag for any other class.
+     *
+     *  @param runtimeClass the erased class the tag should describe
+     */
     def computeTag(runtimeClass: jClass[?]): ClassTag[?] =
       runtimeClass match {
         case x if x.isPrimitive => primitiveClassTag(runtimeClass)
@@ -143,11 +169,24 @@ object ClassTag {
 
   @SerialVersionUID(1L)
   private class GenericClassTag[T](val runtimeClass: jClass[?]) extends ClassTag[T] {
+    /** Returns a new array of length `len` whose element type is `runtimeClass`.
+     *
+     *  @param len the length of the new array
+     */
     override def newArray(len: Int): Array[T] = {
       java.lang.reflect.Array.newInstance(runtimeClass, len).asInstanceOf[Array[T]]
     }
   }
 
+  /** Returns a `ClassTag[T]` whose `runtimeClass` is `runtimeClass1`, taken from a cache of tags
+   *  keyed by class unless caching was disabled by setting the system property
+   *  `scala.reflect.classtag.cache.disable` to `true` before this object was initialized, in which
+   *  case a tag is computed on each call.
+   *
+   *  @tparam T the type the resulting tag stands for; it is assumed, but not checked, to erase
+   *            to `runtimeClass1`
+   *  @param runtimeClass1 the erased class the resulting tag describes
+   */
   def apply[T](runtimeClass1: jClass[?]): ClassTag[T] = {
     if (cacheDisabled) {
       cache.computeTag(runtimeClass1).asInstanceOf[ClassTag[T]]
@@ -162,5 +201,14 @@ object ClassTag {
     }
   }
 
+  /** Extracts the erased class stored in a `ClassTag`, so that class tags can be taken apart in
+   *  pattern matches.
+   *
+   *  A `null` tag is not accepted: the extraction throws `NullPointerException` in that case.
+   *
+   *  @tparam T the type the tag stands for
+   *  @param ctag the class tag to take apart
+   *  @return `Some` of the tag's `runtimeClass`; for a non-null `ctag` the match always succeeds
+   */
   def unapply[T](ctag: ClassTag[T]): Option[Class[?]] = Some(ctag.runtimeClass)
 }
