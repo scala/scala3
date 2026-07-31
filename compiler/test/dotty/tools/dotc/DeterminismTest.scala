@@ -10,6 +10,7 @@ import scala.util.control.NonFatal
 import org.junit.{Ignore, Test}
 import org.junit.Assert.*
 import dotty.tools.vulpix.TestConfiguration
+import dotty.tools.io.ClassPath
 
 /** Tests that the compiler produces byte-for-byte identical class files and
  *  TASTy when the same sources are compiled in a different order, or when
@@ -426,7 +427,7 @@ class DeterminismTester {
 
     def compile(output: Path, sources: List[TestSource]): Unit = {
       val paths = writeSources(sources)
-      val classpath = TestConfiguration.basicClasspath + java.io.File.pathSeparator + output.toString
+      val classpath = TestConfiguration.basicClasspath + ClassPath.pathSeparator + output.toString
       val (javaSources, scalaSources) = sources.partition(_.isJava)
       if scalaSources.nonEmpty then
         val args =
