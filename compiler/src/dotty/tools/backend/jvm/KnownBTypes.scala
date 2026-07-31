@@ -15,6 +15,7 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
 
   private val jliLambdaMetafactoryInternalName: String = "java/lang/invoke/LambdaMetafactory"
   private val jliStringConcatFactoryInternalName: String = "java/lang/invoke/StringConcatFactory"
+  private val jliSwitchBootstrapsInternalName: String = "java/lang/runtime/SwitchBootstraps"
   private val jliMethodHandlesLookupRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandlesLookupClass)
   private val jliMethodTypeRef: ClassBType = loader.classBTypeFromSymbol(requiredClass[java.lang.invoke.MethodType])
   private val jliMethodHandleRef: ClassBType = loader.classBTypeFromSymbol(defn.MethodHandleClass)
@@ -56,6 +57,26 @@ class KnownBTypes(loader: BTypeLoader)(using @constructorOnly initctx: Context) 
     "makeConcatWithConstants",
     MethodBType(
       List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, StringRef, ArrayBType(ObjectRef)),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false
+  )
+  val jliSwitchBootstrapsTypeSwitchHandle: Handle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    jliSwitchBootstrapsInternalName,
+    "typeSwitch",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
+      jliCallSiteRef
+    ).descriptor,
+    /* itf = */ false
+  )
+  val jliSwitchBootstrapsEnumSwitchHandle: Handle = new Handle(
+    Opcodes.H_INVOKESTATIC,
+    jliSwitchBootstrapsInternalName,
+    "enumSwitch",
+    MethodBType(
+      List(jliMethodHandlesLookupRef, StringRef, jliMethodTypeRef, ArrayBType(ObjectRef)),
       jliCallSiteRef
     ).descriptor,
     /* itf = */ false

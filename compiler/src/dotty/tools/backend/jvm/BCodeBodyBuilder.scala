@@ -13,7 +13,8 @@ import dotty.tools.dotc.core.Flags.{Label as LabelFlag, *}
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.core.StdNames.{nme, str}
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.transform.Erasure
+import dotty.tools.dotc.core.TypeErasure
+import dotty.tools.dotc.transform.{Erasure, PatternMatcher}
 import dotty.tools.dotc.util.Spans.*
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Phases.*
@@ -972,8 +973,9 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         else
           (expectedType, null, dest)
 
-      // Only two possible selector types exist in `Match` trees at this point: Int and String
-      if (tpeTK(selector) == INT) {
+      if tree.hasAttachment(PatternMatcher.TypeSwitchKey) then
+        genTypeSwitchMatch(selector, cases, tree.getAttachment(PatternMatcher.TypeSwitchKey).get, generatedType, postMatchDest)
+      else if (tpeTK(selector) == INT) {
 
         /* On a first pass over the case clauses, we flatten the keys and their
          * targets (the latter represented with asm.Labels). That representation
@@ -1138,6 +1140,63 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       if postMatch != null then
         markProgramPoint(postMatch)
       generatedType
+    }
+
+    private def genTypeSwitchMatch(
+        selector: Tree,
+        cases: List[CaseDef],
+        info: PatternMatcher.TypeSwitchInfo,
+        generatedType: BType,
+        postMatchDest: LoadDestination)(using Context): Unit = {
+      import PatternMatcher.{ClassLabel, IntegerLabel, StringLabel}
+
+      val labelCount = info.labels.size
+      val bsmArgs = info.labels.map {
+        case ClassLabel(tpe) => bTypeLoader.bTypeFromType(TypeErasure.erasure(tpe)).toASMType
+        case StringLabel(value) => value
+        case IntegerLabel(value) => Int.box(value)
+      }.toArray
+
+      val (indyName, bsmHandle) =
+        if info.isEnumBootstrap then ("enumSwitch", bTypes.jliSwitchBootstrapsEnumSwitchHandle)
+        else ("typeSwitch", bTypes.jliSwitchBootstrapsTypeSwitchHandle)
+      val selectorBType =
+        if info.isEnumBootstrap then bTypeLoader.bTypeFromType(TypeErasure.erasure(info.selectorTpe))
+        else bTypes.ObjectRef
+
+      genLoad(selector, selectorBType)
+      bc.iconst(0)
+      bc.jmethod.visitInvokeDynamicInsn(indyName, s"(${selectorBType.descriptor}I)I", bsmHandle, bsmArgs*)
+
+      var caseIndex = 0
+      val nullCase = if info.hasNullCase then { val caze = cases(caseIndex); caseIndex += 1; Some(caze) } else None
+      val contentCases = cases.slice(caseIndex, caseIndex + labelCount)
+      caseIndex += labelCount
+      val defaultCase = if caseIndex < cases.size then Some(cases(caseIndex)) else None
+
+      val nullLabel = nullCase.map(_ => new asm.Label)
+      val caseLabels = Array.fill(labelCount)(new asm.Label)
+      val defaultLabel = new asm.Label
+
+      val keysAndTargets =
+        nullLabel.map((-1, _)).toList ::: caseLabels.zipWithIndex.map { (label, idx) => (idx, label) }.toList
+      bc.emitSWITCH(keysAndTargets, defaultLabel, MIN_SWITCH_DENSITY)
+
+      nullCase.foreach { caze =>
+        markProgramPoint(nullLabel.get)
+        genLoadTo(caze.body, generatedType, postMatchDest)
+      }
+
+      var i = 0
+      while i < labelCount do
+        markProgramPoint(caseLabels(i))
+        genLoadTo(contentCases(i).body, generatedType, postMatchDest)
+        i += 1
+
+      markProgramPoint(defaultLabel)
+      defaultCase match
+        case Some(caze) => genLoadTo(caze.body, generatedType, postMatchDest)
+        case None => emitThrowMatchError()
     }
 
     def genBlockTo(tree: Block, expectedType: BType, dest: LoadDestination)(using Context): Unit = tree match {
