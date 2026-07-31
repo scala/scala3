@@ -616,8 +616,10 @@ object TypeAssigner extends TypeAssigner:
 
   /** An attachment on an application indicating a map from arguments to the skolem types
    *  that were created in safeSubstParams.
+   *  We use StickyKey so the Inlining phase can reuse the
+   *  same skolems for path-dependent types in the expansion (see #26153).
    */
-  private[typer] val SkolemizedArgs = new Property.Key[Map[tpd.Tree, SkolemType]]
+  private[dotc] val SkolemizedArgs = new Property.StickyKey[Map[tpd.Tree, SkolemType]]
 
   def seqLitType(tree: untpd.SeqLiteral, elemType: Type)(using Context) = tree match
     case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemType)
