@@ -84,11 +84,11 @@ def testDocPath: Path = Paths.get(BuildInfo.testDocumentationRoot)
 /** JVM classpath of the test runner; used when compiling sources or running Scaladoc at test time. */
 def javaClasspath: String = System.getProperty("java.class.path")
 
-/** Copy a test resource `<resourceDir>/<name>.txt` into `root/sources/<name>` and return that path. */
-def copyTestResource(root: Path, resourceDir: String, name: String): Path =
-  val resource = classOf[TestReporter].getResource(s"/$resourceDir/$name.txt")
-  assertNotNull(s"Test resource not found: /$resourceDir/$name.txt", resource)
-  val source = root.resolve("sources").resolve(name)
+/** Copy a test resource `/<resourceDir>/<resourceFile>` into `root/sources/<resourceFile>`. */
+def copyTestResource(root: Path, resourceDir: String, resourceFile: String): Path =
+  val resource = classOf[TestReporter].getResource(s"/$resourceDir/$resourceFile")
+  assertNotNull(s"Test resource not found: /$resourceDir/$resourceFile", resource)
+  val source = root.resolve("sources").resolve(resourceFile)
   Files.createDirectories(source.getParent)
   Files.copy(Paths.get(resource.toURI), source)
   source
