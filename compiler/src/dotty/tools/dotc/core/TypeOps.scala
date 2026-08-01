@@ -401,7 +401,7 @@ object TypeOps:
           case (tp1 @ AppliedType(tycon1, args1), tp2 @ AppliedType(tycon2, args2))
           if tycon1.typeSymbol == tycon2.typeSymbol && (tycon1 =:= tycon2) =>
             mergeRefinedOrApplied(tp1, tp2) match
-              case tp: AppliedType if tp.isUnreducibleWild =>
+              case tp: AppliedType if tp.isUnreducibleWild(isInferred = true) =>
                 // fall back to or-dominators rather than inferring a type that would
                 // cause an unreducible type error later.
                 approximateOr(tp1, tp2)
