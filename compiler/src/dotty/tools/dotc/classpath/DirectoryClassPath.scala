@@ -164,14 +164,16 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
   override def hasPackage(pkg: String): Boolean =
     packageToModuleBases(pkg).nonEmpty
 
-  // Right now the compiler always asks for all of them anyway (inPackage == "") so might as well cache them
+  // Right now the compiler always asks for those at the root package anyway (inPackage == ""),
+  // and we have no way to query the file system for "entries without a dot in their name",
+  // so might as well cache them
   private val allPackages = listFiles(dir).map(f => PackageEntry(f.toString.stripPrefix(dirName)))
   override def packages(inPackage: String): Iterable[PackageEntry] =
     if inPackage == "" then
-      allPackages
+      allPackages.filter(p => !p.name.contains('.'))
     else
       val start = inPackage + "."
-      allPackages.filter(p => p.name.startsWith(start) && p.name.lastIndexOf('.') <= inPackage.length)
+      allPackages.filter(p => p.name.startsWith(start) && p.name.lastIndexOf('.') == inPackage.length)
 
   private val cachedClasses = mutable.Map.empty[String, Iterable[BinaryFileEntry]]
   override def classes(inPackage: String): Iterable[BinaryFileEntry] = cachedClasses.get(inPackage) match {
