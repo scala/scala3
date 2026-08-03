@@ -880,6 +880,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
     if flags.is(InlineProxy) then writeModTag(INLINEPROXY)
     if flags.is(Macro) then writeModTag(MACRO)
     if flags.is(JavaStatic) then writeModTag(STATIC)
+    if flags.is(Synchronized) then writeModTag(SYNCHRONIZED)
     if flags.is(Module) then writeModTag(OBJECT)
     if flags.is(Enum) then writeModTag(ENUM)
     if flags.is(Local) then writeModTag(LOCAL)
