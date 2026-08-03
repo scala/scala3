@@ -119,6 +119,7 @@ class Compiler {
          new ArrayApply,             // Optimize `scala.Array.apply([....])` and `scala.Array.apply(..., [....])` into `[...]`
          new sjs.AddLocalJSFakeNews, // Adds fake new invocations to local JS classes in calls to `createLocalJSClass`
          new ElimPolyFunction,       // Rewrite PolyFunction subclasses to FunctionN subclasses
+         new SimplifySynchronized,   // Simplifies synchronized methods
          new TailRec,                // Rewrite tail recursion to loops
          new CompleteJavaEnums,      // Fill in constructors for Java enums
          new Mixin,                  // Expand trait fields and trait initializers
