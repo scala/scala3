@@ -29,5 +29,13 @@ package <empty> {
         ""
       }
   }
+  trait T() extends Object {
+    def alsoNotThisBecauseInATrait: String =
+      this.synchronized[String](
+        {
+          ""
+        }
+      )
+  }
 }
 
