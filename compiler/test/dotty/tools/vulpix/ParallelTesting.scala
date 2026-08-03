@@ -774,7 +774,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       if filteredSources.nonEmpty then
         val pool = JExecutors.newWorkStealingPool(threadLimit.getOrElse(Runtime.getRuntime.availableProcessors()))
         val timer = new Timer()
-        val logProgress = isInteractive && !suppressAllOutput
+        val logProgress = sourceCount > 1 && isInteractive && !suppressAllOutput
         val start = System.currentTimeMillis()
         if logProgress then
           timer.schedule((() => updateProgressMonitor(start)): TimerTask, 100/*ms*/, 200/*ms*/)
