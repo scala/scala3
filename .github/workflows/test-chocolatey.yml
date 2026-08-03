@@ -19,6 +19,9 @@ on:
         required: true
         type    : string
 
+permissions:
+  actions: read # downloads the launcher artifact through the Actions API
+
 env:
   CHOCOLATEY-REPOSITORY: chocolatey-pkgs
   # Controls behaviour of chocolatey{Install,Uninstall}.ps1 scripts
@@ -51,4 +54,3 @@ jobs:
         run  : scaladoc --version
       - name : Uninstall the `scala` package
         run  : choco uninstall scala
-        

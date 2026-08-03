@@ -40,6 +40,9 @@ on:
         description: The SHA256 of the uploaded artifact (`win x86-64`)
         value      : ${{ jobs.build.outputs.win-x86_64-digest }}
 
+permissions:
+  contents: read
+  actions: read  # To read back the win-x86_64 artifact through the Actions API
 
 jobs:
   build:

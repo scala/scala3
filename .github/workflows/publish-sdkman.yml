@@ -26,6 +26,9 @@ on:
       CONSUMER-TOKEN:
         required: true
 
+# Publishes to SDKMAN! with vendor credentials no GITHUB_TOKEN use
+permissions: {}
+
 env:
   # The download URLs handed to sdkman point at the releases of the repository
   # that ran the workflow. Only the scala/scala3 releases are real sdkman targets.

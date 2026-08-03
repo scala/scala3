@@ -3,6 +3,10 @@ on:
   push:
     branches:
       - main # default branch of the project
+
+permissions:
+  contents: write  # To submit the dependency graph (in sbt-dependency-submission)
+
 jobs:
   dependency-graph:
     name: Update Dependency Graph
