@@ -803,6 +803,8 @@ case class ClassBType private(internalName: String) extends RefBType {
 }
 
 object ClassBType {
+  val javaLangObjectInternalName: String = "java/lang/Object"
+  val scalaRuntimeBoxesRunTimeInternalName: String = "scala/runtime/BoxesRunTime"
 
   /**
    * Retrieve the `ClassBType` for the class with the given internal name, creating the entry if it doesn't
