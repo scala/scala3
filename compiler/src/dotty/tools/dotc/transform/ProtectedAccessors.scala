@@ -77,6 +77,23 @@ class ProtectedAccessors extends MiniPhase {
           reference.srcPos)
         reference
       }
+
+      private def inInlinedCode(using Context): Boolean =
+        enclosingInlineds.headOption.isDefined
+
+      // Changing signature from public to protected in stdlib works in a backward-compatible
+      // way for TASTy (where it isn't rechecked when loaded) and classfiles (where it stays public),
+      // but inline-expanded trees stumble here - we disable the check and accessor generation
+      // here for those cases (see test #26626)
+      private def excludedInlineSymbols(using Context): Set[Symbol] = Set(
+        defn.OptionClass.info.member("orNull".toTermName).suchThat(_.is(Protected)).symbol
+      )
+
+      override def accessorIfNeeded(tree: Tree)(using Context) = {
+        if !(inInlinedCode && excludedInlineSymbols.contains(tree.symbol)) then
+          super.accessorIfNeeded(tree)
+        else tree
+      }
     }
   }
 

@@ -254,7 +254,8 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    */
   @inline final def orNull[A1 >: A | Null]: A1 = this.getOrElse(null)
   
-  // for binary and TASTy backwards compatibility 
+  // for binary and TASTy backwards compatibility
+  // (for inlines this trick requires adding an entry in ProtectedAccessors.excludedMacroSymbols)
   @deprecated @inline protected final def orNull[A1 >: A](implicit ev: Null <:< A1): A1 = this getOrElse ev(null)
 
   /** Returns a $some containing the result of applying $f to this $option's
