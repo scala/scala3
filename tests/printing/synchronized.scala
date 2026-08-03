@@ -24,3 +24,9 @@ class A {
     }
     ""
 }
+
+trait T {
+  def alsoNotThisBecauseInATrait: String = synchronized {
+    ""
+  }
+}

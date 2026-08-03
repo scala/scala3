@@ -3202,7 +3202,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case _ =>
         ddef.rhs
     val rhs0 =
-      if !sym.is(Inline) && ctx.platform.supportsSynchronizedMethods
+      if !sym.is(Inline) && !sym.owner.is(Trait) && ctx.platform.supportsSynchronizedMethods
       then extractSynchronized(ddef.rhs)
       else ddef.rhs
 
