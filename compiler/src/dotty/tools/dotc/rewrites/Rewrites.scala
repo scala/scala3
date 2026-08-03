@@ -72,7 +72,7 @@ object Rewrites {
     }
 
     def writeBack(): Unit =
-      val chars = apply(source.underlying.content)
+      val chars = apply(source.content)
       val osw = OutputStreamWriter(source.file.output, UTF_8)
       try osw.write(chars, 0, chars.length)
       finally osw.close()

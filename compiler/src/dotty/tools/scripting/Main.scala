@@ -71,7 +71,7 @@ object Main:
       (Name.MAIN_CLASS, mainClassName),
       (Name.CLASS_PATH, cpString),
     )
-    val jarArchive = JarArchive.open(dotty.tools.io.Path(jarPath), create = true)
+    val jarArchive = JarArchive.create(dotty.tools.io.Path(jarPath))
     val writer = FileWriters.FileWriter(jarArchive, manifestAttributes)
     try
       dotty.tools.io.AbstractFile.getDirectory(outDir, "").nn.deepIterator.foreach(f => {

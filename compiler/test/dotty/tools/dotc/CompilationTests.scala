@@ -2,8 +2,6 @@ package dotty
 package tools
 package dotc
 
-import scala.language.unsafeNulls
-
 import org.junit.{Test, AfterClass}
 import org.junit.Assume.*
 
@@ -45,7 +43,7 @@ class CompilationTests {
       else Nil
     )
     val compilationTest = withCoverage(aggregateTests(tests*))
-    runWithCoverageOrFallback[PosTestWithCoverage](compilationTest, "Pos")
+    runWithCoverageOrFallback[PosTestWithCoverage](compilationTest)
   }
 
   @Test def rewrites: Unit = {
@@ -57,7 +55,7 @@ class CompilationTests {
       compileFile("tests/rewrites/rewrites3x-fatal-warnings.scala", defaultOptions.and("-rewrite", "-source", "future-migration", "-Werror")),
       compileFile("tests/rewrites/i21394.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/uninitialized-var.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
-      compileFile("tests/rewrites/with-type-operator.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
+      compileFile("tests/rewrites/with-type-operator.scala", defaultOptions.and("-rewrite", "-source", "3.10-migration")),
       compileFile("tests/rewrites/i26013.scala", defaultOptions.and("-rewrite", "-source", "3.4-migration")),
       compileFile("tests/rewrites/private-this.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/alphanumeric-infix-operator.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
@@ -139,13 +137,14 @@ class CompilationTests {
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/warn", defaultOptions),
     ))
-    runWithCoverageOrFallback[WarnTestWithCoverage](compilationTest, "Warn")
+    runWithCoverageOrFallback[WarnTestWithCoverage](compilationTest)
   }
 
   // Negative tests ------------------------------------------------------------
 
   @Test def negAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNeg")
+
     aggregateTests(
       compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.negScala2LibraryTastyExcludelisted)),
       compileFilesInDir("tests/neg-deep-subtype", allowDeepSubtypes),
@@ -158,6 +157,10 @@ class CompilationTests {
         defaultOptions),
       compileFile("tests/neg/i7575.scala", defaultOptions.withoutLanguageFeatures),
       compileFile("tests/neg-custom-args/i20491/Test.scala", defaultOptions.withClasspath("tests/neg-custom-args/i20491/cp")),
+      compileFile("tests/neg-custom-args/missing-java-outer-dependency/TestInner.scala",
+          defaultOptions.withClasspath("tests/neg-custom-args/missing-java-outer-dependency/cp")),
+      compileFile("tests/neg-custom-args/missing-java-outer-dependency/TestImportSuggestion.scala",
+          defaultOptions.withClasspath("tests/neg-custom-args/missing-java-outer-dependency/cp")),
     ).checkExpectedErrors()
   }
 
@@ -187,7 +190,7 @@ class CompilationTests {
       // Run tests for legacy lazy vals.
       compileFilesInDir("tests/run", defaultOptions.and("-Wsafe-init", "-Ylegacy-lazy-vals", "-Ycheck-constraint-deps"), FileFilter.include(TestSources.runLazyValsAllowlist)),
     ))
-    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
+    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
   // Generic java signatures tests ---------------------------------------------
@@ -195,7 +198,7 @@ class CompilationTests {
   @Test def genericJavaSignatures: Unit = {
     implicit val testGroup: TestGroup = TestGroup("genericJavaSignatures")
     val compilationTest = withCoverage(compileFilesInDir("tests/generic-java-signatures", defaultOptions))
-    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
+    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
   // Pickling Tests ------------------------------------------------------------
@@ -206,6 +209,18 @@ class CompilationTests {
       compileFilesInDir("tests/pos", picklingOptions, FileFilter.exclude(TestSources.posTestPicklingExcludelisted)),
       compileFilesInDir("tests/run", picklingOptions, FileFilter.exclude(TestSources.runTestPicklingExcludelisted))
     ).checkCompile()
+  }
+
+  // Pattern matching tests
+  @Test def patmat: Unit = {
+    given TestGroup = TestGroup("patmat")
+    // pagewidth/color: for a stable diff as the defaults are based on the terminal (e.g size)
+    // stop-after: patmatexhaust-huge.scala crash compiler (but also hides other warnings..)
+    val options = TestFlags(TestConfiguration.basicClasspath, Array("-pagewidth", "80", "-color:never", "-Ystop-after:explicitSelf", "-Ycheck-constraint-deps"))
+    val compilationTest = withCoverage(aggregateTests(
+      compileFilesInDir("tests/patmat", options),
+    ))
+    runWithCoverageOrFallback[PatmatTestWithCoverage](compilationTest)
   }
 
   //@Test disabled in favor of posWithCompilerCC to save time.
@@ -245,7 +260,7 @@ class CompilationTests {
       compileFilesInDir("tests/explicit-nulls/flexible-types-common", explicitNullsOptions),
       compileFilesInDir("tests/explicit-nulls/unsafe-common", explicitNullsOptions `and` "-language:unsafeNulls" `and` "-Yno-flexible-types"),
     ))
-    runWithCoverageOrFallback[PosTestWithCoverage](compilationTest, "Pos")
+    runWithCoverageOrFallback[PosTestWithCoverage](compilationTest)
 
     special(
       explicitNullsOptions.and("-Yforce-sbt-phases"),
@@ -269,13 +284,13 @@ class CompilationTests {
   @Test def explicitNullsWarn: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsWarn")
     val compilationTest = withCoverage(compileFilesInDir("tests/explicit-nulls/warn", explicitNullsOptions))
-    runWithCoverageOrFallback[WarnTestWithCoverage](compilationTest, "Warn")
+    runWithCoverageOrFallback[WarnTestWithCoverage](compilationTest)
   }
 
   @Test def explicitNullsRun: Unit = {
     implicit val testGroup: TestGroup = TestGroup("explicitNullsRun")
     val compilationTest = withCoverage(compileFilesInDir("tests/explicit-nulls/run", explicitNullsOptions))
-    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
+    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
   // initialization tests for global objects
@@ -315,11 +330,11 @@ class CompilationTests {
     val options = defaultOptions.and("-Wsafe-init", "-Werror")
     compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
     val initWarnTest = withCoverage(compileFilesInDir("tests/init/warn", defaultOptions.and("-Wsafe-init")))
-    runWithCoverageOrFallback[WarnTestWithCoverage](initWarnTest, "Warn")
+    runWithCoverageOrFallback[WarnTestWithCoverage](initWarnTest)
     val initPosTest = withCoverage(compileFilesInDir("tests/init/pos", options))
-    runWithCoverageOrFallback[PosTestWithCoverage](initPosTest, "Pos")
+    runWithCoverageOrFallback[PosTestWithCoverage](initPosTest)
     val initCrashTest = withCoverage(compileFilesInDir("tests/init/crash", options.without("-Werror")))
-    runWithCoverageOrFallback[PosTestWithCoverage](initCrashTest, "Pos")
+    runWithCoverageOrFallback[PosTestWithCoverage](initCrashTest)
     special(
       options.without("-Werror"),
       "checkInit/i12128",
@@ -346,7 +361,7 @@ class CompilationTests {
         withCoverage(compileFile("tests/init/tasty-error/val-or-defdef/v1/B.scala", tastyErrorOptions.withClasspath(classA1))(using tastyErrorGroup).keepOutput),
         withCoverage(compileFile("tests/init/tasty-error/val-or-defdef/v0/A.scala", tastyErrorOptions)(using tastyErrorGroup).keepOutput),
       )
-      tests.foreach(t => runWithCoverageOrFallback[PosTestWithCoverage](t, "Pos"))
+      tests.foreach(t => runWithCoverageOrFallback[PosTestWithCoverage](t))
 
       compileFile("tests/init/tasty-error/val-or-defdef/Main.scala", tastyErrorOptions.withClasspath(classA0).withClasspath(classB1))(using tastyErrorGroup).checkExpectedErrors()
 
@@ -372,7 +387,7 @@ class CompilationTests {
         withCoverage(compileFile("tests/init/tasty-error/typedef/v1/B.scala", tastyErrorOptions.withClasspath(classC).withClasspath(classA1))(using tastyErrorGroup).keepOutput),
         withCoverage(compileFile("tests/init/tasty-error/typedef/v0/A.scala", tastyErrorOptions.withClasspath(classC))(using tastyErrorGroup).keepOutput),
       )
-      tests.foreach(t => runWithCoverageOrFallback[PosTestWithCoverage](t, "Pos"))
+      tests.foreach(t => runWithCoverageOrFallback[PosTestWithCoverage](t))
 
       compileFile("tests/init/tasty-error/typedef/Main.scala", tastyErrorOptions.withClasspath(classC).withClasspath(classA0).withClasspath(classB1))(using tastyErrorGroup).checkExpectedErrors()
 
@@ -433,7 +448,7 @@ class CompilationTests {
       if expectError then
         t.checkExpectedErrors()
       else
-        runWithCoverageOrFallback[PosTestWithCoverage](t, "Pos")
+        runWithCoverageOrFallback[PosTestWithCoverage](t)
       allTests ::= t
     }
     try

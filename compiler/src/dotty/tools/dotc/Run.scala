@@ -361,6 +361,8 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
     compiling = true
 
+    Feature.checkDeprecatedSettingFeatures
+
     profile =
       if ctx.settings.Vprofile.value
         || !ctx.settings.VprofileSortedBy.value.isEmpty

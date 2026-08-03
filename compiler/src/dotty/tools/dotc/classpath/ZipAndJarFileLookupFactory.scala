@@ -41,12 +41,11 @@ object ZipAndJarClassPathFactory extends ZipAndJarFileLookupFactory {
     extends ZipArchiveFileLookup[BinaryFileEntry] {
 
     override def findClassFile(className: String): Option[AbstractFile] =
-      val (pkg, simpleClassName) = PackageNameUtils.separatePkgAndClassNames(className)
-      file(pkg, simpleClassName + ".class").map(_.file)
+      file(className).map(_.file)
 
     override def classes(inPackage: String): Seq[BinaryFileEntry] = files(inPackage)
 
-    override protected def createFileEntry(file: FileZipArchive#Entry): BinaryFileEntry = BinaryFileEntry(file)
+    override protected def createFileEntry(file: AbstractFile): BinaryFileEntry = BinaryFileEntry(file)
 
     override protected def isRequiredFileType(file: AbstractFile): Boolean =
       file.exists && (file.ext.isTasty || (file.ext.isClass && !file.hasSiblingTasty))
@@ -65,7 +64,7 @@ object ZipAndJarSourcePathFactory extends ZipAndJarFileLookupFactory {
   private case class ZipArchiveSourcePath(zipFile: File, override val release: String) extends ZipArchiveFileLookup[SourceFileEntry] {
     override def sources(inPackage: String): Seq[SourceFileEntry] = files(inPackage)
 
-    override protected def createFileEntry(file: FileZipArchive#Entry): SourceFileEntry = SourceFileEntry(file)
+    override protected def createFileEntry(file: AbstractFile): SourceFileEntry = SourceFileEntry(file)
     override protected def isRequiredFileType(file: AbstractFile): Boolean = file.ext.isSourceExtension
   }
 

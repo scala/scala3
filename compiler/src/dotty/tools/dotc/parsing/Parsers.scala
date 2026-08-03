@@ -23,7 +23,6 @@ import util.Spans.*
 import util.chaining.*
 import Constants.*
 import Symbols.NoSymbol
-import ScriptParsers.*
 import Decorators.*
 import util.Chars
 import rewrites.Rewrites.{overlapsPatch, patch, unpatch}
@@ -90,13 +89,6 @@ object Parsers {
       case x => buf += x
     }
 
-  /** The parse starting point depends on whether the source file is self-contained:
-   *  if not, the AST will be supplemented.
-   */
-  def parser(source: SourceFile)(using Context): Parser =
-    if source.isSelfContained then new ScriptParser(source)
-    else new Parser(source)
-
   private val InCase: Region => Region = Scanners.InCase(_)
   private val InCond: Region => Region = Scanners.InParens(LPAREN, _)
   private val InFor : Region => Region = Scanners.InBraces(_)
@@ -117,7 +109,10 @@ object Parsers {
      *  If `t` does not have a span yet, set its span to the given one.
      */
     def atSpan[T <: Positioned](span: Span)(t: T): T =
-      if (t.span.isSourceDerived) t else t.withSpan(span.union(t.span))
+      if t.span.isSourceDerived then t
+      else t match
+        case tree: Tree if tree.isEmpty => t
+        case _ => t.withSpan(span.union(t.span))
 
     def atSpan[T <: Positioned](start: Offset, point: Offset, end: Offset)(t: T): T =
       atSpan(Span(start, end, point))(t)
@@ -198,10 +193,12 @@ object Parsers {
         }
     }
   }
+  /** Parse given interval in the sourcefile, or the whole source file if the
+   *  interval is not defined.
+   */
+  class Parser(source: SourceFile, startFrom: Offset = 0, limit: Offset = -1)(using Context) extends ParserCommon(source) {
 
-  class Parser(source: SourceFile)(using Context) extends ParserCommon(source) {
-
-    val in: Scanner = new Scanner(source, profile = Profile.current)
+    val in: Scanner = new Scanner(source, startFrom, limit, profile = Profile.current)
     // in.debugTokenStream = true    // uncomment to see the token stream of the standard scanner, but not syntax highlighting
 
     /** This is the general parse entry point.
@@ -1508,7 +1505,8 @@ object Parsers {
                 patch(source, Span(in.offset, in.offset + 1), "Symbol(\"")
                 patch(source, Span(in.charOffset - 1), "\")")
             atSpan(in.skipToken()) { SymbolLit(in.strVal.nn) }
-        else if (in.token == INTERPOLATIONID) interpolatedString(inPattern)
+        else if in.token == INTERPOLATIONID then
+          interpolatedString(inPattern)
         else {
           val t = literalOf(in.token)
           in.nextToken()
@@ -1519,7 +1517,7 @@ object Parsers {
 
     private val interpolatorsFromAny = Set(nme.toString_, nme.hashCode_, nme.getClass_, nme.synchronized_, nme.eq, nme.ne)
 
-    private def interpolatedString(inPattern: Boolean = false): Tree = atSpan(in.offset) {
+    private def interpolatedString(inPattern: Boolean): Tree = atSpan(in.offset) {
       val segmentBuf = new ArrayBuffer[Tree]
       val interpolator = in.name.nn
       val startOffset = in.charOffset
@@ -1559,7 +1557,8 @@ object Parsers {
         segmentBuf += literal(in.offset + offsetCorrection, inPattern = inPattern, inStringInterpolation = true)
         if dedentWidth != null then
           for i <- 0 until segmentBuf.length do
-            segmentBuf(i) = trim(segmentBuf(i), dedentWidth, isFirst = i == 0, isLast = i == segmentBuf.length - 1)
+            segmentBuf(i) = trim(segmentBuf(i), dedentWidth,
+              isFirst = i == 0, isLast = i == segmentBuf.length - 1, isSpec = interpolator == nme.SPEC)
 
       if interpolatorsFromAny(interpolator) then
         report.warning(UseOfAnyMethodAsInterpolator(interpolator), source.atSpan(Span(startOffset, in.charOffset)))
@@ -1659,11 +1658,18 @@ object Parsers {
         trimAll(cs, lastIndent(cs), strOffset, isFirst = true, isLast = true)
 
       /** Trim part of '''-enclosed interpolated string literal */
-      def apply(tree: Tree, width: IndentWidth, isFirst: Boolean, isLast: Boolean): Tree = tree match
+      def apply(tree: Tree, width: IndentWidth, isFirst: Boolean, isLast: Boolean, isSpec: Boolean): Tree = tree match
         case Thicket(lit :: rest) =>
-          Thicket(apply(lit, width, isFirst, isLast) :: rest)
+          Thicket(apply(lit, width, isFirst, isLast, isSpec) :: rest)
         case Literal(Constant(str: String)) =>
-          val trimmed = trimAll(str.toCharArray, width, tree.span.start, isFirst, isLast)
+          val trimmed =
+            if isSpec then
+              if isFirst then
+                // just replace the leading "spec" with spaces, keeping positions unchanged
+                str.patch(0, "    ", 4)
+              else str
+            else
+              trimAll(str.toCharArray, width, tree.span.start, isFirst, isLast)
           cpy.Literal(tree)(Constant(trimmed))
     }
 
@@ -1789,8 +1795,9 @@ object Parsers {
       case _ => None
     }
 
-    /** CaptureRef  ::=  { SimpleRef `.` } SimpleRef [`*`] [CapFilter] [`.` `rd`] -- under captureChecking
-     *  CapFilter   ::=  `.` `only` `[` QualId `]`
+    /** CaptureRef    ::=  { SimpleRef `.` } SimpleRef [`*`] [OnlyFilter] {ExceptFilter} [`.` `rd`] -- under captureChecking
+     *  OnlyFilter    ::=  `.` `only` `[` QualId `]`
+     *  ExceptFilter  ::=  `.` `except` `[` QualId `]`
      */
     def captureRef(): Tree =
 
@@ -1808,6 +1815,15 @@ object Parsers {
             Annotated(ref, makeOnlyAnnot(inBrackets(convertToTypeId(qualId()))))
         else ref
 
+      def exceptOpt(ref: Tree): Tree =
+        if in.token == DOT && in.lookahead.isIdent(nme.except) then
+          val ref1 = atSpan(startOffset(ref)):
+            in.nextToken()
+            in.nextToken()
+            Annotated(ref, makeExceptAnnot(inBrackets(convertToTypeId(qualId()))))
+          exceptOpt(ref1)
+        else ref
+
       def readOnlyOpt(ref: Tree): Tree =
         if in.token == DOT && in.lookahead.isIdent(nme.rd) then
           atSpan(startOffset(ref)):
@@ -1817,7 +1833,7 @@ object Parsers {
         else ref
 
       def recur(ref: Tree): Tree =
-        val ref1 = readOnlyOpt(restrictedOpt(reachOpt(ref)))
+        val ref1 = readOnlyOpt(exceptOpt(restrictedOpt(reachOpt(ref))))
         if (ref1 eq ref) && in.token == DOT then
           in.nextToken()
           recur(selector(ref))
@@ -2095,7 +2111,7 @@ object Parsers {
         t
     }
 
-    /** WithType ::= AnnotType {`with' AnnotType}    (deprecated)
+    /** WithType ::= AnnotType {`with' AnnotType}    (error since 3.10, deprecated since 3.4)
      *
      *  `inPatternType` indicates that this type appears in a typed pattern
      *  position (such as `case x: A with B =>` or `case given A with B =>`).

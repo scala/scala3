@@ -64,6 +64,7 @@ object SymOps:
       }
       else None
 
+    @scala.annotation.nowarn
     def source =
       val path = sym.pos.flatMap(_.sourceFile.getJPath).map(_.toAbsolutePath)
       path.map(TastyMemberSource(_, sym.pos.get.startLine))
@@ -297,9 +298,8 @@ class SymOpsWithLinkCache:
             val extLink = if externalLinkCache.contains(csym.associatedFile)
               then externalLinkCache(csym.associatedFile)
               else {
-                def calculatePath(file: AbstractFile): String = file.underlyingSource.filter(_ != file).fold("")(f => calculatePath(f) + "/") + file.path
-                val calculatedLink = Option(csym.associatedFile).map(f => calculatePath(f)).flatMap { path =>
-                  dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path)))
+                val calculatedLink = Option(csym.associatedFile).flatMap { f =>
+                  dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(f.path)))
                 }
                 externalLinkCache += (csym.associatedFile -> calculatedLink)
                 calculatedLink

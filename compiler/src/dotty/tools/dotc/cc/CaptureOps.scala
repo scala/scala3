@@ -69,6 +69,8 @@ extension (tp: Type)
       tp1.toCapability.readOnly
     case OnlyCapability(tp1, cls) =>
       tp1.toCapability.restrict(cls)
+    case ExceptCapability(tp1, cls) =>
+      tp1.toCapability.exclude(cls)
     case ref: TermRef if ref.isCapsAnyRef =>
       GlobalAny
     case ref: TermRef if ref.isCapsFreshRef =>
@@ -108,6 +110,8 @@ extension (tp: Type)
       elem match
         case CapturingType(parent, refs) if parent.derivesFromCapSet =>
           refs.elems.toList
+        case ExceptCapability(_, cls) if cls.isTopClassifier =>
+          Nil // empty projection
         case _ =>
           elem.toCapability :: Nil
 
@@ -158,7 +162,7 @@ extension (tp: Type)
    *  @param includeBoxed     if true, include capture sets found in boxed parts of this type
    */
   def computeDeepCaptureSet(includeTypevars: Boolean, includeBoxed: Boolean = true)(using Context): CaptureSet =
-    tp.captureSet ++ CaptureSet.ofTypeDeeply(tp.widen.stripCapturing, includeTypevars, includeBoxed)
+    tp.captureSet ++ CaptureSet.ofTypeDeeply(tp.widen.stripOneCapturing, includeTypevars, includeBoxed)
 
   /** The deep capture set of a type. This is by default the union of all
    *  covariant capture sets embedded in the widened type, as computed by
@@ -182,7 +186,9 @@ extension (tp: Type)
    *  the two capture sets are combined.
    */
   def capturing(cs: CaptureSet)(using Context): Type =
-    if (cs.isAlwaysEmpty || cs.isConst && cs.subCaptures(tp.captureSet, VarState.Separate))
+    if (cs.isAlwaysEmpty && !tp.isAny
+        || cs.isConst && cs.subCaptures(tp.captureSet, VarState.Separate)
+        )
         && !cs.keepAlways
     then tp
     else tp match
@@ -257,11 +263,25 @@ extension (tp: Type)
       case tp: MethodOrPoly => tp // don't box results of methods outside refinements
       case _ => recur(tp)
 
+  /** Is this type boxed (i.e its outmost capturing type is boxed,
+   *  skipping any capturing types with empty capsets)?
+   */
+  def isBoxed(using Context): Boolean = tp match
+    case tp @ CapturingType(parent, refs) =>
+      tp.annot match
+        case annot: CaptureAnnotation =>
+          annot.boxed && (!refs.isAlwaysEmpty || parent.isBoxed)
+        case _ =>
+          false
+    case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
+    case tp: TypeProxy => tp.superType.isBoxed
+    case tp: AndType => tp.tp1.isBoxed && tp.tp2.isBoxed
+    case tp: OrType => tp.tp1.isBoxed || tp.tp2.isBoxed
+    case _ => false
+
   /** The capture set consisting of all top-level captures of `tp` that appear under a box.
    *  Unlike for `boxed` this also considers parents of capture types, unions and
    *  intersections, and type proxies other than abstract types.
-   *  Furthermore, if the original type is a capability `x`, it replaces boxed universal sets
-   *  on the fly with x*.
    */
   def boxedCaptureSet(using Context): CaptureSet =
     def getBoxed(tp: Type, pre: Type): CaptureSet = tp match
@@ -276,22 +296,25 @@ extension (tp: Type)
       case _ => CaptureSet.empty
     getBoxed(tp, NoType)
 
-  /** Is the boxedCaptureSet of this type nonempty? */
-  def isBoxedCapturing(using Context): Boolean =
+  /** Is the boxedCaptureSet of this type nonempty?
+   *  Unlike for `isBoxed` that also includes types with a boxed
+   *  capset wrapped in an unboxed capturing type.
+   */
+  def hasBoxedCapset(using Context): Boolean =
     tp match
       case tp @ CapturingType(parent, refs) =>
-        tp.isBoxed && !refs.isAlwaysEmpty || parent.isBoxedCapturing
+        tp.isBoxed && !refs.isAlwaysEmpty || parent.hasBoxedCapset
       case tp: TypeRef if tp.symbol.isAbstractOrParamType => false
-      case tp: TypeProxy => tp.superType.isBoxedCapturing
-      case tp: AndType => tp.tp1.isBoxedCapturing && tp.tp2.isBoxedCapturing
-      case tp: OrType => tp.tp1.isBoxedCapturing || tp.tp2.isBoxedCapturing
+      case tp: TypeProxy => tp.superType.hasBoxedCapset
+      case tp: AndType => tp.tp1.hasBoxedCapset && tp.tp2.hasBoxedCapset
+      case tp: OrType => tp.tp1.hasBoxedCapset || tp.tp2.hasBoxedCapset
       case _ => false
 
-  /** Is the box status of `tp` and `tp2` compatible? I.ee  they are
-   *  box boxed, or both unboxed, or one of them has an empty capture set.
+  /** Is the box status of `tp` and `tp2` compatible? I.e. they are
+   *  both boxed, or both unboxed, or one of them has an empty capture set.
    */
   def isBoxCompatibleWith(tp2: Type)(using Context): Boolean =
-    isBoxedCapturing == tp2.isBoxedCapturing
+    isBoxed == tp2.isBoxed
     || tp.captureSet.isAlwaysEmpty
     || tp2.captureSet.isAlwaysEmpty
 
@@ -313,10 +336,21 @@ extension (tp: Type)
    *  via dealising are also stripped.
    */
   def stripCapturing(using Context): Type = tp.dealiasKeepAnnots match
-    case CapturingType(parent, _) =>
+    case tp @ CapturingType(parent, _) =>
       parent.stripCapturing
     case atd @ AnnotatedType(parent, annot) =>
       atd.derivedAnnotatedType(parent.stripCapturing, annot)
+    case _ =>
+      tp
+
+  /** Strip capture set of type, leaving possible boxed nested capture sets in place.
+   */
+  def stripOneCapturing(using Context): Type = tp.dealiasKeepAnnots match
+    case tp @ CapturingType(parent, _) =>
+      if parent.isBoxed && !tp.isBoxed then parent
+      else parent.stripOneCapturing
+    case atd @ AnnotatedType(parent, annot) =>
+      atd.derivedAnnotatedType(parent.stripOneCapturing, annot)
     case _ =>
       tp
 
@@ -467,7 +501,7 @@ extension (tp: Type)
     clsfier match
     case clsfier: ClassSymbol =>
       val lcap = LocalCap(Origin.NewInstance(tp, contributing))
-      if clsfier != defn.AnyClass then
+      if !clsfier.isTopClassifier then
         lcap.hiddenSet.adoptClassifier(clsfier)
       (if readOnly then lcap.readOnly else lcap).singletonCaptureSet
     case _ =>
@@ -541,6 +575,11 @@ extension (cls: ClassSymbol) {
 
   def isClassifiedCapabilityClass(using Context): Boolean =
     cls.derivesFromCapability && cls.parentSyms.contains(defn.Caps_Classifier)
+
+  /** `Any`, the top of the classifier tree: not a classifier class, but accepted as a
+   *  projection argument (`only[Any]` = identity, `except[Any]` = empty). */
+  def isTopClassifier(using Context): Boolean =
+    cls == defn.AnyClass
 
   def classifier(using Context): ClassSymbol =
     if cls.derivesFromCapability then
@@ -622,6 +661,11 @@ extension (cls: ClassSymbol) {
 
   def refiningGetterNamed(name: Name)(using Context): Symbol =
     cls.info.decls.lookup(name).suchThat(_.isRefiningParamAccessor).symbol
+
+  def consumeGetterNamed(name: Name)(using Context): Symbol =
+    cls.info.decls.lookup(name).suchThat: sym =>
+        sym.is(ParamAccessor) && sym.isConsume
+      .symbol
 }
 
 extension (sym: Symbol) {
@@ -803,12 +847,14 @@ extension (sym: Symbol) {
 
   /** Do terminal capabilities in the type of this symbol contribute to the capture set
    *  of the enclosing class? This is the case for concrete, non-parameter fields
-   *  that are not marked with @uncheckedCapturs.
+   *  that are not marked with @uncheckedCapturs. Also included are consume parameter
+   *  fields.
    */
   def contributesLocalCapsToClass(using Context): Boolean =
-    sym.isField
-    && !sym.isOneOf(DeferredOrTermParamOrAccessor)
-    && !sym.hasAnnotation(defn.UntrackedCapturesAnnot)
+    def isExempt =
+      if sym.is(ParamAccessor) then !sym.isConsume
+      else sym.isOneOf(DeferredOrTermParamOrAccessor)
+    sym.isField && !isExempt && !sym.hasAnnotation(defn.UntrackedCapturesAnnot)
 
   /** The terminal capabilities that this symbol contributes to the capture set of the
    *  enclosing class.
@@ -842,13 +888,6 @@ extension (sym: Symbol) {
         || sym.is(Method, butNot = Flags.Accessor)
     then sym
     else sym.owner.widenOwner(skipModules)
-}
-
-extension (tp: AnnotatedType) {
-  /** Is this a boxed capturing type? */
-  def isBoxed(using Context): Boolean = tp.annot match
-    case ann: CaptureAnnotation => ann.boxed
-    case _ => false
 }
 
 extension (clss: List[ClassSymbol])
@@ -897,18 +936,31 @@ object ReadOnlyCapability extends AnnotatedCapability(defn.ReadOnlyCapabilityAnn
  */
 object MaybeCapability extends AnnotatedCapability(defn.MaybeCapabilityAnnot)
 
-object OnlyCapability:
+/** A base class for extractors that match annotated types carrying a classifier
+ *  class as type argument of their annotation.
+ */
+abstract class ClassifiedCapability(annotCls: Context ?=> ClassSymbol):
   def apply(tp: Type, cls: ClassSymbol)(using Context): AnnotatedType =
     AnnotatedType(tp,
-      Annotation(defn.OnlyCapabilityAnnot.typeRef.appliedTo(cls.typeRef), Nil, util.Spans.NoSpan))
+      Annotation(annotCls.typeRef.appliedTo(cls.typeRef), Nil, util.Spans.NoSpan))
 
   def unapply(tree: AnnotatedType)(using Context): Option[(Type, ClassSymbol)] = tree match
-    case AnnotatedType(parent: Type, ann) if ann.hasSymbol(defn.OnlyCapabilityAnnot) =>
+    case AnnotatedType(parent: Type, ann) if ann.hasSymbol(annotCls) =>
       ann.tree.tpe.argTypes.head.dealias.typeSymbol match
         case cls: ClassSymbol => Some((parent, cls))
         case _ => None
     case _ => None
-end OnlyCapability
+end ClassifiedCapability
+
+/** An extractor for `ref @onlyCapability[C]`, which is used to express
+ *  the restricted capability `ref.only[C]` as a type.
+ */
+object OnlyCapability extends ClassifiedCapability(defn.OnlyCapabilityAnnot)
+
+/** An extractor for `ref @exceptCapability[C]`, which is used to express
+ *  the excluded capability `ref.except[C]` as a type.
+ */
+object ExceptCapability extends ClassifiedCapability(defn.ExceptCapabilityAnnot)
 
 /** An extractor for all kinds of function types as well as method and poly types.
  *  It includes aliases of function types such as `=>`. TODO: Can we do without?

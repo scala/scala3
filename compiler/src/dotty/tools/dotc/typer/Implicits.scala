@@ -86,10 +86,6 @@ object Implicits:
   def strictEquality(using Context): Boolean =
     ctx.mode.is(Mode.StrictEquality) || Feature.enabled(nme.strictEquality)
 
-  def strictEqualityPatternMatching(using Context): Boolean =
-    Feature.enabled(Feature.strictEqualityPatternMatching)
-
-
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
    */
@@ -319,7 +315,7 @@ object Implicits:
 
       outerImplicits match
         case null => 1
-        case oi if migrateTo3(using irefCtx) 
+        case oi if migrateTo3(using irefCtx)
                 || (irefCtx.owner eq oi.irefCtx.owner) && (isImport || (irefCtx.scope eq oi.irefCtx.scope) && !isLazyImplicit) => oi.level
         case oi => oi.level + 1
     end level
@@ -1045,7 +1041,7 @@ trait Implicits:
    *   - if one of T, U is an error type, or
    *   - if one of T, U is a subtype of the lifted version of the other,
    *     unless strict equality is set.
-   *   - if strictEqualityPatternMatching is set and the necessary conditions are met
+   *   - if the strictEqualityPatternMatching (SIP-67) conditions apply
    */
   def assumedCanEqual(ltp: Type, rtp: Type, leftTree: Tree = EmptyTree)(using Context): Boolean = {
     // Map all non-opaque abstract types to their upper bound.
@@ -1072,15 +1068,14 @@ trait Implicits:
     || rtp.isError
     || locally:
       if strictEquality then
-        strictEqualityPatternMatching &&
-          (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.is(Flags.Module)) &&
+        (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.is(Flags.Module)) &&
           ltp <:< rtp
       else
         ltp <:< lift(rtp) || rtp <:< lift(ltp)
   }
 
   /** Check that equality tests between types `ltp` and `left.tpe` make sense.
-   * `left` is required to check for the condition for language.strictEqualityPatternMatching.
+   * `left` is required to check for the condition for language.strictEqualityPatternMatching (SIP-67)
    */
   def checkCanEqual(left: Tree, rtp: Type, span: Span)(using Context): Unit =
     val ltp = left.tpe.widen

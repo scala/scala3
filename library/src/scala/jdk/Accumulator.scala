@@ -69,6 +69,7 @@ import scala.language.implicitConversions
  *  [[DoubleAccumulator]].
  *
  *  @tparam CC the covariant higher-kinded type constructor for the specific accumulator collection, constrained to `mutable.Seq`
+ *  @tparam C the concrete result type of this accumulator's builder, constrained to `mutable.Seq[A]`
  */
 abstract class Accumulator[@specialized(Double, Int, Long) A, +CC[X] <: mutable.Seq[X], +C <: mutable.Seq[A]]
   extends mutable.Seq[A]
@@ -98,6 +99,7 @@ abstract class Accumulator[@specialized(Double, Int, Long) A, +CC[X] <: mutable.
    *     allocated with 1 extra slot. So `history(0)` has 17 slots of which the first 15 store elements.
    *
    *  @param i the index into the `history` array, where `0 <= i < `hIndex``
+   *  @return the total number of elements stored in `history(0)` through `history(i)`, inclusive
    */
   private[jdk] def cumulative(i: Int): Long
 
@@ -185,6 +187,7 @@ object Accumulator {
    *  @tparam A      the type of the ${coll}'s elements
    *  @tparam C the (inferred) specific type of the $coll
    *  @param canAccumulate the implicit factory shape that determines the specific accumulator type to build
+   *  @return an empty $coll of the type selected by `canAccumulate`
    */
   def empty[A, C](implicit canAccumulate: AccumulatorFactoryShape[A, C]): C =
     canAccumulate.empty
@@ -222,6 +225,7 @@ object Accumulator {
    *  @param init State initial value
    *  @param f    Computes the next element (or returns `None` to signal
    *             the end of the collection)
+   *  @param canAccumulate the implicit factory shape that determines the specific accumulator type to build
    *  @return an $coll that produces elements using `f` until `f` returns `None`
    */
   def unfold[A, S, C](init: S)(f: S => Option[(A, S)])(implicit canAccumulate: AccumulatorFactoryShape[A, C]): C =
@@ -350,6 +354,7 @@ object Accumulator {
    *  @param   n1  the number of elements in the 1st dimension
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   f   The function computing element values
+   *  @param canAccumulate the implicit factory shape that determines the specific accumulator type to build
    *  @return An $coll consisting of elements `f(i1, i2)`
    *          for `0 <= i1 < n1` and `0 <= i2 < n2`.
    */
@@ -364,6 +369,7 @@ object Accumulator {
    *  @param   n2  the number of elements in the 2nd dimension
    *  @param   n3  the number of elements in the 3rd dimension
    *  @param   f   The function computing element values
+   *  @param canAccumulate the implicit factory shape that determines the specific accumulator type to build
    *  @return An $coll consisting of elements `f(i1, i2, i3)`
    *          for `0 <= i1 < n1`, `0 <= i2 < n2`, and `0 <= i3 < n3`.
    */
@@ -379,6 +385,7 @@ object Accumulator {
    *  @param   n3  the number of elements in the 3rd dimension
    *  @param   n4  the number of elements in the 4th dimension
    *  @param   f   The function computing element values
+   *  @param canAccumulate the implicit factory shape that determines the specific accumulator type to build
    *  @return An $coll consisting of elements `f(i1, i2, i3, i4)`
    *          for `0 <= i1 < n1`, `0 <= i2 < n2`, `0 <= i3 < n3`, and `0 <= i4 < n4`.
    */
@@ -395,6 +402,7 @@ object Accumulator {
    *  @param   n4  the number of elements in the 4th dimension
    *  @param   n5  the number of elements in the 5th dimension
    *  @param   f   The function computing element values
+   *  @param canAccumulate the implicit factory shape that determines the specific accumulator type to build
    *  @return An $coll consisting of elements `f(i1, i2, i3, i4, i5)`
    *          for `0 <= i1 < n1`, `0 <= i2 < n2`, `0 <= i3 < n3`, `0 <= i4 < n4`, and `0 <= i5 < n5`.
    */

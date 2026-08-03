@@ -41,6 +41,7 @@ object FromDigits {
      *
      *  @param digits the string representation of the numeric literal to convert
      *  @param radix the base for the number system (e.g. 10 for decimal, 16 for hexadecimal)
+     *  @return the value of type `T` represented by the digit string interpreted in the given radix
      */
     def fromDigits(digits: String, radix: Int): T
   }
@@ -95,6 +96,7 @@ object FromDigits {
    *  @param digits the string representation of the numeric literal to convert
    *  @param radix the base for the number system (e.g. 10 for decimal, 16 for hexadecimal)
    *  @param limit the upper bound for positive values of the result type (e.g. `Int.MaxValue` or `Long.MaxValue`)
+   *  @return the integer value represented by the digit string, as a `Long`
    */
   private def integerFromDigits(digits: String, radix: Int, limit: Long): Long = {
     var value: Long = 0
@@ -126,8 +128,10 @@ object FromDigits {
   }
 
   /** Converts digit string to Int number.
+   *
    *  @param digits            The string to convert
    *  @param radix             The radix
+   *  @return the `Int` value represented by the digit string in the given radix
    *  @throws NumberTooLarge   if number does not fit within Int range
    *  @throws MalformedNumber  if digits is not a legal digit string.
    *                           Legal strings consist only of digits conforming to radix,
@@ -137,8 +141,10 @@ object FromDigits {
     integerFromDigits(digits, radix, Int.MaxValue).toInt
 
   /** Converts digit string to Long number.
+   *
    *  @param digits            The string to convert
    *  @param radix             The radix
+   *  @return the `Long` value represented by the digit string in the given radix
    *  @throws NumberTooLarge   if the resulting number does not fit within Long range
    *  @throws MalformedNumber  if digits is not a legal digit string.
    *                           Legal strings consist only of digits conforming to radix,
@@ -150,7 +156,9 @@ object FromDigits {
   @sharable private val zeroFloat = raw"-?[0.]+(?:[eE][+-]?[0-9]+)?[fFdD]?".r
 
   /** Converts digit string to Float number.
+   *
    *  @param digits            The string to convert
+   *  @return the `Float` value represented by the digit string
    *  @throws NumberTooLarge   if the resulting number is infinite
    *  @throws NumberTooSmall   if the resulting number is 0.0f, yet the digits
    *                           string contains non-zero digits before the exponent.
@@ -168,7 +176,9 @@ object FromDigits {
   }
 
   /** Converts digit string to Double number.
+   *
    *  @param digits            The string to convert
+   *  @return the `Double` value represented by the digit string
    *  @throws NumberTooLarge   if the resulting number is infinite
    *  @throws NumberTooSmall   if the resulting number is 0.0d, yet the digits
    *                           string contains non-zero digits before the exponent.

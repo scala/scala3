@@ -22,6 +22,7 @@ import cc.CleanupRetains
 
 import collection.mutable
 import reporting.{NotConstant, trace}
+import util.Property
 import util.Spans.Span
 import dotty.tools.dotc.core.Periods.PhaseId
 import dotty.tools.dotc.util.chaining.*
@@ -29,6 +30,13 @@ import dotty.tools.dotc.util.chaining.*
 /** Support for querying inlineable methods and for inlining calls to such methods */
 object Inlines:
   import tpd.*
+
+  /** Method name of the transparent inline call.
+   *
+   *  Used for reporting type errors on the expansion, to add a note that
+   *  precise type isn't available in transparent inline call inside an inline method.
+   */
+  private[dotc] val TransparentInlinedCall: Property.Key[String] = new Property.Key
 
   /** An exception signalling that an inline info cannot be computed due to a
    *  cyclic reference. i14772.scala shows a case where this happens.
@@ -198,11 +206,15 @@ object Inlines:
                |You can use ${setting.name} to change the limit.""",
           (tree :: enclosingInlineds).last.srcPos
         )
+    // if tree0 (inline call tree before expansion) is transparent
+    // attach the method name to the tree2 (expanded tree)
+    val tree3 =
+      if tree0.symbol.is(Transparent) then tree2.withAttachment(TransparentInlinedCall, tree0.symbol.show) else tree2
     if ctx.base.stopInlining && enclosingInlineds.isEmpty then
       ctx.base.stopInlining = false
         // we have completely backed out of the call that overflowed;
         // reset so that further inline calls can be expanded
-    tree2
+    tree3
   end inlineCall
 
   /** Try to inline a pattern with an inline unapply method. Fail with error if the maximal
@@ -586,7 +598,7 @@ object Inlines:
 
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.
-      val inlined = tpd.Inlined(call, bindings, expansion)
+      val inlined0 = tpd.Inlined(call, bindings, expansion)
 
       val hasOpaquesInResultFromCallWithTransparentContext =
         val owners = call.symbol.ownersIterator.toSet
@@ -613,6 +625,24 @@ object Inlines:
                   TermRef(apply(prefix), tref.symbol.companionModule)
                 case _ => mapOver(t)
         ).typeMap(tpe)
+
+      /** Argument proxies may be typed with skolems from the call tree (see
+       *  Inliner#callValueSkolemss). However, TASTy pickles skolems as their underlying
+       *  types, so the expansion's type may change after unpickling, which break the TASTy
+       *  roundtrip checked by `-Ytest-pickler`.
+       *
+       *  To avoid this, insert the expansion with a no-op cast. This makes the pickled
+       *  underlying type to prevent `TypeOps.avoid` from generating a different
+       *  result type after unpickling.
+       */
+      val inlined =
+        val proxySkolems = bindings.map(_.symbol.info.widenExpr).collect { case sk: SkolemType => sk }
+        if proxySkolems.nonEmpty && inlined0.tpe.existsPart(proxySkolems.contains) then
+          val sealedExpansion =
+            inContext(ctx.withSource(expansion.source)):
+              expansion.cast(inlined0.tpe).withSpan(expansion.span)
+          tpd.Inlined(call, bindings, sealedExpansion)
+        else inlined0
 
       if !hasOpaqueProxies && !hasOpaquesInResultFromCallWithTransparentContext then inlined
       else

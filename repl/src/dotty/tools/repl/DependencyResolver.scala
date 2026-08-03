@@ -9,12 +9,17 @@ import scala.util.control.NonFatal
 
 import dotty.tools.repl.AbstractFileClassLoader
 
-import coursierapi.{Repository, Dependency, MavenRepository}
-import com.virtuslab.using_directives.UsingDirectivesProcessor
-import com.virtuslab.using_directives.custom.model.{Path, StringValue, Value}
+import coursierapi.{Dependency, MavenRepository}
+import dotty.tools.directives.{DirectiveValue, UsingDirectivesParser}
 
 /** Handles dependency resolution using Coursier for the REPL */
 object DependencyResolver:
+
+  /** Result of classifying `//> using` directives in REPL input. */
+  case class ClassifiedDirectives(deps: List[String], unsupportedKeys: List[String], hasDirectives: Boolean)
+
+  /** Directive keys the REPL knows how to handle. Extend as more directives gain REPL support. */
+  val supportedDirectives: Set[String] = Set("dep")
 
   /** Parse a dependency string of the form `org::artifact:version` or `org:artifact:version`
    *  and return the (organization, artifact, version) triple if successful.
@@ -31,27 +36,19 @@ object DependencyResolver:
         System.err.println("Unable to parse dependency \"" + dep + "\"")
         None
 
-  /** Extract all dependencies from using directives in source code */
-  def extractDependencies(sourceCode: String): List[String] =
+  /** Classify `//> using` directives in REPL input into dependency coordinates and unsupported keys. */
+  def classifyDirectives(sourceCode: String): ClassifiedDirectives =
     try
-      val directives = new UsingDirectivesProcessor().extract(sourceCode.toCharArray)
-      val deps = scala.collection.mutable.Buffer[String]()
-
-      for
-        directive <- directives.asScala
-        (path, values) <- directive.getFlattenedMap.asScala
-      do
-        if path.getPath.asScala.toList == List("dep") then
-          values.asScala.foreach {
-            case strValue: StringValue => deps += strValue.get()
-            case value => System.err.println("Unrecognized directive value " + value)
-          }
-        else
-          System.err.println("Unrecognized directive " + path.getPath)
-
-      deps.toList
+      val result = UsingDirectivesParser.parse(sourceCode)
+      val (supported, unsupported) = result.directives.partition(d => supportedDirectives.contains(d.key))
+      val deps =
+        supported
+          .flatMap(_.values.collect { case DirectiveValue.StringVal(value, _, _) => value })
+          .toList
+      val unsupportedKeys = unsupported.map(_.key).distinct.toList
+      ClassifiedDirectives(deps, unsupportedKeys, result.directives.nonEmpty)
     catch
-      case NonFatal(e) => Nil // If parsing fails, fall back to empty list
+      case NonFatal(_) => ClassifiedDirectives(Nil, Nil, false)
 
   /** Resolve dependencies using Coursier Interface and return the classpath as a list of File objects */
   def resolveDependencies(dependencies: List[(String, String, String)]): Either[String, List[File]] =

@@ -11,10 +11,10 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 object Dependencies {
   val asm = "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1"
 
-  val coursier = "io.get-coursier" %% "coursier" % "2.1.24"
+  /** Version of Coursier to use + download for initializing the local maven repo of Scala command */
+  val coursierJarVersion = "2.1.25-M26"
+  val coursier = "io.get-coursier" %% "coursier" % coursierJarVersion
   val coursierInterface = "io.get-coursier" % "interface" % "1.0.29-M4"
-
-  val fansi = "com.lihaoyi" %% "fansi" % "0.5.1"
 
   private val flexmarkVersion = "0.64.8"
   val flexmarkDeps = Seq(
@@ -34,11 +34,11 @@ object Dependencies {
 
   val guava = "com.google.guava" % "guava" % "33.6.0-jre"
 
-  private val jacksonVersion = "3.1.2"
+  private val jacksonVersion = "3.2.1"
   val jacksonDatabind = "tools.jackson.core" % "jackson-databind" % jacksonVersion
   val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
-  private val jlineVersion = "4.0.14"
+  private val jlineVersion = "4.3.1"
   val jlineReader = "org.jline" % "jline-reader" % jlineVersion
   val jlineTerminal = "org.jline" % "jline-terminal" % jlineVersion
   val jlineTerminalJni = "org.jline" % "jline-terminal-jni" % jlineVersion
@@ -51,17 +51,18 @@ object Dependencies {
 
   val lz4 = "org.lz4" % "lz4-java" % "1.8.1"
 
-  private val mtagsVersion = "1.6.7"
+  private val mtagsVersion = "1.6.8"
   val mtagsInterfaces = "org.scalameta" % "mtags-interfaces" % mtagsVersion
   val mtagsShared = "org.scalameta" % s"mtags-shared_${Versions.scala2Version}" % mtagsVersion
-
-  val pprint = "com.lihaoyi" %% "pprint" % "0.9.3"
 
   val sbtCompilerInterface = "org.scala-sbt" % "compiler-interface" % "1.12.0"
   val sbtJunitInterface = "com.github.sbt" % "junit-interface" % "0.13.3"
   val sbtZincApiInfo = "org.scala-sbt" %% "zinc-apiinfo" % "1.12.0"
 
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.19.0"
+
+  /** Version of Scala CLI to download */
+  val scalaCliLauncherVersion = "1.15.0"
 
   val scalaJsDomVersion = "2.8.1" // needs %%% which isn't usable within a val here
   val scalaJsEnvNodeJs = "org.scala-js" %% "scalajs-env-nodejs" % "1.6.0"
@@ -70,8 +71,4 @@ object Dependencies {
   val scalaJsJunitTestRuntime = "org.scala-js" %% "scalajs-junit-test-runtime" % scalaJSVersion
   val scalaJsLibrary = "org.scala-js" %% "scalajs-library" % scalaJSVersion
   val scalaJsLinker = "org.scala-js" %% "scalajs-linker" % scalaJSVersion
-
-  val sourcecode = "com.lihaoyi" %% "sourcecode" % "0.4.4"
-
-  val usingDirectives = "org.virtuslab" % "using_directives" % "1.1.4"
 }

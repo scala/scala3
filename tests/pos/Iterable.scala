@@ -30,13 +30,13 @@ trait IterableImpls[CC[X]] {
     fromIterator(toIterator(xs).flatMap(f))
 }
 
-abstract class IterableCompanion[+CC[X] <: Iterable[X] with Collection[CC, X]]
+abstract class IterableCompanion[+CC[X] <: Iterable[X] & Collection[CC, X]]
 extends CollectionCompanion[CC] with IterableImpls[CC] @uncheckedVariance {
   def toIterator[T](xs: CC[T] @uncheckedVariance) = xs.iterator
   implicit def transformOps[T](xs: CC[T] @uncheckedVariance): TransformOps[CC, T] = new TransformOps[CC, T](xs)
 }
 
-class TransformOps[+CC[X] <: Iterable[X] with Collection[CC, X], T] (val xs: CC[T]) extends AnyVal {
+class TransformOps[+CC[X] <: Iterable[X] & Collection[CC, X], T] (val xs: CC[T]) extends AnyVal {
   def companion[T](xs: CC[T] @uncheckedVariance): IterableCompanion[CC] = xs.companion.asInstanceOf
   def map[U](f: T => U): CC[U] = companion(xs).map(xs, f)
   def filter(p: T => Boolean): CC[T] = companion(xs).filter(xs, p)

@@ -1,1 +1,8 @@
-63: Pattern Match Exhaustivity: (Try3.VN(), Try3.VC(_, _)), (Try3.VC(_, _), Try3.VN())
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/gadt5.scala:63:6 ----
+63 |      (v1, v2) match {
+   |      ^^^^^^^^
+   |match may not be exhaustive.
+   |
+   |It would fail on pattern case: (Try3.VN(), Try3.VC(_, _)), (Try3.VC(_, _), Try3.VN())
+   |
+   | longer explanation available when compiling with `-explain`

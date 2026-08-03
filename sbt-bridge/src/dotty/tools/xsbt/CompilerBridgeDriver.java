@@ -62,8 +62,9 @@ public class CompilerBridgeDriver extends Driver {
       HashMap<AbstractFile, VirtualFile> lookup) {
     return lookup.computeIfAbsent(sourceFile.file(), path -> {
       reportMissingFile(reporter, sourceFile);
-      if (sourceFile.file().jpath() != null)
-        return new FallbackPathBasedFile(sourceFile);
+      var pathBasedFile = sourceFile.file().jfile();
+      if (pathBasedFile.isPresent())
+        return new FallbackPathBasedFile(sourceFile, pathBasedFile.get().toPath());
       else
         return new FallbackVirtualFile(sourceFile);
     });
@@ -170,17 +171,13 @@ public class CompilerBridgeDriver extends Driver {
   }
 
   private static AbstractFile asDottyFile(VirtualFile virtualFile) {
-    if (virtualFile instanceof PathBasedFile) {
-      java.nio.file.Path path = ((PathBasedFile) virtualFile).toPath();
+    if (virtualFile instanceof PathBasedFile pathBasedFile) {
+      java.nio.file.Path path = pathBasedFile.toPath();
       return new PlainFile(new Path(path));
     }
 
-    try {
-      dotty.tools.io.VirtualFile file = new dotty.tools.io.VirtualFile(virtualFile.name(), virtualFile.id());
-      try (java.io.OutputStream output = file.output(); java.io.InputStream input = virtualFile.input()) {
-        input.transferTo(output);
-      }
-      return file;
+    try (java.io.InputStream input = virtualFile.input()) {
+      return new dotty.tools.io.VirtualFile(virtualFile.id(), input.readAllBytes());
     } catch (IOException e) {
       throw new IllegalArgumentException("invalid file " + virtualFile.name(), e);
     }

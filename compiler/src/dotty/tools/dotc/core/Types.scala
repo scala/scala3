@@ -5828,7 +5828,8 @@ object Types extends TypeUtils {
    *  If we assumed full substitutivity, we would have to reject all recursive match
    *  aliases (or else take the jump and allow full recursive types).
    */
-  class MatchAlias(alias: Type) extends AliasingBounds(alias)
+  class MatchAlias(alias: Type) extends AliasingBounds(alias):
+    override def isMatchAlias(using Context): Boolean = true
 
   object TypeBounds {
     def apply(lo: Type, hi: Type)(using Context): TypeBounds =
@@ -6359,8 +6360,8 @@ object Types extends TypeUtils {
         null
 
     /** Map capability `c` with this type map.
-     *  @return  Either a the mapped capability, or a captureset containing mapped capabilities,
-     *           together with a boolen indicating whether the map is exact, rather than approximated.
+     *  @return  Either the mapped capability, or a captureset containing mapped capabilities,
+     *           together with a boolean indicating whether the map is exact, rather than approximated.
      */
     def mapCapability(c: Capability): Capability | (CaptureSet, Boolean) = c match
       case c @ LocalCap(prefix) =>
@@ -6381,10 +6382,12 @@ object Types extends TypeUtils {
                 skolem
         c.derivedLocalCap(ensurePath(apply(prefix)))
       case c: RootCapability => c
-      case Restricted(c1, cls) =>
+      case Classified(c1, only, except) =>
         mapCapability(c1) match
-          case c2: Capability => c2.restrict(cls)
-          case (cs: CaptureSet, exact) => (cs.restrict(cls), exact)
+          case c2: Capability =>
+            except.foldLeft(c2.restrict(only))((c, e) => c.exclude(e))
+          case (cs: CaptureSet, exact) =>
+            (except.foldLeft(cs.restrict(only))((s, e) => s.exclude(e)), exact)
       case ReadOnly(c1) =>
         mapCapability(c1) match
           case c2: Capability => c2.readOnly

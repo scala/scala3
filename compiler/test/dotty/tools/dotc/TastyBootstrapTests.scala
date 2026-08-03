@@ -2,18 +2,11 @@ package dotty
 package tools
 package dotc
 
-import scala.language.unsafeNulls
-
-import org.junit.{ Test, Ignore, BeforeClass, AfterClass }
+import org.junit.{ Test, Ignore, AfterClass }
 import org.junit.Assert.*
-import org.junit.Assume.*
-import org.junit.experimental.categories.Category
 
 import java.io.File
 import java.nio.file.*
-import java.util.stream.{ Stream => JStream }
-import scala.jdk.CollectionConverters.*
-import scala.util.matching.Regex
 import scala.concurrent.duration.*
 import TestSources.sources
 import vulpix.*

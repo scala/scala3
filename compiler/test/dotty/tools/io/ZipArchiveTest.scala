@@ -1,7 +1,5 @@
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
 import java.io.IOException
 import java.net.{URI, URL, URLClassLoader}
 import java.nio.file.{Files, Path, Paths}
@@ -17,7 +15,7 @@ class ZipArchiveTest {
   @Test
   def corruptZip(): Unit = {
     val f = Files.createTempFile("test", ".jar")
-    val fza = new FileZipArchive(f)
+    val fza = new FileZipArchive(f, "17")
     try {
       fza.iterator
       assert(false)
@@ -33,7 +31,7 @@ class ZipArchiveTest {
   @Test
   def missingFile(): Unit = {
     val f = Paths.get("xxx.does.not.exist")
-    val fza = new FileZipArchive(f)
+    val fza = new FileZipArchive(f, "17")
     try {
       fza.iterator
       assert(false)

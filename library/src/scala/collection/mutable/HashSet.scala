@@ -64,12 +64,14 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
   /** Performs the inverse operation of improveHash. In this case, it happens to be identical to improveHash.
    *
    *  @param improvedHash the improved hash value to convert back to a standard hash index
+   *  @return the hash index recovered by re-applying the improvement transformation (which happens to be its own inverse)
    */
   @`inline` private[collection] def unimproveHash(improvedHash: Int): Int = improveHash(improvedHash)
 
   /** Computes the improved hash of an original (`any.##`) hash.
    *
    *  @param originalHash the original hash code obtained from `##`
+   *  @return the improved hash, with high bits XORed into the low bits to spread entropy into the bits used for bucket indexing
    */
   private def improveHash(originalHash: Int): Int = {
     // Improve the hash by xoring the high 16 bits into the low 16 bits just in case entropy is skewed towards the
@@ -81,6 +83,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
   /** Computes the improved hash of this element.
    *
    *  @param o the element whose hash to compute
+   *  @return the improved hash of `o`, computed from `o.##`
    */
   @`inline` private def computeHash(o: A): Int = improveHash(o.##)
 
@@ -163,8 +166,10 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
   }
 
   /** Adds an element to this set.
+   *
    *  @param elem element to add
    *  @param hash the **improved** hash of `elem` (see computeHash)
+   *  @return `true` if `elem` was added to the set, or `false` if an equal element was already present
    */
   private def addElem(elem: A, hash: Int) : Boolean = {
     val idx = index(hash)

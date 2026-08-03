@@ -1,7 +1,6 @@
 package dotty.tools.vulpix
 
 import scala.jdk.CollectionConverters.*
-import scala.language.unsafeNulls
 import scala.util.Properties.{javaSpecVersion, versionNumberString}
 
 import java.io.File

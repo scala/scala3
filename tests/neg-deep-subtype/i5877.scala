@@ -13,7 +13,7 @@ object Main {
       type This = PThis
 
       // inline // uncommenting `inline` cause problem in scastie dotty version, but is fixed in dotty `master`
-      def self(): This with this.type = this
+      def self(): This & this.type = this
     }
 
     // ---- ---- ---- ----
@@ -30,7 +30,7 @@ object Main {
 
 
     def testHasThisType2(): Unit = {
-      def testSelf[PThis <: HasThisType[_ <: PThis]](that: PThis with HasThisType[PThis]): Unit = {
+      def testSelf[PThis <: HasThisType[_ <: PThis]](that: PThis & HasThisType[PThis]): Unit = {
         // that.type <: that.This
         assert(implicitly[that.type <:< that.This] != null)
       }

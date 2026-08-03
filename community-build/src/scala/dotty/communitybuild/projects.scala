@@ -687,12 +687,13 @@ object projects:
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
   )
 
-  lazy val parboiled2 = SbtCommunityProject(
+  // Disabled because it requires SBT 2
+  /*lazy val parboiled2 = SbtCommunityProject(
     project = "parboiled2",
-    sbtTestCommand = "parboiledCoreJVM/test; parboiledJVM/test",
+    sbtTestCommand = "parboiledCoreJVM3/test; parboiledJVM3/test",
     sbtPublishCommand = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
-  )
+  )*/
 
 end projects
 
@@ -773,7 +774,7 @@ def allProjects = List(
   projects.specs2,
   projects.spire,
   projects.http4s,
-  projects.parboiled2,
+  //projects.parboiled2,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

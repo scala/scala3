@@ -23,7 +23,9 @@ on:
         required: true
 
 jobs:
+  # Never push to WinGet from a fork, regardless of how this workflow is called
   publish:
+    if: github.repository == 'scala/scala3'
     runs-on: windows-latest
     steps:
       - uses: vedantmgoyal9/winget-releaser@4ffc7888bffd451b357355dc214d43bb9f23917e

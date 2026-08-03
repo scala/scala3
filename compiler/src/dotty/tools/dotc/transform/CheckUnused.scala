@@ -57,6 +57,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     tree
 
   override def transformIdent(tree: Ident)(using Context): tree.type =
+    val name = tree.removeAttachment(OriginalName).getOrElse(tree.name)
     if tree.symbol.exists then
       // if in an inline expansion, resolve at summonInline (synthetic pos) or in an enclosing call site
       val resolvingImports =
@@ -69,9 +70,9 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
             loopOverPrefixes(prefix.normalizedPrefix, depth + 1)
         if tree.srcPos.isZeroExtentSynthetic then
           loopOverPrefixes(tree.typeOpt.normalizedPrefix, depth = 0)
-        resolveUsage(tree.symbol, tree.name, tree.typeOpt.importPrefix.skipPackageObject, tree.srcPos, resolvingImports)
+        resolveUsage(tree.symbol, name, tree.typeOpt.importPrefix.skipPackageObject, tree.srcPos, resolvingImports)
     else if tree.hasType then
-      resolveUsage(tree.tpe.classSymbol, tree.name, tree.tpe.importPrefix.skipPackageObject, tree.srcPos)
+      resolveUsage(tree.tpe.classSymbol, name, tree.tpe.importPrefix.skipPackageObject, tree.srcPos)
     tree
 
   // import x.y; y may be rewritten x.y, also import x.z as y
@@ -143,7 +144,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForAssign(tree: Assign)(using Context): Context =
     if tree.lhs.symbol.exists then
       refInfos.addAssignmentTarget(tree.lhs.symbol)
-      ctx.fresh.setTree(tree)
+      ctx.fresh.setProperty(EnclosingAssigns, tree :: enclosingAssigns)
     else ctx
 
   override def prepareForMatch(tree: Match)(using Context): Context =
@@ -328,10 +329,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
    *  Also check that every enclosing element is not a synthetic member
    *  of the sym's case class companion module.
    *
-   *  The LHS of a current Assign is never recorded as a reference (that is, a usage).
+   *  A reference to the LHS of a current Assign is not recorded as a usage, nor is a reference
+   *  in its RHS that does not escape into a call that might observe the value.
    */
   def refUsage(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    if !refInfos.hasRef(sym) then
+    if !refInfos.hasRef(sym) && !isUnobservedUpdate(sym, pos) then
       val isCase = sym.is(Case) && sym.isClass
       if !ctx.outersIterator.exists: outer =>
         val owner = outer.owner
@@ -340,11 +342,24 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
            && owner.exists
            && owner.is(Synthetic)
            && owner.owner.eq(sym.companionModule.moduleClass)
-        || outer.tree.match
-           case Assign(lhs, _) => lhs.symbol.eq(sym) && outer.tree.srcPos.sourcePos.contains(pos.sourcePos)
-           case _ => false
       then
         refInfos.addRef(sym)
+
+  /** Is a reference at `pos` an unobserved update of `sym`: the LHS of an enclosing assignment
+   *  to `sym`, or a read in its RHS which does not escape into an application that might observe
+   *  the value?
+   */
+  private def isUnobservedUpdate(sym: Symbol, pos: SrcPos)(using Context): Boolean =
+    def mightObserve(rhs: Tree): Boolean =
+      rhs.existsSubTree: t =>
+        t.srcPos.sourcePos.contains(pos.sourcePos) && t.match
+          case t: GenericApply => !isKnownPureOp(funPart(t).symbol)
+          case _: DefDef => true
+          case _ => false
+    enclosingAssigns.exists: assign =>
+         assign.lhs.symbol.eq(sym)
+      && assign.srcPos.sourcePos.contains(pos.sourcePos)
+      && !mightObserve(assign.rhs)
 
   /** Look up a reference in enclosing contexts to determine whether it was introduced by a definition or import.
    *  The binding of highest precedence must then be correct.
@@ -515,8 +530,24 @@ object CheckUnused:
 
   inline def refInfos(using Context): RefInfos = ctx.property(refInfosKey).get
 
+  /** The assignments enclosing the tree being traversed, innermost first.
+   *  Typed, unlike Context.tree, which is untyped-generic.
+   */
+  private val EnclosingAssigns = Property.Key[List[Assign]]
+
+  private def enclosingAssigns(using Context): List[Assign] =
+    ctx.property(EnclosingAssigns).getOrElse(Nil)
+
   /** Attachment holding the name of an Ident as written by the user. */
   val OriginalName = Property.StickyKey[Name]
+
+  /** Record the name as written by the user when it differs from the referenced
+   *  symbol's name, such as a renamed import or a renamed extension method, so that
+   *  CheckUnused can match the reference against the import selector that renamed it.
+   */
+  def withOriginalName(tree: Tree, written: Name)(using Context): tree.type =
+    if tree.symbol.name != written then tree.withAttachment(OriginalName, written)
+    tree
 
   /** Suppress warning in a tree, such as a patvar name allowed by special convention. */
   val NoWarn = Property.StickyKey[Unit]

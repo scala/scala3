@@ -77,8 +77,9 @@ object Build {
       "-Werror",
       // temporary duplicate 'caps' while CC is developed?
       "-Wconf:msg=package scala contains object and package with same name:i",
-      // Scaladoc testcases contain deliberately weird code
+      // Scaladoc and PC testcases contain deliberately weird code
       "-Wconf:src=scaladoc-testcases/.*:s",
+      "-Wconf:src=presentation-compiler-testcases/.*:s",
       // FPs of the init checker
       "-Wconf:msg=The RHS of reassignment must be transitively initialized:i",
       "-Wconf:msg=Could not verify that the method argument is transitively initialized:i",
@@ -601,6 +602,8 @@ object Build {
     `scala3-library-sjs`,
     `tasty-core-nonbootstrapped`,
     `tasty-core-bootstrapped`,
+    `scala3-directives-parser-nonbootstrapped`,
+    `scala3-directives-parser-bootstrapped`,
     `scala3-staging`,
     `scala3-tasty-inspector`,
     `scala3-repl`,
@@ -631,7 +634,7 @@ object Build {
 
   lazy val `scala3-nonbootstrapped` = project.in(file("."))
     .aggregate(`scala3-interfaces`, `scala3-library-nonbootstrapped` , `scala-library-nonbootstrapped`,
-      `tasty-core-nonbootstrapped`, `scala3-compiler-nonbootstrapped`, `scala3-sbt-bridge-nonbootstrapped`)
+      `tasty-core-nonbootstrapped`, `scala3-directives-parser-nonbootstrapped`, `scala3-compiler-nonbootstrapped`, `scala3-sbt-bridge-nonbootstrapped`)
     .settings(
       name          := "scala3-nonbootstrapped",
       moduleName    := "scala3-nonbootstrapped",
@@ -721,7 +724,7 @@ object Build {
   lazy val `scala3-bootstrapped` = project
     .enablePlugins(ScriptedPlugin)
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped` , `scala-library-bootstrapped`,
-      `tasty-core-bootstrapped`, `scala3-compiler-bootstrapped`, `scala3-sbt-bridge-bootstrapped`,
+      `tasty-core-bootstrapped`, `scala3-directives-parser-bootstrapped`, `scala3-compiler-bootstrapped`, `scala3-sbt-bridge-bootstrapped`,
       `scala3-staging`, `scala3-tasty-inspector`, `scala-library-sjs`, `scala3-library-sjs`,
       scaladoc, `scala3-repl`, `scala3-presentation-compiler`, `scala3-language-server`)
     .settings(
@@ -770,6 +773,7 @@ object Build {
         (`scala-library-sjs` / publishLocalBin),
         (`scala3-library-sjs` / publishLocalBin),
         (`tasty-core-bootstrapped` / publishLocalBin),
+        (`scala3-directives-parser-bootstrapped` / publishLocalBin),
         (`scala3-staging` / publishLocalBin),
         (`scala3-tasty-inspector` / publishLocalBin),
         (scaladoc / publishLocalBin),
@@ -878,7 +882,7 @@ object Build {
     )
 
   lazy val `scala3-repl` = project.in(file("repl"))
-    .dependsOn(`scala3-compiler-bootstrapped` % "compile->compile;test->test")
+    .dependsOn(`scala3-compiler-bootstrapped` % "compile->compile;test->test", `scala3-directives-parser-bootstrapped`)
     .settings(publishSettings)
     .settings(
       name          := "scala3-repl",
@@ -904,12 +908,8 @@ object Build {
         Dependencies.jlineReader,
         Dependencies.jlineTerminal,
         Dependencies.jlineTerminalJni,
-        Dependencies.pprint,
-        Dependencies.fansi,
-        Dependencies.sourcecode,
         Dependencies.sbtJunitInterface % Test,
         Dependencies.coursierInterface, // used by the REPL for dependency resolution
-        Dependencies.usingDirectives, // used by the REPL for parsing magic comments
       ),
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
@@ -1001,6 +1001,7 @@ object Build {
       Compile / mainClass := None,
 
       Test / unmanagedSourceDirectories   := Seq(baseDirectory.value / "test"),
+      Test / unmanagedSourceDirectories   += baseDirectory.value / "test-nonbootstrapped",
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       libraryDependencies ++= Seq(
         Dependencies.sbtJunitInterface % Test,
@@ -1091,6 +1092,7 @@ object Build {
       bspEnabled := enableBspAllProjects,
       Compile / mainClass := None,
       Test / unmanagedSourceDirectories   := Seq(baseDirectory.value / "test"),
+      Test / unmanagedSourceDirectories   += baseDirectory.value / "test-bootstrapped",
       Test / unmanagedResourceDirectories := Seq(baseDirectory.value / "test-resources"),
       libraryDependencies ++= Seq(
         Dependencies.sbtJunitInterface % Test,
@@ -1356,13 +1358,64 @@ object Build {
       bspEnabled := false,
     )
 
+  /* Configuration of the org.scala-lang:scala3-directives-parser_3:*.**.**-nonbootstrapped project */
+  lazy val `scala3-directives-parser-nonbootstrapped` = project.in(file("directives-parser"))
+    .dependsOn(`scala3-library-nonbootstrapped`)
+    .settings(
+      name          := "scala3-directives-parser",
+      moduleName    := "scala3-directives-parser",
+      version       := dottyNonBootstrappedVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := referenceVersion,
+      crossPaths    := true,
+      autoScalaLibrary := false,
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src" / "main" / "scala"),
+      Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "src" / "test" / "scala"),
+      libraryDependencies ++= Seq(
+        Dependencies.sbtJunitInterface % Test,
+      ),
+      publish / skip := true,
+      target := target.value / "scala3-directives-parser-nonbootstrapped",
+      Compile / compile / scalacOptions += "-Wunused:all",
+      fetchedScalaInstanceSettings,
+      bspEnabled := true,
+    )
+
+  /* Configuration of the org.scala-lang:scala3-directives-parser_3:*.**.**-bootstrapped project */
+  lazy val `scala3-directives-parser-bootstrapped` = project.in(file("directives-parser"))
+    .dependsOn(`scala3-library-bootstrapped`)
+    .settings(publishSettings)
+    .settings(
+      name          := "scala3-directives-parser",
+      moduleName    := "scala3-directives-parser",
+      version       := dottyVersion,
+      versionScheme := Some("semver-spec"),
+      scalaVersion  := dottyNonBootstrappedVersion,
+      crossPaths    := true,
+      autoScalaLibrary := false,
+      Compile / unmanagedSourceDirectories := Seq(baseDirectory.value / "src" / "main" / "scala"),
+      Test    / unmanagedSourceDirectories := Seq(baseDirectory.value / "src" / "test" / "scala"),
+      libraryDependencies ++= Seq(
+        Dependencies.sbtJunitInterface % Test,
+      ),
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := true,
+      Compile / packageSrc / publishArtifact := true,
+      Test    / publishArtifact := false,
+      publish / skip := false,
+      target := target.value / "scala3-directives-parser",
+      Compile / compile / scalacOptions += "-Wunused:all",
+      bootstrappedScalaInstanceSettings,
+      bspEnabled := enableBspAllProjects,
+    )
+
   // ==============================================================================================
   // ======================================= SCALA COMPILER =======================================
   // ==============================================================================================
 
   /* Configuration of the org.scala-lang:scala3-compiler_3:*.**.**-nonbootstrapped project */
   lazy val `scala3-compiler-nonbootstrapped` = project.in(file("compiler"))
-    .dependsOn(`scala3-interfaces`, `tasty-core-nonbootstrapped`, `scala3-library-nonbootstrapped`)
+    .dependsOn(`scala3-interfaces`, `tasty-core-nonbootstrapped`, `scala3-library-nonbootstrapped`, `scala3-directives-parser-nonbootstrapped` % Test)
     .settings(
       name          := "scala3-compiler-nonbootstrapped",
       moduleName    := "scala3-compiler",
@@ -1499,7 +1552,7 @@ object Build {
 
   /* Configuration of the org.scala-lang:scala3-compiler_3:*.**.**-bootstrapped project */
   lazy val `scala3-compiler-bootstrapped` = project.in(file("compiler"))
-    .dependsOn(`scala3-interfaces`, `tasty-core-bootstrapped`, `scala3-library-bootstrapped`)
+    .dependsOn(`scala3-interfaces`, `tasty-core-bootstrapped`, `scala3-library-bootstrapped`, `scala3-directives-parser-bootstrapped` % Test)
     .settings(publishSettings)
     .settings(
       name          := "scala3-compiler-bootstrapped",
@@ -2079,6 +2132,11 @@ object Build {
       regularScalaJSProjectSettings,
       bspEnabled := false,
       scalacOptions --= Seq("-Werror", "-deprecation", "-Yexplicit-nulls"),
+      // The fetched Scala.js test suite (pinned to v$scalaJSVersion) still uses
+      // the `with` type operator, which is an error since 3.10. Compile these
+      // sources under 3.9, where it is only a (non-fatal) warning. 3.9 and 3.10
+      // are otherwise identical in enabled language features.
+      scalacOptions += "-source:3.9",
 
       // Required to run Scala.js tests.
       Test / fork := false,
@@ -2231,6 +2289,7 @@ object Build {
             -- "StackTraceTest.scala" // would require `npm install source-map-support`
             -- "UnionTypeTest.scala" // requires the Scala 2 macro defined in Typechecking*.scala
             -- "OptimizerTest.scala" // something crashes the optimizer, TODO investigate
+            -- "TypedArrayConversionTest.scala" // #24321
             )).get
 
           ++ (dir / "js/src/test/require-2.12" ** "*.scala").get
@@ -2442,6 +2501,7 @@ object Build {
         (`scala3-tasty-inspector` / publishLocalBin).value
         (scaladoc / publishLocalBin).value
         (`scala3-repl` / publishLocalBin).value
+        (`scala3-directives-parser-bootstrapped` / publishLocalBin).value
         (`scala3-compiler-bootstrapped` / publishLocalBin).value
         (`scala-library-sjs` / publishLocalBin).value
         (`scala3-library-sjs` / publishLocalBin).value
@@ -2546,9 +2606,9 @@ object Build {
     .settings(
       republishLibexecDir := baseDirectory.value / "libexec",
       republishCoursier +=
-        ("coursier.jar" -> s"https://github.com/coursier/coursier/releases/download/v$coursierJarVersion/coursier.jar"),
+        ("coursier.jar" -> s"https://github.com/coursier/coursier/releases/download/v${Dependencies.coursierJarVersion}/coursier.jar"),
       republishLaunchers +=
-        ("scala-cli.jar" -> s"https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli.jar"),
+        ("scala-cli.jar" -> s"https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli.jar"),
     )
 
   lazy val `dist-mac-x86_64` = project.in(file("dist/mac-x86_64")).asDist
@@ -2558,7 +2618,7 @@ object Build {
       republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
-        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-apple-darwin.gz")
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-apple-darwin.gz")
     )
 
   lazy val `dist-mac-aarch64` = project.in(file("dist/mac-aarch64")).asDist
@@ -2568,7 +2628,7 @@ object Build {
       republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
-        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-apple-darwin.gz")
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-aarch64-apple-darwin.gz")
     )
 
   lazy val `dist-win-x86_64` = project.in(file("dist/win-x86_64")).asDist
@@ -2579,10 +2639,16 @@ object Build {
       republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
-        ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
+        ("scala-cli.exe" -> s"zip+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-pc-win32.zip!/scala-cli.exe")
     )
     .settings(
       Windows / name := "scala",
+      // Windows/packageName feeds the WiX core-feature id: WindowsPlugin truncates
+      // the sanitized id to its last 38 chars, and with the default long name
+      // (e.g. scala3-3.10.0-RC1-x86_64-pc-win32) the truncation can leave an id
+      // starting with a digit, which WiX rejects (error CNDL0014). A short stable
+      // name keeps the id legal and version-independent.
+      Windows / packageName := "scala3",
       // Windows/version is used to create ProductInfo - it requires a version without any -RC suffixes
       // If not explicitly overridden it would try to use `dottyVersion` assigned to `dist-win-x86_64/version`
       Windows / version    := developedVersion,
@@ -2605,7 +2671,7 @@ object Build {
       republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
-        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-x86_64-pc-linux.gz")
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-pc-linux.gz")
     )
 
   lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist
@@ -2615,7 +2681,7 @@ object Build {
       republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
-        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v$scalaCliLauncherVersion/scala-cli-aarch64-pc-linux.gz")
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-aarch64-pc-linux.gz")
     )
 
   private def customMimaReportBinaryIssues(issueFilterLocation: String) = mimaReportBinaryIssues := {
@@ -2642,6 +2708,7 @@ object Build {
         `scala3-sbt-bridge-bootstrapped`, // for scala-cli
         `scala3-staging`,
         `scala3-tasty-inspector`,
+        `scala3-directives-parser-bootstrapped`,
         scaladoc,
         `tasty-core-bootstrapped`,
       )

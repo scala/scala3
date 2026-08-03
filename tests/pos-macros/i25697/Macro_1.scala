@@ -24,6 +24,9 @@ object TinyMacro:
         case Apply(term, List(Select(Ident("Pattern"), name))) => loop(term, acc :+ flag(name))
         case Select(term, "|")                                 => loop(term, acc)
         case Select(Ident("Pattern"), name)                    => acc :+ flag(name)
+        // Upstream code changed in https://github.com/leviysoft/oolong/pull/61
+        case Literal(IntConstant(n)) =>
+          acc ++ (0 until 30).map(1 << _).filter(b => (n & b) != 0)
 
       loop(term, Nil)
 

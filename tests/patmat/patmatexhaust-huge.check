@@ -1,1 +1,8 @@
-404: Pattern Match Exhaustivity: C392, C397
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/patmatexhaust-huge.scala:404:21 
+404 |  def f(c: C): Int = c match {
+    |                     ^
+    |                     match may not be exhaustive.
+    |
+    |                     It would fail on pattern case: C392, C397
+    |
+    | longer explanation available when compiling with `-explain`

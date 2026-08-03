@@ -20,19 +20,8 @@ class TypeUtils:
     def isErasedValueType(using Context): Boolean =
       self.isInstanceOf[ErasedValueType]
 
-    def isPrimitiveValueType(using Context): Boolean = self match
-      case tp: TypeRef =>
-        val sym = tp.symbol
-        if sym.isClass then sym.isPrimitiveValueClass
-        else tp.superType.isPrimitiveValueType
-      case tp: TypeProxy =>
-        tp.superType.isPrimitiveValueType
-      case tp: ClassInfo =>
-        tp.cls.isPrimitiveValueClass
-      case _ =>
-        // anything else definitely can't be one (e.g., AndType),
-        // so let's not waste time constructing a ClassSymbol
-        false
+    def isPrimitiveValueType(using Context): Boolean =
+      self.classSymbol.isPrimitiveValueClass
 
     /** Is this type a checked exception? This is the case if the type
      *  derives from Exception but not from RuntimeException. According to
@@ -282,5 +271,19 @@ class TypeUtils:
       case self: SingletonType => ctx.printer.toTextRef(self).show
       case _ => self.show
 
+    /** True if `tp` is a method or poly type whose term parameter names are
+     *  worth surfacing in printed types and capture sets — they are
+     *  user-given (not all `x$N` synthetic, not all `_$N` wildcard) and there
+     *  is at least one of them.
+     */
+    def hasMeaningfulParamNames(using Context): Boolean = self match
+      case mt: MethodType =>
+        mt.paramNames.nonEmpty
+        && !mt.allParamNamesSynthetic
+        && !mt.paramNames.forall(_.is(NameKinds.WildcardParamName))
+      case pt: PolyType =>
+        pt.resType.hasMeaningfulParamNames
+      case _ =>
+        false
 end TypeUtils
 

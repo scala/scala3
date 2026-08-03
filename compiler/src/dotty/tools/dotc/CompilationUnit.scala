@@ -75,8 +75,11 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   /** Will be set to true if the unit contains a captureChecking language import */
   var needsSeparationChecking: Boolean = false
 
-  /** Will be set to true is unit was compiled with `safe` language import. */
+  /** Will be set to true if unit was compiled with `safe` language import. */
   var safeMode: Boolean = false
+
+  /** Will be set to true if unit was compiled with `magic` language import. */
+  var magic: Boolean = false
 
   /** Will be set to true if the unit contains a pureFunctions language import */
   var knowsPureFuns: Boolean = false
@@ -146,7 +149,7 @@ object CompilationUnit {
   def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit =
     val compilationUnitInfo = clsd.symbol.compilationUnitInfo.nn
     val file = compilationUnitInfo.associatedFile
-    apply(SourceFile(file, Array.empty[Char]), unpickled, forceTrees, compilationUnitInfo)
+    apply(SourceFile(file, Array.emptyCharArray), unpickled, forceTrees, compilationUnitInfo)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
   def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean, info: CompilationUnitInfo)(using Context): CompilationUnit = {
@@ -166,8 +169,8 @@ object CompilationUnit {
   /** Create a compilation unit corresponding to an in-memory String.
    *  Used for `compiletime.testing.typeChecks`.
    */
-  def apply(name: String, source: String): CompilationUnit = {
-    val src = SourceFile.virtual(name = name, content = source, maybeIncomplete = false)
+  def apply(path: String, source: String): CompilationUnit = {
+    val src = SourceFile.virtual(path, source)
     new CompilationUnit(src, null)
   }
 

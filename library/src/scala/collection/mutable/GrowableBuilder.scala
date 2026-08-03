@@ -26,6 +26,7 @@ import language.experimental.captureChecking
  *
  *  @tparam Elem the type of elements that can be added to the builder
  *  @tparam To the type of the resulting growable collection, which must be a subtype of `Growable[Elem]`
+ *  @param elems the underlying growable collection that elements are added to and which is returned as the result
  */
 class GrowableBuilder[Elem, To <: Growable[Elem]](protected val elems: To)
   extends Builder[Elem, To] {

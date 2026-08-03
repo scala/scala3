@@ -83,23 +83,10 @@ object LiftCoverage extends LiftImpure:
     if liftingArgs then noLiftArg(expr)
     else isUnsafeAssumeSeparate(expr) || super.noLift(expr)
 
-  /** Preserve precision for lifted coverage temps when widening would break later checks:
-   *  compile-time constants and stable singleton types need their singleton precision,
-   *  and capture-converted types need their local TypeBox#CAP references.
-   */
+  /** Coverage runs post-typer, so skip deskolemization and preserve valid skolems. */
   override protected def liftedExprType(expr: tpd.Tree)(using Context): Type =
-    val dealiased = expr.tpe.dealias
-    val deskolemized = dealiased.deskolemized
-    val valueType = dealiased match
-      case ref: TermRef if ref.prefix.exists && ref.underlying.isInstanceOf[ExprType] =>
-        ref.prefix.memberInfo(ref.symbol).widenExpr
-      case _ =>
-        dealiased
-    valueType.widenTermRefExpr.normalized.simplified match
-      case _: ConstantType => deskolemized
-      case _ if dealiased.isInstanceOf[SingletonType] && dealiased.isStable => dealiased
-      case _ if valueType.existsPart(_.typeSymbol == defn.TypeBox_CAP) => valueType
-      case _ => super.liftedExprType(expr)
+    val tp = expr.tpe
+    if tp.isStable then tp else tp.widen
 
   private def markSelectedReceiverDef(
     defs: mutable.ListBuffer[tpd.Tree],
@@ -208,7 +195,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     // Serialize once at the end with merged coverage
     val mergedCoverage = Coverage()
-    val currentFiles = units.map(_.source.file.absolute.jpath)
+    val currentFiles = units.map(_.source.file.jpath.nn.toAbsolutePath)
 
     // Add statements from previous coverage that aren't from recompiled files
     // and whose source files still exist
@@ -851,6 +838,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       val sym = tree.symbol
       !sym.isOneOf(ExcludeMethodFlags)
       && !isCompilerIntrinsicMethod(sym)
+      && sym != defn.Caps_unsafeDiscardUses
       && !(sym.isClassConstructor && isSecondaryCtorDelegateCall(tree.fun))
       && !sym.name.is(DefaultGetterName) // https://github.com/scala/scala3/issues/20255
       && (tree.typeOpt match

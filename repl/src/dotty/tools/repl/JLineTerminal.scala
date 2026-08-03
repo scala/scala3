@@ -63,8 +63,19 @@ class JLineTerminal(providedTerminal: org.jline.terminal.Terminal | Null = null)
   private val userInput = new UserInputStream(userLineReader, terminal.encoding())
 
   private def bindCtrlCInterrupt(lr: LineReader): Unit =
+    val ctrlCWidgetName = "userInterrupt"
+
+    lr.getWidgets.put(
+      ctrlCWidgetName,
+      new Widget { override def apply(): Boolean = throw new UserInterruptException("") }
+    )
+    // The keybind must be a `Reference` to a registered widget, not a raw `Widget`.
+    // While a completion list is shown, JLine's loop (`LineReaderImpl.doList`)
+    // only dispatches `Reference` bindings; a raw `Widget` is silently ignored,
+    // so Ctrl-C would do nothing during completion.
+    // See https://github.com/scala/scala3/issues/26074.
     lr.getKeyMaps.get(LineReader.MAIN).bind(
-      new Widget { override def apply(): Boolean = throw new UserInterruptException("") },
+      new Reference(ctrlCWidgetName),
       "\u0003"
     )
 
@@ -256,9 +267,16 @@ class JLineTerminal(providedTerminal: org.jline.terminal.Terminal | Null = null)
         null
       }
 
+      // A lone directive/command must defer (and assemble) when pasted code is already
+      // arriving, but submit on one ENTER when typed.
+      // A short bounded peek waits just long enough for the pump to surface
+      // already-arriving paste bytes; the wait only applies when submitting a bare
+      // directive/command line.
+      def hasPendingInput: Boolean = terminal.reader().peek(5) >= 0
+
       def acceptLine = {
         val onLastLine = !input.substring(cursor).contains(System.lineSeparator)
-        onLastLine && !ParseResult.isIncomplete(input)
+        onLastLine && ParseResult.shouldAcceptLine(input, hasPendingInput)
       }
 
       context match {

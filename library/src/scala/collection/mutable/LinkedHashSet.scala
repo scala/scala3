@@ -155,6 +155,7 @@ class LinkedHashSet[A]
   /** Computes the improved hash of this key.
    *
    *  @param o the key whose hash to compute
+   *  @return the improved hash code of `o`, derived by mixing the high and low bits of its `##` value
    */
   @`inline` private def computeHash(o: A): Int = improveHash(o.##)
 

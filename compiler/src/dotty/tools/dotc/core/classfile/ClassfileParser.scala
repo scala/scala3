@@ -289,10 +289,10 @@ final class ClassfileParser(
   private def currentIsTopLevel(using Context) = classRoot.owner.is(Flags.PackageClass)
 
   private def mismatchError(className: SimpleName) =
-    throw new IOException(s"class file '${classfile.canonicalPath}' has location not matching its contents: contains class $className")
+    throw new IOException(s"class file '${classfile.path}' has location not matching its contents: contains class $className")
 
-  def run()(using Context): Option[Embedded] = try ctx.base.reusableDataReader.withInstance { reader =>
-    implicit val reader2 = reader.reset(classfile)
+  def run()(using Context): Option[Embedded] = try {
+    implicit val reader = new DataReader(classfile)
     report.debuglog("[class] >> " + classRoot.fullName)
     classfileVersion = parseHeader(classfile)
     this.pool = new ConstantPool
@@ -307,7 +307,7 @@ final class ClassfileParser(
         case _: UnpickleException => ""
         case _ => Header.Version.brokenVersionAddendum(classfileVersion)
       throw new IOException(
-        i"""  class file ${classfile.canonicalPath} is broken$addendum,
+        i"""  class file ${classfile.path} is broken$addendum,
           |  reading aborted with ${e.getClass}:
           |  ${Option(e.getMessage).getOrElse("")}""")
   }
@@ -384,7 +384,7 @@ final class ClassfileParser(
     }
 
     val result = unpickleOrParseInnerClasses()
-    if (!result.isDefined) {
+    if (result.isEmpty) {
       var classInfo: Type = TempClassInfoType(parseParents, instanceScope, classRoot.symbol)
       // might be reassigned by later parseAttributes
       val staticInfo = TempClassInfoType(List(), staticScope, moduleRoot.symbol)
@@ -418,7 +418,7 @@ final class ClassfileParser(
       setClassInfo(classRoot, classInfo, fromScala2 = false)
       NamerOps.addConstructorProxies(moduleRoot.classSymbol)
     }
-    else if (result == Some(NoEmbedded))
+    else if (result.contains(NoEmbedded))
       for (sym <- List(moduleRoot.sourceModule, moduleRoot.symbol, classRoot.symbol)) {
         classRoot.owner.asClass.delete(sym)
         sym.markAbsent()
@@ -955,7 +955,6 @@ final class ClassfileParser(
     def parseAttribute(): Unit = {
       val attrName = pool.getName(in.nextChar).name.toTypeName
       val attrLen = in.nextInt
-      val end = in.bp + attrLen
       attrName match {
         case tpnme.SignatureATTR =>
           val sig = pool.getExternalName(in.nextChar)
@@ -991,6 +990,7 @@ final class ClassfileParser(
 
         case tpnme.AnnotationDefaultATTR =>
           sym.addAnnotation(Annotation(defn.AnnotationDefaultAnnot, Nil, sym.span))
+          in.skip(attrLen) // we don't actually parse the value
 
         // Java annotations on classes / methods / fields with RetentionPolicy.RUNTIME
         case tpnme.RuntimeVisibleAnnotationATTR
@@ -1024,8 +1024,8 @@ final class ClassfileParser(
           }
 
         case _ =>
+          in.skip(attrLen)
       }
-      in.bp = end
     }
 
     /**
@@ -1084,7 +1084,7 @@ final class ClassfileParser(
   /** Enter own inner classes in the right scope. It needs the scopes to be set up,
    *  and implicitly current class' superclasses.
    */
-  private def enterOwnInnerClasses()(using Context, DataReader): Unit = {
+  private def enterOwnInnerClasses()(using Context): Unit = {
     def enterClassAndModule(entry: InnerClassEntry, file: AbstractFile, jflags: Int) =
       SymbolLoaders.enterClassAndModule(
         getOwner(jflags),
@@ -1098,10 +1098,11 @@ final class ClassfileParser(
     for entry <- innerClasses.valuesIterator do
       // create a new class member for immediate inner classes
       if entry.outer.name == currentClassName then
-        val file = ctx.platform.classPath.findClassFile(entry.externalName) getOrElse {
-          throw new AssertionError(entry.externalName)
-        }
-        enterClassAndModule(entry, file, entry.jflags)
+        ctx.platform.classPath.findClassFile(entry.externalName) match
+          case Some(file) =>
+            enterClassAndModule(entry, file, entry.jflags)
+          case None =>
+            dependencyStub(getOwner(entry.jflags), entry).entered
   }
 
   // Nothing$ and Null$ were incorrectly emitted with a Scala attribute
@@ -1251,6 +1252,13 @@ final class ClassfileParser(
     def strippedOuter = outer.name.stripModuleClassSuffix
   }
 
+  private def dependencyStub(owner: Symbol, entry: InnerClassEntry)(using Context): Symbol =
+    newStubSymbol(
+      owner,
+      entry.originalName.toTypeName,
+      CompilationUnitInfo(classfile),
+    )
+
   private object innerClasses extends util.HashMap[String, InnerClassEntry] {
     /** Return the Symbol of the top level class enclosing `name`,
      *  or 'name's symbol if no entry found for `name`.
@@ -1305,14 +1313,8 @@ final class ClassfileParser(
             getMember(owner, innerName.toTypeName)
           else
             atPhase(typerPhase)(getMember(owner, innerName.toTypeName))
-      assert(result ne NoSymbol,
-        i"""failure to resolve inner class:
-           |externalName = ${entry.externalName},
-           |outerName = $outerName,
-           |innerName = $innerName
-           |owner.fullName = ${owner.showFullName}
-           |while parsing ${classfile}""")
-      result
+      if result eq NoSymbol then dependencyStub(owner, entry)
+      else result
     }
   }
 

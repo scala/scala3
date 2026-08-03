@@ -78,6 +78,11 @@ object NameOps {
     def isUnapplyName: Boolean = name == nme.unapply || name == nme.unapplySeq
     def isRightAssocOperatorName: Boolean = name.lastPart.last == ':'
 
+    /** Optionally, if name is a selector name `_i`, its index i - 1 */
+    def selectorIndex: Option[Int] =
+      if isSelectorName then name.toString.tail.toIntOption.map(_ - 1)
+      else None
+
     /** Does this name match `[{letter | digit} '_'] op`?
       *
       * See examples in [[NameOpsTest]].

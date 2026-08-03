@@ -1,0 +1,9 @@
+-- [E008] Not Found Error: tests/neg/transparent-inline-select-note.scala:9:24 -----------------------------------------
+9 |    val x: Int = choose.m // error
+  |                 ^^^^^^^^
+  |                 value m is not a member of A
+  |
+  |                 Note: `method choose` is transparent inline, but its precise type may not be available here.
+  |                 This can happen when:
+  |                 - It is used inside another inline body.
+  |                 - Its result type depends on another inline expansion or on an inline parameter.

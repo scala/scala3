@@ -49,6 +49,14 @@ trait CoverageSupport:
   )(implicit summaryReport: SummaryReporting)
   extends WarnTest(testSources, times, threadLimit, suppressAllOutput) with CoverageVerification
 
+  final class PatmatTestWithCoverage(
+    testSources: List[TestSource],
+    times: Int,
+    threadLimit: Option[Int],
+    suppressAllOutput: Boolean
+  )(implicit summaryReport: SummaryReporting)
+  extends PatmatTest(testSources, times, threadLimit, suppressAllOutput) with CoverageVerification
+
   /** Custom RunTest that verifies coverage files in onSuccess callback */
   final class RunTestWithCoverage(
     testSources: List[TestSource],
@@ -66,6 +74,10 @@ trait CoverageSupport:
   given CoverageTestSupport[WarnTestWithCoverage] with
     def build(using SummaryReporting) = (t, ti, tl, s) => new WarnTestWithCoverage(t, ti, tl, s)
     def fallback(test: CompilationTest)(using SummaryReporting): Unit = test.checkWarnings()
+
+  given CoverageTestSupport[PatmatTestWithCoverage] with
+    def build(using SummaryReporting) = (t, ti, tl, s) => new PatmatTestWithCoverage(t, ti, tl, s)
+    def fallback(test: CompilationTest)(using SummaryReporting): Unit = test.checkPatmat()
 
   given CoverageTestSupport[RunTestWithCoverage] with
     def build(using SummaryReporting) = (t, ti, tl, s) => new RunTestWithCoverage(t, ti, tl, s)
@@ -99,7 +111,7 @@ trait CoverageSupport:
     end if
   end verifyCoverageFile
 
-  def runWithCoverageOrFallback[A <: Test](test: CompilationTest, desc: String)(using CoverageTestSupport[A], SummaryReporting): Unit =
+  def runWithCoverageOrFallback[A <: Test](test: CompilationTest)(using CoverageTestSupport[A], SummaryReporting): Unit =
     val tc = summon[CoverageTestSupport[A]]
     if Properties.testsInstrumentCoverage then
       test.checkPass(tc.build(test.targets, test.times, test.threadLimit, test.shouldFail || test.shouldSuppressOutput))

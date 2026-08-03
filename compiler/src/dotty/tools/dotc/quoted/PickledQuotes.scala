@@ -9,7 +9,7 @@ import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.core.tasty.{ PositionPickler, TastyPickler, TastyPrinter, TreePickler, Attributes }
+import dotty.tools.dotc.core.tasty.{Attributes, PositionPickler, TastyPickler, TastyPrinter, TreePickler}
 import dotty.tools.dotc.core.tasty.DottyUnpickler
 import dotty.tools.dotc.core.tasty.TreeUnpickler.UnpickleMode
 import dotty.tools.dotc.report
@@ -17,11 +17,9 @@ import dotty.tools.dotc.reporting.Message
 
 import scala.quoted.Quotes
 import scala.quoted.runtime.impl.*
-
 import scala.collection.mutable
-
 import QuoteUtils.*
-import dotty.tools.io.NoAbstractFile
+import dotty.tools.io.VirtualFile
 import dotty.tools.dotc.ast.TreeMapWithImplicits
 
 object PickledQuotes {
@@ -280,7 +278,7 @@ object PickledQuotes {
           quotePickling.println(s"**** unpickling quote from TASTY\n${TastyPrinter.showContents(bytes, ctx.settings.color.value == "never", isBestEffortTasty = false)}")
 
           val mode = if (isType) UnpickleMode.TypeTree else UnpickleMode.Term
-          val unpickler = new DottyUnpickler(NoAbstractFile, bytes, isBestEffortTasty = false, mode)
+          val unpickler = new DottyUnpickler(new VirtualFile("bytes", bytes), isBestEffortTasty = false, mode)
           unpickler.enter(Set.empty)
 
           val tree = unpickler.tree

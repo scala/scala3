@@ -9,7 +9,7 @@ def eff(using Cap): Unit = ()
 def test(using consume cc: Cap) =
 
   class C(val x: () => Int):
-    val y: C^ = this
+    consume def y: C^ = this
 
   def f = () =>
     eff

@@ -40,6 +40,8 @@ metals.sbt
 sbt-launch.jar
 
 .claude
+.cursor
+.cursorrules
 
 # Partest
 dotty.jar

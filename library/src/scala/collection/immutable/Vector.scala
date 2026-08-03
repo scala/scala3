@@ -270,6 +270,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
    *
    *  @param lo the lowest index to include (inclusive), must satisfy `0 <= lo < hi`
    *  @param hi the exclusive upper bound index, must satisfy `lo < hi <= length`
+   *  @return a new vector containing the elements from index `lo` (inclusive) to `hi` (exclusive)
    */
   protected def slice0(lo: Int, hi: Int): Vector[A]
 
@@ -278,11 +279,13 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
   /** Slices at index.
    *
    *  @param idx the zero-based slice index
+   *  @return the underlying data array (of dimension matching the slice level) for the slice at position `idx`
    */
   protected[immutable] def vectorSlice(idx: Int): Array[? <: AnyRef | Null]
   /** Length of all slices up to and including index.
    *
    *  @param idx the zero-based slice index
+   *  @return the cumulative number of elements in all slices from `0` up to and including `idx`
    */
   protected[immutable] def vectorSlicePrefixLength(idx: Int): Int
 
@@ -337,6 +340,7 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
 /** This class only exists because we cannot override `slice` in `Vector` in a binary-compatible way.
  *
  *  @tparam A the element type of the vector
+ *  @param _prefix1 the leading data array containing the leftmost elements
  */
 private sealed abstract class VectorImpl[+A](_prefix1: Arr1) extends Vector[A](_prefix1) {
 
@@ -355,6 +359,7 @@ private sealed abstract class VectorImpl[+A](_prefix1: Arr1) extends Vector[A](_
  *  @tparam A the element type of the vector
  *  @param suffix1 the last data array containing the rightmost elements
  *  @param length0 the total number of elements in this vector
+ *  @param _prefix1 the leading data array containing the leftmost elements
  */
 private sealed abstract class BigVector[+A](_prefix1: Arr1, private[immutable] val suffix1: Arr1, private[immutable] val length0: Int) extends VectorImpl[A](_prefix1) {
 
@@ -413,6 +418,7 @@ private object Vector0 extends BigVector[Nothing](empty1, empty1, 0) {
 /** Flat ArraySeq-like structure.
  *
  *  @tparam A the element type of the vector
+ *  @param _data1 the single data array holding all elements of this vector (between 1 and `WIDTH` entries, since `Vector0` handles the empty case)
  */
 private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
 
@@ -476,6 +482,9 @@ private final class Vector1[+A](_data1: Arr1) extends VectorImpl[A](_data1) {
  *  @tparam A the element type of the vector
  *  @param len1 the number of elements in `prefix1`
  *  @param data2 the central 2-dimensional data array
+ *  @param _prefix1 the leading data array containing the leftmost elements
+ *  @param _suffix1 the last data array containing the rightmost elements
+ *  @param _length0 the total number of elements in this vector
  */
 private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val data2: Arr2,
@@ -584,6 +593,9 @@ private final class Vector2[+A](_prefix1: Arr1, private[immutable] val len1: Int
  *  @param len12 the combined number of elements in `prefix1` and `prefix2`
  *  @param data3 the central 3-dimensional data array
  *  @param suffix2 the 2nd-level suffix data arrays
+ *  @param _prefix1 the leading data array containing the leftmost elements
+ *  @param _suffix1 the last data array containing the rightmost elements
+ *  @param _length0 the total number of elements in this vector
  */
 private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
@@ -718,6 +730,9 @@ private final class Vector3[+A](_prefix1: Arr1, private[immutable] val len1: Int
  *  @param data4 the central 4-dimensional data array
  *  @param suffix3 the 3rd-level suffix data arrays
  *  @param suffix2 the 2nd-level suffix data arrays
+ *  @param _prefix1 the leading data array containing the leftmost elements
+ *  @param _suffix1 the last data array containing the rightmost elements
+ *  @param _length0 the total number of elements in this vector
  */
 private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
@@ -876,6 +891,9 @@ private final class Vector4[+A](_prefix1: Arr1, private[immutable] val len1: Int
  *  @param suffix4 the 4th-level suffix data arrays
  *  @param suffix3 the 3rd-level suffix data arrays
  *  @param suffix2 the 2nd-level suffix data arrays
+ *  @param _prefix1 the leading data array containing the leftmost elements
+ *  @param _suffix1 the last data array containing the rightmost elements
+ *  @param _length0 the total number of elements in this vector
  */
 private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
@@ -1058,6 +1076,9 @@ private final class Vector5[+A](_prefix1: Arr1, private[immutable] val len1: Int
  *  @param suffix4 the 4th-level suffix data arrays
  *  @param suffix3 the 3rd-level suffix data arrays
  *  @param suffix2 the 2nd-level suffix data arrays
+ *  @param _prefix1 the leading data array containing the leftmost elements
+ *  @param _suffix1 the last data array containing the rightmost elements
+ *  @param _length0 the total number of elements in this vector
  */
 private final class Vector6[+A](_prefix1: Arr1, private[immutable] val len1: Int,
                                  private[immutable] val prefix2: Arr2, private[immutable] val len12: Int,
@@ -2111,6 +2132,7 @@ private[immutable] object VectorInline {
    *
    *  @param count the total number of slices
    *  @param idx the zero-based slice index
+   *  @return the dimension (1-based level) of the slice at position `idx`: rises from 1 at the outermost prefix slice up to `count/2 + 1` at the central data array, then falls back to 1 at the outermost suffix slice
    */
   @inline def vectorSliceDim(count: Int, idx: Int): Int = {
     val c = count/2

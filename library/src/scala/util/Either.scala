@@ -422,6 +422,7 @@ sealed abstract class Either[+A, +B] extends Product with Serializable {
    *  @tparam A1 the supertype of `A` used to widen the left type
    *  @tparam B1 the right type of the resulting `Either`
    *  @param f the function to bind across `Right`
+   *  @return the result of applying `f` if this is a `Right`, otherwise the unchanged `Left`
    */
   def flatMap[A1 >: A, B1](f: B => Either[A1, B1]): Either[A1, B1] = this match {
     case Right(b) => f(b)
@@ -563,6 +564,7 @@ final case class Left[+A, +B](value: A) extends Either[A, B] {
    *  ```
    *
    *  @tparam B1 the target right type to widen to
+   *  @return this `Left` typed as `Either[A, B1]`
    */
   def withRight[B1 >: B]: Either[A, B1] = this
 
@@ -585,6 +587,7 @@ final case class Right[+A, +B](value: B) extends Either[A, B] {
    *  ```
    *
    *  @tparam A1 the target left type to widen to
+   *  @return this `Right` typed as `Either[A1, B]`
    */
   def withLeft[A1 >: A]: Either[A1, B] = this
 
@@ -915,6 +918,7 @@ object Either {
      *  @tparam A1 the supertype of `A` used to widen the left type
      *  @tparam B1 the right type of the resulting `Either`
      *  @param f the function to bind across `Right`
+     *  @return the result of applying `f` if this is a `Right`, otherwise the unchanged `Left`
      */
     def flatMap[A1 >: A, B1](f: B => Either[A1, B1]): Either[A1, B1] = e match {
       case Right(b) => f(b)

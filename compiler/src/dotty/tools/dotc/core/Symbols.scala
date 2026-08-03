@@ -197,13 +197,6 @@ object Symbols extends SymUtils {
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
 
-    /** Test whether symbol is private. This
-     *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
-     *  is a class that is not yet read.
-     */
-    final def isPrivate(using Context): Boolean =
-      lastDenot.flagsUNSAFE.is(Private)
-
     /** Is the symbol a pattern bound symbol?
      */
     final def isPatternBound(using Context): Boolean =
@@ -244,7 +237,7 @@ object Symbols extends SymUtils {
             if (this.is(Module)) this.moduleClass.validFor |= InitialPeriod
           }
           else owner.ensureFreshScopeAfter(phase)
-          assert(isPrivate || phase.changesMembers, i"$this entered in $owner at undeclared phase $phase")
+          assert(this.is(Private) || phase.changesMembers, i"$this entered in $owner at undeclared phase $phase")
           entered
         case _ => this
       }
@@ -265,7 +258,7 @@ object Symbols extends SymUtils {
       else {
         assert (!this.owner.is(Package))
         this.owner.asClass.ensureFreshScopeAfter(phase)
-        assert(isPrivate || phase.changesMembers, i"$this deleted in ${this.owner} at undeclared phase $phase")
+        assert(this.is(Private) || phase.changesMembers, i"$this deleted in ${this.owner} at undeclared phase $phase")
         drop()
       }
 
@@ -286,7 +279,7 @@ object Symbols extends SymUtils {
      */
     def associatedFile(using Context): AbstractFile | Null =
       val compUnitInfo = compilationUnitInfo
-      if compUnitInfo == null then (null: AbstractFile | Null)
+      if compUnitInfo == null then null
       else compUnitInfo.associatedFile
 
     /** The compilation unit info (associated file, tasty versions, ...).
@@ -517,7 +510,7 @@ object Symbols extends SymUtils {
 
     private var mySource: SourceFile = NoSource
 
-    final def sourceOfClass(using Context): SourceFile = {
+    final def sourceOfClass(using Context): SourceFile = atPhaseNoLater(flattenPhase) {
       if !mySource.exists && !denot.is(Package) then
         // this allows sources to be added in annotations after `sourceOfClass` is first called
         val file = associatedFile
@@ -530,12 +523,12 @@ object Symbols extends SymUtils {
               case Some(path) => mySource = ctx.getSource(path)
               case _ =>
           if !mySource.exists then
-            mySource = atPhaseNoLater(flattenPhase) {
+            mySource = {
               denot.topLevelClass.unforcedAnnotation(defn.SourceFileAnnot) match
                 case Some(sourceAnnot) => sourceAnnot.argumentConstant(0) match
                   case Some(Constant(path: String)) => ctx.getSource(path)
-                  case none => NoSource
-                case none => NoSource
+                  case _ => NoSource
+                case _ => NoSource
             }
       mySource
     }

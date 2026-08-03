@@ -57,6 +57,7 @@ sealed abstract class ArrayBuilder[T]
   /** Adds all elements of an array.
    *
    *  @param xs the array from which to add elements
+   *  @return this builder with the elements of `xs` appended
    */
   def addAll(xs: Array[_ <: T]): this.type = addAll(xs, 0, xs.length)
 
@@ -65,6 +66,7 @@ sealed abstract class ArrayBuilder[T]
    *  @param xs the array from which to add a slice of elements
    *  @param offset the starting index in `xs` from which to copy elements
    *  @param length the number of elements to copy from `xs`
+   *  @return this builder with the specified slice of `xs` appended
    */
   def addAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
     ensureSize(this.size + length)
@@ -106,6 +108,7 @@ object ArrayBuilder {
   /** Implementation of `make` for JS.
    *
    *  @tparam T the element type of the array builder, with a `ClassTag` context bound
+   *  @return a new generic `ArrayBuilder` optimized for Scala.js
    */
   @inline
   private def makeForJS[T: ClassTag]: ArrayBuilder[T] =
@@ -165,6 +168,7 @@ object ArrayBuilder {
      *  @param xs the array from which to add a slice of elements
      *  @param offset the starting index in `xs` from which to copy elements
      *  @param length the number of elements to copy from `xs`
+     *  @return this builder with the specified slice of `xs` appended
      */
     override def addAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
       val end = offset + length

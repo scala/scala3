@@ -8,4 +8,7 @@ package dotty.tools
 package object io {
   type JFile = java.io.File
   type JPath = java.nio.file.Path
+
+  def virtualDirectory(name: String): AbstractFile =
+    new VirtualDirectory(name)
 }

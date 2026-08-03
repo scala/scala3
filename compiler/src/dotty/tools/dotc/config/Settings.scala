@@ -345,6 +345,7 @@ object Settings:
       def valueSetByUser(using Context): Option[T] = Option(setting.value).filter(_ != setting.default)
       def update(x: T)(using Context): SettingsState = setting.updateIn(ctx.settingsState, x)
       def isDefault(using Context): Boolean = setting.isDefaultIn(ctx.settingsState)
+      def wasSetByUser(using Context): Boolean = ctx.settingsState.wasChanged(setting.idx)
 
     /**
      * A choice with help description.

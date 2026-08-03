@@ -23,7 +23,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn)
       val meth1      = getMethod(clsNode, "meth1")
       val meth2      = getMethod(clsNode, "meth2")
@@ -59,7 +59,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
     )
     for (source <- sources)
       checkBCode(source) { dir =>
-        val clsIn      = dir.lookupName("Foo.class", directory = false).nn.input
+        val clsIn      = lookupClass(dir, "Foo.class")
         val clsNode    = loadClassNode(clsIn)
         val meth1      = getMethod(clsNode, "meth1")
         val meth2      = getMethod(clsNode, "meth2")
@@ -93,7 +93,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn, skipDebugInfo = false)
 
       val track = clsNode.methods.asScala.find(_.name == "track")
@@ -154,7 +154,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn, skipDebugInfo = false)
 
       val track = clsNode.methods.asScala.find(_.name == "track")
@@ -213,7 +213,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn, skipDebugInfo = false)
 
       val track = clsNode.methods.asScala.find(_.name == "track")
@@ -273,7 +273,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn, skipDebugInfo = false)
 
       val track = clsNode.methods.asScala.find(_.name == "track")
@@ -327,7 +327,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn)
 
       val fun = getMethod(clsNode, "test")
@@ -355,7 +355,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Test.class")
       val clsNode    = loadClassNode(clsIn)
 
       val fun = getMethod(clsNode, "test")
@@ -382,7 +382,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn)
 
       val fun = getMethod(clsNode, "test")
@@ -403,7 +403,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn)
 
       val fun = getMethod(clsNode, "test")
@@ -427,7 +427,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn)
 
       val fun = getMethod(clsNode, "test")
@@ -446,7 +446,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Test.class")
       val clsNode    = loadClassNode(clsIn)
 
       val fun = getMethod(clsNode, "test")
@@ -469,7 +469,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Test.class")
       val clsNode    = loadClassNode(clsIn)
 
       val fun = getMethod(clsNode, "test")
@@ -496,7 +496,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Test.class")
       val clsNode    = loadClassNode(clsIn)
 
       val fun = getMethod(clsNode, "test")
@@ -524,7 +524,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Test.class")
       val clsNode    = loadClassNode(clsIn)
 
       val fun = getMethod(clsNode, "test")
@@ -553,7 +553,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Test.class")
       val clsNode    = loadClassNode(clsIn)
 
       val fun = getMethod(clsNode, "test")
@@ -585,7 +585,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Foo.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Foo.class")
       val clsNode    = loadClassNode(clsIn)
 
       val fun = getMethod(clsNode, "test")
@@ -637,7 +637,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Test.class")
       val clsNode    = loadClassNode(clsIn)
 
       for cls <- List("Boolean", "Byte", "Short", "Int", "Long", "Float", "Double", "Char", "Unit") do
@@ -689,7 +689,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Test.class")
       val clsNode    = loadClassNode(clsIn)
 
       for cls <- List("Boolean", "Byte", "Short", "Int", "Long", "Float", "Double", "Char", "Unit") do
@@ -711,7 +711,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Test.class")
       val clsNode    = loadClassNode(clsIn)
 
       val fun = getMethod(clsNode, "test")
@@ -737,7 +737,7 @@ class InlineBytecodeTests extends DottyBytecodeTest {
                  """.stripMargin
 
     checkBCode(source) { dir =>
-      val clsIn      = dir.lookupName("Test.class", directory = false).nn.input
+      val clsIn      = lookupClass(dir, "Test.class")
       val clsNode    = loadClassNode(clsIn)
 
       val fun = getMethod(clsNode, "test")

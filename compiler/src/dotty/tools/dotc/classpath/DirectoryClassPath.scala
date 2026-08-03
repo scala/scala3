@@ -3,17 +3,17 @@
  */
 package dotty.tools.dotc.classpath
 
-import java.io.{File => JFile}
+import java.io.{File as JFile}
 import java.net.{URI, URL}
 import java.nio.file.{FileSystems, Files}
-
 import dotty.tools.dotc.classpath.PackageNameUtils.{packageContains, separatePkgAndClassNames}
-import dotty.tools.io.{AbstractFile, PlainFile, ClassPath}
+import dotty.tools.io.{AbstractFile, ClassPath, PlainFile}
 import FileUtils.*
 import PlainFile.toPlainFile
 
 import scala.jdk.CollectionConverters.*
 import scala.collection.immutable.ArraySeq
+import scala.collection.mutable
 
 /**
  * A trait allowing to look for classpath entries in directories. It provides common logic for
@@ -135,29 +135,49 @@ object JrtClassPath {
   */
 final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
   import java.nio.file.Path, java.nio.file.*
-  type F = Path
-  private val dir: Path = fs.getPath("/packages")
+  private val dirName = "/packages/"
+  private val dir: Path = fs.getPath(dirName)
+
+  private def listFiles(dir: Path, glob: String = "*"): Iterable[Path] =
+    val stream = Files.newDirectoryStream(dir, glob)
+    try stream.asScala.toSeq
+    finally stream.close()
 
   // e.g. "java.lang" -> Seq("/modules/java.base")
-  private val packageToModuleBases: Map[String, Seq[Path]] = {
-    val ps = Files.newDirectoryStream(dir).iterator().asScala
-    def lookup(pack: Path): Seq[Path] =
-      Files.list(pack).iterator().asScala.map(l => if (Files.isSymbolicLink(l)) Files.readSymbolicLink(l) else l).toList
-    ps.map(p => (p.toString.stripPrefix("/packages/"), lookup(p))).toMap
+  // On a modern JDK there are 100s of packages,
+  // most of which are never going to be needed because they're internal implementation details,
+  // so we lazy-load modules from the ones we need
+  private val cachedPackageToModuleBases = mutable.Map.empty[String, Iterable[Path]]
+  private def packageToModuleBases(pkg: String): Iterable[Path] =
+    cachedPackageToModuleBases.get(pkg) match
+      case Some(ps) => ps
+      case None =>
+        val pkgDir = dir.resolve(pkg)
+        // no TOCTOU here with Files.exists, we're inside JRT so nothing will get modified (unless something has gone horribly wrong)
+        val moduleFiles =
+          if Files.exists(pkgDir)
+          then listFiles(pkgDir).map(_.toRealPath()) // toRealPath to follow symlinks
+          else Iterable.empty
+        cachedPackageToModuleBases(pkg) = moduleFiles
+        moduleFiles
+
+  override def hasPackage(pkg: String): Boolean =
+    packageToModuleBases(pkg).nonEmpty
+
+  override def packages(inPackage: String): Iterable[PackageEntry] = {
+    // iterate fewer files by letting the file system do some filtering
+    val glob = if inPackage == ClassPath.RootPackage then "*" else inPackage + ".*"
+    listFiles(dir, glob)
+      .map(_.toString.stripPrefix(dirName))
+      .filter(p => p.lastIndexOf('.') <= inPackage.length)
+      .map(PackageEntry(_))
   }
 
-  /** Empty string represents root package */
-  override def hasPackage(pkg: String): Boolean = packageToModuleBases.contains(pkg)
-
-  override def packages(inPackage: String): Seq[PackageEntry] =
-    packageToModuleBases.keysIterator.filter(pack => packageContains(inPackage, pack)).map(PackageEntry(_)).toVector
-
-  override def classes(inPackage: String): Seq[BinaryFileEntry] =
-    if (inPackage == ClassPath.RootPackage) Nil
-    else
-      packageToModuleBases.getOrElse(inPackage, Nil).flatMap(x =>
-        Files.list(x.resolve(PackageNameUtils.dirPathTrailingSlash(inPackage))).iterator().asScala.filter(_.getFileName.toString.endsWith(".class"))).map(x =>
-        ClassFileEntry(x.toPlainFile)).toVector
+  override def classes(inPackage: String): Iterable[BinaryFileEntry] = {
+    packageToModuleBases(inPackage)
+      .flatMap(pkg => listFiles(pkg.resolve(inPackage.replace('.', JFile.separatorChar)), "*.class"))
+      .map(x => ClassFileEntry(x.toPlainFile))
+  }
 
   override def asURLs: Seq[URL] = Seq(new URI("jrt:/").toURL)
 
@@ -165,7 +185,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
     if (!className.contains(".")) None
     else {
       val (inPackage, _) = separatePkgAndClassNames(className)
-      packageToModuleBases.getOrElse(inPackage, Nil).iterator.flatMap{ x =>
+      packageToModuleBases(inPackage).flatMap{ x =>
         val file = x.resolve(FileUtils.dirPath(className) + ".class")
         if (Files.exists(file)) {
           file.toPlainFile :: Nil

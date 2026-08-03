@@ -21,7 +21,7 @@ import collection.mutable
 import util.concurrent.Executor
 
 import compiletime.uninitialized
-import dotty.tools.io.{AbstractFile, JarArchive}
+import dotty.tools.io.{AbstractFile, JarArchive, VirtualFile}
 import dotty.tools.dotc.printing.OutlinePrinter
 
 import scala.annotation.constructorOnly
@@ -542,7 +542,7 @@ class Pickler extends Phase {
     val resolveCheck = ctx.settings.YtestPicklerCheck.value
     val unpicklers =
       for ((cls, (unit, bytes)) <- pickledBytes) yield {
-        val unpickler = new DottyUnpickler(unit.source.file, bytes, isBestEffortTasty = false)
+        val unpickler = new DottyUnpickler(new VirtualFile(unit.source.file.path, bytes), isBestEffortTasty = false)
         unpickler.enter(roots = Set.empty)
         val optCheck =
           if resolveCheck then

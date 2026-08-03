@@ -1438,7 +1438,8 @@ private final class BitmapIndexedSetNode[A](
   override def hashCode(): Int =
     throw new UnsupportedOperationException("Trie nodes do not support hashing.")
 
-  override def toString(): String = f"BitmapIndexedSetNode(size=$size, dataMap=$dataMap%x, nodeMap=$nodeMap%x)" // content=${scala.runtime.ScalaRunTime.stringOf(content)}
+  override def toString(): String =
+    s"BitmapIndexedSetNode(size=$size, dataMap=${dataMap.toHexString}, nodeMap=${nodeMap.toHexString})" // content=${scala.runtime.ScalaRunTime.stringOf(content)}
 
   override def copy(): BitmapIndexedSetNode[A] = {
     val contentClone = content.clone()
@@ -1968,6 +1969,7 @@ object HashSet extends IterableFactory[HashSet] {
    *  intermediate call to `clear()` in order to build multiple related results.
    *
    *  @tparam A the element type of the set to build
+   *  @return a new reusable builder that produces a `HashSet[A]`
    */
   def newBuilder[A]: ReusableBuilder[A, HashSet[A]] = new HashSetBuilder
 }
@@ -1985,7 +1987,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
 
   /** The last given out HashSet as a return value of `result()`, if any, otherwise null.
    *  Indicates that on next add, the elements should be copied to an identical structure, before continuing
-   *  mutations. 
+   *  mutations.
    */
   @annotation.stableNull
   private var aliased: HashSet[A] | Null = null
@@ -2000,6 +2002,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
    *  @param as the source array to insert into
    *  @param ix the index at which to insert the element
    *  @param elem the element to insert
+   *  @return a new array of length `as.length + 1` with `elem` inserted at index `ix`
    */
   private def insertElement(as: Array[Int], ix: Int, elem: Int): Array[Int] = {
     if (ix < 0) throw new ArrayIndexOutOfBoundsException

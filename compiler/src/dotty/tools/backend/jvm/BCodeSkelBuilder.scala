@@ -374,6 +374,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
       }
 
+      cnode.visitAttribute(bTypeLoader.classBTypeFromSymbol(claszSymbol).inlineInfoAttribute)
+
       // the invoker is responsible for adding a class-static constructor.
 
     } // end of method initJClass
@@ -407,14 +409,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     }
 
     private def addClassFields()(using Context): Unit =
-      /*  Non-method term members are fields, except for module members. Module
-       *  members can only happen on .NET (no flatten) for inner traits. There,
-       *  a module symbol is generated (transformInfo in mixin) which is used
-       *  as owner for the members of the implementation class (so that the
-       *  backend emits them as static).
-       *  No code is needed for this module symbol.
-       */
-      claszSymbol.info.decls.filter(p => p.isTerm && !p.is(Method)).foreach(addClassField)
+      claszSymbol.info.decls.filter(d => d.isTerm && !d.is(Method) && !d.is(Module)).foreach(addClassField)
 
     // current method
     var mnode: MethodNode1         = uninitialized
@@ -623,7 +618,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         val nr =
           val sourcePos = tree.sourcePos
           (
-            if sourcePos.exists then sourcePos.source.positionInUltimateSource(sourcePos).line
+            if sourcePos.exists then sourcePos.line
             else ctx.source.offsetToLine(tree.span.point) // fallback
           ) + 1
 
@@ -685,7 +680,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
            */
           val sym = dd.symbol
           val needsStaticImplMethod =
-            claszSymbol.is(Trait) && !dd.rhs.isEmpty && !sym.isPrivate && !sym.isStaticMember
+            claszSymbol.is(Trait) && !dd.rhs.isEmpty && !sym.is(Private) && !sym.isStaticMember
           if needsStaticImplMethod then
             if sym.name == nme.TRAIT_CONSTRUCTOR then
               genTraitConstructorDefDef(dd)
@@ -855,7 +850,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         // we failed to emit the method header, no point in continuing
         return
 
-      if (!isAbstractMethod && !isNative) {
+      if mnode.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && claszSymbol.isPrimitiveValueClass then
+        // The JVM requires all classes' constructors to call a superclass constructor (or another of the class's constructors),
+        // which doesn't match our view of primitive value classes as special
+        mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
+        bc.invokespecial(ClassBType.javaLangObjectInternalName, mnode.name, mnode.desc, itf = false, dd)
+        bc.emitRETURN(UNIT)
+      else if !isAbstractMethod && !isNative then {
         // #14773 Reuse locals slots for tailrec-generated mutable vars
         val trimmedRhs: Tree =
           @tailrec def loop(stats: List[Tree]): List[Tree] =

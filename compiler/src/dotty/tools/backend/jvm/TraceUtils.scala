@@ -5,7 +5,7 @@ package jvm
 import scala.tools.asm.util.{Textifier, TraceClassVisitor, TraceMethodVisitor}
 import scala.tools.asm.ClassReader
 import scala.tools.asm.tree.*
-import java.io.PrintWriter
+import java.io.{PrintWriter, StringWriter}
 
 object TraceUtils {
 
@@ -61,6 +61,13 @@ object TraceUtils {
   }
 
   def traceClass(bytes: Array[Byte]): Unit = traceClass(readClass(bytes))
+
+  /** The textified bytecode of a classfile, as a String. */
+  def traceClassToString(bytes: Array[Byte]): String = {
+    val sw = new StringWriter()
+    readClass(bytes).accept(new TraceClassVisitor(new PrintWriter(sw)))
+    sw.toString
+  }
 
   private def readClass(bytes: Array[Byte]): ClassNode = {
     val node = new ClassNode()

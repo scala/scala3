@@ -1,5 +1,6 @@
 import scala.quoted.*
 
+@deprecated("test")
 final case class Record(a: String, b: Int)
 
 transparent inline def ann[T]: List[Any] = ${ annsImpl[T] }
