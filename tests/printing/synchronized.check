@@ -1,0 +1,33 @@
+[[syntax trees at end of                     typer]] // tests/printing/synchronized.scala
+package <empty> {
+  class A() extends Object() {
+    <synchronized> def basic: String =
+      {
+        ""
+      }
+    <synchronized> def explicit: String =
+      {
+        ""
+      }
+    <synchronized> def explicitWithBraces: String =
+      {
+        ""
+      }
+    inline def notThisOneBecauseInline: String =
+      this.synchronized[String](
+        {
+          ""
+        }
+      ):String
+    def alsoNotThisBecauseHasOtherCode: String =
+      {
+        this.synchronized[Unit](
+          {
+            ()
+          }
+        )
+        ""
+      }
+  }
+}
+
