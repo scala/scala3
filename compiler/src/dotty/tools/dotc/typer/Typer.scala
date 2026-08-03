@@ -3199,8 +3199,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         synchronizedBody
       case Block(Nil, expr) =>
         extractSynchronized(expr)
-      case t =>
-        t
+      case _ =>
+        ddef.rhs
     val rhs0 =
       if !sym.is(Inline) && ctx.platform.supportsSynchronizedMethods
       then extractSynchronized(ddef.rhs)
