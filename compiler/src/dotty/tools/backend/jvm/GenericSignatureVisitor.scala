@@ -90,7 +90,7 @@ abstract class GenericSignatureVisitor(nestedOnly: Boolean) {
           index += 1
         }
 
-        // OPT: avoid allocations when only a top-level class is encountered
+        // OPT: avoid allocations when collecting only nested classes and only a top-level class is encountered
         val topLevelIndex = index
         lazy val names = {
           val n = new java.lang.StringBuilder(32)
