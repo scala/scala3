@@ -164,19 +164,26 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
   override def hasPackage(pkg: String): Boolean =
     packageToModuleBases(pkg).nonEmpty
 
-  override def packages(inPackage: String): Iterable[PackageEntry] = {
-    // iterate fewer files by letting the file system do some filtering
-    val glob = if inPackage == ClassPath.RootPackage then "*" else inPackage + ".*"
-    listFiles(dir, glob)
-      .map(_.toString.stripPrefix(dirName))
-      .filter(p => p.lastIndexOf('.') <= inPackage.length)
-      .map(PackageEntry(_))
-  }
+  // Right now the compiler always asks for those at the root package anyway (inPackage == ""),
+  // and we have no way to query the file system for "entries without a dot in their name",
+  // so might as well cache them
+  private val allPackages = listFiles(dir).map(f => PackageEntry(f.toString.stripPrefix(dirName)))
+  override def packages(inPackage: String): Iterable[PackageEntry] =
+    if inPackage == "" then
+      allPackages.filter(p => !p.name.contains('.'))
+    else
+      val start = inPackage + "."
+      allPackages.filter(p => p.name.startsWith(start) && p.name.lastIndexOf('.') == inPackage.length)
 
-  override def classes(inPackage: String): Iterable[BinaryFileEntry] = {
-    packageToModuleBases(inPackage)
-      .flatMap(pkg => listFiles(pkg.resolve(inPackage.replace('.', JFile.separatorChar)), "*.class"))
-      .map(x => ClassFileEntry(x.toPlainFile))
+  private val cachedClasses = mutable.Map.empty[String, Iterable[BinaryFileEntry]]
+  override def classes(inPackage: String): Iterable[BinaryFileEntry] = cachedClasses.get(inPackage) match {
+    case Some(cs) => cs
+    case None =>
+      val cs = packageToModuleBases(inPackage)
+        .flatMap(pkg => listFiles(pkg.resolve(inPackage.replace('.', JFile.separatorChar)), "*.class"))
+        .map(x => ClassFileEntry(x.toPlainFile))
+      cachedClasses(inPackage) = cs
+      cs
   }
 
   override def asURLs: Seq[URL] = Seq(new URI("jrt:/").toURL)
