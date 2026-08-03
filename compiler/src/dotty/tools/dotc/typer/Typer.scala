@@ -3186,7 +3186,27 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     if sym.isInlineMethod then rhsCtx.addMode(Mode.InlineableBody)
     if sym.is(ExtensionMethod) then rhsCtx.addMode(Mode.InExtensionMethod)
-    val rhs1 = excludeDeferredGiven(ddef.rhs, sym): rhs =>
+
+    // Turn non-inline methods whose body is contained within a `this.synchronized` call into synchronized methods
+    // Besides being more efficient, this also allows tail recursion in such methods
+    @tailrec
+    def extractSynchronized(rhs: Trees.Tree[Untyped]): Trees.Tree[Untyped] = rhs match
+      case Apply(Select(This(_), nme.synchronized_), synchronizedBody :: Nil) =>
+        sym.denot.setFlag(Synchronized)
+        synchronizedBody
+      case Apply(Ident(nme.synchronized_), synchronizedBody :: Nil) =>
+        sym.denot.setFlag(Synchronized)
+        synchronizedBody
+      case Block(Nil, expr) =>
+        extractSynchronized(expr)
+      case t =>
+        t
+    val rhs0 =
+      if !sym.is(Inline) && ctx.platform.supportsSynchronizedMethods
+      then extractSynchronized(ddef.rhs)
+      else ddef.rhs
+
+    val rhs1 = excludeDeferredGiven(rhs0, sym): rhs =>
       PrepareInlineable.dropInlineIfError(sym,
         if sym.isScala2Macro then typedScala2MacroBody(rhs)(using rhsCtx)
         else
