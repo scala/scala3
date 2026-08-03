@@ -29,6 +29,13 @@ package <empty> {
         ""
       }
   }
+  final lazy module val A: A = new A()
+  final module class A() extends Object() { this: A.type =>
+    @static <synchronized> def staticOne: String =
+      {
+        ""
+      }
+  }
   trait T() extends Object {
     def alsoNotThisBecauseInATrait: String =
       this.synchronized[String](
