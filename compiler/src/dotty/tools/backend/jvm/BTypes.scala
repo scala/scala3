@@ -5,7 +5,7 @@ package jvm
 import java.util.concurrent.ConcurrentHashMap
 import scala.tools.asm
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.opt.OptimizerWarning
+import dotty.tools.backend.jvm.opt.{InlineInfoAttribute, OptimizerWarning}
 
 import scala.collection.SortedMap
 import scala.tools.asm.Opcodes
@@ -736,6 +736,9 @@ case class ClassBType private(internalName: String) extends RefBType {
         flags = adjustStatic(info.flags)
       )
   }
+
+  def inlineInfoAttribute: InlineInfoAttribute =
+    InlineInfoAttribute(info.inlineInfo)
 
   def isSubtypeOf(other: ClassBType): Boolean = {
     if (this == other) return true

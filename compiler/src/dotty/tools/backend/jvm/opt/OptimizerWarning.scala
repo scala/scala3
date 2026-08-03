@@ -214,13 +214,13 @@ final case class RewriteClosureIllegalAccess(pos: SourcePosition, callsiteClass:
 sealed trait ClassInlineInfoWarning extends OptimizerWarning {
   override def toString: String = this match {
     case NoInlineInfoAttribute(internalName) =>
-      s"The Scala classfile $internalName does not have a ScalaInlineInfo attribute."
+      s"The Scala classfile $internalName does not have a ${InlineInfoAttribute.attributeName} attribute."
 
     case ClassNotFoundWhenBuildingInlineInfoFromSymbol(missingClass) =>
       s"Failed to build the inline information: $missingClass"
 
     case UnknownScalaInlineInfoVersion(internalName, version) =>
-      s"Cannot read ScalaInlineInfo version $version in classfile $internalName. Use a more recent compiler."
+      s"Cannot read ${InlineInfoAttribute.attributeName} version $version in classfile $internalName. Use a more recent compiler."
   }
 
   def emitWarning(settings: OptimizerSettings): Boolean = this match {
