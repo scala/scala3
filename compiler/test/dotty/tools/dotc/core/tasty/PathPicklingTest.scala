@@ -13,6 +13,7 @@ class PathPicklingTest {
 
   @Test def test(): Unit = {
     FileContainer.getOnDisk("out/testPathPickling").foreach(_.deleteRecursively())
+    FileContainer.getOrCreateOnDisk("out/testPathPickling")
     val outPath = "out/testPathPickling/out.jar"
 
     locally {
