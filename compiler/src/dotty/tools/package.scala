@@ -48,9 +48,4 @@ package object tools {
   type WrappedResult[T] = resultWrapper.WrappedResult[T]
   def WrappedResult[T](x: T): WrappedResult[T] = resultWrapper.wrap(x)
   def result[T](using x: WrappedResult[T]): T = resultWrapper.unwrap(x)
-
-  // Ensure this object is already classloaded, since it's only actually used
-  // when handling stack overflows and every operation (including class loading)
-  // risks failing.
-  dotty.tools.dotc.core.handleRecursive
  }
