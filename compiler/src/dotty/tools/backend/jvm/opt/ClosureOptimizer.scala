@@ -240,7 +240,10 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
         receiverProducers.size == 1 && receiverProducers.head == indy
       }
 
-      def isSpecializedVersion(specName: String, nonSpecName: String) = specName.startsWith(nonSpecName) && specializationSuffix.pattern.matcher(specName.substring(nonSpecName.length)).matches
+      def isSpecializedVersion(specName: String, nonSpecName: String) =
+        specName.startsWith(nonSpecName)
+          && ((specName == "applyVoid" && nonSpecName == "apply" && invocation.owner.startsWith("scala/Function"))
+              || specializationSuffix.pattern.matcher(specName.substring(nonSpecName.length)).matches)
 
       def sameOrSpecializedType(specTp: Type, nonSpecTp: Type) = {
         specTp == nonSpecTp || {

@@ -17,6 +17,7 @@ import org.objectweb.asm.{Handle, Opcodes, Type}
  * This component hosts tools and utilities used in the optimizer that require access to an `OptimizerKnownBTypes` instance.
  */
 class OptimizerUtils(val ts: OptimizerKnownBTypes) {
+  private val ScalaPackage = "scala/package$"
 
   private val indyLambdaImplMethods: ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]] =
     new ConcurrentHashMap
@@ -135,9 +136,9 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
 
   def runtimeRefClassBoxedType(refClass: InternalName): asm.Type = asm.Type.getArgumentTypes(ts.srRefCreateMethods(refClass).methodType.descriptor)(0)
 
-  def isSideEffectFreeConstructorCall(insn: MethodInsnNode): Boolean = {
-    insn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && sideEffectFreeConstructors((insn.owner, insn.desc))
-  }
+  def isSideEffectFreeConstructorCall(insn: MethodInsnNode): Boolean =
+    insn.owner == ScalaPackage ||
+      (insn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && sideEffectFreeConstructors((insn.owner, insn.desc)))
 
   def isNewForSideEffectFreeConstructor(insn: AbstractInsnNode): Boolean = {
     insn.getOpcode == Opcodes.NEW && {
@@ -156,7 +157,7 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
   // methods that are known to return a non-null result
   def isNonNullMethodInvocation(mi: MethodInsnNode): Boolean = {
     isJavaBox(mi) || isScalaBox(mi) || isPredefAutoBox(mi) || isRefCreate(mi) || isRefZero(mi) || AnalysisUtils.isClassTagApply(mi) ||
-      isTupleApply(mi)
+      isTupleApply(mi) || mi.owner == ScalaPackage
   }
 
   // unused objects created by these constructors are eliminated by pushPop
@@ -169,19 +170,6 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
       (ts.StringRef.internalName, MethodBType(Nil, UNIT).descriptor),
       (ts.StringRef.internalName, MethodBType(List(ts.StringRef), UNIT).descriptor),
       (ts.StringRef.internalName, MethodBType(List(ArrayBType(CHAR)), UNIT).descriptor))
-
-  lazy val modulesAllowSkipInitialization: Set[InternalName] =
-    Set(
-      "scala/Predef$",
-      "scala/runtime/ScalaRunTime$",
-      "scala/runtime/Scala3RunTime$",
-      "scala/reflect/ClassTag$",
-      "scala/reflect/ManifestFactory$",
-      "scala/Array$",
-      "scala/collection/ArrayOps$",
-      "scala/collection/StringOps$",
-      "scala/TupleXXL$"
-    ) ++ (1 to Definitions.MaxTupleArity).map(n => s"scala/Tuple$n$$") ++ AnalysisUtils.primitiveTypes.keysIterator
 
   private lazy val classesOfSideEffectFreeConstructors: Set[String] =
     sideEffectFreeConstructors.map(_._1)
@@ -229,8 +217,10 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
       val t = i.getType
       if (t == AbstractInsnNode.METHOD_INSN) {
         val mi = i.asInstanceOf[MethodInsnNode]
-        // invokespecial has, well, special semantics that depend on the class it's being invoked in, see, e.g., https://stackoverflow.com/a/8950564
-        if (!allowPrivateCalls && i.getOpcode == Opcodes.INVOKESPECIAL && mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) {
+        if (mi.owner == ScalaPackage) {
+          // Ignore calls that, e.g., load the Range module -- that's still part of a forwarder
+        } else if (!allowPrivateCalls && i.getOpcode == Opcodes.INVOKESPECIAL && mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) {
+          // invokespecial has, well, special semantics that depend on the class it's being invoked in, see, e.g., https://stackoverflow.com/a/8950564
           numCallsOrNew = 2 // stop here: don't inline forwarders with a private or super call
         } else {
           if (isScalaBox(mi) || isScalaUnbox(mi) || isPredefAutoBox(mi) || isPredefAutoUnbox(mi) || isJavaBox(mi) || isJavaUnbox(mi))
@@ -242,8 +232,9 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
         }
       } else if (nonForwarderInstructionTypes(t)) {
         if (i.getOpcode == Opcodes.GETSTATIC) {
-          if (!allowPrivateCalls && owner == i.asInstanceOf[FieldInsnNode].owner)
+          if (!allowPrivateCalls && owner == i.asInstanceOf[FieldInsnNode].owner) {
             numCallsOrNew = 2 // stop here: not forwarder or trivial
+          }
         } else {
           numCallsOrNew = 2 // stop here: not forwarder or trivial
         }
