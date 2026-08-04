@@ -259,6 +259,7 @@ jobs:
           rm -rf ./target/sona-staging/
           publishCommand=" \
             all \
+              scala3-jline-shaded/publishSigned \
               scala-library-bootstrapped/publishSigned \
               scala3-compiler-bootstrapped/publishSigned \
               scala3-directives-parser-bootstrapped/publishSigned \

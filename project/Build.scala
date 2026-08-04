@@ -614,7 +614,7 @@ object Build {
     `scala3-directives-parser-bootstrapped`,
     `scala3-staging`,
     `scala3-tasty-inspector`,
-    `jline-shaded`,
+    `scala3-jline-shaded`,
     `scala3-repl`,
     `scala2-library`,
     scaladoc,
@@ -735,7 +735,7 @@ object Build {
     .aggregate(`scala3-interfaces`, `scala3-library-bootstrapped` , `scala-library-bootstrapped`,
       `tasty-core-bootstrapped`, `scala3-directives-parser-bootstrapped`, `scala3-compiler-bootstrapped`, `scala3-sbt-bridge-bootstrapped`,
       `scala3-staging`, `scala3-tasty-inspector`, `scala-library-sjs`, `scala3-library-sjs`,
-      scaladoc, `scala3-repl`, `scala3-presentation-compiler`, `scala3-language-server`)
+      scaladoc, `scala3-jline-shaded`, `scala3-repl`, `scala3-presentation-compiler`, `scala3-language-server`)
     .settings(
       name          := "scala3-bootstrapped",
       moduleName    := "scala3-bootstrapped",
@@ -786,6 +786,7 @@ object Build {
         (`scala3-staging` / publishLocalBin),
         (`scala3-tasty-inspector` / publishLocalBin),
         (scaladoc / publishLocalBin),
+        (`scala3-jline-shaded` / publishLocalBin),
         (`scala3-repl` / publishLocalBin),
         publishLocalBin,
       ).evaluated,
@@ -894,10 +895,7 @@ object Build {
    *  alone (its JNI symbols are name-based and cannot be renamed).
    */
   private def shadeJlineResourceText(text: String): String =
-    text
-      .replace("org.jline.nativ.", "\u0000ORG_JLINE_NATIV.\u0000")
-      .replace("org.jline.", "dotty.shaded.org.jline.")
-      .replace("\u0000ORG_JLINE_NATIV.\u0000", "org.jline.nativ.")
+    text.replaceAll("""org\.jline\.(?!nativ\b)""", "dotty.shaded.org.jline.")
 
   private def shadeJlineResourceEntries(
       conflicts: Vector[sbtassembly.Assembly.Dependency],
@@ -911,30 +909,59 @@ object Build {
 
   /* Shade JLine under `dotty.shaded.org.jline.**` so sbt 1's JLineLoader cannot
    * intercept half of it when `sbt console` runs the REPL in-process.
-   * See scala/scala3#26678. `org.jline.nativ` stays unshaded (JNI symbol names).
+   * See scala/scala3#26678. `org.jline.nativ` stays unshaded (JNI symbol names)
+   * and is published as a normal dependency of this artifact.
    */
-  lazy val `jline-shaded` = project.in(file("repl/jline-shaded"))
+  lazy val `scala3-jline-shaded` = project.in(file("repl/scala3-jline-shaded"))
+    .settings(publishSettings)
     .settings(
-      name := "jline-shaded",
+      // Artifact id must contain "jline": Scala CLI filters REPL artifacts by
+      // that substring when building the JDK 24+ module path (ReplArtifacts).
+      name := "scala3-jline-shaded",
+      moduleName := "scala3-jline-shaded",
+      version := dottyVersion,
+      versionScheme := Some("semver-spec"),
       autoScalaLibrary := false,
       crossPaths := false,
-      publish / skip := true,
-      bspEnabled := false,
+      publish / skip := false,
+      Compile / packageBin / publishArtifact := true,
+      Compile / packageDoc / publishArtifact := false,
+      Compile / packageSrc / publishArtifact := false,
+      Test / publishArtifact := false,
+      bspEnabled := true,
       libraryDependencies ++= Seq(
-        Dependencies.jlineReader,
-        Dependencies.jlineTerminal,
-        Dependencies.jlineTerminalJni,
+        // Shaded into the published jar; Provided so they are not runtime
+        // transitive deps. Stripped from the POM below so coursier cannot put
+        // unshaded `org.jline.terminal` jars on Scala CLI's module path next
+        // to this artifact (same JPMS module name = conflict).
+        Dependencies.jlineReader % Provided,
+        Dependencies.jlineTerminal % Provided,
+        Dependencies.jlineTerminalJni % Provided,
+        // Unshaded: JNI symbols are name-based (`Java_org_jline_nativ_*`).
+        // Must appear in the POM so Scala CLI / coursier put it on the module
+        // path next to this jar for `--enable-native-access=org.jline.nativ`.
+        Dependencies.jlineNative,
       ),
-      // Keep `jline-native` out of the shaded jar: its JNI symbols are
-      // name-based (`Java_org_jline_nativ_*`) and cannot be relocated.
-      // `scala3-repl` depends on it as a normal published dependency.
-      excludeDependencies += "org.jline" % "jline-native",
+      // Drop Provided deps from the published POM (they are baked into the jar).
+      pomPostProcess := { (node: XmlNode) =>
+        new RuleTransformer(new RewriteRule {
+          override def transform(n: XmlNode): XmlNodeSeq = n match {
+            case e: Elem if e.label == "dependency" &&
+                (e \ "scope").text == "provided" => XmlNodeSeq.Empty
+            case other => other
+          }
+        }).transform(node).head
+      },
+      // Dependency classpath only (managed Provided JLine jars + jline-native).
+      // Avoid Compile/fullClasspath so packageBin (which depends on assembly)
+      // cannot appear on the assembly classpath.
+      assembly / fullClasspath := (Compile / dependencyClasspath).value,
       assemblyExcludedJars := {
         (assembly / fullClasspath).value.filter { atr =>
           atr.data.getName.startsWith("jline-native")
         }
       },
-      assembly / assemblyJarName := "jline-shaded.jar",
+      assembly / assemblyJarName := "scala3-jline-shaded.jar",
       assembly / test := {},
       assemblyPackageScala / assembleArtifact := false,
       assemblyShadeRules := Seq(
@@ -971,19 +998,30 @@ object Build {
           val oldStrategy = (ThisBuild / assemblyMergeStrategy).value
           oldStrategy(x)
       },
-      // JarJar also rewrites string constants that look like class names,
-      // which corrupts JLine system-property keys. Restore any shaded dotted
-      // string that does not name a class present in the jar.
+      // Restore JarJar-corrupted string constants and inject module-info.class.
       shadedJlineJar := {
         val assembled = assembly.value
-        val fixed = streams.value.cacheDirectory / "jline-shaded-fixed.jar"
-        JLineShade.restoreNonClassStringConstants(assembled, fixed)
+        val fixed = streams.value.cacheDirectory / "scala3-jline-shaded-fixed.jar"
+        JLineShade.finalizeShadedJar(assembled, fixed)
         fixed
+      },
+      // Publish the post-processed shaded jar (with module-info). Copy to the
+      // standard packageBin path rather than returning the streams cache file
+      // directly, so Ivy/coursier publish and exportJars see a stable artifact.
+      Compile / packageBin := {
+        val shaded = shadedJlineJar.value
+        val dest = (Compile / packageBin / artifactPath).value
+        IO.copyFile(shaded, dest)
+        dest
       },
     )
 
   lazy val `scala3-repl` = project.in(file("repl"))
-    .dependsOn(`scala3-compiler-bootstrapped` % "compile->compile;test->test", `scala3-directives-parser-bootstrapped`)
+    .dependsOn(
+      `scala3-compiler-bootstrapped` % "compile->compile;test->test",
+      `scala3-directives-parser-bootstrapped`,
+      `scala3-jline-shaded`,
+    )
     .settings(publishSettings)
     .settings(
       name          := "scala3-repl",
@@ -1005,28 +1043,16 @@ object Build {
       // Only publish compilation artifacts, no test artifacts
       Test    / publishArtifact := false,
       publish / skip := false,
-      // JLine is shaded into this jar under `dotty.shaded.org.jline.**` (see
-      // `jline-shaded`) so sbt 1's JLineLoader cannot mix versions (#26678).
-      // `jline-native` stays a normal dependency: its JNI symbols are name-based
-      // and cannot be relocated.
+      // Shaded JLine comes from `scala3-jline-shaded`;
+      // `jline-native` is transitive via that dependency (#26678).
+      // unmanagedJars is required because scala3-jline-shaded cannot use exportJars
+      // (sbt-assembly forbids it when shading), so dependsOn alone would put
+      // an empty classDirectory on the classpath.
       libraryDependencies ++= Seq(
-        Dependencies.jlineNative,
         Dependencies.sbtJunitInterface % Test,
         Dependencies.coursierInterface, // used by the REPL for dependency resolution
       ),
-      Compile / unmanagedJars += (`jline-shaded` / shadedJlineJar).value,
-      Compile / packageBin / mappings ++= {
-        val shadedJar = (`jline-shaded` / shadedJlineJar).value
-        val out = target.value / "jline-shaded-unpacked"
-        IO.delete(out)
-        IO.unzip(shadedJar, out)
-        sbt.io.Path.allSubpaths(out).toSeq.filterNot { case (_, rel) =>
-          rel == "META-INF/MANIFEST.MF"
-        }
-      },
-      // Dependents must see the packaged jar (which embeds shaded JLine), not
-      // just the classDirectory (which does not).
-      exportJars := true,
+      Compile / unmanagedJars += (`scala3-jline-shaded` / shadedJlineJar).value,
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
       // Needed for the JSR223 tests which are "run" tests
@@ -2616,6 +2642,7 @@ object Build {
         (`scala-library-bootstrapped` / publishLocalBin).value
         (`scala3-tasty-inspector` / publishLocalBin).value
         (scaladoc / publishLocalBin).value
+        (`scala3-jline-shaded` / publishLocalBin).value
         (`scala3-repl` / publishLocalBin).value
         (`scala3-directives-parser-bootstrapped` / publishLocalBin).value
         (`scala3-compiler-bootstrapped` / publishLocalBin).value
@@ -2820,6 +2847,7 @@ object Build {
         `scala3-compiler-bootstrapped`,
         `scala3-interfaces`,
         `scala3-library-bootstrapped`,
+        `scala3-jline-shaded`,
         `scala3-repl`,
         `scala3-sbt-bridge-bootstrapped`, // for scala-cli
         `scala3-staging`,
