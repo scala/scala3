@@ -1,6 +1,3 @@
-// scalajs: --skip
-// (JVM-only simplification)
-
 import scala.annotation.tailrec
 
 class TailrecProblem {
