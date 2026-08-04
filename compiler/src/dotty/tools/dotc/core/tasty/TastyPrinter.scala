@@ -12,7 +12,6 @@ import util.Spans.offsetToInt
 import dotty.tools.tasty.TastyFormat.{ASTsSection, PositionsSection, CommentsSection}
 import java.nio.file.{Files, Paths}
 import dotty.tools.io.{AbstractFile, JarArchive, Path}
-import dotty.tools.tasty.TastyFormat.header
 
 import scala.compiletime.uninitialized
 import dotty.tools.tasty.TastyBuffer.Addr
