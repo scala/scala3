@@ -2,7 +2,6 @@ package dotty.tools.pc
 
 import scala.meta.internal.pc.ItemResolver
 import scala.meta.pc.PresentationCompilerConfig
-import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
 
 import dotty.tools.dotc.core.Contexts.Context
@@ -61,7 +60,7 @@ object CompletionItemResolver extends ItemResolver:
           fullDocstring(gsym.info.deepDealiasAndSimplify.typeSymbol, search)
         else if gsym.is(Method) then
           gsym.info.finalResultType match
-            case tr @ TermRef(_, sym) =>
+            case tr: TermRef =>
               fullDocstring(tr.symbol, search)
             case _ =>
               ""

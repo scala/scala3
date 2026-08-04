@@ -2,7 +2,6 @@ package dotty.tools.pc
 
 import java.net.URI
 import java.nio.file.Paths
-import java.util.ArrayList
 
 import scala.jdk.CollectionConverters.*
 import scala.meta.internal.pc.DefinitionResultImpl
@@ -124,7 +123,7 @@ class PcDefinitionProvider(
   )(using ctx: Context): DefinitionResult =
     semanticSymbolsSorted(symbols) match
       case Nil => DefinitionResultImpl.empty
-      case syms @ ((_, headSym) :: tail) =>
+      case syms @ ((_, headSym) :: _) =>
         val locations = syms.flatMap:
           case (sym, semanticdbSymbol) =>
             locationsForSymbol(sym, semanticdbSymbol, uri, pos)

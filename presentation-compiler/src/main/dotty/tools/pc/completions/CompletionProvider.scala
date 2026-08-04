@@ -11,7 +11,6 @@ import scala.meta.pc.SymbolSearch
 import scala.meta.pc.reports.ReportContext
 import scala.util.control.NonFatal
 
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context

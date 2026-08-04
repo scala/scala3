@@ -4,7 +4,6 @@ import scala.jdk.CollectionConverters.*
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
-import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
@@ -25,7 +24,7 @@ object SignatureHelpProvider:
       driver: InteractiveDriver,
       params: OffsetParams,
       search: SymbolSearch
-  )(using ReportContext): l.SignatureHelp =
+  ): l.SignatureHelp =
     val uri = params.uri().nn
     val text = params.text().nn
     val sourceFile = SourceFile.virtual(uri, text)
