@@ -47,7 +47,7 @@ class PrintingTest {
     }
 
     val actualLines = byteStream.toString(StandardCharsets.UTF_8.name).linesIterator
-    FileDiff.checkAndDumpOrUpdate(path.toString, actualLines.toIndexedSeq, checkFilePath)
+    FileDiff.checkAndDumpOrUpdate(path.toString, actualLines.toIndexedSeq, checkFilePath, tolerateMissingCheckFile = false)
   }
 
   def testIn(testsDir: String, phase: String) =
