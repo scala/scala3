@@ -23,6 +23,9 @@ on:
         required: true
         type    : string
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: windows-latest

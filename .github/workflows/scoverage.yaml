@@ -11,6 +11,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 # This workflow compiles a subset of the Scala 3 projects with
 # scoverage enabled to test robustness of scoverage.
 #

@@ -6,6 +6,12 @@ on:
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
 
+# The nightly documentation is pushed to scala/nightly.scala-lang.org with a
+# GitHub App token, and Maven artifacts with the project's Sonatype credentials,
+# so read-only access for the token is enough for every job.
+permissions:
+  contents: read
+
 jobs:
   stdlib-tests:
     uses: ./.github/workflows/stdlib.yaml

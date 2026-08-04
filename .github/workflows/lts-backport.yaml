@@ -5,6 +5,11 @@ on:
     branches:
       - main
 
+# The backporting project is updated via the API with a GitHub App token, the
+# workflow GITHUB_TOKEN is only used to check out the repository.
+permissions:
+  contents: read
+
 jobs:
   add-to-backporting-project:
     if: "!contains(github.event.push.head_commit.message, '[Next only]') &&
