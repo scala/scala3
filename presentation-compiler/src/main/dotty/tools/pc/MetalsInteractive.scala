@@ -3,8 +3,6 @@ package pc
 
 import scala.annotation.tailrec
 
-import dotty.tools.dotc.core.Constants.*
-import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import dotc.*
