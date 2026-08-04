@@ -204,26 +204,23 @@ case object Help extends Command {
   override def replayLine = Some(command)
   val command: String = ":help"
   val text: String =
-    """The REPL has several commands available:
-      |
-      |:help                    print this summary
-      |:save <path>             save replayable session to a file
-      |:load <path>             interpret lines in a file
-      |:quit                    exit the interpreter
-      |:type <expression>       evaluate the type of the given expression
-      |:doc <expression>        print the documentation for the given expression
-      |:imports                 show import history
-      |:reset [options]         clear the session and start fresh with the given compiler options
-      |:replay [options]        reset, then re-run the session with the given compiler options
-      |:settings <options>      update compiler options, if possible
-      |:silent                  disable/enable automatic printing of results
-      |:dep <group>::<artifact>:<version>     Resolve a dependency and make it available in the REPL
-      |
-      |Scala CLI `//> using dep` directives are also supported and behave like `:dep`, e.g.:
-      |  //> using dep <group>::<artifact>:<version>
-      |Directives must appear before any Scala code in the input; code on following lines is
-      |evaluated as usual. Other `//> using` directives are not (yet) supported in the REPL.
-    """.stripMargin
+    s"""|The REPL has several commands available:
+        |
+        |:help                    print this summary
+        |:save <path>             save replayable session to a file
+        |:load <path>             interpret lines in a file
+        |:quit                    exit the interpreter
+        |:type <expression>       evaluate the type of the given expression
+        |:doc <expression>        print the documentation for the given expression
+        |:imports                 show import history
+        |:reset [options]         clear the session and start fresh with the given compiler options
+        |:replay [options]        reset, then re-run the session with the given compiler options
+        |:settings <options>      update compiler options, if possible
+        |:silent                  disable/enable automatic printing of results
+        |:dep <group>::<artifact>:<version>     Resolve a dependency and make it available in the REPL
+        |
+        |${ReplDirectives.helpText}
+      """.stripMargin
 }
 
 object ParseResult {
