@@ -58,12 +58,26 @@ trait Migrations:
     val pt1 = if (defn.isFunctionNType(pt)) pt else AnyFunctionProto
     val nestedCtx = ctx.fresh.setNewTyperState()
     val res = typed(qual, pt1)(using nestedCtx)
+    // A method-typed expression whose `_` can be dropped because 3.4+ will
+    // auto-eta-expand the bare reference. Mirrors the condition in
+    // `Typer.adaptNoArgsUnappliedMethod` for the non-function-expected case:
+    // a single varargs parameter (or no parameters) does not auto-eta-expand.
+    def autoEtaExpands(tp: Type): Boolean = tp.stripPoly match
+      case mt: MethodType =>
+        val n = mt.paramInfos.length
+        n > 1 || n == 1 && !mt.isVarArgsMethod
+      case _ => false
+    // Type of `qual` without a prototype (i.e. what it would be without the `_`).
+    // Used to decide whether the candidate rewrite is safe.
+    lazy val unprotoTpe = typed(qual)(using ctx.fresh.setExploreTyperState()).tpe.widen
     res match {
       case blockEndingInClosure(_, _, _) =>
       case _ =>
-        val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
-        if !defn.isFunctionType(recovered.tpe.widen) then
-          val msg = OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree)
+        // A method-typed result that will auto-eta-expand isn't a Scala2-to-3
+        // `expr _` -> `() => expr` case; let the FunctionUnderscore migration
+        // handle it below.
+        if !defn.isFunctionType(unprotoTpe) && !autoEtaExpands(unprotoTpe) then
+          val msg = OnlyFunctionsCanBeFollowedByUnderscore(unprotoTpe, tree)
           report.errorOrMigrationWarning(msg, tree.srcPos, mv.Scala2to3)
           if mv.Scala2to3.needsPatch then
             // Under -rewrite, patch `x _` to `(() => x)`
@@ -76,7 +90,7 @@ trait Migrations:
 
     def functionPrefixSuffix(arity: Int) = if (arity > 0) ("", "") else ("(() => ", "())")
 
-    lazy val (prefix, suffix) = res match {
+    val proposedPatch: (String, String) = res match {
       case Block(DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure) =>
         functionPrefixSuffix(vparams.length)
       case Block(ValDef(_, _, _) :: Nil, Block(DefDef(_, vparams :: Nil, _, _) :: Nil, _: Closure)) =>
@@ -86,18 +100,37 @@ trait Migrations:
       case _ =>
         ("(() => ", ")")
     }
+    // Validate the proposed rewrite against the un-prototyped type of `qual`
+    // (since `res` was typed under `AnyFunctionProto`, which forces
+    // eta-expansion and hides whether the bare reference is well-typed).
+    val patchOpt: Option[(String, String)] = proposedPatch match
+      case ("", "") =>
+        // Dropping `_` is safe only when the bare reference type-checks:
+        // already a function, or a method type that auto-eta-expands.
+        Option.when(defn.isFunctionType(unprotoTpe) || autoEtaExpands(unprotoTpe))(proposedPatch)
+      case ("(() => ", ")") =>
+        // Wrapping in `(() => …)` is wrong for a partially-applied curried
+        // method: it adds a spurious Function0 layer (issue #26004).
+        Option.when(!unprotoTpe.isInstanceOf[MethodOrPoly])(proposedPatch)
+      case _ =>
+        Some(proposedPatch)
+
     val mversion = mv.FunctionUnderscore
-    def remedy =
-      if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
-      else s"use `$prefix<function>$suffix` instead"
-    def rewrite = Message.rewriteNotice("This construct", mversion.patchFrom)
+    def remedy = patchOpt match
+      case Some((prefix, suffix)) if (prefix ++ suffix).isEmpty => "simply leave out the trailing ` _`"
+      case Some((prefix, suffix)) => s"use `$prefix<function>$suffix` instead"
+      case None => "rewrite the expression explicitly as an eta-expanded function"
+    def rewrite = patchOpt match
+      case Some(_) => Message.rewriteNotice("This construct", mversion.patchFrom)
+      case None => ""
     report.errorOrMigrationWarning(
       em"""The trailing ` _` for eta-expansion is unnecessary;
         |the compiler performs eta-expansion automatically, so you can write the function value directly instead.$rewrite""",
       tree.srcPos, mversion)
     if mversion.needsPatch then
-      patch(Span(tree.span.start), prefix)
-      patch(Span(qual.span.end, tree.span.end), suffix)
+      patchOpt.foreach: (prefix, suffix) =>
+        patch(Span(tree.span.start), prefix)
+        patch(Span(qual.span.end, tree.span.end), suffix)
 
     res
   }
