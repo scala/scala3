@@ -76,8 +76,8 @@ class ActiveProfile(details: Int) extends Profile:
     val units =
       val rawUnits = pinfo.keysIterator.toArray
       ctx.settings.VprofileSortedBy.value match
-        case "name"       => rawUnits.sortBy(_.source.file.name)
-        case "path"       => rawUnits.sortBy(_.source.file.path)
+        case "name"       => rawUnits.sortBy(_.source.name)
+        case "path"       => rawUnits.sortBy(_.source.path)
         case "lines"      => rawUnits.sortBy(unitProfile(_).lineCount)
         case "tokens"     => rawUnits.sortBy(unitProfile(_).tokenCount)
         case "complexity" => rawUnits.sortBy(unitProfile(_).complexity)
@@ -106,7 +106,7 @@ class ActiveProfile(details: Int) extends Profile:
     def safeMax(xs: Array[Int]) = if xs.isEmpty then 10 else xs.max.max(10).min(50)
 
     def printAndAggregateSourceInfos(): Profile.Info =
-      val sourceNameWidth = safeMax(units.map(_.source.file.name.length))
+      val sourceNameWidth = safeMax(units.map(_.source.name.length))
       val layout = printHeader(sourceNameWidth)
       val agg = new Profile.Info(details)
       for unit <- units do

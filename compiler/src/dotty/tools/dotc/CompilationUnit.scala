@@ -182,11 +182,11 @@ object CompilationUnit {
       if (!mustExist)
         source
       else if (source.file.isDirectory) {
-        report.error(em"expected file, received directory '${source.file.path}'")
+        report.error(em"expected file, received directory '${source.path}'")
         NoSource
       }
       else if (!source.file.exists) {
-        report.error(em"source file not found: ${source.file.path}")
+        report.error(em"source file not found: ${source.path}")
         NoSource
       }
       else source

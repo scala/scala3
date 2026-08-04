@@ -1925,7 +1925,7 @@ object desugar {
    *  be using for the package object that will wrap them.
    */
   def packageObjectName(src: SourceFile): TermName =
-    val fileName = src.file.name
+    val fileName = src.name
     val sourceName = fileName.take(fileName.lastIndexOf('.'))
     (sourceName ++ str.TOPLEVEL_SUFFIX).toTermName
 

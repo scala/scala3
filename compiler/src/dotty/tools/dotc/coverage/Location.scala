@@ -46,5 +46,5 @@ object Location:
       s"$packageName.$className",
       classType,
       methodName,
-      source.file.jpath.nn.toAbsolutePath
+      source.jfile.get.toPath.toAbsolutePath
     )

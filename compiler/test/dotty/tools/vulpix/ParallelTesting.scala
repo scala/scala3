@@ -905,10 +905,10 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       def sawDiagnostic(d: Diagnostic): Unit =
         val srcpos = d.pos.nonInlined
         if srcpos.exists then
-          val key = s"${relativize(srcpos.source.file.toString())}:${srcpos.line + 1}"
+          val key = s"${relativize(srcpos.source.path)}:${srcpos.line + 1}"
           if !seenAt(key) then unexpected += key
         else
-          if !seenAt("nopos") then unexpected += relativize(srcpos.source.file.toString)
+          if !seenAt("nopos") then unexpected += relativize(srcpos.source.path)
 
       reporterWarnings.foreach(sawDiagnostic)
 
@@ -1070,7 +1070,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         case n => errorMap.put(key, n - 1); true
       def sawDiagnostic(d: Diagnostic): Unit =
         val srcpos = d.pos.nonInlined.adjustedAtEOF
-        val path = srcpos.source.file.toString
+        val path = srcpos.source.path
         if srcpos.exists then
           val key = s"$path:${srcpos.line + 1}"
           if !seenAt(key) then unexpected += key

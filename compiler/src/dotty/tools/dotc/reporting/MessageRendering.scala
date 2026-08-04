@@ -170,12 +170,12 @@ trait MessageRendering {
     if addLine then msgStr ++ s"${EOL}$offsetBox" else msgStr
   }
 
-  // file.path or munge it to normalize for testing
-  protected def renderPath(file: AbstractFile): String = file.path
+  // path or munge it to normalize for testing
+  protected def renderPath(path: String): String = path
 
   /** The source file path, line and column numbers from the given SourcePosition */
   protected def posFileStr(pos: SourcePosition): String =
-    val path = renderPath(pos.source.file)
+    val path = renderPath(pos.source.path)
     if pos.exists then s"$path:${pos.line + 1}:${pos.column}" else path
 
   /** The separator between errors containing the source file and error type

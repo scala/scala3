@@ -22,7 +22,7 @@ import Implicits.ContextualImplicits
 import config.Settings.*
 import config.Config
 import reporting.*
-import io.{AbstractFile, NoAbstractFile, PlainFile, Path}
+import io.{AbstractFile, PlainFile, Path}
 import scala.io.Codec
 import collection.mutable
 import printing.*

@@ -188,7 +188,7 @@ class Erasure extends Phase with DenotTransformer {
 
   def assertErased(tp: Type, tree: tpd.Tree = tpd.EmptyTree)(using Context): Unit = {
     def isAllowed(cls: Symbol, sourceName: String) =
-      tp.typeSymbol == cls && ctx.compilationUnit.source.file.name == sourceName
+      tp.typeSymbol == cls && ctx.compilationUnit.source.name == sourceName
     assert(
       isErasedType(tp)
       || isAllowed(defn.AnyValClass, "AnyVal.scala")

@@ -187,7 +187,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       }
 
       if excludedSpans.nonEmpty then
-        coverageLocalExclusions(unit.source.file.path) = excludedSpans.toList
+        coverageLocalExclusions(unit.source.path) = excludedSpans.toList
     }
 
     // Run the transformation on all units
@@ -195,7 +195,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
 
     // Serialize once at the end with merged coverage
     val mergedCoverage = Coverage()
-    val currentFiles = units.map(_.source.file.jpath.nn.toAbsolutePath)
+    val currentFiles = units.map(_.source.jfile.get.toPath.toAbsolutePath)
 
     // Add statements from previous coverage that aren't from recompiled files
     // and whose source files still exist
@@ -231,7 +231,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     )
 
   private def isTreeExcluded(tree: Tree)(using Context): Boolean =
-    val sourceFile = ctx.source.file.path
+    val sourceFile = ctx.source.path
     coverageLocalExclusions.get(sourceFile).exists: excludedSpans =>
       excludedSpans.exists(_.contains(tree.span))
 

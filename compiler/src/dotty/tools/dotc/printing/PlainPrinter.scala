@@ -791,7 +791,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(pos: SourcePosition): Text =
     if (!pos.exists) "<no position>"
-    else if (pos.source.exists) s"${pos.source.file.name}:${pos.line + 1}"
+    else if (pos.source.exists) s"${pos.source.name}:${pos.line + 1}"
     else s"(no source file, offset = ${pos.span.point})"
 
   def toText(cand: Candidate): Text =

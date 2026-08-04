@@ -91,7 +91,7 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
           else ((dupPos, clsPos), (dupName, name))
         val locationAddendum =
           if pos1.source.path == pos2.source.path then ""
-          else s" (defined in ${pos2.source.file.name})"
+          else s" (defined in ${pos2.source.name})"
         def nicify(name: String): String = name.replace('/', '.')
         if name1 == name2 then
           report.error(
@@ -272,7 +272,7 @@ final class PostProcessorWithOptimizations(byteCodeRepository: BCodeRepository, 
     for u <- generatedUnits
         c <- u.classes
     do
-      byteCodeRepository.add(c.classNode, Some(u.sourceFile.path))
+      byteCodeRepository.add(c.classNode, Some(u.sourcePath))
     for u <- generatedUnits
         c <- u.classes
         if !c.isArtifact // skip call graph for mirror / bean: we don't inline into them, and they are not referenced from other classes
@@ -295,5 +295,5 @@ case class GeneratedClass(
   isArtifact: Boolean,
   onFileCreated: AbstractFile => Unit)
 case class GeneratedTasty(classNode: ClassNode, tastyGen: () => Array[Byte])
-case class GeneratedCompilationUnit(sourceFile: AbstractFile, classes: List[GeneratedClass], tasty: List[GeneratedTasty])
+case class GeneratedCompilationUnit(sourcePath: String, classes: List[GeneratedClass], tasty: List[GeneratedTasty])
 

@@ -85,8 +85,8 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
       assert(
         classSym != defn.NothingClass && classSym != defn.NullClass,
         s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
-      assert(classSym != defn.ArrayClass || compilingArray, s"Found $classSym while compiling ${ctx.compilationUnit.source.file.name}")
-      assert(!classSym.isPrimitiveValueClass || compilingPrimitive, s"Found $classSym while compiling ${ctx.compilationUnit.source.file.name}")
+      assert(classSym != defn.ArrayClass || compilingArray, s"Found $classSym while compiling ${ctx.compilationUnit.source.name}")
+      assert(!classSym.isPrimitiveValueClass || compilingPrimitive, s"Found $classSym while compiling ${ctx.compilationUnit.source.name}")
 
       val result = classBType(classSym.javaBinaryName)(ct => createClassInfo(ct, classSym.asClass))
       classBTypeCacheBySymbol.update(classSym0, result)
@@ -406,7 +406,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     sym.is(PackageClass) || sym.is(ModuleClass) && isOriginallyStaticOwner(sym.originalOwner.originalLexicallyEnclosingClass)
   
   private def compilingArray(using Context) =
-    ctx.compilationUnit.source.file.name == "Array.scala"
+    ctx.compilationUnit.source.name == "Array.scala"
 
   private val primitiveCompilationUnits = Set(
     "Unit.scala",
@@ -420,5 +420,5 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     "Double.scala"
   )
   private def compilingPrimitive(using Context) =
-    primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
+    primitiveCompilationUnits(ctx.compilationUnit.source.name)
 }

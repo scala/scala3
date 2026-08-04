@@ -134,9 +134,9 @@ class ExtractAPI extends Phase {
 
     if (ctx.settings.YdumpSbtInc.value) {
       // Append to existing file that should have been created by ExtractDependencies
-      val sourceFileJPath = sourceFile.file.jpath
-      assert(sourceFileJPath != null, s"unexpected null jpath for $sourceFile")
-      val pw = new PrintWriter(File(sourceFileJPath).changeExtension(FileExtension.Inc).toFile
+      val sourceFileJPath = sourceFile.jfile
+      assert(sourceFileJPath.isPresent, s"unexpected null jpath for $sourceFile")
+      val pw = new PrintWriter(File(sourceFileJPath.get().toPath).changeExtension(FileExtension.Inc).toFile
         .bufferedWriter(append = true), true)
       try {
         classes.foreach(source => pw.println(DefaultShowAPI(source)))

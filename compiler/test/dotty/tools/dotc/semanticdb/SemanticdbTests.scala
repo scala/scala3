@@ -278,7 +278,7 @@ object SemanticdbTests:
           && !(occ.symbol.isConstructor && occ.role.isDefinition) then
           val line = sourceFile.lineContent(sourceFile.lineToOffset(range.startLine))
           assert(range.startCharacter <= line.length && range.endCharacter <= line.length,
-            s"Line is only ${line.length} - start line was ${range.startLine} in source ${sourceFile.file.name}"
+            s"Line is only ${line.length} - start line was ${range.startLine} in source ${sourceFile.name}"
           )
           sb.append(" ").append(line.substring(range.startCharacter, range.endCharacter))
       case _ =>

@@ -5,8 +5,7 @@ import dotty.tools.dotc.config.PathResolver.Defaults
 import dotty.tools.dotc.config.Settings.{Setting, SettingAlias, SettingGroup, SettingCategory, Deprecation}
 import dotty.tools.dotc.config.SourceVersion
 import dotty.tools.dotc.core.Contexts.*
-import dotty.tools.dotc.rewrites.Rewrites
-import dotty.tools.io.{AbstractFile, Directory, PlainDirectory, NoAbstractFile}
+import dotty.tools.io.{AbstractFile, Directory, PlainDirectory}
 import Setting.ChoiceWithHelp
 import ScalaSettingCategories.*
 

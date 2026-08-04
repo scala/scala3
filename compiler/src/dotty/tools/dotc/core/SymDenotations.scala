@@ -2693,13 +2693,13 @@ object SymDenotations {
       true
     }
 
-    /** Unlink all package members defined in `file` in a previous run. */
-    def unlinkFromFile(file: AbstractFile)(using Context): Unit = {
+    /** Unlink all package members defined in `path` in a previous run. */
+    def unlinkFromFile(path: String)(using Context): Unit = {
       val scope = unforcedDecls.openForMutations
       for (sym <- scope.toList.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
-        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.compUnitInfo != null && sym.asClass.compUnitInfo.nn.associatedFile.path == file.path)
+        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.compUnitInfo != null && sym.asClass.compUnitInfo.nn.associatedFile.path == path)
           scope.unlink(sym, sym.lastKnownDenotation.name)
     }
   }

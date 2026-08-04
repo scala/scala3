@@ -6,7 +6,7 @@ import java.io.{IOException, File}
 import java.nio.channels.ClosedByInterruptException
 
 import dotty.tools.dotc.classpath.PackageNameUtils
-import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile, NoAbstractFile }
+import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
 
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
 import NameOps.*
