@@ -24,7 +24,7 @@ object FileDiff {
   //at scala.quoted.runtime.impl.QuotesImpl$reflect$ClassDef$.module(QuotesImpl.scala:257)
   private val frame = """\s+at [^(]+\([^:]+:(\d+)\)""".r
 
-  def check(sourceTitle: String, outputLines: Seq[String], checkFile: String, tolerateMissing: Boolean = true): Option[String] = {
+  def check(sourceTitle: String, outputLines: Seq[String], checkFile: String): Option[String] = {
     val path = Paths.get(checkFile)
     if Files.exists(path) then
       var stacked = false
@@ -50,9 +50,7 @@ object FileDiff {
         Some(s"""|Output from '$sourceTitle' did not match check file. Actual output:
                  |${outputLines.mkString(EOL)}
                  |""".stripMargin + "\n")
-    else
-      assert(tolerateMissing, "Missing check file: " + path.toString)
-      None
+    else None
   }
 
   def matches(actual: String, expect: String): Boolean = {
@@ -73,9 +71,9 @@ object FileDiff {
     outFile.writeAll(content.mkString("", EOL, EOL))
   }
 
-  def checkAndDumpOrUpdate(sourceTitle: String, actualLines: Seq[String], checkFilePath: String, tolerateMissingCheckFile: Boolean = true): Boolean = {
+  def checkAndDumpOrUpdate(sourceTitle: String, actualLines: Seq[String], checkFilePath: String): Boolean = {
     val outFilePath = checkFilePath + ".out"
-    FileDiff.check(sourceTitle, actualLines, checkFilePath, tolerateMissingCheckFile) match {
+    FileDiff.check(sourceTitle, actualLines, checkFilePath) match {
       case Some(msg) if dotty.Properties.testsUpdateCheckfile =>
         Files.deleteIfExists(Paths.get(outFilePath))
         if actualLines.isEmpty

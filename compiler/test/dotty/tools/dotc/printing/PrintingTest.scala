@@ -54,10 +54,15 @@ class PrintingTest {
     val res = Directory(testsDir).list.toList
       .filter(_.ext.isSourceExtension)
       .map(f => compileFile(f.jpath, phase))
+
     val failed = res.filter(!_)
+
     val msg = s"Pass: ${res.length - failed.length}, Failed: ${failed.length}"
-    assert(failed.isEmpty, msg)
+
+    assert(failed.length == 0, msg)
+
     println(msg)
+
   end testIn
 
   @Test
