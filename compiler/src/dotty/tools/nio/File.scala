@@ -30,10 +30,6 @@ object File:
     action(temp)
     DiskFile.moveTo(temp, path)
 
-  /** Gets a file that does not exist, used to avoid the need for Option or nullables throughout the compiler. (This is a hack.) */
-  def none(): File =
-    NoFile
-
 abstract class File extends FileSystemEntry:
   /** Name of the file without the extension nor the period. */
   def nameWithoutExtension: String =
