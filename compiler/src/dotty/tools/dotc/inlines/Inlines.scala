@@ -650,14 +650,17 @@ object Inlines:
           if inlinedMethod.is(Transparent) then
             val unpacked = unpackProxiesFromResultType(inlined)
             val withAdjustedThisTypes = if call.symbol.is(Macro) then fixThisTypeModuleClassReferences(unpacked) else unpacked
-            (call.tpe & withAdjustedThisTypes, withAdjustedThisTypes != unpacked)
+            (call.tpe & withAdjustedThisTypes, withAdjustedThisTypes != inlined.tpe)
           else (call.tpe, false)
         // `target` might contain a method reference, which is an invalid cast target. Use its return type instead.
         // see https://github.com/scala/scala3/issues/25091
         val resultType = target.widenIfUnstable
         if forceCast then
-          // we need to force the cast for issues with ThisTypes, as ensureConforms will just
-          // check subtyping and then choose not to cast, leaving the previous, incorrect type
+          // We might need to force the cast for various issues, as a subtype check/ensureConform
+          // will leave out the previous type which might not be correct, e.g.:
+          //  * fixes for nonsense ThisTypes that expose opaque types would fall through any subtype check
+          //  * RefinedTypes are skipped when looking for implicits, so we want to avoid
+          //    the ones with generated RefinedType prefixes if we can
           inlined.cast(resultType)
         else if !(inlined.tpe <:< target) then
           // Make sure that the sealing with the declared type
