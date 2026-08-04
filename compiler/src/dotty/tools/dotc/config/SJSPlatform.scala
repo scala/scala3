@@ -45,5 +45,5 @@ class SJSPlatform(precomputedSourcePackages: Option[LogicalPackage] = None) exte
     (defn.ScalaNumericValueClasses()(c) || defn.ScalaNumericBoxedClasses()(c)) &&
       (defn.ScalaNumericValueClasses()(potentialSuperClass) || defn.ScalaNumericBoxedClasses()(potentialSuperClass))
 
-  override def supportsSynchronizedMethods: Boolean = false
+  // supportsSynchronizedMethods remains `true` since `synchronized` is a no-op in JS anyway
 }
