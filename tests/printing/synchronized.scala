@@ -14,19 +14,36 @@ class A {
     }
   }
 
-  inline def notThisOneBecauseInline: String = synchronized {
+  inline def notThisBecauseInline: String = synchronized {
     ""
   }
 
-  def alsoNotThisBecauseHasOtherCode: String =
+  def notThisBecauseHasOtherCode: String =
     synchronized {
       ()
     }
     ""
 }
 
-trait T {
-  def alsoNotThisBecauseInATrait: String = synchronized {
+object A {
+  @scala.annotation.static
+  def staticOne: String = synchronized {
     ""
   }
 }
+
+trait T {
+  def notThisBecauseInATrait: String = synchronized {
+    ""
+  }
+}
+
+class X(val s: String) extends AnyVal {
+  def notThisBecauseExtension1: String = synchronized { "" }
+}
+
+extension (s: String) {
+  def notThisBecauseExtension2: String = synchronized { "" }
+}
+
+def notThisBecauseTopLevel: String = synchronized { "" }
