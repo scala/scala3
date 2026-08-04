@@ -1438,7 +1438,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     /** Compose test targets from `tests`
      *
-     *  It does this, only if all the tests are mutally compatible.
+     *  It does this, only if all the tests are mutually compatible.
      *  Otherwise it throws an `IllegalArgumentException`.
      *
      *  Grouping tests together like this allows us to take advantage of the

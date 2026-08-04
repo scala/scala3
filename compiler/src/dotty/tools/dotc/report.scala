@@ -108,7 +108,7 @@ object report:
       // ignore errors or warningsfor Scala 2 stdlib sources
       if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
         if sourceVersion != migrationVersion.errorFrom.prevMigrating then error(msg, pos)
-        else if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
+        else if !ctx.settings.rewrite.value then migrationWarning(msg, pos)
       else if sourceVersion.isAtLeast(migrationVersion.warnFrom) then warning(msg, pos)
 
   def restrictionError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =

@@ -40,6 +40,7 @@ import util.Store
 import plugins.*
 import java.nio.file.InvalidPathException
 import dotty.tools.dotc.coverage.Coverage
+import dotty.tools.dotc.rewrites.Rewrites
 import scala.annotation.tailrec
 
 object Contexts {
@@ -1096,6 +1097,8 @@ object Contexts {
     private var charArray = new Array[Char](256)
 
     private[dotc] var wConfCache: (List[String], WConf) = uninitialized
+
+    private[dotc] val patched: Rewrites.PatchedFiles = Rewrites.newPatchedFiles()
 
     def sharedCharArray(len: Int): Array[Char] =
       while len > charArray.length do

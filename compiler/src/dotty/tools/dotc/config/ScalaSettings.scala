@@ -52,7 +52,7 @@ trait AllScalaSettings extends CommonScalaSettings, PluginSettings, VerboseSetti
 
   val source: Setting[String] = ChoiceSetting(RootSetting, "source", "source version", "source version", ScalaSettingsProperties.supportedSourceVersions, SourceVersion.defaultSourceVersion.toString, aliases = List("--source"))
   val uniqid: Setting[Boolean] = BooleanSetting(RootSetting, "uniqid", "Uniquely tag all identifiers in debugging output.", aliases = List("--unique-id"))
-  val rewrite: Setting[Option[Rewrites]] = OptionSetting[Rewrites](RootSetting, "rewrite", "When used in conjunction with a `...-migration` source version, rewrites sources to migrate to new version.", aliases = List("--rewrite"))
+  val rewrite: Setting[Boolean] = BooleanSetting(RootSetting, "rewrite", "When used in conjunction with a `...-migration` source version, rewrites sources to migrate to new version.", aliases = List("--rewrite"))
   val fromTasty: Setting[Boolean] = BooleanSetting(RootSetting, "from-tasty", "Compile classes from tasty files. The arguments are .tasty or .jar files.", aliases = List("--from-tasty"))
 
   val newSyntax: Setting[Boolean] = BooleanSetting(RootSetting, "new-syntax", "Require `then` and `do` in control expressions.")

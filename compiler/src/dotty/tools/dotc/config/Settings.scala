@@ -21,7 +21,6 @@ object Settings:
   val StringTag: ClassTag[String]        = ClassTag(classOf[String])
   val ListTag: ClassTag[List[?]]         = ClassTag(classOf[List[?]])
   val VersionTag: ClassTag[ScalaVersion] = ClassTag(classOf[ScalaVersion])
-  val OptionTag: ClassTag[Option[?]]     = ClassTag(classOf[Option[?]])
   val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
 
   trait SettingCategory:
@@ -82,7 +81,7 @@ object Settings:
   def validateSettingString(name: String): Unit =
     assert(settingCharacters.matches(name), s"Setting string $name contains invalid characters")
 
-  val validTags = List(BooleanTag, IntTag, StringTag, ListTag, VersionTag, OptionTag, OutputTag)
+  val validTags = List(BooleanTag, IntTag, StringTag, ListTag, VersionTag, OutputTag)
   def validateSettingTag(ct: ClassTag[?]): Unit =
     assert(validTags.contains(ct), s"Unsupported option value $ct")
 
@@ -143,7 +142,7 @@ object Settings:
 
     def isMultivalue: Boolean = ct == ListTag
 
-    def acceptsNoArg: Boolean = ct == BooleanTag || ct == OptionTag || choices.exists(_.contains(""))
+    def acceptsNoArg: Boolean = ct == BooleanTag || choices.exists(_.contains(""))
 
     def legalChoices: String =
       choices match
@@ -267,7 +266,6 @@ object Settings:
 
         if arg1 == "help" then update(arg1, arg1, args1)
         else if ct == BooleanTag then setBoolean(arg1, args1)
-        else if ct == OptionTag then update(Some(propertyClass.get.getConstructor().newInstance()), "", args1)
         else if preferPrevious && changed then
           if ignoreInvalidArgs then state.shifted(args1)
           else state.warn(s"Ignoring update of option $name", args1)
@@ -315,7 +313,7 @@ object Settings:
 
       def matches: Boolean =
         val name = arg.takeWhile(_ != ':')
-        allFullNames.exists(_ == name) || prefix.exists(arg.startsWith)
+        allFullNames.contains(name) || prefix.exists(arg.startsWith)
 
       if matches then
         given ArgsSummary = state0
@@ -495,9 +493,6 @@ object Settings:
 
     def VersionSetting(category: SettingCategory, name: String, descr: String, default: ScalaVersion = NoScalaVersion, legacyArgs: Boolean = false, deprecation: Option[Deprecation] = None): Setting[ScalaVersion] =
       publish(Setting(category, prependName(name), descr, default, legacyArgs = legacyArgs, deprecation = deprecation))
-
-    def OptionSetting[T: ClassTag](category: SettingCategory, name: String, descr: String, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[Option[T]] =
-      publish(Setting(category, prependName(name), descr, None, propertyClass = Some(summon[ClassTag[T]].runtimeClass), aliases = aliases, deprecation = deprecation))
 
   end SettingGroup
 end Settings

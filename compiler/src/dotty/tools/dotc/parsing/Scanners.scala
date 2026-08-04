@@ -194,7 +194,7 @@ object Scanners {
     var debugTokenStream = false
     val showLookAheadOnDebug = false
 
-    val rewrite = ctx.settings.rewrite.value.isDefined
+    val rewrite = ctx.settings.rewrite.value
     val oldSyntax = ctx.settings.oldSyntax.value
     val newSyntax = ctx.settings.newSyntax.value || sourceVersion.requiresNewSyntax
 
