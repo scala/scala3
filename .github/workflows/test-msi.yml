@@ -20,6 +20,9 @@ on:
         required: true
         type: string
 
+# The scala.msi artifact comes from the same run no GITHUB_TOKEN required
+permissions: {}
+
 jobs:
   test:
     runs-on: windows-latest
@@ -37,7 +40,7 @@ jobs:
           path: .
 
       # Run the MSI installer
-      # During normal installation msiexec would modify the PATH automatically. 
+      # During normal installation msiexec would modify the PATH automatically.
       # However, it seems not to work in GH Actions. Append the PATH manually instead.
       - name: Install Scala Runner
         shell: pwsh

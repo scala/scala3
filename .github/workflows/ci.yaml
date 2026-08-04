@@ -24,6 +24,11 @@ on:
   merge_group:
   workflow_dispatch:
 
+# Default token permissions for all jobs: read-only. Jobs that need more must
+# declare their own permissions block.
+permissions:
+  contents: read
+
 # Cancels any in-progress runs within the same group identified by workflow name and GH reference (branch or tag)
 # For example it would:
 # - terminate previous PR CI execution after pushing more changes to the same PR branch
@@ -245,6 +250,9 @@ jobs:
 
   build-sdk-package:
    uses: ./.github/workflows/build-sdk.yml
+   permissions:
+     contents: read
+     actions: read  # to read back the win-x86_64 artifact through the Actions API
    if:
      (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]')) ||
      (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
@@ -264,6 +272,8 @@ jobs:
 
   test-chocolatey-package:
    uses: ./.github/workflows/test-chocolatey.yml
+   permissions:
+     actions: read  # downloads the launcher artifact through the Actions API
    with:
      version     : 3.6.0-SNAPSHOT # Fake version, used only for choco tests
      java-version: 17

@@ -15,8 +15,6 @@ permissions:
 jobs:
   build-and-push:
     name: Build reference documentation and push it
-    permissions:
-      contents: write  # for Git to git push
     runs-on: ubuntu-latest
     steps:
       - name: Get current date

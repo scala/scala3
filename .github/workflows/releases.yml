@@ -20,6 +20,11 @@ on:
         required: true
         type: string
 
+# Publishing uses credentials from secrets for each repository (SDKMAN,
+# Chocolatey, etc), the GITHUB_TOKEN is only needed by the jobs that declare
+# their own permissions.
+permissions: {}
+
 jobs:
   # TODO: ADD JOB TO SWITCH THE GITHUB RELEASE FROM DRAFT TO LATEST
   publish-sdkman:
@@ -53,6 +58,8 @@ jobs:
 
   build-chocolatey:
     uses: ./.github/workflows/build-chocolatey.yml
+    permissions:
+      contents: read
     needs: compute-digest
     with:
       version: ${{ inputs.version }}
@@ -60,6 +67,8 @@ jobs:
       digest : ${{ needs.compute-digest.outputs.digest }}
   test-chocolatey:
     uses: ./.github/workflows/test-chocolatey.yml
+    permissions:
+      actions: read  # Granted because the called workflow declares it, unused for stable versions
     needs: build-chocolatey
     with:
       version     : ${{ inputs.version }}

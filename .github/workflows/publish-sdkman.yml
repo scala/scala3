@@ -26,6 +26,9 @@ on:
       CONSUMER-TOKEN:
         required: true
 
+# Publishes to SDKMAN! with vendor credentials no GITHUB_TOKEN use
+permissions: {}
+
 env:
   RELEASE-URL: 'https://github.com/scala/scala3/releases/download/${{ inputs.version }}'
 

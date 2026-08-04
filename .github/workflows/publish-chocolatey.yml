@@ -26,6 +26,9 @@ on:
       API-KEY:
         required: true
 
+# Pushes to Chocolatey with an API key, no GITHUB_TOKEN use
+permissions: {}
+
 jobs:
   publish:
     runs-on: windows-latest
