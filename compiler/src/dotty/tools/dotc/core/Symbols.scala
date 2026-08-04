@@ -311,7 +311,7 @@ object Symbols extends SymUtils {
 
     final def source(using Context): SourceFile = {
       def valid(src: SourceFile): SourceFile =
-        if (src.exists && !src.file.ext.isScalaBinary) src
+        if (src.exists && !src.ext.isScalaBinary) src
         else NoSource
 
       if (!denot.exists) NoSource

@@ -46,9 +46,9 @@ class LogicalPackagesProvider(sourcePath: String){
       rootPackage: ParsedLogicalPackage
   ): Unit =
     val fileName = sourceFile.path
-    if sourceFile.file.ext ==  FileExtension.Scala then
+    if sourceFile.ext ==  FileExtension.Scala then
       parseScalaSourceFile(sourceFile, rootPackage)
-    else if sourceFile.file.ext == FileExtension.Java then
+    else if sourceFile.ext == FileExtension.Java then
       parseJavaSourceFile(sourceFile, rootPackage)
 
   private def parseScalaSourceFile(
@@ -97,7 +97,7 @@ class LogicalPackagesProvider(sourcePath: String){
         traversePackageDef(pkg)
       case _: untpd.MemberDef =>
         // Top-level class or object in default package
-        currentPackage.enterSource(sourceFile.file)
+        currentPackage.enterSource(sourceFile.file.nn)
       case _ =>
 
     private def traversePackageDef(pkg: untpd.PackageDef): Unit = {

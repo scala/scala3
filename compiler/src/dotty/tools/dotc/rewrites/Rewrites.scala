@@ -73,6 +73,7 @@ object Rewrites {
     }
 
     def writeBack(): Unit =
+      assert(source.file != null, "Cannot rewrite nonexistent file!")
       val chars = apply(source.content)
       val osw = OutputStreamWriter(source.file.output, UTF_8)
       try osw.write(chars, 0, chars.length)
@@ -114,7 +115,7 @@ object Rewrites {
   def writeBack()(using Context): Unit =
     if ctx.settings.rewrite.value then
       for (source, value) <- ctx.base.patched do
-        report.echo(s"[patched file ${source.file.path}]")
+        report.echo(s"[patched file ${source.path}]")
         value.writeBack()
 
   /** Given a CodeAction take the patches and apply them.

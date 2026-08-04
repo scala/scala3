@@ -58,7 +58,7 @@ class ActiveProfile(details: Int) extends Profile:
 
   private def curInfo(using Context): Profile.Info =
     val unit: CompilationUnit | Null = ctx.compilationUnit
-    if unit == null || unit.source.file.isVirtual then junkInfo else unitProfile(unit)
+    if unit == null || unit.source.file == null || unit.source.file.isVirtual then junkInfo else unitProfile(unit)
 
   def unitProfile(unit: CompilationUnit): Profile.Info =
     pinfo.getOrElseUpdate(unit, new Profile.Info(details))
@@ -112,7 +112,7 @@ class ActiveProfile(details: Int) extends Profile:
       for unit <- units do
         val file = unit.source.file
         val info = unitProfile(unit)
-        printInfo(layout, file.name, info, file.container.map(_.path).getOrElse("<no file>"))
+        printInfo(layout, unit.source.name, info, if file == null then "<no file>" else file.container.map(_.path).getOrElse("<no file>"))
         agg.lineCount += info.lineCount
         agg.tokenCount += info.tokenCount
         agg.tastySize += info.tastySize
@@ -140,8 +140,8 @@ class ActiveProfile(details: Int) extends Profile:
         info.lineCount += 1
         info.tastySize = size
         val file = meth.source.file
-        val header = s"%-${sourceNameWidth}s %-${methNameWidth}s".format(file.name, meth.name)
-        printInfo(layout, header, info, file.container.map(_.path).getOrElse("<no file>"))
+        val header = s"%-${sourceNameWidth}s %-${methNameWidth}s".format(meth.source.name, meth.name)
+        printInfo(layout, header, info, if file == null then "<no file>" else file.container.map(_.path).getOrElse("<no file>"))
 
     val agg = printAndAggregateSourceInfos()
     if details > 0 then printDetails(agg)

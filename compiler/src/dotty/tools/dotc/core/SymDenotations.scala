@@ -2699,8 +2699,10 @@ object SymDenotations {
       for (sym <- scope.toList.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
-        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.compUnitInfo != null && sym.asClass.compUnitInfo.nn.associatedFile.path == path)
-          scope.unlink(sym, sym.lastKnownDenotation.name)
+        if sym.defRunId != ctx.runId && sym.isClass && sym.asClass.compUnitInfo != null then
+          val file = sym.asClass.compUnitInfo.nn.associatedFile
+          if file != null && file.path == path then
+            scope.unlink(sym, sym.lastKnownDenotation.name)
     }
   }
 

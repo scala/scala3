@@ -27,11 +27,11 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
   /** Is this the compilation unit of a Java file */
-  def isJava: Boolean = source.file.ext.isJava
+  def isJava: Boolean = source.ext.isJava
 
   /** Is this the compilation unit of a Java file, or TASTy derived from a Java file */
   def typedAsJava =
-    val ext = source.file.ext
+    val ext = source.ext
     ext.isJava || ext.isTasty && tastyInfo.exists(_.attributes.isJava)
 
   def tastyInfo: Option[TastyInfo] =
@@ -178,15 +178,16 @@ object CompilationUnit {
    *  If `mustExist` is true, this will fail if `source` does not exist.
    */
   def apply(source: SourceFile, mustExist: Boolean = true)(using Context): CompilationUnit = {
+    val file = source.file
     val src =
       if (!mustExist)
         source
-      else if (source.file.isDirectory) {
-        report.error(em"expected file, received directory '${source.path}'")
+      else if (file == null || !file.exists) {
+        report.error(em"source file not found: ${source.path}")
         NoSource
       }
-      else if (!source.file.exists) {
-        report.error(em"source file not found: ${source.path}")
+      else if (file.isDirectory) {
+        report.error(em"expected file, received directory '${source.path}'")
         NoSource
       }
       else source

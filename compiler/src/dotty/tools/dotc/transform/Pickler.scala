@@ -545,13 +545,12 @@ class Pickler extends Phase {
     val resolveCheck = ctx.settings.YtestPicklerCheck.value
     val unpicklers =
       for ((cls, (unit, bytes)) <- pickledBytes) yield {
-        val unpickler = new DottyUnpickler(new VirtualFile(unit.source.file.path, bytes), isBestEffortTasty = false)
+        val unpickler = new DottyUnpickler(new VirtualFile(unit.source.path, bytes), isBestEffortTasty = false)
         unpickler.enter(roots = Set.empty)
         val optCheck =
-          if resolveCheck then
+          if resolveCheck && unit.source.file != null then
             val resolved = unit.source.file.resolveSibling(s"${cls.name.mangledString}.tastycheck")
-            if resolved == null then None
-            else Some(resolved)
+            Option(resolved)
           else None
         cls -> (unit, unpickler, optCheck)
       }
