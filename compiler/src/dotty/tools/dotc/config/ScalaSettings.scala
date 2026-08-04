@@ -93,8 +93,7 @@ trait CommonScalaSettings:
   val sourceroot: Setting[String] = PathSetting(RootSetting, "sourceroot", "Specify workspace root directory.", ".")
 
   val classpath: Setting[String] = PathSetting(RootSetting, "classpath", "Specify where to find user class files.", ScalaSettingsProperties.defaultClasspath, aliases = List("-cp", "--class-path"))
-  val outputDir: Setting[AbstractFile] = OutputSetting(RootSetting, "d", "directory|jar", "Destination for generated classfiles.",
-    new PlainDirectory(Directory(".")))
+  val outputDir: Setting[AbstractFile] = OutputSetting(RootSetting, "d", "directory|jar", "Destination for generated classfiles.", new PlainDirectory(Directory(".")))
   val color: Setting[String] = ChoiceSetting(RootSetting, "color", "mode", "Colored output", List("always", "never"/*, "auto"*/), "always"/* "auto"*/, aliases = List("--color"))
   val verbose: Setting[Boolean] = BooleanSetting(RootSetting, "verbose", "Output messages about what the compiler is doing.", aliases = List("--verbose"))
   val version: Setting[Boolean] = BooleanSetting(RootSetting, "version", "Print product version and exit.", aliases = List("--version"))
@@ -468,7 +467,7 @@ private sealed trait XSettings:
 
   /** Pipeline compilation options */
   val XjavaTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xjava-tasty", "Pickler phase should compute TASTy for .java defined symbols for use by build tools", aliases = List("-Xpickle-java", "-Yjava-tasty", "-Ypickle-java"), preferPrevious = true)
-  val XearlyTastyOutput: Setting[AbstractFile] = OutputSetting(AdvancedSetting, "Xearly-tasty-output", "directory|jar", "Destination to write generated .tasty files to for use in pipelined compilation.", NoAbstractFile, aliases = List("-Xpickle-write", "-Yearly-tasty-output", "-Ypickle-write"), ignoreInvalidArgs = true, preferPrevious = true)
+  val XearlyTastyOutput: Setting[Option[AbstractFile]] = OptionalOutputSetting(AdvancedSetting, "Xearly-tasty-output", "directory|jar", "Destination to write generated .tasty files to for use in pipelined compilation.", aliases = List("-Xpickle-write", "-Yearly-tasty-output", "-Ypickle-write"), ignoreInvalidArgs = true, preferPrevious = true)
   val XallowOutlineFromTasty: Setting[Boolean] = BooleanSetting(AdvancedSetting, "Xallow-outline-from-tasty", "Allow outline TASTy to be loaded with the -from-tasty option.", aliases = List("-Yallow-outline-from-tasty"))
 
   val XmixinForceForwarders = ChoiceSetting(
