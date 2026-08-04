@@ -11,26 +11,26 @@ import dotc.parsing.Tokens.*
 import dotc.printing.SyntaxHighlighting
 import dotc.reporting.Reporter
 import dotc.util.SourceFile
-import org.jline.reader
-import org.jline.reader.Parser.ParseContext
-import org.jline.reader.*
-import org.jline.reader.impl.LineReaderImpl
-import org.jline.reader.impl.history.DefaultHistory
-import org.jline.terminal.Attributes
-import org.jline.terminal.Attributes.ControlChar
-import org.jline.terminal.TerminalBuilder
-import org.jline.terminal.Terminal.Signal
-import org.jline.utils.AttributedString
-import org.jline.utils.NonBlockingReader
+import dotty.shaded.org.jline.reader
+import dotty.shaded.org.jline.reader.Parser.ParseContext
+import dotty.shaded.org.jline.reader.*
+import dotty.shaded.org.jline.reader.impl.LineReaderImpl
+import dotty.shaded.org.jline.reader.impl.history.DefaultHistory
+import dotty.shaded.org.jline.terminal.Attributes
+import dotty.shaded.org.jline.terminal.Attributes.ControlChar
+import dotty.shaded.org.jline.terminal.TerminalBuilder
+import dotty.shaded.org.jline.terminal.Terminal.Signal
+import dotty.shaded.org.jline.utils.AttributedString
+import dotty.shaded.org.jline.utils.NonBlockingReader
 
 // `stdin` alternates between a background Ctrl-C monitor and the foreground
 // wrapped `System.in` reader. These states track which side currently owns it.
 private enum InputState:
   case Monitoring, ForegroundRead, Closed
 
-class JLineTerminal(providedTerminal: org.jline.terminal.Terminal | Null = null) extends java.io.Closeable {
+class JLineTerminal(providedTerminal: dotty.shaded.org.jline.terminal.Terminal | Null = null) extends java.io.Closeable {
   def this() = this(null)
-  private val terminal: org.jline.terminal.Terminal =
+  private val terminal: dotty.shaded.org.jline.terminal.Terminal =
     if providedTerminal != null then providedTerminal
     else
       val builder = TerminalBuilder.builder()

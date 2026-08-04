@@ -10,8 +10,8 @@ import java.util.concurrent.{Executors, TimeUnit, TimeoutException}
 import dotc.core.Contexts.Context
 import org.junit.Assert.*
 import org.junit.Test
-import org.jline.reader.{Candidate, Completer, LineReader, ParsedLine}
-import org.jline.terminal.TerminalBuilder
+import dotty.shaded.org.jline.reader.{Candidate, Completer, LineReader, ParsedLine}
+import dotty.shaded.org.jline.terminal.TerminalBuilder
 
 /** Interactive-mode accept-line behaviour for lone directives/commands and pastes. */
 class ReplInteractiveTests:

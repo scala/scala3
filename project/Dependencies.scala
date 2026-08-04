@@ -39,6 +39,7 @@ object Dependencies {
   val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
   private val jlineVersion = "4.3.1"
+  val jlineNative = "org.jline" % "jline-native" % jlineVersion
   val jlineReader = "org.jline" % "jline-reader" % jlineVersion
   val jlineTerminal = "org.jline" % "jline-terminal" % jlineVersion
   val jlineTerminalJni = "org.jline" % "jline-terminal-jni" % jlineVersion

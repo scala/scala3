@@ -7,8 +7,8 @@ import java.io.{ByteArrayOutputStream, PipedInputStream, PipedOutputStream}
 
 import org.junit.Assert.*
 import org.junit.{Ignore, Test}
-import org.jline.terminal.TerminalBuilder
-import org.jline.utils.NonBlockingReader
+import dotty.shaded.org.jline.terminal.TerminalBuilder
+import dotty.shaded.org.jline.utils.NonBlockingReader
 
 class JLineTerminalTests:
 
