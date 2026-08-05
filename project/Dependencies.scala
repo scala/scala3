@@ -49,7 +49,7 @@ object Dependencies {
 
   val lsp4j = "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "1.0.0"
 
-  val lz4 = "org.lz4" % "lz4-java" % "1.8.1"
+  val lz4 = "at.yawk.lz4" % "lz4-java" % "1.11.1"
 
   private val mtagsVersion = "1.6.8"
   val mtagsInterfaces = "org.scalameta" % "mtags-interfaces" % mtagsVersion
