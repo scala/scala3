@@ -10,16 +10,9 @@ import scala.util.control.NonFatal
 import dotty.tools.repl.AbstractFileClassLoader
 
 import coursierapi.{Dependency, MavenRepository}
-import dotty.tools.directives.{DirectiveValue, UsingDirectivesParser}
 
 /** Handles dependency resolution using Coursier for the REPL */
 object DependencyResolver:
-
-  /** Result of classifying `//> using` directives in REPL input. */
-  case class ClassifiedDirectives(deps: List[String], unsupportedKeys: List[String], hasDirectives: Boolean)
-
-  /** Directive keys the REPL knows how to handle. Extend as more directives gain REPL support. */
-  val supportedDirectives: Set[String] = Set("dep")
 
   /** Parse a dependency string of the form `org::artifact:version` or `org:artifact:version`
    *  and return the (organization, artifact, version) triple if successful.
@@ -35,20 +28,6 @@ object DependencyResolver:
       case _ =>
         System.err.println("Unable to parse dependency \"" + dep + "\"")
         None
-
-  /** Classify `//> using` directives in REPL input into dependency coordinates and unsupported keys. */
-  def classifyDirectives(sourceCode: String): ClassifiedDirectives =
-    try
-      val result = UsingDirectivesParser.parse(sourceCode)
-      val (supported, unsupported) = result.directives.partition(d => supportedDirectives.contains(d.key))
-      val deps =
-        supported
-          .flatMap(_.values.collect { case DirectiveValue.StringVal(value, _, _) => value })
-          .toList
-      val unsupportedKeys = unsupported.map(_.key).distinct.toList
-      ClassifiedDirectives(deps, unsupportedKeys, result.directives.nonEmpty)
-    catch
-      case NonFatal(_) => ClassifiedDirectives(Nil, Nil, false)
 
   /** Resolve dependencies using Coursier Interface and return the classpath as a list of File objects */
   def resolveDependencies(dependencies: List[(String, String, String)]): Either[String, List[File]] =
