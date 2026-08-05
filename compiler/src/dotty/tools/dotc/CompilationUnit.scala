@@ -183,7 +183,7 @@ object CompilationUnit {
       if (!mustExistIfNotNull)
         source
       else if (file == null) {
-        NoSource
+        source
       }
       else if (file.isDirectory) {
         report.error(em"expected file, received directory '${source.path}'")
