@@ -1092,7 +1092,7 @@ object CaptureSet:
           elem match
             case elem: LocalCap =>
               if elem.origin != Origin.InDecl(owner) then
-                val isSubsumed = (false /: inDeclRoots): (isSubsumed, root) =>
+                val isSubsumed = inDeclRoots.exists: root =>
                   hideIn(root.asInstanceOf[LocalCap])
                 if !isSubsumed then
                   val fc = LocalCap(owner, Origin.InDecl(owner, elem.origin.contributingFields))
