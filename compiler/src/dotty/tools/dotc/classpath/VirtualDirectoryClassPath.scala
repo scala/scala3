@@ -1,6 +1,6 @@
 package dotty.tools.dotc.classpath
 
-import dotty.tools.io.{AbstractFile, ClassPath, FileExtension, VirtualDirectory}
+import dotty.tools.io.{AbstractFile, FileExtension}
 import FileUtils.*
 
 import java.net.{URI, URL}
@@ -8,14 +8,12 @@ import java.net.{URI, URL}
 case class VirtualDirectoryClassPath(dir: AbstractFile) extends ClassPath with DirectoryLookup[BinaryFileEntry] {
   type F = AbstractFile
 
-  protected def emptyFiles: Array[AbstractFile] = Array.empty
-
   protected def getSubDir(packageDirName: String): Option[AbstractFile] =
     dir.lookupPath(packageDirName, java.io.File.separatorChar, directory = true)
 
-  protected def listChildren(dir: AbstractFile, filter: Option[AbstractFile => Boolean] = None): Array[F] = filter match {
-    case Some(f) => dir.iterator.filter(f).toArray
-    case _ => dir.iterator.toArray
+  protected def listChildren(dir: AbstractFile, filter: Option[AbstractFile => Boolean] = None): Iterable[F] = filter match {
+    case Some(f) => dir.iterator.filter(f).toSeq
+    case _ => dir.iterator.toSeq
   }
   def getName(f: AbstractFile): String = f.name
   def toAbstractFile(f: AbstractFile): AbstractFile = f
@@ -27,7 +25,7 @@ case class VirtualDirectoryClassPath(dir: AbstractFile) extends ClassPath with D
     dir.lookupPath(className, '.', lastSuffix = FileExtension.Class.withDot, directory = false)
   }
 
-  override def classes(inPackage: String): Seq[BinaryFileEntry] = files(inPackage)
+  override def classes(inPackage: String): Iterable[BinaryFileEntry] = files(inPackage)
 
   protected def createFileEntry(file: AbstractFile): BinaryFileEntry = BinaryFileEntry(file)
 

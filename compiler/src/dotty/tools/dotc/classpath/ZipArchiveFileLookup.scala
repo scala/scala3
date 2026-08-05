@@ -7,9 +7,8 @@ package dotty.tools.dotc.classpath
 import java.io.File
 import java.net.URL
 
-import dotty.tools.io.{ AbstractFile, FileZipArchive }
+import dotty.tools.io.AbstractFile
 import FileUtils.*
-import dotty.tools.io.ClassPath
 
 /**
  * A trait allowing to look for classpath entries of given type in zip and jar files.
@@ -24,15 +23,15 @@ trait ZipArchiveFileLookup[FileEntryType] extends ClassPath {
 
   private val archive = AbstractFile.getDirectory(zipFile.toPath, release).nn
 
-  override def packages(inPackage: String): Seq[PackageEntry] =
+  override def packages(inPackage: String): Iterable[String] =
     findDirEntry(inPackage) match {
       case None =>
         Seq.empty
       case Some(dirEntry) =>
-        dirEntry.iterator.filter(_.isPackage).map(e => PackageEntry(PackageNameUtils.entryName(inPackage, e.name))).toSeq
+        dirEntry.iterator.filter(_.isPackage).map(e => PackageNameUtils.entryName(inPackage, e.name)).toSeq
     }
 
-  protected def files(inPackage: String): Seq[FileEntryType] =
+  protected def files(inPackage: String): Iterable[FileEntryType] =
     findDirEntry(inPackage) match {
       case None =>
         Seq.empty

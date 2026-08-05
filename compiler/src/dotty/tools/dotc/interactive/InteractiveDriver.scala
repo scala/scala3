@@ -44,7 +44,7 @@ class InteractiveDriver(
 
   override def sourcesRequired: Boolean = false
 
-  private var myProgressCallback: ProgressCallback = new ProgressCallback:
+  private val myProgressCallback: ProgressCallback = new ProgressCallback:
     override def isCancelled(): Boolean = Thread.interrupted()
 
   private val myInitCtx: Context = {

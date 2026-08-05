@@ -4,14 +4,12 @@
 
 package dotty.tools.dotc.classpath
 
-import dotty.tools.io.ClassPath
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.runners.JUnit4
 import dotty.tools.dotc.config.PathResolver
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase}
-import dotty.tools.dotc.classpath.ClassPathFactory
 
 import scala.tools.asm.ClassReader
 import scala.tools.asm.tree.ClassNode
@@ -32,7 +30,7 @@ class JrtClassPathTest {
       else JrtClassPath(None).get
 
     assertEquals(Nil, cp.classes(""))
-    assertTrue(cp.packages("java").toString, cp.packages("java").exists(_.name == "java.lang"))
+    assertTrue(cp.packages("java").toString, cp.packages("java").exists(_ == "java.lang"))
     assertTrue(cp.classes("java.lang").exists(_.name == "Object"))
     val jl_Object = cp.classes("java.lang").find(_.name == "Object").get
     val jl_Class = {
@@ -41,7 +39,7 @@ class JrtClassPathTest {
       node
     }
     assertEquals("java/lang/Object", jl_Class.name)
-    assertTrue(cp.packages("java.lang").exists(_.name == "java.lang.annotation"))
+    assertTrue(cp.packages("java.lang").exists(_ == "java.lang.annotation"))
     assertTrue(cp.findClassFile("java.lang.Object").isDefined)
   }
 }
