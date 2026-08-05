@@ -1031,6 +1031,8 @@ class CheckCaptures extends Recheck, SymTransformer:
     /** Check that capture set of type argument subcaptures capture set of bounds.
      *  We don't check if
      *   - the bound is exactly any since that is capture polymorphic top, or
+     *   - the bound is FromJavaObject (the `Object` bound of Java type parameters),
+     *     which is the capture polymorphic top for Java interop, or
      *   - the bound is singleton, since that's not a "real" bound, or
      *   - the bound capture set has terminal capabilities, since we don't
      *     want to upper-bound capsets by GlobalAny, or
@@ -1042,8 +1044,11 @@ class CheckCaptures extends Recheck, SymTransformer:
       val argRefs = argType.captureSet
       val hiBound = formal.bounds.hi
       val boundRefs = hiBound.captureSet
+      // Is `hiBound` exactly `Any`, or `FromJavaObject` (Java's `Object` bound)?
+      // These are capture polymorphic top types, so they do not constrain arguments.
+      val isPolymorphicTop = hiBound.isExactlyAny || hiBound.isFromJavaObject
       val canCheck =
-        !hiBound.isExactlyAny && !hiBound.isRef(defn.SingletonClass)
+        !isPolymorphicTop && !hiBound.isRef(defn.SingletonClass)
         && !boundRefs.elems.exists:
           case ref: TypeParamRef => ref.binder == binder // F-bounded
           case ref => ref.isTerminalCapability // GlobalCaps cannot constrain arguments
@@ -1985,6 +1990,11 @@ class CheckCaptures extends Recheck, SymTransformer:
         // Get wildcards out of the way
         expected match
           case _: WildcardType => return actual
+          case _ =>
+
+        actual match
+          case actual: FlexibleType =>
+            return actual.derivedFlexibleType(recur(actual.hi, expected, covariant))
           case _ =>
 
         // Decompose the actual type into the inner shape type, the capture set and the box status
