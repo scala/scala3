@@ -126,7 +126,7 @@ object SafeRefs {
       "newInstance", "cast", "toGenericString"))
     assumeSafe("java.util.Locale", except = List("setDefault"))
     assumeSafe("java.util.TimeZone", except = List("setDefault", "setID", "setRawOffset"))
-    assumeSafe("java.util.UUID", except = List("randomUIID"))
+    assumeSafe("java.util.UUID", except = List("randomUUID"))
     assumeSafe("java.util.Objects")
     assumeSafe("java.util.Optional")
     assumeSafe("java.util.OptionalInt")

@@ -21,6 +21,11 @@ import org.junit.Ignore
     val compilationTest = withCoverage(aggregateTests(test))
     runWithCoverageOrFallback[TestKind](compilationTest)
 
+  @Test def rewrite(): Unit =
+    given testGroup: TestGroup = TestGroup("single-test")
+    val options = defaultOptions.and("-indent").and("-rewrite")
+    compileFile("tests/rewrites/i8982.scala", options).checkRewrites()
+
   @Test def bestEffortTasty(): Unit =
     given testGroup: TestGroup = TestGroup("single-test")
     // can add, e.g., .and("-some-option")

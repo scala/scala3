@@ -1,5 +1,5 @@
 object Test {
-  type FieldType2[K, +V] = V with KeyTag2[K, V]
+  type FieldType2[K, +V] = V & KeyTag2[K, V]
   trait KeyTag2[K, +V] extends Any
 
   type WrapUpper = Tuple

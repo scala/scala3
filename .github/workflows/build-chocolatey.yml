@@ -23,25 +23,28 @@ on:
         required: true
         type    : string
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Replace the version placeholder
-        uses: richardrigutins/replace-in-files@v3
+        uses: richardrigutins/replace-in-files@5b141bbfcb4cbf3eea03a9658645166eef3f9030 # v3.1.1
         with:
           files: ./pkgs/chocolatey/scala.nuspec
           search-text: '@LAUNCHER_VERSION@'
           replacement-text: ${{ inputs.version }}
       - name: Replace the URL placeholder
-        uses: richardrigutins/replace-in-files@v3
+        uses: richardrigutins/replace-in-files@5b141bbfcb4cbf3eea03a9658645166eef3f9030 # v3.1.1
         with:
           files: ./pkgs/chocolatey/tools/chocolateyInstall.ps1
           search-text: '@LAUNCHER_URL@'
           replacement-text: ${{ inputs.url }}
       - name: Replace the CHECKSUM placeholder
-        uses: richardrigutins/replace-in-files@v3
+        uses: richardrigutins/replace-in-files@5b141bbfcb4cbf3eea03a9658645166eef3f9030 # v3.1.1
         with:
           files: ./pkgs/chocolatey/tools/chocolateyInstall.ps1
           search-text: '@LAUNCHER_SHA256@'
@@ -49,7 +52,7 @@ jobs:
       - name: Build the Chocolatey package (.nupkg)
         run: choco pack ./pkgs/chocolatey/scala.nuspec --out ./pkgs/chocolatey
       - name: Upload the Chocolatey package to GitHub
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: scala.nupkg
           path: ./pkgs/chocolatey/scala.${{ inputs.version }}.nupkg

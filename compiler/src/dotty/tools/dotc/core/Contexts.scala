@@ -22,7 +22,7 @@ import Implicits.ContextualImplicits
 import config.Settings.*
 import config.Config
 import reporting.*
-import io.{AbstractFile, NoAbstractFile, PlainFile, Path}
+import io.{AbstractFile, PlainFile, Path}
 import scala.io.Codec
 import collection.mutable
 import printing.*
@@ -40,6 +40,7 @@ import util.Store
 import plugins.*
 import java.nio.file.InvalidPathException
 import dotty.tools.dotc.coverage.Coverage
+import dotty.tools.dotc.rewrites.Rewrites
 import scala.annotation.tailrec
 
 object Contexts {
@@ -312,8 +313,8 @@ object Contexts {
           if ctx2.compilationUnit eq NoCompilationUnit then
             // `source` might correspond to a file not necessarily
             // in the current project (e.g. when inlining library code),
-            // so set `mustExist` to false.
-            ctx2.setCompilationUnit(CompilationUnit(source, mustExist = false))
+            // so set `mustExistIfNotNull` to false.
+            ctx2.setCompilationUnit(CompilationUnit(source, mustExistIfNotNull = false))
           ctx1 = ctx2
           related = related.nn.updated(source, ctx2)
         ctx1
@@ -1096,6 +1097,8 @@ object Contexts {
     private var charArray = new Array[Char](256)
 
     private[dotc] var wConfCache: (List[String], WConf) = uninitialized
+
+    private[dotc] val patched: Rewrites.PatchedFiles = Rewrites.newPatchedFiles()
 
     def sharedCharArray(len: Int): Array[Char] =
       while len > charArray.length do

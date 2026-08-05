@@ -2,7 +2,7 @@ trait A
 trait B
 
 trait Wr {
-  val z: A with B
+  val z: A & B
 }
 
 object Er {

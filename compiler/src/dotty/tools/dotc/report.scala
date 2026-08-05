@@ -103,12 +103,12 @@ object report:
           |${stackTrace}"""
     ctx.reporter.report(Error(fullMsg, NoSourcePosition))
 
-  def errorOrMigrationWarning(msg: Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
+  def errorOrMigrationWarning(msg: => Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
     if sourceVersion != SourceVersion.`2.13` then
       // ignore errors or warningsfor Scala 2 stdlib sources
       if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
         if sourceVersion != migrationVersion.errorFrom.prevMigrating then error(msg, pos)
-        else if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
+        else if !ctx.settings.rewrite.value then migrationWarning(msg, pos)
       else if sourceVersion.isAtLeast(migrationVersion.warnFrom) then warning(msg, pos)
 
   def restrictionError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =

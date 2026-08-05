@@ -6,7 +6,7 @@ import java.io.{IOException, File}
 import java.nio.channels.ClosedByInterruptException
 
 import dotty.tools.dotc.classpath.PackageNameUtils
-import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile, NoAbstractFile }
+import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
 
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
 import NameOps.*
@@ -359,7 +359,6 @@ object SymbolLoaders {
     jarClasspath: ClassPath, fullClasspath: ClassPath,
   )(using Context): Unit =
     val hasClasses = jarClasspath.classes(fullPackageName).nonEmpty
-    val hasPackages = jarClasspath.packages(fullPackageName).nonEmpty
 
     if hasClasses then
       // if the package contains classes in jarClasspath, the package is invalidated (or removed if there are no more classes in it)
@@ -383,13 +382,12 @@ object SymbolLoaders {
     // This is needed when a package has BOTH classes AND sub-packages,
     // e.g. scala-parallel-collections adds both classes to scala.collection
     // and the new scala.collection.parallel sub-package.
-    if hasPackages then
-      for p <- jarClasspath.packages(fullPackageName) do
-        val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
-        val subPackage = packageClass.info.decl(subPackageName).orElse:
-          // package does not exist in symbol table, create a new symbol
-          enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))
-        mergeNewEntries(subPackage.asSymDenotation.moduleClass.asClass, p.name, jarClasspath, fullClasspath)
+    for p <- jarClasspath.packages(fullPackageName) do
+      val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
+      val subPackage = packageClass.info.decl(subPackageName).orElse:
+        // package does not exist in symbol table, create a new symbol
+        enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))
+      mergeNewEntries(subPackage.asSymDenotation.moduleClass.asClass, p.name, jarClasspath, fullClasspath)
   end mergeNewEntries
 }
 
@@ -417,10 +415,10 @@ abstract class SymbolLoader extends LazyType { self =>
 
   private inline def profileCompletion[T](root: SymDenotation)(inline body: T)(using Context): T = {
     val sym = root.symbol
-    def associatedFile = root.symbol.associatedFile match
-      case file: AbstractFile => file
-      case null => NoAbstractFile
-    ctx.profiler.onCompletion(sym, associatedFile)(body)
+    def associatedFileName = root.symbol.associatedFile match
+      case file: AbstractFile => Some(file.name)
+      case null => None
+    ctx.profiler.onCompletion(sym, associatedFileName)(body)
   }
 
   override def complete(root: SymDenotation)(using Context): Unit = profileCompletion(root) {
@@ -505,15 +503,17 @@ class ClassfileLoader(val classfile: AbstractFile) extends SymbolLoader {
     classfileParser.run()
 }
 
-class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
-  val isBestEffortTasty = tastyFile.ext.isBetasty
+class TastyLoader(tastyFile: AbstractFile) extends SymbolLoader {
+  private val isBestEffortTasty = tastyFile.ext.isBetasty
 
   private lazy val unpickler: tasty.DottyUnpickler =
     handleUnpicklingExceptions:
       new tasty.DottyUnpickler(tastyFile, isBestEffortTasty) // reads header and name table
 
-  val compilationUnitInfo: CompilationUnitInfo =
-    CompilationUnitInfo(tastyFile, unpickler.compilationUnitInfo.tastyInfo)
+  def compilationUnitInfo: CompilationUnitInfo =
+    // It's important for performance that we only materialize `unpickler` if tasty info is actually requested,
+    // not for every compilation unit info
+    CompilationUnitInfo(tastyFile, () => unpickler.compilationUnitInfo.tastyInfo)
 
   def description(using Context): String =
     if isBestEffortTasty then "Best Effort TASTy file " + tastyFile.toString
@@ -567,7 +567,7 @@ class TastyLoader(val tastyFile: AbstractFile) extends SymbolLoader {
     ctx.settings.YretainTrees.value || ctx.settings.fromTasty.value
 }
 
-class SourcefileLoader(val srcfile: AbstractFile) extends SymbolLoader {
+class SourcefileLoader(srcfile: AbstractFile) extends SymbolLoader {
   def description(using Context): String = "source file " + srcfile.toString
   def compilationUnitInfo: CompilationUnitInfo | Null = CompilationUnitInfo(srcfile)
   def doComplete(root: SymDenotation)(using Context): Unit =

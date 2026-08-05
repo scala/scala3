@@ -96,11 +96,9 @@
 [submodule "community-build/community-projects/cats-effect-3"]
 	path = community-build/community-projects/cats-effect-3
 	url = https://github.com/dotty-staging/cats-effect.git
-	branch = series/3.x
 [submodule "community-build/community-projects/scala-parallel-collections"]
 	path = community-build/community-projects/scala-parallel-collections
 	url = https://github.com/dotty-staging/scala-parallel-collections.git
-	branch = serialisation-stability-fix
 [submodule "community-build/community-projects/scala-collection-compat"]
 	path = community-build/community-projects/scala-collection-compat
 	url = https://github.com/dotty-staging/scala-collection-compat.git
@@ -167,7 +165,6 @@
 [submodule "community-build/community-projects/perspective"]
 	path = community-build/community-projects/perspective
 	url = https://github.com/dotty-staging/perspective.git
-	branch = dotty/nightly
 [submodule "community-build/community-projects/akka"]
 	path = community-build/community-projects/akka
 	url = https://github.com/dotty-staging/akka.git

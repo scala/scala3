@@ -2111,7 +2111,7 @@ object Parsers {
         t
     }
 
-    /** WithType ::= AnnotType {`with' AnnotType}    (deprecated)
+    /** WithType ::= AnnotType {`with' AnnotType}    (error since 3.10, deprecated since 3.4)
      *
      *  `inPatternType` indicates that this type appears in a typed pattern
      *  position (such as `case x: A with B =>` or `case given A with B =>`).
@@ -2246,9 +2246,9 @@ object Parsers {
           Ident(tpnme.USCOREkw).withSpan(Span(start, in.lastOffset, start))
         else
           if !inMatchPattern then
-            val msg =
-              em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}"
-            report.errorOrMigrationWarning(msg, in.sourcePos(), MigrationVersion.WildcardType)
+            report.errorOrMigrationWarning(
+              em"`_` is deprecated for wildcard arguments of types: use `?` instead${rewriteNotice(`3.4-migration`)}",
+              in.sourcePos(), MigrationVersion.WildcardType)
           val start = in.skipToken()
           typeBounds().withSpan(Span(start, in.lastOffset, start))
             .tap: tbt =>

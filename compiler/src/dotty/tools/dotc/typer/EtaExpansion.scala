@@ -55,6 +55,9 @@ abstract class Lifter {
   /** Hook for lifters that need to record or mark freshly created lifted defs. */
   protected def onLiftedDef(tree: Tree)(using Context): Unit = ()
 
+  protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: Tree)(using Context): Tree =
+    ref(lifted.termRef)
+
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
     else {
@@ -72,7 +75,7 @@ abstract class Lifter {
         .setDefTree
       onLiftedDef(liftedTree)
       defs += liftedTree
-      ref(lifted.termRef).withSpan(expr.span.focus)
+      liftedRef(lifted, liftedType, expr).withSpan(expr.span.focus)
     }
 
   /** Lift out common part of lhs tree taking part in an operator assignment such as

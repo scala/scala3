@@ -1,0 +1,44 @@
+-- Error: tests/neg-custom-args/captures/freshlist-explicit.scala:40:23 ------------------------------------------------
+40 |    val xs = FreshCons(r1, xs1) // error separation
+   |                       ^^
+   |Separation failure: Illegal access to (r1 : Ref^), which was passed as a consume parameter to constructor of class FreshCons
+   |on line 39 and therefore is no longer available.
+   |
+   |where:    ^ refers to a root capability classified as Unscoped in the type of value r1
+-- Error: tests/neg-custom-args/captures/freshlist-explicit.scala:43:8 -------------------------------------------------
+43 |    par(h, c.head) // error separation
+   |        ^
+   |Separation failure: argument of type  (h : Ref^{c.head})
+   |to method par: [A, B](x: A^, y: B^): Unit
+   |corresponds to capture-polymorphic formal parameter x of type  (Ref^'s1)^
+   |and hides capabilities  {h}.
+   |Some of these overlap with the captures of the second argument with type  (c.head : Ref^).
+   |
+   |  Hidden set of current argument        : {h}
+   |  Hidden footprint of current argument  : {h, c.head}
+   |  Capture set of second argument        : {c.head}
+   |  Footprint set of second argument      : {c.head}
+   |  The two sets overlap at               : {c.head}
+   |
+   |where:    ^ refers to a root capability classified as Unscoped created in method Test when checking argument to parameter x of method par
+-- Error: tests/neg-custom-args/captures/freshlist-explicit.scala:54:14 ------------------------------------------------
+54 |    val err = xs match // error separation
+   |              ^^
+   |Separation failure: Illegal access to (xs : FreshList[Ref^{}]^), which was passed as a consume parameter to method unapply
+   |on line 49 and therefore is no longer available.
+   |
+   |where:    ^ refers to a root capability in the type of value xs
+-- Error: tests/neg-custom-args/captures/freshlist-explicit.scala:55:11 ------------------------------------------------
+55 |      case FreshCons(h, t) => FreshCons(h, t) // error separation // error separation
+   |           ^
+   |Separation failure: Illegal access to (x10 : (xs : FreshList[Ref^{}]^)), which was passed as a consume parameter to method unapply
+   |on line 49 and therefore is no longer available.
+   |
+   |where:    ^ refers to a root capability in the type of value xs
+-- Error: tests/neg-custom-args/captures/freshlist-explicit.scala:55:20 ------------------------------------------------
+55 |      case FreshCons(h, t) => FreshCons(h, t) // error separation // error separation
+   |                    ^
+   |Separation failure: Illegal access to (x10 : (xs : FreshList[Ref^{}]^)), which was passed as a consume parameter to method unapply
+   |on line 49 and therefore is no longer available.
+   |
+   |where:    ^ refers to a root capability in the type of value xs

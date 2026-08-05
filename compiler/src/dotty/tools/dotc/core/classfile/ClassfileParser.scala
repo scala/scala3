@@ -1098,10 +1098,11 @@ final class ClassfileParser(
     for entry <- innerClasses.valuesIterator do
       // create a new class member for immediate inner classes
       if entry.outer.name == currentClassName then
-        val file = ctx.platform.classPath.findClassFile(entry.externalName) getOrElse {
-          throw new AssertionError(entry.externalName)
-        }
-        enterClassAndModule(entry, file, entry.jflags)
+        ctx.platform.classPath.findClassFile(entry.externalName) match
+          case Some(file) =>
+            enterClassAndModule(entry, file, entry.jflags)
+          case None =>
+            dependencyStub(getOwner(entry.jflags), entry).entered
   }
 
   // Nothing$ and Null$ were incorrectly emitted with a Scala attribute
@@ -1251,6 +1252,13 @@ final class ClassfileParser(
     def strippedOuter = outer.name.stripModuleClassSuffix
   }
 
+  private def dependencyStub(owner: Symbol, entry: InnerClassEntry)(using Context): Symbol =
+    newStubSymbol(
+      owner,
+      entry.originalName.toTypeName,
+      CompilationUnitInfo(classfile),
+    )
+
   private object innerClasses extends util.HashMap[String, InnerClassEntry] {
     /** Return the Symbol of the top level class enclosing `name`,
      *  or 'name's symbol if no entry found for `name`.
@@ -1305,14 +1313,8 @@ final class ClassfileParser(
             getMember(owner, innerName.toTypeName)
           else
             atPhase(typerPhase)(getMember(owner, innerName.toTypeName))
-      assert(result ne NoSymbol,
-        i"""failure to resolve inner class:
-           |externalName = ${entry.externalName},
-           |outerName = $outerName,
-           |innerName = $innerName
-           |owner.fullName = ${owner.showFullName}
-           |while parsing ${classfile}""")
-      result
+      if result eq NoSymbol then dependencyStub(owner, entry)
+      else result
     }
   }
 

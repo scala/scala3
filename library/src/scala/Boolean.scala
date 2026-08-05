@@ -18,8 +18,7 @@ import scala.language.`2.13`
  *  subtype of [[scala.AnyVal]]. Instances of `Boolean` are not
  *  represented by an object in the underlying runtime system.
  *
- *  There is an implicit conversion from [[scala.Boolean]] => [[scala.runtime.RichBoolean]]
- *  which provides useful non-primitive operations.
+ *  The companion object provides useful non-primitive operations as extension methods.
  */
 final abstract class Boolean private extends AnyVal {
   /** Negates a Boolean expression.

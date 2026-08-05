@@ -1,12 +1,12 @@
 // cf. pos/t8300-conversions-a.scala
 trait Universe {
-  type Symbol >: Null <: AnyRef with SymbolApi
+  type Symbol >: Null <: AnyRef & SymbolApi
   trait SymbolApi
 
-  type TypeSymbol >: Null <: TypeSymbolApi with Symbol
+  type TypeSymbol >: Null <: TypeSymbolApi & Symbol
   trait TypeSymbolApi extends SymbolApi
 
-  type FreeTypeSymbol >: Null <: FreeTypeSymbolApi with TypeSymbol
+  type FreeTypeSymbol >: Null <: FreeTypeSymbolApi & TypeSymbol
   trait FreeTypeSymbolApi extends TypeSymbolApi
 
   implicit class CompatibleSymbol(sym: Symbol) {

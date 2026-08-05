@@ -326,8 +326,8 @@ class InteractiveDriver(
 
 
 object InteractiveDriver {
-  def toUriOption(file: AbstractFile): Option[URI] =
-    if (!file.exists)
+  def toUriOption(file: AbstractFile | Null): Option[URI] =
+    if (file == null || !file.exists)
       None
     else
       try

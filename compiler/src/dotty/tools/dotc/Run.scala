@@ -197,7 +197,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   def files: Set[AbstractFile] = {
     if (myUnits ne myUnitsCached) {
       myUnitsCached = myUnits
-      myFiles = (myUnits ++ suspendedUnits).map(_.source.file).toSet
+      myFiles = (myUnits ++ suspendedUnits).map(_.source.file).collect{ case f: AbstractFile => f }.toSet
     }
     myFiles
   }
@@ -209,7 +209,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   val staticRefs = util.EqHashMap[Name, Denotation](initialCapacity = 1024)
 
   /** Actions that need to be performed at the end of the current compilation run */
-  private var finalizeActions = ListBuffer.empty[() => Unit]
+  private val finalizeActions = ListBuffer.empty[() => Unit]
 
   private var _progress: Progress | Null = null // Set if progress reporting is enabled
 
@@ -326,7 +326,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   def compile(files: List[AbstractFile]): Unit =
     try compileSources(files.map(runContext.getSource(_)))
     catch case ex: Exception if !this.enrichedErrorMessage =>
-      val files1 = if units.isEmpty then files else units.map(_.source.file)
+      val files1 = if units.isEmpty then files else units.map(_.source)
       report.echo(this.enrichErrorMessage(s"exception occurred while compiling ${files1.map(_.path)}"))
       throw ex
 
@@ -625,7 +625,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
 object Run {
 
-  case class SubPhase(val name: String):
+  case class SubPhase(name: String):
     override def toString: String = name
 
   class SubPhases(val phase: Phase):

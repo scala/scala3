@@ -3,7 +3,7 @@ trait Universe {
 
   type SymTree <: Tree
   type NameTree <: Tree
-  type RefTree <: SymTree with NameTree
+  type RefTree <: SymTree & NameTree
 
   type Ident <: RefTree
   type Select <: RefTree

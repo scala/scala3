@@ -9,11 +9,12 @@ import dotty.tools.backend.jvm.SymbolUtils.symExtensions
 import dotty.tools.dotc.core.Symbols.{ClassSymbol, NoSymbol, Symbol, defn}
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.toTermName
-import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, Trait}
+import dotty.tools.dotc.core.Flags.{Final, JavaDefined, Method, ModuleClass, ModuleVal, PackageClass, Private, Trait}
 import dotty.tools.dotc.core.Phases.{Phase, flattenPhase, lambdaLiftPhase, picklerPhase}
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.{StdNames, Types}
 import dotty.tools.dotc.core.Types.{JavaArrayType, Type, TypeRef, abstractTermNameFilter}
+import dotty.tools.dotc.util.EqHashMap
 
 import scala.annotation.tailrec
 import scala.tools.asm
@@ -23,6 +24,12 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
   // Concurrent map because stack map frames are computed when in the class writer, which
   // might run on multiple classes concurrently.
   private val classBTypeCache = new ConcurrentHashMap[InternalName, ClassBType]
+
+  // Cache only for `classBTypeFromSymbol`, since it is heavily called.
+  // Its values are all also values of the main cache.
+  // Does not need to be concurrent because that method takes a Context,
+  // and thus can only be called from the main thread anyway.
+  private val classBTypeCacheBySymbol = new EqHashMap[Symbol, ClassBType]
 
   /** Maps special symbols, including primitive types, to their corresponding BType. */
   // It's OK to cache this because all Contexts that go through here share their defns.
@@ -63,23 +70,27 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
   /**
    * The ClassBType for a class symbol `sym`.
    */
-  def classBTypeFromSymbol(classSym0: Symbol)(using Context): ClassBType = {
-    // For each java class, the scala compiler creates a class and a module (thus a module class).
-    // If the symbol is a java module class, we use the java class instead. This ensures that the
-    // ClassBType is created from the main class (instead of the module class).
-    // The two symbols have the same name, so the resulting internalName is the same.
-    val classSym = if classSym0.isAllOf(JavaDefined | ModuleClass, butNot = PackageClass)
-                   then classSym0.linkedClass
-                   else classSym0
+  def classBTypeFromSymbol(classSym0: Symbol)(using Context): ClassBType = classBTypeCacheBySymbol.get(classSym0) match {
+    case Some(t) => t
+    case None =>
+      // For each java class, the scala compiler creates a class and a module (thus a module class).
+      // If the symbol is a java module class, we use the java class instead. This ensures that the
+      // ClassBType is created from the main class (instead of the module class).
+      // The two symbols have the same name, so the resulting internalName is the same.
+      val classSym = if classSym0.isAllOf(JavaDefined | ModuleClass, butNot = PackageClass)
+                     then classSym0.linkedClass
+                     else classSym0
 
-    assert(classSym.isClass, s"Cannot create ClassBType from non-class symbol $classSym") // also covers the NoSymbol case
-    assert(
-      classSym != defn.NothingClass && classSym != defn.NullClass,
-      s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
-    assert(classSym != defn.ArrayClass || compilingArray, classSym)
-    assert(!classSym.isPrimitiveValueClass || compilingPrimitive, s"Found $classSym while compiling ${ctx.compilationUnit.source.file.name}")
+      assert(classSym.isClass, s"Cannot create ClassBType from non-class symbol $classSym") // also covers the NoSymbol case
+      assert(
+        classSym != defn.NothingClass && classSym != defn.NullClass,
+        s"Cannot create ClassBType for special class symbol ${classSym.showFullName}")
+      assert(classSym != defn.ArrayClass || compilingArray, s"Found $classSym while compiling ${ctx.compilationUnit.source.name}")
+      assert(!classSym.isPrimitiveValueClass || compilingPrimitive, s"Found $classSym while compiling ${ctx.compilationUnit.source.name}")
 
-    classBType(classSym.javaBinaryName)(ct => createClassInfo(ct, classSym.asClass))
+      val result = classBType(classSym.javaBinaryName)(ct => createClassInfo(ct, classSym.asClass))
+      classBTypeCacheBySymbol.update(classSym0, result)
+      result
   }
 
   def mirrorClassBTypeFromSymbol(moduleClassSym: Symbol)(using Context): ClassBType = {
@@ -134,14 +145,12 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
       def declaredNestedClasses(internalName: InternalName): List[ClassBType] =
         previouslyConstructedClassBType(internalName).get.info.nestedClasses
 
-      def getClassIfNested(internalName: InternalName): Option[ClassBType] = {
-        val c = previouslyConstructedClassBType(internalName).get
-        Option.when(c.isNestedClass)(c)
-      }
-
-      def raiseError(msg: String, sig: String, e: Option[Throwable]): Unit = {
-        // don't crash on invalid generic signatures
-      }
+      def getClassIfNested(internalName: InternalName): Option[ClassBType] =
+        // A missing ClassBType here means we did something wrong!
+        previouslyConstructedClassBType(internalName) match
+          case Some(c) => if c.isNestedClass then Some(c) else None
+          case None =>
+            throw new AssertionError("Unknown name while collecting nested classes: " + internalName)
     }
     c.visit(classNode)
     (c.declaredInnerClasses, c.referredInnerClasses)
@@ -160,7 +169,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
       else t
     }
     assert(
-      if (classSym == defn.ObjectClass)
+      if (classSym == defn.ObjectClass || classSym == defn.AnyKindClass)
         superClassSym == NoSymbol
       else if (classSym.is(Trait))
         superClassSym == defn.ObjectClass
@@ -309,7 +318,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
    * extending traits. Creating the InlineInfo from the symbol would prevent these mixins from being
    * inlined.
    *
-   * So for classes being compiled, the InlineInfo is created here and stored in the ScalaInlineInfo
+   * So for classes being compiled, the InlineInfo is created here and stored in the inline info
    * classfile attribute.
    */
   private def buildInlineInfo(inlineInfoLoader: InlineInfoLoader, classSym: ClassSymbol, internalName: InternalName)(using Context): InlineInfo = {
@@ -353,7 +362,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     else
       val staticForwarders = if classSym.is(Trait) then
         // !!! This logic duplicates PlainSkelBuilder::makeStaticForwarder, copy changes there !!!
-        classSym.info.decls.filter(s => s.isTerm && !s.isPrivate && !s.isStaticMember && s.name != nme.TRAIT_CONSTRUCTOR).map(s => {
+        classSym.info.decls.filter(s => s.isTerm && !s.is(Private) && !s.isStaticMember && s.name != nme.TRAIT_CONSTRUCTOR).map(s => {
           SymbolUtils.makeStatifiedDefSymbol(s.asTerm, SymbolUtils.traitSuperAccessorName(s).toTermName)
         })
       else Nil
@@ -397,7 +406,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     sym.is(PackageClass) || sym.is(ModuleClass) && isOriginallyStaticOwner(sym.originalOwner.originalLexicallyEnclosingClass)
   
   private def compilingArray(using Context) =
-    ctx.compilationUnit.source.file.name == "Array.scala"
+    ctx.compilationUnit.source.name == "Array.scala"
 
   private val primitiveCompilationUnits = Set(
     "Unit.scala",
@@ -411,5 +420,5 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
     "Double.scala"
   )
   private def compilingPrimitive(using Context) =
-    primitiveCompilationUnits(ctx.compilationUnit.source.file.name)
+    primitiveCompilationUnits(ctx.compilationUnit.source.name)
 }
