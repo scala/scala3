@@ -1,3 +1,4 @@
+//> using jvm 8
 /*
 This script will bisect a problem with the compiler based on success/failure of the validation script passed as an argument.
 It starts with a fast bisection on released nightly builds.
