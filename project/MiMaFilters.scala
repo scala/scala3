@@ -17,6 +17,8 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.generic.IsSeq.iarrayIsSeq"),
         // new annotation encoding capture checking's `x.except[C]` capabilities
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.exceptCapability"),
+        // scala/scala3#24874 - Uniform Tuple.apply and Tuple.unapply for SIP-NN
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Tuple.unapply*"),
     ))
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(

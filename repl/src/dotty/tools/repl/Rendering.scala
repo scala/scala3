@@ -245,12 +245,17 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
 
   /** Return a colored fansi.Str representation of a value we got from `classLoader()`. */
   private[repl] def replStringOf(value: Object, prefixLength: Int)(using Context): fansi.Str = {
-    val res = pprintRender(
-      value,
-      width = ctx.settings.pageWidth.value,
-      height = ctx.settings.XreplPrintHeight.value,
-      initialOffset = prefixLength
-    )
+    // Use Tuple1(x) format to avoid pprint's "(x,)" format
+    val res = value match {
+      case t: Tuple1[?] => s"Tuple1(${t._1})"
+      case _ =>
+        pprintRender(
+          value,
+          width = ctx.settings.pageWidth.value,
+          height = ctx.settings.XreplPrintHeight.value,
+          initialOffset = prefixLength
+        )
+    }
     if (ctx.settings.color.value == "never") fansi.Str(res).plainText else res
   }
 
