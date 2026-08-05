@@ -90,7 +90,7 @@ object Settings:
     * For example, `s = Setting(..., depends = List(YprofileEnabled -> true))`
     * means that `s` requires `YprofileEnabled` to be set to `true`.
     */
-  private type SettingDependencies = List[(Setting[?], Any)]
+  type SettingDependencies = List[(Setting[?], Any)]
 
   case class SettingAlias(name: String, deprecation: Option[Deprecation])
   object SettingAlias:
