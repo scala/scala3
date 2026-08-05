@@ -90,6 +90,10 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     def noneExcept(allowedCalls: String*)(clazz: String, meth: String): Boolean = allowedCalls.contains(meth)
   }
 
+  private def isCall(cls: String, meth: String)(i: AsmConverters.Instruction) = i match
+    case inv: AsmConverters.Invoke => inv.owner == cls && inv.name == meth
+    case _ => false
+
 
   @Test def inlineTuple2Specialized =
     assertEquivalence(
@@ -585,6 +589,82 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
         case AsmConverters.Invoke(_, owner, name, _, _) => owner == "T" && name == "p"
         case _ => true
       }, "t2b should only call T.p, but instead:\n" + instrs2b.mkString("\n"))
+    }
+
+  @Test def twoStepNoInlinePrivate =
+    val source =
+      """
+        |class C {
+        |  @noinline private def f() = 0
+        |  @inline final def g() = f()
+        |  @inline final def h() = g() // after inlining g, h has an invocate of private method f
+        |}
+        |class D {
+        |  def t(c: C) = c.h() // cannot inline
+        |}
+      """.stripMargin
+    checkBCode(source) { dir =>
+      val cIn = dir.lookupName("C.class", directory = false).nn.input
+      val cNode = loadClassNode(cIn)
+      val hInstrs = instructionsFromMethod(getMethod(cNode, "h"))
+
+      val dIn = dir.lookupName("D.class", directory = false).nn.input
+      val dNode = loadClassNode(dIn)
+      val tInstrs = instructionsFromMethod(getMethod(dNode, "t"))
+
+      assert(hInstrs.exists(isCall("C", "f")), hInstrs.mkString("\n"))
+      assert(tInstrs.exists(isCall("C", "h")), tInstrs.mkString("\n"))
+    }
+
+  @Test def illegalAccessNoInline =
+    val source =
+      """package a {
+        |  class C {
+        |    private def f: Int = 0
+        |    def g: Int = f: @noinline
+        |  }
+        |}
+        |package b {
+        |  class D {
+        |    def h(c: a.C): Int = c.g + 1
+        |  }
+        |}
+      """.stripMargin
+    checkBCode(source) { dir =>
+      val dIn = dir.lookupName("b", directory = true).nn.lookupName("D.class", directory = false).nn.input
+      val dNode = loadClassNode(dIn)
+      val hInstrs = instructionsFromMethod(getMethod(dNode, "h"))
+
+      assert(hInstrs.exists(isCall("a/C", "g")), hInstrs.mkString("\n"))
+    }
+
+  @Test def noInlineTemporaryIllegalInstructions =
+    // The problem with this example was:
+    //   1. `foo` is inlined into `m`. the inliner knows that this is illegal, so it saved the state
+    //      before. `m` is pushed on the queue of methods for further inlining.
+    //   2. `m` is inlined into `t`, so `t` also calls the private method `A.impl`
+    //   3. At the end, `m` is reverted because the call to `impl` was not inlined in a later round
+    // This left `t` with an illegal instruction
+    // The fix: when inlining leaves a method with an illegal access instruction, continue inlining
+    // into that method until the instructions are gone or the method is rolled back.
+    val source =
+      """class A {
+        |  @noinline private def impl = 0
+        |  // We don't mark `foo` @inline but rely on the heuristics. Marking it @inline
+        |  // causes `makeNotPrivate` to be called on `impl` during SuperAccessors.
+        |  final def foo(f: Int => Int) = impl
+        |  def t = foo(x => x)
+        |}
+        |class C {
+        |  @inline final def m(a: A) = a.foo(x => x)
+        |}
+      """.stripMargin
+    checkBCode(source) { dir =>
+      val cIn = dir.lookupName("C.class", directory = false).nn.input
+      val cNode = loadClassNode(cIn)
+      val mInstrs = instructionsFromMethod(getMethod(cNode, "m"))
+
+      assert(mInstrs.exists(isCall("A", "foo")), mInstrs.mkString("\n"))
     }
 
   @Test def t2171 =
