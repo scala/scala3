@@ -2,6 +2,8 @@ package dotty.tools
 package backend
 package jvm
 
+import dotty.tools.backend.jvm.SymbolUtils.symExtensions
+
 import scala.tools.asm
 import scala.tools.asm.{AnnotationVisitor, ClassWriter, Opcodes}
 import scala.collection.mutable
@@ -27,6 +29,7 @@ import dotty.tools.dotc.transform.Mixin
 import dotty.tools.dotc.report
 import tpd.*
 import dotty.tools.dotc.config.ScalaSettingsProperties
+import dotty.tools.dotc.util.NoSourcePosition
 
 /*
  *  Encapsulates functionality to convert Scala AST Trees into ASM ClassNodes.
@@ -551,6 +554,16 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
   class JMirrorBuilder extends JCommonBuilder {
     private val EMPTY_STRING_ARRAY = Array.empty[String]
 
+    def genMirrorClassIfNeeded(moduleClass: Symbol)(using Context): asm.tree.ClassNode | Null = {
+      if !moduleClass.isTopLevelModuleClass then 
+        null
+      else if moduleClass.companionClass == NoSymbol then 
+        genMirrorClass(moduleClass)
+      else
+        report.log(s"No mirror class for module with linked class: ${moduleClass.fullName}", NoSourcePosition)
+        null
+    }
+    
     /* Generate a mirror class for a top-level module. A mirror class is a class
      *  containing only static methods that forward to the corresponding method
      *  on the MODULE instance of the given Scala object.  It will only be
@@ -559,7 +572,7 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
      *
      *  must-single-thread
      */
-    def genMirrorClass(moduleClass: Symbol)(using Context): asm.tree.ClassNode = {
+    private def genMirrorClass(moduleClass: Symbol)(using Context): asm.tree.ClassNode = {
       assert(moduleClass.is(ModuleClass))
       assert(moduleClass.companionClass == NoSymbol, moduleClass)
       val bType      = bTypeLoader.mirrorClassBTypeFromSymbol(moduleClass)
