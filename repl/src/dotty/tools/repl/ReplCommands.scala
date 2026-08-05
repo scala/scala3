@@ -54,10 +54,10 @@ private[repl] object ReplCommands:
     command(Silent.command,   _ => Silent,    "disable/enable automatic printing of results"),
     command(JarCmd.command,   JarCmd.apply,   "add a JAR to the classpath", "<path>"),
     command(Dep.command,      Dep.apply,      "resolve a dependency and make it available in the REPL", "<group>::<artifact>:<version>"),
-    hidden(Sh.command, Sh.apply),
-    hidden(KindOf.command, KindOf.apply),
-    hidden(Require.command, Require.apply),
-    hidden(Paste.command, _ => Paste)
+    hidden(Sh.command,        Sh.apply),
+    hidden(KindOf.command,    KindOf.apply),
+    hidden(Require.command,   Require.apply),
+    hidden(Paste.command,     _ => Paste)
   )
 
   private val commands = definitions.flatMap: definition =>
