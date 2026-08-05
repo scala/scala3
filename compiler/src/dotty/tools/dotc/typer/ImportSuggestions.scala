@@ -125,9 +125,10 @@ trait ImportSuggestions:
             else ctx.scope
               .filter(lookInside(_))
               .flatMap(sym => rootsIn(sym.termRef))
+        val info = ctx.importInfoIfImportContext
         val imported =
-          if ctx.importInfo eq ctx.outer.importInfo then Nil
-          else ctx.importInfo.nn.importSym.info match
+          if info eq null then Nil
+          else info.importSym.info match
             case ImportType(expr) => rootsOnPath(expr.tpe)
             case _ => Nil
         defined ++ imported ++ recur(using ctx.outer)

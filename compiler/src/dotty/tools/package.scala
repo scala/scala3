@@ -13,15 +13,6 @@ package object tools {
   def unreachable(x: Any = "<< this case was declared unreachable >>"): Nothing =
     throw new MatchError(x)
 
-  /** Forward-ported from the explicit-nulls branch. */
-  extension [T](x: T | Null)
-    /** Should be used when we know from the context that `x` is not null.
-     *  Flow-typing under explicit nulls will automatically insert many necessary
-     *  occurrences of uncheckedNN.
-     */
-    transparent inline def uncheckedNN: T = x.asInstanceOf[T]
-  end extension
-
   /**
    * Allows one to lazily initialize values without explicit `.nn`.
    * This is useful for values that need a Context and thus can't be `lazy val`s.
