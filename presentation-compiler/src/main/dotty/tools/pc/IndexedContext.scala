@@ -1,25 +1,19 @@
 package dotty.tools.pc
 
 import scala.annotation.tailrec
-import scala.meta.pc.OffsetParams
-import scala.util.control.NonFatal
 
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Denotations.PreDenotation
 import dotty.tools.dotc.core.Denotations.SingleDenotation
 import dotty.tools.dotc.core.Flags.*
-import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.Phases
-import dotty.tools.dotc.core.Scopes.EmptyScope
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.interactive.Completion
 import dotty.tools.dotc.interactive.Completion.CompletionResult
 import dotty.tools.dotc.interactive.Interactive
-import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.dotc.typer.ImportInfo
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.pc.IndexedContext.Result
 import dotty.tools.pc.utils.InteractiveEnrichments.*
@@ -42,7 +36,7 @@ sealed trait IndexedContext:
       case Some(symbols) if symbols.map(_.dealiasType).exists(isRelated) => Result.InScope
       case Some(symbols) if symbols.nonEmpty && symbols.forall(_.isStale) => Result.Missing
       case Some(symbols) if symbols.exists(rename(_).isEmpty) => Result.Conflict
-      case Some(symbols) => Result.InScope
+      case Some(_) => Result.InScope
       case _ => Result.Missing
 
   final def hasRename(sym: Symbol, as: String): Boolean =

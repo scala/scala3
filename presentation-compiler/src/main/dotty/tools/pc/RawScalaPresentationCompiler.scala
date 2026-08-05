@@ -8,8 +8,6 @@ import java.util as ju
 
 import scala.jdk.CollectionConverters.*
 import scala.language.unsafeNulls
-import scala.meta.internal.metals.CompilerVirtualFileParams
-import scala.meta.internal.metals.PcQueryContext
 import scala.meta.internal.metals.ReportLevel
 import scala.meta.internal.mtags.CommonMtagsEnrichments.*
 import scala.meta.internal.pc.EmptySymbolSearch
@@ -19,7 +17,6 @@ import scala.meta.pc.PcSymbolInformation as IPcSymbolInformation
 import scala.meta.pc.reports.EmptyReportContext
 import scala.meta.pc.reports.ReportContext
 
-import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.pc.InferExpectedType
 import dotty.tools.pc.SymbolInformationProvider
