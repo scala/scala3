@@ -203,24 +203,8 @@ case object Quit extends Command {
 case object Help extends Command {
   override def replayLine = Some(command)
   val command: String = ":help"
-  val text: String =
-    s"""|The REPL has several commands available:
-        |
-        |:help                    print this summary
-        |:save <path>             save replayable session to a file
-        |:load <path>             interpret lines in a file
-        |:quit                    exit the interpreter
-        |:type <expression>       evaluate the type of the given expression
-        |:doc <expression>        print the documentation for the given expression
-        |:imports                 show import history
-        |:reset [options]         clear the session and start fresh with the given compiler options
-        |:replay [options]        reset, then re-run the session with the given compiler options
-        |:settings <options>      update compiler options, if possible
-        |:silent                  disable/enable automatic printing of results
-        |:dep <group>::<artifact>:<version>     Resolve a dependency and make it available in the REPL
-        |
-        |${ReplDirectives.helpText}
-      """.stripMargin
+  def text: String =
+    s"${ReplCommands.helpText}\n\n${ReplDirectives.helpText}"
 }
 
 object ParseResult {
@@ -235,39 +219,6 @@ object ParseResult {
     parser.accept(Tokens.EOF)
     stats
   }
-
-  private[repl] val commands: List[(String, String => ParseResult)] = List(
-    Quit.command -> (_ => Quit),
-    Quit.alias -> (_ => Quit),
-    Help.command -> (_  => Help),
-    Reset.command -> (arg  => Reset(arg)),
-    Replay.command -> (arg => Replay(arg)),
-    Imports.command -> (_  => Imports),
-    JarCmd.command -> (arg => JarCmd(arg)),
-    KindOf.command -> (arg => KindOf(arg)),
-    Save.command -> (arg => Save(arg)),
-    Load.command -> (arg => Load(arg)),
-    Require.command -> (arg => Require(arg)),
-    Dep.command -> (arg => Dep(arg)),
-    TypeOf.command -> (arg => TypeOf(arg)),
-    DocOf.command -> (arg => DocOf(arg)),
-    Settings.command -> (arg => Settings(arg)),
-    Sh.command -> (arg => Sh(arg)),
-    Paste.command -> (_ => Paste),
-    Silent.command -> (_ => Silent),
-  )
-
-  /** Resolve a `:command` name (which may be a prefix) and its argument into a `Command`. */
-  private def command(cmd: String, arg: String): Command =
-    commands.filter((command, _) => command.startsWith(cmd)) match {
-      case Nil => UnknownCommand(cmd)
-      case (_, f) :: Nil =>
-        f(arg) match {
-          case matched: Command => matched
-          case _ => UnknownCommand(cmd)
-        }
-      case multiple => AmbiguousCommand(cmd, multiple.map(_._1))
-    }
 
   private def extractDirectives(sourceCode: String): ExtractorResult =
     UsingDirectivesParser.extractLines(sourceCode.toIndexedSeq)
@@ -374,13 +325,13 @@ object ParseResult {
     sourceCode match {
       case "" => Newline
       case _ if mixesCommandsAndDirectives(sourceCode) => MixedCommandsAndDirectives
-      case CommandExtract(cmd: String, arg: String) => command(cmd, arg)
+      case CommandExtract(cmd: String, arg: String) => ReplCommands.parse(cmd, arg)
       case _ =>
         val extracted = extractDirectives(sourceCode)
         leadingCommand(sourceCode, extracted) match {
           case Some((cmd, arg, rest)) =>
-            if rest.exists(!_.isWhitespace) then CommandThenCode(command(cmd, arg), rest)
-            else command(cmd, arg)
+            if rest.exists(!_.isWhitespace) then CommandThenCode(ReplCommands.parse(cmd, arg), rest)
+            else ReplCommands.parse(cmd, arg)
           case None =>
             inContext(state.context) {
               val reporter = newStoreReporter
