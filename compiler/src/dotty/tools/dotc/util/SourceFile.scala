@@ -49,7 +49,8 @@ object WrappedSourceFile:
                 val sourceStartOffset = sourceFile.nextLine(m.start)
                 val name = m.group(1).nn
                 val src = ctx.getSource(name)
-                if src.file.exists then
+                val file = src.file
+                if file != null && file.exists then
                   HasHeader(sourceStartOffset, src)
                 else
                   report.warning(em"original source file not found: $name")
@@ -59,7 +60,7 @@ object WrappedSourceFile:
         result
       case result => result
 
-class SourceFile private[util] (val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
+class SourceFile private[util] (val file: AbstractFile | Null, computeContent: => Array[Char]) extends interfaces.SourceFile {
   private var myContent: Array[Char] | Null = null
 
   /** The contents of the original source file. Note that this can be empty, for example when
@@ -69,9 +70,14 @@ class SourceFile private[util] (val file: AbstractFile, computeContent: => Array
     myContent.nn
   }
 
-  override def name: String = file.name
-  override def path: String = file.path
-  override def jfile: Optional[JFile] = file.jfile
+  override def name: String =
+    if file eq null then "" else file.name
+  def ext: FileExtension =
+    if file eq null then FileExtension.Empty else file.ext
+  override def path: String =
+    if file eq null then "" else file.path
+  override def jfile: Optional[JFile] =
+    if file eq null then Optional.empty() else file.jfile
 
   override def equals(that: Any): Boolean =
     (this `eq` that.asInstanceOf[AnyRef]) || {
@@ -81,7 +87,7 @@ class SourceFile private[util] (val file: AbstractFile, computeContent: => Array
       }
     }
 
-  override def hashCode: Int = file.hashCode
+  override def hashCode: Int = if file eq null then 0 else file.hashCode
 
   def apply(idx: Int): Char = content().apply(idx)
 
@@ -188,7 +194,8 @@ class SourceFile private[util] (val file: AbstractFile, computeContent: => Array
     pad.result()
   }
 
-  override def toString: String = file.toString
+  override def toString: String = 
+    if file eq null then "<no file>" else file.toString
 }
 object SourceFile {
   implicit def eqSource: CanEqual[SourceFile, SourceFile] = CanEqual.derived
@@ -212,9 +219,9 @@ object SourceFile {
    */
   def relativePath(source: SourceFile, reference: String): String = {
     val file = source.file
-    val jpath = file.jpath
+    val jpath = if file == null then null else file.jpath
     if jpath eq null then
-      file.path // repl and other custom tests use abstract files with no path
+      "" // repl and other custom tests use abstract files with no path
     else
       val sourcePath = jpath.toAbsolutePath.normalize
       val refPath = java.nio.file.Paths.get(reference).toAbsolutePath.normalize
@@ -249,11 +256,11 @@ object SourceFile {
 
     new SourceFile(file, chars)
 
-  def apply(file: AbstractFile, contents: => Array[Char]): SourceFile =
+  def apply(file: AbstractFile | Null, contents: => Array[Char]): SourceFile =
     new SourceFile(file, contents)
 }
 
-@sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {
+@sharable object NoSource extends SourceFile(null, Array[Char]()) {
   override def exists: Boolean = false
   override def atSpan(span: Span): SourcePosition = NoSourcePosition
 }

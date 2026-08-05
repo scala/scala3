@@ -344,7 +344,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
                   superClass, interfaceNames.toArray)
 
       if (emitSource) {
-        cnode.visitSource(ctx.compilationUnit.source.file.name, null /* SourceDebugExtension */)
+        cnode.visitSource(ctx.compilationUnit.source.name, null /* SourceDebugExtension */)
       }
 
       BCodeUtils.enclosingMethodAttribute(claszSymbol, bTypeLoader.classBTypeFromSymbol(_).internalName, bTypeLoader.methodBTypeFromSymbol(_).descriptor) match {

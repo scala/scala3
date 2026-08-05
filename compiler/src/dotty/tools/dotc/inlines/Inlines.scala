@@ -380,7 +380,7 @@ object Inlines:
         else codeArg1
 
       // We should not be rewriting tested strings
-      val noRewriteSettings = ctx.settings.rewrite.updateIn(ctx.settingsState.reinitializedCopy(), None)
+      val noRewriteSettings = ctx.settings.rewrite.updateIn(ctx.settingsState.reinitializedCopy(), false)
 
       class MegaPhaseWithCustomPhaseId(miniPhases: Array[MiniPhase], startId: PhaseId, endId: PhaseId)
         extends MegaPhase(miniPhases) {

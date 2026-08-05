@@ -6,7 +6,7 @@ import java.io.{IOException, File}
 import java.nio.channels.ClosedByInterruptException
 
 import dotty.tools.dotc.classpath.PackageNameUtils
-import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile, NoAbstractFile }
+import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
 
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
 import NameOps.*
@@ -415,10 +415,10 @@ abstract class SymbolLoader extends LazyType { self =>
 
   private inline def profileCompletion[T](root: SymDenotation)(inline body: T)(using Context): T = {
     val sym = root.symbol
-    def associatedFile = root.symbol.associatedFile match
-      case file: AbstractFile => file
-      case null => NoAbstractFile
-    ctx.profiler.onCompletion(sym, associatedFile)(body)
+    def associatedFileName = root.symbol.associatedFile match
+      case file: AbstractFile => Some(file.name)
+      case null => None
+    ctx.profiler.onCompletion(sym, associatedFileName)(body)
   }
 
   override def complete(root: SymDenotation)(using Context): Unit = profileCompletion(root) {

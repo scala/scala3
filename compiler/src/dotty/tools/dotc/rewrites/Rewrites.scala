@@ -1,13 +1,13 @@
 package dotty.tools.dotc
 package rewrites
 
-import util.{SourceFile, Spans}
+import util.{SourceFile, SourcePosition, Spans}
 import Spans.Span
 import core.Contexts.*
 import collection.mutable
+
 import scala.annotation.tailrec
 import dotty.tools.dotc.reporting.Reporter
-import dotty.tools.dotc.util.SourcePosition
 
 import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets.UTF_8
@@ -15,7 +15,8 @@ import dotty.tools.dotc.reporting.CodeAction
 
 /** Handles rewriting of Scala2 files to Dotty */
 object Rewrites {
-  private type PatchedFiles = mutable.HashMap[SourceFile, Patches]
+  opaque type PatchedFiles = mutable.HashMap[SourceFile, Patches]
+  def newPatchedFiles(): PatchedFiles = new PatchedFiles
 
   private case class Patch(span: Span, replacement: String) {
     def delta = replacement.length - (span.end - span.start)
@@ -72,6 +73,7 @@ object Rewrites {
     }
 
     def writeBack(): Unit =
+      assert(source.file != null, "Cannot rewrite nonexistent file!")
       val chars = apply(source.content)
       val osw = OutputStreamWriter(source.file.output, UTF_8)
       try osw.write(chars, 0, chars.length)
@@ -83,10 +85,10 @@ object Rewrites {
    */
   def patch(source: SourceFile, span: Span, replacement: String)(using Context): Unit =
     if ctx.reporter != Reporter.NoReporter // NoReporter is used for syntax highlighting
-    then ctx.settings.rewrite.value.foreach(_.patched
+       && ctx.settings.rewrite.value
+    then ctx.base.patched
          .getOrElseUpdate(source, new Patches(source))
          .addPatch(span, replacement)
-    )
 
   /** Patch position in `ctx.compilationUnit.source`. */
   def patch(span: Span, replacement: String)(using Context): Unit =
@@ -97,24 +99,24 @@ object Rewrites {
    */
   def unpatch(source: SourceFile, span: Span)(using Context): Unit =
     if ctx.reporter != Reporter.NoReporter // NoReporter is used for syntax highlighting
-    then ctx.settings.rewrite.value.foreach: rewrites =>
-      rewrites.patched
+      && ctx.settings.rewrite.value
+    then ctx.base.patched
         .get(source)
         .foreach(_.removePatch(span))
 
   /** Does `span` overlap with a patch region of `source`? */
   def overlapsPatch(source: SourceFile, span: Span)(using Context): Boolean =
-    ctx.settings.rewrite.value.exists(rewrites =>
-      rewrites.patched.get(source).exists(patches =>
-        patches.pbuf.exists(patch => patch.span.overlaps(span))))
+    ctx.settings.rewrite.value &&
+      ctx.base.patched.get(source).exists(patches =>
+        patches.pbuf.exists(patch => patch.span.overlaps(span)))
 
   /** If -rewrite is set, apply all patches and overwrite patched source files.
    */
   def writeBack()(using Context): Unit =
-    for (rewrites <- ctx.settings.rewrite.value; source <- rewrites.patched.keys) {
-      report.echo(s"[patched file ${source.file.path}]")
-      rewrites.patched(source).writeBack()
-    }
+    if ctx.settings.rewrite.value then
+      for (source, value) <- ctx.base.patched do
+        report.echo(s"[patched file ${source.path}]")
+        value.writeBack()
 
   /** Given a CodeAction take the patches and apply them.
    *
@@ -123,12 +125,4 @@ object Rewrites {
   def applyAction(action: CodeAction)(using Context): Unit =
     action.patches.foreach: actionPatch =>
       patch(actionPatch.srcPos.span, actionPatch.replacement)
-}
-
-/** A completely encapsulated class representing rewrite state, used
- *  as an optional setting.
- */
-class Rewrites {
-  import Rewrites.*
-  private val patched = new PatchedFiles
 }
