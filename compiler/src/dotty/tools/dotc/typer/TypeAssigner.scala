@@ -120,19 +120,22 @@ trait TypeAssigner {
    *  @see QualSkolemType, TypeOps#asSeenFrom
    */
   def maybeSkolemizePrefix(qualType: Type, name: Name)(using Context): Type =
-    if skolemizesPrefix(qualType, name) then
+    if (name.isTermName && !TypeOps.isLegalPrefix(qualType))
       QualSkolemType(qualType)
     else
       qualType
 
-  /** Does selecting `name` on `qualType` skolemize the prefix?
-   *
-   *  Callers that may compute a selection type more than once need this: each call to
-   *  `maybeSkolemizePrefix` makes a *fresh* skolem, so for such a selection recomputing
-   *  the type is not a no-op even when it finds the very same member.
-   */
-  def skolemizesPrefix(qualType: Type, name: Name)(using Context): Boolean =
-    name.isTermName && !TypeOps.isLegalPrefix(qualType)
+  def maybeSkolemizePrefix(tree: untpd.Tree, qualType: Type, name: Name)(using Context): Type =
+    if name.isTermName && !TypeOps.isLegalPrefix(qualType) then
+      tree.getAttachment(QualSkolem) match
+        case Some(skolem) if skolem.info == qualType =>
+          skolem
+        case _ =>
+          val skolem = QualSkolemType(qualType)
+          tree.putAttachment(QualSkolem, skolem)
+          skolem
+    else
+      qualType
 
   /** The type of the selection `tree`, where `qual1` is the typed qualifier part. */
   def selectionType(tree: untpd.RefTree, qual1: Tree)(using Context): Type =
@@ -164,7 +167,7 @@ trait TypeAssigner {
       // is casted to T[] by javac. Since the return type of Array[T]#clone() is Array[T],
       // this is exactly what Erasure will do.
       case _ =>
-        val pre = maybeSkolemizePrefix(qualType, name)
+        val pre = maybeSkolemizePrefix(tree, qualType, name)
         val mbr =
           if ctx.isJava then
             // don't look in the companion class here if qual is a module,
@@ -629,6 +632,11 @@ object TypeAssigner extends TypeAssigner:
    *  same skolems for path-dependent types in the expansion (see #26153).
    */
   private[dotc] val SkolemizedArgs = new Property.StickyKey[Map[tpd.Tree, SkolemType]]
+
+  /** An attachment on a selection holding the `QualSkolemType` used to type it.
+   *  Sticky so that copies of the tree (e.g. while inlining) keep the same skolem.
+   */
+  private[dotc] val QualSkolem = new Property.StickyKey[QualSkolemType]
 
   def seqLitType(tree: untpd.SeqLiteral, elemType: Type)(using Context) = tree match
     case tree: untpd.JavaSeqLiteral => defn.ArrayOf(elemType)

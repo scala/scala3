@@ -1,13 +1,4 @@
 // https://github.com/scala/scala3/issues/26681
-//
-// Selecting on an unstable prefix skolemizes that prefix, and each selection must
-// get its *own* skolem: two evaluations of `unstable` return two different `Owner`s,
-// so their `w` are unrelated and `Box[w.type]` must not unify across occurrences.
-//
-// Memoizing the `QualSkolemType` per prefix type would make `maybeSkolemizePrefix`
-// idempotent -- which is tempting, since a fresh skolem per call is what made the
-// same selection carry two different skolems in i26681 -- but it also makes every
-// case below compile. This test pins the property so that stays visible.
 class Box[T](val x: T)
 
 class Owner:
