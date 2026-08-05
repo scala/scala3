@@ -1,8 +1,8 @@
-// scalac -Wunsued:all
+//> using options -Wunused:all
 //Avoid warning on setter in trait Regression test : issue10154 scala
 
 trait T {
-  private var x: String = _
+  private var x: String = compiletime.uninitialized
 
   def y: String = {
     if (x eq null) x = "hello, world"
