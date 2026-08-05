@@ -519,7 +519,7 @@ object Checking {
   }
 
   def checkScala2Implicit(sym: Symbol)(using Context): Unit =
-    def migration(msg: Message) =
+    def migration(msg: => Message) =
       report.errorOrMigrationWarning(msg, sym.srcPos, MigrationVersion.Scala2Implicits)
     def info = sym match
       case sym: ClassSymbol => sym.primaryConstructor.info

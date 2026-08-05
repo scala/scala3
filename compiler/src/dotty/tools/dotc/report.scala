@@ -103,7 +103,7 @@ object report:
           |${stackTrace}"""
     ctx.reporter.report(Error(fullMsg, NoSourcePosition))
 
-  def errorOrMigrationWarning(msg: Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
+  def errorOrMigrationWarning(msg: => Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
     if sourceVersion != SourceVersion.`2.13` then
       // ignore errors or warningsfor Scala 2 stdlib sources
       if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
