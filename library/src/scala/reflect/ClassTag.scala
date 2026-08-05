@@ -42,7 +42,7 @@ import scala.runtime.ClassValueCompat
  *  [[scala.reflect.TypeTest]] and [[scala.reflect.Typeable]].
  */
 @nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifestDeprecatedApis""")
-@implicitNotFound(msg = "No ClassTag available for ${T}. You can fix this by changing [${T}] to [${T}: ClassTag].")
+@implicitNotFound(msg = "No reflect.ClassTag available for ${T}. You can fix this by changing [${T}] to [${T}: reflect.ClassTag].")
 trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serializable {
   // please, don't add any APIs here, like it was with `newWrappedArray` and `newArrayBuilder`
   // class tags, and all tags in general, should be as minimalistic as possible
