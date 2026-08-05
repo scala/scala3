@@ -4,7 +4,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.util.Property
 import dotty.tools.dotc.reporting.trace
-import dotty.tools.io.ClassPath
+import dotty.tools.dotc.classpath.ClassPath
 
 object MacroClassLoader {
 

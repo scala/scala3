@@ -97,10 +97,10 @@ object DependencyResolver:
     prevClassLoader: ClassLoader,
     prevOutputDir: dotty.tools.io.AbstractFile
   )(using ctx: dotty.tools.dotc.core.Contexts.Context): AbstractFileClassLoader =
-    import dotty.tools.dotc.classpath.ClassPathFactory
+    import dotty.tools.dotc.classpath.{ClassPath, ClassPathFactory}
     import dotty.tools.dotc.core.SymbolLoaders
     import dotty.tools.dotc.core.Symbols.defn
-    import dotty.tools.io.{AbstractFile, ClassPath}
+    import dotty.tools.io.AbstractFile
     import dotty.tools.repl.ScalaClassLoader.fromURLsParallelCapable
 
     // Create a classloader with all the resolved JAR files
