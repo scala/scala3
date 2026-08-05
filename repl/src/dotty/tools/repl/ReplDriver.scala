@@ -795,13 +795,13 @@ class ReplDriver(settings: Array[String],
       state
   }
 
-  private def interpretDirectives(classified: ReplDirectives.ClassifiedDirectives)(using state: State): State =
+  private def interpretDirectives(classified: ReplDirectives.DirectiveClassification)(using state: State): State =
     classified.unsupportedKeys.foreach: key =>
       out.println(
         s"""[warn] The `using $key` directive is not supported in the REPL.
            |To use it, re-run with the `scala` command and pass the directive inside an input.""".stripMargin
       )
-    resolveAndAddDeps(classified.effects.dependencies)
+    resolveAndAddDeps(classified.dependencies)
 
   private def resolveAndAddDeps(depStrings: List[String])(using state: State): State =
     if depStrings.isEmpty then state

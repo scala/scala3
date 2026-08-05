@@ -6,12 +6,10 @@ import dotty.tools.directives.{DirectiveValue, UsingDirectivesParser}
 
 private[repl] object ReplDirectives:
 
-  case class DirectiveEffects(dependencies: List[String] = Nil):
-    def ++(other: DirectiveEffects): DirectiveEffects =
-      DirectiveEffects(dependencies ++ other.dependencies)
+  type Dependencies = List[String]
 
-  case class ClassifiedDirectives(
-    effects: DirectiveEffects,
+  case class DirectiveClassification(
+    dependencies: Dependencies,
     unsupportedKeys: List[String],
     hasDirectives: Boolean
   )
@@ -20,7 +18,7 @@ private[repl] object ReplDirectives:
     def keys: List[String]
     def usage: String
     def description: String
-    def process(values: Seq[DirectiveValue]): DirectiveEffects
+    def process(values: Seq[DirectiveValue]): Dependencies
 
     final def helpText: String =
       val aliasText = keys.drop(1) match
@@ -33,10 +31,10 @@ private[repl] object ReplDirectives:
     val usage = "//> using dep <group>::<artifact>:<version> ..."
     val description = "Resolve dependencies and make them available in the REPL."
 
-    def process(values: Seq[DirectiveValue]): DirectiveEffects =
-      val dependencies = values.collect:
-        case DirectiveValue.StringVal(value, _, _) => value
-      DirectiveEffects(dependencies.toList)
+    def process(values: Seq[DirectiveValue]): Dependencies =
+      values.collect:
+          case DirectiveValue.StringVal(value, _, _) => value
+        .toList
 
   private val handlers = List(DependencyDirective)
   private val handlersByKey = handlers.flatMap(handler => handler.keys.map(_ -> handler)).toMap
@@ -55,13 +53,14 @@ private[repl] object ReplDirectives:
        |evaluated as usual. Other `//> using` directives are not (yet) supported in the REPL.
        |""".stripMargin
 
-  def classify(sourceCode: String): ClassifiedDirectives =
+  def classify(sourceCode: String): DirectiveClassification =
     try
       val result = UsingDirectivesParser.parse(sourceCode)
       val (supported, unsupported) = result.directives.partition(directive => handlersByKey.contains(directive.key))
-      val effects = supported.foldLeft(DirectiveEffects()): (acc, directive) =>
-        acc ++ handlersByKey(directive.key).process(directive.values)
+      val dependencies = supported
+        .flatMap(directive => handlersByKey(directive.key).process(directive.values))
+        .toList
       val unsupportedKeys = unsupported.map(_.key).distinct.toList
-      ClassifiedDirectives(effects, unsupportedKeys, result.directives.nonEmpty)
+      DirectiveClassification(dependencies, unsupportedKeys, result.directives.nonEmpty)
     catch
-      case NonFatal(_) => ClassifiedDirectives(DirectiveEffects(), Nil, false)
+      case NonFatal(_) => DirectiveClassification(Nil, Nil, false)
