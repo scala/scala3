@@ -27,6 +27,7 @@ import dotty.tools.dotc.transform.MacroAnnotations.hasMacroAnnotation
 import dotty.tools.dotc.core.NameKinds.DefaultGetterName
 import ast.TreeInfo
 import dotty.tools.dotc.cc.derivedFunctionOrMethod
+import dotty.tools.dotc.qualified_types.QualifiedAnnotation
 
 object PostTyper {
   val name: String = "posttyper"
@@ -222,20 +223,29 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       inJavaAnnot = annot.symbol.is(JavaDefined)
       if (inJavaAnnot) checkValidJavaAnnotation(annot)
       try
-        val annotCtx =
+        // Re-enter annotation mode, as `Typer` did when first typing the
+        // annotation. In particular, qualifier predicates (`@qualified`) must be
+        // transformed under `Mode.InAnnotation` so dependent calls inside them are
+        // not skolemized — their value is logical, not a runtime value to lift.
+        val annotCtx0 =
           if annot.hasAttachment(untpd.RetainsAnnot)
           then ctx.addMode(Mode.InCaptureSet)
           else ctx
+        val annotCtx = annotCtx0.addMode(Mode.InAnnotation)
         transform(annot)(using annotCtx)
       finally inJavaAnnot = saved
     }
 
     private def transformAnnot(annot: Annotation)(using Context): Annotation =
-      val tree1 =
-        annot match
-          case _: BodyAnnotation => annot.tree
-          case _ => copySymbols(annot.tree)
-      annot.derivedAnnotation(transformAnnotTree(tree1))
+      annot match
+        case _: QualifiedAnnotation =>
+          annot
+        case _ =>
+          val tree1 =
+            annot match
+              case _: BodyAnnotation => annot.tree
+              case _ => copySymbols(annot.tree)
+          annot.derivedAnnotation(transformAnnotTree(tree1))
 
     /** Transforms all annotations in the given type. */
     private def transformAnnotsIn(using Context) =

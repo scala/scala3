@@ -546,6 +546,12 @@ trait Applications extends Compatibility {
     /** Turn a typed tree into an argument */
     protected def treeToArg(arg: Tree): Arg
 
+    /** Convert a `TypedArg` to a `tpd.Tree` when applicable, otherwise `null`.
+     *  Used to thread typed argument trees through dependent substitution (e.g.
+     *  for stable `ENodeVar` allocation in qualifier substitution).
+     */
+    protected def argToTree(arg: TypedArg): Tree | Null
+
     /** Check that argument corresponds to type `formal` and
      *  possibly add it to the list of adapted arguments
      */
@@ -560,6 +566,11 @@ trait Applications extends Compatibility {
      *  `SeqLiteral` tree with element type `elemFormal`.
      */
     protected def makeVarArg(n: Int, elemFormal: Type): Unit
+
+    /** Hook for adjusting `arg` (typed against `formal`) for qualified-type
+     *  support. No-op by default; overridden by `TypedApply`.
+     */
+    protected def maybeWrapQualifiedArg(arg: TypedArg, formal: Type): TypedArg = arg
 
     /** If all `args` have primitive numeric types, make sure it's the same one */
     protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
@@ -833,7 +844,7 @@ trait Applications extends Compatibility {
            */
           def addTyped(arg: Arg): List[Type] =
             if !formal.isRepeatedParam then checkNoVarArg(arg)
-            val argTyped = typedArg(arg, formal)
+            val argTyped = maybeWrapQualifiedArg(typedArg(arg, formal), formal)
             addArg(argTyped, formal)
             if methodType.looksParamDependent
                   // need to handle also false dependencies since we generate TypeTrees from
@@ -841,7 +852,7 @@ trait Applications extends Compatibility {
                   // stray parameter references. Test case is i23266.scala.
                 && typeOfArg(argTyped).exists
                   // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-            then formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(argTyped)))
+            then formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(argTyped), argTree = argToTree(argTyped)))
             else formals1
 
           def missingArg(n: Int): Unit =
@@ -955,6 +966,8 @@ trait Applications extends Compatibility {
     type Result = Unit
 
     def applyKind = ApplyKind.Regular
+
+    protected def argToTree(arg: TypedArg): Tree | Null = null
 
     protected def argOK(arg: TypedArg, formal: Type): Boolean = argType(arg, formal) match
       case ref: TermRef if ref.denot.isOverloaded =>
@@ -1106,6 +1119,7 @@ trait Applications extends Compatibility {
     override val applyKind: ApplyKind)(using Context)
   extends Application(methRef, fun.tpe, args, resultType) {
     type TypedArg = Tree
+    protected def argToTree(arg: Tree): Tree | Null = arg
     def isVarArg(arg: Trees.Tree[T]): Boolean = untpd.isWildcardStarArg(arg)
     private var typedArgBuf = new mutable.ListBuffer[Tree]
     private var liftedDefs: mutable.ListBuffer[Tree] | Null = null
@@ -1113,6 +1127,50 @@ trait Applications extends Compatibility {
     init()
 
     def typeOfArg(arg: tpd.Tree): Type = arg.tpe
+
+    /** Wrap unstable args with `@QualifierSkolemIndex(n)` so each arg's
+     *  skolem identity is stable across TASTy round-trips. Needed when the
+     *  arg is checked against a qualified formal, or when a qualifier in the
+     *  signature refers to a method parameter ([[hasDependentQualifier]]).
+     */
+    override protected def maybeWrapQualifiedArg(arg: Tree, formal: Type): Tree =
+      if Feature.qualifiedTypesEnabled
+         && !arg.tpe.isStable
+         && (hasDependentQualifier || qualified_types.QualifiedTypes.containsQualifier(formal))
+         && !isInAnnotationDeep
+      then qualified_types.QualifiedTypes.wrapWithSkolemIndex(arg)
+      else arg
+
+    /** True iff the method's signature contains a qualifier that refers to one
+     *  of the method's parameters via `TermParamRef`. Prefiltered by the cached
+     *  dependency status: `QualifiedAnnotation.refersToParamOf` feeds
+     *  `depStatus`, so a param-referring qualifier always implies a dependent
+     *  method type, and the scan only runs for dependent methods.
+     */
+    private lazy val hasDependentQualifier: Boolean = methType match
+      case mt: MethodType if mt.isParamDependent || mt.isResultDependent =>
+        var found = false
+        def scan(tp: Type): Unit =
+          if !found then
+            tp.foreachPart:
+              case qualified_types.QualifiedType(_, qualifier) =>
+                qualifier.foreachType: qtp =>
+                  if !found then qtp.foreachPart:
+                    case TermParamRef(`mt`, _) => found = true
+                    case _ =>
+              case _ => ()
+        mt.paramInfos.foreach(scan)
+        if !found then scan(mt.resultType)
+        found
+      case _ => false
+
+    /** Check if any enclosing context has `Mode.InAnnotation` set. This is
+     *  needed because `FunProto.typedArg` retracts `InAnnotation`, so the
+     *  current context may not have it even when we are inside an annotation.
+     */
+    private def isInAnnotationDeep(using ctx: Context): Boolean =
+      ctx != null && (ctx.mode.is(Mode.InAnnotation)
+      || (ctx.outer ne ctx) && isInAnnotationDeep(using ctx.outer))
 
     def addArg(arg: Tree, formal: Type): Unit =
       val typedArg = adapt(arg, formal.widenExpr)

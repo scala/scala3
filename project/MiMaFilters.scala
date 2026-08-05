@@ -17,6 +17,14 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.generic.IsSeq.iarrayIsSeq"),
         // new annotation encoding capture checking's `x.except[C]` capabilities
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.exceptCapability"),
+        // qualified types related
+        ProblemFilters.exclude[MissingFieldProblem]("scala.language#experimental.qualifiedTypes"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$qualifiedTypes$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$qualifiedTypes$runtimeChecks$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$qualifiedTypes$silent$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$qualifiedTypes$warn$"),
+        ProblemFilters.exclude[MissingFieldProblem]("scala.runtime.stdLibPatches.language#experimental.qualifiedTypes"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$qualifiedTypes$"),
     ))
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(

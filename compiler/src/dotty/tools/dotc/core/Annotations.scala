@@ -8,6 +8,7 @@ import util.Spans.{Span, NoSpan}
 import printing.{Showable, Printer}
 import printing.Texts.Text
 import cc.{isRetainsLike, RetainingAnnotation}
+import qualified_types.{ENode, QualifiedAnnotation}
 import config.Feature.sourceVersion
 import Decorators.*
 
@@ -298,7 +299,14 @@ object Annotations {
       case tree: TypeTree =>
         CompactAnnotation(tree.tpe)
       case _ =>
-        if annotClass(tree).isRetainsLike then CompactAnnotation(tree)
+        val cls = annotClass(tree)
+        if cls.isRetainsLike then CompactAnnotation(tree)
+        else if cls == defn.QualifiedAnnot then
+          tpd.allTermArguments(tree).headOption.flatMap(ENode.fromTree(_)) match
+            case Some(qualifier: ENode.Lambda) =>
+              QualifiedAnnotation(qualifier)
+            case other =>
+              throw new IllegalArgumentException(i"invalid tree for QualifiedAnnotation: $tree, args: ${tpd.allTermArguments(tree)}, qualifier arg: ${tpd.allTermArguments(tree).headOption}")
         else ConcreteAnnotation(tree)
 
     def apply(cls: ClassSymbol, span: Span)(using Context): Annotation =
