@@ -362,9 +362,8 @@ class ReplDriver(settings: Array[String],
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected final def completions(cursor: Int, expr: String, state0: State): List[Completion] =
     if expr.startsWith(":") then
-      ParseResult.commands.collect {
-        case command if command._1.startsWith(expr) => Completion(command._1, "", List())
-      }
+      ReplCommands.names.collect:
+        case command if command.startsWith(expr) => Completion(command, "", List())
     else
       given state: State = newRun(state0)
       compiler
