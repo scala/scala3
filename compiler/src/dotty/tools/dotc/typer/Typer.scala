@@ -56,6 +56,7 @@ import transform.CheckUnused.OriginalName
 import scala.annotation.constructorOnly
 import scala.util.chaining.scalaUtilChainingOps
 import dotty.tools.dotc.rewrites.Rewrites
+import dotty.tools.dotc.core.Mode.Interactive
 
 object Typer {
 
