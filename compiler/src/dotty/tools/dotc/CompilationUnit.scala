@@ -175,19 +175,22 @@ object CompilationUnit {
   }
 
   /** Create a compilation unit corresponding to `source`.
-   *  If `mustExist` is true, this will fail if `source` does not exist.
+   *  If `mustExistIfNotNull` is true, this will fail if `source` is not null but does not exist.
    */
-  def apply(source: SourceFile, mustExist: Boolean = true)(using Context): CompilationUnit = {
+  def apply(source: SourceFile, mustExistIfNotNull: Boolean = true)(using Context): CompilationUnit = {
     val file = source.file
     val src =
-      if (!mustExist)
+      if (!mustExistIfNotNull)
         source
-      else if (file == null || !file.exists) {
-        report.error(em"source file not found: ${source.path}")
+      else if (file == null) {
         NoSource
       }
       else if (file.isDirectory) {
         report.error(em"expected file, received directory '${source.path}'")
+        NoSource
+      }
+      else if(!file.exists) {
+        report.error(em"source file not found: ${source.path}")
         NoSource
       }
       else source

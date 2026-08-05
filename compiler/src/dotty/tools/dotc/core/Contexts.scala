@@ -313,8 +313,8 @@ object Contexts {
           if ctx2.compilationUnit eq NoCompilationUnit then
             // `source` might correspond to a file not necessarily
             // in the current project (e.g. when inlining library code),
-            // so set `mustExist` to false.
-            ctx2.setCompilationUnit(CompilationUnit(source, mustExist = false))
+            // so set `mustExistIfNotNull` to false.
+            ctx2.setCompilationUnit(CompilationUnit(source, mustExistIfNotNull = false))
           ctx1 = ctx2
           related = related.nn.updated(source, ctx2)
         ctx1

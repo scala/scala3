@@ -3396,7 +3396,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         val unit = ctx.compilationUnit
         if unit eq NoCompilationUnit then
           throw new java.lang.UnsupportedOperationException(
-            "`reflect.SourceFile.current` cannot be called within the TASTy ispector")
+            "`reflect.SourceFile.current` cannot be called within the TASTy inspector")
         else unit.source
     }
 
