@@ -1,6 +1,7 @@
 package scala.annotation
 
 import language.experimental.captureChecking
+import meta.exportable
 
 /** An annotation that defines an external name for a definition.
  *  If an `targetName(extname)` annotation is given for a method or some other
@@ -9,4 +10,5 @@ import language.experimental.captureChecking
  *
  *  @param name the external name to use for the annotated definition
  */
+@exportable
 final class targetName(name: String) extends StaticAnnotation
