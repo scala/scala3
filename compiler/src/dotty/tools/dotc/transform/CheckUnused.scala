@@ -353,7 +353,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     def mightObserve(rhs: Tree): Boolean =
       rhs.existsSubTree: t =>
         t.srcPos.sourcePos.contains(pos.sourcePos) && t.match
-          case t: GenericApply => !isKnownPureOp(funPart(t).symbol)
+          case t: GenericApply => !InstrumentCoverage.isCoverageProbe(t) && !isKnownPureOp(funPart(t).symbol)
           case _: DefDef => true
           case _ => false
     enclosingAssigns.exists: assign =>
