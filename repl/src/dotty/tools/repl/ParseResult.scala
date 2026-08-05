@@ -46,6 +46,17 @@ case object SigKill extends ParseResult
 sealed trait Command extends ParseResult:
   def replayLine: Option[String]
 
+sealed trait CommandCompanion:
+  def command: String
+  def parse(argument: String): Command
+
+sealed trait ArgCommand[C <: Command] extends CommandCompanion:
+  def apply(argument: String): C
+  final def parse(argument: String): Command = apply(argument)
+
+sealed trait NoArgCommand extends CommandCompanion, Command:
+  final def parse(argument: String): Command = this
+
 /** A command on the first line followed by Scala code, e.g.
  *  ```none
  *  :dep <coords>
@@ -66,7 +77,7 @@ case class UnknownCommand(cmd: String) extends Command:
 
 case class Dep(dep: String) extends Command:
   override def replayLine = Some(s"${Dep.command} $dep")
-object Dep {
+object Dep extends ArgCommand[Dep] {
   val command: String = ":dep"
 }
 /** An ambiguous prefix that matches multiple commands */
@@ -76,7 +87,7 @@ case class AmbiguousCommand(cmd: String, matchingCommands: List[String]) extends
 case class Save(path: String) extends Command:
   override def replayLine = None
 
-object Save {
+object Save extends ArgCommand[Save] {
   val command: String = ":save"
 
   /** `:load` treats a file as a session only when it starts with this header.
@@ -95,7 +106,7 @@ object Save {
  */
 case class Load(path: String) extends Command:
   override def replayLine = Some(s"${Load.command} $path")
-object Load {
+object Load extends ArgCommand[Load] {
   val command: String = ":load"
 }
 
@@ -103,7 +114,7 @@ object Load {
  */
 case class Require(path: String) extends Command:
   override def replayLine = Some(s"${Require.command} $path")
-object Require {
+object Require extends ArgCommand[Require] {
   val command: String = ":require"
 }
 
@@ -111,7 +122,7 @@ object Require {
  */
 case class JarCmd(path: String) extends Command:
   override def replayLine = Some(s"${JarCmd.command} $path")
-object JarCmd {
+object JarCmd extends ArgCommand[JarCmd] {
   val command: String = ":jar"
 }
 
@@ -119,7 +130,7 @@ object JarCmd {
  */
 case class KindOf(expr: String) extends Command:
   override def replayLine = Some(s"${KindOf.command} $expr")
-object KindOf {
+object KindOf extends ArgCommand[KindOf] {
   val command: String = ":kind"
 }
 
@@ -132,7 +143,7 @@ object KindOf {
  */
 case class TypeOf(expr: String) extends Command:
   override def replayLine = Some(s"${TypeOf.command} $expr")
-object TypeOf {
+object TypeOf extends ArgCommand[TypeOf] {
   val command: String = ":type"
 }
 
@@ -142,21 +153,21 @@ object TypeOf {
  */
 case class DocOf(expr: String) extends Command:
   override def replayLine = Some(s"${DocOf.command} $expr")
-object DocOf {
+object DocOf extends ArgCommand[DocOf] {
   val command: String = ":doc"
 }
 
 /** `:imports` lists the imports that have been explicitly imported during the
  *  session
  */
-case object Imports extends Command {
+case object Imports extends NoArgCommand {
   override def replayLine = Some(command)
   val command: String = ":imports"
 }
 
 case class Settings(arg: String) extends Command:
   override def replayLine = Some(s"${Settings.command} $arg")
-object Settings {
+object Settings extends ArgCommand[Settings] {
   val command: String = ":settings"
 }
 
@@ -165,42 +176,42 @@ object Settings {
  */
 case class Reset(arg: String) extends Command:
   override def replayLine = Some(s"${Reset.command} $arg")
-object Reset {
+object Reset extends ArgCommand[Reset] {
   val command: String = ":reset"
 }
 
 case class Replay(arg: String) extends Command:
   override def replayLine = None
-object Replay {
+object Replay extends ArgCommand[Replay] {
   val command: String = ":replay"
 }
 
 /** `:sh <command line>` run a shell command (result is implicitly => List[String]) */
 case class Sh(expr: String) extends Command:
   override def replayLine = Some(s"${Sh.command} $expr")
-object Sh {
+object Sh extends ArgCommand[Sh] {
   val command: String = ":sh"
 }
 
 /** `:paste` is deprecated; JLine supports multiline editing so it is not needed */
-case object Paste extends Command:
+case object Paste extends NoArgCommand:
   override def replayLine = Some(command)
   val command: String = ":paste"
 
 /** Toggle automatic printing of results */
-case object Silent extends Command:
+case object Silent extends NoArgCommand:
   override def replayLine = Some(command)
   val command: String = ":silent"
 
 /** `:quit` exits the repl */
-case object Quit extends Command {
+case object Quit extends NoArgCommand {
   override def replayLine = None
   val command: String = ":quit"
   val alias: String = ":exit"
 }
 
 /** `:help` shows the different commands implemented by the Dotty repl */
-case object Help extends Command {
+case object Help extends NoArgCommand {
   override def replayLine = Some(command)
   val command: String = ":help"
   def text: String =

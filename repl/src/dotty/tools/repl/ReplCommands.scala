@@ -11,11 +11,11 @@ private[repl] object ReplCommands:
   private case class CommandHelp(description: String, arguments: String)
 
   private case class CommandDefinition(
-    name: String,
-    parse: String => Command,
+    companion: CommandCompanion,
     help: Option[CommandHelp] = None,
     aliases: List[String] = Nil
   ):
+    def name: String = companion.command
     def names: List[String] = name :: aliases
 
     def helpText: Option[String] = help.map: entry =>
@@ -28,40 +28,39 @@ private[repl] object ReplCommands:
       s"$usage$padding${entry.description}$aliasText"
 
   private def command(
-    name: String,
-    parse: String => Command,
+    companion: CommandCompanion,
     description: String,
     arguments: String = "",
     aliases: List[String] = Nil
   ): CommandDefinition =
-    CommandDefinition(name, parse, Some(CommandHelp(description, arguments)), aliases)
+    CommandDefinition(companion, Some(CommandHelp(description, arguments)), aliases)
 
   /** A command that is recognized but not listed in `:help`. */
-  private def hidden(name: String, parse: String => Command): CommandDefinition =
-    CommandDefinition(name, parse)
+  private def hidden(companion: CommandCompanion): CommandDefinition =
+    CommandDefinition(companion)
 
   private val definitions = List(
-    command(Help.command,     _ => Help,      "print this summary"),
-    command(Save.command,     Save.apply,     "save replayable session to a file", "<path>"),
-    command(Load.command,     Load.apply,     "interpret lines in a file", "<path>"),
-    command(Quit.command,     _ => Quit,      "exit the interpreter", aliases = List(Quit.alias)),
-    command(TypeOf.command,   TypeOf.apply,   "evaluate the type of the given expression", "<expression>"),
-    command(DocOf.command,    DocOf.apply,    "print the documentation for the given expression", "<expression>"),
-    command(Imports.command,  _ => Imports,   "show import history"),
-    command(Reset.command,    Reset.apply,    "clear the session and start fresh with the given compiler options", "[options]"),
-    command(Replay.command,   Replay.apply,   "reset, then re-run the session with the given compiler options", "[options]"),
-    command(Settings.command, Settings.apply, "update compiler options, if possible", "<options>"),
-    command(Silent.command,   _ => Silent,    "disable/enable automatic printing of results"),
-    command(JarCmd.command,   JarCmd.apply,   "add a JAR to the classpath", "<path>"),
-    command(Dep.command,      Dep.apply,      "resolve a dependency and make it available in the REPL", "<group>::<artifact>:<version>"),
-    hidden(Sh.command,        Sh.apply),
-    hidden(KindOf.command,    KindOf.apply),
-    hidden(Require.command,   Require.apply),
-    hidden(Paste.command,     _ => Paste)
+    command(Help,     "print this summary"),
+    command(Save,     "save replayable session to a file", "<path>"),
+    command(Load,     "interpret lines in a file", "<path>"),
+    command(Quit,     "exit the interpreter", aliases = List(Quit.alias)),
+    command(TypeOf,   "evaluate the type of the given expression", "<expression>"),
+    command(DocOf,    "print the documentation for the given expression", "<expression>"),
+    command(Imports,  "show import history"),
+    command(Reset,    "clear the session and start fresh with the given compiler options", "[options]"),
+    command(Replay,   "reset, then re-run the session with the given compiler options", "[options]"),
+    command(Settings, "update compiler options, if possible", "<options>"),
+    command(Silent,   "disable/enable automatic printing of results"),
+    command(JarCmd,   "add a JAR to the classpath", "<path>"),
+    command(Dep,      "resolve a dependency and make it available in the REPL", "<group>::<artifact>:<version>"),
+    hidden(Sh),
+    hidden(KindOf),
+    hidden(Require),
+    hidden(Paste)
   )
 
   private val commands = definitions.flatMap: definition =>
-    definition.names.map(_ -> definition.parse)
+    definition.names.map(_ -> definition.companion)
 
   val names: List[String] = commands.map(_._1)
 
@@ -76,5 +75,5 @@ private[repl] object ReplCommands:
   def parse(name: String, argument: String): Command =
     commands.filter((command, _) => command.startsWith(name)) match
       case Nil => UnknownCommand(name)
-      case (_, handler) :: Nil => handler(argument)
+      case (_, companion) :: Nil => companion.parse(argument)
       case multiple => AmbiguousCommand(name, multiple.map(_._1))
