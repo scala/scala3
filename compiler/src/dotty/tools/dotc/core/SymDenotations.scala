@@ -2628,7 +2628,7 @@ object SymDenotations {
           val assocFiles = multi
             .filterWithPredicate(_.symbol.maybeOwner.isPackageObject)
             .aggregate(d => if d.symbol.associatedFile == null then Set.empty else Set(d.symbol.associatedFile.nn), _ `union` _)
-          if assocFiles.size == 1 then
+          if assocFiles.size <= 1 then
             multi // they are all overloaded variants from the same file
           else
             // pick the variant(s) from the youngest class file
