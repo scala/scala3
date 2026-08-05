@@ -12,8 +12,7 @@ import FileUtils.*
 import PlainFile.toPlainFile
 
 import scala.jdk.CollectionConverters.*
-import scala.collection.immutable.ArraySeq
-import scala.collection.{SortedSet, mutable}
+import scala.collection.mutable
 
 /**
  * A trait allowing to look for classpath entries in directories. It provides common logic for
@@ -135,9 +134,9 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
   // so might as well cache them
   private val allPackages = listFiles(dir).map(f => f.getFileName.toString)
 
-  private def listFiles(dir: Path, glob: String = "*"): SortedSet[Path] =
+  private def listFiles(dir: Path, glob: String = "*"): Seq[Path] =
     val stream = Files.newDirectoryStream(dir, glob)
-    try SortedSet.from(stream.asScala)
+    try stream.asScala.toSeq
     finally stream.close()
 
   // e.g. "java.lang" -> Seq("/modules/java.base")
@@ -153,7 +152,7 @@ final class JrtClassPath(fs: java.nio.file.FileSystem) extends ClassPath {
         // since we have `allPackages` cached anyway, use it.
         // No TOCTOU bug here, we're inside JRT so nothing will get modified (unless something has gone horribly wrong).
         val moduleFiles =
-          if allPackages(pkg)
+          if allPackages.contains(pkg)
           then listFiles(dir.resolve(pkg)).map(_.toRealPath()) // toRealPath to follow symlinks
           else Iterable.empty
         cachedPackageToModuleBases(pkg) = moduleFiles
