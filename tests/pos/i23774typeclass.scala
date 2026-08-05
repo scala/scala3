@@ -18,7 +18,7 @@ object Fold:
   final class Leaf[E] extends Fold[E]:
     def apply[Acc](acc: Acc, expr: E, f: [t] => (Acc, Expr[t]) => Acc): Acc = acc
 
-  given [T: Fold as fold] => Fold[Seq[T]] = new Fold[Seq[T]] {
+  given [T](using fold: Fold[T]): Fold[Seq[T]] = new Fold[Seq[T]] {
     def apply[Acc](acc: Acc, expr: Seq[T], f: [t] => (Acc, Expr[t]) => Acc): Acc =
       expr.foldLeft(acc)((a, e) => fold(a, e, f))
   }
@@ -26,7 +26,7 @@ object Fold:
   given Fold[EmptyTuple] = new Fold[EmptyTuple]:
     def apply[Acc](acc: Acc, expr: EmptyTuple, f: [t] => (Acc, Expr[t]) => Acc): Acc = acc
 
-  given [H: Fold as h, T <: Tuple: Fold as t] => Fold[H *: T] =
+  given [H, T <: Tuple](using h: Fold[H], t: Fold[T]): Fold[H *: T] =
     new Fold[H *: T]:
       def apply[Acc](acc: Acc, expr: H *: T, f: [t] => (Acc, Expr[t]) => Acc): Acc =
         val acc1 = h(acc, expr.head, f)
@@ -51,22 +51,22 @@ object Fold:
       case m: Mirror.SumOf[E] => sum(m, () => summonAll[m.MirroredElemTypes])
       case m: Mirror.ProductOf[E] => product[E](m, summonInline[Fold[m.MirroredElemTypes]])
 
-  given [T] => Fold[Expr.Const[T]] = Leaf()
+  given [T]: Fold[Expr.Const[T]] = Leaf()
   given Fold[Expr.UpcastToIterable[Any, Iterable[Any]]] = derived
-  given [T] => Fold[Expr[T]] = new Fold[Expr[T]]:
+  given [T]: Fold[Expr[T]] = new Fold[Expr[T]]:
     val default = derived[Expr[T]]
     def apply[Acc](acc: Acc, expr: Expr[T], f: [t] => (Acc, Expr[t]) => Acc): Acc =
       default(f(acc, expr), expr, f)
 
 @main def test(): Unit =
   def count[T](expr: Expr[T], f: [t] => Expr[t] => Boolean)(using fold: Fold[Expr[T]]): Int =
-    fold(0, expr, [t] => (acc, e) => if f(e) then acc + 1 else acc)
+    fold(0, expr, [t] => (acc: Int, e: Expr[t]) => if f(e) then acc + 1 else acc)
 
   val ast: Expr[Iterable[Int]] = Expr.UpcastToIterable(Expr.Seq(Expr.Const(1), Expr.Const(2), Expr.Const(3)))
   val constCount = count(
     ast,
     [t] =>
-      _ match {
+      (_: Expr[t]) match {
         case Expr.Const(_) => true
         case _ => false
       }
