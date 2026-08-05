@@ -27,7 +27,7 @@ import scala.tools.asm.Opcodes.*
 import scala.tools.asm.commons.CodeSizeEvaluator
 import scala.tools.asm.tree.*
 import scala.tools.asm.tree.analysis.*
-import scala.tools.asm.{Label, Type}
+import scala.tools.asm.{ClassWriter, Label, Type}
 
 object BCodeUtils {
   val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
@@ -605,6 +605,17 @@ object BCodeUtils {
         methodOpt.map(methodDesc).orNull))
     } else {
       None
+    }
+  }
+  
+  def createJAttribute(name: String, b: Array[Byte], offset: Int, len: Int): asm.Attribute = {
+    new asm.Attribute(name) {
+      override def write(classWriter: ClassWriter, code: Array[Byte],
+                         codeLength: Int, maxStack: Int, maxLocals: Int): asm.ByteVector = {
+        val byteVector = new asm.ByteVector(len)
+        byteVector.putByteArray(b, offset, len)
+        byteVector
+      }
     }
   }
 }

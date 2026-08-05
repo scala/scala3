@@ -19,6 +19,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 object FileWriters {
+  // TODO: Instead of doing this dance of replacement, we should pass the original thing...
   private def classRelativePath(className: String, suffix: String): String =
     className.replace('.', '/') + suffix
 
@@ -83,7 +84,7 @@ object FileWriters {
   }
 
   object ClassfileWriter {
-    def apply(output: AbstractFile, jarManifestMainClass: Option[String], jarCompressionLevel: Int, dumpClassesPath: Option[AbstractFile]): ClassfileWriter = {
+    def apply(output: AbstractFile, jarManifestMainClass: Option[String], jarCompressionLevel: Int, dumpClassesPath: AbstractFile): ClassfileWriter = {
       // In Scala 2 depending on cardinality of distinct output dirs MultiClassWriter could have been used
       // In Dotty we always use single output directory
       val manifest = jarManifestMainClass match
@@ -92,8 +93,8 @@ object FileWriters {
 
       val basicClassWriter = new SingleClassWriter(FileWriter(output, manifest, jarCompressionLevel))
       dumpClassesPath match
-        case None => basicClassWriter
-        case Some(out) => new DebugClassWriter(basicClassWriter, FileWriter(out, Seq.empty))
+        case NoAbstractFile => basicClassWriter
+        case out => new DebugClassWriter(basicClassWriter, FileWriter(out, Seq.empty, jarCompressionLevel))
     }
 
     private final class SingleClassWriter(underlying: FileWriter) extends ClassfileWriter {

@@ -28,6 +28,15 @@ case class CommonTastyHeader(
 
 object TastyUnpickler {
 
+  def getUuidBytes(tasty: Array[Byte]): Array[Byte] =
+    val uuid = new TastyHeaderUnpickler(TastyUnpickler.scala3CompilerConfig, tasty).readHeader()
+    val lo = uuid.getMostSignificantBits
+    val hi = uuid.getLeastSignificantBits
+    val buffer = new TastyBuffer(16)
+    buffer.writeUncompressedLong(lo)
+    buffer.writeUncompressedLong(hi)
+    buffer.bytes
+
   abstract class SectionUnpickler[R](val name: String) {
     def unpickle(reader: TastyReader, nameAtRef: NameTable): R
   }

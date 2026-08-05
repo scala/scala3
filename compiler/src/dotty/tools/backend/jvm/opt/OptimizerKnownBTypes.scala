@@ -16,15 +16,9 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
   val srNothingRef: ClassBType = ts.classBTypeFromSymbol(defn.RuntimeNothingClass)
   val srNullRef: ClassBType = ts.classBTypeFromSymbol(defn.RuntimeNullClass)
 
-  val boxedClasses: Set[ClassBType] = boxedClassOfPrimitive.values.toSet
-
   val srBoxedUnitRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[scala.runtime.BoxedUnit])
 
   val PredefRef: ClassBType = ts.classBTypeFromSymbol(defn.ScalaPredefModuleClass)
-
-  val jlCloneableRef: ClassBType = ts.classBTypeFromSymbol(defn.JavaCloneableClass)
-
-  val jiSerializableRef: ClassBType = ts.classBTypeFromSymbol(requiredClass[java.io.Serializable])
 
   // java/lang/Boolean -> MethodNameAndType(valueOf,(Z)Ljava/lang/Boolean;)
   val javaBoxMethods: Map[InternalName, MethodNameAndType] = _javaBoxMethods(using initctx)
