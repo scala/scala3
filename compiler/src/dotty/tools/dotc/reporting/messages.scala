@@ -359,8 +359,12 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
       if (found1 frozen_<:< expected1) || reported.fbounded then (found, expected)
       else (found1, expected1)
     val (foundStr, expectedStr) = Formatting.typeDiff(found2.normalized, expected2.normalized)
+    val extra =
+      if defn.isFunctionNType(found) && SAMType.unapply(expected).isEmpty && SAMType.unapply(expected, ignoreFinalOrSealed = true).nonEmpty
+      then i"\nNote that conversion from a function to a single abstract method type is only possible if the type is neither ${hl("final")} nor ${hl("sealed")}"
+      else ""
     i"""|${preface}Found:    $foundStr
-        |Required: $expectedStr${reported.notes}"""
+        |Required: $expectedStr${reported.notes}$extra"""
   end msg
 
   override def msgPostscript(using Context): String =

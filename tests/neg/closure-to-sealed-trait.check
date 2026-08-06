@@ -1,0 +1,8 @@
+-- [E007] Type Mismatch Error: tests/neg/closure-to-sealed-trait.scala:4:18 --------------------------------------------
+4 |def test: Foo = { (x: String) => "" } // error
+  |                  ^^^^^^^^^^^^^^^^^
+  |Found:    String => String
+  |Required: Foo
+  |Note that conversion from a function to a single abstract method type is only possible if the type is neither final nor sealed
+  |
+  | longer explanation available when compiling with `-explain`
