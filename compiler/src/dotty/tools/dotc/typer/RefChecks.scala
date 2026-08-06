@@ -11,6 +11,7 @@ import util.Spans.*
 import scala.collection.{mutable, immutable}
 import ast.*
 import MegaPhase.*
+import inlines.Inlines
 import config.Printers.{checks, noPrinter, capt}
 import Decorators.*
 import OverridingPairs.isOverridingPair
@@ -281,6 +282,33 @@ object RefChecks {
     // Disabled for capture checking since traits can get different parameter refinements
     def checkInheritedTraitParameters: Boolean = true
   end OverridingPairsChecker
+
+  def implementationOf(clazz: ClassSymbol, mbr: Symbol)(using Context): PreDenotation =
+    val mbrDenot = mbr.asSeenFrom(clazz.thisType)
+    def isConcrete(sym: Symbol) = sym.exists && !sym.isOneOf(NotConcrete)
+    clazz.nonPrivateMembersNamed(mbr.name)
+      .filterWithPredicate(
+        impl => isConcrete(impl.symbol)
+          && withMode(Mode.IgnoreCaptures)(mbrDenot.matchesLoosely(impl, alwaysCompareTypes = true)))
+
+  def hasJavaErasedOverriding(clazz: ClassSymbol, sym: Symbol)(using Context): Boolean =
+    !erasurePhase.exists || // can't do the test, assume the best
+      atPhase(erasurePhase.next) {
+        clazz.info.nonPrivateMember(sym.name).hasAltWith { alt =>
+          alt.symbol.is(JavaDefined, butNot = Deferred) &&
+            !sym.owner.derivesFrom(alt.symbol.owner) &&
+            alt.matches(sym)
+        }
+    }
+
+  def ignoreDeferred(clazz: ClassSymbol, mbr: Symbol, checkJavaErasedOverriding: Boolean = true)(using Context): Boolean =
+    mbr.isType
+    || mbr.isSuperAccessor // not yet synthesized
+    || checkJavaErasedOverriding && mbr.is(JavaDefined) && hasJavaErasedOverriding(clazz, mbr)
+    || mbr.is(Tracked)
+      // Tracked members correspond to existing val parameters, so they don't
+      // count as deferred. The val parameter could not implement the tracked
+      // refinement since it usually has a wider type.
 
   /** 1. Check all members of class `clazz` for overriding conditions.
    *  That is for overriding member M and overridden member O:
@@ -687,33 +715,9 @@ object RefChecks {
         else abstractErrors += msg
       }
 
-      def hasJavaErasedOverriding(sym: Symbol): Boolean =
-        !erasurePhase.exists || // can't do the test, assume the best
-          atPhase(erasurePhase.next) {
-            clazz.info.nonPrivateMember(sym.name).hasAltWith { alt =>
-              alt.symbol.is(JavaDefined, butNot = Deferred) &&
-                !sym.owner.derivesFrom(alt.symbol.owner) &&
-                alt.matches(sym)
-            }
-        }
+      def ignoreDeferred(mbr: Symbol): Boolean = RefChecks.ignoreDeferred(clazz, mbr)
 
-      def ignoreDeferred(mbr: Symbol) =
-        mbr.isType
-        || mbr.isSuperAccessor // not yet synthesized
-        || mbr.is(JavaDefined) && hasJavaErasedOverriding(mbr)
-        || mbr.is(Tracked)
-          // Tracked members correspond to existing val parameters, so they don't
-          // count as deferred. The val parameter could not implement the tracked
-          // refinement since it usually has a wider type.
-
-      def isImplemented(mbr: Symbol) =
-        val mbrDenot = mbr.asSeenFrom(clazz.thisType)
-        def isConcrete(sym: Symbol) = sym.exists && !sym.isOneOf(NotConcrete)
-        clazz.nonPrivateMembersNamed(mbr.name)
-          .filterWithPredicate(
-            impl => isConcrete(impl.symbol)
-              && withMode(Mode.IgnoreCaptures)(mbrDenot.matchesLoosely(impl, alwaysCompareTypes = true)))
-          .exists
+      def isImplemented(mbr: Symbol) = implementationOf(clazz, mbr).exists
 
       /** Filter out symbols from `syms` that are overridden by a symbol appearing later in the list.
        *  Symbols that are not overridden are kept. */
@@ -1464,7 +1468,7 @@ import RefChecks.*
  *  Unlike in Scala 2.x not-private members keep their name. It is
  *  up to the backend to find a unique expanded name for them. The
  *  rationale to do name changes that late is that they are very fragile.
-
+ *
  *  todo: But RefChecks is not done yet. It's still a somewhat dirty port from the Scala 2 version.
  *  todo: move untrivial logic to their own mini-phases
  */
