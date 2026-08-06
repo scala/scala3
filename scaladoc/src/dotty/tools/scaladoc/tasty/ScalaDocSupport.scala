@@ -41,20 +41,25 @@ object ScaladocSupport:
     }
     parser.parse(preparsed)
 
-  def parseComment(using Quotes, DocContext)(docstring: String, tree: reflect.Tree): Option[Comment] =
+  // ownerSym is not necessarily sym.owner because documentation `@define`s must be respected even for symbols that aren't overridden;
+  // e.g., if `trait T` has a `@define x a` and a `def m` that uses `$x`,
+  // and `class C extends trait T` has a `@define x b` and does not override `m`,
+  // the documentation for `C.m` must use `b` as the value of `x`.
+  def parseComment(using Quotes, DocContext)(docstring: String, sym: reflect.Symbol, ownerSym: reflect.Symbol): Option[Comment] =
     val commentString: String =
-      if tree.symbol.isClassDef || tree.symbol.owner.isClassDef then
+      if sym.isClassDef || ownerSym.isClassDef then
         import dotty.tools.dotc
         import dotty.tools.dotc.core.Comments.docCtx
         given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
 
         val docCtx = ctx.docCtx.get
 
-        val sym = tree.symbol.asInstanceOf[dotc.core.Symbols.Symbol]
+        val dottySym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
+        val dottyOwnerSym = ownerSym.asInstanceOf[dotc.core.Symbols.Symbol]
 
-        docCtx.templateExpander.expand(sym, sym.owner)
+        docCtx.templateExpander.expand(dottySym, dottyOwnerSym)
       else
         docstring
     if commentString == ""
     then None
-    else Some(parseCommentString(commentString, tree.symbol, Some(tree.pos)))
+    else Some(parseCommentString(commentString, sym, Some(sym.tree.pos)))
