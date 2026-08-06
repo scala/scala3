@@ -8,9 +8,21 @@ private[repl] object ReplDirectives:
 
   type Dependencies = List[String]
 
+  enum Warning:
+    case NoSeparateTestScope
+    case UnsupportedDirective(key: String)
+
+    override def toString: String = this match
+      case NoSeparateTestScope =>
+        """[warn] The REPL does not have a separate test scope. Dependencies declared with a
+          |`using test.*` directive are added to the current REPL session.""".stripMargin
+      case UnsupportedDirective(key) =>
+        s"""[warn] The `using $key` directive is not supported in the REPL.
+           |To use it, re-run with the `scala` command and pass the directive inside an input.""".stripMargin
+
   case class DirectiveClassification(
     dependencies: Dependencies,
-    unsupportedKeys: List[String],
+    warnings: List[Warning],
     hasDirectives: Boolean
   )
 
@@ -19,6 +31,7 @@ private[repl] object ReplDirectives:
     def usage: String
     def description: String
     def process(values: Seq[DirectiveValue]): Dependencies
+    def warnings: List[Warning] = Nil
 
     final def helpText: String =
       val aliasText = keys.drop(1) match
@@ -27,7 +40,7 @@ private[repl] object ReplDirectives:
       (List(usage, s"  $description") ++ aliasText).mkString("\n")
 
   private object DependencyDirective extends DirectiveHandler:
-    val keys = List("dep")
+    val keys = List("dep", "deps", "dependency", "dependencies")
     val usage = "//> using dep <group>::<artifact>:<version> ..."
     val description = "Resolve dependencies and make them available in the REPL."
 
@@ -36,7 +49,16 @@ private[repl] object ReplDirectives:
           case DirectiveValue.StringVal(value, _, _) => value
         .toList
 
-  private val handlers = List(DependencyDirective)
+  private object TestDependencyDirective extends DirectiveHandler:
+    val keys = List("test.dep", "test.deps", "test.dependency", "test.dependencies")
+    val usage = "//> using test.dep <group>::<artifact>:<version> ..."
+    val description = "Resolve dependencies and make them available in the REPL."
+    override val warnings = List(Warning.NoSeparateTestScope)
+
+    def process(values: Seq[DirectiveValue]): Dependencies =
+      DependencyDirective.process(values)
+
+  private val handlers = List(DependencyDirective, TestDependencyDirective)
   private val handlersByKey = handlers.flatMap(handler => handler.keys.map(_ -> handler)).toMap
 
   require(
@@ -60,7 +82,10 @@ private[repl] object ReplDirectives:
       val dependencies = supported
         .flatMap(directive => handlersByKey(directive.key).process(directive.values))
         .toList
-      val unsupportedKeys = unsupported.map(_.key).distinct.toList
-      DirectiveClassification(dependencies, unsupportedKeys, result.directives.nonEmpty)
+      val warnings = (supported.flatMap(directive => handlersByKey(directive.key).warnings) ++
+        unsupported.map(directive => Warning.UnsupportedDirective(directive.key)))
+        .distinct
+        .toList
+      DirectiveClassification(dependencies, warnings, result.directives.nonEmpty)
     catch
       case NonFatal(_) => DirectiveClassification(Nil, Nil, false)

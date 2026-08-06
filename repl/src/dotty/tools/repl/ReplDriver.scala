@@ -795,11 +795,7 @@ class ReplDriver(settings: Array[String],
   }
 
   private def interpretDirectives(classified: ReplDirectives.DirectiveClassification)(using state: State): State =
-    classified.unsupportedKeys.foreach: key =>
-      out.println(
-        s"""[warn] The `using $key` directive is not supported in the REPL.
-           |To use it, re-run with the `scala` command and pass the directive inside an input.""".stripMargin
-      )
+    classified.warnings.foreach(warning => out.println(warning.toString))
     resolveAndAddDeps(classified.dependencies)
 
   private def resolveAndAddDeps(depStrings: List[String])(using state: State): State =
