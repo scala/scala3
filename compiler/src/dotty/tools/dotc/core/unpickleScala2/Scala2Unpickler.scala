@@ -1138,11 +1138,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         val cls = symbol.asClass
         val ((constr: DefDef) :: Nil, stats) =
           impl.body.partition(_.symbol == cls.primaryConstructor): @unchecked
-        ClassDef(cls, constr, tparams ++ stats)
+        ClassDef(cls, constr, tparams ++ stats, Nil, adaptVarargs = false, impl.symbol)
 
       case MODULEtree =>
         val symbol = setSymModsName()
-        ModuleDef(symbol.asTerm, readTemplateRef().body)
+        val impl = readTemplateRef()
+        ModuleDef(symbol.asTerm, impl.body, impl.symbol)
 
       case VALDEFtree =>
         val symbol = setSymModsName()
