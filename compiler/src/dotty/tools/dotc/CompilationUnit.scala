@@ -17,6 +17,7 @@ import config.{SourceVersion, Feature}
 import scala.annotation.internal.sharable
 import scala.util.control.NoStackTrace
 import transform.MacroAnnotations.isMacroAnnotation
+import scala.io.Codec
 
 class CompilationUnit protected (val source: SourceFile, val info: CompilationUnitInfo | Null) {
 
@@ -149,7 +150,7 @@ object CompilationUnit {
   def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit =
     val compilationUnitInfo = clsd.symbol.compilationUnitInfo.nn
     val file = compilationUnitInfo.associatedFile
-    apply(SourceFile(file, Array.emptyCharArray), unpickled, forceTrees, compilationUnitInfo)
+    apply(SourceFile(file, Codec(ctx.settings.encoding.value)), unpickled, forceTrees, compilationUnitInfo)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
   def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean, info: CompilationUnitInfo)(using Context): CompilationUnit = {
