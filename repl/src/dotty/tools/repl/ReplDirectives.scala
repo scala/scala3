@@ -10,11 +10,19 @@ private[repl] object ReplDirectives:
 
   enum Warning:
     case NoSeparateTestScope
+    case UnsupportedDirective(key: String)
+
+    override def toString: String = this match
+      case NoSeparateTestScope =>
+        """[warn] The REPL does not have a separate test scope. Dependencies declared with a
+          |`using test.*` directive are added to the current REPL session.""".stripMargin
+      case UnsupportedDirective(key) =>
+        s"""[warn] The `using $key` directive is not supported in the REPL.
+           |To use it, re-run with the `scala` command and pass the directive inside an input.""".stripMargin
 
   case class DirectiveClassification(
     dependencies: Dependencies,
     warnings: List[Warning],
-    unsupportedKeys: List[String],
     hasDirectives: Boolean
   )
 
@@ -74,11 +82,10 @@ private[repl] object ReplDirectives:
       val dependencies = supported
         .flatMap(directive => handlersByKey(directive.key).process(directive.values))
         .toList
-      val warnings = supported
-        .flatMap(directive => handlersByKey(directive.key).warnings)
+      val warnings = (supported.flatMap(directive => handlersByKey(directive.key).warnings) ++
+        unsupported.map(directive => Warning.UnsupportedDirective(directive.key)))
         .distinct
         .toList
-      val unsupportedKeys = unsupported.map(_.key).distinct.toList
-      DirectiveClassification(dependencies, warnings, unsupportedKeys, result.directives.nonEmpty)
+      DirectiveClassification(dependencies, warnings, result.directives.nonEmpty)
     catch
-      case NonFatal(_) => DirectiveClassification(Nil, Nil, Nil, false)
+      case NonFatal(_) => DirectiveClassification(Nil, Nil, false)

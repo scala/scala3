@@ -13,7 +13,6 @@ class ReplDirectiveTests extends ReplTest:
       val result = ReplDirectives.classify(s"//> using $alias $dependency")
       assertEquals(List(dependency), result.dependencies)
       assertEquals(Nil, result.warnings)
-      assertEquals(Nil, result.unsupportedKeys)
     assertTrue(ReplDirectives.helpText.contains("Aliases: deps, dependency, dependencies"))
 
   @Test def `test dependency directive aliases are supported with a warning`: Unit =
@@ -23,7 +22,6 @@ class ReplDirectiveTests extends ReplTest:
       val result = ReplDirectives.classify(s"//> using $alias ${dependencies.mkString(" ")}")
       assertEquals(dependencies, result.dependencies)
       assertEquals(List(ReplDirectives.Warning.NoSeparateTestScope), result.warnings)
-      assertEquals(Nil, result.unsupportedKeys)
     assertTrue(ReplDirectives.helpText.contains("Aliases: test.deps, test.dependency, test.dependencies"))
 
   @Test def `test dependency directive warns about the shared REPL scope`: Unit =
