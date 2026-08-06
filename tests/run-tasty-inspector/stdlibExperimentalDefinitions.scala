@@ -73,6 +73,20 @@ val experimentalDefinitionInLibrary = Set(
   "scala.quoted.Quotes.reflectModule.SymbolModule.newBoundedType",
   "scala.quoted.Quotes.reflectModule.SymbolModule.newTypeAlias",
 
+  // New API: experimental capture-checking reflection
+  // Can be stabilized when capture checking is stabilized.
+  "scala.quoted.Quotes.reflectModule.cc",
+  "scala.quoted.Quotes.reflectModule.ccModule",
+  "scala.quoted.Quotes.reflectModule.SymbolMethods.isPureClass",
+  "scala.quoted.Quotes.reflectModule.defnModule.Caps_Capability",
+  "scala.quoted.Quotes.reflectModule.defnModule.Caps_CapSet",
+  "scala.quoted.Quotes.reflectModule.defnModule.Caps_any",
+  "scala.quoted.Quotes.reflectModule.defnModule.Caps_fresh",
+  "scala.quoted.Quotes.reflectModule.defnModule.ConsumeAnnot",
+  "scala.quoted.Quotes.reflectModule.defnModule.isFunctionClass",
+  "scala.quoted.Quotes.reflectModule.defnModule.isContextFunctionClass",
+  "scala.quoted.Quotes.reflectModule.defnModule.isImpureFunctionClass",
+
   // New feature: functions with erased parameters.
   // Need erasedDefinitions enabled.
   "scala.quoted.Quotes.reflectModule.MethodTypeMethods.erasedParams",

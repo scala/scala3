@@ -3,7 +3,6 @@ package tasty
 
 import scala.jdk.CollectionConverters._
 import dotty.tools.scaladoc._
-import dotty.tools.scaladoc.cc.CaptureDefs
 import scala.quoted._
 
 import SymOps._
@@ -43,7 +42,7 @@ trait BasicSupport:
     def getAnnotations(): List[Annotation] =
       // Custom annotations should be documented only if annotated by @java.lang.annotation.Documented
       // We allow also some special cases
-      val fqNameAllowlist0 = Set(
+      val fqNameAllowlist = Set(
         "scala.specialized",
         "scala.throws",
         "scala.transient",
@@ -55,7 +54,6 @@ trait BasicSupport:
         "scala.annotation.threadUnsafe",
         "scala.annotation.varargs",
       )
-      val fqNameAllowlist = fqNameAllowlist0
       val documentedSymbol = summon[Quotes].reflect.Symbol.requiredClass("java.lang.annotation.Documented")
       val annotations = sym.annotations.filter { a =>
         a.tpe.typeSymbol.hasAnnotation(documentedSymbol) || fqNameAllowlist.contains(a.symbol.fullName)

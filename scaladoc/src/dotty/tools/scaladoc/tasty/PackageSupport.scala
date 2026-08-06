@@ -5,7 +5,6 @@ import scala.jdk.CollectionConverters._
 
 import SymOps._
 
-import dotty.tools.scaladoc.cc.CCImport
 
 trait PackageSupport:
     self: TastyParser =>
