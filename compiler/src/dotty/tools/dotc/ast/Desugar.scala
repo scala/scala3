@@ -282,7 +282,7 @@ object desugar {
 
     rhs match
       case MacroTree(call) =>
-        cpy.DefDef(meth)(rhs = call, paramss = newParamss).withMods(meth.mods | Macro | Erased)
+        cpy.DefDef(meth)(rhs = call, paramss = paramssNoContextBounds).withMods(meth.mods | Macro | Erased)
       case _ =>
         addEvidenceParams(
           cpy.DefDef(meth)(
