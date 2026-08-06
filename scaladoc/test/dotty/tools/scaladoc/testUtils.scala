@@ -84,10 +84,9 @@ def testDocPath: Path = Paths.get(BuildInfo.testDocumentationRoot)
 /** JVM classpath of the test runner; used when compiling sources or running Scaladoc at test time. */
 def javaClasspath: String = System.getProperty("java.class.path")
 
-/** Copy a test resource `<resourceDir>/<name>.txt` into `root/sources/<name>` and return that path.
- *  Why .txt? So that the files don't conflict with other tests that load all .scala files... not great. */
+/** Copy a test resource `<resourceDir>/<name>` into `root/sources/<name>` and return that path. */
 def copyTestResource(root: Path, resourceDir: String, name: String): Path =
-  val resource = classOf[TestReporter].getResource(s"/$resourceDir/$name.txt")
+  val resource = classOf[TestReporter].getResource(s"/$resourceDir/$name")
   assertNotNull(s"Test resource not found: /$resourceDir/$name.txt", resource)
   val source = root.resolve("sources").resolve(name)
   Files.createDirectories(source.getParent)
