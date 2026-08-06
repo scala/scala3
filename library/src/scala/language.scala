@@ -99,14 +99,13 @@ object language {
    */
   implicit lazy val reflectiveCalls: reflectiveCalls = languageFeature.reflectiveCalls
 
-  /** Where this feature is enabled, definitions of implicit conversion methods are allowed.
-   *  If `implicitConversions` is not enabled, the definition of an implicit
-   *  conversion method will trigger a warning from the compiler.
+  /** There are two kinds of implicit conversions, depending on whether we are in
+   *  Scala 2 or 3. This language import has different meanings depending on which kind
+   *  of conversion is used.
    *
-   *  An implicit conversion is an implicit value of unary function type `A => B`,
-   *  or an implicit method that has in its first parameter section a single,
-   *  non-implicit parameter. Examples:
-   *
+   *  In Scala 2, an implicit conversion is an implicit method that has in its first
+   *  parameter section a single, non-implicit parameter, or it is an implicit value
+   *  of function type A => B. Examples:
    *  ```
    *     implicit def intToString(i: Int): String = s"\$i"
    *     implicit val conv: Int => String = i => s"\$i"
@@ -114,23 +113,50 @@ object language {
    *     implicit val strlen: String => Int = _.length
    *     implicit def listToInt[T](xs: List[T])(implicit f: T => Int): Int = xs.map(f).sum
    *  ```
-   *
-   *  This language feature warns only for implicit conversions introduced by methods.
-   *
-   *  Other values, including functions or data types which extend `Function1`,
-   *  such as `Map`, `Set`, and `List`, do not warn.
-   *
+   *  The language import controls whether _definitions_ of these Scala 2 conversions
+   *  are allowed. If `implicitConversions` is not enabled, the definition of an implicit
+   *  conversion method will trigger a warning from the compiler. The warning is only for
+   *  implicit conversions introduced by methods, implicit values are unaffected.
    *  Implicit class definitions, which introduce a conversion to the wrapping class,
    *  also do not warn.
    *
-   *  **Why keep the feature?** Implicit conversions are central to many aspects
-   *  of Scala’s core libraries.
+   *  In Scala 3, an implicit conversion is a given of type `scala.Conversion`.
+   *  Examples:
+   *  ```
+   *      given Conversion[Int, BigInt] = (i: Int) => BigInt(i)
+   *      given [T] => Conversion[T, Option[T]] = Some(_)
+   *  ```
+   *  As of Scala 3.9, the language still supports Scala-2 style conversions, but these
+   *  are slated to be phased out.
    *
-   *  **Why control it?** Implicit conversions are known to cause many pitfalls
-   *  if over-used. And there is a tendency to over-use them because they look
-   *  very powerful and their effects seem to be easy to understand. Also, in
-   *  most situations using implicit parameters leads to a better design than
-   *  implicit conversions.
+   *  In Scala 3, the _use_ of a (new style) implicit conversion triggers a warning or an error
+   *  if the `implicitConversions` language import is not given. Exempted are only uses that
+   *  map a value into an `into[...]` type, since `into[...]` signifies that an implicit
+   *  conversion is allowed. Everwhere else the language import has to be given. Example:
+   *  ```
+   *      import Conversion.into
+   *      given [T] => Conversion[T, Option[T]] = Some(_)
+   *
+   *      def strict(x: Option[String]) = ()
+   *      def lenient(x: into[Option[String]]) = ()
+   *
+   *      strict("abc")    // error or warning: language import needed
+   *      lenient("abc")   // ok
+   *  ```
+   *  The precise kind of diagnostic depends on the Scala version:
+   *
+   *   - For Scala 3.0 - 3.9: feature warning.
+   *   - For Scala 3.10: regular warning.
+   *   - For Scala 3.11 and higher: error.
+   *
+   *  **Why keep the feature?** Implicit conversions can add flexibility. They are
+   *  widely used in many libraries including Scala’s collection library.
+   *
+   *  **Why control it?** Implicit conversions may have unexpected global effects,
+   *  potentially causing unexpected behavior or performance degradation.
+   *  Their presence also imposes a tax on precise type inference. It's therefore
+   *  better to limit their use to specific situations where a library explicitly allows
+   *  them by wrapping expected argument types in `into`.
    *
    *  @group production
    */
