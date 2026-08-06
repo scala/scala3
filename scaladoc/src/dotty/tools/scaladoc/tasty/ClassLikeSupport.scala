@@ -148,7 +148,7 @@ trait ClassLikeSupport:
 
     val kind = if intrinsicClassDefs.contains(classDef.symbol) then bareClasslikeKind(classDef.symbol) else kindForClasslike(classDef)
 
-    val baseMember = mkMember(classDef.symbol, kind, selfSignature)(
+    val baseMember = mkMember(classDef.symbol.owner, classDef.symbol, kind, selfSignature)(
       modifiers = modifiers,
       graph = graph,
       deprecated = classDef.symbol.isDeprecated(),
@@ -431,6 +431,7 @@ trait ClassLikeSupport:
       case _ => methodSymbol.getExtraModifiers()
 
     mkMember(
+      c.symbol,
       methodSymbol,
       methodKind,
       method.returnTpt.tpe.asSignature(c, methodSymbol),
@@ -450,13 +451,13 @@ trait ClassLikeSupport:
   ) =
     val symbol = argument.symbol
     val inlinePrefix = if symbol.flags.is(Flags.Inline) then "inline " else ""
-    val comsumePrefix = if self.ccEnabled && symbol.hasAnnotation(cc.CaptureDefs.ConsumeAnnot) then "consume " else ""
+    val consumePrefix = if self.ccEnabled && symbol.hasAnnotation(cc.CaptureDefs.ConsumeAnnot) then "consume " else ""
     val name = symbol.normalizedName
     val nameIfNotSynthetic = Option.when(!symbol.flags.is(Flags.Synthetic))(name)
     val defaultValue = Option.when(symbol.flags.is(Flags.HasDefault))(Plain(" = ..."))
     api.TermParameter(
       symbol.getAnnotations(),
-      comsumePrefix + inlinePrefix + prefix(symbol),
+      consumePrefix + inlinePrefix + prefix(symbol),
       nameIfNotSynthetic,
       symbol.dri,
       argument.tpt.asSignature(classDef, symbol.owner) :++ defaultValue,
@@ -528,13 +529,13 @@ trait ClassLikeSupport:
           Some(Link(l.tpe.typeSymbol.owner.name, l.tpe.typeSymbol.owner.dri))
         case _ => None
       }
-      mkMember(symbol, Kind.Exported(kind), sigWithCaret)(
+      mkMember(classDef.symbol, symbol, Kind.Exported(kind), sigWithCaret)(
         deprecated = symbol.isDeprecated(),
         origin = Origin.ExportedFrom(origin),
         experimental = symbol.isExperimental()
       )
     }
-    else mkMember(symbol, kind, sigWithCaret)(deprecated = symbol.isDeprecated())
+    else mkMember(classDef.symbol, symbol, kind, sigWithCaret)(deprecated = symbol.isDeprecated())
 
   def parseValDef(c: ClassDef, valDef: ValDef): Member =
     val symbol = valDef.symbol
@@ -551,7 +552,7 @@ trait ClassLikeSupport:
         .filterNot(m => m == Modifier.Lazy || m == Modifier.Final)
       case _ => symbol.getExtraModifiers()
 
-    mkMember(symbol, kind, sig)(
+    mkMember(c.symbol, symbol, kind, sig)(
       // Due to how capture checking encodes update methods (recycling the mutable flag for methods),
       // we need to filter out the update modifier here. Otherwise, mutable fields will
       // be documented as having the update modifier, which is not correct.
@@ -560,7 +561,7 @@ trait ClassLikeSupport:
       experimental = symbol.isExperimental()
     )
 
-  def mkMember(symbol: Symbol, kind: Kind, signature: DSignature)(
+  def mkMember(ownerSymbol: Symbol, symbol: Symbol, kind: Kind, signature: DSignature)(
     modifiers: Seq[Modifier] = symbol.getExtraModifiers(),
     origin: Origin = Origin.RegularlyDefined,
     inheritedFrom: Option[InheritedFrom] = None,
@@ -581,7 +582,7 @@ trait ClassLikeSupport:
     origin = origin,
     inheritedFrom = inheritedFrom,
     graph = graph,
-    docs = symbol.documentation,
+    docs = symbol.documentation(ownerSymbol),
     deprecated = deprecated,
     experimental = experimental
   )

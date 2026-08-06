@@ -244,7 +244,7 @@ case class TastyParser(
 
     try Traverser.traverseTree(root)(Symbol.spliceOwner)
     catch case e: Throwable =>
-      println(s"Problem parsing ${root.pos}, documentation may not be generated.")
+      report.error(s"Problem parsing ${root.pos}, documentation may not be generated. (Error message: ${e.getMessage})")
       // e.printStackTrace()
 
     docs.result()
