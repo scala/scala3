@@ -54,6 +54,9 @@ trait ImportSuggestions:
    *     that should not be used for suggestions.
    *   - Any members of the java or java.lang packages. These are
    *     skipped as an optimization, since they won't contain implicits anyway.
+   *   - Package symbols that have no package object.
+   *     Givens/extensions accessible as members of a package is only in those objects
+   *
    */
   private def suggestionRoots(using Context) =
     val seen = mutable.Set[TermRef]()
@@ -103,12 +106,21 @@ trait ImportSuggestions:
           .flatMap(rootsIn(_, newParentSymbols))
           .toList
 
+    def hasPackageObject(pkg: Symbol)(using Context): Boolean =
+      pkg.moduleClass.denot match
+        case pcd: PackageClassDenotation => pcd.packageObjs.nonEmpty
+        case _ => false
+
     def rootsIn(ref: TermRef, parentSymbols: Set[Symbol] = Set())(using Context): List[TermRef] =
       if seen.contains(ref) then Nil
       else
-        implicitsDetailed.println(i"search for suggestions in ${ref.symbol.fullName}")
         seen += ref
-        ref :: rootsStrictlyIn(ref, parentSymbols)
+        // put in the root if the symbol is not a package (except package object)
+        if !ref.symbol.is(Package) || hasPackageObject(ref.symbol) then
+          implicitsDetailed.println(i"search for suggestions in ${ref.symbol.fullName}")
+          ref :: rootsStrictlyIn(ref, parentSymbols)
+        else
+          rootsStrictlyIn(ref, parentSymbols)
 
     def rootsOnPath(tp: Type)(using Context): List[TermRef] = tp match
       case ref: TermRef => rootsIn(ref) ::: rootsOnPath(ref.prefix)
