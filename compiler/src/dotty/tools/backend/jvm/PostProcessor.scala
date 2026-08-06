@@ -36,9 +36,6 @@ class PostProcessor(val frontendAccess: PostProcessorFrontendAccess, val bTypes:
         setInnerClasses(classNode)
         serializeClass(classNode)
       catch
-        case e: java.lang.RuntimeException if e.getMessage != null && e.getMessage.nn.contains("too large!") =>
-          backendReporting.error(em"Could not write class $internalName because it exceeds JVM code size limits. ${e.getMessage}")
-          null
         case ex: Throwable =>
           if compilerSettings.debug then ex.printStackTrace()
           backendReporting.error(em"Error while emitting $internalName\n${ex.getMessage}")
