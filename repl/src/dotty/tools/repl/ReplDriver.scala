@@ -795,8 +795,16 @@ class ReplDriver(settings: Array[String],
   }
 
   private def interpretDirectives(classified: ReplDirectives.DirectiveClassification)(using state: State): State =
+    import ReplDirectives.ReplDirective.*
+
     classified.warnings.foreach(warning => out.println(warning.toString))
-    resolveAndAddDeps(classified.dependencies)
+    val dependencies = classified.directives.collect:
+      case Dependency(coordinate) => coordinate
+    val jars = classified.directives.collect:
+      case Jar(path) => path
+    val stateWithDependencies = resolveAndAddDeps(dependencies)
+    jars.foldLeft(stateWithDependencies): (currentState, path) =>
+      interpretCommand(JarCmd(path))(using currentState)
 
   private def resolveAndAddDeps(depStrings: List[String])(using state: State): State =
     if depStrings.isEmpty then state
