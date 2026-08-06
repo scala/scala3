@@ -1,10 +1,19 @@
 package dotty.tools
 package repl
 
-import org.junit.Assert.{assertFalse, assertTrue}
+import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 import org.junit.Test
 
 class ReplDirectiveTests extends ReplTest:
+
+  @Test def `dependency directive aliases are supported`: Unit =
+    val dependency = "com.lihaoyi::os-lib:0.11.3"
+    val aliases = List("dep", "deps", "dependency", "dependencies")
+    aliases.foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias $dependency")
+      assertEquals(List(dependency), result.dependencies)
+      assertEquals(Nil, result.unsupportedKeys)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: deps, dependency, dependencies"))
 
   @Test def `lone dep directive is incomplete until code follows`: Unit = contextually:
     assertTrue(ParseResult.onlyPreambleSoFar("//> using dep com.lihaoyi::os-lib:0.11.3"))

@@ -27,7 +27,7 @@ private[repl] object ReplDirectives:
       (List(usage, s"  $description") ++ aliasText).mkString("\n")
 
   private object DependencyDirective extends DirectiveHandler:
-    val keys = List("dep")
+    val keys = List("dep", "deps", "dependency", "dependencies")
     val usage = "//> using dep <group>::<artifact>:<version> ..."
     val description = "Resolve dependencies and make them available in the REPL."
 
