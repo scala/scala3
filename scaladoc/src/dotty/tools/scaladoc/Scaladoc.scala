@@ -127,7 +127,7 @@ object Scaladoc:
       .partition(commonScalaSettings.contains)
     shared.foreach(setInGlobal)
 
-    if !other.isEmpty then report.echo(s"Skipping unused scalacOptions: ${other.map(_.name).mkString(", ")}")
+    if warnOnUnusedOptions.get && other.nonEmpty then report.warning(s"Skipping unused scalacOptions: ${other.map(_.name).mkString(", ")}")
 
     def parseTastyRoots(roots: String) =
       roots.split(File.pathSeparatorChar).toList.map(new File(_))
