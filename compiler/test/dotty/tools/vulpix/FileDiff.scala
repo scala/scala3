@@ -47,9 +47,8 @@ object FileDiff {
       else if matched then
         None
       else
-        Some(s"""|Output from '$sourceTitle' did not match check file. Actual output:
-                 |${outputLines.mkString(EOL)}
-                 |""".stripMargin + "\n")
+        // Do not use a """ literal here with .stripMargin since `outputLines` may begin with |
+        Some(s"Output from '$sourceTitle' did not match check file. Actual output:\n${outputLines.mkString(EOL)}\n")
     else None
   }
 
