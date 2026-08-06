@@ -14,7 +14,7 @@ import Symbols.*
 import Flags.Module
 import reporting.{ThrowingReporter, Profile, Message}
 import collection.mutable
-import util.concurrent.{Executor, Future}
+import util.concurrent.Executor
 import compiletime.uninitialized
 
 object Pickler {
