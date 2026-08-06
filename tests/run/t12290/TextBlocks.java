@@ -1,3 +1,5 @@
+// test: -jvm 17+
+
 class TextBlocks {
 
     final static String aText = """
