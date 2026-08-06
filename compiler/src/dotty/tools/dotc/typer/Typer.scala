@@ -12,7 +12,7 @@ import Scopes.*
 import Denotations.*
 import ProtoTypes.*
 import Contexts.*
-import Symbols.*
+import Symbols.{toDenot, *}
 import Types.*
 import SymDenotations.*
 import Annotations.*
@@ -48,7 +48,7 @@ import staging.StagingLevel
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
-import cc.{Setup, CheckCaptures, isRetainsLike, derivesFromCapSet}
+import cc.{CheckCaptures, Setup, derivesFromCapSet, isRetainsLike}
 import config.MigrationVersion
 import dotty.tools.dotc.core.Mode.Interactive
 import transform.CheckUnused.withOriginalName
@@ -3186,7 +3186,37 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     if sym.isInlineMethod then rhsCtx.addMode(Mode.InlineableBody)
     if sym.is(ExtensionMethod) then rhsCtx.addMode(Mode.InExtensionMethod)
-    val rhs1 = excludeDeferredGiven(ddef.rhs, sym): rhs =>
+
+    // Turn non-inline methods whose body is contained within a `this.synchronized` call into synchronized methods
+    // Besides being more efficient, this also allows tail recursion in such methods.
+    // (Doing this at the typer stage is considerably easier; if we did it later,
+    //  we'd need to undo some typer work such as adding boxed Unit returns to the synchronized body)
+    @tailrec
+    def extractSynchronized(rhs: Trees.Tree[Untyped]): Trees.Tree[Untyped] = rhs match
+      case Apply(Select(This(_), nme.synchronized_), synchronizedBody :: Nil) =>
+        sym.denot.setFlag(Synchronized)
+        synchronizedBody
+      case Apply(Ident(nme.synchronized_), synchronizedBody :: Nil) =>
+        sym.denot.setFlag(Synchronized)
+        synchronizedBody
+      case Block(Nil, expr) =>
+        extractSynchronized(expr)
+      case _ =>
+        ddef.rhs
+    // However, this is only feasible for class/module methods that are not inline (which does not include extension methods)
+    def canBeSynchronized =
+      !sym.isOneOf(Inline | ExtensionMethod)
+        && !sym.owner.is(Trait)
+        && !sym.owner.isPackageObject
+        && (sym.owner match
+        case cs: ClassSymbol => !cs.parentSyms.contains(defn.AnyValClass)
+        case _ => false)
+    val rhs0 =
+      if ctx.platform.supportsSynchronizedMethods && canBeSynchronized
+      then extractSynchronized(ddef.rhs)
+      else ddef.rhs
+
+    val rhs1 = excludeDeferredGiven(rhs0, sym): rhs =>
       PrepareInlineable.dropInlineIfError(sym,
         if sym.isScala2Macro then typedScala2MacroBody(rhs)(using rhsCtx)
         else

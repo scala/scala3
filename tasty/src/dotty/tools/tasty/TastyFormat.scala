@@ -494,7 +494,7 @@ object TastyFormat {
   final val CASEaccessor = 27
   final val COVARIANT = 28
   final val CONTRAVARIANT = 29
-  // final val ??? = 30
+  final val SYNCHRONIZED = 30
   final val HASDEFAULT = 31
   final val STABLE = 32
   final val MACRO = 33
@@ -682,6 +682,7 @@ object TastyFormat {
        | MACRO
        | OPAQUE
        | STATIC
+       | SYNCHRONIZED
        | OBJECT
        | TRAIT
        | TRANSPARENT
