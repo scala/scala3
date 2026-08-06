@@ -1,4 +1,3 @@
-
 import util.chaining.*
 
 def f = - 42
@@ -6,3 +5,7 @@ def g = -42.abs
 def h = - 42.abs
 def i = - 42
   .pipe(_.abs)
+
+def jl = (-2L).abs
+def jf = (-2f).abs
+def jd = (-2d).abs
