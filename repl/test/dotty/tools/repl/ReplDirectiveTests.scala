@@ -28,7 +28,7 @@ class ReplDirectiveTests extends ReplTest:
 
   @Test def `test dependency directive warns about the shared REPL scope`: Unit =
     initially:
-      run("//> using test.dep one.weird.dep")
+      run("//> using test.dep")
       assertEquals(
         """[warn] The REPL does not have a separate test scope. Dependencies declared with a
           |`using test.*` directive are added to the current REPL session.""".stripMargin,
