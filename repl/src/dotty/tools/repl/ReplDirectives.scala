@@ -8,8 +8,12 @@ private[repl] object ReplDirectives:
 
   type Dependencies = List[String]
 
+  enum Warning:
+    case NoSeparateTestScope
+
   case class DirectiveClassification(
     dependencies: Dependencies,
+    warnings: List[Warning],
     unsupportedKeys: List[String],
     hasDirectives: Boolean
   )
@@ -19,6 +23,7 @@ private[repl] object ReplDirectives:
     def usage: String
     def description: String
     def process(values: Seq[DirectiveValue]): Dependencies
+    def warnings: List[Warning] = Nil
 
     final def helpText: String =
       val aliasText = keys.drop(1) match
@@ -36,7 +41,16 @@ private[repl] object ReplDirectives:
           case DirectiveValue.StringVal(value, _, _) => value
         .toList
 
-  private val handlers = List(DependencyDirective)
+  private object TestDependencyDirective extends DirectiveHandler:
+    val keys = List("test.dep", "test.deps", "test.dependency", "test.dependencies")
+    val usage = "//> using test.dep <group>::<artifact>:<version> ..."
+    val description = "Resolve dependencies and make them available in the REPL."
+    override val warnings = List(Warning.NoSeparateTestScope)
+
+    def process(values: Seq[DirectiveValue]): Dependencies =
+      DependencyDirective.process(values)
+
+  private val handlers = List(DependencyDirective, TestDependencyDirective)
   private val handlersByKey = handlers.flatMap(handler => handler.keys.map(_ -> handler)).toMap
 
   require(
@@ -60,7 +74,11 @@ private[repl] object ReplDirectives:
       val dependencies = supported
         .flatMap(directive => handlersByKey(directive.key).process(directive.values))
         .toList
+      val warnings = supported
+        .flatMap(directive => handlersByKey(directive.key).warnings)
+        .distinct
+        .toList
       val unsupportedKeys = unsupported.map(_.key).distinct.toList
-      DirectiveClassification(dependencies, unsupportedKeys, result.directives.nonEmpty)
+      DirectiveClassification(dependencies, warnings, unsupportedKeys, result.directives.nonEmpty)
     catch
-      case NonFatal(_) => DirectiveClassification(Nil, Nil, false)
+      case NonFatal(_) => DirectiveClassification(Nil, Nil, Nil, false)

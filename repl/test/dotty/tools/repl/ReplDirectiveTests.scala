@@ -12,8 +12,28 @@ class ReplDirectiveTests extends ReplTest:
     aliases.foreach: alias =>
       val result = ReplDirectives.classify(s"//> using $alias $dependency")
       assertEquals(List(dependency), result.dependencies)
+      assertEquals(Nil, result.warnings)
       assertEquals(Nil, result.unsupportedKeys)
     assertTrue(ReplDirectives.helpText.contains("Aliases: deps, dependency, dependencies"))
+
+  @Test def `test dependency directive aliases are supported with a warning`: Unit =
+    val dependencies = List("org.scalameta::munit:1.1.1", "org.typelevel::cats-effect:3.6.3")
+    val aliases = List("test.dep", "test.deps", "test.dependency", "test.dependencies")
+    aliases.foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${dependencies.mkString(" ")}")
+      assertEquals(dependencies, result.dependencies)
+      assertEquals(List(ReplDirectives.Warning.NoSeparateTestScope), result.warnings)
+      assertEquals(Nil, result.unsupportedKeys)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: test.deps, test.dependency, test.dependencies"))
+
+  @Test def `test dependency directive warns about the shared REPL scope`: Unit =
+    initially:
+      run("//> using test.dep one.weird.dep")
+      assertEquals(
+        """[warn] The REPL does not have a separate test scope. Dependencies declared with a
+          |`using test.*` directive are added to the current REPL session.""".stripMargin,
+        storedOutput().trim
+      )
 
   @Test def `lone dep directive is incomplete until code follows`: Unit = contextually:
     assertTrue(ParseResult.onlyPreambleSoFar("//> using dep com.lihaoyi::os-lib:0.11.3"))

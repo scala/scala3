@@ -795,6 +795,12 @@ class ReplDriver(settings: Array[String],
   }
 
   private def interpretDirectives(classified: ReplDirectives.DirectiveClassification)(using state: State): State =
+    classified.warnings.foreach:
+      case ReplDirectives.Warning.NoSeparateTestScope =>
+        out.println(
+          """[warn] The REPL does not have a separate test scope. Dependencies declared with a
+            |`using test.*` directive are added to the current REPL session.""".stripMargin
+        )
     classified.unsupportedKeys.foreach: key =>
       out.println(
         s"""[warn] The `using $key` directive is not supported in the REPL.
