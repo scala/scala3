@@ -1,7 +1,7 @@
 -- [E172] Type Error: tests/neg/i15618.scala:17:44 ---------------------------------------------------------------------
 17 |  def toArray: Array[ScalaType[T]] = Array() // error
    |                                            ^
-   |No ClassTag available for ScalaType[T]. You can fix this by changing [ScalaType[T]] to [ScalaType[T]: ClassTag].
+   |No reflect.ClassTag available for ScalaType[T]. You can fix this by changing [ScalaType[T]] to [ScalaType[T]: reflect.ClassTag].
    |
    |where:    T is a type in class Tensor with bounds <: DType
    |
@@ -19,6 +19,6 @@
 -- [E172] Type Error: tests/neg/i15618.scala:21:33 ---------------------------------------------------------------------
 21 |  def toArray: Array[T] = Array() // error
    |                                 ^
-   |                                 No ClassTag available for T. You can fix this by changing [T] to [T: ClassTag].
+   |                 No reflect.ClassTag available for T. You can fix this by changing [T] to [T: reflect.ClassTag].
    |
-   |                                 where:    T is a type in class Tensor2 with bounds <: Int | Float
+   |                 where:    T is a type in class Tensor2 with bounds <: Int | Float
