@@ -48,7 +48,7 @@ import staging.StagingLevel
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
-import cc.{Setup, CheckCaptures, isRetainsLike, derivesFromCapSet}
+import cc.{Setup, CheckCaptures, isRetainsLike, derivesFromCapSet, RetainingAnnotation}
 import config.MigrationVersion
 import dotty.tools.dotc.core.Mode.Interactive
 import transform.CheckUnused.withOriginalName
@@ -2690,8 +2690,13 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val tycon = typedType(tree.tycon)
     def spliced(tree: Tree) = untpd.TypedSplice(tree)
     val tparam = untpd.Ident(tree.paramName).withSpan(tree.span.withEnd(tree.span.point))
-    if Feature.ccEnabled && typed(tparam).tpe.derivesFromCapSet then
-      report.error(em"Capture variable `${tree.paramName}` cannot have a context bound.", tycon.srcPos)
+    if Feature.ccEnabled then
+      if typed(tparam).tpe.derivesFromCapSet then
+        report.error(em"Capture variable `${tree.paramName}` cannot have a context bound.", tycon.srcPos)
+      tycon.tpe match
+        case AnnotatedType(_, _ : RetainingAnnotation) =>
+          report.error(em"Context bound `${tree.tycon}` cannot have a capture set.", tycon.srcPos)
+        case _ =>
     if tycon.tpe.typeParams.nonEmpty then
       val tycon0 = tycon.withType(tycon.tpe.etaCollapse)
       typed(untpd.AppliedTypeTree(spliced(tycon0), tparam :: Nil))
