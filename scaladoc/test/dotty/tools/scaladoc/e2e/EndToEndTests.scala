@@ -175,3 +175,11 @@ class EndToEndTests:
     // this used to crash
     assertTrue(reporter.allErrors.mkString("\n"), reporter.allErrors.isEmpty)
   }
+
+  @Test
+  def specialLastChars(): Unit = run("special-last-chars", "special-last-chars.scala") { (_, reporter) =>
+    assertTrue(
+      reporter.allWarnings.mkString("\n"),
+      !reporter.allWarnings.exists(m => m.message.contains("Couldn't resolve"))
+    )
+  }
