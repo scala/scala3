@@ -1,16 +1,16 @@
 package dotty.tools.scaladoc.tasty
 
-import dotty.tools.scaladoc._
-import dotty.tools.scaladoc.{Signature => DSignature}
-
+import dotty.tools.scaladoc.*
+import dotty.tools.scaladoc.Signature as DSignature
 import dotty.tools.scaladoc.cc.*
 
-import scala.quoted._
-
-import SymOps._
-import NameNormalizer._
-import SyntheticsSupport._
+import scala.quoted.*
+import SymOps.*
+import NameNormalizer.*
+import SyntheticsSupport.*
 import dotty.tools.dotc.core.NameKinds
+
+import scala.annotation.tailrec
 
 // Please use this only for things defined in the api.scala file
 import dotty.tools.{scaladoc => api}
@@ -230,11 +230,12 @@ trait ClassLikeSupport:
         }
 
       case dd: DefDef if !dd.symbol.isHiddenByVisibility && dd.symbol.isExported && !dd.symbol.isArtifact =>
-        dd.rhs.map {
-          case TypeApply(rhs, _) => rhs
-          case Apply(TypeApply(rhs, _), _) => rhs
-          case rhs => rhs
-        }.map(_.tpe.termSymbol).filter(_.exists).map(_.tree).map {
+        @tailrec
+        def unwrap(term: Term): Term = term match
+          case Apply(fun, _)     => unwrap(fun)
+          case TypeApply(fun, _) => unwrap(fun)
+          case unwrapped         => unwrapped
+        dd.rhs.map(unwrap).map(_.tpe.termSymbol).filter(_.exists).map(_.tree).map {
           case v: ValDef if v.symbol.flags.is(Flags.Module) && !v.symbol.flags.is(Flags.Synthetic) =>
             v.symbol.owner -> Symbol.newVal(c.symbol, dd.name, v.tpt.tpe, Flags.Final, Symbol.noSymbol).tree
           case other => other.symbol.owner -> other

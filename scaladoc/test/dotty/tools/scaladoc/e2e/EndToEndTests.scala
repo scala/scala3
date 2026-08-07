@@ -114,3 +114,9 @@ class EndToEndTests:
       !ctx.reportedDiagnostics.warningMsgs.exists(_.contains("undefined in comment"))
     )
   }
+
+  @Test
+  def exportMethods(): Unit = run("exports", "exports.scala") { (out, _) =>
+    ensureContains(out, "pkg", "Midrange.html", "parameterless method 1", "method with empty parameter list 1", "method with one parameter 1")
+    ensureContains(out, "pkg", "Treble.html", "parameterless method 2", "method with empty parameter list 2", "method with one parameter 2")
+  }
