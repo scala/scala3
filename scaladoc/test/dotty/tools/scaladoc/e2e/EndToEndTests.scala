@@ -106,11 +106,10 @@ class EndToEndTests:
   }
 
   // for advanced cases found while generating the doc of the stdlib
-  // also minimized as a test case above, but it's good to keep the original one in case the minimization is too different
   @Test
   def stdlibCasesNoWarnings(): Unit = run("defines", "stdlib.scala") { (_, ctx) =>
     assertTrue(
       ctx.reportedDiagnostics.warningMsgs.mkString("\n"),
-      !ctx.reportedDiagnostics.warningMsgs.exists(_.contains("undefined in comment"))
+      !ctx.reportedDiagnostics.warningMsgs.exists(m => m.contains("undefined in comment") || m.contains("Couldn't resolve"))
     )
   }
