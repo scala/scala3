@@ -130,3 +130,12 @@ class EndToEndTests:
       !reporter.allWarnings.exists(m => m.message.contains("Couldn't resolve"))
     )
   }
+
+  @Test
+  def warningPosition(): Unit = run("warningPosition", "warningPosition.scala") { (_, reporter) =>
+    assertEquals(
+      reporter.allWarnings.mkString("\n"),
+      2,
+      reporter.allWarnings.count(m => m.message.contains("Couldn't resolve"))
+    )
+  }
