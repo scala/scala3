@@ -309,7 +309,7 @@ final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Opt
    * extending traits. Creating the InlineInfo from the symbol would prevent these mixins from being
    * inlined.
    *
-   * So for classes being compiled, the InlineInfo is created here and stored in the ScalaInlineInfo
+   * So for classes being compiled, the InlineInfo is created here and stored in the inline info
    * classfile attribute.
    */
   private def buildInlineInfo(inlineInfoLoader: InlineInfoLoader, classSym: ClassSymbol, internalName: InternalName)(using Context): InlineInfo = {
