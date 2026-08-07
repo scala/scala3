@@ -21,6 +21,7 @@ trait MemberLookup {
   def lookupOpt(using Quotes, DocContext)(
     query: Query,
     ownerOpt: Option[reflect.Symbol],
+    neverForce: Boolean = false
   ): Option[(reflect.Symbol, String, Option[reflect.Symbol])] =
     try
       import reflect._
@@ -36,10 +37,10 @@ trait MemberLookup {
 
       val res: Option[(Symbol, String, Option[Symbol])] = {
         def toplevelLookup(querystrings: List[String]) =
-          downwardLookup(querystrings, defn.PredefModule.moduleClass)
-          .orElse(downwardLookup(querystrings, defn.ScalaPackage))
-          .orElse(downwardLookup(querystrings, defn.RootPackage))
-          .orElse(downwardLookup(querystrings, defn.EmptyPackageClass))
+          downwardLookup(querystrings, defn.PredefModule.moduleClass, neverForce)
+          .orElse(downwardLookup(querystrings, defn.ScalaPackage, neverForce))
+          .orElse(downwardLookup(querystrings, defn.RootPackage, neverForce))
+          .orElse(downwardLookup(querystrings, defn.EmptyPackageClass, neverForce))
 
         ownerOpt match {
           case Some(owner) =>
@@ -55,7 +56,7 @@ trait MemberLookup {
                 && owner.ne(defn.EmptyPackageClass)
 
               if !isMeaningful then None else {
-                downwardLookup(querystrings, owner) match {
+                downwardLookup(querystrings, owner, neverForce) match {
                   case None => relativeLookup(querystrings, owner.owner)
                   case some => some
                 }
@@ -64,17 +65,25 @@ trait MemberLookup {
 
             query match {
               case Query.StrictMemberId(id) =>
-                downwardLookup(List(id), nearest).map(memberLookupResult(_, id, _))
+                downwardLookup(List(id), nearest, neverForce).map(memberLookupResult(_, id, _))
               case Query.QualifiedId(Query.Qual.This, _, rest) =>
-                downwardLookup(rest.asList, nearestCls).map(memberLookupResult(_, rest.join, _))
+                downwardLookup(rest.asList, nearestCls, neverForce).map(memberLookupResult(_, rest.join, _))
               case Query.QualifiedId(Query.Qual.Package, _, rest) =>
-                downwardLookup(rest.asList, nearestPkg).map(memberLookupResult(_, rest.join, _))
+                downwardLookup(rest.asList, nearestPkg, neverForce).map(memberLookupResult(_, rest.join, _))
               case query =>
                 val ql = query.asList
-                toplevelLookup(ql)
+                val result = toplevelLookup(ql)
                 .orElse(relativeLookup(ql, nearest))
-                .orElse(downwardLookup(ql, nearestPkg))
+                .orElse(downwardLookup(ql, nearestPkg, neverForce))
                 .map(memberLookupResult(_, query.join, _))
+
+                // Ensure that if someone declared, e.g., `foo!` as a method,
+                // we first try with the "! means force type" syntax,
+                // then retry to just look for it
+                result.orElse(
+                  if neverForce then None
+                  else lookupOpt(query, ownerOpt, neverForce = true)
+                )
             }
 
           case None =>
@@ -172,13 +181,13 @@ trait MemberLookup {
   }
 
   private def downwardLookup(using Quotes)(
-    query: List[String], owner: reflect.Symbol
+    query: List[String], owner: reflect.Symbol, neverForce: Boolean
   ): Option[(reflect.Symbol, Option[reflect.Symbol])] = {
     import reflect._
     query match {
       case Nil => None
       case q :: Nil =>
-        val sel = MemberLookup.Selector.fromString(q)
+        val sel = MemberLookup.Selector.fromString(q, neverForce)
         val res = sel.kind match {
           case MemberLookup.SelectorKind.NoForce =>
             // Extract just the method name from the signature (removing type params and param list)
@@ -220,7 +229,7 @@ trait MemberLookup {
             Some(sym -> externalOwner)
         }
       case q :: qs =>
-        val sel = MemberLookup.Selector.fromString(q)
+        val sel = MemberLookup.Selector.fromString(q, neverForce)
         val lookedUp = localLookup(sel, owner).toSeq
 
         if lookedUp.isEmpty then None else {
@@ -236,9 +245,9 @@ trait MemberLookup {
             else if s.flags.is(Flags.Module) then tm = Some(s)
             else if s.isClassDef || s.isTypeDef then tp = Some(s)
           }
-          pk.flatMap(downwardLookup(qs, _))
-          .orElse(tp.flatMap(downwardLookup(qs, _)))
-          .orElse(tm.flatMap(downwardLookup(qs, _)))
+          pk.flatMap(downwardLookup(qs, _, neverForce))
+          .orElse(tp.flatMap(downwardLookup(qs, _, neverForce)))
+          .orElse(tm.flatMap(downwardLookup(qs, _, neverForce)))
         }
     }
   }
@@ -357,11 +366,13 @@ object MemberLookup extends MemberLookup {
 
   case class Selector(ident: String, kind: SelectorKind)
   object Selector {
-    def fromString(str: String) = {
+    def fromString(str: String, neverForce: Boolean) = {
       // Scaladoc overloading support allows terminal * (and they're meaningless)
       val cleanStr = str.stripSuffix("*")
 
-      if cleanStr.endsWith("$") then
+      if neverForce then
+        Selector(cleanStr, SelectorKind.NoForce)
+      else if cleanStr.endsWith("$") then
         Selector(cleanStr.init, SelectorKind.ForceTerm)
       else if cleanStr.endsWith("!") then
         Selector(cleanStr.init, SelectorKind.ForceType)

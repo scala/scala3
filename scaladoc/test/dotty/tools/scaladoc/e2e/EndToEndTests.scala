@@ -130,3 +130,11 @@ class EndToEndTests:
       !reporter.allWarnings.exists(m => m.message.contains("Couldn't resolve"))
     )
   }
+
+  @Test
+  def specialLastChars(): Unit = run("special-last-chars", "special-last-chars.scala") { (_, reporter) =>
+    assertTrue(
+      reporter.allWarnings.mkString("\n"),
+      !reporter.allWarnings.exists(m => m.message.contains("Couldn't resolve"))
+    )
+  }
