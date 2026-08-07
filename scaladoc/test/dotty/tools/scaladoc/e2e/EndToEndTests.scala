@@ -9,11 +9,11 @@ import dotty.tools.scaladoc.util.IO
 
 /** End-to-end Scaladoc runs that compile sources at test time and assert on diagnostics. */
 class EndToEndTests:
-  private def run(dirName: String, fileName: String)(callback: (File, CompilerContext) => Unit): Unit =
+  private def run(dirName: String, fileNames: String*)(callback: (File, CompilerContext) => Unit): Unit =
     val root = Files.createTempDirectory("scaladoc-e2e")
     try
       val output = root.resolve("classes")
-      compileStage(output, Nil, copyTestResource(root, dirName, fileName))
+      compileStage(output, Nil, fileNames.map(copyTestResource(root, dirName, _))*)
       val ctx = testContext
       val docOutput = root.resolve("doc").toFile
       val tasty = collectTastyFiles(output)
@@ -111,5 +111,13 @@ class EndToEndTests:
     assertTrue(
       ctx.reportedDiagnostics.warningMsgs.mkString("\n"),
       !ctx.reportedDiagnostics.warningMsgs.exists(m => m.contains("undefined in comment") || m.contains("Couldn't resolve"))
+    )
+  }
+
+  @Test
+  def i20028(): Unit = run("i20028", "Enum.scala", "Foo.scala") { (_, ctx) =>
+    assertTrue(
+      ctx.reportedDiagnostics.warningMsgs.mkString("\n"),
+      !ctx.reportedDiagnostics.warningMsgs.exists(m => m.contains("Couldn't resolve"))
     )
   }
