@@ -105,7 +105,9 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
         val msg = s"Unable to parse query: ${err.getMessage}"
         DocLink.UnresolvedDRI(queryStr, msg)
       case Right(query) =>
-        MemberLookup.lookup(using qctx)(query, owner) match
+        // calling it a second time can yield a result when the first time failed... why? unsure, but it works
+        // TODO: figure out why
+        MemberLookup.lookup(using qctx)(query, owner).orElse(MemberLookup.lookup(using qctx)(query, owner)) match
           case Some((sym, targetText, inheritingParent)) =>
             val dri = inheritingParent match
               case Some(parent) => sym.driInContextOfInheritingParent(parent)
