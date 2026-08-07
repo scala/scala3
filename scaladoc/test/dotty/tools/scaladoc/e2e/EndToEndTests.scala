@@ -160,3 +160,12 @@ class EndToEndTests:
     ensureContains(out, "pkg", "Midrange.html", "parameterless method 1", "method with empty parameter list 1", "method with one parameter 1")
     ensureContains(out, "pkg", "Treble.html", "parameterless method 2", "method with empty parameter list 2", "method with one parameter 2")
   }
+
+  @Test
+  def warningPosition(): Unit = run("warningPosition", "warningPosition.scala") { (_, reporter) =>
+    assertEquals(
+      reporter.allWarnings.mkString("\n"),
+      2,
+      reporter.allWarnings.count(m => m.message.contains("Couldn't resolve"))
+    )
+  }
