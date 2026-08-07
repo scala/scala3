@@ -4,14 +4,17 @@ package repl
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 import org.junit.Test
 
-class ReplDirectiveTests extends ReplTest:
+import ReplDirectives.ReplDirective.{Dependency, Jar}
+import ReplDirectives.Warning
+
+class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
 
   @Test def `dependency directive aliases are supported`: Unit =
     val dependency = "com.lihaoyi::os-lib:0.11.3"
     val aliases = List("dep", "deps", "dependency", "dependencies")
     aliases.foreach: alias =>
       val result = ReplDirectives.classify(s"//> using $alias $dependency")
-      assertEquals(List(dependency), result.dependencies)
+      assertEquals(List(Dependency(dependency)), result.directives)
       assertEquals(Nil, result.warnings)
     assertTrue(ReplDirectives.helpText.contains("Aliases: deps, dependency, dependencies"))
 
@@ -20,9 +23,28 @@ class ReplDirectiveTests extends ReplTest:
     val aliases = List("test.dep", "test.deps", "test.dependency", "test.dependencies")
     aliases.foreach: alias =>
       val result = ReplDirectives.classify(s"//> using $alias ${dependencies.mkString(" ")}")
-      assertEquals(dependencies, result.dependencies)
-      assertEquals(List(ReplDirectives.Warning.NoSeparateTestScope), result.warnings)
+      assertEquals(dependencies.map(Dependency(_)), result.directives)
+      assertEquals(List(Warning.NoSeparateTestScope), result.warnings)
     assertTrue(ReplDirectives.helpText.contains("Aliases: test.deps, test.dependency, test.dependencies"))
+
+  @Test def `jar directive aliases are supported`: Unit =
+    val jars = List("lib/first.jar", "lib/second.jar")
+    List("jar", "jars").foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${jars.mkString(" ")}")
+      assertEquals(jars.map(Jar(_)), result.directives)
+      assertEquals(Nil, result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: jars"))
+
+  @Test def `jars directive adds all JARs to the classpath`: Unit =
+    val firstJar = emptyJar()
+    val secondJar = emptyJar()
+    initially:
+      run(s"//> using jars $firstJar $secondJar")
+      assertEquals(
+        s"""Added '$firstJar' to classpath.
+           |Added '$secondJar' to classpath.""".stripMargin,
+        storedOutput().trim
+      )
 
   @Test def `test dependency directive warns about the shared REPL scope`: Unit =
     initially:
