@@ -14,6 +14,30 @@ package scala.runtime
 
 import scala.language.`2.13`
 
+/** `AbstractFunction17` is a base class for seventeen-parameter function implementations.
+ *
+ *  Extending this class allows a function value to be defined by extending a class
+ *  rather than the [[scala.Function17]] trait.
+ *
+ *  @tparam T1 the type of the 1st argument
+ *  @tparam T2 the type of the 2nd argument
+ *  @tparam T3 the type of the 3rd argument
+ *  @tparam T4 the type of the 4th argument
+ *  @tparam T5 the type of the 5th argument
+ *  @tparam T6 the type of the 6th argument
+ *  @tparam T7 the type of the 7th argument
+ *  @tparam T8 the type of the 8th argument
+ *  @tparam T9 the type of the 9th argument
+ *  @tparam T10 the type of the 10th argument
+ *  @tparam T11 the type of the 11th argument
+ *  @tparam T12 the type of the 12th argument
+ *  @tparam T13 the type of the 13th argument
+ *  @tparam T14 the type of the 14th argument
+ *  @tparam T15 the type of the 15th argument
+ *  @tparam T16 the type of the 16th argument
+ *  @tparam T17 the type of the 17th argument
+ *  @tparam R the return type of this function
+ */
 abstract class AbstractFunction17[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, -T15, -T16, -T17, +R] extends Function17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, R] {
 
 }

@@ -54,5 +54,6 @@ trait Function7[-T1, -T2, -T3, -T4, -T5, -T6, -T7, +R] extends AnyRef {
   @annotation.unspecialized def tupled: ((T1, T2, T3, T4, T5, T6, T7)) => R = {
     case ((x1, x2, x3, x4, x5, x6, x7)) => apply(x1, x2, x3, x4, x5, x6, x7)
   }
+  /** TODO FILL IN */
   override def toString(): String = "<function7>"
 }
