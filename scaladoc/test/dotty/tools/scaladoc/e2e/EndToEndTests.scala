@@ -6,24 +6,26 @@ import java.io.File
 import org.junit.Test
 import org.junit.Assert.*
 import dotty.tools.scaladoc.util.IO
+import dotty.tools.dotc.reporting.Reporter
 
 /** End-to-end Scaladoc runs that compile sources at test time and assert on diagnostics. */
 class EndToEndTests:
-  private def run(dirName: String, fileNames: String*)(callback: (File, CompilerContext) => Unit): Unit =
+  private def run(dirName: String, fileNames: String*)(callback: (File, Reporter) => Unit): Unit =
     val root = Files.createTempDirectory("scaladoc-e2e")
     try
       val output = root.resolve("classes")
       compileStage(output, Nil, fileNames.map(copyTestResource(root, dirName, _))*)
-      val ctx = testContext
       val docOutput = root.resolve("doc").toFile
+      java.nio.file.Files.createDirectories(docOutput.toPath)
       val tasty = collectTastyFiles(output)
       assert(tasty.nonEmpty, s"Expected .tasty files under $output")
-      Scaladoc.run(
-        testArgs(tasty, docOutput).copy(
-          classpath = Seq(output.toString, javaClasspath).mkString(java.io.File.pathSeparator)
-        )
-      )(using ctx)
-      callback(docOutput, ctx)
+      val args = Array(
+        "-project", "Test Project Name",
+        "-d", docOutput.toString,
+        "-cp", Seq(output.toString, javaClasspath).mkString(java.io.File.pathSeparator)
+      ) ++ tasty.map(_.toString)
+      val reporter = (new dotty.tools.scaladoc.Main).run(args)
+      callback(docOutput, reporter)
     finally
       IO.delete(root.toFile)
 
@@ -35,9 +37,8 @@ class EndToEndTests:
   }
 
   @Test
-  def i26627(): Unit = run("i26627", "lazyFuture.scala") { (_, ctx) =>
-    val diagnostics = ctx.reportedDiagnostics
-    val linkWarnings = diagnostics.warningMsgs.filter(msg =>
+  def i26627(): Unit = run("i26627", "lazyFuture.scala") { (_, reporter) =>
+    val linkWarnings = reporter.allWarnings.map(_.message).filter(msg =>
       msg.contains("Couldn't resolve a member for the given link query")
         || msg.contains("Unable to find a link for")
     )
@@ -46,7 +47,7 @@ class EndToEndTests:
       Nil,
       linkWarnings
     )
-    assertNoErrors(diagnostics)
+    assertEquals(0, reporter.errorCount)
   }
 
   @Test
@@ -107,25 +108,25 @@ class EndToEndTests:
 
   // for advanced cases found while generating the doc of the stdlib
   @Test
-  def stdlibCasesNoWarnings(): Unit = run("defines", "stdlib.scala") { (_, ctx) =>
+  def stdlibCasesNoWarnings(): Unit = run("defines", "stdlib.scala") { (_, reporter) =>
     assertTrue(
-      ctx.reportedDiagnostics.warningMsgs.mkString("\n"),
-      !ctx.reportedDiagnostics.warningMsgs.exists(m => m.contains("undefined in comment") || m.contains("Couldn't resolve"))
+      reporter.allWarnings.mkString("\n"),
+      !reporter.allWarnings.exists(m => m.message.contains("undefined in comment") || m.message.contains("Couldn't resolve"))
     )
   }
 
   @Test
-  def i20028(): Unit = run("i20028", "Enum.scala", "Foo.scala") { (_, ctx) =>
+  def i20028(): Unit = run("i20028", "Enum.scala", "Foo.scala") { (_, reporter) =>
     assertTrue(
-      ctx.reportedDiagnostics.warningMsgs.mkString("\n"),
-      !ctx.reportedDiagnostics.warningMsgs.exists(m => m.contains("Couldn't resolve"))
+      reporter.allWarnings.mkString("\n"),
+      !reporter.allWarnings.exists(m => m.message.contains("Couldn't resolve"))
     )
   }
 
   @Test
-  def throws(): Unit = run("throws", "MyException.scala", "Thrower.scala", "ThrowerDerived.scala") { (_, ctx) =>
+  def throws(): Unit = run("throws", "MyException.scala", "Thrower.scala", "ThrowerDerived.scala") { (_, reporter) =>
     assertTrue(
-      ctx.reportedDiagnostics.warningMsgs.mkString("\n"),
-      !ctx.reportedDiagnostics.warningMsgs.exists(m => m.contains("Couldn't resolve"))
+      reporter.allWarnings.mkString("\n"),
+      !reporter.allWarnings.exists(m => m.message.contains("Couldn't resolve"))
     )
   }
