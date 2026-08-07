@@ -586,7 +586,7 @@ object Inlines:
 
       // Take care that only argument bindings go into `bindings`, since positions are
       // different for bindings from arguments and bindings from body.
-      val inlined = tpd.Inlined(call, bindings, expansion)
+      val inlined0 = tpd.Inlined(call, bindings, expansion)
 
       val hasOpaquesInResultFromCallWithTransparentContext =
         val owners = call.symbol.ownersIterator.toSet
@@ -613,6 +613,24 @@ object Inlines:
                   TermRef(apply(prefix), tref.symbol.companionModule)
                 case _ => mapOver(t)
         ).typeMap(tpe)
+
+      /** Argument proxies may be typed with skolems from the call tree (see
+       *  Inliner#callValueSkolemss). However, TASTy pickles skolems as their underlying
+       *  types, so the expansion's type may change after unpickling, which break the TASTy
+       *  roundtrip checked by `-Ytest-pickler`.
+       *
+       *  To avoid this, insert the expansion with a no-op cast. This makes the pickled
+       *  underlying type to prevent `TypeOps.avoid` from generating a different
+       *  result type after unpickling.
+       */
+      val inlined =
+        val proxySkolems = bindings.map(_.symbol.info.widenExpr).collect { case sk: SkolemType => sk }
+        if proxySkolems.nonEmpty && inlined0.tpe.existsPart(proxySkolems.contains) then
+          val sealedExpansion =
+            inContext(ctx.withSource(expansion.source)):
+              expansion.cast(inlined0.tpe).withSpan(expansion.span)
+          tpd.Inlined(call, bindings, sealedExpansion)
+        else inlined0
 
       if !hasOpaqueProxies && !hasOpaquesInResultFromCallWithTransparentContext then inlined
       else
