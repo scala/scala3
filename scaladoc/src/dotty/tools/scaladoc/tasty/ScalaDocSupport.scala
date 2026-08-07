@@ -46,7 +46,7 @@ object ScaladocSupport:
   // and `class C extends trait T` has a `@define x b` and does not override `m`,
   // the documentation for `C.m` must use `b` as the value of `x`.
   def parseComment(using Quotes, DocContext)(docstring: String, sym: reflect.Symbol, ownerSym: reflect.Symbol): Option[Comment] =
-    val commentString: String =
+    val (commentString, commentOwner) =
       if sym.isClassDef || ownerSym.isClassDef then
         import dotty.tools.dotc
         import dotty.tools.dotc.core.Comments.docCtx
@@ -57,9 +57,17 @@ object ScaladocSupport:
         val dottySym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
         val dottyOwnerSym = ownerSym.asInstanceOf[dotc.core.Symbols.Symbol]
 
-        docCtx.templateExpander.expand(dottySym, dottyOwnerSym)
+        /** A member without a docstring of its own inherits the comment of the nearest overridden symbol that has one.
+         *  @see [[dotty.tools.dotc.core.Comments.CommentExpander.superComment]]
+         */
+        def hasDocstring(s: dotc.core.Symbols.Symbol) = docCtx.docstring(s).exists(_.raw.nonEmpty)
+        val commentOwnerSym =
+          if hasDocstring(dottySym) || !dottyOwnerSym.isClass then dottySym
+          else dottySym.denot.allOverriddenSymbols.find(hasDocstring).getOrElse(sym)
+
+        (docCtx.templateExpander.expand(dottySym, dottyOwnerSym), commentOwnerSym.asInstanceOf[reflect.Symbol])
       else
-        docstring
+        (docstring, sym)
     if commentString == ""
     then None
-    else Some(parseCommentString(commentString, sym, Some(sym.tree.pos)))
+    else Some(parseCommentString(commentString, commentOwner, Some(sym.tree.pos)))
