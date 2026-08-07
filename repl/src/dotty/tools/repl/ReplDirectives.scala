@@ -6,19 +6,61 @@ import dotty.tools.directives.{DirectiveValue, UsingDirectivesParser}
 
 private[repl] object ReplDirectives:
 
-  type Dependencies = List[String]
+  enum Warning:
+    case NoSeparateTestScope
+    case UnsupportedDirective(key: String)
+
+    override def toString: String = this match
+      case NoSeparateTestScope =>
+        """[warn] The REPL does not have a separate test scope. Dependencies declared with a
+          |`using test.*` directive are added to the current REPL session.""".stripMargin
+      case UnsupportedDirective(key) =>
+        s"""[warn] The `using $key` directive is not supported in the REPL.
+           |To use it, re-run with the `scala` command and pass the directive inside an input.""".stripMargin
+
+  enum ReplDirective:
+    case Dependency(coordinate: String)
+    case Jar(path: String)
 
   case class DirectiveClassification(
-    dependencies: Dependencies,
-    unsupportedKeys: List[String],
+    directives: List[ReplDirective],
+    warnings: List[Warning],
     hasDirectives: Boolean
   )
 
-  private trait DirectiveHandler:
-    def keys: List[String]
-    def usage: String
-    def description: String
-    def process(values: Seq[DirectiveValue]): Dependencies
+  private enum DirectiveHandler(
+    val keys: List[String],
+    val usage: String,
+    val description: String,
+    toDirective: String => ReplDirective,
+    val warnings: List[Warning] = Nil
+  ):
+    case Dependency extends DirectiveHandler(
+      keys = List("dep", "deps", "dependency", "dependencies"),
+      usage = "//> using dep <group>::<artifact>:<version> ...",
+      description = "Resolve dependencies and make them available in the REPL.",
+      toDirective = ReplDirective.Dependency(_)
+    )
+
+    case TestDependency extends DirectiveHandler(
+      keys = List("test.dep", "test.deps", "test.dependency", "test.dependencies"),
+      usage = "//> using test.dep <group>::<artifact>:<version> ...",
+      description = "Resolve dependencies and make them available in the REPL.",
+      toDirective = ReplDirective.Dependency(_),
+      warnings = List(Warning.NoSeparateTestScope)
+    )
+
+    case Jar extends DirectiveHandler(
+      keys = List("jar", "jars"),
+      usage = "//> using jar <path> ...",
+      description = "Add JARs to the REPL classpath.",
+      toDirective = ReplDirective.Jar(_)
+    )
+
+    def process(values: Seq[DirectiveValue]): List[ReplDirective] =
+      values.collect:
+          case DirectiveValue.StringVal(value, _, _) => toDirective(value)
+        .toList
 
     final def helpText: String =
       val aliasText = keys.drop(1) match
@@ -26,17 +68,7 @@ private[repl] object ReplDirectives:
         case aliases => List(s"  Aliases: ${aliases.mkString(", ")}")
       (List(usage, s"  $description") ++ aliasText).mkString("\n")
 
-  private object DependencyDirective extends DirectiveHandler:
-    val keys = List("dep")
-    val usage = "//> using dep <group>::<artifact>:<version> ..."
-    val description = "Resolve dependencies and make them available in the REPL."
-
-    def process(values: Seq[DirectiveValue]): Dependencies =
-      values.collect:
-          case DirectiveValue.StringVal(value, _, _) => value
-        .toList
-
-  private val handlers = List(DependencyDirective)
+  private val handlers = DirectiveHandler.values.toList
   private val handlersByKey = handlers.flatMap(handler => handler.keys.map(_ -> handler)).toMap
 
   require(
@@ -57,10 +89,13 @@ private[repl] object ReplDirectives:
     try
       val result = UsingDirectivesParser.parse(sourceCode)
       val (supported, unsupported) = result.directives.partition(directive => handlersByKey.contains(directive.key))
-      val dependencies = supported
+      val directives = supported
         .flatMap(directive => handlersByKey(directive.key).process(directive.values))
         .toList
-      val unsupportedKeys = unsupported.map(_.key).distinct.toList
-      DirectiveClassification(dependencies, unsupportedKeys, result.directives.nonEmpty)
+      val warnings = (supported.flatMap(directive => handlersByKey(directive.key).warnings) ++
+        unsupported.map(directive => Warning.UnsupportedDirective(directive.key)))
+        .distinct
+        .toList
+      DirectiveClassification(directives, warnings, result.directives.nonEmpty)
     catch
       case NonFatal(_) => DirectiveClassification(Nil, Nil, false)

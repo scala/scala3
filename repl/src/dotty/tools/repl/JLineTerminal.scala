@@ -289,7 +289,7 @@ class JLineTerminal(providedTerminal: org.jline.terminal.Terminal | Null = null)
         // 2 tokens, but rather the entire thing is treated as the "word", in
         //   order to insure the : is replaced in the completion.
         case ParseContext.COMPLETE if
-          ParseResult.commands.exists(command => command._1.startsWith(input)) =>
+          ReplCommands.names.exists(_.startsWith(input)) =>
             parsedLine(input, cursor)
 
         case ParseContext.COMPLETE =>
@@ -325,7 +325,7 @@ private final class UserInputStream(
   private var bytes = new Array[Byte](16)
   private var byteCount = 0
   private var state = InputState.ForegroundRead
- 
+
   /** Blocks until the state is no longer ForegroundRead. Returns the active state. */
   def waitUntilActive(): InputState = synchronized {
     while state == InputState.ForegroundRead do wait()

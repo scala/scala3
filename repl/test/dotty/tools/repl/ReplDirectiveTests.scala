@@ -1,10 +1,59 @@
 package dotty.tools
 package repl
 
-import org.junit.Assert.{assertFalse, assertTrue}
+import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 import org.junit.Test
 
-class ReplDirectiveTests extends ReplTest:
+import ReplDirectives.ReplDirective.{Dependency, Jar}
+import ReplDirectives.Warning
+
+class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
+
+  @Test def `dependency directive aliases are supported`: Unit =
+    val dependency = "com.lihaoyi::os-lib:0.11.3"
+    val aliases = List("dep", "deps", "dependency", "dependencies")
+    aliases.foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias $dependency")
+      assertEquals(List(Dependency(dependency)), result.directives)
+      assertEquals(Nil, result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: deps, dependency, dependencies"))
+
+  @Test def `test dependency directive aliases are supported with a warning`: Unit =
+    val dependencies = List("org.scalameta::munit:1.1.1", "org.typelevel::cats-effect:3.6.3")
+    val aliases = List("test.dep", "test.deps", "test.dependency", "test.dependencies")
+    aliases.foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${dependencies.mkString(" ")}")
+      assertEquals(dependencies.map(Dependency(_)), result.directives)
+      assertEquals(List(Warning.NoSeparateTestScope), result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: test.deps, test.dependency, test.dependencies"))
+
+  @Test def `jar directive aliases are supported`: Unit =
+    val jars = List("lib/first.jar", "lib/second.jar")
+    List("jar", "jars").foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${jars.mkString(" ")}")
+      assertEquals(jars.map(Jar(_)), result.directives)
+      assertEquals(Nil, result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: jars"))
+
+  @Test def `jars directive adds all JARs to the classpath`: Unit =
+    val firstJar = emptyJar()
+    val secondJar = emptyJar()
+    initially:
+      run(s"//> using jars $firstJar $secondJar")
+      assertEquals(
+        s"""Added '$firstJar' to classpath.
+           |Added '$secondJar' to classpath.""".stripMargin,
+        storedOutput().trim
+      )
+
+  @Test def `test dependency directive warns about the shared REPL scope`: Unit =
+    initially:
+      run("//> using test.dep")
+      assertEquals(
+        """[warn] The REPL does not have a separate test scope. Dependencies declared with a
+          |`using test.*` directive are added to the current REPL session.""".stripMargin,
+        storedOutput().trim
+      )
 
   @Test def `lone dep directive is incomplete until code follows`: Unit = contextually:
     assertTrue(ParseResult.onlyPreambleSoFar("//> using dep com.lihaoyi::os-lib:0.11.3"))

@@ -362,9 +362,8 @@ class ReplDriver(settings: Array[String],
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected final def completions(cursor: Int, expr: String, state0: State): List[Completion] =
     if expr.startsWith(":") then
-      ParseResult.commands.collect {
-        case command if command._1.startsWith(expr) => Completion(command._1, "", List())
-      }
+      ReplCommands.names.collect:
+        case command if command.startsWith(expr) => Completion(command, "", List())
     else
       given state: State = newRun(state0)
       compiler
@@ -796,12 +795,16 @@ class ReplDriver(settings: Array[String],
   }
 
   private def interpretDirectives(classified: ReplDirectives.DirectiveClassification)(using state: State): State =
-    classified.unsupportedKeys.foreach: key =>
-      out.println(
-        s"""[warn] The `using $key` directive is not supported in the REPL.
-           |To use it, re-run with the `scala` command and pass the directive inside an input.""".stripMargin
-      )
-    resolveAndAddDeps(classified.dependencies)
+    import ReplDirectives.ReplDirective.*
+
+    classified.warnings.foreach(warning => out.println(warning.toString))
+    val dependencies = classified.directives.collect:
+      case Dependency(coordinate) => coordinate
+    val jars = classified.directives.collect:
+      case Jar(path) => path
+    val stateWithDependencies = resolveAndAddDeps(dependencies)
+    jars.foldLeft(stateWithDependencies): (currentState, path) =>
+      interpretCommand(JarCmd(path))(using currentState)
 
   private def resolveAndAddDeps(depStrings: List[String])(using state: State): State =
     if depStrings.isEmpty then state

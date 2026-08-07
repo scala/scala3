@@ -1,6 +1,7 @@
 package dotty.tools.scaladoc
 
 import org.junit.Assert.assertEquals
+import org.junit.Test
 
 class PackageOrderingTest extends ScaladocTest(""):
   override def moduleDocContext =
@@ -9,7 +10,8 @@ class PackageOrderingTest extends ScaladocTest(""):
         tastyFiles("", rootPck = "packageorderingbeta")
     )
 
-  override def runTest: Unit = withModule { module =>
+  @Test
+  def runTest(): Unit = withModule { module =>
     val packages = module.rootPackage.members
       .filter(_.name.startsWith("packageordering"))
       .map(_.name)

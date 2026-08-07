@@ -60,15 +60,18 @@ object WrappedSourceFile:
         result
       case result => result
 
-class SourceFile private[util] (val file: AbstractFile | Null, computeContent: => Array[Char]) extends interfaces.SourceFile {
+class SourceFile (val file: AbstractFile | Null, codec: Codec) extends interfaces.SourceFile {
   private var myContent: Array[Char] | Null = null
 
   /** The contents of the original source file. Note that this can be empty, for example when
    * the source is read from Tasty. */
-  def content(): Array[Char] = {
-    if (myContent == null) myContent = computeContent
-    myContent.nn
-  }
+  def content(): Array[Char] =
+    if file == null then Array.emptyCharArray
+    else
+      initialize(myContent, myContent = _,
+        try new String(file.toByteArray, codec.charSet).toCharArray
+        catch case _: FileSystemException => Array.empty[Char]
+      )
 
   override def name: String =
     if file eq null then "" else file.name
@@ -198,15 +201,13 @@ class SourceFile private[util] (val file: AbstractFile | Null, computeContent: =
     if file eq null then "<no file>" else file.toString
 }
 object SourceFile {
-  implicit def eqSource: CanEqual[SourceFile, SourceFile] = CanEqual.derived
-
   implicit def fromContext(using Context): SourceFile = ctx.source
 
   /** A source file with an underlying virtual file. The path is taken as a file system path
    *  with the local separator converted to "/". The last element of the path will be the simple name of the file.
    */
   def virtual(name: String, content: String) =
-    new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
+    new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), Codec.UTF8)
 
   /** A helper method to create a virtual source file for given URI.
    */
@@ -248,19 +249,9 @@ object SourceFile {
       else
         jpath.toString
   }
-
-  def apply(file: AbstractFile, codec: Codec): SourceFile =
-    def chars =
-      try new String(file.toByteArray, codec.charSet).toCharArray
-      catch case _: FileSystemException => Array.empty[Char]
-
-    new SourceFile(file, chars)
-
-  def apply(file: AbstractFile | Null, contents: => Array[Char]): SourceFile =
-    new SourceFile(file, contents)
 }
 
-@sharable object NoSource extends SourceFile(null, Array[Char]()) {
+@sharable object NoSource extends SourceFile(null, Codec.UTF8) {
   override def exists: Boolean = false
   override def atSpan(span: Span): SourcePosition = NoSourcePosition
 }
