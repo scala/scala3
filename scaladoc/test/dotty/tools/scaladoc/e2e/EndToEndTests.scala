@@ -121,3 +121,11 @@ class EndToEndTests:
       !ctx.reportedDiagnostics.warningMsgs.exists(m => m.contains("Couldn't resolve"))
     )
   }
+
+  @Test
+  def throws(): Unit = run("throws", "MyException.scala", "Thrower.scala", "ThrowerDerived.scala") { (_, ctx) =>
+    assertTrue(
+      ctx.reportedDiagnostics.warningMsgs.mkString("\n"),
+      !ctx.reportedDiagnostics.warningMsgs.exists(m => m.contains("Couldn't resolve"))
+    )
+  }
