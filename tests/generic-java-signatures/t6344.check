@@ -4,7 +4,7 @@ public <A> int C0.v1(int)
 public scala.collection.immutable.List C0.v2()
 public <A> scala.collection.immutable.List<Val<A>> C0.v2()
 public int C0.v3()
-public int C0.v3()
+public <A> int C0.v3()
 public int C0.v4(int,scala.collection.immutable.List)
 public <A extends java.lang.String> int C0.v4(int,scala.collection.immutable.List<Val<A>>)
 

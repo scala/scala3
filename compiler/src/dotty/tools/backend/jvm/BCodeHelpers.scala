@@ -358,10 +358,9 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
 
               // there might be a getter created after erasure by the mixin phase,
               // and if so we must use the information that the mixin phase stored for it.
-              // However, we can't do this if the result is a primitive, since field generic signatures can only be reference types (JVMS §4.7.9.1)
               val mixinGetter = atPhase(mixinPhase.next) { sym.getter }
               if mixinGetter.exists then mixinPhase.asInstanceOf[Mixin].mixinGenericInfos.get(mixinGetter) match
-                case Some(ExprType(genericInfo)) if !genericInfo.isPrimitiveValueType => return genericInfo // since we're looking for the getter, we get an ExprType
+                case Some(ExprType(genericInfo)) => return genericInfo // since we're looking for the getter, we get an ExprType
                 case _ => ()
 
           owner.denot.thisType.memberInfo(sym)
@@ -596,18 +595,17 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader, val bTypes: WellKnownBTypes) ex
   } // end of class JMirrorBuilder
 
   private def getGenericSignatureHelper(sym: Symbol, owner: Symbol, memberTpe: Type)(using Context): java.lang.StringBuilder | Null = {
-    val erasedTypeSym = TypeErasure.fullErasure(sym.denot.info).typeSymbol
-    if (erasedTypeSym.isPrimitiveValueClass) {
-      // Suppress signatures for symbols whose types erase in the end to primitive
-      // value types. This is needed to fix #7416.
-      null
-    } else {
-      val jsOpt = GenericSignatures.javaSig(sym, memberTpe)
-      if (jsOpt != null && ctx.settings.XverifySignatures.value) {
-        verifySignature(sym, jsOpt.toString)
-      }
-      jsOpt
+    // We must ensure all classes used in generic signatures are known to the loader so they can later be resolved
+    // if necessary; and to do so, we must have a context with flattened names, because the callback is called with an erasure-time context.
+    // The one exception is `scala.Array`, which can end up in a signature like `class C extends T[Array]` with `trait T[C[_]]`.
+    lazy val loadingCtx = ctx.withPhase(flattenPhase.next)
+    val jsOpt = GenericSignatures.javaSig(sym, memberTpe, c => {
+      if c != defn.ArrayClass then bTypeLoader.classBTypeFromSymbol(c)(using loadingCtx)
+    })
+    if (jsOpt != null && ctx.settings.XverifySignatures.value) {
+      verifySignature(sym, jsOpt.toString)
     }
+    jsOpt
   }
 
   private def verifySignature(sym: Symbol, sig: String)(using Context): Unit = {

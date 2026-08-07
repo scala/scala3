@@ -11,6 +11,8 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 object Dependencies {
   val asm = "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1"
 
+  /** Version of Coursier to download for initializing the local maven repo of Scala command */
+  val coursierJarVersion = "2.1.25-M26"
   val coursier = "io.get-coursier" %% "coursier" % "2.1.24"
   val coursierInterface = "io.get-coursier" % "interface" % "1.0.29-M4"
 
@@ -58,6 +60,9 @@ object Dependencies {
   val sbtZincApiInfo = "org.scala-sbt" %% "zinc-apiinfo" % "1.12.0"
 
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.19.0"
+
+  /** Version of Scala CLI to download */
+  val scalaCliLauncherVersion = "1.16.0"
 
   val scalaJsDomVersion = "2.8.1" // needs %%% which isn't usable within a val here
   val scalaJsEnvNodeJs = "org.scala-js" %% "scalajs-env-nodejs" % "1.6.0"

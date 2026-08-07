@@ -30,6 +30,9 @@ import scala.tools.asm.tree.analysis.*
 import scala.tools.asm.{Label, Type}
 
 object BCodeUtils {
+  val CLASS_CONSTRUCTOR_NAME    = "<clinit>"
+  val INSTANCE_CONSTRUCTOR_NAME = "<init>"
+
   // The JVM enforces a max length of 65535 bytes per UTF-8 constant.
   // Java uses "Modified UTF-8", in which the null character specifically is two bytes,
   // and the rest of the BMP is as usual, see https://docs.oracle.com/javase/8/docs/api/java/io/DataInput.html#modified-utf-8
@@ -327,7 +330,7 @@ object BCodeUtils {
           index += 1
         }
       }
-      
+
       foreachWithIndex(list.asScala.toList) { case (l, i) =>
         if (l == from) list.set(i, to)
       }
