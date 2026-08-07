@@ -44,6 +44,8 @@ object Feature:
   val safe = experimental("safe")
   val dedentedStringLiterals = experimental("dedentedStringLiterals")
   val magic = experimental("magic")
+  val inlineTraits = experimental("inlineTraits")
+  val specializedTraits = experimental("specializedTraits")
 
   val nonViralExperimentalFeatures: Set[TermName] =
     Set(captureChecking, separationChecking, safe)
@@ -70,6 +72,7 @@ object Feature:
     (scala2macros, "Allow Scala 2 macros"),
     (dependent, "Allow dependent method types"),
     (erasedDefinitions, "Allow erased definitions"),
+    (strictEqualityPatternMatching, "relaxed CanEqual checks for ADT pattern matching"),
     (symbolLiterals, "Allow symbol literals"),
     (saferExceptions, "Enable safer exceptions"),
     (pureFunctions, "Enable pure functions for capture checking"),
@@ -82,6 +85,8 @@ object Feature:
     (safe, "Require safe mode"),
     (dedentedStringLiterals, "Enable experimental dedented string literals"),
     (magic, "Enable extensions for working with coding agents"),
+    (inlineTraits, "Allow inline traits"),
+    (specializedTraits, "Allow specialized traits"),
   )
 
   /** Features that are now standard; the language import / -language choice is
@@ -181,7 +186,12 @@ object Feature:
 
   def quotedPatternsWithPolymorphicFunctionsEnabled(using Context) =
     enabled(quotedPatternsWithPolymorphicFunctions)
-
+  
+  def inlineTraitsEnabled(using Context) = 
+    enabledBySetting(inlineTraits)
+    || enabledBySetting(specializedTraits)
+    || ctx.compilationUnit.knowsInlineTraits
+  
   /** Is pureFunctions enabled for this compilation unit? */
   def pureFunsEnabled(using Context) =
     enabledBySetting(pureFunctions)
@@ -213,6 +223,12 @@ object Feature:
   def magicEnabled(using Context) =
     enabledBySetting(magic)
     || ctx.originalCompilationUnit.magic
+
+  /** Are inline traits enabled for this compilation unit */
+  def inlineTraitsEnabledSomewhere(using Context) =
+    enabledBySetting(inlineTraits)
+    || enabledBySetting(specializedTraits)
+    || ctx.run != null && ctx.run.nn.inlineTraitsImportEncountered
 
   /** Is pureFunctions enabled for any of the currently compiled compilation units? */
   def pureFunsEnabledSomewhere(using Context) =
@@ -300,7 +316,7 @@ object Feature:
    *  snippet compiler so they take effect across inputs (i16250).
    */
   val globalLanguageImports: Set[TermName] =
-    Set(pureFunctions, captureChecking, separationChecking, safe)
+    Set(pureFunctions, captureChecking, separationChecking, safe, inlineTraits)
 
   /** Handle a global language import `import language.<prefix>.<imported>`.
    *  Sets the compilation unit's and current run's fields accordingly.
@@ -328,6 +344,10 @@ object Feature:
         true
       case `magic` =>
         ctx.compilationUnit.magic = true
+        true
+      case `inlineTraits` =>
+        ctx.compilationUnit.knowsInlineTraits = true 
+        if ctx.run != null then ctx.run.nn.inlineTraitsImportEncountered = true
         true
       case _ =>
         false

@@ -312,6 +312,11 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
    *  a pureFunctions language import.
    */
   var pureFunsImportEncountered = false
+  
+  /** Will be set to true if any of the compiled compilation units contains
+   *  an inlineTraits language import.
+   */
+  var inlineTraitsImportEncountered = false
 
   /** Will be set to true if experimental.captureChecking is enabled
    *  or any of the compiled compilation units contains a captureChecking language import.
