@@ -2572,7 +2572,20 @@ object Types extends TypeUtils {
     }
 
     private def memberDenot(prefix: Type, name: Name, allowPrivate: Boolean)(using Context): Denotation =
-      if (allowPrivate) prefix.member(name) else prefix.nonPrivateMember(name)
+      // We need a valid prefix for `asSeenFrom`, as in `memberBasedOnFlags`.
+      val pre0 = prefix match
+        case prefix: ClassInfo => prefix.appliedRef
+        case prefix => prefix.widenIfUnstable
+      // When the prefix of a term selection is not a legal prefix, the typer computes the
+      // member as seen from a skolem of the prefix, so that a member type that mentions the
+      // prefix stays precise (see `TypeAssigner.maybeSkolemizePrefix`). Recomputing the
+      // denotation here -- after unpickling, most importantly -- has to skolemize the same
+      // way, or the reference silently acquires a more approximate info than the one it was
+      // pickled with, and the tree no longer survives a pickling round-trip.
+      val pre =
+        if name.isTermName && !TypeOps.isLegalPrefix(pre0) then QualSkolemType(pre0)
+        else pre0
+      prefix.findMember(name, pre, excluded = if allowPrivate then EmptyFlags else Private)
 
     private def argDenot(param: TypeSymbol)(using Context): Denotation = {
       val cls = param.owner
