@@ -17,7 +17,7 @@
 -- Error: tests/neg/closure-args.scala:17:38 ---------------------------------------------------------------------------
 17 |  .map: x => x.toString + xs.dropWhile: y => y > 0 // error
    |                                      ^
-   |                          Can't have two single line lambdas on the same line, enclsoe the second in parentheses
+   |                          Can't have two single line lambdas on the same line, enclose the second in parentheses
 -- [E018] Syntax Error: tests/neg/closure-args.scala:21:20 -------------------------------------------------------------
 21 |val e = xs.map: y => // error
    |                    ^

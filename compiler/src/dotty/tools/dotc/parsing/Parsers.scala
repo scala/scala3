@@ -1135,7 +1135,7 @@ object Parsers {
               case success @ Some(_) => success
               case _ if !in.currentRegion.isInstanceOf[InParens] =>
                 if in.currentRegion.isInstanceOf[SingleLineLambda] then
-                  syntaxError(em"Can't have two single line lambdas on the same line, enclsoe the second in parentheses")
+                  syntaxError(em"Can't have two single line lambdas on the same line, enclose the second in parentheses")
                 Some: () =>
                   val t = inSepRegion(SingleLineLambda(_)):
                     expr(Location.InColonArg)
