@@ -52,5 +52,9 @@ typeCheckErrors.scala
 i18150.scala
 i22968.scala
 
+# Unstable-prefix selection: typer skolemizes, unpickling recomputes without skolem
+# so info goes from Box[(Owner#w : Int)] to Box[? <: (Owner#w : Int)]. Separate fix later.
+i26681.scala
+
 # Pickling differences with local parameters export forwarders of methods with into parameters. But their external type is the same
 Parser.scala
