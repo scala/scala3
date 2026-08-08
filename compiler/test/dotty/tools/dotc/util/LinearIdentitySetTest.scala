@@ -145,4 +145,29 @@ class LinearIdentitySetTest:
     s += id3
     assert(s.size == 1 && s.contains(id3))
 
+  @Test
+  def mutableSetInterface: Unit =
+    val s = LinearIdentitySet[Id]()
+    // add reports whether the element was new
+    assert(s.add(id1))
+    assert(!s.add(id1))
+    // put returns the argument and inserts if absent
+    assert(s.put(id2) eq id2)
+    assert(s.put(id1) eq id1)
+    assert(s.size == 2)
+    // lookup returns the stored element or null
+    assert(s.lookup(id2) eq id2)
+    assert(s.lookup(id3) == null)
+    assert(s.lookup(Id("b")) == null) // structural equality is ignored
+    // iterator follows insertion order
+    s ++= List(id3, id1)
+    assert(s.iterator.map(_.name).toList == List("a", "b", "c"))
+    s --= List(id2, Id("x"))
+    assert(s.toList.map(_.name) == List("a", "c"))
+    // clear(false) keeps the arrays but resets the contents
+    s.clear(resetToInitial = false)
+    assert(s.isEmpty)
+    s += id1
+    assert(s.toList.map(_.name) == List("a"))
+
 end LinearIdentitySetTest

@@ -10,8 +10,12 @@ package dotty.tools.dotc.util
  *  iteration preserves insertion order, and removal is O(1) with occasional
  *  compaction. Elements are compared by reference, so the set is safe for elements
  *  whose `equals`/`hashCode` are structural (e.g. case classes).
+ *
+ *  Unlike `EqHashSet`, iteration order is deterministic (insertion order rather than
+ *  hash-table order), which matters when the set is part of compiler state whose
+ *  traversal order must be reproducible.
  */
-final class LinearIdentitySet[E <: AnyRef]:
+final class LinearIdentitySet[E <: AnyRef] extends MutableSet[E]:
   private var elems: Array[AnyRef | Null] = new Array[AnyRef | Null](4)
 
   // Open addressing table: 0 = empty, -1 = deleted, otherwise position in `elems` + 1.
@@ -27,7 +31,7 @@ final class LinearIdentitySet[E <: AnyRef]:
   private var used = 0
 
   def size: Int = mySize
-  def isEmpty: Boolean = mySize == 0
+  override def isEmpty: Boolean = mySize == 0
 
   /** The smallest power of two >= `n` (the table size must be a power of two
    *  for the mask-based probing to work). */
@@ -48,14 +52,20 @@ final class LinearIdentitySet[E <: AnyRef]:
       t = table(i)
     0
 
-  def contains(x: E): Boolean = positionPlus1(x) != 0
+  override def contains(x: E): Boolean = positionPlus1(x) != 0
 
-  private def growDense(): Unit =
+  override def lookup(x: E): E | Null =
+    val t = positionPlus1(x)
+    if t == 0 then null else elems(t - 1).asInstanceOf[E]
+
+  /** Double the `elems` array, keeping holes. */
+  private def growElems(): Unit =
     val elems1 = new Array[AnyRef | Null](elems.length * 2)
     System.arraycopy(elems, 0, elems1, 0, end)
     elems = elems1
 
-  /** Rebuild the hash table from `elems[0..end)`, skipping holes. */
+  /** Rebuild the hash table from `elems[0..end)` at double the size, dropping
+   *  holes and tombstones. */
   private def growTable(): Unit =
     val table1 = new Array[Int](table.length * 2)
     val oldTable = table
@@ -71,6 +81,9 @@ final class LinearIdentitySet[E <: AnyRef]:
         table1(j) = i + 1
       i += 1
 
+  /** Register `elems(posPlus1 - 1)` in the hash table, reusing the first
+   *  tombstone on the probe path if there is one. Reusing a tombstone is safe
+   *  because lookups only stop at empty (`0`) slots, never at tombstones. */
   private def insert(posPlus1: Int): Unit =
     var i = System.identityHashCode(elems(posPlus1 - 1).asInstanceOf[AnyRef]) & (table.length - 1)
     while table(i) != 0 && table(i) != -1 do
@@ -78,24 +91,42 @@ final class LinearIdentitySet[E <: AnyRef]:
     if table(i) == 0 then used += 1
     table(i) = posPlus1
 
-  def += (x: E): this.type =
-    if positionPlus1(x) == 0 then
-      if end == elems.length then growDense()
-      if used + 1 > table.length / 2 then growTable()
-      elems(end) = x
-      insert(end + 1)
-      end += 1
-      mySize += 1
-    this
+  private def insertNew(x: E): Unit =
+    if end == elems.length then growElems()
+    if used + 1 > table.length / 2 then growTable()
+    elems(end) = x
+    insert(end + 1)
+    end += 1
+    mySize += 1
 
-  /** Remove all elements and release the backing arrays. */
-  def clear(): Unit =
-    elems = new Array[AnyRef | Null](4)
-    table = new Array[Int](8)
+  override def += (x: E): Unit =
+    if positionPlus1(x) == 0 then insertNew(x)
+
+  override def add(x: E): Boolean =
+    if positionPlus1(x) != 0 then false
+    else
+      insertNew(x)
+      true
+
+  override def put(x: E): E =
+    // Elements are compared by identity, so an existing entry is always `x` itself.
+    if positionPlus1(x) == 0 then insertNew(x)
+    x
+
+  /** Remove all elements. If `resetToInitial` is false, keep the backing arrays. */
+  override def clear(resetToInitial: Boolean = true): Unit =
+    if resetToInitial then
+      elems = new Array[AnyRef | Null](4)
+      table = new Array[Int](8)
+    else
+      java.util.Arrays.fill(elems, null)
+      java.util.Arrays.fill(table, 0)
     end = 0
     mySize = 0
     used = 0
 
+  /** Rebuild both arrays without holes and tombstones, keeping the relative
+   *  order of live elements (so iteration still follows insertion order). */
   private def compact(): Unit =
     val elems1 = new Array[AnyRef | Null](math.max(4, mySize * 2))
     val table1 = new Array[Int](nextPowerOfTwo(math.max(8, mySize * 4)))
@@ -115,7 +146,7 @@ final class LinearIdentitySet[E <: AnyRef]:
     end = to
     used = to
 
-  def -= (x: E): this.type =
+  override def -= (x: E): Unit =
     val t = positionPlus1(x)
     if t != 0 then
       elems(t - 1) = null
@@ -125,14 +156,26 @@ final class LinearIdentitySet[E <: AnyRef]:
       mySize -= 1
       // `used` stays the same: the slot is now a tombstone, not empty
       if mySize * 4 < end && end > 8 then compact()
-    this
 
-  def foreach(f: E => Unit): Unit =
+  override def foreach[U](f: E => U): Unit =
     var i = 0
     while i < end do
       val e = elems(i)
       if e != null then f(e.asInstanceOf[E])
       i += 1
+
+  override def iterator: Iterator[E] = new Iterator[E]:
+    private var idx = 0
+    private def skipHoles(): Unit =
+      while idx < end && elems(idx) == null do idx += 1
+    def hasNext: Boolean =
+      skipHoles()
+      idx < end
+    def next(): E =
+      if !hasNext then throw new NoSuchElementException("next on empty iterator")
+      val e = elems(idx)
+      idx += 1
+      e.asInstanceOf[E]
 
   def forall(p: E => Boolean): Boolean =
     var i = 0
@@ -147,7 +190,7 @@ final class LinearIdentitySet[E <: AnyRef]:
     foreach(e => acc = f(acc, e))
     acc
 
-  def toList: List[E] =
+  override def toList: List[E] =
     val buf = new scala.collection.mutable.ListBuffer[E]
     foreach(buf += _)
     buf.toList

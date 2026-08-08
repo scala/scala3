@@ -788,7 +788,7 @@ object CaptureSet:
     /** The sets currently known to be dependent sets (i.e. new additions to this set
      *  are propagated to these dependent sets.)
      */
-    var deps: Deps = new LinearIdentitySet[CaptureSet]
+    val deps: Deps = new LinearIdentitySet[CaptureSet]
 
     def associateWithStateful()(using Context): CaptureSet =
       mutability = Writer
