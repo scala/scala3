@@ -13,6 +13,7 @@
 package scala
 package sys
 
+import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.collection.{mutable, Iterator}
 import scala.jdk.CollectionConverters._
