@@ -1,38 +1,18 @@
-/*
- * Copyright (c) 2014 Contributor. All rights reserved.
- */
-
 package dotty.tools.dotc.classpath
 
-import dotty.tools.io.ClassPath
 import org.junit.Assert.*
 import org.junit.Test
-import org.junit.runner.RunWith
-import org.junit.runners.JUnit4
-import dotty.tools.dotc.config.PathResolver
-import dotty.tools.dotc.core.Contexts.{Context, ContextBase}
-import dotty.tools.dotc.classpath.ClassPathFactory
 
 import scala.tools.asm.ClassReader
 import scala.tools.asm.tree.ClassNode
 
-@RunWith(classOf[JUnit4])
 class JrtClassPathTest {
 
   @Test def lookupJavaClasses(): Unit = {
-    given Context = new ContextBase().initialCtx
-    val specVersion = scala.util.Properties.javaSpecVersion
-    // Run the test using the JDK8 or 9 provider for rt.jar depending on the platform the test is running on.
-    val cp: ClassPath =
-      if (specVersion == "" || specVersion == "1.8") {
-        val resolver = new PathResolver
-        val elements = (new ClassPathFactory).classesInPath(resolver.Calculated.javaBootClassPath)
-        AggregateClassPath(elements)
-      }
-      else JrtClassPath(None).get
+    val cp: ClassPath = JrtClassPath(None).get
 
-    assertEquals(Nil, cp.classes(""))
-    assertTrue(cp.packages("java").toString, cp.packages("java").exists(_.name == "java.lang"))
+    assertTrue(cp.classes("").isEmpty)
+    assertTrue(cp.packages("java").toString, cp.packages("java").exists(_ == "java.lang"))
     assertTrue(cp.classes("java.lang").exists(_.name == "Object"))
     val jl_Object = cp.classes("java.lang").find(_.name == "Object").get
     val jl_Class = {
@@ -41,7 +21,7 @@ class JrtClassPathTest {
       node
     }
     assertEquals("java/lang/Object", jl_Class.name)
-    assertTrue(cp.packages("java.lang").exists(_.name == "java.lang.annotation"))
+    assertTrue(cp.packages("java.lang").exists(_ == "java.lang.annotation"))
     assertTrue(cp.findClassFile("java.lang.Object").isDefined)
   }
 }

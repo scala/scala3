@@ -17,9 +17,8 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.backend.jvm.ClassNode1
 import dotty.tools.backend.jvm.analysis.AnalysisUtils.LambdaMetaFactoryCall
-import dotty.tools.dotc.classpath.{AggregateClassPath, CtSymClassPath, JrtClassPath}
+import dotty.tools.dotc.classpath.{AggregateClassPath, ClassPath, CtSymClassPath, JrtClassPath}
 import dotty.tools.io
-import dotty.tools.io.ClassPath
 
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*

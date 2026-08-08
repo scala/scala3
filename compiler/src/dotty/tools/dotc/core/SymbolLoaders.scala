@@ -5,8 +5,8 @@ package core
 import java.io.{IOException, File}
 import java.nio.channels.ClosedByInterruptException
 
-import dotty.tools.dotc.classpath.PackageNameUtils
-import dotty.tools.io.{ ClassPath, ClassRepresentation, AbstractFile }
+import dotty.tools.dotc.classpath.{ClassPath, ClassRepresentation, PackageNameUtils}
+import dotty.tools.io.AbstractFile
 
 import Contexts.*, Symbols.*, Flags.*, SymDenotations.*, Types.*, Scopes.*, Names.*
 import NameOps.*
@@ -331,8 +331,7 @@ object SymbolLoaders {
       }
       enterClasses(root, packageName, flat = false)
       if (!root.isEmptyPackage)
-        for (pkg <- classPath.packages(packageName)) {
-          val fullName = pkg.name
+        for (fullName <- classPath.packages(packageName)) {
           val name =
             if (packageName.isEmpty) fullName
             else fullName.substring(packageName.length + 1).nn
@@ -383,11 +382,11 @@ object SymbolLoaders {
     // e.g. scala-parallel-collections adds both classes to scala.collection
     // and the new scala.collection.parallel sub-package.
     for p <- jarClasspath.packages(fullPackageName) do
-      val subPackageName = PackageNameUtils.separatePkgAndClassNames(p.name)._2.toTermName
+      val subPackageName = PackageNameUtils.separatePkgAndClassNames(p)._2.toTermName
       val subPackage = packageClass.info.decl(subPackageName).orElse:
         // package does not exist in symbol table, create a new symbol
         enterPackage(packageClass, subPackageName, (module, modcls) => new PackageLoader(module, fullClasspath))
-      mergeNewEntries(subPackage.asSymDenotation.moduleClass.asClass, p.name, jarClasspath, fullClasspath)
+      mergeNewEntries(subPackage.asSymDenotation.moduleClass.asClass, p, jarClasspath, fullClasspath)
   end mergeNewEntries
 }
 
