@@ -3004,6 +3004,9 @@ class MissingImplicitArgument(
     ignoredConvertibleImplicits: => Iterable[TermRef]
   )(using Context) extends TypeMsg(MissingImplicitArgumentID), ShowMatchTrace(pt):
 
+  /** True iff the missing implicit was rejected because the search diverged. */
+  val isDivergingImplicit: Boolean = arg.tpe.isInstanceOf[DivergingImplicit]
+
   arg.tpe match
     case ambi: AmbiguousImplicits => withoutDisambiguation()
     case _ =>

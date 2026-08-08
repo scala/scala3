@@ -1238,6 +1238,16 @@ trait Implicits:
               NoMatchingImplicitsFailure
             else if Splicer.inMacroExpansion && tpe <:< pt then
               SearchFailure(adapted.withType(new MacroErrorsFailure(ctx.reporter.allErrors.reverse, pt, argument)))
+            else if ctx.reporter.allErrors.exists(e => e.msg match
+                  case mia: reporting.MissingImplicitArgument => mia.isDivergingImplicit
+                  case _ => false)
+            then
+              // The candidate's adapt failed because of a nested divergent implicit
+              // search (typically a `summonInline` inside the candidate's inline body
+              // that recursively requests the same type being searched here). Surface
+              // the divergence directly instead of a misleading "does not match" message.
+              // See scala/scala3#26018.
+              SearchFailure(adapted.withType(new DivergingImplicit(ref, pt, argument)))
             else
               SearchFailure(adapted.withType(new MismatchedImplicit(ref, pt, argument)))
         }
