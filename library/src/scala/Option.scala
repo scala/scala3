@@ -13,6 +13,7 @@
 package scala
 
 import scala.language.`2.13`
+import scala.annotation.publicInBinary
 
 object Option {
 
@@ -253,9 +254,10 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
    *  @return the option's value if nonempty, or `null` if empty
    */
   @inline final def orNull[A1 >: A | Null]: A1 = this.getOrElse(null)
-  
-  // for binary and TASTy backwards compatibility 
-  @deprecated @inline protected final def orNull[A1 >: A](implicit ev: Null <:< A1): A1 = this getOrElse ev(null)
+
+  // for binary and TASTy backwards compatibility
+  @publicInBinary
+  @deprecated @inline private[Option] final def orNull[A1 >: A](implicit ev: Null <:< A1): A1 = this getOrElse ev(null)
 
   /** Returns a $some containing the result of applying $f to this $option's
    *  value if this $option is nonempty.
