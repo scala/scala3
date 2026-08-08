@@ -87,7 +87,7 @@ trait MemberLookup {
       res
     catch
       case e: Exception =>
-        if (!summon[DocContext].args.noLinkWarnings) then
+        if !summon[DocContext].args.noLinkWarnings then
           val msg = s"Unable to find a link for ${query} ${ownerOpt.fold("")(o => "in " + o.name)}"
           report.warn(msg, e)
         None
@@ -101,7 +101,6 @@ trait MemberLookup {
       sym.info.allMembers.iterator.map(_.symbol).filter(
         s => hackIsNotAbsent(s.asInstanceOf[Symbol])
       )
-    // println(s"members of ${sym.show} : ${members.map(_.show).mkString(", ")}")
     members.asInstanceOf[Iterator[Symbol]]
   }
 
@@ -115,7 +114,7 @@ trait MemberLookup {
       case _: dotc.core.SymDenotations.ModuleCompleter | dotc.core.SymDenotations.NoCompleter | dotc.core.Types.NoType | _: dotc.core.NoLoader => false
       case _ => true
 
-  private def localLookup(using Quotes)(
+  private def localLookup(using Quotes, DocContext)(
     sel: MemberLookup.Selector,
     owner: reflect.Symbol
   ): Iterator[reflect.Symbol] = {
@@ -123,7 +122,11 @@ trait MemberLookup {
 
     def findMatch(syms: Iterator[Symbol]): Iterator[Symbol] = {
       def matches(s: Symbol): Boolean =
-        s.name == sel.ident && sel.kind.match {
+        val dottySym = s.asInstanceOf[dotty.tools.dotc.core.Symbols.Symbol]
+        // We don't have the right context here. If we did, this entire lookup logic could be replaced by a call to the compiler's logic.
+        given dottyContext: CompilerContext = dotty.tools.dotc.core.Contexts.ctx.fresh.setPeriod(dottySym.lastKnownDenotation.validFor)
+        val targetName = dottySym.lastKnownDenotation.targetName.toString
+        targetName == sel.ident && sel.kind.match {
           case MemberLookup.SelectorKind.ForceTerm => s.isTerm
           case MemberLookup.SelectorKind.ForceType => s.isType
           case MemberLookup.SelectorKind.NoForce => true
@@ -131,21 +134,6 @@ trait MemberLookup {
 
       def hackResolveModule(s: Symbol): Symbol =
         if s.flags.is(Flags.Module) then s.moduleClass else s
-
-      // val syms0 = syms.toList
-      // val matched0 = syms0.filter(matches)
-      // if matched0.isEmpty then
-      //   println(s"Failed to look up ${sel.ident} in $owner; all members: {{{")
-      //   syms0.foreach { s => println(s"\t$s") }
-      //   println("}}}")
-      // val matched = matched0.iterator
-
-      // def showMatched() = matched0.foreach { s =>
-      //   println(s"\t $s")
-      // }
-      // println(s"localLookup in class ${owner} for `${sel.ident}`{kind=${sel.kind}}:{{{")
-      // showMatched()
-      // println("}}}")
 
       val matched = syms.filter(matches)
       matched.map(hackResolveModule)
@@ -171,7 +159,7 @@ trait MemberLookup {
       }
   }
 
-  private def downwardLookup(using Quotes)(
+  private def downwardLookup(using Quotes, DocContext)(
     query: List[String], owner: reflect.Symbol
   ): Option[(reflect.Symbol, Option[reflect.Symbol])] = {
     import reflect._

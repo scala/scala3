@@ -105,20 +105,18 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
         val msg = s"Unable to parse query: ${err.getMessage}"
         DocLink.UnresolvedDRI(queryStr, msg)
       case Right(query) =>
-        MemberLookup.lookup(using qctx)(query, owner) match
+        // calling it a second time can yield a result when the first time failed... why? unsure, but it works
+        // TODO: figure out why
+        MemberLookup.lookup(using qctx)(query, owner).orElse(MemberLookup.lookup(using qctx)(query, owner)) match
           case Some((sym, targetText, inheritingParent)) =>
-            var dri = inheritingParent match
+            val dri = inheritingParent match
               case Some(parent) => sym.driInContextOfInheritingParent(parent)
               case None => sym.dri
             DocLink.ToDRI(dri, targetText)
           case None =>
             val txt = s"Couldn't resolve a member for the given link query"
-            val msg = s"$txt: $queryStr"
-
-            if (!summon[DocContext].args.noLinkWarnings) then
-
-              report.warning(msg, srcPos)
-
+            if !summon[DocContext].args.noLinkWarnings then
+              report.warning(s"$txt: $queryStr", srcPos)
             DocLink.UnresolvedDRI(queryStr, txt)
 
   private val SchemeUri = """[a-z]+:.*""".r

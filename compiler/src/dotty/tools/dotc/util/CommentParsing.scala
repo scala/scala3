@@ -83,7 +83,7 @@ object CommentParsing {
    *  pairs of start/end positions of all tagged sections in the string.
    *  Every section starts with an at sign and extends to the next at sign,
    *  or to the end of the comment string, but excluding the final two
-   *  characters which terminate the comment.
+   *  characters which terminate the comment and any trailing whitespace.
    *
    *  Also take usecases into account - they need to expand until the next
    *  usecase or the end of the string, as they might include other sections
@@ -94,9 +94,15 @@ object CommentParsing {
     indices = mergeUsecaseSections(str, indices)
     indices = mergeInheritdocSections(str, indices)
 
+    // Drop any '*' or whitespace before the given index
+    def previous(last: Int): Int =
+      var end = last - 1
+      while end >= 0 && (str.charAt(end) == '*' || Character.isWhitespace(str.charAt(end))) do end -= 1
+      end + 1
+
     indices match {
       case List() => List()
-      case idxs   => idxs zip (idxs.tail ::: List(str.length - 2))
+      case idxs   => idxs zip (idxs.tail.map(previous) ::: List(previous(str.length - 2)))
     }
   }
 
@@ -129,7 +135,7 @@ object CommentParsing {
     str.startsWith(tag, start) && !isIdentifierPart(str.charAt(start + tag.length))
 
   /** The first start tag of a list of tag intervals,
-   *  or the end of the whole comment string - 2 if list is empty
+   *  or the end of the whole comment - 2 if `list` is empty
    */
   def startTag(str: String, sections: List[(Int, Int)]): Int = sections match {
     case Nil             => str.length - 2
@@ -159,10 +165,10 @@ object CommentParsing {
   def returnDoc(str: String, sections: List[(Int, Int)]): Option[(Int, Int)] =
     sections find (startsWithTag(str, _, "@return"))
 
-  /** Extracts variable name from a string, stripping any pair of surrounding braces */
+  /** Extracts variable name from a string, stripping any pair of surrounding braces and whitespace inside braces. */
   def variableName(str: String): String =
     if (str.length >= 2 && str.charAt(0) == '{' && str.charAt(str.length - 1) == '}')
-      str.substring(1, str.length - 1)
+      str.substring(1, str.length - 1).trim()
     else
       str
 
