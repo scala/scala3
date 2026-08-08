@@ -257,7 +257,7 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
 
   // for binary and TASTy backwards compatibility
   @publicInBinary
-  @deprecated @inline protected final def orNull[A1 >: A](implicit ev: Null <:< A1): A1 = this getOrElse ev(null)
+  @deprecated @inline private[Option] final def orNull[A1 >: A](implicit ev: Null <:< A1): A1 = this getOrElse ev(null)
 
   /** Returns a $some containing the result of applying $f to this $option's
    *  value if this $option is nonempty.
