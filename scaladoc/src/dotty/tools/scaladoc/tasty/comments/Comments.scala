@@ -1,21 +1,24 @@
 package dotty.tools.scaladoc
 package tasty.comments
 
+import scala.collection.mutable
 import scala.collection.immutable.SortedMap
 import scala.util.Try
-
-import com.vladsch.flexmark.util.{ast => mdu, sequence}
-import com.vladsch.flexmark.{ast => mda}
+import com.vladsch.flexmark.util.{sequence, ast as mdu}
+import com.vladsch.flexmark.ast as mda
 import com.vladsch.flexmark.formatter.Formatter
 import com.vladsch.flexmark.util.sequence.BasedSequence
+import dotty.tools.dotc.core.Contexts
+import dotty.tools.dotc.util.{SrcPos, SourcePosition, Spans}
 
-import scala.quoted._
+import scala.quoted.*
 import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
 import dotty.tools.scaladoc.tasty.comments.wiki.Paragraph
 import dotty.tools.scaladoc.DocPart
-import dotty.tools.scaladoc.tasty.{ SymOpsWithLinkCache, SymOps }
-import scala.jdk.CollectionConverters._
-import dotty.tools.scaladoc.snippets._
+import dotty.tools.scaladoc.tasty.{SymOps, SymOpsWithLinkCache}
+
+import scala.jdk.CollectionConverters.*
+import dotty.tools.scaladoc.snippets.*
 
 class Repr(val qctx: Quotes)(val sym: qctx.reflect.Symbol)
 
@@ -73,6 +76,8 @@ case class PreparsedComment(
 case class DokkaCommentBody(summary: Option[DocPart], body: DocPart)
 
 abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
+  private val existingWarningPositions: mutable.Set[SrcPos] = mutable.Set.empty
+
   protected def stringToMarkup(str: String): T
   protected def markupToDokka(t: T): DocPart
   protected def markupToString(t: T): String
@@ -88,7 +93,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
     if repr == null then null.asInstanceOf[qctx.reflect.Symbol] else repr.sym
   private given qctx.type = qctx
 
-  lazy val srcPos = if owner == qctx.reflect.defn.RootClass then {
+  private lazy val srcPos = if owner == qctx.reflect.defn.RootClass then {
     val sourceFile = dctx.args.rootDocPath.map(p => dotty.tools.dotc.util.SourceFile(dotty.tools.io.AbstractFile.getFile(p), scala.io.Codec.UTF8))
     sourceFile.fold(dotty.tools.dotc.util.NoSourcePosition)(sf => dotty.tools.dotc.util.SourcePosition(sf, dotty.tools.dotc.util.Spans.NoSpan))
   } else owner.pos.get.asInstanceOf[dotty.tools.dotc.util.SrcPos]
@@ -105,20 +110,31 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
         val msg = s"Unable to parse query: ${err.getMessage}"
         DocLink.UnresolvedDRI(queryStr, msg)
       case Right(query) =>
-        MemberLookup.lookup(using qctx)(query, owner) match
+        // calling it a second time can yield a result when the first time failed... why? unsure, but it works
+        // TODO: figure out why
+        MemberLookup.lookup(using qctx)(query, owner).orElse(MemberLookup.lookup(using qctx)(query, owner)) match
           case Some((sym, targetText, inheritingParent)) =>
-            var dri = inheritingParent match
+            val dri = inheritingParent match
               case Some(parent) => sym.driInContextOfInheritingParent(parent)
               case None => sym.dri
             DocLink.ToDRI(dri, targetText)
           case None =>
             val txt = s"Couldn't resolve a member for the given link query"
-            val msg = s"$txt: $queryStr"
-
-            if (!summon[DocContext].args.noLinkWarnings) then
-
-              report.warning(msg, srcPos)
-
+            // We do not have the actual position of the link,
+            // and to get it, we need to refactor the entire Scaladoc codebase to track positions when parsing.
+            // For now, we at least don't want warnings to hide other warnings, so shift the position by 1
+            // if we've already reported a warning at that position.
+            var pos = srcPos
+            while !existingWarningPositions.add(pos) do
+              val oldPos = pos
+              pos = new SrcPos {
+                def sourcePos(using ctx: Contexts.Context): SourcePosition =
+                  SourcePosition(oldPos.sourcePos.source, oldPos.sourcePos.span.shift(1), oldPos.sourcePos.outer)
+                def span: Spans.Span =
+                  oldPos.span.shift(1)
+              }
+            if !summon[DocContext].args.noLinkWarnings then
+              report.warning(s"$txt: $queryStr", pos)
             DocLink.UnresolvedDRI(queryStr, txt)
 
   private val SchemeUri = """[a-z]+:.*""".r
