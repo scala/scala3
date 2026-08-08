@@ -4,7 +4,7 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Contexts.*, Decorators.*
-import util.{SimpleIdentitySet, EqHashMap}
+import util.{SimpleIdentitySet, LinearIdentitySet, EqHashMap}
 import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*
@@ -301,7 +301,7 @@ object Capabilities:
   case class ResultCap(binder: MethodicType) extends RootCapability:
 
     private var myOrigin: RootCapability = GlobalAny
-    private var variants: SimpleIdentitySet[ResultCap] = SimpleIdentitySet.empty
+    private val variants: LinearIdentitySet[ResultCap] = new LinearIdentitySet
 
     /** Every ResultCap capability has an origin. This is
      *   - A LocalCap capability `f`, if the current capability was created as a mirror

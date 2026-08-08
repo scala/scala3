@@ -13,7 +13,7 @@ import reporting.trace
 import reporting.Message.Note
 import printing.{Showable, Printer}
 import printing.Texts.*
-import util.{SimpleIdentitySet, Property, EqHashMap}
+import util.{SimpleIdentitySet, LinearIdentitySet, Property, EqHashMap}
 import scala.collection.{mutable, immutable}
 import CCState.*
 import TypeOps.AvoidMap
@@ -573,7 +573,7 @@ sealed abstract class CaptureSet extends Showable:
 object CaptureSet:
   type Refs = SimpleIdentitySet[Capability]
   type Vars = SimpleIdentitySet[Var]
-  type Deps = SimpleIdentitySet[CaptureSet]
+  type Deps = LinearIdentitySet[CaptureSet]
 
   enum Mutability derives CanEqual:
     case Writer, Reader, Ignored
@@ -788,7 +788,7 @@ object CaptureSet:
     /** The sets currently known to be dependent sets (i.e. new additions to this set
      *  are propagated to these dependent sets.)
      */
-    var deps: Deps = SimpleIdentitySet.empty
+    val deps: Deps = new LinearIdentitySet[CaptureSet]
 
     def associateWithStateful()(using Context): CaptureSet =
       mutability = Writer
@@ -977,7 +977,8 @@ object CaptureSet:
 
     /** The intersection of all upper approximations of dependent sets */
     protected def computeApprox(origin: CaptureSet)(using Context): CaptureSet =
-      ((universal: CaptureSet) /: deps) { (acc, sup) => acc ** sup.upperApprox(this) }
+      deps.foldLeft(universal: CaptureSet): (acc, sup) =>
+        acc ** sup.upperApprox(this)
 
     /** Widen the variable's elements to its upper approximation and
      *  mark it as constant from now on. This is used for contra-variant type variables
