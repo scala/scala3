@@ -1,4 +1,4 @@
-import language.experimental.relaxedLambdaSyntax
+//> using options -preview
 
 def fun(f: Int => Int => Int): Int = f(1)(2)
 

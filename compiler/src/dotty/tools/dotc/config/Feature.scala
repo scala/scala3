@@ -35,7 +35,6 @@ object Feature:
   val pureFunctions = experimental("pureFunctions")
   val captureChecking = experimental("captureChecking")
   val separationChecking = experimental("separationChecking")
-  val into = experimental("into")
   val modularity = experimental("modularity")
   val quotedPatternsWithPolymorphicFunctions = experimental("quotedPatternsWithPolymorphicFunctions")
   val multiSpreads = experimental("multiSpreads")
@@ -101,10 +100,12 @@ object Feature:
      "`experimental.namedTuples` is now standard, no language import is needed"),
     (experimental("betterFors"),
      "`experimental.betterFors` is now standard, no language import is needed"),
-    (into,
-     "The `into` language import is no longer needed; the `into` modifier is now in preview and can be enabled with the -preview flag"),
+    (experimental("into"),
+     "`experimental.into` is now standard, no language import is needed"),
     (experimental("packageObjectValues"),
      "The `experimental.packageObjectValues` language import is no longer needed; the feature is now in preview and can be enabled with the -preview flag"),
+    (experimental("relaxedLambdaSyntax"),
+     "The `experimental.relaxedLambdaSyntax` language import is no longer needed; the feature is now in preview and can be enabled with the -preview flag"),
   )
 
   /** Deprecated features that were enabled via the -language command-line setting. */
