@@ -107,6 +107,30 @@ class DependencySpecification {
   }
 
   @Test
+  def binaryDependencyOnTopLevelObjectUsesModuleClassFile = {
+    val upstream =
+      """|package example
+         |object Api {
+         |  val value = 1
+         |}""".stripMargin
+    val downstream =
+      """|package example
+         |object Usage {
+         |  val value = Api.value
+         |}""".stripMargin
+
+    val compilerForTesting = new ScalaCompilerForUnitTesting
+    val output = compilerForTesting.compileSrcs(List(List(upstream), List(downstream)))
+    val downstreamSource = output.srcFiles.last
+    val dependencyClassFiles = output.analysis.binaryDependencies.collect {
+      case (classFile, "example.Api$", _, source, _) if source == downstreamSource =>
+        classFile.getFileName.toString
+    }
+
+    assertEquals(Seq("Api$.class"), dependencyClassFiles.toSeq)
+  }
+
+  @Test
   def extractedTopLevelImportDependencies = {
     val srcA =
       """
