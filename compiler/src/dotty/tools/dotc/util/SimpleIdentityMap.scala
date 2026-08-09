@@ -5,7 +5,7 @@ import scala.collection.mutable.ListBuffer
 /** A simple linked map with `eq` as the key comparison, optimized for small maps.
  * It has linear complexity for `apply`, `updated`, and `remove`.
  */
-final class SimpleIdentityMap[K <: AnyRef, +V <: AnyRef](bindings: Array[AnyRef]) extends (K => V | Null) {
+final class SimpleIdentityMap[K <: AnyRef, +V <: AnyRef](bindings: Array[AnyRef]) extends AnyVal {
   private def key(i: Int): K = bindings(i).asInstanceOf[K]
 
   private def value(i: Int): V = bindings(i + 1).asInstanceOf[V]
@@ -15,7 +15,7 @@ final class SimpleIdentityMap[K <: AnyRef, +V <: AnyRef](bindings: Array[AnyRef]
 
   def size: Int = bindings.length / 2
 
-  Stats.record(s"SimpleIdentityMap/$size")
+  //Stats.record(s"SimpleIdentityMap/$size")
 
   def apply(k: K): V | Null = {
     var i = 0
@@ -122,7 +122,7 @@ final class SimpleIdentityMap[K <: AnyRef, +V <: AnyRef](bindings: Array[AnyRef]
 
   def toList: List[(K, V)] = map2((k, v) => (k, v))
 
-  override def toString(): String = {
+  override def toString: String = {
     def assocToString(key: K, value: V) = s"$key -> $value"
 
     map2(assocToString) mkString("(", ", ", ")")

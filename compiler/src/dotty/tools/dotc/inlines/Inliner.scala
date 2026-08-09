@@ -1220,7 +1220,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     // inlining.println(i"drop unused $bindings%, % in $tree")
     val (termBindings, typeBindings) = bindings.partition(_.symbol.isTerm)
     if (typeBindings.nonEmpty) {
-      val typeBindingsSet = typeBindings.foldLeft[SimpleIdentitySet[Symbol]](SimpleIdentitySet.empty)(_ + _.symbol)
+      val typeBindingsSet = SimpleIdentitySet(typeBindings.iterator.map(_.symbol))
       val inlineTypeBindings = new TreeTypeMap(
         typeMap = new TypeMap() {
           override def apply(tp: Type): Type = tp match {

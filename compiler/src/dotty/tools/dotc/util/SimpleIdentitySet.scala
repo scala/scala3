@@ -5,7 +5,7 @@ import collection.mutable
 /** A simple linked set with `eq` as the comparison, optimized for small sets.
  * It has linear complexity for `contains`, `+`, and `-`.
  */
-final class SimpleIdentitySet[+Elem <: AnyRef](val xs: Array[AnyRef]) {
+final class SimpleIdentitySet[+Elem <: AnyRef](private val xs: Array[AnyRef]) {
   def size: Int = xs.length
 
   def +[E >: Elem <: AnyRef](x: E): SimpleIdentitySet[E] =
@@ -144,7 +144,7 @@ final class SimpleIdentitySet[+Elem <: AnyRef](val xs: Array[AnyRef]) {
     else this.filter(that.contains)
 
   def ==[E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): Boolean =
-    (this eq that) || this.size == that.size && forall(that.contains)
+    (this.xs eq that.xs) || this.size == that.size && forall(that.contains)
 
   def !=[E >: Elem <: AnyRef](that: SimpleIdentitySet[E]): Boolean =
     !(this == that)
@@ -156,7 +156,10 @@ object SimpleIdentitySet {
   private val emptySet = new SimpleIdentitySet(Array.empty[AnyRef])
 
   def apply[Elem <: AnyRef](elems: Elem*): SimpleIdentitySet[Elem] =
-    elems.foldLeft(empty: SimpleIdentitySet[Elem])(_ + _)
+    new SimpleIdentitySet[Elem](elems.toArray)
+
+  def apply[Elem <: AnyRef](elems: Iterator[Elem]): SimpleIdentitySet[Elem] =
+    new SimpleIdentitySet[Elem](elems.toArray)
 
   extension [E <: AnyRef](xs: SimpleIdentitySet[E])
     def intersect(ys: SimpleIdentitySet[E]): SimpleIdentitySet[E] =

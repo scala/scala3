@@ -590,7 +590,7 @@ object Inferencing {
               constraint.upper(param).foreach(p => traverse(constraint.typeVarOfParam(p)))
           case _ =>
       }
-      if (vmap1 eq vmap) vmap else propagate(vmap1)
+      if (vmap1 == vmap) vmap else propagate(vmap1)
     }
 
     propagate(accu(accu(VarianceMap.empty, tp), pt.finalResultType))
@@ -669,7 +669,7 @@ trait Inferencing { this: Typer =>
     // `qualifying`.
 
     val ownedVars = state.ownedVars
-    if (ownedVars ne locked) && !ownedVars.isEmpty then
+    if (ownedVars != locked) && !ownedVars.isEmpty then
       val qualifying = (ownedVars -- locked).toList
       if (!qualifying.isEmpty) {
         typr.println(i"interpolate $tree: ${tree.tpe.widen} in $state, pt = $pt, owned vars = ${state.ownedVars.toList}%, %, qualifying = ${qualifying.toList}%, %, previous = ${locked.toList}%, % / ${state.constraint}")
@@ -748,7 +748,7 @@ trait Inferencing { this: Typer =>
     end toInstantiate
 
     def typeVarsIn(xs: ToInstantiate): TypeVars =
-      xs.foldLeft(SimpleIdentitySet.empty: TypeVars)((tvs, tvi) => tvs + tvi._1)
+      SimpleIdentitySet(xs.iterator.map(_._1))
 
     /** Filter list of proposed instantiations so that they don't constrain further
      *  the current constraint.
