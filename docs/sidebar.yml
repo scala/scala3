@@ -440,4 +440,7 @@ subsection:
       - page: reference/error-codes/E230.md
       - page: reference/error-codes/E231.md
       - page: reference/error-codes/E232.md
+      - page: reference/error-codes/E233.md
+      - page: reference/error-codes/E234.md
+      - page: reference/error-codes/E235.md
 
