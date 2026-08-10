@@ -26,7 +26,7 @@ object Dynamic {
     name == nme.applyDynamic || name == nme.selectDynamic || name == nme.updateDynamic || name == nme.applyDynamicNamed
 
   /** Is `tree` a reference over `Dynamic` that should be expanded to a
-   *  dyanmic `applyDynamic`, `selectDynamic`, `updateDynamic`, or `applyDynamicNamed` call?
+   *  dynamic `applyDynamic`, `selectDynamic`, `updateDynamic`, or `applyDynamicNamed` call?
    */
   def isDynamicExpansion(tree: untpd.RefTree)(using Context): Boolean =
     isDynamicMethod(tree.name)
