@@ -256,7 +256,11 @@ object Contexts {
     /** Sourcefile corresponding to given abstract file, memoized */
     def getSource(file: AbstractFile, codec: => Codec = Codec(settings.encoding.value)) = {
       util.Stats.record("Context.getSource")
-      base.sources.getOrElseUpdate(file, SourceFile(file, codec))
+      if file.isDirectory then
+        report.error(s"expected file, received directory '${file.path}'")
+        NoSource
+      else
+        base.sources.getOrElseUpdate(file, SourceFile(file, codec))
     }
 
     /** SourceFile with given path name, memoized */
