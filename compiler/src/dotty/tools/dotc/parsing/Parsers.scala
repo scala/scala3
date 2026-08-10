@@ -384,9 +384,9 @@ object Parsers {
           val found = in.token
           val statFollows = mustStartStatTokens.contains(found)
           val extra =
-          if in.isOperator && Tokens.canStartExprTokens3.contains(in.lookahead.token) then
-            " - did you intend to apply an infix operator? If so, wrap the right operand in parentheses or in a block."
-          else ""
+            if in.isOperator && Tokens.canStartExprTokens3.contains(in.lookahead.token) then
+              " - did you intend to apply an infix operator? If so, wrap the right operand in parentheses or in a block."
+            else ""
           syntaxError(
             if noPrevStat then IllegalStartOfStatement(what, isModifier, statFollows)
             else em"end of $what expected but ${showToken(found)} found$extra")

@@ -1213,6 +1213,13 @@ object Scanners {
 
 // String Parsing -----------------------------------------------------------------
 
+    private def unclosedStringLit(): Unit =
+      error(em"unclosed string literal")
+      // Recover as best we can by pretending the line has ended
+      litBuf.clear()
+      adjustSepRegions(STRINGLIT)
+      token = SEMI
+
     def multiline = delimCount >= 3
 
     def nextStrChar() =
@@ -1224,7 +1231,8 @@ object Scanners {
         setStrVal()
         nextChar()
         token = STRINGLIT
-      else error(em"unclosed string literal")
+      else
+        unclosedStringLit()
 
     private def getMultilineStringLit(): Unit =
       if ch == delimChar then
@@ -1308,7 +1316,7 @@ object Scanners {
           if multiline then
             incompleteInputError(em"unclosed multi-line string literal")
           else
-            error(em"unclosed string literal")
+            unclosedStringLit()
         else
           putChar(ch)
           nextStrChar()
