@@ -99,7 +99,7 @@ class Compiler {
          new InlinePatterns,         // Remove placeholders of inlined patterns
          new VCInlineMethods,        // Inlines calls to value class methods
          new SeqLiterals,            // Express vararg arguments as arrays
-         new InterceptedMethods,     // Special handling of `==`, `|=`, `getClass` methods
+         new InterceptedMethods,     // Special handling of `!=`, `##`, `toString()` and `getClass()` methods
          new Getters,                // Replace non-private vals and vars with getter defs (fields are added later)
          new SpecializeFunctions,    // Specialized Function{0,1,2} by replacing super with specialized super
          new SpecializeTuples,       // Specializes Tuples by replacing tuple construction and selection trees

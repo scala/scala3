@@ -406,6 +406,7 @@ object StdNames {
     val annotation: N           = "annotation"
     val any: N                  = "any"
     val any2stringadd: N        = "any2stringadd"
+    val anyClass: N             = "anyClass"
     val anyHash: N              = "anyHash"
     val anyValClass: N          = "anyValClass"
     val append: N               = "append"

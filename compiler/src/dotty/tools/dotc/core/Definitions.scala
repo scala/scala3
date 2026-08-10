@@ -535,6 +535,7 @@ class Definitions {
     @tu lazy val ScalaRuntime__hashCode: Symbol = ScalaRuntimeModule.requiredMethod(nme._hashCode_)
     @tu lazy val ScalaRuntime_toArray: Symbol = ScalaRuntimeModule.requiredMethod(nme.toArray)
     @tu lazy val ScalaRuntime_toObjectArray: Symbol = ScalaRuntimeModule.requiredMethod(nme.toObjectArray)
+    @tu lazy val ScalaRuntime_anyClass: Symbol = ScalaRuntimeModule.requiredMethod(nme.anyClass)
 
   @tu lazy val MurmurHash3Module: Symbol = requiredModule("scala.util.hashing.MurmurHash3")
     @tu lazy val MurmurHash3_productHash = MurmurHash3Module.info.member(termName("productHash")).suchThat(_.info.firstParamTypes.size == 3).symbol
@@ -758,6 +759,8 @@ class Definitions {
     JavaUtilObjectsClass.info.member(nme.hashCode_).suchThat(_.info.firstParamTypes.length == 1).symbol
   def Objects_equals(using Context): Symbol =
     JavaUtilObjectsClass.info.member(nme.equals_).suchThat(_.info.firstParamTypes.length == 2).symbol
+  def Objects_toString(using Context): Symbol =
+    JavaUtilObjectsClass.info.member(nme.toString_).suchThat(_.info.firstParamTypes.length == 1).symbol
 
   @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Enum")
