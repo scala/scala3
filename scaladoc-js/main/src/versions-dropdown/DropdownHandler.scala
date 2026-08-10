@@ -25,8 +25,14 @@ class DropdownHandler:
   private def addVersionsList(json: String) =
     val ver = JSON.parse(json).asInstanceOf[Versions]
     val ddc = document.getElementById("version-dropdown")
+    val url = window.location.href
+    val versionPrefix = ver.versions.keysIterator.find(url.startsWith)
+    val urlSuffix = versionPrefix.map(v => url.substring(v.length)).getOrElse("")
     for (k, v) <- ver.versions do
-      var child = a(cls := "text-button", href := v)(k)
+      // only add the suffix if the version points to a directory,
+      // not a specific file like /index.html, otherwise the resulting path makes no sense
+      val vSuffix = if v.endsWith("/") then urlSuffix else ""
+      val child = a(cls := "text-button", href := v + vSuffix)(k)
       ddc.appendChild(child)
 
   private def disableButton() =
