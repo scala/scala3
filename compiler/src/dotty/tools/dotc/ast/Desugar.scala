@@ -1616,11 +1616,12 @@ object desugar {
           case _ =>
             // ... except we have one more optimization up our sleeve:
             // if we're in the "simple tuple" case and the RHS is also a tuple, for `val (a, b) = (1, 2)` we can emit `val a = 1; val b = 2`.
-            // We don't do this if there are any types or wildcards involved, since those can require conversions or handling side-effects.
+            // We don't do this if there is laziness or any types or wildcards involved; the latter can require conversions or handling side effects.
             val (firstDef, splitRhs) = rhs match
               case TuplePattern(elems, TypeTree()) if opt == Optimization.SimpleTuple
                                                    && elems.size == variables.size
                                                    && !pat.isInstanceOf[Typed]
+                                                   && !mods.is(Lazy)
                                                    && variables.forall((n, _) => n.name != nme.WILDCARD) =>
                 (Nil, elems)
               case _ =>
