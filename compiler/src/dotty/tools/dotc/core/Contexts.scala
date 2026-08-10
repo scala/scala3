@@ -14,7 +14,7 @@ import Uniques.*
 import ast.Trees.*
 import Flags.ParamAccessor
 import ast.untpd
-import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, WrappedSourceFile}
+import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, WrappedSourceFile, GenericHashMap}
 import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import inlines.Inliner
 import Nullables.*
@@ -274,6 +274,26 @@ object Contexts {
           report.error(em"invalid file path: ${ex.getMessage}")
           None
     )
+
+    /** A hash map whose composite keys compare each component by identity. */
+    private[dotc] class AsSeenFromCache
+        extends GenericHashMap[(Type, Type, Symbol), Type](8, 2) { // same as EqHashSet
+      protected def hash(key: (Type, Type, Symbol)): Int = {
+        (System.identityHashCode(key._1) * 31
+          + System.identityHashCode(key._2)) * 31
+          + System.identityHashCode(key._3)
+      }
+
+      protected def isEqual(x: (Type, Type, Symbol), y: (Type, Type, Symbol)): Boolean =
+        (x._1 eq y._1) && (x._2 eq y._2) && (x._3 eq y._3)
+    }
+
+    /** Cache for `TypeOps.asSeenFrom` results computed in this context. */
+    private var asSeenFromCacheMap: AsSeenFromCache | Null = null
+    private[dotc] def asSeenFromCache: AsSeenFromCache =
+      if asSeenFromCacheMap == null then
+        asSeenFromCacheMap = new AsSeenFromCache
+      asSeenFromCacheMap.nn
 
     private var related: SimpleIdentityMap[Phase | SourceFile, Context] | Null = null
 
@@ -551,6 +571,7 @@ object Contexts {
     protected def resetCaches(): Unit =
       implicitsCache = null
       related = null
+      asSeenFromCacheMap = null
 
     /** Reuse this context as a fresh context nested inside `outer`
      *  But keep the typerstate, this one has to be set explicitly if needed.
