@@ -282,7 +282,7 @@ object desugar {
 
     rhs match
       case MacroTree(call) =>
-        cpy.DefDef(meth)(rhs = call).withMods(meth.mods | Macro | Erased)
+        cpy.DefDef(meth)(rhs = call, paramss = newParamss).withMods(meth.mods | Macro | Erased)
       case _ =>
         addEvidenceParams(
           cpy.DefDef(meth)(
@@ -1911,7 +1911,7 @@ object desugar {
     desugared.withSpan(tree.span)
   }
 
-  /** Turn a fucntion value `handlerFun` into a catch case for a try.
+  /** Turn a function value `handlerFun` into a catch case for a try.
    *  If `handlerFun` is a partial function, translate to
    *
    *    case ex =>
