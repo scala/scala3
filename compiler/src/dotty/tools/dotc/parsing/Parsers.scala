@@ -3073,6 +3073,17 @@ object Parsers {
               warning(IllegalLiteral(), start)
               unpatch(ctx.compilationUnit.source, span)
               patch(span, s"($n)")
+            case Literal(const)
+                if testChar(t.span.start, '-')
+                && (const.tag == LongTag
+                    || const.tag == FloatTag
+                    || const.tag == DoubleTag) =>
+              val start = t.span.start
+              val span = Span(start, in.lastOffset)
+              warning(IllegalLiteral(), start)
+              unpatch(ctx.compilationUnit.source, span)
+              val text = new String(source.content, start, span.end - start)
+              patch(span, s"($text)")
             case _ =>
           in.nextToken()
           simpleExprRest(selectorOrMatch(t), location, canApply = true)
