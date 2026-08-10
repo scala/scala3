@@ -1,4 +1,3 @@
-//rewrite
 import util.chaining.*
 
 def f = - 42
