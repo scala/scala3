@@ -161,6 +161,7 @@ class CompilationTests {
           defaultOptions.withClasspath("tests/neg-custom-args/missing-java-outer-dependency/cp")),
       compileFile("tests/neg-custom-args/missing-java-outer-dependency/TestImportSuggestion.scala",
           defaultOptions.withClasspath("tests/neg-custom-args/missing-java-outer-dependency/cp")),
+      compileFile("tests/neg-custom-args/empty-compiled-with-dir.scala", defaultOptions.and("tests"))
     ).checkExpectedErrors()
   }
 
