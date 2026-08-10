@@ -373,6 +373,7 @@ object language {
     /** Experimental support for single-line lambdas and case clause expressions after `:`
      */
     @compileTimeOnly("`relaxedLambdaSyntax` can only be used at compile time in import statements")
+    @deprecated("The `experimental.relaxedLambdaSyntax` language import is no longer needed since the feature is now in preview", since = "3.10")
     object relaxedLambdaSyntax
 
     /** Experimental support for safe mode
