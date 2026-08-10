@@ -21,12 +21,13 @@ object ScalaModuleProvider:
 
     val groupedMembers =
       def groupMembers(ms: List[Member], n: Int = 0): List[Member] =
-        ms.groupBy(_.name.split('.')(n)).values.map {
+        ms.groupBy(_.name.split('.')(n)).values.flatMap {
           case m :: ms if m.name.count(_ == '.') == n =>
-            m.withMembers(groupMembers(ms, n + 1) ++ m.members)
+            val (nested, rest) = ms.partition(mm => mm.name.count(_ == '.') > n)
+            m.withMembers(groupMembers(nested, n + 1) ++ m.members) :: rest
           case ms =>
             groupMembers(ms, n + 1) match
-              case m :: Nil => m
+              case m :: Nil => m :: Nil
               case ms =>
                 val name = ms.head.name.split('.').take(n + 1).mkString(".")
                 Member(
@@ -35,7 +36,7 @@ object ScalaModuleProvider:
                   dri = DRI(location = name),
                   kind = Kind.Package,
                   members = ms,
-                )
+                ) :: Nil
         }.toList.sortBy(_.name)
       groupMembers(nonemptyPackages)
 
