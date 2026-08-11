@@ -24,7 +24,7 @@ import core.StdNames.nme
 import core.Types.*
 import core.Decorators.*
 import cc.{
-  CaptureAnnotation, IllegalCaptureRef, RetainingAnnotation,
+  IllegalCaptureRef, RetainingAnnotation,
   hasTrackedParts, isRefiningParamAccessor, retainedElements
 }
 import coverage.*
@@ -85,23 +85,9 @@ object LiftCoverage extends LiftImpure:
       true
     catch case _: IllegalCaptureRef => false
 
-  /** Whether `tp` observes the identity of one specific method parameter. */
-  private def refersToParam(tp: Type, mt: MethodType, paramNum: Int)(using Context): Boolean =
-    val seen = mutable.HashSet.empty[Type]
-    def recur(current: Type): Boolean =
-      seen.add(current) && current.existsPart({
-        case TermParamRef(binder, index) => (binder eq mt) && index == paramNum
-        case ref: TypeRef =>
-          val dealiased = ref.dealias
-          (dealiased ne ref) && recur(dealiased)
-        case AnnotatedType(_, annot: RetainingAnnotation) => recur(annot.retainedType)
-        case AnnotatedType(_, annot: CaptureAnnotation) =>
-          annot.refs.elems.exists(ref => recur(ref.coreType))
-        case _ => false
-      }, StopAt.Static)
-    recur(tp)
-
-  /** Keep nested capture-refining components explicit while leaving the root inferred. */
+  /** Keep nested capture-refining components explicit while leaving the root inferred.
+   *  This mirrors eligibility in `Setup.addCaptureRefinements`.
+   */
   private def declareNestedCaptureRefinements(tp: Type, span: Span)(using Context): Type =
     object marker extends TypeMap with FollowAliasesMap:
       private var nested = false
@@ -166,8 +152,7 @@ object LiftCoverage extends LiftImpure:
       if canInstantiate then tp.substParams(mt, withArg(candidate)) else tp
     val formal = instantiate(mt.paramInfos(paramNum), original)
     def observesOriginalIn(tp: Type): Boolean =
-      refersToParam(tp, mt, paramNum)
-      || !(instantiate(tp, original) frozen_=:= instantiate(tp, defaultLifted))
+      !instantiate(tp, original).eql(instantiate(tp, defaultLifted))
     val observesOriginal =
       canInstantiate
       && original.isStable
@@ -226,12 +211,7 @@ object LiftCoverage extends LiftImpure:
   override protected def onLiftedDef(tree: tpd.Tree)(using Context): Unit =
     tree.putAttachment(CoverageLiftedTemp, liftingArgs)
 
-  /** Coverage temps are strict weak-owner vals created post-typer. Keep RHS-local
-   *  definitions on their original symbols: remapping only the lifted subtree would
-   *  split their identity from references in the surrounding already-typed tree.
-   */
-  override protected def reownerLiftedTree: Boolean = false
-
+  /** Keep RHS-local symbols unchanged: coverage moves them only under a weak owner. */
   override protected def liftedDef(sym: TermSymbol, rhs: tpd.Tree)(using Context): tpd.MemberDef =
     val authoritative = ctx.property(PreservedArgType).isDefined
     val rhs1 = if authoritative then rhs.ensureConforms(sym.info) else rhs

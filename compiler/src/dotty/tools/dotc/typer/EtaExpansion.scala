@@ -46,9 +46,9 @@ abstract class Lifter {
   protected def liftedFlags: FlagSet = EmptyFlags
 
   /** The tree of a lifted definition */
-  protected def liftedDef(sym: TermSymbol, rhs: Tree)(using Context): MemberDef =
+  protected def liftedDef(sym: TermSymbol, rhs: Tree)(using Context): Tree =
     // Mark the type of lifted definitions as inferred
-    ValDef(sym, rhs, inferred = true)
+    ValDef(sym, rhs, inferred = true).changeNonLocalOwners(sym)
 
   /** Type assigned to a lifted temporary symbol. */
   protected def liftedExprType(expr: Tree)(using Context): Type =
@@ -57,9 +57,6 @@ abstract class Lifter {
 
   /** Hook for lifters that need to record or mark freshly created lifted defs. */
   protected def onLiftedDef(tree: Tree)(using Context): Unit = ()
-
-  /** Whether definitions nested in a lifted expression should be relocated. */
-  protected def reownerLiftedTree: Boolean = true
 
   protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: Tree)(using Context): Tree =
     ref(lifted.termRef)
@@ -83,10 +80,7 @@ abstract class Lifter {
         // Lifted definitions will be added to a local block, so they need to be
         // at a higher nesting level to prevent leaks. See tests/pos/i15174.scala
         nestingLevel = ctx.nestingLevel + 1)
-      val liftedTree0 = liftedDef(lifted, expr).withSpan(expr.span)
-      val liftedTree =
-        (if reownerLiftedTree then liftedTree0.changeNonLocalOwners(lifted) else liftedTree0)
-          .setDefTree
+      val liftedTree = liftedDef(lifted, expr).withSpan(expr.span).setDefTree
       onLiftedDef(liftedTree)
       defs += liftedTree
       liftedRef(lifted, liftedType, expr).withSpan(expr.span.focus)
