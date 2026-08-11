@@ -20,4 +20,19 @@ final class Evaluation:
     assert(iterator.next() == List(1))
     assert(events == List("start", "step", "apply"), events)
 
-@main def Test = Evaluation().check()
+final class VarargEvaluation:
+  private var events = List.empty[String]
+
+  private def record(label: String, value: Int): Int =
+    events :+= label
+    value
+
+  private def total(values: Int*): Int = values.sum
+
+  def check(): Unit =
+    assert(total(record("first", 1), record("second", 2)) == 3)
+    assert(events == List("first", "second"), events)
+
+@main def Test =
+  Evaluation().check()
+  VarargEvaluation().check()

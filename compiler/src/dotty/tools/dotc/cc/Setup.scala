@@ -24,6 +24,7 @@ import NameOps.isSelectorName
 import NameKinds.{CanThrowEvidenceName, TryOwnerName, DefaultGetterName}
 import Constants.Constant
 import Capabilities.*
+import typer.Lifter
 
 /** Operations accessed from CheckCaptures */
 trait SetupAPI:
@@ -61,6 +62,65 @@ object Setup:
 
   val name: String = "setupCC"
   val description: String = "prepare compilation unit for capture checking"
+
+  private def isCaptureRefiningGetter(getter: Symbol, refiningNames: Set[Name])(using Context): Boolean =
+    atPhase(checkCapturesPhase)(getter.hasTrackedParts)
+    && getter.isRefiningParamAccessor
+    && !refiningNames.contains(getter.name)
+
+  /** Whether inferred capture Setup would add a fresh parameter refinement below
+   *  the root value type. Such nested identities cannot be inferred from a proxy RHS.
+   */
+  def wouldAddNestedCaptureRefinements(tp: Type)(using Context): Boolean =
+    val seen = mutable.HashSet.empty[(Type, Set[Name], Boolean)]
+    object accumulator extends TypeAccumulator[Boolean]:
+      private var refiningNames: Set[Name] = Set.empty
+      private var nested = false
+
+      private def atNested(isNested: Boolean)(op: => Boolean): Boolean =
+        val saved = nested
+        nested = isNested
+        try op
+        finally nested = saved
+
+      private def foundHere(part: Type): Boolean =
+        nested
+        && part.typeParams.isEmpty
+        && (part.typeSymbol match
+          case cls: ClassSymbol if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
+            cls.paramGetters.exists(isCaptureRefiningGetter(_, refiningNames))
+          case _ => false)
+
+      def apply(found: Boolean, part: Type): Boolean =
+        if found || !seen.add((part, refiningNames, nested)) then found
+        else part match
+          case part: RefinedType =>
+            val saved = refiningNames
+            refiningNames += part.refinedName
+            val foundInParent =
+              try apply(false, part.parent)
+              finally refiningNames = saved
+            foundInParent || atNested(true)(apply(false, part.refinedInfo))
+          case part: FlexibleType =>
+            apply(false, part.underlying)
+          case part: TermRef =>
+            apply(false, part.underlying)
+          case part: ExprType =>
+            apply(false, part.resultType)
+          case part: AnnotatedType =>
+            apply(false, part.parent)
+          case part: AppliedType =>
+            val dealiased = part.dealiasKeepAnnotsAndOpaques
+            if dealiased ne part then apply(false, dealiased)
+            else if foundHere(part) then true
+            else atNested(true)(part.args.exists(apply(false, _)))
+          case part: TypeRef =>
+            val dealiased = part.dealiasKeepAnnotsAndOpaques
+            if dealiased ne part then apply(false, dealiased)
+            else foundHere(part)
+          case _ => atNested(true)(foldOver(false, part))
+
+    accumulator(false, tp)
 
   /** Recognizer for `res $throws exc`, returning `(res, exc)` in case of success */
   object throwsAlias:
@@ -345,11 +405,22 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
     */
   private def transformInferredType(tp: Type, sym: Symbol, typeArgFormal: Type = NoType, initialVariance: Int = 1)(using Context): Type = {
 
+    val preserveNestedTypeIdentity =
+      Lifter.valueProxy(sym).exists(_.preserveNestedTypeIdentity)
+
     def mapInferred(inCaptureRefinement: Boolean): TypeMap = new TypeMap with SetupTypeMap {
       override def toString = "map inferred"
 
       variance = initialVariance
       var refiningNames: Set[Name] = Set()
+
+      /** A transparent post-typer proxy may infer refinements owned by its RHS value,
+       *  but nested type arguments already carry identities fixed by the original call.
+       */
+      override def mapArg(arg: Type, tparam: ParamInfo): Type =
+        if preserveNestedTypeIdentity then
+          transformExplicitType(Recheck.mapExprType(arg), sym, initialVariance = variance)
+        else super.mapArg(arg, tparam)
 
       /** Refine a possibly applied class type C where the class has tracked parameters
        *  x_1: T_1, ..., x_n: T_n to C { val x_1: T_1^{CV_1}, ..., val x_n: T_n^{CV_n} }
@@ -361,9 +432,7 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             case cls: ClassSymbol
             if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
               cls.paramGetters.foldLeft(tp): (core, getter) =>
-                if atPhase(thisPhase.next)(getter.hasTrackedParts)
-                    && getter.isRefiningParamAccessor
-                    && !refiningNames.contains(getter.name) // Don't add a refinement if we have already an explicit one for the same name
+                if Setup.isCaptureRefiningGetter(getter, refiningNames)
                 then
                   val getterType =
                     mapInferred(inCaptureRefinement = true)(tp.memberInfo(getter)).strippedDealias

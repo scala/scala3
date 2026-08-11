@@ -11,8 +11,25 @@ import Symbols.*
 import Names.*
 import NameKinds.UniqueName
 import util.Spans.*
+import util.Property
 import collection.mutable
 import Trees.*
+
+object Lifter:
+  /** Semantics of a synthetic value that must remain transparent to later rechecking. */
+  final case class ValueProxy(preserveNestedTypeIdentity: Boolean)
+
+  private val ValueProxyAttachment = Property.StickyKey[ValueProxy]()
+
+  private[dotc] def markValueProxy(tree: tpd.Tree, proxy: ValueProxy)(using Context): Unit =
+    tree.putAttachment(ValueProxyAttachment, proxy)
+
+  private[dotc] def valueProxy(sym: Symbol)(using Context): Option[ValueProxy] =
+    if sym.exists then sym.defTree.getAttachment(ValueProxyAttachment) else None
+
+  private[dotc] def isTransparentValueProxy(sym: Symbol)(using Context): Boolean =
+    valueProxy(sym).isDefined
+end Lifter
 
 /** A class that handles argument lifting. Argument lifting is needed in the following
  *  scenarios:

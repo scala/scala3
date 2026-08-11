@@ -10,7 +10,7 @@ import config.Printers.{capt, recheckr, noPrinter}
 import config.{Config, Feature}
 import ast.{tpd, untpd, Trees}
 import Trees.*
-import typer.ForceDegree
+import typer.{ForceDegree, Lifter}
 import typer.Inferencing.isFullyDefined
 import typer.RefChecks.{checkAllOverrides, checkSelfAgainstParents, OverridingPairsChecker}
 import typer.Checking.{checkBounds, checkAppliedTypesIn}
@@ -811,6 +811,14 @@ class CheckCaptures extends Recheck, SymTransformer:
         includeCallCaptures(meth, res, tree)
         res
 
+    /** A non-singleton argument proxy preserves evaluation order; it does not
+     *  introduce a new source-level path. Its capture identity comes from the value.
+     */
+    private def isTransparentValueProxy(tree: Tree)(using Context): Boolean =
+      tree.symbol.exists
+      && Lifter.isTransparentValueProxy(tree.symbol)
+      && !tree.symbol.info.isSingleton
+
     /** Recheck argument against an instantiated version of `formal` where toplevel `any`
      *  occurrences are replaced by LocalCap instances.
      */
@@ -867,6 +875,7 @@ class CheckCaptures extends Recheck, SymTransformer:
             if arg.tpe.isStable            // stable --> there might be path dependent types with arg as prefix
                && arg.tpe.isTrackableRef   // isTrackableRef --> we can get back original capture set by adaptation
                && !nuType.hasBoxedCapset // !isBoxed --> no risk of losing uses when unboxing in result
+               && !isTransparentValueProxy(arg)
               => arg.tpe
             case (nuType, _) => nuType
           if argTypes1 ne argTypes then
@@ -2102,12 +2111,15 @@ class CheckCaptures extends Recheck, SymTransformer:
         // Compute the widened type. Drop `@consume` annotations from the type,
         // since they obscure the capturing type.
         val widened = actual.widen.dealiasKeepAnnots.dropAnnot(defn.ConsumeAnnot)
-        val improvedVAR = improveCaptures(widened, actual)
+        val transparentValue = isTransparentValueProxy(tree)
+        val improvedVAR =
+          if transparentValue then widened
+          else improveCaptures(widened, actual)
         val adaptedReadOnly = adaptReadOnly(improvedVAR, actual, expected, tree)
         val adapted = adaptBoxed(adaptedReadOnly, expected, tree,
             covariant = true, alwaysConst = false)
         if adapted eq improvedVAR // no read-only-adaptation, no reaches added, no box-adaptation
-        then actual               // might as well use actual instead of improved widened
+        then if transparentValue then improvedVAR else actual
         else adapted.showing(i"adapt $actual vs $expected = $adapted", capt)
     end adapt
 

@@ -10,20 +10,18 @@ import ast.desugar.TrailingForMap
 import collection.mutable
 import core.Comments.Comment
 import core.Flags.*
-import core.Contexts.{Context, atPhase, ctx, inContext}
+import core.Contexts.{Context, ctx, inContext}
 import core.DenotTransformers.IdentityDenotTransformer
-import core.Symbols.{defn, ClassSymbol, Symbol, TermSymbol}
+import core.Symbols.{defn, Symbol, TermSymbol}
 import core.Constants.Constant
 import core.NameKinds.DefaultGetterName
-import core.Names.Name
 import core.NameOps.isContextFunction
-import core.Phases
 import core.StdNames.nme
 import core.Types.*
 import core.Decorators.*
-import cc.{CaptureAnnotation, CapturingOrRetainsType, RetainingAnnotation, hasTrackedParts, isRefiningParamAccessor}
+import cc.{CaptureAnnotation, CapturingOrRetainsType, IllegalCaptureRef, RetainingAnnotation, Setup, retainedElements}
 import coverage.*
-import typer.LiftImpure
+import typer.{Lifter, LiftImpure}
 import util.{Property, SourcePosition, SourceFile}
 import util.Spans.Span
 import localopt.StringInterpolatorOpt
@@ -37,19 +35,26 @@ object LiftCoverage extends LiftImpure:
 
   // Property indicating whether we're currently lifting the arguments of an application
   private val LiftingArgs = new Property.Key[Boolean]
-  private val LiftedArgType = new Property.Key[Type]
+  private final case class LiftedArgDescriptor(identityType: Option[Type], preserveNestedTypeIdentity: Boolean)
+  private val CurrentLiftedArg = new Property.Key[LiftedArgDescriptor]
   private val SkolemizedArguments = new Property.Key[Map[tpd.Tree, SkolemType]]
+  private val CurrentSemanticArgumentTypes = new Property.Key[List[Type]]
+  private val SemanticArgumentTypes = Property.StickyKey[List[Type]]()
   private val SelectedReceiverApply = Property.StickyKey[tpd.Apply]()
   val CoverageLiftedTemp = Property.StickyKey[Unit]()
 
   private inline def liftingArgs(using Context): Boolean =
     ctx.property(LiftingArgs).contains(true)
 
-  private def liftingArgsContext(skolems: Map[tpd.Tree, SkolemType])(using Context): Context =
+  private def liftingArgsContext(
+    skolems: Map[tpd.Tree, SkolemType],
+    semanticTypes: List[Type]
+  )(using Context): Context =
     ctx.fresh
-      .dropProperty(LiftedArgType)
+      .dropProperty(CurrentLiftedArg)
       .setProperty(LiftingArgs, true)
       .setProperty(SkolemizedArguments, skolems)
+      .setProperty(CurrentSemanticArgumentTypes, semanticTypes)
 
   private def existsInType(tp: Type)(predicate: Type => Boolean)(using Context): Boolean =
     val seen = mutable.HashSet.empty[Type]
@@ -79,30 +84,68 @@ object LiftCoverage extends LiftImpure:
       case TermParamRef(binder, index) => (binder eq mt) && index == paramNum
       case _ => false
 
+  private def hasNonEmptyCaptures(tp: Type)(using Context): Boolean =
+    existsInType(tp):
+      case CapturingOrRetainsType(_, refs) => !refs.isAlwaysEmpty
+      case _ => false
+
+  private def defaultLiftedType(tp: Type)(using Context): Type =
+    val eager = eagerValueType(tp)
+    if eager.isStable then eager else eager.widen
+
+  /** Whether `tp` can be installed as a declared proxy type before capture Setup.
+   *  Provisional retains references must remain inferred so Setup can normalize them.
+   */
+  private def isDeclarableProxyType(tp: Type)(using Context): Boolean =
+    try
+      val seen = mutable.HashSet.empty[Type]
+      new TypeTraverser:
+        def traverse(current: Type): Unit =
+          if seen.add(current) then current match
+            case AnnotatedType(parent, annot: RetainingAnnotation) =>
+              annot.retainedType.retainedElements
+              traverse(parent)
+            case _: TypeRef | _: AppliedType =>
+              val dealiased = current.dealiasKeepAnnotsAndOpaques
+              if dealiased ne current then traverse(dealiased)
+              else traverseChildren(current)
+            case _ => traverseChildren(current)
+      .traverse(tp)
+      true
+    catch case _: IllegalCaptureRef => false
+
   override protected def liftArgContext(
     mt: MethodType,
     paramNum: Int,
     arg: tpd.Tree
   )(using Context): Context =
-    val preservedType =
-      ctx.property(SkolemizedArguments).flatMap(_.get(arg)).orElse:
-        val original = arg.tpe
-        val eager = eagerValueType(original)
-        val formal = mt.paramInfos(paramNum)
-        def observesOriginal(tp: Type): Boolean =
-          val pref = mt.paramRefs(paramNum)
-          refersToParam(tp, mt, paramNum)
-          || !(tp.substParam(pref, original) frozen_=:= tp.substParam(pref, eager))
-        Option.when(
-          original.isStable
-          && (existsInType(formal)(_ frozen_=:= original)
-              || !(eager frozen_<:< formal)
-              || mt.paramInfos.drop(paramNum + 1).exists(observesOriginal)
-              || observesOriginal(mt.resultType))
-        )(original)
-    preservedType match
-      case Some(tp) => ctx.withProperty(LiftedArgType, Some(tp))
-      case None => ctx.withProperty(LiftedArgType, None)
+    val original =
+      ctx.property(CurrentSemanticArgumentTypes).flatMap(_.lift(paramNum)).getOrElse(arg.tpe)
+    val defaultLifted = defaultLiftedType(arg.tpe)
+    val formal = mt.paramInfos(paramNum)
+    val declarable = isDeclarableProxyType(original)
+    val exactTyperIdentity =
+      ctx.property(SkolemizedArguments).flatMap(_.get(arg)).filter(isDeclarableProxyType)
+    def observesOriginal(tp: Type): Boolean =
+      val pref = mt.paramRefs(paramNum)
+      refersToParam(tp, mt, paramNum)
+      || !(tp.substParam(pref, original) frozen_=:= tp.substParam(pref, defaultLifted))
+    val formalUsesExactType = existsInType(formal)(_ frozen_=:= original)
+    val preserveOriginal =
+      declarable
+      && (!(defaultLifted frozen_<:< formal)
+          || original.isBottomType
+          || (original.isStable
+              && (formalUsesExactType
+                  || mt.paramInfos.drop(paramNum + 1).exists(observesOriginal)
+                  || observesOriginal(mt.resultType)))
+          || (hasNonEmptyCaptures(original) && formalUsesExactType))
+    val identityType = exactTyperIdentity.orElse(Option.when(preserveOriginal)(original))
+    val preserveNestedTypeIdentity =
+      declarable && Setup.wouldAddNestedCaptureRefinements(original)
+    ctx.withProperty(
+      CurrentLiftedArg,
+      Some(LiftedArgDescriptor(identityType, preserveNestedTypeIdentity)))
 
   /** Variant of `noLift` for the arguments of applications.
    *  To produce the right coverage information (especially in case of exceptions), we must lift:
@@ -117,6 +160,7 @@ object LiftCoverage extends LiftImpure:
       case tpd.Block(stats, expr) => stats.forall(noLiftArg) && noLiftArg(expr)
       case tpd.Inlined(_, bindings, expr) => noLiftArg(expr)
       case tpd.Typed(expr, _) => noLiftArg(expr)
+      case tpd.SeqLiteral(elems, _) => elems.forall(noLiftArg)
       case _ => super.noLift(arg)
 
   def isUnsafeAssumeSeparate(tree: tpd.Tree)(using Context): Boolean = tree match
@@ -140,6 +184,8 @@ object LiftCoverage extends LiftImpure:
 
   override protected def onLiftedDef(tree: tpd.Tree)(using Context): Unit =
     tree.putAttachment(CoverageLiftedTemp, ())
+    ctx.property(CurrentLiftedArg).foreach: descriptor =>
+      Lifter.markValueProxy(tree, Lifter.ValueProxy(descriptor.preserveNestedTypeIdentity))
 
   /** Coverage temps are strict weak-owner vals created post-typer. Keep RHS-local
    *  definitions on their original symbols: remapping only the lifted subtree would
@@ -148,57 +194,17 @@ object LiftCoverage extends LiftImpure:
   override protected def relocateLiftedTree(tree: tpd.Tree, lifted: TermSymbol)(using Context): tpd.Tree =
     tree
 
-  /** Whether capture setup would add fresh refinements if it treated `tp` as inferred again. */
-  private def infersCaptureRefinements(tp: Type)(using Context): Boolean =
-    object accumulator extends TypeAccumulator[Boolean]:
-      private var refiningNames: Set[Name] = Set.empty
-
-      def apply(found: Boolean, part: Type): Boolean =
-        if found then true
-        else part match
-          case part: RefinedType =>
-            val saved = refiningNames
-            refiningNames += part.refinedName
-            val foundInParent =
-              try apply(false, part.parent)
-              finally refiningNames = saved
-            foundInParent || apply(false, part.refinedInfo)
-          case _: TypeRef | _: AppliedType if part.typeParams.isEmpty =>
-            val foundHere = part.typeSymbol match
-              case cls: ClassSymbol if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
-                cls.paramGetters.exists: getter =>
-                  atPhase(Phases.checkCapturesPhase)(getter.hasTrackedParts)
-                  && getter.isRefiningParamAccessor
-                  && !refiningNames.contains(getter.name)
-              case _ => false
-            foundHere || foldOver(false, part)
-          case _ => foldOver(false, part)
-
-    accumulator(false, tp)
-
-  private def needsAuthoritativeType(tp: Type)(using Context): Boolean =
-    val hasCaptures = tp.existsPart:
-      case CapturingOrRetainsType(_, refs) => !refs.isAlwaysEmpty
-      case _ => false
-    liftingArgs
-    && (ctx.property(LiftedArgType).isDefined
-        || tp.isBottomType
-        || infersCaptureRefinements(tp)
-        || hasCaptures)
+  private def needsAuthoritativeType(using Context): Boolean =
+    ctx.property(CurrentLiftedArg).exists(_.identityType.isDefined)
 
   override protected def liftedDef(sym: TermSymbol, rhs: tpd.Tree)(using Context): tpd.MemberDef =
-    val authoritative = needsAuthoritativeType(sym.info)
-    val rhs1 =
-      if authoritative then
-        sym.info match
-          case skolem: SkolemType => rhs.cast(skolem)
-          case _ => rhs
-      else rhs
+    val authoritative = needsAuthoritativeType
+    val rhs1 = if authoritative then rhs.ensureConforms(sym.info) else rhs
     tpd.ValDef(sym, rhs1, inferred = !authoritative)
 
   override protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: tpd.Tree)(using Context): tpd.Tree =
     val liftedRef = tpd.ref(lifted.termRef)
-    if needsAuthoritativeType(liftedType) then
+    if needsAuthoritativeType then
       tpd.Typed(liftedRef, tpd.TypeTree(liftedType, inferred = false))
     else liftedRef
 
@@ -210,21 +216,29 @@ object LiftCoverage extends LiftImpure:
   override protected def prepareLiftedValueType(tp: Type)(using Context): Type = tp
 
   override protected def liftedExprType(expr: tpd.Tree)(using Context): Type =
-    ctx.property(LiftedArgType).getOrElse:
-      val tp = eagerValueType(expr.tpe)
-      if tp.isStable then tp else tp.widen
+    ctx.property(CurrentLiftedArg).flatMap(_.identityType).getOrElse(defaultLiftedType(expr.tpe))
 
   override protected def liftAppContext(app: tpd.Apply)(using Context): Context =
     val skolems = app.getAttachment(SkolemizedArgs).getOrElse(Map.empty)
-    liftingArgsContext(skolems)
+    val semanticTypes = app.getAttachment(SemanticArgumentTypes).getOrElse(app.args.map(_.tpe))
+    liftingArgsContext(skolems, semanticTypes)
 
   override protected def liftedApply(original: tpd.Apply, lifted: tpd.Apply)(using Context): tpd.Apply =
-    remapSkolemizedArgs(original, lifted)
+    copyArgumentMetadata(original, lifted)
 
-  private def remapSkolemizedArgs(
+  /** Keep positional argument types and argument-keyed typer skolems aligned whenever
+   *  coverage replaces application children.
+   */
+  private[transform] def copyArgumentMetadata(
     original: tpd.Apply,
     lifted: tpd.Apply
   )(using Context): tpd.Apply =
+    if original eq lifted then return lifted
+    val semanticTypes =
+      original.getAttachment(SemanticArgumentTypes).getOrElse(original.args.map(_.tpe))
+    lifted.removeAttachment(SemanticArgumentTypes)
+    if semanticTypes.size == lifted.args.size then
+      lifted.putAttachment(SemanticArgumentTypes, semanticTypes)
     original.getAttachment(SkolemizedArgs) match
       case Some(mapping) =>
         val liftedMapping = original.args.lazyZip(lifted.args).flatMap: (originalArg, liftedArg) =>
@@ -466,11 +480,15 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         if isErased then arg else transform(arg)
       }
 
+    /** Copy an application while keeping argument-keyed typer identity metadata aligned. */
+    private def copyApply(tree: Apply, fun: Tree, args: List[Tree])(using Context): Apply =
+      LiftCoverage.copyArgumentMetadata(tree, cpy.Apply(tree)(fun, args))
+
     private def transformInnerApply(tree: Tree)(using Context): Tree = tree match
       case a: Apply if a.fun.symbol == defn.StringContextModule_apply =>
         a
       case a: Apply =>
-        cpy.Apply(a)(
+        copyApply(a,
           transformInnerApply(a.fun),
           transformApplyArgs(a.args, erasedParamStatuses(a))
         )
@@ -507,7 +525,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
       */
     private def tryInstrument(tree: Apply)(using Context): InstrumentedParts =
       if LiftCoverage.isUnsafeAssumeSeparate(tree) then
-        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
+        val transformed = copyApply(tree, transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
         InstrumentedParts.notCovered(transformed)
       else if canInstrumentApply(tree) then
         // Create a call to Invoker.invoked(coverageDirectory, newStatementId)
@@ -516,7 +534,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
         // Transform args and fun, i.e. instrument them if needed (and if possible)
         val app =
           if tree.fun.symbol eq defn.throwMethod then tree
-          else cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
+          else copyApply(tree, transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
 
         if needsLift(app) then
           // Lifts the arguments. Note that if only one argument needs to be lifted, we lift them all.
@@ -534,7 +552,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
           InstrumentedParts.singleExpr(coverageCall, app)
       else
         // Transform recursively but don't instrument the tree itself
-        val transformed = cpy.Apply(tree)(transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
+        val transformed = copyApply(tree, transformInnerApply(tree.fun), transformApplyArgs(tree.args, erasedParamStatuses(tree)))
         InstrumentedParts.notCovered(transformed)
     end tryInstrument
 
@@ -828,7 +846,7 @@ class InstrumentCoverage extends MacroTransform with IdentityDenotTransformer:
     private def transformTemplateParents(parents: List[Tree])(using Context): List[Tree] =
       def transformParent(parent: Tree): Tree = parent match
         case tree: Apply =>
-          cpy.Apply(tree)(tree.fun, transformApplyArgs(tree.args, erasedParamStatuses(tree)))
+          copyApply(tree, tree.fun, transformApplyArgs(tree.args, erasedParamStatuses(tree)))
         case tree: TypeApply =>
           // args are types, instrument the fun with transformParent
           cpy.TypeApply(tree)(transformParent(tree.fun), tree.args)
