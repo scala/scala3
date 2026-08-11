@@ -17,9 +17,9 @@ package analysis
 import scala.annotation.switch
 import scala.collection.AbstractIterator
 import scala.collection.mutable
-import scala.tools.asm.Opcodes
-import scala.tools.asm.tree.*
-import scala.tools.asm.tree.analysis.*
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.tree.analysis.*
 import dotty.tools.backend.jvm.BCodeUtils.FrameExtensions
 
 /**

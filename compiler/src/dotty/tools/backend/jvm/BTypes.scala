@@ -3,14 +3,14 @@ package backend
 package jvm
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.tools.asm
+import org.objectweb.asm
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.ClassBType.runtimeNullInternalName
 import dotty.tools.backend.jvm.opt.{InlineInfoAttribute, OptimizerWarning}
 import dotty.tools.dotc.core.Definitions
 
 import scala.collection.SortedMap
-import scala.tools.asm.Opcodes
+import org.objectweb.asm.Opcodes
 
 
 /**

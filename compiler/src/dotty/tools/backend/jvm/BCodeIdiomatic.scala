@@ -3,9 +3,9 @@ package backend
 package jvm
 
 import dotty.tools.backend.jvm.opt.CallGraph
-import scala.tools.asm
+import org.objectweb.asm
 import scala.annotation.tailrec
-import scala.tools.asm.tree.MethodInsnNode
+import org.objectweb.asm.tree.MethodInsnNode
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.util.NoSourcePosition
