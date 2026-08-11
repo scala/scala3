@@ -13,7 +13,7 @@ import reporting.trace
 import reporting.Message.Note
 import printing.{Showable, Printer}
 import printing.Texts.*
-import util.{SimpleIdentitySet, LinearIdentitySet, Property, EqHashMap}
+import util.{SimpleIdentitySet, MutableIdentitySet, Property, EqHashMap}
 import scala.collection.{mutable, immutable}
 import CCState.*
 import TypeOps.AvoidMap
@@ -573,7 +573,7 @@ sealed abstract class CaptureSet extends Showable:
 object CaptureSet:
   type Refs = SimpleIdentitySet[Capability]
   type Vars = SimpleIdentitySet[Var]
-  type Deps = LinearIdentitySet[CaptureSet]
+  type Deps = MutableIdentitySet[CaptureSet]
 
   enum Mutability derives CanEqual:
     case Writer, Reader, Ignored
@@ -788,7 +788,7 @@ object CaptureSet:
     /** The sets currently known to be dependent sets (i.e. new additions to this set
      *  are propagated to these dependent sets.)
      */
-    val deps: Deps = new LinearIdentitySet[CaptureSet]
+    val deps: Deps = new MutableIdentitySet[CaptureSet]
 
     def associateWithStateful()(using Context): CaptureSet =
       mutability = Writer

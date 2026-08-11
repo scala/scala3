@@ -2,10 +2,6 @@ package dotty.tools.dotc.util
 
 /** A mutable identity set that preserves insertion order.
  *
- *  Intended for "linear" use: after an update, the previous value of the set is not
- *  used anymore (only the most recent value matters). `+=` and `-=` mutate the set in
- *  place, so a reference obtained before an update must not be used afterwards.
- *
  *  Adds and membership tests are amortized O(1) (identity hash table with doubling),
  *  iteration preserves insertion order, and removal is O(1) with occasional
  *  compaction. Elements are compared by reference, so the set is safe for elements
@@ -15,7 +11,7 @@ package dotty.tools.dotc.util
  *  hash-table order), which matters when the set is part of compiler state whose
  *  traversal order must be reproducible.
  */
-final class LinearIdentitySet[E <: AnyRef] extends MutableSet[E]:
+final class MutableIdentitySet[E <: AnyRef] extends MutableSet[E]:
   private var elems: Array[AnyRef | Null] = new Array[AnyRef | Null](4)
 
   // Open addressing table: 0 = empty, -1 = deleted, otherwise position in `elems` + 1.
@@ -85,7 +81,7 @@ final class LinearIdentitySet[E <: AnyRef] extends MutableSet[E]:
    *  tombstone on the probe path if there is one. Reusing a tombstone is safe
    *  because lookups only stop at empty (`0`) slots, never at tombstones. */
   private def insert(posPlus1: Int): Unit =
-    var i = System.identityHashCode(elems(posPlus1 - 1).asInstanceOf[AnyRef]) & (table.length - 1)
+    var i = System.identityHashCode(elems(posPlus1 - 1)) & (table.length - 1)
     while table(i) != 0 && table(i) != -1 do
       i = (i + 1) & (table.length - 1)
     if table(i) == 0 then used += 1
@@ -172,10 +168,11 @@ final class LinearIdentitySet[E <: AnyRef] extends MutableSet[E]:
       skipHoles()
       idx < end
     def next(): E =
-      if !hasNext then throw new NoSuchElementException("next on empty iterator")
-      val e = elems(idx)
-      idx += 1
-      e.asInstanceOf[E]
+      if hasNext then
+        val e = elems(idx)
+        idx += 1
+        e.asInstanceOf[E]
+      else Iterator.empty.next()
 
   def forall(p: E => Boolean): Boolean =
     var i = 0
@@ -190,10 +187,5 @@ final class LinearIdentitySet[E <: AnyRef] extends MutableSet[E]:
     foreach(e => acc = f(acc, e))
     acc
 
-  override def toList: List[E] =
-    val buf = new scala.collection.mutable.ListBuffer[E]
-    foreach(buf += _)
-    buf.toList
-
-  override def toString: String = toList.mkString("{", ", ", "}")
-end LinearIdentitySet
+  override def toString: String = iterator.mkString("{", ", ", "}")
+end MutableIdentitySet

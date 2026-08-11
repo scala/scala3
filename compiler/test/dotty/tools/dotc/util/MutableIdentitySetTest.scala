@@ -3,7 +3,7 @@ package dotty.tools.dotc.util
 import org.junit.Test
 import org.junit.Assert.*
 
-class LinearIdentitySetTest:
+class MutableIdentitySetTest:
 
   class Id(val name: String):
     // structural equality on purpose: the set must use reference identity
@@ -19,7 +19,7 @@ class LinearIdentitySetTest:
 
   @Test
   def newEmpty: Unit =
-    val s = LinearIdentitySet[Id]()
+    val s = MutableIdentitySet[Id]()
     assert(s.isEmpty)
     assert(s.size == 0)
     assert(!s.contains(id1))
@@ -27,7 +27,7 @@ class LinearIdentitySetTest:
 
   @Test
   def addUsesIdentity: Unit =
-    val s = LinearIdentitySet[Id]()
+    val s = MutableIdentitySet[Id]()
     s += id1
     s += id1b // structurally equal, different reference: must be a distinct element
     s += id2
@@ -39,7 +39,7 @@ class LinearIdentitySetTest:
 
   @Test
   def addIsIdempotentForSameReference: Unit =
-    val s = LinearIdentitySet[Id]()
+    val s = MutableIdentitySet[Id]()
     s += id1
     s += id1
     assert(s.size == 1)
@@ -49,7 +49,7 @@ class LinearIdentitySetTest:
 
   @Test
   def preservesInsertionOrder: Unit =
-    val s = LinearIdentitySet[Id]()
+    val s = MutableIdentitySet[Id]()
     s += id2
     s += id1
     s += id3
@@ -60,7 +60,7 @@ class LinearIdentitySetTest:
 
   @Test
   def remove: Unit =
-    val s = LinearIdentitySet[Id]()
+    val s = MutableIdentitySet[Id]()
     s += id1
     s += id2
     s += id3
@@ -78,7 +78,7 @@ class LinearIdentitySetTest:
 
   @Test
   def removeAndReaddKeepsSemantics: Unit =
-    val s = LinearIdentitySet[Id]()
+    val s = MutableIdentitySet[Id]()
     s += id1
     s += id2
     s -= id1
@@ -88,7 +88,7 @@ class LinearIdentitySetTest:
 
   @Test
   def growsBeyondInitialCapacity: Unit =
-    val s = LinearIdentitySet[Id]()
+    val s = MutableIdentitySet[Id]()
     val ids = (1 to 1000).map(i => Id(i.toString)).toList
     for id <- ids do s += id
     assert(s.size == 1000)
@@ -107,7 +107,7 @@ class LinearIdentitySetTest:
 
   @Test
   def forallAndFoldLeft: Unit =
-    val s = LinearIdentitySet[Id]()
+    val s = MutableIdentitySet[Id]()
     s += id1
     s += id2
     s += id3
@@ -122,7 +122,7 @@ class LinearIdentitySetTest:
   def compactionKeepsProbingWorking: Unit =
     // Force several compaction rounds (removal-heavy) so the table is rebuilt at
     // sizes that must remain powers of two for the open-addressing probe to work.
-    val s = LinearIdentitySet[Id]()
+    val s = MutableIdentitySet[Id]()
     val ids = (1 to 40).map(i => Id(i.toString)).toList
     for id <- ids do s += id
     // Remove most elements to trigger compaction with a small live set.
@@ -137,7 +137,7 @@ class LinearIdentitySetTest:
 
   @Test
   def clear: Unit =
-    val s = LinearIdentitySet[Id]()
+    val s = MutableIdentitySet[Id]()
     s += id1
     s += id2
     s.clear()
@@ -147,7 +147,7 @@ class LinearIdentitySetTest:
 
   @Test
   def mutableSetInterface: Unit =
-    val s = LinearIdentitySet[Id]()
+    val s = MutableIdentitySet[Id]()
     // add reports whether the element was new
     assert(s.add(id1))
     assert(!s.add(id1))
@@ -170,4 +170,4 @@ class LinearIdentitySetTest:
     s += id1
     assert(s.toList.map(_.name) == List("a"))
 
-end LinearIdentitySetTest
+end MutableIdentitySetTest
