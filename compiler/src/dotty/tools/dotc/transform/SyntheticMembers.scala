@@ -82,7 +82,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val existing = sym.matchingMember(clazz.thisType)
     if Feature.shouldBehaveAsScala2 && clazz.isValueClass && (sym == defn.Any_equals || sym == defn.Any_hashCode) then
       NoSymbol
-    else if existing != sym && !existing.is(Deferred) then
+    else if existing != sym && !existing.is(Deferred) && existing != defn.Object_equals && existing != defn.Object_hashCode then
       existing
     else
       NoSymbol

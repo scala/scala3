@@ -798,7 +798,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
           // representation.
           h = MurmurHash3.mix(h, apiType(c.typeValue).hashCode)
         case _ =>
-          h = MurmurHash3.mix(h, c.value.hashCode)
+          h = MurmurHash3.mix(h, java.util.Objects.hashCode(c.value))
       h
     end constantHash
 
