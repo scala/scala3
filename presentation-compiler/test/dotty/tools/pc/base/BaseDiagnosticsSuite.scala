@@ -74,7 +74,7 @@ class BaseDiagnosticsSuite extends PcAssertions with DiagnosticTestHelpers:
   def getDiagnostics(text: String): List[Diagnostic] = {
     pc
       .didChange(
-        TestVirtualFileParams(URI.create("file:/Diagnostic.scala"), text)
+        TestVirtualFileParams(URI.create("file:/Diagnostic.scala").nn, text)
       )
       .nn
       .asScala

@@ -31,8 +31,8 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
 
   private def isLocal(diag: Diagnostic, uri: java.net.URI): Boolean =
     diag.pos.exists && {
-      val sourcePath = diag.pos.source.jfile.map(_.toPath())
-      sourcePath.isPresent() && sourcePath.get().toUri().equals(uri)
+      val sourcePath = diag.pos.source.jfile.map(_.nn.toPath())
+      sourcePath.nn.isPresent() && sourcePath.nn.get().nn.toUri().equals(uri)
     }
 
   private def toLsp(diag: Diagnostic)(using Context): Option[lsp4j.Diagnostic] =
