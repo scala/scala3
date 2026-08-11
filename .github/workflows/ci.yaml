@@ -288,6 +288,63 @@ jobs:
           name: sona-staging-org-scala-js
           path: target/sona-staging/
 
+  # Attests the artifacts published by publish_release with a signed SLSA
+  # provenance attestation.
+  #
+  # carabiner-dev/actions/slsa/generate uses Kubernetes' Tejolote attester
+  # observe this workflow run through the Actions API and builds the SLSA
+  # predicate from it. The attested subjects are the assets publish_release
+  # attached to the GitHub release. That release is still a draft at this point
+  # (not reachable through the API) so the assets are pulled using the github
+  # gh CLI, which does resolve drafts, and hashed from the local copy.
+  provenance:
+    permissions:
+      contents: write  # to read the draft release assets and attach the attestation
+      id-token: write  # to sign the attestation with the job's workload identity
+      actions: read    # for tejolote to read the run and job metadata
+
+    runs-on: ubuntu-latest
+    needs: [publish_release]
+    if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
+
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+
+    steps:
+      - name: Download the released artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p release-artifacts
+          # Mirrors the asset list uploaded by publish_release. Naming the
+          # patterns also keeps a re-run from attesting an earlier attestation.
+          gh release download "${RELEASE_TAG}" \
+            --dir release-artifacts \
+            --pattern "scala3-${RELEASE_TAG}*.zip" \
+            --pattern "scala3-${RELEASE_TAG}*.tar.gz" \
+            --pattern "scala3-${RELEASE_TAG}*.sha256" \
+            --pattern "scala3-${RELEASE_TAG}.msi"
+
+      - name: Generate the provenance attestation
+        id: provenance
+        uses: carabiner-dev/actions/slsa/generate@36a39ef667efe7112df8b1a534a4e37f35fad6fd # v1.2.6
+        with:
+          # publish_release has finished by the time this job starts, naming it
+          # keeps tejolote from waiting on the unrelated jobs of the run
+          watch-jobs: publish_release
+          artifacts: file://${{ github.workspace }}/release-artifacts
+          output: provenance.intoto.json
+
+      - name: Attach the provenance to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ATTESTATION: ${{ steps.provenance.outputs.attestation }}
+        run: gh release upload "${RELEASE_TAG}" "${ATTESTATION}" --clobber
+
   build-msi-package:
    uses: ./.github/workflows/build-msi.yml
    if  :
