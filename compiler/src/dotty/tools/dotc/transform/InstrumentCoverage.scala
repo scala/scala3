@@ -23,7 +23,10 @@ import core.NameOps.isContextFunction
 import core.StdNames.nme
 import core.Types.*
 import core.Decorators.*
-import cc.{hasTrackedParts, isRefiningParamAccessor, retainedElements, IllegalCaptureRef, RetainingAnnotation}
+import cc.{
+  CaptureAnnotation, IllegalCaptureRef, RetainingAnnotation,
+  hasTrackedParts, isRefiningParamAccessor, retainedElements
+}
 import coverage.*
 import typer.LiftImpure
 import util.{Property, SourcePosition, SourceFile}
@@ -81,6 +84,22 @@ object LiftCoverage extends LiftImpure:
       .traverse(tp)
       true
     catch case _: IllegalCaptureRef => false
+
+  /** Whether `tp` observes the identity of one specific method parameter. */
+  private def refersToParam(tp: Type, mt: MethodType, paramNum: Int)(using Context): Boolean =
+    val seen = mutable.HashSet.empty[Type]
+    def recur(current: Type): Boolean =
+      seen.add(current) && current.existsPart({
+        case TermParamRef(binder, index) => (binder eq mt) && index == paramNum
+        case ref: TypeRef =>
+          val dealiased = ref.dealias
+          (dealiased ne ref) && recur(dealiased)
+        case AnnotatedType(_, annot: RetainingAnnotation) => recur(annot.retainedType)
+        case AnnotatedType(_, annot: CaptureAnnotation) =>
+          annot.refs.elems.exists(ref => recur(ref.coreType))
+        case _ => false
+      }, StopAt.Static)
+    recur(tp)
 
   /** Keep nested capture-refining components explicit while leaving the root inferred. */
   private def declareNestedCaptureRefinements(tp: Type, span: Span)(using Context): Type =
@@ -146,12 +165,14 @@ object LiftCoverage extends LiftImpure:
     def instantiate(tp: Type, candidate: Type): Type =
       if canInstantiate then tp.substParams(mt, withArg(candidate)) else tp
     val formal = instantiate(mt.paramInfos(paramNum), original)
+    def observesOriginalIn(tp: Type): Boolean =
+      refersToParam(tp, mt, paramNum)
+      || !(instantiate(tp, original) frozen_=:= instantiate(tp, defaultLifted))
     val observesOriginal =
       canInstantiate
       && original.isStable
-      && ((mt.paramInfos.drop(paramNum + 1).exists: later =>
-            !(instantiate(later, original) frozen_=:= instantiate(later, defaultLifted)))
-          || !(instantiate(mt.resultType, original) frozen_=:= instantiate(mt.resultType, defaultLifted)))
+      && (mt.paramInfos.drop(paramNum + 1).exists(observesOriginalIn)
+          || observesOriginalIn(mt.resultType))
     val needsOriginal =
       !(defaultLifted frozen_<:< formal) || original.isBottomType || observesOriginal
     val preserveOriginal = needsOriginal && isDeclarableType(original)
