@@ -11,25 +11,8 @@ import Symbols.*
 import Names.*
 import NameKinds.UniqueName
 import util.Spans.*
-import util.Property
 import collection.mutable
 import Trees.*
-
-object Lifter:
-  /** Semantics of a synthetic value that must remain transparent to later rechecking. */
-  final case class ValueProxy(preserveNestedTypeIdentity: Boolean)
-
-  private val ValueProxyAttachment = Property.StickyKey[ValueProxy]()
-
-  private[dotc] def markValueProxy(tree: tpd.Tree, proxy: ValueProxy)(using Context): Unit =
-    tree.putAttachment(ValueProxyAttachment, proxy)
-
-  private[dotc] def valueProxy(sym: Symbol)(using Context): Option[ValueProxy] =
-    if sym.exists then sym.defTree.getAttachment(ValueProxyAttachment) else None
-
-  private[dotc] def isTransparentValueProxy(sym: Symbol)(using Context): Boolean =
-    valueProxy(sym).isDefined
-end Lifter
 
 /** A class that handles argument lifting. Argument lifting is needed in the following
  *  scenarios:
@@ -67,44 +50,27 @@ abstract class Lifter {
     // Mark the type of lifted definitions as inferred
     ValDef(sym, rhs, inferred = true)
 
-  /** Prepare a lifted value type for this typing phase. */
-  protected def prepareLiftedValueType(tp: Type)(using Context): Type = tp.deskolemized
-
-  /** Follow parameterless methods to the stable value stored in an eager temporary. */
-  protected def eagerValueType(tp: Type)(using Context): Type =
-    val seen = mutable.HashSet.empty[Type]
-    def recur(tp: Type): Type =
-      if !seen.add(tp) then tp
-      else tp match
-        case ref: TermRef if !ref.symbol.is(Module) =>
-          ref.underlying match
-            case info: ExprType if info.resultType.isStable => recur(info.resultType)
-            case info if ref.symbol.is(Lazy) => info.widenExpr
-            case _ => tp
-        case info: ExprType if info.resultType.isStable => recur(info.resultType)
-        case _ => tp
-    recur(tp)
-
   /** Type assigned to a lifted temporary symbol. */
   protected def liftedExprType(expr: Tree)(using Context): Type =
-    val tp = prepareLiftedValueType(expr.tpe)
+    val tp = expr.tpe.deskolemized
     if tp.isStable then tp else tp.widen
 
   /** Hook for lifters that need to record or mark freshly created lifted defs. */
   protected def onLiftedDef(tree: Tree)(using Context): Unit = ()
 
-  /** Relocate definitions nested in a lifted expression under its synthetic owner. */
-  protected def relocateLiftedTree(tree: Tree, lifted: TermSymbol)(using Context): Tree =
-    tree.changeNonLocalOwners(lifted)
+  /** Whether definitions nested in a lifted expression should be relocated. */
+  protected def reownerLiftedTree: Boolean = true
 
   protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: Tree)(using Context): Tree =
     ref(lifted.termRef)
 
-  /** Context in which the arguments of `app` should be lifted. */
-  protected def liftAppContext(app: Apply)(using Context): Context = ctx
-
-  /** Hook for preserving application metadata after its arguments were lifted. */
-  protected def liftedApply(original: Apply, lifted: Apply)(using Context): Apply = lifted
+  /** Lift the arguments and rebuild an application after its function was lifted. */
+  protected def liftApply(
+    defs: mutable.ListBuffer[Tree],
+    original: Apply,
+    liftedFun: Tree
+  )(using Context): Apply =
+    cpy.Apply(original)(liftedFun, liftArgs(defs, original.fun.tpe, original.args))
 
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
@@ -117,8 +83,10 @@ abstract class Lifter {
         // Lifted definitions will be added to a local block, so they need to be
         // at a higher nesting level to prevent leaks. See tests/pos/i15174.scala
         nestingLevel = ctx.nestingLevel + 1)
-      val liftedTree = relocateLiftedTree(liftedDef(lifted, expr).withSpan(expr.span), lifted)
-        .setDefTree
+      val liftedTree0 = liftedDef(lifted, expr).withSpan(expr.span)
+      val liftedTree =
+        (if reownerLiftedTree then liftedTree0.changeNonLocalOwners(lifted) else liftedTree0)
+          .setDefTree
       onLiftedDef(liftedTree)
       defs += liftedTree
       liftedRef(lifted, liftedType, expr).withSpan(expr.span.focus)
@@ -180,10 +148,9 @@ abstract class Lifter {
    *
    */
   def liftApp(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree = tree match {
-    case app @ Apply(fn, args) =>
+    case app @ Apply(fn, _) =>
       val fn1 = liftApp(defs, fn)
-      val args1 = liftArgs(defs, fn.tpe, args)(using liftAppContext(app))
-      liftedApply(app, cpy.Apply(app)(fn1, args1))
+      liftApply(defs, app, fn1)
     case TypeApply(fn, targs) =>
       cpy.TypeApply(tree)(liftApp(defs, fn), targs)
     case Select(pre, name) if isPureRef(tree) =>
