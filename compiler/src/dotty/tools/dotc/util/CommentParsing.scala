@@ -94,15 +94,12 @@ object CommentParsing {
     indices = mergeUsecaseSections(str, indices)
     indices = mergeInheritdocSections(str, indices)
 
-    // Drop any '*' or whitespace before the given index
-    def previous(last: Int): Int =
-      var end = last - 1
-      while end >= 0 && (str.charAt(end) == '*' || Character.isWhitespace(str.charAt(end))) do end -= 1
-      end + 1
-
+    // TODO: It'd be good to drop trailing whitespace here.
+    // But we're too "early" in the pipeline, we still have to deal with '*' at the start of lines,
+    // which we must not confuse with deliberate '*' inserted inside a line.
     indices match {
       case List() => List()
-      case idxs   => idxs zip (idxs.tail.map(previous) ::: List(previous(str.length - 2)))
+      case idxs   => idxs zip (idxs.tail ::: List(str.length - 2))
     }
   }
 
@@ -221,9 +218,9 @@ object CommentParsing {
     if (str.startsWith("@param", beg) ||
         str.startsWith("@tparam", beg) ||
         str.startsWith("@throws", beg))
-      (skipWhitespace(str, skipIdent(str, skipWhitespace(str, skipTag(str, beg)))), end)
+      (skipWhitespace(str, skipIdent(str, skipWhitespace(str, skipTag(str, beg)))), skipWhitespace(str, end))
     else
-      (skipWhitespace(str, skipTag(str, beg)), end)
+      (skipWhitespace(str, skipTag(str, beg)), skipWhitespace(str, end))
   }
 
   /** Cleanup section text */

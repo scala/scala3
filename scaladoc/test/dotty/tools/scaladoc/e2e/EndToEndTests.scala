@@ -58,12 +58,13 @@ class EndToEndTests:
 
   @Test
   def definesAreInherited(): Unit = run("defines", "inheritance.scala") { (out, _) =>
-    ensureContains(out, "pkg", "T.html", "A method on the trait (trait)", "A final method on the trait")
-    ensureContains(out, "pkg", "C1.html", "A method on the trait (trait)", "A final method on the trait")
-    ensureContains(out, "pkg", "C2.html", "A method on the trait (trait)", "A final method on the trait")
+    // See the comment in CommentParsing.tagIndex for why we have extra whitespace
+    ensureContains(out, "pkg", "T.html", "A method on the trait (trait )", "A final method on the trait")
+    ensureContains(out, "pkg", "C1.html", "A method on the trait (trait )", "A final method on the trait")
+    ensureContains(out, "pkg", "C2.html", "A method on the trait (trait )", "A final method on the trait")
     ensureContains(out, "pkg", "C3.html", "A method on the class (class)", "A final method on the class")
     ensureContains(out, "pkg", "C4.html", "A method on the class (class4)", "A final method on the class4")
-    ensureContains(out, "pkg", "C5.html", "A method on the trait (trait)", "A final method on the trait")
+    ensureContains(out, "pkg", "C5.html", "A method on the trait (trait )", "A final method on the trait")
   }
 
   @Test
@@ -111,6 +112,18 @@ class EndToEndTests:
     // Nothing, we just don't want this to loop infinitely
   }
 
+  @Test
+  def spaces(): Unit = run("defines", "spaces.scala") { (_, reporter) =>
+    // This used to crash and thus cause a warning
+    assertTrue(reporter.allErrors.mkString("\n"), reporter.allErrors.isEmpty)
+    assertTrue(reporter.allWarnings.mkString("\n"), !reporter.allWarnings.exists(_.message.contains("IndexOutOfBounds")))
+  }
+
+  @Test
+  def markdown(): Unit = run("defines", "markdown.scala") { (out, _) =>
+    ensureContains(out, "pkg", "C.html", "before <strong>middle</strong> after")
+  }
+
   // for advanced cases found while generating the doc of the stdlib
   @Test
   def stdlibCasesNoWarnings(): Unit = run("defines", "stdlib.scala") { (_, reporter) =>
@@ -118,6 +131,12 @@ class EndToEndTests:
       reporter.allWarnings.mkString("\n"),
       !reporter.allWarnings.exists(m => m.message.contains("undefined in comment") || m.message.contains("Couldn't resolve"))
     )
+  }
+
+  @Test
+  def inheritdocSimple(): Unit = run("inheritdoc", "simple.scala") { (out, _) =>
+    // Regression test for a case where the @param in the child contained the @return tag
+    ensureContains(out, "inheritdoc", "Child.html", "child parameter</p>")
   }
 
   @Test

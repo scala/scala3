@@ -402,7 +402,7 @@ object Comments {
                 superComment(sym, findClasses = true) match
                   case Some(sc) =>
                     val superSections = tagIndex(sc)
-                    var end =startTag(sc, superSections)
+                    var end = startTag(sc, superSections)
                     // Avoid including trailing whitespace
                     while end > 0 && Character.isWhitespace(sc.charAt(end - 1)) do end -= 1
                     replaceWith(sc.subSequence(3, end))
