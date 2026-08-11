@@ -87,10 +87,11 @@ object Properties {
 
   /** all the ASM jars */
   def asmAll: Seq[String] =
+    val sep = java.io.File.separator
     Seq("", "-tree", "-util", "-commons", "-analysis")
       .map(suffix =>
         asm.replaceAll("asm", "asm" + suffix)
-          .replaceFirst("/asm" + suffix + "/", "/asm/"))
+          .replaceFirst(sep + "asm" + suffix + sep, sep + "asm" + sep))
 
   /** jline-terminal jar */
   def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal").nn
