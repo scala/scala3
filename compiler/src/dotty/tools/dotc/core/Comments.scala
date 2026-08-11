@@ -468,14 +468,10 @@ object Comments {
               case Types.AppliedType(tycon, _) => searchList = tycon.typeSymbol :: searchList
               case self => searchList = self.typeSymbol :: searchList
           case _ => ()
-        @tailrec
-        def recur(variable: String): Option[String] =
-          searchList.iterator.flatMap(x => getDefs(x).get(variable)).nextOption() match {
-            case Some(str) if str.startsWith("$") => recur(str.tail)
-            case Some(str)                        => Some(str)
-            case None                             => lookupVariable(variable, site.owner)
-          }
-        recur(variable)
+        searchList.iterator
+          .flatMap(x => getDefs(x).get(variable))
+          .nextOption()
+          .orElse(lookupVariable(variable, site.owner))
     }
 
     /** The position of the raw doc comment of symbol `sym`, or NoPosition if missing

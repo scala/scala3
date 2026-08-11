@@ -106,6 +106,11 @@ class EndToEndTests:
     ensureContains(out, "pkg", "C.html", "$a", "${b}", "$c", "${d}", "$e")
   }
 
+  @Test
+  def variableDefinedToItself(): Unit = run("defines", "variableDefinedToItself.scala") { (out, _) =>
+    // Nothing, we just don't want this to loop infinitely
+  }
+
   // for advanced cases found while generating the doc of the stdlib
   @Test
   def stdlibCasesNoWarnings(): Unit = run("defines", "stdlib.scala") { (_, reporter) =>
