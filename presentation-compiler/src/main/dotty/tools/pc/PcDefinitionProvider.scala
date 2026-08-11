@@ -158,9 +158,12 @@ class PcDefinitionProvider(
         if file != null then
           file.underlyingSource match
             case Some(jar: ZipArchive) =>
+              println(s"file: ${file.name}")
+              println(s"jar: ${jar}")
               val classFile =
                 if file.nn.hasExtension("tasty") then file.jpath.nn.resolveSibling(FileUtils.stripClassExtension(file.name) + ".class")
-                else file.jpath
+                else file.toString
+              println(s"classFile: ${classFile}")
               if classFile != null then
                 List(new Location(
                   s"jar:${jar.jpath.toUri}!/${classFile}",
