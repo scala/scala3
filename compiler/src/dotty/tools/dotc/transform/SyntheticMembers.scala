@@ -322,23 +322,16 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  class C(x: T) extends AnyVal
      *  ```
      *
-     *  gets the `hashCode` method. If the value is primitive:
-     *  ```
-     *  def hashCode: Int = x.hashCode()
-     *  ```
-     *  otherwise, the null-safe variant:
+     *  gets the `hashCode` method
      *  ```
      *  def hashCode: Int = java.util.Objects.hashCode(x)
      *  ```
+     *
+     *  If the value is primitive, we precompute the dispatch so that we do not need to box.
      */
     def valueHashCodeBody(using Context): Tree = {
       assert(accessors.nonEmpty)
-      val accessor = accessors.head
-      val tp = accessor.info.finalResultType
-      if (tp.classSymbol.isPrimitiveValueClass)
-        ref(accessor).select(nme.hashCode_).ensureApplied
-      else
-        ref(defn.Objects_hashCode).appliedTo(ref(accessor))
+      hashImpl(accessors.head, scalaHashHash = false)
     }
 
     /**
@@ -397,22 +390,28 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val mixPrefix = Assign(ref(acc),
         ref(defn.staticsMethod("mix")).appliedTo(ref(acc), Literal(Constant(ownName.hashCode))))
       val mixes = for (accessor <- accessors) yield
-        Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
+        Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor, scalaHashHash = true)))
       val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
       Block(accDef :: mixPrefix :: mixes, finish)
     }
 
     /** The `hashCode` implementation for given symbol `sym`. */
-    def hashImpl(sym: Symbol)(using Context): Tree =
+    def hashImpl(sym: Symbol, scalaHashHash: Boolean)(using Context): Tree =
+      def hashHashDependent(staticsMethodName: String, javaBoxedClass: ClassSymbol): Tree =
+        val implMethod =
+          if scalaHashHash then defn.staticsMethod(staticsMethodName)
+          else javaBoxedClass.companionModule.moduleClass.asClass.info.member(nme.hashCode_).suchThat(_.info.firstParamTypes.length == 1).symbol
+        ref(implMethod).appliedTo(ref(sym))
+
       defn.scalaClassName(sym.info.finalResultType) match {
         case tpnme.Unit | tpnme.Null               => Literal(Constant(0))
         case tpnme.Boolean                         => If(ref(sym), Literal(Constant(1231)), Literal(Constant(1237)))
         case tpnme.Int                             => ref(sym)
         case tpnme.Short | tpnme.Byte | tpnme.Char => ref(sym).select(nme.toInt)
-        case tpnme.Long                            => ref(defn.staticsMethod("longHash")).appliedTo(ref(sym))
-        case tpnme.Double                          => ref(defn.staticsMethod("doubleHash")).appliedTo(ref(sym))
-        case tpnme.Float                           => ref(defn.staticsMethod("floatHash")).appliedTo(ref(sym))
-        case _                                     => ref(defn.staticsMethod("anyHash")).appliedTo(ref(sym))
+        case tpnme.Long                            => hashHashDependent("longHash", defn.BoxedLongClass)
+        case tpnme.Double                          => hashHashDependent("doubleHash", defn.BoxedDoubleClass)
+        case tpnme.Float                           => hashHashDependent("floatHash", defn.BoxedFloatClass)
+        case _                                     => hashHashDependent("anyHash", defn.JavaUtilObjectsClass)
       }
 
     /** The class
