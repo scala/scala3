@@ -32,7 +32,6 @@ import scala.meta.pc.reports.EmptyReportContext
 import scala.meta.pc.reports.ReportContext
 import scala.util.control.NonFatal
 
-import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.reporting.StoreReporter
 import dotty.tools.dotc.semanticdb.TextDocument
 import dotty.tools.dotc.semanticdb.TextDocuments
@@ -135,7 +134,7 @@ case class ScalaPresentationCompiler(
   ): PresentationCompiler =
     copy(semanticdbFileManager = semanticdbFileManager)
 
-  val compilerAccess: CompilerAccess[StoreReporter, InteractiveDriver] =
+  val compilerAccess: CompilerAccess[StoreReporter, CachingDriver] =
     Scala3CompilerAccess(
       config,
       sh,
@@ -210,7 +209,6 @@ case class ScalaPresentationCompiler(
       new CompletionProvider(
         search,
         driver,
-        () => InteractiveDriver(driverSettings, driver.logicalRootPackageExtractor),
         params,
         config,
         buildTargetIdentifier,

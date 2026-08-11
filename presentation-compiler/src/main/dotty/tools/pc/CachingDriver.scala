@@ -11,10 +11,12 @@ import scala.meta.pc.SemanticdbFileManager
 import scala.meta.pc.SourcePathMode
 
 import dotty.tools.dotc.core.Contexts.Context
-import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.dotc.interactive.LogicalPackage
-import dotty.tools.dotc.interactive.LogicalPackagesProvider
-import dotty.tools.dotc.interactive.ParsedLogicalPackage
+import dotty.tools.dotc.interactive.{
+  CachedLogicalPackage,
+  InteractiveDriver,
+  LogicalPackagesProvider,
+  ParsedLogicalPackage
+}
 import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.util.SourceFile
 
@@ -38,8 +40,8 @@ import dotty.tools.dotc.util.SourceFile
  */
 class CachingDriver private (
     override val settings: List[String],
-    sourcePackagesExtractor: Context ?=> Option[LogicalPackage]
-) extends InteractiveDriver(settings, sourcePackagesExtractor):
+    sourcePackage: CachedLogicalPackage
+) extends InteractiveDriver(settings, sourcePackage):
 
   private var lastCompiledURI: URI = uninitialized
   private var previousDiags = List.empty[Diagnostic]
@@ -56,6 +58,9 @@ class CachingDriver private (
     if !alreadyCompiled(uri, source.content) then previousDiags = super.run(uri, source)
     lastCompiledURI = uri
     previousDiags
+
+  def freshDriver(): InteractiveDriver =
+    new InteractiveDriver(settings, sourcePackage)
 
 end CachingDriver
 
@@ -74,4 +79,4 @@ object CachingDriver:
         if sourcePathFiles.nonEmpty then Some(new LogicalPackagesProvider(logicalSourcePath).root) else None
       case SourcePathMode.MBT =>
         Some(ParsedLogicalPackage.fromMbtIndex(semanticdbFileManager.listAllPackages()))
-    new CachingDriver(settings, sourcePackagesExtractor)
+    new CachingDriver(settings, CachedLogicalPackage(sourcePackagesExtractor))

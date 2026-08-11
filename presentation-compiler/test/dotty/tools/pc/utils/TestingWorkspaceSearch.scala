@@ -2,21 +2,18 @@ package dotty.tools.pc.utils
 
 import java.io.File
 import java.nio.file.Paths
-
 import scala.collection.mutable
 import scala.language.unsafeNulls
 import scala.meta.internal.metals.CompilerVirtualFileParams
 import scala.meta.internal.metals.Fuzzy
 import scala.meta.internal.metals.WorkspaceSymbolQuery
 import scala.meta.pc.SymbolSearchVisitor
-
 import dotty.tools.dotc.ast.untpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
-import dotty.tools.dotc.interactive.InteractiveDriver
+import dotty.tools.dotc.interactive.{CachedLogicalPackage, InteractiveDriver}
 import dotty.tools.pc.CompilerSearchVisitor
 import dotty.tools.pc.utils.InteractiveEnrichments.decoded
-
 import TestingWorkspaceSearch.*
 
 object TestingWorkspaceSearch:
@@ -97,7 +94,7 @@ class TestingWorkspaceSearch(classpath: Seq[String]):
       val newParent = symbol.map(ParentSymbol(_, parent.fileName)).getOrElse(parent)
       children.foldLeft(res)((a, c) => traverse(a, c, newParent))
 
-  val driver = new InteractiveDriver(settings)
+  val driver = new InteractiveDriver(settings, CachedLogicalPackage(_ ?=> None))
 
   private def namesFromSelect(select: Tree)(using Context): List[String] =
     select match

@@ -24,24 +24,31 @@ import classpath.*
 import reporting.*
 import util.*
 
-private class InteractiveContextBase(sourcePackagesExtractor: Context ?=> Option[LogicalPackage]) extends ContextBase {
+private class InteractiveContextBase(sourcePackage: CachedLogicalPackage) extends ContextBase {
 
   override protected def newPlatform(using Context): Platform = {
-      if (settings.scalajs.value) new SJSPlatform(sourcePackagesExtractor)
-      else new JavaPlatform(sourcePackagesExtractor)
+      if (settings.scalajs.value) new SJSPlatform(sourcePackage.value)
+      else new JavaPlatform(sourcePackage.value)
   }
 
+}
+
+// Assumes the context does not change; only use if this is true!
+class CachedLogicalPackage(extractor: Context ?=> Option[LogicalPackage]) {
+  private var cached: Option[LogicalPackage] | Null = null
+  def value(using Context): Option[LogicalPackage] =
+    initialize(cached, cached = _, extractor)
 }
 
 /** A Driver subclass designed to be used from IDEs */
 class InteractiveDriver(
     val settings: List[String],
-    val logicalRootPackageExtractor: Context ?=> Option[LogicalPackage] = _ ?=> None
+    logicalRootPackage: CachedLogicalPackage
 ) extends Driver {
   import tpd.*
 
   override protected def initCtx: Context =
-    new InteractiveContextBase(logicalRootPackageExtractor).initialCtx
+    new InteractiveContextBase(logicalRootPackage).initialCtx
 
   override def sourcesRequired: Boolean = false
 
