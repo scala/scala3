@@ -1555,8 +1555,8 @@ object desugar {
           // we can simplify the match we emit to not have any variable patterns and just use the type directly.
           // In this case too, `variables` may contain wildcard names.
           // Exception:
-          // This optimization cannot be used in the presence of the `@unchecked` annotation,
-          // since given `a: List[A]` and `B <: A`, `val (x: List[B @unchecked], _) = (a, 1): @unchecked` is OK,
+          // This optimization cannot be used in the presence of `@unchecked` or `.runtimeChecked`,
+          // e.g., given `a: List[A]` and `B <: A`, `val (x: List[B @unchecked], _) = (a, 1): @unchecked` is OK,
           // but `val x: List[B @unchecked] = a: @unchecked` is not.
           // So we cannot desugar the first one into `(a, 1) match { $1 @ (_: List[B @unchecked], _) => $1 }`
           // because that loses track of the unchecked-ness.
@@ -1568,18 +1568,23 @@ object desugar {
         val (opt, variables) = pat match {
           case TuplePattern(pats, _) =>
             // We want to include wildcards for the optimizations, so we can't use `IdPattern` which excludes them
-            val allVariables = pats.map {
+            val allVariables = pats.flatMap {
               case id: Ident if isVarPattern(id) => Some(id, TypeTree())
               case Typed(id: Ident, tpt) if isVarPattern(id) => Some((id, tpt))
               case _ => None
-            }.flatten
+            }
             if allVariables.size == pats.size then
               def isMatchingTuple(t: Tree) = t match {
                 case Tuple(elems) => pats.size == elems.length && !hasNamedArg(elems)
                 case _ => false
               }
+              def mayBeUnchecked(t: Tree) = t match {
+                case _: Annotated => true // conservatively; might be @unchecked
+                case Select(_, nme.runtimeChecked) => true
+                case _ => false
+              }
               if forallResults(rhs, isMatchingTuple) then (Optimization.SimpleTuple, allVariables)
-              else if !rhs.isInstanceOf[Annotated] then (Optimization.MatchableTuple, allVariables)
+              else if !mayBeUnchecked(rhs) then (Optimization.MatchableTuple, allVariables)
               else (Optimization.None, generalGetVariables)
             else
               (Optimization.None, generalGetVariables)
