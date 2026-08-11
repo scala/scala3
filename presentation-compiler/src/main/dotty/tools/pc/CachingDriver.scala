@@ -1,15 +1,16 @@
 package dotty.tools.pc
 
-import dotty.tools.dotc.core.Contexts.Context
-
 import java.io.File
 import java.net.URI
 import java.nio.file.Path
 import java.util as ju
+
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
 import scala.meta.pc.SemanticdbFileManager
 import scala.meta.pc.SourcePathMode
+
+import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.interactive.LogicalPackage
 import dotty.tools.dotc.interactive.LogicalPackagesProvider
