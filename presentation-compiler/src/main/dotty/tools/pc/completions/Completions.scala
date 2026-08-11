@@ -815,7 +815,7 @@ class Completions(
   private lazy val EnsuringClass: ClassSymbol = requiredClass("scala.Predef.Ensuring")
   private lazy val StringFormatClass: ClassSymbol = requiredClass("scala.Predef.StringFormat")
   private lazy val nnMethod: Symbol = defn.ScalaPredefModule.info.member("nn".toTermName).symbol
-  private lazy val runtimeCheckedMethod: Symbol = defn.ScalaPredefModule.info.member("runtimeChecked".toTermName).symbol
+  private lazy val runtimeCheckedMethod: Symbol = defn.ScalaPredefModule.info.member(nme.runtimeChecked).symbol
 
   private def isNotLocalForwardReference(sym: Symbol)(using Context): Boolean =
     !sym.isLocalToBlock ||
