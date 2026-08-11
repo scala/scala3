@@ -2,18 +2,21 @@ package dotty.tools.pc.utils
 
 import java.io.File
 import java.nio.file.Paths
+
 import scala.collection.mutable
 import scala.language.unsafeNulls
 import scala.meta.internal.metals.CompilerVirtualFileParams
 import scala.meta.internal.metals.Fuzzy
 import scala.meta.internal.metals.WorkspaceSymbolQuery
 import scala.meta.pc.SymbolSearchVisitor
+
 import dotty.tools.dotc.ast.untpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.interactive.{CachedLogicalPackage, InteractiveDriver}
 import dotty.tools.pc.CompilerSearchVisitor
 import dotty.tools.pc.utils.InteractiveEnrichments.decoded
+
 import TestingWorkspaceSearch.*
 
 object TestingWorkspaceSearch:
