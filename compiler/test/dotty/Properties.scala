@@ -82,8 +82,15 @@ object Properties {
   // TODO: Remove this once we migrate the test suite
   def usingScalaLibraryTasty: Boolean = true
 
-  /** scala-asm jar */
-  def scalaAsm: String = sys.props("dotty.tests.classes.scalaAsm").nn
+  /** main ASM jar */
+  def asm: String = sys.props("dotty.tests.classes.asm").nn
+
+  /** all the ASM jars */
+  def asmAll: Seq[String] =
+    Seq("", "-tree", "-util", "-commons", "-analysis")
+      .map(suffix =>
+        asm.replaceAll("asm", "asm" + suffix)
+          .replaceFirst("/asm" + suffix + "/", "/asm/"))
 
   /** jline-terminal jar */
   def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal").nn
