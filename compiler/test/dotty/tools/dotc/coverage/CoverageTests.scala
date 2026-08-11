@@ -38,6 +38,25 @@ class CoverageTests:
   def checkCoverageWarnings(): Unit =
     checkCoverageWarningsIn(rootSrc.resolve("warn"))
 
+  @Test
+  def checkCoveredClassTokenEscapeRejected(): Unit =
+    val target = Files.createTempDirectory("coverage-neg")
+    val sourceRoot = Paths.get(userDir)
+    val inputFile = sourceRoot.resolve("tests/neg-custom-args/captures/coverage-class-token-real-capture.scala")
+    val options = defaultOptions.and(
+      "-language:experimental.captureChecking",
+      "-Ycheck:instrumentCoverage",
+      "-coverage-out", target.toString,
+      "-sourceroot", sourceRoot.toString)
+
+    compileFile(inputFile.toString, options).checkExpectedErrors()
+
+    val coverageFile = target.resolve("scoverage.coverage")
+    assertTrue(s"Expected scoverage file to exist at $coverageFile", Files.exists(coverageFile))
+    val coverage = Serializer.deserialize(coverageFile, sourceRoot.toString)
+    val coveredFiles = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
+    assertEquals(Set(inputFile.getFileName.toString), coveredFiles)
+
   def checkCoverageIn(dir: Path, run: Boolean)(using TestGroup): Unit =
     /** Converts \\ (escaped \) to / on windows, to make the tests pass without changing the serialization. */
     def fixWindowsPaths(lines: Buffer[String]): Buffer[String] =

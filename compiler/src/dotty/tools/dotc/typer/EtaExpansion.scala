@@ -32,6 +32,9 @@ abstract class Lifter {
   /** The corresponding lifter for pass-by-name arguments */
   protected def exprLifter: Lifter = NoLift
 
+  /** Context in which the argument at `paramNum` should be lifted. */
+  protected def liftArgContext(mt: MethodType, paramNum: Int, arg: Tree)(using Context): Context = ctx
+
   private def lifterFor(paramType: Type): Lifter =
     if paramType.isInstanceOf[ExprType] then exprLifter else this
 
@@ -47,16 +50,44 @@ abstract class Lifter {
     // Mark the type of lifted definitions as inferred
     ValDef(sym, rhs, inferred = true)
 
+  /** Prepare a lifted value type for this typing phase. */
+  protected def prepareLiftedValueType(tp: Type)(using Context): Type = tp.deskolemized
+
+  /** Follow parameterless methods to the stable value stored in an eager temporary. */
+  protected def eagerValueType(tp: Type)(using Context): Type =
+    val seen = mutable.HashSet.empty[Type]
+    def recur(tp: Type): Type =
+      if !seen.add(tp) then tp
+      else tp match
+        case ref: TermRef if !ref.symbol.is(Module) =>
+          ref.underlying match
+            case info: ExprType if info.resultType.isStable => recur(info.resultType)
+            case info if ref.symbol.is(Lazy) => info.widenExpr
+            case _ => tp
+        case info: ExprType if info.resultType.isStable => recur(info.resultType)
+        case _ => tp
+    recur(tp)
+
   /** Type assigned to a lifted temporary symbol. */
   protected def liftedExprType(expr: Tree)(using Context): Type =
-    val tp = expr.tpe.deskolemized
+    val tp = prepareLiftedValueType(expr.tpe)
     if tp.isStable then tp else tp.widen
 
   /** Hook for lifters that need to record or mark freshly created lifted defs. */
   protected def onLiftedDef(tree: Tree)(using Context): Unit = ()
 
+  /** Relocate definitions nested in a lifted expression under its synthetic owner. */
+  protected def relocateLiftedTree(tree: Tree, lifted: TermSymbol)(using Context): Tree =
+    tree.changeNonLocalOwners(lifted)
+
   protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: Tree)(using Context): Tree =
     ref(lifted.termRef)
+
+  /** Context in which the arguments of `app` should be lifted. */
+  protected def liftAppContext(app: Apply)(using Context): Context = ctx
+
+  /** Hook for preserving application metadata after its arguments were lifted. */
+  protected def liftedApply(original: Apply, lifted: Apply)(using Context): Apply = lifted
 
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
@@ -69,9 +100,7 @@ abstract class Lifter {
         // Lifted definitions will be added to a local block, so they need to be
         // at a higher nesting level to prevent leaks. See tests/pos/i15174.scala
         nestingLevel = ctx.nestingLevel + 1)
-      val liftedTree = liftedDef(lifted, expr)
-        .withSpan(expr.span)
-        .changeNonLocalOwners(lifted)
+      val liftedTree = relocateLiftedTree(liftedDef(lifted, expr).withSpan(expr.span), lifted)
         .setDefTree
       onLiftedDef(liftedTree)
       defs += liftedTree
@@ -108,10 +137,14 @@ abstract class Lifter {
   def liftArgs(defs: mutable.ListBuffer[Tree], methRef: Type, args: List[Tree])(using Context): List[Tree] =
     methRef.widen match {
       case mt: MethodType =>
-        args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).map: (arg, name, tp) =>
+        args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).lazyZip(mt.paramNames.indices).map: (arg, name, tp, paramNum) =>
           if tp.hasAnnotation(defn.InlineParamAnnot) then arg
           else
-            lifterFor(tp).liftArg(defs, arg, if name.firstPart.contains('$') then EmptyTermName else name)
+            lifterFor(tp).liftArg(
+              defs,
+              arg,
+              if name.firstPart.contains('$') then EmptyTermName else name
+            )(using liftArgContext(mt, paramNum, arg))
       case _ =>
         args.mapConserve(liftArg(defs, _))
     }
@@ -130,10 +163,10 @@ abstract class Lifter {
    *
    */
   def liftApp(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree = tree match {
-    case Apply(fn, args) =>
+    case app @ Apply(fn, args) =>
       val fn1 = liftApp(defs, fn)
-      val args1 = liftArgs(defs, fn.tpe, args)
-      cpy.Apply(tree)(fn1, args1)
+      val args1 = liftArgs(defs, fn.tpe, args)(using liftAppContext(app))
+      liftedApply(app, cpy.Apply(app)(fn1, args1))
     case TypeApply(fn, targs) =>
       cpy.TypeApply(tree)(liftApp(defs, fn), targs)
     case Select(pre, name) if isPureRef(tree) =>
