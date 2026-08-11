@@ -68,10 +68,41 @@ object Setup:
     && getter.isRefiningParamAccessor
     && !refiningNames.contains(getter.name)
 
+  /** Whether inferred capture Setup would add a fresh parameter refinement at any
+   *  position in `tp`.
+   */
+  private def wouldAddCaptureRefinements(tp: Type)(using Context): Boolean =
+    wouldAddCaptureRefinements(tp, nestedOnly = false)
+
+  /** Whether `tp` can be installed as an explicit proxy component before capture
+   *  Setup. Provisional retains references must remain inferred so Setup can
+   *  normalize them.
+   */
+  def isDeclarableType(tp: Type)(using Context): Boolean =
+    try
+      val seen = mutable.HashSet.empty[Type]
+      new TypeTraverser:
+        def traverse(current: Type): Unit =
+          if seen.add(current) then current match
+            case AnnotatedType(parent, annot: RetainingAnnotation) =>
+              annot.retainedType.retainedElements
+              traverse(parent)
+            case _: TypeRef | _: AppliedType =>
+              val dealiased = current.dealiasKeepAnnotsAndOpaques
+              if dealiased ne current then traverse(dealiased)
+              else traverseChildren(current)
+            case _ => traverseChildren(current)
+      .traverse(tp)
+      true
+    catch case _: IllegalCaptureRef => false
+
   /** Whether inferred capture Setup would add a fresh parameter refinement below
    *  the root value type. Such nested identities cannot be inferred from a proxy RHS.
    */
   def wouldAddNestedCaptureRefinements(tp: Type)(using Context): Boolean =
+    wouldAddCaptureRefinements(tp, nestedOnly = true)
+
+  private def wouldAddCaptureRefinements(tp: Type, nestedOnly: Boolean)(using Context): Boolean =
     val seen = mutable.HashSet.empty[(Type, Set[Name], Boolean)]
     object accumulator extends TypeAccumulator[Boolean]:
       private var refiningNames: Set[Name] = Set.empty
@@ -84,7 +115,7 @@ object Setup:
         finally nested = saved
 
       private def foundHere(part: Type): Boolean =
-        nested
+        (!nestedOnly || nested)
         && part.typeParams.isEmpty
         && (part.typeSymbol match
           case cls: ClassSymbol if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
@@ -413,13 +444,26 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
 
       variance = initialVariance
       var refiningNames: Set[Name] = Set()
+      private var inNestedProxyType = false
+
+      private def atNestedProxyType[T](op: => T): T =
+        val saved = inNestedProxyType
+        inNestedProxyType = true
+        try op
+        finally inNestedProxyType = saved
 
       /** A transparent post-typer proxy may infer refinements owned by its RHS value,
-       *  but nested type arguments already carry identities fixed by the original call.
+       *  but nested components already carry identities fixed by the original call.
        */
       override def mapArg(arg: Type, tparam: ParamInfo): Type =
         if preserveNestedTypeIdentity then
-          transformExplicitType(Recheck.mapExprType(arg), sym, initialVariance = variance)
+          val arg1 = Recheck.mapExprType(arg)
+          arg1 match
+            case _: TypeBounds =>
+              atNestedProxyType(this(arg1))
+            case _ =>
+              atVariance(variance * tparam.paramVarianceSign):
+                atNestedProxyType(this(arg1))
         else super.mapArg(arg, tparam)
 
       /** Refine a possibly applied class type C where the class has tracked parameters
@@ -457,7 +501,12 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
         addVar(super.mapRefinedFunction(tp, rinfo), tp)
 
       def innerApply(tp: Type) =
-        tp match
+        if preserveNestedTypeIdentity
+            && inNestedProxyType
+            && Setup.wouldAddCaptureRefinements(tp)
+            && Setup.isDeclarableType(tp)
+        then transformExplicitType(Recheck.mapExprType(tp), sym, initialVariance = variance)
+        else tp match
           case AnnotatedType(parent, annot)
           if annot.symbol.isRetains || annot.symbol == defn.InferredAnnot =>
             // Drop explicit retains and @inferred annotations
@@ -469,9 +518,19 @@ class Setup extends PreRecheck, SymTransformer, SetupAPI:
             val saved = refiningNames
             refiningNames += rname
             val parent1 = try this(parent) finally refiningNames = saved
-            addVar(tp.derivedRefinedType(parent1, rname, this(rinfo)), tp)
-          case _ =>
+            val rinfo1 =
+              if preserveNestedTypeIdentity
+              then atNestedProxyType(this(Recheck.mapExprType(rinfo)))
+              else this(rinfo)
+            addVar(tp.derivedRefinedType(parent1, rname, rinfo1), tp)
+          case _: TypeRef | _: AppliedType | _: FlexibleType | _: TermRef | _: ExprType | _: AnnotatedType =>
             addVar(mapFollowingAliases(tp), tp)
+          case _ =>
+            val tp1 =
+              if preserveNestedTypeIdentity && !inNestedProxyType
+              then atNestedProxyType(mapFollowingAliases(tp))
+              else mapFollowingAliases(tp)
+            addVar(tp1, tp)
     }
 
     try

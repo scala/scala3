@@ -19,7 +19,7 @@ import core.NameOps.isContextFunction
 import core.StdNames.nme
 import core.Types.*
 import core.Decorators.*
-import cc.{CaptureAnnotation, CapturingOrRetainsType, IllegalCaptureRef, RetainingAnnotation, Setup, retainedElements}
+import cc.{CaptureAnnotation, CapturingOrRetainsType, RetainingAnnotation, Setup}
 import coverage.*
 import typer.{Lifter, LiftImpure}
 import util.{Property, SourcePosition, SourceFile}
@@ -93,27 +93,6 @@ object LiftCoverage extends LiftImpure:
     val eager = eagerValueType(tp)
     if eager.isStable then eager else eager.widen
 
-  /** Whether `tp` can be installed as a declared proxy type before capture Setup.
-   *  Provisional retains references must remain inferred so Setup can normalize them.
-   */
-  private def isDeclarableProxyType(tp: Type)(using Context): Boolean =
-    try
-      val seen = mutable.HashSet.empty[Type]
-      new TypeTraverser:
-        def traverse(current: Type): Unit =
-          if seen.add(current) then current match
-            case AnnotatedType(parent, annot: RetainingAnnotation) =>
-              annot.retainedType.retainedElements
-              traverse(parent)
-            case _: TypeRef | _: AppliedType =>
-              val dealiased = current.dealiasKeepAnnotsAndOpaques
-              if dealiased ne current then traverse(dealiased)
-              else traverseChildren(current)
-            case _ => traverseChildren(current)
-      .traverse(tp)
-      true
-    catch case _: IllegalCaptureRef => false
-
   override protected def liftArgContext(
     mt: MethodType,
     paramNum: Int,
@@ -123,9 +102,9 @@ object LiftCoverage extends LiftImpure:
       ctx.property(CurrentSemanticArgumentTypes).flatMap(_.lift(paramNum)).getOrElse(arg.tpe)
     val defaultLifted = defaultLiftedType(arg.tpe)
     val formal = mt.paramInfos(paramNum)
-    val declarable = isDeclarableProxyType(original)
+    val declarable = Setup.isDeclarableType(original)
     val exactTyperIdentity =
-      ctx.property(SkolemizedArguments).flatMap(_.get(arg)).filter(isDeclarableProxyType)
+      ctx.property(SkolemizedArguments).flatMap(_.get(arg)).filter(Setup.isDeclarableType)
     def observesOriginal(tp: Type): Boolean =
       val pref = mt.paramRefs(paramNum)
       refersToParam(tp, mt, paramNum)
@@ -142,7 +121,7 @@ object LiftCoverage extends LiftImpure:
           || (hasNonEmptyCaptures(original) && formalUsesExactType))
     val identityType = exactTyperIdentity.orElse(Option.when(preserveOriginal)(original))
     val preserveNestedTypeIdentity =
-      declarable && Setup.wouldAddNestedCaptureRefinements(original)
+      Setup.wouldAddNestedCaptureRefinements(original)
     ctx.withProperty(
       CurrentLiftedArg,
       Some(LiftedArgDescriptor(identityType, preserveNestedTypeIdentity)))
