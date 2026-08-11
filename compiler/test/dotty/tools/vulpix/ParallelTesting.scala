@@ -2,20 +2,20 @@ package dotty
 package tools
 package vulpix
 
-import java.io.{File as JFile, PrintStream}
+import java.io.{PrintStream, File as JFile}
 import java.lang.management.ManagementFactory
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Paths}
 import java.nio.charset.{Charset, StandardCharsets}
 import java.util.{HashMap, Timer, TimerTask}
-import java.util.concurrent.{TimeUnit, TimeoutException, Executors => JExecutors}
-
-import scala.collection.mutable, mutable.ArrayBuffer, mutable.ListBuffer
+import java.util.concurrent.{TimeUnit, TimeoutException, Executors as JExecutors}
+import scala.collection.mutable
+import mutable.ArrayBuffer
+import mutable.ListBuffer
 import scala.io.{Codec, Source}
 import scala.jdk.CollectionConverters.*
 import scala.util.{Random, Try, Using}
 import scala.util.Properties.{isJavaAtLeast, javaSpecVersion}
-
 import dotc.{Compiler, Driver}
 import dotty.tools.dotc.CoverageSupport
 import dotc.core.Contexts.*
@@ -23,8 +23,8 @@ import dotc.report
 import dotc.interfaces.Diagnostic.{ERROR, WARNING}
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
-import dotc.util.{SourceFile, SourcePosition, Spans, NoSourcePosition}
-import io.AbstractFile
+import dotc.util.{NoSourcePosition, SourceFile, SourcePosition, Spans}
+import io.{AbstractFile, Directory, PlainDirectory}
 import util.chaining.*
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
@@ -632,7 +632,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
             val lineNum = line.nn.toInt
             val columnNum = column.nn.toInt
             val abstractFile = AbstractFile.getFile(filePath.nn).nn
-            val sourceFile = SourceFile(abstractFile, Codec.UTF8)
+            val sourceFile = SourceFile(abstractFile, new PlainDirectory(Directory(".")), Codec.UTF8)
             val offset = sourceFile.lineToOffset(lineNum - 1) + columnNum - 1
             val span = Spans.Span(offset)
             val sourcePos = SourcePosition(sourceFile, span)
