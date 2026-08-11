@@ -14,8 +14,8 @@ package dotty.tools
 package backend.jvm
 package analysis
 
-import scala.tools.asm.tree.analysis.*
-import scala.tools.asm.tree.{AbstractInsnNode, MethodNode}
+import org.objectweb.asm.tree.analysis.*
+import org.objectweb.asm.tree.{AbstractInsnNode, MethodNode}
 import dotty.tools.backend.jvm.BCodeUtils.AnalyzerExtensions
 
 

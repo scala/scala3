@@ -4,7 +4,7 @@ package jvm
 
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
-import scala.tools.asm
+import org.objectweb.asm
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.TreeTypeMap
 import dotty.tools.dotc.ast.Trees.SyntheticUnit

@@ -13,8 +13,8 @@ import dotty.tools.dotc.config.PathResolver
 import dotty.tools.dotc.core.Contexts.{Context, ContextBase}
 import dotty.tools.dotc.classpath.ClassPathFactory
 
-import scala.tools.asm.ClassReader
-import scala.tools.asm.tree.ClassNode
+import org.objectweb.asm.ClassReader
+import org.objectweb.asm.tree.ClassNode
 
 @RunWith(classOf[JUnit4])
 class JrtClassPathTest {

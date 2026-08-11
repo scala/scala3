@@ -17,14 +17,14 @@ package opt
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm.Opcodes.*
-import scala.tools.asm.{Opcodes, Type}
-import scala.tools.asm.tree.*
+import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.{Opcodes, Type}
+import org.objectweb.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.*
 import BCodeUtils.*
 
-import scala.tools.asm
+import org.objectweb.asm
 
 class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes, settings: OptimizerSettings) {
 

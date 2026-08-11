@@ -4,7 +4,7 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.util.{SourcePosition, SrcPos}
 
-import scala.tools.asm.tree.AbstractInsnNode
+import org.objectweb.asm.tree.AbstractInsnNode
 
 final class OptimizerIssue(val msg: String, val site: String, val pos: SrcPos)
 

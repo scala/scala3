@@ -3,7 +3,7 @@ package backend
 package jvm
 
 import scala.collection.immutable
-import scala.tools.asm
+import org.objectweb.asm
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.ast.tpd

@@ -488,9 +488,11 @@ object Build {
     val dottyStaging = (`scala3-staging` / Compile / packageBin).value.getAbsolutePath
     val dottyTastyInspector = (`scala3-tasty-inspector` / Compile / packageBin).value.getAbsolutePath
     val tastyCore = (`tasty-core-bootstrapped` / Compile / packageBin).value.getAbsolutePath
-    val asm = findArtifactPath(externalDeps, "scala-asm")
+    val asm =
+      Seq("asm", "asm-util", "asm-commons", "asm-analysis", "asm-tree")
+        .map(name => findArtifactPath(externalDeps, name))
     val compilerInterface = findArtifactPath(externalDeps, "compiler-interface")
-    Seq(dottyCompiler, dottyInterfaces, asm, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
+    asm ++ Seq(dottyCompiler, dottyInterfaces, dottyStaging, dottyTastyInspector, tastyCore, compilerInterface)
   }
 
   /** Build the `scala` input task for an aggregate project.
@@ -1435,7 +1437,8 @@ object Build {
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
         Dependencies.sbtJunitInterface % Test,
-        Dependencies.asm,
+        Dependencies.asmUtil,
+        Dependencies.asmCommons,
         Dependencies.sbtCompilerInterface,
         (Dependencies.coursier % Test).cross(CrossVersion.for3Use2_13),
       ),
@@ -1544,7 +1547,7 @@ object Build {
           s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-nonbootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-nonbootstrapped` / Compile / packageBin).value}",
-          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
+          s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
@@ -1572,7 +1575,8 @@ object Build {
       Test / unmanagedResourceDirectories += baseDirectory.value / "test-resources",
       // All the dependencies needed by the compiler
       libraryDependencies ++= Seq(
-        Dependencies.asm,
+        Dependencies.asmUtil,
+        Dependencies.asmCommons,
         Dependencies.sbtCompilerInterface,
         Dependencies.sbtJunitInterface % Test,
         (Dependencies.coursier % Test).cross(CrossVersion.for3Use2_13),
@@ -1671,7 +1675,7 @@ object Build {
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.scalaJSScalalib=${(`scala-library-sjs` / Compile / packageBin).value}",
-          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
+          s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
           s"-Ddotty.tests.classes.dottyStaging=${(LocalProject("scala3-staging") / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.dottyTastyInspector=${(LocalProject("scala3-tasty-inspector") / Compile / packageBin).value}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
@@ -2369,7 +2373,7 @@ object Build {
           s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-bootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
-          s"-Ddotty.tests.classes.scalaAsm=${findArtifactPath(externalDeps, "scala-asm")}",
+          s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
           s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
           "-Ddotty.tests.classes.scalaJSScalalib=" + (`scala-library-sjs` / Compile / packageBin).value,
           "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),

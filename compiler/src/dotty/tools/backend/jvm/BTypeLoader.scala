@@ -17,8 +17,8 @@ import dotty.tools.dotc.core.Types.{JavaArrayType, Type, TypeRef, abstractTermNa
 import dotty.tools.dotc.util.EqHashMap
 
 import scala.annotation.tailrec
-import scala.tools.asm
-import scala.tools.asm.tree.ClassNode
+import org.objectweb.asm
+import org.objectweb.asm.tree.ClassNode
 
 final class BTypeLoader(primitives: ScalaPrimitives, inlineInfoLoader: () => Option[InlineInfoLoader]) {
   // Concurrent map because stack map frames are computed when in the class writer, which

@@ -23,9 +23,9 @@ import dotty.tools.io.ClassPath
 
 import scala.collection.{concurrent, mutable}
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm
-import scala.tools.asm.tree.*
-import scala.tools.asm.{Attribute, ClassReader, Type}
+import org.objectweb.asm
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.{Attribute, ClassReader, Type}
 
 /**
  * The BCodeRepository provides utilities to read the bytecode of classfiles from the compilation

@@ -9,7 +9,8 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
  * PLEASE KEEP ALPHABETIZED!
  */
 object Dependencies {
-  val asm = "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1"
+  val asmUtil = "org.ow2.asm" % "asm-util" % "9.10.1"
+  val asmCommons = "org.ow2.asm" % "asm-commons" % "9.10.1"
 
   /** Version of Coursier to use + download for initializing the local maven repo of Scala command */
   val coursierJarVersion = "2.1.25-M26"

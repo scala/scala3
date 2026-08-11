@@ -15,7 +15,7 @@ import StdNames.nme
 import dotty.tools.tasty.{TastyBuffer, TastyHeaderUnpickler}
 import dotty.tools.dotc.core.tasty.TastyUnpickler
 
-import scala.tools.asm.tree.*
+import org.objectweb.asm.tree.*
 import tpd.*
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.ast.Positioned

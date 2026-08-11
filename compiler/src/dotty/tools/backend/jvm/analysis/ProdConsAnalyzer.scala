@@ -7,10 +7,10 @@ import java.util
 import scala.annotation.switch
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm.Opcodes.*
-import scala.tools.asm.tree.*
-import scala.tools.asm.tree.analysis.*
-import scala.tools.asm.{MethodVisitor, Type}
+import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.tree.analysis.*
+import org.objectweb.asm.{MethodVisitor, Type}
 import dotty.tools.backend.jvm.BCodeUtils.{FrameExtensions, isLoad, isStore, isLoadOrStore}
 
 /**
@@ -446,7 +446,7 @@ case class ParameterProducer(local: Int)                                        
 case class UninitializedLocalProducer(local: Int)                                       extends InitialProducer
 case class ExceptionProducer[V <: Value](handlerLabel: LabelNode, handlerStackTop: Int) extends InitialProducer
 
-class InitialProducerSourceInterpreter extends SourceInterpreter(scala.tools.asm.Opcodes.ASM7) {
+class InitialProducerSourceInterpreter extends SourceInterpreter(org.objectweb.asm.Opcodes.ASM7) {
   override def newParameterValue(isInstanceMethod: Boolean, local: Int, tp: Type): SourceValue = {
     new SourceValue(tp.getSize, ParameterProducer(local))
   }

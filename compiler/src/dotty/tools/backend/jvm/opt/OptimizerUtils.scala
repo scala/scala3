@@ -9,9 +9,9 @@ import java.util.concurrent.ConcurrentHashMap
 import scala.annotation.switch
 import scala.collection.{BitSet, mutable}
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm
-import scala.tools.asm.tree.*
-import scala.tools.asm.{Handle, Opcodes, Type}
+import org.objectweb.asm
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.{Handle, Opcodes, Type}
 
 /**
  * This component hosts tools and utilities used in the optimizer that require access to an `OptimizerKnownBTypes` instance.
