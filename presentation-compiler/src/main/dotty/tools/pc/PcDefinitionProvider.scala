@@ -12,6 +12,7 @@ import scala.meta.pc.SymbolSearch
 import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
+import dotty.tools.dotc.classpath.FileUtils
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.{Exported, ModuleClass}
 import dotty.tools.dotc.core.Symbols.*
@@ -21,7 +22,6 @@ import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.io.ZipArchive
-import dotty.tools.dotc.classpath.FileUtils
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j.Location
@@ -156,19 +156,21 @@ class PcDefinitionProvider(
       else
         val file = symbol.associatedFile
         if file != null then
-          file.underlyingSource match
-            case Some(jar: ZipArchive) =>
-              println(s"file: ${file.name}")
-              println(s"jar: ${jar}")
+          file match
+            case entry: ZipArchive#Entry =>
               val classFile =
-                if file.nn.hasExtension("tasty") then file.jpath.nn.resolveSibling(FileUtils.stripClassExtension(file.name) + ".class")
-                else file.toString
-              println(s"classFile: ${classFile}")
+                if file.nn.hasExtension("tasty") then
+                  Paths.get(entry.path).nn.resolveSibling(FileUtils.stripClassExtension(file.name) + ".class")
+                else Paths.get(entry.path)
               if classFile != null then
-                List(new Location(
-                  s"jar:${jar.jpath.toUri}!/${classFile}",
-                  new Range(new Position(0, 0), new Position(0, 0))
-                ))
+                entry.underlyingSource match
+                  case Some(jar: ZipArchive) =>
+                    val res = List(new Location(
+                      s"jar:${jar.jpath.toUri}!/${classFile}",
+                      new Range(new Position(0, 0), new Position(0, 0))
+                    ))
+                    res
+                  case _ => Nil
               else Nil
             case _ => Nil
         else Nil
