@@ -40,6 +40,9 @@ class CachedLogicalPackage(extractor: Context ?=> Option[LogicalPackage]) {
     initialize(cached, cached = _, extractor)
 }
 
+object CachedLogicalPackage:
+  val none: CachedLogicalPackage = CachedLogicalPackage(_ ?=> None)
+
 /** A Driver subclass designed to be used from IDEs */
 class InteractiveDriver(
     val settings: List[String],
