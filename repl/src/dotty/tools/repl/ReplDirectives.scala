@@ -24,9 +24,9 @@ private[repl] object ReplDirectives:
         """[warn] The REPL does not have a separate test scope, so `using test.toolkit` adds
           |exactly what `using toolkit` does.""".stripMargin
       case ValueMissing(key) =>
-        s"[warn] The `using $key` directive was given no value and is ignored.${usageHint(key)}"
+        s"[warn] The `using $key` directive was given no value. It was ignored.${usageHint(key)}"
       case TooManyValues(key) =>
-        s"[warn] The `using $key` directive expects a single value and is ignored.${usageHint(key)}"
+        s"[warn] The `using $key` directive expects a single value. It was ignored.${usageHint(key)}"
       case UnsupportedDirective(key) =>
         s"""[warn] The `using $key` directive is not supported in the REPL.
            |To use it, re-run with the `scala` command and pass the directive inside an input.""".stripMargin
