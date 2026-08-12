@@ -2087,6 +2087,40 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assert(bridge.signature == null, "vararg bridges should not have generic signatures")
     }
   }
+
+
+  @Test def synchronizedClassMethod = {
+    val source =
+      """|class Test:
+         |  def m(x: Int): Int = synchronized { x }
+         |""".stripMargin
+    checkBCode(source) { dir =>
+      val clsIn = lookupClass(dir, "Test.class")
+      val clsNode = loadClassNode(clsIn)
+      val meth = clsNode.methods.asScala.find(_.name == "m").get
+      assert((meth.access & ACC_SYNCHRONIZED) != 0)
+      assertSameCode(meth, List(
+        VarOp(ILOAD, 1),
+        Op(IRETURN)
+      ))
+    }
+  }
+
+  @Test def synchronizedInterfaceMethod = {
+    val source =
+      """|trait Test:
+         |  def m(x: Int): Int = synchronized { x }
+         |""".stripMargin
+    checkBCode(source) { dir =>
+      val clsIn = lookupClass(dir, "Test.class")
+      val clsNode = loadClassNode(clsIn)
+      val meth = clsNode.methods.asScala.find(_.name == "m").get
+      assert((meth.access & ACC_SYNCHRONIZED) == 0) // illegal!
+      val instrs = instructionsFromMethod(meth)
+      assert(instrs.contains(Op(MONITORENTER)))
+      assert(instrs.contains(Op(MONITOREXIT)))
+    }
+  }
 }
 
 object invocationReceiversTestCode {

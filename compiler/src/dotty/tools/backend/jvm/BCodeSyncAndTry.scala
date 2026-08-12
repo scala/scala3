@@ -22,8 +22,8 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
    */
   class SyncAndTryBuilder extends PlainBodyBuilder {
 
-    def genSynchronized(tree: Apply, expectedType: BType)(using Context): BType = (tree: @unchecked) match {
-      case Apply(TypeApply(fun, _), args) =>
+    /** Precondition: the target of the 'synchronized' call must already be on the stack. (`tree` is only used for positions) */
+    def genSynchronized(tree: Tree, args: List[Tree], expectedType: BType)(using Context): BType = {
       val monitor = locals.makeLocal(bTypes.ObjectRef, "monitor", defn.ObjectType, tree.span)
       val monCleanup = new asm.Label
 
@@ -33,7 +33,6 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       val monitorResult: Symbol | Null = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", defn.ObjectType, tree.span) else null
 
       /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
-      genLoadQualifier(fun)
       bc.dup(bTypes.ObjectRef)
       locals.store(monitor)
       emit(asm.Opcodes.MONITORENTER)

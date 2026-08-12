@@ -903,7 +903,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
               ctx.source.atSpan(NoSpan)
             )
           else
-            genLoadTo(trimmedRhs, returnType, LoadDestination.Return)
+            // The JVM doesn't support `synchronized` methods on interfaces so we must implement that ourselves
+            if dd.symbol.is(Synchronized) && dd.symbol.owner.is(Trait) then
+              bc.aloadThis()
+              val generatedType = genSynchronized(trimmedRhs, trimmedRhs :: Nil, returnType)
+              genAdaptAndSendToDest(generatedType, returnType, LoadDestination.Return)
+            else
+              genLoadTo(trimmedRhs, returnType, LoadDestination.Return)
 
           if (emitVars) {
             // add entries to LocalVariableTable JVM attribute
@@ -942,6 +948,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       }
     }
 
+    def genSynchronized(tree: Tree, args: List[Tree], expectedType: BType)(using Context): BType
+    def genAdaptAndSendToDest(generatedType: BType | Null, expectedType: BType, dest: LoadDestination)(using Context): Unit
     def genLoadTo(tree: Tree, expectedType: BType, dest: LoadDestination)(using Context): Unit
 
   } // end of class PlainSkelBuilder

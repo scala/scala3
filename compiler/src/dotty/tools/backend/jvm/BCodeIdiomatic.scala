@@ -277,6 +277,7 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
     final def iinc( idx: Int, increment: Int): Unit = jmethod.visitIincInsn(idx, increment) // can-multi-thread
 
     final def aload( tk: BType): Unit = { emitTypeBased(JCodeMethodN.aloadOpcodes,  tk) } // can-multi-thread
+    final def aloadThis(): Unit = { jmethod.visitVarInsn(Opcodes.ALOAD, 0) } // can-multi-thread
     final def astore(tk: BType): Unit = { emitTypeBased(JCodeMethodN.astoreOpcodes, tk) } // can-multi-thread
 
     final def neg(tk: BType): Unit = { emitPrimitive(JCodeMethodN.negOpcodes, tk) } // can-multi-thread
