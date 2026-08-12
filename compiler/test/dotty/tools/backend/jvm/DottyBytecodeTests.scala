@@ -2089,20 +2089,55 @@ class DottyBytecodeTests extends DottyBytecodeTest {
   }
 
 
-  @Test def synchronizedClassMethod = {
+  @Test def synchronizedClassMethods = {
     val source =
-      """|class Test:
-         |  def m(x: Int): Int = synchronized { x }
+      """|class A {
+         |  def yesBasic: Int = synchronized {
+         |    1
+         |  }
+         |  def yesExplicit: Int =
+         |    this.synchronized {
+         |      1
+         |    }
+         |  def yesExplicitWithBraces: Int = {
+         |    this.synchronized {
+         |      1
+         |    }
+         |  }
+         |  inline def noIsInline: Int = synchronized {
+         |    1
+         |  }
+         |  def noHasOtherCode: Int =
+         |    synchronized {
+         |      ()
+         |    }
+         |    1
+         |}
+         |object A {
+         |  @scala.annotation.static
+         |  def yesStaticOne: Int = synchronized {
+         |    1
+         |  }
+         |  def yesInModule: Int = synchronized {
+         |    1
+         |  }
+         |}
          |""".stripMargin
     checkBCode(source) { dir =>
-      val clsIn = lookupClass(dir, "Test.class")
-      val clsNode = loadClassNode(clsIn)
-      val meth = clsNode.methods.asScala.find(_.name == "m").get
-      assert((meth.access & ACC_SYNCHRONIZED) != 0)
-      assertSameCode(meth, List(
-        VarOp(ILOAD, 1),
-        Op(IRETURN)
-      ))
+      val cls = loadClassNode(lookupClass(dir, "A.class"))
+      val clsMod = loadClassNode(lookupClass(dir, "A$.class"))
+      // ignore the forwarder one
+      val meths = cls.methods.asScala.filter(_.name != "yesInModule") ++ clsMod.methods.asScala
+      meths.filter(_.name.startsWith("yes")).foreach(m =>
+        assert((m.access & ACC_SYNCHRONIZED) != 0, s"method ${m.name} is not ACC_SYNCHRONIZED")
+        assertSameCode(m, List(
+          Op(ICONST_1),
+          Op(IRETURN)
+        ))
+      )
+      meths.filter(_.name.startsWith("no")).foreach(m =>
+        assert((m.access & ACC_SYNCHRONIZED) == 0, s"method ${m.name} is ACC_SYNCHRONIZED")
+      )
     }
   }
 
