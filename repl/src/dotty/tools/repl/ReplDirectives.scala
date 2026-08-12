@@ -46,32 +46,23 @@ private[repl] object ReplDirectives:
     case "latest" => "latest.release"
     case explicit => explicit
 
-  private sealed trait Toolkit:
-    val org: String
-    val defaultVersion: String
-    protected def matchesFlavor(flavor: String): Boolean
-    def unapply(flavorAndVersion: (String, String)): Option[(String, String)] =
-      val (flavor, rawVersion) = flavorAndVersion
-      Option.when(matchesFlavor(flavor))((org, resolveVersion(rawVersion, defaultVersion)))
+  private case class Toolkit(alias: String, org: String, defaultVersion: String)
 
-  private object ScalaToolkit extends Toolkit:
-    val org = "org.scala-lang"
-    val defaultVersion = "0.9.2"
-    protected def matchesFlavor(flavor: String) = flavor == "scala" || flavor == org
+  private val ScalaToolkit = Toolkit("scala", "org.scala-lang", "0.9.2")
+  private val TypelevelToolkit = Toolkit("typelevel", "org.typelevel", "0.2.0")
 
-  private object TypelevelToolkit extends Toolkit:
-    val org = "org.typelevel"
-    val defaultVersion = "0.2.0"
-    protected def matchesFlavor(flavor: String) = flavor == "typelevel" || flavor == org
+  private val toolkitsByFlavor: Map[String, Toolkit] =
+    List(ScalaToolkit, TypelevelToolkit)
+      .flatMap(toolkit => List(toolkit.alias -> toolkit, toolkit.org -> toolkit))
+      .toMap
 
   def toolkitCoordinates(coords: String): List[String] =
     val tokens = coords.split(':').toList
     val rawVersion = tokens.lastOption.filter(_.nonEmpty).getOrElse("default")
-    val flavor = tokens.dropRight(1).headOption.getOrElse("scala")
-    val (org, version) = (flavor, rawVersion) match
-      case TypelevelToolkit(org, version) => (org, version)
-      case ScalaToolkit(org, version) => (org, version)
-      case (customOrg, rawVersion) => (customOrg, resolveVersion(rawVersion, default = rawVersion))
+    val flavor = tokens.dropRight(1).headOption.getOrElse(ScalaToolkit.alias)
+    val (org, version) = toolkitsByFlavor.get(flavor) match
+      case Some(toolkit) => (toolkit.org, resolveVersion(rawVersion, toolkit.defaultVersion))
+      case None => (flavor, resolveVersion(rawVersion, default = rawVersion))
     List("toolkit", "toolkit-test").map(artifact => s"$org::$artifact:$version")
 
   private def toolkitDependencies(coords: String): List[ReplDirective] =
