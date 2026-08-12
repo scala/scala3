@@ -61,14 +61,6 @@ abstract class Lifter {
   protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: Tree)(using Context): Tree =
     ref(lifted.termRef)
 
-  /** Lift the arguments and rebuild an application after its function was lifted. */
-  protected def liftApply(
-    defs: mutable.ListBuffer[Tree],
-    original: Apply,
-    liftedFun: Tree
-  )(using Context): Apply =
-    cpy.Apply(original)(liftedFun, liftArgs(defs, original.fun.tpe, original.args))
-
   private def lift(defs: mutable.ListBuffer[Tree], expr: Tree, prefix: TermName = EmptyTermName)(using Context): Tree =
     if (noLift(expr)) expr
     else {
@@ -119,11 +111,8 @@ abstract class Lifter {
         args.lazyZip(mt.paramNames).lazyZip(mt.paramInfos).lazyZip(mt.paramNames.indices).map: (arg, name, tp, paramNum) =>
           if tp.hasAnnotation(defn.InlineParamAnnot) then arg
           else
-            lifterFor(tp).liftArg(
-              defs,
-              arg,
-              if name.firstPart.contains('$') then EmptyTermName else name
-            )(using liftArgContext(mt, paramNum, arg))
+            lifterFor(tp).liftArg(defs, arg,
+              if name.firstPart.contains('$') then EmptyTermName else name)(using liftArgContext(mt, paramNum, arg))
       case _ =>
         args.mapConserve(liftArg(defs, _))
     }
@@ -142,9 +131,10 @@ abstract class Lifter {
    *
    */
   def liftApp(defs: mutable.ListBuffer[Tree], tree: Tree)(using Context): Tree = tree match {
-    case app @ Apply(fn, _) =>
+    case Apply(fn, args) =>
       val fn1 = liftApp(defs, fn)
-      liftApply(defs, app, fn1)
+      val args1 = liftArgs(defs, fn.tpe, args)
+      cpy.Apply(tree)(fn1, args1)
     case TypeApply(fn, targs) =>
       cpy.TypeApply(tree)(liftApp(defs, fn), targs)
     case Select(pre, name) if isPureRef(tree) =>

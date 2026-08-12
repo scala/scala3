@@ -2104,8 +2104,7 @@ class CheckCaptures extends Recheck, SymTransformer:
         val widened = actual.widen.dealiasKeepAnnots.dropAnnot(defn.ConsumeAnnot)
         // A lifted argument preserves evaluation order but introduces no source-level path.
         val transparentValue =
-          tree.symbol.exists
-          && LiftCoverage.isCoverageLiftedArg(tree.symbol)
+          LiftCoverage.isCoverageLiftedArg(tree.symbol)
           && !tree.symbol.info.isSingleton
         val improvedVAR =
           if transparentValue then widened
