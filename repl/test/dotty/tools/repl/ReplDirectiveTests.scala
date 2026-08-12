@@ -51,9 +51,7 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
       "typelevel:0.1.29" -> ("org.typelevel", "0.1.29"),
       "org.typelevel:default" -> ("org.typelevel", "0.2.0"),
       "com.example:1.2.3" -> ("com.example", "1.2.3"),
-      "com.example:latest" -> ("com.example", "latest.release"),
-      ":" -> ("org.scala-lang", "0.9.2"),
-      "::" -> ("org.scala-lang", "0.9.2")
+      "com.example:latest" -> ("com.example", "latest.release")
     )
     expected.foreach:
       case (coordinates, (org, version)) =>
@@ -63,6 +61,12 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
           List(Dependency(s"$org::toolkit:$version"), Dependency(s"$org::toolkit-test:$version")),
           result.directives
         )
+
+  @Test def `toolkit directive rejects values of any other shape`: Unit =
+    List(":", "::", "typelevel:", ":default", "a:b:c", "typelevel::default").foreach: coordinates =>
+      val result = ReplDirectives.classify(s"//> using toolkit $coordinates")
+      assertEquals(coordinates, Nil, result.directives)
+      assertEquals(coordinates, List(Warning.MalformedValue("toolkit", coordinates)), result.warnings)
 
   @Test def `toolkit directives reject more than one value`: Unit =
     List("toolkit", "test.toolkit").foreach: key =>

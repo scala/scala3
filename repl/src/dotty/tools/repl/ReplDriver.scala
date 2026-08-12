@@ -791,12 +791,17 @@ class ReplDriver(settings: Array[String],
     case Dep(dep) => resolveAndAddDeps(List(dep))
 
     case ToolkitCmd(coordinates) =>
-      coordinates.split("\\s+").filter(_.nonEmpty).toList match
-        case coords :: Nil =>
+      val singleValue = coordinates.split("\\s+").filter(_.nonEmpty).toList match
+        case coords :: Nil => Some(coords)
+        case _ => None
+      singleValue.flatMap(ReplDirectives.toolkitCoordinates) match
+        case Some(dependencies) =>
           out.println(ReplDirectives.Warning.NoSeparateTestScope.toString)
-          resolveAndAddDeps(ReplDirectives.toolkitCoordinates(coords))
-        case _ =>
-          out.println(s"${ToolkitCmd.command} expects a single version, e.g. `${ToolkitCmd.command} default`")
+          resolveAndAddDeps(dependencies)
+        case None =>
+          out.println(
+            s"""${ToolkitCmd.command} expects a single version or <flavor>:<version>.
+               |Example: ${ToolkitCmd.command} default""".stripMargin)
           state
 
     case Quit =>

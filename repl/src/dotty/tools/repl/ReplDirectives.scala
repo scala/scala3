@@ -2,7 +2,7 @@ package dotty.tools.repl
 
 import scala.util.control.NonFatal
 
-import dotty.tools.directives.{DirectiveValue, UsingDirectivesParser}
+import dotty.tools.directives.{DirectiveValue, UsingDirective, UsingDirectivesParser}
 
 private[repl] object ReplDirectives:
 
@@ -14,6 +14,7 @@ private[repl] object ReplDirectives:
     case TestToolkitSameAsToolkit
     case ValueMissing(key: String)
     case TooManyValues(key: String)
+    case MalformedValue(key: String, value: String)
     case UnsupportedDirective(key: String)
 
     override def toString: String = this match
@@ -27,6 +28,8 @@ private[repl] object ReplDirectives:
         s"[warn] The `using $key` directive was given no value. It was ignored.${usageHint(key)}"
       case TooManyValues(key) =>
         s"[warn] The `using $key` directive expects a single value. It was ignored.${usageHint(key)}"
+      case MalformedValue(key, value) =>
+        s"[warn] The `using $key` directive does not recognize `$value`. It was ignored.${usageHint(key)}"
       case UnsupportedDirective(key) =>
         s"""[warn] The `using $key` directive is not supported in the REPL.
            |To use it, re-run with the `scala` command and pass the directive inside an input.""".stripMargin
@@ -56,17 +59,19 @@ private[repl] object ReplDirectives:
       .flatMap(toolkit => List(toolkit.alias -> toolkit, toolkit.org -> toolkit))
       .toMap
 
-  def toolkitCoordinates(coords: String): List[String] =
-    val tokens = coords.split(':').toList
-    val rawVersion = tokens.lastOption.filter(_.nonEmpty).getOrElse("default")
-    val flavor = tokens.dropRight(1).headOption.getOrElse(ScalaToolkit.alias)
-    val (org, version) = toolkitsByFlavor.get(flavor) match
-      case Some(toolkit) => (toolkit.org, resolveVersion(rawVersion, toolkit.defaultVersion))
-      case None => (flavor, resolveVersion(rawVersion, default = rawVersion))
-    List("toolkit", "toolkit-test").map(artifact => s"$org::$artifact:$version")
+  def toolkitCoordinates(coords: String): Option[List[String]] =
+    val flavorAndVersion = coords.split(":", -1).toList match
+      case version :: Nil if version.nonEmpty => Some((ScalaToolkit.alias, version))
+      case flavor :: version :: Nil if flavor.nonEmpty && version.nonEmpty => Some((flavor, version))
+      case _ => None
+    flavorAndVersion.map: (flavor, rawVersion) =>
+      val (org, version) = toolkitsByFlavor.get(flavor) match
+        case Some(toolkit) => (toolkit.org, resolveVersion(rawVersion, toolkit.defaultVersion))
+        case None => (flavor, resolveVersion(rawVersion, default = rawVersion))
+      List("toolkit", "toolkit-test").map(artifact => s"$org::$artifact:$version")
 
   private def toolkitDependencies(coords: String): List[ReplDirective] =
-    toolkitCoordinates(coords).map(ReplDirective.Dependency(_))
+    toolkitCoordinates(coords).getOrElse(Nil).map(ReplDirective.Dependency(_))
 
   private enum DirectiveHandler(
     val keys: List[String],
@@ -151,22 +156,23 @@ private[repl] object ReplDirectives:
     case DirectiveValue.EmptyVal(_) => true
     case _ => false
 
+  private def classifyDirective(directive: UsingDirective): (List[ReplDirective], List[Warning]) =
+    val UsingDirective(key, values, _) = directive
+    handlersByKey.get(key) match
+      case None => (Nil, List(Warning.UnsupportedDirective(key)))
+      case Some(handler) =>
+        if values.forall(carriesNoValue) then
+          (Nil, List(Warning.ValueMissing(key)))
+        else if !handler.acceptsMultipleValues && values.sizeIs > 1 then
+          (Nil, List(Warning.TooManyValues(key)))
+        else handler.process(values) match
+          case Nil => (Nil, List(Warning.MalformedValue(key, values.map(_.stringValue).mkString(" "))))
+          case directives => (directives, handler.warnings)
+
   def classify(sourceCode: String): DirectiveClassification =
     try
-      val result = UsingDirectivesParser.parse(sourceCode)
-      val (supported, unsupported) = result.directives.partition(directive => handlersByKey.contains(directive.key))
-      val (valueless, valued) = supported.partition(_.values.forall(carriesNoValue))
-      val (overfull, accepted) = valued.partition: directive =>
-        !handlersByKey(directive.key).acceptsMultipleValues && directive.values.sizeIs > 1
-      val directives = accepted
-        .flatMap(directive => handlersByKey(directive.key).process(directive.values))
-        .toList
-      val warnings = (accepted.flatMap(directive => handlersByKey(directive.key).warnings) ++
-        valueless.map(directive => Warning.ValueMissing(directive.key)) ++
-        overfull.map(directive => Warning.TooManyValues(directive.key)) ++
-        unsupported.map(directive => Warning.UnsupportedDirective(directive.key)))
-        .distinct
-        .toList
-      DirectiveClassification(directives, warnings, result.directives.nonEmpty)
+      val parsed = UsingDirectivesParser.parse(sourceCode).directives
+      val (directives, warnings) = parsed.map(classifyDirective).unzip
+      DirectiveClassification(directives.flatten.toList, warnings.flatten.distinct.toList, parsed.nonEmpty)
     catch
       case NonFatal(_) => DirectiveClassification(Nil, Nil, false)
