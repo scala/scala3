@@ -360,7 +360,9 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
       else (found1, expected1)
     val (foundStr, expectedStr) = Formatting.typeDiff(found2.normalized, expected2.normalized)
     val extra =
-      if defn.isFunctionNType(found) && SAMType.unapply(expected).isEmpty && SAMType.unapply(expected, ignoreFinalOrSealed = true).nonEmpty
+      if defn.isFunctionNType(found)
+        && SAMType.deconstruct(expected, ignoreFinalOrSealed = false).isEmpty
+        && SAMType.deconstruct(expected, ignoreFinalOrSealed = true).nonEmpty
       then i"\nNote that conversion from a function to a single abstract method type is only possible if the type is neither ${hl("final")} nor ${hl("sealed")}"
       else ""
     i"""|${preface}Found:    $foundStr

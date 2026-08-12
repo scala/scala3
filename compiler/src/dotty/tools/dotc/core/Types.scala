@@ -6123,44 +6123,48 @@ object Types extends TypeUtils {
         approxWildcardArgs(tp)
     end samParent
 
-    private def samClass(tp: Type, ignoreFinalOrSealed: Boolean)(using Context): Symbol = tp match
-      case tp: ClassInfo =>
-        val cls = tp.cls
-        def takesNoArgs(tp: Type) =
-          !tp.classSymbol.primaryConstructor.exists
-              // e.g. `ContextFunctionN` does not have constructors
-          || tp.applicableConstructors(argTypes = Nil, adaptVarargs = true).lengthCompare(1) == 0
-              // we require a unique constructor so that SAM expansion is deterministic
-        val noArgsNeeded: Boolean =
-          takesNoArgs(tp)
-          && (!cls.is(Trait) || takesNoArgs(tp.parents.head))
-        def isInstantiable =
-          (ignoreFinalOrSealed || !cls.isOneOf(FinalOrSealed)) && (tp.appliedRef <:< tp.selfType)
-        if noArgsNeeded && isInstantiable then cls
-        else NoSymbol
-      case tp: AppliedType =>
-        samClass(tp.superType, ignoreFinalOrSealed)
-      case tp: TypeRef =>
-        samClass(tp.underlying, ignoreFinalOrSealed)
-      case tp: RefinedType =>
-        samClass(tp.underlying, ignoreFinalOrSealed)
-      case tp: TypeBounds =>
-        samClass(tp.underlying, ignoreFinalOrSealed)
-      case tp: TypeVar =>
-        samClass(tp.underlying, ignoreFinalOrSealed)
-      case tp: AnnotatedType =>
-        samClass(tp.underlying, ignoreFinalOrSealed)
-      case tp: FlexibleType =>
-        samClass(tp.underlying, ignoreFinalOrSealed)
-      case _ =>
-        NoSymbol
-
     def unapply(tp: Type)(using Context): Option[(MethodType, Type)] =
-      unapply(tp, false)
+      deconstruct(tp, false)
 
     /** Optionally ignores `final` and `sealed`, so that error messages can point to this specific problem. */
-    def unapply(tp: Type, ignoreFinalOrSealed: Boolean)(using Context): Option[(MethodType, Type)] =
-      val cls = samClass(tp, ignoreFinalOrSealed)
+    def deconstruct(tp: Type, ignoreFinalOrSealed: Boolean)(using Context): Option[(MethodType, Type)] =
+      def samClass(tp: Type)(using Context): Symbol = tp match {
+        case tp: ClassInfo =>
+          val cls = tp.cls
+
+          def takesNoArgs(tp: Type) =
+            !tp.classSymbol.primaryConstructor.exists
+              // e.g. `ContextFunctionN` does not have constructors
+              || tp.applicableConstructors(argTypes = Nil, adaptVarargs = true).lengthCompare(1) == 0
+
+          // we require a unique constructor so that SAM expansion is deterministic
+          val noArgsNeeded: Boolean =
+            takesNoArgs(tp)
+              && (!cls.is(Trait) || takesNoArgs(tp.parents.head))
+
+          def isInstantiable =
+            (ignoreFinalOrSealed || !cls.isOneOf(FinalOrSealed)) && (tp.appliedRef <:< tp.selfType)
+
+          if noArgsNeeded && isInstantiable then cls
+          else NoSymbol
+        case tp: AppliedType =>
+          samClass(tp.superType)
+        case tp: TypeRef =>
+          samClass(tp.underlying)
+        case tp: RefinedType =>
+          samClass(tp.underlying)
+        case tp: TypeBounds =>
+          samClass(tp.underlying)
+        case tp: TypeVar =>
+          samClass(tp.underlying)
+        case tp: AnnotatedType =>
+          samClass(tp.underlying)
+        case tp: FlexibleType =>
+          samClass(tp.underlying)
+        case _ =>
+          NoSymbol
+      }
+      val cls = samClass(tp)
       if cls.exists then
         val absMems =
           if tp.isRef(defn.PartialFunctionClass) then
