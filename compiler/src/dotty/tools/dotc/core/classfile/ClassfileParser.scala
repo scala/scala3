@@ -458,7 +458,23 @@ class ClassfileParser(
           while (sig(index) == '.') {
             accept('.')
             val name = subName(c => c == ';' || c == '<' || c == '.').toTypeName
-            val tp = tpe.select(name)
+            // Java allows for certain cyclic signatures, so we must too.
+            // If we are already in a class, we manually lookup instead of
+            // tpe.select to avoid cyclic errors. See #26646
+            val tp =
+              if tpe.typeSymbol eq classRoot.symbol then
+                // classRoot is being completed - we have to use classRoot's instanceScope
+                // e.g. case: `class CyclicSignature<S extends CyclicSignature<S>.Nested>`
+                val member = instanceScope.lookup(name)
+                if member.exists then TypeRef(tpe, member) else tpe.select(name)
+              else if tpe.typeSymbol.isContainedIn(classRoot.symbol) then
+                // classRoot is completed - using .info is safe
+                // e.g. case: `class CyclicSignature<S extends CyclicSignature<S>.Nested.Deeper>`
+                val member = tpe.typeSymbol.info.decls.lookup(name)
+                if member.exists then TypeRef(tpe, member) else tpe.select(name)
+              else
+                // non-cyclic case
+                tpe.select(name)
             tpe = processTypeArgs(tp)
           }
           accept(';')

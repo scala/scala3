@@ -342,7 +342,11 @@ object Checking {
 
           if isInteresting(pre) then
             CyclicReference.trace(i"explore ${tp.symbol} for cyclic references"):
-              val pre1 = atVariance(variance max 0)(this(pre, false, false))
+              val nestedCycleOkInPrefix =
+                // generated symbols like primary constructor may not have JavaDefined,
+                // even when the corresponding file is java - also check the owner
+                if sym.is(JavaDefined) || sym.maybeOwner.is(JavaDefined) then nestedCycleOK else false
+              val pre1 = atVariance(variance max 0)(this(pre, false, nestedCycleOkInPrefix))
               if locked.contains(tp)
                   || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter]
                   && tp.symbol == sym
