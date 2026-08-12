@@ -95,7 +95,7 @@ object Equiv extends LowPriorityEquiv {
       case that: IterableEquiv[?, ?]     => this.eqv == that.eqv
       case _                             => false
     }
-    override def hashCode(): Int = eqv.hashCode() * iterableSeed
+    override def hashCode(): Int = eqv.## * iterableSeed
   }
 
   trait ExtraImplicits {
@@ -275,7 +275,7 @@ object Equiv extends LowPriorityEquiv {
       case that: OptionEquiv[?]         => this.eqv == that.eqv
       case _                            => false
     }
-    override def hashCode(): Int = eqv.hashCode() * optionSeed
+    override def hashCode(): Int = eqv.## * optionSeed
   }
 
   implicit def Tuple2[T1, T2](implicit eqv1: Equiv[T1], eqv2: Equiv[T2]): Equiv[(T1, T2)] =

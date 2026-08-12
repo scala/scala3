@@ -66,7 +66,9 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
   override def size: Int = contentSize
 
   @inline private final def computeHash(o: K): Int = {
-    val h = if(o.asInstanceOf[AnyRef] eq null) 0 else o.hashCode
+    // Objects.hashCode is consistent with the requirements, namely:
+    // > Universal equality of numeric types is not supported (similar to `AnyRefMap`).
+    val h = java.util.Objects.hashCode(o)
     h ^ (h >>> 16)
   }
 

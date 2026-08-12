@@ -304,12 +304,21 @@ class Definitions {
   def MatchableType: TypeRef = MatchableClass.typeRef
   @tu lazy val AnyValClass: ClassSymbol = requiredClass("scala.AnyVal")
 
+  extension (sym: TermSymbol) private def deprecatedUniversalMethod(replacement: String): TermSymbol =
+    if ctx.explicitNulls then
+      import dotty.tools.dotc.ast.tpd, Constants.Constant, Annotations.Annotation
+      val message = s"Any.${sym.name} does not handle `null` nor equality of primitive numbers; use $replacement instead"
+      sym.addAnnotation(Annotation.deferredSymAndTree(DeprecatedAnnot)(
+        tpd.New(DeprecatedAnnot.typeRef, tpd.Literal(Constant(message)) :: tpd.Literal(Constant("3.10.0")) :: Nil)
+      ))
+    sym
+
   def AnyValType: TypeRef = AnyValClass.typeRef
 
     @tu lazy val Any_== : TermSymbol          = enterMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
     @tu lazy val Any_!= : TermSymbol          = enterMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final)
-    @tu lazy val Any_equals: TermSymbol       = enterMethod(AnyClass, nme.equals_, methOfAny(BooleanType))
-    @tu lazy val Any_hashCode: TermSymbol     = enterMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType))
+    @tu lazy val Any_equals: TermSymbol       = enterMethod(AnyClass, nme.equals_, methOfAny(BooleanType)).deprecatedUniversalMethod("==")
+    @tu lazy val Any_hashCode: TermSymbol     = enterMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType)).deprecatedUniversalMethod("##")
     @tu lazy val Any_toString: TermSymbol     = enterMethod(AnyClass, nme.toString_, MethodType(Nil, StringType))
     @tu lazy val Any_## : TermSymbol          = enterMethod(AnyClass, nme.HASHHASH, ExprType(IntType), Final)
     @tu lazy val Any_isInstanceOf: TermSymbol = enterT1ParameterlessMethod(AnyClass, nme.isInstanceOf_, _ => BooleanType, Final)
@@ -454,8 +463,13 @@ class Definitions {
     @tu lazy val Object_waitL: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: Nil, UnitType), Final)
     @tu lazy val Object_waitLI: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: IntType :: Nil, UnitType), Final)
 
+    // Non-deprecated overrides from Any
+    @tu lazy val Object_equals: TermSymbol = enterMethod(ObjectClass, nme.equals_, methOfAny(BooleanType), Override)
+    @tu lazy val Object_hashCode: TermSymbol = enterMethod(ObjectClass, nme.hashCode_, MethodType(Nil, IntType), Override)
+
     def ObjectMethods: List[TermSymbol] = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
-        Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
+        Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI,
+        Object_equals, Object_hashCode)
 
   /** Methods in Object and Any that do not have a side effect */
   @tu lazy val pureMethods: List[TermSymbol] = List(Any_==, Any_!=, Any_equals, Any_hashCode,
@@ -535,6 +549,7 @@ class Definitions {
     @tu lazy val ScalaRuntime__hashCode: Symbol = ScalaRuntimeModule.requiredMethod(nme._hashCode_)
     @tu lazy val ScalaRuntime_toArray: Symbol = ScalaRuntimeModule.requiredMethod(nme.toArray)
     @tu lazy val ScalaRuntime_toObjectArray: Symbol = ScalaRuntimeModule.requiredMethod(nme.toObjectArray)
+    @tu lazy val ScalaRuntime_anyClass: Symbol = ScalaRuntimeModule.requiredMethod(nme.anyClass)
 
   @tu lazy val MurmurHash3Module: Symbol = requiredModule("scala.util.hashing.MurmurHash3")
     @tu lazy val MurmurHash3_productHash = MurmurHash3Module.info.member(termName("productHash")).suchThat(_.info.firstParamTypes.size == 3).symbol
@@ -758,6 +773,8 @@ class Definitions {
     JavaUtilObjectsClass.info.member(nme.hashCode_).suchThat(_.info.firstParamTypes.length == 1).symbol
   def Objects_equals(using Context): Symbol =
     JavaUtilObjectsClass.info.member(nme.equals_).suchThat(_.info.firstParamTypes.length == 2).symbol
+  def Objects_toString(using Context): Symbol =
+    JavaUtilObjectsClass.info.member(nme.toString_).suchThat(_.info.firstParamTypes.length == 1).symbol
 
   @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Enum")

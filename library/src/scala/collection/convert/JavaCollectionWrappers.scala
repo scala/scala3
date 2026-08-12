@@ -286,10 +286,8 @@ private[collection] object JavaCollectionWrappers extends Serializable {
             // specified in the javadocs of java.util.Map.Entry.hashCode
             //
             // See https://github.com/scala/bug/issues/10663
-            override def hashCode() = {
-              (if (k == null) 0 else k.hashCode()) ^
-              (if (v == null) 0 else v.hashCode())
-            }
+            override def hashCode() =
+              java.util.Objects.hashCode(k) ^ java.util.Objects.hashCode(v)
 
             override def equals(other: Any) = other match {
               case e: ju.Map.Entry[?, ?] => k == e.getKey && v == e.getValue
