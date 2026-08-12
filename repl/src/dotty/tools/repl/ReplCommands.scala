@@ -53,7 +53,7 @@ private[repl] object ReplCommands:
     command(Silent,     "disable/enable automatic printing of results"),
     command(JarCmd,     "add a JAR to the classpath", "<path>"),
     command(Dep,        "resolve a dependency and make it available in the REPL", "<group>::<artifact>:<version>"),
-    command(ToolkitCmd, "resolve a toolkit and make it available in the REPL", "[version|<flavor>:<version>]"),
+    command(ToolkitCmd, "resolve a toolkit and make it available in the REPL", "<version>|default|<flavor>:<version>"),
     hidden(Sh),
     hidden(KindOf),
     hidden(Require),
