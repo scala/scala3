@@ -110,7 +110,7 @@ object Load extends ArgCommand[Load] {
   val command: String = ":load"
 }
 
-/** `:require` is a deprecated alias for :jar`
+/** `:require` is a deprecated alias for `:jar`
  */
 case class Require(path: String) extends Command:
   override def replayLine = Some(s"${Require.command} $path")
@@ -124,6 +124,14 @@ case class JarCmd(path: String) extends Command:
   override def replayLine = Some(s"${JarCmd.command} $path")
 object JarCmd extends ArgCommand[JarCmd] {
   val command: String = ":jar"
+}
+
+/** `:toolkit <version>` resolves a toolkit and adds it to the classpath
+ */
+case class ToolkitCmd(coordinates: String) extends Command:
+  override def replayLine = Some(s"${ToolkitCmd.command} $coordinates")
+object ToolkitCmd extends ArgCommand[ToolkitCmd] {
+  val command: String = ":toolkit"
 }
 
 /** `:kind <type>` display the kind of a type. see also :help kind

@@ -35,6 +35,41 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
       assertEquals(Nil, result.warnings)
     assertTrue(ReplDirectives.helpText.contains("Aliases: jars"))
 
+  @Test def `directives without a value are reported and act on nothing`: Unit =
+    List("dep", "test.dep", "jar", "toolkit", "test.toolkit").foreach: key =>
+      val result = ReplDirectives.classify(s"//> using $key")
+      assertEquals(key, Nil, result.directives)
+      assertEquals(key, List(Warning.ValueMissing(key)), result.warnings)
+
+  @Test def `toolkit directive accepts explicit versions and flavors`: Unit =
+    val expected = Map(
+      "0.7.0" -> ("org.scala-lang", "0.7.0"),
+      "latest" -> ("org.scala-lang", "latest.release"),
+      "scala:default" -> ("org.scala-lang", "0.9.2"),
+      "org.scala-lang:0.7.0" -> ("org.scala-lang", "0.7.0"),
+      "typelevel:default" -> ("org.typelevel", "0.2.0"),
+      "typelevel:0.1.29" -> ("org.typelevel", "0.1.29"),
+      "org.typelevel:default" -> ("org.typelevel", "0.2.0"),
+      "com.example:1.2.3" -> ("com.example", "1.2.3"),
+      "com.example:latest" -> ("com.example", "latest.release"),
+      ":" -> ("org.scala-lang", "0.9.2"),
+      "::" -> ("org.scala-lang", "0.9.2")
+    )
+    expected.foreach:
+      case (coordinates, (org, version)) =>
+        val result = ReplDirectives.classify(s"//> using toolkit $coordinates")
+        assertEquals(
+          coordinates,
+          List(Dependency(s"$org::toolkit:$version"), Dependency(s"$org::toolkit-test:$version")),
+          result.directives
+        )
+
+  @Test def `toolkit directives reject more than one value`: Unit =
+    List("toolkit", "test.toolkit").foreach: key =>
+      val result = ReplDirectives.classify(s"//> using $key default typelevel:default")
+      assertEquals(key, Nil, result.directives)
+      assertEquals(key, List(Warning.TooManyValues(key)), result.warnings)
+
   @Test def `jars directive adds all JARs to the classpath`: Unit =
     val firstJar = emptyJar()
     val secondJar = emptyJar()
@@ -48,10 +83,11 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
 
   @Test def `test dependency directive warns about the shared REPL scope`: Unit =
     initially:
-      run("//> using test.dep")
+      run("//> using test.dep org.scalameta::munit:1.1.1")
       assertEquals(
-        """[warn] The REPL does not have a separate test scope. Dependencies declared with a
-          |`using test.*` directive are added to the current REPL session.""".stripMargin,
+        """[warn] The REPL does not have a separate test scope. Dependencies that would only be
+          |available to tests are added to the current REPL session.
+          |Resolved a dependency (8 JARs)""".stripMargin,
         storedOutput().trim
       )
 

@@ -787,7 +787,17 @@ class ReplDriver(settings: Array[String],
         state.copy(context = rootCtx)
 
     case Silent => state.copy(quiet = !state.quiet)
+
     case Dep(dep) => resolveAndAddDeps(List(dep))
+
+    case ToolkitCmd(coordinates) =>
+      coordinates.split("\\s+").filter(_.nonEmpty).toList match
+        case coords :: Nil =>
+          out.println(ReplDirectives.Warning.NoSeparateTestScope.toString)
+          resolveAndAddDeps(ReplDirectives.toolkitCoordinates(coords))
+        case _ =>
+          out.println(s"${ToolkitCmd.command} expects a single version, e.g. `${ToolkitCmd.command} default`")
+          state
 
     case Quit =>
       // end of the world!
