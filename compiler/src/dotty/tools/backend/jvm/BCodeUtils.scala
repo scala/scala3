@@ -502,7 +502,7 @@ object BCodeUtils {
         // Primitives are "abstract final" to prohibit instantiation
         // without having to provide any implementations, but that is an
         // illegal combination of modifiers at the bytecode level so
-        // suppress final if abstract if present.
+        // suppress final if abstract is present.
         && !sym.isOneOf(AbstractOrTrait)
         // Bridges can be final, but final bridges confuse some frameworks
         && !sym.is(Bridge), ACC_FINAL)
@@ -512,7 +512,8 @@ object BCodeUtils {
       .addFlagIf(sym.isClass && !sym.is(Trait), ACC_SUPER)
       .addFlagIf(sym.isAllOf(JavaEnum), ACC_ENUM)
       .addFlagIf(sym.is(JavaVarargs), ACC_VARARGS)
-      .addFlagIf(sym.is(Synchronized), ACC_SYNCHRONIZED)
+      // The JVM does not support synchronized interface methods, we implement those ourselves
+      .addFlagIf(sym.is(Synchronized) && !sym.owner.is(Trait), ACC_SYNCHRONIZED)
       .addFlagIf(sym.isDeprecated, ACC_DEPRECATED)
       .addFlagIf(sym.is(Enum), ACC_ENUM)
   }
