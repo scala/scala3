@@ -232,11 +232,11 @@ object Contexts {
             else if (infoIfImport `ne` null) infoIfImport.importedImplicits
             else if (isNonEmptyScopeContext) scope.implicitDecls
             else Nil
-          val outerImplicits = infoIfImport match
-            case null => outer.implicits
-            case info => if info.unimported.exists
-                         then outer.implicits.exclude(info.unimported)
-                         else outer.implicits
+          val outerImplicits =
+            if (infoIfImport ne null && infoIfImport.unimported.exists)
+              outer.implicits.exclude(infoIfImport.unimported)
+            else
+              outer.implicits
           if (implicitRefs.isEmpty) outerImplicits
           else new ContextualImplicits(implicitRefs, outerImplicits, infoIfImport)(this)
         }
