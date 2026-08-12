@@ -1,6 +1,7 @@
 package scala.quoted
 
 import language.experimental.captureChecking
+import scala.annotation.tailrec
 import scala.deriving.Mirror
 import scala.reflect.ClassTag
 
@@ -51,11 +52,15 @@ object ToExprFactory:
       def apply(x: T)(using quotes: Quotes): Expr[T] =
         import quotes.reflect.*
         val idx = m.ordinal(x)
-        val caseSym = TypeRepr.of[T].typeSymbol.children(idx)
-        // Parameterless enum cases (`case Red, Green`) are terms, not types; use termRef for those.
-        val ref = if caseSym.isTerm then caseSym.termRef else caseSym.typeRef
-        ref.asType match
-          case '[c] => elems(idx).asInstanceOf[ToExprFactory[c]].apply().apply(x.asInstanceOf[c]).asInstanceOf[Expr[T]]
+        // Re-derive `MirroredElemTypes` at this splice site instead of trusting the case symbol's
+        // bare `typeRef`: for a generic sum (e.g. `Result[+A]`), the symbol alone loses the type
+        // arguments (`Ok` instead of `Ok[Int]`).
+        @tailrec def elemTypeAt(n: Int, elemTypes: TypeRepr): TypeRepr = elemTypes.asType match
+          case '[h *: t] => if n == 0 then TypeRepr.of[h] else elemTypeAt(n - 1, TypeRepr.of[t])
+        Expr.summon[Mirror.SumOf[T]].get match
+          case '{ $_ : Mirror.SumOf[T] { type MirroredElemTypes = elemTypes } } =>
+            elemTypeAt(idx, TypeRepr.of[elemTypes]).asType match
+              case '[c] => elems(idx).asInstanceOf[ToExprFactory[c]].apply().apply(x.asInstanceOf[c]).asExprOf[T]
 
   /** Bridges any type that already has a plain `ToExpr` (e.g. `Int`, `String`) into `ToExprFactory`. */
   given fromToExpr: [T] => (te: ToExpr[T]) => ToExprFactory[T]:
