@@ -4,7 +4,7 @@ package jvm
 
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
-import scala.tools.asm
+import org.objectweb.asm
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.TreeTypeMap
 import dotty.tools.dotc.ast.Trees.SyntheticUnit
@@ -344,7 +344,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
                   superClass, interfaceNames.toArray)
 
       if (emitSource) {
-        cnode.visitSource(ctx.compilationUnit.source.file.name, null /* SourceDebugExtension */)
+        cnode.visitSource(ctx.compilationUnit.source.name, null /* SourceDebugExtension */)
       }
 
       BCodeUtils.enclosingMethodAttribute(claszSymbol, bTypeLoader.classBTypeFromSymbol(_).internalName, bTypeLoader.methodBTypeFromSymbol(_).descriptor) match {
@@ -373,6 +373,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         }
 
       }
+
+      cnode.visitAttribute(bTypeLoader.classBTypeFromSymbol(claszSymbol).inlineInfoAttribute)
 
       // the invoker is responsible for adding a class-static constructor.
 
@@ -848,7 +850,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
         // we failed to emit the method header, no point in continuing
         return
 
-      if (!isAbstractMethod && !isNative) {
+      if mnode.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && claszSymbol.isPrimitiveValueClass then
+        // The JVM requires all classes' constructors to call a superclass constructor (or another of the class's constructors),
+        // which doesn't match our view of primitive value classes as special
+        mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
+        bc.invokespecial(ClassBType.javaLangObjectInternalName, mnode.name, mnode.desc, itf = false, dd)
+        bc.emitRETURN(UNIT)
+      else if !isAbstractMethod && !isNative then {
         // #14773 Reuse locals slots for tailrec-generated mutable vars
         val trimmedRhs: Tree =
           @tailrec def loop(stats: List[Tree]): List[Tree] =

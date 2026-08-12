@@ -144,7 +144,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForAssign(tree: Assign)(using Context): Context =
     if tree.lhs.symbol.exists then
       refInfos.addAssignmentTarget(tree.lhs.symbol)
-      ctx.fresh.setTree(tree)
+      ctx.fresh.setProperty(EnclosingAssigns, tree :: enclosingAssigns)
     else ctx
 
   override def prepareForMatch(tree: Match)(using Context): Context =
@@ -329,10 +329,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
    *  Also check that every enclosing element is not a synthetic member
    *  of the sym's case class companion module.
    *
-   *  The LHS of a current Assign is never recorded as a reference (that is, a usage).
+   *  A reference to the LHS of a current Assign is not recorded as a usage, nor is a reference
+   *  in its RHS that does not escape into a call that might observe the value.
    */
   def refUsage(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    if !refInfos.hasRef(sym) then
+    if !refInfos.hasRef(sym) && !isUnobservedUpdate(sym, pos) then
       val isCase = sym.is(Case) && sym.isClass
       if !ctx.outersIterator.exists: outer =>
         val owner = outer.owner
@@ -341,11 +342,24 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
            && owner.exists
            && owner.is(Synthetic)
            && owner.owner.eq(sym.companionModule.moduleClass)
-        || outer.tree.match
-           case Assign(lhs, _) => lhs.symbol.eq(sym) && outer.tree.srcPos.sourcePos.contains(pos.sourcePos)
-           case _ => false
       then
         refInfos.addRef(sym)
+
+  /** Is a reference at `pos` an unobserved update of `sym`: the LHS of an enclosing assignment
+   *  to `sym`, or a read in its RHS which does not escape into an application that might observe
+   *  the value?
+   */
+  private def isUnobservedUpdate(sym: Symbol, pos: SrcPos)(using Context): Boolean =
+    def mightObserve(rhs: Tree): Boolean =
+      rhs.existsSubTree: t =>
+        t.srcPos.sourcePos.contains(pos.sourcePos) && t.match
+          case t: GenericApply => !InstrumentCoverage.isCoverageProbe(t) && !isKnownPureOp(funPart(t).symbol)
+          case _: DefDef => true
+          case _ => false
+    enclosingAssigns.exists: assign =>
+         assign.lhs.symbol.eq(sym)
+      && assign.srcPos.sourcePos.contains(pos.sourcePos)
+      && !mightObserve(assign.rhs)
 
   /** Look up a reference in enclosing contexts to determine whether it was introduced by a definition or import.
    *  The binding of highest precedence must then be correct.
@@ -516,6 +530,14 @@ object CheckUnused:
 
   inline def refInfos(using Context): RefInfos = ctx.property(refInfosKey).get
 
+  /** The assignments enclosing the tree being traversed, innermost first.
+   *  Typed, unlike Context.tree, which is untyped-generic.
+   */
+  private val EnclosingAssigns = Property.Key[List[Assign]]
+
+  private def enclosingAssigns(using Context): List[Assign] =
+    ctx.property(EnclosingAssigns).getOrElse(Nil)
+
   /** Attachment holding the name of an Ident as written by the user. */
   val OriginalName = Property.StickyKey[Name]
 
@@ -667,6 +689,7 @@ object CheckUnused:
         || m.hasAnnotation(defn.UnusedAnnot) // param of unused method
         || sym.info.isSingleton
         || m.isConstructor && m.owner.thisType.baseClasses.contains(defn.AnnotationClass)
+        || sym.isErased // erased param may be unused by design
       def checkExplicit(): Unit =
         // A class param is unused if its param accessor is unused.
         // (The class param is not assigned to a field until constructors.)
@@ -733,6 +756,7 @@ object CheckUnused:
              tps.hasAnnotation(dd.LanguageFeatureMetaAnnot)
         || sym.info.isSingleton // DSL friendly
         || sym.info.dealias.isInstanceOf[RefinedType] // can't be expressed as a context bound
+        || sym.isErased // erased param is unused by design
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
         && !m.isEffectivelyOverride

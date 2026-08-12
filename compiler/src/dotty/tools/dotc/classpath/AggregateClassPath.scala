@@ -32,13 +32,13 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
 
   override def asURLs: Seq[URL] = aggregates.flatMap(_.asURLs)
 
-  override def packages(inPackage: String): Seq[PackageEntry] =
+  override def packages(inPackage: String): Iterable[PackageEntry] =
     aggregates.flatMap(_.packages(inPackage)).distinct
 
-  override def classes(inPackage: String): Seq[BinaryFileEntry] =
+  override def classes(inPackage: String): Iterable[BinaryFileEntry] =
     getDistinctEntries(_.classes(inPackage))
 
-  override def sources(inPackage: String): Seq[SourceFileEntry] =
+  override def sources(inPackage: String): Iterable[SourceFileEntry] =
     getDistinctEntries(_.sources(inPackage))
 
   override def hasPackage(pkg: String): Boolean = aggregates.exists(_.hasPackage(pkg))
@@ -87,7 +87,7 @@ case class AggregateClassPath(aggregates: Seq[ClassPath]) extends ClassPath {
     if (mergedEntries.isEmpty) Nil else mergedEntries.toIndexedSeq
   }
 
-  private def getDistinctEntries[EntryType <: ClassRepresentation](getEntries: ClassPath => Seq[EntryType]): Seq[EntryType] = {
+  private def getDistinctEntries[EntryType <: ClassRepresentation](getEntries: ClassPath => Iterable[EntryType]): Iterable[EntryType] = {
     val seenNames = util.HashSet[String]()
     val entriesBuffer = new ArrayBuffer[EntryType](1024)
     for {

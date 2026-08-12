@@ -55,7 +55,7 @@ class CompilationTests {
       compileFile("tests/rewrites/rewrites3x-fatal-warnings.scala", defaultOptions.and("-rewrite", "-source", "future-migration", "-Werror")),
       compileFile("tests/rewrites/i21394.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/uninitialized-var.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
-      compileFile("tests/rewrites/with-type-operator.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
+      compileFile("tests/rewrites/with-type-operator.scala", defaultOptions.and("-rewrite", "-source", "3.10-migration")),
       compileFile("tests/rewrites/i26013.scala", defaultOptions.and("-rewrite", "-source", "3.4-migration")),
       compileFile("tests/rewrites/private-this.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
       compileFile("tests/rewrites/alphanumeric-infix-operator.scala", defaultOptions.and("-rewrite", "-source", "future-migration")),
@@ -144,6 +144,7 @@ class CompilationTests {
 
   @Test def negAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNeg")
+
     aggregateTests(
       compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.negScala2LibraryTastyExcludelisted)),
       compileFilesInDir("tests/neg-deep-subtype", allowDeepSubtypes),
@@ -156,6 +157,11 @@ class CompilationTests {
         defaultOptions),
       compileFile("tests/neg/i7575.scala", defaultOptions.withoutLanguageFeatures),
       compileFile("tests/neg-custom-args/i20491/Test.scala", defaultOptions.withClasspath("tests/neg-custom-args/i20491/cp")),
+      compileFile("tests/neg-custom-args/missing-java-outer-dependency/TestInner.scala",
+          defaultOptions.withClasspath("tests/neg-custom-args/missing-java-outer-dependency/cp")),
+      compileFile("tests/neg-custom-args/missing-java-outer-dependency/TestImportSuggestion.scala",
+          defaultOptions.withClasspath("tests/neg-custom-args/missing-java-outer-dependency/cp")),
+      compileFile("tests/neg-custom-args/empty-compiled-with-dir.scala", defaultOptions.and("tests"))
     ).checkExpectedErrors()
   }
 

@@ -369,7 +369,7 @@ class Namer { typer: Typer =>
         case d: PackageClassDenotation =>
           // Remove existing members coming from a previous compilation of this file,
           // they are obsolete.
-          d.unlinkFromFile(ctx.source.file)
+          d.unlinkFromFile(ctx.source.path)
         case _ =>
       }
       existing

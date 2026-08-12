@@ -373,7 +373,7 @@ object PatternMatcher {
       def unapplyPlan(unapp: Tree, args: List[Tree]): Plan = {
         def caseClass = unapp.symbol.owner.linkedClass
         lazy val caseAccessors = caseClass.caseAccessors
-        val unappType = unapp.tpe.widen.stripNamedTuple
+        val unappType = unapp.tpe.widen.stripNamedTuple.simplified
 
         def isSyntheticScala2Unapply(sym: Symbol) =
           sym.is(Synthetic) && sym.owner.is(Scala2x)
@@ -402,7 +402,7 @@ object PatternMatcher {
             if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(_, ref(scrutinee)))
             else caseAccessors.map(tupleSel)
           matchArgsPlan(components, args, onSuccess)
-        else if unappType.isRef(defn.BooleanClass) then
+        else if unappType.derivesFrom(defn.BooleanClass) then
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
         else
           letAbstract(unapp) { unappResult =>

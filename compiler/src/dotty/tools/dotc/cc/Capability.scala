@@ -4,7 +4,7 @@ package cc
 
 import core.*
 import Types.*, Symbols.*, Contexts.*, Decorators.*
-import util.{SimpleIdentitySet, EqHashMap}
+import util.{SimpleIdentitySet, MutableIdentitySet, EqHashMap}
 import util.common.alwaysTrue
 import scala.collection.mutable
 import CCState.*
@@ -301,7 +301,7 @@ object Capabilities:
   case class ResultCap(binder: MethodicType) extends RootCapability:
 
     private var myOrigin: RootCapability = GlobalAny
-    private var variants: SimpleIdentitySet[ResultCap] = SimpleIdentitySet.empty
+    private val variants: MutableIdentitySet[ResultCap] = new MutableIdentitySet
 
     /** Every ResultCap capability has an origin. This is
      *   - A LocalCap capability `f`, if the current capability was created as a mirror
@@ -1179,7 +1179,11 @@ object Capabilities:
   // ---------- Maps between different kinds of root capabilities -----------------
 
   /** Map each occurrence of `caps.any` to a different LocalCap instance
-   *  Exception: CapSet^ stays as it is.
+   *  Exception: Capture set references like an `X` with `type X^ = {caps.any}`
+   *  are kept as they are. The `caps.any` in the alias is freshened once when
+   *  the alias definition itself is set up, so all uses of `X` refer to that
+   *  same instance. Following the alias in `mapCapability` instead would map
+   *  `X` to a capture set, which cannot be an element of a mapped set (i26180).
    */
   class GlobalCapToLocal(origin: Origin)(using Context) extends BiTypeMap, FollowAliasesMap:
     thisMap =>
@@ -1212,6 +1216,7 @@ object Capabilities:
         // `cap` to reach capabilities, so invariant occurrences were never
         // connected to their environment.
         LocalCap(origin, atInvariantPos = variance == 0)
+      case c: TypeRef if c.derivesFromCapSet => c
       case _ => super.mapCapability(c)
 
     override def fuse(next: BiTypeMap)(using Context) = next match
@@ -1227,6 +1232,7 @@ object Capabilities:
 
       override def mapCapability(c: Capability): Capability = c match
         case c: LocalCap if globalizes(c) => GlobalAny
+        case c: TypeRef if c.derivesFromCapSet => c
         case _ => super.mapCapability(c)
 
       def inverse = thisMap

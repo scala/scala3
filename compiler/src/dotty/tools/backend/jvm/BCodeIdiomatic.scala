@@ -3,9 +3,9 @@ package backend
 package jvm
 
 import dotty.tools.backend.jvm.opt.CallGraph
-import scala.tools.asm
+import org.objectweb.asm
 import scala.annotation.tailrec
-import scala.tools.asm.tree.MethodInsnNode
+import org.objectweb.asm.tree.MethodInsnNode
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.util.NoSourcePosition
@@ -474,7 +474,7 @@ trait BCodeIdiomatic(callGraph: Option[CallGraph]) {
 
     // can-multi-thread
     final def checkCast(tk: RefBType): Unit = {
-      // TODO ICode also requires: but that's too much, right? assert(!isBoxedType(tk),     "checkcast on boxed type: " + tk)
+      // TODO ICode also requires: but that's too much, right? assert(!isBoxed(tk),     "checkcast on boxed type: " + tk)
       jmethod.visitTypeInsn(Opcodes.CHECKCAST, tk.classOrArrayType)
     }
 

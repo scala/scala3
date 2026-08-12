@@ -9,9 +9,12 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
  * PLEASE KEEP ALPHABETIZED!
  */
 object Dependencies {
-  val asm = "org.scala-lang.modules" % "scala-asm" % "9.9.0-scala-1"
+  val asmUtil = "org.ow2.asm" % "asm-util" % "9.10.1"
+  val asmCommons = "org.ow2.asm" % "asm-commons" % "9.10.1"
 
-  val coursier = "io.get-coursier" %% "coursier" % "2.1.24"
+  /** Version of Coursier to use + download for initializing the local maven repo of Scala command */
+  val coursierJarVersion = "2.1.25-M26"
+  val coursier = "io.get-coursier" %% "coursier" % coursierJarVersion
   val coursierInterface = "io.get-coursier" % "interface" % "1.0.29-M4"
 
   private val flexmarkVersion = "0.64.8"
@@ -32,11 +35,11 @@ object Dependencies {
 
   val guava = "com.google.guava" % "guava" % "33.6.0-jre"
 
-  private val jacksonVersion = "3.1.2"
+  private val jacksonVersion = "3.2.1"
   val jacksonDatabind = "tools.jackson.core" % "jackson-databind" % jacksonVersion
   val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
-  private val jlineVersion = "4.0.14"
+  private val jlineVersion = "4.3.1"
   val jlineReader = "org.jline" % "jline-reader" % jlineVersion
   val jlineTerminal = "org.jline" % "jline-terminal" % jlineVersion
   val jlineTerminalJni = "org.jline" % "jline-terminal-jni" % jlineVersion
@@ -47,9 +50,9 @@ object Dependencies {
 
   val lsp4j = "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "1.0.0"
 
-  val lz4 = "org.lz4" % "lz4-java" % "1.8.1"
+  val lz4 = "at.yawk.lz4" % "lz4-java" % "1.11.1"
 
-  private val mtagsVersion = "1.6.7"
+  private val mtagsVersion = "1.6.8"
   val mtagsInterfaces = "org.scalameta" % "mtags-interfaces" % mtagsVersion
   val mtagsShared = "org.scalameta" % s"mtags-shared_${Versions.scala2Version}" % mtagsVersion
 
@@ -58,6 +61,9 @@ object Dependencies {
   val sbtZincApiInfo = "org.scala-sbt" %% "zinc-apiinfo" % "1.12.0"
 
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.19.0"
+
+  /** Version of Scala CLI to download */
+  val scalaCliLauncherVersion = "1.16.0"
 
   val scalaJsDomVersion = "2.8.1" // needs %%% which isn't usable within a val here
   val scalaJsEnvNodeJs = "org.scala-js" %% "scalajs-env-nodejs" % "1.6.0"

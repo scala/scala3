@@ -18,6 +18,8 @@ class SJSPlatform(precomputedSourcePackages: Option[LogicalPackage] = None) exte
   /** Scala.js-specific definitions. */
   val jsDefinitions: JSDefinitions = new JSDefinitions()
 
+  override protected def supportsJava25MainClassDiscovery: Boolean = false
+
   override def init()(using Context): Unit =
     jsDefinitions.init()
 

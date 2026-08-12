@@ -17,6 +17,7 @@ import config.{SourceVersion, Feature}
 import scala.annotation.internal.sharable
 import scala.util.control.NoStackTrace
 import transform.MacroAnnotations.isMacroAnnotation
+import scala.io.Codec
 
 class CompilationUnit protected (val source: SourceFile, val info: CompilationUnitInfo | Null) {
 
@@ -27,11 +28,11 @@ class CompilationUnit protected (val source: SourceFile, val info: CompilationUn
   var tpdTree: tpd.Tree = tpd.EmptyTree
 
   /** Is this the compilation unit of a Java file */
-  def isJava: Boolean = source.file.ext.isJava
+  def isJava: Boolean = source.ext.isJava
 
   /** Is this the compilation unit of a Java file, or TASTy derived from a Java file */
   def typedAsJava =
-    val ext = source.file.ext
+    val ext = source.ext
     ext.isJava || ext.isTasty && tastyInfo.exists(_.attributes.isJava)
 
   def tastyInfo: Option[TastyInfo] =
@@ -149,7 +150,7 @@ object CompilationUnit {
   def apply(clsd: ClassDenotation, unpickled: Tree, forceTrees: Boolean)(using Context): CompilationUnit =
     val compilationUnitInfo = clsd.symbol.compilationUnitInfo.nn
     val file = compilationUnitInfo.associatedFile
-    apply(SourceFile(file, Array.emptyCharArray), unpickled, forceTrees, compilationUnitInfo)
+    apply(SourceFile(file, Codec(ctx.settings.encoding.value)), unpickled, forceTrees, compilationUnitInfo)
 
   /** Make a compilation unit, given picked bytes and unpickled tree */
   def apply(source: SourceFile, unpickled: Tree, forceTrees: Boolean, info: CompilationUnitInfo)(using Context): CompilationUnit = {
@@ -175,18 +176,22 @@ object CompilationUnit {
   }
 
   /** Create a compilation unit corresponding to `source`.
-   *  If `mustExist` is true, this will fail if `source` does not exist.
+   *  If `mustExistIfNotNull` is true, this will fail if `source` is not null but does not exist.
    */
-  def apply(source: SourceFile, mustExist: Boolean = true)(using Context): CompilationUnit = {
+  def apply(source: SourceFile, mustExistIfNotNull: Boolean = true)(using Context): CompilationUnit = {
+    val file = source.file
     val src =
-      if (!mustExist)
+      if (!mustExistIfNotNull)
         source
-      else if (source.file.isDirectory) {
-        report.error(em"expected file, received directory '${source.file.path}'")
+      else if (file == null) {
+        source
+      }
+      else if (file.isDirectory) {
+        report.error(em"expected file, received directory '${source.path}'")
         NoSource
       }
-      else if (!source.file.exists) {
-        report.error(em"source file not found: ${source.file.path}")
+      else if(!file.exists) {
+        report.error(em"source file not found: ${source.path}")
         NoSource
       }
       else source

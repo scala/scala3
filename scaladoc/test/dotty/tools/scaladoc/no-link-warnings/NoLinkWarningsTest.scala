@@ -1,6 +1,8 @@
 package dotty.tools.scaladoc
 package noLinkWarnings
 
+import org.junit.Test
+
 class NoLinkWarningsTest extends ScaladocTest("noLinkWarnings"):
 
   override def args = Scaladoc.Args(
@@ -11,7 +13,8 @@ class NoLinkWarningsTest extends ScaladocTest("noLinkWarnings"):
     noLinkWarnings = true
   )
 
-  override def runTest = afterRendering {
+  @Test
+  def runTest(): Unit = afterRendering {
     val diagnostics = summon[DocContext].compilerContext.reportedDiagnostics
     assertNoWarning(diagnostics)
     assertNoErrors(diagnostics)

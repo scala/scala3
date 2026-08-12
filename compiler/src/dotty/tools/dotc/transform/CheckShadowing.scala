@@ -221,7 +221,7 @@ object CheckShadowing:
       )
 
     private def lookForShadowedField(symDecl: Symbol)(using Context): Option[Symbol] =
-      if symDecl.isPrivate then
+      if symDecl.is(Private) then
         val symDeclType = symDecl.info
         val bClasses = symDecl.owner.info.baseClasses
         bClasses match

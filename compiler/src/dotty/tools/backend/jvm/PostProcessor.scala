@@ -7,8 +7,8 @@ import dotty.tools.io.FileWriters
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Decorators.em
 
-import scala.tools.asm.{ClassWriter, Handle}
-import scala.tools.asm.tree.{ClassNode, InvokeDynamicInsnNode}
+import org.objectweb.asm.{ClassWriter, Handle}
+import org.objectweb.asm.tree.{ClassNode, InvokeDynamicInsnNode}
 import dotty.tools.backend.jvm.opt.*
 import dotty.tools.dotc.report
 import dotty.tools.io.PlainFile.toPlainFile
@@ -16,7 +16,7 @@ import dotty.tools.io.PlainFile.toPlainFile
 import java.nio.file.{Files, Paths}
 import scala.jdk.CollectionConverters.*
 import scala.collection.mutable
-import scala.tools.asm
+import org.objectweb.asm
 import scala.util.chaining.scalaUtilChainingOps
 
 /**
@@ -91,7 +91,7 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
           else ((dupPos, clsPos), (dupName, name))
         val locationAddendum =
           if pos1.source.path == pos2.source.path then ""
-          else s" (defined in ${pos2.source.file.name})"
+          else s" (defined in ${pos2.source.name})"
         def nicify(name: String): String = name.replace('/', '.')
         if name1 == name2 then
           report.error(
@@ -184,7 +184,7 @@ class PostProcessor(bTypeLoader: BTypeLoader, bTypes: KnownBTypes)(using Context
     val groups: Array[Array[Handle]] = implMethodsArray.grouped(targetMethodGroupLimit).toArray
     val numGroups = groups.length
 
-    import scala.tools.asm.Label
+    import org.objectweb.asm.Label
     val initialLabels = Array.fill(numGroups - 1)(new Label())
     val terminalLabel = new Label
     def nextLabel(i: Int) = if (i == numGroups - 2) terminalLabel else initialLabels(i + 1)
@@ -272,7 +272,7 @@ final class PostProcessorWithOptimizations(byteCodeRepository: BCodeRepository, 
     for u <- generatedUnits
         c <- u.classes
     do
-      byteCodeRepository.add(c.classNode, Some(u.sourceFile.path))
+      byteCodeRepository.add(c.classNode, Some(u.sourcePath))
     for u <- generatedUnits
         c <- u.classes
         if !c.isArtifact // skip call graph for mirror / bean: we don't inline into them, and they are not referenced from other classes
@@ -295,5 +295,5 @@ case class GeneratedClass(
   isArtifact: Boolean,
   onFileCreated: AbstractFile => Unit)
 case class GeneratedTasty(classNode: ClassNode, tastyGen: () => Array[Byte])
-case class GeneratedCompilationUnit(sourceFile: AbstractFile, classes: List[GeneratedClass], tasty: List[GeneratedTasty])
+case class GeneratedCompilationUnit(sourcePath: String, classes: List[GeneratedClass], tasty: List[GeneratedTasty])
 

@@ -4,7 +4,7 @@ import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.util.{SourcePosition, SrcPos}
 
-import scala.tools.asm.tree.AbstractInsnNode
+import org.objectweb.asm.tree.AbstractInsnNode
 
 final class OptimizerIssue(val msg: String, val site: String, val pos: SrcPos)
 
@@ -215,13 +215,13 @@ final case class RewriteClosureIllegalAccess(pos: SourcePosition, callsiteClass:
 sealed trait ClassInlineInfoWarning extends OptimizerWarning {
   override def toString: String = this match {
     case NoInlineInfoAttribute(internalName) =>
-      s"The Scala classfile $internalName does not have a ScalaInlineInfo attribute."
+      s"The Scala classfile $internalName does not have a ${InlineInfoAttribute.attributeName} attribute."
 
     case ClassNotFoundWhenBuildingInlineInfoFromSymbol(missingClass) =>
       s"Failed to build the inline information: $missingClass"
 
     case UnknownScalaInlineInfoVersion(internalName, version) =>
-      s"Cannot read ScalaInlineInfo version $version in classfile $internalName. Use a more recent compiler."
+      s"Cannot read ${InlineInfoAttribute.attributeName} version $version in classfile $internalName. Use a more recent compiler."
   }
 
   def emitWarning(settings: OptimizerSettings): Boolean = this match {

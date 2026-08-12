@@ -31,10 +31,11 @@ object GenericSignatures {
    *
    *  @param sym0 The symbol for which to define the signature
    *  @param info The type of the symbol
+   *  @param onClassRef Invoked for every class whose name is written into the signature
    *  @return The signature if it could be generated, `null` otherwise.
    */
-  def javaSig(sym0: Symbol, info: Type)(using Context): StringBuilder | Null =
-    if mayNeedSignature(sym0, info) then atPhase(erasurePhase)(javaSig0(sym0, info))
+  def javaSig(sym0: Symbol, info: Type, onClassRef: ClassSymbol => Unit)(using Context): StringBuilder | Null =
+    if mayNeedSignature(sym0, info) then atPhase(erasurePhase)(javaSig0(sym0, info, onClassRef))
     else null
 
   private def mayNeedSignature(sym0: Symbol, info: Type)(using Context) = {
@@ -49,7 +50,7 @@ object GenericSignatures {
     else mayNeedSignature(info)
   }
 
-  private def javaSig0(sym0: Symbol, info: Type)(using Context): StringBuilder | Null = {
+  private def javaSig0(sym0: Symbol, info: Type, onClassRef: ClassSymbol => Unit)(using Context): StringBuilder | Null = {
     // This works as long as mangled names are always valid Java identifiers (see git history of this method).
     def sanitizeName(name: Name): String = name.mangledString
 
@@ -230,6 +231,8 @@ object GenericSignatures {
               // `tp` might be a singleton type referring to a getter.
               // Hence the widenNullaryMethod.
         }
+
+      onClassRef(sym)
 
       // when generating a java generic signature that includes
       // a selection of an inner class p.I, (p = `pre`, I = `cls`) must

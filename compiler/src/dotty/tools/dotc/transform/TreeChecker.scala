@@ -82,6 +82,11 @@ class TreeChecker extends Phase with SymTransformer {
 
     assert(!badDeferredAndPrivate, i"$sym is both Deferred and Private")
 
+    for fc <- antagonisticFlags do
+      assert(!fc.violatedBy(sym),
+        i"""$sym carries antagonistic flags ${fc.conflict.flagsString} after ${ctx.phase.prev}: ${fc.explain}
+           |flags = ${symd.flagsString}""")
+
     checkCompanion(symd)
 
     // Signatures are used to disambiguate overloads and need to stay stable
@@ -156,6 +161,37 @@ class TreeChecker extends Phase with SymTransformer {
 }
 
 object TreeChecker {
+
+  /** Restricts a rule to term- or type-symbols; needed because their flag
+   *  variants share carrier bits (bit 10 is `Lazy` for terms, `Trait` for types).
+   */
+  private enum Applies:
+    case Term, Type, Any
+
+  /** Flags that must never appear together on a symbol of the given kind. */
+  private class FlagConflict(
+    val conflict: FlagSet,
+    val explain: String,
+    val applies: Applies = Applies.Any):
+
+    def violatedBy(sym: Symbol)(using Context): Boolean =
+      (applies match
+        case Applies.Term => sym.isTerm
+        case Applies.Type => sym.isType
+        case Applies.Any  => true)
+      && sym.isAllOf(conflict)
+
+  /** Flag combinations that are nonsensical at every phase. See #1329. Most
+   *  apparent contradictions are in fact produced somewhere (capture checking
+   *  reuses `Mutable` on methods, value classes are `abstract final`, ...), so
+   *  validate any new entry against the full corpus under `-Ycheck:all`.
+   */
+  private val antagonisticFlags: List[FlagConflict] = List(
+    new FlagConflict(VarianceFlags, "a type parameter cannot be both covariant and contravariant", Applies.Type),
+    new FlagConflict(Lazy | Label, "a symbol cannot be both a lazy value and a label", Applies.Term),
+    new FlagConflict(Module | Trait, "a module cannot be a trait", Applies.Type),
+  )
+
   /** - Check that TypeParamRefs and MethodParams refer to an enclosing type.
    *  - Check that all type variables are instantiated.
    */

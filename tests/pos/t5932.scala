@@ -8,7 +8,7 @@ object Test {
   println(x1 == B) // no warning
   println(B == x1) // no warning
 
-  val x2 = (B: A with Product)
+  val x2 = (B: A & Product)
 
   println(x2 == B) // no warning
   println(B == x2) // spurious warning: "always returns false"

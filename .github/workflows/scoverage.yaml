@@ -11,6 +11,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 # This workflow compiles a subset of the Scala 3 projects with
 # scoverage enabled to test robustness of scoverage.
 #
@@ -47,13 +50,13 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -69,13 +72,13 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -91,13 +94,13 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -113,13 +116,13 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -135,13 +138,13 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -157,13 +160,13 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -179,13 +182,13 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
       - name: Compile with coverage and Ycheck
         run: |
           ./project/scripts/sbt '
@@ -202,13 +205,13 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
       - name: Compile with coverage
         run: |
           ./project/scripts/sbt '
@@ -224,13 +227,13 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
       - name: Compile with coverage
         run: |
           ./project/scripts/sbt '
@@ -247,13 +250,13 @@ jobs:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.body, '[test_coverage]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
       - name: Run coverage compilation tests
         run: ./project/scripts/sbt 'scala3-bootstrapped/testCompilation --enable-coverage-phase'
 

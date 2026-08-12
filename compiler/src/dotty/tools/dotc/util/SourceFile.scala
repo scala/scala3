@@ -49,7 +49,8 @@ object WrappedSourceFile:
                 val sourceStartOffset = sourceFile.nextLine(m.start)
                 val name = m.group(1).nn
                 val src = ctx.getSource(name)
-                if src.file.exists then
+                val file = src.file
+                if file != null && file.exists then
                   HasHeader(sourceStartOffset, src)
                 else
                   report.warning(em"original source file not found: $name")
@@ -59,19 +60,27 @@ object WrappedSourceFile:
         result
       case result => result
 
-class SourceFile private[util] (val file: AbstractFile, computeContent: => Array[Char]) extends interfaces.SourceFile {
+class SourceFile (val file: AbstractFile | Null, codec: Codec) extends interfaces.SourceFile {
   private var myContent: Array[Char] | Null = null
 
   /** The contents of the original source file. Note that this can be empty, for example when
    * the source is read from Tasty. */
-  def content(): Array[Char] = {
-    if (myContent == null) myContent = computeContent
-    myContent.nn
-  }
+  def content(): Array[Char] =
+    if file == null then Array.emptyCharArray
+    else
+      initialize(myContent, myContent = _,
+        try new String(file.toByteArray, codec.charSet).toCharArray
+        catch case _: FileSystemException => Array.empty[Char]
+      )
 
-  override def name: String = file.name
-  override def path: String = file.path
-  override def jfile: Optional[JFile] = file.jfile
+  override def name: String =
+    if file eq null then "" else file.name
+  def ext: FileExtension =
+    if file eq null then FileExtension.Empty else file.ext
+  override def path: String =
+    if file eq null then "" else file.path
+  override def jfile: Optional[JFile] =
+    if file eq null then Optional.empty() else file.jfile
 
   override def equals(that: Any): Boolean =
     (this `eq` that.asInstanceOf[AnyRef]) || {
@@ -81,7 +90,7 @@ class SourceFile private[util] (val file: AbstractFile, computeContent: => Array
       }
     }
 
-  override def hashCode: Int = file.hashCode
+  override def hashCode: Int = if file eq null then 0 else file.hashCode
 
   def apply(idx: Int): Char = content().apply(idx)
 
@@ -188,18 +197,17 @@ class SourceFile private[util] (val file: AbstractFile, computeContent: => Array
     pad.result()
   }
 
-  override def toString: String = file.toString
+  override def toString: String = 
+    if file eq null then "<no file>" else file.toString
 }
 object SourceFile {
-  implicit def eqSource: CanEqual[SourceFile, SourceFile] = CanEqual.derived
-
   implicit def fromContext(using Context): SourceFile = ctx.source
 
   /** A source file with an underlying virtual file. The path is taken as a file system path
    *  with the local separator converted to "/". The last element of the path will be the simple name of the file.
    */
   def virtual(name: String, content: String) =
-    new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), content.toCharArray)
+    new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), Codec.UTF8)
 
   /** A helper method to create a virtual source file for given URI.
    */
@@ -212,9 +220,9 @@ object SourceFile {
    */
   def relativePath(source: SourceFile, reference: String): String = {
     val file = source.file
-    val jpath = file.jpath
+    val jpath = if file == null then null else file.jpath
     if jpath eq null then
-      file.path // repl and other custom tests use abstract files with no path
+      "" // repl and other custom tests use abstract files with no path
     else
       val sourcePath = jpath.toAbsolutePath.normalize
       val refPath = java.nio.file.Paths.get(reference).toAbsolutePath.normalize
@@ -241,19 +249,9 @@ object SourceFile {
       else
         jpath.toString
   }
-
-  def apply(file: AbstractFile, codec: Codec): SourceFile =
-    val chars =
-      try new String(file.toByteArray, codec.charSet).toCharArray
-      catch case _: FileSystemException => Array.empty[Char]
-
-    new SourceFile(file, chars)
-
-  def apply(file: AbstractFile, contents: => Array[Char]): SourceFile =
-    new SourceFile(file, contents)
 }
 
-@sharable object NoSource extends SourceFile(NoAbstractFile, Array[Char]()) {
+@sharable object NoSource extends SourceFile(null, Codec.UTF8) {
   override def exists: Boolean = false
   override def atSpan(span: Span): SourcePosition = NoSourcePosition
 }

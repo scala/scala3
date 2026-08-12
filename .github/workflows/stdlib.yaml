@@ -20,13 +20,13 @@ jobs:
     name: Non-Bootstrapped Library Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
       - run: ./project/scripts/sbt scala-library-nonbootstrapped/test
 
   test-scala-library-bootstrapped:
@@ -34,13 +34,13 @@ jobs:
     name: Bootstrapped Library Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
       - run: ./project/scripts/sbt scala-library-bootstrapped/test
 
   scala-library-docs:
@@ -48,15 +48,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
       - name: Generate Documentation of the Standard Library
         run: ./project/scripts/sbt scala-library-bootstrapped/doc

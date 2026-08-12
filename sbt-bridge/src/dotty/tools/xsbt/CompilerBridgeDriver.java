@@ -62,7 +62,7 @@ public class CompilerBridgeDriver extends Driver {
       HashMap<AbstractFile, VirtualFile> lookup) {
     return lookup.computeIfAbsent(sourceFile.file(), path -> {
       reportMissingFile(reporter, sourceFile);
-      var pathBasedFile = sourceFile.file().jfile();
+      var pathBasedFile = sourceFile.jfile();
       if (pathBasedFile.isPresent())
         return new FallbackPathBasedFile(sourceFile, pathBasedFile.get().toPath());
       else

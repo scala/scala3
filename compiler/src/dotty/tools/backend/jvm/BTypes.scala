@@ -3,14 +3,14 @@ package backend
 package jvm
 
 import java.util.concurrent.ConcurrentHashMap
-import scala.tools.asm
+import org.objectweb.asm
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.ClassBType.runtimeNullInternalName
-import dotty.tools.backend.jvm.opt.OptimizerWarning
+import dotty.tools.backend.jvm.opt.{InlineInfoAttribute, OptimizerWarning}
 import dotty.tools.dotc.core.Definitions
 
 import scala.collection.SortedMap
-import scala.tools.asm.Opcodes
+import org.objectweb.asm.Opcodes
 
 
 /**
@@ -680,7 +680,7 @@ final case class ClassBType private(internalName: String) extends RefBType {
 
     assert(!ClassBType.isInternalPhantomType(internalName), s"Cannot create ClassBType for phantom type $this")
     assert(
-      if (info.superClass.isEmpty) { isJLO(this) || ClassBType.hasNoSuper(internalName) }
+      if (info.superClass.isEmpty) ClassBType.hasNoSuper(internalName)
       else if (isInterface) isJLO(info.superClass.get)
       else !isJLO(this) && ifInit(info.superClass.get)(!_.isInterface),
       s"Invalid superClass in $this: ${info.superClass}"
@@ -746,6 +746,9 @@ final case class ClassBType private(internalName: String) extends RefBType {
         flags = adjustStatic(info.flags)
       )
   }
+
+  def inlineInfoAttribute: InlineInfoAttribute =
+    InlineInfoAttribute(info.inlineInfo)
 
   def isSubtypeOf(other: ClassBType): Boolean = {
     if (this == other) return true
@@ -851,9 +854,9 @@ object ClassBType {
     }
   }
 
-  // Primitive classes have no super class. A ClassBType for those is only created when
-  // they are actually being compiled (e.g., when compiling scala/Boolean.scala).
   private val hasNoSuper = Set(
+    // Primitive classes have no super class. A ClassBType for those is only created when
+    // they are actually being compiled (e.g., when compiling scala/Boolean.scala).
     "scala/Unit",
     "scala/Boolean",
     "scala/Char",
@@ -862,7 +865,10 @@ object ClassBType {
     "scala/Int",
     "scala/Float",
     "scala/Long",
-    "scala/Double"
+    "scala/Double",
+    // java.lang.Object and scala.AnyKind have no super either
+    javaLangObjectInternalName,
+    "scala/AnyKind"
   )
 
   private val isInternalPhantomType = Set(

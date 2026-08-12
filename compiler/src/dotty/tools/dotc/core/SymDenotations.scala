@@ -898,7 +898,7 @@ object SymDenotations {
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
       if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes
-      then symbol == defn.NullClass || symbol == defn.AnyClass || symbol == defn.MatchableClass
+      then symbol == defn.NullClass || symbol == defn.AnyClass || symbol == defn.AnyValClass || symbol == defn.MatchableClass
       else isNullableClassAfterErasure
 
     /** Is this symbol a class of which `null` is a value after erasure?
@@ -2627,8 +2627,8 @@ object SymDenotations {
         else
           val assocFiles = multi
             .filterWithPredicate(_.symbol.maybeOwner.isPackageObject)
-            .aggregate(d => Set(d.symbol.associatedFile.nn), _ `union` _)
-          if assocFiles.size == 1 then
+            .aggregate(d => if d.symbol.associatedFile == null then Set.empty else Set(d.symbol.associatedFile.nn), _ `union` _)
+          if assocFiles.size <= 1 then
             multi // they are all overloaded variants from the same file
           else
             // pick the variant(s) from the youngest class file
@@ -2693,14 +2693,16 @@ object SymDenotations {
       true
     }
 
-    /** Unlink all package members defined in `file` in a previous run. */
-    def unlinkFromFile(file: AbstractFile)(using Context): Unit = {
+    /** Unlink all package members defined in `path` in a previous run. */
+    def unlinkFromFile(path: String)(using Context): Unit = {
       val scope = unforcedDecls.openForMutations
       for (sym <- scope.toList.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
-        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.compUnitInfo != null && sym.asClass.compUnitInfo.nn.associatedFile.path == file.path)
-          scope.unlink(sym, sym.lastKnownDenotation.name)
+        if sym.defRunId != ctx.runId && sym.isClass && sym.asClass.compUnitInfo != null then
+          val file = sym.asClass.compUnitInfo.nn.associatedFile
+          if file != null && file.path == path then
+            scope.unlink(sym, sym.lastKnownDenotation.name)
     }
   }
 

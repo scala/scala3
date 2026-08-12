@@ -15,7 +15,7 @@ import StdNames.nme
 import dotty.tools.tasty.{TastyBuffer, TastyHeaderUnpickler}
 import dotty.tools.dotc.core.tasty.TastyUnpickler
 
-import scala.tools.asm.tree.*
+import org.objectweb.asm.tree.*
 import tpd.*
 import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.ast.Positioned
@@ -44,7 +44,6 @@ class CodeGen(val primitives: ScalaPrimitives,
     def genClassDef(cd: TypeDef): Unit =
       try
         val sym = cd.symbol
-        val sourceFile = ctx.compilationUnit.source.file
         val mainClassNode = genClass(cd)
         val mirrorClassNode =
           if !sym.isTopLevelModuleClass then null
@@ -101,7 +100,7 @@ class CodeGen(val primitives: ScalaPrimitives,
 
     genClassDefs(ctx.compilationUnit.tpdTree)
     generatedClassHandler.process(
-      GeneratedCompilationUnit(ctx.compilationUnit.source.file, generatedClasses.toList, generatedTasty.toList)
+      GeneratedCompilationUnit(ctx.compilationUnit.source.path, generatedClasses.toList, generatedTasty.toList)
     )
   }
 

@@ -51,7 +51,7 @@ object Pickler {
    * The callbacks should only be called once.
    */
   class AsyncTastyHolder private (
-      val earlyOut: AbstractFile, incCallback: IncrementalCallback | Null)(using @constructorOnly ex: ExecutionContext):
+      val earlyOut: Option[AbstractFile], incCallback: IncrementalCallback | Null)(using @constructorOnly ex: ExecutionContext):
     import scala.concurrent.Future as StdFuture
     import scala.concurrent.Await
     import scala.concurrent.duration.Duration
@@ -104,7 +104,7 @@ object Pickler {
           // we should close the file system so it can be read in the same JVM process.
           // Note: we close even if we have been cancelled.
           earlyOut match
-            case jar: JarArchive => jar.close()
+            case Some(jar: JarArchive) => jar.close()
             case _ =>
         catch
           case ex: Exception =>
@@ -498,10 +498,13 @@ class Pickler extends Phase {
     val writeTask: Option[() => Unit] =
       ctx.run.nn.asyncTasty.map: async =>
         fastDoAsyncTasty = true
-        () =>
-          given ReadOnlyContext = if useExecutor then ReadOnlyContext.buffered else ReadOnlyContext.eager
-          val writer = Pickler.EarlyFileWriter(async.earlyOut)
-          writeSigFilesAsync(serialized.result(), writer, async)
+        () => async.earlyOut match {
+          case Some(out) =>
+            given ReadOnlyContext = if useExecutor then ReadOnlyContext.buffered else ReadOnlyContext.eager
+            val writer = Pickler.EarlyFileWriter(out)
+            writeSigFilesAsync(serialized.result(), writer, async)
+          case None =>
+        }
 
     def runPhase(writeCB: (doWrite: () => Unit) => Unit) =
       super.runOn(units).tap(_ => writeTask.foreach(writeCB))
@@ -542,13 +545,12 @@ class Pickler extends Phase {
     val resolveCheck = ctx.settings.YtestPicklerCheck.value
     val unpicklers =
       for ((cls, (unit, bytes)) <- pickledBytes) yield {
-        val unpickler = new DottyUnpickler(new VirtualFile(unit.source.file.path, bytes), isBestEffortTasty = false)
+        val unpickler = new DottyUnpickler(new VirtualFile(unit.source.path, bytes), isBestEffortTasty = false)
         unpickler.enter(roots = Set.empty)
         val optCheck =
-          if resolveCheck then
+          if resolveCheck && unit.source.file != null then
             val resolved = unit.source.file.resolveSibling(s"${cls.name.mangledString}.tastycheck")
-            if resolved == null then None
-            else Some(resolved)
+            Option(resolved)
           else None
         cls -> (unit, unpickler, optCheck)
       }

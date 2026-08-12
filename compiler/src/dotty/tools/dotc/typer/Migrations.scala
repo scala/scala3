@@ -63,7 +63,7 @@ trait Migrations:
       case _ =>
         val recovered = typed(qual)(using ctx.fresh.setExploreTyperState())
         if !defn.isFunctionType(recovered.tpe.widen) then
-          val msg = OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree)
+          lazy val msg = OnlyFunctionsCanBeFollowedByUnderscore(recovered.tpe.widen, tree)
           report.errorOrMigrationWarning(msg, tree.srcPos, mv.Scala2to3)
           if mv.Scala2to3.needsPatch then
             // Under -rewrite, patch `x _` to `(() => x)`
@@ -142,17 +142,18 @@ trait Migrations:
         if hasParentheses then
           Message.rewriteNotice("This code", mversion.patchFrom)
         else ""
-      val message =
-        em"""Implicit parameters should be provided with a `using` clause.$rewriteMsg
-            |To disable the warning, please use the following option:
-            |  "-Wconf:msg=Implicit parameters should be provided with a `using` clause:s"
-            |"""
-      val codeAction = CodeAction(
-        title = "Add `using` clause",
-        description = None,
-        patches = List(ActionPatch(pt.args.head.startPos.sourcePos, "using "))
-      )
-      val withActions = message.withActions(codeAction)
+      def withActions =
+        val message =
+          em"""Implicit parameters should be provided with a `using` clause.$rewriteMsg
+              |To disable the warning, please use the following option:
+              |  "-Wconf:msg=Implicit parameters should be provided with a `using` clause:s"
+              |"""
+        val codeAction = CodeAction(
+          title = "Add `using` clause",
+          description = None,
+          patches = List(ActionPatch(pt.args.head.startPos.sourcePos, "using "))
+        )
+        message.withActions(codeAction)
       report.errorOrMigrationWarning(
         withActions,
         pt.args.head.srcPos,
