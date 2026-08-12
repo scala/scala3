@@ -12,7 +12,7 @@ import Scopes.*
 import Denotations.*
 import ProtoTypes.*
 import Contexts.*
-import Symbols.{toDenot, *}
+import Symbols.*
 import Types.*
 import SymDenotations.*
 import Annotations.*
@@ -48,7 +48,7 @@ import staging.StagingLevel
 import reporting.*
 import Nullables.*
 import NullOpsDecorator.*
-import cc.{CheckCaptures, Setup, derivesFromCapSet, isRetainsLike}
+import cc.{Setup, CheckCaptures, isRetainsLike, derivesFromCapSet}
 import config.MigrationVersion
 import dotty.tools.dotc.core.Mode.Interactive
 import transform.CheckUnused.withOriginalName
@@ -3186,7 +3186,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
     if sym.isInlineMethod then rhsCtx.addMode(Mode.InlineableBody)
     if sym.is(ExtensionMethod) then rhsCtx.addMode(Mode.InExtensionMethod)
-
     val rhs1 = excludeDeferredGiven(ddef.rhs, sym): rhs =>
       PrepareInlineable.dropInlineIfError(sym,
         if sym.isScala2Macro then typedScala2MacroBody(rhs)(using rhsCtx)

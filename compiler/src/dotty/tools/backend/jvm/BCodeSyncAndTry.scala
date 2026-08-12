@@ -32,7 +32,9 @@ trait BCodeSyncAndTry extends BCodeBodyBuilder {
       val hasResult = expectedType != UNIT
       val monitorResult: Symbol | Null = if (hasResult) locals.makeLocal(tpeTK(args.head), "monitorResult", defn.ObjectType, tree.span) else null
 
-      /* ------ (1) pushing and entering the monitor, also keeping a reference to it in a local var. ------ */
+      /* ------ (0) the monitor itself has been pushed to stack already, precondition of this method. ------ */
+
+      /* ------ (1) entering the monitor, also keeping a reference to it in a local var. ------ */
       bc.dup(bTypes.ObjectRef)
       locals.store(monitor)
       emit(asm.Opcodes.MONITORENTER)
