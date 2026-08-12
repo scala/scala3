@@ -56,17 +56,13 @@ object TypeOps:
     if tp.isProvisional || pre.isProvisional then
       new AsSeenFromMap(pre, cls).apply(tp)
     else
-      val cache = ctx.asSeenFromCache
-      val key = (tp, pre, cls)
-      val cached = cache.lookup(key)
-      if cached != null then
-        Stats.record("asSeenFrom cache hit")
-        cached
-      else
-        Stats.record("asSeenFrom cache miss")
-        val res = new AsSeenFromMap(pre, cls).apply(tp)
-        cache.update(key, res)
-        res
+      var hit = true
+      val res = ctx.asSeenFromCache.getOrElseUpdate(AsfKey(tp, pre, cls), {
+        hit = false
+        new AsSeenFromMap(pre, cls).apply(tp)
+      })
+      Stats.record(if hit then "asSeenFrom cache hit" else "asSeenFrom cache miss")
+      res
   }
 
   /** The TypeMap handling the asSeenFrom */

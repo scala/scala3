@@ -14,7 +14,7 @@ import Uniques.*
 import ast.Trees.*
 import Flags.ParamAccessor
 import ast.untpd
-import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, WrappedSourceFile, GenericHashMap}
+import util.{NoSource, SimpleIdentityMap, SourceFile, HashSet, WrappedSourceFile, HashMap}
 import typer.{Implicits, ImportInfo, SearchHistory, SearchRoot, TypeAssigner, Typer, Nullables}
 import inlines.Inliner
 import Nullables.*
@@ -125,6 +125,18 @@ object Contexts {
    *      of all class fields of type context; allow them only in allowlisted
    *      classes (which should be short-lived).
    */
+
+  /** Identity-based key for the per-context `asSeenFrom` cache. */
+  private[dotc] final class AsfKey(val tp: Type, val pre: Type, val cls: Symbol):
+    override def hashCode: Int =
+      ((System.identityHashCode(tp) * 31
+        + System.identityHashCode(pre)) * 31
+        + System.identityHashCode(cls))
+    override def equals(other: Any): Boolean = other match
+      case that: AsfKey =>
+        (tp eq that.tp) && (pre eq that.pre) && (cls eq that.cls)
+      case _ => false
+
   abstract class Context(val base: ContextBase) { thiscontext =>
 
     protected given Context = this
@@ -275,24 +287,11 @@ object Contexts {
           None
     )
 
-    /** A hash map whose composite keys compare each component by identity. */
-    private[dotc] class AsSeenFromCache
-        extends GenericHashMap[(Type, Type, Symbol), Type](8, 2) { // same as EqHashSet
-      protected def hash(key: (Type, Type, Symbol)): Int = {
-        (System.identityHashCode(key._1) * 31
-          + System.identityHashCode(key._2)) * 31
-          + System.identityHashCode(key._3)
-      }
-
-      protected def isEqual(x: (Type, Type, Symbol), y: (Type, Type, Symbol)): Boolean =
-        (x._1 eq y._1) && (x._2 eq y._2) && (x._3 eq y._3)
-    }
-
     /** Cache for `TypeOps.asSeenFrom` results computed in this context. */
-    private var asSeenFromCacheMap: AsSeenFromCache | Null = null
-    private[dotc] def asSeenFromCache: AsSeenFromCache =
+    private var asSeenFromCacheMap: HashMap[AsfKey, Type] | Null = null
+    private[dotc] def asSeenFromCache: HashMap[AsfKey, Type] =
       if asSeenFromCacheMap == null then
-        asSeenFromCacheMap = new AsSeenFromCache
+        asSeenFromCacheMap = HashMap()
       asSeenFromCacheMap.nn
 
     private var related: SimpleIdentityMap[Phase | SourceFile, Context] | Null = null
