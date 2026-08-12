@@ -5,6 +5,7 @@ package jvm
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
 import org.objectweb.asm
+import org.objectweb.asm.tree.MethodNode
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.TreeTypeMap
 import dotty.tools.dotc.ast.Trees.SyntheticUnit
@@ -25,7 +26,6 @@ import dotty.tools.dotc.transform.Mixin
 import tpd.*
 
 import scala.compiletime.uninitialized
-import scala.tools.asm.tree.MethodNode
 
 /*
  *
