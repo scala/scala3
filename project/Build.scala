@@ -983,6 +983,7 @@ object Build {
       Compile / unmanagedSourceDirectories   += baseDirectory.value / "src-non-bootstrapped",
       Compile / unmanagedResourceDirectories := Seq(baseDirectory.value / "resources"),
       Compile / compile / scalacOptions ++= Seq(
+        "-opt", "-opt-inline:**,!java.**",
         // Needed so that the library sources are visible when `dotty.tools.dotc.core.Definitions#init` is called
         "-sourcepath", (Compile / sourceDirectories).value.map(_.getCanonicalPath).distinct.mkString(File.pathSeparator),
       ),
