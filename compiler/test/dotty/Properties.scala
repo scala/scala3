@@ -1,6 +1,7 @@
 package dotty
 
 import java.nio.file.*
+import java.util.regex.{Matcher, Pattern}
 
 /** Runtime properties from defines or environmnent */
 object Properties {
@@ -87,10 +88,11 @@ object Properties {
 
   /** all the ASM jars */
   def asmAll: Seq[String] =
+    val sep = java.io.File.separator
     Seq("", "-tree", "-util", "-commons", "-analysis")
       .map(suffix =>
         asm.replaceAll("asm", "asm" + suffix)
-          .replaceFirst("/asm" + suffix + "/", "/asm/"))
+          .replaceFirst(Pattern.quote(sep + "asm" + suffix + sep), Matcher.quoteReplacement(sep + "asm" + sep)))
 
   /** jline-terminal jar */
   def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal").nn
