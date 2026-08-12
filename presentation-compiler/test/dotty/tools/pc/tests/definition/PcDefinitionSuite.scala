@@ -121,7 +121,7 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
       """|
          |object Main {
          |  val <<increment>>: Int => Int = _ + 2
-         |  incre@@ment(1)
+         |  incre@@/*scala/Function1.class*/ment(1)
          |}
          |""".stripMargin
     )
@@ -140,7 +140,7 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
     check(
       """|
          |object Main {
-         |  /*scala/package.List. package.scala*/@@List(1)
+         |  /*scala/collection/IterableFactory.class*//*scala/package.List. package.scala*/@@List(1)
          |}
          |""".stripMargin
     )
@@ -652,7 +652,7 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
     check(
       """|package a
          |object Repro:
-         |    export scala.collection.immutable.V/*scala/collection/immutable/Vector. Vector.scala*/@@ector
+         |    export scala.collection.immutable.V/*scala/collection/immutable/Vector.class*//*scala/collection/immutable/Vector. Vector.scala*/@@ector
          |""".stripMargin
     )
 

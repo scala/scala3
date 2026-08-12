@@ -166,7 +166,7 @@ class PcDefinitionProvider(
                 entry.underlyingSource match
                   case Some(jar: ZipArchive) =>
                     val res = List(new Location(
-                      s"jar:${jar.jpath.toUri}!/${classFile}",
+                      s"jar:${jar.jpath.toUri}!/${classFile.toString.replace("\\", "/")}",
                       new Range(new Position(0, 0), new Position(0, 0))
                     ))
                     res
