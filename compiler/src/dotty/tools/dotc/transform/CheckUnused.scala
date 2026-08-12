@@ -689,7 +689,7 @@ object CheckUnused:
         || m.hasAnnotation(defn.UnusedAnnot) // param of unused method
         || sym.info.isSingleton
         || m.isConstructor && m.owner.thisType.baseClasses.contains(defn.AnnotationClass)
-        || sym.isErased // erased param is unused by design
+        || sym.isErased // erased param may be unused by design
       def checkExplicit(): Unit =
         // A class param is unused if its param accessor is unused.
         // (The class param is not assigned to a field until constructors.)
