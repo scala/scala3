@@ -20,6 +20,7 @@ class ToolkitTests extends ReplTest:
         run(input)
         assertEquals(
           input,
-          ":toolkit expects a single version, e.g. `:toolkit default`",
+          """:toolkit expects a single version or <flavor>:<version>.
+            |Example: :toolkit default""".stripMargin,
           storedOutput().trim
         )
