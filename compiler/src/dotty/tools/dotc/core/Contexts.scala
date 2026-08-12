@@ -233,7 +233,7 @@ object Contexts {
             else if (isNonEmptyScopeContext) scope.implicitDecls
             else Nil
           val outerImplicits =
-            if (infoIfImport ne null && infoIfImport.unimported.exists)
+            if (infoIfImport != null && infoIfImport.unimported.exists)
               outer.implicits.exclude(infoIfImport.unimported)
             else
               outer.implicits
