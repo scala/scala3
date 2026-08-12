@@ -44,6 +44,4 @@ class SJSPlatform(precomputedSourcePackages: Option[LogicalPackage] = None) exte
     // otherwise the compiler will error with, e.g., "cannot test if scala.Double is a subtype of java.lang.Integer"
     (defn.ScalaNumericValueClasses()(c) || defn.ScalaNumericBoxedClasses()(c)) &&
       (defn.ScalaNumericValueClasses()(potentialSuperClass) || defn.ScalaNumericBoxedClasses()(potentialSuperClass))
-
-  // supportsSynchronizedMethods remains `true` since `synchronized` is a no-op in JS anyway
 }

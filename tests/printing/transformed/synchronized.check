@@ -1,0 +1,91 @@
+[[syntax trees at end of MegaPhase{dropOuterAccessors, dropParentRefinements, checkNoSuperThis, flatten, transformWildcards, moveStatic, expandPrivate, restoreScopes, selectStatic, repeatableAnnotations}]] // tests/printing/transformed/synchronized.scala
+package <empty> {
+  final class X extends Object {
+    def <init>(s: String): Unit =
+      {
+        this.s = s
+        super()
+        ()
+      }
+    override def hashCode(): Int = X.hashCode$extension(this.s())
+    override def equals(x$0: Object): Boolean =
+      X.equals$extension(this.s(), x$0)
+    private val s: String
+    def s(): String = this.s
+    def extension1(): String = X.extension1$extension(this.s())
+  }
+  final module class X extends Object {
+    def <init>(): Unit =
+      {
+        super()
+        ()
+      }
+    private def writeReplace(): Object =
+      new scala.runtime.ModuleSerializationProxy(classOf[X])
+    final def hashCode$extension($this: String): Int =
+      java.util.Objects.hashCode($this)
+    final def equals$extension($this: String, x$0: Object): Boolean =
+      matchResult1[Boolean]:
+        {
+          case val x1: Object = x$0
+          if x1.isInstanceOf[X] then
+            {
+              case val x$0: String =
+                if x1 eq null then null else x1.asInstanceOf[X].s()
+              return[matchResult1] $this == x$0
+            }
+           else ()
+          return[matchResult1] false
+        }
+    final <synchronized> def extension1$extension($this: String): String = ""
+  }
+  final module class synchronized$package extends Object {
+    def <init>(): Unit =
+      {
+        super()
+        ()
+      }
+    private def writeReplace(): Object =
+      new scala.runtime.ModuleSerializationProxy(classOf[synchronized$package])
+    extension (s: String) <synchronized> def extension2: String = ""
+    <synchronized> def topLevel(): String = ""
+  }
+  trait T() extends Object {
+    <synchronized> def inTrait(): String = ""
+  }
+  class A extends Object {
+    def <init>(): Unit =
+      {
+        super()
+        ()
+      }
+    <synchronized> def basic(): String = ""
+    <synchronized> def explicit(): String = ""
+    <synchronized> def explicitWithBraces(): String = ""
+    def hasOtherCode(): String =
+      {
+        this.synchronized[scala.runtime.BoxedUnit](
+          {
+            scala.runtime.BoxedUnit.UNIT
+          }
+        )
+        ""
+      }
+    @static <synchronized> def staticOne(): String = ""
+  }
+  final module class A extends Object {
+    def <init>(): Unit =
+      {
+        super()
+        ()
+      }
+    private def writeReplace(): Object =
+      new scala.runtime.ModuleSerializationProxy(classOf[A])
+    <synchronized> def inModule(): String = ""
+  }
+  final lazy module val A: A = new A()
+  final lazy module val X: X = new X()
+  final lazy module val synchronized$package: synchronized$package =
+    new synchronized$package()
+}
+

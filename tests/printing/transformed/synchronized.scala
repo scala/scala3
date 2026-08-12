@@ -14,11 +14,11 @@ class A {
     }
   }
 
-  inline def notThisBecauseInline: String = synchronized {
+  inline def isInline: String = synchronized {
     ""
   }
 
-  def notThisBecauseHasOtherCode: String =
+  def hasOtherCode: String =
     synchronized {
       ()
     }
@@ -30,20 +30,24 @@ object A {
   def staticOne: String = synchronized {
     ""
   }
+
+  def inModule: String = synchronized {
+    ""
+  }
 }
 
 trait T {
-  def notThisBecauseInATrait: String = synchronized {
+  def inTrait: String = synchronized {
     ""
   }
 }
 
 class X(val s: String) extends AnyVal {
-  def notThisBecauseExtension1: String = synchronized { "" }
+  def extension1: String = synchronized { "" }
 }
 
 extension (s: String) {
-  def notThisBecauseExtension2: String = synchronized { "" }
+  def extension2: String = synchronized { "" }
 }
 
-def notThisBecauseTopLevel: String = synchronized { "" }
+def topLevel: String = synchronized { "" }

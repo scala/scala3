@@ -121,6 +121,4 @@ class JavaPlatform(precomputedSourcePackages: Option[LogicalPackage] = None) ext
   def typeMightBeSubtypeAtRuntime(c: Symbol, potentialSuperClass: Symbol)(using Context): Boolean =
     // On the JVM, we add an implementation of Serializable to everything
     potentialSuperClass == defn.JavaSerializableClass
-
-  def supportsSynchronizedMethods: Boolean = true
 }

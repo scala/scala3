@@ -63,13 +63,7 @@ abstract class Platform {
    * Whether instances of the class represented by the class symbol `c` **might** be a subtype of
    * the class represented by the class symbol `potentialSuperClass` at runtime on this platform.
    * This does not imply that they always will be,
-   * only that the compiler cannot fold `x.isInstanceOf[potentialSuperClass]` to false for `x: c`
+   * only that the compiler cannot fold `x.isInstanceOf[potentialSuperClass]` to false for for `x: c`
    */
   def typeMightBeSubtypeAtRuntime(c: Symbol, potentialSuperClass: Symbol)(using Context): Boolean
-
-  /**
-   * Whether this platform supports methods whose body is contained within a `this.synchronized:` call specially,
-   * enabling, e.g., tail recursion in such methods.
-   */
-  def supportsSynchronizedMethods: Boolean
 }
