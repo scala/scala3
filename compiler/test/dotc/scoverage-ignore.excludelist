@@ -25,3 +25,4 @@ tailrec.scala
 traitParams.scala
 optimizer-warnings.scala
 i10174b.scala
+i17132.min.scala

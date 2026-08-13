@@ -148,8 +148,7 @@ class CompilationTests {
 
   @Test def negAll: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNeg")
-
-    aggregateTests(
+    withCoverage(aggregateTests(
       compileFilesInDir("tests/neg", defaultOptions, FileFilter.exclude(TestSources.negScala2LibraryTastyExcludelisted)),
       compileFilesInDir("tests/neg-deep-subtype", allowDeepSubtypes),
       compileFilesInDir("tests/neg-custom-args/captures", defaultOptions.and("-language:experimental.captureChecking", "-language:experimental.separationChecking", "-source", "3.8")),
@@ -166,7 +165,7 @@ class CompilationTests {
       compileFile("tests/neg-custom-args/missing-java-outer-dependency/TestImportSuggestion.scala",
           defaultOptions.withClasspath("tests/neg-custom-args/missing-java-outer-dependency/cp")),
       compileFile("tests/neg-custom-args/empty-compiled-with-dir.scala", defaultOptions.and("tests"))
-    ).checkExpectedErrors()
+    )).checkExpectedErrors()
   }
 
   @Test def fuzzyAll: Unit = {
