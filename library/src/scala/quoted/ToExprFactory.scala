@@ -14,7 +14,18 @@ import scala.reflect.ClassTag
 trait ToExprFactory[T]:
   def apply()(using Type[T]): ToExpr[T]
 
-object ToExprFactory:
+private[quoted] trait LowPriorityToExprFactory:
+  given tupleConsToExprFactory: [H: ToExprFactory, T <: Tuple: ToExprFactory] => ToExprFactory[H *: T]:
+    def apply()(using Type[H *: T]): ToExpr[H *: T] = new ToExpr[H *: T]:
+      def apply(tup: H *: T)(using Quotes): Expr[H *: T] = summon[Type[H *: T]] match
+        case '[h *: t] =>
+          given Type[H] = Type.of[h].asInstanceOf[Type[H]]
+          given Type[T] = Type.of[t].asInstanceOf[Type[T]]
+          val head = Expr(tup.head)
+          val tail = Expr(tup.tail)
+          '{ $head *: $tail }
+
+object ToExprFactory extends LowPriorityToExprFactory:
   inline def derived[T: Mirror.Of as m]: ToExprFactory[T] = inline m match
     case given Mirror.ProductOf[T] =>
       derivedProduct[T](compiletime.summonAll[Tuple.Map[m.MirroredElemTypes, ToExprFactory]].toList.asInstanceOf[List[ToExprFactory[Any]]])
@@ -567,14 +578,3 @@ object ToExprFactory:
           given Type[T21] = Type.of[t21].asInstanceOf[Type[T21]]
           given Type[T22] = Type.of[t22].asInstanceOf[Type[T22]]
           '{ (${Expr(tup._1)}, ${Expr(tup._2)}, ${Expr(tup._3)}, ${Expr(tup._4)}, ${Expr(tup._5)}, ${Expr(tup._6)}, ${Expr(tup._7)}, ${Expr(tup._8)}, ${Expr(tup._9)}, ${Expr(tup._10)}, ${Expr(tup._11)}, ${Expr(tup._12)}, ${Expr(tup._13)}, ${Expr(tup._14)}, ${Expr(tup._15)}, ${Expr(tup._16)}, ${Expr(tup._17)}, ${Expr(tup._18)}, ${Expr(tup._19)}, ${Expr(tup._20)}, ${Expr(tup._21)}, ${Expr(tup._22)}) }
-
-
-  given tupleConsToExprFactory: [H: ToExprFactory, T <: Tuple: ToExprFactory] => ToExprFactory[H *: T]:
-    def apply()(using Type[H *: T]): ToExpr[H *: T] = new ToExpr[H *: T]:
-      def apply(tup: H *: T)(using Quotes): Expr[H *: T] = summon[Type[H *: T]] match
-        case '[h *: t] =>
-          given Type[H] = Type.of[h].asInstanceOf[Type[H]]
-          given Type[T] = Type.of[t].asInstanceOf[Type[T]]
-          val head = Expr(tup.head)
-          val tail = Expr(tup.tail)
-          '{ $head *: $tail }
