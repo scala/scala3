@@ -1,4 +1,4 @@
-scala>:t 123
+scala>:ty 123
 Int
 scala>:type 123
 Int
