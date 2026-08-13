@@ -402,6 +402,7 @@ class ReplDriver(settings: Array[String],
         else state
 
       case SyntaxErrors(_, errs, _) =>
+        state.context.run.suppressions.initSuspendedMessages(oldRun = null)
         displayErrors(errs, state)
 
       case CommandThenCode(cmd, code) =>
