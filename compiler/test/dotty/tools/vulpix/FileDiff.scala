@@ -6,7 +6,6 @@ import scala.util.Properties.{javaSpecVersion, versionNumberString}
 import java.io.File
 import java.lang.System.{lineSeparator => EOL}
 import java.nio.file.{Files, Paths}
-import java.nio.charset.StandardCharsets
 
 
 object FileDiff {
@@ -47,9 +46,8 @@ object FileDiff {
       else if matched then
         None
       else
-        Some(s"""|Output from '$sourceTitle' did not match check file. Actual output:
-                 |${outputLines.mkString(EOL)}
-                 |""".stripMargin + "\n")
+        // Do not use a """ literal here with .stripMargin since `outputLines` may begin with |
+        Some(s"Output from '$sourceTitle' did not match check file. Actual output:\n${outputLines.mkString(EOL)}\n")
     else
       assert(tolerateMissing, "Missing check file: " + path.toString)
       None
