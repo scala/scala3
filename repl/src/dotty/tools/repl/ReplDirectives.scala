@@ -61,7 +61,10 @@ private[repl] object ReplDirectives:
 
   def toolkitCoordinates(coords: String): Option[List[String]] =
     val flavorAndVersion = coords.split(":", -1).toList match
-      case version :: Nil if version.nonEmpty => Some((ScalaToolkit.alias, version))
+      // e.g. //> using toolkit typelevel would otherwise be treated as version `typelevel`
+      // and fail during resolution with a cryptic error, so we reject it early
+      case version :: Nil if version.nonEmpty && !toolkitsByFlavor.keySet.contains(version) =>
+        Some((ScalaToolkit.alias, version))
       case flavor :: version :: Nil if flavor.nonEmpty && version.nonEmpty => Some((flavor, version))
       case _ => None
     flavorAndVersion.map: (flavor, rawVersion) =>
