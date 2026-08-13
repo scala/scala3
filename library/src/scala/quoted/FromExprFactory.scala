@@ -83,12 +83,17 @@ object FromExprFactory:
     def apply()(using Type[T]): FromExpr[T] = new FromExpr[T]:
       def unapply(x: Expr[T])(using quotes: Quotes): Option[T] =
         import quotes.reflect.*
-        val caseSyms = TypeRepr.of[T].typeSymbol.children
-        val resolvedElems: List[FromExpr[Any]] = elems.zip(caseSyms).map:
-          case (factory, caseSym) =>
-            // Parameterless enum cases (`case Red, Green`) are terms, not types; use termRef for those.
-            val ref = if caseSym.isTerm then caseSym.termRef else caseSym.typeRef
-            ref.asType match
+        // Re-derive `MirroredElemTypes` at this splice site instead of trusting the case symbols'
+        // bare `typeRef`: for a generic sum (e.g. `Result[+A]`), the symbol alone loses the type
+        // arguments (`Ok` instead of `Ok[Int]`).
+        def elemTypesOf(elemTypes: TypeRepr): List[TypeRepr] = elemTypes.asType match
+          case '[EmptyTuple] => Nil
+          case '[h *: t] => TypeRepr.of[h] :: elemTypesOf(TypeRepr.of[t])
+        val elemTypeReprs = Expr.summon[Mirror.SumOf[T]].get match
+          case '{ $_ : Mirror.SumOf[T] { type MirroredElemTypes = elemTypes } } => elemTypesOf(TypeRepr.of[elemTypes])
+        val resolvedElems: List[FromExpr[Any]] = elems.zip(elemTypeReprs).map:
+          case (factory, elemType) =>
+            elemType.asType match
               case '[c] => factory.asInstanceOf[FromExprFactory[c]].apply().asInstanceOf[FromExpr[Any]]
         resolvedElems.iterator.map(_.unapply(x)).collectFirst { case Some(v) => v.asInstanceOf[T] }
 
