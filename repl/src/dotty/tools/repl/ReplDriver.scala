@@ -50,6 +50,7 @@ import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
 import org.objectweb.asm.ClassReader
 import scala.util.Using
+import scala.util.control.NonFatal
 
 /** The state of the REPL contains necessary bindings instead of having to have
  *  mutation
@@ -748,7 +749,7 @@ class ReplDriver(settings: Array[String],
 
             out.println(s"Added '$path' to classpath.")
         } catch {
-          case e: Throwable =>
+          case NonFatal(e) =>
             out.println(s"Failed to load '$path' to classpath: ${e.getMessage}")
         }
         state

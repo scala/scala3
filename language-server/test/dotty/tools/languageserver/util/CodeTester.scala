@@ -279,7 +279,7 @@ class CodeTester(projects: List[Project]) {
     try {
       action.execute()(using testServer, testServer.client, positions)
     } catch {
-      case ex: AssertionError =>
+      case ex: Exception =>
         val sourcesStr =
           sources.zip(files).map {
             case ((project, source), file) =>

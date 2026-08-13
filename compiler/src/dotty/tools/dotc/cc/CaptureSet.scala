@@ -312,11 +312,8 @@ sealed abstract class CaptureSet extends Showable:
         capt.println(i"WIDEN ro $this with ${this.mutability} <:< $that with ${that.mutability} to $this1")
         this1.subCaptures(that, vs)
       else
-        try
+        printOnAssertionError(i"error while subcap $this <:< $that"):
           that.tryInclude(elems, this) && addDependent(that)
-        catch case ex: AssertionError =>
-          println(i"error while subcap $this <:< $that")
-          throw ex
 
   /** Two capture sets are considered =:= equal if they mutually subcapture each other
    *  in a frozen state.
@@ -895,10 +892,8 @@ object CaptureSet:
         // id == 108 then assert(false, i"trying to add $elem to $this")
         assert(elem.isWellformed, elem)
         assert(!this.isInstanceOf[HiddenSet] || summon[VarState].isSeparating, summon[VarState])
-        try includeElem(elem)
-        catch case ex: AssertionError =>
-          println(i"error for incl $elem in $this, ${summon[VarState].toString}")
-          throw ex
+        printOnAssertionError(i"error for incl $elem in $this, ${summon[VarState].toString}"):
+          includeElem(elem)
         newElemAddedHandlers.foreach(_(elem))
         val normElem = if isMaybeSet then elem else elem.stripMaybe
         // assert(id != 5 || elems.size != 3, this)
@@ -1187,12 +1182,9 @@ object CaptureSet:
       else
         // Propagate backwards to source. The element will be added then by another
         // forward propagation from source that hits the first branch `if origin eq source then`.
-        try
+        printOnAssertionError(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}"):
           reporting.trace(i"prop backwards $elem from $this # $id to $source # ${source.id} via $summarize"):
             source.tryInclude(bimap.inverse.mapCapability(elem), this)
-        catch case ex: AssertionError =>
-          println(i"fail while prop backwards tryInclude $elem of ${elem.getClass} from $this # $id / ${this.summarize} to $source # ${source.id}")
-          throw ex
 
     /** For a BiTypeMap, supertypes of the mapped type also constrain
      *  the source via the inverse type mapping and vice versa. That is, if
