@@ -37,14 +37,7 @@ class PrintingTest {
       if (!(new File(flagsFilePath)).exists) Nil
       else Using(Source.fromFile(flagsFilePath, StandardCharsets.UTF_8.name))(_.getLines().toList).get
 
-    try {
-      Main.process((path.toString :: options(phase, flags)).toArray, reporter, null)
-    } catch {
-      case e: Throwable =>
-        println(s"Compile $path exception:")
-        e.printStackTrace()
-        throw e
-    }
+    Main.process((path.toString :: options(phase, flags)).toArray, reporter, null)
 
     val actualLines = byteStream.toString(StandardCharsets.UTF_8.name).linesIterator
     FileDiff.checkAndDumpOrUpdate(path.toString, actualLines.toIndexedSeq, checkFilePath, tolerateMissingCheckFile = false)

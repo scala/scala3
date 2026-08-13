@@ -2,6 +2,7 @@ package dotty.tools
 package repl
 
 import scala.language.unsafeNulls
+import scala.util.control.NonFatal
 
 import java.io.{ByteArrayOutputStream, PipedInputStream, PipedOutputStream}
 import java.nio.charset.StandardCharsets
@@ -125,7 +126,7 @@ class ReplInteractiveTests:
         waitsForMore
     finally
       executor.shutdownNow()
-      try jlt.close() catch case _: Throwable => ()
+      try jlt.close() catch case NonFatal(_) => ()
 
   @Test def `command then incomplete code is not submitted as one line`(): Unit =
     val incomplete = ":settings -deprecation\nif true then"
