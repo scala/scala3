@@ -1,6 +1,6 @@
 //> using options -Wunused:all
-import ext.Reader
-import ext.NonEmptyList
+import ext.Reader // warn
+import ext.NonEmptyList // warn
 
 @main def run = locally {
   macros.demo
