@@ -560,236 +560,232 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     end flattenSpreads
 
     override def transform(tree: Tree)(using Context): Tree =
-      try tree match {
-        // TODO move CaseDef case lower: keep most probable trees first for performance
-        case CaseDef(pat, _, _) =>
-          val gadtCtx =
-           pat.removeAttachment(typer.Typer.InferredGadtConstraints) match
-             case Some(gadt) => ctx.fresh.setGadtState(GadtState(gadt))
-             case None =>
-               ctx
-          super.transform(tree)(using gadtCtx)
-        case tree: Ident =>
-          if tree.isType then
-            checkNotPackage(tree)
-          else
+      printOnAssertionError(i"error while transforming $tree"): 
+        tree match {
+          // TODO move CaseDef case lower: keep most probable trees first for performance
+          case CaseDef(pat, _, _) =>
+            val gadtCtx =
+             pat.removeAttachment(typer.Typer.InferredGadtConstraints) match
+               case Some(gadt) => ctx.fresh.setGadtState(GadtState(gadt))
+               case None =>
+                 ctx
+            super.transform(tree)(using gadtCtx)
+          case tree: Ident =>
+            if tree.isType then
+              checkNotPackage(tree)
+            else
+              registerNeedsInlining(tree)
+              val tree1 = checkUsableAsValue(tree)
+              tree1.tpe match {
+                case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
+                case _ => tree1
+              }
+          case tree @ Select(qual, name) =>
             registerNeedsInlining(tree)
-            val tree1 = checkUsableAsValue(tree)
-            tree1.tpe match {
-              case tpe: ThisType => This(tpe.cls).withSpan(tree.span)
-              case _ => tree1
-            }
-        case tree @ Select(qual, name) =>
-          registerNeedsInlining(tree)
-          if name.isTypeName then
-            Checking.checkRealizable(qual.tpe, qual.srcPos)
-            withMode(Mode.Type)(super.transform(checkNotPackage(tree)))
-          else
-            checkUsableAsValue(tree) match
-              case tree1: Select => transformSelect(tree1, Nil)
-              case tree1 => tree1
-        case app: Apply =>
-          val methType = app.fun.tpe.widen.asInstanceOf[MethodType]
-          if (methType.hasErasedParams)
-            for (arg, isErased) <- app.args.lazyZip(methType.paramErasureStatuses) do
-              if isErased then
-                if methType.isResultDependent then
-                  Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
-          def app1 =
-            // reverse order of transforming args and fun. This way, we get a chance to see other
-            // well-formedness errors before reporting errors in possible inferred type args of fun.
-            val args1 = transform(app.args)
-            cpy.Apply(app)(transform(app.fun), args1)
-          methPart(app) match
-            case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
-              // need to check instantiability here, because the type of the New itself
-              // might be a type constructor.
-              def checkClassType(tpe: Type, stablePrefixReq: Boolean) =
-                ctx.typer.checkClassType(tpe, tree.srcPos,
-                    traitReq = false, stablePrefixReq = stablePrefixReq,
-                    refinementOK = Feature.enabled(Feature.modularity))
-              checkClassType(tree.tpe, stablePrefixReq = true)
-              if !nu.tpe.isLambdaSub then
-                // Check the constructor type as well; it could be an illegal singleton type
-                // which would not be reflected as `tree.tpe`
-                checkClassType(nu.tpe, stablePrefixReq = false)
-              Checking.checkInstantiable(tree.tpe, nu.tpe, nu.srcPos)
-              withNoCheckNews(nu :: Nil)(app1)
-            case _ =>
-              app1
-        case UnApply(fun, implicits, patterns) =>
-          // Reverse transform order for the same reason as in `app1` above.
-          val patterns1 = transform(patterns)
-          val tree1 = cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
-          // The pickling of UnApply trees uses the tpe of the tree,
-          // so we need to clean retains from it here
-          tree1.withType(transformAnnotsIn(CleanupRetains()(tree1.tpe)))
-        case tree: TypeApply =>
-          if tree.symbol == defn.QuotedTypeModule_of then
-            ctx.compilationUnit.needsStaging = true
-          registerNeedsInlining(tree)
-          val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
-          for arg <- args do
-            checkInferredWellFormed(arg)
-          if (fn.symbol != defn.ChildAnnot.primaryConstructor)
-            // Make an exception for ChildAnnot, which should really have AnyKind bounds
-            Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
-          val args1 =
-            if Feature.ccEnabled && fn.symbol.isInlineMethod
-            then transform(args).mapConserve(markInferred)
-            else transform(args)
-          val fn1 = fn match
-            case sel: Select =>
-              transformSelect(sel, args1) // skip the checkUsableAsValue of normal transform
-            case _ =>
-              transform(fn)
-          cpy.TypeApply(tree1)(fn1, args1)
-        case tree @ Inlined(call, bindings, expansion) if !tree.inlinedFromOuterScope =>
-          val pos = call.sourcePos
-          CrossVersionChecks.checkRef(call.symbol, pos)
-          withMode(Mode.NoInline)(transform(call))
-          val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
-          cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
-        case templ: Template =>
-          Checking.checkPolyFunctionExtension(templ)
-          withNoCheckNews(templ.parents.flatMap(newPart)) {
-            forwardParamAccessors(templ)
-            synthMbr.addSyntheticMembers(
-              beanProps.addBeanMethods(
-                superAcc.wrapTemplate(templ)(
-                  super.transform(_).asInstanceOf[Template]))
-            )
-          }
-        case tree: ValDef =>
-          annotateExperimentalCompanion(tree.symbol)
-          registerIfHasMacroAnnotations(tree)
-          Checking.checkPolyFunctionType(tree.tpt)
-          val tree1 = cpy.ValDef(tree)(tpt = explicifyTpt(tree))
-          if tree1.removeAttachment(desugar.UntupledParam).isDefined then
-            checkStableSelection(tree.rhs)
-          processValOrDefDef(super.transform(tree1))
-        case tree: DefDef =>
-          registerIfHasMacroAnnotations(tree)
-          Checking.checkPolyFunctionType(tree.tpt)
-          annotateContextResults(tree)
-          val tree1 = cpy.DefDef(tree)(tpt = explicifyTpt(tree))
-          processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
-        case tree: TypeDef =>
-          registerIfHasMacroAnnotations(tree)
-          val sym = tree.symbol
-          if (sym.isClass)
-            VarianceChecker.check(tree)
-            annotateExperimentalCompanion(sym)
-            checkMacroAnnotation(sym)
-            if sym.isOneOf(GivenOrImplicit) then
-              sym.keepAnnotationsCarrying(thisPhase, Set(defn.CompanionClassMetaAnnot), orNoneOf = defn.MetaAnnots)
-            tree.rhs match
-              case impl: Template =>
-                for parent <- impl.parents do
-                  Checking.checkTraitInheritance(parent.tpe.classSymbol, sym.asClass, parent.srcPos)
-                  // Constructor parameters are in scope when typing a parent.
-                  // While they can safely appear in a parent tree, to preserve
-                  // soundness we need to ensure they don't appear in a parent
-                  // type (#16270). We can strip any refinement of a parent type since
-                  // these refinements are split off from the parent type constructor
-                  // application `parent` in Namer and don't show up as parent types
-                  // of the class.
-                  val illegalRefs = parent.tpe.dealias.stripRefinement.namedPartsWith:
-                      p => p.symbol.is(ParamAccessor) && (p.symbol.owner eq sym)
-                  if illegalRefs.nonEmpty then
-                    report.error(
-                      em"The type of a class parent cannot refer to constructor parameters, but ${parent.tpe} refers to ${illegalRefs.map(_.name.show).mkString(",")}", parent.srcPos)
-          else
-            if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
-              Checking.checkGoodBounds(tree.symbol)
-            // Delete all context bound companions of this TypeDef
-            if sym.owner.isClass && sym.hasAnnotation(defn.WitnessNamesAnnot) then
-              val decls = sym.owner.info.decls
-              for cbCompanion <- decls.lookupAll(sym.name.toTermName) do
-                if cbCompanion.isContextBoundCompanion then
-                  decls.openForMutations.unlink(cbCompanion)
-            (tree.rhs, sym.info) match
-              case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
-                VarianceChecker.checkLambda(rhs, bounds)
-                if sym.isOpaqueAlias then
-                  VarianceChecker.checkLambda(rhs, TypeBounds.upper(sym.opaqueAlias))
+            if name.isTypeName then
+              Checking.checkRealizable(qual.tpe, qual.srcPos)
+              withMode(Mode.Type)(super.transform(checkNotPackage(tree)))
+            else
+              checkUsableAsValue(tree) match
+                case tree1: Select => transformSelect(tree1, Nil)
+                case tree1 => tree1
+          case app: Apply =>
+            val methType = app.fun.tpe.widen.asInstanceOf[MethodType]
+            if (methType.hasErasedParams)
+              for (arg, isErased) <- app.args.lazyZip(methType.paramErasureStatuses) do
+                if isErased then
+                  if methType.isResultDependent then
+                    Checking.checkRealizable(arg.tpe, arg.srcPos, "erased argument")
+            def app1 =
+              // reverse order of transforming args and fun. This way, we get a chance to see other
+              // well-formedness errors before reporting errors in possible inferred type args of fun.
+              val args1 = transform(app.args)
+              cpy.Apply(app)(transform(app.fun), args1)
+            methPart(app) match
+              case Select(nu: New, nme.CONSTRUCTOR) if isCheckable(nu) =>
+                // need to check instantiability here, because the type of the New itself
+                // might be a type constructor.
+                def checkClassType(tpe: Type, stablePrefixReq: Boolean) =
+                  ctx.typer.checkClassType(tpe, tree.srcPos,
+                      traitReq = false, stablePrefixReq = stablePrefixReq,
+                      refinementOK = Feature.enabled(Feature.modularity))
+                checkClassType(tree.tpe, stablePrefixReq = true)
+                if !nu.tpe.isLambdaSub then
+                  // Check the constructor type as well; it could be an illegal singleton type
+                  // which would not be reflected as `tree.tpe`
+                  checkClassType(nu.tpe, stablePrefixReq = false)
+                Checking.checkInstantiable(tree.tpe, nu.tpe, nu.srcPos)
+                withNoCheckNews(nu :: Nil)(app1)
               case _ =>
-          processMemberDef(super.transform(scala2LibPatch(tree)))
-        case tree: Bind =>
-          val sym = tree.symbol
-          if sym.isType && !sym.name.is(WildcardParamName) then
-            Checking.checkGoodBounds(sym)
-          // Cleanup retains from the info of the Bind symbol
-          sym.copySymDenotation(info = transformAnnotsIn(CleanupRetains()(sym.info))).installAfter(thisPhase)
-          super.transform(tree)
-        case tree: New if isCheckable(tree) =>
-          Checking.checkInstantiable(tree.tpe, tree.tpe, tree.srcPos)
-          super.transform(tree)
-        case tree: Closure if !tree.tpt.isEmpty =>
-          Checking.checkRealizable(tree.tpt.tpe, tree.srcPos, "SAM type")
-          super.transform(tree)
-        case tree @ Annotated(annotated, annot) =>
-          cpy.Annotated(tree)(transform(annotated), transformAnnotTree(annot))
-        case tree: AppliedTypeTree =>
-          if (tree.tpt.symbol == defn.andType)
-            Checking.checkNonCyclicInherited(tree.tpe, tree.args.tpes, EmptyScope, tree.srcPos)
-              // Ideally, this should be done by Typer, but we run into cyclic references
-              // when trying to typecheck self types which are intersections.
-          else if (tree.tpt.symbol == defn.orType)
-            () // nothing to do
-          else
-            Checking.checkAppliedType(tree)
-          super.transform(tree)
-        case SingletonTypeTree(ref) =>
-          if !ctx.mode.is(Mode.InCaptureSet) then
-            Checking.checkRealizable(ref.tpe, ref.srcPos)
-          super.transform(tree)
-        case tree: TypeBoundsTree =>
-          val TypeBoundsTree(lo, hi, alias) = tree
-          if !alias.isEmpty then
-            val bounds = TypeBounds(lo.tpe, hi.tpe)
-            if !bounds.contains(alias.tpe) then
-              report.error(em"type ${alias.tpe} outside bounds $bounds", tree.srcPos)
-          super.transform(tree)
-        case tree: TypeTree =>
-          val tpe = if tree.isInferred then CleanupRetains()(tree.tpe) else tree.tpe
-          tree.withType(transformAnnotsIn(tpe))
-        case Typed(Ident(nme.WILDCARD), _) =>
-          withMode(Mode.Pattern)(super.transform(tree))
-            // The added mode signals that bounds in a pattern need not
-            // conform to selector bounds. I.e. assume
-            //     type Tree[T >: Null <: Type]
-            // One is still allowed to write
-            //     case x: Tree[?]
-            // (which translates to)
-            //     case x: (_: Tree[?])
-        case m @ MatchTypeTree(bounds, selector, cases) =>
-          // Analog to the case above for match types
-          def transformIgnoringBoundsCheck(x: CaseDef): CaseDef =
-            withMode(Mode.Pattern)(super.transform(x)).asInstanceOf[CaseDef]
-          cpy.MatchTypeTree(tree)(
-            super.transform(bounds),
-            super.transform(selector),
-            cases.mapConserve(transformIgnoringBoundsCheck)
-          )
-        case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
-          superAcc.withInvalidCurrentClass(super.transform(tree))
-        case tree: RefinedTypeTree =>
-          Checking.checkPolyFunctionType(tree)
-          super.transform(tree)
-        case tree: SeqLiteral if tree.hasAttachment(HasSpreads) =>
-          flattenSpreads(tree)
-        case _: Quote | _: QuotePattern =>
-          ctx.compilationUnit.needsStaging = true
-          super.transform(tree)
-        case tree =>
-          super.transform(tree)
-      }
-      catch {
-        case ex : AssertionError =>
-          println(i"error while transforming $tree")
-          throw ex
-      }
+                app1
+          case UnApply(fun, implicits, patterns) =>
+            // Reverse transform order for the same reason as in `app1` above.
+            val patterns1 = transform(patterns)
+            val tree1 = cpy.UnApply(tree)(transform(fun), transform(implicits), patterns1)
+            // The pickling of UnApply trees uses the tpe of the tree,
+            // so we need to clean retains from it here
+            tree1.withType(transformAnnotsIn(CleanupRetains()(tree1.tpe)))
+          case tree: TypeApply =>
+            if tree.symbol == defn.QuotedTypeModule_of then
+              ctx.compilationUnit.needsStaging = true
+            registerNeedsInlining(tree)
+            val tree1 @ TypeApply(fn, args) = normalizeTypeArgs(tree)
+            for arg <- args do
+              checkInferredWellFormed(arg)
+            if (fn.symbol != defn.ChildAnnot.primaryConstructor)
+              // Make an exception for ChildAnnot, which should really have AnyKind bounds
+              Checking.checkBounds(args, fn.tpe.widen.asInstanceOf[PolyType])
+            val args1 =
+              if Feature.ccEnabled && fn.symbol.isInlineMethod
+              then transform(args).mapConserve(markInferred)
+              else transform(args)
+            val fn1 = fn match
+              case sel: Select =>
+                transformSelect(sel, args1) // skip the checkUsableAsValue of normal transform
+              case _ =>
+                transform(fn)
+            cpy.TypeApply(tree1)(fn1, args1)
+          case tree @ Inlined(call, bindings, expansion) if !tree.inlinedFromOuterScope =>
+            val pos = call.sourcePos
+            CrossVersionChecks.checkRef(call.symbol, pos)
+            withMode(Mode.NoInline)(transform(call))
+            val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
+            cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
+          case templ: Template =>
+            Checking.checkPolyFunctionExtension(templ)
+            withNoCheckNews(templ.parents.flatMap(newPart)) {
+              forwardParamAccessors(templ)
+              synthMbr.addSyntheticMembers(
+                beanProps.addBeanMethods(
+                  superAcc.wrapTemplate(templ)(
+                    super.transform(_).asInstanceOf[Template]))
+              )
+            }
+          case tree: ValDef =>
+            annotateExperimentalCompanion(tree.symbol)
+            registerIfHasMacroAnnotations(tree)
+            Checking.checkPolyFunctionType(tree.tpt)
+            val tree1 = cpy.ValDef(tree)(tpt = explicifyTpt(tree))
+            if tree1.removeAttachment(desugar.UntupledParam).isDefined then
+              checkStableSelection(tree.rhs)
+            processValOrDefDef(super.transform(tree1))
+          case tree: DefDef =>
+            registerIfHasMacroAnnotations(tree)
+            Checking.checkPolyFunctionType(tree.tpt)
+            annotateContextResults(tree)
+            val tree1 = cpy.DefDef(tree)(tpt = explicifyTpt(tree))
+            processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
+          case tree: TypeDef =>
+            registerIfHasMacroAnnotations(tree)
+            val sym = tree.symbol
+            if (sym.isClass)
+              VarianceChecker.check(tree)
+              annotateExperimentalCompanion(sym)
+              checkMacroAnnotation(sym)
+              if sym.isOneOf(GivenOrImplicit) then
+                sym.keepAnnotationsCarrying(thisPhase, Set(defn.CompanionClassMetaAnnot), orNoneOf = defn.MetaAnnots)
+              tree.rhs match
+                case impl: Template =>
+                  for parent <- impl.parents do
+                    Checking.checkTraitInheritance(parent.tpe.classSymbol, sym.asClass, parent.srcPos)
+                    // Constructor parameters are in scope when typing a parent.
+                    // While they can safely appear in a parent tree, to preserve
+                    // soundness we need to ensure they don't appear in a parent
+                    // type (#16270). We can strip any refinement of a parent type since
+                    // these refinements are split off from the parent type constructor
+                    // application `parent` in Namer and don't show up as parent types
+                    // of the class.
+                    val illegalRefs = parent.tpe.dealias.stripRefinement.namedPartsWith:
+                        p => p.symbol.is(ParamAccessor) && (p.symbol.owner eq sym)
+                    if illegalRefs.nonEmpty then
+                      report.error(
+                        em"The type of a class parent cannot refer to constructor parameters, but ${parent.tpe} refers to ${illegalRefs.map(_.name.show).mkString(",")}", parent.srcPos)
+            else
+              if !sym.is(Param) && !sym.owner.isOneOf(AbstractOrTrait) then
+                Checking.checkGoodBounds(tree.symbol)
+              // Delete all context bound companions of this TypeDef
+              if sym.owner.isClass && sym.hasAnnotation(defn.WitnessNamesAnnot) then
+                val decls = sym.owner.info.decls
+                for cbCompanion <- decls.lookupAll(sym.name.toTermName) do
+                  if cbCompanion.isContextBoundCompanion then
+                    decls.openForMutations.unlink(cbCompanion)
+              (tree.rhs, sym.info) match
+                case (rhs: LambdaTypeTree, bounds: TypeBounds) =>
+                  VarianceChecker.checkLambda(rhs, bounds)
+                  if sym.isOpaqueAlias then
+                    VarianceChecker.checkLambda(rhs, TypeBounds.upper(sym.opaqueAlias))
+                case _ =>
+            processMemberDef(super.transform(scala2LibPatch(tree)))
+          case tree: Bind =>
+            val sym = tree.symbol
+            if sym.isType && !sym.name.is(WildcardParamName) then
+              Checking.checkGoodBounds(sym)
+            // Cleanup retains from the info of the Bind symbol
+            sym.copySymDenotation(info = transformAnnotsIn(CleanupRetains()(sym.info))).installAfter(thisPhase)
+            super.transform(tree)
+          case tree: New if isCheckable(tree) =>
+            Checking.checkInstantiable(tree.tpe, tree.tpe, tree.srcPos)
+            super.transform(tree)
+          case tree: Closure if !tree.tpt.isEmpty =>
+            Checking.checkRealizable(tree.tpt.tpe, tree.srcPos, "SAM type")
+            super.transform(tree)
+          case tree @ Annotated(annotated, annot) =>
+            cpy.Annotated(tree)(transform(annotated), transformAnnotTree(annot))
+          case tree: AppliedTypeTree =>
+            if (tree.tpt.symbol == defn.andType)
+              Checking.checkNonCyclicInherited(tree.tpe, tree.args.tpes, EmptyScope, tree.srcPos)
+                // Ideally, this should be done by Typer, but we run into cyclic references
+                // when trying to typecheck self types which are intersections.
+            else if (tree.tpt.symbol == defn.orType)
+              () // nothing to do
+            else
+              Checking.checkAppliedType(tree)
+            super.transform(tree)
+          case SingletonTypeTree(ref) =>
+            if !ctx.mode.is(Mode.InCaptureSet) then
+              Checking.checkRealizable(ref.tpe, ref.srcPos)
+            super.transform(tree)
+          case tree: TypeBoundsTree =>
+            val TypeBoundsTree(lo, hi, alias) = tree
+            if !alias.isEmpty then
+              val bounds = TypeBounds(lo.tpe, hi.tpe)
+              if !bounds.contains(alias.tpe) then
+                report.error(em"type ${alias.tpe} outside bounds $bounds", tree.srcPos)
+            super.transform(tree)
+          case tree: TypeTree =>
+            val tpe = if tree.isInferred then CleanupRetains()(tree.tpe) else tree.tpe
+            tree.withType(transformAnnotsIn(tpe))
+          case Typed(Ident(nme.WILDCARD), _) =>
+            withMode(Mode.Pattern)(super.transform(tree))
+              // The added mode signals that bounds in a pattern need not
+              // conform to selector bounds. I.e. assume
+              //     type Tree[T >: Null <: Type]
+              // One is still allowed to write
+              //     case x: Tree[?]
+              // (which translates to)
+              //     case x: (_: Tree[?])
+          case m @ MatchTypeTree(bounds, selector, cases) =>
+            // Analog to the case above for match types
+            def transformIgnoringBoundsCheck(x: CaseDef): CaseDef =
+              withMode(Mode.Pattern)(super.transform(x)).asInstanceOf[CaseDef]
+            cpy.MatchTypeTree(tree)(
+              super.transform(bounds),
+              super.transform(selector),
+              cases.mapConserve(transformIgnoringBoundsCheck)
+            )
+          case Block(_, Closure(_, _, tpt)) if ExpandSAMs.needsWrapperClass(tpt.tpe) =>
+            superAcc.withInvalidCurrentClass(super.transform(tree))
+          case tree: RefinedTypeTree =>
+            Checking.checkPolyFunctionType(tree)
+            super.transform(tree)
+          case tree: SeqLiteral if tree.hasAttachment(HasSpreads) =>
+            flattenSpreads(tree)
+          case _: Quote | _: QuotePattern =>
+            ctx.compilationUnit.needsStaging = true
+            super.transform(tree)
+          case tree =>
+            super.transform(tree)
+        }
 
     override def transformStats[T](trees: List[Tree], exprOwner: Symbol, wrapResult: List[Tree] => Context ?=> T)(using Context): T =
       Checking.checkAndAdaptExperimentalImports(trees)

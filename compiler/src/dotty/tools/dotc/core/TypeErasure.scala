@@ -1050,7 +1050,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
    *
    *  Note: Need to ensure correspondence with erasure!
    */
-  private def sigName(tp: Type)(using Context): TypeName = try
+  private def sigName(tp: Type)(using Context): TypeName = printOnAssertionError(s"no sig for $tp"):
     tp match {
       case tp: TypeRef =>
         if (!tp.denot.exists)
@@ -1112,9 +1112,4 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         assert(erasedTp ne tp, tp)
         sigName(erasedTp)
     }
-  catch {
-    case ex: AssertionError =>
-      println(s"no sig for $tp because of ${ex.printStackTrace()}")
-      throw ex
-  }
 }

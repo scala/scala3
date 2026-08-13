@@ -17,7 +17,7 @@ import dotty.tools.dotc.core.Denotations.StaleSymbol
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.typer.Applications.*
 import dotty.tools.dotc.util.{NoSourcePosition, SrcPos}
-import dotty.tools.io
+import dotty.tools.{io, printOnAssertionError}
 import dotty.tools.io.AbstractFile
 import xsbti.UseScope
 import xsbti.api.DependencyContext
@@ -121,7 +121,7 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends Abst
    *  can be retrieved using DependencyRecorder.
    */
   override def traverse(tree: Tree)(using Context): Unit =
-    try
+    printOnAssertionError(i"assertion failed while traversing $tree"):
       recordTree(tree)
 
       recordInlineCallArgs(tree)
@@ -141,10 +141,6 @@ private class ExtractDependenciesCollector(rec: DependencyRecorder) extends Abst
           t.body.foreach(traverse)
         case _ =>
           traverseChildren(tree)
-    catch
-      case ex: AssertionError =>
-        println(i"asserted failed while traversing $tree")
-        throw ex
 end ExtractDependenciesCollector
 
 /** Extract the dependency information of a compilation unit.

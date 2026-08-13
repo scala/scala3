@@ -165,7 +165,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
    *  - Parent spans contain child spans
    *  - If item is a non-empty tree, it has a position
    */
-  def checkPos(nonOverlapping: Boolean)(using Context): Unit = try {
+  def checkPos(nonOverlapping: Boolean)(using Context): Unit = printOnAssertionError(i"error while checking $this") {
     import untpd.*
     val last = LastPosRef()
     def check(p: Any): Unit = p match {
@@ -230,11 +230,6 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
           n += 1
         }
     }
-  }
-  catch {
-    case ex: AssertionError =>
-      println(i"error while checking $this")
-      throw ex
   }
 }
 
