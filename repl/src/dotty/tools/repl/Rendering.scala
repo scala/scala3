@@ -8,6 +8,7 @@ import printing.SyntaxHighlighting
 import reporting.Diagnostic
 import StackTraceOps.*
 
+import scala.annotation.nowarn
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
 import org.objectweb.asm.*
@@ -319,6 +320,8 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
   end renderVal
 
   /** Force module initialization in the absence of members. */
+  // the module statements are executing in can fail to initialize if there's a problem
+  @nowarn("msg=Catching ExceptionInInitializerError can lead to unexpected behavior")
   def forceModule(sym: Symbol)(using Context): Seq[Diagnostic] =
     def load() =
       val objectName = sym.fullName.encode.toString
