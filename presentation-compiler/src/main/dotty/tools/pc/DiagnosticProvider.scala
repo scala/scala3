@@ -1,5 +1,7 @@
 package dotty.tools.pc
 
+import java.nio.file.Paths
+
 import scala.jdk.CollectionConverters.*
 import scala.meta.pc.VirtualFileParams
 
@@ -32,7 +34,7 @@ class DiagnosticProvider(driver: InteractiveDriver, params: VirtualFileParams):
   private def isLocal(diag: Diagnostic, uri: java.net.URI): Boolean =
     diag.pos.exists && {
       val sourcePath = diag.pos.source.jfile.map(_.nn.toPath())
-      sourcePath.nn.isPresent() && sourcePath.nn.get().nn.toUri().equals(uri)
+      sourcePath.nn.isPresent() && sourcePath.nn.get() == Paths.get(uri)
     }
 
   private def toLsp(diag: Diagnostic)(using Context): Option[lsp4j.Diagnostic] =
