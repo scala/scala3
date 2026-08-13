@@ -7,40 +7,29 @@
    |For the unprocessed stack overflow trace, compile with -Xno-enrich-error-messages.
    |A recurring operation is (inner to outer):
    |
-   |  typing contextual$3: scala.quoted.Quotes
-   |  typing def $anonfun(using contextual$3: scala.quoted.Quotes): scala.quoted.Expr[A] = value
-   |  typing (using contextual$3: scala.quoted.Quotes) => value
-   |  typing ${(using contextual$3: scala.quoted.Quotes) => value}
-   |  typing val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
+   |  typing createTupleAux(x$proxy31 - 1)
+   |  typing def $anonfun(using contextual$2: scala.quoted.Quotes): scala.quoted.Expr[Tuple] = createTupleAux(x$proxy31 - 1)
+   |  typing (using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy31 - 1)
+   |  typing ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy31 - 1)}
+   |  typing ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy31 - 1)}.*:
+   |  typing ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy31 - 1)}.*:[A, Tuple]
+   |  typing ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy31 - 1)}.*:[A, Tuple](x$1)
    |  typing {
    |  val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
-   |  ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy32 - 1)}.*:[A, Tuple](x$1)
+   |  ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy31 - 1)}.*:[A, Tuple](x$1)
    |}
    |  typing '{
    |  {
    |    val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
-   |    ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy32 - 1)}.*:[A, Tuple](x$1)
+   |    ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy31 - 1)}.*:[A, Tuple](x$1)
    |  }
    |}
    |  typing '{
    |  {
    |    val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
-   |    ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy32 - 1)}.*:[A, Tuple](x$1)
+   |    ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy31 - 1)}.*:[A, Tuple](x$1)
    |  }
    |}.apply
-   |  typing '{
-   |  {
-   |    val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
-   |    ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy32 - 1)}.*:[A, Tuple](x$1)
-   |  }
-   |}.apply(q)
-   |  typing if x$proxy32 == 0 then '{EmptyTuple}.apply(q) else
-   |  '{
-   |    {
-   |      val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
-   |      ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x$proxy32 - 1)}.*:[A, Tuple](x$1)
-   |    }
-   |  }.apply(q)
    |  ...
    |
    |  typing '{
@@ -171,10 +160,6 @@
    |}
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace
-   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   |This location contains code that was inlined from Macros_1.scala:16
-16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
-   |             ^
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    |This location contains code that was inlined from Macros_1.scala:16
 16 |    else '{ $value *: ${ createTupleAux(x - 1) } }
