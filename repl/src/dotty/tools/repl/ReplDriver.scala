@@ -402,7 +402,9 @@ class ReplDriver(settings: Array[String],
         else state
 
       case SyntaxErrors(_, errs, _) =>
-        state.context.run.suppressions.initSuspendedMessages(oldRun = null)
+        // if there is a Run that is tracking suspended parse warnings, ignore (drop) them when erroring
+        if state.context.run != null then
+          state.context.run.suppressions.initSuspendedMessages(oldRun = null)
         displayErrors(errs, state)
 
       case CommandThenCode(cmd, code) =>
