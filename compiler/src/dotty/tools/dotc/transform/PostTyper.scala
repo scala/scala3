@@ -647,7 +647,17 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree @ Inlined(call, bindings, expansion) if !tree.inlinedFromOuterScope =>
           val pos = call.sourcePos
           CrossVersionChecks.checkRef(call.symbol, pos)
-          withMode(Mode.NoInline)(transform(call))
+          // Transform the (otherwise discarded) `call` for its checking side effects
+          // only (e.g. `Checking.checkBounds` on type arguments, see i17168). The result
+          // is thrown away — the next line rebuilds the node with a minimal `callTrace`.
+          // We skip this when already transforming a discarded `call` (Mode.NoInline):
+          // chained transparent inline operations nest each `Inlined` node's full
+          // expansion inside the next node's `call`, so re-transforming nested calls
+          // makes the work grow exponentially with the chain length (see i25728). The
+          // type arguments of nested calls are still checked when those nodes are reached
+          // through the kept `expansion` below.
+          if !ctx.mode.is(Mode.NoInline) then
+            withMode(Mode.NoInline)(transform(call))
           val callTrace = Inlines.inlineCallTrace(call.symbol, pos)(using ctx.withSource(pos.source))
           cpy.Inlined(tree)(callTrace, transformSub(bindings), transform(expansion)(using inlineContext(tree)))
         case templ: Template =>
