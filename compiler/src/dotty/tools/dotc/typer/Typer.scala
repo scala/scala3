@@ -925,7 +925,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     // Otherwise, under magic, if selector is `$spec`, convert to spec string representation.
     def trySpecString(tree: untpd.Select, qual: Tree) =
       if selName == nme.SPEC then
-        ref(defn.Compiletime_spec).appliedTo(qual).withSpan(tree.span)
+        ref(defn.Magic_spec).appliedTo(qual).withSpan(tree.span)
       else EmptyTree
 
     // Otherwise, try a GADT approximation if we're trying to select a member
@@ -3793,9 +3793,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
     val result =
       if (ctx.mode.is(Mode.Type))
         typedAppliedTypeTree(
-          if op.name == tpnme.throws && Feature.enabled(Feature.saferExceptions)
-          then desugar.throws(l, op, r)
-          else cpy.AppliedTypeTree(tree)(op, l :: r :: Nil))
+          if op.name == tpnme.throws && Feature.enabled(Feature.saferExceptions) then
+            desugar.throws(l, op, r)
+          //else if op.name == tpnme.? && Feature.magicEnabled then
+          //  cpy.AppliedTypeTree(tree)(untpd.ref(defn.MaybeClass.typeRef), l :: r :: Nil)
+          else
+            cpy.AppliedTypeTree(tree)(op, l :: r :: Nil))
       else if (ctx.mode.is(Mode.Pattern))
         typedUnApply(cpy.Apply(tree)(op, l :: r :: Nil), pt)
       else {
