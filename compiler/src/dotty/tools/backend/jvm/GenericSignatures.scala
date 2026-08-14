@@ -439,7 +439,7 @@ object GenericSignatures {
     jsig(info, toplevel = true)
     for annot <- sym0.annotations do
       annot match
-        case ThrownException(e) =>
+        case ThrownException(e) if sym0.is(Method) => // ThrowsSignature is only valid in MethodSignature
           builder.append('^')
           jsig(e, toplevel = true)
         case _ => ()
