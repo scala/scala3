@@ -40,3 +40,8 @@ case class Bar(val value: String) extends Comparable[Bar]:
   // record with varargs only
   val r8 = RecVarOnly("p", "q")
   r8 match { case RecVarOnly(rest*) => println(rest.mkString("-")) }
+
+  // a null scrutinee does not match a record pattern
+  try
+    (null: Rec1) match { case Rec1(s) => println("matched null") }
+  catch case _: MatchError => println("null: MatchError")
