@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters.*
 class JarArchive private (underlying: Path, root: Directory) extends PlainDirectory(root) {
   def close(): Unit = this.synchronized(jpath.getFileSystem().close())
 
-  override lazy val path: String = underlying.path
+  override val path: String = underlying.path
   override def ext: FileExtension = underlying.ext
 
   override def exists: Boolean = jpath.getFileSystem().isOpen() && super.exists

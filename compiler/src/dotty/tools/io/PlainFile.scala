@@ -27,7 +27,7 @@ class PlainFile(givenPath: Path) extends AbstractFile {
 
   override def name: String = givenPath.name
 
-  override lazy val path: String = givenPath.normalize.path
+  override val path: String = givenPath.normalize.path
 
   override def container: Option[AbstractFile] = Some(new PlainFile(givenPath.parent))
   override def input: InputStream = givenPath.toFile.inputStream()
