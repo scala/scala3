@@ -48,7 +48,7 @@ class ReplCompiler extends Compiler:
   )
 
   def newRun(initCtx: Context, state: State): Run =
-    val run = new Run(this, initCtx) {
+    new Run(this, initCtx):
       /** Import previous runs and user defined imports */
       override protected def rootContext(using Context): Context = {
         def importContext(imp: tpd.Import)(using Context) =
@@ -74,9 +74,7 @@ class ReplCompiler extends Compiler:
         (state.validObjectIndexes).foldLeft(rootCtx)((ctx, id) =>
           importPreviousRun(id)(using ctx))
       }
-    }
-    run.suppressions.initSuspendedMessages(state.context.run)
-    run
+    .tap(_.suppressions.initSuspendedMessages(state.context.run))
   end newRun
 
   private def packaged(stats: List[untpd.Tree])(using Context): untpd.PackageDef =
