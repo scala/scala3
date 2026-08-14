@@ -21,8 +21,8 @@ object Settings:
   private val StringTag: ClassTag[String]        = ClassTag(classOf[String])
   private val ListTag: ClassTag[List[?]]         = ClassTag(classOf[List[?]])
   private val VersionTag: ClassTag[ScalaVersion] = ClassTag(classOf[ScalaVersion])
-  private val OutputTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
-  private val OptionalOutputTag: ClassTag[Option[AbstractFile]]  = ClassTag(classOf[Option[AbstractFile]])
+  private val FileContainerTag: ClassTag[AbstractFile]  = ClassTag(classOf[AbstractFile])
+  private val OptionalFileContainerTag: ClassTag[Option[AbstractFile]]  = ClassTag(classOf[Option[AbstractFile]])
 
   trait SettingCategory:
     def prefixLetter: String
@@ -82,7 +82,7 @@ object Settings:
   private def validateSettingString(name: String): Unit =
     assert(settingCharacters.matches(name), s"Setting string $name contains invalid characters")
 
-  private val validTags = List(BooleanTag, IntTag, StringTag, ListTag, VersionTag, OutputTag, OptionalOutputTag)
+  private val validTags = List(BooleanTag, IntTag, StringTag, ListTag, VersionTag, FileContainerTag, OptionalFileContainerTag)
   private def validateSettingTag(ct: ClassTag[?]): Unit =
     assert(validTags.contains(ct), s"Unsupported option value $ct")
 
@@ -236,17 +236,17 @@ object Settings:
         .getOrElse:
           state.fail(s"$argValue is not an integer argument for $name", args)
 
-      def setOutput(arg: String, args: List[String], optional: Boolean)(using ArgsSummary) =
+      def setFileContainer(arg: String, args: List[String], optional: Boolean)(using ArgsSummary) =
         val path = Directory(arg)
         val isJar = path.ext.isJar
         if !isJar && !path.isDirectory then
-          state.fail(s"'$arg' does not exist or is not a directory or .jar file", args)
+          state.fail(s"'$arg' does not exist or is not a " + helpArg, args)
         else
           /* Side effect, do not change this method to evaluate eagerly */
-          def output = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
-          def fullOutput = if optional then Some(output) else output
-          val dubious = changed && fullOutput != valueIn(sstate)
-          val updated = update(fullOutput, arg, args)
+          def file = if (isJar) JarArchive.create(path) else new PlainDirectory(path)
+          def fullFile = if optional then Some(file) else file
+          val dubious = changed && fullFile != valueIn(sstate)
+          val updated = update(fullFile, arg, args)
           if dubious then updated.warn(s"Option $name was updated") else updated
 
       // argRest is the remainder of -foo:bar if any. This setting will receive a value from argRest or args.head.
@@ -274,8 +274,8 @@ object Settings:
         else ct match
           case ListTag => setMultivalue(arg1, args1)
           case StringTag => setString(arg1, args1)
-          case OutputTag => setOutput(arg1, args1, optional = false)
-          case OptionalOutputTag => setOutput(arg1, args1, optional = true)
+          case FileContainerTag => setFileContainer(arg1, args1, optional = false)
+          case OptionalFileContainerTag => setFileContainer(arg1, args1, optional = true)
           case IntTag => setInt(arg1, args1)
           case VersionTag => setVersion(arg1, args1)
           case _ => state.fail(s"unknown $ct", args1)
@@ -480,11 +480,11 @@ object Settings:
     def MultiStringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[List[String]] =
       publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, deprecation = deprecation))
 
-    def OutputSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: AbstractFile, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[AbstractFile] =
-      publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs))
+    def FileContainerSetting(category: SettingCategory, name: String, allowsJar: Boolean, descr: String, default: AbstractFile, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[AbstractFile] =
+      publish(Setting(category, prependName(name), descr, default, if allowsJar then "directory or .jar file" else "directory", aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs))
 
-    def OptionalOutputSetting(category: SettingCategory, name: String, helpArg: String, descr: String, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[Option[AbstractFile]] =
-      publish(Setting(category, prependName(name), descr, None, helpArg, aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs))
+    def OptionalFileContainerSetting(category: SettingCategory, name: String, allowsJar: Boolean, descr: String, aliases: List[SettingAlias] = Nil, preferPrevious: Boolean = false, deprecation: Option[Deprecation] = None, ignoreInvalidArgs: Boolean = false): Setting[Option[AbstractFile]] =
+      publish(Setting(category, prependName(name), descr, None, if allowsJar then "directory or .jar file" else "directory", aliases = aliases, preferPrevious = preferPrevious, deprecation = deprecation, ignoreInvalidArgs = ignoreInvalidArgs))
 
     def PathSetting(category: SettingCategory, name: String, descr: String, default: String, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[String] =
       publish(Setting(category, prependName(name), descr, default, aliases = aliases, deprecation = deprecation))

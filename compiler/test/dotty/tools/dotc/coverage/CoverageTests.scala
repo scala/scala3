@@ -58,7 +58,7 @@ class CoverageTests:
       // as these are generated at runtime by the scala.runtime.coverage.Invoker
       val (targetDir, expectFile, expectMeasurementFile) =
         if Files.isDirectory(path) then
-          val dirName = path.getFileName().toString
+          val dirName = path.getFileName.toString
           assert(!Files.walk(path).filter(scalaFile.matches(_)).toArray.isEmpty, s"No scala files found in test directory: ${path}")
           val targetDir = computeCoverageInTmp(path, isDirectory = true, dir, run)
           (targetDir, path.resolve(s"test.scoverage.check"), path.resolve(s"test.measurement.check"))
@@ -129,7 +129,7 @@ class CoverageTests:
 
   private def findMeasurementFile(targetDir: Path): Path = {
     val allFilesInTarget = Files.list(targetDir).collect(Collectors.toList).asScala
-    allFilesInTarget.filter(_.getFileName.toString.startsWith("scoverage.measurements.")).headOption.getOrElse(
+    allFilesInTarget.find(_.getFileName.toString.startsWith("scoverage.measurements.")).getOrElse(
       throw new AssertionError(s"Expected to find measurement file in targetDir [${targetDir}] but none were found.")
     )
   }
@@ -151,8 +151,8 @@ class CoverageTests:
     assert(Files.exists(scoverageFile), s"Expected scoverage file to exist at $scoverageFile")
 
     locally {
-      val coverage = Serializer.deserialize(scoverageFile, sourceRoot.toString())
-      val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
+      val coverage = Serializer.deserialize(scoverageFile)
+      val filesWithCoverage = coverage.statements.map(s => Path.of(s.location.sourcePath).getFileName.toString).toSet
       assertEquals(Set("file1.scala"), filesWithCoverage)
     }
 
@@ -161,8 +161,8 @@ class CoverageTests:
 
     compileFile(sourceFile2.toString, options).checkCompile()
     locally {
-      val coverage = Serializer.deserialize(scoverageFile, sourceRoot.toString())
-      val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
+      val coverage = Serializer.deserialize(scoverageFile)
+      val filesWithCoverage = coverage.statements.map(s => Path.of(s.location.sourcePath).getFileName.toString).toSet
       assertEquals(Set("file1.scala", "file2.scala"), filesWithCoverage)
     }
 
@@ -183,8 +183,8 @@ class CoverageTests:
     assert(Files.exists(scoverageFile), s"Expected scoverage file to exist at $scoverageFile")
 
     locally {
-      val coverage = Serializer.deserialize(scoverageFile, sourceRoot.toString())
-      val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
+      val coverage = Serializer.deserialize(scoverageFile)
+      val filesWithCoverage = coverage.statements.map(s => Path.of(s.location.sourcePath).getFileName.toString).toSet
       assertEquals(Set("file1.scala"), filesWithCoverage)
     }
 
@@ -195,8 +195,8 @@ class CoverageTests:
 
     compileFile(sourceFile2.toString, options).checkCompile()
     locally {
-      val coverage = Serializer.deserialize(scoverageFile, sourceRoot.toString())
-      val filesWithCoverage = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
+      val coverage = Serializer.deserialize(scoverageFile)
+      val filesWithCoverage = coverage.statements.map(s => Path.of(s.location.sourcePath).getFileName.toString).toSet
       assertEquals(Set("file2.scala"), filesWithCoverage)
     }
 

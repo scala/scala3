@@ -252,7 +252,7 @@ class SettingsTests:
 
   @Test def `dir option also warns`: Unit =
     object Settings extends SettingGroup:
-      val option = OutputSetting(RootSetting, "option", "out", "A file", Paths.get("a", "b", "c").toPlainFile)
+      val option = FileContainerSetting(RootSetting, "option", false, "A file", Paths.get("a", "b", "c").toPlainFile)
     Using.resource(createTempDirectory("i13887")) { dir =>
       val target = createDirectory(dir.resolve("x"))
       val mistake = createDirectory(dir.resolve("y"))
@@ -297,7 +297,7 @@ class SettingsTests:
     val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
-        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir)
+        val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir)
 
       import Settings.*
       Files.write(file, "test".getBytes())
@@ -313,7 +313,7 @@ class SettingsTests:
     ): (file1, file2) =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
-        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true)
+        val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir, preferPrevious = true)
 
       import Settings.*
 
@@ -336,7 +336,7 @@ class SettingsTests:
     val result = Using.resource(Files.createTempFile("myfile", ".jar")): file =>
       object Settings extends SettingGroup:
         val defaultDir = new PlainDirectory(Directory("."))
-        val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
+        val testOutput = FileContainerSetting(RootSetting, "testOutput", true, "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
 
       import Settings.*
 
@@ -359,7 +359,7 @@ class SettingsTests:
       val intSetting = IntSetting(RootSetting, "intSetting", "intSetting", 0)
       val intChoiceSetting = IntChoiceSetting(RootSetting, "intChoiceSetting", "intChoiceSetting", List(1,2,3), 1)
       val multiStringSetting = MultiStringSetting(RootSetting, "multiStringSetting", "multiStringSetting", Help, default = List("a", "b"))
-      val outputSetting = OutputSetting(RootSetting, "outputSetting", "outputSetting", Help, new PlainDirectory(Directory(".")))
+      val outputSetting = FileContainerSetting(RootSetting, "outputSetting", true, Help, new PlainDirectory(Directory(".")))
       val pathSetting = PathSetting(RootSetting, "pathSetting", "pathSetting", ".")
       val phasesSetting = PhasesSetting(RootSetting, "phasesSetting", "phasesSetting", "all")
       val versionSetting= VersionSetting(RootSetting, "versionSetting", "versionSetting")
@@ -473,7 +473,7 @@ class SettingsTests:
     object Settings extends SettingGroup:
       val foo = BooleanSetting(RootSetting, "foo", "foo", ignoreInvalidArgs = true, preferPrevious = true)
       val bar = BooleanSetting(RootSetting, "bar", "bar")
-      val baz = OutputSetting(RootSetting, "out", "dir", "A file", default = Paths.get("out", "baz").toPlainFile,
+      val baz = FileContainerSetting(RootSetting, "out", false, "A file", default = Paths.get("out", "baz").toPlainFile,
         ignoreInvalidArgs = true, preferPrevious = true)
     import Settings.*
     Using.resource(createTempDirectory("testDir")): dir =>
