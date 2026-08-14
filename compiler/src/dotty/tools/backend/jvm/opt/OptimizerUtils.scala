@@ -17,6 +17,7 @@ import org.objectweb.asm.{Handle, Opcodes, Type}
  * This component hosts tools and utilities used in the optimizer that require access to an `OptimizerKnownBTypes` instance.
  */
 class OptimizerUtils(val ts: OptimizerKnownBTypes) {
+  // Contains methods that get instances of various standard library modules, such as `Either$`, `Range$`, etc.
   private val ScalaPackageObject = "scala/package$"
 
   private val indyLambdaImplMethods: ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]] =
@@ -136,8 +137,8 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
 
   def runtimeRefClassBoxedType(refClass: InternalName): asm.Type = asm.Type.getArgumentTypes(ts.srRefCreateMethods(refClass).methodType.descriptor)(0)
 
-  def isSideEffectFreeConstructorCall(insn: MethodInsnNode): Boolean =
-    insn.owner == ScalaPackage ||
+  def isSideEffectFreeConstructorOrFactoryCall(insn: MethodInsnNode): Boolean =
+    insn.owner == ScalaPackageObject ||
       (insn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && sideEffectFreeConstructors((insn.owner, insn.desc)))
 
   def isNewForSideEffectFreeConstructor(insn: AbstractInsnNode): Boolean = {
@@ -150,14 +151,14 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
   def isSideEffectFreeCall(mi: MethodInsnNode): Boolean = {
     isScalaBox(mi) ||  // not Scala unbox, it may CCE
       isJavaBox(mi) || // not Java unbox, it may NPE
-      isSideEffectFreeConstructorCall(mi) ||
+      isSideEffectFreeConstructorOrFactoryCall(mi) ||
       AnalysisUtils.isClassTagApply(mi)
   }
 
   // methods that are known to return a non-null result
   def isNonNullMethodInvocation(mi: MethodInsnNode): Boolean = {
     isJavaBox(mi) || isScalaBox(mi) || isPredefAutoBox(mi) || isRefCreate(mi) || isRefZero(mi) || AnalysisUtils.isClassTagApply(mi) ||
-      isTupleApply(mi) || mi.owner == ScalaPackage
+      isTupleApply(mi) || mi.owner == ScalaPackageObject
   }
 
   // unused objects created by these constructors are eliminated by pushPop
@@ -217,7 +218,7 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
       val t = i.getType
       if (t == AbstractInsnNode.METHOD_INSN) {
         val mi = i.asInstanceOf[MethodInsnNode]
-        if (mi.owner == ScalaPackage) {
+        if (mi.owner == ScalaPackageObject) {
           // Ignore calls that, e.g., load the Range module -- that's still part of a forwarder
         } else if (!allowPrivateCalls && i.getOpcode == Opcodes.INVOKESPECIAL && mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) {
           // invokespecial has, well, special semantics that depend on the class it's being invoked in, see, e.g., https://stackoverflow.com/a/8950564
