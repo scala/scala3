@@ -291,7 +291,7 @@ class ReplDriver(settings: Array[String],
   }
 
   final def run(input: String)(using state: State): State = runBody {
-    interpret(ParseResult(input))
+    interpret(ParseResult.complete(input))
   }
 
   protected def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
@@ -369,7 +369,7 @@ class ReplDriver(settings: Array[String],
       compiler
         .typeCheck(expr, errorsAllowed = true)
         .map { (untpdTree, tpdTree) =>
-          val file = SourceFile.virtual("<completions>", expr)
+          val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
           val unit = CompilationUnit(file)(using state.context)
           unit.untpdTree = untpdTree
           unit.tpdTree = tpdTree
