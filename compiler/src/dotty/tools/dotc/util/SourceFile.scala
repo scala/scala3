@@ -9,15 +9,16 @@ import core.Decorators.*
 
 import scala.io.Codec
 import Chars.*
+
 import scala.annotation.internal.sharable
 import scala.collection.mutable.ArrayBuffer
 import scala.compiletime.uninitialized
-
 import java.io.File.separator
 import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.nio.file.{FileSystemException, Paths}
 import java.util.Optional
+import scala.annotation.threadUnsafe
 
 object WrappedSourceFile:
   enum MagicHeaderInfo:
@@ -79,9 +80,9 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
     if file eq null then FileExtension.Empty else file.ext
   override def path: String =
     if file eq null then "" else file.path
-  lazy val pathRelativeToSourceRoot: String =
+  @threadUnsafe lazy val pathRelativeToSourceRoot: String =
     if (file eq null) || (file.jpath eq null) then
-      ""
+      throw new AssertionError(s"pathRelativeToSourceRoot called on a missing or non-disk file ('$path')")
     else if sourceRoot.jpath eq null then
       file.path
     else
