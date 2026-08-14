@@ -937,8 +937,9 @@ object TypeOps:
       case _               => Nil
     val protoTp1 = prefixInferredTp.appliedTo(tvars)
 
-    if gadtSyms.nonEmpty then
-      ctx.gadtState.addToConstraint(gadtSyms)
+    val missingGadtSyms = gadtSyms.filterNot(ctx.gadt.contains)
+    if missingGadtSyms.nonEmpty then
+      ctx.gadtState.addToConstraint(missingGadtSyms)
 
     // If parent contains a reference to an abstract type, then we should
     // refine subtype checking to eliminate abstract types according to

@@ -551,7 +551,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         // TODO move CaseDef case lower: keep most probable trees first for performance
         case CaseDef(pat, _, _) =>
           val gadtCtx =
-           pat.removeAttachment(typer.Typer.InferredGadtConstraints) match
+           pat.getAttachment(typer.Typer.InferredGadtConstraints) match
              case Some(gadt) => ctx.fresh.setGadtState(GadtState(gadt))
              case None =>
                ctx
