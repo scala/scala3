@@ -9,7 +9,3 @@ def test[A, B](m: X[A])(using ev: Ev[A, B]) =
     case Evidence() =>
       m match
         case Foo(_) =>
-
-def direct[B](m: X[Some[B]]) =
-  m match
-    case Foo(_) =>
