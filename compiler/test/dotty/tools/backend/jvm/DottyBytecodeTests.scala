@@ -2087,6 +2087,40 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       assert(bridge.signature == null, "vararg bridges should not have generic signatures")
     }
   }
+
+  /** Java record patterns compile to plain accessor calls: the synthesized identity
+   *  `unapply` and the anonymous class hosting it are eliminated by InlinePatterns,
+   *  for monomorphic and polymorphic records alike.
+   */
+  @Test def javaRecordPatternsAreInlined = {
+    val recJava = "public record Rec(int x, String y) {}"
+    val recGenJava = "public record RecGen<T>(int x, T y) {}"
+    val source =
+      """class Test {
+        |  def mono(r: Rec): String = r match {
+        |    case Rec(i, s) => s * i
+        |  }
+        |  def poly(r: RecGen[String]): String = r match {
+        |    case RecGen(i, s) => s * i
+        |  }
+        |}
+      """.stripMargin
+
+    checkBCode(List(source), List(recJava, recGenJava)) { dir =>
+      val classfiles = getGeneratedClassfiles(dir).map(_._1)
+      assert(!classfiles.exists(_.contains("$anon")),
+        s"no anonymous classes should be generated for record patterns, found: $classfiles")
+
+      val clsNode = loadClassNode(lookupClass(dir, "Test.class"))
+      for methName <- List("mono", "poly") do
+        val meth = getMethod(clsNode, methName)
+        val invokes = instructionsFromMethod(meth).collect { case i: Invoke => i.name }
+        assert(!invokes.contains("unapply"),
+          s"no unapply call should remain in $methName, found calls to: $invokes")
+        assert(invokes.contains("x") && invokes.contains("y"),
+          s"$methName should call the record's accessors directly, found calls to: $invokes")
+    }
+  }
 }
 
 object invocationReceiversTestCode {

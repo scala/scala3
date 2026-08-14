@@ -12,18 +12,18 @@ import scala.collection.mutable.ListBuffer
 
 /** Rewrite an application
  *
- *    {new { def unapply(x0: X0)(x1: X1,..., xn: Xn) = b }}.unapply(y0)(y1, ..., yn)
+ *    {new { def unapply[T1, ..., Tm](x0: X0)(x1: X1,..., xn: Xn) = b }}.unapply[S1, ..., Sm](y0)(y1, ..., yn)
  *
  *  where
  *
  *    - the method is `unapply` or `unapplySeq`
- *    - the method does not have type parameters
  *
  *  to
  *
- *    [xi := yi]b
+ *    [Ti := Si, xi := yi]b
  *
- *  This removes placeholders added by inline `unapply`/`unapplySeq` patterns.
+ *  This removes placeholders added by inline `unapply`/`unapplySeq` patterns
+ *  and the identity `unapply` methods synthesized for Java record patterns.
  */
 class InlinePatterns extends MiniPhase:
   import ast.tpd.*
@@ -51,6 +51,7 @@ class InlinePatterns extends MiniPhase:
     def unapply(app: Tree): (Tree, List[List[Tree]]) =
       app match
         case Apply(App(fn, argss), args) => (fn, argss :+ args)
+        case TypeApply(App(fn, argss), targs) => (fn, argss :+ targs)
         case _ => (app, Nil)
 
   // TODO merge with BetaReduce.scala
