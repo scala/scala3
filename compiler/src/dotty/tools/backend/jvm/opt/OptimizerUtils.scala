@@ -17,7 +17,7 @@ import org.objectweb.asm.{Handle, Opcodes, Type}
  * This component hosts tools and utilities used in the optimizer that require access to an `OptimizerKnownBTypes` instance.
  */
 class OptimizerUtils(val ts: OptimizerKnownBTypes) {
-  private val ScalaPackage = "scala/package$"
+  private val ScalaPackageObject = "scala/package$"
 
   private val indyLambdaImplMethods: ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]] =
     new ConcurrentHashMap
