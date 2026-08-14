@@ -809,6 +809,7 @@ object TypeOps:
     TraverseTp2.traverse(tp2)
     val singletons = TraverseTp2.singletons
     val gadtSyms   = TraverseTp2.gadtSyms.toList
+    val initialGadt = ctx.gadt
 
     // Prefix inference, given `p.C.this.Child`:
     //   1. return it as is, if `C.this` is found in `tp`, i.e. the scrutinee; or
@@ -881,15 +882,17 @@ object TypeOps:
             tref
 
         case tp: TypeRef if !tp.symbol.isClass =>
-          val lookup = boundTypeParams.lookup(tp)
-          if lookup != null then lookup
+          if initialGadt.contains(tp.symbol) then tp
           else
-            val TypeBounds(lo, hi) = tp.underlying.bounds
-            val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
-            boundTypeParams(tp) = tv
-            assert(tv <:< apply(hi))
-            apply(lo) <:< tv //  no assert, since bounds might conflict
-            tv
+            val lookup = boundTypeParams.lookup(tp)
+            if lookup != null then lookup
+            else
+              val TypeBounds(lo, hi) = tp.underlying.bounds
+              val tv = newTypeVar(TypeBounds(defn.NothingType, hi.topType))
+              boundTypeParams(tp) = tv
+              assert(tv <:< apply(hi))
+              apply(lo) <:< tv //  no assert, since bounds might conflict
+              tv
 
         case tp @ AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass && !tp.isMatchAlias =>
 
@@ -936,7 +939,7 @@ object TypeOps:
       case _               => Nil
     val protoTp1 = prefixInferredTp.appliedTo(tvars)
 
-    val missingGadtSyms = gadtSyms.filterNot(ctx.gadt.contains)
+    val missingGadtSyms = gadtSyms.filterNot(initialGadt.contains)
     if missingGadtSyms.nonEmpty then
       ctx.gadtState.addToConstraint(missingGadtSyms)
 
