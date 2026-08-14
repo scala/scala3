@@ -2416,13 +2416,16 @@ object desugar {
         // This is a deliberate departure from scalac, where StringContext is not rooted (See #4732)
         Apply(Select(Apply(scalaDot(nme.StringContext), strs), id).withSpan(tree.span), elems)
       case PostfixOp(t, op) =>
-        if (ctx.mode is Mode.Type) && !isBackquoted(op) && op.name == tpnme.raw.STAR then
+        def isOp(name: TypeName) = op.name == name && !isBackquoted(op)
+        if isOp(tpnme.raw.STAR) then
           if ctx.isJava then
             AppliedTypeTree(ref(defn.RepeatedParamType), t)
           else
             Annotated(
               AppliedTypeTree(ref(defn.SeqType), t),
               New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
+        else if isOp(tpnme.?) then
+          AppliedTypeTree(ref(defn.MagicMaybeClass.typeRef), t /*:: ref(defn.UnitClass.typeRef)*/ :: Nil)
         else
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)

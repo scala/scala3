@@ -277,12 +277,15 @@ object Feature:
     ccEnabledSomewhere && (defn.ccExperimental.contains(sym)
       || sym.exists && defn.ccExperimental.contains(sym.owner))
 
+  private def magicException(sym: Symbol)(using Context): Boolean =
+    Feature.magicEnabled && sym.enclosingPackageClass == defn.MagicPackageClass
+
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
     val experimentalSym =
       if sym.hasAnnotation(defn.ExperimentalAnnot) then sym
       else if sym.owner.hasAnnotation(defn.ExperimentalAnnot) then sym.owner
       else NoSymbol
-    if !isExperimentalEnabled && !ccException(experimentalSym) then
+    if !isExperimentalEnabled && !ccException(experimentalSym) && !magicException(experimentalSym) then
       val msg =
         experimentalSym.getAnnotation(defn.ExperimentalAnnot).map {
           case ExperimentalAnnotation(msg) if msg.nonEmpty => s": $msg"
