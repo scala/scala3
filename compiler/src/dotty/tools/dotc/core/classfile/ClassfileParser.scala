@@ -1040,13 +1040,15 @@ final class ClassfileParser(
           }
 
         case tpnme.RecordATTR =>
+          // JVMS 4.7.30: each record component has a name, a descriptor, and attributes
           val components = List.fill(in.nextChar):
             val name = pool.getName(in.nextChar).value
             val _ = in.nextChar
             skipAttributes()
             name
-
-          ctx.base.javaRecordsFields.put(classRoot.symbol, components)
+          // Record the component names, see `Applications.javaRecordFields`
+          res.annotations ::= Annotation.deferredSymAndTree(defn.JavaRecordFieldsAnnot):
+            JavaRecordFieldsAnnot.tpdTree(components)
 
         case _ =>
           in.skip(attrLen)

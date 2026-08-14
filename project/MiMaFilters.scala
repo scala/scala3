@@ -17,6 +17,8 @@ object MiMaFilters {
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.generic.IsSeq.iarrayIsSeq"),
         // new annotation encoding capture checking's `x.except[C]` capabilities
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.exceptCapability"),
+        // new annotation carrying the component names of Java records
+        ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
     ))
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(

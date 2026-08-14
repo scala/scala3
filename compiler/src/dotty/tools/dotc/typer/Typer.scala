@@ -3566,9 +3566,6 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       for (deriver <- cdef.removeAttachment(AttachedDeriver))
         cdef1.putAttachment(AttachedDeriver, deriver)
 
-      for (recordFields <- cdef.removeAttachment(untpd.JavaRecordFields))
-        ctx.base.javaRecordsFields.put(cls, recordFields)
-
       cdef1
     }
   }

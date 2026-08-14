@@ -185,10 +185,20 @@ object Applications {
     (0 until argsNum).map(i => if (i < arity - 1) selectorTypes(i) else elemTp).toList
   end seqSelectors
 
+  /** The component names of the Java record type `tp`, from its
+   *  `@JavaRecordFields` annotation. The annotation is attached by
+   *  `JavaParsers.recordDecl` (from the record header) and by the
+   *  `ClassfileParser` (from the `Record` classfile attribute); since
+   *  annotations are pickled, it is also available on record symbols
+   *  unpickled from TASTy in pipelined compilation.
+   */
   def javaRecordFields(tp: Type)(using Context): List[Name] =
-    ctx.base.javaRecordsFields.get(tp.typeSymbol) match
-      case Some(fields) => fields.map(termName)
-      case None => assert(false, "Invariant violation - Java record is missing fields information")
+    tp.classSymbol.getAnnotation(defn.JavaRecordFieldsAnnot) match
+      case Some(annot) =>
+        annot.tree match
+          case JavaRecordFieldsAnnot(names) => names
+          case _ => Nil
+      case None => Nil
 
   def javaRecordTypes(tp: Type)(using Context): List[Type] =
     javaRecordFields(tp).map: name =>

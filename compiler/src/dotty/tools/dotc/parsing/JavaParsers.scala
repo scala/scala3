@@ -921,10 +921,11 @@ object JavaParsers {
             tparams = tparams,
             needsDummyConstr = true
           )
-        ).withMods(mods.withFlags(Flags.JavaDefined | Flags.Final))
+        ).withMods(mods
+          .withFlags(Flags.JavaDefined | Flags.Final)
+          // Record the component names, see `Applications.javaRecordFields`
+          .withAddedAnnotation(ast.untpd.JavaRecordFieldsAnnot(header.map(_.name.toString))))
       }
-
-      recordTypeDef.putAttachment(JavaRecordFields, header.map(_.name.toString))
 
       addCompanionObject(statics, recordTypeDef)
     end recordDecl

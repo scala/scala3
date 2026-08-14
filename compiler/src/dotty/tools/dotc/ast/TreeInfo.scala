@@ -431,6 +431,29 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
             case _ => None
         case _ => None
   end WitnessNamesAnnot
+
+  /** Constructor and extractor for `annotation.internal.JavaRecordFields(name_1, ..., name_n)`
+   *  represented as an untyped or typed tree.
+   */
+  object JavaRecordFieldsAnnot:
+    def tpdTree(names: List[String])(using Context): tpd.Tree =
+      tpd.New(
+        defn.JavaRecordFieldsAnnot.typeRef,
+        tpd.SeqLiteral(names.map(n => tpd.Literal(Constant(n))), tpd.TypeTree(defn.StringType)) :: Nil
+      )
+
+    def apply(names: List[String])(using Context): untpd.Tree =
+      untpd.TypedSplice(tpdTree(names))
+
+    def unapply(tree: Tree)(using Context): Option[List[TermName]] =
+      unsplice(tree) match
+        case Apply(Select(New(tpt: tpd.TypeTree), nme.CONSTRUCTOR), SeqLiteral(elems, _) :: Nil)
+        if tpt.tpe.classSymbol == defn.JavaRecordFieldsAnnot =>
+          Some:
+            elems.map:
+              case Literal(Constant(str: String)) => str.toTermName
+        case _ => None
+  end JavaRecordFieldsAnnot
 }
 
 trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] =>
