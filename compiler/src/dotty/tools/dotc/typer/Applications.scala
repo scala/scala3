@@ -201,7 +201,7 @@ object Applications {
           case _ => (false, Nil)
       case None => (false, Nil)
 
-  /** A utility class that matches results of unapplys with patterns. Two queriable members:
+  /** A utility class that matches results of unapplys with patterns. Two queryable members:
    *     val argTypes: List[Type]
    *     def typedPatterns(qual: untpd.Tree, typer: Typer): List[Tree]
    *  TODO: Move into Applications trait. No need to keep it outside. But it's a large
