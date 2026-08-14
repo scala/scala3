@@ -647,18 +647,15 @@ abstract class Recheck extends Phase, SymTransformer:
       case _ => checkConformsExpr(tpe.widenExpr, pt.widenExpr, tree)
 
     def isCompatible(actual: Type, expected: Type)(using Context): Boolean =
-     try
-      actual <:< expected
-      || expected.isRepeatedParam
-          && isCompatible(actual,
-              expected.translateFromRepeated(toArray = actual.isRef(defn.ArrayClass)))
-      || {
-        val widened = widenSkolems(expected)
-        (widened ne expected) && isCompatible(actual, widened)
-      }
-     catch case ex: AssertionError =>
-      println(i"fail while $actual iscompat $expected")
-      throw ex
+      printOnAssertionError(i"fail while $actual iscompat $expected"):
+        actual <:< expected
+        || expected.isRepeatedParam
+            && isCompatible(actual,
+                expected.translateFromRepeated(toArray = actual.isRef(defn.ArrayClass)))
+        || {
+          val widened = widenSkolems(expected)
+          (widened ne expected) && isCompatible(actual, widened)
+        }
 
     def checkConformsExpr(actual: Type, expected: Type, tree: Tree, notes: List[Note] = Nil)(using Context): Type =
       //println(i"check conforms $actual <:< $expected")

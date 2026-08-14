@@ -4651,6 +4651,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             // is a temporary hack to keep projects compiling that would fail otherwise due to
             // searching more arguments to instantiate implicits (PR #23532). A failing project
             // is described in issue #23609.
+            @nowarn("msg=unexpected behavior") // will go away once this workaround is unneeded
             def tryConstrainResult(pt: Type): Boolean =
               try constrainResult(tree.symbol, wtp, pt)
               catch case ex: TyperState.BadTyperStateAssertion => false

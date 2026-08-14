@@ -13,7 +13,8 @@ class SnippetChecker(val args: Scaladoc.Args)(using cctx: CompilerContext):
     args.tastyFiles
       .map(_.getAbsolutePath())
       .map(AbstractFile.getFile(_).nn)
-      .flatMap(t => try TastyFileUtil.getClassPath(t) catch case _: AssertionError => Seq.empty)
+      .filter(t => t.exists && t.ext.isTasty)
+      .flatMap(t => TastyFileUtil.getClassPath(t))
       .distinct
       .mkString(sep),
     args.classpath

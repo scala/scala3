@@ -31,9 +31,6 @@ class CompilerSearchVisitor(
     try
       (sym != NoSymbol && sym.isAccessibleFrom(ctx.owner.info) && sym.isStatic) || isAccessibleImplicitClass(sym)
     catch
-      case err: AssertionError =>
-        logger.log(Level.WARNING, err.getMessage())
-        false
       case NonFatal(e) =>
         reports.incognito.create(() =>
           Report(

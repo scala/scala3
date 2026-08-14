@@ -19,6 +19,7 @@ import java.util.function.{BiConsumer, BiFunction, Consumer, Function => JFuncti
 import scala.concurrent.Future
 import scala.concurrent.impl.Promise.DefaultPromise
 import scala.util.{Failure, Success, Try}
+import scala.util.control.NonFatal
 
 private[scala] object FutureConvertersImpl {
   final class CF[T](val wrapped: Future[T]) extends CompletableFuture[T] with (Try[T] => Unit) {
@@ -62,7 +63,7 @@ private[scala] object FutureConvertersImpl {
               try {
                 fn(e).asInstanceOf[AnyRef]
               } catch {
-                case thr: Throwable =>
+                case NonFatal(thr) =>
                   cf.completeExceptionally(thr)
                   this
               }

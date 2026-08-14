@@ -5,6 +5,7 @@ import scala.language.unsafeNulls
 
 import scala.util.{Failure, Success, Try}
 import scala.util.chaining.given
+import scala.util.control.NonFatal
 
 import org.junit.Assert.{assertEquals, assertTrue}
 import org.junit.Test
@@ -18,20 +19,20 @@ class StackTraceTest:
   def sampler: String = sample
 
   // repackage with message
-  def resample: String = try sample catch case e: Throwable => throw new RuntimeException("resample", e)
+  def resample: String = try sample catch case NonFatal(e) => throw new RuntimeException("resample", e)
   def resampler: String = resample
 
   // simple wrapper
-  def wrapper: String = try sample catch case e: Throwable => throw new RuntimeException(e)
+  def wrapper: String = try sample catch case NonFatal(e) => throw new RuntimeException(e)
   // another onion skin
-  def rewrapper: String = try wrapper catch case e: Throwable => throw new RuntimeException(e)
+  def rewrapper: String = try wrapper catch case NonFatal(e) => throw new RuntimeException(e)
   def rewrapperer: String = rewrapper
 
   // circular cause
-  def insane: String = try sample catch case e: Throwable => throw new RuntimeException(e).tap(e.initCause)
+  def insane: String = try sample catch case NonFatal(e) => throw new RuntimeException(e).tap(e.initCause)
   def insaner: String = insane
 
-  def repressed: String = try sample catch case e: Throwable => throw new RuntimeException("My problem").tap(_.addSuppressed(e))
+  def repressed: String = try sample catch case NonFatal(e) => throw new RuntimeException("My problem").tap(_.addSuppressed(e))
   def represser: String = repressed
 
   // evaluating s should throw, p trims stack trace, t is the test of resulting trace string

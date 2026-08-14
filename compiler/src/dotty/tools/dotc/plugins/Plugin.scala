@@ -99,6 +99,7 @@ object Plugin {
 
   /** Use a class loader to load the plugin class.
    */
+  @nowarn("msg=Catching NoClassDefFoundError can lead to unexpected behavior") // backwards compat
   def load(classname: String, loader: ClassLoader): Try[AnyClass] = {
     try
       Success[AnyClass](loader.loadClass(classname))

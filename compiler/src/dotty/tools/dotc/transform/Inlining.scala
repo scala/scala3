@@ -3,8 +3,7 @@ package transform
 
 
 import java.util.Arrays
-
-import dotty.tools.io
+import dotty.tools.{io, printOnAssertionError}
 import ast.tpd
 import ast.Trees.*
 import ast.TreeMapWithTrackedStats
@@ -19,7 +18,7 @@ import DenotTransformers.IdentityDenotTransformer
 import MacroAnnotations.hasMacroAnnotation
 import inlines.Inlines
 import quoted.*
-import sbt.{ AbstractExtractDependenciesCollector, DependencyRecorder }
+import sbt.{AbstractExtractDependenciesCollector, DependencyRecorder}
 import staging.StagingLevel
 import util.Property
 
@@ -113,7 +112,7 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
 
     val inlineFinder = new tpd.TreeTraverser:
       override def traverse(tree: Tree)(using Context): Unit =
-        try
+        printOnAssertionError(i"assertion failed while traversing $tree"):
           tree match
             case tree: Inlined =>
               collector.traverse(tree)
@@ -126,10 +125,6 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
               t.body.foreach(traverse)
             case _ =>
               traverseChildren(tree)
-        catch
-          case ex: AssertionError =>
-            println(i"asserted failed while traversing $tree")
-            throw ex
 
     override def transform(tree: Tree)(using Context): Tree = {
       val result = tree match

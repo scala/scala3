@@ -4,12 +4,19 @@ package reporting
 
 import core.*
 import Contexts.*
-import Decorators.*, Symbols.*, Names.*, NameOps.*, Types.*, Flags.*, Phases.*
+import Decorators.*
+import Symbols.*
+import Names.*
+import NameOps.*
+import Types.{Type, *}
+import Flags.*
+import Phases.*
 import Denotations.SingleDenotation
 import SymDenotations.SymDenotation
-import NameKinds.{WildcardParamName, ContextFunctionParamName}
+import NameKinds.{ContextFunctionParamName, WildcardParamName}
 import parsing.Scanners.Token
-import parsing.Tokens, Tokens.showToken
+import parsing.Tokens
+import Tokens.showToken
 import printing.Highlighting.*
 import printing.Formatting
 import ErrorMessageID.*
@@ -21,11 +28,12 @@ import config.{Feature, MigrationVersion, ScalaVersion}
 import transform.patmat.Space
 import transform.patmat.SpaceEngine
 import typer.ErrorReporting.{err, matchReductionAddendum, substitutableTypeSymbolsInScope}
-import typer.ProtoTypes.{ViewProto, FunProto}
+import typer.ProtoTypes.{FunProto, ViewProto}
 import typer.Implicits.*
 import typer.Inferencing
 import StdNames.nme
-import Formatting.{hl, delay}
+import Formatting.{delay, hl}
+
 import scala.util.matching.Regex
 import java.util.regex.Matcher.quoteReplacement
 import cc.CaptureSet
@@ -3944,4 +3952,17 @@ class UseOfAnyMethodAsInterpolator(interpolator: Name)(using Context)
     i"""String interpolation resolves to methods calls on ${hl("StringContext")},
        |which can target methods declared by ${hl("Any")} such as ${hl(i"$interpolator")}.
        |This is unlikely to be what you intended."""
+}
+
+class UnreasonableCatch(tpe: Type)(using Context)
+  extends Message(UnreasonableCatchID) {
+  def kind = MessageKind.PotentialIssue
+  def msg(using Context) = i"Catching $tpe can lead to unexpected behavior"
+  def explain(using Context) =
+    i"""Catching ${hl("Error")} subclasses, including by catching all ${hl("Throwable")}s,
+       |can lead to unexpected behavior because an ${hl("Error")} being thrown indicates
+       |an unrecoverable problem.
+       |The JDK documentation states that "a reasonable application should not
+       |try to catch" ${hl("Error")}s, and on some platforms such as Scala.js,
+       |such errors will immediately terminate the application and cannot be caught."""
 }

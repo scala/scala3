@@ -167,6 +167,8 @@ private sealed trait WarningSettings:
   private val WrecurseWithDefault = BooleanSetting(WarningSetting, "Wrecurse-with-default", "Warn when a method calls itself with a default argument.")
   private val WwrongArrow = BooleanSetting(WarningSetting, "Wwrong-arrow", "Warn if function arrow was used instead of context literal ?=>.")
   private val WinferUnion = BooleanSetting(WarningSetting, "Winfer-union", "Warn if type argument was inferred as union type.")
+  private val WsafeInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
+  private val WunreasonableCatch: Setting[Boolean] = BooleanSetting(WarningSetting, "Wunreasonable-catch", "Warn when catching errors that should normally not be caught.")
   private val Wunused: Setting[List[ChoiceWithHelp[String]]] = MultiChoiceHelpSetting(
     WarningSetting,
     name = "Wunused",
@@ -297,8 +299,6 @@ private sealed trait WarningSettings:
       allOr("type-parameter-shadow")
   end WshadowHas
 
-  val WsafeInit: Setting[Boolean] = BooleanSetting(WarningSetting, "Wsafe-init", "Ensure safe initialization of objects.")
-
   object Whas:
     def allOr(s: Setting[Boolean])(using Context): Boolean =
       Wall.value || s.value
@@ -312,6 +312,7 @@ private sealed trait WarningSettings:
     def wrongArrow(using Context): Boolean = allOr(WwrongArrow)
     def inferUnion(using Context): Boolean = allOr(WinferUnion)
     def safeInit(using Context): Boolean = allOr(WsafeInit)
+    def unreasonableCatch(using Context): Boolean = allOr(WunreasonableCatch)
 
 /** "Optimizer" settings */
 private sealed trait OptimizerSettings:

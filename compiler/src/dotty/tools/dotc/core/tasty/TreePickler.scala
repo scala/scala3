@@ -18,6 +18,7 @@ import config.Feature.sourceVersion
 import collection.mutable
 import reporting.{Profile, NoProfile}
 import dotty.tools.tasty.TastyFormat.ASTsSection
+import scala.util.control.NonFatal
 
 class TreePickler(pickler: TastyPickler, attributes: Attributes) {
   val buf: TreeBuffer = new TreeBuffer
@@ -170,7 +171,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
 
   def pickleType(tpe0: Type, richTypes: Boolean = false)(using Context): Unit = {
     val tpe = tpe0.stripTypeVar
-    try {
+    printOnAssertionError(i"error when pickling type $tpe") {
       val prev: Addr | Null = pickledTypes.lookup(tpe)
       if (prev == null) {
         pickledTypes(tpe) = currentAddr
@@ -180,11 +181,6 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
         writeByte(SHAREDtype)
         writeRef(prev)
       }
-    }
-    catch {
-      case ex: AssertionError =>
-        println(i"error when pickling type $tpe")
-        throw ex
     }
   }
 
@@ -820,12 +816,9 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
         case ex: TypeError =>
           report.error(ex.toMessage, tree.srcPos.focus)
           pickleErrorType()
-        case ex: AssertionError =>
+        case NonFatal(t) =>
           println(i"error when pickling tree $tree of class ${tree.getClass}")
-          throw ex
-        case ex: MatchError =>
-          println(i"error when pickling tree $tree of class ${tree.getClass}")
-          throw ex
+          throw t
       }
   }
 

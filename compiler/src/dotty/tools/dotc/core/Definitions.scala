@@ -757,6 +757,7 @@ class Definitions {
   def ThrowableClass(using Context): ClassSymbol  = ThrowableType.symbol.asClass
   @tu lazy val ExceptionClass: ClassSymbol        = requiredClass("java.lang.Exception")
   @tu lazy val RuntimeExceptionClass: ClassSymbol = requiredClass("java.lang.RuntimeException")
+  @tu lazy val ErrorType: TypeRef                 = requiredClassRef("java.lang.Error")
 
   @tu lazy val SerializableType: TypeRef       = JavaSerializableClass.typeRef
   def SerializableClass(using Context): ClassSymbol = SerializableType.symbol.asClass
