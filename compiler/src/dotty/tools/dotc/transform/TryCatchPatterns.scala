@@ -109,7 +109,7 @@ class TryCatchPatterns extends MiniPhase {
     }
 
   private def warnIfUnreasonableCatch(tpt: Tree)(using Context): Unit = {
-    if tpt.tpe <:< defn.ErrorType || tpt.tpe =:= defn.ThrowableType then
+    if ctx.settings.Whas.unreasonableCatch && tpt.tpe <:< defn.ErrorType || tpt.tpe =:= defn.ThrowableType then
       report.warning(UnreasonableCatch(tpt.tpe), tpt)
   }
 }

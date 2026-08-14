@@ -1,3 +1,5 @@
+//> using options -Wunreasonable-catch
+
 import scala.util.control.*
 
 object O:
