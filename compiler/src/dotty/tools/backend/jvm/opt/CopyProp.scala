@@ -29,7 +29,7 @@ import org.objectweb.asm
 class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes, settings: OptimizerSettings) {
 
   private val modulesAllowSkipInitialization: InternalName => Boolean =
-    if settings.optAllowSkipCoreModuleInit then n => n.startsWith("scala/") else Set.empty
+    if settings.optAllowSkipCoreModuleInit then optimizerUtils.modulesAllowSkipInitialization else Set.empty
 
   /**
    * For every `xLOAD n`, find all local variable slots that are aliases of `n` using an

@@ -172,6 +172,45 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
       (ts.StringRef.internalName, MethodBType(List(ts.StringRef), UNIT).descriptor),
       (ts.StringRef.internalName, MethodBType(List(ArrayBType(CHAR)), UNIT).descriptor))
 
+  lazy val modulesAllowSkipInitialization: Set[InternalName] =
+    Set(
+      // Please keep sorted
+      ScalaPackageObject,
+      "scala/Array$",
+      "scala/Predef$",
+      "scala/TupleXXL$",
+      "scala/collection/ArrayOps$",
+      "scala/collection/Iterable$",
+      "scala/collection/Iterator$",
+      "scala/collection/StringOps$",
+      "scala/collection/immutable/IndexedSeq$",
+      "scala/collection/immutable/LazyList$",
+      "scala/collection/immutable/List$",
+      "scala/collection/immutable/Nil$",
+      "scala/collection/immutable/Range$",
+      "scala/collection/immutable/Seq$",
+      "scala/collection/immutable/Stream$",
+      "scala/collection/immutable/Vector$",
+      "scala/collection/mutable/StringBuilder$",
+      "scala/math/BigDecimal$",
+      "scala/math/BigInt$",
+      "scala/math/Equiv$",
+      "scala/math/Fractional$",
+      "scala/math/Integral$",
+      "scala/math/Numeric$",
+      "scala/math/Ordered$",
+      "scala/math/Ordering$",
+      "scala/runtime/Arrays$",
+      "scala/runtime/ScalaRunTime$",
+      "scala/runtime/Scala3RunTime$",
+      "scala/reflect/ClassTag$",
+      "scala/reflect/ManifestFactory$",
+      "scala/util/Either$",
+      "scala/util/Left$",
+      "scala/util/Right$",
+    ) ++ (1 to Definitions.MaxTupleArity).map(n => s"scala/Tuple$n$$")
+      ++ AnalysisUtils.primitiveTypes.keysIterator.map(n => s"scala/$n$$")
+
   private lazy val classesOfSideEffectFreeConstructors: Set[String] =
     sideEffectFreeConstructors.map(_._1)
 
@@ -218,7 +257,7 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
       val t = i.getType
       if (t == AbstractInsnNode.METHOD_INSN) {
         val mi = i.asInstanceOf[MethodInsnNode]
-        if (mi.owner == ScalaPackageObject) {
+        if (mi.owner == ScalaPackageObject && modulesAllowSkipInitialization.exists(mi.desc.contains)) {
           // Ignore calls that, e.g., load the Range module -- that's still part of a forwarder
         } else if (!allowPrivateCalls && i.getOpcode == Opcodes.INVOKESPECIAL && mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) {
           // invokespecial has, well, special semantics that depend on the class it's being invoked in, see, e.g., https://stackoverflow.com/a/8950564
