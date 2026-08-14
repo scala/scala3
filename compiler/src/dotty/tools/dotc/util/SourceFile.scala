@@ -13,6 +13,8 @@ import Chars.*
 import scala.annotation.internal.sharable
 import scala.collection.mutable.ArrayBuffer
 import scala.compiletime.uninitialized
+import dotty.tools.dotc.util.chaining.*
+
 import java.io.File.separator
 import java.net.URI
 import java.nio.charset.StandardCharsets
@@ -63,6 +65,10 @@ object WrappedSourceFile:
 
 class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec: Codec) extends interfaces.SourceFile {
   private var myContent: Array[Char] | Null = null
+
+  private var _maybeIncomplete: Boolean = false
+
+  def maybeIncomplete: Boolean = _maybeIncomplete
 
   /** The contents of the original source file. Note that this can be empty, for example when
    * the source is read from Tasty. */
@@ -229,8 +235,9 @@ object SourceFile {
   /** A source file with an underlying virtual file. The path is taken as a file system path
    *  with the local separator converted to "/". The last element of the path will be the simple name of the file.
    */
-  def virtual(name: String, content: String) =
+  def virtual(name: String, content: String, maybeIncomplete: Boolean = false) =
     new SourceFile(new VirtualFile(name.replace(separator, "/"), content.getBytes(StandardCharsets.UTF_8)), new VirtualFile("_root_", Array.emptyByteArray), Codec.UTF8)
+      .tap(_._maybeIncomplete = maybeIncomplete)
 
   /** A helper method to create a virtual source file for given URI.
    */

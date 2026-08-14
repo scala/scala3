@@ -369,7 +369,13 @@ object ParseResult {
   }
 
   def apply(sourceCode: String)(using state: State): ParseResult =
-    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode))
+    maybeIncomplete(sourceCode, maybeIncomplete = true)
+
+  def complete(sourceCode: String)(using state: State): ParseResult =
+    maybeIncomplete(sourceCode, maybeIncomplete = false)
+
+  private def maybeIncomplete(sourceCode: String, maybeIncomplete: Boolean)(using state: State): ParseResult =
+    apply(SourceFile.virtual(str.REPL_SESSION_LINE + (state.objectIndex + 1), sourceCode, maybeIncomplete = maybeIncomplete))
 
   def isCommand(line: String): Boolean =
     line match
@@ -434,7 +440,7 @@ object ParseResult {
         val code = codeAfterLeadingCommands(sourceCode, extractedDirectives)
         code.nonEmpty && {
           val reporter = newStoreReporter
-          val source   = SourceFile.virtual("<incomplete-handler>", code)
+          val source   = SourceFile.virtual("<incomplete-handler>", code, maybeIncomplete = true)
           val unit     = CompilationUnit(source, mustExistIfNotNull = false)
           val localCtx = ctx.fresh
                             .setCompilationUnit(unit)
