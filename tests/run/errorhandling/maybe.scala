@@ -1,3 +1,4 @@
+//> using options -Yexplicit-nulls
 package scala.util
 import boundary.{Label, break}
 import language.experimental.magic
@@ -13,7 +14,7 @@ def NULL: Err[Unit] = Err(())
 
 extension (str: String) def parseInt: Int ?? Unit =
   try str.toInt
-  catch case ex: NumberFormatException => null
+  catch case ex: NumberFormatException => Err(null)
 
 case class Date(day: Int, month: Int, year: Int)
 

@@ -1,3 +1,4 @@
+//> using options -Yexplicit-nulls
 package magicTest
 
 import scala.util.*, boundary.break

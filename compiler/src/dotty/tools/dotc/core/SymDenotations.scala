@@ -934,7 +934,11 @@ object SymDenotations {
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
       if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes
-      then symbol == defn.NullClass || symbol == defn.AnyClass || symbol == defn.AnyValClass || symbol == defn.MatchableClass
+      then symbol == defn.NullClass
+        || symbol == defn.AnyClass
+        || symbol == defn.AnyValClass
+        || symbol == defn.MatchableClass
+        || symbol == defn.MagicMaybeClass
       else isNullableClassAfterErasure
 
     /** Is this symbol a class of which `null` is a value after erasure?

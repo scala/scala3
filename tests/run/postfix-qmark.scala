@@ -1,3 +1,4 @@
+//> using options -Yexplicit-nulls
 import language.experimental.magic
 
 case class C(elem: Int):
