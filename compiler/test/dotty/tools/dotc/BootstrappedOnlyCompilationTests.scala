@@ -97,6 +97,13 @@ class BootstrappedOnlyCompilationTests {
       .checkExpectedErrors()
   }
 
+  @Test def warnBootstrappedOnly: Unit = {
+    given TestGroup = TestGroup("warnBootstrappedOnly")
+    aggregateTests(
+      compileFilesInDir("tests/warn-bootstrapped", defaultOptions),
+    )
+  }
+
   @Test def negWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("compileNegWithCompiler")
     aggregateTests(
