@@ -635,7 +635,8 @@ object SymDenotations {
       case myInfo: ModuleCompleter =>
         // Instead of completing the ModuleCompleter, we can check whether
         // the module class is absent, which might require less completions.
-        myInfo.moduleClass.isAbsent(canForce)
+        val mcls: Symbol = myInfo.moduleClass
+        !mcls.exists || mcls.isAbsent(canForce)
       case _: SymbolLoader if canForce =>
          // Completing a SymbolLoader might call `markAbsent()`
         completeOnce()
