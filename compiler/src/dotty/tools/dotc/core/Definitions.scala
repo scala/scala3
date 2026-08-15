@@ -484,6 +484,7 @@ class Definitions {
   // Magic stuff
   @tu lazy val MagicPackageClass: ClassSymbol = requiredPackage("scala.magic").moduleClass.asClass
   @tu lazy val MagicMaybeClass: ClassSymbol = requiredClass("scala.magic.$Maybe")
+  @tu lazy val MagicValidClass: ClassSymbol = requiredClass("scala.magic.runtime.Valid")
 
   @tu lazy val MagicCompiletimeModule: Symbol = requiredModule("scala.magic.compiletime")
     @tu lazy val Magic_spec: Symbol = MagicCompiletimeModule.requiredMethod("$spec")
@@ -2225,6 +2226,7 @@ class Definitions {
     m(TupleClass) = ProductClass
     m(NonEmptyTupleClass) = ProductClass
     m(PairClass) = ObjectClass
+    m(MagicMaybeClass) = ObjectClass
     m
 
   // ----- Initialization ---------------------------------------------------

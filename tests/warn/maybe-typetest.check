@@ -1,0 +1,32 @@
+-- [E030] Match case Unreachable Warning: tests/warn/maybe-typetest.scala:11:9 -----------------------------------------
+11 |    case _ =>                           // warn
+   |         ^
+   |         Unreachable case
+-- [E030] Match case Unreachable Warning: tests/warn/maybe-typetest.scala:17:9 -----------------------------------------
+17 |    case _ =>                           // warn
+   |         ^
+   |         Unreachable case
+-- [E092] Pattern Match Unchecked Warning: tests/warn/maybe-typetest.scala:7:9 -----------------------------------------
+7 |    case y: String? => println(y)       // warn
+  |         ^
+  |the type test for scala.magic.$Maybe[String] cannot be checked at runtime because its type arguments can't be determined from T
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E092] Pattern Match Unchecked Warning: tests/warn/maybe-typetest.scala:10:9 ----------------------------------------
+10 |    case y: String? => println(y)       // warn
+   |         ^
+   |the type test for scala.magic.$Maybe[String] cannot be checked at runtime because its type arguments can't be determined from scala.magic.$Maybe[T]
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E092] Pattern Match Unchecked Warning: tests/warn/maybe-typetest.scala:13:9 ----------------------------------------
+13 |    case y: Option[String] => println(y)// warn
+   |         ^
+   |the type test for Option[String] cannot be checked at runtime because its type arguments can't be determined from T
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E092] Pattern Match Unchecked Warning: tests/warn/maybe-typetest.scala:16:9 ----------------------------------------
+16 |    case y: Option[String] => println(y)// warn
+   |         ^
+   |the type test for Option[String] cannot be checked at runtime because its type arguments can't be determined from Some[T]
+   |
+   | longer explanation available when compiling with `-explain`
