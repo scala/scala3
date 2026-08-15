@@ -47,7 +47,7 @@ object Feature:
   val specializedTraits = experimental("specializedTraits")
 
   val nonViralExperimentalFeatures: Set[TermName] =
-    Set(captureChecking, separationChecking, safe)
+    Set(captureChecking, separationChecking, safe, magic)
 
   /** Experimental language imports that imply that the importing unit
    *  is experimental.
@@ -187,12 +187,12 @@ object Feature:
 
   def quotedPatternsWithPolymorphicFunctionsEnabled(using Context) =
     enabled(quotedPatternsWithPolymorphicFunctions)
-  
-  def inlineTraitsEnabled(using Context) = 
+
+  def inlineTraitsEnabled(using Context) =
     enabledBySetting(inlineTraits)
     || enabledBySetting(specializedTraits)
     || ctx.compilationUnit.knowsInlineTraits
-  
+
   /** Is pureFunctions enabled for this compilation unit? */
   def pureFunsEnabled(using Context) =
     enabledBySetting(pureFunctions)
@@ -350,7 +350,7 @@ object Feature:
         ctx.compilationUnit.magic = true
         true
       case `inlineTraits` =>
-        ctx.compilationUnit.knowsInlineTraits = true 
+        ctx.compilationUnit.knowsInlineTraits = true
         if ctx.run != null then ctx.run.nn.inlineTraitsImportEncountered = true
         true
       case _ =>
