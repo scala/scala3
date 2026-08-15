@@ -274,6 +274,8 @@ class RefinedPrinter(_ctx: Context) extends PlainPrinter(_ctx) {
     }
 
     def appliedText(tp: Type): Text = tp match
+      case AppliedType(tycon, arg :: Nil) if tycon.isRef(defn.MagicMaybeClass) =>
+        toText(arg) ~ "?"
       case tp @ AppliedType(tycon, args) =>
         val namedElems =
           try tp.namedTupleElementTypesUpTo(200, false, normalize = false)
