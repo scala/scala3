@@ -82,7 +82,11 @@ object TypeErasure:
   private val DisallowSpecialized = Property.Key[Unit] 
 
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
-    sym == defn.ArrayClass || sym == defn.PairClass || sym.isDerivedValueClass || sym.isSpecializedTrait
+    sym == defn.ArrayClass
+    || sym == defn.PairClass
+    || sym == defn.MagicMaybeClass
+    || sym.isDerivedValueClass
+    || sym.isSpecializedTrait
 
   /** The arity of this tuple type, which can be made up of EmptyTuple, TupleX and `*:` pairs.
    *
@@ -805,6 +809,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else if (tycon.isRef(defn.PairClass)) erasePair(tp)
         else if (tp.isRepeatedParam) apply(tp.translateFromRepeated(toArray = sourceLanguage.isJava))
         else if (semiEraseVCs && tycon.classSymbol.isDerivedValueClass) eraseDerivedValueClass(tp)
+        else if tycon.isRef(defn.MagicMaybeClass) then eraseMaybe(tp)
         else this(checkedSuperType(tp))
       case tp: TermRef =>
         this(underlyingOfTermRef(tp))
@@ -989,6 +994,12 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     else if arity <= Definitions.MaxTupleArity then defn.TupleType(arity).nn
     else defn.TupleXXLClass.typeRef
   }
+
+  private def eraseMaybe(tp: AppliedType)(using Context): Type =
+    val arg = tp.args.head
+    if arg.isNotNull && arg.derivesFrom(defn.ObjectClass)
+    then apply(arg)
+    else defn.ObjectClass.typeRef
 
   /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s and
    *  `PolyType`s are treated. `eraseInfo` maps them to method types, whereas `apply` maps them

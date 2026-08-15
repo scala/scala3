@@ -1516,6 +1516,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           || byGadtBounds
           || defn.isCompiletimeAppliedType(tycon2.symbol)
               && compareCompiletimeAppliedType(tp2, tp1, fromBelow = true)
+          || tycon2.symbol == defn.MagicMaybeClass && tp1.isNotNull
           || tycon2.info.match
                 case info2: TypeBounds =>
                   compareLower(info2, tyconIsTypeRef = true)

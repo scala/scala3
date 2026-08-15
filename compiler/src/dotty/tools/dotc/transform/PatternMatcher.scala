@@ -390,7 +390,16 @@ object PatternMatcher {
               receiver.ensureConforms(defn.NonEmptyTupleTypeRef), // If scrutinee is a named tuple, cast to underlying tuple
               Literal(Constant(i)))
 
-        def getOfGetMatch(gm: Tree) = gm.select(nme.get, _.info.isParameterless)
+        def getOfGetMatch(gm: Tree) =
+          val getSelection = gm.select(nme.get, _.info.isParameterless)
+          if gm.tpe.widen.isRef(defn.MagicMaybeClass) then
+            val validTpe = defn.MagicValidClass.typeRef
+            If(gm.isInstance(validTpe),
+                gm.asInstance(validTpe).select(nme.elem),
+                gm)
+              .asInstance(getSelection.tpe.widen)
+          else getSelection
+
         // Disable Scala2Unapply optimization if the argument is a named argument for a single-element named tuple to
         // enable selecting the field. See i23131.scala for test cases.
         val wasUnaryNamedTupleSelectArgForNamedTuple =
@@ -441,7 +450,7 @@ object PatternMatcher {
                         if i == elemTypes.length - 1 then tree.cast(tp) else tree
                       }
                       unapplyProductSeqPlan(selectors, args)
-                    else { 
+                    else {
                       val selectors = productSelectors(getResult.info).map(ref(getResult).select(_))
                       unapplyProductSeqPlan(selectors, args)
                     }
@@ -528,7 +537,7 @@ object PatternMatcher {
             )
           }
         // When match against a `this.type` (say case a: this.type => ???),
-        // the typer will transform the pattern to a `Bind(..., Typed(Ident(a), ThisType(...)))`, 
+        // the typer will transform the pattern to a `Bind(..., Typed(Ident(a), ThisType(...)))`,
         // then post typer will change all the `Ident` with a `ThisType` to a `This`.
         // Therefore, after pattern matching, we will have the following tree `Bind(..., Typed(This(...), ThisType(...)))`.
         // We handle now here the case were the pattern was transformed to a `This`, relying on the fact that the logic for
@@ -813,10 +822,13 @@ object PatternMatcher {
       val scrutinee = plan.scrutinee
       (plan.test: @unchecked) match
         case NonEmptyTest =>
-          constToLiteral(
-            scrutinee
-              .select(nme.isEmpty, _.info.isParameterless)
-              .select(nme.UNARY_!, _.info.isParameterless))
+          if scrutinee.tpe.widen.isRef(defn.MagicMaybeClass) then
+            scrutinee.testNotNull
+          else
+            constToLiteral(
+              scrutinee
+                .select(nme.isEmpty, _.info.isParameterless)
+                .select(nme.UNARY_!, _.info.isParameterless))
         case NonNullTest =>
           scrutinee.testNotNull
         case GuardTest =>

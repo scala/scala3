@@ -11,4 +11,4 @@ object Ok:
     else x
   }.asInstanceOf[`$Maybe`[T]]
 
-  def unapply[T](x: `$Maybe`[T]): x.type = x
+  def unapply(x: `$Maybe`[Any]): x.type = x
