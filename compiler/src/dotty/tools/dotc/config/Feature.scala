@@ -278,7 +278,7 @@ object Feature:
       || sym.exists && defn.ccExperimental.contains(sym.owner))
 
   private def magicException(sym: Symbol)(using Context): Boolean =
-    Feature.magicEnabled && sym.enclosingPackageClass == defn.MagicPackageClass
+    Feature.magicEnabled && sym.isContainedIn(defn.MagicPackageClass)
 
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
     val experimentalSym =
