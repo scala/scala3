@@ -12,6 +12,7 @@ import dotty.tools.dotc.util.NoSourcePosition
 
 import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import core.Decorators.{em, toMessage}
 
@@ -98,6 +99,8 @@ abstract class Reporter extends interfaces.ReporterResult {
   private var _errorCount = 0
   private var _warningCount = 0
   private var _infoCount = 0
+  // Suppress repeated reports of the same loading failure within one run.
+  private val reportedLoadingFailures = mutable.WeakHashMap.empty[LoadingFailure, Int]
 
   /** The number of errors reported by this reporter (ignoring outer reporters) */
   def errorCount: Int = _errorCount
@@ -267,8 +270,13 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** Should this diagnostic not be reported at all? */
   def isHidden(dia: Diagnostic)(using Context): Boolean =
     ctx.mode.is(Mode.Printing)
+    || (dia match
+      case error: LoadingError => reportedLoadingFailures.get(error.failure).contains(ctx.runId)
+      case _ => false)
 
-  def markReported(dia: Diagnostic)(using Context): Unit = ()
+  def markReported(dia: Diagnostic)(using Context): Unit = dia match
+    case error: LoadingError => reportedLoadingFailures(error.failure) = ctx.runId
+    case _ =>
 
   /** Does this reporter contain errors that have yet to be reported by its outer reporter ?
    *  Note: this is always false when there is no outer reporter.

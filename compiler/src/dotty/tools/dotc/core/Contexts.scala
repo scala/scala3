@@ -22,6 +22,7 @@ import Implicits.ContextualImplicits
 import config.Settings.*
 import config.Config
 import reporting.*
+import reporting.Diagnostic.LoadingFailure
 import io.{AbstractFile, PlainFile, Path}
 import scala.io.Codec
 import collection.mutable
@@ -1100,6 +1101,12 @@ object Contexts {
      *  to avoid space leaks - the message usually captures a context.
      */
     private[core] val errorTypeMsg: mutable.Map[Types.ErrorType, Message] = mutable.Map()
+
+    /** Symbol-loading failures retained for later references to the same symbol.
+     *  These must live as long as the symbol graph: resetting per-run caches does not
+     *  restore symbols whose infos have already been replaced by `NoType`.
+     */
+    private[core] val loadingFailures: mutable.WeakHashMap[Symbol, LoadingFailure] = mutable.WeakHashMap()
 
     // Phases state
 

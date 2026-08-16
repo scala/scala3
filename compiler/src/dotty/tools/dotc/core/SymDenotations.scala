@@ -21,6 +21,7 @@ import util.Stats
 import java.util.WeakHashMap
 import config.Config
 import reporting.*
+import reporting.Diagnostic.LoadingFailure
 import collection.mutable
 import cc.{CapturingType, derivedCapturingType, stripCapturing}
 
@@ -609,10 +610,18 @@ object SymDenotations {
         assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
           s"Illegal call to `markAbsent()` while completing $this using completer $myInfo")
       myInfo = NoType
+      if (ctx ne NoContext) && (symbol ne NoSymbol) then
+        ctx.base.loadingFailures.remove(symbol)
     }
+
+    /** Mark this symbol absent because its binary representation could not be loaded. */
+    private[core] final def markLoadFailed(failure: LoadingFailure)(using Context): Unit =
+      markAbsent()
+      ctx.base.loadingFailures(symbol) = failure
 
     /** Is symbol known to not exist?
      *  @param canForce  If this is true, the info may be forced to avoid a false-negative result
+     *                   and a retained loading failure may be reported.
      */
     @tailrec
     final def isAbsent(canForce: Boolean = true)(using Context): Boolean = myInfo match {
@@ -626,7 +635,10 @@ object SymDenotations {
         isAbsent(canForce)
       case _ =>
         // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
-        (myInfo `eq` NoType)
+        val absent = myInfo `eq` NoType
+        if absent && canForce && (symbol ne NoSymbol) && (ctx ne NoContext) then
+          ctx.base.loadingFailures.get(symbol).foreach(report.loadingError)
+        absent
         || (is(Invisible) && !ctx.mode.is(Mode.ResolveFromTASTy)) && ctx.isTyper
         || is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
     }

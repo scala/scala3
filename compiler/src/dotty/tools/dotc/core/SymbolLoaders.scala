@@ -16,6 +16,7 @@ import Decorators.*
 
 import util.Stats
 import reporting.trace
+import reporting.Diagnostic.LoadingFailure
 
 import ast.desugar
 
@@ -422,14 +423,16 @@ abstract class SymbolLoader extends LazyType { self =>
   }
 
   override def complete(root: SymDenotation)(using Context): Unit = profileCompletion(root) {
-    def signalError(ex: Exception): Unit = {
+    def loadingFailure(ex: Exception): LoadingFailure = {
       if (ctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()
-      report.error(
+      val message =
         if msg == null then em"i/o error while loading ${root.name}"
         else em"""error while loading ${root.name},
-                 |$msg""")
+                 |$msg"""
+      LoadingFailure(message)
     }
+    var failure: Option[LoadingFailure] = None
     try {
       val start = System.currentTimeMillis
       trace.onDebug("loading") {
@@ -441,7 +444,9 @@ abstract class SymbolLoader extends LazyType { self =>
       case ex: ClosedByInterruptException =>
         throw new InterruptedException
       case ex: IOException =>
-        signalError(ex)
+        val loadFailure = loadingFailure(ex)
+        failure = Some(loadFailure)
+        report.loadingError(loadFailure)
       case ex: TypeError =>
         println(s"exception caught when loading $root: ${ex.toMessage}")
         throw ex
@@ -453,11 +458,14 @@ abstract class SymbolLoader extends LazyType { self =>
       def postProcess(denot: SymDenotation, other: Symbol) =
         if !denot.isCompleted &&
            !denot.completer.isInstanceOf[SymbolLoaders.SecondCompleter] then
-          if denot.is(ModuleClass) && NamerOps.needsConstructorProxies(other) then
-            NamerOps.makeConstructorCompanion(denot.sourceModule.asTerm, other.asClass)
-            denot.resetFlag(Touched)
-          else
-            denot.markAbsent()
+          failure match
+            case Some(failure) => denot.markLoadFailed(failure)
+            case None =>
+              if denot.is(ModuleClass) && NamerOps.needsConstructorProxies(other) then
+                NamerOps.makeConstructorCompanion(denot.sourceModule.asTerm, other.asClass)
+                denot.resetFlag(Touched)
+              else
+                denot.markAbsent()
 
       val other = if root.isRoot then NoSymbol else root.scalacLinkedClass
       postProcess(root, other)
