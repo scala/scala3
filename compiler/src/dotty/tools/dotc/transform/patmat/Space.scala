@@ -435,6 +435,11 @@ object SpaceEngine {
 
   private def project(tp: Type)(using Context): Space = tp match {
     case OrType(tp1, tp2) => Or(project(tp1) :: project(tp2) :: Nil)
+    case tp if tp.isMaybeType =>
+      // A maybe type `T ? E` erases to Object and is inhabited by the values of `T`
+      // together with `null`, which represents the invalid case. Since `Typ(tp)` stands
+      // for the valid values only, `null` has to be added as a separate space.
+      Or(Typ(tp, decomposed = true) :: nullSpace :: Nil)
     case tp => Typ(tp, decomposed = true)
   }
 
@@ -659,6 +664,10 @@ object SpaceEngine {
       val AppliedType(_, tp :: Nil) = unapp.prefix.widen.dealias: @unchecked
       scrutineeTp <:< tp
     }
+    // `Ok.unapply` returns its argument, and the emitted non-empty test for a maybe
+    // type is a `!= null` test (see PatternMatcher#emitCondition). So `Ok(_)` matches
+    // every non-null value of a maybe type, which is what `Typ(scrutineeTp)` stands for.
+    || scrutineeTp.isMaybeType && unapp.symbol == defn.Magic_OkUnapply
   }
 
   /** Decompose a type into subspaces -- assume the type can be decomposed */
@@ -754,6 +763,12 @@ object SpaceEngine {
   }
 
   extension (tp: Type)
+    /** Is `tp` a maybe type `T ? E`? Such a type is inhabited by the values of `T`
+     *  plus `null`, which stands for the invalid case.
+     */
+    def isMaybeType(using Context): Boolean =
+      tp.isRef(defn.MagicMaybeClass)
+
     def isDecomposableToChildren(using Context): Boolean =
       val cls = tp.classSymbol // e.g. Foo[List[Int]] = class List
       tp.hasSimpleKind                  // can't decompose higher-kinded types

@@ -2425,7 +2425,7 @@ object desugar {
               AppliedTypeTree(ref(defn.SeqType), t),
               New(ref(defn.RepeatedAnnot.typeRef), Nil :: Nil))
         else if isOp(tpnme.?) then
-          AppliedTypeTree(ref(defn.MagicMaybeClass.typeRef), t /*:: ref(defn.UnitClass.typeRef)*/ :: Nil)
+          AppliedTypeTree(ref(defn.MagicMaybeClass.typeRef), t :: ref(defn.UnitClass.typeRef) :: Nil)
         else
           assert(ctx.mode.isExpr || ctx.reporter.errorsReported || ctx.mode.is(Mode.Interactive), ctx.mode)
           Select(t, op.name)

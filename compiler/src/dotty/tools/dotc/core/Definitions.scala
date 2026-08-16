@@ -483,8 +483,11 @@ class Definitions {
 
   // Magic stuff
   @tu lazy val MagicPackageClass: ClassSymbol = requiredPackage("scala.magic").moduleClass.asClass
-  @tu lazy val MagicMaybeClass: ClassSymbol = requiredClass("scala.magic.$Maybe")
+  @tu lazy val MagicMaybeClass: ClassSymbol = requiredClass("scala.magic.Maybe")
   @tu lazy val MagicValidClass: ClassSymbol = requiredClass("scala.magic.runtime.Valid")
+
+  @tu lazy val MagicOkModule: Symbol = requiredModule("scala.magic.Ok")
+    @tu lazy val Magic_OkUnapply: Symbol = MagicOkModule.requiredMethod(nme.unapply)
 
   @tu lazy val MagicCompiletimeModule: Symbol = requiredModule("scala.magic.compiletime")
     @tu lazy val Magic_spec: Symbol = MagicCompiletimeModule.requiredMethod("$spec")
@@ -1777,7 +1780,7 @@ class Definitions {
   private val PredefImportFns: RootRef =
     RootRef(() => ScalaPredefModule.termRef)
 
-  // The new Specialized lives in scala.specialize. 
+  // The new Specialized lives in scala.specialize.
   // This is to avoid conflict with the Scala2 specialized annotation.
   // It is not imported by default with the scala package, so we additionally import it here.
   private val SpecializeImportFns: RootRef =
