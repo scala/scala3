@@ -896,7 +896,6 @@ object TypeOps:
               tv
 
         case tp @ AppliedType(tycon: TypeRef, _) if !tycon.dealias.typeSymbol.isClass && !tp.isMatchAlias =>
-
           // In tests/patmat/i3645g.scala, we need to tell whether it's possible
           // that K1 <: K[Foo]. If yes, we issue a warning; otherwise, no
           // warnings.
@@ -917,13 +916,18 @@ object TypeOps:
           // Note that `HKTypeLambda.resType` may contain TypeParamRef that are
           // bound in the HKTypeLambda. This is fine, as the TypeComparer will
           // recurse on the bounds of `TypeParamRef`.
-          val bounds: TypeBounds = tycon.underlying match {
+          val tyconBounds =
+            if initialGadt.contains(tycon.symbol) then initialGadt.bounds(tycon.symbol).nn
+            else tycon.underlying.bounds
+          val bounds: TypeBounds = tyconBounds match {
             case TypeBounds(tl1: HKTypeLambda, tl2: HKTypeLambda) =>
               TypeBounds(tl1.resType, tl2.resType)
             case TypeBounds(tl1: HKTypeLambda, tp2) =>
               TypeBounds(tl1.resType, tp2)
             case TypeBounds(tp1, tl2: HKTypeLambda) =>
               TypeBounds(tp1, tl2.resType)
+            case bounds =>
+              bounds
           }
 
           newTypeVar(bounds)
