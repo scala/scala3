@@ -1,6 +1,7 @@
 package scala.annotation
 
 import language.experimental.captureChecking
+import meta.exportable
 
 /** An annotation that can be used to mark a definition as experimental.
  *
@@ -9,5 +10,6 @@ import language.experimental.captureChecking
  *
  *  @param message a description explaining the experimental status, or an empty string if no message is needed
  */
+@exportable
 final class experimental(message: String) extends StaticAnnotation:
   def this() = this("")
