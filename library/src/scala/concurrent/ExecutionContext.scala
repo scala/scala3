@@ -68,6 +68,7 @@ consider using Scala's global ExecutionContext by defining
 the following:
 
 implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global""")
+/** An execution context that can execute program logic asynchronously, typically on a thread pool. */
 trait ExecutionContext {
 
   /** Runs a block of code on this execution context.
@@ -217,8 +218,20 @@ object ExecutionContext {
    *  Any `NonFatal` or `InterruptedException`s will be reported to the `defaultReporter`.
    */
   object parasitic extends ExecutionContextExecutor with BatchingExecutor {
+    /** Executes the given `Runnable` immediately on the current thread.
+     *
+     *  @param runnable the task to execute
+     */
     override final def submitForExecution(runnable: Runnable): Unit = runnable.run()
+    /** Executes the given `Runnable` on the current thread, batching nested tasks.
+     *
+     *  @param runnable the task to execute
+     */
     override final def execute(runnable: Runnable): Unit = submitSyncBatched(runnable)
+    /** Reports the given `Throwable` to the default reporter.
+     *
+     *  @param t the failure to report
+     */
     override final def reportFailure(t: Throwable): Unit = defaultReporter(t)
   }
 
