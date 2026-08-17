@@ -87,9 +87,10 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
   override def path: String =
     if file eq null then "" else file.path
   @threadUnsafe lazy val pathRelativeToSourceRoot: String =
-    if (file eq null) || (file.jpath eq null) then
-      throw new AssertionError(s"pathRelativeToSourceRoot called on a missing or non-disk file ('$path')")
-    else if sourceRoot.jpath eq null then
+    if file eq null then
+      throw new AssertionError(s"pathRelativeToSourceRoot called on a missing file")
+    else if file.isVirtual || sourceRoot.isVirtual then
+      // This can happen when evaluating debug expressions with fake in-memory files
       file.path
     else
       val sourcePath = file.jpath.nn.toAbsolutePath.normalize
