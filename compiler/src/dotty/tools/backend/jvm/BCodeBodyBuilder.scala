@@ -1841,20 +1841,21 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       // scala/bug#10334: make sure that a lambda object for `T => U` has a method `apply(T)U`, not only the `(Object)Object`
       // version. Using the lambda a structural type `{def apply(t: T): U}` causes a reflective lookup for this method.
       val needsGenericBridge = samMethodType != instantiatedMethodType
-      val bridgeMethods = atPhase(erasurePhase){
+      val bridgeMethods = atPhase(erasurePhase) {
         samMethod.allOverriddenSymbols.toList
       }
       val overriddenMethodTypes = bridgeMethods.map(b => bTypeLoader.methodBTypeFromSymbol(b).toASMType)
+                                               .filterNot(_ == samMethodType)
+                                               .distinct
 
       // any methods which `samMethod` overrides need bridges made for them
       // this is done automatically during erasure for classes we generate, but LMF needs to have them explicitly mentioned
       // so we have to compute them at this relatively late point.
-      val bridgeTypes = (
-        if (needsGenericBridge)
-          instantiatedMethodType +: overriddenMethodTypes
+      val bridgeTypes =
+        if (needsGenericBridge && !overriddenMethodTypes.contains(instantiatedMethodType))
+          instantiatedMethodType :: overriddenMethodTypes
         else
           overriddenMethodTypes
-      ).distinct.filterNot(_ == samMethodType)
 
       val needsBridges = bridgeTypes.nonEmpty
 
