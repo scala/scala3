@@ -174,6 +174,14 @@ import scala.language.implicitConversions
 object Exception {
   type Catcher[+T] = PartialFunction[Throwable, T]
 
+  /** Creates a partial function that handles exceptions of type `Ex`.
+   *
+   *  @tparam Ex the exception type to catch
+   *  @tparam T the result type of the handler function
+   *  @param isDef predicate determining whether an exception should be handled
+   *  @param f the handler function to apply to caught exceptions
+   *  @return a partial function that applies `f` to exceptions of type `Ex` that satisfy `isDef`
+   */
   def mkCatcher[Ex <: Throwable: ClassTag, T](isDef: Ex => Boolean, f: Ex => T): PartialFunction[Throwable, T] = new Catcher[T] {
     private def downcast(x: Throwable): Option[Ex] =
       if (classTag[Ex].runtimeClass.isAssignableFrom(x.getClass)) Some(x.asInstanceOf[Ex])
@@ -183,8 +191,22 @@ object Exception {
     def apply(x: Throwable): T = f(downcast(x).get)
   }
 
+  /** Creates a partial function that handles any `Throwable`.
+   *
+   *  @tparam T the result type of the handler function
+   *  @param isDef predicate determining whether a throwable should be handled
+   *  @param f the handler function to apply to caught throwables
+   *  @return a partial function that applies `f` to throwables that satisfy `isDef`
+   */
   def mkThrowableCatcher[T](isDef: Throwable => Boolean, f: Throwable => T): PartialFunction[Throwable, T] = mkCatcher[Throwable, T](isDef, f)
 
+  /** Converts a partial function on exceptions to a catcher.
+   *
+   *  @tparam Ex the exception type handled by the partial function
+   *  @tparam T the result type of the handler function
+   *  @param pf the partial function to convert
+   *  @return a catcher that applies `pf` to exceptions of type `Ex`
+   */
   implicit def throwableSubtypeToCatcher[Ex <: Throwable: ClassTag, T](pf: PartialFunction[Ex, T]): Catcher[T] =
     mkCatcher(pf.isDefinedAt, pf.apply)
 
@@ -200,14 +222,23 @@ object Exception {
     case _                        => false
   }
 
+  /** A trait for objects that can be described with a name and description. */
   trait Described {
+    /** The name of this described object. */
     protected val name: String
     private var _desc: String = ""
+    /** The current description of this object. */
     def desc: String = _desc
+    /** Sets the description of this object.
+     *
+     *  @param s the new description
+     *  @return this object with the updated description
+     */
     def withDesc(s: String): this.type = {
       _desc = s
       this
     }
+    /** Returns a string representation of this object. */
     override def toString(): String = name + "(" + desc + ")"
   }
 
@@ -215,9 +246,16 @@ object Exception {
    *  @group logic-container
    */
   class Finally private[Exception](body: => Unit) extends Described {
+    /** The name of this Finally object. */
     protected val name = "Finally"
 
+    /** Creates a new Finally that executes both this and the given finally body.
+     *
+     *  @param other the additional finally logic to execute
+     *  @return a new Finally that executes both bodies in sequence
+     */
     def and(other: => Unit): Finally = new Finally({ body ; other })
+    /** Executes the finally body. */
     def invoke(): Unit = { body }
   }
 
@@ -233,11 +271,15 @@ object Exception {
    *  @group logic-container
    */
   class Catch[+T](
+    /** The partial function that handles caught exceptions. */
     val pf: Catcher[T],
+    /** The optional finally logic to execute after exception handling. */
     val fin: Option[Finally] = None,
+    /** The predicate that determines whether a caught exception should be rethrown. */
     val rethrow: Throwable => Boolean = shouldRethrow)
   extends Described {
 
+    /** The name of this Catch object. */
     protected val name = "Catch"
 
     /** Creates a new Catch with additional exception handling logic.
@@ -247,6 +289,12 @@ object Exception {
      *  @return a new `Catch` that tries this catch's handler first, falling back to `pf2`
      */
     def or[U >: T](pf2: Catcher[U]): Catch[U] = new Catch(pf orElse pf2, fin, rethrow)
+    /** Creates a new Catch that combines this catch's logic with another Catch's logic.
+     *
+     *  @tparam U the result type of the combined catch logic, a supertype of `T`
+     *  @param other the other Catch to combine with this one
+     *  @return a new `Catch` that tries this catch's handler first, falling back to `other`'s handler
+     */
     def or[U >: T](other: Catch[U]): Catch[U] = or(other.pf)
 
     /** Applies this catch logic to the supplied body.
@@ -318,12 +366,25 @@ object Exception {
 
     /** Convenience methods. */
     def toOption: Catch[Option[T]] = withApply(_ => None)
+    /** Returns a Catch that maps caught exceptions to Left(Throwable). */
     def toEither: Catch[Either[Throwable, T]] = withApply(Left(_))
+    /** Returns a Catch that maps caught exceptions to Failure(Throwable). */
     def toTry: Catch[scala.util.Try[T]] = withApply(x => Failure(x))
   }
 
+  /** A catcher that never matches any throwable. */
   final val nothingCatcher: Catcher[Nothing]  = mkThrowableCatcher(_ => false, throw _)
+  /** Creates a catcher that matches non-fatal throwables.
+   *
+   *  @tparam T the result type of the catcher
+   *  @return a catcher that matches any NonFatal throwable
+   */
   final def nonFatalCatcher[T]: Catcher[T]    = mkThrowableCatcher({ case NonFatal(_) => true; case _ => false }, throw _)
+  /** Creates a catcher that matches all throwables.
+   *
+   *  @tparam T the result type of the catcher
+   *  @return a catcher that matches any throwable
+   */
   final def allCatcher[T]: Catcher[T]         = mkThrowableCatcher(_ => true, throw _)
 
   /** The empty `Catch` object.
@@ -364,6 +425,12 @@ object Exception {
   def catching[T](exceptions: Class[?]*): Catch[T] =
     new Catch(pfFromExceptions(exceptions*)) withDesc (exceptions map (_.getName) mkString ", ")
 
+  /** Creates a Catch object from a catcher.
+   *
+   *  @tparam T the result type of the catcher
+   *  @param c the catcher to use for exception handling
+   *  @return a Catch object that uses the given catcher
+   */
   def catching[T](c: Catcher[T]): Catch[T] = new Catch(c)
 
   /** Creates a `Catch` object which will catch any of the supplied exceptions.
@@ -376,6 +443,12 @@ object Exception {
    *  @return a `Catch` that catches exactly the specified exceptions, including $protectedExceptions, without auto-rethrowing them
    */
   def catchingPromiscuously[T](exceptions: Class[?]*): Catch[T] = catchingPromiscuously(pfFromExceptions(exceptions*))
+  /** Creates a Catch object from a catcher that catches all exceptions including protected ones.
+   *
+   *  @tparam T the result type of the catcher
+   *  @param c the catcher to use for exception handling
+   *  @return a Catch object that uses the given catcher and catches all exceptions
+   */
   def catchingPromiscuously[T](c: Catcher[T]): Catch[T]         = new Catch(c, None, _ => false)
 
   /** Creates a `Catch` object which catches and ignores any of the supplied exceptions.
@@ -408,7 +481,18 @@ object Exception {
   def failAsValue[T](exceptions: Class[?]*)(value: => T): Catch[T] =
     catching(exceptions*) withApply (_ => value)
 
+  /** A builder for creating Catch objects from exception handlers.
+   *
+   *  @tparam T the input type of the handler function
+   *  @tparam R the result type of the handler function
+   *  @param f the function that creates a Catch from a handler
+   */
   class By[T,R](f: T => R) {
+    /** Applies the handler function to create a Catch.
+     *
+     *  @param x the handler function
+     *  @return the resulting Catch object
+     */
     def by(x: T): R = f(x)
   }
 

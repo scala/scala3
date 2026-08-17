@@ -64,6 +64,12 @@ trait BlockContext {
 
 object BlockContext {
   private object DefaultBlockContext extends BlockContext {
+    /** Executes the supplied thunk directly, performing no blocking handling.
+     *
+     *  @tparam T the result type of the blocking thunk
+     *  @param thunk the code to execute that may block the current thread
+     *  @param permission the implicit `CanAwait` permit granting permission to block
+     */
     override final def blockOn[T](thunk: => T)(implicit permission: CanAwait): T = thunk
   }
 

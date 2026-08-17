@@ -274,6 +274,7 @@ object Using {
     def apply[A](op: Manager => A): Try[A] = Try { (new Manager).manage(op) }
 
     private final class Resource[R](resource: R)(implicit releasable: Releasable[R]) {
+      /** Releases the wrapped resource using its `Releasable` instance. */
       def release(): Unit = releasable.release(resource)
     }
   }
@@ -448,6 +449,10 @@ object Using {
     //implicit val AutoCloseableIsReleasable: Releasable[AutoCloseable] = new Releasable[AutoCloseable] {}
     /** An implicit `Releasable` for [[java.lang.AutoCloseable `AutoCloseable`s]]. */
     implicit object AutoCloseableIsReleasable extends Releasable[AutoCloseable] {
+      /** Releases the specified `AutoCloseable` resource by calling its `close` method.
+       *
+       *  @param resource the `AutoCloseable` resource to release
+       */
       def release(resource: AutoCloseable): Unit = resource.close()
     }
   }
