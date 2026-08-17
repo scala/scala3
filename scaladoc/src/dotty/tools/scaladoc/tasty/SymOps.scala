@@ -276,6 +276,7 @@ class SymOpsWithLinkCache:
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
     def dri(using dctx: DocContext): DRI =
       import reflect.*
+
       if sym == Symbol.noSymbol then topLevelDri
       else
         val method =
@@ -288,24 +289,22 @@ class SymOpsWithLinkCache:
         else
           (sym.className, sym.anchor)
 
-        val location = (sym.packageNameSplitted ++ className).map(escapeFilename(_))
-
+        val location = (sym.packageNameSplitted ++ className).map(escapeFilename)
         val externalLink = {
-            import reflect._
-            import dotty.tools.dotc
-            given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-            val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
-            val extLink = if externalLinkCache.contains(csym.associatedFile)
-              then externalLinkCache(csym.associatedFile)
-              else {
-                def calculatePath(file: AbstractFile): String = file.underlyingSource.filter(_ != file).fold("")(f => calculatePath(f) + "/") + file.path
-                val calculatedLink = Option(csym.associatedFile).map(f => calculatePath(f)).flatMap { path =>
-                  dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path)))
+          import dotty.tools.dotc
+          given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+          val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
+          val file = csym.associatedFile
+          val extLink =
+            externalLinkCache.get(file) match
+              case Some(s) => s
+              case None =>
+                val calculatedLink = Option(file).flatMap { f =>
+                  dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(f.path)))
                 }
-                externalLinkCache += (csym.associatedFile -> calculatedLink)
+                externalLinkCache += (file -> calculatedLink)
                 calculatedLink
-              }
-            extLink.map(link => sym.constructPath(location, anchor, link))
+          extLink.map(link => sym.constructPath(location, anchor, link))
         }
 
         DRI(
