@@ -1986,7 +1986,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedExpr(tree.body, pt1)(using ctx.addNotNullInfo(guard1.notNullInfoIf(true))),
         pt1, ctx.scope.toList)
       if ctx.gadt.isNarrowing then
-        // Store GADT constraint to later retrieve it (in PostTyper, for now).
+        // Store GADT constraint for retrieval in PostTyper and PatternMatcher.
         // GADT constraints are necessary to correctly check bounds of type app,
         // see tests/pos/i12226 and issue #12226. It might be possible that this
         // will end up taking too much memory. If it does, we should just limit
