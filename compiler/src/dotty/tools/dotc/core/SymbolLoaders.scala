@@ -134,7 +134,7 @@ object SymbolLoaders {
    *  All entered symbols are given a source completer of `src` as info.
    */
   def enterToplevelsFromSource(
-      owner: Symbol, name: PreName, src: AbstractFile,
+      owner: Symbol, src: AbstractFile,
       scope: Scope = EmptyScope)(using Context): Unit =
     if src.exists && !src.isDirectory then
       val completer = new SourcefileLoader(src)
@@ -212,10 +212,10 @@ object SymbolLoaders {
       ((classRep.binary, classRep.source): @unchecked) match {
       case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, nameOf(classRep)) =>
         if (ctx.settings.verbose.value) report.inform("[symloader] picked up newer source file for " + src.path)
-        enterToplevelsFromSource(owner, nameOf(classRep), src)
+        enterToplevelsFromSource(owner, src)
       case (None, Some(src)) =>
         if (ctx.settings.verbose.value) report.inform("[symloader] no class or tasty, picked up source file for " + src.path)
-        enterToplevelsFromSource(owner, nameOf(classRep), src)
+        enterToplevelsFromSource(owner, src)
       case (Some(bin), _) =>
         val completer =
           if bin.ext.isTasty || bin.ext.isBetasty then ctx.platform.newTastyLoader(bin)
