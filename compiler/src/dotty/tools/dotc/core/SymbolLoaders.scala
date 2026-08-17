@@ -220,19 +220,11 @@ object SymbolLoaders {
         val completer =
           if bin.ext.isTasty || bin.ext.isBetasty then ctx.platform.newTastyLoader(bin)
           else ctx.platform.newClassLoader(bin)
-        enterClassAndModule(owner, nameOf(classRep), completer)
+        enterClassAndModule(owner, termName(classRep.name), completer)
     }
 
   def needCompile(bin: AbstractFile, src: AbstractFile): Boolean =
     src.lastModified >= bin.lastModified
-
-  private def nameOf(classRep: ClassRepresentation)(using Context): TermName =
-    // avoid forcing `classRep.name` when we just need the length
-    val nameLength = {
-      val ix = classRep.fileName.lastIndexOf('.')
-      if (ix < 0) classRep.fileName.length else ix
-    }
-    classRep.fileName.sliceToTermName(0, nameLength)
 
   /** Load contents of a package
    */
