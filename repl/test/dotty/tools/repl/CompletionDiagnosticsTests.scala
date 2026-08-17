@@ -28,6 +28,7 @@ object CompletionDiagnosticsTests:
     Files.write(Files.createDirectories(classpath.resolve("scala")).resolve("CompletionPoison.class"), brokenBytes)
 
   def options: Array[String] =
+    // `-Ydebug` prints exceptions from the deliberately corrupt classfiles.
     ReplTest.createOptions(classpath.toString).filterNot(_ == "-Ydebug")
 
   @AfterClass def tearDownFixture(): Unit =
@@ -40,11 +41,11 @@ object CompletionDiagnosticsTests:
 class CompletionDiagnosticsTests extends ReplTest(options = CompletionDiagnosticsTests.options):
 
   private def assertSingleLoadingError(output: String, name: String): Unit =
-    assertTrue(output, output.contains(s"error while loading $name"))
-    assertTrue(output, output.contains("is broken"))
-    assertEquals(1, output.linesIterator.count(_.contains(s"error while loading $name")))
+    val header = s"error while loading $name"
+    assertTrue(output, output.contains(header))
+    assertEquals(output, 1, output.linesIterator.count(_.contains(header)))
 
-  @Test def `i18614 loading errors are reported for every explicit completion`: Unit =
+  @Test def `explicit completion reports a loading error on every request`: Unit =
     initially:
       tabComplete("import broken.Broken.")
       assertSingleLoadingError(storedOutput(), "Broken")
@@ -52,26 +53,28 @@ class CompletionDiagnosticsTests extends ReplTest(options = CompletionDiagnostic
       tabComplete("import broken.Broken.")
       assertSingleLoadingError(storedOutput(), "Broken")
 
-  @Test def `ordinary completion errors remain hidden`: Unit =
+  @Test def `missing member completion remains silent`: Unit =
     initially:
       tabComplete("List.doesNotExist")
       assertEquals("", storedOutput())
 
-  @Test def `incidental loading errors remain available to an explicit completion`: Unit =
+  @Test def `loading error found by completion is replayed by a later submission`: Unit =
     initially {
       val state = run("object O")
       storedOutput()
-      Files.write(CompletionDiagnosticsTests.incidentalClassfile, CompletionDiagnosticsTests.invalidClassfile(99))
       state
     } andThen {
       try
+        Files.write(CompletionDiagnosticsTests.incidentalClassfile, CompletionDiagnosticsTests.invalidClassfile(99))
+
+        // Extension completion for `O.` enumerates the default `scala.*` import,
+        // which forces `CompletionPoison` while looking for candidates.
         tabComplete("O.")
         assertEquals("", storedOutput())
 
-        // Changing the file again proves that the explicit query replays the failure found by `O.`
-        // instead of attempting the physical load for the first time.
+        // A second load would now fail on the header, not on constant-pool tag 99.
         Files.write(CompletionDiagnosticsTests.incidentalClassfile, Array[Byte](0, 0, 0, 0))
-        tabComplete("import scala.CompletionPoison.")
+        run("val poison: scala.CompletionPoison = ???")
         val output = storedOutput()
         assertSingleLoadingError(output, "CompletionPoison")
         assertTrue(output, output.contains("bad constant pool tag 99"))

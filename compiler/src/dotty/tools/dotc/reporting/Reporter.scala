@@ -99,8 +99,19 @@ abstract class Reporter extends interfaces.ReporterResult {
   private var _errorCount = 0
   private var _warningCount = 0
   private var _infoCount = 0
-  // Suppress repeated reports of the same loading failure within one run.
-  private val reportedLoadingFailures = mutable.WeakHashMap.empty[LoadingFailure, Int]
+  // The last run that reported each loading failure through this reporter.
+  private var reportedLoadingFailures: mutable.WeakHashMap[LoadingFailure, Int] | Null = null
+
+  private def reportedLoadingFailuresMap: mutable.WeakHashMap[LoadingFailure, Int] =
+    val reported = reportedLoadingFailures
+    if reported != null then reported
+    else
+      val fresh = mutable.WeakHashMap.empty[LoadingFailure, Int]
+      reportedLoadingFailures = fresh
+      fresh
+
+  protected final def clearReportedLoadingFailures(): Unit =
+    reportedLoadingFailures = null
 
   /** The number of errors reported by this reporter (ignoring outer reporters) */
   def errorCount: Int = _errorCount
@@ -271,11 +282,14 @@ abstract class Reporter extends interfaces.ReporterResult {
   def isHidden(dia: Diagnostic)(using Context): Boolean =
     ctx.mode.is(Mode.Printing)
     || (dia match
-      case error: LoadingError => reportedLoadingFailures.get(error.failure).contains(ctx.runId)
+      case error: LoadingError =>
+        val reported = reportedLoadingFailures
+        reported != null && reported.get(error.failure).contains(ctx.runId)
       case _ => false)
 
   def markReported(dia: Diagnostic)(using Context): Unit = dia match
-    case error: LoadingError => reportedLoadingFailures(error.failure) = ctx.runId
+    case error: LoadingError =>
+      reportedLoadingFailuresMap(error.failure) = ctx.runId
     case _ =>
 
   /** Does this reporter contain errors that have yet to be reported by its outer reporter ?

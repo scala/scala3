@@ -15,7 +15,7 @@ import classfile.{ClassfileParser, ClassfileTastyUUIDParser}
 import Decorators.*
 
 import util.Stats
-import reporting.trace
+import reporting.{Message, trace}
 import reporting.Diagnostic.LoadingFailure
 
 import ast.desugar
@@ -423,14 +423,12 @@ abstract class SymbolLoader extends LazyType { self =>
   }
 
   override def complete(root: SymDenotation)(using Context): Unit = profileCompletion(root) {
-    def loadingFailure(ex: Exception): LoadingFailure = {
+    def loadingMessage(ex: IOException): Message = {
       if (ctx.debug) ex.printStackTrace()
       val msg = ex.getMessage()
-      val message =
-        if msg == null then em"i/o error while loading ${root.name}"
-        else em"""error while loading ${root.name},
-                 |$msg"""
-      LoadingFailure(message)
+      if msg == null then em"i/o error while loading ${root.name}"
+      else em"""error while loading ${root.name},
+               |$msg"""
     }
     var failure: Option[LoadingFailure] = None
     try {
@@ -444,9 +442,12 @@ abstract class SymbolLoader extends LazyType { self =>
       case ex: ClosedByInterruptException =>
         throw new InterruptedException
       case ex: IOException =>
-        val loadFailure = loadingFailure(ex)
-        failure = Some(loadFailure)
-        report.loadingError(loadFailure)
+        val message = loadingMessage(ex)
+        if ctx.property(RetainedSymbolLoadingFailures).isDefined then
+          val loadFailure = LoadingFailure(message)
+          failure = Some(loadFailure)
+          report.loadingError(loadFailure)
+        else report.error(message)
       case ex: TypeError =>
         println(s"exception caught when loading $root: ${ex.toMessage}")
         throw ex

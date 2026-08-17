@@ -81,7 +81,7 @@ object report:
   def error(msg: => String)(using Context): Unit =
     error(msg, NoSourcePosition)
 
-  private[tools] def loadingError(failure: LoadingFailure)(using Context): Unit =
+  private[dotc] def loadingError(failure: LoadingFailure)(using Context): Unit =
     ctx.reporter.report(new LoadingError(failure))
     if ctx.settings.YdebugError.value then Thread.dumpStack()
 

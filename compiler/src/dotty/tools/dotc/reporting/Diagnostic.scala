@@ -16,14 +16,15 @@ import core.Decorators.toMessage
 object Diagnostic:
 
   /** A context-independent description of a failed symbol load.
-   *  One instance can be shared by linked roots that are invalidated and acts as a reporting identity.
+   *  Linked roots invalidated by the same load share one instance so a reporter can
+   *  suppress duplicate diagnostics.
    */
   private[tools] final class LoadingFailure private (val message: Message)
 
   private[tools] object LoadingFailure:
     def apply(message: Message): LoadingFailure = new LoadingFailure(message.persist)
 
-  /** An error caused by a failed symbol load. */
+  /** An error whose `failure` identifies a failed symbol load. */
   private[tools] final class LoadingError(val failure: LoadingFailure)
       extends Error(failure.message, NoSourcePosition)
 

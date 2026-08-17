@@ -105,6 +105,7 @@ class ReplDriver(settings: Array[String],
   /** Create a fresh and initialized context with IDE mode enabled */
   private def initialCtx(settings: List[String]) = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive)
+    rootCtx.setProperty(RetainedSymbolLoadingFailures, mutable.WeakHashMap.empty)
     rootCtx.setSetting(rootCtx.settings.XcookComments, true)
     rootCtx.setSetting(rootCtx.settings.XreadComments, true)
     setupRootCtx(this.settings ++ settings, rootCtx)
@@ -367,7 +368,7 @@ class ReplDriver(settings: Array[String],
     cursor: Int,
     expr: String,
     state0: State,
-    reportLoadingErrors: String => Unit
+    displayLoadingErrors: String => Unit
   ): List[Completion] =
     if expr.startsWith(":") then
       ReplCommands.names.collect:
@@ -390,13 +391,14 @@ class ReplDriver(settings: Array[String],
             List(Completion("<Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues>", "", Nil))
         }
         .getOrElse(Nil)
-      // Candidate discovery may force unrelated symbols, so discard its diagnostics.
+      // Candidate discovery can load symbols unrelated to the qualifier. Discard its
+      // diagnostics; failed loads are retained and reported if the symbol is requested later.
       state.context.reporter.removeBufferedMessages(using state.context)
-      val errors = typecheckReporter.removeBufferedMessages(using state.context).collect:
+      val loadingErrors = typecheckReporter.removeBufferedMessages(using state.context).collect:
         case error: Diagnostic.LoadingError => error
-      if errors.nonEmpty then
+      if loadingErrors.nonEmpty then
         given Context = state.context
-        reportLoadingErrors(errors.map(ReplConsoleReporter.messageAndPos).mkString("\n"))
+        displayLoadingErrors(loadingErrors.map(ReplConsoleReporter.messageAndPos).mkString("\n"))
       result
   end completions
 

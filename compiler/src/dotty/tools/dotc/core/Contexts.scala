@@ -58,6 +58,9 @@ object Contexts {
 
   private val initialStore = store11
 
+  /** Loading failures retained after their symbols are marked absent. */
+  private[tools] object RetainedSymbolLoadingFailures extends Key[mutable.WeakHashMap[Symbol, LoadingFailure]]
+
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
 
@@ -1101,12 +1104,6 @@ object Contexts {
      *  to avoid space leaks - the message usually captures a context.
      */
     private[core] val errorTypeMsg: mutable.Map[Types.ErrorType, Message] = mutable.Map()
-
-    /** Symbol-loading failures retained for later references to the same symbol.
-     *  These must live as long as the symbol graph: resetting per-run caches does not
-     *  restore symbols whose infos have already been replaced by `NoType`.
-     */
-    private[core] val loadingFailures: mutable.WeakHashMap[Symbol, LoadingFailure] = mutable.WeakHashMap()
 
     // Phases state
 
