@@ -398,7 +398,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
 
             case INVOKESPECIAL =>
               val mi = insn.asInstanceOf[MethodInsnNode]
-              if (optimizerUtils.isSideEffectFreeConstructorOrFactoryCall(mi)) sideEffectFreeCreations += mi
+              if (optimizerUtils.isSideEffectFreeConstructorCall(mi)) sideEffectFreeCreations += mi
 
             case _ =>
           }

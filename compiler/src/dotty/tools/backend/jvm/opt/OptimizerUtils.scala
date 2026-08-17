@@ -19,6 +19,7 @@ import org.objectweb.asm.{Handle, Opcodes, Type}
 class OptimizerUtils(val ts: OptimizerKnownBTypes) {
   // Contains methods that get instances of various standard library modules, such as `Either$`, `Range$`, etc.
   private val ScalaPackageObject = "scala/package$"
+  private val PredefModule = "scala/Predef$"
 
   private val indyLambdaImplMethods: ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]] =
     new ConcurrentHashMap
@@ -137,9 +138,8 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
 
   def runtimeRefClassBoxedType(refClass: InternalName): asm.Type = asm.Type.getArgumentTypes(ts.srRefCreateMethods(refClass).methodType.descriptor)(0)
 
-  def isSideEffectFreeConstructorOrFactoryCall(insn: MethodInsnNode): Boolean =
-    insn.owner == ScalaPackageObject ||
-      (insn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && sideEffectFreeConstructors((insn.owner, insn.desc)))
+  def isSideEffectFreeConstructorCall(insn: MethodInsnNode): Boolean =
+    insn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && sideEffectFreeConstructors((insn.owner, insn.desc))
 
   def isNewForSideEffectFreeConstructor(insn: AbstractInsnNode): Boolean = {
     insn.getOpcode == Opcodes.NEW && {
@@ -151,14 +151,15 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
   def isSideEffectFreeCall(mi: MethodInsnNode): Boolean = {
     isScalaBox(mi) ||  // not Scala unbox, it may CCE
       isJavaBox(mi) || // not Java unbox, it may NPE
-      isSideEffectFreeConstructorOrFactoryCall(mi) ||
-      AnalysisUtils.isClassTagApply(mi)
+      isSideEffectFreeConstructorCall(mi) ||
+      AnalysisUtils.isClassTagApply(mi) ||
+      isStdLibModuleAlias(mi)
   }
 
   // methods that are known to return a non-null result
   def isNonNullMethodInvocation(mi: MethodInsnNode): Boolean = {
     isJavaBox(mi) || isScalaBox(mi) || isPredefAutoBox(mi) || isRefCreate(mi) || isRefZero(mi) || AnalysisUtils.isClassTagApply(mi) ||
-      isTupleApply(mi) || mi.owner == ScalaPackageObject
+      isTupleApply(mi) || isStdLibModuleAlias(mi)
   }
 
   // unused objects created by these constructors are eliminated by pushPop
@@ -211,6 +212,11 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
     ) ++ (1 to Definitions.MaxTupleArity).map(n => s"scala/Tuple$n$$")
       ++ AnalysisUtils.primitiveTypes.keysIterator.map(n => s"scala/$n$$")
 
+  // e.g., `val Range = collection.immutable.Range` in `scala` package object
+  def isStdLibModuleAlias(mi: MethodInsnNode) =
+    (mi.owner == ScalaPackageObject || mi.owner == PredefModule) &&
+      modulesAllowSkipInitialization(mi.desc.stripPrefix("()L").stripSuffix(";"))
+
   private lazy val classesOfSideEffectFreeConstructors: Set[String] =
     sideEffectFreeConstructors.map(_._1)
 
@@ -257,8 +263,8 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
       val t = i.getType
       if (t == AbstractInsnNode.METHOD_INSN) {
         val mi = i.asInstanceOf[MethodInsnNode]
-        if (mi.owner == ScalaPackageObject && modulesAllowSkipInitialization.exists(mi.desc.contains)) {
-          // Ignore calls that, e.g., load the Range module -- that's still part of a forwarder
+        if (isStdLibModuleAlias(mi)) {
+          // allow method calls that return well-known modules, they are removed in `eliminatePushPop`
         } else if (!allowPrivateCalls && i.getOpcode == Opcodes.INVOKESPECIAL && mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) {
           // invokespecial has, well, special semantics that depend on the class it's being invoked in, see, e.g., https://stackoverflow.com/a/8950564
           numCallsOrNew = 2 // stop here: don't inline forwarders with a private or super call
