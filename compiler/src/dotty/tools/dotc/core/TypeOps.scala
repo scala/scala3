@@ -918,7 +918,7 @@ object TypeOps:
           // recurse on the bounds of `TypeParamRef`.
           val tyconBounds =
             if initialGadt.contains(tycon.symbol) then initialGadt.bounds(tycon.symbol).nn
-            else tycon.underlying.bounds
+            else tycon.underlying
           val bounds: TypeBounds = tyconBounds match {
             case TypeBounds(tl1: HKTypeLambda, tl2: HKTypeLambda) =>
               TypeBounds(tl1.resType, tl2.resType)
@@ -926,8 +926,6 @@ object TypeOps:
               TypeBounds(tl1.resType, tp2)
             case TypeBounds(tp1, tl2: HKTypeLambda) =>
               TypeBounds(tp1, tl2.resType)
-            case bounds =>
-              bounds
           }
 
           newTypeVar(bounds)
