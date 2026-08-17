@@ -87,6 +87,7 @@ object Build {
       // Workaround for #25897
       "-Wconf:cat=deprecation&origin=scala\\.collection\\.Iterable\\.stringPrefix:s",
       //"-Wunused:all",
+      //"-Wunused:params",
       "-encoding", "UTF8",
       "-language:implicitConversions",
       s"--java-output-version:${Versions.minimumJVMVersion}",
@@ -955,11 +956,12 @@ object Build {
       moduleName    := "scala2-library",
       scalaVersion  := Versions.scala2Version,
       version       := scalaVersion.value,
-      // Remove Scala 3 specific settings
+      // Remove Scala 3 specific settings (and the unused params one, which is an issue that should be fixed in the 2.x stdlib)
       scalacOptions --= Seq(
         "--java-output-version:17",
         "-Yexplicit-nulls",
-        "-Wsafe-init"
+        "-Wsafe-init",
+        "-Wunused:params"
       ),
       scalacOptions ++= Seq(
         "-release:17",
