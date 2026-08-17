@@ -1104,6 +1104,10 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
     def and(that: Tree)(using Context): Tree =
       tree.select(defn.Boolean_&&).appliedTo(that)
 
+    /** `!this`, for boolean tree `this` */
+    def not(using Context): Tree =
+      tree.select(defn.Boolean_!)
+
     /** `this || that`, for boolean trees `this`, `that` */
     def or(that: Tree)(using Context): Tree =
       tree.select(defn.Boolean_||).appliedTo(that)

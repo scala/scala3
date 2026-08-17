@@ -5,10 +5,10 @@ import annotation.experimental
 
 @experimental
 object Ok:
-  inline def apply[T, E](x: T): Maybe[T, E] = {
+  inline def apply[T](x: T): Maybe[T, Nothing] = {
     if x == null then new Valid(null)
     else if x.isInstanceOf[Valid] then new Valid(x)
     else x
-  }.asInstanceOf[Maybe[T, E]]
+  }.asInstanceOf[Maybe[T, Nothing]]
 
   def unapply(x: Maybe[Any, Any]): x.type = x

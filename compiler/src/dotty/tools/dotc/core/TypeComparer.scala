@@ -1042,6 +1042,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 // Same as above; this.type is also a singleton type in spec language
                 !ctx.explicitNulls && isNullable(tp.underlying)
               case tp: RefinedOrRecType => isNullable(tp.parent)
+              case AppliedType(tycon, _ :: errArg :: Nil) if tycon.isRef(defn.MagicMaybeClass) =>
+                isSubType(defn.UnitType, errArg)
               case tp: AppliedType => isNullable(tp.tycon)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
@@ -1975,7 +1977,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                    && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
-                if v < 0 then 
+                if v < 0 then
                   val isValidSubtype = isSubType(arg2, arg1)
                   // Specialized traits have special variance rules because they have special erasure
                   if tp1.classSymbol.isSpecializedTrait
@@ -1987,7 +1989,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     false
                   else // Normal contravariance case
                     isValidSubtype
-                else if v > 0 then 
+                else if v > 0 then
                   val isValidSubtype = isSubType(arg1, arg2)
                   // Specialized traits have special variance rules because they have special erasure
                   if tp1.classSymbol.isSpecializedTrait

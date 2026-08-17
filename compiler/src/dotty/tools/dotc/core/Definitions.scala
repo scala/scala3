@@ -485,6 +485,7 @@ class Definitions {
   @tu lazy val MagicPackageClass: ClassSymbol = requiredPackage("scala.magic").moduleClass.asClass
   @tu lazy val MagicMaybeClass: ClassSymbol = requiredClass("scala.magic.Maybe")
   @tu lazy val MagicValidClass: ClassSymbol = requiredClass("scala.magic.runtime.Valid")
+  @tu lazy val MagicFailClass: ClassSymbol = requiredClass("scala.magic.runtime.Fail")
 
   @tu lazy val MagicOkModule: Symbol = requiredModule("scala.magic.Ok")
     @tu lazy val Magic_OkUnapply: Symbol = MagicOkModule.requiredMethod(nme.unapply)
@@ -1603,6 +1604,8 @@ class Definitions {
     Set(Caps_erasedValue, Caps_unsafeErasedValue)
   @tu lazy val erasedValueMethods =
     capsErasedValueMethods + Compiletime_erasedValue
+
+  @tu lazy val unitSuperClasses: Set[Symbol] = Set(UnitClass, AnyValClass, AnyClass)
 
   @tu lazy val AbstractFunctionType: Array[TypeRef] = mkArityArray("scala.runtime.AbstractFunction", MaxImplementedFunctionArity, 0).asInstanceOf[Array[TypeRef]]
   val AbstractFunctionClassPerRun: PerRun[Array[Symbol]] = new PerRun(AbstractFunctionType.map(_.symbol.asClass))

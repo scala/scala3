@@ -676,9 +676,9 @@ object SymDenotations {
     final def isSpecializedTraitImplementationClass(using Context): Boolean =
       isClass && name.isSpecializedTraitImplementationName
 
-    /** Is this symbol a specialized trait implementation class that 
+    /** Is this symbol a specialized trait implementation class that
      * was generated from a specialization using only top classes / Nothing
-     * and is therefore not subject to a specialized interface */ 
+     * and is therefore not subject to a specialized interface */
     final def isRawSpecializedTraitImplementationClass(using Context): Boolean =
       isClass && name.isSpecializedTraitImplementationName
 
@@ -938,7 +938,6 @@ object SymDenotations {
         || symbol == defn.AnyClass
         || symbol == defn.AnyValClass
         || symbol == defn.MatchableClass
-        || symbol == defn.MagicMaybeClass
       else isNullableClassAfterErasure
 
     /** Is this symbol a class of which `null` is a value after erasure?
@@ -1091,11 +1090,11 @@ object SymDenotations {
 
     def isInlineTrait(using Context): Boolean =
       isAllOf(InlineTrait)
-    
-    def isSpecializedMethod(using Context): Boolean = 
+
+    def isSpecializedMethod(using Context): Boolean =
       Specialization.isSpecializedMethod(symbol)
 
-    def isSpecializedTrait(using Context): Boolean = 
+    def isSpecializedTrait(using Context): Boolean =
       Specialization.isSpecializedTrait(symbol)
 
     /** Does this method or field need to be retained at runtime */
