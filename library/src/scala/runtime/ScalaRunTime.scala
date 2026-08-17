@@ -14,6 +14,7 @@ package scala
 package runtime
 
 import scala.language.`2.13`
+import scala.annotation.unused
 import scala.collection.{AbstractIterator, AnyConstr, SortedOps, StrictOptimizedIterableOps, StringOps, StringView, View}
 import scala.collection.generic.IsIterable
 import scala.collection.immutable.{ArraySeq, NumericRange}
@@ -57,7 +58,7 @@ object ScalaRunTime {
    *  @param value the boxed value whose unboxed class is returned
    *  @return the runtime `Class` representing the unboxed type `T`
    */
-  def anyValClass[T <: AnyVal : ClassTag](value: T): jClass[T] =
+  def anyValClass[T <: AnyVal : ClassTag](@unused value: T): jClass[T] =
     classTag[T].runtimeClass.asInstanceOf[jClass[T]]
 
   /** Runtime code for `(x: T).getClass()` where `T` is not a subtype of `AnyRef`.
