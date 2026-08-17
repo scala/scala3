@@ -200,8 +200,8 @@ object SymbolLoaders {
    *  Note: We do a name-base comparison here because the method is called before we even
    *  have ReflectPackage defined.
    */
-  def binaryOnly(owner: Symbol, name: TermName)(using Context): Boolean =
-    name == nme.PACKAGEkw &&
+  def binaryOnly(owner: Symbol, name: String)(using Context): Boolean =
+    name == nme.PACKAGE.toString &&
       (owner.name == nme.scala || owner.name == nme.reflect && owner.owner.name == nme.scala)
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
@@ -210,7 +210,7 @@ object SymbolLoaders {
     // module-info is a special class added by JPMS (Java 9+) that cannot be parsed like a normal class
     if classRep.name != "module-info" then
       ((classRep.binary, classRep.source): @unchecked) match {
-      case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, nameOf(classRep)) =>
+      case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
         if (ctx.settings.verbose.value) report.inform("[symloader] picked up newer source file for " + src.path)
         enterToplevelsFromSource(owner, src)
       case (None, Some(src)) =>
