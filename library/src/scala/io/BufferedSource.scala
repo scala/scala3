@@ -26,8 +26,20 @@ import scala.collection.mutable.StringBuilder
  *  @param codec the `Codec` used to decode bytes from the input stream into characters
  */
 class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val codec: Codec) extends Source {
+  /** Creates a `BufferedSource` from the given input stream using the default
+   *  buffer size.
+   *
+   *  @param inputStream the underlying input stream to read characters from
+   *  @param codec the codec used to decode bytes into characters
+   */
   def this(inputStream: InputStream)(implicit codec: Codec) = this(inputStream, DefaultBufSize)(using codec)
+  /** Returns a new `InputStreamReader` that decodes the underlying input stream
+   *  using `codec`.
+   */
   def reader() = new InputStreamReader(inputStream, codec.decoder)
+  /** Returns a new `BufferedReader` wrapping `reader()` with a buffer of
+   *  `bufferSize` characters.
+   */
   def bufferedReader() = new BufferedReader(reader(), bufferSize)
 
   // The same reader has to be shared between the iterators produced
@@ -69,16 +81,25 @@ class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val cod
   }
 
 
+  /** An `Iterator` over the lines remaining in this source, not including the
+   *  line separator characters.
+   */
   class BufferedLineIterator extends AbstractIterator[String] with Iterator[String] {
     private val lineReader = decachedReader
     @annotation.stableNull var nextLine: String | Null = null
 
+    /** Returns `true` if another line is available, reading and buffering the
+     *  next line if necessary.
+     */
     override def hasNext = {
       if (nextLine == null)
         nextLine = lineReader.readLine
 
       nextLine != null
     }
+    /** Returns the next line, or throws a `NoSuchElementException` if no more
+     *  lines remain.
+     */
     override def next(): String = {
       val result = {
         if (nextLine == null) lineReader.readLine
@@ -89,6 +110,9 @@ class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val cod
     }
   }
 
+  /** Returns an iterator over the lines remaining in this source, not including
+   *  the line separator characters.
+   */
   override def getLines(): Iterator[String] = new BufferedLineIterator
 
   /** Efficiently appends the entire remaining input.
