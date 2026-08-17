@@ -18,13 +18,12 @@ import scala.io.Codec
  * the logical package structure of the whole source path.
  */
 class LogicalPackagesProvider(sourcePath: String) {
-
   /**
    * Parse all source files in the sourcepath and build the logical package structure.
    */
   def root(using Context): LogicalPackage =
     val pkg: ParsedLogicalPackage = newPackage()
-    val sourceRoots = allSources(sourcePath).map(f => SourceFile(f, Codec(ctx.settings.encoding.value)))
+    val sourceRoots = allSources(sourcePath).map(f => SourceFile(f, ctx.settings.sourceroot.value, Codec(ctx.settings.encoding.value)))
     for sourceFile <- sourceRoots do
       try
         parseSourceFile(sourceFile, pkg)

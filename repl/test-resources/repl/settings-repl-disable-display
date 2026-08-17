@@ -1,11 +1,11 @@
 scala> 1
 val res0: Int = 1
 
-scala>:settings -Xrepl-disable-display
+scala> :settings -Xrepl-disable-display
 
 scala> 2
 
-scala>:reset
+scala> :reset
 Resetting REPL state.
 
 scala> 3
