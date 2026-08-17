@@ -271,11 +271,8 @@ object Exception {
    *  @group logic-container
    */
   class Catch[+T](
-    /** The partial function that handles caught exceptions. */
     val pf: Catcher[T],
-    /** The optional finally logic to execute after exception handling. */
     val fin: Option[Finally] = None,
-    /** The predicate that determines whether a caught exception should be rethrown. */
     val rethrow: Throwable => Boolean = shouldRethrow)
   extends Described {
 

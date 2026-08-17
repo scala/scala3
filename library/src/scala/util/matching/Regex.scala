@@ -784,7 +784,6 @@ object Regex {
    *  @param _groupNames the names of the capturing groups, if any, used to look up groups by name
    */
   class Match(val source: CharSequence,
-              /** The underlying Matcher that performed the match. */
               protected[matching] val matcher: Matcher,
               _groupNames: Seq[String]) extends MatchData {
 

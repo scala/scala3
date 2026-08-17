@@ -42,13 +42,9 @@ private[concurrent] object ExecutionContextImpl {
    *  @param uncaught the handler for uncaught exceptions in created threads
    */
   final class DefaultThreadFactory(
-    /** Whether created threads should be daemon threads */
     final val daemonic: Boolean,
-    /** The maximum number of threads that can block simultaneously */
     final val maxBlockers: Int,
-    /** The prefix to use for thread names */
     final val prefix: String,
-    /** The handler for uncaught exceptions in created threads */
     final val uncaught: Thread.UncaughtExceptionHandler) extends ThreadFactory with ForkJoinPool.ForkJoinWorkerThreadFactory {
 
     require(prefix ne null, "DefaultThreadFactory.prefix must be non null")
