@@ -12,6 +12,7 @@
 
 package scala
 
+// import language.experimental.captureChecking
 import scala.language.`2.13`
 import scala.annotation.implicitNotFound
 
@@ -169,10 +170,10 @@ object <:< {
     override def substituteContra[F[_]](ff: F[Any]) = ff
     override def apply(x: Any) = x
     override def flip: Any =:= Any = this
-    override def compose[C](r: C =>  Any) = r
+    override def compose[C](r: C =>  Any): C => Any = r
     override def compose[C](r: C <:< Any) = r
     override def compose[C](r: C =:= Any) = r
-    override def andThen[C](r: Any =>  C) = r
+    override def andThen[C](r: Any =>  C): Any => C = r
     override def andThen[C](r: Any <:< C) = r
     override def andThen[C](r: Any =:= C) = r
     override def liftCo    [F[_]] = asInstanceOf[F[Any] =:= F[Any]]
