@@ -899,7 +899,7 @@ object Trees {
     override def isTerm: Boolean = name.isTermName
 
     override def nameSpan(using Context): Span =
-      if span.exists then Span(span.start, span.start + name.toString.length) else span
+      if span.exists then Span(span.start, span.start + name.length) else span
   }
 
   /** tree_1 | ... | tree_n */
