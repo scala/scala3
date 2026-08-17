@@ -79,7 +79,7 @@ end SourceLanguage
  */
 object TypeErasure:
 
-  private val DisallowSpecialized = Property.Key[Unit] 
+  private val DisallowSpecialized = Property.Key[Unit]
 
   private def erasureDependsOnArgs(sym: Symbol)(using Context) =
     sym == defn.ArrayClass
@@ -218,7 +218,7 @@ object TypeErasure:
   /** The current context but with Foo[Int] erasing to Foo instead of
    *  Foo$sp$Int when Foo is a specialized trait. */
   def disallowSpecializedCtx(using Context) = ctx.fresh.setProperty(DisallowSpecialized, ())
-  
+
   /** The current context but with Foo[Int] erasing to Foo$sp$Int instead of
    *  Foo when Foo is a specialized trait. */
   def allowSpecializedCtx(using Context) = ctx.fresh.dropProperty(DisallowSpecialized)
@@ -793,12 +793,12 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
         else if semiEraseVCs && sym.isDerivedValueClass then eraseDerivedValueClass(tp)
         else if defn.isSyntheticFunctionClass(sym) then defn.functionTypeErasure(sym)
         else eraseNormalClassRef(tp)
-      case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) // At the beginning the $sp$ trait symbols are not present so up until 
+      case Specialization(spec) if ((ctx.phase == erasurePhase || ctx.erasedTypes) // At the beginning the $sp$ trait symbols are not present so up until
                                                                                    // erasure need to consider the signature of def foo(x: Foo[Int]): Int as
                                                                                    // foo(Foo):Int. Only at erasure do the symbols swap. This ensures
                                                                                    // the signatures don't change before erasure which is required (meta-ordering
                                                                                    // constraint in Compiler.scala)
-                                    && spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty) => 
+                                    && spec.isSpecialized && ctx.property(DisallowSpecialized).isEmpty) =>
         val specName = spec.newSpecializedTraitName
         val interfaceSymbol = spec.symbol.owner.enclosingPackageClass.info.decls.lookup(specName)
         assert(interfaceSymbol.exists && interfaceSymbol.isClass)
@@ -902,7 +902,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
             if ((cls eq defn.ObjectClass) || cls.isPrimitiveValueClass) Nil
             else
               // Match corresponding tree erasure in Erasure::typedClassDef
-              val parents1 = 
+              val parents1 =
                 if cls.isSpecializedTraitInterface then // {source: inline trait Bar[T: Specialized] extends Foo[T] both specialized traits} inline trait Bar$sp$Int extends Object, Bar, Foo$sp$Int
                   val (obj :: originalTrait :: inheritedParents) = parents : @unchecked
                   eraseParent(obj) :: apply(originalTrait)(using disallowSpecializedCtx) :: inheritedParents.mapConserve(eraseParent(_)(using allowSpecializedCtx))
@@ -914,7 +914,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
 
                 // {source: class Bar extends Foo[Int](10) with Baz[Int](10)}
                 // class Bar extends Object, Foo(10), Baz(10), Foo$sp$Int, Baz$sp$Int
-                  parents.mapConserve(p => if p.typeSymbol.isSpecializedTrait then 
+                  parents.mapConserve(p => if p.typeSymbol.isSpecializedTrait then
                                              apply(p)(using disallowSpecializedCtx)
                                            else eraseParent(p)) ::: originalSpecializedTraits
               parents1 match {
@@ -999,7 +999,7 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     val arg = tp.args.head
     if arg.isNotNull && arg.derivesFrom(defn.ObjectClass)
     then apply(arg)
-    else defn.ObjectClass.typeRef
+    else defn.ObjectType
 
   /** The erasure of a symbol's info. This is different from `apply` in the way `ExprType`s and
    *  `PolyType`s are treated. `eraseInfo` maps them to method types, whereas `apply` maps them

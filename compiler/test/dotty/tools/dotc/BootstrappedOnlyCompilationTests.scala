@@ -97,10 +97,17 @@ class BootstrappedOnlyCompilationTests {
       .checkExpectedErrors()
   }
 
+  @Test def negBootstrappedOnly: Unit = {
+    given TestGroup = TestGroup("warnBootstrappedOnly")
+    aggregateTests(
+      compileFilesInDir("tests/neg-bootstrapped", defaultOptions)
+    ).checkExpectedErrors()
+  }
+
   @Test def warnBootstrappedOnly: Unit = {
     given TestGroup = TestGroup("warnBootstrappedOnly")
     aggregateTests(
-      compileFilesInDir("tests/warn-bootstrapped", defaultOptions),
+      compileFilesInDir("tests/warn-bootstrapped", defaultOptions)
     )
   }
 

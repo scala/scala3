@@ -496,6 +496,10 @@ object PatternMatcher {
               patternPlan(casted, pat, onSuccess)
             })
         case UnApply(extractor, implicits, args) =>
+          val mt @ MethodType(_) = extractor.tpe.widen.runtimeChecked
+          val admitsNull = mt.paramInfos.headOption match
+            case Some(MagicMaybeType(nullable)) => nullable
+            case _ => false
           val unappPlan = if (scrutinee.info.isBottomType)
             // Generate a throwaway but type-correct plan.
             // This plan will never execute because it'll be guarded by a `NonNullTest`.
@@ -510,12 +514,12 @@ object PatternMatcher {
                 assert(implicits.isEmpty)
                 acc
             }
-            val mt @ MethodType(_) = extractor.tpe.widen: @unchecked
             val unapp0 = extractor.appliedTo(ref(scrutinee).ensureConforms(mt.paramInfos.head))
             val unapp = applyImplicits(unapp0, implicits, mt.resultType)
             unapplyPlan(unapp, args)
           }
-          if (scrutinee.info.isNotNull || nonNull(scrutinee)) unappPlan
+          if scrutinee.info.isNotNull || nonNull(scrutinee) || admitsNull
+          then unappPlan
           else TestPlan(NonNullTest, scrutinee, tree.span, unappPlan)
         case Bind(name, body) =>
           if (name == nme.WILDCARD) patternPlan(scrutinee, body, onSuccess)
@@ -822,13 +826,17 @@ object PatternMatcher {
       val scrutinee = plan.scrutinee
       (plan.test: @unchecked) match
         case NonEmptyTest =>
-          if scrutinee.tpe.widen.isRef(defn.MagicMaybeClass) then
-            scrutinee.testNotNull
-          else
-            constToLiteral(
-              scrutinee
-                .select(nme.isEmpty, _.info.isParameterless)
-                .select(nme.UNARY_!, _.info.isParameterless))
+          scrutinee.tpe.widenDealias match
+            case AppliedType(tycon, _ :: errArg :: Nil) if tycon.isRef(defn.MagicMaybeClass) =>
+              val test = scrutinee.testNotNull
+              if errArg.isRef(defn.UnitClass)
+              then test
+              else test.and(scrutinee.isInstance(defn.MagicFailClass.typeRef).not)
+            case _ =>
+              constToLiteral(
+                scrutinee
+                  .select(nme.isEmpty, _.info.isParameterless)
+                  .select(nme.UNARY_!, _.info.isParameterless))
         case NonNullTest =>
           scrutinee.testNotNull
         case GuardTest =>

@@ -108,7 +108,9 @@ val experimentalDefinitionInLibrary = Set(
   "scala.magic.compiletime",
   "scala.magic.compiletime$",
   "scala.magic.runtime.Valid",
-  "scala.magic.runtime.Invalid",
+  "scala.magic.Err",
+  "scala.magic.Err$",
+  "scala.magic.runtime.Fail",
 )
 
 

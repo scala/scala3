@@ -385,7 +385,7 @@ object Types extends TypeUtils {
       case tp: ConstantType => tp.value.value != null
       case tp: FlexibleType => false
       case tp: ClassInfo => !tp.cls.isNullableClass && !tp.isNothingType
-      case tp: AppliedType => tp.superType.isNotNull
+      case MagicMaybeType(nullable) => !nullable
       case tp: TypeBounds => tp.hi.isNotNull
       case tp: TypeProxy => tp.underlying.isNotNull
       case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
@@ -5788,6 +5788,15 @@ object Types extends TypeUtils {
   object MatchAlias {
     def apply(alias: Type)(using Context): MatchAlias = unique(new MatchAlias(alias))
     def unapply(tp: MatchAlias): Option[Type] = Some(tp.alias)
+  }
+
+  object MagicMaybeType {
+    /** Matches types T ? E, returns E == Unit */
+    def unapply(tp: Type)(using Context): Option[Boolean] = tp.dealias match
+      case AppliedType(tycon, _ :: errArg :: Nil) if tycon.isRef(defn.MagicMaybeClass) =>
+        Some(defn.unitSuperClasses.contains(errArg.classSymbol))
+      case _ =>
+        None
   }
 
   // ----- Annotated and Import types -----------------------------------------------
