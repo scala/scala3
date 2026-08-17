@@ -48,31 +48,30 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
 
   override protected def run(using Context): Unit =
     val unit = ctx.compilationUnit
-    val rec = ctx.compilationUnit.depRecorder
     if unit.needsInlining || unit.hasMacroAnnotations then
       super.run
 
-    if ctx.settings.YdumpSbtInc.value then
-      val deps = rec.foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray[Object]
-      val names = rec.foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray[Object]
-      Arrays.sort(deps)
-      Arrays.sort(names)
-
-      unit.source.jfile.ifPresent(jpath => {
-        val pw = io.File(jpath.toPath)(using Codec.UTF8).changeExtension(io.FileExtension.Inc).toFile.printWriter()
-        // val pw = Console.out
-        try
-          pw.println("Used Names:")
-          pw.println("===========")
-          names.foreach(pw.println)
-          pw.println()
-          pw.println("Dependencies:")
-          pw.println("=============")
-          deps.foreach(pw.println)
-        finally pw.close()
-      })
-
-    rec.sendToZinc()
+    if ctx.runZincPhases then
+      val rec = ctx.compilationUnit.depRecorder
+      if ctx.settings.YdumpSbtInc.value then
+        val deps = rec.foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.classesString}" }.toArray[Object]
+        val names = rec.foundDeps.iterator.map { case (clazz, found) => s"$clazz: ${found.namesString}" }.toArray[Object]
+        Arrays.sort(deps)
+        Arrays.sort(names)
+        unit.source.jfile.ifPresent(jpath => {
+          val pw = io.File(jpath.toPath)(using Codec.UTF8).changeExtension(io.FileExtension.Inc).toFile.printWriter()
+          // val pw = Console.out
+          try
+            pw.println("Used Names:")
+            pw.println("===========")
+            names.foreach(pw.println)
+            pw.println()
+            pw.println("Dependencies:")
+            pw.println("=============")
+            deps.foreach(pw.println)
+          finally pw.close()
+        })
+      rec.sendToZinc()
 
   override def checkPostCondition(tree: Tree)(using Context): Unit =
     tree match {
@@ -89,13 +88,17 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
     }
 
   def newTransformer(using Context): Transformer = new Transformer {
-    override def transform(tree: tpd.Tree)(using Context): tpd.Tree =
-      val rec = ctx.compilationUnit.depRecorder
-      val collector = ExtractInlineDependenciesCollector(rec)
+    override def transform(tree: tpd.Tree)(using Context): tpd.Tree = {
+      val collector =
+        if ctx.runZincPhases then
+          Some(ExtractInlineDependenciesCollector(ctx.compilationUnit.depRecorder))
+        else
+          None
       InliningTreeMap(collector).transform(tree)
+    }
   }
 
-  private class ExtractInlineDependenciesCollector(rec: DependencyRecorder) extends AbstractExtractDependenciesCollector(rec):
+  private final class ExtractInlineDependenciesCollector(rec: DependencyRecorder) extends AbstractExtractDependenciesCollector(rec):
     /** Traverse the tree of a source file and record the dependencies and used names which
      *  can be retrieved using `rec`.
      */
@@ -104,7 +107,7 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
       traverseChildren(tree)
   end ExtractInlineDependenciesCollector
 
-  private class InliningTreeMap(collector: ExtractInlineDependenciesCollector) extends TreeMapWithTrackedStats {
+  private final class InliningTreeMap(collector: Option[ExtractInlineDependenciesCollector]) extends TreeMapWithTrackedStats {
 
     /** List of top level classes added by macro annotation in a package object.
      *  These are added to the PackageDef that owns this particular package object.
@@ -118,12 +121,12 @@ class Inlining extends MacroTransform, IdentityDenotTransformer {
      */
     private var transformDepth: Int = 0
 
-    val inlineFinder = new tpd.TreeTraverser:
+    private val inlineFinder = new tpd.TreeTraverser:
       override def traverse(tree: Tree)(using Context): Unit =
         try
           tree match
             case tree: Inlined =>
-              collector.traverse(tree)
+              collector.foreach(_.traverse(tree))
             case vd: ValDef if vd.symbol.is(ModuleVal) =>
               // Don't visit module val
             case t: Template if t.symbol.owner.is(ModuleClass) =>
