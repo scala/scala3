@@ -30,10 +30,10 @@ object WithTail:
     if s.isEmpty then null else s.substring(1)
 
 object Poly:
-  def unapply[T](x: T): T? = x match
+  def unapply[T](x: T): T ? String = x match
     case Pos(y) => y
     case WithTail(s) => s
-    case _ => null
+    case _ => Err("no match")
 
 def f[T, E](x: T, e: E) =
   val x1 = toEither(Ok("s"))
@@ -56,8 +56,6 @@ def f[T, E](x: T, e: E) =
   println(y4)
   println(z1)
   println(z2)
-
-
 
 def posTest(x: Int) = x match
   case Pos(y) => println(s"pos $x $y")

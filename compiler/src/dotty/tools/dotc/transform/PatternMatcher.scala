@@ -202,6 +202,7 @@ object PatternMatcher {
     case object NonEmptyTest extends Test                            // !scrutinee.isEmpty
     case object NonNullTest extends Test                             // scrutinee ne null
     case object GuardTest extends Test                               // scrutinee
+    case object IsFailTest extends Test                              // scrutinee.isInstanceOf[Fail]
 
     val noLengthTest = LengthTest(0, exact = false)
 
@@ -374,38 +375,53 @@ object PatternMatcher {
         matchArgsPlan(selectors.take(arity - 1), args.take(arity - 1), matchSeq)
       }
 
+      def tupleApp(i: Int, receiver: Tree) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
+        ref(defn.RuntimeTuplesModule)
+          .select(defn.RuntimeTuples_apply)
+          .appliedTo(
+            receiver.ensureConforms(defn.NonEmptyTupleTypeRef), // If scrutinee is a named tuple, cast to underlying tuple
+            Literal(Constant(i)))
+
+      def getOfGetMatch(gm: Tree, isErrMatch: Boolean = false) =
+        val getSelection = gm.select(nme.get, _.info.isParameterless)
+        if gm.tpe.widen.isRef(defn.MagicMaybeClass) then
+          if isErrMatch then
+            val MagicMaybeType(_, errArg, nullable) = gm.tpe.widen.runtimeChecked
+            val select = gm.asInstance(defn.MagicFailClass.typeRef.appliedTo(defn.AnyType))
+              .select(nme.elem)
+            if nullable
+            then If(
+              gm.nullTest(cond = true),
+              unitLiteral.asInstance(errArg),
+              select)
+            else select
+          else
+            val validTpe = defn.MagicValidClass.typeRef
+            If(gm.isInstance(validTpe),
+              gm.asInstance(validTpe).select(nme.elem),
+              gm
+              ).asInstance(getSelection.tpe.widen)
+        else getSelection
+
       /** Plan for matching the result of an unapply against argument patterns `args` */
       def unapplyPlan(unapp: Tree, args: List[Tree]): Plan = {
         def caseClass = unapp.symbol.owner.linkedClass
         lazy val caseAccessors = caseClass.caseAccessors
         val unappType = unapp.tpe.widen.stripNamedTuple.simplified
+        //println(i"unapp $tree, $unapp, $unappType")
 
         def isSyntheticScala2Unapply(sym: Symbol) =
           sym.is(Synthetic) && sym.owner.is(Scala2x)
 
-        def tupleApp(i: Int, receiver: Tree) = // manually inlining the call to NonEmptyTuple#apply, because it's an inline method
-          ref(defn.RuntimeTuplesModule)
-            .select(defn.RuntimeTuples_apply)
-            .appliedTo(
-              receiver.ensureConforms(defn.NonEmptyTupleTypeRef), // If scrutinee is a named tuple, cast to underlying tuple
-              Literal(Constant(i)))
-
-        def getOfGetMatch(gm: Tree) =
-          val getSelection = gm.select(nme.get, _.info.isParameterless)
-          if gm.tpe.widen.isRef(defn.MagicMaybeClass) then
-            val validTpe = defn.MagicValidClass.typeRef
-            If(gm.isInstance(validTpe),
-                gm.asInstance(validTpe).select(nme.elem),
-                gm)
-              .asInstance(getSelection.tpe.widen)
-          else getSelection
-
-        // Disable Scala2Unapply optimization if the argument is a named argument for a single-element named tuple to
-        // enable selecting the field. See i23131.scala for test cases.
         val wasUnaryNamedTupleSelectArgForNamedTuple =
           args.length == 1 && args.head.removeAttachment(FirstTransform.WasNamedArg).isDefined &&
             isGetMatch(unappType) && getOfGetMatch(unapp).tpe.widenDealias.isNamedTupleType
-        if (isSyntheticScala2Unapply(unapp.symbol) && caseAccessors.length == args.length && !wasUnaryNamedTupleSelectArgForNamedTuple)
+        if isSyntheticScala2Unapply(unapp.symbol)
+            && caseAccessors.length == args.length
+            && !wasUnaryNamedTupleSelectArgForNamedTuple
+               // Disable Scala2Unapply optimization if the argument is a named argument for a single-element named tuple to
+               // enable selecting the field. See i23131.scala for test cases.
+        then
           def tupleSel(sym: Symbol) =
             // If scrutinee is a named tuple, cast to underlying tuple, so that we can
             // continue to select with _1, _2, ...
@@ -419,64 +435,75 @@ object PatternMatcher {
         else if unappType.derivesFrom(defn.BooleanClass) then
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
         else
-          val unappCore = unapp match
-            case Apply(fn, arg :: Nil) if fn.symbol == defn.Magic_OkUnapply => arg
-            case _ => unapp
-          letAbstract(unappCore) { unappResult =>
-            val isUnapplySeq = unapp.symbol.name == nme.unapplySeq
-            if isProductMatch(unappType, args.length) && !isUnapplySeq then
-              val selectors = productSelectors(unappType).take(args.length)
-                .map(ref(unappResult).select(_))
-              matchArgsPlan(selectors, args, onSuccess)
-            else if isUnapplySeq && unapplySeqTypeElemTp(unappType.finalResultType).exists then
-              unapplySeqPlan(unappResult, args)
-            else if isUnapplySeq && isProductSeqMatch(unappType, args.length, unapp.srcPos) then
-              val selectors = productSelectors(unappType).map(ref(unappResult).select(_))
-              unapplyProductSeqPlan(selectors, args)
-            else if unappResult.info <:< defn.NonEmptyTupleTypeRef then
-              val components =
-                (0 until unappResult.denot.info.tupleElementTypes.getOrElse(Nil).length)
-                  .toList.map(tupleApp(_, ref(unappResult)))
-              matchArgsPlan(components, args, onSuccess)
-            else {
-              assert(isGetMatch(unappType))
-              val argsPlan = {
-                val get = getOfGetMatch(ref(unappResult))
-                if (isUnapplySeq)
-                  letAbstract(get) { getResult =>
-                    if unapplySeqTypeElemTp(get.tpe).exists then
-                      unapplySeqPlan(getResult, args)
-                    else if isGenericTuple(getResult.info) then
-                      val elemTypes = getResult.info.tupleElementTypes.getOrElse(Nil)
-                      val selectors = elemTypes.zipWithIndex.map { (tp, i) =>
-                        val tree = tupleApp(i, ref(getResult))
-                        if i == elemTypes.length - 1 then tree.cast(tp) else tree
-                      }
-                      unapplyProductSeqPlan(selectors, args)
-                    else {
-                      val selectors = productSelectors(getResult.info).map(ref(getResult).select(_))
-                      unapplyProductSeqPlan(selectors, args)
-                    }
+          unapp match
+            case Apply(fn, arg :: Nil) if fn.symbol == defn.Magic_OkUnapply =>
+              unappResultPlan(unapp, args, arg.symbol, unappType, wasUnaryNamedTupleSelectArgForNamedTuple)
+            case Apply(fn, arg :: Nil) if fn.symbol == defn.Magic_ErrUnapply =>
+              unappResultPlan(unapp, args, arg.symbol, unappType, wasUnaryNamedTupleSelectArgForNamedTuple, isErrMatch = true)
+            case _ =>
+              letAbstract(unapp): unappResult =>
+                unappResultPlan(unapp, args, unappResult, unappType, wasUnaryNamedTupleSelectArgForNamedTuple)
+      }
+
+      def unappResultPlan(
+          unapp: Tree, args: List[Tree], unappResult: Symbol, unappType: Type,
+          wasUnaryNamedTupleSelectArgForNamedTuple: Boolean,
+          isErrMatch: Boolean = false): Plan = {
+        val isUnapplySeq = unapp.symbol.name == nme.unapplySeq
+        if isProductMatch(unappType, args.length) && !isUnapplySeq then
+          val selectors = productSelectors(unappType).take(args.length)
+            .map(ref(unappResult).select(_))
+          matchArgsPlan(selectors, args, onSuccess)
+        else if isUnapplySeq && unapplySeqTypeElemTp(unappType.finalResultType).exists then
+          unapplySeqPlan(unappResult, args)
+        else if isUnapplySeq && isProductSeqMatch(unappType, args.length, unapp.srcPos) then
+          val selectors = productSelectors(unappType).map(ref(unappResult).select(_))
+          unapplyProductSeqPlan(selectors, args)
+        else if unappResult.info <:< defn.NonEmptyTupleTypeRef then
+          val components =
+            (0 until unappResult.denot.info.tupleElementTypes.getOrElse(Nil).length)
+              .toList.map(tupleApp(_, ref(unappResult)))
+          matchArgsPlan(components, args, onSuccess)
+        else {
+          assert(isGetMatch(unappType))
+          val argsPlan = {
+            val get = getOfGetMatch(ref(unappResult), isErrMatch)
+            if (isUnapplySeq)
+              letAbstract(get) { getResult =>
+                if unapplySeqTypeElemTp(get.tpe).exists then
+                  unapplySeqPlan(getResult, args)
+                else if isGenericTuple(getResult.info) then
+                  val elemTypes = getResult.info.tupleElementTypes.getOrElse(Nil)
+                  val selectors = elemTypes.zipWithIndex.map { (tp, i) =>
+                    val tree = tupleApp(i, ref(getResult))
+                    if i == elemTypes.length - 1 then tree.cast(tp) else tree
                   }
-                else
-                  letAbstract(get) { getResult =>
-                    // Special case: Normally, we pull out the argument wholesale if
-                    // there is only one. But if the argument is a named argument for
-                    // a single-element named tuple, we have to select the field instead.
-                    // NamedArg trees are eliminated in FirstTransform but for named arguments
-                    // of patterns we add a WasNamedArg attachment, which is used to guide the
-                    // logic here. See i22900.scala for test cases.
-                    val selectors = args match
-                      case arg :: Nil if !wasUnaryNamedTupleSelectArgForNamedTuple =>
-                        ref(getResult) :: Nil
-                      case _ =>
-                        productSelectors(getResult.info).map(ref(getResult).select(_))
-                    matchArgsPlan(selectors, args, onSuccess)
-                  }
+                  unapplyProductSeqPlan(selectors, args)
+                else {
+                  val selectors = productSelectors(getResult.info).map(ref(getResult).select(_))
+                  unapplyProductSeqPlan(selectors, args)
+                }
               }
-              TestPlan(NonEmptyTest, unappResult, unapp.span, argsPlan)
-            }
+            else
+              letAbstract(get) { getResult =>
+                // Special case: Normally, we pull out the argument wholesale if
+                // there is only one. But if the argument is a named argument for
+                // a single-element named tuple, we have to select the field instead.
+                // NamedArg trees are eliminated in FirstTransform but for named arguments
+                // of patterns we add a WasNamedArg attachment, which is used to guide the
+                // logic here. See i22900.scala for test cases.
+                val selectors = args match
+                  case arg :: Nil if !wasUnaryNamedTupleSelectArgForNamedTuple =>
+                    ref(getResult) :: Nil
+                  case _ =>
+                    productSelectors(getResult.info).map(ref(getResult).select(_))
+                matchArgsPlan(selectors, args, onSuccess)
+              }
           }
+          TestPlan(
+            if isErrMatch then IsFailTest else NonEmptyTest,
+            unappResult, unapp.span, argsPlan)
+        }
       }
 
       // begin patternPlan
@@ -501,7 +528,7 @@ object PatternMatcher {
         case UnApply(extractor, implicits, args) =>
           val mt @ MethodType(_) = extractor.tpe.widen.runtimeChecked
           val admitsNull = mt.paramInfos.headOption match
-            case Some(MagicMaybeType(nullable)) => nullable
+            case Some(MagicMaybeType(_, _, nullable)) => nullable
             case _ => false
           val unappPlan = if (scrutinee.info.isBottomType)
             // Generate a throwaway but type-correct plan.
@@ -831,7 +858,7 @@ object PatternMatcher {
         case NonEmptyTest =>
           scrutinee.tpe.widenDealias match
             case AppliedType(tycon, _ :: errArg :: Nil) if tycon.isRef(defn.MagicMaybeClass) =>
-              val test = nullLiteral.select(defn.Any_!=).appliedTo(scrutinee)
+              val test = scrutinee.nullTest(cond = false)
               if errArg.isRef(defn.UnitClass)
               then test
               else test.and(scrutinee.isInstance(defn.MagicFailClass.typeRef).not)
@@ -840,6 +867,11 @@ object PatternMatcher {
                 scrutinee
                   .select(nme.isEmpty, _.info.isParameterless)
                   .select(nme.UNARY_!, _.info.isParameterless))
+        case IsFailTest =>
+          val MagicMaybeType(_, _, nullable) = scrutinee.tpe.widen.runtimeChecked
+          val typeTest = scrutinee.isInstance(defn.MagicFailClass.typeRef)
+          if nullable then scrutinee.nullTest(cond = true).or(typeTest)
+          else typeTest
         case NonNullTest =>
           scrutinee.testNotNull
         case GuardTest =>
