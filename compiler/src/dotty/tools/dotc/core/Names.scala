@@ -331,7 +331,7 @@ object Names {
 
     override def asSimpleName: SimpleName = this
     override def toSimpleName: SimpleName = this
-    override final def mangle: SimpleName = encode
+    override def mangle: SimpleName = encode
 
     override def replace(f: PartialFunction[Name, Name]): ThisName =
       if (f.isDefinedAt(this)) likeSpaced(f(this)) else this

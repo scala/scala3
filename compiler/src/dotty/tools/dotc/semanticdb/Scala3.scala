@@ -39,11 +39,12 @@ private[semanticdb] object Scala3:
     if !span.exists then false
     else
       val content = source.textContent()
-      val (start, end) =
-        if content.lift(span.end - 1).exists(_ == '`') then
-          (span.start + 1, span.end - 1)
-        else (span.start, span.end)
-      val nameInSource = content.substring(start, end)
+      val nameInSource =
+        if content.lift(span.end - 1).contains('`') then
+          if span.start + 1 < span.end - 1 then content.substring(span.start + 1, span.end - 1)
+          else ""
+        else if span.end <= content.length then content.substring(span.start, span.end)
+        else "" // span.end > content.length happens in, e.g., tests/pos/i23897.scala
       // for secondary constructors `this`
       desig match
         case sym: Symbol =>
