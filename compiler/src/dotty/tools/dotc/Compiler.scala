@@ -35,7 +35,8 @@ class Compiler {
     List(new TyperPhase) ::         // Compiler frontend: namer, typer
     List(new WInferUnion,           // Check for type arguments inferred as union types
          CheckUnused.PostTyper(),   // Check for unused
-         CheckShadowing()) ::       // Check for shadowed elements
+         CheckShadowing(),
+         CheckInlineTraits()) ::       // Check for shadowed elements
     List(new YCheckPositions) ::    // YCheck positions
     List(new sbt.ExtractDependencies) :: // Sends information on classes' dependencies to sbt via callbacks
     List(new semanticdb.ExtractSemanticInfo) :: // Extract info into .semanticdb files
@@ -43,7 +44,8 @@ class Compiler {
     List(new UnrollDefinitions) ::  // Unroll annotated methods if detected in PostTyper
     List(new sjs.PrepJSInterop) ::  // Additional checks and transformations for Scala.js (Scala.js only)
     List(new SetRootTree) ::        // Set the `rootTreeOrProvider` on class symbols
-    List(new DesugarSpecializedTraits,  // Process Specialized traits
+    List(
+         new DesugarSpecializedTraits,  // Process Specialized traits
          new SpecializeInlineTraits) :: // Inline the code of inline traits into their children
     Nil
 
