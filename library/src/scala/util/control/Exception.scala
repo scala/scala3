@@ -478,17 +478,20 @@ object Exception {
   def failAsValue[T](exceptions: Class[?]*)(value: => T): Catch[T] =
     catching(exceptions*) withApply (_ => value)
 
-  /** A builder for creating Catch objects from exception handlers.
+  /** A wrapper around a function `f`, which `by` applies to its argument.
    *
-   *  @tparam T the input type of the handler function
-   *  @tparam R the result type of the handler function
-   *  @param f the function that creates a Catch from a handler
+   *  This provides the `by` syntax of `handling`, whose `By` wraps a function that
+   *  turns an exception handler into a `Catch`.
+   *
+   *  @tparam T the input type of the wrapped function
+   *  @tparam R the result type of the wrapped function
+   *  @param f the function applied by `by`
    */
   class By[T,R](f: T => R) {
-    /** Applies the handler function to create a Catch.
+    /** Applies the wrapped function to `x`.
      *
-     *  @param x the handler function
-     *  @return the resulting Catch object
+     *  @param x the argument to pass to the wrapped function
+     *  @return the result of applying the wrapped function to `x`
      */
     def by(x: T): R = f(x)
   }

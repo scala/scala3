@@ -41,8 +41,7 @@ import scala.language.`2.13`
  *  ```
  */
 object NonFatal {
-  /** Returns true if the provided `Throwable` is to be considered non-fatal, or false if it is to be considered fatal */
-  /** Returns `true` if the provided `Throwable` is to be considered non-fatal, or false if it is to be considered fatal
+  /** Returns `true` if the provided `Throwable` is non-fatal, or `false` if it is fatal.
    *
    *  @param t the `Throwable` to test for being non-fatal
    */
