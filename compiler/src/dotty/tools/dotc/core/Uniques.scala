@@ -11,7 +11,7 @@ import scala.annotation.tailrec
 
 class Uniques extends WeakHashSet[Type](Config.initialUniquesCapacity):
   override def hash(x: Type): Int = x.hash
-  override def isEqual(x: Type, y: Type) = x.eql(y)
+  override def isEqual(x: Type, y: Type) = x.equals(y)
 
 /** Defines operation `unique` for hash-consing types.
  *  Also defines specialized hash sets for hash consing uniques of a specific type.
