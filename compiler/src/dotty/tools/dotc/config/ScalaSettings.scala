@@ -340,6 +340,7 @@ private sealed trait OptimizerSettings:
     default = Nil
   )
   private def optEnabled(s: String)(using Context): Boolean = opt.value || YoptSpecific.value.contains(s)
+  def optAnyEnabled(using Context): Boolean = opt.value || YoptSpecific.value.nonEmpty
   def optUnreachableCode(using Context): Boolean = optEnabled("unreachable-code")
   def optSimplifyJumps(using Context): Boolean = optEnabled("simplify-jumps")
   def optCompactLocals(using Context): Boolean = optEnabled("compact-locals")

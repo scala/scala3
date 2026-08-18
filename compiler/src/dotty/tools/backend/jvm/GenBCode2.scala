@@ -30,7 +30,7 @@ final class GenBCode2 extends Phase {
       val primitives = ScalaPrimitives()
       val classBTypeCache = new ClassBType.Cache()
       val gen =
-        if ctx.settings.optInlineEnabled || ctx.settings.optClosureInvocations then
+        if ctx.settings.optInlineEnabled || ctx.settings.optAnyEnabled then
           val byteCodeRepository = new BCodeRepository(ctx.platform.classPath)
           val bTypesFromClassfile = new BTypesFromClassfile(byteCodeRepository, classBTypeCache)
           val bTypeLoader = new BTypeLoader(primitives, classBTypeCache, Some(bTypesFromClassfile))
