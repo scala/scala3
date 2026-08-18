@@ -28,7 +28,7 @@ import org.objectweb.asm
 
 class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: Inliner, ts: OptimizerKnownBTypes, settings: OptimizerSettings) {
 
-  private val modulesAllowSkipInitialization =
+  private val modulesAllowSkipInitialization: InternalName => Boolean =
     if settings.optAllowSkipCoreModuleInit then optimizerUtils.modulesAllowSkipInitialization else Set.empty
 
   /**
@@ -309,8 +309,8 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       // A queue of instructions producing a value that has to be eliminated. If possible, the
       // instruction (and its inputs) will be removed, otherwise a POP is inserted after
       val queue = mutable.Queue.empty[ProducedValue]
-      // Contains constructor invocations for values that can be eliminated if unused.
-      val sideEffectFreeConstructorCalls = mutable.ArrayBuffer.empty[MethodInsnNode]
+      // Contains the creation of values that can be eliminated if unused.
+      val sideEffectFreeCreations = mutable.ArrayBuffer.empty[MethodInsnNode]
 
       // instructions to remove (we don't change the bytecode while analyzing it. this allows
       // running the ProdConsAnalyzer only once.)
@@ -398,7 +398,7 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
 
             case INVOKESPECIAL =>
               val mi = insn.asInstanceOf[MethodInsnNode]
-              if (optimizerUtils.isSideEffectFreeConstructorCall(mi)) sideEffectFreeConstructorCalls += mi
+              if (optimizerUtils.isSideEffectFreeConstructorCall(mi)) sideEffectFreeCreations += mi
 
             case _ =>
           }
@@ -545,11 +545,11 @@ class CopyProp(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
         def removeConstructorCall(mi: MethodInsnNode): Unit = {
           toRemove += mi
           callGraph.removeCallsite(mi, method)
-          sideEffectFreeConstructorCalls -= mi
+          sideEffectFreeCreations -= mi
           changed = true
         }
 
-        for (mi <- sideEffectFreeConstructorCalls.toList) { // toList to allow removing elements while traversing
+        for (mi <- sideEffectFreeCreations.toList) { // toList to allow removing elements while traversing
         val frame = prodCons.frameAt(mi)
           val stackTop = frame.stackTop
           val numArgs = Type.getArgumentTypes(mi.desc).length

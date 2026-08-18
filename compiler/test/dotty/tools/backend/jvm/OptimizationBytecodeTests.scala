@@ -78,7 +78,7 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
       val instructions = instructionsFromMethod(meth)
       for instr <- instructions do instr match {
         case AsmConverters.Invoke(_, owner, name, _, _) => assert(allowedCalls(owner, name), s"Found invoke to $owner.$name in:\n${instructions.mkString("\n")}")
-        case AsmConverters.InvokeDynamic(_, name, _, _, _) => assert(false, s"Found dynamic invoke to $name in:\n${instructions.mkString("\n")}")
+        case AsmConverters.InvokeDynamic(_, _, _, bsm, _) => assert(allowedCalls(bsm.owner, bsm.name), s"Found dynamic invoke to ${bsm.owner}.${bsm.name} in:\n${instructions.mkString("\n")}")
         case _ => ()
       }
     }
@@ -717,6 +717,25 @@ class OptimizationBytecodeTests extends DottyBytecodeTest {
     // but we cannot inline 'start', 'isEmpty', etc. in `Range` because the fields are private...
     assertCalls(Calls.noneToClasses("IntRef"),
       "var x = 0; for i <- 1 to 10 do x += i; x"
+    )
+
+
+  @Test def inlineIntTo =
+    assertCalls(Calls.noneToClasses("Test"),
+      "extension (n: Int) { def myTo(m: Int): Range.Inclusive = Range.inclusive(n, m) }; (0 myTo 49)",
+      returnType = "Range.Inclusive"
+    )
+
+  // requires understanding `applyVoid` as a specialization on Function*
+  @Test def inlineRangeForeachArrayForeach =
+    assertCalls(Calls.noneToClasses("java/lang/invoke/LambdaMetafactory"),
+      """
+        |final class C() { @noinline def test(): Boolean = false }
+        |val r = Range.inclusive(0, 49)
+        |val a = Array.fill(50)(new C())
+        |var x = 1
+        |r.foreach { n => a.foreach { c => if (c.test()) { x += 1 } } }
+        |x""".stripMargin
     )
 
 
