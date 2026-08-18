@@ -1649,18 +1649,21 @@ trait Applications extends Compatibility {
 
   /** Is `tp` a unary function type or an overloaded type with only unary function
    *  types as alternatives?
+   *  If `skipImplicit` is true, leading implicit parameter sections are
+   *  skipped first.
    */
-  def isUnary(tp: Type)(using Context): Boolean = tp match {
-    case tp: MethodicType =>
-      tp.firstParamTypes match {
-        case ptype :: Nil => !ptype.isRepeatedParam
-        case _ => false
-      }
+  def isUnary(tp: Type, skipImplicit: Boolean)(using Context): Boolean = tp.stripPoly match
+    case mt: MethodType =>
+      if skipImplicit && mt.isImplicitMethod then
+        isUnary(tp.resultType, skipImplicit)
+      else
+        mt.paramInfos match
+          case ptype :: Nil => !ptype.isRepeatedParam
+          case _ => false
     case tp: TermRef =>
-      tp.denot.alternatives.forall(alt => isUnary(alt.info))
+      tp.denot.alternatives.forall(alt => isUnary(alt.info, skipImplicit))
     case _ =>
       false
-  }
 
   /** Should we tuple or untuple the argument before application?
     *  If auto-tupling is enabled then
@@ -1671,14 +1674,15 @@ trait Applications extends Compatibility {
     *     does not consist only of unary alternatives.
     */
   def needsTupledDual(funType: Type, pt: FunProto)(using Context): Boolean =
+    val skipImplicit = pt.applyKind != ApplyKind.Using
     pt.args match
       case untpd.Tuple(elems) :: Nil =>
         elems.length > 1
         && pt.applyKind == ApplyKind.InfixTuple
-        && !isUnary(funType)
+        && !isUnary(funType, skipImplicit)
       case args =>
         args.lengthCompare(1) > 0
-        && isUnary(funType)
+        && isUnary(funType, skipImplicit)
         && Feature.autoTuplingEnabled
 
   /** If `tree` is a complete application of a compiler-generated `apply`
