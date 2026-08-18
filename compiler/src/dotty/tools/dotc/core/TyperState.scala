@@ -193,10 +193,20 @@ class TyperState() {
       else
         targetState.mergeConstraintWith(this)
 
-    upLevels.foreachBinding { (tv, level) =>
-      if level < targetState.nestingLevel(tv) then
-        targetState.setNestingLevel(tv, level)
-    }
+    // Fast path: a fresh typer state shares its `upLevels` map by reference with
+    // the state it was forked from (see `fresh`, which does `ts.upLevels = upLevels`).
+    // If the speculative typing committed here did not lower any type variable's
+    // nesting level, `upLevels eq targetState.upLevels` and this merge is a
+    // guaranteed no-op (every binding already holds the level the target has).
+    // Skipping it avoids an O(n^2) rescan on every commit -- `foreachBinding` over
+    // the whole map times a linear-scan `nestingLevel`/`setNestingLevel` per binding
+    // -- which otherwise dominates typer time for macro/inline-heavy code that forks
+    // and commits many typer states while carrying many level-lowered type variables.
+    if upLevels ne targetState.upLevels then
+      upLevels.foreachBinding { (tv, level) =>
+        if level < targetState.nestingLevel(tv) then
+          targetState.setNestingLevel(tv, level)
+      }
 
     targetState.gc()
     isCommitted = true
