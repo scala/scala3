@@ -60,6 +60,8 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
   override def changesMembers: Boolean = false
   override def changesParents: Boolean = true 
 
+  override def runsAfter: Set[String] = Set("checkInlineTraits")
+
   override def allowsImplicitSearch: Boolean = true
 
   private def newInterfaceTrait(specialization: Specialization, cache: SpecializationCache)(using Context): (ClassSymbol, SpecializationCache) = {
@@ -353,78 +355,6 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
     // but not sure if that's worth doing (it would be throwing away work).
     (generatedTraitStatsFinal ++ generatedClassStatsFinal ++ stats, specializationsFinal) 
   }
-  
-  private def checkSpecializedTraitRules(tree: Tree)(using Context) =
-    def checkType(t: Type, pos: SrcPos) = t.widen.dealias match {
-      case SpecializedEvidence(_) => 
-        report.error(s"Only inline traits and inline functions may take Specialized type parameters", pos)
-      case _ =>
-    }
-    
-    // TODO: Depending on how we ultimately organize the phasing
-    // If we settle on using miniphases, this could be moved into transformDefDef and transformBlock.
-    tree.foreachSubTree { 
-      case ddef: DefDef =>
-        val sym = ddef.symbol
-        if sym.isConstructor then
-          if !sym.owner.is(Flags.Inline) then
-            ddef.paramss.flatten.foreach(p => checkType(p.tpe, ddef.srcPos))
-        else
-          if !sym.is(Flags.Inline) then
-            ddef.paramss.flatten.foreach(p => checkType(p.tpe, ddef.srcPos))
-      case AnonymousClassInstance(anon) =>
-        def deandify(tp: Type): Iterator[Type] = tp match {
-          case AndType(l, r) => deandify(l) ++ deandify(r)
-          case _ => Iterator.single(tp)
-        }
-        anon.typeTree.tpe match {
-          case a: AndType => /* Multiple mixed in traits will be typed as an AndType */ 
-            deandify(a) foreach {trt =>
-              Specialization.unapply(trt, anon.typeTree.span) foreach { spec => 
-                if spec.hasSpecializedParams then
-                  report.error(
-                    """
-                    Anonymous classes acting as instances of Specialized traits may not mix in other traits; 
-                    You can make a named object instead if you like.
-                    """, 
-                    anon.srcPos
-                  )
-              }
-            }
-      
-          case tpe =>
-            Specialization.unapply(tpe, anon.typeTree.span).map(spec => 
-                {
-                if spec.hasSpecializedParams then
-                  // Only allowed to contain evidence parameters
-                  if anon.body.filterNot(x => x.symbol.name.is(ContextBoundParamName)).nonEmpty then 
-                    report.error(
-                      """
-                      Anonymous classes acting as instances of Specialized traits may not have additional members; 
-                      you can make a named object instead if you like.
-                      """,
-                      anon.srcPos
-                    )                    
-
-                  anon.parentCalls match { 
-                    case (obj :: parentsOfSpecTrait) :+ (app@Apply(_, _)) 
-                      if (obj.symbol.owner == ctx.definitions.ObjectClass) && 
-                        (parentsOfSpecTrait.forall(x => spec.symbol.asClass.baseClasses.exists(p => p == x.symbol.owner))) => 
-                    case _ => 
-                      report.error(
-                        """
-                        Anonymous classes acting as instances of Specialized traits may not mix in other traits; 
-                        you can make a named object instead if you like.""", 
-                        anon.srcPos
-                      )
-                  }
-                else
-                  tree
-              }).getOrElse(tree)
-        }
-
-      case _ =>
-    }
 
   private def specializedTraitCtx(using Context): Context = 
     ctx.fresh.setInlineTraitState(ctx.inlineTraitState.copyInPhase(InlineTraitState.InlineContext.SpecializedTraits))
@@ -443,10 +373,9 @@ class DesugarSpecializedTraits extends MiniPhase, IdentityDenotTransformer:
   // As long as we remember to call transformFollowing on the synthetic classes (which we do) then 
   // we should be composable in the way that we want to be.
   override def transformUnit(tree: Tree)(using Context): Tree = 
-    tree match {
+    if !ctx.compilationUnit.hasSpecializations then tree 
+    else tree match {
       case pkg@PackageDef(pid, stats) =>
-        checkSpecializedTraitRules(tree)
-
         val (stats1, specializedTraitCache2) = transformStatements(stats, specializedTraitCache)
         
         specializedTraitCache = specializedTraitCache2 
@@ -898,23 +827,21 @@ object SpecializedEvidence {
 }
 
 object Specialization:
+  def unapply(typeSpan: (Type, Span))(using Context): Option[Specialization] = typeSpan match {
+    case (AppliedType(tycon: Type, args: List[Type]), span) if isSpecializationCandidate(tycon.typeSymbol) => 
+      Some(Specialization(tycon.typeSymbol, args, span))
+    case _ => 
+      None
+  }
 
   def unapply(tpt: Tree)(using Context): Option[Specialization] = tpt match {
-    case AppliedTypeTree(specializedTrait: Ident, concreteTypeTrees: List[Tree]) => 
-      Some(Specialization(specializedTrait.symbol, concreteTypeTrees.map(_.tpe), tpt.span))
+    case tpt: AppliedTypeTree=> 
+      Specialization.unapply(tpt.tpe, tpt.span)
     case t: TypeTree => Specialization.unapply(t.tpe, t.span)
     case _ => None
   }
-  
-  def unapply(typeSpan: (Type, Span))(using Context): Option[Specialization] = typeSpan match {
-    case (AppliedType(tycon: Type, args: List[Type]), span) => Some(Specialization(tycon.typeSymbol, args, span))
-    case _ => None
-  }
 
-  def unapply(tpe: Type)(using Context): Option[Specialization] = tpe match {
-    case AppliedType(tycon: Type, args: List[Type]) => Some(Specialization(tycon.typeSymbol, args, NoSpan))
-    case _ => None
-  }
+  def unapply(tpe: Type)(using Context): Option[Specialization] = unapply(tpe, NoSpan)
 
   def classSpecializedTypeParams(classSym: Symbol)(using Context): List[Type] = 
     if !classSym.isClass || classSym.is(Flags.JavaDefined) then
@@ -936,12 +863,17 @@ object Specialization:
       case TypeDef(anon, Template(_, parentCalls: List[Tree], _, _)) =>
         parentCalls match {
           case _ :+ Apply(Apply(t, ctorArgs), ev) => // extends Object, parents of spec trait, spec trait
-            val spec = Specialization.unapply(t.tpe.resultType.resultType, t.span)
-            spec.get.hasSpecializedParams
+            Specialization
+              .unapply(t.tpe.resultType.resultType, t.span)
+              .map(_.hasSpecializedParams)
+              .nonEmpty
           case _ => false
         }
       case _ => false
     } 
+
+  def isSpecializationCandidate(sym: Symbol)(using Context) = 
+    isSpecializedTrait(sym) || isSpecializedTrait(sym.info.firstParent.typeSymbol)
 
   def isSpecializedTrait(sym: Symbol)(using Context) = 
     sym.isClass && 
