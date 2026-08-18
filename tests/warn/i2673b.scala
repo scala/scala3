@@ -2,6 +2,6 @@
 
 package Foos
 
-class Bar // warn
-object bar
+class Bar
+object bar // warn
 
