@@ -193,10 +193,10 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
       sym.sourcePos.span.exists && {
         val source = ctx.source
         if (source ne sym.source) && source.path == sym.source.path then
-          !source.content.startsWith(
-            sym.decodedName.toString(),
-            sym.sourcePos.span.point
-          )
+          val strName = sym.decodedName.toString()
+          val start = sym.sourcePos.span.point
+          val content = source.textContent()
+          content.length <= start + strName.length || content.substring(start, start + strName.length) != strName
         else false
       }
   end extension

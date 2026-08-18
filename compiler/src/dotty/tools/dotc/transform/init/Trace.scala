@@ -49,11 +49,11 @@ object Trace:
    * The method SourceFile#exists always return true thus cannot be used.
    */
   def fileExists(source: SourceFile): Boolean =
-    source.content().nonEmpty
+    source.textContent().nonEmpty
 
   def buildStacktrace(trace: Trace, preamble: String)(using Context): String = if trace.isEmpty then "" else preamble + {
     var lastLineNum = -1
-    var lines: mutable.ArrayBuffer[String] = new mutable.ArrayBuffer
+    val lines: mutable.ArrayBuffer[String] = new mutable.ArrayBuffer
     trace.foreach { tree =>
       val isLastTraceItem = tree `eq` trace.last
       val pos = tree.sourcePos

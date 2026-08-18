@@ -599,10 +599,10 @@ object Names {
    *  See `sliceToTermName` in `Decorators` for a more efficient version
    *  which however requires a Context for its operation.
    */
-  def termName(s: String): SimpleName = termName(s.toCharArray.nn, 0, s.length)
+  def termName(s: CharSequence): SimpleName = termName(s.toString.toCharArray.nn, 0, s.length)
 
   /** Create a type name from a string */
-  def typeName(s: String): TypeName = typeName(s.toCharArray.nn, 0, s.length)
+  def typeName(s: CharSequence): TypeName = typeName(s.toString.toCharArray.nn, 0, s.length)
 
   /** The type name represented by the empty string */
   val EmptyTypeName: TypeName = EmptyTermName.toTypeName

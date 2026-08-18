@@ -376,7 +376,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
   override def actions(using Context) =
     inTree match {
       case Some(tree) if shouldSuggestNN =>
-        val content = tree.source.content().slice(tree.srcPos.startPos.start, tree.srcPos.endPos.end).mkString
+        val content = tree.source.textContent().substring(tree.srcPos.startPos.start, tree.srcPos.endPos.end)
         val replacement = tree match
           case a @ Apply(_, _) if !a.hasAttachment(desugar.WasTypedInfix) =>
             content + ".nn"
