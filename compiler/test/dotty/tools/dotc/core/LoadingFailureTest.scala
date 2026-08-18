@@ -72,24 +72,25 @@ class LoadingFailureTest extends DottyTest:
     errors.head
 
   private def retainingContext(reporter: StoreReporter)(using Context): Context =
-    val failures = ctx.property(RetainedSymbolLoadingFailures).getOrElse(mutable.WeakHashMap.empty)
+    val retained = ctx.retainedSymbolLoadingFailures
+    val failures = if retained == null then mutable.WeakHashMap.empty else retained
     ctx.fresh
       .setReporter(reporter)
-      .setProperty(RetainedSymbolLoadingFailures, failures)
+      .setRetainedSymbolLoadingFailures(failures)
 
-  @Test def `failed loads are not retained without the context property`(): Unit =
+  @Test def `failed loads are not retained when retention is disabled`(): Unit =
     val initialReporter = new StoreReporter(null)
     ctx = ctx.fresh
       .addMode(Mode.Interactive)
       .setReporter(initialReporter)
-      .dropProperty(RetainedSymbolLoadingFailures)
+      .setRetainedSymbolLoadingFailures(null)
     val failed = newFailedLoad("UnretainedOwner")
 
     assertTrue(failed.cls.isAbsent())
     val initialDiagnostics = initialReporter.removeBufferedMessages
     assertEquals(1, initialDiagnostics.size)
     assertFalse(initialDiagnostics.head.isInstanceOf[LoadingError])
-    assertTrue(ctx.property(RetainedSymbolLoadingFailures).isEmpty)
+    assertNull(ctx.retainedSymbolLoadingFailures)
 
     val replayReporter = new StoreReporter(null)
     ctx = retainingContext(replayReporter)
@@ -108,7 +109,7 @@ class LoadingFailureTest extends DottyTest:
     val replayReporter = new StoreReporter(null)
     ctx = ctx.fresh
       .setReporter(replayReporter)
-      .dropProperty(RetainedSymbolLoadingFailures)
+      .setRetainedSymbolLoadingFailures(null)
     assertTrue(failed.cls.isAbsent())
     assertTrue(replayReporter.removeBufferedMessages.isEmpty)
     assertEquals(1, failed.loader.attempts)

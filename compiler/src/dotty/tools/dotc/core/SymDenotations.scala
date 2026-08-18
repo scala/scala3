@@ -616,13 +616,15 @@ object SymDenotations {
       val wasAbsent = myInfo eq NoType
       setAbsentInfo()
       if !wasAbsent && (ctx ne NoContext) && (symbol ne NoSymbol) then
-        ctx.property(RetainedSymbolLoadingFailures).foreach(_.remove(symbol))
+        val failures = ctx.retainedSymbolLoadingFailures
+        if failures != null then failures.remove(symbol)
     }
 
     /** Mark this symbol absent and retain the loading failure when retention is enabled. */
     private[core] final def markLoadFailed(failure: LoadingFailure)(using Context): Unit =
       setAbsentInfo()
-      ctx.property(RetainedSymbolLoadingFailures).foreach(_(symbol) = failure)
+      val failures = ctx.retainedSymbolLoadingFailures
+      if failures != null then failures(symbol) = failure
 
     /** Is symbol known to not exist?
      *  @param canForce  If true, force the info to avoid a false negative. In contexts that
@@ -642,10 +644,9 @@ object SymDenotations {
         // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
         val absent = myInfo `eq` NoType
         if absent && canForce && (ctx ne NoContext) && (symbol ne NoSymbol) then
-          for
-            failures <- ctx.property(RetainedSymbolLoadingFailures)
-            failure <- failures.get(symbol)
-          do report.loadingError(failure)
+          val failures = ctx.retainedSymbolLoadingFailures
+          if failures != null then
+            failures.get(symbol).foreach(report.loadingError)
         absent
         || (is(Invisible) && !ctx.mode.is(Mode.ResolveFromTASTy)) && ctx.isTyper
         || is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)

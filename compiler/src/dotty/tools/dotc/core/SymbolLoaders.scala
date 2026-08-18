@@ -443,7 +443,7 @@ abstract class SymbolLoader extends LazyType { self =>
         throw new InterruptedException
       case ex: IOException =>
         val message = loadingMessage(ex)
-        if ctx.property(RetainedSymbolLoadingFailures).isDefined then
+        if ctx.retainedSymbolLoadingFailures != null then
           val loadFailure = LoadingFailure(message)
           failure = Some(loadFailure)
           report.loadingError(loadFailure)
