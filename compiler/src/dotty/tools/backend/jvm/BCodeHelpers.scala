@@ -433,9 +433,9 @@ trait BCodeHelpers(val bTypeLoader: BTypeLoader) extends BCodeIdiomatic {
     private val EMPTY_STRING_ARRAY = Array.empty[String]
 
     def genMirrorClassIfNeeded(moduleClass: Symbol)(using Context): asm.tree.ClassNode | Null = {
-      if !moduleClass.isTopLevelModuleClass then 
+      if !moduleClass.isTopLevelModuleClass then
         null
-      else if moduleClass.companionClass == NoSymbol then 
+      else if moduleClass.companionClass == NoSymbol then
         genMirrorClass(moduleClass)
       else
         report.log(s"No mirror class for module with linked class: ${moduleClass.fullName}", NoSourcePosition)
