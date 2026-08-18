@@ -253,7 +253,7 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
       val runDCE = (settings.optUnreachableCode && (requestDCE || nullnessOptChanged)) ||
         settings.optBoxUnbox ||
         settings.optCopyPropagation
-      val codeRemoved = if (runDCE) LocalOptImpls.removeUnreachableCodeImpl(method, ownerClassName, callGraph, optimizerUtils) else false
+      val codeRemoved = if (runDCE) LocalOptImpls.removeUnreachableCodeImpl(method, ownerClassName, callGraph) else false
       traceIfChanged("dce")
 
       // BOX-UNBOX
@@ -467,8 +467,7 @@ class LocalOpt(optimizerUtils: OptimizerUtils, callGraph: CallGraph, inliner: In
         case _ =>
       }
 
-      // We don't need to worry about CallGraph.closureInstantiations and
-      // OptimizerUtils.indyLambdaImplMethods, the removed instructions are not IndyLambdas
+      // We don't need to worry about CallGraph.closureInstantiations, the removed instructions are not IndyLambdas
       def removeFromCallGraph(insn: AbstractInsnNode): Unit = insn match {
         case mi: MethodInsnNode => callGraph.removeCallsite(mi, method)
         case _ =>
@@ -652,7 +651,7 @@ object LocalOptImpls {
    *
    * @return A set containing the eliminated instructions
    */
-  def minimalRemoveUnreachableCode(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph, optimizerUtils: OptimizerUtils): Boolean = {
+  def minimalRemoveUnreachableCode(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph): Boolean = {
     // In principle, for the inliner, a single removeUnreachableCodeImpl would be enough. But that
     // would potentially leave behind stale handlers (empty try block) which is not legal in the
     // classfile. So we run both removeUnreachableCodeImpl and removeEmptyExceptionHandlers.
@@ -663,7 +662,7 @@ object LocalOptImpls {
     // handlers, see scaladoc of def methodOptimizations. Removing a live handler may render more
     // code unreachable and therefore requires running another round.
     def removalRound(): Boolean = {
-      val insnsRemoved = removeUnreachableCodeImpl(method, ownerClassName, callGraph, optimizerUtils)
+      val insnsRemoved = removeUnreachableCodeImpl(method, ownerClassName, callGraph)
       if (insnsRemoved) {
         val removeHandlersResult = removeEmptyExceptionHandlers(method)
         if (removeHandlersResult.liveHandlerRemoved) removalRound()
@@ -685,7 +684,7 @@ object LocalOptImpls {
    * When this method returns, each `labelNode.getLabel` has a status set whether the label is live
    * or not. This can be queried using `OptimizerUtils.isLabelReachable`.
    */
-  def removeUnreachableCodeImpl(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph, optimizerUtils: OptimizerUtils): Boolean = {
+  def removeUnreachableCodeImpl(method: MethodNode, ownerClassName: InternalName, callGraph: CallGraph): Boolean = {
     val size = method.instructions.size
 
     // queue of instruction indices where analysis should start
@@ -816,7 +815,6 @@ object LocalOptImpls {
                 case invocation: MethodInsnNode => callGraph.removeCallsite(invocation, method)
                 case indy: InvokeDynamicInsnNode =>
                   callGraph.removeClosureInstantiation(indy, method)
-                  optimizerUtils.removeIndyLambdaImplMethod(ownerClassName, method, indy)
                 case _ =>
               }
             }
