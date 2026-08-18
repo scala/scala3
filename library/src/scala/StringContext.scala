@@ -310,7 +310,7 @@ object StringContext {
   class InvalidEscapeException(str: String, val index: Int) extends IllegalArgumentException(
     s"""invalid escape ${
       require(index >= 0 && index < str.length)
-      val ok = s"""[\\b, \\t, \\n, \\f, \\r, \\\\, \\", \\', \\uxxxx]"""
+      val ok = s"""[\\b, \\t, \\n, \\f, \\s, \\r, \\\\, \\", \\', \\uxxxx]"""
       if (index == str.length - 1) "at terminal" else s"'\\${str(index + 1)}' not one of $ok at"
     } index $index in "$str". Use \\\\ for literal \\."""
   )
@@ -350,7 +350,7 @@ object StringContext {
 
   /** Expands standard Scala escape sequences in a string.
    *  Escape sequences are:
-   *   control: `\b`, `\t`, `\n`, `\f`, `\r`
+   *   control: `\b`, `\t`, `\n`, `\f`, `\r`, `\s`
    *   escape:  `\\`, `\"`, `\'`
    *
    *  @param  str  A string that may contain escape sequences
@@ -361,7 +361,7 @@ object StringContext {
 
   /** Expands standard Scala escape sequences in a string.
    *  Escape sequences are:
-   *   control: `\b`, `\t`, `\n`, `\f`, `\r`
+   *   control: `\b`, `\t`, `\n`, `\f`, `\r`, `\s`
    *   escape:  `\\`, `\"`, `\'`
    *
    *  @param  str  A string that may contain escape sequences
@@ -397,6 +397,7 @@ object StringContext {
             case 'n'  => '\n'
             case 'f'  => '\f'
             case 'r'  => '\r'
+            case 's'  => ' '
             case '"'  => '"'
             case '\'' => '\''
             case '\\' => '\\'
