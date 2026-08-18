@@ -166,7 +166,7 @@ class SettingsTests:
       val args = List("-foo", "c", "-bar", "3", "-baz", "-1")
       val summary = Settings.processArguments(args, true)
       val expectedErrors = List(
-        "c is not a valid choice for -foo",
+        "c is not a valid choice for -foo.\nExpected a foo.\nAvailable choices: a, b",
         "3 is not a valid choice for -bar",
         "-1 is out of legal range 0..10 for -baz"
       )
