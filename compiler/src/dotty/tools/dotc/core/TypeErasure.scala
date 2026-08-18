@@ -995,9 +995,15 @@ class TypeErasure(sourceLanguage: SourceLanguage, semiEraseVCs: Boolean, isConst
     else defn.TupleXXLClass.typeRef
   }
 
+  /** The erasure of `T ? E`. A value of that type is represented at runtime either
+   *  as a value of type `T`, or, if `E` is `Unit`, as `null`, or otherwise as a
+   *  `runtime.Fail` wrapping the error. So we can erase to the erasure of `T` only
+   *  if `T` cannot be `null` and no `Fail` can arise, i.e. `E` is `Unit`.
+   */
   private def eraseMaybe(tp: AppliedType)(using Context): Type =
-    val arg = tp.args.head
+    val arg :: errArg :: Nil = tp.args: @unchecked
     if arg.isNotNull && arg.derivesFrom(defn.ObjectClass)
+       && (errArg.isRef(defn.UnitClass) || errArg.isRef(defn.NothingClass))
     then apply(arg)
     else defn.ObjectType
 

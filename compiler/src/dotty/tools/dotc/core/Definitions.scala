@@ -490,6 +490,9 @@ class Definitions {
   @tu lazy val MagicOkModule: Symbol = requiredModule("scala.magic.Ok")
     @tu lazy val Magic_OkUnapply: Symbol = MagicOkModule.requiredMethod(nme.unapply)
 
+  @tu lazy val MagicErrModule: Symbol = requiredModule("scala.magic.Err")
+    @tu lazy val Magic_ErrUnapply: Symbol = MagicErrModule.requiredMethod(nme.unapply)
+
   @tu lazy val MagicCompiletimeModule: Symbol = requiredModule("scala.magic.compiletime")
     @tu lazy val Magic_spec: Symbol = MagicCompiletimeModule.requiredMethod("$spec")
     @tu lazy val Magic_wrappedType: Symbol = MagicCompiletimeModule.requiredMethod("$wrappedType")
