@@ -5,7 +5,8 @@ package jvm
 import scala.annotation.tailrec
 import scala.collection.{immutable, mutable}
 import org.objectweb.asm
-import org.objectweb.asm.tree.MethodNode
+import org.objectweb.asm.{Handle, Opcodes}
+import org.objectweb.asm.tree.{ClassNode, MethodNode}
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.TreeTypeMap
 import dotty.tools.dotc.ast.Trees.SyntheticUnit
@@ -26,8 +27,6 @@ import dotty.tools.dotc.transform.Mixin
 import tpd.*
 
 import scala.compiletime.uninitialized
-import scala.tools.asm.{Handle, Opcodes}
-import scala.tools.asm.tree.ClassNode
 
 /*
  *
@@ -342,7 +341,7 @@ trait BCodeSkelBuilder(val bTypes: KnownBTypes) extends BCodeHelpers {
       val groups = serializableLambdas.grouped(targetMethodGroupLimit).toArray
       val numGroups = groups.length
 
-      import scala.tools.asm.Label
+      import org.objectweb.asm.Label
       val initialLabels = Array.fill(numGroups - 1)(new Label())
       val terminalLabel = new Label
 
