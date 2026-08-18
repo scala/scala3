@@ -1372,7 +1372,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           // is weaker than the first, we keep it in place of the first.
           // Note that if the isSubArgs test fails, we will proceed anyway by
           // dealising by doing a compareLower.
-          def loop(tycon1: Type, args1: List[Type]): Boolean = tycon1 match {
+          def loop(tycon1: Type, args1: List[Type]): Boolean = ctx.handleRecursive("checking for matching apply of", tycon1) { tycon1 match {
             case tycon1: TypeParamRef =>
               (tycon1 == tycon2 ||
                canConstrain(tycon1) && isSubType(tycon1, tycon2)) &&
@@ -1434,7 +1434,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
               loop(tycon1.underlying, args1)
             case _ =>
               false
-          }
+          } }
           loop(tycon1, args1)
         case _ =>
           false
