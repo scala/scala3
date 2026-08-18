@@ -902,9 +902,9 @@ object TypeOps:
           // Note that `HKTypeLambda.resType` may contain TypeParamRef that are
           // bound in the HKTypeLambda. This is fine, as the TypeComparer will
           // recurse on the bounds of `TypeParamRef`.
-          val tyconBounds =
-            if initialGadt.contains(tycon.symbol) then initialGadt.bounds(tycon.symbol).nn
-            else tycon.underlying
+          val tyconBounds = initialGadt.bounds(tycon.symbol) match
+            case tb @ (TypeBounds(_: HKTypeLambda, _) | TypeBounds(_, _: HKTypeLambda)) => tb
+            case _ => tycon.underlying
           val bounds: TypeBounds = tyconBounds match {
             case TypeBounds(tl1: HKTypeLambda, tl2: HKTypeLambda) =>
               TypeBounds(tl1.resType, tl2.resType)
