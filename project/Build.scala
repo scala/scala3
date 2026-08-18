@@ -1586,9 +1586,9 @@ object Build {
       versionScheme := Some("semver-spec"),
       scalaVersion  := dottyNonBootstrappedVersion,
       crossPaths    := true, // org.scala-lang:scala3-compiler has a crosspath
-      // sbt shouldn't add stdlib automatically, we depend on `scala3-library-nonbootstrapped`
+      // sbt shouldn't add stdlib automatically, we depend on `scala3-library-bootstrapped`
       autoScalaLibrary := false,
-      // Add the source directories for the compiler (boostrapped)
+      // Add the source directories for the compiler (bootstrapped)
       Compile / unmanagedSourceDirectories   := Seq(baseDirectory.value / "src"),
       Compile / unmanagedSourceDirectories   += baseDirectory.value / "src-bootstrapped",
       Compile / unmanagedResourceDirectories += baseDirectory.value / "resources",
@@ -1621,6 +1621,9 @@ object Build {
       Compile / resourceGenerators += generateCompilerProperties.taskValue,
       // Configure to use the non-bootstrapped compiler
       bootstrappedScalaInstanceSettings,
+      // Optimize the compiler, but only inline its own code,
+      // since it may be used with a different standard library than it was compiled with.
+      Compile / compile / scalacOptions ++= Seq("-opt", "-opt-inline:dotty.**"),
       /* Add the sources of scalajs-ir.
        * To guarantee that dotty can bootstrap without depending on a version
        * of scalajs-ir built with a different Scala compiler, we add its
