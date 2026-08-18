@@ -14,7 +14,6 @@ import dotty.tools.backend.jvm.opt.*
 
 import scala.annotation.constructorOnly
 import scala.collection.mutable
-import scala.util.chaining.scalaUtilChainingOps
 
 /**
  * Implements late stages of the backend, i.e.,

@@ -104,7 +104,7 @@ class CodeGen(impl: BCodeSyncAndTry) {
       case (dupName, dupPos) =>
         val locationAddendum =
           if clsPos.source.path == dupPos.source.path then ""
-          else s" (defined in ${dupPos.source.file.name})"
+          else s" (defined in ${dupPos.source.name})"
         def nicify(name: String): String = name.replace('/', '.')
         if name == dupName then
           report.error(
