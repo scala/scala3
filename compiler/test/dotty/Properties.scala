@@ -1,6 +1,7 @@
 package dotty
 
-import java.nio.file.*
+import dotty.tools.nio.FileSystemEntry
+
 import java.util.regex.{Matcher, Pattern}
 
 /** Runtime properties from defines or environmnent */
@@ -18,11 +19,6 @@ object Properties {
 
   /** Are we running on the CI? */
   val isRunByCI: Boolean = sys.env.isDefinedAt("DOTTY_CI_RUN")
-
-  val testCache: Path =
-    sys.env.get("DOTTY_TEST_CACHE").map(Paths.get(_)).getOrElse {
-      Paths.get(sys.props("user.home"), ".cache", "dotty", "test")
-    }
 
   /** Tests should run interactive? */
   val testsInteractive: Boolean = propIsNullOrTrue("dotty.tests.interactive")
@@ -54,7 +50,7 @@ object Properties {
   val testsInstrumentCoverage: Boolean = propIsTrue("dotty.tests.instrumentCoverage")
 
   /** Extra directory containing sources for the compiler */
-  def dottyCompilerManagedSources: Path = Paths.get(sys.props("dotty.tests.dottyCompilerManagedSources"))
+  def dottyCompilerManagedSources: String = sys.props("dotty.tests.dottyCompilerManagedSources").nn
 
   /** dotty-interfaces jar */
   def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces").nn
@@ -88,7 +84,7 @@ object Properties {
 
   /** all the ASM jars */
   def asmAll: Seq[String] =
-    val sep = java.io.File.separator
+    val sep = FileSystemEntry.separator.toString
     Seq("", "-tree", "-util", "-commons", "-analysis")
       .map(suffix =>
         asm.replaceAll("asm", "asm" + suffix)

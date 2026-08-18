@@ -1,18 +1,20 @@
 package dotty.tools.dotc.profile
 
-import java.io.*
-
+import dotty.tools.io.FileExtension
 import org.junit.Assert.*
 import org.junit.*
+import dotty.tools.nio.*
+
+import scala.io.Codec
 
 class FileUtilsTest {
 
   @Test def writeIsSame(): Unit = {
-    val fileTest = File.createTempFile("FileUtilsTest", "t1").nn
-    val fileExpected = File.createTempFile("FileUtilsTest", "t2").nn
+    val fileTest = File.createTemporaryOnDisk("FileUtilsTest", FileExtension.from("t1"))
+    val fileExpected = File.createTemporaryOnDisk("FileUtilsTest", FileExtension.from("t2"))
 
-    val sTest = FileUtils.newAsyncBufferedWriter(new FileWriter(fileTest), threadsafe = false)
-    val sExpected = new BufferedWriter(new FileWriter(fileExpected))
+    val sTest = FileUtils.newAsyncBufferedWriter(fileTest.writer(Codec.UTF8), threadsafe = false)
+    val sExpected = fileExpected.writer(Codec.UTF8)
 
     def writeBoth(s:String, asChars: Boolean) = {
       if (asChars) {
@@ -33,10 +35,10 @@ class FileUtilsTest {
     sTest.close()
     sExpected.close()
 
-    assertEquals(fileExpected.length(),fileTest.length())
+    assertEquals(fileExpected.size(), fileTest.size())
 
-    val expIn = new BufferedReader(new FileReader(fileExpected))
-    val testIn = new BufferedReader(new FileReader(fileTest))
+    val expIn = fileExpected.reader(Codec.UTF8)
+    val testIn = fileTest.reader(Codec.UTF8)
 
     var exp = expIn.readLine()
     while (exp ne null) {
@@ -57,12 +59,12 @@ class FileUtilsTest {
       writeIsSame()
     }
 
-    val fileTest = File.createTempFile("FileUtilsTest", "t1").nn
-    val fileExpected = File.createTempFile("FileUtilsTest", "t2").nn
+    val fileTest = File.createTemporaryOnDisk("FileUtilsTest", FileExtension.from("t1"))
+    val fileExpected = File.createTemporaryOnDisk("FileUtilsTest", FileExtension.from("t2"))
 
     for (i <- 1 to 10) {
-      val sTest = FileUtils.newAsyncBufferedWriter(fileTest.toPath.nn)
-      val sExpected = new BufferedWriter(new FileWriter(fileExpected))
+      val sTest = FileUtils.newAsyncBufferedWriter(fileTest.writer(Codec.UTF8), threadsafe = false)
+      val sExpected = fileExpected.writer(Codec.UTF8)
 
       val t1 = System.nanoTime()
       List.tabulate(10000) {i =>

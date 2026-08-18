@@ -1,17 +1,17 @@
 package dotty.tools.dotc
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, StandardCopyOption}
-import javax.tools.{DiagnosticCollector, JavaFileObject, ToolProvider}
+import dotty.tools.nio.{File, FileContainer}
 
+import javax.tools.{DiagnosticCollector, JavaFileObject, ToolProvider}
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
-
 import org.junit.{Ignore, Test}
 import org.junit.Assert.*
-
-import dotty.tools.deleteDirectory
 import dotty.tools.vulpix.TestConfiguration
+import dotty.tools.io.{ClassPath, FileExtension}
+
+import java.nio.charset.StandardCharsets
+import scala.io.Codec
 
 /** Tests that the compiler produces byte-for-byte identical class files and
  *  TASTy when the same sources are compiled in a different order, or when
@@ -416,25 +416,25 @@ class DeterminismTester {
   )
 
   def test(groups: List[List[TestSource]]): Unit = {
-    val srcDir = Files.createTempDirectory("determinism-src")
-    val referenceOutput = Files.createTempDirectory("determinism-reference")
+    val srcDir = FileContainer.createTemporaryOnDisk("determinism-src")
+    val referenceOutput = FileContainer.createTemporaryOnDisk("determinism-reference")
 
-    def writeSources(sources: List[TestSource]): List[Path] =
+    def writeSources(sources: List[TestSource]): List[File] =
       sources.map { s =>
-        val p = srcDir.resolve(s.name)
-        Files.write(p, s.content.getBytes(StandardCharsets.UTF_8))
+        val p = srcDir.getOrCreateFile(s.name)
+        p.writeText(s.content, Codec.UTF8)
         p
       }
 
-    def compile(output: Path, sources: List[TestSource]): Unit = {
+    def compile(output: FileContainer, sources: List[TestSource]): Unit = {
       val paths = writeSources(sources)
-      val classpath = TestConfiguration.basicClasspath + java.io.File.pathSeparator + output.toString
+      val classpath = TestConfiguration.basicClasspath + ClassPath.pathSeparator + output.path
       val (javaSources, scalaSources) = sources.partition(_.isJava)
       if scalaSources.nonEmpty then
         val args =
           compilerOptions
-            ++ List("-classpath", classpath, "-d", output.toString, "-sourceroot", srcDir.toString)
-            ++ paths.map(_.toString)
+            ++ List("-classpath", classpath, "-d", output.path, "-sourceroot", srcDir.path)
+            ++ paths.map(_.path)
         val reporter = new dotty.tools.dotc.reporting.Reporter.SilentReporter
         try Main.process(args.toArray, reporter)
         catch case NonFatal(ex) =>
@@ -448,9 +448,9 @@ class DeterminismTester {
         val diagnostics = new DiagnosticCollector[JavaFileObject]
         val fileMan = javac.getStandardFileManager(diagnostics, null, StandardCharsets.UTF_8)
         try
-          val javaPaths = paths.zip(sources).collect { case (p, s) if s.isJava => p.toAbsolutePath.toString }
+          val javaPaths = paths.zip(sources).collect { case (p, s) if s.isJava => p.path }
           val javaFileObjects = fileMan.getJavaFileObjects(javaPaths*)
-          val options = List("-d", output.toString, "-cp", classpath)
+          val options = List("-d", output.path, "-cp", classpath)
           val task = javac.getTask(null, fileMan, diagnostics, options.asJava, null, javaFileObjects)
           val ok = task.call()
           assertTrue(s"javac failed for $javaPaths:\n${diagnostics.getDiagnostics.asScala.mkString("\n")}", ok)
@@ -470,14 +470,14 @@ class DeterminismTester {
     // Cleanup happens only on success: on failure the temp directories are
     // kept for inspection and named in the assertion message.
     for permutation <- permutations do
-      val recompileOutput = Files.createTempDirectory("determinism-recompile")
-      copyRecursive(referenceOutput, recompileOutput)
+      val recompileOutput = FileContainer.createTemporaryOnDisk("determinism-recompile")
+      referenceOutput.copyRecursivelyTo(recompileOutput)
       compile(recompileOutput, permutation)
       assertDirectorySame(referenceOutput, recompileOutput, permutation.map(_.name).mkString("recompile of [", ", ", "]"))
-      deleteDirectory(recompileOutput.toFile)
+      recompileOutput.deleteRecursively()
 
-    deleteDirectory(referenceOutput.toFile)
-    deleteDirectory(srcDir.toFile)
+    referenceOutput.deleteRecursively()
+    srcDir.deleteRecursively()
   }
 
   def permutationsWithSubsets[A](as: List[A]): List[List[A]] =
@@ -485,16 +485,13 @@ class DeterminismTester {
 
   // -- Directory comparison ---------------------------------------------------
 
-  private def isBinaryArtifact(p: Path): Boolean =
-    val name = p.getFileName.toString
-    name.endsWith(".class") || name.endsWith(".tasty")
+  private def isBinaryArtifact(p: File): Boolean =
+    p.extension == FileExtension.Class || p.extension == FileExtension.Tasty
 
-  private def relativeArtifacts(dir: Path): Map[String, Path] =
-    val stream = Files.walk(dir)
-    try stream.iterator().asScala.filter(isBinaryArtifact).map(p => dir.relativize(p).toString -> p).toMap
-    finally stream.close()
+  private def relativeArtifacts(dir: FileContainer): Map[String, File] =
+    dir.recursiveEntries.collect { case f: File if isBinaryArtifact(f) => f.path.substring(dir.path.length) -> f }.toMap
 
-  private def assertDirectorySame(dir1: Path, dir2: Path, note: String): Unit = {
+  private def assertDirectorySame(dir1: FileContainer, dir2: FileContainer, note: String): Unit = {
     // On failure the two directories are intentionally kept for inspection.
     def kept = s"(outputs kept for inspection: reference=$dir1, recompile=$dir2)"
     val files1 = relativeArtifacts(dir1)
@@ -502,8 +499,8 @@ class DeterminismTester {
     assertEquals(s"different file sets ($note)\n$kept", files1.keySet, files2.keySet)
 
     val diffs = files1.keySet.toList.sorted.flatMap { rel =>
-      val bytes1 = Files.readAllBytes(files1(rel))
-      val bytes2 = Files.readAllBytes(files2(rel))
+      val bytes1 = files1(rel).readBytes()
+      val bytes2 = files2(rel).readBytes()
       if java.util.Arrays.equals(bytes1, bytes2) then None
       else if rel.endsWith(".class") then Some(s"$rel differs:\n${diffClassFiles(bytes1, bytes2)}")
       else Some(s"$rel differs (TASTy):\n${diffTasty(bytes1, bytes2)}")
@@ -545,18 +542,4 @@ class DeterminismTester {
       ((s"  (first difference at line ${prefixLen + 1})" :: block("reference", mid1)) ++ block("recompile", mid2))
         .mkString("\n")
 
-  // -- Temp file helpers ------------------------------------------------------
-
-  private def copyRecursive(src: Path, dest: Path): Unit =
-    val stream = Files.walk(src)
-    try
-      stream.iterator().asScala.foreach { p =>
-        val target = dest.resolve(src.relativize(p).toString)
-        if Files.isDirectory(p) then Files.createDirectories(target)
-        else
-          Files.createDirectories(target.getParent)
-          Files.copy(p, target, StandardCopyOption.REPLACE_EXISTING)
-      }
-    finally stream.close()
 }
-
