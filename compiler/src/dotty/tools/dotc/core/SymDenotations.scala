@@ -21,6 +21,7 @@ import util.Stats
 import java.util.WeakHashMap
 import config.Config
 import reporting.*
+import reporting.Diagnostic.LoadingFailure
 import collection.mutable
 import cc.{CapturingType, derivedCapturingType, stripCapturing}
 
@@ -601,18 +602,33 @@ object SymDenotations {
     /** is this symbol the result of an erroneous definition? */
     def isError: Boolean = false
 
+    private def setAbsentInfo(): Unit = {
+      if (isCompleting)
+        assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
+          s"Illegal attempt to mark $this absent while completing using completer $myInfo")
+      myInfo = NoType
+    }
+
     /** Make denotation not exist.
      *  @pre `isCompleting` is false, or this is a ModuleCompleter or SymbolLoader
      */
     final def markAbsent()(using Context): Unit = {
-      if (isCompleting)
-        assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
-          s"Illegal call to `markAbsent()` while completing $this using completer $myInfo")
-      myInfo = NoType
+      val wasAbsent = myInfo eq NoType
+      setAbsentInfo()
+      if !wasAbsent && (ctx ne NoContext) && (symbol ne NoSymbol) then
+        val failures = ctx.retainedSymbolLoadingFailures
+        if failures != null then failures.remove(symbol)
     }
 
+    /** Mark this symbol absent and retain the loading failure when retention is enabled. */
+    private[core] final def markLoadFailed(failure: LoadingFailure)(using Context): Unit =
+      setAbsentInfo()
+      val failures = ctx.retainedSymbolLoadingFailures
+      if failures != null then failures(symbol) = failure
+
     /** Is symbol known to not exist?
-     *  @param canForce  If this is true, the info may be forced to avoid a false-negative result
+     *  @param canForce  If true, force the info to avoid a false negative. In contexts that
+     *                   retain loading failures, report the failure for an absent symbol.
      */
     @tailrec
     final def isAbsent(canForce: Boolean = true)(using Context): Boolean = myInfo match {
@@ -626,7 +642,12 @@ object SymDenotations {
         isAbsent(canForce)
       case _ =>
         // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
-        (myInfo `eq` NoType)
+        val absent = myInfo `eq` NoType
+        if absent && canForce && (ctx ne NoContext) && (symbol ne NoSymbol) then
+          val failures = ctx.retainedSymbolLoadingFailures
+          if failures != null then
+            failures.get(symbol).foreach(report.loadingError)
+        absent
         || (is(Invisible) && !ctx.mode.is(Mode.ResolveFromTASTy)) && ctx.isTyper
         || is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
     }

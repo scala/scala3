@@ -105,6 +105,7 @@ class ReplDriver(settings: Array[String],
   /** Create a fresh and initialized context with IDE mode enabled */
   private def initialCtx(settings: List[String]) = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive)
+    rootCtx.setRetainedSymbolLoadingFailures(mutable.WeakHashMap.empty)
     rootCtx.setSetting(rootCtx.settings.XcookComments, true)
     rootCtx.setSetting(rootCtx.settings.XreadComments, true)
     setupRootCtx(this.settings ++ settings, rootCtx)
@@ -215,7 +216,7 @@ class ReplDriver(settings: Array[String],
             /* complete = */ false  // if true adds space when completing
           )
         }
-        val comps = completions(line.cursor, line.line, state)
+        val comps = completions(line.cursor, line.line, state, lineReader.printAbove(_))
         candidates.addAll(comps.map(_.label).distinct.map(makeCandidate).asJava)
         val lineWord = line.word()
         comps.filter(c => c.label == lineWord && c.symbols.nonEmpty) match
@@ -361,13 +362,22 @@ class ReplDriver(settings: Array[String],
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected final def completions(cursor: Int, expr: String, state0: State): List[Completion] =
+    completions(cursor, expr, state0, out.println(_))
+
+  private def completions(
+    cursor: Int,
+    expr: String,
+    state0: State,
+    displayLoadingErrors: String => Unit
+  ): List[Completion] =
     if expr.startsWith(":") then
       ReplCommands.names.collect:
         case command if command.startsWith(expr) => Completion(command, "", List())
     else
+      val typecheckReporter = newStoreReporter
       given state: State = newRun(state0)
-      compiler
-        .typeCheck(expr, errorsAllowed = true)
+      val result = compiler
+        .typeCheck(expr, errorsAllowed = true, reporter = typecheckReporter)
         .map { (untpdTree, tpdTree) =>
           val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
           val unit = CompilationUnit(file)(using state.context)
@@ -381,6 +391,15 @@ class ReplDriver(settings: Array[String],
             List(Completion("<Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues>", "", Nil))
         }
         .getOrElse(Nil)
+      // Candidate discovery can load symbols unrelated to the qualifier. Discard its
+      // diagnostics; failed loads are retained and reported if the symbol is requested later.
+      state.context.reporter.removeBufferedMessages(using state.context)
+      val loadingErrors = typecheckReporter.removeBufferedMessages(using state.context).collect:
+        case error: Diagnostic.LoadingError => error
+      if loadingErrors.nonEmpty then
+        given Context = state.context
+        displayLoadingErrors(loadingErrors.map(ReplConsoleReporter.messageAndPos).mkString("\n"))
+      result
   end completions
 
   protected def interpret(res: ParseResult)(using state: State): State = {

@@ -16,7 +16,7 @@ import dotc.core.Contexts.atPhase
 import dotc.config.Feature
 import dotc.core.StdNames.*
 import dotc.core.Symbols.*
-import dotc.reporting.Diagnostic
+import dotc.reporting.{Diagnostic, StoreReporter}
 import dotc.transform.{CheckUnused, CheckShadowing, PostTyper, UnrollDefinitions, WInferUnion}
 import dotc.typer.ImportInfo.{withRootImports, RootRef}
 import dotc.typer.TyperPhase
@@ -203,7 +203,14 @@ class ReplCompiler extends Compiler:
     }
   }
 
-  final def typeCheck(expr: String, errorsAllowed: Boolean = false)(using state: State): Either[List[Diagnostic], (untpd.ValDef, tpd.ValDef)] = {
+  final def typeCheck(expr: String, errorsAllowed: Boolean = false)(using state: State): Either[List[Diagnostic], (untpd.ValDef, tpd.ValDef)] =
+    typeCheck(expr, errorsAllowed, newStoreReporter)
+
+  private[repl] final def typeCheck(
+    expr: String,
+    errorsAllowed: Boolean,
+    reporter: StoreReporter
+  )(using state: State): Either[List[Diagnostic], (untpd.ValDef, tpd.ValDef)] = {
 
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(using Context): Either[List[Diagnostic], untpd.PackageDef] = {
       def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
@@ -260,7 +267,7 @@ class ReplCompiler extends Compiler:
 
     val src = SourceFile.virtual("<typecheck>", expr)
     inContext(state.context.fresh
-      .setReporter(newStoreReporter)
+      .setReporter(reporter)
       .setSetting(state.context.settings.YstopAfter, List("typer"))
     ) {
       wrapped(expr, src, state).flatMap { pkg =>

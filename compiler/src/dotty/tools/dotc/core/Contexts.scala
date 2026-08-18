@@ -22,6 +22,7 @@ import Implicits.ContextualImplicits
 import config.Settings.*
 import config.Config
 import reporting.*
+import reporting.Diagnostic.LoadingFailure
 import io.{AbstractFile, PlainFile, Path}
 import scala.io.Codec
 import collection.mutable
@@ -54,8 +55,10 @@ object Contexts {
   private val (importInfoLoc,        store9) = store8.newLocation[ImportInfo | Null]()
   private val (typeAssignerLoc,     store10) = store9.newLocation[TypeAssigner](TypeAssigner)
   private val (progressCallbackLoc, store11) = store10.newLocation[ProgressCallback | Null]()
+  private val (retainedSymbolLoadingFailuresLoc, store12) =
+    store11.newLocation[mutable.WeakHashMap[Symbol, LoadingFailure] | Null]()
 
-  private val initialStore = store11
+  private val initialStore = store12
 
   /** The current context */
   inline def ctx(using ctx: Context): Context = ctx
@@ -162,6 +165,12 @@ object Contexts {
      *  slightly slower than a normal field access would be.
      */
     def store: Store
+
+    /** Failures retained for symbols whose loader has installed `NoType`,
+     *  or `null` when retention is disabled.
+     */
+    private[tools] def retainedSymbolLoadingFailures: mutable.WeakHashMap[Symbol, LoadingFailure] | Null =
+      store(retainedSymbolLoadingFailuresLoc)
 
     /** The compiler callback implementation, or null if no callback will be called. */
     def compilerCallback: CompilerCallback | Null = store(compilerCallbackLoc)
@@ -768,6 +777,9 @@ object Contexts {
         case _ =>
       updateStore(importInfoLoc, importInfo)
     def setTypeAssigner(typeAssigner: TypeAssigner): this.type = updateStore(typeAssignerLoc, typeAssigner)
+    private[tools] def setRetainedSymbolLoadingFailures(
+        failures: mutable.WeakHashMap[Symbol, LoadingFailure] | Null
+    ): this.type = updateStore(retainedSymbolLoadingFailuresLoc, failures)
 
     def setProperty[T](key: Key[T], value: T): this.type =
       setMoreProperties(moreProperties.updated(key, value))

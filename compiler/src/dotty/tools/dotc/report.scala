@@ -81,6 +81,10 @@ object report:
   def error(msg: => String)(using Context): Unit =
     error(msg, NoSourcePosition)
 
+  private[dotc] def loadingError(failure: LoadingFailure)(using Context): Unit =
+    ctx.reporter.report(new LoadingError(failure))
+    if ctx.settings.YdebugError.value then Thread.dumpStack()
+
   def error(ex: TypeError, pos: SrcPos)(using Context): Unit =
     val fullPos = addInlineds(pos)
     ctx.reporter.report(new StickyError(ex.toMessage, fullPos))
