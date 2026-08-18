@@ -14,6 +14,8 @@ package scala
 
 import scala.language.`2.13`
 
+import scala.collection.immutable.NumericRange
+
 /** `Short`, a 16-bit signed integer (equivalent to Java's `short` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Short` are not
  *  represented by an object in the underlying runtime system.
@@ -705,5 +707,19 @@ object Short extends AnyValCompanion {
       * - `0` if `this == that`
       */
     def compare(that: Short): Int = java.lang.Short.compare(self, that)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range (defaults to 1).
+      */
+    def until(end: Short, step: Short = 1): NumericRange.Exclusive[Short] = NumericRange(self, end, step)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range (defaults to 1).
+      */
+    def to(end: Short, step: Short = 1): NumericRange.Inclusive[Short] = NumericRange.inclusive(self, end, step)
   }
 }

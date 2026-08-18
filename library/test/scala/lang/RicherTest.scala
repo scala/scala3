@@ -78,6 +78,24 @@ class RicherTest {
     assertEqualTo(0)((10 until -2).length)
     assertEqualTo(0)((10 to -2).length)
   }
+  @Test def `Bytes are ranged`(): Unit = {
+    val start: Byte = 1
+    val end: Byte = 5
+    val step: Byte = 2
+    assertEqualTo(List[Byte](1, 2, 3, 4, 5))((start to end).toList)
+    assertEqualTo(List[Byte](1, 2, 3, 4))((start until end).toList)
+    assertEqualTo(List[Byte](1, 3, 5))(start.to(end, step).toList)
+    assertEqualTo(List[Byte](1, 3))(start.until(end, step).toList)
+  }
+  @Test def `Shorts are ranged`(): Unit = {
+    val start: Short = 10
+    val end: Short = 14
+    val step: Short = 2
+    assertEqualTo(List[Short](10, 11, 12, 13, 14))((start to end).toList)
+    assertEqualTo(List[Short](10, 11, 12, 13))((start until end).toList)
+    assertEqualTo(List[Short](10, 12, 14))(start.to(end, step).toList)
+    assertEqualTo(List[Short](10, 12))(start.until(end, step).toList)
+  }
   @Test def `Int strings`(): Unit = {
     assertEqualTo(x"1_0000")(16.toBinaryString)
     assertEqualTo("10")(16.toHexString)

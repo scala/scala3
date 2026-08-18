@@ -14,6 +14,8 @@ package scala
 
 import scala.language.`2.13`
 
+import scala.collection.immutable.NumericRange
+
 /** `Byte`, a 8-bit signed integer (equivalent to Java's `byte` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Byte` are not
  *  represented by an object in the underlying runtime system.
@@ -707,5 +709,19 @@ object Byte extends AnyValCompanion {
       * - `0` if `this == that`
       */
     def compare(that: Byte): Int = java.lang.Byte.compare(self, that)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range (defaults to 1).
+      */
+    def until(end: Byte, step: Byte = 1): NumericRange.Exclusive[Byte] = NumericRange(self, end, step)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range (defaults to 1).
+      */
+    def to(end: Byte, step: Byte = 1): NumericRange.Inclusive[Byte] = NumericRange.inclusive(self, end, step)
   }
 }
