@@ -37,6 +37,11 @@ class PatternMatcher extends MiniPhase {
 
   override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
+  override def prepareForCaseDef(tree: CaseDef)(using Context): Context =
+    tree.pat.removeAttachment(typer.Typer.InferredGadtConstraints) match
+      case Some(gadt) => ctx.fresh.setGadtState(GadtState(gadt))
+      case None => ctx
+
   override def transformMatch(tree: Match)(using Context): Tree =
     if (tree.isInstanceOf[InlineMatch]) tree
     else if tree.isSubMatch then
