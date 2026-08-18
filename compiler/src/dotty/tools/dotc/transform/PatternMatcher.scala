@@ -419,7 +419,10 @@ object PatternMatcher {
         else if unappType.derivesFrom(defn.BooleanClass) then
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
         else
-          letAbstract(unapp) { unappResult =>
+          val unappCore = unapp match
+            case Apply(fn, arg :: Nil) if fn.symbol == defn.Magic_OkUnapply => arg
+            case _ => unapp
+          letAbstract(unappCore) { unappResult =>
             val isUnapplySeq = unapp.symbol.name == nme.unapplySeq
             if isProductMatch(unappType, args.length) && !isUnapplySeq then
               val selectors = productSelectors(unappType).take(args.length)
@@ -828,7 +831,7 @@ object PatternMatcher {
         case NonEmptyTest =>
           scrutinee.tpe.widenDealias match
             case AppliedType(tycon, _ :: errArg :: Nil) if tycon.isRef(defn.MagicMaybeClass) =>
-              val test = scrutinee.testNotNull
+              val test = nullLiteral.select(defn.Any_!=).appliedTo(scrutinee)
               if errArg.isRef(defn.UnitClass)
               then test
               else test.and(scrutinee.isInstance(defn.MagicFailClass.typeRef).not)
