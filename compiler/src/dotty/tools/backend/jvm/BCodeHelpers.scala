@@ -4,8 +4,8 @@ package jvm
 
 import dotty.tools.backend.jvm.SymbolUtils.symExtensions
 
-import scala.tools.asm
-import scala.tools.asm.{AnnotationVisitor, ClassWriter, Opcodes}
+import org.objectweb.asm
+import org.objectweb.asm.{AnnotationVisitor, ClassWriter, Opcodes}
 import scala.collection.mutable
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.Trees
