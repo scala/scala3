@@ -3383,9 +3383,9 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def startColumn: Int = self.startColumn
         def endColumn: Int = self.endColumn
         def sourceCode: Option[String] =
-          val contents = self.source.content()
+          val contents = self.source.textContent()
           if contents.length < self.end then None
-          else Some(new String(contents, self.start, self.end - self.start))
+          else Some(contents.substring(self.start, self.end))
       end extension
     end PositionMethods
 
@@ -3408,7 +3408,7 @@ class QuotesImpl private (using val ctx: Context) extends Quotes, QuoteUnpickler
         def getJPath: Option[java.nio.file.Path] = Option(self.jfile.map(_.toPath).orElse(null))
         def name: String = self.name
         def path: String = self.path
-        def content: Option[String] = Option.when(self.exists)(new String(self.content()))
+        def content: Option[String] = Option.when(self.exists)(self.textContent())
       end extension
     end SourceFileMethods
 

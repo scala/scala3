@@ -408,7 +408,7 @@ class ReplDriver(settings: Array[String],
       case parsed: Parsed =>
         for diag <- parsed.directiveDiagnostics do
           out.println(s"[warn] ${diag.message}")
-        val src = parsed.source.content().mkString
+        val src = parsed.source.textContent()
         val classified = ReplDirectives.classify(src)
         if classified.hasDirectives then
           val stateAfterDirectives = interpretDirectives(classified)
@@ -510,7 +510,7 @@ class ReplDriver(settings: Array[String],
               .foreach(printDiagnostic)
 
             if updatedState.invalidObjectIndexes.contains(updatedState.objectIndex) then updatedState
-            else updatedState.recordInput(parsed.source.content().mkString)
+            else updatedState.recordInput(parsed.source.textContent())
       )
   }
 

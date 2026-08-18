@@ -1379,15 +1379,15 @@ object RefChecks {
     import dotty.tools.dotc.rewrites.Rewrites.ActionPatch
 
     val classSrcPos = clazz.srcPos
-    val content = classSrcPos.sourcePos.source.content()
+    val content = classSrcPos.sourcePos.source.textContent()
     val span = classSrcPos.endPos.span
 
-    val classText = new String(content.slice(untypedTree.span.start, untypedTree.span.end))
+    val classText = content.substring(untypedTree.span.start, untypedTree.span.end)
     val classHasBraces = classText.contains("{") && classText.contains("}")
 
     // Indentation for inserted methods
     val lineStart = content.lastIndexWhere(isLineBreakChar, end = span.end - 1) + 1
-    val baseIndent = new String(content.slice(lineStart, span.end).takeWhile(c => c == ' ' || c == '\t'))
+    val baseIndent = content.toSeq.slice(lineStart, span.end).takeWhile(c => c == ' ' || c == '\t').mkString
     val indent = baseIndent + "  "
 
     val formattedMethods = methods.map(m => s"$indent$m").mkString("\n")

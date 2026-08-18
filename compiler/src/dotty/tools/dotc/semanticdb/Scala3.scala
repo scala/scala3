@@ -38,12 +38,12 @@ private[semanticdb] object Scala3:
   def namePresentInSource(desig: Designator, span: Span, source:SourceFile)(using Context): Boolean =
     if !span.exists then false
     else
-      val content = source.content()
+      val content = source.textContent()
       val (start, end) =
         if content.lift(span.end - 1).exists(_ == '`') then
           (span.start + 1, span.end - 1)
         else (span.start, span.end)
-      val nameInSource = content.slice(start, end).mkString
+      val nameInSource = content.substring(start, end)
       // for secondary constructors `this`
       desig match
         case sym: Symbol =>

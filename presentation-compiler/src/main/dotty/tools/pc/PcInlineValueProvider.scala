@@ -248,8 +248,8 @@ final class PcInlineValueProvider(
       val offset = pos.start
       var idx = source.startOfLine(offset)
       val pad = new StringBuilder
-      while idx != offset && idx < source.content().length && source.content()(idx).isWhitespace do
-        pad.append(source.content()(idx))
+      while idx != offset && idx < source.textContent().length && source.textContent()(idx).isWhitespace do
+        pad.append(source.textContent()(idx))
         idx += 1
       pad.result()
 
