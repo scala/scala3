@@ -8,4 +8,5 @@ package dotty.tools.vulpix
  *    compileFilesInDir("tests/pos", defaultOptions)(TestGroup("compileStdLib")) // will output in ./out/compileStdLib/...
  *    compileFilesInDir("tests/pos", defaultOptimised)(TestGroup("optimised/testOptimised")) // will output in ./out/optimised/testOptimised/...
  */
-case class TestGroup(name: String)
+case class TestGroup(name: String):
+  override def toString: String = name

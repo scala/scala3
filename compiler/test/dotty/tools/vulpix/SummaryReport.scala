@@ -79,8 +79,8 @@ final class SummaryReport extends SummaryReporting {
   /** Both echoes the summary to stdout and prints to file */
   override def echoSummary(): Unit = {
     val rep = new StringBuilder
-    if failed == 0 && failedTests.isEmpty && skippedTests.isEmpty then
-      rep.append(s"== Vulpix Test Report: all $passed suites passed ==")
+    if failed == 0 && failedTests.isEmpty then
+      rep.append(s"== Vulpix Test Report: $passed suites passed, no failures (${skippedTests.size} skipped) ==")
     else
       rep.append(
         s"""|
@@ -93,7 +93,8 @@ final class SummaryReport extends SummaryReporting {
       )
       failedTests.asScala.map(x => s"    ${x.title}${x.extra}\n").foreach(rep.append)
       TestReporter.writeFailedTests(failedTests.asScala.toList.map(_.title))
-      skippedTests.asScala.map(x => s"    ${x.title} skipped").toList.distinct.foreach(rep.append)
+      if !skippedTests.isEmpty then
+        rep.append("Skipped: " + skippedTests.asScala.map(_.title).mkString(", "))
 
     // If we're on the CI, we want reproduction instructions; otherwise, we just need a pointer to the log file.
     if Properties.isRunByCI then
@@ -107,7 +108,7 @@ final class SummaryReport extends SummaryReporting {
             |Note - reproduction instructions have been dumped to log file:
             |    ${TestReporter.logPath}
             |--------------------------------------------------------------------------------""".stripMargin
-      )
+      ).append('\n')
 
     println(rep.toString)
     TestReporter.logPrintln(rep.toString)
