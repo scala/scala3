@@ -1,0 +1,54 @@
+###################################################################################################
+###                       THIS IS A REUSABLE WORKFLOW TO BUILD SCALA DEB                        ###
+### HOW TO USE:                                                                                 ###
+###   - THE RELEASE WORKFLOW SHOULD CALL THIS WORKFLOW                                          ###
+###   - IT WILL UPLOAD TO GITHUB THE DEB FILE FOR SCALA UNDER THE 'scala.deb' NAME              ###
+###                                                                                             ###
+### NOTE:                                                                                       ###
+###   - SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17                                               ###
+###################################################################################################
+
+name: Build the Debian Package
+
+on:
+  workflow_call:
+    outputs:
+      version:
+        description: 'The developed Scala version (major.minor.patch) extracted from project/Build.scala'
+        value: ${{ jobs.build.outputs.version }}
+
+env:
+  # Release only happens when triggering CI by pushing a tag
+  RELEASEBUILD: ${{ startsWith(github.event.ref, 'refs/tags/') && 'yes' || 'no' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract-version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: sbt
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
+      - name: Ensure Debian build tooling
+        run: |
+          command -v dpkg-deb >/dev/null && command -v fakeroot >/dev/null \
+            || (sudo apt-get update && sudo apt-get install -y --no-install-recommends dpkg-dev fakeroot)
+      - name: Extract Scala version
+        id: extract-version
+        shell: bash
+        run: |
+          version=$(sed -n 's/.*val developedVersion = "\(.*\)".*/\1/p' project/Build.scala)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Extracted Scala version: $version"
+      - name: Build the .deb package
+        run: ./project/scripts/sbt "dist-linux-x86_64-deb/Debian/packageBin"
+      - name: Upload deb Artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scala.deb
+          path: ./dist/linux-x86_64-deb/target/scala.deb
