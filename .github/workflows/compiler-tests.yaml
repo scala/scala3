@@ -46,7 +46,7 @@ jobs:
             .github/workflows/run-vulpix-ci.sh ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
           fi
 
-      - name: Full Vulpix test log
+      - name: Vulpix failure output
         if: ${{ failure() && steps.compiler_test.outcome == 'failure' }}
         run: .github/workflows/print-vulpix-testlogs.sh
 
@@ -91,7 +91,7 @@ jobs:
             .github/workflows/run-vulpix-ci.sh ./project/scripts/sbt scala3-compiler-bootstrapped/test
           fi
 
-      - name: Full Vulpix test log
+      - name: Vulpix failure output
         if: ${{ failure() && steps.compiler_test.outcome == 'failure' }}
         run: .github/workflows/print-vulpix-testlogs.sh
 

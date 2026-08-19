@@ -143,7 +143,10 @@ private[vulpix] object VulpixConsole:
     includeGroup: Boolean,
     useColors: Boolean,
   ): String =
-    val slowest = timings.toList.sortWith(timingComesBefore).take(5)
+    val distinctTimings = timings.groupMapReduce(timing => (timing.group, timing.title))(timing => timing) {
+      (left, right) => if left.durationNanos >= right.durationNanos then left else right
+    }
+    val slowest = distinctTimings.values.toList.sortWith(timingComesBefore).take(5)
     if slowest.isEmpty then ""
     else
       val rows = slowest.zipWithIndex.map { (timing, index) =>

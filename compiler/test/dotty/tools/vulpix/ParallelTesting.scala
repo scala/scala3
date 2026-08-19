@@ -280,7 +280,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       for (msg <- FileDiff.check(testSource.title, actual, checkFile.getPath)) {
         if (Properties.testsUpdateCheckfile) {
           FileDiff.dump(checkFile.toPath.toString, actual)
-          logger.echo("Updated checkfile: " + checkFile.getPath)
+          echo("Updated checkfile: " + checkFile.getPath)
         } else {
           onFailure(testSource, reporters, logger, Some(msg))
           val outFile = checkFile.toPath.resolveSibling(s"${checkFile.toPath.getFileName}.out").toString
@@ -434,9 +434,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         _testSourcesCompleted += 1
         val index = activeTestSources.indexWhere(_ eq active)
         if index >= 0 then activeTestSources.remove(index)
-        if collectTimings then
+        if collectTimings && active.testSource.group.reportTimings then
           completedTestTimings += VulpixConsole.TestTiming(
-            active.testSource.group.name,
+            active.testSource.group.reportingName,
             active.testSource.title,
             duration,
           )
@@ -445,12 +445,14 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     private def testTimingsSnapshot(): List[VulpixConsole.TestTiming] = synchronized {
       val nowNanos = System.nanoTime()
-      completedTestTimings.toList ++ activeTestSources.map { active =>
-        VulpixConsole.TestTiming(
-          active.testSource.group.name,
-          active.testSource.title,
-          math.max(nowNanos - active.startedAtNanos, 0L),
-        )
+      completedTestTimings.toList ++ activeTestSources.flatMap { active =>
+        Option.when(active.testSource.group.reportTimings) {
+          VulpixConsole.TestTiming(
+            active.testSource.group.reportingName,
+            active.testSource.title,
+            math.max(nowNanos - active.startedAtNanos, 0L),
+          )
+        }
       }
     }
 
@@ -540,10 +542,10 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     private def makeCIProgress(start: Long): VulpixConsole.Progress = synchronized {
       val nowNanos = System.nanoTime()
       val active = activeTestSources.toList.sortBy(_.startedAtNanos)
-      val activeGroups = active.map(_.testSource.group.name).distinct
+      val activeGroups = active.map(_.testSource.group.reportingName).distinct
       val groups =
         if activeGroups.nonEmpty then activeGroups
-        else filteredSources.map(_.group.name).distinct
+        else filteredSources.map(_.group.reportingName).distinct
       val activeTests = active.map { active =>
         VulpixConsole.ActiveTest(
           active.testSource.title,
@@ -629,12 +631,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
             (1 to n).foldLeft(emptyReporter) ((_, i) => op(i))
 
           override def doCompile(comp: Compiler, files: List[AbstractFile])(using Context) =
-            ntimes(times) { run =>
-              val start = System.nanoTime()
-              val rep = super.doCompile(comp, files)
-              report.echoToLog(List(s"\ntime run $run: ${(System.nanoTime - start) / 1000000}ms"))
-              rep
-            }
+            ntimes(times)(_ => super.doCompile(comp, files))
         }
 
       val allArgs = flags.all
@@ -845,7 +842,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     private[ParallelTesting] def executeTestSuite(): this.type = {
       VulpixConsole.announceStart()
-      if collectTimings then summaryReport.beginTestGroups(filteredSources.iterator.map(_.group.name).toSet)
+      if collectTimings then
+        val groups = filteredSources.iterator.map(_.group.reportingName).toSet
+        if groups.nonEmpty then summaryReport.beginTestGroups(groups)
       assert(testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
       if filteredSources.nonEmpty then
         val pool = JExecutors.newWorkStealingPool(threadLimit.getOrElse(Runtime.getRuntime.availableProcessors()))

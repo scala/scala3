@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.ConcurrentLinkedDeque
 import scala.collection.mutable.ArrayBuffer
 
-/** Collects Vulpix results and writes summaries to stdout and the test log.
+/** Collects Vulpix results, writes summaries to stdout, and records failure diagnostics.
  *
  *  Local runs use one report per JUnit suite and emit it from `@AfterClass`.
  *  CI runs share one report across the test process and emit it from a shutdown
@@ -63,9 +63,7 @@ private[vulpix] final class NoResultSummaryReport(delegate: SummaryReporting) ex
   override def echoToLog(it: Iterable[String]): Unit = delegate.echoToLog(it)
 }
 
-/** A summary report that logs to both stdout and the `TestReporter.logWriter`
- *  which outputs to a log file in `./testlogs/`
- */
+/** A summary report that writes concise status to stdout and failure details to `./testlogs/`. */
 final class SummaryReport(pulse: Boolean = VulpixConsole.pulseEnabled) extends SummaryReporting {
   import scala.jdk.CollectionConverters.*
 
@@ -103,16 +101,13 @@ final class SummaryReport(pulse: Boolean = VulpixConsole.pulseEnabled) extends S
   private[vulpix] def consoleSummaryText(useColors: Boolean): String =
     VulpixConsole.renderSummary(summary, useColors)
 
-  private[vulpix] def detailedText: String = {
-    val instructions = reproduceInstructions.asScala.toList.sorted
-    if instructions.isEmpty then summaryText
-    else instructions.mkString(summaryText + "\n", "", "")
-  }
+  private[vulpix] def reproductionText: String =
+    reproduceInstructions.asScala.toList.distinct.sorted.mkString
 
   private[vulpix] def overallTimingsText: String =
     VulpixConsole.renderSlowestOverall(testTimings.asScala, useColors = false)
 
-  /** Echo the concise summary to stdout and the full report to file. */
+  /** Echo the concise summary to stdout; local runs also log reproduction instructions. */
   override def echoSummary(): Unit = {
     flushTestTimings()
     val failures = failedTestsSnapshot
@@ -136,8 +131,8 @@ final class SummaryReport(pulse: Boolean = VulpixConsole.pulseEnabled) extends S
       }
     }
 
-    if hasResults || !reproduceInstructions.isEmpty then TestReporter.logPrintln(detailedText)
-    if overallTimings.nonEmpty then TestReporter.logPrintln(VulpixConsole.stripColors(overallTimings))
+    val reproduction = reproductionText
+    if reproduction.nonEmpty && !Properties.isRunByCI then echoToLog(List(reproduction))
   }
 
   override private[vulpix] def progressEnabled: Boolean = pulse
@@ -169,13 +164,10 @@ final class SummaryReport(pulse: Boolean = VulpixConsole.pulseEnabled) extends S
   private def emitTestTimings(timings: Iterable[VulpixConsole.TestTiming]): Unit =
     if timings.nonEmpty then {
       val rendered = VulpixConsole.renderSlowestByGroup(timings, VulpixConsole.colorsEnabled)
-      if rendered.nonEmpty then {
-        println(rendered)
-        TestReporter.logPrintln(VulpixConsole.stripColors(rendered))
-      }
+      if rendered.nonEmpty then println(rendered)
     }
 
-  override def echoToLog(it: Iterable[String]): Unit = {
+  override def echoToLog(it: Iterable[String]): Unit = synchronized {
     it.foreach(msg => TestReporter.logPrint(VulpixConsole.stripColors(msg)))
     TestReporter.logFlush()
   }

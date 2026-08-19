@@ -34,14 +34,14 @@ class SummaryReportTests:
 
     assert(report.summaryText == expectedSummary, report.summaryText)
     assert(!report.summaryText.contains("REPRODUCE_SENTINEL"))
-    assert(report.detailedText == expectedSummary + "\nREPRODUCE_SENTINEL")
+    assert(report.reproductionText == "REPRODUCE_SENTINEL")
 
     val coloredSummary = report.consoleSummaryText(useColors = true)
     assert(VulpixConsole.stripColors(coloredSummary) == expectedSummary, coloredSummary)
     assert(coloredSummary.contains("\u001b[32m"), coloredSummary)
     assert(coloredSummary.contains("\u001b[31m"), coloredSummary)
     assert(coloredSummary.contains("\u001b[33m"), coloredSummary)
-    assert(!report.detailedText.contains("\u001b["), report.detailedText)
+    assert(!report.reproductionText.contains("\u001b["), report.reproductionText)
 
   @Test def progressRendering: Unit =
     val progress = VulpixConsole.Progress(
@@ -109,6 +109,7 @@ class SummaryReportTests:
       VulpixConsole.TestTiming("compileNeg", "tests/neg/b.scala", millis(12_842)),
       VulpixConsole.TestTiming("compileNeg", "tests/neg/mid.scala", millis(3_000)),
       VulpixConsole.TestTiming("compileNeg", "tests/neg/quick.scala", millis(842)),
+      VulpixConsole.TestTiming("compileNeg", "tests/neg/quick.scala", millis(900)),
       VulpixConsole.TestTiming("compileNeg", "tests/neg/excluded.scala", millis(1)),
       VulpixConsole.TestTiming("compilePos", "tests/pos/slow\u001b\n::error::injected.scala", millis(3_600_001)),
     )
@@ -118,7 +119,7 @@ class SummaryReportTests:
          |  2. tests/neg/a.scala (12.842s)
          |  3. tests/neg/b.scala (12.842s)
          |  4. tests/neg/mid.scala (3.000s)
-         |  5. tests/neg/quick.scala (842ms)
+         |  5. tests/neg/quick.scala (900ms)
          |[Vulpix] Top 5 slowest in compilePos:
          |  1. tests/pos/slow??::error::injected.scala (1h00m00.001s)""".stripMargin
     val expectedOverall =

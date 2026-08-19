@@ -94,6 +94,20 @@ class VulpixUnitTests:
     assert(report.summaryText.contains("1 test passed, 1 failed, 2 total"))
     assert(report.summaryText.contains("tests/vulpix-tests/unit/posFail1Error.scala failed"))
 
+  @Test def childGroupReportsAsTopLevelGroup: Unit =
+    val report = SummaryReport(pulse = true)
+    val childGroup = TestGroup("topLevel").child("internal/multi-file")
+    compileFile("tests/vulpix-tests/unit/pos.scala", defaultOptions)(using childGroup)
+      .checkCompile()(using report)
+    assert(report.overallTimingsText.contains("[topLevel]"), report.overallTimingsText)
+    assert(!report.overallTimingsText.contains("[internal/multi-file]"), report.overallTimingsText)
+
+    val unreportedReport = SummaryReport(pulse = true)
+    val unreportedGroup = TestGroup("unreported", reportTimings = false)
+    compileFile("tests/vulpix-tests/unit/pos.scala", defaultOptions)(using unreportedGroup)
+      .checkCompile()(using unreportedReport)
+    assert(unreportedReport.overallTimingsText.isEmpty, unreportedReport.overallTimingsText)
+
   @Test def runTimeout: Unit =
     val fileName = s"tests/vulpix-tests/unit/timeout.scala"
     val expect = """(?m).*test '.+' timed out.*"""
