@@ -293,13 +293,13 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     /** Entry point: runs the test */
     final def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable { self =>
       def checkTestSource(): Unit =
-        registerActive(testSource)
+        val active = registerActive(testSource)
         try
           tryCompile(testSource, self) {
             val reportersOrCrash = compileTestSource(testSource, self)
             onComplete(testSource, reportersOrCrash, self)
           }
-        finally completeActiveTest()
+        finally completeActiveTest(active)
     }
 
     /** This callback is executed once the compilation of this test source finished */
@@ -412,29 +412,23 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     /** Total amount of test sources being compiled by this test */
     val sourceCount = filteredSources.length
 
-    private case class ActiveTestSource(testSource: TestSource, startedAt: Long, workerId: Int)
+    protected final class ActiveTestSource(val testSource: TestSource, val startedAt: Long)
 
     private var _testSourcesCompleted = 0
     private val activeTestSources = ArrayBuffer.empty[ActiveTestSource]
-    private val workerIds = mutable.HashMap.empty[Thread, Int]
-    private var nextWorkerId = 1
 
     private def testSourcesCompleted: Int = synchronized { _testSourcesCompleted }
 
-    protected final def registerActive(testSource: TestSource): Unit = synchronized {
-      val workerId = workerIds.getOrElseUpdate(Thread.currentThread(), {
-        val id = nextWorkerId
-        nextWorkerId += 1
-        id
-      })
-      activeTestSources += ActiveTestSource(testSource, System.currentTimeMillis(), workerId)
+    protected final def registerActive(testSource: TestSource): ActiveTestSource = synchronized {
+      val active = new ActiveTestSource(testSource, System.currentTimeMillis())
+      activeTestSources += active
+      active
     }
 
-    /** Record completion and remove the worker from the active snapshot atomically. */
-    protected final def completeActiveTest(): Unit = synchronized {
+    /** Record completion and remove the execution from the active snapshot atomically. */
+    protected final def completeActiveTest(active: ActiveTestSource): Unit = synchronized {
       _testSourcesCompleted += 1
-      val workerId = workerIds(Thread.currentThread())
-      val index = activeTestSources.indexWhere(_.workerId == workerId)
+      val index = activeTestSources.indexWhere(_ eq active)
       if index >= 0 then activeTestSources.remove(index)
     }
 
@@ -517,20 +511,19 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       s"[$past$curr$next] completed ($tCompiled/$sourceCount, $failureCount failed, ${timestamp}s)"
 
     /** Emit a sparse, line-oriented progress update for non-interactive CI logs. */
-    private def updateCIProgressMonitor(start: Long, completedBefore: Int): Unit =
+    private def updateCIProgressMonitor(start: Long): Unit =
       if testSourcesCompleted < sourceCount && !isUserDebugging then
-        summaryReport.echoProgress(makeCIProgress(start, completedBefore))
+        summaryReport.echoProgress(makeCIProgress(start))
 
-    private def makeCIProgress(start: Long, completedBefore: Int): VulpixConsole.Progress = synchronized {
+    private def makeCIProgress(start: Long): VulpixConsole.Progress = synchronized {
       val now = System.currentTimeMillis()
-      val active = activeTestSources.toList.sortBy(_.workerId)
+      val active = activeTestSources.toList.sortBy(_.startedAt)
       val activeGroups = active.map(_.testSource.group.name).distinct
       val groups =
         if activeGroups.nonEmpty then activeGroups
         else filteredSources.map(_.group.name).distinct
       val activeTests = active.map { active =>
         VulpixConsole.ActiveTest(
-          active.workerId,
           active.testSource.title,
           math.max(now - active.startedAt, 0L) / 1000,
         )
@@ -539,7 +532,6 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         groupNames = groups,
         completed = _testSourcesCompleted,
         total = sourceCount,
-        completedOverall = completedBefore + staticallySkippedCount + _testSourcesCompleted,
         failed = failedTestSources.size,
         elapsedSeconds = math.max(now - start, 0L) / 1000,
         activeTests = activeTests,
@@ -836,12 +828,11 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         val logLocalProgress = !Properties.isRunByCI && sourceCount > 1 && !suppressAllOutput
         val logCIProgress = summaryReport.progressEnabled && !suppressAllOutput
         val start = System.currentTimeMillis()
-        val completedBefore = summaryReport.completedSources
         if logLocalProgress then
           timer.schedule((() => updateProgressMonitor(start)): TimerTask, 100/*ms*/, 200/*ms*/)
         else if logCIProgress then
           timer.schedule(
-            (() => updateCIProgressMonitor(start, completedBefore)): TimerTask,
+            (() => updateCIProgressMonitor(start)): TimerTask,
             CIProgressInitialDelayMillis,
             CIProgressPeriodMillis,
           )

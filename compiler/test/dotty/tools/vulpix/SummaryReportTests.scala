@@ -48,79 +48,55 @@ class SummaryReportTests:
       groupNames = List("compileNeg"),
       completed = 12,
       total = 20,
-      completedOverall = 42,
       failed = 1,
       elapsedSeconds = 125,
       activeTests = List(
-        VulpixConsole.ActiveTest(3, "tests/neg/slow.scala", 70),
-        VulpixConsole.ActiveTest(1, "tests/neg/other.scala", 45),
-        VulpixConsole.ActiveTest(2, "tests/neg/third.scala", 20),
+        VulpixConsole.ActiveTest("tests/neg/third.scala", 20),
+        VulpixConsole.ActiveTest("tests/neg/slow.scala", 70),
+        VulpixConsole.ActiveTest("tests/neg/other.scala", 45),
       ),
     )
-    val expectedHeader =
-      "[Vulpix] compileNeg: 12/20 done (60%); 3 active; 1 failed; 42 done overall; 2m05s"
-    val expectedGitHub =
-      """|::group::[Vulpix] compileNeg: 12/20 done (60%25); 3 active; 1 failed; 42 done overall; 2m05s
-         |  worker 1: tests/neg/other.scala (45s)
-         |  worker 2: tests/neg/third.scala (20s)
-         |  worker 3: tests/neg/slow.scala (1m10s)
-         |::endgroup::""".stripMargin
+    val expected =
+      "[Vulpix] compileNeg | 12/20 complete | 3 running | 1 failed in group | 2m05s elapsed" +
+        " | longest: tests/neg/slow.scala (1m10s), tests/neg/other.scala (45s), +1"
 
-    assert(VulpixConsole.renderProgress(progress, useColors = false) == expectedHeader)
-    assert(VulpixConsole.renderGitHubProgress(progress, useColors = false) == expectedGitHub)
+    assert(VulpixConsole.renderProgress(progress, useColors = false) == expected)
+    val colored = VulpixConsole.renderProgress(progress, useColors = true)
+    assert(VulpixConsole.stripColors(colored) == expected, colored)
 
-    val colored = VulpixConsole.renderGitHubProgress(progress, useColors = true)
-    assert(VulpixConsole.stripColors(colored) == expectedGitHub, colored)
-    assert(colored.startsWith("::group::"), colored)
-
-  @Test def progressPercentageAndEmptyWorkerRendering: Unit =
-    def progress(completed: Int, total: Int) =
-      VulpixConsole.Progress(Nil, completed, total, completed, 0, 0, Nil)
-
-    assert(VulpixConsole.renderProgress(progress(0, 0), false).contains("done (100%)"))
-    assert(VulpixConsole.renderProgress(progress(0, 3), false).contains("done (0%)"))
-    assert(VulpixConsole.renderProgress(progress(1, 3), false).contains("done (33%)"))
-    assert(VulpixConsole.renderProgress(progress(2, 3), false).contains("done (67%)"))
-    assert(VulpixConsole.renderProgress(progress(758, 3886), false).contains("done (20%)"))
-    assert(VulpixConsole.renderProgress(progress(9995, 10000), false).contains("done (99%)"))
-    assert(VulpixConsole.renderProgress(progress(4, 3), false).contains("done (100%)"))
-    assert(!VulpixConsole.renderGitHubProgress(progress(1, 3), false).contains("::group::"))
-
-  @Test def progressCannotInjectWorkflowCommands: Unit =
+  @Test def progressRenderingIsSingleLineWithoutActiveTests: Unit =
     val progress = VulpixConsole.Progress(
-      groupNames = List("compile%0A\n::endgroup::"),
-      completed = 1,
-      total = 2,
-      completedOverall = 1,
+      groupNames = List("compile\u001b\n::error::injected"),
+      completed = 20,
+      total = 20,
       failed = 0,
       elapsedSeconds = 1,
-      activeTests = List(VulpixConsole.ActiveTest(1, "\n::error::injected\u001b", 1)),
+      activeTests = Nil,
     )
-    val rendered = VulpixConsole.renderGitHubProgress(progress, useColors = false)
-    val lines = rendered.linesIterator.toList
+    val rendered = VulpixConsole.renderProgress(progress, useColors = false)
 
-    assert(lines.count(_.startsWith("::group::")) == 1, rendered)
-    assert(lines.count(_ == "::endgroup::") == 1, rendered)
-    assert(!lines.exists(_.startsWith("::error::")), rendered)
-    assert(lines.head.contains("%250A"), rendered)
+    assert(rendered.linesIterator.size == 1, rendered)
+    assert(!rendered.contains('\u001b'), rendered)
+    assert(!rendered.contains(" | longest:"), rendered)
+    assert(rendered.contains("compile??::error::injected"), rendered)
 
-  @Test def cumulativeProgressExcludesNestedRuns: Unit =
-    val report = SummaryReport()
-    report.reportResults(passed = 7, failed = List(FailedTestInfo("bad.scala", "")), skipped = 2)
-    assert(report.completedSources == 10)
-    report.reportResults(passed = 0, failed = Nil, skipped = 3)
-    assert(report.completedSources == 13)
-
-    val nested = NoResultSummaryReport(report)
-    nested.reportResults(passed = 5, failed = Nil, skipped = 0)
-    assert(report.completedSources == 13)
+    val withActive = VulpixConsole.renderProgress(
+      progress.copy(activeTests = List(VulpixConsole.ActiveTest("tests/pos/ok.scala\u001b\n::error::injected", 1))),
+      useColors = false,
+    )
+    assert(withActive.linesIterator.size == 1, withActive)
+    assert(withActive.contains("tests/pos/ok.scala??::error::injected"), withActive)
 
   @Test def githubActionsColorDetection: Unit =
     val github = Map("GITHUB_ACTIONS" -> "true")
-    assert(VulpixConsole.githubActionsEnabled(github, isCI = true))
-    assert(VulpixConsole.githubActionsEnabled(github + ("NO_COLOR" -> ""), isCI = true))
-    assert(!VulpixConsole.githubActionsEnabled(github, isCI = false))
     assert(VulpixConsole.colorsEnabled(github, isCI = true))
     assert(!VulpixConsole.colorsEnabled(github, isCI = false))
     assert(!VulpixConsole.colorsEnabled(Map.empty, isCI = true))
     assert(!VulpixConsole.colorsEnabled(github + ("NO_COLOR" -> ""), isCI = true))
+
+  @Test def pulseDetection: Unit =
+    val enabled = Map("VULPIX_CI_PULSE" -> "true")
+    assert(VulpixConsole.pulseEnabled(enabled, isCI = true))
+    assert(!VulpixConsole.pulseEnabled(enabled, isCI = false))
+    assert(!VulpixConsole.pulseEnabled(Map.empty, isCI = true))
+    assert(!VulpixConsole.pulseEnabled(Map("VULPIX_CI_PULSE" -> "false"), isCI = true))
