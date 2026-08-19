@@ -484,7 +484,6 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    */
   private def defKind(tree: Tree)(using Context): FlagSet = unsplice(tree) match {
     case EmptyTree | _: Import => NoInitsInterface
-    case _: ModuleDef => NoInits
     case tree: TypeDef =>
       if tree.isClassDef then
         if Feature.shouldBehaveAsScala2 then EmptyFlags
