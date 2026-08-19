@@ -24,7 +24,7 @@ import dotc.interfaces.Diagnostic.{ERROR, WARNING}
 import dotc.reporting.{Reporter, TestReporter}
 import dotc.reporting.Diagnostic
 import dotc.util.{SourceFile, SourcePosition, Spans, NoSourcePosition}
-import io.AbstractFile
+import io.{AbstractFile, Directory, PlainDirectory}
 
 /** A parallel testing suite whose goal is to integrate nicely with JUnit
  *
