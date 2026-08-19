@@ -5,7 +5,7 @@
 ###   - IT WILL UPLOAD TO GITHUB THE MSI FILE FOR SCALA UNDER THE 'scala.msi' NAME              ###
 ###                                                                                             ###
 ### NOTE:                                                                                       ###
-###   - WE SHOULD BUILD SCALA USING JAVA 8                                                      ###
+###   - SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17                                               ###
 ###################################################################################################
 
 name: Build the MSI Package
@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 env:
-  # Release only happends when triggering CI by pushing tag
+  # Release only happens when triggering CI by pushing a tag
   RELEASEBUILD: ${{ startsWith(github.event.ref, 'refs/tags/') && 'yes' || 'no' }}
 
 jobs:
