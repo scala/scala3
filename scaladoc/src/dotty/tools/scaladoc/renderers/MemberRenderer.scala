@@ -258,10 +258,10 @@ class MemberRenderer(signatureRenderer: SignatureRenderer)(using DocContext) ext
       div(cls := "documentableElement-expander")(
         Option.when(annots.nonEmpty || originInf.nonEmpty || memberInf.nonEmpty)(button(cls := "icon-button ar show-content")).toList,
         annots.map(div(_)).toList,
-        div(cls := "header monospace mono-medium")(memberSignature(member)),
+        div(cls := "header monospace mono-small-block")(memberSignature(member)),
       ),
       Option.when(originInf.nonEmpty || memberInf.nonEmpty)(
-        div(cls := "docs")(
+        div(cls := "docs body-small")(
           span(cls := "modifiers"), // just to have padding on left
           div(
             div(cls := "originInfo")(originInf*),
