@@ -108,8 +108,8 @@ object Build {
 
     outputStrategy := Some(StdoutOutput),
 
-    // enable verbose exception messages for JUnit
-    (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-s"),
+    // See options at https://github.com/sbt/junit-interface.
+    (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-s"),
   )
 
   // Settings shared globally (scoped in Global). Used in build.sbt
