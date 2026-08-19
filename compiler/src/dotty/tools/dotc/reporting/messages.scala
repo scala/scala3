@@ -3020,7 +3020,7 @@ class MissingImplicitArgument(
       case Regex.Groups(v: String) => quoteReplacement(translate(v).getOrElse("?" + v)).nn
     )
 
-  /** @param rawMsg           Message template with variables, e.g. "Variable A is ${A}"
+  /** @param rawMsg           Message template with variables, e.g. "Variable A is \${A}"
    *  @param sym              Symbol of the annotated type or of the method whose parameter was annotated
    *  @param paramNames       Names of type parameters to substitute with `args` in the message template
    *  @param args             Resolved type arguments to substitute for `paramNames` in the message template

@@ -85,7 +85,7 @@ class CompleteJavaEnums extends MiniPhase with InfoTransformer { thisPhase =>
       case p => p
     }
 
-  /** If this is a constructor of a enum class that extends, add $name and $ordinal parameters to it. */
+  /** If this is a constructor of a enum class that extends, add \$name and \$ordinal parameters to it. */
   override def transformDefDef(tree: DefDef)(using Context): DefDef = {
     val sym = tree.symbol
     if sym.isConstructor && sym.owner.derivesFromJavaEnum then

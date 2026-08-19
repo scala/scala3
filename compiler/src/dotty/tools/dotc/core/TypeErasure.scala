@@ -155,7 +155,7 @@ object TypeErasure:
   }
 
   /** A type representing the semi-erasure of a derived value class, see SIP-15
-   *  where it's called "C$unboxed" for a class C.
+   *  where it's called "C\$unboxed" for a class C.
    *  Derived value classes are erased to this type during Erasure (when
    *  semiEraseVCs = true) and subsequently erased to their underlying type
    *  during ElimErasedValueType. This type is outside the normal Scala class

@@ -50,7 +50,7 @@ import dotty.tools.dotc.printing.Formatting.ShownDef.Shown.runCtxShow
  *
  *  This string will be represented internally as follows:
  *
- *     scala.compiletime.$spec(
+ *     scala.compiletime.\$spec(
  *       StringContext(
  *         "    \n   Parse date string into `",
  *         "` structure. The string is in the format given by `",
