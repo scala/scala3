@@ -34,6 +34,9 @@ trait SummaryReporting {
   /** Echo a periodic CI progress update. */
   private[vulpix] def echoProgress(progress: VulpixConsole.Progress): Unit = ()
 
+  /** Number of logical test sources completed by earlier Vulpix batches. */
+  private[vulpix] def completedSources: Int = 0
+
 }
 
 /** A summary report that doesn't do anything */
@@ -65,12 +68,18 @@ final class SummaryReport extends SummaryReporting {
 
   private val passed = AtomicInteger()
   private val skipped = AtomicInteger()
+  private val completed = AtomicInteger()
 
   override def reportResults(passed: Int, failed: Iterable[FailedTestInfo], skipped: Int): Unit = {
     require(passed >= 0 && skipped >= 0)
+    var failedCount = 0
     this.passed.addAndGet(passed)
     this.skipped.addAndGet(skipped)
-    failed.foreach(failedTests.add)
+    failed.foreach { failure =>
+      failedTests.add(failure)
+      failedCount += 1
+    }
+    completed.addAndGet(passed + failedCount + skipped)
   }
 
   override def addSkippedTest(msg: FailedTestInfo): Unit =
@@ -121,7 +130,14 @@ final class SummaryReport extends SummaryReporting {
   override private[vulpix] def progressEnabled: Boolean = Properties.isRunByCI
 
   override private[vulpix] def echoProgress(progress: VulpixConsole.Progress): Unit =
-    if progressEnabled then println(VulpixConsole.renderProgress(progress, VulpixConsole.colorsEnabled))
+    if progressEnabled then
+      val rendered =
+        if VulpixConsole.githubActionsEnabled then
+          VulpixConsole.renderGitHubProgress(progress, VulpixConsole.colorsEnabled)
+        else VulpixConsole.renderProgress(progress, useColors = false)
+      println(rendered)
+
+  override private[vulpix] def completedSources: Int = completed.get
 
   override def echoToLog(it: Iterable[String]): Unit = {
     it.foreach(msg => TestReporter.logPrint(VulpixConsole.stripColors(msg)))
