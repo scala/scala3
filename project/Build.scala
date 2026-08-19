@@ -13,6 +13,8 @@ import com.typesafe.sbt.packager.windows.WindowsPlugin.autoImport.Windows
 import com.typesafe.sbt.packager.debian.DebianPlugin
 import com.typesafe.sbt.packager.debian.DebianPlugin.autoImport.Debian
 import com.typesafe.sbt.packager.linux.LinuxPlugin.autoImport.Linux
+import com.typesafe.sbt.packager.rpm.RpmPlugin
+import com.typesafe.sbt.packager.rpm.RpmPlugin.autoImport.Rpm
 import sbt.Package.ManifestAttributes
 import sbt.PublishBinPlugin.autoImport._
 import dotty.tools.sbtplugin._
@@ -631,6 +633,7 @@ object Build {
     `dist-win-x86_64`,
     `dist-linux-x86_64`,
     `dist-linux-x86_64-deb`,
+    `dist-linux-x86_64-rpm`,
     `dist-linux-aarch64`,
   )
 
@@ -2719,6 +2722,41 @@ object Build {
         IO.copyFile(built, fixed)
         fixed
       },
+    )
+
+  lazy val `dist-linux-x86_64-rpm` = project.in(file("dist/linux-x86_64-rpm")).asDist
+    .enablePlugins(RpmPlugin) // TO GENERATE THE `.rpm` package
+    .settings(packageName := (dist / packageName).value + "-x86_64-pc-linux")
+    .settings(
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-pc-linux.gz")
+    )
+    .settings(
+      Linux / packageName := "scala3",
+      // No `Rpm / name := "scala3"` here unlike debian - the name is derived from packageName
+      // RPM version ordering (very similar to Debian):
+      //   `-` is used for RPM release/revision, which is set automatically, so we replace it
+      //   `~` sorts BEFORE empty string (so x.y.z~RC is older than x.y.z)
+      //   `+` is just an ordinary character, so we use it instead of `-` when we're not using `~`
+      // For reference: https://rpm.org/docs/6.0.x/man/rpm-version.7
+      Rpm / version := version.value
+        .replaceFirst("-RC", "~RC").replaceFirst("-bin-", "~bin-").replace("-", "+"),
+      Rpm / packageArchitecture := "x86_64",
+      rpmVendor  := "The Scala Programming Language",
+      rpmLicense := Some("Apache-2.0"),
+      rpmAutoreq  := "no",
+      rpmAutoprov := "no",
+      // `java-headless` for Fedora/RHEL/CentOS, `java-17-headless` for openSUSE
+      rpmRequirements := Seq("(java-headless >= 1:17 or java-17-headless)"),
+      maintainer         := "The Scala Programming Language",
+      packageSummary     := s"Scala $dottyVersion",
+      packageDescription := "The Scala Programming Language",
+      // Emit a fixed-name `scala.rpm` so CI can reference it without a glob
+      Rpm / packageBin / artifactPath := (Rpm / target).value / "scala.rpm",
+      Rpm / packageBin := (Rpm / packageBin).dependsOn(republish).value,
     )
 
   lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist
