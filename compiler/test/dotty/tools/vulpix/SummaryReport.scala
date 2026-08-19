@@ -79,11 +79,13 @@ final class SummaryReport extends SummaryReporting {
   /** Both echoes the summary to stdout and prints to file */
   override def echoSummary(): Unit = {
     val rep = new StringBuilder
-    if !failedTests.isEmpty || !skippedTests.isEmpty then
+    if failed == 0 && failedTests.isEmpty && skippedTests.isEmpty then
+      rep.append(s"== Vulpix Test Report: all $passed suites passed ==")
+    else
       rep.append(
         s"""|
             |================================================================================
-            |Test Report
+            |Vulpix Test Report
             |================================================================================
             |
             |$passed suites passed, $failed failed, ${passed + failed} total
