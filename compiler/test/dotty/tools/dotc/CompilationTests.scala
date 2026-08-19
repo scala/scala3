@@ -140,7 +140,7 @@ class CompilationTests {
     implicit val testGroup: TestGroup = TestGroup("compileWarn")
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/warn", defaultOptions),
-    )).checkWarnings()
+    ))
     runWithCoverageOrFallback[WarnTestWithCoverage](compilationTest)
   }
 

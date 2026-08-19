@@ -1,0 +1,13 @@
+CaseNums
+ok
+ok
+ok
+None
+Some((SuccClass(ZeroObj),SuccClass(ZeroObj)))
+
+IntNums
+error
+error
+error
+/ by zero
+Some((1,1))

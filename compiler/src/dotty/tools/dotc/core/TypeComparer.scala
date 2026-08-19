@@ -1508,6 +1508,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case _ => false
         } && recordGadtUsageIf(true)
 
+      /** T <: T? if T is not null */
+      def byMaybeWidening: Boolean = tp2 match
+        case MagicMaybeType(res2, err2, _) if tp1.isNotNull =>
+          recur(tp1, res2) && isSubType(err2, defn.UnitType)
+        case _ => false
+
       tycon2 match {
         case param2: TypeParamRef =>
           isMatchingApply(tp1) ||
@@ -1516,9 +1522,9 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         case tycon2: TypeRef =>
           isMatchingApply(tp1)
           || byGadtBounds
+          || byMaybeWidening
           || defn.isCompiletimeAppliedType(tycon2.symbol)
               && compareCompiletimeAppliedType(tp2, tp1, fromBelow = true)
-          || tycon2.symbol == defn.MagicMaybeClass && tp1.isNotNull
           || tycon2.info.match
                 case info2: TypeBounds =>
                   compareLower(info2, tyconIsTypeRef = true)

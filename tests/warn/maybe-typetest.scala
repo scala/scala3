@@ -7,7 +7,7 @@ def Test[T](x: T) =
     case y: String? => println(y)       // warn typetest
     case _ =>
   Ok(x) match
-    case y: String? => println(y)       // TODO why not warn typetest?
+    case y: String? => println(y)       // warn typetest?
     case _ =>                           // warn unreachable
   x match
     case y: Option[String] => println(y)// warn typetest

@@ -2,6 +2,7 @@
 import language.experimental.magic
 import scala.magic.*
 
+
 class C:
   def toOptionAny[T](x: Any): Option[Any] = x match
     case Ok(y) => Some(y)
@@ -29,8 +30,8 @@ object WithTail:
 
 object Poly:
   def unapply[T](x: T): T? = x match
-    case Pos(y) => y
-    case WithTail(s) => s
+    case Pos(y: T @unchecked) => Ok(y)
+    case WithTail(s: T @unchecked) => Ok(s)
     case _ => null
 
 def f[T](x: T) =

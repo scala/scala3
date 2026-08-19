@@ -1,0 +1,8 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t8511-maybe.scala:20:42 
+20 |  private def logic(head: Expr): String = head match {
+   |                                          ^^^^
+   |  match may not be exhaustive.
+   |
+   |  It would fail on pattern case: Bar(_), Baz(), EatsExhaustiveWarning(_)
+   |
+   | longer explanation available when compiling with `-explain`
