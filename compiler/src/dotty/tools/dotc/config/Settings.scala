@@ -215,7 +215,7 @@ object Settings:
       def setString(argValue: String, args: List[String])(using ArgsSummary) =
         choices match
         case Some(choices) if !choices.contains(argValue) =>
-          state.fail(s"$argValue is not a valid choice for $name", args)
+          state.fail(s"$argValue is not a valid choice for $name.\nExpected a $helpArg.\nAvailable choices: ${choices.mkString(", ")}", args)
         case _ =>
           if changed && argValue != valueIn(sstate).asInstanceOf[String] then
             update(argValue, argValue, args).warn(s"Option $name was updated")
@@ -228,7 +228,7 @@ object Settings:
           case Some(r: Range) if intValue < r.head || r.last < intValue =>
             state.fail(s"$argValue is out of legal range ${r.head}..${r.last} for $name", args)
           case Some(choices) if !choices.contains(intValue) =>
-            state.fail(s"$argValue is not a valid choice for $name", args)
+            state.fail(s"$argValue is not a valid choice for $name.\nExpected a $helpArg.\nAvailable choices: ${choices.mkString(", ")}", args)
           case _ =>
             val dubious = changed && intValue != valueIn(sstate).asInstanceOf[Int]
             val updated = update(intValue, argValue, args)
@@ -474,8 +474,8 @@ object Settings:
     def IntSetting(category: SettingCategory, name: String, descr: String, default: Int, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[Int] =
       publish(Setting(category, prependName(name), descr, default, aliases = aliases, deprecation = deprecation))
 
-    def IntChoiceSetting(category: SettingCategory, name: String, descr: String, choices: Seq[Int], default: Int, deprecation: Option[Deprecation] = None): Setting[Int] =
-      publish(Setting(category, prependName(name), descr, default, choices = Some(choices), deprecation = deprecation))
+    def IntChoiceSetting(category: SettingCategory, name: String, helpArg: String, descr: String, choices: Seq[Int], default: Int, deprecation: Option[Deprecation] = None): Setting[Int] =
+      publish(Setting(category, prependName(name), descr, default, helpArg, choices = Some(choices), deprecation = deprecation))
 
     def MultiStringSetting(category: SettingCategory, name: String, helpArg: String, descr: String, default: List[String] = Nil, aliases: List[SettingAlias] = Nil, deprecation: Option[Deprecation] = None): Setting[List[String]] =
       publish(Setting(category, prependName(name), descr, default, helpArg, aliases = aliases, deprecation = deprecation))
