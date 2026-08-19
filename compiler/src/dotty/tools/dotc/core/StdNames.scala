@@ -609,6 +609,7 @@ object StdNames {
     val run: N                  = "run"
     val runOrElse: N            = "runOrElse"
     val runtime: N              = "runtime"
+    val runtimeChecked: N       = "runtimeChecked"
     val runtimeClass: N         = "runtimeClass"
     val runtimeMirror: N        = "runtimeMirror"
     val s: N                    = "s"
