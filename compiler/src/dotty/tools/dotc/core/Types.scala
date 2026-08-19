@@ -7063,7 +7063,7 @@ object Types extends TypeUtils {
 
   object VarianceMap:
     /** An immutable map representing the variance of keys of type `K` */
-    opaque type VarianceMap[K <: AnyRef] <: AnyRef = SimpleIdentityMap[K, Integer]
+    opaque type VarianceMap[K <: AnyRef] = SimpleIdentityMap[K, Integer]
     def empty[K <: AnyRef]: VarianceMap[K] = SimpleIdentityMap.empty[K]
     extension [K <: AnyRef](vmap: VarianceMap[K])
       /** The backing map used to implement this VarianceMap. */
