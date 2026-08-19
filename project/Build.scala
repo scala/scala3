@@ -112,6 +112,15 @@ object Build {
     (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-s"),
   )
 
+  /** Keep Vulpix JUnit wrappers terse in CI; Vulpix prints its own source-level summary. */
+  lazy val vulpixTestSettings = Def.settings(
+    (Test / testOptions) ++= {
+      if (sys.env.contains("DOTTY_CI_RUN"))
+        Seq(Tests.Argument(TestFrameworks.JUnit, "+v"))
+      else Nil
+    },
+  )
+
   // Settings shared globally (scoped in Global). Used in build.sbt
   lazy val globalSettings = Def.settings(
     onLoad := (Global / onLoad).value andThen { state =>
@@ -915,6 +924,7 @@ object Build {
     .dependsOn(`scala3-compiler-bootstrapped` % "compile->compile;test->test", `scala3-directives-parser-bootstrapped`)
     .settings(publishSettings)
     .settings(replSettings)
+    .settings(vulpixTestSettings)
     .settings(
       name          := "scala3-repl",
       version       := dottyVersion,
@@ -938,6 +948,7 @@ object Build {
   lazy val `scala3-repl-nonbootstrapped` = project.in(file("repl"))
     .dependsOn(`scala3-compiler-nonbootstrapped` % "compile->compile;test->test", `scala3-directives-parser-nonbootstrapped`)
     .settings(replSettings)
+    .settings(vulpixTestSettings)
     .settings(
       name          := "scala3-repl-nonbootstrapped",
       version       := dottyNonBootstrappedVersion,
@@ -1440,6 +1451,7 @@ object Build {
   /* Configuration of the org.scala-lang:scala3-compiler_3:*.**.**-nonbootstrapped project */
   lazy val `scala3-compiler-nonbootstrapped` = project.in(file("compiler"))
     .dependsOn(`scala3-interfaces`, `tasty-core-nonbootstrapped`, `scala3-library-nonbootstrapped`, `scala3-directives-parser-nonbootstrapped` % Test)
+    .settings(vulpixTestSettings)
     .settings(
       name          := "scala3-compiler-nonbootstrapped",
       moduleName    := "scala3-compiler",
@@ -1579,6 +1591,7 @@ object Build {
   lazy val `scala3-compiler-bootstrapped` = project.in(file("compiler"))
     .dependsOn(`scala3-interfaces`, `tasty-core-bootstrapped`, `scala3-library-bootstrapped`, `scala3-directives-parser-bootstrapped` % Test)
     .settings(publishSettings)
+    .settings(vulpixTestSettings)
     .settings(
       name          := "scala3-compiler-bootstrapped",
       moduleName    := "scala3-compiler",
@@ -2361,9 +2374,10 @@ object Build {
       },
     )
 
-  lazy val sjsCompilerTests = project.in(file("sjs-compiler-tests")).
-    dependsOn(`scala3-compiler-bootstrapped` % "test->test").
-    settings(
+  lazy val sjsCompilerTests = project.in(file("sjs-compiler-tests"))
+    .dependsOn(`scala3-compiler-bootstrapped` % "test->test")
+    .settings(vulpixTestSettings)
+    .settings(
       (Compile / scalaSource)    := baseDirectory.value / "src",
       (Test / scalaSource)       := baseDirectory.value / "test",
       (Compile / javaSource)    := baseDirectory.value / "src",

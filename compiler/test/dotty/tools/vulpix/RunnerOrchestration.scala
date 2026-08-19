@@ -38,7 +38,7 @@ import scala.jdk.CollectionConverters.ListHasAsScala
  *  child process is destroyed and a new child is spawned.
  */
 trait RunnerOrchestration:
-  protected val report: SummaryReporting = SummaryReport() // so it's overrideable by the Vulpix self-tests
+  protected val report: SummaryReporting = SummaryReport.default
   given summaryReport: SummaryReporting = report
 
   /** Open JDI connection for testing the debugger */
@@ -56,7 +56,7 @@ trait RunnerOrchestration:
   @AfterClass
   def cleanup(): Unit =
     monitor.killAll()
-    summaryReport.echoSummary()
+    if !Properties.isRunByCI then summaryReport.echoSummary()
 
   private val monitor = new RunnerMonitor
   export monitor.debugMain

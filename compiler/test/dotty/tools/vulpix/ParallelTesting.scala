@@ -3,7 +3,7 @@ package tools
 package vulpix
 
 
-import java.io.{File as JFile, PrintStream}
+import java.io.{File as JFile, PrintStream, PrintWriter, StringWriter}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, NoSuchFileException, Paths}
 import java.nio.charset.{Charset, StandardCharsets}
@@ -239,7 +239,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
      * Compiles the test source.
      * @return The reporters containing the results of all the compilation runs for this test source.
      */
-    private final def compileTestSource(testSource: TestSource): Try[List[TestReporter]] =
+    private final def compileTestSource(testSource: TestSource, logger: LoggedRunnable): Try[List[TestReporter]] =
       Try(testSource match {
         case testSource @ JointCompilationSource(name, files, flags, outDir, fromTasty, decompilation) =>
           val reporter = fromTasty match
@@ -249,9 +249,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
                   case SeparateCompilationSource.HasCompilerVersion(version) =>
                     val compiler = version.nn.stripSuffix(".")
                     compileWithOtherCompiler(compiler, testSource.sourceFiles, flags, outDir)
-                  case _ => compile(testSource.sourceFiles, flags, outDir)
-              else
-                compile(testSource.sourceFiles, flags, outDir)
+                  case _ => compile(testSource, testSource.sourceFiles, flags, outDir, logger)
+              else compile(testSource, testSource.sourceFiles, flags, outDir, logger)
             case FromTasty => compileFromTasty(flags, outDir)
             case FromBestEffortTasty => compileFromBestEffortTasty(flags, outDir)
             case WithBestEffortTasty(bestEffortDir) => compileWithBestEffortTasty(testSource.sourceFiles, bestEffortDir, flags, outDir)
@@ -260,7 +259,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         case testSource @ SeparateCompilationSource(_, dir, flags, outDir) =>
           testSource.compilationGroups.map { (group, files) =>
             if group.compiler.isEmpty then
-              compile(files, flags, outDir)
+              compile(testSource, files, flags, outDir, logger)
             else
               compileWithOtherCompiler(group.compiler, files, flags, outDir)
           }
@@ -281,20 +280,20 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       for (msg <- FileDiff.check(testSource.title, actual, checkFile.getPath)) {
         if (Properties.testsUpdateCheckfile) {
           FileDiff.dump(checkFile.toPath.toString, actual)
-          echo("Updated checkfile: " + checkFile.getPath)
+          logger.echo("Updated checkfile: " + checkFile.getPath)
         } else {
           onFailure(testSource, reporters, logger, Some(msg))
           val outFile = checkFile.toPath.resolveSibling(s"${checkFile.toPath.getFileName}.out").toString
           FileDiff.dump(outFile, actual)
-          echo(FileDiff.diffMessage(checkFile.getPath, outFile))
+          logger.echo(FileDiff.diffMessage(checkFile.getPath, outFile))
         }
       }
     }
 
     /** Entry point: runs the test */
     final def encapsulatedCompilation(testSource: TestSource) = new LoggedRunnable { self =>
-      def checkTestSource(): Unit = tryCompile(testSource) {
-        val reportersOrCrash = compileTestSource(testSource)
+      def checkTestSource(): Unit = tryCompile(testSource, self) {
+        val reportersOrCrash = compileTestSource(testSource, self)
         onComplete(testSource, reportersOrCrash, self)
         registerCompletion()
       }
@@ -306,20 +305,23 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         reportersOrCrash match
           case util.Failure(exn) => onFailure(testSource, Nil, logger, Some(s"Fatal compiler crash when compiling: ${testSource.title}:\n${exn.getMessage}${exn.getStackTrace.map("\n\tat " + _).mkString}"))
           case util.Success(reporters) if !reporters.exists(_.skipped) =>
-            maybeFailureMessage(testSource, reporters) match {
-              case Some(msg) => onFailure(testSource, reporters, logger, Option(msg).filter(_.nonEmpty))
-              case None => onSuccess(testSource, reporters, logger)
-            }
+            if hasFailed(testSource) then
+              reporters.filter(reporterFailed).foreach(logger.logReporterContents)
+            else
+              maybeFailureMessage(testSource, reporters) match {
+                case Some(msg) => onFailure(testSource, reporters, logger, Option(msg).filter(_.nonEmpty))
+                case None => onSuccess(testSource, reporters, logger)
+              }
           case _ =>
       catch case ex: Throwable =>
-        echo(s"Exception thrown onComplete (probably by a reporter) in $testSource: ${ex.getClass}")
-        Try(ex.printStackTrace())
+        logger.echo(s"Exception thrown onComplete (probably by a reporter) in $testSource: ${ex.getClass}")
+        Try(logger.logThrowable(ex))
           .recover{ _ =>
             val trace = ex.getStackTrace.map(_.toString) // compute this first in case getStackTrace throws an exception
-            echo(s"${ex.getClass.getName} message could not be printed due to an exception while computing the message.")
-            if trace.nonEmpty then trace.foreach(echo) else echo(s"${ex.getClass.getName} stack trace is empty.")
+            logger.echo(s"${ex.getClass.getName} message could not be printed due to an exception while computing the message.")
+            if trace.nonEmpty then trace.foreach(logger.echo) else logger.echo(s"${ex.getClass.getName} stack trace is empty.")
           }
-          .getOrElse(echo(s"${ex.getClass.getName} stack trace could not be printed due to an exception while printing the stack trace."))
+          .getOrElse(logger.echo(s"${ex.getClass.getName} stack trace could not be printed due to an exception while printing the stack trace."))
         failTestSource(testSource)
 
     /**
@@ -340,7 +342,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
      * If the test failed to compile or the compiler crashed, this callback will be called.
      */
     def onFailure(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable, message: Option[String]): Unit = {
-      message.foreach(echo)
+      message.foreach(logger.echo)
       reporters.filter(reporterFailed).foreach(logger.logReporterContents)
       logBuildInstructions(testSource, reporters)
       failTestSource(testSource)
@@ -353,7 +355,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
    */
   protected class Test(testSources: List[TestSource], times: Int, threadLimit: Option[Int], suppressAllOutput: Boolean)(using summaryReport: SummaryReporting) extends CompilationLogic { test =>
 
-    import summaryReport.{addFailedTest, addReproduceInstruction, addSkippedTest, reportFailed, reportPassed}
+    import summaryReport.{addReproduceInstruction, addSkippedTest, reportResults}
 
     protected final val realStdout: PrintStream = System.out
     protected final val realStderr: PrintStream = System.err
@@ -371,28 +373,38 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       def logReporterContents(reporter: TestReporter): Unit =
         reporter.messages.foreach(log)
 
+      def logThrowable(ex: Throwable): Unit = {
+        val stackTrace = StringWriter()
+        ex.printStackTrace(PrintWriter(stackTrace))
+        echo(stackTrace.toString)
+      }
+
       def echo(msg: String): Unit = {
         log(msg)
         test.echo(msg)
       }
 
       final def run(): Unit = {
-        checkTestSource()
-        summaryReport.echoToLog(logBuffer)
+        try checkTestSource()
+        finally summaryReport.echoToLog(logBuffer)
       }
     }
 
-    /** All testSources left after filtering out */
-    private val filteredSources =
-      val filteredByName =
-        if (Properties.testsFilter.isEmpty) testSources
-        else testSources.filter {
-          case JointCompilationSource(_, files, _, _, _, _) =>
-            Properties.testsFilter.exists(filter => files.exists(file => file.getPath.contains(filter)))
-          case SeparateCompilationSource(_, dir, _, _) =>
-            Properties.testsFilter.exists(dir.getPath.contains)
-        }
-      filteredByName.filterNot(shouldSkipTestSource(_)).filter(shouldReRun(_))
+    private val filteredByName =
+      if (Properties.testsFilter.isEmpty) testSources
+      else testSources.filter {
+        case JointCompilationSource(_, files, _, _, _, _) =>
+          Properties.testsFilter.exists(filter => files.exists(file => file.getPath.contains(filter)))
+        case SeparateCompilationSource(_, dir, _, _) =>
+          Properties.testsFilter.exists(dir.getPath.contains)
+      }
+
+    private val selectedSources = filteredByName.filter(shouldReRun(_))
+
+    /** All selected test sources left after filtering out static skips. */
+    private val filteredSources = selectedSources.filterNot(shouldSkipTestSource(_))
+
+    private val staticallySkippedCount = selectedSources.size - filteredSources.size
 
     /** Total amount of test sources being compiled by this test */
     val sourceCount = filteredSources.length
@@ -411,24 +423,21 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     case object Generic extends Failure
 
     private var _failures = Set.empty[Failure]
-    private var _failureCount = 0
+    private val failedTestSources = mutable.LinkedHashMap.empty[TestSource, FailedTestInfo]
+    private val skippedTestSources = mutable.HashSet.empty[TestSource]
 
-    /** Fail the current test */
-    protected final def fail(failure: Failure = Generic): Unit = synchronized {
-      _failures = _failures + failure
-      _failureCount = _failureCount + 1
-    }
-    def didFail: Boolean = _failureCount != 0
+    def didFail: Boolean = synchronized { failedTestSources.nonEmpty }
 
     /** A set of the different failures */
-    def failureReasons: Set[Failure] = _failures
+    def failureReasons: Set[Failure] = synchronized { _failures }
 
     /** Number of failed tests */
-    def failureCount: Int = _failureCount
+    def failureCount: Int = synchronized { failedTestSources.size }
 
-    private var _skipCount = 0
-    protected final def registerSkip(): Unit = synchronized { _skipCount += 1 }
-    def skipCount: Int = _skipCount
+    protected final def registerSkip(testSource: TestSource): Unit = synchronized {
+      skippedTestSources += testSource
+    }
+    def skipCount: Int = synchronized { skippedTestSources.count(!failedTestSources.contains(_)) }
 
     protected def logBuildInstructions(testSource: TestSource, reporters: Seq[TestReporter]) = {
       val (errCount, warnCount) = countErrorsAndWarnings(reporters)
@@ -441,20 +450,29 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     protected final def addFailureInstruction(ins: String): Unit =
       synchronized { reproduceInstructions.append(ins) }
 
-    /** The test sources that failed according to the implementing subclass */
-    private val failedTestSources = ArrayBuffer.empty[FailedTestInfo]
-    protected final def failTestSource(testSource: TestSource, reason: Failure = Generic) = synchronized {
-      val extra = reason match {
-        case TimeoutFailure(title) => s", test '$title' timed out"
-        case JavaCompilationFailure(msg) => s", java test sources failed to compile with: \n$msg"
-        case Generic => ""
+    /** Mark a test source as failed, keeping only its first failure. */
+    protected final def failTestSource(testSource: TestSource, reason: Failure = Generic): Unit = synchronized {
+      if !failedTestSources.contains(testSource) then {
+        val extra = reason match {
+          case TimeoutFailure(title) => s", test '$title' timed out"
+          case JavaCompilationFailure(_) => ", java compilation failed"
+          case Generic => ""
+        }
+        failedTestSources(testSource) = FailedTestInfo(testSource.title, s" failed" + extra)
+        _failures += reason
       }
-      failedTestSources.append(FailedTestInfo(testSource.title, s" failed" + extra))
-      fail(reason)
+    }
+
+    protected def hasFailed(testSource: TestSource): Boolean = synchronized {
+      failedTestSources.contains(testSource)
+    }
+
+    def failedTestInfos: List[FailedTestInfo] = synchronized {
+      failedTestSources.values.toList
     }
 
     /** Prints to `System.err` if we're not suppressing all output */
-    protected def echo(msg: String): Unit = if (!suppressAllOutput) {
+    protected def echo(msg: String): Unit = if (!suppressAllOutput && !Properties.isRunByCI) {
       // pad right so that output is at least as large as progress bar line
       val paddingRight = " " * math.max(0, 80 - msg.length)
       realStderr.println(msg + paddingRight)
@@ -480,18 +498,18 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     /** Wrapper function to make sure that the compiler itself did not crash -
      *  if it did, the test should automatically fail.
      */
-    protected def tryCompile(testSource: TestSource)(op: => Unit): Unit =
+    protected def tryCompile(testSource: TestSource, logger: LoggedRunnable)(op: => Unit): Unit =
       try op
       catch
         case e: Throwable =>
           // if an exception is thrown during compilation, the complete test
           // run should fail
           failTestSource(testSource)
-          e.printStackTrace()
+          logger.logThrowable(e)
           registerCompletion()
           throw e
 
-    protected def compile(files0: Array[JFile], flags0: TestFlags, targetDir: JFile): TestReporter = {
+    protected def compile(testSource: TestSource, files0: Array[JFile], flags0: TestFlags, targetDir: JFile, logger: LoggedRunnable): TestReporter = {
 
       def flattenFiles(f: JFile): Array[JFile] =
         if (f.isDirectory) f.listFiles.flatMap(flattenFiles)
@@ -578,11 +596,12 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         val javaErrors = compileWithJavac(javaFiles)
 
         if (javaErrors.isDefined) {
-          echo(s"\njava compilation failed: \n${ javaErrors.get }")
-          fail(failure = JavaCompilationFailure(javaErrors.get))
+          logger.echo(s"\njava compilation failed: \n${ javaErrors.get }")
+          logBuildInstructions(testSource, List(reporter))
+          failTestSource(testSource, JavaCompilationFailure(javaErrors.get))
         }
       else
-        registerSkip()
+        registerSkip(testSource)
         reporter.setSkip()
       end if
 
@@ -742,7 +761,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       reporter
     }
 
-    private def mkLogLevel = if suppressErrors || suppressAllOutput then ERROR + 1 else ERROR
+    private def mkLogLevel =
+      if suppressErrors || suppressAllOutput || Properties.isRunByCI then ERROR + 1 else ERROR
     private def mkReporter = TestReporter.reporter(realStdout, logLevel = mkLogLevel)
 
     protected def diffCheckfile(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
@@ -750,6 +770,13 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     private def reporterOutputLines(reporters: Seq[TestReporter]): List[String] =
       reporters.flatMap(_.consoleOutput.linesIterator).toList
+
+    private def reportSummaryResults(): Unit = {
+      val failures = failedTestInfos
+      val skipped = skipCount
+      reportResults(sourceCount - failures.size - skipped, failures, skipped + staticallySkippedCount)
+      if failures.nonEmpty then reproduceInstructions.foreach(addReproduceInstruction)
+    }
 
     private[ParallelTesting] def executeTestSuite(): this.type = {
       assert(testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
@@ -773,33 +800,38 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
               remaining += src
 
           pool.shutdownNow()
+          remaining.foreach(src => failTestSource(src, TimeoutFailure(src.title)))
+          if logProgress then timer.cancel()
           System.setOut(realStdout)
           System.setErr(realStderr)
-          throw new TimeoutException(s"Compiling targets timed out, remaining targets: ${remaining.mkString(", ")}")
+          reportSummaryResults()
+          val exception = new TimeoutException(s"Compiling targets timed out, remaining targets: ${remaining.mkString(", ")}")
+          if Properties.isRunByCI then exception.setStackTrace(Array.empty)
+          throw exception
         end if
 
         for fut <- eventualResults do
           try fut.get()
           catch case ex: Exception =>
-            System.err.println(ex.getMessage)
-            ex.printStackTrace()
+            if !Properties.isRunByCI then {
+              System.err.println(ex.getMessage)
+              ex.printStackTrace()
+            }
 
         if logProgress then
           timer.cancel()
           finishProgressMonitor(start)
 
-        if didFail then
-          reportFailed()
-          failedTestSources.toSet.foreach(addFailedTest)
-          reproduceInstructions.foreach(addReproduceInstruction)
-        else reportPassed()
+        reportSummaryResults()
       else
-        val groupInfo = testSources.map(_.group).distinct.mkString(",")
-        if Properties.testsFilter.isEmpty then
-          reportFailed()
-          addFailedTest(FailedTestInfo(groupInfo, "No tests available under target - erroneous test?"))
-        else
-          addSkippedTest(FailedTestInfo(groupInfo, s"""No files matched "${Properties.testsFilter.mkString(",")}" in test"""))
+        if testSources.nonEmpty then {
+          val groupInfo = testSources.map(_.group).distinct.mkString(",")
+          val reason =
+            if Properties.testsFilter.nonEmpty then s"""No files matched "${Properties.testsFilter.mkString(",")}" in test"""
+            else "No tests selected"
+          reportResults(0, Nil, staticallySkippedCount)
+          addSkippedTest(FailedTestInfo(groupInfo, reason))
+        }
 
       this
     }
@@ -923,7 +955,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       }
 
       // check that the rewritten code compiles
-      new CompilationTest(testSource).checkCompile()
+      new CompilationTest(testSource).checkCompile()(using NoResultSummaryReport(summaryReport))
     }
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
@@ -939,14 +971,14 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
           for file <- checkFile if file.exists do
             diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
         case Failure("") =>
-          echo(s"Test '$title' failed with no output")
+          logger.echo(s"Test '$title' failed with no output")
           failTestSource(testSource)
         case Failure(output) =>
-          echo(s"Test '$title' failed with output:")
-          echo(output)
+          logger.echo(s"Test '$title' failed with output:")
+          logger.echo(output)
           failTestSource(testSource)
         case Timeout =>
-          echo(s"failed because test '$title' timed out")
+          logger.echo(s"failed because test '$title' timed out")
           failTestSource(testSource, TimeoutFailure(title))
 
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable) =
@@ -1190,7 +1222,11 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     val shouldFail: Boolean,
     val shouldSuppressOutput: Boolean
   ) {
-    import org.junit.Assert.fail
+    private def fail(message: String): Nothing = {
+      val failure = new AssertionError(message)
+      if Properties.isRunByCI then failure.setStackTrace(Array.empty)
+      throw failure
+    }
 
     def this(target: TestSource) =
       this(List(target), 1, true, None, false, false)
@@ -1245,9 +1281,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       cleanup()
 
       if shouldFail && !test.didFail && test.skipCount == 0 then
-        fail(s"Neg test shouldn't have failed, but did. Reasons:\n${ reasonsForFailure(test) }")
-      else if !shouldFail && test.didFail then
         fail("Neg test should have failed, but did not")
+      else if !shouldFail && test.didFail then
+        fail(s"Neg test failed, but should not, reasons:\n${reasonsForFailure(test)}")
 
       this
     end checkExpectedErrors
@@ -1314,9 +1350,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       cleanup()
 
       if shouldFail && !test.didFail && test.skipCount == 0 then
-        fail(s"$desc test shouldn't have failed, but did. Reasons:\n${reasonsForFailure(test)}")
+        fail(s"$desc test should have failed, but did not")
       else if !shouldFail && test.didFail then
-        fail(s"$desc test failed")
+        fail(s"$desc test failed, but should not, reasons:\n${reasonsForFailure(test)}")
 
       this
 
@@ -1330,15 +1366,20 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     private def reasonsForFailure(test: Test): String =
       if test.failureCount == 0 then ""
       else
-        test.failureReasons.collect:
-          case test.TimeoutFailure(title) =>
-            s"  - test '$title' timed out"
-          case test.JavaCompilationFailure(msg) =>
-            val header = "  - java compilation failed with:\n"
-            msg.linesIterator.map("      " + _).mkString(header, "\n", "")
-          case test.Generic =>
-             "  - generic failure (see test output)"
-        .mkString(s"encountered ${test.failureCount} test failure(s):\n", "\n", "")
+        val failedSources = test.failedTestInfos.sortBy(info => (info.title, info.extra))
+        val sourceReport = failedSources.map(info => s"  - ${info.title}${info.extra}")
+          .mkString(s"encountered ${test.failureCount} failed test source(s):\n", "\n", "")
+        val details =
+          if Properties.isRunByCI then ""
+          else test.failureReasons.collect:
+            case test.TimeoutFailure(title) =>
+              s"  - test '$title' timed out"
+            case test.JavaCompilationFailure(msg) =>
+              val header = "  - java compilation failed with:\n"
+              msg.linesIterator.map("      " + _).mkString(header, "\n", "")
+            case test.Generic => ""
+          .filter(_.nonEmpty).mkString("\nFailure details:\n", "\n", "")
+        sourceReport + details
 
     /** Copies `file` to `dir` - taking into account if `file` is a directory,
      *  and if so copying recursively

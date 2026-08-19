@@ -5,7 +5,7 @@ import org.junit.Test
 
 /** Unit tests for the Vulpix test suite */
 class VulpixUnitTests:
-  import VulpixUnitTests.{*, given}
+  import VulpixUnitTests.*
   import TestConfiguration.*
 
   given TestGroup = TestGroup("VulpixTests")
@@ -77,10 +77,22 @@ class VulpixUnitTests:
     compileFile("tests/vulpix-tests/unit/deadlock.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def badJava: Unit =
+    val report = SummaryReport()
     assertThrows[AssertionError](_.getMessage.contains("java compilation failed")):
       compileFile("tests/vulpix-tests/unit/BadJava.java", defaultOptions)
         .suppressAllOutput
-        .checkCompile()
+        .checkCompile()(using report)
+    assert(report.summaryText.contains("0 tests passed, 1 failed, 1 total"))
+    assert(report.summaryText.contains("tests/vulpix-tests/unit/BadJava.java failed, java compilation failed"))
+
+  @Test def sourceLevelSummary: Unit =
+    val report = SummaryReport()
+    CompilationTest.aggregateTests(
+      compileFile("tests/vulpix-tests/unit/pos.scala", defaultOptions),
+      compileFile("tests/vulpix-tests/unit/posFail1Error.scala", defaultOptions),
+    ).expectFailure.checkCompile()(using report)
+    assert(report.summaryText.contains("1 test passed, 1 failed, 2 total"))
+    assert(report.summaryText.contains("tests/vulpix-tests/unit/posFail1Error.scala failed"))
 
   @Test def runTimeout: Unit =
     val fileName = s"tests/vulpix-tests/unit/timeout.scala"
