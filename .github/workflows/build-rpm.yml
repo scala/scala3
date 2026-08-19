@@ -15,7 +15,7 @@ on:
   workflow_call:
     outputs:
       version:
-        description: 'The developed Scala version (major.minor.patch) extracted from project/Build.scala'
+        description: 'The full Scala version, from sbt (scala3-compiler-bootstrapped/version)'
         value: ${{ jobs.build.outputs.version }}
 
 env:
@@ -41,7 +41,7 @@ jobs:
         id: extract-version
         shell: bash
         run: |
-          version=$(sed -n 's/.*val developedVersion = "\(.*\)".*/\1/p' project/Build.scala)
+          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Extracted Scala version: $version"
       - name: Build the .rpm package
