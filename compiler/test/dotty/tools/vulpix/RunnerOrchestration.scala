@@ -38,7 +38,8 @@ import scala.jdk.CollectionConverters.ListHasAsScala
  *  child process is destroyed and a new child is spawned.
  */
 trait RunnerOrchestration:
-  given summaryReport: SummaryReporting = SummaryReport()
+  protected val report: SummaryReporting = SummaryReport() // so it's overrideable by the Vulpix self-tests
+  given summaryReport: SummaryReporting = report
 
   /** Open JDI connection for testing the debugger */
   def debugMode: Boolean = false

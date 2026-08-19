@@ -79,40 +79,38 @@ final class SummaryReport extends SummaryReporting {
   /** Both echoes the summary to stdout and prints to file */
   override def echoSummary(): Unit = {
     val rep = new StringBuilder
-    rep.append(
-      s"""|
-          |================================================================================
-          |Test Report
-          |================================================================================
-          |
-          |$passed suites passed, $failed failed, ${passed + failed} total
-          |""".stripMargin
-    )
+    if failed == 0 && failedTests.isEmpty then
+      rep.append(s"== Vulpix Test Report: $passed suites passed, no failures (${skippedTests.size} skipped) ==")
+    else
+      rep.append(
+        s"""|
+            |================================================================================
+            |Vulpix Test Report
+            |================================================================================
+            |
+            |$passed suites passed, $failed failed, ${passed + failed} total
+            |""".stripMargin
+      )
+      failedTests.asScala.map(x => s"    ${x.title}${x.extra}\n").foreach(rep.append)
+      TestReporter.writeFailedTests(failedTests.asScala.toList.map(_.title))
+      if !skippedTests.isEmpty then
+        rep.append("Skipped: " + skippedTests.asScala.map(_.title).mkString(", "))
 
-    failedTests.asScala.map(x => s"    ${x.title}${x.extra}\n").foreach(rep.append)
-    TestReporter.writeFailedTests(failedTests.asScala.toList.map(_.title))
-
-    // If we're compiling locally, we don't need to see instructions on how to
-    // reproduce failures on stdout, only a pointer to the log file.
-    if (!Properties.isRunByCI) {
-      println(rep.toString)
-      skippedTests.asScala.map(x => s"    ${x.title} skipped").toList.distinct.foreach(println)
-      if (failed > 0) println {
+    // If we're on the CI, we want reproduction instructions; otherwise, we just need a pointer to the log file.
+    if Properties.isRunByCI then
+      if !reproduceInstructions.isEmpty then
+        rep += '\n'
+        reproduceInstructions.asScala.foreach(rep.append)
+    else
+      if failed > 0 then rep.append(
         s"""|
             |--------------------------------------------------------------------------------
             |Note - reproduction instructions have been dumped to log file:
             |    ${TestReporter.logPath}
             |--------------------------------------------------------------------------------""".stripMargin
-      }
-    }
+      ).append('\n')
 
-    rep += '\n'
-
-    reproduceInstructions.asScala.foreach(rep.append)
-
-    // If we're on the CI, we want everything
-    if (Properties.isRunByCI) println(rep.toString)
-
+    println(rep.toString)
     TestReporter.logPrintln(rep.toString)
   }
 
