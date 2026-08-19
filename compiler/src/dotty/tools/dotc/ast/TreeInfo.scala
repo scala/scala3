@@ -69,9 +69,9 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
    *  is that named arguments can transform a call into a block, e.g.
    *   <init>(b = foo, a = bar)
    * is transformed to
-   *   { val x$1 = foo
-   *     val x$2 = bar
-   *     <init>(x$2, x$1)
+   *   { val x\$1 = foo
+   *     val x\$2 = bar
+   *     <init>(x\$2, x\$1)
    *   }
    */
   def methPart(tree: Tree): Tree = stripApply(tree) match {

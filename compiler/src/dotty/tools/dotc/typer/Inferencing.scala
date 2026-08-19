@@ -599,8 +599,8 @@ object Inferencing {
   }
 
   /** Replace every top-level occurrence of a wildcard type argument by
-   *  a fresh skolem type. The skolem types are of the form $i.CAP, where
-   *  $i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
+   *  a fresh skolem type. The skolem types are of the form \$i.CAP, where
+   *  \$i is a skolem of type `scala.internal.TypeBox`, and `CAP` is its
    *  type member. See the documentation of `TypeBox` for a rationale why we do this.
    */
   def captureWildcards(tp: Type)(using Context): Type = derivedOnDealias(tp) {
