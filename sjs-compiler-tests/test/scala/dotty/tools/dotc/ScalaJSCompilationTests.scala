@@ -14,7 +14,7 @@ import org.junit.Ignore
 class ScalaJSCompilationTests {
   import ParallelTesting._
   import TestConfiguration._
-  import ScalaJSCompilationTests._
+  import ScalaJSCompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
   // Negative tests ------------------------------------------------------------
