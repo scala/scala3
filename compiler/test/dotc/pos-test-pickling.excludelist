@@ -29,6 +29,7 @@ i9804.scala
 i13433.scala
 i16649-irrefutable.scala
 strict-pattern-bindings-3.0-migration.scala
+strict-pattern-bindings-3.0-migration-maybe.scala
 i17186b.scala
 i11982a.scala
 i17255

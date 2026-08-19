@@ -2,6 +2,7 @@
 patmat.scala
 patmat-interpolator.scala
 unapplySeq-implicit-arg-pos.scala
+unapplySeq-implicit-arg-pos-maybe.scala
 global-cycle11.scala
 
 ## warns! and fails under -Werror, noticed at #25571

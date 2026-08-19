@@ -22,9 +22,3 @@ def toEither[T, E](x: T ? E): Either[E, T] = x match
 def toEitherIntStr[T, E](x: Int ? String): Either[String, Int] = x match
   case Ok(y) => Right(y)
   case Err(e) => Left(e)
-
-def toEitherIntStrBAD[T, E](x: Int ? String): Either[String, Int] = x match
-  case Ok(y) => Right(y)  // warn
-
-def toEitherIntStrBAD2[T, E](x: Int ? String): Either[String, Int] = x match
-  case Err(y) => Left(y)  // warn

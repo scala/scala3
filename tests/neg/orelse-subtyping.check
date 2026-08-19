@@ -6,10 +6,4 @@
   |                        Note that implicit conversions were not tried because the result of an implicit conversion
   |                        must be more specific than String ? String
   |
-  |                        One of the following imports might fix the problem:
-  |
-  |                          import scala.reflect.Selectable.reflectiveSelectable
-  |                          import scala.util.chaining.scalaUtilChainingOps
-  |
-  |
   | longer explanation available when compiling with `-explain`

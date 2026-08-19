@@ -31,8 +31,8 @@ object WithTail:
 
 object Poly:
   def unapply[T](x: T): T ? String = x match
-    case Pos(y) => y
-    case WithTail(s) => s
+    case Pos(y: T @unchecked) => Ok(y)
+    case WithTail(s: T @unchecked) => Ok(s)
     case _ => Err("no match")
 
 def f[T, E](x: T, e: E) =
@@ -42,7 +42,7 @@ def f[T, E](x: T, e: E) =
   val x4 = toEither(Err("bad"))
 
   val y1 = toEitherIntStr(Ok(1))
-  val y3 = toEitherIntStr(22)
+  val y3 = toEitherIntStr(Ok(22))
   val y4 = toEitherIntStr(Err("bad"))
 
   val z1 = toEither(Ok(x))

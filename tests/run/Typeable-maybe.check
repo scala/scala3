@@ -1,0 +1,8 @@
+1 is a Int
+List(1, 2, 3) is a List[Int]
+List(1, 2, 3) is not a Int
+1 is not a List[Int]
+a is not a Int
+List() is a List[Int]
+List(1, a) is not a List[Int]
+List(1, 2) is a List[Int]
