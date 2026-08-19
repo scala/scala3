@@ -112,12 +112,15 @@ object Build {
     (Test / testOptions) += Tests.Argument(TestFrameworks.JUnit, "-a", "-v", "-s"),
   )
 
-  /** Keep Vulpix JUnit wrappers terse in CI; Vulpix prints its own source-level summary. */
+  /** Keep Vulpix-bearing test projects terse in CI; Vulpix prints its own progress and summary. */
   lazy val vulpixTestSettings = Def.settings(
     (Test / testOptions) ++= {
       if (sys.env.contains("DOTTY_CI_RUN"))
         Seq(Tests.Argument(TestFrameworks.JUnit, "+v"))
       else Nil
+    },
+    Test / logLevel := {
+      if (sys.env.contains("DOTTY_CI_RUN")) Level.Error else Level.Info
     },
   )
 

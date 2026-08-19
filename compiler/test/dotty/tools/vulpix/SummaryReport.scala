@@ -28,6 +28,12 @@ trait SummaryReporting {
   /** Echoes contents of `it` to file *immediately* then flushes */
   def echoToLog(it: Iterable[String]): Unit
 
+  /** Whether this reporter wants periodic CI progress updates. */
+  private[vulpix] def progressEnabled: Boolean = false
+
+  /** Echo a periodic CI progress update. */
+  private[vulpix] def echoProgress(progress: VulpixConsole.Progress): Unit = ()
+
 }
 
 /** A summary report that doesn't do anything */
@@ -76,24 +82,14 @@ final class SummaryReport extends SummaryReporting {
   private def failedTestsSnapshot: List[FailedTestInfo] =
     failedTests.asScala.toList.sortBy(info => (info.title, info.extra))
 
-  private[vulpix] def summaryText: String = {
-    val failures = failedTestsSnapshot
-    val passedCount = passed.get
-    val skippedCount = skipped.get
-    val total = passedCount + failures.size + skippedCount
-    val testLabel = if passedCount == 1 then "test" else "tests"
-    val skippedText = if skippedCount == 0 then "" else s", $skippedCount skipped"
-    val failedLines =
-      if failures.isEmpty then ""
-      else failures.map(info => s"    ${info.title}${info.extra}").mkString("Failed tests:\n", "\n", "\n")
+  private def summary: VulpixConsole.Summary =
+    VulpixConsole.Summary(passed.get, failedTestsSnapshot, skipped.get)
 
-    s"""|================================================================================
-        |Vulpix Test Report
-        |================================================================================
-        |
-        |$passedCount $testLabel passed, ${failures.size} failed$skippedText, $total total
-        |$failedLines""".stripMargin
-  }
+  private[vulpix] def summaryText: String =
+    VulpixConsole.renderSummary(summary, useColors = false)
+
+  private[vulpix] def consoleSummaryText(useColors: Boolean): String =
+    VulpixConsole.renderSummary(summary, useColors)
 
   private[vulpix] def detailedText: String = {
     val instructions = reproduceInstructions.asScala.toList.sorted
@@ -107,7 +103,7 @@ final class SummaryReport extends SummaryReporting {
     val hasResults = passed.get + failures.size + skipped.get > 0
     TestReporter.writeFailedTests(failures.map(_.title).distinct)
 
-    if hasResults then println(summaryText)
+    if hasResults then println(consoleSummaryText(VulpixConsole.colorsEnabled))
 
     if !Properties.isRunByCI then {
       skippedTests.asScala.map(x => s"    ${x.title} skipped").toList.distinct.sorted.foreach(println)
@@ -122,11 +118,13 @@ final class SummaryReport extends SummaryReporting {
     if hasResults || !reproduceInstructions.isEmpty then TestReporter.logPrintln(detailedText)
   }
 
-  private def removeColors(msg: String): String =
-    msg.replaceAll("\u001b\\[.*?m", "")
+  override private[vulpix] def progressEnabled: Boolean = Properties.isRunByCI
+
+  override private[vulpix] def echoProgress(progress: VulpixConsole.Progress): Unit =
+    if progressEnabled then println(VulpixConsole.renderProgress(progress, VulpixConsole.colorsEnabled))
 
   override def echoToLog(it: Iterable[String]): Unit = {
-    it.foreach(msg => TestReporter.logPrint(removeColors(msg)))
+    it.foreach(msg => TestReporter.logPrint(VulpixConsole.stripColors(msg)))
     TestReporter.logFlush()
   }
 }
