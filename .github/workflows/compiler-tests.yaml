@@ -32,7 +32,12 @@ jobs:
       - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
 
       - name: Test `scala3-compiler-nonbootstrapped`
+        id: compiler_test
         run: ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
+
+      - name: Full Vulpix test log
+        if: ${{ failure() && steps.compiler_test.outcome == 'failure' }}
+        run: .github/workflows/print-vulpix-testlogs.sh
 
       - name: Cmd Tests
         run: |
@@ -56,7 +61,12 @@ jobs:
       - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
 
       - name: Test `scala3-compiler-bootstrapped`
+        id: compiler_test
         run: ./project/scripts/sbt scala3-compiler-bootstrapped/test
+
+      - name: Full Vulpix test log
+        if: ${{ failure() && steps.compiler_test.outcome == 'failure' }}
+        run: .github/workflows/print-vulpix-testlogs.sh
 
       - name: Cmd Tests
         run: |

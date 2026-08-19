@@ -5,7 +5,7 @@ import org.junit.Test
 
 /** Unit tests for the Vulpix test suite */
 class VulpixUnitTests:
-  import VulpixUnitTests.*
+  import VulpixUnitTests.{*, given}
   import TestConfiguration.*
 
   given TestGroup = TestGroup("VulpixTests")
