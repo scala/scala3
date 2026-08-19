@@ -51,13 +51,19 @@ class SummaryReportTests:
 
     val output = java.io.ByteArrayOutputStream()
     Console.withOut(output) {
-      val live = SummaryReport(pulse = true)
+      val live = SummaryReport(pulse = true, announceGroups = true)
       live.beginTestGroups(Set("patmat"))
       live.beginTestGroups(Set("patmat"))
       live.beginTestGroups(Set("runAll"))
     }
-    assert(output.toString("UTF-8").linesIterator.toList ==
+    assert(VulpixConsole.stripColors(output.toString("UTF-8")).linesIterator.toList ==
       List("[Vulpix] Starting patmat", "[Vulpix] Starting runAll"))
+
+    val quietOutput = java.io.ByteArrayOutputStream()
+    Console.withOut(quietOutput) {
+      SummaryReport(pulse = false, announceGroups = true).beginTestGroups(Set("compileNeg"))
+    }
+    assert(VulpixConsole.stripColors(quietOutput.toString("UTF-8")).trim == "[Vulpix] Starting compileNeg")
 
     val github = Map("GITHUB_ACTIONS" -> "true")
     assert(VulpixConsole.colorsEnabled(github, isCI = true))

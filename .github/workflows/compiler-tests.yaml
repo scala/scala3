@@ -32,11 +32,9 @@ jobs:
       - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
 
       - name: Test `scala3-compiler-nonbootstrapped`
-        env:
-          VULPIX_TASK: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') && 'scala3-nonbootstrapped/testCompilation' || 'scala3-compiler-nonbootstrapped/test' }}
         run: |
           echo '::group::sbt startup and compiler build'
-          VULPIX_CI_FOLD=true ./project/scripts/sbt "$VULPIX_TASK"
+          VULPIX_CI_FOLD=true ./project/scripts/sbt '${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') && 'scala3-nonbootstrapped/testCompilation' || 'scala3-compiler-nonbootstrapped/test' }}'
 
       - name: Vulpix failure output
         if: failure()
@@ -70,11 +68,9 @@ jobs:
       - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
 
       - name: Test `scala3-compiler-bootstrapped`
-        env:
-          VULPIX_TASK: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') && 'scala3-bootstrapped/testCompilation' || 'scala3-compiler-bootstrapped/test' }}
         run: |
           echo '::group::sbt startup and compiler build'
-          VULPIX_CI_FOLD=true ./project/scripts/sbt "$VULPIX_TASK"
+          VULPIX_CI_FOLD=true ./project/scripts/sbt '${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') && 'scala3-bootstrapped/testCompilation' || 'scala3-compiler-bootstrapped/test' }}'
 
       - name: Vulpix failure output
         if: failure()

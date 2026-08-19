@@ -27,6 +27,9 @@ trait SummaryReporting {
   /** Whether this reporter wants periodic CI progress updates. */
   private[vulpix] def progressEnabled: Boolean = false
 
+  /** Whether this reporter wants top-level CI group announcements. */
+  private[vulpix] def groupAnnouncementsEnabled: Boolean = false
+
   /** Record timings for a completed Vulpix batch. */
   private[vulpix] def reportTestTimings(timings: Iterable[VulpixConsole.TestTiming]): Unit = ()
 
@@ -54,7 +57,10 @@ private[vulpix] final class NoResultSummaryReport(delegate: SummaryReporting) ex
 }
 
 /** A summary report that writes concise status to stdout and failure details to `./testlogs/`. */
-final class SummaryReport(pulse: Boolean = VulpixConsole.pulseEnabled) extends SummaryReporting {
+final class SummaryReport(
+  pulse: Boolean = VulpixConsole.pulseEnabled,
+  announceGroups: Boolean = Properties.isRunByCI,
+) extends SummaryReporting {
   private val failedTests = ArrayBuffer.empty[FailedTestInfo]
   private val reproduceInstructions = ArrayBuffer.empty[String]
   private val testTimings = ArrayBuffer.empty[VulpixConsole.TestTiming]
@@ -118,6 +124,7 @@ final class SummaryReport(pulse: Boolean = VulpixConsole.pulseEnabled) extends S
   }
 
   override private[vulpix] def progressEnabled: Boolean = pulse
+  override private[vulpix] def groupAnnouncementsEnabled: Boolean = announceGroups
 
   override private[vulpix] def reportTestTimings(timings: Iterable[VulpixConsole.TestTiming]): Unit = synchronized {
     testTimings ++= timings
@@ -125,21 +132,21 @@ final class SummaryReport(pulse: Boolean = VulpixConsole.pulseEnabled) extends S
   }
 
   override private[vulpix] def beginTestGroups(groups: Set[String]): Unit =
-    if progressEnabled then {
+    if progressEnabled || groupAnnouncementsEnabled then {
       val started = synchronized {
         val started = groups -- currentTestGroups
         currentTestGroups = groups
         started
       }
-      emitTestTimings(drainTestTimingsExcept(groups))
-      if started.nonEmpty then println(VulpixConsole.renderGroupStarts(started, VulpixConsole.colorsEnabled))
+      if progressEnabled then emitTestTimings(drainTestTimingsExcept(groups))
+      if groupAnnouncementsEnabled && started.nonEmpty then
+        println(VulpixConsole.renderGroupStarts(started, VulpixConsole.colorsEnabled))
     }
 
-  override private[vulpix] def flushTestTimings(): Unit =
-    if progressEnabled then {
-      synchronized { currentTestGroups = Set.empty }
-      emitTestTimings(drainTestTimingsExcept(Set.empty))
-    }
+  override private[vulpix] def flushTestTimings(): Unit = {
+    synchronized { currentTestGroups = Set.empty }
+    if progressEnabled then emitTestTimings(drainTestTimingsExcept(Set.empty))
+  }
 
   private[vulpix] def drainTestTimingsExcept(groups: Set[String]): List[VulpixConsole.TestTiming] = synchronized {
     val (retained, completed) = pendingTestTimings.partition(timing => groups.contains(timing.group))

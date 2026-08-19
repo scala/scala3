@@ -409,6 +409,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     private val activeTestSources = ArrayBuffer.empty[ActiveTestSource]
     private val completedTestTimings = ArrayBuffer.empty[VulpixConsole.TestTiming]
     private val collectTimings = summaryReport.progressEnabled && !suppressAllOutput
+    private val announceGroups = summaryReport.groupAnnouncementsEnabled && !suppressAllOutput
 
     private def testSourcesCompleted: Int = synchronized { _testSourcesCompleted }
 
@@ -807,7 +808,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
     private[ParallelTesting] def executeTestSuite(): this.type = {
       VulpixConsole.announceStart()
-      if collectTimings then
+      if collectTimings || announceGroups then
         val groups = filteredSources.iterator.map(_.group.reportingName).toSet
         if groups.nonEmpty then summaryReport.beginTestGroups(groups)
       assert(testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
