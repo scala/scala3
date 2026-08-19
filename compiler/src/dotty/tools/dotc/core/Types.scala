@@ -4255,10 +4255,10 @@ object Types extends TypeUtils {
     /** Produce method type from parameter symbols, with special mappings for repeated
      *  and inline parameters:
      *   - replace `@repeated` annotations on Seq or Array types by <repeated> types
-     *   - map into annotations to $into annotations
+     *   - map into annotations to \$into annotations
      *   - add `@inlineParam` to inline parameters
      *   - add `@erasedParam` to erased parameters
-     *   - map `T @$into` types to `into[T]`
+     *   - map `T @\$into` types to `into[T]`
      */
     def fromSymbols(params: List[Symbol], resultType: Type)(using Context): MethodType =
       apply(params.map(_.name.asTermName))(

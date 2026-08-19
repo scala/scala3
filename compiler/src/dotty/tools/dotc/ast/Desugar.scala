@@ -213,12 +213,13 @@ object desugar {
       && (!mods.is(Private) || ctx.owner.is(Trait) || ctx.owner.isPackageObject)
   }
 
-  /**   var x: Int = expr
+  /** Normalize the member name and generate a setter where needed.
+   *  ```
+   *    var x: Int = expr
    *  ==>
    *    def x: Int = expr
    *    def x_=($1: <TypeTree()>): Unit = ()
-   *
-   *  Generate setter where needed
+   *  ```
    */
   def valDef(vdef0: ValDef)(using Context): Tree =
     val vdef @ ValDef(_, tpt, rhs) = vdef0
@@ -1274,14 +1275,13 @@ object desugar {
       case mdef: DefDef => defDef(extMethod(mdef, ext.paramss))
       case _ => EmptyTree // we ignore all the other trees. Error was reported during parsing.
   }
-  /** Transforms
-   *
+  /** Type pattern variables get an annotation `@patternType`.
+   *  ```
    *    <mods> type t >: Low <: Hi
-   *  to
-   *
-   *    @patternType <mods> type $T >: Low <: Hi
-   *
-   *  if the type has a pattern variable name
+   *  ==>
+   *    @patternType <mods> type t >: Low <: Hi
+   *  ```
+   *  if the type `t` has a pattern variable name.
    */
   def quotedPatternTypeDef(tree: TypeDef)(using Context): TypeDef = {
     assert(ctx.mode.isQuotedPattern)
@@ -1350,8 +1350,12 @@ object desugar {
       case _ => body
     cpy.PolyFunction(tree)(tree.targs, stripped(tree.body)).asInstanceOf[PolyFunction]
 
-  /** Desugar [T_1, ..., T_M] => (P_1, ..., P_N) => R
-   *  Into    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
+  /** Desugar a `PolyFunction` to a type with the corresponding `apply` member.
+   *  ```
+   *    [T_1, ..., T_M] => (P_1, ..., P_N) => R
+   *  ==>
+   *    scala.PolyFunction { def apply[T_1, ..., T_M](x$1: P_1, ..., x$N: P_N): R }
+   *  ```
    */
   def makePolyFunctionType(tree: PolyFunction)(using Context): RefinedTypeTree = (tree: @unchecked) match
     case PolyFunction(tparams: List[untpd.TypeDef] @unchecked, fun @ untpd.Function(formals, res)) =>
@@ -1789,8 +1793,12 @@ object desugar {
     return apply
   }
 
-  /** Translate throws type `A throws E1 | ... | En` to
-   *  $throws[... $throws[A, E1] ... , En].
+  /** Translate throws type to `runtime.$throws`.
+   *  ```
+   *    A throws E1 | ... | En
+   *  ==>
+   *    $throws[... $throws[A, E1] ... , En].
+   *  ```
    */
   def throws(tpt: Tree, op: Ident, excepts: Tree)(using Context): AppliedTypeTree = excepts match
     case Parens(excepts1) =>
@@ -1970,10 +1978,12 @@ object desugar {
   }
 
   /** Make closure corresponding to function.
+   *  ```
    *      [tparams] => params => body
    *  ==>
    *      def $anonfun[tparams](params) = body
    *      Closure($anonfun)
+   *  ```
    */
   def makeClosure(tparams: List[TypeDef], vparams: List[ValDef], body: Tree, tpt: Tree | Null = null, span: Span)(using Context): Block =
     val paramss: List[ParamClause] =
@@ -1985,15 +1995,19 @@ object desugar {
         .withMods(synthetic | Artifact),
       Closure(Nil, Ident(nme.ANON_FUN), EmptyTree).withSpan(span))
 
-  /** If `nparams` == 1, expand partial function
+  /** Expand a pattern matching anonymous function to a function with match body.
    *
+   *  If `nparams` == 1, expand partial function
+   *  ```
    *       { cases }
    *  ==>
    *       x$1 => (x$1 @unchecked?) match { cases }
+   *  ```
    *
    *  If `nparams` != 1, expand instead to
-   *
+   *  ```
    *       (x$1, ..., x$n) => (x$0, ..., x${n-1} @unchecked?) match { cases }
+   *  ```
    */
   def makeCaseLambda(cases: List[CaseDef], checkMode: MatchCheck, nparams: Int = 1)(using Context): Function = {
     val params = (1 to nparams).toList.map(makeSyntheticParameter(_))
@@ -2001,23 +2015,29 @@ object desugar {
     Function(params, Match(makeSelector(selector, checkMode), cases))
   }
 
-  /** Map n-ary function `(x1: T1, ..., xn: Tn) => body` where n != 1 to unary function as follows:
+  /** Map an n-ary function to a unary function.
    *
+   *  Map n-ary function `(x1: T1, ..., xn: Tn) => body` where n != 1 to unary function as follows:
+   *
+   *  ```
    *    (x$1: (T1, ..., Tn)) => {
    *      val x1: T1 = x$1._1
    *      ...
    *      val xn: Tn = x$1._n
    *      body
    *    }
+   *  ```
    *
    *  or if `isGenericTuple`
    *
+   *  ```
    *    (x$1: (T1, ... Tn) => {
    *      val x1: T1 = x$1.apply(0)
    *      ...
    *      val xn: Tn = x$1.apply(n-1)
    *      body
    *    }
+   *  ```
    *
    *  If some of the Ti's are absent, omit the : (T1, ..., Tn) type ascription
    *  in the selector.
@@ -2102,49 +2122,66 @@ object desugar {
      *
      *  1. if betterFors is enabled:
      *
+     *  ```
      *    for () do E  ==>  E
+     *  ```
      *      or
+     *  ```
      *    for () yield E  ==>  E
+     *  ```
      *
      *    (Where empty for-comprehensions are excluded by the parser)
      *
      *  2.
      *
+     *  ```
      *    for (P <- G) do E   ==>   G.foreach (P => E)
+     *  ```
      *
      *    Here and in the following (P => E) is interpreted as the function (P => E)
      *    if P is a variable pattern and as the partial function { case P => E } otherwise.
      *
      *  3.
      *
+     *  ```
      *    for (P <- G) yield E  ==>  G.map (P => E)
+     *  ```
      *
      *  4.
      *
+     *  ```
      *    for (P_1 <- G_1; P_2 <- G_2; ...) ...
      *      ==>
      *    G_1.flatMap (P_1 => for (P_2 <- G_2; ...) ...)
+     *  ```
      *
      *  5.
      *
+     *  ```
      *    for (P <- G; if E; ...) ...
      *      ==>
      *    for (P <- G.withFilter (P => E); ...) ...
+     *  ```
      *
      *  6. For any N, if betterFors is enabled:
      *
+     *  ```
      *    for (P <- G; P_1 = E_1; ... P_N = E_N; P1 <- G1; ...) ...
      *      ==>
      *    G.flatMap (P => for (P_1 = E_1; ... P_N = E_N; ...))
+     *  ```
      *
      *  7. For any N, if betterFors is enabled:
      *
+     *  ```
      *    for (P <- G; P_1 = E_1; ... P_N = E_N) ...
      *      ==>
      *    G.map (P => for (P_1 = E_1; ... P_N = E_N) ...)
+     *  ```
      *
      *  8. For any N:
      *
+     *  ```
      *    for (P <- G; P_1 = E_1; ... P_N = E_N; ...)
      *      ==>
      *    for (TupleN(P, P_1, ... P_N) <-
@@ -2154,18 +2191,21 @@ object desugar {
      *        val x_N @ P_N = E_N
      *        TupleN(x, x_1, ..., x_N)
      *      }; if E; ...)
+     *  ```
      *
      *    If any of the P_i are variable patterns, the corresponding `x_i @ P_i` is not generated
      *    and the variable constituting P_i is used instead of x_i
      *
      *  9. For any N, if betterFors is enabled:
      *
+     *  ```
      *    for (P_1 = E_1; ... P_N = E_N; ...)
      *      ==>
      *    {
      *      val x_N @ P_N = E_N
      *      for (...)
      *    }
+     *  ```
      *
      *  @param mapName      The name to be used for maps (either map or foreach)
      *  @param flatMapName  The name to be used for flatMaps (either flatMap or foreach)
@@ -2231,30 +2271,40 @@ object desugar {
           (Bind(name, pat), Ident(name))
 
       /** Make a pattern filter:
+       *  ```
        *    rhs.withFilter { case pat => true case _ => false }
+       *  ```
        *
        *  On handling irrefutable patterns:
        *  The idea is to wait until the pattern matcher sees a call
        *
+       *  ```
        *      xs withFilter { cases }
+       *  ```
        *
        *  where cases can be proven to be refutable i.e. cases would be
        *  equivalent to  { case _ => true }
        *
        *  In that case, compile to
        *
+       *  ```
        *      xs withFilter alwaysTrue
+       *  ```
        *
        *  where `alwaysTrue` is a predefined function value:
        *
+       *  ```
        *      val alwaysTrue: Any => Boolean = true
+       *  ```
        *
        *  In the libraries operations can take advantage of alwaysTrue to shortcircuit the
        *  withFilter call.
        *
+       *  ```
        *  def withFilter(f: Elem => Boolean) =
        *    if (f eq alwaysTrue) this // or rather identity filter monadic applied to this
        *    else real withFilter
+       *  ```
        */
       def makePatFilter(rhs: Tree, pat: Tree): Tree = {
         val cases = List(
@@ -2265,7 +2315,7 @@ object desugar {
 
       /** Is pattern `pat` irrefutable when matched against `rhs`?
        *  We only can do a simple syntactic check here; a more refined check
-       *  is done later in the pattern matcher (see discussion in @makePatFilter).
+       *  is done later in the pattern matcher (see discussion in [makePatFilter]).
        */
       def isIrrefutable(pat: Tree, rhs: Tree): Boolean = {
         def matchesTuple(pats: List[Tree], rhs: Tree): Boolean = rhs match {
@@ -2446,15 +2496,20 @@ object desugar {
   }
 
   /** Turn a function value `handlerFun` into a catch case for a try.
+   *
    *  If `handlerFun` is a partial function, translate to
    *
+   *  ```
    *    case ex =>
    *      val ev$1 = handlerFun
    *      if ev$1.isDefinedAt(ex) then ev$1.apply(ex) else throw ex
+   *  ```
    *
    *  Otherwise translate to
    *
+   *  ```
    *     case ex => handlerFun.apply(ex)
+   *  ```
    */
   def makeTryCase(handlerFun: tpd.Tree)(using Context): CaseDef =
     val handler = TypedSplice(handlerFun)
@@ -2476,25 +2531,33 @@ object desugar {
   /** Create a class definition with the same info as the refined type given by `parent`
    *  and `refinements`.
    *
+   *  ```
    *      parent { refinements }
    *  ==>
    *      trait <refinement> extends core { this: self => refinements }
+   *  ```
    *
    *  Here, `core` is the (possibly parameterized) class part of `parent`.
    *  If `parent` is the same as `core`, self is empty. Otherwise `self` is `parent`.
    *
    *  Example: Given
    *
+   *  ```
    *      class C
    *      type T1 = C { type T <: A }
+   *  ```
    *
    *  the refined type
    *
+   *  ```
    *      T1 { type T <: B }
+   *  ```
    *
    *  is expanded to
    *
+   *  ```
    *      trait <refinement> extends C { this: T1 => type T <: A }
+   *  ```
    *
    *  The result of this method is used for validity checking, is thrown away afterwards.
    *  @param parent  The type of `parent`
@@ -2533,9 +2596,13 @@ object desugar {
 
   /** Ensure the given function tree use only ValDefs for parameters.
    *  For example,
+   *  ```
    *      FunctionWithMods(List(TypeTree(A), TypeTree(B)), body, mods, erasedParams)
+   *  ```
    *  gets converted to
+   *  ```
    *      FunctionWithMods(List(ValDef(x$1, A), ValDef(x$2, B)), body, mods, erasedParams)
+   *  ```
    */
   def makeFunctionWithValDefs(tree: Function)(using Context): Function = {
     val Function(args, result) = tree
