@@ -174,7 +174,6 @@ class CompilationTests {
   }
 
   @Test def negSpecial: Unit = {
-    // This is one staged logical test; its three compilation steps are not independent timing entries.
     given TestGroup = TestGroup("negSpecial", reportTimings = false)
     special(
       defaultOptions,

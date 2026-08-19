@@ -12,15 +12,11 @@ permissions:
 
 env:
   DOTTY_CI_RUN: true
-  VULPIX_CI_PULSE: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[vulpix_pulse]') }}
 
 jobs:
 
   test-scala3-compiler-nonbootstrapped:
-    if: >-
-      github.event_name != 'pull_request'
-      || !contains(github.event.pull_request.body, '[skip ci]')
-      || contains(github.event.pull_request.body, '[test_vulpix]')
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]') || contains(github.event.pull_request.body, '[test_vulpix]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -36,36 +32,29 @@ jobs:
       - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
 
       - name: Test `scala3-compiler-nonbootstrapped`
-        id: compiler_test
         env:
-          VULPIX_ONLY: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') }}
+          VULPIX_TASK: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') && 'scala3-nonbootstrapped/testCompilation' || 'scala3-compiler-nonbootstrapped/test' }}
         run: |
-          if [[ "$VULPIX_ONLY" == "true" ]]; then
-            .github/workflows/run-vulpix-ci.sh ./project/scripts/sbt scala3-nonbootstrapped/testCompilation
-          else
-            .github/workflows/run-vulpix-ci.sh ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
-          fi
+          echo '::group::sbt startup and compiler build'
+          VULPIX_CI_FOLD=true ./project/scripts/sbt "$VULPIX_TASK"
 
       - name: Vulpix failure output
-        if: ${{ failure() && steps.compiler_test.outcome == 'failure' }}
-        run: .github/workflows/print-vulpix-testlogs.sh
+        if: failure()
+        run: |
+          for log in testlogs/tests-*/*.log; do
+            [[ -s "$log" ]] || continue
+            printf 'File: %s\n\n' "$log"
+            sed 's/^/    /' "$log"
+          done
 
       - name: Cmd Tests
-        if: >-
-          success()
-          && (
-            github.event_name != 'pull_request'
-            || !contains(github.event.pull_request.body, '[test_vulpix]')
-          )
+        if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[test_vulpix]')
         run: |
           ./project/scripts/sbt scala3-nonbootstrapped/publishLocal
           ./project/scripts/cmdTests
 
   test-scala3-compiler-bootstrapped:
-    if: >-
-      github.event_name != 'pull_request'
-      || !contains(github.event.pull_request.body, '[skip ci]')
-      || contains(github.event.pull_request.body, '[test_vulpix]')
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]') || contains(github.event.pull_request.body, '[test_vulpix]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -81,27 +70,23 @@ jobs:
       - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
 
       - name: Test `scala3-compiler-bootstrapped`
-        id: compiler_test
         env:
-          VULPIX_ONLY: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') }}
+          VULPIX_TASK: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') && 'scala3-bootstrapped/testCompilation' || 'scala3-compiler-bootstrapped/test' }}
         run: |
-          if [[ "$VULPIX_ONLY" == "true" ]]; then
-            .github/workflows/run-vulpix-ci.sh ./project/scripts/sbt scala3-bootstrapped/testCompilation
-          else
-            .github/workflows/run-vulpix-ci.sh ./project/scripts/sbt scala3-compiler-bootstrapped/test
-          fi
+          echo '::group::sbt startup and compiler build'
+          VULPIX_CI_FOLD=true ./project/scripts/sbt "$VULPIX_TASK"
 
       - name: Vulpix failure output
-        if: ${{ failure() && steps.compiler_test.outcome == 'failure' }}
-        run: .github/workflows/print-vulpix-testlogs.sh
+        if: failure()
+        run: |
+          for log in testlogs/tests-*/*.log; do
+            [[ -s "$log" ]] || continue
+            printf 'File: %s\n\n' "$log"
+            sed 's/^/    /' "$log"
+          done
 
       - name: Cmd Tests
-        if: >-
-          success()
-          && (
-            github.event_name != 'pull_request'
-            || !contains(github.event.pull_request.body, '[test_vulpix]')
-          )
+        if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[test_vulpix]')
         run: |
           ./project/scripts/sbt scala3-bootstrapped/publishLocal
           ./project/scripts/bootstrappedOnlyCmdTests

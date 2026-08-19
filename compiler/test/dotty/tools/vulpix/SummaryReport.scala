@@ -3,8 +3,6 @@ package tools
 package vulpix
 
 import dotc.reporting.TestReporter
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.ConcurrentLinkedDeque
 import scala.collection.mutable.ArrayBuffer
 
 /** Collects Vulpix results, writes summaries to stdout, and records failure diagnostics.
@@ -17,9 +15,6 @@ trait SummaryReporting {
   /** Report the result of running a collection of test sources. */
   def reportResults(passed: Int, failed: Iterable[FailedTestInfo], skipped: Int): Unit
 
-  /** Add a skipped test. */
-  def addSkippedTest(msg: FailedTestInfo): Unit
-
   /** Add instructions to reproduce the error */
   def addReproduceInstruction(instr: String): Unit
 
@@ -31,9 +26,6 @@ trait SummaryReporting {
 
   /** Whether this reporter wants periodic CI progress updates. */
   private[vulpix] def progressEnabled: Boolean = false
-
-  /** Echo a periodic CI progress update. */
-  private[vulpix] def echoProgress(progress: VulpixConsole.Progress): Unit = ()
 
   /** Record timings for a completed Vulpix batch. */
   private[vulpix] def reportTestTimings(timings: Iterable[VulpixConsole.TestTiming]): Unit = ()
@@ -49,7 +41,6 @@ trait SummaryReporting {
 /** A summary report that doesn't do anything */
 final class NoSummaryReport extends SummaryReporting {
   override def reportResults(passed: Int, failed: Iterable[FailedTestInfo], skipped: Int): Unit = ()
-  override def addSkippedTest(msg: FailedTestInfo): Unit = ()
   override def addReproduceInstruction(instr: String): Unit = ()
   override def echoSummary(): Unit = ()
   override def echoToLog(it: Iterable[String]): Unit = ()
@@ -57,7 +48,6 @@ final class NoSummaryReport extends SummaryReporting {
 
 private[vulpix] final class NoResultSummaryReport(delegate: SummaryReporting) extends SummaryReporting {
   override def reportResults(passed: Int, failed: Iterable[FailedTestInfo], skipped: Int): Unit = ()
-  override def addSkippedTest(msg: FailedTestInfo): Unit = delegate.addSkippedTest(msg)
   override def addReproduceInstruction(instr: String): Unit = delegate.addReproduceInstruction(instr)
   override def echoSummary(): Unit = ()
   override def echoToLog(it: Iterable[String]): Unit = delegate.echoToLog(it)
@@ -65,71 +55,63 @@ private[vulpix] final class NoResultSummaryReport(delegate: SummaryReporting) ex
 
 /** A summary report that writes concise status to stdout and failure details to `./testlogs/`. */
 final class SummaryReport(pulse: Boolean = VulpixConsole.pulseEnabled) extends SummaryReporting {
-  import scala.jdk.CollectionConverters.*
-
-  private val failedTests = new ConcurrentLinkedDeque[FailedTestInfo]
-  private val skippedTests = new ConcurrentLinkedDeque[FailedTestInfo]
-  private val reproduceInstructions = new ConcurrentLinkedDeque[String]
-  private val testTimings = new ConcurrentLinkedDeque[VulpixConsole.TestTiming]
+  private val failedTests = ArrayBuffer.empty[FailedTestInfo]
+  private val reproduceInstructions = ArrayBuffer.empty[String]
+  private val testTimings = ArrayBuffer.empty[VulpixConsole.TestTiming]
   private val pendingTestTimings = ArrayBuffer.empty[VulpixConsole.TestTiming]
+  private var currentTestGroups = Set.empty[String]
 
-  private val passed = AtomicInteger()
-  private val skipped = AtomicInteger()
+  private var passed = 0
+  private var skipped = 0
 
-  override def reportResults(passed: Int, failed: Iterable[FailedTestInfo], skipped: Int): Unit = {
+  override def reportResults(passed: Int, failed: Iterable[FailedTestInfo], skipped: Int): Unit = synchronized {
     require(passed >= 0 && skipped >= 0)
-    this.passed.addAndGet(passed)
-    this.skipped.addAndGet(skipped)
-    failed.foreach(failedTests.add)
+    this.passed += passed
+    this.skipped += skipped
+    failedTests ++= failed
   }
 
-  override def addSkippedTest(msg: FailedTestInfo): Unit =
-    skippedTests.add(msg)
-
-  override def addReproduceInstruction(instr: String): Unit =
-    reproduceInstructions.add(instr)
-
-  private def failedTestsSnapshot: List[FailedTestInfo] =
-    failedTests.asScala.toList.sortBy(info => (info.title, info.extra))
+  override def addReproduceInstruction(instr: String): Unit = synchronized {
+    reproduceInstructions += instr
+  }
 
   private def summary: VulpixConsole.Summary =
-    VulpixConsole.Summary(passed.get, failedTestsSnapshot, skipped.get)
+    synchronized(VulpixConsole.Summary(passed, failedTests.toList.sortBy(info => (info.title, info.extra)), skipped))
 
   private[vulpix] def summaryText: String =
     VulpixConsole.renderSummary(summary, useColors = false)
 
-  private[vulpix] def consoleSummaryText(useColors: Boolean): String =
+  private[vulpix] def summaryText(useColors: Boolean): String =
     VulpixConsole.renderSummary(summary, useColors)
 
   private[vulpix] def reproductionText: String =
-    reproduceInstructions.asScala.toList.distinct.sorted.mkString
+    synchronized(reproduceInstructions.toList).distinct.sorted.mkString
 
   private[vulpix] def overallTimingsText: String =
-    VulpixConsole.renderSlowestOverall(testTimings.asScala, useColors = false)
+    VulpixConsole.renderSlowestOverall(synchronized(testTimings.toList), useColors = false)
 
   /** Echo the concise summary to stdout; local runs also log reproduction instructions. */
   override def echoSummary(): Unit = {
     flushTestTimings()
-    val failures = failedTestsSnapshot
-    val hasResults = passed.get + failures.size + skipped.get > 0
+    val currentSummary = summary
+    val failures = currentSummary.failures
+    val hasResults = currentSummary.passed + failures.size + currentSummary.skipped > 0
     TestReporter.writeFailedTests(failures.map(_.title).distinct)
 
-    if hasResults then println(consoleSummaryText(VulpixConsole.colorsEnabled))
+    if hasResults then println(VulpixConsole.renderSummary(currentSummary, VulpixConsole.colorsEnabled))
 
     val overallTimings =
-      if progressEnabled then VulpixConsole.renderSlowestOverall(testTimings.asScala, VulpixConsole.colorsEnabled)
+      if progressEnabled then VulpixConsole.renderSlowestOverall(synchronized(testTimings.toList), VulpixConsole.colorsEnabled)
       else ""
     if overallTimings.nonEmpty then println(overallTimings)
 
-    if !Properties.isRunByCI then {
-      skippedTests.asScala.map(x => s"    ${x.title} skipped").toList.distinct.sorted.foreach(println)
-      if failures.nonEmpty then println {
+    if !Properties.isRunByCI && failures.nonEmpty then
+      println {
         s"""|--------------------------------------------------------------------------------
             |Note - reproduction instructions have been dumped to log file:
             |    ${TestReporter.logPath}
             |--------------------------------------------------------------------------------""".stripMargin
       }
-    }
 
     val reproduction = reproductionText
     if reproduction.nonEmpty && !Properties.isRunByCI then echoToLog(List(reproduction))
@@ -137,22 +119,27 @@ final class SummaryReport(pulse: Boolean = VulpixConsole.pulseEnabled) extends S
 
   override private[vulpix] def progressEnabled: Boolean = pulse
 
-  override private[vulpix] def echoProgress(progress: VulpixConsole.Progress): Unit =
-    if progressEnabled then println(VulpixConsole.renderProgress(progress, VulpixConsole.colorsEnabled))
-
-  override private[vulpix] def reportTestTimings(timings: Iterable[VulpixConsole.TestTiming]): Unit = {
-    val snapshot = timings.toList
-    synchronized {
-      snapshot.foreach(testTimings.add)
-      pendingTestTimings ++= snapshot
-    }
+  override private[vulpix] def reportTestTimings(timings: Iterable[VulpixConsole.TestTiming]): Unit = synchronized {
+    testTimings ++= timings
+    pendingTestTimings ++= timings
   }
 
   override private[vulpix] def beginTestGroups(groups: Set[String]): Unit =
-    if progressEnabled then emitTestTimings(drainTestTimingsExcept(groups))
+    if progressEnabled then {
+      val started = synchronized {
+        val started = groups -- currentTestGroups
+        currentTestGroups = groups
+        started
+      }
+      emitTestTimings(drainTestTimingsExcept(groups))
+      if started.nonEmpty then println(VulpixConsole.renderGroupStarts(started, VulpixConsole.colorsEnabled))
+    }
 
   override private[vulpix] def flushTestTimings(): Unit =
-    if progressEnabled then emitTestTimings(drainTestTimingsExcept(Set.empty))
+    if progressEnabled then {
+      synchronized { currentTestGroups = Set.empty }
+      emitTestTimings(drainTestTimingsExcept(Set.empty))
+    }
 
   private[vulpix] def drainTestTimingsExcept(groups: Set[String]): List[VulpixConsole.TestTiming] = synchronized {
     val (retained, completed) = pendingTestTimings.partition(timing => groups.contains(timing.group))
@@ -167,10 +154,11 @@ final class SummaryReport(pulse: Boolean = VulpixConsole.pulseEnabled) extends S
       if rendered.nonEmpty then println(rendered)
     }
 
-  override def echoToLog(it: Iterable[String]): Unit = synchronized {
-    it.foreach(msg => TestReporter.logPrint(VulpixConsole.stripColors(msg)))
-    TestReporter.logFlush()
-  }
+  override def echoToLog(it: Iterable[String]): Unit =
+    if it.nonEmpty then synchronized {
+      it.foreach(msg => TestReporter.logPrint(VulpixConsole.stripColors(msg)))
+      TestReporter.logFlush()
+    }
 }
 
 object SummaryReport {
