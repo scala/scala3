@@ -528,11 +528,15 @@ object Trees {
       putAttachment(untpd.KindOfApply, kind)
       this
 
-    /** The kind of this application. Works reliably only for untyped trees; typed trees
-     *  are under no obligation to update it correctly.
-     */
-    def applyKind: ApplyKind =
-      attachmentOrElse(untpd.KindOfApply, ApplyKind.Regular)
+    /** The kind of this application. */
+    def applyKind(using Context): ApplyKind =
+      // The attachement is only guaranteed to be set on untyped trees.
+      if hasAttachment(untpd.KindOfApply) then
+        attachment(untpd.KindOfApply)
+      else
+        val funTpe = fun.typeOpt
+        if funTpe.exists && funTpe.widen.stripPoly.isImplicitMethod then ApplyKind.Using
+        else ApplyKind.Regular
   }
 
   /** fun[args] */

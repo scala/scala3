@@ -49,14 +49,14 @@
    |    val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
    |    ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x - 1)}.*:[A, Tuple](x$1)
    |  }
-   |}.apply(q)
-   |  typing if x == 0 then '{EmptyTuple}.apply(q) else
+   |}.apply(using q)
+   |  typing if x == 0 then '{EmptyTuple}.apply(using q) else
    |  '{
    |    {
    |      val x$1: A = ${(using contextual$3: scala.quoted.Quotes) => value}
    |      ${(using contextual$2: scala.quoted.Quotes) => createTupleAux(x - 1)}.*:[A, Tuple](x$1)
    |    }
-   |  }.apply(q)
+   |  }.apply(using q)
    |  typing {
    |  createTupleAux(x)
    |}

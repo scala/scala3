@@ -4,7 +4,7 @@
    |      No given instance of type TC[A] was found for a context parameter of constructor Payload in class Payload.
    |      I found:
    |
-   |          TC.derived[A](/* missing */summon[scala.deriving.Mirror.Of[A]])
+   |          TC.derived[A](using /* missing */summon[scala.deriving.Mirror.Of[A]])
    |
    |      But Failed to synthesize an instance of type scala.deriving.Mirror.Of[A]:
    |      	* class Nothing is not a generic product because it is not a case class
