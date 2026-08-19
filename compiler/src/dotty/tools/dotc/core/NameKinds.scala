@@ -290,25 +290,33 @@ object NameKinds {
 
   /** The name of the term parameter generated for a context bound:
    *
+   *  ```
    *      def foo[T: A](...): ...
+   *  ```
    *
    *  becomes:
    *
-   *      def foo[T](...)(using evidence$1: A[T]): ...
+   *  ```
+   *      def foo[T](...)(using evidence\$1: A[T]): ...
+   *  ```
    *
-   *  The "evidence$" prefix is a convention copied from Scala 2.
+   *  The `evidence$` prefix is a convention copied from Scala 2.
    */
   val ContextBoundParamName: UniqueNameKind = new UniqueNameKindWithUnmangle("evidence$")
 
   /** The name of an inferred contextual function parameter:
    *
+   *  ```
    *      val x: A ?=> B = b
    *      val f: (x: A) ?=> B = b
+   *  ```
    *
    *  becomes:
    *
+   *  ```
    *      val x: A ?=> B = (contextual$1: A) ?=> b
    *      val f: (x: A) ?=> B = (xcontextual$1: A) ?=> b
+   *  ```
    */
   val ContextFunctionParamName: UniqueNameKind =
     new UniqueNameKind("contextual$"):

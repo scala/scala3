@@ -22,8 +22,10 @@ import Decorators.*
  *
  * Additionally, for a value class V, let U be the underlying type after erasure. We add
  * to the companion module of V two cast methods:
+ *  ```
  *   def u2evt$(x0: U): ErasedValueType(V, U)
  *   def evt2u$(x0: ErasedValueType(V, U)): U
+ *  ```
  * The casts are used in [[Erasure]] to make it typecheck, they are then removed
  * in [[ElimErasedValueType]].
  * This is different from the implementation of value classes in Scala 2

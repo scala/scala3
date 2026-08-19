@@ -473,11 +473,15 @@ object Inlines:
   /** For a retained inline method, another method that keeps track of
    *  the body that is kept at runtime. For instance, an inline method
    *
+   *  ```
    *      inline override def f(x: T) = b
+   *  ```
    *
    *  is complemented by the body retainer method
    *
+   *  ```
    *      private def f$retainedBody(x: T) = f(x)
+   *  ```
    *
    *  where the call `f(x)` is inline-expanded. This body is then transferred
    *  back to `f` at erasure, using method addRetainedInlineBodies.

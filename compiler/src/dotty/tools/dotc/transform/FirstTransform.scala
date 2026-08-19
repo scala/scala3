@@ -117,9 +117,9 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
 
   /** Eliminate self in Template
    *  Under captureChecking, we keep the self type `S` around in a type definition
-   *
+   *  ```
    *     private[this] type $this = S
-   *
+   *  ```
    *  This is so that the type can be checked for well-formedness in the CaptureCheck phase.
    */
   override def transformTemplate(impl: Template)(using Context): Tree =
