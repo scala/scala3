@@ -35,11 +35,6 @@ class ScalaJSCompilationTests {
 }
 
 object ScalaJSCompilationTests extends ParallelTesting {
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-
-  @AfterClass def tearDown(): Unit =
-    cleanup()
-    summaryReport.echoSummary()
 
   // Run tests -----------------------------------------------------------------
 

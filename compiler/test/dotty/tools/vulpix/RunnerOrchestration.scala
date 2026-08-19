@@ -2,6 +2,7 @@ package dotty
 package tools
 package vulpix
 
+import org.junit.AfterClass
 import java.io.{BufferedReader, IOException, InputStreamReader, PrintStream, File as JFile}
 import java.nio.file.Paths
 import java.nio.charset.StandardCharsets.UTF_8
@@ -37,6 +38,7 @@ import scala.jdk.CollectionConverters.ListHasAsScala
  *  child process is destroyed and a new child is spawned.
  */
 trait RunnerOrchestration:
+  given summaryReport: SummaryReporting = SummaryReport()
 
   /** Open JDI connection for testing the debugger */
   def debugMode: Boolean = false
@@ -50,8 +52,10 @@ trait RunnerOrchestration:
     /** wait until the end of the main method */
     def exit(): Status
 
-  /** Kill all processes */
-  def cleanup() = monitor.killAll()
+  @AfterClass
+  def cleanup(): Unit =
+    monitor.killAll()
+    summaryReport.echoSummary()
 
   private val monitor = new RunnerMonitor
   export monitor.debugMain

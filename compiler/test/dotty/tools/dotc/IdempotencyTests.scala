@@ -14,7 +14,7 @@ import vulpix.*
 
 class IdempotencyTests {
   import TestConfiguration.*
-  import IdempotencyTests.*
+  import IdempotencyTests.{*, given}
   import CompilationTest.aggregateTests
 
   // ignore flaky tests
@@ -64,10 +64,4 @@ class IdempotencyTests {
 
 }
 
-object IdempotencyTests extends ParallelTesting {
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def tearDown(): Unit = {
-    super.cleanup()
-    summaryReport.echoSummary()
-  }
-}
+object IdempotencyTests extends ParallelTesting

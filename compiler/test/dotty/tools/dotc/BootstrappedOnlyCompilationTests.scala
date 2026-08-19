@@ -15,7 +15,7 @@ import java.nio.file.*
 class BootstrappedOnlyCompilationTests {
   import ParallelTesting.*
   import TestConfiguration.*
-  import BootstrappedOnlyCompilationTests.*
+  import BootstrappedOnlyCompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
   // Positive tests ------------------------------------------------------------
@@ -207,10 +207,4 @@ class BootstrappedOnlyCompilationTests {
   }
 }
 
-object BootstrappedOnlyCompilationTests extends ParallelTesting with CoverageSupport {
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def tearDown(): Unit = {
-    super.cleanup()
-    summaryReport.echoSummary()
-  }
-}
+object BootstrappedOnlyCompilationTests extends ParallelTesting with CoverageSupport

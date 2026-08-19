@@ -27,12 +27,6 @@ class DebugTests:
 object DebugTests extends ParallelTesting:
   override def debugMode = true
 
-  given summaryReport: SummaryReporting = new SummaryReport
-
-  @AfterClass def tearDown(): Unit =
-    super.cleanup()
-    summaryReport.echoSummary()
-
   extension (test: CompilationTest)
     private def checkDebug()(using SummaryReporting): test.type =
       import test.*

@@ -8,9 +8,4 @@ package dotty.tools.vulpix
  *    compileFilesInDir("tests/pos", defaultOptions)(TestGroup("compileStdLib")) // will output in ./out/compileStdLib/...
  *    compileFilesInDir("tests/pos", defaultOptimised)(TestGroup("optimised/testOptimised")) // will output in ./out/optimised/testOptimised/...
  */
-
-opaque type TestGroup = String
-
-object TestGroup:
-  inline def apply(inline name: String): TestGroup = name
-  extension (inline group: TestGroup) inline def name: String = group
+case class TestGroup(name: String)

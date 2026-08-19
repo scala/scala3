@@ -12,7 +12,7 @@ import scala.concurrent.duration.*
 
 class FromTastyTests {
   import TestConfiguration.*
-  import FromTastyTests.*
+  import FromTastyTests.{*, given}
 
   @Test def posTestFromTasty: Unit = {
     // Can be reproduced with
@@ -38,10 +38,4 @@ class FromTastyTests {
   }
 }
 
-object FromTastyTests extends ParallelTesting {
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def tearDown(): Unit = {
-    super.cleanup()
-    summaryReport.echoSummary()
-  }
-}
+object FromTastyTests extends ParallelTesting

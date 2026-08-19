@@ -7,7 +7,6 @@ import org.junit.AfterClass
 import vulpix.*
 
 final class JSR223Tests:
-
   import JSR223Tests.{*, given}
 
   @Test def filetests: Unit =
@@ -20,13 +19,4 @@ final class JSR223Tests:
 
 end JSR223Tests
 
-object JSR223Tests extends ParallelTesting:
-
-  given report: SummaryReporting = new SummaryReport
-
-  @AfterClass def tearDown(): Unit = {
-    super.cleanup()
-    report.echoSummary()
-  }
-
-end JSR223Tests
+object JSR223Tests extends ParallelTesting
