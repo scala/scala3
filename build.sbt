@@ -42,6 +42,7 @@ val `dist-mac-x86_64` = Build.`dist-mac-x86_64`
 val `dist-mac-aarch64` = Build.`dist-mac-aarch64`
 val `dist-win-x86_64` = Build.`dist-win-x86_64`
 val `dist-linux-x86_64` = Build.`dist-linux-x86_64`
+val `dist-linux-x86_64-deb` = Build.`dist-linux-x86_64-deb`
 val `dist-linux-aarch64` = Build.`dist-linux-aarch64`
 val `community-build` = Build.`community-build`
 val `scala3-presentation-compiler` = Build.`scala3-presentation-compiler`

@@ -10,6 +10,9 @@ import com.typesafe.sbt.packager.universal.UniversalPlugin
 import com.typesafe.sbt.packager.universal.UniversalPlugin.autoImport.Universal
 import com.typesafe.sbt.packager.windows.WindowsPlugin
 import com.typesafe.sbt.packager.windows.WindowsPlugin.autoImport.Windows
+import com.typesafe.sbt.packager.debian.DebianPlugin
+import com.typesafe.sbt.packager.debian.DebianPlugin.autoImport.Debian
+import com.typesafe.sbt.packager.linux.LinuxPlugin.autoImport.Linux
 import sbt.Package.ManifestAttributes
 import sbt.PublishBinPlugin.autoImport._
 import dotty.tools.sbtplugin._
@@ -627,6 +630,7 @@ object Build {
     `dist-mac-aarch64`,
     `dist-win-x86_64`,
     `dist-linux-x86_64`,
+    `dist-linux-x86_64-deb`,
     `dist-linux-aarch64`,
   )
 
@@ -2678,6 +2682,43 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-pc-linux.gz")
+    )
+
+  lazy val `dist-linux-x86_64-deb` = project.in(file("dist/linux-x86_64-deb")).asDist
+    .enablePlugins(DebianPlugin) // TO GENERATE THE `.deb` package
+    .settings(packageName := (dist / packageName).value + "-x86_64-pc-linux")
+    .settings(
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-pc-linux.gz")
+    )
+    .settings(
+      Linux / packageName := "scala3",
+      Debian / name       := "scala3",
+      // Debian version ordering:
+      //   `-` is used for "debian revision", which we're not using, so we replace it
+      //   `~` sorts BEFORE empty string (so x.y.z~RC is older than x.y.z)
+      //   `+` is just an ordinary character, so we use it instead of `-` when we're not using `~`
+      // For reference: https://www.debian.org/doc/debian-policy/ch-controlfields.html#version
+      Debian / version := version.value
+        .replaceFirst("-RC", "~RC").replaceFirst("-bin-", "~bin-").replace("-", "+"),
+      Debian / packageArchitecture := "amd64",
+      // java17-runtime-headless - virtual package, satisfied by any existing java 17+ package
+      // If it's not available, we try openjdk-17-jre-headless and then openjdk-21-jre-headless (for systems without openjdk 17, e.g. Debian 13 Trixie)
+      debianPackageDependencies := Seq("java17-runtime-headless | openjdk-17-jre-headless | openjdk-21-jre-headless"),
+      maintainer         := "The Scala Programming Language",
+      packageSummary     := s"Scala $dottyVersion",
+      packageDescription := "The Scala Programming Language",
+      // Emit a fixed-name `scala.deb` so CI can reference it without a glob
+      // Debian packaging doesn't seem to respect `artifactPath`
+      Debian / packageBin := {
+        val built = (Debian / packageBin).dependsOn(republish).value
+        val fixed = built.getParentFile / "scala.deb"
+        IO.copyFile(built, fixed)
+        fixed
+      },
     )
 
   lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist
