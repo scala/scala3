@@ -14,23 +14,26 @@ private[vulpix] object VulpixConsole:
 
   private val Dim = "\u001b[2m"
   private val BoldCyan = Console.BOLD + Console.CYAN
-  private val startAnnounced = AtomicBoolean()
+  private val startAnnounced = new AtomicBoolean
+
+  def ciEnabled(environment: collection.Map[String, String], isCI: Boolean): Boolean =
+    isCI && environment.get("VULPIX_CI").contains("true")
+
+  def ciEnabled: Boolean = ciEnabled(sys.env, Properties.isRunByCI)
 
   def colorsEnabled(environment: collection.Map[String, String], isCI: Boolean): Boolean =
-    isCI && environment.get("GITHUB_ACTIONS").contains("true") && !environment.contains("NO_COLOR")
+    ciEnabled(environment, isCI) && environment.get("GITHUB_ACTIONS").contains("true") && !environment.contains("NO_COLOR")
 
   def colorsEnabled: Boolean = colorsEnabled(sys.env, Properties.isRunByCI)
 
   def pulseEnabled(environment: collection.Map[String, String], isCI: Boolean): Boolean =
-    isCI && environment.get("RUNNER_DEBUG").contains("1")
+    ciEnabled(environment, isCI) && environment.get("RUNNER_DEBUG").contains("1")
 
   def pulseEnabled: Boolean = pulseEnabled(sys.env, Properties.isRunByCI)
 
   /** Close the CI section containing sbt startup when the first Vulpix batch starts. */
   def announceStart(): Unit =
-    if Properties.isRunByCI && sys.env.get("VULPIX_CI_FOLD").contains("true")
-        && startAnnounced.compareAndSet(false, true)
-    then println("::endgroup::")
+    if ciEnabled && startAnnounced.compareAndSet(false, true) then println("::endgroup::")
 
   def renderSummary(summary: Summary, useColors: Boolean): String =
     val failures = summary.failures
@@ -44,14 +47,11 @@ private[vulpix] object VulpixConsole:
       styled(s"== Vulpix Test Report: ${summary.passed} $testLabel passed, no failures$skippedText ==", Console.GREEN, useColors)
     else
       val failedLines = failures.map(info => styled(s"    ${info.title}${info.extra}", Console.RED, useColors)).mkString("\n")
-      s"""|${styled("=" * 80, Console.CYAN, useColors)}
-          |${styled("Vulpix Test Report", BoldCyan, useColors)}
-          |${styled("=" * 80, Console.CYAN, useColors)}
-          |
-          |$passedText, ${styled(s"${failures.size} failed", Console.RED, useColors)}$skippedText, ${styled(s"$total total", Console.BOLD, useColors)}
+      val failedText = styled(s"${failures.size} failed", Console.RED, useColors)
+      val totalText = styled(s"$total total", Console.BOLD, useColors)
+      s"""|${styled("== Vulpix Test Report:", BoldCyan, useColors)} $passedText, $failedText$skippedText, $totalText ${styled("==", BoldCyan, useColors)}
           |${styled("Failed tests:", Console.RED, useColors)}
-          |$failedLines
-          |""".stripMargin
+          |$failedLines""".stripMargin
 
   def renderProgress(progress: Progress, useColors: Boolean): String =
     val groups = abbreviated(progress.groupNames.map(sanitize(_, 48)), 3)
@@ -76,11 +76,8 @@ private[vulpix] object VulpixConsole:
       s" | ${styled(s"${formatDuration(progress.elapsedSeconds)} elapsed", Dim, useColors)}" +
       styled(longestText, Dim, useColors)
 
-  def renderGroupStarts(groups: Iterable[String], useColors: Boolean): String =
-    groups.toList.sorted
-      .map(group =>
-        s"${styled("[Vulpix]", BoldCyan, useColors)} Starting ${styled(sanitize(group, 48), Console.CYAN, useColors)}")
-      .mkString("\n")
+  def renderGroupStart(group: String, useColors: Boolean): String =
+    s"${styled("[Vulpix]", BoldCyan, useColors)} Starting ${styled(sanitize(group, 48), Console.CYAN, useColors)}"
 
   def renderSlowestByGroup(timings: Iterable[TestTiming], useColors: Boolean): String =
     timings
@@ -127,19 +124,15 @@ private[vulpix] object VulpixConsole:
       (styled(heading, BoldCyan, useColors) :: rows).mkString("\n")
 
   private def formatNanos(nanos: Long): String =
-    formatDuration(math.max(nanos, 0L) / 1_000_000L, precise = true)
+    val millis = math.max(nanos, 0L) / 1_000_000L
+    if millis < 1_000 then s"${millis}ms"
+    else
+      val minutes = millis / 60_000
+      val seconds = millis % 60_000 / 1_000
+      val fraction = f".${millis % 1_000}%03d"
+      if minutes > 0 then f"${minutes}m${seconds}%02d${fraction}s"
+      else s"$seconds${fraction}s"
 
   private def formatDuration(seconds: Long): String =
     val safe = math.max(seconds, 0L)
-    if safe < 60 then s"${safe}s" else formatDuration(safe * 1_000L, precise = false)
-
-  private def formatDuration(millis: Long, precise: Boolean): String =
-    if millis < 1_000 then s"${millis}ms"
-    else
-      val hours = millis / 3_600_000
-      val minutes = millis % 3_600_000 / 60_000
-      val seconds = millis % 60_000 / 1_000
-      val fraction = if precise then f".${millis % 1_000}%03d" else ""
-      if hours > 0 then f"${hours}h${minutes}%02dm${seconds}%02d${fraction}s"
-      else if minutes > 0 then f"${minutes}m${seconds}%02d${fraction}s"
-      else s"$seconds${fraction}s"
+    if safe < 60 then s"${safe}s" else f"${safe / 60}m${safe % 60}%02ds"

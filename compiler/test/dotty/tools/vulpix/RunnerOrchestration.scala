@@ -57,8 +57,8 @@ trait RunnerOrchestration:
   def cleanup(): Unit =
     try monitor.killAll()
     finally
-      summaryReport.flushTestTimings()
-      if !Properties.isRunByCI then summaryReport.echoSummary()
+      if VulpixConsole.ciEnabled then summaryReport.flushTestTimings()
+      else summaryReport.echoSummary()
 
   private val monitor = new RunnerMonitor
   export monitor.debugMain

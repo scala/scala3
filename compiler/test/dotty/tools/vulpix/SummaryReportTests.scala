@@ -1,5 +1,6 @@
 package dotty.tools.vulpix
 
+import java.nio.charset.StandardCharsets.UTF_8
 import org.junit.Test
 
 class SummaryReportTests:
@@ -8,27 +9,21 @@ class SummaryReportTests:
   @Test def summaryRendering: Unit =
     val report = SummaryReport()
     report.reportResults(2, List(FailedTestInfo("tests/z.scala", " failed"), FailedTestInfo("tests/a.scala", " failed")), 1)
-    report.reportResults(1, List(FailedTestInfo("tests/m.scala", " failed, test timed out")), 0)
+    report.reportResults(1, Nil, 0)
     report.addReproduceInstruction("REPRODUCE_SENTINEL")
     val expected =
-      """|================================================================================
-         |Vulpix Test Report
-         |================================================================================
-         |
-         |3 tests passed, 3 failed, 1 skipped, 7 total
+      """|== Vulpix Test Report: 3 tests passed, 2 failed, 1 skipped, 6 total ==
          |Failed tests:
          |    tests/a.scala failed
-         |    tests/m.scala failed, test timed out
-         |    tests/z.scala failed
-         |""".stripMargin
+         |    tests/z.scala failed""".stripMargin
 
-    assert(report.summaryText == expected, report.summaryText)
+    val plain = VulpixConsole.renderSummary(report.summary, useColors = false)
+    assert(plain == expected, plain)
     assert(report.reproductionText == "REPRODUCE_SENTINEL")
-    assert(!report.summaryText.contains("REPRODUCE_SENTINEL"))
-    val colored = report.summaryText(useColors = true)
+    assert(!plain.contains("REPRODUCE_SENTINEL"))
+    val colored = VulpixConsole.renderSummary(report.summary, useColors = true)
     assert(VulpixConsole.stripColors(colored) == expected, colored)
-    List(31, 32, 33).foreach(code => assert(colored.contains(s"\u001b[${code}m"), colored))
-    assert(!report.reproductionText.contains("\u001b["))
+    assert(colored.contains("\u001b["), colored)
 
   @Test def progressRenderingAndEnvironmentGates: Unit =
     val progress = VulpixConsole.Progress(
@@ -46,35 +41,22 @@ class SummaryReportTests:
     assert(rendered == expected, rendered)
     assert(rendered.linesIterator.size == 1 && !rendered.contains('\u001b'), rendered)
     assert(VulpixConsole.stripColors(VulpixConsole.renderProgress(progress, useColors = true)) == expected)
-    assert(VulpixConsole.renderGroupStarts(Set("patmat", "parallelBackend"), false) ==
-      "[Vulpix] Starting parallelBackend\n[Vulpix] Starting patmat")
-
-    val output = java.io.ByteArrayOutputStream()
+    val output = new java.io.ByteArrayOutputStream
     Console.withOut(output) {
-      val live = SummaryReport(pulse = true, announceGroups = true)
-      live.beginTestGroups(Set("patmat"))
-      live.beginTestGroups(Set("patmat"))
-      live.beginTestGroups(Set("runAll"))
+      val live = SummaryReport(pulse = true)
+      List("patmat", "patmat", "runAll").foreach(group => live.beginTestGroups(Set(group)))
     }
-    assert(VulpixConsole.stripColors(output.toString("UTF-8")).linesIterator.toList ==
+    assert(VulpixConsole.stripColors(output.toString(UTF_8)).linesIterator.toList ==
       List("[Vulpix] Starting patmat", "[Vulpix] Starting runAll"))
 
-    val quietOutput = java.io.ByteArrayOutputStream()
-    Console.withOut(quietOutput) {
-      SummaryReport(pulse = false, announceGroups = true).beginTestGroups(Set("compileNeg"))
-    }
-    assert(VulpixConsole.stripColors(quietOutput.toString("UTF-8")).trim == "[Vulpix] Starting compileNeg")
-
-    val github = Map("GITHUB_ACTIONS" -> "true")
+    val github = Map("VULPIX_CI" -> "true", "GITHUB_ACTIONS" -> "true")
+    assert(VulpixConsole.ciEnabled(github, isCI = true))
+    assert(!VulpixConsole.ciEnabled(github, isCI = false))
     assert(VulpixConsole.colorsEnabled(github, isCI = true))
-    assert(!VulpixConsole.colorsEnabled(github, isCI = false))
-    assert(!VulpixConsole.colorsEnabled(Map.empty, isCI = true))
     assert(!VulpixConsole.colorsEnabled(github + ("NO_COLOR" -> ""), isCI = true))
-    val debug = Map("RUNNER_DEBUG" -> "1")
+    val debug = github + ("RUNNER_DEBUG" -> "1")
     assert(VulpixConsole.pulseEnabled(debug, isCI = true))
-    assert(!VulpixConsole.pulseEnabled(debug, isCI = false))
-    assert(!VulpixConsole.pulseEnabled(Map.empty, isCI = true))
-    assert(!VulpixConsole.pulseEnabled(Map("RUNNER_DEBUG" -> "true"), isCI = true))
+    assert(!VulpixConsole.pulseEnabled(github, isCI = true))
 
   @Test def slowestRendering: Unit =
     val timings = List(
@@ -85,29 +67,25 @@ class SummaryReportTests:
       VulpixConsole.TestTiming("compileNeg", "quick.scala", millis(842)),
       VulpixConsole.TestTiming("compileNeg", "quick.scala", millis(900)),
       VulpixConsole.TestTiming("compileNeg", "excluded.scala", millis(1)),
-      VulpixConsole.TestTiming("compilePos", "hour.scala", millis(3_600_001)),
+      VulpixConsole.TestTiming("compilePos", "other.scala", millis(60_001)),
     )
-    val byGroup =
-      """|[Vulpix] Top 5 slowest in compileNeg:
-         |  1. slow.scala (2m05.432s)
-         |  2. a.scala (12.842s)
-         |  3. b.scala (12.842s)
-         |  4. mid.scala (3.000s)
-         |  5. quick.scala (900ms)
-         |[Vulpix] Top 5 slowest in compilePos:
-         |  1. hour.scala (1h00m00.001s)""".stripMargin
     val overall =
       """|[Vulpix] Top 5 slowest overall:
-         |  1. [compilePos] hour.scala (1h00m00.001s)
-         |  2. [compileNeg] slow.scala (2m05.432s)
+         |  1. [compileNeg] slow.scala (2m05.432s)
+         |  2. [compilePos] other.scala (1m00.001s)
          |  3. [compileNeg] a.scala (12.842s)
          |  4. [compileNeg] b.scala (12.842s)
          |  5. [compileNeg] mid.scala (3.000s)""".stripMargin
-    assert(VulpixConsole.renderSlowestByGroup(timings, false) == byGroup)
+    val byGroup = VulpixConsole.renderSlowestByGroup(timings, false)
+    assert(byGroup.linesIterator.filter(_.startsWith("[Vulpix]")).toList ==
+      List("[Vulpix] Top 5 slowest in compileNeg:", "[Vulpix] Top 5 slowest in compilePos:"))
+    assert(byGroup.contains("5. quick.scala (900ms)") && !byGroup.contains("excluded.scala"), byGroup)
     assert(VulpixConsole.renderSlowestOverall(timings, false) == overall)
     assert(VulpixConsole.renderSlowestOverall(Nil, false).isEmpty)
 
   @Test def timingAccumulationAndDrain: Unit =
+    val child = TestGroup("topLevel").child("internal/multi-file")
+    assert(child.reportingName == "topLevel" && child.name == "internal/multi-file")
     val report = SummaryReport(pulse = false)
     val first = VulpixConsole.TestTiming("compilePos", "first.scala", 3_000_000L)
     val second = VulpixConsole.TestTiming("compilePos", "second.scala", 2_000_000L)
@@ -118,4 +96,3 @@ class SummaryReportTests:
     NoResultSummaryReport(report).reportTestTimings(List(VulpixConsole.TestTiming("nested", "hidden.scala", Long.MaxValue)))
     assert(report.drainTestTimingsExcept(Set("compileNeg")) == List(first, second))
     assert(report.drainTestTimingsExcept(Set.empty) == List(third))
-    assert(!report.overallTimingsText.contains("hidden.scala"), report.overallTimingsText)

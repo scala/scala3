@@ -54,7 +54,7 @@ object DebugTests extends ParallelTesting:
             Failure(s"Debug step failed: $location\n" + message)
           case e: Exception =>
             Failure(s"Debug test failed due to unexpected error: ${e.getMessage}")
-      reportDebuggeeStatus(testSource, status)
+      reportDebuggeeStatus(testSource, status, logger)
     end verifyDebug
 
     private def playDebugSteps(debugger: Debugger, steps: Seq[DebugStepAssert[?]], verbose: Boolean = false): Unit =
@@ -101,17 +101,17 @@ object DebugTests extends ParallelTesting:
       continueIfPaused()
     end playDebugSteps
 
-    private def reportDebuggeeStatus(testSource: TestSource, status: Status): Unit =
+    private def reportDebuggeeStatus(testSource: TestSource, status: Status, logger: LoggedRunnable): Unit =
       status match
         case Success(output) => ()
         case Failure(output) =>
           if output == "" then
-            echo(s"Test '${testSource.title}' failed with no output")
+            logger.echo(s"Test '${testSource.title}' failed with no output")
           else
-            echo(s"Test '${testSource.title}' failed with output:")
-            echo(output)
+            logger.echo(s"Test '${testSource.title}' failed with output:")
+            logger.echo(output)
           failTestSource(testSource)
         case Timeout =>
-          echo("failed because test " + testSource.title + " timed out")
+          logger.echo("failed because test " + testSource.title + " timed out")
           failTestSource(testSource, TimeoutFailure(testSource.title))
   end DebugTest

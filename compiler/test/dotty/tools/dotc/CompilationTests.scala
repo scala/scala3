@@ -173,8 +173,7 @@ class CompilationTests {
     compileFilesInDir("tests/fuzzy", defaultOptions).checkNoCrash()
   }
 
-  @Test def negSpecial: Unit = {
-    given TestGroup = TestGroup("negSpecial", reportTimings = false)
+  @Test def negSpecial: Unit =
     special(
       defaultOptions,
       "tests/neg-special/22459",
@@ -182,8 +181,7 @@ class CompilationTests {
       o => compileFile("tests/neg-special/22459/A.scala", o),
       ("A/22459/A/", o => compileFile("tests/neg-special/22459/B.scala", o)),
       ("B/22459/B/", o => compileFile("tests/neg-special/22459/C.scala", o))
-    )
-  }
+    )(using TestGroup("negSpecial", reportTimings = false))
 
   // Run tests -----------------------------------------------------------------
 
@@ -332,7 +330,7 @@ class CompilationTests {
 
   // initialization tests
   @Test def safeInit: Unit = {
-    given testGroup: TestGroup = TestGroup("safeInit")
+    given TestGroup = TestGroup("safeInit")
     val options = defaultOptions.and("-Wsafe-init", "-Werror")
     compileFilesInDir("tests/init/neg", options).checkExpectedErrors()
     val initWarnTest = withCoverage(compileFilesInDir("tests/init/warn", defaultOptions.and("-Wsafe-init")))
@@ -355,7 +353,7 @@ class CompilationTests {
      * compatible, but (b) and (c) are not. If (b) and (c) are compiled together, there should be
      * an error when reading the files' TASTy trees. */
     locally {
-      val tastyErrorGroup = testGroup.child("checkInit/tasty-error/val-or-defdef")
+      val tastyErrorGroup = summon[TestGroup].child("checkInit/tasty-error/val-or-defdef")
       val tastyErrorOptions = options.without("-Werror")
 
       val classA0 = Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "A", "v0", "A").toString
@@ -379,7 +377,7 @@ class CompilationTests {
      * compatible, but v1/B and v0/A are not. If v1/B and v0/A are compiled together, there should be
      * an error when reading the files' TASTy trees. This fact is demonstrated by the compilation of Main. */
     locally {
-      val tastyErrorGroup = testGroup.child("checkInit/tasty-error/typedef")
+      val tastyErrorGroup = summon[TestGroup].child("checkInit/tasty-error/typedef")
       val tastyErrorOptions = options.without("-Werror").without("-Ycheck:all")
 
       val classC =  Paths.get(defaultOutputDir.getAbsolutePath, tastyErrorGroup.name, "C", "typedef", "C").toString

@@ -34,7 +34,7 @@ jobs:
       - name: Test `scala3-compiler-nonbootstrapped`
         run: |
           echo '::group::sbt startup and compiler build'
-          VULPIX_CI_FOLD=true ./project/scripts/sbt '${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') && 'scala3-nonbootstrapped/testCompilation' || 'scala3-compiler-nonbootstrapped/test' }}'
+          VULPIX_CI=true ./project/scripts/sbt 'set ThisBuild / Test / logLevel := Level.Error; ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') && 'scala3-nonbootstrapped/testCompilation' || 'scala3-compiler-nonbootstrapped/test' }}'
 
       - name: Vulpix failure output
         if: failure()
@@ -70,7 +70,7 @@ jobs:
       - name: Test `scala3-compiler-bootstrapped`
         run: |
           echo '::group::sbt startup and compiler build'
-          VULPIX_CI_FOLD=true ./project/scripts/sbt '${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') && 'scala3-bootstrapped/testCompilation' || 'scala3-compiler-bootstrapped/test' }}'
+          VULPIX_CI=true ./project/scripts/sbt 'set ThisBuild / Test / logLevel := Level.Error; ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') && 'scala3-bootstrapped/testCompilation' || 'scala3-compiler-bootstrapped/test' }}'
 
       - name: Vulpix failure output
         if: failure()

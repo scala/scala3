@@ -12,11 +12,9 @@ package dotty.tools.vulpix
  *  top-level progress and timing report. `reportTimings` excludes staged tests.
  */
 case class TestGroup(name: String, reportAs: Option[String] = None, reportTimings: Boolean = true):
-  /** The top-level group used for progress and timing reports. */
   def reportingName: String = reportAs.getOrElse(name)
 
-  /** A physically isolated subgroup with this group's reporting identity. */
   def child(childName: String): TestGroup =
-    TestGroup(childName, Some(reportingName), reportTimings)
+    copy(name = childName, reportAs = Some(reportingName))
 
   override def toString: String = name
