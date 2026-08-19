@@ -3682,7 +3682,7 @@ final class NamedPatternNotApplicable(selectorType: Type)(using Context) extends
 
   override protected def explain(using Context): String = ""
 
-/**  @param reason            The reason for the unnecessary null. The warning given to the user will be i""""Unncessary .nn: $reason"""
+/**  @param reason            The reason for the unnecessary null. The warning given to the user will be i""""Unncessary .nn: \$reason"""
    *  @param sourcePosition   The sourcePosition of the qualifier
    */
 class UnnecessaryNN(reason: String, sourcePosition: SourcePosition)(using Context) extends SyntaxMsg(UnnecessaryNN) {

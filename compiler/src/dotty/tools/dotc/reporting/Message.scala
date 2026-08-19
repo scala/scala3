@@ -364,7 +364,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
   import Message.*
 
   /** The kind of the error message, e.g. "Syntax" or "Type Mismatch".
-    * This will be printed as "$kind Error", "$kind Warning", etc, on the first
+    * This will be printed as "\$kind Error", "\$kind Warning", etc, on the first
     * line of the message.
     */
   def kind: MessageKind
