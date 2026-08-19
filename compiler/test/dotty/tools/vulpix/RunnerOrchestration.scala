@@ -55,8 +55,10 @@ trait RunnerOrchestration:
 
   @AfterClass
   def cleanup(): Unit =
-    monitor.killAll()
-    if !Properties.isRunByCI then summaryReport.echoSummary()
+    try monitor.killAll()
+    finally
+      summaryReport.flushTestTimings()
+      if !Properties.isRunByCI then summaryReport.echoSummary()
 
   private val monitor = new RunnerMonitor
   export monitor.debugMain

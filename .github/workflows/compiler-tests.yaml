@@ -41,9 +41,9 @@ jobs:
           VULPIX_ONLY: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') }}
         run: |
           if [[ "$VULPIX_ONLY" == "true" ]]; then
-            ./project/scripts/sbt scala3-nonbootstrapped/testCompilation
+            .github/workflows/run-vulpix-ci.sh ./project/scripts/sbt scala3-nonbootstrapped/testCompilation
           else
-            ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
+            .github/workflows/run-vulpix-ci.sh ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
           fi
 
       - name: Full Vulpix test log
@@ -86,9 +86,9 @@ jobs:
           VULPIX_ONLY: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') }}
         run: |
           if [[ "$VULPIX_ONLY" == "true" ]]; then
-            ./project/scripts/sbt scala3-bootstrapped/testCompilation
+            .github/workflows/run-vulpix-ci.sh ./project/scripts/sbt scala3-bootstrapped/testCompilation
           else
-            ./project/scripts/sbt scala3-compiler-bootstrapped/test
+            .github/workflows/run-vulpix-ci.sh ./project/scripts/sbt scala3-compiler-bootstrapped/test
           fi
 
       - name: Full Vulpix test log

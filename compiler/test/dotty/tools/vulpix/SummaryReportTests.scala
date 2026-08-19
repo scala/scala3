@@ -100,3 +100,78 @@ class SummaryReportTests:
     assert(!VulpixConsole.pulseEnabled(enabled, isCI = false))
     assert(!VulpixConsole.pulseEnabled(Map.empty, isCI = true))
     assert(!VulpixConsole.pulseEnabled(Map("VULPIX_CI_PULSE" -> "false"), isCI = true))
+
+  @Test def slowestTestRendering: Unit =
+    def millis(value: Long): Long = value * 1_000_000L
+    val timings = List(
+      VulpixConsole.TestTiming("compileNeg", "tests/neg/slow.scala", millis(125_432)),
+      VulpixConsole.TestTiming("compileNeg", "tests/neg/a.scala", millis(12_842)),
+      VulpixConsole.TestTiming("compileNeg", "tests/neg/b.scala", millis(12_842)),
+      VulpixConsole.TestTiming("compileNeg", "tests/neg/mid.scala", millis(3_000)),
+      VulpixConsole.TestTiming("compileNeg", "tests/neg/quick.scala", millis(842)),
+      VulpixConsole.TestTiming("compileNeg", "tests/neg/excluded.scala", millis(1)),
+      VulpixConsole.TestTiming("compilePos", "tests/pos/slow\u001b\n::error::injected.scala", millis(3_600_001)),
+    )
+    val expectedByGroup =
+      """|[Vulpix] Top 5 slowest in compileNeg:
+         |  1. tests/neg/slow.scala (2m05.432s)
+         |  2. tests/neg/a.scala (12.842s)
+         |  3. tests/neg/b.scala (12.842s)
+         |  4. tests/neg/mid.scala (3.000s)
+         |  5. tests/neg/quick.scala (842ms)
+         |[Vulpix] Top 5 slowest in compilePos:
+         |  1. tests/pos/slow??::error::injected.scala (1h00m00.001s)""".stripMargin
+    val expectedOverall =
+      """|[Vulpix] Top 5 slowest overall:
+         |  1. [compilePos] tests/pos/slow??::error::injected.scala (1h00m00.001s)
+         |  2. [compileNeg] tests/neg/slow.scala (2m05.432s)
+         |  3. [compileNeg] tests/neg/a.scala (12.842s)
+         |  4. [compileNeg] tests/neg/b.scala (12.842s)
+         |  5. [compileNeg] tests/neg/mid.scala (3.000s)""".stripMargin
+
+    assert(VulpixConsole.renderSlowestByGroup(timings, useColors = false) == expectedByGroup)
+    assert(VulpixConsole.renderSlowestOverall(timings, useColors = false) == expectedOverall)
+    assert(VulpixConsole.renderSlowestByGroup(Nil, useColors = false).isEmpty)
+    assert(VulpixConsole.renderSlowestOverall(Nil, useColors = false).isEmpty)
+
+    val colored = VulpixConsole.renderSlowestOverall(timings, useColors = true)
+    assert(VulpixConsole.stripColors(colored) == expectedOverall, colored)
+
+  @Test def timingAccumulationExcludesNestedRuns: Unit =
+    val report = SummaryReport(pulse = false)
+    val first = VulpixConsole.TestTiming("compilePos", "tests/pos/first.scala", 2_000_000L)
+    val second = VulpixConsole.TestTiming("compileNeg", "tests/neg/second.scala", 1_000_000L)
+    report.reportTestTimings(List(first))
+    report.reportTestTimings(List(second))
+    val expected = VulpixConsole.renderSlowestOverall(List(first, second), useColors = false)
+    assert(report.overallTimingsText == expected)
+
+    NoResultSummaryReport(report).reportTestTimings(
+      List(VulpixConsole.TestTiming("nested", "should-not-appear.scala", Long.MaxValue))
+    )
+    assert(report.overallTimingsText == expected)
+
+  @Test def groupTimingsCoalesceUntilNextGroup: Unit =
+    val report = SummaryReport(pulse = false)
+    val timings = List(
+      VulpixConsole.TestTiming("compilePos", "tests/pos/first.scala", 3_000_000L),
+      VulpixConsole.TestTiming("compilePos", "tests/pos/second.scala", 2_000_000L),
+      VulpixConsole.TestTiming("compileNeg", "tests/neg/third.scala", 1_000_000L),
+    )
+    report.reportTestTimings(timings.take(1))
+    assert(report.drainTestTimingsExcept(Set("compilePos")).isEmpty)
+
+    report.reportTestTimings(timings.slice(1, 2))
+    assert(report.drainTestTimingsExcept(Set("compileNeg")) == timings.take(2))
+
+    report.reportTestTimings(timings.drop(2))
+    assert(report.drainTestTimingsExcept(Set.empty) == timings.drop(2))
+    assert(report.drainTestTimingsExcept(Set.empty).isEmpty)
+    assert(report.overallTimingsText == VulpixConsole.renderSlowestOverall(timings, useColors = false))
+
+  @Test def startMarkerDetection: Unit =
+    val environment = Map("VULPIX_CI_START_MARKER" -> "safe-marker")
+    assert(VulpixConsole.startMarker(environment, isCI = true).contains("safe-marker"))
+    assert(VulpixConsole.startMarker(environment, isCI = false).isEmpty)
+    assert(VulpixConsole.startMarker(Map.empty, isCI = true).isEmpty)
+    assert(VulpixConsole.startMarker(environment.updated("VULPIX_CI_START_MARKER", "bad\nmarker"), isCI = true).isEmpty)

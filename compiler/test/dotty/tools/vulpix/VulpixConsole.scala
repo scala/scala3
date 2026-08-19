@@ -1,9 +1,11 @@
 package dotty.tools.vulpix
 
 import dotty.Properties
+import java.util.concurrent.atomic.AtomicBoolean
 
 private[vulpix] object VulpixConsole:
   final case class ActiveTest(title: String, runningSeconds: Long)
+  final case class TestTiming(group: String, title: String, durationNanos: Long)
 
   final case class Progress(
     groupNames: List[String],
@@ -24,6 +26,7 @@ private[vulpix] object VulpixConsole:
   private val Yellow = "\u001b[33m"
   private val Cyan = "\u001b[36m"
   private val BoldCyan = Bold + Cyan
+  private val startAnnounced = AtomicBoolean()
 
   def colorsEnabled(environment: collection.Map[String, String], isCI: Boolean): Boolean =
     isCI && environment.get("GITHUB_ACTIONS").contains("true") && !environment.contains("NO_COLOR")
@@ -34,6 +37,21 @@ private[vulpix] object VulpixConsole:
     isCI && environment.get("VULPIX_CI_PULSE").contains("true")
 
   def pulseEnabled: Boolean = pulseEnabled(sys.env, Properties.isRunByCI)
+
+  def startMarker(environment: collection.Map[String, String], isCI: Boolean): Option[String] =
+    if !isCI then None
+    else
+      environment
+        .get("VULPIX_CI_START_MARKER")
+        .filter(marker => marker.nonEmpty && !marker.exists(Character.isISOControl))
+
+  /** Tell the CI log wrapper that the first Vulpix batch is about to start. */
+  def announceStart(): Unit =
+    startMarker(sys.env, Properties.isRunByCI).foreach { marker =>
+      if startAnnounced.compareAndSet(false, true) then
+        System.out.println(marker)
+        System.out.flush()
+    }
 
   def renderSummary(summary: Summary, useColors: Boolean): String =
     val failures = summary.failures
@@ -82,6 +100,25 @@ private[vulpix] object VulpixConsole:
       s" | ${styled(s"${formatDuration(progress.elapsedSeconds)} elapsed", Dim, useColors)}" +
       styled(longestText, Dim, useColors)
 
+  def renderSlowestByGroup(timings: Iterable[TestTiming], useColors: Boolean): String =
+    timings
+      .groupBy(_.group)
+      .toList
+      .sortBy((group, _) => (sanitize(group, Int.MaxValue), group))
+      .map { (group, groupTimings) =>
+        renderSlowest(
+          s"[Vulpix] Top 5 slowest in ${sanitize(group, 48)}:",
+          groupTimings,
+          includeGroup = false,
+          useColors,
+        )
+      }
+      .filter(_.nonEmpty)
+      .mkString("\n")
+
+  def renderSlowestOverall(timings: Iterable[TestTiming], useColors: Boolean): String =
+    renderSlowest("[Vulpix] Top 5 slowest overall:", timings, includeGroup = true, useColors)
+
   def stripColors(text: String): String =
     text.replaceAll("\u001b\\[.*?m", "")
 
@@ -99,6 +136,42 @@ private[vulpix] object VulpixConsole:
     val clean = text.iterator.map(ch => if Character.isISOControl(ch) then '?' else ch).mkString
     if clean.length <= maxLength then clean
     else "..." + clean.takeRight(maxLength - 3)
+
+  private def renderSlowest(
+    heading: String,
+    timings: Iterable[TestTiming],
+    includeGroup: Boolean,
+    useColors: Boolean,
+  ): String =
+    val slowest = timings.toList.sortWith(timingComesBefore).take(5)
+    if slowest.isEmpty then ""
+    else
+      val rows = slowest.zipWithIndex.map { (timing, index) =>
+        val group = if includeGroup then s"[${sanitize(timing.group, 48)}] " else ""
+        val title = sanitize(timing.title, 120)
+        val duration = styled(formatNanos(timing.durationNanos), Dim, useColors)
+        s"  ${index + 1}. $group$title ($duration)"
+      }
+      (styled(heading, BoldCyan, useColors) :: rows).mkString("\n")
+
+  private def timingComesBefore(left: TestTiming, right: TestTiming): Boolean =
+    if left.durationNanos != right.durationNanos then left.durationNanos > right.durationNanos
+    else
+      val byGroup = left.group.compareTo(right.group)
+      if byGroup != 0 then byGroup < 0
+      else left.title.compareTo(right.title) < 0
+
+  private def formatNanos(nanos: Long): String =
+    val millis = math.max(nanos, 0L) / 1_000_000L
+    if millis < 1_000 then s"${millis}ms"
+    else
+      val hours = millis / 3_600_000
+      val minutes = millis % 3_600_000 / 60_000
+      val seconds = millis % 60_000 / 1_000
+      val remainder = millis % 1_000
+      if hours > 0 then f"${hours}h${minutes}%02dm${seconds}%02d.${remainder}%03ds"
+      else if minutes > 0 then f"${minutes}m${seconds}%02d.${remainder}%03ds"
+      else f"${seconds}.${remainder}%03ds"
 
   private def formatDuration(seconds: Long): String =
     val safeSeconds = math.max(seconds, 0L)

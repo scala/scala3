@@ -412,24 +412,46 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     /** Total amount of test sources being compiled by this test */
     val sourceCount = filteredSources.length
 
-    protected final class ActiveTestSource(val testSource: TestSource, val startedAt: Long)
+    protected final class ActiveTestSource(val testSource: TestSource, val startedAtNanos: Long)
 
     private var _testSourcesCompleted = 0
     private val activeTestSources = ArrayBuffer.empty[ActiveTestSource]
+    private val completedTestTimings = ArrayBuffer.empty[VulpixConsole.TestTiming]
+    private val collectTimings = summaryReport.progressEnabled && !suppressAllOutput
 
     private def testSourcesCompleted: Int = synchronized { _testSourcesCompleted }
 
     protected final def registerActive(testSource: TestSource): ActiveTestSource = synchronized {
-      val active = new ActiveTestSource(testSource, System.currentTimeMillis())
+      val active = new ActiveTestSource(testSource, System.nanoTime())
       activeTestSources += active
       active
     }
 
     /** Record completion and remove the execution from the active snapshot atomically. */
-    protected final def completeActiveTest(active: ActiveTestSource): Unit = synchronized {
-      _testSourcesCompleted += 1
-      val index = activeTestSources.indexWhere(_ eq active)
-      if index >= 0 then activeTestSources.remove(index)
+    protected final def completeActiveTest(active: ActiveTestSource): Unit = {
+      val duration = math.max(System.nanoTime() - active.startedAtNanos, 0L)
+      synchronized {
+        _testSourcesCompleted += 1
+        val index = activeTestSources.indexWhere(_ eq active)
+        if index >= 0 then activeTestSources.remove(index)
+        if collectTimings then
+          completedTestTimings += VulpixConsole.TestTiming(
+            active.testSource.group.name,
+            active.testSource.title,
+            duration,
+          )
+      }
+    }
+
+    private def testTimingsSnapshot(): List[VulpixConsole.TestTiming] = synchronized {
+      val nowNanos = System.nanoTime()
+      completedTestTimings.toList ++ activeTestSources.map { active =>
+        VulpixConsole.TestTiming(
+          active.testSource.group.name,
+          active.testSource.title,
+          math.max(nowNanos - active.startedAtNanos, 0L),
+        )
+      }
     }
 
     sealed trait Failure
@@ -516,8 +538,8 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         summaryReport.echoProgress(makeCIProgress(start))
 
     private def makeCIProgress(start: Long): VulpixConsole.Progress = synchronized {
-      val now = System.currentTimeMillis()
-      val active = activeTestSources.toList.sortBy(_.startedAt)
+      val nowNanos = System.nanoTime()
+      val active = activeTestSources.toList.sortBy(_.startedAtNanos)
       val activeGroups = active.map(_.testSource.group.name).distinct
       val groups =
         if activeGroups.nonEmpty then activeGroups
@@ -525,7 +547,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       val activeTests = active.map { active =>
         VulpixConsole.ActiveTest(
           active.testSource.title,
-          math.max(now - active.startedAt, 0L) / 1000,
+          math.max(nowNanos - active.startedAtNanos, 0L) / 1_000_000_000L,
         )
       }
       VulpixConsole.Progress(
@@ -533,7 +555,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         completed = _testSourcesCompleted,
         total = sourceCount,
         failed = failedTestSources.size,
-        elapsedSeconds = math.max(now - start, 0L) / 1000,
+        elapsedSeconds = math.max(System.currentTimeMillis() - start, 0L) / 1000,
         activeTests = activeTests,
       )
     }
@@ -818,9 +840,12 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       val skipped = skipCount
       reportResults(sourceCount - failures.size - skipped, failures, skipped + staticallySkippedCount)
       if failures.nonEmpty then reproduceInstructions.foreach(addReproduceInstruction)
+      if collectTimings then summaryReport.reportTestTimings(testTimingsSnapshot())
     }
 
     private[ParallelTesting] def executeTestSuite(): this.type = {
+      VulpixConsole.announceStart()
+      if collectTimings then summaryReport.beginTestGroups(filteredSources.iterator.map(_.group.name).toSet)
       assert(testSourcesCompleted == 0, "not allowed to re-use a `CompileRun`")
       if filteredSources.nonEmpty then
         val pool = JExecutors.newWorkStealingPool(threadLimit.getOrElse(Runtime.getRuntime.availableProcessors()))
