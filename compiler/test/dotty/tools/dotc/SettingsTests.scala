@@ -136,11 +136,11 @@ class SettingsTests:
   @Test def validateChoices: Unit =
     object Settings extends SettingGroup:
       val foo = ChoiceSetting(RootSetting, "foo", "foo", "Foo", List("a", "b"), "a")
-      val bar = IntChoiceSetting(RootSetting, "bar", "Bar", List(0, 1, 2), 0)
-      val baz = IntChoiceSetting(RootSetting, "baz", "Baz", 0 to 10, 10)
+      val bar = IntChoiceSetting(RootSetting, "bar", "b", "Bar", List(0, 1, 2), 0)
+      val baz = IntChoiceSetting(RootSetting, "baz", "c", "Baz", 0 to 10, 10)
 
-      val quux = ChoiceSetting(RootSetting, "quux", "quux", "Quux", List(), "")
-      val quuz = IntChoiceSetting(RootSetting, "quuz", "Quuz", List(), 0)
+      val quux = ChoiceSetting(RootSetting, "quux", "quuquux", "Quux", List("x", "y"), "")
+      val quuz = IntChoiceSetting(RootSetting, "quuz", "thingy", "Quuz", List(42), 0)
 
     locally {
       val args = List("-foo", "b", "-bar", "1", "-baz", "5")
@@ -167,7 +167,7 @@ class SettingsTests:
       val summary = Settings.processArguments(args, true)
       val expectedErrors = List(
         "c is not a valid choice for -foo.\nExpected a foo.\nAvailable choices: a, b",
-        "3 is not a valid choice for -bar",
+        "3 is not a valid choice for -bar.\nExpected a b.\nAvailable choices: 0, 1, 2",
         "-1 is out of legal range 0..10 for -baz"
       )
       assertEquals(expectedErrors, summary.errors)
@@ -176,7 +176,9 @@ class SettingsTests:
     locally {
       val args = List("-foo:c")
       val summary = Settings.processArguments(args, true)
-      val expectedErrors = List("c is not a valid choice for -foo")
+      val expectedErrors = List(
+        "c is not a valid choice for -foo.\nExpected a foo.\nAvailable choices: a, b"
+      )
       assertEquals(expectedErrors, summary.errors)
     }
 
@@ -184,8 +186,8 @@ class SettingsTests:
       val args = List("-quux", "a", "-quuz", "0")
       val summary = Settings.processArguments(args, true)
       val expectedErrors = List(
-        "a is not a valid choice for -quux",
-        "0 is not a valid choice for -quuz",
+        "a is not a valid choice for -quux.\nExpected a quuquux.\nAvailable choices: x, y",
+        "0 is not a valid choice for -quuz.\nExpected a thingy.\nAvailable choices: 42",
       )
       assertEquals(expectedErrors, summary.errors)
     }
@@ -357,7 +359,7 @@ class SettingsTests:
       val multiChoiceSetting = MultiChoiceSetting(RootSetting, "multiChoiceSetting", "multiChoiceSetting", Help, choices = List("a", "b"), legacyChoices = List("c"))
       val multiChoiceHelpSetting=  MultiChoiceHelpSetting(RootSetting, "multiChoiceHelpSetting", "multiChoiceHelpSetting", Help, List(ChoiceWithHelp("a", "a"), ChoiceWithHelp("b", "b")), List(), legacyChoices = List("c"))
       val intSetting = IntSetting(RootSetting, "intSetting", "intSetting", 0)
-      val intChoiceSetting = IntChoiceSetting(RootSetting, "intChoiceSetting", "intChoiceSetting", List(1,2,3), 1)
+      val intChoiceSetting = IntChoiceSetting(RootSetting, "intChoiceSetting", "int choice", "intChoiceSetting", List(1,2,3), 1)
       val multiStringSetting = MultiStringSetting(RootSetting, "multiStringSetting", "multiStringSetting", Help, default = List("a", "b"))
       val outputSetting = FileContainerSetting(RootSetting, "outputSetting", true, Help, new PlainDirectory(Directory(".")))
       val pathSetting = PathSetting(RootSetting, "pathSetting", "pathSetting", ".")
