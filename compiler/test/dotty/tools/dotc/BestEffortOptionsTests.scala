@@ -13,7 +13,7 @@ import org.junit.{AfterClass, Test}
 class BestEffortOptionsTests {
   import ParallelTesting.*
   import vulpix.TestConfiguration.*
-  import BestEffortOptionsTests.*
+  import BestEffortOptionsTests.{*, given}
 
   // Since TASTy and beTASTy files are read in a lazy manner (only when referenced by the source .scala file)
   // we test by using the "-from-tasty" option. This guarantees that the tasty files will be read
@@ -39,12 +39,4 @@ class BestEffortOptionsTests {
       .noCrashWithCompilingDependencies()
 }
 
-object BestEffortOptionsTests extends ParallelTesting {
-  def numberOfWorkers = Runtime.getRuntime.availableProcessors()
-
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def tearDown(): Unit = {
-    super.cleanup()
-    summaryReport.echoSummary()
-  }
-}
+object BestEffortOptionsTests extends ParallelTesting

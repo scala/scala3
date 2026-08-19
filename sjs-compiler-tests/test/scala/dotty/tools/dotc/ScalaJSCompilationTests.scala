@@ -14,7 +14,7 @@ import org.junit.Ignore
 class ScalaJSCompilationTests {
   import ParallelTesting._
   import TestConfiguration._
-  import ScalaJSCompilationTests._
+  import ScalaJSCompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
   // Negative tests ------------------------------------------------------------
@@ -35,13 +35,6 @@ class ScalaJSCompilationTests {
 }
 
 object ScalaJSCompilationTests extends ParallelTesting {
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-
-  def numberOfWorkers = 5
-
-  @AfterClass def tearDown(): Unit =
-    cleanup()
-    summaryReport.echoSummary()
 
   // Run tests -----------------------------------------------------------------
 

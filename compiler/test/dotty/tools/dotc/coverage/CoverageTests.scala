@@ -21,6 +21,7 @@ import java.util.stream.Collectors
 @Category(Array(classOf[BootstrappedOnlyTests]))
 class CoverageTests:
   import CoverageTests.{*, given}
+  given TestGroup = TestGroup("instrumentCoverage")
 
   private val scalaFile = FileSystems.getDefault.getPathMatcher("glob:**.scala")
   private val rootSrc = Paths.get(userDir, "tests", "coverage")
@@ -200,12 +201,4 @@ class CoverageTests:
       assertEquals(Set("file2.scala"), filesWithCoverage)
     }
 
-object CoverageTests extends ParallelTesting:
-  def numberOfWorkers = 1
-
-  given summaryReport: SummaryReporting = SummaryReport()
-  @AfterClass def tearDown(): Unit =
-    super.cleanup()
-    summaryReport.echoSummary()
-
-  given TestGroup = TestGroup("instrumentCoverage")
+object CoverageTests extends ParallelTesting

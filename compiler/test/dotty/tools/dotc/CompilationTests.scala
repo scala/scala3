@@ -470,14 +470,4 @@ class CompilationTests {
   }
 }
 
-object CompilationTests extends ParallelTesting with CoverageSupport {
-  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
-
-  given summaryReport: SummaryReporting = new SummaryReport
-
-  @AfterClass def tearDown(): Unit = {
-    super.cleanup()
-    summaryReport.echoSummary()
-  }
-
-}
+object CompilationTests extends ParallelTesting with CoverageSupport

@@ -25,14 +25,7 @@ class DebugTests:
     ).checkDebug()
 
 object DebugTests extends ParallelTesting:
-  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
   override def debugMode = true
-
-  given summaryReport: SummaryReporting = new SummaryReport
-
-  @AfterClass def tearDown(): Unit =
-    super.cleanup()
-    summaryReport.echoSummary()
 
   extension (test: CompilationTest)
     private def checkDebug()(using SummaryReporting): test.type =

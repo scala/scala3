@@ -378,7 +378,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
       final def run(): Unit = {
         checkTestSource()
-        summaryReport.echoToLog(logBuffer.iterator)
+        summaryReport.echoToLog(logBuffer)
       }
     }
 

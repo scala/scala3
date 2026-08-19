@@ -29,17 +29,11 @@ trait SummaryReporting {
   /** Add instructions to reproduce the error */
   def addReproduceInstruction(instr: String): Unit
 
-  /** Add a message that will be issued in the beginning of the summary */
-  def addStartingMessage(msg: String): Unit
-
   /** Echo the summary report to the appropriate locations */
   def echoSummary(): Unit
 
-  /** Echoes *immediately* to file */
-  def echoToLog(msg: String): Unit
-
   /** Echoes contents of `it` to file *immediately* then flushes */
-  def echoToLog(it: Iterator[String]): Unit
+  def echoToLog(it: Iterable[String]): Unit
 
 }
 
@@ -50,10 +44,8 @@ final class NoSummaryReport extends SummaryReporting {
   override def addFailedTest(msg: FailedTestInfo): Unit = ()
   override def addSkippedTest(msg: FailedTestInfo): Unit = ()
   override def addReproduceInstruction(instr: String): Unit = ()
-  override def addStartingMessage(msg: String): Unit = ()
   override def echoSummary(): Unit = ()
-  override def echoToLog(msg: String): Unit = ()
-  override def echoToLog(it: Iterator[String]): Unit = ()
+  override def echoToLog(it: Iterable[String]): Unit = ()
 }
 
 /** A summary report that logs to both stdout and the `TestReporter.logWriter`
@@ -62,7 +54,6 @@ final class NoSummaryReport extends SummaryReporting {
 final class SummaryReport extends SummaryReporting {
   import scala.jdk.CollectionConverters.*
 
-  private val startingMessages = new ConcurrentLinkedDeque[String]
   private val failedTests = new ConcurrentLinkedDeque[FailedTestInfo]
   private val skippedTests = new ConcurrentLinkedDeque[FailedTestInfo]
   private val reproduceInstructions = new ConcurrentLinkedDeque[String]
@@ -85,9 +76,6 @@ final class SummaryReport extends SummaryReporting {
   override def addReproduceInstruction(instr: String): Unit =
     reproduceInstructions.add(instr)
 
-  override def addStartingMessage(msg: String): Unit =
-    startingMessages.add(msg)
-
   /** Both echoes the summary to stdout and prints to file */
   override def echoSummary(): Unit = {
     val rep = new StringBuilder
@@ -100,8 +88,6 @@ final class SummaryReport extends SummaryReporting {
           |$passed suites passed, $failed failed, ${passed + failed} total
           |""".stripMargin
     )
-
-    startingMessages.asScala.foreach(rep.append)
 
     failedTests.asScala.map(x => s"    ${x.title}${x.extra}\n").foreach(rep.append)
     TestReporter.writeFailedTests(failedTests.asScala.toList.map(_.title))
@@ -133,10 +119,7 @@ final class SummaryReport extends SummaryReporting {
   private def removeColors(msg: String): String =
     msg.replaceAll("\u001b\\[.*?m", "")
 
-  override def echoToLog(msg: String): Unit =
-    TestReporter.logPrintln(removeColors(msg))
-
-  override def echoToLog(it: Iterator[String]): Unit = {
+  override def echoToLog(it: Iterable[String]): Unit = {
     it.foreach(msg => TestReporter.logPrint(removeColors(msg)))
     TestReporter.logFlush()
   }
