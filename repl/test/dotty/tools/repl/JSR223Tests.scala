@@ -6,8 +6,6 @@ import org.junit.AfterClass
 
 import vulpix.*
 
-import scala.concurrent.duration._
-
 final class JSR223Tests:
 
   import JSR223Tests.{*, given}
@@ -26,13 +24,7 @@ object JSR223Tests extends ParallelTesting:
 
   given report: SummaryReporting = new SummaryReport
 
-  def maxDuration = 100.seconds
   def numberOfWorkers = Runtime.getRuntime().availableProcessors()
-  def safeMode = dotty.Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = dotty.Properties.testsFilter
-  def updateCheckFiles: Boolean = dotty.Properties.testsUpdateCheckfile
-  def failedTests = dotc.reporting.TestReporter.lastRunFailedTests
 
   @AfterClass def tearDown(): Unit = {
     super.cleanup()

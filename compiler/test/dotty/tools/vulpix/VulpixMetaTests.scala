@@ -23,14 +23,8 @@ class VulpixMetaTests {
 }
 
 object VulpixMetaTests extends ParallelTesting {
-  def maxDuration = 1.seconds
   // Ensure maximum reproducibility.
   def numberOfWorkers = 1
-  def safeMode = false // Don't fork a new VM after each run test
-  def isInteractive = false // Don't beautify output for interactive use.
-  def testFilter = Nil // Run all the tests.
-  def updateCheckFiles: Boolean = false
-  def failedTests = None
 
   @AfterClass
   def tearDown() = this.cleanup()
