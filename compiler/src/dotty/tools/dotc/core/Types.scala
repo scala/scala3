@@ -5791,6 +5791,10 @@ object Types extends TypeUtils {
   }
 
   object MagicMaybeType {
+    /** The maybe type `resTp ? errTp` */
+    def apply(resTp: Type, errTp: Type)(using Context) =
+      defn.MagicMaybeClass.typeRef.appliedTo(resTp, errTp)
+
     /** Matches types T ? E, returns (T, E, E >: Unit) */
     def unapply(tp: Type)(using Context): Option[(Type, Type, Boolean)] = tp.dealias match
       case AppliedType(tycon, resArg :: errArg :: Nil) if tycon.isRef(defn.MagicMaybeClass) =>

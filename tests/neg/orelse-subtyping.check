@@ -1,4 +1,4 @@
--- [E007] Type Mismatch Error: tests/neg-bootstrapped/orelse-subtyping.scala:6:25 --------------------------------------
+-- [E007] Type Mismatch Error: tests/neg/orelse-subtyping.scala:6:25 ---------------------------------------------------
 6 |val x: String ? String = null // error
   |                         ^^^^
   |                        Found:    Null

@@ -1,0 +1,32 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/maybe-conversions.scala:6:47 ----------------------------------
+6 |def toOptionMissingNull[T](x: T?): Option[T] = x match // warn
+  |                                               ^
+  |                                               match may not be exhaustive.
+  |
+  |                                               It would fail on pattern case: null
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/maybe-conversions.scala:9:45 ----------------------------------
+9 |def toOptionMissingOk[T](x: T?): Option[T] = x match // warn
+  |                                             ^
+  |                                             match may not be exhaustive.
+  |
+  |                                             It would fail on pattern case: Ok(_)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/maybe-conversions.scala:12:63 ---------------------------------
+12 |def toEitherMissingErr(x: Int ? String): Either[String, Int] = x match // warn
+   |                                                               ^
+   |                                                               match may not be exhaustive.
+   |
+   |                                                               It would fail on pattern case: Err(_)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/maybe-conversions.scala:15:62 ---------------------------------
+15 |def toEitherMissingOk(x: Int ? String): Either[String, Int] = x match // warn
+   |                                                              ^
+   |                                                              match may not be exhaustive.
+   |
+   |                                                              It would fail on pattern case: Ok(_)
+   |
+   | longer explanation available when compiling with `-explain`
