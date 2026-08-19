@@ -550,7 +550,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
             ntimes(times) { run =>
               val start = System.nanoTime()
               val rep = super.doCompile(comp, files)
-              report.echo(s"\ntime run $run: ${(System.nanoTime - start) / 1000000}ms")
+              report.echoToLog(List(s"\ntime run $run: ${(System.nanoTime - start) / 1000000}ms"))
               rep
             }
         }
@@ -1576,78 +1576,6 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     new CompilationTest(targets)
   }
 
-  /** This function compiles the files and folders contained within directory
-   *  `f` in a specific way. Once compiled, they are recompiled/run from tasty as sources.
-   *
-   *  - Each file is compiled separately as a single compilation run
-   *  - Each directory is compiled as a `SeparateCompilationTarget`, in this
-   *    target all files are grouped according to the file suffix `_X` where `X`
-   *    is a number. These groups are then ordered in ascending order based on
-   *    the value of `X` and each group is compiled one after the other.
-   *
-   *  For this function to work as expected, we use the same convention for
-   *  directory layout as the old partest. That is:
-   *
-   *  - Single files can have an associated check-file with the same name (but
-   *    with file extension `.check`)
-   *  - Directories can have an associated check-file, where the check file has
-   *    the same name as the directory (with the file extension `.check`)
-   *
-   *  Tests in the first part of the tuple must be executed before the second.
-   *  Both testsRequires explicit delete().
-   */
-  def compileTastyInDir(f: String, flags0: TestFlags, fromTastyFilter: FileFilter)(implicit testGroup: TestGroup): TastyCompilationTest = {
-    val outDir = new JFile(defaultOutputDir, testGroup.name)
-    val flags = flags0 `and` "-Yretain-trees"
-    val sourceDir = new JFile(f)
-    checkRequirements(f, sourceDir, outDir)
-
-    val (dirs, files) = compilationTargets(sourceDir, fromTastyFilter)
-
-    val filteredFiles = Properties.testsFilter match
-      case Nil      => Nil
-      case _ => files.filter(f => Properties.testsFilter.exists(f.getPath.contains))
-
-    class JointCompilationSourceFromTasty(
-       name: String,
-       file: JFile,
-       flags: TestFlags,
-       outDir: JFile,
-       fromTasty: Boolean = false,
-    ) extends JointCompilationSource(name, Array(file), flags, outDir, if (fromTasty) FromTasty else NotFromTasty) {
-
-      override def buildInstructions(errors: Int, warnings: Int): String = {
-        val runOrPos = if (file.getPath.startsWith(s"tests${JFile.separator}run${JFile.separator}")) "run" else "pos"
-        val listName = if (fromTasty) "from-tasty" else "decompilation"
-        s"""|
-            |Test '$title' compiled with $errors error(s) and $warnings warning(s),
-            |the test can be reproduced by running:
-            |
-            |  sbt "testCompilation --from-tasty $file"
-            |
-            |This tests can be disabled by adding `${file.getName}` to `compiler${JFile.separator}test${JFile.separator}dotc${JFile.separator}$runOrPos-$listName.excludelist`
-            |
-            |""".stripMargin
-      }
-
-    }
-
-    val targets = filteredFiles.map { f =>
-      val classpath = createOutputDirsForFile(f, sourceDir, outDir)
-      new JointCompilationSourceFromTasty(testGroup.name, f, flags.withClasspath(classpath.getPath), classpath, fromTasty = true)
-    }
-    // TODO add SeparateCompilationSource from tasty?
-
-    // Create a CompilationTest and let the user decide whether to execute a pos or a neg test
-    val generateClassFiles = compileFilesInDir(f, flags0, fromTastyFilter)
-
-    new TastyCompilationTest(
-      generateClassFiles.keepOutput,
-      new CompilationTest(targets).keepOutput,
-      shouldDelete = true
-    )
-  }
-
   /** A two step compilation test for best effort compilation pickling and unpickling.
    *
    *  First, erroring neg test files are compiled with the `-Ybest-effort` option.
@@ -1788,32 +1716,6 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
     )
   }
 
-
-  class TastyCompilationTest(step1: CompilationTest, step2: CompilationTest, shouldDelete: Boolean)(implicit testGroup: TestGroup) {
-
-    def keepOutput: TastyCompilationTest =
-      new TastyCompilationTest(step1, step2, shouldDelete)
-
-    def checkCompile()(using SummaryReporting): this.type = {
-      step1.checkCompile() // Compile all files to generate the class files with tasty
-      step2.checkCompile() // Compile from tasty
-
-      if (shouldDelete)
-        CompilationTest.aggregateTests(step1, step2).delete()
-
-      this
-    }
-
-    def checkRuns()(using SummaryReporting): this.type = {
-      step1.checkCompile() // Compile all files to generate the class files with tasty
-      step2.checkRuns() // Compile from tasty
-
-      if (shouldDelete)
-        CompilationTest.aggregateTests(step1, step2).delete()
-
-      this
-    }
-  }
 
   class BestEffortOptionsTest(step1: CompilationTest, step2: CompilationTest, bestEffortDirs: List[JFile], shouldDelete: Boolean)(implicit testGroup: TestGroup) {
 

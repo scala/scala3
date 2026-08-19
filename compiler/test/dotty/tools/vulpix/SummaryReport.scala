@@ -79,15 +79,16 @@ final class SummaryReport extends SummaryReporting {
   /** Both echoes the summary to stdout and prints to file */
   override def echoSummary(): Unit = {
     val rep = new StringBuilder
-    rep.append(
-      s"""|
-          |================================================================================
-          |Test Report
-          |================================================================================
-          |
-          |$passed suites passed, $failed failed, ${passed + failed} total
-          |""".stripMargin
-    )
+    if !failedTests.isEmpty || !skippedTests.isEmpty then
+      rep.append(
+        s"""|
+            |================================================================================
+            |Test Report
+            |================================================================================
+            |
+            |$passed suites passed, $failed failed, ${passed + failed} total
+            |""".stripMargin
+      )
 
     failedTests.asScala.map(x => s"    ${x.title}${x.extra}\n").foreach(rep.append)
     TestReporter.writeFailedTests(failedTests.asScala.toList.map(_.title))
@@ -106,9 +107,9 @@ final class SummaryReport extends SummaryReporting {
       }
     }
 
-    rep += '\n'
-
-    reproduceInstructions.asScala.foreach(rep.append)
+    if !reproduceInstructions.isEmpty then
+      rep += '\n'
+      reproduceInstructions.asScala.foreach(rep.append)
 
     // If we're on the CI, we want everything
     if (Properties.isRunByCI) println(rep.toString)

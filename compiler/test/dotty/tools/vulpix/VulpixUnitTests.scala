@@ -90,4 +90,7 @@ class VulpixUnitTests:
         .suppressAllOutput
         .checkRuns()
 
-object VulpixUnitTests extends ParallelTesting
+object VulpixUnitTests extends ParallelTesting:
+  // Vulpix's self-tests deliberately have failed test cases, but those are expected and should not be printed.
+  // TODO: The "suppress output" feature should do this on its own.
+  override val report = new NoSummaryReport
