@@ -6,7 +6,7 @@ import annotation.experimental
 
 @experimental
 object Err:
-  def apply[E](e: E): Maybe[Nothing, E] =
+  inline def apply[E](e: E): Maybe[Nothing, E] =
     (if e == () then null else new runtime.Fail(e))
       .asInstanceOf[Maybe[Nothing, E]]
 
