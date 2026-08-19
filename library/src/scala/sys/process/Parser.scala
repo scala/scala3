@@ -21,7 +21,8 @@ private[scala] object Parser {
   private final val SQ = '\''
   private final val EOF = -1
 
-  /** Splits the line into tokens separated by whitespace or quotes.
+  /** Splits the line into whitespace-delimited tokens, recognizing single- and
+   *  double-quoted segments and removing their enclosing quotes.
    *
    *  @param line the command line string to parse
    *  @param errorFn the error handler invoked with a message when parsing fails (e.g., unmatched quote)
@@ -112,5 +113,12 @@ private[scala] object Parser {
     loop()
   }
 
+  /** Splits the line into whitespace-delimited tokens, recognizing single- and
+   *  double-quoted segments and removing their enclosing quotes, throwing a
+   *  `RuntimeException` if the line is malformed, such as when a quote is unmatched.
+   *
+   *  @param line the command line string to parse
+   *  @return a list of parsed tokens in order of appearance
+   */
   def tokenize(line: String): List[String] = tokenize(line, scala.sys.error)
 }

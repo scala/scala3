@@ -22,6 +22,7 @@ import scala.language.`2.13`
 final case class Tuple1[@specialized(Int, Long, Double) +T1](_1: T1)
   extends Product1[T1]
 {
+  /** Returns a string representation of this tuple, the element enclosed in parentheses. */
   override def toString(): String = "(" + _1 + ")"
   
 }

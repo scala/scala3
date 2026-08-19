@@ -19,6 +19,14 @@ import scala.language.`2.13`
  *  how to unregister itself.
  */
 class ShutdownHookThread private (runnable: Runnable, name: String) extends Thread(runnable, name) {
+  /** Returns `true` if this hook was still registered with the JVM and was
+   *  successfully unregistered, `false` otherwise.
+   *
+   *  Throws an `IllegalStateException` if the JVM has already begun shutting
+   *  down, because hooks can no longer be removed once shutdown is in progress,
+   *  or a `SecurityException` if a security manager is present and denies
+   *  `RuntimePermission("shutdownHooks")`.
+   */
   def remove() = Runtime.getRuntime.removeShutdownHook(this)
 }
 

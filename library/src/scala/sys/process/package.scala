@@ -241,22 +241,57 @@ import scala.language.`2.13`
       @deprecated("Use `java.util.concurrent.LinkedBlockingQueue with capacity 1` instead.", since = "2.13.4")
       type SyncVar[T] = scala.concurrent.SyncVar[T]
 
+      /** Returns a partial function, suitable as a `catch` clause, that applies
+       *  `handler` to any caught `Throwable`.
+       *
+       *  @tparam T the result type of `handler`
+       *  @param handler the function applied to the caught exception
+       */
       def onError[T](handler: Throwable => T): Throwable =?> T = {
         case e @ _ => handler(e)
       }
 
+      /** Returns a partial function, suitable as a `catch` clause, that evaluates
+       *  `handler` when a `java.io.InterruptedIOException` is caught, and is
+       *  undefined for every other `Throwable`.
+       *
+       *  @tparam T the result type of `handler`
+       *  @param handler the expression evaluated on interruption, by name
+       */
       def onIOInterrupt[T](handler: => T): Throwable =?> T = {
         case _: InterruptedIOException => handler
       }
 
+      /** Returns a partial function, suitable as a `catch` clause, that evaluates
+       *  `handler` when an `InterruptedException` is caught, and is undefined for
+       *  every other `Throwable`.
+       *
+       *  @tparam T the result type of `handler`
+       *  @param handler the expression evaluated on interruption, by name
+       */
       def onInterrupt[T](handler: => T): Throwable =?> T = {
         case _: InterruptedException => handler
       }
 
+      /** Returns a partial function, suitable as a `catch` clause, that applies
+       *  `handler` to a caught `java.io.IOException`, and is undefined for every
+       *  other `Throwable`.
+       *
+       *  @tparam T the result type of `handler`
+       *  @param handler the function applied to the caught exception
+       */
       def ioFailure[T](handler: IOException => T): Throwable =?> T = {
         case e: IOException => handler(e)
       }
 
+      /** Prints the given messages to the console, separated by spaces and prefixed
+       *  with `[process]`, when process debugging is enabled.
+       *
+       *  Debugging is enabled by defining the `scala.process.debug` system property,
+       *  and is read once when this object is initialized.
+       *
+       *  @param msgs the values whose string representations make up the message
+       */
       def dbg(msgs: Any*) = if (processDebug) {
         Console.println("[process] " + (msgs mkString " "))
       }
