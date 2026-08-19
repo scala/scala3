@@ -57,14 +57,14 @@ case "`uname`" in
            if [ -z "$JAVA_HOME" ] ; then
              JAVA_HOME=/System/Library/Frameworks/JavaVM.framework/Versions/${JAVA_VERSION}/Home
            fi
-           JAVACMD="`which java`"
+           JAVACMD="`command -v java`"
            ;;
 esac
 
 unset CYGPATHCMD
 if [[ ${cygwin-} || ${mingw-} || ${msys-} ]]; then
   # cygpath is used by various windows shells: cygwin, git-sdk, gitbash, msys, etc.
-  CYGPATHCMD=`which cygpath 2>/dev/null`
+  CYGPATHCMD=`command -v cygpath 2>/dev/null`
   case "$TERM" in
     rxvt* | xterm* | cygwin*)
       [ $isterminal -eq 1 ] && stty -icanon min 1 -echo
@@ -75,10 +75,10 @@ fi
 
 # Resolve JAVA_HOME from javac command path
 if [ -z "$JAVA_HOME" ]; then
-  javaExecutable="`which javac`"
+  javaExecutable="`command -v javac`"
   if [ -n "$javaExecutable" -a -f "$javaExecutable" -a ! "`expr \"$javaExecutable\" : '\([^ ]*\)'`" = "no" ]; then
     # readlink(1) is not available as standard on Solaris 10.
-    readLink=`which readlink`
+    readLink=`command -v readlink`
     if [ ! `expr "$readLink" : '\([^ ]*\)'` = "no" ]; then
       javaExecutable="`readlink -f \"$javaExecutable\"`"
       javaHome="`dirname \"$javaExecutable\"`"
@@ -98,7 +98,7 @@ if [ -z "${JAVACMD-}" ] ; then
       JAVACMD="$JAVA_HOME/bin/java"
     fi
   else
-    JAVACMD="`which java`"
+    JAVACMD="`command -v java`"
   fi
 fi
 
