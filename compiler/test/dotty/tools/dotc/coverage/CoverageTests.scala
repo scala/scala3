@@ -201,8 +201,6 @@ class CoverageTests:
     }
 
 object CoverageTests extends ParallelTesting:
-  def numberOfWorkers = 1
-
   given summaryReport: SummaryReporting = SummaryReport()
   @AfterClass def tearDown(): Unit =
     super.cleanup()

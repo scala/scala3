@@ -24,8 +24,6 @@ object JSR223Tests extends ParallelTesting:
 
   given report: SummaryReporting = new SummaryReport
 
-  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
-
   @AfterClass def tearDown(): Unit = {
     super.cleanup()
     report.echoSummary()

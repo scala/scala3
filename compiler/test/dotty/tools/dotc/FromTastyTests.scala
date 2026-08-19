@@ -39,8 +39,6 @@ class FromTastyTests {
 }
 
 object FromTastyTests extends ParallelTesting {
-  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
-
   implicit val summaryReport: SummaryReporting = new SummaryReport
   @AfterClass def tearDown(): Unit = {
     super.cleanup()

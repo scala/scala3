@@ -17,7 +17,7 @@ import dotty.tools.debug.{Debugger, ExpressionEvaluator}
 import java.lang.management.ManagementFactory
 import scala.jdk.CollectionConverters.ListHasAsScala
 
-/** Vulpix spawns JVM subprocesses (`numberOfWorkers`) in order to run tests
+/** Vulpix spawns JVM subprocesses in order to run tests
  *  without compromising the main JVM
  *
  *  These need to be orchestrated in a safe manner with a simple protocol. This
@@ -37,9 +37,6 @@ import scala.jdk.CollectionConverters.ListHasAsScala
  *  child process is destroyed and a new child is spawned.
  */
 trait RunnerOrchestration:
-
-  /** The maximum amount of active runners, which contain a child JVM */
-  def numberOfWorkers: Int
 
   /** Open JDI connection for testing the debugger */
   def debugMode: Boolean = false
@@ -201,6 +198,7 @@ trait RunnerOrchestration:
 
     private val freeRunners = mutable.Queue.empty[Runner]
     private val busyRunners = mutable.Set.empty[Runner]
+    private val numberOfWorkers = Runtime.getRuntime.availableProcessors()
 
     private def getRunner(): Runner = synchronized {
       while freeRunners.isEmpty && busyRunners.size >= numberOfWorkers

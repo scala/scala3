@@ -25,7 +25,6 @@ class DebugTests:
     ).checkDebug()
 
 object DebugTests extends ParallelTesting:
-  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
   override def debugMode = true
 
   given summaryReport: SummaryReporting = new SummaryReport

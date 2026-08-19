@@ -23,9 +23,6 @@ class VulpixMetaTests {
 }
 
 object VulpixMetaTests extends ParallelTesting {
-  // Ensure maximum reproducibility.
-  def numberOfWorkers = 1
-
   @AfterClass
   def tearDown() = this.cleanup()
 }

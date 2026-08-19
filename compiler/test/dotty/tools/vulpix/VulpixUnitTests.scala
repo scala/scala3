@@ -93,7 +93,5 @@ class VulpixUnitTests:
         .checkRuns()
 
 object VulpixUnitTests extends ParallelTesting:
-  def numberOfWorkers = 5
-
   @tearDown
   def tearDown() = cleanup()
