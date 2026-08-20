@@ -35,6 +35,7 @@ def defaultMarkdownOptions(showSnippetName: Boolean = true)(using ctx: StaticSit
       AutolinkExtension.create(),
       EmojiExtension.create(),
       FootnoteExtension.create(),
+      tasty.comments.markdown.FootnoteSeparatorExtension,
       YamlFrontMatterExtension.create(),
       StrikethroughExtension.create(),
       WikiLinkExtension.create(),

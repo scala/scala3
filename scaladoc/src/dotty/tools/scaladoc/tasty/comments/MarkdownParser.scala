@@ -34,6 +34,7 @@ object MarkdownParser {
       AnchorLinkExtension.create(),
       EmojiExtension.create(),
       FootnoteExtension.create(),
+      markdown.FootnoteSeparatorExtension,
       YamlFrontMatterExtension.create(),
       StrikethroughExtension.create()
     ) ++ additionalExtensions

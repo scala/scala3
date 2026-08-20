@@ -273,7 +273,38 @@
 
 #content .footnotes .footnote-backref {
   margin-left: calc(0.5 * var(--base-spacing));
+  color: var(--action-primary-content-default);
   text-decoration: none;
+}
+
+#content .footnotes .footnote-backref:hover {
+  color: var(--action-primary-content-hover);
+}
+
+/* footnote references */
+#content sup:has(> a.footnote-ref),
+#content sup.footnote-ref-sep {
+  /* neutralize the default superscript metrics so references
+     do not stretch the line box */
+  vertical-align: baseline;
+  position: relative;
+  top: -0.5em;
+  font-size: 11px;
+  line-height: 1;
+}
+
+#content a.footnote-ref {
+  color: var(--action-primary-content-default);
+  text-decoration: none;
+  padding: 0 2px;
+}
+
+#content a.footnote-ref:hover {
+  color: var(--action-primary-content-hover);
+}
+
+#content sup.footnote-ref-sep {
+  color: var(--text-secondary);
 }
 
 /* content link */
