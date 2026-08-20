@@ -135,7 +135,7 @@ object SymbolLoaders {
    *  All entered symbols are given a source completer of `src` as info.
    */
   def enterToplevelsFromSource(
-      owner: Symbol, name: PreName, src: AbstractFile,
+      owner: Symbol, src: AbstractFile,
       scope: Scope = EmptyScope)(using Context): Unit =
     if src.exists && !src.isDirectory then
       val completer = new SourcefileLoader(src)
@@ -201,8 +201,8 @@ object SymbolLoaders {
    *  Note: We do a name-base comparison here because the method is called before we even
    *  have ReflectPackage defined.
    */
-  def binaryOnly(owner: Symbol, name: TermName)(using Context): Boolean =
-    name == nme.PACKAGEkw &&
+  def binaryOnly(owner: Symbol, name: String)(using Context): Boolean =
+    name == nme.PACKAGE.toString &&
       (owner.name == nme.scala || owner.name == nme.reflect && owner.owner.name == nme.scala)
 
   /** Initialize toplevel class and module symbols in `owner` from class path representation `classRep`
@@ -211,29 +211,21 @@ object SymbolLoaders {
     // module-info is a special class added by JPMS (Java 9+) that cannot be parsed like a normal class
     if classRep.name != "module-info" then
       ((classRep.binary, classRep.source): @unchecked) match {
-      case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, nameOf(classRep)) =>
+      case (Some(bin), Some(src)) if needCompile(bin, src) && !binaryOnly(owner, classRep.name) =>
         if (ctx.settings.verbose.value) report.inform("[symloader] picked up newer source file for " + src.path)
-        enterToplevelsFromSource(owner, nameOf(classRep), src)
+        enterToplevelsFromSource(owner, src)
       case (None, Some(src)) =>
         if (ctx.settings.verbose.value) report.inform("[symloader] no class or tasty, picked up source file for " + src.path)
-        enterToplevelsFromSource(owner, nameOf(classRep), src)
+        enterToplevelsFromSource(owner, src)
       case (Some(bin), _) =>
         val completer =
           if bin.ext.isTasty || bin.ext.isBetasty then ctx.platform.newTastyLoader(bin)
           else ctx.platform.newClassLoader(bin)
-        enterClassAndModule(owner, nameOf(classRep), completer)
+        enterClassAndModule(owner, termName(classRep.name), completer)
     }
 
   def needCompile(bin: AbstractFile, src: AbstractFile): Boolean =
     src.lastModified >= bin.lastModified
-
-  private def nameOf(classRep: ClassRepresentation)(using Context): TermName =
-    // avoid forcing `classRep.name` when we just need the length
-    val nameLength = {
-      val ix = classRep.fileName.lastIndexOf('.')
-      if (ix < 0) classRep.fileName.length else ix
-    }
-    classRep.fileName.sliceToTermName(0, nameLength)
 
   /** Load contents of a package
    */

@@ -329,7 +329,7 @@ trait Migrations:
     private def usesAppMember(tree: tpd.Tree, allowArgs: Boolean)(using Context): Boolean =
       def isAppMember(sym: Symbol) = sym.exists && sym.maybeOwner == defn.AppClass
       tree.existsSubTree {
-        case id: tpd.Ident   => isAppMember(id.symbol) && !(allowArgs && id.symbol.name.toString == "args")
+        case id: tpd.Ident   => isAppMember(id.symbol) && !(allowArgs && id.symbol.name == nme.args)
         case sel: tpd.Select => isAppMember(sel.symbol)
         case _               => false
       }
