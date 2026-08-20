@@ -15,7 +15,9 @@ private[repl] object TestProcess:
     val outputFile = Files.createTempFile("dotty-test-process-", ".log")
     val process = start(command, outputFile)
 
-    try awaitOutput(command, process, outputFile)
+    try
+      process.getOutputStream.close()
+      awaitOutput(command, process, outputFile)
     finally cleanup(process, outputFile)
 
   private def start(command: Seq[String], outputFile: Path): Process =
@@ -30,13 +32,16 @@ private[repl] object TestProcess:
     if !process.waitFor(Timeout.length, Timeout.unit) then
       process.destroyForcibly().waitFor()
       throw new AssertionError(
-        s"Command timed out after $Timeout: ${command.mkString(" ")}\n${Files.readString(outputFile, UTF_8)}"
+        s"Command timed out after $Timeout: ${command.mkString(" ")}\n${readOutput(outputFile)}"
       )
 
-    val output = Files.readString(outputFile, UTF_8)
+    val output = readOutput(outputFile)
     if process.exitValue != 0 then
       throw new AssertionError(s"Command failed: ${command.mkString(" ")}\n$output")
     output
+
+  private def readOutput(outputFile: Path): String =
+    new String(Files.readAllBytes(outputFile), UTF_8)
 
   private def cleanup(process: Process, outputFile: Path): Unit =
     if process.isAlive then process.destroyForcibly().waitFor()

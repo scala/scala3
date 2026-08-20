@@ -35,7 +35,7 @@ class ToolkitTests extends ReplTest:
     val scalaCliExecutable = sys.env.get("DOTTY_REPL_TEST_SCALA_CLI_EXECUTABLE")
     assumeTrue(
       "Scala CLI integration test requires DOTTY_REPL_TEST_SCALA_CLI_EXECUTABLE",
-      scalaCliExecutable.nonEmpty
+      scalaCliExecutable.exists(_.nonEmpty)
     )
     val scalaCli = scalaCliExecutable.get
     val expectedScalaCliVersion = sys.props.getOrElse(
@@ -43,6 +43,7 @@ class ToolkitTests extends ReplTest:
       throw new AssertionError("Missing dotty.tests.scalaCliVersion; run this test through sbt")
     )
     assertEquals(
+      "Scala CLI version must match project/Dependencies.scala and .github/workflows/compiler-tests.yaml",
       expectedScalaCliVersion,
       extractVersion(
         ScalaCliVersion,
