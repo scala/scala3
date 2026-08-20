@@ -13,8 +13,13 @@ def toEitherIntStr(x: Int ? String): Either[String, Int] = x match
   case Err(e) => Left(e)
 
 def toEither[T, E](x: T ? E): Either[E, T] = x match
-  case Ok(y) => Right(y)
   case Err(e) => Left(e)
+  case Ok(y) => Right(y)
+
+def toEitherBooleanStr[T](x: T ? String): Either[String, Boolean] = x match
+  case Ok(x: Boolean) => Right(x)
+  case Err(e) => Left(e)
+  case _ => Left("not a boolean")
 
 extension [T, E](x: T ? E)
   def withErr[E1](e1: => E1): T ? E1 = x match
@@ -47,15 +52,27 @@ def f[T, E](x: T, e: E) =
 
   val z1 = toEither(Ok(x))
   val z2 = toEither(Err(e))
+
+  val a1 = toEitherBooleanStr(Ok(true))
+  val a2 = toEitherBooleanStr(Ok(1))
+  val a3 = toEitherBooleanStr(Err("bad"))
+
+  println("==== x")
   println(x1)
   println(x2)
   println(x3)
   println(x4)
+  println("==== y")
   println(y1)
   println(y3)
   println(y4)
+  println("==== z")
   println(z1)
   println(z2)
+  println("==== a")
+  println(a1)
+  println(a2)
+  println(a3)
 
 def posTest(x: Int) = x match
   case Pos(y) => println(s"pos $x $y")
@@ -91,12 +108,16 @@ def polyTest2[T](x: T) = x match
 
 @main def Test =
   f("ss", "BAD")
+  println("==== pos")
   posTest(1)
   posTest(-1)
+  println("==== str")
   strTest("abc")
   strTest("")
+  println("==== poly")
   polyTest("abc", 22)
   polyTest("", -1)
+  println("==== poly2")
   polyTest2("abc")
   polyTest2(22)
   polyTest2("")

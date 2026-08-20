@@ -12,3 +12,8 @@ def Test =
   val _: String? = z1
   val z2 = if ??? then y else x
   val _: String? = z2
+
+  def foo[T](x: T, y: T): T = x
+
+  val z3 = foo(x, y)
+  val _: String? = z3

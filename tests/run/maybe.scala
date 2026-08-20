@@ -9,8 +9,8 @@ class C:
     case null => None
 
 def toOptionStr(x: String?): Option[String] = x match
-  case Ok(y) => Some(y)
   case null => None
+  case Ok(y) => Some(y)
 
 def toOption[T](x: T?): Option[T] = x match
   case Ok(y) => Some(y)
