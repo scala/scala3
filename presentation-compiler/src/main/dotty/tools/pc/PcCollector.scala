@@ -11,6 +11,7 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
+import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
@@ -188,7 +189,9 @@ trait PcCollector[T]:
               && fun.symbol.owner == defn.NamedTupleModule.moduleClass
               && app.span.isCorrect =>
           val fieldOccurrence =
-            namedTupleFieldSymbol(app, t1, t2, i)
+            namedTupleFieldSymbol(qual.symbol, t1, t2, i)
+              .filter: sym =>
+                soughtFilter(sought => sameNamedTupleField(sought, sym))
               .map: sym =>
                 collect(app, pos.withSpan(app.span.withStart(app.span.point)), Some(sym))
           val traverser =
