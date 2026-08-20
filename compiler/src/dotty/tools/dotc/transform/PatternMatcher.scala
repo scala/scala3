@@ -202,7 +202,8 @@ object PatternMatcher {
     case object NonEmptyTest extends Test                            // !scrutinee.isEmpty
     case object NonNullTest extends Test                             // scrutinee ne null
     case object GuardTest extends Test                               // scrutinee
-    case object IsFailTest extends Test                              // scrutinee.isInstanceOf[Fail]
+    case object IsOkTest extends Test                                // x != null, and possibly && !x.isInstanceOf[Fail]
+    case object IsErrTest extends Test                               // x == null, and possible || scrutinee.isInstanceOf[Fail]
 
     val noLengthTest = LengthTest(0, exact = false)
 
@@ -437,18 +438,18 @@ object PatternMatcher {
         else
           unapp match
             case Apply(fn, arg :: Nil) if fn.symbol == defn.Magic_OkUnapply =>
-              unappResultPlan(unapp, args, arg.symbol, unappType, wasUnaryNamedTupleSelectArgForNamedTuple)
+              unappResultPlan(unapp, args, arg.symbol, unappType, wasUnaryNamedTupleSelectArgForNamedTuple, IsOkTest)
             case Apply(fn, arg :: Nil) if fn.symbol == defn.Magic_ErrUnapply =>
-              unappResultPlan(unapp, args, arg.symbol, unappType, wasUnaryNamedTupleSelectArgForNamedTuple, isErrMatch = true)
+              unappResultPlan(unapp, args, arg.symbol, unappType, wasUnaryNamedTupleSelectArgForNamedTuple, IsErrTest)
             case _ =>
               letAbstract(unapp): unappResult =>
-                unappResultPlan(unapp, args, unappResult, unappType, wasUnaryNamedTupleSelectArgForNamedTuple)
+                unappResultPlan(unapp, args, unappResult, unappType, wasUnaryNamedTupleSelectArgForNamedTuple, NonEmptyTest)
       }
 
       def unappResultPlan(
           unapp: Tree, args: List[Tree], unappResult: Symbol, unappType: Type,
           wasUnaryNamedTupleSelectArgForNamedTuple: Boolean,
-          isErrMatch: Boolean = false): Plan = {
+          nonEmptyTest: Test): Plan = {
         val isUnapplySeq = unapp.symbol.name == nme.unapplySeq
         if isProductMatch(unappType, args.length) && !isUnapplySeq then
           val selectors = productSelectors(unappType).take(args.length)
@@ -467,7 +468,7 @@ object PatternMatcher {
         else {
           assert(isGetMatch(unappType))
           val argsPlan = {
-            val get = getOfGetMatch(ref(unappResult), isErrMatch)
+            val get = getOfGetMatch(ref(unappResult), nonEmptyTest == IsErrTest)
             if (isUnapplySeq)
               letAbstract(get) { getResult =>
                 if unapplySeqTypeElemTp(get.tpe).exists then
@@ -500,9 +501,7 @@ object PatternMatcher {
                 matchArgsPlan(selectors, args, onSuccess)
               }
           }
-          TestPlan(
-            if isErrMatch then IsFailTest else NonEmptyTest,
-            unappResult, unapp.span, argsPlan)
+          TestPlan(nonEmptyTest, unappResult, unapp.span, argsPlan)
         }
       }
 
@@ -849,15 +848,85 @@ object PatternMatcher {
       Inliner(plan)
     }
 
+    /** Drop tests that are oposites of previously established tests.
+     *
+     *  When we have the following shape:
+     *
+     *  if testA then plan1
+     *  if testB then plan2
+     *  nextPlan?
+     *
+     *  where testA is a dual of testB and plan1 is test-free, transform it to
+     *
+     *  if testA then plan1
+     *  plan2
+     *  nextPlan?
+     *
+     *  "Dual" means:
+     *    - one of the tests is an IsOKTest, the other is an
+     *      IsErrTest or an "== null" test,
+     *    - the two tests have the same scrutinee.
+     */
+    def dropOpposites(plan: Plan): Plan = {
+
+      object Dropper extends PlanTransform {
+
+        def isTestFree(plan: Plan): Boolean = plan match
+          case _: TestPlan => false
+          case _: ReturnPlan => true
+          case _: ResultPlan => true
+          case LetPlan(_, expr) => isTestFree(expr)
+          case LabeledPlan(_, expr) => isTestFree(expr)
+          case SeqPlan(hd, tl) => isTestFree(hd) && isTestFree(tl)
+
+        def isDual(test1: Test, test2: Test) = test1 match
+          case IsOkTest =>
+            test2 match
+              case IsErrTest => true
+              case EqualTest(tree) => tree.tpe.isRef(defn.NullClass)
+              case _ => false
+          case _ =>
+            false
+
+        override def apply(plan: SeqPlan): Plan = {
+          if Feature.magicEnabled then
+            plan.head = apply(plan.head)
+            plan.tail = apply(plan.tail)
+            plan.head match
+              case TestPlan(test1, scrut1, _, follow1) =>
+                def tryDropTest(plan: Plan) = plan match
+                  case TestPlan(test2, scrut2, _, follow2) =>
+                    (scrut1, scrut2) match
+                      case (_: Ident, _: Ident)
+                      if scrut1.symbol == scrut2.symbol
+                          && (isDual(test1, test2) || isDual(test2, test1))
+                          && isTestFree(follow1) =>
+                        follow2
+                      case _ => plan
+                  case _ =>
+                    plan
+
+                plan.tail match
+                  case tail @ SeqPlan(tailHead, tailTail) =>
+                    tail.head = tryDropTest(tailHead)
+                  case tail =>
+                    plan.tail = tryDropTest(tail)
+              case _ =>
+          plan
+        }
+      }
+      Dropper(plan)
+    }
+
     // ----- Generating trees from plans ---------------
 
     /** The condition a test plan rewrites to */
     private def emitCondition(plan: TestPlan): Tree =
       val scrutinee = plan.scrutinee
       (plan.test: @unchecked) match
-        case NonEmptyTest =>
+        case NonEmptyTest | IsOkTest =>
           scrutinee.tpe.widenDealias match
-            case AppliedType(tycon, _ :: errArg :: Nil) if tycon.isRef(defn.MagicMaybeClass) =>
+            case MagicMaybeType(_, errArg, _) =>
               val test = scrutinee.nullTest(cond = false)
               if errArg.isRef(defn.UnitClass)
               then test
@@ -867,7 +936,13 @@ object PatternMatcher {
                 scrutinee
                   .select(nme.isEmpty, _.info.isParameterless)
                   .select(nme.UNARY_!, _.info.isParameterless))
-        case IsFailTest =>
+        case IsOkTest =>
+          val MagicMaybeType(_, errArg, _) = scrutinee.tpe.widenDealias.runtimeChecked
+          val notNull = scrutinee.nullTest(cond = false)
+          if errArg.isRef(defn.UnitClass)
+          then notNull
+          else notNull.and(scrutinee.isInstance(defn.MagicFailClass.typeRef).not)
+        case IsErrTest =>
           val MagicMaybeType(_, _, nullable) = scrutinee.tpe.widen.runtimeChecked
           val typeTest = scrutinee.isInstance(defn.MagicFailClass.typeRef)
           if nullable then scrutinee.nullTest(cond = true).or(typeTest)
@@ -1199,7 +1274,8 @@ object PatternMatcher {
 
     val optimizations: List[(String, Plan => Plan)] = List(
       "mergeTests" -> mergeTests,
-      "inlineVars" -> inlineVars
+      "inlineVars" -> inlineVars,
+      "dropOpposites" -> dropOpposites
     )
 
     /** Translate pattern match to sequence of tests. */
