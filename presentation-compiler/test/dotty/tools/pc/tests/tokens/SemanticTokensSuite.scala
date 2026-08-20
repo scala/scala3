@@ -481,7 +481,7 @@ class SemanticTokensSuite extends BaseSemanticTokensSuite:
          |
          |  val <<nn>>/*variable,definition,readonly*/ = <<pNN>>/*variable,readonly*/.<<name>>/*variable,readonly*/
          |  val <<cc>>/*variable,definition,readonly*/ = <<pCC>>/*variable,readonly*/.<<name>>/*variable,readonly*/
-         |  val <<ccAge>>/*variable,definition,readonly*/ = <<pNN>>/*variable,readonly*/.<<age>>/*variable,readonly*/
+         |  val <<nnAge>>/*variable,definition,readonly*/ = <<pNN>>/*variable,readonly*/.<<age>>/*variable,readonly*/
          |  val <<ccAge>>/*variable,definition,readonly*/ = <<pCC>>/*variable,readonly*/.<<age>>/*variable,readonly*/
          |""".stripMargin
     )
