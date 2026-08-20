@@ -854,6 +854,14 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             return recur(tp1, OrType(tp21, tp221, tp2.isSoft)) && recur(tp1, OrType(tp21, tp222, tp2.isSoft))
           case _ =>
         }
+        tp2 match
+          case OrNull(tp2a) =>
+            tp1w match
+              case MagicMaybeType(tp1a, errArg, _) =>
+                if errArg.isRef(defn.UnitClass) && tp1a.isNotNull then
+                  return recur(tp1a, tp2a)
+              case _ =>
+          case _ =>
         either(recur(tp1, tp21), recur(tp1, tp22)) || fourthTry
       case tp2: MatchType =>
         val reduced = tp2.reduced
