@@ -437,6 +437,11 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
      *   (3) If the definition is a closure that is a curried result of the
      *       right hand side of a defininition meeting condition (2), also make
      *       its parameter types non-inferred as specified by (2).
+     *   (4) If the definition is a closure with a capture set parameter, also
+     *       make its parameter types non-inferred as specified by (2), no
+     *       matter where the closure appears. References to the capture set
+     *       parameter in the types of subsequent parameters cannot be
+     *       re-inferred, so they have to be kept. See issue #26000.
      */
     private def explicifyTpt(tree: ValOrDefDef)(using Context): Tree = tree.tpt match
       case tpt: InferredTypeTree if Feature.ccEnabled =>
@@ -446,6 +451,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           case closureDef(mdef)
           if !tree.symbol.isAnonymousFunction // (2)
             || closuresNeedingExplicify.remove(tree.symbol) // (3)
+            || hasCapSetParam(tree.symbol) // (4)
           =>
             val tpe1 = makeFormalsDeclared(tpt.tpe, tree.rhs)
             if tpe1 `ne` tpt.tpe
@@ -454,6 +460,13 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           case _ => tpt
       case tpt =>
         tpt
+
+    /** Does `sym` have a type parameter that is a capture set parameter,
+     *  as in `[C^] => ...`?
+     */
+    private def hasCapSetParam(sym: Symbol)(using Context): Boolean = sym.info match
+      case pt: PolyType => pt.paramInfos.exists(_.hi.derivesFromCapSet)
+      case _ => false
 
     /** Insert a `@caps.declared` annotation on all parameter infos
      *  of a function type `tp` corresponding to a closure `rhs` that contain
