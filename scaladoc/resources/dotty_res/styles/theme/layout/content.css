@@ -247,6 +247,35 @@
   margin-inline-end: calc(2 * var(--base-spacing));
 }
 
+/* content footnotes */
+#content .footnotes {
+  margin-block-start: calc(8 * var(--base-spacing));
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 16px;
+}
+
+#content .footnotes hr {
+  border: none;
+  border-top: 1px solid var(--border-default);
+  margin: 0 0 calc(3 * var(--base-spacing));
+}
+
+#content .footnotes ol {
+  margin-block: 0;
+  padding-inline-start: calc(3 * var(--base-spacing));
+}
+
+/* keep the back-reference arrow on the same line as the note text */
+#content .footnotes li > p:last-of-type {
+  display: inline;
+}
+
+#content .footnotes .footnote-backref {
+  margin-left: calc(0.5 * var(--base-spacing));
+  text-decoration: none;
+}
+
 /* content link */
 #content a {
   color: var(--text-primary);
