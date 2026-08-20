@@ -12,6 +12,7 @@ import com.vladsch.flexmark.parser.ParserEmulationProfile
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
 import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
 import com.vladsch.flexmark.ext.emoji.EmojiExtension
+import com.vladsch.flexmark.ext.footnotes.FootnoteExtension
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.anchorlink.AnchorLinkExtension
 import com.vladsch.flexmark.ext.yaml.front.matter.YamlFrontMatterExtension
@@ -32,6 +33,7 @@ object MarkdownParser {
       AutolinkExtension.create(),
       AnchorLinkExtension.create(),
       EmojiExtension.create(),
+      FootnoteExtension.create(),
       YamlFrontMatterExtension.create(),
       StrikethroughExtension.create()
     ) ++ additionalExtensions

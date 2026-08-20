@@ -26,6 +26,7 @@ object Dependencies {
     "com.vladsch.flexmark" % "flexmark-ext-anchorlink" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-autolink" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-emoji" % flexmarkVersion,
+    "com.vladsch.flexmark" % "flexmark-ext-footnotes" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-gfm-strikethrough" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-gfm-tasklist" % flexmarkVersion,
     "com.vladsch.flexmark" % "flexmark-ext-wikilink" % flexmarkVersion,
