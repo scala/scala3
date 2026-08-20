@@ -6,6 +6,15 @@
   position: absolute;
   right: 0;
   scroll-behavior: smooth;
+  /* column flex so the footer can be pushed to at least the bottom of the
+     viewport on pages shorter than the viewport (see #footer) */
+  display: flex;
+  flex-direction: column;
+}
+
+/* children must never be squeezed to fit the viewport; long pages scroll */
+#main > * {
+  flex-shrink: 0;
 }
 
 /* blog footer */

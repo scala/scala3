@@ -1,4 +1,7 @@
 #footer {
+  /* on pages shorter than the viewport, take up the remaining free space of
+     the #main flex column so the footer is never above the viewport bottom */
+  margin-top: auto;
   background-color: var(--action-primary-background-default-solid);
   height: calc(6 * var(--base-spacing));
   width: 100%;
