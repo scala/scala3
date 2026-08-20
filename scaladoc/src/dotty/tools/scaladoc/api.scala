@@ -114,7 +114,8 @@ case class TermParameter(
   dri: DRI,
   signature: Signature,
   isExtendedSymbol: Boolean = false,
-  isGrouped: Boolean = false
+  isGrouped: Boolean = false,
+  ccModifiers: String = "" // modifiers specific to capture checking, e.g. "consume "
 )
 
 type TypeParameterList = Seq[TypeParameter]
@@ -138,6 +139,21 @@ case class Name(override val name: String, dri: DRI) extends SignaturePart
 case class Type(override val name: String, dri: Option[DRI]) extends SignaturePart
 case class Keyword(override val name: String) extends SignaturePart
 case class Plain(override val name: String) extends SignaturePart
+
+/** An experimental language feature whose signature fragments can be toggled
+ *  on and off interactively in the rendered documentation.
+ */
+enum ToggleableFeature(val cssClass: String):
+  case CaptureChecking extends ToggleableFeature("cc")
+
+/** A signature fragment that depends on a toggleable language feature.
+ *  `on` is rendered when the feature's annotations are shown, `off` (usually
+ *  empty) when they are hidden. For example, a pure function arrow under
+ *  capture checking is `Toggleable(CaptureChecking, on = ->, off = =>)`,
+ *  while a capture set `^{io}` is purely additive and has an empty `off`.
+ */
+case class Toggleable(feature: ToggleableFeature, on: Signature, off: Signature = Nil) extends SignaturePart:
+  override val name: String = on.map(_.name).mkString
 
 type Signature = List[SignaturePart]
 
@@ -257,12 +273,7 @@ extension (m: Module)
 
 extension (s: Signature)
   def getName: String =
-    s.map {
-      case Name(s, _) => s
-      case Plain(s) => s
-      case Type(s, _) => s
-      case Keyword(s) => s
-    }.mkString
+    s.map(_.name).mkString
 
 case class TastyMemberSource(path: java.nio.file.Path, lineNumber: Int)
 

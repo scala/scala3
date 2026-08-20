@@ -38,3 +38,10 @@ trait SignatureRenderer:
     case Type(name, None) => span(Attr("t") := "t")(name)
     case Keyword(name) => span(Attr("t") := "k")(name)
     case Plain(name) => raw(name)
+    case Toggleable(feature, on, off) =>
+      // Both variants are emitted; CSS shows exactly one of them, depending on
+      // whether the feature is toggled on (default) or off in the browser.
+      span(cls := s"feature-${feature.cssClass}")(
+        span(cls := "feature-on")(on.map(renderElement(_))) +:
+          (if off.isEmpty then Nil else Seq(span(cls := "feature-off")(off.map(renderElement(_)))))
+      )
