@@ -102,11 +102,13 @@ val experimentalDefinitionInLibrary = Set(
   "scala.specialize.Specialized$",
 
   // New feature: magic
-  "scala.magic.Maybe",
   "scala.magic.Ok",
   "scala.magic.Ok$",
   "scala.magic.compiletime",
   "scala.magic.compiletime$",
+  "scala.magic.compiletime.Maybe",
+  "scala.magic.compiletime.package$.$spec",
+  "scala.magic.compiletime.package$.$wrappedType",
   "scala.magic.runtime.Valid",
   "scala.magic.Err",
   "scala.magic.Err$",

@@ -483,7 +483,7 @@ class Definitions {
 
   // Magic stuff
   @tu lazy val MagicPackageClass: ClassSymbol = requiredPackage("scala.magic").moduleClass.asClass
-  @tu lazy val MagicMaybeClass: ClassSymbol = requiredClass("scala.magic.Maybe")
+  @tu lazy val MagicMaybeClass: ClassSymbol = requiredClass("scala.magic.compiletime.Maybe")
   @tu lazy val MagicValidClass: ClassSymbol = requiredClass("scala.magic.runtime.Valid")
   @tu lazy val MagicFailClass: ClassSymbol = requiredClass("scala.magic.runtime.Fail")
 
@@ -493,9 +493,9 @@ class Definitions {
   @tu lazy val MagicErrModule: Symbol = requiredModule("scala.magic.Err")
     @tu lazy val Magic_ErrUnapply: Symbol = MagicErrModule.requiredMethod(nme.unapply)
 
-  @tu lazy val MagicCompiletimeModule: Symbol = requiredModule("scala.magic.compiletime")
-    @tu lazy val Magic_spec: Symbol = MagicCompiletimeModule.requiredMethod("$spec")
-    @tu lazy val Magic_wrappedType: Symbol = MagicCompiletimeModule.requiredMethod("$wrappedType")
+  @tu lazy val MagicCompiletimePackage: Symbol = requiredPackage("scala.magic.compiletime")
+    @tu lazy val Magic_spec: Symbol = MagicCompiletimePackage.requiredMethod("$spec")
+    @tu lazy val Magic_wrappedType: Symbol = MagicCompiletimePackage.requiredMethod("$wrappedType")
 
   // More synthetic symbols
   @tu lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))
