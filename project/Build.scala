@@ -923,6 +923,7 @@ object Build {
       bootstrappedScalaInstanceSettings,
       // Needed for the JSR223 tests which are "run" tests
       Test / javaOptions += s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
+      Test / javaOptions += s"-Ddotty.tests.scalaCliVersion=${Dependencies.scalaCliLauncherVersion}",
       excludeDependencies += "org.scala-lang" %% "scala3-library",
       excludeDependencies += "org.scala-lang" % "scala-library",
       bspEnabled := enableBspAllProjects,
