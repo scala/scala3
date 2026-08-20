@@ -44,7 +44,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     def push(btype: BType): Unit =
       if size == stack.length then
-        stack = java.util.Arrays.copyOf(stack, stack.length * 2)
+        stack = Array.copyOf(stack, stack.length * 2)
       stack(size) = btype
       size += 1
 

@@ -382,7 +382,7 @@ private[semanticdb] object ExtractSemanticDB:
               case tree @ NamedArg(name, arg) =>
                 traverse(localBodies.getOrElse(arg.symbol, arg))
                 genParamSymbol(name).foreach(
-                  registerUse(_, tree.span.startPos.withEnd(tree.span.start + name.toString.length), tree.source)
+                  registerUse(_, tree.span.startPos.withEnd(tree.span.start + name.length), tree.source)
                 )
               case _ => traverse(arg)
         case tree: Assign =>

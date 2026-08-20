@@ -1159,16 +1159,9 @@ object Contexts {
     private[Contexts] val comparers = new mutable.ArrayBuffer[TypeComparer]
     private[Contexts] var comparersInUse: Int = 0
 
-    private var charArray = new Array[Char](256)
-
     private[dotc] var wConfCache: (List[String], WConf) = uninitialized
 
     private[dotc] val patched: Rewrites.PatchedFiles = Rewrites.newPatchedFiles()
-
-    def sharedCharArray(len: Int): Array[Char] =
-      while len > charArray.length do
-        charArray = new Array[Char](charArray.length * 2)
-      charArray
 
     def reset(): Unit =
       uniques.clear()

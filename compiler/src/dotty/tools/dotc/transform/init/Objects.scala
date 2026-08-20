@@ -1304,7 +1304,7 @@ class Objects(using Context @constructorOnly):
           UnknownValue
 
       else if target.exists then
-        def isNextFieldOfColonColon: Boolean = ref.klass == defn.ConsClass && target.name.toString == "next"
+        def isNextFieldOfColonColon: Boolean = ref.klass == defn.ConsClass && target.name == nme.next
         if target.isMutableVarOrAccessor && !isNextFieldOfColonColon then
           if ref.hasVar(target) then
             if ref.owner == State.currentObject then
