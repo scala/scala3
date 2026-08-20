@@ -222,6 +222,30 @@ jobs:
           mv scala.msi "${msiInstaller}"
           sha256sum "${msiInstaller}" > "${msiInstaller}.sha256"
 
+      - name: Download deb package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: scala.deb
+          path: .
+      - name: Prepare deb package
+        shell: bash
+        run: |
+          debInstaller="scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.deb"
+          mv scala.deb "${debInstaller}"
+          sha256sum "${debInstaller}" > "${debInstaller}.sha256"
+
+      - name: Download rpm package
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: scala.rpm
+          path: .
+      - name: Prepare rpm package
+        shell: bash
+        run: |
+          rpmInstaller="scala3-${{ env.RELEASE_TAG }}-x86_64-pc-linux.rpm"
+          mv scala.rpm "${rpmInstaller}"
+          sha256sum "${rpmInstaller}" > "${rpmInstaller}.sha256"
+
       - name: Install GH CLI
         uses: dev-hanz-ops/install-gh-cli-action@af38ce09b1ec248aeb08eea2b16bbecea9e059f8 # v0.2.1
         with:
@@ -251,6 +275,8 @@ jobs:
           --verify-tag ${{ env.RELEASE_TAG }} \
           scala3-${{ env.RELEASE_TAG }}*.zip \
           scala3-${{ env.RELEASE_TAG }}*.tar.gz \
+          scala3-${{ env.RELEASE_TAG }}*.deb \
+          scala3-${{ env.RELEASE_TAG }}*.rpm \
           scala3-${{ env.RELEASE_TAG }}*.sha256 \
           scala3-${{ env.RELEASE_TAG }}.msi
 
@@ -378,6 +404,30 @@ jobs:
    with:
      version: ${{ needs.build-msi-package.outputs.version }}
      java-version: 17
+
+  build-deb-package:
+   uses: ./.github/workflows/build-deb.yml
+   if  :
+     (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_deb]')) ||
+     (github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/'))
+
+  test-deb-package:
+   uses: ./.github/workflows/test-deb.yml
+   needs: [build-deb-package]
+   with:
+     version: ${{ needs.build-deb-package.outputs.version }}
+
+  build-rpm-package:
+   uses: ./.github/workflows/build-rpm.yml
+   if  :
+     (github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_rpm]')) ||
+     (github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/'))
+
+  test-rpm-package:
+   uses: ./.github/workflows/test-rpm.yml
+   needs: [build-rpm-package]
+   with:
+     version: ${{ needs.build-rpm-package.outputs.version }}
 
   build-sdk-package:
    uses: ./.github/workflows/build-sdk.yml
