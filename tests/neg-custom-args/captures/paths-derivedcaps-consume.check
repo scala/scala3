@@ -1,0 +1,5 @@
+-- Error: tests/neg-custom-args/captures/paths-derivedcaps-consume.scala:10:26 -----------------------------------------
+10 |class B(val c: C) extends Foo, Stateful: // error
+   |                          ^^^
+   |                   illegal inheritance: class B which extends `Stateful` is not allowed to also extend class Foo
+   |                   since class Foo is an exclusive capability but does not extend `Stateful`.

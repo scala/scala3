@@ -1,13 +1,11 @@
 package dotty.tools
 
-import scala.language.unsafeNulls
-
 import dotc.ast.tpd
-import dotc.ast.tpd._
+import dotc.ast.tpd.*
 import dotc.core.Contexts.{Context, atPhase}
 import dotty.tools.dotc.core.Phases.{typerPhase, erasurePhase}
 import dotc.core.Symbols.Symbol
-import dotc.core.Decorators._
+import dotc.core.Decorators.*
 import dotc.core.Types.Type
 
 import scala.util.CommandLineParser.FromString
@@ -79,8 +77,8 @@ object DottyTypeStealer extends DottyTest {
     val dummyName = "x_x_x"
     val vals = typeStrings.zipWithIndex.map{case (s, x) => kind.format(dummyName + x, s) }.mkString("\n")
     val gatheredSource = s" ${source}\n object A$dummyName {$vals}"
-    var scontext : Context = null
-    var members: List[Symbol] = null
+    var scontext: Context | Null = null
+    var members: List[Symbol] | Null = null
     checkCompile(lastPhase, gatheredSource) {
       (tree, context) =>
         given Context = context
@@ -95,6 +93,6 @@ object DottyTypeStealer extends DottyTest {
         members = d.map(_.symbol).reverse
         scontext = context
     }
-    (scontext, members)
+    (scontext.nn, members.nn)
   }
 }

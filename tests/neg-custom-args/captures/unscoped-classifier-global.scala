@@ -5,12 +5,12 @@ trait Async extends Control
 class A(a: Async) extends caps.Unscoped // error but msg could be better
 
 class B extends caps.Unscoped:
-  val a: Async^ = new Async {}  // ok (should this be an error instead?)
+  val a: Async^ = new Async {}  // error
 
 class C(f: () => Unit) extends caps.Unscoped // error but msg could be better
 
 class D extends caps.Unscoped:
-  val f: () => Unit = ???   // ok (should this be an error instead?)
+  val f: () => Unit = ???   // error
 
 val g: () => Unit = () => ()
 

@@ -1,11 +1,9 @@
 package dotty.tools.dotc.plugins
 
-import scala.language.unsafeNulls
-
 import org.junit.Test
 
-import dotty.tools.dotc._
-import plugins._
+import dotty.tools.dotc.*
+import plugins.*
 import transform.MegaPhase.MiniPhase
 import core.Phases.Phase
 

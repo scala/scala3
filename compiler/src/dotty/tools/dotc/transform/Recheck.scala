@@ -382,8 +382,12 @@ abstract class Recheck extends Phase, SymTransformer:
       funtpe.widen match
         case fntpe: PolyType =>
           assert(fntpe.paramInfos.hasSameLengthAs(tree.args))
-          val argTypes = tree.args.map(recheck(_))
+          val argTypes = tree.args.lazyZip(fntpe.paramInfos).map:
+            recheckTypeArg(_, _, fntpe)
           constFold(tree, fntpe.instantiate(argTypes))
+
+    def recheckTypeArg(arg: Tree, formal: Type, binder: PolyType)(using Context): Type =
+      recheck(arg)
 
     def recheckTyped(tree: Typed)(using Context): Type =
       val tptType = recheck(tree.tpt)
@@ -449,9 +453,6 @@ abstract class Recheck extends Phase, SymTransformer:
         def toAvoid(tp: NamedType) =
            tp.symbol.is(Case) && tp.symbol.owner.isContainedIn(ctx.owner)
 
-      val rawType = recheck(tree.expr)
-      val ownType = avoidMap(rawType)
-
       // The pattern matching translation, which runs before this phase
       // sometimes instantiates return types with singleton type alternatives
       // but the returned expression is widened. We compensate by widening the expected
@@ -464,7 +465,10 @@ abstract class Recheck extends Phase, SymTransformer:
         case tp: AndOrType => tp.derivedAndOrType(widened(tp.tp1), widened(tp.tp2))
         case tp @ AnnotatedType(tp1, ann) => tp.derivedAnnotatedType(widened(tp1), ann)
         case _ => tp
-      checkConforms(ownType, widened(tree.from.symbol.returnProto), tree)
+      val expected = widened(tree.from.symbol.returnProto)
+      val rawType = recheck(tree.expr, expected)
+      val ownType = avoidMap(rawType)
+      checkConforms(ownType, expected, tree)
       defn.NothingType
     end recheckReturn
 
@@ -686,5 +690,3 @@ class TestRecheck extends Recheck:
   def phaseName: String = "recheck"
   override def isEnabled(using Context) = ctx.settings.YrecheckTest.value
   def newRechecker()(using Context): Rechecker = Rechecker(ctx)
-
-

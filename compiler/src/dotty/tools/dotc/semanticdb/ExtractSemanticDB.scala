@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package semanticdb
 
-import scala.language.unsafeNulls
-
 import core.*
 import Phases.*
 import ast.tpd.*
@@ -26,7 +24,7 @@ import scala.PartialFunction.condOpt
 import typer.ImportInfo.withRootImports
 
 import dotty.tools.dotc.{semanticdb => s}
-import dotty.tools.io.{AbstractFile, JarArchive}
+import dotty.tools.io.AbstractFile
 import dotty.tools.dotc.semanticdb.DiagnosticOps.*
 import scala.util.{Using, Failure, Success}
 import java.nio.file.Path
@@ -55,14 +53,13 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
 
   override def isRunnable(using Context) =
     import ExtractSemanticDB.{semanticdbTarget, outputDirectory}
-    def writesToOutputJar = semanticdbTarget.isEmpty && outputDirectory.isInstanceOf[JarArchive]
+    def writesToOutputJar = semanticdbTarget.isEmpty && outputDirectory.ext.isJar
     (super.isRunnable || ctx.isBestEffort) && ctx.settings.Xsemanticdb.value && !writesToOutputJar
 
   // Check not needed since it does not transform trees
   override def isCheckable: Boolean = false
 
   private def computeDiagnostics(
-      sourceRoot: String,
       warnings: Map[SourceFile, List[dotty.tools.dotc.reporting.Diagnostic]],
       append: ((Path, List[Diagnostic])) => Unit)(using Context): Boolean = monitor(phaseName) {
     val unit = ctx.compilationUnit
@@ -70,21 +67,19 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
       val outputDir =
         ExtractSemanticDB.semanticdbPath(
           unit.source,
-          ExtractSemanticDB.semanticdbOutDir,
-          sourceRoot
+          ExtractSemanticDB.semanticdbOutDir
         )
       append((outputDir, ws.map(_.toSemanticDiagnostic)))
     }
   }
 
-  private def extractSemanticDB(sourceRoot: String, writeSemanticdbText: Boolean)(using Context): Boolean =
+  private def extractSemanticDB(writeSemanticdbText: Boolean)(using Context): Boolean =
     monitor(phaseName) {
       val unit = ctx.compilationUnit
       val outputDir =
         ExtractSemanticDB.semanticdbPath(
           unit.source,
-          ExtractSemanticDB.semanticdbOutDir,
-          sourceRoot
+          ExtractSemanticDB.semanticdbOutDir
         )
       val extractor = ExtractSemanticDB.Extractor()
       extractor.extract(unit.tpdTree)
@@ -94,20 +89,18 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
         extractor.symbolInfos.toList,
         extractor.synthetics.toList,
         outputDir,
-        sourceRoot,
         writeSemanticdbText
       )
     }
 
   override def runOn(units: List[CompilationUnit])(using ctx: Context): List[CompilationUnit] = {
-    val sourceRoot = ctx.settings.sourceroot.value
     val appendDiagnostics = phaseMode == ExtractSemanticDB.PhaseMode.AppendDiagnostics
     val unitContexts = units.map(ctx.fresh.setCompilationUnit(_).withRootImports)
     if (appendDiagnostics)
       val warningsAndInfos = (ctx.reporter.allWarnings ++ ctx.reporter.allInfos).groupBy(w => w.pos.source)
       val buf = mutable.ListBuffer.empty[(Path, Seq[Diagnostic])]
       val units0 =
-        for unitCtx <- unitContexts if computeDiagnostics(sourceRoot, warningsAndInfos, buf += _)(using unitCtx)
+        for unitCtx <- unitContexts if computeDiagnostics(warningsAndInfos, buf += _)(using unitCtx)
         yield unitCtx.compilationUnit
       cancellable {
         buf.toList.asJava.parallelStream().forEach { case (out, diagnostics) =>
@@ -117,7 +110,7 @@ private[semanticdb] class ExtractSemanticDB private (phaseMode: ExtractSemanticD
       units0
     else
       val writeSemanticdbText = ctx.settings.semanticdbText.value
-      for unitCtx <- unitContexts if extractSemanticDB(sourceRoot, writeSemanticdbText)(using unitCtx)
+      for unitCtx <- unitContexts if extractSemanticDB(writeSemanticdbText)(using unitCtx)
       yield unitCtx.compilationUnit
   }
 
@@ -151,7 +144,7 @@ private[semanticdb] object ExtractSemanticDB:
 
   /** Output directory for SemanticDB files */
   private def semanticdbOutDir(using Context): Path =
-    semanticdbTarget.getOrElse(outputDirectory.jpath)
+    semanticdbTarget.getOrElse(outputDirectory.jpath.nn)
 
   private def absolutePath(path: Path): Path = path.toAbsolutePath.normalize
 
@@ -161,14 +154,13 @@ private[semanticdb] object ExtractSemanticDB:
     symbolInfos: List[SymbolInformation],
     synthetics: List[Synthetic],
     outpath: Path,
-    sourceRoot: String,
     semanticdbText: Boolean
   ): Unit =
     Files.createDirectories(outpath.getParent())
     val doc: TextDocument = TextDocument(
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
-      uri = Tools.mkURIstring(Paths.get(relPath(source, sourceRoot))),
+      uri = Tools.mkURIstring(Path.of(source.pathRelativeToSourceRoot)),
       text = if semanticdbText then String(source.content) else "",
       md5 = internal.MD5.compute(String(source.content)),
       symbols = symbolInfos,
@@ -203,14 +195,11 @@ private[semanticdb] object ExtractSemanticDB:
       case Success(_) => // success to update semanticdb, say nothing
   end appendDiagnostics
 
-  private def relPath(source: SourceFile, sourceRoot: String) =
-    SourceFile.relativePath(source, sourceRoot)
-
-  private def semanticdbPath(source: SourceFile, base: Path, sourceRoot: String): Path =
+  private def semanticdbPath(source: SourceFile, base: Path): Path =
     absolutePath(base)
       .resolve("META-INF")
       .resolve("semanticdb")
-      .resolve(relPath(source, sourceRoot))
+      .resolve(source.pathRelativeToSourceRoot)
       .resolveSibling(source.name + ".semanticdb")
 
   /** Extractor of symbol occurrences from trees */
@@ -385,14 +374,16 @@ private[semanticdb] object ExtractSemanticDB:
           val member = extractRefinement(qualTpe, memberName)
           member.foreach(sym => registerUse(sym.symbolName, sel.nameSpan, tree.source))
         case tree: Apply if tree.fun.symbol.exists =>
-          @tu lazy val genParamSymbol: Name => String = tree.fun.symbol.funParamSymbol
+          @tu lazy val genParamSymbol: Name => Option[String] = tree.fun.symbol.funParamSymbol
           traverse(tree.fun)
           synth.tryFindSynthetic(tree).foreach(synthetics.addOne)
           for arg <- tree.args do
             arg match
               case tree @ NamedArg(name, arg) =>
-                traverse(localBodies.get(arg.symbol).getOrElse(arg))
-                registerUse(genParamSymbol(name), tree.span.startPos.withEnd(tree.span.start + name.toString.length), tree.source)
+                traverse(localBodies.getOrElse(arg.symbol, arg))
+                genParamSymbol(name).foreach(
+                  registerUse(_, tree.span.startPos.withEnd(tree.span.start + name.toString.length), tree.source)
+                )
               case _ => traverse(arg)
         case tree: Assign =>
           val qualSym = condOpt(tree.lhs) { case Select(qual, _) if qual.symbol.exists => qual.symbol }
@@ -569,10 +560,20 @@ private[semanticdb] object ExtractSemanticDB:
       else
         Span(span.start)
 
-      if namePresentInSource(sym, span, treeSource) || sym.isAnonymousClass then
+      if namePresentInSource(sym, span, treeSource)
+        || sym.isAnonymousClass
+        || isPositionedMainEntryPoint(sym, span)
+      then
         registerOccurrence(sname, finalSpan, SymbolOccurrence.Role.DEFINITION, treeSource)
       if !sym.is(Package) then
         registerSymbol(sym, symkinds)
+
+    /** A generated main entry point may be anchored on a source span that does
+     *  not contain its name, so `namePresentInSource` is false and no
+     *  occurrence is emitted. Still emit one for such entry points so tooling
+     *  can locate them, restricted to runnable main classes. */
+    private def isPositionedMainEntryPoint(sym: Symbol, span: Span)(using Context): Boolean =
+      span.hasLength && ctx.platform.hasMainMethod(sym)
 
     private def spanOfSymbol(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Span =
       val contents = if treeSource.exists then treeSource.content() else Array.empty[Char]
@@ -596,7 +597,7 @@ private[semanticdb] object ExtractSemanticDB:
         body.collect({
           case tree: ValDef
           if ctorParams.contains(tree.name)
-          && !tree.symbol.isPrivate =>
+          && !tree.symbol.is(Private) =>
             tree.name -> tree
         }).toMap
     end findGetters
@@ -671,7 +672,11 @@ private[semanticdb] object ExtractSemanticDB:
           val symkinds =
             getters.get(vparam.name).fold(SymbolKind.emptySet)(getter =>
               if getter.mods.is(Mutable) then SymbolKind.VarSet else SymbolKind.ValSet)
-          registerSymbol(vparam.symbol, symkinds)
+          // Emit a definition occurrence for the constructor parameter at its name span (and
+          // record the symbol; registerDefinition calls registerSymbol internally). The param
+          // symbol `C#<init>().(x)` then shares the name range with the param-accessor
+          // occurrence emitted from the template body.
+          registerDefinition(vparam.symbol, vparam.nameSpan, symkinds, vparam.source)
         traverse(vparam.tpt)
       tparams.foreach(tp => traverse(tp.rhs))
   end Extractor

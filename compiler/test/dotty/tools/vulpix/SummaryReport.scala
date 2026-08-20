@@ -2,9 +2,8 @@ package dotty
 package tools
 package vulpix
 
-import scala.language.unsafeNulls
-import scala.collection.mutable
 import dotc.reporting.TestReporter
+import java.util.concurrent.ConcurrentLinkedDeque
 
 /** `SummaryReporting` can be used by unit tests by utilizing `@AfterClass` to
  *  call `echoSummary`
@@ -24,119 +23,104 @@ trait SummaryReporting {
   /** Add the name of the failed test */
   def addFailedTest(msg: FailedTestInfo): Unit
 
+  /** Add a skipped test. */
+  def addSkippedTest(msg: FailedTestInfo): Unit
+
   /** Add instructions to reproduce the error */
   def addReproduceInstruction(instr: String): Unit
-
-  /** Add a message that will be issued in the beginning of the summary */
-  def addStartingMessage(msg: String): Unit
 
   /** Echo the summary report to the appropriate locations */
   def echoSummary(): Unit
 
-  /** Echoes *immediately* to file */
-  def echoToLog(msg: String): Unit
-
   /** Echoes contents of `it` to file *immediately* then flushes */
-  def echoToLog(it: Iterator[String]): Unit
+  def echoToLog(it: Iterable[String]): Unit
 
 }
 
 /** A summary report that doesn't do anything */
 final class NoSummaryReport extends SummaryReporting {
-  def reportFailed(): Unit = ()
-  def reportPassed(): Unit = ()
-  def addFailedTest(msg: FailedTestInfo): Unit = ()
-  def addReproduceInstruction(instr: String): Unit = ()
-  def addStartingMessage(msg: String): Unit = ()
-  def echoSummary(): Unit = ()
-  def echoToLog(msg: String): Unit = ()
-  def echoToLog(it: Iterator[String]): Unit = ()
-  def updateCheckFiles: Boolean = false
+  override def reportFailed(): Unit = ()
+  override def reportPassed(): Unit = ()
+  override def addFailedTest(msg: FailedTestInfo): Unit = ()
+  override def addSkippedTest(msg: FailedTestInfo): Unit = ()
+  override def addReproduceInstruction(instr: String): Unit = ()
+  override def echoSummary(): Unit = ()
+  override def echoToLog(it: Iterable[String]): Unit = ()
 }
 
 /** A summary report that logs to both stdout and the `TestReporter.logWriter`
  *  which outputs to a log file in `./testlogs/`
  */
 final class SummaryReport extends SummaryReporting {
-  import scala.jdk.CollectionConverters._
+  import scala.jdk.CollectionConverters.*
 
-  private val startingMessages = new java.util.concurrent.ConcurrentLinkedDeque[String]
-  private val failedTests = new java.util.concurrent.ConcurrentLinkedDeque[FailedTestInfo]
-  private val reproduceInstructions = new java.util.concurrent.ConcurrentLinkedDeque[String]
+  private val failedTests = new ConcurrentLinkedDeque[FailedTestInfo]
+  private val skippedTests = new ConcurrentLinkedDeque[FailedTestInfo]
+  private val reproduceInstructions = new ConcurrentLinkedDeque[String]
 
   private var passed = 0
   private var failed = 0
 
-  def reportFailed(): Unit =
+  override def reportFailed(): Unit =
     failed += 1
 
-  def reportPassed(): Unit =
+  override def reportPassed(): Unit =
     passed += 1
 
-  def addFailedTest(msg: FailedTestInfo): Unit =
+  override def addFailedTest(msg: FailedTestInfo): Unit =
     failedTests.add(msg)
 
-  def addReproduceInstruction(instr: String): Unit =
+  override def addSkippedTest(msg: FailedTestInfo): Unit =
+    skippedTests.add(msg)
+
+  override def addReproduceInstruction(instr: String): Unit =
     reproduceInstructions.add(instr)
 
-  def addStartingMessage(msg: String): Unit =
-    startingMessages.add(msg)
-
   /** Both echoes the summary to stdout and prints to file */
-  def echoSummary(): Unit = {
-    import SummaryReport._
-
+  override def echoSummary(): Unit = {
     val rep = new StringBuilder
-    rep.append(
-      s"""|
-          |================================================================================
-          |Test Report
-          |================================================================================
-          |
-          |$passed suites passed, $failed failed, ${passed + failed} total
-          |""".stripMargin
-    )
+    if failed == 0 && failedTests.isEmpty then
+      rep.append(s"== Vulpix Test Report: $passed suites passed, no failures (${skippedTests.size} skipped) ==")
+    else
+      rep.append(
+        s"""|
+            |================================================================================
+            |Vulpix Test Report
+            |================================================================================
+            |
+            |$passed suites passed, $failed failed, ${passed + failed} total
+            |""".stripMargin
+      )
+      failedTests.asScala.map(x => s"    ${x.title}${x.extra}\n").foreach(rep.append)
+      TestReporter.writeFailedTests(failedTests.asScala.toList.map(_.title))
+      if !skippedTests.isEmpty then
+        rep.append("Skipped: " + skippedTests.asScala.map(_.title).mkString(", "))
 
-    startingMessages.asScala.foreach(rep.append)
-
-    failedTests.asScala.map(x => s"    ${x.title}${x.extra}\n").foreach(rep.append)
-    TestReporter.writeFailedTests(failedTests.asScala.toList.map(_.title))
-
-    // If we're compiling locally, we don't need instructions on how to
-    // reproduce failures
-    if (isInteractive) {
-      println(rep.toString)
-      if (failed > 0) println {
+    // If we're on the CI, we want reproduction instructions; otherwise, we just need a pointer to the log file.
+    if Properties.isRunByCI then
+      if !reproduceInstructions.isEmpty then
+        rep += '\n'
+        reproduceInstructions.asScala.foreach(rep.append)
+    else
+      if failed > 0 then rep.append(
         s"""|
             |--------------------------------------------------------------------------------
             |Note - reproduction instructions have been dumped to log file:
             |    ${TestReporter.logPath}
             |--------------------------------------------------------------------------------""".stripMargin
-      }
-    }
+      ).append('\n')
 
-    rep += '\n'
-
-    reproduceInstructions.asScala.foreach(rep.append)
-
-    // If we're on the CI, we want everything
-    if (!isInteractive) println(rep.toString)
-
+    println(rep.toString)
     TestReporter.logPrintln(rep.toString)
   }
 
   private def removeColors(msg: String): String =
     msg.replaceAll("\u001b\\[.*?m", "")
 
-  def echoToLog(msg: String): Unit =
-    TestReporter.logPrintln(removeColors(msg))
-
-  def echoToLog(it: Iterator[String]): Unit = {
+  override def echoToLog(it: Iterable[String]): Unit = {
     it.foreach(msg => TestReporter.logPrint(removeColors(msg)))
     TestReporter.logFlush()
   }
 }
 
-object SummaryReport {
-  val isInteractive = Properties.testsInteractive && !Properties.isRunByCI
-}
+case class FailedTestInfo(title: String, extra: String)

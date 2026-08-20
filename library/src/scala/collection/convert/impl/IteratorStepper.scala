@@ -119,7 +119,13 @@ private[collection] class LongIteratorStepper(_underlying: Iterator[Long] | Null
   }
 }
 
-/** Common functionality for Steppers that step through an Iterator, caching the results as needed when a split is requested. */
+/** Common functionality for Steppers that step through an Iterator, caching the results as needed when a split is requested.
+ *
+ *  @tparam A the element type of the iterator being stepped through
+ *  @tparam SP the specific `Stepper` subtype, bounded by `Stepper[A]`, used for proxied delegation and split results
+ *  @tparam Semi the concrete stepper subtype returned by `semiclone()`, must extend `SP`
+ *  @param underlying the source `Iterator` to step through, or `null` for steppers created via `semiclone()` during a split, which delegate to `proxied` instead
+ */
 private[convert] abstract class IteratorStepperBase[A, SP <: Stepper[A], Semi <: SP](final protected val underlying: Iterator[A] | Null) {
   final protected var nextChunkSize = 16
   @annotation.stableNull

@@ -229,12 +229,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
   def bounds(param: TypeParamRef)(using Context): TypeBounds = {
     val e = entry(param)
     if (e.exists) e.bounds
-    else {
-      // TODO: should we change the type of paramInfos to nullable?
-      val pinfos: List[param.binder.PInfo] | Null = param.binder.paramInfos
-      if (pinfos != null) pinfos(param.paramNum) // pinfos == null happens in pos/i536.scala
-      else TypeBounds.empty
-    }
+    else param.binder.paramInfos(param.paramNum)
   }
 
 // ---------- Info related to TypeParamRefs -------------------------------------------
@@ -346,20 +341,19 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
       if newSet.isEmpty then deps.remove(referenced)
       else deps.updated(referenced, newSet)
 
-    def traverse(t: Type) = try
+    def traverse(t: Type) = ctx.handleRecursive("adjust", t):
       t match
-      case param: TypeParamRef =>
-        if hasBounds(param) then
-          if variance >= 0 then coDeps = update(coDeps, param)
-          if variance <= 0 then contraDeps = update(contraDeps, param)
-        else
-          traverse(entry(param))
-      case tp: LazyRef =>
-        if !seen.contains(tp) then
-          seen += tp
-          traverse(tp.ref)
-      case _ => traverseChildren(t)
-    catch case ex: Throwable => handleRecursive("adjust", t.show, ex)
+        case param: TypeParamRef =>
+          if hasBounds(param) then
+            if variance >= 0 then coDeps = update(coDeps, param)
+            if variance <= 0 then contraDeps = update(contraDeps, param)
+          else
+            traverse(entry(param))
+        case tp: LazyRef =>
+          if !seen.contains(tp) then
+            seen += tp
+            traverse(tp.ref)
+        case _ => traverseChildren(t)
   end Adjuster
 
   /** Adjust dependencies to account for the delta of previous entry `prevEntry`
@@ -760,6 +754,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case tp: TypeVar if contains(tp.origin) => withHard(tp)
     case tp: TypeParamRef if contains(tp)   => hardenTypeVars(typeVarOfParam(tp))
     case tp: AndOrType                      => hardenTypeVars(tp.tp1).hardenTypeVars(tp.tp2)
+    case tp: FlexibleType                   => hardenTypeVars(tp.hi)
     case _                                  => this
 
   def remove(pt: TypeLambda)(using Context): This = {
@@ -892,22 +887,23 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
         i += 1
     }
 
-  private var myUninstVars: mutable.ArrayBuffer[TypeVar] | Null = uninitialized
+  private var myUninstVars: mutable.ArrayBuffer[TypeVar] | Null = null
 
   /** The uninstantiated typevars of this constraint */
-  def uninstVars: collection.Seq[TypeVar] = {
-    if (myUninstVars == null || myUninstVars.uncheckedNN.exists(_.isPermanentlyInstantiated)) {
-      myUninstVars = new mutable.ArrayBuffer[TypeVar]
-      boundsMap.foreachBinding { (poly, entries) =>
-        for (i <- 0 until paramCount(entries))
-          typeVar(entries, i) match {
-            case tv: TypeVar if !tv.isPermanentlyInstantiated && isBounds(entries(i)) => myUninstVars.uncheckedNN += tv
-            case _ =>
-          }
-      }
-    }
-    myUninstVars.uncheckedNN
-  }
+  def uninstVars: collection.Seq[TypeVar] =
+    myUninstVars match
+      case uv: mutable.ArrayBuffer[TypeVar] if !uv.exists(_.isPermanentlyInstantiated) => uv
+      case _ =>
+        val res = new mutable.ArrayBuffer[TypeVar]
+        myUninstVars = res
+        boundsMap.foreachBinding { (poly, entries) =>
+          for (i <- 0 until paramCount(entries))
+            typeVar(entries, i) match {
+              case tv: TypeVar if !tv.isPermanentlyInstantiated && isBounds(entries(i)) => res += tv
+              case _ =>
+            }
+        }
+        res
 
 // ---------- Checking -----------------------------------------------
 

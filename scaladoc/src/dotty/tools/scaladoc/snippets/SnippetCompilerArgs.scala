@@ -3,11 +3,19 @@ package snippets
 
 import java.nio.file.Path
 
-case class SnippetCompilerArg(flag: SCFlags, scalacOptions: Seq[String] = Seq.empty):
+case class SnippetCompilerArg(
+  flag: SCFlags,
+  scalacOptions: Seq[String] = Seq.empty,
+  verifyDiagnostics: Boolean = false
+):
   def overrideFlag(f: SCFlags): SnippetCompilerArg = copy(flag = f)
   def withScalacOptions(opts: Seq[String]): SnippetCompilerArg = copy(scalacOptions = scalacOptions ++ opts)
   def merge(other: SnippetCompilerArg): SnippetCompilerArg =
-    SnippetCompilerArg(other.flag, scalacOptions ++ other.scalacOptions)
+    SnippetCompilerArg(
+      other.flag,
+      scalacOptions ++ other.scalacOptions,
+      verifyDiagnostics || other.verifyDiagnostics
+    )
 
 enum SCFlags(val flagName: String):
   case Compile extends SCFlags("compile")
@@ -27,22 +35,27 @@ case class SnippetCompilerArgs(scArgs: PathBased[SnippetCompilerArg], defaultFla
 
 
 object SnippetCompilerArgs:
+  /** Enables inline diagnostic expectation checking (`// error`, `// warn`). */
+  val TestModifier = "test"
+
   val usage =
-    """
+    s"""
     |Snippet compiler arguments provide a way to configure snippet type checking.
     |
-    |This setting accept list of arguments in format:
+    |This setting accepts a list of arguments in format:
     |args := arg{,arg}
-    |arg := [path=]flag[|scalacOption]*
-    |where `path` is a prefix of the path to source files where snippets are located, `flag` is the mode in which snippets will be type checked, and optional `scalacOption`s (separated by `|`) are passed to the compiler.
+    |arg := [path=]flag[+modifier]*[|scalacOption]*
+    |where `path` is a prefix of the path to source files where snippets are located, `flag` is the mode in which snippets will be type checked, optional `modifier`s tweak snippet assertions, and optional `scalacOption`s (separated by `|`) are passed to the compiler.
     |
-    |If the path is not present, the argument will be used as the default for all unmatched paths..
+    |If the path is not present, the argument will be used as the default for all unmatched paths.
     |
     |Available flags:
     |compile - Enables snippet checking.
     |nocompile - Disables snippet checking.
     |fail - Enables snippet checking, asserts that snippet doesn't compile.
     |
+    |Available modifiers:
+    |$TestModifier - Enables inline diagnostic expectation checking (`// error`, `// warn`).
     """.stripMargin
 
   def load(args: List[String], defaultFlag: SCFlags = SCFlags.NoCompile)(using CompilerContext): SnippetCompilerArgs = {
@@ -68,5 +81,13 @@ object SCFlagsParser extends ArgParser[SCFlags]:
 object SnippetCompilerArgParser extends ArgParser[SnippetCompilerArg]:
   def parse(s: String): Either[String, SnippetCompilerArg] =
     val parts = s.split("\\|")
-    SCFlagsParser.parse(parts(0)).map: flag =>
-      SnippetCompilerArg(flag, parts.drop(1).toSeq)
+    val flagAndModifiers = parts.head.split("\\+").toList
+    val flagText = flagAndModifiers.head
+    val modifiers = flagAndModifiers.tail
+    val unknownModifiers = modifiers.filterNot(_ == SnippetCompilerArgs.TestModifier)
+    val verifyDiagnostics = modifiers.contains(SnippetCompilerArgs.TestModifier)
+    if unknownModifiers.nonEmpty then
+      Left(s"${unknownModifiers.mkString(", ")}: Unknown snippet compiler modifier(s).")
+    else
+      SCFlagsParser.parse(flagText).map: flag =>
+        SnippetCompilerArg(flag, parts.drop(1).toSeq, verifyDiagnostics)

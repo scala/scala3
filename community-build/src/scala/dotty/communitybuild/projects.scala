@@ -81,6 +81,9 @@ sealed case class MillCommunityProject(
   override val runCommandsArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
   override val environment = Map.empty
 
+val sbt1Version = "1.12.1"
+val sbt2Version = "2.0.3"
+
 final case class SbtCommunityProject(
     project: String,
     sbtTestCommand: String,
@@ -89,6 +92,7 @@ final case class SbtCommunityProject(
     sbtDocCommand: String = null,
     scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
     override val environment: Map[String, String] = Map.empty,
+    sbtVersion: String = sbt1Version
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
@@ -117,12 +121,14 @@ final case class SbtCommunityProject(
     val sbtProps = Option(System.getProperty("sbt.ivy.home")) match
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
-    extraSbtArgs ++ sbtProps ++ List("-sbt-version", "1.11.5", "-Dsbt.supershell=false", s"--addPluginSbtFile=$sbtPluginFilePath")
+    extraSbtArgs ++ sbtProps ++ List(s"-Dsbt.version=$sbtVersion", "-Dsbt.supershell=false", s"--addPluginSbtFile=$sbtPluginFilePath")
 
 object SbtCommunityProject:
   def scalacOptions = List(
     "-Xcheck-macros",
     "-Wsafe-init",
+    "-Yexplicit-nulls",
+    "-language:unsafeNulls",
   )
 
 object projects:
@@ -134,7 +140,7 @@ object projects:
 
   private def removeRelease8(projects: String*): String =
     projects.map(project =>
-      s"""set $project/Compile/scalacOptions := ($project/Compile/scalacOptions).value.filterNot(opt => opt == "-release" || opt == "8")"""
+      s"""set $project/Compile/scalacOptions := ($project/Compile/scalacOptions).value.filterNot(opt => opt == "-release" || opt == "-java-output-version" || opt == "8")"""
     ).mkString("; ")
 
   private def aggregateDoc(in: String)(projects: String*) =
@@ -426,7 +432,14 @@ object projects:
 
   lazy val catsEffect3 = SbtCommunityProject(
     project        = "cats-effect-3",
-    sbtTestCommand = "ciJVM",
+    sbtTestCommand =
+      List(
+        removeRelease8("core.jvm", "example.jvm", "kernel.jvm", "kernelTestkit.jvm", "laws.jvm", "std.jvm", "testkit.jvm", "tests.jvm", "rootJVM", "ioAppTestsJVM", "benchmarks", "graalVMExample"),
+        // repeats code from `removeRelease8`, but oh well, maybe generalize later
+        """set root/ScalaUnidoc/unidoc/scalacOptions := (root/ScalaUnidoc/unidoc/scalacOptions).value.filterNot(opt => opt == "-release" || opt == "-java-output-version" || opt == "8")""",
+        "set ThisBuild / tlFatalWarnings := false",
+        "ciJVM"
+      ).mkString("; "),
     sbtPublishCommand = "publishLocal",
     sbtDocCommand  = ";coreJVM/doc ;lawsJVM/doc ;kernelJVM/doc",
   )
@@ -680,9 +693,10 @@ object projects:
 
   lazy val parboiled2 = SbtCommunityProject(
     project = "parboiled2",
-    sbtTestCommand = "parboiledCoreJVM/test; parboiledJVM/test",
+    sbtTestCommand = "parboiledCoreJVM3/testFull; parboiledJVM3/testFull",
     sbtPublishCommand = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
+    sbtVersion = sbt2Version,
   )
 
 end projects
@@ -762,7 +776,6 @@ def allProjects = List(
   projects.libretto,
   projects.jacksonModuleScala,
   projects.specs2,
-  projects.coop,
   projects.spire,
   projects.http4s,
   projects.parboiled2,

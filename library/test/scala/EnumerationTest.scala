@@ -23,4 +23,11 @@ class EnumerationTest {
     }
     assertSame(Ordering[MyEnum.Value], MyEnum.ValueOrdering)
   }
+
+  @Test def iteratorFromWithNegativeValueIds(): Unit = {
+    object NegativeIds extends Enumeration(-2) {
+      val first, second, third = Value
+    }
+    assertEquals(List(NegativeIds.second, NegativeIds.third), NegativeIds.values.iteratorFrom(NegativeIds.second).toList)
+  }
 }

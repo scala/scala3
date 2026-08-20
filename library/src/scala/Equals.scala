@@ -32,6 +32,8 @@ trait Equals extends Any {
 
   /** Checks whether this instance is equal to `that`.
    *  This universal equality method is defined in `AnyRef`.
+   *
+   *  @param that the object to compare for equality with this instance
    */
   def equals(that: Any): Boolean
 }

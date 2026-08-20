@@ -2,14 +2,20 @@ package dotty.tools
 package dotc
 package core
 
-import ast.{ untpd, tpd }
-import Symbols.*, Contexts.*
-import util.{SourceFile, ReadOnlyMap}
+import ast.{tpd, untpd}
+import Symbols.*
+import Contexts.*
+import dotty.tools.dotc.core.Decorators.em
+import dotty.tools.dotc.core.Types.ClassInfo
+import dotty.tools.dotc.printing.Formatting.hl
+import util.{ReadOnlyMap, SourceFile}
 import util.Spans.*
 import util.CommentParsing.*
 import util.Property.Key
 import parsing.Parsers.Parser
 import reporting.ProperDefinitionNotFound
+
+import scala.annotation.tailrec
 
 object Comments {
   val ContextDoc: Key[ContextDocstrings] = new Key[ContextDocstrings]
@@ -22,7 +28,7 @@ object Comments {
     */
   class ContextDocstrings {
 
-    private val _docstrings: MutableSymbolMap[Comment] = MutableSymbolMap[Comment](512) // FIXME: 2nd [Comment] needed or "not a class type"
+    private val _docstrings: MutableSymbolMap[Comment] = MutableSymbolMap(512)
 
     val templateExpander: CommentExpander = new CommentExpander
 
@@ -50,7 +56,6 @@ object Comments {
     usecases: List[UseCase],
     variables: Map[String, String],
   ) {
-
     /** Has this comment been cooked or expanded? */
     def isExpanded: Boolean = expanded.isDefined
 
@@ -145,8 +150,7 @@ object Comments {
     import scala.collection.mutable
 
     def expand(sym: Symbol, site: Symbol)(using Context): String = {
-      val parent = if (site != NoSymbol) site else sym
-      defineVariables(parent)
+      val parent = if site != NoSymbol then site else sym
       expandedDocComment(sym, parent)
     }
 
@@ -181,8 +185,11 @@ object Comments {
       docStr.replaceAll("""\{@inheritDoc\p{Zs}*\}""", "@inheritdoc")
 
     /** The cooked doc comment of an overridden symbol */
-    protected def superComment(sym: Symbol)(using Context): Option[String] =
-      allInheritedOverriddenSymbols(sym).iterator map (x => cookedDocComment(x)) find (_ != "")
+    protected def superComment(sym: Symbol, findClasses: Boolean = false)(using Context): Option[String] =
+      val searchList =
+        if sym.isClass && findClasses then sym.info.baseClasses.tail
+        else allInheritedOverriddenSymbols(sym)
+      searchList.iterator.map(x => cookedDocComment(x)).find(_ != "")
 
     private val cookedDocComments = MutableSymbolMap[String]()
 
@@ -193,7 +200,7 @@ object Comments {
      */
     def cookedDocComment(sym: Symbol, docStr: String = "")(using Context): String = cookedDocComments.getOrElseUpdate(sym, {
       var ownComment =
-        if (docStr.length == 0) ctx.docCtx.flatMap(_.docstring(sym).map(c => template(c.raw))).getOrElse("")
+        if (docStr.isEmpty) ctx.docCtx.flatMap(_.docstring(sym).map(c => template(c.raw))).getOrElse("")
         else template(docStr)
       ownComment = replaceInheritDocToInheritdoc(ownComment)
 
@@ -349,87 +356,122 @@ object Comments {
     protected def expandVariables(initialStr: String, sym: Symbol, site: Symbol)(using Context): String = {
       val expandLimit = 10
 
+      @tailrec
       def expandInternal(str: String, depth: Int): String = {
+        def indexOfEither(str: String, fst: Char, snd: Char, start: Int): Int = {
+          val fstIdx = str.indexOf(fst, start)
+          val sndIdx = str.indexOf(snd, start)
+          if fstIdx == -1 then sndIdx
+          else if sndIdx == -1 then fstIdx
+          else Math.min(fstIdx, sndIdx)
+        }
+
         if (depth >= expandLimit)
           throw new ExpansionLimitExceeded(str)
 
-        val out         = new StringBuilder
-        var copied, idx = 0
-        // excluding variables written as \$foo so we can use them when
-        // necessary to document things like Symbol#decode
-        def isEscaped = idx > 0 && str.charAt(idx - 1) == '\\'
-        while (idx < str.length)
-          if str.charAt(idx) != '$' || isEscaped then
-            idx += 1
-          else {
+        val out    = new StringBuilder
+        var idx    = -1
+        var copied = 0
+        while
+          idx = indexOfEither(str, '$', '`', idx + 1)
+          idx != -1
+        do {
+          // don't expand anything inside fenced code blocks
+          // but handle unfinished ones!
+          if str.charAt(idx) == '`' then
+            if idx + 2 < str.length && str.charAt(idx + 1) == '`' && str.charAt(idx + 2) == '`' then
+              idx = str.indexOf("```", idx + 1)
+              if idx == -1 then idx = str.length
+              else idx = idx + 2 // since there are 3 chars (and the loop automatically skips one)
+            else
+              idx = str.indexOf('`', idx + 1)
+              if idx == -1 then idx = str.length
+          // one can escape `$` as `\$`, e.g., `\$foo`,
+          // useful to document things like `Symbol#decode`
+          else if idx == 0 || str.charAt(idx - 1) != '\\' then
             val vstart = idx
-            idx = skipVariable(str, idx + 1)
-            def replaceWith(repl: String) = {
-              out append str.substring(copied, vstart)
-              out append repl
+            def replaceWith(repl: CharSequence): Unit = {
+              out.append(str.subSequence(copied, vstart))
+              out.append(repl)
               copied = idx
             }
-            variableName(str.substring(vstart + 1, idx)) match {
-              case "super"    =>
-                superComment(sym) foreach { sc =>
-                  val superSections = tagIndex(sc)
-                  replaceWith(sc.substring(3, startTag(sc, superSections)))
-                  for (sec @ (start, end) <- superSections)
-                    if (!isMovable(sc, sec)) out append sc.substring(start, end)
-                }
-              case "" => idx += 1
-              case vname  =>
-                lookupVariable(vname, site) match {
-                  case Some(replacement) => replaceWith(replacement)
-                  case None              =>
-                    scaladoc.println(s"Variable $vname undefined in comment for $sym in $site")
-                }
-            }
-          }
-        if (out.length == 0) str
-        else {
-          out append str.substring(copied)
-          expandInternal(out.toString, depth + 1)
+            idx = skipVariable(str, idx + 1)
+            variableName(str.substring(vstart + 1, idx)) match
+              case "" => ()
+              case "super" =>
+                superComment(sym, findClasses = true) match
+                  case Some(sc) =>
+                    val superSections = tagIndex(sc)
+                    var end = startTag(sc, superSections)
+                    // Avoid including trailing whitespace
+                    while end > 0 && Character.isWhitespace(sc.charAt(end - 1)) do end -= 1
+                    replaceWith(sc.subSequence(3, end))
+                    for sec @ (start, end) <- superSections
+                      if !isMovable(sc, sec)
+                        do out.append(sc.subSequence(start, end))
+                  case None =>
+                    report.warning(em"$$${hl("super")} reference does not refer to anything in comment for $sym", site)
+              case vname =>
+                lookupVariable(vname, site) match
+                  case Some(replacement) =>
+                    replaceWith(replacement)
+                  case None =>
+                    report.warning(
+                      em"Variable $$${hl(vname)} undefined in comment for $sym.\n(You can escape with \"\\$$\" to produce a single '$$' if necessary)",
+                      site
+                    )
         }
+        if (out.isEmpty)
+          // Now that we're done, we fix up the escapes;
+          // we can't do this as we go, because then the next round of expanding would treat them as unescaped.
+          str.replace("\\$", "$")
+        else
+          out.append(str.subSequence(copied, str.length))
+          expandInternal(out.toString, depth + 1)
       }
 
-      // We suppressed expanding \$ throughout the recursion, and now we
-      // need to replace \$ with $ so it looks as intended.
-      expandInternal(initialStr, 0).replace("""\$""", "$")
-    }
-
-    def defineVariables(sym: Symbol)(using Context): Unit = {
-      val Trim = "(?s)^[\\s&&[^\n\r]]*(.*?)\\s*$".r
-
-      val raw = ctx.docCtx.flatMap(_.docstring(sym).map(_.raw)).getOrElse("")
-      defs(sym) ++= defines(raw).map { str =>
-        val start = skipWhitespace(str, "@define".length)
-        val (key, Trim(value: String)) = str.splitAt(skipVariable(str, start)): @unchecked
-        variableName(key.drop(start)) -> value.replaceAll("\\s+\\*+$", "")
-      }
+      expandInternal(initialStr, 0)
     }
 
     /** Maps symbols to the variable -> replacement maps that are defined
      *  in their doc comments
      */
     private val defs = mutable.HashMap[Symbol, Map[String, String]]() withDefaultValue Map()
+    private val Trim = "(?s)^[\\s&&[^\n\r]]*(.*?)\\s*$".r
+    private def getDefs(symbol: Symbol)(using Context): Map[String, String] = defs.get(symbol) match
+      case Some(m) => m
+      case None =>
+        val raw = ctx.docCtx.flatMap(_.docstring(symbol).map(_.raw)).getOrElse("")
+        val vars = defines(raw).map(str =>
+          val start = skipWhitespace(str, "@define".length)
+          val (key, Trim(value: String)) = str.splitAt(skipVariable(str, start)): @unchecked
+          variableName(key.drop(start)) -> value.replaceAll("\\s+\\*+$", "")
+        ).toMap
+        defs(symbol) = vars
+        vars
 
     /** Lookup definition of variable.
      *
-     *  @param vble  The variable for which a definition is searched
-     *  @param site  The class for which doc comments are generated
+     *  @param variable  The variable for which a definition is searched
+     *  @param site      The class for which doc comments are generated
      */
-    def lookupVariable(vble: String, site: Symbol)(using Context): Option[String] = site match {
+    private def lookupVariable(variable: String, site: Symbol)(using Context): Option[String] = site match {
       case NoSymbol => None
       case _        =>
-        val searchList =
-          if (site.flags.is(Flags.Module)) site :: site.info.baseClasses
-          else site.info.baseClasses
-
-        searchList collectFirst { case x if defs(x) contains vble => defs(x)(vble) } match {
-          case Some(str) if str.startsWith("$") => lookupVariable(str.tail, site)
-          case res                              => res `orElse` lookupVariable(vble, site.owner)
-        }
+        var searchList: List[Symbol] = site.info.baseClasses
+        if site.flags.is(Flags.Module) then
+          searchList = site :: searchList
+        site match
+          case cs: ClassSymbol =>
+            cs.givenSelfType.stripped match
+              case Types.NoType => ()
+              case Types.AppliedType(tycon, _) => searchList = tycon.typeSymbol :: searchList
+              case self => searchList = self.typeSymbol :: searchList
+          case _ => ()
+        searchList.iterator
+          .flatMap(x => getDefs(x).get(variable))
+          .nextOption()
+          .orElse(lookupVariable(variable, site.owner))
     }
 
     /** The position of the raw doc comment of symbol `sym`, or NoPosition if missing

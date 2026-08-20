@@ -8,31 +8,34 @@ import Decorators.*
 import tasty.*
 import config.Printers.{noPrinter, pickling}
 import config.Feature
+
 import java.io.PrintStream
-import io.FileWriters.{TastyWriter, ReadOnlyContext}
-import StdNames.{str, nme}
+import io.FileWriters.TastyWriter
+import StdNames.{nme, str}
 import Periods.*
 import Phases.*
 import Symbols.*
 import Flags.Module
-import reporting.{ThrowingReporter, Profile, Message}
+import reporting.{Message, Profile, ThrowingReporter}
 import collection.mutable
-import util.concurrent.{Executor, Future}
+import util.concurrent.Executor
+
 import compiletime.uninitialized
-import dotty.tools.io.{JarArchive, AbstractFile}
+import dotty.tools.io.{AbstractFile, JarArchive, VirtualFile}
 import dotty.tools.dotc.printing.OutlinePrinter
+
 import scala.annotation.constructorOnly
 import scala.concurrent.Promise
-import dotty.tools.dotc.transform.Pickler.writeSigFilesAsync
-
-import dotty.tools.io.FileWriters.{EagerReporter, BufferingReporter}
+import dotty.tools.dotc.transform.Pickler.*
 import dotty.tools.dotc.sbt.interfaces.IncrementalCallback
 import dotty.tools.dotc.sbt.asyncZincPhasesCompleted
+import dotty.tools.dotc.util.{NoSourcePosition, SourcePosition}
 import dotty.tools.dotc.util.chaining.*
+
 import scala.concurrent.ExecutionContext
-import scala.util.control.NonFatal
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicReference}
 import java.nio.file.Files
+import java.util.ConcurrentModificationException
 
 object Pickler {
   val name: String = "pickler"
@@ -48,7 +51,7 @@ object Pickler {
    * The callbacks should only be called once.
    */
   class AsyncTastyHolder private (
-      val earlyOut: AbstractFile, incCallback: IncrementalCallback | Null)(using @constructorOnly ex: ExecutionContext):
+      val earlyOut: Option[AbstractFile], incCallback: IncrementalCallback | Null)(using @constructorOnly ex: ExecutionContext):
     import scala.concurrent.Future as StdFuture
     import scala.concurrent.Await
     import scala.concurrent.duration.Duration
@@ -101,11 +104,11 @@ object Pickler {
           // we should close the file system so it can be read in the same JVM process.
           // Note: we close even if we have been cancelled.
           earlyOut match
-            case jar: JarArchive => jar.close()
+            case Some(jar: JarArchive) => jar.close()
             case _ =>
         catch
-          case NonFatal(t) =>
-            ctx.reporter.error(em"Error closing early output: ${t}")
+          case ex: Exception =>
+            ctx.reporter.error(em"Error closing early output: $ex")
 
       asyncTastyWritten.trySuccess:
         Some(
@@ -162,11 +165,11 @@ object Pickler {
           if !async.cancelled then
             val _ = writer.writeTasty(internalName, pickled)
       catch
-        case NonFatal(t) => ctx.reporter.exception(em"writing TASTy to early output", t)
+        case ex: Exception => ctx.reporter.exception(em"writing TASTy to early output", ex)
       finally
         writer.close()
     catch
-      case NonFatal(t) => ctx.reporter.exception(em"closing early output writer", t)
+      case ex: Exception => ctx.reporter.exception(em"closing early output writer", ex)
     finally
       async.signalAsyncTastyWritten()
   }
@@ -175,6 +178,118 @@ object Pickler {
     def this(dest: AbstractFile)(using @constructorOnly ctx: ReadOnlyContext) = this(TastyWriter(dest))
 
     export writer.{writeTasty, close}
+
+
+  sealed trait DelayedReporter {
+    def hasErrors: Boolean
+    def error(message: Context ?=> Message, position: SourcePosition): Unit
+    def warning(message: Context ?=> Message, position: SourcePosition): Unit
+    def log(message: String): Unit
+
+    final def toBuffered: Option[BufferingReporter] = this match
+      case buffered: BufferingReporter =>
+        if buffered.hasReports then Some(buffered) else None
+      case _: EagerReporter => None
+
+    def error(message: Context ?=> Message): Unit = error(message, NoSourcePosition)
+    def warning(message: Context ?=> Message): Unit = warning(message, NoSourcePosition)
+    final def exception(reason: Context ?=> Message, throwable: Throwable): Unit =
+      error({
+        val trace = throwable.getStackTrace().mkString("\n  ")
+        em"An unhandled exception was thrown in the compiler while\n  ${reason.message}.\n${throwable}\n  $trace"
+      }, NoSourcePosition)
+  }
+
+  final class EagerReporter(using captured: Context) extends DelayedReporter:
+    private var _hasErrors = false
+
+    def hasErrors: Boolean = _hasErrors
+
+    def error(message: Context ?=> Message, position: SourcePosition): Unit =
+      report.error(message, position)
+      _hasErrors = true
+
+    def warning(message: Context ?=> Message, position: SourcePosition): Unit =
+      report.warning(message, position)
+
+    def log(message: String): Unit = report.echo(message)
+
+  enum Report:
+    case Error(message: Context => Message, position: SourcePosition)
+    case Warning(message: Context => Message, position: SourcePosition)
+    case Log(message: String)
+
+  final class BufferingReporter extends DelayedReporter {
+    // We optimise access to the buffered reports for the common case - that there are no warning/errors to report
+    // We could use a listBuffer etc - but that would be extra allocation in the common case
+    // buffered logs are updated atomically.
+
+    private val _bufferedReports = AtomicReference(List.empty[Report])
+    private val _hasErrors = AtomicBoolean(false)
+
+
+    /** Atomically record that an error occurred */
+    private def recordError(): Unit =
+      _hasErrors.set(true)
+
+    /** Atomically add a report to the log */
+    private def recordReport(report: Report): Unit =
+      _bufferedReports.getAndUpdate(report :: _)
+
+    /** atomically extract and clear the buffered reports, must only be called at a synchronization point. */
+    def resetReports(): List[Report] =
+      val curr = _bufferedReports.get()
+      if curr.nonEmpty && !_bufferedReports.compareAndSet(curr, Nil) then
+        throw ConcurrentModificationException("concurrent modification of buffered reports")
+      else curr
+
+    def hasErrors: Boolean = _hasErrors.get()
+    def hasReports: Boolean = _bufferedReports.get().nonEmpty
+
+    def error(message: Context ?=> Message, position: SourcePosition): Unit =
+      recordReport(Report.Error({case given Context => message}, position))
+      recordError()
+
+    def warning(message: Context ?=> Message, position: SourcePosition): Unit =
+      recordReport(Report.Warning({case given Context => message}, position))
+
+    def log(message: String): Unit =
+      recordReport(Report.Log(message))
+  }
+
+  trait ReadOnlySettings:
+    def jarCompressionLevel: Int
+    def debug: Boolean
+
+  trait ReadOnlyRun:
+    def suspendedAtTyperPhase: Boolean
+
+  trait ReadOnlyContext:
+    val run: ReadOnlyRun
+    val settings: ReadOnlySettings
+    val reporter: DelayedReporter
+
+  trait BufferedReadOnlyContext extends ReadOnlyContext:
+    val reporter: BufferingReporter
+
+  object ReadOnlyContext:
+    def readSettings(using ctx: Context): ReadOnlySettings = new:
+      val jarCompressionLevel = ctx.settings.XjarCompressionLevel.value
+      val debug = ctx.settings.Ydebug.value
+
+    def readRun(using ctx: Context): ReadOnlyRun = new:
+      val suspendedAtTyperPhase = ctx.run.nn.suspendedAtTyperPhase
+
+    def buffered(using Context): BufferedReadOnlyContext = new:
+      val settings = readSettings
+      val reporter = BufferingReporter()
+      val run = readRun
+
+    def eager(using Context): ReadOnlyContext = new:
+      val settings = readSettings
+      val reporter = EagerReporter()
+      val run = readRun
+
 }
 
 /** This phase pickles trees */
@@ -244,7 +359,7 @@ class Pickler extends Phase {
   private val executor = Executor[Array[Byte]]()
 
   private def useExecutor(using Context) =
-    Pickler.ParallelPickling && !ctx.isBestEffort && !ctx.settings.YtestPickler.value
+    Pickler.ParallelPickling && !ctx.isBestEffort && !ctx.settings.YtestPickler.value && !ctx.settings.YprintTasty.value
 
   private def printerContext(isOutline: Boolean)(using Context): Context =
     if isOutline then ctx.fresh.setPrinterFn(OutlinePrinter(_))
@@ -260,6 +375,40 @@ class Pickler extends Phase {
   private def computeInternalName(cls: ClassSymbol)(using Context): String =
     if cls.is(Module) then cls.binaryClassName.stripSuffix(str.MODULE_SUFFIX)
     else cls.binaryClassName
+
+  // This can be called inside a Future in a background thread, it must not capture a Context
+  def computePickled(pickler: TastyPickler, treePkl: TreePickler, 
+                     tree: Tree, unit: CompilationUnit, internalName: String, attributes: Attributes,
+                     dropComments: Boolean/*ctx.settings.XdropComments.value*/): Array[Byte] =
+    serialized.run { scratch =>
+      treePkl.compactify(scratch)
+      if tree.span.exists then
+        PositionPickler.picklePositions(
+          pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots,
+          unit.source, tree :: Nil,
+          scratch.positionBuffer, scratch.pickledIndices)
+
+      if !dropComments then
+        CommentPickler.pickleComments(
+          pickler, treePkl.buf.addrOfTree, treePkl.docString, tree,
+          scratch.commentBuffer)
+
+      AttributePickler.pickleAttributes(attributes, pickler, scratch.attributeBuffer)
+
+      val pickled = pickler.assembleParts()
+
+      def rawBytes = // not needed right now, but useful to print raw format.
+        pickled.iterator.grouped(10).toList.zipWithIndex.map {
+          case (row, i) => s"${i}0: ${row.mkString(" ")}"
+        }
+
+      // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
+
+      if fastDoAsyncTasty then
+        serialized.commit(internalName, pickled)
+
+      pickled
+    }
 
   protected def run(using Context): Unit = {
     val unit = ctx.compilationUnit
@@ -281,16 +430,13 @@ class Pickler extends Phase {
       if ctx.settings.YtestPickler.value then beforePickling(cls) =
         tree.show(using printerContext(unit.typedAsJava))
 
-      val sourceRelativePath =
-        val reference = ctx.settings.sourceroot.value
-        util.SourceFile.relativePath(unit.source, reference)
       val isJavaAttr = unit.isJava // we must always set JAVAattr when pickling Java sources
       if isJavaAttr then
         // assert that Java sources didn't reach Pickler without `-Xjava-tasty`.
         assert(ctx.settings.XjavaTasty.value, "unexpected Java source file without -Xjava-tasty")
       val isOutline = isJavaAttr // TODO: later we may want outline for Scala sources too
       val attributes = Attributes(
-        sourceFile = sourceRelativePath,
+        sourceFile = unit.source.pathRelativeToSourceRoot,
         scala2StandardLibrary = Feature.shouldBehaveAsScala2,
         explicitNulls = ctx.settings.YexplicitNulls.value,
         captureChecked = Feature.ccEnabled,
@@ -306,67 +452,32 @@ class Pickler extends Phase {
           treePkl.pickle(tree :: Nil)
           true
         catch
-          case NonFatal(ex) if ctx.isBestEffort =>
+          case ex: Exception if ctx.isBestEffort =>
             report.bestEffortError(ex, "Some best-effort tasty files will not be generated.")
             false
       Profile.current.recordTasty(treePkl.buf.length)
 
-      val positionWarnings = new mutable.ListBuffer[Message]()
-      def reportPositionWarnings() = positionWarnings.foreach(report.warning(_))
-
       val internalName = if fastDoAsyncTasty then computeInternalName(cls) else ""
 
-      def computePickled(): Array[Byte] = inContext(ctx.fresh) {
-        serialized.run { scratch =>
-          treePkl.compactify(scratch)
-          if tree.span.exists then
-            val reference = ctx.settings.sourceroot.value
-            PositionPickler.picklePositions(
-                pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
-                unit.source, tree :: Nil, positionWarnings,
-                scratch.positionBuffer, scratch.pickledIndices)
-
-          if !ctx.settings.XdropComments.value then
-            CommentPickler.pickleComments(
-                pickler, treePkl.buf.addrOfTree, treePkl.docString, tree,
-                scratch.commentBuffer)
-
-          AttributePickler.pickleAttributes(attributes, pickler, scratch.attributeBuffer)
-
-          val pickled = pickler.assembleParts()
-
-          def rawBytes = // not needed right now, but useful to print raw format.
-            pickled.iterator.grouped(10).toList.zipWithIndex.map {
-              case (row, i) => s"${i}0: ${row.mkString(" ")}"
-            }
-
-          // println(i"rawBytes = \n$rawBytes%\n%") // DEBUG
-          if ctx.settings.YprintTasty.value || pickling != noPrinter then
-            println(i"**** pickled info of $cls")
-            println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never", isBestEffortTasty = false))
-            println(i"**** end of pickled info of $cls")
-
-          if fastDoAsyncTasty then
-            serialized.commit(internalName, pickled)
-
-          pickled
-        }
-      }
-
       if successful then
+        val dropComments = ctx.settings.XdropComments.value
+        // must not depend on a Context as it's passed to the executor, so we fetch settings before
+        def doComputePickled() =
+          computePickled(pickler, treePkl, tree, unit, internalName, attributes, dropComments)
         /** A function that returns the pickled bytes. Depending on `Pickler.ParallelPickling`
          *  either computes the pickled data in a future or eagerly before constructing the
          *  function value.
          */
         val demandPickled: () => Array[Byte] =
           if useExecutor then
-            val futurePickled = executor.schedule(computePickled)
-            () =>
-              try futurePickled.force.get
-              finally reportPositionWarnings()
+            val futurePickled = executor.schedule(doComputePickled)
+            () => futurePickled.force.get
           else
-            val pickled = computePickled()
-            reportPositionWarnings()
+            val pickled = doComputePickled()
+            if ctx.settings.YprintTasty.value || pickling != noPrinter then
+              println(i"**** pickled info of $cls")
+              println(TastyPrinter.showContents(pickled, ctx.settings.color.value == "never", isBestEffortTasty = false))
+              println(i"**** end of pickled info of $cls")
             if ctx.settings.YtestPickler.value then
               pickledBytes(cls) = (unit, pickled)
               if ctx.settings.YtestPicklerCheck.value then
@@ -383,10 +494,13 @@ class Pickler extends Phase {
     val writeTask: Option[() => Unit] =
       ctx.run.nn.asyncTasty.map: async =>
         fastDoAsyncTasty = true
-        () =>
-          given ReadOnlyContext = if useExecutor then ReadOnlyContext.buffered else ReadOnlyContext.eager
-          val writer = Pickler.EarlyFileWriter(async.earlyOut)
-          writeSigFilesAsync(serialized.result(), writer, async)
+        () => async.earlyOut match {
+          case Some(out) =>
+            given ReadOnlyContext = if useExecutor then ReadOnlyContext.buffered else ReadOnlyContext.eager
+            val writer = Pickler.EarlyFileWriter(out)
+            writeSigFilesAsync(serialized.result(), writer, async)
+          case None =>
+        }
 
     def runPhase(writeCB: (doWrite: () => Unit) => Unit) =
       super.runOn(units).tap(_ => writeTask.foreach(writeCB))
@@ -427,13 +541,12 @@ class Pickler extends Phase {
     val resolveCheck = ctx.settings.YtestPicklerCheck.value
     val unpicklers =
       for ((cls, (unit, bytes)) <- pickledBytes) yield {
-        val unpickler = new DottyUnpickler(unit.source.file, bytes, isBestEffortTasty = false)
+        val unpickler = new DottyUnpickler(new VirtualFile(unit.source.path, bytes), isBestEffortTasty = false)
         unpickler.enter(roots = Set.empty)
         val optCheck =
-          if resolveCheck then
+          if resolveCheck && unit.source.file != null then
             val resolved = unit.source.file.resolveSibling(s"${cls.name.mangledString}.tastycheck")
-            if resolved == null then None
-            else Some(resolved)
+            Option(resolved)
           else None
         cls -> (unit, unpickler, optCheck)
       }

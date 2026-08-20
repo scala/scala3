@@ -11,19 +11,24 @@ Capabilities are extremely versatile. They can express concepts from many differ
 Sometimes it is important to restrict, or: _classify_ what kind of capabilities are expected or returned in a context. For instance, we might want to allow only control capabilities such as `CanThrow`s or boundary `Label`s but no
 other capabilities. Or might want to allow mutation, but no other side effects. This is achieved by having a capability class extend a _classifier_.
 
+```scala sc-hidden sc-name:classifiers-cc-context
+import language.experimental.captureChecking
+import caps.*
+```
+
 For instance, the `scala.caps` package defines a classifier trait called `Control`,
 like this:
 ```scala sc:nocompile
-  trait Control extends SharedCapability, Classifier
+trait Control extends SharedCapability, Classifier
 ```
 The [Gears library](https://lampepfl.github.io/gears/) then defines a capability class `Async` which extends `Control`.
 
-```scala sc:nocompile
-  trait Async extends Control
+```scala sc-name:classifiers-async sc-compile-with:classifiers-cc-context
+trait Async extends Control
 ```
 Unlike normal inheritance, classifiers also restrict the capture set of a capability. For instance, say we have a function
-```scala sc:nocompile
-  def f(using async: Async^) = body
+```scala sc-compile-with:classifiers-async
+def f(using async: Async^) = ()
 ```
 (the `^` is as usual redundant here since `Async` is a capability trait).
 Then we have the guarantee that any actual `async` argument can only capture
@@ -42,12 +47,11 @@ trait Classifier
 
 sealed trait Capability
 
-trait SharedCapability extends Capability Classifier
+trait SharedCapability extends Capability, Classifier
 trait Control extends SharedCapability, Classifier
 
 trait ExclusiveCapability extends Capability
-trait Stateful extends ExclusiveCapability
-trait Unscoped extends Stateful, Classifier
+trait Unscoped extends ExclusiveCapability, Classifier
 ```
 Here is a graph showing the hierarchy of predefined capability traits. Classifier traits are underlined.
 ```
@@ -58,8 +62,6 @@ Here is a graph showing the hierarchy of predefined capability traits. Classifie
            /              \
  SharedCapability     ExclusiveCapability
  ----------------            |
-        |                    |
-        |                 Stateful
         |                    |
         |                    |
      Control              Unscoped
@@ -85,10 +87,15 @@ Consider the following problem: The `Try.apply` method takes in its `body` param
 the `get` method of a `Try` object. What should a capability-aware signature of `Try` be?
 
 The body passed to `Try.apply` can have arbitrary effects, so it can retain arbitrary capabilities. Yet the resulting `Try` object will retain only those capabilities of `body` which are classified as `Control`. So the signature of `Try.apply` should look like this:
-```scala sc:nocompile
-object Try:
-  def apply[T](body: => T): Try[T]^{body.only[Control]}
+```scala sc-hidden sc-name:classifiers-try-context sc-compile-with:classifiers-cc-context
+class Try[+T]
 ```
+
+```scala sc-compile-with:classifiers-try-context
+object Try:
+  def apply[T](body: => T): Try[T]^{body.only[Control]} = ???
+```
+
 Note a new form of capability in the result's capture set: `body.only[Control]`. This is called a _restricted capability_. The general form of a restricted capability is
 `c.only[A]` where
 
@@ -113,3 +120,48 @@ def test(io: IO, async: Async, proc: () => Unit) =
     // code accessing `io`, `async`, and `proc` and returning an `Int.
   val _: Try[Int]^{async, proc} = r
 ```
+
+### Classifier Exclusion
+
+Restriction keeps the capabilities that fall under a classifier; exclusion does the reverse, keeping everything _except_ those. Suppose a method runs its argument on a separate thread. That argument must not capture a `Control` capability such as a `boundary.Label` or a `CanThrow`, since each is bound to the stack of the thread that created it; invoking one from another thread would jump into a different thread's stack. Capabilities of every other kind are admitted. We express this with an _excluded capability_:
+```scala sc-name:classifiers-except sc-compile-with:classifiers-cc-context
+def runOnNewThread[T](body: () ->{any.except[Control]} T): T = ???
+```
+The general form of an excluded capability is `c.except[A]` where
+
+ - `c` is a regular capability, possibly carrying an `only` restriction
+ - `A` is a classifier trait.
+
+`c.except[A]` stands for the parts of `c` that are _not_ classified as `A` or a subclass of `A`. A capability `x` is covered by `c.except[A]` only if `x` is covered by `c` and `x` is known to be unrelated to the classifier `A`. For instance, take a `FileSystem` capability whose classifier `IO` is a sibling of `Control`:
+```scala sc-name:classifiers-fs sc-compile-with:classifiers-except
+trait IO extends SharedCapability, Classifier
+class FileSystem extends IO:
+  def read(): Unit = ()
+```
+A closure over a `FileSystem` is accepted, since `IO` is unrelated to `Control`:
+```scala sc-compile-with:classifiers-fs
+def onIO(fs: FileSystem^) = runOnNewThread(() => fs.read())
+```
+A closure that might retain a `Control` capability is rejected — whether it captures an `Async` (which _is_ a `Control`), an unclassified function value, or a capability classified only as `SharedCapability` (of which `Control` is a sub-classifier):
+```scala sc:fail sc-compile-with:classifiers-except,classifiers-async
+def onControl(async: Async^)            = runOnNewThread(() => async.toString)  // error
+def onUnclassified(proc: () => Unit)    = runOnNewThread(() => proc())          // error
+def onShared(shared: SharedCapability^) = runOnNewThread(() => shared.toString) // error
+```
+
+Restriction and exclusion can be combined: `c.only[A].except[B]` keeps those capabilities of `c` that are classified as `A` but not as `B`. If `B` covers all of `A`, the result is the empty capture set. Several exclusions can be chained — `c.except[A].except[B]` removes both — and their order does not matter.
+
+Subcapturing relates excluded capabilities as follows, where `B` is a subtrait of classifier trait `A`:
+```
+{c.except[A]} <: {c}
+{c.only[A].except[B]} <: {c.only[A]}
+{c.except[A]} <: {c.except[B]}
+```
+The last rule holds since excluding a larger classifier `A` removes more capabilities than excluding a smaller one `B`. Exclusions of unrelated classifiers are not comparable.
+
+#### The top classifier
+
+A projection can also name `Any`, the top above all classifiers. `Any` is not itself a classifier trait, but it is accepted as the argument of `.only` and `.except`, where it stands for all capabilities. This gives two limiting cases:
+
+ - `c.only[Any]` is the _identity_ restriction: it keeps all of `c`, so `{c.only[Any]}` is the same as `{c}`.
+ - `c.except[Any]` is the _empty_ exclusion: it removes all of `c`, so `{c.except[Any]}` is the empty capture set.

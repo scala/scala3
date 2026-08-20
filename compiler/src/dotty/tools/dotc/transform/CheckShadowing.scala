@@ -221,7 +221,7 @@ object CheckShadowing:
       )
 
     private def lookForShadowedField(symDecl: Symbol)(using Context): Option[Symbol] =
-      if symDecl.isPrivate then
+      if symDecl.is(Private) then
         val symDeclType = symDecl.info
         val bClasses = symDecl.owner.info.baseClasses
         bClasses match
@@ -252,7 +252,8 @@ object CheckShadowing:
       /** Looks after any type import symbol in the given import that matches this symbol */
       private def isAnImportedType(imp: tpd.Import)(using Context): Option[Symbol] =
         val tpd.Import(qual, sels) = imp
-        val simpleSelections = qual.tpe.member(sym.name).alternatives
+        val hasWildcard = sels.exists(sel => sel.isWildcard && !sel.isGiven)
+        val simpleSelections = if hasWildcard then qual.tpe.member(sym.name).alternatives else Nil
         val typeSelections = sels.flatMap(n => qual.tpe.member(n.name.toTypeName).alternatives)
         sels
           .find(is => is.rename.toSimpleName == sym.name.toSimpleName).map(_.symbol)

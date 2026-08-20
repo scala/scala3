@@ -17,7 +17,7 @@ object Test {
     // Artefact of the current test infrastructure
     // TODO improve infrastructure to avoid needing this code on each test
     val classpath = dotty.tools.dotc.util.ClasspathFromClassloader(this.getClass.getClassLoader).split(java.io.File.pathSeparator).find(_.contains("runWithCompiler")).get
-    val allTastyFiles = dotty.tools.io.Path(classpath).walkFilter(_.extension == "tasty").map(_.toString).toList
+    val allTastyFiles = dotty.tools.io.Path(classpath).walkFilter(_.ext == dotty.tools.io.FileExtension.Tasty).map(_.toString).toList
 
     val actualOutput = interpret(allTastyFiles.filter(x => x.contains("IntepretedMain") || x.contains("InterpretedBar")))
     val expectedOutput =
@@ -96,7 +96,7 @@ object Test {
 
     // Artefact of the current test infrastructure
     // TODO improve infrastructure to avoid needing this code on each test
-    val allTastyFiles = dotty.tools.io.Path(out).walkFilter(_.extension == "tasty").map(_.toString).toList
+    val allTastyFiles = dotty.tools.io.Path(out).walkFilter(_.ext == dotty.tools.io.FileExtension.Tasty).map(_.toString).toList
 
     val actualOutput = interpret(allTastyFiles.filter(_.endsWith("Test.tasty")))
 

@@ -39,18 +39,18 @@ private[scala] trait PropertiesTrait {
 
   final def propIsSet(name: String)                   = System.getProperty(name) != null
   final def propIsSetTo(name: String, value: String)  = propOrNull(name) == value
-  final def propOrElse(name: String, alt: String)     = System.getProperty(name, alt)
-  final def propOrEmpty(name: String)                 = propOrElse(name, "")
-  final def propOrNull(name: String)                  = propOrElse(name, null)
-  final def propOrNone(name: String)                  = Option(propOrNull(name))
+  final def propOrElse(name: String, alt: String): String = System.getProperty(name, alt)
+  final def propOrEmpty(name: String): String         = propOrElse(name, "")
+  final def propOrNull(name: String): String | Null   = propOrElse(name, null)
+  final def propOrNone(name: String): Option[String]  = Option(propOrNull(name))
   final def propOrFalse(name: String)                 = propOrNone(name) exists (x => List("yes", "on", "true") contains x.toLowerCase)
-  final def setProp(name: String, value: String)      = System.setProperty(name, value)
-  final def clearProp(name: String)                   = System.clearProperty(name)
+  final def setProp(name: String, value: String): String = System.setProperty(name, value)
+  final def clearProp(name: String): String           = System.clearProperty(name)
 
-  final def envOrElse(name: String, alt: String)      = Option(System.getenv(name)) getOrElse alt
-  final def envOrNone(name: String)                   = Option(System.getenv(name))
+  final def envOrElse(name: String, alt: String): String = Option(System.getenv(name)) getOrElse alt
+  final def envOrNone(name: String): Option[String]   = Option(System.getenv(name))
 
-  final def envOrSome(name: String, alt: Option[String])       = envOrNone(name) orElse alt
+  final def envOrSome(name: String, alt: Option[String]): Option[String] = envOrNone(name) orElse alt
 
   // for values based on propFilename, falling back to System properties
   final def scalaPropOrElse(name: String, alt: String): String = scalaPropOrNone(name).getOrElse(alt)

@@ -1,0 +1,11 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/curried.scala:16:43 --------------------------------------
+16 |  val f: (y: Ref[Int]^{a}) ->{a} Unit = foo(a) // error
+   |                                        ^^^^^^
+   |                                        Found:    (y: Ref[Int]^{any}) ->{a} Unit
+   |                                        Required: (y: Ref[Int]^{a}) ->{a} Unit
+   |
+   |                                        Note that capability `a` cannot flow into capture set {any}.
+   |
+   |                                        where:    any is the root capability caps.any
+   |
+   | longer explanation available when compiling with `-explain`

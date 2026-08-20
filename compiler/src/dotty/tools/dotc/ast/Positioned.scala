@@ -4,7 +4,6 @@ package ast
 
 import util.Spans.*
 import util.{SourceFile, SourcePosition, SrcPos, WrappedSourceFile}
-import WrappedSourceFile.MagicHeaderInfo, MagicHeaderInfo.*
 import core.Contexts.*
 import core.Decorators.*
 import core.NameOps.*
@@ -53,14 +52,7 @@ abstract class Positioned(implicit @constructorOnly src: SourceFile) extends Src
   def source: SourceFile = mySource
 
   def sourcePos(using Context): SourcePosition =
-    val info = WrappedSourceFile.locateMagicHeader(source)
-    info match
-      // This span is in user code
-      case HasHeader(offset, originalFile)
-        if span.exists && span.start >= offset =>
-          originalFile.atSpan(span.shift(-offset))
-      // Otherwise, return the source position in the wrapper code
-      case _ => source.atSpan(span)
+    WrappedSourceFile.sourcePos(source, span)
 
   /** This positioned item, widened to `SrcPos`. Used to make clear we only need the
    *  position, typically for error reporting.

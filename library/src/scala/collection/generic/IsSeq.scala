@@ -28,6 +28,8 @@ import scala.reflect.ClassTag
  *  their implementation.
  *
  *  @see [[scala.collection.generic.IsIterable]]
+ *
+ *  @tparam Repr the collection representation type that is witnessed to have sequence-like operations
  */
 transparent trait IsSeq[Repr] extends IsIterable[Repr] {
 
@@ -40,6 +42,9 @@ transparent trait IsSeq[Repr] extends IsIterable[Repr] {
    *  @note The second type parameter of the returned `SeqOps` value is
    *       still `Iterable` (and not `Seq`) because `SeqView[A]` only
    *       extends `SeqOps[A, View, View[A]]`.
+   *
+   *  @param coll the collection to convert
+   *  @return a `SeqOps` instance that provides sequence operations on `coll`
    */
   def apply(coll: Repr): SeqOps[A, Iterable, C]
 }
@@ -102,6 +107,24 @@ object IsSeq {
           def iterableFactory: IterableFactory[mutable.ArraySeq] = mutable.ArraySeq.untagged
           override def empty: Array[A] = Array.empty[A]
           protected def newSpecificBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder
+          def iterator: Iterator[A] = a.iterator
+        }
+    }
+
+  given iarrayIsSeq[A0 : ClassTag]: (IsSeq[IArray[A0]] { type A = A0; type C = IArray[A0] }) =
+    new IsSeq[IArray[A0]] {
+      type A = A0
+      type C = IArray[A0]
+      def apply(a: IArray[A0]): SeqOps[A0, immutable.IndexedSeq, IArray[A0]] =
+        new SeqOps[A, immutable.ArraySeq, IArray[A]] {
+          def apply(i: Int): A = a.apply(i)
+          def length: Int = a.length
+          def toIterable: Iterable[A] = IArray.genericWrapArray(a)
+          protected def coll: IArray[A] = a
+          protected def fromSpecific(coll: IterableOnce[A]^): IArray[A] = IArray.from(coll)
+          def iterableFactory: IterableFactory[immutable.ArraySeq] = immutable.ArraySeq.untagged
+          override def empty: IArray[A] = IArray.empty[A]
+          protected def newSpecificBuilder: mutable.Builder[A, IArray[A]] = IArray.newBuilder[A]
           def iterator: Iterator[A] = a.iterator
         }
     }

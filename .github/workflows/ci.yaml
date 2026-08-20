@@ -1,4 +1,4 @@
-name: Dotty
+name: Scala 3
 
 on:
   push:
@@ -23,6 +23,11 @@ on:
   pull_request:
   merge_group:
   workflow_dispatch:
+
+# Default token permissions for all jobs: read-only. Jobs that need more must
+# declare their own permissions block.
+permissions:
+  contents: read
 
 # Cancels any in-progress runs within the same group identified by workflow name and GH reference (branch or tag)
 # For example it would:
@@ -50,16 +55,36 @@ env:
 # text on stderr and so can break tests which check the output of a program).
 
 jobs:
-  # Run stdlib tests before publishing a release
+  # Run tests before publishing a release
   stdlib-tests:
     uses: ./.github/workflows/stdlib.yaml
+    if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
+    secrets: inherit
+
+  mima-tests:
+    uses: ./.github/workflows/mima.yaml
+    if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
+    secrets: inherit
+
+  compiler-tests:
+    uses: ./.github/workflows/compiler-tests.yaml
+    if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
+    secrets: inherit
+
+  community-build-tests:
+    uses: ./.github/workflows/community-build.yaml
+    if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
+    secrets: inherit
+
+  misc-tests:
+    uses: ./.github/workflows/misc-tests.yaml
     if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
     secrets: inherit
 
   test_windows_full:
     runs-on: [self-hosted, Windows]
     if: "github.event_name == 'schedule' && github.repository == 'scala/scala3'
-         || github.event_name == 'push'
+         || github.event_name == 'push' && github.repository == 'scala/scala3'
          || (
            github.event_name == 'pull_request'
            && !contains(github.event.pull_request.body, '[skip ci]')
@@ -74,7 +99,7 @@ jobs:
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Git Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Test
         run: sbt ";scala3-bootstrapped/compile ;scala3-compiler-bootstrapped/test"
@@ -83,8 +108,9 @@ jobs:
   publish_release:
     permissions:
       contents: write  # for GH CLI to create a release
-    runs-on: [self-hosted, Linux]
-    needs: [stdlib-tests]
+    # Forks have no self-hosted runners, so the release runs on a normal GitHub runner
+    runs-on: ${{ github.repository == 'scala/scala3' && fromJSON('["self-hosted", "Linux"]') || 'ubuntu-latest' }}
+    needs: [stdlib-tests, mima-tests, compiler-tests, community-build-tests, misc-tests, build-msi-package]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096
@@ -96,6 +122,16 @@ jobs:
 
     env:
       RELEASEBUILD: yes
+      # IS_ORIGIN routes how we publish:
+      #
+      # - External channels like Maven Central are only used on scala/scala3.
+      # - On forks all the artifacts are built, signed and staged, but are only
+      #   published to fork-local targets (GitHub releases, workflow artifacts).
+      #
+      # Setting the FORK_SIMULATE_ORIGIN repo variable lets a fork walk the
+      # origin code path to test that the external-publish guards fire.
+      IS_ORIGIN: ${{ github.repository == 'scala/scala3' || vars.FORK_SIMULATE_ORIGIN == 'true' }}
+      HAS_SIGNING_KEY: ${{ secrets.PGP_SECRET != '' }}
       PGP_PW: ${{ secrets.PGP_PW }}  # PGP passphrase
       PGP_SECRET: ${{ secrets.PGP_SECRET }}  # Export your private and public PGP key to an *.asc file, take the file's contents as a string
       SONATYPE_PW: ${{ secrets.SONATYPE_PW_ORGSCALALANG }}
@@ -113,15 +149,17 @@ jobs:
           git -c "http.https://github.com/.extraheader=" fetch --recurse-submodules=no "https://github.com/scala/scala3" && git reset --hard FETCH_HEAD || true
 
       - name: Checkout cleanup script
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Cleanup
         run: .github/workflows/cleanup.sh
 
       - name: Git Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Add SBT proxy repositories
+        # The proxies are EPFL-internal Artifactory, forks resolve from Maven Central
+        if: env.IS_ORIGIN == 'true'
         run: cp -vf .github/workflows/repositories /root/.sbt/ ; true
 
       # Extract the release tag
@@ -133,9 +171,13 @@ jobs:
         run : |
           version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
           echo "This build version: ${version}"
+          echo "BUILD_VERSION=${version}" >> $GITHUB_ENV
           if [ "${version}" != "${{ env.RELEASE_TAG }}" ]; then
             echo "Compiler version for this build '${version}', does not match tag: ${{ env.RELEASE_TAG }}"
-            exit 1
+            if [ "${IS_ORIGIN}" = "true" ]; then
+              exit 1
+            fi
+            echo "::warning::Continuing build, fork test tags may not match the built version"
           fi
 
       - name: Prepare the SDKs
@@ -150,11 +192,15 @@ jobs:
             ./project/scripts/sbt "all ${sbtProject}/Universal/packageBin ${sbtProject}/Universal/packageZipTarball"
 
             artifactName="scala3-${{ env.RELEASE_TAG }}${distroSuffix}"
+            # sbt names the archives after the built version. On scala/scala3 the
+            # version check guarantees it equals the tag; on forks a test tag may
+            # differ, so rename the archives to the tag the release will use.
+            builtName="scala3-${{ env.BUILD_VERSION }}${distroSuffix}"
 
             # Caluclate SHA for each of archive files
-            for file in "${artifactName}.zip" "${artifactName}.tar.gz"; do
-              mv ${distDir}/target/universal/$file $file
-              sha256sum "${file}" > "${file}.sha256"
+            for ext in "zip" "tar.gz"; do
+              mv "${distDir}/target/universal/${builtName}.${ext}" "${artifactName}.${ext}"
+              sha256sum "${artifactName}.${ext}" > "${artifactName}.${ext}.sha256"
             done
           }
           prepareSDK ""                      "dist"               "./dist/"
@@ -165,7 +211,7 @@ jobs:
           prepareSDK "-x86_64-pc-win32"      "dist-win-x86_64"    "./dist/win-x86_64/"
 
       - name: Download MSI package
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: scala.msi
           path: .
@@ -177,7 +223,7 @@ jobs:
           sha256sum "${msiInstaller}" > "${msiInstaller}.sha256"
 
       - name: Install GH CLI
-        uses: dev-hanz-ops/install-gh-cli-action@v0.2.1
+        uses: dev-hanz-ops/install-gh-cli-action@af38ce09b1ec248aeb08eea2b16bbecea9e059f8 # v0.2.1
         with:
           gh-cli-version: 2.59.0
 
@@ -190,10 +236,16 @@ jobs:
           # We need to config safe.directory in every step that might reference git
           # It is not persisted between steps
           git config --global --add safe.directory $GITHUB_WORKSPACE
+          notesFile="./changelogs/${{ env.RELEASE_TAG }}.md"
+          notesArgs=(--notes-file "${notesFile}")
+          if [ "${IS_ORIGIN}" != "true" ] && [ ! -f "${notesFile}" ]; then
+            # Fork test tags have no changelog entry
+            notesArgs=(--generate-notes)
+          fi
           gh release create \
           --draft \
           --title "${{ env.RELEASE_TAG }}" \
-          --notes-file ./changelogs/${{ env.RELEASE_TAG }}.md \
+          "${notesArgs[@]}" \
           --latest=${{ !contains(env.RELEASE_TAG, '-RC') }} \
           --prerelease=${{ contains(env.RELEASE_TAG, '-RC') }} \
           --verify-tag ${{ env.RELEASE_TAG }} \
@@ -203,13 +255,18 @@ jobs:
           scala3-${{ env.RELEASE_TAG }}.msi
 
       # Each namespace needs to be published separately
+      # On forks, the artifacts are signed and staged (target/sona-staging) but the
+      # upload to Maven Central is skipped and the staged bundle is archived instead.
+      # A fork without a signing key configured skips these steps entirely.
       - name: Publish Release (org.scala-lang)
+        if: env.IS_ORIGIN == 'true' || env.HAS_SIGNING_KEY == 'true'
         run: |
           rm -rf ./target/sona-staging/
-          ./project/scripts/sbtPublish " \
+          publishCommand=" \
             all \
               scala-library-bootstrapped/publishSigned \
               scala3-compiler-bootstrapped/publishSigned \
+              scala3-directives-parser-bootstrapped/publishSigned \
               scala3-interfaces/publishSigned \
               scala3-language-server/publishSigned \
               scala3-library-bootstrapped/publishSigned \
@@ -221,13 +278,93 @@ jobs:
               scala3-tasty-inspector/publishSigned \
               scaladoc/publishSigned \
               tasty-core-bootstrapped/publishSigned \
-            ;sonaUpload"
+            "
+          if [ "${IS_ORIGIN}" = "true" ]; then
+            publishCommand="${publishCommand} ;sonaUpload"
+          fi
+          ./project/scripts/sbtPublish "${publishCommand}"
+
+      - name: Upload staged bundle (org.scala-lang, fork only)
+        if: env.IS_ORIGIN != 'true' && env.HAS_SIGNING_KEY == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sona-staging-org-scala-lang
+          path: target/sona-staging/
 
       - name: Publish Release (org.scala-js)
+        if: env.IS_ORIGIN == 'true' || env.HAS_SIGNING_KEY == 'true'
         run: |
           # Ensure the staging does not contain any stale artifacts
           rm -rf ./target/sona-staging/
-          ./project/scripts/sbtPublish "scala-library-sjs/publishSigned ;sonaUpload"
+          publishCommand="scala-library-sjs/publishSigned"
+          if [ "${IS_ORIGIN}" = "true" ]; then
+            publishCommand="${publishCommand} ;sonaUpload"
+          fi
+          ./project/scripts/sbtPublish "${publishCommand}"
+
+      - name: Upload staged bundle (org.scala-js, fork only)
+        if: env.IS_ORIGIN != 'true' && env.HAS_SIGNING_KEY == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: sona-staging-org-scala-js
+          path: target/sona-staging/
+
+  # Attests the artifacts published by publish_release with a signed SLSA
+  # provenance attestation.
+  #
+  # carabiner-dev/actions/slsa/generate uses Kubernetes' Tejolote attester
+  # observe this workflow run through the Actions API and builds the SLSA
+  # predicate from it. The attested subjects are the assets publish_release
+  # attached to the GitHub release. That release is still a draft at this point
+  # (not reachable through the API) so the assets are pulled using the github
+  # gh CLI, which does resolve drafts, and hashed from the local copy.
+  provenance:
+    permissions:
+      contents: write  # to read the draft release assets and attach the attestation
+      id-token: write  # to sign the attestation with the job's workload identity
+      actions: read    # for tejolote to read the run and job metadata
+
+    runs-on: ubuntu-latest
+    needs: [publish_release]
+    if: "github.event_name == 'push' && startsWith(github.event.ref, 'refs/tags/')"
+
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+
+    steps:
+      - name: Download the released artifacts
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p release-artifacts
+          # Mirrors the asset list uploaded by publish_release. Naming the
+          # patterns also keeps a re-run from attesting an earlier attestation.
+          gh release download "${RELEASE_TAG}" \
+            --dir release-artifacts \
+            --pattern "scala3-${RELEASE_TAG}*.zip" \
+            --pattern "scala3-${RELEASE_TAG}*.tar.gz" \
+            --pattern "scala3-${RELEASE_TAG}*.sha256" \
+            --pattern "scala3-${RELEASE_TAG}.msi"
+
+      - name: Generate the provenance attestation
+        id: provenance
+        uses: carabiner-dev/actions/slsa/generate@36a39ef667efe7112df8b1a534a4e37f35fad6fd # v1.2.6
+        with:
+          # publish_release has finished by the time this job starts, naming it
+          # keeps tejolote from waiting on the unrelated jobs of the run
+          watch-jobs: publish_release
+          artifacts: file://${{ github.workspace }}/release-artifacts
+          output: provenance.intoto.json
+
+      - name: Attach the provenance to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          ATTESTATION: ${{ steps.provenance.outputs.attestation }}
+        run: gh release upload "${RELEASE_TAG}" "${ATTESTATION}" --clobber
 
   build-msi-package:
    uses: ./.github/workflows/build-msi.yml
@@ -239,13 +376,14 @@ jobs:
    uses: ./.github/workflows/test-msi.yml
    needs: [build-msi-package]
    with:
-     # Ensure that version starts with prefix 3.
-     # In the future it can be adapted to compare with git tag or version set in the project/Build.scala
-     version: "3."
+     version: ${{ needs.build-msi-package.outputs.version }}
      java-version: 17
 
   build-sdk-package:
    uses: ./.github/workflows/build-sdk.yml
+   permissions:
+     contents: read
+     actions: read  # to read back the win-x86_64 artifact through the Actions API
    if:
      (github.event_name == 'pull_request' && !contains(github.event.pull_request.body, '[skip ci]')) ||
      (github.event_name == 'workflow_dispatch' && github.repository == 'scala/scala3') ||
@@ -265,6 +403,8 @@ jobs:
 
   test-chocolatey-package:
    uses: ./.github/workflows/test-chocolatey.yml
+   permissions:
+     actions: read  # downloads the launcher artifact through the Actions API
    with:
      version     : 3.6.0-SNAPSHOT # Fake version, used only for choco tests
      java-version: 17
@@ -274,9 +414,22 @@ jobs:
   scalafmt:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.12.4
-      - run: scala-cli format --check
+      - uses: coursier/cache-action@95e5b1029b6b86e7bac033ee44a0697d8a527d2d # v8.1.1
+      - uses: VirtusLab/scala-cli-setup@8db5313925605c20e292348c1749e80dac7eed0f # v1.16.0
+      - name: Check formatting
+        run: |
+          if ! scala-cli format --check; then
+            echo ""
+            echo "========================================"
+            echo "Formatting check failed!"
+            echo "To fix this, run the following command in the root of the project:"
+            echo ""
+            echo "  scala-cli format"
+            echo ""
+            echo "Then commit the changes."
+            echo "========================================"
+            exit 1
+          fi

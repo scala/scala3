@@ -1,4 +1,4 @@
-//> using options -experimental -Vprint:unrollDefs
+//> using options -preview -Vprint:unrollDefs
 
 import scala.annotation.unroll
 

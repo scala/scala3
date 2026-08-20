@@ -1,0 +1,365 @@
+package dotty.tools
+package repl
+
+import scala.language.unsafeNulls
+
+import java.nio.file.Files
+
+import org.junit.Test
+import org.junit.Assert.assertEquals
+
+class SaveTests extends ReplTest, SessionFileHelpers {
+
+  private def lines() =
+      storedOutput().trim.linesIterator.toList
+
+  @Test def savesSuccessfulInputs =
+    val target = tempFile()
+    initially {
+      run("val x = 1")
+    } andThen {
+      run("def double(n: Int) = n * 2")
+    } andThen {
+      run(s":save $target")
+      assertEquals(
+        s"""|$header
+            |$sep
+            |val x = 1
+            |$sep
+            |def double(n: Int) = n * 2""".stripMargin,
+        contentOf(target)
+      )
+    }
+
+  @Test def skipsErroredInputs =
+    val target = tempFile()
+    initially {
+      run("val x = 1")
+    } andThen {
+      run("val y = notDefined")
+    } andThen {
+      run(s":save $target")
+      assertEquals(
+        s"""|$header
+            |$sep
+            |val x = 1""".stripMargin,
+        contentOf(target)
+      )
+    }
+
+  @Test def recordsCommands =
+    val target = tempFile()
+    initially {
+      run("val x = 1")
+    } andThen {
+      run(":type x")
+    } andThen {
+      run(":imports")
+    } andThen {
+      run(s":save $target")
+      assertEquals(
+        s"""|$header
+            |$sep
+            |val x = 1
+            |$sep
+            |:type x
+            |$sep
+            |:imports""".stripMargin,
+        contentOf(target)
+      )
+    }
+
+  @Test def roundTripsViaLoad =
+    val target = tempFile()
+    initially {
+      run("val x = 21")
+    } andThen {
+      run("def double(n: Int) = n * 2")
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      run(s":load $target")
+    } andThen {
+      storedOutput()
+      run("double(x)")
+      assertEquals("val res0: Int = 42", storedOutput().trim)
+    }
+
+  @Test def emptyPath = initially {
+    run(":save")
+    assertEquals("File name is required.", storedOutput().trim)
+  }
+
+  @Test def emptySession =
+    val target = tempFile()
+    initially {
+      run(s":save $target")
+      assertEquals("Nothing to save.", storedOutput().trim)
+    }
+
+  @Test def recordsSuccessfulJar =
+    val jar = emptyJar()
+    val target = tempFile()
+    initially {
+      run(s":jar $jar")
+    } andThen {
+      run(s":save $target")
+      assertEquals(
+        s"""|$header
+            |$sep
+            |:jar $jar""".stripMargin,
+        contentOf(target)
+      )
+    }
+
+  @Test def roundTripsCommandViaLoad =
+    val jar = emptyJar()
+    val target = tempFile()
+    initially {
+      run(s":jar $jar")
+    } andThen {
+      run("val x = 42")
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      storedOutput()
+      run(s":load $target")
+    } andThen {
+      assertEquals(
+        List(
+          s"Added '$jar' to classpath.",
+          "val x: Int = 42"
+        ),
+        lines()
+      )
+      run("x")
+      assertEquals(
+        List("val res0: Int = 42"),
+        lines()
+      )
+    }
+
+  @Test def roundTripsRedefinitionViaLoad =
+    val target = tempFile()
+    initially {
+      run("val x = 1")
+    } andThen {
+      run("val x = 2")
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      storedOutput()
+      run(s":load $target")
+    } andThen {
+      storedOutput()
+      run("x")
+      assertEquals(List("val res0: Int = 2"), lines())
+    }
+
+  @Test def roundTripsCommandInStringViaLoad =
+    val target = tempFile()
+    initially {
+      run("val s = \"\"\"\n:help\n\"\"\"")
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      storedOutput()
+      run(s":load $target")
+    } andThen {
+      storedOutput()
+      run("s.trim")
+      assertEquals(List("val res0: String = \":help\""), lines())
+    }
+
+  @Test def roundTripsSeparatorInStringViaLoad =
+    val target = tempFile()
+    initially {
+      run(s"""val s = "$sep"""")
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      storedOutput()
+      run(s":load $target")
+    } andThen {
+      storedOutput()
+      run("s")
+      assertEquals(List(s"""val res0: String = "$sep""""), lines())
+    }
+
+  @Test def roundTripsWithCaptureChecking =
+    val target = tempFile()
+    initially {
+      run("import language.experimental.captureChecking")
+    } andThen {
+      run("import caps.*")
+    } andThen {
+      run("class File extends SharedCapability")
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      storedOutput()
+      run(s":load $target")
+    } andThen {
+      storedOutput()
+      run("class Logger(f: File^) extends SharedCapability")
+      assertEquals("// defined class Logger", storedOutput().trim)
+    }
+
+  @Test def skipsThrowingVal =
+    val target = tempFile()
+    initially {
+      run("val x = 1")
+    } andThen {
+      run("""val boom = throw new RuntimeException("boom")""")
+    } andThen {
+      run(s":save $target")
+      assertEquals(
+        s"""|$header
+            |$sep
+            |val x = 1""".stripMargin,
+        contentOf(target)
+      )
+    }
+
+  @Test def recordsLoadAsCommand =
+    val script = tempFile()
+    Files.writeString(script, "val a = 1\nval b = 2\n")
+    val target = tempFile()
+    initially {
+      run(s":load $script")
+    } andThen {
+      run(s":save $target")
+      assertEquals(
+        s"""|$header
+            |$sep
+            |:load $script""".stripMargin,
+        contentOf(target)
+      )
+    }
+
+  @Test def roundTripsMutuallyRecursiveDefs =
+    val target = tempFile()
+    initially {
+      run("""|def isEven(n: Int): Boolean = if n == 0 then true else isOdd(n - 1)
+             |def isOdd(n: Int): Boolean = if n == 0 then false else isEven(n - 1)""".stripMargin)
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      storedOutput()
+      run(s":load $target")
+    } andThen {
+      storedOutput()
+      run("isEven(10)")
+      assertEquals(List("val res0: Boolean = true"), lines())
+    }
+
+  @Test def savesCommandThenCode =
+    val target = tempFile()
+    initially {
+      run(":type \"hi\"\nval x = 5")
+    } andThen {
+      run(s":save $target")
+      assertEquals(
+        s"""|$header
+            |$sep
+            |:type "hi"
+            |$sep
+            |val x = 5""".stripMargin,
+        contentOf(target)
+      )
+    }
+
+  @Test def roundTripsCommandThenCodeViaLoad =
+    val target = tempFile()
+    initially {
+      run(":type \"hi\"\nval x = 5")
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      storedOutput()
+      run(s":load $target")
+    } andThen {
+      storedOutput()
+      run("x")
+      assertEquals(List("val res0: Int = 5"), lines())
+    }
+
+  @Test def savesLoneDirective =
+    val target = tempFile()
+    initially {
+      run("//> using options -Werror")
+    } andThen {
+      run(s":save $target")
+      assertEquals(
+        s"""|$header
+            |$sep
+            |//> using options -Werror""".stripMargin,
+        contentOf(target)
+      )
+    }
+
+  @Test def savesDirectiveThenCode =
+    val target = tempFile()
+    initially {
+      run("//> using options -Werror\nval x = 1")
+    } andThen {
+      run(s":save $target")
+      assertEquals(
+        s"""|$header
+            |$sep
+            |//> using options -Werror
+            |val x = 1""".stripMargin,
+        contentOf(target)
+      )
+    }
+
+  @Test def roundTripsMultipleDirectivesThenCodeViaLoad =
+    val target = tempFile()
+    initially {
+      run("//> using options -Werror\n//> using scala 3.3.1\nval z = 3")
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      storedOutput()
+      run(s":load $target")
+    } andThen {
+      storedOutput()
+      run("z")
+      assertEquals(List("val res0: Int = 3"), lines())
+    }
+
+  @Test def roundTripsDepDirectiveViaLoad =
+    val target = tempFile()
+    initially {
+      run("//> using dep com.lihaoyi::os-lib:0.11.8\nval p = os.pwd.toString.nonEmpty")
+    } andThen {
+      run(s":save $target")
+    }
+    resetToInitial()
+    initially {
+      storedOutput()
+      run(s":load $target")
+    } andThen {
+      storedOutput()
+      run("os.pwd.toString.nonEmpty")
+      assertEquals(List("val res0: Boolean = true"), lines())
+    }
+}

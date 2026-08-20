@@ -71,7 +71,7 @@ object Platform {
    *
    *  The caller must cast the returned value to the correct type.
    *
-   *  @example ```
+  *  @example ```scala sc:compile
    *  val a = scala.compat.Platform.createArray(classOf[Int], 4).asInstanceOf[Array[Int]] // returns Array[Int](0, 0, 0, 0)
    *  ```
    *
@@ -105,7 +105,7 @@ object Platform {
    * @throws java.lang.LinkageError if the linkage fails
    * @throws java.lang.ExceptionInInitializerError if the initialization provoked by this method fails
    * @throws java.lang.ClassNotFoundException if the class cannot be located
-   *  @example ```
+  *  @example ```scala sc:compile
    *  val a = scala.compat.Platform.getClassForName("java.lang.Integer")  // returns the Class[_] for java.lang.Integer
    *  ```
    */

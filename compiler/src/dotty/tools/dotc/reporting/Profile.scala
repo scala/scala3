@@ -58,7 +58,7 @@ class ActiveProfile(details: Int) extends Profile:
 
   private def curInfo(using Context): Profile.Info =
     val unit: CompilationUnit | Null = ctx.compilationUnit
-    if unit == null || unit.source.file.isVirtual then junkInfo else unitProfile(unit)
+    if unit == null || unit.source.file == null || unit.source.file.isVirtual then junkInfo else unitProfile(unit)
 
   def unitProfile(unit: CompilationUnit): Profile.Info =
     pinfo.getOrElseUpdate(unit, new Profile.Info(details))
@@ -76,8 +76,8 @@ class ActiveProfile(details: Int) extends Profile:
     val units =
       val rawUnits = pinfo.keysIterator.toArray
       ctx.settings.VprofileSortedBy.value match
-        case "name"       => rawUnits.sortBy(_.source.file.name)
-        case "path"       => rawUnits.sortBy(_.source.file.path)
+        case "name"       => rawUnits.sortBy(_.source.name)
+        case "path"       => rawUnits.sortBy(_.source.path)
         case "lines"      => rawUnits.sortBy(unitProfile(_).lineCount)
         case "tokens"     => rawUnits.sortBy(unitProfile(_).tokenCount)
         case "complexity" => rawUnits.sortBy(unitProfile(_).complexity)
@@ -106,13 +106,13 @@ class ActiveProfile(details: Int) extends Profile:
     def safeMax(xs: Array[Int]) = if xs.isEmpty then 10 else xs.max.max(10).min(50)
 
     def printAndAggregateSourceInfos(): Profile.Info =
-      val sourceNameWidth = safeMax(units.map(_.source.file.name.length))
+      val sourceNameWidth = safeMax(units.map(_.source.name.length))
       val layout = printHeader(sourceNameWidth)
       val agg = new Profile.Info(details)
       for unit <- units do
         val file = unit.source.file
         val info = unitProfile(unit)
-        printInfo(layout, file.name, info, file.container.path)
+        printInfo(layout, unit.source.name, info, if file == null then "<no file>" else file.container.map(_.path).getOrElse("<no file>"))
         agg.lineCount += info.lineCount
         agg.tokenCount += info.tokenCount
         agg.tastySize += info.tastySize
@@ -134,14 +134,14 @@ class ActiveProfile(details: Int) extends Profile:
       do
         val methProfile = new ActiveProfile(0)
         val methCtx = ctx.fresh.setCompilationUnit(unit)
-        val s = Scanner(meth.source, span.start, methProfile)(using methCtx)
+        val s = Scanner(meth.source, span.start, profile = methProfile)(using methCtx)
         while s.offset < span.end do s.nextToken()
         val info = methProfile.unitProfile(unit)
         info.lineCount += 1
         info.tastySize = size
         val file = meth.source.file
-        val header = s"%-${sourceNameWidth}s %-${methNameWidth}s".format(file.name, meth.name)
-        printInfo(layout, header, info, file.container.path)
+        val header = s"%-${sourceNameWidth}s %-${methNameWidth}s".format(meth.source.name, meth.name)
+        printInfo(layout, header, info, if file == null then "<no file>" else file.container.map(_.path).getOrElse("<no file>"))
 
     val agg = printAndAggregateSourceInfos()
     if details > 0 then printDetails(agg)

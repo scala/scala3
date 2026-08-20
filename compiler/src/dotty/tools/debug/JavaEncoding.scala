@@ -5,7 +5,6 @@ import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.Flags.*
 import dotty.tools.dotc.core.Names.*
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 import dotty.tools.dotc.util.NameTransformer
 
 // Inspired by https://github.com/lampepfl/dotty/blob/main/compiler/src/dotty/tools/backend/sjs/JSEncoding.scala

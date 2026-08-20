@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package transform
 
-import scala.language.unsafeNulls as _
-
 import core.*
 import Contexts.*, Symbols.*, Types.*, Constants.*, StdNames.*, Decorators.*
 import ast.untpd
@@ -172,7 +170,7 @@ object TypeTestsCasts {
         && (TypeComparer.hasMatchingMember(tp2.refinedName, X, tp2) ||| i"it's a refinement type")
       case tp2: RecType         => recur(X, tp2.parent)
       case _
-      if P.classSymbol.isLocal && foundClasses(X).exists(P.classSymbol.isInaccessibleChildOf) => // 8
+      if P.classSymbol.isLocal && effectiveClassSymbols(X).exists(P.classSymbol.isInaccessibleChildOf) => // 8
         i"it's a local class"
       case _                    => ""
     }
@@ -224,8 +222,9 @@ object TypeTestsCasts {
             !(!testCls.isPrimitiveValueClass && foundCls.isPrimitiveValueClass) &&
                // foundCls can be `Boolean`, while testCls is `Integer`
                // it can happen in `(3: Boolean | Int).isInstanceOf[Int]`
-            !foundCls.isDerivedValueClass && !testCls.isDerivedValueClass
+            !testCls.isDerivedValueClass &&
                // we don't have the logic to handle derived value classes
+            !ctx.platform.typeMightBeSubtypeAtRuntime(foundCls, testCls)
 
           /** Check whether a runtime test that a value of `foundCls` can be a `testCls`
            *  can be true in some cases. Issues a warning or an error otherwise.
@@ -233,7 +232,9 @@ object TypeTestsCasts {
           def checkSensical(foundClasses: List[Symbol])(using Context): Boolean =
             def exprType = i"type ${expr.tpe.widen.stripped}"
             def check(foundCls: Symbol): Boolean =
-              if (!isCheckable(foundCls)) true
+              if foundCls.isDerivedValueClass then
+                checkSensical(effectiveClassSymbols(ValueClasses.valueClassUnbox(foundCls.asClass).info.resultType))
+              else if (!isCheckable(foundCls)) true
               else if (!foundCls.derivesFrom(testCls)) {
                 val unrelated =
                   !testCls.derivesFrom(foundCls)
@@ -248,12 +249,7 @@ object TypeTestsCasts {
               else true
             end check
 
-            val foundEffectiveClass = effectiveClass(expr.tpe.widen)
-
-            if foundEffectiveClass.isPrimitiveValueClass && !testCls.isPrimitiveValueClass then
-              report.error(em"cannot test if value of $exprType is a reference of $testCls", tree.srcPos)
-              false
-            else foundClasses.exists(check)
+            foundClasses.exists(check)
           end checkSensical
 
           val tp = if expr.tpe.isPrimitiveValueType then defn.boxedType(expr.tpe) else expr.tpe
@@ -264,7 +260,7 @@ object TypeTestsCasts {
             if expr.tpe.isBottomType then
               report.warning(TypeTestAlwaysDiverges(expr.tpe, testType), tree.srcPos)
             val nestedCtx = ctx.fresh.setNewTyperState()
-            val foundClsSyms = foundClasses(expr.tpe.widen)
+            val foundClsSyms = effectiveClassSymbols(expr.tpe.widen)
             val sensical = checkSensical(foundClsSyms)(using nestedCtx)
             if (!sensical) {
               nestedCtx.typerState.commit()
@@ -272,7 +268,7 @@ object TypeTestsCasts {
             }
             else if (testCls.isPrimitiveValueClass)
               foundClsSyms match
-                case List(cls) if cls.isPrimitiveValueClass =>
+                case List(cls) if cls.isPrimitiveValueClass && !ctx.platform.typeMightBeSubtypeAtRuntime(testCls, cls) =>
                   constant(expr, Literal(Constant(foundClsSyms.head == testCls)))
                 case _ =>
                   transformIsInstanceOf(
@@ -285,7 +281,7 @@ object TypeTestsCasts {
         def transformAsInstanceOf(testType: Type): Tree = {
           def testCls = effectiveClass(testType.widen)
           def foundClsSymPrimitive = {
-            val foundClsSyms = foundClasses(expr.tpe.widen)
+            val foundClsSyms = effectiveClassSymbols(expr.tpe.widen)
             foundClsSyms.size == 1 && foundClsSyms.head.isPrimitiveValueClass
           }
           if (erasure(expr.tpe) <:< testType)
@@ -298,7 +294,7 @@ object TypeTestsCasts {
             else derivedTree(box(expr), defn.Any_asInstanceOf, testType)
           else if (testCls.isPrimitiveValueClass)
             unbox(expr.ensureConforms(defn.ObjectType), testType)
-          else if (isDerivedValueClass(testCls))
+          else if (testType.widen.isErasedValueType || isDerivedValueClass(testCls))
             expr // adaptToType in Erasure will do the necessary type adaptation
           else if (testCls eq defn.NothingClass) {
             // In the JVM `x.asInstanceOf[Nothing]` would throw a class cast exception except when `x eq null`.
@@ -368,7 +364,7 @@ object TypeTestsCasts {
           val isTrusted = tree.hasAttachment(PatternMatcher.TrustedTypeTestKey)
           checkTypePattern(expr.tpe, argType, expr.srcPos, isTrusted)
           transformTypeTest(expr, argType,
-            flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, dont't flag it even if it always false
+            flagUnrelated = enclosingInlineds.isEmpty) // if test comes from inlined code, don't flag it even if it always false
         }
         else if (sym.isTypeCast)
           transformAsInstanceOf(erasure(tree.args.head.tpe))
@@ -403,7 +399,7 @@ object TypeTestsCasts {
     else if tp.isRef(defn.AnyValClass) then defn.AnyClass
     else tp.classSymbol
 
-  private[transform] def foundClasses(tp: Type)(using Context): List[Symbol] =
+  private[transform] def effectiveClassSymbols(tp: Type)(using Context): List[Symbol] =
     def go(tp: Type, acc: List[Type])(using Context): List[Type] = tp.dealias match
       case  OrType(tp1, tp2) => go(tp2, go(tp1, acc))
       case AndType(tp1, tp2) => (for t1 <- go(tp1, Nil); t2 <- go(tp2, Nil) yield AndType(t1, t2)) ::: acc

@@ -28,7 +28,7 @@ object Enums/*<-_empty_::Enums.*/:
     case Saturday/*<-_empty_::Enums.WeekDays.Saturday.*/
     case Sunday/*<-_empty_::Enums.WeekDays.Sunday.*/
 
-  enum Coin/*<-_empty_::Enums.Coin#*/(value/*<-_empty_::Enums.Coin#value.*/: Int/*->scala::Int#*/):
+  enum Coin/*<-_empty_::Enums.Coin#*/(value/*<-_empty_::Enums.Coin#value.*//*<-_empty_::Enums.Coin#`<init>`().(value)*/: Int/*->scala::Int#*/):
     case Penny/*<-_empty_::Enums.Coin.Penny.*/    extends Coin/*->_empty_::Enums.Coin#*/(1)
     case Nickel/*<-_empty_::Enums.Coin.Nickel.*/   extends Coin/*->_empty_::Enums.Coin#*/(5)
     case Dime/*<-_empty_::Enums.Coin.Dime.*/     extends Coin/*->_empty_::Enums.Coin#*/(10)
@@ -36,7 +36,7 @@ object Enums/*<-_empty_::Enums.*/:
     case Dollar/*<-_empty_::Enums.Coin.Dollar.*/   extends Coin/*->_empty_::Enums.Coin#*/(100)
 
   enum Maybe/*<-_empty_::Enums.Maybe#*/[+A/*<-_empty_::Enums.Maybe#[A]*/]:
-    case Just/*<-_empty_::Enums.Maybe.Just#*/(value/*<-_empty_::Enums.Maybe.Just#value.*/: A/*->_empty_::Enums.Maybe.Just#[A]*/)
+    case Just/*<-_empty_::Enums.Maybe.Just#*/(value/*<-_empty_::Enums.Maybe.Just#value.*//*<-_empty_::Enums.Maybe.Just#`<init>`().(value)*/: A/*->_empty_::Enums.Maybe.Just#[A]*/)
     case None/*<-_empty_::Enums.Maybe.None.*/
 
   enum Tag/*<-_empty_::Enums.Tag#*/[A/*<-_empty_::Enums.Tag#[A]*/]:
@@ -54,7 +54,7 @@ object Enums/*<-_empty_::Enums.*/:
 
   val some1/*<-_empty_::Enums.some1.*/ = Some/*->scala::Some.*/(Some/*->scala::Some.*/(1)).unwrap/*->_empty_::Enums.unwrap().*/
 
-  enum Planet/*<-_empty_::Enums.Planet#*/(mass/*<-_empty_::Enums.Planet#mass.*/: Double/*->scala::Double#*/, radius/*<-_empty_::Enums.Planet#radius.*/: Double/*->scala::Double#*/) extends Enum/*->java::lang::Enum#*/[Planet/*->_empty_::Enums.Planet#*/]:
+  enum Planet/*<-_empty_::Enums.Planet#*/(mass/*<-_empty_::Enums.Planet#mass.*//*<-_empty_::Enums.Planet#`<init>`().(mass)*/: Double/*->scala::Double#*/, radius/*<-_empty_::Enums.Planet#radius.*//*<-_empty_::Enums.Planet#`<init>`().(radius)*/: Double/*->scala::Double#*/) extends Enum/*->java::lang::Enum#*/[Planet/*->_empty_::Enums.Planet#*/]:
     private final val G/*<-_empty_::Enums.Planet#G.*/ = 6.67300E-11
     def surfaceGravity/*<-_empty_::Enums.Planet#surfaceGravity().*/ = G/*->_empty_::Enums.Planet#G.*/ */*->scala::Double#`*`(+6).*/ mass/*->_empty_::Enums.Planet#mass.*/ //*->scala::Double#`::`(+6).*/ (radius/*->_empty_::Enums.Planet#radius.*/ */*->scala::Double#`*`(+6).*/ radius/*->_empty_::Enums.Planet#radius.*/)
     def surfaceWeight/*<-_empty_::Enums.Planet#surfaceWeight().*/(otherMass/*<-_empty_::Enums.Planet#surfaceWeight().(otherMass)*/: Double/*->scala::Double#*/) = otherMass/*->_empty_::Enums.Planet#surfaceWeight().(otherMass)*/ */*->scala::Double#`*`(+6).*/ surfaceGravity/*->_empty_::Enums.Planet#surfaceGravity().*/

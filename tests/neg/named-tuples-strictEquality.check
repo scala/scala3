@@ -1,0 +1,20 @@
+-- [E172] Type Error: tests/neg/named-tuples-strictEquality.scala:9:20 -------------------------------------------------
+9 |  val b2: Boolean = u == v // error
+  |                    ^^^^^^
+  |Values of types (name : String, age : Int) and (name : String, birthYear : Int) cannot be compared with == or !=.
+  |I found:
+  |
+  |    NamedTuple.namedTupleCanEqual[(("name" : String), ("age" : String)), (("name" : String), ("birthYear" : String)), V1, V2
+  |      ](/* missing */summon[(("name" : String), ("age" : String)) =:= (("name" : String), ("birthYear" : String))])
+  |
+  |But no implicit values were found that match type (("name" : String), ("age" : String)) =:= (("name" : String), ("birthYear" : String)).
+-- [E172] Type Error: tests/neg/named-tuples-strictEquality.scala:15:11 ------------------------------------------------
+15 |      case ScalaBook => true // error
+   |           ^^^^^^^^^
+   |Values of types (name : String, published : Int) and (name : String, age : Int) cannot be compared with == or !=.
+   |I found:
+   |
+   |    NamedTuple.namedTupleCanEqual[(("name" : String), ("published" : String)), (("name" : String), ("age" : String)), V1, V2
+   |      ](/* missing */summon[(("name" : String), ("published" : String)) =:= (("name" : String), ("age" : String))])
+   |
+   |But no implicit values were found that match type (("name" : String), ("published" : String)) =:= (("name" : String), ("age" : String)).

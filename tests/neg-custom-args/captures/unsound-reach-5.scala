@@ -1,13 +1,13 @@
 class IO
 
-def f(xs: List[() => Unit]): () ->{xs*} Unit = () =>
-  println(xs.head) // error
+def f[c^](xs: List[() ->{c} Unit]): () ->{c} Unit = () =>
+  println(xs.head) // was error, ok with captset vars
 
 def test(io: IO^)(ys: List[() ->{io} Unit]) =
   val x = () =>
     val z = f(ys)
     z()
-  val _: () -> Unit = x // !!! ys* gets lost
+  val _: () -> Unit = x // error
   ()
 
 def test(io: IO^) =
@@ -15,7 +15,7 @@ def test(io: IO^) =
   val x = () =>
     val z = f(ys)
     z()
-  val _: () -> Unit = x // !!! io gets lost
+  val _: () -> Unit = x // error
   ()
 
 

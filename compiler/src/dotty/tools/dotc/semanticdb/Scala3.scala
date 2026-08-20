@@ -278,7 +278,7 @@ private[semanticdb] object Scala3:
       def symbolName(using builder: SemanticSymbolBuilder)(using Context): String =
         builder.symbolName(sym)
 
-      def funParamSymbol(using builder: SemanticSymbolBuilder)(using Context): Name => String =
+      def funParamSymbol(using builder: SemanticSymbolBuilder)(using Context): Name => Option[String] =
         builder.funParamSymbol(sym)
 
       def symbolKind(symkinds: Set[SymbolKind])(using Context): SymbolInformation.Kind =

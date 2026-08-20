@@ -1,0 +1,4 @@
+-- Deprecation Warning: tests/warn/i25548.scala:5:43 -------------------------------------------------------------------
+5 |  def apply(value: String): Location = new Location(value) // warn
+  |                                           ^^^^^^^^
+  |                                           constructor Location in class Location is deprecated

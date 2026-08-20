@@ -1,11 +1,9 @@
 package dotty.tools.io
 
-import scala.language.unsafeNulls
-
 import org.junit.Test
 
 import dotty.tools.io.AbstractFile
-import java.nio.file.Files._
+import java.nio.file.Files.*
 import java.nio.file.attribute.PosixFilePermissions
 
 class AbstractFileTest {
@@ -25,7 +23,7 @@ class AbstractFileTest {
       val target = createTempDirectory(temp.jpath, "real", attributes)
       val link   = temp.jpath.resolve("link")
       createSymbolicLink(link, target)     // may bail early if unsupported
-      AbstractFile.getDirectory(link)
+      AbstractFile.getDirectory(link, "").nn
     }
 
     val file = base.fileNamed("foo")
@@ -36,7 +34,7 @@ class AbstractFileTest {
     val leaf = dir.fileNamed("basement")
     assert(leaf.exists && !leaf.isDirectory)
 
-    val nested = AbstractFile.getDirectory(createSymbolicLink(dir.jpath.resolve("link"), dir.subdirectoryNamed("nested").jpath))
+    val nested = AbstractFile.getDirectory(createSymbolicLink(dir.jpath.nn.resolve("link"), dir.subdirectoryNamed("nested").jpath), "").nn
     val doubly = nested.fileNamed("doubly")
     assert(nested.exists && nested.isDirectory)  // /tmp/link/bar/link
     assert(doubly.exists && !doubly.isDirectory) // /tmp/link/bar/link/doubly

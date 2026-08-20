@@ -34,6 +34,7 @@ import reporting.*
 import Message.Note
 import transform.Splicer
 import annotation.tailrec
+import NullOpsDecorator.stripNull
 
 import scala.annotation.internal.sharable
 import scala.annotation.threadUnsafe
@@ -85,10 +86,6 @@ object Implicits:
   def strictEquality(using Context): Boolean =
     ctx.mode.is(Mode.StrictEquality) || Feature.enabled(nme.strictEquality)
 
-  def strictEqualityPatternMatching(using Context): Boolean =
-    Feature.enabled(Feature.strictEqualityPatternMatching)
-
-
   /** A common base class of contextual implicits and of-type implicits which
    *  represents a set of references to implicit definitions.
    */
@@ -112,9 +109,9 @@ object Implicits:
 
     /** Widen type so that it is neither a singleton type nor a type that inherits from scala.Singleton. */
     private def widenSingleton(tp: Type)(using Context): Type = {
-      if (mySingletonClass == null) mySingletonClass = defn.SingletonClass
+      val sc = initialize(mySingletonClass, mySingletonClass = _, defn.SingletonClass)
       val wtp = tp.widenSingleton
-      if (wtp.derivesFrom(mySingletonClass.uncheckedNN)) defn.AnyType else wtp
+      if (wtp.derivesFrom(sc)) defn.AnyType else wtp
     }
 
     protected def isAccessible(ref: TermRef)(using Context): Boolean
@@ -306,7 +303,7 @@ object Implicits:
   class ContextualImplicits(
       val refs: List[ImplicitRef],
       val outerImplicits: ContextualImplicits | Null,
-      val isImport: Boolean)(initctx: Context) extends ImplicitRefs(initctx) {
+      val importInfo: ImportInfo | Null)(initctx: Context) extends ImplicitRefs(initctx) {
     private val eligibleCache = EqHashMap[Type, List[Candidate]]()
 
     /** The level increases if current context has a different owner or scope than
@@ -314,15 +311,13 @@ object Implicits:
      *  Scala2 mode, since we do not want to change the implicit disambiguation then.
      */
     override val level: Int =
-      def isSameOwner = irefCtx.owner eq outerImplicits.uncheckedNN.irefCtx.owner
-      def isSameScope = irefCtx.scope eq outerImplicits.uncheckedNN.irefCtx.scope
       def isLazyImplicit = refs.head.implicitName.is(LazyImplicitName)
 
-      if outerImplicits == null then 1
-      else if migrateTo3(using irefCtx)
-              || isSameOwner && (isImport || isSameScope && !isLazyImplicit)
-      then outerImplicits.uncheckedNN.level
-      else outerImplicits.uncheckedNN.level + 1
+      outerImplicits match
+        case null => 1
+        case oi if migrateTo3(using irefCtx)
+                || (irefCtx.owner eq oi.irefCtx.owner) && ((importInfo ne null) || (irefCtx.scope eq oi.irefCtx.scope) && !isLazyImplicit) => oi.level
+        case oi => oi.level + 1
     end level
 
     /** Is this the outermost implicits? This is the case if it either the implicits
@@ -334,14 +329,14 @@ object Implicits:
     }
 
     def bindingPrec: BindingPrec =
-      if isImport then if ctx.importInfo.uncheckedNN.isWildcardImport then WildImport else NamedImport else Definition
+      if importInfo != null then if importInfo.isWildcardImport then WildImport else NamedImport else Definition
 
     private def combineEligibles(ownEligible: List[Candidate], outerEligible: List[Candidate]): List[Candidate] =
       if ownEligible.isEmpty then outerEligible
       else if outerEligible.isEmpty then ownEligible
       else
         val ownNames = mutable.Set(ownEligible.map(_.ref.implicitName)*)
-        val outer = outerImplicits.uncheckedNN
+        val outer = outerImplicits.nn
         if !migrateTo3(using irefCtx) && level == outer.level && outer.bindingPrec.beats(bindingPrec) then
           val keptOuters = outerEligible.filterConserve: cand =>
             if ownNames.contains(cand.ref.implicitName) then
@@ -408,7 +403,7 @@ object Implicits:
         val outerExcluded = outerImplicits.nn.exclude(root)
         if (irefCtx.importInfo.nn.site.termSymbol == root) outerExcluded
         else if (outerExcluded eq outerImplicits) this
-        else new ContextualImplicits(refs, outerExcluded, isImport)(irefCtx)
+        else new ContextualImplicits(refs, outerExcluded, importInfo)(irefCtx)
       }
   }
 
@@ -651,14 +646,14 @@ trait ImplicitRunInfo:
     || sym.is(Deferred, butNot = Param)
     || sym.info.isMatchAlias
 
-  private def computeIScope(rootTp: Type): OfTypeImplicits =
+  private def computeIScope(rootTp: Type)(using Context): OfTypeImplicits =
 
     object collectParts extends TypeTraverser:
 
       private var parts: mutable.LinkedHashSet[Type] = uninitialized
       private val partSeen = util.HashSet[Type]()
 
-      def traverse(t: Type) = try
+      def traverse(t: Type) = ctx.handleRecursive("collectParts of", t):
         if partSeen.contains(t) then ()
         else if implicitScopeCache.contains(t) then parts += t
         else
@@ -690,7 +685,6 @@ trait ImplicitRunInfo:
               traverseChildren(t)
             case t =>
               traverseChildren(t)
-      catch case ex: Throwable => handleRecursive("collectParts of", t.show, ex)
 
       def apply(tp: Type): collection.Set[Type] =
         parts = mutable.LinkedHashSet()
@@ -721,7 +715,7 @@ trait ImplicitRunInfo:
       end iscopeRefs
 
       def addCompanion(pre: Type, companion: Symbol) =
-        if companion.exists && !companion.isAbsent() then
+        if companion.exists && !companion.isAbsent() && companion.isAccessibleFrom(pre) then
           companions += TermRef(pre, companion)
 
       def addCompanions(t: Type) = implicitScopeCache.lookup(t) match
@@ -889,7 +883,7 @@ trait Implicits:
     && ctx.mode.is(Mode.ImplicitsEnabled)
     && from.isValueType
     && (  from.isValueSubType(to)
-       || inferView(dummyTreeOfType(from), to)
+       || inferView(dummyTreeOfType(from).withSpan(ctx.tree.span), to)
             (using ctx.fresh.addMode(Mode.ImplicitExploration).setExploreTyperState()).isSuccess
           // TODO: investigate why we can't TyperState#test here
        || from.widen.isNamedTupleType && to.derivesFrom(defn.TupleClass)
@@ -950,8 +944,8 @@ trait Implicits:
       case fail @ SearchFailure(failed) =>
         if fail.isAmbiguous then failed
         else
-          if synthesizer == null then synthesizer = Synthesizer(this)
-          val (tree, errors) = synthesizer.uncheckedNN.tryAll(formal, span)
+          val synth = initialize(synthesizer, synthesizer = _, Synthesizer(this))
+          val (tree, errors) = synth.tryAll(formal, span)
           if errors.nonEmpty then
             SearchFailure(new SynthesisFailure(errors, formal), span).tree
           else
@@ -1046,7 +1040,7 @@ trait Implicits:
    *   - if one of T, U is an error type, or
    *   - if one of T, U is a subtype of the lifted version of the other,
    *     unless strict equality is set.
-   *   - if strictEqualityPatternMatching is set and the necessary conditions are met
+   *   - if the strictEqualityPatternMatching (SIP-67) conditions apply
    */
   def assumedCanEqual(ltp: Type, rtp: Type, leftTree: Tree = EmptyTree)(using Context): Boolean = {
     // Map all non-opaque abstract types to their upper bound.
@@ -1073,15 +1067,14 @@ trait Implicits:
     || rtp.isError
     || locally:
       if strictEquality then
-        strictEqualityPatternMatching &&
-          (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.isAllOf(Flags.Module | Flags.Case)) &&
-          ltp <:< lift(rtp)
+        (leftTree.symbol.isAllOf(Flags.EnumValue) || leftTree.symbol.is(Flags.Module)) &&
+          ltp <:< rtp
       else
         ltp <:< lift(rtp) || rtp <:< lift(ltp)
   }
 
   /** Check that equality tests between types `ltp` and `left.tpe` make sense.
-   * `left` is required to check for the condition for language.strictEqualityPatternMatching.
+   * `left` is required to check for the condition for language.strictEqualityPatternMatching (SIP-67)
    */
   def checkCanEqual(left: Tree, rtp: Type, span: Span)(using Context): Unit =
     val ltp = left.tpe.widen
@@ -1668,14 +1661,14 @@ trait Implicits:
     def isUnderSpecifiedArgument(tp: Type): Boolean =
       tp.isRef(defn.NothingClass) || tp.isRef(defn.NullClass) || (tp eq NoPrefix)
 
-    private def isUnderspecified(tp: Type): Boolean = tp.stripTypeVar match
+    private def isUnderspecified(tp: Type): Boolean = tp.stripTypeVar.stripNull() match
       case tp: WildcardType =>
         !tp.optBounds.exists || isUnderspecified(tp.optBounds.hiBound)
       case tp: ViewProto =>
         isUnderspecified(tp.resType)
         || tp.resType.isRef(defn.UnitClass)
         || isUnderSpecifiedArgument(tp.argType.widen)
-      case _ =>
+      case tp =>
         tp.isAny || tp.isAnyRef
 
     /** Search implicit in context `ctxImplicits` or else in implicit scope
@@ -1752,8 +1745,8 @@ trait Implicits:
                           |Current result ${showResult(prevResult)} will be no longer eligible
                           |  because it is not defined before the search position.
                           |Result with new rules: ${showResult(result)}.
-                          |To opt into the new rules, compile with `-source future` or use
-                          |the `scala.language.future` language import.
+                          |To opt into the new rules, compile with `-source 3.6` (or higher) or use
+                          |the `scala.language.`3.6` language import.
                           |
                           |To fix the problem without the language import, you could try one of the following:
                           |  - use a `given ... with` clause as the enclosing given,
@@ -1780,9 +1773,7 @@ trait Implicits:
                     // Otherwise, proceed with a search of the implicit scope.
                     val newCtxImplicits =
                       if eligible eq preEligible then null
-                      else ctxImplicits.nn.outerImplicits: ContextualImplicits | Null
-                        // !!! Dotty problem: without the ContextualImplicits | Null type ascription
-                        // we get a Ycheck failure after arrayConstructors due to "Types differ"
+                      else ctxImplicits.nn.outerImplicits
                     searchImplicit(newCtxImplicits, SearchMode.New).recoverWith:
                       failure2 => failure2.reason match
                         case _: AmbiguousImplicits => failure2
@@ -1847,15 +1838,33 @@ trait Implicits:
       // is larger (see `typeSize`) and is constructed using the same set of types and type
       // constructors (see `coveringSet`).
       //
+      // We also treat two candidates as equivalent for this check when they are sibling
+      // givens declared in the same owner that share a declared signature. Such siblings
+      // (a common pattern when modeling type class hierarchies, see i24914) demand the
+      // same context parameters, so exploring one and then another under the same
+      // prototype shape makes no progress and would otherwise lead to a factorial
+      // blow-up of the search before the expression-count limit eventually kicks in.
+      // We use `frozen_=:=` so the check does not commit constraint updates.
+      //
       // We are able to tie a recursive knot if there is compatible term already under
       // construction which is separated from this context by at least one by name argument
       // as we ascend the chain of open implicits to the outermost search context.
+
+      def equivalentCandidates(c1: Candidate, c2: Candidate): Boolean =
+        if c1.ref eq c2.ref then true
+        else
+          val sym1 = c1.ref.symbol
+          val sym2 = c2.ref.symbol
+          sym1.exists
+            && sym2.exists
+            && sym1.maybeOwner == sym2.maybeOwner
+            && c1.ref.info.frozen_=:=(c2.ref.info)
 
       @tailrec
       def loop(history: SearchHistory, belowByname: Boolean): Boolean =
         history match
           case prev @ OpenSearch(cand1, tp, outer) =>
-            if cand1.ref eq cand.ref then
+            if equivalentCandidates(cand1, cand) then
               lazy val wildTp = wildApprox(tp.widenExpr)
               if belowByname && (wildTp <:< wildPt) then
                 fullyDefinedType(tp, "by-name implicit parameter", srcPos)
@@ -1986,9 +1995,7 @@ final class SearchRoot extends SearchHistory:
   /** The dictionary of recursive implicit types and corresponding terms for this search. */
   var myImplicitDictionary: mutable.Map[Type, (TermRef, tpd.Tree)] | Null = null
   private def implicitDictionary =
-    if myImplicitDictionary == null then
-      myImplicitDictionary = mutable.Map.empty[Type, (TermRef, tpd.Tree)]
-    myImplicitDictionary.uncheckedNN
+    initialize(myImplicitDictionary, myImplicitDictionary = _,  mutable.Map.empty[Type, (TermRef, tpd.Tree)])
 
   /**
    * Link a reference to an under-construction implicit for the provided type to its
@@ -2110,14 +2117,24 @@ final class SearchRoot extends SearchHistory:
             val nsyms = vsyms.map(vsym => newSymbol(classSym, vsym.name, EmptyFlags, vsym.info, coord = span).entered)
             val vsymMap = (vsyms zip nsyms).toMap
 
+            def substVsymRefs(t: tpd.Tree, termRefMap: TermRef => Type, identMap: Ident => tpd.Tree): tpd.Tree =
+              new TreeTypeMap(
+                typeMap = new TypeMap {
+                  def apply(tp: Type): Type = tp match
+                    case ref: TermRef if vsymMap.contains(ref.symbol) => termRefMap(ref)
+                    case _ => mapOver(tp)
+                },
+                treeMap = {
+                  case id: Ident if vsymMap.contains(id.symbol) => identMap(id)
+                  case tree => tree
+                })(t)
+
             val rhss = pruned.map(_._2)
             // Substitute dictionary references into dictionary entry RHSs
-            val rhsMap = new TreeTypeMap(treeMap = {
-              case id: Ident if vsymMap.contains(id.symbol) =>
-                tpd.ref(vsymMap(id.symbol))(using ctx.withSource(id.source)).withSpan(id.span)
-              case tree => tree
-            })
-            val nrhss = rhss.map(rhsMap(_))
+            val nrhss = rhss.map(substVsymRefs(
+              _,
+              ref => classSym.thisType.select(vsymMap(ref.symbol)),
+              id  => tpd.ref(vsymMap(id.symbol))(using ctx.withSource(id.source)).withSpan(id.span)))
 
             val vdefs = (nsyms zip nrhss) map {
               case (nsym, nrhs) => ValDef(nsym.asTerm, nrhs.changeNonLocalOwners(nsym))
@@ -2130,13 +2147,10 @@ final class SearchRoot extends SearchHistory:
             val inst = ValDef(valSym, New(classSym.typeRef, Nil))
 
             // Substitute dictionary references into outermost result term.
-            val resMap = new TreeTypeMap(treeMap = {
-              case id: Ident if vsymMap.contains(id.symbol) =>
-                Select(tpd.ref(valSym), id.name)
-              case tree => tree
-            })
-
-            val res = resMap(success.tree)
+            val res = substVsymRefs(
+              success.tree,
+              ref => valSym.termRef.select(vsymMap(ref.symbol)),
+              id  => Select(tpd.ref(valSym), id.name))
 
             val blk = Block(classDef :: inst :: Nil, res).withSpan(span)
 
@@ -2167,12 +2181,10 @@ sealed class TermRefSet(using Context):
     if !that.isEmpty then that.foreach(+=)
 
   def foreach[U](f: TermRef => U): Unit =
-    def handle(sym: TermSymbol | Null, prefixes: Type | List[Type] | Null): Unit =
-      // We cannot use `.nn` here due to inference issue.
-      val prefixes0: Type | List[Type] = prefixes.uncheckedNN
-      prefixes0 match
-        case prefix: Type => f(TermRef(prefix, sym.uncheckedNN))
-        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym.uncheckedNN)))
+    def handle(sym: TermSymbol, prefixes: Type | List[Type]): Unit =
+      prefixes match
+        case prefix: Type => f(TermRef(prefix, sym))
+        case prefixes: List[Type] => prefixes.foreach(pre => f(TermRef(pre, sym)))
     elems.forEach(handle)
 
   // used only for debugging

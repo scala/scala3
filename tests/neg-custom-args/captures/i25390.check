@@ -1,0 +1,4 @@
+-- Error: tests/neg-custom-args/captures/i25390.scala:4:37 -------------------------------------------------------------
+4 |  val col = scala.collection.mutable.Buffer(23) // error
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |Cannot refer to object Buffer in package scala.collection.mutable from safe code since it is neither compiled in safe mode nor tagged with @assumedSafe

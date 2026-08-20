@@ -1,7 +1,5 @@
 package dotty.tools.dotc.util
 
-import scala.language.unsafeNulls
-
 /** A specialized implementation of GenericHashMap with standard hashCode and equals
  *  as comparison
  */
@@ -13,13 +11,13 @@ extends GenericHashMap[Key, Value](initialCapacity, capacityMultiple):
    *  when taking the index.
    */
   final def hash(key: Key): Int =
-    val h = key.hashCode
+    val h = java.util.Objects.hashCode(key)
     // Part of the MurmurHash3 32 bit finalizer
     val i = (h ^ (h >>> 16)) * 0x85EBCA6B
     val j = (i ^ (i >>> 13)) & 0x7FFFFFFF
     (if j==0 then 0x41081989 else j) << 1
 
-  final def isEqual(x: Key, y: Key): Boolean = x.equals(y)
+  final def isEqual(x: Key, y: Key): Boolean = java.util.Objects.equals(x, y)
 
   // The following methods are duplicated from GenericHashMap
   // to avoid polymorphic dispatches

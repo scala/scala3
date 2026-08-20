@@ -369,6 +369,7 @@
 ./other-new-features/generalized-method-syntax.html
 ./other-new-features/indentation.html
 ./other-new-features/index.html
+./other-new-features/into.html
 ./other-new-features/kind-polymorphism.html
 ./other-new-features/matchable.html
 ./other-new-features/named-tuples.html
@@ -390,7 +391,6 @@
 ./overview.html
 ./preview/better-fors.html
 ./preview/index.html
-./preview/into.html
 ./preview/named-tuples.html
 ./preview/overview.html
 ./preview/runtimeChecked.html

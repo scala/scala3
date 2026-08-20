@@ -1,0 +1,9 @@
+-- [E120] Naming Error: tests/neg/i4520.scala:6:46 ---------------------------------------------------------------------
+6 |case class LabeledEdge[T, U](_1: T, label: U, _2: T) extends EdgeLike[T] // error
+  |                                              ^
+  |                                              Conflicting definitions:
+  |                                              def _2: U in class LabeledEdge at line 6 and
+  |                                              val _2: T in class LabeledEdge at line 6
+  |                                              _2 is a case element selector and must name the 2th element
+  |
+  | longer explanation available when compiling with `-explain`

@@ -18,8 +18,7 @@ import scala.language.`2.13`
  *  subtype of [[scala.AnyVal]]. Instances of `Boolean` are not
  *  represented by an object in the underlying runtime system.
  *
- *  There is an implicit conversion from [[scala.Boolean]] => [[scala.runtime.RichBoolean]]
- *  which provides useful non-primitive operations.
+ *  The companion object provides useful non-primitive operations as extension methods.
  */
 final abstract class Boolean private extends AnyVal {
   /** Negates a Boolean expression.
@@ -57,6 +56,9 @@ final abstract class Boolean private extends AnyVal {
    *  @note This method uses 'short-circuit' evaluation and
    *       behaves as if it was declared as `def ||(x: => Boolean): Boolean`.
    *       If `a` evaluates to `true`, `true` is returned without evaluating `b`.
+   *
+   *  @param x the right-hand operand, only evaluated if `this` is `false`
+   *  @return `true` if at least one operand is `true`, `false` otherwise
    */
   def ||(x: Boolean): Boolean
 
@@ -68,6 +70,9 @@ final abstract class Boolean private extends AnyVal {
    *  @note This method uses 'short-circuit' evaluation and
    *       behaves as if it was declared as `def &&(x: => Boolean): Boolean`.
    *       If `a` evaluates to `false`, `false` is returned without evaluating `b`.
+   *
+   *  @param x the right-hand operand, only evaluated if `this` is `true`
+   *  @return `true` if both operands are `true`, `false` otherwise
    */
   def &&(x: Boolean): Boolean
 
@@ -83,6 +88,9 @@ final abstract class Boolean private extends AnyVal {
    *  - `a` and `b` are `true`.
    *
    *  @note This method evaluates both `a` and `b`, even if the result is already determined after evaluating `a`.
+   *
+   *  @param x the right-hand operand, always evaluated
+   *  @return `true` if at least one operand is `true`, `false` otherwise
    */
   def |(x: Boolean): Boolean
 
@@ -92,6 +100,9 @@ final abstract class Boolean private extends AnyVal {
    *  - `a` and `b` are `true`.
    *
    *  @note This method evaluates both `a` and `b`, even if the result is already determined after evaluating `a`.
+   *
+   *  @param x the right-hand operand, always evaluated
+   *  @return `true` if both operands are `true`, `false` otherwise
    */
   def &(x: Boolean): Boolean
 
@@ -100,11 +111,12 @@ final abstract class Boolean private extends AnyVal {
    *  `a ^ b` returns `true` if and only if
    *  - `a` is `true` and `b` is `false` or
    *  - `a` is `false` and `b` is `true`.
+   *
+   *  @param x the right-hand operand
+   *  @return `true` if the operands evaluate to different values, `false` otherwise
    */
   def ^(x: Boolean): Boolean
 
-  // Provide a more specific return type for Scaladoc
-  override def getClass(): Class[Boolean] = ???
 }
 
 object Boolean extends AnyValCompanion {
@@ -133,5 +145,27 @@ object Boolean extends AnyValCompanion {
   /** The String representation of the scala.Boolean companion object. */
   override def toString() = "object scala.Boolean"
 
-}
+  extension (self: Boolean) {
 
+    /** Compares `this` to `that` according to the standard total ordering.
+      *
+      * Returns:
+      * - a positive value if `this` is `true` and `that` is `false`
+      * - a negative value if `this` is `false` and `that` is `true`
+      * - `0` if `this == that`
+      */
+    def compare(that: Boolean): Int = java.lang.Boolean.compare(self, that)
+
+    /** Returns true iff `this` is `false` and `that` is `true`. */
+    def <(that: Boolean): Boolean = !self & that
+
+    /** Returns true iff `this` is `true` and `that` is `false`. */
+    def >(that: Boolean): Boolean = self & !that
+
+    /** Returns true iff `this` is `false` or `that` is `true`. */
+    def <=(that: Boolean): Boolean = !self | that
+
+    /** Returns true iff `this` is `true` or `that` is `false`. */
+    def >=(that: Boolean): Boolean = self | !that
+  }
+}

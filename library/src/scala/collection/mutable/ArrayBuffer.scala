@@ -65,7 +65,10 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 
   override def knownSize: Int = super[IndexedSeqOps].knownSize
 
-  /** Ensures that the internal array has at least `n` cells. */
+  /** Ensures that the internal array has at least `n` cells.
+   *
+   *  @param n the minimum number of cells required in the internal array
+   */
   protected def ensureSize(n: Int): Unit = {
     array = ArrayBuffer.ensureSize(array, size0, n)
   }
@@ -77,7 +80,10 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   def sizeHint(size: Int): Unit =
     if(size > length && size >= 1) ensureSize(size)
 
-  /** Reduces length to `n`, nulling out all dropped elements. */
+  /** Reduces length to `n`, nulling out all dropped elements.
+   *
+   *  @param n the new size of the buffer, must be less than or equal to the current size
+   */
   private def reduceToSize(n: Int): Unit = {
     mutationCount += 1
     Arrays.fill(array, n, size0, null)
@@ -95,6 +101,8 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 
   /** Trims the `array` buffer size down to either a power of 2
    *  or Int.MaxValue while keeping first `requiredLength` elements.
+   *
+   *  @param requiredLength the number of elements to retain in the resized array
    */
   private def resize(requiredLength: Int): Unit =
     array = ArrayBuffer.downsize(array, requiredLength)
@@ -130,6 +138,7 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   /** Clears this buffer and shrinks to @param size (rounding up to the next
    *  natural size)
    *  @param size
+   *  @return this `ArrayBuffer`, now empty and resized to a capacity at least as large as `size`
    */
   def clearAndShrink(size: Int = ArrayBuffer.DefaultInitialSize): this.type = {
     clear()
@@ -179,7 +188,7 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   def insertAll(@deprecatedName("n", "2.13.0") index: Int, elems: IterableOnce[A]^): Unit = {
     checkWithinBounds(index, index)
     elems match {
-      case elems: collection.Iterable[A] =>
+      case elems: collection.Iterable[A @unchecked] =>
         val elemsLength = elems.size
         if (elemsLength > 0) {
           mutationCount += 1
@@ -203,6 +212,9 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 
   /** Note: This does not actually resize the internal representation.
    *  See trimToSize if you want to also resize internally
+   *
+   *  @param index the zero-based position of the element to remove
+   *  @return the element that was removed at position `index`
    */
   def remove(@deprecatedName("n", "2.13.0") index: Int): A = {
     checkWithinBounds(index, index + 1)
@@ -214,6 +226,11 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 
   /** Note: This does not actually resize the internal representation.
    *  See trimToSize if you want to also resize internally
+   *
+   *  @param index the zero-based position of the first element to remove
+   *  @param count the number of elements to remove
+   *  @throws IllegalArgumentException if `count` is negative
+   *  @throws IndexOutOfBoundsException if the range `[index, index + count)` is out of bounds
    */
   def remove(@deprecatedName("n", "2.13.0") index: Int, count: Int): Unit =
     if (count > 0) {
@@ -246,6 +263,7 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
   /** Sorts this $coll in place according to an Ordering.
    *
    *  @see [[scala.collection.mutable.IndexedSeqOps.sortInPlace]]
+   *  @tparam B a supertype of the element type `A` for which an `Ordering` is available
    *  @param  ord the ordering to be used to compare elements.
    *  @return modified input $coll sorted according to the ordering `ord`.
    */

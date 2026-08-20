@@ -20,23 +20,24 @@ on:
         required: true
         type: string
 
+# Publishing uses credentials from secrets for each repository (SDKMAN,
+# Chocolatey, etc), the GITHUB_TOKEN is only needed by the jobs that declare
+# their own permissions.
+permissions: {}
+
 jobs:
   # TODO: ADD JOB TO SWITCH THE GITHUB RELEASE FROM DRAFT TO LATEST
+  # The publish-* jobs push to external package managers and channels so we only
+  # run then on scala/scala3. Forks running this workflow still build and test
+  # the packages.
   publish-sdkman:
     uses:  ./.github/workflows/publish-sdkman.yml
+    if: github.repository == 'scala/scala3'
     with:
       version: ${{ inputs.version }}
     secrets:
       CONSUMER-KEY: ${{ secrets.SDKMAN_KEY }}
       CONSUMER-TOKEN: ${{ secrets.SDKMAN_TOKEN }}
-
-  publish-winget:
-    uses: ./.github/workflows/publish-winget.yml
-    if: false # TODO: Requires setting up initial WinGet package
-    with:
-      version: ${{ inputs.version }}
-    secrets:
-      DOTTYBOT-TOKEN: ${{ secrets.DOTTYBOT_WINGET_TOKEN }}
 
   compute-digest:
     runs-on: ubuntu-latest
@@ -45,25 +46,33 @@ jobs:
     steps:
       - name: Compute the SHA256 of scala3-${{ inputs.version }}-x86_64-pc-win32.zip in GitHub Release
         id: digest
+        env:
+          VERSION: ${{ inputs.version }}
         run: |
-          curl -o artifact.zip -L https://github.com/scala/scala3/releases/download/${{ inputs.version }}/scala3-${{ inputs.version }}-x86_64-pc-win32.zip
+          # TODO(puerco): Verify provenance of this artifact
+          curl -o artifact.zip -L "https://github.com/${{ github.repository }}/releases/download/$VERSION/scala3-$VERSION-x86_64-pc-win32.zip"
           echo "digest=$(sha256sum artifact.zip | cut -d " " -f 1)" >> "$GITHUB_OUTPUT"
 
   build-chocolatey:
     uses: ./.github/workflows/build-chocolatey.yml
+    permissions:
+      contents: read
     needs: compute-digest
     with:
       version: ${{ inputs.version }}
-      url    : 'https://github.com/scala/scala3/releases/download/${{ inputs.version }}/scala3-${{ inputs.version }}-x86_64-pc-win32.zip'
+      url    : 'https://github.com/${{ github.repository }}/releases/download/${{ inputs.version }}/scala3-${{ inputs.version }}-x86_64-pc-win32.zip'
       digest : ${{ needs.compute-digest.outputs.digest }}
   test-chocolatey:
     uses: ./.github/workflows/test-chocolatey.yml
+    permissions:
+      actions: read  # Granted because the called workflow declares it, unused for stable versions
     needs: build-chocolatey
     with:
       version     : ${{ inputs.version }}
       java-version: 17
   publish-chocolatey:
     uses: ./.github/workflows/publish-chocolatey.yml
+    if: github.repository == 'scala/scala3'
     needs: [ build-chocolatey, test-chocolatey ]
     with:
       version: ${{ inputs.version }}

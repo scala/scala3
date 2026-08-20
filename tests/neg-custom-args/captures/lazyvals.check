@@ -7,15 +7,11 @@
    |                           Note that capability `console` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals.scala:16:30 -------------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/lazyvals.scala:16:36 -----------------------------------
 16 |  val fun3: () ->{x} String = () => x() // error // error
-   |                              ^^^^^^^^^
-   |                              Found:    () ->{console} String
-   |                              Required: () ->{x} String
-   |
-   |                              Note that capability `console` cannot flow into capture set {x}.
-   |
-   | longer explanation available when compiling with `-explain`
+   |                                    ^
+   |                                    Reference `console` is not included in the allowed capture set {x}
+   |                                    of an enclosing function literal with expected type () ->{x} String.
 -- Error: tests/neg-custom-args/captures/lazyvals.scala:16:12 ----------------------------------------------------------
 16 |  val fun3: () ->{x} String = () => x() // error // error
    |            ^^^^^^^^^^^^^^^

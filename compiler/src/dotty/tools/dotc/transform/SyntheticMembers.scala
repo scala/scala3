@@ -82,7 +82,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
     val existing = sym.matchingMember(clazz.thisType)
     if Feature.shouldBehaveAsScala2 && clazz.isValueClass && (sym == defn.Any_equals || sym == defn.Any_hashCode) then
       NoSymbol
-    else if existing != sym && !existing.is(Deferred) then
+    else if existing != sym && !existing.is(Deferred) && existing != defn.Object_equals && existing != defn.Object_hashCode then
       existing
     else
       NoSymbol
@@ -189,7 +189,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  def productElement(index: Int): Any = index match {
      *    case 0 => this._1
      *    case 1 => this._2
-     *    case _ => throw new IndexOutOfBoundsException(index.toString)
+     *    case _ => throw new IndexOutOfBoundsException(index)
      *  }
      *  ```
      */
@@ -215,7 +215,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  def productElement(index: Int): Any = index match {
      *    case 0 => this.x
      *    case 1 => this.y
-     *    case _ => throw new IndexOutOfBoundsException(index.toString)
+     *    case _ => throw new IndexOutOfBoundsException(index)
      *  }
      *  ```
      */
@@ -242,7 +242,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  def productElementName(index: Int): String = index match {
      *    case 0 => "x"
      *    case 1 => "y"
-     *    case _ => throw new IndexOutOfBoundsException(index.toString)
+     *    case _ => throw new IndexOutOfBoundsException(index)
      *  }
      *  ```
      */
@@ -255,20 +255,16 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       Match(index, (cases :+ generateIOBECase(index)).toList)
     }
 
+    /** Generate a tree equivalent to the following source level code:
+      * ```scala
+      *   case _: Int => throw new IndexOutOfBoundsException(index)
+      * ```
+      */
     def generateIOBECase(index: Tree): CaseDef = {
-      val ioob = defn.IndexOutOfBoundsException.typeRef
-      // Second constructor of ioob that takes a String argument
-      def filterStringConstructor(s: Symbol): Boolean = s.info match {
-        case m: MethodType if s.isConstructor && m.paramInfos.size == 1 =>
-          m.paramInfos.head.stripNull() == defn.StringType
-        case _ => false
-      }
-      val constructor = ioob.typeSymbol.info.decls.find(filterStringConstructor(_)).asTerm
-      val stringIndex = Apply(Select(index, nme.toString_), Nil)
-      val error = Throw(New(ioob, constructor, List(stringIndex)))
-
-      // case _ => throw new IndexOutOfBoundsException(i.toString)
-      CaseDef(Underscore(defn.IntType), EmptyTree, error)
+      val rhs = New(defn.IndexOutOfBoundsExceptionType)
+        .select(defn.IndexOutOfBoundsException_IntConstructor)
+        .appliedTo(index)
+      CaseDef(Underscore(defn.IntType), EmptyTree, Throw(rhs))
     }
 
     /** The class
@@ -326,23 +322,16 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
      *  class C(x: T) extends AnyVal
      *  ```
      *
-     *  gets the `hashCode` method. If the value is primitive:
-     *  ```
-     *  def hashCode: Int = x.hashCode()
-     *  ```
-     *  otherwise, the null-safe variant:
+     *  gets the `hashCode` method
      *  ```
      *  def hashCode: Int = java.util.Objects.hashCode(x)
      *  ```
+     *
+     *  If the value is primitive, we precompute the dispatch so that we do not need to box.
      */
     def valueHashCodeBody(using Context): Tree = {
       assert(accessors.nonEmpty)
-      val accessor = accessors.head
-      val tp = accessor.info.finalResultType
-      if (tp.classSymbol.isPrimitiveValueClass)
-        ref(accessor).select(nme.hashCode_).ensureApplied
-      else
-        ref(defn.Objects_hashCode).appliedTo(ref(accessor))
+      hashImpl(accessors.head, scalaHashHash = false)
     }
 
     /**
@@ -401,22 +390,28 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val mixPrefix = Assign(ref(acc),
         ref(defn.staticsMethod("mix")).appliedTo(ref(acc), Literal(Constant(ownName.hashCode))))
       val mixes = for (accessor <- accessors) yield
-        Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor)))
+        Assign(ref(acc), ref(defn.staticsMethod("mix")).appliedTo(ref(acc), hashImpl(accessor, scalaHashHash = true)))
       val finish = ref(defn.staticsMethod("finalizeHash")).appliedTo(ref(acc), Literal(Constant(accessors.size)))
       Block(accDef :: mixPrefix :: mixes, finish)
     }
 
     /** The `hashCode` implementation for given symbol `sym`. */
-    def hashImpl(sym: Symbol)(using Context): Tree =
+    def hashImpl(sym: Symbol, scalaHashHash: Boolean)(using Context): Tree =
+      def hashHashDependent(staticsMethodName: String, javaBoxedClass: ClassSymbol): Tree =
+        val implMethod =
+          if scalaHashHash then defn.staticsMethod(staticsMethodName)
+          else javaBoxedClass.companionModule.moduleClass.asClass.info.member(nme.hashCode_).suchThat(_.info.firstParamTypes.length == 1).symbol
+        ref(implMethod).appliedTo(ref(sym))
+
       defn.scalaClassName(sym.info.finalResultType) match {
         case tpnme.Unit | tpnme.Null               => Literal(Constant(0))
         case tpnme.Boolean                         => If(ref(sym), Literal(Constant(1231)), Literal(Constant(1237)))
         case tpnme.Int                             => ref(sym)
         case tpnme.Short | tpnme.Byte | tpnme.Char => ref(sym).select(nme.toInt)
-        case tpnme.Long                            => ref(defn.staticsMethod("longHash")).appliedTo(ref(sym))
-        case tpnme.Double                          => ref(defn.staticsMethod("doubleHash")).appliedTo(ref(sym))
-        case tpnme.Float                           => ref(defn.staticsMethod("floatHash")).appliedTo(ref(sym))
-        case _                                     => ref(defn.staticsMethod("anyHash")).appliedTo(ref(sym))
+        case tpnme.Long                            => hashHashDependent("longHash", defn.BoxedLongClass)
+        case tpnme.Double                          => hashHashDependent("doubleHash", defn.BoxedDoubleClass)
+        case tpnme.Float                           => hashHashDependent("floatHash", defn.BoxedFloatClass)
+        case _                                     => hashHashDependent("anyHash", defn.JavaUtilObjectsClass)
       }
 
     /** The class
@@ -672,6 +667,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val newClassInfo = oldClassInfo.derivedClassInfo(
         declaredParents = oldClassInfo.declaredParents :+ parent)
       clazz.copySymDenotation(info = newClassInfo).installAfter(thisPhase)
+      parent.classSymbol.asClass.invalidateBaseTypeCache()
     }
     def addMethod(name: TermName, info: Type, cls: Symbol, body: (Symbol, Tree) => Context ?=> Tree): Unit = {
       val meth = newSymbol(clazz, name, Synthetic | Method, info, coord = clazz.coord)

@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 import java.util.Comparator;
 
 public class Test {

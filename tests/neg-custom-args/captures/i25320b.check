@@ -1,0 +1,9 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25320b.scala:6:16 ---------------------------------------
+6 |    case Box(y) => Box(y)  // error
+  |                ^^^^^^^^^
+  |                Found:    Box[Foo]^'s1
+  |                Required: Box[Foo^{y}]^'s2
+  |
+  |                Note that capability `y` cannot flow into capture set {}.
+  |
+  | longer explanation available when compiling with `-explain`

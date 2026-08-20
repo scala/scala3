@@ -32,8 +32,8 @@ def main() =
   runSecure: () =>
     "I am pure" : Unit                             // ok
 
-  runSecure: () => // error
-    untrustedLogger.log("I can't be used here")
+  runSecure: () =>
+    untrustedLogger.log("I can't be used here") // error
 
-  runSecure: () => // error
-    untrustedChannel.send("I can't be used here")
+  runSecure: () =>
+    untrustedChannel.send("I can't be used here") // error

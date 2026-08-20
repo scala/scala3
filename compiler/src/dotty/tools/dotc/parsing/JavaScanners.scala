@@ -14,7 +14,10 @@ import core.Decorators.em
 
 object JavaScanners {
 
-  class JavaScanner(source: SourceFile, override val startFrom: Offset = 0)(using Context) extends ScannerCommon(source) {
+  class JavaScanner(
+      source: SourceFile,
+      override val startFrom: Offset = 0,
+      limit: Offset = -1)(using Context) extends ScannerCommon(source, limit) {
 
     override def decodeUni: Boolean = true
 
@@ -632,6 +635,7 @@ object JavaScanners {
     /** convert name to long value
      */
     def intVal(negated: Boolean): Long =
+      val strVal = this.strVal.nn
       if (token == CHARLIT && !negated)
         if (strVal.length > 0) strVal.charAt(0).toLong else 0
       else {
@@ -729,7 +733,7 @@ object JavaScanners {
       case COMMA =>
         ","
       case _ =>
-        tokenString(token)
+        tokenString(token).nn
     }
 
     /* Initialization: read first char, then first token */

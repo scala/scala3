@@ -1,0 +1,24 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25605.scala:3:26 ----------------------------------------
+3 |def magic(): Id[IO^] = Id([R] => (x, op) => op(x))  // error
+  |                          ^^^^^^^^^^^^^^^^^^^^^^^
+  |            Capability `x` outlives its scope: it leaks into outer capture set 's1 which is owned by method magic.
+  |            The leakage occurred when trying to match the following types:
+  |
+  |            Found:    [R] => (x: IO^, op: IO^{x} => R) ->'s2 R
+  |            Required: [R] => (x: IO^, op: IO^'s1 => R) -> R
+  |
+  |            where:    => and ^ refer to the root capability caps.any
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i25605.scala:6:24 ----------------------------------------
+6 |def magic2(): IO^ = foo([R] => (x, op) => op(x)) // error
+  |                        ^^^^^^^^^^^^^^^^^^^^^^^
+  |           Capability `x` outlives its scope: it leaks into outer capture set 's3 which is owned by method magic2.
+  |           The leakage occurred when trying to match the following types:
+  |
+  |           Found:    [R] => (x: IO^, op: IO^{x} => R) ->'s4 R
+  |           Required: [R] => (x: IO^, op: IO^'s3 => R) -> R
+  |
+  |           where:    => and ^ refer to the root capability caps.any
+  |
+  | longer explanation available when compiling with `-explain`

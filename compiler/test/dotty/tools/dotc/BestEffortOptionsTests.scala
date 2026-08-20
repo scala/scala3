@@ -6,7 +6,6 @@ import dotty.tools.vulpix.*
 import reporting.TestReporter
 
 import scala.concurrent.duration.*
-import scala.language.unsafeNulls
 
 import java.io.{File => JFile}
 import org.junit.{AfterClass, Test}
@@ -14,7 +13,7 @@ import org.junit.{AfterClass, Test}
 class BestEffortOptionsTests {
   import ParallelTesting.*
   import vulpix.TestConfiguration.*
-  import BestEffortOptionsTests.*
+  import BestEffortOptionsTests.{*, given}
 
   // Since TASTy and beTASTy files are read in a lazy manner (only when referenced by the source .scala file)
   // we test by using the "-from-tasty" option. This guarantees that the tasty files will be read
@@ -40,18 +39,4 @@ class BestEffortOptionsTests {
       .noCrashWithCompilingDependencies()
 }
 
-object BestEffortOptionsTests extends ParallelTesting {
-  def maxDuration = 45.seconds
-  def numberOfWorkers = Runtime.getRuntime.availableProcessors()
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
-
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def tearDown(): Unit = {
-    super.cleanup()
-    summaryReport.echoSummary()
-  }
-}
+object BestEffortOptionsTests extends ParallelTesting

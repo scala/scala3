@@ -1,10 +1,9 @@
-import caps.{use, CapSet}
+import caps.CapSet
 
 def f[C^](xs: List[Object^{C}]): Unit = ???
 
-private def g[C^] = (xs: List[Object^{C}]) => xs.head // error TODO: allow this
-  // This fails currently since `C^` is not classified as used. To classify it we'd also have to look on the
-  // RHS. But this would change again if we go to non-monotonic currying.
+private def g[C^] = (xs: List[Object^{C}]) => xs.head
+private def g2[C^](xs: List[Object^{C}]) = xs.head // ok
 
 def test(io: Object^)(xs: List[Object^{io}]): Unit =
   val h = () => f(xs)

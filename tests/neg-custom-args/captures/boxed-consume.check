@@ -1,8 +1,8 @@
 -- Error: tests/neg-custom-args/captures/boxed-consume.scala:10:52 -----------------------------------------------------
 10 |  def h(consume x: (Object^, Object^)): Object^ = x._1  // error: local reach leak
    |                                                  ^^^^
-   |                           Local reach capability x._1* leaks into capture scope of method h.
-   |                           You could try to abstract the capabilities referred to by x._1* in a capset variable.
+   |                                      Local any in the type of parameter x leaks into capture scope of method h.
+   |                                      You could try to abstract the capability in a capset variable.
 -- Error: tests/neg-custom-args/captures/boxed-consume.scala:16:10 -----------------------------------------------------
 16 |  println(d) // error
    |          ^

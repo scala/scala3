@@ -1,10 +1,10 @@
-import caps.{any, Stateful, SharedCapability}
+import caps.*
 
-trait Iterator[T] extends Stateful:
+trait Iterator[T] extends Stateful, ExclusiveCapability:
   def hasNext: Boolean
   def next(): T
 
-  def map[U](f: T => U): Iterator[U] = new Iterator: // error
+  def map[U](f: T => U): Iterator[U] = new Iterator: // sepcheck error
     def hasNext = Iterator.this.hasNext
     def next() = f(Iterator.this.next()) // error
 end Iterator
@@ -17,7 +17,7 @@ def listIterator[T](xs: List[T]) = new Iterator[T]:
       current = xs1 // error
       x
 
-def mappedIterator[T, U](it: Iterator[T]^, f: T => U): Iterator[U] = new Iterator: // error
+def mappedIterator[T, U](it: Iterator[T]^, f: T => U): Iterator[U] = new Iterator: // sepcheck error
   def hasNext = it.hasNext
   def next() = f(it.next()) // error
 

@@ -7,7 +7,9 @@ import annotation.internal.preview
  *  The implicit resolution algorithm will act as if there existed
  *  the additional implicit definition:
  *
- *    def $implicitConversion[T, U](x: T)(c: Conversion[T, U]): U = c(x)
+ *  ```
+ *  def $implicitConversion[T, U](x: T)(c: Conversion[T, U]): U = c(x)
+ *  ```
  *
  *  However, the presence of this definition would slow down implicit search since
  *  its outermost type matches any pair of types. Therefore, implicit search
@@ -23,11 +25,16 @@ import annotation.internal.preview
  *
  *  The `Conversion` class can also be used to convert explicitly, using
  *  the `convert` extension method.
+ *
+ *  @tparam T the input type of the conversion (contravariant)
+ *  @tparam U the output type of the conversion (covariant)
  */
 @java.lang.FunctionalInterface
 abstract class Conversion[-T, +U] extends Function1[T, U]:
-  self =>
-    /** Converts value `x` of type `T` to type `U`. */
+    /** Converts value `x` of type `T` to type `U`.
+     *
+     *  @param x the value of type `T` to convert to type `U`
+     */
     def apply(x: T): U
 
     extension (x: T)
@@ -42,11 +49,9 @@ object Conversion:
    *  conversions are tried from the type of `t` to `T`. `into[T]` types are erased to `T`
    *  in all covariant positions of the types of parameter symbols.
    */
-  @preview
   opaque type into[+T] >: T = T
 
   /** Unwraps an `into`. */
   extension [T](x: into[T])
-    @preview
     def underlying: T = x
 end Conversion

@@ -12,12 +12,6 @@ object Regexes {
   val CleanCommentLine =
     new Regex("""(?:\s*\*\s?\s?)?(.*)""")
 
-  /** Dangerous HTML tags that should be replaced by something safer,
-    * such as wiki syntax, or that should be dropped
-    */
-  val DangerousTags =
-    new Regex("""<(/?(div|ol|ul|li|h[1-6]|p))( [^>]*)?/?>|<!--.*-->""")
-
   /** Javadoc tags that should be replaced by something useful, such as wiki
     * syntax, or that should be dropped. */
   val JavadocTags =
@@ -36,27 +30,7 @@ object Regexes {
     }
   }
 
-  /** Maps a dangerous HTML tag to a safe wiki replacement, or an empty string
-    * if it cannot be salvaged. */
-  def htmlReplacement(mtch: Regex.Match): String = mtch.group(1) match {
-    case "p" | "div" => "\n\n"
-    case "h1"  => "\n= "
-    case "/h1" => " =\n"
-    case "h2"  => "\n== "
-    case "/h2" => " ==\n"
-    case "h3"  => "\n=== "
-    case "/h3" => " ===\n"
-    case "h4" | "h5" | "h6" => "\n==== "
-    case "/h4" | "/h5" | "/h6" => " ====\n"
-    case "li" => "\n *  - "
-    case _ => ""
-  }
-
-  /** Safe HTML tags that can be kept. */
-  val SafeTags =
-    new Regex("""((&\w+;)|(&#\d+;)|(</?(abbr|acronym|address|area|a|bdo|big|blockquote|br|button|b|caption|cite|code|col|colgroup|dd|del|dfn|em|fieldset|form|hr|img|input|ins|i|kbd|label|legend|link|map|object|optgroup|option|param|pre|q|samp|select|small|span|strong|sub|sup|table|tbody|td|textarea|tfoot|th|thead|tr|tt|var)( [^>]*)?/?>))""")
-
-  val safeTagMarker = '\u000E'
+  val safeTagMarker = '\u000E' // IMPORTANT: Only change if you've updated the sanitization tests to match
   val endOfLine     = '\u000A'
   val endOfText     = '\u0003'
 

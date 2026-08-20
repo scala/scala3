@@ -1,1 +1,8 @@
-6: Pattern Match Exhaustivity: _: Foo
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/3144c.scala:6:4 -----
+6 |    foo match {
+  |    ^^^
+  |    match may not be exhaustive.
+  |
+  |    It would fail on pattern case: _: Foo
+  |
+  | longer explanation available when compiling with `-explain`

@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/depfun-reach.scala:19:4 ----------------------------------
 19 |    op // error
    |    ^^
-   |    Found:    (op : (xs: List[(X, () ->{io} Unit)]) ->{any} List[() ->{xs*} Unit])
+   |    Found:    (op : (xs: List[(X, () ->{io} Unit)]) ->{any} List[() ->{io} Unit])
    |    Required: (xs: List[(X, () ->{io} Unit)]) ->{any²} List[() -> Unit]
    |
    |    Note that capability `any` cannot flow into capture set {any²}.
@@ -10,15 +10,24 @@
    |              any² is a root capability in the result type of method foo
    |
    | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/depfun-reach.scala:22:8 ----------------------------------
+22 |    foo(compose1)(op) // error
+   |        ^^^^^^^^
+   |        Found:    List[() ->{async, io} Unit]
+   |        Required: List[() ->{io} Unit]
+   |
+   |        Note that capability `async` cannot flow into capture set {io}.
+   |
+   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/depfun-reach.scala:26:60 ---------------------------------
 26 |  val b: (xs: List[() ->{io} Unit]) => List[() ->{} Unit] = a // error
    |                                                            ^
-   |                                        Found:    (a : (xs: List[() ->{io} Unit]) ->{any} List[() ->{xs*} Unit])
-   |                                        Required: (xs: List[() ->{io} Unit]) ->{any²} List[() -> Unit]
+   |                                         Found:    (a : (xs: List[() ->{io} Unit]) ->{any} List[() ->{io} Unit])
+   |                                         Required: (xs: List[() ->{io} Unit]) ->{any²} List[() -> Unit]
    |
-   |                                        Note that capability `any` cannot flow into capture set {any²}.
+   |                                         Note that capability `any` cannot flow into capture set {any²}.
    |
-   |                                        where:    any  is a root capability in the type of value a
-   |                                                  any² is a root capability in the type of value b
+   |                                         where:    any  is a root capability in the type of value a
+   |                                                   any² is a root capability in the type of value b
    |
    | longer explanation available when compiling with `-explain`

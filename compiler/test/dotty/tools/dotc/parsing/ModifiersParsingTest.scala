@@ -3,14 +3,14 @@ package dotc
 package parsing
 
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 
 import ast.Trees.mods
-import ast.untpd._
+import ast.untpd.*
 import ast.{ Trees => d }
 import Parsers.Parser
 import util.SourceFile
-import core.Contexts._
+import core.Contexts.*
 import core.Flags
 
 object ModifiersParsingTest {

@@ -14,6 +14,7 @@ import com.vladsch.flexmark.util.{ast => mdu, sequence}
 import com.vladsch.flexmark.{ast => mda}
 import com.vladsch.flexmark.formatter.Formatter
 import scala.jdk.CollectionConverters._
+import org.junit.Test
 
 import dotty.tools.scaladoc.tasty.comments.markdown.ExtendedFencedCodeBlock
 
@@ -23,7 +24,7 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags) extends Scaladoc
 
   val source = Source.fromFile(s"${BuildInfo.test_testcasesSourceRoot}/tests/$testName.scala")
 
-  val snippetsCount = source.getLines.filter(l => l.indexOf("```scala") != -1 && !l.contains("sc-hidden")).size
+  val snippetsCount = source.getLines().filter(l => l.indexOf("```scala") != -1 && !l.contains("sc-hidden")).size
 
   def report(str: String) = s"""|In test $testName:
                                 |$str""".stripMargin
@@ -135,7 +136,8 @@ abstract class SnippetsE2eTest(testName: String, flag: SCFlags) extends Scaladoc
     }
   }
 
-  def runTest = {
+  @Test
+  def runTest(): Unit = {
     org.junit.Assume.assumeTrue("Running on Windows", java.io.File.separatorChar == '/')
     withModule(moduleTestingFunc)
   }

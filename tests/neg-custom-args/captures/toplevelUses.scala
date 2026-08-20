@@ -4,7 +4,7 @@ import caps.*
 class Console extends SharedCapability:
   def println(): Unit = ()
 
-object M:
+object M:  // error
   val c: Console^ = Console()
 
 def test(cc: Console^) =

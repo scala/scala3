@@ -2,7 +2,7 @@ package scala.collection
 
 import org.junit.Test
 import org.junit.Assert.assertEquals
-import tools.AssertUtil.assertThrows
+import tools.AssertUtil.{assertSameElements, assertThrows}
 
 class StringOpsTest {
   // Test for scala/bug#10951
@@ -111,5 +111,73 @@ class StringOpsTest {
     assertEquals("b", "ab".tail)
     assertEquals("", "a".tail)
     assertThrows[UnsupportedOperationException]("".tail)
+  }
+
+  // Test that String.split(Char) matches String.split(String) in all cases
+  @Test def splitByChar: Unit = {
+    val separators =
+      val lowSurrogate = 0xDF62.toChar
+      val highSurrogate = 0xD852.toChar
+      Array('D', lowSurrogate, highSurrogate)
+
+    // add in charaters that won't be used for splitting
+    val alphabet =
+      separators.flatMap(ch => Seq(ch, (ch + 1).toChar))
+
+    def allStringsOfLength(n: Int): Iterator[String] =
+      if n == 0 then Iterator("")
+      else
+        for
+          before <- allStringsOfLength(n - 1)
+          ch <- alphabet
+        yield before + ch
+
+    for
+      len <- 0 to 5
+      s <- allStringsOfLength(len)
+      separator <- separators
+    do
+      assertSameElements(s.split(separator), s.split(s"$separator"))
+  }
+
+  @Test def splitByCharExamples: Unit = {
+    assertSameElements("a,b,c".split(','), Array("a", "b", "c"))
+
+    assertSameElements("abc".split(','), Array("abc"))
+
+    assertSameElements(",a,b".split(','), Array("", "a", "b"))
+    assertSameElements("a,,b".split(','), Array("a", "", "b"))
+
+    // Edge cases:
+    assertSameElements("a,b,,,".split(','), Array("a", "b"))
+    assertSameElements("".split(','), Array(""))
+    assertSameElements(",,,".split(','), Array.empty[String])
+  }
+
+  @Test def splitBySurrogateCharExamples: Unit = {
+    val high = '\uD83D' // High surrogate
+    val low  = '\uDE00' // Low surrogate
+    val pair = "\uD83D\uDE00" // Valid surrogate pair
+
+    // --- HIGH SURROGATE SPLITS ---
+    
+    // Basic isolated high surrogate split
+    assertSameElements(s"a${high}b".split(high), Array("a", "b"))
+
+    // Should skip the high surrogate because it belongs to a valid pair
+    assertSameElements(s"a${pair}b".split(high), Array(s"a${pair}b"))
+
+    // --- LOW SURROGATE SPLITS ---
+    
+    // Basic isolated low surrogate split
+    assertSameElements(s"a${low}b".split(low), Array("a", "b"))
+
+    // Should skip the low surrogate because it belongs to a valid pair
+    assertSameElements(s"a${pair}b".split(low), Array(s"a${pair}b"))
+
+    // Edge case: Over-trimming recovery
+    // The while loop initially trims the trailing `low` char. 
+    // However, because it's preceded by a `high` char, it forms a valid pair and MUST be restored.
+    assertSameElements(s"a${pair}".split(low), Array(s"a${pair}"))
   }
 }

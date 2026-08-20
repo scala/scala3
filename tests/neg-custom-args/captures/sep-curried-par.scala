@@ -21,7 +21,7 @@ def test(c: () => Unit) =
   foo(c)(c) // error: separation
 
   val bar = (p1: () => Unit) => (p2: () ->{p1, any} Unit) => par(p1, p2) // error separation
-  bar(c)(c) // error separation
+  bar(c)(c)
 
 
 

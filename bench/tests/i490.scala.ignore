@@ -1,9 +1,0 @@
-trait Foo {
-  def app(x: Object)(y: Object): Object
-}
-
-object O {
-  def main(args: Array[String]): Unit = {
-    val z: Foo = x => ???
-  }
-}

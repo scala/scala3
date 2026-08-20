@@ -4,7 +4,6 @@ package coverage
 import ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.*
-import java.nio.file.Path
 import dotty.tools.dotc.util.SourceFile
 
 /** Information about the location of a coverable piece of code.
@@ -14,7 +13,7 @@ import dotty.tools.dotc.util.SourceFile
   * @param fullClassName  fully qualified name of the closest enclosing class
   * @param classType      "type" of the closest enclosing class: Class, Trait or Object
   * @param methodName     name of the closest enclosing method
-  * @param sourcePath     absolute path of the source file
+  * @param sourcePath     path of the source file relative to the source root
   */
 final case class Location(
     packageName: String,
@@ -22,7 +21,7 @@ final case class Location(
     fullClassName: String,
     classType: String,
     methodName: String,
-    sourcePath: Path
+    sourcePath: String
 )
 
 object Location:
@@ -46,5 +45,5 @@ object Location:
       s"$packageName.$className",
       classType,
       methodName,
-      source.file.absolute.jpath.nn
+      source.pathRelativeToSourceRoot
     )

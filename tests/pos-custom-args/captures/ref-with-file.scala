@@ -1,6 +1,6 @@
 import caps.*
 
-class Ref[T](init: T) extends caps.Stateful, Unscoped:
+class Ref[T](init: T) extends Stateful, Unscoped:
   var x = init
   def get: T = x
   update def put(y: T): Unit = x = y
@@ -15,6 +15,8 @@ def withFileAndRef[T](op: (f: File^, r: Ref[String]^) => T): T =
   op(File(), Ref(""))
 
 def Test =
+  withFile: f =>
+    Ref("")
   withFile: f =>
     val r = Ref(f.read())
     r

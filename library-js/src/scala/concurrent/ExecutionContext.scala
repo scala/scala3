@@ -169,6 +169,8 @@ object ExecutionContext {
      *  The default `ExecutionContext` implementation is backed by a work-stealing thread pool. By default,
      *  the thread pool uses a target number of worker threads equal to the number of
      *  [available processors](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/lang/Runtime.html#availableProcessors()).
+     *
+     *  @return the global `ExecutionContext`
      */
     implicit final def global: ExecutionContext = ExecutionContext.global
   }

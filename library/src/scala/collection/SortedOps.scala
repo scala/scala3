@@ -15,7 +15,11 @@ package scala.collection
 import scala.language.`2.13`
 import language.experimental.captureChecking
 
-/** Base trait for sorted collections. */
+/** Base trait for sorted collections.
+ *
+ *  @tparam A the element type of this sorted collection
+ *  @tparam C the type of the sorted collection itself
+ */
 transparent trait SortedOps[A, +C] {
 
   def ordering: Ordering[A]
@@ -42,6 +46,7 @@ transparent trait SortedOps[A, +C] {
    *               `None` if there is no lower bound.
    *  @param until The upper-bound (exclusive) of the ranged projection.
    *               `None` if there is no upper bound.
+   *  @return a ranged projection of this collection containing only elements within the specified range
    */
   def rangeImpl(from: Option[A], until: Option[A]): C
 
@@ -50,6 +55,7 @@ transparent trait SortedOps[A, +C] {
    *
    *  @param from The lower-bound (inclusive) of the ranged projection.
    *  @param until The upper-bound (exclusive) of the ranged projection.
+   *  @return a ranged projection of this collection containing only elements greater than or equal to `from` and less than `until`
    */
   def range(from: A, until: A): C = rangeImpl(Some(from), Some(until))
 
@@ -63,6 +69,7 @@ transparent trait SortedOps[A, +C] {
   /** Creates a ranged projection of this collection with no upper-bound.
    *
    *  @param from The lower-bound (inclusive) of the ranged projection.
+   *  @return a ranged projection of this collection containing only elements greater than or equal to `from`
    */
   def rangeFrom(from: A): C = rangeImpl(Some(from), None)
 
@@ -76,6 +83,7 @@ transparent trait SortedOps[A, +C] {
   /** Creates a ranged projection of this collection with no lower-bound.
    *
    *  @param until The upper-bound (exclusive) of the ranged projection.
+   *  @return a ranged projection of this collection containing only elements less than `until`
    */
   def rangeUntil(until: A): C = rangeImpl(None, Some(until))
 
@@ -86,7 +94,9 @@ transparent trait SortedOps[A, +C] {
   final def to(to: A): C = rangeTo(to)
 
   /** Creates a range projection of this collection with no lower-bound.
+   *
    *  @param to The upper-bound (inclusive) of the ranged projection.
+   *  @return a ranged projection of this collection containing only elements less than or equal to `to`
    */
   def rangeTo(to: A): C
 }

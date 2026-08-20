@@ -1,8 +1,5 @@
 package test
 import language.experimental.safe
-import caps.unsafe.untrackedCaptures
-import scala.annotation.unchecked.{uncheckedCaptures, uncheckedVariance}
-
 
 object Test:
 
@@ -15,4 +12,3 @@ object Test:
     case x: String => x.length
     case _ => 0
 
-  def h(x: Any) = x.asInstanceOf[String] // error

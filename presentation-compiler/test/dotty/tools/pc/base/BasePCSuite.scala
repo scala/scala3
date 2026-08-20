@@ -13,6 +13,7 @@ import scala.meta.internal.metals.{ClasspathSearch, ExcludedPackagesHandler}
 import scala.meta.internal.pc.PresentationCompilerConfigImpl
 import scala.meta.pc.{PresentationCompiler, PresentationCompilerConfig}
 import scala.meta.pc.CompletionItemPriority
+import scala.meta.pc.SemanticdbFileManager
 
 import dotty.tools.pc.*
 import dotty.tools.pc.ScalaPresentationCompiler
@@ -40,23 +41,25 @@ abstract class BasePCSuite extends PcAssertions:
   val testingWorkspaceSearch = TestingWorkspaceSearch(
     TestResources.classpath.map(_.toString)
   )
+  protected val sourcePath: Seq[Path] = Nil
+  protected val semanticdbFileManager: SemanticdbFileManager = SemanticdbFileManager.EMPTY
 
   lazy val presentationCompiler: PresentationCompiler =
-    val myclasspath: Seq[Path] = TestResources.classpath
+    val myclasspath: Seq[Path] = TestResources.classpath ++ additionalClasspath
     val scalacOpts = scalacOptions(myclasspath)
     val search = new MockSymbolSearch(
       testingWorkspaceSearch,
       TestResources.classpathSearch,
       mockEntries
     )
-
     new ScalaPresentationCompiler()
       .withConfiguration(config)
       .withExecutorService(executorService)
       .withScheduledExecutorService(executorService)
       .withSearch(search)
+      .withSemanticdbFileManager(semanticdbFileManager)
       .withCompletionItemPriority(completionItemPriority)
-      .newInstance("", myclasspath.asJava, scalacOpts.asJava)
+      .newInstance("", myclasspath.asJava, scalacOpts.asJava, () => sourcePath.asJava)
 
   protected def config: PresentationCompilerConfigImpl =
     PresentationCompilerConfigImpl().copy(snippetAutoIndent = false, timeoutDelay = if isDebug then 3600 else 10)
@@ -80,6 +83,7 @@ abstract class BasePCSuite extends PcAssertions:
 
   protected def scalacOptions(classpath: Seq[Path]): Seq[String] =
     immutable.Seq.empty
+  protected def additionalClasspath: Seq[Path] = Nil
   protected def mockEntries: MockEntries = new MockEntries {}
 
   def params(code: String, filename: String = "A.scala"): (String, Int) =

@@ -3,3 +3,6 @@ patmat.scala
 patmat-interpolator.scala
 unapplySeq-implicit-arg-pos.scala
 global-cycle11.scala
+
+## warns! and fails under -Werror, noticed at #25571
+LazyList.scala

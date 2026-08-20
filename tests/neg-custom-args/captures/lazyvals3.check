@@ -1,13 +1,10 @@
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals3.scala:24:52 ------------------------------------
-24 |      lazy val od1: (Int ->{ev1,console} Boolean) = (n: Int) => // error
-   |                                                    ^
-   |                                           Found:    (n: Int) ->{console, c, ev1} Boolean
-   |                                           Required: Int ->{ev1, console} Boolean
-   |
-   |                                           Note that capability `c` cannot flow into capture set {ev1, console}.
-   |
-25 |        if n == 1 then
-26 |...
-29 |          ev1(n - 1)
-   |
-   | longer explanation available when compiling with `-explain`
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/lazyvals3.scala:29:10 ----------------------------------
+29 |          ev1(n - 1) // error
+   |          ^^^
+   |          References {c, console} are not all included in the allowed capture set {ev1, console}
+   |          of an enclosing function literal with expected type Int ->{ev1, console} Boolean.
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/lazyvals3.scala:34:8 -----------------------------------
+34 |        od1(n - 1) // error
+   |        ^^^
+   |        References {console, c, ev1, io} are not all included in the allowed capture set {io, console}
+   |        of an enclosing function literal with expected type Int ->{io, console} Boolean.

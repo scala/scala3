@@ -16,15 +16,11 @@
    |                                       Note that capability `t` cannot flow into capture set {}.
    |
    | longer explanation available when compiling with `-explain`
--- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals4.scala:25:39 ------------------------------------
+-- [E223] CaptureChecking Error: tests/neg-custom-args/captures/lazyvals4.scala:25:45 ----------------------------------
 25 |  val v3: (() -> String)^{c.console} = () => c.memberLazy()   // error (but should this be allowed?)
-   |                                       ^^^^^^^^^^^^^^^^^^^^
-   |                                       Found:    () ->{c} String
-   |                                       Required: () ->{c.console} String
-   |
-   |                                       Note that capability `c` cannot flow into capture set {c.console}.
-   |
-   | longer explanation available when compiling with `-explain`
+   |                                             ^
+   |                                    Reference `c` is not included in the allowed capture set {c.console}
+   |                                    of an enclosing function literal with expected type () ->{c.console} String.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lazyvals4.scala:26:39 ------------------------------------
 26 |  val v4:  () -> String              = () => t.memberMethod() // error
    |                                       ^^^^^^^^^^^^^^^^^^^^^^

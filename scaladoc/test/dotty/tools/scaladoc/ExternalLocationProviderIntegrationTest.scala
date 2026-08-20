@@ -5,6 +5,7 @@ import dotty.tools.scaladoc.test.BuildInfo
 import java.nio.file.Path;
 import org.jsoup.Jsoup
 import util.IO
+import org.junit.Test
 
 class JavadocExternalLocationProviderIntegrationTest extends ExternalLocationProviderIntegrationTest(
   "externalJavadoc",
@@ -74,7 +75,8 @@ abstract class ExternalLocationProviderIntegrationTest(
       ).toList
   )
 
-  override def runTest = afterRendering {
+  @Test
+  def runTest(): Unit = afterRendering {
     val output = summon[DocContext].args.output.nn.toPath
     val linksBuilder = List.newBuilder[String]
 
@@ -88,7 +90,7 @@ abstract class ExternalLocationProviderIntegrationTest(
       }
 
     IO.foreachFileIn(output, processFile)
-    val links = linksBuilder.result
+    val links = linksBuilder.result()
     val errors = expectedLinks.flatMap(expect => Option.when(!links.contains(expect))(expect))
     if !errors.isEmpty then {
       val reportMessage =

@@ -76,7 +76,7 @@ object PrepareInlineable {
         def referencesInlineContainedClassDef(tree: Tree): Boolean = tree match
           case Apply(qual, _) => referencesInlineContainedClassDef(qual)
           case TypeApply(qual, _) => referencesInlineContainedClassDef(qual)
-          case Select(qual, _) => qual.symbol.isContainedIn(inlineSym)
+          case Select(qual, _) => qual.tpe.isInstanceOf[ThisType] && qual.symbol.isContainedIn(inlineSym)
           case _ => false
         val sym = refTree.symbol
         sym.isTerm &&

@@ -3,7 +3,7 @@ package dotc
 package typer
 
 import core.*
-import ast.{Trees, tpd, untpd, desugar}
+import ast.{Trees, tpd, untpd, desugar, TreeTypeMap}
 import util.Stats.record
 import util.{SrcPos, NoSourcePosition}
 import Contexts.*
@@ -38,7 +38,6 @@ import Denotations.SingleDenotation
 import annotation.threadUnsafe
 
 import scala.annotation.tailrec
-import scala.util.control.NonFatal
 
 object Applications {
   import tpd.*
@@ -186,7 +185,7 @@ object Applications {
     (0 until argsNum).map(i => if (i < arity - 1) selectorTypes(i) else elemTp).toList
   end seqSelectors
 
-  /** A utility class that matches results of unapplys with patterns. Two queriable members:
+  /** A utility class that matches results of unapplys with patterns. Two queryable members:
    *     val argTypes: List[Type]
    *     def typedPatterns(qual: untpd.Tree, typer: Typer): List[Tree]
    *  TODO: Move into Applications trait. No need to keep it outside. But it's a large
@@ -264,7 +263,7 @@ object Applications {
             case _ => None
         case _ => None
 
-    /** The computed argument types which will be the scutinees of the sub-patterns. */
+    /** The computed argument types which will be the scrutinees of the sub-patterns. */
     val argTypes: List[Type] =
       if unapplyName == nme.unapplySeq then
         unapplySeq(unapplyResult):
@@ -294,7 +293,7 @@ object Applications {
         case argType :: Nil
         if args.lengthCompare(1) > 0
             && Feature.autoTuplingEnabled
-            && defn.isTupleNType(argType) =>
+            && defn.isTupleNType(argType.normalizedTupleType) =>
           untpd.Tuple(args) :: Nil
         case _ =>
           args
@@ -428,7 +427,21 @@ object Applications {
 
   /** Splice new method reference `meth` into existing application `app` */
   private def spliceMeth(meth: Tree, app: Tree)(using Context): Tree = app match {
-    case Apply(fn, args) =>
+    case Apply(fn, args0) =>
+      def duplicateByNameArg(arg: Tree, formal: Type): Tree = {
+        if formal.isByName then
+          // Default getter calls reuse by-name argument trees. If that argument contains
+          // local definitions, reusing the same tree would duplicate the same symbols.
+          // Use a fresh copy of those symbols here.
+          // see https://github.com/scala/scala3/issues/2939
+          new TreeTypeMap(oldOwners = ctx.owner :: Nil, newOwners = ctx.owner :: Nil).transform(arg)
+        else arg
+      }
+
+      val args = fn.tpe.widen match
+        case mt: MethodType => args0.zipWithConserve(mt.paramInfos)(duplicateByNameArg)
+        case _ => args0
+
       // Constructors written with a leading implicit parameter list are normalized
       // to have one leading non-implicit parameter list. See NamerOps.normalizeIfConstructor.
       // However, a default getter for the implicit parameter will not reflect the augmented signature.
@@ -472,7 +485,7 @@ object Applications {
       // it's crucial that the type tree is not copied directly as argument to
       // `cpy$default$1`. If it was, the variable `X'` would already be interpolated
       // when typing the default argument, which is too early.
-      spliceMeth(meth, fn).appliedToTypeTrees(targs.map(targ => TypeTree(targ.tpe).withSpan(targ.span)))
+      spliceMeth(meth, fn).appliedToTypeTrees(targs.map(targ => TypeTree(targ.tpe, inferred = true).withSpan(targ.span)))
     case _ => meth
   }
 
@@ -563,7 +576,8 @@ trait Applications extends Compatibility {
      */
     protected def normalizedFun: Tree
 
-    protected def typeOfArg(arg: Arg): Type
+    /** The type of the given typed argument. */
+    protected def typeOfArg(arg: TypedArg): Type
 
     /** If constructing trees, pull out all parts of the function
      *  which are not idempotent into separate prefix definitions
@@ -819,14 +833,15 @@ trait Applications extends Compatibility {
            */
           def addTyped(arg: Arg): List[Type] =
             if !formal.isRepeatedParam then checkNoVarArg(arg)
-            addArg(typedArg(arg, formal), formal)
+            val argTyped = typedArg(arg, formal)
+            addArg(argTyped, formal)
             if methodType.looksParamDependent
                   // need to handle also false dependencies since we generate TypeTrees from
                   // formal parameters in makeVarArg. These are not de-aliased, so they might contain
                   // stray parameter references. Test case is i23266.scala.
-                && typeOfArg(arg).exists
+                && typeOfArg(argTyped).exists
                   // `typeOfArg(arg)` could be missing because the evaluation of `arg` produced type errors
-            then formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(arg)))
+            then formals1.mapconserve(safeSubstParam(_, methodType.paramRefs(n), typeOfArg(argTyped)))
             else formals1
 
           def missingArg(n: Int): Unit =
@@ -1097,6 +1112,8 @@ trait Applications extends Compatibility {
     private var myNormalizedFun: Tree = fun
     init()
 
+    def typeOfArg(arg: tpd.Tree): Type = arg.tpe
+
     def addArg(arg: Tree, formal: Type): Unit =
       val typedArg = adapt(arg, formal.widenExpr)
       typedArgBuf += typedArg
@@ -1139,8 +1156,9 @@ trait Applications extends Compatibility {
 
     override def liftFun(): Unit =
       if (liftedDefs == null) {
-        liftedDefs = new mutable.ListBuffer[Tree]
-        myNormalizedFun = lifter.liftApp(liftedDefs.uncheckedNN, myNormalizedFun)
+        val lds = new mutable.ListBuffer[Tree]
+        liftedDefs = lds
+        myNormalizedFun = lifter.liftApp(lds, myNormalizedFun)
       }
 
     /** The index of the first difference between lists of trees `xs` and `ys`
@@ -1250,7 +1268,6 @@ trait Applications extends Compatibility {
   extends TypedApply(app, fun, methRef, proto.args, resultType, proto.applyKind) {
     def typedArg(arg: untpd.Tree, formal: Type): TypedArg = proto.typedArg(arg, formal)
     def treeToArg(arg: Tree): untpd.Tree = untpd.TypedSplice(arg)
-    def typeOfArg(arg: untpd.Tree): Type = proto.typeOfArg(arg)
   }
 
   /** Subclass of Application for type checking an Apply node with typed arguments. */
@@ -1260,7 +1277,6 @@ trait Applications extends Compatibility {
   extends TypedApply(app, fun, methRef, args, resultType, applyKind) {
     def typedArg(arg: Tree, formal: Type): TypedArg = arg
     def treeToArg(arg: Tree): Tree = arg
-    def typeOfArg(arg: Tree): Type = arg.tpe
   }
 
   /** If `app` is a `this(...)` constructor call, the this-call argument context,
@@ -1683,7 +1699,7 @@ trait Applications extends Compatibility {
       val widened = TypeComparer.dropTransparentTraits(
         tree.tpe.parents.reduceLeft(TypeComparer.andType(_, _)),
         pt)
-      if widened <:< pt then Typed(tree, TypeTree(widened))
+      if widened <:< pt then Typed(tree, TypeTree(widened, inferred = true))
       else tree
     else tree
 
@@ -1703,7 +1719,19 @@ trait Applications extends Compatibility {
   def typedUnApply(tree: untpd.Apply, selType0: Type)(using Context): Tree = {
     record("typedUnApply")
     val Apply(qual, unadaptedArgs) = tree
-    val selType = selType0.stripNamedTuple
+    // If the selector type is a tuple, then try using the element types from the tree if it's itself a tuple,
+    // e.g., if `(a: Any, b: Any)` is matched with `x @ (_, y: Int)` then `x` should be of type `(Any, Int)`
+    val selType = selType0 match
+      case AppliedType(selCon, selArgs) if defn.isTupleClass(selCon.typeSymbol) && unadaptedArgs.length == selArgs.length =>
+        val newSelArgs = unadaptedArgs.zip(selArgs).map:
+          case (Typed(_, tpt: AppliedTypeTree), t) =>
+            // However, we can't do that if the args changed, e.g., if the args were patterns
+            typed(tpt) match
+              case tpt2: AppliedTypeTree if tpt.args == tpt2.args => tpt2.tpe
+              case _ => t
+          case (_, t) => t
+        AppliedType(selCon, newSelArgs)
+      case st => st.stripNamedTuple
 
     def notAnExtractor(tree: Tree): Tree =
       // prefer inner errors

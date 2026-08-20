@@ -28,6 +28,8 @@ import scala.collection.generic.DefaultSerializable
  *  @define orderDependentFold
  *  @define mayNotTerminateInf
  *  @define willNotTerminateInf
+ *
+ *  @tparam A the element type stored in this queue
  */
 class Queue[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
   extends ArrayDeque[A](array, start, end)
@@ -48,30 +50,32 @@ class Queue[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
 
   /** Adds elements to the end of this queue
    *
-   *  @param elem
-   *  @return this
+   *  @param elem the element to enqueue
+   *  @return the queue with the element enqueued
    */
   def enqueue(elem: A): this.type = this += elem
 
   /** Enqueue two or more elements at the end of the queue. The last element
    *  of the sequence will be on end of the queue.
    *
-   *  @param   elems      the element sequence.
-   *  @return this
+   *  @param elem1 the first element to enqueue
+   *  @param elem2 the second element to enqueue
+   *  @param elems the remaining elements to enqueue
+   *  @return the queue with the elements enqueued
    */
   def enqueue(elem1: A, elem2: A, elems: A*): this.type = enqueue(elem1).enqueue(elem2).enqueueAll(elems)
 
   /** Enqueues all elements in the given iterable object into the queue. The
-   *  last element in the iterable object will be on front of the new queue.
+   *  last element in the iterable object will be at the end of the queue.
    *
    *  @param elems the iterable object.
-   *  @return this
+   *  @return the queue with the elements enqueued
    */
   def enqueueAll(elems: scala.collection.IterableOnce[A]^): this.type = this ++= elems
 
   /** Removes the first element from this queue and returns it.
    *
-   *  @return
+   *  @return the first element of the queue
    *  @throws NoSuchElementException when queue is empty
    */
   def dequeue(): A = removeHead()
@@ -97,8 +101,8 @@ class Queue[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
 
   /** Returns and dequeues all elements from the queue which satisfy the given predicate.
    *
-   *  @param f   the predicate used for choosing elements
-   *  @return The removed elements
+   *  @param f   the predicate that must hold true for elements to be dequeued from the front
+   *  @return the removed elements, in order from front of the queue
    */
   def dequeueWhile(f: A => Boolean): scala.collection.Seq[A] = removeHeadWhile(f)
 

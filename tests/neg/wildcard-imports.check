@@ -1,0 +1,8 @@
+-- [E049] Reference Error: tests/neg/wildcard-imports/Test.scala:7:12 --------------------------------------------------
+7 |  val bar = foo // error
+  |            ^^^
+  |            Reference to foo is ambiguous.
+  |            It is both imported by import test.A._
+  |            and imported subsequently by import test.B._
+  |
+  | longer explanation available when compiling with `-explain`

@@ -1,7 +1,5 @@
 package dotty.tools.dotc.util
 
-import dotty.tools.uncheckedNN
-
 import scala.compiletime.uninitialized
 
 object GenericHashSet:
@@ -74,7 +72,7 @@ abstract class GenericHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int
     var idx = firstIndex(x)
     var e: T | Null = entryAt(idx)
     while e != null do
-      if isEqual(e.uncheckedNN, x) then return e
+      if isEqual(e, x) then return e
       idx = nextIndex(idx)
       e = entryAt(idx)
     null
@@ -93,7 +91,7 @@ abstract class GenericHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int
     var idx = firstIndex(x)
     var e: T | Null = entryAt(idx)
     while e != null do
-      if isEqual(e.uncheckedNN, x) then return false // already entered
+      if isEqual(e, x) then return false // already entered
       idx = nextIndex(idx)
       e = entryAt(idx)
     addEntryAt(idx, x)
@@ -104,8 +102,7 @@ abstract class GenericHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int
     var idx = firstIndex(x)
     var e: T | Null = entryAt(idx)
     while e != null do
-      // TODO: remove uncheckedNN when explicit-nulls is enabled for regule compiling
-      if isEqual(e.uncheckedNN, x) then return e.uncheckedNN
+      if isEqual(e, x) then return e
       idx = nextIndex(idx)
       e = entryAt(idx)
     addEntryAt(idx, x)
@@ -117,20 +114,20 @@ abstract class GenericHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int
     var idx = firstIndex(x)
     var e: T | Null = entryAt(idx)
     while e != null do
-      if isEqual(e.uncheckedNN, x) then
+      if isEqual(e, x) then
         var hole = idx
         while
           idx = nextIndex(idx)
           e = entryAt(idx)
           e != null
         do
-          val eidx = index(hash(e.uncheckedNN))
+          val eidx = index(hash(e))
           if isDense
             || index(eidx - (hole + 1)) > index(idx - (hole + 1))
                // entry `e` at `idx` can move unless `index(hash(e))` is in
                // the (ring-)interval [hole + 1 .. idx]
           then
-            setEntry(hole, e.uncheckedNN)
+            setEntry(hole, e)
             hole = idx
         table(hole) = null
         used -= 1
@@ -158,7 +155,7 @@ abstract class GenericHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int
       var idx = 0
       while idx < oldTable.length do
         val e: T | Null = oldTable(idx).asInstanceOf[T | Null]
-        if e != null then addOld(e.uncheckedNN)
+        if e != null then addOld(e)
         idx += 1
 
   protected def growTable(): Unit =
@@ -177,7 +174,11 @@ abstract class GenericHashSet[T](initialCapacity: Int = 8, capacityMultiple: Int
       idx < table.length
     def next() =
       require(hasNext)
-      try entry(idx).uncheckedNN finally idx += 1
+      entry(idx) match
+        case null => throw new NoSuchElementException()
+        case e =>
+          idx += 1
+          e
 
   def iterator: Iterator[T] = new EntryIterator():
     def entry(idx: Int) = entryAt(idx)

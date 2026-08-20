@@ -1,3 +1,7 @@
+-- Error: tests/neg-custom-args/captures/toplevelUses.scala:7:7 --------------------------------------------------------
+7 |object M:  // error
+  |       ^
+  |       object M needs to extend Capability since it has a field `c` with `any` in its type.
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/toplevelUses.scala:13:22 ---------------------------------
 13 |  val _: () -> Unit = f // error
    |                      ^

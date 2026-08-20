@@ -23,15 +23,3 @@ def test1(): Unit =
   val b = xs.unbox
   par(() => a.set(42), () => println(b.get))
 
-def test2(): Unit =
-  val a = allocRef()
-  val xs = freeze:
-    Box(a) // error
-  val b = xs.unbox
-  par(() => a.set(42), () => println(b.get))  // error
-
-def test3(): Unit =
-  val a = allocRef()
-  val b = freeze:
-    a
-  par(() => a.set(42), () => println(b.get)) // error

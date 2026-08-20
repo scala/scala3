@@ -203,11 +203,6 @@ object ProtoTypes {
 
     override def computeHash(bs: Hashable.Binders): Int = doHash(bs, ignored)
 
-    override def eql(that: Type): Boolean = that match
-      case that: IgnoredProto => ignored eq that.ignored
-      case _ => false
-
-    // equals comes from case class; no need to redefine
   end IgnoredProto
 
   final class CachedIgnoredProto(ignored: Type) extends IgnoredProto(ignored)
@@ -316,13 +311,6 @@ object ProtoTypes {
         (name eq that.name) && memberProto.equals(that.memberProto) && (compat eq that.compat) && (privateOK == that.privateOK)
       case _ =>
         false
-
-    override def eql(that: Type): Boolean = that match {
-      case that: SelectionProto =>
-        (name eq that.name) && (memberProto eq that.memberProto) && (compat eq that.compat) && (privateOK == that.privateOK)
-      case _ =>
-        false
-    }
   }
 
   class CachedSelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean, nameSpan: Span)
@@ -583,7 +571,7 @@ object ProtoTypes {
     /** The type of the argument `arg`, or `NoType` if `arg` has not been typed before
      *  or if `arg`'s typing produced a type error.
      */
-    def typeOfArg(arg: untpd.Tree)(using Context): Type = {
+    private[ProtoTypes] def typeOfArg(arg: untpd.Tree)(using Context): Type = {
       val t = state.typedArg(arg)
       if (t == null) NoType else t.tpe
     }
@@ -707,10 +695,6 @@ object ProtoTypes {
 
   class CachedViewProto(argType: Type, resultType: Type) extends ViewProto(argType, resultType) {
     override def computeHash(bs: Hashable.Binders): Int = doHash(bs, argType, resultType)
-    override def eql(that: Type): Boolean = that match
-      case that: ViewProto => (argType eq that.argType) && (resType eq that.resType)
-      case _ => false
-    // equals comes from case class; no need to redefine
   }
 
   object ViewProto {
@@ -955,6 +939,13 @@ object ProtoTypes {
     }
   }
 
+  def containsTypeParamRef(tp: Type)(using Context): Boolean =
+    tp.stripped match {
+      case tr: TypeParamRef => true
+      case AppliedType(_, args) => args.exists(containsTypeParamRef)
+      case _ => false
+    }
+
   /** Approximate occurrences of parameter types and uninstantiated typevars
    *  by wildcard types.
    */
@@ -962,7 +953,9 @@ object ProtoTypes {
     tp match {
     case tp: NamedType => // default case, inlined for speed
       val isPatternBoundTypeRef = tp.isInstanceOf[TypeRef] && tp.symbol.isPatternBound
+      val isImplicitTermRef = tp.isInstanceOf[TermRef] && tp.symbol.maybeOwner.isAnonymousFunction && tp.symbol.isParamOrAccessor && tp.symbol.is(Flags.Given) && containsTypeParamRef(tp.superType)
       if (isPatternBoundTypeRef) WildcardType(tp.underlying.bounds)
+      else if (isImplicitTermRef) wildApprox(tp.underlying, theMap, seen, internal)
       else if (tp.symbol.isStatic || (tp.prefix `eq` NoPrefix)) tp
       else tp.derivedSelect(wildApprox(tp.prefix, theMap, seen, internal))
     case tp @ AppliedType(tycon, args) =>

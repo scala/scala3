@@ -17,7 +17,7 @@ import collection.mutable
 /** A utility class offering methods for rewriting inlined code */
 class InlineReducer(inliner: Inliner)(using Context):
   import tpd.*
-  import Inliner.{isElideableExpr, DefBuffer}
+  import Inliner.{isElideableExpr, DefBuffer, inlinedConstToLiteral}
   import inliner.{call, newSym, tryInlineArg, paramBindingDef}
 
   extension (tp: Type)
@@ -175,13 +175,21 @@ class InlineReducer(inliner: Inliner)(using Context):
 
     val unusable: util.EqHashSet[Symbol] = util.EqHashSet()
 
+    /** Check if a symbol is truly erased.
+     *  Scala 2-based macro declarations like StringContext.s are marked Erased & Macro to reuse
+     *  flag bits (isScala2MacroInScala3 in SymDenotations) but are not truly erased values.
+     *  See issue #24588.
+     */
+    def isTrulyErased(sym: Symbol): Boolean =
+      sym.isErased && !sym.is(Macro)
+
     /** Adjust internaly generated value definitions;
      *   - If the RHS refers to an erased symbol, mark the val as erased
      *   - If the RHS refers to an unusable symbol, mark the val as unusable
      */
     def adjustErased(sym: TermSymbol, rhs: Tree): Unit =
       rhs.foreachSubTree:
-        case id: Ident if id.symbol.isErased =>
+        case id: Ident if isTrulyErased(id.symbol) =>
           sym.setFlag(Erased)
           if unusable.contains(id.symbol) then unusable += sym
         case _ =>
@@ -202,7 +210,7 @@ class InlineReducer(inliner: Inliner)(using Context):
         val copied = sym.copy(info = rhs.tpe.widenInlineScrutinee, coord = sym.coord,
           flags = sym.flags &~ Case).asTerm
         adjustErased(copied, rhs)
-        caseBindingMap += ((sym, ValDef(copied, constToLiteral(rhs)).withSpan(sym.span)))
+        caseBindingMap += ((sym, ValDef(copied, inlinedConstToLiteral(rhs)).withSpan(sym.span)))
 
       def newTypeBinding(sym: TypeSymbol, alias: Type): Unit = {
         val copied = sym.copy(info = TypeAlias(alias), coord = sym.coord).asType
@@ -322,7 +330,7 @@ class InlineReducer(inliner: Inliner)(using Context):
                 case (pat :: pats1, selector :: selectors1) =>
                   val elem = newSym(InlineBinderName.fresh(), Synthetic, selector.tpe.widenInlineScrutinee).asTerm
                   adjustErased(elem, selector)
-                  val rhs = constToLiteral(selector)
+                  val rhs = inlinedConstToLiteral(selector)
                   elem.defTree = rhs
                   caseBindingMap += ((NoSymbol, ValDef(elem, rhs).withSpan(elem.span)))
                   reducePattern(caseBindingMap, elem.termRef, pat) &&
@@ -338,7 +346,7 @@ class InlineReducer(inliner: Inliner)(using Context):
                   else paramCls.asClass.paramAccessors
                 val selectors =
                   for (accessor <- caseAccessors)
-                  yield constToLiteral(reduceProjection(ref(scrut).select(accessor).ensureApplied))
+                  yield inlinedConstToLiteral(reduceProjection(ref(scrut).select(accessor).ensureApplied))
                 caseAccessors.length == pats.length && reduceSubPatterns(pats, selectors)
               }
               else false
@@ -371,7 +379,7 @@ class InlineReducer(inliner: Inliner)(using Context):
         // to unusable symbols.
         // Note that compiletime.erasedValue is treated as erased but not pure, so scrutinees
         // containing references to it becomes unusable.
-        if scrutinee.existsSubTree(_.symbol.isErased) then
+        if scrutinee.existsSubTree(t => isTrulyErased(t.symbol)) then
           scrutineeSym.setFlag(Erased)
           if !tpd.isPureExpr(scrutinee) then unusable += scrutineeSym
         val binding = normalizeBinding(ValDef(scrutineeSym, scrutinee))

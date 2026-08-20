@@ -54,10 +54,20 @@ sealed abstract class ArrayBuilder[T]
 
   protected[this] def resize(size: Int): Unit
 
-  /** Adds all elements of an array. */
+  /** Adds all elements of an array.
+   *
+   *  @param xs the array from which to add elements
+   *  @return this builder with the elements of `xs` appended
+   */
   def addAll(xs: Array[_ <: T]): this.type = addAll(xs, 0, xs.length)
 
-  /** Adds a slice of an array. */
+  /** Adds a slice of an array.
+   *
+   *  @param xs the array from which to add a slice of elements
+   *  @param offset the starting index in `xs` from which to copy elements
+   *  @param length the number of elements to copy from `xs`
+   *  @return this builder with the specified slice of `xs` appended
+   */
   def addAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
     ensureSize(this.size + length)
     Array.copy(xs, offset, elems.nn, this.size, length)
@@ -95,7 +105,11 @@ object ArrayBuilder {
     if (LinkingInfo.isWebAssembly) makeForWasm
     else makeForJS
 
-  /** Implementation of `make` for JS. */
+  /** Implementation of `make` for JS.
+   *
+   *  @tparam T the element type of the array builder, with a `ClassTag` context bound
+   *  @return a new generic `ArrayBuilder` optimized for Scala.js
+   */
   @inline
   private def makeForJS[T: ClassTag]: ArrayBuilder[T] =
     new ArrayBuilder.generic[T](implicitly[ClassTag[T]].runtimeClass)
@@ -103,6 +117,9 @@ object ArrayBuilder {
   /** Implementation of `make` for Wasm.
    *
    *  This is the original upstream implementation.
+   *
+   *  @tparam T the element type of the array builder, with a `ClassTag` context bound
+   *  @return a new array builder specialized for the runtime type of `T`
    */
   @inline
   private def makeForWasm[T: ClassTag]: ArrayBuilder[T] = {
@@ -146,7 +163,13 @@ object ArrayBuilder {
       this
     }
 
-    /** Adds a slice of an array. */
+    /** Adds a slice of an array.
+     *
+     *  @param xs the array from which to add a slice of elements
+     *  @param offset the starting index in `xs` from which to copy elements
+     *  @param length the number of elements to copy from `xs`
+     *  @return this builder with the specified slice of `xs` appended
+     */
     override def addAll(xs: Array[_ <: T], offset: Int, length: Int): this.type = {
       val end = offset + length
       var i = offset

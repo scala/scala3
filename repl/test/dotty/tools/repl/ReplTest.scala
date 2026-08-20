@@ -63,7 +63,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
 
   /** Returns failures: None if all is well, Some for an error */
   private def testScript(name: => String, lines: List[String], scriptFile: Option[JFile] = None): Option[String] = {
-    val prompt = "scala>"
+    val prompt = "scala> "
 
     def evaluate(state: State, input: String) =
       try {
@@ -91,7 +91,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
       resetToInitial(opts)
 
       assert(inputLines.head.startsWith(prompt),
-        s"""Each script must start with the prompt: "$prompt"""")
+        s"""[$name]: Each script must start with the prompt: "$prompt"""")
       val inputRes = inputLines.filter(_.startsWith(prompt))
 
       val buf = new ArrayBuffer[String]
@@ -113,13 +113,24 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
         println(s"Wrote updated script file to $checkFile")
         None
       else
-        println(dotty.tools.dotc.util.DiffUtil.mkColoredHorizontalLineDiff(actualOutput.mkString(EOL), expectedOutput.mkString(EOL)))
+        val diff = dotty.tools.dotc.util.DiffUtil.mkColoredHorizontalLineDiff(actualOutput.mkString(EOL), expectedOutput.mkString(EOL))
 
-        Some(s"Error in script $name, expected output did not match actual")
+        Some(s"Error in script $name, expected output did not match actual:\n$diff")
     end if
   }
 
 object ReplTest:
-  val commonOptions = Array("-color:never", "-pagewidth", "80" /* TODO: but a lot of tests need fixing to match production behavior "-Ydebug"*/)
-  val defaultOptions = commonOptions ++ Array("-classpath", TestConfiguration.replClassPath)
-  lazy val withStagingOptions = commonOptions ++ Array("-classpath", TestConfiguration.replWithStagingClasspath)
+  // Because we test REPL features like completion,
+  // we don't want other test stuff to get in the way,
+  // e.g., "Pred" should complete to "Predef" and not "PredefTest" just because some dependency has a test named like that
+  private val classpath =
+    System.getProperty("java.class.path")
+      .split(JFile.pathSeparator)
+      .filter(!_.contains("test-classes"))
+      .mkString(JFile.pathSeparator)
+
+  def createOptions(extraClasspath: String*): Array[String] =
+    Array("-color:never", "-pagewidth", "80", "-Ydebug",
+          "-classpath", classpath + JFile.pathSeparator + extraClasspath.mkString(JFile.pathSeparator))
+
+  val defaultOptions: Array[String] = createOptions()

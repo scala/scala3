@@ -28,7 +28,7 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
   /** The address of the next byte to read */
   def currentAddr: Addr = addr(bp)
 
-  /** the address one greater than the last brte to read */
+  /** the address one greater than the last byte to read */
   def endAddr: Addr = addr(end)
 
   /** Have all bytes been read? */
@@ -58,20 +58,34 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
     result
   }
 
-  /** Read a natural number fitting in an Int in big endian format, base 128.
-   *  All but the last digits have bit 0x80 set.
+  /** Read a 31-bit natural (nonnegative) integer number in big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset.
    */
-  def readNat(): Int = readLongNat().toInt
+  def readNat(): Int = {
+    val l = readLongNat()
+    if (l > Int.MaxValue) {
+      throw new UnpickleException(s"Expected a 31-bit nat, got: $l")
+    }
+    l.toInt
+  }
 
-  /** Read an integer number in 2's complement big endian format, base 128.
-   *  All but the last digits have bit 0x80 set.
+  /** Read a 32-bit integer number in 2's complement big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset.
    */
-  def readInt(): Int = readLongInt().toInt
+  def readInt(): Int = {
+    val l = readLongInt()
+    val i = l.toInt
+    if (i.toLong != l) {
+      throw new UnpickleException(s"Expected a 32-bit int, got: $l")
+    }
+    i
+  }
 
-  /** Read a natural number fitting in a Long in big endian format, base 128.
-   *  All but the last digits have bit 0x80 set.
+  /** Read a 63-bit natural (nonnegative) number in big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset.
    */
   def readLongNat(): Long = {
+    val ogBp = bp
     var b = 0L
     var x = 0L
     while ({
@@ -79,13 +93,19 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
       x = (x << 7) | (b & 0x7f)
       bp += 1
       (b & 0x80) == 0
-    })
-    ()
+    }) ()
+    if (bp - ogBp > 9) {
+      throw new UnpickleException(s"Expected a long nat, but read too many bytes (${bp - ogBp})")
+    }
+    assert(x >= 0, "We read <= 9 groups of 7 bits so x must be nonnegative here")
     x
   }
 
-  /** Read a long integer number in 2's complement big endian format, base 128. */
+  /** Read a 64-bit long integer number in 2's complement big endian format, base 128, each digit being a byte.
+   *  All bytes except the last one have bit 0x80 unset.
+   */
   def readLongInt(): Long = {
+    val ogBp = bp
     var b = bytes(bp)
     var x: Long = (b << 1).toByte >> 1 // sign extend with bit 6.
     bp += 1
@@ -93,6 +113,9 @@ class TastyReader(val bytes: Array[Byte], start: Int, end: Int, val base: Int = 
       b = bytes(bp)
       x = (x << 7) | (b & 0x7f)
       bp += 1
+    }
+    if (bp - ogBp > 10) {
+      throw new UnpickleException(s"Expected a long int, but read too many bytes (${bp - ogBp})")
     }
     x
   }

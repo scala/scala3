@@ -7,10 +7,22 @@ import scala.collection.mutable.{ Map => MMap }
 import dotty.tools.io.AbstractFile
 import Scaladoc2AnchorCreator.getScaladoc2Type
 import JavadocAnchorCreator.getJavadocType
+import scala.annotation.tailrec
 
 object SymOps:
 
   extension (using Quotes)(sym: reflect.Symbol)
+
+    private def isPackageObjectOwner(owner: reflect.Symbol): Boolean =
+      owner.name.toString.contains("package$")
+
+    private def ownerPath: List[reflect.Symbol] =
+      import reflect._
+      @tailrec
+      def loop(current: Symbol, seen: Set[Symbol], acc: List[Symbol]): List[Symbol] =
+        if !current.exists || seen.contains(current) then acc
+        else loop(current.maybeOwner, seen + current, current :: acc)
+      loop(sym, Set.empty, Nil)
 
     def isImplicitClass: Boolean =
       import reflect._
@@ -20,19 +32,25 @@ object SymOps:
         }
 
     def packageName: String =
-      if (sym.isPackageDef) sym.fullName
-      else sym.maybeOwner.packageName
+      sym.ownerPath.reverseIterator.collectFirst {
+        case owner if owner.isPackageDef => owner.fullName
+      }.getOrElse("")
 
     def packageNameSplitted: Seq[String] =
-      sym.packageName.split('.').toList
+      sym.packageName match
+        case "" => Nil
+        case pkg => pkg.split('.').toList
 
     def className: Option[String] =
       import reflect._
-      if (sym.isClassDef && !sym.flags.is(Flags.Package)) Some(
-        Some(sym.maybeOwner).filter(s => s.exists).flatMap(_.className).fold("")(cn => cn + "$") + sym.name
-      ).filterNot(_.contains("package$"))
-      else if (sym.isPackageDef) None
-      else sym.maybeOwner.className
+      val classOwners = sym.ownerPath.collect {
+        case owner
+        if owner.isClassDef
+          && !owner.flags.is(Flags.Package)
+          && !sym.isPackageObjectOwner(owner) =>
+            owner.name
+      }
+      Option.when(classOwners.nonEmpty)(classOwners.mkString("$"))
 
     def anchor: Option[String] =
       if (!sym.isClassDef && !sym.isPackageDef) {
@@ -46,6 +64,7 @@ object SymOps:
       }
       else None
 
+    @scala.annotation.nowarn
     def source =
       val path = sym.pos.flatMap(_.sourceFile.getJPath).map(_.toAbsolutePath)
       path.map(TastyMemberSource(_, sym.pos.get.startLine))
@@ -257,6 +276,7 @@ class SymOpsWithLinkCache:
     // TODO #22 make sure that DRIs are unique plus probably reuse semantic db code?
     def dri(using dctx: DocContext): DRI =
       import reflect.*
+
       if sym == Symbol.noSymbol then topLevelDri
       else
         val method =
@@ -269,24 +289,22 @@ class SymOpsWithLinkCache:
         else
           (sym.className, sym.anchor)
 
-        val location = (sym.packageNameSplitted ++ className).map(escapeFilename(_))
-
+        val location = (sym.packageNameSplitted ++ className).map(escapeFilename)
         val externalLink = {
-            import reflect._
-            import dotty.tools.dotc
-            given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
-            val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
-            val extLink = if externalLinkCache.contains(csym.associatedFile)
-              then externalLinkCache(csym.associatedFile)
-              else {
-                def calculatePath(file: AbstractFile): String = file.underlyingSource.filter(_ != file).fold("")(f => calculatePath(f) + "/") + file.path
-                val calculatedLink = Option(csym.associatedFile).map(f => calculatePath(f)).flatMap { path =>
-                  dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(path)))
+          import dotty.tools.dotc
+          given ctx: dotc.core.Contexts.Context = quotes.asInstanceOf[scala.quoted.runtime.impl.QuotesImpl].ctx
+          val csym = sym.asInstanceOf[dotc.core.Symbols.Symbol]
+          val file = csym.associatedFile
+          val extLink =
+            externalLinkCache.get(file) match
+              case Some(s) => s
+              case None =>
+                val calculatedLink = Option(file).flatMap { f =>
+                  dctx.externalDocumentationLinks.find(_.originRegexes.exists(r => r.matches(f.path)))
                 }
-                externalLinkCache += (csym.associatedFile -> calculatedLink)
+                externalLinkCache += (file -> calculatedLink)
                 calculatedLink
-              }
-            extLink.map(link => sym.constructPath(location, anchor, link))
+          extLink.map(link => sym.constructPath(location, anchor, link))
         }
 
         DRI(

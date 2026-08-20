@@ -1,14 +1,12 @@
 package dotty.tools.backend.jvm
 
-import scala.language.unsafeNulls
-
-import scala.tools.asm.{ClassReader, Type, Handle }
-import scala.tools.asm.tree.*
+import org.objectweb.asm.{Type, Handle}
+import org.objectweb.asm.tree.*
 
 import scala.collection.mutable
-import scala.util.control.{NoStackTrace, NonFatal}
 import scala.annotation.*
 import scala.jdk.CollectionConverters.*
+import BTypes.InternalName
 
 // Backported from scala/scala, commit sha: 724be0e9425b9ad07c244d25efdad695d75abbcf
 // https://github.com/scala/scala/blob/724be0e9425b9ad07c244d25efdad695d75abbcf/src/compiler/scala/tools/nsc/backend/jvm/analysis/BackendUtils.scala#L928
@@ -19,21 +17,19 @@ abstract class GenericSignatureVisitor(nestedOnly: Boolean) {
   final def visitInternalName(internalName: String): Unit = visitInternalName(internalName, 0, if (internalName eq null) 0 else internalName.length)
   def visitInternalName(internalName: String, offset: Int, length: Int): Unit
 
-  def raiseError(msg: String, sig: String, e: Option[Throwable] = None): Unit
-
   def visitClassSignature(sig: String): Unit = if (sig != null) {
     val p = new Parser(sig, nestedOnly)
-    p.safely { p.classSignature() }
+    p.classSignature()
   }
 
   def visitMethodSignature(sig: String): Unit = if (sig != null) {
     val p = new Parser(sig, nestedOnly)
-    p.safely { p.methodSignature() }
+    p.methodSignature()
   }
 
   def visitFieldSignature(sig: String): Unit = if (sig != null) {
     val p = new Parser(sig, nestedOnly)
-    p.safely { p.fieldSignature() }
+    p.fieldSignature()
   }
 
   private final class Parser(sig: String, nestedOnly: Boolean) {
@@ -41,27 +37,11 @@ abstract class GenericSignatureVisitor(nestedOnly: Boolean) {
     private var index = 0
     private val end = sig.length
 
-    private val Aborted: Throwable = new NoStackTrace { }
-    private def abort(): Nothing = throw Aborted
-
-    @inline def safely(f: => Unit): Unit = try f catch {
-      case Aborted =>
-      case NonFatal(e) => raiseError(s"Exception thrown during signature parsing", sig, Some(e))
-    }
-
-    private def current = {
-      if (index >= end) {
-        raiseError(s"Out of bounds, $index >= $end", sig)
-        abort() // Don't continue, even if `notifyInvalidSignature` returns
-      }
+    private def current =
       sig.charAt(index)
-    }
 
     private def accept(c: Char): Unit = {
-      if (current != c) {
-        raiseError(s"Expected $c at $index, found $current", sig)
-        abort()
-      }
+      assert(current == c, s"Expected $c at $index, found $current, in $sig")
       index += 1
     }
 
@@ -72,13 +52,9 @@ abstract class GenericSignatureVisitor(nestedOnly: Boolean) {
       while (!isDelimiter(current)) { index += 1 }
     }
     private def skipUntilDelimiter(delimiter: Char): Unit = {
-      sig.indexOf(delimiter, index) match {
-        case -1 =>
-          raiseError(s"Out of bounds", sig)
-          abort() // Don't continue, even if `notifyInvalidSignature` returns
-        case i =>
-          index = i
-      }
+      val idx = sig.indexOf(delimiter, index)
+      assert(idx >= 0, s"Out of bounds finding $delimiter from $index in $sig")
+      index = idx
     }
 
     private def appendUntil(builder: java.lang.StringBuilder, isDelimiter: CharBooleanFunction): Unit = {
@@ -107,18 +83,22 @@ abstract class GenericSignatureVisitor(nestedOnly: Boolean) {
 
     @tailrec private def referenceTypeSignature(): Unit = getCurrentAndSkip() match {
       case 'L' =>
-        var names: java.lang.StringBuilder = null
-
         val start = index
         var seenDollar = false
         while (!isClassNameEnd(current)) {
           seenDollar ||= current == '$'
           index += 1
         }
+
+        // OPT: avoid allocations when collecting only nested classes and only a top-level class is encountered
+        val topLevelIndex = index
+        lazy val names = {
+          val n = new java.lang.StringBuilder(32)
+          n.append(sig, start, topLevelIndex)
+          n
+        }
+
         if ((current == '.' || seenDollar) || !nestedOnly) {
-          // OPT: avoid allocations when only a top-level class is encountered
-          names = new java.lang.StringBuilder(32)
-          names.append(sig, start, index)
           visitInternalName(names.toString)
         }
         typeArguments()
@@ -178,17 +158,14 @@ abstract class GenericSignatureVisitor(nestedOnly: Boolean) {
       }
     }
 
-    def fieldSignature(): Unit = if (sig != null) safely {
-      referenceTypeSignature()
-    }
+    def fieldSignature(): Unit =
+      if sig != null then referenceTypeSignature()
   }
 }
 
 // Backported from scala/scala, commit sha: 724be0e9425b9ad07c244d25efdad695d75abbcf
 // https://github.com/scala/scala/blob/724be0e9425b9ad07c244d25efdad695d75abbcf/src/compiler/scala/tools/nsc/backend/jvm/analysis/BackendUtils.scala#L790
 abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSignatureVisitor(nestedOnly) {
-  type InternalName = String
-
   def declaredNestedClasses(internalName: InternalName): List[T]
   def getClassIfNested(internalName: InternalName): Option[T]
 

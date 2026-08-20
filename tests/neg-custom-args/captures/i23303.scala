@@ -1,5 +1,4 @@
 import language.experimental.captureChecking
-import caps.use
 
 class Test:
   class Runner(ops: List[() => Unit]):

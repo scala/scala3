@@ -84,6 +84,7 @@ class SymUtils:
       !d.isRefinementClass &&
       d.isValueClass &&
       (d.initial.symbol ne defn.AnyValClass) && // Compare the initial symbol because AnyVal does not exist after erasure
+      (d.initial.symbol ne defn.NullClass) &&
       !d.isPrimitiveValueClass
     }
 
@@ -250,6 +251,15 @@ class SymUtils:
     @tailrec final def enclosingMethodOrClass(using Context): Symbol =
       if (self.is(Method) || self.isClass) self
       else if (self.exists) self.owner.enclosingMethodOrClass
+      else NoSymbol
+
+    /** The closest enclosing method, class or object of this symbol.
+     *  Module references get mapped to their moduleClasses.
+     */
+    @tailrec final def enclosingMethodOrClassOrObject(using Context): Symbol =
+      if self.is(Method) || self.isClass then self
+      else if self.is(ModuleVal) then self.moduleClass
+      else if self.exists then self.owner.enclosingMethodOrClassOrObject
       else NoSymbol
 
     /** Apply symbol/symbol substitution to this symbol */

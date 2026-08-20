@@ -22,6 +22,7 @@ import inlines.Inlines.inInlineMethod
 import util.Property
 import inlines.Inlines
 import reporting.InlinedAnonClassWarning
+import dotty.tools.dotc.transform.Specialization.anonymousClassIsSpecialized
 
 object FirstTransform {
   val name: String = "firstTransform"
@@ -210,7 +211,9 @@ class FirstTransform extends MiniPhase with SymTransformer { thisPhase =>
     }
 
   override def transformTypeDef(tree: TypeDef)(using Context): Tree =
-    if tree.symbol.isAnonymousClass && Inlines.inInlineMethod then
+    if tree.symbol.isAnonymousClass && Inlines.inInlineMethod &&
+       !anonymousClassIsSpecialized(tree)
+    then
       report.warning(InlinedAnonClassWarning(), tree.symbol.sourcePos)
     tree
 

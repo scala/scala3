@@ -35,6 +35,9 @@ object Symbol extends UniquenessCache[String, Symbol] {
 
 /** This is private so it won't appear in the library API, but
  *  abstracted to offer some hope of reusability.  
+ *
+ *  @tparam K the type of keys used for cache lookup, held via weak references
+ *  @tparam V the type of cached values, weakly referenced and constructed from keys via `valueFromKey`
  */
 private[scala] abstract class UniquenessCache[K, V] {
   import java.lang.ref.WeakReference

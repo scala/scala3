@@ -24,13 +24,11 @@ object Searching {
     *
     * Example usage:
     *
-    * ```
+    * ```scala sc:compile
     *   val list = List(1, 3, 4, 5) // list must be sorted before searching
     *   list.search(4) // Found(2)
     *   list.search(2) // InsertionPoint(1)
     * ```
-    *
-    *
     */
   sealed abstract class SearchResult {
     /** The index corresponding to the element searched for in the sequence, if it was found,

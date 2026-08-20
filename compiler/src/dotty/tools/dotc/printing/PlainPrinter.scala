@@ -12,7 +12,6 @@ import typer.Implicits.*
 import typer.ImportInfo
 import Variances.varianceSign
 import util.{Chars, SourcePosition}
-import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
 import ast.{tpd, untpd}
@@ -90,7 +89,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else tp
 
   private def sameBound(lo: Type, hi: Type): Boolean =
-    try lo frozen_=:= hi catch { case NonFatal(ex) => false }
+    try lo frozen_=:= hi catch { case ex: Exception => false }
 
   private def homogenizeArg(tp: Type) = tp match {
     case TypeBounds(lo, hi) if homogenizedView && sameBound(lo, hi) => homogenize(hi)
@@ -135,9 +134,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   protected def argText(arg: Type, isErased: Boolean = false): Text =
     keywordText("erased ").provided(isErased)
-    ~ specialAnnotText(defn.UseAnnot, arg)
     ~ specialAnnotText(defn.ConsumeAnnot, arg)
-    ~ specialAnnotText(defn.ReserveAnnot, arg)
     ~ homogenizeArg(arg).match
         case arg: TypeBounds => "?" ~ toText(arg)
         case arg => toText(arg)
@@ -278,7 +275,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val boxText: Text = Str("box ") `provided` tp.isBoxed && ccVerbose
         if elideCapabilityCaps
             && parent.derivesFromCapability
-            && refs.containsTerminalCapability
+            && refs.containsGlobalOrLocalCap
             && (!parent.derivesFromStateful || refs.isReadOnly)
         then toText(parent)
         else toTextCapturing(parent, refs, boxText)
@@ -329,7 +326,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
               ~ Str("R").provided(printDebug)
             else toText(tpe)
           case annot: CaptureAnnotation =>
-            toTextLocal(tpe) ~ "^" ~ toText(annot)
+            val boxText: Text = Str("box ") `provided` annot.boxed && ccVerbose
+            toTextCapturing(tpe, annot.refs, boxText)
           case _ if defn.SilentAnnots.contains(annot.symbol) && !printDebug =>
             toText(tpe)
           case _ =>
@@ -354,7 +352,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: LazyRef =>
         def refTxt =
           try toTextGlobal(tp.ref)
-          catch case _: Throwable => Str("...") // reconsider catching errors
+          catch case _: Exception => Str("...") // reconsider catching errors
         "LazyRef(" ~ refTxt ~ ")"
       case Range(lo, hi) =>
         toText(lo) ~ ".." ~ toText(hi)
@@ -380,7 +378,6 @@ class PlainPrinter(_ctx: Context) extends Printer {
     def paramText(ref: ParamRef) =
       val erased = ref.underlying.hasAnnotation(defn.ErasedParamAnnot)
       keywordText("erased ").provided(erased)
-        ~ specialAnnotText(defn.UseAnnot, ref.underlying)
         ~ specialAnnotText(defn.ConsumeAnnot, ref.underlying)
         ~ ParamRefNameString(ref) ~ hashStr(lam) ~ toTextRHS(ref.underlying, isParameter = true)
     Text(lam.paramRefs.map(paramText), ", ")
@@ -397,8 +394,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** If -uniqid is set, the hashcode of the type, after a # */
   protected def hashStr(tp: Type): String =
     if showUniqueIds then
-      try "#" + tp.hashCode
-      catch case ex: NullPointerException => ""
+      "#" + tp.hashCode
     else ""
 
   /** A string to append to a symbol composed of:
@@ -465,8 +461,11 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toTextCapability(c: Capability): Text = c match
     case ReadOnly(c1) => toTextCapability(c1) ~ ".rd"
-    case Restricted(c1, cls) => toTextCapability(c1) ~ s".only[${nameString(cls)}]"
-    case Reach(c1) => toTextCapability(c1) ~ "*"
+    case Classified(c1, only, except) =>
+      val withOnly =
+        if only == defn.AnyClass then toTextCapability(c1)
+        else toTextCapability(c1) ~ s".only[${nameString(only)}]"
+      except.foldLeft(withOnly)((t, e) => t ~ s".except[${nameString(e)}]")
     case Maybe(c1) => toTextCapability(c1) ~ "?"
     case GlobalAny => "any"
     case GlobalFresh => "fresh"
@@ -567,6 +566,26 @@ class PlainPrinter(_ctx: Context) extends Printer {
         (tparamStr, bounds.derivedTypeBounds(loRhs, hiRhs))
   end decomposeLambdas
 
+  /** Is this a capture variable's bounds? i.e. lo and hi are both CapSet-based. */
+  private def isCaptureVarBounds(lo: Type, hi: Type): Boolean =
+    lo.derivesFromCapSet && (hi match
+      case CapturingType(parent, _) => parent.derivesFromCapSet
+      case hi => hi.derivesFromCapSet)
+
+  /** Print capture variable bounds using `^` syntax.
+   *  Plain CapSet lower bound, empty lower bound, and universal upper bound are elided.
+   */
+  private def toTextCaptureVarBounds(lo: Type, hi: Type): Text =
+    val loText = lo match
+      case CapturingType(_, refs: CaptureSet) if refs.elems.isEmpty && !ccVerbose => Text() // empty lower bound
+      case CapturingType(_, refs) => " >: " ~ toTextCaptureSet(refs)
+      case _ => Text() // plain CapSet = trivial lower bound
+    val hiText = hi match
+      case CapturingType(_, refs) if isElidableUniversal(refs) => Text() // trivial upper bound
+      case CapturingType(_, refs) => " <: " ~ toTextCaptureSet(refs)
+      case _ => Text()
+    Str("^") ~ loText ~ hiText
+
   /** String representation of a definition's type following its name */
   protected def toTextRHS(tp: Type, isParameter: Boolean = false): Text = controlled {
     homogenize(tp) match {
@@ -575,6 +594,8 @@ class PlainPrinter(_ctx: Context) extends Printer {
         val binder = rhs match
           case tp: AliasingBounds =>
             " = " ~ toText(tp.alias)
+          case TypeBounds(lo, hi) if !printDebug && Feature.ccEnabledSomewhere && isCaptureVarBounds(lo, hi) =>
+            toTextCaptureVarBounds(lo, hi)
           case TypeBounds(lo, hi) =>
             (if lo.isExactlyNothing then Text() else " >: " ~ toText(lo))
             ~ (if hi.isExactlyAny || (!printDebug && hi.isFromJavaObject) then Text() else " <: " ~ toText(hi))
@@ -770,7 +791,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   def toText(pos: SourcePosition): Text =
     if (!pos.exists) "<no position>"
-    else if (pos.source.exists) s"${pos.source.file.name}:${pos.line + 1}"
+    else if (pos.source.exists) s"${pos.source.name}:${pos.line + 1}"
     else s"(no source file, offset = ${pos.span.point})"
 
   def toText(cand: Candidate): Text =
@@ -864,4 +885,3 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def coloredText(text: Text, color: String): Text =
     if (ctx.useColors) color ~ text ~ SyntaxHighlighting.NoColor else text
 }
-

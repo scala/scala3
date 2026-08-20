@@ -102,7 +102,7 @@ private[mutable] object CheckedIndexedSeqView {
   class Reverse[A](underlying: SomeIndexedSeqOps[A]^)(protected val mutationCount: () => Int)
     extends IndexedSeqView.Reverse[A](underlying) with CheckedIndexedSeqView[A] {
     override def reverse: IndexedSeqView[A]^{this} = underlying match {
-      case x: IndexedSeqView[A] => x
+      case x: IndexedSeqView[A @unchecked] => x
       case _ => super.reverse
     }
   }

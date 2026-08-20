@@ -3,7 +3,7 @@ trait IO
 def withIO(op: IO^ => Unit): Unit = ???
 def test(): Unit =
   withIO: io1 =>
-    var myIO: IO^ = io1  // error: separation
+    var myIO: IO^ = io1  // would be error: separation
     def setIO(io: IO^): Unit =
       myIO = io  // error, level mismatch
     withIO(setIO)

@@ -9,9 +9,7 @@ import scala.util.control.NonFatal
 
 import dotty.tools.repl.AbstractFileClassLoader
 
-import coursierapi.{Repository, Dependency, MavenRepository}
-import com.virtuslab.using_directives.UsingDirectivesProcessor
-import com.virtuslab.using_directives.custom.model.{Path, StringValue, Value}
+import coursierapi.{Dependency, MavenRepository}
 
 /** Handles dependency resolution using Coursier for the REPL */
 object DependencyResolver:
@@ -30,28 +28,6 @@ object DependencyResolver:
       case _ =>
         System.err.println("Unable to parse dependency \"" + dep + "\"")
         None
-
-  /** Extract all dependencies from using directives in source code */
-  def extractDependencies(sourceCode: String): List[String] =
-    try
-      val directives = new UsingDirectivesProcessor().extract(sourceCode.toCharArray)
-      val deps = scala.collection.mutable.Buffer[String]()
-
-      for
-        directive <- directives.asScala
-        (path, values) <- directive.getFlattenedMap.asScala
-      do
-        if path.getPath.asScala.toList == List("dep") then
-          values.asScala.foreach {
-            case strValue: StringValue => deps += strValue.get()
-            case value => System.err.println("Unrecognized directive value " + value)
-          }
-        else
-          System.err.println("Unrecognized directive " + path.getPath)
-
-      deps.toList
-    catch
-      case NonFatal(e) => Nil // If parsing fails, fall back to empty list
 
   /** Resolve dependencies using Coursier Interface and return the classpath as a list of File objects */
   def resolveDependencies(dependencies: List[(String, String, String)]): Either[String, List[File]] =
@@ -101,7 +77,7 @@ object DependencyResolver:
 
     // Add each JAR to the compiler's classpath
     for file <- files do
-      val jarFile = AbstractFile.getDirectory(file.getAbsolutePath)
+      val jarFile = AbstractFile.getDirectory(file.getAbsolutePath, ctx.settings.javaOutputVersion.value)
       if jarFile != null then
         val jarClassPath = ClassPathFactory.newClassPath(jarFile)
         ctx.platform.addToClassPath(jarClassPath)

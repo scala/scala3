@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package core.classfile
 
-import scala.language.unsafeNulls
 import scala.compiletime.uninitialized
 
 import dotty.tools.dotc.core.Contexts.*
@@ -27,12 +26,12 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
   private var pool: ConstantPool = uninitialized // the classfile's constant pool
   private var classfileVersion: Header.Version = Header.Version.Unknown
 
-  def checkTastyUUID(tastyUUID: UUID)(using Context): Unit = try ctx.base.reusableDataReader.withInstance { reader =>
-    implicit val reader2 = reader.reset(classfile)
+  def checkTastyUUID(tastyUUID: UUID)(using Context): Unit = try {
+    implicit val reader = new DataReader(classfile)
     this.classfileVersion = ClassfileParser.parseHeader(classfile)
     this.pool = new ConstantPool
     checkTastyAttr(tastyUUID)
-    this.pool =  null
+    this.pool = null.asInstanceOf[ConstantPool] // deinit for GC
   }
   catch {
     case e: RuntimeException =>
@@ -41,7 +40,7 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
         case _: UnpickleException => ""
         case _ => Header.Version.brokenVersionAddendum(classfileVersion)
       throw new IOException(
-        i"""  class file ${classfile.canonicalPath} is broken$addendum,
+        i"""  class file ${classfile.path} is broken$addendum,
           |  reading aborted with ${e.getClass}:
           |  ${Option(e.getMessage).getOrElse("")}""")
   }
@@ -53,10 +52,8 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
     skipMembers() // fields
     skipMembers() // methods
     val attrs = in.nextChar
-    val attrbp = in.bp
 
     def scan(target: TypeName): Boolean = {
-      in.bp = attrbp
       var i = 0
       while (i < attrs && pool.getName(in.nextChar).name.toTypeName != target) {
         val attrLen = in.nextInt
@@ -106,6 +103,6 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
   class ConstantPool(using in: DataReader) extends ClassfileParser.AbstractConstantPool {
     def getClassOrArrayType(index: Int)(using ctx: Context, in: DataReader): Type = throw new UnsupportedOperationException
     def getClassSymbol(index: Int)(using ctx: Context, in: DataReader): Symbol = throw new UnsupportedOperationException
-    def getType(index: Int, isVarargs: Boolean)(using x$3: Context, x$4: DataReader): Type = throw new UnsupportedOperationException
+    def getType(index: Int, isVarargs: Boolean)(using Context, DataReader): Type = throw new UnsupportedOperationException
   }
 }

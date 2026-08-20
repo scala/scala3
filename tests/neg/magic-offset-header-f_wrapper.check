@@ -1,0 +1,4 @@
+-- [E172] Type Error: tests/neg/magic-offset-header-f.scala:6:12 -------------------------------------------------------
+6 |def test2 = new Foo == new Bar // error
+  |            ^^^^^^^^^^^^^^^^^^
+  |            Values of types Foo and Bar cannot be compared with == or !=

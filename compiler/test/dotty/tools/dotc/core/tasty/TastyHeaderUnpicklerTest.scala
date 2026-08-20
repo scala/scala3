@@ -1,10 +1,10 @@
 package dotty.tools.dotc.core.tasty
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.{Test, Ignore}
 
-import dotty.tools.tasty.TastyFormat._
-import dotty.tools.tasty.TastyBuffer._
+import dotty.tools.tasty.TastyFormat.*
+import dotty.tools.tasty.TastyBuffer.*
 import dotty.tools.tasty.TastyBuffer
 import dotty.tools.tasty.TastyReader
 import dotty.tools.tasty.UnpickleException
@@ -14,7 +14,7 @@ import dotty.tools.tasty.UnpicklerConfig
 
 class TastyHeaderUnpicklerTest {
 
-  import TastyHeaderUnpicklerTest._
+  import TastyHeaderUnpicklerTest.*
 
   @Test
   def okThisCompilerReadsItself: Unit = {

@@ -37,6 +37,14 @@ class SyncVar[A] {
 
   /** Waits `timeout` millis. If `timeout <= 0` just returns 0.
    *  It never returns negative results.
+   *
+   *  Although `System.nanoTime` is documented
+   *  as monotonic, historically it has not been on every platform, so a backward
+   *  clock jump could yield a negative elapsed time, in which case this method
+   *  returns `0` (see [[https://bugs.java.com/view_bug.do?bug_id=6458294 JDK-6458294]]).
+   *
+   *  @param timeout the maximum time to wait, in milliseconds
+   *  @return the elapsed wait time in milliseconds, or `0` if `timeout <= 0` or the elapsed time was negative
    */
   private def waitMeasuringElapsed(timeout: Long): Long = if (timeout <= 0) 0 else {
     val start = System.nanoTime()
@@ -80,8 +88,8 @@ class SyncVar[A] {
    *  to become defined and then gets the stored value, unsetting it
    *  as a side effect.
    *
-   *  @param timeout     the amount of milliseconds to wait
-   *  @return            the value or a throws an exception if the timeout occurs
+   *  @param timeout     the maximum time to wait, in milliseconds
+   *  @return            the value held in this `SyncVar`
    *  @throws NoSuchElementException on timeout
    */
   def take(timeout: Long): A = synchronized {
@@ -91,6 +99,8 @@ class SyncVar[A] {
 
   /** Place a value in the SyncVar. If the SyncVar already has a stored value,
    *  wait until another thread takes it. 
+   *
+   *  @param x the value to store in this `SyncVar`
    */
   def put(x: A): Unit = synchronized {
     while (isDefined) wait()

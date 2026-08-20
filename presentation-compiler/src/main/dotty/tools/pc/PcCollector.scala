@@ -1,30 +1,18 @@
 package dotty.tools.pc
 
-import java.nio.file.Paths
-
-import scala.meta.internal.metals.CompilerOffsetParams
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.VirtualFileParams
-import scala.meta as m
 
-import dotty.tools.dotc.ast.NavigateAST
-import dotty.tools.dotc.ast.Positioned
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
-import dotty.tools.dotc.ast.untpd.ExtMethods
 import dotty.tools.dotc.ast.untpd.ImportSelector
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
-import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
-import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
 import dotty.tools.pc.PcSymbolSearch.*
@@ -38,7 +26,7 @@ trait PcCollector[T]:
 
   def allowZeroExtentImplicits: Boolean = false
 
-  def resultAllOccurences(): Set[T] =
+  def resultAllOccurrences(): Set[T] =
     def noTreeFilter = (_: Tree) => true
     def noSoughtFilter = (_: Symbol => Boolean) => true
 
@@ -302,7 +290,7 @@ trait PcCollector[T]:
           trees.foldLeft(occurrences) { case (set, tree) =>
             traverser(set, tree)
           }
-        case o =>
+        case _ =>
           occurrences
       end match
     end collectNamesWithParent
@@ -329,7 +317,7 @@ object PcCollector:
     def apply(x: X, tree: Tree)(using Context) =
       traverser.traverse(x, tree, None)
 
-case class ExtensionParamOccurence(
+case class ExtensionParamOccurrence(
     name: Name,
     pos: SourcePosition,
     sym: Symbol,
@@ -346,9 +334,7 @@ object EndMarker:
    *  ```
    */
   private val endMarkerRegex = """.*end(/\*.*\*/|\s)+""".r
-  def getPosition(df: NamedDefTree, pos: SourcePosition, sourceText: String)(
-      implicit ct: Context
-  ): Option[SourcePosition] =
+  def getPosition(df: NamedDefTree, pos: SourcePosition, sourceText: String): Option[SourcePosition] =
     val name = df.name.toString().stripSuffix("$")
     val lines = sourceText.slice(df.span.start, df.span.end).split('\n')
 
@@ -385,4 +371,4 @@ abstract class SimpleCollector[T](
     params: VirtualFileParams
 ) extends WithCompilationUnit(driver, params)
     with PcCollector[T]:
-  def result(): List[T] = resultAllOccurences().toList
+  def result(): List[T] = resultAllOccurrences().toList

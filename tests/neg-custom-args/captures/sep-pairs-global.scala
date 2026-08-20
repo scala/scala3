@@ -35,14 +35,14 @@ val io: Object^ = ???
 
 def test(): Unit =
   val two = twoRefs()
-  val fst: Ref^{two.fst*} = two.fst
-  val snd: Ref^{two.snd*} = two.snd
+  val fst/*: Ref^{two.fst*}*/ = two.fst
+  val snd/*: Ref^{two.snd*}*/ = two.snd
   val twoCopy: Pair[Ref^, Ref^] = Pair(fst, snd) // ok
 
   val same = twoRefs2()
   val fstSame = same.fst
-  val sndSame = same.snd
-  val sameToPair: Pair[Ref^, Ref^] = Pair(fstSame, sndSame) // error
+  val sndSame = same.snd // error after reach drop
+  val sameToPair: Pair[Ref^, Ref^] = Pair(fstSame, sndSame) // error // error after reach drop
 
 
 

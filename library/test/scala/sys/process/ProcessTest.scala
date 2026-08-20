@@ -58,11 +58,6 @@ class ProcessTest {
     val res = ("cat" #< new ByteArrayInputStream("lol".getBytes)).!!
     assertEquals("lol\n", res)
   }
-  // test non-hanging
-  //@Test def t10055(): Unit = noWin() {
-  //  val res = ("cat" #< ( () => -1 ) ).!
-  //  assertEquals(0, res)
-  //}
 
   @Test def t10953(): Unit =
     Using.resources(File.createTempFile("foo", "tmp"), File.createTempFile("bar", "tmp")) {
@@ -126,4 +121,12 @@ class ProcessTest {
       case (_, other)                        => fail(s"Expected one IOException, got $other")
     }
   }
+
+  @Test def unmatchedQuotes(): Unit =
+    val badCommand = "echo 'Hello"
+    tools.AssertUtil.assertThrows[RuntimeException] { badCommand.!! }
+
+  @Test def trailingBackslash(): Unit =
+    val badCommand = "echo 'Hello'\\"
+    tools.AssertUtil.assertThrows[RuntimeException] { badCommand.!! }
 }

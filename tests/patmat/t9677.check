@@ -1,1 +1,8 @@
-18: Pattern Match Exhaustivity: _: Base (anonymous)
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/t9677.scala:18:4 ----
+18 |    b match {    // A.apply creates anonymous class <: Base
+   |    ^
+   |    match may not be exhaustive.
+   |
+   |    It would fail on pattern case: _: Base (anonymous)
+   |
+   | longer explanation available when compiling with `-explain`

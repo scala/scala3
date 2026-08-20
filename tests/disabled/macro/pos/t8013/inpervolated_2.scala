@@ -1,4 +1,4 @@
-//> using options -Werror -Xlint
+//> using options -Werror -Wshadow
 package t8013
 
 // unsuspecting user of perverse macro

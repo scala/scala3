@@ -22,8 +22,8 @@ import scala.language.`2.13`
   * This group of escape codes provides control over text styling. For example, to turn on reverse video with bold and
   * then turn off all styling embed these codes,
   *
-  * ```
-  * import io.AnsiColor._
+  * ```scala sc:compile
+  * import scala.io.AnsiColor._
   *
   * println(s"\${REVERSED}\${BOLD}Hello 1979!\${RESET}")
   * ```

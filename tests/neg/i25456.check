@@ -1,0 +1,22 @@
+-- [E040] Syntax Error: tests/neg/i25456.scala:6:41 --------------------------------------------------------------------
+6 |  def generate[F[_]: { ApplicativeError[_[?], ?] }]: Int = 1 // error // error // error // nopos-error
+  |                                         ^
+  |                                         ']' expected, but '[' found
+-- [E035] Syntax Error: tests/neg/i25456.scala:6:46 --------------------------------------------------------------------
+6 |  def generate[F[_]: { ApplicativeError[_[?], ?] }]: Int = 1 // error // error // error // nopos-error
+  |                                              ^
+  |                                              Unbound wildcard type
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E019] Syntax Error: tests/neg/i25456.scala:6:48 --------------------------------------------------------------------
+6 |  def generate[F[_]: { ApplicativeError[_[?], ?] }]: Int = 1 // error // error // error // nopos-error
+  |                                                ^
+  |                                                Missing return type
+  |
+  | longer explanation available when compiling with `-explain`
+-- Warning: tests/neg/i25456.scala:6:40 --------------------------------------------------------------------------------
+6 |  def generate[F[_]: { ApplicativeError[_[?], ?] }]: Int = 1 // error // error // error // nopos-error
+  |                                        ^
+  |                               `_` is deprecated for wildcard arguments of types: use `?` instead
+  |                               This construct can be rewritten automatically under -rewrite -source 3.4-migration.
+No warnings can be incurred under -Werror

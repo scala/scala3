@@ -1,0 +1,2 @@
+(kind = Dog, age = 7, weight = 6.5)
+(kind = Dog, age = 7, weight = 6.5, growth = 0.9285714285714286)

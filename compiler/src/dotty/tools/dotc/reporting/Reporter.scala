@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package reporting
 
-import scala.language.unsafeNulls
-
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Mode
 import dotty.tools.dotc.core.Symbols.{NoSymbol, Symbol}
@@ -14,9 +12,9 @@ import dotty.tools.dotc.util.NoSourcePosition
 
 import java.io.{BufferedReader, PrintWriter}
 import scala.annotation.internal.sharable
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import core.Decorators.{em, toMessage}
-import core.handleRecursive
 
 object Reporter {
   /** Convert a SimpleReporter into a real Reporter */
@@ -41,7 +39,7 @@ object Reporter {
     (mc, ctx) => ctx.reporter.report(mc)(using ctx)
 
   /** Show prompt if `-Xprompt` is passed as a flag to the compiler */
-  def displayPrompt(reader: BufferedReader, writer: PrintWriter): Unit = {
+  def displayPrompt(reader: BufferedReader | Null, writer: PrintWriter): Unit = {
     writer.println()
     writer.print("a)bort, s)tack, r)esume: ")
     writer.flush()
@@ -101,6 +99,19 @@ abstract class Reporter extends interfaces.ReporterResult {
   private var _errorCount = 0
   private var _warningCount = 0
   private var _infoCount = 0
+  // The last run that reported each loading failure through this reporter.
+  private var reportedLoadingFailures: mutable.WeakHashMap[LoadingFailure, Int] | Null = null
+
+  private def reportedLoadingFailuresMap: mutable.WeakHashMap[LoadingFailure, Int] =
+    val reported = reportedLoadingFailures
+    if reported != null then reported
+    else
+      val fresh = mutable.WeakHashMap.empty[LoadingFailure, Int]
+      reportedLoadingFailures = fresh
+      fresh
+
+  protected final def clearReportedLoadingFailures(): Unit =
+    reportedLoadingFailures = null
 
   /** The number of errors reported by this reporter (ignoring outer reporters) */
   def errorCount: Int = _errorCount
@@ -159,20 +170,20 @@ abstract class Reporter extends interfaces.ReporterResult {
     unreportedWarnings = unreportedWarnings.updated(key, count + n)
 
   /** Issue the diagnostic, ignoring `-Wconf` and `@nowarn` configurations,
-   *  but still honouring `-nowarn`, `-Werror`, and conditional warnings. */
-  def issueUnconfigured(dia: Diagnostic)(using Context): Unit = dia match
+   *  but still honouring `-nowarn`, `-Werror`, and conditional warnings.
+   *
+   *  Avoid forcing elaboration of the message, but if already `forced`,
+   *  then do issue the diagnostic with usual `isHidden` check.
+   */
+  def issueUnconfigured(dia: Diagnostic, forced: Boolean = false)(using Context): Unit = dia match
     case w: Warning if ctx.settings.silentWarnings.value    =>
-    case w: ConditionalWarning if w.isSummarizedConditional =>
+    case w: ConditionalWarning if !forced && w.isSummarizedConditional =>
       val key = w.enablingOption.name
       addUnreported(key, 1)
     case _                                                  =>
       if !isHidden(dia) then // avoid isHidden test for summarized warnings so that message is not forced
-        try
+        ctx.handleRecursive("error reporting", () => dia.message):
           withMode(Mode.Printing)(doReport(dia))
-        catch case ex: Throwable =>
-          // #20158: Don't increment the error count, otherwise we might suppress
-          // the RecursiveOverflow error and not print any error at all.
-          handleRecursive("error reporting", dia.message, ex)
         dia match {
           case w: Warning =>
             if w.isInstanceOf[LintWarning] then
@@ -199,10 +210,11 @@ abstract class Reporter extends interfaces.ReporterResult {
       dia match
         case w: Warning => WConf.parsed.action(dia) match
           case Error   => issueUnconfigured(w.toError)
-          case Warning => issueUnconfigured(w)
+          case Warning => issueUnconfigured(w, forced = true)
           case Verbose => issueUnconfigured(w.setVerbose())
           case Info    => issueUnconfigured(w.toInfo)
           case Silent  =>
+          case Default => issueUnconfigured(w)
         case _ => issueUnconfigured(dia)
 
     // `ctx.run` can be null in test, also in the repl when parsing the first line. The parser runs early, the Run is
@@ -269,8 +281,16 @@ abstract class Reporter extends interfaces.ReporterResult {
   /** Should this diagnostic not be reported at all? */
   def isHidden(dia: Diagnostic)(using Context): Boolean =
     ctx.mode.is(Mode.Printing)
+    || (dia match
+      case error: LoadingError =>
+        val reported = reportedLoadingFailures
+        reported != null && reported.get(error.failure).contains(ctx.runId)
+      case _ => false)
 
-  def markReported(dia: Diagnostic)(using Context): Unit = ()
+  def markReported(dia: Diagnostic)(using Context): Unit = dia match
+    case error: LoadingError =>
+      reportedLoadingFailuresMap(error.failure) = ctx.runId
+    case _ =>
 
   /** Does this reporter contain errors that have yet to be reported by its outer reporter ?
    *  Note: this is always false when there is no outer reporter.

@@ -123,7 +123,9 @@ class GadtConstraint private (
     def apply(tp: Type): Type = externalize(tp, this)(using mapCtx)
 
   def tvarOrError(sym: Symbol)(using Context): TypeVar =
-    mapping(sym).ensuring(_ != null, i"not a constrainable symbol: $sym").uncheckedNN
+    mapping(sym) match
+      case null => throw new AssertionError(i"not a constrainable symbol: $sym")
+      case m => m
 
   @tailrec final def stripInternalTypeVar(tp: Type): Type = tp match
     case tv: TypeVar =>

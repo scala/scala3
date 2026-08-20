@@ -1,1 +1,8 @@
-8: Pattern Match Exhaustivity: C()
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/i8757.scala:8:17 ----
+8 |def h(): Unit = (C(42): T) match
+  |                 ^^^^^^^^
+  |                 match may not be exhaustive.
+  |
+  |                 It would fail on pattern case: C()
+  |
+  | longer explanation available when compiling with `-explain`

@@ -7,7 +7,7 @@ import dotty.tools.dotc.interfaces.Diagnostic.{ERROR, INFO, WARNING}
 import dotty.tools.scaladoc.test.BuildInfo
 import org.junit.Assert._
 import java.io.File
-import java.nio.file.Paths
+import java.nio.file.{Files, Path, Paths}
 
 
 case class ReportedDiagnostics(errors: List[Diagnostic], warnings: List[Diagnostic], infos: List[Diagnostic]):
@@ -18,7 +18,7 @@ case class ReportedDiagnostics(errors: List[Diagnostic], warnings: List[Diagnost
 
 extension (c: CompilerContext) def reportedDiagnostics: ReportedDiagnostics =
   val t = c.reporter.asInstanceOf[TestReporter]
-  ReportedDiagnostics(t.errors.result, t.warnings.result, t.infos.result)
+  ReportedDiagnostics(t.errors.result(), t.warnings.result(), t.infos.result())
 
 def assertNoWarning(diag: ReportedDiagnostics) = assertEquals("Warnings should be empty", Nil, diag.warningMsgs)
 def assertNoErrors(diag: ReportedDiagnostics) = assertEquals("Erros should be empty", Nil, diag.errorMsgs)
@@ -79,4 +79,40 @@ def tastyFiles(name: String, allowEmpty: Boolean = false, rootPck: String = "tes
   assert(files.nonEmpty || allowEmpty)
   files.toSeq
 
-def testDocPath = Paths.get(BuildInfo.testDocumentationRoot)
+def testDocPath: Path = Paths.get(BuildInfo.testDocumentationRoot)
+
+/** JVM classpath of the test runner; used when compiling sources or running Scaladoc at test time. */
+def javaClasspath: String = System.getProperty("java.class.path")
+
+/** Copy a test resource `<resourceDir>/<name>` into `root/sources/<name>` and return that path. */
+def copyTestResource(root: Path, resourceDir: String, name: String): Path =
+  val resource = classOf[TestReporter].getResource(s"/$resourceDir/$name")
+  assertNotNull(s"Test resource not found: /$resourceDir/$name.txt", resource)
+  val source = root.resolve("sources").resolve(name)
+  Files.createDirectories(source.getParent)
+  Files.copy(Paths.get(resource.toURI), source)
+  source
+
+/** Compile `sources` with the current compiler into `output`, using `classpath` ahead of the JVM classpath. */
+def compileStage(output: Path, classpath: Seq[Path], sources: Path*): Unit =
+  Files.createDirectories(output)
+  val compilerClasspath =
+    (classpath.map(_.toString) :+ javaClasspath).mkString(java.io.File.pathSeparator)
+  val reporter = new TestReporter
+  val result = dotty.tools.dotc.Main.process(
+    Array("-classpath", compilerClasspath, "-d", output.toString) ++ sources.map(_.toString),
+    reporter
+  )
+  assertFalse(
+    s"Compilation failed:\n${reporter.errors.result().map(_.msg.message).mkString("\n")}",
+    result.hasErrors
+  )
+
+/** Recursively collect `.tasty` files under `dir`. */
+def collectTastyFiles(dir: Path): Seq[File] =
+  def collect(f: File): List[File] = Option(f.listFiles).toList.flatten.flatMap {
+    case d if d.isDirectory => collect(d)
+    case t if t.getName.endsWith(".tasty") => t :: Nil
+    case _ => Nil
+  }
+  collect(dir.toFile)

@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package interactive
 
-import scala.language.unsafeNulls
-
 import java.net.URI
 import java.io.*
 import java.nio.file.*
@@ -18,6 +16,7 @@ import dotty.tools.dotc.sbt.interfaces.ProgressCallback
 import dotty.tools.io.AbstractFile
 
 import ast.{Trees, tpd}
+import config.*
 import core.*, core.Decorators.*
 import Contexts.*, Names.*, NameOps.*, Symbols.*, SymDenotations.*, Trees.*, Types.*
 import Denotations.staticRef
@@ -25,9 +24,34 @@ import classpath.*
 import reporting.*
 import util.*
 
+private class InteractiveContextBase(sourcePackage: CachedLogicalPackage) extends ContextBase {
+
+  override protected def newPlatform(using Context): Platform = {
+      if (settings.scalajs.value) new SJSPlatform(sourcePackage.value)
+      else new JavaPlatform(sourcePackage.value)
+  }
+
+}
+
+// Assumes the context does not change; only use if this is true!
+class CachedLogicalPackage(extractor: Context ?=> Option[LogicalPackage]) {
+  private var cached: Option[LogicalPackage] | Null = null
+  def value(using Context): Option[LogicalPackage] =
+    initialize(cached, cached = _, extractor)
+}
+
+object CachedLogicalPackage:
+  val none: CachedLogicalPackage = CachedLogicalPackage(_ ?=> None)
+
 /** A Driver subclass designed to be used from IDEs */
-class InteractiveDriver(val settings: List[String]) extends Driver {
+class InteractiveDriver(
+    val settings: List[String],
+    logicalRootPackage: CachedLogicalPackage
+) extends Driver {
   import tpd.*
+
+  override protected def initCtx: Context =
+    new InteractiveContextBase(logicalRootPackage).initialCtx
 
   override def sourcesRequired: Boolean = false
 
@@ -113,9 +137,9 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
       val classNames = new mutable.ListBuffer[TypeName]
       val output = ctx.settings.outputDir.value
       if (output.isDirectory)
-        classesFromDir(output.jpath, classNames)
+        classesFromDir(output.jpath.nn, classNames)
       else
-        classesFromZip(output.file, classNames)
+        classesFromZip(output.file.nn, classNames)
       classNames.flatMap { cls =>
         treesFromClassName(cls, id)
       }
@@ -313,8 +337,8 @@ class InteractiveDriver(val settings: List[String]) extends Driver {
 
 
 object InteractiveDriver {
-  def toUriOption(file: AbstractFile): Option[URI] =
-    if (!file.exists)
+  def toUriOption(file: AbstractFile | Null): Option[URI] =
+    if (file == null || !file.exists)
       None
     else
       try

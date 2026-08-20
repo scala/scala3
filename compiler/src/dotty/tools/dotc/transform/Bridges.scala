@@ -12,6 +12,7 @@ import ContextFunctionResults.{contextResultCount, contextFunctionResultTypeAfte
 import StdNames.nme
 import Constants.Constant
 import TypeErasure.transformInfo
+import TypeErasure.disallowSpecializedCtx
 import Erasure.Boxing.adaptClosure
 
 /** A helper class for generating bridge methods in class `root`. */
@@ -19,7 +20,7 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
   import ast.tpd.*
 
   assert(ctx.phase == erasurePhase.next)
-  private val preErasureCtx = ctx.withPhase(erasurePhase)
+  private val preErasureCtx = disallowSpecializedCtx(using ctx.withPhase(erasurePhase.prev))
   private lazy val elimErasedCtx = ctx.withPhase(elimErasedValueTypePhase.next)
 
   private class BridgesCursor(using Context) extends OverridingPairs.Cursor(root) {
@@ -90,12 +91,15 @@ class Bridges(root: ClassSymbol, thisPhase: DenotTransformer)(using Context) {
       // A bridge might introduce a classcast exception.
       // Example where this was observed: run/i12828a.scala and MapView in stdlib213
       report.log(i"suppress bridge in $root for ${member} in ${member.owner} and ${other.showLocated} since member infos ${site.memberInfo(member)} and ${site.memberInfo(other)} do not match")
-    else if !member.isPublic(using preErasureCtx) && !member.is(Protected) // opt: public or protected are obviously accessible
+    else if member.is(JavaDefined)
+        && !member.isPublic(using preErasureCtx) && !member.is(Protected) // opt: public or protected are obviously accessible
         && !member.isAccessibleFrom(root.thisType)(using preErasureCtx)
     then
       // Don't generate a bridge that would call an inaccessible method.
-      // This can typically happen with Java package-private methods
+      // This can happen with Java package-private methods
       // when a Scala class in a different package extends the Java class.
+      // Scala's private[pkg] methods are compiled as public at the JVM level,
+      // so they don't have this problem (see #25291).
       report.log(i"suppress bridge in $root for inaccessible method ${member.showLocated}")
     else if !bridgeExists then
       addBridge(member, other)

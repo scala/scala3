@@ -39,7 +39,7 @@ class TestClient extends DottyClient {
     telemetry += obj
   }
 
-  override def showMessageRequest(requestParams: ShowMessageRequestParams) = {
+  override def showMessageRequest(requestParams: ShowMessageRequestParams): CompletableFuture[MessageActionItem] = {
     val reply = new CompletableFuture[MessageActionItem]
     requests += ((requestParams, reply))
     reply

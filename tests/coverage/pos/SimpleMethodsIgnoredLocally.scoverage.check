@@ -229,15 +229,15 @@ C
 Class
 covtest.C
 cond
-215
-220
+226
+230
 16
 <none>
 Literal
 false
 0
 true
-false
+true
 
 13
 SimpleMethodsIgnoredLocally.scala
@@ -251,7 +251,7 @@ cond
 16
 <none>
 Literal
-false
+true
 0
 true
 true
@@ -263,15 +263,15 @@ C
 Class
 covtest.C
 cond
-226
-230
-16
+240
+245
+17
 <none>
 Literal
-true
+false
 0
 true
-true
+false
 
 15
 SimpleMethodsIgnoredLocally.scala
@@ -285,29 +285,12 @@ cond
 17
 <none>
 Literal
-false
+true
 0
 true
 false
 
 16
-SimpleMethodsIgnoredLocally.scala
-covtest
-C
-Class
-covtest.C
-cond
-240
-245
-17
-<none>
-Literal
-true
-0
-true
-false
-
-17
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -324,6 +307,23 @@ false
 true
 def cond
 
+17
+SimpleMethodsIgnoredLocally.scala
+covtest
+C
+Class
+covtest.C
+partialCond
+291
+293
+20
+<none>
+Literal
+false
+0
+true
+()
+
 18
 SimpleMethodsIgnoredLocally.scala
 covtest
@@ -331,51 +331,17 @@ C
 Class
 covtest.C
 partialCond
-280
-285
+291
+293
 20
 <none>
 Literal
-false
+true
 0
 true
-false
+()
 
 19
-SimpleMethodsIgnoredLocally.scala
-covtest
-C
-Class
-covtest.C
-partialCond
-291
-293
-20
-<none>
-Literal
-false
-0
-true
-()
-
-20
-SimpleMethodsIgnoredLocally.scala
-covtest
-C
-Class
-covtest.C
-partialCond
-291
-293
-20
-<none>
-Literal
-true
-0
-true
-()
-
-21
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -392,7 +358,7 @@ true
 true
 
 
-22
+20
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -409,7 +375,7 @@ false
 true
 def partialCond
 
-23
+21
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -426,7 +392,7 @@ false
 false
 new {}
 
-24
+22
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -443,7 +409,7 @@ false
 false
 def new1
 
-25
+23
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -460,7 +426,7 @@ false
 false
 ()
 
-26
+24
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -477,7 +443,7 @@ true
 false
 ()
 
-27
+25
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -494,7 +460,7 @@ false
 false
 1
 
-28
+26
 SimpleMethodsIgnoredLocally.scala
 covtest
 C
@@ -511,7 +477,7 @@ true
 false
 => 1
 
-29
+27
 SimpleMethodsIgnoredLocally.scala
 covtest
 C

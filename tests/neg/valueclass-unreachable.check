@@ -1,0 +1,6 @@
+-- [E030] Match case Unreachable Error: tests/neg/valueclass-unreachable.scala:5:7 -------------------------------------
+5 |  case 2 :: ys => 2  // error
+  |       ^
+  |       Unreachable case
+  |
+  | longer explanation available when compiling with `-explain`

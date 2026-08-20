@@ -32,7 +32,7 @@ class SignatureHelp(override val marker: CodeMarker,
   val expectedSignatures = expected.map(DottyLanguageServer.signatureToSignatureInformation)
 
   override def execute(): Exec[Unit] = {
-    val results = server.signatureHelp(marker.toTextDocumentPositionParams).get()
+    val results = server.signatureHelp(marker.toSignatureHelpParams).get()
     val resultSignatures = results.getSignatures.asScala
 
     assertEquals("Number of signatures", expected.length, resultSignatures.length)

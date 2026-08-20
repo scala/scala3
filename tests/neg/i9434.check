@@ -1,0 +1,53 @@
+-- [E018] Syntax Error: tests/neg/i9434.scala:10:18 --------------------------------------------------------------------
+10 |      Vector(1) ++ // error
+   |                  ^
+   |                  expression expected but [31munindent[0m found
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E050] Type Error: tests/neg/i9434.scala:4:14 -----------------------------------------------------------------------
+4 |    val bar = foo // error
+  |              ^
+  |              value foo does not take parameters
+  |
+5 |      (1, 1)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/i9434.scala:6:3 ---------------------------------------------------------------
+6 |  } // error
+  |   ^
+  |   Found:    Unit
+  |   Required: (Int, Int)
+  |
+  |   Maybe the enclosing block is missing a final expression after the definition of `bar`?
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E050] Type Error: tests/neg/i9434.scala:26:29 ----------------------------------------------------------------------
+26 |  def f[A](as: List[A]) = as headOption // error
+   |                          ^
+   |                          method headOption in trait LinearSeqOps does not take parameters
+   |
+27 |    42
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E050] Type Error: tests/neg/i9434.scala:30:29 ----------------------------------------------------------------------
+30 |  def f[A](as: List[A]) = as headOption // error
+   |                          ^
+   |                          method headOption in trait LinearSeqOps does not take parameters
+   |
+31 |  42
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E050] Type Error: tests/neg/i9434.scala:35:10 ----------------------------------------------------------------------
+35 |  def f = g // error
+   |          ^
+   |          method g in object Y does not take parameters
+   |
+36 |    (42)
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E129] Potential Issue Warning: tests/neg/i9434.scala:41:2 ----------------------------------------------------------
+41 |  (42) // warn
+   |  ^^^^
+   |  A pure expression does nothing in statement position
+   |
+   | longer explanation available when compiling with `-explain`

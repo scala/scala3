@@ -1,12 +1,12 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i20481.scala:4:13 ----------------------------------------
 4 |  val b: A = this // error
   |             ^^^^
-  |             Found:    (A.this : A^{any})
-  |             Required: A
+  |  Found:    (A.this : A^{any})
+  |  Required: A
   |
-  |             Note that capability `any` cannot flow into capture set {}.
+  |  Note that capability `any` cannot flow into capture set {}.
   |
-  |             where:    any is a root capability in the type of class A with contributing field val f
+  |  where:    any is a root capability created in class A when constructing instance A with contributing field val f
   |
   | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i20481.scala:8:14 ----------------------------------------

@@ -4,8 +4,6 @@ package fromtasty
 import dotty.tools.dotc.core.tasty.TastyClassName
 import dotty.tools.dotc.core.StdNames.nme.EMPTY_PACKAGE
 import dotty.tools.io.AbstractFile
-import dotty.tools.dotc.classpath.FileUtils.hasTastyExtension
-import dotty.tools.dotc.classpath.FileUtils.hasBetastyExtension
 
 object TastyFileUtil {
   /** Get the class path of a tasty file
@@ -35,9 +33,9 @@ object TastyFileUtil {
    */
   def getClassName(file: AbstractFile, withBestEffortTasty: Boolean = false): Option[String] =
     assert(file.exists)
-    assert(file.hasTastyExtension || (withBestEffortTasty && file.hasBetastyExtension))
+    assert(file.ext.isTasty || (withBestEffortTasty && file.ext.isBetasty))
     val bytes = file.toByteArray
-    val names = new TastyClassName(bytes, file.hasBetastyExtension).readName()
+    val names = new TastyClassName(bytes, file.ext.isBetasty).readName()
     names.map: (packageName, className) =>
       if packageName == EMPTY_PACKAGE then
         s"${className.lastPart.encode}"

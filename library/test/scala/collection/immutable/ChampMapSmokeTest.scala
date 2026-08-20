@@ -111,7 +111,7 @@ class ChampMapSmokeTest {
     assertEquals(2, res3.size)
     assertTrue(res3.contains(v1h1))
     assertTrue(res3.contains(v32769a))
-    println(scala.runtime.ScalaRunTime.getClass.getProtectionDomain.getCodeSource)
+    //println(scala.runtime.ScalaRunTime.getClass.getProtectionDomain.getCodeSource)
     val expected = mapOf(mkTuple(v1h1), mkTuple(v32769a))
     assertEquals(expected, res3)
   }

@@ -2,10 +2,10 @@ package dotty.tools
 package dotc
 package parsing
 
-import dotty.tools.io._
+import dotty.tools.io.*
 import scala.io.Codec
-import util._
-import Tokens._, Scanners._
+import util.*
+import Tokens.*, Scanners.*
 import org.junit.Test
 
 class ScannerTest extends DottyTest {
@@ -19,7 +19,7 @@ class ScannerTest extends DottyTest {
 
   def scan(file: PlainFile): Unit = {
     //println("***** scanning " + file)
-    val source = SourceFile(file, Codec.UTF8)
+    val source = SourceFile(file, new PlainDirectory(Directory(".")), Codec.UTF8)
     val scanner = new Scanner(source)
     var i = 0
     while (scanner.token != EOF) {
@@ -48,7 +48,6 @@ class ScannerTest extends DottyTest {
 
   @Test
   def scanList() = {
-    println(System.getProperty("user.dir"))
     scan("compiler/src/dotty/tools/dotc/core/Symbols.scala")
     scan("compiler/src/dotty/tools/dotc/core/Symbols.scala")
   }

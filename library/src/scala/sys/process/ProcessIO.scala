@@ -59,15 +59,30 @@ final class ProcessIO(
 ) {
   def this(in: OutputStream => Unit, out: InputStream => Unit, err: InputStream => Unit) = this(in, out, err, daemonizeThreads = false)
 
-  /** Creates a new `ProcessIO` with a different handler for the process input. */
+  /** Creates a new `ProcessIO` with a different handler for the process input.
+   *
+   *  @param write the new function to handle the process input `OutputStream`
+   *  @return a new `ProcessIO` with the specified input handler
+   */
   def withInput(write: OutputStream => Unit): ProcessIO   = new ProcessIO(write, processOutput, processError, daemonizeThreads)
 
-  /** Creates a new `ProcessIO` with a different handler for the normal output. */
+  /** Creates a new `ProcessIO` with a different handler for the normal output.
+   *
+   *  @param process the new function to handle the process standard output `InputStream`
+   *  @return a new `ProcessIO` with the specified output handler
+   */
   def withOutput(process: InputStream => Unit): ProcessIO = new ProcessIO(writeInput, process, processError, daemonizeThreads)
 
-  /** Creates a new `ProcessIO` with a different handler for the error output. */
+  /** Creates a new `ProcessIO` with a different handler for the error output.
+   *
+   *  @param process the new function to handle the process error output `InputStream`
+   *  @return a new `ProcessIO` with the specified error handler
+   */
   def withError(process: InputStream => Unit): ProcessIO  = new ProcessIO(writeInput, processOutput, process, daemonizeThreads)
 
-  /** Creates a new `ProcessIO`, with `daemonizeThreads` true. */
+  /** Creates a new `ProcessIO`, with `daemonizeThreads` true.
+   *
+   *  @return a new `ProcessIO` that runs all I/O threads as daemon threads
+   */
   def daemonized(): ProcessIO = new ProcessIO(writeInput, processOutput, processError, daemonizeThreads = true)
 }

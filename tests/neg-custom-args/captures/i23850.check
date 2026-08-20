@@ -9,7 +9,7 @@
    |Note that capability `test` cannot flow into capture set {}.
    |Note that object test is a capability because it contains fields given instance given_Console
    |
-   |where:    any is a root capability classified as SharedCapability in the type of object test with contributing field val given_Console
+   |where:    any is a root capability classified as SharedCapability created in object test with contributing field val given_Console
    |
 16 |    log(s"adding a ($a) to b ($b)")
 17 |    a + b

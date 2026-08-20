@@ -1,0 +1,19 @@
+-- [E007] Type Mismatch Error: tests/neg/magic-offset-header-e.scala:2:17 ----------------------------------------------
+2 |def foo: Int = "not an int"  // error
+  |                 ^^^^^^^^^^^^
+  |                 Found:    ("not an int" : String)
+  |                 Required: Int
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E120] Naming Error: tests/neg/magic-offset-header-e.scala:2:6 ------------------------------------------------------
+2 |def foo: Int = "not an int"  // error
+  |      ^
+  |      Conflicting definitions:
+  |      def foo: String in class Wrapper at line 6 and
+  |      def foo: Int in class Wrapper at line 2
+  |      have the same type (): Int after erasure.
+  |
+  |      Consider adding a @targetName annotation to one of the conflicting definitions
+  |      for disambiguation.
+  |
+  | longer explanation available when compiling with `-explain`

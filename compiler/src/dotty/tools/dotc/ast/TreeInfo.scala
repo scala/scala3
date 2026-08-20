@@ -479,6 +479,21 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
     case _ => false
   }
 
+  def isConsumeAnnot(tree: Tree)(using Context): Boolean = unsplice(tree) match
+    case Apply(
+      Select(
+        New(
+          Select(
+            Select(
+              Select(
+                Select(
+                  Ident(nme.ROOTPKG),
+                  nme.scala),
+                nme.caps),
+              nme.internal),
+            tpnme.consume)), _), _) => true
+    case _ => false
+
   /**  The largest subset of {NoInits, PureInterface} that a
    *   trait or class enclosing this statement can have as flags.
    */
@@ -510,6 +525,12 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
    */
   def bodyKind(body: List[Tree])(using Context): FlagSet =
     body.foldLeft(NoInitsInterface)((fs, stat) => fs & defKind(stat))
+
+  /** Is `tree` a DerivedTypeTree, possibly followed by type arguments? */
+  def hasDerivedTree(tree: Tree)(using Context): Boolean = tree match
+    case tree: DerivedTypeTree => true
+    case AppliedTypeTree(tpt, _) => hasDerivedTree(tpt)
+    case _ => false
 
   /** Info of a variable in a pattern: The named tree and its type */
   type VarInfo = (NameTree, Tree)
@@ -626,6 +647,8 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       minOf(exprPurity(expr), bindings.map(statPurity))
     case NamedArg(_, expr) =>
       exprPurity(expr)
+    case Assign(v, rhs) =>
+      exprPurity(v) `min` exprPurity(rhs)
     case _ =>
       Impure
   }
@@ -659,15 +682,16 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       cls.is(Case) && cls.isNoInitsRealClass
     }
 
+  /** True for operations known not to observe their arguments, such as primitive arithmetic. */
+  def isKnownPureOp(sym: Symbol)(using Context): Boolean =
+    sym.owner.isPrimitiveValueClass
+    || sym.owner == defn.StringClass
+    || defn.pureMethods.contains(sym)
+
   /** Is the application `tree` with function part `fn` known to be pure?
    *  Function value and arguments can still be impure.
    */
   def isPureApply(tree: Tree, fn: Tree)(using Context): Boolean =
-    def isKnownPureOp(sym: Symbol) =
-      sym.owner.isPrimitiveValueClass
-      || sym.owner == defn.StringClass
-      || defn.pureMethods.contains(sym)
-
     tree.tpe.isInstanceOf[ConstantType] && tree.symbol != NoSymbol && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
     || fn.symbol.isStableMember && fn.symbol.isConstructor // constructors of no-inits classes are stable
     || isPureSyntheticCaseApply(fn.symbol)
@@ -1109,8 +1133,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           hasRefinement(tp.tp1) || hasRefinement(tp.tp2)
         case _ =>
           false
+      def isDynamicMethod(name: Name): Boolean =
+        name == nme.applyDynamic || name == nme.selectDynamic ||
+        name == nme.updateDynamic || name == nme.applyDynamicNamed
       !tree.symbol.exists
       && tree.isTerm
+      && !isDynamicMethod(tree.name)  // Don't treat dynamic method calls as structural (prevents infinite recursion)
       && hasRefinement(tree.qualifier.tpe)
     funPart(tree) match
       case tree: Select =>

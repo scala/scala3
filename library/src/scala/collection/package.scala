@@ -64,7 +64,12 @@ package object collection {
   /** An extractor used to head/tail deconstruct sequences. */
   object +: {
     /** Splits a sequence into head +: tail.
-     *  @return Some((head, tail)) if sequence is non-empty. None otherwise.
+     *
+     *  @tparam A the element type of the sequence
+     *  @tparam CC the type constructor of the sequence (e.g., `List`, `Vector`)
+     *  @tparam C the concrete sequence type, providing `SeqOps[A, CC, C]` for `head`/`tail` operations
+     *  @param t the sequence to deconstruct into its head and tail
+     *  @return `Some((head, tail))` if the sequence is non-empty, `None` otherwise
      */
     def unapply[A, CC[_] <: Seq[?], C <: SeqOps[A, CC, C]](t: (C & SeqOps[A, CC, C])^): Option[(A, C^{t})] =
       if(t.isEmpty) None
@@ -74,7 +79,12 @@ package object collection {
   /** An extractor used to init/last deconstruct sequences. */
   object :+ {
     /** Splits a sequence into init :+ last.
-     *  @return Some((init, last)) if sequence is non-empty. None otherwise.
+     *
+     *  @tparam A the element type of the sequence
+     *  @tparam CC the type constructor of the sequence (e.g., `List`, `Vector`)
+     *  @tparam C the concrete sequence type, providing `SeqOps[A, CC, C]` for `init`/`last` operations
+     *  @param t the sequence to deconstruct into its init and last element
+     *  @return `Some((init, last))` if the sequence is non-empty, `None` otherwise
      */
     def unapply[A, CC[_] <: Seq[?], C <: SeqOps[A, CC, C]](t: (C & SeqOps[A, CC, C])^): Option[(C^{t}, A)] =
       if(t.isEmpty) None

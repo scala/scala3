@@ -252,7 +252,8 @@ private[collection] object JavaCollectionWrappers extends Serializable {
   }
 
   @SerialVersionUID(3L)
-  class MapWrapper[K, V](underlying: Map[K, V]) extends ju.AbstractMap[K, V] with Serializable { self =>
+  class MapWrapper[K, V](underlying: Map[K, V]) extends ju.AbstractMap[K, V] with Serializable {
+    self: MapWrapper[K, V] =>
     override def size = underlying.size
 
     override def get(key: AnyRef): V = try {
@@ -285,10 +286,8 @@ private[collection] object JavaCollectionWrappers extends Serializable {
             // specified in the javadocs of java.util.Map.Entry.hashCode
             //
             // See https://github.com/scala/bug/issues/10663
-            override def hashCode() = {
-              (if (k == null) 0 else k.hashCode()) ^
-              (if (v == null) 0 else v.hashCode())
-            }
+            override def hashCode() =
+              java.util.Objects.hashCode(k) ^ java.util.Objects.hashCode(v)
 
             override def equals(other: Any) = other match {
               case e: ju.Map.Entry[?, ?] => k == e.getKey && v == e.getValue

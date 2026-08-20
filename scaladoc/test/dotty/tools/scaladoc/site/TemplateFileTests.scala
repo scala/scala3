@@ -4,8 +4,12 @@ package site
 import com.vladsch.flexmark.html.HtmlRenderer
 import com.vladsch.flexmark.parser.Parser
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 import java.nio.file.Files
+import dotty.tools.scaladoc.assertMessagesAbout
+import util.IO
 
 class TemplateFileTests:
   given staticSiteContext: StaticSiteContext = testDocContext().staticSiteContext.get
@@ -258,3 +262,173 @@ class TemplateFileTests:
       html,
       Map(),
       List(base -> "html", content -> "html"))
+
+  @Test
+  def snippetCompileWithErrorPointsToVisibleMarkdownLine(): Unit =
+    val tmpFile = Files.createTempFile("snippet-position", ".md").toFile()
+    try
+      Files.write(
+        tmpFile.toPath,
+        """---
+          |title: "Snippet position"
+          |---
+          |
+          |```scala sc-hidden sc-name:preamble
+          |import language.experimental.captureChecking
+          |class File
+          |```
+          |
+          |```scala sc-compile-with:preamble
+          |object Console:oops
+          |```
+          |""".stripMargin.getBytes
+      )
+
+      val dctx = DocContext(
+        testArgs().copy(snippetCompiler = List(s"${tmpFile.getAbsolutePath}=compile")),
+        testContext
+      )
+      given StaticSiteContext = dctx.staticSiteContext.get
+
+      loadTemplateFile(tmpFile).resolveInner(RenderingContext(Map.empty))
+      summon[StaticSiteContext].reportSnippetMessages()
+
+      val diagnostics = dctx.compilerContext.reportedDiagnostics
+      assertEquals(diagnostics.errorMsgs.mkString("\n"), 1, diagnostics.errors.size)
+      val error = diagnostics.errors.head
+      assertTrue(error.message.contains("end of statement expected"))
+      assertEquals(10, error.pos.line)
+      assertEquals(14, error.pos.column)
+    finally IO.delete(tmpFile)
+
+  @Test
+  def snippetErrorsAreBufferedAcrossTemplates(): Unit =
+    val tmpRoot = Files.createTempDirectory("snippet-errors").toFile()
+    val tmpDocs = File(tmpRoot, "_docs")
+    val first = File(tmpDocs, "first.md")
+    val second = File(tmpDocs, "second.md")
+    try
+      Files.createDirectories(tmpDocs.toPath)
+      Files.write(
+        first.toPath,
+        """---
+          |title: "First"
+          |---
+          |
+          |```scala
+          |val x = doesNotCompile
+          |```
+          |""".stripMargin.getBytes
+      )
+      Files.write(
+        second.toPath,
+        """---
+          |title: "Second"
+          |---
+          |
+          |```scala
+          |val y = stillDoesNotCompile
+          |```
+          |""".stripMargin.getBytes
+      )
+
+      val dctx = DocContext(
+        testArgs().copy(
+          docsRoot = Some(tmpRoot.getAbsolutePath),
+          snippetCompiler = List(s"${tmpDocs.getAbsolutePath}=compile")
+        ),
+        testContext
+      )
+      given StaticSiteContext = dctx.staticSiteContext.get
+
+      loadTemplateFile(first).resolveInner(RenderingContext(Map.empty))
+      loadTemplateFile(second).resolveInner(RenderingContext(Map.empty))
+
+      summon[StaticSiteContext].reportSnippetMessages()
+
+      val diagnostics = dctx.compilerContext.reportedDiagnostics
+      assertEquals(diagnostics.errorMsgs.mkString("\n"), 2, diagnostics.errors.size)
+      assertMessagesAbout(diagnostics.errorMsgs)(
+        "doesNotCompile",
+        "stillDoesNotCompile"
+      )
+    finally IO.delete(tmpRoot)
+
+  @Test
+  def markdownInlineExpectationsCanValidateFailingSnippets(): Unit =
+    val tmpRoot = Files.createTempDirectory("snippet-inline-checks").toFile()
+    val tmpDocs = File(tmpRoot, "_docs")
+    val tmpFile = File(tmpDocs, "checks.md")
+    try
+      Files.createDirectories(tmpDocs.toPath)
+      Files.write(
+        tmpFile.toPath,
+        """---
+          |title: "Snippet inline checks"
+          |---
+          |
+          |```scala sc:fail
+          |val x = 1.missing // error
+          |```
+          |""".stripMargin.getBytes
+      )
+
+      val dctx = DocContext(
+        testArgs().copy(
+          docsRoot = Some(tmpRoot.getAbsolutePath),
+          snippetCompiler = List(s"${tmpFile.getAbsolutePath}=compile+test")
+        ),
+        testContext
+      )
+      given StaticSiteContext = dctx.staticSiteContext.get
+
+      loadTemplateFile(tmpFile).resolveInner(RenderingContext(Map.empty))
+      summon[StaticSiteContext].reportSnippetMessages()
+
+      assertEquals(0, dctx.compilerContext.reportedDiagnostics.errors.size)
+    finally IO.delete(tmpRoot)
+
+  private def renderNamedSnippet(relativePath: String, noSnippetNamesFor: List[String] = Nil): String =
+    val tmpRoot = Files.createTempDirectory("snippet-name-rendering").toFile()
+    val tmpFile = File(tmpRoot, relativePath)
+    try
+      Files.createDirectories(tmpFile.getParentFile.toPath)
+      Files.write(
+        tmpFile.toPath,
+        """---
+          |title: "Snippet names"
+          |---
+          |
+          |```scala sc-name:demo
+          |val xs = List(1, 2, 3)
+          |```
+          |""".stripMargin.getBytes
+      )
+
+      val dctx = DocContext(
+        testArgs().copy(
+          docsRoot = Some(tmpRoot.getAbsolutePath),
+          snippetCompiler = List(s"${tmpFile.getAbsolutePath}=compile"),
+          noSnippetNamesFor = noSnippetNamesFor
+        ),
+        testContext
+      )
+      given StaticSiteContext = dctx.staticSiteContext.get
+
+      loadTemplateFile(tmpFile).resolveInner(RenderingContext(Map.empty)).code
+    finally IO.delete(tmpRoot)
+
+  @Test
+  def namedSnippetLabelsRenderByDefault(): Unit =
+    val rendered = renderNamedSnippet("_docs/snippets.md")
+    assertTrue(rendered.contains("""<div class="snippet-label">demo</div>"""))
+
+  @Test
+  def namedSnippetLabelsCanBeSuppressedForConfiguredPaths(): Unit =
+    val rendered = renderNamedSnippet("_docs/snippets.md", noSnippetNamesFor = List("_docs"))
+    assertTrue(!rendered.contains("""<div class="snippet-label">demo</div>"""))
+
+  @Test
+  def namedSnippetLabelsAreSuppressedInLanguageReference(): Unit =
+    val rendered = renderNamedSnippet("_docs/reference/snippets.md", noSnippetNamesFor = List("_docs/reference"))
+    assertTrue(!rendered.contains("""<div class="snippet-label">demo</div>"""))

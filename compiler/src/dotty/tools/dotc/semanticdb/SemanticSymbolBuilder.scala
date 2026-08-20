@@ -13,7 +13,6 @@ import Scala3.{*, given}
 
 import scala.annotation.tailrec
 import scala.collection.mutable
-import scala.util.control.NonFatal
 
 // The API here is a little tricky because it's used both as a stateful builder with local symbols,
 // and for non-local symbols that do not need any state through the companion object.
@@ -56,13 +55,18 @@ private[semanticdb] class SemanticSymbolBuilder:
         addLocalSymName(b)
     b.toString
 
-  def funParamSymbol(sym: Symbol)(using Context): Name => String =
+  def funParamSymbol(sym: Symbol)(using Context): Name => Option[String] =
     if sym.isGlobal then
       val funSymbol = symbolName(sym)
-      name => s"$funSymbol($name)"
+      name => Some(s"$funSymbol($name)")
     else
-      name => locals.keys.find(local => local.isTerm && local.owner == sym && local.name == name)
-                    .fold("<?>")(Symbols.LocalPrefix + locals(_))
+      // Fall back to paramSymss: synthetic apply params of local case classes may not be in
+      // `locals` yet (https://github.com/scala/scala3/issues/26521).
+      name =>
+        locals.keys.find(local => local.isTerm && local.owner == sym && local.name == name)
+          .map(local => Symbols.LocalPrefix + locals(local))
+          .orElse(sym.paramSymss.flatten.find(p => p.isTerm && p.name == name).map(symbolName))
+
 
   private def addLocalSymName(b: StringBuilder): Unit =
     val idx = nextLocalIdx
@@ -116,7 +120,7 @@ private[semanticdb] object SemanticSymbolBuilder:
           val pkg = s.split('/').map(stripBackticks).mkString(".")
           requiredPackage(pkg) :: Nil
         catch
-          case NonFatal(_) =>
+          case _: Exception =>
             Nil
       else
         val (desc, parent) = DescriptorParser(s)
@@ -198,7 +202,7 @@ private[semanticdb] object SemanticSymbolBuilder:
     try
       val res = loop(sym)
       res.filterNot(_ == NoSymbol)
-    catch case NonFatal(e) => Nil
+    catch case e: Exception => Nil
   end inverseSymbol
 
   private def addName(b: StringBuilder, name: Name): Unit =

@@ -544,11 +544,32 @@ trait TypesSupport:
   private def emitCapability(using Quotes)(ref: reflect.TypeRepr, skipThisTypePrefix: Boolean)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._
     ref match
-      case ReachCapability(c)     => emitCapability(c, skipThisTypePrefix) :+ Keyword("*")
       case ReadOnlyCapability(c)  => emitCapability(c, skipThisTypePrefix) :+ Keyword(".rd")
       case OnlyCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("only"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
-      case ThisType(_)            => List(Keyword("this"))
+      case ExceptCapability(c, cls) => emitCapability(c, skipThisTypePrefix) ++ List(Plain("."), Keyword("except"), Plain("[")) ++ inner(cls.typeRef, skipThisTypePrefix) :+ Plain("]")
+      case t @ ThisType(tpe)      =>
+        // Render `this` for self-references and `EnclosingClass.this` otherwise.
+        // We deliberately call `inner` without `inCC` in scope so the enclosing
+        // class name renders as a clickable Type element rather than Plain
+        // (see the `tpe(symbol)` helper, which collapses to Plain when inCC is set).
+        if skipPrefix(t, elideThis, originalOwner, skipThisTypePrefix) then List(Keyword("this"))
+        else inner(tpe, skipThisTypePrefix) ++ plain(".").l ++ List(Keyword("this"))
       case t                      => inner(t, skipThisTypePrefix)(using skipTypeSuffix = true, inCC = Some(Nil))
+
+  protected def emitCaptureRefsSignature(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean = false)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
+    emitUseRefsSignature(refs.map(_ -> false), skipThisTypePrefix)
+
+  protected def emitUseRefsSignature(using Quotes)(refs: List[(reflect.TypeRepr, Boolean)], skipThisTypePrefix: Boolean = false)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
+    refs match
+      case Nil => Nil
+      case _ =>
+        def emitRef(ref: reflect.TypeRepr, initially: Boolean) =
+          val csig = emitCapability(ref, skipThisTypePrefix)
+          if initially then csig ++ List(plain(" "), Keyword("initially"))
+          else csig
+        refs
+          .map((r, init) => emitRef(r, init))
+          .reduce((left, right) => left ++ (Plain(", ") :: right))
 
   private def emitCaptureSet(using Quotes)(refs: List[reflect.TypeRepr], skipThisTypePrefix: Boolean, omitCap: Boolean = true)(using elideThis: reflect.ClassDef, originalOwner: reflect.Symbol): SSignature =
     import reflect._
@@ -563,7 +584,7 @@ trait TypesSupport:
 
   // Determines whether a capture set reference should be rendered in the current context.
   // Some capabilities (like `this` in a pure class) are elided. We need to handle all
-  // capability wrappers (reach `c*`, read-only `c.rd`, classifier `.only[C]`) by
+  // capability wrappers (reach `c*`, read-only `c.rd`, classifier `.only[C]` and `.except[C]`) by
   // recursing into the underlying capability, and always render root capabilities
   // (`cap`/`any`) and `fresh`.
   private def isCapturedInContext(using Quotes)(ref: reflect.TypeRepr)(using elideThis: reflect.ClassDef): Boolean =
@@ -571,9 +592,9 @@ trait TypesSupport:
     ref match
       case t if t.isCaptureRoot   => true
       case t if t.isFreshCap      => true
-      case ReachCapability(c)     => isCapturedInContext(c)
       case ReadOnlyCapability(c)  => isCapturedInContext(c)
       case OnlyCapability(c, _)   => isCapturedInContext(c)
+      case ExceptCapability(c, _) => isCapturedInContext(c)
       case ThisType(tr)           => !elideThis.symbol.typeRef.isPureClass(elideThis)
       case t                      => !t.isPureClass(elideThis)
 

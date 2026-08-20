@@ -70,3 +70,19 @@ class BaseHtmlTest:
     assertTrue(s"File at $path does not exisits!", Files.exists(path))
     val document = Jsoup.parse(IO.read(path))
     op(DocumentContext(document, path))
+
+  def docHtml(dir: String, cls: String, syntax: String): String =
+    val dest = Files.createTempDirectory("test-doc").toFile
+    try
+      val args = Scaladoc.Args(
+        name = projectName,
+        tastyFiles = tastyFiles(dir),
+        output = dest,
+        projectVersion = Some(projectVersion),
+        defaultSyntax = List(syntax),
+      )
+      Scaladoc.run(args)(using testContext)
+      val path = dest.toPath.resolve(s"tests/$dir/$cls.html")
+      val doc = org.jsoup.Jsoup.parse(dotty.tools.scaladoc.util.IO.read(path))
+      doc.select(".doc").html()
+    finally dotty.tools.scaladoc.util.IO.delete(dest)

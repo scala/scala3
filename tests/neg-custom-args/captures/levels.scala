@@ -16,6 +16,7 @@ def test2(cap1: CC^) =
 
   val _ = Ref[String => String]((x: String) => x)
   val r = Ref((x: String) => x)
+  val _: Ref[String -> String] = r // error
 
   def scope(cap3: CC^) =
     def g(x: String): String = if cap3 == cap3 then "" else "a"

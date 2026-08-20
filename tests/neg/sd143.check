@@ -1,0 +1,5 @@
+-- Error: tests/neg/sd143.scala:5:28 -----------------------------------------------------------------------------------
+5 |  override def m = super[T].m // error // should invoke A.m
+  |                   ^^^^^^^^^^
+  |Super call cannot be emitted: the selected method m is declared in class A, which is not the direct superclass of class C.
+  |An unqualified super call (super.m) would be allowed.

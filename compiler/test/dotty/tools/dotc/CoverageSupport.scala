@@ -2,19 +2,16 @@ package dotty
 package tools
 package dotc
 
-import scala.language.unsafeNulls
-
 import java.nio.file.{Files, Paths}
 import scala.util.Try
-import scala.util.control.NonFatal
 import dotty.tools.dotc.coverage.Serializer
-import vulpix._
+import vulpix.*
 import reporting.TestReporter
 import TestSources.scoverageIgnoreExcludelisted
 
 trait CoverageSupport:
   this: ParallelTesting =>
-  import ParallelTesting._
+  import ParallelTesting.*
 
   trait CoverageVerification extends Test:
     override def onSuccess(testSource: TestSource, reporters: Seq[TestReporter], logger: LoggedRunnable): Unit =
@@ -52,6 +49,14 @@ trait CoverageSupport:
   )(implicit summaryReport: SummaryReporting)
   extends WarnTest(testSources, times, threadLimit, suppressAllOutput) with CoverageVerification
 
+  final class PatmatTestWithCoverage(
+    testSources: List[TestSource],
+    times: Int,
+    threadLimit: Option[Int],
+    suppressAllOutput: Boolean
+  )(implicit summaryReport: SummaryReporting)
+  extends PatmatTest(testSources, times, threadLimit, suppressAllOutput) with CoverageVerification
+
   /** Custom RunTest that verifies coverage files in onSuccess callback */
   final class RunTestWithCoverage(
     testSources: List[TestSource],
@@ -69,6 +74,10 @@ trait CoverageSupport:
   given CoverageTestSupport[WarnTestWithCoverage] with
     def build(using SummaryReporting) = (t, ti, tl, s) => new WarnTestWithCoverage(t, ti, tl, s)
     def fallback(test: CompilationTest)(using SummaryReporting): Unit = test.checkWarnings()
+
+  given CoverageTestSupport[PatmatTestWithCoverage] with
+    def build(using SummaryReporting) = (t, ti, tl, s) => new PatmatTestWithCoverage(t, ti, tl, s)
+    def fallback(test: CompilationTest)(using SummaryReporting): Unit = test.checkPatmat()
 
   given CoverageTestSupport[RunTestWithCoverage] with
     def build(using SummaryReporting) = (t, ti, tl, s) => new RunTestWithCoverage(t, ti, tl, s)
@@ -88,8 +97,7 @@ trait CoverageSupport:
         assert(Files.size(coverageFile) > 0, s"Coverage file is empty: $coverageFile for test ${testSource.title}")
 
         // Verify file can be deserialized (valid format)
-        val sourceRoot = Paths.get(".").toAbsolutePath.toString
-        assert(Try(Serializer.deserialize(coverageFile, sourceRoot)).isSuccess, s"Coverage file has invalid format: $coverageFile for test ${testSource.title}")
+        assert(Try(Serializer.deserialize(coverageFile)).isSuccess, s"Coverage file has invalid format: $coverageFile for test ${testSource.title}")
       finally
         // Cleanup temporary directory even if exceptions are thrown
         try
@@ -97,15 +105,15 @@ trait CoverageSupport:
             .sorted(java.util.Comparator.reverseOrder())
             .forEach(Files.delete)
         catch
-          case NonFatal(_) => // Ignore cleanup errors
+          case _: Exception => // Ignore cleanup errors
       end try
     end if
   end verifyCoverageFile
 
-  def runWithCoverageOrFallback[A <: Test](test: CompilationTest, desc: String)(using CoverageTestSupport[A], SummaryReporting): Unit =
+  def runWithCoverageOrFallback[A <: Test](test: CompilationTest)(using CoverageTestSupport[A], SummaryReporting): Unit =
     val tc = summon[CoverageTestSupport[A]]
     if Properties.testsInstrumentCoverage then
-      test.checkPass(tc.build(test.targets, test.times, test.threadLimit, test.shouldFail || test.shouldSuppressOutput), desc)
+      test.checkPass(tc.build(test.targets, test.times, test.threadLimit, test.shouldFail || test.shouldSuppressOutput))
     else
       tc.fallback(test)
 
@@ -116,6 +124,7 @@ trait CoverageSupport:
   def withCoverage(test: CompilationTest): CompilationTest = {
     if (Properties.testsInstrumentCoverage) {
       val ignoreList = scoverageIgnoreExcludelisted.toSet
+      val ycheckExemptList = Set("i5039.scala", "null.scala")
 
       // Filter out test sources whose filenames or directory names match the excludelist
       val filteredTargets = test.targets.filter { target =>
@@ -149,8 +158,11 @@ trait CoverageSupport:
       val modifiedTargets = filteredTargets.map { target =>
         val coverageDir = Files.createTempDirectory("coverage")
         val sourceRoot = Paths.get(".").toAbsolutePath.toString
-        target.withFlags(
-          "-Ycheck:instrumentCoverage",
+        val targetWithFlags =
+          if target.sourceFiles.exists(file => ycheckExemptList.contains(file.getName)) then target.withoutFlags("-Ycheck:all")
+          else target
+
+        targetWithFlags.withFlags(
           "-coverage-out", coverageDir.toString,
           "-sourceroot", sourceRoot
         )

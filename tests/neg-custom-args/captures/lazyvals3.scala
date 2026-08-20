@@ -21,17 +21,17 @@ def test(c: Cap, console: Console^, io: IO^): Unit =
   lazy val ev1: (Int ->{io,console} Boolean) =
     println(c)
     (n: Int) =>
-      lazy val od1: (Int ->{ev1,console} Boolean) = (n: Int) => // error
+      lazy val od1: (Int ->{ev1,console} Boolean) = (n: Int) =>
         if n == 1 then
           console.println("CONSOLE: 1")
           true
         else
-          ev1(n - 1)
+          ev1(n - 1) // error
       if n == 0 then
         io.readLine() // just to capture io
         true
       else
-        od1(n - 1)
+        od1(n - 1) // error
 
   // But this is ok:
   lazy val ev2: (Int ->{c,io,console} Boolean) =

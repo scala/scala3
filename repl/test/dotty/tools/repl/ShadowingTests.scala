@@ -25,9 +25,11 @@ import vulpix.{TestConfiguration, TestFlags}
  *  and running scripted REPL tests with them on the claspath.
  */
 object ShadowingTests:
-  def classpath = TestConfiguration.basicClasspath + File.pathSeparator + shadowDir
-  def options = ReplTest.commonOptions ++ Array("-classpath", classpath)
+  // The directory on the classpath containing artifacts to be shadowed
+  private var dir: Path = null
+
   def shadowDir = dir.toAbsolutePath.toString
+  def options = ReplTest.createOptions(shadowDir)
 
   def createSubDir(name: String): Path =
     val subdir = dir.resolve(name)
@@ -35,9 +37,6 @@ object ShadowingTests:
     catch case _: java.nio.file.FileAlreadyExistsException =>
       assert(Files.isDirectory(subdir), s"failed to create shadowed subdirectory $subdir")
     subdir
-
-  // The directory on the classpath containing artifacts to be shadowed
-  private var dir: Path = null
 
   @BeforeClass def setupDir: Unit =
     dir = Files.createTempDirectory("repl-shadow")
@@ -93,9 +92,9 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
     script =
       """|scala> new C().c
          |-- [E171] Type Error: ----------------------------------------------------------
-         |1 | new C().c
-         |  | ^^^^^^^
-         |  | missing argument for parameter c of constructor C in class C: (c: Int): C
+         |1 |new C().c
+         |  |^^^^^^^
+         |  |missing argument for parameter c of constructor C in class C: (c: Int): C
          |1 error found
          |
          |scala> new C(13).c
@@ -142,9 +141,9 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
     testScript(name = "<shadow-subdir-util>",
       """|scala> import util.Try
          |-- [E008] Not Found Error: -----------------------------------------------------
-         |1 | import util.Try
-         |  |             ^^^
-         |  |             value Try is not a member of util
+         |1 |import util.Try
+         |  |            ^^^
+         |  |            value Try is not a member of util
          |1 error found
          |
          |scala> object util { class Try { override def toString = "you've gotta try!" }  }

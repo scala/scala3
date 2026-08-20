@@ -1,7 +1,5 @@
 package dotty.tools.dotc.util
 
-import scala.language.unsafeNulls
-
 import scala.annotation.tailrec
 import scala.collection.mutable
 
@@ -296,4 +294,3 @@ object DiffUtil {
     builder ++= alignment
   }
 }
-

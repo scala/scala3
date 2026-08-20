@@ -33,7 +33,7 @@ private[scala] object language:
 
     /** Experimental support for named type arguments.
       *
-      * @see [[https://nightly.scala-lang.org/docs/reference/other-new-features/named-typeargs]]
+      * @see [[https://docs.scala-lang.org/scala3/reference/experimental/named-typeargs.html]]
       */
     @compileTimeOnly("`namedTypeArguments` can only be used at compile time in import statements")
     object namedTypeArguments
@@ -52,11 +52,15 @@ private[scala] object language:
     @compileTimeOnly("`erasedDefinitions` can only be used at compile time in import statements")
     object erasedDefinitions
 
+    @compileTimeOnly("`specializedTraits` can only be used at compile time in import statements")
+    object specializedTraits
+
     /** Experimental support for relaxed CanEqual checks for ADT pattern matching
      *
      * @see [[https://github.com/scala/improvement-proposals/pull/97]]
      */
     @compileTimeOnly("`strictEqualityPatternMatching` can only be used at compile time in import statements")
+    @deprecated("`strictEqualityPatternMatching` is now standard, no language import is needed", since = "3.10")
     object strictEqualityPatternMatching
 
     /** Experimental support for using indentation for arguments
@@ -90,14 +94,14 @@ private[scala] object language:
 
     /** Experimental support for capture checking; implies support for pureFunctions
      *
-     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/cc]]
+     *  @see [[https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/index.html]]
      */
     @compileTimeOnly("`captureChecking` can only be used at compile time in import statements")
     object captureChecking
 
     /** Experimental support for separation checking; requires captureChecking also to be enabled.
      *
-     *  @see [[https://nightly.scala-lang.org/docs/reference/experimental/cc]]
+     *  @see [[https://docs.scala-lang.org/scala3/reference/experimental/capture-checking/index.html]]
      */
     @compileTimeOnly("`separationChecking` can only be used at compile time in import statements")
     object separationChecking

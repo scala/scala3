@@ -3,16 +3,13 @@ package tools
 package dotc
 package printing
 
-import scala.language.unsafeNulls
-
 import vulpix.FileDiff
 import vulpix.TestConfiguration
 import vulpix.ParallelTesting
 import reporting.TestReporter
 
-import java.io._
+import java.io.*
 import java.nio.file.{Path => JPath}
-import java.lang.System.{lineSeparator => EOL}
 import java.nio.charset.StandardCharsets
 
 import interfaces.Diagnostic.INFO
@@ -26,9 +23,9 @@ import java.io.File
 class PrintingTest {
 
   def options(phase: String, flags: List[String]) =
-    val outDir = ParallelTesting.defaultOutputDir + "printing" + File.pathSeparator
-    File(outDir).mkdirs()
-    List(s"-Vprint:$phase", "-color:never", "-nowarn", "-d", outDir, "-classpath", TestConfiguration.basicClasspath) ::: flags
+    val outDir = new File(ParallelTesting.defaultOutputDir, "printing")
+    outDir.mkdirs()
+    List(s"-Vprint:$phase", "-color:never", "-nowarn", "-d", outDir.getAbsolutePath, "-classpath", TestConfiguration.basicClasspath) ::: flags
 
   private def compileFile(path: JPath, phase: String): Boolean = {
     val baseFilePath  = path.toString.stripSuffix(".scala").stripSuffix(".java")
@@ -46,25 +43,21 @@ class PrintingTest {
       case e: Throwable =>
         println(s"Compile $path exception:")
         e.printStackTrace()
+        throw e
     }
 
     val actualLines = byteStream.toString(StandardCharsets.UTF_8.name).linesIterator
-    FileDiff.checkAndDumpOrUpdate(path.toString, actualLines.toIndexedSeq, checkFilePath)
+    FileDiff.checkAndDumpOrUpdate(path.toString, actualLines.toIndexedSeq, checkFilePath, tolerateMissingCheckFile = false)
   }
 
   def testIn(testsDir: String, phase: String) =
     val res = Directory(testsDir).list.toList
-      .filter(_.ext.isScalaOrJava)
+      .filter(_.ext.isSourceExtension)
       .map(f => compileFile(f.jpath, phase))
-
     val failed = res.filter(!_)
-
     val msg = s"Pass: ${res.length - failed.length}, Failed: ${failed.length}"
-
-    assert(failed.length == 0, msg)
-
+    assert(failed.isEmpty, msg)
     println(msg)
-
   end testIn
 
   @Test

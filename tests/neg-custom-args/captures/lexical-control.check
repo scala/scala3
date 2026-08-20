@@ -1,0 +1,36 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lexical-control.scala:18:30 ------------------------------
+18 |      val u = suspend(inner): () =>  // error, was OK (???)
+   |                              ^
+   |                              Found:    () ->{outer} Int
+   |                              Required: () ->'s1 Int
+   |
+   |                              Note that capability `outer` cannot flow into capture set {inner.Fv}.
+   |
+19 |        suspend(outer) {() => y} // ok
+20 |        suspend(outer) {() => y} // ok
+21 |        y
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lexical-control.scala:22:23 ------------------------------
+22 |      suspend(outer) { () => // error
+   |                       ^
+   |                       Found:    () ->{outer} Int
+   |                       Required: () ->'s2 Int
+   |
+   |                       Note that capability `outer` cannot flow into capture set {outer.Fv}.
+   |
+23 |        suspend(outer) {() => y }
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/lexical-control.scala:25:22 ------------------------------
+25 |      suspend(outer): () => // error  (leaks the inner label)
+   |                      ^
+   |                      Found:    () ->{inner} Int
+   |                      Required: () ->'s3 Int
+   |
+   |                      Note that capability `inner` cannot flow into capture set {outer.Fv}.
+   |
+26 |        println(inner)
+27 |        x + y + z
+   |
+   | longer explanation available when compiling with `-explain`

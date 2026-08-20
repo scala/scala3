@@ -1,0 +1,4 @@
+-- [E030] Match case Unreachable Warning: tests/warn/i20122.scala:10:7 -------------------------------------------------
+10 |  case CC_B(CC_E(CC_C(_))) => 0 // warn: unreachable
+   |       ^^^^^^^^^^^^^^^^^^^
+   |       Unreachable case

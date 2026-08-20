@@ -11,7 +11,7 @@ import dotty.tools.dotc.interfaces.Diagnostic.INFO
   * This class implements a Reporter that displays messages on a text console
   */
 class ConsoleReporter(
-  reader: BufferedReader = Console.in,
+  reader: BufferedReader | Null = Console.in,
   writer: PrintWriter = new PrintWriter(Console.err, true),
   echoer: PrintWriter = new PrintWriter(Console.out, true)
 ) extends ConsoleReporter.AbstractConsoleReporter {

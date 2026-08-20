@@ -6,7 +6,7 @@ import org.junit.Assert.*
 
 class HashSetTest {
   // based on run/hashset.scala partest
-  @Ignore @Test
+  @Test
   def testPar(): Unit = {
     val h1 = new HashSet[Int]
     for (i <- 0 until 20) h1 += i
@@ -15,16 +15,16 @@ class HashSetTest {
     assertEquals((0 until 20).toList.sorted, h1.toList.sorted)
 
     val h2 = new HashSet[String]
-    //h2 += null
+    h2 += null.asInstanceOf[String]
     for (i <- 0 until 20) h2 +=  "" + i
-    //assertTrue(h2 contains null)
+    assertTrue(h2.contains(null.asInstanceOf[String]))
     for (i <- 0 until 20) assertTrue(h2.contains("" + i))
     for (i <- 20 until 40) assertFalse(h2.contains("" + i))
     assertEquals((0 until 20).map("" + _).toList.sorted.mkString(",") + ",null", h2.toList.map("" + _).sorted.mkString(","))
 
-    //h2 -= null
+    h2 -= null.asInstanceOf[String]
     h2 -= "" + 0
-    //assertFalse(h2 contains null)
+    assertFalse(h2.contains(null.asInstanceOf[String]))
     assertEquals((1 until 20).map("" + _).toList.sorted.mkString(","), h2.toList.map("" + _).sorted.mkString(","))
   }
 

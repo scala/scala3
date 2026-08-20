@@ -7,14 +7,14 @@ import org.junit.experimental.categories.Category
 
 import scala.concurrent.duration._
 import reporting.TestReporter
-import vulpix._
+import vulpix.*, Status.Failure
 import org.junit.Ignore
 
 @Category(Array(classOf[ScalaJSCompilationTests]))
 class ScalaJSCompilationTests {
   import ParallelTesting._
   import TestConfiguration._
-  import ScalaJSCompilationTests._
+  import ScalaJSCompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
   // Negative tests ------------------------------------------------------------
@@ -35,25 +35,12 @@ class ScalaJSCompilationTests {
 }
 
 object ScalaJSCompilationTests extends ParallelTesting {
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-
-  // Test suite configuration --------------------------------------------------
-  def maxDuration = 60.seconds
-  def numberOfWorkers = 5
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
-
-  @AfterClass def tearDown(): Unit =
-    cleanup()
-    summaryReport.echoSummary()
 
   // Run tests -----------------------------------------------------------------
 
   override protected def shouldSkipTestSource(testSource: TestSource): Boolean =
-    testSource.allToolArgs.get(ToolName.ScalaJS).exists(_.contains("--skip"))
+    testSource.sourceFiles.exists(_.getName.endsWith(".java"))
+    || testSource.allToolArgs.get(ToolName.ScalaJS).exists(_.contains("--skip"))
     || super.shouldSkipTestSource(testSource)
 
   override protected def testPlatform: TestPlatform = TestPlatform.ScalaJS

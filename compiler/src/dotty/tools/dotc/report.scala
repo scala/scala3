@@ -55,6 +55,9 @@ object report:
     else issueWarning(new FeatureWarning(msg, pos.sourcePos))
   end featureWarning
 
+  def optimizerWarning(msg: String, site: String, pos: SrcPos)(using Context): Unit =
+    issueWarning(new OptimizerWarning(em"$msg", site, addInlineds(pos)))
+  
   def warning(msg: Message, pos: SrcPos, origin: String)(using Context): Unit =
     issueWarning(LintWarning(msg, addInlineds(pos), origin))
 
@@ -78,6 +81,10 @@ object report:
   def error(msg: => String)(using Context): Unit =
     error(msg, NoSourcePosition)
 
+  private[dotc] def loadingError(failure: LoadingFailure)(using Context): Unit =
+    ctx.reporter.report(new LoadingError(failure))
+    if ctx.settings.YdebugError.value then Thread.dumpStack()
+
   def error(ex: TypeError, pos: SrcPos)(using Context): Unit =
     val fullPos = addInlineds(pos)
     ctx.reporter.report(new StickyError(ex.toMessage, fullPos))
@@ -100,12 +107,12 @@ object report:
           |${stackTrace}"""
     ctx.reporter.report(Error(fullMsg, NoSourcePosition))
 
-  def errorOrMigrationWarning(msg: Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
+  def errorOrMigrationWarning(msg: => Message, pos: SrcPos, migrationVersion: MigrationVersion)(using Context): Unit =
     if sourceVersion != SourceVersion.`2.13` then
       // ignore errors or warningsfor Scala 2 stdlib sources
       if sourceVersion.isAtLeast(migrationVersion.errorFrom) then
         if sourceVersion != migrationVersion.errorFrom.prevMigrating then error(msg, pos)
-        else if ctx.settings.rewrite.value.isEmpty then migrationWarning(msg, pos)
+        else if !ctx.settings.rewrite.value then migrationWarning(msg, pos)
       else if sourceVersion.isAtLeast(migrationVersion.warnFrom) then warning(msg, pos)
 
   def restrictionError(msg: Message, pos: SrcPos = NoSourcePosition)(using Context): Unit =
@@ -153,7 +160,7 @@ object report:
   def enrichErrorMessage(errorMessage: String)(using Context): String =
     if ctx.settings.XnoEnrichErrorMessages.value then errorMessage
     else try enrichErrorMessage1(errorMessage)
-    catch case _: Throwable => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
+    catch case _: Exception => errorMessage // don't introduce new errors trying to report errors, so swallow exceptions
 
   private def enrichErrorMessage1(errorMessage: String)(using Context): String = {
     import untpd.*, config.Settings.*

@@ -9,7 +9,6 @@ import scala.meta.internal.pc.LabelPart
 import scala.meta.internal.pc.LabelPart.*
 import scala.meta.pc.InlayHintsParams
 import scala.meta.pc.SymbolSearch
-import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Contexts.Context
@@ -30,13 +29,12 @@ import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j.InlayHint
 import org.eclipse.lsp4j.InlayHintKind
-import org.eclipse.lsp4j as l
 
 class PcInlayHintsProvider(
     driver: InteractiveDriver,
     params: InlayHintsParams,
     symbolSearch: SymbolSearch
-)(using ReportContext):
+):
 
   val uri: java.net.URI = params.uri()
   val filePath: java.nio.file.Path = Paths.get(uri)
@@ -65,6 +63,16 @@ class PcInlayHintsProvider(
     pos.adjust(text)._1
 
   def collectDecorations(
+      inlayHints: InlayHints,
+      tree: Tree,
+      parent: Option[Tree]
+  ): InlayHints =
+    // Skip trees positioned outside the analyzed file (inlined expansions from
+    // other sources). See [[dotty.tools.pc.tests.inlayHints.InlayHintsInlinedDependencySuite]].
+    if tree.source.path != source.path then inlayHints
+    else collectDecorationsImpl(inlayHints, tree, parent)
+
+  private def collectDecorationsImpl(
       inlayHints: InlayHints,
       tree: Tree,
       parent: Option[Tree]
@@ -135,7 +143,7 @@ class PcInlayHintsProvider(
           InlayHintKind.Type,
           InlayHintOrigin.TypeParameters
         )
-      case InferredType(tpe, pos, defTree)
+      case InferredType(tpe, pos, _)
           if !isErrorTpe(tpe) =>
         val adjustedPos = adjustPos(pos).endPos
         withClosingLabels
@@ -190,10 +198,10 @@ class PcInlayHintsProvider(
       tpe: Type,
       pos: SourcePosition
   ): List[LabelPart] =
-    val tpdPath =
-      Interactive.pathTo(unit.tpdTree, pos.span)
-
-    val indexedCtx = IndexedContext(pos)(using Interactive.contextOfPath(tpdPath))
+    val tpdPath = Interactive.pathTo(unit.tpdTree, pos.span)
+    val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
+    val indexedCtx = IndexedContext(pos, tpdPath, newctx)
+    import indexedCtx.ctx
     val printer = ShortenedTypePrinter(
       symbolSearch
     )(using indexedCtx)
@@ -215,13 +223,11 @@ class PcInlayHintsProvider(
     val usedRenames = printer.getUsedRenames
     val parts = partsFromType(dealiased, usedRenames)
     InlayHints.makeLabelParts(parts, tpeStr)
-  end toLabelParts
 
-  private val definitions = IndexedContext(pos)(using ctx).ctx.definitions
   private def syntheticTupleApply(tree: Tree): Boolean =
     tree match
       case sel: Select =>
-        if definitions.isTupleNType(sel.symbol.info.finalResultType) then
+        if ctx.definitions.isTupleNType(sel.symbol.info.finalResultType) then
           sel match
             case Select(tupleClass: Ident, _)
                 if !tupleClass.span.isZeroExtent &&
@@ -372,7 +378,7 @@ object ValueOf:
   def unapply(tree: Tree)(using params: InlayHintsParams, ctx: Context) =
     if params.implicitParameters() then
       tree match
-        case Apply(ta @ TypeApply(fun, _), _)
+        case Apply(TypeApply(fun, _), _)
             if fun.span.isSynthetic && isValueOf(fun) =>
           Some(
             "new " + tpnme.valueOf.decoded.capitalize + "(...)",
@@ -568,9 +574,11 @@ object XRayModeHint:
 
   private def isEndOfLine(pos: SourcePosition): Boolean =
     if pos.exists then
-      val source = pos.source
+      // Bound on `content().length`, not `source.length`: a TASTy-only source has
+      // empty `content()` but a non-zero `length`. See InlayHintsInlinedDependencySuite.
+      val content = pos.source.content()
       val end = pos.end
-      end >= source.length || source(end) == '\n' || source(end) == '\r'
+      end >= content.length || content(end) == '\n' || content(end) == '\r'
     else false
 
 end XRayModeHint
@@ -598,5 +606,8 @@ object ClosingLabel:
 
   private def endsWithBrace(tree: Tree)(using Context): Boolean =
     val pos = tree.sourcePos
-    pos.exists && !pos.span.isZeroExtent && pos.source(pos.end - 1) == '}'
+    // Bound on `content().length` before indexing: a TASTy-only source has empty
+    // `content()` but a non-zero span. See InlayHintsInlinedDependencySuite.
+    pos.exists && !pos.span.isZeroExtent &&
+    pos.end - 1 < pos.source.content().length && pos.source(pos.end - 1) == '}'
 end ClosingLabel

@@ -1,10 +1,10 @@
-import caps.{SharedCapability, Control, Unscoped}
+import caps.*
 
 class Try[+T]
 case class Ok[T](x: T) extends Try[T]
 case class Fail(ex: Exception) extends Try[Nothing]
 
-trait Matrix extends Unscoped:
+trait Matrix extends Stateful, Unscoped:
   def get(): Unit
 
 trait Label extends Control:

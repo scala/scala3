@@ -8,6 +8,7 @@ import dotty.tools.scaladoc.test.BuildInfo
 import java.nio.file.Path;
 import org.jsoup.Jsoup
 import util.IO
+import org.junit.Test
 
 private enum SignatureRes:
   case Expected(name: String, signature: String)
@@ -22,7 +23,8 @@ abstract class SignatureTest(
   filterFunc: (Path) => Boolean = _ => true
 ) extends ScaladocTest(testName):
 
-  def runTest = { org.junit.Assume.assumeTrue("Running on Windows", java.io.File.separatorChar == '/'); afterRendering {
+  @Test
+  def runTest(): Unit = { org.junit.Assume.assumeTrue("Running on Windows", java.io.File.separatorChar == '/'); afterRendering {
     val sources = sourceFiles match
       case Nil => testName :: Nil
       case s => s
@@ -92,7 +94,7 @@ abstract class SignatureTest(
     yield name
 
   private def signaturesFromSources(source: Source, kinds: Seq[String]): Seq[SignatureRes] =
-    source.getLines.map(_.trim)
+    source.getLines().map(_.trim)
       .filterNot(_.isEmpty)
       .filterNot(l => l.startWithAnyOfThese("=",":","{","}", "//") && !l.startsWith("//expected:"))
       .toSeq
@@ -129,7 +131,7 @@ abstract class SignatureTest(
       }
 
     IO.foreachFileIn(output, processFile)
-    signatures.result
+    signatures.result()
 
 object SignatureTest {
   val classlikeKinds = Seq("class",  "object", "trait", "enum") // TODO add docs for packages

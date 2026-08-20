@@ -154,6 +154,7 @@ object Console extends AnsiColor {
    *  withOut(Console.err) { println("This goes to default _error_") }
    *  ```
    *
+   *  @tparam T the return type of `thunk`
    *  @param out the new output stream.
    *  @param thunk the code to execute with
    *               the new output stream active
@@ -167,6 +168,7 @@ object Console extends AnsiColor {
   /** Sets the default output stream for the duration
    *  of execution of one thunk.
    *
+   *  @tparam T the return type of `thunk`
    *  @param out the new output stream.
    *  @param thunk the code to execute with
    *               the new output stream active
@@ -183,6 +185,7 @@ object Console extends AnsiColor {
    *  withErr(Console.out) { err.println("This goes to default _out_") }
    *  ```
    *
+   *  @tparam T the return type of `thunk`
    *  @param err the new error stream.
    *  @param thunk the code to execute with
    *               the new error stream active
@@ -196,6 +199,7 @@ object Console extends AnsiColor {
   /** Sets the default error stream for the duration
    *  of execution of one thunk.
    *
+   *  @tparam T the return type of `thunk`
    *  @param err the new error stream.
    *  @param thunk the code to execute with
    *               the new error stream active
@@ -217,9 +221,10 @@ object Console extends AnsiColor {
    *  }
    *  ```
    *
+   *  @tparam T the return type of `thunk`
+   *  @param reader the new input reader to use as the default input source
    *  @param thunk the code to execute with
    *               the new input stream active
-   *
    *  @return the results of `thunk`
    *  @see `withIn[T](in:InputStream)(thunk: => T)`
    *  @group io-redefinition
@@ -230,6 +235,7 @@ object Console extends AnsiColor {
   /** Sets the default input stream for the duration
    *  of execution of one thunk.
    *
+   *  @tparam T the return type of `thunk`
    *  @param in the new input stream.
    *  @param thunk the code to execute with
    *               the new input stream active

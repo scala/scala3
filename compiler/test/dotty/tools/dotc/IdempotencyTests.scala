@@ -2,23 +2,19 @@ package dotty
 package tools
 package dotc
 
-import scala.language.unsafeNulls
-
 import java.io.{File => JFile}
-import java.nio.file.{Files, Path, Paths}
 
-import org.junit.Assume.assumeTrue
 import org.junit.{AfterClass, Test}
 import org.junit.experimental.categories.Category
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import reporting.TestReporter
-import vulpix._
+import vulpix.*
 
 
 class IdempotencyTests {
-  import TestConfiguration._
-  import IdempotencyTests._
+  import TestConfiguration.*
+  import IdempotencyTests.{*, given}
   import CompilationTest.aggregateTests
 
   // ignore flaky tests
@@ -68,20 +64,4 @@ class IdempotencyTests {
 
 }
 
-object IdempotencyTests extends ParallelTesting {
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 30.seconds
-  def numberOfWorkers = 5
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
-
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def tearDown(): Unit = {
-    super.cleanup()
-    summaryReport.echoSummary()
-  }
-}
+object IdempotencyTests extends ParallelTesting

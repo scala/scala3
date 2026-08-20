@@ -1,0 +1,12 @@
+-- [E007] Type Mismatch Error: tests/neg/transparent-inline-param-note.scala:7:26 --------------------------------------
+7 |val d: Succ[Zero.type] = s(Zero) // error
+  |                         ^^^^^^^
+  |                         Found:    Succ[Nat]
+  |                         Required: Succ[Zero.type]
+  |
+  |                         Note: `method s` is transparent inline, but its precise type may not be available here.
+  |                         This can happen when:
+  |                         - It is used inside another inline body.
+  |                         - Its result type depends on another inline expansion or on an inline parameter.
+  |
+  | longer explanation available when compiling with `-explain`

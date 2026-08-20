@@ -1,0 +1,105 @@
+# Coverage data, format version: 3.0
+# Statement data:
+# - id
+# - source path
+# - package name
+# - class name
+# - class type (Class, Object or Trait)
+# - full class name
+# - method name
+# - start offset
+# - end offset
+# - line number
+# - symbol name
+# - tree name
+# - is branch
+# - invocations count
+# - is ignored
+# - description (can be multi-line)
+# '' sign
+# ------------------------------------------
+0
+SingletonLiftCoverage.scala
+covtest
+Ops
+Object
+covtest.Ops
+<init>
+331
+332
+10
+<none>
+Literal
+false
+0
+false
+1
+
+1
+SingletonLiftCoverage.scala
+covtest
+Ops
+Object
+covtest.Ops
+<init>
+354
+355
+11
+<none>
+Literal
+false
+0
+false
+8
+
+2
+SingletonLiftCoverage.scala
+covtest
+SingletonLiftMinimal
+Object
+covtest.SingletonLiftMinimal
+<init>
+501
+529
+15
+|
+Apply
+false
+0
+false
+Ops.PUBLIC | (Ops.STATIC + 0
+
+3
+SingletonLiftCoverage.scala
+covtest
+SingletonLiftMinimal
+Object
+covtest.SingletonLiftMinimal
+<init>
+515
+529
+15
++
+Apply
+false
+0
+false
+Ops.STATIC + 0
+
+4
+SingletonLiftCoverage.scala
+covtest
+SingletonLiftJavaReflect
+Object
+covtest.SingletonLiftJavaReflect
+<init>
+596
+665
+19
+|
+Apply
+false
+0
+false
+java.lang.reflect.Modifier.PUBLIC | java.lang.reflect.Modifier.STATIC
+

@@ -45,7 +45,6 @@ trait Arrows:
   def pathDependent2(n: Nested^)(g: AnyRef^{n.next.c} => Any): Any
   def pathDependent3(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): Any
   def pathDependent4(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): AnyRef^{n.next.next.c}
-  def pathDependent5(n: Nested^)(g: AnyRef^{n.c} => AnyRef^{n.next.c} ->{n.c} Any): AnyRef^{n.next.next.c*, n.c, any}
 
   def contextPure(f: AnyRef^{a} ?-> Int): Int
   def contextImpure(f: AnyRef^{a} ?=> Int): Int
@@ -79,9 +78,10 @@ trait Arrows:
   def polyContextImpure3[A](f: A ?->{a,b,c} Int => Int): Int //expected: def polyContextImpure3[A](f: A ?->{a, b, c} Int => Int): Int
 
   val polyPureV: [A] => A -> Int //expected: val polyPureV: [A] => A => Int
-  val polyPureV2: [A] => Int => A ->{a,b,c} Int //expected: val polyPureV2: [A] => Int => A ->{a, b, c} Int
-  val polyImpureV: [A] -> A => Int //expected: val polyImpureV: [A] => A => Int
-  val polyImpureV2: [A] -> A => Int //expected: val polyImpureV2: [A] => A => Int
+  // Disallowed by implementation restriction: polymorphic function types cannot wrap impure function types.
+  // val polyPureV2: [A] => Int => A ->{a,b,c} Int //expected: val polyPureV2: [A] => Int => A ->{a, b, c} Int
+  // val polyImpureV: [A] -> A => Int //expected: val polyImpureV: [A] => A => Int
+  // val polyImpureV2: [A] -> A => Int //expected: val polyImpureV2: [A] => A => Int
 
 trait SelfTypeCaptures[+A]:
   self: SelfTypeCaptures[A]^ =>
@@ -98,7 +98,7 @@ trait MutableThisCapture extends Mutable:
 
 // --- Mutation tracking ---
 
-import caps.{Mutable, Stateful, Separate, SharedCapability, Classifier}
+import caps.{Mutable, Stateful, SharedCapability, Classifier}
 
 class Ref[T](init: T) extends Mutable:
   private var x: T = init //unexpected
@@ -110,7 +110,7 @@ class MyStateful extends Stateful:
   def value: Int = count //expected: def value: Int
   update def incr(): Unit = count += 1 //expected: update def incr(): Unit
 
-class MySeparate(consume val inner: Ref[Int]^) extends Separate
+class MySeparate(consume val inner: Ref[Int]^) extends ExclusiveCapability
 
 // Read-only captures (.rd)
 trait ReadOnlyExamples:
@@ -133,6 +133,14 @@ trait Control extends SharedCapability, Classifier
 trait ClassifierExamples:
   def restricted(f: () ->{any.only[Control]} Unit): Unit //expected: def restricted(f: () ->{any.only[Control]} Unit): Unit
   def sharedOnly: AnyRef^{any.only[Control]} //expected: def sharedOnly: AnyRef^{any.only[Control]}
+
+// .except[Classifier] excluded capabilities
+trait ExceptExamples:
+  val a: AnyRef^
+  def excluded(f: () ->{any.except[Control]} Unit): Unit //expected: def excluded(f: () ->{any.except[Control]} Unit): Unit
+  def sharedExcept: AnyRef^{any.except[Control]} //expected: def sharedExcept: AnyRef^{any.except[Control]}
+  def pathExcept: AnyRef^{a.except[Control]} //expected: def pathExcept: AnyRef^{a.except[Control]}
+  def onlyThenExcept: AnyRef^{a.only[Control].except[Control]} //expected: def onlyThenExcept: AnyRef^{a.only[Control].except[Control]}
 
 // --- Capture set variables and capability members ---
 

@@ -21,14 +21,15 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/i21401.scala:17:72 ---------------------------------------
 17 |  val x: Boxed[IO^] = leaked[Boxed[IO^], Boxed[IO^] -> Boxed[IO^]](x => x) // error
    |                                                                        ^
-   |                                        Found:    Boxed[IO^{x*}]
-   |                                        Required: Boxed[IO^{any}]
+   |Found:    (x : Boxed[IO^{any}])
+   |Required: Boxed[IO^{any²}]
    |
-   |                                        Note that capability `x*` cannot flow into capture set {any}
-   |                                        because x* in an enclosing function is not visible from any in value x².
+   |Note that capability `any` cannot flow into capture set {any²}
+   |because any in an enclosing function is not visible from any² in value x².
    |
-   |                                        where:    any is a root capability created in value x²
-   |                                                  x   is a parameter in an anonymous function in method test2
-   |                                                  x²  is a value in method test2
+   |where:    any  is a root capability created in anonymous function of type (x³: Boxed[IO^]): Boxed[IO^] of parameter parameter x of method $anonfun
+   |          any² is a root capability created in value x²
+   |          x    is a parameter in an anonymous function in method test2
+   |          x²   is a value in method test2
    |
    | longer explanation available when compiling with `-explain`

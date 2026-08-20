@@ -26,6 +26,9 @@ object StdNames {
     inline val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks
     inline val ANON_CLASS               = "$anon"
     inline val ANON_FUN                 = "$anonfun"
+    inline val SPECIALIZED_TRAIT_SUFFIX = "$$sp"
+    inline val SPECIALIZED_TRAIT_IMPL_SUFFIX = "$impl"
+    inline val SPECIALIZED_TRAIT_TYPE_SEP = "$"
 
     inline val REPL_SESSION_LINE  = "rs$line$"
     inline val REPL_ASSIGN_SUFFIX = "$assign"
@@ -135,6 +138,7 @@ object StdNames {
     val OVERLOADED: N                 = "<overloaded>"
     val PACKAGE: N                    = "package"
     val ROOT: N                       = "<root>"
+    val SPEC: N                       = "$spec"
     val SPECIALIZED_SUFFIX: N         = "$sp"
     val SUPER_PREFIX: N               = "super$"
     val WHILE_PREFIX: N               = "while$"
@@ -280,7 +284,7 @@ object StdNames {
     final val SignatureATTR: N                    = "Signature"
     final val SourceFileATTR: N                   = "SourceFile"
     final val SyntheticATTR: N                    = "Synthetic"
-
+    final val PermittedSubclassesATTR: N          = "PermittedSubclasses"
 
 // ----- Term names -----------------------------------------
 
@@ -388,7 +392,7 @@ object StdNames {
     val RootClass: N            = "RootClass"
     val Select: N               = "Select"
     val Self: N                 = "Self"
-    val Shape: N                = "Shape"
+    val Snippet: N              = "Snippet"
     val StringContext: N        = "StringContext"
     val This: N                 = "This"
     val ThisType: N             = "ThisType"
@@ -405,6 +409,7 @@ object StdNames {
     val annotation: N           = "annotation"
     val any: N                  = "any"
     val any2stringadd: N        = "any2stringadd"
+    val anyClass: N             = "anyClass"
     val anyHash: N              = "anyHash"
     val anyValClass: N          = "anyValClass"
     val append: N               = "append"
@@ -488,6 +493,8 @@ object StdNames {
     val eval: N                 = "eval"
     val eqlAny: N               = "eqlAny"
     val ex: N                   = "ex"
+    val except: N               = "except"
+    val exceptCapability: N     = "exceptCapability"
     val extension: N            = "extension"
     val experimental: N         = "experimental"
     val f: N                    = "f"
@@ -520,6 +527,7 @@ object StdNames {
     val implicitConversions: N  = "implicitConversions"
     val implicitly: N           = "implicitly"
     val in: N                   = "in"
+    val initially: N            = "initially"
     val inline: N               = "inline"
     val infix: N                = "infix"
     val info: N                 = "info"
@@ -593,7 +601,6 @@ object StdNames {
     val productPrefix: N        = "productPrefix"
     val quotes : N              = "quotes"
     val raw_ : N                = "raw"
-    val reachCapability: N      = "reachCapability"
     val readOnlyCapability: N   = "readOnlyCapability"
     val rd: N                   = "rd"
     val refl: N                 = "refl"
@@ -608,6 +615,7 @@ object StdNames {
     val run: N                  = "run"
     val runOrElse: N            = "runOrElse"
     val runtime: N              = "runtime"
+    val runtimeChecked: N       = "runtimeChecked"
     val runtimeClass: N         = "runtimeClass"
     val runtimeMirror: N        = "runtimeMirror"
     val s: N                    = "s"
@@ -661,7 +669,6 @@ object StdNames {
     val update: N               = "update"
     val updateDynamic: N        = "updateDynamic"
     val uses: N                 = "uses"
-    val uses_init: N            = "uses_init"
     val using: N                = "using"
     val value: N                = "value"
     val valueOf : N             = "valueOf"
@@ -714,7 +721,7 @@ object StdNames {
       final val MINUS_USCORE: N = "-_"
       final val PLUS_USCORE : N = "+_"
 
-      final val isUnary: Set[Name] = Set(MINUS, PLUS, TILDE, BANG)
+      final val isUnary: Set[Name | Null] = Set(MINUS, PLUS, TILDE, BANG)
     }
 
     object specializedTypeNames {

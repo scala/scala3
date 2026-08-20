@@ -1,0 +1,22 @@
+
+package scala.collection.convert
+
+import org.scalacheck.Properties
+import org.scalacheck.Prop.*
+
+import scala.collection.immutable
+
+
+object WrapperProperties extends Properties("Wrappers") {
+
+  property("JSetWrapper#filterInPlace(p)") = forAll { (hs: immutable.HashSet[Int], p: Int => Boolean) =>
+    val expected: collection.Set[Int] = hs.filter(p)
+    val actual: collection.Set[Int] = {
+      val jset = new java.util.HashSet[Int]()
+      hs.foreach(jset.add)
+      new JavaCollectionWrappers.JSetWrapper(jset)
+    }.filterInPlace(p)
+    actual ?= expected
+  }
+
+}

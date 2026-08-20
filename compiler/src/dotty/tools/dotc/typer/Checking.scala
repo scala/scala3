@@ -142,7 +142,7 @@ object Checking {
   }
 
   /** Check all applied type trees in inferred type `tpt` for well-formedness */
-  def checkAppliedTypesIn(tpt: TypeTree)(using Context): Unit =
+  def checkAppliedTypesIn(tpt: TypeTree)(using Context): Unit = ctx.handleRecursive("checking applied types in", tpt, tpt):
     val checker = new TypeTraverser:
       def traverse(tp: Type) =
         tp.normalized match
@@ -361,7 +361,11 @@ object Checking {
 
           if isInteresting(pre) then
             CyclicReference.trace(i"explore ${tp.symbol} for cyclic references"):
-              val pre1 = atVariance(variance max 0)(this(pre, false, false))
+              val nestedCycleOkInPrefix =
+                // generated symbols like primary constructor may not have JavaDefined,
+                // even when the corresponding file is java - also check the owner
+                if sym.is(JavaDefined) || sym.maybeOwner.is(JavaDefined) then nestedCycleOK else false
+              val pre1 = atVariance(variance max 0)(this(pre, false, nestedCycleOkInPrefix))
               if locked.contains(tp)
                   || tp.symbol.infoOrCompleter.isInstanceOf[NoCompleter]
                   && tp.symbol == sym
@@ -491,7 +495,6 @@ object Checking {
 
   /** Check type members inherited from different `parents` of `joint` type for cycles,
    *  unless a type with the same name already appears in `decls`.
-   *  @return    true iff no cycles were detected
    */
   def checkNonCyclicInherited(joint: Type, parents: List[Type], decls: Scope, pos: SrcPos)(using Context): Unit = {
     // If we don't have more than one parent, then there's nothing to check
@@ -509,17 +512,15 @@ object Checking {
           val mbr = joint.member(name)
           mbr.info match
             case bounds: TypeBounds =>
-              !checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
+              checkNonCyclic(mbr.symbol, bounds, reportErrors = true).isError
             case _ =>
-              true
-        catch case _: RecursionOverflow | _: CyclicReference =>
+        catch case _: CyclicReference =>
           report.error(em"cyclic reference involving type $name", pos)
-          false
     }
   }
 
   def checkScala2Implicit(sym: Symbol)(using Context): Unit =
-    def migration(msg: Message) =
+    def migration(msg: => Message) =
       report.errorOrMigrationWarning(msg, sym.srcPos, MigrationVersion.Scala2Implicits)
     def info = sym match
       case sym: ClassSymbol => sym.primaryConstructor.info
@@ -593,8 +594,8 @@ object Checking {
   end checkScala2Implicit
 
   def checkErasedOK(sym: Symbol)(using Context): Unit =
-    if sym.is(Method, butNot = Macro)
-        || sym.isOneOf(Mutable | Lazy)
+    if sym.is(Method, butNot = Macro | Accessor)
+        || sym.isOneOf(Lazy)
         || sym.isType
     then report.error(IllegalErasedDef(sym), sym.srcPos)
 
@@ -689,7 +690,9 @@ object Checking {
     if (sym.isConstructor && !sym.isPrimaryConstructor && sym.owner.is(Trait, butNot = JavaDefined))
       val addendum = if ctx.settings.Ydebug.value then s" ${sym.owner.flagsString}" else ""
       fail(em"Traits cannot have secondary constructors$addendum")
-    checkApplicable(Inline, sym.isTerm && !sym.is(Module) && !sym.isMutableVarOrAccessor)
+    if (!Feature.inlineTraitsEnabledSomewhere && sym.isAllOf(Inline | Trait))
+      fail(em"Inline traits are experimental and must be enabled")
+    checkApplicable(Inline, sym.isTerm && !sym.is(Module) && !sym.isMutableVarOrAccessor || sym.is(Trait))
     checkApplicable(Lazy, !sym.isOneOf(Method | Mutable))
     if (sym.isType && !sym.isOneOf(Deferred | JavaDefined))
       for (cls <- sym.allOverriddenSymbols.filter(_.isClass)) {
@@ -1537,6 +1540,8 @@ trait Checking {
       else tree
     else if !cls.derivesFrom(defn.AnnotationClass) then
       errorTree(tree, em"$cls is not a valid Scala annotation: it does not extend `scala.annotation.Annotation`")
+    else if cls == defn.AssumeSafeAnnot && Feature.safeEnabled then
+      errorTree(tree, em"@assumeSafe cannot be used in safe mode")
     else tree
 
   /** Check arguments of compiler-defined annotations */
@@ -1561,6 +1566,8 @@ trait Checking {
    *  2. Check that parameterised `enum` cases do not extend java.lang.Enum.
    *  3. Check that only a static `enum` base class can extend java.lang.Enum.
    *  4. Check that user does not implement an `ordinal` method in the body of an enum class.
+   *  5. Check that an enum extending java.lang.Enum has no type parameters and
+   *     uses itself as the type argument to java.lang.Enum.
    */
   def checkEnum(cdef: untpd.TypeDef, cls: Symbol, firstParent: Symbol)(using Context): Unit = {
     def existingDef(sym: Symbol, clazz: ClassSymbol)(using Context): Symbol = // adapted from SyntheticMembers
@@ -1573,6 +1580,18 @@ trait Checking {
           report.error(em"the ordinal method of enum $cls can not be defined by the user", decl.srcPos)
         else
           report.error(em"enum $cls can not inherit the concrete ordinal method of ${decl.owner}", cdef.srcPos)
+    def checkJavaEnumTypeArg(using Context) =
+      val javaEnumBase = cls.thisType.baseType(defn.JavaEnumClass)
+      if javaEnumBase.exists then
+        javaEnumBase.argInfos match
+          case typeArg :: Nil =>
+            if cls.typeParams.nonEmpty then
+              report.error(em"An enum extending java.lang.Enum cannot have type parameters", cdef.srcPos)
+            if typeArg.classSymbol ne cls then
+              report.error(
+                em"enum $cls extends java.lang.Enum[$typeArg], but the type argument must be the enum class itself",
+                cdef.srcPos)
+          case _ =>
     def isEnumAnonCls =
       cls.isAnonymousClass
       && cls.owner.isTerm
@@ -1581,10 +1600,12 @@ trait Checking {
     val isJavaEnum = cls.derivesFrom(defn.JavaEnumClass)
     if isJavaEnum && cdef.mods.isEnumClass && !cls.isStatic then
       report.error(em"An enum extending java.lang.Enum must be declared in a static scope", cdef.srcPos)
+    if isJavaEnum && cdef.mods.isEnumClass then
+      checkJavaEnumTypeArg
     if !isEnumAnonCls then
       if cdef.mods.isEnumCase then
         if isJavaEnum then
-          report.error(em"paramerized case is not allowed in an enum that extends java.lang.Enum", cdef.srcPos)
+          report.error(em"parameterized case is not allowed in an enum that extends java.lang.Enum", cdef.srcPos)
       else if cls.is(Case) || firstParent.is(Enum) then
         // Since enums are classes and Namer checks that classes don't extend multiple classes, we only check the class
         // parent.

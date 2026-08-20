@@ -55,6 +55,9 @@ package object reflect {
   /** Makes a java reflection object accessible, if it is not already
    *  and it is possible to do so. If a SecurityException is thrown in the
    *  attempt, it is caught and discarded.
+   *
+   *  @tparam T the concrete subtype of `java.lang.reflect.AccessibleObject` to make accessible
+   *  @param m the reflection object to make accessible
    */
   def ensureAccessible[T <: jAccessibleObject](m: T): T = {
     // This calls `setAccessible` unnecessarily, because `isAccessible` is only `true` if `setAccessible(true)`

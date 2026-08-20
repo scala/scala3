@@ -44,6 +44,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     extends MemberDef {
     type ThisTree[+T <: Untyped] <: Trees.NameTree[T] & Trees.MemberDef[T] & ModuleDef
     def withName(name: Name)(using Context): ModuleDef = cpy.ModuleDef(this)(name.toTermName, impl)
+    def isBackquoted: Boolean = hasAttachment(Backquoted)
   }
 
   /** An untyped template with a derives clause. Derived parents are added to the end
@@ -77,12 +78,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   }
 
   /** A function type or closure with `implicit` or `given` modifiers and information on which parameters are `erased` */
-  class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers, val erasedParams: List[Boolean])(implicit @constructorOnly src: SourceFile)
-    extends Function(args, body) {
-      assert(args.length == erasedParams.length)
-
-      def hasErasedParams = erasedParams.contains(true)
-    }
+  class FunctionWithMods(args: List[Tree], body: Tree, val mods: Modifiers)(implicit @constructorOnly src: SourceFile)
+  extends Function(args, body) {
+      override def toString = s"FunctionWithMods($args, $body, $mods)"
+  }
 
   /** A polymorphic function type */
   case class PolyFunction(targs: List[Tree], body: Tree)(implicit @constructorOnly src: SourceFile) extends Tree {
@@ -155,6 +154,9 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
    *  is combined in a single node.
    */
   case class CapturesAndResult(refs: List[Tree], parent: Tree)(implicit @constructorOnly src: SourceFile) extends TypTree
+
+  /** A use reference for an object or class or constructor */
+  case class UseRef(ref: Tree, initially: Boolean)(implicit @constructorOnly src: SourceFile) extends Tree
 
   /** A type tree appearing somewhere in the untyped DefDef of a lambda, it will be typed using `tpFun`.
    *
@@ -466,7 +468,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def New(tpt: Tree, argss: List[List[Tree]])(using Context): Tree =
     ensureApplied(argss.foldLeft(makeNew(tpt))(Apply(_, _)))
 
-  /** A new expression with constrictor and possibly type arguments. See
+  /** A new expression with constructor and possibly type arguments. See
    *  `New(tpt, argss)` for details.
    */
   def makeNew(tpt: Tree)(using Context): Tree = {
@@ -536,10 +538,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
   def captureRoot(using Context): Select =
     Select(scalaDot(nme.caps), nme.any)
 
-  def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
-    var annot: Tree = scalaAnnotationDot(annotName)
+  def makeRetainsAnnot(refs: List[Tree], annotName: TypeName)(using Context): Tree =
+    val annotConstr: Tree = scalaAnnotationDot(annotName)
     if annotName == tpnme.retainsCap then
-      annot = New(annot, Nil)
+      New(annotConstr, Nil)
     else
       val trefs =
         if refs.isEmpty then
@@ -551,9 +553,12 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
           // and references to them will be replaced with the corresponding
           // type references during typing.
           refs.map(SingletonTypeTree).reduce[Tree]((a, b) => makeOrType(a, b))
-      annot = New(AppliedTypeTree(annot, trefs :: Nil), Nil)
+      val annot = New(AppliedTypeTree(annotConstr, trefs :: Nil), Nil)
       annot.putAttachment(RetainsAnnot, ())
-    Annotated(parent, annot)
+      annot
+
+  def makeRetaining(parent: Tree, refs: List[Tree], annotName: TypeName)(using Context): Annotated =
+    Annotated(parent, makeRetainsAnnot(refs, annotName))
 
   def getRetainsAnnot(tree: Tree): Tree = tree match
     case Annotated(parent, annot) if annot.hasAttachment(RetainsAnnot) => annot
@@ -565,14 +570,14 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
     case _ =>
       false
 
-  def makeReachAnnot()(using Context): Tree =
-    New(scalaAnnotationInternalDot(tpnme.reachCapability), Nil :: Nil)
-
   def makeReadOnlyAnnot()(using Context): Tree =
     New(scalaAnnotationInternalDot(tpnme.readOnlyCapability), Nil :: Nil)
 
   def makeOnlyAnnot(qid: Tree)(using Context) =
     New(AppliedTypeTree(scalaAnnotationInternalDot(tpnme.onlyCapability), qid :: Nil), Nil :: Nil)
+
+  def makeExceptAnnot(qid: Tree)(using Context) =
+    New(AppliedTypeTree(scalaAnnotationInternalDot(tpnme.exceptCapability), qid :: Nil), Nil :: Nil)
 
   def makeConsumeAnnot()(using Context): Tree =
     New(scalaCapsInternalDot(tpnme.consume), Nil :: Nil)
@@ -671,7 +676,7 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: Function if (args eq tree.args) && (body eq tree.body) => tree
       case _ =>
         val tree1 = tree match
-          case tree: FunctionWithMods => untpd.FunctionWithMods(args, body, tree.mods, tree.erasedParams)(using tree.source)
+          case tree: FunctionWithMods => untpd.FunctionWithMods(args, body, tree.mods)(using tree.source)
           case _ => untpd.Function(args, body)(using tree.source)
         finalize(tree, tree1)
     }
@@ -745,6 +750,10 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
       case tree: CapturesAndResult if (refs eq tree.refs) && (parent eq tree.parent) => tree
       case _ => finalize(tree, untpd.CapturesAndResult(refs, parent))
 
+    def UseRef(tree: Tree)(ref: Tree, initially: Boolean)(using Context): Tree = tree match
+      case tree: UseRef if (ref eq tree.ref) && (initially == tree.initially) => tree
+      case _ => finalize(tree, untpd.UseRef(ref, initially))
+
     def TypedSplice(tree: Tree)(splice: tpd.Tree)(using Context): ProxyTree = tree match {
       case tree: TypedSplice if splice `eq` tree.splice => tree
       case _ => finalize(tree, untpd.TypedSplice(splice)(using ctx))
@@ -808,6 +817,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         cpy.MacroTree(tree)(transform(expr))
       case CapturesAndResult(refs, parent) =>
         cpy.CapturesAndResult(tree)(transform(refs), transform(parent))
+      case UseRef(ref, initially) =>
+        cpy.UseRef(tree)(transform(ref), initially)
       case _ =>
         super.transformMoreCases(tree)
     }
@@ -867,6 +878,8 @@ object untpd extends Trees.Instance[Untyped] with UntypedTreeInfo {
         this(x, expr)
       case CapturesAndResult(refs, parent) =>
         this(this(x, refs), parent)
+      case UseRef(ref, _) =>
+        this(x, ref)
       case _ =>
         super.foldMoreCases(x, tree)
     }

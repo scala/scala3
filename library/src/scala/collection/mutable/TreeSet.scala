@@ -115,21 +115,33 @@ sealed class TreeSet[A] private (private val tree: RB.Tree[A, Null])(implicit va
   private final class TreeSetProjection(from: Option[A], until: Option[A]) extends TreeSet[A](tree) {
     self: TreeSetProjection^{} =>
 
-    /** Given a possible new lower bound, chooses and returns the most constraining one (the maximum). */
+    /** Given a possible new lower bound, chooses and returns the most constraining one (the maximum).
+     *
+     *  @param newFrom a possible new lower bound wrapped in a `Some`, or `None` if unbounded
+     *  @return the more restrictive of the existing `from` bound and `newFrom`, or `None` if both are unbounded
+     */
     private def pickLowerBound(newFrom: Option[A]): Option[A] = (from, newFrom) match {
       case (Some(fr), Some(newFr)) => Some(ordering.max(fr, newFr))
       case (None, _) => newFrom
       case _ => from
     }
 
-    /** Given a possible new upper bound, chooses and returns the most constraining one (the minimum). */
+    /** Given a possible new upper bound, chooses and returns the most constraining one (the minimum).
+     *
+     *  @param newUntil a possible new upper bound wrapped in a `Some`, or `None` if unbounded
+     *  @return the more restrictive of the existing `until` bound and `newUntil`, or `None` if both are unbounded
+     */
     private def pickUpperBound(newUntil: Option[A]): Option[A] = (until, newUntil) match {
       case (Some(unt), Some(newUnt)) => Some(ordering.min(unt, newUnt))
       case (None, _) => newUntil
       case _ => until
     }
 
-    /** Returns true if the argument is inside the view bounds (between `from` and `until`). */
+    /** Returns true if the argument is inside the view bounds (between `from` and `until`).
+     *
+     *  @param key the element to check against the view bounds
+     *  @return `true` if `key` is greater than or equal to the `from` bound (if any) and strictly less than the `until` bound (if any)
+     */
     private def isInsideViewBounds(key: A): Boolean = {
       val afterFrom = from.isEmpty || ordering.compare(from.get, key) <= 0
       val beforeUntil = until.isEmpty || ordering.compare(key, until.get) < 0

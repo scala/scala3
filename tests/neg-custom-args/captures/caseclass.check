@@ -1,0 +1,33 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/caseclass/Test_2.scala:8:15 ------------------------------
+8 |  val _: Ref = x // error
+  |               ^
+  |               Found:    (x : Ref{val x²: () ->{impure} Unit}^{impure})
+  |               Required: Ref
+  |
+  |               Note that capability `impure` cannot flow into capture set {}.
+  |
+  |               where:    x  is a value in method test
+  |                         x² is a value in class Ref
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/caseclass/Test_2.scala:10:16 -----------------------------
+10 |  val yc: Ref = y // error
+   |                ^
+   |                Found:    (y : Ref{val x: () ->{x².x} Unit}^{x².x})
+   |                Required: Ref
+   |
+   |                Note that capability `x².x` cannot flow into capture set {}.
+   |
+   |                where:    x  is a value in class Ref
+   |                          x² is a value in method test
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/caseclass/Test_2.scala:27:26 -----------------------------
+27 |  val _: () ->{y3} Unit = y4  // error
+   |                          ^^
+   |                          Found:    (y4 : () ->{x3.x} Unit)
+   |                          Required: () ->{y3} Unit
+   |
+   |                          Note that capability `y4` cannot flow into capture set {y3}.
+   |
+   | longer explanation available when compiling with `-explain`

@@ -12,6 +12,7 @@ import core.Decorators.*
 import collection.mutable
 import ast.Trees.*
 import core.NameKinds.SuperArgName
+import config.Feature
 
 import core.Decorators.*
 
@@ -134,7 +135,7 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
       arg match {
         case _ if arg.existsSubTree(needsHoist) =>
           val superMeth = newSuperArgMethod(arg.tpe)
-          val superArgDef = DefDef(superMeth, prefss => {
+          var superArgDef = DefDef(superMeth, prefss => {
             val paramSyms = prefss.flatten.map(pref =>
               if pref.isType then pref.tpe.typeSymbol else pref.symbol)
             val tmap = new TreeTypeMap(
@@ -158,6 +159,9 @@ class HoistSuperArgs extends MiniPhase with IdentityDenotTransformer { thisPhase
               })
             tmap(arg).changeOwnerAfter(constr, superMeth, thisPhase)
           })
+          if Feature.ccEnabled then
+            superArgDef =
+              cpy.DefDef(superArgDef)(tpt = cpy.TypeTree(superArgDef.tpt)(inferred = true))
           superArgDefs += superArgDef
           def termParamRefs(tp: Type, params: List[Symbol]): List[List[Tree]] = tp match {
             case tp: PolyType =>

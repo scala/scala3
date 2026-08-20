@@ -4,14 +4,12 @@ import dotty.tools.FatalError
 import config.CompilerCommand
 import core.Comments.{ContextDoc, ContextDocstrings}
 import core.Contexts.*
-import core.{MacroClassLoader, TypeError}
+import core.{MacroClassLoader, RecursionOverflow, TypeError}
 import dotty.tools.dotc.ast.Positioned
 import dotty.tools.io.{AbstractFile, FileExtension}
 import reporting.*
 import core.Decorators.*
 import util.chaining.*
-
-import scala.util.control.NonFatal
 import fromtasty.{TASTYCompiler, TastyFileUtil}
 
 /** Run the Dotty compiler.
@@ -37,15 +35,24 @@ class Driver {
         run.compile(files)
         finish(compiler, run)
       catch
+        case ro: RecursionOverflow =>
+          report.error(ro.toMessage, ro.pos)(using ro.ctx)
+        case so: StackOverflowError =>
+          // This should be the ONLY point in the compiler where we catch stack overflows.
+          // The JVM cannot be assumed to function 100% properly after a stack overflow is caught.
+          // This is a pure best-effort attempt at helping the user.
+          report.error("Stack overflow in the compiler.\n"
+            + "See https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html\n"
+            + s"Stack trace:\n${so.getStackTrace.mkString("\n  ")}")
         case ex: FatalError =>
           report.error(ex.getMessage) // signals that we should fail compilation.
-        case ex: Throwable if ctx.usedBestEffortTasty =>
+        case ex: Exception if ctx.usedBestEffortTasty =>
           report.bestEffortError(ex, "Some best-effort tasty files were not able to be read.")
           throw ex
         case ex: TypeError if !runOrNull.enrichedErrorMessage =>
           println(runOrNull.enrichErrorMessage(s"${ex.toMessage} while compiling ${files.map(_.path).mkString(", ")}"))
           throw ex
-        case ex: Throwable if !runOrNull.enrichedErrorMessage =>
+        case ex: Exception if !runOrNull.enrichedErrorMessage =>
           println(runOrNull.enrichErrorMessage(s"Exception while compiling ${files.map(_.path).mkString(", ")}"))
           throw ex
     ctx.reporter
@@ -80,29 +87,26 @@ class Driver {
     val ictx = rootCtx.fresh
     val summary = command.distill(args, ictx.settings)(ictx.settingsState)(using ictx)
     ictx.setSettings(summary.sstate)
-    MacroClassLoader.init(ictx)
-    Positioned.init(using ictx)
 
     inContext(ictx):
       if !ctx.settings.XdropComments.value || ctx.settings.XreadComments.value then
         ictx.setProperty(ContextDoc, new ContextDocstrings)
       val fileNamesOrNone = command.checkUsage(summary, sourcesRequired)(using ctx.settings)(using ctx.settingsState)
-      fileNamesOrNone.map: fileNames =>
-        val files = fileNames.map(ctx.getFile)
-        (files, fromTastySetup(files))
-      .tap: _ =>
-        if !ctx.settings.Yreporter.isDefault then
-          ctx.settings.Yreporter.value match
-          case "help" =>
-          case reporterClassName =>
-            try
-              Class.forName(reporterClassName).getDeclaredConstructor().newInstance() match
+      fileNamesOrNone.map(fileNames =>
+        MacroClassLoader.init(ictx)
+        Positioned.init
+        if !ctx.settings.Yreporter.isDefault && ctx.settings.Yreporter.value != "help" then
+          try
+            Class.forName(ctx.settings.Yreporter.value).getDeclaredConstructor().newInstance() match
               case userReporter: Reporter =>
                 ictx.setReporter(userReporter)
-              case badReporter => report.error:
-                em"Not a reporter: ${ctx.settings.Yreporter.value}"
-            catch case e: ReflectiveOperationException => report.error:
-              em"Could not create reporter ${ctx.settings.Yreporter.value}: ${e}"
+              case badReporter =>
+                report.error(em"Not a reporter: ${ctx.settings.Yreporter.value}")
+          catch case e: ReflectiveOperationException =>
+            report.error(em"Could not create reporter ${ctx.settings.Yreporter.value}: $e")
+        val files = fileNames.flatMap(ctx.getFile)
+        (files, fromTastySetup(files))
+      )
   }
 
   /** Setup extra classpath of tasty and jar files */
@@ -215,10 +219,6 @@ class Driver {
   }
 
   def main(args: Array[String]): Unit = {
-    // Preload scala.util.control.NonFatal. Otherwise, when trying to catch a StackOverflowError,
-    // we may try to load it but fail with another StackOverflowError and lose the original exception,
-    // see <https://groups.google.com/forum/#!topic/scala-user/kte6nak-zPM>.
-    val _ = NonFatal
     sys.exit(if (process(args).hasErrors) 1 else 0)
   }
 }

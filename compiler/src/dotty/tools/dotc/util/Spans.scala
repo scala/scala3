@@ -101,7 +101,7 @@ object Spans {
     /** Is this a zero-extent span? */
     def isZeroExtent: Boolean = exists && start == end
 
-     /** A span where all components are shifted by a given `offset`
+    /** A span where all components are shifted by a given `offset`
      *  relative to this span.
      */
     def shift(offset: Int): Span =

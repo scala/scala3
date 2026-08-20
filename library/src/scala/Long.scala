@@ -14,12 +14,13 @@ package scala
 
 import scala.language.`2.13`
 
+import scala.collection.immutable.NumericRange
+
 /** `Long`, a 64-bit signed integer (equivalent to Java's `long` primitive type) is a
  *  subtype of [[scala.AnyVal]]. Instances of `Long` are not
  *  represented by an object in the underlying runtime system.
  *
- *  There is an implicit conversion from [[scala.Long]] => [[scala.runtime.RichLong]]
- *  which provides useful non-primitive operations.
+ *  The companion object provides useful non-primitive operations as extension methods.
  */
 final abstract class Long private extends AnyVal {
   def toByte: Byte
@@ -52,6 +53,8 @@ final abstract class Long private extends AnyVal {
    *  ```
    *  6 << 3 == 48 // in binary: 0110 << 3 == 0110000
    *  ```
+   *
+   *  @param x the number of bits to shift left
    */
   def <<(x: Int): Long
   /** Returns this value bit-shifted left by the specified number of bits,
@@ -60,6 +63,8 @@ final abstract class Long private extends AnyVal {
    *  ```
    *  6 << 3 == 48 // in binary: 0110 << 3 == 0110000
    *  ```
+   *
+   *  @param x the number of bits to shift left
    */
   def <<(x: Long): Long
   /** Returns this value bit-shifted right by the specified number of bits,
@@ -70,6 +75,8 @@ final abstract class Long private extends AnyVal {
    *  // in binary: 11111111 11111111 11111111 11101011 >>> 3 ==
    *  //            00011111 11111111 11111111 11111101
    *  ```
+   *
+   *  @param x the number of bits to shift right
    */
   def >>>(x: Int): Long
   /** Returns this value bit-shifted right by the specified number of bits,
@@ -80,6 +87,8 @@ final abstract class Long private extends AnyVal {
    *  // in binary: 11111111 11111111 11111111 11101011 >>> 3 ==
    *  //            00011111 11111111 11111111 11111101
    *  ```
+   *
+   *  @param x the number of bits to shift right
    */
   def >>>(x: Long): Long
   /** Returns this value bit-shifted right by the specified number of bits,
@@ -90,6 +99,8 @@ final abstract class Long private extends AnyVal {
    *  // in binary: 11111111 11111111 11111111 11101011 >> 3 ==
    *  //            11111111 11111111 11111111 11111101
    *  ```
+   *
+   *  @param x the number of bits to shift right
    */
   def >>(x: Int): Long
   /** Returns this value bit-shifted right by the specified number of bits,
@@ -100,6 +111,8 @@ final abstract class Long private extends AnyVal {
    *  // in binary: 11111111 11111111 11111111 11101011 >> 3 ==
    *  //            11111111 11111111 11111111 11111101
    *  ```
+   *
+   *  @param x the number of bits to shift right
    */
   def >>(x: Long): Long
 
@@ -133,19 +146,40 @@ final abstract class Long private extends AnyVal {
   /** Returns `true` if this value is not equal to x, `false` otherwise. */
   def !=(x: Double): Boolean
 
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Byte): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Short): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Char): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Int): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Long): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Float): Boolean
-  /** Returns `true` if this value is less than x, `false` otherwise. */
+  /** Returns `true` if this value is less than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def <(x: Double): Boolean
 
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
@@ -163,19 +197,40 @@ final abstract class Long private extends AnyVal {
   /** Returns `true` if this value is less than or equal to x, `false` otherwise. */
   def <=(x: Double): Boolean
 
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Byte): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Short): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Char): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Int): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Long): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Float): Boolean
-  /** Returns `true` if this value is greater than x, `false` otherwise. */
+  /** Returns `true` if this value is greater than x, `false` otherwise.
+   *
+   *  @param x the value to compare against
+   */
   def >(x: Double): Boolean
 
   /** Returns `true` if this value is greater than or equal to x, `false` otherwise. */
@@ -201,6 +256,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              11111010
    *  ```
+   *
+   *  @param x the value to OR with this value
    */
   def |(x: Byte): Long
   /** Returns the bitwise OR of this value and `x`.
@@ -211,6 +268,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              11111010
    *  ```
+   *
+   *  @param x the value to OR with this value
    */
   def |(x: Short): Long
   /** Returns the bitwise OR of this value and `x`.
@@ -221,6 +280,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              11111010
    *  ```
+   *
+   *  @param x the value to OR with this value
    */
   def |(x: Char): Long
   /** Returns the bitwise OR of this value and `x`.
@@ -231,6 +292,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              11111010
    *  ```
+   *
+   *  @param x the value to OR with this value
    */
   def |(x: Int): Long
   /** Returns the bitwise OR of this value and `x`.
@@ -241,6 +304,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              11111010
    *  ```
+   *
+   *  @param x the value to OR with this value
    */
   def |(x: Long): Long
 
@@ -252,6 +317,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              10100000
    *  ```
+   *
+   *  @param x the value to AND with this value
    */
   def &(x: Byte): Long
   /** Returns the bitwise AND of this value and `x`.
@@ -262,6 +329,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              10100000
    *  ```
+   *
+   *  @param x the value to AND with this value
    */
   def &(x: Short): Long
   /** Returns the bitwise AND of this value and `x`.
@@ -272,6 +341,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              10100000
    *  ```
+   *
+   *  @param x the value to AND with this value
    */
   def &(x: Char): Long
   /** Returns the bitwise AND of this value and `x`.
@@ -282,6 +353,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              10100000
    *  ```
+   *
+   *  @param x the value to AND with this value
    */
   def &(x: Int): Long
   /** Returns the bitwise AND of this value and `x`.
@@ -292,6 +365,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              10100000
    *  ```
+   *
+   *  @param x the value to AND with this value
    */
   def &(x: Long): Long
 
@@ -303,6 +378,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              01011010
    *  ```
+   *
+   *  @param x the value to XOR with this value
    */
   def ^(x: Byte): Long
   /** Returns the bitwise XOR of this value and `x`.
@@ -313,6 +390,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              01011010
    *  ```
+   *
+   *  @param x the value to XOR with this value
    */
   def ^(x: Short): Long
   /** Returns the bitwise XOR of this value and `x`.
@@ -323,6 +402,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              01011010
    *  ```
+   *
+   *  @param x the value to XOR with this value
    */
   def ^(x: Char): Long
   /** Returns the bitwise XOR of this value and `x`.
@@ -333,6 +414,8 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              01011010
    *  ```
+   *
+   *  @param x the value to XOR with this value
    */
   def ^(x: Int): Long
   /** Returns the bitwise XOR of this value and `x`.
@@ -343,86 +426,191 @@ final abstract class Long private extends AnyVal {
    *  //              --------
    *  //              01011010
    *  ```
+   *
+   *  @param x the value to XOR with this value
    */
   def ^(x: Long): Long
 
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Byte): Long
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Short): Long
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Char): Long
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Int): Long
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Long): Long
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Float): Float
-  /** Returns the sum of this value and `x`. */
+  /** Returns the sum of this value and `x`.
+   *
+   *  @param x the value to add to this value
+   */
   def +(x: Double): Double
 
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Byte): Long
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Short): Long
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Char): Long
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Int): Long
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Long): Long
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Float): Float
-  /** Returns the difference of this value and `x`. */
+  /** Returns the difference of this value and `x`.
+   *
+   *  @param x the value to subtract from this value
+   */
   def -(x: Double): Double
 
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Byte): Long
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Short): Long
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Char): Long
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Int): Long
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Long): Long
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Float): Float
-  /** Returns the product of this value and `x`. */
+  /** Returns the product of this value and `x`.
+   *
+   *  @param x the value to multiply this value by
+   */
   def *(x: Double): Double
 
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Byte): Long
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Short): Long
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Char): Long
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Int): Long
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Long): Long
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Float): Float
-  /** Returns the quotient of this value and `x`. */
+  /** Returns the quotient of this value and `x`.
+   *
+   *  @param x the value to divide this value by
+   */
   def /(x: Double): Double
 
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Byte): Long
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Short): Long
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Char): Long
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Int): Long
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Long): Long
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Float): Float
-  /** Returns the remainder of the division of this value by `x`. */
+  /** Returns the remainder of the division of this value by `x`.
+   *
+   *  @param x the divisor
+   */
   def %(x: Double): Double
 
-  // Provide a more specific return type for Scaladoc
-  override def getClass(): Class[Long] = ???
 }
 
 object Long extends AnyValCompanion {
@@ -461,5 +649,100 @@ object Long extends AnyValCompanion {
   implicit def long2float(x: Long): Float = x.toFloat
   @deprecated("Implicit conversion from Long to Double is dangerous because it loses precision. Write `.toDouble` instead.", "2.13.1")
   implicit def long2double(x: Long): Double = x.toDouble
-}
 
+  extension (self: Long) {
+    /** Returns `'''true'''` if this number has no decimal component.
+      * Always `'''true'''` for `Long`.
+      */
+    @deprecated("isWhole on Long is always true", "2.12.15")
+    def isWhole: Boolean = true
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Char]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidChar: Boolean = self.toChar.toLong == self
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Byte]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidByte: Boolean = self.toByte.toLong == self
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Short]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidShort: Boolean = self.toShort.toLong == self
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Int]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    def isValidInt: Boolean = self.toInt.toLong == self
+
+    /** Returns `true` iff this is within the
+      * range of [[scala.Long]] MinValue and MaxValue; otherwise returns `false`.
+      */
+    @deprecated("isValidLong on Long is always true", since = "3.10.0")
+    def isValidLong: Boolean = true
+
+    /** Returns the absolute value of `this`. */
+    def abs: Long = java.lang.Math.abs(self)
+
+    /** Returns `this` if `this > that` or `that` otherwise. */
+    def max(that: Long): Long = java.lang.Math.max(self, that)
+
+    /** Returns `this` if `this < that` or `that` otherwise. */
+    def min(that: Long): Long = java.lang.Math.min(self, that)
+
+    /** Returns the sign of `this`.
+      *
+      * `0` if `this == 0`, `-1` if `this < 0` and `1` if `this > 0`.
+      */
+    def sign: Long = java.lang.Long.signum(self)
+
+    /** Returns the signum of `this`. */
+    @deprecated("use `sign` method instead", since = "2.13.0")
+    def signum: Int = self.sign.toInt
+
+    /** There is no reason to round an `Int`, but this method is provided to avoid accidental loss of precision from a detour through `Double`. */
+    @deprecated("this is an integer type; there is no reason to round it.  Perhaps you meant to call this on a floating-point value?", "2.11.0")
+    def round: Long = self
+
+    /** Compares `this` to `that` according to the standard total ordering.
+      *
+      * Returns:
+      * - a positive value if `this > that`
+      * - a negative value if `this < that`
+      * - `0` if `this == that`
+      */
+    def compare(that: Long): Int = java.lang.Long.compare(self, that)
+
+    def toBinaryString: String = java.lang.Long.toBinaryString(self)
+    def toHexString: String    = java.lang.Long.toHexString(self)
+    def toOctalString: String  = java.lang.Long.toOctalString(self)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def until(end: Long): NumericRange.Exclusive[Long] = NumericRange(self, end, 1L)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to but not including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def until(end: Long, step: Long): NumericRange.Exclusive[Long] = NumericRange(self, end, step)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      */
+    def to(end: Long): NumericRange.Inclusive[Long] = NumericRange.inclusive(self, end, 1L)
+
+    /** A [[scala.collection.immutable.NumericRange]] from `this` up to and including `end`.
+      *
+      * @param end The final bound of the range to make.
+      * @param step The number to increase by for each step of the range.
+      */
+    def to(end: Long, step: Long): NumericRange.Inclusive[Long] = NumericRange.inclusive(self, end, step)
+  }
+}

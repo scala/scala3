@@ -2,15 +2,15 @@ package dotty.tools
 package dotc
 package parsing
 
-import dotty.tools.dotc.ast.Trees._
+import dotty.tools.dotc.ast.Trees.*
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 class DocstringTests extends DocstringTest {
 
   @Test def noComment = {
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     val source = "class Class"
 
     checkFrontend(source) {
@@ -220,7 +220,7 @@ class DocstringTests extends DocstringTest {
       |}
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(o1: ModuleDef, o2: ModuleDef)) => {
         assert(o1.name.toString == "Object1")
@@ -255,7 +255,7 @@ class DocstringTests extends DocstringTest {
       |}
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case PackageDef(_, Seq(p: ModuleDef)) => {
         checkDocString(p.rawComment.map(_.raw), "/** Package object docstring */")
@@ -282,7 +282,7 @@ class DocstringTests extends DocstringTest {
       |class Class
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case PackageDef(_, Seq(c: TypeDef)) =>
         checkDocString(c.rawComment.map(_.raw), "/** Real comment */")
@@ -301,7 +301,7 @@ class DocstringTests extends DocstringTest {
       |/** Following comment 3 */
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case PackageDef(_, Seq(c: TypeDef)) =>
         checkDocString(c.rawComment.map(_.raw), "/** Real comment */")
@@ -325,7 +325,7 @@ class DocstringTests extends DocstringTest {
       |}
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case PackageDef(_, Seq(o: ModuleDef)) => {
         o.impl.body match {
@@ -357,7 +357,7 @@ class DocstringTests extends DocstringTest {
       |}
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case PackageDef(_, Seq(o: ModuleDef)) => {
         o.impl.body match {
@@ -389,7 +389,7 @@ class DocstringTests extends DocstringTest {
       |}
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case PackageDef(_, Seq(o: ModuleDef)) => {
         o.impl.body match {
@@ -421,7 +421,7 @@ class DocstringTests extends DocstringTest {
       |}
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case PackageDef(_, Seq(o: ModuleDef)) => {
         o.impl.body match {
@@ -447,7 +447,7 @@ class DocstringTests extends DocstringTest {
       |}
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case PackageDef(_, Seq(o: ModuleDef)) =>
         o.impl.body match {
@@ -466,7 +466,7 @@ class DocstringTests extends DocstringTest {
       |class Class1 extends Trait1
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(_, c: TypeDef)) =>
         checkDocString(c.rawComment.map(_.raw), "/** Class1 */")
@@ -482,7 +482,7 @@ class DocstringTests extends DocstringTest {
       |class Class1
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(c: TypeDef)) =>
         checkDocString(c.rawComment.map(_.raw), "/** Class1 */")
@@ -497,7 +497,7 @@ class DocstringTests extends DocstringTest {
       |class Class1
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(c: TypeDef)) =>
         checkDocString(c.rawComment.map(_.raw), "/** Class1 */")
@@ -512,7 +512,7 @@ class DocstringTests extends DocstringTest {
       |class Class1
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(c: TypeDef)) =>
         checkDocString(c.rawComment.map(_.raw), "/** Class1 */")
@@ -528,7 +528,7 @@ class DocstringTests extends DocstringTest {
       |class Class1
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(c: TypeDef)) =>
         checkDocString(c.rawComment.map(_.raw), "/** Class1 */")
@@ -544,7 +544,7 @@ class DocstringTests extends DocstringTest {
       |class C
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(_, c: TypeDef)) =>
         assert(c.rawComment == None, s"class C is not supposed to have a docstring (${c.rawComment.get}) in:$source")
@@ -558,7 +558,7 @@ class DocstringTests extends DocstringTest {
       |/** Cheeky comment */
       """.stripMargin
 
-    import dotty.tools.dotc.ast.untpd._
+    import dotty.tools.dotc.ast.untpd.*
     checkFrontend(source) {
       case p @ PackageDef(_, Seq(c: TypeDef)) =>
         assert(c.rawComment == None, s"class C is not supposed to have a docstring (${c.rawComment.get}) in:$source")
