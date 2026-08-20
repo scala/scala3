@@ -10,7 +10,7 @@ import org.junit.Test
 class ToolkitTests extends ReplTest:
 
   private val ScalaCliVersion = raw"(?m)^(\d+\.\d+\.\S+)\s*$$".r
-  private val ReplToolkitVersion = raw"toolkit_3[/\\]([^/\\]+)[/\\]toolkit_3-[^/\\]+\.jar".r
+  private val ReplToolkitCoordinate = raw"[^:]+::toolkit:([^:]+)".r
 
   private case class Toolkit(flavor: String, directive: String, scalaCliDefaultVersion: Regex)
 
@@ -23,6 +23,13 @@ class ToolkitTests extends ReplTest:
     pattern.findFirstMatchIn(output).map(_.group(1)) match
       case Some(version) => version.nn
       case None => throw new AssertionError(s"Could not find a version in $source output:\n$output")
+
+  private def replToolkitVersion(directive: String): String =
+    val coordinates = ReplDirectives.toolkitCoordinates(directive).getOrElse(Nil)
+    val version = coordinates.collectFirst:
+      case ReplToolkitCoordinate(version) => version.nn
+    version.getOrElse:
+      throw new AssertionError(s"Could not find a toolkit version in REPL coordinates: $coordinates")
 
   @Test def `default toolkit versions match Scala CLI`: Unit =
     val scalaCliExecutable = sys.env.get("DOTTY_REPL_TEST_SCALA_CLI_EXECUTABLE")
@@ -47,26 +54,7 @@ class ToolkitTests extends ReplTest:
     val scalaCliHelp = TestProcess.output(Seq(scalaCli, "run", "--help-full"))
     Toolkits.foreach: toolkit =>
       val scalaCliVersion = extractVersion(toolkit.scalaCliDefaultVersion, scalaCliHelp, "Scala CLI help")
-      val replVersion = extractVersion(
-        ReplToolkitVersion,
-        ReplTestProcess.outputFromInput(
-          s"""//> using toolkit ${toolkit.directive}
-             |val toolkitJar = (
-             |  Iterator
-             |    .iterate(Option(getClass.getClassLoader))(_.flatMap(loader => Option(loader.getParent)))
-             |    .takeWhile(_.nonEmpty)
-             |    .flatten
-             |    .flatMap:
-             |      case loader: java.net.URLClassLoader => loader.getURLs
-             |      case _ => Array.empty[java.net.URL]
-             |    .find(_.getPath.contains("/toolkit_3/"))
-             |)
-             |println(toolkitJar)
-             |:quit
-             |""".stripMargin
-        ),
-        s"REPL classpath for ${toolkit.flavor} toolkit"
-      )
+      val replVersion = replToolkitVersion(toolkit.directive)
       assertEquals(s"Default ${toolkit.flavor} toolkit version", scalaCliVersion, replVersion)
 
   @Test def `toolkit command puts the toolkit on the classpath`: Unit =

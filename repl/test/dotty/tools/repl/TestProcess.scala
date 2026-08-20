@@ -1,25 +1,21 @@
 package dotty.tools
 package repl
 
-import java.io.{File, PrintWriter}
+import java.io.File
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.{Files, Path}
 
 import scala.concurrent.duration.*
-import scala.util.Using
 import scala.util.control.NonFatal
 
 private[repl] object TestProcess:
   private val Timeout = 5.minutes
 
-  def output(command: Seq[String], input: Option[String] = None): String =
+  def output(command: Seq[String]): String =
     val outputFile = Files.createTempFile("dotty-test-process-", ".log")
     val process = start(command, outputFile)
 
-    try
-      input.foreach: content =>
-        Using.resource(new PrintWriter(process.getOutputStream))(_.print(content))
-      awaitOutput(command, process, outputFile)
+    try awaitOutput(command, process, outputFile)
     finally cleanup(process, outputFile)
 
   private def start(command: Seq[String], outputFile: Path): Process =
@@ -52,9 +48,6 @@ private[repl] object ReplTestProcess:
 
   def output(initScript: String): String =
     TestProcess.output(command(Seq("--repl-quit-after-init", "--repl-init-script", initScript)))
-
-  def outputFromInput(input: String): String =
-    TestProcess.output(command(Nil), Some(input))
 
   private def command(arguments: Seq[String]): Seq[String] =
     val javaHome = javaHomeOverride.getOrElse(sys.props("java.home"))
