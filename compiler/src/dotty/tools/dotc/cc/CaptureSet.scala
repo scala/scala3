@@ -1779,7 +1779,29 @@ object CaptureSet:
     case c: TermRef if isAssumedPure(c.symbol) =>
       CaptureSet.empty
     case c: CoreCapability =>
-      ofType(c.underlying, followResult = ccConfig.useSpanCapset)
+      val cs = ofType(c.underlying, followResult = ccConfig.useSpanCapset)
+      c match
+        case c: TermRef if cs.isAlwaysEmpty && c.symbol.is(ModuleVal)
+            && c.symbol.moduleClass.isClass
+            && c.symbol.moduleClass.asClass.isBinaryExemptClass =>
+          // For module vals read from TASTy, the capture set of their type is
+          // not pickled, since the capture checker runs after the pickler.
+          // Fall back to the use set of the module class (reconstructed from
+          // the pickled member bodies) plus the capabilities implied by its
+          // fields, which are still visible. Only constant use sets are used;
+          // unresolved variables would make every module look tracked.
+          val moduleClass = c.symbol.moduleClass.asClass
+          val (fieldRefs, fields) = moduleClass.capturesImpliedByFields(moduleClass.appliedRef)
+          // Fields that are themselves module values (i.e. nested objects) do
+          // not contribute to the capture set of the enclosing module's type;
+          // they are reached through their own paths.
+          val fieldCs =
+            if fields.forall(_.is(Module)) then CaptureSet.empty
+            else fieldRefs
+          moduleClass.useSet match
+            case uses: CaptureSet.Const => uses ++ fieldCs
+            case _ => fieldCs
+        case _ => cs
 
   /** Capture set of a type
    *  @param followResult  If true, also include capture sets of function results.
