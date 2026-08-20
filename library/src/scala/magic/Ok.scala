@@ -1,6 +1,7 @@
 package scala.magic
 
 import scala.magic.runtime.Valid
+import scala.magic.compiletime.Maybe
 import annotation.experimental
 
 @experimental
