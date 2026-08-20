@@ -255,12 +255,47 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
    *  @param lhs the left-hand side value for infix comparison operations
    */
   class OrderingOps(lhs: T) {
+    /** Returns true if `lhs` is less than `rhs` in this ordering.
+     *
+     *  @param rhs the right-hand side value to compare with `lhs`
+     *  @return `true` if `lhs` < `rhs`, `false` otherwise
+     */
     def <(rhs: T): Boolean = lt(lhs, rhs)
+    /** Returns true if `lhs` is less than or equal to `rhs` in this ordering.
+     *
+     *  @param rhs the right-hand side value to compare with `lhs`
+     *  @return `true` if `lhs` <= `rhs`, `false` otherwise
+     */
     def <=(rhs: T): Boolean = lteq(lhs, rhs)
+    /** Returns true if `lhs` is greater than `rhs` in this ordering.
+     *
+     *  @param rhs the right-hand side value to compare with `lhs`
+     *  @return `true` if `lhs` > `rhs`, `false` otherwise
+     */
     def >(rhs: T): Boolean = gt(lhs, rhs)
+    /** Returns true if `lhs` is greater than or equal to `rhs` in this ordering.
+     *
+     *  @param rhs the right-hand side value to compare with `lhs`
+     *  @return `true` if `lhs` >= `rhs`, `false` otherwise
+     */
     def >=(rhs: T): Boolean = gteq(lhs, rhs)
+    /** Returns true if `lhs` is equivalent to `rhs` in this ordering.
+     *
+     *  @param rhs the right-hand side value to compare with `lhs`
+     *  @return `true` if `lhs` == `rhs`, `false` otherwise
+     */
     def equiv(rhs: T): Boolean = Ordering.this.equiv(lhs, rhs)
+    /** Returns the greater of `lhs` and `rhs` according to this ordering.
+     *
+     *  @param rhs the right-hand side value to compare with `lhs`
+     *  @return the maximum of `lhs` and `rhs`
+     */
     def max(rhs: T): T = Ordering.this.max(lhs, rhs)
+    /** Returns the lesser of `lhs` and `rhs` according to this ordering.
+     *
+     *  @param rhs the right-hand side value to compare with `lhs`
+     *  @return the minimum of `lhs` and `rhs`
+     */
     def min(rhs: T): T = Ordering.this.min(lhs, rhs)
   }
 
@@ -273,6 +308,12 @@ trait Ordering[T] extends Comparator[T] with PartialOrdering[T] with Serializabl
   implicit def mkOrderingOps(lhs: T): OrderingOps = new OrderingOps(lhs)
 }
 
+/** Provides implicit orderings for types that don't have higher-priority implicit orderings available.
+ *
+ *  This trait contains lower-priority implicit orderings that are only used when no other
+ *  implicit ordering is available in scope. It helps prevent ambiguous implicit conversions
+ *  while still providing default ordering behavior.
+ */
 trait LowPriorityOrderingImplicits {
 
   type AsComparable[A] = A => Comparable[? >: A]
@@ -291,6 +332,12 @@ trait LowPriorityOrderingImplicits {
     def compare(x: A, y: A): Int = asComparable(x).compareTo(y)
   }
 
+  /** Converts a Java `Comparator` to a Scala `Ordering`.
+   *
+   *  @tparam A the type of elements to be compared
+   *  @param cmp the Java `Comparator` to convert
+   *  @return an `Ordering[A]` that delegates to the provided `Comparator`
+   */
   implicit def comparatorToOrdering[A](implicit cmp: Comparator[A]): Ordering[A] = new Ordering[A] {
     def compare(x: A, y: A) = cmp.compare(x, y)
   }
@@ -306,6 +353,11 @@ object Ordering extends LowPriorityOrderingImplicits {
   private final val optionSeed   = 43
   private final val iterableSeed = 47
 
+  /** Retrieves the implicit `Ordering` for type `T`.
+   *
+   *  @tparam T the type for which to retrieve the ordering
+   *  @param ord the implicit `Ordering[T]` instance
+   */
   @inline def apply[T](implicit ord: Ordering[T]) = ord
 
   /** An ordering which caches the value of its reverse.
@@ -314,7 +366,14 @@ object Ordering extends LowPriorityOrderingImplicits {
    */
   sealed trait CachedReverse[T] extends Ordering[T] {
     private val _reverse = super.reverse
+    /** Returns the cached reverse ordering of this ordering.
+     */
     override final def reverse: Ordering[T] = _reverse
+    /** Returns whether the given ordering is the cached reverse of this ordering.
+     *
+     *  @param other the ordering to check
+     *  @return `true` if `other` is the cached reverse of this ordering, `false` otherwise
+     */
     override final def isReverseOf(other: Ordering[?]): Boolean = other eq _reverse
   }
 
@@ -324,28 +383,98 @@ object Ordering extends LowPriorityOrderingImplicits {
    *  @param outer the original ordering to be reversed
    */
   private final class Reverse[T](private[Ordering] val outer: Ordering[T]) extends Ordering[T] {
+    /** Returns the original ordering that this ordering reverses.
+     */
     override def reverse: Ordering[T]                   = outer
+    /** Returns whether the given ordering is the original ordering that this ordering reverses.
+     *
+     *  @param other the ordering to check
+     *  @return `true` if `other` is the original ordering that this ordering reverses, `false` otherwise
+     */
     override def isReverseOf(other: Ordering[?]): Boolean = other == outer
 
+    /** Compares two values in reverse order.
+     *
+     *  @param x the first value to compare
+     *  @param y the second value to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is greater than, equal to, or less than `y`
+     */
     def compare(x: T, y: T): Int            = outer.compare(y, x)
+    /** Returns true if `x` is greater than or equal to `y` in the original ordering.
+     *
+     *  @param x the first value to compare
+     *  @param y the second value to compare
+     *  @return `true` if `x` >= `y` in the original ordering, `false` otherwise
+     */
     override def lteq(x: T, y: T): Boolean  = outer.lteq(y, x)
+    /** Returns true if `x` is less than or equal to `y` in the original ordering.
+     *
+     *  @param x the first value to compare
+     *  @param y the second value to compare
+     *  @return `true` if `x` <= `y` in the original ordering, `false` otherwise
+     */
     override def gteq(x: T, y: T): Boolean  = outer.gteq(y, x)
+    /** Returns true if `x` is greater than `y` in the original ordering.
+     *
+     *  @param x the first value to compare
+     *  @param y the second value to compare
+     *  @return `true` if `x` > `y` in the original ordering, `false` otherwise
+     */
     override def lt(x: T, y: T): Boolean    = outer.lt(y, x)
+    /** Returns true if `x` is less than `y` in the original ordering.
+     *
+     *  @param x the first value to compare
+     *  @param y the second value to compare
+     *  @return `true` if `x` < `y` in the original ordering, `false` otherwise
+     */
     override def gt(x: T, y: T): Boolean    = outer.gt(y, x)
+    /** Returns true if `x` is equivalent to `y` in the original ordering.
+     *
+     *  @param x the first value to compare
+     *  @param y the second value to compare
+     *  @return `true` if `x` == `y` in the original ordering, `false` otherwise
+     */
     override def equiv(x: T, y: T): Boolean = outer.equiv(y, x)
+    /** Returns the minimum of `x` and `y` in the original ordering.
+     *
+     *  @tparam U a subtype of `T`, used to preserve the specific type in the return value
+     *  @param x the first candidate value
+     *  @param y the second candidate value
+     *  @return the minimum of `x` and `y` in the original ordering
+     */
     override def max[U <: T](x: U, y: U): U = outer.min(x, y)
+    /** Returns the maximum of `x` and `y` in the original ordering.
+     *
+     *  @tparam U a subtype of `T`, used to preserve the specific type in the return value
+     *  @param x the first candidate value
+     *  @param y the second candidate value
+     *  @return the maximum of `x` and `y` in the original ordering
+     */
     override def min[U <: T](x: U, y: U): U = outer.max(x, y)
 
+    /** Returns whether the given object is equal to this ordering.
+     *
+     *  @param obj the object to compare with this ordering
+     *  @return `true` if `obj` is equal to this ordering, `false` otherwise
+     */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
       case that: Reverse[?]             => this.outer == that.outer
       case _                            => false
     }
+    /** Returns a hash code for this ordering.
+     */
     override def hashCode(): Int = outer.hashCode() * reverseSeed
   }
 
   @SerialVersionUID(-2996748994664583574L)
   private final class IterableOrdering[CC[X] <: Iterable[X], T](private val ord: Ordering[T]) extends Ordering[CC[T]] {
+    /** Compares two iterables lexicographically using the element ordering.
+     *
+     *  @param x the first iterable to compare
+     *  @param y the second iterable to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: CC[T], y: CC[T]): Int = {
       val xe = x.iterator
       val ye = y.iterator
@@ -358,14 +487,23 @@ object Ordering extends LowPriorityOrderingImplicits {
       Boolean.compare(xe.hasNext, ye.hasNext)
     }
 
+    /** Returns whether the given object is equal to this ordering.
+     *
+     *  @param obj the object to compare with this ordering
+     *  @return `true` if `obj` is equal to this ordering, `false` otherwise
+     */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that  => true
       case that: IterableOrdering[?, ?]  => this.ord == that.ord
       case _                             => false
     }
+    /** Returns a hash code for this ordering.
+     */
     override def hashCode(): Int = ord.hashCode() * iterableSeed
   }
 
+  /** Provides additional implicit orderings that are not in the default scope.
+   */
   trait ExtraImplicits {
     /** Not in the standard scope due to the potential for divergence:
      *  For instance `implicitly[Ordering[Any]]` diverges in its presence.
@@ -378,6 +516,13 @@ object Ordering extends LowPriorityOrderingImplicits {
     implicit def seqOrdering[CC[X] <: scala.collection.Seq[X], T](implicit ord: Ordering[T]): Ordering[CC[T]] =
       new IterableOrdering[CC, T](ord)
 
+    /** Creates an ordering for sorted sets using the element ordering.
+     *
+     *  @tparam CC the higher-kinded type constructor for the sorted set type, bounded by `scala.collection.SortedSet`
+     *  @tparam T the element type of the sorted sets being compared
+     *  @param ord the implicit `Ordering` used to compare elements of type `T`
+     *  @return an `Ordering[CC[T]]` that compares sorted sets lexicographically using `ord`
+     */
     implicit def sortedSetOrdering[CC[X] <: scala.collection.SortedSet[X], T](implicit ord: Ordering[T]): Ordering[CC[T]] =
       new IterableOrdering[CC, T](ord)
 
@@ -440,43 +585,98 @@ object Ordering extends LowPriorityOrderingImplicits {
     override def lteq(x: T, y: T): Boolean = ord.lteq(f(x), f(y))
   }
 
+  /** An ordering for `Unit` values.
+   */
   trait UnitOrdering extends Ordering[Unit] {
+    /** Compares two `Unit` values.
+     *
+     *  @param x the first `Unit` value to compare
+     *  @param y the second `Unit` value to compare
+     */
     def compare(x: Unit, y: Unit) = 0
   }
   @SerialVersionUID(4089257611611206746L)
   implicit object Unit extends UnitOrdering
 
+  /** An ordering for `Boolean` values.
+   */
   trait BooleanOrdering extends Ordering[Boolean] {
+    /** Compares two `Boolean` values.
+     *
+     *  @param x the first `Boolean` value to compare
+     *  @param y the second `Boolean` value to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: Boolean, y: Boolean): Int = java.lang.Boolean.compare(x, y)
   }
   @SerialVersionUID(-94703182178890445L)
   implicit object Boolean extends BooleanOrdering
 
+  /** An ordering for `Byte` values.
+   */
   trait ByteOrdering extends Ordering[Byte] {
+    /** Compares two `Byte` values.
+     *
+     *  @param x the first `Byte` value to compare
+     *  @param y the second `Byte` value to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: Byte, y: Byte): Int = java.lang.Byte.compare(x, y)
   }
   @SerialVersionUID(-2268545360148786406L)
   implicit object Byte extends ByteOrdering
 
+  /** An ordering for `Char` values.
+   */
   trait CharOrdering extends Ordering[Char] {
+    /** Compares two `Char` values.
+     *
+     *  @param x the first `Char` value to compare
+     *  @param y the second `Char` value to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: Char, y: Char): Int = java.lang.Character.compare(x, y)
   }
   @SerialVersionUID(2588141633104296698L)
   implicit object Char extends CharOrdering
 
+  /** An ordering for `Short` values.
+   */
   trait ShortOrdering extends Ordering[Short] {
+    /** Compares two `Short` values.
+     *
+     *  @param x the first `Short` value to compare
+     *  @param y the second `Short` value to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: Short, y: Short): Int = java.lang.Short.compare(x, y)
   }
   @SerialVersionUID(4919657051864630912L)
   implicit object Short extends ShortOrdering
 
+  /** An ordering for `Int` values.
+   */
   trait IntOrdering extends Ordering[Int] {
+    /** Compares two `Int` values.
+     *
+     *  @param x the first `Int` value to compare
+     *  @param y the second `Int` value to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: Int, y: Int): Int = java.lang.Integer.compare(x, y)
   }
   @SerialVersionUID(-8412871093094815037L)
   implicit object Int extends IntOrdering with CachedReverse[Int]
 
+  /** An ordering for `Long` values.
+   */
   trait LongOrdering extends Ordering[Long] {
+    /** Compares two `Long` values.
+     *
+     *  @param x the first `Long` value to compare
+     *  @param y the second `Long` value to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: Long, y: Long): Int = java.lang.Long.compare(x, y)
   }
   @SerialVersionUID(-5231423581640563981L)
@@ -536,6 +736,11 @@ object Ordering extends LowPriorityOrderingImplicits {
      *  @see [[IeeeOrdering]]
      */
     trait TotalOrdering extends Ordering[Float] {
+      /** Compares two `Float` values using the total ordering.
+       *
+       *  @param x the first `Float` value to compare
+       *  @param y the second `Float` value to compare
+       */
       def compare(x: Float, y: Float) = java.lang.Float.compare(x, y)
     }
     @SerialVersionUID(2951539161283192433L)
@@ -558,14 +763,63 @@ object Ordering extends LowPriorityOrderingImplicits {
      *  @see [[TotalOrdering]]
      */
     trait IeeeOrdering extends Ordering[Float] {
+      /** Compares two `Float` values using the total ordering.
+       *
+       *  @param x the first `Float` value to compare
+       *  @param y the second `Float` value to compare
+       */
       def compare(x: Float, y: Float) = java.lang.Float.compare(x, y)
 
+      /** Returns true if `x` is less than or equal to `y` using IEEE 754 semantics.
+       *
+       *  @param x the first `Float` value to compare
+       *  @param y the second `Float` value to compare
+       *  @return `true` if `x` <= `y`, `false` otherwise
+       */
       override def lteq(x: Float, y: Float): Boolean = x <= y
+      /** Returns true if `x` is greater than or equal to `y` using IEEE 754 semantics.
+       *
+       *  @param x the first `Float` value to compare
+       *  @param y the second `Float` value to compare
+       *  @return `true` if `x` >= `y`, `false` otherwise
+       */
       override def gteq(x: Float, y: Float): Boolean = x >= y
+      /** Returns true if `x` is less than `y` using IEEE 754 semantics.
+       *
+       *  @param x the first `Float` value to compare
+       *  @param y the second `Float` value to compare
+       *  @return `true` if `x` < `y`, `false` otherwise
+       */
       override def lt(x: Float, y: Float): Boolean = x < y
+      /** Returns true if `x` is greater than `y` using IEEE 754 semantics.
+       *
+       *  @param x the first `Float` value to compare
+       *  @param y the second `Float` value to compare
+       *  @return `true` if `x` > `y`, `false` otherwise
+       */
       override def gt(x: Float, y: Float): Boolean = x > y
+      /** Returns true if `x` is equivalent to `y` using IEEE 754 semantics.
+       *
+       *  @param x the first `Float` value to compare
+       *  @param y the second `Float` value to compare
+       *  @return `true` if `x` == `y`, `false` otherwise
+       */
       override def equiv(x: Float, y: Float): Boolean = x == y
+      /** Returns the maximum of `x` and `y` using IEEE 754 semantics.
+       *
+       *  @tparam U a subtype of `Float`, used to preserve the specific type in the return value
+       *  @param x the first candidate value
+       *  @param y the second candidate value
+       *  @return the maximum of `x` and `y`
+       */
       override def max[U <: Float](x: U, y: U): U = math.max(x, y).asInstanceOf[U]
+      /** Returns the minimum of `x` and `y` using IEEE 754 semantics.
+       *
+       *  @tparam U a subtype of `Float`, used to preserve the specific type in the return value
+       *  @param x the first candidate value
+       *  @param y the second candidate value
+       *  @return the minimum of `x` and `y`
+       */
       override def min[U <: Float](x: U, y: U): U = math.min(x, y).asInstanceOf[U]
     }
     @SerialVersionUID(2142189527751553605L)
@@ -633,6 +887,11 @@ object Ordering extends LowPriorityOrderingImplicits {
      *  @see [[IeeeOrdering]]
      */
     trait TotalOrdering extends Ordering[Double] {
+      /** Compares two `Double` values using the total ordering.
+       *
+       *  @param x the first `Double` value to compare
+       *  @param y the second `Double` value to compare
+       */
       def compare(x: Double, y: Double) = java.lang.Double.compare(x, y)
     }
     @SerialVersionUID(-831119229746134011L)
@@ -655,14 +914,63 @@ object Ordering extends LowPriorityOrderingImplicits {
      *  @see [[TotalOrdering]]
      */
     trait IeeeOrdering extends Ordering[Double] {
+      /** Compares two `Double` values using the total ordering.
+       *
+       *  @param x the first `Double` value to compare
+       *  @param y the second `Double` value to compare
+       */
       def compare(x: Double, y: Double) = java.lang.Double.compare(x, y)
 
+      /** Returns true if `x` is less than or equal to `y` using IEEE 754 semantics.
+       *
+       *  @param x the first `Double` value to compare
+       *  @param y the second `Double` value to compare
+       *  @return `true` if `x` <= `y`, `false` otherwise
+       */
       override def lteq(x: Double, y: Double): Boolean = x <= y
+      /** Returns true if `x` is greater than or equal to `y` using IEEE 754 semantics.
+       *
+       *  @param x the first `Double` value to compare
+       *  @param y the second `Double` value to compare
+       *  @return `true` if `x` >= `y`, `false` otherwise
+       */
       override def gteq(x: Double, y: Double): Boolean = x >= y
+      /** Returns true if `x` is less than `y` using IEEE 754 semantics.
+       *
+       *  @param x the first `Double` value to compare
+       *  @param y the second `Double` value to compare
+       *  @return `true` if `x` < `y`, `false` otherwise
+       */
       override def lt(x: Double, y: Double): Boolean = x < y
+      /** Returns true if `x` is greater than `y` using IEEE 754 semantics.
+       *
+       *  @param x the first `Double` value to compare
+       *  @param y the second `Double` value to compare
+       *  @return `true` if `x` > `y`, `false` otherwise
+       */
       override def gt(x: Double, y: Double): Boolean = x > y
+      /** Returns true if `x` is equivalent to `y` using IEEE 754 semantics.
+       *
+       *  @param x the first `Double` value to compare
+       *  @param y the second `Double` value to compare
+       *  @return `true` if `x` == `y`, `false` otherwise
+       */
       override def equiv(x: Double, y: Double): Boolean = x == y
+      /** Returns the maximum of `x` and `y` using IEEE 754 semantics.
+       *
+       *  @tparam U a subtype of `Double`, used to preserve the specific type in the return value
+       *  @param x the first candidate value
+       *  @param y the second candidate value
+       *  @return the maximum of `x` and `y`
+       */
       override def max[U <: Double](x: U, y: U): U = math.max(x, y).asInstanceOf[U]
+      /** Returns the minimum of `x` and `y` using IEEE 754 semantics.
+       *
+       *  @tparam U a subtype of `Double`, used to preserve the specific type in the return value
+       *  @param x the first candidate value
+       *  @param y the second candidate value
+       *  @return the minimum of `x` and `y`
+       */
       override def min[U <: Double](x: U, y: U): U = math.min(x, y).asInstanceOf[U]
     }
     @SerialVersionUID(5722631152457877238L)
@@ -678,32 +986,72 @@ object Ordering extends LowPriorityOrderingImplicits {
   @SerialVersionUID(-7340686892557971538L)
   implicit object DeprecatedDoubleOrdering extends Double.TotalOrdering
 
+  /** An ordering for `BigInt` values.
+   */
   trait BigIntOrdering extends Ordering[BigInt] {
+    /** Compares two `BigInt` values.
+     *
+     *  @param x the first `BigInt` value to compare
+     *  @param y the second `BigInt` value to compare
+     */
     def compare(x: BigInt, y: BigInt) = x.compare(y)
   }
   @SerialVersionUID(-3075297647817530785L)
   implicit object BigInt extends BigIntOrdering
 
+  /** An ordering for `BigDecimal` values.
+   */
   trait BigDecimalOrdering extends Ordering[BigDecimal] {
+    /** Compares two `BigDecimal` values.
+     *
+     *  @param x the first `BigDecimal` value to compare
+     *  @param y the second `BigDecimal` value to compare
+     */
     def compare(x: BigDecimal, y: BigDecimal) = x.compare(y)
   }
   @SerialVersionUID(-833457937756812905L)
   implicit object BigDecimal extends BigDecimalOrdering
 
+  /** An ordering for `String` values.
+   */
   trait StringOrdering extends Ordering[String] {
+    /** Compares two `String` values.
+     *
+     *  @param x the first `String` value to compare
+     *  @param y the second `String` value to compare
+     */
     def compare(x: String, y: String) = x.compareTo(y)
   }
   @SerialVersionUID(1302240016074071079L)
   implicit object String extends StringOrdering
 
+  /** An ordering for `Symbol` values.
+   */
   trait SymbolOrdering extends Ordering[Symbol] {
+    /** Compares two `Symbol` values by their names.
+     *
+     *  @param x the first `Symbol` value to compare
+     *  @param y the second `Symbol` value to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: Symbol, y: Symbol): Int = x.name.compareTo(y.name)
   }
   @SerialVersionUID(1996702162912307637L)
   implicit object Symbol extends SymbolOrdering
 
+  /** An ordering for `Option` values.
+   *
+   *  @tparam T the type of the values contained in the `Option`
+   */
   trait OptionOrdering[T] extends Ordering[Option[T]] {
+    /** The ordering used to compare the values contained in the `Option`.
+     */
     def optionOrdering: Ordering[T]
+    /** Compares two `Option` values.
+     *
+     *  @param x the first `Option` value to compare
+     *  @param y the second `Option` value to compare
+     */
     def compare(x: Option[T], y: Option[T]) = (x, y) match {
       case (None, None)       => 0
       case (None, _)          => -1
@@ -711,13 +1059,26 @@ object Ordering extends LowPriorityOrderingImplicits {
       case (Some(x), Some(y)) => optionOrdering.compare(x, y)
     }
 
+    /** Returns whether the given object is equal to this ordering.
+     *
+     *  @param obj the object to compare with this ordering
+     *  @return `true` if `obj` is equal to this ordering, `false` otherwise
+     */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
       case that: OptionOrdering[?]      => this.optionOrdering == that.optionOrdering
       case _                            => false
     }
+    /** Returns a hash code for this ordering.
+     */
     override def hashCode(): Int = optionOrdering.hashCode() * optionSeed
   }
+  /** Creates an ordering for `Option` values using the given element ordering.
+   *
+   *  @tparam T the type of the values contained in the `Option`
+   *  @param ord the implicit `Ordering` used to compare the values contained in the `Option`
+   *  @return an `Ordering[Option[T]]` that compares `Option` values using `ord`
+   */
   implicit def Option[T](implicit ord: Ordering[T]): Ordering[Option[T]] = {
     @SerialVersionUID(6958068162830323876L)
     class O extends  OptionOrdering[T] { val optionOrdering = ord }
@@ -732,21 +1093,46 @@ object Ordering extends LowPriorityOrderingImplicits {
    */
   @deprecated("Iterables are not guaranteed to have a consistent order; if using a type with a " +
     "consistent order (e.g. Seq), use its Ordering (found in the Ordering.Implicits object)", since = "2.13.0")
+  /** Creates an ordering for `Iterable` values using the given element ordering.
+   *
+   *  @tparam T the type of the elements contained in the `Iterable`
+   *  @param ord the implicit `Ordering` used to compare elements of type `T`
+   *  @return an `Ordering[Iterable[T]]` that compares `Iterable` values lexicographically using `ord`
+   */
   implicit def Iterable[T](implicit ord: Ordering[T]): Ordering[Iterable[T]] =
     new IterableOrdering[Iterable, T](ord)
 
+  /** Creates an ordering for tuples of two elements using the given element orderings.
+   *
+   *  @tparam T1 the type of the first element in the tuple
+   *  @tparam T2 the type of the second element in the tuple
+   *  @param ord1 the implicit `Ordering` used to compare the first element
+   *  @param ord2 the implicit `Ordering` used to compare the second element
+   *  @return an `Ordering[(T1, T2)]` that compares tuples lexicographically using `ord1` and `ord2`
+   */
   implicit def Tuple2[T1, T2](implicit ord1: Ordering[T1], ord2: Ordering[T2]): Ordering[(T1, T2)] =
     new Tuple2Ordering(ord1, ord2)
 
   @SerialVersionUID(4945084135299531202L)
   private final class Tuple2Ordering[T1, T2](private val ord1: Ordering[T1],
                                                    private val ord2: Ordering[T2]) extends Ordering[(T1, T2)] {
+    /** Compares two tuples of two elements lexicographically.
+     *
+     *  @param x the first tuple to compare
+     *  @param y the second tuple to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: (T1, T2), y: (T1, T2)): Int = {
       val compare1 = ord1.compare(x._1, y._1)
       if (compare1 != 0) return compare1
       ord2.compare(x._2, y._2)
     }
 
+    /** Returns whether the given object is equal to this ordering.
+     *
+     *  @param obj the object to compare with this ordering
+     *  @return `true` if `obj` is equal to this ordering, `false` otherwise
+     */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
       case that: Tuple2Ordering[?, ?] =>
@@ -754,9 +1140,21 @@ object Ordering extends LowPriorityOrderingImplicits {
         this.ord2 == that.ord2
       case _ => false
     }
+    /** Returns a hash code for this ordering.
+     */
     override def hashCode(): Int = (ord1, ord2).hashCode()
   }
 
+  /** Creates an ordering for tuples of three elements using the given element orderings.
+   *
+   *  @tparam T1 the type of the first element in the tuple
+   *  @tparam T2 the type of the second element in the tuple
+   *  @tparam T3 the type of the third element in the tuple
+   *  @param ord1 the implicit `Ordering` used to compare the first element
+   *  @param ord2 the implicit `Ordering` used to compare the second element
+   *  @param ord3 the implicit `Ordering` used to compare the third element
+   *  @return an `Ordering[(T1, T2, T3)]` that compares tuples lexicographically using `ord1`, `ord2`, and `ord3`
+   */
   implicit def Tuple3[T1, T2, T3](implicit ord1: Ordering[T1], ord2: Ordering[T2], ord3: Ordering[T3]) : Ordering[(T1, T2, T3)] =
     new Tuple3Ordering(ord1, ord2, ord3)
 
@@ -764,6 +1162,12 @@ object Ordering extends LowPriorityOrderingImplicits {
   private final class Tuple3Ordering[T1, T2, T3](private val ord1: Ordering[T1],
                                                        private val ord2: Ordering[T2],
                                                        private val ord3: Ordering[T3]) extends Ordering[(T1, T2, T3)] {
+    /** Compares two tuples of three elements lexicographically.
+     *
+     *  @param x the first tuple to compare
+     *  @param y the second tuple to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: (T1, T2, T3), y: (T1, T2, T3)): Int = {
       val compare1 = ord1.compare(x._1, y._1)
       if (compare1 != 0) return compare1
@@ -772,6 +1176,11 @@ object Ordering extends LowPriorityOrderingImplicits {
       ord3.compare(x._3, y._3)
     }
 
+    /** Returns whether the given object is equal to this ordering.
+     *
+     *  @param obj the object to compare with this ordering
+     *  @return `true` if `obj` is equal to this ordering, `false` otherwise
+     */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
       case that: Tuple3Ordering[?, ?, ?] =>
@@ -780,9 +1189,23 @@ object Ordering extends LowPriorityOrderingImplicits {
         this.ord3 == that.ord3
       case _ => false
     }
+    /** Returns a hash code for this ordering.
+     */
     override def hashCode(): Int = (ord1, ord2, ord3).hashCode()
   }
 
+  /** Creates an ordering for tuples of four elements using the given element orderings.
+   *
+   *  @tparam T1 the type of the first element in the tuple
+   *  @tparam T2 the type of the second element in the tuple
+   *  @tparam T3 the type of the third element in the tuple
+   *  @tparam T4 the type of the fourth element in the tuple
+   *  @param ord1 the implicit `Ordering` used to compare the first element
+   *  @param ord2 the implicit `Ordering` used to compare the second element
+   *  @param ord3 the implicit `Ordering` used to compare the third element
+   *  @param ord4 the implicit `Ordering` used to compare the fourth element
+   *  @return an `Ordering[(T1, T2, T3, T4)]` that compares tuples lexicographically using `ord1`, `ord2`, `ord3`, and `ord4`
+   */
   implicit def Tuple4[T1, T2, T3, T4](implicit ord1: Ordering[T1], ord2: Ordering[T2], ord3: Ordering[T3], ord4: Ordering[T4]) : Ordering[(T1, T2, T3, T4)] =
     new Tuple4Ordering(ord1, ord2, ord3, ord4)
 
@@ -792,6 +1215,12 @@ object Ordering extends LowPriorityOrderingImplicits {
                                                            private val ord3: Ordering[T3],
                                                            private val ord4: Ordering[T4])
     extends Ordering[(T1, T2, T3, T4)] {
+    /** Compares two tuples of four elements lexicographically.
+     *
+     *  @param x the first tuple to compare
+     *  @param y the second tuple to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: (T1, T2, T3, T4), y: (T1, T2, T3, T4)): Int = {
       val compare1 = ord1.compare(x._1, y._1)
       if (compare1 != 0) return compare1
@@ -802,6 +1231,11 @@ object Ordering extends LowPriorityOrderingImplicits {
       ord4.compare(x._4, y._4)
     }
 
+    /** Returns whether the given object is equal to this ordering.
+     *
+     *  @param obj the object to compare with this ordering
+     *  @return `true` if `obj` is equal to this ordering, `false` otherwise
+     */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
       case that: Tuple4Ordering[?, ?, ?, ?] =>
@@ -811,9 +1245,25 @@ object Ordering extends LowPriorityOrderingImplicits {
         this.ord4 == that.ord4
       case _ => false
     }
+    /** Returns a hash code for this ordering.
+     */
     override def hashCode(): Int = (ord1, ord2, ord3, ord4).hashCode()
   }
 
+  /** Creates an ordering for tuples of five elements using the given element orderings.
+   *
+   *  @tparam T1 the type of the first element in the tuple
+   *  @tparam T2 the type of the second element in the tuple
+   *  @tparam T3 the type of the third element in the tuple
+   *  @tparam T4 the type of the fourth element in the tuple
+   *  @tparam T5 the type of the fifth element in the tuple
+   *  @param ord1 the implicit `Ordering` used to compare the first element
+   *  @param ord2 the implicit `Ordering` used to compare the second element
+   *  @param ord3 the implicit `Ordering` used to compare the third element
+   *  @param ord4 the implicit `Ordering` used to compare the fourth element
+   *  @param ord5 the implicit `Ordering` used to compare the fifth element
+   *  @return an `Ordering[(T1, T2, T3, T4, T5)]` that compares tuples lexicographically using `ord1`, `ord2`, `ord3`, `ord4`, and `ord5`
+   */
   implicit def Tuple5[T1, T2, T3, T4, T5](implicit ord1: Ordering[T1], ord2: Ordering[T2], ord3: Ordering[T3], ord4: Ordering[T4], ord5: Ordering[T5]): Ordering[(T1, T2, T3, T4, T5)] =
     new Tuple5Ordering(ord1, ord2, ord3, ord4, ord5)
 
@@ -824,6 +1274,12 @@ object Ordering extends LowPriorityOrderingImplicits {
                                                                private val ord4: Ordering[T4],
                                                                private val ord5: Ordering[T5])
     extends Ordering[(T1, T2, T3, T4, T5)] {
+    /** Compares two tuples of five elements lexicographically.
+     *
+     *  @param x the first tuple to compare
+     *  @param y the second tuple to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: (T1, T2, T3, T4, T5), y: (T1, T2, T3, T4, T5)): Int = {
       val compare1 = ord1.compare(x._1, y._1)
       if (compare1 != 0) return compare1
@@ -836,6 +1292,11 @@ object Ordering extends LowPriorityOrderingImplicits {
       ord5.compare(x._5, y._5)
     }
 
+    /** Returns whether the given object is equal to this ordering.
+     *
+     *  @param obj the object to compare with this ordering
+     *  @return `true` if `obj` is equal to this ordering, `false` otherwise
+     */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
       case that: Tuple5Ordering[?, ?, ?, ?, ?] =>
@@ -846,10 +1307,28 @@ object Ordering extends LowPriorityOrderingImplicits {
         this.ord5 == that.ord5
       case _ => false
     }
+    /** Returns a hash code for this ordering.
+     */
     override def hashCode(): Int = (ord1, ord2, ord3, ord4, ord5).hashCode()
   }
 
   @SerialVersionUID(3045467524192969060L)
+  /** Creates an ordering for tuples of six elements using the given element orderings.
+   *
+   *  @tparam T1 the type of the first element in the tuple
+   *  @tparam T2 the type of the second element in the tuple
+   *  @tparam T3 the type of the third element in the tuple
+   *  @tparam T4 the type of the fourth element in the tuple
+   *  @tparam T5 the type of the fifth element in the tuple
+   *  @tparam T6 the type of the sixth element in the tuple
+   *  @param ord1 the implicit `Ordering` used to compare the first element
+   *  @param ord2 the implicit `Ordering` used to compare the second element
+   *  @param ord3 the implicit `Ordering` used to compare the third element
+   *  @param ord4 the implicit `Ordering` used to compare the fourth element
+   *  @param ord5 the implicit `Ordering` used to compare the fifth element
+   *  @param ord6 the implicit `Ordering` used to compare the sixth element
+   *  @return an `Ordering[(T1, T2, T3, T4, T5, T6)]` that compares tuples lexicographically using `ord1`, `ord2`, `ord3`, `ord4`, `ord5`, and `ord6`
+   */
   implicit def Tuple6[T1, T2, T3, T4, T5, T6](implicit ord1: Ordering[T1], ord2: Ordering[T2], ord3: Ordering[T3], ord4: Ordering[T4], ord5: Ordering[T5], ord6: Ordering[T6]): Ordering[(T1, T2, T3, T4, T5, T6)] =
     new Tuple6Ordering(ord1, ord2, ord3, ord4, ord5, ord6)
 
@@ -860,6 +1339,12 @@ object Ordering extends LowPriorityOrderingImplicits {
                                                                    private val ord5: Ordering[T5],
                                                                    private val ord6: Ordering[T6])
     extends Ordering[(T1, T2, T3, T4, T5, T6)] {
+    /** Compares two tuples of six elements lexicographically.
+     *
+     *  @param x the first tuple to compare
+     *  @param y the second tuple to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: (T1, T2, T3, T4, T5, T6), y: (T1, T2, T3, T4, T5, T6)): Int = {
       val compare1 = ord1.compare(x._1, y._1)
       if (compare1 != 0) return compare1
@@ -874,6 +1359,11 @@ object Ordering extends LowPriorityOrderingImplicits {
       ord6.compare(x._6, y._6)
     }
 
+    /** Returns whether the given object is equal to this ordering.
+     *
+     *  @param obj the object to compare with this ordering
+     *  @return `true` if `obj` is equal to this ordering, `false` otherwise
+     */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
       case that: Tuple6Ordering[?, ?, ?, ?, ?, ?] =>
@@ -885,9 +1375,29 @@ object Ordering extends LowPriorityOrderingImplicits {
         this.ord6 == that.ord6
       case _ => false
     }
+    /** Returns a hash code for this ordering.
+     */
     override def hashCode(): Int = (ord1, ord2, ord3, ord4, ord5, ord6).hashCode()
   }
 
+  /** Creates an ordering for tuples of seven elements using the given element orderings.
+   *
+   *  @tparam T1 the type of the first element in the tuple
+   *  @tparam T2 the type of the second element in the tuple
+   *  @tparam T3 the type of the third element in the tuple
+   *  @tparam T4 the type of the fourth element in the tuple
+   *  @tparam T5 the type of the fifth element in the tuple
+   *  @tparam T6 the type of the sixth element in the tuple
+   *  @tparam T7 the type of the seventh element in the tuple
+   *  @param ord1 the implicit `Ordering` used to compare the first element
+   *  @param ord2 the implicit `Ordering` used to compare the second element
+   *  @param ord3 the implicit `Ordering` used to compare the third element
+   *  @param ord4 the implicit `Ordering` used to compare the fourth element
+   *  @param ord5 the implicit `Ordering` used to compare the fifth element
+   *  @param ord6 the implicit `Ordering` used to compare the sixth element
+   *  @param ord7 the implicit `Ordering` used to compare the seventh element
+   *  @return an `Ordering[(T1, T2, T3, T4, T5, T6, T7)]` that compares tuples lexicographically using `ord1`, `ord2`, `ord3`, `ord4`, `ord5`, `ord6`, and `ord7`
+   */
   implicit def Tuple7[T1, T2, T3, T4, T5, T6, T7](implicit ord1: Ordering[T1], ord2: Ordering[T2], ord3: Ordering[T3], ord4: Ordering[T4], ord5: Ordering[T5], ord6: Ordering[T6], ord7: Ordering[T7]): Ordering[(T1, T2, T3, T4, T5, T6, T7)] =
     new Tuple7Ordering(ord1, ord2, ord3, ord4, ord5, ord6, ord7)
 
@@ -900,6 +1410,12 @@ object Ordering extends LowPriorityOrderingImplicits {
                                                                        private val ord6: Ordering[T6],
                                                                        private val ord7: Ordering[T7])
     extends Ordering[(T1, T2, T3, T4, T5, T6, T7)] {
+    /** Compares two tuples of seven elements lexicographically.
+     *
+     *  @param x the first tuple to compare
+     *  @param y the second tuple to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: (T1, T2, T3, T4, T5, T6, T7), y: (T1, T2, T3, T4, T5, T6, T7)): Int = {
       val compare1 = ord1.compare(x._1, y._1)
       if (compare1 != 0) return compare1
@@ -916,6 +1432,11 @@ object Ordering extends LowPriorityOrderingImplicits {
       ord7.compare(x._7, y._7)
     }
 
+    /** Returns whether the given object is equal to this ordering.
+     *
+     *  @param obj the object to compare with this ordering
+     *  @return `true` if `obj` is equal to this ordering, `false` otherwise
+     */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
       case that: Tuple7Ordering[?, ?, ?, ?, ?, ?, ?] =>
@@ -928,10 +1449,32 @@ object Ordering extends LowPriorityOrderingImplicits {
         this.ord7 == that.ord7
       case _ => false
     }
+    /** Returns a hash code for this ordering.
+     */
     override def hashCode(): Int = (ord1, ord2, ord3, ord4, ord5, ord6, ord7).hashCode()
   }
 
   @SerialVersionUID(4003095353309354068L)
+  /** Creates an ordering for tuples of eight elements using the given element orderings.
+   *
+   *  @tparam T1 the type of the first element in the tuple
+   *  @tparam T2 the type of the second element in the tuple
+   *  @tparam T3 the type of the third element in the tuple
+   *  @tparam T4 the type of the fourth element in the tuple
+   *  @tparam T5 the type of the fifth element in the tuple
+   *  @tparam T6 the type of the sixth element in the tuple
+   *  @tparam T7 the type of the seventh element in the tuple
+   *  @tparam T8 the type of the eighth element in the tuple
+   *  @param ord1 the implicit `Ordering` used to compare the first element
+   *  @param ord2 the implicit `Ordering` used to compare the second element
+   *  @param ord3 the implicit `Ordering` used to compare the third element
+   *  @param ord4 the implicit `Ordering` used to compare the fourth element
+   *  @param ord5 the implicit `Ordering` used to compare the fifth element
+   *  @param ord6 the implicit `Ordering` used to compare the sixth element
+   *  @param ord7 the implicit `Ordering` used to compare the seventh element
+   *  @param ord8 the implicit `Ordering` used to compare the eighth element
+   *  @return an `Ordering[(T1, T2, T3, T4, T5, T6, T7, T8)]` that compares tuples lexicographically using `ord1`, `ord2`, `ord3`, `ord4`, `ord5`, `ord6`, `ord7`, and `ord8`
+   */
   implicit def Tuple8[T1, T2, T3, T4, T5, T6, T7, T8](implicit ord1: Ordering[T1], ord2: Ordering[T2], ord3: Ordering[T3], ord4: Ordering[T4], ord5: Ordering[T5], ord6: Ordering[T6], ord7: Ordering[T7], ord8: Ordering[T8]): Ordering[(T1, T2, T3, T4, T5, T6, T7, T8)] =
     new Tuple8Ordering(ord1, ord2, ord3, ord4, ord5, ord6, ord7, ord8)
 
@@ -944,6 +1487,12 @@ object Ordering extends LowPriorityOrderingImplicits {
                                                                            private val ord7: Ordering[T7],
                                                                            private val ord8: Ordering[T8])
     extends Ordering[(T1, T2, T3, T4, T5, T6, T7, T8)] {
+    /** Compares two tuples of eight elements lexicographically.
+     *
+     *  @param x the first tuple to compare
+     *  @param y the second tuple to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: (T1, T2, T3, T4, T5, T6, T7, T8), y: (T1, T2, T3, T4, T5, T6, T7, T8)): Int = {
       val compare1 = ord1.compare(x._1, y._1)
       if (compare1 != 0) return compare1
@@ -962,6 +1511,11 @@ object Ordering extends LowPriorityOrderingImplicits {
       ord8.compare(x._8, y._8)
     }
 
+    /** Returns whether the given object is equal to this ordering.
+     *
+     *  @param obj the object to compare with this ordering
+     *  @return `true` if `obj` is equal to this ordering, `false` otherwise
+     */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
       case that: Tuple8Ordering[?, ?, ?, ?, ?, ?, ?, ?] =>
@@ -975,10 +1529,34 @@ object Ordering extends LowPriorityOrderingImplicits {
         this.ord8 == that.ord8
       case _ => false
     }
+    /** Returns a hash code for this ordering.
+     */
     override def hashCode(): Int = (ord1, ord2, ord3, ord4, ord5, ord6, ord7, ord8).hashCode()
   }
 
   @SerialVersionUID(8185342054829975001L)
+  /** Creates an ordering for tuples of nine elements using the given element orderings.
+   *
+   *  @tparam T1 the type of the first element in the tuple
+   *  @tparam T2 the type of the second element in the tuple
+   *  @tparam T3 the type of the third element in the tuple
+   *  @tparam T4 the type of the fourth element in the tuple
+   *  @tparam T5 the type of the fifth element in the tuple
+   *  @tparam T6 the type of the sixth element in the tuple
+   *  @tparam T7 the type of the seventh element in the tuple
+   *  @tparam T8 the type of the eighth element in the tuple
+   *  @tparam T9 the type of the ninth element in the tuple
+   *  @param ord1 the implicit `Ordering` used to compare the first element
+   *  @param ord2 the implicit `Ordering` used to compare the second element
+   *  @param ord3 the implicit `Ordering` used to compare the third element
+   *  @param ord4 the implicit `Ordering` used to compare the fourth element
+   *  @param ord5 the implicit `Ordering` used to compare the fifth element
+   *  @param ord6 the implicit `Ordering` used to compare the sixth element
+   *  @param ord7 the implicit `Ordering` used to compare the seventh element
+   *  @param ord8 the implicit `Ordering` used to compare the eighth element
+   *  @param ord9 the implicit `Ordering` used to compare the ninth element
+   *  @return an `Ordering[(T1, T2, T3, T4, T5, T6, T7, T8, T9)]` that compares tuples lexicographically using `ord1`, `ord2`, `ord3`, `ord4`, `ord5`, `ord6`, `ord7`, `ord8`, and `ord9`
+   */
   implicit def Tuple9[T1, T2, T3, T4, T5, T6, T7, T8, T9](implicit ord1: Ordering[T1], ord2: Ordering[T2], ord3: Ordering[T3], ord4: Ordering[T4], ord5: Ordering[T5], ord6: Ordering[T6], ord7: Ordering[T7], ord8 : Ordering[T8], ord9: Ordering[T9]): Ordering[(T1, T2, T3, T4, T5, T6, T7, T8, T9)] =
     new Tuple9Ordering(ord1, ord2, ord3, ord4, ord5, ord6, ord7, ord8, ord9)
 
@@ -992,6 +1570,12 @@ object Ordering extends LowPriorityOrderingImplicits {
                                                                                private val ord8: Ordering[T8],
                                                                                private val ord9: Ordering[T9])
     extends Ordering[(T1, T2, T3, T4, T5, T6, T7, T8, T9)] {
+    /** Compares two tuples of nine elements lexicographically.
+     *
+     *  @param x the first tuple to compare
+     *  @param y the second tuple to compare
+     *  @return a negative integer, zero, or a positive integer as `x` is less than, equal to, or greater than `y`
+     */
     def compare(x: (T1, T2, T3, T4, T5, T6, T7, T8, T9), y: (T1, T2, T3, T4, T5, T6, T7, T8, T9)): Int = {
       val compare1 = ord1.compare(x._1, y._1)
       if (compare1 != 0) return compare1
@@ -1012,6 +1596,11 @@ object Ordering extends LowPriorityOrderingImplicits {
       ord9.compare(x._9, y._9)
     }
 
+    /** Returns whether the given object is equal to this ordering.
+     *
+     *  @param obj the object to compare with this ordering
+     *  @return `true` if `obj` is equal to this ordering, `false` otherwise
+     */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
       case that: Tuple9Ordering[?, ?, ?, ?, ?, ?, ?, ?, ?] =>
@@ -1026,6 +1615,8 @@ object Ordering extends LowPriorityOrderingImplicits {
         this.ord9 == that.ord9
       case _ => false
     }
+    /** Returns a hash code for this ordering.
+     */
     override def hashCode(): Int = (ord1, ord2, ord3, ord4, ord5, ord6, ord7, ord8, ord9).hashCode()
   }
 }

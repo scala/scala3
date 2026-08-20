@@ -49,6 +49,7 @@ transparent trait IsIterableOnce[Repr] {
   /** The type of elements we can traverse over (e.g. `Int`). */
   type A
 
+  /** A deprecated alias for the `apply` method that converts a `Repr` to an `IterableOnce[A]`. */
   @deprecated("'conversion' is now a method named 'apply'", "2.13.0")
   @untrackedCaptures
   val conversion: Repr => IterableOnce[A] = apply(_)
@@ -65,6 +66,12 @@ transparent trait IsIterableOnce[Repr] {
 object IsIterableOnce extends IsIterableOnceLowPriority {
 
   // Straightforward case: IterableOnce subclasses
+  /** Provides an *implicit* `IsIterableOnce` instance for any `IterableOnce` subclass.
+   *
+   *  @tparam CC0 the collection type constructor, which must be a subclass of `IterableOnce`
+   *  @tparam A0 the element type of the collection
+   *  @return an `IsIterableOnce` instance for `CC0[A0]`
+   */
   implicit def iterableOnceIsIterableOnce[CC0[A] <: IterableOnce[A], A0]: IsIterableOnce[CC0[A0]] { type A = A0 } =
     new IsIterableOnce[CC0[A0]] {
       type A = A0
@@ -76,6 +83,12 @@ object IsIterableOnce extends IsIterableOnceLowPriority {
 transparent trait IsIterableOnceLowPriority {
 
   // Makes `IsIterable` instance visible in `IsIterableOnce` companion
+  /** Provides an *implicit* `IsIterableOnce` instance for any type that has an *implicit* `IsIterable` instance.
+   *
+   *  @tparam Repr the collection representation type
+   *  @param isIterableLike the implicit `IsIterable` instance for `Repr`
+   *  @return an `IsIterableOnce` instance for `Repr` with the same element type as `isIterableLike`
+   */
   implicit def isIterableLikeIsIterableOnce[Repr](implicit
     isIterableLike: IsIterable[Repr]
   ): IsIterableOnce[Repr] { type A = isIterableLike.A } = isIterableLike

@@ -19,6 +19,7 @@ import scala.language.`2.13`
  *  extend ScalaNumber (which excludes value classes.)
  */
 trait ScalaNumericConversions extends ScalaNumber with ScalaNumericAnyConversions {
+  /** Returns the underlying value as a Java `Object`. */
   def underlying: Object
 }
 
@@ -31,11 +32,17 @@ trait ScalaNumericAnyConversions extends Any {
    */
   def isWhole: Boolean
 
+  /** Returns the value of this number as a [[scala.Byte]]. Values that don't fit are narrowed to the low-order bits of the target type and can lose magnitude or flip sign. */
   def byteValue: Byte
+  /** Returns the value of this number as a [[scala.Short]]. Values that don't fit are narrowed to the low-order bits of the target type and can lose magnitude or flip sign. */
   def shortValue: Short
+  /** Returns the value of this number as an [[scala.Int]]. Values that don't fit are narrowed to the low-order bits of the target type and can lose magnitude or flip sign. */
   def intValue: Int
+  /** Returns the value of this number as a [[scala.Long]]. Values that don't fit are narrowed to the low-order bits of the target type and can lose magnitude or flip sign. */
   def longValue: Long
+  /** Returns the value of this number as a [[scala.Float]]. This may involve rounding, or overflow to positive/negative infinity if the magnitude is too large to represent. */
   def floatValue: Float
+  /** Returns the value of this number as a [[scala.Double]]. This may involve rounding, or overflow to positive/negative infinity if the magnitude is too large to represent. */
   def doubleValue: Double
 
   /** Returns the value of this as a [[scala.Char]]. This may involve
@@ -93,6 +100,7 @@ trait ScalaNumericAnyConversions extends Any {
    */
   def isValidChar  = isWhole && (toInt >= Char.MinValue && toInt <= Char.MaxValue)
 
+  /** Returns the [[scala.Int]] hash code if the value fits in an [[scala.Int]]; otherwise, returns the [[scala.Long]] hash code. */
   protected def unifiedPrimitiveHashcode = {
     val lv = toLong
     if (lv >= Int.MinValue && lv <= Int.MaxValue) lv.toInt
