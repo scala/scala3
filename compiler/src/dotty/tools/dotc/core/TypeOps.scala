@@ -559,12 +559,17 @@ object TypeOps:
    *  does not update `ctx.nestingLevel` when entering a block so I'm leaving
    *  this as Future Work™.
    */
-  def avoid(tp: Type, symsToAvoid: => List[Symbol])(using Context): Type = {
+  def avoid(tp: Type, symsToAvoid: => List[Symbol],
+      replacements: Map[Symbol, Type] = Map.empty)(using Context): Type = {
     val widenMap = new AvoidMap {
       @threadUnsafe lazy val forbidden = symsToAvoid.toSet
       def toAvoid(tp: NamedType) = forbidden.contains(tp.symbol)
 
       override def apply(tp: Type): Type = tp match
+        case tp: TermRef if toAvoid(tp) =>
+          replacements.get(tp.symbol) match
+            case Some(replacement) => replacement
+            case None => super.apply(tp)
         case tp: TypeVar if mapCtx.typerState.constraint.contains(tp) =>
           val lo = TypeComparer.instanceType(
             tp.origin,
