@@ -614,7 +614,6 @@ main :is(ul, ol) li .snippet {
 
 .membersList {
   position: relative;
-  min-height: 80vh;
 }
 
 #concise-view-switch {
