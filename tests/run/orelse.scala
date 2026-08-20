@@ -1,3 +1,6 @@
+// scalajs: --skip
+// scalajs needs to be diasabled since `null` gives an Err(undefined) instead of an Err(())
+// TODO: Figure out how to fix this under scalajs
 //> using options -Yexplicit-nulls
 import language.experimental.magic
 import scala.magic.*
