@@ -414,11 +414,10 @@ object SpaceEngine {
         val prod = Prod(erase(pat.tpe.stripAnnots, isValue = false), funRef, pats.map(project))
         // `Err.unapply` succeeds on `null`, which is how `Err(())` is represented for
         // a maybe type with a nullable error type. Since such a maybe type decomposes
-        // into a space of its own for `null` (see `maybeParts`), `Err(_)` has to cover
+        // into a space of its own for `null` (see `maybeParts`), `Err...)` has to cover
         // it explicitly.
         pat.tpe.widen.dealias match
-          case MagicMaybeType(_, _, /*nullable=*/true)
-          if fun.symbol == defn.Magic_ErrUnapply && pats.forall(isWildcardArg) =>
+          case MagicMaybeType(_, _, /*nullable=*/true) if fun.symbol == defn.Magic_ErrUnapply =>
             Or(prod :: nullSpace :: Nil)
           case _ =>
             prod
