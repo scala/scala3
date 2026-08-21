@@ -1,0 +1,36 @@
+/* Interactive toggles for experimental language features (e.g. capture checking).
+ *
+ * Signature fragments that depend on a toggleable feature carry both variants
+ * in the DOM (see featureToggles.js); these rules display exactly one of them.
+ * By default the feature's annotations are shown; a `<id>-hidden` class on the
+ * root element (e.g. `cc-hidden`) swaps every fragment to its plain variant.
+ */
+
+.feature-off {
+  display: none;
+}
+
+:root.cc-hidden .feature-cc > .feature-on {
+  display: none;
+}
+
+:root.cc-hidden .feature-cc > .feature-off {
+  display: inline;
+}
+
+/* The header button toggling capture checking annotations */
+
+#cc-toggle {
+  border: 1px solid var(--border-default);
+  border-radius: 4px;
+  background: none;
+  padding: calc(0.5 * var(--base-spacing)) calc(1 * var(--base-spacing));
+  font-family: var(--code-font-family);
+  font-size: 14px;
+  line-height: 16px;
+}
+
+#cc-toggle.feature-toggle-off {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
