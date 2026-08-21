@@ -219,7 +219,6 @@ jobs:
           # Keep in sync with project/Dependencies.scala.
           scala-cli-version: 1.16.0
           jvm: ''
-          apps: ''
       - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
       - name: Test REPL on JDK ${{ matrix.jdk }}
         env:
