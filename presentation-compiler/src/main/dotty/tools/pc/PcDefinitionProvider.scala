@@ -12,6 +12,7 @@ import scala.meta.pc.SymbolSearch
 import dotty.tools.dotc.ast.NavigateAST
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
+import dotty.tools.dotc.classpath.FileUtils
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Flags.{Exported, ModuleClass}
 import dotty.tools.dotc.core.Symbols.*
@@ -20,9 +21,12 @@ import dotty.tools.dotc.interactive.Interactive.Include
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourceFile
 import dotty.tools.dotc.util.SourcePosition
+import dotty.tools.io.ZipArchive
 import dotty.tools.pc.utils.InteractiveEnrichments.*
 
 import org.eclipse.lsp4j.Location
+import org.eclipse.lsp4j.Position
+import org.eclipse.lsp4j.Range
 
 class PcDefinitionProvider(
     driver: InteractiveDriver,
@@ -146,7 +150,30 @@ class PcDefinitionProvider(
         case srcTree if srcTree.namePos.exists =>
           new Location(params.uri().toString(), srcTree.namePos.toLsp)
       .toList
-    else search.definition(semanticdbSymbol, uri).nn.asScala.toList
+    else
+      val fromSearch = search.definition(semanticdbSymbol, uri).nn.asScala.toList
+      if fromSearch.nonEmpty then fromSearch
+      else
+        val file = symbol.associatedFile
+        if file != null then
+          file match
+            case entry: ZipArchive#Entry =>
+              val classFile =
+                if file.nn.hasExtension("tasty") then
+                  Paths.get(entry.path).nn.resolveSibling(FileUtils.stripClassExtension(file.name) + ".class")
+                else Paths.get(entry.path)
+              if classFile != null then
+                entry.underlyingSource match
+                  case Some(jar: ZipArchive) =>
+                    val res = List(new Location(
+                      s"jar:${jar.jpath.toUri}!/${classFile.toString.replace("\\", "/")}",
+                      new Range(new Position(0, 0), new Position(0, 0))
+                    ))
+                    res
+                  case _ => Nil
+              else Nil
+            case _ => Nil
+        else Nil
 
   def semanticSymbolsSorted(
       syms: List[Symbol]

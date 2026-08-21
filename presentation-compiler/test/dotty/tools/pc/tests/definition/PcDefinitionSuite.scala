@@ -1,5 +1,7 @@
 package dotty.tools.pc.tests.definition
 
+import java.nio.file.Path
+
 import scala.language.unsafeNulls
 import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.pc.OffsetParams
@@ -7,10 +9,24 @@ import scala.meta.pc.OffsetParams
 import dotty.tools.pc.base.BasePcDefinitionSuite
 import dotty.tools.pc.utils.MockEntries
 
+import coursierapi.{Dependency, Fetch}
 import org.eclipse.lsp4j.Location
 import org.junit.{Ignore, Test}
 
 class PcDefinitionSuite extends BasePcDefinitionSuite:
+
+  override protected def additionalClasspath: Seq[Path] =
+    // we purposefully don't request/attach the -sources.jar here
+    fetchJar("com.lihaoyi", "sourcecode_3", "0.4.2")
+
+  private def fetchJar(organization: String, artifact: String, version: String): Seq[Path] =
+    Fetch
+      .create()
+      .withDependencies(Dependency.of(organization, artifact, version))
+      .fetch()
+      .asScala
+      .map(_.toPath)
+      .toSeq
 
   override def mockEntries = new MockEntries:
     override def definitions = Map[String, List[Location]](
@@ -105,7 +121,7 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
       """|
          |object Main {
          |  val <<increment>>: Int => Int = _ + 2
-         |  incre@@ment(1)
+         |  incre@@/*scala/Function1.class*/ment(1)
          |}
          |""".stripMargin
     )
@@ -124,7 +140,7 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
     check(
       """|
          |object Main {
-         |  /*scala/package.List. package.scala*/@@List(1)
+         |  /*scala/collection/IterableFactory.class*//*scala/package.List. package.scala*/@@List(1)
          |}
          |""".stripMargin
     )
@@ -636,6 +652,15 @@ class PcDefinitionSuite extends BasePcDefinitionSuite:
     check(
       """|package a
          |object Repro:
-         |    export scala.collection.immutable.V/*scala/collection/immutable/Vector. Vector.scala*/@@ector
+         |    export scala.collection.immutable.V/*scala/collection/immutable/Vector.class*//*scala/collection/immutable/Vector. Vector.scala*/@@ector
+         |""".stripMargin
+    )
+
+  @Test def `dep-no-source-jar` =
+    check(
+      """|import sourcecode.Name
+         |object Main {
+         |  def foo: /*sourcecode/Name.class*/@@Name = ???
+         |}
          |""".stripMargin
     )

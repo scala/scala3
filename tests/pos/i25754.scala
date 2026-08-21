@@ -1,6 +1,6 @@
 object Tag {
   opaque type @@[A, T] = A
-  inline def tag[T]: [A] => A => A @@ T = [A] => a => a
+  inline def tag[T]: [A] => A => A @@ T = [A] => (a: A) => a
 }
 
 import Tag.*
