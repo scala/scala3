@@ -9,7 +9,7 @@ import reporting.Message
 import Contexts.Context
 import Types.MethodType
 import Symbols.{Symbol, ClassSymbol}
-import util.{SimpleIdentitySet, EqHashMap}
+import util.{SimpleIdentitySet, EqHashMap, EqHashSet}
 import Capabilities.Capability
 
 /** Capture checking state, which is known to other capture checking components */
@@ -111,6 +111,11 @@ class CCState:
 
   /* A cache for CaptureOps.useSet */
   private[cc] val useSetCache: EqHashMap[Symbol, CaptureSet] = EqHashMap()
+
+  /** Symbols whose use sets are currently being reconstructed from TASTy, to
+   *  guard against cycles in the reconstruction.
+   */
+  private[cc] val tastyUsesInProgress: EqHashSet[Symbol] = EqHashSet()
 
   /** A cache that stores for each class the classifiers of all LocalCap instances
    *  in the types of its fields and the fields that contribute such LocalCap instances.

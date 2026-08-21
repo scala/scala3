@@ -566,6 +566,12 @@ class TastyLoader(tastyFile: AbstractFile) extends SymbolLoader {
 
   private def mayLoadTreesFromTasty(using Context): Boolean =
     ctx.settings.YretainTrees.value || ctx.settings.fromTasty.value
+      || unpickler.tastyAttributes.captureChecked
+      // Retain the unpicklers of capture-checked TASTy files, so that the
+      // capture checker can reconstruct the use sets of their classes by
+      // walking the pickled member bodies. This is keyed on the file's own
+      // attribute since a classpath symbol can be completed before any
+      // compilation unit has enabled capture checking.
 }
 
 class SourcefileLoader(srcfile: AbstractFile) extends SymbolLoader {
