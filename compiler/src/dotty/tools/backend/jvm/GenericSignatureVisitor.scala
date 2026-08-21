@@ -264,10 +264,7 @@ abstract class NestedClassesCollector[T](nestedOnly: Boolean) extends GenericSig
       do
         val start = i + 1 // skip the L
         val end = desc.indexOf(';', start)
-        val dollarIndex = desc.indexOf('$', start)
-        val seenDollar = 0 <= dollarIndex && dollarIndex < end
-        if seenDollar then
-          visitInternalName(desc, start, end)
+        visitInternalName(desc, start, end)
         i = end
 
     case 'L' =>
