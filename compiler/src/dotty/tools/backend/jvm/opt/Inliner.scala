@@ -19,7 +19,7 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import org.objectweb.asm
 import org.objectweb.asm.Opcodes.*
-import org.objectweb.asm.Type
+import org.objectweb.asm.{Opcodes, Type}
 import org.objectweb.asm.tree.*
 import org.objectweb.asm.tree.analysis.Value
 import dotty.tools.backend.jvm.BTypes.InternalName
@@ -27,40 +27,16 @@ import dotty.tools.backend.jvm.analysis.*
 import AnalysisUtils.LambdaMetaFactoryCall
 import BCodeUtils.*
 
-class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
-              heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
-              settings: OptimizerSettings) {
+abstract class Inliner {
+  def run(issueSink: OptimizerIssue => Unit): Unit
+  def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit
+}
 
-  // True if all instructions (they would cause an IllegalAccessError otherwise) can potentially be
-  // inlined in a later inlining round.
-  // Note that this method has a side effect. It allows inlining `INVOKESPECIAL` calls of static
-  // super accessors that we emit in traits. The inlined calls are marked in the call graph as
-  // `staticallyResolvedInvokespecial`. When looking up the MethodNode for the cloned `INVOKESPECIAL`,
-  // the call graph will always return the corresponding method in the trait.
-  private def maybeInlinedLater(callsite: KnownCallsite, insns: List[AbstractInsnNode]): Boolean = {
-    insns.forall({
-      case mi: MethodInsnNode =>
-        (mi.getOpcode != INVOKESPECIAL) || {
-          // Special handling for invokespecial T.f that appears within T, and T defines f.
-          // Such an instruction can be inlined into a different class, but it needs to be inlined in
-          // turn in a later inlining round.
-          // The call graph needs to treat it specially: the normal dynamic lookup needs to be
-          // avoided, it needs to resolve to T.f, no matter in which class the invocation appears.
-          def hasMethod(c: ClassNode): Boolean = {
-            val r = c.methods.iterator.asScala.exists(m => m.name == mi.name && m.desc == mi.desc)
-            if (r) callGraph.staticallyResolvedInvokespecial += mi
-            r
-          }
+final class InlinerImpl(callGraph: OptimizerCallGraph, classBTypeCache: ClassBType.Cache, bTypesFromClassfile: BTypesFromClassfile, byteCodeRepository: BCodeRepository,
+                        heuristics: InlinerHeuristics, closureOptimizer: ClosureOptimizer,
+                        settings: OptimizerSettings) extends Inliner {
 
-          mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME &&
-            mi.owner == callsite.callee.calleeDeclarationClass.internalName &&
-            byteCodeRepository.classNode(mi.owner).map((c, _) => hasMethod(c)).getOrElse(false) // TODO bubble up warning instead
-        }
-      case _ => false
-    })
-  }
-
-  def runInlinerAndClosureOptimizer(issueSink: OptimizerIssue => Unit): Unit = {
+  override def run(issueSink: OptimizerIssue => Unit): Unit = {
     var round = 0
     var changedByInliner = Iterable.empty[MethodNode]
     var changedByClosureOptimizer = mutable.LinkedHashSet.empty[MethodNode]
@@ -175,7 +151,7 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
             case None =>
               doInline(r, aliasFrame, None)
 
-            case Some(w: IllegalAccessInstructions) if maybeInlinedLater(r.callsite, w.instructions) =>
+            case Some(w: IllegalAccessInstructions) if callGraph.maybeInlinedLater(r.callsite, w.instructions) =>
               if (state.undoLog.isEmpty) {
                 val undo = new UndoLog(callGraph)
                 val currentState = state.clone()
@@ -244,7 +220,7 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
           }
 
         val rs = mutable.ListBuffer.empty[InlineRequest]
-        callGraph.callsites(method).valuesIterator foreach {
+        callGraph.getCallsites(method).foreach {
           // Don't inline: recursive calls, callsites that failed inlining before
           case cs: KnownCallsite if !failed(cs.callsiteInstruction) && !isLoop(cs.callsiteInstruction, cs.callee) =>
             heuristics.inlineRequest(cs) match {
@@ -402,7 +378,7 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
    * @return A map associating instruction nodes of the callee with the corresponding cloned
    *         instruction in the callsite method.
    */
-  def inlineCallsite(callsite: KnownCallsite, aliasFrame: Option[AliasingFrame[Value]] = None, updateCallGraph: Boolean = true): Map[AbstractInsnNode, AbstractInsnNode] = {
+  private def inlineCallsite(callsite: KnownCallsite, aliasFrame: Option[AliasingFrame[Value]] = None, updateCallGraph: Boolean = true): Map[AbstractInsnNode, AbstractInsnNode] = {
     val callsiteCallee = callsite.callee
     import callsiteCallee.{callee, calleeDeclarationClass, sourceFilePath}
 
@@ -706,6 +682,18 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
     instructionMap
   }
 
+  override def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit = {
+      var css = toInline.flatMap(callGraph.getCallsite(method, _))
+        .collect { case k: KnownCallsite => k }
+        .toList
+        .sorted(using callsiteOrdering)
+      while (css.nonEmpty) {
+        val cs = css.head
+        css = css.tail
+        inlineCallsite(cs, None, updateCallGraph = css.isEmpty)
+      }
+  }
+
   /**
    * Check whether the body of the callee contains any instructions that prevent the callsite from
    * being inlined. See also method `earlyCanInlineCheck`.
@@ -964,6 +952,13 @@ class Inliner(callGraph: CallGraph, classBTypeCache: ClassBType.Cache, bTypesFro
   }
 }
 
+object DisabledInliner extends Inliner {
+  override def run(issueSink: OptimizerIssue => Unit): Unit =
+    ()
+  override def inlineCallsites(method: MethodNode, toInline: Iterable[MethodInsnNode]): Unit =
+    ()
+}
+
 object Inliner {
   /**
    * Check if a type is accessible to some class, as defined in JVMS 5.4.4.
@@ -1046,7 +1041,7 @@ object Inliner {
   }
 }
 
-class UndoLog(callGraph: CallGraph) {
+class UndoLog(callGraph: OptimizerCallGraph) {
 
   import java.util.{ArrayList => JArrayList}
 
