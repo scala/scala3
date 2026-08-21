@@ -1,6 +1,7 @@
 package dotty.tools
 package repl
 
+import scala.sys.process.*
 import scala.util.matching.Regex
 
 import org.junit.Assert.assertEquals
@@ -47,12 +48,12 @@ class ToolkitTests extends ReplTest:
       expectedScalaCliVersion,
       extractVersion(
         scalaCliVersion,
-        TestProcess.output(Seq(scalaCli, "version", "--cli-version")),
+        Seq(scalaCli, "version", "--cli-version").!!,
         "Scala CLI version"
       )
     )
 
-    val scalaCliHelp = TestProcess.output(Seq(scalaCli, "run", "--help-full"))
+    val scalaCliHelp = Seq(scalaCli, "run", "--help-full").!!
     toolkits.foreach: toolkit =>
       val scalaCliVersion = extractVersion(toolkit.scalaCliDefaultVersion, scalaCliHelp, "Scala CLI help")
       val replVersion = replToolkitVersion(toolkit.directive)
