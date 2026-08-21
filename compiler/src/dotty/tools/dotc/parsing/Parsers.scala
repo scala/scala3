@@ -823,9 +823,9 @@ object Parsers {
         patch(source, Span(startOpening, endOpening), " {")
         val next = in.next
         def closedByEndMarker =
-          next.token == END && (next.offset - next.lineOffset) == indentWidth.toPrefix.size
+          next.token == END && (next.offset - next.lineOffset) == indentWidth.toPrefixSize
         if closedByEndMarker then patch(source, Span(next.offset), "} // ")
-        else patch(source, Span(closingOffset(source.nextLine(in.lastOffset))), indentWidth.toPrefix ++ "}\n")
+        else patch(source, Span(closingOffset(source.nextLine(in.lastOffset))), indentWidth.toPrefix + "}\n")
       t
     end indentedToBraces
 

@@ -88,7 +88,7 @@ trait Migrations:
     }
     val mversion = mv.FunctionUnderscore
     def remedy =
-      if ((prefix ++ suffix).isEmpty) "simply leave out the trailing ` _`"
+      if ((prefix + suffix).isEmpty) "simply leave out the trailing ` _`"
       else s"use `$prefix<function>$suffix` instead"
     def rewrite = Message.rewriteNotice("This construct", mversion.patchFrom)
     report.errorOrMigrationWarning(

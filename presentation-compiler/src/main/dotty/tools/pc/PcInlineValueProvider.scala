@@ -136,8 +136,8 @@ final class PcInlineValueProvider(
     rhsLines match
       case _ :: Nil => rhs
       case h :: t =>
-        val header = if !hasNextLineAfterEqualsSign then h else "\n" ++ refIndent ++ "  " ++ h
-        header ++ t.map(refIndent ++ _.stripPrefix(defIndent)).mkString("\n", "\n", "")
+        val header = if !hasNextLineAfterEqualsSign then h else "\n" + refIndent + "  " + h
+        header + t.map(refIndent + _.stripPrefix(defIndent)).mkString("\n", "\n", "")
       case Nil => rhs
 
   private def definitionRequiresBrackets(tree: Tree)(using Context): Boolean =
