@@ -144,10 +144,12 @@ class RangeConsistencyTest {
       def negate(x: Int): Int = -x
       def plus(x: Int, y: Int): Int = x + y
       def times(x: Int, y: Int): Int = x*y
-      def toDouble(x: Int): Double = x.toDouble
-      def toFloat(x: Int): Float = x.toFloat
-      def toInt(x: Int): Int = x
-      def toLong(x: Int): Long = x.toLong
+      extension (x: Int) {
+        override def toDouble: Double = x.toDouble
+        override def toFloat: Float = x.toFloat
+        override def toInt: Int = x
+        override def toLong: Long = x.toLong
+      }
       def compare(x: Int, y: Int) = x compare y
     }
     val r = (Int.MinValue to Int.MaxValue by (1<<23))
@@ -185,10 +187,12 @@ class RangeConsistencyTest {
       def times(x: A, y: A): A = A(x.v * y.v)
       def quot(x: A, y: A): A = A(x.v / y.v)
       def rem(x: A, y: A): A = A(x.v % y.v)
-      def toDouble(x: A): Double = x.v.toDouble
-      def toFloat(x: A): Float = x.v.toFloat
-      def toInt(x: A): Int = x.v
-      def toLong(x: A): Long = x.v.toLong
+      extension (x: A) {
+        override def toDouble: Double = x.v.toDouble
+        override def toFloat: Float = x.v.toFloat
+        override def toInt: Int = x.v
+        override def toLong: Long = x.v.toLong
+      }
     }
 
     val r = NumericRange(A(1), A(10), A(1))

@@ -1,8 +1,6 @@
 
 import scala.quoted.*
 
-import math.Numeric.Implicits.infixNumericOps
-
 inline def power[Num](x: Num, inline n: Int)(using num: Numeric[Num]) = ${powerCode('x, 'n)(using 'num)}
 
 private def powerCode[Num: Type](x: Expr[Num], n: Expr[Int])(using Expr[Numeric[Num]])(using Quotes): Expr[Num] =
@@ -22,4 +20,4 @@ private def powerCode[Num: Type](x: Expr[Num], n: Int)(using num: Expr[Numeric[N
     }
   }
 
-inline def withGiven[U, T](inline x: T)(inline body: T ?=> U): U = body(using x)
+inline def withGiven[U](x: Any)(inline body: x.type ?=> U): U = body(using x)
