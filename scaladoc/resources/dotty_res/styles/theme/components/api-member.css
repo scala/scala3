@@ -101,7 +101,8 @@ color: var(--text-secondary);
 .documentableElement .icon-button {
   position: absolute;
   left: calc(3.5 * var(--base-spacing) / -1);
-  top: calc(2 * var(--base-spacing));
+  /* centers the 16px icon on the signature's first line (13px padding + 20px line-height) */
+  top: 15px;
 }
 
 @media (max-width: 480px) {
