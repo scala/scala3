@@ -390,11 +390,10 @@ object PatternMatcher {
             val MagicMaybeType(_, errArg, nullable) = gm.tpe.widen.runtimeChecked
             val select = gm.asInstance(defn.MagicFailClass.typeRef.appliedTo(defn.AnyType))
               .select(nme.elem)
-            if nullable
-            then If(
-              gm.nullTest(cond = true),
-              unitLiteral.asInstance(errArg),
-              select)
+            if nullable then
+              If(gm.nullTest(cond = true),
+                unitLiteral.asInstance(errArg),
+                select)
             else select
           else
             val validTpe = defn.MagicValidClass.typeRef
