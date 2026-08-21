@@ -82,9 +82,10 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     // When the REPL creates a new run (ReplDriver.compile), parsing is already done in the old context, with the
     // previous Run. Parser warnings were suspended in the old run and need to be copied over so they are not lost.
     // Same as scala/scala/commit/79ca1408c7.
-    def initSuspendedMessages(oldRun: Run | Null) = if oldRun != null then
+    def initSuspendedMessages(oldRun: Run | Null) =
       mySuspendedMessages.clear()
-      mySuspendedMessages ++= oldRun.mySuspendedMessages
+      if oldRun != null then
+        mySuspendedMessages ++= oldRun.mySuspendedMessages
 
     def suppressionsComplete(source: SourceFile) = source == NoSource || mySuppressionsComplete(source)
 
@@ -197,7 +198,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   def files: Set[AbstractFile] = {
     if (myUnits ne myUnitsCached) {
       myUnitsCached = myUnits
-      myFiles = (myUnits ++ suspendedUnits).map(_.source.file).toSet
+      myFiles = (myUnits ++ suspendedUnits).map(_.source.file).collect{ case f: AbstractFile => f }.toSet
     }
     myFiles
   }
@@ -209,7 +210,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   val staticRefs = util.EqHashMap[Name, Denotation](initialCapacity = 1024)
 
   /** Actions that need to be performed at the end of the current compilation run */
-  private var finalizeActions = ListBuffer.empty[() => Unit]
+  private val finalizeActions = ListBuffer.empty[() => Unit]
 
   private var _progress: Progress | Null = null // Set if progress reporting is enabled
 
@@ -312,6 +313,11 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
    *  a pureFunctions language import.
    */
   var pureFunsImportEncountered = false
+  
+  /** Will be set to true if any of the compiled compilation units contains
+   *  an inlineTraits language import.
+   */
+  var inlineTraitsImportEncountered = false
 
   /** Will be set to true if experimental.captureChecking is enabled
    *  or any of the compiled compilation units contains a captureChecking language import.
@@ -326,7 +332,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
   def compile(files: List[AbstractFile]): Unit =
     try compileSources(files.map(runContext.getSource(_)))
     catch case ex: Exception if !this.enrichedErrorMessage =>
-      val files1 = if units.isEmpty then files else units.map(_.source.file)
+      val files1 = if units.isEmpty then files else units.map(_.source)
       report.echo(this.enrichErrorMessage(s"exception occurred while compiling ${files1.map(_.path)}"))
       throw ex
 
@@ -625,7 +631,7 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
 
 object Run {
 
-  case class SubPhase(val name: String):
+  case class SubPhase(name: String):
     override def toString: String = name
 
   class SubPhases(val phase: Phase):

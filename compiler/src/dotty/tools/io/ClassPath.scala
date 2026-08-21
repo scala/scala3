@@ -18,9 +18,9 @@ import dotc.classpath.{BinaryFileEntry, PackageEntry, SourceFileEntry}
 trait ClassPath {
   def asURLs: Seq[URL] = Seq.empty
   def hasPackage(pkg: String): Boolean = false
-  def packages(inPackage: String): Seq[PackageEntry] = Seq.empty
-  def classes(inPackage: String): Seq[BinaryFileEntry] = Seq.empty
-  def sources(inPackage: String): Seq[SourceFileEntry] = Seq.empty
+  def packages(inPackage: String): Iterable[PackageEntry] = Seq.empty
+  def classes(inPackage: String): Iterable[BinaryFileEntry] = Seq.empty
+  def sources(inPackage: String): Iterable[SourceFileEntry] = Seq.empty
 
   /**
    * Returns *only* the classfile for an external name, e.g., "java.lang.String". This method does not

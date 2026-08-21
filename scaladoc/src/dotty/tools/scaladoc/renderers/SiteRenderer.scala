@@ -77,7 +77,9 @@ trait SiteRenderer(using DocContext) extends Locations:
         .orElse(asStaticSite)
         .orElse(asAsset)
         .getOrElse {
-          if (!summon[DocContext].args.noLinkAssetWarnings){
+          // Disabled. This feature is currently so broken as to be effectively useless,
+          // For instance, it fails as soon as there is a slash, or a link to a redirect.
+          if (false && !summon[DocContext].args.noLinkAssetWarnings){
             val msg = s"Unable to resolve link '$str'"
             report.warn(msg, content.template.templateFile.file)
           }

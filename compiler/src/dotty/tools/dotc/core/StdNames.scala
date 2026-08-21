@@ -26,6 +26,9 @@ object StdNames {
     inline val LOCALDUMMY_PREFIX        = "<local "       // owner of local blocks
     inline val ANON_CLASS               = "$anon"
     inline val ANON_FUN                 = "$anonfun"
+    inline val SPECIALIZED_TRAIT_SUFFIX = "$$sp"
+    inline val SPECIALIZED_TRAIT_IMPL_SUFFIX = "$impl"
+    inline val SPECIALIZED_TRAIT_TYPE_SEP = "$"
 
     inline val REPL_SESSION_LINE  = "rs$line$"
     inline val REPL_ASSIGN_SUFFIX = "$assign"
@@ -135,6 +138,7 @@ object StdNames {
     val OVERLOADED: N                 = "<overloaded>"
     val PACKAGE: N                    = "package"
     val ROOT: N                       = "<root>"
+    val SPEC: N                       = "$spec"
     val SPECIALIZED_SUFFIX: N         = "$sp"
     val SUPER_PREFIX: N               = "super$"
     val WHILE_PREFIX: N               = "while$"
@@ -405,6 +409,7 @@ object StdNames {
     val annotation: N           = "annotation"
     val any: N                  = "any"
     val any2stringadd: N        = "any2stringadd"
+    val anyClass: N             = "anyClass"
     val anyHash: N              = "anyHash"
     val anyValClass: N          = "anyValClass"
     val append: N               = "append"
@@ -610,6 +615,7 @@ object StdNames {
     val run: N                  = "run"
     val runOrElse: N            = "runOrElse"
     val runtime: N              = "runtime"
+    val runtimeChecked: N       = "runtimeChecked"
     val runtimeClass: N         = "runtimeClass"
     val runtimeMirror: N        = "runtimeMirror"
     val s: N                    = "s"

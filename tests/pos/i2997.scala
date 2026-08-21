@@ -1,4 +1,4 @@
-case class Foo[T <: Int with Singleton](t : T)
+case class Foo[T <: Int & Singleton](t : T)
 
 object Test {
   val one = 1

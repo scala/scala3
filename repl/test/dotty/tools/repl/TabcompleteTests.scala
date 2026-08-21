@@ -226,6 +226,7 @@ class TabcompleteTests extends ReplTest {
         ":settings",
         ":sh",
         ":silent",
+        ":toolkit",
         ":type"
       ),
       tabComplete(":")

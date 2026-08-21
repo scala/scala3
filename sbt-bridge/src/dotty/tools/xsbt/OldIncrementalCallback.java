@@ -16,7 +16,7 @@ public final class OldIncrementalCallback implements dotty.tools.dotc.sbt.interf
   }
 
   private static File asJavaFile(SourceFile sourceFile) {
-    var jfile = sourceFile.file().jfile();
+    var jfile = sourceFile.jfile();
     if (jfile.isPresent()) return jfile.get();
     throw new IllegalArgumentException("SourceFile " + sourceFile + " is not backed by a java.io.File");
   }

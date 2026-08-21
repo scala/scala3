@@ -4,7 +4,7 @@ val res0: Boolean = true
 scala> val x = 1
 val x: Int = 1
 
-scala>:settings -d target/test-repl-settings-outDir
+scala> :settings -d target/test-repl-settings-outDir
 
 scala> val y = 2
 val y: Int = 2

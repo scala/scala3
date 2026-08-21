@@ -16,7 +16,6 @@ import util.Property
 import config.Printers.{cyclicErrors, noPrinter}
 import collection.mutable
 
-import scala.annotation.constructorOnly
 
 abstract class TypeError(using creationContext: Context) extends Exception(""):
 
@@ -84,69 +83,6 @@ class MissingType(val pre: Type, val name: Name)(using Context) extends TypeErro
     em"""Cannot resolve reference to type $pre.$name.
         |$reason."""
 end MissingType
-
-class RecursionOverflow(val op: String, details: => String, val previous: Throwable, val weight: Int)(using Context)
-extends TypeError:
-
-  def explanation: String = s"$op $details"
-
-  private def recursions: List[RecursionOverflow] = {
-    val result = mutable.ListBuffer.empty[RecursionOverflow]
-    @annotation.tailrec def loop(throwable: Throwable): List[RecursionOverflow] = throwable match {
-      case ro: RecursionOverflow =>
-        result += ro
-        loop(ro.previous)
-      case _ => result.toList
-    }
-
-    loop(this)
-  }
-
-  def opsString(rs: List[RecursionOverflow])(using Context): String = {
-    val maxShown = 20
-    if (rs.lengthCompare(maxShown) > 0)
-      i"""${opsString(rs.take(maxShown / 2))}
-         |  ...
-         |${opsString(rs.takeRight(maxShown / 2))}"""
-    else
-      (rs.map(_.explanation): List[String]).mkString("\n  ", "\n|  ", "")
-  }
-
-  override def toMessage(using Context): Message =
-    val mostCommon = recursions.groupBy(_.op).toList.maxBy(_._2.map(_.weight).sum)._2.reverse
-    em"""Recursion limit exceeded.
-        |Maybe there is an illegal cyclic reference?
-        |If that's not the case, you could also try to increase the stacksize using the -Xss JVM option.
-        |For the unprocessed stack trace, compile with -Xno-enrich-error-messages.
-        |A recurring operation is (inner to outer):
-        |${opsString(mostCommon).stripMargin}"""
-
-  override def fillInStackTrace(): Throwable = this
-  override def getStackTrace(): Array[StackTraceElement] = previous.getStackTrace().asInstanceOf
-end RecursionOverflow
-
-/** Post-process exceptions that might result from StackOverflow to add
-  * tracing information while unwalking the stack.
-  */
-// Beware: Since this object is only used when handling a StackOverflow, this code
-// cannot consume significant amounts of stack.
-object handleRecursive:
-  private inline def underlyingStackOverflowOrNull(exc: Throwable): Throwable | Null =
-    var e: Throwable | Null = exc
-    while e != null && !e.isInstanceOf[StackOverflowError] do e = e.getCause
-    e
-
-  def apply(op: String, details: => String, exc: Throwable, weight: Int = 1)(using Context): Nothing =
-    if ctx.settings.XnoEnrichErrorMessages.value then
-      throw exc
-    else exc match
-      case _: RecursionOverflow =>
-        throw new RecursionOverflow(op, details, exc, weight)
-      case _ =>
-        val so = underlyingStackOverflowOrNull(exc)
-        if so != null then throw new RecursionOverflow(op, details, so, weight)
-        else throw exc
-end handleRecursive
 
 /**
  * This TypeError signals that completing denot encountered a cycle: it asked for denot.info (or similar),

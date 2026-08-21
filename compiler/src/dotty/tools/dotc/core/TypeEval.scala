@@ -49,14 +49,10 @@ object TypeEval:
       // Returns Some(false) if the type is not a constant.
       // Returns None if there is not enough information to determine if the type is a constant.
       // The type is a constant if it is a constant type or a type operation composition of constant types.
-      // If we get a type reference for an argument, then the result is not yet known.
+      // A type that is not concrete yet may still be instantiated to a constant, so it stays unknown.
       def isConst(tp: Type): Option[Boolean] = tp.dealias match
         // known to be constant
         case ConstantType(_) => Some(true)
-        // currently not a concrete known type
-        case TypeRef(NoPrefix,_) => None
-        // currently not a concrete known type
-        case _: TypeParamRef => None
         // constant if the term is constant
         case t: TermRef =>
           if t.denot.symbol.flagsUNSAFE.is(Flags.Param) then
@@ -69,8 +65,15 @@ object TypeEval:
           val argsConst = applied.args.map(isConst)
           if (argsConst.exists(_.isEmpty)) None
           else Some(argsConst.forall(_.get))
-        // all other types are considered not to be constant
-        case _ => Some(false)
+        case tp1 =>
+          // a type that still reduces is as constant as its reduction
+          val reduced = tp1.tryNormalize
+          if reduced.exists then isConst(reduced)
+          // only a concrete type is known not to be a constant; anything else
+          // (an abstract type, an application of an abstract type constructor,
+          // a stuck match type) may still become one
+          else if MatchTypes.isConcrete(tp1) then Some(false)
+          else None
 
       def expectArgsNum(expectedNum: Int): Unit =
       // We can use assert instead of a compiler type error because this error should not

@@ -7,10 +7,10 @@ clear_out "$OUT"
 clear_out "$OUT1"
 
 
-DOTTY_NONBOOTSTRAPPED_VERSION_COMMAND="$SBT \"eval println(Build.dottyNonBootstrappedVersion)\""
+DOTTY_NONBOOTSTRAPPED_VERSION_COMMAND="$SBT \"eval println(dotty.tools.sbtplugin.Versions.dottyNonBootstrappedVersion)\""
 DOTTY_NONBOOTSTRAPPED_VERSION=$(eval $DOTTY_NONBOOTSTRAPPED_VERSION_COMMAND | tail -n 2 | head -n 1)
 
-DOTTY_BOOTSTRAPPED_VERSION_COMMAND="$SBT \"eval println(Build.dottyVersion)\""
+DOTTY_BOOTSTRAPPED_VERSION_COMMAND="$SBT \"eval println(dotty.tools.sbtplugin.Versions.dottyVersion)\""
 DOTTY_BOOTSTRAPPED_VERSION=$(eval $DOTTY_BOOTSTRAPPED_VERSION_COMMAND | tail -n 2 | head -n 1)
 
 SOURCE_LINKS_REPOSITORY="${GITHUB_REPOSITORY:-scala/scala3}"
@@ -21,7 +21,7 @@ dist/target/universal/stage/bin/scaladoc \
   -d "$OUT1" \
   -project "scaladoc testcases" \
   -source-links:github://"${SOURCE_LINKS_REPOSITORY}"/"${SOURCE_LINKS_VERSION}" \
-  "-external-mappings:.*scala/.*::scaladoc3::https://nightly.scala-lang.org/api/,.*java/.*::javadoc::https://docs.oracle.com/javase/8/docs/api/" \
+  "-external-mappings:.*scala/.*::scaladoc3::https://nightly.scala-lang.org/api/,.*java/.*::javadoc::https://docs.oracle.com/en/java/javase/17/docs/api/java.base/" \
   "-skip-by-regex:.+\.internal($|\..+)" \
   "-skip-by-regex:.+\.impl($|\..+)" \
   -project-logo docs/_assets/images/logo.svg \

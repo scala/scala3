@@ -32,5 +32,6 @@ class Basic {
   val c2: Int = n // error
   val i3: Int | Null = null
 
-  val av: AnyVal = null // error
+  val av1: AnyVal = null // ok
+  val av2: AnyVal = (1: Int | Null) // ok
 }

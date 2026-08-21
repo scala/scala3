@@ -13,13 +13,13 @@ object A {
   val a = js.constructorTag[NativeJSTrait] // error
   val b = js.constructorTag[NativeJSObject.type] // error
 
-  val c = js.constructorTag[NativeJSClass with NativeJSTrait] // error
+  val c = js.constructorTag[NativeJSClass & NativeJSTrait] // error
   val d = js.constructorTag[NativeJSClass { def bar: Int }] // error
 
   val e = js.constructorTag[JSTrait] // error
   val f = js.constructorTag[JSObject.type] // error
 
-  val g = js.constructorTag[JSClass with JSTrait] // error
+  val g = js.constructorTag[JSClass & JSTrait] // error
   val h = js.constructorTag[JSClass { def bar: Int }] // error
 
   def foo[A <: js.Any] = js.constructorTag[A] // error

@@ -11,11 +11,12 @@ import dotty.tools.vulpix.TestConfiguration
 import org.junit.Test
 import org.junit.Assert.*
 import core.Decorators.toMessage
-import dotty.tools.io.{Path, PlainFile}
+import dotty.tools.io.*
 
 import java.net.URI
 import java.nio.file.Files
 import scala.util.Using
+import scala.io.Codec
 
 import scala.annotation.nowarn
 
@@ -199,7 +200,7 @@ class ScalaSettingsTests:
         warning = reporting.Diagnostic.Warning(
           "A warning".toMessage,
           util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
+            source = util.SourceFile(new PlainFile(Path(file)), new PlainDirectory(Directory(".")), Codec.UTF8),
             span = util.Spans.Span(1L)
           )
         )
@@ -214,7 +215,7 @@ class ScalaSettingsTests:
         warning = reporting.Diagnostic.Warning(
           "A warning".toMessage,
           util.SourcePosition(
-            source = util.SourceFile(new PlainFile(Path(file)), "UTF-8"),
+            source = util.SourceFile(new PlainFile(Path(file)), new PlainDirectory(Directory(".")), Codec.UTF8),
             span = util.Spans.Span(1L)
           )
         )

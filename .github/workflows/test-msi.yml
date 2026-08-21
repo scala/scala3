@@ -20,24 +20,27 @@ on:
         required: true
         type: string
 
+# The scala.msi artifact comes from the same run no GITHUB_TOKEN required
+permissions: {}
+
 jobs:
   test:
     runs-on: windows-latest
     env:
       VERSION: ${{ inputs.version }}
     steps:
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
           java-version: ${{ inputs.java-version }}
       - name: Download MSI artifact
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: scala.msi
           path: .
 
       # Run the MSI installer
-      # During normal installation msiexec would modify the PATH automatically. 
+      # During normal installation msiexec would modify the PATH automatically.
       # However, it seems not to work in GH Actions. Append the PATH manually instead.
       - name: Install Scala Runner
         shell: pwsh

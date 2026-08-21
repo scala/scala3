@@ -6,7 +6,7 @@ import io.{ClassPath, AbstractFile}
 import core.Contexts.*, core.Symbols.*
 import core.SymbolLoader
 import core.StdNames.nme
-import core.Flags.Module
+import core.Flags.{Module, Trait}
 
 /** The platform dependent pieces of Global.
  */
@@ -54,6 +54,10 @@ abstract class Platform {
   final def hasMainMethod(sym: Symbol)(using Context): Boolean =
     sym.info.member(nme.main).hasAltWith(d =>
       isMainMethod(d.symbol) && (sym.is(Module) || d.symbol.isStatic))
+
+  /** Is the given class symbol eligible to be reported as a main class? */
+  def isMainClass(sym: ClassSymbol)(using Context): Boolean =
+    sym.isStatic && !sym.is(Trait) && hasMainMethod(sym)
 
   /**
    * Whether instances of the class represented by the class symbol `c` **might** be a subtype of

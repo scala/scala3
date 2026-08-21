@@ -17,6 +17,9 @@ on:
         description: 'The developed Scala version (major.minor.patch) extracted from project/Build.scala'
         value: ${{ jobs.build.outputs.version }}
 
+permissions:
+  contents: read
+
 env:
   # Release only happends when triggering CI by pushing tag
   RELEASEBUILD: ${{ startsWith(github.event.ref, 'refs/tags/') && 'yes' || 'no' }}
@@ -27,8 +30,8 @@ jobs:
     outputs:
       version: ${{ steps.extract-version.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'adopt'
           java-version: 17
@@ -43,7 +46,7 @@ jobs:
       - name: Build MSI package
         run: sbt 'dist-win-x86_64/Windows/packageBin'
       - name: Upload MSI Artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: scala.msi
           path: ./dist/win-x86_64/target/windows/scala.msi

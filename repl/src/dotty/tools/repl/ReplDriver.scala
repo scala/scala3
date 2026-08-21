@@ -49,7 +49,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm.ClassReader
+import org.objectweb.asm.ClassReader
 import scala.util.Using
 
 /** The state of the REPL contains necessary bindings instead of having to have
@@ -105,6 +105,7 @@ class ReplDriver(settings: Array[String],
   /** Create a fresh and initialized context with IDE mode enabled */
   private def initialCtx(settings: List[String]) = {
     val rootCtx = initCtx.fresh.addMode(Mode.ReadPositions | Mode.Interactive)
+    rootCtx.setRetainedSymbolLoadingFailures(mutable.WeakHashMap.empty)
     rootCtx.setSetting(rootCtx.settings.XcookComments, true)
     rootCtx.setSetting(rootCtx.settings.XreadComments, true)
     setupRootCtx(this.settings ++ settings, rootCtx)
@@ -215,7 +216,7 @@ class ReplDriver(settings: Array[String],
             /* complete = */ false  // if true adds space when completing
           )
         }
-        val comps = completions(line.cursor, line.line, state)
+        val comps = completions(line.cursor, line.line, state, lineReader.printAbove(_))
         candidates.addAll(comps.map(_.label).distinct.map(makeCandidate).asJava)
         val lineWord = line.word()
         comps.filter(c => c.label == lineWord && c.symbols.nonEmpty) match
@@ -291,7 +292,7 @@ class ReplDriver(settings: Array[String],
   }
 
   final def run(input: String)(using state: State): State = runBody {
-    interpret(ParseResult(input))
+    interpret(ParseResult.complete(input))
   }
 
   protected def runBody(body: => State): State = rendering.classLoader()(using rootCtx).asContext(withRedirectedOutput(body))
@@ -361,16 +362,24 @@ class ReplDriver(settings: Array[String],
 
   /** Extract possible completions at the index of `cursor` in `expr` */
   protected final def completions(cursor: Int, expr: String, state0: State): List[Completion] =
+    completions(cursor, expr, state0, out.println(_))
+
+  private def completions(
+    cursor: Int,
+    expr: String,
+    state0: State,
+    displayLoadingErrors: String => Unit
+  ): List[Completion] =
     if expr.startsWith(":") then
-      ParseResult.commands.collect {
-        case command if command._1.startsWith(expr) => Completion(command._1, "", List())
-      }
+      ReplCommands.names.collect:
+        case command if command.startsWith(expr) => Completion(command, "", List())
     else
+      val typecheckReporter = newStoreReporter
       given state: State = newRun(state0)
-      compiler
-        .typeCheck(expr, errorsAllowed = true)
+      val result = compiler
+        .typeCheck(expr, errorsAllowed = true, reporter = typecheckReporter)
         .map { (untpdTree, tpdTree) =>
-          val file = SourceFile.virtual("<completions>", expr)
+          val file = SourceFile.virtual("<completions>", expr, maybeIncomplete = true)
           val unit = CompilationUnit(file)(using state.context)
           unit.untpdTree = untpdTree
           unit.tpdTree = tpdTree
@@ -382,13 +391,24 @@ class ReplDriver(settings: Array[String],
             List(Completion("<Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues>", "", Nil))
         }
         .getOrElse(Nil)
+      // Candidate discovery can load symbols unrelated to the qualifier. Discard its
+      // diagnostics; failed loads are retained and reported if the symbol is requested later.
+      state.context.reporter.removeBufferedMessages(using state.context)
+      val loadingErrors = typecheckReporter.removeBufferedMessages(using state.context).collect:
+        case error: Diagnostic.LoadingError => error
+      if loadingErrors.nonEmpty then
+        given Context = state.context
+        displayLoadingErrors(loadingErrors.map(ReplConsoleReporter.messageAndPos).mkString("\n"))
+      result
   end completions
 
   protected def interpret(res: ParseResult)(using state: State): State = {
     res match {
       case parsed: Parsed =>
+        for diag <- parsed.directiveDiagnostics do
+          out.println(s"[warn] ${diag.message}")
         val src = parsed.source.content().mkString
-        val classified = DependencyResolver.classifyDirectives(src)
+        val classified = ReplDirectives.classify(src)
         if classified.hasDirectives then
           val stateAfterDirectives = interpretDirectives(classified)
           if parsed.trees.nonEmpty then
@@ -401,12 +421,21 @@ class ReplDriver(settings: Array[String],
         else state
 
       case SyntaxErrors(_, errs, _) =>
+        // if there is a Run that is tracking suspended parse warnings, ignore (drop) them when erroring
+        if state.context.run != null then
+          state.context.run.suppressions.initSuspendedMessages(oldRun = null)
         displayErrors(errs, state)
 
       case CommandThenCode(cmd, code) =>
         val stateAfterCommand = interpretCommand(cmd)
         val recorded = cmd.replayLine.fold(stateAfterCommand)(line => stateAfterCommand.recordInput(line.strip))
-        interpret(code)(using recorded)
+        interpret(ParseResult(code)(using recorded))(using recorded)
+
+      case MixedCommandsAndDirectives =>
+        out.println(
+          """Cannot mix `:` commands and `//> using` directives in the same REPL input.
+            |Submit them as separate inputs.""".stripMargin)
+        state
 
       case cmd: Command =>
         val next = interpretCommand(cmd)
@@ -447,42 +476,39 @@ class ReplDriver(settings: Array[String],
           displayErrors(errs, errState)
           istate.afterFailedCompilation(errState.objectIndex)
         ,
-        {
-          case (unit: CompilationUnit, newState: State) =>
-            val newestWrapper = extractNewestWrapper(unit.untpdTree)
-            val newImports = extractTopLevelImports(newState.context)
-            var allImports = newState.imports
-            if (newImports.nonEmpty)
-              allImports += (newState.objectIndex -> newImports)
-            val newStateWithImports = newState.copy(
-              imports = allImports,
-              context = contextWithNewImports(newState.context, newImports)
-            )
+        (unit, newState) =>
+          val newestWrapper = extractNewestWrapper(unit.untpdTree)
+          val newImports = extractTopLevelImports(newState.context)
+          var allImports = newState.imports
+          if (newImports.nonEmpty)
+            allImports += (newState.objectIndex -> newImports)
+          val newStateWithImports = newState.copy(
+            imports = allImports,
+            context = contextWithNewImports(newState.context, newImports)
+          )
 
-            val warnings = newState.context.reporter
-              .removeBufferedMessages(using newState.context)
+          val warnings = newState.context.reporter
+            .removeBufferedMessages(using newState.context)
 
-            inContext(newState.context) {
-              val (updatedState, definitions) =
-                if (!ctx.settings.XreplDisableDisplay.value)
-                  renderDefinitions(unit.tpdTree, newestWrapper)(using newStateWithImports)
-                else
-                  (newStateWithImports, Seq.empty)
+          inContext(newState.context):
+            val (updatedState, definitions) =
+              if (!ctx.settings.XreplDisableDisplay.value)
+                renderDefinitions(unit.tpdTree, newestWrapper)(using newStateWithImports)
+              else
+                (newStateWithImports, Seq.empty)
 
-              // output is printed in the order it was put in. warnings should be
-              // shown before infos (eg. typedefs) for the same line. column
-              // ordering is mostly to make tests deterministic
-              given Ordering[Diagnostic] =
-                Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
+            // output is printed in the order it was put in. warnings should be
+            // shown before infos (e.g. typedefs) for the same line.
+            // column ordering is mostly to make tests deterministic
+            given Ordering[Diagnostic] =
+              Ordering[(Int, Int, Int)].on(d => (d.pos.line, -d.level, d.pos.column))
 
-              (if istate.quiet then warnings else definitions ++ warnings)
-                .sorted
-                .foreach(printDiagnostic)
+            (if istate.quiet then warnings else definitions ++ warnings)
+              .sorted
+              .foreach(printDiagnostic)
 
-              if updatedState.invalidObjectIndexes.contains(updatedState.objectIndex) then updatedState
-              else updatedState.recordInput(parsed.source.content().mkString)
-            }
-        }
+            if updatedState.invalidObjectIndexes.contains(updatedState.objectIndex) then updatedState
+            else updatedState.recordInput(parsed.source.content().mkString)
       )
   }
 
@@ -730,32 +756,36 @@ class ReplDriver(settings: Array[String],
       out.println(s"""The :kind command is not currently supported.""")
       state
     case TypeOf(expr) =>
-      expr match {
-        case "" => out.println(s":type <expression>")
+      expr match
+        case "" =>
+          out.println(s":type <expression>")
+          state
         case _  =>
+          val queryState = newRun(state)
           try
-            compiler.typeOf(expr)(using newRun(state)).fold(
-              errs => displayErrors(errs, state),
+            compiler.typeOf(expr)(using queryState).fold(
+              errs => displayErrors(errs, queryState),
               res => out.println(res)  // result has some highlights
             )
           catch case NonFatal(ex) =>
             out.println(s"Error: ${ex.getMessage}")
-      }
-      state
+          queryState
 
     case DocOf(expr) =>
-      expr match {
-        case "" => out.println(s":doc <expression>")
+      expr match
+        case "" =>
+          out.println(s":doc <expression>")
+          state
         case _  =>
+          val queryState = newRun(state)
           try
-            compiler.docOf(expr)(using newRun(state)).fold(
-              errs => displayErrors(errs, state),
+            compiler.docOf(expr)(using queryState).fold(
+              errs => displayErrors(errs, queryState),
               res => out.println(res)
             )
           catch case NonFatal(ex) =>
             out.println(s"Error: ${ex.getMessage}")
-      }
-      state
+          queryState
 
     case Sh(expr) =>
       out.println(s"""The :sh command is deprecated. Use `import scala.sys.process._` and `"command".!` instead.""")
@@ -776,20 +806,39 @@ class ReplDriver(settings: Array[String],
         state.copy(context = rootCtx)
 
     case Silent => state.copy(quiet = !state.quiet)
+
     case Dep(dep) => resolveAndAddDeps(List(dep))
+
+    case ToolkitCmd(coordinates) =>
+      val singleValue = coordinates.split("\\s+").filter(_.nonEmpty).toList match
+        case coords :: Nil => Some(coords)
+        case _ => None
+      singleValue.flatMap(ReplDirectives.toolkitCoordinates) match
+        case Some(dependencies) =>
+          out.println(ReplDirectives.Warning.NoSeparateTestScope.toString)
+          resolveAndAddDeps(dependencies)
+        case None =>
+          out.println(
+            s"""${ToolkitCmd.command} expects a single version or <flavor>:<version>.
+               |Example: ${ToolkitCmd.command} default""".stripMargin)
+          state
 
     case Quit =>
       // end of the world!
       state
   }
 
-  private def interpretDirectives(classified: DependencyResolver.ClassifiedDirectives)(using state: State): State =
-    classified.unsupportedKeys.foreach: key =>
-      out.println(
-        s"""[warn] The `using $key` directive is not supported in the REPL.
-           |To use it, re-run with the `scala` command and pass the directive inside an input.""".stripMargin
-      )
-    resolveAndAddDeps(classified.deps)
+  private def interpretDirectives(classified: ReplDirectives.DirectiveClassification)(using state: State): State =
+    import ReplDirectives.ReplDirective.*
+
+    classified.warnings.foreach(warning => out.println(warning.toString))
+    val dependencies = classified.directives.collect:
+      case Dependency(coordinate) => coordinate
+    val jars = classified.directives.collect:
+      case Jar(path) => path
+    val stateWithDependencies = resolveAndAddDeps(dependencies)
+    jars.foldLeft(stateWithDependencies): (currentState, path) =>
+      interpretCommand(JarCmd(path))(using currentState)
 
   private def resolveAndAddDeps(depStrings: List[String])(using state: State): State =
     if depStrings.isEmpty then state
@@ -800,7 +849,8 @@ class ReplDriver(settings: Array[String],
         DependencyResolver.resolveDependencies(deps) match
           case Right(files) =>
             if files.nonEmpty then
-              inContext(state.context):
+              val classpathState = newRun(state)
+              inContext(classpathState.context):
                 val prevOutputDir = ctx.settings.outputDir.value
                 val prevClassLoader = rendering.classLoader()
                 rendering.myClassLoader = DependencyResolver.addToCompilerClasspath(
@@ -810,9 +860,11 @@ class ReplDriver(settings: Array[String],
                 )
                 val depsDescription = if deps.size == 1 then "a dependency" else s"${deps.size} dependencies"
                 out.println(s"Resolved $depsDescription (${files.size} JARs)")
+              classpathState
+            else state
           case Left(error) =>
             out.println(s"Error resolving dependencies: $error")
-        state
+            state
 
   /** shows all errors nicely formatted */
   private def displayErrors(errs: Seq[Diagnostic], state: State): State = {

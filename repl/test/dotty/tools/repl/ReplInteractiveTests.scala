@@ -32,7 +32,7 @@ class ReplInteractiveTests:
 
   @Test def `single-line directive accepts when nothing is pending`(): Unit = contextually:
     val input = "//> using dep com.lihaoyi::os-lib:0.11.8"
-    assertTrue(ParseResult.awaitsTrailingCode(input))
+    assertTrue(ParseResult.onlyPreambleSoFar(input))
     assertTrue(ParseResult.shouldAcceptLine(input, hasPendingInput = false))
 
   @Test def `lone directive defers when pasted code is already buffered`(): Unit = contextually:
@@ -45,7 +45,7 @@ class ReplInteractiveTests:
 
   @Test def `directive with code accepts when nothing is pending`(): Unit = contextually:
     val input = "//> using dep com.lihaoyi::os-lib:0.11.8\nval x = 1"
-    assertFalse(ParseResult.awaitsTrailingCode(input))
+    assertFalse(ParseResult.onlyPreambleSoFar(input))
     assertTrue(ParseResult.shouldAcceptLine(input, hasPendingInput = false))
 
   private val noopCompleter = new Completer:
@@ -134,3 +134,15 @@ class ReplInteractiveTests:
   @Test def `code with incomplete trailing expression is not submitted as one line`(): Unit =
     val incomplete = "val x = 5\nif x == 5 then"
     assertNotEquals(incomplete, submittedOrWaiting(incomplete + "\n"))
+
+  @Test def `settings paste with conflict submits as one block`(): Unit =
+    val pasted =
+      """:settings -old-syntax:false
+        |:settings -old-syntax:true
+        |if true then println("Hello")""".stripMargin
+    assertEquals(pasted, submittedOrWaiting(pasted + "\n"))
+
+  @Test def `two settings lines with pending paste are not accepted early`(): Unit = contextually:
+    val preamble = ":settings -old-syntax:false\n:settings -old-syntax:true\n"
+    assertFalse(ParseResult.shouldAcceptLine(preamble, hasPendingInput = true))
+    assertTrue(ParseResult.shouldAcceptLine(preamble, hasPendingInput = false))

@@ -144,7 +144,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
   override def prepareForAssign(tree: Assign)(using Context): Context =
     if tree.lhs.symbol.exists then
       refInfos.addAssignmentTarget(tree.lhs.symbol)
-      ctx.fresh.setTree(tree)
+      ctx.fresh.setProperty(EnclosingAssigns, tree :: enclosingAssigns)
     else ctx
 
   override def prepareForMatch(tree: Match)(using Context): Context =
@@ -329,10 +329,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
    *  Also check that every enclosing element is not a synthetic member
    *  of the sym's case class companion module.
    *
-   *  The LHS of a current Assign is never recorded as a reference (that is, a usage).
+   *  A reference to the LHS of a current Assign is not recorded as a usage, nor is a reference
+   *  in its RHS that does not escape into a call that might observe the value.
    */
   def refUsage(sym: Symbol, pos: SrcPos)(using Context): Unit =
-    if !refInfos.hasRef(sym) then
+    if !refInfos.hasRef(sym) && !isUnobservedUpdate(sym, pos) then
       val isCase = sym.is(Case) && sym.isClass
       if !ctx.outersIterator.exists: outer =>
         val owner = outer.owner
@@ -341,11 +342,24 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
            && owner.exists
            && owner.is(Synthetic)
            && owner.owner.eq(sym.companionModule.moduleClass)
-        || outer.tree.match
-           case Assign(lhs, _) => lhs.symbol.eq(sym) && outer.tree.srcPos.sourcePos.contains(pos.sourcePos)
-           case _ => false
       then
         refInfos.addRef(sym)
+
+  /** Is a reference at `pos` an unobserved update of `sym`: the LHS of an enclosing assignment
+   *  to `sym`, or a read in its RHS which does not escape into an application that might observe
+   *  the value?
+   */
+  private def isUnobservedUpdate(sym: Symbol, pos: SrcPos)(using Context): Boolean =
+    def mightObserve(rhs: Tree): Boolean =
+      rhs.existsSubTree: t =>
+        t.srcPos.sourcePos.contains(pos.sourcePos) && t.match
+          case t: GenericApply => !InstrumentCoverage.isCoverageProbe(t) && !isKnownPureOp(funPart(t).symbol)
+          case _: DefDef => true
+          case _ => false
+    enclosingAssigns.exists: assign =>
+         assign.lhs.symbol.eq(sym)
+      && assign.srcPos.sourcePos.contains(pos.sourcePos)
+      && !mightObserve(assign.rhs)
 
   /** Look up a reference in enclosing contexts to determine whether it was introduced by a definition or import.
    *  The binding of highest precedence must then be correct.
@@ -427,10 +441,11 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       val cur = ctxs.next()
       if cur.owner.userSymbol == sym && !sym.is(Package) then
         enclosed = true // found enclosing definition, don't record the reference
-      if cur.isImportContext then
-        val sel = matchingSelector(cur.importInfo.nn)
+      val importInfo = cur.importInfoIfImportContext
+      if importInfo `ne` null then
+        val sel = matchingSelector(importInfo)
         if sel != null then
-          if cur.importInfo.nn.isRootImport then
+          if importInfo.isRootImport then
             if precedence.weakerThan(OtherUnit) then
               precedence = OtherUnit
               candidate = cur
@@ -474,23 +489,24 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
     val ctxs = ctx.outersIterator
     while !done && ctxs.hasNext do
       val cur = ctxs.next()
+      val importInfo = cur.importInfoIfImportContext
       val implicitRefs: List[ImplicitRef] =
         if (cur.isClassDefContext) cur.owner.thisType.implicitMembers
-        else if (cur.isImportContext) cur.importInfo.nn.importedImplicits
+        else if (importInfo `ne` null) importInfo.importedImplicits
         else if (cur.isNonEmptyScopeContext) cur.scope.implicitDecls
         else Nil
       implicitRefs.find(ref => ref.underlyingRef.widen <:< tp) match
       case Some(found: TermRef) =>
         refUsage(found.denot.symbol, pos)
-        if cur.isImportContext then
-          cur.importInfo.nn.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
+        if importInfo `ne` null then
+          importInfo.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
           case Some(sel) =>
             refInfos.sels.put(sel, ())
           case _ =>
         return
-      case Some(found: RenamedImplicitRef) if cur.isImportContext =>
+      case Some(found: RenamedImplicitRef) if importInfo `ne` null =>
         refUsage(found.underlyingRef.denot.symbol, pos)
-        cur.importInfo.nn.selectors.find(sel => sel.rename == found.implicitName) match
+        importInfo.selectors.find(sel => sel.rename == found.implicitName) match
         case Some(sel) =>
           refInfos.sels.put(sel, ())
         case _ =>
@@ -515,6 +531,14 @@ object CheckUnused:
   val refInfosKey = Property.StickyKey[RefInfos]
 
   inline def refInfos(using Context): RefInfos = ctx.property(refInfosKey).get
+
+  /** The assignments enclosing the tree being traversed, innermost first.
+   *  Typed, unlike Context.tree, which is untyped-generic.
+   */
+  private val EnclosingAssigns = Property.Key[List[Assign]]
+
+  private def enclosingAssigns(using Context): List[Assign] =
+    ctx.property(EnclosingAssigns).getOrElse(Nil)
 
   /** Attachment holding the name of an Ident as written by the user. */
   val OriginalName = Property.StickyKey[Name]
@@ -667,6 +691,7 @@ object CheckUnused:
         || m.hasAnnotation(defn.UnusedAnnot) // param of unused method
         || sym.info.isSingleton
         || m.isConstructor && m.owner.thisType.baseClasses.contains(defn.AnnotationClass)
+        || sym.isErased // erased param may be unused by design
       def checkExplicit(): Unit =
         // A class param is unused if its param accessor is unused.
         // (The class param is not assigned to a field until constructors.)
@@ -733,6 +758,7 @@ object CheckUnused:
              tps.hasAnnotation(dd.LanguageFeatureMetaAnnot)
         || sym.info.isSingleton // DSL friendly
         || sym.info.dealias.isInstanceOf[RefinedType] // can't be expressed as a context bound
+        || sym.isErased // erased param is unused by design
       if ctx.settings.WunusedHas.implicits
         && !infos.skip(m)
         && !m.isEffectivelyOverride
@@ -1089,7 +1115,7 @@ object CheckUnused:
     def namePos: SrcPos =
       sym.srcPos.sourcePos.withSpan:
         val span = sym.span
-        Span(span.start, span.start + sym.name.toString.length)
+        Span(span.start, span.start + sym.name.length)
 
   extension (sel: ImportSelector)
     def boundTpe: Type = sel.bound match

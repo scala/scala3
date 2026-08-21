@@ -102,8 +102,9 @@ object Scanners {
       token == ARROW || token == CTXARROW
   }
 
-  abstract class ScannerCommon(source: SourceFile)(using Context) extends CharArrayReader with TokenData {
+  abstract class ScannerCommon(source: SourceFile, limit: Offset = -1)(using Context) extends CharArrayReader with TokenData {
     val buf: Array[Char] = source.content
+    val endIdx = if limit >= 0 && limit < buf.length then limit else buf.length
     def nextToken(): Unit
 
     // Errors -----------------------------------------------------------------
@@ -183,7 +184,8 @@ object Scanners {
         errorButContinue(em"trailing separator is not allowed", offset + litBuf.length - 1)
   }
 
-  class Scanner(source: SourceFile, override val startFrom: Offset = 0, profile: Profile = NoProfile, allowIndent: Boolean = true)(using Context) extends ScannerCommon(source) {
+  class Scanner(source: SourceFile, override val startFrom: Offset = 0, limit: Offset = -1, profile: Profile = NoProfile, allowIndent: Boolean = true)(using Context)
+      extends ScannerCommon(source, limit) {
     val keepComments = !ctx.settings.XdropComments.value
 
     /** A switch whether operators at the start of lines can be infix operators */
@@ -192,7 +194,7 @@ object Scanners {
     var debugTokenStream = false
     val showLookAheadOnDebug = false
 
-    val rewrite = ctx.settings.rewrite.value.isDefined
+    val rewrite = ctx.settings.rewrite.value
     val oldSyntax = ctx.settings.oldSyntax.value
     val newSyntax = ctx.settings.newSyntax.value || sourceVersion.requiresNewSyntax
 
@@ -223,6 +225,9 @@ object Scanners {
     def featureEnabled(name: TermName) = Feature.enabled(name)(using languageImportContext)
     def erasedEnabled = featureEnabled(Feature.erasedDefinitions)
     def trackedEnabled = featureEnabled(Feature.modularity)
+    def dedentedStringLiteralsEnabled =
+         featureEnabled(Feature.dedentedStringLiterals)
+      || Feature.magicEnabled
 
     private var postfixOpsEnabledCache = false
     private var postfixOpsEnabledCtx: Context = NoContext
@@ -613,7 +618,7 @@ object Scanners {
       // can emit OUTDENT if line is not non-empty blank line at EOF
       inline def isTrailingBlankLine: Boolean =
         token == EOF && {
-          val end = buf.length - 1 // take terminal NL as empty last line
+          val end = endIdx - 1 // take terminal NL as empty last line
           val prev = buf.lastIndexWhere(!isWhitespace(_), end = end)
           prev < 0 || end - prev > 0 && isLineBreakChar(buf(prev))
         }
@@ -787,8 +792,10 @@ object Scanners {
           if lastToken == IDENTIFIER && lastName != null && isIdentifierStart(lastName.head)
               || colonEOLPredecessors.contains(lastToken)
           then token = COLONfollow
-        case RBRACE | RPAREN | RBRACKET | EOF =>
+        case RBRACE | RPAREN | RBRACKET =>
           closeIndented()
+        case EOF =>
+          if !source.maybeIncomplete then closeIndented()
         case _ =>
       }
     }
@@ -952,7 +959,7 @@ object Scanners {
               case _ =>
                 error(em"unclosed character literal")
 
-          if lookaheadChar() == '\'' && featureEnabled(Feature.dedentedStringLiterals) then
+          if lookaheadChar() == '\'' && dedentedStringLiteralsEnabled then
             delimChar = '\''
             delimCount = 1
             fetchString()
@@ -1208,6 +1215,13 @@ object Scanners {
 
 // String Parsing -----------------------------------------------------------------
 
+    private def unclosedStringLit(): Unit =
+      error(em"unclosed string literal")
+      // Recover as best we can by pretending the line has ended
+      litBuf.clear()
+      adjustSepRegions(STRINGLIT)
+      token = SEMI
+
     def multiline = delimCount >= 3
 
     def nextStrChar() =
@@ -1219,7 +1233,8 @@ object Scanners {
         setStrVal()
         nextChar()
         token = STRINGLIT
-      else error(em"unclosed string literal")
+      else
+        unclosedStringLit()
 
     private def getMultilineStringLit(): Unit =
       if ch == delimChar then
@@ -1303,7 +1318,7 @@ object Scanners {
           if multiline then
             incompleteInputError(em"unclosed multi-line string literal")
           else
-            error(em"unclosed string literal")
+            unclosedStringLit()
         else
           putChar(ch)
           nextStrChar()
@@ -1329,7 +1344,9 @@ object Scanners {
 
     private def stringPart() =
       getStringPart()
-      currentRegion = InString(delimChar, delimCount, currentRegion)
+      // don't edit the region if we recovered from a parsing error by inserting a semicolon
+      if token != SEMI then
+        currentRegion = InString(delimChar, delimCount, currentRegion)
 
     private def emptyString() =
       if delimChar == '\'' then
@@ -1344,6 +1361,16 @@ object Scanners {
         while ch == delimChar do
           delimCount += 1
           nextChar()
+
+    def isSpecString(): Boolean =
+      var i = charOffset
+      while i < endIdx && buf(i) == '\'' do
+        i += 1
+      Feature.magicEnabled
+      && i + 4 < endIdx
+      && i - charOffset >= 2
+      && buf(i) == 's' && buf(i + 1) == 'p' && buf(i + 2) == 'e' && buf(i + 3) == 'c'
+      && (isWhitespace(buf(i + 4)) || buf(i + 4) == LF)
 
     def fetchString() =
       delimCount = 1
@@ -1360,6 +1387,9 @@ object Scanners {
             emptyString()
         else
           stringPart()
+      else if delimChar == '\'' && isSpecString() then
+        token = INTERPOLATIONID
+        name = nme.SPEC.asSimpleName
       else
         nextChar()
         if ch == delimChar then

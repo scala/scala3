@@ -29,17 +29,11 @@ trait SummaryReporting {
   /** Add instructions to reproduce the error */
   def addReproduceInstruction(instr: String): Unit
 
-  /** Add a message that will be issued in the beginning of the summary */
-  def addStartingMessage(msg: String): Unit
-
   /** Echo the summary report to the appropriate locations */
   def echoSummary(): Unit
 
-  /** Echoes *immediately* to file */
-  def echoToLog(msg: String): Unit
-
   /** Echoes contents of `it` to file *immediately* then flushes */
-  def echoToLog(it: Iterator[String]): Unit
+  def echoToLog(it: Iterable[String]): Unit
 
 }
 
@@ -50,10 +44,8 @@ final class NoSummaryReport extends SummaryReporting {
   override def addFailedTest(msg: FailedTestInfo): Unit = ()
   override def addSkippedTest(msg: FailedTestInfo): Unit = ()
   override def addReproduceInstruction(instr: String): Unit = ()
-  override def addStartingMessage(msg: String): Unit = ()
   override def echoSummary(): Unit = ()
-  override def echoToLog(msg: String): Unit = ()
-  override def echoToLog(it: Iterator[String]): Unit = ()
+  override def echoToLog(it: Iterable[String]): Unit = ()
 }
 
 /** A summary report that logs to both stdout and the `TestReporter.logWriter`
@@ -62,7 +54,6 @@ final class NoSummaryReport extends SummaryReporting {
 final class SummaryReport extends SummaryReporting {
   import scala.jdk.CollectionConverters.*
 
-  private val startingMessages = new ConcurrentLinkedDeque[String]
   private val failedTests = new ConcurrentLinkedDeque[FailedTestInfo]
   private val skippedTests = new ConcurrentLinkedDeque[FailedTestInfo]
   private val reproduceInstructions = new ConcurrentLinkedDeque[String]
@@ -85,67 +76,51 @@ final class SummaryReport extends SummaryReporting {
   override def addReproduceInstruction(instr: String): Unit =
     reproduceInstructions.add(instr)
 
-  override def addStartingMessage(msg: String): Unit =
-    startingMessages.add(msg)
-
   /** Both echoes the summary to stdout and prints to file */
   override def echoSummary(): Unit = {
-    import SummaryReport.*
-
     val rep = new StringBuilder
-    rep.append(
-      s"""|
-          |================================================================================
-          |Test Report
-          |================================================================================
-          |
-          |$passed suites passed, $failed failed, ${passed + failed} total
-          |""".stripMargin
-    )
+    if failed == 0 && failedTests.isEmpty then
+      rep.append(s"== Vulpix Test Report: $passed suites passed, no failures (${skippedTests.size} skipped) ==")
+    else
+      rep.append(
+        s"""|
+            |================================================================================
+            |Vulpix Test Report
+            |================================================================================
+            |
+            |$passed suites passed, $failed failed, ${passed + failed} total
+            |""".stripMargin
+      )
+      failedTests.asScala.map(x => s"    ${x.title}${x.extra}\n").foreach(rep.append)
+      TestReporter.writeFailedTests(failedTests.asScala.toList.map(_.title))
+      if !skippedTests.isEmpty then
+        rep.append("Skipped: " + skippedTests.asScala.map(_.title).mkString(", "))
 
-    startingMessages.asScala.foreach(rep.append)
-
-    failedTests.asScala.map(x => s"    ${x.title}${x.extra}\n").foreach(rep.append)
-    TestReporter.writeFailedTests(failedTests.asScala.toList.map(_.title))
-
-    // If we're compiling locally, we don't need to see instructions on how to
-    // reproduce failures on stdout, only a pointer to the log file.
-    if (isInteractive) {
-      println(rep.toString)
-      skippedTests.asScala.map(x => s"    ${x.title} skipped").toList.distinct.foreach(println)
-      if (failed > 0) println {
+    // If we're on the CI, we want reproduction instructions; otherwise, we just need a pointer to the log file.
+    if Properties.isRunByCI then
+      if !reproduceInstructions.isEmpty then
+        rep += '\n'
+        reproduceInstructions.asScala.foreach(rep.append)
+    else
+      if failed > 0 then rep.append(
         s"""|
             |--------------------------------------------------------------------------------
             |Note - reproduction instructions have been dumped to log file:
             |    ${TestReporter.logPath}
             |--------------------------------------------------------------------------------""".stripMargin
-      }
-    }
+      ).append('\n')
 
-    rep += '\n'
-
-    reproduceInstructions.asScala.foreach(rep.append)
-
-    // If we're on the CI, we want everything
-    if (!isInteractive) println(rep.toString)
-
+    println(rep.toString)
     TestReporter.logPrintln(rep.toString)
   }
 
   private def removeColors(msg: String): String =
     msg.replaceAll("\u001b\\[.*?m", "")
 
-  override def echoToLog(msg: String): Unit =
-    TestReporter.logPrintln(removeColors(msg))
-
-  override def echoToLog(it: Iterator[String]): Unit = {
+  override def echoToLog(it: Iterable[String]): Unit = {
     it.foreach(msg => TestReporter.logPrint(removeColors(msg)))
     TestReporter.logFlush()
   }
-}
-
-object SummaryReport {
-  val isInteractive = Properties.testsInteractive && !Properties.isRunByCI
 }
 
 case class FailedTestInfo(title: String, extra: String)

@@ -4,7 +4,7 @@ trait Subtractable[AS, +Repr <: Subtractable[AS, Repr]] {
   def -(elem: AS): Repr
 }
 
-trait BufferLike[BA, +This <: BufferLike[BA, This] with Buffer[BA]]
+trait BufferLike[BA, +This <: BufferLike[BA, This] & Buffer[BA]]
                 extends Subtractable[BA, This]
 { self : This =>
 

@@ -6,14 +6,36 @@ on:
   schedule:
     - cron: '0 3 * * *'  # Every day at 3 AM
 
+# The nightly documentation is pushed to scala/nightly.scala-lang.org with a
+# GitHub App token, and Maven artifacts with the project's Sonatype credentials,
+# so read-only access for the token is enough for every job.
+permissions:
+  contents: read
+
 jobs:
   stdlib-tests:
     uses: ./.github/workflows/stdlib.yaml
     secrets: inherit
 
+  mima-tests:
+    uses: ./.github/workflows/mima.yaml
+    secrets: inherit
+
+  compiler-tests:
+    uses: ./.github/workflows/compiler-tests.yaml
+    secrets: inherit
+
+  community-build-tests:
+    uses: ./.github/workflows/community-build.yaml
+    secrets: inherit
+
+  misc-tests:
+    uses: ./.github/workflows/misc-tests.yaml
+    secrets: inherit
+
   release-maven-artifacts:
     uses: ./.github/workflows/release-maven-artifacts.yml
-    needs: [stdlib-tests]
+    needs: [stdlib-tests, mima-tests, compiler-tests, community-build-tests, misc-tests]
     with:
       environment: release-nightly
     secrets: inherit
@@ -25,25 +47,25 @@ jobs:
     env:
       NIGHTLYBUILD: ${{ vars.NIGHTLYBUILD }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'adopt'
           java-version: 17
           cache: 'sbt'
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
       - name: Generate The Website
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
       - name: Generate GitHub App Token
         id: app-token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           app-id: ${{ secrets.SCALA_APP_ID }}
           private-key: ${{ secrets.SCALA_APP_PRIVATE_KEY }}
           owner: scala
           repositories: nightly.scala-lang.org
       - name: Deploy Website to https://nightly.scala-lang.org
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
         with:
           personal_token: ${{ steps.app-token.outputs.token }}
           publish_dir: scaladoc/output/scala3

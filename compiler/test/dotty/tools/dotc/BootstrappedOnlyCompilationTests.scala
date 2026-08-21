@@ -15,7 +15,7 @@ import java.nio.file.*
 class BootstrappedOnlyCompilationTests {
   import ParallelTesting.*
   import TestConfiguration.*
-  import BootstrappedOnlyCompilationTests.*
+  import BootstrappedOnlyCompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
   // Positive tests ------------------------------------------------------------
@@ -207,20 +207,4 @@ class BootstrappedOnlyCompilationTests {
   }
 }
 
-object BootstrappedOnlyCompilationTests extends ParallelTesting with CoverageSupport {
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 100.seconds
-  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
-
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def tearDown(): Unit = {
-    super.cleanup()
-    summaryReport.echoSummary()
-  }
-}
+object BootstrappedOnlyCompilationTests extends ParallelTesting with CoverageSupport

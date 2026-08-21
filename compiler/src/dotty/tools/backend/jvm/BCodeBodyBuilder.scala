@@ -4,8 +4,8 @@ package jvm
 
 import scala.annotation.{switch, tailrec}
 import scala.collection.mutable.SortedMap
-import scala.tools.asm
-import scala.tools.asm.{Handle, Opcodes}
+import org.objectweb.asm
+import org.objectweb.asm.{Handle, Opcodes}
 import BCodeHelpers.InvokeStyle
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.core.Constants.*
@@ -391,7 +391,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
 
           genLoadArguments(env, fun.symbol.info.firstParamTypes.map(bTypeLoader.bTypeFromType))
           stack.restoreSize(savedStackSize)
-          generatedType = genInvokeDynamicLambda(NoSymbol, fun.symbol, env.size, functionalInterface)
+          generatedType = genInvokeDynamicLambda(fun.symbol, env.size, functionalInterface)
 
         case app @ Apply(_, _) =>
           generatedType = genApply(app, expectedType)
@@ -772,10 +772,12 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
 
           generatedType = bTypeLoader.bTypeFromType(c.typeValue)
           mkArrayConstructorCall(generatedType.asArrayBType, app, av.elems)
-        case Apply(t :TypeApply, _) =>
+        case Apply(t @ TypeApply(fun, _), args) =>
           generatedType =
             if (t.symbol ne defn.Object_synchronized) genTypeApply(t)
-            else genSynchronized(app, expectedType)
+            else
+              genLoadQualifier(fun)
+              genSynchronized(app, args, expectedType)
 
         case Apply(fun @ DesugaredSelect(superRef @ Super(superQual, _), _), args) =>
           // 'super' call: Note: since constructors are supposed to
@@ -953,13 +955,17 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
      * Int/String values to use as keys, and a code block. The exception is the "default" case
      * clause which doesn't list any key (there is exactly one of these per match).
      */
-    private def emitThrowMatchError(): Unit =
-      bc.jmethod.visitTypeInsn(asm.Opcodes.NEW, "scala/MatchError")
-      bc.jmethod.visitInsn(asm.Opcodes.DUP)
-      bc.jmethod.visitInsn(asm.Opcodes.ACONST_NULL)
-      bc.jmethod.visitMethodInsn(asm.Opcodes.INVOKESPECIAL,
-        "scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false)
-      bc.jmethod.visitInsn(asm.Opcodes.ATHROW)
+    private def emitThrowMatchError(pos: Positioned)(using Context): Unit =
+      bc.newobj("scala/MatchError")
+      bc.dup(bTypes.ObjectRef)
+      bc.nullconst()
+      bc.invokespecial("scala/MatchError", "<init>", "(Ljava/lang/Object;)V", false, pos)
+      bc.throwex()
+
+    // Used as threshold above which a tableswitch bytecode instruction is preferred over a lookupswitch.
+    // There's a space tradeoff between these multi-branch instructions (details in the JVM spec).
+    // The particular value in use for `MIN_SWITCH_DENSITY` reflects a heuristic.
+    private val MIN_SWITCH_DENSITY = 0.7
 
     private def genMatchTo(tree: Match, expectedType: BType, dest: LoadDestination)(using Context): BType = tree match {
       case Match(selector, cases) =>
@@ -1026,7 +1032,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
 
         if !hasDefault then
           markProgramPoint(default.nn)
-          emitThrowMatchError()
+          emitThrowMatchError(tree)
       } else {
 
         /* Since the JVM doesn't have a way to switch on a string, we  switch
@@ -1129,7 +1135,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         for ((caseLabel, caseBody) <- indirectBlocks.reverse) {
           markProgramPoint(caseLabel)
           if caseBody == null then
-            emitThrowMatchError()
+            emitThrowMatchError(tree)
           else
             genLoadTo(caseBody, generatedType, postMatchDest)
         }
@@ -1286,7 +1292,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
 
     def genLoadModule(module: Symbol)(using Context): Unit = {
       def inStaticMethod = methSymbol != null && methSymbol.isStaticMember
-      if (claszSymbol == module.moduleClass && jMethodName != "readResolve" && !inStaticMethod) {
+      if (claszSymbol == module.moduleClass && mnode.name != "readResolve" && !inStaticMethod) {
         mnode.visitVarInsn(asm.Opcodes.ALOAD, 0)
       } else {
         val mbt = symInfoTK(module).asClassBType
@@ -1775,13 +1781,11 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
     }
 
 
-    def genSynchronized(tree: Apply, expectedType: BType)(using Context): BType
     def genLoadTry(tree: Try)(using Context): BType
 
-    def genInvokeDynamicLambda(ctor: Symbol, lambdaTarget: Symbol, environmentSize: Int, functionalInterface: Symbol)(using Context): BType = {
+    def genInvokeDynamicLambda(lambdaTarget: Symbol, environmentSize: Int, functionalInterface: Symbol)(using Context): BType = {
       import java.lang.invoke.LambdaMetafactory.{FLAG_BRIDGES, FLAG_SERIALIZABLE}
 
-      report.debuglog(s"Using invokedynamic rather than `new ${ctor.owner}`")
       val generatedType = bTypeLoader.classBTypeFromSymbol(functionalInterface)
       // Lambdas should be serializable if they implement a SAM that extends Serializable or if they
       // implement a scala.Function* class.
@@ -1800,13 +1804,10 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           bTypeLoader.methodBTypeFromSymbol(lambdaTarget).descriptor,
           /* itf = */ isInterface)
 
-      val (a,b) = lambdaTarget.info.firstParamTypes.splitAt(environmentSize)
-      var (capturedParamsTypes, lambdaParamTypes) = (a,b)
+      var (capturedParamsTypes, lambdaParamTypes) = lambdaTarget.info.firstParamTypes.splitAt(environmentSize)
 
       if (invokeStyle != asm.Opcodes.H_INVOKESTATIC) capturedParamsTypes = lambdaTarget.owner.info :: capturedParamsTypes
 
-      // TODO: this comment seems to indicate this is very old and could be removed? this lib isn't recommended since >=2.13
-      // Requires https://github.com/scala/scala-java8-compat on the runtime classpath
       val returnUnit = lambdaTarget.info.resultType.typeSymbol == defn.UnitClass
       val functionalInterfaceDesc: String = generatedType.descriptor
       val desc = capturedParamsTypes.map(bTypeLoader.bTypeFromType).mkString(("("), "", ")") + functionalInterfaceDesc
@@ -1840,20 +1841,21 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       // scala/bug#10334: make sure that a lambda object for `T => U` has a method `apply(T)U`, not only the `(Object)Object`
       // version. Using the lambda a structural type `{def apply(t: T): U}` causes a reflective lookup for this method.
       val needsGenericBridge = samMethodType != instantiatedMethodType
-      val bridgeMethods = atPhase(erasurePhase){
+      val bridgeMethods = atPhase(erasurePhase) {
         samMethod.allOverriddenSymbols.toList
       }
       val overriddenMethodTypes = bridgeMethods.map(b => bTypeLoader.methodBTypeFromSymbol(b).toASMType)
+                                               .filterNot(_ == samMethodType)
+                                               .distinct
 
       // any methods which `samMethod` overrides need bridges made for them
       // this is done automatically during erasure for classes we generate, but LMF needs to have them explicitly mentioned
       // so we have to compute them at this relatively late point.
-      val bridgeTypes = (
-        if (needsGenericBridge)
-          instantiatedMethodType +: overriddenMethodTypes
+      val bridgeTypes =
+        if (needsGenericBridge && !overriddenMethodTypes.contains(instantiatedMethodType))
+          instantiatedMethodType :: overriddenMethodTypes
         else
           overriddenMethodTypes
-      ).distinct.filterNot(_ == samMethodType)
 
       val needsBridges = bridgeTypes.nonEmpty
 
@@ -1872,7 +1874,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
         else
           bTypes.jliLambdaMetaFactoryMetafactoryHandle
 
-      bc.jmethod.visitInvokeDynamicInsn(methodName, desc, metafactory, bsmArgs*)
+      bc.invokedynamic(methodName, desc, metafactory, bsmArgs)
 
       generatedType
     }

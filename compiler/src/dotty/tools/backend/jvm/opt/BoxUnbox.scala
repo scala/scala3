@@ -18,9 +18,9 @@ import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm.Opcodes.*
-import scala.tools.asm.Type
-import scala.tools.asm.tree.*
+import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.Type
+import org.objectweb.asm.tree.*
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.{AsmAnalyzer, ProdConsAnalyzer}
 import dotty.tools.backend.jvm.BCodeUtils.*
@@ -415,8 +415,7 @@ final class BoxUnbox(optimizerUtils: OptimizerUtils, callGraph: CallGraph, ts: O
         }
       }
 
-      // We don't need to worry about CallGraph.closureInstantiations and
-      // OptimizerUtils.indyLambdaImplMethods, the removed instructions are not IndyLambdas
+      // We don't need to worry about CallGraph.closureInstantiations, the removed instructions are not IndyLambdas
       def removeFromCallGraph(insn: AbstractInsnNode): Unit = insn match {
         case mi: MethodInsnNode => callGraph.removeCallsite(mi, method)
         case _ =>

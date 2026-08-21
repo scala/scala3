@@ -279,7 +279,8 @@ object SpaceEngine {
         else a
       case (a @ Typ(tp1, _), Prod(tp2, fun, ss)) =>
         // rationale: every instance of `tp1` is covered by `tp2(_)`
-        if isSubType(tp1.stripNamedTuple, tp2) && covers(fun, tp1, ss.length) then
+        val applicable = isSubType(tp1.stripNamedTuple, tp2) || tp1.classSymbol == tp2.classSymbol
+        if applicable && covers(fun, tp1, ss.length) then
           minus(Prod(tp1, fun, signature(fun, tp1, ss.length).map(Typ(_, false))), b)
         else if canDecompose(a) then minus(Or(decompose(a)), b)
         else a

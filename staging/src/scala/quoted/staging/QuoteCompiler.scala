@@ -98,7 +98,7 @@ private class QuoteCompiler extends Compiler:
               val classTree = ClassDef(cls, DefDef(cls.primaryConstructor.asTerm), run :: Nil)
               val tree = PackageDef(ref(defn.RootPackage).asInstanceOf[Ident], classTree :: Nil).withSpan(pos)
               val source = SourceFile.virtual("<quoted.Expr>", "")
-              val unitInfo = CompilationUnitInfo(source.file, tastyInfo = None)
+              val unitInfo = CompilationUnitInfo(source.file)
               result = Left(outputClassName.toString)
               Some(CompilationUnit(source, tree, forceTrees = true, unitInfo))
       }

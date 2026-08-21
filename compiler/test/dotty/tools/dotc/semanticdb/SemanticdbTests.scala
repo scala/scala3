@@ -13,6 +13,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.experimental.categories.Category
 import dotty.BootstrappedOnlyTests
+import dotty.tools.TestSources
 import dotty.tools.dotc.Main
 import dotty.tools.dotc.semanticdb
 import dotty.tools.dotc.semanticdb.Scala3.given
@@ -51,7 +52,7 @@ class SemanticdbTests:
   val javaFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.java")
   val scalaFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.scala")
   val expectFile: PathMatcher = FileSystems.getDefault.getPathMatcher("glob:**.expect.scala")
-  val rootSrc: Path = Paths.get(System.getProperty("dotty.tools.dotc.semanticdb.test"))
+  val rootSrc: Path = TestSources.getPath("tests/semanticdb")
   val expectSrc: Path = rootSrc.resolve("expect")
   val javaRoot: Path = rootSrc.resolve("javacp")
   val metacExpectFile: Path = rootSrc.resolve("metac.expect")
@@ -278,7 +279,7 @@ object SemanticdbTests:
           && !(occ.symbol.isConstructor && occ.role.isDefinition) then
           val line = sourceFile.lineContent(sourceFile.lineToOffset(range.startLine))
           assert(range.startCharacter <= line.length && range.endCharacter <= line.length,
-            s"Line is only ${line.length} - start line was ${range.startLine} in source ${sourceFile.file.name}"
+            s"Line is only ${line.length} - start line was ${range.startLine} in source ${sourceFile.name}"
           )
           sb.append(" ").append(line.substring(range.startCharacter, range.endCharacter))
       case _ =>

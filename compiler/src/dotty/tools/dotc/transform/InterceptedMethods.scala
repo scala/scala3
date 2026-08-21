@@ -12,7 +12,7 @@ import dotty.tools.dotc.transform.MegaPhase.MiniPhase
 
 object InterceptedMethods {
   val name: String = "intercepted"
-  val description: String = "rewrite universal `!=`, `##` methods"
+  val description: String = "rewrite universal `!=`, `##`, `toString()` and `getClass()` methods"
 }
 
 /** Replace member references as follows:
@@ -21,6 +21,12 @@ object InterceptedMethods {
   * - `x.##` for ## in NullClass becomes `0`
   * - `x.##` for ## in Any becomes calls to ScalaRunTime.hash,
   *     using the most precise overload available
+  *
+  * Under -Yexplicit-nulls:
+  *
+  * - `x.toString()` for `toString()` in class Any becomes `java.util.Objects.toString(x)`
+  * - `x.getClass()` for `x: T` where `T <: AnyRef` is not true becomes `Scala3Runtime.anyGetClass(x)`
+  *   (for primitives, getClass() has already been replaced when we get here)
   */
 class InterceptedMethods extends MiniPhase {
   import tpd.*
@@ -63,7 +69,7 @@ class InterceptedMethods extends MiniPhase {
   }
 
   override def transformApply(tree: Apply)(using Context): Tree = {
-    lazy val qual = tree.fun match {
+    def qualOf(fun: Tree): Tree = fun match {
       case Select(qual, _) => qual
       case ident: Ident =>
         ident.tpe match {
@@ -72,10 +78,22 @@ class InterceptedMethods extends MiniPhase {
           case TermRef(prefix: ThisType, _) =>
             tpd.This(prefix.cls)
         }
+      case TypeApply(inner, _) => qualOf(inner)
     }
 
-    if tree.fun.symbol == defn.Any_!= then
+    lazy val qual = qualOf(tree.fun)
+
+    val sym = tree.fun.symbol
+
+    if sym == defn.Any_!= then
       qual.select(defn.Any_==).appliedToTermArgs(tree.args).select(defn.Boolean_!).withSpan(tree.span)
+    else if ctx.explicitNulls then
+      if sym == defn.Any_toString && !qual.tpe.isNotNull then
+        ref(defn.Objects_toString).appliedTo(qual)
+      else if sym == defn.Any_getClass && !qual.tpe.isNotNull then
+        ref(defn.ScalaRuntime_anyClass).appliedToType(qual.tpe).appliedTo(qual)
+      else
+        tree
     else
       tree
   }

@@ -2,7 +2,7 @@ trait K
 trait L
 
 object O {
-  type LK = K with L
+  type LK = K & L
 }
 
 object Test extends App {

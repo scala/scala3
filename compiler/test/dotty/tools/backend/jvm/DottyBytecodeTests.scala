@@ -5,11 +5,11 @@ import dotty.DottyBytecodeTest
 import org.junit.Assert.*
 import org.junit.Test
 
-import scala.tools.asm
-import scala.tools.asm.*
-import scala.tools.asm.tree.*
-import scala.tools.asm.Opcodes
-import scala.tools.asm.Opcodes.*
+import org.objectweb.asm
+import org.objectweb.asm.*
+import org.objectweb.asm.tree.*
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.Opcodes.*
 import scala.jdk.CollectionConverters.*
 
 class DottyBytecodeTests extends DottyBytecodeTest {
@@ -2085,6 +2085,75 @@ class DottyBytecodeTests extends DottyBytecodeTest {
       val varargMeths = clsNode.methods.asScala.filter(_.name.startsWith("v"))
       val bridge = varargMeths.filter(_.desc == "([Ljava/lang/String;)Ljava/lang/String;").head
       assert(bridge.signature == null, "vararg bridges should not have generic signatures")
+    }
+  }
+
+
+  @Test def synchronizedClassMethods = {
+    val source =
+      """|class A {
+         |  def yesBasic: Int = synchronized {
+         |    1
+         |  }
+         |  def yesExplicit: Int =
+         |    this.synchronized {
+         |      1
+         |    }
+         |  def yesExplicitWithBraces: Int = {
+         |    this.synchronized {
+         |      1
+         |    }
+         |  }
+         |  inline def noIsInline: Int = synchronized {
+         |    1
+         |  }
+         |  def noHasOtherCode: Int =
+         |    synchronized {
+         |      ()
+         |    }
+         |    1
+         |}
+         |object A {
+         |  @scala.annotation.static
+         |  def yesStaticOne: Int = synchronized {
+         |    1
+         |  }
+         |  def yesInModule: Int = synchronized {
+         |    1
+         |  }
+         |}
+         |""".stripMargin
+    checkBCode(source) { dir =>
+      val cls = loadClassNode(lookupClass(dir, "A.class"))
+      val clsMod = loadClassNode(lookupClass(dir, "A$.class"))
+      // ignore the forwarder one
+      val meths = cls.methods.asScala.filter(_.name != "yesInModule") ++ clsMod.methods.asScala
+      meths.filter(_.name.startsWith("yes")).foreach(m =>
+        assert((m.access & ACC_SYNCHRONIZED) != 0, s"method ${m.name} is not ACC_SYNCHRONIZED")
+        assertSameCode(m, List(
+          Op(ICONST_1),
+          Op(IRETURN)
+        ))
+      )
+      meths.filter(_.name.startsWith("no")).foreach(m =>
+        assert((m.access & ACC_SYNCHRONIZED) == 0, s"method ${m.name} is ACC_SYNCHRONIZED")
+      )
+    }
+  }
+
+  @Test def synchronizedInterfaceMethod = {
+    val source =
+      """|trait Test:
+         |  def m(x: Int): Int = synchronized { x }
+         |""".stripMargin
+    checkBCode(source) { dir =>
+      val clsIn = lookupClass(dir, "Test.class")
+      val clsNode = loadClassNode(clsIn)
+      val meth = clsNode.methods.asScala.find(_.name == "m").get
+      assert((meth.access & ACC_SYNCHRONIZED) == 0) // illegal!
+      val instrs = instructionsFromMethod(meth)
+      assert(instrs.contains(Op(MONITORENTER)))
+      assert(instrs.contains(Op(MONITOREXIT)))
     }
   }
 }

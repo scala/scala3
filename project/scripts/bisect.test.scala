@@ -148,3 +148,89 @@ class BisectOptionsTest extends munit.FunSuite:
     val compileIdx = body.indexOf("scala-cli compile")
     assert(cleanIdx >= 0 && compileIdx > cleanIdx)
   }
+
+class CommitBisectScriptTest extends munit.FunSuite:
+  import BuildFailureAction.*
+
+  private val validationScriptPath = "/tmp/validate-bisect.sh"
+
+  def script(
+      shouldFail: Boolean = false,
+      bootstrapped: Boolean = false,
+      onBuildFailure: BuildFailureAction = SkipCommit
+  ): String =
+    CommitBisectScripts.buildAndValidateScript(validationScriptPath, shouldFail, bootstrapped, onBuildFailure)
+
+  test("build failure skips the commit instead of running git bisect skip") {
+    val body = script(onBuildFailure = SkipCommit)
+    // `git bisect skip` nested in `git bisect run` moves HEAD and makes the run script exit with
+    // the status of the skip itself, which git bisect then records as a verdict for the wrong commit
+    assert(!body.contains("git bisect skip"), body)
+    assert(body.contains("exit 125"), body)
+  }
+
+  test("build failure during edge verification aborts instead of skipping") {
+    val body = script(onBuildFailure = AbortBisect)
+    assert(body.contains("exit 128"), body)
+    assert(!body.contains("exit 125"), body)
+  }
+
+  test("aborts when the compiler version cannot be captured") {
+    for onBuildFailure <- BuildFailureAction.values do
+      val body = script(onBuildFailure = onBuildFailure)
+      val guardIdx = body.indexOf("""if [ -z "$scalaVersion" ]""")
+      assert(guardIdx >= 0, body)
+      assert(body.indexOf("exit 128", guardIdx) >= 0, body)
+      assert(guardIdx < body.indexOf(validationScriptPath), body)
+  }
+
+  test("version capture filters the sbt output") {
+    val body = script()
+    val grepIdx = body.indexOf("""grep -E '^[0-9]+\.[0-9]+\.[0-9]+'""")
+    assert(grepIdx >= 0, body)
+    assert(grepIdx < body.indexOf("tail -n1"), body)
+  }
+
+  test("logs the commit under test") {
+    val body = script()
+    assert(body.contains("git rev-parse --short HEAD"), body)
+    assert(body.contains("""echo "Testing commit $commit""""), body)
+  }
+
+  test("prints the version of the project matching the bootstrapping") {
+    assert(script(bootstrapped = false).contains("print scala3-compiler/version"))
+    assert(script(bootstrapped = true).contains("print scala3-compiler-bootstrapped/version"))
+  }
+
+  test("shouldFail inverts the validation command status") {
+    assert(script(shouldFail = true).contains(s"! $validationScriptPath"))
+    val body = script(shouldFail = false)
+    assert(!body.contains(s"! $validationScriptPath"), body)
+    assert(body.contains(s"""$validationScriptPath "$$scalaVersion""""), body)
+  }
+
+  test("publish recipe targets the project matching the bootstrapping") {
+    val nonbootstrapped = CommitBisectScripts.sbtPublishRecipe(bootstrapped = false)
+    assert(nonbootstrapped.contains("scala3/publishLocal"), nonbootstrapped)
+    assert(!nonbootstrapped.contains("scala3-bootstrapped"), nonbootstrapped)
+    val bootstrapped = CommitBisectScripts.sbtPublishRecipe(bootstrapped = true)
+    assert(bootstrapped.contains("scala3-bootstrapped/publishLocal"), bootstrapped)
+  }
+
+class BisectReleasesTest extends munit.FunSuite:
+  // Maven Central holds older nightlies; Artifactory nightlies has builds since ~2025-08.
+  // Both must be queried so ranges spanning the migration remain usable.
+  private val mavenCentralNightly = "3.4.1-RC1-bin-20240125-453658b-NIGHTLY"
+  private val artifactoryNightly = "3.10.0-RC1-bin-20260729-8526f78-NIGHTLY"
+
+  test("nightly releases include Maven Central and Artifactory nightlies") {
+    val versions = Releases.allReleases.map(_.version).toSet
+    assert(versions.contains(mavenCentralNightly), s"missing Maven Central nightly: $mavenCentralNightly")
+    assert(versions.contains(artifactoryNightly), s"missing Artifactory nightly: $artifactoryNightly")
+  }
+
+  test("releases range spanning Maven Central and Artifactory nightlies") {
+    val releases = Releases.fromRange(ReleasesRange(Some(mavenCentralNightly), Some(artifactoryNightly)))
+    assertEquals(releases.head.version, mavenCentralNightly)
+    assertEquals(releases.last.version, artifactoryNightly)
+  }
