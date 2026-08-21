@@ -1,8 +1,0 @@
--- Warning: tests/init-global/warn/unapply-implicit-arg-maybe.scala:13:16 ----------------------------------------------
-13 |  val i2: Int = i2 match // warn
-   |                ^^
-   |                Access uninitialized field value i2. Calling trace:
-   |                ├── object Bar {	[ unapply-implicit-arg-maybe.scala:3 ]
-   |                │   ^
-   |                └── val i2: Int = i2 match // warn	[ unapply-implicit-arg-maybe.scala:13 ]
-   |                                  ^^
