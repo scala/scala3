@@ -215,10 +215,6 @@ jobs:
           java-version: 17
           cache: 'sbt'
       - uses: VirtusLab/scala-cli-setup@8db5313925605c20e292348c1749e80dac7eed0f # v1.16.0
-        with:
-          # Keep in sync with project/Dependencies.scala.
-          scala-cli-version: 1.16.0
-          jvm: ''
       - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
       - name: Test REPL on JDK ${{ matrix.jdk }}
         env:

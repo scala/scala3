@@ -9,12 +9,12 @@ import org.junit.Test
 
 class ToolkitTests extends ReplTest:
 
-  private val ScalaCliVersion = raw"(?m)^(\d+\.\d+\.\S+)\s*$$".r
-  private val ReplToolkitCoordinate = raw"[^:]+::toolkit:([^:]+)".r
+  private val scalaCliVersion = raw"(?m)^(\d+\.\d+\.\S+)\s*$$".r
+  private val replToolkitCoordinate = raw"[^:]+::toolkit:([^:]+)".r
 
   private case class Toolkit(flavor: String, directive: String, scalaCliDefaultVersion: Regex)
 
-  private val Toolkits = List(
+  private val toolkits = List(
     Toolkit("Scala", "default", raw"'default' version for Scala toolkit: ([^,\s]+)".r),
     Toolkit("Typelevel", "typelevel:default", raw"'default' version for typelevel toolkit: ([^,\s]+)".r),
   )
@@ -27,7 +27,7 @@ class ToolkitTests extends ReplTest:
   private def replToolkitVersion(directive: String): String =
     val coordinates = ReplDirectives.toolkitCoordinates(directive).getOrElse(Nil)
     val version = coordinates.collectFirst:
-      case ReplToolkitCoordinate(version) => version.nn
+      case replToolkitCoordinate(version) => version.nn
     version.getOrElse:
       throw new AssertionError(s"Could not find a toolkit version in REPL coordinates: $coordinates")
 
@@ -46,14 +46,14 @@ class ToolkitTests extends ReplTest:
       "Scala CLI version must match project/Dependencies.scala and .github/workflows/compiler-tests.yaml",
       expectedScalaCliVersion,
       extractVersion(
-        ScalaCliVersion,
+        scalaCliVersion,
         TestProcess.output(Seq(scalaCli, "version", "--cli-version")),
         "Scala CLI version"
       )
     )
 
     val scalaCliHelp = TestProcess.output(Seq(scalaCli, "run", "--help-full"))
-    Toolkits.foreach: toolkit =>
+    toolkits.foreach: toolkit =>
       val scalaCliVersion = extractVersion(toolkit.scalaCliDefaultVersion, scalaCliHelp, "Scala CLI help")
       val replVersion = replToolkitVersion(toolkit.directive)
       assertEquals(s"Default ${toolkit.flavor} toolkit version", scalaCliVersion, replVersion)

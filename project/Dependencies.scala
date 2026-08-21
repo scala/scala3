@@ -63,7 +63,7 @@ object Dependencies {
 
   val scalaCheck = "org.scalacheck" %% "scalacheck" % "1.19.0"
 
-  /** Version of Scala CLI to download. Keep compiler-tests.yaml in sync. */
+  /** Version of Scala CLI to download. */
   val scalaCliLauncherVersion = "1.16.0"
 
   val scalaJsDomVersion = "2.8.1" // needs %%% which isn't usable within a val here

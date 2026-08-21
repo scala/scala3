@@ -9,8 +9,8 @@ import scala.concurrent.duration.*
 import scala.util.control.NonFatal
 
 private[repl] object TestProcess:
-  private val Timeout = 5.minutes
-  private val TerminationTimeout = 10.seconds
+  private val timeout = 5.minutes
+  private val terminationTimeout = 10.seconds
 
   def output(command: Seq[String]): String =
     val outputFile = Files.createTempFile("dotty-test-process-", ".log")
@@ -30,13 +30,13 @@ private[repl] object TestProcess:
         throw error
 
   private def awaitOutput(command: Seq[String], process: Process, outputFile: Path): String =
-    if !process.waitFor(Timeout.length, Timeout.unit) then
+    if !process.waitFor(timeout.length, timeout.unit) then
       val terminated = terminate(process)
       val terminationFailure =
         if terminated then ""
-        else s"\nProcess did not terminate within $TerminationTimeout after destroyForcibly"
+        else s"\nProcess did not terminate within $terminationTimeout after destroyForcibly"
       throw new AssertionError(
-        s"Command timed out after $Timeout: ${command.mkString(" ")}\n${readOutput(outputFile)}$terminationFailure"
+        s"Command timed out after $timeout: ${command.mkString(" ")}\n${readOutput(outputFile)}$terminationFailure"
       )
 
     val output = readOutput(outputFile)
@@ -54,7 +54,7 @@ private[repl] object TestProcess:
     if !process.isAlive then true
     else
       process.destroyForcibly()
-      process.waitFor(TerminationTimeout.length, TerminationTimeout.unit)
+      process.waitFor(terminationTimeout.length, terminationTimeout.unit)
 
 private[repl] object ReplTestProcess:
   def javaHomeOverride: Option[String] =
