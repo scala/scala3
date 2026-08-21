@@ -7,7 +7,7 @@ import java.util.concurrent.TimeoutException
 
 object IAE {
   def unapply(e: Exception): String? =
-    if (e.isInstanceOf[IllegalArgumentException] && e.getMessage != null) e.getMessage
+    if e.isInstanceOf[IllegalArgumentException] && e.getMessage != null then e.getMessage
     else null
 }
 

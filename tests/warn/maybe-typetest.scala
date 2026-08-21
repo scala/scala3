@@ -4,13 +4,13 @@ import scala.magic.*
 
 def Test[T](x: T) =
   x match
-    case y: String? => println(y)       // warn typetest
+    case y: String? => println(y)       // warn typetest // warn unmatchable
     case _ =>
   Ok(x) match
     case y: String? => println(y)       // warn typetest?
     case _ =>                           // warn unreachable
   x match
-    case y: Option[String] => println(y)// warn typetest
+    case y: Option[String] => println(y)// warn typetest // warn unmatchable
     case _ =>
   Some(x) match
     case y: Option[String] => println(y)// warn typetest

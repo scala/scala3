@@ -13,7 +13,7 @@ object Test {
 trait Foo {
   def name: String
   def unapply(x: String): Unit? = {
-    if (x == name) () else null
+    if x == name then () else null
   }
 }
 object Bar extends Foo { def name = "bar" }

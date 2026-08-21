@@ -1,4 +1,5 @@
 import language.experimental.magic
+import language.future
 import scala.magic.*
 import scala.util.Either
 
@@ -11,4 +12,5 @@ object Extract:
   def unapply[T](x: T): T ? String = Ok(x)
 
 @main def Test = 22 match
-  case Extract(s) => println(s)
+  case Extract(s) =>
+    if (true) println(s)

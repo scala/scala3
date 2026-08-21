@@ -2,6 +2,7 @@
 import language.experimental.magic
 import scala.magic.*
 import scala.reflect.ClassTag
+import language.implicitConversions
 
 object Test {
   def main(args: Array[String]): Unit = {
@@ -21,7 +22,7 @@ object Test {
     println()
 
     {
-      import UnboundedIntImplementation.*
+      import UnboundedIntImplementation.{*, given}
       val large = (BigInt(1) << 100).asInstanceOf[Succ]
       large match {
         case Zero() => println("test fail")
@@ -33,7 +34,10 @@ object Test {
   }
 
   def testInterface(numbers: Numbers): Unit = {
-    import numbers.*
+    import numbers.{*, given}
+    given ClassTag[Nat] = numbers.natClassTag
+    given ClassTag[Zero] = numbers.zeroClassTag
+    given ClassTag[Succ] = numbers.succClassTag
     val zero = Zero()
     println("underlying rep: " + zero)
 
@@ -79,19 +83,20 @@ abstract class Numbers {
   //   case class Succ(pred: Nat) extends Nat
 
   type Nat
-  implicit def natClassTag: ClassTag[Nat]
+  def natClassTag: ClassTag[Nat]
 
   trait AbstractNat  {
     def value: Int
     def succ: Succ
   }
-  implicit def NatDeco(nat: Nat): AbstractNat
+  def NatDeco(nat: Nat): AbstractNat
+  given Conversion[Nat, AbstractNat] = NatDeco(_)
 
   // --- Zero ----------------------------------------
 
   type Zero <: Nat
 
-  implicit def zeroClassTag: ClassTag[Zero]
+  def zeroClassTag: ClassTag[Zero]
 
   val Zero: ZeroExtractor
   abstract class ZeroExtractor {
@@ -103,7 +108,7 @@ abstract class Numbers {
 
   type Succ <: Nat
 
-  implicit def succClassTag: ClassTag[Succ]
+  def succClassTag: ClassTag[Succ]
 
   val Succ: SuccExtractor
   abstract class SuccExtractor {
@@ -114,7 +119,8 @@ abstract class Numbers {
   trait AbstractSucc {
     def pred: Nat
   }
-  implicit def SuccDeco(succ: Succ): AbstractSucc
+  def SuccDeco(succ: Succ): AbstractSucc
+  given Conversion[Succ, AbstractSucc] = SuccDeco(_)
 
 }
 
@@ -130,7 +136,7 @@ object CaseClassImplementation extends Numbers {
 
   def natClassTag: ClassTag[Nat] = implicitly
 
-  implicit def NatDeco(nat: Nat): AbstractNat = new AbstractNat {
+  def NatDeco(nat: Nat): AbstractNat = new AbstractNat {
     def value: Int = nat match {
       case Succ(n) => 1 + n.value
       case _ => 0
@@ -175,7 +181,7 @@ object IntImplementation extends Numbers {
 
   def natClassTag: ClassTag[Nat] = intClassTag(_ >= 0)
 
-  implicit def NatDeco(nat: Nat): AbstractNat = new AbstractNat {
+  def NatDeco(nat: Nat): AbstractNat = new AbstractNat {
     def value: Int = nat
     def succ: Succ = nat + 1
   }
@@ -207,7 +213,7 @@ object IntImplementation extends Numbers {
   }
 
   private def intClassTag(cond: Int => Boolean): ClassTag[Int] = new ClassTag[Int] {
-    def runtimeClass: Class[_] = classOf[Int]
+    def runtimeClass: Class[?] = classOf[Int]
     override def unapply(x: Any): Option[Int] = x match {
       case i: Int if cond(i) => Some(i)
       case _ => None
@@ -223,7 +229,7 @@ object UnboundedIntImplementation extends Numbers {
   type Nat = Any // Int | BigInt
 
   def natClassTag: ClassTag[Nat] = new ClassTag[Any] {
-    def runtimeClass: Class[_] = classOf[Any]
+    def runtimeClass: Class[?] = classOf[Any]
     override def unapply(x: Any): Option[Nat] = x match {
       case i: Int if i >= 0 => Some(i)
       case i: BigInt if i > Int.MaxValue => Some(i)
@@ -231,14 +237,14 @@ object UnboundedIntImplementation extends Numbers {
     }
   }
 
-  implicit def NatDeco(nat: Nat): AbstractNat = new AbstractNat {
+  def NatDeco(nat: Nat): AbstractNat = new AbstractNat {
     def value: Int = nat match {
       case nat: Int => nat
       case _ => throw new Exception("Number too large: " + nat)
     }
     def succ: Succ = nat match {
       case nat: Int =>
-        if (nat == Integer.MAX_VALUE) BigInt(nat) + 1
+        if nat == Integer.MAX_VALUE then BigInt(nat) + 1
         else nat + 1
       case nat: BigInt => nat + 1
     }
@@ -249,8 +255,8 @@ object UnboundedIntImplementation extends Numbers {
   type Zero = Int
 
   def zeroClassTag: ClassTag[Zero] = new ClassTag[Int] {
-    def runtimeClass: Class[_] = classOf[Int]
-    override def unapply(x: Any): Option[Int] = if (x == 0) Some(0) else None
+    def runtimeClass: Class[?] = classOf[Int]
+    override def unapply(x: Any): Option[Int] = if x == 0 then Some(0) else None
   }
 
   object Zero extends ZeroExtractor {
@@ -263,7 +269,7 @@ object UnboundedIntImplementation extends Numbers {
   type Succ = Any // Int | BigInt
 
   def succClassTag: ClassTag[Succ] = new ClassTag[Any] {
-    def runtimeClass: Class[_] = classOf[Any]
+    def runtimeClass: Class[?] = classOf[Any]
     override def unapply(x: Any): Option[Succ] = x match {
       case i: Int if i > 0 => Some(i)
       case i: BigInt if i > Int.MaxValue => Some(i)
@@ -276,12 +282,12 @@ object UnboundedIntImplementation extends Numbers {
     def unapply(succ: Succ): Nat? = Ok(succ.pred) // succ > 0 checked by class tag before calling the unapply
   }
 
-  implicit def SuccDeco(succ: Succ): AbstractSucc = new AbstractSucc {
+  def SuccDeco(succ: Succ): AbstractSucc = new AbstractSucc {
     def pred: Nat = succ match {
       case succ: Int => succ - 1 // succ > 0 checked by class tag before calling the unapply
       case succ: BigInt =>
         val n = succ - 1
-        if (n.isValidInt) n.intValue()
+        if n.isValidInt then n.intValue()
         else n
     }
   }

@@ -7,14 +7,14 @@
 import language.experimental.magic
 import scala.magic.*
 object Foo {
-  def unapply[S, T](scrutinee: S)(implicit evidence: FooHasType[S, T]): T? = scrutinee match {
+  def unapply[S, T](scrutinee: S)(using evidence: FooHasType[S, T]): T? = scrutinee match {
     case i: Int => Ok((i, i).asInstanceOf[T])
   }
 }
 
 class FooHasType[S, T]
 object FooHasType {
-  implicit object int extends FooHasType[Int, (Int, Int)]
+  given int: FooHasType[Int, (Int, Int)] = new FooHasType[Int, (Int, Int)]
 }
 
 // resurrected from neg/t997

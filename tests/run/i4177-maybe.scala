@@ -1,7 +1,7 @@
 //> using options -Yexplicit-nulls
 import language.experimental.magic
 object Test {
-  private[this] var count = 0
+  private var count = 0
 
   def test(x: Int) = { count += 1; true }
 

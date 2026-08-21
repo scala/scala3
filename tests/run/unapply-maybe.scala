@@ -21,7 +21,7 @@ object Fii {
   def unapply(x: Any): Boolean = x.isInstanceOf[Bar]
 }
 object Faa {
-  def unapply(x: Any): String? = if(x.isInstanceOf[Bar]) x.asInstanceOf[Bar].name else null
+  def unapply(x: Any): String? = if x.isInstanceOf[Bar] then x.asInstanceOf[Bar].name else null
 }
 object FaaPrecise {
   def unapply(x: Bar): String? = x.name
@@ -30,7 +30,7 @@ object FaaPreciseSome {
   def unapply(x: Bar) = Some(x.name)  // return type Some[String]
 }
 object VarFoo {
-  def unapply(a : Int)(implicit b : Int) : Int? = a + b
+  def unapply(a : Int)(using b : Int) : Int? = a + b
 }
 
 object Foo {
@@ -60,7 +60,7 @@ object Foo {
     assert(doMatch3(b) == "medium")
     assert(doMatch4(b) == "medium")
     assert(doMatch5(b) == "medium")
-    implicit val bc: Int = 3
+    given bc: Int = 3
     assert(7 == (4 match {
       case VarFoo(x) => x
     }))

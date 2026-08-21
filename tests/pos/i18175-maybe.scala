@@ -4,7 +4,7 @@ import scala.compiletime.ops.int.{ +, -, Max }
 import scala.compiletime.ops.string.{ Substring, Length, Matches, CharAt }
 
 class Regex[P] private() extends Serializable:
-  def unapply(s: CharSequence)(implicit n: Regex.Sanitizer[P]): P? = ???
+  def unapply(s: CharSequence)(using n: Regex.Sanitizer[P]): P? = ???
 
 object Regex:
   def apply[R <: String & Singleton](regex: R): Regex[Compile[R]] = ???

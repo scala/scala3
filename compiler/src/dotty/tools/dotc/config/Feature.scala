@@ -348,6 +348,7 @@ object Feature:
         true
       case `magic` =>
         ctx.compilationUnit.magic = true
+        ctx.compilationUnit.sourceVersion = Some(SourceVersion.future)
         true
       case `inlineTraits` =>
         ctx.compilationUnit.knowsInlineTraits = true

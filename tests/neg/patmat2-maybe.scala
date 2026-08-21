@@ -6,7 +6,7 @@ import java.lang.IllegalArgumentException
 
 object IAE {
   def unapply(e: Exception): String? =
-    if (e.isInstanceOf[IllegalArgumentException]) e.getMessage
+    if e.isInstanceOf[IllegalArgumentException] then e.getMessage
     else null
 }
 

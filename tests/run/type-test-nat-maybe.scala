@@ -38,7 +38,7 @@ trait Peano {
   protected def typeTestOfZero: TypeTest[Nat, Zero]
   protected def typeTestOfSucc: TypeTest[Nat, Succ]
 
-  implicit def succDeco(succ: Succ): SuccAPI
+  def succDeco(succ: Succ): SuccAPI
   trait SuccAPI {
     def pred: Nat
   }
@@ -111,7 +111,7 @@ object ClassNums extends Peano {
       case _ => acc
     }
     def natValue(x: Int): Nat =
-      if (x == 0) ZeroObject
+      if x == 0 then ZeroObject
       else new SuccClass(natValue(x - 1))
     val i = intValue(m, 0)
     val j = intValue(n, 0)

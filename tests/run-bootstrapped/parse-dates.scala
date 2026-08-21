@@ -52,3 +52,31 @@ def parseDate4(str: String): Date? =
         Date(day, month, year)
     case _ =>
       null
+
+@main def Test =
+  println("1/1/2000")
+  println(parseDate("1/1/2000"))
+  println(parseDate2("1/1/2000"))
+  println(parseDate3("1/1/2000"))
+  println(parseDate4("1/1/2000"))
+
+  println("1/1-2000")
+  println(parseDate("1/1-2000"))
+  println(parseDate2("1/1-2000"))
+  println(parseDate3("1/1-2000"))
+  println(parseDate4("1/1-2000"))
+
+  println("1/jan/2000")
+  println(parseDate("1/jan/2000"))
+  println(parseDate2("1/jan/2000"))
+  println(parseDate3("1/jan/2000"))
+  println(parseDate4("1/jan/2000"))
+
+  println("1/13/2000")
+  println(parseDate("1/13/2000"))
+  println(parseDate2("1/13/2000"))
+  println(parseDate3("1/13/2000"))
+  println(parseDate4("1/13/2000"))
+
+
+

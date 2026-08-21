@@ -223,7 +223,7 @@ object StringContext {
     // glob-wildcard placeholders
     val patternLength = {
       var n = numWildcards
-      for(chunk <- patternChunks) {
+      for chunk <- patternChunks do {
         n += chunk.length
       }
       n
@@ -235,13 +235,13 @@ object StringContext {
       val arr = new Array[Short](patternLength)
       var i = 0
       var first = true
-      for(chunk <- patternChunks) {
-        if (first) first = false
+      for chunk <- patternChunks do {
+        if first then first = false
         else {
           arr(i) = -1
           i += 1
         }
-        for(c <- chunk) {
+        for c <- chunk do {
           arr(i) = c.toShort
           i += 1
         }
@@ -256,8 +256,8 @@ object StringContext {
       val arr = Array.fill(patternLength + 1)(-1)
       var i = 0
       var j = 0
-      for(chunk <- patternChunks) {
-        if (j < numWildcards) {
+      for chunk <- patternChunks do {
+        if j < numWildcards then {
           i += chunk.length
           arr(i) = j
           i += 1
@@ -267,7 +267,7 @@ object StringContext {
       arr
     }
 
-    while(patternIndex < patternLength || inputIndex < nameLength) {
+    while patternIndex < patternLength || inputIndex < nameLength do {
       matchIndices(patternIndex) match {
         case -1 => // do nothing
         case n =>
@@ -281,7 +281,7 @@ object StringContext {
           }
       }
 
-      val continue = if (patternIndex < patternLength) {
+      val continue = if patternIndex < patternLength then {
         val c = pattern(patternIndex)
         c match {
           case -1 =>  // zero-or-more-character wildcard
@@ -291,7 +291,7 @@ object StringContext {
             patternIndex += 1
             true
           case _ => // ordinary character
-            if (inputIndex < nameLength && input(inputIndex) == c) {
+            if inputIndex < nameLength && input(inputIndex) == c then {
               patternIndex += 1
               inputIndex += 1
               true
@@ -302,8 +302,8 @@ object StringContext {
       } else false
 
       // Mismatch. Maybe restart.
-      if (!continue) {
-        if (0 < nextInputIndex && nextInputIndex <= nameLength) {
+      if !continue then {
+        if 0 < nextInputIndex && nextInputIndex <= nameLength then {
           patternIndex = nextPatternIndex
           inputIndex = nextInputIndex
         } else {
@@ -327,7 +327,7 @@ object StringContext {
     s"""invalid escape ${
       require(index >= 0 && index < str.length)
       val ok = s"""[\\b, \\t, \\n, \\f, \\r, \\\\, \\", \\', \\uxxxx]"""
-      if (index == str.length - 1) "at terminal" else s"'\\${str(index + 1)}' not one of $ok at"
+      if index == str.length - 1 then "at terminal" else s"'\\${str(index + 1)}' not one of $ok at"
     } index $index in "$str". Use \\\\ for literal \\."""
   )
 
@@ -335,30 +335,30 @@ object StringContext {
     s"""invalid unicode escape at index $index of $str"""
   )
 
-  private[this] def readUEscape(src: String, startindex: Int): (Char, Int) = {
+  private def readUEscape(src: String, startindex: Int): (Char, Int) = {
     val len = src.length()
     def loop(uindex: Int): (Char, Int) = {
       def loopCP(dindex: Int, codepoint: Int): (Char, Int) = {
         //supports BMP + surrogate escapes
         //but only in four hex-digit code units (uxxxx)
-        if(dindex >= 4) {
+        if dindex >= 4 then {
           val usRead = uindex - startindex
           val digitsRead = dindex
           (codepoint.asInstanceOf[Char], usRead + digitsRead)
         }
-        else if (dindex + uindex >= len)
+        else if dindex + uindex >= len then
           throw new InvalidUnicodeEscapeException(src, startindex, uindex + dindex)
         else {
           val ch = src(dindex + uindex)
           val e = ch.asDigit
-          if(e >= 0 && e <= 15) loopCP(dindex + 1, (codepoint << 4) + e)
+          if e >= 0 && e <= 15 then loopCP(dindex + 1, (codepoint << 4) + e)
           else throw new InvalidUnicodeEscapeException(src, startindex, uindex + dindex)
         }
       }
-      if(uindex >= len) throw new InvalidUnicodeEscapeException(src, startindex, uindex - 1)
+      if uindex >= len then throw new InvalidUnicodeEscapeException(src, startindex, uindex - 1)
       //allow one or more `u` characters between the
       //backslash and the code unit
-      else if(src(uindex) == 'u') loop(uindex + 1)
+      else if src(uindex) == 'u' then loop(uindex + 1)
       else loopCP(0, 0)
     }
     loop(startindex)
@@ -384,28 +384,28 @@ object StringContext {
    *  @return The string with all escape sequences expanded.
    */
   def processEscapes(str: String): String =
-    str indexOf '\\' match {
+    str.indexOf('\\') match {
       case -1 => str
       case  i => replace(str, i)
     }
 
   protected[scala] def processUnicode(str: String): String =
-    str indexOf "\\" match {
+    str.indexOf("\\") match {
       case i if i == -1 || i >= (str.length() - 5) => str
       case i => replaceU(str, i)
     }
 
   //replace escapes with given first escape
-  private[this] def replace(str: String, first: Int): String = {
+  private def replace(str: String, first: Int): String = {
     val len = str.length()
     val b = new JLSBuilder
     // append replacement starting at index `i`, with `next` backslash
     @tailrec def loop(i: Int, next: Int): String = {
-      if (next >= 0) {
+      if next >= 0 then {
         //require(str(next) == '\\')
-        if (next > i) b.append(str, i, next)
+        if next > i then b.append(str, i, next)
           var idx = next + 1
-          if (idx >= len) throw new InvalidEscapeException(str, next)
+          if idx >= len then throw new InvalidEscapeException(str, next)
           val c = str(idx) match {
             case 'u'  => 'u'
             case 'b'  => '\b'
@@ -418,13 +418,13 @@ object StringContext {
             case '\\' => '\\'
             case _    => throw new InvalidEscapeException(str, next)
           }
-          val (ch, advance) = if (c == 'u') readUEscape(str, idx)
+          val (ch, advance) = if c == 'u' then readUEscape(str, idx)
                               else (c, 1)
           idx += advance
-          b append ch
+          b.append(ch)
           loop(idx, str.indexOf('\\', idx))
         } else {
-          if (i < len) b.append(str, i, len)
+          if i < len then b.append(str, i, len)
           b.toString
         }
       }
@@ -432,17 +432,17 @@ object StringContext {
     }
 
   //replace escapes with given first escape
-  private[this] def replaceU(str: String, first: Int): String = {
+  private def replaceU(str: String, first: Int): String = {
     val len = str.length()
     val b = new JLSBuilder
     // append replacement starting at index `i`, with `next` backslash
     @tailrec def loop(i: Int, next: Int): String = {
-      if (next >= 0) {
+      if next >= 0 then {
         //require(str(next) == '\\')
-        if (next > i) b.append(str, i, next)
+        if next > i then b.append(str, i, next)
         var idx = next + 1
-        if (idx >= len) {
-          if (idx == len) b.append('\\')
+        if idx >= len then {
+          if idx == len then b.append('\\')
           b.toString()
         }
         else {
@@ -458,7 +458,7 @@ object StringContext {
           loop(idx, str.indexOf('\\', idx))
         }
       } else {
-        if (i < len) b.append(str, i, len)
+        if i < len then b.append(str, i, len)
         b.toString()
       }
     }
@@ -470,9 +470,9 @@ object StringContext {
     val pi = parts.iterator
     val ai = args.iterator
     val bldr = new JLSBuilder(process(pi.next()))
-    while (ai.hasNext) {
-      bldr append ai.next()
-      bldr append process(pi.next())
+    while ai.hasNext do {
+      bldr.append(ai.next())
+      bldr.append(process(pi.next()))
     }
     bldr.toString
   }
@@ -483,7 +483,7 @@ object StringContext {
    *  @throws IllegalArgumentException  if this is not the case.
    */
   def checkLengths(args: scala.collection.Seq[Any], parts: Seq[String]): Unit =
-    if (parts.length != args.length + 1)
+    if parts.length != args.length + 1 then
       throw new IllegalArgumentException("wrong number of arguments ("+ args.length
         +") for interpolated string with "+ parts.length +" parts")
 
