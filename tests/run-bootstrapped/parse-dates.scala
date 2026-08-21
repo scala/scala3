@@ -2,7 +2,7 @@
 import language.experimental.magic
 import scala.magic.*
 
-extension (str: String) def parseInt: Int ? Unit =
+extension (str: String) def parseInt: Int? =
   try str.toInt
   catch case ex: NumberFormatException => null
 
@@ -34,8 +34,8 @@ def parseDate3(str: String): Date ? String =
         val day   = d.parseInt.withErr(s"malformed day: $d")?
         val month = m.parseInt.withErr(s"malformed month: $m")?
         val year  = y.parseInt.withErr(s"malformed year: $y")?
-        provided(1 <= day && day <= 31, s"day $day outside allowed range 1..31")
-        provided(1 <= month && month <= 12, s"month $month outside allowed range 1..12")
+        if 1 <= day && day <= 31 else s"day $day outside allowed range 1..31"
+        if 1 <= month && month <= 12 else s"month $month outside allowed range 1..12"
         Date(day, month, year)
     case _ =>
       Err("Date not in format day/month/year")
@@ -47,8 +47,8 @@ def parseDate4(str: String): Date? =
         val day   = d.parseInt?
         val month = m.parseInt?
         val year  = y.parseInt?
-        provided(1 <= day && day <= 31)
-        provided(1 <= month && month <= 12)
+        if 1 <= day && day <= 31
+        if 1 <= month && month <= 12
         Date(day, month, year)
     case _ =>
       null
@@ -77,6 +77,3 @@ def parseDate4(str: String): Date? =
   println(parseDate2("1/13/2000"))
   println(parseDate3("1/13/2000"))
   println(parseDate4("1/13/2000"))
-
-
-

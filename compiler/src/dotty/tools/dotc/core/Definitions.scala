@@ -482,10 +482,14 @@ class Definitions {
   def AnyKindType: TypeRef = AnyKindClass.typeRef
 
   // Magic stuff
-  @tu lazy val MagicPackageClass: ClassSymbol = requiredPackage("scala.magic").moduleClass.asClass
+  @tu lazy val MagicPackage: Symbol = requiredPackage("scala.magic")
+  @tu lazy val MagicPackageClass: ClassSymbol = MagicPackage.moduleClass.asClass
   @tu lazy val MagicMaybeClass: ClassSymbol = requiredClass("scala.magic.compiletime.Maybe")
   @tu lazy val MagicValidClass: ClassSymbol = requiredClass("scala.magic.runtime.Valid")
   @tu lazy val MagicFailClass: ClassSymbol = requiredClass("scala.magic.runtime.Fail")
+    @tu lazy val Magic_provided1: Symbol = MagicPackage.info.member(termName("provided")).suchThat(_.info.isInstanceOf[MethodType]).symbol
+    @tu lazy val Magic_provided2: Symbol = MagicPackage.info.member(termName("provided")).suchThat(_.info.isInstanceOf[PolyType]).symbol
+    @tu lazy val Magic_CanErr: Symbol = MagicPackageClass.requiredType("CanErr")
 
   @tu lazy val MagicOkModule: Symbol = requiredModule("scala.magic.Ok")
     @tu lazy val Magic_OkUnapply: Symbol = MagicOkModule.requiredMethod(nme.unapply)
