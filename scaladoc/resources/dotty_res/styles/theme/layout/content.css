@@ -247,6 +247,66 @@
   margin-inline-end: calc(2 * var(--base-spacing));
 }
 
+/* content footnotes */
+#content .footnotes {
+  margin-block-start: calc(8 * var(--base-spacing));
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 16px;
+}
+
+#content .footnotes hr {
+  border: none;
+  border-top: 1px solid var(--border-default);
+  margin: 0 0 calc(3 * var(--base-spacing));
+}
+
+#content .footnotes ol {
+  margin-block: 0;
+  padding-inline-start: calc(3 * var(--base-spacing));
+}
+
+/* keep the back-reference arrow on the same line as the note text */
+#content .footnotes li > p:last-of-type {
+  display: inline;
+}
+
+#content .footnotes .footnote-backref {
+  margin-left: calc(0.5 * var(--base-spacing));
+  color: var(--action-primary-content-default);
+  text-decoration: none;
+}
+
+#content .footnotes .footnote-backref:hover {
+  color: var(--action-primary-content-hover);
+}
+
+/* footnote references */
+#content sup:has(> a.footnote-ref),
+#content sup.footnote-ref-sep {
+  /* neutralize the default superscript metrics so references
+     do not stretch the line box */
+  vertical-align: baseline;
+  position: relative;
+  top: -0.5em;
+  font-size: 11px;
+  line-height: 1;
+}
+
+#content a.footnote-ref {
+  color: var(--action-primary-content-default);
+  text-decoration: none;
+  padding: 0 2px;
+}
+
+#content a.footnote-ref:hover {
+  color: var(--action-primary-content-hover);
+}
+
+#content sup.footnote-ref-sep {
+  color: var(--text-secondary);
+}
+
 /* content link */
 #content a {
   color: var(--text-primary);
