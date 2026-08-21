@@ -1086,11 +1086,11 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       // e.g. `null.ne(null)` doesn't type, but `(null: AnyRef).ne(null)` does.
       val receiver =
         if tree.tpe.isBottomType then
-          if ctx.explicitNulls then tree.cast(defn.AnyRefType)
+          if ctx.mode.is(Mode.SafeNulls) then tree.cast(defn.AnyRefType)
           else Typed(tree, TypeTree(defn.AnyRefType))
         else tree.ensureConforms(defn.ObjectType)
       // also need to cast the null literal to AnyRef in explicit nulls
-      val nullLit = if ctx.explicitNulls then nullLiteral.cast(defn.AnyRefType) else nullLiteral
+      val nullLit = if ctx.mode.is(Mode.SafeNulls) then nullLiteral.cast(defn.AnyRefType) else nullLiteral
       receiver.select(defn.Object_ne).appliedTo(nullLit).withSpan(tree.span)
     }
 
