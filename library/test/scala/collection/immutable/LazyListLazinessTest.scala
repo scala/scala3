@@ -476,16 +476,30 @@ class LazyListLazinessTest {
   }
 
   @Test
-  def indexOfSlice_properlyLazy(): Unit = {
-    assertLazyAllSkipping(_.indexOfSlice(0 to 5), 6)
-    assertLazyAllSkipping(_.indexOfSlice(1 to 3), 4)
-    assertLazyAllSkipping(_.indexOfSlice(6 to 9, 5), 10)
+  def `indexOfSlice is properly lazy`: Unit =
+    assertLazyAllSkipping(6)(_.indexOfSlice(0 to 5))
+    assertLazyAllSkipping(4)(_.indexOfSlice(1 to 3))
+    assertLazyAllSkipping(10)(_.indexOfSlice(6 to 9, from = 5))
+
+    // single-element slice hits the `clipped()` branch
+    assertLazyAllSkipping(4)(_.indexOfSlice(Seq(3)))
+    // empty slice short-circuits
+    assertLazyAll(_.indexOfSlice(Nil))
+
+    // pattern also a LazyList (unknown pattern length triggers the pre-scan in kmpUnindexed)
+    assertLazyAllSkipping(6)(_.indexOfSlice(LazyList(3, 4, 5)))
 
     // check laziness of slice when it is a `LazyList`
-    val checker = new OpLazinessChecker
+    val checker = fresh()
     assertEquals(-1, LazyList.from(3).take(LazinessChecker.doubleCount).indexOfSlice(checker.lazyList))
     assertNotEvaluatedSkipping(checker, 1)
-  }
+
+  // `lastIndexOfSlice` is documented `willNotTerminateInf` so it must walk the whole list
+  // in the unbounded case. We verify that a bounded `end` really does bound how much of
+  // the list gets forced.
+  @Test
+  def lastIndexOfSlice_properlyLazy(): Unit =
+    assertLazyAllSkipping(6)(_.lastIndexOfSlice(0 to 2, end = 5))
 
   @Test
   def indexWhere_properlyLazy(): Unit = {
@@ -925,14 +939,27 @@ class LazyListLazinessTest {
     assertLazyAll(op)
     assertRepeatedlyLazy(op)
   }
+
+  @Test // it doesn't report its length without evaluating
+  def `length of bounded list`: Unit =
+    val checker = fresh()
+    assertEquals(5, checker.lazyList.take(5).length)
+    checker.assertAllSkipping(evaluated = false, skip = 5)
+    for i <- 0 until 5 do
+      checker.assert(evaluated = true, index = i)
 }
 
 private object LazyListLazinessTest {
+
+  def fresh(): LazinessChecker = OpLazinessChecker()
+
   /* core laziness utilities */
 
   /** Note: not reusable. */
   sealed abstract class LazinessChecker extends Serializable {
     import LazinessChecker.*
+
+    def lazyList: LazyList[Int]
 
     protected val states = new Array[Boolean](count)
 
@@ -996,12 +1023,11 @@ private object LazyListLazinessTest {
       assertAllImpl(evaluated, defaultException, skip)
 
     // for debugging
-    final override def toString: String = {
-      val sb = new java.lang.StringBuilder(getClass.getSimpleName).append("(")
-      for (i <- 0 until 8) { sb.append(s"state($i): ${states.array(i)}, ") }
-      sb.append("...)")
+    final override def toString: String =
+      val sb = java.lang.StringBuilder(getClass.getSimpleName).append("(")
+      for i <- 0 until states.length do sb.append(s"state($i): ${states(i)}, ")
+      sb.append(")")
       sb.toString
-    }
   }
 
   object LazinessChecker {
@@ -1088,17 +1114,24 @@ private object LazyListLazinessTest {
   /** Asserts that the checker does not have any heads or states evaluated
     * other than the first `skip`.
     */
-  def assertNotEvaluatedSkipping(checker: OpLazinessChecker, skip: Int): Unit = {
+  def assertNotEvaluatedSkipping(checker: LazinessChecker, skip: Int): Unit = {
     checker.assertAllSkipping(evaluated = false, skip = skip)
+  }
+
+  /** Asserts that the operation does not evaluate any heads or states
+   *  other than the first `skip`.
+   */
+  def assertLazyAllSkipping[U](skip: Int)(op: LazyListOp[U]): Unit = {
+    val checker = fresh()
+    op(checker.lazyList)
+    assertNotEvaluatedSkipping(checker, skip)
   }
 
   /** Asserts that the operation does not evaluate any heads or states
     * other than the first `skip`.
     */
   def assertLazyAllSkipping[U](op: LazyListOp[U], skip: Int): Unit = {
-    val checker = new OpLazinessChecker
-    op(checker.lazyList)
-    assertNotEvaluatedSkipping(checker, skip)
+    assertLazyAllSkipping[U](skip)(op)
   }
 
   /** Asserts that a predicate holds when a given operation is performed on
