@@ -496,7 +496,7 @@ object Names {
     if n > chrs.length then
       chrs = Array.copyOf(chrs, chrs.length * 2)
 
-  private class NameTable extends HashSet[SimpleName](initialCapacity = 0x10000, capacityMultiple = 2):
+  private final class NameTable extends HashSet[SimpleName](initialCapacity = 0x10000, capacityMultiple = 2):
     import util.Stats
 
     override def hash(x: SimpleName) = hashValue(chrs, x.start, x.length) // needed for resize
@@ -508,7 +508,7 @@ object Names {
       var idx = hashValue(cs) & (myTable.length - 1)
       var name: SimpleName | Null = myTable(idx).asInstanceOf[SimpleName | Null]
       while name != null do
-        if name.nn.length == cs.length() && Names.equals(name.nn.start, cs) then
+        if Names.equals(name.nn.start, name.nn.length, cs) then
           return name.nn
         Stats.record(statsItem("miss"))
         idx = (idx + 1) & (myTable.length - 1)
@@ -546,7 +546,7 @@ object Names {
       dst(i + dstBegin) = cs.charAt(i)
       i += 1
 
-  /** The hash of a name made of from characters cs[offset..offset+len-1].  */
+  /** The hash of a name made of from characters cs[offset..offset+len-1]. Same algorithm as java.lang.String. */
   private def hashValue(cs: Array[Char], offset: Int, len: Int): Int = {
     var i = offset
     var hash = 0
@@ -557,35 +557,29 @@ object Names {
     hash
   }
 
-  /** The hash of the given character sequence, using the same algorithm as above.  */
-  private def hashValue(cs: CharSequence): Int = {
-    var i = 0
-    var hash = 0
-    while (i < cs.length()) {
-      hash = 31 * hash + cs.charAt(i)
-      i += 1
-    }
-    hash
+  /** The hash of the given character sequence, using the same algorithm as above. */
+  private def hashValue(cs: CharSequence): Int = cs match {
+    case s: String => s.hashCode
+    case _ =>
+      var i = 0
+      var hash = 0
+      val len = cs.length()
+      while (i < len) {
+        hash = 31 * hash + cs.charAt(i)
+        i += 1
+      }
+      hash
   }
 
-  /** Is (the ASCII representation of) name at given index equal to
-   *  cs[offset..offset+len-1]?
-   */
-  private def equals(index: Int, cs: Array[Char], offset: Int, len: Int): Boolean = {
+  /** Is (the ASCII representation of) name at given index equal to cs? */
+  private def equals(index: Int, length: Int, cs: CharSequence): Boolean = {
     var i = 0
-    while ((i < len) && (chrs(index + i) == cs(offset + i)))
+    val len = cs.length()
+    if len != length then
+      return false
+    while i < len && chrs(index + i) == cs.charAt(i) do
       i += 1
     i == len
-  }
-
-  /** Is (the ASCII representation of) name at given index equal to
-   *  cs?
-   */
-  private def equals(index: Int, cs: CharSequence): Boolean = {
-    var i = 0
-    while (i < cs.length() && chrs(index + i) == cs.charAt(i))
-      i += 1
-    i == cs.length()
   }
 
   /** Create a term name from the characters in cs[offset..offset+len-1].

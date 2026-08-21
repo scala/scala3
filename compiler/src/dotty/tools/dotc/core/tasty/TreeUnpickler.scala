@@ -1853,7 +1853,7 @@ class TreeUnpickler(reader: TastyReader,
      */
     def sourceChangeContext(addr: Addr = currentAddr)(using Context): Context = {
       val path = sourcePathAt(addr)
-      if (path.nonEmpty) {
+      if (!path.isEmpty) {
         val sourceFile = ctx.getSource(path)
         posUnpicklerOpt match
           case Some(posUnpickler) if !sourceFile.initialized =>

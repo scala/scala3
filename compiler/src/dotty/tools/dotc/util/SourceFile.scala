@@ -126,7 +126,7 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
 
   override def hashCode: Int = if file eq null then 0 else file.hashCode
 
-  def apply(idx: Int): Char = textContent().apply(idx)
+  def apply(idx: Int): Char = textContent().charAt(idx)
 
   /** length of the original source file
    * Note that when the source is from Tasty, textContent() could be empty even though length > 0.

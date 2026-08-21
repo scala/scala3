@@ -494,8 +494,8 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
 
   // Initialization code
 
-  /** Class#getDeclaredMethods is slow, so we cache its output */
-  private val clsMethodsCache = new java.util.IdentityHashMap[Class[?], Array[java.lang.reflect.Method | Null]]
+  /** Class#getDeclaredMethods is slow, and we want to search by name, so we cache its output */
+  private val clsMethodsCache = new java.util.IdentityHashMap[Class[?], Set[String]]
 
   /** Does `phase` contain a redefinition of method `name`?
    *  (which is a method of MiniPhase)
@@ -506,11 +506,10 @@ class MegaPhase(val miniPhases: Array[MiniPhase]) extends Phase {
       else {
         var clsMethods = clsMethodsCache.get(cls)
         if (clsMethods == null) {
-          clsMethods = cls.getDeclaredMethods
+          clsMethods = cls.getDeclaredMethods.map(_.getName).toSet
           clsMethodsCache.put(cls, clsMethods)
         }
-        clsMethods.nn.exists(_.nn.getName == name) ||
-        hasRedefinedMethod(cls.getSuperclass.nn)
+        clsMethods(name) || hasRedefinedMethod(cls.getSuperclass.nn)
       }
     hasRedefinedMethod(phase.getClass)
   }

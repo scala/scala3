@@ -167,7 +167,7 @@ trait MessageRendering {
     val msgStr = msg.linesIterator
       .map { line => offsetBox + (if line.isEmpty then "" else padding + line) }
       .mkString(EOL)
-    if addLine then msgStr ++ s"${EOL}$offsetBox" else msgStr
+    if addLine then msgStr + s"${EOL}$offsetBox" else msgStr
   }
 
   // path or munge it to normalize for testing

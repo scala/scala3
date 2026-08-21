@@ -176,7 +176,7 @@ object Scanners {
 
     inline def isNumberSeparator(c: Char): Boolean = c == '_'
 
-    def removeNumberSeparators(s: String): String = if (s.indexOf('_') == -1) s else s.replace("_", "")
+    def removeNumberSeparators(s: String): String = s.replace("_", "")
 
     // disallow trailing numeric separator char, but continue lexing
     def checkNoTrailingSeparator(): Unit =
@@ -498,7 +498,7 @@ object Scanners {
       def recur(idx: Int, ch: Char, n: Int, k: IndentWidth => IndentWidth): IndentWidth =
         if (idx < 0) k(Run(ch, n))
         else {
-          val nextChar = buf(idx)
+          val nextChar = buf.charAt(idx)
           if (nextChar == LF) k(Run(ch, n))
           else if (nextChar == ' ' || nextChar == '\t')
             if (nextChar == ch)
@@ -620,7 +620,7 @@ object Scanners {
         token == EOF && {
           val end = endIdx - 1 // take terminal NL as empty last line
           val prev = buf.lastIndexWhere(!isWhitespace(_), end = end)
-          prev < 0 || end - prev > 0 && isLineBreakChar(buf(prev))
+          prev < 0 || end - prev > 0 && isLineBreakChar(buf.charAt(prev))
         }
 
       inline def canDedent: Boolean =
@@ -823,7 +823,7 @@ object Scanners {
       val end = offset
       def recur(idx: Offset, isBlank: Boolean): Boolean =
         idx < end && {
-          val ch = buf(idx)
+          val ch = buf.charAt(idx)
           if (ch == LF || ch == FF) isBlank || recur(idx + 1, true)
           else recur(idx + 1, isBlank && ch <= ' ')
         }
@@ -903,7 +903,7 @@ object Scanners {
           recognizeInterpolationId()
         case '<' => // is XMLSTART?
           def fetchLT() = {
-            val last = if (charOffset >= 2) buf(charOffset - 2) else ' '
+            val last = if (charOffset >= 2) buf.charAt(charOffset - 2) else ' '
             nextChar()
             last match {
               case ' ' | '\t' | '\n' | '{' | '(' | '>' if xml.Utility.isNameStart(ch) || ch == '!' || ch == '?' =>
@@ -1364,13 +1364,13 @@ object Scanners {
 
     def isSpecString(): Boolean =
       var i = charOffset
-      while i < endIdx && buf(i) == '\'' do
+      while i < endIdx && buf.charAt(i) == '\'' do
         i += 1
       Feature.magicEnabled
       && i + 4 < endIdx
       && i - charOffset >= 2
-      && buf(i) == 's' && buf(i + 1) == 'p' && buf(i + 2) == 'e' && buf(i + 3) == 'c'
-      && (isWhitespace(buf(i + 4)) || buf(i + 4) == LF)
+      && buf.charAt(i) == 's' && buf.charAt(i + 1) == 'p' && buf.charAt(i + 2) == 'e' && buf.charAt(i + 3) == 'c'
+      && (isWhitespace(buf.charAt(i + 4)) || buf.charAt(i + 4) == LF)
 
     def fetchString() =
       delimCount = 1
@@ -1771,7 +1771,7 @@ object Scanners {
         if start + n > buf.length then -1
         else
           var i = 0
-          while i < n && buf(start + i) == ch do i += 1
+          while i < n && buf.charAt(start + i) == ch do i += 1
           if i < n then -1 else n
       case Conc(w1, w2) =>
         val len1 = w1.advance(buf, start)
@@ -1791,7 +1791,12 @@ object Scanners {
 
     def toPrefix: String = this match {
       case Run(ch, n) => ch.toString * n
-      case Conc(l, r) => l.toPrefix ++ r.toPrefix
+      case Conc(l, r) => l.toPrefix + r.toPrefix
+    }
+
+    def toPrefixSize: Int = this match {
+      case Run(ch, n) => n
+      case Conc(l, r) => l.toPrefixSize + r.toPrefixSize
     }
 
     override def toString: String = {
