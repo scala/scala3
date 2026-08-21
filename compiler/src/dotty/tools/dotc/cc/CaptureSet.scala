@@ -254,9 +254,24 @@ sealed abstract class CaptureSet extends Showable:
       val suffix = if ctx.settings.YccVerbose.value then i" with ${x.captureSetOfInfo}" else ""
       i"$this accountsFor $x$suffix"
 
+    // Classifier splitting: a classified projection `b.only[..].except[..]` is accounted for
+    // when no single element subsumes it but the same-base projections in this set collectively
+    // cover its classifier region. Equivalent to its kind subtracting to empty against theirs
+    // (subkinding, "Classifying Capabilities" Fig. 3).
+    def classifierSplit(using Context): Boolean = x match
+      case Classified(xbase, onlyX, exceptX) =>
+        val peers = elems.toList.collect:
+          case Classified(b, o, e) if (b eq xbase) && o != defn.NothingClass => (o, e)
+        peers.nonEmpty
+        && peers.foldLeft((onlyX, exceptX) :: Nil): (rem, peer) =>
+             rem.flatMap((o1, e1) => subtractClassifiers(o1, e1, peer._1, peer._2))
+          .isEmpty
+      case _ => false
+
     def test(using Context) = reporting.trace(debugInfo):
       TypeComparer.noNotes: // Any failures in accountsFor should not lead to error notes
         elems.exists(_.subsumes(x))
+        || classifierSplit
         || // Even though subsumes already follows captureSetOfInfo, this is not enough.
            // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
           !x.isTerminalCapability
