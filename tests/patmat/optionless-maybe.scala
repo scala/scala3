@@ -9,11 +9,11 @@ object Ident1 {
 
 trait Cap
 object Ident2 {
-  def unapply(tree: Tree)(implicit any: Cap): Ident = ???
+  def unapply(tree: Tree)(using any: Cap): Ident = ???
 }
 
 object Ident3 {
-  def unapply(tree: Tree)(implicit any: Cap): Ident? = ???
+  def unapply(tree: Tree)(using any: Cap): Ident? = ???
 }
 
 
@@ -23,11 +23,11 @@ class Test {
     case Ident1(t) =>
   }
 
-  def bar(t: Tree)(implicit c: Cap): Unit = t match {
+  def bar(t: Tree)(using c: Cap): Unit = t match {
     case Ident2(t) =>
   }
 
-  def qux(t: Tree)(implicit c: Cap): Unit = t match {
+  def qux(t: Tree)(using c: Cap): Unit = t match {
     case Ident3(t) =>
   }
 

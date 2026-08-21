@@ -14,13 +14,13 @@ trait Toolbox {
 
   trait ApplyImpl {
     def unapply(tree: Tree): (Tree, Seq[Tree])?
-    def unapply(tree: tpd.Tree)(implicit c: Cap): (tpd.Tree, Seq[tpd.Tree])?
+    def unapply(tree: tpd.Tree)(using c: Cap): (tpd.Tree, Seq[tpd.Tree])?
   }
 }
 
 class Test(val tb: Toolbox) {
   import tb.*
-  implicit val cap: Cap = null.asInstanceOf[Cap]
+  given cap: Cap = null.asInstanceOf[Cap]
 
   def foo(tree: Tree): Int = (tree: Any) match {
     case tb.Apply(fun, args) => 3  // error: ambiguous overload of unapply

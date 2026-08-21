@@ -3,8 +3,8 @@ import language.experimental.magic
 final class StringExtract(val s: String) extends AnyVal {
   def length                      = s.length
   def lengthCompare(n: Int)       = s.length compare n
-  def apply(idx: Int): Char       = s charAt idx
-  def head: Char                  = s charAt 0
+  def apply(idx: Int): Char       = s.charAt(idx)
+  def head: Char                  = s.charAt(0)
   def tail: String                = s drop 1
   def drop(n: Int): Seq[Char]     = toSeq.drop(n)
   def toSeq: Seq[Char]            = s.toSeq
@@ -16,8 +16,8 @@ final class ThreeStringExtract(val s: String) extends AnyVal {
   def get: (List[Int], Double, Seq[Char]) = ((s.length :: Nil, s.length.toDouble, toSeq))
   def length                              = s.length
   def lengthCompare(n: Int)               = s.length compare n
-  def apply(idx: Int): Char               = s charAt idx
-  def head: Char                          = s charAt 0
+  def apply(idx: Int): Char               = s.charAt(idx)
+  def head: Char                          = s.charAt(0)
   def tail: String                        = s drop 1
   def drop(n: Int): Seq[Char]             = toSeq.drop(n)
   def toSeq: Seq[Char]                    = s.toSeq
@@ -28,12 +28,12 @@ final class ThreeStringExtract(val s: String) extends AnyVal {
 
 object Bippy {
   def unapplySeq(x: Any): StringExtract? =
-    if ((x == null) || (x == "")) null
+    if (x == null) || (x == "") then null
     else new StringExtract("" + x)
 }
 object TripleBippy {
   def unapplySeq(x: Any): (List[Int], Double, Seq[Char])? =
-    if ((x == null) || (x == "")) then null
+    if (x == null) || (x == "") then null
     else new ThreeStringExtract("" + x).get
 }
 

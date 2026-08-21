@@ -1,8 +1,8 @@
 //> using options -Yexplicit-nulls
 import language.experimental.magic
 package p1 {
-  object Ex  { def unapply(p: Any): (_ <: Int)? = null }
-  object Foo { val Ex(_) = null }
+  object Ex  { def unapply(p: Any): (? <: Int)? = null }
+  object Foo { val Ex(_) = null.runtimeChecked }
 }
 // a.scala:2: error: error during expansion of this match (this is a scalac bug).
 // The underlying error was: type mismatch;

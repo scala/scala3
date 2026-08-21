@@ -66,7 +66,7 @@ trait Numbers {
     def unapply(nat: Nat): Succ?
   }
 
-  implicit def SuccDeco(succ: Succ): SuccAPI
+  def SuccDeco(succ: Succ): SuccAPI
   trait SuccAPI {
     def pred: Nat
   }
@@ -110,7 +110,7 @@ object CaseNums extends Numbers {
 
   def safeDiv(a: Nat, b: Succ): (Nat, Nat) = {
     def sdiv(div: Nat, rem: Nat): (Nat, Nat) =
-      if (lessOrEq(rem, b)) (div, rem)
+      if lessOrEq(rem, b) then (div, rem)
       else sdiv(Succ(div), minus(rem, b))
     sdiv(Zero(), a)
   }
@@ -142,13 +142,13 @@ object IntNums extends Numbers {
   object Succ extends SuccExtractor {
     def apply(nat: Nat): Int = nat + 1
     def unapply(nat: Nat): Int? =
-      if (nat > 0) nat - 1 else null
+      if nat > 0 then nat - 1 else null
   }
 
 
   object SuccRefine extends SuccRefineExtractor {
     def unapply(nat: Nat): Succ? =
-      if (nat > 0) nat else null
+      if nat > 0 then nat else null
   }
 
   def SuccDeco(succ: Succ): SuccAPI = new SuccAPI {

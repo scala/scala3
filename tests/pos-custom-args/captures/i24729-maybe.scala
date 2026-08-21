@@ -15,9 +15,9 @@ extension [A](inline self: A) inline def ---> [B](inline y: B): (A, B) = (self, 
 
 object +: {
   def unapply[A, CC[_] <: Seq[?], C <: SeqOps[A, CC, C]](t: (C & SeqOps[A, CC, C])^): (A, C^{t})? =
-    if(t.isEmpty) null
+    if t.isEmpty then null
     else t.head --> t.tail
   def unapply2[A, CC[_] <: Seq[?], C <: SeqOps[A, CC, C]](t: (C & SeqOps[A, CC, C])^): Option[(A, C^{t})] =
-    if(t.isEmpty) None
+    if t.isEmpty then None
     else Some(t.head ---> t.tail)
 }

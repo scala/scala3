@@ -104,8 +104,6 @@ val experimentalDefinitionInLibrary = Set(
   // New feature: magic
   "scala.magic.Ok",
   "scala.magic.Ok$",
-  "scala.magic.compiletime",
-  "scala.magic.compiletime$",
   "scala.magic.compiletime.Maybe",
   "scala.magic.compiletime.package$.$spec",
   "scala.magic.compiletime.package$.$wrappedType",

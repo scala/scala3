@@ -3,7 +3,7 @@ import language.experimental.magic
 class IntList(val hd: Int, val tl: IntList)
 object NilIL extends IntList(0, null.asInstanceOf[IntList])
 object IntList {
-  def unapply(il: IntList): (Int, IntList)? = if(il eq NilIL) null else (il.hd, il.tl)
+  def unapply(il: IntList): (Int, IntList)? = if il eq NilIL then null else (il.hd, il.tl)
   def apply(x: Int, xs: IntList) = new IntList(x, xs)
 }
 
