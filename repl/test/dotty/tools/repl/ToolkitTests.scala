@@ -13,11 +13,17 @@ class ToolkitTests extends ReplTest:
   private val scalaCliVersion = raw"(?m)^(\d+\.\d+\.\S+)\s*$$".r
   private val replToolkitCoordinate = raw"[^:]+::toolkit:([^:]+)".r
 
-  private case class Toolkit(flavor: String, directive: String, scalaCliDefaultVersion: Regex)
-
   private val toolkits = List(
-    Toolkit("Scala", "default", raw"'default' version for Scala toolkit: ([^,\s]+)".r),
-    Toolkit("Typelevel", "typelevel:default", raw"'default' version for typelevel toolkit: ([^,\s]+)".r),
+    (
+      flavor = "Scala",
+      directive = "default",
+      scalaCliDefaultVersion = raw"'default' version for Scala toolkit: ([^,\s]+)".r,
+    ),
+    (
+      flavor = "Typelevel",
+      directive = "typelevel:default",
+      scalaCliDefaultVersion = raw"'default' version for typelevel toolkit: ([^,\s]+)".r,
+    )
   )
 
   private def extractVersion(pattern: Regex, output: String, source: String): String =
