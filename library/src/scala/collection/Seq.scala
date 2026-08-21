@@ -418,40 +418,26 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     case _ => toSeq
   }
 
-  /** Finds first index after or at a start index where this $coll contains a given sequence as a slice.
+  /** Finds first index at or after a start index where this $coll contains a given sequence as a slice.
    *  $mayNotTerminateInf
    *  @tparam B the element type used for comparison (a supertype of `A`)
-   *  @param  that    the sequence to test
+   *  @param  that    the pattern sequence to search for
    *  @param  from    the start index
    *  @return  the first index `>= from` such that the elements of this $coll starting at this index
    *           match the elements of sequence `that`, or `-1` if no such subsequence exists.
    */
-  // TODO Should be implemented in a way that preserves laziness
   def indexOfSlice[B >: A](that: Seq[B], from: Int): Int =
-    if (that.isEmpty && from == 0) 0
-    else {
+    if that.isEmpty && from == 0 then 0
+    else
+      val s = toGenericSeq
       val l = knownSize
       val tl = that.knownSize
-      if (l >= 0 && tl >= 0) {
-        val clippedFrom = math.max(0, from)
-        if (from > l) -1
-        else if (tl < 1) clippedFrom
-        else if (l < tl) -1
-        else SeqOps.kmpSearch(toGenericSeq, clippedFrom, l, that, 0, tl, forward = true)
-      }
-      else {
-        var i = from
-        var s: scala.collection.Seq[A] = toGenericSeq.drop(i)
-        while (!s.isEmpty) {
-          if (s startsWith that)
-            return i
-
-          i += 1
-          s = s.tail
-        }
-        -1
-      }
-    }
+      val clippedFrom = math.max(0, from)
+      if l >= 0 then
+        if from > l then return -1
+        if tl == 0 then return clippedFrom
+        if tl >= 0 && l < tl then return -1
+      SeqOps.kmpSearch(S = s, m0 = clippedFrom, m1 = l, W = that, n0 = 0, n1 = tl, forward = true)
 
   /** Finds first index where this $coll contains a given sequence as a slice.
    *  $mayNotTerminateInf
@@ -472,16 +458,16 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *  @return  the last index `<= end` such that the elements of this $coll starting at this index
    *           match the elements of sequence `that`, or `-1` if no such subsequence exists.
    */
-  def lastIndexOfSlice[B >: A](that: Seq[B], end: Int): Int = {
-    val l = length
+  def lastIndexOfSlice[B >: A](that: Seq[B], end: Int): Int =
+    val l = knownSize
     val tl = that.length
-    val clippedL = math.min(l-tl, end)
 
-    if (end < 0) -1
-    else if (tl < 1) clippedL
-    else if (l < tl) -1
-    else SeqOps.kmpSearch(toGenericSeq, 0, clippedL+tl, that, 0, tl, forward = false)
-  }
+    if end < 0 then -1
+    else if tl < 1 then math.min((if l >= 0 then l else length) - tl, end)
+    else if l >= 0 && l < tl then -1
+    else
+      val clippedL = if (l < 0) end else math.min(l - tl, end)
+      SeqOps.kmpSearch(S = toGenericSeq, m0 = 0, m1 = clippedL + tl, W = that, n0 = 0, n1 = tl, forward = false)
 
   /** Finds last index where this $coll contains a given sequence as a slice.
    *
@@ -1048,165 +1034,199 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
 
 object SeqOps {
 
-  // KMP search utilities
-
- /** A KMP implementation, based on the undoubtedly reliable wikipedia entry.
-  *  Note: I made this private to keep it from entering the API.  That can be reviewed.
+ /** A KMP implementation.
   *
   *  @tparam B the element type of the sequences being searched
   *  @param  S       Sequence that may contain target
   *  @param  m0      First index of S to consider
   *  @param  m1      Last index of S to consider (exclusive)
   *  @param  W       Target sequence
-  *  @param  n0      First index of W to match
-  *  @param  n1      Last index of W to match (exclusive)
+  *  @param  n0      First index of W to match (0)
+  *  @param  n1      Last index of W to match (exclusive) (W.length if known)
   *  @param  forward Direction of search (from beginning==true, from end==false)
   *  @return Index of start of sequence if found, -1 if not (relative to beginning of S, not m0).
   */
-  private def kmpSearch[B](S: scala.collection.Seq[B], m0: Int, m1: Int, W: scala.collection.Seq[B], n0: Int, n1: Int, forward: Boolean): Int = {
-    // Check for redundant case when target has single valid element
-    def clipR(x: Int, y: Int) = if (x < y) x else -1
-    def clipL(x: Int, y: Int) = if (x > y) x else -1
+  private def kmpSearch[B](S: Seq[B], m0: Int, m1: Int, W: Seq[B], n0: Int, n1: Int, forward: Boolean): Int = {
+    /** Makes sure a target sequence has fast, correctly-ordered indexing for KMP.
+     *
+     *  @param  W    The target sequence
+     *  @param  n0   The first element in the target sequence that we should use
+     *  @param  n1   The far end of the target sequence that we should use (exclusive)
+     *  @param  forward Direction of search (from beginning==true, from end==false)
+     *  @return Target packed in an IndexedSeq (taken from iterator unless W already is an IndexedSeq)
+     */
+    def kmpOptimizeWord(W: Seq[B], n0: Int, n1: Int, forward: Boolean): IndexedSeqView[B] = W match {
+      case iso: IndexedSeq[B @unchecked] =>
+        // Already optimized for indexing--use original (or custom view of original)
+        if (forward && n0==0 && n1==W.length) iso.view
+        else if (forward) new AbstractIndexedSeqView[B] {
+          val length = n1 - n0
+          def apply(x: Int) = iso(n0 + x)
+        }
+        else new AbstractIndexedSeqView[B] {
+          val length = n1 - n0
+          def apply(x: Int) = iso(n1 - 1 - x)
+        }
+      case _ =>
+        // W is probably bad at indexing.  Pack in array (in correct orientation)
+        // Would be marginally faster to special-case each direction
+        new AbstractIndexedSeqView[B] {
+          private[this] val Warr = new Array[AnyRef](n1-n0)
+          private[this] val delta = if (forward) 1 else -1
+          private[this] val done = if (forward) n1-n0 else -1
+          val wit = W.iterator.drop(n0)
+          var i = if (forward) 0 else (n1-n0-1)
+          while (i != done) {
+            Warr(i) = wit.next().asInstanceOf[AnyRef]
+            i += delta
+          }
 
-    if (n1 == n0+1) {
-      if (forward)
-        clipR(S.indexOf(W(n0), m0), m1)
+          val length = n1 - n0
+          def apply(x: Int) = Warr(x).asInstanceOf[B]
+        }
+    }
+
+    /** Makes a jump table for KMP search.
+     *
+     *  @param  Wopt The target sequence
+     *  @param  wlen Just in case we're only IndexedSeq and not IndexedSeqOptimized
+     *  @return KMP jump table for target sequence
+     */
+    def kmpJumpTable(Wopt: IndexedSeqView[B], wlen: Int) = {
+      val arr = Array.ofDim[Int](wlen)
+      var pos = 2
+      var cnd = 0
+      arr(0) = -1
+      arr(1) = 0
+      while (pos < wlen) {
+        if (Wopt(pos-1) == Wopt(cnd)) {
+          arr(pos) = cnd + 1
+          pos += 1
+          cnd += 1
+        }
+        else if (cnd > 0) {
+          cnd = arr(cnd)
+        }
+        else {
+          arr(pos) = 0
+          pos += 1
+        }
+      }
+      arr
+    }
+
+    // We can index into S directly; it should be adequately fast
+    def kmpIndexed(S: IndexedSeq[B]): Int = {
+      val Wopt = kmpOptimizeWord(W, n0, n1, forward)
+      val T = kmpJumpTable(Wopt, n1-n0)
+      var i, m = 0
+      val zero = if (forward) m0 else m1-1
+      val delta = if (forward) 1 else -1
+      while (i+m < m1-m0) {
+        if (Wopt(i) == S(zero+delta*(i+m))) {
+          i += 1
+          if (i == n1-n0) return (if (forward) m+m0 else m1-m-i)
+        }
+        else {
+          val ti = T(i)
+          m += i - ti
+          if (i > 0) i = ti
+        }
+      }
+      -1
+    }
+
+    def clipped(): Int = {
+      def clipR(x: Int, y: Int) = if (x < y) x else -1
+      def clipL(x: Int, y: Int) = if (x > y) x else -1
+      if (forward) {
+        val x = S.indexOf(W(n0), m0)
+        if (m1 >= 0) clipR(x, m1)
+        else x
+      }
       else
         clipL(S.lastIndexOf(W(n0), m1-1), m0-1)
     }
 
-    // Check for redundant case when both sequences are same size
-    else if (m1-m0 == n1-n0) {
-      // Accepting a little slowness for the uncommon case.
-      if (S.iterator.slice(m0, m1).sameElements(W.iterator.slice(n0, n1))) m0
-      else -1
-    }
-    // Now we know we actually need KMP search, so do it
-    else S match {
-      case xs: scala.collection.IndexedSeq[?] =>
-        // We can index into S directly; it should be adequately fast
-        val Wopt = kmpOptimizeWord(W, n0, n1, forward)
-        val T = kmpJumpTable(Wopt, n1-n0)
-        var i, m = 0
-        val zero = if (forward) m0 else m1-1
-        val delta = if (forward) 1 else -1
-        while (i+m < m1-m0) {
-          if (Wopt(i) == S(zero+delta*(i+m))) {
-            i += 1
-            if (i == n1-n0) return (if (forward) m+m0 else m1-m-i)
-          }
-          else {
-            val ti = T(i)
-            m += i - ti
-            if (i > 0) i = ti
-          }
+    // We had better not index into S directly!
+    // Also cope with m1 < 0 || n1 < 0 for collections of unknown size.
+    def kmpUnindexed(): Int = {
+      val iter = S.iterator.drop(m0).buffered
+      // on empty pattern, return m0 if it is a valid index in S or S.length for position to append
+      if (W.isEmpty)
+        if (iter.hasNext) return m0
+        else {
+          val len = S.length
+          if (m0 <= len) return len
+          else return -1
         }
-        -1
-      case _ =>
-        // We had better not index into S directly!
-        val iter = S.iterator.drop(m0)
-        val Wopt = kmpOptimizeWord(W, n0, n1, forward = true)
-        val T = kmpJumpTable(Wopt, n1-n0)
-        val cache = new Array[AnyRef](n1-n0)  // Ring buffer--need a quick way to do a look-behind
-        var largest = 0
-        var i, m = 0
-        var answer = -1
-        while (m+m0+n1-n0 <= m1) {
-          while (i+m >= largest) {
-            cache(largest%(n1-n0)) = iter.next().asInstanceOf[AnyRef]
-            largest += 1
-          }
-          if (Wopt(i) == cache((i+m)%(n1-n0)).asInstanceOf[B]) {
-            i += 1
-            if (i == n1-n0) {
-              if (forward) return m+m0
-              else {
-                i -= 1
-                answer = m+m0
-                val ti = T(i)
-                m += i - ti
-                if (i > 0) i = ti
-              }
+      // enhance laziness by pre-scanning for head of pattern; T could be fully lazy.
+      var n1b = n1
+      var moffset = 0
+      if (n1b < 0) {
+        val head = W(0) // already forced isEmpty
+        while (iter.hasNext && iter.head != head) {
+          iter.next()
+          moffset += 1
+        }
+        if (!iter.hasNext)
+          return -1
+        n1b = W.length // force W
+      }
+      if (n1b == n0+1)
+        clipped()
+      else
+        kmpUnindexedN1(iter, moffset, n1b)
+    }
+    // `wlen` is the forced pattern length (outer `n1` may have been -1).
+    def kmpUnindexedN1(iter: Iterator[B], moffset: Int, wlen: Int): Int = {
+      val Wopt = kmpOptimizeWord(W, n0, wlen, forward = true)
+      val T = kmpJumpTable(Wopt, wlen-n0)
+      val cache = Array.ofDim[AnyRef](wlen-n0)  // Ring buffer--need a quick way to do a look-behind
+      var largest = moffset
+      var i = 0
+      var m = moffset
+      var answer = -1
+      while (m1 < 0 || m+m0+wlen-n0 <= m1) {
+        while (i+m >= largest) {
+          if (!iter.hasNext) return answer
+          cache(largest%(wlen-n0)) = iter.next().asInstanceOf[AnyRef]
+          largest += 1
+        }
+        if (Wopt(i) == cache((i+m)%(wlen-n0)).asInstanceOf[B]) {
+          i += 1
+          if (i == wlen-n0) {
+            if (forward) return m+m0
+            else {
+              i -= 1
+              answer = m+m0
+              val ti = T(i)
+              m += i - ti
+              if (i > 0) i = ti
             }
           }
-          else {
-            val ti = T(i)
-            m += i - ti
-            if (i > 0) i = ti
-          }
         }
-        answer
-    }
-  }
-
-  /** Makes sure a target sequence has fast, correctly-ordered indexing for KMP.
-   *
-   *  @tparam B the element type of the target sequence
-   *  @param  W    The target sequence
-   *  @param  n0   The first element in the target sequence that we should use
-   *  @param  n1   The far end of the target sequence that we should use (exclusive)
-   *  @param forward `true` to index in forward order, `false` to index in reverse order
-   *  @return Target packed in an IndexedSeq (taken from iterator unless W already is an IndexedSeq)
-   */
-  private def kmpOptimizeWord[B](W: scala.collection.Seq[B], n0: Int, n1: Int, forward: Boolean): IndexedSeqView[B] = W match {
-    case iso: IndexedSeq[B @unchecked] =>
-      // Already optimized for indexing--use original (or custom view of original)
-      if (forward && n0==0 && n1==W.length) iso.view
-      else if (forward) new AbstractIndexedSeqView[B] {
-        val length = n1 - n0
-        def apply(x: Int) = iso(n0 + x)
-      }
-      else new AbstractIndexedSeqView[B] {
-        def length = n1 - n0
-        def apply(x: Int) = iso(n1 - 1 - x)
-      }
-    case _ =>
-      // W is probably bad at indexing.  Pack in array (in correct orientation)
-      // Would be marginally faster to special-case each direction
-      new AbstractIndexedSeqView[B] {
-        private val Warr = new Array[AnyRef](n1-n0)
-        private val delta = if (forward) 1 else -1
-        private val done = if (forward) n1-n0 else -1
-        val wit = W.iterator.drop(n0)
-        var i = if (forward) 0 else (n1-n0-1)
-        while (i != done) {
-          Warr(i) = wit.next().asInstanceOf[AnyRef]
-          i += delta
+        else {
+          val ti = T(i)
+          m += i - ti
+          if (i > 0) i = ti
         }
-
-        val length = n1 - n0
-        def apply(x: Int) = Warr(x).asInstanceOf[B]
       }
-  }
-
- /** Makes a jump table for KMP search.
-  *
-  *  @tparam B the element type of the target sequence
-  *  @param  Wopt The target sequence
-  *  @param  wlen Just in case we're only IndexedSeq and not IndexedSeqOptimized
-  *  @return KMP jump table for target sequence
-  */
-  private def kmpJumpTable[B](Wopt: IndexedSeqView[B]^, wlen: Int) = {
-    val arr = new Array[Int](wlen)
-    var pos = 2
-    var cnd = 0
-    arr(0) = -1
-    arr(1) = 0
-    while (pos < wlen) {
-      if (Wopt(pos-1) == Wopt(cnd)) {
-        arr(pos) = cnd + 1
-        pos += 1
-        cnd += 1
-      }
-      else if (cnd > 0) {
-        cnd = arr(cnd)
-      }
-      else {
-        arr(pos) = 0
-        pos += 1
-      }
+      answer
     }
-    arr
+    val sized = m1 >= 0 && n1 >= 0
+    // Check for redundant case when target has single valid element
+    if sized && n1 == n0+1 then
+      clipped()
+    // Check for redundant case when both sequences are same size
+    else if sized && m1-m0 == n1-n0 then
+      // Accepting a little slowness for the uncommon case.
+      if S.iterator.slice(m0, m1).sameElements(W.iterator.slice(n0, n1)) then m0
+      else -1
+    // Now we know we actually need KMP search, so do it
+    else S match
+      case xs: IndexedSeq[B @unchecked] if sized => kmpIndexed(xs)
+      case _ => kmpUnindexed()
   }
 }
 
