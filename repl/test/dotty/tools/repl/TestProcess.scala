@@ -10,6 +10,7 @@ import scala.util.control.NonFatal
 
 private[repl] object TestProcess:
   private val Timeout = 5.minutes
+  private val TerminationTimeout = 10.seconds
 
   def output(command: Seq[String]): String =
     val outputFile = Files.createTempFile("dotty-test-process-", ".log")
@@ -30,9 +31,12 @@ private[repl] object TestProcess:
 
   private def awaitOutput(command: Seq[String], process: Process, outputFile: Path): String =
     if !process.waitFor(Timeout.length, Timeout.unit) then
-      process.destroyForcibly().waitFor()
+      val terminated = terminate(process)
+      val terminationFailure =
+        if terminated then ""
+        else s"\nProcess did not terminate within $TerminationTimeout after destroyForcibly"
       throw new AssertionError(
-        s"Command timed out after $Timeout: ${command.mkString(" ")}\n${readOutput(outputFile)}"
+        s"Command timed out after $Timeout: ${command.mkString(" ")}\n${readOutput(outputFile)}$terminationFailure"
       )
 
     val output = readOutput(outputFile)
@@ -44,8 +48,13 @@ private[repl] object TestProcess:
     new String(Files.readAllBytes(outputFile), UTF_8)
 
   private def cleanup(process: Process, outputFile: Path): Unit =
-    if process.isAlive then process.destroyForcibly().waitFor()
-    Files.deleteIfExists(outputFile)
+    if terminate(process) then Files.deleteIfExists(outputFile)
+
+  private def terminate(process: Process): Boolean =
+    if !process.isAlive then true
+    else
+      process.destroyForcibly()
+      process.waitFor(TerminationTimeout.length, TerminationTimeout.unit)
 
 private[repl] object ReplTestProcess:
   def javaHomeOverride: Option[String] =
