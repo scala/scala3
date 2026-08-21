@@ -6,12 +6,14 @@ import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.ast.untpd
 import dotty.tools.dotc.ast.untpd.ExtMethods
+import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.NameOps.*
 import dotty.tools.dotc.core.Names.*
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
+import dotty.tools.dotc.core.Types.{AppliedType, ConstantType, NoType, Type}
 import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans.Span
@@ -167,6 +169,22 @@ trait PcSymbolSearch:
           .selector(pos.span)
           .map(sym => (symbolAlternatives(sym), sym.sourcePos))
 
+      /* Named tuple field access:
+       *  ```
+       *  val x: (name: String) = ???
+       *  x.na@@me
+       *  ```
+       */
+      case (app @ Apply(
+            Apply(TypeApply(fun, List(t1, t2)), List(qual)),
+            List(Literal(Constant(i: Int)))
+          )) :: _
+          if fun.symbol.exists && fun.symbol.name == nme.apply
+            && fun.symbol.owner.exists
+            && fun.symbol.owner == defn.NamedTupleModule.moduleClass =>
+        namedTupleFieldSymbol(qual.symbol, t1, t2, i).map: sym =>
+          (Set(sym), pos.withSpan(app.span.withStart(app.span.point)))
+
       case _ => None
 
     sought match
@@ -280,5 +298,22 @@ object PcSymbolSearch:
       nameSpan.start,
       nameSpan.end
     ) != df.name.toString()
+
+  /** Extract a synthetic symbol for a named tuple field from the desugared
+   *  `NamedTuple.apply[N, V](qual)(idx)` tree.
+   */
+  def namedTupleFieldSymbol(owner: Symbol, t1: Tree, t2: Tree, i: Int)(using Context): Option[Symbol] =
+    def typeAt(t: Tree): Option[Type] =
+      t.tpe.dealias match
+        case AppliedType(_, args) => args.get(i)
+        case _ => None
+    for
+      case ConstantType(Constant(name: String)) <- typeAt(t1)
+    yield
+      val fieldType = typeAt(t2).getOrElse(NoType)
+      newSymbol(owner, termName(name), Flags.EmptyFlags, fieldType)
+
+  def sameNamedTupleField(sym1: Symbol, sym2: Symbol)(using Context): Boolean =
+    sym1.name == sym2.name && sym1.owner == sym2.owner
 
 end PcSymbolSearch
