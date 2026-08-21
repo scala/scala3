@@ -165,7 +165,7 @@ class TreeUnpickler(reader: TastyReader,
                 using ctx.withOwner(owner).withModeBits(mode).withSource(source))
           catch
             case ex: CyclicReference => throw ex
-            case NonFatal(ex) => throw UnpicklingError(denot, where, ex)
+            case NonFatal(ex) if !ex.isInstanceOf[RecursionOverflow] => throw UnpicklingError(denot, where, ex)
           finally
             cleanup()
   }
