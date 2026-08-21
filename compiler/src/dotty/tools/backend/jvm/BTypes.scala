@@ -27,19 +27,23 @@ import org.objectweb.asm.Opcodes
  * referring to BTypes.
  */
 sealed trait BType {
-  final override def toString: String = this match {
-    case UNIT   => "V"
-    case BOOL   => "Z"
-    case CHAR   => "C"
-    case BYTE   => "B"
-    case SHORT  => "S"
-    case INT    => "I"
-    case FLOAT  => "F"
-    case LONG   => "J"
-    case DOUBLE => "D"
-    case c: ClassBType            => "L" + c.internalName + ";"
-    case ArrayBType(component)    => "[" + component
-    case MethodBType(args, res)   => BTypes.methodDescriptor(args, res)
+  private var myToString: String | Null = null
+
+  final override def toString: String = {
+    initialize(myToString, myToString = _, this match
+      case UNIT   => "V"
+      case BOOL   => "Z"
+      case CHAR   => "C"
+      case BYTE   => "B"
+      case SHORT  => "S"
+      case INT    => "I"
+      case FLOAT  => "F"
+      case LONG   => "J"
+      case DOUBLE => "D"
+      case c: ClassBType          => "L" + c.internalName + ";"
+      case ArrayBType(component)  => "[" + component
+      case MethodBType(args, res) => BTypes.methodDescriptor(args, res)
+    )
   }
 
   /**
