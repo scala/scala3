@@ -62,5 +62,4 @@ class LazyValsWarningTest:
     val output = Using.resource(Source.fromInputStream(process.getInputStream, UTF_8.name))(_.mkString)
     process.waitFor()
     output
-
 end LazyValsWarningTest
