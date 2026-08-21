@@ -41,15 +41,14 @@ object MatchTypeTrace:
 
   /** Are we running an operation that records a match type trace? */
   def isRecording(using Context): Boolean =
-    ctx.property(MatchTrace).isDefined
+    ctx.propertyRaw(MatchTrace) != null
 
   private def matchTypeFail(entry: TraceEntry)(using Context) =
-    ctx.property(MatchTrace) match
-      case Some(trace) =>
-        trace.entries match
-          case (e: TryReduce) :: es => trace.entries = entry :: trace.entries
-          case _ =>
-      case _ =>
+    val trace = ctx.propertyRaw(MatchTrace)
+    if trace != null then
+      trace.entries match
+        case (e: TryReduce) :: es => trace.entries = entry :: trace.entries
+        case _ =>
 
   /** Record a failure that scrutinee `scrut` does not match any case in `cases`.
    *  Only the first failure is recorded.
@@ -77,15 +76,14 @@ object MatchTypeTrace:
    *  If `op` succeeds the entry is removed after exit. If `op` fails, it stays.
    */
   def recurseWith(scrut: Type)(op: => Type)(using Context): Type =
-    ctx.property(MatchTrace) match
-      case Some(trace) if !trace.entries.contains(TryReduce(scrut)) =>
-        val prev = trace.entries
-        trace.entries = TryReduce(scrut) :: prev
-        val res = op
-        if res.exists then trace.entries = prev
-        res
-      case _ =>
-        op
+    val trace = ctx.propertyRaw(MatchTrace)
+    if trace != null && !trace.entries.contains(TryReduce(scrut)) then
+      val prev = trace.entries
+      trace.entries = TryReduce(scrut) :: prev
+      val res = op
+      if res.exists then trace.entries = prev
+      res
+    else op
 
   def caseText(spec: MatchTypeCaseSpec)(using Context): String =
     caseText(spec.origMatchCase)
