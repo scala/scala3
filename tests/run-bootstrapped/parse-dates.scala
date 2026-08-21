@@ -1,20 +1,10 @@
 //> using options -Yexplicit-nulls
-package scala.util
-import boundary.{Label, break}
 import language.experimental.magic
+import scala.magic.*
 
-infix type `??`[+R, +E] = Result[R, E]
-
-inline def maybe[R, E](inline body: Label[Err[E]] ?=> R): R ?? E =
-  boundary(Ok(body))
-
-implicit def toResult[R, E](x: R): R ?? E = Ok(x)
-
-def NULL: Err[Unit] = Err(())
-
-extension (str: String) def parseInt: Int ?? Unit =
+extension (str: String) def parseInt: Int ? Unit =
   try str.toInt
-  catch case ex: NumberFormatException => Err(null)
+  catch case ex: NumberFormatException => null
 
 case class Date(day: Int, month: Int, year: Int)
 
@@ -24,14 +14,9 @@ def parseDate(str: String) =
       maybe:
         Date(d.parseInt?, m.parseInt?, y.parseInt?)
     case _ =>
-      NULL
+      null
 
-extension [R, D](x: R ?? D)
-  def withErr[E](msg: E): R ?? E = x match
-    case Ok(y) => Ok(y)
-    case Err(_) => Err(msg)
-
-def parseDate2(str: String): Date ?? String =
+def parseDate2(str: String): Date ? String =
   str.split("/") match
     case Array(d, m, y) =>
       maybe:
@@ -42,13 +27,7 @@ def parseDate2(str: String): Date ?? String =
     case _ =>
       Err("Date not in format day/month/year")
 
-def provided(cond: Boolean)(using Label[Err[Unit]]): Unit =
-  if !cond then boundary.break(NULL)
-
-inline def provided[E](cond: Boolean, inline err: E)(using Label[Err[E]]): Unit =
-  if !cond then boundary.break(Err(err))
-
-def parseDate3(str: String): Date ?? String =
+def parseDate3(str: String): Date ? String =
   str.split("/") match
     case Array(d, m, y) =>
       maybe:
@@ -61,7 +40,7 @@ def parseDate3(str: String): Date ?? String =
     case _ =>
       Err("Date not in format day/month/year")
 
-def parseDate4(str: String): Date ?? Unit =
+def parseDate4(str: String): Date? =
   str.split("/") match
     case Array(d, m, y) =>
       maybe:
@@ -72,4 +51,4 @@ def parseDate4(str: String): Date ?? Unit =
         provided(1 <= month && month <= 12)
         Date(day, month, year)
     case _ =>
-      NULL
+      null
