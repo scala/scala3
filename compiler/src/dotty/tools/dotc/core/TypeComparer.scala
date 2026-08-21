@@ -858,7 +858,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case OrNull(tp2a) =>
             tp1w match
               case MagicMaybeType(tp1a, errArg, _) =>
-                if errArg.isRef(defn.UnitClass) && tp1a.isNotNull then
+                if errArg.isRef(defn.UnitClass) && tp1a.isNotNullNorMaybe then
                   return recur(tp1a, tp2a)
               case _ =>
           case _ =>
@@ -1518,8 +1518,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
       /** T <: T? if T is not null */
       def byMaybeWidening: Boolean = tp2 match
-        case MagicMaybeType(res2, err2, _) if tp1.isNotNull =>
-          recur(tp1, res2) && isSubType(err2, defn.UnitType)
+        case MagicMaybeType(res2, err2, _) if tp1.isNotNullNorMaybe =>
+          recur(tp1, res2)
         case _ => false
 
       tycon2 match {

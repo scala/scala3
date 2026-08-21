@@ -50,7 +50,7 @@ def f[T, E](x: T, e: E) =
   val x4 = toEither(Err("bad"))
 
   val y1 = toEitherIntStr(Ok(1))
-  val y3 = toEitherIntStr(Ok(22))
+  val y3 = toEitherIntStr(22)
   val y4 = toEitherIntStr(Err("bad"))
 
   val z1 = toEither(Ok(x))

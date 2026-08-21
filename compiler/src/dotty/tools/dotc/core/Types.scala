@@ -381,17 +381,22 @@ object Types extends TypeUtils {
     }
 
     /** Is this type guaranteed not to have `null` as a value? */
-    final def isNotNull(using Context): Boolean = this match {
+    final def isNotNull(norMaybe: Boolean)(using Context): Boolean = this match
       case tp: ConstantType => tp.value.value != null
       case tp: FlexibleType => false
       case tp: ClassInfo => !tp.cls.isNullableClass && !tp.isNothingType
-      case MagicMaybeType(_, _, nullable) => !nullable
-      case tp: TypeBounds => tp.hi.isNotNull
-      case tp: TypeProxy => tp.underlying.isNotNull
-      case AndType(tp1, tp2) => tp1.isNotNull || tp2.isNotNull
-      case OrType(tp1, tp2) => tp1.isNotNull && tp2.isNotNull
+      case MagicMaybeType(_, _, nullable) => !norMaybe && !nullable
+      case tp: TypeBounds => tp.hi.isNotNull(norMaybe)
+      case tp: TypeProxy => tp.underlying.isNotNull(norMaybe)
+      case AndType(tp1, tp2) => tp1.isNotNull(norMaybe) || tp2.isNotNull(norMaybe)
+      case OrType(tp1, tp2) => tp1.isNotNull(norMaybe) && tp2.isNotNull(norMaybe)
       case _ => false
-    }
+
+    /** Is this type guaranteed not to have `null` as a value? */
+    final def isNotNull(using Context): Boolean = isNotNull(norMaybe = false)
+
+    /** Is this type guaranteed not to have `null` or `Fail(...)` as a value? */
+    final def isNotNullNorMaybe(using Context): Boolean = isNotNull(norMaybe = true)
 
     /** Is `null` a value of this type? */
     def admitsNull(using Context): Boolean =
