@@ -7,6 +7,14 @@ package dotty.tools.vulpix
  *
  *    compileFilesInDir("tests/pos", defaultOptions)(TestGroup("compileStdLib")) // will output in ./out/compileStdLib/...
  *    compileFilesInDir("tests/pos", defaultOptimised)(TestGroup("optimised/testOptimised")) // will output in ./out/optimised/testOptimised/...
+ *
+ *  `reportAs` lets an output-isolation subgroup contribute to its enclosing
+ *  top-level progress and timing report. `reportTimings` excludes staged tests.
  */
-case class TestGroup(name: String):
+case class TestGroup(name: String, reportAs: Option[String] = None, reportTimings: Boolean = true):
+  def reportingName: String = reportAs.getOrElse(name)
+
+  def child(childName: String): TestGroup =
+    copy(name = childName, reportAs = Some(reportingName))
+
   override def toString: String = name

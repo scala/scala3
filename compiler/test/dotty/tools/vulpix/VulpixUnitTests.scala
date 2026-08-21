@@ -10,6 +10,14 @@ class VulpixUnitTests:
 
   given TestGroup = TestGroup("VulpixTests")
 
+  private final class RecordingReport extends SummaryReporting:
+    var result = (0, List.empty[FailedTestInfo], 0)
+    def reportResults(passed: Int, failed: Iterable[FailedTestInfo], skipped: Int): Unit =
+      result = (passed, failed.toList, skipped)
+    def addReproduceInstruction(instr: String): Unit = ()
+    def echoSummary(): Unit = ()
+    def echoToLog(it: Iterable[String]): Unit = ()
+
   @Test def missingFile: Unit =
     assertThrows[IllegalArgumentException](_ => true):
       compileFile("tests/vulpix-tests/unit/i-dont-exist.scala", defaultOptions).expectFailure.checkExpectedErrors()
@@ -77,10 +85,20 @@ class VulpixUnitTests:
     compileFile("tests/vulpix-tests/unit/deadlock.scala", defaultOptions).expectFailure.checkRuns()
 
   @Test def badJava: Unit =
+    val report = RecordingReport()
     assertThrows[AssertionError](_.getMessage.contains("java compilation failed")):
       compileFile("tests/vulpix-tests/unit/BadJava.java", defaultOptions)
         .suppressAllOutput
-        .checkCompile()
+        .checkCompile()(using report)
+    assert(report.result == (0, List(FailedTestInfo("tests/vulpix-tests/unit/BadJava.java", " failed, java compilation failed")), 0))
+
+  @Test def sourceLevelSummary: Unit =
+    val report = RecordingReport()
+    CompilationTest.aggregateTests(
+      compileFile("tests/vulpix-tests/unit/i2147.scala", defaultOptions),
+      compileFile("tests/vulpix-tests/unit/posFail1Error.scala", defaultOptions),
+    ).expectFailure.checkCompile()(using report)
+    assert(report.result == (1, List(FailedTestInfo("tests/vulpix-tests/unit/posFail1Error.scala", " failed")), 0))
 
   @Test def runTimeout: Unit =
     val fileName = s"tests/vulpix-tests/unit/timeout.scala"

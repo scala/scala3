@@ -16,7 +16,7 @@ env:
 jobs:
 
   test-scala3-compiler-nonbootstrapped:
-    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]') || contains(github.event.pull_request.body, '[test_vulpix]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -32,15 +32,27 @@ jobs:
       - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
 
       - name: Test `scala3-compiler-nonbootstrapped`
-        run: ./project/scripts/sbt scala3-compiler-nonbootstrapped/test
+        run: |
+          echo '::group::sbt startup and compiler build'
+          VULPIX_CI=true ./project/scripts/sbt 'set ThisBuild / Test / logLevel := Level.Error; ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') && 'scala3-nonbootstrapped/testCompilation' || 'scala3-compiler-nonbootstrapped/test' }}'
+
+      - name: Vulpix failure output
+        if: failure()
+        run: |
+          for log in testlogs/tests-*/*.log; do
+            [[ -s "$log" ]] || continue
+            printf 'File: %s\n\n' "$log"
+            sed 's/^/    /' "$log"
+          done
 
       - name: Cmd Tests
+        if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[test_vulpix]')
         run: |
           ./project/scripts/sbt scala3-nonbootstrapped/publishLocal
           ./project/scripts/cmdTests
 
   test-scala3-compiler-bootstrapped:
-    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]') || contains(github.event.pull_request.body, '[test_vulpix]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
@@ -56,9 +68,21 @@ jobs:
       - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
 
       - name: Test `scala3-compiler-bootstrapped`
-        run: ./project/scripts/sbt scala3-compiler-bootstrapped/test
+        run: |
+          echo '::group::sbt startup and compiler build'
+          VULPIX_CI=true ./project/scripts/sbt 'set ThisBuild / Test / logLevel := Level.Error; ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.body, '[test_vulpix]') && 'scala3-bootstrapped/testCompilation' || 'scala3-compiler-bootstrapped/test' }}'
+
+      - name: Vulpix failure output
+        if: failure()
+        run: |
+          for log in testlogs/tests-*/*.log; do
+            [[ -s "$log" ]] || continue
+            printf 'File: %s\n\n' "$log"
+            sed 's/^/    /' "$log"
+          done
 
       - name: Cmd Tests
+        if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[test_vulpix]')
         run: |
           ./project/scripts/sbt scala3-bootstrapped/publishLocal
           ./project/scripts/bootstrappedOnlyCmdTests
