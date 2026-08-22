@@ -96,10 +96,21 @@ val experimentalDefinitionInLibrary = Set(
 
   // New feature: Erased trait
   "scala.compiletime.Erased",
-  
+
   // New feature: Specialized traits
   "scala.specialize.Specialized",
-  "scala.specialize.Specialized$"
+  "scala.specialize.Specialized$",
+
+  // New feature: magic
+  "scala.magic.Ok",
+  "scala.magic.Ok$",
+  "scala.magic.compiletime.Maybe",
+  "scala.magic.compiletime.package$.$spec",
+  "scala.magic.compiletime.package$.$wrappedType",
+  "scala.magic.runtime.Valid",
+  "scala.magic.Err",
+  "scala.magic.Err$",
+  "scala.magic.runtime.Fail",
 )
 
 

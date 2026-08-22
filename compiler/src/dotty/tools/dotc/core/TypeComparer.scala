@@ -854,6 +854,16 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             return recur(tp1, OrType(tp21, tp221, tp2.isSoft)) && recur(tp1, OrType(tp21, tp222, tp2.isSoft))
           case _ =>
         }
+        tp2 match
+          case OrNull(tp2a) =>
+            tp1w match
+              case MagicMaybeType(tp1a, errArg, _) =>
+                if errArg.isRef(defn.UnitClass) then
+                  if tp1a.isNotNullNorMaybe then
+                    return recur(tp1a, tp2a)
+                  else nullableNote(tp1a, tp2a)
+              case _ =>
+          case _ =>
         either(recur(tp1, tp21), recur(tp1, tp22)) || fourthTry
       case tp2: MatchType =>
         val reduced = tp2.reduced
@@ -1042,6 +1052,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                 // Same as above; this.type is also a singleton type in spec language
                 !ctx.explicitNulls && isNullable(tp.underlying)
               case tp: RefinedOrRecType => isNullable(tp.parent)
+              case AppliedType(tycon, _ :: errArg :: Nil) if tycon.isRef(defn.MagicMaybeClass) =>
+                isSubType(defn.UnitType, errArg)
               case tp: AppliedType => isNullable(tp.tycon)
               case AndType(tp1, tp2) => isNullable(tp1) && isNullable(tp2)
               case OrType(tp1, tp2) => isNullable(tp1) || isNullable(tp2)
@@ -1506,6 +1518,15 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
             case _ => false
         } && recordGadtUsageIf(true)
 
+      /** T <: T? if T is not null */
+      def byMaybeWidening: Boolean = tp2 match
+        case MagicMaybeType(res2, err2, _) =>
+          if tp1.isNotNullNorMaybe then recur(tp1, res2)
+          else
+            nullableNote(tp1, res2)
+            false
+        case _ => false
+
       tycon2 match {
         case param2: TypeParamRef =>
           isMatchingApply(tp1) ||
@@ -1514,6 +1535,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
         case tycon2: TypeRef =>
           isMatchingApply(tp1)
           || byGadtBounds
+          || byMaybeWidening
           || defn.isCompiletimeAppliedType(tycon2.symbol)
               && compareCompiletimeAppliedType(tp2, tp1, fromBelow = true)
           || tycon2.info.match
@@ -1656,6 +1678,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       isCaptureCheckingOrSetup
       && tp1.derivesFromCapSet
       && tp2.derivesFromCapSet
+
+    def nullableNote(test1: Type, test2: Type) =
+      if isSubTypeWhenFrozen(test1, test2) then
+        addErrorNote(NoGenericWideningNote(tp1, tp2, test1))
 
     // begin recur
     if tp2 eq NoType then false
@@ -1974,7 +2000,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                    && defn.isByNameFunction(arg2.dealias) =>
                  isSubArg(arg1res, arg2.argInfos.head)
               case _ =>
-                if v < 0 then 
+                if v < 0 then
                   val isValidSubtype = isSubType(arg2, arg1)
                   // Specialized traits have special variance rules because they have special erasure
                   if tp1.classSymbol.isSpecializedTrait
@@ -1986,7 +2012,7 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
                     false
                   else // Normal contravariance case
                     isValidSubtype
-                else if v > 0 then 
+                else if v > 0 then
                   val isValidSubtype = isSubType(arg1, arg2)
                   // Specialized traits have special variance rules because they have special erasure
                   if tp1.classSymbol.isSpecializedTrait
@@ -3688,6 +3714,23 @@ object TypeComparer {
 
   inline def noNotes(inline op: Boolean)(using Context): Boolean =
     currentComparer.isolated(op, x => x)
+}
+
+class NoGenericWideningNote(tp1: Type, tp2: Type, val nullableTp: Type) extends Note {
+
+  def render(using Context) =
+    def workaround = tp2 match
+      case OrNull(_) => "pattern match"
+      case _ => "wrapper"
+    i"""
+       |
+       |Note that $tp1 cannot be widened to $tp2 since $nullableTp might contain null or a `?` instance.
+       |An explicit `Ok(...)` $workaround is needed."""
+
+  override def covers(other: Note)(using Context) = other match
+    case other: NoGenericWideningNote =>
+      other.nullableTp frozen_<:< this.nullableTp
+    case _ => false
 }
 
 object MatchReducer:

@@ -47,7 +47,7 @@ object Feature:
   val specializedTraits = experimental("specializedTraits")
 
   val nonViralExperimentalFeatures: Set[TermName] =
-    Set(captureChecking, separationChecking, safe)
+    Set(captureChecking, separationChecking, safe, magic)
 
   /** Experimental language imports that imply that the importing unit
    *  is experimental.
@@ -187,12 +187,12 @@ object Feature:
 
   def quotedPatternsWithPolymorphicFunctionsEnabled(using Context) =
     enabled(quotedPatternsWithPolymorphicFunctions)
-  
-  def inlineTraitsEnabled(using Context) = 
+
+  def inlineTraitsEnabled(using Context) =
     enabledBySetting(inlineTraits)
     || enabledBySetting(specializedTraits)
     || ctx.compilationUnit.knowsInlineTraits
-  
+
   /** Is pureFunctions enabled for this compilation unit? */
   def pureFunsEnabled(using Context) =
     enabledBySetting(pureFunctions)
@@ -277,12 +277,15 @@ object Feature:
     ccEnabledSomewhere && (defn.ccExperimental.contains(sym)
       || sym.exists && defn.ccExperimental.contains(sym.owner))
 
+  private def magicException(sym: Symbol)(using Context): Boolean =
+    Feature.magicEnabled && sym.isContainedIn(defn.MagicPackageClass)
+
   def checkExperimentalDef(sym: Symbol, srcPos: SrcPos)(using Context) =
     val experimentalSym =
       if sym.hasAnnotation(defn.ExperimentalAnnot) then sym
       else if sym.owner.hasAnnotation(defn.ExperimentalAnnot) then sym.owner
       else NoSymbol
-    if !isExperimentalEnabled && !ccException(experimentalSym) then
+    if !isExperimentalEnabled && !ccException(experimentalSym) && !magicException(experimentalSym) then
       val msg =
         experimentalSym.getAnnotation(defn.ExperimentalAnnot).map {
           case ExperimentalAnnotation(msg) if msg.nonEmpty => s": $msg"
@@ -345,9 +348,10 @@ object Feature:
         true
       case `magic` =>
         ctx.compilationUnit.magic = true
+        ctx.compilationUnit.sourceVersion = Some(SourceVersion.future)
         true
       case `inlineTraits` =>
-        ctx.compilationUnit.knowsInlineTraits = true 
+        ctx.compilationUnit.knowsInlineTraits = true
         if ctx.run != null then ctx.run.nn.inlineTraitsImportEncountered = true
         true
       case _ =>

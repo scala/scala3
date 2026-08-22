@@ -152,7 +152,7 @@ trait SpecStrings { this: Typer =>
                 extractBackquoted(strLit, closing + 1)
               case untpd.TypedSplice(splice) =>
                 extract(
-                  untpd.TypedSplice(ref(defn.Compiletime_wrappedType)
+                  untpd.TypedSplice(ref(defn.Magic_wrappedType)
                     .appliedToTypeTree(splice)))
           case tree: untpd.TypedSplice =>
             extract(tree)

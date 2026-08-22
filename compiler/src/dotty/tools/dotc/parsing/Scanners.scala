@@ -196,7 +196,9 @@ object Scanners {
 
     val rewrite = ctx.settings.rewrite.value
     val oldSyntax = ctx.settings.oldSyntax.value
-    val newSyntax = ctx.settings.newSyntax.value || sourceVersion.requiresNewSyntax
+
+    private val newSyntaxSetting = ctx.settings.newSyntax.value
+    def newSyntax = newSyntaxSetting || sourceVersion.requiresNewSyntax
 
     val rewriteToIndent = ctx.settings.indent.value && rewrite
     val rewriteNoIndent = ctx.settings.noindent.value && rewrite

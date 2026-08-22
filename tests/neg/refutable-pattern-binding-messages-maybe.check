@@ -1,0 +1,48 @@
+-- Error: tests/neg/refutable-pattern-binding-messages-maybe.scala:6:14 ------------------------------------------------
+6 |  val Positive(p) = 5                     // error: refutable extractor
+  |      ^^^^^^^^^^^^^^^
+  |      pattern binding uses refutable extractor `Test.Positive`
+  |
+  |      If this usage is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
+  |      which may result in a MatchError at runtime.
+  |      This patch can be rewritten automatically under -rewrite -source 3.8-migration.
+-- Error: tests/neg/refutable-pattern-binding-messages-maybe.scala:7:14 ------------------------------------------------
+7 |  for Positive(i) <- List(1, 2, 3) do ()  // error: refutable extractor
+  |      ^^^^^^^^^^^
+  |      pattern binding uses refutable extractor `Test.Positive`
+  |
+  |      If this usage is intentional, this can be communicated by adding the `case` keyword before the full pattern,
+  |      which will result in a filtering for expression (using `withFilter`).
+  |      This patch can be rewritten automatically under -rewrite -source 3.2-migration.
+-- Error: tests/neg/refutable-pattern-binding-messages-maybe.scala:11:20 -----------------------------------------------
+11 |  val i :: is = List(1, 2, 3)             // error: pattern type more specialized
+   |                ^^^^^^^^^^^^^
+   |     pattern's type ::[Int] is more specialized than the right hand side expression's type List[Int]
+   |
+   |     If the narrowing is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
+   |     which may result in a MatchError at runtime.
+   |     This patch can be rewritten automatically under -rewrite -source 3.8-migration.
+-- Error: tests/neg/refutable-pattern-binding-messages-maybe.scala:12:11 -----------------------------------------------
+12 |  for ((x: String) <- xs) do ()           // error: pattern type more specialized
+   |           ^^^^^^
+   | pattern's type String is more specialized than the right hand side expression's type AnyRef
+   |
+   | If the narrowing is intentional, this can be communicated by adding the `case` keyword before the full pattern,
+   | which will result in a filtering for expression (using `withFilter`).
+   | This patch can be rewritten automatically under -rewrite -source 3.2-migration.
+-- Error: tests/neg/refutable-pattern-binding-messages-maybe.scala:16:13 -----------------------------------------------
+16 |  for none @ None <- ys do ()             // error: pattern type does not match
+   |             ^^^^
+   | pattern's type None.type does not match the right hand side expression's type (x$1 : Option[?])
+   |
+   | If the narrowing is intentional, this can be communicated by adding the `case` keyword before the full pattern,
+   | which will result in a filtering for expression (using `withFilter`).
+   | This patch can be rewritten automatically under -rewrite -source 3.2-migration.
+-- Error: tests/neg/refutable-pattern-binding-messages-maybe.scala:17:10 -----------------------------------------------
+17 |  val 1 = 2                               // error: pattern type does not match
+   |          ^
+   |     pattern's type (1 : Int) does not match the right hand side expression's type (2 : Int)
+   |
+   |     If the narrowing is intentional, this can be communicated by adding `.runtimeChecked` after the expression,
+   |     which may result in a MatchError at runtime.
+   |     This patch can be rewritten automatically under -rewrite -source 3.8-migration.
