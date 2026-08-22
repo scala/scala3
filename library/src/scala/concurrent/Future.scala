@@ -617,6 +617,16 @@ object Future {
   /** A Future which is never completed. */
   object never extends Future[Nothing] {
 
+    /** Blocks for at most the specified duration and then always throws, since this future is never completed.
+     *
+     *  Despite the `this.type` result type, this method never returns normally.
+     *
+     *  @param atMost the maximum duration to wait
+     *  @param permit the permission to block
+     *  @throws TimeoutException once `atMost` has elapsed
+     *  @throws InterruptedException if the current thread is interrupted while waiting
+     *  @throws IllegalArgumentException if `atMost` is `Duration.Undefined`
+     */
     @throws[TimeoutException]
     @throws[InterruptedException]
     override final def ready(atMost: Duration)(implicit permit: CanAwait): this.type = {
@@ -645,6 +655,16 @@ object Future {
       timeoutError(atMost)
     }
 
+    /** Always throws, since this future is never completed.
+     *
+     *  Waits as `ready` does and then throws.
+     *
+     *  @param atMost the maximum duration to wait
+     *  @param permit the permission to block
+     *  @throws TimeoutException once `atMost` has elapsed
+     *  @throws InterruptedException if the current thread is interrupted while waiting
+     *  @throws IllegalArgumentException if `atMost` is `Duration.Undefined`
+     */
     @throws[TimeoutException]
     @throws[InterruptedException]
     override final def result(atMost: Duration)(implicit permit: CanAwait): Nothing = {
@@ -652,26 +672,132 @@ object Future {
       timeoutError(atMost)
     }
 
+    /** Does nothing, since this future is never completed and `f` is therefore never invoked.
+     *
+     *  @tparam U the type of the result of the callback function
+     *  @param f the callback function, never invoked
+     *  @param executor the execution context, never used
+     */
     override final def onComplete[U](f: Try[Nothing] => U)(implicit executor: ExecutionContext): Unit = ()
+    /** Returns `false`, since this future is never completed. */
     override final def isCompleted: Boolean = false
+    /** Returns `None`, since this future is never completed. */
     override final def value: Option[Try[Nothing]] = None
+    /** Returns this future, since it is never completed and therefore never fails. */
     override final def failed: Future[Throwable] = this
+    /** Does nothing, since this future is never completed and `f` is therefore never applied.
+     *
+     *  @tparam U the type of the result of the function
+     *  @param f the function, never applied
+     *  @param executor the execution context, never used
+     */
     override final def foreach[U](f: Nothing => U)(implicit executor: ExecutionContext): Unit = ()
+    /** Returns this future, since it is never completed and neither `s` nor `f` is ever applied.
+     *
+     *  @tparam S the type of the resulting future
+     *  @param s the function to apply to successful results, never applied
+     *  @param f the function to apply to failures, never applied
+     *  @param executor the execution context, never used
+     */
     override final def transform[S](s: Nothing => S, f: Throwable => Throwable)(implicit executor: ExecutionContext): Future[S] = this
+    /** Returns this future, since it is never completed and `f` is therefore never applied.
+     *
+     *  @tparam S the type of the resulting future
+     *  @param f the function to apply to the result of this future, never applied
+     *  @param executor the execution context, never used
+     */
     override final def transform[S](f: Try[Nothing] => Try[S])(implicit executor: ExecutionContext): Future[S] = this
+    /** Returns this future, since it is never completed and `f` is therefore never applied.
+     *
+     *  @tparam S the type of the resulting future
+     *  @param f the function to apply to the result of this future, never applied
+     *  @param executor the execution context, never used
+     */
     override final def transformWith[S](f: Try[Nothing] => Future[S])(implicit executor: ExecutionContext): Future[S] = this
+    /** Returns this future, since it is never completed and `f` is therefore never applied.
+     *
+     *  @tparam S the type of the resulting future
+     *  @param f the function to apply to the successful result of this future, never applied
+     *  @param executor the execution context, never used
+     */
     override final def map[S](f: Nothing => S)(implicit executor: ExecutionContext): Future[S] = this
+    /** Returns this future, since it is never completed and `f` is therefore never applied.
+     *
+     *  @tparam S the type of the resulting future
+     *  @param f the function to apply to the successful result of this future, never applied
+     *  @param executor the execution context, never used
+     */
     override final def flatMap[S](f: Nothing => Future[S])(implicit executor: ExecutionContext): Future[S] = this
+    /** Returns this future, since it is never completed and so has no inner future to flatten.
+     *
+     *  @tparam S the type of the inner future
+     *  @param ev the evidence that T is a Future[S]
+     */
     override final def flatten[S](implicit ev: Nothing <:< Future[S]): Future[S] = this
+    /** Returns this future, since it is never completed and `p` is therefore never applied.
+     *
+     *  @param p the predicate function, never applied
+     *  @param executor the execution context, never used
+     */
     override final def filter(p: Nothing => Boolean)(implicit executor: ExecutionContext): Future[Nothing] = this
+    /** Returns this future, since it is never completed and `pf` is therefore never applied.
+     *
+     *  @tparam S the type of the resulting future
+     *  @param pf the partial function to apply, never applied
+     *  @param executor the execution context, never used
+     */
     override final def collect[S](pf: PartialFunction[Nothing, S])(implicit executor: ExecutionContext): Future[S] = this
+    /** Returns this future, since it is never completed and therefore never fails.
+     *
+     *  @tparam U the type of the returned future
+     *  @param pf the partial function to apply if this future fails, never applied
+     *  @param executor the execution context, never used
+     */
     override final def recover[U >: Nothing](pf: PartialFunction[Throwable, U])(implicit executor: ExecutionContext): Future[U] = this
+    /** Returns this future, since it is never completed and therefore never fails.
+     *
+     *  @tparam U the type of the returned future
+     *  @param pf the partial function to apply if this future fails, never applied
+     *  @param executor the execution context, never used
+     */
     override final def recoverWith[U >: Nothing](pf: PartialFunction[Throwable, Future[U]])(implicit executor: ExecutionContext): Future[U] = this
+    /** Returns this future, since it is never completed and so has no value to pair with that of `that`.
+     *
+     *  @tparam U the type of the other future
+     *  @param that the other future, never observed
+     */
     override final def zip[U](that: Future[U]): Future[(Nothing, U)] = this
+    /** Returns this future, since it is never completed and `f` is therefore never applied.
+     *
+     *  In particular, the returned future remains uncompleted even after `that` completes.
+     *
+     *  @tparam U the type of the other future
+     *  @tparam R the type of the resulting future
+     *  @param that the other future to zip with, never observed
+     *  @param f the function to apply to both results, never applied
+     *  @param executor the execution context, never used
+     */
     override final def zipWith[U, R](that: Future[U])(f: (Nothing, U) => R)(implicit executor: ExecutionContext): Future[R] = this
+    /** Returns this future, since it is never completed and therefore never fails, so `that` is never used.
+     *
+     *  @tparam U the type of the other future and the resulting future
+     *  @param that the future whose result would be used if this future failed, never used
+     */
     override final def fallbackTo[U >: Nothing](that: Future[U]): Future[U] = this
+    /** Returns this future, since it is never completed and so has no value to cast.
+     *
+     *  @tparam S the target type
+     *  @param tag the class tag for the target type, never used
+     */
     override final def mapTo[S](implicit tag: ClassTag[S]): Future[S] = this
+    /** Returns this future, since it is never completed and `pf` is therefore never applied.
+     *
+     *  @tparam U only used to accept any return type of the given partial function
+     *  @param pf a partial function which would be conditionally applied to the outcome of this future, never applied
+     *  @param executor the execution context, never used
+     */
     override final def andThen[U](pf: PartialFunction[Try[Nothing], U])(implicit executor: ExecutionContext): Future[Nothing] = this
+    /** Returns the string `"Future(<never>)"`. */
     override final def toString(): String = "Future(<never>)"
   }
 
@@ -945,6 +1071,7 @@ object Future {
     }.map(_.result())(using if (executor.isInstanceOf[BatchingExecutor]) executor else parasitic)
 }
 
+/** A trait for runnables that can be batched together for more efficient execution. */
 @deprecated("Superseded by `scala.concurrent.Batchable`", "2.13.0")
 trait OnCompleteRunnable extends Batchable {
   self: Runnable =>

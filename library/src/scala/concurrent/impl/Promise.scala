@@ -37,12 +37,27 @@ import java.io.{IOException, NotSerializableException, ObjectInputStream, Object
 private[impl] final class CompletionLatch[T] extends AbstractQueuedSynchronizer with (Try[T] => Unit) {
   //@volatie not needed since we use acquire/release
   /*@volatile*/ @annotation.stableNull private var _result: Try[T] | Null = null
+  /** Returns the current result of this latch, or null if not yet completed. */
   final def result: Try[T] | Null = _result
+  /** Attempts to acquire the shared lock.
+   *
+   *  @param ignored the acquisition argument, ignored in this implementation
+   *  @return 1 if the latch is completed (state != 0), -1 otherwise
+   */
   override protected def tryAcquireShared(ignored: Int): Int = if (getState != 0) 1 else -1
+  /** Releases the shared lock by setting the state to 1.
+   *
+   *  @param ignore the release argument, ignored in this implementation
+   *  @return always true, indicating successful release
+   */
   override protected def tryReleaseShared(ignore: Int): Boolean = {
     setState(1)
     true
   }
+  /** Sets the result of this latch and releases the shared lock.
+   *
+   *  @param value the result to set
+   */
   override def apply(value: Try[T]): Unit = {
     _result = value // This line MUST go before releaseShared
     releaseShared(1)
@@ -116,6 +131,10 @@ private[concurrent] object Promise {
     }
 
   // Left non-final to enable addition of extra fields by Java/Scala converters in scala-java8-compat.
+  /** A promise that can be completed with a value or an exception.
+   *
+   *  @tparam T the type of the value contained in this promise
+   */
   class DefaultPromise[T] private (initial: AnyRef) extends AtomicReference[AnyRef](initial) with scala.concurrent.Promise[T] with scala.concurrent.Future[T] with (Try[T] => Unit) {
     /** Constructs a new, completed, Promise.
      *
@@ -137,12 +156,35 @@ private[concurrent] object Promise {
     /** Returns the associated `Future` with this `Promise` */
     override final def future: Future[T] = this
 
+    /** Returns a new Future that is completed with the result of applying the given function to this Future's result.
+     *
+     *  @tparam S the type of the transformed result
+     *  @param f the function to apply to this Future's result
+     *  @param executor the ExecutionContext to use for executing the transformation
+     *  @return a Future that will be completed with the transformed result
+     */
     override final def transform[S](f: Try[T] => Try[S])(implicit executor: ExecutionContext): Future[S] =
       dispatchOrAddCallbacks(get(), new Transformation[T, S](Xform_transform, f, executor))
 
+    /** Returns a new Future that is completed with the result of the given function applied to this Future's result.
+     *
+     *  @tparam S the type of the Future returned by the function
+     *  @param f the function to apply to this Future's result
+     *  @param executor the ExecutionContext to use for executing the transformation
+     *  @return a Future that will be completed with the result of the function
+     */
     override final def transformWith[S](f: Try[T] => Future[S])(implicit executor: ExecutionContext): Future[S] =
       dispatchOrAddCallbacks(get(), new Transformation[T, S](Xform_transformWith, f, executor))
 
+    /** Returns a new Future that is completed with the result of applying the given function to the results of this Future and the given Future.
+     *
+     *  @tparam U the type of the value in the given Future
+     *  @tparam R the type of the result of the function
+     *  @param that the Future to zip with this Future
+     *  @param f the function to apply to the results of both Futures
+     *  @param executor the ExecutionContext to use for executing the function
+     *  @return a Future that will be completed with the result of the function
+     */
     override final def zipWith[U, R](that: Future[U])(f: (T, U) => R)(implicit executor: ExecutionContext): Future[R] = {
       val state = get()
       if (state.isInstanceOf[Try[?]]) {
@@ -179,52 +221,111 @@ private[concurrent] object Promise {
       }
     }
 
+    /** Applies the given function to the result of this Future if it is successful.
+     *
+     *  @tparam U the result type of the function
+     *  @param f the function to apply to the result of this Future
+     *  @param executor the ExecutionContext to use for executing the function
+     */
     override final def foreach[U](f: T => U)(implicit executor: ExecutionContext): Unit = {
       val state = get()
       if (!state.isInstanceOf[Failure[?]]) dispatchOrAddCallbacks(state, new Transformation[T, Unit](Xform_foreach, f, executor))
     }
 
+    /** Returns a new Future that is completed with the result of the given function applied to the result of this Future.
+     *
+     *  @tparam S the type of the value in the Future returned by the function
+     *  @param f the function to apply to the result of this Future
+     *  @param executor the ExecutionContext to use for executing the function
+     *  @return a Future that will be completed with the result of the function, or this Future if it is already failed
+     */
     override final def flatMap[S](f: T => Future[S])(implicit executor: ExecutionContext): Future[S] = {
       val state = get()
       if (!state.isInstanceOf[Failure[?]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_flatMap, f, executor))
       else this.asInstanceOf[Future[S]]
     }
 
+    /** Returns a new Future that is completed with the result of applying the given function to the result of this Future.
+     *
+     *  @tparam S the type of the result of the function
+     *  @param f the function to apply to the result of this Future
+     *  @param executor the ExecutionContext to use for executing the function
+     *  @return a Future that will be completed with the result of the function, or this Future if it is already failed
+     */
     override final def map[S](f: T => S)(implicit executor: ExecutionContext): Future[S] = {
       val state = get()
       if (!state.isInstanceOf[Failure[?]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_map, f, executor))
       else this.asInstanceOf[Future[S]]
     }
 
+    /** Returns a new Future that is completed with the result of this Future if it satisfies the given predicate.
+     *
+     *  @param p the predicate to apply to the result of this Future
+     *  @param executor the ExecutionContext to use for executing the predicate
+     *  @return a Future that will be completed with the result of this Future if it satisfies the predicate, or a failed Future otherwise
+     */
     override final def filter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T] = {
       val state = get()
       if (!state.isInstanceOf[Failure[?]]) dispatchOrAddCallbacks(state, new Transformation[T, T](Xform_filter, p, executor)) // Short-circuit if we get a Success
       else this
     }
 
+    /** Returns a new Future that is completed with the result of applying the given partial function to the result of this Future.
+     *
+     *  @tparam S the type of the result of the partial function
+     *  @param pf the partial function to apply to the result of this Future
+     *  @param executor the ExecutionContext to use for executing the partial function
+     *  @return a Future that will be completed with the result of the partial function, or this Future if it is already failed
+     */
     override final def collect[S](pf: PartialFunction[T, S])(implicit executor: ExecutionContext): Future[S] = {
       val state = get()
       if (!state.isInstanceOf[Failure[?]]) dispatchOrAddCallbacks(state, new Transformation[T, S](Xform_collect, pf, executor)) // Short-circuit if we get a Success
       else this.asInstanceOf[Future[S]]
     }
 
+    /** Returns a new Future that is completed with the result of the given partial function applied to the exception of this Future if it fails.
+     *
+     *  @tparam U the type of the value in the Future returned by the partial function
+     *  @param pf the partial function to apply to the exception of this Future
+     *  @param executor the ExecutionContext to use for executing the partial function
+     *  @return a Future that will be completed with the result of the partial function, or this Future if it is already successful
+     */
     override final def recoverWith[U >: T](pf: PartialFunction[Throwable, Future[U]])(implicit executor: ExecutionContext): Future[U] = {
       val state = get()
       if (!state.isInstanceOf[Success[?]]) dispatchOrAddCallbacks(state, new Transformation[T, U](Xform_recoverWith, pf, executor)) // Short-circuit if we get a Failure
       else this.asInstanceOf[Future[U]]
     }
 
+    /** Returns a new Future that is completed with the result of the given partial function applied to the exception of this Future if it fails.
+     *
+     *  @tparam U the type of the result of the partial function
+     *  @param pf the partial function to apply to the exception of this Future
+     *  @param executor the ExecutionContext to use for executing the partial function
+     *  @return a Future that will be completed with the result of the partial function, or this Future if it is already successful
+     */
     override final def recover[U >: T](pf: PartialFunction[Throwable, U])(implicit executor: ExecutionContext): Future[U] = {
       val state = get()
       if (!state.isInstanceOf[Success[?]]) dispatchOrAddCallbacks(state, new Transformation[T, U](Xform_recover, pf, executor)) // Short-circuit if we get a Failure
       else this.asInstanceOf[Future[U]]
     }
 
+    /** Returns a new Future that is completed with the result of this Future cast to the given type.
+     *
+     *  @tparam S the type to cast the result to
+     *  @param tag the ClassTag for the type to cast to
+     *  @return a Future that will be completed with the result of this Future cast to the given type, or this Future if it is already failed
+     */
     override final def mapTo[S](implicit tag: scala.reflect.ClassTag[S]): Future[S] =
       if (!get().isInstanceOf[Failure[?]]) super[Future].mapTo[S](using tag) // Short-circuit if we get a Success
       else this.asInstanceOf[Future[S]]
 
 
+    /** Registers a callback to be executed when this Future is completed.
+     *
+     *  @tparam U the result type of the callback function
+     *  @param func the callback function to invoke when the future completes
+     *  @param executor the ExecutionContext to use for executing the callback
+     */
     override final def onComplete[U](func: Try[T] => U)(implicit executor: ExecutionContext): Unit =
       dispatchOrAddCallbacks(get(), new Transformation[T, Unit](Xform_onComplete, func, executor))
 
@@ -243,10 +344,15 @@ private[concurrent] object Promise {
       () => unregisterCallback(t)
     }
 
+    /** Returns a Future that is completed with the exception of this Future if it fails.
+     *
+     *  @return a Future that will be completed with the exception of this Future if it fails, or a failed Future otherwise
+     */
     override final def failed: Future[Throwable] =
       if (!get().isInstanceOf[Success[?]]) super.failed
       else Future.failedFailureFuture // Cached instance in case of already known success
 
+    /** Returns a string representation of this Future. */
     @tailrec override final def toString(): String = {
       val state = get()
       if (state.isInstanceOf[Try[?]]) "Future("+state+")"
@@ -277,6 +383,12 @@ private[concurrent] object Promise {
         }
       } else Future.waitUndefinedError()
 
+    /** Awaits the completion of this Future and returns this Future.
+     *
+     *  @param atMost the maximum duration to wait
+     *  @param permit the CanAwait permission
+     *  @return this Future
+     */
     @throws(classOf[TimeoutException])
     @throws(classOf[InterruptedException])
     final def ready(atMost: Duration)(implicit permit: CanAwait): this.type = {
@@ -284,12 +396,26 @@ private[concurrent] object Promise {
       this
     }
 
+    /** Awaits the completion of this Future and returns its result.
+     *
+     *  @param atMost the maximum duration to wait
+     *  @param permit the CanAwait permission
+     *  @return the result of this Future
+     */
     @throws(classOf[Exception])
     final def result(atMost: Duration)(implicit permit: CanAwait): T =
       tryAwait0(atMost).nn.get // returns the value, or throws the contained exception
 
+    /** Returns whether this Future is completed.
+     *
+     *  @return true if this Future is completed, false otherwise
+     */
     override final def isCompleted: Boolean = value0 ne null
 
+    /** Returns the result of this Future if it is completed.
+     *
+     *  @return Some(Try[T]) if this Future is completed, None otherwise
+     */
     override final def value: Option[Try[T]] = Option(value0)
 
     @tailrec // returns null if not completed
@@ -300,6 +426,11 @@ private[concurrent] object Promise {
       else /*if (state.isInstanceOf[Callbacks[T]])*/ null
     }
 
+    /** Attempts to complete this Promise with the given value.
+     *
+     *  @param value the value to complete this Promise with
+     *  @return true if the Promise was completed, false if it was already completed
+     */
     override final def tryComplete(value: Try[T]): Boolean = {
       val state = get()
       if (state.isInstanceOf[Try[?]]) false
@@ -318,6 +449,11 @@ private[concurrent] object Promise {
         (p ne this) && p.tryComplete0(p.get(), resolved) // Use this to get tailcall optimization and avoid re-resolution
       } else /* if(state.isInstanceOf[Try[T]]) */ false
 
+    /** Completes this Promise with the result of the given Future.
+     *
+     *  @param other the Future to complete this Promise with
+     *  @return this Promise
+     */
     override final def completeWith(other: Future[T]): this.type = {
       if (other ne this) {
         val state = get()
@@ -440,23 +576,42 @@ private[concurrent] object Promise {
 
   // Constant byte tags for unpacking transformation function inputs or outputs
   // These need to be Ints to get compiled into constants.
+  /** Transformation tag for no-op transformations. */
   final val Xform_noop          = 0
+  /** Transformation tag for map operations. */
   final val Xform_map           = 1
+  /** Transformation tag for flatMap operations. */
   final val Xform_flatMap       = 2
+  /** Transformation tag for transform operations. */
   final val Xform_transform     = 3
+  /** Transformation tag for transformWith operations. */
   final val Xform_transformWith = 4
+  /** Transformation tag for foreach operations. */
   final val Xform_foreach       = 5
+  /** Transformation tag for onComplete operations. */
   final val Xform_onComplete    = 6
+  /** Transformation tag for recover operations. */
   final val Xform_recover       = 7
+  /** Transformation tag for recoverWith operations. */
   final val Xform_recoverWith   = 8
+  /** Transformation tag for filter operations. */
   final val Xform_filter        = 9
+  /** Transformation tag for collect operations. */
   final val Xform_collect       = 10
 
     /* Marker trait
    */
+  /** A callback that can be registered on a Promise. */
   sealed trait Callbacks[-T]
 
+  /** A collection of callbacks that can be registered on a Promise.
+   *
+   *  @tparam T the type of the value in the Promise
+   *  @param first the first callback in the collection
+   *  @param rest the remaining callbacks in the collection
+   */
   final class ManyCallbacks[-T](final val first: Transformation[T, ?], final val rest: Callbacks[T]) extends Callbacks[T] {
+    /** Returns a string representation of this collection of callbacks. */
     override final def toString(): String = "ManyCallbacks"
   }
 
@@ -476,15 +631,30 @@ private[concurrent] object Promise {
     @annotation.stableNull private final var _arg: Try[F @uncheckedVariance] | Null,
     private final val _xform: Int
   ) extends DefaultPromise[T]() with Callbacks[F] with Runnable with Batchable {
+    /** Constructs a new Transformation with the given transformation function and execution context.
+     *
+     *  @param xform the transformation tag
+     *  @param f the transformation function
+     *  @param ec the execution context to use for executing the transformation
+     */
     final def this(xform: Int, f: (? => ?) | Null, ec: ExecutionContext) =
       this(f.asInstanceOf[(Any => Any) | Null], ec.prepare(): @nowarn("cat=deprecation"), null, xform)
 
+    /** Indicates whether this transformation benefits from batching.
+     *
+     *  @return true if this transformation is not an onComplete or foreach operation, false otherwise
+     */
     final def benefitsFromBatching: Boolean = _xform != Xform_onComplete && _xform != Xform_foreach
 
     // Gets invoked when a value is available, schedules it to be run():ed by the ExecutionContext
     // submitWithValue *happens-before* run(), through ExecutionContext.execute.
     // Invariant: _arg is `null`, _ec is non-null. `this` ne Noop.
     // requireNonNull(resolved) will hold as guarded by `resolve`
+    /** Submits this transformation for execution with the given value.
+     *
+     *  @param resolved the value to transform
+     *  @return this transformation
+     */
     final def submitWithValue(resolved: Try[F]): this.type = {
       _arg = resolved
       val e = _ec
@@ -513,6 +683,10 @@ private[concurrent] object Promise {
     }
 
     // Gets invoked by the ExecutionContext, when we have a value to transform.
+    /** Executes this transformation with the given value.
+     *
+     *  Invoked by the `ExecutionContext` once the transformation is ready to be executed.
+     */
     override final def run(): Unit = {
       val v   = _arg.nn
       val fun = _fun.nn

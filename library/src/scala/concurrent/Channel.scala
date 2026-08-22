@@ -22,7 +22,9 @@ import scala.language.`2.13`
 @deprecated("Use `java.util.concurrent.LinkedTransferQueue` instead.", since = "2.13.0")
 class Channel[A] {
   private class LinkedList {
+    /** The element stored in this node of the linked list. */
     var elem: A = compiletime.uninitialized
+    /** The next node in the linked list. */
     var next: LinkedList = compiletime.uninitialized
   }
   private var written = new LinkedList    // FIFO queue, realized through
