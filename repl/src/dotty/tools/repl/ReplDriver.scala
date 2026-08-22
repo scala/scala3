@@ -11,7 +11,7 @@ import java.util.regex.Pattern
 
 import dotc.ast.Trees.*
 import dotc.ast.{tpd, untpd}
-import dotc.classpath.ClassPathFactory
+import dotc.classpath.{ClassPath, ClassPathFactory}
 import dotc.config.CommandLineParser.tokenize
 import dotc.config.Properties.{javaVersion, javaVmName, simpleVersionString}
 import dotc.core.Contexts.*
