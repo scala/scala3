@@ -110,7 +110,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
    *
    *  gets expanded to
    *
-   *    { def $anonfun(vparams) = expr; Closure($anonfun) }
+   *    { def \$anonfun(vparams) = expr; Closure(\$anonfun) }
    *
    *  where the closure's type is the target type of the expression (FunctionN, unless
    *  otherwise specified).

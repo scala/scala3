@@ -413,10 +413,10 @@ object Erasure {
      *
      *  results in the creation of a closure and an implementation method in the typer:
      *
-     *      def $anonfun(x: Int): Any = ...
-     *      val f: Function1[Int, Any] = closure($anonfun)
+     *      def \$anonfun(x: Int): Any = ...
+     *      val f: Function1[Int, Any] = closure(\$anonfun)
      *
-     *  Notice that `$anonfun` takes a primitive as argument, but the SAM (Single Abstract Method)
+     *  Notice that `\$anonfun` takes a primitive as argument, but the SAM (Single Abstract Method)
      *  of `Function1` after erasure is:
      *
      *      def apply(x: Object): Object
@@ -427,8 +427,8 @@ object Erasure {
      *  original method with appropriate boxing/unboxing. For our example above,
      *  this would be:
      *
-     *      def $anonfun$adapted(x: Object): Object = $anonfun(BoxesRunTime.unboxToInt(x))
-     *      val f: Function1 = closure($anonfun$adapted)
+     *      def \$anonfun$adapted(x: Object): Object = \$anonfun(BoxesRunTime.unboxToInt(x))
+     *      val f: Function1 = closure(\$anonfun\$adapted)
      *
      *  But in some situations we can avoid generating this bridge, either
      *  because the runtime can perform auto-adaptation, or because we can

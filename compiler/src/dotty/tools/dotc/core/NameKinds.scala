@@ -294,9 +294,9 @@ object NameKinds {
    *
    *  becomes:
    *
-   *      def foo[T](...)(using evidence$1: A[T]): ...
+   *      def foo[T](...)(using evidence\$1: A[T]): ...
    *
-   *  The "evidence$" prefix is a convention copied from Scala 2.
+   *  The "evid\$" prefix is a convention copied from Scala 2.
    */
   val ContextBoundParamName: UniqueNameKind = new UniqueNameKindWithUnmangle("evidence$")
 
@@ -307,8 +307,8 @@ object NameKinds {
    *
    *  becomes:
    *
-   *      val x: A ?=> B = (contextual$1: A) ?=> b
-   *      val f: (x: A) ?=> B = (xcontextual$1: A) ?=> b
+   *      val x: A ?=> B = (contextual\$1: A) ?=> b
+   *      val f: (x: A) ?=> B = (xcontextual\$1: A) ?=> b
    */
   val ContextFunctionParamName: UniqueNameKind =
     new UniqueNameKind("contextual$"):

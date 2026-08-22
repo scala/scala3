@@ -216,7 +216,7 @@ object desugar {
   /**   var x: Int = expr
    *  ==>
    *    def x: Int = expr
-   *    def x_=($1: <TypeTree()>): Unit = ()
+   *    def x_=(\$1: <TypeTree()>): Unit = ()
    *
    *  Generate setter where needed
    */

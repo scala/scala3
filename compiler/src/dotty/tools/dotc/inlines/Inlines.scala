@@ -476,7 +476,7 @@ object Inlines:
    *
    *  is complemented by the body retainer method
    *
-   *      private def f$retainedBody(x: T) = f(x)
+   *      private def f\$retainedBody(x: T) = f(x)
    *
    *  where the call `f(x)` is inline-expanded. This body is then transferred
    *  back to `f` at erasure, using method addRetainedInlineBodies.
