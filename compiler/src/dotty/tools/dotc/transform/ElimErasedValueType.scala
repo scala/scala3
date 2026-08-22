@@ -90,7 +90,8 @@ class ElimErasedValueType extends MiniPhase with InfoTransformer { thisPhase =>
           // that are bypassed with different types. See neg/11719a.scala.
           atPhase(elimRepeatedPhase.next) { super.isSubParent(parent, bc) }
         override def exclude(sym: Symbol) =
-          !sym.is(Method) || sym.is(Bridge) || super.exclude(sym)
+          val denot = sym.denot
+          !denot.is(Method) || denot.is(Bridge) || super.exclude(denot)
         override def matches(sym1: Symbol, sym2: Symbol) =
           sym1.signature == sym2.signature
       }
