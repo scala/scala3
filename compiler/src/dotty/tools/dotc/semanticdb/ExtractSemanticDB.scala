@@ -161,8 +161,8 @@ private[semanticdb] object ExtractSemanticDB:
       schema = Schema.SEMANTICDB4,
       language = Language.SCALA,
       uri = Tools.mkURIstring(Path.of(source.pathRelativeToSourceRoot)),
-      text = if semanticdbText then String(source.content) else "",
-      md5 = internal.MD5.compute(String(source.content)),
+      text = if semanticdbText then source.textContent() else "",
+      md5 = internal.MD5.compute(source.textContent()),
       symbols = symbolInfos,
       occurrences = occurrences,
       synthetics = synthetics,
@@ -576,8 +576,8 @@ private[semanticdb] object ExtractSemanticDB:
       span.hasLength && ctx.platform.hasMainMethod(sym)
 
     private def spanOfSymbol(sym: Symbol, span: Span, treeSource: SourceFile)(using Context): Span =
-      val contents = if treeSource.exists then treeSource.content() else Array.empty[Char]
-      val idx = contents.indexOfSlice(sym.name.show, span.start)
+      val contents = if treeSource.exists then treeSource.textContent() else ""
+      val idx = contents.indexOf(sym.name.show, span.start)
       val start = if idx >= 0 then idx else span.start
       Span(start, start + sym.name.show.length, start)
 

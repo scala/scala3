@@ -340,7 +340,7 @@ object ParseResult {
           case _ => None
 
   def apply(source: SourceFile)(using state: State): ParseResult = {
-    val sourceCode = source.content().mkString
+    val sourceCode = source.textContent()
     sourceCode match {
       case "" => Newline
       case _ if mixesCommandsAndDirectives(sourceCode) => MixedCommandsAndDirectives

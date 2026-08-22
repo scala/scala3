@@ -59,7 +59,7 @@ abstract class TypeMsg(errorId: ErrorMessageID)(using Context) extends Message(e
 
 trait ShowMatchTrace(tps: Type*)(using Context) extends Message:
   override def msgPostscript(using Context): String =
-    super.msgPostscript ++ matchReductionAddendum(tps*)
+    super.msgPostscript + matchReductionAddendum(tps*)
 
 abstract class TypeMismatchMsg(found: Type, val expected: Type)(errorId: ErrorMessageID)(using Context)
 extends Message(errorId), ShowMatchTrace(found, expected):
@@ -92,7 +92,7 @@ abstract class CyclicMsg(errorId: ErrorMessageID)(using Context) extends Message
 
   protected def debugInfo =
     if ctx.settings.YdebugCyclic.value then
-      "\n\nStacktrace:" ++ ex.getStackTrace().mkString("\n    ", "\n    ", "")
+      "\n\nStacktrace:" + ex.getStackTrace().mkString("\n    ", "\n    ", "")
     else "\n\n Run with both -explain-cyclic and -Ydebug-cyclic to see full stack trace."
 
   protected def context: String =
@@ -342,7 +342,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
           tp
         case tp @ TypeRef(pre, _) =>
           if pre != NoPrefix && !pre.member(tp.name).exists then
-            notes ++=
+            notes +=
               i"""
                  |
                  |Note that I could not resolve reference $tp.
@@ -367,7 +367,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
     def importSuggestions =
       if expected.isTopType || found.isBottomType then ""
       else ctx.typer.importSuggestionAddendum(ViewProto(found.widen, expected))
-    notes.filter(!_.showAsPrefix).map(_.render).mkString ++ super.msgPostscript ++ importSuggestions
+    notes.filter(!_.showAsPrefix).map(_.render).mkString + super.msgPostscript + importSuggestions
 
   override def explain(using Context) =
     val treeStr = inTree.map(x => s"\nTree:\n\n${x.show}\n").getOrElse("")
@@ -376,7 +376,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
   override def actions(using Context) =
     inTree match {
       case Some(tree) if shouldSuggestNN =>
-        val content = tree.source.content().slice(tree.srcPos.startPos.start, tree.srcPos.endPos.end).mkString
+        val content = tree.source.textContent().substring(tree.srcPos.startPos.start, tree.srcPos.endPos.end)
         val replacement = tree match
           case a @ Apply(_, _) if !a.hasAttachment(desugar.WasTypedInfix) =>
             content + ".nn"
@@ -429,7 +429,7 @@ extends NotFoundMsg(NotAMemberID), ShowMatchTrace(site) {
             case site => i"$site."
         )
         if hint.isEmpty then prefixEnumClause("")
-        else hint ++ enumClause
+        else hint + enumClause
 
     i"$selected $name is not a member of ${site.widen}$finalAddendum"
   }
@@ -3243,7 +3243,7 @@ class MissingImplicitArgument(
             case _ =>
               ctx.typer.importSuggestionAddendum(pt)
         super.msgPostscript
-        ++ ignoredInstanceNormalImport.map(hiddenImplicitNote)
+        + ignoredInstanceNormalImport.map(hiddenImplicitNote)
             .orElse(noChainConversionsNote(ignoredConvertibleImplicits))
             .getOrElse(importSuggestionAddendum)
 
@@ -3798,7 +3798,7 @@ final class CannotBeIncluded(
           if targetOwner.isClass
           then ("", targetOwner)
           else (" initially", targetOwner.owner)
-        def useStr(c: Capability) = c.showAsCapability ++ suffix
+        def useStr(c: Capability) = c.showAsCapability + suffix
         val usedStr = added match
           case added: Capability => i"${useStr(added)}"
           case added: CaptureSet => i"${added.elems.toList.map(useStr).mkString(", ")}"

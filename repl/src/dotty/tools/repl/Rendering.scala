@@ -291,10 +291,10 @@ private[repl] class Rendering(parentClassLoader: Option[ClassLoader] = None):
       Some(value)
 
   def renderTypeDef(d: Denotation)(using Context): Diagnostic =
-    infoDiagnostic("// defined " ++ d.symbol.showUser, d)
+    infoDiagnostic("// defined " + d.symbol.showUser, d)
 
   def renderTypeAlias(d: Denotation)(using Context): Diagnostic =
-    infoDiagnostic("// defined alias " ++ d.symbol.showUser, d)
+    infoDiagnostic("// defined alias " + d.symbol.showUser, d)
 
   /** Render method definition result */
   def renderMethod(d: Denotation)(using Context): Diagnostic =

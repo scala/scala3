@@ -296,11 +296,11 @@ object Signatures {
     for
       previousArg <- untpdArgs.lift(previousArgIndex)
       nextArg = untpdArgs.lift(previousArgIndex + 1)
-      text = ctx.source.content.slice(previousArg.span.end - 1, nextArg.map(_.span.start).getOrElse(span.end))
-      commaIndex = text.indexOf(',')
-      if commaIndex != -1
+      text = ctx.source.textContent()
+      commaIndex = text.indexOf(',', from = previousArg.span.end - 1)
+      if commaIndex != -1 && commaIndex < nextArg.map(_.span.start).getOrElse(span.end)
     yield
-      commaIndex + previousArg.span.end
+      commaIndex + 1
 
   /**
    * Extracts call informatioin for function in unapply context.

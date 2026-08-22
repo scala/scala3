@@ -396,7 +396,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
         msgPrinter.seen.disable()
           // Clear entries and stop futher recording so that messages containing the current
           // one don't repeat the explanations or use explanations from the msgPostscript.
-        if addendum.isEmpty then "" else "\n\n" ++ addendum
+        if addendum.isEmpty then "" else "\n\n" + addendum
       case _ =>
         ""
 
@@ -459,8 +459,8 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
     override val canExplain = self.canExplain
     override def isNonSensical = self.isNonSensical
 
-  def append(suffix: => String): Message = mapMsg(_ ++ suffix)
-  def prepend(prefix: => String): Message = mapMsg(prefix ++ _)
+  def append(suffix: => String): Message = mapMsg(_ + suffix)
+  def prepend(prefix: => String): Message = mapMsg(prefix + _)
 
   def mapMsg(f: String => String): Message = new Message(errorId):
     val kind = self.kind
@@ -473,7 +473,7 @@ abstract class Message(val errorId: ErrorMessageID)(using Context) { self =>
     val kind = self.kind
     def msg(using Context) = self.msg
     override def msgPostscript(using Context) = self.msgPostscript
-    def explain(using Context) = self.explain ++ suffix
+    def explain(using Context) = self.explain + suffix
     override def canExplain = true
 
   /** Override with `true` for messages that should always be shown even if their

@@ -6,9 +6,9 @@ import util.Chars.*
 
 import scala.compiletime.uninitialized
 
-abstract class CharArrayReader { self =>
+abstract class StringReader { self =>
 
-  val buf: Array[Char]
+  val buf: String
   val endIdx: Int  // up to where `buf` should be read
 
   protected def startFrom: Int = 0
@@ -118,12 +118,12 @@ abstract class CharArrayReader { self =>
   def isAtEnd: Boolean = charOffset >= endIdx
 
   /** A new reader that takes off at the current character position */
-  def lookaheadReader(): CharArrayLookaheadReader = new CharArrayLookaheadReader
+  def lookaheadReader(): StringLookaheadReader = new StringLookaheadReader
 
   def lookaheadChar(): Char = lookaheadReader().getc()
 
-  class CharArrayLookaheadReader extends CharArrayReader {
-    val buf: Array[Char] = self.buf
+  class StringLookaheadReader extends StringReader {
+    val buf: String = self.buf
     val endIdx = self.endIdx
     charOffset = self.charOffset
     ch = self.ch
