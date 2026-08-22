@@ -161,10 +161,10 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
 
   override def transformTypeTree(tree: TypeTree)(using Context): tree.type =
     tree.tpe match
-    case AnnotatedType(_, annot) => transformAllDeep(annot.tree)
-    case tpt if !tree.isInferred && tpt.typeSymbol.exists =>
-      resolveUsage(tpt.typeSymbol, tpt.typeSymbol.name, NoPrefix, tree.srcPos)
-    case _ =>
+      case AnnotatedType(_, annot) => transformAllDeep(annot.tree)
+      case tpt if !tree.isInferred && tpt.typeSymbol.exists =>
+        resolveUsage(tpt.typeSymbol, tpt.typeSymbol.name, NoPrefix, tree.srcPos)
+      case _ =>
     tree
 
   override def prepareForInlined(tree: Inlined)(using Context): Context =
@@ -424,9 +424,19 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
       && ctxsym.thisType.baseClasses.contains(sym.owner)
       && ctxsym.thisType.member(sym.name).hasAltWith(d => d.containsSym(sym) && !name.exists(_ != d.name))
 
+    def isHere =
+      val sourcePos = pos.sourcePos // SourcePosition of the referring tree
+      val here = ctx.compilationUnit.source
+      sourcePos.exists
+      && sourcePos.source.exists
+      && here.exists
+      && sourcePos.source == here// both Source exist and compare equal
+
     // Avoid spurious NoSymbol and also primary ctors which are never warned about.
     // Selections C.this.toString should be already excluded, but backstopped here for eq, etc.
-    if !sym.exists || sym.isPrimaryConstructor || sym.isEffectiveRoot || defn.topClasses(sym.owner) then return
+    // Don't look up references if the tree position is not the current source (but is from a macro).
+    if !sym.exists || sym.isPrimaryConstructor || sym.isEffectiveRoot || defn.topClasses(sym.owner) || !isHere
+    then return
 
     // Find the innermost, highest precedence. Contexts have no nesting levels but assume correctness.
     // If the sym is an enclosing definition (the owner of a context), it does not count toward usages.
