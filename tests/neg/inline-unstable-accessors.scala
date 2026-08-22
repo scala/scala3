@@ -64,7 +64,7 @@ package I:
       valBinaryAPI3
 package J:
   inline def inlined =
-    //  I.valBinaryAPI2 + // FIXME should error (now fails -Ycheck)
+    I.valBinaryAPI2 +
     I.valBinaryAPI3
 
 // nopos-error: No warnings can be incurred under -Werror (or -Xfatal-warnings)
