@@ -260,7 +260,7 @@ object Inferencing {
       && (
         toMaximize.isEmpty
         || { maximize(toMaximize)
-             toMaximize = Nil       // Do another round since the maximixing instances
+             toMaximize = Nil       // Do another round since the maximizing instances
              process(tp)            // might have type uninstantiated variables themselves.
            }
       )
