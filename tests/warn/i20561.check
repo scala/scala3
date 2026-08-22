@@ -1,0 +1,24 @@
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20561/Test.scala:1:22 ----------------------------------------
+1 |def f(r: Rec): Unit = r match // warn
+  |                      ^
+  |                      match may not be exhaustive.
+  |
+  |                      It would fail on pattern case: Rec(false)
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20561/Test.scala:11:31 ---------------------------------------
+11 |def i(x: Rec | String): Unit = x match // warn
+   |                               ^
+   |                               match may not be exhaustive.
+   |
+   |                               It would fail on pattern case: _: String
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20561/Test.scala:14:31 ---------------------------------------
+14 |def j(x: Rec | String): Unit = x match // warn
+   |                               ^
+   |                               match may not be exhaustive.
+   |
+   |                               It would fail on pattern case: _: Rec
+   |
+   | longer explanation available when compiling with `-explain`

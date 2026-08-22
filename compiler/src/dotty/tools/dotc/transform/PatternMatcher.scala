@@ -426,8 +426,7 @@ object PatternMatcher {
                 (0 until unappResult.denot.info.tupleElementTypes.getOrElse(Nil).length)
                   .toList.map(tupleApp(_, ref(unappResult)))
               matchArgsPlan(components, args, onSuccess)
-            else {
-              assert(isGetMatch(unappType))
+            else if (isGetMatch(unappType)) {
               val argsPlan = {
                 val get = getOfGetMatch(ref(unappResult))
                 if (isUnapplySeq)
@@ -463,6 +462,11 @@ object PatternMatcher {
                   }
               }
               TestPlan(NonEmptyTest, unappResult, unapp.span, argsPlan)
+            } else {
+              assert(unappType.classSymbol.isJavaRecord)
+              val selectors = javaRecordFields(unappType).map: field =>
+                ref(unappResult).select(field, _.paramSymss == List(Nil)).appliedToArgs(Nil)
+              matchArgsPlan(selectors, args, onSuccess)
             }
           }
       }

@@ -924,6 +924,9 @@ object JavaParsers {
           )
         ).withMods(mods.withFlags(Flags.JavaDefined | Flags.Final))
       }
+
+      recordTypeDef.putAttachment(JavaRecordFields, header.map(_.name.toString))
+
       addCompanionObject(statics, recordTypeDef)
     end recordDecl
 
