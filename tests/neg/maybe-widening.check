@@ -1,0 +1,20 @@
+-- [E007] Type Mismatch Error: tests/neg/maybe-widening.scala:7:21 -----------------------------------------------------
+7 |def g[T](x: T): T? = x  // error
+  |                     ^
+  |                     Found:    (x : T)
+  |                     Required: T?
+  |
+  |                     Note that T cannot be widened to T? since T might contain null or a `?` instance.
+  |                     An explicit `Ok(...)` wrapper is needed.
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/maybe-widening.scala:13:28 ----------------------------------------------------
+13 |def h[T](x: T?): T | Null = x // error
+   |                            ^
+   |                        Found:    (x : T?)
+   |                        Required: T | Null
+   |
+   |                        Note that T? cannot be widened to T | Null since T might contain null or a `?` instance.
+   |                        An explicit `Ok(...)` pattern match is needed.
+   |
+   | longer explanation available when compiling with `-explain`

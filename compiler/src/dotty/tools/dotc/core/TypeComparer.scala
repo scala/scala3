@@ -858,8 +858,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           case OrNull(tp2a) =>
             tp1w match
               case MagicMaybeType(tp1a, errArg, _) =>
-                if errArg.isRef(defn.UnitClass) && tp1a.isNotNullNorMaybe then
-                  return recur(tp1a, tp2a)
+                if errArg.isRef(defn.UnitClass) then
+                  if tp1a.isNotNullNorMaybe then
+                    return recur(tp1a, tp2a)
+                  else nullableNote(tp1a, tp2a)
               case _ =>
           case _ =>
         either(recur(tp1, tp21), recur(tp1, tp22)) || fourthTry
@@ -1518,8 +1520,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
 
       /** T <: T? if T is not null */
       def byMaybeWidening: Boolean = tp2 match
-        case MagicMaybeType(res2, err2, _) if tp1.isNotNullNorMaybe =>
-          recur(tp1, res2)
+        case MagicMaybeType(res2, err2, _) =>
+          if tp1.isNotNullNorMaybe then recur(tp1, res2)
+          else
+            nullableNote(tp1, res2)
+            false
         case _ => false
 
       tycon2 match {
@@ -1673,6 +1678,10 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       isCaptureCheckingOrSetup
       && tp1.derivesFromCapSet
       && tp2.derivesFromCapSet
+
+    def nullableNote(test1: Type, test2: Type) =
+      if isSubTypeWhenFrozen(test1, test2) then
+        addErrorNote(NoGenericWideningNote(tp1, tp2, test1))
 
     // begin recur
     if tp2 eq NoType then false
@@ -3705,6 +3714,23 @@ object TypeComparer {
 
   inline def noNotes(inline op: Boolean)(using Context): Boolean =
     currentComparer.isolated(op, x => x)
+}
+
+class NoGenericWideningNote(tp1: Type, tp2: Type, val nullableTp: Type) extends Note {
+
+  def render(using Context) =
+    def workaround = tp2 match
+      case OrNull(_) => "pattern match"
+      case _ => "wrapper"
+    i"""
+       |
+       |Note that $tp1 cannot be widened to $tp2 since $nullableTp might contain null or a `?` instance.
+       |An explicit `Ok(...)` $workaround is needed."""
+
+  override def covers(other: Note)(using Context) = other match
+    case other: NoGenericWideningNote =>
+      other.nullableTp frozen_<:< this.nullableTp
+    case _ => false
 }
 
 object MatchReducer:
