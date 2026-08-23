@@ -13,3 +13,9 @@ def i(x: Rec | String): Unit = x match // warn
 
 def j(x: Rec | String): Unit = x match // warn
   case s: String => ()
+
+def k(r: Rec0): Unit = r match
+  case Rec0() => ()
+
+def l(x: Rec0 | String): Unit = x match // warn
+  case Rec0() => ()

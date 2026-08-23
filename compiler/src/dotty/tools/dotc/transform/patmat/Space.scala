@@ -313,6 +313,12 @@ object SpaceEngine {
     }
   }
 
+  /** If `unapp` is the synthetic extractor of a Java record, the record type, otherwise None */
+  private def javaRecordUnapplyParam(unapp: TermRef)(using Context): Option[Type] =
+    if unapp.symbol.is(Synthetic) then
+      unapp.widen.firstParamTypes.headOption.filter(_.classSymbol.isJavaRecord)
+    else None
+
   /** Is the unapply or unapplySeq irrefutable?
    *  @param  unapp   The unapply function reference
    */
@@ -323,7 +329,7 @@ object SpaceEngine {
     || (unapp.symbol.is(Synthetic) && unapp.symbol.owner.linkedClass.is(Case))  // scala2 compatibility
     || unapplySeqTypeElemTp(unappResult).exists // only for unapplySeq
     || isProductMatch(unappResult.stripNamedTuple, argLen)
-    || unappResult.classSymbol.isJavaRecord // for java records
+    || javaRecordUnapplyParam(unapp).isDefined // a Java record's extractor always matches
     || extractorMemberType(unappResult, nme.isEmpty, NoSourcePosition) <:< ConstantType(Constant(false))
     || unappResult.derivesFrom(defn.NonEmptyTupleClass)
     || unapp.symbol == defn.TupleXXL_unapplySeq // Fixes TupleXXL.unapplySeq which returns Some but declares Option
@@ -557,17 +563,15 @@ object SpaceEngine {
     def isStable(tp: TermRef) =
       !tp.symbol.is(ExtensionMethod) // The "prefix" of an extension method may be, but the receiver isn't, so exclude
       && tp.prefix.isStable
-    def isRecordUnapply(tp: TermRef) =
-      tp.symbol.is(Synthetic) && tp.widen.finalResultType.classSymbol.isJavaRecord
     // The synthetic extractor of a Java record lives in a fresh anonymous class for
     // each pattern, so its prefix is neither stable nor equal across patterns. Treat
     // two such extractors as the same when they unapply the same record type.
-    if isRecordUnapply(tp1) && isRecordUnapply(tp2) then
-      tp1.widen.finalResultType =:= tp2.widen.finalResultType
-    else
-      // always assume two TypeTest[S, T].unapply are the same if they are equal in types
-      (isStable(tp1) && isStable(tp2) || tp1.symbol == defn.TypeTest_unapply)
-      && tp1 =:= tp2
+    (javaRecordUnapplyParam(tp1), javaRecordUnapplyParam(tp2)) match
+      case (Some(rec1), Some(rec2)) => rec1 =:= rec2
+      case _ =>
+        // always assume two TypeTest[S, T].unapply are the same if they are equal in types
+        (isStable(tp1) && isStable(tp2) || tp1.symbol == defn.TypeTest_unapply)
+        && tp1 =:= tp2
   }
 
   /** Return term parameter types of the extractor `unapp`.
@@ -615,10 +619,9 @@ object SpaceEngine {
     // Case unapply:
     // 1. return types of constructor fields if the extractor is synthesized for Scala2 case classes & length match
     // 2. return Nil if unapply returns Boolean  (boolean pattern)
-    // 3. return the component types of a Java record if unapply returns that record (record pattern)
-    // 4. return product selector types if unapply returns a product type (product pattern)
-    // 5. return product selectors of `T` where `def get: T` is a member of the return type of unapply & length match (named-based pattern)
-    // 6. otherwise, return `T` where `def get: T` is a member of the return type of unapply
+    // 3. return product selector types if unapply returns a product type (product pattern)
+    // 4. return product selectors of `T` where `def get: T` is a member of the return type of unapply & length match (named-based pattern)
+    // 5. otherwise, return `T` where `def get: T` is a member of the return type of unapply
     //
     // Case unapplySeq:
     // 1. return the type `List[T]` where `T` is the element type of the unapplySeq return type `Seq[T]`
@@ -643,8 +646,6 @@ object SpaceEngine {
             sels.init :+ defn.ListType.appliedTo(sels.last)
           }
         }
-        else if (resTp.classSymbol.isJavaRecord)
-          javaRecordTypes(resTp)
         else {
           val arity = productArity(resTp, unappSym.srcPos)
           if (arity > 0)

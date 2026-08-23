@@ -22,3 +22,11 @@
    |                               It would fail on pattern case: _: Rec
    |
    | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20561/Test.scala:20:32 ---------------------------------------
+20 |def l(x: Rec0 | String): Unit = x match // warn
+   |                                ^
+   |                                match may not be exhaustive.
+   |
+   |                                It would fail on pattern case: _: String
+   |
+   | longer explanation available when compiling with `-explain`

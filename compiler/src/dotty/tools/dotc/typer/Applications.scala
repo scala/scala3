@@ -291,8 +291,6 @@ object Applications {
             productSelectorTypes(unapplyResult, pos)
               // this will cause a "wrong number of arguments in pattern" error later on,
               // which is better than the message in `fail`.
-          else if unapplyResult.classSymbol.isJavaRecord then
-            javaRecordTypes(unapplyResult)
           else fail
 
     /** The typed pattens of this unapply */
@@ -1888,15 +1886,21 @@ trait Applications extends Compatibility {
      *  ```
      *    {
      *      class $anon:
-     *        def unapply[...](x: JavaRecord[...]): JavaRecord[...] = x
+     *        def unapply[...](x: JavaRecord[...]): (T_1, ..., T_n) = (x.f_1(), ..., x.f_n())
      *      new $anon
      *    }.unapply
      *  ```
+     *  For a record with no components the result type is `Boolean` and the body is `true`.
      */
     def javaRecordUnapply(recCls: ClassSymbol): Tree =
-      def methType(t: Type) = MethodType(List(nme.x_0), List(t), t)
-
       val recType = recCls.typeRef
+      val fields = javaRecordFields(recType)
+
+      def methType(recTp: Type) =
+        val componentTypes = javaRecordTypes(recTp)
+        val resType = if componentTypes.isEmpty then defn.BooleanType else defn.tupleType(componentTypes)
+        MethodType(List(nme.x_0), List(recTp), resType)
+
       val tparams = recCls.typeParams
       val unapplyInfo =
         if tparams.isEmpty then
@@ -1908,7 +1912,11 @@ trait Applications extends Compatibility {
           )
       val anon = AnonClass(ctx.owner, List(defn.ObjectType), coord = tree.span) { cls =>
         val unapplySym = newSymbol(cls, nme.unapply, Synthetic | Method, unapplyInfo, coord = tree.span).entered
-        val unapplyDef = DefDef(unapplySym.asTerm, _.last.last)
+        val unapplyDef = DefDef(unapplySym.asTerm, paramss =>
+          val x0 = paramss.last.last
+          if fields.isEmpty then Literal(Constant(true))
+          else tupleTree(fields.map(f => x0.select(f, _.paramSymss == List(Nil)).appliedToArgs(Nil)))
+        )
         List(unapplyDef)
       }
 

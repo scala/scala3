@@ -206,10 +206,10 @@ public record Rec2<T>(int x, T y) {}
 both patterns below are record patterns:
 
 ```scala
-(r2: Rec1) match {
+(r1: Rec1) match {
   case Rec1(i, s) => ...   // i: Int, s: String
 }
-(r3: Rec2[String]) match {
+(r2: Rec2[String]) match {
   case Rec2(i, s) => ...   // i: Int, s: String
 }
 ```
@@ -223,11 +223,11 @@ If a record additionally declares an extractor, the extractor takes precedence:
 
 ```java
 public record RecUnapply(int i, String s) {
-  public static RecUnapply unapply(RecUnapply r) { return new RecUnapply(1, "other"); }
+  public static scala.Tuple2<Integer, String> unapply(RecUnapply r) { return new scala.Tuple2<>(1, "other"); }
 }
 ```
 
-Here `RecUnapply(i, s)` is an extractor pattern using the declared `unapply` method, rather than a record pattern.
+Here `RecUnapply(i, s)` is an [extractor pattern](#extractor-patterns) using the declared `unapply` method, rather than a record pattern.
 
 ### Tuple Patterns
 

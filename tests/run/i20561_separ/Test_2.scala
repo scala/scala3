@@ -4,11 +4,6 @@ case class Foo(val value: String) extends Comparable[Integer]:
 case class Bar(val value: String) extends Comparable[Bar]:
   override def compareTo(other: Bar) = 0
 
-case class Baz(val s: String, val i: Int)
-
-object Baz:
-  def unapply(b: Baz): Rec2_1 = Rec2_1(b.i + 1, b.s + "j")
-
 @main def Test =
   val r0 = Rec0_1()
   r0 match { case Rec0_1() => println("empty") }
@@ -36,7 +31,3 @@ object Baz:
   // predefined unapply takes precedence
   val r6 = RecUnapply_1(3, "x")
   r6 match { case RecUnapply_1(i, s) => println(s * i) }
-
-  // scala class returning record from unapply
-  val r7 = Baz("he", 3)
-  r7 match { case Baz(i, s) => println(s * i) }
