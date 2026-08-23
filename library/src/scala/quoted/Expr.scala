@@ -134,15 +134,13 @@ object Expr {
   def ofList[T](xs: Seq[Expr[T]])(using Type[T])(using Quotes): Expr[List[T]] =
     if xs.isEmpty then Expr(Nil) else '{ List(${Varargs(xs)}*) }
 
-  /** Creates an expression that will construct a copy of this tuple
+  /** Creates an expression that will construct a tuple holding the values of the given expressions.
    *
-   *  Transforms a sequence of expression
-   *    `Seq(e1, e2, ...)` where `ei: Expr[Any]`
-   *  to an expression equivalent to
-   *    `'{ ($e1, $e2, ...) }` typed as an `Expr[Tuple]`
+   *  Sequences of up to 22 elements are built with the corresponding `TupleN` constructor,
+   *  longer ones with `Tuple.fromIArray`.
    *
-   *  @param seq the sequence of element expressions to combine into a tuple expression
-   *  @return an expression representing a tuple constructed from the given element expressions
+   *  @param seq the element expressions to combine into a tuple expression
+   *  @return an expression equivalent to `'{ ($e1, $e2, ...) }` typed as an `Expr[Tuple]`, or `'{ Tuple() }` if `seq` is empty
    */
   def ofTupleFromSeq(seq: Seq[Expr[Any]])(using Quotes): Expr[Tuple] = {
     seq.size match {

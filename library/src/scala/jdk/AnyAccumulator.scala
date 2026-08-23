@@ -36,8 +36,17 @@ final class AnyAccumulator[A]
 
   private[jdk] def cumulative(i: Int): Long = cumul(i)
 
+  /** Returns `"AnyAccumulator"`, the prefix used by `toString`. */
   override protected def className: String = "AnyAccumulator"
 
+  /** Returns a [[scala.collection.Stepper]] over the elements of this `AnyAccumulator` that
+   *  supports efficient splitting, so that it can be traversed in parallel.
+   *
+   *  @tparam S the specific stepper type, determined by `shape`
+   *  @param shape the implicit shape selecting the stepper specialized for the element type `A`
+   *  @return a stepper of shape `S`; if `shape` selects a primitive stepper, the elements are
+   *          unboxed as they are stepped over
+   */
   def efficientStepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit =
     shape.parUnbox(new AnyAccumulatorStepper[A](this.asInstanceOf[AnyAccumulator[A]]))
 
@@ -131,6 +140,7 @@ final class AnyAccumulator[A]
     that.clear()
   }
 
+  /** Removes all accumulated elements from this `AnyAccumulator`, releasing the arrays that held them. */
   override def clear(): Unit = {
     super.clear()
     current = AnyAccumulator.emptyAnyRefArray
@@ -158,6 +168,21 @@ final class AnyAccumulator[A]
    */
   def apply(i: Int): A = apply(i.toLong)
 
+  /** Replaces the element at index `idx` with `elem`.
+   *
+   *  `idx` is not validated, and an out-of-range index has more than one possible outcome. It can
+   *  land in unused capacity of the current array, in which case the write silently succeeds
+   *  without changing any element this accumulator reports. Because the offset into the current
+   *  array is computed as a `Long` and then narrowed to an `Int`, an index far enough out of range
+   *  can also wrap onto an occupied slot and silently overwrite an element this accumulator does
+   *  report. Otherwise the write throws.
+   *
+   *  @param idx the zero-based index of the element to replace
+   *  @param elem the element to store at index `idx`
+   *  @throws ArrayIndexOutOfBoundsException if `idx` is out of range and the computed offset falls
+   *          outside the array being written, rather than into unused current-array capacity or
+   *          onto a slot reached by `Int` wraparound
+   */
   def update(idx: Long, elem: A): Unit = {
     if (totalSize - idx <= index || hIndex == 0) current((idx - (totalSize - index)).toInt) = elem.asInstanceOf[AnyRef]
     else {
@@ -166,11 +191,32 @@ final class AnyAccumulator[A]
     }
   }
 
+  /** Replaces the element at index `idx` with `elem`, using an `Int` index.
+   *
+   *  `idx` is not validated, and an out-of-range index has more than one possible outcome. It can
+   *  land in unused capacity of the current array, in which case the write silently succeeds
+   *  without changing any element this accumulator reports. Because the offset into the current
+   *  array is computed as a `Long` and then narrowed to an `Int`, an index far enough out of range
+   *  can also wrap onto an occupied slot and silently overwrite an element this accumulator does
+   *  report. Otherwise the write throws.
+   *
+   *  @param idx the zero-based index of the element to replace
+   *  @param elem the element to store at index `idx`
+   *  @throws ArrayIndexOutOfBoundsException if `idx` is out of range and the computed offset falls
+   *          outside the array being written, rather than into unused current-array capacity or
+   *          onto a slot reached by `Int` wraparound
+   */
   def update(idx: Int, elem: A): Unit = update(idx.toLong, elem)
 
   /** Returns an `Iterator` over the contents of this `AnyAccumulator`. */
   def iterator: Iterator[A] = stepper.iterator
 
+  /** Counts the elements of this `AnyAccumulator` that satisfy a predicate.
+   *
+   *  @param p the predicate each element is tested against
+   *  @return the number of matching elements, as a `Long`, so that accumulators holding more
+   *          than `Int.MaxValue` elements are counted correctly
+   */
   def countLong(p: A => Boolean): Long = {
     var r = 0L
     val s = stepper
@@ -246,6 +292,9 @@ final class AnyAccumulator[A]
     factory.fromSpecific(iterator)
   }
 
+  /** Returns the `AnyAccumulator` companion object, the factory used to build the results of
+   *  operations such as `map` and `filter`.
+   */
   override def iterableFactory: SeqFactory[AnyAccumulator] = AnyAccumulator
 
   private def writeReplace(): AnyRef = new AnyAccumulator.SerializationProxy(this)
@@ -288,15 +337,39 @@ object AnyAccumulator extends collection.SeqFactory[AnyAccumulator] {
    */
   def merger[A]: jf.BiConsumer[AnyAccumulator[A], AnyAccumulator[A]] = (a1: AnyAccumulator[A], a2: AnyAccumulator[A]) => a1 drain a2
 
+  /** Returns an `AnyAccumulator` holding the elements of `source`.
+   *
+   *  @tparam A the element type of `source` and of the resulting accumulator
+   *  @param source the `IterableOnce` whose elements are accumulated; it may be a one-shot
+   *         source, such as an `Iterator`, in which case it is consumed
+   *  @return `source` itself if it already is an `AnyAccumulator`, otherwise a new
+   *          `AnyAccumulator` with all of its elements appended in order
+   */
   def from[A](source: IterableOnce[A]): AnyAccumulator[A] = (source: @unchecked) match {
     case acc: AnyAccumulator[A] => acc
     case _ => new AnyAccumulator[A].addAll(source)
   }
 
+  /** Returns a new, empty `AnyAccumulator`.
+   *
+   *  @tparam A the element type of the accumulator
+   */
   def empty[A]: AnyAccumulator[A] = new AnyAccumulator[A]
 
+  /** Returns a builder that accumulates elements into an `AnyAccumulator`.
+   *
+   *  @tparam A the element type of the accumulator to build
+   *  @return a new, empty `AnyAccumulator[A]`, which acts as its own builder and result
+   */
   def newBuilder[A]: mutable.Builder[A, AnyAccumulator[A]] = new AnyAccumulator[A]
 
+  /** A serialization proxy that writes an `AnyAccumulator` as its size followed by its elements,
+   *  and reads it back into a freshly built accumulator.
+   *
+   *  @tparam A the element type of the accumulator being serialized
+   *  @param acc the accumulator whose elements are written; it is `@transient`, so it is only
+   *         available while serializing, not after deserialization
+   */
   class SerializationProxy[A](@transient private val acc: AnyAccumulator[A]) extends Serializable {
     @transient private var result: AnyAccumulator[AnyRef] = compiletime.uninitialized
 
@@ -350,12 +423,19 @@ private[jdk] class AnyAccumulatorStepper[A](private val acc: AnyAccumulator[A]) 
     i = 0
   }
 
+  /** Returns the characteristics of this stepper: `ORDERED`, `SIZED` and `SUBSIZED`. */
   def characteristics: Int = ORDERED | SIZED | SUBSIZED
 
+  /** Returns the exact number of elements remaining in this stepper. */
   def estimateSize: Long = N
 
+  /** Returns `true` if at least one element remains in this stepper. */
   def hasStep: Boolean = N > 0
 
+  /** Returns the next element and advances this stepper.
+   *
+   *  @throws NoSuchElementException if no elements remain
+   */
   def nextStep(): A =
     if (N <= 0) throw new NoSuchElementException("Next in empty Stepper")
     else {
@@ -366,6 +446,12 @@ private[jdk] class AnyAccumulatorStepper[A](private val acc: AnyAccumulator[A]) 
       ans
     }
 
+  /** Splits the remaining elements in half, returning a stepper over the first half and leaving
+   *  this stepper positioned on the second half, or `null` if fewer than two elements remain.
+   *
+   *  @return a stepper over the first half of the remaining elements, or `null` if fewer than
+   *          two elements remain
+   */
   def trySplit(): AnyStepper[A] | Null =
     if (N <= 1) null
     else {
@@ -391,6 +477,13 @@ private[jdk] class AnyAccumulatorStepper[A](private val acc: AnyAccumulator[A]) 
       ans
     }
 
+  /** Returns a [[java.util.Spliterator]] over the remaining elements of this stepper, which
+   *  advances this stepper as it is consumed.
+   *
+   *  @tparam B a supertype of the element type `A`
+   *  @return a `Spliterator` whose `tryAdvance` and `forEachRemaining` read the accumulator's
+   *          blocks directly, rather than going through `nextStep()`
+   */
   override def spliterator[B >: A]: Spliterator[B] = new AnyStepper.AnyStepperSpliterator[B](this) {
     // Overridden for efficiency
     override def tryAdvance(c: Consumer[? >: B]): Boolean = {

@@ -33,8 +33,18 @@ final class DoubleAccumulator
 
   private[jdk] def cumulative(i: Int) = { val x = history(i); x(x.length-1).toLong }
 
+  /** Returns `"DoubleAccumulator"`, the prefix used by `toString`. */
   override protected def className: String = "DoubleAccumulator"
 
+  /** Returns a [[scala.collection.Stepper]] over the elements of this `DoubleAccumulator` that
+   *  supports efficient splitting, so that it can be traversed in parallel.
+   *
+   *  @tparam S the specific stepper type, determined by `shape`
+   *  @param shape the implicit shape selecting the stepper specialized for the element type; it
+   *         has to select either the `Double` shape or the reference shape
+   *  @return a stepper of shape `S`; an unboxed `DoubleStepper` for the `Double` shape, and a
+   *          boxing `AnyStepper` wrapped around it for the reference shape
+   */
   def efficientStepper[S <: Stepper[?]](implicit shape: StepperShape[Double, S]): S & EfficientSplit = {
     val st = new DoubleAccumulatorStepper(this)
     val r =
@@ -138,6 +148,7 @@ final class DoubleAccumulator
     that.clear()
   }
 
+  /** Removes all accumulated elements from this `DoubleAccumulator`, releasing the arrays that held them. */
   override def clear(): Unit = {
     super.clear()
     current = DoubleAccumulator.emptyDoubleArray
@@ -164,6 +175,21 @@ final class DoubleAccumulator
    */
   def apply(i: Int): Double = apply(i.toLong)
 
+  /** Replaces the element at index `idx` with `elem`.
+   *
+   *  `idx` is not validated, and an out-of-range index has more than one possible outcome. It can
+   *  land in unused capacity of the array it is written to, in which case the write silently
+   *  succeeds without changing any element this accumulator reports. The offset into that array is
+   *  computed as a `Long` and then narrowed to an `Int`, both when it is computed directly for the
+   *  current array and when `seekSlot` computes it for a history array, so an index far enough out
+   *  of range can also wrap onto an occupied slot and silently overwrite an element this
+   *  accumulator does report.
+   *
+   *  @param idx the zero-based index of the element to replace
+   *  @param elem the `Double` value to store at index `idx`
+   *  @throws ArrayIndexOutOfBoundsException if the offset computed from `idx` falls outside the
+   *          bounds of the array being written
+   */
   def update(idx: Long, elem: Double): Unit = {
     if (totalSize - idx <= index || hIndex == 0) current((idx - (totalSize - index)).toInt) = elem
     else {
@@ -172,16 +198,41 @@ final class DoubleAccumulator
     }
   }
 
+  /** Replaces the element at index `idx` with `elem`, using an `Int` index.
+   *
+   *  `idx` is not validated, and an out-of-range index has more than one possible outcome. It can
+   *  land in unused capacity of the array it is written to, in which case the write silently
+   *  succeeds without changing any element this accumulator reports. The offset into that array is
+   *  computed as a `Long` and then narrowed to an `Int`, both when it is computed directly for the
+   *  current array and when `seekSlot` computes it for a history array, so an index far enough out
+   *  of range can also wrap onto an occupied slot and silently overwrite an element this
+   *  accumulator does report.
+   *
+   *  @param idx the zero-based index of the element to replace
+   *  @param elem the `Double` value to store at index `idx`
+   *  @throws ArrayIndexOutOfBoundsException if the offset computed from `idx` falls outside the
+   *          bounds of the array being written
+   */
   def update(idx: Int, elem: Double): Unit = update(idx.toLong, elem)
 
   /** Returns an `Iterator` over the contents of this `DoubleAccumulator`. The `Iterator` is not specialized. */
   def iterator: Iterator[Double] = stepper.iterator
 
+  /** Applies `f` to every element of this `DoubleAccumulator`, in order.
+   *
+   *  @tparam U the result type of `f`, which is discarded
+   *  @param f the function applied to each element
+   */
   override def foreach[U](f: Double => U): Unit = {
     val s = stepper
     while (s.hasStep) f(s.nextStep())
   }
 
+  /** Returns a new `DoubleAccumulator` holding the results of applying `f` to every element of
+   *  this one, in order.
+   *
+   *  @param f the function applied to each element
+   */
   def map(f: Double => Double): DoubleAccumulator = {
     val b = newSpecificBuilder
     val s = stepper
@@ -190,6 +241,11 @@ final class DoubleAccumulator
     b.result()
   }
 
+  /** Returns a new `DoubleAccumulator` holding the concatenated results of applying `f` to every
+   *  element of this one, in order.
+   *
+   *  @param f the function mapping each element to the elements to append in its place
+   */
   def flatMap(f: Double => IterableOnce[Double]): DoubleAccumulator = {
     val b = newSpecificBuilder
     val s = stepper
@@ -198,6 +254,11 @@ final class DoubleAccumulator
     b.result()
   }
 
+  /** Returns a new `DoubleAccumulator` holding the results of applying `pf` to the elements of
+   *  this one for which it is defined, in order.
+   *
+   *  @param pf the partial function applied to each element; elements outside its domain are skipped
+   */
   def collect(pf: PartialFunction[Double, Double]): DoubleAccumulator = {
     val b = newSpecificBuilder
     val s = stepper
@@ -218,10 +279,25 @@ final class DoubleAccumulator
     b.result()
   }
 
+  /** Returns a new `DoubleAccumulator` holding the elements of this one that satisfy `pred`, in order.
+   *
+   *  @param pred the predicate each element is tested against
+   */
   override def filter(pred: Double => Boolean): DoubleAccumulator = filterAccImpl(pred, not = false)
 
+  /** Returns a new `DoubleAccumulator` holding the elements of this one that do not satisfy `pred`,
+   *  in order.
+   *
+   *  @param pred the predicate each element is tested against
+   */
   override def filterNot(pred: Double => Boolean): DoubleAccumulator = filterAccImpl(pred, not = true)
 
+  /** Tests whether `p` holds for every element of this `DoubleAccumulator`.
+   *
+   *  @param p the predicate each element is tested against
+   *  @return `true` if every element satisfies `p`, or if this accumulator is empty; `false` as
+   *          soon as an element fails the test, leaving the remaining elements untested
+   */
   override def forall(p: Double => Boolean): Boolean = {
     val s = stepper
     while (s.hasStep)
@@ -229,6 +305,12 @@ final class DoubleAccumulator
     true
   }
 
+  /** Tests whether `p` holds for at least one element of this `DoubleAccumulator`.
+   *
+   *  @param p the predicate each element is tested against
+   *  @return `true` as soon as an element satisfies `p`, leaving the remaining elements untested;
+   *          `false` if no element does, and in particular if this accumulator is empty
+   */
   override def exists(p: Double => Boolean): Boolean = {
     val s = stepper
     while (s.hasStep)
@@ -236,6 +318,12 @@ final class DoubleAccumulator
     false
   }
 
+  /** Counts the elements of this `DoubleAccumulator` that satisfy a predicate.
+   *
+   *  @param p the predicate each element is tested against
+   *  @return the number of matching elements, as an `Int`, which overflows if more than
+   *          `Int.MaxValue` elements match; use [[countLong]] for such accumulators
+   */
   override def count(p: Double => Boolean): Int = {
     var r = 0
     val s = stepper
@@ -244,6 +332,12 @@ final class DoubleAccumulator
     r
   }
 
+  /** Counts the elements of this `DoubleAccumulator` that satisfy a predicate.
+   *
+   *  @param p the predicate each element is tested against
+   *  @return the number of matching elements, as a `Long`, so that accumulators holding more
+   *          than `Int.MaxValue` elements are counted correctly
+   */
   def countLong(p: Double => Boolean): Long = {
     var r = 0L
     val s = stepper
@@ -252,7 +346,10 @@ final class DoubleAccumulator
     r
   }
 
-  /** Copies the elements in this `DoubleAccumulator` into an `Array[Double]`. */
+  /** Returns a new `Array[Double]` holding all accumulated elements in order.
+   *
+   *  @throws IllegalArgumentException if there are more than `Int.MaxValue` accumulated elements
+   */
   @nowarn // cat=lint-overload see toArray[B: ClassTag]
   def toArray: Array[Double] = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for an array: "+totalSize.toString)
@@ -308,10 +405,23 @@ final class DoubleAccumulator
     factory.fromSpecific(iterator)
   }
 
+  /** Returns a `DoubleAccumulator` holding the elements of `coll`, used to rebuild this
+   *  collection type from the result of a generic operation.
+   *
+   *  @param coll the elements of the resulting accumulator; a one-shot source, such as an
+   *         `Iterator`, is consumed
+   *  @return `coll` itself if it already is a `DoubleAccumulator`, otherwise a new
+   *          `DoubleAccumulator` with all of its elements appended in order
+   */
   override protected def fromSpecific(coll: IterableOnce[Double]): DoubleAccumulator = DoubleAccumulator.fromSpecific(coll)
+  /** Returns a new, empty `DoubleAccumulator`, which acts as its own builder and result. */
   override protected def newSpecificBuilder: DoubleAccumulator = DoubleAccumulator.newBuilder
+  /** Returns the [[AnyAccumulator]] companion object, the factory used to build the results of
+   *  operations that are not specialized for `Double`, such as mapping to another element type.
+   */
   override def iterableFactory: SeqFactory[AnyAccumulator] = AnyAccumulator
 
+  /** Returns a new, empty `DoubleAccumulator`. */
   override def empty: DoubleAccumulator = DoubleAccumulator.empty
 
   private def writeReplace(): AnyRef = new DoubleAccumulator.SerializationProxy(this)
@@ -321,6 +431,13 @@ object DoubleAccumulator extends collection.SpecificIterableFactory[Double, Doub
   private val emptyDoubleArray = new Array[Double](0)
   private val emptyDoubleArrayArray = new Array[Array[Double]](0)
 
+  /** Adapts the [[DoubleAccumulator]] companion object to a factory for boxed `java.lang.Double`
+   *  elements, so that it can be used where a factory of a Java-typed collection is expected.
+   *
+   *  @param ia the `DoubleAccumulator` companion object being converted (never used)
+   *  @return the `DoubleAccumulator` companion object itself, cast to a
+   *          `SpecificIterableFactory` of `java.lang.Double`; no new factory is created
+   */
   implicit def toJavaDoubleAccumulator(ia: DoubleAccumulator.type): collection.SpecificIterableFactory[jl.Double, DoubleAccumulator] = DoubleAccumulator.asInstanceOf[collection.SpecificIterableFactory[jl.Double, DoubleAccumulator]]
 
   import java.util.{function => jf}
@@ -344,6 +461,13 @@ object DoubleAccumulator extends collection.SpecificIterableFactory[Double, Doub
     r
   }
 
+  /** Returns a `DoubleAccumulator` holding the elements of `it`.
+   *
+   *  @param it the elements to accumulate; a one-shot source, such as an `Iterator`, is consumed
+   *  @return `it` itself if it already is a `DoubleAccumulator`, otherwise a new
+   *          `DoubleAccumulator` with all of its elements appended in order; an `ArraySeq` of
+   *          `Double` is copied without boxing
+   */
   override def fromSpecific(it: IterableOnce[Double]): DoubleAccumulator = it match {
     case acc: DoubleAccumulator => acc
     case as: collection.immutable.ArraySeq.ofDouble => fromArray(as.unsafeArray)
@@ -351,10 +475,19 @@ object DoubleAccumulator extends collection.SpecificIterableFactory[Double, Doub
     case _ => (new DoubleAccumulator).addAll(it)
   }
 
+  /** Returns a new, empty `DoubleAccumulator`. */
   override def empty: DoubleAccumulator = new DoubleAccumulator
 
+  /** Returns a new, empty `DoubleAccumulator`, which acts as its own builder and result. */
   override def newBuilder: DoubleAccumulator = new DoubleAccumulator
 
+  /** A serialization proxy that writes a `DoubleAccumulator` as its size followed by its
+   *  elements, and reads it back into a freshly built accumulator.
+   *
+   *  @tparam A a type parameter that is never used; the element type is always `Double`
+   *  @param acc the accumulator whose elements are written; it is `@transient`, so it is only
+   *         available while serializing, not after deserialization
+   */
   class SerializationProxy[A](@transient private val acc: DoubleAccumulator) extends Serializable {
     @transient private var result: DoubleAccumulator = compiletime.uninitialized
 
@@ -408,12 +541,27 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
     i = 0
   }
 
+  /** Returns the characteristics of this stepper: `ORDERED`, `SIZED`, `SUBSIZED` and `NONNULL`. */
   def characteristics: Int = ORDERED | SIZED | SUBSIZED | NONNULL
 
+  /** Returns the exact number of elements remaining in this stepper. */
   def estimateSize: Long = N
 
+  /** Returns `true` if at least one element remains in this stepper. */
   def hasStep: Boolean = N > 0
 
+  /** Returns the next element and advances this stepper.
+   *
+   *  The guard is on the size of the block currently being read, not on the number of elements
+   *  remaining, so after the last element of a nonempty final block has been consumed a further
+   *  call does not throw: `n` is still positive while `N` has reached `0`.
+   *
+   *  @throws NoSuchElementException if the block currently being read holds no elements, which is
+   *          not the same condition as [[hasStep]] being `false`
+   *  @note NEEDS-HUMAN: the guard here is `n <= 0` (the size of the current block), whereas
+   *        `AnyAccumulatorStepper` and `IntAccumulatorStepper` guard on `N <= 0` (the elements
+   *        remaining). Is stepping past the end of an exhausted stepper meant to be unchecked here?
+   */
   def nextStep(): Double =
     if (n <= 0) throw new NoSuchElementException("next on empty Stepper")
     else {
@@ -424,6 +572,12 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
       ans
     }
 
+  /** Splits the remaining elements in half, returning a stepper over the first half and leaving
+   *  this stepper positioned on the second half, or `null` if fewer than two elements remain.
+   *
+   *  @return a stepper over the first half of the remaining elements, or `null` if fewer than two
+   *          elements remain, in which case this stepper is left unchanged
+   */
   def trySplit(): DoubleStepper | Null =
     if (N <= 1) null
     else {
@@ -449,6 +603,14 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
       ans
     }
 
+  /** Returns a [[java.util.Spliterator]] of primitive `Double`s over the remaining elements of
+   *  this stepper, which advances this stepper as it is consumed.
+   *
+   *  @tparam B a supertype of `Double`; it does not affect the result, which is always a
+   *         `Spliterator.OfDouble`
+   *  @return a `Spliterator` whose `tryAdvance` and `forEachRemaining` read the accumulator's
+   *          blocks directly, rather than going through `nextStep()`
+   */
   override def spliterator[B >: Double]: Spliterator.OfDouble = new DoubleStepper.DoubleStepperSpliterator(this) {
     // Overridden for efficiency
     override def tryAdvance(c: DoubleConsumer): Boolean =
