@@ -3,7 +3,7 @@ import language.experimental.magic
 import scala.magic.*
 import compiletime.Maybe
 object G {
-  def unapply(m: Any): Maybe[?, Unit] = Ok("")
+  def unapply(m: Any): Maybe[Any, Unit] = Ok("")
 }
 
 object H {

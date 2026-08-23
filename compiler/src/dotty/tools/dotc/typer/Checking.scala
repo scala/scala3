@@ -129,11 +129,13 @@ object Checking {
       checkBounds(args, bounds, instantiate, tree.tpe, tpt)
 
     def checkWildcardApply(tp: Type): Unit = tp match {
-      case tp @ AppliedType(tycon, _) =>
+      case tp @ AppliedType(tycon, _) if tp.hasWildcardArg =>
         if tp.isUnreducibleWild then
           report.errorOrMigrationWarning(
             showInferred(UnreducibleApplication(tycon), tp, tpt),
             tree.srcPos, MigrationVersion.Scala2to3)
+        else if tp.typeSymbol == defn.MagicMaybeClass then
+          report.error(em"Maybe type may not contain wildcard arguments", tree.srcPos)
       case _ =>
     }
     def checkValidIfApply(using Context): Unit =
