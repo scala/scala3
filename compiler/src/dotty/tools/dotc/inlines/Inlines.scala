@@ -841,7 +841,8 @@ object Inlines:
        *  result type after unpickling.
        */
       val inlined =
-        val proxySkolems = bindings.map(_.symbol.info.widenExpr).collect { case sk: SkolemType => sk }
+        val proxySkolems = bindings.flatMap: b =>
+          b.getAttachment(TypeAssigner.InlineProxySkolem)
         if proxySkolems.nonEmpty && inlined0.tpe.existsPart(proxySkolems.contains) then
           val sealedExpansion =
             inContext(ctx.withSource(expansion.source)):
