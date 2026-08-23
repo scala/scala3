@@ -388,13 +388,16 @@ object PatternMatcher {
         if gm.tpe.widen.isRef(defn.MagicMaybeClass) then
           if isErrMatch then
             val MagicMaybeType(_, errArg, nullable) = gm.tpe.widen.runtimeChecked
-            val select = gm.asInstance(defn.MagicFailClass.typeRef.appliedTo(defn.AnyType))
-              .select(nme.elem)
-            if nullable then
-              If(gm.nullTest(cond = true),
-                unitLiteral.asInstance(errArg),
-                select)
-            else select
+            if errArg.isRef(defn.UnitClass) then
+              unitLiteral
+            else
+              val select = gm.asInstance(defn.MagicFailClass.typeRef.appliedTo(defn.AnyType))
+                .select(nme.elem)
+              if nullable then
+                If(gm.nullTest(cond = true),
+                  unitLiteral.ensureConforms(errArg),
+                  select)
+              else select
           else
             val validTpe = defn.MagicValidClass.typeRef
             If(gm.isInstance(validTpe),
@@ -951,7 +954,7 @@ object PatternMatcher {
         case GuardTest =>
           scrutinee
         case EqualTest(tree) =>
-          tree.equal(scrutinee)
+          inlines.Inliner.reduceEQ(tree.equal(scrutinee))
         case LengthTest(len, exact) =>
           val lengthCompareSym = defn.Seq_lengthCompare.matchingMember(scrutinee.tpe)
           if (lengthCompareSym.exists)
@@ -1166,7 +1169,7 @@ object PatternMatcher {
                     if (acc.isEmpty) emitCondWithPos(otherPlan)
                     else acc.select(nme.ZAND).appliedTo(emitCondWithPos(otherPlan))
                   }
-                If(conditions, emit(plan.onSuccess), unitLiteral)
+                conditional(conditions, emit(plan.onSuccess), unitLiteral)
             }
           }
           emitWithMashedConditions(plan :: Nil)

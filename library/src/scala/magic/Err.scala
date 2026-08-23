@@ -8,9 +8,10 @@ import annotation.experimental
 @experimental
 object Err:
 
-  /** `inline` neded since nonbootrapped 3.9.0 compiler
+  /** `inline` needed since nonbootrapped 3.9.0 compiler
    *  uses a different erasure for Maybe than boostrapped
-   *  3.10.0 compiler.
+   *  3.10.0 compiler. `inline` is also benefical since it can
+   *  remove the condition and the `if` when the argument is known.
    */
   inline def apply[E](e: E): Maybe[Nothing, E] =
     (if e == () then null else new runtime.Fail(e))

@@ -15,6 +15,7 @@ import config.Printers.inlining
 import ErrorReporting.errorTree
 import util.{SimpleIdentitySet, SrcPos}
 import Nullables.computeNullableDeeply
+import config.Printers.transforms
 
 import collection.mutable
 import reporting.trace
@@ -210,6 +211,33 @@ object Inliner:
         rec(rootTree)
       else
         constToLiteral(rootTree)
+
+  /** If tree is an equality test == with known outcome and no side effects, replace it
+   *  by a constant true or false.
+   *  Known outcome means currently:
+   *   - arguments are both constants, or
+   *   - at least one argument is of Unit type
+   */
+  def reduceEQ(tree: Tree)(using Context): Tree = tree match
+    case Apply(sel @ Select(arg1, nme.EQ), arg2 :: Nil) if isPureExpr(arg1) && isPureExpr(arg2) =>
+      val tp1 = arg1.tpe.widen
+      val tp2 = arg2.tpe.widen
+      def const(b: Boolean) =
+        cpy.Literal(tree)(Constant(b))
+          .showing(i"REDUCE $tree to $result in ${ctx.compilationUnit} in ${ctx.owner.ownersIterator.toList}/${arg1.tpe},${arg2.tpe}", transforms)
+      def reduceUnit(tp1: Type, tp2: Type) =
+        if tp1.isRef(defn.UnitClass) then
+          if tp2.isRef(defn.UnitClass) then const(true)
+          else if !tp2.isBottomType && !tp2.isTopType then const(false)
+          else EmptyTree
+        else EmptyTree
+      (tp1, tp2) match
+        case (ConstantType(c1), ConstantType(c2)) =>
+          if c1 == c2 then const(true) else const(false)
+        case _ =>
+          reduceUnit(tp1, tp2).orElse(reduceUnit(tp2, tp1)).orElse(tree)
+    case _ =>
+      tree
 
   private[inlines] def newSym(name: Name, flags: FlagSet, info: Type, span: Span)(using Context): Symbol =
     newSymbol(ctx.owner, name, flags, info, coord = span)
@@ -800,7 +828,7 @@ class Inliner(val call: tpd.Tree)(using Context):
     // corresponding arguments or proxies on the type and term level. It also changes
     // the owner from the inlined method to the current owner.
 
-    // This is reused through InlineTraitAncestors for inline traits, so inlinedMethod might not exist there  
+    // This is reused through InlineTraitAncestors for inline traits, so inlinedMethod might not exist there
     val oldOwners = if (inlinedMethod.exists) then inlinedMethod :: Nil else Nil
     val newOwners = if (inlinedMethod.exists) then ctx.owner :: Nil else Nil
 

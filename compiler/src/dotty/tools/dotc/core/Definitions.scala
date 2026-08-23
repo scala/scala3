@@ -492,6 +492,7 @@ class Definitions {
     @tu lazy val Magic_CanErr: Symbol = MagicPackageClass.requiredType("CanErr")
 
   @tu lazy val MagicOkModule: Symbol = requiredModule("scala.magic.Ok")
+    @tu lazy val Magic_OkApply: Symbol = MagicOkModule.requiredMethod(nme.apply)
     @tu lazy val Magic_OkUnapply: Symbol = MagicOkModule.requiredMethod(nme.unapply)
 
   @tu lazy val MagicErrModule: Symbol = requiredModule("scala.magic.Err")
@@ -500,6 +501,8 @@ class Definitions {
   @tu lazy val MagicCompiletimePackage: Symbol = requiredPackage("scala.magic.compiletime")
     @tu lazy val Magic_spec: Symbol = MagicCompiletimePackage.requiredMethod("$spec")
     @tu lazy val Magic_wrappedType: Symbol = MagicCompiletimePackage.requiredMethod("$wrappedType")
+
+  @tu lazy val MagicRuntimePackageClass = requiredPackage("scala.magic.runtime").moduleClass.asClass
 
   // More synthetic symbols
   @tu lazy val andType: TypeSymbol = enterBinaryAlias(tpnme.AND, AndType(_, _))

@@ -98,6 +98,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
   def If(cond: Tree, thenp: Tree, elsep: Tree)(using Context): If =
     ta.assignType(untpd.If(cond, thenp, elsep), thenp, elsep)
 
+  def conditional(cond: Tree, thenp: Tree, elsep: Tree)(using Context): Tree =
+    cond match
+      case Literal(Constant(true)) => thenp
+      case Literal(Constant(false)) => elsep
+      case _ => If(cond, thenp, elsep)
+
   def InlineIf(cond: Tree, thenp: Tree, elsep: Tree)(using Context): If =
     ta.assignType(untpd.InlineIf(cond, thenp, elsep), thenp, elsep)
 

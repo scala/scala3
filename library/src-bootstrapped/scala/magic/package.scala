@@ -23,10 +23,10 @@ package object magic {
       case Ok(y) => Ok(y)
       case Err(e) => Err(f(e))
 
-  inline def provided(cond: Boolean)(using CanErr[Unit]): Unit =
+  inline def provided(inline cond: Boolean)(using CanErr[Unit]): Unit =
     if !cond then boundary.break(Err(()))
 
-  inline def provided[E](cond: Boolean, inline e: E)(using CanErr[E]): Unit =
+  inline def provided[E](inline cond: Boolean, inline e: E)(using CanErr[E]): Unit =
     if !cond then boundary.break(Err(e))
 
 
