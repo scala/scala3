@@ -500,18 +500,17 @@ private[semanticdb] object Scala3:
   /**
     * A comparator for identifier like "Predef" or "Function10".
     *
-    * Differences from the default string comparator:
-    * - works with CharSequences like compiler `Name`
+    * Difference from the default string comparator:
     * - orders numbers by their numerical value instead of lexicographical
     *   - Good: `Function1`, `Function2`,  `Function10`
     *   - Bad:  `Function1`, `Function10`, `Function2`
     *
     * taken from https://github.com/scalameta/scalameta/blob/master/semanticdb/metap/src/main/scala/scala/meta/internal/metap/IdentifierOrdering.scala
     */
-  private class IdentifierOrdering[T <: CharSequence] extends Ordering[T]:
+  private class IdentifierOrdering extends Ordering[String]:
 
-    override def compare(o1: T, o2: T): Int =
-      val len = math.min(o1.length(), o2.length())
+    override def compare(o1: String, o2: String): Int =
+      val len = math.min(o1.length, o2.length)
       var i = 0
       while i < len do
         val a = o1.charAt(i)
@@ -527,19 +526,18 @@ private[semanticdb] object Scala3:
             return result
           i += 1
       end while
-      Integer.compare(o1.length(), o2.length())
+      Integer.compare(o1.length, o2.length)
     end compare
 
-    private def seekNonDigit(cs: T, i: Int): Int =
+    private def seekNonDigit(str: String, i: Int): Int =
       var curr = i
-      while curr < cs.length && cs.charAt(curr).isDigit do
+      while curr < str.length && str.charAt(curr).isDigit do
         curr += 1
       curr
     end seekNonDigit
 
-    private def toDigit(cs: T, i: Int): Int =
-      val digit = cs.subSequence(i, seekNonDigit(cs, i))
-      Integer.parseUnsignedInt(digit.toString)
+    private def toDigit(str: String, i: Int): Int =
+      Integer.parseUnsignedInt(str.substring(i, seekNonDigit(str, i)))
     end toDigit
 
   end IdentifierOrdering

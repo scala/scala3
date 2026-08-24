@@ -10,6 +10,7 @@ import StdNames.str
 import util.{HashSet, LinearMap}
 
 import java.nio.CharBuffer
+import java.nio.charset.StandardCharsets
 import scala.annotation.internal.sharable
 
 object Names {
@@ -310,7 +311,7 @@ object Names {
     /** A slice of this name making up the characters between `from` and `until` (exclusive) */
     def slice(from: Int, end: Int): SimpleName = {
       assert(0 <= from && from <= end && end <= length)
-      termName(chrs, start + from, end - from)
+      termName(new String(chrs, start + from, end - from))
     }
 
     def drop(n: Int): SimpleName = slice(n, length)
@@ -502,14 +503,15 @@ object Names {
     override def hash(x: SimpleName) = hashValue(chrs, x.start, x.length) // needed for resize
     override def isEqual(x: SimpleName, y: SimpleName) = ???              // not needed
 
-    def enterIfNew(cs: CharSequence): SimpleName =
+    def enterIfNew(str: String): SimpleName =
       Stats.record(statsItem("put"))
       val myTable = currentTable // could be outdated under parallel execution
-      var idx = hashValue(cs) & (myTable.length - 1)
+      var idx = str.hashCode & (myTable.length - 1)
       var name: SimpleName | Null = myTable(idx).asInstanceOf[SimpleName | Null]
       while name != null do
-        if Names.equals(name.nn.start, name.nn.length, cs) then
-          return name.nn
+        val nnName = name.nn // TODO this should not be needed
+        if Names.equals(nnName.start, nnName.length, str) then
+          return nnName
         Stats.record(statsItem("miss"))
         idx = (idx + 1) & (myTable.length - 1)
         name = myTable(idx).asInstanceOf[SimpleName | Null]
@@ -523,13 +525,13 @@ object Names {
           // The same holds for the chrs array. We might miss before the synchronized
           // on published characters but that would make name comparison false, which
           // means we end up in the synchronized block here, where we get the correct state.
-          name = SimpleName(nc, cs.length())
-          ensureCapacity(nc + cs.length())
-          copyTo(cs, chrs, nc)
-          nc += cs.length()
+          name = SimpleName(nc, str.length)
+          ensureCapacity(nc + str.length)
+          str.getChars(0, str.length, chrs, nc)
+          nc += str.length()
           addEntryAt(idx, name.nn)
         else
-          enterIfNew(cs)
+          enterIfNew(str)
       }
 
     addEntryAt(0, EmptyTermName: @unchecked)
@@ -538,13 +540,6 @@ object Names {
   /** Hashtable for finding term names quickly. */
   @sharable // because it's only mutated in synchronized block of enterIfNew
   private val nameTable = NameTable()
-
-  /** Copies the given character sequence to the given array starting at the given destination index. */
-  private def copyTo(cs: CharSequence, dst: Array[Char], dstBegin: Int): Unit =
-    var i = 0
-    while i < cs.length() do
-      dst(i + dstBegin) = cs.charAt(i)
-      i += 1
 
   /** The hash of a name made of from characters cs[offset..offset+len-1]. Same algorithm as java.lang.String. */
   private def hashValue(cs: Array[Char], offset: Int, len: Int): Int = {
@@ -557,41 +552,21 @@ object Names {
     hash
   }
 
-  /** The hash of the given character sequence, using the same algorithm as above. */
-  private def hashValue(cs: CharSequence): Int = cs match {
-    case s: String => s.hashCode
-    case _ =>
-      var i = 0
-      var hash = 0
-      val len = cs.length()
-      while (i < len) {
-        hash = 31 * hash + cs.charAt(i)
-        i += 1
-      }
-      hash
-  }
-
-  /** Is (the ASCII representation of) name at given index equal to cs? */
-  private def equals(index: Int, length: Int, cs: CharSequence): Boolean = {
+  /** Is (the ASCII representation of) name at given index equal to str? */
+  private def equals(index: Int, length: Int, str: String): Boolean = {
     var i = 0
-    val len = cs.length()
-    if len != length then
+    if length != str.length then
       return false
-    while i < len && chrs(index + i) == cs.charAt(i) do
+    while i < length && chrs(index + i) == str.charAt(i) do
       i += 1
-    i == len
+    i == length
   }
-
-  /** Create a term name from the characters in cs[offset..offset+len-1].
-   */
-  private def termName(cs: Array[Char], offset: Int, len: Int): SimpleName =
-    termName(CharBuffer.wrap(cs, offset, len))
 
   /** Create a term name from the UTF8 encoded bytes in bs[offset..offset+len-1].
    */
   def termName(bs: Array[Byte], offset: Int, len: Int): SimpleName = {
-    val chars = Codec.fromUTF8(bs, offset, len)
-    termName(CharBuffer.wrap(chars, 0, chars.length))
+    val str = new String(bs, offset, len, StandardCharsets.UTF_8)
+    termName(str)
   }
 
   /** Create a type name from the UTF8 encoded bytes in bs[offset..offset+len-1].
@@ -601,11 +576,11 @@ object Names {
 
   /** Create a term name from a sequence of characters.
    */
-  def termName(s: CharSequence): SimpleName =
+  def termName(s: String): SimpleName =
     nameTable.enterIfNew(s)
 
   /** Create a type name from a sequence of characters */
-  def typeName(s: CharSequence): TypeName =
+  def typeName(s: String): TypeName =
     termName(s).toTypeName
 
   /** The type name represented by the empty string */
