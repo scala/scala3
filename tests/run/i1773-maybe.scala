@@ -1,5 +1,6 @@
 //> using options -Yexplicit-nulls
 import language.experimental.magic
+import language.implicitConversions
 object Test {
   into class Foo(sc: StringContext) {
     object q {

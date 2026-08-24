@@ -1,12 +1,12 @@
--- Error: tests/neg/if-without-then.scala:5:2 --------------------------------------------------------------------------
+-- Error: tests/neg-macros/if-without-then.scala:5:2 -------------------------------------------------------------------
 5 |  if (true) println("yes") // error
   |  ^^^^^^^^^^^^^^^^^^^^^^^^
   |  `if` without `then` is illegal here since no given of type scala.magic.CanErr[Unit] is available.
--- Error: tests/neg/if-without-then.scala:7:2 --------------------------------------------------------------------------
+-- Error: tests/neg-macros/if-without-then.scala:7:2 -------------------------------------------------------------------
 7 |  if (true)             // error
   |  ^^^^^^^^^
   |  `if` without `then` is illegal here since no given of type scala.magic.CanErr[Unit] is available.
--- Error: tests/neg/if-without-then.scala:10:2 -------------------------------------------------------------------------
+-- Error: tests/neg-macros/if-without-then.scala:10:2 ------------------------------------------------------------------
 10 |  if true else "error"  // error
    |  ^^^^^^^^^^^^^^^^^^^^
    |  `if` without `then` is illegal here since no given of type scala.magic.CanErr[String] is available.

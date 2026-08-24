@@ -95,3 +95,11 @@ def baz(x: Int ? String) =
         }
       ):Object:Object
 */
+
+@main def Test =
+  assert(foo(6) == 6)
+  assert(foo(11) == null)
+  assert(bar(6) == 6)
+  assert(bar(-1) == null)
+  assert(baz(6) == 6)
+  assert(baz(-1) == Err("not positive"), baz(-1))
