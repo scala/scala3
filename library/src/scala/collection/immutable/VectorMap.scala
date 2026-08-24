@@ -202,8 +202,10 @@ final class VectorMap[K, +V] private (
 
   /** Returns a `VectorMap` without a binding for `key`.
    *
-   *  If `key` is absent, returns this map itself; if it is the only key, returns the
-   *  empty `VectorMap`. Otherwise the key's slot in the underlying vector is not
+   *  An empty map yields the shared empty `VectorMap` without `key` being looked up at
+   *  all, so an empty map that is not that instance is replaced by it. Otherwise, if
+   *  `key` is absent this map itself is returned, and if it is the only key the shared
+   *  empty `VectorMap` is. In the remaining case the key's slot in the underlying vector is not
    *  reclaimed but replaced by a tombstone, and adjacent tombstones are linked so that
    *  iteration can skip a whole run of removed slots in one step. The relative order
    *  of the remaining bindings is unchanged.
@@ -404,9 +406,10 @@ private[immutable] final class VectorMapBuilder[K, V] extends mutable.Builder[(K
 
   /** Returns the `VectorMap` built so far.
    *
-   *  The result is cached: repeated calls return the same instance, and pairs added
-   *  after this call are applied to that instance via `updated` instead of the
-   *  underlying builders.
+   *  The result is cached: repeated calls with no intervening addition return the same
+   *  instance. A pair added after this call goes through `updated` on the cached map
+   *  rather than through the underlying builders; since `updated` is itself immutable,
+   *  the map already returned is unaffected and the next call returns a new one.
    */
   override def result(): VectorMap[K, V] = {
     if (aliased eq null) {

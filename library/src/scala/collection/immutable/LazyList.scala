@@ -362,7 +362,9 @@ final class LazyList[+A] private (lazyState: AnyRef /* EmptyMarker.type | () => 
       evaluated
     }
 
-  /** The factory used to build lazy lists, the [[LazyList$ `LazyList`]] companion object. */
+  /** Returns the factory used to build lazy lists, the [[LazyList$ `LazyList`]]
+   *  companion object.
+   */
   override def iterableFactory: SeqFactory[LazyList] = LazyList
 
   // NOTE: `evaluated; this eq Empty` would be wrong. Deserialization of `Empty` creates a new

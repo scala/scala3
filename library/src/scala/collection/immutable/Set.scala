@@ -139,10 +139,12 @@ object Set extends IterableFactory[Set] {
 
   /** Returns an immutable set containing the elements of `it`, with duplicates left out.
    *
-   *  A collection that is already one of the unordered immutable set implementations is
-   *  returned unchanged; anything else, including a sorted set, is copied into a new
-   *  set, so that the result cannot keep an ordering that its static element type no
-   *  longer justifies.
+   *  A collection that is already one of the immutable set implementations reached by
+   *  this factory is returned unchanged. Those are the unordered sets and the key sets
+   *  of immutable maps, so a key set of an insertion-ordered map such as `ListMap` or
+   *  `VectorMap` keeps that map's iteration order. Anything else, including a sorted
+   *  set, is copied into a new set, so that the result cannot keep an ordering that its
+   *  static element type no longer justifies.
    *
    *  @tparam E the element type
    *  @param it the collection whose elements are to be contained

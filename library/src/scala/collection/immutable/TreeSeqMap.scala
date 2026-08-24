@@ -950,16 +950,22 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
         else Bin(p, m, l, r.include(ordinal, value))
     }
 
-    /** Returns an ordering with `value` stored at `ordinal`, which must be
+    /** Returns an ordering with `value` stored at `ordinal`, which is meant to be
      *  greater (in unsigned order) than the current maximum ordinal.
+     *
+     *  That precondition is only partly enforced. A smaller `ordinal` throws only
+     *  where it belongs on the low side of a `Bin` that already covers it; where it
+     *  falls outside the prefix of a `Bin`, or where this ordering is a `Tip` or is
+     *  empty, it is joined in like any other ordinal, and an ordinal equal to a
+     *  `Tip`'s replaces its value.
      *
      *  @tparam S the type of the values in the resulting ordering
      *  @param ordinal the ordinal to store at
      *  @param value the value to store
      *  @return an ordering containing the entries of this one and `value` at
      *          `ordinal`
-     *  @throws IllegalArgumentException if `ordinal` is not greater than the
-     *          current maximum ordinal
+     *  @throws IllegalArgumentException if `ordinal` falls within the prefix of a
+     *          `Bin` on the side already covered by its lower subtree
      */
     final def append[S >: T](ordinal: Int, value: S): Ordering[S] = this match {
       case Zero =>

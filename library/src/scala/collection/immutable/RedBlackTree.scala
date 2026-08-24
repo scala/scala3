@@ -34,13 +34,14 @@ private[collection] object RedBlackTree {
    *  Checks, for every node, that keys are ordered according to `ordering` (strictly
    *  smaller in the left subtree, strictly greater in the right), that no red node
    *  has a red child, and that the left and right subtrees have the same black
-   *  height. An empty (`null`) tree is trivially valid.
+   *  height. It does not check that the root is black, so a tree violating only that
+   *  invariant passes. An empty (`null`) tree is trivially valid.
    *
    *  @tparam A the key type of the tree entries
    *  @param tree the red-black tree to validate, or `null` for the empty tree
    *  @param ordering the ordering used to compare keys
    *  @return `tree`, unchanged
-   *  @throws AssertionError if any invariant is violated
+   *  @throws AssertionError if any of the checked invariants is violated
    */
   def validate[A](tree: Tree[A, ?] | Null)(implicit ordering: Ordering[A]): tree.type = {
     def impl(tree: Tree[A, ?], keyProp: A => Boolean): Int = {

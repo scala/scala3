@@ -723,7 +723,10 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
   def ++[S >: T](that: LongMap[S]) =
     this.unionWith[S](that, (key, x, y) => y)
 
-  /** The entry with the lowest key value considered in unsigned order. */
+  /** Returns the lowest key of this map in unsigned order.
+   *
+   *  @throws IllegalStateException if this map is empty
+   */
   @tailrec
   final def firstKey: Long = this match {
     case LongMap.Bin(_, _, l, r) => l.firstKey
@@ -731,7 +734,10 @@ sealed abstract class LongMap[+T] extends AbstractMap[Long, T]
     case LongMap.Nil => throw new IllegalStateException("Empty set")
   }
 
-  /** The entry with the highest key value considered in unsigned order. */
+  /** Returns the highest key of this map in unsigned order.
+   *
+   *  @throws IllegalStateException if this map is empty
+   */
   @tailrec
   final def lastKey: Long = this match {
     case LongMap.Bin(_, _, l, r) => r.lastKey

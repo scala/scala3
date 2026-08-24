@@ -164,8 +164,10 @@ sealed abstract class List[+A]
   /** Returns a list consisting of the elements of `prefix` followed by the elements of
    *  this list.
    *
-   *  Only `prefix` is copied; this list becomes the tail of the result. An empty
-   *  `prefix` gives this list itself.
+   *  In the general case only `prefix` is copied and this list becomes the tail of the
+   *  result; an empty `prefix` gives this list itself. Nothing at all is copied when
+   *  this list is empty and `prefix` is a `List` or a `ListBuffer`: the prefix, or the
+   *  buffer's list, is then the result.
    *
    *  @tparam B the element type of the returned list, a supertype of `A`
    *  @param prefix the elements to prepend
@@ -233,9 +235,10 @@ sealed abstract class List[+A]
 
   /** Returns the elements of this list from `from` up to but not including `until`.
    *
-   *  Both indices are clamped to the bounds of this list, so no exception is thrown for
-   *  out-of-range values; the elements before `from` are dropped without copying and
-   *  the ones kept are copied.
+   *  A negative `from` is treated as 0 and an `until` past the end is harmless, so no
+   *  exception is thrown for out-of-range values. The elements before `from` are
+   *  dropped without copying. The ones kept are copied unless `until` reaches the end
+   *  of this list, in which case the suffix is shared rather than copied.
    *
    *  @param from the index of the first element of the slice
    *  @param until the index one past the last element of the slice

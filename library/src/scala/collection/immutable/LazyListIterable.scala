@@ -362,7 +362,9 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
       evaluated
     }
 
-  /** The factory used to build lazy lists, the [[LazyListIterable$ `LazyListIterable`]] companion object. */
+  /** Returns the factory used to build lazy lists, the
+   *  [[LazyListIterable$ `LazyListIterable`]] companion object.
+   */
   override def iterableFactory: IterableFactory[LazyListIterable] = LazyListIterable
 
   // NOTE: `evaluated; this eq Empty` would be wrong. Deserialization of `Empty` creates a new

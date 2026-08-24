@@ -576,7 +576,8 @@ object Stream extends SeqFactory[Stream] {
    *
    *  @tparam A the element type of the stream
    *  @param head the first element of this stream
-   *  @param tl the expression producing the rest of this stream, evaluated at most once
+   *  @param tl the expression producing the rest of this stream, evaluated once if it
+   *            returns normally and retried on the next access if it throws
    */
   @SerialVersionUID(3L)
   final class Cons[A](override val head: A, tl: => Stream[A]) extends Stream[A] {
@@ -590,7 +591,8 @@ object Stream extends SeqFactory[Stream] {
      *  and returning the remembered result on every call after that.
      *
      *  The evaluation is synchronized, so that concurrent callers agree on one tail and
-     *  the expression is evaluated once.
+     *  the expression is evaluated once. Nothing is remembered if it throws, so the next
+     *  access evaluates it again.
      */
     override def tail: Stream[A] = {
       if (!tailDefined)
@@ -633,7 +635,8 @@ object Stream extends SeqFactory[Stream] {
    *  operand of a cons is not evaluated when the cons cell is built.
    *
    *  @tparam A the element type of the stream
-   *  @param l the stream to defer, evaluated only when the operator's result asks for its tail
+   *  @param l the stream to defer, evaluated when the operator's result asks for its tail,
+   *           or at once by `#:::` when its left operand turns out to be empty
    */
   implicit def toDeferrer[A](l: => Stream[A]): Deferrer[A] = new Deferrer[A](() => l)
 
@@ -733,7 +736,8 @@ object Stream extends SeqFactory[Stream] {
     def flatMap[B](f: A => IterableOnce[B]): Stream[B] = filtered.flatMap(f)
     /** Applies `f` to each element that satisfies the filter's predicate.
      *
-     *  This computes all elements of the underlying stream.
+     *  This computes every element of the underlying stream, so it does not terminate on
+     *  an infinite stream, and stops early only if the filter's predicate or `f` throws.
      *
      *  @tparam U the result type of `f`, used only for its side effects
      *  @param f the function to apply to each retained element

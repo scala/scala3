@@ -115,8 +115,10 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
    *  @tparam B the element type of `that`
    *  @param that the collection to test for
    *  @param offset the index of this wrapped string at which to start the comparison
-   *  @return `true` if `that` is a prefix of this wrapped string from `offset` onwards,
-   *          `false` in particular if `offset` is negative or past the end
+   *  @return `true` if `that` is a prefix of this wrapped string from `offset` onwards;
+   *          on the delegated path a negative or past-the-end `offset` gives `false`,
+   *          while the inherited implementation gives `true` for an empty `that`
+   *          whatever `offset` is
    */
   override def startsWith[B >: Char](that: IterableOnce[B]^, offset: Int = 0): Boolean =
     that match {
@@ -144,8 +146,9 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
    *  there is none.
    *
    *  When `elem` is a `Char` the search is delegated to `String.indexOf`, which treats
-   *  a negative `from` as `0`; any other value can never occur in this wrapped string
-   *  and is looked for by the inherited implementation.
+   *  a negative `from` as `0`. Any other value is looked for by the inherited
+   *  implementation, which compares with `==`, so a value whose `equals` accepts a
+   *  `Char` can still be found.
    *
    *  @tparam B the type of `elem`
    *  @param elem the element to look for
@@ -161,8 +164,9 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
    *  there is none.
    *
    *  When `elem` is a `Char` the search is delegated to `String.lastIndexOf`, which
-   *  finds nothing for a negative `end`; any other value can never occur in this
-   *  wrapped string and is looked for by the inherited implementation.
+   *  finds nothing for a negative `end`. Any other value is looked for by the inherited
+   *  implementation, which compares with `==`, so a value whose `equals` accepts a
+   *  `Char` can still be found.
    *
    *  @tparam B the type of `elem`
    *  @param elem the element to look for
@@ -184,11 +188,17 @@ final class WrappedString(private val self: String) extends AbstractSeq[Char] wi
    *  by a single `String.getChars`; otherwise the inherited implementation copies the
    *  characters one by one, boxing them.
    *
+   *  A negative `start` is not rejected before that count is computed: the whole length
+   *  of `xs` is taken as the capacity, and the copy that follows a positive count then
+   *  throws rather than writing from a clamped index.
+   *
    *  @tparam B the element type of the destination array, a supertype of `Char`
    *  @param xs the destination array
    *  @param start the index of `xs` at which to write the first character
    *  @param len the maximum number of characters to copy
    *  @return the number of characters actually copied
+   *  @throws IndexOutOfBoundsException if `start` is negative and at least one
+   *          character would be copied
    */
   override def copyToArray[B >: Char](xs: Array[B], start: Int, len: Int): Int =
     (xs: Any) match {

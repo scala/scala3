@@ -45,10 +45,11 @@ sealed abstract class BitSet
    */
   override def unsorted: Set[Int] = this
 
-  /** Builds a new immutable bitset containing the elements of the given collection.
+  /** Returns an immutable bitset containing the elements of the given collection.
    *
    *  @param coll the collection of non-negative integers to include
-   *  @return a new immutable bitset containing the elements of `coll`
+   *  @return an immutable bitset containing the elements of `coll`, which is `coll`
+   *          itself if it is already an immutable bitset
    */
   override protected def fromSpecific(coll: IterableOnce[Int]^): BitSet = bitSetFactory.fromSpecific(coll)
   /** Returns a new builder that accumulates `Int` elements into an immutable bitset. */
@@ -59,7 +60,11 @@ sealed abstract class BitSet
   /** The factory used to build immutable bitsets, the [[BitSet$ `BitSet`]] companion object. */
   def bitSetFactory: BitSet.type = BitSet
 
-  /** Creates an immutable bitset backed directly by the given array, without copying.
+  /** Returns an immutable bitset holding the bits of the given array, without copying it.
+   *
+   *  Only a result of more than two words keeps `elems` as its backing array; the
+   *  shorter representations store their words in fields instead, and an all-zero array
+   *  yields the shared empty bitset.
    *
    *  @param elems the array of `Long` words representing the bits; the caller must not
    *               modify the array after this call
@@ -213,8 +218,9 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   /** Returns a new builder that accumulates `Int` elements into an immutable bitset.
    *
-   *  The elements are collected in a mutable bitset, whose word array becomes the
-   *  backing array of the result without being copied.
+   *  The elements are collected in a mutable bitset, whose word array is handed to the
+   *  result without being copied. It becomes the result's backing array only when it
+   *  holds more than two words; a shorter result stores its words in fields instead.
    *
    *  @return a builder for immutable bitsets
    */

@@ -36,8 +36,9 @@ transparent trait StrictOptimizedSeqOps[+A, +CC[B] <: caps.Pure, +C]
    *
    *  Fills a strict builder in a single traversal, keeping the first of each
    *  group of elements on which `f` agrees. Since this sequence is immutable it
-   *  can be returned as is when it has at most one element, or when no
-   *  duplicate was found, in which case no copy is built.
+   *  can be returned as is when it has at most one element, or when the traversal
+   *  found no duplicate; in the latter case the builder was still filled, and its
+   *  result is discarded.
    *
    *  @tparam B the type of the elements after being transformed by `f`
    *  @param f the transforming function whose result is used to determine the
@@ -108,7 +109,8 @@ transparent trait StrictOptimizedSeqOps[+A, +CC[B] <: caps.Pure, +C]
    *  @param replaced the number of elements to drop from this sequence at `from`
    *  @return a new sequence consisting of the elements of this sequence before
    *          `from`, then the elements of `other`, then the elements of this
-   *          sequence from `from + replaced` onwards
+   *          sequence from `from + replaced` onwards, where a negative `from`
+   *          counts as 0 and a negative `replaced` as 0
    */
   override def patch[B >: A](from: Int, other: IterableOnce[B]^, replaced: Int): CC[B] = {
     val b = iterableFactory.newBuilder[B]

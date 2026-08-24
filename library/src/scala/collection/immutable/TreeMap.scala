@@ -559,7 +559,10 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
    *
    *  If `obj` is a `TreeMap` with the same ordering, this is decided by an efficient structural
    *  comparison in which keys are compared with the ordering and values with `==`; otherwise
-   *  falls back to the general map equality, which compares keys using `equals` and `hashCode`.
+   *  falls back to the general map equality, which tests the sizes and then looks each key of
+   *  this map up in `obj`. That lookup uses whatever notion of key equality `obj` implements,
+   *  so comparing against a `TreeMap` with a different ordering compares by that ordering, and
+   *  the result need not be symmetric.
    *
    *  @param obj the object to compare with
    */

@@ -130,9 +130,13 @@ private[collection] abstract class Node[T <: Node[T]] {
   def getHash(index: Int): Int
 
   /** The sum of the improved hash codes of all elements (or keys, for maps) in the
-   *  subtree rooted at this node, following the `java.util.Set` hash-code contract.
-   *  Cached so parents can maintain their own sum incrementally and equality checks
-   *  can fail fast without traversal.
+   *  subtree rooted at this node.
+   *
+   *  The name recalls the `java.util.Set` hash-code contract, which also sums over the
+   *  elements, but this sum is over improved hashes rather than the elements' own hash
+   *  codes, so it is not that contract's value. It exists so parents can maintain their
+   *  own sum incrementally and equality checks can fail fast without traversal;
+   *  hash-collision nodes compute it on demand rather than storing it.
    */
   def cachedJavaKeySetHashCode: Int
 

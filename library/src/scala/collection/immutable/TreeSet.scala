@@ -419,7 +419,10 @@ final class TreeSet[A] private[immutable] (private[immutable] val tree: RB.Tree[
    *
    *  If `obj` is a `TreeSet` with the same ordering, this is decided by an efficient structural
    *  comparison in which elements are compared with the ordering; otherwise falls back to the
-   *  general set equality, which compares elements using `equals` and `hashCode`.
+   *  general set equality, which tests the sizes and then looks each element of this set up in
+   *  `obj`. That lookup uses whatever notion of equality `obj` implements, so comparing against
+   *  a `TreeSet` with a different ordering compares by that ordering, and the result need not
+   *  be symmetric.
    *
    *  @param obj the object to compare with
    */
