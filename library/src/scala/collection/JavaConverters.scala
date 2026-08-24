@@ -299,6 +299,10 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *  visible through the other. A map that was itself obtained by calling `asJava` on a Scala
    *  mutable `Map` is unwrapped, returning that original `Map`.
    *
+   *  The wrapper adds no locking of its own. If `m` is a synchronized map, only the
+   *  operations that the underlying map performs atomically remain atomic through the
+   *  wrapper; the caller must synchronize the others.
+   *
    *  @tparam A the type of the map keys
    *  @tparam B the type of the map values
    *  @param m the Java `Map` to convert
@@ -340,6 +344,10 @@ object JavaConverters extends AsJavaConverters with AsScalaConverters {
    *  The conversion returns a wrapper, not a copy: changes made through either interface are
    *  visible through the other. This conversion is one-way; there is no corresponding `asJava`
    *  conversion to `Properties`, and the result is always a new wrapper.
+   *
+   *  `Properties` extends `Hashtable[Object, Object]` and can hold entries whose key or
+   *  value is not a `String`. The wrapper casts rather than checks, so reading such an
+   *  entry through the returned map throws a `ClassCastException`.
    *
    *  @param p the Java `Properties` to convert
    *  @return a Scala mutable `Map[String, String]` view of the argument

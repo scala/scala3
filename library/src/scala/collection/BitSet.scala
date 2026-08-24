@@ -40,7 +40,8 @@ trait BitSet extends SortedSet[Int] with BitSetOps[BitSet] { self: BitSet =>
    *  collection of elements, delegating to `bitSetFactory`.
    *
    *  @param coll the collection of elements to include; all must be non-negative
-   *  @return a new bitset containing the elements of `coll`
+   *  @return a bitset containing the elements of `coll`; the immutable factory returns
+   *          `coll` itself when it is already an immutable bitset
    *  @throws IllegalArgumentException if `coll` contains a negative element
    */
   override protected def fromSpecific(coll: IterableOnce[Int]^): BitSet = bitSetFactory.fromSpecific(coll)

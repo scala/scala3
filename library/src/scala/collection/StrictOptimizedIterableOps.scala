@@ -31,8 +31,8 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     with IterableOps[A, CC, C] {
 
   // Optimized, push-based version of `partition`
-  /** A pair of, first, all elements that satisfy predicate `p` and, second,
-   *  all elements that do not.
+  /** Returns a pair holding, first, all elements that satisfy predicate `p` and,
+   *  second, all elements that do not.
    *
    *  Overrides the default implementation to build both results with strict
    *  builders in a single traversal of this collection, instead of one
@@ -299,8 +299,9 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     b.result()
   }
 
-  /** Zips this collection with its indices, filling a strict builder in a
-   *  single traversal instead of going through a view.
+  /** Returns a collection of pairs of each element of this collection with its index,
+   *  counting from 0, filling a strict builder in a single traversal instead of going
+   *  through a view.
    */
   override def zipWithIndex: CC[(A @uncheckedVariance, Int)] = {
     val b = iterableFactory.newBuilder[(A, Int)]

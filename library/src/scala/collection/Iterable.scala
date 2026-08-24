@@ -177,7 +177,9 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    */
   protected def coll: C^{this}
 
-  /** Returns this collection itself, as a `C`. Alias for [[coll]]. */
+  /** Returns the collection this operates on, as a `C`. Alias for [[coll]], which for an
+   *  adapter such as `IsSeq[String]` is the represented collection rather than the adapter.
+   */
   @deprecated("Use coll instead of repr in a collection implementation, use the collection value itself from the outside", "2.13.0")
   final def repr: C^{this} = coll
 
@@ -199,7 +201,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *       implementations of operations where we use a `View[A]`), it is safe.
    *
    *  @param coll the source collection to convert
-   *  @return a new collection of type `C` containing the elements of `coll`
+   *  @return a collection of type `C` containing the elements of `coll`
    */
   protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): C^{coll}
 
@@ -551,7 +553,7 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
   /** Selects all elements except the longest prefix that satisfies a predicate.
    *
    *  The matching prefix starts with the first element of this $coll, and the element
-   *  following the prefix is the first element that does not satisfy the predicate. The
+   *  following the prefix, if any, is the first element that does not satisfy the predicate. The
    *  matching prefix may be empty, so that this method returns the entire $coll.
    *  $orderDependent
    *
@@ -634,7 +636,8 @@ transparent trait IterableOps[+A, +CC[_], +C] extends Any with IterableOnce[A] w
    *  @param from the lowest index to include from this $coll
    *  @param until the lowest index to EXCLUDE from this $coll
    *  @return a $coll containing the elements greater than or equal to index `from`
-   *          extending up to (but not including) index `until` of this $coll
+   *          extending up to (but not including) index `until` of this $coll; a negative
+   *          `from` is treated as `0`, and a non-positive `until` gives an empty result
    */
   def slice(from: Int, until: Int): C^{this} =
     fromSpecific(new View.Drop(new View.Take(this, until), from))
@@ -1106,7 +1109,7 @@ object IterableOps {
      *
      *  @tparam B the element type of the returned collection
      *  @param f the function to apply to each element
-     *  @return a new collection resulting from applying `f` to each element of `self` that
+     *  @return a collection resulting from applying `f` to each element of `self` that
      *          satisfies the predicate `p` and collecting the results
      */
     def map[B](f: A => B): CC[B]^{this, f} =
@@ -1117,7 +1120,7 @@ object IterableOps {
      *
      *  @tparam B the element type of the returned collection
      *  @param f the function to apply to each element
-     *  @return a new collection resulting from applying `f` to each element of `self` that
+     *  @return a collection resulting from applying `f` to each element of `self` that
      *          satisfies the predicate `p` and concatenating the results
      */
     def flatMap[B](f: A => IterableOnce[B]^): CC[B]^{this, f} =
@@ -1195,7 +1198,7 @@ trait IterableFactoryDefaults[+A, +CC[x] <: IterableOps[x, CC, CC[x]]] extends I
    *  collection, by delegating to [[iterableFactory]].
    *
    *  @param coll the source collection to convert
-   *  @return a new collection of type `CC[A]` containing the elements of `coll`
+   *  @return a collection of type `CC[A]` containing the elements of `coll`
    */
   protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): CC[A @uncheckedVariance]^{coll} = iterableFactory.from(coll)
   /** Returns a new builder for `CC[A]`, obtained from [[iterableFactory]]. */
@@ -1229,7 +1232,7 @@ trait EvidenceIterableFactoryDefaults[+A, +CC[x] <: IterableOps[x, CC, CC[x]], E
    *  [[iterableEvidence]].
    *
    *  @param coll the source collection to convert
-   *  @return a new collection of type `CC[A]` containing the elements of `coll`
+   *  @return a collection of type `CC[A]` containing the elements of `coll`
    */
   override protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): CC[A @uncheckedVariance]^{coll} = evidenceIterableFactory.from(coll)
   /** Returns a new builder for `CC[A]`, obtained from [[evidenceIterableFactory]] with the
@@ -1266,7 +1269,7 @@ trait SortedSetFactoryDefaults[+A,
    *  collection, by delegating to `sortedIterableFactory` with this set's `ordering`.
    *
    *  @param coll the source collection to convert
-   *  @return a new sorted set of type `CC[A]` containing the elements of `coll`
+   *  @return a sorted set of type `CC[A]` containing the elements of `coll`
    */
   override protected def fromSpecific(coll: IterableOnce[A @uncheckedVariance]^): CC[A @uncheckedVariance]    = sortedIterableFactory.from(coll)(using ordering)
   /** Returns a new builder for `CC[A]`, obtained from `sortedIterableFactory` with this set's `ordering`. */
@@ -1309,7 +1312,7 @@ trait MapFactoryDefaults[K, +V,
    *  collection, by delegating to `mapFactory`.
    *
    *  @param coll the source collection of key-value pairs to convert
-   *  @return a new map of type `CC[K, V]` containing the key-value pairs of `coll`
+   *  @return a map of type `CC[K, V]` containing the key-value pairs of `coll`
    */
   override protected def fromSpecific(coll: IterableOnce[(K, V @uncheckedVariance)]^): CC[K, V @uncheckedVariance]^{coll} = mapFactory.from(coll)
   /** Returns a new builder for `CC[K, V]`, obtained from `mapFactory`. */
@@ -1361,7 +1364,7 @@ trait SortedMapFactoryDefaults[K, +V,
    *  source collection, by delegating to `sortedMapFactory` with this map's `ordering`.
    *
    *  @param coll the source collection of key-value pairs to convert
-   *  @return a new sorted map of type `CC[K, V]` containing the key-value pairs of `coll`
+   *  @return a sorted map of type `CC[K, V]` containing the key-value pairs of `coll`
    */
   override protected def fromSpecific(coll: IterableOnce[(K, V @uncheckedVariance)]^): CC[K, V @uncheckedVariance] = sortedMapFactory.from(coll)(using ordering)
   /** Returns a new builder for `CC[K, V]`, obtained from `sortedMapFactory` with this map's `ordering`. */

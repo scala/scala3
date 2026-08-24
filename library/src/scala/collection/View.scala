@@ -203,8 +203,9 @@ object View extends IterableFactory[View] {
      *  (how many elements pass the filter cannot be known without evaluating `p`).
      */
     override def knownSize: Int = if (underlying.knownSize == 0) 0 else super.knownSize
-    /** Returns `true` if no element passes the filter, evaluating `p` on the underlying
-     *  elements until a first match is found.
+    /** Returns `true` if no underlying element passes the filter, that is, if none
+     *  satisfies `p`, or, when `isFlipped` is set, if all of them do. `p` is evaluated
+     *  on the underlying elements only until a first match is found.
      */
     override def isEmpty: Boolean = iterator.isEmpty
   }
@@ -345,10 +346,12 @@ object View extends IterableFactory[View] {
   /** A view that drops trailing elements of the underlying collection. */
   @SerialVersionUID(3L)
   class DropRight[A](underlying: SomeIterableOps[A]^, n: Int) extends AbstractView[A] {
-    /** Returns an iterator over the underlying elements except the last `n`.
+    /** Returns an iterator over the underlying elements except the last `n`, or over
+     *  all of them if `n` is not positive.
      *
-     *  If the underlying size is not known, the iterator maintains an `n`-element
-     *  lookahead buffer, so it reads `n` elements ahead of the one it produces.
+     *  If `n` is positive and the underlying size is not known, the iterator maintains
+     *  an `n`-element lookahead buffer, so it reads `n` elements ahead of the one it
+     *  produces.
      */
     def iterator = dropRightIterator(underlying.iterator, n)
     /** The number of elements to drop, clamped to be non-negative. */
@@ -361,7 +364,7 @@ object View extends IterableFactory[View] {
       if (size >= 0) (size - normN) max 0 else -1
     }
     /** Returns `true` if this view has no elements, using `knownSize` when available and
-     *  otherwise iterating, which reads up to `n + 1` underlying elements.
+     *  otherwise asking the iterator, which reads up to `normN + 1` underlying elements.
      */
     override def isEmpty: Boolean =
       if(knownSize >= 0) knownSize == 0
@@ -415,10 +418,11 @@ object View extends IterableFactory[View] {
   @SerialVersionUID(3L)
   class TakeRight[+A](underlying: SomeIterableOps[A]^, n: Int) extends AbstractView[A] {
     /** Returns an iterator over the last `n` underlying elements, or all of them
-     *  if there are fewer than `n`.
+     *  if there are fewer than `n`. The iterator is empty if `n` is not positive, and
+     *  is the underlying iterator itself if `n` is `Int.MaxValue`.
      *
-     *  If the underlying size is not known, the first query of the iterator consumes
-     *  the entire underlying iterator, buffering at most `n` elements.
+     *  Otherwise, if the underlying size is not known, the first query of the iterator
+     *  consumes the entire underlying iterator, buffering at most `n` elements.
      */
     def iterator = takeRightIterator(underlying.iterator, n)
     /** The number of elements to take, clamped to be non-negative. */
@@ -431,7 +435,8 @@ object View extends IterableFactory[View] {
       if (size >= 0) size min normN else -1
     }
     /** Returns `true` if this view has no elements, using `knownSize` when available and
-     *  otherwise iterating, which traverses the whole underlying collection.
+     *  otherwise asking the iterator, which traverses the whole underlying collection
+     *  unless `normN` is 0 or `n` is `Int.MaxValue`.
      */
     override def isEmpty: Boolean =
       if(knownSize >= 0) knownSize == 0
@@ -674,6 +679,9 @@ object View extends IterableFactory[View] {
 
     /** Returns an iterator over the underlying elements in which, starting at position
      *  `from`, `replaced` elements are dropped and the elements of `other` are inserted.
+     *
+     *  A negative `from` is treated as 0, a `from` beyond the end of the underlying
+     *  collection appends the patch, and a non-positive `replaced` drops nothing.
      */
     def iterator: Iterator[A]^{this} = underlying.iterator.patch(from, _other.iterator, replaced)
     /** Returns 0 if both the underlying collection and the patch are known to be empty,

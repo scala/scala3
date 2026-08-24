@@ -58,7 +58,8 @@ private[scala] object StringParsers {
   private final def isDigit(c: Char): Boolean = c >= '0' && c <= '9'
 
   //bool
-  /** Parses the string as a `Boolean`, without throwing.
+  /** Parses the string as a `Boolean`, returning `None` rather than throwing when the
+   *  text is not in the expected format.
    *
    *  @param from the string to parse
    *  @return `Some(true)` if `from` equals `"true"` and `Some(false)` if it equals
@@ -71,7 +72,8 @@ private[scala] object StringParsers {
     else None
 
   //integral types
-  /** Parses the string as a signed decimal `Byte`, without throwing.
+  /** Parses the string as a signed decimal `Byte`, returning `None` rather than throwing when the
+   *  text is not in the expected format.
    *
    *  The string must consist of an optional sign (`+` or `-`) followed by one or more
    *  digit characters (as recognized by `java.lang.Character.digit`), with no
@@ -100,7 +102,8 @@ private[scala] object StringParsers {
     }
   }
 
-  /** Parses the string as a signed decimal `Short`, without throwing.
+  /** Parses the string as a signed decimal `Short`, returning `None` rather than throwing when the
+   *  text is not in the expected format.
    *
    *  The string must consist of an optional sign (`+` or `-`) followed by one or more
    *  digit characters (as recognized by `java.lang.Character.digit`), with no
@@ -129,7 +132,8 @@ private[scala] object StringParsers {
     }
   }
 
-  /** Parses the string as a signed decimal `Int`, without throwing.
+  /** Parses the string as a signed decimal `Int`, returning `None` rather than throwing when the
+   *  text is not in the expected format.
    *
    *  The string must consist of an optional sign (`+` or `-`) followed by one or more
    *  digit characters (as recognized by `java.lang.Character.digit`), with no
@@ -173,7 +177,8 @@ private[scala] object StringParsers {
     }
   }
     
-  /** Parses the string as a signed decimal `Long`, without throwing.
+  /** Parses the string as a signed decimal `Long`, returning `None` rather than throwing when the
+   *  text is not in the expected format.
    *
    *  The string must consist of an optional sign (`+` or `-`) followed by one or more
    *  digit characters (as recognized by `java.lang.Character.digit`), with no
@@ -370,7 +375,8 @@ private[scala] object StringParsers {
     }
   }
     
-  /** Parses the string as a `Float`, without throwing.
+  /** Parses the string as a `Float`, returning `None` rather than throwing when the
+   *  text is not in the expected format.
    *
    *  Unlike the integral parsers, leading and trailing whitespace is allowed.
    *
@@ -384,7 +390,8 @@ private[scala] object StringParsers {
     if (checkFloatFormat(from)) Some(java.lang.Float.parseFloat(from))
     else None
 
-  /** Parses the string as a `Double`, without throwing.
+  /** Parses the string as a `Double`, returning `None` rather than throwing when the
+   *  text is not in the expected format.
    *
    *  Unlike the integral parsers, leading and trailing whitespace is allowed.
    *

@@ -227,13 +227,13 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
    *  The result is built from an indexed view of the selected elements, so the
    *  skipped prefix is not iterated over.
    *
-   *  @param from the index of the first element to include, clamped to the
-   *              valid range
-   *  @param until the index following the last element to include, clamped to
-   *               the valid range
+   *  @param from the index of the first element to include; a negative value is
+   *              treated as 0
+   *  @param until the index following the last element to include; the value is
+   *               clamped to lie between 0 and the length of this sequence
    *  @return a collection containing the elements of this sequence at indices
    *          `from` up to but not including `until`, or an empty collection if
-   *          `until <= from`
+   *          `until` does not exceed `from`
    */
   override def slice(from: Int, until: Int): C^{this} = fromSpecific(new IndexedSeqView.Slice(this, from, until))
 
@@ -345,18 +345,20 @@ transparent trait IndexedSeqOps[+A, +CC[_], +C] extends Any with SeqOps[A, CC, C
    *  using binary search.
    *
    *  The sequence should be sorted with the same `Ordering` before calling;
-   *  otherwise, the results are undefined. The interval is clamped to the
-   *  valid index range of this sequence.
+   *  otherwise, the results are undefined.
    *
    *  @tparam B the element type used for searching and ordering (a supertype of `A`)
    *  @param elem the element to find
-   *  @param from the index where the search starts (treated as `0` if negative)
-   *  @param to the index following where the search ends (clamped to `length`)
+   *  @param from the index where the search starts (treated as `0` if negative,
+   *              but never reduced when it exceeds the length of this sequence)
+   *  @param to the index following where the search ends (reduced to `length` if
+   *            it is greater)
    *  @param ord the ordering to be used to compare elements
    *  @return a `Found` value containing an index within the interval at which
    *          `elem` appears (not necessarily the first one), or the
-   *          `InsertionPoint` where `elem` would be inserted; if the clamped
-   *          interval is empty, an `InsertionPoint` at the clamped `from`
+   *          `InsertionPoint` where `elem` would be inserted; if the interval is
+   *          empty, an `InsertionPoint` at `from` (at 0 if `from` is negative),
+   *          which may lie beyond the end of this sequence
    */
   override def search[B >: A](elem: B, from: Int, to: Int)(implicit ord: Ordering[B]): SearchResult =
     binarySearch(elem, from, to)(using ord)

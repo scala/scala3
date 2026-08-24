@@ -105,8 +105,10 @@ trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
  *  extension methods on [[IterableOnce]], each implemented by delegating to the
  *  corresponding operation on `it.iterator`.
  *
- *  Every operation traverses the wrapped collection; if it can be traversed only once,
- *  the operation consumes it.
+ *  A strict operation traverses the wrapped collection, and consumes it if it can be
+ *  traversed only once. The lazy ones, such as `map`, `flatMap`, `filter` and
+ *  `withFilter`, build an iterator without traversing anything until it is consumed, and
+ *  `toIterator` simply hands back the wrapped iterator.
  *
  *  @tparam A the element type of the wrapped collection
  *  @param it the wrapped collection

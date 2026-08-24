@@ -90,7 +90,8 @@ trait Set[A]
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix: String = "Set"
 
-  /** Returns a string representation of this set, of the form `Set(elem1, elem2, ...)`.
+  /** Returns a string representation of this set, of the form `Set(elem1, elem2, ...)`,
+   *  with the prefix taken from `stringPrefix`, so a `SortedSet` names itself instead.
    *
    *  Reinstates `Iterable`'s `toString`, which the `toString` inherited through `Function1`
    *  would otherwise replace.

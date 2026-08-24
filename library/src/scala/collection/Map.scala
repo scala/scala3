@@ -108,7 +108,9 @@ trait Map[K, +V]
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix: String = "Map"
 
-  /** Returns a string representation of this map, of the form `Map(k1 -> v1, k2 -> v2, ...)`.
+  /** Returns a string representation of this map, of the form `Map(k1 -> v1, k2 -> v2, ...)`,
+   *  with the prefix taken from `stringPrefix`, so a `SeqMap` or `SortedMap` names itself
+   *  instead.
    *
    *  Reinstates `Iterable`'s `toString`, which the `toString` inherited through `Function1`
    *  would otherwise replace.

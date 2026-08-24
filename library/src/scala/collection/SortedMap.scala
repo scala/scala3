@@ -285,8 +285,10 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
   def collect[K2, V2](pf: PartialFunction[(K, V), (K2, V2)]^)(implicit @implicitNotFound(SortedMapOps.ordMsg) ordering: Ordering[K2]): CC[K2, V2] =
     sortedMapFactory.from(new View.Collect(this, pf))
 
-  /** Returns a new $coll containing all elements of this $coll followed by all elements of
-   *  `suffix`, with keys sorted by this $coll's ordering.
+  /** Returns a new $coll containing the bindings of this $coll and those of `suffix`, with
+   *  keys sorted by this $coll's ordering. The result is built through the sorted map
+   *  factory, so where two keys compare equal under that ordering only the later binding
+   *  survives.
    *
    *  @tparam V2 the value type of the returned sorted map, a supertype of `V`
    *  @param suffix the collection of key-value pairs to append

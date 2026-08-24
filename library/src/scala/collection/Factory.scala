@@ -459,8 +459,9 @@ object SeqFactory {
    *  to the pattern matcher.
    *
    *  This is a name-based extractor result: the pattern matcher calls `isEmpty`,
-   *  `get`, `lengthCompare`, `apply`, `drop` and `toSeq` as needed, without
-   *  allocating an intermediate `Option` or collection.
+   *  `get`, `lengthCompare`, `apply`, `drop` and `toSeq` as needed. Being a value
+   *  class, the wrapper itself costs no allocation and no intermediate `Option` is
+   *  built; a vararg pattern still allocates through `drop` and `toSeq`.
    *
    *  @tparam A the type of the sequence's elements
    *  @param c the matched sequence

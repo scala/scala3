@@ -82,6 +82,9 @@ object StepperShape extends StepperShapeLowPriority1 {
   }
   /** The `StepperShape` for `java.lang.Integer` elements, selecting [[IntStepper]]; the same
    *  instance as [[intStepperShape]].
+   *
+   *  The stepper it selects unboxes each element, so a `null` element throws a
+   *  `NullPointerException` when it is stepped over.
    */
   implicit val jIntegerStepperShape: StepperShape[jl.Integer, IntStepper] = intStepperShape.asInstanceOf[StepperShape[jl.Integer, IntStepper]]
 
@@ -93,6 +96,9 @@ object StepperShape extends StepperShapeLowPriority1 {
   }
   /** The `StepperShape` for `java.lang.Long` elements, selecting [[LongStepper]]; the same
    *  instance as [[longStepperShape]].
+   *
+   *  The stepper it selects unboxes each element, so a `null` element throws a
+   *  `NullPointerException` when it is stepped over.
    */
   implicit val jLongStepperShape: StepperShape[jl.Long, LongStepper] = longStepperShape.asInstanceOf[StepperShape[jl.Long, LongStepper]]
 
@@ -104,6 +110,9 @@ object StepperShape extends StepperShapeLowPriority1 {
   }
   /** The `StepperShape` for `java.lang.Double` elements, selecting [[DoubleStepper]]; the same
    *  instance as [[doubleStepperShape]].
+   *
+   *  The stepper it selects unboxes each element, so a `null` element throws a
+   *  `NullPointerException` when it is stepped over.
    */
   implicit val jDoubleStepperShape: StepperShape[jl.Double, DoubleStepper] = doubleStepperShape.asInstanceOf[StepperShape[jl.Double, DoubleStepper]]
 
@@ -117,6 +126,9 @@ object StepperShape extends StepperShapeLowPriority1 {
   }
   /** The `StepperShape` for `java.lang.Byte` elements, selecting [[IntStepper]]; the same
    *  instance as [[byteStepperShape]].
+   *
+   *  The stepper it selects unboxes each element, so a `null` element throws a
+   *  `NullPointerException` when it is stepped over.
    */
   implicit val jByteStepperShape: StepperShape[jl.Byte, IntStepper] = byteStepperShape.asInstanceOf[StepperShape[jl.Byte, IntStepper]]
 
@@ -130,6 +142,9 @@ object StepperShape extends StepperShapeLowPriority1 {
   }
   /** The `StepperShape` for `java.lang.Short` elements, selecting [[IntStepper]]; the same
    *  instance as [[shortStepperShape]].
+   *
+   *  The stepper it selects unboxes each element, so a `null` element throws a
+   *  `NullPointerException` when it is stepped over.
    */
   implicit val jShortStepperShape: StepperShape[jl.Short, IntStepper] = shortStepperShape.asInstanceOf[StepperShape[jl.Short, IntStepper]]
 
@@ -143,6 +158,9 @@ object StepperShape extends StepperShapeLowPriority1 {
   }
   /** The `StepperShape` for `java.lang.Character` elements, selecting [[IntStepper]]; the same
    *  instance as [[charStepperShape]].
+   *
+   *  The stepper it selects unboxes each element, so a `null` element throws a
+   *  `NullPointerException` when it is stepped over.
    */
   implicit val jCharacterStepperShape: StepperShape[jl.Character, IntStepper] = charStepperShape.asInstanceOf[StepperShape[jl.Character, IntStepper]]
 
@@ -156,6 +174,9 @@ object StepperShape extends StepperShapeLowPriority1 {
   }
   /** The `StepperShape` for `java.lang.Float` elements, selecting [[DoubleStepper]]; the same
    *  instance as [[floatStepperShape]].
+   *
+   *  The stepper it selects unboxes each element, so a `null` element throws a
+   *  `NullPointerException` when it is stepped over.
    */
   implicit val jFloatStepperShape: StepperShape[jl.Float, DoubleStepper] = floatStepperShape.asInstanceOf[StepperShape[jl.Float, DoubleStepper]]
 }

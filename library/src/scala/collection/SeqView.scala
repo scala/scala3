@@ -26,7 +26,10 @@ import scala.runtime.ScalaRunTime.nullForGC
  *
  *  As with all views, transformation operations are non strict: they return other views,
  *  and elements are evaluated only when the view is traversed or converted to a strict
- *  collection.
+ *  collection. The operations that must count from the end - `takeRight`, `dropRight`
+ *  and `sorted` - are an exception in one respect: each computes the length of this view
+ *  as the new view is created, though it still leaves the elements themselves
+ *  unevaluated.
  *
  *  @tparam A the element type of the view
  */
@@ -63,8 +66,9 @@ trait SeqView[+A] extends SeqOps[A, View, View[A]] with View[A] {
   /** Returns a view of the first `n` elements of this view, or of all elements if this
    *  view has fewer than `n`.
    *
-   *  @param n the number of elements to take
-   *  @return a view of at most `n` leading elements
+   *  @param n the number of elements to take; a negative value is treated as 0
+   *  @return a view of the `n` leading elements, of all of them if there are fewer
+   *          than `n`, or an empty view if `n` is not positive
    */
   override def take(n: Int): SeqView[A]^{this} = new SeqView.Take(this, n)
   /** Returns a view of the elements of this view except the first `n`.
@@ -78,8 +82,9 @@ trait SeqView[+A] extends SeqOps[A, View, View[A]] with View[A] {
    *
    *  Creating the returned view computes the size of this view immediately.
    *
-   *  @param n the number of elements to take
-   *  @return a view of at most `n` trailing elements
+   *  @param n the number of elements to take; a negative value is treated as 0
+   *  @return a view of the `n` trailing elements, of all of them if there are fewer
+   *          than `n`, or an empty view if `n` is not positive
    */
   override def takeRight(n: Int): SeqView[A]^{this} = new SeqView.TakeRight(this, n)
   /** Returns a view of the elements of this view except the last `n`.
@@ -340,10 +345,13 @@ object SeqView {
     @throws[IndexOutOfBoundsException]
     def apply(i: Int) = underlying.apply(i + normN)
     /** Returns a view that drops `n` more elements of the underlying sequence, fusing
-     *  this drop and the new one into a single `Drop` with the summed drop count.
+     *  this drop and the new one into a single `Drop` whose drop count is the sum of
+     *  the two, before that sum is clamped to be non-negative. A negative count on
+     *  either side therefore offsets the other rather than being ignored on its own.
      *
      *  @param n the number of additional elements to drop
-     *  @return a view of the underlying elements except the first `this.n + n`
+     *  @return a view of the underlying elements except the first `this.n + n`, or of
+     *          all of them if that sum is not positive
      */
     override def drop(n: Int): SeqView[A]^{this} = new Drop(underlying, this.n + n)
   }
@@ -435,7 +443,9 @@ object SeqView {
       override def to[C1](factory: Factory[A, C1]): C1 = _reversed.to(factory)
       /** Returns the enclosing sorted view: reversing this view twice restores it. */
       override def reverse: SeqView[A]^{this} = outer
-      /** Returns the enclosing sorted view, which holds these elements in reverse order. */
+      /** Returns the enclosing sorted view, which holds these elements in the ordering
+       *  this view reverses.
+       */
       override protected def reversed: Iterable[A]^{outer} = outer
 
       /** Returns the enclosing sorted view if `ord1` equals the ordering it was sorted

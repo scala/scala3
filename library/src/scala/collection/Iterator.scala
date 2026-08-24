@@ -998,8 +998,9 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    *              part of the slice. If negative, the slice starts at zero.
    *  @param until the index of the first element following the slice. If
    *               negative, the slice is empty.
-   *  @return an iterator which advances this iterator past the first `from`
-   *          elements, and then produces at most `until - from` elements.
+   *  @return an iterator which advances this iterator past the first `from` elements,
+   *          treating a negative `from` as `0`, and then produces at most as many
+   *          elements as remain up to `until`.
    *  @note   Reuse: $consumesAndProducesIterator
    */
   def slice(from: Int, until: Int): Iterator[A]^{this} = sliceIterator(from, until max 0)
@@ -1698,6 +1699,7 @@ object Iterator extends IterableFactory[Iterator] {
      *
      *  @throws NoSuchElementException if `f` has returned `None`, i.e. the
      *          iterator is exhausted
+     *  @throws NullPointerException if `f` returns `null`, since this calls `hasNext`
      */
     override def next(): A = {
       if (hasNext) {

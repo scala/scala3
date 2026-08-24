@@ -376,8 +376,12 @@ object IndexedSeqView {
   }
 
   /** A view of the elements of `underlying` between index `from` (inclusive)
-   *  and index `until` (exclusive), with both bounds clamped to the valid
-   *  range.
+   *  and index `until` (exclusive).
+   *
+   *  A negative `from` is treated as 0 and `until` is clamped to lie between 0
+   *  and the length of `underlying`; the view is empty whenever the resulting
+   *  lower bound is not below the resulting upper bound, so a `from` beyond the
+   *  end of `underlying` yields an empty view rather than an error.
    *
    *  @tparam A the element type of the view
    *  @param underlying the indexed sequence being viewed

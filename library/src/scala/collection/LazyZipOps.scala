@@ -86,10 +86,6 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
    *            the source collection
    *  @return the concatenation of the collections returned by `f` for each
    *          pair of corresponding elements
-   *  @note NEEDS-HUMAN: the internal view's `isEmpty` is
-   *        `coll1.isEmpty || coll2.isEmpty`, which answers `false` when both
-   *        collections are non-empty but `f` returns only empty collections;
-   *        `LazyZip3` and `LazyZip4` use `iterator.isEmpty` instead.
    */
   def flatMap[B, C](f: (El1, El2) => Iterable[B]^)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
@@ -124,9 +120,6 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
    *  @param bf the builder factory that creates the result collection from
    *            the source collection
    *  @return a collection of the pairs of corresponding elements that satisfy `p`
-   *  @note NEEDS-HUMAN: the internal view's `isEmpty` is `iterator.hasNext`,
-   *        the inverse of the correct answer; `LazyZip3` and `LazyZip4` use
-   *        `iterator.isEmpty` for the same operation.
    */
   def filter[C](p: (El1, El2) => Boolean)(implicit bf: BuildFrom[C1, (El1, El2), C]): C^{this, p} = {
     bf.fromSpecific(src)(new AbstractView[(El1, El2)] {
