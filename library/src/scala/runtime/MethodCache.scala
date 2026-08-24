@@ -38,13 +38,35 @@ private[scala] sealed abstract class MethodCache {
    *  @return the cached `JMethod` compatible with `forReceiver`, or `null` if no such method is cached (in which case the caller should look up the method and `add` it)
    */
   def find(forReceiver: JClass[?]): JMethod | Null
+  /** Returns a cache that also resolves `forMethod` for receiver class
+   *  `forReceiver`, to replace this cache at the call point. This cache
+   *  itself is not mutated: implementations return either a new cache
+   *  extending this one or this cache unchanged.
+   *
+   *  @param forReceiver the runtime `Class` of the receiver object the method was looked up for
+   *  @param forMethod the method resolved for `forReceiver`
+   *  @return the cache to use for subsequent look-ups at this call point
+   */
   def add(forReceiver: JClass[?], forMethod: JMethod): MethodCache
 }
 
 private[scala] final class EmptyMethodCache extends MethodCache {
 
+  /** Returns `null`: the empty cache contains no methods, so the caller
+   *  should look up the method and `add` it.
+   *
+   *  @param forReceiver the runtime `Class` of the receiver object; never used
+   */
   def find(forReceiver: JClass[?]): JMethod | Null = null
 
+  /** Returns a new single-entry [[PolyMethodCache]] of complexity 1 that
+   *  resolves `forMethod` for receiver class `forReceiver`, with this empty
+   *  cache as the end of its chain.
+   *
+   *  @param forReceiver the runtime `Class` of the receiver object the method was looked up for
+   *  @param forMethod the method resolved for `forReceiver`
+   *  @return the new one-entry cache
+   */
   def add(forReceiver: JClass[?], forMethod: JMethod): MethodCache =
     new PolyMethodCache(this, forReceiver, forMethod, 1)
 
@@ -55,9 +77,24 @@ private[scala] final class MegaMethodCache(
   private val forParameterTypes: Array[JClass[?]]
 ) extends MethodCache {
 
+  /** Returns the public method of `forReceiver` with this cache's method
+   *  name and parameter types, resolved reflectively via `getMethod` on
+   *  every call: a mega-morphic cache stores no per-receiver entries.
+   *
+   *  @param forReceiver the runtime `Class` of the receiver object to resolve the method on
+   *  @return the resolved method; never `null`
+   *  @throws NoSuchMethodException if `forReceiver` has no public method
+   *          with this cache's name and parameter types
+   */
   def find(forReceiver: JClass[?]): JMethod | Null =
     forReceiver.getMethod(forName, forParameterTypes*)
 
+  /** Returns this cache unchanged: a mega-morphic cache resolves methods
+   *  reflectively in `find` and records no per-receiver entries.
+   *
+   *  @param forReceiver never used
+   *  @param forMethod never used
+   */
   def add(forReceiver: JClass[?], forMethod: JMethod): MethodCache = this
 
 }
@@ -82,11 +119,27 @@ private[scala] final class PolyMethodCache(
       case _                  => next find forReceiver
     }
 
+  /** Returns the cached method whose receiver class is reference-equal to
+   *  `forReceiver` anywhere in this chain, or `null` if no entry matches
+   *  (in which case the caller should look up the method and `add` it).
+   *
+   *  @param forReceiver the runtime `Class` of the receiver object to look up in the cache chain
+   */
   def find(forReceiver: JClass[?]): JMethod | Null = findInternal(forReceiver)
 
   // TODO: come up with a more realistic number
   final private val MaxComplexity = 160
 
+  /** Returns a new [[PolyMethodCache]] that prepends the entry
+   *  (`forReceiver`, `forMethod`) to this chain, unless this chain has
+   *  reached `MaxComplexity` entries, in which case the call point has
+   *  turned mega-morphic: returns a [[MegaMethodCache]] for the method's
+   *  name and parameter types, discarding the per-receiver entries.
+   *
+   *  @param forReceiver the runtime `Class` of the receiver object the method was looked up for
+   *  @param forMethod the method resolved for `forReceiver`
+   *  @return the extended chain, or a mega-morphic cache at the cutover
+   */
   def add(forReceiver: JClass[?], forMethod: JMethod): MethodCache =
     if (complexity < MaxComplexity)
       new PolyMethodCache(this, forReceiver, forMethod, complexity + 1)

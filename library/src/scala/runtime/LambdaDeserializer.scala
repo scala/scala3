@@ -51,6 +51,21 @@ object LambdaDeserializer {
     else result
   }
 
+  /** Deserializes a lambda like [[deserializeLambda]], but returns `null`
+   *  instead of throwing when the implementation method named by
+   *  `serialized` has no entry in `targetMethodMap`.
+   *
+   *  @param lookup      The factory for method handles. Must have access to the implementation method, the
+   *                    functional interface class, and `java.io.Serializable`.
+   *  @param cache       A cache used to avoid spinning up a class for each deserialization of a given lambda. May be `null`
+   *  @param targetMethodMap a mapping from lambda implementation method name and signature keys (as produced by
+   *                    `LambdaDeserialize.nameAndDescriptorKey`) to their `MethodHandle`s, used to look up the
+   *                    implementation method during deserialization. Must not be `null`
+   *  @param serialized  The lambda to deserialize. Note that this is typically created by the `readResolve`
+   *                    member of the anonymous class created by `LambdaMetaFactory`.
+   *  @return            an instance of the functional interface, or `null` if the implementation
+   *                    method is not found in `targetMethodMap`
+   */
   def deserializeLambdaOrNull(lookup: MethodHandles.Lookup, cache: java.util.Map[String, MethodHandle],
                               targetMethodMap: java.util.Map[String, MethodHandle], serialized: SerializedLambda): AnyRef | Null = {
     assert(targetMethodMap != null)
