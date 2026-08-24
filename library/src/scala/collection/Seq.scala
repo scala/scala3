@@ -1137,17 +1137,15 @@ object SeqOps {
       -1
     }
 
-    def clipped(): Int = {
-      def clipR(x: Int, y: Int) = if (x < y) x else -1
-      def clipL(x: Int, y: Int) = if (x > y) x else -1
-      if (forward) {
+    def clipped(): Int =
+      inline def clipR(x: Int, y: Int) = if x < y then x else -1
+      inline def clipL(x: Int, y: Int) = if x > y then x else -1
+      if forward then
         val x = S.indexOf(W(n0), m0)
-        if (m1 >= 0) clipR(x, m1) else x
-      }
+        if m1 >= 0 then clipR(x, m1) else x
       else
-        val x = if (m1 >= 0) S.lastIndexOf(W(n0), m1-1) else S.lastIndexOf(W(n0))
+        val x = if m1 >= 0 then S.lastIndexOf(W(n0), m1-1) else S.lastIndexOf(W(n0))
         clipL(x, m0-1)
-    }
 
     // We had better not index into S directly!
     // Also cope with m1 < 0 || n1 < 0 for collections of unknown size.
