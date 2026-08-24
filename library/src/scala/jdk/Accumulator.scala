@@ -139,8 +139,9 @@ abstract class Accumulator[@specialized(Double, Int, Long) A, +CC[X] <: mutable.
     if (sizeLong < Int.MaxValue) sizeLong.toInt
     else throw new IllegalArgumentException(s"Size too large for an Int: $sizeLong")
 
-  /** Returns the number of accumulated elements, or `-1` if this accumulator holds `Int.MaxValue`
-   *  or more elements and the size therefore does not fit in an `Int`.
+  /** Returns the number of accumulated elements, or `-1` once this accumulator holds
+   *  `Int.MaxValue` or more of them. The bound is exclusive, so `-1` is reported at exactly
+   *  `Int.MaxValue` elements even though that count is representable.
    */
   final override def knownSize: Int = if (sizeLong < Int.MaxValue) size else -1
 

@@ -551,11 +551,6 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
    *  Call this only while [[hasStep]] is `true`.
    *
    *  @throws NoSuchElementException if this stepper was created from an empty accumulator
-   *  @note NEEDS-HUMAN: the emptiness guard here is `n <= 0` (the size of the block currently
-   *        loaded), whereas `AnyAccumulatorStepper` and `IntAccumulatorStepper` guard on `N <= 0`
-   *        (the number of elements remaining), so a call after [[hasStep]] has turned `false` is
-   *        not reliably detected and can return a stale element instead of throwing. Suspected
-   *        bug in the guard.
    */
   def nextStep(): Double =
     if (n <= 0) throw new NoSuchElementException("next on empty Stepper")

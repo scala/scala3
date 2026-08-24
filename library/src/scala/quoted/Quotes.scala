@@ -294,7 +294,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     }
 
 
-    /** Returns the `Term` representation this expression. */
     extension (expr: Expr[Any])
       /** Returns the `Term` tree representing this expression.
        *
@@ -339,7 +338,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def asExpr: Expr[Any]
       end extension
 
-      /** Converts this tree to an `quoted.Expr[T]` if the tree is a valid expression or throws. */
       extension (self: Tree)
         /** Converts this tree to an `quoted.Expr[T]` if the tree is a valid expression of type `T` or throws.
          *
@@ -1896,7 +1894,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       /** Creates a closure of the method `meth`.
        *
-       *  @param meth a reference to the method of the closure; must refer to an anonymous function
+       *  @param meth a reference to the method of the closure; expected to refer to an anonymous
+       *              function, which is only checked under `-Xcheck-macros`
        *  @param tpe `Some` containing the SAM type of the closure, or `None` if the closure has a function type
        *  @return a `Closure` tree for `meth`
        */
@@ -2394,7 +2393,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *
        *  @param qualifier the prefix term the selection is made on
        *  @param name the name of the selected definition
-       *  @param levels the number of nested scopes of inlined trees to traverse to resolve the selection
+       *  @param levels the number of outer-path hops from the qualifier to the intended owner
        *  @return a new `SelectOuter` tree
        */
       def apply(qualifier: Term, name: String, levels: Int): SelectOuter
@@ -2403,7 +2402,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        *  @param original the original tree being copied
        *  @param qualifier the prefix term the selection is made on
        *  @param name the name of the selected definition
-       *  @param levels the number of nested scopes of inlined trees to traverse to resolve the selection
+       *  @param levels the number of outer-path hops from the qualifier to the intended owner
        *  @return a copy of `original` with the given `qualifier`, `name` and `levels`
        */
       def copy(original: Tree)(qualifier: Term, name: String, levels: Int): SelectOuter
@@ -3534,7 +3533,8 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait TermParamClauseModule { this: TermParamClause.type =>
       /** Creates a term parameter clause `(<params: List[ValDef]>)`.
        *
-       *  @param params the parameter definitions of the clause; must be either all implicit or all non-implicit
+       *  @param params the parameter definitions of the clause; expected to be either all implicit
+       *                or all non-implicit, which is only checked under `-Xcheck-macros`
        *  @return a new `TermParamClause` with the given parameters
        */
       def apply(params: List[ValDef]): TermParamClause
@@ -3736,11 +3736,6 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
     trait OmitSelectorMethods:
       extension (self: OmitSelector)
         /** The name of the omitted member, e.g. `bar` in `import foo.{bar => _}`.
-         *
-         *  @note NEEDS-HUMAN: The implementation returns `self.imported.toString`, the
-         *        case-class rendering of the `Ident` tree (e.g. `Ident(bar)`), not the bare
-         *        name `bar` that `OmitSelector.unapply` and `SimpleSelector.name` return
-         *        via `imported.name.toString`. This looks like a bug in `QuotesImpl`.
          */
         def name: String
         /** The position of the omitted member's name within this selector. */
@@ -4913,7 +4908,7 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
       /** Matches a flexible type and extracts its underlying type.
        *
        *  @param x the `FlexibleType` to match against
-       *  @return a `Some` containing the underlying type, i.e. the non-nullable upper bound
+       *  @return a `Some` containing the underlying type, i.e. the upper bound
        */
       def unapply(x: FlexibleType): Option[TypeRepr]
     }
@@ -4928,7 +4923,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
         def underlying: TypeRepr
         /** The lower bound of this flexible type, i.e. `T | Null` for the flexible type of `T`. */
         def lo: TypeRepr
-        /** The upper bound of this flexible type, i.e. the non-nullable underlying type `T`. */
+        /** The upper bound of this flexible type, the underlying type `T`. Nothing forces it to be
+         *  non-nullable: `FlexibleType.apply` uses whatever value type it is given.
+         */
         def hi: TypeRepr
       end extension
     end FlexibleTypeMethods
@@ -6826,7 +6823,10 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
        */
       def foldTrees(x: X, trees: Iterable[Tree])(owner: Symbol): X = trees.foldLeft(x)((acc, y) => foldTree(acc, y)(owner))
 
-      /** Folds `foldTree` over the direct subtrees of `tree`, from left to right.
+      /** Folds `foldTree` over the subtrees of `tree`, from left to right.
+       *
+       *  Not every `Tree` component is visited: the `call` of an `Inlined`, which records the
+       *  call that was inlined rather than part of the expansion, is skipped.
        *
        *  For a definition tree, the subtrees are folded with the symbol of the definition
        *  itself as their owner.
@@ -6992,6 +6992,9 @@ trait Quotes { self: runtime.QuoteUnpickler & runtime.QuoteMatching =>
 
       /** Transforms `tree` by dispatching on its kind to the more specific `transformX` methods
        *  and rebuilding the tree from its transformed subtrees.
+       *
+       *  Some components are deliberately left as they are rather than transformed: an `Export`
+       *  is returned unchanged, as are the `pattern` of a `Bind` and the `call` of an `Inlined`.
        *
        *  @param tree the tree to transform
        *  @param owner the symbol of the definition enclosing `tree`
