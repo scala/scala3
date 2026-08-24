@@ -45,11 +45,11 @@ object Vector extends StrictOptimizedSeqFactory[Vector] {
 
   /** Returns a vector containing the elements of `it`.
    *
-   *  Returns `it` itself if it is already a `Vector`. A source with a known
-   *  size of at most 32 elements is copied directly into a single-array
-   *  vector (reusing the underlying array of an `ArraySeq.ofRef` of
-   *  `AnyRef`s without copying); other sources are added to a fresh
-   *  [[VectorBuilder]].
+   *  Returns `it` itself if it is already a `Vector`, and the shared empty vector
+   *  if its size is known to be 0. A source with a known size between 1 and 32
+   *  elements is copied directly into a single-array vector (reusing the underlying
+   *  array of an `ArraySeq.ofRef` of `AnyRef`s without copying); other sources are
+   *  added to a fresh [[VectorBuilder]].
    *
    *  @tparam E the element type of the vector
    *  @param it the collection whose elements end up in the vector
@@ -506,8 +506,6 @@ sealed abstract class Vector[+A] private[immutable] (private[immutable] final va
   /** Returns the last element of this vector.
    *
    *  @throws NoSuchElementException if this vector is empty
-   *  @note NEEDS-HUMAN: The exception for the empty case carries the message
-   *        `"empty.tail"`; `"empty.last"` looks intended.
    */
   override final def last: A = {
     if(this.isInstanceOf[BigVector[?]]) {
@@ -2323,8 +2321,9 @@ private final class VectorSliceBuilder(lo: Int, hi: Int) {
 
   /** Returns the sliced vector assembled from the collected slices.
    *
-   *  A result of at most 32 elements becomes a `Vector1` (concatenating the
-   *  level-1 prefix and suffix if both exist). For larger results the
+   *  An empty result is the shared `Vector0`, and a non-empty result of at most
+   *  32 elements becomes a `Vector1` (concatenating the level-1 prefix and
+   *  suffix if both exist). For larger results the
    *  prefixes and suffixes are balanced so that non-empty level-1 fingers
    *  exist on both sides, and the dimension is increased by one when the
    *  highest-dimensional data does not fit within the size limit of a
@@ -3609,9 +3608,11 @@ private object VectorStatics {
    *  those of `prefix1`, or `null` if the fast path does not apply.
    *
    *  Fast path for `prependedAll`: the result can replace a vector's
-   *  `prefix1` directly. Returns `null` if `xs` does not fit into the
-   *  `WIDTH - prefix1.length` remaining slots, if its size is not known, or
-   *  if it is known to be empty.
+   *  `prefix1` directly. Returns `null` if `xs` is empty or does not fit into
+   *  the `WIDTH - prefix1.length` remaining slots. An `Iterable` is measured
+   *  with `sizeCompare` and `size`, so it can take this path whatever its
+   *  `knownSize` reports; any other `IterableOnce` takes it only if its
+   *  `knownSize` is positive.
    *
    *  @param prefix1 the current leading element array
    *  @param xs the elements to prepend
@@ -3646,9 +3647,11 @@ private object VectorStatics {
    *  followed by those of `xs`, or `null` if the fast path does not apply.
    *
    *  Fast path for `appendedAll`: the result can replace a vector's
-   *  `suffix1` directly. Returns `null` if `xs` does not fit into the
-   *  `WIDTH - suffix1.length` remaining slots, if its size is not known, or
-   *  if it is known to be empty.
+   *  `suffix1` directly. Returns `null` if `xs` is empty or does not fit into
+   *  the `WIDTH - suffix1.length` remaining slots. An `Iterable` is measured
+   *  with `sizeCompare` and `size`, so it can take this path whatever its
+   *  `knownSize` reports; any other `IterableOnce` takes it only if its
+   *  `knownSize` is positive.
    *
    *  @param suffix1 the current last element array
    *  @param xs the elements to append
@@ -3903,8 +3906,9 @@ private final class NewVectorIterator[A](v: Vector[A], private var totalLength: 
 
   /** Returns a vector containing the remaining elements of this iterator.
    *
-   *  Implemented as a slice of the original vector, sharing structure with
-   *  it; this iterator is not advanced.
+   *  Implemented as a slice of the original vector, so it shares whatever
+   *  structure `slice` shares - a single-array vector copies its selected range
+   *  instead. This iterator is not advanced.
    */
   override def toVector: Vector[A] =
     v.slice(i1-len1+totalLength, totalLength)

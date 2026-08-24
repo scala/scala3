@@ -50,9 +50,12 @@ sealed abstract class ArraySeq[+A]
    */
   protected def elemTag: ClassTag[?]
 
-  /** Returns the companion factory in its untagged form, which requires no `ClassTag`
-   *  and therefore builds immutable arrays backed by an `Array[AnyRef]`, storing
-   *  primitive values boxed.
+  /** Returns the companion factory in its untagged form, which requires no `ClassTag`.
+   *
+   *  Because no element type is known, the immutable arrays this factory constructs
+   *  are backed by an `Array[AnyRef]` and store primitive values boxed. Its `from`
+   *  constructs nothing when the source is already an `ArraySeq`, returning it with
+   *  whatever backing array it has.
    */
   override def iterableFactory: SeqFactory[ArraySeq] = ArraySeq.untagged
 
@@ -75,8 +78,9 @@ sealed abstract class ArraySeq[+A]
 
   /** Returns a stepper for the elements of this immutable array.
    *
-   *  Steppers enable creating a Java stream to operate on the elements. For a
-   *  primitive element type, the stepper steps over unboxed values unless a
+   *  Steppers enable creating a Java stream to operate on the elements. Where the
+   *  element type is a primitive with a value-shaped stepper - that is, any except
+   *  `Boolean` and `Unit` - the stepper steps over unboxed values unless a
    *  reference-shaped stepper is explicitly requested.
    *
    *  @tparam S the type of the stepper, determined by `shape`
@@ -219,11 +223,10 @@ sealed abstract class ArraySeq[+A]
    *  @tparam B the element type of the returned immutable array, a supertype of `A`
    *  @param suffix the elements to append
    *  @return the concatenated immutable array
-   *  @note NEEDS-HUMAN: when this immutable array and `suffix` are `ArraySeq`s backed
-   *        by primitive arrays of different element types (reachable via a common
-   *        supertype, e.g. `ArraySeq(1) ++ ArraySeq(1L)`), `appendedAllArraySeq`
-   *        copies the suffix's array into an array of this sequence's element type,
-   *        which throws `ArrayStoreException`.
+   *  @throws ArrayStoreException if this immutable array and `suffix` are both backed
+   *          by primitive arrays but of different element types, as in
+   *          `ArraySeq(1) ++ ArraySeq(1L)`: the direct path then writes the elements
+   *          of `suffix` into an array of this immutable array's element type
    */
   override def appendedAll[B >: A](suffix: collection.IterableOnce[B]^): ArraySeq[B] = {
     def genericResult = {
@@ -262,10 +265,10 @@ sealed abstract class ArraySeq[+A]
    *  @tparam B the element type of the returned immutable array, a supertype of `A`
    *  @param prefix the elements to prepend
    *  @return the concatenated immutable array
-   *  @note NEEDS-HUMAN: when `prefix` and this immutable array are `ArraySeq`s backed
-   *        by primitive arrays of different element types (reachable via a common
-   *        supertype), `appendedAllArraySeq` copies this array into an array of the
-   *        prefix's element type, which throws `ArrayStoreException`.
+   *  @throws ArrayStoreException if `prefix` and this immutable array are both backed
+   *          by primitive arrays but of different element types, as in
+   *          `ArraySeq(1L).prependedAll(ArraySeq(1))`: the direct path then writes the
+   *          elements of this immutable array into an array of `prefix`'s element type
    */
   override def prependedAll[B >: A](prefix: collection.IterableOnce[B]^): ArraySeq[B] = {
     def genericResult = {
@@ -458,11 +461,17 @@ sealed abstract class ArraySeq[+A]
    *  minimum is not positive, nothing is copied. Copying is performed by a single
    *  `Array.copy` of the underlying array.
    *
+   *  A negative `start` is not rejected before that count is computed: the whole
+   *  length of `xs` is taken as the capacity, and the `Array.copy` that follows a
+   *  positive count throws.
+   *
    *  @tparam B the element type of the destination array, a supertype of `A`
    *  @param xs the destination array
    *  @param start the index of `xs` at which to write the first element
    *  @param len the maximum number of elements to copy
    *  @return the number of elements actually copied
+   *  @throws ArrayIndexOutOfBoundsException if `start` is negative and at least one
+   *          element would be copied
    */
   override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = {
     val copied = IterableOnce.elemsToCopyToArray(length, xs.length, start, len)
@@ -506,8 +515,10 @@ sealed abstract class ArraySeq[+A]
 object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
   /** A factory for immutable `ArraySeq`s that requires no `ClassTag`.
    *
-   *  Collections built through this factory are backed by an `Array[AnyRef]` and
-   *  store primitive values boxed.
+   *  Because no element type is known, the immutable arrays this factory constructs
+   *  are backed by an `Array[AnyRef]` and store primitive values boxed. Its `from`
+   *  constructs nothing when the source is already an `ArraySeq`, returning it with
+   *  whatever backing array it has.
    */
   val untagged: SeqFactory[ArraySeq] = new ClassTagSeqFactory.AnySeqDelegate(self)
 
@@ -549,11 +560,12 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
   def newBuilder[A : ClassTag]: Builder[A, ArraySeq[A]] =
     ArrayBuffer.newBuilder[A].mapResult(b => unsafeWrapArray[A](b.toArray))
 
-  /** Returns an immutable array of length `n`, where each element is the result of
-   *  one evaluation of `elem`.
+  /** Returns an immutable array of `n` elements, or an empty one if `n` is not
+   *  positive, where each element is the result of one evaluation of `elem`.
    *
-   *  `elem` is evaluated `n` times. The element type of the backing array is
-   *  determined by the `ClassTag`.
+   *  `elem` is evaluated once per element of the result, so not at all when `n` is
+   *  not positive. The element type of the backing array is determined by the
+   *  `ClassTag`.
    *
    *  @tparam A the element type
    *  @param n the number of elements
@@ -563,11 +575,13 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
    */
   override def fill[A : ClassTag](n: Int)(elem: => A): ArraySeq[A] = tabulate(n)(_ => elem)
 
-  /** Returns an immutable array of length `n`, where the element at each index is
-   *  the result of applying `f` to that index.
+  /** Returns an immutable array of `n` elements, or an empty one if `n` is not
+   *  positive, where the element at each index is the result of applying `f` to
+   *  that index.
    *
-   *  `f` is applied to the indices `0` to `n - 1` in ascending order. The element
-   *  type of the backing array is determined by the `ClassTag`.
+   *  `f` is applied to the indices `0` to `n - 1` in ascending order, so not at all
+   *  when `n` is not positive. The element type of the backing array is determined
+   *  by the `ClassTag`.
    *
    *  @tparam A the element type
    *  @param n the number of elements
@@ -734,6 +748,8 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
      *  general sequence equality.
      *
      *  @param that the object to compare with
+     *  @return `true` if `that` is an `ofByte` whose underlying array has the same
+     *          elements in the same order, or is otherwise an equal sequence
      */
     override def equals(that: Any) = that match {
       case that: ofByte => Arrays.equals(unsafeArray, that.unsafeArray)
@@ -859,6 +875,8 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
      *  general sequence equality.
      *
      *  @param that the object to compare with
+     *  @return `true` if `that` is an `ofShort` whose underlying array has the same
+     *          elements in the same order, or is otherwise an equal sequence
      */
     override def equals(that: Any) = that match {
       case that: ofShort => Arrays.equals(unsafeArray, that.unsafeArray)
@@ -984,6 +1002,8 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
      *  general sequence equality.
      *
      *  @param that the object to compare with
+     *  @return `true` if `that` is an `ofChar` whose underlying array has the same
+     *          elements in the same order, or is otherwise an equal sequence
      */
     override def equals(that: Any) = that match {
       case that: ofChar => Arrays.equals(unsafeArray, that.unsafeArray)
@@ -1125,6 +1145,8 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
      *  general sequence equality.
      *
      *  @param that the object to compare with
+     *  @return `true` if `that` is an `ofInt` whose underlying array has the same
+     *          elements in the same order, or is otherwise an equal sequence
      */
     override def equals(that: Any) = that match {
       case that: ofInt => Arrays.equals(unsafeArray, that.unsafeArray)
@@ -1249,6 +1271,8 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
      *  general sequence equality.
      *
      *  @param that the object to compare with
+     *  @return `true` if `that` is an `ofLong` whose underlying array has the same
+     *          elements in the same order, or is otherwise an equal sequence
      */
     override def equals(that: Any) = that match {
       case that: ofLong => Arrays.equals(unsafeArray, that.unsafeArray)
@@ -1375,6 +1399,9 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
      *  else falls back to general sequence equality.
      *
      *  @param that the object to compare with
+     *  @return `true` if `that` is an `ofFloat` sharing this underlying array or
+     *          holding the same elements in the same order, or is otherwise an
+     *          equal sequence
      */
     override def equals(that: Any) = that match {
       case that: ofFloat =>
@@ -1491,6 +1518,9 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
      *  else falls back to general sequence equality.
      *
      *  @param that the object to compare with
+     *  @return `true` if `that` is an `ofDouble` sharing this underlying array or
+     *          holding the same elements in the same order, or is otherwise an
+     *          equal sequence
      */
     override def equals(that: Any) = that match {
       case that: ofDouble =>
@@ -1605,6 +1635,8 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
      *  general sequence equality.
      *
      *  @param that the object to compare with
+     *  @return `true` if `that` is an `ofBoolean` whose underlying array has the
+     *          same elements in the same order, or is otherwise an equal sequence
      */
     override def equals(that: Any) = that match {
       case that: ofBoolean => Arrays.equals(unsafeArray, that.unsafeArray)
@@ -1727,6 +1759,8 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
      *  falls back to general sequence equality.
      *
      *  @param that the object to compare with
+     *  @return `true` if `that` is an `ofUnit` of the same length, or is otherwise
+     *          an equal sequence
      */
     override def equals(that: Any) = that match {
       case that: ofUnit => unsafeArray.length == that.unsafeArray.length

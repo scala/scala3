@@ -39,9 +39,11 @@ trait Map[K, +V]
 
   /** Returns this map, typed as an immutable `Map[K2, V2]`.
    *
-   *  Since this map is already immutable, the default map implementations are
-   *  returned unchanged, without copying; implementations with a reified key
-   *  type, such as sorted maps, are rebuilt as a default `Map`.
+   *  Since this map is already immutable, a non-empty default map implementation is
+   *  returned unchanged, without copying; implementations with a reified key type,
+   *  such as sorted maps, are rebuilt as a default `Map`. Any empty map yields the
+   *  shared `Map.empty`, so an empty `HashMap`, `ListMap` or `VectorMap` is not
+   *  returned unchanged.
    *
    *  @tparam K2 the key type of the resulting map, a supertype of `K`
    *  @tparam V2 the value type of the resulting map, a supertype of `V`
@@ -109,12 +111,14 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
    */
   @`inline` final def - (key: K): C = removed(key)
 
-  /** Returns a new $coll with the two given keys and all keys in `keys` removed.
+  /** Returns a $coll with the two given keys and all keys in `keys` removed, by
+   *  chaining `removed`.
    *
    *  @param key1 the first key to remove
    *  @param key2 the second key to remove
    *  @param keys the remaining keys to remove
-   *  @return a new $coll without bindings for any of the given keys
+   *  @return a $coll without bindings for any of the given keys; the built-in
+   *          immutable maps return themselves when none of the keys is bound
    */
   @deprecated("Use -- with an explicit collection", "2.13.0")
   def - (key1: K, key2: K, keys: K*): C = removed(key1).removed(key2).removedAll(keys)
@@ -255,14 +259,15 @@ transparent trait StrictOptimizedMapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?]
     with collection.StrictOptimizedMapOps[K, V, CC, C]
     with StrictOptimizedIterableOps[(K, V), Iterable, C] {
 
-  /** Returns a new $coll containing the key/value pairs of this $coll followed
-   *  by those of `that`, built eagerly by adding the pairs one at a time.
+  /** Returns a $coll containing the key/value pairs of this $coll followed
+   *  by those of `that`, built eagerly by adding the pairs one at a time to this
+   *  $coll, so an empty `that` leaves this $coll itself as the result.
    *
    *  Pairs in `that` override pairs of this $coll with the same key.
    *
    *  @tparam V1 the value type of the returned map, a supertype of `V`
    *  @param that the key/value pairs to add
-   *  @return a new $coll with the combined bindings
+   *  @return a $coll with the combined bindings
    */
   override def concat [V1 >: V](that: collection.IterableOnce[(K, V1)]^): CC[K, V1] = {
     var result: CC[K, V1] = coll
@@ -391,11 +396,12 @@ object Map extends MapFactory[Map] {
 
   /** Returns an immutable map containing the key/value pairs of `it`.
    *
-   *  If `it` is already one of the default immutable map implementations, such
-   *  as a `HashMap`, `ListMap`, `VectorMap`, or one of the specialized small
-   *  maps, it is returned unchanged. Otherwise, including for maps with a
-   *  reified key type such as sorted maps, a new map is built from its
-   *  elements, with later bindings overriding earlier ones with the same key.
+   *  An empty `Iterable` yields the shared empty map. Otherwise, if `it` is already
+   *  one of the default immutable map implementations, such as a `HashMap`,
+   *  `ListMap`, `VectorMap`, or one of the specialized small maps, it is returned
+   *  unchanged. In every other case, including for maps with a reified key type such
+   *  as sorted maps, a new map is built from its elements, with later bindings
+   *  overriding earlier ones with the same key.
    *
    *  @tparam K the type of the keys
    *  @tparam V the type of the values
@@ -735,11 +741,12 @@ object Map extends MapFactory[Map] {
       /** Advances this iterator past the next `n` elements and returns this
        *  same iterator, without creating an intermediate one.
        *
+       *  `n` is added to the current position without being clamped at 0, so a
+       *  negative `n` moves the position back and replays elements already
+       *  returned, where the inherited `Iterator.drop` would treat it as 0.
+       *
        *  @param n the number of elements to skip
        *  @return this iterator
-       *  @note NEEDS-HUMAN: `i += n` does not clamp `n` at 0, so a negative
-       *        `n` rewinds this iterator and replays elements, where the base
-       *        `Iterator.drop` treats a negative `n` as 0.
        */
       override def drop(n: Int): Iterator[A] = { i += n; this }
       /** Returns the iteration result derived from the key and value of a
@@ -958,11 +965,12 @@ object Map extends MapFactory[Map] {
       /** Advances this iterator past the next `n` elements and returns this
        *  same iterator, without creating an intermediate one.
        *
+       *  `n` is added to the current position without being clamped at 0, so a
+       *  negative `n` moves the position back and replays elements already
+       *  returned, where the inherited `Iterator.drop` would treat it as 0.
+       *
        *  @param n the number of elements to skip
        *  @return this iterator
-       *  @note NEEDS-HUMAN: `i += n` does not clamp `n` at 0, so a negative
-       *        `n` rewinds this iterator and replays elements, where the base
-       *        `Iterator.drop` treats a negative `n` as 0.
        */
       override def drop(n: Int): Iterator[A] = { i += n; this }
       /** Returns the iteration result derived from the key and value of a
@@ -1200,11 +1208,12 @@ object Map extends MapFactory[Map] {
       /** Advances this iterator past the next `n` elements and returns this
        *  same iterator, without creating an intermediate one.
        *
+       *  `n` is added to the current position without being clamped at 0, so a
+       *  negative `n` moves the position back and replays elements already
+       *  returned, where the inherited `Iterator.drop` would treat it as 0.
+       *
        *  @param n the number of elements to skip
        *  @return this iterator
-       *  @note NEEDS-HUMAN: `i += n` does not clamp `n` at 0, so a negative
-       *        `n` rewinds this iterator and replays elements, where the base
-       *        `Iterator.drop` treats a negative `n` as 0.
        */
       override def drop(n: Int): Iterator[A] = { i += n; this }
       /** Returns the iteration result derived from the key and value of a
@@ -1420,10 +1429,11 @@ private[immutable] final class MapBuilderImpl[K, V] extends ReusableBuilder[(K, 
     this
   }
 
-  /** Adds the key/value pair `elem` to this builder, replacing any previous
-   *  binding for its key.
+  /** Returns this builder after adding the key/value pair `elem`, replacing any
+   *  previous binding for its key.
    *
    *  @param elem the key/value pair to add
+   *  @return this builder
    */
   def addOne(elem: (K, V)) = addOne(elem._1, elem._2)
 

@@ -143,9 +143,10 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
    *  is also an immutable `HashSet` the two tries are merged structurally, sharing
    *  unchanged subtrees; when it is a `mutable.HashSet` or `mutable.LinkedHashSet`
    *  its cached element hashes are reused instead of being recomputed. In every
-   *  case, if `that` contributes no new elements this set itself is returned; and
-   *  when this set is empty and `that` is an immutable `HashSet`, `that` itself is
-   *  returned.
+   *  case, if `that` contributes no new elements this set itself is returned. The one
+   *  exception comes first: when this set is empty and `that` is an immutable
+   *  `HashSet`, `that` is returned, even where both are empty and so are distinct
+   *  instances of the same set.
    *
    *  @param that the elements to add
    *  @return a set containing the union of this set and `that`
@@ -524,8 +525,9 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
    *  implementation can be introduced in a minor release without breaking binary
    *  compatibility.
    *
-   *  @param n the number of elements to take
-   *  @return a set containing at most the first `n` elements
+   *  @param n the number of elements to take; a negative value is treated as 0
+   *  @return a set containing the first `n` elements, all of them if there are fewer
+   *          than `n`, or the empty set if `n` is not positive
    */
   override def take(n: Int): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
@@ -538,8 +540,9 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
    *  to the inherited implementation; it exists so that an optimized implementation
    *  can be introduced in a minor release without breaking binary compatibility.
    *
-   *  @param n the number of elements to take
-   *  @return a set containing at most the last `n` elements
+   *  @param n the number of elements to take; a negative value is treated as 0
+   *  @return a set containing the last `n` elements, all of them if there are fewer
+   *          than `n`, or the empty set if `n` is not positive
    */
   override def takeRight(n: Int): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
@@ -567,8 +570,9 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
    *  optimized implementation can be introduced in a minor release without breaking
    *  binary compatibility.
    *
-   *  @param n the number of elements to drop
-   *  @return a set containing all but the first `n` elements
+   *  @param n the number of elements to drop; a negative value is treated as 0
+   *  @return a set containing all but the first `n` elements, or this whole set if `n`
+   *          is not positive
    */
   override def drop(n: Int): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
@@ -582,8 +586,9 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
    *  optimized implementation can be introduced in a minor release without breaking
    *  binary compatibility.
    *
-   *  @param n the number of elements to drop
-   *  @return a set containing all but the last `n` elements
+   *  @param n the number of elements to drop; a negative value is treated as 0
+   *  @return a set containing all but the last `n` elements, or this whole set if `n`
+   *          is not positive
    */
   override def dropRight(n: Int): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included

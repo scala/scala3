@@ -249,13 +249,17 @@ final class HashMap[K, +V] private[immutable] (private[immutable] val rootNode: 
     if (newRootNode eq rootNode) this else new HashMap(newRootNode)
 
   /** Returns a map containing all key-value pairs of this map, with `key` bound to `value`,
-   *  replacing any existing binding for `key`. If `key` is already bound to a value that is
-   *  reference-equal to `value`, returns this map unchanged.
+   *  replacing any existing binding for `key`.
+   *
+   *  This map is returned unchanged when it already holds the binding by identity, that is,
+   *  when the stored key is reference-equal to `key` and the stored value is reference-equal
+   *  to `value`. A stored key that is merely equal to `key` is replaced, producing a new map.
    *
    *  @tparam V1 the value type of the returned map, a supertype of `V`
    *  @param key the key to add or update
    *  @param value the value to associate with `key`
-   *  @return a map with `key` bound to `value`, or this map if the binding is already present
+   *  @return a map with `key` bound to `value`, or this map if it already holds that exact
+   *          binding
    */
   def updated[V1 >: V](key: K, value: V1): HashMap[K, V1] = {
     val keyUnimprovedHash = key.##
@@ -3419,7 +3423,9 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
     rootNode = rootNode.copy()
   }
 
-  /** Returns the map built so far, without clearing the builder. The current root node is
+  /** Returns the map built so far, without clearing the builder.
+   *
+   *  An empty builder returns the shared empty map. Otherwise the current root node is
    *  wrapped and remembered in `aliased`; because the returned map now shares that structure,
    *  the next mutating call first copies the trie (`ensureUnaliased`) so the result is never
    *  changed retroactively. Repeated calls without intervening additions return the same map.
@@ -3544,7 +3550,8 @@ private[immutable] final class HashMapBuilder[K, V] extends ReusableBuilder[(K, 
   }
 
   /** Resets this builder to the empty state. Any previously returned map is unaffected: the
-   *  alias to it is dropped and a fresh, empty root node is installed.
+   *  alias to it is dropped, and a fresh, empty root node is installed if the current one
+   *  holds anything.
    */
   override def clear(): Unit = {
     aliased = null
