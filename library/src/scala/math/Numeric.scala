@@ -509,7 +509,7 @@ object Numeric {
     /** Returns the sign of a `Char` value.
      *
      *  @param x the `Char` value
-     *  @return `'\\u0001'` if `x` is nonzero, `'\\u0000'` if `x` is zero; `Char` values are unsigned
+     *  @return `'\u0001'` if `x` is nonzero, `'\u0000'` if `x` is zero; `Char` values are unsigned
      */
     override def sign(x: Char): Char = math.signum(x.toInt).toChar
   }
@@ -952,7 +952,9 @@ trait Numeric[T] extends Ordering[T] {
   /** Parses a `String` into a value of type `T`.
    *
    *  @param str the `String` to parse
-   *  @return `Some(T)` if the string is a valid `T`, `None` otherwise
+   *  @return `Some(T)` if the string is a valid `T`, `None` if it is not
+   *  @throws NullPointerException if `str` is `null`, for the built-in instances that
+   *          delegate to `StringParsers`
    */
   def parseString(str: String): Option[T]
   /** Converts a value of type `T` to an `Int`.
@@ -987,8 +989,14 @@ trait Numeric[T] extends Ordering[T] {
 
   /** Returns the absolute value of a value of type `T`.
    *
+   *  This negates a negative value, so for a fixed-width signed type it returns the
+   *  argument unchanged at the minimum value, which has no positive counterpart:
+   *  `IntIsIntegral.abs(Int.MinValue)` is `Int.MinValue`. The `Float` and `Double`
+   *  instances override this and do not have that behaviour.
+   *
    *  @param x the value
-   *  @return the absolute value of `x`
+   *  @return the absolute value of `x`, except at the minimum value of a fixed-width
+   *          signed type, where it is `x` itself
    */
   def abs(x: T): T = if (lt(x, zero)) negate(x) else x
 

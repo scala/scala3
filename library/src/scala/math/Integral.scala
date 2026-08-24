@@ -25,14 +25,12 @@ trait Integral[T] extends Numeric[T] {
    *
    *  @param x the dividend
    *  @param y the divisor
-   *  @return the quotient of `x` divided by `y`
    */
   def quot(x: T, y: T): T
   /** Returns the remainder of `x` divided by `y`.
    *
    *  @param x the dividend
    *  @param y the divisor
-   *  @return the remainder of `x` divided by `y`
    */
   def rem(x: T, y: T): T
 

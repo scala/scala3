@@ -96,10 +96,11 @@ trait Map[K, V] extends scala.collection.mutable.Map[K, V] {
   /** Returns the value associated with the given key, if present; otherwise
    *  computes `defaultValue`, stores it under the key, and returns it.
    *
-   *  If another thread inserts a value for `key` after the initial lookup
-   *  fails but before the computed `defaultValue` is stored, that
+   *  This is not atomic. If another thread inserts a value for `key` after the
+   *  initial lookup fails but before the computed `defaultValue` is stored, that
    *  concurrently inserted value is returned instead and the computed
-   *  `defaultValue` is discarded.
+   *  `defaultValue` is discarded. If such a value is inserted and removed again
+   *  in that window, `defaultValue` is stored and returned after all.
    *
    *  @param key the key whose associated value is to be retrieved or updated
    *  @param defaultValue the value to compute and store if `key` is absent;

@@ -69,10 +69,6 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
    *  @param ct the TrieMap instance, whose current root generation decides
    *            whether a pending update is committed or aborted
    *  @return the current main node
-   *  @note NEEDS-HUMAN: The declared result type admits `null`, and
-   *        `GCAS_Complete` guards against a `null` main node, yet this method
-   *        dereferences `m.prev` without a `null` check. Confirm whether the
-   *        main node can actually be `null` when this method is called.
    */
   def GCAS_READ(ct: TrieMap[K, V]): MainNode[K, V] | Null = {
     val m = /*READ*/mainnode
@@ -116,8 +112,8 @@ private[collection] final class INode[K, V](bn: MainNode[K, V] | Null, g: Gen, e
 
   /** Attempts to replace the main node `old` of this INode with `n`, using
    *  the GCAS (Generalized Compare-And-Set) protocol: the update is committed
-   *  only if this i-node's generation matches that of the current root, and
-   *  is rolled back otherwise.
+   *  only if this i-node's generation matches that of the current root and the
+   *  TrieMap is not read-only, and is rolled back otherwise.
    *
    *  @param old the expected current main node value
    *  @param n the new main node value to set
@@ -1528,6 +1524,8 @@ private[collection] class TrieMapIterator[K, V](var level: Int, private var ct: 
   def hasNext = (current ne null) || (subiter ne null)
 
   /** Returns the next element in this iterator.
+   *
+   *  @throws NoSuchElementException if this iterator has no more elements
    */
   def next(): (K, V) = {
     if (subiter ne null) {

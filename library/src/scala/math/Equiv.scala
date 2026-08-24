@@ -141,7 +141,7 @@ object Equiv extends LowPriorityEquiv {
     /** Returns `true` if this `IterableEquiv` is equal to `obj`.
      *
      *  @param obj the object to compare with
-     *  @return `true` if `obj` is an `IterableEquiv` with the same underlying `Equiv` instance
+     *  @return `true` if `obj` is an `IterableEquiv` whose underlying `Equiv` is equal to this one
      */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that  => true
@@ -434,7 +434,7 @@ object Equiv extends LowPriorityEquiv {
     /** Returns `true` if this `OptionEquiv` is equal to `obj`.
      *
      *  @param obj the object to compare with
-     *  @return `true` if `obj` is an `OptionEquiv` with the same underlying `Equiv` instance
+     *  @return `true` if `obj` is an `OptionEquiv` whose underlying `Equiv` is equal to this one
      */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
@@ -474,7 +474,7 @@ object Equiv extends LowPriorityEquiv {
     /** Returns `true` if this `Tuple2Equiv` is equal to `obj`.
      *
      *  @param obj the object to compare with
-     *  @return `true` if `obj` is a `Tuple2Equiv` with the same underlying `Equiv` instances
+     *  @return `true` if `obj` is a `Tuple2Equiv` whose underlying `Equiv` is equal to this ones
      */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
@@ -520,7 +520,7 @@ object Equiv extends LowPriorityEquiv {
     /** Returns `true` if this `Tuple3Equiv` is equal to `obj`.
      *
      *  @param obj the object to compare with
-     *  @return `true` if `obj` is a `Tuple3Equiv` with the same underlying `Equiv` instances
+     *  @return `true` if `obj` is a `Tuple3Equiv` whose underlying `Equiv` is equal to this ones
      */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
@@ -572,7 +572,7 @@ object Equiv extends LowPriorityEquiv {
     /** Returns `true` if this `Tuple4Equiv` is equal to `obj`.
      *
      *  @param obj the object to compare with
-     *  @return `true` if `obj` is a `Tuple4Equiv` with the same underlying `Equiv` instances
+     *  @return `true` if `obj` is a `Tuple4Equiv` whose underlying `Equiv` is equal to this ones
      */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
@@ -629,7 +629,7 @@ object Equiv extends LowPriorityEquiv {
     /** Returns `true` if this `Tuple5Equiv` is equal to `obj`.
      *
      *  @param obj the object to compare with
-     *  @return `true` if `obj` is a `Tuple5Equiv` with the same underlying `Equiv` instances
+     *  @return `true` if `obj` is a `Tuple5Equiv` whose underlying `Equiv` is equal to this ones
      */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
@@ -691,7 +691,7 @@ object Equiv extends LowPriorityEquiv {
     /** Returns `true` if this `Tuple6Equiv` is equal to `obj`.
      *
      *  @param obj the object to compare with
-     *  @return `true` if `obj` is a `Tuple6Equiv` with the same underlying `Equiv` instances
+     *  @return `true` if `obj` is a `Tuple6Equiv` whose underlying `Equiv` is equal to this ones
      */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
@@ -758,7 +758,7 @@ object Equiv extends LowPriorityEquiv {
     /** Returns `true` if this `Tuple7Equiv` is equal to `obj`.
      *
      *  @param obj the object to compare with
-     *  @return `true` if `obj` is a `Tuple7Equiv` with the same underlying `Equiv` instances
+     *  @return `true` if `obj` is a `Tuple7Equiv` whose underlying `Equiv` is equal to this ones
      */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
@@ -830,7 +830,7 @@ object Equiv extends LowPriorityEquiv {
     /** Returns `true` if this `Tuple8Equiv` is equal to `obj`.
      *
      *  @param obj the object to compare with
-     *  @return `true` if `obj` is a `Tuple8Equiv` with the same underlying `Equiv` instances
+     *  @return `true` if `obj` is a `Tuple8Equiv` whose underlying `Equiv` is equal to this ones
      */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true
@@ -907,7 +907,7 @@ object Equiv extends LowPriorityEquiv {
     /** Returns `true` if this `Tuple9Equiv` is equal to `obj`.
      *
      *  @param obj the object to compare with
-     *  @return `true` if `obj` is a `Tuple9Equiv` with the same underlying `Equiv` instances
+     *  @return `true` if `obj` is a `Tuple9Equiv` whose underlying `Equiv` is equal to this ones
      */
     override def equals(obj: scala.Any): Boolean = obj match {
       case that: AnyRef if this eq that => true

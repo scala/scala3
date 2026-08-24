@@ -117,7 +117,7 @@ object BigDecimal {
    *  @param bd the `java.math.BigDecimal` to convert
    *  @param mc the precision and rounding mode for the conversion
    *  @return a `BigDecimal` wrapping `bd` rounded per `mc`
-   *  @throws java.lang.NullPointerException if `bd` is `null`
+   *  @throws java.lang.NullPointerException if `bd` or `mc` is `null`
    */
   def decimal(bd: BigDec, mc: MathContext): BigDecimal = new BigDecimal(bd.round(mc), mc)
 
@@ -618,6 +618,8 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
    *
    *  @param that the `BigDecimal` to add to this value
    *  @throws java.lang.NullPointerException if `that` is `null`
+   *  @throws java.lang.ArithmeticException if this value's `MathContext` uses
+   *          `RoundingMode.UNNECESSARY` and the exact result needs rounding this result
    */
   def +  (that: BigDecimal): BigDecimal = new BigDecimal(this.bigDecimal.add(that.bigDecimal, mc), mc)
 
@@ -625,6 +627,8 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
    *
    *  @param that the `BigDecimal` to subtract from this value
    *  @throws java.lang.NullPointerException if `that` is `null`
+   *  @throws java.lang.ArithmeticException if this value's `MathContext` uses
+   *          `RoundingMode.UNNECESSARY` and the exact result needs rounding this result
    */
   def -  (that: BigDecimal): BigDecimal = new BigDecimal(this.bigDecimal.subtract(that.bigDecimal, mc), mc)
 
@@ -632,6 +636,8 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
    *
    *  @param that the `BigDecimal` to multiply with this value
    *  @throws java.lang.NullPointerException if `that` is `null`
+   *  @throws java.lang.ArithmeticException if this value's `MathContext` uses
+   *          `RoundingMode.UNNECESSARY` and the exact result needs rounding this result
    */
   def *  (that: BigDecimal): BigDecimal = new BigDecimal(this.bigDecimal.multiply(that.bigDecimal, mc), mc)
 
@@ -639,6 +645,8 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
    *
    *  @param that the `BigDecimal` to divide this value by
    *  @throws java.lang.NullPointerException if `that` is `null`
+   *  @throws java.lang.ArithmeticException if `that` is zero, or if this value's
+   *          `MathContext` cannot represent the quotient with the rounding it permits
    */
   def /  (that: BigDecimal): BigDecimal = new BigDecimal(this.bigDecimal.divide(that.bigDecimal, mc), mc)
 
@@ -647,6 +655,7 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
    *
    *  @param that the `BigDecimal` divisor
    *  @throws java.lang.NullPointerException if `that` is `null`
+   *  @throws java.lang.ArithmeticException if `that` is zero
    */
   def /% (that: BigDecimal): (BigDecimal, BigDecimal) = {
     val qr = this.bigDecimal.divideAndRemainder(that.bigDecimal, mc)
@@ -771,7 +780,6 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
    *
    *  @param scale the scale to set for this `BigDecimal`
    *  @param mode the rounding mode to apply
-   *  @return a `BigDecimal` with the specified scale, rounded according to the given mode
    *  @throws java.lang.ArithmeticException if `mode` is `UNNECESSARY` but rounding would be required for the requested `scale`
    */
   def setScale(scale: Int, mode: RoundingMode): BigDecimal =

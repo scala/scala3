@@ -369,7 +369,7 @@ object Ordering extends LowPriorityOrderingImplicits {
     private val _reverse = super.reverse
     /** Returns the cached reverse ordering of this ordering. */
     override final def reverse: Ordering[T] = _reverse
-    /** Returns whether the given ordering is the cached reverse of this ordering.
+    /** Returns whether the given ordering equals the one this reverses.
      *
      *  @param other the ordering to check
      *  @return `true` if `other` is the cached reverse of this ordering, `false` otherwise
