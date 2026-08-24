@@ -14,23 +14,25 @@ package scala.runtime
 
 import scala.language.`2.13`
 
-/** TODO FILL IN
+/** A base class for fourteen-parameter function implementations, allowing a function
+ *  value to be defined by extending a class rather than the [[scala.Function14]]
+ *  trait.
  *
- *  @tparam T1 TODO FILL IN
- *  @tparam T2 TODO FILL IN
- *  @tparam T3 TODO FILL IN
- *  @tparam T4 TODO FILL IN
- *  @tparam T5 TODO FILL IN
- *  @tparam T6 TODO FILL IN
- *  @tparam T7 TODO FILL IN
- *  @tparam T8 TODO FILL IN
- *  @tparam T9 TODO FILL IN
- *  @tparam T10 TODO FILL IN
- *  @tparam T11 TODO FILL IN
- *  @tparam T12 TODO FILL IN
- *  @tparam T13 TODO FILL IN
- *  @tparam T14 TODO FILL IN
- *  @tparam R TODO FILL IN
+ *  @tparam T1 the type of the 1st argument
+ *  @tparam T2 the type of the 2nd argument
+ *  @tparam T3 the type of the 3rd argument
+ *  @tparam T4 the type of the 4th argument
+ *  @tparam T5 the type of the 5th argument
+ *  @tparam T6 the type of the 6th argument
+ *  @tparam T7 the type of the 7th argument
+ *  @tparam T8 the type of the 8th argument
+ *  @tparam T9 the type of the 9th argument
+ *  @tparam T10 the type of the 10th argument
+ *  @tparam T11 the type of the 11th argument
+ *  @tparam T12 the type of the 12th argument
+ *  @tparam T13 the type of the 13th argument
+ *  @tparam T14 the type of the 14th argument
+ *  @tparam R the return type of the function
  */
 abstract class AbstractFunction14[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, +R] extends Function14[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, R] {
 

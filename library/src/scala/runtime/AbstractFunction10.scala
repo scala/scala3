@@ -14,10 +14,9 @@ package scala.runtime
 
 import scala.language.`2.13`
 
-/** `AbstractFunction10` is a base class for ten-parameter function implementations.
- *
- *  Extending this class allows a function value to be defined by extending a class
- *  rather than the [[scala.Function10]] trait.
+/** A base class for ten-parameter function implementations, allowing a function
+ *  value to be defined by extending a class rather than the [[scala.Function10]]
+ *  trait.
  *
  *  @tparam T1 the type of the 1st argument
  *  @tparam T2 the type of the 2nd argument
@@ -29,7 +28,7 @@ import scala.language.`2.13`
  *  @tparam T8 the type of the 8th argument
  *  @tparam T9 the type of the 9th argument
  *  @tparam T10 the type of the 10th argument
- *  @tparam R the return type of this function
+ *  @tparam R the return type of the function
  */
 abstract class AbstractFunction10[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, +R] extends Function10[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, R] {
 

@@ -114,11 +114,11 @@ private[scala] object Parser {
   }
 
   /** Splits the line into whitespace-delimited tokens, recognizing single- and
-   *  double-quoted segments and removing their enclosing quotes, throwing a
-   *  `RuntimeException` if the line is malformed, such as when a quote is unmatched.
+   *  double-quoted segments and removing their enclosing quotes.
    *
    *  @param line the command line string to parse
    *  @return a list of parsed tokens in order of appearance
+   *  @throws RuntimeException if the line is malformed, such as when a quote is unmatched
    */
   def tokenize(line: String): List[String] = tokenize(line, scala.sys.error)
 }

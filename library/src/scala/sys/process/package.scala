@@ -224,6 +224,10 @@ import scala.language.`2.13`
     // These are in a nested object instead of at the package level
     // due to the issues described in tickets #3160 and #3836.
     private[process] object processInternal {
+      /** Whether process debugging output is enabled: true when the
+       *  `scala.process.debug` system property is defined, checked once when
+       *  this object is initialized.
+       */
       final val processDebug = props contains "scala.process.debug"
       dbg("Initializing process package.")
 

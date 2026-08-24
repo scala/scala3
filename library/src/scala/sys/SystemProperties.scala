@@ -88,15 +88,14 @@ extends mutable.AbstractMap[String, String | Null] {
    */
   def subtractOne (key: String): this.type = { wrapAccess(System.clearProperty(key)) ; this }
   /** Sets the System property named by the first element of `kv` to its second
-   *  element, doing nothing if the property may not be written.  Both elements
-   *  must be non-`null`; a `null` value results in a `NullPointerException`.
+   *  element, doing nothing if the property may not be written.
    *
    *  @param kv the name and value of the property to set
    *  @return this $coll
+   *  @throws NullPointerException if the name or the value is `null`
    */
   def addOne (kv: (String, String | Null)): this.type = { wrapAccess(System.setProperty(kv._1, kv._2)) ; this }
 
-  @annotation.nowarn("cat=deprecation") // AccessControlException is deprecated on JDK 17
   /** Evaluates `body`, catching and discarding any `AccessControlException` it
    *  raises.  This is intended for accessing the System properties, where such
    *  an exception indicates that a security manager denied access.
@@ -106,6 +105,7 @@ extends mutable.AbstractMap[String, String | Null] {
    *  @return the result of `body` wrapped in `Some`, or `None` if an
    *          `AccessControlException` was caught
    */
+  @annotation.nowarn("cat=deprecation") // AccessControlException is deprecated on JDK 17
   def wrapAccess[T](body: => T): Option[T] =
     try Some(body) catch { case _: AccessControlException => None }
 }
@@ -153,8 +153,24 @@ object SystemProperties {
     case _                      => ""
   }
 
+  /** The `java.awt.headless` property, indicating that the system should not use a
+   *  display device.  True when the key is set to the empty string or, compared
+   *  case-insensitively, `"true"`.
+   */
   lazy val headless: BooleanProp            = BooleanProp.keyExists(HeadlessKey)
+  /** The `java.net.preferIPv4Stack` property, indicating that the system should
+   *  prefer IPv4 sockets.  True when the key is set to the empty string or, compared
+   *  case-insensitively, `"true"`.
+   */
   lazy val preferIPv4Stack: BooleanProp     = BooleanProp.keyExists(PreferIPv4StackKey)
+  /** The `java.net.preferIPv6Addresses` property, indicating that the system should
+   *  prefer IPv6 addresses.  True when the key is set to the empty string or, compared
+   *  case-insensitively, `"true"`.
+   */
   lazy val preferIPv6Addresses: BooleanProp = BooleanProp.keyExists(PreferIPv6AddressesKey)
+  /** The `scala.control.noTraceSuppression` property, indicating that Scala should not
+   *  suppress any stack trace creation.  True only when the key is set to `"true"`,
+   *  compared case-insensitively.
+   */
   lazy val noTraceSuppression: BooleanProp  = BooleanProp.valueIsTrue(NoTraceSuppressionKey)
 }

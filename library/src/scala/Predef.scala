@@ -211,9 +211,16 @@ object Predef extends LowPriorityImplicits {
   type Manifest[T]      = scala.reflect.Manifest[T]
   // TODO undeprecated until Scala reflection becomes non-experimental
   // @deprecated("use `scala.reflect.ClassTag` (to capture erasures) or scala.reflect.runtime.universe.TypeTag (to capture types) or both instead", "2.10.0")
+  /** An alias for the [[scala.reflect.Manifest]] companion object, which provides
+   *  manifests for the standard value types and factory methods such as `classType`
+   *  and `arrayType` for constructing others.
+   */
   val Manifest          = scala.reflect.Manifest
   // TODO undeprecated until Scala reflection becomes non-experimental
   // @deprecated("this notion doesn't have a corresponding concept in 2.10, because scala.reflect.runtime.universe.TypeTag can capture arbitrary types. Use type tags instead of manifests, and there will be no need in opt manifests.", "2.10.0")
+  /** An alias for [[scala.reflect.NoManifest]], the [[OptManifest]] value
+   *  indicating that no manifest is available for a type.
+   */
   val NoManifest        = scala.reflect.NoManifest
 
   // TODO undeprecated until Scala reflection becomes non-experimental
@@ -419,20 +426,35 @@ object Predef extends LowPriorityImplicits {
    */
   @deprecated("Use `->` extension method instead.", since = "3.10.0")
   final class ArrowAssoc[A](private val self: A) extends AnyVal {
+    /** Returns a two-element tuple with the wrapped value as its first element
+     *  and `y` as its second.
+     *
+     *  Written infix, `a -> b` is a more readable equivalent of `(a, b)`, most
+     *  commonly used for the key/value pairs passed to `Map` factories.
+     *
+     *  @tparam B the type of `y`
+     *  @param y the value to use as the second element of the resulting tuple
+     */
     @deprecated("Use `->` extension method instead.", since = "3.10.0")
     @inline def -> [B](y: B): (A, B) = (self, y)
+    /** Returns a two-element tuple with the wrapped value as its first element
+     *  and `y` as its second, exactly like `->`.
+     *
+     *  @tparam B the type of `y`
+     *  @param y the value to use as the second element of the resulting tuple
+     */
     @deprecated("Use `->` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", "2.13.0")
     def →[B](y: B): (A, B) = ->(y)
   }
 
-  @deprecated("Use `->` extension method instead.", since = "3.10.0")
-  // no longer implicit, but direct calls should still resolve.
   /** Wraps a value so that the pair-construction operators `->` and `→` can be applied to it.
    *
    *  @tparam A the type of the left-hand side of the arrow association
    *  @param self the value to use as the first element of the resulting tuple
    *  @return an [[ArrowAssoc]] wrapping `self`
    */
+  @deprecated("Use `->` extension method instead.", since = "3.10.0")
+  // no longer implicit, but direct calls should still resolve.
   final def ArrowAssoc[A >: Nothing <: Any](self: A): ArrowAssoc[A] = new ArrowAssoc[A](self)
 
   /**
@@ -492,6 +514,13 @@ object Predef extends LowPriorityImplicits {
   @(deprecated @companionClass)("Implicit injection of + is deprecated. Convert to String to call +", "2.13.0") // for Scaladoc
   // scala/bug#8229 retaining the pre 2.11 name for source compatibility in shadowing this implicit
   private[scala] final class any2stringadd[A](private val self: A) extends AnyVal {
+    /** Returns the concatenation of the wrapped value's string representation and `other`.
+     *
+     *  The wrapped value is converted with `String.valueOf`, so a `null` value
+     *  renders as the string `"null"`.
+     *
+     *  @param other the string to append
+     */
     def +(other: String): String = String.valueOf(self) + other
   }
   @deprecated
@@ -611,7 +640,6 @@ object Predef extends LowPriorityImplicits {
 
   // these two are morally deprecated but the @deprecated annotation has been moved to the extension method themselves,
   // in order to provide a more specific deprecation method.
-  @nowarn("""cat=deprecation&origin=scala\.runtime\.Tuple2Zipped""")
   /** Adds the deprecated `zipped` and `invert` operations to a pair, each of which
    *  additionally requires the pair's elements to be collections.
    *
@@ -620,8 +648,8 @@ object Predef extends LowPriorityImplicits {
    *  @param x the pair to enrich
    *  @return an `Ops` wrapper around `x` providing `zipped` and `invert`
    */
+  @nowarn("""cat=deprecation&origin=scala\.runtime\.Tuple2Zipped""")
   implicit def tuple2ToZippedOps[T1, T2](x: (T1, T2)): runtime.Tuple2Zipped.Ops[T1, T2]             = new runtime.Tuple2Zipped.Ops(x)
-  @nowarn("""cat=deprecation&origin=scala\.runtime\.Tuple3Zipped""")
   /** Adds the deprecated `zipped` and `invert` operations to a triple, each of which
    *  additionally requires the triple's elements to be collections.
    *
@@ -631,21 +659,85 @@ object Predef extends LowPriorityImplicits {
    *  @param x the triple to enrich
    *  @return an `Ops` wrapper around `x` providing `zipped` and `invert`
    */
+  @nowarn("""cat=deprecation&origin=scala\.runtime\.Tuple3Zipped""")
   implicit def tuple3ToZippedOps[T1, T2, T3](x: (T1, T2, T3)): runtime.Tuple3Zipped.Ops[T1, T2, T3] = new runtime.Tuple3Zipped.Ops(x)
 
   // Not specialized anymore since 2.13 but we still need separate methods
   // to avoid https://github.com/scala/bug/issues/10746
   // TODO: should not need @inline. add heuristic to inline factories for value classes.
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to an array
+   *  of any element type.
+   *
+   *  This conversion, together with the per-element-type variants such as
+   *  [[intArrayOps]] and [[refArrayOps]], is what makes methods such as `map`,
+   *  `filter`, and `mkString` available on arrays.
+   *
+   *  @tparam T the element type of the array
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def genericArrayOps[T](xs: Array[T]): ArrayOps[T]          = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Boolean` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def booleanArrayOps(xs: Array[Boolean]): ArrayOps[Boolean] = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Byte` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def byteArrayOps(xs: Array[Byte]): ArrayOps[Byte]          = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Char` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def charArrayOps(xs: Array[Char]): ArrayOps[Char]          = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Double` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def doubleArrayOps(xs: Array[Double]): ArrayOps[Double]    = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Float` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def floatArrayOps(xs: Array[Float]): ArrayOps[Float]       = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to an `Int` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def intArrayOps(xs: Array[Int]): ArrayOps[Int]             = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Long` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def longArrayOps(xs: Array[Long]): ArrayOps[Long]          = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to an array
+   *  of reference-typed elements.
+   *
+   *  @tparam T the element type of the array, a subtype of `AnyRef | Null`
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def refArrayOps[T <: AnyRef | Null](xs: Array[T]): ArrayOps[T]    = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Short` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def shortArrayOps(xs: Array[Short]): ArrayOps[Short]       = new ArrayOps(xs)
+  /** Adds the collection operations of [[scala.collection.ArrayOps]] to a `Unit` array.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArrayOps` value class wrapping `xs`; the elements are not copied
+   */
   @inline implicit def unitArrayOps(xs: Array[Unit]): ArrayOps[Unit]          = new ArrayOps(xs)
 
   // "Autoboxing" and "Autounboxing" ---------------------------------------------------
@@ -863,20 +955,73 @@ private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2
   import mutable.ArraySeq
 
   // Deprecated conversions to runtime.Rich* classes; these methods used to be `implicit`
+  /** Wraps a `Byte` in a [[scala.runtime.RichByte]], which adds comparison
+   *  operations and methods such as `min`, `max`, `abs`, and `sign`.
+   *
+   *  @param x the value to wrap
+   *  @return a `RichByte` value class wrapping `x`
+   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def byteWrapper(x: Byte): runtime.RichByte = new runtime.RichByte(x)
+  /** Wraps a `Short` in a [[scala.runtime.RichShort]], which adds comparison
+   *  operations and methods such as `min`, `max`, `abs`, and `sign`.
+   *
+   *  @param x the value to wrap
+   *  @return a `RichShort` value class wrapping `x`
+   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def shortWrapper(x: Short): runtime.RichShort = new runtime.RichShort(x)
+  /** Wraps an `Int` in a [[scala.runtime.RichInt]], which adds comparison
+   *  operations, `min`, `max`, and `abs`, the range constructors `to` and
+   *  `until`, and radix conversions such as `toHexString`.
+   *
+   *  @param x the value to wrap
+   *  @return a `RichInt` value class wrapping `x`
+   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def intWrapper(x: Int): runtime.RichInt = new runtime.RichInt(x)
+  /** Wraps a `Char` in a [[scala.runtime.RichChar]], which adds comparison
+   *  operations, the range constructors `to` and `until`, and the character
+   *  classification and case-conversion methods of `java.lang.Character`.
+   *
+   *  @param c the value to wrap
+   *  @return a `RichChar` value class wrapping `c`
+   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def charWrapper(c: Char): runtime.RichChar = new runtime.RichChar(c)
+  /** Wraps a `Long` in a [[scala.runtime.RichLong]], which adds comparison
+   *  operations, `min`, `max`, and `abs`, the range constructors `to` and
+   *  `until`, and radix conversions such as `toHexString`.
+   *
+   *  @param x the value to wrap
+   *  @return a `RichLong` value class wrapping `x`
+   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def longWrapper(x: Long): runtime.RichLong = new runtime.RichLong(x)
+  /** Wraps a `Float` in a [[scala.runtime.RichFloat]], which adds comparison
+   *  operations, `min`, `max`, and `abs`, rounding methods such as `round`,
+   *  `ceil`, and `floor`, and tests such as `isNaN`.
+   *
+   *  @param x the value to wrap
+   *  @return a `RichFloat` value class wrapping `x`
+   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def floatWrapper(x: Float): runtime.RichFloat = new runtime.RichFloat(x)
+  /** Wraps a `Double` in a [[scala.runtime.RichDouble]], which adds comparison
+   *  operations, `min`, `max`, and `abs`, rounding methods such as `round`,
+   *  `ceil`, and `floor`, and tests such as `isNaN`.
+   *
+   *  @param x the value to wrap
+   *  @return a `RichDouble` value class wrapping `x`
+   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def doubleWrapper(x: Double): runtime.RichDouble = new runtime.RichDouble(x)
+  /** Wraps a `Boolean` in a [[scala.runtime.RichBoolean]], which adds comparison
+   *  operations such as `<` and `compare`, ordering `false` before `true`.
+   *
+   *  @param x the value to wrap
+   *  @return a `RichBoolean` value class wrapping `x`
+   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def booleanWrapper(x: Boolean): runtime.RichBoolean = new runtime.RichBoolean(x)
 
@@ -979,13 +1124,13 @@ private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2
 }
 
 private[scala] abstract class LowPriorityImplicits2 {
-  @deprecated("implicit conversions from Array to immutable.IndexedSeq are implemented by copying; use `toIndexedSeq` explicitly if you want to copy, or use the more efficient non-copying ArraySeq.unsafeWrapArray", since="2.13.0")
   /** Copies an array into an immutable [[scala.collection.immutable.IndexedSeq]].
    *
    *  @tparam T the element type of the array
    *  @param xs the array whose elements are copied
    *  @return a new immutable `IndexedSeq` holding the elements of `xs`, or `null` if `xs` is `null`
    */
+  @deprecated("implicit conversions from Array to immutable.IndexedSeq are implemented by copying; use `toIndexedSeq` explicitly if you want to copy, or use the more efficient non-copying ArraySeq.unsafeWrapArray", since="2.13.0")
   implicit def copyArrayToImmutableIndexedSeq[T](xs: Array[T]): IndexedSeq[T] =
     mapNull(xs, new ArrayOps(xs).toIndexedSeq)
 }

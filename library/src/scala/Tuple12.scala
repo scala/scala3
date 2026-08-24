@@ -29,18 +29,18 @@ import scala.language.`2.13`
  *  @tparam T10 the type of the 10th element
  *  @tparam T11 the type of the 11th element
  *  @tparam T12 the type of the 12th element
- *  @param  _1   Element 1 of this Tuple12
- *  @param  _2   Element 2 of this Tuple12
- *  @param  _3   Element 3 of this Tuple12
- *  @param  _4   Element 4 of this Tuple12
- *  @param  _5   Element 5 of this Tuple12
- *  @param  _6   Element 6 of this Tuple12
- *  @param  _7   Element 7 of this Tuple12
- *  @param  _8   Element 8 of this Tuple12
- *  @param  _9   Element 9 of this Tuple12
- *  @param  _10   Element 10 of this Tuple12
- *  @param  _11   Element 11 of this Tuple12
- *  @param  _12   Element 12 of this Tuple12
+ *  @param  _1   the 1st element of this Tuple12
+ *  @param  _2   the 2nd element of this Tuple12
+ *  @param  _3   the 3rd element of this Tuple12
+ *  @param  _4   the 4th element of this Tuple12
+ *  @param  _5   the 5th element of this Tuple12
+ *  @param  _6   the 6th element of this Tuple12
+ *  @param  _7   the 7th element of this Tuple12
+ *  @param  _8   the 8th element of this Tuple12
+ *  @param  _9   the 9th element of this Tuple12
+ *  @param  _10   the 10th element of this Tuple12
+ *  @param  _11   the 11th element of this Tuple12
+ *  @param  _12   the 12th element of this Tuple12
  */
 final case class Tuple12[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11, +T12](_1: T1, _2: T2, _3: T3, _4: T4, _5: T5, _6: T6, _7: T7, _8: T8, _9: T9, _10: T10, _11: T11, _12: T12)
   extends Product12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12]

@@ -39,8 +39,11 @@ object BasicIO {
   final val Newline: String = System.lineSeparator
 
   private[process] final class LazilyListed[T](
+    /** Enqueues the given element for `lazyList`, blocking while the underlying queue is full. */
     val  process:   T => Unit,
+    /** Signals with the process exit code that no more elements follow, which determines how `lazyList` terminates. */
     val     done: Int => Unit,
+    /** The elements passed to `process`, in order; evaluating a cell blocks until the next element or the exit code arrives. */
     val lazyList: LazyList[T]
   )
 
@@ -76,8 +79,11 @@ object BasicIO {
 
   @deprecated("internal", since = "2.13.4")
   private[process] final class Streamed[T](
+    /** Enqueues the given element for the stream, blocking while the underlying queue is full. */
     val process:   T => Unit,
+    /** Signals with the process exit code that no more elements follow, which determines how the stream terminates. */
     val    done: Int => Unit,
+    /** Returns the elements passed to `process`, in order; evaluating a cell blocks until the next element or the exit code arrives. */
     val  stream:  () => Stream[T]
   )
 

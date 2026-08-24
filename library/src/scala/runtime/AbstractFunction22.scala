@@ -14,10 +14,9 @@ package scala.runtime
 
 import scala.language.`2.13`
 
-/** A base class for twenty-two-parameter function implementations.
- *
- *  Extending this class allows a function value to be defined by extending a class
- *  rather than the [[scala.Function22]] trait.
+/** A base class for twenty-two-parameter function implementations, allowing a function
+ *  value to be defined by extending a class rather than the [[scala.Function22]]
+ *  trait.
  *
  *  @tparam T1 the type of the 1st argument
  *  @tparam T2 the type of the 2nd argument
@@ -41,7 +40,7 @@ import scala.language.`2.13`
  *  @tparam T20 the type of the 20th argument
  *  @tparam T21 the type of the 21st argument
  *  @tparam T22 the type of the 22nd argument
- *  @tparam R the return type of this function
+ *  @tparam R the return type of the function
  */
 abstract class AbstractFunction22[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, -T15, -T16, -T17, -T18, -T19, -T20, -T21, -T22, +R] extends Function22[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T22, R] {
 

@@ -36,14 +36,23 @@ import scala.runtime.ScalaRunTime.{array_apply, array_update}
  *  `Array(1, 2)`, `Array(0, 0)` and `Array(1, 2, 0, 0)`.
  */
 object Array {
+  /** An empty `Array[Boolean]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyBooleanArray = new Array[Boolean](0)
+  /** An empty `Array[Byte]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyByteArray    = new Array[Byte](0)
+  /** An empty `Array[Char]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyCharArray    = new Array[Char](0)
+  /** An empty `Array[Double]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyDoubleArray  = new Array[Double](0)
+  /** An empty `Array[Float]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyFloatArray   = new Array[Float](0)
+  /** An empty `Array[Int]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyIntArray     = new Array[Int](0)
+  /** An empty `Array[Long]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyLongArray    = new Array[Long](0)
+  /** An empty `Array[Short]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyShortArray   = new Array[Short](0)
+  /** An empty `Array[Object]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyObjectArray  = new Array[Object](0)
 
   /** Provides an implicit conversion from the Array object to a collection Factory.
@@ -740,7 +749,7 @@ object Array {
      *
      *  @param i the index, which must be in the range from `0` until the length of the array
      *  @return the element at index `i`
-     *  @throws ArrayIndexOutOfBoundsException if `i < 0` or the length of the wrapped array `<= i`
+     *  @throws ArrayIndexOutOfBoundsException if `i` is negative or not less than the length of the array
      */
     def apply(i: Int): T = a(i)
     /** Returns all elements of the wrapped array except the first `n`, as needed to bind the

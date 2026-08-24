@@ -67,6 +67,7 @@ object BooleanProp {
    *  @param value the constant value of this property
    */
   class ConstantImpl(val key: String, val value: Boolean) extends BooleanProp {
+    /** Equal to `value`: a constant-true property counts as set, a constant-false one as unset. */
     val isSet = value
     /** Ignores `newValue` and returns the string form of the constant value.
      *

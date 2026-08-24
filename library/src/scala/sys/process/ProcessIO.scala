@@ -52,9 +52,13 @@ import processInternal._
  *  @note Failure to close the passed streams may result in resource leakage.
  */
 final class ProcessIO(
+  /** The function called with the stream to which all input to the process must be written. */
   val writeInput: OutputStream => Unit,
+  /** The function called with the stream from which all normal output of the process must be read. */
   val processOutput: InputStream => Unit,
+  /** The function called with the stream from which all error output of the process must be read. */
   val processError: InputStream => Unit,
+  /** Whether the threads spawned to run `writeInput`, `processOutput`, and `processError` are marked as daemon threads. */
   val daemonizeThreads: Boolean
 ) {
   /** Creates a `ProcessIO` with `daemonizeThreads` set to `false`.

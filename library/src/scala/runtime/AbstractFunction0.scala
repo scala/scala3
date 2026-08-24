@@ -20,6 +20,8 @@ import scala.language.`2.13`
  *
  *  The result type is specialized over the primitive types, so a subclass can
  *  produce an unboxed result.
+ *
+ *  @tparam R the return type of the function
  */
 abstract class AbstractFunction0[@specialized(Specializable.Primitives) +R] extends Function0[R] {
 

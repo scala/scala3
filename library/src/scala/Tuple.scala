@@ -415,13 +415,13 @@ case object EmptyTuple extends Tuple {
 /** Tuple of arbitrary non-zero arity. */
 sealed trait NonEmptyTuple extends Tuple
 
-@showAsInfix
 /** A tuple whose first element has type `H` and whose remaining elements form a
  *  tuple of type `T`.
  *
  *  @tparam H the type of the head element
  *  @tparam T the type of the tail, itself a tuple
  */
+@showAsInfix
 sealed abstract class *:[+H, +T <: Tuple] extends NonEmptyTuple
 
 object *: {

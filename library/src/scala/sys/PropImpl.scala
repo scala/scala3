@@ -39,12 +39,11 @@ private[sys] class PropImpl[+T](val key: String, valueFn: String => T) extends P
   }
   /** Sets the property to the string form of the given value.
    *
-   *  A `null` value is passed on unchanged, which causes a `NullPointerException`
-   *  in `java.lang.System.setProperty`.
-   *
    *  @tparam T1 a supertype of `T`, used as the input type since `Prop` is covariant in `T`
    *  @param newValue the value whose string form becomes the new property value
    *  @return the previous converted value, or `zero` if the property was unset
+   *  @throws NullPointerException if `newValue` is `null`, which is passed on unchanged
+   *          and rejected by `java.lang.System.setProperty`
    */
   def setValue[T1 >: T](newValue: T1): T = {
     val old = value

@@ -14,10 +14,9 @@ package scala.runtime
 
 import scala.language.`2.13`
 
-/** `AbstractFunction15` is a base class for fifteen-parameter function implementations.
- *
- *  Extending this class allows a function value to be defined by extending a class
- *  rather than the [[scala.Function15]] trait.
+/** A base class for fifteen-parameter function implementations, allowing a function
+ *  value to be defined by extending a class rather than the [[scala.Function15]]
+ *  trait.
  *
  *  @tparam T1 the type of the 1st argument
  *  @tparam T2 the type of the 2nd argument
@@ -34,7 +33,7 @@ import scala.language.`2.13`
  *  @tparam T13 the type of the 13th argument
  *  @tparam T14 the type of the 14th argument
  *  @tparam T15 the type of the 15th argument
- *  @tparam R the return type of this function
+ *  @tparam R the return type of the function
  */
 abstract class AbstractFunction15[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, -T13, -T14, -T15, +R] extends Function15[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, R] {
 

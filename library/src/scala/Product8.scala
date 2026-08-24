@@ -27,7 +27,6 @@ object Product8 {
    *  @tparam T7 the type of the 7th component of the product
    *  @tparam T8 the type of the 8th component of the product
    *  @param x the product to extract from
-   *  @return `Some(x)`
    */
   def unapply[T1, T2, T3, T4, T5, T6, T7, T8](x: Product8[T1, T2, T3, T4, T5, T6, T7, T8]): Option[Product8[T1, T2, T3, T4, T5, T6, T7, T8]] =
     Some(x)

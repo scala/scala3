@@ -165,11 +165,6 @@ object Option {
  *  @tparam A the type of the value contained in the option
  */
 @SerialVersionUID(-114498752079829388L) // value computed by serialver for 2.11.2, annotation added in 2.11.4
-/** Represents optional values. Instances of `Option` are either an instance
- *  of [[scala.Some]] or the object `None`.
- *
- *  @tparam A the type of the value contained in the option
- */
 sealed abstract class Option[+A] extends IterableOnce[A] with Product with Serializable {
   self =>
 
@@ -425,8 +420,6 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
      *
      *  @tparam B the result type of the function `f`
      *  @param f the function to apply
-     *  @return a `Some` containing `f` applied to the option's value if the option
-     *          is nonempty and its value satisfies `p`, otherwise `None`
      */
     def map[B](f: A => B): Option[B] = self filter p map f
     /** Returns the result of applying $f to the filtered $option's value, or
@@ -434,8 +427,6 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
      *
      *  @tparam B the element type of the returned option
      *  @param f the function to apply
-     *  @return the result of applying `f` to the option's value if the option is
-     *          nonempty and its value satisfies `p`, otherwise `None`
      */
     def flatMap[B](f: A => Option[B]): Option[B] = self filter p flatMap f
     /** Applies the given procedure $f to the filtered $option's value, if the
@@ -448,7 +439,6 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
     /** Returns a `WithFilter` whose predicate is the conjunction of $p and `q`.
      *
      *  @param q the additional predicate used to test the option's value
-     *  @return a `WithFilter` whose predicate holds only when both `p` and `q` hold
      */
     def withFilter(q: A => Boolean): WithFilter = new WithFilter(x => p(x) && q(x))
   }
@@ -728,11 +718,6 @@ sealed abstract class Option[+A] extends IterableOnce[A] with Product with Seria
  *  @param value the contained value
  */
 @SerialVersionUID(1234815782226070388L) // value computed by serialver for 2.11.2, annotation added in 2.11.4
-/** Represents an existing value of type `A`.
- *
- *  @tparam A the type of the contained value
- *  @param value the contained value
- */
 final case class Some[+A](value: A) extends Option[A] {
   /** Returns the contained value. */
   def get: A = value
@@ -742,6 +727,9 @@ final case class Some[+A](value: A) extends Option[A] {
 /** This case object represents non-existent values. */
 @SerialVersionUID(5066590221178148012L) // value computed by serialver for 2.11.2, annotation added in 2.11.4
 case object None extends Option[Nothing] {
-  /** Throws a `NoSuchElementException`, since `None` holds no value. */
+  /** Always throws, since `None` holds no value.
+   *
+   *  @throws NoSuchElementException always
+   */
   def get: Nothing = throw new NoSuchElementException("None.get")
 }

@@ -111,6 +111,7 @@ private[process] trait ProcessBuilderImpl {
   }
 
   private[process] abstract class ThreadBuilder(
+    /** The string representation of this builder: the path, URL, or stream label it reads or writes. */
     override val toString: String
   ) extends AbstractBuilder {
 
@@ -189,16 +190,46 @@ private[process] trait ProcessBuilderImpl {
 
     private val defaultStreamCapacity = 4096
 
+    /** Constructs a command that runs this command and pipes its output into `other`.
+     *
+     *  @param other the command that consumes this command's output; it must be a
+     *               simple command, one whose `canPipeTo` is true
+     *  @return a new `ProcessBuilder` that, when run, runs both commands concurrently
+     *          with the output of the first connected to the input of the second
+     *  @throws IllegalArgumentException if `other` cannot be the target of a pipe
+     */
     def #|(other: ProcessBuilder): ProcessBuilder  = {
       require(other.canPipeTo, "Piping to multiple processes is not supported.")
       new PipedBuilder(this, other, toError = false)
     }
+    /** Constructs a command that runs this command first and then `other` if this
+     *  command's exit code is non-zero.
+     *
+     *  @param other the command to run if this one returns a non-zero exit code
+     *  @return a new `ProcessBuilder` whose exit code is zero if this command's is
+     *          zero, and `other`'s exit code otherwise
+     */
     def #||(other: ProcessBuilder): ProcessBuilder = new OrBuilder(this, other)
+    /** Constructs a command that runs this command first and then `other` if this
+     *  command's exit code is zero.
+     *
+     *  @param other the command to run if this one returns an exit code of zero
+     *  @return a new `ProcessBuilder` whose exit code is that of `other` when it
+     *          runs, and this command's non-zero exit code otherwise
+     */
     def #&&(other: ProcessBuilder): ProcessBuilder = new AndBuilder(this, other)
+    /** Constructs a command that runs this command first and then `other`, regardless
+     *  of this command's exit code.
+     *
+     *  @param other the command to run after this one
+     *  @return a new `ProcessBuilder` whose exit code is that of `other`
+     */
     def ###(other: ProcessBuilder): ProcessBuilder = new SequenceBuilder(this, other)
 
-    /** Returns the started `Process` for this builder, run with its output and error sent to
-     *  the console and with no input given to it.
+    /** Starts the process represented by this builder, sending its output and error to
+     *  the console and giving it no input.
+     *
+     *  @return the started `Process`
      */
     def run(): Process                                          = run(connectInput = false)
     /** Starts the process represented by this builder, sending its output and error to the
@@ -223,91 +254,240 @@ private[process] trait ProcessBuilderImpl {
      */
     def run(log: ProcessLogger, connectInput: Boolean): Process = run(BasicIO(connectInput, log))
 
+    /** Starts the process represented by this builder, blocks until it exits, and
+     *  returns its standard output as a `String`.  Standard error is sent to the
+     *  console and no input is given to the process.
+     *
+     *  @throws RuntimeException if the exit code is non-zero
+     */
     def !!                      = slurp(None, withIn = false)
+    /** Starts the process represented by this builder, blocks until it exits, and
+     *  returns its standard output as a `String`.  Standard error is sent to `log`
+     *  and no input is given to the process.
+     *
+     *  @param log the `ProcessLogger` to receive standard error output
+     *  @throws RuntimeException if the exit code is non-zero
+     */
     def !!(log: ProcessLogger)  = slurp(Some(log), withIn = false)
+    /** Starts the process represented by this builder, blocks until it exits, and
+     *  returns its standard output as a `String`.  Standard error is sent to the
+     *  console and the process reads from the standard input of the current process.
+     *
+     *  @throws RuntimeException if the exit code is non-zero
+     */
     def !!<                     = slurp(None, withIn = true)
+    /** Starts the process represented by this builder, blocks until it exits, and
+     *  returns its standard output as a `String`.  Standard error is sent to `log`
+     *  and the process reads from the standard input of the current process.
+     *
+     *  @param log the `ProcessLogger` to receive standard error output
+     *  @throws RuntimeException if the exit code is non-zero
+     */
     def !!<(log: ProcessLogger) = slurp(Some(log), withIn = true)
 
-    /** Returns the standard output of the process represented by this builder as a `LazyList`
-     *  of lines that blocks until each line becomes available, starting that process as a side
-     *  effect.  Standard error is sent to the console, and a non-zero exit code raises an
-     *  exception after the last line.
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `LazyList` of lines.  Evaluating the list blocks until each line becomes
+     *  available.  Standard error is sent to the console.
+     *
+     *  @return a `LazyList` of the process's standard output lines, whose evaluation
+     *          raises a `RuntimeException` after the last line if the exit code is
+     *          non-zero
      */
     def lazyLines: LazyList[String]                       = lazyLines(withInput = false, nonZeroException = true, None, defaultStreamCapacity)
-    /** Starts the process represented by this builder and returns its standard output as a
-     *  `LazyList` of lines that blocks until each line becomes available.  A non-zero exit
-     *  code raises an exception after the last line.
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `LazyList` of lines.  Evaluating the list blocks until each line becomes
+     *  available.  Standard error is sent to `log`.
      *
      *  @param log the `ProcessLogger` to receive standard error output
-     *  @return a `LazyList` of the process's standard output lines, whose evaluation raises an
-     *          exception once every line has been yielded if the exit code is non-zero
+     *  @return a `LazyList` of the process's standard output lines, whose evaluation
+     *          raises a `RuntimeException` after the last line if the exit code is
+     *          non-zero
      */
     def lazyLines(log: ProcessLogger): LazyList[String]   = lazyLines(withInput = false, nonZeroException = true, Some(log), defaultStreamCapacity)
-    /** Returns the standard output of the process represented by this builder as a `LazyList`
-     *  of lines that blocks until each line becomes available, starting that process as a side
-     *  effect.  Standard error is sent to the console, and a non-zero exit code raises no
-     *  exception.
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `LazyList` of lines.  Evaluating the list blocks until each line becomes
+     *  available.  Standard error is sent to the console.
+     *
+     *  @return a `LazyList` of the process's standard output lines, which simply ends
+     *          after the last line, even if the exit code is non-zero
      */
     def lazyLines_! : LazyList[String]                    = lazyLines(withInput = false, nonZeroException = false, None, defaultStreamCapacity)
-    /** Returns the standard output of the process represented by this builder as a `LazyList`
-     *  of lines that blocks until each line becomes available, starting that process as a side
-     *  effect.  Standard error is sent to the given `ProcessLogger`, and a non-zero exit code
-     *  raises no exception.
-     */
-    def lazyLines_!(log: ProcessLogger): LazyList[String] = lazyLines(withInput = false, nonZeroException = false, Some(log), defaultStreamCapacity)
-    /** Starts the process represented by this builder and returns its standard output as a
-     *  `LazyList` of lines that blocks until each line becomes available.  Standard error is
-     *  sent to the console, and a non-zero exit code raises an exception after the last line.
-     *
-     *  @param capacity the maximum number of lines to buffer before blocking the producer; it must
-     *                  be non-null and positive, since a null or non-positive value fails when the
-     *                  underlying buffer is created
-     *  @return a `LazyList` of the process's standard output lines, whose evaluation raises an
-     *          exception once every line has been yielded if the exit code is non-zero
-     */
-    def lazyLines(capacity: Integer): LazyList[String]                       = lazyLines(withInput = false, nonZeroException = true, None, capacity)
-    /** Starts the process represented by this builder and returns its standard output as a
-     *  `LazyList` of lines that blocks until each line becomes available.  A non-zero exit
-     *  code raises an exception after the last line.
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `LazyList` of lines.  Evaluating the list blocks until each line becomes
+     *  available.  Standard error is sent to `log`.
      *
      *  @param log the `ProcessLogger` to receive standard error output
-     *  @param capacity the maximum number of lines to buffer before blocking the producer; it must
-     *                  be non-null and positive, since a null or non-positive value fails when the
-     *                  underlying buffer is created
-     *  @return a `LazyList` of the process's standard output lines, whose evaluation raises an
-     *          exception once every line has been yielded if the exit code is non-zero
+     *  @return a `LazyList` of the process's standard output lines, which simply ends
+     *          after the last line, even if the exit code is non-zero
+     */
+    def lazyLines_!(log: ProcessLogger): LazyList[String] = lazyLines(withInput = false, nonZeroException = false, Some(log), defaultStreamCapacity)
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `LazyList` of lines.  Evaluating the list blocks until each line becomes
+     *  available, and the producer blocks once `capacity` lines are buffered without
+     *  being consumed.  Standard error is sent to the console.
+     *
+     *  @param capacity the maximum number of lines to buffer before blocking the
+     *                  producer; must be a positive, non-`null` `Integer`
+     *  @return a `LazyList` of the process's standard output lines, whose evaluation
+     *          raises a `RuntimeException` after the last line if the exit code is
+     *          non-zero
+     */
+    def lazyLines(capacity: Integer): LazyList[String]                       = lazyLines(withInput = false, nonZeroException = true, None, capacity)
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `LazyList` of lines.  Evaluating the list blocks until each line becomes
+     *  available, and the producer blocks once `capacity` lines are buffered without
+     *  being consumed.  Standard error is sent to `log`.
+     *
+     *  @param log the `ProcessLogger` to receive standard error output
+     *  @param capacity the maximum number of lines to buffer before blocking the
+     *                  producer; must be a positive, non-`null` `Integer`
+     *  @return a `LazyList` of the process's standard output lines, whose evaluation
+     *          raises a `RuntimeException` after the last line if the exit code is
+     *          non-zero
      */
     def lazyLines(log: ProcessLogger, capacity: Integer): LazyList[String]   = lazyLines(withInput = false, nonZeroException = true, Some(log), capacity)
-    /** Returns the standard output of the process represented by this builder as a `LazyList`
-     *  of lines that blocks until each line becomes available, buffering at most `capacity`
-     *  lines ahead of the consumer and starting that process as a side effect.  The capacity must
-     *  be non-null and positive, since a null or non-positive value fails when the underlying
-     *  buffer is created.  Standard error is sent to the console, and a non-zero exit code raises
-     *  no exception.
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `LazyList` of lines.  Evaluating the list blocks until each line becomes
+     *  available, and the producer blocks once `capacity` lines are buffered without
+     *  being consumed.  Standard error is sent to the console.
+     *
+     *  @param capacity the maximum number of lines to buffer before blocking the
+     *                  producer; must be a positive, non-`null` `Integer`
+     *  @return a `LazyList` of the process's standard output lines, which simply ends
+     *          after the last line, even if the exit code is non-zero
      */
     def lazyLines_!(capacity: Integer) : LazyList[String]                    = lazyLines(withInput = false, nonZeroException = false, None, capacity)
-    /** Returns the standard output of the process represented by this builder as a `LazyList`
-     *  of lines that blocks until each line becomes available, buffering at most `capacity`
-     *  lines ahead of the consumer and starting that process as a side effect.  The capacity must
-     *  be non-null and positive, since a null or non-positive value fails when the underlying
-     *  buffer is created.  Standard error is sent to the given `ProcessLogger`, and a non-zero exit
-     *  code raises no exception.
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `LazyList` of lines.  Evaluating the list blocks until each line becomes
+     *  available, and the producer blocks once `capacity` lines are buffered without
+     *  being consumed.  Standard error is sent to `log`.
+     *
+     *  @param log the `ProcessLogger` to receive standard error output
+     *  @param capacity the maximum number of lines to buffer before blocking the
+     *                  producer; must be a positive, non-`null` `Integer`
+     *  @return a `LazyList` of the process's standard output lines, which simply ends
+     *          after the last line, even if the exit code is non-zero
      */
     def lazyLines_!(log: ProcessLogger, capacity: Integer): LazyList[String] = lazyLines(withInput = false, nonZeroException = false, Some(log), capacity)
 
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `Stream` of lines.  Evaluating the stream blocks until each line becomes
+     *  available.  Standard error is sent to the console.
+     *
+     *  @return a `Stream` of the process's standard output lines, whose evaluation
+     *          raises a `RuntimeException` after the last line if the exit code is
+     *          non-zero
+     */
     @deprecated("internal", since = "2.13.4") def lineStream: Stream[String]                       = lineStream(withInput = false, nonZeroException = true, None, defaultStreamCapacity)
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `Stream` of lines.  Evaluating the stream blocks until each line becomes
+     *  available.  Standard error is sent to `log`.
+     *
+     *  @param log the `ProcessLogger` to receive standard error output
+     *  @return a `Stream` of the process's standard output lines, whose evaluation
+     *          raises a `RuntimeException` after the last line if the exit code is
+     *          non-zero
+     */
     @deprecated("internal", since = "2.13.4") def lineStream(log: ProcessLogger): Stream[String]   = lineStream(withInput = false, nonZeroException = true, Some(log), defaultStreamCapacity)
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `Stream` of lines.  Evaluating the stream blocks until each line becomes
+     *  available.  Standard error is sent to the console.
+     *
+     *  @return a `Stream` of the process's standard output lines, which simply ends
+     *          after the last line, even if the exit code is non-zero
+     */
     @deprecated("internal", since = "2.13.4") def lineStream_! : Stream[String]                    = lineStream(withInput = false, nonZeroException = false, None, defaultStreamCapacity)
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `Stream` of lines.  Evaluating the stream blocks until each line becomes
+     *  available.  Standard error is sent to `log`.
+     *
+     *  @param log the `ProcessLogger` to receive standard error output
+     *  @return a `Stream` of the process's standard output lines, which simply ends
+     *          after the last line, even if the exit code is non-zero
+     */
     @deprecated("internal", since = "2.13.4") def lineStream_!(log: ProcessLogger): Stream[String] = lineStream(withInput = false, nonZeroException = false, Some(log), defaultStreamCapacity)
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `Stream` of lines.  Evaluating the stream blocks until each line becomes
+     *  available, and the producer blocks once `capacity` lines are buffered without
+     *  being consumed.  Standard error is sent to the console.
+     *
+     *  @param capacity the maximum number of lines to buffer before blocking the
+     *                  producer; must be a positive, non-`null` `Integer`
+     *  @return a `Stream` of the process's standard output lines, whose evaluation
+     *          raises a `RuntimeException` after the last line if the exit code is
+     *          non-zero
+     */
     @deprecated("internal", since = "2.13.4") def lineStream(capacity: Integer): Stream[String]                       = lineStream(withInput = false, nonZeroException = true, None, capacity)
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `Stream` of lines.  Evaluating the stream blocks until each line becomes
+     *  available, and the producer blocks once `capacity` lines are buffered without
+     *  being consumed.  Standard error is sent to `log`.
+     *
+     *  @param log the `ProcessLogger` to receive standard error output
+     *  @param capacity the maximum number of lines to buffer before blocking the
+     *                  producer; must be a positive, non-`null` `Integer`
+     *  @return a `Stream` of the process's standard output lines, whose evaluation
+     *          raises a `RuntimeException` after the last line if the exit code is
+     *          non-zero
+     */
     @deprecated("internal", since = "2.13.4") def lineStream(log: ProcessLogger, capacity: Integer): Stream[String]   = lineStream(withInput = false, nonZeroException = true, Some(log), capacity)
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `Stream` of lines.  Evaluating the stream blocks until each line becomes
+     *  available, and the producer blocks once `capacity` lines are buffered without
+     *  being consumed.  Standard error is sent to the console.
+     *
+     *  @param capacity the maximum number of lines to buffer before blocking the
+     *                  producer; must be a positive, non-`null` `Integer`
+     *  @return a `Stream` of the process's standard output lines, which simply ends
+     *          after the last line, even if the exit code is non-zero
+     */
     @deprecated("internal", since = "2.13.4") def lineStream_!(capacity: Integer) : Stream[String]                    = lineStream(withInput = false, nonZeroException = false, None, capacity)
+    /** Starts the process represented by this builder and returns its standard output as
+     *  a `Stream` of lines.  Evaluating the stream blocks until each line becomes
+     *  available, and the producer blocks once `capacity` lines are buffered without
+     *  being consumed.  Standard error is sent to `log`.
+     *
+     *  @param log the `ProcessLogger` to receive standard error output
+     *  @param capacity the maximum number of lines to buffer before blocking the
+     *                  producer; must be a positive, non-`null` `Integer`
+     *  @return a `Stream` of the process's standard output lines, which simply ends
+     *          after the last line, even if the exit code is non-zero
+     */
     @deprecated("internal", since = "2.13.4") def lineStream_!(log: ProcessLogger, capacity: Integer): Stream[String] = lineStream(withInput = false, nonZeroException = false, Some(log), capacity)
 
+    /** Starts the process represented by this builder, blocks until it exits, and
+     *  returns the exit code.  Standard output and error are sent to the console and
+     *  no input is given to the process.
+     */
     def !                      = run(connectInput = false).exitValue()
+    /** Starts the process represented by this builder, blocks until it exits, and
+     *  returns the exit code.  The process's I/O is handled by `io`.
+     *
+     *  @param io the `ProcessIO` that handles the process's standard input, output, and error streams
+     */
     def !(io: ProcessIO)       = run(io).exitValue()
+    /** Starts the process represented by this builder, blocks until it exits, and
+     *  returns the exit code.  Standard output and error are sent to `log` and no
+     *  input is given to the process.  The whole run is wrapped in a call to
+     *  `log.buffer`, giving the logger an opportunity to set up and tear down
+     *  buffering.
+     *
+     *  @param log the `ProcessLogger` to receive standard output and error
+     */
     def !(log: ProcessLogger)  = runBuffered(log, connectInput = false)
+    /** Starts the process represented by this builder, blocks until it exits, and
+     *  returns the exit code.  Standard output and error are sent to the console and
+     *  the process reads from the standard input of the current process.
+     */
     def !<                     = run(connectInput = true).exitValue()
+    /** Starts the process represented by this builder, blocks until it exits, and
+     *  returns the exit code.  Standard output and error are sent to `log` and the
+     *  process reads from the standard input of the current process.  The whole run
+     *  is wrapped in a call to `log.buffer`, giving the logger an opportunity to set
+     *  up and tear down buffering.
+     *
+     *  @param log the `ProcessLogger` to receive standard output and error
+     */
     def !<(log: ProcessLogger) = runBuffered(log, connectInput = true)
 
     /** Constructs a new builder which runs this command with all input/output threads marked
@@ -385,9 +565,31 @@ private[process] trait ProcessBuilderImpl {
     /** Returns a builder that writes its process input to this file, replacing any existing contents. */
     protected def toSink: FileOutput = new FileOutput(base, append = false)
 
+    /** Constructs a command that appends the contents of the given file to this file.
+     *
+     *  @param f the file whose contents to append
+     *  @return a `ProcessBuilder` that, when run, appends the contents of `f` to this file
+     */
     def #<<(f: File): ProcessBuilder           = #<<(new FileInput(f))
+    /** Constructs a command that appends the contents read from the given URL to this file.
+     *
+     *  @param u the URL whose contents to append
+     *  @return a `ProcessBuilder` that, when run, appends the contents of `u` to this file
+     */
     def #<<(u: URL): ProcessBuilder            = #<<(new URLInput(u))
+    /** Constructs a command that appends the contents of the given input stream to this
+     *  file.  The argument is call-by-name, so the stream is recreated, read, and closed
+     *  each time the command is executed.
+     *
+     *  @param s the input stream to append from, created anew for each execution
+     *  @return a `ProcessBuilder` that, when run, appends the contents of `s` to this file
+     */
     def #<<(s: => InputStream): ProcessBuilder = #<<(new IStreamBuilder(s, "<input stream>"))
+    /** Constructs a command that appends the output of the given command to this file.
+     *
+     *  @param b the command whose output to append
+     *  @return a `ProcessBuilder` that, when run, runs `b` and appends its output to this file
+     */
     def #<<(b: ProcessBuilder): ProcessBuilder = new PipedBuilder(b, new FileOutput(base, append = true), toError = false)
   }
 

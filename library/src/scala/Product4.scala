@@ -23,7 +23,6 @@ object Product4 {
    *  @tparam T3 the type of the 3rd component of the product
    *  @tparam T4 the type of the 4th component of the product
    *  @param x the product to extract from
-   *  @return the product `x` wrapped in a [[scala.Some]]
    */
   def unapply[T1, T2, T3, T4](x: Product4[T1, T2, T3, T4]): Option[Product4[T1, T2, T3, T4]] =
     Some(x)

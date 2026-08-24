@@ -34,23 +34,23 @@ import scala.language.`2.13`
  *  @tparam T15 the type of the 15th element
  *  @tparam T16 the type of the 16th element
  *  @tparam T17 the type of the 17th element
- *  @param  _1   element 1 of this Tuple17
- *  @param  _2   element 2 of this Tuple17
- *  @param  _3   element 3 of this Tuple17
- *  @param  _4   element 4 of this Tuple17
- *  @param  _5   element 5 of this Tuple17
- *  @param  _6   element 6 of this Tuple17
- *  @param  _7   element 7 of this Tuple17
- *  @param  _8   element 8 of this Tuple17
- *  @param  _9   element 9 of this Tuple17
- *  @param  _10   element 10 of this Tuple17
- *  @param  _11   element 11 of this Tuple17
- *  @param  _12   element 12 of this Tuple17
- *  @param  _13   element 13 of this Tuple17
- *  @param  _14   element 14 of this Tuple17
- *  @param  _15   element 15 of this Tuple17
- *  @param  _16   element 16 of this Tuple17
- *  @param  _17   element 17 of this Tuple17
+ *  @param  _1   the 1st element of this Tuple17
+ *  @param  _2   the 2nd element of this Tuple17
+ *  @param  _3   the 3rd element of this Tuple17
+ *  @param  _4   the 4th element of this Tuple17
+ *  @param  _5   the 5th element of this Tuple17
+ *  @param  _6   the 6th element of this Tuple17
+ *  @param  _7   the 7th element of this Tuple17
+ *  @param  _8   the 8th element of this Tuple17
+ *  @param  _9   the 9th element of this Tuple17
+ *  @param  _10   the 10th element of this Tuple17
+ *  @param  _11   the 11th element of this Tuple17
+ *  @param  _12   the 12th element of this Tuple17
+ *  @param  _13   the 13th element of this Tuple17
+ *  @param  _14   the 14th element of this Tuple17
+ *  @param  _15   the 15th element of this Tuple17
+ *  @param  _16   the 16th element of this Tuple17
+ *  @param  _17   the 17th element of this Tuple17
  */
 final case class Tuple17[+T1, +T2, +T3, +T4, +T5, +T6, +T7, +T8, +T9, +T10, +T11, +T12, +T13, +T14, +T15, +T16, +T17](_1: T1, _2: T2, _3: T3, _4: T4, _5: T5, _6: T6, _7: T7, _8: T8, _9: T9, _10: T10, _11: T11, _12: T12, _13: T13, _14: T14, _15: T15, _16: T16, _17: T17)
   extends Product17[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, T13, T14, T15, T16, T17]

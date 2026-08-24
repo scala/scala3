@@ -21,6 +21,9 @@ import scala.language.`2.13`
  *  Both the argument type and the result type are specialized over a selection of
  *  the primitive types, so a subclass can accept an unboxed argument and produce
  *  an unboxed result.
+ *
+ *  @tparam T1 the type of the 1st argument
+ *  @tparam R the return type of the function
  */
 abstract class AbstractFunction1[@specialized(Specializable.Arg) -T1, @specialized(Specializable.Return) +R] extends Function1[T1, R] {
 

@@ -167,8 +167,8 @@ private[process] trait ProcessImpl {
     protected override def runAndExitValue() = runAndExitValue(newSource, newSink)
     /** Runs both processes with the output of the first connected through `source` and `sink` to the input of the second.
      *
-     *  The first process writes to its error stream rather than its output stream when this
-     *  is a pipe to error. All of the pipe threads and processes are released if either
+     *  When this is a pipe to error, it is the first process's error output rather than its
+     *  standard output that is piped. All of the pipe threads and processes are released if either
      *  process fails to start or the pipeline is interrupted.
      *
      *  @param source the pipe thread reading the output of the first process
@@ -240,7 +240,13 @@ private[process] trait ProcessImpl {
   @nowarn("msg=Calling the external method .*Name") // setName+getName are safe to call in a constructor
   private[process] class PipeSource(label: => String) extends PipeThread(isSink = false, () => label) {
     setName(s"PipeSource($label)-$getName")
+    /** The write end of the pipe, into which this thread copies each connected input stream;
+     *  `connectOut` connects its far end to a `PipeSink`.
+     */
     protected val pipe = new PipedOutputStream
+    /** A one-element queue through which `connectIn` hands this thread the next input stream
+     *  to copy, and `done()` the `None` marker that ends the copying.
+     */
     protected val source = new LinkedBlockingQueue[Option[InputStream]](1)
     /** Copies each connected input stream into the pipe in turn, finishing once the stream being copied is exhausted
      *  and the end marker queued by `done()` is taken, or as soon as an `InterruptedException` is thrown, and closes
@@ -278,7 +284,13 @@ private[process] trait ProcessImpl {
   @nowarn("msg=Calling the external method .*Name") // setName+getName are safe to call in a constructor
   private[process] class PipeSink(label: => String) extends PipeThread(isSink = true, () => label) {
     setName(s"PipeSink($label)-$getName")
+    /** The read end of the pipe, from which this thread copies what the `PipeSource` writes;
+     *  `connectIn` connects it to the source's write end.
+     */
     protected val pipe = new PipedInputStream
+    /** A one-element queue through which `connectOut` hands this thread the next output stream
+     *  to fill, and `done()` the `None` marker that ends the copying.
+     */
     protected val sink = new LinkedBlockingQueue[Option[OutputStream]](1)
     /** Copies the pipe into each connected output stream in turn, finishing once the transfer in progress completes
      *  and the end marker queued by `done()` is taken, or as soon as an `InterruptedException` is thrown, and closes

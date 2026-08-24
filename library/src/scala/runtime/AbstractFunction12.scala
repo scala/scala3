@@ -14,10 +14,9 @@ package scala.runtime
 
 import scala.language.`2.13`
 
-/** `AbstractFunction12` is a base class for twelve-parameter function implementations.
- *
- *  Extending this class allows a function value to be defined by extending a class
- *  rather than the [[scala.Function12]] trait.
+/** A base class for twelve-parameter function implementations, allowing a function
+ *  value to be defined by extending a class rather than the [[scala.Function12]]
+ *  trait.
  *
  *  @tparam T1 the type of the 1st argument
  *  @tparam T2 the type of the 2nd argument
@@ -31,7 +30,7 @@ import scala.language.`2.13`
  *  @tparam T10 the type of the 10th argument
  *  @tparam T11 the type of the 11th argument
  *  @tparam T12 the type of the 12th argument
- *  @tparam R the return type of this function
+ *  @tparam R the return type of the function
  */
 abstract class AbstractFunction12[-T1, -T2, -T3, -T4, -T5, -T6, -T7, -T8, -T9, -T10, -T11, -T12, +R] extends Function12[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, T12, R] {
 
