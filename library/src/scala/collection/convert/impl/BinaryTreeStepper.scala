@@ -23,6 +23,7 @@ import scala.collection._
 
 
 private[collection] object BinaryTreeStepper {
+  /** The canonical empty stack, shared by all steppers whose stack holds no nodes. */
   val emptyStack = new Array[AnyRef | Null](0)
 }
 
@@ -52,7 +53,14 @@ private[collection] object BinaryTreeStepper {
  *  @tparam Semi the self type of the concrete stepper subclass, which must extend both `Sub` and `BinaryTreeStepperBase`
  */
 private[collection] abstract class BinaryTreeStepperBase[A, T <: AnyRef, Sub, Semi <: Sub & BinaryTreeStepperBase[A, T, ?, ?]](
+  /** The traversal state: `maxLength` bounds the number of elements remaining (exact
+   *  until the first split, an estimate afterwards); `myCurrent` is the detached node
+   *  whose element is next to be consumed, or `null` if none is ready; `stack` holds the
+   *  not-yet-visited nodes on the path to the next elements, with `index` the position
+   *  of its top, or -1 when it is empty.
+   */
   protected var maxLength: Int, protected var myCurrent: T | Null, protected var stack: Array[AnyRef | Null], protected var index: Int,
+  /** Accessors returning a node's left and right children respectively, or `null` when absent. */
   protected val left: T => T | Null, protected val right: T => T | Null
 )
 extends EfficientSplit {
@@ -116,12 +124,31 @@ extends EfficientSplit {
       myCurrent = detach(unroll(root))
     }
 
+  /** Creates a stepper of the concrete type from an explicitly given traversal state;
+   *  used by `trySplit` to package the split-off prefix of the traversal.
+   *
+   *  @param maxL a bound on the number of elements the new stepper will produce
+   *  @param myC the node whose element the new stepper consumes next, or `null` if none is ready
+   *  @param stk the new stepper's stack of not-yet-visited nodes
+   *  @param ix the position of the top of `stk`, or -1 if it is empty
+   *  @return a stepper resuming from the given state
+   */
   protected def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): Semi
 
+  /** Returns the Java `Spliterator` characteristics: `ORDERED` only, elements being
+   *  produced in the tree's in-order sequence.
+   */
   def characteristics: Int = Spliterator.ORDERED
 
+  /** Returns `maxLength` as an estimate of the number of elements remaining, or 0 if
+   *  none remain.  The estimate is exact until the first split.
+   */
   def estimateSize: Long = if (hasStep) maxLength else 0
 
+  /** Returns `true` if an element is ready to consume, detaching the top node of the
+   *  stack to ready one if necessary; resets this stepper to the empty state once the
+   *  traversal is exhausted.
+   */
   def hasStep: Boolean = (myCurrent ne null) || (maxLength > 0 && {
     if (index < 0) { maxLength = 0; stack = BinaryTreeStepper.emptyStack; false }
     else {
@@ -164,6 +191,11 @@ private[collection] final class AnyBinaryTreeStepper[A, T <: AnyRef](
 )
 extends BinaryTreeStepperBase[A, T, AnyStepper[A], AnyBinaryTreeStepper[A, T]](_maxLength, _myCurrent, _stack, _index, _left, _right)
 with AnyStepper[A] {
+  /** Returns the element extracted from the ready node, consuming it and decrementing
+   *  the remaining-element bound.
+   *
+   *  @throws NoSuchElementException if no elements remain
+   */
   def nextStep(): A =
     if (hasStep) {
       val ans = extract(myCurrent.nn)
@@ -173,10 +205,30 @@ with AnyStepper[A] {
     }
     else Stepper.throwNSEE()
 
+  /** Creates a new `AnyBinaryTreeStepper` from the given traversal state and this
+   *  stepper's `left`, `right` and `extract` functions.
+   *
+   *  @param maxL a bound on the number of elements the new stepper will produce
+   *  @param myC the node whose element the new stepper consumes next, or `null` if none is ready
+   *  @param stk the new stepper's stack of not-yet-visited nodes
+   *  @param ix the position of the top of `stk`, or -1 if it is empty
+   *  @return a stepper resuming from the given state
+   */
   def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): AnyBinaryTreeStepper[A, T] =
     new AnyBinaryTreeStepper[A, T](maxL, myC, stk, ix, left, right, extract)
 }
 private[collection] object AnyBinaryTreeStepper {
+  /** Creates a stepper that traverses, in order, the binary tree rooted at `root`.
+   *
+   *  @tparam A the type of elements to produce
+   *  @tparam T the type of the tree's nodes
+   *  @param maxLength the number of elements in the tree
+   *  @param root the root node of the tree, or `null` if the tree is empty
+   *  @param left the function returning a node's left child, or `null` if it has none
+   *  @param right the function returning a node's right child, or `null` if it has none
+   *  @param extract the function reading the element stored in a node
+   *  @return a stepper over all elements of the tree, in order
+   */
   def from[A, T <: AnyRef](maxLength: Int, root: T | Null, left: T => T | Null, right: T => T | Null, extract: T => A): AnyBinaryTreeStepper[A, T] = {
     val ans = new AnyBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
@@ -190,6 +242,11 @@ private[collection] final class DoubleBinaryTreeStepper[T <: AnyRef](
 )
 extends BinaryTreeStepperBase[Double, T, DoubleStepper, DoubleBinaryTreeStepper[T]](_maxLength, _myCurrent, _stack, _index, _left, _right)
 with DoubleStepper {
+  /** Returns the element extracted from the ready node, consuming it and decrementing
+   *  the remaining-element bound.
+   *
+   *  @throws NoSuchElementException if no elements remain
+   */
   def nextStep(): Double =
     if (hasStep) {
       val ans = extract(myCurrent.nn)
@@ -199,10 +256,29 @@ with DoubleStepper {
     }
     else Stepper.throwNSEE()
 
+  /** Creates a new `DoubleBinaryTreeStepper` from the given traversal state and this
+   *  stepper's `left`, `right` and `extract` functions.
+   *
+   *  @param maxL a bound on the number of elements the new stepper will produce
+   *  @param myC the node whose element the new stepper consumes next, or `null` if none is ready
+   *  @param stk the new stepper's stack of not-yet-visited nodes
+   *  @param ix the position of the top of `stk`, or -1 if it is empty
+   *  @return a stepper resuming from the given state
+   */
   def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): DoubleBinaryTreeStepper[T] =
     new DoubleBinaryTreeStepper[T](maxL, myC, stk, ix, left, right, extract)
 }
 private [collection] object DoubleBinaryTreeStepper {
+  /** Creates a stepper that traverses, in order, the binary tree rooted at `root`.
+   *
+   *  @tparam T the type of the tree's nodes
+   *  @param maxLength the number of elements in the tree
+   *  @param root the root node of the tree, or `null` if the tree is empty
+   *  @param left the function returning a node's left child, or `null` if it has none
+   *  @param right the function returning a node's right child, or `null` if it has none
+   *  @param extract the function reading the element stored in a node
+   *  @return a stepper over all elements of the tree, in order
+   */
   def from[T <: AnyRef](maxLength: Int, root: T | Null, left: T => T | Null, right: T => T | Null, extract: T => Double): DoubleBinaryTreeStepper[T] = {
     val ans = new DoubleBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
@@ -216,6 +292,11 @@ private[collection] final class IntBinaryTreeStepper[T <: AnyRef](
 )
 extends BinaryTreeStepperBase[Int, T, IntStepper, IntBinaryTreeStepper[T]](_maxLength, _myCurrent, _stack, _index, _left, _right)
 with IntStepper {
+  /** Returns the element extracted from the ready node, consuming it and decrementing
+   *  the remaining-element bound.
+   *
+   *  @throws NoSuchElementException if no elements remain
+   */
   def nextStep(): Int =
     if (hasStep) {
       val ans = extract(myCurrent.nn)
@@ -225,10 +306,29 @@ with IntStepper {
     }
     else Stepper.throwNSEE()
 
+  /** Creates a new `IntBinaryTreeStepper` from the given traversal state and this
+   *  stepper's `left`, `right` and `extract` functions.
+   *
+   *  @param maxL a bound on the number of elements the new stepper will produce
+   *  @param myC the node whose element the new stepper consumes next, or `null` if none is ready
+   *  @param stk the new stepper's stack of not-yet-visited nodes
+   *  @param ix the position of the top of `stk`, or -1 if it is empty
+   *  @return a stepper resuming from the given state
+   */
   def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): IntBinaryTreeStepper[T] =
     new IntBinaryTreeStepper[T](maxL, myC, stk, ix, left, right, extract)
 }
 private [collection] object IntBinaryTreeStepper {
+  /** Creates a stepper that traverses, in order, the binary tree rooted at `root`.
+   *
+   *  @tparam T the type of the tree's nodes
+   *  @param maxLength the number of elements in the tree
+   *  @param root the root node of the tree, or `null` if the tree is empty
+   *  @param left the function returning a node's left child, or `null` if it has none
+   *  @param right the function returning a node's right child, or `null` if it has none
+   *  @param extract the function reading the element stored in a node
+   *  @return a stepper over all elements of the tree, in order
+   */
   def from[T <: AnyRef](maxLength: Int, root: T | Null, left: T => T | Null, right: T => T | Null, extract: T => Int): IntBinaryTreeStepper[T] = {
     val ans = new IntBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)
@@ -243,6 +343,11 @@ private[collection] final class LongBinaryTreeStepper[T <: AnyRef](
 )
 extends BinaryTreeStepperBase[Long, T, LongStepper, LongBinaryTreeStepper[T]](_maxLength, _myCurrent, _stack, _index, _left, _right)
 with LongStepper {
+  /** Returns the element extracted from the ready node, consuming it and decrementing
+   *  the remaining-element bound.
+   *
+   *  @throws NoSuchElementException if no elements remain
+   */
   def nextStep(): Long =
     if (hasStep) {
       val ans = extract(myCurrent.nn)
@@ -252,10 +357,29 @@ with LongStepper {
     }
     else Stepper.throwNSEE()
 
+  /** Creates a new `LongBinaryTreeStepper` from the given traversal state and this
+   *  stepper's `left`, `right` and `extract` functions.
+   *
+   *  @param maxL a bound on the number of elements the new stepper will produce
+   *  @param myC the node whose element the new stepper consumes next, or `null` if none is ready
+   *  @param stk the new stepper's stack of not-yet-visited nodes
+   *  @param ix the position of the top of `stk`, or -1 if it is empty
+   *  @return a stepper resuming from the given state
+   */
   def semiclone(maxL: Int, myC: T | Null, stk: Array[AnyRef | Null], ix: Int): LongBinaryTreeStepper[T] =
     new LongBinaryTreeStepper[T](maxL, myC, stk, ix, left, right, extract)
 }
 private [collection] object LongBinaryTreeStepper {
+  /** Creates a stepper that traverses, in order, the binary tree rooted at `root`.
+   *
+   *  @tparam T the type of the tree's nodes
+   *  @param maxLength the number of elements in the tree
+   *  @param root the root node of the tree, or `null` if the tree is empty
+   *  @param left the function returning a node's left child, or `null` if it has none
+   *  @param right the function returning a node's right child, or `null` if it has none
+   *  @param extract the function reading the element stored in a node
+   *  @return a stepper over all elements of the tree, in order
+   */
   def from[T <: AnyRef](maxLength: Int, root: T | Null, left: T => T | Null, right: T => T | Null, extract: T => Long): LongBinaryTreeStepper[T] = {
     val ans = new LongBinaryTreeStepper(0, null, BinaryTreeStepper.emptyStack, -1, left, right, extract)
     ans.initialize(root, maxLength)

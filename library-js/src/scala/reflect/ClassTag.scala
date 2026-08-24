@@ -84,9 +84,23 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
     else None
 
   // case class accessories
+  /** Tests whether `x` can possibly equal this class tag: only `ClassTag` instances can.
+   *
+   *  @param x the value to test
+   */
   override def canEqual(x: Any) = x.isInstanceOf[ClassTag[_]]
+  /** Tests whether `x` is a `ClassTag` whose `runtimeClass` equals this one's.
+   *
+   *  @param x the value to compare against
+   */
   override def equals(x: Any) = x.isInstanceOf[ClassTag[_]] && this.runtimeClass == x.asInstanceOf[ClassTag[_]].runtimeClass
+  /** Returns the hash code of `runtimeClass`, so that class tags that compare equal
+   *  hash alike.
+   */
   override def hashCode = runtimeClass.##
+  /** Returns the name of `runtimeClass`, rendering array classes as `Array[...]` of
+   *  their component type, recursively.
+   */
   override def toString = {
     def prettyprint(clazz: jClass[_]): String =
       if (clazz.isArray) s"Array[${prettyprint(clazz.getComponentType)}]" else
@@ -99,30 +113,61 @@ trait ClassTag[T] extends ClassManifestDeprecatedApis[T] with Equals with Serial
 object ClassTag {
   import ManifestFactory._
 
+  /** The class tag for the value type `Byte`, whose `runtimeClass` is `java.lang.Byte.TYPE`. */
   val Byte    : ByteManifest               = ManifestFactory.Byte
+  /** The class tag for the value type `Short`, whose `runtimeClass` is `java.lang.Short.TYPE`. */
   val Short   : ShortManifest              = ManifestFactory.Short
+  /** The class tag for the value type `Char`, whose `runtimeClass` is `java.lang.Character.TYPE`. */
   val Char    : CharManifest               = ManifestFactory.Char
+  /** The class tag for the value type `Int`, whose `runtimeClass` is `java.lang.Integer.TYPE`. */
   val Int     : IntManifest                = ManifestFactory.Int
+  /** The class tag for the value type `Long`, whose `runtimeClass` is `java.lang.Long.TYPE`. */
   val Long    : LongManifest               = ManifestFactory.Long
+  /** The class tag for the value type `Float`, whose `runtimeClass` is `java.lang.Float.TYPE`. */
   val Float   : FloatManifest              = ManifestFactory.Float
+  /** The class tag for the value type `Double`, whose `runtimeClass` is `java.lang.Double.TYPE`. */
   val Double  : DoubleManifest             = ManifestFactory.Double
+  /** The class tag for the value type `Boolean`, whose `runtimeClass` is `java.lang.Boolean.TYPE`. */
   val Boolean : BooleanManifest            = ManifestFactory.Boolean
+  /** The class tag for the value type `Unit`, whose `runtimeClass` is `java.lang.Void.TYPE`. */
   val Unit    : UnitManifest               = ManifestFactory.Unit
+  /** The class tag for the type `Any`, whose `runtimeClass` is `classOf[java.lang.Object]`. */
   val Any     : ClassTag[scala.Any]        = ManifestFactory.Any
+  /** The class tag for the type `Object`, whose `runtimeClass` is `classOf[java.lang.Object]`. */
   val Object  : ClassTag[java.lang.Object] = ManifestFactory.Object
+  /** The class tag for the type `AnyVal`, whose `runtimeClass` is `classOf[java.lang.Object]`. */
   val AnyVal  : ClassTag[scala.AnyVal]     = ManifestFactory.AnyVal
+  /** The class tag for the type `AnyRef`, the same instance as `Object`. */
   val AnyRef  : ClassTag[scala.AnyRef]     = ManifestFactory.AnyRef
+  /** The class tag for the type `Nothing`, whose `runtimeClass` is `classOf[scala.runtime.Nothing$]`. */
   val Nothing : ClassTag[scala.Nothing]    = ManifestFactory.Nothing
+  /** The class tag for the type `Null`, whose `runtimeClass` is `classOf[scala.runtime.Null$]`. */
   val Null    : ClassTag[scala.Null]       = ManifestFactory.Null
 
   @inline
   @SerialVersionUID(1L)
   private class GenericClassTag[T](val runtimeClass: jClass[_]) extends ClassTag[T] {
+    /** Returns a new array with element type `T` and length `len`, created
+     *  reflectively from `runtimeClass`.
+     *
+     *  @param len the length of the new array
+     */
     override def newArray(len: Int): Array[T] = {
       java.lang.reflect.Array.newInstance(runtimeClass, len).asInstanceOf[Array[T]]
     }
   }
 
+  /** Returns a `ClassTag[T]` for the given runtime class.
+   *
+   *  For the primitive classes (`java.lang.Byte.TYPE`, ..., `java.lang.Void.TYPE`) and
+   *  for `classOf[java.lang.Object]`, `classOf[scala.runtime.Nothing$]`, and
+   *  `classOf[scala.runtime.Null$]`, returns the corresponding shared tag
+   *  (`ClassTag.Byte`, ..., `ClassTag.Unit`, `ClassTag.Object`, `ClassTag.Nothing`,
+   *  `ClassTag.Null`); otherwise returns a new `ClassTag` wrapping `runtimeClass1`.
+   *
+   *  @tparam T the type whose erasure is `runtimeClass1`
+   *  @param runtimeClass1 the runtime class of the type `T`
+   */
   def apply[T](runtimeClass1: jClass[_]): ClassTag[T] =
     runtimeClass1 match {
       case java.lang.Byte.TYPE      => ClassTag.Byte.asInstanceOf[ClassTag[T]]
@@ -145,5 +190,11 @@ object ClassTag {
           new GenericClassTag[T](runtimeClass1)
     }
 
+  /** Extractor that yields the runtime class of a class tag.
+   *
+   *  @tparam T the type represented by `ctag`
+   *  @param ctag the class tag to extract from
+   *  @return `Some` of `ctag`'s `runtimeClass`
+   */
   def unapply[T](ctag: ClassTag[T]): Option[Class[_]] = Some(ctag.runtimeClass)
 }

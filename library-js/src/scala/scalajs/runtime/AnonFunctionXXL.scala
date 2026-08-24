@@ -21,5 +21,13 @@ package scala.scalajs.runtime
  *   NewLambda(AnonFunctionXXL, ..., (closureParam: Array[Object]) => closureBody)
  * which provides the best performance for old code.
  */
+/** The runtime representation of anonymous functions of arity above 22 in code
+ *  compiled by Scala.js before version 1.19, backed by a function that takes
+ *  the arguments as a single array.
+ *
+ *  Retained only so that binaries compiled against earlier versions keep
+ *  linking; the IR deserializer rewrites allocations of this class into
+ *  `NewLambda` nodes.
+ */
 @deprecated("used by the codegen before Scala.js 1.19", since = "3.7.0")
 sealed abstract class AnonFunctionXXL extends scala.runtime.FunctionXXL

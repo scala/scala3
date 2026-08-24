@@ -33,6 +33,12 @@ trait StreamExtensions {
   this: StreamExtensions =>
   // collections
 
+  /** Provides the `asJavaSeqStream` extension method that creates a sequential Java Stream over
+   *  a Scala collection, via the collection's [[Stepper]].
+   *
+   *  @tparam A the element type of the collection
+   *  @param cc the collection to create a Stream for
+   */
   implicit class IterableHasSeqStream[A](cc: IterableOnce[A]) {
     /** Creates a sequential [[java.util.stream.Stream Java Stream]] for this collection. If the
      *  collection contains primitive values, a corresponding specialized Stream is returned (e.g.,
@@ -49,8 +55,27 @@ trait StreamExtensions {
   }
 
   // Not `CC[X] <: IterableOnce[X]`, but `C` with an extra constraint, to support non-parametric classes like IntAccumulator
+  /** Provides the `asJavaParStream` extension method that creates a parallel Java Stream over a
+   *  Scala collection, via the collection's [[Stepper]].
+   *
+   *  The receiver is typed as `C` with a separate `ev` constraint, rather than as
+   *  `CC[X] <: IterableOnce[X]`, so that non-parametric collections such as
+   *  [[scala.jdk.IntAccumulator]] are also supported.
+   *
+   *  @tparam A the element type of the collection
+   *  @tparam C the type of the collection
+   *  @param c the collection to create a Stream for
+   *  @param ev evidence that the collection type `C` has elements of type `A`
+   */
   implicit class IterableNonGenericHasParStream[A, C <: IterableOnce[?]](c: C)(implicit ev: C <:< IterableOnce[A]) {
     private type IterableOnceWithEfficientStepper = IterableOnce[A] {
+      /** Returns a `Stepper` for this collection whose type records that it supports efficient
+       *  splitting ([[Stepper.EfficientSplit]]), as required for parallel streams.
+       *
+       *  @tparam S the type of the returned `Stepper`, determined by the element type `A`
+       *  @param shape implicit evidence selecting the appropriate `Stepper` type for element type `A`
+       *  @return a `Stepper` over this collection's elements that supports efficient splitting
+       */
       def stepper[S <: Stepper[?]](implicit shape : StepperShape[A, S]) : S & EfficientSplit
     }
 
@@ -71,6 +96,15 @@ trait StreamExtensions {
 
   // maps
 
+  /** Provides the `asJavaSeqKeyStream`, `asJavaSeqValueStream` and `asJavaSeqStream` extension
+   *  methods that create sequential Java Streams over the keys, the values, or the
+   *  `(key, value)` pairs of a Scala map, via the map's [[Stepper]]s.
+   *
+   *  @tparam K the key type of the map
+   *  @tparam V the value type of the map
+   *  @tparam CC the type of the map
+   *  @param cc the map to create Streams for
+   */
   implicit class MapHasSeqKeyValueStream[K, V, CC[X, Y] <: collection.MapOps[X, Y, collection.Map, ?]](cc: CC[K, V]) {
     /** Creates a sequential [[java.util.stream.Stream Java Stream]] for the keys of this map. If
      *  the keys are primitive values, a corresponding specialized Stream is returned (e.g.,
@@ -113,6 +147,16 @@ trait StreamExtensions {
   }
 
 
+  /** Provides the `asJavaParKeyStream`, `asJavaParValueStream` and `asJavaParStream` extension
+   *  methods that create parallel Java Streams over the keys, the values, or the `(key, value)`
+   *  pairs of a Scala map. Each method requires evidence that the corresponding [[Stepper]] of
+   *  the map supports efficient splitting ([[Stepper.EfficientSplit]]).
+   *
+   *  @tparam K the key type of the map
+   *  @tparam V the value type of the map
+   *  @tparam CC the type of the map
+   *  @param cc the map to create Streams for
+   */
   implicit class MapHasParKeyValueStream[K, V, CC[X, Y] <: collection.MapOps[X, Y, collection.Map, ?]](cc: CC[K, V]) {
     private type MapOpsWithEfficientKeyStepper = collection.MapOps[K, V, collection.Map, ?] { def keyStepper[S <: Stepper[?]](implicit shape : StepperShape[K, S]) : S & EfficientSplit }
     private type MapOpsWithEfficientValueStepper = collection.MapOps[K, V, collection.Map, ?] { def valueStepper[S <: Stepper[?]](implicit shape : StepperShape[V, S]) : S & EfficientSplit }
@@ -163,6 +207,12 @@ trait StreamExtensions {
 
   // steppers
 
+  /** Provides the `asJavaSeqStream` extension method that creates a sequential Java Stream over
+   *  the elements of a [[Stepper]].
+   *
+   *  @tparam A the element type of the stepper
+   *  @param stepper the stepper to create a Stream for
+   */
   implicit class StepperHasSeqStream[A](stepper: Stepper[A]) {
     /** Creates a sequential [[java.util.stream.Stream Java Stream]] for this stepper. If the
      *  stepper yields primitive values, a corresponding specialized Stream is returned (e.g.,
@@ -183,6 +233,13 @@ trait StreamExtensions {
     }
   }
 
+  /** Provides the `asJavaParStream` extension method that creates a parallel Java Stream over
+   *  the elements of a [[Stepper]] that supports efficient splitting
+   *  ([[Stepper.EfficientSplit]]).
+   *
+   *  @tparam A the element type of the stepper
+   *  @param stepper the stepper to create a Stream for
+   */
   implicit class StepperHasParStream[A](stepper: Stepper[A] & EfficientSplit) {
     /** Creates a parallel [[java.util.stream.Stream Java Stream]] for this stepper. If the
      *  stepper yields primitive values, a corresponding specialized Stream is returned (e.g.,
@@ -209,6 +266,11 @@ trait StreamExtensions {
   // steppers are also available on byte/short/char/float arrays (`WidenedByteArrayStepper`),
   // JDK spliterators only for double/int/long/reference.
 
+  /** Provides `asJavaSeqStream` and `asJavaParStream` extension methods that create sequential
+   *  or parallel [[java.util.stream.DoubleStream DoubleStream]]s over a `Double` array.
+   *
+   *  @param a the array to create Streams for
+   */
   implicit class DoubleArrayHasSeqParStream(a: Array[Double]) {
     /** Creates a sequential [[java.util.stream.DoubleStream Java DoubleStream]] for this array. */
     def asJavaSeqStream: DoubleStream = java.util.Arrays.stream(a)
@@ -216,6 +278,11 @@ trait StreamExtensions {
     def asJavaParStream: DoubleStream = asJavaSeqStream.parallel
   }
 
+  /** Provides `asJavaSeqStream` and `asJavaParStream` extension methods that create sequential
+   *  or parallel [[java.util.stream.IntStream IntStream]]s over an `Int` array.
+   *
+   *  @param a the array to create Streams for
+   */
   implicit class IntArrayHasSeqParStream(a: Array[Int]) {
     /** Creates a sequential [[java.util.stream.IntStream Java IntStream]] for this array. */
     def asJavaSeqStream: IntStream = java.util.Arrays.stream(a)
@@ -223,6 +290,11 @@ trait StreamExtensions {
     def asJavaParStream: IntStream = asJavaSeqStream.parallel
   }
 
+  /** Provides `asJavaSeqStream` and `asJavaParStream` extension methods that create sequential
+   *  or parallel [[java.util.stream.LongStream LongStream]]s over a `Long` array.
+   *
+   *  @param a the array to create Streams for
+   */
   implicit class LongArrayHasSeqParStream(a: Array[Long]) {
     /** Creates a sequential [[java.util.stream.LongStream Java LongStream]] for this array. */
     def asJavaSeqStream: LongStream = java.util.Arrays.stream(a)
@@ -230,6 +302,12 @@ trait StreamExtensions {
     def asJavaParStream: LongStream = asJavaSeqStream.parallel
   }
 
+  /** Provides `asJavaSeqStream` and `asJavaParStream` extension methods that create sequential
+   *  or parallel [[java.util.stream.Stream Java Stream]]s over an array of references.
+   *
+   *  @tparam A the element type of the array
+   *  @param a the array to create Streams for
+   */
   implicit class AnyArrayHasSeqParStream[A <: AnyRef](a: Array[A]) {
     /** Creates a sequential [[java.util.stream.Stream Java Stream]] for this array. */
     def asJavaSeqStream: Stream[A] = java.util.Arrays.stream(a)
@@ -237,6 +315,12 @@ trait StreamExtensions {
     def asJavaParStream: Stream[A] = asJavaSeqStream.parallel
   }
 
+  /** Provides `asJavaSeqStream` and `asJavaParStream` extension methods that create sequential
+   *  or parallel [[java.util.stream.IntStream IntStream]]s over a `Byte` array; each element is
+   *  widened to an `Int`.
+   *
+   *  @param a the array to create Streams for
+   */
   implicit class ByteArrayHasSeqParStream(a: Array[Byte]) {
     /** Creates a sequential [[java.util.stream.IntStream Java IntStream]] for this array. */
     def asJavaSeqStream: IntStream = a.stepper.asJavaSeqStream
@@ -244,6 +328,12 @@ trait StreamExtensions {
     def asJavaParStream: IntStream = a.stepper.asJavaParStream
   }
 
+  /** Provides `asJavaSeqStream` and `asJavaParStream` extension methods that create sequential
+   *  or parallel [[java.util.stream.IntStream IntStream]]s over a `Short` array; each element is
+   *  widened to an `Int`.
+   *
+   *  @param a the array to create Streams for
+   */
   implicit class ShortArrayHasSeqParStream(a: Array[Short]) {
     /** Creates a sequential [[java.util.stream.IntStream Java IntStream]] for this array. */
     def asJavaSeqStream: IntStream = a.stepper.asJavaSeqStream
@@ -251,6 +341,12 @@ trait StreamExtensions {
     def asJavaParStream: IntStream = a.stepper.asJavaParStream
   }
 
+  /** Provides `asJavaSeqStream` and `asJavaParStream` extension methods that create sequential
+   *  or parallel [[java.util.stream.IntStream IntStream]]s over a `Char` array; each element is
+   *  widened to an `Int`.
+   *
+   *  @param a the array to create Streams for
+   */
   implicit class CharArrayHasSeqParStream(a: Array[Char]) {
     /** Creates a sequential [[java.util.stream.IntStream Java IntStream]] for this array. */
     def asJavaSeqStream: IntStream = a.stepper.asJavaSeqStream
@@ -258,6 +354,12 @@ trait StreamExtensions {
     def asJavaParStream: IntStream = a.stepper.asJavaParStream
   }
 
+  /** Provides `asJavaSeqStream` and `asJavaParStream` extension methods that create sequential
+   *  or parallel [[java.util.stream.DoubleStream DoubleStream]]s over a `Float` array; each
+   *  element is widened to a `Double`.
+   *
+   *  @param a the array to create Streams for
+   */
   implicit class FloatArrayHasSeqParStream(a: Array[Float]) {
     /** Creates a sequential [[java.util.stream.DoubleStream Java DoubleStream]] for this array. */
     def asJavaSeqStream: DoubleStream = a.stepper.asJavaSeqStream
@@ -269,6 +371,12 @@ trait StreamExtensions {
 
   // strings
 
+  /** Provides extension methods that create sequential or parallel
+   *  [[java.util.stream.IntStream IntStream]]s over the characters or the code points of a
+   *  `String`.
+   *
+   *  @param s the string to create Streams for
+   */
   implicit class StringHasSeqParStream(s: String) {
     /** A sequential stream on the characters of a string, same as [[asJavaSeqCharStream]]. See also
      *  [[asJavaSeqCodePointStream]].
@@ -292,6 +400,13 @@ trait StreamExtensions {
 
   // toScala for streams
 
+  /** Provides the `toScala` extension method that collects the elements of a Java Stream into a
+   *  Scala collection, and the `asJavaPrimitiveStream` extension method that unboxes a Stream of
+   *  boxed primitives to the corresponding primitive Stream.
+   *
+   *  @tparam A the element type of the stream
+   *  @param stream the Java Stream to convert
+   */
   implicit class StreamHasToScala[A](stream: Stream[A]) {
     /** Copies the elements of this stream into a Scala collection.
      *
@@ -335,6 +450,11 @@ trait StreamExtensions {
     def asJavaPrimitiveStream[S](implicit unboxer: StreamUnboxer[A, S]): S = unboxer(stream)
   }
 
+  /** Provides the `toScala` extension method that collects the elements of a Java `IntStream`
+   *  into a Scala collection.
+   *
+   *  @param stream the Java `IntStream` to convert
+   */
   implicit class IntStreamHasToScala(stream: IntStream) {
     /** Copies the elements of this stream into a Scala collection.
      *
@@ -366,6 +486,11 @@ trait StreamExtensions {
     }
   }
 
+  /** Provides the `toScala` extension method that collects the elements of a Java `LongStream`
+   *  into a Scala collection.
+   *
+   *  @param stream the Java `LongStream` to convert
+   */
   implicit class LongStreamHasToScala(stream: LongStream) {
     /** Copies the elements of this stream into a Scala collection.
      *
@@ -397,6 +522,11 @@ trait StreamExtensions {
     }
   }
 
+  /** Provides the `toScala` extension method that collects the elements of a Java `DoubleStream`
+   *  into a Scala collection.
+   *
+   *  @param stream the Java `DoubleStream` to convert
+   */
   implicit class DoubleStreamHasToScala(stream: DoubleStream) {
     /** Copies the elements of this stream into a Scala collection.
      *
@@ -439,30 +569,57 @@ object StreamExtensions {
    *  @tparam St the type of `Stepper` used to traverse elements
    */
   sealed trait StreamShape[T, S <: BaseStream[?, ?], St <: Stepper[?]] {
+    /** Creates a Java Stream over the elements of the given stepper by delegating to
+     *  `mkStream`.
+     *
+     *  @param st the stepper providing the elements
+     *  @param par whether the returned stream is parallel (`true`) or sequential (`false`)
+     *  @return a Java Stream of type `S` over the stepper's elements
+     */
     final def fromStepper(st: St, par: Boolean): S = mkStream(st, par)
+    /** Creates a Java Stream of type `S` from the given stepper's spliterator.
+     *
+     *  @param st the stepper providing the elements
+     *  @param par whether the returned stream is parallel (`true`) or sequential (`false`)
+     *  @return a Java Stream of type `S` over the stepper's elements
+     */
     protected def mkStream(st: St, par: Boolean): S
   }
 
   object StreamShape extends StreamShapeLowPriority1 {
     // primitive
+    /** The `StreamShape` mapping `Int` elements to `IntStream` and `IntStepper`. */
     implicit val intStreamShape   : StreamShape[Int   , IntStream   , IntStepper]    = mkIntStreamShape[Int]
+    /** The `StreamShape` mapping `Long` elements to `LongStream` and `LongStepper`. */
     implicit val longStreamShape  : StreamShape[Long  , LongStream  , LongStepper]   = mkLongStreamShape[Long]
+    /** The `StreamShape` mapping `Double` elements to `DoubleStream` and `DoubleStepper`. */
     implicit val doubleStreamShape: StreamShape[Double, DoubleStream, DoubleStepper] = mkDoubleStreamShape[Double]
 
     // widening
+    /** The `StreamShape` mapping `Byte` elements to `IntStream` and `IntStepper`; each element is widened to an `Int`. */
     implicit val byteStreamShape : StreamShape[Byte , IntStream   , IntStepper]    = mkIntStreamShape[Byte]
+    /** The `StreamShape` mapping `Short` elements to `IntStream` and `IntStepper`; each element is widened to an `Int`. */
     implicit val shortStreamShape: StreamShape[Short, IntStream   , IntStepper]    = mkIntStreamShape[Short]
+    /** The `StreamShape` mapping `Char` elements to `IntStream` and `IntStepper`; each element is widened to an `Int`. */
     implicit val charStreamShape : StreamShape[Char , IntStream   , IntStepper]    = mkIntStreamShape[Char]
+    /** The `StreamShape` mapping `Float` elements to `DoubleStream` and `DoubleStepper`; each element is widened to a `Double`. */
     implicit val floatStreamShape: StreamShape[Float, DoubleStream, DoubleStepper] = mkDoubleStreamShape[Float]
 
     // boxed java primitives
 
+    /** The `StreamShape` mapping boxed `java.lang.Integer` elements to the primitive `IntStream` and `IntStepper`. */
     implicit val jIntegerStreamShape   : StreamShape[jl.Integer  , IntStream   , IntStepper   ] = mkIntStreamShape[jl.Integer]
+    /** The `StreamShape` mapping boxed `java.lang.Long` elements to the primitive `LongStream` and `LongStepper`. */
     implicit val jLongStreamShape      : StreamShape[jl.Long     , LongStream  , LongStepper  ] = mkLongStreamShape[jl.Long]
+    /** The `StreamShape` mapping boxed `java.lang.Double` elements to the primitive `DoubleStream` and `DoubleStepper`. */
     implicit val jDoubleStreamShape    : StreamShape[jl.Double   , DoubleStream, DoubleStepper] = mkDoubleStreamShape[jl.Double]
+    /** The `StreamShape` mapping boxed `java.lang.Byte` elements to `IntStream` and `IntStepper`; each element is widened to an `Int`. */
     implicit val jByteStreamShape      : StreamShape[jl.Byte     , IntStream   , IntStepper   ] = mkIntStreamShape[jl.Byte]
+    /** The `StreamShape` mapping boxed `java.lang.Short` elements to `IntStream` and `IntStepper`; each element is widened to an `Int`. */
     implicit val jShortStreamShape     : StreamShape[jl.Short    , IntStream   , IntStepper   ] = mkIntStreamShape[jl.Short]
+    /** The `StreamShape` mapping boxed `java.lang.Character` elements to `IntStream` and `IntStepper`; each element is widened to an `Int`. */
     implicit val jCharacterStreamShape : StreamShape[jl.Character, IntStream   , IntStepper   ] = mkIntStreamShape[jl.Character]
+    /** The `StreamShape` mapping boxed `java.lang.Float` elements to `DoubleStream` and `DoubleStepper`; each element is widened to a `Double`. */
     implicit val jFloatStreamShape     : StreamShape[jl.Float    , DoubleStream, DoubleStepper] = mkDoubleStreamShape[jl.Float]
 
     private def mkIntStreamShape[T]: StreamShape[T, IntStream, IntStepper] = new StreamShape[T, IntStream, IntStepper] {
@@ -478,8 +635,17 @@ object StreamExtensions {
     }
   }
 
+  /** Defines the low-priority fallback `StreamShape` for arbitrary element types, used when no
+   *  specialized shape applies.
+   */
   trait StreamShapeLowPriority1 {
     // reference
+    /** Returns the fallback `StreamShape` mapping elements of any type `T` to a generic (boxed)
+     *  `Stream[T]`. Applies only when `T` has no specialized shape.
+     *
+     *  @tparam T the element type
+     *  @return the single cached `StreamShape` instance, cast to element type `T`
+     */
     implicit def anyStreamShape[T]: StreamShape[T, Stream[T], Stepper[T]] = anyStreamShapePrototype.asInstanceOf[StreamShape[T, Stream[T], Stepper[T]]]
 
     private val anyStreamShapePrototype: StreamShape[AnyRef, Stream[AnyRef], Stepper[AnyRef]] = new StreamShape[AnyRef, Stream[AnyRef], Stepper[AnyRef]] {
@@ -494,22 +660,33 @@ object StreamExtensions {
    *  @tparam S the target primitive stream type (e.g., `IntStream`, `LongStream`, `DoubleStream`)
    */
   sealed trait StreamUnboxer[A, S] {
+    /** Converts the given boxed Java Stream to the corresponding primitive stream.
+     *
+     *  @param s the boxed Java Stream to convert
+     *  @return a primitive stream of type `S` with the unboxed elements of `s`
+     */
     def apply(s: Stream[A]): S
   }
   object StreamUnboxer {
+    /** The `StreamUnboxer` converting a `Stream[Int]` to a primitive `IntStream`. */
     implicit val intStreamUnboxer: StreamUnboxer[Int, IntStream] = new StreamUnboxer[Int, IntStream] {
       def apply(s: Stream[Int]): IntStream = s.mapToInt(x => x)
     }
+    /** The `StreamUnboxer` converting a `Stream[java.lang.Integer]` to a primitive `IntStream`. */
     implicit val javaIntegerStreamUnboxer: StreamUnboxer[jl.Integer, IntStream] = intStreamUnboxer.asInstanceOf[StreamUnboxer[jl.Integer, IntStream]]
 
+    /** The `StreamUnboxer` converting a `Stream[Long]` to a primitive `LongStream`. */
     implicit val longStreamUnboxer: StreamUnboxer[Long, LongStream] = new StreamUnboxer[Long, LongStream] {
       def apply(s: Stream[Long]): LongStream = s.mapToLong(x => x)
     }
+    /** The `StreamUnboxer` converting a `Stream[java.lang.Long]` to a primitive `LongStream`. */
     implicit val javaLongStreamUnboxer: StreamUnboxer[jl.Long, LongStream] = longStreamUnboxer.asInstanceOf[StreamUnboxer[jl.Long, LongStream]]
 
+    /** The `StreamUnboxer` converting a `Stream[Double]` to a primitive `DoubleStream`. */
     implicit val doubleStreamUnboxer: StreamUnboxer[Double, DoubleStream] = new StreamUnboxer[Double, DoubleStream] {
       def apply(s: Stream[Double]): DoubleStream = s.mapToDouble(x => x)
     }
+    /** The `StreamUnboxer` converting a `Stream[java.lang.Double]` to a primitive `DoubleStream`. */
     implicit val javaDoubleStreamUnboxer: StreamUnboxer[jl.Double, DoubleStream] = doubleStreamUnboxer.asInstanceOf[StreamUnboxer[jl.Double, DoubleStream]]
   }
 
@@ -526,35 +703,75 @@ object StreamExtensions {
    *  @tparam C the target collection type, potentially a specialized `Accumulator`
    */
   trait AccumulatorFactoryInfo[A, C] {
+    /** The companion object of the target `Accumulator` type ([[scala.jdk.AnyAccumulator]],
+     *  [[scala.jdk.IntAccumulator]], etc.), or `null` when the target collection is not an
+     *  accumulator.
+     */
     val companion: AnyRef | Null
   }
+  /** Defines the low-priority fallback `AccumulatorFactoryInfo`, used when the target collection
+   *  type is not an `Accumulator`.
+   */
   trait LowPriorityAccumulatorFactoryInfo {
+    /** Returns the fallback `AccumulatorFactoryInfo`, whose `companion` is `null`. Applies only
+     *  when the target collection type `C` is not an `Accumulator`.
+     *
+     *  @tparam A the element type of the stream
+     *  @tparam C the type of the target collection
+     *  @return the single cached fallback instance, cast to `A` and `C`
+     */
     implicit def noAccumulatorFactoryInfo[A, C]: AccumulatorFactoryInfo[A, C] = noAccumulatorFactoryInfoPrototype.asInstanceOf[AccumulatorFactoryInfo[A, C]]
     private val noAccumulatorFactoryInfoPrototype: AccumulatorFactoryInfo[AnyRef, AnyRef] = new AccumulatorFactoryInfo[AnyRef, AnyRef] {
       val companion: AnyRef | Null = null
     }
   }
   object AccumulatorFactoryInfo extends LowPriorityAccumulatorFactoryInfo {
+    /** Returns the `AccumulatorFactoryInfo` for collecting elements of any type into an
+     *  [[scala.jdk.AnyAccumulator]].
+     *
+     *  @tparam A the element type of the stream
+     *  @return the single cached instance, whose `companion` is `AnyAccumulator`, cast to
+     *          element type `A`
+     */
     implicit def anyAccumulatorFactoryInfo[A]: AccumulatorFactoryInfo[A, AnyAccumulator[A]] = anyAccumulatorFactoryInfoPrototype.asInstanceOf[AccumulatorFactoryInfo[A, AnyAccumulator[A]]]
 
     private object anyAccumulatorFactoryInfoPrototype extends AccumulatorFactoryInfo[AnyRef, AnyAccumulator[AnyRef]] {
+      /** The [[scala.jdk.AnyAccumulator]] companion object. */
       val companion: AnyRef | Null = AnyAccumulator
     }
 
+    /** The `AccumulatorFactoryInfo` for collecting `Int` elements into an [[scala.jdk.IntAccumulator]] without boxing. */
     implicit val intAccumulatorFactoryInfo: AccumulatorFactoryInfo[Int, IntAccumulator] = new AccumulatorFactoryInfo[Int, IntAccumulator] {
       val companion: AnyRef | Null = IntAccumulator
     }
 
+    /** The `AccumulatorFactoryInfo` for collecting `Long` elements into a [[scala.jdk.LongAccumulator]] without boxing. */
     implicit val longAccumulatorFactoryInfo: AccumulatorFactoryInfo[Long, LongAccumulator] = new AccumulatorFactoryInfo[Long, LongAccumulator] {
       val companion: AnyRef | Null = LongAccumulator
     }
 
+    /** The `AccumulatorFactoryInfo` for collecting `Double` elements into a [[scala.jdk.DoubleAccumulator]] without boxing. */
     implicit val doubleAccumulatorFactoryInfo: AccumulatorFactoryInfo[Double, DoubleAccumulator] = new AccumulatorFactoryInfo[Double, DoubleAccumulator] {
       val companion: AnyRef | Null = DoubleAccumulator
     }
 
+    /** The `AccumulatorFactoryInfo` for collecting boxed `java.lang.Integer` elements into an [[scala.jdk.IntAccumulator]], reusing `intAccumulatorFactoryInfo`. */
     implicit val jIntegerAccumulatorFactoryInfo: AccumulatorFactoryInfo[jl.Integer, IntAccumulator] = intAccumulatorFactoryInfo.asInstanceOf[AccumulatorFactoryInfo[jl.Integer, IntAccumulator]]
+    /** The `AccumulatorFactoryInfo` for streams of boxed `java.lang.Long` elements, reusing
+     *  `longAccumulatorFactoryInfo`.
+     *
+     *  @note NEEDS-HUMAN: the second type argument is `IntAccumulator`; the sibling instances
+     *        (`jIntegerAccumulatorFactoryInfo`, and the unboxed `longAccumulatorFactoryInfo` this
+     *        val reuses) suggest it should be `LongAccumulator`.
+     */
     implicit val jLongAccumulatorFactoryInfo: AccumulatorFactoryInfo[jl.Long, IntAccumulator] = longAccumulatorFactoryInfo.asInstanceOf[AccumulatorFactoryInfo[jl.Long, IntAccumulator]]
+    /** The `AccumulatorFactoryInfo` for streams of boxed `java.lang.Double` elements, reusing
+     *  `doubleAccumulatorFactoryInfo`.
+     *
+     *  @note NEEDS-HUMAN: the second type argument is `IntAccumulator`; the sibling instances
+     *        (`jIntegerAccumulatorFactoryInfo`, and the unboxed `doubleAccumulatorFactoryInfo`
+     *        this val reuses) suggest it should be `DoubleAccumulator`.
+     */
     implicit val jDoubleAccumulatorFactoryInfo: AccumulatorFactoryInfo[jl.Double, IntAccumulator] = doubleAccumulatorFactoryInfo.asInstanceOf[AccumulatorFactoryInfo[jl.Double, IntAccumulator]]
   }
 }

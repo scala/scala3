@@ -28,8 +28,14 @@ trait Buffer[A]
     with Shrinkable[A]
     with IterableFactoryDefaults[A, Buffer] {
 
+  /** The companion object `Buffer`, which creates `js.WrappedArray` instances. */
   override def iterableFactory: SeqFactory[Buffer] = Buffer
 
+  /** The number of elements in this buffer, if it can be cheaply computed, -1 otherwise.
+   *
+   *  Overridden to select `Seq`'s implementation over the conflicting one inherited
+   *  from [[Growable]].
+   */
   override def knownSize: Int = super[Seq].knownSize
 
   //TODO Prepend is a logical choice for a readable name of `+=:` but it conflicts with the renaming of `append` to `add`
@@ -61,6 +67,11 @@ trait Buffer[A]
   /** Alias for `prepend`. */
   @`inline` final def +=: (elem: A): this.type = prepend(elem)
 
+  /** Prepends the elements contained in an iterable object to this buffer.
+   *
+   *  @param elems  the iterable object containing the elements to prepend.
+   *  @return this buffer
+   */
   def prependAll(elems: IterableOnce[A]): this.type = { insertAll(0, elems); this }
 
   @deprecated("Use prependAll instead", "2.13.0")
@@ -140,6 +151,17 @@ trait Buffer[A]
     remove(length - norm, norm)
   }
 
+  /** Replaces a slice of elements in this buffer by another sequence of elements.
+   *
+   *  Patching at negative indices is the same as patching starting at 0.
+   *  Patching at indices at or larger than the length of the original buffer appends the patch to the end.
+   *  If the `replaced` count would exceed the available elements, the difference in excess is ignored.
+   *
+   *  @param  from     the index of the first replaced element
+   *  @param  patch    the replacement sequence
+   *  @param  replaced the number of elements to drop in the original buffer
+   *  @return          this buffer
+   */
   def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A], replaced: Int): this.type
 
   // +=, ++=, clear inherited from Growable
@@ -149,45 +171,104 @@ trait Buffer[A]
   // def +=:(elem1: A, elem2: A, elems: A*): this.type = elem1 +=: elem2 +=: elems ++=: this
   // def ++=:(elems: IterableOnce[A]): this.type = { insertAll(0, elems); this }
 
+  /** Removes the first `n` elements from this buffer.
+   *
+   *  @param  n the number of elements to remove
+   *  @return this buffer
+   */
   def dropInPlace(n: Int): this.type = { remove(0, normalized(n)); this }
+  /** Removes the last `n` elements from this buffer.
+   *
+   *  @param  n the number of elements to remove
+   *  @return this buffer
+   */
   def dropRightInPlace(n: Int): this.type = {
     val norm = normalized(n)
     remove(length - norm, norm)
     this
   }
+  /** Retains the first `n` elements from this buffer and removes the rest.
+   *
+   *  @param  n the number of elements to retain
+   *  @return this buffer
+   */
   def takeInPlace(n: Int): this.type = {
     val norm = normalized(n)
     remove(norm, length - norm)
     this
   }
+  /** Retains the last `n` elements from this buffer and removes the rest.
+   *
+   *  @param  n the number of elements to retain
+   *  @return this buffer
+   */
   def takeRightInPlace(n: Int): this.type = { remove(0, length - normalized(n)); this }
+  /** Retains the specified slice from this buffer and removes the rest.
+   *
+   *  @param  start the lowest index to include
+   *  @param  end   the lowest index to exclude
+   *  @return this buffer
+   */
   def sliceInPlace(start: Int, end: Int): this.type = takeInPlace(end).dropInPlace(start)
   private def normalized(n: Int): Int = math.min(math.max(n, 0), length)
 
+  /** Drops the longest prefix of elements that satisfy a predicate.
+   *
+   *  @param   p  The predicate used to test elements.
+   *  @return this buffer
+   *  @see [[dropWhile]]
+   */
   def dropWhileInPlace(p: A => Boolean): this.type = {
     val idx = indexWhere(!p(_))
     if (idx < 0) { clear(); this } else dropInPlace(idx)
   }
+  /** Retains the longest prefix of elements that satisfy a predicate.
+   *
+   *  @param   p  The predicate used to test elements.
+   *  @return this buffer
+   *  @see [[takeWhile]]
+   */
   def takeWhileInPlace(p: A => Boolean): this.type = {
     val idx = indexWhere(!p(_))
     if (idx < 0) this else takeInPlace(idx)
   }
+  /** Appends the given element to this buffer until a target length is reached.
+   *
+   *  @param   len   the target length
+   *  @param   elem  the padding value
+   *  @return this buffer
+   */
   def padToInPlace(len: Int, elem: A): this.type = {
     while (length < len) +=(elem)
     this
   }
 
+  /** The prefix of this buffer's `toString` representation, `"Buffer"`. */
   @deprecatedOverriding("Compatibility override", since="2.13.0")
   override protected[this] def stringPrefix = "Buffer"
 }
 
+/** A `Buffer` that is also an `IndexedSeq`, so its elements can be accessed and
+ *  updated efficiently by index.
+ *
+ *  Adds `flatMapInPlace` and `filterInPlace`, and implements `patchInPlace` in
+ *  terms of indexed `update`.
+ *
+ *  @tparam A the element type of the buffer
+ */
 trait IndexedBuffer[A] extends IndexedSeq[A]
   with IndexedSeqOps[A, IndexedBuffer, IndexedBuffer[A]]
   with Buffer[A]
   with IterableFactoryDefaults[A, IndexedBuffer] {
 
+  /** The companion object `IndexedBuffer`, which creates `js.WrappedArray` instances. */
   override def iterableFactory: SeqFactory[IndexedBuffer] = IndexedBuffer
 
+  /** Replaces the contents of this buffer with the flatmapped result.
+   *
+   *  @param f the mapping function
+   *  @return this buffer
+   */
   def flatMapInPlace(f: A => IterableOnce[A]): this.type = {
     // There's scope for a better implementation which copies elements in place.
     var i = 0
@@ -200,6 +281,11 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
     this
   }
 
+  /** Replaces the contents of this buffer with the filtered result.
+   *
+   *  @param p the filtering function
+   *  @return this buffer
+   */
   def filterInPlace(p: A => Boolean): this.type = {
     var i, j = 0
     while (i < size) {
@@ -215,6 +301,20 @@ trait IndexedBuffer[A] extends IndexedSeq[A]
     if (i == j) this else takeInPlace(j)
   }
 
+  /** Replaces a slice of elements in this buffer by another sequence of elements.
+   *
+   *  `from` and `replaced` are clamped to the range `[0, length]`: patching at negative
+   *  indices is the same as patching starting at 0, patching at indices at or larger
+   *  than the length appends the patch to the end, and an excessive `replaced` count is
+   *  reduced to the available elements. Implemented by overwriting replaced elements in
+   *  place via `update` while the patch lasts, then inserting any remaining patch
+   *  elements or removing any remaining replaced elements.
+   *
+   *  @param from the index of the first replaced element
+   *  @param patch the replacement sequence
+   *  @param replaced the number of elements to drop in the original buffer
+   *  @return this buffer
+   */
   def patchInPlace(from: Int, patch: scala.collection.IterableOnce[A], replaced: Int): this.type = {
     val replaced0 = math.min(math.max(replaced, 0), length)
     val i = math.min(math.max(from, 0), length)

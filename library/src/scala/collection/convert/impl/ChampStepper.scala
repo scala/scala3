@@ -36,8 +36,15 @@ extends EfficientSplit {
 
   // Much of this code is identical to ChampBaseIterator.  If you change that, look here too!
 
+  /** The index in `currentValueNode`'s payload of the next element to read. */
   protected var currentValueCursor: Int = 0
+  /** The number of payload elements of `currentValueNode` available to this stepper:
+   *  the node's full `payloadArity`, unless reduced by a split.
+   */
   protected var currentValueLength: Int = 0
+  /** The node whose payload elements are currently being read; unset until `initRoot`
+   *  or a split assigns it.
+   */
   protected var currentValueNode: T = compiletime.uninitialized
 
   private var currentStackLevel: Int = -1
@@ -50,6 +57,12 @@ extends EfficientSplit {
       nodes = new Array[Node[T]](MaxDepth).asInstanceOf[Array[T]]
     }
   }
+  /** Initializes this stepper, which must be freshly created, to traverse the trie rooted
+   *  at `rootNode`: pushes the root's sub-nodes for depth-first traversal and prepares
+   *  the root's payload, if any, for consumption.
+   *
+   *  @param rootNode the root node of the trie to traverse
+   */
   def initRoot(rootNode: T): Unit = {
     if (rootNode.hasNodes) pushNode(rootNode)
     if (rootNode.hasPayload) setupPayloadNode(rootNode)
@@ -102,18 +115,42 @@ extends EfficientSplit {
     false
   }
 
+  /** Returns no Java `Spliterator` characteristics: hash-trie order is not meaningful
+   *  and after a split the remaining count is only an upper bound.
+   */
   def characteristics: Int = 0
 
+  /** Returns `maxSize`, an upper bound on the number of elements remaining (exact until
+   *  the first split), or 0 if none remain.
+   */
   def estimateSize: Long = if (hasStep) maxSize else 0L
 
+  /** Creates a new, empty stepper of the concrete type; `trySplit` populates it with the
+   *  split-off portion of the traversal state.
+   *
+   *  @return the new, empty stepper
+   */
   def semiclone(): Semi
 
+  /** Returns `true` if elements remain, searching depth-first for the next payload-bearing
+   *  node if the current one is exhausted; sets `maxSize` to 0 once the traversal is done.
+   */
   final def hasStep: Boolean = maxSize > 0 && {
     val ans = (currentValueCursor < currentValueLength) || searchNextValueNode()
     if (!ans) maxSize = 0
     ans
   }
 
+  /** Splits off a prefix of the remaining traversal: if only the current payload node
+   *  remains, hands the first half of its remaining values to the returned stepper;
+   *  otherwise copies the traversal stack and divides the sub-node range at the
+   *  shallowest level that still has nodes to visit, this stepper resuming from the
+   *  division point.  Both halves keep the current `maxSize`, so sizes become upper
+   *  bounds after a split.
+   *
+   *  @return a stepper over a prefix of the remaining elements, or `null` if no elements
+   *          remain or fewer than two values are left in the sole remaining payload node
+   */
   final def trySplit(): Sub | Null =
     if (!hasStep) null
     else {
@@ -165,6 +202,11 @@ extends EfficientSplit {
 private[collection] final class AnyChampStepper[A, T <: Node[T]](_maxSize: Int, protected val extract: (T, Int) => A)
 extends ChampStepperBase[A, T, AnyStepper[A], AnyChampStepper[A, T]](_maxSize)
 with AnyStepper[A] {
+  /** Returns the next element, extracted from the current payload node, and decrements
+   *  the remaining-size bound.
+   *
+   *  @throws NoSuchElementException if no elements remain
+   */
   def nextStep(): A =
     if (hasStep) {
       val ans = extract(currentValueNode, currentValueCursor)
@@ -174,9 +216,21 @@ with AnyStepper[A] {
     }
     else Stepper.throwNSEE()
 
+  /** Returns a new, empty `AnyChampStepper` with the same `extract` function, for
+   *  `trySplit` to populate.
+   */
   def semiclone(): AnyChampStepper[A, T] = new AnyChampStepper[A, T](0, extract)
 }
 private[collection] object AnyChampStepper {
+  /** Creates a stepper over all elements of the CHAMP trie rooted at `root`.
+   *
+   *  @tparam A the type of elements to produce
+   *  @tparam T the type of the trie's nodes
+   *  @param maxSize the number of elements in the trie
+   *  @param root the root node of the trie
+   *  @param extract the function reading the element at a payload index of a node
+   *  @return a stepper over all elements of the trie
+   */
   def from[A, T <: Node[T]](maxSize: Int, root: T, extract: (T, Int) => A): AnyChampStepper[A, T] = {
     val ans = new AnyChampStepper[A, T](maxSize, extract)
     ans.initRoot(root)
@@ -187,6 +241,11 @@ private[collection] object AnyChampStepper {
 private[collection] final class DoubleChampStepper[T <: Node[T]](_maxSize: Int, protected val extract: (T, Int) => Double)
 extends ChampStepperBase[Double, T, DoubleStepper, DoubleChampStepper[T]](_maxSize)
 with DoubleStepper {
+  /** Returns the next element, extracted from the current payload node, and decrements
+   *  the remaining-size bound.
+   *
+   *  @throws NoSuchElementException if no elements remain
+   */
   def nextStep(): Double =
     if (hasStep) {
       val ans = extract(currentValueNode, currentValueCursor)
@@ -196,9 +255,20 @@ with DoubleStepper {
     }
     else Stepper.throwNSEE()
 
+  /** Returns a new, empty `DoubleChampStepper` with the same `extract` function, for
+   *  `trySplit` to populate.
+   */
   def semiclone(): DoubleChampStepper[T] = new DoubleChampStepper[T](0, extract)
 }
 private[collection] object DoubleChampStepper {
+  /** Creates a stepper over all elements of the CHAMP trie rooted at `root`.
+   *
+   *  @tparam T the type of the trie's nodes
+   *  @param maxSize the number of elements in the trie
+   *  @param root the root node of the trie
+   *  @param extract the function reading the element at a payload index of a node
+   *  @return a stepper over all elements of the trie
+   */
   def from[T <: Node[T]](maxSize: Int, root: T, extract: (T, Int) => Double): DoubleChampStepper[T] = {
     val ans = new DoubleChampStepper[T](maxSize, extract)
     ans.initRoot(root)
@@ -209,6 +279,11 @@ private[collection] object DoubleChampStepper {
 private[collection] final class IntChampStepper[T <: Node[T]](_maxSize: Int, protected val extract: (T, Int) => Int)
 extends ChampStepperBase[Int, T, IntStepper, IntChampStepper[T]](_maxSize)
 with IntStepper {
+  /** Returns the next element, extracted from the current payload node, and decrements
+   *  the remaining-size bound.
+   *
+   *  @throws NoSuchElementException if no elements remain
+   */
   def nextStep(): Int =
     if (hasStep) {
       val ans = extract(currentValueNode, currentValueCursor)
@@ -218,9 +293,20 @@ with IntStepper {
     }
     else Stepper.throwNSEE()
 
+  /** Returns a new, empty `IntChampStepper` with the same `extract` function, for
+   *  `trySplit` to populate.
+   */
   def semiclone(): IntChampStepper[T] = new IntChampStepper[T](0, extract)
 }
 private[collection] object IntChampStepper {
+  /** Creates a stepper over all elements of the CHAMP trie rooted at `root`.
+   *
+   *  @tparam T the type of the trie's nodes
+   *  @param maxSize the number of elements in the trie
+   *  @param root the root node of the trie
+   *  @param extract the function reading the element at a payload index of a node
+   *  @return a stepper over all elements of the trie
+   */
   def from[T <: Node[T]](maxSize: Int, root: T, extract: (T, Int) => Int): IntChampStepper[T] = {
     val ans = new IntChampStepper[T](maxSize, extract)
     ans.initRoot(root)
@@ -231,6 +317,11 @@ private[collection] object IntChampStepper {
 private[collection] final class LongChampStepper[T <: Node[T]](_maxSize: Int, protected val extract: (T, Int) => Long)
 extends ChampStepperBase[Long, T, LongStepper, LongChampStepper[T]](_maxSize)
 with LongStepper {
+  /** Returns the next element, extracted from the current payload node, and decrements
+   *  the remaining-size bound.
+   *
+   *  @throws NoSuchElementException if no elements remain
+   */
   def nextStep(): Long =
     if (hasStep) {
       val ans = extract(currentValueNode, currentValueCursor)
@@ -240,9 +331,20 @@ with LongStepper {
     }
     else Stepper.throwNSEE()
 
+  /** Returns a new, empty `LongChampStepper` with the same `extract` function, for
+   *  `trySplit` to populate.
+   */
   def semiclone(): LongChampStepper[T] = new LongChampStepper[T](0, extract)
 }
 private[collection] object LongChampStepper {
+  /** Creates a stepper over all elements of the CHAMP trie rooted at `root`.
+   *
+   *  @tparam T the type of the trie's nodes
+   *  @param maxSize the number of elements in the trie
+   *  @param root the root node of the trie
+   *  @param extract the function reading the element at a payload index of a node
+   *  @return a stepper over all elements of the trie
+   */
   def from[T <: Node[T]](maxSize: Int, root: T, extract: (T, Int) => Long): LongChampStepper[T] = {
     val ans = new LongChampStepper[T](maxSize, extract)
     ans.initRoot(root)

@@ -35,13 +35,37 @@ final class Symbol private (val name: String) extends Serializable {
 
   @throws(classOf[java.io.ObjectStreamException])
   private def readResolve(): Any = Symbol.apply(name)
+  /** Returns the hash code of this symbol, computed from its name. */
   override def hashCode = name.hashCode()
+  /** Returns `true` if `other` is the same object as this symbol.
+   *
+   *  Since symbols are interned, two symbols with the same name are the same
+   *  object, so reference equality suffices.
+   *
+   *  @param other the object to compare with
+   */
   override def equals(other: Any) = this eq other.asInstanceOf[AnyRef]
 }
 
 object Symbol extends UniquenessCache[String, Symbol] {
+  /** Returns the unique symbol with the given name, creating and caching it on
+   *  first use.
+   *
+   *  @param name the name of the symbol
+   *  @return the interned `Symbol` for `name`
+   */
   override def apply(name: String): Symbol = super.apply(name)
+  /** Creates a fresh symbol with the given name; called by the cache on a miss.
+   *
+   *  @param name the name of the symbol
+   *  @return a new `Symbol` for `name`
+   */
   protected def valueFromKey(name: String): Symbol = new Symbol(name)
+  /** Returns the name of the given symbol, the key under which it is cached.
+   *
+   *  @param sym the symbol whose name to return
+   *  @return the name of `sym`, always wrapped in `Some`
+   */
   protected def keyFromValue(sym: Symbol): Option[String] = Some(sym.name)
 }
 
@@ -49,11 +73,32 @@ object Symbol extends UniquenessCache[String, Symbol] {
 private[scala] abstract class UniquenessCache[K, V] {
   private val cache = js.Dictionary.empty[V]
 
+  /** Creates the value to cache for a given key; called by `apply` on a cache miss.
+   *
+   *  @param k the key
+   *  @return a fresh value to associate with `k`
+   */
   protected def valueFromKey(k: String): V
+  /** Returns the key under which a given value is cached, if it can be recovered.
+   *
+   *  @param v the value whose key to return
+   *  @return the key of `v`, or `None` if it cannot be determined
+   */
   protected def keyFromValue(v: V): Option[String]
 
+  /** Returns the unique value for the given key, creating and caching it via
+   *  `valueFromKey` on first use.
+   *
+   *  @param name the key to look up
+   *  @return the cached value for `name`
+   */
   def apply(name: String): V =
     cache.getOrElseUpdate(name, valueFromKey(name))
 
+  /** Extracts the key of a value, for use in pattern matching.
+   *
+   *  @param other the value whose key to extract
+   *  @return the key of `other`, or `None` if it cannot be determined
+   */
   def unapply(other: V): Option[String] = keyFromValue(other)
 }

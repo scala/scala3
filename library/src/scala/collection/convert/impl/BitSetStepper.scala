@@ -30,8 +30,14 @@ with IntStepper {
   import BitSetOps.{WordLength, LogWL}
 
   // When `found` is set, `i0` is an element that exists
+  /** Set when `i0` is known to be the index of a set bit; cleared once that bit is consumed. */
   protected var found: Boolean = false
 
+  /** Advances `i0` to the next set bit at or after its current position, loading further
+   *  words from `underlying` into the two-word cache as needed; stops at `iN`.
+   *
+   *  @return `true` (with `found` set) if a set bit was found before `iN`, else `false`
+   */
   @annotation.tailrec
   protected def findNext(): Boolean =
     if (i0 >= iN) false
@@ -62,6 +68,21 @@ with IntStepper {
       }
     }
 
+  /** Creates a stepper over the set bits in `[i0, half)`, transferring the word cache and
+   *  the `found` flag to it, and reloading this stepper's cache at the word containing
+   *  `half` if that word lies beyond the cached pair.  Called by `trySplit`, which then
+   *  advances this stepper's `i0` to `half`.  The new stepper drops its reference to the
+   *  underlying bitset if the cached words cover its whole range.
+   *
+   *  @param half the ending index (exclusive) of the new stepper's range
+   *  @return a stepper over the set bits in `[i0, half)`
+   *
+   *  @note NEEDS-HUMAN: in the branch where `underlying` is non-null and `half` falls
+   *        within the cached words, this stepper's `found` flag is not cleared even
+   *        though `trySplit` then moves `i0` to `half`; a stale `found` would make
+   *        `nextStep` report `half` as a set bit without checking it.  The other two
+   *        state-transfer paths do clear `found`.
+   */
   def semiclone(half: Int): BitSetStepper =
     if (underlying == null) {
       val ans = new BitSetStepper(null, cache0, cache1, i0, half, cacheIndex)
@@ -97,6 +118,10 @@ with IntStepper {
     else if ((bits & (1L << from)) != 0) from
     else scanLong(bits, from + 1)
 
+  /** Returns the index of the next set bit and advances past it.
+   *
+   *  @throws NoSuchElementException if no set bits remain
+   */
   def nextStep(): Int =
     if (found || findNext()) {
       found = false
@@ -108,6 +133,15 @@ with IntStepper {
 }
 
 private[collection] object BitSetStepper {
+  /** Creates a stepper over all set bits of the given bitset.
+   *
+   *  If the bitset fits in at most two words, the words are cached immediately and the
+   *  bitset itself is not referenced; otherwise words are loaded into the cache two at
+   *  a time as the traversal proceeds.
+   *
+   *  @param bs the bitset whose set bits to step over
+   *  @return a stepper producing the indices of the set bits in increasing order
+   */
   def from(bs: scala.collection.BitSetOps[?]): IntStepper & EfficientSplit =
     new BitSetStepper(
       if (bs.nwords <= 2) null else bs,
