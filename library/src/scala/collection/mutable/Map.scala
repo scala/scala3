@@ -31,6 +31,7 @@ trait Map[K, V]
     with Shrinkable[K]
     with MapFactoryDefaults[K, V, Map, Iterable] {
 
+  /** The factory used to build mutable maps, the [[Map$ `Map`]] companion object, which delegates to [[HashMap]]. */
   override def mapFactory: scala.collection.MapFactory[Map] = Map
 
   /*
@@ -84,11 +85,28 @@ transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K,
     with Shrinkable[K]
     with caps.Pure {
 
+  /** Returns this map. A mutable map is its own builder: elements are added with
+   *  `+=` and `result()` returns the map itself rather than a copy.
+   */
   def result(): C = coll
 
+  /** Returns a clone of this map with `key` removed; this map is unaffected.
+   *
+   *  @param key the key to remove from the clone
+   *  @return a new map of the same kind containing all bindings of this map
+   *          except the one for `key`
+   */
   @deprecated("Use - or remove on an immutable Map", "2.13.0")
   final def - (key: K): C = clone() -= key
 
+  /** Returns a clone of this map with the given keys removed; this map is unaffected.
+   *
+   *  @param key1 the first key to remove from the clone
+   *  @param key2 the second key to remove from the clone
+   *  @param keys the remaining keys to remove from the clone
+   *  @return a new map of the same kind containing all bindings of this map
+   *          except those for the given keys
+   */
   @deprecated("Use -- or removeAll on an immutable Map", "2.13.0")
   final def - (key1: K, key2: K, keys: K*): C = clone() -= key1 -= key2 --= keys
 
@@ -171,10 +189,17 @@ transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K,
     r
   }
 
+  /** Removes all bindings from this map by removing each key in turn. */
   def clear(): Unit = { keysIterator foreach -= }
 
+  /** Returns a new map of the same kind containing the same bindings as this map. */
   override def clone(): C = empty ++= this
 
+  /** Alias for [[filterInPlace]]: retains only those mappings for which `p` returns `true`.
+   *
+   *  @param p the test predicate
+   *  @return the map itself
+   */
   @deprecated("Use filterInPlace instead", "2.13.0")
   @inline final def retain(p: (K, V) => Boolean): this.type = filterInPlace(p)
 
@@ -202,6 +227,12 @@ transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K,
     this
   }
 
+  /** Alias for [[mapValuesInPlace]]: replaces each value with the result of
+   *  applying `f` to its key and current value.
+   *
+   *  @param f the transformation to apply
+   *  @return the map itself
+   */
   @deprecated("Use mapValuesInPlace instead", "2.13.0")
   @inline final def transform(f: (K, V) => V): this.type = mapValuesInPlace(f)
 
@@ -229,10 +260,25 @@ transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K,
     this
   }
 
+  /** Returns a clone of this map updated with the binding `key -> value`; this
+   *  map is unaffected.
+   *
+   *  @tparam V1 the value type of the returned map, a supertype of `V`
+   *  @param key the key to bind
+   *  @param value the value to associate with `key`
+   *  @return a new map of the same kind containing all bindings of this map,
+   *          with `key` bound to `value`
+   */
   @deprecated("Use m.clone().addOne((k,v)) instead of m.updated(k, v)", "2.13.0")
   def updated[V1 >: V](key: K, value: V1): CC[K, V1] =
     clone().asInstanceOf[CC[K, V1]].addOne((key, value))
 
+  /** Returns the number of bindings in this map, if it can be cheaply computed,
+   *  -1 otherwise.
+   *
+   *  This override selects the `IterableOps` implementation over the `Growable`
+   *  default of -1.
+   */
   override def knownSize: Int = super[IterableOps].knownSize
 }
 
@@ -243,34 +289,92 @@ transparent trait MapOps[K, V, +CC[X, Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[K,
 @SerialVersionUID(3L)
 object Map extends MapFactory.Delegate[Map](HashMap) {
 
+  /** A mutable map that wraps another map and computes a default value for keys
+   *  not present in it.
+   *
+   *  The default is only used by `apply`; `get`, `contains`, `iterator`, `keys`
+   *  and other methods are unaffected. `concat`, `empty` and `clone` preserve
+   *  the default; other transformer methods (e.g. `map`) do not.
+   *
+   *  @tparam K the type of keys in the map
+   *  @tparam V the type of values associated with keys
+   *  @param underlying the map providing the bindings
+   *  @param defaultValue the function computing a default value for keys not
+   *                      present in the underlying map
+   */
   @SerialVersionUID(3L)
   class WithDefault[K, V](val underlying: Map[K, V], val defaultValue: K -> V)
     extends AbstractMap[K, V]
       with MapOps[K, V, Map, WithDefault[K, V]] with Serializable {
 
+    /** Defines the default value computation for the map, returned by `apply`
+     *  when a key is not found.
+     *
+     *  @param key the given key value for which a binding is missing
+     *  @return the result of applying `defaultValue` to `key`
+     */
     override def default(key: K): V = defaultValue(key)
 
+    /** Returns an iterator over the key/value pairs of the underlying map. */
     def iterator: scala.collection.Iterator[(K, V)] = underlying.iterator
+    /** Returns `true` if the underlying map contains no bindings. */
     override def isEmpty: Boolean = underlying.isEmpty
+    /** Returns the number of bindings in the underlying map, if it can be cheaply computed, -1 otherwise. */
     override def knownSize: Int = underlying.knownSize
+    /** The factory of the underlying map. Maps it builds do not have a default value. */
     override def mapFactory: MapFactory[Map] = underlying.mapFactory
 
+    /** Removes all bindings from the underlying map. */
     override def clear(): Unit = underlying.clear()
 
+    /** Returns the value associated with `key` in the underlying map as an
+     *  option. The default value is not used.
+     *
+     *  @param key the key value
+     *  @return an option value containing the value associated with `key`, or
+     *          `None` if `key` is not present in the underlying map
+     */
     def get(key: K): Option[V] = underlying.get(key)
 
+    /** Removes the binding for `elem` from the underlying map, if present.
+     *
+     *  @param elem the key whose binding is to be removed
+     *  @return this `WithDefault` map
+     */
     def subtractOne(elem: K): WithDefault.this.type = { underlying.subtractOne(elem); this }
 
+    /** Adds the given key/value pair to the underlying map, replacing any
+     *  existing binding for the key.
+     *
+     *  @param elem the key/value pair to add
+     *  @return this `WithDefault` map
+     */
     def addOne(elem: (K, V)): WithDefault.this.type = { underlying.addOne(elem); this }
 
+    /** Returns a new map containing the bindings of the underlying map followed
+     *  by those of `suffix`, wrapped with the same default value function as
+     *  this map.
+     *
+     *  @tparam V2 the value type of the returned map, a supertype of `V`
+     *  @param suffix the key/value pairs to append
+     *  @return a new `WithDefault` map with the combined bindings and this map's default
+     */
     override def concat[V2 >: V](suffix: collection.IterableOnce[(K, V2)]^): Map[K, V2] =
       underlying.concat(suffix).withDefault(defaultValue)
 
+    /** Returns a new, empty `WithDefault` map with the same default value function as this map. */
     override def empty: WithDefault[K, V] = new WithDefault[K, V](underlying.empty, defaultValue)
 
+    /** Returns a new `WithDefault` map containing the elements of `coll` and
+     *  the same default value function as this map.
+     *
+     *  @param coll the key/value pairs for the new map
+     *  @return a new `WithDefault` map with those bindings and this map's default
+     */
     override protected def fromSpecific(coll: scala.collection.IterableOnce[(K, V)]^): WithDefault[K, V] =
       new WithDefault[K, V](mapFactory.from(coll), defaultValue)
 
+    /** Returns a builder that produces a `WithDefault` map with the same default value function as this map. */
     override protected def newSpecificBuilder: Builder[(K, V), WithDefault[K, V]] =
       Map.newBuilder.mapResult((p: Map[K, V]) => new WithDefault[K, V](p, defaultValue))
   }

@@ -29,9 +29,29 @@ import scala.collection.generic.DefaultSerializable
 @SerialVersionUID(3L)
 object OpenHashMap extends MapFactory[OpenHashMap] {
 
+  /** Creates a new empty `OpenHashMap`.
+   *
+   *  @tparam K the type of keys
+   *  @tparam V the type of values
+   */
   def empty[K, V] = new OpenHashMap[K, V]
+  /** Creates a new `OpenHashMap` from a collection of key/value pairs.
+   *
+   *  If several pairs share a key, the last one wins.
+   *
+   *  @tparam K the type of keys
+   *  @tparam V the type of values
+   *  @param it the key/value pairs to initialize the map with
+   *  @return a new `OpenHashMap` containing the pairs of `it`
+   */
   def from[K, V](it: IterableOnce[(K, V)]^): OpenHashMap[K,V] = empty ++= it
 
+  /** Creates a new empty builder for an `OpenHashMap`.
+   *
+   *  @tparam K the type of keys
+   *  @tparam V the type of values
+   *  @return a new builder that produces an `OpenHashMap` from the key/value pairs added to it
+   */
   def newBuilder[K, V]: Builder[(K, V), OpenHashMap[K,V]] =
     new GrowableBuilder[(K, V), OpenHashMap[K, V]](empty)
 
@@ -84,6 +104,7 @@ class OpenHashMap[Key, Value](initialSize : Int)
   /** A default constructor creates a hashmap with initial size `8`. */
   def this() = this(8)
 
+  /** Returns the companion object `OpenHashMap`, which builds maps of this kind. */
   override def mapFactory: MapFactory[OpenHashMap] = OpenHashMap
 
   private val actualInitialSize = OpenHashMap.nextPositivePowerOfTwo(initialSize)
@@ -103,9 +124,12 @@ class OpenHashMap[Key, Value](initialSize : Int)
   // Used for tracking inserts so that iterators can determine if concurrent modification has occurred.
   private var modCount = 0
 
+  /** Returns the number of key/value pairs in this map. Deleted slots are not counted. */
   override def size = _size
+  /** Returns `size`; the number of key/value pairs is always known. */
   override def knownSize: Int = size
   private def size_=(s : Int): Unit = _size = s
+  /** Returns `true` if this map contains no key/value pairs. */
   override def isEmpty: Boolean = _size == 0
   /** Returns a mangled hash code of the provided key.
    *
@@ -163,14 +187,42 @@ class OpenHashMap[Key, Value](initialSize : Int)
   }
 
   // TODO refactor `put` to extract `findOrAddEntry` and implement this in terms of that to avoid Some boxing.
+  /** Adds a new key/value pair to this map, replacing any value previously associated with the key.
+   *
+   *  Delegates to `put`, discarding its result.
+   *
+   *  @param key the key of the entry to add or update
+   *  @param value the value to associate with `key`
+   */
   override def update(key: Key, value: Value): Unit = put(key, value)
 
+  /** Adds a key/value pair to this map and returns the map.
+   *
+   *  @param kv the key/value pair to add; any existing value for the same key is overwritten
+   *  @return this map after the entry has been added
+   */
   @deprecatedOverriding("addOne should not be overridden in order to maintain consistency with put.", "2.11.0")
   def addOne (kv: (Key, Value)): this.type = { put(kv._1, kv._2); this }
 
+  /** Removes a key from this map, and returns the map.
+   *
+   *  Does nothing if `key` is not present.
+   *
+   *  @param key the key to remove
+   *  @return this map after the removal
+   */
   @deprecatedOverriding("subtractOne should not be overridden in order to maintain consistency with remove.", "2.11.0")
   def subtractOne (key: Key): this.type = { remove(key); this }
 
+  /** Adds a key/value pair to this map, returning any value previously associated with the key.
+   *
+   *  A new entry reuses the first deleted slot on its probe path, if any;
+   *  the table grows when more than half its slots are occupied or deleted.
+   *
+   *  @param key the key to add
+   *  @param value the value to associate with `key`
+   *  @return `Some` of the value previously associated with `key`, or `None` if `key` was not present
+   */
   override def put(key: Key, value: Value): Option[Value] =
     put(key, hashOf(key), value)
 
@@ -211,6 +263,15 @@ class OpenHashMap[Key, Value](initialSize : Int)
     deleted += 1
   }
 
+  /** Removes a key from this map, returning the value previously associated with it.
+   *
+   *  A removed entry's slot is not emptied but marked as deleted, so that
+   *  probe sequences for other keys remain intact; deleted slots are
+   *  reclaimed when an entry is added over one or when the table grows.
+   *
+   *  @param key the key to remove
+   *  @return `Some` of the value previously associated with `key`, or `None` if `key` was not present
+   */
   override def remove(key : Key): Option[Value] = {
     val entry = table(findIndex(key, hashOf(key)))
     if (entry != null && entry.value != None) {
@@ -220,6 +281,11 @@ class OpenHashMap[Key, Value](initialSize : Int)
     } else None
   }
 
+  /** Optionally returns the value associated with a key.
+   *
+   *  @param key the key to look up
+   *  @return `Some` of the value associated with `key`, or `None` if `key` is not present
+   */
   def get(key : Key) : Option[Value] = {
     val hash = hashOf(key)
     var index = hash & mask
@@ -247,9 +313,11 @@ class OpenHashMap[Key, Value](initialSize : Int)
     override protected def nextResult(node: Entry): (Key, Value) = (node.key, node.value.get)
   }
 
+  /** Returns an iterator over the keys of this map, following the same concurrent modification contract as `iterator`. */
   override def keysIterator: Iterator[Key] = new OpenHashMapIterator[Key] {
     override protected def nextResult(node: Entry): Key = node.key
   }
+  /** Returns an iterator over the values of this map, following the same concurrent modification contract as `iterator`. */
   override def valuesIterator: Iterator[Value] = new OpenHashMapIterator[Value] {
     override protected def nextResult(node: Entry): Value = node.value.get
   }
@@ -263,17 +331,39 @@ class OpenHashMap[Key, Value](initialSize : Int)
       while((index <= mask) && (table(index) == null || table(index).value == None)) index+=1
     }
 
+    /** Returns `true` if an occupied slot remains, advancing the cursor past empty and deleted slots.
+     *
+     *  @throws ConcurrentModificationException if an entry was inserted into the map after this iterator was created
+     */
     def hasNext = {advance(); index <= mask }
 
+    /** Returns the result for the next occupied slot and advances the cursor past it.
+     *
+     *  @throws ConcurrentModificationException if an entry was inserted into the map after this iterator was created
+     *  @note NEEDS-HUMAN: When the iterator is exhausted, `table(index)` throws
+     *        `ArrayIndexOutOfBoundsException` instead of the `NoSuchElementException`
+     *        required by the `Iterator.next()` contract.
+     */
     def next() = {
       advance()
       val result = table(index)
       index += 1
       nextResult(result)
     }
+    /** Extracts this iterator's result from a hash table entry.
+     *
+     *  @param node the occupied entry to extract the result from
+     *  @return the part of `node` this iterator produces: its key, its value, or both
+     */
     protected def nextResult(node: Entry): A
   }
 
+  /** Returns a copy of this map with the same key/value pairs.
+   *
+   *  The copy is built by inserting each entry into a fresh table, so deleted
+   *  slots are not carried over. Later changes to the copy do not affect this
+   *  map, and vice versa.
+   */
   override def clone() = {
     val it = new OpenHashMap[Key, Value]
     foreachUndeletedEntry(entry => it.put(entry.key, entry.hash, entry.value.get))
@@ -297,6 +387,14 @@ class OpenHashMap[Key, Value](initialSize : Int)
       f((entry.key, entry.value.get))}
     )
   }
+  /** Loops over the key, value mappings of this map, passing key and value as separate arguments.
+   *
+   *  Unlike `foreach`, does not allocate a tuple per entry. The contract for
+   *  modifying the map during the loop is the same as for `foreach`.
+   *
+   *  @tparam U  The return type of the specified function `f`, return result of which is ignored.
+   *  @param f   The function to apply to each key, value mapping.
+   */
   override def foreachEntry[U](f : (Key, Value) => U): Unit = {
     val startModCount = modCount
     foreachUndeletedEntry(entry => {
@@ -309,16 +407,29 @@ class OpenHashMap[Key, Value](initialSize : Int)
     table.foreach(entry => if (entry != null && entry.value != None) f(entry))
   }
 
+  /** Applies a transformation function to all values stored in this map.
+   *
+   *  @param f the transformation to apply to each key/value pair; its result replaces the value stored for that key
+   *  @return this map after each value has been replaced
+   */
   override def mapValuesInPlace(f : (Key, Value) => Value): this.type = {
     foreachUndeletedEntry(entry => entry.value = Some(f(entry.key, entry.value.get)))
     this
   }
 
+  /** Retains only those entries for which a predicate returns `true`.
+   *
+   *  The slots of removed entries are marked as deleted, as with `remove`.
+   *
+   *  @param f the predicate used to test each key/value pair
+   *  @return this map after the entries failing the predicate have been removed
+   */
   override def filterInPlace(f : (Key, Value) => Boolean): this.type = {
     foreachUndeletedEntry(entry => if (!f(entry.key, entry.value.get)) deleteSlot(entry))
     this
   }
 
+  /** Returns `"OpenHashMap"`, the name used in this map's string representation. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "OpenHashMap"
 }

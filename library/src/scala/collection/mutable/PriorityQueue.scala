@@ -79,6 +79,14 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
 {
 
   private class ResizableArrayAccess[A0] extends ArrayBuffer[A0] {
+    /** Replaces each stored element with the result of applying a function to it.
+     *
+     *  Starts at index 1 because the enclosing priority queue does not use
+     *  index 0 of the array.
+     *
+     *  @param f the function applied to each element
+     *  @return this buffer
+     */
     override def mapInPlace(f: A0 => A0): this.type = {
       var i = 1 // see "we do not use array(0)" comment below (???)
       val siz = this.size
@@ -86,11 +94,29 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
       this
     }
 
+    /** Exposes the buffer's protected `size0`: the number of used array slots,
+     *  one more than the number of queue elements because index 0 is unused.
+     */
     def p_size0 = size0
+    /** Sets the buffer's protected `size0`, the number of used array slots. */
     def p_size0_=(s: Int) = size0 = s
+    /** Exposes the buffer's protected backing array, which holds the heap. */
     def p_array: Array[AnyRef | Null] = array.asInstanceOf[Array[AnyRef | Null]]
+    /** Grows the backing array, if needed, to hold at least `n` slots.
+     *
+     *  @param n the required number of array slots
+     */
     def p_ensureSize(n: Int) = super.ensureSize(n)
+    /** Grows the backing array, if needed, to hold `n` more slots beyond those in use.
+     *
+     *  @param n the number of additional array slots required
+     */
     def p_ensureAdditionalSize(n: Int) = super.ensureSize(size0 + n)
+    /** Swaps the elements at two indices of the backing array.
+     *
+     *  @param a the index of the first element
+     *  @param b the index of the second element
+     */
     def p_swap(a: Int, b: Int): Unit = {
       val h = array(a)
       array(a) = array(b)
@@ -107,13 +133,24 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   resarr.p_size0 += 1
   /** Alias for [[size]]. */
   def length: Int = resarr.length - 1  // adjust length accordingly
+  /** The number of elements in this priority queue. */
   override def size: Int = length
+  /** The number of elements in this priority queue; always known, never `-1`. */
   override def knownSize: Int = length
+  /** Tests whether this priority queue contains no elements. */
   override def isEmpty: Boolean = resarr.p_size0 < 2
 
   // not eligible for EvidenceIterableFactoryDefaults since C != CC[A] (PriorityQueue[A] != Iterable[A])
+  /** Builds a new priority queue, with this queue's ordering, from the
+   *  elements of a collection.
+   *
+   *  @param coll the collection of elements
+   *  @return a new priority queue containing the elements of `coll`
+   */
   override protected def fromSpecific(coll: scala.collection.IterableOnce[A]^): PriorityQueue[A] = PriorityQueue.from(coll)
+  /** Returns a new builder that accumulates elements into a priority queue with this queue's ordering. */
   override protected def newSpecificBuilder: Builder[A, PriorityQueue[A]] = PriorityQueue.newBuilder
+  /** Returns a new empty priority queue with this queue's ordering. */
   override def empty: PriorityQueue[A] = PriorityQueue.empty
 
   /** Replaces the contents of this $coll with the mapped result.
@@ -127,9 +164,18 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     this
   }
 
+  /** Returns this priority queue itself: a `PriorityQueue` is its own builder,
+   *  so no copy is made and later modification affects the result.
+   */
   def result() = this
 
   private def toA(x: AnyRef | Null): A = x.asInstanceOf[A]
+  /** Restores the heap invariant by sifting the element at index `m` upwards,
+   *  swapping it with its parent as long as it is greater than the parent.
+   *
+   *  @param as the heap array (index 0 is unused)
+   *  @param m the index of the element to sift up
+   */
   protected def fixUp(as: Array[AnyRef | Null], m: Int): Unit = {
     var k: Int = m
     // use `ord` directly to avoid allocating `OrderingOps`
@@ -139,6 +185,14 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     }
   }
 
+  /** Restores the heap invariant by sifting the element at index `m` downwards,
+   *  swapping it with its greater child as long as a child is greater than it.
+   *
+   *  @param as the heap array (index 0 is unused)
+   *  @param m the index of the element to sift down
+   *  @param n the index of the last element of the heap
+   *  @return `true` if any swap was made, `false` otherwise
+   */
   protected def fixDown(as: Array[AnyRef | Null], m: Int, n: Int): Boolean = {
     // returns true if any swaps were done (used in heapify)
     var k: Int = m
@@ -172,6 +226,15 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     this
   }
 
+  /** Adds all elements of a collection to this priority queue.
+   *
+   *  The elements are appended to the heap array first and the heap invariant
+   *  is restored in a single pass afterwards, which is cheaper than adding
+   *  them one at a time.
+   *
+   *  @param xs the elements to add
+   *  @return this priority queue
+   */
   override def addAll(xs: IterableOnce[A]^): this.type = {
     val from = resarr.p_size0
     for (x <- xs.iterator) unsafeAdd(x)
@@ -382,6 +445,18 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     pq
   }
 
+  /** Copies elements of this priority queue to an array, in the same
+   *  unspecified order as `iterator`, not in priority order.
+   *
+   *  Copying starts at index `start` in `xs` and stops when `len` elements
+   *  have been copied, or when the end of this queue or of `xs` is reached.
+   *
+   *  @tparam B a supertype of the element type, the element type of `xs`
+   *  @param xs the destination array
+   *  @param start the starting index in `xs`
+   *  @param len the maximum number of elements to copy
+   *  @return the number of elements copied to `xs`
+   */
   override def copyToArray[B >: A](xs: Array[B], start: Int, len: Int): Int = {
     val copied = IterableOnce.elemsToCopyToArray(length, xs.length, start, len)
     if (copied > 0) {
@@ -390,17 +465,28 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
     copied
   }
 
+  /** The companion object of this priority queue, [[PriorityQueue$ `PriorityQueue`]]. */
   @deprecated("Use `PriorityQueue` instead", "2.13.0")
   def orderedCompanion: PriorityQueue.type = PriorityQueue
 
+  /** Replaces this priority queue with a serialization proxy during Java serialization. */
   protected def writeReplace(): AnyRef = new DefaultSerializationProxy(PriorityQueue.evidenceIterableFactory[A], this)
 
+  /** The name used in the string representation of this priority queue, `"PriorityQueue"`. */
   override protected def className = "PriorityQueue"
 }
 
 
 @SerialVersionUID(3L)
 object PriorityQueue extends SortedIterableFactory[PriorityQueue] {
+  /** Returns a new builder that accumulates elements into a priority queue.
+   *
+   *  The builder establishes the heap invariant once, in `result()`, rather
+   *  than on each addition.
+   *
+   *  @tparam A the element type of the queue, which must have an implicit `Ordering`
+   *  @return a builder for a `PriorityQueue[A]`
+   */
   def newBuilder[A : Ordering]: Builder[A, PriorityQueue[A]] = {
     new Builder[A, PriorityQueue[A]] {
       val pq = new PriorityQueue[A]
@@ -410,8 +496,19 @@ object PriorityQueue extends SortedIterableFactory[PriorityQueue] {
     }
   }
 
+  /** Creates a new empty priority queue.
+   *
+   *  @tparam A the element type of the queue, which must have an implicit `Ordering`
+   *  @return a new empty `PriorityQueue[A]`
+   */
   def empty[A : Ordering]: PriorityQueue[A] = new PriorityQueue[A]
 
+  /** Creates a new priority queue containing the elements of the given collection.
+   *
+   *  @tparam E the element type of the queue, which must have an implicit `Ordering`
+   *  @param it the collection of elements
+   *  @return a new priority queue containing the elements of `it`
+   */
   def from[E : Ordering](it: IterableOnce[E]^): PriorityQueue[E] = {
     val b = newBuilder[E]
     b ++= it

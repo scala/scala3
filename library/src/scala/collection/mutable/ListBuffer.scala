@@ -56,16 +56,32 @@ class ListBuffer[A]
 
   private type Predecessor = ::[A] | Null
 
+  /** Returns an iterator over the elements of this buffer.
+   *
+   *  The iterator is fail-fast: if the buffer is mutated after the iterator's
+   *  creation, `hasNext` throws a [[java.util.ConcurrentModificationException]].
+   */
   def iterator: Iterator[A] = new MutationTracker.CheckedIterator(first.iterator, mutationCount)
 
+  /** The companion object `ListBuffer`, used by transformation methods to build new list buffers. */
   override def iterableFactory: SeqFactory[ListBuffer] = ListBuffer
 
+  /** Returns the element of this buffer at index `i`.
+   *
+   *  Takes time linear in `i`.
+   *
+   *  @param i the index of the element to return
+   *  @throws IndexOutOfBoundsException if `i < 0` or `i >= length`
+   */
   @throws[IndexOutOfBoundsException]
   def apply(i: Int) = first.apply(i)
 
+  /** Returns the number of elements in this buffer, in constant time. */
   def length = len
+  /** Returns the number of elements in this buffer. Never `-1`, as the size is always known. */
   override def knownSize = len
 
+  /** Returns `true` if this buffer contains no elements. */
   override def isEmpty: Boolean = len == 0
 
   private def copyElems(): Unit = {
@@ -83,6 +99,14 @@ class ListBuffer[A]
   }
 
   // Avoids copying where possible.
+  /** Returns the contents of this buffer as an immutable [[scala.collection.immutable.List]].
+   *
+   *  Takes constant time: the buffer's internal list is returned directly rather
+   *  than copied. The buffer is instead marked as aliased, and the next mutating
+   *  operation, if any, copies the elements first, so the returned list is never
+   *  affected by later changes to the buffer. The elements are safely published,
+   *  so the returned list may be shared with other threads.
+   */
   override def toList: List[A] = {
     aliased = nonEmpty
     // We've accumulated a number of mutations to `List.tail` by this stage.
@@ -92,6 +116,12 @@ class ListBuffer[A]
     first
   }
 
+  /** Returns the contents of this buffer as an immutable [[scala.collection.immutable.List]], like `toList`.
+   *
+   *  The buffer remains valid afterwards: it can be mutated further (the
+   *  elements are copied first, leaving the returned list unchanged) or reused
+   *  after `clear()`.
+   */
   def result(): immutable.List[A] = toList
 
   /** Prepends the elements of this buffer to a given list
@@ -108,6 +138,10 @@ class ListBuffer[A]
     }
   }
 
+  /** Removes all elements from this buffer, in constant time.
+   *
+   *  Lists previously returned by `toList` or `result()` are not affected.
+   */
   def clear(): Unit = {
     mutationCount += 1
     first = Nil
@@ -116,6 +150,14 @@ class ListBuffer[A]
     aliased = false
   }
 
+  /** Appends `elem` to this buffer.
+   *
+   *  Takes constant time, unless the buffer's list is aliased by an earlier
+   *  `toList` or `result()` call, in which case the elements are first copied.
+   *
+   *  @param elem the element to append
+   *  @return this $coll
+   */
   final def addOne(elem: A): this.type = {
     ensureUnaliased()
     val last1 = new ::[A](elem, Nil)
@@ -145,6 +187,14 @@ class ListBuffer[A]
     this
   }
 
+  /** Appends all elements of `xs` to this buffer.
+   *
+   *  The elements are first copied into a fresh list, so `xs` may be this
+   *  buffer itself or a list it previously returned.
+   *
+   *  @param xs the collection containing the elements to append
+   *  @return this $coll
+   */
   override final def addAll(xs: IterableOnce[A]^): this.type = {
     val it = xs.iterator
     if (it.hasNext) {
@@ -158,6 +208,14 @@ class ListBuffer[A]
     this
   }
 
+  /** Removes the first occurrence of `elem` from this buffer, if any.
+   *
+   *  Takes time linear in the buffer size. If this buffer does not contain
+   *  `elem`, it is unchanged.
+   *
+   *  @param elem the element to remove
+   *  @return this $coll
+   */
   override def subtractOne(elem: A): this.type = {
     ensureUnaliased()
     if (isEmpty) {}
@@ -209,6 +267,14 @@ class ListBuffer[A]
   private def getNext(p: Predecessor): List[A] =
     if (p == null) first else p.next
 
+  /** Replaces the element at index `idx` with `elem`.
+   *
+   *  Takes time linear in `idx`.
+   *
+   *  @param idx the index of the element to replace
+   *  @param elem the new element
+   *  @throws IndexOutOfBoundsException if `idx < 0` or `idx >= length`
+   */
   def update(idx: Int, elem: A): Unit = {
     ensureUnaliased()
     if (idx < 0 || idx >= len) throw CommonErrors.indexOutOfBounds(index = idx, max = len - 1)
@@ -229,6 +295,17 @@ class ListBuffer[A]
     }
   }
 
+  /** Inserts `elem` at index `idx` into this buffer.
+   *
+   *  The elements at indices `idx` and above have their indices increased by
+   *  one. Takes time linear in `idx`, but constant time when prepending
+   *  (`idx == 0`) or appending (`idx == length`).
+   *
+   *  @param idx the index where the element is inserted
+   *  @param elem the element to insert
+   *  @throws IndexOutOfBoundsException if the index `idx` is not in the valid range
+   *          `0 <= idx <= length`
+   */
   def insert(idx: Int, elem: A): Unit = {
     ensureUnaliased()
     if (idx < 0 || idx > len) throw CommonErrors.indexOutOfBounds(index = idx, max = len - 1)
@@ -241,6 +318,11 @@ class ListBuffer[A]
     }
   }
 
+  /** Prepends `elem` to this buffer, in constant time.
+   *
+   *  @param elem the element to prepend
+   *  @return this $coll
+   */
   def prepend(elem: A): this.type = {
     insert(0, elem)
     this
@@ -257,6 +339,19 @@ class ListBuffer[A]
     }
   }
 
+  /** Inserts all elements of `elems` at index `idx` into this buffer.
+   *
+   *  The elements at indices `idx` and above have their indices increased by
+   *  the number of inserted elements. If `idx == length`, the elements are
+   *  appended. The bounds are checked before `elems` is iterated, and the new
+   *  elements are copied into a fresh list before this buffer is modified, so
+   *  `elems` may be this buffer itself.
+   *
+   *  @param idx the index where the elements are inserted
+   *  @param elems the collection containing the elements to insert
+   *  @throws IndexOutOfBoundsException if the index `idx` is not in the valid range
+   *          `0 <= idx <= length`
+   */
   def insertAll(idx: Int, elems: IterableOnce[A]^): Unit = {
     if (idx < 0 || idx > len) throw CommonErrors.indexOutOfBounds(index = idx, max = len - 1)
     val it = elems.iterator
@@ -270,6 +365,15 @@ class ListBuffer[A]
     }
   }
 
+  /** Removes and returns the element at index `idx`.
+   *
+   *  The elements at higher indices have their indices decreased by one. Takes
+   *  time linear in `idx`.
+   *
+   *  @param idx the index of the element to remove
+   *  @return the removed element
+   *  @throws IndexOutOfBoundsException if `idx < 0` or `idx >= length`
+   */
   def remove(idx: Int): A = {
     ensureUnaliased()
     if (idx < 0 || idx >= len) throw CommonErrors.indexOutOfBounds(index = idx, max = len - 1)
@@ -286,6 +390,17 @@ class ListBuffer[A]
     nx.head
   }
 
+  /** Removes `count` elements starting at index `idx`.
+   *
+   *  Takes time linear in `idx + count`. If `count` is zero, this buffer is
+   *  unchanged and the bounds are not checked.
+   *
+   *  @param idx the index of the first element to remove
+   *  @param count the number of elements to remove
+   *  @throws IndexOutOfBoundsException if `count > 0` and the index `idx` is not in
+   *          the valid range `0 <= idx <= length - count`
+   *  @throws IllegalArgumentException if `count < 0`
+   */
   def remove(idx: Int, count: Int): Unit =
     if (count > 0) {
       ensureUnaliased()
@@ -369,6 +484,20 @@ class ListBuffer[A]
     this
   }
 
+  /** Replaces a slice of elements in this $coll by another sequence of elements.
+   *
+   *  `from` and `replaced` are clamped: patching at negative indices is the
+   *  same as patching starting at 0, patching at indices at or larger than the
+   *  length appends the patch to the end, and an excessive `replaced` count is
+   *  reduced to the available elements. Implemented by removing the replaced
+   *  elements and inserting the patch in their place; never fails on
+   *  out-of-range arguments.
+   *
+   *  @param from the index of the first replaced element
+   *  @param patch the replacement sequence
+   *  @param replaced the number of elements to drop in the original $coll
+   *  @return this $coll
+   */
   def patchInPlace(from: Int, patch: collection.IterableOnce[A]^, replaced: Int): this.type = {
     val _len = len
     val _from = math.max(from, 0)         // normalized
@@ -409,6 +538,7 @@ class ListBuffer[A]
    */
   override def lastOption: Option[A] = if (last0 eq null) None else Some(last0.head)
 
+  /** The prefix of this $coll's `toString` representation, `"ListBuffer"`. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "ListBuffer"
 
@@ -417,9 +547,29 @@ class ListBuffer[A]
 @SerialVersionUID(3L)
 object ListBuffer extends StrictOptimizedSeqFactory[ListBuffer] {
 
+  /** Creates a list buffer containing the elements of `coll`.
+   *
+   *  @tparam A the element type
+   *  @param coll the collection providing the elements
+   *  @return a new `ListBuffer` with the elements of `coll` in order
+   */
   def from[A](coll: collection.IterableOnce[A]^): ListBuffer[A] = new ListBuffer[A].freshFrom(coll)
 
+  /** Returns a new builder that produces a `ListBuffer`.
+   *
+   *  A `ListBuffer` is itself a builder, but one producing a `List`; the
+   *  builder returned here appends to a list buffer and returns the buffer
+   *  itself as its result.
+   *
+   *  @tparam A the element type
+   *  @return a builder producing a `ListBuffer`
+   */
   def newBuilder[A]: Builder[A, ListBuffer[A]] = new GrowableBuilder(empty[A])
 
+  /** Creates a new, empty list buffer.
+   *
+   *  @tparam A the element type
+   *  @return a new empty `ListBuffer`
+   */
   def empty[A]: ListBuffer[A] = new ListBuffer[A]
 }

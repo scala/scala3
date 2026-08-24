@@ -51,6 +51,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     with Serializable {
 
   import AnyRefMap._
+  /** Creates a new empty `AnyRefMap` whose `apply` throws `NoSuchElementException` for missing keys. */
   def this() = this(AnyRefMap.exceptionDefault, 16, initBlank = true)
 
   /** Creates a new `AnyRefMap` that returns default values according to a supplied key-value mapping.
@@ -99,6 +100,13 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     mask = m; _size = sz; _vacant = vc; _hashes = hz; _keys = kz; _values = vz
   }
 
+  /** Builds a new `AnyRefMap` containing the key/value pairs of the given collection.
+   *
+   *  If several pairs share a key, the last one wins.
+   *
+   *  @param coll the key/value pairs to build the map from
+   *  @return a new `AnyRefMap` containing the pairs of `coll`
+   */
   override protected def fromSpecific(coll: scala.collection.IterableOnce[(K, V)]^): AnyRefMap[K,V] = {
     var sz = coll.knownSize
     if(sz < 0) sz = 4
@@ -107,11 +115,16 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     if (arm.size < (sz>>3)) arm.repack()
     arm
   }
+  /** Returns a new empty builder producing an `AnyRefMap` of the same key and value types. */
   override protected def newSpecificBuilder: Builder[(K, V), AnyRefMap[K,V]] = new AnyRefMapBuilder
 
+  /** Returns the number of key/value pairs in this map. */
   override def size: Int = _size
+  /** Returns `size`; the number of key/value pairs is always known. */
   override def knownSize: Int = size
+  /** Returns `true` if this map contains no key/value pairs. */
   override def isEmpty: Boolean = _size == 0
+  /** Returns a new empty `AnyRefMap` with the same default-value function as this map. */
   override def empty: AnyRefMap[K,V] = new AnyRefMap(defaultEntry)
 
   private def imbalanced: Boolean =
@@ -157,18 +170,45 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     if (o >= 0) o | MissVacant else e | MissingBit
   }
 
+  /** Tests whether a key is present in this map.
+   *
+   *  @param key the key to look up; may be `null`
+   *  @return `true` if `key` has an associated value, `false` otherwise
+   */
   override def contains(key: K): Boolean = seekEntry(hashOf(key), key) >= 0
 
+  /** Optionally returns the value associated with a key.
+   *
+   *  @param key the key to look up
+   *  @return `Some` of the value associated with `key`, or `None` if `key` is not present
+   */
   override def get(key: K): Option[V] = {
     val i = seekEntry(hashOf(key), key)
     if (i < 0) None else Some(_values(i).asInstanceOf[V])
   }
 
+  /** Returns the value associated with a key, or a computed alternative if the key is not present.
+   *
+   *  @tparam V1 the result type, a supertype of this map's value type
+   *  @param key the key to look up
+   *  @param default the alternative result; evaluated only if `key` is not present
+   *  @return the value associated with `key`, or `default` if `key` is not present
+   */
   override def getOrElse[V1 >: V](key: K, default: => V1): V1 = {
     val i = seekEntry(hashOf(key), key)
     if (i < 0) default else _values(i).asInstanceOf[V]
   }
 
+  /** Returns the value associated with a key, computing and storing a value if the key is not present.
+   *
+   *  If `key` is not present, evaluates `defaultValue`, adds the resulting entry to
+   *  this map, and returns the result. `defaultValue` may itself query or modify this
+   *  map; the entry for `key` is added after it completes.
+   *
+   *  @param key the key to look up
+   *  @param defaultValue the value to store and return if `key` is not present; evaluated at most once
+   *  @return the value associated with `key`, either pre-existing or newly stored
+   */
   override def getOrElseUpdate(key: K, defaultValue: => V): V = {
     val h = hashOf(key)
     var i = seekEntryOrOpen(h, key)
@@ -276,6 +316,12 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     repack(m)
   }
 
+  /** Adds a key/value pair to this map, returning any value previously associated with the key.
+   *
+   *  @param key the key to add
+   *  @param value the value to associate with `key`
+   *  @return `Some` of the value previously associated with `key`, or `None` if `key` was not present
+   */
   override def put(key: K, value: V): Option[V] = {
     val h = hashOf(key)
     val i = seekEntryOrOpen(h, key)
@@ -334,8 +380,22 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
    */
   @inline final def addOne(key: K, value: V): this.type = { update(key, value); this }
 
+  /** Adds a key/value pair to this map and returns the map.
+   *
+   *  @param kv the key/value pair to add; any existing value for the same key is overwritten
+   *  @return this map after the entry has been added
+   */
   @inline override final def addOne(kv: (K, V)): this.type = { update(kv._1, kv._2); this }
 
+  /** Removes a key from this map, and returns the map.
+   *
+   *  If `key` is present, its entry is removed and its slot is marked vacant;
+   *  vacant slots are reclaimed on a later `repack`. Does nothing if `key` is
+   *  not present.
+   *
+   *  @param key the key to remove
+   *  @return this map after the removal
+   */
   def subtractOne(key: K): this.type = {
     val i = seekEntry(hashOf(key), key)
     if (i >= 0) {
@@ -348,12 +408,15 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     this
   }
 
+  /** Returns an iterator over the key/value pairs of this map. */
   def iterator: Iterator[(K, V)] = new AnyRefMapIterator[(K, V)] {
     protected def nextResult(k: K, v: V) = (k, v)
   }
+  /** Returns an iterator over the keys of this map. */
   override def keysIterator: Iterator[K] = new AnyRefMapIterator[K] {
     protected def nextResult(k: K, v: V) = k
   }
+  /** Returns an iterator over the values of this map. */
   override def valuesIterator: Iterator[V] = new AnyRefMapIterator[V] {
     protected def nextResult(k: K, v: V) = v
   }
@@ -365,6 +428,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
 
     private var index = 0
 
+    /** Returns `true` if at least one entry remains, advancing past empty and vacated slots. */
     def hasNext: Boolean = index < hz.length && {
       var h = hz(index)
       while (h+h == 0) {
@@ -375,6 +439,11 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
       true
     }
 
+    /** Returns the result computed by `nextResult` for the next entry, and advances the iterator.
+     *
+     *  @return the result for the next entry
+     *  @throws NoSuchElementException if no entries remain
+     */
     def next(): A = {
       if (hasNext) {
         val ans = nextResult(kz(index).asInstanceOf[K], vz(index).asInstanceOf[V])
@@ -384,10 +453,21 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
       else throw new NoSuchElementException("next")
     }
 
+    /** Computes this iterator's result for one entry.
+     *
+     *  @param k the entry's key
+     *  @param v the entry's value
+     *  @return the result to produce for the entry `k -> v`
+     */
     protected def nextResult(k: K, v: V): A
   }
 
 
+  /** Applies a function to each key/value pair of this map.
+   *
+   *  @tparam U the result type of the function; the results are discarded
+   *  @param f the function to apply to each key/value pair
+   */
   override def foreach[U](f: ((K,V)) => U): Unit = {
     var i = 0
     var e = _size
@@ -402,6 +482,13 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     }
   }
 
+  /** Applies a function to each key/value pair of this map, passing key and value as separate arguments.
+   *
+   *  Unlike `foreach`, does not allocate a tuple per entry.
+   *
+   *  @tparam U the result type of the function; the results are discarded
+   *  @param f the function to apply to each key and value
+   */
   override def foreachEntry[U](f: (K,V) => U): Unit = {
     var i = 0
     var e = _size
@@ -416,6 +503,10 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     }
   }
 
+  /** Returns a copy of this map with the same entries, default-value function, and internal layout.
+   *
+   *  Later changes to the copy do not affect this map, and vice versa.
+   */
   override def clone(): AnyRefMap[K, V] = {
     val hz = java.util.Arrays.copyOf(_hashes, _hashes.length)
     val kz = java.util.Arrays.copyOf(_keys, _keys.length)
@@ -425,9 +516,28 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     arm
   }
 
+  /** Returns a new `AnyRefMap` containing the entries of this map and one additional key/value pair.
+   *
+   *  This map is not modified.
+   *
+   *  @tparam V1 the value type of the resulting map, a supertype of this map's value type
+   *  @param kv the key/value pair to add; it overrides any entry of this map with the same key
+   *  @return a new `AnyRefMap` with the entries of this map plus `kv`
+   */
   @deprecated("Consider requiring an immutable Map or fall back to Map.concat", "2.13.0")
   override def + [V1 >: V](kv: (K, V1)): AnyRefMap[K, V1] = AnyRefMap.from(new View.Appended(this, kv))
 
+  /** Returns a new `AnyRefMap` containing the entries of this map and two or more additional key/value pairs.
+   *
+   *  This map is not modified. When keys coincide, later pairs override earlier
+   *  ones and entries of this map.
+   *
+   *  @tparam V1 the value type of the resulting map, a supertype of this map's value type
+   *  @param elem1 the first key/value pair to add
+   *  @param elem2 the second key/value pair to add
+   *  @param elems the remaining key/value pairs to add, if any
+   *  @return a new `AnyRefMap` with the entries of this map plus all the given pairs
+   */
   @deprecated("Use ++ with an explicit collection argument instead of + with varargs", "2.13.0")
   override def + [V1 >: V](elem1: (K, V1), elem2: (K, V1), elems: (K, V1)*): AnyRefMap[K, V1]^{} = {
     // An empty capture annotation is needed in the result type to satisfy the overriding checker.
@@ -435,14 +545,40 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     if(elems.isEmpty) m else m.concat(elems)
   }
 
+  /** Returns a new `AnyRefMap` containing the entries of this map together with those of another collection.
+   *
+   *  This map is not modified. When keys coincide, pairs of `xs` override
+   *  entries of this map, and later pairs of `xs` override earlier ones.
+   *
+   *  @tparam V2 the value type of the resulting map, a supertype of this map's value type
+   *  @param xs the key/value pairs to add
+   *  @return a new `AnyRefMap` with the entries of this map and of `xs`
+   */
   override def concat[V2 >: V](xs: scala.collection.IterableOnce[(K, V2)]^): AnyRefMap[K, V2] = {
     val arm = clone().asInstanceOf[AnyRefMap[K, V2]]
     xs.iterator.foreach(kv => arm += kv)
     arm
   }
 
+  /** Returns a new `AnyRefMap` containing the entries of this map together with those of another collection.
+   *
+   *  Alias for `concat`; this map is not modified.
+   *
+   *  @tparam V2 the value type of the resulting map, a supertype of this map's value type
+   *  @param xs the key/value pairs to add
+   *  @return a new `AnyRefMap` with the entries of this map and of `xs`
+   */
   override def ++[V2 >: V](xs: scala.collection.IterableOnce[(K, V2)]^): AnyRefMap[K, V2] = concat(xs)
 
+  /** Returns a copy of this map with one key/value pair added or replaced.
+   *
+   *  This map is not modified.
+   *
+   *  @tparam V1 the value type of the resulting map, a supertype of this map's value type
+   *  @param key the key to add
+   *  @param value the value to associate with `key`
+   *  @return a clone of this map with `key` mapped to `value`
+   */
   @deprecated("Use m.clone().addOne(k,v) instead of m.updated(k, v)", "2.13.0")
   override def updated[V1 >: V](key: K, value: V1): AnyRefMap[K, V1] =
     clone().asInstanceOf[AnyRefMap[K, V1]].addOne(key, value)
@@ -557,6 +693,7 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
   def collect[K2 <: AnyRef, V2](pf: PartialFunction[(K, V), (K2, V2)])(implicit dummy: DummyImplicit): AnyRefMap[K2, V2] =
     strictOptimizedCollect(AnyRefMap.newBuilder[K2, V2], pf)
 
+  /** Removes all entries from this map, keeping the internal buffer at its current size. */
   override def clear(): Unit = {
     import java.util.Arrays.fill
     fill(_keys, null)
@@ -566,8 +703,10 @@ class AnyRefMap[K <: AnyRef, V] private[collection] (defaultEntry: K -> V, initi
     _vacant = 0
   }
 
+  /** Returns a serialization proxy that rebuilds this map on deserialization; called by Java serialization. */
   protected def writeReplace(): AnyRef = new DefaultSerializationProxy(AnyRefMap.toFactory[K, V](AnyRefMap), this)
 
+  /** Returns `"AnyRefMap"`, the prefix used in this map's string representation. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix = "AnyRefMap"
 }
@@ -580,6 +719,11 @@ object AnyRefMap {
   private final val MissVacant = 0xC0000000
 
   private class ExceptionDefault extends (Any => Nothing) with Serializable {
+    /** Always throws `NoSuchElementException` reporting the missing key; never returns normally.
+     *
+     *  @param k the key that was not found; rendered as `"(null)"` if `null`
+     *  @throws NoSuchElementException always
+     */
     def apply(k: Any): Nothing = throw new NoSuchElementException(if (k == null) "(null)" else k.toString)
   }
   private val exceptionDefault = new ExceptionDefault
@@ -593,12 +737,20 @@ object AnyRefMap {
    */
   final class AnyRefMapBuilder[K <: AnyRef, V] extends ReusableBuilder[(K, V), AnyRefMap[K, V]] {
     private[collection] var elems: AnyRefMap[K, V] = new AnyRefMap[K, V]
+    /** Adds a key/value pair to the map under construction.
+     *
+     *  @param entry the key/value pair to add; any existing value for the same key is overwritten
+     *  @return this builder
+     */
     def addOne(entry: (K, V)): this.type = {
       elems += entry
       this
     }
+    /** Resets this builder by starting a fresh, empty map; previously returned maps are unaffected. */
     def clear(): Unit = elems = new AnyRefMap[K, V]
+    /** Returns the map under construction. The map is returned directly, not copied, so additions made before the next `clear` also appear in the returned map. */
     def result(): AnyRefMap[K, V] = elems
+    /** Returns the number of entries added since the last `clear`. */
     override def knownSize: Int = elems.knownSize
   }
 
@@ -611,6 +763,12 @@ object AnyRefMap {
    */
   def apply[K <: AnyRef, V](elems: (K, V)*): AnyRefMap[K, V] = buildFromIterableOnce(elems)
 
+  /** Creates a new empty builder for an `AnyRefMap`.
+   *
+   *  @tparam K the type of keys, must be a subtype of `AnyRef`
+   *  @tparam V the type of values
+   *  @return a new reusable builder producing an `AnyRefMap`
+   */
   def newBuilder[K <: AnyRef, V]: ReusableBuilder[(K, V), AnyRefMap[K, V]] = new AnyRefMapBuilder[K, V]
 
   private def buildFromIterableOnce[K <: AnyRef, V](elems: IterableOnce[(K, V)]^): AnyRefMap[K, V] = {
@@ -689,21 +847,66 @@ object AnyRefMap {
     arm
   }
 
+  /** Implicitly converts this companion object to a `Factory`, so it can be passed
+   *  where a factory of `AnyRefMap`s is expected, for example to `to(AnyRefMap)`.
+   *
+   *  @tparam K the type of keys, must be a subtype of `AnyRef`
+   *  @tparam V the type of values
+   *  @param dummy this companion object; its value is never used
+   *  @return a `Factory` that builds an `AnyRefMap` from key/value pairs
+   */
   implicit def toFactory[K <: AnyRef, V](dummy: AnyRefMap.type): Factory[(K, V), AnyRefMap[K, V]] = ToFactory.asInstanceOf[Factory[(K, V), AnyRefMap[K, V]]]
 
   @SerialVersionUID(3L)
   private object ToFactory extends Factory[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] with Serializable {
+    /** Builds an `AnyRefMap` from a collection of key/value pairs.
+     *
+     *  @param it the key/value pairs
+     *  @return a new `AnyRefMap` containing the pairs of `it`
+     */
     def fromSpecific(it: IterableOnce[(AnyRef, AnyRef)]^): AnyRefMap[AnyRef, AnyRef] = AnyRefMap.from[AnyRef, AnyRef](it)
+    /** Returns a new empty builder for an `AnyRefMap`. */
     def newBuilder: Builder[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] = AnyRefMap.newBuilder[AnyRef, AnyRef]
   }
 
+  /** Implicitly converts this companion object to a `BuildFrom`, so it can be passed
+   *  where a `BuildFrom` producing `AnyRefMap`s is expected.
+   *
+   *  @tparam K the type of keys, must be a subtype of `AnyRef`
+   *  @tparam V the type of values
+   *  @param factory this companion object; its value is never used
+   *  @return a `BuildFrom` that builds an `AnyRefMap` from key/value pairs, ignoring the source collection
+   */
   implicit def toBuildFrom[K <: AnyRef, V](factory: AnyRefMap.type): BuildFrom[Any, (K, V), AnyRefMap[K, V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (K, V), AnyRefMap[K, V]]]
   private object ToBuildFrom extends BuildFrom[Any, (AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] {
+    /** Builds an `AnyRefMap` from a collection of key/value pairs.
+     *
+     *  @param from the source collection; never used
+     *  @param it the key/value pairs
+     *  @return a new `AnyRefMap` containing the pairs of `it`
+     */
     def fromSpecific(from: Any)(it: IterableOnce[(AnyRef, AnyRef)]^): AnyRefMap[AnyRef, AnyRef] = AnyRefMap.from(it)
+    /** Returns a new empty builder for an `AnyRefMap`.
+     *
+     *  @param from the source collection; never used
+     *  @return a new reusable builder producing an `AnyRefMap`
+     */
     def newBuilder(from: Any): ReusableBuilder[(AnyRef, AnyRef), AnyRefMap[AnyRef, AnyRef]] = AnyRefMap.newBuilder[AnyRef, AnyRef]
   }
 
+  /** An implicit `Factory` for `AnyRefMap`s, for APIs that look one up implicitly.
+   *
+   *  @tparam K the type of keys, must be a subtype of `AnyRef`
+   *  @tparam V the type of values
+   *  @return a `Factory` that builds an `AnyRefMap` from key/value pairs
+   */
   implicit def iterableFactory[K <: AnyRef, V]: Factory[(K, V), AnyRefMap[K, V]] = toFactory[K, V](this)
+  /** An implicit `BuildFrom` that builds an `AnyRefMap` when the source collection is an `AnyRefMap`.
+   *
+   *  @tparam K the type of keys of the resulting map, must be a subtype of `AnyRef`
+   *  @tparam V the type of values of the resulting map
+   *  @return a `BuildFrom` that builds an `AnyRefMap` from key/value pairs
+   */
   implicit def buildFromAnyRefMap[K <: AnyRef, V]: BuildFrom[AnyRefMap[?, ?], (K, V), AnyRefMap[K, V]] = toBuildFrom(this)
 }
 

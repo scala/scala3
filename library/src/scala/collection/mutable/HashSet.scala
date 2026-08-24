@@ -42,6 +42,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     with IterableFactoryDefaults[A, HashSet]
     with Serializable {
 
+  /** Creates a new, empty hash set with the default initial capacity (16) and the default load factor (0.75). */
   def this() = this(HashSet.defaultInitialCapacity, HashSet.defaultLoadFactor)
 
   import HashSet.Node
@@ -59,6 +60,7 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
 
   private var contentSize = 0
 
+  /** Returns the number of elements in this set. */
   override def size: Int = contentSize
 
   /** Performs the inverse operation of improveHash. In this case, it happens to be identical to improveHash.
@@ -89,6 +91,11 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
 
   @`inline` private def index(hash: Int) = hash & (table.length - 1)
 
+  /** Tests if some element is contained in this set.
+   *
+   *  @param elem the element to test for membership
+   *  @return `true` if `elem` is contained in this set, `false` otherwise
+   */
   override def contains(elem: A): Boolean = findNode(elem) ne null
 
   @`inline` private def findNode(elem: A): Node[A] | Null = {
@@ -99,16 +106,35 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     }
   }
 
+  /** Grows the internal table, if necessary, so that `size` elements can be stored without
+   *  triggering a resize. Never shrinks the table.
+   *
+   *  @param size the expected number of elements
+   */
   override def sizeHint(size: Int): Unit = {
     val target = tableSizeFor(((size + 1).toDouble / loadFactor).toInt)
     if(target > table.length) growTable(target)
   }
 
+  /** Adds a single element to this set, growing the table first if the size threshold
+   *  (capacity times load factor) would be reached.
+   *
+   *  @param elem the element to add
+   *  @return `true` if `elem` was not yet present and has been added, `false` if an equal
+   *          element was already in the set (which is then left unchanged)
+   */
   override def add(elem: A) : Boolean = {
     if(contentSize + 1 >= threshold) growTable(table.length * 2)
     addElem(elem, computeHash(elem))
   }
 
+  /** Adds all elements produced by `xs` to this set. Elements already present are left
+   *  unchanged. When `xs` is an `immutable.HashSet`, a `mutable.HashSet`, or a
+   *  `LinkedHashSet`, the hash codes cached in `xs` are reused instead of being recomputed.
+   *
+   *  @param xs the elements to add
+   *  @return this set
+   */
   override def addAll(xs: IterableOnce[A]^): this.type = {
     sizeHint(xs, delta = 0)
     (xs: @unchecked) match {
@@ -133,6 +159,13 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     }
   }
 
+  /** Removes all elements produced by `xs` from this set, stopping early once this set is
+   *  empty. When `xs` is an `immutable.HashSet`, a `mutable.HashSet`, or a `LinkedHashSet`,
+   *  the hash codes cached in `xs` are reused instead of being recomputed.
+   *
+   *  @param xs the elements to remove
+   *  @return this set
+   */
   override def subtractAll(xs: IterableOnce[A]^): this.type = {
     if (size == 0) {
       return this
@@ -219,6 +252,11 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     }
   }
 
+  /** Removes an element from this set.
+   *
+   *  @param elem the element to remove
+   *  @return `true` if `elem` was present and has been removed, `false` if it was not in the set
+   */
   override def remove(elem: A) : Boolean = remove(elem, computeHash(elem))
 
   private abstract class HashSetIterator[B] extends AbstractIterator[B] {
@@ -226,8 +264,16 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     private var node: Node[A] | Null = null
     private val len = table.length
 
+    /** Extracts the value this iterator yields for the given node.
+     *
+     *  @param nd the node currently visited
+     *  @return the value derived from `nd` (for instance its key)
+     */
     protected def extract(nd: Node[A]): B
 
+    /** Returns `true` if there are more nodes to visit, advancing to the next non-empty
+     *  bucket if the current chain is exhausted.
+     */
     def hasNext: Boolean = {
       if(node ne null) true
       else {
@@ -240,6 +286,10 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
       }
     }
 
+    /** Returns the value extracted from the next node.
+     *
+     *  @throws NoSuchElementException if no more nodes remain
+     */
     def next(): B =
       if(!hasNext) Iterator.empty.next()
       else {
@@ -249,6 +299,9 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
       }
   }
 
+  /** Returns an iterator over the elements of this set. The iteration order is not specified
+   *  and may change when the set is modified.
+   */
   override def iterator: Iterator[A] = new HashSetIterator[A] {
     override protected def extract(nd: Node[A]): A = nd.key
   }
@@ -258,6 +311,14 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     override protected def extract(nd: Node[A]): Node[A] = nd
   }
 
+  /** Returns a [[Stepper]] for the elements of this set, stepping through the hash table directly.
+   *
+   *  @tparam S the type of `Stepper` to use, determined by the implicit `StepperShape`
+   *  @param shape the implicit `StepperShape` that selects the appropriate primitive or boxed `Stepper` for `A`
+   *  @return a `Stepper` over the elements of this set, specialized for primitives when the
+   *          resolved `StepperShape` corresponds to `Int`, `Long`, or `Double`, and supporting
+   *          efficient splitting
+   */
   override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import convert.impl._
     val s = shape.shape match {
@@ -314,6 +375,11 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     }
   }
 
+  /** Removes all elements from this set for which the predicate returns `false`.
+   *
+   *  @param p the predicate used to test elements; elements for which it returns `false` are removed
+   *  @return this set
+   */
   override def filterInPlace(p: A => Boolean): this.type = {
     if (nonEmpty) {
       var bucket = 0
@@ -374,21 +440,31 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
 
   private def newThreshold(size: Int) = (size.toDouble * loadFactor).toInt
 
+  /** Removes all elements from this set. The internal table keeps its current capacity. */
   def clear(): Unit = {
     java.util.Arrays.fill(table.asInstanceOf[Array[AnyRef]], null)
     contentSize = 0
   }
 
+  /** Returns the companion object [[HashSet]], used to build hash sets of the same kind. */
   override def iterableFactory: IterableFactory[HashSet] = HashSet
 
   @`inline` def addOne(elem: A): this.type = { add(elem); this }
 
   @`inline` def subtractOne(elem: A): this.type = { remove(elem); this }
 
+  /** Returns the number of elements in this set; never `-1`, since the size of a hash set is always known. */
   override def knownSize: Int = size
 
+  /** Returns `true` if this set contains no elements. */
   override def isEmpty: Boolean = size == 0
 
+  /** Applies a function `f` to each element of this set. The order of traversal is not
+   *  specified and may change when the set is modified.
+   *
+   *  @tparam U the result type of `f`, which is discarded
+   *  @param f the function to apply to each element
+   */
   override def foreach[U](f: A => U): Unit = {
     val len = table.length
     var i = 0
@@ -399,10 +475,19 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
     }
   }
 
+  /** Replaces this set with a serialization proxy during Java serialization. The proxy records
+   *  the current table length and load factor so deserialization can restore an equivalent set.
+   */
   protected def writeReplace(): AnyRef = new DefaultSerializationProxy(new HashSet.DeserializationFactory[A](table.length, loadFactor), this)
 
+  /** The name of this collection class, `"HashSet"`, used as the prefix in `toString`. */
   override protected def className = "HashSet"
 
+  /** Returns the hash code of this set, computed as an unordered [[scala.util.hashing.MurmurHash3]]
+   *  hash of the element hash codes. The element hashes are recovered from the values cached in the
+   *  nodes (via `unimproveHash`) rather than recomputed, so the result is the same as for other sets
+   *  with equal elements.
+   */
   override def hashCode(): Int = {
     val setIterator = this.iterator
     val hashIterator: Iterator[Any] =
@@ -426,16 +511,42 @@ final class HashSet[A](initialCapacity: Int, loadFactor: Double)
 @SerialVersionUID(3L)
 object HashSet extends IterableFactory[HashSet] {
 
+  /** Creates a new hash set containing the elements of the given collection. When the size of
+   *  `it` is known, the initial capacity is chosen so that all elements can be added without
+   *  resizing the table.
+   *
+   *  @tparam B the element type of the new set
+   *  @param it the collection whose elements are added to the new set
+   *  @return a new `HashSet` containing the elements of `it`
+   */
   def from[B](it: scala.collection.IterableOnce[B]^): HashSet[B] = {
     val k = it.knownSize
     val cap = if(k > 0) ((k + 1).toDouble / defaultLoadFactor).toInt else defaultInitialCapacity
     new HashSet[B](cap, defaultLoadFactor) ++= it
   }
 
+  /** Creates a new, empty hash set with the default initial capacity (16) and load factor (0.75).
+   *
+   *  @tparam A the element type of the new set
+   *  @return a new, empty `HashSet`
+   */
   def empty[A]: HashSet[A] = new HashSet[A]
 
+  /** Creates a new builder for a `HashSet` with the default initial capacity and load factor.
+   *
+   *  @tparam A the element type of the set to build
+   *  @return a new builder producing a `HashSet`
+   */
   def newBuilder[A]: Builder[A, HashSet[A]] = newBuilder(defaultInitialCapacity, defaultLoadFactor)
 
+  /** Creates a new builder for a `HashSet` with the given initial capacity and load factor.
+   *  Size hints given to the builder are forwarded to the underlying set's `sizeHint`.
+   *
+   *  @tparam A the element type of the set to build
+   *  @param initialCapacity the initial capacity of the set's hash table
+   *  @param loadFactor the load factor of the set's hash table
+   *  @return a new builder producing a `HashSet`
+   */
   def newBuilder[A](initialCapacity: Int, loadFactor: Double): Builder[A, HashSet[A]] =
     new GrowableBuilder[A, HashSet[A]](new HashSet[A](initialCapacity, loadFactor)) {
       override def sizeHint(size: Int) = elems.sizeHint(size)
@@ -449,28 +560,53 @@ object HashSet extends IterableFactory[HashSet] {
 
   @SerialVersionUID(3L)
   private final class DeserializationFactory[A](val tableLength: Int, val loadFactor: Double) extends Factory[A, HashSet[A]], Serializable {
+    /** Creates a new `HashSet` with the recorded table length and load factor, containing the
+     *  elements of `it`.
+     *
+     *  @param it the deserialized elements to add
+     *  @return a new `HashSet` containing the elements of `it`
+     */
     def fromSpecific(it: IterableOnce[A]^): HashSet[A] = new HashSet[A](tableLength, loadFactor) ++= it
+    /** Returns a new builder for a `HashSet` with the recorded table length and load factor. */
     def newBuilder: Builder[A, HashSet[A]] = HashSet.newBuilder(tableLength, loadFactor)
   }
 
   private[collection] final class Node[K](_key: K, _hash: Int, @annotation.stableNull private var _next: Node[K] | Null) {
+    /** Returns the element stored in this node. */
     def key: K = _key
+    /** Returns the improved hash code of `key`, cached when the node was created. */
     def hash: Int = _hash
+    /** Returns the next node in this bucket's chain, or `null` if this is the last one. */
     def next: Node[K] | Null = _next
+    /** Sets the next node in this bucket's chain to `n`. */
     def next_= (n: Node[K] | Null): Unit = _next = n
 
+    /** Finds the node for element `k` in the chain starting at this node. Because chains are
+     *  sorted in ascending hash order, the search stops as soon as a node with a larger hash
+     *  is seen.
+     *
+     *  @param k the element to look for
+     *  @param h the improved hash code of `k`
+     *  @return the node whose key equals `k`, or `null` if the chain contains no such node
+     */
     @tailrec
     def findNode(k: K, h: Int): Node[K] | Null =
       if(h == _hash && k == _key) this
       else if((_next eq null) || (_hash > h)) null
       else _next.findNode(k, h)
 
+    /** Applies `f` to the element of this node and of every following node in the chain.
+     *
+     *  @tparam U the result type of `f`, which is discarded
+     *  @param f the function to apply to each element
+     */
     @tailrec
     def foreach[U](f: K => U): Unit = {
       f(_key)
       if(_next ne null) _next.foreach(f)
     }
 
+    /** Returns a string rendering this node's key and hash followed by the rest of the chain. */
     override def toString() = s"Node($key, $hash) -> $next"
   }
 }

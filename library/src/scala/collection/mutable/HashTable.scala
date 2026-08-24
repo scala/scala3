@@ -46,6 +46,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
   // However, I'm afraid it's too late now for such breaking change.
   import HashTable._
 
+  /** The load factor of this hash table, expressed in units of 0.001 (the default `750` means 75%). */
   protected var _loadFactor = defaultLoadFactor
 
   /** The actual hash table. */
@@ -54,6 +55,7 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
   /** The number of mappings contained in this hash table. */
   protected[collection] var tableSize: Int = 0
 
+  /** Returns the number of entries in this hash table. */
   final def size: Int = tableSize
 
   /** The next size value at which to resize (capacity * load factor). */
@@ -63,8 +65,14 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
   @annotation.stableNull
   protected var sizemap: Array[Int] | Null = null
 
+  /** The seed passed to `improve` when computing bucket indices. Initialized from `tableSizeSeed`
+   *  and preserved across serialization so that entries hash to the same buckets after deserialization.
+   */
   protected var seedvalue: Int = tableSizeSeed
 
+  /** Returns a seed for `improve` derived from the current table length: the number of one bits
+   *  in `table.length - 1`, which for the power-of-two table length equals log2 of the capacity.
+   */
   protected def tableSizeSeed = Integer.bitCount(table.length - 1)
 
   /** The initial size of the hash table. */
@@ -143,6 +151,13 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
   final def findEntry(key: A): Entry | Null =
     findEntry0(key, index(elemHashCode(key)))
 
+  /** Finds the entry with the given key in the bucket at index `h`, by walking the bucket's
+   *  linked list and comparing keys with `elemEquals`.
+   *
+   *  @param key the key to look up
+   *  @param h the bucket index to search, as computed by `index(elemHashCode(key))`
+   *  @return the entry whose key equals `key`, or `null` if the bucket contains no such entry
+   */
   protected[collection] final def findEntry0(key: A, h: Int): Entry | Null = {
     var e = table(h).asInstanceOf[Entry | Null]
     while (e != null && !elemEquals(e.key, key)) e = e.next
@@ -158,6 +173,14 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     addEntry0(e, index(elemHashCode(e.key)))
   }
 
+  /** Adds entry `e` at the head of the bucket at index `h`, updates the size map and table size,
+   *  and resizes the table to twice its length if the new size exceeds the threshold.
+   *
+   *  Precondition: no entry with the same key exists, and `h` is the bucket index for `e.key`.
+   *
+   *  @param e the entry to add
+   *  @param h the bucket index at which to add it
+   */
   protected[collection] final def addEntry0(e: Entry, h: Int): Unit = {
     e.next = table(h).asInstanceOf[Entry | Null]
     table(h) = e
@@ -321,14 +344,30 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
    * is converted into a parallel hash table, the size map is initialized, as it will be needed
    * there.
    */
+  /** Records the addition of an entry at table index `h` by incrementing the corresponding
+   *  size map counter. Does nothing if the size map is not initialized (`sizemap` is `null`).
+   *
+   *  @param h the table index at which an entry was added
+   */
   protected final def nnSizeMapAdd(h: Int) = if (sizemap ne null) {
     sizemap(h >> sizeMapBucketBitSize) += 1
   }
 
+  /** Records the removal of an entry at table index `h` by decrementing the corresponding
+   *  size map counter. Does nothing if the size map is not initialized (`sizemap` is `null`).
+   *
+   *  @param h the table index from which an entry was removed
+   */
   protected final def nnSizeMapRemove(h: Int) = if (sizemap ne null) {
     sizemap(h >> sizeMapBucketBitSize) -= 1
   }
 
+  /** Resets the size map for a table of the given length: reallocates it if the required
+   *  number of counters differs from the current one, otherwise fills the existing counters
+   *  with zero. Does nothing if the size map is not initialized (`sizemap` is `null`).
+   *
+   *  @param tableLength the length of the table the size map should cover
+   */
   protected final def nnSizeMapReset(tableLength: Int) = if (sizemap ne null) {
     val nsize = calcSizeMapSize(tableLength)
     if (sizemap.length != nsize) sizemap = new Array[Int](nsize)
@@ -337,14 +376,28 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
 
   private[collection] final def totalSizeMapBuckets = if (sizeMapBucketSize < table.length) 1 else table.length / sizeMapBucketSize
 
+  /** Returns the number of counters a size map needs for a table of the given length:
+   *  one per `sizeMapBucketSize` table entries, plus one.
+   *
+   *  @param tableLength the length of the table the size map should cover
+   */
   protected final def calcSizeMapSize(tableLength: Int) = (tableLength >> sizeMapBucketBitSize) + 1
 
   // discards the previous sizemap and only allocates a new one
+  /** Replaces the size map with a newly allocated, all-zero array of counters sized for a
+   *  table of the given length. Does not count the entries already in the table; use
+   *  `sizeMapInitAndRebuild` for that.
+   *
+   *  @param tableLength the length of the table the size map should cover
+   */
   protected def sizeMapInit(tableLength: Int): Unit = {
     sizemap = new Array[Int](calcSizeMapSize(tableLength))
   }
 
   // discards the previous sizemap and populates the new one
+  /** Replaces the size map with a newly allocated array of counters and populates it by
+   *  counting the entries currently in each block of the table.
+   */
   protected final def sizeMapInitAndRebuild() = {
     sizeMapInit(table.length)
 
@@ -375,15 +428,26 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
     println(sizemap.nn.to(collection.immutable.List))
   }
 
+  /** Disables the size map by setting `sizemap` to `null`, so the `nnSizeMap*` methods become no-ops. */
   protected final def sizeMapDisable() = sizemap = null
 
+  /** Returns `true` if the size map is currently initialized (`sizemap` is not `null`). */
   protected final def isSizeMapDefined = sizemap ne null
 
   // override to automatically initialize the size map
+  /** Whether the size map should always be initialized. Always `false` here; subclasses that
+   *  need the size map (such as parallel hash tables) override this to `true`.
+   */
   protected def alwaysInitSizeMap = false
 
   /* End of size map handling code */
 
+  /** Returns `true` if the two keys are equal according to `==` (universal equality).
+   *  Subclasses may override this to use a different equivalence.
+   *
+   *  @param key1 the first key to compare
+   *  @param key2 the second key to compare
+   */
   protected def elemEquals(key1: A, key2: A): Boolean = (key1 == key2)
 
   /** Note: we take the most significant bits of the hashcode, not the lower ones
@@ -410,11 +474,22 @@ private[collection] object HashTable {
 
   private[collection] final def capacity(expectedSize: Int) = nextPositivePowerOfTwo(expectedSize)
 
+  /** Hashing utilities shared by `HashTable` implementations: key hash codes, hash code
+   *  improvement, and the size map bucket constants.
+   *
+   *  @tparam KeyType the type of the keys to be hashed
+   */
   trait HashUtils[KeyType] {
+    /** The number of bits by which a table index is shifted to obtain its size map counter index; `5`. */
     protected final def sizeMapBucketBitSize = 5
     // so that:
+    /** The number of table entries covered by one size map counter: `1 << sizeMapBucketBitSize`, i.e. 32. */
     protected final def sizeMapBucketSize = 1 << sizeMapBucketBitSize
 
+    /** Returns the hash code of `key`, as computed by `key.##`.
+     *
+     *  @param key the key to hash
+     */
     protected[collection] def elemHashCode(key: KeyType) = key.##
 
     /** Defer to high-quality bit mixing in [[scala.util.hashing]].
@@ -443,6 +518,8 @@ private[collection] object HashTable {
  *  @tparam E the concrete entry type, forming a linked list via `next`
  */
 private[collection] trait HashEntry[A, E <: HashEntry[A, E]] {
+  /** The key stored in this entry. */
   val key: A
+  /** The next entry in the same bucket, or `null` if this is the last one. */
   var next: E | Null = compiletime.uninitialized
 }
