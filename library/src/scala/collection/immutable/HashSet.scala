@@ -40,6 +40,7 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     with IterableFactoryDefaults[A, HashSet]
     with DefaultSerializable {
 
+  /** Creates an empty hash set, backed by the shared empty root node. */
   def this() = this(SetNode.empty)
 
   // This release fence is present because rootNode may have previously been mutated during construction.
@@ -48,21 +49,45 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
   private def newHashSetOrThis(newRootNode: BitmapIndexedSetNode[A]): HashSet[A] =
     if (rootNode eq newRootNode) this else new HashSet(newRootNode)
 
+  /** Returns the [[HashSet]] companion object, the factory used to build new sets of this kind. */
   override def iterableFactory: IterableFactory[HashSet] = HashSet
 
+  /** Returns the number of elements in this set. The size of a `HashSet` is always
+   *  known, cached in the root node, so this never returns -1.
+   */
   override def knownSize: Int = rootNode.size
 
+  /** Returns the number of elements in this set, read from the root node's cache
+   *  in constant time.
+   */
   override def size: Int = rootNode.size
 
+  /** Returns `true` if this set contains no elements. Constant time. */
   override def isEmpty: Boolean = rootNode.size == 0
 
+  /** Returns an iterator over the elements of this set, traversing the hash trie
+   *  depth-first. The resulting order depends on the elements' hash codes and is
+   *  effectively unspecified.
+   */
   def iterator: Iterator[A] = {
     if (isEmpty) Iterator.empty
     else new SetIterator[A](rootNode)
   }
 
+  /** Returns an iterator that yields the elements of this set in exactly the
+   *  reverse order of `iterator`; used to implement `last` and `init`.
+   */
   protected[immutable] def reverseIterator: Iterator[A] = new SetReverseIterator[A](rootNode)
 
+  /** Returns a stepper for the elements of this set, choosing a champ-trie stepper
+   *  specialized to `Int`, `Long`, or `Double` when the element type allows it, and
+   *  a reference stepper otherwise. The stepper supports efficient splitting, for
+   *  use with parallel processing.
+   *
+   *  @tparam S the type of the stepper, determined by the element type via `shape`
+   *  @param shape implicit evidence of the stepper type appropriate for element type `A`
+   *  @return a stepper over the elements of this set that can be split efficiently
+   */
   override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import convert.impl._
     val s = shape.shape match {
@@ -74,12 +99,25 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     s.asInstanceOf[S & EfficientSplit]
   }
 
+  /** Returns `true` if this set contains `element`. Elements are compared by their
+   *  hash codes (`##`) and `==`. Expected constant time: at most seven trie levels
+   *  are descended.
+   *
+   *  @param element the element to look for
+   */
   def contains(element: A): Boolean = {
     val elementUnimprovedHash = element.##
     val elementHash = improve(elementUnimprovedHash)
     rootNode.contains(element, elementUnimprovedHash, elementHash, 0)
   }
 
+  /** Returns a set that contains `element` and all elements of this set. Returns
+   *  this set itself if it already contains `element`; otherwise the result shares
+   *  all unaffected trie nodes with this set.
+   *
+   *  @param element the element to add
+   *  @return a set containing all elements of this set plus `element`
+   */
   def incl(element: A): HashSet[A] = {
     val elementUnimprovedHash = element.##
     val elementHash = improve(elementUnimprovedHash)
@@ -87,6 +125,13 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     newHashSetOrThis(newRootNode)
   }
 
+  /** Returns a set that contains all elements of this set except `element`. Returns
+   *  this set itself if it does not contain `element`; otherwise the result shares
+   *  all unaffected trie nodes with this set.
+   *
+   *  @param element the element to remove
+   *  @return a set containing all elements of this set except `element`
+   */
   def excl(element: A): HashSet[A] = {
     val elementUnimprovedHash = element.##
     val elementHash = improve(elementUnimprovedHash)
@@ -94,6 +139,17 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     newHashSetOrThis(newRootNode)
   }
 
+  /** Returns a set containing all elements of this set and of `that`. When `that`
+   *  is also an immutable `HashSet` the two tries are merged structurally, sharing
+   *  unchanged subtrees; when it is a `mutable.HashSet` or `mutable.LinkedHashSet`
+   *  its cached element hashes are reused instead of being recomputed. In every
+   *  case, if `that` contributes no new elements this set itself is returned; and
+   *  when this set is empty and `that` is an immutable `HashSet`, `that` itself is
+   *  returned.
+   *
+   *  @param that the elements to add
+   *  @return a set containing the union of this set and `that`
+   */
   override def concat(that: IterableOnce[A]^): HashSet[A] =
     (that: @unchecked) match {
       case hs: HashSet[A] =>
@@ -176,14 +232,38 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
         this
     }
 
+  /** Returns a set containing all elements of this set except `head`, the first
+   *  element in iteration order.
+   *
+   *  @throws NoSuchElementException if this set is empty
+   */
   override def tail: HashSet[A] = this - head
 
+  /** Returns a set containing all elements of this set except `last`, the last
+   *  element in iteration order.
+   *
+   *  @throws NoSuchElementException if this set is empty
+   */
   override def init: HashSet[A] = this - last
 
+  /** Returns the first element in the iteration order of this set.
+   *
+   *  @throws NoSuchElementException if this set is empty
+   */
   override def head: A = iterator.next()
 
+  /** Returns the last element in the iteration order of this set.
+   *
+   *  @throws NoSuchElementException if this set is empty
+   */
   override def last: A = reverseIterator.next()
 
+  /** Applies `f` to each element of this set, for its side effects. Traverses the
+   *  trie directly, without allocating an iterator.
+   *
+   *  @tparam U the result type of `f`; results are discarded
+   *  @param f the function to apply to each element
+   */
   override def foreach[U](f: A => U): Unit = rootNode.foreach(f)
 
   /** Applies a function f to each element, and its corresponding **original** hash, in this Set.
@@ -201,21 +281,50 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
 
   // For binary compatibility, the method used to have this signature by mistake.
   // protected is public in bytecode.
+  /** Returns `true` if this set is a subset of `that`. This overload, restricted to
+   *  immutable sets, exists only for binary compatibility (see the comment above);
+   *  it forwards to the `collection.Set` overload.
+   *
+   *  @param that the set to test against
+   *  @return `true` if every element of this set is contained in `that`
+   */
   protected def subsetOf(that: Set[A]): Boolean = subsetOf(that: collection.Set[A])
 
+  /** Returns `true` if this set is a subset of `that`, i.e. every element of this
+   *  set is contained in `that`. The empty set is a subset of every set. When
+   *  `that` is also a `HashSet` the two tries are compared structurally, level by
+   *  level, instead of testing each element individually.
+   *
+   *  @param that the set to test against
+   *  @return `true` if every element of this set is contained in `that`
+   */
   override def subsetOf(that: collection.Set[A]): Boolean = isEmpty || !that.isEmpty && (that match {
     case set: HashSet[A] => rootNode.subsetOf(set.rootNode, 0)
     case _ => super.subsetOf(that)
   })
 
+  /** Returns `true` if `that` is a set containing the same elements as this set.
+   *  When `that` is also an immutable `HashSet` the root nodes are compared
+   *  structurally (with fast rejection on cached sizes and hash codes); any other
+   *  value is compared with the generic set equality inherited from `Set`.
+   *
+   *  @param that the value to compare with
+   *  @return `true` if `that` is an equal set
+   */
   override def equals(that: Any): Boolean =
     that match {
       case set: HashSet[?] => (this eq set) || (this.rootNode == set.rootNode)
       case _ => super.equals(that)
     }
 
+  /** Returns `"HashSet"`, the collection name used as the prefix in `toString`. */
   override protected def className = "HashSet"
 
+  /** Returns a hash code consistent with `equals`: an unordered MurmurHash3 hash
+   *  over the elements' original hash codes, which are read from the trie's cache
+   *  rather than recomputed. Equal to the hash code of any other `Set` with the
+   *  same elements.
+   */
   override def hashCode(): Int = {
     val it = new SetHashIterator(rootNode)
     val hash = MurmurHash3.unorderedHash(it, MurmurHash3.setSeed)
@@ -223,6 +332,16 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     hash
   }
 
+  /** Returns a set containing the elements of this set that are not contained in
+   *  `that`. When `that` is also an immutable `HashSet` the tries are diffed
+   *  structurally, sharing unchanged subtrees; when it is a `mutable.HashSet` its
+   *  cached element hashes are reused; otherwise a size heuristic chooses between
+   *  removing `that`'s elements from this set and filtering this set by
+   *  `that.contains`. Returns this set itself when nothing is removed.
+   *
+   *  @param that the set of elements to remove
+   *  @return a set containing the elements of this set not present in `that`
+   */
   override def diff(that: collection.Set[A]): HashSet[A] = {
     if (isEmpty) {
       this
@@ -317,6 +436,16 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     this
   }
 
+  /** Returns a set containing the elements of this set that are not contained in
+   *  `that`. Delegates to `diff` when `that` is a set. For a `Range` with more
+   *  elements than this set, filters this set's `Int` elements by range membership
+   *  (keeping any non-`Int` elements) instead of iterating the whole range.
+   *  Otherwise removes `that`'s elements one by one, mutating only privately
+   *  created nodes.
+   *
+   *  @param that the elements to remove
+   *  @return a set containing the elements of this set not present in `that`
+   */
   override def removedAll(that: IterableOnce[A]^): HashSet[A] = (that: @unchecked) match {
     case set: scala.collection.Set[A] => diff(set)
     case range: Range if range.length > size =>
@@ -329,18 +458,45 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
       removedAllWithShallowMutations(that)
   }
 
+  /** Returns a pair of sets: the elements of this set that satisfy `p`, and those
+   *  that do not. This override only forwards to the inherited implementation; it
+   *  exists so that an optimized implementation can be introduced in a minor
+   *  release without breaking binary compatibility.
+   *
+   *  @param p the predicate on which to partition
+   *  @return a pair of sets: (elements satisfying `p`, elements not satisfying `p`)
+   */
   override def partition(p: A => Boolean): (HashSet[A], HashSet[A]) = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.partition(p)
   }
 
+  /** Returns a pair of sets: the longest prefix of this set's iteration order whose
+   *  elements all satisfy `p`, and the rest of the elements. This override only
+   *  forwards to the inherited implementation; it exists so that an optimized
+   *  implementation can be introduced in a minor release without breaking binary
+   *  compatibility.
+   *
+   *  @param p the predicate used to test elements
+   *  @return a pair of sets: (longest prefix satisfying `p`, remaining elements)
+   */
   override def span(p: A => Boolean): (HashSet[A], HashSet[A]) = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.span(p)
   }
 
+  /** Returns a set containing the elements of this set for which
+   *  `pred(elem) != isFlipped`: the underlying implementation of both `filter`
+   *  (`isFlipped = false`) and `filterNot` (`isFlipped = true`). The filtering is
+   *  done on the trie nodes directly; returns this set itself if no element is
+   *  dropped, and the shared empty set if none remains.
+   *
+   *  @param pred the predicate used to test elements
+   *  @param isFlipped `false` to keep elements satisfying `pred`, `true` to keep those that do not
+   *  @return a set containing the elements for which `pred(elem) != isFlipped`
+   */
   override protected[collection] def filterImpl(pred: A => Boolean, isFlipped: Boolean): HashSet[A] = {
     val newRootNode = rootNode.filterImpl(pred, isFlipped)
     if (newRootNode eq rootNode) this
@@ -348,42 +504,102 @@ final class HashSet[A] private[immutable](private[immutable] val rootNode: Bitma
     else new HashSet(newRootNode)
   }
 
+  /** Returns a set containing the elements of this set that are also contained in
+   *  `that`. This override only forwards to the inherited implementation; it exists
+   *  so that an optimized implementation can be introduced in a minor release
+   *  without breaking binary compatibility.
+   *
+   *  @param that the set to intersect with
+   *  @return a set containing the elements common to this set and `that`
+   */
   override def intersect(that: collection.Set[A]): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.intersect(that)
   }
 
+  /** Returns a set containing the first `n` elements of this set's iteration
+   *  order, or this whole set if it has at most `n` elements. This override only
+   *  forwards to the inherited implementation; it exists so that an optimized
+   *  implementation can be introduced in a minor release without breaking binary
+   *  compatibility.
+   *
+   *  @param n the number of elements to take
+   *  @return a set containing at most the first `n` elements
+   */
   override def take(n: Int): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.take(n)
   }
 
+  /** Returns a set containing the last `n` elements of this set's iteration order,
+   *  or this whole set if it has at most `n` elements. This override only forwards
+   *  to the inherited implementation; it exists so that an optimized implementation
+   *  can be introduced in a minor release without breaking binary compatibility.
+   *
+   *  @param n the number of elements to take
+   *  @return a set containing at most the last `n` elements
+   */
   override def takeRight(n: Int): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.takeRight(n)
   }
 
+  /** Returns a set containing the longest prefix of this set's iteration order
+   *  whose elements all satisfy `p`. This override only forwards to the inherited
+   *  implementation; it exists so that an optimized implementation can be
+   *  introduced in a minor release without breaking binary compatibility.
+   *
+   *  @param p the predicate used to test elements
+   *  @return a set containing the longest prefix whose elements satisfy `p`
+   */
   override def takeWhile(p: A => Boolean): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.takeWhile(p)
   }
 
+  /** Returns a set containing all elements of this set except the first `n` of its
+   *  iteration order, or the empty set if this set has at most `n` elements. This
+   *  override only forwards to the inherited implementation; it exists so that an
+   *  optimized implementation can be introduced in a minor release without breaking
+   *  binary compatibility.
+   *
+   *  @param n the number of elements to drop
+   *  @return a set containing all but the first `n` elements
+   */
   override def drop(n: Int): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.drop(n)
   }
 
+  /** Returns a set containing all elements of this set except the last `n` of its
+   *  iteration order, or the empty set if this set has at most `n` elements. This
+   *  override only forwards to the inherited implementation; it exists so that an
+   *  optimized implementation can be introduced in a minor release without breaking
+   *  binary compatibility.
+   *
+   *  @param n the number of elements to drop
+   *  @return a set containing all but the last `n` elements
+   */
   override def dropRight(n: Int): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
     super.dropRight(n)
   }
 
+  /** Returns a set containing all elements of this set except the longest prefix
+   *  of its iteration order whose elements all satisfy `p`. This override only
+   *  forwards to the inherited implementation; it exists so that an optimized
+   *  implementation can be introduced in a minor release without breaking binary
+   *  compatibility.
+   *
+   *  @param p the predicate used to test elements
+   *  @return a set containing the elements after the longest prefix satisfying `p`
+   */
   override def dropWhile(p: A => Boolean): HashSet[A] = {
     // This method has been preemptively overridden in order to ensure that an optimizing implementation may be included
     // in a minor release without breaking binary compatibility.
@@ -395,57 +611,173 @@ private[immutable] object SetNode {
 
   private final val EmptySetNode = new BitmapIndexedSetNode(0, 0, Array.empty, Array.empty, 0, 0)
 
+  /** Returns the shared empty set node, cast to the requested element type. The
+   *  cast is safe because the node contains no elements.
+   *
+   *  @tparam A the element type to expose the empty node at
+   *  @return the single cached empty `BitmapIndexedSetNode`
+   */
   def empty[A]: BitmapIndexedSetNode[A] = EmptySetNode.asInstanceOf[BitmapIndexedSetNode[A]]
 
+  /** The number of `content` array slots each payload occupies: 1 for sets (just
+   *  the element; the corresponding constant for maps is 2, key plus value).
+   */
   final val TupleLength = 1
 
 }
 
 private[immutable] sealed abstract class SetNode[A] extends Node[SetNode[A]] {
 
+  /** Returns `true` if the subtree rooted at this node contains `element`.
+   *
+   *  @param element the element to look for
+   *  @param originalHash the original hash of `element`, i.e. `element.##`
+   *  @param hash the improved hash of `element`
+   *  @param shift the number of hash bits consumed by ancestor levels (0 at the
+   *              root, growing by `BitPartitionSize` per level)
+   *  @return `true` if `element` is present in this subtree
+   */
   def contains(element: A, originalHash: Int, hash: Int, shift: Int): Boolean
 
+  /** Returns a node containing all elements of this subtree plus `element`, or
+   *  this node itself if `element` is already present.
+   *
+   *  @param element the element to add
+   *  @param originalHash the original hash of `element`, i.e. `element.##`
+   *  @param hash the improved hash of `element`
+   *  @param shift the number of hash bits consumed by ancestor levels
+   *  @return a node containing this subtree's elements and `element`
+   */
   def updated(element: A, originalHash: Int, hash: Int, shift: Int): SetNode[A]
 
+  /** Returns a node containing all elements of this subtree except `element`, or
+   *  this node itself if `element` is not present.
+   *
+   *  @param element the element to remove
+   *  @param originalHash the original hash of `element`, i.e. `element.##`
+   *  @param hash the improved hash of `element`
+   *  @param shift the number of hash bits consumed by ancestor levels
+   *  @return a node containing this subtree's elements without `element`
+   */
   def removed(element: A, originalHash: Int, hash: Int, shift: Int): SetNode[A]
 
+  /** Returns `true` if this node has at least one sub-node child. */
   def hasNodes: Boolean
 
+  /** Returns the number of sub-node children of this node. */
   def nodeArity: Int
 
+  /** Returns the sub-node child at the given index.
+   *
+   *  @param index the position among this node's sub-nodes, in `[0, nodeArity)`
+   *  @return the sub-node at that position
+   */
   def getNode(index: Int): SetNode[A]
 
+  /** Returns `true` if this node stores at least one element as inline payload. */
   def hasPayload: Boolean
 
+  /** Returns the number of elements stored inline in this node. */
   def payloadArity: Int
 
+  /** Returns the element stored inline in this node at the given index.
+   *
+   *  @param index the position among this node's payload elements, in `[0, payloadArity)`
+   *  @return the element at that position
+   */
   def getPayload(index: Int): A
 
+  /** The total number of elements in the subtree rooted at this node. */
   def size: Int
 
+  /** Applies `f` to every element in this subtree, for its side effects: first to
+   *  this node's payload elements, then recursively through its sub-nodes.
+   *
+   *  @tparam U the result type of `f`; results are discarded
+   *  @param f the function to apply to each element
+   */
   def foreach[U](f: A => U): Unit
 
+  /** Returns `true` if every element in this subtree is contained in `that`, a
+   *  node at the same trie level.
+   *
+   *  @param that the node to test against
+   *  @param shift the number of hash bits consumed by ancestor levels
+   *  @return `true` if this subtree's elements form a subset of `that`'s
+   */
   def subsetOf(that: SetNode[A], shift: Int): Boolean
 
+  /** Returns a copy of this node with all sub-nodes recursively copied, so that
+   *  in-place mutations of the copy cannot affect this node. Used by
+   *  `HashSetBuilder` to un-alias a trie it has already handed out.
+   */
   def copy(): SetNode[A]
 
+  /** Returns a node containing the elements of this subtree for which
+   *  `pred(elem) != flipped`, i.e. those satisfying `pred` when `flipped` is
+   *  `false` and those not satisfying it when `flipped` is `true`.
+   *
+   *  @param pred the predicate used to test elements
+   *  @param flipped `false` to keep elements satisfying `pred`, `true` to keep those that do not
+   *  @return a node containing the retained elements
+   */
   def filterImpl(pred: A => Boolean, flipped: Boolean): SetNode[A]
 
+  /** Returns a node containing the elements of this subtree that are not contained
+   *  in `that`, a node at the same trie level.
+   *
+   *  @param that the node whose elements are removed
+   *  @param shift the number of hash bits consumed by ancestor levels
+   *  @return a node containing this subtree's elements not present in `that`
+   */
   def diff(that: SetNode[A], shift: Int): SetNode[A]
 
+  /** Returns a node containing the union of the elements of this subtree and of
+   *  `that`, a node at the same trie level.
+   *
+   *  @param that the node to merge with
+   *  @param shift the number of hash bits consumed by ancestor levels
+   *  @return a node containing all elements of both subtrees
+   */
   def concat(that: SetNode[A], shift: Int): SetNode[A]
 
+  /** Applies `f` to every element in this subtree together with the element's
+   *  original (unimproved) hash code.
+   *
+   *  @param f the function to apply to each element and its original hash
+   */
   def foreachWithHash(f: (A, Int) => Unit): Unit
 
+  /** Applies `f` to each element in this subtree and its original (unimproved)
+   *  hash code, stopping the first time `f` returns `false`.
+   *
+   *  @param f the function to apply; returns `true` to continue, `false` to stop
+   *  @return `true` if `f` never returned `false`, `false` if iteration was stopped
+   */
   def foreachWithHashWhile(f: (A, Int) => Boolean): Boolean
 }
 
 private final class BitmapIndexedSetNode[A](
+   /** Bitmap with a bit set for each of the 32 child positions that holds an
+    *  element as inline payload.
+    */
    var dataMap: Int,
+   /** Bitmap with a bit set for each of the 32 child positions that holds a
+    *  sub-node; disjoint from `dataMap`.
+    */
    var nodeMap: Int,
+   /** Compressed storage for this node's children: payload elements first, in
+    *  ascending bit-position order, followed by the sub-nodes in reverse
+    *  bit-position order at the end of the array (see `getNode`).
+    */
    var content: Array[Any],
+   /** The original (unimproved) hash codes of the payload elements, parallel to
+    *  the payload prefix of `content`.
+    */
    var originalHashes: Array[Int],
+   /** The total number of elements in the subtree rooted at this node. */
    var size: Int,
+   /** The sum of the improved hash codes of all elements in this subtree. */
    var cachedJavaKeySetHashCode: Int) extends SetNode[A] {
 
   import Node._
@@ -471,12 +803,41 @@ private final class BitmapIndexedSetNode[A](
   }
   */
 
+  /** Returns the payload element at the given index, read from the payload prefix
+   *  of `content`.
+   *
+   *  @param index the position among this node's payload elements, in `[0, payloadArity)`
+   *  @return the element at that position
+   */
   def getPayload(index: Int): A = content(index).asInstanceOf[A]
 
+  /** Returns the original (unimproved) hash code of the payload element at the
+   *  given index.
+   *
+   *  @param index the position among this node's payload elements, in `[0, payloadArity)`
+   *  @return the cached original hash code of that element
+   */
   override def getHash(index: Int): Int = originalHashes(index)
 
+  /** Returns the sub-node child at the given index. Sub-nodes are stored in
+   *  reverse order at the end of `content`, so index 0 maps to the last array slot.
+   *
+   *  @param index the position among this node's sub-nodes, in `[0, nodeArity)`
+   *  @return the sub-node at that position
+   */
   def getNode(index: Int): SetNode[A] = content(content.length - 1 - index).asInstanceOf[SetNode[A]]
 
+  /** Returns `true` if the subtree rooted at this node contains `element`. Derives
+   *  this level's bit position from `elementHash` and `shift`; if it is set in
+   *  `dataMap`, compares the payload there by original hash and `==`; if it is set
+   *  in `nodeMap`, recurses into the sub-node; otherwise the element is absent.
+   *
+   *  @param element the element to look for
+   *  @param originalHash the original hash of `element`, i.e. `element.##`
+   *  @param elementHash the improved hash of `element`
+   *  @param shift the number of hash bits consumed by ancestor levels
+   *  @return `true` if `element` is present in this subtree
+   */
   def contains(element: A, originalHash: Int, elementHash: Int, shift: Int): Boolean = {
     val mask = maskFrom(elementHash, shift)
     val bitpos = bitposFrom(mask)
@@ -494,6 +855,20 @@ private final class BitmapIndexedSetNode[A](
     false
   }
 
+  /** Returns a node containing all elements of this subtree plus `element`, or this
+   *  node itself if the element is already present. When the element's slot holds an
+   *  equal payload, returns `this`; when it holds a different payload, the two are
+   *  merged into a new sub-node one level deeper (`mergeTwoKeyValPairs`); when it
+   *  holds a sub-node, the insertion recurses and the updated child is spliced into
+   *  a copy of this node; otherwise the element is inserted as inline payload.
+   *
+   *  @param element the element to add
+   *  @param originalHash the original hash of `element`, i.e. `element.##`
+   *  @param elementHash the improved hash of `element`
+   *  @param shift the number of hash bits consumed by ancestor levels
+   *  @return a node containing this subtree's elements and `element`; `this` unchanged
+   *         if the element was already present
+   */
   def updated(element: A, originalHash: Int, elementHash: Int, shift: Int): BitmapIndexedSetNode[A] = {
     val mask = maskFrom(elementHash, shift)
     val bitpos = bitposFrom(mask)
@@ -612,6 +987,20 @@ private final class BitmapIndexedSetNode[A](
   }
 
 
+  /** Returns a node containing all elements of this subtree except `element`, or
+   *  this node itself if the element is not present. Maintains the canonical CHAMP
+   *  form: when removing one of the last two payloads of a node with no sub-nodes,
+   *  the result is a singleton node keyed for trie level 0, ready to become the new
+   *  root or be inlined into its parent; when a removal leaves a sub-node with a
+   *  single element, that element is migrated up to inline payload.
+   *
+   *  @param element the element to remove
+   *  @param originalHash the original hash of `element`, i.e. `element.##`
+   *  @param elementHash the improved hash of `element`
+   *  @param shift the number of hash bits consumed by ancestor levels
+   *  @return a node containing this subtree's elements without `element`; `this`
+   *         unchanged if the element was absent
+   */
   def removed(element: A, originalHash: Int, elementHash: Int, shift: Int): BitmapIndexedSetNode[A] = {
     val mask = maskFrom(elementHash, shift)
     val bitpos = bitposFrom(mask)
@@ -746,6 +1135,22 @@ private final class BitmapIndexedSetNode[A](
     } else this
   }
 
+  /** Returns a node containing exactly the two distinct elements `key0` and `key1`,
+   *  placed at trie level `shift`. If the hash bits are exhausted (`shift >=
+   *  HashCodeLength`) the elements collide fully and a `HashCollisionSetNode` is
+   *  returned. If their 5-bit slices at this level differ, both are stored as
+   *  payload of one node, ordered by slice value. Otherwise the merge recurses one
+   *  level deeper and the result is wrapped in a node with a single sub-node.
+   *
+   *  @param key0 the first element; must not equal `key1`
+   *  @param originalKeyHash0 the original hash of `key0`
+   *  @param keyHash0 the improved hash of `key0`
+   *  @param key1 the second element
+   *  @param originalKeyHash1 the original hash of `key1`
+   *  @param keyHash1 the improved hash of `key1`
+   *  @param shift the number of hash bits consumed by the levels above the new node
+   *  @return a node containing exactly `key0` and `key1`
+   */
   def mergeTwoKeyValPairs(key0: A, originalKeyHash0: Int, keyHash0: Int, key1: A, originalKeyHash1: Int, keyHash1: Int, shift: Int): SetNode[A] = {
     // assert(key0 != key1)
 
@@ -775,18 +1180,50 @@ private final class BitmapIndexedSetNode[A](
     }
   }
 
+  /** Returns `true` if this node stores at least one element as inline payload,
+   *  i.e. `dataMap` has at least one bit set.
+   */
   def hasPayload: Boolean = dataMap != 0
 
+  /** Returns the number of elements stored inline in this node: the number of bits
+   *  set in `dataMap`.
+   */
   def payloadArity: Int = bitCount(dataMap)
 
+  /** Returns `true` if this node has at least one sub-node child, i.e. `nodeMap`
+   *  has at least one bit set.
+   */
   def hasNodes: Boolean = nodeMap != 0
 
+  /** Returns the number of sub-node children of this node: the number of bits set
+   *  in `nodeMap`.
+   */
   def nodeArity: Int = bitCount(nodeMap)
 
+  /** Returns the index of the payload at bit position `bitpos` within the payload
+   *  prefix of `content`: the number of `dataMap` bits set below `bitpos`.
+   *
+   *  @param bitpos a one-bit value identifying a child position
+   */
   def dataIndex(bitpos: Int) = bitCount(dataMap & (bitpos - 1))
 
+  /** Returns the index of the sub-node at bit position `bitpos` among this node's
+   *  sub-nodes: the number of `nodeMap` bits set below `bitpos`. The corresponding
+   *  `content` slot is `content.length - 1 - nodeIndex(bitpos)`.
+   *
+   *  @param bitpos a one-bit value identifying a child position
+   */
   def nodeIndex(bitpos: Int) = bitCount(nodeMap & (bitpos - 1))
 
+  /** Returns a copy of this node in which the sub-node at bit position `bitpos` is
+   *  replaced by `newNode`, with `size` and `cachedJavaKeySetHashCode` adjusted by
+   *  the difference between the old and new sub-nodes.
+   *
+   *  @param bitpos the bit position of the sub-node to replace
+   *  @param oldNode the sub-node currently stored at `bitpos`, used only to compute
+   *                the size and hash adjustments
+   *  @param newNode the sub-node to store at `bitpos`
+   */
   def copyAndSetNode(bitpos: Int, oldNode: SetNode[A], newNode: SetNode[A]) = {
     val idx = this.content.length - 1 - this.nodeIndex(bitpos)
 
@@ -806,6 +1243,16 @@ private final class BitmapIndexedSetNode[A](
     )
   }
 
+  /** Returns a copy of this node with `key` inserted as inline payload at bit
+   *  position `bitpos` (which must be empty in both bitmaps): sets the bit in
+   *  `dataMap`, inserts the element and its hash at the corresponding compressed
+   *  indices, and increases `size` by 1 and the cached hash sum by `elementHash`.
+   *
+   *  @param bitpos the (currently unoccupied) bit position at which to insert
+   *  @param key the element to insert
+   *  @param originalHash the original hash of `key`, i.e. `key.##`
+   *  @param elementHash the improved hash of `key`
+   */
   def copyAndInsertValue(bitpos: Int, key: A, originalHash: Int, elementHash: Int) = {
     val dataIx = dataIndex(bitpos)
     val idx = TupleLength * dataIx
@@ -822,6 +1269,18 @@ private final class BitmapIndexedSetNode[A](
     new BitmapIndexedSetNode[A](dataMap | bitpos, nodeMap, dst, dstHashes, size + 1, cachedJavaKeySetHashCode + elementHash)
   }
 
+  /** Returns a copy of this node in which the inline payload at bit position
+   *  `bitpos` is replaced by `key`. Size, hash arrays, and cached hash sum are
+   *  unchanged: the replacement is assumed equal to the replaced element. This
+   *  method is currently never called (its map counterpart replaces the value of an
+   *  existing key).
+   *
+   *  @param bitpos the bit position of the payload to replace; must already be set
+   *               in `dataMap`
+   *  @param key the element to store
+   *  @param originalHash the original hash of `key`; never used
+   *  @param elementHash the improved hash of `key`; never used
+   */
   def copyAndSetValue(bitpos: Int, key: A, originalHash: Int, elementHash: Int) = {
     val dataIx = dataIndex(bitpos)
     val idx = TupleLength * dataIx
@@ -836,6 +1295,14 @@ private final class BitmapIndexedSetNode[A](
     new BitmapIndexedSetNode[A](dataMap | bitpos, nodeMap, dst, originalHashes, size, cachedJavaKeySetHashCode)
   }
 
+  /** Returns a copy of this node with the inline payload at bit position `bitpos`
+   *  removed: clears the bit in `dataMap`, removes the element and its hash from
+   *  the compressed arrays, and decreases `size` by 1 and the cached hash sum by
+   *  `elementHash`.
+   *
+   *  @param bitpos the bit position of the payload to remove; must be set in `dataMap`
+   *  @param elementHash the improved hash of the removed element
+   */
   def copyAndRemoveValue(bitpos: Int, elementHash: Int) = {
     val dataIx = dataIndex(bitpos)
     val idx = TupleLength * dataIx
@@ -850,6 +1317,16 @@ private final class BitmapIndexedSetNode[A](
     new BitmapIndexedSetNode[A](dataMap ^ bitpos, nodeMap, dst, dstHashes, size - 1, cachedJavaKeySetHashCode - elementHash)
   }
 
+  /** Returns a copy of this node in which the inline payload at bit position
+   *  `bitpos` is replaced by the sub-node `node`: moves the bit from `dataMap` to
+   *  `nodeMap`, drops the payload's hash entry, and adjusts `size` and the cached
+   *  hash sum from the removed element to the added subtree.
+   *
+   *  @param bitpos the bit position of the payload to replace; must be set in `dataMap`
+   *  @param elementHash the improved hash of the element being displaced
+   *  @param node the sub-node to store at `bitpos` (containing the displaced
+   *             element and its new sibling)
+   */
   def copyAndMigrateFromInlineToNode(bitpos: Int, elementHash: Int, node: SetNode[A]) = {
     val dataIx = dataIndex(bitpos)
     val idxOld = TupleLength * dataIx
@@ -903,6 +1380,18 @@ private final class BitmapIndexedSetNode[A](
     this
   }
 
+  /** Returns a copy of this node in which the sub-node `oldNode` at bit position
+   *  `bitpos` is replaced by the single element of `node`, stored as inline
+   *  payload: moves the bit from `nodeMap` to `dataMap`, inserts the element's
+   *  original hash, and adjusts `size` and the cached hash sum from the removed
+   *  subtree to the single remaining element.
+   *
+   *  @param bitpos the bit position of the sub-node to replace; must be set in `nodeMap`
+   *  @param elementHash never used
+   *  @param oldNode the sub-node currently stored at `bitpos`, used only to compute
+   *                the size and hash adjustments
+   *  @param node a node whose single payload element is migrated inline
+   */
   def copyAndMigrateFromNodeToInline(bitpos: Int, elementHash: Int, oldNode: SetNode[A], node: SetNode[A]) = {
     val idxOld = this.content.length - 1 - nodeIndex(bitpos)
     val dataIxNew = dataIndex(bitpos)
@@ -960,6 +1449,13 @@ private final class BitmapIndexedSetNode[A](
     this.cachedJavaKeySetHashCode = this.cachedJavaKeySetHashCode - oldNode.cachedJavaKeySetHashCode + node.cachedJavaKeySetHashCode
   }
 
+  /** Applies `f` to every element in this subtree, for its side effects: first to
+   *  this node's payload elements in index order, then recursively through its
+   *  sub-nodes.
+   *
+   *  @tparam U the result type of `f`; results are discarded
+   *  @param f the function to apply to each element
+   */
   def foreach[U](f: A => U): Unit = {
     val thisPayloadArity = payloadArity
     var i = 0
@@ -976,6 +1472,18 @@ private final class BitmapIndexedSetNode[A](
     }
   }
 
+  /** Returns `true` if every element in this subtree is contained in `that`, a
+   *  node at the same trie level. A bitmap-indexed node is never a subset of a
+   *  hash-collision node. Otherwise this node's occupied bit positions must all be
+   *  occupied in `that`, and at each shared position: payload-payload requires
+   *  equal elements, payload-node requires the payload to be contained in `that`'s
+   *  sub-node, node-node recurses, and a sub-node here against a single payload
+   *  there fails (a sub-node always holds at least two elements).
+   *
+   *  @param that the node to test against
+   *  @param shift the number of hash bits consumed by ancestor levels
+   *  @return `true` if this subtree's elements form a subset of `that`'s
+   */
   def subsetOf(that: SetNode[A], shift: Int): Boolean = if (this eq that) true else that match {
     case _: HashCollisionSetNode[A] => false
     case node: BitmapIndexedSetNode[A] =>
@@ -1022,6 +1530,18 @@ private final class BitmapIndexedSetNode[A](
       isValidSubset
   }
 
+  /** Returns a node containing the elements of this subtree for which
+   *  `pred(elem) != flipped`. Fast paths handle empty and singleton nodes, and
+   *  nodes with only inline payload are rebuilt with a single bitmap sweep. In the
+   *  general case, sub-nodes are filtered recursively: emptied sub-nodes are
+   *  dropped, single-element results are migrated up to inline payload, and
+   *  unchanged content is shared. Returns `this` if nothing is dropped, and the
+   *  shared empty node if nothing remains.
+   *
+   *  @param pred the predicate used to test elements
+   *  @param flipped `false` to keep elements satisfying `pred`, `true` to keep those that do not
+   *  @return a node containing the retained elements
+   */
   override def filterImpl(pred: A => Boolean, flipped: Boolean): BitmapIndexedSetNode[A] = {
     if (size == 0) this
     else if (size == 1) {
@@ -1196,6 +1716,19 @@ private final class BitmapIndexedSetNode[A](
     }
   }
 
+  /** Returns a node containing the elements of this subtree that are not contained
+   *  in `that`, a bitmap-indexed node at the same trie level. Walks the occupied
+   *  bit positions of this node: payloads are kept unless contained in `that`, and
+   *  sub-nodes are diffed against `that`'s corresponding payload or sub-node, with
+   *  emptied results dropped, single-element results migrated up to inline payload,
+   *  and unchanged content shared. Returns `this` if nothing is removed.
+   *
+   *  @param that the node whose elements are removed
+   *  @param shift the number of hash bits consumed by ancestor levels
+   *  @return a node containing this subtree's elements not present in `that`
+   *  @throws RuntimeException if `that` is a `HashCollisionSetNode`, which can
+   *         never occur at the same depth as a bitmap-indexed node
+   */
   override def diff(that: SetNode[A], shift: Int): BitmapIndexedSetNode[A] = that match {
     case bm: BitmapIndexedSetNode[A] =>
       if (size == 0) this
@@ -1406,6 +1939,14 @@ private final class BitmapIndexedSetNode[A](
   }
 
 
+  /** Returns `true` if `that` is a bitmap-indexed node structurally equal to this
+   *  one. Compares the cached hash sums, bitmaps, and sizes first, for fast
+   *  rejection, then the original-hash arrays, and finally the content arrays
+   *  element by element (recursing into sub-nodes via their own `equals`).
+   *
+   *  @param that the value to compare with
+   *  @return `true` if `that` is an equal `BitmapIndexedSetNode`
+   */
   override def equals(that: Any): Boolean =
     that match {
       case node: BitmapIndexedSetNode[?] =>
@@ -1435,12 +1976,23 @@ private final class BitmapIndexedSetNode[A](
     }
   }
 
+  /** Always throws: trie nodes define `equals` but do not support hashing.
+   *
+   *  @throws UnsupportedOperationException always
+   */
   override def hashCode(): Int =
     throw new UnsupportedOperationException("Trie nodes do not support hashing.")
 
+  /** Returns a string with this node's size and its two bitmaps in hexadecimal;
+   *  the content array is not included.
+   */
   override def toString(): String =
     s"BitmapIndexedSetNode(size=$size, dataMap=${dataMap.toHexString}, nodeMap=${nodeMap.toHexString})" // content=${scala.runtime.ScalaRunTime.stringOf(content)}
 
+  /** Returns a copy of this node with the content and hash arrays cloned and all
+   *  sub-nodes recursively copied; payload elements themselves are shared. In-place
+   *  mutations of the copy cannot affect this node.
+   */
   override def copy(): BitmapIndexedSetNode[A] = {
     val contentClone = content.clone()
     val contentLength = contentClone.length
@@ -1452,6 +2004,24 @@ private final class BitmapIndexedSetNode[A](
     new BitmapIndexedSetNode[A](dataMap, nodeMap, contentClone, originalHashes.clone(), size, cachedJavaKeySetHashCode)
   }
 
+  /** Returns a node containing the union of the elements of this subtree and of
+   *  `that`, a bitmap-indexed node at the same trie level. After fast paths for an
+   *  empty or singleton operand, performs a two-pass merge: the first pass
+   *  classifies each of the 32 bit positions by what the two nodes hold there
+   *  (payload only on one side, payload on both - equal or to be merged one level
+   *  deeper - node on either or both sides), and the second pass builds the merged
+   *  content accordingly, recursing with `concat`, `updated`, or
+   *  `mergeTwoKeyValPairs` where the position is contested. Returns `this`
+   *  whenever `that` contributes no elements beyond those already present; when a
+   *  new node is built, positions where both sides hold an equal element take the
+   *  instance from `that`.
+   *
+   *  @param that the node to merge with
+   *  @param shift the number of hash bits consumed by ancestor levels
+   *  @return a node containing all elements of both subtrees
+   *  @throws UnsupportedOperationException if `that` is a `HashCollisionSetNode`,
+   *         which can never occur at the same depth as a bitmap-indexed node
+   */
   override def concat(that: SetNode[A], shift: Int): BitmapIndexedSetNode[A] = that match {
     case bm: BitmapIndexedSetNode[A] =>
       if (size == 0) return bm
@@ -1718,6 +2288,12 @@ private final class BitmapIndexedSetNode[A](
       throw new UnsupportedOperationException("Cannot concatenate a HashCollisionSetNode with a BitmapIndexedSetNode")
   }
 
+  /** Applies `f` to every element in this subtree together with the element's
+   *  cached original (unimproved) hash code: first this node's payload elements,
+   *  then recursively through its sub-nodes.
+   *
+   *  @param f the function to apply to each element and its original hash
+   */
   override def foreachWithHash(f: (A, Int) => Unit): Unit = {
     val iN = payloadArity // arity doesn't change during this operation
     var i = 0
@@ -1734,6 +2310,13 @@ private final class BitmapIndexedSetNode[A](
     }
   }
 
+  /** Applies `f` to each element in this subtree and its cached original
+   *  (unimproved) hash code - payload elements first, then sub-nodes - stopping
+   *  the first time `f` returns `false`.
+   *
+   *  @param f the function to apply; returns `true` to continue, `false` to stop
+   *  @return `true` if `f` never returned `false`, `false` if iteration was stopped
+   */
   override def foreachWithHashWhile(f: (A, Int) => Boolean): Boolean = {
     val thisPayloadArity = payloadArity
     var pass = true
@@ -1759,9 +2342,28 @@ private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int
 
   require(content.length >= 2)
 
+  /** Returns `true` if this collision node contains `element`: the given improved
+   *  hash must match this node's shared hash and the element must be in the
+   *  content vector.
+   *
+   *  @param element the element to look for
+   *  @param originalHash the original hash of `element`; never used
+   *  @param hash the improved hash of `element`
+   *  @param shift never used
+   *  @return `true` if `element` is present in this node
+   */
   def contains(element: A, originalHash: Int, hash: Int, shift: Int): Boolean =
     this.hash == hash && content.contains(element)
 
+  /** Returns this node if it already contains `element`, otherwise a new collision
+   *  node with `element` appended to the content vector.
+   *
+   *  @param element the element to add; must have this node's hash
+   *  @param originalHash the original hash of `element`
+   *  @param hash the improved hash of `element`
+   *  @param shift the number of hash bits consumed by ancestor levels
+   *  @return a collision node containing this node's elements and `element`
+   */
   def updated(element: A, originalHash: Int, hash: Int, shift: Int): SetNode[A] =
     if (this.contains(element, originalHash, hash, shift)) {
       this
@@ -1794,23 +2396,50 @@ private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int
       }
     }
 
+  /** Returns `false`: a collision node is a leaf and never has sub-nodes. */
   def hasNodes: Boolean = false
 
+  /** Returns 0: a collision node is a leaf and never has sub-nodes. */
   def nodeArity: Int = 0
 
+  /** Always throws: a collision node is a leaf and never has sub-nodes.
+   *
+   *  @param index never used
+   *  @throws IndexOutOfBoundsException always
+   */
   def getNode(index: Int): SetNode[A] =
     throw new IndexOutOfBoundsException("No sub-nodes present in hash-collision leaf node.")
 
+  /** Returns `true`: a collision node always holds at least two payload elements. */
   def hasPayload: Boolean = true
 
+  /** Returns the number of elements in this collision node; always at least 2. */
   def payloadArity: Int = content.length
 
+  /** Returns the element at the given index of the content vector.
+   *
+   *  @param index the position among this node's elements, in `[0, payloadArity)`
+   *  @return the element at that position
+   */
   def getPayload(index: Int): A = content(index)
 
+  /** Returns the original hash shared by every element of this collision node
+   *  (elements collide on the full improved hash, and hash improvement is a
+   *  bijection, so their original hashes are also identical).
+   *
+   *  @param index never used, since all elements have the same original hash
+   *  @return this node's shared original hash code
+   */
   override def getHash(index: Int): Int = originalHash
 
+  /** The number of elements in this collision node; always at least 2. */
   def size: Int = content.length
 
+  /** Applies `f` to every element of this collision node, for its side effects.
+   *
+   *  @tparam U the result type of `f`; results are discarded
+   *  @param f the function to apply to each element
+   */
   def foreach[U](f: A => U): Unit = {
     val iter = content.iterator
     while (iter.hasNext) {
@@ -1819,8 +2448,21 @@ private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int
   }
 
 
+  /** Returns the sum of the improved hash codes of this node's elements: since
+   *  all elements share the improved hash `hash`, simply `size * hash`.
+   */
   override def cachedJavaKeySetHashCode: Int = size * hash
 
+  /** Returns `true` if every element of this collision node is contained in
+   *  `that`. This holds only when `that` is a collision node (necessarily with the
+   *  same hash, since both nodes sit at the same colliding position) at least as
+   *  large as this one that contains all of this node's elements; against any
+   *  other node type the result is `false`.
+   *
+   *  @param that the node to test against
+   *  @param shift never used
+   *  @return `true` if this node's elements form a subset of `that`'s
+   */
   def subsetOf(that: SetNode[A], shift: Int): Boolean = if (this eq that) true else that match {
     case node: HashCollisionSetNode[A] =>
       this.payloadArity <= node.payloadArity && this.content.forall(node.content.contains)
@@ -1828,6 +2470,16 @@ private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int
       false
   }
 
+  /** Returns a node containing the elements of this collision node for which
+   *  `pred(elem) != flipped`. Returns the shared empty node if no element remains;
+   *  a singleton `BitmapIndexedSetNode` keyed for trie level 0 (ready to become
+   *  the new root or be inlined) if exactly one remains; `this` if all remain; and
+   *  a smaller collision node otherwise.
+   *
+   *  @param pred the predicate used to test elements
+   *  @param flipped `false` to keep elements satisfying `pred`, `true` to keep those that do not
+   *  @return a node containing the retained elements
+   */
   override def filterImpl(pred: A => Boolean, flipped: Boolean): SetNode[A] = {
     val newContent = content.filterImpl(pred, flipped)
     val newContentLength = newContent.length
@@ -1839,9 +2491,25 @@ private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int
     else new HashCollisionSetNode(originalHash, hash, newContent)
   }
 
+  /** Returns a node containing the elements of this collision node that are not
+   *  contained in `that`: filters this node's content by `that.contains`, flipped.
+   *
+   *  @param that the node whose elements are removed
+   *  @param shift the number of hash bits consumed by ancestor levels, passed on
+   *              to `that.contains`
+   *  @return a node containing this node's elements not present in `that`
+   */
   override def diff(that: SetNode[A], shift: Int): SetNode[A] =
     filterImpl(that.contains(_, originalHash, hash, shift), flipped = true)
 
+  /** Returns `true` if `that` is a collision node with the same improved hash and
+   *  the same elements, compared as an unordered set: the sizes must be equal and
+   *  every element of this node contained in `that` (which, for distinct elements,
+   *  implies equality).
+   *
+   *  @param that the value to compare with
+   *  @return `true` if `that` is an equal `HashCollisionSetNode`
+   */
   override def equals(that: Any): Boolean =
     that match {
       case node: HashCollisionSetNode[?] =>
@@ -1852,11 +2520,31 @@ private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int
       case _ => false
     }
 
+  /** Always throws: trie nodes define `equals` but do not support hashing.
+   *
+   *  @throws UnsupportedOperationException always
+   */
   override def hashCode(): Int =
     throw new UnsupportedOperationException("Trie nodes do not support hashing.")
 
+  /** Returns a new collision node sharing this node's (immutable) content vector.
+   *  No deep copying is needed: a collision node has no sub-nodes, and in-place
+   *  "mutation" by the builder only reassigns the `content` field, which cannot
+   *  affect the copy.
+   */
   override def copy(): HashCollisionSetNode[A] = new HashCollisionSetNode[A](originalHash, hash, content)
 
+  /** Returns a collision node containing the union of the elements of this node
+   *  and of `that`, which must be another collision node (for the same hash):
+   *  appends each element of `that` not already present. Returns `this` if `that`
+   *  contributes no new elements.
+   *
+   *  @param that the collision node to merge with
+   *  @param shift never used
+   *  @return a collision node containing all elements of both nodes
+   *  @throws UnsupportedOperationException if `that` is a `BitmapIndexedSetNode`,
+   *         which can never occur at the same depth as a collision node
+   */
   override def concat(that: SetNode[A], shift: Int): SetNode[A] = that match {
     case hc: HashCollisionSetNode[A] =>
       if (hc eq this) {
@@ -1881,6 +2569,11 @@ private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int
       throw new UnsupportedOperationException("Cannot concatenate a HashCollisionSetNode with a BitmapIndexedSetNode")
   }
 
+  /** Applies `f` to every element of this collision node together with the
+   *  original hash they all share.
+   *
+   *  @param f the function to apply to each element and its original hash
+   */
   override def foreachWithHash(f: (A, Int) => Unit): Unit = {
     val iter = content.iterator
     while (iter.hasNext) {
@@ -1889,6 +2582,12 @@ private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int
     }
   }
 
+  /** Applies `f` to each element of this collision node and the original hash they
+   *  all share, stopping the first time `f` returns `false`.
+   *
+   *  @param f the function to apply; returns `true` to continue, `false` to stop
+   *  @return `true` if `f` never returned `false`, `false` if iteration was stopped
+   */
   override def foreachWithHashWhile(f: (A, Int) => Boolean): Boolean = {
     var stillGoing = true
     val iter = content.iterator
@@ -1903,6 +2602,10 @@ private final class HashCollisionSetNode[A](val originalHash: Int, val hash: Int
 private final class SetIterator[A](rootNode: SetNode[A])
   extends ChampBaseIterator[A, SetNode[A]](rootNode) {
 
+  /** Returns the next element of the depth-first traversal and advances the cursor.
+   *
+   *  @throws NoSuchElementException if the iterator is exhausted
+   */
   def next() = {
     if (!hasNext) Iterator.empty.next()
 
@@ -1917,6 +2620,10 @@ private final class SetIterator[A](rootNode: SetNode[A])
 private final class SetReverseIterator[A](rootNode: SetNode[A])
   extends ChampBaseReverseIterator[A, SetNode[A]](rootNode) {
 
+  /** Returns the next element of the reverse traversal and moves the cursor back.
+   *
+   *  @throws NoSuchElementException if the iterator is exhausted
+   */
   def next(): A = {
     if (!hasNext) Iterator.empty.next()
 
@@ -1931,8 +2638,19 @@ private final class SetReverseIterator[A](rootNode: SetNode[A])
 private final class SetHashIterator[A](rootNode: SetNode[A])
   extends ChampBaseIterator[AnyRef, SetNode[A]](rootNode) {
   private var hash = 0
+  /** Returns the original hash of the element most recently visited by `next()`,
+   *  or 0 before the first call. This iterator poses as each element in turn so
+   *  that `MurmurHash3.unorderedHash` reads the cached hashes.
+   */
   override def hashCode(): Int = hash
 
+  /** Advances to the next element and returns this iterator itself, whose
+   *  `hashCode` is now that element's cached original hash. Returning `this`
+   *  instead of a boxed hash value avoids allocation while computing a set's
+   *  hash code.
+   *
+   *  @throws NoSuchElementException if the iterator is exhausted
+   */
   def next(): AnyRef = {
     if (!hasNext) Iterator.empty.next()
 
@@ -1955,9 +2673,24 @@ object HashSet extends IterableFactory[HashSet] {
   @transient
   private final val EmptySet = new HashSet(SetNode.empty)
 
+  /** Returns the empty immutable hash set. Always the same cached instance, cast
+   *  to the requested element type; the cast is safe because the set contains no
+   *  elements.
+   *
+   *  @tparam A the element type of the set
+   *  @return the empty `HashSet`
+   */
   def empty[A]: HashSet[A] =
     EmptySet.asInstanceOf[HashSet[A]]
 
+  /** Returns a `HashSet` containing the elements of `source`. Returns `source`
+   *  itself if it already is a `HashSet`, and the shared empty set if `source` is
+   *  known to be empty; otherwise builds a new set.
+   *
+   *  @tparam A the element type of the set
+   *  @param source the elements of the resulting set
+   *  @return a `HashSet` containing the elements of `source`
+   */
   def from[A](source: collection.IterableOnce[A]^): HashSet[A] =
     (source: @unchecked) match {
       case hs: HashSet[A] => hs
@@ -2057,6 +2790,20 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
     bm.content(idx) = elem
   }
 
+  /** Adds `element` to the trie rooted at `setNode` by in-place mutation, keeping
+   *  each node's `size` and cached hash sum consistent along the descent. In a
+   *  bitmap-indexed node, an equal payload is overwritten with itself, a
+   *  conflicting payload is merged with the new element into a sub-node spliced in
+   *  place, a sub-node slot recurses, and an empty slot gets the element inserted
+   *  inline. In a collision node, the element is appended, or replaces its equal
+   *  counterpart. Must only be called on nodes this builder is allowed to mutate.
+   *
+   *  @param setNode the root of the (sub)trie to mutate
+   *  @param element the element to add
+   *  @param originalHash the original hash of `element`, i.e. `element.##`
+   *  @param elementHash the improved hash of `element`
+   *  @param shift the number of hash bits consumed above `setNode` (0 at the root)
+   */
   def update(setNode: SetNode[A], element: A, originalHash: Int, elementHash: Int, shift: Int): Unit =
     setNode match {
       case bm: BitmapIndexedSetNode[A] =>
@@ -2106,6 +2853,12 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
     rootNode = rootNode.copy()
   }
 
+  /** Returns the set built so far: the shared empty set if nothing was added,
+   *  otherwise a `HashSet` wrapping the current root node. The returned set is
+   *  remembered as aliased, so later additions first copy the structure rather
+   *  than mutate it; repeated calls without intervening additions return the same
+   *  instance. The builder remains usable after this call.
+   */
   override def result(): HashSet[A] =
     if (rootNode.size == 0) {
       HashSet.empty
@@ -2117,6 +2870,12 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
       aliased
     }
 
+  /** Adds `elem` to the set being built, mutating the trie in place (after copying
+   *  it first if the current structure was already given out by `result()`).
+   *
+   *  @param elem the element to add
+   *  @return this builder
+   */
   override def addOne(elem: A): this.type = {
     ensureUnaliased()
     val h = elem.##
@@ -2125,6 +2884,14 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
     this
   }
 
+  /** Adds all elements of `xs` to the set being built. When `xs` is an immutable
+   *  `HashSet`, its trie is walked directly (via a throwaway `ChampBaseIterator`
+   *  whose initializer performs the traversal) so the cached original hashes are
+   *  reused instead of recomputed; any other collection is added element by
+   *  element through `addOne`.
+   *
+   *  @param xs the elements to add
+   */
   override def addAll(xs: IterableOnce[A]^) = {
     ensureUnaliased()
     (xs: @unchecked) match {
@@ -2151,6 +2918,10 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
     this
   }
 
+  /** Resets this builder to empty: drops the aliased result, if any, and replaces
+   *  the root with a fresh empty node. An already-empty root is kept, since it was
+   *  never given out (`result()` returns the shared empty set instead).
+   */
   override def clear(): Unit = {
     aliased = null
     if (rootNode.size > 0) {
@@ -2161,5 +2932,6 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
 
   private[collection] def size: Int = rootNode.size
 
+  /** Returns the number of elements added so far; always known, never -1. */
   override def knownSize: Int = rootNode.size
 }
