@@ -54,7 +54,8 @@ private[impl] final class CompletionLatch[T] extends AbstractQueuedSynchronizer 
     setState(1)
     true
   }
-  /** Sets the result of this latch and releases the shared lock.
+  /** Sets the result of this latch and then releases the shared lock. The result is written
+   *  before the release, so it is visible to any thread unblocked by the release.
    *
    *  @param value the result to set
    */
@@ -161,7 +162,8 @@ private[concurrent] object Promise {
      *  @tparam S the type of the transformed result
      *  @param f the function to apply to this Future's result
      *  @param executor the ExecutionContext to use for executing the transformation
-     *  @return a Future that will be completed with the transformed result
+     *  @return a Future that will be completed with the transformed result, or failed with
+     *          the exception thrown by `f` if `f` throws
      */
     override final def transform[S](f: Try[T] => Try[S])(implicit executor: ExecutionContext): Future[S] =
       dispatchOrAddCallbacks(get(), new Transformation[T, S](Xform_transform, f, executor))
@@ -171,7 +173,8 @@ private[concurrent] object Promise {
      *  @tparam S the type of the Future returned by the function
      *  @param f the function to apply to this Future's result
      *  @param executor the ExecutionContext to use for executing the transformation
-     *  @return a Future that will be completed with the result of the function
+     *  @return a Future that will be completed with the result of the Future returned by `f`,
+     *          or failed with the exception thrown by `f` if `f` throws
      */
     override final def transformWith[S](f: Try[T] => Future[S])(implicit executor: ExecutionContext): Future[S] =
       dispatchOrAddCallbacks(get(), new Transformation[T, S](Xform_transformWith, f, executor))
@@ -183,7 +186,8 @@ private[concurrent] object Promise {
      *  @param that the Future to zip with this Future
      *  @param f the function to apply to the results of both Futures
      *  @param executor the ExecutionContext to use for executing the function
-     *  @return a Future that will be completed with the result of the function
+     *  @return a Future that will be completed with the result of the function, or failed
+     *          if either Future fails or `f` throws
      */
     override final def zipWith[U, R](that: Future[U])(f: (T, U) => R)(implicit executor: ExecutionContext): Future[R] = {
       val state = get()
@@ -262,7 +266,9 @@ private[concurrent] object Promise {
      *
      *  @param p the predicate to apply to the result of this Future
      *  @param executor the ExecutionContext to use for executing the predicate
-     *  @return a Future that will be completed with the result of this Future if it satisfies the predicate, or a failed Future otherwise
+     *  @return a Future that will be completed with the result of this Future if it satisfies
+     *          the predicate, failed with a `NoSuchElementException` if the predicate is not
+     *          satisfied, or this Future if it is already failed
      */
     override final def filter(p: T => Boolean)(implicit executor: ExecutionContext): Future[T] = {
       val state = get()
@@ -275,7 +281,9 @@ private[concurrent] object Promise {
      *  @tparam S the type of the result of the partial function
      *  @param pf the partial function to apply to the result of this Future
      *  @param executor the ExecutionContext to use for executing the partial function
-     *  @return a Future that will be completed with the result of the partial function, or this Future if it is already failed
+     *  @return a Future that will be completed with the result of the partial function, failed
+     *          with a `NoSuchElementException` if `pf` is not defined at the result, or this
+     *          Future if it is already failed
      */
     override final def collect[S](pf: PartialFunction[T, S])(implicit executor: ExecutionContext): Future[S] = {
       val state = get()
@@ -313,14 +321,17 @@ private[concurrent] object Promise {
      *
      *  @tparam S the type to cast the result to
      *  @param tag the ClassTag for the type to cast to
-     *  @return a Future that will be completed with the result of this Future cast to the given type, or this Future if it is already failed
+     *  @return a Future that will be completed with the result of this Future cast to the given
+     *          type, failed with a `ClassCastException` if the value cannot be cast to `S`, or
+     *          this Future if it is already failed
      */
     override final def mapTo[S](implicit tag: scala.reflect.ClassTag[S]): Future[S] =
       if (!get().isInstanceOf[Failure[?]]) super[Future].mapTo[S](using tag) // Short-circuit if we get a Success
       else this.asInstanceOf[Future[S]]
 
 
-    /** Registers a callback to be executed when this Future is completed.
+    /** Registers a callback to be executed on the given ExecutionContext when this Future is
+     *  completed, whether successfully or with a failure.
      *
      *  @tparam U the result type of the callback function
      *  @param func the callback function to invoke when the future completes
@@ -346,7 +357,8 @@ private[concurrent] object Promise {
 
     /** Returns a Future that is completed with the exception of this Future if it fails.
      *
-     *  @return a Future that will be completed with the exception of this Future if it fails, or a failed Future otherwise
+     *  @return a Future that will be completed with the exception of this Future if it fails,
+     *          or failed with a `NoSuchElementException` if this Future succeeds
      */
     override final def failed: Future[Throwable] =
       if (!get().isInstanceOf[Success[?]]) super.failed
@@ -388,6 +400,9 @@ private[concurrent] object Promise {
      *  @param atMost the maximum duration to wait
      *  @param permit the CanAwait permission
      *  @return this Future
+     *  @throws TimeoutException if this Future is not completed within `atMost`
+     *  @throws InterruptedException if the current thread is interrupted while waiting
+     *  @throws IllegalArgumentException if `atMost` is `Duration.Undefined`
      */
     @throws(classOf[TimeoutException])
     @throws(classOf[InterruptedException])
@@ -396,11 +411,14 @@ private[concurrent] object Promise {
       this
     }
 
-    /** Awaits the completion of this Future and returns its result.
+    /** Awaits the completion of this Future and returns its result. If this Future failed,
+     *  the exception it failed with is thrown instead.
      *
      *  @param atMost the maximum duration to wait
      *  @param permit the CanAwait permission
-     *  @return the result of this Future
+     *  @return the result of this Future, if it completed successfully
+     *  @throws TimeoutException if this Future is not completed within `atMost`
+     *  @throws IllegalArgumentException if `atMost` is `Duration.Undefined`
      */
     @throws(classOf[Exception])
     final def result(atMost: Duration)(implicit permit: CanAwait): T =
@@ -650,7 +668,8 @@ private[concurrent] object Promise {
     // submitWithValue *happens-before* run(), through ExecutionContext.execute.
     // Invariant: _arg is `null`, _ec is non-null. `this` ne Noop.
     // requireNonNull(resolved) will hold as guarded by `resolve`
-    /** Submits this transformation for execution with the given value.
+    /** Submits this transformation for execution with the given value, scheduling it to be
+     *  run by its `ExecutionContext`.
      *
      *  @param resolved the value to transform
      *  @return this transformation
@@ -683,7 +702,7 @@ private[concurrent] object Promise {
     }
 
     // Gets invoked by the ExecutionContext, when we have a value to transform.
-    /** Executes this transformation with the given value.
+    /** Executes this transformation with the value previously supplied to `submitWithValue`.
      *
      *  Invoked by the `ExecutionContext` once the transformation is ready to be executed.
      */

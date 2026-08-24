@@ -151,7 +151,8 @@ package object duration {
     /** Multiplies this Long with a Duration.
      *
      *  @param d the Duration to multiply
-     *  @return the product of this Long and the given Duration
+     *  @return the product of this Long and the given Duration; this Long is first converted
+     *          to a `Double`, which can lose precision for very large values
      */
     def *(d: Duration): Duration             = d * i.toDouble
     /** Multiplies this Long with a FiniteDuration.

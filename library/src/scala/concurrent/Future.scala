@@ -731,7 +731,7 @@ object Future {
     /** Returns this future, since it is never completed and so has no inner future to flatten.
      *
      *  @tparam S the type of the inner future
-     *  @param ev the evidence that T is a Future[S]
+     *  @param ev evidence that this future's value type conforms to `Future[S]`, never used
      */
     override final def flatten[S](implicit ev: Nothing <:< Future[S]): Future[S] = this
     /** Returns this future, since it is never completed and `p` is therefore never applied.

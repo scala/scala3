@@ -64,7 +64,7 @@ trait BlockContext {
 
 object BlockContext {
   private object DefaultBlockContext extends BlockContext {
-    /** Executes the supplied thunk directly, performing no blocking handling.
+    /** Executes the supplied thunk directly and returns its result, performing no blocking handling.
      *
      *  @tparam T the result type of the blocking thunk
      *  @param thunk the code to execute that may block the current thread

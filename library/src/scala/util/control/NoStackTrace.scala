@@ -33,9 +33,9 @@ trait NoStackTrace extends Throwable {
 }
 
 object NoStackTrace {
-  /** Returns whether stack trace suppression is disabled globally.
-   *
-   *  @return `true` if stack trace suppression is disabled, `false` otherwise
+  /** Returns whether stack trace suppression is disabled globally,
+   *  as requested by setting the system property
+   *  `scala.control.noTraceSuppression` to `true` at startup.
    */
   final def noSuppression = _noSuppression
 

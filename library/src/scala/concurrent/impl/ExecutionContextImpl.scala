@@ -22,6 +22,7 @@ private[scala] class ExecutionContextImpl private[impl] (final val executor: Exe
   /** Executes the given runnable task using the underlying executor.
    *
    *  @param runnable the task to execute
+   *  @throws java.util.concurrent.RejectedExecutionException if the underlying executor rejects the task
    */
   override final def execute(runnable: Runnable): Unit = executor.execute(runnable)
   /** Reports the given throwable to the configured reporter.
@@ -42,9 +43,13 @@ private[concurrent] object ExecutionContextImpl {
    *  @param uncaught the handler for uncaught exceptions in created threads
    */
   final class DefaultThreadFactory(
+    /** Whether threads created by this factory are daemon threads. */
     final val daemonic: Boolean,
+    /** The maximum number of created threads that may perform managed blocking at the same time; blocking beyond this limit falls back to unmanaged blocking. */
     final val maxBlockers: Int,
+    /** The prefix used for created threads' names, followed by `"-"` and the thread id. */
     final val prefix: String,
+    /** The uncaught-exception handler installed on each created thread. */
     final val uncaught: Thread.UncaughtExceptionHandler) extends ThreadFactory with ForkJoinPool.ForkJoinWorkerThreadFactory {
 
     require(prefix ne null, "DefaultThreadFactory.prefix must be non null")
@@ -73,7 +78,11 @@ private[concurrent] object ExecutionContextImpl {
      */
     def newThread(runnable: Runnable): Thread = wire(new Thread(runnable))
 
-    /** Creates a new ForkJoinWorkerThread that supports blocking operations.
+    /** Creates a new ForkJoinWorkerThread that is also a [[scala.concurrent.BlockContext]]:
+     *  its `blockOn` runs the blocking computation under `ForkJoinPool.managedBlock`, so the
+     *  pool can spawn a compensation thread. At most `maxBlockers` threads may block this way
+     *  at once; beyond that limit, or when the thread is already blocked, the computation runs
+     *  without notifying the pool.
      *
      *  @param fjp the ForkJoinPool this thread will belong to
      *  @return the newly created ForkJoinWorkerThread
@@ -111,10 +120,13 @@ private[concurrent] object ExecutionContextImpl {
       })
   }
 
-  /** Creates a default ForkJoinPool-based ExecutionContextExecutorService.
+  /** Creates a default ForkJoinPool-based ExecutionContextExecutorService. The pool's
+   *  parallelism and the blocker limit are read from the `scala.concurrent.context.minThreads`,
+   *  `numThreads`, `maxThreads`, and `maxExtraThreads` system properties.
    *
    *  @param reporter the function to report uncaught exceptions
    *  @return a new ExecutionContextExecutorService
+   *  @throws NumberFormatException if one of the system properties cannot be parsed as a number
    */
   def createDefaultExecutorService(reporter: Throwable => Unit): ExecutionContextExecutorService = {
     def getInt(name: String, default: String) = (try System.getProperty(name, default) catch {

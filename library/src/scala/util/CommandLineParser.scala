@@ -77,7 +77,8 @@ object CommandLineParser {
      */
     def fromString(s: String): T
 
-    /** Returns an `Option` containing the value parsed from `s`, or `None` if parsing fails.
+    /** Returns `Some` of the value converted from `s`, or `None` if `fromString`
+     *  throws an `IllegalArgumentException`.
      *
      *  @param s the string to convert to type `T`
      */

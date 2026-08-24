@@ -24,27 +24,29 @@ trait Batchable {
 }
 
 private[concurrent] object BatchingExecutorStatics {
-  /** An empty array of `Runnable` used to initialize batches. */
+  /** A shared empty array of `Runnable` used to initialize batches without allocating. */
   final val emptyBatchArray: Array[Runnable | Null] = new Array[Runnable | Null](0)
 
   // Max number of Runnables executed nested before starting to batch (to prevent stack exhaustion)
-  /** The maximum depth of nested `Runnable` executions before switching to batching mode. */
+  /** The maximum depth of nested `Runnable` executions before switching to batching mode, to prevent stack exhaustion. */
   final val syncPreBatchDepth = 16
 
   // Max number of Runnables processed in one go (to prevent starvation of other tasks on the pool)
-  /** The maximum number of `Runnable` tasks processed in a single batch execution. */
+  /** The maximum number of `Runnable` tasks processed in a single batch execution, to prevent starvation of other tasks on the pool. */
   final val runLimit = 1024
 
   object MissingParentBlockContext extends BlockContext {
     /** Always throws an `IllegalStateException`, since reaching this `BlockContext` at all means
      *  `parentBlockContext` was null, which is a bug in `BatchingExecutor.Batch`.
      *
-     *  The thunk is evaluated, but its result is discarded by the `finally throw`, so this method
-     *  never returns normally.
+     *  The `try thunk finally throw` shape is a deliberate defensive assertion, not an oversight:
+     *  the thunk is still evaluated, but the `finally` clause always throws, so this method never
+     *  returns normally.
      *
      *  @tparam T the type of the result of the `thunk`
      *  @param thunk the computation to execute
      *  @param permission the permission to block
+     *  @throws IllegalStateException always
      */
     override def blockOn[T](thunk: => T)(implicit permission: CanAwait): T =
       try thunk finally throw new IllegalStateException("BUG in BatchingExecutor.Batch: parentBlockContext is null")
@@ -139,7 +141,7 @@ private[concurrent] trait BatchingExecutor extends Executor {
       }
     }
 
-    /** Adds a `Runnable` to the batch.
+    /** Adds a `Runnable` to the batch, growing the `other` array if it is full.
      *
      *  @param r the `Runnable` to add
      */
@@ -152,7 +154,8 @@ private[concurrent] trait BatchingExecutor extends Executor {
       this.size = sz + 1
     }
 
-    /** Executes up to `n` `Runnable` tasks from the batch.
+    /** Executes up to `n` `Runnable` tasks from the batch, in LIFO order. An exception thrown
+     *  by a task aborts processing of the remaining tasks and propagates to the caller.
      *
      *  @param n the maximum number of tasks to execute
      */
@@ -185,7 +188,11 @@ private[concurrent] trait BatchingExecutor extends Executor {
      */
     final def this(runnable: Runnable) = this(runnable, BatchingExecutorStatics.emptyBatchArray, 1)
 
-    /** Executes the batch of `Runnable` tasks. */
+    /** Executes the batch of `Runnable` tasks: installs this batch in the thread-local and as
+     *  the current `BlockContext`, runs up to `BatchingExecutorStatics.runLimit` tasks,
+     *  resubmits the batch to `submitForExecution` if tasks remain, and rethrows any exception
+     *  produced by the tasks or by the resubmission.
+     */
     override final def run(): Unit = {
       _tasksLocal.set(this) // This is later cleared in `apply` or `runWithoutResubmit`
 
@@ -196,10 +203,12 @@ private[concurrent] trait BatchingExecutor extends Executor {
     }
 
     /* LOGIC FOR ASYNCHRONOUS BATCHES */
-    /** Executes the batch of `Runnable` tasks within the given `BlockContext`.
+    /** Executes up to `BatchingExecutorStatics.runLimit` of the batch's `Runnable` tasks,
+     *  recording `prevBlockContext` as the parent context to which `blockOn` delegates.
      *
-     *  @param prevBlockContext the `BlockContext` to use for blocking operations
-     *  @return any `Throwable` that occurred during execution, or `null` if none
+     *  @param prevBlockContext the `BlockContext` that was current before this batch was
+     *                          installed; blocking operations within the batch are delegated to it
+     *  @return any `Throwable` thrown during execution, or `null` if none
      */
     override final def apply(prevBlockContext: BlockContext): Throwable | Null = try {
       parentBlockContext = prevBlockContext
@@ -237,7 +246,9 @@ private[concurrent] trait BatchingExecutor extends Executor {
       newBatch
     }
 
-    /** Executes a blocking operation, delegating to the parent `BlockContext` if tasks are queued.
+    /** Executes a blocking operation by delegating to the parent `BlockContext`. If tasks are
+     *  still queued in this batch, they are first handed off to `submitForExecution` in a fresh
+     *  batch, so that the blocking cannot deadlock them.
      *
      *  @tparam T the type of the result of the `thunk`
      *  @param thunk the blocking computation to execute
@@ -254,7 +265,11 @@ private[concurrent] trait BatchingExecutor extends Executor {
   }
 
   private final class SyncBatch(runnable: Runnable) extends AbstractBatch(runnable, BatchingExecutorStatics.emptyBatchArray, 1) with Runnable {
-    /** Executes the batch of `Runnable` tasks synchronously. */
+    /** Executes the batch of `Runnable` tasks synchronously until the batch is empty.
+     *  `InterruptedException` and non-fatal exceptions thrown by a task are passed to
+     *  `reportFailure` and execution continues with the remaining tasks; only fatal
+     *  errors propagate.
+     */
     @tailrec override final def run(): Unit = {
       try runN(BatchingExecutorStatics.runLimit) catch {
         case ie: InterruptedException =>

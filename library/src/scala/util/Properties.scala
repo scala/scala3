@@ -89,7 +89,8 @@ private[scala] trait PropertiesTrait {
    *  @param name the name of the system property to retrieve
    */
   def propOrNull(name: String): String | Null            = propOrNone(name).orNull
-  /** Returns whether the system property with the given name is set to a value that represents `true`.
+  /** Returns whether the system property with the given name is set to
+   *  `"yes"`, `"on"`, or `"true"`, compared case-insensitively.
    *
    *  @param name the name of the system property to check
    */
@@ -98,11 +99,13 @@ private[scala] trait PropertiesTrait {
    *
    *  @param name the name of the system property to set
    *  @param value the value to set the system property to
+   *  @return the previous value of the property, or `null` if it was not set
    */
   def setProp(name: String, value: String): String       = System.setProperty(name, value)
   /** Clears the system property with the given name.
    *
    *  @param name the name of the system property to clear
+   *  @return the previous value of the property, or `null` if it was not set
    */
   def clearProp(name: String): String                    = System.clearProperty(name)
 
@@ -118,7 +121,8 @@ private[scala] trait PropertiesTrait {
    */
   def envOrNone(name: String): Option[String]            = Option(System.getenv(name))
 
-  /** Returns the environment variable with the given name, or the given alternative `Option` if the variable is not set.
+  /** Returns the environment variable with the given name as an `Option`,
+   *  or the given alternative `Option` if the variable is not set.
    *
    *  @param name the name of the environment variable to retrieve
    *  @param alt the alternative `Option` to return if the variable is not set
@@ -137,7 +141,9 @@ private[scala] trait PropertiesTrait {
    *  @param name the name of the Scala property to retrieve
    */
   def scalaPropOrEmpty(name: String): String             = scalaPropOrElse(name, "")
-  /** Returns the Scala property with the given name as an `Option`.
+  /** Returns the Scala property with the given name as an `Option`,
+   *  looking first in the loaded properties file, then among the system
+   *  properties with the name prefixed by `scala.`.
    *
    *  @param name the name of the Scala property to retrieve
    */
@@ -171,7 +177,7 @@ private[scala] trait PropertiesTrait {
    *  Note that it uses "prop" i.e. looks in the scala jar, not the system properties.
    */
   def sourceEncoding        = scalaPropOrElse("file.encoding", "UTF-8")
-  /** The default source reader class for the Scala runtime. */
+  /** The class name of the default source reader. */
   def sourceReader          = scalaPropOrElse("source.reader", "scala.tools.nsc.io.SourceReader")
 
   /** This is the default text encoding, overridden (unreliably) with

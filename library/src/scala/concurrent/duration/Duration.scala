@@ -100,17 +100,16 @@ object Duration {
   )
 
   // TimeUnit => standard label
-  /** A mapping from TimeUnit to its standard string representation.
-   *
-   *  @return a map from TimeUnit to its standard string representation
+  /** A mapping from each `TimeUnit` to its unabbreviated singular name (e.g. `SECONDS -> "second"`),
+   *  used when rendering durations as strings.
    */
   protected[duration] val timeUnitName: Map[TimeUnit, String] =
     timeUnitLabels.toMap.view.mapValues(s => words(s).last).toMap
 
   // Label => TimeUnit
-  /** A mapping from string representations to TimeUnit values.
-   *
-   *  @return a map from string representations to TimeUnit values
+  /** A mapping from every accepted time unit label (`"s"`, `"sec"`, `"secs"`, `"second"`,
+   *  `"seconds"`, and so on for each unit) to its `TimeUnit`, used when parsing durations
+   *  from strings.
    */
   protected[duration] val timeUnit: Map[String, TimeUnit] =
     timeUnitLabels.flatMap{ case (unit, names) => expandLabels(names) map (_ -> unit) }.toMap
@@ -233,9 +232,9 @@ object Duration {
     /** Returns the difference between this infinite duration and another duration.
      *
      *  The result follows Double semantics for infinite values:
-     *  - Subtracting an infinite duration from itself results in Undefined
-     *  - Subtracting an infinite duration from Undefined results in Undefined
-     *  - Subtracting a finite duration from an infinite duration results in the same infinite duration
+     *  - Subtracting this infinite duration from itself results in Undefined
+     *  - Subtracting Undefined from this infinite duration results in Undefined
+     *  - Subtracting any other duration, finite or the opposite infinity, results in this same infinite duration
      *
      *  @param other the duration to subtract from this one
      */
@@ -703,6 +702,7 @@ object FiniteDuration {
    *  @param length the duration length as a whole number
    *  @param unit the time unit in which `length` is measured
    *  @return a finite duration of the given length in the given unit
+   *  @throws IllegalArgumentException if the given length in the given unit exceeds +-(2^63-1) nanoseconds
    */
   def apply(length: Long, unit: TimeUnit): FiniteDuration  = new FiniteDuration(length, unit)
   /** Creates a finite duration with the given length and time unit string.
@@ -710,6 +710,8 @@ object FiniteDuration {
    *  @param length the duration length as a whole number
    *  @param unit the string representation of the time unit (e.g. "ms", "second", "days")
    *  @return a finite duration of the given length with the resolved time unit
+   *  @throws NoSuchElementException if `unit` is not a valid time unit string
+   *  @throws IllegalArgumentException if the given length in the given unit exceeds +-(2^63-1) nanoseconds
    */
   def apply(length: Long, unit: String): FiniteDuration    = new FiniteDuration(length, Duration.timeUnit(unit))
 
@@ -750,17 +752,17 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
 
   /** Returns the length of this duration measured in whole nanoseconds. */
   def toNanos: Long               = unit.toNanos(length)
-  /** Returns the length of this duration measured in whole microseconds. */
+  /** Returns the length of this duration measured in whole microseconds, rounding towards zero. */
   def toMicros: Long              = unit.toMicros(length)
-  /** Returns the length of this duration measured in whole milliseconds. */
+  /** Returns the length of this duration measured in whole milliseconds, rounding towards zero. */
   def toMillis: Long              = unit.toMillis(length)
-  /** Returns the length of this duration measured in whole seconds. */
+  /** Returns the length of this duration measured in whole seconds, rounding towards zero. */
   def toSeconds: Long             = unit.toSeconds(length)
-  /** Returns the length of this duration measured in whole minutes. */
+  /** Returns the length of this duration measured in whole minutes, rounding towards zero. */
   def toMinutes: Long             = unit.toMinutes(length)
-  /** Returns the length of this duration measured in whole hours. */
+  /** Returns the length of this duration measured in whole hours, rounding towards zero. */
   def toHours: Long               = unit.toHours(length)
-  /** Returns the length of this duration measured in whole days. */
+  /** Returns the length of this duration measured in whole days, rounding towards zero. */
   def toDays: Long                = unit.toDays(length)
   /** Returns the length of this duration expressed in the given time unit as a Double.
    *
@@ -797,26 +799,33 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
     new FiniteDuration(totalLength, commonUnit)
   }
 
-  /** Returns the sum of this finite duration and another duration.
+  /** Returns the sum of this finite duration and another duration. If `other` is infinite
+   *  or `Undefined`, the result is `other`.
    *
    *  @param other the duration to add to this one
+   *  @throws IllegalArgumentException if the sum of two finite durations overflows
    */
   def +(other: Duration): Duration = other match {
     case x: FiniteDuration => add(x.length, x.unit)
     case _                 => other
   }
-  /** Returns the difference between this finite duration and another duration.
+  /** Returns the difference between this finite duration and another duration. If `other`
+   *  is infinite or `Undefined`, the result is `-other`.
    *
    *  @param other the duration to subtract from this one
+   *  @throws IllegalArgumentException if the difference of two finite durations overflows
    */
   def -(other: Duration): Duration = other match {
     case x: FiniteDuration => add(-x.length, x.unit)
     case _                 => -other
   }
 
-  /** Returns this finite duration multiplied by a scalar factor.
+  /** Returns this finite duration multiplied by a scalar factor, computed on the nanosecond
+   *  length and rounded to whole nanoseconds. Multiplying by `NaN` yields `Undefined`; an
+   *  infinite factor yields `Inf` or `MinusInf` according to the signs of the operands.
    *
    *  @param factor the scalar to multiply by
+   *  @throws IllegalArgumentException if the result is finite but too large to represent as a `FiniteDuration`
    */
   def *(factor: Double): Duration  =
     if (!factor.isInfinite) fromNanos(toNanos * factor)
@@ -824,9 +833,13 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
     else if ((factor > 0) ^ (this < Zero)) Inf
     else MinusInf
 
-  /** Returns this finite duration divided by a scalar divisor.
+  /** Returns this finite duration divided by a scalar divisor, computed on the nanosecond
+   *  length and rounded to whole nanoseconds. The semantics follow those of `Double`: dividing
+   *  by `NaN`, or a zero duration by zero, yields `Undefined`; dividing a nonzero duration by
+   *  zero yields `Inf` or `MinusInf`; dividing by an infinite divisor yields `Zero`.
    *
    *  @param divisor the scalar to divide by
+   *  @throws IllegalArgumentException if the result is finite but too large to represent as a `FiniteDuration`
    */
   def /(divisor: Double): Duration =
     if (!divisor.isInfinite) fromNanos(toNanos / divisor)
@@ -835,7 +848,10 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
 
   // if this is made a constant, then scalac will elide the conditional and always return +0.0, scala/bug#6331
   private def minusZero = -0d
-  /** Returns the quotient of this finite duration divided by another duration.
+  /** Returns the quotient of this finite duration divided by another duration, as the ratio
+   *  of their nanosecond lengths. Dividing by `Undefined` yields `Double.NaN`; dividing by
+   *  `Inf` or `MinusInf` yields `+0.0` when the operands have the same sign and `-0.0`
+   *  otherwise.
    *
    *  @param divisor the duration to divide by
    */
@@ -849,21 +865,25 @@ final class FiniteDuration(val length: Long, val unit: TimeUnit) extends Duratio
   /** Returns the sum of this finite duration and another finite duration.
    *
    *  @param other the finite duration to add to this one
+   *  @throws IllegalArgumentException if the sum overflows
    */
   def +(other: FiniteDuration): FiniteDuration     = add(other.length, other.unit)
   /** Returns the difference between this finite duration and another finite duration.
    *
    *  @param other the finite duration to subtract from this one
+   *  @throws IllegalArgumentException if the difference overflows
    */
   def -(other: FiniteDuration): FiniteDuration     = add(-other.length, other.unit)
   /** Returns the sum of this finite duration and another finite duration.
    *
    *  @param other the finite duration to add to this one
+   *  @throws IllegalArgumentException if the sum overflows
    */
   def plus(other: FiniteDuration): FiniteDuration  = this + other
   /** Returns the difference between this finite duration and another finite duration.
    *
    *  @param other the finite duration to subtract from this one
+   *  @throws IllegalArgumentException if the difference overflows
    */
   def minus(other: FiniteDuration): FiniteDuration = this - other
   /** Returns the smaller of this finite duration and another finite duration.

@@ -534,9 +534,9 @@ object MurmurHash3 extends MurmurHash3 {
     if (xs.isEmpty) emptyMapHash
     else {
       class accum extends Function2[Any, Any, Unit] {
-        /** Accumulates hash values for map entries. */
+        /** The sum (`a`), bitwise exclusive-or (`b`), and count (`n`) of the entry hashes. */
         var a, b, n = 0
-        /** Accumulates the product of hash values for map entries. */
+        /** The product of the entry hashes, each with its lowest bit set to avoid multiplying by zero. */
         var c = 1
         /** Processes a map entry by updating the accumulated hash values.
          *

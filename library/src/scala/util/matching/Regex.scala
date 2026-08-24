@@ -352,10 +352,10 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
     else unapplySeq(m.matched.nn)
 
   //  @see UnanchoredRegex
-  /** Runs the matcher to determine if the pattern matches the input.
+  /** Runs the matcher, requiring the pattern to match the entire input.
    *
    *  @param m the matcher to run
-   *  @return true if the pattern matches the input, false otherwise
+   *  @return `true` if `m` matches the entire input, `false` otherwise
    */
   protected def runMatcher(m: Matcher): Boolean = m.matches()
 
@@ -639,10 +639,10 @@ class Regex private[matching](val pattern: Pattern, groupNames: String*) extends
  *  @see [[Regex#unanchored]]
  */
 trait UnanchoredRegex extends Regex {
-  /** Runs the matcher to find the next occurrence of the pattern in the input.
+  /** Runs the matcher, looking for the next occurrence of the pattern in the input.
    *
    *  @param m the matcher to run
-   *  @return true if the pattern is found in the input, false otherwise
+   *  @return `true` if a subsequence of the input matches the pattern, `false` otherwise
    */
   override protected def runMatcher(m: Matcher): Boolean = m.find()
   /** Returns this UnanchoredRegex, which is already unanchored. */
@@ -785,10 +785,11 @@ object Regex {
    *  @param _groupNames the names of the capturing groups, if any, used to look up groups by name
    */
   class Match(val source: CharSequence,
+              /** The underlying `Matcher` that performed the match. */
               protected[matching] val matcher: Matcher,
               _groupNames: Seq[String]) extends MatchData {
 
-    /** The names of the capturing groups, if any, used to look up groups by name. */
+    /** The explicit group names, if any, supplied when the regex was constructed. */
     @deprecated("groupNames does not include inline group names, and should not be used anymore", "2.13.7")
     val groupNames: Seq[String] = _groupNames
 
@@ -837,10 +838,10 @@ object Regex {
    *  ```
    */
   object Match {
-    /** Extracts the matched string from a Match.
+    /** Extracts the matched string from a `Match`.
      *
-     *  @param m the Match to extract from
-     *  @return the matched string wrapped in Some
+     *  @param m the `Match` to extract from
+     *  @return the matched string wrapped in `Some`
      */
     def unapply(m: Match): Some[String] = Some(m.matched.nn)
   }
@@ -857,10 +858,11 @@ object Regex {
    *  ```
    */
   object Groups {
-    /** Extracts the matched groups from a Match.
+    /** Extracts the matched groups from a `Match`.
      *
-     *  @param m the Match to extract groups from
-     *  @return the matched groups as a sequence, or None if there are no groups
+     *  @param m the `Match` to extract groups from
+     *  @return the matched groups as a sequence, in which an unmatched group is `null`,
+     *          or `None` if the pattern has no capturing groups
      */
     def unapplySeq(m: Match): Option[Seq[String | Null]] = {
       if (m.groupCount > 0) extractGroupsFromMatch(m) else None
@@ -889,11 +891,11 @@ object Regex {
   class MatchIterator(val source: CharSequence, val regex: Regex, private[Regex] val _groupNames: Seq[String])
   extends AbstractIterator[String] with MatchData { self: MatchIterator =>
 
-    /** The names of the capturing groups, if any, used to look up groups by name. */
+    /** The explicit group names, if any, supplied when the regex was constructed. */
     @deprecated("groupNames does not include inline group names, and should not be used anymore", "2.13.7")
     val groupNames: Seq[String] = _groupNames
 
-    /** The underlying Matcher used to find matches. */
+    /** The underlying `Matcher` used to find matches. */
     protected[Regex] val matcher = regex.pattern.matcher(source)
 
     // 0 = not yet matched, 1 = matched, 2 = advanced to match, 3 = no more matches
@@ -976,7 +978,7 @@ object Regex {
 
   /** Internal trait used by `replaceAllIn` and `replaceSomeIn`. */
   private[matching] trait Replacement {
-    /** The underlying Matcher used for replacement. */
+    /** The underlying `Matcher` used for replacement. */
     protected def matcher: Matcher
 
     private val sb = new java.lang.StringBuilder
@@ -989,9 +991,10 @@ object Regex {
     }
 
     // Appends the input prefix and the replacement text.
-    /** Appends the replacement text to the result buffer.
+    /** Appends the input text preceding the current match, followed by the
+     *  replacement text, to the result buffer.
      *
-     *  @param replacement the text to append
+     *  @param replacement the replacement text, in which `$` may reference capturing groups
      *  @return the matcher
      */
     def replace(replacement: String): Matcher = matcher.appendReplacement(sb, replacement)

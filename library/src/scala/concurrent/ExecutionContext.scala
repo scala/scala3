@@ -68,7 +68,6 @@ consider using Scala's global ExecutionContext by defining
 the following:
 
 implicit val ec: scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.global""")
-/** An execution context that can execute program logic asynchronously, typically on a thread pool. */
 trait ExecutionContext {
 
   /** Runs a block of code on this execution context.
@@ -223,7 +222,9 @@ object ExecutionContext {
      *  @param runnable the task to execute
      */
     override final def submitForExecution(runnable: Runnable): Unit = runnable.run()
-    /** Executes the given `Runnable` on the current thread, batching nested tasks.
+    /** Runs the given `Runnable` on the calling thread. Nested calls are not run eagerly:
+     *  past a small nesting depth they are queued in a batch and trampolined, to bound
+     *  stack growth.
      *
      *  @param runnable the task to execute
      */
