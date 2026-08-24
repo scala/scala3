@@ -374,10 +374,6 @@ abstract class Enumeration (initial: Int) extends Serializable {
      *  than or equal to that of `start`, in increasing order of their ids.
      *
      *  @param start the inclusive lower bound for the values to return
-     *  @note NEEDS-HUMAN: unlike the JVM version, this implementation does not
-     *        subtract `bottomId` from `start.id` before filtering the
-     *        zero-adjusted ids in the underlying bit set, so the bound appears
-     *        to be applied incorrectly when the enumeration has negative ids.
      */
     override def iteratorFrom(start: Value) = nnIds iteratorFrom start.id  map (id => thisenum.apply(bottomId + id))
     /** Returns the name used to prefix the string representation of this set:

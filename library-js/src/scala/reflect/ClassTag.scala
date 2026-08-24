@@ -165,8 +165,9 @@ object ClassTag {
    *  (`ClassTag.Byte`, ..., `ClassTag.Unit`, `ClassTag.Object`, `ClassTag.Nothing`,
    *  `ClassTag.Null`); otherwise returns a new `ClassTag` wrapping `runtimeClass1`.
    *
-   *  @tparam T the type whose erasure is `runtimeClass1`
-   *  @param runtimeClass1 the runtime class of the type `T`
+   *  @tparam T the type the tag is for; it is not checked against `runtimeClass1`, so a
+   *            mismatched pair yields a tag whose `runtimeClass` does not erase `T`
+   *  @param runtimeClass1 the runtime class the tag reports
    */
   def apply[T](runtimeClass1: jClass[_]): ClassTag[T] =
     runtimeClass1 match {

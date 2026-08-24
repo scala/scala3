@@ -180,8 +180,10 @@ object Manifest {
 
   /** Manifest for the array type `Array[T]`, where `arg` manifests the element type `T`.
    *
-   *  @tparam T the element type of the array
-   *  @param arg the manifest for the element type `T`
+   *  @tparam T the element type of the resulting array manifest; it is not checked against
+   *            `arg`, so a mismatched pair yields a manifest whose represented element type
+   *            differs from its static one
+   *  @param arg the manifest for the element type
    *  @return the array manifest of `arg`
    */
   def arrayType[T](arg: Manifest[_]): Manifest[Array[T]] =

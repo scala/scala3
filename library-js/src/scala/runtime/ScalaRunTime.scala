@@ -32,8 +32,10 @@ object ScalaRunTime {
   /** Tests whether `x` is an array with at least `atLevel` dimensions.
    *
    *  @param x the value to test; `null` yields `false`
-   *  @param atLevel the minimum number of array dimensions required; the default, 1, accepts any array
-   *  @return `true` if `x` is a non-null array of at least `atLevel` dimensions, `false` otherwise
+   *  @param atLevel the number of array dimensions required; the default, 1, accepts any array.
+   *                 A value below 1 never holds: the check descends one component type per
+   *                 level and fails once it reaches a non-array
+   *  @return `true` if `x` is a non-null array of `atLevel` or more dimensions, `false` otherwise
    */
   def isArray(x: Any, atLevel: Int = 1): Boolean =
     x != null && isArrayClass(x.getClass, atLevel)

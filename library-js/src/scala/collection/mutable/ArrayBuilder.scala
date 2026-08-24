@@ -401,10 +401,6 @@ object ArrayBuilder {
      *  @param other the value to compare with
      *  @return `true` if `other` is an `ofRef` builder equal to this one,
      *          `false` otherwise
-     *  @note NEEDS-HUMAN: this `equals` override and those of the sibling
-     *        builder classes compare backing arrays by reference and have no
-     *        matching `hashCode` override; the JVM variant defines no
-     *        `equals` at all.
      */
     override def equals(other: Any): Boolean = other match {
       case x: ofRef[_] => (size == x.size) && (elems == x.elems)

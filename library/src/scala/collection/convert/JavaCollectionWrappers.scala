@@ -1064,9 +1064,10 @@ private[collection] object JavaCollectionWrappers extends Serializable {
     /** Returns the value bound to `key`; if the key is absent, evaluates
      *  `op`, stores its result, and returns it.
      *
-     *  Delegates to the wrapped map's `computeIfAbsent`, which is atomic per
-     *  the `ConcurrentMap` contract; if `op` returns `null`, falls back to
-     *  the default non-atomic check-then-act implementation.
+     *  Delegates to the wrapped map's `computeIfAbsent`. Whether that is atomic depends on
+     *  the wrapped map: `ConcurrentHashMap` performs it atomically, but `ConcurrentMap`'s
+     *  default implementation does not, and an arbitrary implementation may use it. If `op`
+     *  returns `null`, this falls back to a non-atomic check-then-act.
      *
      *  @param key the key to look up
      *  @param op the value to compute if `key` is absent; may be evaluated a
@@ -1147,8 +1148,9 @@ private[collection] object JavaCollectionWrappers extends Serializable {
      *
      *  A result of `Some(v)` stores `v`; `None` removes the binding.
      *  Delegates to the wrapped map's `compute`, which is atomic per the
-     *  `ConcurrentMap` contract, except that a `Some(null)` result falls
-     *  back to the default non-atomic implementation.
+     *  wrapped map. Whether that is atomic depends on the implementation: `ConcurrentHashMap`
+     *  performs it atomically, but `ConcurrentMap`'s default implementation does not. A
+     *  `Some(null)` result falls back to a non-atomic implementation in any case.
      *
      *  @param key the key whose binding to update
      *  @param remappingFunction the function computing the new binding from the current one

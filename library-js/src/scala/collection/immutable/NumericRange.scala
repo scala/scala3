@@ -93,8 +93,9 @@ sealed class NumericRange[T](
   // See comment in Range for why this must be lazy.
   /** The number of elements in this range, computed on first access and cached.
    *
-   *  @throws IllegalArgumentException if `step` is zero, or if the range has
-   *          more than `Int.MaxValue` elements
+   *  @throws IllegalArgumentException if `step` is zero, if the range has more than
+   *          `Int.MaxValue` elements, or, for a `BigDecimal` range, if the endpoints
+   *          cannot represent the step accurately enough to count the elements
    */
   override lazy val length: Int     = NumericRange.count(start, end, step, isInclusive)
   /** Whether this range has no elements.
@@ -309,8 +310,9 @@ sealed class NumericRange[T](
    *  order: an inclusive range from `last` to `start` with step `-step`.
    *  Returns this range itself if it is empty.
    *
-   *  @throws ArithmeticException if the element type is unsigned, so that
-   *          negating the step cannot change its sign
+   *  @throws ArithmeticException if negating the step cannot change its sign, either
+   *          because the element type is unsigned or because the step is the minimum
+   *          value of a signed fixed-width type
    */
   override def reverse: NumericRange[T] =
     if (isEmpty) this

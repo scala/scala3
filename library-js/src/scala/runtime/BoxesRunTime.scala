@@ -45,9 +45,6 @@ object BoxesRunTime {
    *
    *  @param b the primitive value to box
    *  @return `b` in boxed form
-   *  @note NEEDS-HUMAN: the declared result type and the cast target are
-   *        `java.lang.Boolean`, but the upstream Scala.js version of this
-   *        method uses `java.lang.Byte`. This looks like a typo.
    */
   def boxToByte(b: Byte): java.lang.Boolean =
     b.asInstanceOf[java.lang.Boolean]

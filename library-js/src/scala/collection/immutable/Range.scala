@@ -83,6 +83,8 @@ sealed abstract class Range(
    *         an `IntStepper` for the primitive `Int` shape, or a boxing
    *         `AnyStepper` for the reference shape
    *  @return a stepper over the elements of this range; it supports efficient splitting
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
    */
   override final def stepper[S <: Stepper[_]](implicit shape: StepperShape[Int, S]): S with EfficientSplit = {
     val st = new RangeStepper(start, step, 0, length)
@@ -285,6 +287,8 @@ sealed abstract class Range(
    *
    *  @param elem the element to search for
    *  @param end the end index for the search
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
    */
   override final def lastIndexOf[@specialized(Int) B >: Int](elem: B, end: Int = length - 1): Int =
     elem match {
@@ -305,6 +309,8 @@ sealed abstract class Range(
    *
    *  @tparam B the element type of `that`
    *  @param that the collection to compare with
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
    */
   override def sameElements[B >: Int](that: IterableOnce[B]): Boolean = that match {
     case other: Range =>
@@ -540,6 +546,8 @@ sealed abstract class Range(
    *  @tparam B a supertype of `Int` for which the addition is defined
    *  @param num the numeric instance used to add elements
    *  @return the sum of all elements, or zero if this range is empty
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
    */
   final override def sum[B >: Int](implicit num: Numeric[B]): Int = {
     if (num eq scala.math.Numeric.IntIsIntegral) {
@@ -613,6 +621,8 @@ sealed abstract class Range(
    *  range itself and ending with an empty range.
    *
    *  Each tail is itself a range, produced in constant time by `drop`.
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
    */
   override def tails: Iterator[Range] =
     new AbstractIterator[Range] {
@@ -633,6 +643,8 @@ sealed abstract class Range(
    *  range itself and ending with an empty range.
    *
    *  Each init is itself a range, produced in constant time by `dropRight`.
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
    */
   override def inits: Iterator[Range] =
     new AbstractIterator[Range] {
@@ -720,6 +732,8 @@ sealed abstract class Range(
    *  @return an iterator over the groups; every group has `size` elements,
    *          except possibly the last, which may have fewer
    *  @throws IllegalArgumentException if `size` is less than `1`
+   *  @throws IllegalArgumentException if this range contains more than
+   *          `Int.MaxValue` elements
    */
   override def grouped(size: Int): Iterator[Range] = {
     require(size >= 1, f"size=$size%d, but size must be positive")
@@ -1030,7 +1044,10 @@ private class RangeIterator(
 ) extends AbstractIterator[Int] with Serializable {
   private[this] var _hasNext: Boolean = !initiallyEmpty
   private[this] var _next: Int = start
-  /** Returns the number of elements remaining, computed in constant time. */
+  /** Returns the number of elements remaining, computed in constant time. The subtraction it
+   *  uses is an `Int` one, so the count is not meaningful for a range whose span exceeds
+   *  `Int.MaxValue`.
+   */
   override def knownSize: Int = if (_hasNext) (lastElement - _next) / step + 1 else 0
   /** Returns `true` if this iterator has more elements. */
   def hasNext: Boolean = _hasNext
@@ -1052,7 +1069,8 @@ private class RangeIterator(
    *
    *  A non-positive `n` has no effect.
    *
-   *  @param n the number of elements to skip
+   *  @param n the number of elements to skip; `step * n` is computed as an `Int`, so a
+   *           product that overflows does not skip the number of elements asked for
    *  @return this iterator
    */
   override def drop(n: Int): Iterator[Int] = {

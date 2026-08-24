@@ -107,7 +107,8 @@ package object scala {
      *
      *  @tparam A the element type of the lazy list
      *  @param s the lazy list to decompose
-     *  @return `Some` of the head and tail of `s` if it is non-empty, `None` otherwise
+     *  @return `Some` of the head and tail of `s` if it is non-empty, `None` otherwise;
+     *          obtaining the tail evaluates it, so matching forces one element beyond the head
      */
     def unapply[A](s: LazyList[A]): Option[(A, LazyList[A])] =
       if (s.nonEmpty) Some((s.head, s.tail)) else None

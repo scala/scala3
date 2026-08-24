@@ -188,6 +188,10 @@ trait AsScalaExtensions {
    *  visible through the other. This conversion is one-way; there is no corresponding `asJava`
    *  conversion to `Properties`, and the result is always a new wrapper.
    *
+   *  The wrapper exposes only the `Properties` object's own entries; the defaults it may have
+   *  been constructed with are not consulted. It also assumes every entry has a `String` key
+   *  and value, so an entry of any other type can make its operations fail.
+   *
    *  @param i the Java `Properties` to convert
    */
   implicit class PropertiesHasAsScala(i: ju.Properties) {

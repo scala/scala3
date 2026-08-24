@@ -76,12 +76,6 @@ with IntStepper {
    *
    *  @param half the ending index (exclusive) of the new stepper's range
    *  @return a stepper over the set bits in `[i0, half)`
-   *
-   *  @note NEEDS-HUMAN: in the branch where `underlying` is non-null and `half` falls
-   *        within the cached words, this stepper's `found` flag is not cleared even
-   *        though `trySplit` then moves `i0` to `half`; a stale `found` would make
-   *        `nextStep` report `half` as a set bit without checking it.  The other two
-   *        state-transfer paths do clear `found`.
    */
   def semiclone(half: Int): BitSetStepper =
     if (underlying == null) {
