@@ -89,6 +89,7 @@ sealed abstract class List[+A]
     with IterableFactoryDefaults[A, List]
     with DefaultSerializable {
 
+  /** The factory used to build lists, the [[List$ `List`]] companion object. */
   override def iterableFactory: SeqFactory[List] = List
 
   /** Adds an element at the beginning of this list.
@@ -147,10 +148,28 @@ sealed abstract class List[+A]
     these
   }
 
+  /** Returns `true` if this list is `Nil`, which is the only empty list. */
   override final def isEmpty: Boolean = this eq Nil
 
+  /** Returns a list with `elem` at its head and this list as its tail.
+   *
+   *  Only one cons cell is allocated: this list becomes the tail of the result and is
+   *  not copied.
+   *
+   *  @tparam B the element type of the returned list, a supertype of `A`
+   *  @param elem the element to prepend
+   */
   override def prepended[B >: A](elem: B): List[B] = elem :: this
 
+  /** Returns a list consisting of the elements of `prefix` followed by the elements of
+   *  this list.
+   *
+   *  Only `prefix` is copied; this list becomes the tail of the result. An empty
+   *  `prefix` gives this list itself.
+   *
+   *  @tparam B the element type of the returned list, a supertype of `A`
+   *  @param prefix the elements to prepend
+   */
   override def prependedAll[B >: A](prefix: collection.IterableOnce[B]^): List[B] = (prefix: @unchecked) match {
     case xs: List[B] => xs ::: this
     case _ if prefix.knownSize == 0 => this
@@ -173,11 +192,29 @@ sealed abstract class List[+A]
   }
 
   // When calling appendAll with another list `suffix`, avoid copying `suffix`
+  /** Returns a list consisting of the elements of this list followed by the elements of
+   *  `suffix`.
+   *
+   *  When `suffix` is itself a list, only this list is copied and `suffix` becomes the
+   *  tail of the result; otherwise both are copied into a new list.
+   *
+   *  @tparam B the element type of the returned list, a supertype of `A`
+   *  @param suffix the elements to append
+   */
   override def appendedAll[B >: A](suffix: collection.IterableOnce[B]^): List[B] = suffix match {
     case xs: List[B] => this ::: xs
     case _ => super.appendedAll(suffix)
   }
 
+  /** Returns a list of the first `n` elements of this list, or of all its elements if it
+   *  has fewer than `n`.
+   *
+   *  The elements taken are copied, so the result shares nothing with this list, except
+   *  when the whole list is taken, in which case this list itself is returned. A
+   *  non-positive `n` gives `Nil`.
+   *
+   *  @param n the number of elements to take
+   */
   override def take(n: Int): List[A] = if (isEmpty || n <= 0) Nil else {
     val h = new ::(head, Nil)
     var t = h
@@ -194,12 +231,31 @@ sealed abstract class List[+A]
     h
   }
 
+  /** Returns the elements of this list from `from` up to but not including `until`.
+   *
+   *  Both indices are clamped to the bounds of this list, so no exception is thrown for
+   *  out-of-range values; the elements before `from` are dropped without copying and
+   *  the ones kept are copied.
+   *
+   *  @param from the index of the first element of the slice
+   *  @param until the index one past the last element of the slice
+   *  @return a list of the elements at the indices in the interval, `Nil` if `until` is
+   *          not greater than `from`
+   */
   override def slice(from: Int, until: Int): List[A] = {
     val lo = scala.math.max(from, 0)
     if (until <= lo || isEmpty) Nil
     else this drop lo take (until - lo)
   }
 
+  /** Returns a list of the last `n` elements of this list, or of all its elements if it
+   *  has fewer than `n`.
+   *
+   *  The result is a suffix of this list and is shared with it, so nothing is copied;
+   *  finding it costs one traversal. A non-positive `n` gives `Nil`.
+   *
+   *  @param n the number of elements to take
+   */
   override def takeRight(n: Int): List[A] = {
     @tailrec
     def loop(lead: List[A], lag: List[A]): List[A] = lead match {
@@ -211,6 +267,15 @@ sealed abstract class List[+A]
 
   // dropRight is inherited from LinearSeq
 
+  /** Returns a pair of lists, the first holding the first `n` elements of this list and
+   *  the second the rest.
+   *
+   *  The first `n` elements are copied; the second list is a suffix of this list and is
+   *  shared with it. A non-positive `n` puts everything in the second list.
+   *
+   *  @param n the index at which to split this list
+   *  @return a pair of the first `n` elements and the remaining ones
+   */
   override def splitAt(n: Int): (List[A], List[A]) = {
     val b = new ListBuffer[A]
     var i = 0
@@ -223,6 +288,18 @@ sealed abstract class List[+A]
     (b.toList, these)
   }
 
+  /** Returns a copy of this list with the element at `index` replaced by `elem`.
+   *
+   *  The elements before `index` are copied and the ones after it are shared with this
+   *  list.
+   *
+   *  @tparam B the element type of the returned list, a supertype of `A`
+   *  @param index the position of the element to replace
+   *  @param elem the replacing element
+   *  @return a list that agrees with this list everywhere except at `index`, where it
+   *          holds `elem`
+   *  @throws IndexOutOfBoundsException if `index` is negative or not less than the length of this list
+   */
   override def updated[B >: A](index: Int, elem: B): List[B] = {
     var i = 0
     var current = this
@@ -239,6 +316,12 @@ sealed abstract class List[+A]
     }
   }
 
+  /** Returns a list of the results of applying `f` to each element of this list, in
+   *  order.
+   *
+   *  @tparam B the element type of the returned list
+   *  @param f the function to apply to each element
+   */
   final override def map[B](f: A => B): List[B] = {
     if (this eq Nil) Nil else {
       val h = new ::[B](f(head), Nil)
@@ -255,6 +338,15 @@ sealed abstract class List[+A]
     }
   }
 
+  /** Returns a list of the results of applying `pf` to the elements of this list on
+   *  which it is defined, leaving the others out.
+   *
+   *  `pf` is applied at most once per element, its domain being tested and its result
+   *  taken in one step.
+   *
+   *  @tparam B the element type of the returned list
+   *  @param pf the partial function applied to the elements in its domain
+   */
   final override def collect[B](pf: PartialFunction[A, B]^): List[B] = {
     if (this eq Nil) Nil else {
       var rest = this
@@ -283,6 +375,14 @@ sealed abstract class List[+A]
     }
   }
 
+  /** Returns a list of the concatenated results of applying `f` to each element of this
+   *  list, in order.
+   *
+   *  @tparam B the element type of the returned list
+   *  @param f the function mapping each element to a collection of results
+   *  @return a list of all elements of the collections returned by `f`, `Nil` if they
+   *          are all empty
+   */
   final override def flatMap[B](f: A => IterableOnce[B]^): List[B] = {
     var rest = this
     var h: ::[B] | Null = null
@@ -303,6 +403,13 @@ sealed abstract class List[+A]
     if (h eq null) Nil else {releaseFence(); h}
   }
 
+  /** Returns the longest prefix of this list whose elements all satisfy `p`.
+   *
+   *  `p` is applied to the elements in order and to at most one element that fails it;
+   *  the elements kept are copied.
+   *
+   *  @param p the predicate the elements of the prefix must satisfy
+   */
   @inline final override def takeWhile(p: A => Boolean): List[A] = {
     val b = new ListBuffer[A]
     var these = this
@@ -313,6 +420,15 @@ sealed abstract class List[+A]
     b.toList
   }
 
+  /** Returns a pair of the longest prefix of this list whose elements all satisfy `p`
+   *  and the rest of this list.
+   *
+   *  The prefix is copied; the second list is a suffix of this list and is shared with
+   *  it.
+   *
+   *  @param p the predicate the elements of the prefix must satisfy
+   *  @return a pair of the longest prefix satisfying `p` and the remaining elements
+   */
   @inline final override def span(p: A => Boolean): (List[A], List[A]) = {
     val b = new ListBuffer[A]
     var these = this
@@ -325,6 +441,11 @@ sealed abstract class List[+A]
 
   // Overridden with an implementation identical to the inherited one (at this time)
   // solely so it can be finalized and thus inlinable.
+  /** Applies `f` to each element of this list, in order.
+   *
+   *  @tparam U the result type of `f`, used only for its side effects
+   *  @param f the function to apply to each element
+   */
   @inline final override def foreach[U](f: A => U): Unit = {
     var these = this
     while (!these.isEmpty) {
@@ -333,6 +454,10 @@ sealed abstract class List[+A]
     }
   }
 
+  /** Returns a list with the elements of this list in reverse order.
+   *
+   *  Every cons cell is rebuilt, so the result shares nothing with this list.
+   */
   final override def reverse: List[A] = {
     var result: List[A] = Nil
     var these = this
@@ -343,6 +468,17 @@ sealed abstract class List[+A]
     result
   }
 
+  /** Applies `op` to the elements of this list and `z`, going right to left.
+   *
+   *  This list is reversed first and then folded from the left, so the fold uses no
+   *  stack in the length of this list but does allocate a reversed copy of it.
+   *
+   *  @tparam B the result type of the fold
+   *  @param z the start value, combined with the last element first
+   *  @param op the binary operator, applied to an element and the result accumulated so far
+   *  @return the result of inserting `op` between consecutive elements and `z`, or `z`
+   *          itself if this list is empty
+   */
   final override def foldRight[B](z: B)(op: (A, B) => B): B = {
     var acc = z
     var these: List[A] = reverse
@@ -355,6 +491,9 @@ sealed abstract class List[+A]
 
   // Copy/Paste overrides to avoid interface calls inside loops.
 
+  /** Returns the number of elements in this list, counted by traversing it, which costs
+   *  `O(n)`.
+   */
   override final def length: Int = {
     var these = this
     var len = 0
@@ -365,6 +504,14 @@ sealed abstract class List[+A]
     len
   }
 
+  /** Compares the length of this list with `len`, traversing no further than `len`
+   *  elements rather than counting them all.
+   *
+   *  @param len the length to compare against
+   *  @return a negative value if this list is shorter than `len`, `0` if it has exactly
+   *          `len` elements, and a positive value if it is longer, which is also the
+   *          answer for every negative `len`
+   */
   override final def lengthCompare(len: Int): Int = {
     @tailrec def loop(i: Int, xs: List[A]): Int = {
       if (i == len)
@@ -378,6 +525,13 @@ sealed abstract class List[+A]
     else loop(0, coll)
   }
 
+  /** Returns `true` if `p` holds for every element of this list.
+   *
+   *  The traversal stops at the first element that fails `p`.
+   *
+   *  @param p the predicate used to test elements
+   *  @return `true` if this list is empty or `p` holds for all of its elements
+   */
   override final def forall(p: A => Boolean): Boolean = {
     var these: List[A] = this
     while (!these.isEmpty) {
@@ -387,6 +541,13 @@ sealed abstract class List[+A]
     true
   }
 
+  /** Returns `true` if `p` holds for at least one element of this list.
+   *
+   *  The traversal stops at the first element that satisfies `p`.
+   *
+   *  @param p the predicate used to test elements
+   *  @return `true` if `p` holds for some element, `false` if this list is empty
+   */
   override final def exists(p: A => Boolean): Boolean = {
     var these: List[A] = this
     while (!these.isEmpty) {
@@ -396,6 +557,13 @@ sealed abstract class List[+A]
     false
   }
 
+  /** Returns `true` if this list holds an element that is `==` to `elem`.
+   *
+   *  The traversal stops at the first match.
+   *
+   *  @tparam A1 the type of `elem`, a supertype of `A`
+   *  @param elem the element to look for
+   */
   override final def contains[A1 >: A](elem: A1): Boolean = {
     var these: List[A] = this
     while (!these.isEmpty) {
@@ -405,6 +573,13 @@ sealed abstract class List[+A]
     false
   }
 
+  /** Returns the first element satisfying `p` wrapped in a `Some`, or `None` if there is
+   *  none.
+   *
+   *  The traversal stops at the first match.
+   *
+   *  @param p the predicate used to test elements
+   */
   override final def find(p: A => Boolean): Option[A] = {
     var these: List[A] = this
     while (!these.isEmpty) {
@@ -414,6 +589,11 @@ sealed abstract class List[+A]
     None
   }
 
+  /** Returns the last element of this list, reached by traversing it, which costs
+   *  `O(n)`.
+   *
+   *  @throws NoSuchElementException if this list is empty
+   */
   override def last: A = {
     if (isEmpty) throw new NoSuchElementException("List.last")
     else {
@@ -427,6 +607,16 @@ sealed abstract class List[+A]
     }
   }
 
+  /** Returns `true` if this list and `that` have the same length and `p` holds for every
+   *  pair of corresponding elements.
+   *
+   *  When `that` is a linear sequence the two are walked side by side, which avoids
+   *  indexing into it; the traversal stops at the first pair that fails `p`.
+   *
+   *  @tparam B the element type of `that`
+   *  @param that the sequence to compare against
+   *  @param p the relation each pair of corresponding elements must satisfy
+   */
   override def corresponds[B](that: collection.Seq[B])(p: (A, B) => Boolean): Boolean = that match {
     case that: LinearSeq[B @unchecked] =>
       var i = this
@@ -442,6 +632,7 @@ sealed abstract class List[+A]
       super.corresponds(that)(p)
   }
 
+  /** The prefix of this list's string representation: `"List"`. */
   override protected def className = "List"
 
   /** Builds a new list by applying a function to all elements of this list.
@@ -497,8 +688,24 @@ sealed abstract class List[+A]
     result
   }
 
+  /** Returns a list of the elements of this list that satisfy `p`, in order.
+   *
+   *  As much of this list as possible is shared with the result: this list itself is
+   *  returned when every element satisfies `p`, and the longest suffix in which nothing
+   *  is dropped is shared rather than copied.
+   *
+   *  @param p the predicate an element must satisfy to be kept
+   */
   override def filter(p: A => Boolean): List[A] = filterCommon(p, isFlipped = false)
 
+  /** Returns a list of the elements of this list that do not satisfy `p`, in order.
+   *
+   *  As much of this list as possible is shared with the result: this list itself is
+   *  returned when no element satisfies `p`, and the longest suffix in which nothing is
+   *  dropped is shared rather than copied.
+   *
+   *  @param p the predicate an element must not satisfy to be kept
+   */
   override def filterNot(p: A => Boolean): List[A] = filterCommon(p, isFlipped = true)
 
   private def filterCommon(p: A => Boolean, isFlipped: Boolean): List[A] = {
@@ -581,6 +788,15 @@ sealed abstract class List[+A]
     result
   }
 
+  /** Returns a pair of lists, the first holding the elements satisfying `p` and the
+   *  second the elements that do not.
+   *
+   *  When all elements fall on one side, this list itself is used for that side rather
+   *  than a copy, and the other side is `Nil`.
+   *
+   *  @param p the predicate used to test elements
+   *  @return a pair of the elements satisfying `p` and the elements not satisfying it
+   */
   override def partition(p: A => Boolean): (List[A], List[A]) = {
     if (isEmpty) List.TupleOfNil
     else super.partition(p) match {
@@ -590,9 +806,18 @@ sealed abstract class List[+A]
     }
   }
 
+  /** Returns this list itself; being already a `List`, no copy is made. */
   final override def toList: List[A] = this
 
   // Override for performance
+  /** Returns `true` if `o` is a sequence holding the same elements in the same order.
+   *
+   *  Two lists are compared by walking them side by side, and two lists that are the
+   *  same object are equal without any comparison; against any other value the inherited
+   *  sequence equality is used.
+   *
+   *  @param o the value to compare against
+   */
   override def equals(o: scala.Any): Boolean = {
     @tailrec def listEq(a: List[?], b: List[?]): Boolean =
       (a eq b) || {
@@ -649,10 +874,20 @@ sealed abstract class List[+A]
 
 // Internal code that mutates `next` _must_ call `Statics.releaseFence()` if either immediately, or
 // before a newly-allocated, thread-local :: instance is aliased (e.g. in ListBuffer.toList)
+/** A non-empty list, holding its first element and the list of the remaining ones.
+ *
+ *  @tparam A the element type of this list
+ *  @param head the first element of this list
+ *  @param next the list of all elements after the first
+ */
 final case class :: [+A](override val head: A, private[scala] var next: List[A @uncheckedVariance]) // sound because `next` is used only locally
   extends List[A] {
   releaseFence()
+  /** Returns the first element of this list wrapped in a `Some`, which is never `None`
+   *  for a non-empty list.
+   */
   override def headOption: Some[A] = Some(head)
+  /** Returns the list of all elements of this list after the first. */
   override def tail: List[A] = next
 
   @publicInBinary
@@ -661,13 +896,39 @@ final case class :: [+A](override val head: A, private[scala] var next: List[A @
 }
 
 case object Nil extends List[Nothing] {
+  /** Returns nothing; the empty list has no elements.
+   *
+   *  @throws NoSuchElementException always
+   */
   override def head: Nothing = throw new NoSuchElementException("head of empty list")
+  /** Returns `None`; the empty list has no first element. */
   override def headOption: None.type = None
+  /** Returns nothing; the empty list has no tail.
+   *
+   *  @throws UnsupportedOperationException always
+   */
   override def tail: Nothing = throw new UnsupportedOperationException("tail of empty list")
+  /** Returns nothing; the empty list has no last element.
+   *
+   *  @throws NoSuchElementException always
+   */
   override def last: Nothing = throw new NoSuchElementException("last of empty list")
+  /** Returns nothing; the empty list has no elements to drop the last of.
+   *
+   *  @throws UnsupportedOperationException always
+   */
   override def init: Nothing = throw new UnsupportedOperationException("init of empty list")
+  /** Returns `0`; the size of the empty list is known without traversal. */
   override def knownSize: Int = 0
+  /** Returns the empty iterator. */
   override def iterator: Iterator[Nothing] = Iterator.empty
+  /** Returns a pair of empty lists, the same shared pair on every call.
+   *
+   *  @tparam A1 the element type of the first returned list
+   *  @tparam A2 the element type of the second returned list
+   *  @param asPair evidence that the elements are pairs; never used, since there are no
+   *                elements to split
+   */
   override def unzip[A1, A2](implicit asPair: Nothing -> (A1, A2)): (List[A1], List[A2]) = EmptyUnzip
 
   @transient
@@ -682,10 +943,27 @@ case object Nil extends List[Nothing] {
 object List extends StrictOptimizedSeqFactory[List] {
   private val TupleOfNil = (Nil, Nil)
 
+  /** Returns a list containing the elements of `coll`, in the order `coll` gives them
+   *  out.
+   *
+   *  If `coll` is already a list it is returned unchanged.
+   *
+   *  @tparam B the element type
+   *  @param coll the collection whose elements are to be contained
+   */
   def from[B](coll: collection.IterableOnce[B]^): List[B] = Nil.prependedAll(coll)
 
+  /** Returns a new builder that collects elements into a list, in the order they are
+   *  added, using a `ListBuffer` to append in constant time.
+   *
+   *  @tparam A the element type of the list being built
+   */
   def newBuilder[A]: Builder[A, List[A]] = new ListBuffer()
 
+  /** Returns the empty list, [[Nil]].
+   *
+   *  @tparam A the element type of the list
+   */
   def empty[A]: List[A] = Nil
 
   @transient

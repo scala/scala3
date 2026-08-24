@@ -362,10 +362,16 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
       evaluated
     }
 
+  /** The factory used to build lazy lists, the [[LazyListIterable$ `LazyListIterable`]] companion object. */
   override def iterableFactory: IterableFactory[LazyListIterable] = LazyListIterable
 
   // NOTE: `evaluated; this eq Empty` would be wrong. Deserialization of `Empty` creates a new
   // instance with `null` fields, but the `evaluated` method always returns the canonical `Empty`.
+  /** Returns `true` if this lazy list has no elements.
+   *
+   *  Deciding this evaluates the state of this lazy list, that is, its head and the
+   *  identity of its tail, but no element beyond the first.
+   */
   @inline override def isEmpty: Boolean = evaluated eq Empty
 
   /** @inheritdoc
@@ -374,17 +380,34 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
    */
   override def knownSize: Int = if (knownIsEmpty) 0 else -1
 
+  /** Returns the first element of this lazy list, evaluating the state of this lazy
+   *  list if it has not been evaluated already.
+   *
+   *  @throws NoSuchElementException if this lazy list is empty
+   */
   override def head: A =
     // inlined `isEmpty` to make it clear that `rawHead` below is initialized
     if (evaluated eq Empty) throw new NoSuchElementException("head of empty lazy list")
     else rawHead.asInstanceOf[A]
 
+  /** Returns a lazy list of all elements of this lazy list except the first.
+   *
+   *  Evaluating the state of this lazy list yields the tail itself; the elements of
+   *  the tail are not evaluated.
+   *
+   *  @throws UnsupportedOperationException if this lazy list is empty
+   */
   override def tail: LazyListIterable[A]^{this} =
     // inlined `isEmpty` to make it clear that `rawTail` below is initialized
     if (evaluated eq Empty) throw new UnsupportedOperationException("tail of empty lazy list")
     else rawTail.asInstanceOf[LazyListIterable[A]]
 
   /* Same implementation as of LinearSeq */
+  /** Returns the number of elements in this lazy list.
+   *
+   *  Counting them evaluates all of them, and does not terminate for a lazy list of
+   *  infinite length.
+   */
   override def length: Int = {
     var these: LazyListIterable[A]^{this} = coll
     var len = 0
@@ -398,6 +421,13 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
   /* Same implementation as of LinearSeq */
   // `apply` is defined in terms of `drop`, which is in turn defined in
   //  terms of `tail`.
+  /** Returns the element at index `n`, counting from `0`.
+   *
+   *  Reaching it evaluates the elements up to and including index `n`, and no further.
+   *
+   *  @param n the index of the element to return
+   *  @throws IndexOutOfBoundsException if `n` is negative or this lazy list holds `n` elements or fewer
+   */
   @throws[IndexOutOfBoundsException]
   override def apply(n: Int): A = {
     if (n < 0) throw new IndexOutOfBoundsException(n.toString)
@@ -488,9 +518,17 @@ final class LazyListIterable[+A] private (lazyState: LazyListIterable.EmptyMarke
     else tail.foldLeft(op(z, head))(op)
 
   // LazyListIterable.Empty doesn't use the SerializationProxy
+  /** Replaces this lazy list with a serialization proxy during Java serialization, but
+   *  only if its state is already evaluated and non-empty.
+   *
+   *  An evaluated prefix is written out compactly by the proxy; a lazy list whose state
+   *  is not yet evaluated is serialized as itself, so that its unevaluated thunks are
+   *  stored by standard Java serialization and are not forced by serializing.
+   */
   protected def writeReplace(): AnyRef^{this} =
     if (knownNonEmpty) new SerializationProxy[A](this) else this
 
+  /** The prefix of this lazy list's string representation: `"LazyListIterable"`. */
   override protected def className = "LazyListIterable"
 
   /** The lazy list resulting from the concatenation of this lazy list with the argument lazy list.
@@ -1420,8 +1458,18 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     def unapply[A](xs: LazyListIterable[A]^): Option[(A, LazyListIterable[A]^{xs})] = #::.unapply(xs)
   }
 
+  /** Provides the `#::` and `#:::` operators on a by-name lazy list, so that the right
+   *  operand of a cons is not evaluated when the cons cell is built.
+   *
+   *  @tparam A the element type of the lazy list
+   *  @param l the lazy list to defer, evaluated only when the operator's result is forced
+   */
   implicit def toDeferrer[A](l: => LazyListIterable[A]^): Deferrer[A]^{l} = new Deferrer[A](() => l)
 
+  /** Holds the deferred right operand of a `#::` or `#:::` operation on lazy lists.
+   *
+   *  @tparam A the element type of the deferred lazy list
+   */
   final class Deferrer[A] private[LazyListIterable] (private val l: () => LazyListIterable[A]^) extends AnyVal { self: Deferrer[A]^ =>
     /** Constructs a `LazyListIterable` consisting of a given first element followed by elements
      *  from another `LazyListIterable`.
@@ -1434,16 +1482,41 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
   }
 
   object #:: {
+    /** Matches a non-empty lazy list against its head and tail.
+     *
+     *  Matching evaluates the state of `s` and, if it is non-empty, its head; the
+     *  elements of the tail are left unevaluated.
+     *
+     *  @tparam A the element type of the lazy list
+     *  @param s the lazy list to decompose
+     *  @return `Some((head, tail))` if `s` is non-empty, or `None` if it is empty
+     */
     def unapply[A](s: LazyListIterable[A]^): Option[(A, LazyListIterable[A]^{s})] =
       if (!s.isEmpty) Some((s.head, s.tail)) else None
   }
 
+  /** Returns a lazy list containing the elements of `coll`.
+   *
+   *  If `coll` is already a lazy list it is returned unchanged, and a collection known
+   *  to be empty gives the empty lazy list; otherwise the elements are taken from
+   *  `coll`'s iterator one at a time as the result is forced, the first of them as soon
+   *  as the result's state is evaluated.
+   *
+   *  @tparam A the element type
+   *  @param coll the collection whose elements are to be contained
+   */
   def from[A](coll: collection.IterableOnce[A]^): LazyListIterable[A]^{coll} = coll match {
     case lazyList: LazyListIterable[A]    => lazyList
     case _ if coll.knownSize == 0 => empty[A]
     case _                        => newLL(eagerHeadFromIterator(coll.iterator))
   }
 
+  /** Returns the empty lazy list.
+   *
+   *  All calls return the same instance, which is already evaluated.
+   *
+   *  @tparam A the element type of the lazy list
+   */
   def empty[A]: LazyListIterable[A] = Empty
 
   /** Creates a LazyListIterable with the elements of an iterator followed by a LazyListIterable suffix.
@@ -1469,6 +1542,15 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     else Empty
 
   // TODO This should be (xss: (collection.Iterable[A]^)*)
+  /** Returns a lazy list of the elements of all the given collections, one collection
+   *  after another.
+   *
+   *  $initiallyLazy Each collection is iterated only as the result is forced past its
+   *  predecessors.
+   *
+   *  @tparam A the element type
+   *  @param xss the collections to concatenate
+   */
   override def concat[A](xss: collection.Iterable[A]*): LazyListIterable[A] =
     if (xss.knownSize == 0) empty
     else newLL(eagerHeadConcatIterators(xss.iterator))
@@ -1528,9 +1610,29 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
    */
   def continually[A](elem: => A): LazyListIterable[A]^{elem} = newLL(eagerCons(elem, continually(elem)))
 
+  /** Returns a lazy list of `n` elements, each the result of a separate evaluation of
+   *  `elem`.
+   *
+   *  $initiallyLazy An element is computed only when the lazy list is forced that far,
+   *  so `elem` is evaluated once per element and never more often than that. A
+   *  non-positive `n` gives the empty lazy list.
+   *
+   *  @tparam A the element type
+   *  @param n the number of elements
+   *  @param elem the element expression, evaluated once for each element
+   */
   override def fill[A](n: Int)(elem: => A): LazyListIterable[A]^{elem} =
     if (n > 0) newLL(eagerCons(elem, LazyListIterable.fill(n - 1)(elem))) else empty
 
+  /** Returns a lazy list of `n` elements, the element at index `i` being `f(i)`.
+   *
+   *  $initiallyLazy `f` is applied to an index only when the lazy list is forced that
+   *  far. A non-positive `n` gives the empty lazy list.
+   *
+   *  @tparam A the element type
+   *  @param n the number of elements
+   *  @param f the function computing the element at each index
+   */
   override def tabulate[A](n: Int)(f: Int => A): LazyListIterable[A]^{f} = {
     def at(index: Int): LazyListIterable[A]^{f} =
       if (index < n) newLL(eagerCons(f(index), at(index + 1))) else empty
@@ -1539,6 +1641,17 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
   }
 
   // significantly simpler than the iterator returned by Iterator.unfold
+  /** Returns a lazy list produced by repeatedly applying `f` to a state, starting from
+   *  `init`, for as long as it returns an element and the next state.
+   *
+   *  $initiallyLazy `f` is applied to a state only when the lazy list is forced that
+   *  far; the first `None` it returns ends the lazy list.
+   *
+   *  @tparam A the element type
+   *  @tparam S the type of the state
+   *  @param init the initial state
+   *  @param f the function producing the next element and state, or `None` to stop
+   */
   override def unfold[A, S](init: S)(f: S => Option[(A, S)]): LazyListIterable[A]^{f} =
     newLL {
       f(init) match {
@@ -1558,8 +1671,14 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     (new collection.mutable.ListBuffer[A]).mapResult(from).asInstanceOf // CC cannot figure out correct type
 
   private class LazyIterator[+A](private var lazyList: LazyListIterable[A]^) extends AbstractIterator[A] {
+    /** Returns `true` if the remaining lazy list is non-empty, evaluating its state to find out. */
     override def hasNext: Boolean = !lazyList.isEmpty
 
+    /** Returns the next element and advances to the tail, so that the elements already
+     *  produced can be collected while the iteration goes on.
+     *
+     *  @throws NoSuchElementException if the remaining lazy list is empty
+     */
     override def next(): A =
       if (lazyList.isEmpty) Iterator.empty.next()
       else {
@@ -1575,10 +1694,21 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     private val minLen = size - step max 0
     private var first = true
 
+    /** Returns `true` if another group can be produced: for the first group the lazy
+     *  list only has to be non-empty, for later ones it must hold more than `size - step`
+     *  elements, so that a group overlapping the previous one is not repeated.
+     */
     def hasNext: Boolean =
       if (first) !lazyList.isEmpty
       else lazyList.lengthGt(minLen)
 
+    /** Returns the next group of at most `size` elements and advances by `step` elements.
+     *
+     *  The group is itself a lazy list, so its elements are evaluated only when it is
+     *  forced.
+     *
+     *  @throws NoSuchElementException if no further group can be produced
+     */
     def next(): LazyListIterable[A]^{l} = {
       if (!hasNext) Iterator.empty.next()
       else {
@@ -1593,9 +1723,38 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
   private final class WithFilter[A] private[LazyListIterable](lazyList: LazyListIterable[A]^, p: A => Boolean)
     extends collection.WithFilter[A, LazyListIterable] {
     @untrackedCaptures private val filtered = lazyList.filter(p)
+    /** Returns a lazy list of the results of applying `f` to the elements that satisfy
+     *  the filter's predicate.
+     *
+     *  $preservesLaziness
+     *
+     *  @tparam B the element type of the resulting lazy list
+     *  @param f the function to apply to each retained element
+     */
     def map[B](f: A => B): LazyListIterable[B]^{this, f} = filtered.map(f)
+    /** Returns a lazy list of the concatenated results of applying `f` to the elements
+     *  that satisfy the filter's predicate.
+     *
+     *  $preservesLaziness
+     *
+     *  @tparam B the element type of the resulting lazy list
+     *  @param f the function to apply to each retained element
+     */
     def flatMap[B](f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f} = filtered.flatMap(f)
+    /** Applies `f` to each element that satisfies the filter's predicate.
+     *
+     *  This evaluates all elements of the underlying lazy list.
+     *
+     *  @tparam U the result type of `f`, used only for its side effects
+     *  @param f the function to apply to each retained element
+     */
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
+    /** Returns a `WithFilter` that also requires `q`, restricting the elements further.
+     *
+     *  $preservesLaziness
+     *
+     *  @param q the additional predicate an element must satisfy
+     */
     def withFilter(q: A => Boolean): collection.WithFilter[A, LazyListIterable]^{this, q} = new WithFilter(filtered, q)
   }
 
@@ -1663,6 +1822,7 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
    */
   @SerialVersionUID(4L)
   final class SerializationProxy[A](of: LazyListIterable[A]^) extends Serializable {
+    /** The lazy list this proxy stands for, restored from the stream when the proxy is read back. */
     @transient protected var coll: LazyListIterable[A]^{this} = of
 
     private def writeObject(out: ObjectOutputStream): Unit = {

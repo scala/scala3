@@ -28,11 +28,20 @@ trait Iterable[+A] extends collection.Iterable[A]
                       with collection.IterableOps[A, Iterable, Iterable[A]]
                       with IterableFactoryDefaults[A, Iterable] {
 
+  /** The factory used to build immutable collections, the [[Iterable$ `Iterable`]] companion object, which delegates to [[List]]. */
   override def iterableFactory: IterableFactory[Iterable] = Iterable
 }
 
 @SerialVersionUID(3L)
 object Iterable extends IterableFactory.Delegate[Iterable](List) {
+  /** Returns an immutable collection containing the elements of `it`.
+   *
+   *  If `it` is already an immutable `Iterable` it is returned unchanged; otherwise
+   *  its elements are copied into a new [[List]].
+   *
+   *  @tparam E the element type
+   *  @param it the collection whose elements are to be contained
+   */
   override def from[E](it: IterableOnce[E]^): Iterable[E]^{it} = it match {
     case iterable: Iterable[E @unchecked] => iterable
     case _ => super.from(it)

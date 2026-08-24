@@ -38,16 +38,43 @@ sealed abstract class BitSet
     with collection.BitSetOps[BitSet]
     with Serializable {
 
+  /** Returns this bitset viewed as an unsorted `Set[Int]`.
+   *
+   *  No copy is made: the result is this same bitset, so its iteration order remains
+   *  increasing.
+   */
   override def unsorted: Set[Int] = this
 
+  /** Builds a new immutable bitset containing the elements of the given collection.
+   *
+   *  @param coll the collection of non-negative integers to include
+   *  @return a new immutable bitset containing the elements of `coll`
+   */
   override protected def fromSpecific(coll: IterableOnce[Int]^): BitSet = bitSetFactory.fromSpecific(coll)
+  /** Returns a new builder that accumulates `Int` elements into an immutable bitset. */
   override protected def newSpecificBuilder: Builder[Int, BitSet] = bitSetFactory.newBuilder
+  /** Returns the empty immutable bitset. */
   override def empty: BitSet = bitSetFactory.empty
 
+  /** The factory used to build immutable bitsets, the [[BitSet$ `BitSet`]] companion object. */
   def bitSetFactory: BitSet.type = BitSet
 
+  /** Creates an immutable bitset backed directly by the given array, without copying.
+   *
+   *  @param elems the array of `Long` words representing the bits; the caller must not
+   *               modify the array after this call
+   *  @return a bitset holding the bits of `elems`
+   */
   protected[collection] def fromBitMaskNoCopy(elems: Array[Long]): BitSet = BitSet.fromBitMaskNoCopy(elems)
 
+  /** Returns a bitset containing `elem` and all elements of this bitset. Returns this
+   *  bitset itself if it already contains `elem`; otherwise only the word holding
+   *  `elem` differs, and the underlying storage grows if `elem` lies beyond it.
+   *
+   *  @param elem the element to add; must be non-negative
+   *  @return a bitset containing all elements of this bitset plus `elem`
+   *  @throws IllegalArgumentException if `elem` is negative
+   */
   def incl(elem: Int): BitSet = {
     require(elem >= 0, "bitset element must be >= 0")
     if (contains(elem)) this
@@ -57,6 +84,14 @@ sealed abstract class BitSet
     }
   }
 
+  /** Returns a bitset containing all elements of this bitset except `elem`. Returns this
+   *  bitset itself if it does not contain `elem`; otherwise only the word holding `elem`
+   *  differs.
+   *
+   *  @param elem the element to remove; must be non-negative
+   *  @return a bitset containing all elements of this bitset except `elem`
+   *  @throws IllegalArgumentException if `elem` is negative
+   */
   def excl(elem: Int): BitSet = {
     require(elem >= 0, "bitset element must be >= 0")
     if (contains(elem)) {
@@ -73,22 +108,81 @@ sealed abstract class BitSet
    */
   protected def updateWord(idx: Int, w: Long): BitSet
 
+  /** Builds a new bitset by applying a function to all elements of this bitset.
+   *
+   *  @param f the function to apply to each element; must return non-negative values
+   *  @return a new bitset containing the results of applying `f` to each element
+   *  @throws IllegalArgumentException if `f` returns a negative value for some element
+   */
   override def map(f: Int => Int): BitSet = strictOptimizedMap(newSpecificBuilder, f)
+  /** Builds a new sorted set by applying a function to all elements of this bitset.
+   *
+   *  @tparam B the element type of the returned set
+   *  @param f the function to apply to each element
+   *  @param ev the ordering used to sort the resulting elements
+   *  @return a new sorted set containing the results of applying `f` to each element
+   */
   override def map[B](f: Int => B)(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
     super[StrictOptimizedSortedSetOps].map(f)
 
+  /** Builds a new bitset by applying a function to all elements of this bitset and
+   *  concatenating the results.
+   *
+   *  @param f the function to apply to each element; the collections it returns must
+   *           contain only non-negative values
+   *  @return a new bitset containing all elements of the collections returned by `f`
+   *  @throws IllegalArgumentException if a collection returned by `f` contains a negative value
+   */
   override def flatMap(f: Int => IterableOnce[Int]^): BitSet = strictOptimizedFlatMap(newSpecificBuilder, f)
+  /** Builds a new sorted set by applying a function to all elements of this bitset and
+   *  concatenating the results.
+   *
+   *  @tparam B the element type of the returned set
+   *  @param f the function to apply to each element
+   *  @param ev the ordering used to sort the resulting elements
+   *  @return a new sorted set containing all elements of the collections returned by `f`
+   */
   override def flatMap[B](f: Int => IterableOnce[B]^)(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
     super[StrictOptimizedSortedSetOps].flatMap(f)
 
+  /** Builds a new bitset by applying a partial function to all elements of this bitset
+   *  on which the function is defined.
+   *
+   *  @param pf the partial function to apply to each element; must return non-negative
+   *            values where defined
+   *  @return a new bitset containing the results of applying `pf` to each element on
+   *          which it is defined
+   *  @throws IllegalArgumentException if `pf` returns a negative value for some element
+   */
   override def collect(pf: PartialFunction[Int, Int]^): BitSet = strictOptimizedCollect(newSpecificBuilder, pf)
+  /** Builds a new sorted set by applying a partial function to all elements of this
+   *  bitset on which the function is defined.
+   *
+   *  @tparam B the element type of the returned set
+   *  @param pf the partial function to apply to each element
+   *  @param ev the ordering used to sort the resulting elements
+   *  @return a new sorted set containing the results of applying `pf` to each element on
+   *          which it is defined
+   */
   override def collect[B](pf: scala.PartialFunction[Int, B]^)(implicit @implicitNotFound(collection.BitSet.ordMsg) ev: Ordering[B]): SortedSet[B] =
     super[StrictOptimizedSortedSetOps].collect(pf)
 
   // necessary for disambiguation
+  /** Returns a sorted set of pairs formed by zipping the elements of this bitset, in
+   *  increasing order, with the elements of `that`.
+   *
+   *  If one of the two collections is longer than the other, its remaining elements are
+   *  dropped.
+   *
+   *  @tparam B the element type of `that`
+   *  @param that the collection providing the second half of each result pair
+   *  @param ev the ordering used to sort the resulting pairs
+   *  @return a new sorted set of pairs
+   */
   override def zip[B](that: scala.IterableOnce[B]^)(implicit @implicitNotFound(collection.BitSet.zipOrdMsg) ev: Ordering[(Int, B)]): SortedSet[(Int, B)] =
     super.zip(that)
 
+  /** Replaces this bitset with a serialization proxy that stores its words during Java serialization. */
   protected def writeReplace(): AnyRef = new BitSet.SerializationProxy(this)
 }
 
@@ -100,14 +194,30 @@ sealed abstract class BitSet
 @SerialVersionUID(3L)
 object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
+  /** Returns an immutable bitset containing the elements of `it`.
+   *
+   *  If `it` is already an immutable bitset it is returned unchanged; otherwise its
+   *  elements are collected into a new one.
+   *
+   *  @param it the collection of non-negative integers to include
+   *  @throws IllegalArgumentException if `it` contains a negative value
+   */
   def fromSpecific(it: scala.collection.IterableOnce[Int]^): BitSet =
     it match {
       case bs: BitSet => bs
       case _          => (newBuilder ++= it).result()
     }
 
+  /** The empty immutable bitset, a single all-zero word shared by every call to `empty`. */
   final val empty: BitSet = new BitSet1(0L)
 
+  /** Returns a new builder that accumulates `Int` elements into an immutable bitset.
+   *
+   *  The elements are collected in a mutable bitset, whose word array becomes the
+   *  backing array of the result without being copied.
+   *
+   *  @return a builder for immutable bitsets
+   */
   def newBuilder: Builder[Int, BitSet] =
     mutable.BitSet.newBuilder.mapResult(bs => fromBitMaskNoCopy(bs.elems))
 
@@ -143,16 +253,44 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
     else new BitSetN(elems)
   }
 
+  /** An immutable bitset holding the elements `0` to `63` in a single word.
+   *
+   *  @param elems the word holding the bits of this bitset
+   */
   @deprecated("Implementation classes of BitSet should not be accessed directly", "2.13.0")
   class BitSet1(val elems: Long) extends BitSet {
+    /** Returns `1`; this bitset is stored in one word. */
     protected[collection] def nwords = 1
+    /** Returns the word at index `idx`, which is this bitset's only word for `idx == 0`
+     *  and `0L` beyond it.
+     *
+     *  @param idx the word index
+     */
     protected[collection] def word(idx: Int) = if (idx == 0) elems else 0L
+    /** Returns a bitset that agrees with this one except that the word at `idx` is `w`.
+     *
+     *  The representation widens to two words, or to an array of words, only as far as
+     *  the non-zero words of the result require.
+     *
+     *  @param idx the index of the word to update
+     *  @param w the new value for the word at index `idx`
+     *  @return a bitset with the word at `idx` set to `w`
+     */
     protected[collection] def updateWord(idx: Int, w: Long): BitSet =
       if (idx == 0) new BitSet1(w)
       else if (idx == 1) createSmall(elems, w)
       else this.fromBitMaskNoCopy(updateArray(Array(elems), idx, w))
 
 
+    /** Returns a bitset containing the elements of this bitset that are not in `other`.
+     *
+     *  When `other` is itself a bitset the difference is a single bitwise operation on
+     *  the words; any other set falls back to the inherited element-by-element
+     *  implementation.
+     *
+     *  @param other the set of elements to remove
+     *  @return a bitset with the elements of `other` removed
+     */
     override def diff(other: collection.Set[Int]): BitSet = other match {
       case bs: collection.BitSet => bs.nwords match {
         case 0 => this
@@ -163,22 +301,61 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
       case _ => super.diff(other)
     }
 
+    /** Returns a bitset of the elements of this bitset that satisfy `pred`, or that fail
+     *  to satisfy it when `isFlipped` is `true`.
+     *
+     *  `pred` is applied to each element present, and the result is narrowed to the
+     *  empty bitset when no element is left.
+     *
+     *  @param pred the predicate used to test elements
+     *  @param isFlipped if `true`, keeps the elements that do not satisfy `pred`
+     *  @return a bitset of the elements that pass the test
+     */
     override def filterImpl(pred: Int => Boolean, isFlipped: Boolean): BitSet = {
       val _elems = BitSetOps.computeWordForFilter(pred, isFlipped, elems, 0)
       if (_elems == 0L) this.empty else new BitSet1(_elems)
     }
   }
 
+  /** An immutable bitset holding the elements `0` to `127` in two words.
+   *
+   *  @param elems0 the word holding the bits of the elements `0` to `63`
+   *  @param elems1 the word holding the bits of the elements `64` to `127`
+   */
   @deprecated("Implementation classes of BitSet should not be accessed directly", "2.13.0")
   class BitSet2(val elems0: Long, val elems1: Long) extends BitSet {
+    /** Returns `2`; this bitset is stored in two words. */
     protected[collection] def nwords = 2
+    /** Returns the word at index `idx`, which is one of this bitset's two words for
+     *  `idx == 0` or `idx == 1`, and `0L` beyond them.
+     *
+     *  @param idx the word index
+     */
     protected[collection] def word(idx: Int) = if (idx == 0) elems0 else if (idx == 1) elems1 else 0L
+    /** Returns a bitset that agrees with this one except that the word at `idx` is `w`,
+     *  narrowing to a single word when the second word becomes zero and widening to an
+     *  array of words when `idx` lies beyond the two words held here.
+     *
+     *  @param idx the index of the word to update
+     *  @param w the new value for the word at index `idx`
+     *  @return a bitset with the word at `idx` set to `w`
+     */
     protected[collection] def updateWord(idx: Int, w: Long): BitSet =
       if (idx == 0) new BitSet2(w, elems1)
       else if (idx == 1) createSmall(elems0, w)
       else this.fromBitMaskNoCopy(updateArray(Array(elems0, elems1), idx, w))
 
 
+    /** Returns a bitset containing the elements of this bitset that are not in `other`.
+     *
+     *  When `other` is itself a bitset the difference is a bitwise operation on the
+     *  words, and the result is narrowed to one word or to the empty bitset when the
+     *  higher words become zero; any other set falls back to the inherited
+     *  element-by-element implementation.
+     *
+     *  @param other the set of elements to remove
+     *  @return a bitset with the elements of `other` removed
+     */
     override def diff(other: collection.Set[Int]): BitSet = other match {
       case bs: collection.BitSet => bs.nwords match {
         case 0 => this
@@ -201,6 +378,16 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
       case _ => super.diff(other)
     }
 
+    /** Returns a bitset of the elements of this bitset that satisfy `pred`, or that fail
+     *  to satisfy it when `isFlipped` is `true`.
+     *
+     *  `pred` is applied to each element present, and the result is narrowed to one word
+     *  or to the empty bitset when the higher words become zero.
+     *
+     *  @param pred the predicate used to test elements
+     *  @param isFlipped if `true`, keeps the elements that do not satisfy `pred`
+     *  @return a bitset of the elements that pass the test
+     */
     override def filterImpl(pred: Int => Boolean, isFlipped: Boolean): BitSet = {
       val _elems0 = BitSetOps.computeWordForFilter(pred, isFlipped, elems0, 0)
       val _elems1 = BitSetOps.computeWordForFilter(pred, isFlipped, elems1, 1)
@@ -215,14 +402,42 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
     }
   }
 
+  /** An immutable bitset of any size, holding its bits in an array of words.
+   *
+   *  @param elems the array of `Long` words holding the bits of this bitset; it is used
+   *               as is, so it must not be modified afterwards
+   */
   @deprecated("Implementation classes of BitSet should not be accessed directly", "2.13.0")
   class BitSetN(val elems: Array[Long]) extends BitSet {
+    /** Returns the number of words this bitset is stored in. */
     protected[collection] def nwords = elems.length
 
+    /** Returns the word at index `idx`, or `0L` if `idx` is beyond the words held here.
+     *
+     *  @param idx the word index
+     */
     protected[collection] def word(idx: Int) = if (idx < nwords) elems(idx) else 0L
 
+    /** Returns a bitset that agrees with this one except that the word at `idx` is `w`,
+     *  growing the array if `idx` lies beyond it and narrowing the representation when
+     *  the higher words become zero.
+     *
+     *  @param idx the index of the word to update
+     *  @param w the new value for the word at index `idx`
+     *  @return a bitset with the word at `idx` set to `w`
+     */
     protected[collection] def updateWord(idx: Int, w: Long): BitSet = this.fromBitMaskNoCopy(updateArray(elems, idx, w))
 
+    /** Returns a bitset containing the elements of this bitset that are not in `that`.
+     *
+     *  When `that` is itself a bitset the difference is computed word by word, this
+     *  bitset itself is returned if no word changes, and the result is shrunk to the
+     *  words it actually needs; any other set falls back to the inherited
+     *  element-by-element implementation.
+     *
+     *  @param that the set of elements to remove
+     *  @return a bitset with the elements of `that` removed
+     */
     override def diff(that: collection.Set[Int]): BitSet = that match {
       case bs: collection.BitSet =>
         /*
@@ -323,6 +538,16 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
     }
 
 
+    /** Returns a bitset of the elements of this bitset that satisfy `pred`, or that fail
+     *  to satisfy it when `isFlipped` is `true`.
+     *
+     *  `pred` is applied to each element present, this bitset itself is returned if no
+     *  word changes, and the result is shrunk to the words it actually needs.
+     *
+     *  @param pred the predicate used to test elements
+     *  @param isFlipped if `true`, keeps the elements that do not satisfy `pred`
+     *  @return a bitset of the elements that pass the test
+     */
     override def filterImpl(pred: Int => Boolean, isFlipped: Boolean): BitSet = {
       // here, we may have opportunity to shrink the size of the array
       // so, track the highest index which is non-zero. That ( + 1 ) will be our new array length
@@ -378,11 +603,17 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
       }
     }
 
+    /** Returns the words of this bitset as a fresh array, so that changing it does not
+     *  affect this bitset.
+     */
     override def toBitMask: Array[Long] = elems.clone()
   }
 
   @SerialVersionUID(3L)
   private final class SerializationProxy(coll: BitSet) extends scala.collection.BitSet.SerializationProxy(coll) {
+    /** Returns the bitset rebuilt from the words read back from the stream, replacing
+     *  this proxy.
+     */
     protected def readResolve(): Any = BitSet.fromBitMaskNoCopy(elems)
   }
 }
