@@ -48,9 +48,10 @@ object LazyVals {
   /* ------------- Start of public API ------------- */
 
   // This trait extends Serializable to fix #16806 that caused a race condition
-  /** A control state stored in the field of a lazy val while the val is not
-   *  yet bound to its computed value: [[Evaluating]], a [[Waiting]] latch,
-   *  or [[NullValue]].
+  /** A state stored in the field of a lazy val other than an ordinary computed value:
+   *  [[Evaluating]] or a [[Waiting]] latch while the val is not yet bound, and
+   *  [[NullValue]], which is the permanent sentinel for a lazy val that evaluated to
+   *  `null`.
    *
    *  Extends `Serializable` so that an object can be serialized while one of
    *  its lazy vals holds a control state (issue #16806).

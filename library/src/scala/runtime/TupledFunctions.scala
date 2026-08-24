@@ -21,7 +21,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 0
    *  @tparam G the tupled form of `F`, mapping `EmptyTuple` to `F`'s result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction0[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => ((args: EmptyTuple) => f.asInstanceOf[() => Any].apply()).asInstanceOf[G],
@@ -41,7 +40,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 1
    *  @tparam G the tupled form of `F`, mapping a `Tuple1` of `F`'s argument to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction1[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => ((args: Tuple1[Any]) => f.asInstanceOf[Any => Any].apply(args._1)).asInstanceOf[G],
@@ -61,7 +59,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 2
    *  @tparam G the tupled form of `F`, mapping a `Tuple2` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction2[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function2[?, ?, ?]].tupled.asInstanceOf[G],
@@ -81,7 +78,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 3
    *  @tparam G the tupled form of `F`, mapping a `Tuple3` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction3[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function3[?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -101,7 +97,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 4
    *  @tparam G the tupled form of `F`, mapping a `Tuple4` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction4[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function4[?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -121,7 +116,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 5
    *  @tparam G the tupled form of `F`, mapping a `Tuple5` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction5[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function5[?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -141,7 +135,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 6
    *  @tparam G the tupled form of `F`, mapping a `Tuple6` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction6[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function6[?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -163,7 +156,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 7
    *  @tparam G the tupled form of `F`, mapping a `Tuple7` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction7[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function7[?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -185,7 +177,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 8
    *  @tparam G the tupled form of `F`, mapping a `Tuple8` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction8[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function8[?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -207,7 +198,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 9
    *  @tparam G the tupled form of `F`, mapping a `Tuple9` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction9[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function9[?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -229,7 +219,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 10
    *  @tparam G the tupled form of `F`, mapping a `Tuple10` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction10[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function10[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -251,7 +240,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 11
    *  @tparam G the tupled form of `F`, mapping a `Tuple11` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction11[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function11[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -273,7 +261,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 12
    *  @tparam G the tupled form of `F`, mapping a `Tuple12` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction12[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function12[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -295,7 +282,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 13
    *  @tparam G the tupled form of `F`, mapping a `Tuple13` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction13[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function13[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -317,7 +303,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 14
    *  @tparam G the tupled form of `F`, mapping a `Tuple14` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction14[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function14[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -339,7 +324,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 15
    *  @tparam G the tupled form of `F`, mapping a `Tuple15` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction15[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function15[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -361,7 +345,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 16
    *  @tparam G the tupled form of `F`, mapping a `Tuple16` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction16[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function16[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -383,7 +366,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 17
    *  @tparam G the tupled form of `F`, mapping a `Tuple17` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction17[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function17[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -405,7 +387,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 18
    *  @tparam G the tupled form of `F`, mapping a `Tuple18` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction18[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function18[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -427,7 +408,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 19
    *  @tparam G the tupled form of `F`, mapping a `Tuple19` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction19[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function19[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -449,7 +429,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 20
    *  @tparam G the tupled form of `F`, mapping a `Tuple20` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction20[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function20[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -471,7 +450,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 21
    *  @tparam G the tupled form of `F`, mapping a `Tuple21` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction21[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function21[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -493,7 +471,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity 22
    *  @tparam G the tupled form of `F`, mapping a `Tuple22` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunction22[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => f.asInstanceOf[Function22[?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?]].tupled.asInstanceOf[G],
@@ -521,7 +498,6 @@ object TupledFunctions {
    *
    *  @tparam F the function type of arity greater than 22, represented at runtime by [[FunctionXXL]]
    *  @tparam G the tupled form of `F`, mapping a `TupleXXL` of `F`'s arguments to its result
-   *  @return a `TupledFunction` whose `tupled` converts an `F` into a `G` and whose `untupled` converts a `G` into an `F`
    */
   def tupledFunctionXXL[F, G]: TupledFunction[F, G] = TupledFunction[F, G](
     tupledImpl = (f: F) => ((args: TupleXXL) => f.asInstanceOf[FunctionXXL].apply(args.elems)).asInstanceOf[G],

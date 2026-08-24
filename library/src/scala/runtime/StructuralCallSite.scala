@@ -52,12 +52,16 @@ final class StructuralCallSite private (callType: MethodType) {
    *  per-receiver entries; see [[MethodCache.find]].
    *
    *  @param receiver the runtime `Class` of the receiver object
+   *  @throws NoSuchMethodException from the reflective lookup a mega-morphic cache
+   *          performs, in place of returning `null`
    */
   def find(receiver: Class[?]): Method | Null = get.find(receiver)
 
   /** Records that `m` is the method to call for receiver class `receiver`,
-   *  replacing this call site's cache with the extended one, and returns
-   *  `m`.
+   *  replacing this call site's cache with the extended one, and returns `m`.
+   *
+   *  Once the cache has turned mega-morphic it records nothing per receiver and
+   *  returns itself, so the call site's cache is then left as it was.
    *
    *  @param receiver the runtime `Class` of the receiver object
    *  @param m the method resolved for `receiver`

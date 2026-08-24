@@ -50,7 +50,12 @@ sealed abstract class VarArgsBuilder[T]:
    *  @return this builder
    */
   def addArray(elems: Array[T]): this.type
-  /** Returns a sequence of the elements that were added to this builder, in order. */
+  /** Returns a sequence over the builder's whole array, in order.
+   *
+   *  The array is the fixed length the factory was given and no count of added elements is
+   *  kept, so calling this before exactly that many have been added exposes the array's
+   *  default values.
+   */
   def result(): Seq[T]
 
 object VarArgsBuilder:
@@ -63,7 +68,8 @@ object VarArgsBuilder:
    *  `ArraySeq[T]`, without copying.
    *
    *  @tparam T the element type
-   *  @param n the exact number of elements that will be added to the builder
+   *  @param n the length of the array to allocate; exactly this many elements are expected
+   *           to be added, which is not enforced
    */
   def generic[T](n: Int): VarArgsBuilder[T] = new VarArgsBuilder[T]:
     private val xs = new Array[AnyRef](n)
@@ -91,7 +97,8 @@ object VarArgsBuilder:
    *  without copying.
    *
    *  @tparam T the element type, a reference type
-   *  @param n the exact number of elements that will be added to the builder
+   *  @param n the length of the array to allocate; exactly this many elements are expected
+   *           to be added, which is not enforced
    */
   def ofRef[T <: AnyRef](n: Int): VarArgsBuilder[T] = new VarArgsBuilder[T]:
     private val xs = new Array[AnyRef](n)
@@ -117,7 +124,8 @@ object VarArgsBuilder:
    *  The builder stores elements in an `Array[Byte]` of length `n`; `result()`
    *  wraps that array in an `ArraySeq.ofByte`, without copying.
    *
-   *  @param n the exact number of elements that will be added to the builder
+   *  @param n the length of the array to allocate; exactly this many elements are expected
+   *           to be added, which is not enforced
    */
   def ofByte(n: Int): VarArgsBuilder[Byte] = new VarArgsBuilder[Byte]:
     private val xs = new Array[Byte](n)
@@ -143,7 +151,8 @@ object VarArgsBuilder:
    *  The builder stores elements in an `Array[Short]` of length `n`; `result()`
    *  wraps that array in an `ArraySeq.ofShort`, without copying.
    *
-   *  @param n the exact number of elements that will be added to the builder
+   *  @param n the length of the array to allocate; exactly this many elements are expected
+   *           to be added, which is not enforced
    */
   def ofShort(n: Int): VarArgsBuilder[Short] = new VarArgsBuilder[Short]:
     private val xs = new Array[Short](n)
@@ -169,7 +178,8 @@ object VarArgsBuilder:
    *  The builder stores elements in an `Array[Char]` of length `n`; `result()`
    *  wraps that array in an `ArraySeq.ofChar`, without copying.
    *
-   *  @param n the exact number of elements that will be added to the builder
+   *  @param n the length of the array to allocate; exactly this many elements are expected
+   *           to be added, which is not enforced
    */
   def ofChar(n: Int): VarArgsBuilder[Char] = new VarArgsBuilder[Char]:
     private val xs = new Array[Char](n)
@@ -195,7 +205,8 @@ object VarArgsBuilder:
    *  The builder stores elements in an `Array[Int]` of length `n`; `result()`
    *  wraps that array in an `ArraySeq.ofInt`, without copying.
    *
-   *  @param n the exact number of elements that will be added to the builder
+   *  @param n the length of the array to allocate; exactly this many elements are expected
+   *           to be added, which is not enforced
    */
   def ofInt(n: Int): VarArgsBuilder[Int] = new VarArgsBuilder[Int]:
     private val xs = new Array[Int](n)
@@ -221,7 +232,8 @@ object VarArgsBuilder:
    *  The builder stores elements in an `Array[Long]` of length `n`; `result()`
    *  wraps that array in an `ArraySeq.ofLong`, without copying.
    *
-   *  @param n the exact number of elements that will be added to the builder
+   *  @param n the length of the array to allocate; exactly this many elements are expected
+   *           to be added, which is not enforced
    */
   def ofLong(n: Int): VarArgsBuilder[Long] = new VarArgsBuilder[Long]:
     private val xs = new Array[Long](n)
@@ -247,7 +259,8 @@ object VarArgsBuilder:
    *  The builder stores elements in an `Array[Float]` of length `n`; `result()`
    *  wraps that array in an `ArraySeq.ofFloat`, without copying.
    *
-   *  @param n the exact number of elements that will be added to the builder
+   *  @param n the length of the array to allocate; exactly this many elements are expected
+   *           to be added, which is not enforced
    */
   def ofFloat(n: Int): VarArgsBuilder[Float] = new VarArgsBuilder[Float]:
     private val xs = new Array[Float](n)
@@ -273,7 +286,8 @@ object VarArgsBuilder:
    *  The builder stores elements in an `Array[Double]` of length `n`;
    *  `result()` wraps that array in an `ArraySeq.ofDouble`, without copying.
    *
-   *  @param n the exact number of elements that will be added to the builder
+   *  @param n the length of the array to allocate; exactly this many elements are expected
+   *           to be added, which is not enforced
    */
   def ofDouble(n: Int): VarArgsBuilder[Double] = new VarArgsBuilder[Double]:
     private val xs = new Array[Double](n)
@@ -299,7 +313,8 @@ object VarArgsBuilder:
    *  The builder stores elements in an `Array[Boolean]` of length `n`;
    *  `result()` wraps that array in an `ArraySeq.ofBoolean`, without copying.
    *
-   *  @param n the exact number of elements that will be added to the builder
+   *  @param n the length of the array to allocate; exactly this many elements are expected
+   *           to be added, which is not enforced
    */
   def ofBoolean(n: Int): VarArgsBuilder[Boolean] = new VarArgsBuilder[Boolean]:
     private val xs = new Array[Boolean](n)
@@ -325,7 +340,8 @@ object VarArgsBuilder:
    *  The builder stores elements in an `Array[Unit]` of length `n`; `result()`
    *  wraps that array in an `ArraySeq.ofUnit`, without copying.
    *
-   *  @param n the exact number of elements that will be added to the builder
+   *  @param n the length of the array to allocate; exactly this many elements are expected
+   *           to be added, which is not enforced
    */
   def ofUnit(n: Int): VarArgsBuilder[Unit] = new VarArgsBuilder[Unit]:
     private val xs = new Array[Unit](n)

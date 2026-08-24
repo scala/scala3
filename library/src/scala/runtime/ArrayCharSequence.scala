@@ -43,8 +43,10 @@ final class ArrayCharSequence(val xs: Array[Char], start: Int, end: Int) extends
    *
    *  @param index the index of the character to return, from `0` to `length - 1`
    *  @throws ArrayIndexOutOfBoundsException if `index` is negative or not less
-   *          than `length` (the exception message reports the bounds of the
-   *          underlying array, not of this sequence)
+   *          than `length`, or if the slice this sequence was constructed with
+   *          falls outside the array, since those bounds are not validated (the
+   *          exception message reports the bounds of the underlying array, not
+   *          of this sequence)
    */
   def charAt(index: Int): Char = {
     if (0 <= index && index < length)
@@ -78,8 +80,10 @@ final class ArrayCharSequence(val xs: Array[Char], start: Int, end: Int) extends
    *
    *  The bounds are clamped to the underlying array before copying: a
    *  negative `start` is treated as `0` and the end is capped at the array's
-   *  length, so a sequence constructed with out-of-range bounds yields its
-   *  in-range characters (or the empty string) rather than throwing.
+   *  length, so a sequence constructed with out-of-range bounds yields
+   *  characters rather than throwing. The count is taken from the declared
+   *  bounds, so a negative `start` shifts the window: `start = -2, end = 5`
+   *  copies seven characters from index `0`, not the five in range.
    */
   override def toString() = {
     val start = math.max(this.start, 0)

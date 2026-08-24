@@ -44,8 +44,9 @@ private[runtime] object ModuleSerializationProxy {
  *  method that serializes an instance of this class instead of the object
  *  itself. On deserialization, `readResolve` replaces the proxy with the
  *  object's unique instance, obtained reflectively from the `MODULE$` field
- *  of `moduleClass` (and cached per class), so deserialization yields the
- *  singleton rather than a fresh copy.
+ *  of `moduleClass`, so deserialization yields the singleton rather than a
+ *  fresh copy. The lookup is cached per class where `java.lang.ClassValue` is
+ *  available, and repeated on each deserialization where it is not.
  *
  *  @param moduleClass the class of the object whose instance the proxy
  *                     resolves to

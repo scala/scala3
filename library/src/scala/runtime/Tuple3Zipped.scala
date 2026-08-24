@@ -41,7 +41,6 @@ object ZippedIterable3 {
    *  @tparam El2 the second element type of each triple
    *  @tparam El3 the third element type of each triple
    *  @param zz the zipped iterable to convert
-   *  @return an `Iterable` producing the element triples of `zz`
    */
   implicit def zippedIterable3ToIterable[El1, El2, El3](zz: ZippedIterable3[El1, El2, El3]): Iterable[(El1, El2, El3)] = {
     new scala.collection.AbstractIterable[(El1, El2, El3)] {

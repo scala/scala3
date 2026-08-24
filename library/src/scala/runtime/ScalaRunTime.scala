@@ -31,7 +31,9 @@ object ScalaRunTime {
   /** Tests whether `x` is an array with at least `atLevel` dimensions.
    *
    *  @param x the value to test; `null` yields `false`
-   *  @param atLevel the minimum number of array dimensions required; the default, 1, accepts any array
+   *  @param atLevel the number of array dimensions required; a value below 1 never
+   *                 holds, since the check descends one component type per level and
+   *                 fails once it reaches a non-array; the default, 1, accepts any array
    *  @return `true` if `x` is a non-null array of at least `atLevel` dimensions, `false` otherwise
    */
   def isArray(x: Any, atLevel: Int = 1): Boolean =
@@ -289,7 +291,8 @@ object ScalaRunTime {
    *  back to `String.valueOf(arg)`.
    *
    *  @param arg the value to stringify
-   *  @param maxElements the maximum number of elements rendered per collection or array
+   *  @param maxElements the maximum number of elements rendered per collection or array;
+   *                     a value below 1 renders none of them
    */
   def stringOf(arg: Any, maxElements: Int): String = {
     def packageOf(x: AnyRef) = x.getClass.getPackage match {

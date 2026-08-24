@@ -41,7 +41,8 @@ object Tuples {
    *
    *  Accepts any `Product`, not just tuples. [[toArray]] uses it for `Tuple1`
    *  to `Tuple22`, and the compiler calls it directly when optimizing
-   *  `Tuple.toArray` on tuples statically known to have at most 22 elements.
+   *  `Tuple.toArray` on tuples statically known to have between 1 and 22 elements; the
+   *  empty tuple is handled separately, with `Array.emptyObjectArray`.
    *
    *  @param self the product whose elements are copied
    *  @return a fresh array containing `self.productElement(0)` to `self.productElement(self.productArity - 1)`

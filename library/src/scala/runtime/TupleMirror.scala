@@ -19,7 +19,6 @@ final class TupleMirror(arity: Int) extends scala.deriving.Mirror.Product with S
    *  than copied.
    *
    *  @param product the product supplying the elements of the resulting tuple
-   *  @return a tuple containing the elements of `product`, in order
    *  @throws IllegalArgumentException if `product.productArity` differs from the
    *          arity this mirror was constructed with
    */

@@ -42,7 +42,6 @@ object ZippedIterable2 {
    *  @tparam El1 the first element type of each pair
    *  @tparam El2 the second element type of each pair
    *  @param zz the zipped iterable to convert
-   *  @return an `Iterable` producing the element pairs of `zz`
    */
   implicit def zippedIterable2ToIterable[El1, El2](zz: ZippedIterable2[El1, El2]): Iterable[(El1, El2)] = {
     new scala.collection.AbstractIterable[(El1, El2)] {

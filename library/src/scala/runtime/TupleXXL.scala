@@ -41,7 +41,6 @@ final class TupleXXL private (es: IArray[Object]) extends Product {
   /** Returns whether `that` can be compared for equality against this tuple.
    *
    *  @param that the value to test
-   *  @return `true` if `that` is a `TupleXXL` with the same arity as this tuple, `false` otherwise
    */
   override def canEqual(that: Any): Boolean = that match {
     case that: TupleXXL => that.productArity == this.productArity
@@ -56,7 +55,6 @@ final class TupleXXL private (es: IArray[Object]) extends Product {
    *  a `TupleXXL` is never equal to this tuple.
    *
    *  @param that the value to compare against
-   *  @return `true` if `that` is a `TupleXXL` equal to this tuple, `false` otherwise
    */
   override def equals(that: Any): Boolean = that match {
     case that: TupleXXL =>
@@ -95,19 +93,16 @@ object TupleXXL {
    *  The iterator is fully consumed into a fresh array.
    *
    *  @param elems the iterator supplying the elements; must produce more than 22 values (asserted)
-   *  @return a `TupleXXL` with the produced values as its elements
    */
   def fromIterator(elems: Iterator[Any]): TupleXXL = new TupleXXL(elems.map(_.asInstanceOf[Object]).toArray.asInstanceOf[IArray[Object]]) // TODO use Iterator.toIArray
   /** Creates a `TupleXXL` backed directly by `elems`; the array is not copied.
    *
    *  @param elems the immutable array to use as the tuple's backing storage; must have more than 22 elements (asserted)
-   *  @return a `TupleXXL` whose elements are those of `elems`
    */
   def fromIArray(elems: IArray[Object]): TupleXXL = new TupleXXL(elems)
   /** Creates a `TupleXXL` with the given elements.
    *
    *  @param elems the elements of the tuple; more than 22 must be supplied (asserted)
-   *  @return a `TupleXXL` with the given elements, in order
    */
   def apply(elems: Any*): TupleXXL = new TupleXXL(IArray(elems.asInstanceOf[Seq[AnyRef]]*))
   /** Extracts the elements of a `TupleXXL`, enabling `case TupleXXL(xs*)` patterns.
