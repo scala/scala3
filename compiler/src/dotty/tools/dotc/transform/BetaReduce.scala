@@ -45,7 +45,7 @@ class BetaReduce extends MiniPhase:
     if app1 ne app then report.log(i"beta reduce $app -> $app1")
     app1
 
-  /** Cleanup ifs after reduceEQ */
+  /** Cleanup ifs after reduceUnitEQ */
   override def transformIf(tree: If)(using Context): Tree = tree.cond match
     case Literal(Constant(true)) => tree.thenp
     case Literal(Constant(false)) => tree.elsep
@@ -120,7 +120,7 @@ object BetaReduce:
           case None =>
             tree
       case _ =>
-        inlines.Inliner.reduceEQ(tree)
+        inlines.Inliner.reduceUnitEQ(tree)
 
   /** Beta-reduces a call to `ddef` with arguments `args` and registers new bindings.
    *  @return optionally, the expanded call, or none if the actual argument

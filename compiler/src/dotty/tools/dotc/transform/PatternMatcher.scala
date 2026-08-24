@@ -938,12 +938,6 @@ object PatternMatcher {
                 scrutinee
                   .select(nme.isEmpty, _.info.isParameterless)
                   .select(nme.UNARY_!, _.info.isParameterless))
-        case IsOkTest =>
-          val MagicMaybeType(_, errArg, _) = scrutinee.tpe.widenDealias.runtimeChecked
-          val notNull = scrutinee.nullTest(cond = false)
-          if errArg.isRef(defn.UnitClass)
-          then notNull
-          else notNull.and(scrutinee.isInstance(defn.MagicFailClass.typeRef).not)
         case IsErrTest =>
           val MagicMaybeType(_, _, nullable) = scrutinee.tpe.widen.runtimeChecked
           val typeTest = scrutinee.isInstance(defn.MagicFailClass.typeRef)
@@ -954,7 +948,7 @@ object PatternMatcher {
         case GuardTest =>
           scrutinee
         case EqualTest(tree) =>
-          inlines.Inliner.reduceEQ(tree.equal(scrutinee))
+          inlines.Inliner.reduceUnitEQ(tree.equal(scrutinee))
         case LengthTest(len, exact) =>
           val lengthCompareSym = defn.Seq_lengthCompare.matchingMember(scrutinee.tpe)
           if (lengthCompareSym.exists)

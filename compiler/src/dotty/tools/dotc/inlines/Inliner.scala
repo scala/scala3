@@ -212,30 +212,38 @@ object Inliner:
       else
         constToLiteral(rootTree)
 
-  /** If tree is an equality test == with known outcome and no side effects, replace it
-   *  by a constant true or false.
-   *  Known outcome means currently:
-   *   - arguments are both constants, or
-   *   - at least one argument is of Unit type
+  /** Can a value of type `tp` be the unit value `()` at runtime? That's the case if
+   *  `tp` is not a class type, since then it could still be instantiated to `Unit`,
+   *  or if it is one of the classes that `()` is an instance of. Note that `()` is
+   *  represented as a `BoxedUnit` where a reference type is expected, so `Object`
+   *  and `java.io.Serializable` have to be counted in as well.
    */
-  def reduceEQ(tree: Tree)(using Context): Tree = tree match
+  private def canBeUnit(tp: Type)(using Context): Boolean =
+    val cls = tp.widenDealias.typeSymbol
+    !cls.isClass
+    || defn.UnitClass.derivesFrom(cls)
+    || cls == defn.ObjectClass
+    || cls == defn.JavaSerializableClass
+
+  /** If tree is an equality test `==` with known outcome and no side effects, replace it
+   *  by a constant true or false.
+   *  Known outcome means currently: one argument is of Unit type and the other one's
+   *  type tells us whether it can be the unit value or not.
+   */
+  def reduceUnitEQ(tree: Tree)(using Context): Tree = tree match
     case Apply(sel @ Select(arg1, nme.EQ), arg2 :: Nil) if isPureExpr(arg1) && isPureExpr(arg2) =>
-      val tp1 = arg1.tpe.widen
-      val tp2 = arg2.tpe.widen
       def const(b: Boolean) =
         cpy.Literal(tree)(Constant(b))
           .showing(i"REDUCE $tree to $result in ${ctx.compilationUnit} in ${ctx.owner.ownersIterator.toList}/${arg1.tpe},${arg2.tpe}", transforms)
       def reduceUnit(tp1: Type, tp2: Type) =
         if tp1.isRef(defn.UnitClass) then
           if tp2.isRef(defn.UnitClass) then const(true)
-          else if !tp2.isBottomType && !tp2.isTopType then const(false)
+          else if !canBeUnit(tp2) then const(false)
           else EmptyTree
         else EmptyTree
-      (tp1, tp2) match
-        case (ConstantType(c1), ConstantType(c2)) =>
-          if c1 == c2 then const(true) else const(false)
-        case _ =>
-          reduceUnit(tp1, tp2).orElse(reduceUnit(tp2, tp1)).orElse(tree)
+      val tp1 = arg1.tpe.widen
+      val tp2 = arg2.tpe.widen
+      reduceUnit(tp1, tp2).orElse(reduceUnit(tp2, tp1)).orElse(tree)
     case _ =>
       tree
 
