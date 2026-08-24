@@ -156,7 +156,7 @@ object Scanners {
      *  If `target` is different from `this`, don't treat identifiers as end tokens.
      */
     def finishNamedToken(idtoken: Token, target: TokenData): Unit =
-      val name = termName(litBuf)
+      val name = termName(litBuf.toString)
       target.name = name
       litBuf.setLength(0)
       if name.contains('$') && Feature.safeEnabled && !SafeRefs.allowDollarIn(name) then
