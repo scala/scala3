@@ -44,7 +44,7 @@ abstract class StringReader { self =>
     if (idx >= endIdx)
       ch = SU
     else {
-      val c = buf(idx)
+      val c = buf.charAt(idx)
       ch = c
       if (c == '\\') potentialUnicode()
       else if (c < ' ') { skipCR(); potentialLineEnd() }
@@ -64,7 +64,7 @@ abstract class StringReader { self =>
     if (idx >= endIdx)
       ch = SU
     else {
-      val c = buf(idx)
+      val c = buf.charAt(idx)
       ch = c
       if (c == '\\') potentialUnicode()
     }
@@ -74,7 +74,7 @@ abstract class StringReader { self =>
   private def potentialUnicode(): Unit = {
     def evenSlashPrefix: Boolean = {
       var p = charOffset - 2
-      while (p >= 0 && buf(p) == '\\') p -= 1
+      while (p >= 0 && buf.charAt(p) == '\\') p -= 1
       (charOffset - p) % 2 == 0
     }
     def udigit: Int =
@@ -86,15 +86,15 @@ abstract class StringReader { self =>
         SU
       }
       else {
-        val d = digit2int(buf(charOffset), 16)
+        val d = digit2int(buf.charAt(charOffset), 16)
         if (d >= 0) charOffset += 1
         else error("error in unicode escape", charOffset)
         d
       }
-    if (charOffset < endIdx && buf(charOffset) == 'u' && decodeUni && evenSlashPrefix) {
+    if (charOffset < endIdx && buf.charAt(charOffset) == 'u' && decodeUni && evenSlashPrefix) {
       while ({
         charOffset += 1
-        charOffset < endIdx && buf(charOffset) == 'u'
+        charOffset < endIdx && buf.charAt(charOffset) == 'u'
       })
       ()
       val code = udigit << 12 | udigit << 8 | udigit << 4 | udigit
@@ -106,7 +106,7 @@ abstract class StringReader { self =>
   /** replace CR;LF by LF */
   private def skipCR(): Unit =
     if (ch == CR)
-      if (charOffset < endIdx && buf(charOffset) == LF) {
+      if (charOffset < endIdx && buf.charAt(charOffset) == LF) {
         charOffset += 1
         ch = LF
       }
