@@ -23,7 +23,7 @@ import scala.collection.mutable.ListBuffer
  *    [Ti := Si, xi := yi]b
  *
  *  This removes placeholders added by inline `unapply`/`unapplySeq` patterns
- *  and the identity `unapply` methods synthesized for Java record patterns.
+ *  and the `unapply`/`unapplySeq` methods synthesized for Java record patterns.
  */
 class InlinePatterns extends MiniPhase:
   import ast.tpd.*
