@@ -421,7 +421,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
   /** Finds first index at or after a start index where this $coll contains a given sequence as a slice.
    *  $mayNotTerminateInf
    *  @tparam B the element type used for comparison (a supertype of `A`)
-   *  @param  that    the pattern sequence to search for
+   *  @param  that    the pattern sequence to search for, must be finite
    *  @param  from    the start index
    *  @return  the first index `>= from` such that the elements of this $coll starting at this index
    *           match the elements of sequence `that`, or `-1` if no such subsequence exists.
@@ -441,7 +441,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
 
   /** Finds first index where this $coll contains a given sequence as a slice.
    *  $mayNotTerminateInf
-   *  @param  that    the sequence to test
+   *  @param  that    the sequence to test, must be finite
    *  @return  the first index `>= 0` such that the elements of this $coll starting at this index
    *           match the elements of sequence `that`, or `-1` if no such subsequence exists.
    */
@@ -453,7 +453,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    *  $willNotTerminateInf
    *
    *  @tparam B the element type used for comparison (a supertype of `A`)
-   *  @param  that    the sequence to test
+   *  @param  that    the sequence to test, must be finite
    *  @param  end     the end index
    *  @return  the last index `<= end` such that the elements of this $coll starting at this index
    *           match the elements of sequence `that`, or `-1` if no such subsequence exists.
@@ -463,17 +463,18 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     val tl = that.length
 
     if end < 0 then -1
-    else if tl < 1 then math.min((if l >= 0 then l else length) - tl, end)
+    else if tl == 0 then math.min(if l >= 0 then l else length, end)
     else if l >= 0 && l < tl then -1
     else
       val clippedL = if (l < 0) end else math.min(l - tl, end)
+      // if `clippedL + tl` overflows that's correct, a negative `m1` means "unbounded"
       SeqOps.kmpSearch(S = toGenericSeq, m0 = 0, m1 = clippedL + tl, W = that, n0 = 0, n1 = tl, forward = false)
 
   /** Finds last index where this $coll contains a given sequence as a slice.
    *
    *  $willNotTerminateInf
    *
-   *  @param  that    the sequence to test
+   *  @param  that    the sequence to test, must be finite
    *  @return  the last index such that the elements of this $coll starting at this index
    *           match the elements of sequence `that`, or `-1` if no such subsequence exists.
    */
@@ -500,7 +501,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
   /** Tests whether this $coll contains a given sequence as a slice.
    *  $mayNotTerminateInf
    *  @tparam B the element type used for comparison (a supertype of `A`)
-   *  @param  that    the sequence to test
+   *  @param  that    the sequence to test, must be finite
    *  @return  `true` if this $coll contains a slice with the same elements
    *           as `that`, otherwise `false`.
    */
@@ -1141,11 +1142,11 @@ object SeqOps {
       def clipL(x: Int, y: Int) = if (x > y) x else -1
       if (forward) {
         val x = S.indexOf(W(n0), m0)
-        if (m1 >= 0) clipR(x, m1)
-        else x
+        if (m1 >= 0) clipR(x, m1) else x
       }
       else
-        clipL(S.lastIndexOf(W(n0), m1-1), m0-1)
+        val x = if (m1 >= 0) S.lastIndexOf(W(n0), m1-1) else S.lastIndexOf(W(n0))
+        clipL(x, m0-1)
     }
 
     // We had better not index into S directly!
@@ -1225,7 +1226,8 @@ object SeqOps {
       else -1
     // Now we know we actually need KMP search, so do it
     else S match
-      case xs: IndexedSeq[B @unchecked] if sized => kmpIndexed(xs)
+      // `m1` may exceed the length if the source is indexed but reports an unknown `knownSize`
+      case xs: IndexedSeq[B @unchecked] if sized && m1 <= xs.length => kmpIndexed(xs)
       case _ => kmpUnindexed()
   }
 }

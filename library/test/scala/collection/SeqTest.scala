@@ -128,6 +128,29 @@ class SeqTest {
     assertEquals(3, LazyList(0, 1, 2).lastIndexOfSlice(Nil))
     assertEquals(2, List(0, 1, 2).lastIndexOfSlice(Nil, end = 2))
     assertEquals(-1, List(0, 1, 2).lastIndexOfSlice(Nil, end = -1))
+
+    assertEquals(2, List(0, 1, 2).lastIndexOfSlice(List(2), end = 1000))
+  }
+
+  // `knownSize` may be -1 even for an `IndexedSeq`, since -1 just means "not cheaply known".
+  // `lastIndexOfSlice` must then not hand `kmpSearch` an `m1` past the end of the source.
+  @Test
+  def lastIndexOfSliceIndexedWithUnknownSize(): Unit = {
+    class Unsized[A](u: Vector[A]) extends AbstractSeq[A] with IndexedSeq[A] {
+      def apply(i: Int) = u(i)
+      def length = u.length
+      override def knownSize = -1
+    }
+    val empty = new Unsized(Vector.empty[Int])
+    val two = new Unsized(Vector(1, 2))
+    assertEquals(-1, empty.lastIndexOfSlice(List(0, 0), end = 1))
+    assertEquals(-1, two.lastIndexOfSlice(List(9, 9), end = 5))
+    assertEquals(0, two.lastIndexOfSlice(List(1, 2), end = 5))
+    assertEquals(0, two.lastIndexOfSlice(List(1, 2)))
+    assertEquals(1, two.lastIndexOfSlice(List(2), end = 5))   // single element, via `clipped`
+    assertEquals(2, two.lastIndexOfSlice(Nil, end = 5))
+    assertEquals(-1, empty.indexOfSlice(List(0, 0)))
+    assertEquals(1, two.indexOfSlice(List(2), from = 1))
   }
 
   @Test
