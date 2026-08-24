@@ -134,6 +134,16 @@ class CompilationTests {
     ).times(2).checkCompile()
   }
 
+  @Test def posSpecial(): Unit = {
+    special(
+      defaultOptions.without("-Xsemanticdb"),
+      "tests/pos/26889",
+      expectError = false,
+      o => compileFile("tests/pos-special/26889/lib_1.scala", o),
+      ("lib_1/26889/lib_1/", o => compileFile("tests/pos-special/26889/test_2.scala", o))
+    )
+  }
+
   // Warning tests ------------------------------------------------------------
 
   @Test def warn: Unit = {
