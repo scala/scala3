@@ -264,11 +264,6 @@ sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
    *  @throws IndexOutOfBoundsException if `count > 0` and the index `idx` is not in
    *          the valid range `0 <= idx <= length - count`; the elements before the
    *          failing index remain removed
-   *  @note NEEDS-HUMAN: `Buffer.remove(idx, count)` documents an
-   *        `IllegalArgumentException` for `count < 0` and implies the bounds are
-   *        checked before anything is removed; this implementation silently
-   *        ignores negative counts and removes elements one at a time, so an
-   *        out-of-range call fails only part-way through.
    */
   @tailrec final def remove(idx: Int, count: Int): Unit =
     if (count > 0) {
@@ -304,9 +299,9 @@ sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
 
   /** Inserts all elements of `elems` at index `idx` into this buffer.
    *
-   *  The node containing index `idx` is split at that position, the new
-   *  elements are appended to its front half, and the rear half is linked back
-   *  after them.
+   *  The node containing index `idx` is split at that position, the new elements
+   *  are appended to its front half, and the rear half is linked back after them.
+   *  Inserting at the end of a node appends to it instead, with no split.
    *
    *  @param idx the index where the elements are inserted; if `idx == length`,
    *             the elements are appended
@@ -349,8 +344,6 @@ sealed class UnrolledBuffer[T](implicit val tag: ClassTag[T])
    *  @throws IndexOutOfBoundsException if `replaced > 0` and `from` is not in the
    *          valid range `0 <= from <= length - replaced`, or if `replaced <= 0`
    *          and `from` is not in the valid range `0 <= from <= length`
-   *  @note NEEDS-HUMAN: this deviates from the documented `Buffer.patchInPlace`
-   *        contract, which clamps `from` and `replaced` instead of throwing.
    */
   def patchInPlace(from: Int, patch: collection.IterableOnce[T]^, replaced: Int): this.type = {
     remove(from, replaced)
@@ -636,10 +629,11 @@ object UnrolledBuffer extends StrictOptimizedClassTagSeqFactory[UnrolledBuffer] 
     /** Inserts all elements of `t` at index `idx`, counting from the start of
      *  this node.
      *
-     *  The node containing the index is split at that position into a front
-     *  half and a fresh rear-half node; the new elements are appended after
-     *  the front half, the rear half is linked back after them, and a
-     *  waterline merge of the two is attempted. `buffer`'s last-node pointer
+     *  The node containing the index is split at that position into a front half
+     *  and a fresh rear-half node; the new elements are appended after the front
+     *  half, the rear half is linked back after them, and a waterline merge of the
+     *  two is attempted. Inserting at the end of the node appends to it instead,
+     *  with no split. `buffer`'s last-node pointer
      *  is updated when the insertion changes the chain's last node.
      *
      *  @param idx the index, relative to this node, at which to insert

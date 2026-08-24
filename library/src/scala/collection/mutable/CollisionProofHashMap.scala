@@ -158,11 +158,6 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
    *  triggering a resize. Never shrinks the table.
    *
    *  @param size the expected number of entries
-   *  @note NEEDS-HUMAN: `if(size == 0) reallocTable(target)` tests the `size` parameter, which
-   *        shadows the `size` method; the analogous check in `growTable` of `HashMap`/`HashSet`
-   *        tests the current content size. `reallocTable` discards the table contents without
-   *        resetting `contentSize`, so `sizeHint(0)` on a non-empty map whose load factor is
-   *        small enough for `target` to exceed the table length would silently drop all entries.
    */
   override def sizeHint(size: Int): Unit = {
     val target = tableSizeFor(((size + 1).toDouble / loadFactor).toInt)
@@ -185,12 +180,6 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
    *
    *  @param key the key to add
    *  @param value the value to bind to `key`
-   *  @note NEEDS-HUMAN: the returned option is unreliable. `put0` ends in
-   *        `if(res) Some(null.asInstanceOf[V]) else null //TODO`, so this method returns
-   *        `Some(null)` instead of `None` when `key` was not present, and `None` instead of
-   *        `Some(previousValue)` when the binding was replaced inside a tree bucket (`insert`
-   *        discards the old value). Only replacement inside a list bucket returns the previous
-   *        value as `MapOps.put` documents.
    */
   override def put(key: K, value: V): Option[V] = put0(key, value, getOld = true) match {
     case null => None
@@ -1056,7 +1045,6 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
    *  @param parent the parent node, or `null` if this node is the root of its tree
    */
   final class RBNode[K, V](
-      /** The key, its cached improved hash, the value bound to the key, and this node's color (`true` for red, `false` for black). */
       var key: K, var hash: Int, var value: V, var red: Boolean,
       /** The left child, or `null` if there is none. */
       @annotation.stableNull

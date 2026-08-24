@@ -102,9 +102,11 @@ class ListBuffer[A]
   /** Returns the contents of this buffer as an immutable [[scala.collection.immutable.List]].
    *
    *  Takes constant time: the buffer's internal list is returned directly rather
-   *  than copied. The buffer is instead marked as aliased, and the next mutating
-   *  operation, if any, copies the elements first, so the returned list is never
-   *  affected by later changes to the buffer. The elements are safely published,
+   *  than copied. The buffer is instead marked as aliased, and any later operation
+   *  that would modify the shared cells copies them first, so the returned list is
+   *  never affected by later changes to the buffer. Operations that abandon those
+   *  cells rather than modify them, such as `clear`, `mapInPlace` and
+   *  `flatMapInPlace`, need no copy. The elements are safely published,
    *  so the returned list may be shared with other threads.
    */
   override def toList: List[A] = {
@@ -118,9 +120,9 @@ class ListBuffer[A]
 
   /** Returns the contents of this buffer as an immutable [[scala.collection.immutable.List]], like `toList`.
    *
-   *  The buffer remains valid afterwards: it can be mutated further (the
-   *  elements are copied first, leaving the returned list unchanged) or reused
-   *  after `clear()`.
+   *  The buffer remains valid afterwards: it can be mutated further, with the shared
+   *  cells copied first where an operation would modify them, leaving the returned
+   *  list unchanged, or reused after `clear()`.
    */
   def result(): immutable.List[A] = toList
 
@@ -269,7 +271,8 @@ class ListBuffer[A]
 
   /** Replaces the element at index `idx` with `elem`.
    *
-   *  Takes time linear in `idx`.
+   *  Takes time linear in `idx`, or in the buffer size if a previous `toList` or
+   *  `result` left it aliased, since the shared cells are copied first.
    *
    *  @param idx the index of the element to replace
    *  @param elem the new element
@@ -298,8 +301,10 @@ class ListBuffer[A]
   /** Inserts `elem` at index `idx` into this buffer.
    *
    *  The elements at indices `idx` and above have their indices increased by
-   *  one. Takes time linear in `idx`, but constant time when prepending
-   *  (`idx == 0`) or appending (`idx == length`).
+   *  one. Takes time linear in `idx`, or constant time when prepending
+   *  (`idx == 0`) or appending (`idx == length`), except that a buffer left
+   *  aliased by an earlier `toList` or `result` is copied first, which is
+   *  linear in its size whatever `idx` is.
    *
    *  @param idx the index where the element is inserted
    *  @param elem the element to insert
@@ -318,7 +323,8 @@ class ListBuffer[A]
     }
   }
 
-  /** Prepends `elem` to this buffer, in constant time.
+  /** Prepends `elem` to this buffer, in constant time, or in time linear in its
+   *  size if an earlier `toList` or `result` left it aliased.
    *
    *  @param elem the element to prepend
    *  @return this $coll
@@ -368,7 +374,8 @@ class ListBuffer[A]
   /** Removes and returns the element at index `idx`.
    *
    *  The elements at higher indices have their indices decreased by one. Takes
-   *  time linear in `idx`.
+   *  time linear in `idx`, or in the buffer size if an earlier `toList` or
+   *  `result` left it aliased.
    *
    *  @param idx the index of the element to remove
    *  @return the removed element
@@ -392,8 +399,9 @@ class ListBuffer[A]
 
   /** Removes `count` elements starting at index `idx`.
    *
-   *  Takes time linear in `idx + count`. If `count` is zero, this buffer is
-   *  unchanged and the bounds are not checked.
+   *  Takes time linear in `idx + count`, or in the buffer size if `count` is
+   *  positive and an earlier `toList` or `result` left it aliased. If `count`
+   *  is zero, this buffer is unchanged and the bounds are not checked.
    *
    *  @param idx the index of the first element to remove
    *  @param count the number of elements to remove

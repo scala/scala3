@@ -217,7 +217,8 @@ class OpenHashMap[Key, Value](initialSize : Int)
   /** Adds a key/value pair to this map, returning any value previously associated with the key.
    *
    *  A new entry reuses the first deleted slot on its probe path, if any;
-   *  the table grows when more than half its slots are occupied or deleted.
+   *  the table grows once the entry being added would take the number of occupied or
+   *  deleted slots past half of them.
    *
    *  @param key the key to add
    *  @param value the value to associate with `key`
@@ -340,9 +341,6 @@ class OpenHashMap[Key, Value](initialSize : Int)
     /** Returns the result for the next occupied slot and advances the cursor past it.
      *
      *  @throws ConcurrentModificationException if an entry was inserted into the map after this iterator was created
-     *  @note NEEDS-HUMAN: When the iterator is exhausted, `table(index)` throws
-     *        `ArrayIndexOutOfBoundsException` instead of the `NoSuchElementException`
-     *        required by the `Iterator.next()` contract.
      */
     def next() = {
       advance()

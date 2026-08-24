@@ -293,8 +293,10 @@ object Map extends MapFactory.Delegate[Map](HashMap) {
    *  not present in it.
    *
    *  The default is only used by `apply`; `get`, `contains`, `iterator`, `keys`
-   *  and other methods are unaffected. `concat`, `empty` and `clone` preserve
-   *  the default; other transformer methods (e.g. `map`) do not.
+   *  and other methods are unaffected. Operations that build another map of this
+   *  same type keep the default, including `concat`, `empty`, `clone` and those
+   *  going through `fromSpecific`, such as `filter`; one that builds a plain map,
+   *  such as `map`, does not.
    *
    *  @tparam K the type of keys in the map
    *  @tparam V the type of values associated with keys

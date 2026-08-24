@@ -173,7 +173,9 @@ sealed class PriorityQueue[A](implicit val ord: Ordering[A])
   /** Restores the heap invariant by sifting the element at index `m` upwards,
    *  swapping it with its parent as long as it is greater than the parent.
    *
-   *  @param as the heap array (index 0 is unused)
+   *  @param as the array whose values are compared (index 0 is unused); the swaps are
+   *            made in the queue's own backing array, so this has the effect described
+   *            only when `as` is that array
    *  @param m the index of the element to sift up
    */
   protected def fixUp(as: Array[AnyRef | Null], m: Int): Unit = {

@@ -52,7 +52,8 @@ class BitSet(protected[collection] final var elems: Array[Long])
    *  The bitset grows automatically when larger elements are added.
    *
    *  @param initSize the number of elements the initial word array can represent;
-   *                  at least one 64-bit word is always allocated
+   *                  at least one 64-bit word is always allocated, and a value within
+   *                  63 of `Int.MaxValue` overflows the rounding and allocates just one
    */
   def this(initSize: Int) = this(new Array[Long](math.max((initSize + 63) >> 6, 1)))
 
@@ -63,6 +64,7 @@ class BitSet(protected[collection] final var elems: Array[Long])
    *
    *  @param coll the collection of non-negative integers to include
    *  @return a new mutable bitset containing the elements of `coll`
+   *  @throws IllegalArgumentException if `coll` contains a negative element
    */
   override protected def fromSpecific(coll: IterableOnce[Int]^): BitSet = bitSetFactory.fromSpecific(coll)
   /** Returns a new builder that accumulates `Int` elements into a mutable bitset. */

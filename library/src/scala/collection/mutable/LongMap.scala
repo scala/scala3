@@ -823,7 +823,8 @@ object LongMap {
   /** Creates a new empty `LongMap`.
    *
    *  @tparam V the type of the values
-   *  @return a new empty `LongMap` whose value type is `V`
+   *  @return a new empty `LongMap` whose value type is `V`, and whose default for an
+   *          absent key throws, as `LongMap.exceptionDefault` does
    */
   def empty[V]: LongMap[V] = new LongMap[V]
 

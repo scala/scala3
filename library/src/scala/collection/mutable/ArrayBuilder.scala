@@ -27,7 +27,8 @@ sealed abstract class ArrayBuilder[T]
   extends ReusableBuilder[T, Array[T]]
     with Serializable {
   /** The number of elements this builder can hold without resizing, typically
-   *  the length of `elems`; 0 while no backing array is allocated.
+   *  the length of `elems`; 0 while no backing array is allocated. The `ofUnit`
+   *  builder keeps no array at all and simply records a capacity here.
    */
   protected var capacity: Int = 0
   /** The backing array, holding the first `size` elements added to this
@@ -44,7 +45,8 @@ sealed abstract class ArrayBuilder[T]
   override def knownSize: Int = size
 
   /** Grows the backing array, if necessary, so that it can hold at least
-   *  `size` elements.
+   *  `size` elements. The `ofUnit` builder, which keeps no array, only records
+   *  the new capacity.
    *
    *  When growing is needed, the new capacity is the largest of the requested
    *  size, twice the current capacity, and the default initial size (16),
@@ -59,7 +61,8 @@ sealed abstract class ArrayBuilder[T]
     if (newLen > 0) resize(newLen)
   }
 
-  /** Grows the backing array to hold at least `size` elements.
+  /** Grows the backing array to hold at least `size` elements; for the `ofUnit`
+   *  builder, which keeps no array, records the capacity instead.
    *
    *  Does nothing if the current capacity suffices; otherwise resizes to
    *  exactly `size`, avoiding the over-allocation of the doubling strategy
@@ -120,8 +123,9 @@ sealed abstract class ArrayBuilder[T]
    *
    *  @param xs the collection whose elements are added
    *  @return this builder with the elements of `xs` appended
-   *  @throws IllegalStateException if `xs` reports a known size but yields a
-   *          different number of elements
+   *  @throws IllegalStateException if `xs` reports a positive known size but yields a
+   *          different number of elements; a reported size of zero is taken on trust and
+   *          `xs` is not iterated at all
    */
   override def addAll(xs: IterableOnce[T]^): this.type = {
     val k = xs.knownSize
@@ -749,10 +753,6 @@ object ArrayBuilder {
      *  @param offset the start index of the slice; never used
      *  @param length the number of elements to add, applied as is
      *  @return this builder with its size increased by `length`
-     *  @note NEEDS-HUMAN: unlike the base overload, this override does not
-     *        clamp `offset` and `length`: a negative `length` shrinks the
-     *        builder (or makes `ensureSize` throw), and a `length` larger
-     *        than the slice inflates the count.
      */
     override def addAll(xs: Array[? <: Unit], offset: Int, length: Int): this.type = {
       val newSize = size + length

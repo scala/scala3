@@ -47,6 +47,8 @@ class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
   /** Creates an empty stack whose backing array can hold at least `initialSize` elements.
    *
    *  @param initialSize the initial capacity hint, 16 by default
+   *  @throws IllegalArgumentException if `initialSize` is negative or too large to
+   *          allocate, since `ArrayDeque.alloc` rejects it
    */
   def this(initialSize: Int = ArrayDeque.DefaultInitialSize) =
     this(ArrayDeque.alloc(initialSize), start = 0, end = 0)
@@ -131,8 +133,7 @@ class Stack[A] protected (array: Array[AnyRef | Null], start: Int, end: Int)
 
   /** Wraps an array in a new stack, without copying.
    *
-   *  @param array the backing array, allocated by `ArrayDeque.alloc` so that
-   *               its length is a power of 2
+   *  @param array the backing array, used as given; its length must be a power of 2
    *  @param end the number of elements: `array` holds them at indices `0` until `end`
    *  @return a new stack backed by `array`
    */

@@ -395,8 +395,11 @@ private[collection] trait HashTable[A, B, Entry <: HashEntry[A, Entry]] extends 
   }
 
   // discards the previous sizemap and populates the new one
-  /** Replaces the size map with a newly allocated array of counters and populates it by
-   *  counting the entries currently in each block of the table.
+  /** Replaces the size map with a newly allocated array of counters and populates it from
+   *  the table.
+   *
+   *  The number of blocks it fills is `totalSizeMapBuckets`, which is zero for a table
+   *  shorter than 32 and one otherwise, so this counts at most the first block.
    */
   protected final def sizeMapInitAndRebuild() = {
     sizeMapInit(table.length)
@@ -506,7 +509,9 @@ private[collection] object HashTable {
 
   /** Returns a power of two >= `target`.
    *
-   *  @param target the minimum value for the returned power of two
+   *  @param target the minimum value for the returned power of two; above `1 << 30` the
+   *                shift overflows and the result is `Int.MinValue` rather than a power
+   *                of two
    *  @return the smallest positive power of two that is greater than or equal to `target`
    */
   private[collection] def nextPositivePowerOfTwo(target: Int): Int = 1 << -numberOfLeadingZeros(target - 1)

@@ -171,6 +171,8 @@ class HashMap[K, V](initialCapacity: Int, loadFactor: Double)
    *  @param key the key whose binding is updated
    *  @param remappingFunction the function that maps the current, optional value to the new, optional value
    *  @return the value now bound to `key` wrapped in `Some`, or `None` if `key` is now unbound
+   *  @throws Throwable whatever `remappingFunction` throws, in which case this map is
+   *          left unchanged
    */
   override def updateWith(key: K)(remappingFunction: Option[V] => Option[V]): Option[V] = {
     if (getClass != classOf[HashMap[?, ?]]) {

@@ -467,6 +467,7 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
    *  @param step the distance between the first elements of successive groups
    *  @return an iterator over the groups, each an `ArrayBuffer` of `size`
    *          elements, except possibly a smaller final group
+   *  @throws IllegalArgumentException if `size` or `step` is not positive
    */
   override def sliding(size: Int, step: Int): Iterator[ArrayBuffer[A]] =
     new MutationTracker.CheckedIterator(super.sliding(size = size, step = step), mutationCount)
@@ -482,7 +483,8 @@ class ArrayBuffer[A] private (initialElements: Array[AnyRef], initialSize: Int)
 @SerialVersionUID(3L)
 object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
   /** The capacity, 16, of the backing array of an `ArrayBuffer` created without
-   *  an initial size, and the default capacity `clearAndShrink` shrinks to. It
+   *  an initial size, and the default size `clearAndShrink` resizes to; since that
+   *  only ever shrinks, a buffer whose array is already smaller keeps it. It
    *  is also the minimum capacity allocated when a buffer's backing array first
    *  grows.
    */
@@ -583,7 +585,9 @@ object ArrayBuffer extends StrictOptimizedSeqFactory[ArrayBuffer] {
  *  Iterators obtained from this view, directly or through the overridden
  *  transformation methods, check the buffer's mutation count and throw a
  *  [[java.util.ConcurrentModificationException]] if the buffer is mutated
- *  after the iterator's creation.
+ *  after the iterator's creation. A view built through the deprecated
+ *  `(array, length)` constructor has a constant mutation count instead, so its
+ *  iterators never detect mutation.
  *
  *  @tparam A the element type of the underlying buffer
  */

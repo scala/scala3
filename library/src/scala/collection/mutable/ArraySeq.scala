@@ -268,6 +268,8 @@ object ArraySeq extends StrictOptimizedClassTagSeqFactory[ArraySeq] { self =>
      *  @param elem the new value
      *  @throws ArrayIndexOutOfBoundsException if `index` is negative or not less than
      *          `length`
+     *  @throws ArrayStoreException if the wrapped array's runtime component type is
+     *          narrower than `T` and `elem` is not an instance of it
      */
     def update(index: Int, elem: T): Unit = { array(index) = elem }
     /** Returns a hash code computed from the array elements, consistent with the hashing

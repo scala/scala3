@@ -35,9 +35,11 @@ abstract class ImmutableBuilder[-A, C <: IterableOnce[?]](empty: C)
   /** Clears this builder by restoring `elems` to the empty collection given at construction. */
   def clear(): Unit = { elems = empty }
 
-  /** Returns the immutable collection accumulated so far. As this is a reusable
-   *  builder, the builder remains usable afterwards; the returned collection is
-   *  unaffected by later additions.
+  /** Returns the collection accumulated so far. As this is a reusable builder, the
+   *  builder remains usable afterwards, and later additions replace the accumulator
+   *  rather than modifying it, so a collection already returned is unaffected. That
+   *  holds for the immutable collections this is used with; a subclass whose `addOne`
+   *  mutates the accumulator in place would break it.
    */
   def result(): C = elems
 

@@ -71,6 +71,8 @@ class ArrayDeque[A] protected (
    *
    *  @param initialSize the initial capacity hint; the buffer allocated is the
    *                     next power of two above this value, at least 16
+   *  @throws IllegalArgumentException if `initialSize` is negative or too large to
+   *          allocate, since `ArrayDeque.alloc` rejects it
    */
   def this(initialSize: Int = ArrayDeque.DefaultInitialSize) = this(ArrayDeque.alloc(initialSize), start = 0, end = 0)
 
@@ -206,7 +208,8 @@ class ArrayDeque[A] protected (
 
   /** Inserts an element at a given index, shifting the shorter of the prefix
    *  before `idx` and the suffix from `idx` onwards; the elements previously at
-   *  `idx` and beyond follow the inserted element. Takes O(min(idx, length - idx)) time.
+   *  `idx` and beyond follow the inserted element. Takes O(min(idx, length - idx))
+   *  time, or O(length) when the buffer is full and has to grow first.
    *
    *  @param idx the index at which to insert, from `0` to `length` inclusive
    *  @param elem the element to insert
@@ -251,7 +254,9 @@ class ArrayDeque[A] protected (
   /** Inserts all elements of a collection at a given index, keeping their
    *  order; the elements previously at `idx` and beyond follow the inserted
    *  elements. Shifts the shorter of the prefix before `idx` and the suffix
-   *  from `idx` onwards, and resizes the internal buffer at most once.
+   *  from `idx` onwards. The buffer is resized at most once, except when inserting at
+   *  the end from a collection of unknown size, which appends one element at a time
+   *  and may resize repeatedly.
    *
    *  @param idx the index at which to insert, from `0` to `length` inclusive
    *  @param elems the elements to insert
@@ -592,8 +597,9 @@ class ArrayDeque[A] protected (
    *
    *  @param array the array to use as the internal buffer; its length must be a
    *               power of two
-   *  @param end the number of elements, from the start of `array`, that the
-   *             result contains
+   *  @param end the number of elements, from the start of `array`, that the result
+   *             contains; it must be less than the array's length, since the circular
+   *             buffer always leaves one slot free
    *  @return a new `ArrayDeque` over the first `end` elements of `array`
    */
   protected def ofArray(array: Array[AnyRef | Null], end: Int): ArrayDeque[A] =
@@ -608,9 +614,12 @@ class ArrayDeque[A] protected (
    *
    *  @tparam B the element type of the destination array, a supertype of `A`
    *  @param dest the destination array
-   *  @param destStart the index of `dest` at which to write the first element
+   *  @param destStart the index of `dest` at which to write the first element; it must
+   *                   be within `dest` whenever there is anything to copy
    *  @param len the maximum number of elements to copy
    *  @return the number of elements actually copied
+   *  @throws IndexOutOfBoundsException if there are elements to copy and `destStart` is
+   *          not a valid index of `dest`
    */
   override def copyToArray[B >: A](dest: Array[B], destStart: Int, len: Int): Int = {
     val copied = IterableOnce.elemsToCopyToArray(length, dest.length, destStart, len)
@@ -868,6 +877,8 @@ transparent trait ArrayDequeOps[A, +CC[_] <: caps.Pure, +C <: AnyRef] extends St
    *  @return an iterator producing collections of `size` elements each, except
    *          the last group, which may be smaller
    *  @throws IllegalArgumentException if `size` or `step` is not positive
+   *  @throws java.util.ConcurrentModificationException from the returned iterator if the
+   *          length of this collection changes while it is being consumed
    */
   override def sliding(@deprecatedName("window") size: Int, step: Int): Iterator[C] =
     super.sliding(size = size, step = step)
@@ -878,6 +889,8 @@ transparent trait ArrayDequeOps[A, +CC[_] <: caps.Pure, +C <: AnyRef] extends St
    *  @return an iterator producing collections of `n` elements each, except the
    *          last group, which may be smaller
    *  @throws IllegalArgumentException if `n` is not positive
+   *  @throws java.util.ConcurrentModificationException from the returned iterator if the
+   *          length of this collection changes while it is being consumed
    */
   override def grouped(n: Int): Iterator[C] = sliding(n, n)
 }
