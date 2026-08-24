@@ -21,7 +21,9 @@ import language.experimental.captureChecking
 
 /** Loads `library.properties` from the jar. */
 object Properties extends PropertiesTrait {
+  /** The category of properties to load, used to construct the properties file name. */
   protected def propCategory = "library"
+  /** The class used to determine which JAR contains the properties file. */
   protected def pickJarBasedOn: Class[Option[?]] = classOf[Option[?]]
 
   /** Scala manifest attributes.
@@ -30,7 +32,9 @@ object Properties extends PropertiesTrait {
 }
 
 private[scala] trait PropertiesTrait {
+  /** The category of properties to load, used to construct the properties file name. */
   protected def propCategory: String      // specializes the remainder of the values
+  /** The class used to determine which JAR contains the properties file. */
   protected def pickJarBasedOn: Class[?]  // props file comes from jar containing this
 
   /** The name of the properties file. */
@@ -53,24 +57,96 @@ private[scala] trait PropertiesTrait {
         catch   { case _: IOException => }
     }
 
+  /** Returns whether the system property with the given name is set.
+   *
+   *  @param name the name of the system property to check
+   */
   def propIsSet(name: String): Boolean                   = System.getProperty(name) != null
+  /** Returns whether the system property with the given name is set to the given value.
+   *
+   *  @param name the name of the system property to check
+   *  @param value the expected value of the system property
+   */
   def propIsSetTo(name: String, value: String)           = propOrNull(name) == value
+  /** Returns the system property with the given name as an `Option`.
+   *
+   *  @param name the name of the system property to retrieve
+   */
   def propOrNone(name: String): Option[String]           = Option[String](System.getProperty(name))
+  /** Returns the system property with the given name, or the given alternative if the property is not set.
+   *
+   *  @param name the name of the system property to retrieve
+   *  @param alt the alternative value to return if the property is not set
+   */
   def propOrElse(name: String, alt: => String): String   = propOrNone(name).getOrElse(alt)
+  /** Returns the system property with the given name, or an empty string if the property is not set.
+   *
+   *  @param name the name of the system property to retrieve
+   */
   def propOrEmpty(name: String): String                  = propOrElse(name, "")
+  /** Returns the system property with the given name, or `null` if the property is not set.
+   *
+   *  @param name the name of the system property to retrieve
+   */
   def propOrNull(name: String): String | Null            = propOrNone(name).orNull
+  /** Returns whether the system property with the given name is set to
+   *  `"yes"`, `"on"`, or `"true"`, compared case-insensitively.
+   *
+   *  @param name the name of the system property to check
+   */
   def propOrFalse(name: String): Boolean                 = propOrNone(name) exists (x => List("yes", "on", "true") contains x.toLowerCase)
+  /** Sets the system property with the given name to the given value.
+   *
+   *  @param name the name of the system property to set
+   *  @param value the value to set the system property to
+   *  @return the previous value of the property, or `null` if it was not set
+   */
   def setProp(name: String, value: String): String       = System.setProperty(name, value)
+  /** Clears the system property with the given name.
+   *
+   *  @param name the name of the system property to clear
+   *  @return the previous value of the property, or `null` if it was not set
+   */
   def clearProp(name: String): String                    = System.clearProperty(name)
 
+  /** Returns the environment variable with the given name, or the given alternative if the variable is not set.
+   *
+   *  @param name the name of the environment variable to retrieve
+   *  @param alt the alternative value to return if the variable is not set
+   */
   def envOrElse(name: String, alt: => String): String    = Option(System.getenv(name)) getOrElse alt
+  /** Returns the environment variable with the given name as an `Option`.
+   *
+   *  @param name the name of the environment variable to retrieve
+   */
   def envOrNone(name: String): Option[String]            = Option(System.getenv(name))
 
+  /** Returns the environment variable with the given name as an `Option`,
+   *  or the given alternative `Option` if the variable is not set.
+   *
+   *  @param name the name of the environment variable to retrieve
+   *  @param alt the alternative `Option` to return if the variable is not set
+   */
   def envOrSome(name: String, alt: => Option[String])    = envOrNone(name) orElse alt
 
   // for values based on propFilename, falling back to System properties
+  /** Returns the Scala property with the given name, or the given alternative if the property is not set.
+   *
+   *  @param name the name of the Scala property to retrieve
+   *  @param alt the alternative value to return if the property is not set
+   */
   def scalaPropOrElse(name: String, alt: => String): String = scalaPropOrNone(name).getOrElse(alt)
+  /** Returns the Scala property with the given name, or an empty string if the property is not set.
+   *
+   *  @param name the name of the Scala property to retrieve
+   */
   def scalaPropOrEmpty(name: String): String             = scalaPropOrElse(name, "")
+  /** Returns the Scala property with the given name as an `Option`,
+   *  looking first in the loaded properties file, then among the system
+   *  properties with the name prefixed by `scala.`.
+   *
+   *  @param name the name of the Scala property to retrieve
+   */
   def scalaPropOrNone(name: String): Option[String]      = Option(scalaProps.getProperty(name)).orElse(propOrNone("scala." + name))
 
   /** The version of the Scala runtime, if this is not a snapshot.
@@ -94,12 +170,14 @@ private[scala] trait PropertiesTrait {
   /** A verbose alternative to [[versionNumberString]].
    */
   val versionString         = s"version ${scalaPropOrElse("version.number", "(unknown)")}"
+  /** The copyright string for the Scala runtime. */
   val copyrightString       = scalaPropOrElse("copyright.string", "Copyright 2002-2025, LAMP/EPFL and Lightbend, Inc. dba Akka")
 
   /** This is the encoding to use reading in source files, overridden with -encoding.
    *  Note that it uses "prop" i.e. looks in the scala jar, not the system properties.
    */
   def sourceEncoding        = scalaPropOrElse("file.encoding", "UTF-8")
+  /** The class name of the default source reader. */
   def sourceReader          = scalaPropOrElse("source.reader", "scala.tools.nsc.io.SourceReader")
 
   /** This is the default text encoding, overridden (unreliably) with
@@ -112,22 +190,39 @@ private[scala] trait PropertiesTrait {
   def lineSeparator: String = System.lineSeparator()
 
   /* Various well-known properties. */
+  /** The Java class path, or the empty string if that system property is not set. */
   def javaClassPath         = propOrEmpty("java.class.path")
+  /** The Java home directory, or the empty string if that system property is not set. */
   def javaHome              = propOrEmpty("java.home")
+  /** The Java vendor, or the empty string if that system property is not set. */
   def javaVendor            = propOrEmpty("java.vendor")
+  /** The Java version, or the empty string if that system property is not set. */
   def javaVersion           = propOrEmpty("java.version")
+  /** The Java VM info, or the empty string if that system property is not set. */
   def javaVmInfo            = propOrEmpty("java.vm.info")
+  /** The Java VM name, or the empty string if that system property is not set. */
   def javaVmName            = propOrEmpty("java.vm.name")
+  /** The Java VM vendor, or the empty string if that system property is not set. */
   def javaVmVendor          = propOrEmpty("java.vm.vendor")
+  /** The Java VM version, or the empty string if that system property is not set. */
   def javaVmVersion         = propOrEmpty("java.vm.version")
+  /** The Java specification version, or the empty string if that system property is not set. */
   def javaSpecVersion       = propOrEmpty("java.specification.version")
+  /** The Java specification vendor, or the empty string if that system property is not set. */
   def javaSpecVendor        = propOrEmpty("java.specification.vendor")
+  /** The Java specification name, or the empty string if that system property is not set. */
   def javaSpecName          = propOrEmpty("java.specification.name")
+  /** The operating system name, or the empty string if that system property is not set. */
   def osName                = propOrEmpty("os.name")
+  /** The Scala home directory, or the empty string if that system property is not set. */
   def scalaHome             = propOrEmpty("scala.home")
+  /** The temporary directory, or the empty string if that system property is not set. */
   def tmpDir                = propOrEmpty("java.io.tmpdir")
+  /** The user's current working directory, or the empty string if that system property is not set. */
   def userDir               = propOrEmpty("user.dir")
+  /** The user's home directory, or the empty string if that system property is not set. */
   def userHome              = propOrEmpty("user.home")
+  /** The user's name, or the empty string if that system property is not set. */
   def userName              = propOrEmpty("user.name")
 
   /* Some derived values. */
@@ -161,12 +256,16 @@ private[scala] trait PropertiesTrait {
   // This is looking for javac, tools.jar, etc.
   // Tries JDK_HOME first, then the more common but likely jre JAVA_HOME,
   // and finally the system property based javaHome.
+  /** The JDK home directory, determined by checking the `JDK_HOME` environment variable, then `JAVA_HOME`, and finally the `java.home` system property. */
   def jdkHome               = envOrElse("JDK_HOME", envOrElse("JAVA_HOME", javaHome))
 
   private[scala] def versionFor(command: String) = s"Scala $command $versionString -- $copyrightString"
 
+  /** The version message for the Scala runtime. */
   def versionMsg            = versionFor(propCategory)
+  /** The name of the Scala command, depending on the operating system. */
   def scalaCmd              = if (isWin) "scala.bat" else "scala"
+  /** The name of the Scala compiler command, depending on the operating system. */
   def scalacCmd             = if (isWin) "scalac.bat" else "scalac"
 
   /** Compares the given specification version to the specification version of the platform.
@@ -229,6 +328,10 @@ private[scala] trait PropertiesTrait {
   def isJavaAtLeast(version: Int): Boolean = isJavaAtLeast(math.max(version, 0).toString)
 
   // provide a main method so version info can be obtained by running this
+  /** Prints the version message to the standard error stream.
+   *
+   *  @param args the command-line arguments (not used)
+   */
   def main(args: Array[String]): Unit = {
     val writer = new PrintWriter(Console.err, true)
     writer.println(versionMsg)

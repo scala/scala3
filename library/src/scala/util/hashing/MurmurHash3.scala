@@ -85,6 +85,13 @@ private[hashing] class MurmurHash3 {
   // In this case, the `seed` already has the case class name mixed in and `ignorePrefix` is set to true.
   // Case classes compiled before 2.13.17 call this method with `productSeed` and `ignorePrefix = false`.
   // See `productHashCode` in `SyntheticMethods` for details.
+  /** Computes the hash code of a Product instance.
+   *
+   *  @param x the Product instance to hash
+   *  @param seed the initial seed for the hash computation
+   *  @param ignorePrefix whether to ignore the product prefix in the hash computation
+   *  @return the hash code of `x`, derived from the product prefix (if not ignored) and each product element
+   */
   final def productHash(x: Product, seed: Int, ignorePrefix: Boolean = false): Int = {
     val arr = x.productArity
     if (arr == 0)
@@ -407,22 +414,67 @@ private[hashing] class MurmurHash3 {
  *  @see [[https://github.com/aappleby/smhasher]]
  */
 object MurmurHash3 extends MurmurHash3 {
+  /** The default seed value used for array hashing. */
   final val arraySeed       = 0x3c074a61
+  /** The default seed value used for string hashing. */
   final val stringSeed      = 0xf7ca7fd2
+  /** The default seed value used for product (case class) hashing. */
   final val productSeed     = 0xcafebabe
+  /** The default seed value used for symmetric (unordered) hashing. */
   final val symmetricSeed   = 0xb592f7ae
+  /** The default seed value used for traversable (unordered) hashing. */
   final val traversableSeed = 0xe73a8b15
+  /** The default seed value used for sequence hashing. */
   final val seqSeed         = "Seq".hashCode
+  /** The default seed value used for map hashing. */
   final val mapSeed         = "Map".hashCode
+  /** The default seed value used for set hashing. */
   final val setSeed         = "Set".hashCode
 
+  /** Computes the hash of an array using the default array seed.
+   *
+   *  @param a the array to hash
+   *  @return the hash of `a`, computed with the default array seed
+   */
   def arrayHash[@specialized T](a: Array[T]): Int      = arrayHash(a, arraySeed)
+  /** Computes the hash of a byte array using the default array seed.
+   *
+   *  @param data the byte array to hash
+   *  @return the hash of `data`, computed with the default array seed
+   */
   def bytesHash(data: Array[Byte]): Int                = bytesHash(data, arraySeed)
+  /** Computes the order-dependent hash of an iterable collection using the default symmetric seed.
+   *
+   *  @param xs the elements to hash in traversal order
+   *  @return the order-dependent hash of `xs`, computed with the default symmetric seed
+   */
   def orderedHash(xs: IterableOnce[Any]): Int          = orderedHash(xs, symmetricSeed)
+  /** Computes the hash of a string using the default string seed.
+   *
+   *  @param x the string to hash
+   *  @return the hash of `x`, computed with the default string seed
+   */
   def stringHash(x: String): Int                       = stringHash(x, stringSeed)
+  /** Computes the order-independent hash of an iterable collection using the default traversable seed.
+   *
+   *  @param xs the elements to hash (order-independent)
+   *  @return the order-independent hash of `xs`, computed with the default traversable seed
+   */
   def unorderedHash(xs: IterableOnce[Any]): Int        = unorderedHash(xs, traversableSeed)
+  /** Computes the hash of a range using the default sequence seed.
+   *
+   *  @param start the first element of the range
+   *  @param step the increment between successive elements
+   *  @param last the actual last element produced by the range
+   *  @return the hash of the range, computed with the default sequence seed
+   */
   def rangeHash(start: Int, step: Int, last: Int): Int = rangeHash(start, step, last, seqSeed)
 
+  /** Computes the hash code of a Product instance using the default product seed.
+   *
+   *  @param x the Product instance to hash
+   *  @return the hash code of `x`, derived from the product prefix and each product element
+   */
   @deprecated("use `caseClassHash` instead", "2.13.17")
   def productHash(x: Product): Int = caseClassHash(x, productSeed, null)
 
@@ -473,12 +525,24 @@ object MurmurHash3 extends MurmurHash3 {
     case xs => orderedHash(xs, seqSeed)
   }
 
+  /** Computes the hash of a map using the default map seed.
+   *
+   *  @param xs the map to hash
+   *  @return the hash of `xs`, computed with the default map seed
+   */
   def mapHash(xs: scala.collection.Map[?, ?]): Int = {
     if (xs.isEmpty) emptyMapHash
     else {
       class accum extends Function2[Any, Any, Unit] {
+        /** The sum (`a`), bitwise exclusive-or (`b`), and count (`n`) of the entry hashes. */
         var a, b, n = 0
+        /** The product of the entry hashes, each with its lowest bit set to avoid multiplying by zero. */
         var c = 1
+        /** Processes a map entry by updating the accumulated hash values.
+         *
+         *  @param k the key of the map entry
+         *  @param v the value of the map entry
+         */
         override def apply(k: Any, v: Any): Unit = {
           val h = tuple2Hash(k, v)
           a += h
@@ -498,35 +562,52 @@ object MurmurHash3 extends MurmurHash3 {
   }
 
   private[scala] val emptyMapHash = unorderedHash(Nil, mapSeed)
+  /** Computes the hash of a set using the default set seed.
+   *
+   *  @param xs the set to hash
+   *  @return the hash of `xs`, computed with the default set seed
+   */
   def setHash(xs: scala.collection.Set[?]): Int    = unorderedHash(xs, setSeed)
 
+  /** A Hashing implementation for arrays. */
   class ArrayHashing[@specialized T] extends Hashing[Array[T]] {
+    /** Computes the hash of an array.
+     *
+     *  @param a the array to hash
+     */
     def hash(a: Array[T]) = arrayHash(a)
   }
 
+  /** Creates a Hashing instance for arrays. */
   def arrayHashing[@specialized T] = new ArrayHashing[T]
 
+  /** Creates a Hashing instance for byte arrays. */
   def bytesHashing = new Hashing[Array[Byte]] {
     def hash(data: Array[Byte]) = bytesHash(data)
   }
 
+  /** Creates a Hashing instance for order-dependent collections. */
   def orderedHashing = new Hashing[IterableOnce[Any]] {
     def hash(xs: IterableOnce[Any]) = orderedHash(xs)
   }
 
+  /** Creates a Hashing instance for products (case classes). */
   @deprecated("use `caseClassHashing` instead", "2.13.17")
   def productHashing = new Hashing[Product] {
     def hash(x: Product) = caseClassHash(x)
   }
 
+  /** Creates a Hashing instance for case classes. */
   def caseClassHashing = new Hashing[Product] {
     def hash(x: Product) = caseClassHash(x)
   }
 
+  /** Creates a Hashing instance for strings. */
   def stringHashing = new Hashing[String] {
     def hash(x: String) = stringHash(x)
   }
 
+  /** Creates a Hashing instance for order-independent collections. */
   def unorderedHashing = new Hashing[IterableOnce[Any]] {
     def hash(xs: IterableOnce[Any]) = unorderedHash(xs)
   }
