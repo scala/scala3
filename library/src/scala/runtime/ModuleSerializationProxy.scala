@@ -38,6 +38,18 @@ private[runtime] object ModuleSerializationProxy {
   }
 }
 
+/** A serialization proxy written in place of a Scala `object` instance.
+ *
+ *  The compiler adds to every serializable static object a `writeReplace`
+ *  method that serializes an instance of this class instead of the object
+ *  itself. On deserialization, `readResolve` replaces the proxy with the
+ *  object's unique instance, obtained reflectively from the `MODULE$` field
+ *  of `moduleClass` (and cached per class), so deserialization yields the
+ *  singleton rather than a fresh copy.
+ *
+ *  @param moduleClass the class of the object whose instance the proxy
+ *                     resolves to
+ */
 @SerialVersionUID(1L)
 final class ModuleSerializationProxy(moduleClass: Class[?]) extends Serializable {
   private def readResolve = ModuleSerializationProxy.instances.get(moduleClass)

@@ -28,6 +28,12 @@ import java.lang.reflect.{Method => JMethod}
  *  outside the API and subject to change or removal without notice.
  */
 object ScalaRunTime {
+  /** Tests whether `x` is an array with at least `atLevel` dimensions.
+   *
+   *  @param x the value to test; `null` yields `false`
+   *  @param atLevel the minimum number of array dimensions required; the default, 1, accepts any array
+   *  @return `true` if `x` is a non-null array of at least `atLevel` dimensions, `false` otherwise
+   */
   def isArray(x: Any, atLevel: Int = 1): Boolean =
     x != null && isArrayClass(x.getClass, atLevel)
 
@@ -35,6 +41,14 @@ object ScalaRunTime {
     clazz.isArray && (atLevel == 1 || isArrayClass(clazz.getComponentType, atLevel - 1))
 
   // A helper method to make my life in the pattern matcher a lot easier.
+  /** Drops the first `num` elements of a collection-like value, preserving its representation type.
+   *
+   *  @tparam Repr the representation type of the collection
+   *  @param coll the collection-like value to drop from
+   *  @param num the number of leading elements to drop
+   *  @param iterable evidence for viewing `coll` as an iterable whose collection type conforms to `Repr`
+   *  @return `coll` without its first `num` elements
+   */
   def drop[Repr](coll: Repr, num: Int)(implicit iterable: IsIterable[Repr] { type C <: Repr }): Repr =
     iterable(coll) drop num
 
@@ -119,6 +133,14 @@ object ScalaRunTime {
 
   // TODO: bytecode Object.clone() will in fact work here and avoids
   // the type switch. See Array_clone comment in BCodeBodyBuilder.
+  /** Clones a generic array, dispatching on its element type.
+   *
+   *  A non-array argument fails with a `MatchError`.
+   *
+   *  @param xs the array to clone
+   *  @return a shallow copy of `xs`, with the same element type and length
+   *  @throws NullPointerException if `xs` is `null`
+   */
   def array_clone(xs: AnyRef): AnyRef = (xs: @unchecked) match {
     case x: Array[AnyRef]  => x.clone()
     case x: Array[Int]     => x.clone()
@@ -167,6 +189,13 @@ object ScalaRunTime {
     }
   }
 
+  /** Copies the elements of a sequence into a new `Array[AnyRef]`, boxing primitive values.
+   *
+   *  Returns the shared empty object array when `xs` is empty.
+   *
+   *  @tparam T the element type of the sequence
+   *  @param xs the sequence to copy
+   */
   def toArray[T](xs: scala.collection.Seq[T]) = {
     if (xs.isEmpty) Array.emptyObjectArray
     else {
@@ -183,10 +212,23 @@ object ScalaRunTime {
 
   // Java bug: https://bugs.java.com/view_bug.do?bug_id=4071957
   // More background at ticket #2318.
+  /** Makes the given method callable reflectively, calling `setAccessible(true)` on it if needed.
+   *
+   *  Delegates to [[scala.reflect.ensureAccessible]]; a `SecurityException` thrown in the
+   *  attempt is caught and discarded.
+   *
+   *  @param m the method to make accessible
+   *  @return `m` itself
+   */
   def ensureAccessible(m: JMethod): JMethod = scala.reflect.ensureAccessible(m)
 
   // This is called by the synthetic case class `toString` method.
   // It originally had a `CaseClass` parameter type which was changed to `Product`.
+  /** Returns the default case-class string representation of `x`: its product prefix
+   *  followed by its elements, comma-separated in parentheses, e.g. `Foo(1,two)`.
+   *
+   *  @param x the product to render
+   */
   def _toString(x: Product): String =
     x.productIterator.mkString(x.productPrefix + "(", ",", ")")
 
@@ -194,6 +236,11 @@ object ScalaRunTime {
   // In newer versions, the synthetic case class `hashCode` has either the calculation inlined or calls
   // `MurmurHash3.productHash`.
   // There used to be an `_equals` method as well which was removed in 5e7e81ab2a.
+  /** Returns a hash code for a case class, mixing the hash of its `productPrefix` with
+   *  those of its elements via [[scala.util.hashing.MurmurHash3.caseClassHash]].
+   *
+   *  @param x the product to hash
+   */
   def _hashCode(x: Product): Int = scala.util.hashing.MurmurHash3.caseClassHash(x)
 
   /** A helper for case classes.
@@ -228,6 +275,22 @@ object ScalaRunTime {
    *  @return        a string representation of arg.
    */
   def stringOf(arg: Any): String = stringOf(arg, scala.Int.MaxValue)
+  /** Returns a string representation of `arg`, rendering at most `maxElements` elements
+   *  of any collection or array encountered.
+   *
+   *  `null` is rendered as `"null"`; arrays as `Array(...)`; Scala collections with their
+   *  class name followed by their elements, map entries as `key -> value`; tuples in
+   *  parentheses; the empty string and strings with leading or trailing whitespace in
+   *  double quotes. Elements are rendered recursively by the same rules. Values better
+   *  served by their own `toString` (ranges, sorted collections, views, string builders,
+   *  XML nodes, and iterables that are not strict Scala collections) are rendered with it.
+   *  Truncation to `maxElements` is silent: no ellipsis marks the omitted elements. If
+   *  rendering fails with an `UnsupportedOperationException` or `AssertionError`, falls
+   *  back to `String.valueOf(arg)`.
+   *
+   *  @param arg the value to stringify
+   *  @param maxElements the maximum number of elements rendered per collection or array
+   */
   def stringOf(arg: Any, maxElements: Int): String = {
     def packageOf(x: AnyRef) = x.getClass.getPackage match {
       case null   => ""
@@ -339,15 +402,77 @@ object ScalaRunTime {
   // which led to a ticket in Scala 3 (scala/scala3#24204). The argument may be null:
   //   - When calling a Scala `@varargs` method from Java
   //   - When using an array as sequence argument in Scala 3: `foo((null: Array[X])*)`
+  /** Wraps an array in an immutable [[scala.collection.immutable.ArraySeq]] without copying it,
+   *  selecting the `ArraySeq` subclass matching the array's element type at runtime.
+   *
+   *  Used when the element type is not statically known; the compiler otherwise emits a
+   *  call to one of the type-specific `wrapXArray` methods below.
+   *
+   *  @tparam T the element type of the array
+   *  @param xs the array to wrap
+   *  @return an `ArraySeq` backed by `xs`, or `null` if `xs` is `null`
+   */
   def genericWrapArray[T](xs: Array[T]): ArraySeq[T]              = mapNull(xs, ArraySeq.unsafeWrapArray(xs))
+  /** Wraps an array of references in an immutable [[scala.collection.immutable.ArraySeq]]
+   *  without copying it.
+   *
+   *  @tparam T the reference element type of the array
+   *  @param xs the array to wrap
+   *  @return an `ArraySeq.ofRef` backed by `xs`, or `null` if `xs` is `null`
+   */
   def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq[T] = mapNull(xs, new ArraySeq.ofRef[T](xs))
+  /** Wraps an `Array[Int]` in an immutable [[scala.collection.immutable.ArraySeq]] without copying it.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArraySeq.ofInt` backed by `xs`, or `null` if `xs` is `null`
+   */
   def wrapIntArray(xs: Array[Int]): ArraySeq[Int]                 = mapNull(xs, new ArraySeq.ofInt(xs))
+  /** Wraps an `Array[Double]` in an immutable [[scala.collection.immutable.ArraySeq]] without copying it.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArraySeq.ofDouble` backed by `xs`, or `null` if `xs` is `null`
+   */
   def wrapDoubleArray(xs: Array[Double]): ArraySeq[Double]        = mapNull(xs, new ArraySeq.ofDouble(xs))
+  /** Wraps an `Array[Long]` in an immutable [[scala.collection.immutable.ArraySeq]] without copying it.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArraySeq.ofLong` backed by `xs`, or `null` if `xs` is `null`
+   */
   def wrapLongArray(xs: Array[Long]): ArraySeq[Long]              = mapNull(xs, new ArraySeq.ofLong(xs))
+  /** Wraps an `Array[Float]` in an immutable [[scala.collection.immutable.ArraySeq]] without copying it.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArraySeq.ofFloat` backed by `xs`, or `null` if `xs` is `null`
+   */
   def wrapFloatArray(xs: Array[Float]): ArraySeq[Float]           = mapNull(xs, new ArraySeq.ofFloat(xs))
+  /** Wraps an `Array[Char]` in an immutable [[scala.collection.immutable.ArraySeq]] without copying it.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArraySeq.ofChar` backed by `xs`, or `null` if `xs` is `null`
+   */
   def wrapCharArray(xs: Array[Char]): ArraySeq[Char]              = mapNull(xs, new ArraySeq.ofChar(xs))
+  /** Wraps an `Array[Byte]` in an immutable [[scala.collection.immutable.ArraySeq]] without copying it.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArraySeq.ofByte` backed by `xs`, or `null` if `xs` is `null`
+   */
   def wrapByteArray(xs: Array[Byte]): ArraySeq[Byte]              = mapNull(xs, new ArraySeq.ofByte(xs))
+  /** Wraps an `Array[Short]` in an immutable [[scala.collection.immutable.ArraySeq]] without copying it.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArraySeq.ofShort` backed by `xs`, or `null` if `xs` is `null`
+   */
   def wrapShortArray(xs: Array[Short]): ArraySeq[Short]           = mapNull(xs, new ArraySeq.ofShort(xs))
+  /** Wraps an `Array[Boolean]` in an immutable [[scala.collection.immutable.ArraySeq]] without copying it.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArraySeq.ofBoolean` backed by `xs`, or `null` if `xs` is `null`
+   */
   def wrapBooleanArray(xs: Array[Boolean]): ArraySeq[Boolean]     = mapNull(xs, new ArraySeq.ofBoolean(xs))
+  /** Wraps an `Array[Unit]` in an immutable [[scala.collection.immutable.ArraySeq]] without copying it.
+   *
+   *  @param xs the array to wrap
+   *  @return an `ArraySeq.ofUnit` backed by `xs`, or `null` if `xs` is `null`
+   */
   def wrapUnitArray(xs: Array[Unit]): ArraySeq[Unit]              = mapNull(xs, new ArraySeq.ofUnit(xs))
 }
