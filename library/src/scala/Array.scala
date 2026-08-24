@@ -36,14 +36,23 @@ import scala.runtime.ScalaRunTime.{array_apply, array_update}
  *  `Array(1, 2)`, `Array(0, 0)` and `Array(1, 2, 0, 0)`.
  */
 object Array {
+  /** An empty `Array[Boolean]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyBooleanArray = new Array[Boolean](0)
+  /** An empty `Array[Byte]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyByteArray    = new Array[Byte](0)
+  /** An empty `Array[Char]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyCharArray    = new Array[Char](0)
+  /** An empty `Array[Double]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyDoubleArray  = new Array[Double](0)
+  /** An empty `Array[Float]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyFloatArray   = new Array[Float](0)
+  /** An empty `Array[Int]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyIntArray     = new Array[Int](0)
+  /** An empty `Array[Long]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyLongArray    = new Array[Long](0)
+  /** An empty `Array[Short]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyShortArray   = new Array[Short](0)
+  /** An empty `Array[Object]`, shared to avoid allocation; a zero-length array cannot be mutated. */
   val emptyObjectArray  = new Array[Object](0)
 
   /** Provides an implicit conversion from the Array object to a collection Factory.
@@ -55,7 +64,13 @@ object Array {
   implicit def toFactory[A : ClassTag](dummy: Array.type): Factory[A, Array[A]] = new ArrayFactory(dummy)
   @SerialVersionUID(3L)
   private class ArrayFactory[A : ClassTag](dummy: Array.type) extends Factory[A, Array[A]] with Serializable {
+    /** Builds an array containing the elements of the given collection.
+     *
+     *  @param it the source of elements to include in the array
+     *  @return a new `Array[A]` holding the elements of `it`, in iteration order
+     */
     def fromSpecific(it: IterableOnce[A]^): Array[A] = Array.from[A](it)
+    /** Returns a new builder that accumulates elements into an `Array[A]`. */
     def newBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder[A]
   }
 
@@ -704,12 +719,47 @@ object Array {
    */
   def unapplySeq[T](x: Array[T]): UnapplySeqWrapper[T] = new UnapplySeqWrapper(x)
 
+  /** A wrapper that lets an array be destructured by a sequence pattern such as
+   *  `case Array(x, y, z) =>`.
+   *
+   *  The members below implement the name-based extractor protocol directly against
+   *  the wrapped array, so a fixed-arity pattern matches without building an
+   *  intermediate sequence.
+   *
+   *  @tparam T the element type of the wrapped array
+   *  @param a the array to be destructured
+   */
   final class UnapplySeqWrapper[T](private val a: Array[T]) extends AnyVal {
+    /** Returns `false`, since this extractor never yields an empty result.
+     *
+     *  The literal type `false` tells the compiler that the extraction itself cannot fail, so
+     *  [[get]] is always available. Whether a particular sequence pattern matches is decided
+     *  separately, by [[lengthCompare]] and the element accessors.
+     */
     def isEmpty: false = false
+    /** Returns this wrapper, whose sequence-like operations supply the elements of the pattern. */
     def get: UnapplySeqWrapper[T] = this
+    /** Compares the length of the wrapped array to a test value.
+     *
+     *  @param len the test value that gets compared with the length
+     *  @return a value less than, equal to, or greater than `0` as the length of the array is less than, equal to, or greater than `len`
+     */
     def lengthCompare(len: Int): Int = a.lengthCompare(len)
+    /** Returns the element of the wrapped array at the given index.
+     *
+     *  @param i the index, which must be in the range from `0` until the length of the array
+     *  @return the element at index `i`
+     *  @throws ArrayIndexOutOfBoundsException if `i` is negative or not less than the length of the array
+     */
     def apply(i: Int): T = a(i)
+    /** Returns all elements of the wrapped array except the first `n`, as needed to bind the
+     *  variable-length part of a pattern such as `case Array(x, rest*) =>`.
+     *
+     *  @param n the number of leading elements to skip
+     *  @return a sequence backed by a fresh copy of the remaining elements, even when `n` is `0`
+     */
     def drop(n: Int): scala.Seq[T] = ArraySeq.unsafeWrapArray(a.drop(n)) // clones the array, also if n == 0
+    /** Returns the elements of the wrapped array as a sequence backed by a copy of the array. */
     def toSeq: scala.Seq[T] = a.toSeq // clones the array
   }
 }

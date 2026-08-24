@@ -37,29 +37,68 @@ trait BooleanProp extends Prop[Boolean] {
 
 object BooleanProp {
   private[sys]
+  /** A `BooleanProp` backed by a system property, whose truth is decided by `valueFn`.
+   *
+   *  @param key the system property key used to look up the value
+   *  @param valueFn the function deciding whether the raw `String` property value counts as true
+   */
   class BooleanPropImpl(key: String, valueFn: String => Boolean) extends PropImpl(key, valueFn) with BooleanProp {
+    /** Sets the property to `newValue`, clearing it instead when `newValue` is `false`.
+     *
+     *  @tparam T1 a supertype of `Boolean`, used as the input type since `Prop` is covariant in `T`
+     *  @param newValue the value to set for this property
+     *  @return the previous value of this property
+     */
     override def setValue[T1 >: Boolean](newValue: T1): Boolean = newValue match {
       case x: Boolean if !x   => val old = value ; clear() ; old
       case x                  => super.setValue(newValue)
     }
+    /** Sets the raw property value to `"true"`, so that `value` will be whatever `valueFn` returns for `"true"`. */
     def enable()  = this setValue true
+    /** Removes the property from the underlying map, so that `value` will be false. */
     def disable() = this.clear()
+    /** Disables the property if `value` is currently true, otherwise enables it. */
     def toggle()  = if (value) disable() else enable()
   }
   private[sys]
+  /** A `BooleanProp` with a fixed value, backed by no map, whose mutating operations do nothing.
+   *
+   *  @param key the name of the property
+   *  @param value the constant value of this property
+   */
   class ConstantImpl(val key: String, val value: Boolean) extends BooleanProp {
+    /** Equal to `value`: a constant-true property counts as set, a constant-false one as unset. */
     val isSet = value
+    /** Ignores `newValue` and returns the string form of the constant value.
+     *
+     *  @param newValue the new string value, which is discarded
+     */
     def set(newValue: String) = "" + value
+    /** Ignores `newValue` and leaves the constant value in place.
+     *
+     *  @tparam T1 a supertype of `Boolean`, used as the input type since `Prop` is covariant in `T`
+     *  @param newValue the value to set for this property, which is discarded
+     *  @return the constant value of this property
+     */
     def setValue[T1 >: Boolean](newValue: T1): Boolean = value
+    /** Returns the string form of the constant value, either `"true"` or `"false"`. */
     def get: String = "" + value
+    /** Returns `Some(true)` if the constant value is true, `None` otherwise. */
     def option = if (isSet) Some(value) else None
     //def or[T1 >: Boolean](alt: => T1): T1 = if (value) true else alt
 
+    /** Does nothing, since the value of this property is constant. */
     def clear() = ()
+    /** Does nothing, since the value of this property is constant. */
     def enable() = ()
+    /** Does nothing, since the value of this property is constant. */
     def disable() = ()
+    /** Does nothing, since the value of this property is constant. */
     def toggle() = ()
 
+    /** The zero value for a Boolean property, `false`; never consulted here because
+     *  `value` is fixed at construction.
+     */
     protected def zero = false
   }
 
@@ -92,5 +131,10 @@ object BooleanProp {
    */
   def constant(key: String, isOn: Boolean): BooleanProp = new ConstantImpl(key, isOn)
 
+  /** Returns the `value` of the given property, so that a `BooleanProp` can be used
+   *  where a `Boolean` is expected.
+   *
+   *  @param b the property to convert
+   */
   implicit def booleanPropAsBoolean(b: BooleanProp): Boolean = b.value
 }
