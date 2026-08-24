@@ -1,0 +1,254 @@
+-- Error: tests/neg/recursionoverflow-in-macro/Use_2.scala:6:42 --------------------------------------------------------
+ 6 |val proof: Int = LemmaMacros.applyTactics { // error
+   |                 ^
+   |Recursion limit exceeded.
+   |Maybe there is an illegal cyclic reference?
+   |If that's not the case, you could try to increase the fuel and stack size: https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html
+   |For the unprocessed stack overflow trace, compile with -Xno-enrich-error-messages.
+   |A recurring operation is (inner to outer):
+   |
+   |  folding over LemmaMacros.use(0, step)
+   |  folding over LemmaMacros.use(0, step)
+   |  folding over LemmaMacros.use(0, step)
+   |  folding over LemmaMacros.use(LemmaMacros.use(0, step), step)
+   |  folding over LemmaMacros.use(LemmaMacros.use(0, step), step)
+   |  folding over LemmaMacros.use(LemmaMacros.use(0, step), step)
+   |  folding over LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step)
+   |  folding over LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step)
+   |  folding over LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step)
+   |  folding over LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step), step)
+   |  ...
+   |
+   |  folding over LemmaMacros.use(
+   |  LemmaMacros.use(
+   |    LemmaMacros.use(
+   |      LemmaMacros.use(
+   |        LemmaMacros.use(
+   |          LemmaMacros.use(
+   |            LemmaMacros.use(
+   |              LemmaMacros.use(
+   |                LemmaMacros.use(
+   |                  LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step), step), step),
+   |                step),
+   |            step),
+   |          step),
+   |        step),
+   |      step),
+   |    step),
+   |  step),
+   |step)
+   |  folding over LemmaMacros.use(
+   |  LemmaMacros.use(
+   |    LemmaMacros.use(
+   |      LemmaMacros.use(
+   |        LemmaMacros.use(
+   |          LemmaMacros.use(
+   |            LemmaMacros.use(
+   |              LemmaMacros.use(
+   |                LemmaMacros.use(
+   |                  LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step), step), step),
+   |                step),
+   |            step),
+   |          step),
+   |        step),
+   |      step),
+   |    step),
+   |  step),
+   |step)
+   |  folding over LemmaMacros.use(
+   |  LemmaMacros.use(
+   |    LemmaMacros.use(
+   |      LemmaMacros.use(
+   |        LemmaMacros.use(
+   |          LemmaMacros.use(
+   |            LemmaMacros.use(
+   |              LemmaMacros.use(
+   |                LemmaMacros.use(
+   |                  LemmaMacros.use(
+   |                    LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step), step), step)
+   |                    ,
+   |                step),
+   |              step),
+   |            step),
+   |          step),
+   |        step),
+   |      step),
+   |    step),
+   |  step),
+   |step)
+   |  folding over LemmaMacros.use(
+   |  LemmaMacros.use(
+   |    LemmaMacros.use(
+   |      LemmaMacros.use(
+   |        LemmaMacros.use(
+   |          LemmaMacros.use(
+   |            LemmaMacros.use(
+   |              LemmaMacros.use(
+   |                LemmaMacros.use(
+   |                  LemmaMacros.use(
+   |                    LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step), step), step)
+   |                    ,
+   |                step),
+   |              step),
+   |            step),
+   |          step),
+   |        step),
+   |      step),
+   |    step),
+   |  step),
+   |step)
+   |  folding over LemmaMacros.use(
+   |  LemmaMacros.use(
+   |    LemmaMacros.use(
+   |      LemmaMacros.use(
+   |        LemmaMacros.use(
+   |          LemmaMacros.use(
+   |            LemmaMacros.use(
+   |              LemmaMacros.use(
+   |                LemmaMacros.use(
+   |                  LemmaMacros.use(
+   |                    LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step), step), step)
+   |                    ,
+   |                step),
+   |              step),
+   |            step),
+   |          step),
+   |        step),
+   |      step),
+   |    step),
+   |  step),
+   |step)
+   |  folding over LemmaMacros.use(
+   |  LemmaMacros.use(
+   |    LemmaMacros.use(
+   |      LemmaMacros.use(
+   |        LemmaMacros.use(
+   |          LemmaMacros.use(
+   |            LemmaMacros.use(
+   |              LemmaMacros.use(
+   |                LemmaMacros.use(
+   |                  LemmaMacros.use(
+   |                    LemmaMacros.use(
+   |                      LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step), step),
+   |                      step),
+   |                  step),
+   |                step),
+   |              step),
+   |            step),
+   |          step),
+   |        step),
+   |      step),
+   |    step),
+   |  step),
+   |step)
+   |  folding over LemmaMacros.use(
+   |  LemmaMacros.use(
+   |    LemmaMacros.use(
+   |      LemmaMacros.use(
+   |        LemmaMacros.use(
+   |          LemmaMacros.use(
+   |            LemmaMacros.use(
+   |              LemmaMacros.use(
+   |                LemmaMacros.use(
+   |                  LemmaMacros.use(
+   |                    LemmaMacros.use(
+   |                      LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step), step),
+   |                      step),
+   |                  step),
+   |                step),
+   |              step),
+   |            step),
+   |          step),
+   |        step),
+   |      step),
+   |    step),
+   |  step),
+   |step)
+   |  folding over LemmaMacros.use(
+   |  LemmaMacros.use(
+   |    LemmaMacros.use(
+   |      LemmaMacros.use(
+   |        LemmaMacros.use(
+   |          LemmaMacros.use(
+   |            LemmaMacros.use(
+   |              LemmaMacros.use(
+   |                LemmaMacros.use(
+   |                  LemmaMacros.use(
+   |                    LemmaMacros.use(
+   |                      LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step), step),
+   |                      step),
+   |                  step),
+   |                step),
+   |              step),
+   |            step),
+   |          step),
+   |        step),
+   |      step),
+   |    step),
+   |  step),
+   |step)
+   |  folding over LemmaMacros.use(
+   |  LemmaMacros.use(
+   |    LemmaMacros.use(
+   |      LemmaMacros.use(
+   |        LemmaMacros.use(
+   |          LemmaMacros.use(
+   |            LemmaMacros.use(
+   |              LemmaMacros.use(
+   |                LemmaMacros.use(
+   |                  LemmaMacros.use(
+   |                    LemmaMacros.use(
+   |                      LemmaMacros.use(
+   |                        LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step), step),
+   |                        step),
+   |                    step),
+   |                  step),
+   |                step),
+   |              step),
+   |            step),
+   |          step),
+   |        step),
+   |      step),
+   |    step),
+   |  step),
+   |step)
+   |  folding over LemmaMacros.use(
+   |  LemmaMacros.use(
+   |    LemmaMacros.use(
+   |      LemmaMacros.use(
+   |        LemmaMacros.use(
+   |          LemmaMacros.use(
+   |            LemmaMacros.use(
+   |              LemmaMacros.use(
+   |                LemmaMacros.use(
+   |                  LemmaMacros.use(
+   |                    LemmaMacros.use(
+   |                      LemmaMacros.use(
+   |                        LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(LemmaMacros.use(0, step), step), step), step),
+   |                        step),
+   |                    step),
+   |                  step),
+   |                step),
+   |              step),
+   |            step),
+   |          step),
+   |        step),
+   |      step),
+   |    step),
+   |  step),
+   |step)
+   |
+ 7 |  step; step; step; step; step; step; step; step; step; step; step; step; step; step; step
+ 8 |...
+10 |}
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macro_1.scala:23
+23 |      '{ LemmaMacros.use($acc, ${ tactic.asExprOf[Tactic[Any]] }) }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macro_1.scala:23
+23 |      '{ LemmaMacros.use($acc, ${ tactic.asExprOf[Tactic[Any]] }) }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    --------------------------------------------------------------------------------------------------------------------
