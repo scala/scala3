@@ -288,17 +288,13 @@ final class BigInt private (
     case x                => isValidLong && unifiedPrimitiveEquals(x)
   }
 
-  /** Returns `true` if this `BigInt` can be represented as a `Byte`, `false` otherwise.
-   */
+  /** Returns `true` if this `BigInt` can be represented as a `Byte`, `false` otherwise. */
   override def isValidByte: Boolean = _long >= Byte.MinValue && _long <= Byte.MaxValue /* && longEncoding */
-  /** Returns `true` if this `BigInt` can be represented as a `Short`, `false` otherwise.
-   */
+  /** Returns `true` if this `BigInt` can be represented as a `Short`, `false` otherwise. */
   override def isValidShort: Boolean = _long >= Short.MinValue && _long <= Short.MaxValue /* && longEncoding */
-  /** Returns `true` if this `BigInt` can be represented as a `Char`, `false` otherwise.
-   */
+  /** Returns `true` if this `BigInt` can be represented as a `Char`, `false` otherwise. */
   override def isValidChar: Boolean = _long >= Char.MinValue && _long <= Char.MaxValue /* && longEncoding */
-  /** Returns `true` if this `BigInt` can be represented as an `Int`, `false` otherwise.
-   */
+  /** Returns `true` if this `BigInt` can be represented as an `Int`, `false` otherwise. */
   override def isValidInt: Boolean = _long >= Int.MinValue && _long <= Int.MaxValue /* && longEncoding */
            def isValidLong: Boolean = longEncoding || _bigInteger == BigInt.longMinValueBigInteger // rhs of || tests == Long.MinValue
 
@@ -336,11 +332,8 @@ final class BigInt private (
     (shifted.signum != 0) && !(shifted.equals(BigInt.minusOne))
   }
 
+  /** Always returns `true` since a `BigInt` is always a whole number. */
   @deprecated("isWhole on an integer type is always true", "2.12.15")
-  /** Always returns `true` since a `BigInt` is always a whole number.
-   *
-   *  @deprecated("isWhole on an integer type is always true", "2.12.15")
-   */
   def isWhole: Boolean = true
   /** Returns the underlying `java.math.BigInteger` representation of this `BigInt`. */
   def underlying: BigInteger = bigInteger

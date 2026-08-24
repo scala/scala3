@@ -93,20 +93,17 @@ trait Map[K, V] extends scala.collection.mutable.Map[K, V] {
     */
   def replace(k: K, v: V): Option[V]
 
-  /** Returns the value associated with the given key if it exists, otherwise
-   *  computes and stores the `defaultValue` for that key, or returns a value
-   *  concurrently inserted by another thread.
+  /** Returns the value associated with the given key, if present; otherwise
+   *  computes `defaultValue`, stores it under the key, and returns it.
    *
-   *  If the key is present, the associated value is returned. If not, the
-   *  `defaultValue` is computed, stored in the map under the given key, and
-   *  returned. If another thread concurrently inserts a value for `key` before
-   *  this method can store `defaultValue`, that concurrently inserted value is
-   *  returned instead, and the computed `defaultValue` is discarded.
-   *
+   *  If another thread inserts a value for `key` after the initial lookup
+   *  fails but before the computed `defaultValue` is stored, that
+   *  concurrently inserted value is returned instead and the computed
+   *  `defaultValue` is discarded.
    *
    *  @param key the key whose associated value is to be retrieved or updated
-   *  @param defaultValue the value to be computed and stored if the key is absent (unless another thread inserts a value first)
-   *  @return the value associated with the key: the existing value, the newly computed and stored value, or a value inserted concurrently by another thread
+   *  @param defaultValue the value to compute and store if `key` is absent;
+   *                      not evaluated if `key` is already present
    */
   override def getOrElseUpdate(key: K, @deprecatedName("op", since="2.13.13") defaultValue: => V): V = get(key) match {
     case Some(v) => v
@@ -120,8 +117,11 @@ trait Map[K, V] extends scala.collection.mutable.Map[K, V] {
 
   /**
    * Removes the entry for the specified key if it's currently mapped to the
-   * specified value. Comparison uses reference equality if supported by the
-   * implementation; otherwise, object equality.
+   * specified value. Comparison to the specified value is done using reference
+   * equality.
+   *
+   * Not all map implementations can support removal based on reference
+   * equality, and for those implementations, object equality is used instead.
    *
    * $atomicop
    *
@@ -135,8 +135,11 @@ trait Map[K, V] extends scala.collection.mutable.Map[K, V] {
 
   /**
    * Replaces the entry for the given key only if it was previously mapped to
-   * a given value. Comparison uses reference equality if supported by the
-   * implementation; otherwise, object equality.
+   * a given value. Comparison to the specified value is done using reference
+   * equality.
+   *
+   * Not all map implementations can support replacement based on reference
+   * equality, and for those implementations, object equality is used instead.
    *
    * $atomicop
    *
@@ -157,12 +160,11 @@ trait Map[K, V] extends scala.collection.mutable.Map[K, V] {
    * If the remapping function returns `None`, the mapping is removed (or remains absent if initially absent).
    * If the function itself throws an exception, the exception is rethrown, and the current mapping is left unchanged.
    *
-   * If the map is updated by another concurrent access, the remapping function is retried until successfully updated.
+   * If the map is updated by another concurrent access, the remapping function will be retried until successfully updated.
    *
    * @param key the key value
    * @param remappingFunction a function that receives current optionally mapped value and returns a new mapping
    * @return the new value associated with the specified key
-   * @throws the exception thrown by `remappingFunction` if it fails.
    */
   override def updateWith(key: K)(remappingFunction: Option[V] => Option[V]): Option[V] = updateWithAux(key)(remappingFunction)
 

@@ -32,7 +32,8 @@ private[collection] object BitOperations {
       *  @param mask the bitmask to apply
       */
     def zero(i: Int, mask: Int)                 = (i & mask) == 0
-    /** Returns the result of applying a bitmask to `i`.
+    /** Returns the prefix of `i` above the branching bit `mask`: all bits of
+      *  `i` at or below `mask` are cleared.
       *
       *  @param i the integer value to mask
       *  @param mask the branch bit used to derive the mask applied to `i`
@@ -42,7 +43,7 @@ private[collection] object BitOperations {
       *
       *  @param key the integer value to check
       *  @param prefix the expected prefix value
-      *  @param m the bitmask to apply
+      *  @param m the branch bit used to derive the mask matched against `key`
       */
     def hasMatch(key: Int, prefix: Int, m: Int) = mask(key, m) == prefix
     /** Returns `true` if `i` is less than `j`, treating both as unsigned values.
@@ -51,10 +52,11 @@ private[collection] object BitOperations {
       *  @param j the second integer to compare
       */
     def unsignedCompare(i: Int, j: Int)         = (i < j) ^ (i < 0) ^ (j < 0)
-    /** Returns `true` if `m1` is shorter than `m2` when treated as unsigned values.
+    /** Returns `true` if the mask `m1` denotes a shorter prefix than `m2`,
+      *  that is, if `m1` is greater than `m2` in the unsigned ordering.
       *
-      *  @param m1 the first integer to compare
-      *  @param m2 the second integer to compare
+      *  @param m1 the first mask to compare
+      *  @param m2 the second mask to compare
       */
     def shorter(m1: Int, m2: Int)               = unsignedCompare(m2, m1)
     /** Returns the bitwise complement of `i`.
@@ -73,7 +75,8 @@ private[collection] object BitOperations {
       *  @param sep the separator to use between bits
       */
     def bitString(num: Int, sep: String = "")   = bits(num) map (b => if (b) "1" else "0") mkString sep
-    /** Returns the highest one bit of `j`.
+    /** Returns an `Int` with a single bit set in the position of the highest
+      *  set bit of `j`, or zero if `j` is zero.
       *
       *  @param j the integer value to process
       */
@@ -91,7 +94,8 @@ private[collection] object BitOperations {
       *  @param mask the bitmask to apply
       */
     def zero(i: Long, mask: Long)                  = (i & mask) == 0L
-    /** Returns the result of applying a bitmask to `i`.
+    /** Returns the prefix of `i` above the branching bit `mask`: all bits of
+      *  `i` at or below `mask` are cleared.
       *
       *  @param i the long value to mask
       *  @param mask the branch bit used to derive the mask applied to `i`
@@ -101,7 +105,7 @@ private[collection] object BitOperations {
       *
       *  @param key the long value to check
       *  @param prefix the expected prefix value
-      *  @param m the bitmask to apply
+      *  @param m the branch bit used to derive the mask matched against `key`
       */
     def hasMatch(key: Long, prefix: Long, m: Long) = mask(key, m) == prefix
     /** Returns `true` if `i` is less than `j`, treating both as unsigned values.
@@ -110,10 +114,11 @@ private[collection] object BitOperations {
       *  @param j the second long to compare
       */
     def unsignedCompare(i: Long, j: Long)          = (i < j) ^ (i < 0L) ^ (j < 0L)
-    /** Returns `true` if `m1` is shorter than `m2` when treated as unsigned values.
+    /** Returns `true` if the mask `m1` denotes a shorter prefix than `m2`,
+      *  that is, if `m1` is greater than `m2` in the unsigned ordering.
       *
-      *  @param m1 the first long to compare
-      *  @param m2 the second long to compare
+      *  @param m1 the first mask to compare
+      *  @param m2 the second mask to compare
       */
     def shorter(m1: Long, m2: Long)                = unsignedCompare(m2, m1)
     /** Returns the bitwise complement of `i`.
@@ -132,7 +137,8 @@ private[collection] object BitOperations {
       *  @param sep the separator to use between bits
       */
     def bitString(num: Long, sep: String = "")     = bits(num) map (b => if (b) "1" else "0") mkString sep
-    /** Returns the highest one bit of `j`.
+    /** Returns a `Long` with a single bit set in the position of the highest
+      *  set bit of `j`, or zero if `j` is zero.
       *
       *  @param j the long value to process
       */

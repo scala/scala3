@@ -88,7 +88,7 @@ private[collection] case object SerializeEnd
   * serialization scheme.
   */
 transparent trait DefaultSerializable extends Serializable { this: scala.collection.Iterable[?]^ =>
-  /** Creates a serialization proxy for this collection.
+  /** Returns a serialization proxy for this collection.
     *
     *  This method is called during serialization to replace the collection with
     *  a `DefaultSerializationProxy` that handles the serialization and

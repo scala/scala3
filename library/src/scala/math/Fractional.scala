@@ -40,32 +40,29 @@ trait Fractional[T] extends Numeric[T] {
      */
     def /(rhs: T) = div(lhs, rhs)
   }
-  /** Returns an object that provides fractional operations for `lhs`.
+  /** Returns a `FractionalOps` instance that provides fractional operations for `lhs`.
    *
    *  @param lhs the value to perform operations on
-   *  @return an object providing fractional operations for `lhs`
    */
   override implicit def mkNumericOps(lhs: T): FractionalOps =
     new FractionalOps(lhs)
 }
 
 object Fractional {
-  /** Returns the `Fractional` instance for type `T`.
+  /** Returns the implicit `Fractional` instance for type `T`.
    *
    *  @tparam T the type of the fractional numbers
    *  @param frac the implicit `Fractional` instance for `T`
-   *  @return the `Fractional` instance for `T`
    */
   @inline def apply[T](implicit frac: Fractional[T]): Fractional[T] = frac
 
   /** Provides additional implicit conversions for fractional types. */
   trait ExtraImplicits {
-    /** Returns an object that provides fractional operations for `x`.
+    /** Returns a `FractionalOps` instance that provides fractional operations for `x`.
      *
      *  @tparam T the type of the fractional numbers
      *  @param x the value to perform operations on
      *  @param num the implicit `Fractional` instance for `T`
-     *  @return an object providing fractional operations for `x`
      */
     implicit def infixFractionalOps[T](x: T)(implicit num: Fractional[T]): Fractional[T]#FractionalOps = new num.FractionalOps(x)
   }

@@ -178,7 +178,7 @@ object Numeric {
     def negate(x: Int): Int = -x
     /** Returns the given `Int` value, as no conversion is needed.
      *
-     *  @param x the `Int` value to convert
+     *  @param x the `Int` value (returned unchanged)
      *  @return the given `Int` value unchanged
      */
     def fromInt(x: Int): Int = x
@@ -190,7 +190,7 @@ object Numeric {
     def parseString(str: String): Option[Int] = StringParsers.parseInt(str)
     /** Returns the given `Int` value, as no conversion is needed.
      *
-     *  @param x the `Int` value to convert
+     *  @param x the `Int` value (returned unchanged)
      *  @return the given `Int` value unchanged
      */
     def toInt(x: Int): Int = x
@@ -503,13 +503,13 @@ object Numeric {
     /** Returns the signum of a `Char` value.
      *
      *  @param x the `Char` value
-     *  @return 1 if `x` is nonzero, 0 if `x` is zero (\\u0000) — `Char` values are unsigned.
+     *  @return 1 if `x` is nonzero, 0 if `x` is zero; the result is never -1 because `Char` values are unsigned
      */
     override def signum(x: Char): Int = math.signum(x.toInt)
     /** Returns the sign of a `Char` value.
      *
      *  @param x the `Char` value
-     *  @return \\u0001 if `x` is nonzero, \\u0000 if `x` is zero (\\u0000) — `Char` values are unsigned.
+     *  @return `'\\u0001'` if `x` is nonzero, `'\\u0000'` if `x` is zero; `Char` values are unsigned
      */
     override def sign(x: Char): Char = math.signum(x.toInt).toChar
   }
@@ -580,7 +580,7 @@ object Numeric {
     def toInt(x: Long): Int = x.toInt
     /** Returns the given `Long` value, as no conversion is needed.
      *
-     *  @param x the `Long` value to convert
+     *  @param x the `Long` value (returned unchanged)
      *  @return the given `Long` value unchanged
      */
     def toLong(x: Long): Long = x
@@ -694,7 +694,7 @@ object Numeric {
     /** Returns the sign of a `Float` value.
      *
      *  @param x the `Float` value
-     *  @return -1.0 if `x` is negative, 1.0 if `x` is positive, 0.0 if `x` is zero, or `NaN` if `x` is `NaN`
+     *  @return -1.0 if `x` is negative, 1.0 if `x` is positive, `x` itself if `x` is a zero (the sign of the zero is preserved), or `NaN` if `x` is `NaN`
      */
     override def sign(x: Float): Float = math.signum(x)
   }
@@ -783,7 +783,7 @@ object Numeric {
     /** Returns the sign of a `Double` value.
      *
      *  @param x the `Double` value
-     *  @return -1.0 if `x` is negative, 1.0 if `x` is positive, 0.0 if `x` is zero, or `NaN` if `x` is `NaN`
+     *  @return -1.0 if `x` is negative, 1.0 if `x` is positive, `x` itself if `x` is a zero (the sign of the zero is preserved), or `NaN` if `x` is `NaN`
      */
     override def sign(x: Double): Double = math.signum(x)
   }
@@ -993,7 +993,6 @@ trait Numeric[T] extends Ordering[T] {
   def abs(x: T): T = if (lt(x, zero)) negate(x) else x
 
   /** Returns the signum of a value of type `T`.
-   *  @deprecated Use `sign` instead.
    *
    *  @param x the value
    *  @return -1 if `x` is negative, 1 if `x` is positive, 0 if `x` is zero
@@ -1039,9 +1038,7 @@ trait Numeric[T] extends Ordering[T] {
     def unary_- = negate(lhs)
     /** Returns the absolute value of this value. */
     def abs: T = Numeric.this.abs(lhs)
-    /** Returns the signum of this value.
-     *  @deprecated("use `sign` method instead", since = "2.13.0")
-     */
+    /** Returns the signum of this value. */
     @deprecated("use `sign` method instead", since = "2.13.0") def signum: Int = Numeric.this.signum(lhs)
     /** Returns the sign of this value. */
     def sign: T = Numeric.this.sign(lhs)

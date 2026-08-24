@@ -51,16 +51,15 @@ trait Integral[T] extends Numeric[T] {
      *  @param rhs the divisor
      */
     def %(rhs: T) = rem(lhs, rhs)
-    /** Returns the quotient and remainder of this value divided by `rhs`.
+    /** Returns the quotient and remainder of this value divided by `rhs`, as a `(quotient, remainder)` tuple.
      *
-     *  @param rhs the divisor; the method returns a tuple of (quotient, remainder)
+     *  @param rhs the divisor
      */
     def /%(rhs: T) = (quot(lhs, rhs), rem(lhs, rhs))
   }
-  /** Returns an `IntegralOps` instance for `lhs`.
+  /** Returns an `IntegralOps` instance providing integral operators on `lhs`.
    *
    *  @param lhs the value to wrap with integral operations
-   *  @return an `IntegralOps` instance providing integral operators on `lhs`
    */
   override implicit def mkNumericOps(lhs: T): IntegralOps = new IntegralOps(lhs)
 }
@@ -70,7 +69,6 @@ object Integral {
    *
    *  @tparam T the type for which an `Integral` instance is requested
    *  @param int the implicit `Integral` instance for type `T`
-   *  @return the implicit `Integral` instance for type `T`
    */
   @inline def apply[T](implicit int: Integral[T]): Integral[T] = int
 

@@ -106,7 +106,7 @@ transparent trait IsIterable[Repr] extends IsIterableOnce[Repr] {
    */
   type C
 
-  /** A deprecated alias for the `apply` method, which converts a `Repr` to an `IterableOps[A, Iterable, C]`. */
+  /** A function that converts a `Repr` to an `IterableOps[A, Iterable, C]`, equivalent to `apply`. */
   @deprecated("'conversion' is now a method named 'apply'", "2.13.0")
   @untrackedCaptures
   override val conversion: Repr => IterableOps[A, Iterable, C] = apply(_)
@@ -159,8 +159,8 @@ transparent trait IsIterableLowPriority {
   /** Makes an `IsSeq` instance visible as an `IsIterable` instance.
    *
    *  @tparam Repr the representation type that can be converted to an `Iterable`
-   *  @param isSeqLike the `IsSeq` instance to convert
-   *  @return an `IsIterable` instance with the same element and collection types as the given `IsSeq`
+   *  @param isSeqLike the `IsSeq` instance to expose as an `IsIterable`
+   *  @return `isSeqLike` itself (an `IsSeq` is an `IsIterable`), preserving its element (`A`) and collection (`C`) types
    */
   implicit def isSeqLikeIsIterable[Repr](implicit
     isSeqLike: IsSeq[Repr]
@@ -170,8 +170,8 @@ transparent trait IsIterableLowPriority {
   /** Makes an `IsMap` instance visible as an `IsIterable` instance.
    *
    *  @tparam Repr the representation type that can be converted to an `Iterable`
-   *  @param isMapLike the `IsMap` instance to convert
-   *  @return an `IsIterable` instance with the same element and collection types as the given `IsMap`
+   *  @param isMapLike the `IsMap` instance to expose as an `IsIterable`
+   *  @return `isMapLike` itself (an `IsMap` is an `IsIterable`), preserving its element (`A`) and collection (`C`) types
    */
   implicit def isMapLikeIsIterable[Repr](implicit
     isMapLike: IsMap[Repr]

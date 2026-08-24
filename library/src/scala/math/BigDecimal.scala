@@ -54,7 +54,7 @@ object BigDecimal {
     /** Rounding mode to round towards the nearest neighbor, or towards the even neighbor if equidistant. */
     val HALF_EVEN   = Value(JRM.HALF_EVEN.ordinal)
     /** Rounding mode to assert that no rounding is necessary.
-     *  @note This mode throws an `ArithmeticException` if rounding would be required.
+     *  @note Operations that would require rounding throw an `ArithmeticException` under this mode.
      */
     val UNNECESSARY = Value(JRM.UNNECESSARY.ordinal)
   }
@@ -470,9 +470,10 @@ object BigDecimal {
  */
 final class BigDecimal(val bigDecimal: BigDec, val mc: MathContext)
 extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[BigDecimal] {
-  /** Constructs a BigDecimal using the given java.math.BigDecimal and the default MathContext.
+  /** Constructs a `BigDecimal` using the given `java.math.BigDecimal` and the default `MathContext`.
    *
-   *  @param bigDecimal the java.math.BigDecimal to wrap
+   *  @param bigDecimal the `java.math.BigDecimal` to wrap
+   *  @throws java.lang.IllegalArgumentException if `bigDecimal` is `null`
    */
   def this(bigDecimal: BigDec) = this(bigDecimal, BigDecimal.defaultMathContext)
   import BigDecimal.RoundingMode._
@@ -537,15 +538,15 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
       }
     case _                    => isValidLong && unifiedPrimitiveEquals(that)
   }
-  /** Returns true if this `BigDecimal` can be converted to a `Byte` without truncation or overflow. */
+  /** Returns `true` if this `BigDecimal` can be converted to a `Byte` without truncation or overflow. */
   override def isValidByte  = noArithmeticException(toByteExact)
-  /** Returns true if this `BigDecimal` can be converted to a `Short` without truncation or overflow. */
+  /** Returns `true` if this `BigDecimal` can be converted to a `Short` without truncation or overflow. */
   override def isValidShort = noArithmeticException(toShortExact)
-  /** Returns true if this `BigDecimal` can be converted to a `Char` without truncation or overflow. */
+  /** Returns `true` if this `BigDecimal` can be converted to a `Char` without truncation or overflow. */
   override def isValidChar  = isValidInt && toIntExact >= Char.MinValue && toIntExact <= Char.MaxValue
-  /** Returns true if this `BigDecimal` can be converted to an `Int` without truncation or overflow. */
+  /** Returns `true` if this `BigDecimal` can be converted to an `Int` without truncation or overflow. */
   override def isValidInt   = noArithmeticException(toIntExact)
-  /** Returns true if this `BigDecimal` can be converted to a `Long` without truncation or overflow. */
+  /** Returns `true` if this `BigDecimal` can be converted to a `Long` without truncation or overflow. */
   def isValidLong  = noArithmeticException(toLongExact)
 
   /** Tests whether this `BigDecimal` holds the decimal representation of a `Double`. */
@@ -590,10 +591,10 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
     catch { case _: ArithmeticException => false }
   }
 
-  /** Returns true if this BigDecimal represents a whole number (has no fractional part). */
+  /** Returns `true` if this `BigDecimal` represents a whole number (has no fractional part). */
   def isWhole = scale <= 0 || bigDecimal.stripTrailingZeros.scale <= 0
 
-  /** Returns the underlying java.math.BigDecimal representation. */
+  /** Returns the underlying `java.math.BigDecimal` representation. */
   def underlying: java.math.BigDecimal = bigDecimal
 
 
@@ -766,11 +767,11 @@ extends ScalaNumber with ScalaNumericConversions with Serializable with Ordered[
     if (this.scale == scale) this
     else new BigDecimal(this.bigDecimal.setScale(scale), mc)
 
-  /** Returns a BigDecimal with the specified scale, using the given rounding mode.
+  /** Returns a `BigDecimal` with the specified scale, using the given rounding mode.
    *
-   *  @param scale the scale to set for this BigDecimal
+   *  @param scale the scale to set for this `BigDecimal`
    *  @param mode the rounding mode to apply
-   *  @return a BigDecimal with the specified scale, rounded according to the given mode
+   *  @return a `BigDecimal` with the specified scale, rounded according to the given mode
    *  @throws java.lang.ArithmeticException if `mode` is `UNNECESSARY` but rounding would be required for the requested `scale`
    */
   def setScale(scale: Int, mode: RoundingMode): BigDecimal =

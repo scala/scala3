@@ -101,7 +101,7 @@ trait PartialOrdering[T] extends Equiv[T] {
 
   /** Returns a new `PartialOrdering` that reverses the order of this one.
    *
-   *  The returned ordering satisfies `reverse.lteq(x, y) == lteq(y, x)`.
+   *  The returned ordering satisfies `this.reverse.lteq(x, y) == this.lteq(y, x)`.
    */
   def reverse : PartialOrdering[T] = new PartialOrdering[T] {
     override def reverse = outer
@@ -115,7 +115,7 @@ trait PartialOrdering[T] extends Equiv[T] {
 }
 
 object PartialOrdering {
-  /** Returns the given `PartialOrdering` instance.
+  /** Returns the implicit `PartialOrdering` instance for type `T`.
    *
    *  @tparam T the type of elements being ordered
    *  @param ev the implicit `PartialOrdering[T]` to return

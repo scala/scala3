@@ -45,6 +45,7 @@ transparent trait IsMap[Repr] extends IsIterable[Repr] {
    *       extends `MapOps[K, V, View, View[A]]`.
    *
    *  @param c the collection to convert to `MapOps`
+   *  @return a `MapOps[K, V, Iterable, C]` view of the collection
    */
   override def apply(c: Repr): MapOps[K, V, Tupled[Iterable]#Ap, C]
 
@@ -78,7 +79,7 @@ object IsMap {
   // MapView
   /** Provides an `IsMap` instance for any `MapView` collection type.
    *
-   *  @tparam CC0 the collection type constructor, which must be a subtype of `MapView`
+   *  @tparam CC0 the collection type constructor, which must be a subtype of `MapView[X, Y]`
    *  @tparam K0 the type of keys in the map view
    *  @tparam V0 the type of values in the map view
    */

@@ -54,6 +54,9 @@ trait LowPriorityEquiv {
   /** Use `Equiv.universal` explicitly instead. If you really want an implicit universal `Equiv` instance
    *  despite the potential problems, consider `implicit def universalEquiv[T]: Equiv[T] = universal[T]`.
    *
+   *  @tparam T the type of values to compare
+   *  @return an `Equiv[T]` that compares values using universal equality (`==`), as returned by `Equiv.universal`
+   *
    *  @deprecated This implicit universal `Equiv` instance allows accidentally
    *  comparing instances of types for which equality isn't well-defined or implemented.
    *  (For example, it does not make sense to compare two `Function1` instances.)

@@ -33,12 +33,9 @@ import scala.reflect.ClassTag
  */
 transparent trait IsSeq[Repr] extends IsIterable[Repr] {
 
+  /** A function that converts a `Repr` to a `SeqOps[A, Iterable, C]`, equivalent to `apply`. */
   @deprecated("'conversion' is now a method named 'apply'", "2.13.0")
   @untrackedCaptures
-  /** Returns the same conversion as `apply`, for compatibility with older code.
-   *
-   *  @deprecated("'conversion' is now a method named 'apply'", "2.13.0")
-   */
   override val conversion: Repr => SeqOps[A, Iterable, C] = apply(_)
 
   /** A conversion from the type `Repr` to `SeqOps[A, Iterable, C]`
@@ -113,7 +110,8 @@ object IsSeq {
       def apply(coll: StringView): SeqOps[Char, View, View[Char]] = coll
     }
 
-  /** Provides an `IsSeq` instance for arrays of any type.
+  /** Provides an `IsSeq` instance for arrays of any element type that has an
+   *  available `ClassTag`.
    *
    *  @tparam A0 the element type of the array
    *  @return an `IsSeq` instance for `Array[A0]`

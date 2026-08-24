@@ -32,13 +32,13 @@ trait ScalaNumericAnyConversions extends Any {
    */
   def isWhole: Boolean
 
-  /** Returns the value of this number as a [[scala.Byte]]. Values that don't fit are narrowed to the low-order bits of the target type and can lose magnitude or flip sign. */
+  /** Returns the value of this number as a [[scala.Byte]]. Any fractional part is discarded, and a value that does not fit is truncated to 8 bits, which can change its magnitude and sign. */
   def byteValue: Byte
-  /** Returns the value of this number as a [[scala.Short]]. Values that don't fit are narrowed to the low-order bits of the target type and can lose magnitude or flip sign. */
+  /** Returns the value of this number as a [[scala.Short]]. Any fractional part is discarded, and a value that does not fit is truncated to 16 bits, which can change its magnitude and sign. */
   def shortValue: Short
-  /** Returns the value of this number as an [[scala.Int]]. Values that don't fit are narrowed to the low-order bits of the target type and can lose magnitude or flip sign. */
+  /** Returns the value of this number as an [[scala.Int]]. Any fractional part is discarded, and a value that does not fit is narrowed in an implementation-specific way: integral implementations such as [[scala.math.BigInt]] keep only the low-order 32 bits, which can change the magnitude and sign, while `Float` and `Double` saturate at `Int.MinValue` or `Int.MaxValue`. */
   def intValue: Int
-  /** Returns the value of this number as a [[scala.Long]]. Values that don't fit are narrowed to the low-order bits of the target type and can lose magnitude or flip sign. */
+  /** Returns the value of this number as a [[scala.Long]]. Any fractional part is discarded, and a value that does not fit is narrowed in an implementation-specific way: integral implementations such as [[scala.math.BigInt]] keep only the low-order 64 bits, which can change the magnitude and sign, while `Float` and `Double` saturate at `Long.MinValue` or `Long.MaxValue`. */
   def longValue: Long
   /** Returns the value of this number as a [[scala.Float]]. This may involve rounding, or overflow to positive/negative infinity if the magnitude is too large to represent. */
   def floatValue: Float
@@ -100,7 +100,7 @@ trait ScalaNumericAnyConversions extends Any {
    */
   def isValidChar  = isWhole && (toInt >= Char.MinValue && toInt <= Char.MaxValue)
 
-  /** Returns the [[scala.Int]] hash code if the value fits in an [[scala.Int]]; otherwise, returns the [[scala.Long]] hash code. */
+  /** Returns a hash code based on `toLong`: the value itself, as an [[scala.Int]], if it fits in the `Int` range; otherwise the hash code of the [[scala.Long]] value. */
   protected def unifiedPrimitiveHashcode = {
     val lv = toLong
     if (lv >= Int.MinValue && lv <= Int.MaxValue) lv.toInt
