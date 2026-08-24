@@ -190,39 +190,39 @@ private[scala] trait PropertiesTrait {
   def lineSeparator: String = System.lineSeparator()
 
   /* Various well-known properties. */
-  /** The Java class path. */
+  /** The Java class path, or the empty string if that system property is not set. */
   def javaClassPath         = propOrEmpty("java.class.path")
-  /** The Java home directory. */
+  /** The Java home directory, or the empty string if that system property is not set. */
   def javaHome              = propOrEmpty("java.home")
-  /** The Java vendor. */
+  /** The Java vendor, or the empty string if that system property is not set. */
   def javaVendor            = propOrEmpty("java.vendor")
-  /** The Java version. */
+  /** The Java version, or the empty string if that system property is not set. */
   def javaVersion           = propOrEmpty("java.version")
-  /** The Java VM info. */
+  /** The Java VM info, or the empty string if that system property is not set. */
   def javaVmInfo            = propOrEmpty("java.vm.info")
-  /** The Java VM name. */
+  /** The Java VM name, or the empty string if that system property is not set. */
   def javaVmName            = propOrEmpty("java.vm.name")
-  /** The Java VM vendor. */
+  /** The Java VM vendor, or the empty string if that system property is not set. */
   def javaVmVendor          = propOrEmpty("java.vm.vendor")
-  /** The Java VM version. */
+  /** The Java VM version, or the empty string if that system property is not set. */
   def javaVmVersion         = propOrEmpty("java.vm.version")
-  /** The Java specification version. */
+  /** The Java specification version, or the empty string if that system property is not set. */
   def javaSpecVersion       = propOrEmpty("java.specification.version")
-  /** The Java specification vendor. */
+  /** The Java specification vendor, or the empty string if that system property is not set. */
   def javaSpecVendor        = propOrEmpty("java.specification.vendor")
-  /** The Java specification name. */
+  /** The Java specification name, or the empty string if that system property is not set. */
   def javaSpecName          = propOrEmpty("java.specification.name")
-  /** The operating system name. */
+  /** The operating system name, or the empty string if that system property is not set. */
   def osName                = propOrEmpty("os.name")
-  /** The Scala home directory. */
+  /** The Scala home directory, or the empty string if that system property is not set. */
   def scalaHome             = propOrEmpty("scala.home")
-  /** The temporary directory. */
+  /** The temporary directory, or the empty string if that system property is not set. */
   def tmpDir                = propOrEmpty("java.io.tmpdir")
-  /** The user's current working directory. */
+  /** The user's current working directory, or the empty string if that system property is not set. */
   def userDir               = propOrEmpty("user.dir")
-  /** The user's home directory. */
+  /** The user's home directory, or the empty string if that system property is not set. */
   def userHome              = propOrEmpty("user.home")
-  /** The user's name. */
+  /** The user's name, or the empty string if that system property is not set. */
   def userName              = propOrEmpty("user.name")
 
   /* Some derived values. */

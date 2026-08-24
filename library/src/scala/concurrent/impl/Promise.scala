@@ -296,7 +296,9 @@ private[concurrent] object Promise {
      *  @tparam U the type of the value in the Future returned by the partial function
      *  @param pf the partial function to apply to the exception of this Future
      *  @param executor the ExecutionContext to use for executing the partial function
-     *  @return a Future that will be completed with the result of the partial function, or this Future if it is already successful
+     *  @return a Future completed with the result of the partial function where it is defined
+     *          for the failure, with the original failure where it is not, or this Future if it
+     *          is already successful
      */
     override final def recoverWith[U >: T](pf: PartialFunction[Throwable, Future[U]])(implicit executor: ExecutionContext): Future[U] = {
       val state = get()
@@ -309,7 +311,9 @@ private[concurrent] object Promise {
      *  @tparam U the type of the result of the partial function
      *  @param pf the partial function to apply to the exception of this Future
      *  @param executor the ExecutionContext to use for executing the partial function
-     *  @return a Future that will be completed with the result of the partial function, or this Future if it is already successful
+     *  @return a Future completed with the result of the partial function where it is defined
+     *          for the failure, with the original failure where it is not, or this Future if it
+     *          is already successful
      */
     override final def recover[U >: T](pf: PartialFunction[Throwable, U])(implicit executor: ExecutionContext): Future[U] = {
       val state = get()
@@ -419,6 +423,7 @@ private[concurrent] object Promise {
      *  @return the result of this Future, if it completed successfully
      *  @throws TimeoutException if this Future is not completed within `atMost`
      *  @throws IllegalArgumentException if `atMost` is `Duration.Undefined`
+     *  @throws InterruptedException if the calling thread is interrupted while waiting
      */
     @throws(classOf[Exception])
     final def result(atMost: Duration)(implicit permit: CanAwait): T =

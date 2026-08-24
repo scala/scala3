@@ -57,7 +57,9 @@ private[scala] object FutureConvertersImpl {
      */
     override def thenAccept(fn: Consumer[? >: T]): CompletableFuture[Void] = thenAcceptAsync(fn)
 
-    /** Returns a new `CompletableFuture` that runs the given action when this future completes.
+    /** Returns a new `CompletableFuture` that runs the given action once this future completes
+     *  normally. If this future completes exceptionally the action is not run and the
+     *  returned future completes with the same exception.
      *
      *  @param fn the action to run
      *  @return a new `CompletableFuture` that completes asynchronously once the action has been run
@@ -83,7 +85,10 @@ private[scala] object FutureConvertersImpl {
      */
     override def thenAcceptBoth[U](cs: CompletionStage[? <: U], fn: BiConsumer[? >: T, ? >: U]): CompletableFuture[Void] = thenAcceptBothAsync(cs, fn)
 
-    /** Returns a new `CompletableFuture` that runs the given action when both this future and the given `CompletionStage` complete.
+    /** Returns a new `CompletableFuture` that runs the given action once this future and the
+     *  given `CompletionStage` have both completed normally. If either completes
+     *  exceptionally the action is not run and the returned future completes with that
+     *  exception.
      *
      *  @param cs the `CompletionStage` to wait for
      *  @param fn the action to run
@@ -91,7 +96,9 @@ private[scala] object FutureConvertersImpl {
      */
     override def runAfterBoth(cs: CompletionStage[?], fn: Runnable): CompletableFuture[Void] = runAfterBothAsync(cs, fn)
 
-    /** Returns a new `CompletableFuture` that applies the given function to the result of whichever of this future or the given `CompletionStage` completes first.
+    /** Returns a new `CompletableFuture` that applies the given function to the result of
+     *  whichever of this future or the given `CompletionStage` completes normally first. An
+     *  exceptional completion does not trigger the function.
      *
      *  @tparam U the type of the result of the function
      *  @param cs the `CompletionStage` to race with
@@ -100,7 +107,9 @@ private[scala] object FutureConvertersImpl {
      */
     override def applyToEither[U](cs: CompletionStage[? <: T], fn: JFunction[? >: T, U]): CompletableFuture[U] = applyToEitherAsync(cs, fn)
 
-    /** Returns a new `CompletableFuture` that consumes the result of whichever of this future or the given `CompletionStage` completes first with the given action.
+    /** Returns a new `CompletableFuture` that passes to the given action the result of
+     *  whichever of this future or the given `CompletionStage` completes normally first. An
+     *  exceptional completion does not trigger the action.
      *
      *  @param cs the `CompletionStage` to race with
      *  @param fn the action to perform on the result
@@ -108,7 +117,9 @@ private[scala] object FutureConvertersImpl {
      */
     override def acceptEither(cs: CompletionStage[? <: T], fn: Consumer[? >: T]): CompletableFuture[Void] = acceptEitherAsync(cs, fn)
 
-    /** Returns a new `CompletableFuture` that runs the given action when either this future or the given `CompletionStage` completes.
+    /** Returns a new `CompletableFuture` that runs the given action once either this future or
+     *  the given `CompletionStage` completes normally. An exceptional completion does not
+     *  trigger the action.
      *
      *  @param cs the `CompletionStage` to race with
      *  @param fn the action to run
@@ -127,7 +138,9 @@ private[scala] object FutureConvertersImpl {
     /** Returns a new `CompletableFuture` that performs the given action when this future completes, whether normally or exceptionally.
      *
      *  @param fn the action to perform on the result or exception
-     *  @return a new `CompletableFuture` that completes asynchronously with the same result as this future
+     *  @return a new `CompletableFuture` that completes asynchronously with the same result as
+     *          this future, unless `fn` itself throws and this future completed normally, in
+     *          which case it completes with the exception `fn` threw
      */
     override def whenComplete(fn: BiConsumer[? >: T, ? >: Throwable]): CompletableFuture[T] = whenCompleteAsync(fn)
 
@@ -188,6 +201,10 @@ private[scala] object FutureConvertersImpl {
 
     /** Returns the result of this future, blocking if necessary until it is ready. The wait
      *  is wrapped in `scala.concurrent.blocking` to notify the current `BlockContext`.
+     *
+     *  @throws InterruptedException if the calling thread is interrupted while waiting
+     *  @throws java.util.concurrent.ExecutionException if this future completed exceptionally
+     *  @throws java.util.concurrent.CancellationException if this future was cancelled
      */
     override def get(): T = scala.concurrent.blocking(super.get())
 
@@ -199,6 +216,9 @@ private[scala] object FutureConvertersImpl {
      *  @param unit the time unit of the timeout
      *  @return the result of this future
      *  @throws TimeoutException if the timeout elapses before this future completes
+     *  @throws InterruptedException if the calling thread is interrupted while waiting
+     *  @throws java.util.concurrent.ExecutionException if this future completed exceptionally
+     *  @throws java.util.concurrent.CancellationException if this future was cancelled
      */
     override def get(timeout: Long, unit: TimeUnit): T = scala.concurrent.blocking(super.get(timeout, unit))
 

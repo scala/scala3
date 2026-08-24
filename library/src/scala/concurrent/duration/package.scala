@@ -70,10 +70,12 @@ package object duration {
    *  @return a FiniteDuration representing the given pair
    */
   implicit def pairLongToDuration(p: (Long, TimeUnit)): FiniteDuration = Duration(p._1, p._2)
-  /** Converts a Duration to a pair of Long and TimeUnit.
+  /** Converts a finite Duration to a pair of Long and TimeUnit.
    *
    *  @param d the Duration to convert
    *  @return a pair of Long and TimeUnit representing the given Duration
+   *  @throws IllegalArgumentException if `d` is `Inf`, `MinusInf` or `Undefined`, none of which
+   *          has a length or a unit
    */
   implicit def durationToPair(d: Duration): (Long, TimeUnit)           = (d.length, d.unit)
 
@@ -112,7 +114,8 @@ package object duration {
      *
      *  @param unit the TimeUnit to use for the duration
      *  @return a FiniteDuration representing this Double in the given TimeUnit
-     *  @throws IllegalArgumentException if the resulting Duration is not finite
+     *  @throws IllegalArgumentException if this value has no finite Duration in `unit`, whether
+     *          because it is infinite or `NaN`, or because it is out of the representable range
      */
     override protected def durationIn(unit: TimeUnit): FiniteDuration  =
       Duration(d, unit) match {

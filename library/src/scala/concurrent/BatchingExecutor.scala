@@ -32,12 +32,17 @@ private[concurrent] object BatchingExecutorStatics {
   final val syncPreBatchDepth = 16
 
   // Max number of Runnables processed in one go (to prevent starvation of other tasks on the pool)
-  /** The maximum number of `Runnable` tasks processed in a single batch execution, to prevent starvation of other tasks on the pool. */
+  /** The number of `Runnable` tasks a batch processes in one go before yielding, to prevent
+   *  starvation of other tasks on the pool. An asynchronous batch is resubmitted after each
+   *  such chunk; a synchronous one loops over chunks until it is empty, so this bounds the
+   *  chunk rather than the whole batch.
+   */
   final val runLimit = 1024
 
   object MissingParentBlockContext extends BlockContext {
     /** Always throws an `IllegalStateException`, since reaching this `BlockContext` at all means
-     *  `parentBlockContext` was null, which is a bug in `BatchingExecutor.Batch`.
+     *  no parent context was ever installed, which is a bug in `BatchingExecutor.Batch`. The
+     *  field itself holds this sentinel rather than `null`.
      *
      *  The `try thunk finally throw` shape is a deliberate defensive assertion, not an oversight:
      *  the thunk is still evaluated, but the `finally` clause always throws, so this method never

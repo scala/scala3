@@ -127,6 +127,8 @@ private[concurrent] object ExecutionContextImpl {
    *  @param reporter the function to report uncaught exceptions
    *  @return a new ExecutionContextExecutorService
    *  @throws NumberFormatException if one of the system properties cannot be parsed as a number
+   *  @throws IllegalArgumentException if the values parsed from them are out of range, for
+   *          example a negative `maxExtraThreads` or a non-positive parallelism
    */
   def createDefaultExecutorService(reporter: Throwable => Unit): ExecutionContextExecutorService = {
     def getInt(name: String, default: String) = (try System.getProperty(name, default) catch {

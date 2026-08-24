@@ -17,7 +17,11 @@ import DurationConversions._
 
 // Would be nice to limit the visibility of this trait a little bit,
 // but it crashes scalac to do so.
-/** Provides conversions from durations to various time units and classifiers. */
+/** Provides the numeric duration DSL: the `nanos`, `millis`, `seconds`, `minutes`, `hours` and
+ *  `days` methods that build `FiniteDuration` values from an `Int`, `Long` or `Double`
+ *  receiver, together with the `Classifier`-driven overloads that convert those values to
+ *  other result types.
+ */
 trait DurationConversions extends Any {
   /** Returns the duration in the specified time unit.
    *
@@ -74,32 +78,32 @@ trait DurationConversions extends Any {
 
   /** Converts this duration in nanoseconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
   def nanoseconds[C](c: C)(implicit ev: Classifier[C]): ev.R  = ev.convert(nanoseconds)
   /** Converts this duration in nanoseconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
   def nanos[C](c: C)(implicit ev: Classifier[C]): ev.R        = nanoseconds(c)
   /** Converts this duration in nanoseconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
   def nanosecond[C](c: C)(implicit ev: Classifier[C]): ev.R   = nanoseconds(c)
   /** Converts this duration in nanoseconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
@@ -107,32 +111,32 @@ trait DurationConversions extends Any {
 
   /** Converts this duration in microseconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
   def microseconds[C](c: C)(implicit ev: Classifier[C]): ev.R = ev.convert(microseconds)
   /** Converts this duration in microseconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
   def micros[C](c: C)(implicit ev: Classifier[C]): ev.R       = microseconds(c)
   /** Converts this duration in microseconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
   def microsecond[C](c: C)(implicit ev: Classifier[C]): ev.R  = microseconds(c)
   /** Converts this duration in microseconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
@@ -140,32 +144,32 @@ trait DurationConversions extends Any {
 
   /** Converts this duration in milliseconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
   def milliseconds[C](c: C)(implicit ev: Classifier[C]): ev.R = ev.convert(milliseconds)
   /** Converts this duration in milliseconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
   def millis[C](c: C)(implicit ev: Classifier[C]): ev.R       = milliseconds(c)
   /** Converts this duration in milliseconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
   def millisecond[C](c: C)(implicit ev: Classifier[C]): ev.R  = milliseconds(c)
   /** Converts this duration in milliseconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
@@ -173,16 +177,16 @@ trait DurationConversions extends Any {
 
   /** Converts this duration in seconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
   def seconds[C](c: C)(implicit ev: Classifier[C]): ev.R      = ev.convert(seconds)
   /** Converts this duration in seconds to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
@@ -190,16 +194,16 @@ trait DurationConversions extends Any {
 
   /** Converts this duration in minutes to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
   def minutes[C](c: C)(implicit ev: Classifier[C]): ev.R      = ev.convert(minutes)
   /** Converts this duration in minutes to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
@@ -207,16 +211,16 @@ trait DurationConversions extends Any {
 
   /** Converts this duration in hours to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
   def hours[C](c: C)(implicit ev: Classifier[C]): ev.R        = ev.convert(hours)
   /** Converts this duration in hours to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
@@ -224,16 +228,16 @@ trait DurationConversions extends Any {
 
   /** Converts this duration in days to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
   def days[C](c: C)(implicit ev: Classifier[C]): ev.R         = ev.convert(days)
   /** Converts this duration in days to the type selected by the given marker object.
    *
-   *  @tparam C the singleton type of the marker object
-   *  @param c the marker object selecting the conversion, either `span` or `fromNow`; only its type is used, never its value
+   *  @tparam C the type of the marker, which selects the conversion through its `Classifier`
+   *  @param c the marker object selecting the conversion, typically `span` or `fromNow`; only its type is used, never its value
    *  @param ev the `Classifier` that performs the conversion
    *  @return the converted result, of type `ev.R`
    */
@@ -244,9 +248,13 @@ trait DurationConversions extends Any {
  * This object just holds some cogs which make the DSL machine work, not for direct consumption.
  */
 object DurationConversions {
-  /** A classifier that converts a duration to the result type selected by a marker object.
+  /** A classifier that converts a duration to a result type chosen by the type `C`.
    *
-   *  @tparam C the singleton type of the marker object that selects this classifier
+   *  The library provides classifiers for the `span` and `fromNow` markers, but `Classifier`
+   *  is public and unconstrained: any type may have one.
+   *
+   *  @tparam C the type selecting this classifier; the value passed alongside it is not
+   *            inspected, only the implicit `Classifier[C]` is used
    */
   trait Classifier[C] {
     type R

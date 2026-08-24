@@ -300,7 +300,8 @@ final case class Failure[+T](exception: Throwable) extends Try[T] { self: Failur
    *  @param default the default value to return
    */
   override def getOrElse[U >: T](default: => U): U = default
-  /** Returns the given `default` `Try` since this is a `Failure`.
+  /** Returns the given `default` `Try` since this is a `Failure`, or a `Failure` holding the
+   *  non-fatal exception that evaluating `default` threw.
    *
    *  @tparam U the type of the value in the returned `Try`, a supertype of `T`
    *  @param default the fallback `Try` to return (evaluated lazily)
@@ -448,7 +449,8 @@ final case class Success[+T](value: T) extends Try[T] {
    *  @return the `Try` returned by `s` applied to the value; any non-fatal exception thrown by `s` is caught and returned as a `Failure`
    */
   override def transform[U](s: T => Try[U]^, f: Throwable => Try[U]^): Try[U]^{s} = this flatMap s
-  /** Returns a `Success` containing the result of applying the given function to the value.
+  /** Returns the result of applying the given function to the value, as a `Success`, or as a
+   *  `Failure` if the function throws a non-fatal exception.
    *
    *  @tparam U the type of the mapped value
    *  @param f the function to apply to the value

@@ -209,10 +209,10 @@ object Duration {
     private def readResolve(): AnyRef = Undefined      // Instructs deserialization to use this same instance
   }
 
-  /** Represents an infinite duration, either positive or negative.
+  /** Represents a duration that is not finite: `Inf`, `MinusInf`, or `Undefined`.
    *
-   *  Infinite durations behave similarly to Double.PositiveInfinity and Double.NegativeInfinity
-   *  in arithmetic operations.
+   *  `Inf` and `MinusInf` behave similarly to Double.PositiveInfinity and
+   *  Double.NegativeInfinity in arithmetic operations; `Undefined` behaves like Double.NaN.
    */
   sealed abstract class Infinite extends Duration {
     /** Returns the sum of this infinite duration and another duration.

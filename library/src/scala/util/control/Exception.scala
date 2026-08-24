@@ -249,10 +249,11 @@ object Exception {
     /** The name of this Finally object. */
     protected val name = "Finally"
 
-    /** Creates a new Finally that executes both this and the given finally body.
+    /** Creates a new Finally that executes this finally body and then `other`.
      *
      *  @param other the additional finally logic to execute
-     *  @return a new `Finally` that executes this finally body, then `other`
+     *  @return a new `Finally` that executes this finally body, then `other`; if this body
+     *          throws, `other` does not run
      */
     def and(other: => Unit): Finally = new Finally({ body ; other })
     /** Executes the finally body. */
@@ -289,10 +290,13 @@ object Exception {
      *  @return a new `Catch` that tries this catch's handler first, falling back to `pf2`
      */
     def or[U >: T](pf2: Catcher[U]): Catch[U] = new Catch(pf orElse pf2, fin, rethrow)
-    /** Creates a new Catch that combines this catch's logic with another Catch's logic.
+    /** Creates a new Catch whose handler is this catch's handler falling back to the other's.
+     *
+     *  Only the handler is taken from `other`: the new `Catch` keeps this one's finally body
+     *  and rethrow policy.
      *
      *  @tparam U the result type of the combined catch logic, a supertype of `T`
-     *  @param other the other Catch to combine with this one
+     *  @param other the Catch whose handler to fall back to
      *  @return a new `Catch` that tries this catch's handler first, falling back to `other`'s handler
      */
     def or[U >: T](other: Catch[U]): Catch[U] = or(other.pf)
