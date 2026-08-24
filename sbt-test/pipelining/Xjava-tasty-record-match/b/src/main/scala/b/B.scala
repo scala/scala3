@@ -1,6 +1,6 @@
 package b
 
-import a.{Rec, RecGen, RecExpl}
+import a.{Rec, RecGen, RecExpl, RecVar, RecVarExpl}
 
 // pattern matching on Java records whose symbols are loaded from java TASTy
 object B {
@@ -17,9 +17,20 @@ object B {
     case RecExpl(i, s) => s * i
   }
 
+  def showRecVar(r: RecVar): String = r match {
+    case RecVar(i, rest*) => rest.mkString * i
+  }
+
+  def showRecVarExpl(r: RecVarExpl): String = r match {
+    case RecVarExpl(i, rest*) => rest.mkString * i
+  }
+
   @main def test =
     assert(showRec(Rec(2, "ab")) == "abab")
     assert(showRecGen(RecGen(3, "c")) == "ccc")
     assert(showRecExpl(RecExpl(2, "ha")) == "haha")
     assert(showRecExpl(RecExpl(1)) == "default")
+    assert(showRecVar(RecVar(2, "a", "b")) == "abab")
+    assert(showRecVarExpl(RecVarExpl(2, "a", "b")) == "abab")
+    assert(showRecVarExpl(RecVarExpl(3)) == "")
 }

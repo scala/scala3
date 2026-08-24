@@ -31,3 +31,12 @@ case class Bar(val value: String) extends Comparable[Bar]:
   // predefined unapply takes precedence
   val r6 = RecUnapply_1(3, "x")
   r6 match { case RecUnapply_1(i, s) => println(s * i) }
+
+  // record with vararg
+  val r7 = RecVar_1(1, "a", "b")
+  r7 match { case RecVar_1(x, rest*) => println(s"$x ${rest.mkString(",")}") }
+  r7 match { case RecVar_1(x, a, b) => println(s"$x $a $b") }
+
+  // record with varargs only
+  val r8 = RecVarOnly_1("p", "q")
+  r8 match { case RecVarOnly_1(rest*) => println(rest.mkString("-")) }

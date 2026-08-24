@@ -432,26 +432,29 @@ trait TreeInfo[T <: Untyped] { self: Trees.Instance[T] =>
         case _ => None
   end WitnessNamesAnnot
 
-  /** Constructor and extractor for `annotation.internal.JavaRecordFields(name_1, ..., name_n)`
+  /** Constructor and extractor for `annotation.internal.JavaRecordFields(isVararg, name_1, ..., name_n)`
    *  represented as an untyped or typed tree.
    */
   object JavaRecordFieldsAnnot:
-    def tpdTree(names: List[String])(using Context): tpd.Tree =
+    def tpdTree(isVararg: Boolean, names: List[String])(using Context): tpd.Tree =
       tpd.New(
         defn.JavaRecordFieldsAnnot.typeRef,
-        tpd.SeqLiteral(names.map(n => tpd.Literal(Constant(n))), tpd.TypeTree(defn.StringType)) :: Nil
+        List(
+          tpd.Literal(Constant(isVararg)),
+          tpd.SeqLiteral(names.map(n => tpd.Literal(Constant(n))), tpd.TypeTree(defn.StringType))
+        )
       )
 
-    def apply(names: List[String])(using Context): untpd.Tree =
-      untpd.TypedSplice(tpdTree(names))
+    def apply(isVararg: Boolean, names: List[String])(using Context): untpd.Tree =
+      untpd.TypedSplice(tpdTree(isVararg, names))
 
-    def unapply(tree: Tree)(using Context): Option[List[TermName]] =
+    def unapply(tree: Tree)(using Context): Option[(Boolean, List[TermName])] =
       unsplice(tree) match
-        case Apply(Select(New(tpt: tpd.TypeTree), nme.CONSTRUCTOR), SeqLiteral(elems, _) :: Nil)
+        case Apply(Select(New(tpt: tpd.TypeTree), nme.CONSTRUCTOR), Literal(Constant(isVararg: Boolean)) :: SeqLiteral(elems, _) :: Nil)
         if tpt.tpe.classSymbol == defn.JavaRecordFieldsAnnot =>
-          Some:
-            elems.map:
-              case Literal(Constant(str: String)) => str.toTermName
+          val names = elems.map:
+            case Literal(Constant(str: String)) => str.toTermName
+          Some((isVararg, names))
         case _ => None
   end JavaRecordFieldsAnnot
 }

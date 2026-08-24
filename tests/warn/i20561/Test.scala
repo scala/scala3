@@ -19,3 +19,16 @@ def k(r: Rec0): Unit = r match
 
 def l(x: Rec0 | String): Unit = x match // warn
   case Rec0() => ()
+
+def m(r: RecVar): Unit = r match
+  case RecVar(b, rest*) => ()
+
+def n(r: RecVar): Unit = r match // warn
+  case RecVar(true, rest*) => ()
+
+def o(r: RecVar): Unit = r match // warn
+  case RecVar(b, x, y) => ()
+
+def p(r: RecVar): Unit = r match
+  case RecVar(b, x, y) => ()
+  case RecVar(b, rest*) => ()

@@ -194,6 +194,9 @@ If the record class is polymorphic, then its type parameters are instantiated so
 The instantiated component types are then taken as the expected types of the element patterns ´p_1, ..., p_n´.
 The pattern matches all instances ´v´ of the record class where each element pattern ´p_i´ matches the corresponding component of ´v´.
 
+A special case arises when ´r´'s last component is a repeated parameter (a Java vararg).
+This is further discussed [here](#pattern-sequences).
+
 ###### Example
 
 Given the Java records
@@ -325,9 +328,10 @@ object Extractor {
 SimplePattern ::= StableId ‘(’ [Patterns ‘,’] [varid ‘@’] ‘_’ ‘*’ ‘)’
 ```
 
-A _pattern sequence_ ´p_1, ..., p_n´ appears in two contexts.
+A _pattern sequence_ ´p_1, ..., p_n´ appears in three contexts.
 First, in a constructor pattern ´c(q_1, ..., q_m, p_1, ..., p_n)´, where ´c´ is a case class which has ´m+1´ primary constructor parameters,  ending in a [repeated parameter](04-basic-definitions.html#repeated-parameters) of type `S*`.
 Second, in an extractor pattern ´x(q_1, ..., q_m, p_1, ..., p_n)´ if the extractor object ´x´ does not have an `unapply` method, but it does define an `unapplySeq` method with a result type that is an extractor type for type `(T_1, ... , T_m, Seq[S])` (if `m = 0`, an extractor type for the type `Seq[S]` is also accepted). The expected type for the patterns ´p_i´ is ´S´.
+Third, in a record pattern ´r(q_1, ..., q_m, p_1, ..., p_n)´, where ´r´ is a Java `record` which has ´m+1´ components, ending in a [repeated parameter](04-basic-definitions.html#repeated-parameters) of type `S*` (a Java vararg).
 
 The last pattern in a pattern sequence may be a _sequence wildcard_ `_*`.
 Each element pattern ´p_i´ is type-checked with ´S´ as expected type, unless it is a sequence wildcard.

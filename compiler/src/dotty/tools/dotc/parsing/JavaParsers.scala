@@ -896,6 +896,11 @@ object JavaParsers {
         fieldsByName -= name
       end for
 
+      def isVarargComponent(tpt: Tree) = tpt match
+        case PostfixOp(_, Ident(tpnme.raw.STAR)) => true
+        case _ => false
+      val isVararg = header.lastOption.exists(v => isVarargComponent(v.tpt))
+
       // accessor for record's vararg field  (T...) returns array type (T[])
       def adaptVarargsType(tpt: Tree) = tpt match
         case PostfixOp(tpt2, Ident(tpnme.raw.STAR)) => arrayOf(tpt2)
@@ -923,8 +928,8 @@ object JavaParsers {
           )
         ).withMods(mods
           .withFlags(Flags.JavaDefined | Flags.Final)
-          // Record the component names, see `Applications.javaRecordFields`
-          .withAddedAnnotation(ast.untpd.JavaRecordFieldsAnnot(header.map(_.name.toString))))
+          // Record the component names and whether it's vararg, see `Applications.javaRecordFields`
+          .withAddedAnnotation(ast.untpd.JavaRecordFieldsAnnot(isVararg, header.map(_.name.toString))))
       }
 
       addCompanionObject(statics, recordTypeDef)

@@ -1046,9 +1046,22 @@ final class ClassfileParser(
             val _ = in.nextChar
             skipAttributes()
             name
-          // Record the component names, see `Applications.javaRecordFields`
+          // Record the component names and whether it's vararg, see `Applications.javaRecordFields`
           res.annotations ::= Annotation.deferredSymAndTree(defn.JavaRecordFieldsAnnot):
-            JavaRecordFieldsAnnot.tpdTree(components)
+            val recSym = classRoot.symbol
+            val componentTypes = components.map: name =>
+              recSym.info.member(termName(name)).suchThat(_.paramSymss == List(Nil)).info.finalResultType
+            // The vararg bit is ACC_VARARGS on the canonical constructor, found by matching component types
+            def isCanonical(ctor: Symbol): Boolean =
+              ctor.info.stripPoly match
+                case mt: MethodType if mt.paramInfos.length == componentTypes.length =>
+                  mt.paramInfos.zip(componentTypes).forall:
+                    case (param, defn.ArrayOf(elem)) if param.isRepeatedParam => param.argInfos.head =:= elem
+                    case (param, component) => param =:= component
+                case _ => false
+            val isVararg =
+              recSym.info.decls.lookupAll(nme.CONSTRUCTOR).find(isCanonical).exists(_.info.isVarArgsMethod)
+            JavaRecordFieldsAnnot.tpdTree(isVararg, components)
 
         case _ =>
           in.skip(attrLen)

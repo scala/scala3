@@ -185,24 +185,21 @@ object Applications {
     (0 until argsNum).map(i => if (i < arity - 1) selectorTypes(i) else elemTp).toList
   end seqSelectors
 
-  /** The component names of the Java record type `tp`, from its
+  /** The component names of the Java record type `tp`, and whether its last
+   *  component is a repeated (vararg) parameter, from its
    *  `@JavaRecordFields` annotation. The annotation is attached by
    *  `JavaParsers.recordDecl` (from the record header) and by the
    *  `ClassfileParser` (from the `Record` classfile attribute); since
    *  annotations are pickled, it is also available on record symbols
    *  unpickled from TASTy in pipelined compilation.
    */
-  def javaRecordFields(tp: Type)(using Context): List[Name] =
+  def javaRecordFields(tp: Type)(using Context): (Boolean, List[Name]) =
     tp.classSymbol.getAnnotation(defn.JavaRecordFieldsAnnot) match
       case Some(annot) =>
         annot.tree match
-          case JavaRecordFieldsAnnot(names) => names
-          case _ => Nil
-      case None => Nil
-
-  def javaRecordTypes(tp: Type)(using Context): List[Type] =
-    javaRecordFields(tp).map: name =>
-      tp.member(name).suchThat(_.paramSymss == List(Nil)).info.resultType
+          case JavaRecordFieldsAnnot(isVararg, names) => (isVararg, names)
+          case _ => (false, Nil)
+      case None => (false, Nil)
 
   /** A utility class that matches results of unapplys with patterns. Two queriable members:
    *     val argTypes: List[Type]
@@ -1892,7 +1889,7 @@ trait Applications extends Compatibility {
           case _ => None
       case _ => None
 
-    /** For Java record, generate synthetic unapply:
+    /** For Java record, generate synthetic unapply/unapplySeq:
      *  ```
      *    {
      *      class $anon:
@@ -1901,14 +1898,31 @@ trait Applications extends Compatibility {
      *    }.unapply
      *  ```
      *  For a record with no components the result type is `Boolean` and the body is `true`.
+     * 
+     *  For a vararg record - Rec(T_1, ..., T_n, T*) - generate unapplySeq, with return type:
+     *  - Seq[T]                   when n = 0
+     *  - (T_1, ..., T_n, Seq[T])  when n > 0
      */
     def javaRecordUnapply(recCls: ClassSymbol): Tree =
       val recType = recCls.typeRef
-      val fields = javaRecordFields(recType)
+      val (isVararg, fields) = javaRecordFields(recType)
 
       def methType(recTp: Type) =
-        val componentTypes = javaRecordTypes(recTp)
-        val resType = if componentTypes.isEmpty then defn.BooleanType else defn.tupleType(componentTypes)
+        val componentTypes = fields.map: name =>
+          recTp.member(name).suchThat(_.paramSymss == List(Nil)).info.resultType
+
+        val resType =
+          // For `Rec()` we do `Boolean`
+          if componentTypes.isEmpty then defn.BooleanType
+          else if isVararg then
+            val defn.ArrayOf(elemType) = componentTypes.last.runtimeChecked
+            val seqType = defn.SeqType.appliedTo(elemType)
+            // For `Rec(T*)` we do `Seq[T]`
+            if componentTypes.length == 1 then seqType
+            // For `Rec(T1, ..., Tn, T*)` we do `(T1, ..., Tn, Seq[T])`
+            else defn.tupleType(componentTypes.init :+ seqType)
+          // For `Rec(T1, ..., Tn)` we do `(T1, ..., Tn)`
+          else defn.tupleType(componentTypes)
         MethodType(List(nme.x_0), List(recTp), resType)
 
       val tparams = recCls.typeParams
@@ -1920,18 +1934,27 @@ trait Applications extends Compatibility {
             pt => tparams.map(_.info.subst(tparams, pt.paramRefs).bounds),
             pt => methType(recType.appliedTo(pt.paramRefs))
           )
+      val methName = if isVararg then nme.unapplySeq else nme.unapply
       val anon = AnonClass(ctx.owner, List(defn.ObjectType), coord = tree.span) { cls =>
-        val unapplySym = newSymbol(cls, nme.unapply, Synthetic | Method, unapplyInfo, coord = tree.span).entered
+        val unapplySym = newSymbol(cls, methName, Synthetic | Method, unapplyInfo, coord = tree.span).entered
         val unapplyDef = DefDef(unapplySym.asTerm, paramss =>
           val x0 = paramss.last.last
+          def accessor(field: Name) = x0.select(field, _.paramSymss == List(Nil)).appliedToArgs(Nil)
           if fields.isEmpty then Literal(Constant(true))
-          else tupleTree(fields.map(f => x0.select(f, _.paramSymss == List(Nil)).appliedToArgs(Nil)))
+          else if isVararg then
+            val lastField = accessor(fields.last)
+            val defn.ArrayOf(lastElemType) = lastField.tpe.runtimeChecked
+            val lastFieldSeq = wrapArray(lastField, lastElemType)
+            if fields.length == 1 then lastFieldSeq
+            else tupleTree(fields.init.map(accessor) :+ lastFieldSeq)
+          else tupleTree(fields.map(accessor))
         )
         List(unapplyDef)
       }
 
       trySelectUnapply(untpd.TypedSplice(anon)):
         (sel, state) => reportErrors(sel, state)
+    end javaRecordUnapply
 
     def tryJavaRecordUnapply(qual: untpd.Tree)(fallback: => Tree): Tree =
       javaRecordClass(qual) match
