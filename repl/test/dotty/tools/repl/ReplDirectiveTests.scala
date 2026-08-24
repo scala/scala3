@@ -4,7 +4,7 @@ package repl
 import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 import org.junit.Test
 
-import ReplDirectives.ReplDirective.{Dependency, Jar}
+import ReplDirectives.ReplDirective.{Dependency, Jar, Repository}
 import ReplDirectives.Warning
 
 class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
@@ -35,8 +35,16 @@ class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
       assertEquals(Nil, result.warnings)
     assertTrue(ReplDirectives.helpText.contains("Aliases: jars"))
 
+  @Test def `repository directive aliases are supported`: Unit =
+    val repositories = List("m2Local", "https://jitpack.io")
+    List("repository", "repositories").foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${repositories.mkString(" ")}")
+      assertEquals(repositories.map(Repository(_)), result.directives)
+      assertEquals(Nil, result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: repositories"))
+
   @Test def `directives without a value are reported and act on nothing`: Unit =
-    List("dep", "test.dep", "jar", "toolkit", "test.toolkit").foreach: key =>
+    List("dep", "test.dep", "jar", "toolkit", "test.toolkit", "repository").foreach: key =>
       val result = ReplDirectives.classify(s"//> using $key")
       assertEquals(key, Nil, result.directives)
       assertEquals(key, List(Warning.ValueMissing(key)), result.warnings)
