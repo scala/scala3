@@ -58,7 +58,9 @@ final class ProcessIO(
   val processOutput: InputStream => Unit,
   /** The function called with the stream from which all error output of the process must be read. */
   val processError: InputStream => Unit,
-  /** Whether the threads spawned to run `writeInput`, `processOutput`, and `processError` are marked as daemon threads. */
+  /** Whether the threads spawned to run `processOutput` and `processError` are marked as daemon
+   *  threads. The thread that runs `writeInput` is always a daemon, whatever this is set to.
+   */
   val daemonizeThreads: Boolean
 ) {
   /** Creates a `ProcessIO` with `daemonizeThreads` set to `false`.

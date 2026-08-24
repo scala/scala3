@@ -60,9 +60,10 @@ object BasicIO {
      *                         when `done` reports a nonzero exit code, instead of simply
      *                         ending the list
      *  @param capacity the number of elements the underlying queue holds before `process`
-     *                 blocks
+     *                 blocks; must be a positive, non-`null` `Integer`
      *  @return a `LazilyListed` whose `process`, `done` and `lazyList` members share one
      *          queue
+     *  @throws IllegalArgumentException if `capacity` is not positive
      */
     def apply[T](nonzeroException: Boolean, capacity: Integer): LazilyListed[T] = {
       val queue = new LinkedBlockingQueue[Either[Int, T]](capacity)
@@ -102,8 +103,9 @@ object BasicIO {
      *                         when `done` reports a nonzero exit code, instead of simply
      *                         ending the stream
      *  @param capacity the number of elements the underlying queue holds before `process`
-     *                 blocks
+     *                 blocks; must be a positive, non-`null` `Integer`
      *  @return a `Streamed` whose `process`, `done` and `stream` members share one queue
+     *  @throws IllegalArgumentException if `capacity` is not positive
      */
     def apply[T](nonzeroException: Boolean, capacity: Integer): Streamed[T] = {
       val q = new LinkedBlockingQueue[Either[Int, T]](capacity)

@@ -537,6 +537,7 @@ object Predef extends LowPriorityImplicits {
     /** Returns the character at position `index` of the wrapped sequence.
      *
      *  @param index the zero-based position of the character to retrieve
+     *  @throws IndexOutOfBoundsException if `index` is negative or not less than `length`
      */
     def charAt(index: Int): Char                        = sequenceOfChars(index)
     /** Returns the characters from `start` (inclusive) to `end` (exclusive) as a `CharSequence`.
@@ -569,6 +570,7 @@ object Predef extends LowPriorityImplicits {
     /** Returns the character at position `index` of the wrapped array.
      *
      *  @param index the zero-based position of the character to retrieve
+     *  @throws ArrayIndexOutOfBoundsException if `index` is negative or not less than `length`
      */
     def charAt(index: Int): Char                        = arrayOfChars(index)
     /** Returns the characters from `start` (inclusive) to `end` (exclusive) as a `CharSequence`.

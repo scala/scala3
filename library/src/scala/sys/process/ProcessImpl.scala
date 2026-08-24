@@ -114,6 +114,8 @@ private[process] trait ProcessImpl {
     def destroy()   = destroyer()
     /** Blocks until this process exits and returns its exit code, throwing a `RuntimeException` if no exit code was
      *  produced, as happens when the process is destroyed.
+     *
+     *  @throws InterruptedException if the calling thread is interrupted while waiting for the exit code
      */
     def exitValue() = futureValue() getOrElse scala.sys.error("No exit code: process destroyed.")
     /** Starts this process by forcing the threads that run the underlying processes to be created. */
@@ -337,6 +339,8 @@ private[process] trait ProcessImpl {
     override def isAlive() = thread.isAlive()
     /** Blocks until the computation finishes and returns its result as the exit code, rethrowing any exception the
      *  computation threw.
+     *
+     *  @throws InterruptedException if the calling thread is interrupted while waiting for the result
      */
     override def exitValue() = value()
     /** Does nothing, as there is no native process to destroy. */

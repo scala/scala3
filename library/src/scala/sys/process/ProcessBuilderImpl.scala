@@ -578,10 +578,12 @@ private[process] trait ProcessBuilderImpl {
      */
     def #<<(u: URL): ProcessBuilder            = #<<(new URLInput(u))
     /** Constructs a command that appends the contents of the given input stream to this
-     *  file.  The argument is call-by-name, so the stream is recreated, read, and closed
-     *  each time the command is executed.
+     *  file.  The argument is call-by-name, so the expression is evaluated afresh on each
+     *  execution, and the stream it yields is read and then closed, except that the
+     *  standard input of the current process is left open.
      *
-     *  @param s the input stream to append from, created anew for each execution
+     *  @param s the expression yielding the input stream to append from, evaluated once
+     *           per execution
      *  @return a `ProcessBuilder` that, when run, appends the contents of `s` to this file
      */
     def #<<(s: => InputStream): ProcessBuilder = #<<(new IStreamBuilder(s, "<input stream>"))

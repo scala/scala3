@@ -96,8 +96,8 @@ object BooleanProp {
     /** Does nothing, since the value of this property is constant. */
     def toggle() = ()
 
-    /** The default `false` required by the `Prop` contract, never consulted here
-     *  because `value` is fixed at construction.
+    /** The zero value for a Boolean property, `false`; never consulted here because
+     *  `value` is fixed at construction.
      */
     protected def zero = false
   }
