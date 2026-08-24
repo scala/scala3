@@ -53,9 +53,10 @@ class CoverageTests:
 
     val coverageFile = target.resolve("scoverage.coverage")
     assertTrue(s"Expected scoverage file to exist at $coverageFile", Files.exists(coverageFile))
-    val coverage = Serializer.deserialize(coverageFile, sourceRoot.toString)
-    val coveredFiles = coverage.statements.map(_.location.sourcePath.getFileName.toString).toSet
+    val coverage = Serializer.deserialize(coverageFile)
+    val coveredFiles = coverage.statements.map(s => Path.of(s.location.sourcePath).getFileName.toString).toSet
     assertEquals(Set(inputFile.getFileName.toString), coveredFiles)
+  end checkCoveredClassTokenEscapeRejected
 
   def checkCoverageIn(dir: Path, run: Boolean)(using TestGroup): Unit =
     /** Converts \\ (escaped \) to / on windows, to make the tests pass without changing the serialization. */

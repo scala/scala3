@@ -11,11 +11,10 @@ import collection.mutable
 import core.Annotations.Annotation
 import core.Comments.Comment
 import core.Flags.*
-import core.Contexts.{Context, atPhase, ctx, inContext}
+import core.Contexts.{Context, ctx, inContext}
 import core.DenotTransformers.IdentityDenotTransformer
 import core.ParamInfo
-import core.Phases.*
-import core.Symbols.{defn, ClassSymbol, Symbol, TermSymbol}
+import core.Symbols.{defn, Symbol, TermSymbol}
 import core.Names.Name
 import core.Constants.Constant
 import core.NameKinds.DefaultGetterName
@@ -24,8 +23,8 @@ import core.StdNames.nme
 import core.Types.*
 import core.Decorators.*
 import cc.{
-  CapturingOrRetainsType, IllegalCaptureRef, RetainingAnnotation,
-  hasTrackedParts, isRefiningParamAccessor, retainedElements
+  CapturingOrRetainsType, IllegalCaptureRef, RetainingAnnotation, Setup,
+  retainedElements
 }
 import coverage.*
 import typer.LiftImpure
@@ -84,9 +83,7 @@ object LiftCoverage extends LiftImpure:
       true
     catch case _: IllegalCaptureRef => false
 
-  /** Keep nested capture-refining components explicit while leaving the root inferred.
-   *  This mirrors eligibility in `Setup.addCaptureRefinements`.
-   */
+  /** Keep nested capture-refining components explicit while leaving the root inferred. */
   private def declareNestedCaptureRefinements(tp: Type, span: Span)(using Context): Type =
     object marker extends TypeMap with FollowAliasesMap:
       private var nested = false
@@ -98,19 +95,8 @@ object LiftCoverage extends LiftImpure:
         try op
         finally nested = saved
 
-      private def refinesCapturesHere(current: Type): Boolean =
-        !current.isInstanceOf[TypeBounds]
-        && current.typeParams.isEmpty
-        && (current.typeSymbol match
-          case cls: ClassSymbol if !defn.isFunctionClass(cls) && cls.is(CaptureChecked) =>
-            cls.paramGetters.exists: getter =>
-              atPhase(checkCapturesPhase)(getter.hasTrackedParts)
-              && getter.isRefiningParamAccessor
-              && !refiningNames.contains(getter.name)
-          case _ => false)
-
       override protected def mapArg(arg: Type, tparam: ParamInfo): Type =
-        atNested(super.mapArg(Recheck.mapExprType(arg), tparam))
+        atNested(super.mapArg(arg, tparam))
 
       def apply(current: Type): Type = current match
         case current: RefinedType =>
@@ -120,12 +106,15 @@ object LiftCoverage extends LiftImpure:
           current.derivedRefinedType(
             parent1,
             current.refinedName,
-            atNested(this(Recheck.mapExprType(current.refinedInfo))))
+            atNested(this(current.refinedInfo)))
         case AnnotatedType(_, annot) if annot.symbol == defn.DeclaredAnnot =>
           current
-        case _ if nested && refinesCapturesHere(current) && isDeclarableType(current) =>
+        case _
+        if nested
+            && Setup.inferredCaptureRefiningGetters(current, refiningNames).nonEmpty
+            && isDeclarableType(current) =>
           AnnotatedType(
-            Recheck.mapExprType(current),
+            current,
             Annotation(defn.DeclaredAnnot, span))
         case _: TypeRef | _: AppliedType | _: FlexibleType | _: TermRef | _: ExprType | _: AnnotatedType =>
           mapFollowingAliases(current)
@@ -134,6 +123,7 @@ object LiftCoverage extends LiftImpure:
           else atNested(mapFollowingAliases(current))
 
     marker(tp)
+  end declareNestedCaptureRefinements
 
   override protected def liftArgContext(
     mt: MethodType,
@@ -147,7 +137,7 @@ object LiftCoverage extends LiftImpure:
     val canInstantiate = argTypes.hasSameLengthAs(mt.paramInfos)
     val formal = if canInstantiate then mt.paramInfos(paramNum).substParams(mt, argTypes) else mt.paramInfos(paramNum)
     def observesOriginalIn(tp: Type): Boolean =
-      !tp.substParams(mt, argTypes).eql(tp.substParams(mt, argTypes.updated(paramNum, defaultLifted)))
+      !tp.substParams(mt, argTypes).equals(tp.substParams(mt, argTypes.updated(paramNum, defaultLifted)))
     val observesOriginal =
       canInstantiate
       && original.isStable
