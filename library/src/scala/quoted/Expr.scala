@@ -136,8 +136,8 @@ object Expr {
 
   /** Creates an expression that will construct a tuple holding the values of the given expressions.
    *
-   *  Sequences of up to 22 elements are built with the corresponding `TupleN` constructor,
-   *  longer ones with `Tuple.fromIArray`.
+   *  Non-empty sequences of up to 22 elements are built with the corresponding `TupleN`
+   *  constructor, longer ones with `Tuple.fromIArray`.
    *
    *  @param seq the element expressions to combine into a tuple expression
    *  @return an expression equivalent to `'{ ($e1, $e2, ...) }` typed as an `Expr[Tuple]`, or `'{ Tuple() }` if `seq` is empty

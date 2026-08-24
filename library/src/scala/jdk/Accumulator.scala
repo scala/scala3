@@ -194,7 +194,7 @@ object Accumulator {
    *  object can be passed wherever a factory for the element type is expected, as in
    *  `List(1, 2, 3).to(Accumulator)`.
    *
-   *  @tparam A the type of the ${coll}’s elements
+   *  @tparam A the type of the ${coll}'s elements
    *  @tparam C the (inferred) specific type of the $coll built by the returned factory
    *  @param sa the `Accumulator` object being converted (never used)
    *  @param canAccumulate the implicit factory shape that determines the specific accumulator type to build

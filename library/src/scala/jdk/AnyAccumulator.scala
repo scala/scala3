@@ -175,7 +175,9 @@ final class AnyAccumulator[A]
    *  without changing any element this accumulator reports. Because the offset into the current
    *  array is computed as a `Long` and then narrowed to an `Int`, an index far enough out of range
    *  can also wrap onto an occupied slot and silently overwrite an element this accumulator does
-   *  report. Otherwise the write throws.
+   *  report. The same narrowing happens on the other branch: `seekSlot` narrows the index it is
+   *  given to an `Int` when locating a slot in `history`, so an out-of-range index can wrap onto
+   *  an occupied history slot as well. Otherwise the write throws.
    *
    *  @param idx the zero-based index of the element to replace
    *  @param elem the element to store at index `idx`
@@ -195,27 +197,24 @@ final class AnyAccumulator[A]
    *
    *  `idx` is not validated, and an out-of-range index has more than one possible outcome. It can
    *  land in unused capacity of the current array, in which case the write silently succeeds
-   *  without changing any element this accumulator reports. Because the offset into the current
-   *  array is computed as a `Long` and then narrowed to an `Int`, an index far enough out of range
-   *  can also wrap onto an occupied slot and silently overwrite an element this accumulator does
-   *  report. Otherwise the write throws.
+   *  without changing any element this accumulator reports. Otherwise the write throws. An `Int`
+   *  index is widened to a `Long` without loss, so it can never wrap onto an occupied slot the
+   *  way a sufficiently large `Long` index can.
    *
    *  @param idx the zero-based index of the element to replace
    *  @param elem the element to store at index `idx`
    *  @throws ArrayIndexOutOfBoundsException if `idx` is out of range and the computed offset falls
-   *          outside the array being written, rather than into unused current-array capacity or
-   *          onto a slot reached by `Int` wraparound
+   *          outside the array being written, rather than into unused current-array capacity
    */
   def update(idx: Int, elem: A): Unit = update(idx.toLong, elem)
 
   /** Returns an `Iterator` over the contents of this `AnyAccumulator`. */
   def iterator: Iterator[A] = stepper.iterator
 
-  /** Counts the elements of this `AnyAccumulator` that satisfy a predicate.
+  /** Returns the number of elements of this `AnyAccumulator` that satisfy `p`, as a `Long`, so
+   *  that accumulators holding more than `Int.MaxValue` elements are counted correctly.
    *
    *  @param p the predicate each element is tested against
-   *  @return the number of matching elements, as a `Long`, so that accumulators holding more
-   *          than `Int.MaxValue` elements are counted correctly
    */
   def countLong(p: A => Boolean): Long = {
     var r = 0L
@@ -450,7 +449,7 @@ private[jdk] class AnyAccumulatorStepper[A](private val acc: AnyAccumulator[A]) 
    *  this stepper positioned on the second half, or `null` if fewer than two elements remain.
    *
    *  @return a stepper over the first half of the remaining elements, or `null` if fewer than
-   *          two elements remain
+   *          two elements remain, in which case this stepper is left unchanged
    */
   def trySplit(): AnyStepper[A] | Null =
     if (N <= 1) null

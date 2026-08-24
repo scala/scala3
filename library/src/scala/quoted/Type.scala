@@ -105,6 +105,12 @@ object Type:
     rec(tpe)
 
   private object ValueOf:
+    /** Extractor for the value of a singleton constant type.
+     *
+     *  @param tpe the type to extract a constant value from; term references are widened and
+     *         aliases dealiased before matching
+     *  @return `Some` of the constant's value if `tpe` is a singleton constant type, `None` otherwise
+     */
     def unapply(using Quotes)(tpe: quotes.reflect.TypeRepr): Option[Any] =
       import quotes.reflect.*
       tpe.widenTermRefByName.dealias match

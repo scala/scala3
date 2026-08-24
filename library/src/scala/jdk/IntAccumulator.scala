@@ -188,7 +188,9 @@ final class IntAccumulator
    *  without changing any element this accumulator reports. Because the offset into the current
    *  array is computed as a `Long` and then narrowed to an `Int`, an index far enough out of range
    *  can also wrap onto an occupied slot and silently overwrite an element this accumulator does
-   *  report. Otherwise the write throws.
+   *  report. The same narrowing happens on the other branch: `seekSlot` narrows the index it is
+   *  given to an `Int` when locating a slot in `history`, so an out-of-range index can wrap onto
+   *  an occupied history slot as well. Otherwise the write throws.
    *
    *  @param idx the zero-based index of the element to replace
    *  @param elem the `Int` value to store at index `idx`
@@ -270,6 +272,9 @@ final class IntAccumulator
   /** Returns a new `IntAccumulator` containing the results of applying `pf` to the elements of
    *  this one for which it is defined, in order.
    *
+   *  Unlike the inherited `collect`, which builds an [[AnyAccumulator]], this overload keeps the
+   *  elements unboxed.
+   *
    *  @param pf the partial function applied to the elements on which it is defined
    */
   def collect(pf: PartialFunction[Int, Int]): IntAccumulator = {
@@ -344,11 +349,10 @@ final class IntAccumulator
     r
   }
 
-  /** Counts the elements of this `IntAccumulator` that satisfy a predicate.
+  /** Returns the number of elements of this `IntAccumulator` that satisfy `p`, as a `Long`, so
+   *  that accumulators holding more than `Int.MaxValue` elements are counted correctly.
    *
    *  @param p the predicate each element is tested against
-   *  @return the number of matching elements, as a `Long`, so that accumulators holding more
-   *          than `Int.MaxValue` elements are counted correctly
    */
   def countLong(p: Int => Boolean): Long = {
     var r = 0L
@@ -414,8 +418,8 @@ final class IntAccumulator
     factory.fromSpecific(iterator)
   }
 
-  /** Returns an `IntAccumulator` holding the elements of `coll`, as used to build the results of
-   *  operations that preserve this collection's type.
+  /** Returns an `IntAccumulator` holding the elements of `coll`; used by operations that
+   *  preserve this collection's type to build their result.
    *
    *  @param coll the collection whose elements are accumulated
    *  @return `coll` itself if it already is an `IntAccumulator`, otherwise a new `IntAccumulator`
@@ -598,7 +602,7 @@ private[jdk] class IntAccumulatorStepper(private val acc: IntAccumulator) extend
       ans
     }
 
-  /** Returns a [[java.util.Spliterator.OfInt]] over the remaining elements of this stepper, which
+  /** Returns a `java.util.Spliterator.OfInt` over the remaining elements of this stepper, which
    *  advances this stepper as it is consumed.
    *
    *  @tparam B a supertype of `Int` (never used, the result is always an `OfInt`)

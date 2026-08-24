@@ -183,7 +183,8 @@ final class DoubleAccumulator
    *  computed as a `Long` and then narrowed to an `Int`, both when it is computed directly for the
    *  current array and when `seekSlot` computes it for a history array, so an index far enough out
    *  of range can also wrap onto an occupied slot and silently overwrite an element this
-   *  accumulator does report.
+   *  accumulator does report, or onto a history block's trailing bookkeeping slot, corrupting the
+   *  accumulator's internal indexing.
    *
    *  @param idx the zero-based index of the element to replace
    *  @param elem the `Double` value to store at index `idx`
@@ -201,17 +202,15 @@ final class DoubleAccumulator
   /** Replaces the element at index `idx` with `elem`, using an `Int` index.
    *
    *  `idx` is not validated, and an out-of-range index has more than one possible outcome. It can
-   *  land in unused capacity of the array it is written to, in which case the write silently
-   *  succeeds without changing any element this accumulator reports. The offset into that array is
-   *  computed as a `Long` and then narrowed to an `Int`, both when it is computed directly for the
-   *  current array and when `seekSlot` computes it for a history array, so an index far enough out
-   *  of range can also wrap onto an occupied slot and silently overwrite an element this
-   *  accumulator does report.
+   *  land in unused capacity of the current array, in which case the write silently succeeds
+   *  without changing any element this accumulator reports. Otherwise the write throws. An `Int`
+   *  index is widened to a `Long` without loss, so it can never wrap onto an occupied slot the
+   *  way a sufficiently large `Long` index can.
    *
    *  @param idx the zero-based index of the element to replace
    *  @param elem the `Double` value to store at index `idx`
-   *  @throws ArrayIndexOutOfBoundsException if the offset computed from `idx` falls outside the
-   *          bounds of the array being written
+   *  @throws ArrayIndexOutOfBoundsException if `idx` is out of range and the computed offset falls
+   *          outside the array being written, rather than into unused current-array capacity
    */
   def update(idx: Int, elem: Double): Unit = update(idx.toLong, elem)
 
@@ -346,10 +345,7 @@ final class DoubleAccumulator
     r
   }
 
-  /** Returns a new `Array[Double]` holding all accumulated elements in order.
-   *
-   *  @throws IllegalArgumentException if there are more than `Int.MaxValue` accumulated elements
-   */
+  /** Copies the elements in this `DoubleAccumulator` into an `Array[Double]`. */
   @nowarn // cat=lint-overload see toArray[B: ClassTag]
   def toArray: Array[Double] = {
     if (totalSize > Int.MaxValue) throw new IllegalArgumentException("Too many elements accumulated for an array: "+totalSize.toString)
@@ -552,15 +548,14 @@ private[jdk] class DoubleAccumulatorStepper(private val acc: DoubleAccumulator) 
 
   /** Returns the next element and advances this stepper.
    *
-   *  The guard is on the size of the block currently being read, not on the number of elements
-   *  remaining, so after the last element of a nonempty final block has been consumed a further
-   *  call does not throw: `n` is still positive while `N` has reached `0`.
+   *  Call this only while [[hasStep]] is `true`.
    *
-   *  @throws NoSuchElementException if the block currently being read holds no elements, which is
-   *          not the same condition as [[hasStep]] being `false`
-   *  @note NEEDS-HUMAN: the guard here is `n <= 0` (the size of the current block), whereas
-   *        `AnyAccumulatorStepper` and `IntAccumulatorStepper` guard on `N <= 0` (the elements
-   *        remaining). Is stepping past the end of an exhausted stepper meant to be unchecked here?
+   *  @throws NoSuchElementException if this stepper was created from an empty accumulator
+   *  @note NEEDS-HUMAN: the emptiness guard here is `n <= 0` (the size of the block currently
+   *        loaded), whereas `AnyAccumulatorStepper` and `IntAccumulatorStepper` guard on `N <= 0`
+   *        (the number of elements remaining), so a call after [[hasStep]] has turned `false` is
+   *        not reliably detected and can return a stale element instead of throwing. Suspected
+   *        bug in the guard.
    */
   def nextStep(): Double =
     if (n <= 0) throw new NoSuchElementException("next on empty Stepper")

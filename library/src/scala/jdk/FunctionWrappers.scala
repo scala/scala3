@@ -78,7 +78,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `BiConsumer` value that `asJava` returns
+     *  @return a Java `BiConsumer` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaBiConsumer: java.util.function.BiConsumer[T, U] = underlying match {
       case FromJavaBiConsumer((sf @ _)) => sf.asInstanceOf[java.util.function.BiConsumer[T, U]]
@@ -149,7 +149,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `BiFunction` value that `asJava` returns
+     *  @return a Java `BiFunction` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaBiFunction: java.util.function.BiFunction[T, U, R] = underlying match {
       case FromJavaBiFunction((sf @ _)) => sf.asInstanceOf[java.util.function.BiFunction[T, U, R]]
@@ -216,7 +216,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `BiPredicate` value that `asJava` returns
+     *  @return a Java `BiPredicate` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaBiPredicate: java.util.function.BiPredicate[T, U] = underlying match {
       case FromJavaBiPredicate((sf @ _)) => sf.asInstanceOf[java.util.function.BiPredicate[T, U]]
@@ -279,7 +279,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `BinaryOperator` value that `asJava` returns
+     *  @return a Java `BinaryOperator` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaBinaryOperator: java.util.function.BinaryOperator[T] = underlying match {
       case FromJavaBinaryOperator((sf @ _)) => sf.asInstanceOf[java.util.function.BinaryOperator[T]]
@@ -385,7 +385,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `Consumer` value that `asJava` returns
+     *  @return a Java `Consumer` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaConsumer: java.util.function.Consumer[T] = underlying match {
       case FromJavaConsumer((sf @ _)) => sf.asInstanceOf[java.util.function.Consumer[T]]
@@ -548,7 +548,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `DoubleFunction` value that `asJava` returns
+     *  @return a Java `DoubleFunction` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaDoubleFunction: java.util.function.DoubleFunction[R] = underlying match {
       case FromJavaDoubleFunction((sf @ _)) => sf.asInstanceOf[java.util.function.DoubleFunction[R]]
@@ -852,7 +852,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `Function` value that `asJava` returns
+     *  @return a Java `Function` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaFunction: java.util.function.Function[T, R] = underlying match {
       case FromJavaFunction((sf @ _)) => sf.asInstanceOf[java.util.function.Function[T, R]]
@@ -1015,7 +1015,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `IntFunction` value that `asJava` returns
+     *  @return a Java `IntFunction` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaIntFunction: java.util.function.IntFunction[R] = underlying match {
       case FromJavaIntFunction((sf @ _)) => sf.asInstanceOf[java.util.function.IntFunction[R]]
@@ -1417,7 +1417,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `LongFunction` value that `asJava` returns
+     *  @return a Java `LongFunction` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaLongFunction: java.util.function.LongFunction[R] = underlying match {
       case FromJavaLongFunction((sf @ _)) => sf.asInstanceOf[java.util.function.LongFunction[R]]
@@ -1721,7 +1721,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `ObjDoubleConsumer` value that `asJava` returns
+     *  @return a Java `ObjDoubleConsumer` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaObjDoubleConsumer: java.util.function.ObjDoubleConsumer[T] = underlying match {
       case FromJavaObjDoubleConsumer((sf @ _)) => sf.asInstanceOf[java.util.function.ObjDoubleConsumer[T]]
@@ -1786,7 +1786,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `ObjIntConsumer` value that `asJava` returns
+     *  @return a Java `ObjIntConsumer` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaObjIntConsumer: java.util.function.ObjIntConsumer[T] = underlying match {
       case FromJavaObjIntConsumer((sf @ _)) => sf.asInstanceOf[java.util.function.ObjIntConsumer[T]]
@@ -1851,7 +1851,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `ObjLongConsumer` value that `asJava` returns
+     *  @return a Java `ObjLongConsumer` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaObjLongConsumer: java.util.function.ObjLongConsumer[T] = underlying match {
       case FromJavaObjLongConsumer((sf @ _)) => sf.asInstanceOf[java.util.function.ObjLongConsumer[T]]
@@ -1912,7 +1912,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `Predicate` value that `asJava` returns
+     *  @return a Java `Predicate` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaPredicate: java.util.function.Predicate[T] = underlying match {
       case FromJavaPredicate((sf @ _)) => sf.asInstanceOf[java.util.function.Predicate[T]]
@@ -1967,7 +1967,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `Supplier` value that `asJava` returns
+     *  @return a Java `Supplier` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaSupplier: java.util.function.Supplier[T] = underlying match {
       case FromJavaSupplier((sf @ _)) => sf.asInstanceOf[java.util.function.Supplier[T]]
@@ -2034,7 +2034,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `ToDoubleBiFunction` value that `asJava` returns
+     *  @return a Java `ToDoubleBiFunction` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaToDoubleBiFunction: java.util.function.ToDoubleBiFunction[T, U] = underlying match {
       case FromJavaToDoubleBiFunction((sf @ _)) => sf.asInstanceOf[java.util.function.ToDoubleBiFunction[T, U]]
@@ -2095,7 +2095,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `ToDoubleFunction` value that `asJava` returns
+     *  @return a Java `ToDoubleFunction` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaToDoubleFunction: java.util.function.ToDoubleFunction[T] = underlying match {
       case FromJavaToDoubleFunction((sf @ _)) => sf.asInstanceOf[java.util.function.ToDoubleFunction[T]]
@@ -2162,7 +2162,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `ToIntBiFunction` value that `asJava` returns
+     *  @return a Java `ToIntBiFunction` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaToIntBiFunction: java.util.function.ToIntBiFunction[T, U] = underlying match {
       case FromJavaToIntBiFunction((sf @ _)) => sf.asInstanceOf[java.util.function.ToIntBiFunction[T, U]]
@@ -2223,7 +2223,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `ToIntFunction` value that `asJava` returns
+     *  @return a Java `ToIntFunction` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaToIntFunction: java.util.function.ToIntFunction[T] = underlying match {
       case FromJavaToIntFunction((sf @ _)) => sf.asInstanceOf[java.util.function.ToIntFunction[T]]
@@ -2290,7 +2290,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `ToLongBiFunction` value that `asJava` returns
+     *  @return a Java `ToLongBiFunction` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaToLongBiFunction: java.util.function.ToLongBiFunction[T, U] = underlying match {
       case FromJavaToLongBiFunction((sf @ _)) => sf.asInstanceOf[java.util.function.ToLongBiFunction[T, U]]
@@ -2351,7 +2351,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `ToLongFunction` value that `asJava` returns
+     *  @return a Java `ToLongFunction` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaToLongFunction: java.util.function.ToLongFunction[T] = underlying match {
       case FromJavaToLongFunction((sf @ _)) => sf.asInstanceOf[java.util.function.ToLongFunction[T]]
@@ -2412,7 +2412,7 @@ object FunctionWrappers {
     };
     /** An explicitly named alias for `asJava`, with identical behavior.
      *
-     *  @return the same Java `UnaryOperator` value that `asJava` returns
+     *  @return a Java `UnaryOperator` that behaves identically to the one `asJava` returns
      */
     @inline def asJavaUnaryOperator: java.util.function.UnaryOperator[T] = underlying match {
       case FromJavaUnaryOperator((sf @ _)) => sf.asInstanceOf[java.util.function.UnaryOperator[T]]

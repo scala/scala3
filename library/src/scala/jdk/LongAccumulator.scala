@@ -206,16 +206,13 @@ final class LongAccumulator
    *  `idx` is not validated, and an out-of-range index has more than one possible outcome. It can
    *  land in unused capacity of the current array, in which case the write silently succeeds
    *  without changing any element this accumulator reports. Otherwise the write throws. An `Int`
-   *  index is widened to a `Long` without loss, which rules out wraparound driven by the magnitude
-   *  of `idx` alone; the wraparound described on the `Long` overload is driven by arithmetic on
-   *  `totalSize` and `index` that is narrowed to an `Int`, so for a large enough accumulator it
-   *  remains possible here too.
+   *  index is widened to a `Long` without loss, so it can never wrap onto an occupied slot the
+   *  way a sufficiently large `Long` index can.
    *
    *  @param idx the zero-based index of the element to replace
    *  @param elem the `Long` value to store at index `idx`
    *  @throws ArrayIndexOutOfBoundsException if `idx` is out of range and the computed offset falls
-   *          outside the array being written, rather than into unused current-array capacity or
-   *          onto an occupied slot reached by `Int` narrowing
+   *          outside the array being written, rather than into unused current-array capacity
    */
   def update(idx: Int, elem: Long): Unit = update(idx.toLong, elem)
 
@@ -269,6 +266,9 @@ final class LongAccumulator
 
   /** Returns a new `LongAccumulator` containing the results of applying `pf` to the elements of
    *  this one for which it is defined, in order.
+   *
+   *  Unlike the inherited `collect`, which builds an [[AnyAccumulator]], this overload keeps the
+   *  elements unboxed.
    *
    *  @param pf the partial function applied to the elements on which it is defined
    */
@@ -344,11 +344,10 @@ final class LongAccumulator
     r
   }
 
-  /** Counts the elements of this `LongAccumulator` that satisfy a predicate.
+  /** Returns the number of elements of this `LongAccumulator` that satisfy `p`, as a `Long`, so
+   *  that accumulators holding more than `Int.MaxValue` elements are counted correctly.
    *
    *  @param p the predicate each element is tested against
-   *  @return the number of matching elements, as a `Long`, so that accumulators holding more
-   *          than `Int.MaxValue` elements are counted correctly
    */
   def countLong(p: Long => Boolean): Long = {
     var r = 0L
@@ -414,8 +413,8 @@ final class LongAccumulator
     factory.fromSpecific(iterator)
   }
 
-  /** Returns a `LongAccumulator` holding the elements of `coll`, as used to build the results of
-   *  operations that preserve this collection's type.
+  /** Returns a `LongAccumulator` holding the elements of `coll`; used by operations that
+   *  preserve this collection's type to build their result.
    *
    *  @param coll the collection whose elements are accumulated
    *  @return `coll` itself if it already is a `LongAccumulator`, otherwise a new `LongAccumulator`
@@ -558,13 +557,14 @@ private[jdk] class LongAccumulatorStepper(private val acc: LongAccumulator) exte
 
   /** Returns the next element and advances this stepper.
    *
-   *  Exhaustion is not reliably detected. The emptiness check tests the number of elements in the
-   *  block currently loaded rather than the number remaining overall, so calling this after
-   *  [[hasStep]] has turned `false` typically returns a stale element from that block instead of
-   *  throwing. Call it only while `hasStep` is `true`.
+   *  Call this only while [[hasStep]] is `true`.
    *
-   *  @throws NoSuchElementException if the block currently loaded is empty, which happens when this
-   *          stepper is built from an empty accumulator
+   *  @throws NoSuchElementException if this stepper was created from an empty accumulator
+   *  @note NEEDS-HUMAN: the emptiness guard here is `n <= 0` (the size of the block currently
+   *        loaded), whereas `AnyAccumulatorStepper` and `IntAccumulatorStepper` guard on `N <= 0`
+   *        (the number of elements remaining), so a call after [[hasStep]] has turned `false` is
+   *        not reliably detected and can return a stale element instead of throwing. Suspected
+   *        bug in the guard.
    */
   def nextStep(): Long =
     if (n <= 0) throw new NoSuchElementException("next on empty Stepper")
@@ -604,7 +604,7 @@ private[jdk] class LongAccumulatorStepper(private val acc: LongAccumulator) exte
       ans
     }
 
-  /** Returns a [[java.util.Spliterator.OfLong]] over the remaining elements of this stepper, which
+  /** Returns a `java.util.Spliterator.OfLong` over the remaining elements of this stepper, which
    *  advances this stepper as it is consumed.
    *
    *  @tparam B a supertype of `Long` (never used, the result is always an `OfLong`)

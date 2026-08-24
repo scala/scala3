@@ -21,7 +21,7 @@ trait ExprMap:
    *
    *  @tparam T the type of the expression whose children are transformed
    *  @param e the expression whose direct sub-expressions will be transformed via `transform`
-   *  @return an expression of type `T` in which the direct sub-expressions of `e` have been
+   *  @return an expression of type `T` in which the direct sub-expressions of `e` are
    *          replaced by the result of applying `transform` to them. Not every direct child is
    *          transformed: the left-hand side of an `Assign`, the type arguments of a `TypeApply`,
    *          the `call` of an `Inlined` tree and the expression of a `Return` are left as they
@@ -262,7 +262,8 @@ trait ExprMap:
       /** Returns `trees` unchanged, since `transformTypeTree` does not transform type trees.
        *
        *  @param trees the type trees
-       *  @param owner the symbol that owns the type trees
+       *  @param owner the symbol that owns the type trees, passed on to `transformTypeTree`,
+       *         which ignores it, so its value has no effect
        */
       def transformTypeTrees(trees: List[TypeTree])(owner: Symbol): List[TypeTree] =
         trees.mapConserve(x => transformTypeTree(x)(owner))
@@ -280,7 +281,8 @@ trait ExprMap:
       /** Returns `trees` unchanged, since `transformTypeCaseDef` never changes a type case.
        *
        *  @param trees the type cases
-       *  @param owner the symbol that owns the type cases
+       *  @param owner the symbol that owns the type cases, passed through `transformTypeCaseDef`
+       *         to `transformTypeTree`, which ignores it, so its value has no effect
        */
       def transformTypeCaseDefs(trees: List[TypeCaseDef])(owner: Symbol): List[TypeCaseDef] =
         trees.mapConserve(x => transformTypeCaseDef(x)(owner))
