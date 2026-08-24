@@ -100,6 +100,10 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
   @throws[NoSuchElementException]
   def next(): A
 
+  /** Returns this iterator, since an iterator is its own iterator.
+   *
+   *  @note Reuse: $preservesIterator
+   */
   @inline final def iterator = this
 
   /** Wraps the value of `next()` in an option.
@@ -276,8 +280,21 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     // fill() returns false if no more sequences can be produced
     private def fill(): Boolean = filled || { filled = self.hasNext && fulfill() ; filled }
 
+    /** Tests whether another segment can be produced, buffering it eagerly
+     *  from the underlying iterator if it is not already buffered.
+     */
     def hasNext = fill()
 
+    /** Returns the next segment, buffering it from the underlying iterator if
+     *  it has not already been buffered by `hasNext`.
+     *
+     *  If sliding with `step < size`, the elements shared with the next
+     *  segment are retained for reuse.
+     *
+     *  @return the next segment, of `size` elements unless it is a partial
+     *          segment permitted by `withPartial`
+     *  @throws NoSuchElementException if no further segment can be produced
+     */
     @throws[NoSuchElementException]
     def next(): immutable.Seq[B] =
       if (!fill()) Iterator.empty.next()
@@ -403,6 +420,19 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
   def sliding[B >: A](size: Int, step: Int = 1): GroupedIterator[B]^{this} =
     new GroupedIterator[B](self, size, step)
 
+  /** Produces an iterator containing the cumulative results of applying the
+   *  operator `op` going left to right, starting with the value `z`.
+   *
+   *  The results are computed lazily, as the returned iterator is advanced.
+   *
+   *  @tparam B the element type of the returned iterator
+   *  @param z the initial value, produced first
+   *  @param op the operator applied to the previous cumulative result and the
+   *            next element of this iterator
+   *  @return an iterator producing `z, op(z, x1), op(op(z, x1), x2), ...`
+   *          where `x1, x2, ...` are the elements of this iterator
+   *  @note   Reuse: $consumesAndProducesIterator
+   */
   def scanLeft[B](z: B)(op: (B, A) => B): Iterator[B]^{this, op} = new AbstractIterator[B] {
     // We use an intermediate iterator that iterates through the first element `z`
     // and then that will be modified to iterate through the collection
@@ -434,6 +464,21 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     def hasNext: Boolean = current.hasNext
   }
 
+  /** Produces an iterator containing the cumulative results of applying the
+   *  operator `op` going right to left, ending with the value `z`.
+   *
+   *  Unlike most iterator methods, calling this method immediately consumes
+   *  this iterator into an internal buffer, so it must not be called on an
+   *  infinite iterator.
+   *
+   *  @tparam B the element type of the returned iterator
+   *  @param z the initial value, produced last
+   *  @param op the operator applied to an element of this iterator and the
+   *            cumulative result to its right
+   *  @return an iterator producing `..., op(x(n-1), op(xn, z)), op(xn, z), z`
+   *          where `x1, ..., xn` are the elements of this iterator
+   *  @note   Reuse: $consumesAndProducesIterator
+   */
   @deprecated("Call scanRight on an Iterable instead.", "2.13.0")
   def scanRight[B](z: B)(op: (A, B) => B): Iterator[B]^{this, op} = ArrayBuffer.from(this).scanRight(z)(op).iterator
 
@@ -495,13 +540,39 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     -1
   }
 
+  /** Returns the number of elements produced by this iterator, an alias of `size`.
+   *
+   *  Note: will not terminate for infinite iterators.
+   *
+   *  @note Reuse: $consumesIterator
+   */
   @inline final def length: Int = size
 
+  /** Tests whether this iterator is exhausted, i.e. whether `hasNext` is `false`.
+   *
+   *  @note Reuse: $preservesIterator
+   */
   @deprecatedOverriding("isEmpty is defined as !hasNext; override hasNext instead", "2.13.0")
   override def isEmpty: Boolean = !hasNext
 
+  /** Creates an iterator over all the elements of this iterator that
+   *  satisfy the predicate `p`. The order of the elements
+   *  is preserved.
+   *
+   *  @param p the predicate used to test values.
+   *  @return  an iterator which produces those values of this iterator which satisfy the predicate `p`.
+   *  @note    Reuse: $consumesAndProducesIterator
+   */
   def filter(p: A => Boolean): Iterator[A]^{this, p} = filterImpl(p, isFlipped = false)
 
+  /** Creates an iterator over all the elements of this iterator which do not
+   *  satisfy the predicate `p`. The order of the elements
+   *  is preserved.
+   *
+   *  @param p the predicate used to test values.
+   *  @return  an iterator which produces those values of this iterator which do not satisfy the predicate `p`.
+   *  @note    Reuse: $consumesAndProducesIterator
+   */
   def filterNot(p: A => Boolean): Iterator[A]^{this, p} = filterImpl(p, isFlipped = true)
 
   private[collection] def filterImpl(p: A => Boolean, isFlipped: Boolean): Iterator[A]^{this, p} = new AbstractIterator[A] {
@@ -540,6 +611,16 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    */
   def withFilter(p: A => Boolean): Iterator[A]^{this, p} = filter(p)
 
+  /** Creates an iterator by transforming values produced by this iterator with
+   *  a partial function, dropping those values for which the partial function
+   *  is not defined.
+   *
+   *  @tparam B the element type of the returned iterator
+   *  @param pf the partial function which filters and maps the iterator.
+   *  @return   an iterator which yields the value `pf(x)` for each value `x` produced by
+   *            this iterator on which `pf` is defined.
+   *  @note     Reuse: $consumesAndProducesIterator
+   */
   def collect[B](pf: PartialFunction[A, B]^): Iterator[B]^{this, pf} = new AbstractIterator[B] with (A => B) {
     // Manually buffer to avoid extra layer of wrapping with buffered
     private var hd: B = compiletime.uninitialized
@@ -611,12 +692,31 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       }
   }
 
+  /** Creates a new iterator that maps all produced values of this iterator
+   *  to new values using a transformation function.
+   *
+   *  @tparam B the element type of the returned iterator
+   *  @param f the transformation function
+   *  @return  a new iterator which transforms every value produced by this
+   *           iterator by applying the function `f` to it.
+   *  @note    Reuse: $consumesAndProducesIterator
+   */
   def map[B](f: A => B): Iterator[B]^{this, f} = new AbstractIterator[B] {
     override def knownSize = self.knownSize
     def hasNext = self.hasNext
     def next() = f(self.next())
   }
 
+  /** Creates a new iterator by applying a function to all values produced by
+   *  this iterator and concatenating the results.
+   *
+   *  @tparam B the element type of the returned iterator
+   *  @param f the function to apply on each value produced by this iterator
+   *  @return  the iterator resulting from applying the given iterator-valued
+   *           function `f` to each value produced by this iterator and
+   *           concatenating the results.
+   *  @note    Reuse: $consumesAndProducesIterator
+   */
   def flatMap[B](f: A => IterableOnce[B]^): Iterator[B]^{this, f} = new AbstractIterator[B] {
     private var cur: Iterator[B]^{f} = Iterator.empty
     /** Trillium logic boolean: -1 = unknown, 0 = false, 1 = true. */
@@ -652,15 +752,55 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     }
   }
 
+  /** Creates a new iterator by concatenating the elements of the collections
+   *  produced by this iterator.
+   *
+   *  @tparam B the element type of the collections produced by this iterator
+   *  @param ev evidence that each element of this iterator can be treated as
+   *            an `IterableOnce[B]`
+   *  @return   an iterator producing, in order, the elements of each collection
+   *            produced by this iterator.
+   *  @note     Reuse: $consumesAndProducesIterator
+   */
   def flatten[B](implicit ev: A -> IterableOnce[B]): Iterator[B]^{this} =
     flatMap[B](ev)
 
+  /** Concatenates this iterator with the elements of another collection.
+   *
+   *  The by-name argument `xs` is evaluated lazily: not when this method is
+   *  called, but only once the returned iterator has produced all values of
+   *  this iterator and more are demanded. Repeated concatenations are
+   *  efficient because appended collections are kept in a flat queue rather
+   *  than in nested iterators.
+   *
+   *  @tparam B the element type of the returned iterator, a supertype of `A`
+   *  @param xs the collection whose elements follow the values of this iterator
+   *  @return   an iterator producing the values of this iterator, followed by
+   *            the elements of `xs`.
+   *  @note     Reuse: $consumesTwoAndProducesOneIterator
+   */
   def concat[B >: A](xs: => IterableOnce[B]^): Iterator[B]^{this, xs} = new Iterator.ConcatIterator[B](self).concat(xs)
 
   @`inline` final def ++ [B >: A](xs: => IterableOnce[B]^): Iterator[B]^{this, xs} = concat(xs)
 
+  /** Selects the first `n` values of this iterator.
+   *
+   *  @param n the number of values to take
+   *  @return  an iterator producing only the first `n` values of this iterator,
+   *           or else the whole iterator, if it produces fewer than `n` values.
+   *  @note    Reuse: $consumesAndProducesIterator
+   */
   def take(n: Int): Iterator[A]^{this} = sliceIterator(0, n max 0)
 
+  /** Takes the longest prefix of values produced by this iterator that satisfy
+   *  a predicate.
+   *
+   *  @param p the predicate used to test elements.
+   *  @return  an iterator producing the values of this iterator, until
+   *           this iterator produces a value that does not satisfy
+   *           the predicate `p`.
+   *  @note    Reuse: $consumesAndProducesIterator
+   */
   def takeWhile(p: A => Boolean): Iterator[A]^{this, p} = new AbstractIterator[A] {
     private var hd: A = compiletime.uninitialized
     private var hdDefined: Boolean = false
@@ -675,8 +815,27 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     def next() = if (hasNext) { hdDefined = false; hd } else Iterator.empty.next()
   }
 
+  /** Selects all values of this iterator except the first `n` ones.
+   *
+   *  The skipped values are not consumed immediately, but only once the
+   *  returned iterator is queried.
+   *
+   *  @param n the number of values to drop
+   *  @return  an iterator producing all values of this iterator except the
+   *           first `n` ones, or else the empty iterator, if this iterator
+   *           produces fewer than `n` values.
+   *  @note    Reuse: $consumesAndProducesIterator
+   */
   def drop(n: Int): Iterator[A]^{this} = sliceIterator(n, -1)
 
+  /** Skips the longest prefix of values produced by this iterator that satisfy
+   *  a predicate.
+   *
+   *  @param p the predicate used to skip values.
+   *  @return  an iterator producing the values of this iterator starting with
+   *           the first value that does not satisfy the predicate `p`.
+   *  @note    Reuse: $consumesAndProducesIterator
+   */
   def dropWhile(p: A => Boolean): Iterator[A]^{this, p} = new AbstractIterator[A] {
     // Magic value: -1 = hasn't dropped, 0 = found first, 1 = defer to parent iterator
     private var status = -1
@@ -738,6 +897,10 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
         if (lookahead == null) lookahead = new mutable.Queue[A]
         lookahead.nn += a
       }
+      /** Tests whether the prefix has another element, either buffered in the
+       *  lookahead queue or read ahead from the underlying iterator and tested
+       *  against `p`.
+       */
       def hasNext = {
         if (status < 0) (lookahead ne null) && lookahead.nn.nonEmpty
         else if (status > 0) true
@@ -750,6 +913,12 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
           status > 0
         }
       }
+      /** Returns the next element of the prefix, taken from the lookahead
+       *  queue if the underlying iterator has been handed over to the trailing
+       *  iterator.
+       *
+       *  @throws NoSuchElementException if the prefix is exhausted
+       */
       def next() = {
         if (hasNext) {
           if (status == 1) { status = 0; hd }
@@ -757,6 +926,12 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
         }
         else Iterator.empty.next()
       }
+      /** Hands the underlying iterator over to the trailing iterator, reading
+       *  all remaining prefix elements into the lookahead queue.
+       *
+       *  @return `true` if an element failing `p` was found and saved as the
+       *          trailer, `false` if the underlying iterator was exhausted first
+       */
       @tailrec
       def finish(): Boolean = status match {
         case -2 => status = -1 ; true
@@ -774,6 +949,7 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
           }
           false
       }
+      /** Returns the first element that failed `p`, valid once `finish()` has returned `true`. */
       def trailer: A = hd
     }
 
@@ -816,6 +992,16 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     (leading, trailing)
   }
 
+  /** Creates an iterator returning an interval of the values produced by this iterator.
+   *
+   *  @param from the index of the first element in this iterator which forms
+   *              part of the slice. If negative, the slice starts at zero.
+   *  @param until the index of the first element following the slice. If
+   *               negative, the slice is empty.
+   *  @return an iterator which advances this iterator past the first `from`
+   *          elements, and then produces at most `until - from` elements.
+   *  @note   Reuse: $consumesAndProducesIterator
+   */
   def slice(from: Int, until: Int): Iterator[A]^{this} = sliceIterator(from, until max 0)
 
   /** Creates an optionally bounded slice, unbounded if `until` is negative.
@@ -837,6 +1023,18 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     else new Iterator.SliceIterator(this, lo, rest)
   }
 
+  /** Creates an iterator formed from this iterator and another iterable
+   *  collection by combining corresponding values in pairs. If one of the two
+   *  is longer than the other, its remaining elements are ignored.
+   *
+   *  @tparam B the element type of `that`
+   *  @param that the collection providing the second half of each result pair
+   *  @return a new iterator containing pairs consisting of corresponding
+   *          elements of this iterator and `that`. The number of elements
+   *          produced by the new iterator is the minimum of the number of
+   *          elements produced by this iterator and `that`.
+   *  @note   Reuse: $consumesTwoAndProducesOneIterator
+   */
   def zip[B](that: IterableOnce[B]^): Iterator[(A, B)]^{this, that} = new AbstractIterator[(A, B)] {
     val thatIterator = that.iterator
     override def knownSize = self.knownSize min thatIterator.knownSize
@@ -844,6 +1042,24 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     def next() = (self.next(), thatIterator.next())
   }
 
+  /** Creates an iterator formed from this iterator and another iterable
+   *  collection by combining corresponding elements in pairs. If one of the
+   *  two is shorter than the other, placeholder elements are used to extend
+   *  the shorter one to the length of the longer.
+   *
+   *  @tparam A1 the type of the first half of each result pair, a supertype of `A`
+   *  @tparam B the element type of `that`
+   *  @param that the collection providing the second half of each result pair
+   *  @param thisElem the element used to pad the pairs if this iterator is
+   *                  shorter than `that`
+   *  @param thatElem the element used to pad the pairs if `that` is shorter
+   *                  than this iterator
+   *  @return a new iterator containing pairs consisting of corresponding
+   *          values of this iterator and `that`. The number of elements
+   *          produced by the new iterator is the maximum of the number of
+   *          elements produced by this iterator and `that`.
+   *  @note   Reuse: $consumesTwoAndProducesOneIterator
+   */
   def zipAll[A1 >: A, B](that: IterableOnce[B]^, thisElem: A1, thatElem: B): Iterator[(A1, B)]^{this, that} = new AbstractIterator[(A1, B)] {
     val thatIterator = that.iterator
     override def knownSize = {
@@ -861,6 +1077,13 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     }
   }
 
+  /** Creates an iterator that pairs each value produced by this iterator with
+   *  its index, counting from 0.
+   *
+   *  @return a new iterator containing pairs consisting of each value produced
+   *          by this iterator and its index.
+   *  @note   Reuse: $consumesAndProducesIterator
+   */
   def zipWithIndex: Iterator[(A, Int)]^{this} = new AbstractIterator[(A, Int)] {
     var idx = 0
     override def knownSize = self.knownSize
@@ -906,6 +1129,12 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
     var ahead: (Iterator[A]^{this}) | Null = null
     class Partner extends AbstractIterator[A] {
       this: Partner^{Iterator.this} =>
+      /** Returns the number of remaining elements if it can be computed, `-1` otherwise.
+       *
+       *  For the partner that is ahead this is the original iterator's
+       *  `knownSize`; for the one that is behind, the buffered elements are
+       *  added to that.
+       */
       override def knownSize: Int = self.synchronized {
         val thisSize = self.knownSize
 
@@ -913,9 +1142,16 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
         else if (thisSize < 0 || gap.knownSize < 0) -1
         else thisSize + gap.knownSize
       }
+      /** Tests whether an element remains, either buffered in the shared queue
+       *  (when this partner is behind the other) or in the original iterator.
+       */
       def hasNext: Boolean = self.synchronized {
         (this ne ahead) && !gap.isEmpty || self.hasNext
       }
+      /** Returns the next element, reading it from the original iterator and
+       *  buffering it for the other partner if this partner is ahead, or
+       *  dequeuing an already buffered element otherwise.
+       */
       def next(): A = self.synchronized {
         if (gap.isEmpty) ahead = this
         if (this eq ahead) {
@@ -927,7 +1163,17 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       // to verify partnerhood we use reference equality on gap because
       // type testing does not discriminate based on origin.
       private def compareGap(queue: scala.collection.mutable.Queue[A]) = gap eq queue
+      /** Returns the hash code of the queue shared by the two partner iterators, so both partners hash alike. */
       override def hashCode() = gap.hashCode()
+      /** Compares this iterator with `other` for equality.
+       *
+       *  The result is `true` if `other` is a partner iterator created by the
+       *  same `duplicate` call and the shared buffer is empty, that is, the
+       *  two iterators are positioned at the same element. Any other value is
+       *  compared by reference.
+       *
+       *  @param other the value to compare with
+       */
       override def equals(other: Any) = (other: @unchecked) match {
         case x: Partner   => x.compareGap(gap) && gap.isEmpty
         case _            => super.equals(other)
@@ -994,6 +1240,17 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
       }
     }
 
+  /** Applies a side-effecting function to each element as it is produced,
+   *  passing the element through unchanged.
+   *
+   *  The function is invoked lazily: `f` is applied to an element only when,
+   *  and each time, that element is produced by the returned iterator.
+   *
+   *  @tparam U the return type of `f`, which is discarded
+   *  @param f the side-effecting function applied to each element
+   *  @return  an iterator producing the same values as this iterator
+   *  @note    Reuse: $consumesAndProducesIterator
+   */
   override def tapEach[U](f: A => U): Iterator[A]^{this, f} = new AbstractIterator[A] {
     override def knownSize = self.knownSize
     override def hasNext = self.hasNext
@@ -1011,6 +1268,10 @@ trait Iterator[+A] extends IterableOnce[A] with IterableOnceOps[A, Iterator, Ite
    */
   override def toString() = "<iterator>"
 
+  /** Returns this iterator.
+   *
+   *  @note Reuse: $preservesIterator
+   */
   @deprecated("Iterator.seq always returns the iterator itself", "2.13.0")
   def seq: this.type = this
 }
@@ -1041,6 +1302,12 @@ object Iterator extends IterableFactory[Iterator] {
    */
   @`inline` final def empty[T]: Iterator[T] = _empty
 
+  /** Creates an iterator that produces the single element `a` and is then exhausted.
+   *
+   *  @tparam A the element type of the iterator
+   *  @param a the single element to produce
+   *  @return an iterator that produces `a` once
+   */
   def single[A](a: A): Iterator[A] = new AbstractIterator[A] {
     private var consumed: Boolean = false
     def hasNext = !consumed
@@ -1050,6 +1317,12 @@ object Iterator extends IterableFactory[Iterator] {
       else this
   }
 
+  /** Creates an iterator that produces the given elements, in order.
+   *
+   *  @tparam A the element type of the iterator
+   *  @param xs the elements to produce
+   *  @return an iterator over the elements `xs`
+   */
   override def apply[A](xs: A*): Iterator[A] = xs.iterator
 
   /**
@@ -1208,6 +1481,11 @@ object Iterator extends IterableFactory[Iterator] {
     private var last: ConcatIteratorCell[A @uncheckedVariance] | Null = null
     private var currentHasNextChecked = false
 
+    /** Tests whether an element remains in any of the concatenated iterators.
+     *
+     *  Advances past exhausted constituent iterators, merging any nested
+     *  `ConcatIterator` encountered into this one to keep the chain flat.
+     */
     def hasNext =
       if (currentHasNextChecked) true
       else if (current == null) false
@@ -1253,12 +1531,27 @@ object Iterator extends IterableFactory[Iterator] {
         advance()
       }
 
+    /** Returns the next element of the first non-exhausted constituent iterator.
+     *
+     *  @throws NoSuchElementException if all constituent iterators are exhausted
+     */
     def next()  =
       if (hasNext) {
         currentHasNextChecked = false
         current.nn.next()
       } else Iterator.empty.next()
 
+    /** Appends a collection to this concatenation, returning this same iterator.
+     *
+     *  Unlike the base implementation, no wrapping iterator is created: the
+     *  by-name argument is enqueued in an internal list of cells and only
+     *  evaluated when iteration reaches it, so repeated concatenation neither
+     *  nests iterators nor risks a stack overflow.
+     *
+     *  @tparam B the element type of the returned iterator, a supertype of `A`
+     *  @param that the collection to append, evaluated on demand
+     *  @return this iterator, extended to also produce the elements of `that`
+     */
     override def concat[B >: A](that: => IterableOnce[B]^): Iterator[B]^{this, that} = {
       val c = new ConcatIteratorCell[B](that, null).asInstanceOf[ConcatIteratorCell[A]]
       if (tail == null) {
@@ -1275,6 +1568,7 @@ object Iterator extends IterableFactory[Iterator] {
   }
 
   private final class ConcatIteratorCell[A](head: => IterableOnce[A]^, var tail: (ConcatIteratorCell[A]^) | Null) {
+    /** Returns an iterator over this cell's collection, evaluating the by-name `head` expression. */
     def headIterator: Iterator[A]^{this} = head.iterator
   }
 
@@ -1298,6 +1592,12 @@ object Iterator extends IterableFactory[Iterator] {
         } else
           dropping = 0
       }
+    /** Returns the number of remaining elements if the underlying iterator's
+     *  size is known, `-1` otherwise.
+     *
+     *  Accounts for elements not yet skipped and, if bounded, for the
+     *  remaining limit.
+     */
     override def knownSize: Int = {
       val size = underlying.knownSize
       if (size < 0) -1
@@ -1307,7 +1607,13 @@ object Iterator extends IterableFactory[Iterator] {
         else remaining min dropSize
       }
     }
+    /** Tests whether an element remains within the limit, first skipping any leading elements still to be dropped. */
     def hasNext = { skip(); remaining != 0 && underlying.hasNext }
+    /** Returns the next element, first skipping any leading elements still to be dropped.
+     *
+     *  @throws NoSuchElementException if the limit has been reached or the
+     *          underlying iterator is exhausted
+     */
     def next()  = {
       skip()
       if (remaining > 0) {
@@ -1317,6 +1623,20 @@ object Iterator extends IterableFactory[Iterator] {
       else if (unbounded) underlying.next()
       else empty.next()
     }
+    /** Creates an optionally bounded slice of this slice, unbounded if `until` is negative.
+     *
+     *  Instead of wrapping this iterator in a further `SliceIterator`, this
+     *  implementation adjusts the drop count and limit of this iterator in
+     *  place and returns it, avoiding daisy-chained iterators. Only when the
+     *  combined drop count overflows `Int` is a second `SliceIterator`
+     *  chained on to absorb the excess.
+     *
+     *  @param from the index of the first element in the slice
+     *  @param until the index of the first element following the slice, or negative for unbounded
+     *  @return this iterator with adjusted bounds, the empty iterator if the
+     *          slice is empty, or a chained iterator if the combined drop
+     *          count overflows `Int`
+     */
     override protected def sliceIterator(from: Int, until: Int): Iterator[A]^{this} = {
       val lo = from max 0
       def adjustedBound =
@@ -1356,6 +1676,12 @@ object Iterator extends IterableFactory[Iterator] {
     private var state: S = init
     private var nextResult: Option[(A, S)] | Null = null
 
+    /** Tests whether another element can be produced, applying `f` to the
+     *  current state and caching the result for `next()` if it is not already
+     *  cached.
+     *
+     *  @throws NullPointerException if `f` returns `null` instead of an `Option`
+     */
     override def hasNext: Boolean = {
       if (nextResult eq null) {
         nextResult = {
@@ -1368,6 +1694,11 @@ object Iterator extends IterableFactory[Iterator] {
       nextResult.nn.isDefined
     }
 
+    /** Returns the element cached by `hasNext` and advances the internal state.
+     *
+     *  @throws NoSuchElementException if `f` has returned `None`, i.e. the
+     *          iterator is exhausted
+     */
     override def next(): A = {
       if (hasNext) {
         val (value, newState) = nextResult.nn.get

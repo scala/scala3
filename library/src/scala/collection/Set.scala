@@ -32,6 +32,13 @@ trait Set[A]
     with IterableFactoryDefaults[A, Set]
     with caps.Pure {
 
+  /** Tests whether this set can equal the given object.
+   *
+   *  Always `true` here; [[equals]] consults this method so that subclasses can restrict
+   *  equality to specific set types.
+   *
+   *  @param that the value being probed for possible equality; not examined by this implementation
+   */
   def canEqual(that: Any) = true
 
   /** Equality of sets is implemented using the lookup method [[contains]]. This method returns `true` if
@@ -70,13 +77,24 @@ trait Set[A]
         false
     })
 
+  /** Returns a hash code value consistent with [[equals]]: computed with
+   *  [[scala.util.hashing.MurmurHash3.setHash]], it does not depend on the order in which
+   *  this set enumerates its elements.
+   */
   override def hashCode(): Int = MurmurHash3.setHash(this)
 
+  /** Returns the `Set` companion object as the factory for sets of this kind. */
   override def iterableFactory: IterableFactory[Set] = Set
 
+  /** Returns `"Set"`, the prefix used by `toString`. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix: String = "Set"
 
+  /** Returns a string representation of this set, of the form `Set(elem1, elem2, ...)`.
+   *
+   *  Reinstates `Iterable`'s `toString`, which the `toString` inherited through `Function1`
+   *  would otherwise replace.
+   */
   override def toString(): String = super[Iterable].toString() // Because `Function1` overrides `toString` too
 }
 
@@ -94,6 +112,11 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
      with (A => Boolean)
      with caps.Pure {
 
+  /** Tests whether this set contains a given element.
+   *
+   *  @param elem the element to test for membership
+   *  @return `true` if `elem` is contained in this set, `false` otherwise
+   */
   def contains(elem: A): Boolean
 
   /** Tests if some element is contained in this set.
@@ -160,7 +183,12 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
     private var _hasNext = true
     idxs(len) = elms.size
 
+    /** Tests whether further subsets remain. */
     def hasNext = _hasNext
+    /** Returns the next subset of the requested size.
+     *
+     *  @throws NoSuchElementException if no further subsets remain
+     */
     @throws[NoSuchElementException]
     def next(): C = {
       if (!hasNext) Iterator.empty.next()
@@ -211,15 +239,30 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
    */
   @`inline` final def &~ (that: Set[A]): C = this diff that
 
+  /** Returns a new $coll containing the elements of this $coll that are not also contained
+   *  in the given collection `that`.
+   *
+   *  @param that the collection of elements to exclude
+   */
   @deprecated("Consider requiring an immutable Set", "2.13.0")
   def -- (that: IterableOnce[A]^): C = {
     val toRemove = that.iterator.to(immutable.Set)
     fromSpecific(view.filterNot(toRemove))
   }
 
+  /** Returns a new $coll containing all elements of this $coll except `elem`.
+   *
+   *  @param elem the element to remove
+   */
   @deprecated("Consider requiring an immutable Set or fall back to Set.diff", "2.13.0")
   def - (elem: A): C = diff(Set(elem))
 
+  /** Returns a new $coll containing all elements of this $coll except the given elements.
+   *
+   *  @param elem1 the first element to remove
+   *  @param elem2 the second element to remove
+   *  @param elems the remaining elements to remove
+   */
   @deprecated("Use &- with an explicit collection argument instead of - with varargs", "2.13.0")
   def - (elem1: A, elem2: A, elems: A*): C = diff(elems.toSet + elem1 + elem2)
 
@@ -247,9 +290,20 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
     })
   }
 
+  /** Returns a new $coll containing all elements of this $coll together with `elem`.
+   *
+   *  @param elem the element to add
+   */
   @deprecated("Consider requiring an immutable Set or fall back to Set.union", "2.13.0")
   def + (elem: A): C = fromSpecific(new View.Appended(this, elem))
 
+  /** Returns a new $coll containing all elements of this $coll together with the given
+   *  elements.
+   *
+   *  @param elem1 the first element to add
+   *  @param elem2 the second element to add
+   *  @param elems the remaining elements to add
+   */
   @deprecated("Use ++ with an explicit collection argument instead of + with varargs", "2.13.0")
   def + (elem1: A, elem2: A, elems: A*): C = fromSpecific(new View.Concat(new View.Appended(new View.Appended(this, elem1), elem2), elems))
 

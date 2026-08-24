@@ -22,6 +22,9 @@ import language.experimental.captureChecking
  */
 transparent trait SortedOps[A, +C] {
 
+  /** The ordering by which the keys of this collection are sorted, used by all comparison
+   *  and range operations.
+   */
   def ordering: Ordering[A]
 
   /** Returns the first key of the collection. */

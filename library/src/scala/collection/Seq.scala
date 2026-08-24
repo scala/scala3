@@ -32,20 +32,54 @@ trait Seq[+A]
     with Equals
     with caps.Pure {
 
+  /** The factory used to build sequences, the [[Seq$ `Seq`]] companion object. */
   override def iterableFactory: SeqFactory[Seq] = Seq
 
+  /** Tests whether `that` can possibly equal this sequence.
+   *
+   *  Any value may be compared with a sequence, so this method always
+   *  returns `true`.
+   *
+   *  @param that the value being probed for possible equality; never used
+   *  @return `true`
+   */
   def canEqual(that: Any): Boolean = true
 
+  /** Tests whether this sequence is equal to another object.
+   *
+   *  Two sequences are equal if they contain equal elements in the same
+   *  order, regardless of their concrete implementations: for example, a
+   *  `List` and a `Vector` with the same elements are equal. Returns `false`
+   *  if `o` is not a sequence, or if `o.canEqual(this)` is `false`.
+   *
+   *  @param o the object to compare with
+   *  @return `true` if `o` is a sequence containing equal elements in the
+   *          same order as this sequence, `false` otherwise
+   */
   override def equals(o: Any): Boolean =
     (this eq o.asInstanceOf[AnyRef]) || (o match {
       case seq: Seq[A @unchecked] if seq.canEqual(this) => sameElements(seq)
       case _ => false
     })
 
+  /** Returns a hash code for this sequence, computed from its elements with
+   *  [[scala.util.hashing.MurmurHash3]]'s sequence hash.
+   *
+   *  Consistent with `equals`: any two equal sequences have the same hash
+   *  code, whatever their concrete implementations.
+   */
   override def hashCode(): Int = MurmurHash3.seqHash(this)
 
+  /** Returns a string representation of this sequence, consisting of the
+   *  `stringPrefix` followed by the elements.
+   *
+   *  Selects the representation inherited from `Iterable` over the
+   *  `<function1>` form that would otherwise be inherited via
+   *  `PartialFunction`.
+   */
   override def toString(): String = super[Iterable].toString()
 
+  /** The prefix used in the string representation of this sequence, `"Seq"`. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix: String = "Seq"
 }
@@ -80,6 +114,11 @@ object Seq extends SeqFactory.Delegate[Seq](immutable.Seq)
 transparent trait SeqOps[+A, +CC[_], +C] extends Any
   with IterableOps[A, CC, C] { self: SeqOps[A, CC, C]^ =>
 
+  /** Returns a [[SeqView]] over the elements of this $coll.
+   *
+   *  The view is not evaluated: it reflects any changes to the underlying
+   *  $coll.
+   */
   override def view: SeqView[A]^{this} = new SeqView.Id[A](this)
 
   /** Gets the element at the specified index. This operation is provided for convenience in `Seq`. It should
@@ -182,6 +221,17 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
 
   // Make `concat` an alias for `appendedAll` so that it benefits from performance
   // overrides of this method
+  /** Returns a new $coll containing the elements from this $coll followed by
+   *  the elements from `suffix`.
+   *
+   *  In `Seq` collections, `concat` is an alias for `appendedAll`, so
+   *  performance overrides of `appendedAll` benefit `concat` as well.
+   *
+   *  @tparam B the element type of the returned collection
+   *  @param suffix the iterable to append
+   *  @return a new collection of type `CC[B]` which contains all elements
+   *          of this $coll followed by all elements of `suffix`
+   */
   @inline override def concat[B >: A](suffix: IterableOnce[B]^): CC[B]^{this, suffix} = appendedAll(suffix)
 
  /** Produces a new sequence which contains all elements of this $coll and also all elements of
@@ -195,6 +245,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
   @deprecated("Use `concat` instead", "2.13.0")
   @inline final def union[B >: A](that: Seq[B]): CC[B]^{this} = concat(that)
 
+  /** The size of this $coll, always equal to `length`. */
   final override def size: Int = length
 
   /** Selects all the elements of this $coll ignoring the duplicates.
@@ -530,6 +581,14 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    */
   def contains[A1 >: A](elem: A1): Boolean = exists (_ == elem)
 
+  /** Builds a new $coll by applying a function to all elements of this $coll
+   *  in reverse order.
+   *
+   *  @tparam B the element type of the returned $coll
+   *  @param f the function to apply to each element
+   *  @return a new $coll consisting of the results of applying `f` to the
+   *          elements of this $coll, from the last to the first
+   */
   @deprecated("Use .reverseIterator.map(f).to(...) instead of .reverseMap(f)", "2.13.0")
   def reverseMap[B](f: A => B): CC[B]^{this, f} = iterableFactory.from(new View.Map(View.fromIteratorProvider(() => reverseIterator), f))
 
@@ -595,7 +654,17 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     private val (elms, idxs) = init()
     private var _hasNext = true
 
+    /** Returns `true` if more distinct permutations remain. */
     def hasNext = _hasNext
+    /** Returns the next distinct permutation and advances this iterator.
+     *
+     *  The result is built from the current arrangement of the elements;
+     *  the following arrangement is then computed with the classic
+     *  next-permutation algorithm on the underlying array of element
+     *  indices.
+     *
+     *  @throws NoSuchElementException if no more permutations remain
+     */
     @throws[NoSuchElementException]
     def next(): C = {
       if (!hasNext)
@@ -648,7 +717,16 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     private val offs = cnts.scanLeft(0)(_ + _)
     private var _hasNext = true
 
+    /** Returns `true` if more combinations remain. */
     def hasNext = _hasNext
+    /** Returns the next `n`-element combination and advances this iterator.
+     *
+     *  The result is built from the current selection counts `nums`, taking
+     *  `nums(k)` copies of the `k`th distinct element; the counts are then
+     *  updated to describe the following combination.
+     *
+     *  @throws NoSuchElementException if no more combinations remain
+     */
     def next(): C = {
       if (!hasNext)
         Iterator.empty.next()
@@ -796,6 +874,16 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    */
   def indices: Range = Range(0, length)
 
+  /** Compares the size of this $coll to a test value.
+   *
+   *  Delegates to [[lengthCompare(Int) `lengthCompare(Int)`]], so overrides
+   *  of that method also take effect here.
+   *
+   *  @param otherSize the test value that gets compared with the size
+   *  @return a negative value if `this.size < otherSize`, zero if
+   *          `this.size == otherSize`, and a positive value if
+   *          `this.size > otherSize`
+   */
   override final def sizeCompare(otherSize: Int): Int = lengthCompare(otherSize)
 
   /** Compares the length of this $coll to a test value.
@@ -815,6 +903,16 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    */
   def lengthCompare(len: Int): Int = super.sizeCompare(len)
 
+  /** Compares the size of this $coll to the size of another `Iterable`.
+   *
+   *  Delegates to `lengthCompare(Iterable)`, so overrides of that method
+   *  also take effect here.
+   *
+   *  @param that the `Iterable` whose size is compared with this $coll's size
+   *  @return a negative value if `this.size < that.size`, zero if
+   *          `this.size == that.size`, and a positive value if
+   *          `this.size > that.size`
+   */
   override final def sizeCompare(that: Iterable[?]^): Int = lengthCompare(that)
 
   /** Compares the length of this $coll to the size of another `Iterable`.
@@ -850,6 +948,13 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
    */
   @inline final def lengthIs: IterableOps.SizeCompareOps^{this} = new IterableOps.SizeCompareOps(caps.unsafe.unsafeAssumePure(this) /* see comment in SizeCompareOps*/)
 
+  /** Tests whether this $coll is empty.
+   *
+   *  Implemented as `lengthCompare(0) == 0`, so the full length is not
+   *  computed when it is expensive.
+   *
+   *  @return `true` if this $coll contains no elements, `false` otherwise
+   */
   override def isEmpty: Boolean = lengthCompare(0) == 0
 
   /** Checks whether corresponding elements of the given iterable collection
@@ -975,6 +1080,16 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     iterableFactory.from(new View.Updated(this, index, elem))
   }
 
+  /** Returns a mutable map from each distinct element of `sq` to the number
+   *  of times it occurs in `sq`.
+   *
+   *  Used to implement the multiset operations `diff` and `intersect`.
+   *
+   *  @tparam B the element type of `sq`
+   *  @param sq the sequence whose element occurrences are counted
+   *  @return a mutable map whose keys are the distinct elements of `sq` and
+   *          whose values are their occurrence counts (always positive)
+   */
   protected[collection] def occCounts[B](sq: Seq[B]): mutable.Map[B, Int] = {
     val occ = new mutable.HashMap[B, Int]()
     for (y <- sq) occ.updateWith(y) {

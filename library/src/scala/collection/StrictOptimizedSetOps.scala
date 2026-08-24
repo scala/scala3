@@ -25,6 +25,15 @@ transparent trait StrictOptimizedSetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
   extends SetOps[A, CC, C]
     with StrictOptimizedIterableOps[A, CC, C] {
 
+  /** Returns a new set containing the elements of this set followed by the
+   *  elements of `that`.
+   *
+   *  Overrides the default view-based implementation to fill a strict builder
+   *  directly, which is slightly faster.
+   *
+   *  @param that the elements to add
+   *  @return a new set containing all elements of this set and of `that`
+   */
   override def concat(that: IterableOnce[A]^): C =
     strictOptimizedConcat(that, newSpecificBuilder)
 

@@ -58,8 +58,14 @@ object ArrayOps {
 
   @SerialVersionUID(3L)
   private class ArrayView[A](xs: Array[A]) extends AbstractIndexedSeqView[A] {
+    /** Returns the length of the underlying array. */
     def length = xs.length
+    /** Returns the element of the underlying array at index `n`.
+     *
+     *  @param n the index of the element to return
+     */
     def apply(n: Int) = xs(n)
+    /** Returns a string representation of the form `ArrayView(elem1, elem2, ...)`. */
     override def toString(): String = immutable.ArraySeq.unsafeWrapArray(xs).mkString("ArrayView(", ", ", ")")
   }
 
@@ -124,6 +130,17 @@ object ArrayOps {
       b.result()
     }
 
+    /** Builds a new array by applying a function to all elements of this array
+     *  and using the elements of the results after converting them to `Iterable`s.
+     *
+     *  @tparam BS the type returned by `f`, convertible to an `Iterable` of `B`
+     *  @tparam B the element type of the returned array
+     *  @param f the function to apply to each element
+     *  @param asIterable the conversion applied to each result of `f`
+     *  @param m the class tag for the element type `B`, required to create the result array
+     *  @return a new array resulting from applying `f` to each element of this
+     *          array and concatenating the converted results
+     */
     def flatMap[BS, B](f: A => BS)(implicit asIterable: BS => Iterable[B], m: ClassTag[B]): Array[B] =
       flatMap[B](x => asIterable(f(x)))
 
@@ -139,14 +156,27 @@ object ArrayOps {
   private[collection] final class ArrayIterator[@specialized(Specializable.Everything) A](xs: Array[A]) extends AbstractIterator[A] with Serializable {
     private var pos = 0
     private val len = xs.length
+    /** Returns the number of elements remaining in this iterator. */
     override def knownSize: Int = len - pos
+    /** Returns `true` if this iterator has not yet reached the end of the array. */
     def hasNext: Boolean = pos < len
+    /** Returns the next element of the array and advances this iterator.
+     *
+     *  @throws NoSuchElementException if this iterator is exhausted
+     */
     def next(): A = {
       if (pos >= xs.length) Iterator.empty.next()
       val r = xs(pos)
       pos += 1
       r
     }
+    /** Advances this iterator past its next `n` elements in constant time,
+     *  without touching the elements.
+     *
+     *  @param n the number of elements to skip; a negative or zero value skips nothing
+     *  @return this iterator itself, positioned at most `n` elements further
+     *          on, and never past the end of the array
+     */
     override def drop(n: Int): Iterator[A] = {
       if (n > 0) {
         val newPos = pos + n
@@ -161,7 +191,13 @@ object ArrayOps {
   @SerialVersionUID(3L)
   private final class ReverseIterator[@specialized(Specializable.Everything) A](xs: Array[A]) extends AbstractIterator[A] with Serializable {
     private var pos = xs.length-1
+    /** Returns `true` if this iterator has not yet passed the first element of the array. */
     def hasNext: Boolean = pos >= 0
+    /** Returns the next element in reverse order, moving this iterator one
+     *  position towards the start of the array.
+     *
+     *  @throws NoSuchElementException if this iterator is exhausted
+     */
     def next(): A = {
       if (pos < 0) Iterator.empty.next()
       val r = xs(pos)
@@ -169,6 +205,14 @@ object ArrayOps {
       r
     }
 
+    /** Advances this iterator past its next `n` elements (moving `n` positions
+     *  towards the start of the array) in constant time, without touching the
+     *  elements.
+     *
+     *  @param n the number of elements to skip; a negative or zero value skips nothing
+     *  @return this iterator itself, positioned at most `n` elements further
+     *          towards the start, and never before the start of the array
+     */
     override def drop(n: Int): Iterator[A] = {
       if (n > 0) pos = Math.max( -1, pos - n)
       this
@@ -178,7 +222,13 @@ object ArrayOps {
   @SerialVersionUID(3L)
   private final class GroupedIterator[A](xs: Array[A], groupSize: Int) extends AbstractIterator[Array[A]] with Serializable {
     private var pos = 0
+    /** Returns `true` if elements of the array remain to be grouped. */
     def hasNext: Boolean = pos < xs.length
+    /** Returns the next group as a new array of `groupSize` elements copied
+     *  from the underlying array; the last group may be smaller.
+     *
+     *  @throws NoSuchElementException if this iterator is exhausted
+     */
     def next(): Array[A] = {
       if(pos >= xs.length) throw new NoSuchElementException
       val r = new ArrayOps(xs).slice(pos, pos+groupSize)
@@ -442,6 +492,13 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     slice(lo, xs.length)
   }
 
+  /** Returns an iterator over the elements of this array.
+   *
+   *  The array is matched on its runtime element type so that primitive arrays
+   *  get an iterator specialized to that primitive type.
+   *
+   *  @throws NullPointerException if this array is `null`
+   */
   def iterator: Iterator[A] =
     ((xs: Any @unchecked) match {
       case xs: Array[AnyRef]  => new ArrayOps.ArrayIterator(xs)
@@ -457,6 +514,19 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
       case null               => throw new NullPointerException
     }).asInstanceOf[Iterator[A]]
 
+  /** Returns a stepper for the elements of this array.
+   *
+   *  The implicit [[scala.collection.StepperShape]] parameter defines the
+   *  resulting `Stepper` type according to the element type of this array:
+   *  a primitive-typed stepper for `Int`/`Long`/`Double` (and related) element
+   *  types, an [[scala.collection.AnyStepper]] otherwise. The returned stepper
+   *  supports efficient splitting, so it can be used to create a parallel
+   *  stream via the converters in [[scala.jdk.StreamConverters]].
+   *
+   *  @tparam S the type of the returned `Stepper`, determined by the implicit `StepperShape`
+   *  @param shape the `StepperShape` that determines the concrete `Stepper` subtype to return
+   *  @return a `Stepper` over the elements of this array
+   */
   def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit = {
     import convert.impl._
     val s = (shape.shape: @unchecked) match {
@@ -989,6 +1059,11 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     ys
   }
 
+  /** Replaces each element of this array with the result of applying `f` to it.
+   *
+   *  @param f the function to apply to each element
+   *  @return this array itself after the in-place update; no new array is allocated
+   */
   def mapInPlace(f: A => A): Array[A] = {
     var i = 0
     while (i < xs.length) {
@@ -1016,6 +1091,17 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
     b.result()
   }
 
+  /** Builds a new array by applying a function to all elements of this array
+   *  and using the elements of the results after converting them to `Iterable`s.
+   *
+   *  @tparam BS the type returned by `f`, convertible to an `Iterable` of `B`
+   *  @tparam B the element type of the returned array
+   *  @param f the function to apply to each element
+   *  @param asIterable the conversion applied to each result of `f`
+   *  @param m the class tag for the element type `B`, required to create the result array
+   *  @return a new array resulting from applying `f` to each element of this
+   *          array and concatenating the converted results
+   */
   def flatMap[BS, B](f: A => BS)(implicit asIterable: BS => Iterable[B]^, m: ClassTag[B]): Array[B] =
     flatMap[B](x => asIterable(f(x)))
 
@@ -1519,6 +1605,10 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
 
   @`inline` final def toSeq: immutable.Seq[A] = toIndexedSeq
 
+  /** Returns an immutable indexed sequence containing the elements of this
+   *  array, copied so that later changes to this array are not visible through
+   *  the result.
+   */
   def toIndexedSeq: immutable.IndexedSeq[A] =
     immutable.ArraySeq.unsafeWrapArray(Array.copyOf(xs, xs.length))
 

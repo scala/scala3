@@ -26,13 +26,26 @@ trait SortedSet[A] extends Set[A]
     with SortedSetOps[A, SortedSet, SortedSet[A]]
     with SortedSetFactoryDefaults[A, SortedSet, Set] {
 
+  /** Returns this set itself, statically typed as an unsorted `Set`; no copy is made. */
   def unsorted: Set[A] = this
 
+  /** Returns the `SortedSet` companion object as the factory for sorted sets of this kind. */
   def sortedIterableFactory: SortedIterableFactory[SortedSet] = SortedSet
 
+  /** Returns `"SortedSet"`, the prefix used by `toString`. */
   @nowarn("""cat=deprecation&origin=scala\.collection\.Iterable\.stringPrefix""")
   override protected def stringPrefix: String = "SortedSet"
 
+  /** Tests whether this sorted set equals the given object.
+   *
+   *  If `that` is a sorted set whose ordering equals this set's ordering, the two are compared
+   *  by iterating both in order and testing that corresponding elements are equivalent under
+   *  that ordering (after checking `canEqual` and equal sizes). Otherwise falls back to the
+   *  unordered `Set` equality, which compares by membership.
+   *
+   *  @param that the object to compare this sorted set with
+   *  @return `true` if the two sets are equal according to the description
+   */
   override def equals(that: Any): Boolean = that match {
     case _ if this eq that.asInstanceOf[AnyRef] => true
     case ss: SortedSet[A @unchecked] if ss.ordering == this.ordering =>
@@ -81,7 +94,15 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
   @deprecated("Use `iteratorFrom` instead.", "2.13.0")
   @`inline` def keysIteratorFrom(start: A): Iterator[A] = iteratorFrom(start)
 
+  /** Returns the first element of this collection, the smallest under its ordering.
+   *
+   *  @throws NoSuchElementException if this collection is empty
+   */
   def firstKey: A = head
+  /** Returns the last element of this collection, the largest under its ordering.
+   *
+   *  @throws NoSuchElementException if this collection is empty
+   */
   def lastKey: A = last
 
   /** Finds the smallest element larger than or equal to a given key.
@@ -96,18 +117,43 @@ transparent trait SortedSetOps[A, +CC[X] <: SortedSet[X], +C <: SortedSetOps[A, 
    */
   def maxBefore(key: A): Option[A] = rangeUntil(key).lastOption
 
+  /** Returns the smallest element of this collection with respect to `ord`.
+   *
+   *  When `ord` equals this collection's ordering, the first element is returned; when it is
+   *  the reverse of that ordering, the last. Any other ordering falls back to examining every
+   *  element.
+   *
+   *  @tparam B the type over which the ordering is defined, a supertype of `A`
+   *  @param ord the ordering used to compare elements
+   *  @throws UnsupportedOperationException if this collection is empty
+   */
   override def min[B >: A](implicit ord: Ordering[B]): A =
     if (isEmpty) throw new UnsupportedOperationException("empty.min")
     else if (ord == ordering) head
     else if (ord isReverseOf ordering) last
     else super.min[B] // need the type annotation for it to infer the correct implicit
 
+  /** Returns the largest element of this collection with respect to `ord`.
+   *
+   *  When `ord` equals this collection's ordering, the last element is returned; when it is
+   *  the reverse of that ordering, the first. Any other ordering falls back to examining every
+   *  element.
+   *
+   *  @tparam B the type over which the ordering is defined, a supertype of `A`
+   *  @param ord the ordering used to compare elements
+   *  @throws UnsupportedOperationException if this collection is empty
+   */
   override def max[B >: A](implicit ord: Ordering[B]): A =
     if (isEmpty) throw new UnsupportedOperationException("empty.max")
     else if (ord == ordering) last
     else if (ord isReverseOf ordering) head
     else super.max[B] // need the type annotation for it to infer the correct implicit
 
+  /** Creates a ranged projection of this collection with no lower-bound.
+   *
+   *  @param to The upper-bound (inclusive) of the ranged projection.
+   *  @return a ranged projection of this collection containing only elements less than or equal to `to`
+   */
   def rangeTo(to: A): C = {
     val i = rangeFrom(to).iterator
     if (i.isEmpty) return coll
@@ -189,12 +235,33 @@ object SortedSetOps {
     p: A => Boolean
   ) extends IterableOps.WithFilter[A, IterableCC](self, p) {
 
+    /** Builds a new $coll by applying a function to all elements of the filtered outer $coll.
+     *
+     *  @tparam B the element type of the returned $coll, which must have an implicit `Ordering`
+     *  @param f the function to apply to each element
+     *  @return a new $coll resulting from applying `f` to each element of the filtered outer
+     *          $coll and collecting the results
+     */
     def map[B : Ordering](f: A => B): CC[B] =
       self.sortedIterableFactory.from(new View.Map(filtered, f))
 
+    /** Builds a new $coll by applying a collection-valued function to all elements of the
+     *  filtered outer $coll and concatenating the results.
+     *
+     *  @tparam B the element type of the returned $coll, which must have an implicit `Ordering`
+     *  @param f the collection-valued function to apply to each element
+     *  @return a new $coll resulting from applying `f` to each element of the filtered outer
+     *          $coll and concatenating the results
+     */
     def flatMap[B : Ordering](f: A => IterableOnce[B]^): CC[B] =
       self.sortedIterableFactory.from(new View.FlatMap(filtered, f))
 
+    /** Further refines the filter of this `WithFilter`.
+     *
+     *  @param q the predicate to combine with the existing filter
+     *  @return a new `WithFilter` whose operations apply to the elements of the outer $coll
+     *          that satisfy both the existing predicate and `q`
+     */
     override def withFilter(q: A => Boolean): WithFilter[A, IterableCC, CC]^{this, q} =
       new WithFilter[A, IterableCC, CC](self, (a: A) => p(a) && q(a))
   }

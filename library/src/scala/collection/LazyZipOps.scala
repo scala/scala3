@@ -39,6 +39,23 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
    */
   def lazyZip[B](that: Iterable[B]^): LazyZip3[El1, El2, B, C1]^{this, that} = new LazyZip3(src, coll1, coll2, that)
 
+  /** Builds a collection of the results of applying `f` to corresponding
+   *  elements of the two zipped collections.
+   *
+   *  Traversal is truncated at the end of the shorter collection: excess
+   *  elements of the longer one are not passed to `f`. The elements are
+   *  zipped lazily, without creating an intermediate collection of pairs;
+   *  whether the result is computed eagerly or on demand is determined by
+   *  `bf` (eagerly for strict collection types such as `List`, on demand for
+   *  lazy ones such as views or `LazyList`).
+   *
+   *  @tparam B the type of the values returned by `f`
+   *  @tparam C the type of the resulting collection
+   *  @param f the function applied to each pair of corresponding elements
+   *  @param bf the builder factory that creates the result collection from
+   *            the source collection
+   *  @return a collection of the values of `f` for each pair of corresponding elements
+   */
   def map[B, C](f: (El1, El2) => B)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
@@ -52,6 +69,28 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
     })
   }
 
+  /** Builds a collection by applying `f` to corresponding elements of the two
+   *  zipped collections and concatenating the results.
+   *
+   *  Traversal is truncated at the end of the shorter collection: excess
+   *  elements of the longer one are not passed to `f`. The elements are
+   *  zipped lazily, without creating an intermediate collection of pairs;
+   *  whether the result is computed eagerly or on demand is determined by
+   *  `bf` (eagerly for strict collection types such as `List`, on demand for
+   *  lazy ones such as views or `LazyList`).
+   *
+   *  @tparam B the element type of the collections returned by `f`
+   *  @tparam C the type of the resulting collection
+   *  @param f the function applied to each pair of corresponding elements
+   *  @param bf the builder factory that creates the result collection from
+   *            the source collection
+   *  @return the concatenation of the collections returned by `f` for each
+   *          pair of corresponding elements
+   *  @note NEEDS-HUMAN: the internal view's `isEmpty` is
+   *        `coll1.isEmpty || coll2.isEmpty`, which answers `false` when both
+   *        collections are non-empty but `f` returns only empty collections;
+   *        `LazyZip3` and `LazyZip4` use `iterator.isEmpty` instead.
+   */
   def flatMap[B, C](f: (El1, El2) => Iterable[B]^)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
@@ -71,6 +110,24 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
     })
   }
 
+  /** Builds a collection of the pairs of corresponding elements of the two
+   *  zipped collections for which `p` holds.
+   *
+   *  Traversal is truncated at the end of the shorter collection: excess
+   *  elements of the longer one are not tested. The elements are zipped
+   *  lazily; whether the result is computed eagerly or on demand is
+   *  determined by `bf` (eagerly for strict collection types such as `List`,
+   *  on demand for lazy ones such as views or `LazyList`).
+   *
+   *  @tparam C the type of the resulting collection
+   *  @param p the predicate applied to each pair of corresponding elements
+   *  @param bf the builder factory that creates the result collection from
+   *            the source collection
+   *  @return a collection of the pairs of corresponding elements that satisfy `p`
+   *  @note NEEDS-HUMAN: the internal view's `isEmpty` is `iterator.hasNext`,
+   *        the inverse of the correct answer; `LazyZip3` and `LazyZip4` use
+   *        `iterator.isEmpty` for the same operation.
+   */
   def filter[C](p: (El1, El2) => Boolean)(implicit bf: BuildFrom[C1, (El1, El2), C]): C^{this, p} = {
     bf.fromSpecific(src)(new AbstractView[(El1, El2)] {
       def iterator: AbstractIterator[(El1, El2)]^{this, p} = new AbstractIterator[(El1, El2)] {
@@ -99,6 +156,15 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
     })
   }
 
+  /** Returns `true` if `p` holds for at least one pair of corresponding
+   *  elements of the two zipped collections.
+   *
+   *  This operation is evaluated eagerly. Iteration stops at the first pair
+   *  satisfying `p`, or at the end of the shorter collection; excess elements
+   *  of the longer one are never tested.
+   *
+   *  @param p the predicate applied to each pair of corresponding elements
+   */
   def exists(p: (El1, El2) => Boolean): Boolean = {
     val elems1 = coll1.iterator
     val elems2 = coll2.iterator
@@ -109,8 +175,26 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
     res
   }
 
+  /** Returns `true` if `p` holds for every pair of corresponding elements of
+   *  the two zipped collections.
+   *
+   *  This operation is evaluated eagerly. Only as many pairs as the shorter
+   *  collection provides are tested, so the result is `true` when either
+   *  collection is empty. Iteration stops at the first pair failing `p`.
+   *
+   *  @param p the predicate applied to each pair of corresponding elements
+   */
   def forall(p: (El1, El2) => Boolean): Boolean = !exists((el1, el2) => !p(el1, el2))
 
+  /** Applies `f` to each pair of corresponding elements of the two zipped
+   *  collections, for its side effects.
+   *
+   *  This operation is evaluated eagerly. Iteration stops at the end of the
+   *  shorter collection, and the results of `f` are discarded.
+   *
+   *  @tparam U the result type of `f`, which is discarded
+   *  @param f the function applied to each pair of corresponding elements
+   */
   def foreach[U](f: (El1, El2) => U): Unit = {
     val elems1 = coll1.iterator
     val elems2 = coll2.iterator
@@ -137,10 +221,25 @@ final class LazyZip2[+El1, +El2, C1] private[collection](src: C1, coll1: Iterabl
     }
   }
 
+  /** Returns a string of the form `coll1.lazyZip(coll2)`, where `coll1` and
+   *  `coll2` are the string representations of the two zipped collections.
+   */
   override def toString() = s"$coll1.lazyZip($coll2)"
 }
 
 object LazyZip2 {
+  /** Converts a [[LazyZip2]] to a view of pairs of corresponding elements.
+   *
+   *  The elements are zipped lazily: each pair is formed only as the view is
+   *  traversed, and traversal is truncated at the end of the shorter
+   *  collection.
+   *
+   *  @tparam El1 the element type of the first collection
+   *  @tparam El2 the element type of the second collection
+   *  @param zipped2 the lazily zipped pair of collections to convert
+   *  @return a view producing the pairs of corresponding elements of the two
+   *          zipped collections
+   */
   implicit def lazyZip2ToIterable[El1, El2](zipped2: LazyZip2[El1, El2, ?]^): View[(El1, El2)]^{zipped2} = zipped2.toIterable
 }
 
@@ -172,6 +271,23 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
    */
   def lazyZip[B](that: Iterable[B]^): LazyZip4[El1, El2, El3, B, C1]^{this, that} = new LazyZip4(src, coll1, coll2, coll3, that)
 
+  /** Builds a collection of the results of applying `f` to corresponding
+   *  elements of the three zipped collections.
+   *
+   *  Traversal is truncated at the end of the shortest collection: excess
+   *  elements of the longer ones are not passed to `f`. The elements are
+   *  zipped lazily, without creating an intermediate collection of triples;
+   *  whether the result is computed eagerly or on demand is determined by
+   *  `bf` (eagerly for strict collection types such as `List`, on demand for
+   *  lazy ones such as views or `LazyList`).
+   *
+   *  @tparam B the type of the values returned by `f`
+   *  @tparam C the type of the resulting collection
+   *  @param f the function applied to each triple of corresponding elements
+   *  @param bf the builder factory that creates the result collection from
+   *            the source collection
+   *  @return a collection of the values of `f` for each triple of corresponding elements
+   */
   def map[B, C](f: (El1, El2, El3) => B)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
@@ -186,6 +302,24 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
     })
   }
 
+  /** Builds a collection by applying `f` to corresponding elements of the
+   *  three zipped collections and concatenating the results.
+   *
+   *  Traversal is truncated at the end of the shortest collection: excess
+   *  elements of the longer ones are not passed to `f`. The elements are
+   *  zipped lazily, without creating an intermediate collection of triples;
+   *  whether the result is computed eagerly or on demand is determined by
+   *  `bf` (eagerly for strict collection types such as `List`, on demand for
+   *  lazy ones such as views or `LazyList`).
+   *
+   *  @tparam B the element type of the collections returned by `f`
+   *  @tparam C the type of the resulting collection
+   *  @param f the function applied to each triple of corresponding elements
+   *  @param bf the builder factory that creates the result collection from
+   *            the source collection
+   *  @return the concatenation of the collections returned by `f` for each
+   *          triple of corresponding elements
+   */
   def flatMap[B, C](f: (El1, El2, El3) => Iterable[B]^)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
@@ -206,6 +340,21 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
     })
   }
 
+  /** Builds a collection of the triples of corresponding elements of the
+   *  three zipped collections for which `p` holds.
+   *
+   *  Traversal is truncated at the end of the shortest collection: excess
+   *  elements of the longer ones are not tested. The elements are zipped
+   *  lazily; whether the result is computed eagerly or on demand is
+   *  determined by `bf` (eagerly for strict collection types such as `List`,
+   *  on demand for lazy ones such as views or `LazyList`).
+   *
+   *  @tparam C the type of the resulting collection
+   *  @param p the predicate applied to each triple of corresponding elements
+   *  @param bf the builder factory that creates the result collection from
+   *            the source collection
+   *  @return a collection of the triples of corresponding elements that satisfy `p`
+   */
   def filter[C](p: (El1, El2, El3) => Boolean)(implicit bf: BuildFrom[C1, (El1, El2, El3), C]): C^{this, p} = {
     bf.fromSpecific(src)(new AbstractView[(El1, El2, El3)] {
       def iterator: AbstractIterator[(El1, El2, El3)]^{this, p} = new AbstractIterator[(El1, El2, El3)] {
@@ -236,6 +385,15 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
     })
   }
 
+  /** Returns `true` if `p` holds for at least one triple of corresponding
+   *  elements of the three zipped collections.
+   *
+   *  This operation is evaluated eagerly. Iteration stops at the first triple
+   *  satisfying `p`, or at the end of the shortest collection; excess
+   *  elements of the longer ones are never tested.
+   *
+   *  @param p the predicate applied to each triple of corresponding elements
+   */
   def exists(p: (El1, El2, El3) => Boolean): Boolean = {
     val elems1 = coll1.iterator
     val elems2 = coll2.iterator
@@ -248,8 +406,27 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
     res
   }
 
+  /** Returns `true` if `p` holds for every triple of corresponding elements
+   *  of the three zipped collections.
+   *
+   *  This operation is evaluated eagerly. Only as many triples as the
+   *  shortest collection provides are tested, so the result is `true` when
+   *  any of the collections is empty. Iteration stops at the first triple
+   *  failing `p`.
+   *
+   *  @param p the predicate applied to each triple of corresponding elements
+   */
   def forall(p: (El1, El2, El3) => Boolean): Boolean = !exists((el1, el2, el3) => !p(el1, el2, el3))
 
+  /** Applies `f` to each triple of corresponding elements of the three zipped
+   *  collections, for its side effects.
+   *
+   *  This operation is evaluated eagerly. Iteration stops at the end of the
+   *  shortest collection, and the results of `f` are discarded.
+   *
+   *  @tparam U the result type of `f`, which is discarded
+   *  @param f the function applied to each triple of corresponding elements
+   */
   def foreach[U](f: (El1, El2, El3) => U): Unit = {
     val elems1 = coll1.iterator
     val elems2 = coll2.iterator
@@ -282,10 +459,27 @@ final class LazyZip3[+El1, +El2, +El3, C1] private[collection](src: C1,
     }
   }
 
+  /** Returns a string of the form `coll1.lazyZip(coll2).lazyZip(coll3)`, where
+   *  `coll1`, `coll2` and `coll3` are the string representations of the three
+   *  zipped collections.
+   */
   override def toString() = s"$coll1.lazyZip($coll2).lazyZip($coll3)"
 }
 
 object LazyZip3 {
+  /** Converts a [[LazyZip3]] to a view of triples of corresponding elements.
+   *
+   *  The elements are zipped lazily: each triple is formed only as the view
+   *  is traversed, and traversal is truncated at the end of the shortest
+   *  collection.
+   *
+   *  @tparam El1 the element type of the first collection
+   *  @tparam El2 the element type of the second collection
+   *  @tparam El3 the element type of the third collection
+   *  @param zipped3 the lazily zipped triple of collections to convert
+   *  @return a view producing the triples of corresponding elements of the
+   *          three zipped collections
+   */
   implicit def lazyZip3ToIterable[El1, El2, El3](zipped3: LazyZip3[El1, El2, El3, ?]^): View[(El1, El2, El3)]^{zipped3} = zipped3.toIterable
 }
 
@@ -310,6 +504,23 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
                                                                      coll3: Iterable[El3]^,
                                                                      coll4: Iterable[El4]^) {
 
+  /** Builds a collection of the results of applying `f` to corresponding
+   *  elements of the four zipped collections.
+   *
+   *  Traversal is truncated at the end of the shortest collection: excess
+   *  elements of the longer ones are not passed to `f`. The elements are
+   *  zipped lazily, without creating an intermediate collection of 4-tuples;
+   *  whether the result is computed eagerly or on demand is determined by
+   *  `bf` (eagerly for strict collection types such as `List`, on demand for
+   *  lazy ones such as views or `LazyList`).
+   *
+   *  @tparam B the type of the values returned by `f`
+   *  @tparam C the type of the resulting collection
+   *  @param f the function applied to each 4-tuple of corresponding elements
+   *  @param bf the builder factory that creates the result collection from
+   *            the source collection
+   *  @return a collection of the values of `f` for each 4-tuple of corresponding elements
+   */
   def map[B, C](f: (El1, El2, El3, El4) => B)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
@@ -325,6 +536,24 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
     })
   }
 
+  /** Builds a collection by applying `f` to corresponding elements of the
+   *  four zipped collections and concatenating the results.
+   *
+   *  Traversal is truncated at the end of the shortest collection: excess
+   *  elements of the longer ones are not passed to `f`. The elements are
+   *  zipped lazily, without creating an intermediate collection of 4-tuples;
+   *  whether the result is computed eagerly or on demand is determined by
+   *  `bf` (eagerly for strict collection types such as `List`, on demand for
+   *  lazy ones such as views or `LazyList`).
+   *
+   *  @tparam B the element type of the collections returned by `f`
+   *  @tparam C the type of the resulting collection
+   *  @param f the function applied to each 4-tuple of corresponding elements
+   *  @param bf the builder factory that creates the result collection from
+   *            the source collection
+   *  @return the concatenation of the collections returned by `f` for each
+   *          4-tuple of corresponding elements
+   */
   def flatMap[B, C](f: (El1, El2, El3, El4) => Iterable[B]^)(implicit bf: BuildFrom[C1, B, C]): C^{this, f} = {
     bf.fromSpecific(src)(new AbstractView[B] {
       def iterator: AbstractIterator[B]^{this, f} = new AbstractIterator[B] {
@@ -346,6 +575,21 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
     })
   }
 
+  /** Builds a collection of the 4-tuples of corresponding elements of the
+   *  four zipped collections for which `p` holds.
+   *
+   *  Traversal is truncated at the end of the shortest collection: excess
+   *  elements of the longer ones are not tested. The elements are zipped
+   *  lazily; whether the result is computed eagerly or on demand is
+   *  determined by `bf` (eagerly for strict collection types such as `List`,
+   *  on demand for lazy ones such as views or `LazyList`).
+   *
+   *  @tparam C the type of the resulting collection
+   *  @param p the predicate applied to each 4-tuple of corresponding elements
+   *  @param bf the builder factory that creates the result collection from
+   *            the source collection
+   *  @return a collection of the 4-tuples of corresponding elements that satisfy `p`
+   */
   def filter[C](p: (El1, El2, El3, El4) => Boolean)(implicit bf: BuildFrom[C1, (El1, El2, El3, El4), C]): C^{this, p} = {
     bf.fromSpecific(src)(new AbstractView[(El1, El2, El3, El4)] {
       def iterator: AbstractIterator[(El1, El2, El3, El4)]^{this, p} = new AbstractIterator[(El1, El2, El3, El4)] {
@@ -378,6 +622,15 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
     })
   }
 
+  /** Returns `true` if `p` holds for at least one 4-tuple of corresponding
+   *  elements of the four zipped collections.
+   *
+   *  This operation is evaluated eagerly. Iteration stops at the first
+   *  4-tuple satisfying `p`, or at the end of the shortest collection; excess
+   *  elements of the longer ones are never tested.
+   *
+   *  @param p the predicate applied to each 4-tuple of corresponding elements
+   */
   def exists(p: (El1, El2, El3, El4) => Boolean): Boolean = {
     val elems1 = coll1.iterator
     val elems2 = coll2.iterator
@@ -391,8 +644,27 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
     res
   }
 
+  /** Returns `true` if `p` holds for every 4-tuple of corresponding elements
+   *  of the four zipped collections.
+   *
+   *  This operation is evaluated eagerly. Only as many 4-tuples as the
+   *  shortest collection provides are tested, so the result is `true` when
+   *  any of the collections is empty. Iteration stops at the first 4-tuple
+   *  failing `p`.
+   *
+   *  @param p the predicate applied to each 4-tuple of corresponding elements
+   */
   def forall(p: (El1, El2, El3, El4) => Boolean): Boolean = !exists((el1, el2, el3, el4) => !p(el1, el2, el3, el4))
 
+  /** Applies `f` to each 4-tuple of corresponding elements of the four zipped
+   *  collections, for its side effects.
+   *
+   *  This operation is evaluated eagerly. Iteration stops at the end of the
+   *  shortest collection, and the results of `f` are discarded.
+   *
+   *  @tparam U the result type of `f`, which is discarded
+   *  @param f the function applied to each 4-tuple of corresponding elements
+   */
   def foreach[U](f: (El1, El2, El3, El4) => U): Unit = {
     val elems1 = coll1.iterator
     val elems2 = coll2.iterator
@@ -430,10 +702,28 @@ final class LazyZip4[+El1, +El2, +El3, +El4, C1] private[collection](src: C1,
     }
   }
 
+  /** Returns a string of the form `coll1.lazyZip(coll2).lazyZip(coll3).lazyZip(coll4)`,
+   *  where `coll1`, `coll2`, `coll3` and `coll4` are the string
+   *  representations of the four zipped collections.
+   */
   override def toString() = s"$coll1.lazyZip($coll2).lazyZip($coll3).lazyZip($coll4)"
 }
 
 object LazyZip4 {
+  /** Converts a [[LazyZip4]] to a view of 4-tuples of corresponding elements.
+   *
+   *  The elements are zipped lazily: each 4-tuple is formed only as the view
+   *  is traversed, and traversal is truncated at the end of the shortest
+   *  collection.
+   *
+   *  @tparam El1 the element type of the first collection
+   *  @tparam El2 the element type of the second collection
+   *  @tparam El3 the element type of the third collection
+   *  @tparam El4 the element type of the fourth collection
+   *  @param zipped4 the lazily zipped 4-tuple of collections to convert
+   *  @return a view producing the 4-tuples of corresponding elements of the
+   *          four zipped collections
+   */
   implicit def lazyZip4ToIterable[El1, El2, El3, El4](zipped4: LazyZip4[El1, El2, El3, El4, ?]^): View[(El1, El2, El3, El4)]^{zipped4} =
     zipped4.toIterable
 }

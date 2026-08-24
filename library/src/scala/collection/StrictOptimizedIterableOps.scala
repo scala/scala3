@@ -31,12 +31,33 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     with IterableOps[A, CC, C] {
 
   // Optimized, push-based version of `partition`
+  /** A pair of, first, all elements that satisfy predicate `p` and, second,
+   *  all elements that do not.
+   *
+   *  Overrides the default implementation to build both results with strict
+   *  builders in a single traversal of this collection, instead of one
+   *  traversal each for `filter` and `filterNot`.
+   *
+   *  @param p the predicate used to test elements
+   *  @return a pair of collections: the first containing all elements that
+   *          satisfy `p`, the second containing those that do not
+   */
   override def partition(p: A => Boolean): (C, C) = {
     val l, r = newSpecificBuilder
     iterator.foreach(x => (if (p(x)) l else r) += x)
     (l.result(), r.result())
   }
 
+  /** Splits this collection into a prefix/suffix pair according to a predicate.
+   *
+   *  Overrides the default implementation to build both results with strict
+   *  builders in a single traversal of this collection, instead of one
+   *  traversal each for `takeWhile` and `dropWhile`.
+   *
+   *  @param p the predicate used to test elements
+   *  @return a pair consisting of the longest prefix of this collection whose
+   *          elements all satisfy `p`, and the rest of this collection
+   */
   override def span(p: A => Boolean): (C, C) = {
     val first = newSpecificBuilder
     val second = newSpecificBuilder
@@ -57,6 +78,18 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     (first.result(), second.result())
   }
 
+  /** Converts this collection of pairs into two collections of the first and
+   *  second half of each pair.
+   *
+   *  Overrides the default implementation to fill two strict builders in a
+   *  single traversal of this collection.
+   *
+   *  @tparam A1 the type of the first half of the element pairs
+   *  @tparam A2 the type of the second half of the element pairs
+   *  @param asPair evidence that this collection's element type is a pair `(A1, A2)`
+   *  @return a pair of collections containing, respectively, the first and
+   *          second half of each element pair of this collection
+   */
   override def unzip[A1, A2](implicit asPair: A -> (A1, A2)): (CC[A1], CC[A2]) = {
     val first = iterableFactory.newBuilder[A1]
     val second = iterableFactory.newBuilder[A2]
@@ -68,6 +101,19 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     (first.result(), second.result())
   }
 
+  /** Converts this collection of triples into three collections of the first,
+   *  second, and third element of each triple.
+   *
+   *  Overrides the default implementation to fill three strict builders in a
+   *  single traversal of this collection.
+   *
+   *  @tparam A1 the type of the first member of the element triples
+   *  @tparam A2 the type of the second member of the element triples
+   *  @tparam A3 the type of the third member of the element triples
+   *  @param asTriple evidence that this collection's element type is a triple `(A1, A2, A3)`
+   *  @return a triple of collections containing, respectively, the first,
+   *          second, and third member of each element triple of this collection
+   */
   override def unzip3[A1, A2, A3](implicit asTriple: A -> (A1, A2, A3)): (CC[A1], CC[A2], CC[A3]) = {
     val b1 = iterableFactory.newBuilder[A1]
     val b2 = iterableFactory.newBuilder[A2]
@@ -86,6 +132,17 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
   // the view-based implementations, but they turn out to be slightly faster because
   // a couple of indirection levels are removed
 
+  /** Builds a new collection by applying a function to all elements of this
+   *  collection.
+   *
+   *  Overrides the default view-based implementation to fill a strict builder
+   *  directly, which is slightly faster.
+   *
+   *  @tparam B the element type of the returned collection
+   *  @param f the function to apply to each element
+   *  @return a new collection containing the results of applying `f` to every
+   *          element of this collection
+   */
   override def map[B](f: A => B): CC[B] =
     strictOptimizedMap(iterableFactory.newBuilder, f)
 
@@ -104,6 +161,17 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     b.result()
   }
 
+  /** Builds a new collection by applying a function to all elements of this
+   *  collection and concatenating the results.
+   *
+   *  Overrides the default view-based implementation to fill a strict builder
+   *  directly, which is slightly faster.
+   *
+   *  @tparam B the element type of the returned collection
+   *  @param f the function to apply to each element
+   *  @return a new collection containing the concatenated results of applying
+   *          `f` to every element of this collection
+   */
   override def flatMap[B](f: A => IterableOnce[B]^): CC[B] =
     strictOptimizedFlatMap(iterableFactory.newBuilder, f)
 
@@ -135,6 +203,18 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     b.result()
   }
 
+  /** Builds a new collection by applying a partial function to all elements of
+   *  this collection on which the function is defined.
+   *
+   *  Overrides the default view-based implementation to fill a strict builder
+   *  directly, using a single `applyOrElse` call per element to test
+   *  definedness and transform the element at the same time.
+   *
+   *  @tparam B the element type of the returned collection
+   *  @param pf the partial function to apply to each element
+   *  @return a new collection containing the results of applying `pf` to every
+   *          element of this collection on which it is defined
+   */
   override def collect[B](pf: PartialFunction[A, B]^): CC[B] =
     strictOptimizedCollect(iterableFactory.newBuilder, pf)
 
@@ -156,6 +236,18 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     b.result()
   }
 
+  /** Converts this collection of collections into a collection formed by the
+   *  elements of the nested collections.
+   *
+   *  Overrides the default view-based implementation to fill a strict builder
+   *  directly, which is slightly faster.
+   *
+   *  @tparam B the element type of the nested collections
+   *  @param toIterableOnce evidence that this collection's element type can be
+   *                        seen as an `IterableOnce[B]`
+   *  @return a new collection containing the concatenated elements of the
+   *          nested collections, in order
+   */
   override def flatten[B](implicit toIterableOnce: A -> IterableOnce[B]): CC[B] =
     strictOptimizedFlatten(iterableFactory.newBuilder)
 
@@ -174,6 +266,20 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     b.result()
   }
 
+  /** Returns a new collection of pairs formed from this collection and another
+   *  iterable collection by combining corresponding elements.
+   *
+   *  Overrides the default view-based implementation to fill a strict builder
+   *  directly, which is slightly faster. As with the default implementation,
+   *  if one of the two collections is longer than the other, its remaining
+   *  elements are ignored.
+   *
+   *  @tparam B the type of the second half of the returned pairs
+   *  @param that the iterable providing the second half of each result pair
+   *  @return a new collection containing pairs consisting of corresponding
+   *          elements of this collection and `that`, whose length is the
+   *          minimum of the lengths of the two collections
+   */
   override def zip[B](that: IterableOnce[B]^): CC[(A @uncheckedVariance, B)] =
     strictOptimizedZip(that, iterableFactory.newBuilder[(A, B)])
 
@@ -193,6 +299,9 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     b.result()
   }
 
+  /** Zips this collection with its indices, filling a strict builder in a
+   *  single traversal instead of going through a view.
+   */
   override def zipWithIndex: CC[(A @uncheckedVariance, Int)] = {
     val b = iterableFactory.newBuilder[(A, Int)]
     var i = 0
@@ -204,6 +313,20 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     b.result()
   }
 
+  /** Produces a collection containing the cumulative results of applying the
+   *  operator going left to right, including the initial value.
+   *
+   *  Overrides the default view-based implementation to fill a strict builder
+   *  directly, which is slightly faster.
+   *
+   *  @tparam B the element type of the returned collection
+   *  @param z the initial value
+   *  @param op the binary operator applied to the intermediate result and the element
+   *  @return a new collection containing the intermediate results of inserting
+   *          `op` between consecutive elements of this collection, going left
+   *          to right with the start value `z` on the left, so one element
+   *          longer than this collection
+   */
   override def scanLeft[B](z: B)(op: (B, A) => B): CC[B] = {
     val b = iterableFactory.newBuilder[B]
     b.sizeHint(this, delta = 0)
@@ -217,10 +340,39 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
     b.result()
   }
 
+  /** Selects all elements of this collection that satisfy a predicate.
+   *
+   *  Overrides the default view-based implementation to fill a strict builder
+   *  directly, via [[filterImpl]].
+   *
+   *  @param pred the predicate used to test elements
+   *  @return a new collection containing all elements of this collection that
+   *          satisfy `pred`, in the order they appear in this collection
+   */
   override def filter(pred: A => Boolean): C = filterImpl(pred, isFlipped = false)
 
+  /** Selects all elements of this collection that do not satisfy a predicate.
+   *
+   *  Overrides the default view-based implementation to fill a strict builder
+   *  directly, via [[filterImpl]].
+   *
+   *  @param pred the predicate used to test elements
+   *  @return a new collection containing all elements of this collection that
+   *          do not satisfy `pred`, in the order they appear in this collection
+   */
   override def filterNot(pred: A => Boolean): C = filterImpl(pred, isFlipped = true)
 
+  /** Shared strict implementation of [[filter]] and [[filterNot]]: builds a
+   *  new collection from the elements whose `pred` result differs from
+   *  `isFlipped`.
+   *
+   *  @param pred the predicate used to test elements
+   *  @param isFlipped if `false`, keeps the elements that satisfy `pred`
+   *                   (`filter`); if `true`, keeps those that do not
+   *                   (`filterNot`)
+   *  @return a new collection containing the selected elements, in the order
+   *          they appear in this collection
+   */
   protected[collection] def filterImpl(pred: A => Boolean, isFlipped: Boolean): C = {
     val b = newSpecificBuilder
     val it = iterator
@@ -234,6 +386,19 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
   }
 
   // Optimized, push-based version of `partitionMap`
+  /** Applies a function returning an `Either` to each element of this
+   *  collection and collects the `Left` and `Right` results into two separate
+   *  collections.
+   *
+   *  Overrides the default implementation to fill two strict builders in a
+   *  single traversal of this collection, applying `f` once per element.
+   *
+   *  @tparam A1 the element type of the first resulting collection
+   *  @tparam A2 the element type of the second resulting collection
+   *  @param f the function mapping each element to a `Left(_)` or a `Right(_)`
+   *  @return a pair of collections: the first containing the values wrapped in
+   *          `Left`, the second containing the values wrapped in `Right`
+   */
   override def partitionMap[A1, A2](f: A => Either[A1, A2]): (CC[A1], CC[A2]) = {
     val l = iterableFactory.newBuilder[A1]
     val r = iterableFactory.newBuilder[A2]
@@ -247,6 +412,17 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
   }
 
   // Optimization avoids creation of second collection
+  /** Applies a side-effecting function to each element of this collection and
+   *  returns this collection itself.
+   *
+   *  Overrides the default implementation to call `f` eagerly on every element
+   *  and return this collection unchanged, instead of creating a second,
+   *  mapped collection.
+   *
+   *  @tparam U the return type of `f`, ignored
+   *  @param f the side-effecting function to apply to each element
+   *  @return this collection, unchanged
+   */
   override def tapEach[U](f: A => U): C^{this}  = {
     foreach(f)
     coll

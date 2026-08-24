@@ -58,6 +58,12 @@ private[scala] object StringParsers {
   private final def isDigit(c: Char): Boolean = c >= '0' && c <= '9'
 
   //bool
+  /** Parses the string as a `Boolean`, without throwing.
+   *
+   *  @param from the string to parse
+   *  @return `Some(true)` if `from` equals `"true"` and `Some(false)` if it equals
+   *          `"false"`, compared ignoring case; `None` for any other string
+   */
   @inline
   final def parseBool(from: String): Option[Boolean] =
     if (from.equalsIgnoreCase("true")) Some(true)
@@ -65,6 +71,16 @@ private[scala] object StringParsers {
     else None
 
   //integral types
+  /** Parses the string as a signed decimal `Byte`, without throwing.
+   *
+   *  The string must consist of an optional sign (`+` or `-`) followed by one or more
+   *  digit characters (as recognized by `java.lang.Character.digit`), with no
+   *  surrounding whitespace. An empty string or a lone sign does not parse.
+   *
+   *  @param from the string to parse
+   *  @return the parsed value, or `None` if `from` is not a valid representation or
+   *          its value is outside the range of `Byte`
+   */
   final def parseByte(from: String): Option[Byte] = {
     val len = from.length()
     //empty strings parse to None
@@ -84,6 +100,16 @@ private[scala] object StringParsers {
     }
   }
 
+  /** Parses the string as a signed decimal `Short`, without throwing.
+   *
+   *  The string must consist of an optional sign (`+` or `-`) followed by one or more
+   *  digit characters (as recognized by `java.lang.Character.digit`), with no
+   *  surrounding whitespace. An empty string or a lone sign does not parse.
+   *
+   *  @param from the string to parse
+   *  @return the parsed value, or `None` if `from` is not a valid representation or
+   *          its value is outside the range of `Short`
+   */
   final def parseShort(from: String): Option[Short] = {
     val len = from.length()
     //empty strings parse to None
@@ -103,6 +129,16 @@ private[scala] object StringParsers {
     }
   }
 
+  /** Parses the string as a signed decimal `Int`, without throwing.
+   *
+   *  The string must consist of an optional sign (`+` or `-`) followed by one or more
+   *  digit characters (as recognized by `java.lang.Character.digit`), with no
+   *  surrounding whitespace. An empty string or a lone sign does not parse.
+   *
+   *  @param from the string to parse
+   *  @return the parsed value, or `None` if `from` is not a valid representation or
+   *          its value is outside the range of `Int`
+   */
   final def parseInt(from: String): Option[Int] = {
     val len = from.length()
 
@@ -137,6 +173,16 @@ private[scala] object StringParsers {
     }
   }
     
+  /** Parses the string as a signed decimal `Long`, without throwing.
+   *
+   *  The string must consist of an optional sign (`+` or `-`) followed by one or more
+   *  digit characters (as recognized by `java.lang.Character.digit`), with no
+   *  surrounding whitespace. An empty string or a lone sign does not parse.
+   *
+   *  @param from the string to parse
+   *  @return the parsed value, or `None` if `from` is not a valid representation or
+   *          its value is outside the range of `Long`
+   */
   final def parseLong(from: String): Option[Long] = {
     //like parseInt, but Longer
     val len = from.length()
@@ -173,6 +219,19 @@ private[scala] object StringParsers {
   }
   
   //floating point
+  /** Checks whether the string is a well-formed floating-point literal, i.e. whether
+   *  `java.lang.Float.parseFloat` and `java.lang.Double.parseDouble` would accept it
+   *  rather than throw.
+   *
+   *  Accepts, after optional leading and trailing whitespace (characters with code
+   *  `0x20` or lower): an optional sign (`+` or `-`), followed by `NaN`, `Infinity`,
+   *  or a decimal or hexadecimal (`0x`/`0X` prefixed, with a `p`/`P` exponent)
+   *  floating-point literal, the literal forms optionally ending in an `f`, `F`, `d`
+   *  or `D` suffix.
+   *
+   *  @param format the string to check
+   *  @return `true` if the string is a well-formed floating-point literal, `false` otherwise
+   */
   final def checkFloatFormat(format: String): Boolean = {
     //indices are tracked with a start index which points *at* the first index
     //and an end index which points *after* the last index
@@ -311,11 +370,29 @@ private[scala] object StringParsers {
     }
   }
     
+  /** Parses the string as a `Float`, without throwing.
+   *
+   *  Unlike the integral parsers, leading and trailing whitespace is allowed.
+   *
+   *  @param from the string to parse
+   *  @return `Some` of the value parsed by `java.lang.Float.parseFloat` if `from` is a
+   *          well-formed floating-point literal according to [[checkFloatFormat]],
+   *          `None` otherwise
+   */
   @inline
   def parseFloat(from: String): Option[Float] =
     if (checkFloatFormat(from)) Some(java.lang.Float.parseFloat(from))
     else None
 
+  /** Parses the string as a `Double`, without throwing.
+   *
+   *  Unlike the integral parsers, leading and trailing whitespace is allowed.
+   *
+   *  @param from the string to parse
+   *  @return `Some` of the value parsed by `java.lang.Double.parseDouble` if `from` is a
+   *          well-formed floating-point literal according to [[checkFloatFormat]],
+   *          `None` otherwise
+   */
   @inline
   def parseDouble(from: String): Option[Double] =
     if (checkFloatFormat(from)) Some(java.lang.Double.parseDouble(from))

@@ -101,70 +101,201 @@ trait IterableOnce[+A] extends Any { this: IterableOnce[A]^ =>
   def knownSize: Int = -1
 }
 
+/** A value class providing the operations of Scala 2.12's `TraversableOnce` as deprecated
+ *  extension methods on [[IterableOnce]], each implemented by delegating to the
+ *  corresponding operation on `it.iterator`.
+ *
+ *  Every operation traverses the wrapped collection; if it can be traversed only once,
+ *  the operation consumes it.
+ *
+ *  @tparam A the element type of the wrapped collection
+ *  @param it the wrapped collection
+ */
 final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) extends AnyVal {
+  /** Returns an iterator over all elements of the wrapped collection that satisfy the
+   *  predicate `f`.
+   *
+   *  @param f the predicate used to test elements
+   */
   @deprecated("Use .iterator.withFilter(...) instead", "2.13.0")
   def withFilter(f: A => Boolean): Iterator[A]^{f} = it.iterator.withFilter(f)
 
+  /** Optionally applies the binary operator `f` to all elements of the wrapped collection,
+   *  going left to right.
+   *
+   *  @param f the binary operator
+   *  @return the result of the reduction inside a `Some` if the wrapped collection is
+   *          nonempty, `None` otherwise
+   */
   @deprecated("Use .iterator.reduceLeftOption(...) instead", "2.13.0")
   def reduceLeftOption(f: (A, A) => A): Option[A] = it.iterator.reduceLeftOption(f)
 
+  /** Returns the smallest element of the wrapped collection with respect to the
+   *  ordering `ord`.
+   *
+   *  @param ord the ordering used to compare elements
+   *  @throws UnsupportedOperationException if the wrapped collection is empty
+   */
   @deprecated("Use .iterator.min instead", "2.13.0")
   def min(implicit ord: Ordering[A]): A = it.iterator.min
 
+  /** Returns `true` if the wrapped collection contains at least one element, `false` otherwise. */
   @deprecated("Use .iterator.nonEmpty instead", "2.13.0")
   def nonEmpty: Boolean = it.iterator.nonEmpty
 
+  /** Returns the largest element of the wrapped collection with respect to the
+   *  ordering `ord`.
+   *
+   *  @param ord the ordering used to compare elements
+   *  @throws UnsupportedOperationException if the wrapped collection is empty
+   */
   @deprecated("Use .iterator.max instead", "2.13.0")
   def max(implicit ord: Ordering[A]): A = it.iterator.max
 
+  /** Applies the binary operator `f` to all elements of the wrapped collection, going
+   *  right to left.
+   *
+   *  @param f the binary operator
+   *  @return the result of the reduction
+   *  @throws UnsupportedOperationException if the wrapped collection is empty
+   */
   @deprecated("Use .iterator.reduceRight(...) instead", "2.13.0")
   def reduceRight(f: (A, A) => A): A = it.iterator.reduceRight(f)
 
+  /** Returns the first element of the wrapped collection with the largest value measured
+   *  by function `f`, with respect to the ordering `cmp`.
+   *
+   *  @tparam B the result type of the measuring function
+   *  @param f the measuring function
+   *  @param cmp the ordering used to compare measured values
+   *  @throws UnsupportedOperationException if the wrapped collection is empty
+   */
   @deprecated("Use .iterator.maxBy(...) instead", "2.13.0")
   def maxBy[B](f: A -> B)(implicit cmp: Ordering[B]): A = it.iterator.maxBy(f)
 
+  /** Applies the binary operator `f` to all elements of the wrapped collection, going
+   *  left to right.
+   *
+   *  @param f the binary operator
+   *  @return the result of the reduction
+   *  @throws UnsupportedOperationException if the wrapped collection is empty
+   */
   @deprecated("Use .iterator.reduceLeft(...) instead", "2.13.0")
   def reduceLeft(f: (A, A) => A): A = it.iterator.reduceLeft(f)
 
+  /** Returns the sum of all elements of the wrapped collection with respect to the `+`
+   *  operator in `num`.
+   *
+   *  @param num the `Numeric` instance providing the `+` operator and the zero of the sum
+   *  @return the sum of all elements, or `num.zero` if the wrapped collection is empty
+   */
   @deprecated("Use .iterator.sum instead", "2.13.0")
   def sum(implicit num: Numeric[A]): A = it.iterator.sum
 
+  /** Returns the product of all elements of the wrapped collection with respect to the `*`
+   *  operator in `num`.
+   *
+   *  @param num the `Numeric` instance providing the `*` operator and the unit of the product
+   *  @return the product of all elements, or `num.one` if the wrapped collection is empty
+   */
   @deprecated("Use .iterator.product instead", "2.13.0")
   def product(implicit num: Numeric[A]): A = it.iterator.product
 
+  /** Returns the number of elements of the wrapped collection that satisfy the
+   *  predicate `f`.
+   *
+   *  @param f the predicate used to test elements
+   */
   @deprecated("Use .iterator.count(...) instead", "2.13.0")
   def count(f: A => Boolean): Int = it.iterator.count(f)
 
+  /** Optionally reduces the wrapped collection with the binary operator `f`, going left
+   *  to right.
+   *
+   *  @param f the binary operator
+   *  @return the result of the reduction inside a `Some` if the wrapped collection is
+   *          nonempty, `None` otherwise
+   */
   @deprecated("Use .iterator.reduceOption(...) instead", "2.13.0")
   def reduceOption(f: (A, A) => A): Option[A] = it.iterator.reduceOption(f)
 
+  /** Returns the first element of the wrapped collection with the smallest value measured
+   *  by function `f`, with respect to the ordering `cmp`.
+   *
+   *  @tparam B the result type of the measuring function
+   *  @param f the measuring function
+   *  @param cmp the ordering used to compare measured values
+   *  @throws UnsupportedOperationException if the wrapped collection is empty
+   */
   @deprecated("Use .iterator.minBy(...) instead", "2.13.0")
   def minBy[B](f: A -> B)(implicit cmp: Ordering[B]): A = it.iterator.minBy(f)
 
+  /** Returns the number of elements in the wrapped collection. */
   @deprecated("Use .iterator.size instead", "2.13.0")
   def size: Int = it.iterator.size
 
+  /** Returns `true` if the wrapped collection is empty or the predicate `f` holds for all
+   *  of its elements, `false` otherwise.
+   *
+   *  @param f the predicate used to test elements
+   */
   @deprecated("Use .iterator.forall(...) instead", "2.13.0")
   def forall(f: A => Boolean): Boolean = it.iterator.forall(f)
 
+  /** Finds the first element of the wrapped collection for which the partial function `f`
+   *  is defined, and applies `f` to it.
+   *
+   *  @tparam B the result type of the partial function
+   *  @param f the partial function to test and apply
+   *  @return an option value containing `f` applied to the first element for which it is
+   *          defined, or `None` if none exists
+   */
   @deprecated("Use .iterator.collectFirst(...) instead", "2.13.0")
   def collectFirst[B](f: PartialFunction[A, B]^): Option[B] = it.iterator.collectFirst(f)
 
+  /** Returns an iterator over all elements of the wrapped collection that satisfy the
+   *  predicate `f`.
+   *
+   *  @param f the predicate used to test elements
+   */
   @deprecated("Use .iterator.filter(...) instead", "2.13.0")
   def filter(f: A => Boolean): Iterator[A]^{f} = it.iterator.filter(f)
 
+  /** Returns `true` if the predicate `f` holds for at least one element of the wrapped
+   *  collection, `false` otherwise.
+   *
+   *  @param f the predicate used to test elements
+   */
   @deprecated("Use .iterator.exists(...) instead", "2.13.0")
   def exists(f: A => Boolean): Boolean = it.iterator.exists(f)
 
+  /** Appends all elements of the wrapped collection to the buffer `dest`.
+   *
+   *  @param dest the buffer to which elements are appended
+   */
   @deprecated("Use .iterator.copyToBuffer(...) instead", "2.13.0")
   def copyToBuffer(dest: mutable.Buffer[A]): Unit = it.iterator.copyToBuffer(dest)
 
+  /** Reduces the wrapped collection with the binary operator `f`, going left to right.
+   *
+   *  @param f the binary operator
+   *  @return the result of the reduction
+   *  @throws UnsupportedOperationException if the wrapped collection is empty
+   */
   @deprecated("Use .iterator.reduce(...) instead", "2.13.0")
   def reduce(f: (A, A) => A): A = it.iterator.reduce(f)
 
+  /** Optionally applies the binary operator `f` to all elements of the wrapped collection,
+   *  going right to left.
+   *
+   *  @param f the binary operator
+   *  @return the result of the reduction inside a `Some` if the wrapped collection is
+   *          nonempty, `None` otherwise
+   */
   @deprecated("Use .iterator.reduceRightOption(...) instead", "2.13.0")
   def reduceRightOption(f: (A, A) => A): Option[A] = it.iterator.reduceRightOption(f)
 
+  /** Returns an immutable `IndexedSeq` containing all elements of the wrapped collection. */
   @deprecated("Use .iterator.toIndexedSeq instead", "2.13.0")
   def toIndexedSeq: IndexedSeq[A] = it.iterator.toIndexedSeq
 
@@ -174,18 +305,34 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
     case _ => it.iterator.foreach(f)
   }
 
+  /** Converts the wrapped collection to a collection of type `C1`.
+   *
+   *  @tparam C1 the target collection type
+   *  @param factory the factory for the target collection type
+   *  @return a new collection of type `C1` containing all elements of the wrapped collection
+   */
   @deprecated("Use .iterator.to(factory) instead", "2.13.0")
   def to[C1](factory: Factory[A, C1]): C1 = factory.fromSpecific(it)
 
+  /** Returns a new mutable `Buffer` (an `ArrayBuffer`) containing all elements of the
+   *  wrapped collection.
+   *
+   *  @tparam B the element type of the result, a supertype of `A`
+   */
   @deprecated("Use .iterator.to(ArrayBuffer) instead", "2.13.0")
   def toBuffer[B >: A]: mutable.Buffer[B] = mutable.ArrayBuffer.from(it)
 
+  /** Returns an array containing all elements of the wrapped collection.
+   *
+   *  @tparam B the element type of the result, a supertype of `A`
+   */
   @deprecated("Use .iterator.toArray", "2.13.0")
   def toArray[B >: A: ClassTag]: Array[B] = it match {
     case it: Iterable[B @unchecked] => it.toArray[B]
     case _ => it.iterator.toArray[B]
   }
 
+  /** Returns a `List` containing all elements of the wrapped collection. */
   @deprecated("Use .iterator.to(List) instead", "2.13.0")
   def toList: immutable.List[A] = immutable.List.from(it)
 
@@ -207,6 +354,16 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
   @deprecated("Use .iterator.to(Vector) instead", "2.13.0")
   @`inline` def toVector: immutable.Vector[A] = immutable.Vector.from(it)
 
+  /** Converts the wrapped collection to an immutable `Map`, given implicit evidence that
+   *  its element type is a key-value pair.
+   *
+   *  @tparam K the key type of the resulting map
+   *  @tparam V the value type of the resulting map
+   *  @param ev implicit evidence that `A` is a subtype of `(K, V)`; never used, but its
+   *            presence proves the element type is a pair
+   *  @return an immutable map containing the elements of the wrapped collection as key-value
+   *          bindings
+   */
   @deprecated("Use .iterator.to(Map) instead", "2.13.0")
   def toMap[K, V](implicit ev: A <:< (K, V)): immutable.Map[K, V] =
     immutable.Map.from(it.asInstanceOf[IterableOnce[(K, V)]])
@@ -214,30 +371,53 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
   @deprecated("Use .iterator instead", "2.13.0")
   @`inline` def toIterator: Iterator[A] = it.iterator
 
+  /** Returns `true` if the wrapped collection contains no elements, `false` otherwise. */
   @deprecated("Use .iterator.isEmpty instead", "2.13.0")
   def isEmpty: Boolean = it match {
     case it: Iterable[A @unchecked] => it.isEmpty
     case _ => it.iterator.isEmpty
   }
 
+  /** Returns a string representation of the wrapped collection that begins with the string
+   *  `start` and ends with the string `end`, with the string representations of all
+   *  elements separated by the string `sep`.
+   *
+   *  @param start the starting string
+   *  @param sep the separator string
+   *  @param end the ending string
+   */
   @deprecated("Use .iterator.mkString instead", "2.13.0")
   def mkString(start: String, sep: String, end: String): String = it match {
     case it: Iterable[A @unchecked] => it.mkString(start, sep, end)
     case _ => it.iterator.mkString(start, sep, end)
   }
 
+  /** Returns a string representation of the wrapped collection in which the string
+   *  representations of all elements are separated by the string `sep`.
+   *
+   *  @param sep the separator string
+   */
   @deprecated("Use .iterator.mkString instead", "2.13.0")
   def mkString(sep: String): String = it match {
     case it: Iterable[A @unchecked] => it.mkString(sep)
     case _ => it.iterator.mkString(sep)
   }
 
+  /** Returns a string representation of the wrapped collection in which the string
+   *  representations of all elements follow each other without any separator.
+   */
   @deprecated("Use .iterator.mkString instead", "2.13.0")
   def mkString: String = it match {
     case it: Iterable[A @unchecked] => it.mkString
     case _ => it.iterator.mkString
   }
 
+  /** Finds the first element of the wrapped collection satisfying the predicate `p`, if any.
+   *
+   *  @param p the predicate used to test elements
+   *  @return an option value containing the first element that satisfies `p`, or `None` if
+   *          none exists
+   */
   @deprecated("Use .iterator.find instead", "2.13.0")
   def find(p: A => Boolean): Option[A] = it.iterator.find(p)
 
@@ -247,6 +427,14 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
   @deprecated("Use .iterator.foldRight instead", "2.13.0")
   @`inline` def foldRight[B](z: B)(op: (A, B) => B): B = it.iterator.foldRight(z)(op)
 
+  /** Folds the elements of the wrapped collection using the binary operator `op`, starting
+   *  with the initial value `z`, going left to right.
+   *
+   *  @tparam A1 the result type of the binary operator, a supertype of `A`
+   *  @param z the initial value
+   *  @param op the binary operator
+   *  @return the result of the fold, or `z` if the wrapped collection is empty
+   */
   @deprecated("Use .iterator.fold instead", "2.13.0")
   def fold[A1 >: A](z: A1)(op: (A1, A1) => A1): A1 = it.iterator.fold(z)(op)
 
@@ -256,23 +444,54 @@ final class IterableOnceExtensionMethods[A](private val it: IterableOnce[A]) ext
   @deprecated("Use .iterator.foldRight instead", "2.13.0")
   @`inline` def :\ [B](z: B)(op: (A, B) => B): B = foldRight[B](z)(op)
 
+  /** Builds a new `IterableOnce` by applying the function `f` to all elements of the
+   *  wrapped collection: an `Iterable` if the wrapped collection is an `Iterable`, an
+   *  iterator otherwise.
+   *
+   *  @tparam B the element type of the result
+   *  @param f the function to apply to each element
+   *  @return a new `IterableOnce` containing the results of applying `f` to each element of
+   *          the wrapped collection
+   */
   @deprecated("Use .iterator.map instead or consider requiring an Iterable", "2.13.0")
   def map[B](f: A => B): IterableOnce[B]^{f} = it match {
     case it: Iterable[A @unchecked]^{f} => it.map(f)
     case _ => it.iterator.map(f)
   }
 
+  /** Builds a new `IterableOnce` by applying the collection-valued function `f` to all
+   *  elements of the wrapped collection and concatenating the results: an `Iterable` if the
+   *  wrapped collection is an `Iterable`, an iterator otherwise.
+   *
+   *  @tparam B the element type of the result
+   *  @param f the collection-valued function to apply to each element
+   *  @return a new `IterableOnce` containing the concatenated results of applying `f` to
+   *          each element of the wrapped collection
+   */
   @deprecated("Use .iterator.flatMap instead or consider requiring an Iterable", "2.13.0")
   def flatMap[B](f: A => IterableOnce[B]^): IterableOnce[B]^{f} = it match {
     case it: Iterable[A @unchecked] => it.flatMap(f)
     case _ => it.iterator.flatMap(f)
   }
 
+  /** Returns `true` if the wrapped collection and `that` contain the same elements in the
+   *  same order, `false` otherwise.
+   *
+   *  @tparam B the element type of `that`, a supertype of `A`
+   *  @param that the collection to compare with
+   */
   @deprecated("Use .iterator.sameElements instead", "2.13.0")
   def sameElements[B >: A](that: IterableOnce[B]): Boolean = it.iterator.sameElements(that)
 }
 
 object IterableOnce {
+  /** Implicit conversion providing the deprecated compatibility operations of
+   *  [[IterableOnceExtensionMethods]] on any `IterableOnce`.
+   *
+   *  @tparam A the element type of the collection
+   *  @param it the collection to wrap
+   *  @return a value class wrapping `it`
+   */
   @inline implicit def iterableOnceExtensionMethods[A](it: IterableOnce[A]): IterableOnceExtensionMethods[A] =
     new IterableOnceExtensionMethods[A](it)
 
@@ -577,7 +796,13 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    */
   def splitAt(n: Int): (C^{this}, C^{this}) = {
     class Spanner extends runtime.AbstractFunction1[A, Boolean] {
+      /** The number of elements accepted so far. */
       var i = 0
+      /** Returns `true` for the first `n` applications, incrementing the count each time,
+       *  and `false` afterwards.
+       *
+       *  @param a the element under test; never used
+       */
       def apply(a: A) = i < n && { i += 1 ; true }
     }
     val spanner = new Spanner
@@ -1007,6 +1232,11 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
       len
     }
 
+  /** Appends all elements of this $coll to the buffer `dest`.
+   *
+   *  @tparam B the element type of the buffer, a supertype of `A`
+   *  @param dest the buffer to which elements are appended
+   */
   @deprecated("Use `dest ++= coll` instead", "2.13.0")
   @inline final def copyToBuffer[B >: A](dest: mutable.Buffer[B]): Unit = dest ++= this
 
@@ -1199,11 +1429,27 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
     }
 
   private class Maximized[X, B](descriptor: String)(f: X -> B)(cmp: (B, B) -> Boolean) extends AbstractFunction2[Maximized[X, B], X, Maximized[X, B]] {
+    /** The best element seen so far; meaningful only once `nonEmpty` is `true`. */
     var maxElem: X = null.asInstanceOf[X]
+    /** The measure `f(maxElem)` of the best element seen so far; meaningful only once `nonEmpty` is `true`. */
     var maxF: B = null.asInstanceOf[B]
+    /** Whether at least one element has been folded in. */
     var nonEmpty = false
+    /** Returns the best element inside a `Some`, or `None` if no element has been folded in. */
     def toOption: Option[X] = if (nonEmpty) Some(maxElem) else None
+    /** Returns the best element.
+     *
+     *  @throws UnsupportedOperationException if no element has been folded in
+     */
     def result: X = if (nonEmpty) maxElem else throw new UnsupportedOperationException(s"empty.$descriptor")
+    /** Folds the element `a` into the accumulator: records `a` as the best element if it is
+     *  the first one seen, or if its measure `f(a)` improves on the current best according
+     *  to `cmp`.
+     *
+     *  @param m the accumulator; in every use this is the receiver itself
+     *  @param a the element to fold in
+     *  @return the accumulator `m`
+     */
     def apply(m: Maximized[X, B], a: X): Maximized[X, B] =
       if (m.nonEmpty) {
         val fa = f(a)
@@ -1512,6 +1758,7 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    */
   def toIndexedSeq: immutable.IndexedSeq[A] = immutable.IndexedSeq.from(this)
 
+  /** Converts this $coll to a `Stream`. */
   @deprecated("Use .to(LazyList) instead of .toStream", "2.13.0")
   @inline final def toStream: immutable.Stream[A] = to(immutable.Stream)
 
@@ -1539,6 +1786,13 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
     else mutable.ArrayBuilder.make[B].addAll(this).result()
 
   // For internal use
+  /** Returns an `Iterable` containing the elements of this $coll in reverse order of
+   *  traversal.
+   *
+   *  The default implementation eagerly copies all elements into a `List` by prepending
+   *  each one; it is the basis for the default right-to-left operations such as
+   *  `foldRight` and `reduceRight`.
+   */
   protected def reversed: Iterable[A]^{this} = {
     var xs: immutable.List[A] = immutable.Nil
     val it = iterator
