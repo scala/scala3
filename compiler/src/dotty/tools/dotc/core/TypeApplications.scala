@@ -214,7 +214,7 @@ class TypeApplications(val self: Type) extends AnyVal {
       case NoPrefix => true
       case _ => false
     }
-    ctx.handleRecursive("type parameters of", self):
+    //ctx.handleRecursive("type parameters of", self):
       self match
         case self: TypeRef =>
           val tsym = self.symbol

@@ -262,8 +262,8 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
     }
     else this.approx = a
     try
-      ctx.handleRecursive("subtype", () => i"$tp1 <:< $tp2", weight = 2):
-        recur(tp1, tp2)
+      //ctx.handleRecursive("subtype", () => i"$tp1 <:< $tp2", weight = 2):
+      recur(tp1, tp2)
     finally
       this.approx = savedApprox
       this.leftRoot = savedLeftRoot

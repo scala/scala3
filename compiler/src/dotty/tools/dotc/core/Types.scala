@@ -6321,7 +6321,7 @@ object Types extends TypeUtils {
       if t2 ne t1 then t2 else t
 
     /** Map this function over given type */
-    def mapOver(tp: Type): Type = ctx.handleRecursive("map over", tp) {
+    def mapOver(tp: Type): Type = /*ctx.handleRecursive("map over", tp)*/ {
       record(s"TypeMap mapOver ${getClass}")
       record("TypeMap mapOver total")
       val ctx = this.mapCtx // optimization for performance

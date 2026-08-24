@@ -128,7 +128,7 @@ object TypeOps:
     pre.isStable || !ctx.phase.isTyper && ctx.mode.is(Mode.ImplicitsEnabled)
 
   /** Implementation of Types#simplified */
-  def simplify(tp: Type, theMap: SimplifyMap | Null)(using Context): Type = ctx.handleRecursive("simplify", tp) {
+  def simplify(tp: Type, theMap: SimplifyMap | Null)(using Context): Type = /*ctx.handleRecursive("simplify", tp)*/ {
     def mapOver = (if (theMap != null) theMap else new SimplifyMap).mapOver(tp)
     tp match {
       case tp: NamedType =>
@@ -470,7 +470,7 @@ object TypeOps:
       case _ => true
 
     override def apply(tp: Type): Type =
-      ctx.handleRecursive("traversing for avoiding local references", tp):
+      //ctx.handleRecursive("traversing for avoiding local references", tp):
         tp match
           case tp: TermRef if toAvoid(tp) =>
             tp.info.widenExpr.dealiasKeepRefiningAnnots match {
