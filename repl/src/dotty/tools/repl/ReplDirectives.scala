@@ -37,6 +37,7 @@ private[repl] object ReplDirectives:
   enum ReplDirective:
     case Dependency(coordinate: String)
     case Jar(path: String)
+    case Repository(repository: String)
 
   case class DirectiveClassification(
     directives: List[ReplDirective],
@@ -125,6 +126,13 @@ private[repl] object ReplDirectives:
       toDirectives = toolkitDependencies,
       warnings = List(Warning.TestToolkitSameAsToolkit),
       acceptsMultipleValues = false
+    )
+
+    case Repository extends DirectiveHandler(
+      keys = List("repository", "repositories"),
+      usage = "//> using repository <url>|<alias> ...",
+      description = "Add repositories, consulted before the default ones, to dependency resolution.",
+      toDirectives = repository => List(ReplDirective.Repository(repository))
     )
 
     def process(values: Seq[DirectiveValue]): List[ReplDirective] =
