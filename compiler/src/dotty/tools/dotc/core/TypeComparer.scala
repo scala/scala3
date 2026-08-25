@@ -2128,7 +2128,12 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
       // check whether `op2` generates a weaker constraint than `op1`
       val leftConstraint = constraint
       constraint = preConstraint
-      val res = try op catch case _: TypeError => false
+      val res =
+        try
+          op
+        catch
+          // TODO we should not have to do this, but it's currently required for tests/pos-deep-subtype/i21015.scala
+          case _: RecursionOverflow => false
       if !(res && subsumes(leftConstraint, constraint, preConstraint)) then
         if constr != noPrinter && !subsumes(constraint, leftConstraint, preConstraint) then
           constr.println(i"CUT - prefer $leftConstraint over $constraint")
