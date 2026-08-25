@@ -1,4 +1,6 @@
 //> using options -language:experimental.erasedDefinitions
+// scalajs: --skip
+// (this test uses serialization)
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream, PrintWriter, StringWriter}
 import java.lang.invoke.{MethodHandleInfo, SerializedLambda}
