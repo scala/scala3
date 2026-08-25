@@ -191,13 +191,11 @@ object LiftCoverage extends LiftImpure:
   def markSelectedReceiverApply(tree: tpd.Apply)(using Context): Unit =
     tree.putAttachment(SelectedReceiverApply, tree)
 
-  override protected def onLiftedDef(tree: tpd.Tree)(using Context): Unit =
-    tree.putAttachment(CoverageLiftedTemp, liftingArgs)
-
   /** Keep RHS-local symbols unchanged: coverage moves them only under a weak owner. */
   override protected def liftedDef(sym: TermSymbol, rhs: tpd.Tree)(using Context): tpd.MemberDef =
     val rhs1 = ctx.property(PreservedArgType).fold(rhs)(rhs.ensureConforms)
     tpd.ValDef(sym, rhs1, inferred = true)
+      .withAttachment(CoverageLiftedTemp, liftingArgs)
 
   override protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: tpd.Tree)(using Context): tpd.Tree =
     val liftedRef = tpd.ref(lifted.termRef)

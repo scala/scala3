@@ -55,9 +55,6 @@ abstract class Lifter {
     val tp = expr.tpe.deskolemized
     if tp.isStable then tp else tp.widen
 
-  /** Hook for lifters that need to record or mark freshly created lifted defs. */
-  protected def onLiftedDef(tree: Tree)(using Context): Unit = ()
-
   protected def liftedRef(lifted: TermSymbol, liftedType: Type, expr: Tree)(using Context): Tree =
     ref(lifted.termRef)
 
@@ -73,7 +70,6 @@ abstract class Lifter {
         // at a higher nesting level to prevent leaks. See tests/pos/i15174.scala
         nestingLevel = ctx.nestingLevel + 1)
       val liftedTree = liftedDef(lifted, expr).withSpan(expr.span).setDefTree
-      onLiftedDef(liftedTree)
       defs += liftedTree
       liftedRef(lifted, liftedType, expr).withSpan(expr.span.focus)
     }
