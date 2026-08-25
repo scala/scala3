@@ -385,26 +385,29 @@ object PatternMatcher {
 
       def getOfGetMatch(gm: Tree, isErrMatch: Boolean = false) =
         val getSelection = gm.select(nme.get, _.info.isParameterless)
-        if gm.tpe.widen.isRef(defn.MagicMaybeClass) then
-          if isErrMatch then
-            val MagicMaybeType(_, errArg, nullable) = gm.tpe.widen.runtimeChecked
-            if errArg.isRef(defn.UnitClass) then
-              unitLiteral
+        gm.tpe.widen match
+          case MagicMaybeType(res, _, _) =>
+            if isErrMatch then
+              val MagicMaybeType(_, errArg, nullable) = gm.tpe.widen.runtimeChecked
+              if errArg.isRef(defn.UnitClass) then
+                unitLiteral
+              else
+                val select = gm.asInstance(defn.MagicFailClass.typeRef.appliedTo(defn.AnyType))
+                  .select(nme.elem)
+                if nullable then
+                  If(gm.nullTest(cond = true),
+                    unitLiteral.ensureConforms(errArg),
+                    select)
+                else select
             else
-              val select = gm.asInstance(defn.MagicFailClass.typeRef.appliedTo(defn.AnyType))
-                .select(nme.elem)
-              if nullable then
-                If(gm.nullTest(cond = true),
-                  unitLiteral.ensureConforms(errArg),
-                  select)
-              else select
-          else
-            val validTpe = defn.MagicValidClass.typeRef
-            If(gm.isInstance(validTpe),
-              gm.asInstance(validTpe).select(nme.elem),
-              gm
-              ).asInstance(getSelection.tpe.widen)
-        else getSelection
+              val tested =
+                if res.isNotNullNorMaybe then gm
+                else
+                  val validTpe = defn.MagicValidClass.typeRef
+                  If(gm.isInstance(validTpe), gm.asInstance(validTpe).select(nme.elem), gm)
+              tested.asInstance(getSelection.tpe.widen)
+          case _ =>
+            getSelection
 
       /** Plan for matching the result of an unapply against argument patterns `args` */
       def unapplyPlan(unapp: Tree, args: List[Tree]): Plan = {
