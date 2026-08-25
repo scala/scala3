@@ -46,12 +46,13 @@ object ProtectedAccessors {
     ctx.owner.enclosingClass.derivesFrom(sym.owner)
 
   /** Do we need a protected accessor for accessing tree.symbol from the current context's owner? */
-  def needsAccessor(tree: Tree)(using Context): Boolean =
-    // Cheap check first! Only compute the symbol if it's at least a term
-    tree.isTerm && {
+  def needsAccessor(tree: Tree)(using Context): Boolean = tree match
+    // Cheap checks first! Only fetch the symbol if it may actually be needed
+    case _: Select | _: Ident if tree.isTerm =>
       val sym = tree.symbol
       needsAccessorIfNotInSubclass(sym) && !needsAccessorIsSubclass(sym)
-    }
+    case _ =>
+      false
 }
 
 class ProtectedAccessors extends MiniPhase {
