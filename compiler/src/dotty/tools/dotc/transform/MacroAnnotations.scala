@@ -137,7 +137,7 @@ object MacroAnnotations:
 
   /** Is this an annotation that implements `scala.annation.MacroAnnotation` */
   def isMacroAnnotation(annot: Annotation)(using Context): Boolean =
-    annot.tree.symbol.maybeOwner.derivesFrom(defn.MacroAnnotationClass)
+    annot.symbol.exists && annot.tree.symbol.maybeOwner.derivesFrom(defn.MacroAnnotationClass)
 
   /** Is this symbol annotated with an annotation that implements `scala.annation.MacroAnnotation` */
   def hasMacroAnnotation(sym: Symbol)(using Context): Boolean =
