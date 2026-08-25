@@ -112,15 +112,37 @@ abstract class Accumulator[@specialized(Double, Int, Long) A, +CC[X] <: mutable.
     else 1 << 24
   }
 
+  /** Returns a [[scala.collection.Stepper]] over the elements of this accumulator that supports
+   *  efficient splitting, so that it can be traversed in parallel.
+   *
+   *  @tparam S the specific stepper type, determined by `shape`
+   *  @param shape the implicit shape selecting the stepper specialized for the element type `A`
+   */
   protected def efficientStepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit
 
+  /** Returns a [[scala.collection.Stepper]] over the elements of this accumulator, refining the
+   *  inherited result type to one that always supports efficient splitting.
+   *
+   *  @tparam S the specific stepper type, determined by `shape`
+   *  @param shape the implicit shape selecting the stepper specialized for the element type `A`
+   *  @return the stepper created by [[efficientStepper]]
+   */
   final override def stepper[S <: Stepper[?]](implicit shape: StepperShape[A, S]): S & EfficientSplit =
     efficientStepper(using shape)
 
+  /** Returns the number of accumulated elements as an `Int`.
+   *
+   *  @throws IllegalArgumentException if this accumulator holds `Int.MaxValue` or more elements, in
+   *          which case [[sizeLong]] has to be used instead
+   */
   final override def length: Int =
     if (sizeLong < Int.MaxValue) sizeLong.toInt
     else throw new IllegalArgumentException(s"Size too large for an Int: $sizeLong")
 
+  /** Returns the number of accumulated elements, or `-1` once this accumulator holds
+   *  `Int.MaxValue` or more of them. The bound is exclusive, so `-1` is reported at exactly
+   *  `Int.MaxValue` elements even though that count is representable.
+   */
   final override def knownSize: Int = if (sizeLong < Int.MaxValue) size else -1
 
   /** Size of the accumulated collection, as a `Long`. */
@@ -169,6 +191,15 @@ abstract class Accumulator[@specialized(Double, Int, Long) A, +CC[X] <: mutable.
  *  @define Coll `Accumulator`
  */
 object Accumulator {
+  /** Returns the [[collection.Factory]] selected by `canAccumulate`, so that the [[Accumulator]]
+   *  object can be passed wherever a factory for the element type is expected, as in
+   *  `List(1, 2, 3).to(Accumulator)`.
+   *
+   *  @tparam A the type of the ${coll}'s elements
+   *  @tparam C the (inferred) specific type of the $coll built by the returned factory
+   *  @param sa the `Accumulator` object being converted (never used)
+   *  @param canAccumulate the implicit factory shape that determines the specific accumulator type to build
+   */
   implicit def toFactory[A, C](sa: Accumulator.type)(implicit canAccumulate: AccumulatorFactoryShape[A, C]): collection.Factory[A, C] = canAccumulate.factory
 
   /** Creates a target $coll from an existing source collection
@@ -432,32 +463,54 @@ object Accumulator {
    *  @tparam C the specific accumulator type produced (e.g., `IntAccumulator`, `DoubleAccumulator`, or `AnyAccumulator[A]`)
    */
   sealed trait AccumulatorFactoryShape[A, C] {
+    /** Returns the factory that builds a `C` from elements of type `A`. */
     def factory: collection.Factory[A, C]
+    /** Returns an empty accumulator of type `C`. */
     def empty: C
   }
 
   object AccumulatorFactoryShape extends LowPriorityAccumulatorFactoryShape {
+    /** The shape that collects `Double` elements into a [[DoubleAccumulator]], without boxing them. */
     implicit val doubleAccumulatorFactoryShape: AccumulatorFactoryShape[Double, DoubleAccumulator] = new AccumulatorFactoryShape[Double, DoubleAccumulator] {
       def factory: collection.Factory[Double, DoubleAccumulator] = DoubleAccumulator
       def empty: DoubleAccumulator = DoubleAccumulator.empty
     }
 
+    /** The shape that collects `Int` elements into an [[IntAccumulator]], without boxing them. */
     implicit val intAccumulatorFactoryShape: AccumulatorFactoryShape[Int, IntAccumulator] = new AccumulatorFactoryShape[Int, IntAccumulator] {
       def factory: collection.Factory[Int, IntAccumulator] = IntAccumulator
       def empty: IntAccumulator = IntAccumulator.empty
     }
 
+    /** The shape that collects `Long` elements into a [[LongAccumulator]], without boxing them. */
     implicit val longAccumulatorFactoryShape: AccumulatorFactoryShape[Long, LongAccumulator] = new AccumulatorFactoryShape[Long, LongAccumulator] {
       def factory: collection.Factory[Long, LongAccumulator] = LongAccumulator
       def empty: LongAccumulator = LongAccumulator.empty
     }
 
+    /** The shape that collects `java.lang.Double` elements into a [[DoubleAccumulator]], which
+     *  stores them unboxed.
+     */
     implicit val jDoubleAccumulatorFactoryShape: AccumulatorFactoryShape[jl.Double, DoubleAccumulator] = doubleAccumulatorFactoryShape.asInstanceOf[AccumulatorFactoryShape[jl.Double, DoubleAccumulator]]
+    /** The shape that collects `java.lang.Integer` elements into an [[IntAccumulator]], which
+     *  stores them unboxed.
+     */
     implicit val jIntegerAccumulatorFactoryShape: AccumulatorFactoryShape[jl.Integer, IntAccumulator] = intAccumulatorFactoryShape.asInstanceOf[AccumulatorFactoryShape[jl.Integer, IntAccumulator]]
+    /** The shape that collects `java.lang.Long` elements into a [[LongAccumulator]], which stores
+     *  them unboxed.
+     */
     implicit val jLongAccumulatorFactoryShape: AccumulatorFactoryShape[jl.Long, LongAccumulator] = longAccumulatorFactoryShape.asInstanceOf[AccumulatorFactoryShape[jl.Long, LongAccumulator]]
   }
 
+  /** Provides the fallback [[Accumulator.AccumulatorFactoryShape]] used for element types that have
+   *  no unboxed specialization, so that the specialized shapes in
+   *  [[Accumulator.AccumulatorFactoryShape]] take precedence.
+   */
   sealed trait LowPriorityAccumulatorFactoryShape {
+    /** Returns the shape that collects elements of type `A` into an [[AnyAccumulator]].
+     *
+     *  @tparam A the type of the elements to accumulate
+     */
     implicit def anyAccumulatorFactoryShape[A]: AccumulatorFactoryShape[A, AnyAccumulator[A]] = anyAccumulatorFactoryShapePrototype.asInstanceOf[AccumulatorFactoryShape[A, AnyAccumulator[A]]]
 
     private val anyAccumulatorFactoryShapePrototype = new AccumulatorFactoryShape[AnyRef, AnyAccumulator[AnyRef]] {

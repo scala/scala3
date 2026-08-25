@@ -34,8 +34,18 @@ final class IntAccumulator
 
   private[jdk] def cumulative(i: Int) = { val x = history(i); x(x.length-2).toLong << 32 | (x(x.length-1)&0xFFFFFFFFL) }
 
+  /** Returns `"IntAccumulator"`, the prefix used by `toString`. */
   override protected def className: String = "IntAccumulator"
 
+  /** Returns a [[scala.collection.Stepper]] over the elements of this `IntAccumulator` that
+   *  supports efficient splitting, so that it can be traversed in parallel.
+   *
+   *  @tparam S the specific stepper type, determined by `shape`
+   *  @param shape the implicit shape selecting the stepper specialized for `Int`; only
+   *         `IntShape` and `ReferenceShape` are supported
+   *  @return a stepper of shape `S`; for `IntShape` it steps over the elements without boxing,
+   *          for `ReferenceShape` it boxes them as `java.lang.Integer`
+   */
   def efficientStepper[S <: Stepper[?]](implicit shape: StepperShape[Int, S]): S & EfficientSplit = {
     val st = new IntAccumulatorStepper(this)
     val r =
@@ -144,6 +154,7 @@ final class IntAccumulator
     that.clear()
   }
 
+  /** Removes all accumulated elements from this `IntAccumulator`, releasing the arrays that held them. */
   override def clear(): Unit = {
     super.clear()
     current = IntAccumulator.emptyIntArray
@@ -170,6 +181,23 @@ final class IntAccumulator
    */
   def apply(i: Int): Int = apply(i.toLong)
 
+  /** Replaces the element at index `idx` with `elem`.
+   *
+   *  `idx` is not validated, and an out-of-range index has more than one possible outcome. It can
+   *  land in unused capacity of the current array, in which case the write silently succeeds
+   *  without changing any element this accumulator reports. Because the offset into the current
+   *  array is computed as a `Long` and then narrowed to an `Int`, an index far enough out of range
+   *  can also wrap onto an occupied slot and silently overwrite an element this accumulator does
+   *  report. The same narrowing happens on the other branch: `seekSlot` narrows the index it is
+   *  given to an `Int` when locating a slot in `history`, so an out-of-range index can wrap onto
+   *  an occupied history slot as well. Otherwise the write throws.
+   *
+   *  @param idx the zero-based index of the element to replace
+   *  @param elem the `Int` value to store at index `idx`
+   *  @throws ArrayIndexOutOfBoundsException if `idx` is out of range and the computed offset falls
+   *          outside the array being written, rather than into unused current-array capacity or
+   *          onto a slot reached by `Int` wraparound
+   */
   def update(idx: Long, elem: Int): Unit = {
     if (totalSize - idx <= index || hIndex == 0) current((idx - (totalSize - index)).toInt) = elem
     else {
@@ -178,16 +206,45 @@ final class IntAccumulator
     }
   }
 
+  /** Replaces the element at index `idx` with `elem`, using an `Int` index.
+   *
+   *  `idx` is not validated, and an out-of-range index has more than one possible outcome. It can
+   *  land in unused capacity of the current array, in which case the write silently succeeds
+   *  without changing any element this accumulator reports. Otherwise the write throws. An `Int`
+   *  index is widened to a `Long` without loss, so it can never wrap onto an occupied slot the way
+   *  a sufficiently large `Long` index can.
+   *
+   *  @param idx the zero-based index of the element to replace
+   *  @param elem the `Int` value to store at index `idx`
+   *  @throws ArrayIndexOutOfBoundsException if `idx` is out of range and the computed offset falls
+   *          outside the array being written, rather than into unused current-array capacity
+   */
   def update(idx: Int, elem: Int): Unit = update(idx.toLong, elem)
 
   /** Returns an `Iterator` over the contents of this `IntAccumulator`. The `Iterator` is not specialized. */
   def iterator: Iterator[Int] = stepper.iterator
 
+  /** Applies `f` to every element of this `IntAccumulator`, in order.
+   *
+   *  Elements are read through an [[scala.collection.IntStepper]], so a function specialized for
+   *  `Int` receives them without boxing.
+   *
+   *  @tparam U the result type of `f`, which is discarded
+   *  @param f the function applied to each element
+   */
   override def foreach[U](f: Int => U): Unit = {
     val s = stepper
     while (s.hasStep) f(s.nextStep())
   }
 
+  /** Returns a new `IntAccumulator` containing the results of applying `f` to each element of
+   *  this one, in order.
+   *
+   *  Unlike the inherited `map`, which builds an [[AnyAccumulator]], this overload keeps the
+   *  elements unboxed.
+   *
+   *  @param f the function applied to each element
+   */
   def map(f: Int => Int): IntAccumulator = {
     val b = newSpecificBuilder
     val s = stepper
@@ -196,6 +253,14 @@ final class IntAccumulator
     b.result()
   }
 
+  /** Returns a new `IntAccumulator` containing the elements produced by applying `f` to each
+   *  element of this one, concatenated in order.
+   *
+   *  Unlike the inherited `flatMap`, which builds an [[AnyAccumulator]], this overload keeps the
+   *  elements unboxed.
+   *
+   *  @param f the function mapping each element to a collection of `Int`s
+   */
   def flatMap(f: Int => IterableOnce[Int]): IntAccumulator = {
     val b = newSpecificBuilder
     val s = stepper
@@ -204,6 +269,14 @@ final class IntAccumulator
     b.result()
   }
 
+  /** Returns a new `IntAccumulator` containing the results of applying `pf` to the elements of
+   *  this one for which it is defined, in order.
+   *
+   *  Unlike the inherited `collect`, which builds an [[AnyAccumulator]], this overload keeps the
+   *  elements unboxed.
+   *
+   *  @param pf the partial function applied to the elements on which it is defined
+   */
   def collect(pf: PartialFunction[Int, Int]): IntAccumulator = {
     val b = newSpecificBuilder
     val s = stepper
@@ -224,10 +297,25 @@ final class IntAccumulator
     b.result()
   }
 
+  /** Returns a new `IntAccumulator` containing the elements of this one that satisfy `pred`, in
+   *  order.
+   *
+   *  @param pred the predicate each element is tested against
+   */
   override def filter(pred: Int => Boolean): IntAccumulator = filterAccImpl(pred, not = false)
 
+  /** Returns a new `IntAccumulator` containing the elements of this one that do not satisfy
+   *  `pred`, in order.
+   *
+   *  @param pred the predicate each element is tested against
+   */
   override def filterNot(pred: Int => Boolean): IntAccumulator = filterAccImpl(pred, not = true)
 
+  /** Returns `true` if `p` holds for every element of this `IntAccumulator`, and `true` if this
+   *  `IntAccumulator` is empty. Testing stops at the first element for which `p` is `false`.
+   *
+   *  @param p the predicate each element is tested against
+   */
   override def forall(p: Int => Boolean): Boolean = {
     val s = stepper
     while (s.hasStep)
@@ -235,6 +323,11 @@ final class IntAccumulator
     true
   }
 
+  /** Returns `true` if `p` holds for at least one element of this `IntAccumulator`, `false`
+   *  otherwise. Testing stops at the first element for which `p` is `true`.
+   *
+   *  @param p the predicate each element is tested against
+   */
   override def exists(p: Int => Boolean): Boolean = {
     val s = stepper
     while (s.hasStep)
@@ -242,6 +335,12 @@ final class IntAccumulator
     false
   }
 
+  /** Returns the number of elements of this `IntAccumulator` that satisfy `p`.
+   *
+   *  @param p the predicate each element is tested against
+   *  @return the number of matching elements, as an `Int`, which overflows silently if more than
+   *          `Int.MaxValue` elements match; use [[countLong]] for large accumulators
+   */
   override def count(p: Int => Boolean): Int = {
     var r = 0
     val s = stepper
@@ -250,6 +349,11 @@ final class IntAccumulator
     r
   }
 
+  /** Returns the number of elements of this `IntAccumulator` that satisfy `p`, as a `Long`, so
+   *  that accumulators holding more than `Int.MaxValue` elements are counted correctly.
+   *
+   *  @param p the predicate each element is tested against
+   */
   def countLong(p: Int => Boolean): Long = {
     var r = 0L
     val s = stepper
@@ -314,10 +418,22 @@ final class IntAccumulator
     factory.fromSpecific(iterator)
   }
 
+  /** Returns an `IntAccumulator` holding the elements of `coll`; used by operations that
+   *  preserve this collection's type to build their result.
+   *
+   *  @param coll the collection whose elements are accumulated
+   *  @return `coll` itself if it already is an `IntAccumulator`, otherwise a new `IntAccumulator`
+   *          with all of its elements appended in order
+   */
   override protected def fromSpecific(coll: IterableOnce[Int]): IntAccumulator = IntAccumulator.fromSpecific(coll)
+  /** Returns a new, empty `IntAccumulator`, which acts as both the builder and its result. */
   override protected def newSpecificBuilder: IntAccumulator = IntAccumulator.newBuilder
+  /** Returns the [[AnyAccumulator]] companion object, the factory used to build the results of
+   *  inherited operations, such as `map`, that can produce elements of any type.
+   */
   override def iterableFactory: SeqFactory[AnyAccumulator] = AnyAccumulator
 
+  /** Returns a new, empty `IntAccumulator`. */
   override def empty: IntAccumulator = IntAccumulator.empty
 
   private def writeReplace(): AnyRef = new IntAccumulator.SerializationProxy(this)
@@ -327,6 +443,11 @@ object IntAccumulator extends collection.SpecificIterableFactory[Int, IntAccumul
   private val emptyIntArray = new Array[Int](0)
   private val emptyIntArrayArray = new Array[Array[Int]](0)
 
+  /** Returns the [[IntAccumulator]] companion object as a factory for `java.lang.Integer`
+   *  elements, so that collections of boxed `Integer`s can be built into an `IntAccumulator`.
+   *
+   *  @param ia the `IntAccumulator` companion object being converted (never used)
+   */
   implicit def toJavaIntegerAccumulator(ia: IntAccumulator.type): collection.SpecificIterableFactory[jl.Integer, IntAccumulator] = IntAccumulator.asInstanceOf[collection.SpecificIterableFactory[jl.Integer, IntAccumulator]]
 
   import java.util.{function => jf}
@@ -350,6 +471,13 @@ object IntAccumulator extends collection.SpecificIterableFactory[Int, IntAccumul
     r
   }
 
+  /** Returns an `IntAccumulator` holding the elements of `it`.
+   *
+   *  @param it the collection whose elements are accumulated; it may be a one-shot source, such
+   *         as an `Iterator`, in which case it is consumed
+   *  @return `it` itself if it already is an `IntAccumulator`, otherwise a new `IntAccumulator`
+   *          with all of its elements appended in order
+   */
   override def fromSpecific(it: IterableOnce[Int]): IntAccumulator = it match {
     case acc: IntAccumulator => acc
     case as: collection.immutable.ArraySeq.ofInt => fromArray(as.unsafeArray)
@@ -357,10 +485,19 @@ object IntAccumulator extends collection.SpecificIterableFactory[Int, IntAccumul
     case _ => (new IntAccumulator).addAll(it)
   }
 
+  /** Returns a new, empty `IntAccumulator`. */
   override def empty: IntAccumulator = new IntAccumulator
 
+  /** Returns a builder for `IntAccumulator`s, which is itself a new, empty `IntAccumulator`. */
   override def newBuilder: IntAccumulator = new IntAccumulator
 
+  /** A serialization proxy that writes an `IntAccumulator` as its size followed by its elements,
+   *  and reads it back into a freshly built accumulator.
+   *
+   *  @tparam A an unused type parameter; the proxy always serializes `Int` elements
+   *  @param acc the accumulator whose elements are written; it is `@transient`, so it is only
+   *         available while serializing, not after deserialization
+   */
   class SerializationProxy[A](@transient private val acc: IntAccumulator) extends Serializable {
     @transient private var result: IntAccumulator = compiletime.uninitialized
 
@@ -414,12 +551,19 @@ private[jdk] class IntAccumulatorStepper(private val acc: IntAccumulator) extend
     i = 0
   }
 
+  /** Returns the characteristics of this stepper: `ORDERED`, `SIZED`, `SUBSIZED` and `NONNULL`. */
   def characteristics: Int = ORDERED | SIZED | SUBSIZED | NONNULL
 
+  /** Returns the exact number of elements remaining in this stepper. */
   def estimateSize: Long = N
 
+  /** Returns `true` if at least one element remains in this stepper. */
   def hasStep: Boolean = N > 0
 
+  /** Returns the next element and advances this stepper.
+   *
+   *  @throws NoSuchElementException if no elements remain
+   */
   def nextStep(): Int =
     if (N <= 0) throw new NoSuchElementException("next on empty Stepper")
     else {
@@ -430,6 +574,9 @@ private[jdk] class IntAccumulatorStepper(private val acc: IntAccumulator) extend
       ans
     }
 
+  /** Splits the remaining elements in half, returning a stepper over the first half and leaving
+   *  this stepper positioned on the second half, or `null` if fewer than two elements remain.
+   */
   def trySplit(): IntStepper | Null =
     if (N <= 1) null
     else {
@@ -455,6 +602,13 @@ private[jdk] class IntAccumulatorStepper(private val acc: IntAccumulator) extend
       ans
     }
 
+  /** Returns a `java.util.Spliterator.OfInt` over the remaining elements of this stepper, which
+   *  advances this stepper as it is consumed.
+   *
+   *  @tparam B a supertype of `Int` (never used, the result is always an `OfInt`)
+   *  @return a `Spliterator.OfInt` whose `tryAdvance` and `forEachRemaining` read the
+   *          accumulator's blocks directly, rather than going through `nextStep()`
+   */
   override def spliterator[B >: Int]: Spliterator.OfInt = new IntStepper.IntStepperSpliterator(this) {
     // Overridden for efficiency
     override def tryAdvance(c: IntConsumer): Boolean =

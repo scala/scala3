@@ -34,8 +34,18 @@ final class LongAccumulator
 
   private[jdk] def cumulative(i: Int) = { val x = history(i); x(x.length-1) }
 
+  /** Returns `"LongAccumulator"`, the prefix used by `toString`. */
   override protected def className: String = "LongAccumulator"
 
+  /** Returns a [[scala.collection.Stepper]] over the elements of this `LongAccumulator` that
+   *  supports efficient splitting, so that it can be traversed in parallel.
+   *
+   *  @tparam S the specific stepper type, determined by `shape`
+   *  @param shape the implicit shape selecting the stepper specialized for `Long`; only
+   *         `LongShape` and `ReferenceShape` are supported
+   *  @return a stepper of shape `S`; for `LongShape` it steps over the elements without boxing,
+   *          for `ReferenceShape` it boxes them as `java.lang.Long`
+   */
   def efficientStepper[S <: Stepper[?]](implicit shape: StepperShape[Long, S]): S & EfficientSplit = {
     val st = new LongAccumulatorStepper(this)
     val r =
@@ -139,6 +149,7 @@ final class LongAccumulator
     that.clear()
   }
 
+  /** Removes all accumulated elements from this `LongAccumulator`, releasing the arrays that held them. */
   override def clear(): Unit = {
     super.clear()
     current = LongAccumulator.emptyLongArray
@@ -165,6 +176,23 @@ final class LongAccumulator
    */
   def apply(i: Int): Long = apply(i.toLong)
 
+  /** Replaces the element at index `idx` with `elem`.
+   *
+   *  `idx` is not validated, and an out-of-range index has more than one possible outcome. It can
+   *  land in unused capacity of the current array, in which case the write silently succeeds
+   *  without changing any element this accumulator reports. Because the offset into the current
+   *  array is computed as a `Long` and then narrowed to an `Int`, an index far enough out of range
+   *  can also wrap onto an occupied slot and silently overwrite an element this accumulator does
+   *  report. The same narrowing happens on the other branch: `seekSlot` narrows the index it is
+   *  given to an `Int` when locating a slot in `history`, so an out-of-range index can wrap onto an
+   *  occupied history slot as well. Otherwise the write throws.
+   *
+   *  @param idx the zero-based index of the element to replace
+   *  @param elem the `Long` value to store at index `idx`
+   *  @throws ArrayIndexOutOfBoundsException if `idx` is out of range and the computed offset falls
+   *          outside the array being written, rather than into unused current-array capacity or
+   *          onto an occupied slot reached by `Int` narrowing
+   */
   def update(idx: Long, elem: Long): Unit = {
     if (totalSize - idx <= index || hIndex == 0) current((idx - (totalSize - index)).toInt) = elem
     else {
@@ -173,16 +201,45 @@ final class LongAccumulator
     }
   }
 
+  /** Replaces the element at index `idx` with `elem`, using an `Int` index.
+   *
+   *  `idx` is not validated, and an out-of-range index has more than one possible outcome. It can
+   *  land in unused capacity of the current array, in which case the write silently succeeds
+   *  without changing any element this accumulator reports. Otherwise the write throws. An `Int`
+   *  index is widened to a `Long` without loss, so it can never wrap onto an occupied slot the
+   *  way a sufficiently large `Long` index can.
+   *
+   *  @param idx the zero-based index of the element to replace
+   *  @param elem the `Long` value to store at index `idx`
+   *  @throws ArrayIndexOutOfBoundsException if `idx` is out of range and the computed offset falls
+   *          outside the array being written, rather than into unused current-array capacity
+   */
   def update(idx: Int, elem: Long): Unit = update(idx.toLong, elem)
 
   /** Returns an `Iterator` over the contents of this `LongAccumulator`. The `Iterator` is not specialized. */
   def iterator: Iterator[Long] = stepper.iterator
 
+  /** Applies `f` to every element of this `LongAccumulator`, in order.
+   *
+   *  Elements are read through an [[scala.collection.LongStepper]], so a function specialized for
+   *  `Long` receives them without boxing.
+   *
+   *  @tparam U the result type of `f`, which is discarded
+   *  @param f the function applied to each element
+   */
   override def foreach[U](f: Long => U): Unit = {
     val s = stepper
     while (s.hasStep) f(s.nextStep())
   }
 
+  /** Returns a new `LongAccumulator` containing the results of applying `f` to each element of
+   *  this one, in order.
+   *
+   *  Unlike the inherited `map`, which builds an [[AnyAccumulator]], this overload keeps the
+   *  elements unboxed.
+   *
+   *  @param f the function applied to each element
+   */
   def map(f: Long => Long): LongAccumulator = {
     val b = newSpecificBuilder
     val s = stepper
@@ -191,6 +248,14 @@ final class LongAccumulator
     b.result()
   }
 
+  /** Returns a new `LongAccumulator` containing the elements produced by applying `f` to each
+   *  element of this one, concatenated in order.
+   *
+   *  Unlike the inherited `flatMap`, which builds an [[AnyAccumulator]], this overload keeps the
+   *  elements unboxed.
+   *
+   *  @param f the function mapping each element to a collection of `Long`s
+   */
   def flatMap(f: Long => IterableOnce[Long]): LongAccumulator = {
     val b = newSpecificBuilder
     val s = stepper
@@ -199,6 +264,14 @@ final class LongAccumulator
     b.result()
   }
 
+  /** Returns a new `LongAccumulator` containing the results of applying `pf` to the elements of
+   *  this one for which it is defined, in order.
+   *
+   *  Unlike the inherited `collect`, which builds an [[AnyAccumulator]], this overload keeps the
+   *  elements unboxed.
+   *
+   *  @param pf the partial function applied to the elements on which it is defined
+   */
   def collect(pf: PartialFunction[Long, Long]): LongAccumulator = {
     val b = newSpecificBuilder
     val s = stepper
@@ -219,10 +292,25 @@ final class LongAccumulator
     b.result()
   }
 
+  /** Returns a new `LongAccumulator` containing the elements of this one that satisfy `pred`, in
+   *  order.
+   *
+   *  @param pred the predicate each element is tested against
+   */
   override def filter(pred: Long => Boolean): LongAccumulator = filterAccImpl(pred, not = false)
 
+  /** Returns a new `LongAccumulator` containing the elements of this one that do not satisfy
+   *  `pred`, in order.
+   *
+   *  @param pred the predicate each element is tested against
+   */
   override def filterNot(pred: Long => Boolean): LongAccumulator = filterAccImpl(pred, not = true)
 
+  /** Returns `true` if `p` holds for every element of this `LongAccumulator`, and `true` if this
+   *  `LongAccumulator` is empty. Testing stops at the first element for which `p` is `false`.
+   *
+   *  @param p the predicate each element is tested against
+   */
   override def forall(p: Long => Boolean): Boolean = {
     val s = stepper
     while (s.hasStep)
@@ -230,6 +318,11 @@ final class LongAccumulator
     true
   }
 
+  /** Returns `true` if `p` holds for at least one element of this `LongAccumulator`, `false`
+   *  otherwise. Testing stops at the first element for which `p` is `true`.
+   *
+   *  @param p the predicate each element is tested against
+   */
   override def exists(p: Long => Boolean): Boolean = {
     val s = stepper
     while (s.hasStep)
@@ -237,6 +330,12 @@ final class LongAccumulator
     false
   }
 
+  /** Returns the number of elements of this `LongAccumulator` that satisfy `p`.
+   *
+   *  @param p the predicate each element is tested against
+   *  @return the number of matching elements, as an `Int`, which overflows silently if more than
+   *          `Int.MaxValue` elements match; use [[countLong]] for large accumulators
+   */
   override def count(p: Long => Boolean): Int = {
     var r = 0
     val s = stepper
@@ -245,6 +344,11 @@ final class LongAccumulator
     r
   }
 
+  /** Returns the number of elements of this `LongAccumulator` that satisfy `p`, as a `Long`, so
+   *  that accumulators holding more than `Int.MaxValue` elements are counted correctly.
+   *
+   *  @param p the predicate each element is tested against
+   */
   def countLong(p: Long => Boolean): Long = {
     var r = 0L
     val s = stepper
@@ -309,10 +413,22 @@ final class LongAccumulator
     factory.fromSpecific(iterator)
   }
 
+  /** Returns a `LongAccumulator` holding the elements of `coll`; used by operations that
+   *  preserve this collection's type to build their result.
+   *
+   *  @param coll the collection whose elements are accumulated
+   *  @return `coll` itself if it already is a `LongAccumulator`, otherwise a new `LongAccumulator`
+   *          with all of its elements appended in order
+   */
   override protected def fromSpecific(coll: IterableOnce[Long]): LongAccumulator = LongAccumulator.fromSpecific(coll)
+  /** Returns a new, empty `LongAccumulator`, which acts as both the builder and its result. */
   override protected def newSpecificBuilder: LongAccumulator = LongAccumulator.newBuilder
+  /** Returns the [[AnyAccumulator]] companion object, the factory used to build the results of
+   *  inherited operations, such as `map`, that can produce elements of any type.
+   */
   override def iterableFactory: SeqFactory[AnyAccumulator] = AnyAccumulator
 
+  /** Returns a new, empty `LongAccumulator`. */
   override def empty: LongAccumulator = LongAccumulator.empty
 
   private def writeReplace(): AnyRef = new LongAccumulator.SerializationProxy(this)
@@ -322,6 +438,11 @@ object LongAccumulator extends collection.SpecificIterableFactory[Long, LongAccu
   private val emptyLongArray = new Array[Long](0)
   private val emptyLongArrayArray = new Array[Array[Long]](0)
 
+  /** Returns the [[LongAccumulator]] companion object as a factory for `java.lang.Long`
+   *  elements, so that collections of boxed `Long`s can be built into a `LongAccumulator`.
+   *
+   *  @param ia the `LongAccumulator` companion object being converted (never used)
+   */
   implicit def toJavaLongAccumulator(ia: LongAccumulator.type): collection.SpecificIterableFactory[jl.Long, LongAccumulator] = LongAccumulator.asInstanceOf[collection.SpecificIterableFactory[jl.Long, LongAccumulator]]
 
   import java.util.{function => jf}
@@ -345,6 +466,13 @@ object LongAccumulator extends collection.SpecificIterableFactory[Long, LongAccu
     r
   }
 
+  /** Returns a `LongAccumulator` holding the elements of `it`.
+   *
+   *  @param it the collection whose elements are accumulated; it may be a one-shot source, such
+   *         as an `Iterator`, in which case it is consumed
+   *  @return `it` itself if it already is a `LongAccumulator`, otherwise a new `LongAccumulator`
+   *          with all of its elements appended in order
+   */
   override def fromSpecific(it: IterableOnce[Long]): LongAccumulator = it match {
     case acc: LongAccumulator => acc
     case as: collection.immutable.ArraySeq.ofLong => fromArray(as.unsafeArray)
@@ -352,10 +480,19 @@ object LongAccumulator extends collection.SpecificIterableFactory[Long, LongAccu
     case _ => (new LongAccumulator).addAll(it)
   }
 
+  /** Returns a new, empty `LongAccumulator`. */
   override def empty: LongAccumulator = new LongAccumulator
 
+  /** Returns a builder for `LongAccumulator`s, which is itself a new, empty `LongAccumulator`. */
   override def newBuilder: LongAccumulator = new LongAccumulator
 
+  /** A serialization proxy that writes a `LongAccumulator` as its size followed by its elements,
+   *  and reads it back into a freshly built accumulator.
+   *
+   *  @tparam A an unused type parameter; the proxy always serializes `Long` elements
+   *  @param acc the accumulator whose elements are written; it is `@transient`, so it is only
+   *         available while serializing, not after deserialization
+   */
   class SerializationProxy[A](@transient private val acc: LongAccumulator) extends Serializable {
     @transient private var result: LongAccumulator = compiletime.uninitialized
 
@@ -409,12 +546,21 @@ private[jdk] class LongAccumulatorStepper(private val acc: LongAccumulator) exte
     i = 0
   }
 
+  /** Returns the characteristics of this stepper: `ORDERED`, `SIZED`, `SUBSIZED` and `NONNULL`. */
   def characteristics: Int = ORDERED | SIZED | SUBSIZED | NONNULL
 
+  /** Returns the exact number of elements remaining in this stepper. */
   def estimateSize: Long = N
 
+  /** Returns `true` if at least one element remains in this stepper. */
   def hasStep: Boolean = N > 0
 
+  /** Returns the next element and advances this stepper.
+   *
+   *  Call this only while [[hasStep]] is `true`.
+   *
+   *  @throws NoSuchElementException if this stepper was created from an empty accumulator
+   */
   def nextStep(): Long =
     if (n <= 0) throw new NoSuchElementException("next on empty Stepper")
     else {
@@ -425,6 +571,9 @@ private[jdk] class LongAccumulatorStepper(private val acc: LongAccumulator) exte
       ans
     }
 
+  /** Splits the remaining elements in half, returning a stepper over the first half and leaving
+   *  this stepper positioned on the second half, or `null` if fewer than two elements remain.
+   */
   def trySplit(): LongStepper | Null =
     if (N <= 1) null
     else {
@@ -450,6 +599,13 @@ private[jdk] class LongAccumulatorStepper(private val acc: LongAccumulator) exte
       ans
     }
 
+  /** Returns a `java.util.Spliterator.OfLong` over the remaining elements of this stepper, which
+   *  advances this stepper as it is consumed.
+   *
+   *  @tparam B a supertype of `Long` (never used, the result is always an `OfLong`)
+   *  @return a `Spliterator.OfLong` whose `tryAdvance` and `forEachRemaining` read the
+   *          accumulator's blocks directly, rather than going through `nextStep()`
+   */
   override def spliterator[B >: Long]: Spliterator.OfLong = new LongStepper.LongStepperSpliterator(this) {
     // Overridden for efficiency
     override def tryAdvance(c: LongConsumer): Boolean =
