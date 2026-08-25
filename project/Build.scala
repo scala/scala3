@@ -544,7 +544,7 @@ object Build {
            |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
            |  --update-checkfiles   override the checkfiles that did not match with the current output
            |  --failed              re-run only failed tests
-           |  --enable-coverage-phase enable Scoverage instrumentation phase for compilation tests
+           |  --enable-coverage-phase run coverage-enabled compilation tests with Scoverage instrumentation
            |  <filter>              substring of the path of the tests file
            |
          """.stripMargin
@@ -569,6 +569,7 @@ object Build {
         else if (coverageFlag) compilationTests
         else s"$compilationTests dotty.tools.dotc.coverage.*"
       val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
+        (if (enableCoveragePhase) " --include-categories=dotty.CoverageCompilationTests" else "") +
         (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
         (if (rerunFailed) " -Ddotty.tests.rerunFailed=TRUE" else "") +
         (if (enableCoveragePhase) " -Ddotty.tests.instrumentCoverage=TRUE" else "") +
