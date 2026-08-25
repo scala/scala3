@@ -787,7 +787,7 @@ object Array {
  *  @tparam T the element type of the array
  *  @param _length the size of the array to allocate; must be non-negative
  */
-final class Array[T](@unused _length: Int) extends java.io.Serializable with java.lang.Cloneable { self: Array[T] =>
+final class Array[T](_length: Int) extends java.io.Serializable with java.lang.Cloneable { self: Array[T] =>
 
   /** The length of the array. */
   def length: Int = throw new Error()

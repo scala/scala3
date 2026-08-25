@@ -15,7 +15,6 @@ package immutable
 
 import scala.language.`2.13`
 import language.experimental.captureChecking
-import scala.annotation.unused
 
 import java.lang.Math.{abs, max => mmax, min => mmin}
 import java.util.Arrays.{copyOf, copyOfRange}
@@ -2595,7 +2594,7 @@ private class LongVectorStepper(it: NewVectorIterator[Long])
 
 
 // The following definitions are needed for binary compatibility with ParVector
-private[collection] class VectorIterator[+A](@unused _startIndex: Int, private var endIndex: Int) extends AbstractIterator[A] {
+private[collection] class VectorIterator[+A](_startIndex: Int, private var endIndex: Int) extends AbstractIterator[A] {
   private[immutable] var it: NewVectorIterator[A @uncheckedVariance] = compiletime.uninitialized
   def hasNext: Boolean = it.hasNext
   def next(): A = it.next()
