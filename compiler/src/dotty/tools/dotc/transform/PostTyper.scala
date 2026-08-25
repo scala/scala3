@@ -265,7 +265,7 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
       tree match
         case tree: ValOrDefDef if !sym.is(Synthetic) =>
           checkInferredWellFormed(tree.tpt)
-          if tree.symbol.owner.isInlineTrait then checkInlTraitPrivateMemberIsLocal(tree)
+          if sym.owner.isInlineTrait then checkInlTraitPrivateMemberIsLocal(tree)
           if sym.is(Method) then
             if sym.isSetter then
               sym.keepAnnotationsCarrying(thisPhase, Set(defn.SetterMetaAnnot))
@@ -383,12 +383,13 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
     def checkUsableAsValue(tree: Tree)(using Context): Tree =
       def unusable(msg: Symbol => Message) =
         errorTree(tree, msg(tree.symbol))
-      if tree.symbol.is(PhantomSymbol) then
-        if tree.symbol.isDummyCaptureParam then
+      val sym = tree.symbol
+      if sym.is(PhantomSymbol) then
+        if sym.isDummyCaptureParam then
           unusable(DummyCaptureParamNotValue(_))
         else
           unusable(ConstructorProxyNotValue(_))
-      else if tree.symbol.isContextBoundCompanion then
+      else if sym.isContextBoundCompanion then
         unusable(ContextBoundCompanionNotValue(_))
       else
         tree
@@ -682,12 +683,12 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
           val tree1 = cpy.DefDef(tree)(tpt = explicifyTpt(tree))
           processValOrDefDef(superAcc.wrapDefDef(tree1)(super.transform(tree1).asInstanceOf[DefDef]))
         case tree: TypeDef =>
-          if tree.symbol.isInlineTrait then
+          val sym = tree.symbol
+          if sym.isInlineTrait then
             ctx.compilationUnit.needsInlining = true  // Check and transform inline traits
-          if tree.rhs.tpe.existsPart(t => t.typeSymbol == defn.SpecializedClass.asType) && (tree.symbol ne defn.SpecializedClass) then
+          if tree.rhs.tpe.existsPart(t => t.typeSymbol == defn.SpecializedClass.asType) && (sym ne defn.SpecializedClass) then
             report.error(IllegalUseOfSpecialized(), tree.srcPos)
           registerIfHasMacroAnnotations(tree)
-          val sym = tree.symbol
           if (sym.isClass)
             VarianceChecker.check(tree)
             annotateExperimentalCompanion(sym)
@@ -744,14 +745,15 @@ class PostTyper extends MacroTransform with InfoTransformer { thisPhase =>
         case tree @ Annotated(annotated, annot) =>
           cpy.Annotated(tree)(transform(annotated), transformAnnotTree(annot))
         case tree: AppliedTypeTree =>
-          if (tree.tpt.symbol == defn.andType)
+          val sym = tree.tpt.symbol
+          if (sym == defn.andType)
             Checking.checkNonCyclicInherited(tree.tpe, tree.args.tpes, EmptyScope, tree.srcPos)
               // Ideally, this should be done by Typer, but we run into cyclic references
               // when trying to typecheck self types which are intersections.
-          else if (tree.tpt.symbol == defn.orType)
+          else if (sym == defn.orType)
             () // nothing to do
           else
-            if tree.tpt.symbol == defn.SpecializedClass && !(ctx.owner.name.is(ContextBoundParamName) || ctx.owner.ownersIterator.contains(defn.SpecializedModule_apply)) then
+            if sym == defn.SpecializedClass && !(ctx.owner.name.is(ContextBoundParamName) || ctx.owner.ownersIterator.contains(defn.SpecializedModule_apply)) then
               report.error(IllegalUseOfSpecialized(), tree.srcPos)
             Checking.checkAppliedType(tree)
           super.transform(tree)

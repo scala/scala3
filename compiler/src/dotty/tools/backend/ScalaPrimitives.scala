@@ -397,8 +397,9 @@ class ScalaPrimitives(using @constructorOnly initCtx: Context) {
     primitives.contains(sym)
 
   def isPrimitive(fun: Tree)(using Context): Boolean =
-    primitives.contains(fun.symbol)
-    || (fun.symbol == NoSymbol // the only trees that do not have a symbol assigned are array.{update,select,length,clone}
+    val sym = fun.symbol
+    primitives.contains(sym)
+    || (sym == NoSymbol // the only trees that do not have a symbol assigned are array.{update,select,length,clone}
         && {
           fun match
             case Select(_, nme.clone_) => false // but array.clone is NOT a primitive op.

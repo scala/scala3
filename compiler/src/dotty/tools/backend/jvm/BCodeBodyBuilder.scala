@@ -397,10 +397,11 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
           generatedType = genApply(app, expectedType)
 
         case This(qual) =>
-          val symIsModuleClass = tree.symbol.is(ModuleClass)
-          assert(tree.symbol == claszSymbol || symIsModuleClass,
-                 s"Trying to access the this of another class: tree.symbol = ${tree.symbol}, class symbol = $claszSymbol compilation unit: ${ctx.compilationUnit}")
-          if (symIsModuleClass && tree.symbol != claszSymbol) {
+          val sym = tree.symbol
+          val symIsModuleClass = sym.is(ModuleClass)
+          assert(sym == claszSymbol || symIsModuleClass,
+                 s"Trying to access the this of another class: tree.symbol = $sym, class symbol = $claszSymbol compilation unit: ${ctx.compilationUnit}")
+          if (symIsModuleClass && sym != claszSymbol) {
             generatedType = genLoadModule(tree)
           }
           else {
@@ -409,7 +410,7 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
             // is `[Object` (computed by typeToBType, the type of This(Array) is `Array[T]`). If we would set
             // the generatedType to `Array` below, the call to adapt at the end would fail. The situation is
             // similar for primitives (`I` vs `Int`).
-            if (tree.symbol != defn.ArrayClass && !tree.symbol.isPrimitiveValueClass) {
+            if (sym != defn.ArrayClass && !sym.isPrimitiveValueClass) {
               generatedType = bTypeLoader.classBTypeFromSymbol(claszSymbol)
             }
           }
@@ -1278,13 +1279,13 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
     end genLoadArguments
 
     def genLoadModule(tree: Tree)(using Context): BType = {
-      val module = (
-        if (!tree.symbol.is(PackageClass)) tree.symbol
-        else tree.symbol.info.member(nme.PACKAGE).symbol match {
+      val sym = tree.symbol
+      val module =
+        if !sym.is(PackageClass) then sym
+        else sym.info.member(nme.PACKAGE).symbol match {
           case NoSymbol => throw new AssertionError(s"SI-5604: Cannot use package as value: $tree")
           case s        => throw new AssertionError(s"SI-5604: found package class where package object expected: $tree")
         }
-      )
       lineNumber(tree)
       genLoadModule(module)
       symInfoTK(module)

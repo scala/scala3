@@ -378,8 +378,10 @@ object Trees {
 
     protected def srcName(using Context): Name =
       if name == nme.CONSTRUCTOR then nme.this_
-      else if symbol.isPackageObject then symbol.owner.name
-      else name
+      else
+        val sym = this.symbol
+        if sym.isPackageObject then sym.owner.name
+        else name
 
     /** The position of the name defined by this definition.
      *  This is a point position if the definition is synthetic, or a range position

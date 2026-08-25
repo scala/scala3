@@ -63,7 +63,8 @@ object Inliner:
       case New(_) | Closure(_, _, _) =>
         true
       case TypeApply(fn, _) =>
-        if fn.symbol.isErased || fn.symbol == defn.QuotedTypeModule_of then true else apply(fn)
+        val sym = fn.symbol
+        if sym.isErased || sym == defn.QuotedTypeModule_of then true else apply(fn)
       case Apply(fn, args) =>
         val isCaseClassApply = {
           val cls = tree.tpe.classSymbol
@@ -711,8 +712,10 @@ class Inliner(val call: tpd.Tree)(using Context):
         /* Span of the argument. Used when the argument is inlined directly without a binding */
         def argSpan =
           if (tree.name == nme.WILDCARD) tree.span // From type match
-          else if (tree.symbol.isTypeParam && tree.symbol.owner.isClass) tree.span // TODO is this the correct span
-          else paramSpan(tree.name)
+          else
+            val sym = tree.symbol
+            if sym.isTypeParam && sym.owner.isClass then tree.span // TODO is this the correct span
+            else paramSpan(tree.name)
         val inlinedCtx = ctx.withSource(inlinedMethod.topLevelClass.source)
         paramProxy.get(tree.tpe) match {
           case Some(t) if tree.isTerm && t.isSingleton =>
