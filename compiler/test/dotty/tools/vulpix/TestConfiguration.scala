@@ -68,7 +68,6 @@ object TestConfiguration {
 
   val noYcheckCommonOptions = Array("-indent") ++ checkOptions ++ noCheckOptions
   val commonOptions = noYcheckCommonOptions ++ yCheckOptions ++ silenceOptions
-  val bareOptions = TestFlags(basicClasspath, Array())
   val defaultOptions = TestFlags(basicClasspath, commonOptions)
   val noYcheckOptions = TestFlags(basicClasspath, noYcheckCommonOptions)
   val bestEffortBaselineOptions = TestFlags(basicClasspath, noCheckOptions)
