@@ -548,6 +548,7 @@ object Contexts {
       if depth >= ops.length then
         throw RecursionOverflow(ops, title, details, pos, weight)
       if depth >= 0 then
+        //if depth >= 100 then println(title)
         base.recursiveDepth = depth + 1
         ops(depth).title = title
         ops(depth).details = details
