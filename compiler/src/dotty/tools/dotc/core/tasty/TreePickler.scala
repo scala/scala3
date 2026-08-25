@@ -484,7 +484,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
                   name.isTypeName
                   || qual.isInstanceOf[Hole] // holes have no symbol
                   || sig == Signature.NotAMethod // no overload resolution necessary
-                  || !tree.denot.symbol.exists // polymorphic function type
+                  || !tree.symbol.exists // polymorphic function type
                   || tree.denot.asSingleDenotation.isRefinedMethod // refined methods have no defining class symbol
                 if selectFromQualifier then
                   writeByte(if name.isTypeName then SELECTtpt else SELECT)

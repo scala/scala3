@@ -897,7 +897,7 @@ object Specialization:
 
   def unapply(tpt: Tree)(using Context): Option[Specialization] = tpt match {
     case AppliedTypeTree(specializedTrait: Ident, concreteTypeTrees: List[Tree]) => 
-      Some(Specialization(specializedTrait.denot.symbol, concreteTypeTrees.map(_.tpe), tpt.span))
+      Some(Specialization(specializedTrait.symbol, concreteTypeTrees.map(_.tpe), tpt.span))
     case t: TypeTree => Specialization.unapply(t.tpe, t.span)
     case _ => None
   }
