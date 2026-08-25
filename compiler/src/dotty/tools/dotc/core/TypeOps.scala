@@ -470,7 +470,7 @@ object TypeOps:
       case _ => true
 
     override def apply(tp: Type): Type =
-      //ctx.handleRecursive("traversing for avoiding local references", tp):
+      ctx.handleRecursive("traversing for avoiding local references", tp):
         tp match
           case tp: TermRef if toAvoid(tp) =>
             tp.info.widenExpr.dealiasKeepRefiningAnnots match {
