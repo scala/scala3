@@ -1,4 +1,4 @@
--- Error: tests/neg-macros/recursionoverflow-in-macro/Use_2.scala:6:42 --------------------------------------------------------
+-- Error: tests/neg-macros/recursionoverflow-in-macro/Use_2.scala:6:42 -------------------------------------------------
  6 |val proof: Int = LemmaMacros.applyTactics { // error
    |                 ^
    |Recursion limit exceeded.
