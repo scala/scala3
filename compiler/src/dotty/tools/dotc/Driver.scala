@@ -34,6 +34,8 @@ class Driver {
         runOrNull = run
         run.compile(files)
         finish(compiler, run)
+        println("Total: " + dotty.tools.dotc.ast.Trees.symbolStats.toList.map(_._2).sum)
+        dotty.tools.dotc.ast.Trees.symbolStats.toList.sortBy(-_._2).map{ case (k, v) => s"$v: $k" }.foreach(println)
       catch
         case ro: RecursionOverflow =>
           report.error(ro.toMessage, ro.pos)(using ro.ctx)

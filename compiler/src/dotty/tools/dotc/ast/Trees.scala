@@ -20,6 +20,7 @@ import Decorators.*
 import staging.StagingLevel.*
 
 object Trees {
+  val symbolStats = scala.collection.mutable.Map.empty[String, Int]
 
   type Untyped = Type | Null
 
@@ -147,7 +148,14 @@ object Trees {
     def denot(using Context): Denotation = NoDenotation
 
     /** Shorthand for `denot.symbol`. */
-    final def symbol(using Context): Symbol = denot.symbol
+    final def symbol(using Context): Symbol = {
+      val caller = Thread.currentThread().getStackTrace()(2).toString
+      symbolStats.get(caller) match {
+        case Some(s) => symbolStats(caller) = s + 1
+        case None => symbolStats(caller) = 1
+      }
+      denot.symbol
+    }
 
     /** Does this tree represent a type? */
     def isType: Boolean = false
