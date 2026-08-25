@@ -6,7 +6,6 @@
    |
    |               Note that I could not resolve reference Event.
    |               Event is a private member in a base class
-   |                                
    |
    | longer explanation available when compiling with `-explain`
 -- [E007] Type Mismatch Error: tests/neg/i21543.scala:10:20 ------------------------------------------------------------
@@ -17,6 +16,5 @@
    |
    |                    Note that I could not resolve reference Event.
    |                    Event is a private member in a base class
-   |                                     
    |
    | longer explanation available when compiling with `-explain`
