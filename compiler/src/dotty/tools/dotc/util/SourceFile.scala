@@ -88,7 +88,8 @@ class SourceFile (val file: AbstractFile | Null, sourceRoot: AbstractFile, codec
     if file eq null then "" else file.path
   @threadUnsafe lazy val pathRelativeToSourceRoot: String =
     if file eq null then
-      throw new AssertionError(s"pathRelativeToSourceRoot called on a missing file")
+      // While this should not happen, it currently does due to known definitions being loaded without a source file
+      ""
     else if file.isVirtual || sourceRoot.isVirtual then
       // This can happen when evaluating debug expressions with fake in-memory files
       file.path
