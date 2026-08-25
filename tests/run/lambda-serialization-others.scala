@@ -1,3 +1,7 @@
+//> using options -language:experimental.erasedDefinitions
+// scalajs: --skip
+// (this test uses serialization)
+
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, ObjectInputStream, ObjectOutputStream, PrintWriter, StringWriter}
 import java.lang.invoke.{MethodHandleInfo, SerializedLambda}
 
@@ -31,7 +35,7 @@ class C1 {
 
   val depfun: (x1: Int) => List[x1.type] = x1 => List(x1)
 
-  val erasedfun: (erased Int) => Int = (erased x1) => 0
+  val erasedfun: (erased x1: Int) => Int = (erased x1) => 0
 }
 
 class C2
@@ -40,7 +44,7 @@ class C2
 
   val impdepfun: (x1: Int) ?=> List[x1.type] = x1 ?=> List(x1)
 
-  val erasedimpfun: (erased Int) ?=> Int = (erased x1) ?=> 0
+  val erasedimpfun: (erased x1: Int) ?=> Int = (erased x1) ?=> 0
 }
 
 object Test {
