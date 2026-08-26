@@ -280,6 +280,9 @@ final class ClassfileParser(
   private var currentClassName: SimpleName = uninitialized // JVM name of the current class
   private var classTParams: Map[Name, Symbol] = Map()
 
+  // descriptors of the constructors with the ACC_VARARGS flag, see `tpnme.RecordATTR`
+  private var varargsConstructors: Set[String] = Set.empty
+
   private val Scala2UnpicklingMode = Mode.Scala2Unpickling
   private var classfileVersion: Header.Version = Header.Version.Unknown
 
@@ -446,6 +449,8 @@ final class ClassfileParser(
     val preName = pool.getName(in.nextChar)
     if (!sflags.isOneOf(Flags.PrivateOrArtifact) || preName.name == nme.CONSTRUCTOR) {
       val sig = pool.getExternalName(in.nextChar).value
+      if preName.name == nme.CONSTRUCTOR && (jflags & JAVA_ACC_VARARGS) != 0 then
+        varargsConstructors += sig
       val completer = MemberCompleter(preName.name, jflags, sig)
       val member = newSymbol(
         getOwner(jflags), preName.name, sflags, completer,
@@ -1043,25 +1048,17 @@ final class ClassfileParser(
           // JVMS 4.7.30: each record component has a name, a descriptor, and attributes
           val components = List.fill(in.nextChar):
             val name = pool.getName(in.nextChar).value
-            val _ = in.nextChar
+            val descriptor = pool.getExternalName(in.nextChar).value
             skipAttributes()
-            name
+            (name, descriptor)
+          val (names, descriptors) = components.unzip
+          // JLS 8.10.4: the canonical constructor's descriptor is the concatenation of the component
+          // descriptors, no other constructor can have that descriptor. It is vararg if the record is.
+          val canonicalConstructor = descriptors.mkString("(", "", ")V")
+          val isVararg = varargsConstructors.contains(canonicalConstructor)
           // Record the component names and whether it's vararg, see `Applications.javaRecordFields`
           res.annotations ::= Annotation.deferredSymAndTree(defn.JavaRecordFieldsAnnot):
-            val recSym = classRoot.symbol
-            val componentTypes = components.map: name =>
-              recSym.info.member(termName(name)).suchThat(_.paramSymss == List(Nil)).info.finalResultType
-            // The vararg bit is ACC_VARARGS on the canonical constructor, found by matching component types
-            def isCanonical(ctor: Symbol): Boolean =
-              ctor.info.stripPoly match
-                case mt: MethodType if mt.paramInfos.length == componentTypes.length =>
-                  mt.paramInfos.zip(componentTypes).forall:
-                    case (param, defn.ArrayOf(elem)) if param.isRepeatedParam => param.argInfos.head =:= elem
-                    case (param, component) => param =:= component
-                case _ => false
-            val isVararg =
-              recSym.info.decls.lookupAll(nme.CONSTRUCTOR).find(isCanonical).exists(_.info.isVarArgsMethod)
-            JavaRecordFieldsAnnot.tpdTree(isVararg, components)
+            JavaRecordFieldsAnnot.tpdTree(isVararg, names)
 
         case _ =>
           in.skip(attrLen)

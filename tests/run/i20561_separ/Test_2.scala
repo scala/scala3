@@ -50,6 +50,10 @@ case class Bar(val value: String) extends Comparable[Bar]:
   val r10 = RecVarOnly_1("x", "y", "z")
   r10 match { case RecVarOnly_1(_, rest*) => println(rest.mkString(",")) }
 
+  // non-canonical vararg constructor
+  val r11 = RecVarNonCanon_1("k", Array("a", "b"))
+  r11 match { case RecVarNonCanon_1(o, xs) => println(s"$o ${xs.mkString}") }
+
   // a null scrutinee does not match a record pattern
   try
     (null: Rec1_1) match { case Rec1_1(s) => println("matched null") }

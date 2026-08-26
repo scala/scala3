@@ -11,4 +11,5 @@ predefined
 p-q
 empty: MatchError
 y,z
+k ab
 null: MatchError
