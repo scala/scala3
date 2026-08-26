@@ -21,12 +21,7 @@ def bar(x: Int?) =
                 case val x1: Object = x
                 if (null == x1).unary_!() then
                   {
-                    case val x4: Int =
-                      Int.unbox(
-                        (if x1.isInstanceOf[scala.magic.runtime.Valid] then
-                          x1.asInstanceOf[scala.magic.runtime.Valid].elem()
-                           else x1):Object
-                      )
+                    case val x4: Int = Int.unbox(x1:Object)
                     case val y: Int = x4
                     return[matchResult1] y:Int
                   }
@@ -43,6 +38,11 @@ def bar(x: Int?) =
           Int.box(y:Int)
         }
       ):Object:Object
+    def baz(x: Object): Object =
+      (boundary2[Object]:
+        {
+          val y: Int =
+
 */
 
 def baz(x: Int ? String) =
@@ -66,12 +66,7 @@ def baz(x: Int ? String) =
                       x6.isInstanceOf[scala.magic.runtime.Fail].unary_!()
                    then
                     {
-                      case val x9: Int =
-                        Int.unbox(
-                          (if x6.isInstanceOf[scala.magic.runtime.Valid] then
-                            x6.asInstanceOf[scala.magic.runtime.Valid].elem()
-                             else x6):Object
-                        )
+                      case val x9: Int = Int.unbox(x6:Object)
                       case val y: Int = x9
                       return[matchResult2] y:Int
                     }
@@ -94,8 +89,36 @@ def baz(x: Int ? String) =
           Int.box(y:Int)
         }
       ):Object:Object
+
 */
 
+def maybeReverse(s: String?): String? = s match
+  case Ok(s) => s.reverse
+  case null => null
+
+/** With -Vprint:erasure should produce something like:
+
+      matchResult3[String]:
+        {
+          case val x11: String = s
+          if (null == x11).unary_!() then
+            {
+              case val x12: String = x11.asInstanceOf[String]
+              case val s: String = x12
+              return[matchResult3]
+                {
+                  scala.collection.StringOps.reverse$extension(augmentString(s))
+                    :String
+                }
+            }
+           else ()
+          return[matchResult3]
+            {
+              null
+            }
+          throw new MatchError(x11)
+        }
+*/
 @main def Test =
   assert(foo(6) == 6)
   assert(foo(11) == null)

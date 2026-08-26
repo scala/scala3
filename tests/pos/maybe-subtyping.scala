@@ -17,3 +17,5 @@ def Test =
 
   val z3 = foo(x, y)
   val _: String? = z3
+
+  val _: String | Nothing = "abc"
