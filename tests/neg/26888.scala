@@ -22,8 +22,8 @@ object CirceImplicits:
       f7 <- get[Int]("f7")
       f8 <- get[Int]("f8")
       f9 <- get[Int]("f9")
-      f10 <- get[Int]("f10") // error
-      f11 <- get[Int]("f11")
+      f10 <- get[Int]("f10")
+      f11 <- get[Int]("f11") // error
       f12 <- get[Int]("f12")
       f13 <- get[Int]("f13")
       f14 <- get[Int]("f14")
