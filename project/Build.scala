@@ -395,7 +395,7 @@ object Build {
         case cv: Disabled => thisProjectID.name
         case cv: Binary => s"${thisProjectID.name}_${cv.prefix}3${cv.suffix}"
       }
-      (thisProjectID.organization % crossedName % mimaPreviousDottyVersion)
+      (thisProjectID.organization % crossedName % mimaPreviousVersion)
     },
 
     mimaCheckDirection := (CompatMode.value match {

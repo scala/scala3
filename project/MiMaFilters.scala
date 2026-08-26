@@ -8,10 +8,10 @@ object MiMaFilters {
 
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
-      Versions.mimaPreviousDottyVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq.empty,
 
       // Additions since last LTS
-      Versions.mimaPreviousLTSDottyVersion -> Seq(
+      Versions.mimaPreviousLTSVersion -> Seq(
         // new feature: CanEqual support for NamedTuple
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleCanEqual"),
         // IArray integration with Scala Collections:
@@ -202,10 +202,10 @@ object MiMaFilters {
       // In general we should never have backwards incompatible changes in the library.
       // Only exceptional cases should be added here.
 
-      Versions.mimaPreviousDottyVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq.empty,
 
       // Breaking changes since last LTS
-      Versions.mimaPreviousLTSDottyVersion -> Seq(
+      Versions.mimaPreviousLTSVersion -> Seq(
 
         // scala/scala3#26100
         ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyList"),
@@ -665,10 +665,10 @@ object MiMaFilters {
   object ScalaLibrarySJS {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
-      Versions.mimaPreviousDottyVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq.empty,
 
       // Additions since last LTS
-      Versions.mimaPreviousLTSDottyVersion -> Seq(
+      Versions.mimaPreviousLTSVersion -> Seq(
         // No .class files generated in the artifacts, only `scala.scalajs.*` files might be present
         ProblemFilters.exclude[MissingClassProblem]("scala.*"),
       ),
@@ -676,25 +676,25 @@ object MiMaFilters {
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // We should never break backwards compatibility
-      Versions.mimaPreviousDottyVersion -> Seq.empty,
-      Versions.mimaPreviousLTSDottyVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq.empty,
+      Versions.mimaPreviousLTSVersion -> Seq.empty,
     )
   }
 
   object TastyCore {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of tasty core
-      Versions.mimaPreviousDottyVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq.empty,
 
       // Additions since last LTS
-      Versions.mimaPreviousLTSDottyVersion -> Seq.empty,
+      Versions.mimaPreviousLTSVersion -> Seq.empty,
     )
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
-      Versions.mimaPreviousDottyVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq.empty,
 
       // Breaking changes since last LTS
-      Versions.mimaPreviousLTSDottyVersion -> Seq(
+      Versions.mimaPreviousLTSVersion -> Seq(
         // Removal of unnecessary nested module fields that were always `null` (PR #25538)
         ProblemFilters.exclude[MissingFieldProblem]("dotty.tools.tasty.TastyBuffer.Addr"),
         ProblemFilters.exclude[MissingFieldProblem]("dotty.tools.tasty.TastyBuffer.NameRef"),
@@ -706,17 +706,17 @@ object MiMaFilters {
   object Interfaces {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of interfaces
-      Versions.mimaPreviousDottyVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq.empty,
 
       // Additions since last LTS
-      Versions.mimaPreviousLTSDottyVersion -> Seq.empty,
+      Versions.mimaPreviousLTSVersion -> Seq.empty,
     )
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
-      Versions.mimaPreviousDottyVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq.empty,
 
       // Breaking changes since last LTS
-      Versions.mimaPreviousLTSDottyVersion -> Seq.empty,
+      Versions.mimaPreviousLTSVersion -> Seq.empty,
     )
   }
 
