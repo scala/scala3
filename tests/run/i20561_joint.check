@@ -9,4 +9,6 @@ predefined
 1 a,b
 1 a b
 p-q
+empty: MatchError
+y,z
 null: MatchError

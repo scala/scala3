@@ -46,3 +46,11 @@
    |                 It would fail on pattern case: RecVar(_, List(_, _, _, _*)), RecVar(_, List(_)), RecVar(_, Nil)
    |
    | longer explanation available when compiling with `-explain`
+-- [E029] Pattern Match Exhaustivity Warning: tests/warn/i20561/Test.scala:36:29 ---------------------------------------
+36 |def q(r: RecVarOnly): Unit = r match // warn
+   |                             ^
+   |                             match may not be exhaustive.
+   |
+   |                             It would fail on pattern case: RecVarOnly(Nil)
+   |
+   | longer explanation available when compiling with `-explain`

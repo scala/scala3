@@ -32,3 +32,6 @@ def o(r: RecVar): Unit = r match // warn
 def p(r: RecVar): Unit = r match
   case RecVar(b, x, y) => ()
   case RecVar(b, rest*) => ()
+
+def q(r: RecVarOnly): Unit = r match // warn
+  case RecVarOnly(_, rest*) => ()
