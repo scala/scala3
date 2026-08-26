@@ -49,13 +49,13 @@ import scala.collection.convert.StreamExtensions
   * capability to partition off some of their elements. This partitioning, if supported by the
   * Spliterator, is used for parallelizing Stream operations.
   *
-  * Scala collections have a method [[scala.collection.IterableOnce.stepper `stepper`]] that
+  * Scala collections have a method [[scala.collection.IterableOnce.stepper stepper]] that
   * returns a [[scala.collection.Stepper]] for the collection, which in turn can be converted to a
   * Spliterator for creating a Java Stream.
   *
   * The `asJavaSeqStream ` extension method is available on any Scala collection. The
   * `asJavaParStream` extension method can only be invoked on collections where the return type of
-  * the [[scala.collection.IterableOnce.stepper `stepper`]] method is marked with the
+  * the [[scala.collection.IterableOnce.stepper stepper]] method is marked with the
   * [[scala.collection.Stepper.EfficientSplit]] marker trait. This trait is added to steppers that
   * support partitioning, and therefore efficient parallel processing.
   *
