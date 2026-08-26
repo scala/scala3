@@ -8,8 +8,6 @@ import dotty.tools.dotc.printing.Showable
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.util.{NoSourcePosition, SrcPos}
 
-import scala.math.Ordering.comparatorToOrdering
-
 // If possible, we want to directly reference a Showable to avoid allocating a closure for every `handleRecursive` call
 type RecursiveOperationDetails = Showable | (() => String)
 
@@ -35,7 +33,7 @@ final class RecursiveOperation(var title: String, var details: RecursiveOperatio
   def copy(): RecursiveOperation = RecursiveOperation(title, details, pos)
 
 object RecursiveOperation:
-  def blank(): RecursiveOperation = RecursiveOperation("", () => "", NoSourcePosition, 0)
+  def blank(): RecursiveOperation = RecursiveOperation("", () => "", NoSourcePosition)
 
 /**
  * Thrown when recursing too deep, as an alternative to triggering a stack overflow.
@@ -64,7 +62,7 @@ final class RecursionOverflow(ops: List[RecursiveOperation])(using val ctx: Cont
     ops.collectFirst{ case op if op.pos != null && op.pos != NoSourcePosition => op.pos.nn }.getOrElse(NoSourcePosition)
 
   def toMessage: Message =
-    val mostCommon = ops.groupBy(_.title).toList.maxBy(_._2.sum)._2
+    val mostCommon = ops.groupBy(_.title).toList.maxBy(_._2.length)._2
     em"""Recursion limit exceeded.
         |Maybe there is an illegal cyclic reference?
         |If that's not the case, you could try to increase the fuel and stack size: https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html
