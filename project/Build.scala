@@ -1704,6 +1704,7 @@ object Build {
       Compile / mainClass := Some("dotty.tools.scaladoc.Main"),
       Compile / buildInfoKeys := Seq[BuildInfoKey](version),
       Compile / buildInfoPackage := "dotty.tools.scaladoc",
+      Test / unmanagedResourceDirectories += sourceDirectory.value / "test" / "resources",
       BuildInfoPlugin.buildInfoScopedSettings(Compile),
       BuildInfoPlugin.buildInfoDefaultSettings,
 
