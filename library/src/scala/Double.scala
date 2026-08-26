@@ -395,7 +395,7 @@ object Double extends AnyValCompanion {
   override def toString() = "object scala.Double"
 
   extension (self: Double) {
-    /** Returns `'''true'''` if this number is finite and has no decimal component. */
+    /** Returns `true` if this number is finite and has no decimal component. */
     def isWhole: Boolean = {
       val l = self.toLong
       l.toDouble == self || l == Long.MaxValue && self < Double.PositiveInfinity || l == Long.MinValue && self > Double.NegativeInfinity

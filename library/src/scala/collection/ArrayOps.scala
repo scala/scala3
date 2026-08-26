@@ -296,7 +296,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   /** Method mirroring [[SeqOps.sizeIs]] for consistency, except it returns an `Int`
    *  because `size` is known and comparison is constant-time.
    *
-   *  These operations are equivalent to [[sizeCompare(Int) `sizeCompare(Int)`]], and
+   *  These operations are equivalent to [[sizeCompare(Int) sizeCompare(Int)]], and
    *  allow the following more readable usages:
    *
    *  ```
@@ -315,7 +315,7 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
   /** Method mirroring [[SeqOps.lengthIs]] for consistency, except it returns an `Int`
    *  because `length` is known and comparison is constant-time.
    *
-   *  These operations are equivalent to [[lengthCompare(Int) `lengthCompare(Int)`]], and
+   *  These operations are equivalent to [[lengthCompare(Int) lengthCompare(Int)]], and
    *  allow the following more readable usages:
    *
    *  ```
@@ -809,8 +809,8 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *  all elements of this array, going left to right. Returns the initial value
    *  if this array is empty.
    *
-   *  If `x,,1,,`, `x,,2,,`, ..., `x,,n,,` are the elements of this array, the
-   *  result is `op( op( ... op( op(z, x,,1,,), x,,2,,) ... ), x,,n,,)`.
+   *  If <code>x<sub>1</sub></code>, <code>x<sub>2</sub></code>, ..., <code>x<sub>n</sub></code> are the elements of this array, the
+   *  result is <code>op( op( ... op( op(z, x<sub>1</sub>), x<sub>2</sub>) ... ), x<sub>n</sub>)</code>.
    *
    *  @tparam   B       The result type of the binary operator.
    *  @param    z       An initial value.
@@ -912,8 +912,8 @@ final class ArrayOps[A](private val xs: Array[A]) extends AnyVal {
    *  the given initial value `z`, going right to left. Returns the initial
    *  value if this array is empty.
    *
-   *  If `x,,1,,`, `x,,2,,`, ..., `x,,n,,` are the elements of this array, the
-   *  result is `op(x,,1,,, op(x,,2,,, op( ... op(x,,n,,, z) ... )))`.
+   *  If <code>x<sub>1</sub></code>, <code>x<sub>2</sub></code>, ..., <code>x<sub>n</sub></code> are the elements of this array, the
+   *  result is <code>op(x<sub>1</sub>, op(x<sub>2</sub>, op( ... op(x<sub>n</sub>, z) ... )))</code>.
    *
    *  @tparam   B       The result type of the binary operator.
    *  @param    z       An initial value.

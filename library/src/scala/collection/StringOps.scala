@@ -1212,8 +1212,8 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *  in this string, going left to right. Returns the initial value if this string is
    *  empty.
    *
-   *  If `x,,1,,`, `x,,2,,`, ..., `x,,n,,` are the chars in this string, the
-   *  result is `op( op( ... op( op(z, x,,1,,), x,,2,,) ... ), x,,n,,)`.
+   *  If <code>x<sub>1</sub></code>, <code>x<sub>2</sub></code>, ..., <code>x<sub>n</sub></code> are the chars in this string, the
+   *  result is <code>op( op( ... op( op(z, x<sub>1</sub>), x<sub>2</sub>) ... ), x<sub>n</sub>)</code>.
    *
    *  @tparam   B       The result type of the binary operator.
    *  @param    z       An initial value.
@@ -1236,8 +1236,8 @@ final class StringOps(private val s: String) extends AnyVal { self =>
    *  initial value `z`, going right to left. Returns the initial value if this string is
    *  empty.
    *
-   *  If `x,,1,,`, `x,,2,,`, ..., `x,,n,,` are the chars in this string, the
-   *  result is `op(x,,1,,, op(x,,2,,, op( ... op(x,,n,,, z) ... )))`.
+   *  If <code>x<sub>1</sub></code>, <code>x<sub>2</sub></code>, ..., <code>x<sub>n</sub></code> are the chars in this string, the
+   *  result is <code>op(x<sub>1</sub>, op(x<sub>2</sub>, op( ... op(x<sub>n</sub>, z) ... )))</code>.
    *
    *  @tparam   B       The result type of the binary operator.
    *  @param    z       An initial value.

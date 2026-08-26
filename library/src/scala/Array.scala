@@ -804,7 +804,7 @@ final class Array[T](_length: Int) extends java.io.Serializable with java.lang.C
 
   /** Updates the element at given index.
    *
-   *  Indices start at `0`; `xs.update(i, x)` replaces the i^th^ element in the array.
+   *  Indices start at `0`; `xs.update(i, x)` replaces the i<sup>th</sup> element in the array.
    *  Note the syntax `xs(i) = x` is a shorthand for `xs.update(i, x)`.
    *
    *  @param    i   the index

@@ -22,12 +22,12 @@ import language.experimental.captureChecking
  */
 transparent trait Product extends Any with Equals {
   /** The size of this product.
-    *  @return     for a product `A(x,,1,,, ..., x,,k,,)`, returns `k`
+    *  @return     for a product <code>A(x<sub>1</sub>, ..., x<sub>k</sub>)</code>, returns `k`
     */
   def productArity: Int
 
-  /** The n^th^ element of this product, 0-based.  In other words, for a
-   *  product `A(x,,1,,, ..., x,,k,,)`, returns `x,,(n+1),,` where `0 <= n < k`.
+  /** The n<sup>th</sup> element of this product, 0-based.  In other words, for a
+   *  product <code>A(x<sub>1</sub>, ..., x<sub>k</sub>)</code>, returns <code>x<sub>(n+1)</sub></code> where `0 <= n < k`.
    *
    *  @param    n   the index of the element to return
    *  @throws       IndexOutOfBoundsException if the `n` is out of range(n < 0 || n >= productArity).
@@ -53,7 +53,7 @@ transparent trait Product extends Any with Equals {
    */
   def productPrefix: String = ""
 
-  /** The name of the n^th^ element of this product, 0-based.
+  /** The name of the n<sup>th</sup> element of this product, 0-based.
    *  In the default implementation, an empty string.
    *
    *  @param    n   the index of the element name to return

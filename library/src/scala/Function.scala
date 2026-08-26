@@ -16,8 +16,8 @@ import scala.language.`2.13`
 
 /** A module defining utility methods for higher-order functional programming. */
 object Function {
-  /** Given a sequence of functions `f,,1,,`, ..., `f,,n,,`, return the
-   *  function `f,,1,, andThen ... andThen f,,n,,`.
+  /** Given a sequence of functions <code>f<sub>1</sub></code>, ..., <code>f<sub>n</sub></code>, return the
+   *  function <code>f<sub>1</sub> andThen ... andThen f<sub>n</sub></code>.
    *
    *  @tparam T the common input and output type of the functions in the chain
    *  @param fs the given sequence of functions
