@@ -8,6 +8,8 @@ import dotty.tools.dotc.printing.Showable
 import dotty.tools.dotc.reporting.Message
 import dotty.tools.dotc.util.{NoSourcePosition, SrcPos}
 
+import scala.math.Ordering.comparatorToOrdering
+
 // If possible, we want to directly reference a Showable to avoid allocating a closure for every `handleRecursive` call
 type RecursiveOperationDetails = Showable | (() => String)
 
@@ -19,9 +21,8 @@ type RecursiveOperationDetails = Showable | (() => String)
  * @param title the operation title
  * @param details the operation details
  * @param pos the operation position
- * @param weight the operation weight, used to prioritize some operations when displaying error messages
  */
-final class RecursiveOperation(var title: String, var details: RecursiveOperationDetails, var pos: SrcPos | Null, var weight: Int):
+final class RecursiveOperation(var title: String, var details: RecursiveOperationDetails, var pos: SrcPos | Null):
   def explanation(using Context): String =
     try
       ctx.handleRecursive("displaying error for", () => title):
@@ -31,7 +32,7 @@ final class RecursiveOperation(var title: String, var details: RecursiveOperatio
     catch
       case _: RecursionOverflow => "<not enough fuel to show details>"
 
-  def copy(): RecursiveOperation = RecursiveOperation(title, details, pos, weight)
+  def copy(): RecursiveOperation = RecursiveOperation(title, details, pos)
 
 object RecursiveOperation:
   def blank(): RecursiveOperation = RecursiveOperation("", () => "", NoSourcePosition, 0)
@@ -63,7 +64,7 @@ final class RecursionOverflow(ops: List[RecursiveOperation])(using val ctx: Cont
     ops.collectFirst{ case op if op.pos != null && op.pos != NoSourcePosition => op.pos.nn }.getOrElse(NoSourcePosition)
 
   def toMessage: Message =
-    val mostCommon = ops.groupBy(_.title).toList.maxBy(_._2.map(_.weight).sum)._2
+    val mostCommon = ops.groupBy(_.title).toList.maxBy(_._2.sum)._2
     em"""Recursion limit exceeded.
         |Maybe there is an illegal cyclic reference?
         |If that's not the case, you could try to increase the fuel and stack size: https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html
@@ -81,7 +82,6 @@ object RecursionOverflow:
   def apply(rawOps: Array[RecursiveOperation],
             rawOverflowTitle: String,
             rawOverflowDetails: RecursiveOperationDetails,
-            rawOverflowPosition: SrcPos | Null,
-            rawOverflowWeight: Int)(using Context): Error =
-    val ops = RecursiveOperation(rawOverflowTitle, rawOverflowDetails, rawOverflowPosition, rawOverflowWeight) :: rawOps.map(_.copy()).reverse.toList
+            rawOverflowPosition: SrcPos | Null)(using Context): Error =
+    val ops = RecursiveOperation(rawOverflowTitle, rawOverflowDetails, rawOverflowPosition) :: rawOps.map(_.copy()).reverse.toList
     new RecursionOverflow(ops)
