@@ -88,8 +88,9 @@ jobs:
   publish_release:
     permissions:
       contents: write  # for GH CLI to create a release
-    runs-on: 'ubuntu-latest'
-    needs: [stdlib-tests, mima-tests, compiler-tests, community-build-tests, misc-tests, build-msi-package]
+    # Forks have no self-hosted runners, so the release runs on a normal GitHub runner
+    runs-on: ${{ github.repository == 'scala/scala3' && fromJSON('["self-hosted", "Linux"]') || 'ubuntu-latest' }}
+    needs: [stdlib-tests]
     container:
       image: lampepfl/dotty:2024-10-18
       options: --cpu-shares 4096

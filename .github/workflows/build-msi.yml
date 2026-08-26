@@ -40,7 +40,7 @@ jobs:
         id: extract-version
         shell: bash
         run: |
-          version=$(sed -n 's/.*val developedVersion = "\(.*\)".*/\1/p' project/Build.scala)
+          version=$(sbt -no-colors "print scala3-compiler-bootstrapped/version" | tr -d '\r' | tail -n1)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Extracted Scala version: $version"
       - name: Build MSI package
