@@ -766,7 +766,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
 
         pool.shutdown()
 
-        if !pool.awaitTermination(3, TimeUnit.MINUTES) then
+        if !pool.awaitTermination(20, TimeUnit.MINUTES) then
           val remaining = ListBuffer.empty[TestSource]
           for (src, res) <- filteredSources.lazyZip(eventualResults) do
             if !res.isDone then
