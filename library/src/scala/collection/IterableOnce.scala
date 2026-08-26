@@ -599,15 +599,15 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
 
   /** Tests whether this $coll is known to have a finite size.
    *  All strict collections are known to have finite size. For a non-strict
-   *  collection such as `Stream`, the predicate returns `**true**` if all
-   *  elements have been computed. It returns `**false**` if the stream is
+   *  collection such as `Stream`, the predicate returns `true` if all
+   *  elements have been computed. It returns `false` if the stream is
    *  not yet evaluated to the end. Non-empty Iterators usually return
-   *  `**false**` even if they were created from a collection with a known
+   *  `false` even if they were created from a collection with a known
    *  finite size.
    *
    *  Note: many collection methods will not work on collections of infinite sizes.
    *  The typical failure mode is an infinite loop. These methods always attempt a
-   *  traversal without checking first that `hasDefiniteSize` returns `**true**`.
+   *  traversal without checking first that `hasDefiniteSize` returns `true`.
    *  However, checking `hasDefiniteSize` can provide an assurance that size is
    *  well-defined and non-termination is not a concern.
    *
@@ -621,8 +621,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *
    *  @see method `knownSize` for a more useful alternative
    *
-   *  @return  `**true**` if this collection is known to have finite size,
-   *           `**false**` otherwise.
+   *  @return  `true` if this collection is known to have finite size,
+   *           `false` otherwise.
    */
   @deprecated("Check .knownSize instead of .hasDefiniteSize for more actionable information (see scaladoc for details)", "2.13.0")
   def hasDefiniteSize: Boolean = true
@@ -726,8 +726,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  is empty.
    *
    *  "Going left to right" only makes sense if this collection is ordered: then if
-   *  `x,,1,,`, `x,,2,,`, ..., `x,,n,,` are the elements of this $coll, the result is
-   *  `op( op( ... op( op(z, x,,1,,), x,,2,,) ... ), x,,n,,)`.
+   *  <code>x<sub>1</sub></code>, <code>x<sub>2</sub></code>, ..., <code>x<sub>n</sub></code> are the elements of this $coll, the result is
+   *  <code>op( op( ... op( op(z, x<sub>1</sub>), x<sub>2</sub>) ... ), x<sub>n</sub>)</code>.
    *
    *  If this collection is not ordered, then for each application of the operator, each
    *  right operand is an element. In addition, the leftmost operand is the initial
@@ -760,8 +760,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  empty.
    *
    *  "Going right to left" only makes sense if this collection is ordered: then if
-   *  `x,,1,,`, `x,,2,,`, ..., `x,,n,,` are the elements of this $coll, the result is
-   *  `op(x,,1,,, op(x,,2,,, op( ... op(x,,n,,, z) ... )))`.
+   *  <code>x<sub>1</sub></code>, <code>x<sub>2</sub></code>, ..., <code>x<sub>n</sub></code> are the elements of this $coll, the result is
+   *  <code>op(x<sub>1</sub>, op(x<sub>2</sub>, op( ... op(x<sub>n</sub>, z) ... )))</code>.
    *
    *  If this collection is not ordered, then for each application of the operator, each
    *  left operand is an element. In addition, the rightmost operand is the initial
@@ -857,8 +857,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  right.
    *
    *  "Going left to right" only makes sense if this collection is ordered: then if
-   *  `x,,1,,`, `x,,2,,`, ..., `x,,n,,` are the elements of this $coll, the result is
-   *  `op( op( op( ... op(x,,1,,, x,,2,,) ... ), x,,n-1,,), x,,n,,)`.
+   *  <code>x<sub>1</sub></code>, <code>x<sub>2</sub></code>, ..., <code>x<sub>n</sub></code> are the elements of this $coll, the result is
+   *  <code>op( op( op( ... op(x<sub>1</sub>, x<sub>2</sub>) ... ), x<sub>n-1</sub>), x<sub>n</sub>)</code>.
    *
    *  If this collection is not ordered, then for each application of the operator, each
    *  right operand is an element. In addition, the leftmost operand is the first element
@@ -894,8 +894,8 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
    *  left.
    *
    *  "Going right to left" only makes sense if this collection is ordered: then if
-   *  `x,,1,,`, `x,,2,,`, ..., `x,,n,,` are the elements of this $coll, the result is
-   *  `op(x,,1,,, op(x,,2,,, op( ... op(x,,n-1,,, x,,n,,) ... )))`.
+   *  <code>x<sub>1</sub></code>, <code>x<sub>2</sub></code>, ..., <code>x<sub>n</sub></code> are the elements of this $coll, the result is
+   *  <code>op(x<sub>1</sub>, op(x<sub>2</sub>, op( ... op(x<sub>n-1</sub>, x<sub>n</sub>) ... )))</code>.
    *
    *  If this collection is not ordered, then for each application of the operator, each
    *  left operand is an element. In addition, the rightmost operand is the last element

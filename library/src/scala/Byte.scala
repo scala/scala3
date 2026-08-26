@@ -651,8 +651,8 @@ object Byte extends AnyValCompanion {
   implicit def byte2double(x: Byte): Double = x.toDouble
 
   extension (self: Byte) {
-    /** Returns `'''true'''` if this number has no decimal component.
-      * Always `'''true'''` for `Byte`.
+    /** Returns `true` if this number has no decimal component.
+      * Always `true` for `Byte`.
       */
     @deprecated("isWhole on Byte is always true", "2.12.15")
     def isWhole: Boolean = true
