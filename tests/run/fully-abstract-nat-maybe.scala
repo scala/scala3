@@ -74,7 +74,7 @@ object Test {
 
 }
 
-abstract class Numbers {
+abstract class Numbers extends caps.Pure {
 
   // === Nat ==========================================
   // Represents:
@@ -212,7 +212,7 @@ object IntImplementation extends Numbers {
     def pred: Nat = succ - 1
   }
 
-  private def intClassTag(cond: Int => Boolean): ClassTag[Int] = new ClassTag[Int] {
+  private def intClassTag(cond: Int -> Boolean): ClassTag[Int] = new ClassTag[Int] {
     def runtimeClass: Class[?] = classOf[Int]
     override def unapply(x: Any): Option[Int] = x match {
       case i: Int if cond(i) => Some(i)

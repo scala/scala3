@@ -4,7 +4,7 @@ package xcollections:
   import annotation.unchecked.uncheckedVariance
   import compiletime.uninitialized
 
-  abstract class LazyList[+T]:
+  abstract class LazyList[+T] extends caps.Pure:
 
     private var myHead: T = uninitialized
     private var myTail: LazyList[T] = uninitialized
@@ -69,12 +69,12 @@ package xcollections:
           else set(xs.head, xs.tail ++ ys)
 
     extension [T, U](xs: LazyList[T])
-      def map(f: T => U): LazyList[U] = new:
+      def map(f: T -> U): LazyList[U] = new:
         protected def force() =
           if xs.isEmpty then empty
           else set(f(xs.head), xs.tail.map(f))
 
-      def flatMap(f: T => LazyList[U]): LazyList[U] = new:
+      def flatMap(f: T -> LazyList[U]): LazyList[U] = new:
         protected def force(): LazyList[U] =
           if xs.isEmpty then empty
           else f(xs.head) ++ xs.tail.flatMap(f)
@@ -84,7 +84,7 @@ package xcollections:
         else xs.tail.foldLeft(f(z, xs.head))(f)
 
     extension [T](xs: LazyList[T])
-      def filter(p: T => Boolean): LazyList[T] = new:
+      def filter(p: T -> Boolean): LazyList[T] = new:
         protected def force(): LazyList[T] =
           if xs.isEmpty then empty
           else if p(xs.head) then set(xs.head, xs.tail.filter(p))

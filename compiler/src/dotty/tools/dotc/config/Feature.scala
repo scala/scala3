@@ -327,26 +327,27 @@ object Feature:
    *  @return true iff the import was handled
    */
   def handleGlobalLanguageImport(prefix: TermName, imported: Name)(using Context): Boolean =
+    def enableCC() =
+      ctx.compilationUnit.needsCaptureChecking = true
+      if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
     QualifiedName(prefix, imported.asTermName) match
       case `pureFunctions` =>
         ctx.compilationUnit.knowsPureFuns = true
         if ctx.run != null then ctx.run.nn.pureFunsImportEncountered = true
         true
       case `captureChecking` =>
-        ctx.compilationUnit.needsCaptureChecking = true
-        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
+        enableCC()
         true
       case `separationChecking` =>
-        ctx.compilationUnit.needsCaptureChecking = true
+        enableCC()
         ctx.compilationUnit.needsSeparationChecking = true
-        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
         true
       case `safe` =>
-        ctx.compilationUnit.needsCaptureChecking = true
+        enableCC()
         ctx.compilationUnit.safeMode = true
-        if ctx.run != null then ctx.run.nn.ccEnabledSomewhere = true
         true
       case `magic` =>
+        enableCC()
         ctx.compilationUnit.magic = true
         ctx.compilationUnit.sourceVersion = Some(SourceVersion.future)
         true
