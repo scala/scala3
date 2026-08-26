@@ -87,7 +87,14 @@ object Versions {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.9.0"
+  val mimaPreviousDottyVersion = "3.9.0" // TODO: update to 3.10.0 when released
+
+  /** LTS version against which we check binary compatibility.
+   *
+   *  This must be the earliest published release in the LTS versioning line.
+   *  For example, if the latest LTS release is 3.3.4, then this must be set to 3.3.0.
+   */
+  val mimaPreviousLTSDottyVersion = "3.9.0"
 
   /* Tests TASTy version invariants during NIGHLY, RC or Stable releases */
   def checkReleasedTastyVersion(): Unit = {
