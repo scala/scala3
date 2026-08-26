@@ -1,3 +1,5 @@
+//> using options -language:experimental.erasedDefinitions
+
 trait Assoc[T] {
   type U
   def foo(t: T): U
