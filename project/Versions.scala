@@ -32,7 +32,7 @@ object Versions {
    *  During release candidate cycle incremented by the release officer before publishing a subsequent RC version;
    *  During final, stable release is set exactly to `developedVersion`.
   */
-  val baseVersion = s"$developedVersion-RC6"
+  val baseVersion = developedVersion
 
   /** The version of TASTY that should be emitted, checked in runtime test
    *  For details on how TASTY version should be set see related discussions:
@@ -50,7 +50,7 @@ object Versions {
    *      - in release candidate branch is experimental if {patch == 0}
    *      - in stable release is always non-experimental
    */
-  val expectedTastyVersion = "28.9-experimental-1"
+  val expectedTastyVersion = "28.9"
   checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
