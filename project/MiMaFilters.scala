@@ -4,7 +4,7 @@ import com.typesafe.tools.mima.core._
 
 object MiMaFilters {
 
-  object Scala3Library {
+  object ScalaLibrary {
 
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
