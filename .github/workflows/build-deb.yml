@@ -1,14 +1,14 @@
 ###################################################################################################
-###                       THIS IS A REUSABLE WORKFLOW TO BUILD SCALA MSI                        ###
+###                       THIS IS A REUSABLE WORKFLOW TO BUILD SCALA DEB                        ###
 ### HOW TO USE:                                                                                 ###
 ###   - THE RELEASE WORKFLOW SHOULD CALL THIS WORKFLOW                                          ###
-###   - IT WILL UPLOAD TO GITHUB THE MSI FILE FOR SCALA UNDER THE 'scala.msi' NAME              ###
+###   - IT WILL UPLOAD TO GITHUB THE DEB FILE FOR SCALA UNDER THE 'scala.deb' NAME              ###
 ###                                                                                             ###
 ### NOTE:                                                                                       ###
 ###   - SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17                                               ###
 ###################################################################################################
 
-name: Build the MSI Package
+name: Build the Debian Package
 
 on:
   workflow_call:
@@ -17,36 +17,38 @@ on:
         description: 'The full Scala version, from sbt (scala3-compiler-bootstrapped/version)'
         value: ${{ jobs.build.outputs.version }}
 
-permissions:
-  contents: read
-
 env:
   # Release only happens when triggering CI by pushing a tag
   RELEASEBUILD: ${{ startsWith(github.event.ref, 'refs/tags/') && 'yes' || 'no' }}
 
 jobs:
   build:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.extract-version.outputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
-          distribution: 'adopt'
+          distribution: temurin
           java-version: 17
-          cache: 'sbt'
+          cache: sbt
+      - uses: sbt/setup-sbt@bfea3c5f48abd221b04a6df4798aa5eb8b6a2baf # v1.5.6
+      - name: Ensure Debian build tooling
+        run: |
+          command -v dpkg-deb >/dev/null && command -v fakeroot >/dev/null \
+            || (sudo apt-get update && sudo apt-get install -y --no-install-recommends dpkg-dev fakeroot)
       - name: Extract Scala version
         id: extract-version
         shell: bash
         run: |
-          version=$(sbt -no-colors "print scala3-compiler-bootstrapped/version" | tr -d '\r' | tail -n1)
+          version=$(./project/scripts/sbt "print scala3-compiler-bootstrapped/version" | tail -n1)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Extracted Scala version: $version"
-      - name: Build MSI package
-        run: sbt 'dist-win-x86_64/Windows/packageBin'
-      - name: Upload MSI Artifact
+      - name: Build the .deb package
+        run: ./project/scripts/sbt "dist-linux-x86_64-deb/Debian/packageBin"
+      - name: Upload deb Artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: scala.msi
-          path: ./dist/win-x86_64/target/windows/scala.msi
+          name: scala.deb
+          path: ./dist/linux-x86_64-deb/target/scala.deb
