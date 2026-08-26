@@ -695,7 +695,7 @@ object projects:
     project = "parboiled2",
     sbtTestCommand = "parboiledCoreJVM3/testFull; parboiledJVM3/testFull",
     sbtPublishCommand = "publishLocal",
-    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
+    scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros") :+ "-Xmax-fuel:1200",
     sbtVersion = sbt2Version,
   )
 
