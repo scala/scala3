@@ -13,8 +13,8 @@
 
   function toggleDarkTheme(isDark) {
     currentlyDark = isDark
-    // this triggers the `:root.theme-dark` rule from scalastyle.css,
-    // which changes the values of a bunch of CSS color variables
+    // this triggers the `:root.theme-dark` rules from styles/theme/colors.css
+    // and color-tokens.css, which change the values of a bunch of CSS color variables
     document.documentElement.classList.toggle("theme-dark", isDark);
     supportsLocalStorage && localStorage.setItem(settingKey, isDark);
   }
