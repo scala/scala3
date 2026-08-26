@@ -17,7 +17,6 @@ import scala.meta.pc.PcSymbolInformation as IPcSymbolInformation
 import scala.meta.pc.reports.EmptyReportContext
 import scala.meta.pc.reports.ReportContext
 
-import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.pc.InferExpectedType
 import dotty.tools.pc.SymbolInformationProvider

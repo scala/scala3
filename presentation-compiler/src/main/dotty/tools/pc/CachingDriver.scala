@@ -10,7 +10,6 @@ import scala.jdk.CollectionConverters.*
 import scala.meta.pc.SemanticdbFileManager
 import scala.meta.pc.SourcePathMode
 
-import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.interactive.LogicalPackage
 import dotty.tools.dotc.interactive.LogicalPackagesProvider
