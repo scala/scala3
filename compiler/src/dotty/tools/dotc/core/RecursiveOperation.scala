@@ -63,7 +63,8 @@ final class RecursionOverflow(ops: List[RecursiveOperation])(using val ctx: Cont
 
   def toMessage: Message =
     val mostCommon = ops.groupBy(_.title).toList.maxBy(_._2.length)._2
-    val reason = opsString(mostCommon).stripMargin
+    val reason = ops.map(_.title).mkString("\n")
+    //val reason = opsString(mostCommon).stripMargin
     em"""Recursion limit exceeded.
         |Maybe there is an illegal cyclic reference?
         |If that's not the case, you could try to increase the fuel and stack size: https://docs.scala-lang.org/overviews/compiler-options/compiling-deeply-nested-code.html
