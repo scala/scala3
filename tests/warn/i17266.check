@@ -1,7 +1,7 @@
 -- [E181] Potential Issue Warning: tests/warn/i17266.scala:4:2 ---------------------------------------------------------
 4 |  synchronized { // warn
   |  ^^^^^^^^^^^^
-  |  Suspicious top-level unqualified call to synchronized
+  |  Universal method synchronized does not resolve to the enclosing class
   |---------------------------------------------------------------------------------------------------------------------
   | Explanation (enabled by `-explain`)
   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -12,7 +12,7 @@
 -- [E181] Potential Issue Warning: tests/warn/i17266.scala:17:2 --------------------------------------------------------
 17 |  synchronized { // warn
    |  ^^^^^^^^^^^^
-   |  Suspicious top-level unqualified call to synchronized
+   |  Universal method synchronized does not resolve to the enclosing class
    |--------------------------------------------------------------------------------------------------------------------
    | Explanation (enabled by `-explain`)
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -33,7 +33,7 @@
 -- [E181] Potential Issue Warning: tests/warn/i17266.scala:108:2 -------------------------------------------------------
 108 |  wait() // warn
     |  ^^^^
-    |  Suspicious top-level unqualified call to wait
+    |  Universal method wait does not resolve to the enclosing class
     |-------------------------------------------------------------------------------------------------------------------
     | Explanation (enabled by `-explain`)
     |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -44,7 +44,7 @@
 -- [E181] Potential Issue Warning: tests/warn/i17266.scala:115:2 -------------------------------------------------------
 115 |  wait() // warn
     |  ^^^^
-    |  Suspicious top-level unqualified call to wait
+    |  Universal method wait does not resolve to the enclosing class
     |-------------------------------------------------------------------------------------------------------------------
     | Explanation (enabled by `-explain`)
     |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -55,7 +55,7 @@
 -- [E181] Potential Issue Warning: tests/warn/i17266.scala:121:2 -------------------------------------------------------
 121 |  wait(10) // warn
     |  ^^^^
-    |  Suspicious top-level unqualified call to wait
+    |  Universal method wait does not resolve to the enclosing class
     |-------------------------------------------------------------------------------------------------------------------
     | Explanation (enabled by `-explain`)
     |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -66,7 +66,7 @@
 -- [E181] Potential Issue Warning: tests/warn/i17266.scala:128:2 -------------------------------------------------------
 128 |  wait(10) // warn
     |  ^^^^
-    |  Suspicious top-level unqualified call to wait
+    |  Universal method wait does not resolve to the enclosing class
     |-------------------------------------------------------------------------------------------------------------------
     | Explanation (enabled by `-explain`)
     |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -77,7 +77,7 @@
 -- [E181] Potential Issue Warning: tests/warn/i17266.scala:134:2 -------------------------------------------------------
 134 |  hashCode() // warn
     |  ^^^^^^^^
-    |  Suspicious top-level unqualified call to hashCode
+    |  Universal method hashCode does not resolve to the enclosing class
     |-------------------------------------------------------------------------------------------------------------------
     | Explanation (enabled by `-explain`)
     |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -88,7 +88,7 @@
 -- [E181] Potential Issue Warning: tests/warn/i17266.scala:141:2 -------------------------------------------------------
 141 |  hashCode() // warn
     |  ^^^^^^^^
-    |  Suspicious top-level unqualified call to hashCode
+    |  Universal method hashCode does not resolve to the enclosing class
     |-------------------------------------------------------------------------------------------------------------------
     | Explanation (enabled by `-explain`)
     |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -99,7 +99,7 @@
 -- [E181] Potential Issue Warning: tests/warn/i17266.scala:148:2 -------------------------------------------------------
 148 |  synchronized { // warn
     |  ^^^^^^^^^^^^
-    |  Suspicious top-level unqualified call to synchronized
+    |  Universal method synchronized does not resolve to the enclosing class
     |-------------------------------------------------------------------------------------------------------------------
     | Explanation (enabled by `-explain`)
     |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

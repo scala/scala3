@@ -88,7 +88,7 @@ abstract class ExternalLocationProviderIntegrationTest(
       }
 
     IO.foreachFileIn(output, processFile)
-    val links = linksBuilder.result
+    val links = linksBuilder.result()
     val errors = expectedLinks.flatMap(expect => Option.when(!links.contains(expect))(expect))
     if !errors.isEmpty then {
       val reportMessage =

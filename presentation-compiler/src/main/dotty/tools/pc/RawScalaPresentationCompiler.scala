@@ -8,8 +8,6 @@ import java.util as ju
 
 import scala.jdk.CollectionConverters.*
 import scala.language.unsafeNulls
-import scala.meta.internal.metals.CompilerVirtualFileParams
-import scala.meta.internal.metals.PcQueryContext
 import scala.meta.internal.metals.ReportLevel
 import scala.meta.internal.mtags.CommonMtagsEnrichments.*
 import scala.meta.internal.pc.EmptySymbolSearch

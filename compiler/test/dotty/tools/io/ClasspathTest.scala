@@ -7,7 +7,7 @@ import org.junit.Test
 import java.io.File
 import dotty.tools.io.AbstractFile
 import java.nio.file.{Files, Paths}
-import java.nio.file.StandardCopyOption._
+import java.nio.file.StandardCopyOption.*
 import java.nio.file.attribute.PosixFilePermissions
 import dotty.tools.io.{ PlainDirectory, Directory, ClassPath }
 

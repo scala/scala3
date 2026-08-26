@@ -1,0 +1,27 @@
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/rand.scala:14:14 -----------------------------------------
+14 |val _: Rand = rand // error
+   |              ^^^^
+   |              Found:    Rand{val self: JavaRand^{rand*}}^{rand}
+   |              Required: Rand
+   |
+   |              Note that capability `rand` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/rand.scala:17:14 -----------------------------------------
+17 |val _: Rand = rand1 // error
+   |              ^^^^^
+   |              Found:    (rand1 : Rand{val self: JavaRand^{jrand}}^{jrand})
+   |              Required: Rand
+   |
+   |              Note that capability `jrand` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg-custom-args/captures/rand.scala:20:14 -----------------------------------------
+20 |val _: Rand = rand2 // error
+   |              ^^^^^
+   |              Found:    (rand2 : Rand{val self: JavaRand^{jrand}}^{jrand})
+   |              Required: Rand
+   |
+   |              Note that capability `jrand` cannot flow into capture set {}.
+   |
+   | longer explanation available when compiling with `-explain`

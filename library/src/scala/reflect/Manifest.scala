@@ -27,21 +27,21 @@ import scala.collection.mutable.{ArrayBuilder, ArraySeq}
  *  which are not yet adequately represented in manifests.
  *
  *  Example usages:
- *  ```
- *    def arr[T] = new Array[T](0)                          // does not compile
- *    def arr[T](implicit m: Manifest[T]) = new Array[T](0) // compiles
- *    def arr[T: Manifest] = new Array[T](0)                // shorthand for the preceding
+ *  ```scala sc:compile
+ *    import scala.reflect.Manifest
+ *
+ *    def arr[T: Manifest]: Array[T] = new Array[T](0)
  *
  *    // Methods manifest and optManifest are in [[scala.Predef]].
- *    def isApproxSubType[T: Manifest, U: Manifest] = manifest[T] <:< manifest[U]
- *    isApproxSubType[List[String], List[AnyRef]] // true
- *    isApproxSubType[List[String], List[Int]]    // false
+ *    def isApproxSubType[T: Manifest, U: Manifest]: Boolean = manifest[T] <:< manifest[U]
+ *    val stringsAreAnyRefs = isApproxSubType[List[String], List[AnyRef]]
+ *    val stringsAreInts = isApproxSubType[List[String], List[Int]]
  *
  *    def methods[T: Manifest] = manifest[T].runtimeClass.getMethods
  *    def retType[T: Manifest](name: String) =
- *      methods[T] find (_.getName == name) map (_.getGenericReturnType)
+ *      methods[T].find(_.getName == name).map(_.getGenericReturnType)
  *
- *    retType[Map[_, _]]("values")  // Some(scala.collection.Iterable<B>)
+ *    val mapValuesReturnType = retType[Map[_, _]]("values")
  *  ```
  */
 @nowarn("""cat=deprecation&origin=scala\.reflect\.ClassManifest(DeprecatedApis.*)?""")
@@ -115,7 +115,7 @@ object Manifest {
     ManifestFactory.classType[T](clazz)
 
   /** Manifest for the class type `clazz`, where `clazz` is
-   *  a top-level or static class and args are its type arguments. 
+   *  a top-level or static class and args are its type arguments.
    */
   def classType[T](clazz: Predef.Class[T], arg1: Manifest[?], args: Manifest[?]*): Manifest[T] =
     ManifestFactory.classType[T](clazz, arg1, args*)
@@ -131,7 +131,7 @@ object Manifest {
 
   /** Manifest for the abstract type `prefix # name`. `upperBound` is not
    *  strictly necessary as it could be obtained by reflection. It was
-   *  added so that erasure can be calculated without reflection. 
+   *  added so that erasure can be calculated without reflection.
    */
   def abstractType[T](prefix: Manifest[?], name: String, upperBound: Predef.Class[?], args: Manifest[?]*): Manifest[T] =
     ManifestFactory.abstractType[T](prefix, name, upperBound, args*)
@@ -158,8 +158,7 @@ abstract class AnyValManifest[T <: AnyVal](override val toString: String) extend
     case _                    => false
   }
   override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
-  @transient
-  override val hashCode = System.identityHashCode(this)
+  override def hashCode = System.identityHashCode(this)
 }
 
 /** `ManifestFactory` defines factory methods for manifests.
@@ -390,7 +389,7 @@ object ManifestFactory {
     new ClassTypeManifest[T](None, clazz, Nil)
 
   /** Manifest for the class type `clazz`, where `clazz` is
-   *  a top-level or static class and args are its type arguments. 
+   *  a top-level or static class and args are its type arguments.
    */
   def classType[T](clazz: Predef.Class[T], arg1: Manifest[?], args: Manifest[?]*): Manifest[T] =
     new ClassTypeManifest[T](None, clazz, arg1 :: args.toList)
@@ -405,12 +404,11 @@ object ManifestFactory {
   private abstract class PhantomManifest[T](_runtimeClass: Predef.Class[?],
                                             override val toString: String) extends ClassTypeManifest[T](None, _runtimeClass, Nil) {
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
-    @transient
-    override val hashCode = System.identityHashCode(this)
+    override def hashCode = System.identityHashCode(this)
   }
 
   /** Manifest for the class type `clazz[args]`, where `clazz` is
-   *  a top-level or static class. 
+   *  a top-level or static class.
    */
   @SerialVersionUID(1L)
   private class ClassTypeManifest[T](prefix: Option[Manifest[?]],
@@ -434,7 +432,7 @@ object ManifestFactory {
 
   /** Manifest for the abstract type `prefix # name`. `upperBound` is not
    *  strictly necessary as it could be obtained by reflection. It was
-   *  added so that erasure can be calculated without reflection. 
+   *  added so that erasure can be calculated without reflection.
    */
   def abstractType[T](prefix: Manifest[?], name: String, upperBound: Predef.Class[?], args: Manifest[?]*): Manifest[T] =
     new AbstractTypeManifest[T](prefix, name, upperBound, args)

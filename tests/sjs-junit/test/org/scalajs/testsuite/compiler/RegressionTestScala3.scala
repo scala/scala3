@@ -11,11 +11,31 @@ import scala.scalajs.js.annotation._
 
 import org.scalajs.junit.async._
 
-import org.scalajs.testsuite.jsinterop.ExportLoopback
 import org.scalajs.testsuite.utils.Platform._
 
 class RegressionTestScala3 {
   import RegressionTestScala3.*
+
+  /** The namespace in which top-level exports are stored. */
+  private lazy val exportsNamespace: Future[js.Dynamic] = {
+    import scala.scalajs.LinkingInfo._
+
+    linkTimeIf[Future[js.Dynamic]](moduleKind == ModuleKind.NoModule) {
+      throw new AssertionError("attempted to get exportsNamsepace in NoModule mode")
+    } {
+      linkTimeIf[Future[js.Dynamic]](moduleKind == ModuleKind.ESModule) {
+        js.`import`("./main.js").toFuture
+      } {
+        linkTimeIf[Future[js.Dynamic]](moduleKind == ModuleKind.CommonJSModule) {
+          js.Promise.resolve[Unit](())
+            .`then`[js.Dynamic](_ => js.Dynamic.global.require("./main.js"))
+            .toFuture
+        } {
+          throw new AssertionError(s"unknown module kind: ${moduleKind}")
+        }
+      }
+    }
+  }
 
   @Test def testRegressionDoubleDefinitionOfOuterPointerIssue10177(): Unit = {
     assertEquals(6, new OuterClassIssue10177().foo(5))
@@ -124,7 +144,7 @@ class RegressionTestScala3 {
         assertEquals((), global.RegressionTestScala3_Issue14168_unitField)
       }
     } else {
-      for (exports <- ExportLoopback.exportsNamespace) yield {
+      for (exports <- exportsNamespace) yield {
         assertEquals("string", exports.RegressionTestScala3_Issue14168_stringField)
         assertEquals(null, exports.RegressionTestScala3_Issue14168_nullField)
         assertEquals((), exports.RegressionTestScala3_Issue14168_unitField)

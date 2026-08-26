@@ -1,5 +1,5 @@
 
-//> using options -feature -Werror -preview
+//> using options -feature -Werror
 
 import Conversion.into
 

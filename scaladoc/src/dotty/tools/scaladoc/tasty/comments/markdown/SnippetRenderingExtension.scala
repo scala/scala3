@@ -22,12 +22,12 @@ import com.vladsch.flexmark.util.data.DataHolder
  * For each codeblock we run compiler to check whether snippet works in the newest scala version and to produce rich html codeblocks with
  * compiler warnings/errors for IDE-like live experience.
  */
-object SnippetRenderingExtension extends HtmlRenderer.HtmlRendererExtension:
+case class SnippetRenderingExtension(showSnippetName: Boolean = true) extends HtmlRenderer.HtmlRendererExtension:
   def rendererOptions(opt: MutableDataHolder): Unit = ()
   object ExtendedFencedCodeBlockHandler extends CustomNodeRenderer[ExtendedFencedCodeBlock]:
     override def render(node: ExtendedFencedCodeBlock, c: NodeRendererContext, html: HtmlWriter): Unit =
       html.raw(
-        SnippetRenderer.renderSnippetWithMessages(node)
+        SnippetRenderer.renderSnippetWithMessages(node, showSnippetName)
       )
 
   object FencedCodeBlockHandler extends CustomNodeRenderer[FencedCodeBlock]:

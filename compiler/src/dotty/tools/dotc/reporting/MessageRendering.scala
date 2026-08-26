@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package reporting
 
-import scala.language.unsafeNulls
-
 import java.lang.System.{lineSeparator => EOL}
 
 import core.Contexts.*

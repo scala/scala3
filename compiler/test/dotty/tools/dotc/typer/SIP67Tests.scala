@@ -36,9 +36,25 @@ class SIP67Tests extends DottyTest:
       sealed trait Foo
 
       object Foo:
-        case object Bar extends Foo
+        object Bar extends Foo
 
       val _ =
         (??? : Foo) match
+          case Foo.Bar =>
+      """
+
+  @Test
+  def sip67test3: Unit =
+    checkNoErrors:
+      """
+      import scala.language.strictEquality
+      import scala.language.experimental.strictEqualityPatternMatching
+
+      sealed trait Foo[A]
+      object Foo:
+        object Bar extends Foo[Int]
+
+      def a[A](a: Foo[A]) =
+        a match
           case Foo.Bar =>
       """

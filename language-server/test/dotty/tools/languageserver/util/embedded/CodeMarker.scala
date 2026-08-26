@@ -30,8 +30,20 @@ class CodeMarker(val name: String) extends Embedded {
   /** Converts this marker to a position. */
   def toPosition: PosCtx[Position] = new Position(line, character)
 
-  def toTextDocumentPositionParams: PosCtx[TextDocumentPositionParams] =
-    new TextDocumentPositionParams(toTextDocumentIdentifier, toPosition)
+  def toDefinitionParams: PosCtx[DefinitionParams] =
+    new DefinitionParams(toTextDocumentIdentifier, toPosition)
+
+  def toDocumentHighlightParams: PosCtx[DocumentHighlightParams] =
+    new DocumentHighlightParams(toTextDocumentIdentifier, toPosition)
+
+  def toHoverParams: PosCtx[HoverParams] =
+    new HoverParams(toTextDocumentIdentifier, toPosition)
+
+  def toImplementationParams: PosCtx[ImplementationParams] =
+    new ImplementationParams(toTextDocumentIdentifier, toPosition)
+
+  def toSignatureHelpParams: PosCtx[SignatureHelpParams] =
+    new SignatureHelpParams(toTextDocumentIdentifier, toPosition)
 
   def toDocumentSymbolParams: PosCtx[DocumentSymbolParams] =
     new DocumentSymbolParams(toTextDocumentIdentifier)
@@ -51,12 +63,8 @@ class CodeMarker(val name: String) extends Embedded {
   def toVersionedTextDocumentIdentifier: PosCtx[VersionedTextDocumentIdentifier] =
     new VersionedTextDocumentIdentifier(file.uri, 0)
 
-  def toReferenceParams(withDecl: Boolean): PosCtx[ReferenceParams] = {
-    val rp = new ReferenceParams(new ReferenceContext(withDecl))
-    rp.setTextDocument(toTextDocumentIdentifier)
-    rp.setPosition(toPosition)
-    rp
-  }
+  def toReferenceParams(withDecl: Boolean): PosCtx[ReferenceParams] =
+    new ReferenceParams(toTextDocumentIdentifier, toPosition, new ReferenceContext(withDecl))
 
   def show: PosCtx[String] = s"($name,line=$line,char=$character)"
   override def toString: String = s"CodePosition($name)"

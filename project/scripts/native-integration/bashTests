@@ -95,3 +95,22 @@ std_output=$("$PROG_HOME/bin/scala" run "$SOURCE_TEST_BOOTSTRAPPED" --power --of
 echo "$std_output" | grep -q "BOOTSTRAPPED_LIBRARY_TEST_PASSED" || die "Bootstrapped library test failed, output: $std_output"
 clear_cli_dotfiles "$ROOT/project/scripts/native-integration"
 
+echo "testing REPL does not emit legacy lazy vals warnings on JDK 25 (scala/scala3#25508)"
+# The vendored pprint/fansi/sourcecode must be compiled with the new lazy vals
+# scheme, otherwise scala.runtime.LazyVals$ calls sun.misc.Unsafe::objectFieldOffset,
+# which the JVM reports as a terminally deprecated method starting with JDK 24+
+std_output=$("$PROG_HOME/bin/scala" --jvm 25 --server=false -repl-init-script 'val replCheck = 1 + 1' -repl-quit-after-init 2>&1)
+echo "$std_output" | grep -q "replCheck" || die "REPL init script did not run on JDK 25, output: $std_output"
+if echo "$std_output" | grep "has been called by scala.runtime.LazyVals" | grep -qv "scala-cli"; then
+  die "REPL emitted a legacy lazy vals warning on JDK 25, output: $std_output"
+fi
+clear_cli_dotfiles "$ROOT"
+
+echo "testing REPL coexists with a user dependency on fansi (shaded internally)"
+# The REPL vendors pprint/fansi/sourcecode shaded under dotty.vendored.*,
+# so a user can depend on the original (unshaded, possibly different-versioned)
+# libraries without clashing with the REPL's internal copy.
+std_output=$("$PROG_HOME/bin/scala" --server=false --dependency com.lihaoyi::fansi:0.4.0 -repl-init-script 'println(fansi.Color.Red("COEXIST_OK").plainText)' -repl-quit-after-init 2>&1)
+echo "$std_output" | grep -q "COEXIST_OK" || die "REPL failed to use a user-provided fansi dependency, output: $std_output"
+clear_cli_dotfiles "$ROOT"
+

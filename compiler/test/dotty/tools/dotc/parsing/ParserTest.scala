@@ -2,11 +2,11 @@ package dotty.tools
 package dotc
 package parsing
 
-import dotty.tools.io._
-import util._
+import dotty.tools.io.*
+import util.*
 import scala.io.Codec
-import Tokens._, Parsers._
-import ast.untpd._
+import Tokens.*, Parsers.*
+import ast.untpd.*
 import scala.collection.mutable.ListBuffer
 
 class ParserTest extends DottyTest {

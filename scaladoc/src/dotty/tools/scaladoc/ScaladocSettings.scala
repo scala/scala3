@@ -150,5 +150,8 @@ class ScaladocSettings extends SettingGroup with AllScalaSettings:
   val suppressCC: Setting[Boolean] =
     BooleanSetting(RootSetting, "suppressCC", "Suppress rendering anything related to experimental capture checking", false)
 
+  val noSnippetNamesFor: Setting[List[String]] =
+    MultiStringSetting(RootSetting, "no-snippet-names-for", "path", "Do not render labels for named snippets in static-site pages under these paths relative to the site root", Nil)
+
   def scaladocSpecificSettings: Set[Setting[?]] =
-    Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, defaultTemplate, scastieConfiguration, quickLinks, dynamicSideMenu, suppressCC, generateApi)
+    Set(sourceLinks, legacySourceLink, syntax, revision, externalDocumentationMappings, socialLinks, skipById, skipByRegex, deprecatedSkipPackages, docRootContent, snippetCompiler, generateInkuire, defaultTemplate, scastieConfiguration, quickLinks, dynamicSideMenu, suppressCC, noSnippetNamesFor, generateApi)

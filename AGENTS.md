@@ -2,6 +2,8 @@
 
 This file provides guidance to AI coding agents when working with code in this repository.
 
+**Important**: Read `CONTRIBUTING.md`, in particular the "Forbidden" section!
+
 ## Project Overview
 
 Dotty is the Scala 3 compiler (`dotc`). It compiles Scala source code into JVM bytecode (and optionally Scala.js IR). The compiler is itself written in Scala 3.

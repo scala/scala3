@@ -2,8 +2,6 @@ import scala.annotation.tailrec
 
 import sbt._
 
-import org.scalajs.ir.ScalaJSVersions
-
 object ConstantHolderGenerator {
   /** Generate a *.scala file that contains the given values as literals. */
   def generate(dir: File, fqn: String, values: (String, Any)*): Seq[File] = {

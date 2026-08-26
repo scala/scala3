@@ -17,7 +17,7 @@ import scala.jdk.CollectionConverters._
 class CodeHover(override val range: CodeRange, expectedOpt: Option[String]) extends ActionOnRange {
 
   override def onMarker(marker: CodeMarker): Exec[Unit] = {
-    val result = server.hover(marker.toTextDocumentPositionParams).get()
+    val result = server.hover(marker.toHoverParams).get()
     expectedOpt match {
       case None =>
         assertNull(result)

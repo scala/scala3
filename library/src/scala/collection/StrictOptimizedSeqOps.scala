@@ -17,6 +17,9 @@ import language.experimental.captureChecking
 
 /** Trait that overrides operations on sequences in order
  *  to take advantage of strict builders.
+ *
+ *  @tparam A the element type of the sequence
+ *  @tparam CC the type constructor of the collection
  */
 transparent trait StrictOptimizedSeqOps [+A, +CC[_] <: caps.Pure, +C]
   extends Any with SeqOps[A, CC, C] with StrictOptimizedIterableOps[A, CC, C] with caps.Pure {

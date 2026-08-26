@@ -20,6 +20,9 @@ on:
         required: true
         type: string
 
+# The scala.msi artifact comes from the same run no GITHUB_TOKEN required
+permissions: {}
+
 jobs:
   test:
     runs-on: windows-latest

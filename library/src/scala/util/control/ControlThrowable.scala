@@ -20,8 +20,12 @@ import scala.language.`2.13`
  *
  *  As a convenience, `NonFatal` does not match `ControlThrowable`.
  *
- *  ```
+ *  ```scala sc:compile
  *  import scala.util.control.{Breaks, NonFatal}, Breaks.{break, breakable}
+ *
+ *  def log(t: Throwable): Unit = ()
+ *  def p(v: Int): Boolean = v == 3
+ *  val values = (1 to 10).toList
  *
  *  breakable {
  *    for (v <- values) {
@@ -41,6 +45,8 @@ import scala.language.`2.13`
  *
  *  Instances of `ControlThrowable` should not normally have a cause.
  *  Legacy subclasses may set a cause using `initCause`.
+ *
+ *  @param message the detail message for this control throwable, or `null` if none
  */
 abstract class ControlThrowable(message: String | Null) extends Throwable(
   message, /*cause*/ null, /*enableSuppression=*/ false, /*writableStackTrace*/ false) {

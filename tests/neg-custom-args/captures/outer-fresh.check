@@ -12,7 +12,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-fresh.scala:14:43 ----------------------------------
 14 |  val _: (s: String) -> (t: String) -> A = y // error
    |                                           ^
-   |Found:    (s: String) -> (t: String) -> A^{outer_fresh}
+   |Found:    (Test.y : (s: String) -> (t: String) -> A^{outer_fresh})
    |Required: (s: String) -> (t: String) -> A
    |
    |Note that capability `fresh` cannot flow into capture set {}.
@@ -34,7 +34,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/outer-fresh.scala:20:34 ----------------------------------
 20 |  val _: () -> (t: String) -> A = z2 // error
    |                                  ^^
-   |Found:    () -> (t: String) -> A^{outer_fresh}
+   |Found:    (Test.z2 : () -> (t: String) -> A^{outer_fresh})
    |Required: () -> (t: String) -> A
    |
    |Note that capability `fresh` cannot flow into capture set {}.

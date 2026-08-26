@@ -137,7 +137,7 @@ object SnippetRenderer:
     div(cls := "snippet-label")(name)
   ).toString
 
-  def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage], success: Boolean): String =
+  def renderSnippetWithMessages(snippetName: Option[String], codeLines: Seq[String], messages: Seq[SnippetCompilerMessage], success: Boolean, showSnippetName: Boolean = true): String =
     val transformedLines = wrapCodeLines.andThen(addCompileMessages(messages)).andThen(reindexLines).apply(codeLines).map(_.toHTML)
     val codeHTML = s"""<code class="language-scala">${transformedLines.mkString("")}</code>"""
     val isRunnable = success
@@ -148,16 +148,17 @@ object SnippetRenderer:
       pre(
         raw(codeHTML)
       ),
-      raw(snippetName.fold("")(snippetLabel(_))),
+      raw(if showSnippetName then snippetName.fold("")(snippetLabel(_)) else ""),
       div(cls := "buttons")()
     ).toString
 
-  def renderSnippetWithMessages(node: ExtendedFencedCodeBlock): String =
+  def renderSnippetWithMessages(node: ExtendedFencedCodeBlock, showSnippetName: Boolean): String =
     renderSnippetWithMessages(
       node.name,
       node.codeBlock.getContentChars.toString.split("\n").map(_ + "\n").toSeq,
       node.compilationResult.toSeq.flatMap(_.messages),
-      node.compilationResult.fold(false)(_.isSuccessful)
+      node.compilationResult.fold(false)(_.isSuccessful),
+      showSnippetName
     )
 
   def renderSnippet(content: String, language: Option[String] = None): String =

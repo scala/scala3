@@ -20,7 +20,6 @@ import dotty.tools.dotc.core.Constants.Constant
 
 import dotty.tools.dotc.quoted.Interpreter
 
-import scala.util.control.NonFatal
 import dotty.tools.dotc.util.SrcPos
 import dotty.tools.io.AbstractFileClassLoader
 
@@ -76,7 +75,7 @@ object Splicer {
         case ex: StopInterpretation =>
           report.error(ex.msg, ex.pos)
           ref(defn.Predef_undefined).withType(ErrorType(ex.msg))
-        case NonFatal(ex) =>
+        case ex: Exception =>
           val msg =
             em"""Failed to evaluate macro.
                 |  Caused by ${ex.getClass}: ${if (ex.getMessage == null) "" else ex.getMessage}

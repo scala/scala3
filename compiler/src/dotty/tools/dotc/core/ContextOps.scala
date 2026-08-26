@@ -137,6 +137,7 @@ object ContextOps:
     }
 
     def isRechecking: Boolean =
-      (ctx.base.recheckPhaseIds & (1L << ctx.phaseId)) != 0
+      val phaseId = ctx.phaseId
+      0 <= phaseId && phaseId < 64 && (ctx.base.recheckPhaseIds & (1L << phaseId)) != 0
 
 end ContextOps

@@ -81,12 +81,12 @@ object TypeEval:
 
       // Runs the op and returns the result as a constant type.
       // If the op throws an exception, then this exception is converted into a type error.
-      def runConstantOp(op: => Any): Type =
+      def runConstantOp[T](op: => T)(using Constant.ValueToConstant[T]): Type =
         val result =
           try op
-          catch case e: Throwable =>
-            throw TypeError(em"${e.getMessage}")
-        ConstantType(Constant(result))
+          catch case ex: Exception =>
+            throw TypeError(em"${ex.getMessage}")
+        ConstantType(Constant.fromValue(result))
 
       def fieldsOf: Option[Type] =
         expectArgsNum(1)
@@ -113,25 +113,25 @@ object TypeEval:
               case _ => None
           case _ => None
 
-      def constantFold1[T](extractor: Type => Option[T], op: T => Any): Option[Type] =
+      def constantFold1[T, U: Constant.ValueToConstant](extractor: Type => Option[T], op: T => U): Option[Type] =
         expectArgsNum(1)
         extractor(tp.args.head).map(a => runConstantOp(op(a)))
 
-      def constantFold2[T](extractor: Type => Option[T], op: (T, T) => Any): Option[Type] =
+      def constantFold2[T, U: Constant.ValueToConstant](extractor: Type => Option[T], op: (T, T) => U): Option[Type] =
         constantFold2AB(extractor, extractor, op)
 
-      def constantFold2AB[TA, TB](extractorA: Type => Option[TA], extractorB: Type => Option[TB], op: (TA, TB) => Any): Option[Type] =
+      def constantFold2AB[TA, TB, U: Constant.ValueToConstant](extractorA: Type => Option[TA], extractorB: Type => Option[TB], op: (TA, TB) => U): Option[Type] =
         expectArgsNum(2)
         for
           a <- extractorA(tp.args(0))
           b <- extractorB(tp.args(1))
         yield runConstantOp(op(a, b))
 
-      def constantFold3[TA, TB, TC](
+      def constantFold3[TA, TB, TC, U: Constant.ValueToConstant](
         extractorA: Type => Option[TA],
         extractorB: Type => Option[TB],
         extractorC: Type => Option[TC],
-        op: (TA, TB, TC) => Any
+        op: (TA, TB, TC) => U
       ): Option[Type] =
         expectArgsNum(3)
         for

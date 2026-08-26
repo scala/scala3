@@ -1,7 +1,5 @@
 package dotty.tools.dotc.semanticdb.internal
 
-import scala.language.unsafeNulls
-
 import java.io.IOException
 import java.io.InputStream
 import java.util.Arrays
@@ -73,7 +71,7 @@ object SemanticdbInputStream {
   private val BUFFER_SIZE = 4096
 }
 
-class SemanticdbInputStream private (buffer: Array[Byte], input: InputStream) {
+class SemanticdbInputStream private (buffer: Array[Byte], input: InputStream | Null) {
   /**
     * The total number of bytes read before the current buffer.  The total
     * bytes read up to the current position can be computed as

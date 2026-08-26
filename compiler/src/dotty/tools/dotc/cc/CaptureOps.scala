@@ -89,7 +89,7 @@ extension (tp: Type)
   def retainedElementsRaw(using Context): List[Type] = tp match
     case OrType(tp1, tp2) =>
       tp1.retainedElementsRaw ++ tp2.retainedElementsRaw
-    case AnnotatedType(tp1, ann: RetainingAnnotation) if tp1.derivesFrom(defn.Caps_CapSet) =>
+    case AnnotatedType(tp1, ann: RetainingAnnotation) if tp1.derivesFromCapSet =>
       ann.retainedType.retainedElementsRaw
     case tp =>
       tp.dealiasKeepAnnots match
@@ -108,7 +108,7 @@ extension (tp: Type)
   def retainedElements(using Context): List[Capability] =
     retainedElementsRaw.flatMap: elem =>
       elem match
-        case CapturingType(parent, refs) if parent.derivesFrom(defn.Caps_CapSet) =>
+        case CapturingType(parent, refs) if parent.derivesFromCapSet =>
           refs.elems.toList
         case _ =>
           elem.toCapability :: Nil
@@ -128,17 +128,15 @@ extension (tp: Type)
         || tp.symbol.isField && tp.prefix.isPrefixOfTrackableRef
         ) && !tp.symbol.isOneOf(UnstableValueFlags)
     case tp: TypeRef =>
-      tp.symbol.isType && tp.derivesFrom(defn.Caps_CapSet)
+      tp.symbol.isType && tp.derivesFromCapSet
     case tp: TypeParamRef =>
       !tp.underlying.exists // might happen during construction of lambdas
-      || tp.derivesFrom(defn.Caps_CapSet)
+      || tp.derivesFromCapSet
     case _ =>
       false
 
   private def isPrefixOfTrackableRef(using Context): Boolean =
-    isTrackableRef || tp.match
-      case tp: TermRef => tp.symbol.is(Package)
-      case _ => false
+    isTrackableRef || tp.refersToPackage
 
   /** The capture set of a type. This is:
     *   - For object capabilities: The singleton capture set consisting of
@@ -214,7 +212,7 @@ extension (tp: Type)
   def boxed(using Context): Type = tp.dealias match
     case tp @ CapturingType(parent, refs) if !tp.isBoxed && !refs.isAlwaysEmpty =>
       tp.annot match
-        case ann: CaptureAnnotation if !parent.derivesFrom(defn.Caps_CapSet) =>
+        case ann: CaptureAnnotation if !parent.derivesFromCapSet =>
           AnnotatedType(parent, ann.boxedAnnot)
         case ann => tp
     case tp: RealTypeBounds =>
@@ -240,10 +238,10 @@ extension (tp: Type)
   def boxDeeply(using Context): Type =
     def recur(tp: Type): Type = tp.dealiasKeepAnnotsAndOpaques match
       case tp @ CapturingType(parent, refs) =>
-        if tp.isBoxed || parent.derivesFrom(defn.Caps_CapSet) then tp
+        if tp.isBoxed || parent.derivesFromCapSet then tp
         else tp.boxed
       case tp @ AnnotatedType(parent, ann: RetainingAnnotation)
-      if !parent.derivesFrom(defn.Caps_CapSet) =>
+      if !parent.derivesFromCapSet =>
         assert(ann.isStrict)
         CapturingType(parent, ann.toCaptureSet, boxed = true)
       case tp @ AnnotatedType(parent, ann) =>
@@ -393,7 +391,8 @@ extension (tp: Type)
   def derivesFromCapTrait(cls: ClassSymbol)(using Context): Boolean = tp.dealiasKeepAnnots match
     case tp: (TypeRef | AppliedType) =>
       val sym = tp.typeSymbol
-      if sym.isClass then sym.derivesFrom(cls)
+      if sym.isClass
+      then (if sym.isArrayUnderStrictMut then defn.Caps_Mutable else sym).derivesFrom(cls)
       else tp.superType.derivesFromCapTrait(cls)
     case tp: (TypeProxy & ValueType) =>
       tp.superType.derivesFromCapTrait(cls)
@@ -404,18 +403,9 @@ extension (tp: Type)
     case _ =>
       false
 
-  def derivesFromCapability(using Context): Boolean =
-    derivesFromCapTrait(defn.Caps_Capability) || isArrayUnderStrictMut
-  def derivesFromExclusive(using Context): Boolean =
-    derivesFromCapTrait(defn.Caps_ExclusiveCapability) || isArrayUnderStrictMut
-  def derivesFromStateful(using Context): Boolean =
-    derivesFromCapTrait(defn.Caps_Stateful) || isArrayUnderStrictMut
-  def derivesFromShared(using Context): Boolean =
-    derivesFromCapTrait(defn.Caps_SharedCapability)
-  def derivesFromUnscoped(using Context): Boolean =
-    derivesFromCapTrait(defn.Caps_Unscoped) || isArrayUnderStrictMut
-  def derivesFromMutable(using Context): Boolean =
-    derivesFromCapTrait(defn.Caps_Mutable) || isArrayUnderStrictMut
+  def derivesFromStateful(using Context): Boolean = derivesFromCapTrait(defn.Caps_Stateful)
+  def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
+  def derivesFromCapSet(using Context) = tp.derivesFrom(defn.Caps_CapSet)
 
   def isArrayUnderStrictMut(using Context): Boolean = tp.classSymbol.isArrayUnderStrictMut
 
@@ -471,7 +461,7 @@ extension (tp: Type)
         else if variance <= 0 then false
         else if directly && defn.isFunctionSymbol(t.typeSymbol) then false
         else t match
-          case CapturingType(_, refs) if refs.elems.exists(_.core == c) =>
+          case CapturingOrRetainsType(_, refs) if refs.elems.exists(_.core == c) =>
             true
           case t @ AnnotatedType(parent, ann) =>
             // Don't traverse annotations, which includes capture sets
@@ -512,8 +502,8 @@ extension (tp: Type)
     case tp: MethodType =>
       tp.derivedLambdaType(paramInfos = argTypes, resType = resType)
     case tp: PolyType =>
-      assert(argTypes.isEmpty)
-      tp.derivedLambdaType(resType = resType)
+      assert(argTypes.forall(_.isInstanceOf[TypeBounds]))
+      tp.derivedLambdaType(paramInfos = argTypes.asInstanceOf[List[TypeBounds]], resType = resType)
     case _ =>
       tp
 
@@ -558,13 +548,16 @@ extension (cls: ClassSymbol) {
       bc.is(CaptureChecked) && selfType.exists && selfType.captureSet.elems == refs.elems
 
   def isClassifiedCapabilityClass(using Context): Boolean =
-    cls.derivesFrom(defn.Caps_Capability) && cls.parentSyms.contains(defn.Caps_Classifier)
+    cls.derivesFromCapability && cls.parentSyms.contains(defn.Caps_Classifier)
 
   def classifier(using Context): ClassSymbol =
-    if cls.derivesFrom(defn.Caps_Capability) then
-      cls.baseClasses
-        .filter(_.parentSyms.contains(defn.Caps_Classifier))
-        .foldLeft(defn.AnyClass)(leastClassifier)
+    if cls.derivesFromCapability then
+      if cls.isArrayUnderStrictMut then
+        defn.Caps_Unscoped
+      else
+        cls.baseClasses
+          .filter(_.parentSyms.contains(defn.Caps_Classifier))
+          .foldLeft(defn.AnyClass)(leastClassifier)
     else defn.AnyClass
 
   /** The additional capture set implied by the capture sets of its fields. This
@@ -577,26 +570,34 @@ extension (cls: ClassSymbol) {
    *  @return  the implied capture set, and the list of fields contributing to it
    */
   def capturesImpliedByFields(core: Type)(using Context): (refs: CaptureSet, fields: List[Symbol]) = {
-    var infos: List[String] = Nil
-    def pushInfo(msg: => String) =
-      if ctx.settings.YccVerbose.value then infos = msg :: infos
-
     def knownFields(cls: ClassSymbol) =
       ccState.fieldsWithExplicitTypes             // pick fields with explicit types for classes in this compilation unit
         .getOrElse(cls, cls.info.decls.toList)  // pick all symbols in class scope for other classes
 
-    /** The classifiers of the LocalCaps in the span capture sets of all fields
-     *  in the given class `cls`.
+    def commonAncestor(clss: List[ClassSymbol]): Symbol =
+      if clss.isEmpty then NoSymbol
+      else clss.reduce(greatestClassifier)
+
+    /** The implied classifier of the LocalCap of the class instance, derived from
+     *    - the clasifiers of the LocalCaps in the span capture sets of all fields
+     *    - the implied classifiers of the parent classes
+     *    - if `cls` is a stateful class, the classifier of `cls` itself
+     *  @return The implied classidier, or NoSymbol is there is no LocalCap
+     *          to be generated for the instance.
      */
-    def impliedClassifiers(cls: Symbol): List[ClassSymbol] = cls match
+    def impliedClassifier(cls: Symbol): Symbol = cls match
       case cls: ClassSymbol =>
-        var fieldClassifiers = knownFields(cls).flatMap(classifiersOfLocalCapsInType)
+        val fieldClassifiers =
+          knownFields(cls).flatMap(classifiersOfLocalCapsInType)
         val parentClassifiers =
-          cls.parentSyms.map(impliedClassifiers).filter(_.nonEmpty)
-        if fieldClassifiers.isEmpty && parentClassifiers.isEmpty
-        then Nil
-        else parentClassifiers.foldLeft(fieldClassifiers.distinct)(dominators)
-      case _ => Nil
+          cls.parentSyms.map(impliedClassifier).collect:
+            case cl: ClassSymbol => cl
+        val stateClassifiers =
+          if cls.typeRef.isStatefulType(varsOnly = true)
+          then cls.classifier :: Nil
+          else Nil
+        commonAncestor(fieldClassifiers ++ parentClassifiers ++ stateClassifiers)
+      case _ => NoSymbol
 
     def contributingFields(cls: Symbol): List[Symbol] = cls match
       case cls: ClassSymbol =>
@@ -606,30 +607,28 @@ extension (cls: ClassSymbol) {
       case _ => Nil
 
     def maybeRO(ref: Capability, fields: List[Symbol]) =
-      if !cls.typeRef.isStatefulType && fields.forall(allLocalCapsInTypeAreRO)
+      if !cls.typeRef.isStatefulType() && fields.forall(allLocalCapsInTypeAreRO)
       then ref.readOnly
       else ref
 
     def localCap(fields: List[Symbol]) =
       LocalCap(Origin.NewInstance(core, fields))
 
-    var implied = impliedClassifiers(cls)
-    if cls.typeRef.isStatefulType then implied = dominators(cls.classifier :: Nil, implied)
-    val fields = contributingFields(cls)
-    val impliedSet = ccState.localCapClassifiersAndFieldsCache.getOrElseUpdate(cls, (implied, fields)) match
-      case (Nil, _) =>
+    val impliedClr = impliedClassifier(cls)
+    val contributing = contributingFields(cls)
+    val impliedSet = impliedClr match
+      case impliedClr: ClassSymbol =>
+        val result = localCap(contributing)
+        if impliedClr != defn.AnyClass then
+          result.hiddenSet.adoptClassifier(impliedClr)
+        maybeRO(result, contributing).singletonCaptureSet
+      case _ =>
         CaptureSet.empty
-      case (cl :: Nil, fields) =>
-        val result = localCap(fields)
-        result.hiddenSet.adoptClassifier(cl)
-        maybeRO(result, fields).singletonCaptureSet
-      case (_, fields) =>
-        maybeRO(localCap(fields), fields).singletonCaptureSet
-    (impliedSet, fields)
+    (impliedSet, contributing)
   }
 
   def creationCapset(using Context)(core: Type = cls.appliedRef): CaptureSet =
-    if cls.derivesFrom(defn.Caps_Capability)
+    if cls.derivesFromCapability
     then LocalCap(Origin.NewInstance(core, Nil)).singletonCaptureSet
     else cls.capturesImpliedByFields(core).refs
 
@@ -781,6 +780,9 @@ extension (sym: Symbol) {
   def isArrayUnderStrictMut(using Context): Boolean =
     sym == defn.ArrayClass && ccConfig.strictMutability
 
+  def derivesFromCapability(using Context): Boolean =
+    sym.derivesFrom(defn.Caps_Capability) || sym.isArrayUnderStrictMut
+
   def isDisallowedInCapset(using Context): Boolean =
     sym.isOneOf(if ccConfig.strictMutability then Method else UnstableValueFlags)
 
@@ -819,18 +821,20 @@ extension (sym: Symbol) {
   def useSet(using Context): CaptureSet =
     ccState.useSetCache.getOrElseUpdate(sym,
       sym.getAnnotation(defn.RetainsAnnot) match
-        case Some(ann: RetainingAnnotation) =>
-          try ann.toCaptureSet
+        case Some(ann) =>
+          // If we read from Tasty, the annotation is not a RetainingAnnotation but is
+          // instead a regular annotation of type TreeUnpickler#DeferredSymAndTree.
+          // Map it to a RetainingAnnotation now.
+          try RetainingAnnotation.fromAnnotation(ann).toCaptureSet
           catch case ex: IllegalCaptureRef =>
             report.error(em"Illegal capture reference: ${ex.getMessage}", sym.srcPos)
             CaptureSet.empty
         case _ =>
           if sym.is(Package)
             || (sym.isClass || sym.isConstructor) && !sym.isExemptFromExplicitChecks
-            // If `sym` does not have a `uses` clause (or `uses_init` for constructors)
-            // set its capture set to the empty set, unless it is local to the current
-            // compilation unit. For local classes and constructors we infer their
-            // use set.
+            // If `sym` does not have a `uses` clause, set its capture set to the empty set,
+            // unless it is local to the current compilation unit.
+            // For local classes and constructors we infer their use set.
           then CaptureSet.empty
           else CaptureSet.Var(sym, nestedOK = false)
     )
@@ -904,12 +908,16 @@ class PathSelectionProto(val selector: Symbol, val pt: Type, val tree: Tree) ext
  *   argument if CC is enabled (we need to do that to keep by-name status).
  */
 class CleanupRetains(using Context) extends TypeMap:
+  var retainsFound: Boolean = false
   def apply(tp: Type): Type = tp match
     case tp @ AnnotatedType(parent, annot: RetainingAnnotation) =>
       if Feature.ccEnabled then
+        retainsFound = true
         if annot.symbol == defn.RetainsCapAnnot then tp
         else AnnotatedType(this(parent), RetainingAnnotation(annot.symbol.asClass, defn.NothingType))
       else this(parent)
+    case tp @ AnnotatedType(parent, annot) if annot.symbol == defn.DeclaredAnnot =>
+      tp
     case _ => mapOver(tp)
 
 /** A base class for extractors that match annotated types with a specific
@@ -954,14 +962,13 @@ end OnlyCapability
 
 /** An extractor for all kinds of function types as well as method and poly types.
  *  It includes aliases of function types such as `=>`. TODO: Can we do without?
- *  @return  1st half: The argument types or empty if this is a type function
+ *  @return  1st half: The argument types or type bounds if this is a type function
  *           2nd half: The result type
  */
 object FunctionOrMethod:
   def unapply(tp: Type)(using Context): Option[(List[Type], Type)] = tp match
     case defn.FunctionOf(args, res, isContextual) => Some((args, res))
-    case mt: MethodType => Some((mt.paramInfos, mt.resType))
-    case mt: PolyType => Some((Nil, mt.resType))
+    case mt: MethodOrPoly => Some((mt.paramInfos, mt.resType))
     case defn.RefinedFunctionOf(rinfo) => unapply(rinfo)
     case _ => None
 

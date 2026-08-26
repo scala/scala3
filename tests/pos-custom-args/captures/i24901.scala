@@ -11,6 +11,10 @@ object Plan:
     test =>
       execute(test) // was error
 
+object PlanC:
+  def execute(test: Rand => Unit): Boolean =
+    true
+
   val err: (Rand => Unit) => Boolean =
     test =>
       execute(r => test(r)) // was error

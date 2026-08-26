@@ -6,6 +6,16 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-che
 
 ### Introduction
 
+```scala sc-hidden sc-name:overview-cc-context
+import language.experimental.captureChecking
+import caps.*
+```
+
+```scala sc-hidden sc-name:overview-mut-context
+import language.experimental.captureChecking
+import caps.*
+```
+
 Tracked capabilities are the most important new feature of Scala. This page gives an overview of
 the underlying concepts, focusing on what capabilities can express and what one can do with them.
 
@@ -18,17 +28,17 @@ For a more systematic description of all the details we refer you to the followi
  - [Capability Classifiers](./classifiers.md): Classifiers for capabilities and projection with the `.only[...]` operator.
  - [Checked Exceptions](./checked-exceptions.md): `CanThrow` capabilities and `throws` clauses.
  - [Stateful Capabilities](./mutability.md): Capabilities for mutable data structures.
- - [Separation Checking](./separation-checking.md): More detailed checking for congtrolling aliasing and sharing of capabilities.
+ - [Separation Checking](./separation-checking.md): More detailed checking for controlling aliasing and sharing of capabilities.
  - [How to Use the Capture Checker](./how-to-use.md): Instructions how to enable and configure capture checking.
  - [Internals](./internals.md): Description of some of the internals of the capture checker for implementers.
 
 Tracked capabilities are supported under Scala's capture checking extension, which can be enabled
 by the language import
-```scala sc:nocompile
+```scala
 import language.experimental.captureChecking
 ```
 Some more features of capture checking having to do with mutable data structures and alias control currently require a separate language import
-```scala sc:nocompile
+```scala
 import language.experimental.separationChecking
 ```
 Both extensions are experimental, which means that details can still change. Capture checking is by now quite mature and we expect it to be stabilized soon. Separation checking is still a bit more fluid at present.
@@ -38,8 +48,13 @@ Both extensions are experimental, which means that details can still change. Cap
 Informally, a capability is a value "of interest". For instance, a file handle, an access permission token, or a mutable data structure all make sense as capabilities. But the pair `("hello", "world!")` is just a value, not a capability. Often capabilities are associated with effects. For instance, a file handle gives access to the effect of reading or writing it.
 
 One can designate a value as a capability by making the type of the value extend directly or indirectly a standard trait `Capability`. For instance, a `File` can be declared to be a capability like this:
-```scala sc:nocompile
-	class File(path: String) extends ExclusiveCapability
+```scala sc-name:overview-file-context sc-compile-with:overview-cc-context
+class File(path: String) extends ExclusiveCapability
+//{
+extension (file: File)
+  def close(): Unit = ()
+  def println(message: String): Unit = ()
+//}
 ```
 Here, `ExclusiveCapability` is a subtrait of `Capability` that prevents concurrent accesses.
 
@@ -48,11 +63,15 @@ Here, `ExclusiveCapability` is a subtrait of `Capability` that prevents concurre
 Capabilities in Scala 3 are *tracked*. This means that we record in a type which capabilities can be accessed by values of that type. We write `A^{c}` for the type of values of type `A` that can access the capability `c`.
 
 For instance we can define a class `Logger` for sending log messages to a file and instantiate it like this:
-```scala sc:nocompile
-  class Logger(f: File) { ... }
+```scala sc-name:overview-logger-context sc-compile-with:overview-file-context
+class Logger(file: File)
+//{
+extension (logger: Logger^)
+  def log(message: String): Unit = ()
+//}
 
-  val out = File("~/some/bits")
-  val lg: Logger^{out} = Logger(out)
+val out: File^ = new File("~/some/bits")
+val lg: Logger^{out} = new Logger(out)
 ```
 Note the type `Logger^{out}` of `lg` above. It indicates not only that `lg` is of class `Logger` but also that it can access file `out`. We also say `lg` _captures_ `out` and call `Logger^{out}` a _capturing type_.
 
@@ -70,7 +89,7 @@ We say in this case that `c` _refines_ the underlying capture set `{c₁, ..., c
 
 For instance, if `out` and `lg` are capabilities as defined above and `f` is some other capability, we have
 ```
-  A  <:  A^{lg}  <:  A^{out}  <:  A{out, f}  <:  A^
+  A  <:  A^{lg}  <:  A^{out}  <:  A^{out, f}  <:  A^
 ```
 
 
@@ -86,18 +105,17 @@ retain any capability. We then use the following shorthands.
 ```
 
 A function captures any capabilities accessed by its body. For instance the function
-```scala sc:nocompile
-(x: Int) =>
+```scala sc-compile-with:overview-logger-context
+val next: Int ->{lg} Int = (x: Int) =>
   lg.log(s"called with parameter $x")
   x + 1
 ```
 has type `Int ->{lg} Int`, which is a subtype of `Int => Int`.
 
 Scala systematically distinguishes methods, which are members of classes and objects, from functions, which are objects themselves. Methods don't have expressible types and consequently don't have capability sets that can be tracked. Instead, the capability set is associated with the enclosing object. For instance, in
-```scala sc:nocompile
-val exec = new Runnable {
-  def run() = lg.log(s"called with parameter $x")
-}
+```scala sc-compile-with:overview-logger-context
+val exec: Runnable^{lg} = new Runnable:
+  def run(): Unit = lg.log("called")
 ```
 the value `exec` has type `Runnable^{lg}` since `lg` is accessed by `Runnable`'s method `run`.
 Methods can be converted to functions by just naming the method without passing any parameters (this is called eta expansion). For instance the value `exec.run` would have type `() ->{lg} Unit`.
@@ -109,23 +127,22 @@ For instance, here is a function that runs an operation `op` while providing a l
 file. After the operation is finished, the file is closed and the result of the operation is returned.
 The function is generic: the result type of the operation is the type parameter `T`, which can be instantiated as needed.
 
-```scala sc:nocompile
+```scala sc-name:overview-logged-context sc-compile-with:overview-logger-context
 def logged[T](op: Logger^ => T): T =
   val f = new File("logfile")
-  val l = Logger(f)
+  val l: Logger^{f} = new Logger(f)
   val result = op(l)
   f.close()
   result
 ```
 
 A problematic use of the function would leak the logger `l` in the result of the operation. For instance like this:
-```scala sc:nocompile
-  val bad = logged { l =>
-    () => l.log("too late!"))
-  }
-  bad()
+```scala sc:fail sc-compile-with:overview-logged-context
+val bad = logged { l =>
+  () => l.log("too late!")
+}
 ```
-Here, the value of bad is result of the operation passed to `logged` is the nested function `() => l.log("too late!")`. This is also the value of `bad`. Hence, the call `bad()` would invoke `l.log`, but at this point the file underlying the logger was already closed by `logged`. Fortunately, the definition of `bad` is rejected in Scala 3's type system. Essentially, the type parameter `T` in the definition of `logger` must be independent of the identity of the logger passed to `op`. In the bad usage scenario, this requirement is violated since the result type of `op` has type `() ->{l} Unit`, so it does depend on the logger parameter in its capture set.
+Here, the result of the operation passed to `logged` is the nested function `() => l.log("too late!")`. This is also the value of `bad`. Hence, the call `bad()` would invoke `l.log`, but at this point the file underlying the logger was already closed by `logged`. Fortunately, the definition of `bad` is rejected in Scala 3's type system. Essentially, the type parameter `T` in the definition of `logged` must be independent of the identity of the logger passed to `op`. In the bad usage scenario, this requirement is violated since the result type of `op` has type `() ->{l} Unit`, so it does depend on the logger parameter in its capture set.
 
 The fine grained control of lifetimes is one of the properties that set tracked capabilities apart from traditional untracked ones.
 
@@ -135,46 +152,49 @@ Capabilities like `out` or `lg` are objects with which a program interacts as us
 
 For instance, in the [Gears](https://lampepfl.github.io/gears/) framework for concurrent systems we have `Async` capabilities that allow a computation to suspend while waiting for an external event (and possibly be cancelled in the process). This is modeled by having the `Async` class extend a capability trait:
 
-```scala sc:nocompile
-   	class Async extends SharedCapability
+```scala sc-name:overview-async-context sc-compile-with:overview-file-context
+class Async extends SharedCapability
+class Data
 
-	// A suspendable method using an Async capability
-	def readDataEventually(file: File)(using async: Async): Data
+// A suspendable method using an Async capability
+def readDataEventually(file: File)(using async: Async): Data = new Data
 ```
 
 One common issue with traditional capabilities is that passing many capabilities as parameters to all the places that need them can get tedious quickly. In Scala this is much less of a problem since capabilities can be passed as implicit parameters via `using` clauses. For instance, the following method calls `readDataEventually` without having to pass the parameter `async` explicitly.
-```scala sc:nocompile
-def processData(using Async) =
-  val file = File("~/some/path")
+```scala sc-compile-with:overview-async-context
+def processData(using Async): Data =
+  val file = new File("~/some/path")
   readDataEventually(file)
 ```
-Since the parameter is not mentioned, we also don’t need a name for it in its definition. So the method above is a convenient shorthand for the following more explicit definition.
+Since the parameter is not mentioned, we also don't need a name for it in its definition. So the method above is a convenient shorthand for the following more explicit definition.
 
-```scala sc:nocompile
-def processData(using async: Async) =
-  val file = File("~/some/path")
+```scala sc-compile-with:overview-async-context
+def processData(using async: Async): Data =
+  val file = new File("~/some/path")
   readDataEventually(file)(using async)
 ```
 
 ### Mutation
 
 Mutable variables and mutable data structures are also considered capabilities.
-For instance, consider a pair of functions for incrementing and reading a counter:
-```scala sc:nocompile
-var counter: Int = 0
-def incr = () => counter += 1
-def current = () => counter
+For instance, consider a method that creates a pair of functions for incrementing and reading a counter:
+```scala sc-compile-with:overview-mut-context
+def counterOps =
+  var counter: Int = 0
+  val incr = () => counter += 1
+  val current = () => counter
+  (incr, current)
 ```
-Function `incr` has type `() ->{counter} Unit`, which records the fact that the counter is updated when calling the function.
+The function `incr` has type `() ->{counter} Unit`, where `counter` is the local variable defined in `counterOps`. This records the fact that the counter is updated when calling the function.
 
-We distinguish read and write accesses to mutable data. A read access to a mutable data stricture `m` charges a "fractional" read-only capability `m.rd` whereas a write access charges the full capability `m`. [Separation checking](./separation-checking.md) ensures that targets to write accesses cannot be obscured through aliasing. This is analogous to borrow checking in Rust, but uses a different mechanism based on capabilities instead of regions.
+We distinguish read and write accesses to mutable data. A read access to a mutable data structure `m` charges a "fractional" read-only capability `m.rd` whereas a write access charges the full capability `m`. [Separation checking](./separation-checking.md) ensures that targets to write accesses cannot be obscured through aliasing. This is analogous to borrow checking in Rust, but uses a different mechanism based on capabilities instead of regions.
 
 Mutable data structures extend trait `Mutable`, which is another subtrait of `Capability`.
 Methods that write to such data are marked with an `update` modifier. For instance, here is
 a class for append-buffers:
 
-```scala sc:nocompile
-class Buffer[T] extends Mutable {
+```scala sc-name:overview-buffer-context sc-compile-with:overview-mut-context
+abstract class Buffer[T] extends Mutable {
   update def append(elem: T): Unit
   def apply(pos: Int): T
   def size: Int
@@ -187,8 +207,8 @@ Types are used to regulate calls to update methods. A reference of type `Buffer`
 
 For instance, a `copy` method between buffers could be written like this:
 
-```scala sc:nocompile
-def copy(from: Buffer[T], to: Buffer[T]^): Unit =
+```scala sc-compile-with:overview-buffer-context
+def copy[T](from: Buffer[T], to: Buffer[T]^): Unit =
   for i <- 0 until from.size do
     to.append(from(i))
 ```
@@ -201,18 +221,22 @@ In traditional object capability systems, global capabilities are ruled out. Ind
 
 But with tracked capabilities, we have another means to control access via tracked types. Consequently global capabilities can be allowed. For instance,
 here is a `Console` object:
-```scala sc:nocompile
-object Console {
-  val in: File = ...
-  val out: File = ...
-}
+```scala sc-hidden sc-name:overview-console-channel-context sc-compile-with:overview-cc-context
+class File(path: String) extends SharedCapability
+extension (file: File)
+  def println(message: String): Unit = ()
+```
+
+```scala sc-name:overview-console-context sc-compile-with:overview-console-channel-context
+object Console extends SharedCapability:
+  val in: File = new File("stdin")
+  val out: File = new File("stdout")
 ```
 Here, `in`, and `out` are of type `File`, so `Console.in`, and `Console.out` are global capabilities. A function `() => Console.out.println("hi")` would have type
 `() ->{Console.out} Unit`. It could not be passed into a context expecting a pure function. A global object that refers to `Console` needs to declare that dependency in a `uses` clause.
-```scala sc:nocompile
-object SimpleLogger uses Console {
-  def log(str: String) = Console.out.println(str)
-}
+```scala sc-compile-with:overview-console-context
+object SimpleLogger uses Console:
+  def log(str: String): Unit = Console.out.println(str)
 ```
 Allowing global capabilities like `Console.out` is quite useful since it means that we don't need to fundamentally change a system's architecture to make it capability-safe. In traditional capability systems all capabilities provided by the host system have to be passed as parameters into the main entry point and from there to all functions that need access. This usually requires a global refactoring of the code base and can lead to more complex code.
 

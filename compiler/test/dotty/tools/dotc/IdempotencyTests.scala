@@ -11,14 +11,14 @@ import org.junit.Assume.assumeTrue
 import org.junit.{AfterClass, Test}
 import org.junit.experimental.categories.Category
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import reporting.TestReporter
-import vulpix._
+import vulpix.*
 
 
 class IdempotencyTests {
-  import TestConfiguration._
-  import IdempotencyTests._
+  import TestConfiguration.*
+  import IdempotencyTests.*
   import CompilationTest.aggregateTests
 
   // ignore flaky tests

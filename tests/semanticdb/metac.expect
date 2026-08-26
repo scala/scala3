@@ -3764,7 +3764,7 @@ Text => empty
 Language => Scala
 Symbols => 13 entries
 Occurrences => 35 entries
-Diagnostics => 4 entries
+Diagnostics => 1 entries
 Synthetics => 4 entries
 
 Symbols:
@@ -3820,12 +3820,9 @@ Occurrences:
 [23:4..23:19): StructuralTypes -> example/StructuralTypes.
 
 Diagnostics:
-[15:2..15:11): [warning] A pure expression does nothing in statement position
-[16:2..16:10): [warning] A pure expression does nothing in statement position
 [17:20..17:23): [warning] Alphanumeric method foo is not declared infix; it should not be used as infix operator.
 Instead, use method syntax .foo(...) or backticked identifier `foo`.
 The latter can be rewritten automatically under -rewrite -source 3.4-migration.
-[22:2..22:13): [warning] A pure expression does nothing in statement position
 
 Synthetics:
 [15:2..15:6):user => reflectiveSelectable(*)
@@ -5059,8 +5056,8 @@ _empty_/Txn# => trait Txn [typeparam T  <: Txn[T]] extends Object { self: Txn[T]
 _empty_/Txn#[T] => typeparam T  <: Txn[T]
 _empty_/Txn#`<init>`(). => primary ctor <init> [typeparam T  <: Txn[T]](): Txn[T]
 local0 => val local out: Repr[Out]
-local1 => val local inObj: Obj[In] & Repr[In]
-local2 => val local outObj: Obj[Out] & Repr[Out]
+local1 => val local inObj: Obj[In]
+local2 => val local outObj: Obj[Out]
 
 Occurrences:
 [1:6..1:9): Txn <- _empty_/Txn#
@@ -5304,8 +5301,8 @@ local1 => val local p: N$1
 local2 => type N$2  <: Nat
 local3 => val local p: N$2
 local4 => val local Nat_this: Zero.type
-local5 => val local Nat_this: Succ[Zero.type]
-local6 => val local Nat_this: Succ[_] forSome { type _  <: Succ[Zero.type] }
+local5 => val local Nat_this: Succ[Nat_this.type]
+local6 => val local Nat_this: Succ[Nat_this.type]
 recursion/Nats. => final object Nats extends Object { self: Nats.type => +9 decls }
 recursion/Nats.Nat# => sealed trait Nat extends Object { self: Nat => +3 decls }
 recursion/Nats.Nat#`++`(). => inline transparent macro ++ => Succ[Nat.this.type]

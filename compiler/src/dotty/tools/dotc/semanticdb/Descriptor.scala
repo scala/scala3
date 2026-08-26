@@ -1,7 +1,5 @@
 package dotty.tools.dotc.semanticdb
 
-import scala.language.unsafeNulls
-
 import java.lang.System.{lineSeparator => EOL}
 import dotty.tools.dotc.semanticdb.{Descriptor => d}
 

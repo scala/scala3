@@ -2,3 +2,19 @@ breakTest
 optTest
 resultTest
 Person(Kostas,5)
+validateTest
+ok: Form(Bob,Email(Bob@example.com),21)
+err: [0]: Missing name
+err: [0]: bob does not start with uppercase letter
+err: [0]: Invalid email bad-email
+err: [0]: Age 16 is below minimum age 18
+err: [0]: Missing confirmation
+err: [0]: bob does not start with uppercase letter, [1]: Invalid email bad-email, [2]: Age 16 is below minimum age 18, [3]: Missing confirmation
+----
+ok: Invoice(c1,100)
+ok: Refund(i1,bad product)
+err: [0]: Missing customerId, [1]: Missing amount
+err: [0]: Invalid amount: For input string: "b"
+err: [0]: Missing invoiceId, [1]: Missing reason
+err: [0]: invalid 'kind' other
+err: [0]: missing 'kind'

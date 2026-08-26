@@ -48,6 +48,8 @@ trait MapView[K, +V]
   override def filterKeys(p: K => Boolean): MapView[K, V]^{this, p} = new MapView.FilterKeys(this, p)
 
   /** Transforms this map by applying a function to every retrieved value.
+   *
+   *  @tparam W the type of the transformed values
    *  @param  f   the function used to transform values of this map.
    *  @return a map view which maps every key of this map
    *          to `f(this(key))`. The resulting map wraps the original map without copying any elements.
@@ -167,7 +169,7 @@ object MapView extends MapViewFactory {
   override def from[K, V](it: IterableOnce[(K, V)]^): View[(K, V)]^{it} = View.from(it)
 
   override def from[K, V](it: SomeMapOps[K, V]): MapView[K, V] = it match {
-    case mv: MapView[K, V] => mv
+    case mv: MapView[K @unchecked, V @unchecked] => mv
     case other => new MapView.Id(other)
   }
 

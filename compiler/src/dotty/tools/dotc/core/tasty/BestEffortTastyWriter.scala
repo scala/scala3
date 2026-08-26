@@ -21,10 +21,7 @@ object BestEffortTastyWriter:
         val outstream = new DataOutputStream(new PlainFile(outTastyFile).bufferedOutput)
         try outstream.write(binary())
         catch case ex: ClosedByInterruptException =>
-          try
-            outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
-          catch
-            case _: Throwable =>
+          outTastyFile.delete() // don't leave an empty or half-written tastyfile around after an interrupt
           throw ex
         finally outstream.close()
       }

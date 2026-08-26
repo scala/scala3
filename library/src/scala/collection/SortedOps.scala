@@ -15,7 +15,11 @@ package scala.collection
 import scala.language.`2.13`
 import language.experimental.captureChecking
 
-/** Base trait for sorted collections. */
+/** Base trait for sorted collections.
+ *
+ *  @tparam A the element type of this sorted collection
+ *  @tparam C the type of the sorted collection itself
+ */
 transparent trait SortedOps[A, +C] {
 
   def ordering: Ordering[A]
@@ -42,6 +46,7 @@ transparent trait SortedOps[A, +C] {
    *               `None` if there is no lower bound.
    *  @param until The upper-bound (exclusive) of the ranged projection.
    *               `None` if there is no upper bound.
+   *  @return a ranged projection of this collection containing only elements within the specified range
    */
   def rangeImpl(from: Option[A], until: Option[A]): C
 

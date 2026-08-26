@@ -159,8 +159,8 @@ class LinkedHashMap[K, V]
   /** Removes a key from this map if it exists
    *
    *  @param elem the element to remove
-   *  @param hash the **improved** hashcode of `element` (see computeHash)
-   *  @return the node that contained element if it was present, otherwise null
+   *  @param hash the **improved** hash code of `elem` (see `computeHash`)
+   *  @return the entry that contained `elem` if it was present, otherwise `null`
    */
   private def removeEntry0(elem: K, hash: Int): Entry | Null = {
     val idx = index(hash)
@@ -190,13 +190,19 @@ class LinkedHashMap[K, V]
     }
   }
 
-  /** Computes the improved hash of an original (`any.##`) hash. */
+  /** Computes the improved hash of an original (`any.##`) hash.
+   *
+   *  @param originalHash the original hash code obtained from `any.##`
+   */
   @`inline` private def improveHash(originalHash: Int): Int = {
     originalHash ^ (originalHash >>> 16)
   }
   @`inline` private[collection] def unimproveHash(improvedHash: Int): Int = improveHash(improvedHash)
 
-  /** Computes the improved hash of this key. */
+  /** Computes the improved hash of this key.
+   *
+   *  @param o the key whose improved hash to compute
+   */
   @`inline` private def computeHash(o: K): Int = improveHash(o.##)
 
   @`inline` private def index(hash: Int) = hash & (table.length - 1)
@@ -365,7 +371,10 @@ class LinkedHashMap[K, V]
     e
   }
 
-  /** Deletes the entry from the LinkedHashMap, set the `earlier` and `later` pointers correctly. */
+  /** Deletes the entry from the `LinkedHashMap`, set the `earlier` and `later` pointers correctly.
+   *
+   *  @param e the entry to remove from the `LinkedHashMap`
+   */
   private def deleteEntry(e: Entry): Unit = {
     if (e.earlier eq null) firstEntry = e.later
     else e.earlier.nn.later = e.later
@@ -495,7 +504,14 @@ object LinkedHashMap extends MapFactory[LinkedHashMap] {
 
   def newBuilder[K, V]: GrowableBuilder[(K, V), LinkedHashMap[K, V]] = new GrowableBuilder(empty[K, V])
 
-  /** Class for the linked hash map entry, used internally. */
+  /** Class for the linked hash map entry, used internally.
+   *
+   *  @tparam K the type of key stored in this entry
+   *  @tparam V the type of value stored in this entry
+   *  @param key the key for this map entry
+   *  @param hash the improved hash code of `key` (see `improveHash`)
+   *  @param value the value associated with `key`
+   */
   private[mutable] final class LinkedEntry[K, V](val key: K, val hash: Int, var value: V) {
     var earlier: LinkedEntry[K, V] | Null = null
     var later: LinkedEntry[K, V] | Null = null

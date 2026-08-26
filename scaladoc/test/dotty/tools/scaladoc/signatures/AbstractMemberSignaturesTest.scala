@@ -42,4 +42,4 @@ class AbstractMembers extends ScaladocTest("abstractmembersignatures"):
         }
       }
     IO.foreachFileIn(output, processFile)
-    signatures.result.groupMap(_._1)(_._2)
+    signatures.result().groupMap(_._1)(_._2)

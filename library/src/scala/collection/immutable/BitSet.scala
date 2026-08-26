@@ -65,7 +65,11 @@ sealed abstract class BitSet
     } else this
   }
 
-  /** Updates word at index `idx`; enlarges set if `idx` outside range of set. */
+  /** Updates word at index `idx`; enlarges set if `idx` outside range of set.
+   *
+   *  @param idx the index of the word to update
+   *  @param w the new value for the word at index `idx`
+   */
   protected def updateWord(idx: Int, w: Long): BitSet
 
   override def map(f: Int => Int): BitSet = strictOptimizedMap(newSpecificBuilder, f)
@@ -108,7 +112,10 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   private def createSmall(a: Long, b: Long): BitSet = if (b == 0L) new BitSet1(a) else new BitSet2(a, b)
 
-  /** A bitset containing all the bits in an array. */
+  /** A bitset containing all the bits in an array.
+   *
+   *  @param elems the array of `Long` words representing the bits; the array is defensively copied
+   */
   def fromBitMask(elems: Array[Long]): BitSet = {
     val len = elems.length
     if (len == 0) empty
@@ -122,6 +129,8 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   /** A bitset containing all the bits in an array, wrapping the existing
    *  array without copying.
+   *
+   *  @param elems the array of `Long` words representing the bits; the caller must not modify the array after this call
    */
   def fromBitMaskNoCopy(elems: Array[Long]): BitSet = {
     val len = elems.length

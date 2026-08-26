@@ -1,7 +1,5 @@
 package dotty.tools.dotc.util
 
-import scala.language.unsafeNulls
-
 /** A specialized implementation of GenericHashMap with standard hashCode and equals
  *  as comparison
  */

@@ -21,7 +21,10 @@ import java.lang.String
 
 import scala.annotation.nowarn
 
-/** Base trait for set collections. */
+/** Base trait for set collections.
+ *
+ *  @tparam A the element type of the set
+ */
 trait Set[A]
   extends Iterable[A]
     with SetOps[A, Set, Set[A]]
@@ -46,17 +49,12 @@ trait Set[A]
    *  to unexpected results if `ordering.equiv(e1, e2)` (used for lookup in `TreeSet`) is different from `e1 == e2`
    *  (used for lookup in `HashSet`).
    *
+   *  ```scala sc:compile
+   *   import scala.collection.immutable._
+   *   val ord: Ordering[String] = _ compareToIgnoreCase _
+   *   val result1 = TreeSet("A")(using ord) == HashSet("a") // false
+   *   val result2 = HashSet("a") == TreeSet("A")(using ord) // true
    *  ```
-   *   scala> import scala.collection.immutable._
-   *   scala> val ord: Ordering[String] = _ compareToIgnoreCase _
-   *
-   *   scala> TreeSet("A")(ord) == HashSet("a")
-   *   val res0: Boolean = false
-   *
-   *   scala> HashSet("a") == TreeSet("A")(ord)
-   *   val res1: Boolean = true
-   *  ```
-   *
    *
    *  @param that The set to which this set is compared
    *  @return `true` if the two sets are equal according to the description
@@ -86,6 +84,9 @@ trait Set[A]
  *
  *  @define coll set
  *  @define Coll `Set`
+ *
+ *  @tparam A the element type of the set
+ *  @tparam CC the type constructor for the set's collection type
  */
 transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
   extends IterableOps[A, CC, C]
@@ -149,6 +150,9 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
    *  ListSet(1,2,3).subsets => {{1},{2},{3},{1,2},{1,3},{2,3},{1,2,3}}
    *
    *  $willForceEvaluation
+   *
+   *  @param elms the elements of the set as an indexed sequence
+   *  @param len the size of each subset to generate
    */
   private class SubsetsItr(elms: IndexedSeq[A], len: Int) extends AbstractIterator[C] {
     private val idxs = Array.range(0, len+1)
@@ -186,7 +190,10 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
    */
   def intersect(that: Set[A]): C = this.filter(that)
 
-  /** Alias for `intersect`. */
+  /** Alias for `intersect`.
+   *
+   *  @param that the set to intersect with
+   */
   @`inline` final def & (that: Set[A]): C = intersect(that)
 
   /** Computes the difference of this set and another set.
@@ -197,7 +204,10 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
    */
   def diff(that: Set[A]): C
 
-  /** Alias for `diff`. */
+  /** Alias for `diff`.
+   *
+   *  @param that the set of elements to exclude
+   */
   @`inline` final def &~ (that: Set[A]): C = this diff that
 
   @deprecated("Consider requiring an immutable Set", "2.13.0")
@@ -231,10 +241,10 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
       while (it.hasNext) result = result + it.next()
       result.asInstanceOf[C]
     case _ => fromSpecific(that match {
-      case that: collection.Iterable[A] => new View.Concat(this, that)
+      case that: collection.Iterable[A @unchecked] => new View.Concat(this, that)
       case _ => iterator.concat(that.iterator)
     })
-  }    
+  }
 
   @deprecated("Consider requiring an immutable Set or fall back to Set.union", "2.13.0")
   def + (elem: A): C = fromSpecific(new View.Appended(this, elem))
@@ -242,7 +252,10 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
   @deprecated("Use ++ with an explicit collection argument instead of + with varargs", "2.13.0")
   def + (elem1: A, elem2: A, elems: A*): C = fromSpecific(new View.Concat(new View.Appended(new View.Appended(this, elem1), elem2), elems))
 
-  /** Alias for `concat`. */
+  /** Alias for `concat`.
+   *
+   *  @param that the collection containing the elements to add
+   */
   @`inline` final def ++ (that: collection.IterableOnce[A]^): C = concat(that)
 
   /** Computes the union between of set and another set.
@@ -253,7 +266,10 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
    */
   @`inline` final def union(that: Set[A]): C = concat(that)
 
-  /** Alias for `union`. */
+  /** Alias for `union`.
+   *
+   *  @param that the set to form the union with
+   */
   @`inline` final def | (that: Set[A]): C = concat(that)
 }
 
@@ -264,5 +280,8 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
 @SerialVersionUID(3L)
 object Set extends IterableFactory.Delegate[Set](immutable.Set)
 
-/** Explicit instantiation of the `Set` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Set` trait to reduce class file size in subclasses.
+ *
+ *  @tparam A the element type of the set
+ */
 abstract class AbstractSet[A] extends AbstractIterable[A] with Set[A]

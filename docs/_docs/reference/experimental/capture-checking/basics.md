@@ -12,14 +12,14 @@ import caps.*
 ```
 
 Capture checking can be enabled by the language import
-```scala sc:nocompile
+```scala
 import language.experimental.captureChecking
 ```
 At present, capture checking is still highly experimental and unstable, and it evolves quickly.
 Before trying it out, make sure you have the latest version of Scala.
 
 To get an idea what capture checking can do, let's start with a small example:
-```scala
+```scala sc-name:logfile-unchecked
 //{
 import java.io.FileOutputStream
 //}
@@ -35,7 +35,7 @@ operation's result is returned. This is a typical _try-with-resources_ pattern, 
 The problem is that `usingLogFile`'s implementation is not entirely safe. One can
 undermine it by passing an operation that performs the logging at some later point
 after it has terminated. For instance:
-```scala sc:nocompile
+```scala sc-compile-with:logfile-unchecked
 val later = usingLogFile { file => () => file.write(0) }
 later() // crash
 ```
@@ -85,7 +85,7 @@ trait LzyList[+A]:
 object LzyList:
   def apply[T](xs: T*): LzyList[T] = ???
 //}
-val xs = usingLogFile { f =>
+val xs = usingLogFile { f => // error // error
   LzyList(1, 2, 3).map { x => f.write(x); x * x }
 }
 ```
@@ -208,7 +208,12 @@ Lazy vals receive special treatment under capture checking, similar to parameter
 
 When a lazy val is declared, its initializer is checked in its own environment (like a method body). The initializer can capture capabilities, and these are tracked separately:
 
-```scala sc:nocompile
+```scala sc-hidden sc-name:lazy-console-context sc-compile-with:cc-context
+class Console extends SharedCapability:
+  def println(msg: String): Unit = ()
+```
+
+```scala sc:fail sc-compile-with:lazy-console-context
 def example(console: Console^) =
   lazy val x: () -> String =
     console.println("Computing x")  // console captured by initializer
@@ -226,9 +231,12 @@ The type system tracks that accessing `x` requires the `console` capability, eve
 
 When accessing a lazy val member through a qualifier, the qualifier is charged to the current capture set, just like calling a parameterless method:
 
-```scala sc:nocompile
+```scala sc:fail sc-compile-with:cc-context
 trait Container:
-  lazy val lazyMember: String
+  lazy val lazyMember: String =
+    //{
+    "value"
+    //}
 
 def client(c: Container^): Unit =
   val f1: () -> String = () => c.lazyMember        // error
@@ -241,7 +249,7 @@ Accessing `c.lazyMember` can trigger initialization, which may use capabilities 
 
 For capture checking purposes, lazy vals behave identically to parameterless methods:
 
-```scala sc:nocompile
+```scala sc-compile-with:cc-context
 trait T:
   def methodMember: String
   lazy val lazyMember: String
@@ -361,10 +369,10 @@ An analogous restriction applies to the type of a mutable variable.
 Another way one could try to undermine capture checking would be to
 assign a closure with a local capability to a global variable. Maybe
 like this:
-```scala sc:nocompile
+```scala sc:fail sc-compile-with:logfile-checked
 var loophole: () => Unit = () => ()
 usingLogFile { f =>
-  loophole = () => f.write(0)
+  loophole = () => f.write(0) // error
 }
 loophole()
 ```

@@ -44,10 +44,7 @@ final class AutoImportsProvider(
     val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
     val path =
       Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
-
-    val indexedContext = IndexedContext(pos)(
-      using Interactive.contextOfPath(path)(using newctx)
-    )
+    val indexedContext = IndexedContext(pos, path, newctx)
     import indexedContext.ctx
 
     def correctInTreeContext(sym: Symbol) = path match

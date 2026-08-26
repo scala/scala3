@@ -12,7 +12,6 @@ import typer.Implicits.*
 import typer.ImportInfo
 import Variances.varianceSign
 import util.{Chars, SourcePosition}
-import scala.util.control.NonFatal
 import scala.annotation.switch
 import config.{Config, Feature}
 import ast.{tpd, untpd}
@@ -90,7 +89,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
     else tp
 
   private def sameBound(lo: Type, hi: Type): Boolean =
-    try lo frozen_=:= hi catch { case NonFatal(ex) => false }
+    try lo frozen_=:= hi catch { case ex: Exception => false }
 
   private def homogenizeArg(tp: Type) = tp match {
     case TypeBounds(lo, hi) if homogenizedView && sameBound(lo, hi) => homogenize(hi)
@@ -355,7 +354,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
       case tp: LazyRef =>
         def refTxt =
           try toTextGlobal(tp.ref)
-          catch case _: Throwable => Str("...") // reconsider catching errors
+          catch case _: Exception => Str("...") // reconsider catching errors
         "LazyRef(" ~ refTxt ~ ")"
       case Range(lo, hi) =>
         toText(lo) ~ ".." ~ toText(hi)
@@ -398,8 +397,7 @@ class PlainPrinter(_ctx: Context) extends Printer {
   /** If -uniqid is set, the hashcode of the type, after a # */
   protected def hashStr(tp: Type): String =
     if showUniqueIds then
-      try "#" + tp.hashCode
-      catch case ex: NullPointerException => ""
+      "#" + tp.hashCode
     else ""
 
   /** A string to append to a symbol composed of:
@@ -570,15 +568,16 @@ class PlainPrinter(_ctx: Context) extends Printer {
 
   /** Is this a capture variable's bounds? i.e. lo and hi are both CapSet-based. */
   private def isCaptureVarBounds(lo: Type, hi: Type): Boolean =
-    lo.derivesFrom(defn.Caps_CapSet) && (hi match
-      case CapturingType(parent, _) => parent.derivesFrom(defn.Caps_CapSet)
-      case hi => hi.derivesFrom(defn.Caps_CapSet))
+    lo.derivesFromCapSet && (hi match
+      case CapturingType(parent, _) => parent.derivesFromCapSet
+      case hi => hi.derivesFromCapSet)
 
   /** Print capture variable bounds using `^` syntax.
-   *  Plain CapSet lower bound and universal upper bound are elided.
+   *  Plain CapSet lower bound, empty lower bound, and universal upper bound are elided.
    */
   private def toTextCaptureVarBounds(lo: Type, hi: Type): Text =
     val loText = lo match
+      case CapturingType(_, refs: CaptureSet) if refs.elems.isEmpty && !ccVerbose => Text() // empty lower bound
       case CapturingType(_, refs) => " >: " ~ toTextCaptureSet(refs)
       case _ => Text() // plain CapSet = trivial lower bound
     val hiText = hi match
@@ -886,4 +885,3 @@ class PlainPrinter(_ctx: Context) extends Printer {
   protected def coloredText(text: Text, color: String): Text =
     if (ctx.useColors) color ~ text ~ SyntaxHighlighting.NoColor else text
 }
-

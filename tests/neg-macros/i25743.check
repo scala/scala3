@@ -1,0 +1,38 @@
+-- Error: tests/neg-macros/i25743/Test_2.scala:2:16 --------------------------------------------------------------------
+ 2 |  Macro.foo[Int]() // error // error
+   |  ^^^^^^^^^^^^^^^^
+   |Malformed tree was found while expanding macro with -Xcheck-macros.
+   |The tree does not conform to the compiler's tree invariants.
+   |
+   |Macro was:
+   |scala.quoted.runtime.Expr.splice[scala.Unit](((contextual$2: scala.quoted.Quotes) ?=> Macro.fooImpl[scala.Int](scala.quoted.Type.of[scala.Int](contextual$2), contextual$2)))
+   |
+   |The macro returned:
+   |Macro_1$package.useTag[scala.Int](Tag.apply[scala.Int])
+   |
+   |Error:
+   |Cannot create Tag for scala.Int
+   |
+   |stacktrace available when compiling with `-Ydebug`
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Macro_1.scala:12
+12 |  inline def foo[A](): Unit = ${ fooImpl[A] }
+   |                              ^^^^^^^^^^^^^^^
+    --------------------------------------------------------------------------------------------------------------------
+-- Error: tests/neg-macros/i25743/Test_2.scala:2:16 --------------------------------------------------------------------
+ 2 |  Macro.foo[Int]() // error // error
+   |  ^^^^^^^^^^^^^^^^
+   |  Cannot create Tag for scala.Int
+   |--------------------------------------------------------------------------------------------------------------------
+   |Inline stack trace
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Test_2.scala:2
+14 |    '{ useTag(Tag.apply[A]) }
+   |              ^^^^^^^^^^^^
+   |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   |This location contains code that was inlined from Test_2.scala:2
+14 |    '{ useTag(Tag.apply[A]) }
+   |       ^^^^^^^^^^^^^^^^^^^^
+    --------------------------------------------------------------------------------------------------------------------

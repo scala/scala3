@@ -2,8 +2,6 @@ package dotty.tools
 package dotc
 package parsing
 
-import scala.language.unsafeNulls
-
 import collection.immutable.BitSet
 import core.Decorators.*
 import core.StdNames.nme
@@ -16,7 +14,7 @@ abstract class TokensCommon {
 
   def tokenRange(lo: Int, hi: Int): TokenSet = BitSet(lo to hi *)
 
-  val tokenString, debugString: Array[String] = new Array[String](maxToken + 1)
+  val tokenString, debugString: Array[String | Null] = new Array[String | Null](maxToken + 1)
 
   def enter(token: Int, str: String, debugStr: String = ""): Unit = {
     assert(tokenString(token) == null)
@@ -128,7 +126,7 @@ abstract class TokensCommon {
   inline val lastParen = OUTDENT
 
   def buildKeywordArray(keywords: TokenSet): (Int, Array[Int]) = {
-    def start(tok: Token) = tokenString(tok).toTermName.asSimpleName.start
+    def start(tok: Token) = tokenString(tok).nn.toTermName.asSimpleName.start
     def sourceKeywords = keywords.toList.filter { (kw: Token) =>
       val ts = tokenString(kw)
       (ts != null) && !ts.contains(' ')
@@ -306,10 +304,10 @@ object Tokens extends TokensCommon {
   final val softModifierNames = Set(nme.inline, nme.into, nme.opaque, nme.open, nme.transparent, nme.infix)
     // Note: update, consume and erased are missing here since they are only modifiers under some import
 
-  def showTokenDetailed(token: Int): String = debugString(token)
+  def showTokenDetailed(token: Int): String = debugString(token).nn
 
   def showToken(token: Int): String = {
-    val str = tokenString(token)
+    val str = tokenString(token).nn
     if isKeyword(token) || token == COLONfollow || token == COLONeol then s"'$str'" else str
   }
 }

@@ -246,4 +246,28 @@ class TabcompleteTests extends ReplTest {
   @Test def i9334 = initially {
     assert(tabComplete("class Foo[T]; classOf[Foo].").contains("getName"))
   }
+
+  // i25790: tab completion with CC enabled
+  // i25790: tab completion with CC enabled
+  @Test def `i25790 cc tab complete` =
+    initially {
+      run("import language.experimental.captureChecking")
+    } andThen {
+      storedOutput()
+      run("val x = new Object")
+    } andThen {
+      storedOutput()
+      val comp = tabComplete("x.toStr")
+      assertEquals(List("toString"), comp.distinct)
+    }
+
+  @Test def tabCompleteForNamedTuple =
+    initially {
+      val src = "val t = (a = 1, b = 2)"
+      run(src)
+    } andThen {
+      val comp = tabComplete("t.")
+      assertTrue(s"should contain 'a' but was: ${comp.mkString(", ")}", comp.contains("a"))
+      assertTrue(s"should contain 'b' but was: ${comp.mkString(", ")}", comp.contains("b"))
+    }
 }

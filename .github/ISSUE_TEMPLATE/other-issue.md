@@ -1,6 +1,6 @@
 ---
 name: Other issue
-about: Report an issue about the Dotty Compiler (not bug or crash)
+about: Report an issue about the Scala 3 compiler (not a bug or a crash)
 title: ''
 labels: stat:needs triage
 assignees: ''

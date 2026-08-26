@@ -7,7 +7,7 @@
   box-sizing: border-box;
 }
 
-/* show direct children of currently exmanded node*/
+/* show direct children of currently expanded node*/
 .side-menu div.expanded > div {
   display: block;
 }

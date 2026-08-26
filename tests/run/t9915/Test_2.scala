@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 object Test extends App {
   private def dump(s: String) = s.map(c => f"${c.toInt}%02X").mkString(" ")
   def assertEqualStrings(expected: String)(actual: String) =

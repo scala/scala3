@@ -20,6 +20,9 @@ import scala.collection.mutable.StringBuilder
 
 /** This object provides convenience methods to create an iterable
  *  representation of a source file.
+ *
+ *  @param inputStream the underlying input stream to read characters from
+ *  @param bufferSize the size of the internal buffer used for reading
  */
 class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val codec: Codec) extends Source {
   def this(inputStream: InputStream)(implicit codec: Codec) = this(inputStream, DefaultBufSize)(using codec)
@@ -91,6 +94,12 @@ class BufferedSource(inputStream: InputStream, bufferSize: Int)(implicit val cod
    *
    *  Note: This function may temporarily load the entire buffer into
    *  memory.
+   *
+   *  @param sb the string builder to append to
+   *  @param start the string to prepend before the first character
+   *  @param sep the separator string inserted between elements
+   *  @param end the string to append after the last element
+   *  @return the string builder `sb` with all elements appended
    */
   override def addString(sb: StringBuilder, start: String, sep: String, end: String): sb.type =
     if (sep.isEmpty) {

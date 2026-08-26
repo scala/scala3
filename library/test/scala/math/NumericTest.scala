@@ -8,8 +8,8 @@ class NumericTest {
   /* Test for scala/bug#8102 */
   @Test
   def testAbs(): Unit = {
-    assertTrue(-0.0.abs.equals(0.0))
-    assertTrue(-0.0f.abs.equals(0.0f))
+    assertTrue((-0.0).abs.equals(0.0))
+    assertTrue((-0.0f).abs.equals(0.0f))
   }
 
   /* Test for scala/bug#9348 */

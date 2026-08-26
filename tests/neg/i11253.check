@@ -1,0 +1,35 @@
+-- Error: tests/neg/i11253.scala:5:5 -----------------------------------------------------------------------------------
+5 |enum E1(val t: String) extends Enum[T], T { case X extends E1("xxx") } // error
+  |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |enum class E1 extends java.lang.Enum[T], but the type argument must be the enum class itself
+-- Error: tests/neg/i11253.scala:9:5 -----------------------------------------------------------------------------------
+9 |enum E2 extends Enum[Nothing] { case X } // error
+  |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |enum class E2 extends java.lang.Enum[Nothing], but the type argument must be the enum class itself
+-- Error: tests/neg/i11253.scala:11:5 ----------------------------------------------------------------------------------
+11 |enum E3[A](val inner: A) extends Enum[E3[Int]] { // error
+   |^
+   |An enum extending java.lang.Enum cannot have type parameters
+   |
+12 |  case X extends E3[String]("hello")
+13 |}
+-- Error: tests/neg/i11253.scala:17:5 ----------------------------------------------------------------------------------
+17 |enum E5[+A] extends Enum[E5[?]] { case X extends E5[Nothing] } // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |An enum extending java.lang.Enum cannot have type parameters
+-- Error: tests/neg/i11253.scala:19:5 ----------------------------------------------------------------------------------
+19 |enum E6[A] extends Enum[E6[?]] { case X extends E6[Unit] } // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |An enum extending java.lang.Enum cannot have type parameters
+-- Error: tests/neg/i11253.scala:27:5 ----------------------------------------------------------------------------------
+27 |enum E7 extends UBad { case X } // error
+   |^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |enum class E7 extends java.lang.Enum[UBad], but the type argument must be the enum class itself
+-- Error: tests/neg/i11253.scala:31:5 ----------------------------------------------------------------------------------
+31 |enum E[+T] extends java.lang.Enum[E[_]] { // error
+   |^
+   |An enum extending java.lang.Enum cannot have type parameters
+   |
+32 |  case S1, S2
+33 |  case C extends E[Int]
+34 |}

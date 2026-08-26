@@ -10,6 +10,9 @@ on:
   merge_group:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 env:
   DOTTY_CI_RUN: true
 
@@ -49,7 +52,7 @@ jobs:
         env:
           USER_FOR_TEST: ${{ secrets.SPEC_DEPLOY_USER }}
         if: ${{ env.USER_FOR_TEST != '' }}
-        uses: burnett01/rsync-deployments@8.0.4
+        uses: burnett01/rsync-deployments@8.0.5
         with:
           switches: -rzv
           path: docs/_spec/_site/

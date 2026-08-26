@@ -1,0 +1,4 @@
+public Category1Hi C.funcA()
+public Category1Hi<Box> C.funcA()
+public Category1LoHi C.funcB()
+public Category1LoHi<Box> C.funcB()

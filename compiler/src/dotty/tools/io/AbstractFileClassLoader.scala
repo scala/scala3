@@ -13,8 +13,6 @@
 package dotty.tools
 package io
 
-import scala.language.unsafeNulls
-
 import dotty.tools.io.AbstractFile
 
 import java.net.{URL, URLConnection, URLStreamHandler}
@@ -41,19 +39,20 @@ class AbstractFileClassLoader(val root: AbstractFile, parent: ClassLoader) exten
       case url  => Collections.enumeration(Collections.singleton(url))
 
   override def findClass(name: String): Class[?] = {
-    var file: AbstractFile | Null = root
+    var file: AbstractFile = root
     val pathParts = name.split("[./]").toList
     for (dirPart <- pathParts.init) {
-      file = file.lookupName(dirPart, true)
-      if (file == null) {
+      val subFile = file.lookupName(dirPart, true)
+      if (subFile == null) {
         throw new ClassNotFoundException(name)
       }
+      file = subFile
     }
-    file = file.lookupName(pathParts.last+".class", false)
-    if (file == null) {
+    val lastFile = file.lookupName(pathParts.last+".class", false)
+    if (lastFile == null) {
       throw new ClassNotFoundException(name)
     }
-    val bytes = file.toByteArray
+    val bytes = lastFile.toByteArray
     defineClass(name, bytes, 0, bytes.length)
   }
 

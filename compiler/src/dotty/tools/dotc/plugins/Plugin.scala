@@ -1,8 +1,6 @@
 package dotty.tools.dotc
 package plugins
 
-import scala.language.unsafeNulls
-
 import core.*
 import Contexts.*
 import Phases.*
@@ -103,15 +101,13 @@ object Plugin {
   /** Use a class loader to load the plugin class.
    */
   def load(classname: String, loader: ClassLoader): Try[AnyClass] = {
-    import scala.util.control.NonFatal
     try
       Success[AnyClass](loader.loadClass(classname))
-    catch {
-      case NonFatal(e) =>
+    catch
+      case e: Exception =>
         Failure(new PluginLoadException(classname, s"Error: unable to load class $classname: ${e.getMessage}"))
       case e: NoClassDefFoundError =>
         Failure(new PluginLoadException(classname, s"Error: class not found: ${e.getMessage} required by $classname"))
-    }
   }
 
   /** Load all plugins specified by the arguments.
@@ -144,7 +140,7 @@ object Plugin {
 
     def loadDescriptionFromJar(jarp: Path): Try[String] = {
       // XXX Return to this once we have more ARM support
-      def read(is: InputStream) =
+      def read(is: InputStream | Null) =
         if (is == null) throw new PluginLoadException(jarp.path, s"Missing $PluginFile in $jarp")
         else fromFile(is, jarp)
 
@@ -210,7 +206,7 @@ object Plugin {
   def instantiate(clazz: AnyClass): Plugin = clazz.getConstructor().newInstance().asInstanceOf[Plugin]
 }
 
-class PluginLoadException(val path: String, message: String, cause: Exception) extends Exception(message, cause) {
+class PluginLoadException(val path: String, message: String, cause: Exception | Null) extends Exception(message, cause) {
   def this(path: String, message: String) = this(path, message, null)
 }
 

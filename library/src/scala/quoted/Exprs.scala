@@ -7,13 +7,17 @@ object Exprs:
   /** Matches literal sequence of literal constant value expressions and returns a sequence of values.
    *
    *  Usage:
-   *  ```scala
+   *  ```scala sc:compile
    *  inline def sum(args: Int*): Int = ${ sumExpr('args) }
    *  def sumExpr(argsExpr: Expr[Seq[Int]])(using Quotes): Expr[Int] = argsExpr match
-   *    case Varargs(Exprs(args)) => ???
+   *    case Varargs(Exprs(args)) => Expr(args.sum)
    *      // args: Seq[Int]
    *  ```
    *  To directly get the value of all expressions in a sequence `exprs: Seq[Expr[T]]` consider using `exprs.map(_.value)`/`exprs.map(_.valueOrError)` instead.
+   *
+   *  @tparam T the type of values being extracted from the expressions
+   *  @param exprs the sequence of expressions to extract values from
+   *  @return `Some` containing the sequence of extracted values if all expressions yield a value, or `None` if any expression cannot be converted
    */
   def unapply[T](exprs: Seq[Expr[T]])(using FromExpr[T])(using Quotes): Option[Seq[T]] =
     val builder = Seq.newBuilder[T]

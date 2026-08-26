@@ -40,6 +40,7 @@ object FutureConverters {
    *  therefore the returned CompletionStage routes all calls to synchronous transformations to
    *  their asynchronous counterparts, i.e., `thenRun` will internally call `thenRunAsync`.
    *
+   *  @tparam T the result type of the Future and CompletionStage
    *  @param f The Scala Future which may eventually supply the completion for the returned
    *          CompletionStage
    *  @return a CompletionStage that runs all callbacks asynchronously and does not support the
@@ -62,6 +63,7 @@ object FutureConverters {
    *  executed asynchronously as specified by the ExecutionContext that is given to the combinator
    *  methods.
    *
+   *  @tparam T the result type of the CompletionStage and Future
    *  @param cs The CompletionStage which may eventually supply the completion for the returned
    *           Scala Future
    *  @return a Scala Future that represents the CompletionStage's completion

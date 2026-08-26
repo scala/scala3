@@ -9,7 +9,6 @@ import scala.jdk.CollectionConverters.*
 import scala.meta.internal.pc.CompletionFuzzy
 import scala.meta.pc.PresentationCompilerConfig
 import scala.meta.pc.SymbolSearch
-import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
@@ -21,7 +20,6 @@ import dotty.tools.dotc.core.StdNames
 import dotty.tools.dotc.core.Symbols.NoSymbol
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.AndType
-import dotty.tools.dotc.core.Types.AppliedType
 import dotty.tools.dotc.core.Types.ClassInfo
 import dotty.tools.dotc.core.Types.NoType
 import dotty.tools.dotc.core.Types.OrType
@@ -69,7 +67,7 @@ object CaseKeywordCompletion:
       patternOnly: Option[String] = None,
       hasBind: Boolean = false,
       includeExhaustive: Option[NewLineOptions] = None
-  )(using ReportContext): List[CompletionValue] =
+  ): List[CompletionValue] =
     import indexedContext.ctx
     val definitions = indexedContext.ctx.definitions
     val clientSupportsSnippets = config.isCompletionSnippetsEnabled()
@@ -92,9 +90,9 @@ object CaseKeywordCompletion:
                 val argPts = UnapplyArgs(fn.tpe.widen.finalResultType, fn, patterns, parent.srcPos).argTypes
                 patterns.zipWithIndex
                   .find:
-                    case (Ident(v), tpe) => v.decoded == value
-                    case (Select(_, v), tpe) => v.decoded == value
-                    case t => false
+                    case (Ident(v), _) => v.decoded == value
+                    case (Select(_, v), _) => v.decoded == value
+                    case _ => false
                   .map((_, id) => argPts(id).widen.deepDealiasAndSimplify)
           /* Parent is a function expecting a case match expression */
           case TreeApply(fun, _) if !fun.tpe.isErroneous =>
@@ -270,7 +268,7 @@ object CaseKeywordCompletion:
       search: SymbolSearch,
       autoImportsGen: AutoImportsGenerator,
       noIndent: Boolean
-  )(using ReportContext): List[CompletionValue] =
+  ): List[CompletionValue] =
     import indexedContext.ctx
     val clientSupportsSnippets = config.isCompletionSnippetsEnabled()
 
@@ -370,7 +368,7 @@ object CaseKeywordCompletion:
           getParentTypes(tp2, getParentTypes(tp1, acc))
         case OrType(tp1, tp2) =>
           getParentTypes(tp2, getParentTypes(tp1, acc))
-        case t =>
+        case _ =>
           tpe.typeSymbol :: acc
 
     /** Check if `sym` is a subclass of type `tpe`. For
@@ -498,7 +496,7 @@ class CompletionValueGenerator(
       else
         sym.primaryConstructor.paramSymss match
           case Nil => "()"
-          case tparams :: params :: _ =>
+          case _ :: params :: _ =>
             params
               .map(param => param.showName)
               .mkString("(", ", ", ")")
@@ -528,7 +526,7 @@ class MatchCaseExtractor(
     def unapply(path: List[Tree]) =
       path match
         // foo mat@@
-        case (sel @ Select(qualifier, name)) :: _
+        case (Select(qualifier, name)) :: _
             if name.toString() != Cursor.value && "match"
               .startsWith(
                 name.toString().replace(Cursor.value, "")
@@ -572,7 +570,7 @@ class MatchCaseExtractor(
         case (_: CaseDef) :: (m: Match) :: parent :: _ =>
           Some((m.selector, parent, None))
         // List(foo).map { ca@@ }
-        case (ident @ Ident(name)) :: (block @ Block(stats, expr)) ::
+        case (ident @ Ident(name)) :: (Block(stats, expr)) ::
             (apply @ Apply(fun, args)) :: _
             if stats.isEmpty && ident == expr && "case".startsWith(
               name.toString().replace(Cursor.value, "")

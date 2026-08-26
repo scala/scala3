@@ -197,7 +197,7 @@ class SettingsTests:
   @Test def `Allow IntSetting's to be set with a colon`: Unit =
     object Settings extends SettingGroup:
       val foo = IntSetting(RootSetting, "foo", "foo", 80)
-    import Settings._
+    import Settings.*
 
     def check(args: List[String]) = {
       val summary = processArguments(args, processAll = true)
@@ -273,7 +273,7 @@ class SettingsTests:
       val bar = BooleanSetting(RootSetting, "bar", "bar", initialValue = true)
       val baz = BooleanSetting(RootSetting, "baz", "baz", initialValue = false)
       val qux = BooleanSetting(RootSetting, "qux", "qux", initialValue = false)
-    import Settings._
+    import Settings.*
 
     val args = List("-foo:true", "-bar:false", "-baz", "-qux:true", "-qux:false")
     val summary = processArguments(args, processAll = true)
@@ -288,7 +288,7 @@ class SettingsTests:
   @Test def `flag can't be set with separate arg`: Unit =
     object Settings extends SettingGroup:
       val foo = BooleanSetting(RootSetting, "foo", "foo", initialValue = false)
-    import Settings._
+    import Settings.*
 
     val args = List("-foo", "false")
     val summary = processArguments(args, processAll = true)
@@ -319,7 +319,7 @@ class SettingsTests:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true)
 
-      import Settings._
+      import Settings.*
 
       Files.write(file1, "test1".getBytes())
       Files.write(file2, "test2".getBytes())
@@ -342,7 +342,7 @@ class SettingsTests:
         val defaultDir = new PlainDirectory(Directory("."))
         val testOutput = OutputSetting(RootSetting, "testOutput", "testOutput", "", defaultDir, preferPrevious = true, deprecation = Deprecation.renamed("XtestOutput"))
 
-      import Settings._
+      import Settings.*
 
       Files.write(file, "test".getBytes())
       val fileStateBefore = String(Files.readAllBytes(file))
@@ -368,7 +368,7 @@ class SettingsTests:
       val phasesSetting = PhasesSetting(RootSetting, "phasesSetting", "phasesSetting", "all")
       val versionSetting= VersionSetting(RootSetting, "versionSetting", "versionSetting")
 
-    import Settings._
+    import Settings.*
     Using.resource(Files.createTempDirectory("testDir")): dir =>
 
       val args = List(

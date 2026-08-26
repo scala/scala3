@@ -37,6 +37,11 @@ class PatternMatcher extends MiniPhase {
 
   override def runsAfter: Set[String] = Set(ElimRepeated.name)
 
+  override def prepareForCaseDef(tree: CaseDef)(using Context): Context =
+    tree.pat.removeAttachment(typer.Typer.InferredGadtConstraints) match
+      case Some(gadt) => ctx.fresh.setGadtState(GadtState(gadt))
+      case None => ctx
+
   override def transformMatch(tree: Match)(using Context): Tree =
     if (tree.isInstanceOf[InlineMatch]) tree
     else if tree.isSubMatch then
@@ -403,7 +408,7 @@ object PatternMatcher {
             if isGenericTuple then caseAccessors.indices.toList.map(tupleApp(_, ref(scrutinee)))
             else caseAccessors.map(tupleSel)
           matchArgsPlan(components, args, onSuccess)
-        else if unappType.isRef(defn.BooleanClass) then
+        else if unappType.derivesFrom(defn.BooleanClass) then
           TestPlan(GuardTest, unapp, unapp.span, onSuccess)
         else
           letAbstract(unapp) { unappResult =>
@@ -1118,7 +1123,7 @@ object PatternMatcher {
         def typesInCases(cdefs: List[CaseDef]): List[Type] =
           cdefs.flatMap(cdef => typesInPattern(cdef.pat))
         def numTypes(cdefs: List[CaseDef]): Int =
-          typesInCases(cdefs).toSet.size: Int // without the type ascription, testPickling fails because of #2840.
+          typesInCases(cdefs).toSet.size
         val numTypesInOriginal = numTypes(original.cases)
         if numTypesInOriginal >= caseThreshold && numTypes(resultCases) < numTypesInOriginal then
           patmatch.println(i"switch warning for ${ctx.compilationUnit}")

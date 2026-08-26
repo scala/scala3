@@ -1,7 +1,7 @@
 -- [E007] Type Mismatch Error: tests/neg-custom-args/captures/levels.scala:19:33 ---------------------------------------
 19 |  val _: Ref[String -> String] = r // error
    |                                 ^
-   |                                 Found:    Ref[String ->{} String]^{r.rd}
+   |                                 Found:    Ref[String -> String]^{r.rd}
    |                                 Required: Ref[String -> String]
    |
    |                                 Note that capability `r.rd` cannot flow into capture set {}.

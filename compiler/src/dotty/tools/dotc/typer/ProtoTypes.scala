@@ -583,7 +583,7 @@ object ProtoTypes {
     /** The type of the argument `arg`, or `NoType` if `arg` has not been typed before
      *  or if `arg`'s typing produced a type error.
      */
-    def typeOfArg(arg: untpd.Tree)(using Context): Type = {
+    private[ProtoTypes] def typeOfArg(arg: untpd.Tree)(using Context): Type = {
       val t = state.typedArg(arg)
       if (t == null) NoType else t.tpe
     }

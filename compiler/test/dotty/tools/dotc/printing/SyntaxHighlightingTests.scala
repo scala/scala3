@@ -3,13 +3,13 @@ package dotty.tools.dotc.printing
 import scala.language.unsafeNulls
 
 import dotty.tools.DottyTest
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.{Ignore, Test}
 
 /** Adapted from Ammonite HighlightTests
  */
 class SyntaxHighlightingTests extends DottyTest {
-  import SyntaxHighlighting._
+  import SyntaxHighlighting.*
 
   private def test(source: String, expected: String): Unit = {
     val highlighted = SyntaxHighlighting.highlight(source)(using ctx.withColors)

@@ -13,12 +13,10 @@
 package scala.sys.process
 
 import scala.language.`2.13`
-import processInternal._
-
+import processInternal.*
 import java.util.concurrent.LinkedBlockingQueue
 import java.io.{PipedInputStream, PipedOutputStream}
-
-import scala.annotation.tailrec
+import scala.annotation.{nowarn, tailrec}
 
 private[process] trait ProcessImpl {
   self: Process.type =>
@@ -193,6 +191,7 @@ private[process] trait ProcessImpl {
     private def ioHandler(e: IOException): Unit = e.printStackTrace()
   }
 
+  @nowarn("msg=Calling the external method .*Name") // setName+getName are safe to call in a constructor
   private[process] class PipeSource(label: => String) extends PipeThread(isSink = false, () => label) {
     setName(s"PipeSource($label)-$getName")
     protected val pipe = new PipedOutputStream
@@ -216,6 +215,7 @@ private[process] trait ProcessImpl {
     }
     def done() = source.put(None)
   }
+  @nowarn("msg=Calling the external method .*Name") // setName+getName are safe to call in a constructor
   private[process] class PipeSink(label: => String) extends PipeThread(isSink = true, () => label) {
     setName(s"PipeSink($label)-$getName")
     protected val pipe = new PipedInputStream
@@ -242,6 +242,8 @@ private[process] trait ProcessImpl {
 
   /** A thin wrapper around a java.lang.Process.  `ioThreads` are the Threads created to do I/O.
    *  The implementation of `exitValue` waits until these threads die before returning.
+   *
+   *  @param action the by-name computation whose result will be used as the exit value
    */
   private[process] class DummyProcess(action: => Int) extends Process {
     private val (thread, value) = Future(action)
@@ -260,6 +262,10 @@ private[process] trait ProcessImpl {
    *
    *  The implementation of `exitValue` interrupts `inputThread`
    *  and then waits until all I/O threads die before returning.
+   *
+   *  @param p the underlying `java.lang.Process` being wrapped
+   *  @param inputThread the thread writing to the process's stdin, or null if stdin was inherited
+   *  @param outputThreads the threads reading from the process's stdout and stderr streams
    */
   private[process] class SimpleProcess(p: JProcess, inputThread: Thread | Null, outputThreads: List[Thread]) extends Process {
     override def isAlive() = p.isAlive()

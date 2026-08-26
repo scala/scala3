@@ -1,7 +1,6 @@
 package dotty.tools.dotc
 package core.classfile
 
-import scala.language.unsafeNulls
 import scala.compiletime.uninitialized
 
 import dotty.tools.dotc.core.Contexts.*
@@ -32,7 +31,7 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
     this.classfileVersion = ClassfileParser.parseHeader(classfile)
     this.pool = new ConstantPool
     checkTastyAttr(tastyUUID)
-    this.pool =  null
+    this.pool = null.asInstanceOf[ConstantPool] // deinit for GC
   }
   catch {
     case e: RuntimeException =>
@@ -106,6 +105,6 @@ class ClassfileTastyUUIDParser(classfile: AbstractFile)(ictx: Context) {
   class ConstantPool(using in: DataReader) extends ClassfileParser.AbstractConstantPool {
     def getClassOrArrayType(index: Int)(using ctx: Context, in: DataReader): Type = throw new UnsupportedOperationException
     def getClassSymbol(index: Int)(using ctx: Context, in: DataReader): Symbol = throw new UnsupportedOperationException
-    def getType(index: Int, isVarargs: Boolean)(using x$3: Context, x$4: DataReader): Type = throw new UnsupportedOperationException
+    def getType(index: Int, isVarargs: Boolean)(using Context, DataReader): Type = throw new UnsupportedOperationException
   }
 }

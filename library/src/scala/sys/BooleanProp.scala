@@ -67,6 +67,8 @@ object BooleanProp {
    *  the value be equal to the String "true", case insensitively.  This method
    *  creates a BooleanProp instance which adheres to that definition.
    *
+   *  @tparam T unused type parameter, retained for API compatibility
+   *  @param key the name of the system property to look up
    *  @return   A BooleanProp which acts like java's Boolean.getBoolean
    */
   def valueIsTrue[T](key: String): BooleanProp = new BooleanPropImpl(key, _.toLowerCase == "true")
@@ -76,11 +78,17 @@ object BooleanProp {
    *  compared case-insensitively, or the empty string.  This way -Dmy.property
    *  results in a true-valued property, but -Dmy.property=false does not.
    *
+   *  @tparam T unused type parameter, retained for API compatibility
+   *  @param key the name of the system property to look up
    *  @return   A BooleanProp with a liberal truth policy
    */
   def keyExists[T](key: String): BooleanProp = new BooleanPropImpl(key, s => s == "" || s.equalsIgnoreCase("true"))
 
-  /** A constant true or false property which ignores all method calls. */
+  /** A constant true or false property which ignores all method calls.
+   *
+   *  @param key the name of the system property
+   *  @param isOn whether the constant property is true or false
+   */
   def constant(key: String, isOn: Boolean): BooleanProp = new ConstantImpl(key, isOn)
 
   implicit def booleanPropAsBoolean(b: BooleanProp): Boolean = b.value

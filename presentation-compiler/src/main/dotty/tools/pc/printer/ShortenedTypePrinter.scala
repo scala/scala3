@@ -5,7 +5,6 @@ import scala.meta.internal.jdk.CollectionConverters.*
 import scala.meta.internal.mtags.KeywordWrapper
 import scala.meta.pc.SymbolDocumentation
 import scala.meta.pc.SymbolSearch
-import scala.meta.pc.reports.ReportContext
 
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.Denotations.Denotation
@@ -44,7 +43,7 @@ class ShortenedTypePrinter(
       IncludeDefaultParam.ResolveLater,
     isTextEdit: Boolean = false,
     renameConfigMap: Map[Symbol, String] = Map.empty
-)(using indexedCtx: IndexedContext, reportCtx: ReportContext) extends RefinedPrinter(indexedCtx.ctx):
+)(using indexedCtx: IndexedContext) extends RefinedPrinter(indexedCtx.ctx):
   private val missingImports: mutable.Set[ImportSel] = mutable.LinkedHashSet.empty
   private val defaultWidth = 1000
 
@@ -139,7 +138,7 @@ class ShortenedTypePrinter(
         renameConfigMap.get(owner).flatMap { rename =>
           // if the rename is taken, we don't want to use it
           indexedCtx.findSymbolInLocalScope(rename) match
-            case Some(symbols) => None
+            case Some(_) => None
             case None => Some(Missing(owner, rename, prefixAfterRename))
         }
       currentRenamesSearchResult orElse configRenamesSearchResult
@@ -480,7 +479,7 @@ class ShortenedTypePrinter(
       index: Int,
       defaultValues: => Seq[SymbolDocumentation],
       nameToInfo: Map[Name, Type]
-  )(using ReportContext): String =
+  ): String =
     val docInfo = defaultValues.lift(index)
     val rawKeywordName = nameString(param)
     val keywordName = docInfo match

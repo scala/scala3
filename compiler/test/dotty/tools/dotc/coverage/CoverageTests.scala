@@ -8,7 +8,6 @@ import org.junit.experimental.categories.Category
 import dotty.{BootstrappedOnlyTests, Properties}
 import dotty.tools.vulpix.*
 import dotty.tools.vulpix.TestConfiguration.*
-import dotty.tools.dotc.Main
 import dotty.tools.dotc.reporting.TestReporter
 
 import java.nio.file.{FileSystems, Files, Path, Paths, StandardCopyOption}
@@ -16,7 +15,6 @@ import scala.jdk.CollectionConverters.*
 import scala.util.Properties.userDir
 import scala.language.unsafeNulls
 import scala.collection.mutable.Buffer
-import dotty.tools.dotc.util.DiffUtil
 
 import java.nio.charset.StandardCharsets
 import java.util.stream.Collectors
@@ -35,6 +33,10 @@ class CoverageTests:
   @Test
   def checkInstrumentedRuns(): Unit =
     checkCoverageIn(rootSrc.resolve("run"), true)
+
+  @Test
+  def checkCoverageWarnings(): Unit =
+    checkCoverageWarningsIn(rootSrc.resolve("warn"))
 
   def checkCoverageIn(dir: Path, run: Boolean)(using TestGroup): Unit =
     /** Converts \\ (escaped \) to / on windows, to make the tests pass without changing the serialization. */
@@ -103,7 +105,8 @@ class CoverageTests:
     if run then
       val path = if isDirectory then inputFile.toString else inputFile.getParent.toString
       val test = compileDir(path, options)
-      test.checkFiles.foreach: checkFile =>
+      // a checkFile exists by construction; perhaps this intends to assert that target.checkFile.isDefined
+      for target <- test.targets; checkFile <- target.checkFile do
         assert(checkFile.exists, s"Expected checkfile for $path $checkFile does not exist.")
       test.checkRuns()
     else
@@ -112,6 +115,18 @@ class CoverageTests:
         else compileFile(inputFile.toString, options)
       test.checkCompile()
     target
+
+  def checkCoverageWarningsIn(dir: Path)(using TestGroup): Unit =
+    def runOnFile(p: Path): Boolean =
+      scalaFile.matches(p)
+      && (Properties.testsFilter.isEmpty || Properties.testsFilter.exists(p.toString.contains))
+
+    Files.walk(dir, 1).filter(runOnFile).forEach { path =>
+      val target = Files.createTempDirectory("coverage-warning")
+      val options = defaultOptions.and("-Ycheck:instrumentCoverage", "-coverage-out", target.toString, "-sourceroot", rootSrc.toString)
+      val relativePath = Paths.get(userDir).relativize(path).toString
+      compileFile(relativePath, options).checkWarnings()
+    }
 
   private def findMeasurementFile(targetDir: Path): Path = {
     val allFilesInTarget = Files.list(targetDir).collect(Collectors.toList).asScala

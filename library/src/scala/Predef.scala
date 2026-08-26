@@ -119,6 +119,8 @@ object Predef extends LowPriorityImplicits {
    *
    *  @return The runtime [[Class]] representation of type `T`.
    *  @group utilities
+   *
+   *  @tparam T the type whose runtime class representation is returned
    */
   def classOf[T]: Class[T] = null.asInstanceOf[Class[T]] // This is a stub method. The actual implementation is filled in by the compiler.
 
@@ -133,6 +135,10 @@ object Predef extends LowPriorityImplicits {
    *  // bar is 23.type = 23
    *  ```
    *  @group utilities
+   *
+   *  @tparam T the singleton type whose unique value is retrieved
+   *  @param vt the implicit `ValueOf` instance that provides the value
+   *  @return the unique inhabitant of type `T`
    */
   @inline def valueOf[T](implicit vt: ValueOf[T]): T = vt.value
 
@@ -147,6 +153,9 @@ object Predef extends LowPriorityImplicits {
    *  // bar is 23.type = 23
    *  ```
    *  @group utilities
+   *
+   *  @tparam T the singleton type whose unique value is retrieved
+   *  @return the unique inhabitant of type `T`
    */
   inline def valueOf[T]: T = summonFrom {
     case ev: ValueOf[T] => ev.value
@@ -217,9 +226,9 @@ object Predef extends LowPriorityImplicits {
   // Minor variations on identity functions
 
   /** A method that returns its input value.
-   *  @tparam A type of the input value x.
-   *  @param x the value of type `A` to be returned.
-   *  @return the value `x`.
+   *  @tparam A the type of the input value `x`
+   *  @param x the value of type `A` to be returned
+   *  @return the value `x`
    *  @group utilities
    */
   @inline def identity[A](x: A): A = x // see `$conforms` for the implicit version
@@ -227,6 +236,7 @@ object Predef extends LowPriorityImplicits {
   /** Summon an implicit value of type `T`. Usually, the argument is not passed explicitly.
    *
    *  @tparam T the type of the value to be summoned
+   *  @param e the implicit value of type `T`
    *  @return the implicit value of type `T`
    *  @group utilities
    */
@@ -235,7 +245,8 @@ object Predef extends LowPriorityImplicits {
   /** Summon a given value of type `T`. Usually, the argument is not passed explicitly.
    *
    *  @tparam T the type of the value to be summoned
-   *  @return the given value typed: the provided type parameter
+   *  @param x the given value of type `T`
+   *  @return the given value with its singleton type preserved
    */
   transparent inline def summon[T](using x: T): x.type = x
 
@@ -267,6 +278,8 @@ object Predef extends LowPriorityImplicits {
    *             // locally guards the block and helps communicate intent
    *           ```
    *  @group utilities
+   *
+   *  @tparam T the type of the expression being guarded
    */
   @inline def locally[T](@deprecatedName("x") x: T): T = x
 
@@ -384,14 +397,24 @@ object Predef extends LowPriorityImplicits {
 
   // implicit classes -----------------------------------------------------
 
-  /** @group implicit-classes-any */
+  /**
+   *  @group implicit-classes-any
+   *
+   *  @tparam A the type of the left-hand side of the arrow association
+   *  @param self the value to use as the first element of the resulting tuple
+   */
   implicit final class ArrowAssoc[A](private val self: A) extends AnyVal {
     @inline def -> [B](y: B): (A, B) = (self, y)
     @deprecated("Use `->` instead. If you still wish to display it as one character, consider using a font with programming ligatures such as Fira Code.", "2.13.0")
     def →[B](y: B): (A, B) = ->(y)
   }
 
-  /** @group implicit-classes-any */
+  /**
+   *  @group implicit-classes-any
+   *
+   *  @tparam A the type of the value being checked with `ensuring`
+   *  @param self the value to check postconditions against
+   */
   implicit final class Ensuring[A](private val self: A) extends AnyVal {
     def ensuring(cond: Boolean): A = { assert(cond); self }
     def ensuring(cond: Boolean, msg: => Any): A = { assert(cond, msg); self }
@@ -399,7 +422,12 @@ object Predef extends LowPriorityImplicits {
     def ensuring(cond: A => Boolean, msg: => Any): A = { assert(cond(self), msg); self }
   }
 
-  /** @group implicit-classes-any */
+  /**
+   *  @group implicit-classes-any
+   *
+   *  @tparam A the type of the value to be formatted as a string
+   *  @param self the value to format
+   */
   implicit final class StringFormat[A](private val self: A) extends AnyVal {
     /** Returns string formatted according to given `format` string.
      *  Format strings are as for `String.format`
@@ -419,7 +447,11 @@ object Predef extends LowPriorityImplicits {
     def +(other: String): String = String.valueOf(self) + other
   }
 
-  /** @group char-sequence-wrappers */
+  /**
+   *  @group char-sequence-wrappers
+   *
+   *  @param sequenceOfChars the indexed sequence of characters to wrap as a `CharSequence`
+   */
   final class SeqCharSequence(sequenceOfChars: scala.collection.IndexedSeq[Char]) extends CharSequence {
     def length: Int                                     = sequenceOfChars.length
     def charAt(index: Int): Char                        = sequenceOfChars(index)
@@ -427,10 +459,18 @@ object Predef extends LowPriorityImplicits {
     override def toString()                             = sequenceOfChars.mkString
   }
 
-  /** @group char-sequence-wrappers */
+  /**
+   *  @group char-sequence-wrappers
+   *
+   *  @param sequenceOfChars the indexed sequence of characters to wrap as a `CharSequence`
+   */
   def SeqCharSequence(sequenceOfChars: scala.collection.IndexedSeq[Char]): SeqCharSequence = new SeqCharSequence(sequenceOfChars)
 
-  /** @group char-sequence-wrappers */
+  /**
+   *  @group char-sequence-wrappers
+   *
+   *  @param arrayOfChars the array of characters to wrap as a `CharSequence`
+   */
   final class ArrayCharSequence(arrayOfChars: Array[Char]) extends CharSequence {
     def length: Int                                     = arrayOfChars.length
     def charAt(index: Int): Char                        = arrayOfChars(index)
@@ -438,10 +478,18 @@ object Predef extends LowPriorityImplicits {
     override def toString()                             = arrayOfChars.mkString
   }
 
-  /** @group char-sequence-wrappers */
+  /**
+   *  @group char-sequence-wrappers
+   *
+   *  @param arrayOfChars the array of characters to wrap as a `CharSequence`
+   */
   def ArrayCharSequence(arrayOfChars: Array[Char]): ArrayCharSequence = new ArrayCharSequence(arrayOfChars)
 
-  /** @group conversions-string */
+  /**
+   *  @group conversions-string
+   *
+   *  @param x the string to enrich with `StringOps` methods
+   */
   @inline implicit def augmentString(x: String): StringOps = new StringOps(x)
 
   // printing -----------------------------------------------------------
@@ -508,38 +556,102 @@ object Predef extends LowPriorityImplicits {
 
   // "Autoboxing" and "Autounboxing" ---------------------------------------------------
 
-  /** @group conversions-anyval-to-java */
+  /**
+   *  @group conversions-anyval-to-java
+   *
+   *  @param x the Scala `Byte` value to convert
+   */
   implicit def byte2Byte(x: Byte): java.lang.Byte             = x.asInstanceOf[java.lang.Byte]
-  /** @group conversions-anyval-to-java */
+  /**
+   *  @group conversions-anyval-to-java
+   *
+   *  @param x the Scala `Short` value to convert
+   */
   implicit def short2Short(x: Short): java.lang.Short         = x.asInstanceOf[java.lang.Short]
-  /** @group conversions-anyval-to-java */
+  /**
+   *  @group conversions-anyval-to-java
+   *
+   *  @param x the Scala `Char` value to convert
+   */
   implicit def char2Character(x: Char): java.lang.Character   = x.asInstanceOf[java.lang.Character]
-  /** @group conversions-anyval-to-java */
+  /**
+   *  @group conversions-anyval-to-java
+   *
+   *  @param x the Scala `Int` value to convert
+   */
   implicit def int2Integer(x: Int): java.lang.Integer         = x.asInstanceOf[java.lang.Integer]
-  /** @group conversions-anyval-to-java */
+  /**
+   *  @group conversions-anyval-to-java
+   *
+   *  @param x the Scala `Long` value to convert
+   */
   implicit def long2Long(x: Long): java.lang.Long             = x.asInstanceOf[java.lang.Long]
-  /** @group conversions-anyval-to-java */
+  /**
+   *  @group conversions-anyval-to-java
+   *
+   *  @param x the Scala `Float` value to convert
+   */
   implicit def float2Float(x: Float): java.lang.Float         = x.asInstanceOf[java.lang.Float]
-  /** @group conversions-anyval-to-java */
+  /**
+   *  @group conversions-anyval-to-java
+   *
+   *  @param x the Scala `Double` value to convert
+   */
   implicit def double2Double(x: Double): java.lang.Double     = x.asInstanceOf[java.lang.Double]
-  /** @group conversions-anyval-to-java */
+  /**
+   *  @group conversions-anyval-to-java
+   *
+   *  @param x the Scala `Boolean` value to convert
+   */
   implicit def boolean2Boolean(x: Boolean): java.lang.Boolean = x.asInstanceOf[java.lang.Boolean]
 
-  /** @group conversions-java-to-anyval */
+  /**
+   *  @group conversions-java-to-anyval
+   *
+   *  @param x the `java.lang.Byte` value to convert
+   */
   implicit def Byte2byte(x: java.lang.Byte): Byte             = x.asInstanceOf[Byte]
-  /** @group conversions-java-to-anyval */
+  /**
+   *  @group conversions-java-to-anyval
+   *
+   *  @param x the `java.lang.Short` value to convert
+   */
   implicit def Short2short(x: java.lang.Short): Short         = x.asInstanceOf[Short]
-  /** @group conversions-java-to-anyval */
+  /**
+   *  @group conversions-java-to-anyval
+   *
+   *  @param x the `java.lang.Character` value to convert
+   */
   implicit def Character2char(x: java.lang.Character): Char   = x.asInstanceOf[Char]
-  /** @group conversions-java-to-anyval */
+  /**
+   *  @group conversions-java-to-anyval
+   *
+   *  @param x the `java.lang.Integer` value to convert
+   */
   implicit def Integer2int(x: java.lang.Integer): Int         = x.asInstanceOf[Int]
-  /** @group conversions-java-to-anyval */
+  /**
+   *  @group conversions-java-to-anyval
+   *
+   *  @param x the `java.lang.Long` value to convert
+   */
   implicit def Long2long(x: java.lang.Long): Long             = x.asInstanceOf[Long]
-  /** @group conversions-java-to-anyval */
+  /**
+   *  @group conversions-java-to-anyval
+   *
+   *  @param x the `java.lang.Float` value to convert
+   */
   implicit def Float2float(x: java.lang.Float): Float         = x.asInstanceOf[Float]
-  /** @group conversions-java-to-anyval */
+  /**
+   *  @group conversions-java-to-anyval
+   *
+   *  @param x the `java.lang.Double` value to convert
+   */
   implicit def Double2double(x: java.lang.Double): Double     = x.asInstanceOf[Double]
-  /** @group conversions-java-to-anyval */
+  /**
+   *  @group conversions-java-to-anyval
+   *
+   *  @param x the `java.lang.Boolean` value to convert
+   */
   implicit def Boolean2boolean(x: java.lang.Boolean): Boolean = x.asInstanceOf[Boolean]
 
   /** An implicit of type `A => A` is available for all `A` because it can always
@@ -561,6 +673,8 @@ object Predef extends LowPriorityImplicits {
    *  val s3: String | Null = null
    *  val s4: String = s3.nn // throw NullPointerException
    *  ```
+   *
+   *  @return the value cast to its non-nullable type `x.type & T`
    */
   extension [T](x: T | Null) inline def nn: x.type & T =
     if x.asInstanceOf[Any] == null then scala.runtime.Scala3RunTime.nnFail()
@@ -570,12 +684,16 @@ object Predef extends LowPriorityImplicits {
     /** Enables an expression of type `T|Null`, where `T` is a subtype of `AnyRef`, to be checked for `null`
      *  using `eq` rather than only `==`. This is needed because `Null` no longer has
      *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`.
+     *
+     *  @param y the reference to compare against for reference equality
      */
     inline infix def eq(inline y: AnyRef | Null): Boolean =
       x.asInstanceOf[AnyRef] eq y.asInstanceOf[AnyRef]
     /** Enables an expression of type `T|Null`, where `T` is a subtype of `AnyRef`, to be checked for `null`
      *  using `ne` rather than only `!=`. This is needed because `Null` no longer has
      *  `eq` or `ne` methods, only `==` and `!=` inherited from `Any`.
+     *
+     *  @param y the reference to compare against for reference non-equality
      */
     inline infix def ne(inline y: AnyRef | Null): Boolean =
       !(x eq y)
@@ -629,6 +747,9 @@ private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2
    *  the call to xxxWrapper is not eliminated even though it does nothing.
    *  Even inlined, every call site does a no-op retrieval of Predef's MODULE$
    *  because maybe loading Predef has side effects!
+   *
+   *  @param x the primitive value to wrap
+   *  @return a rich wrapper providing additional methods on the primitive value
    */
   @inline implicit def byteWrapper(x: Byte): runtime.RichByte          = new runtime.RichByte(x)
   @inline implicit def shortWrapper(x: Short): runtime.RichShort       = new runtime.RichShort(x)
@@ -639,39 +760,89 @@ private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2
   @inline implicit def doubleWrapper(x: Double): runtime.RichDouble    = new runtime.RichDouble(x)
   @inline implicit def booleanWrapper(x: Boolean): runtime.RichBoolean = new runtime.RichBoolean(x)
 
-  /** @group conversions-array-to-wrapped-array */
+  /**
+   *  @group conversions-array-to-wrapped-array
+   *
+   *  @tparam T the element type of the array
+   *  @param xs the array to wrap as an `ArraySeq`
+   */
   implicit def genericWrapArray[T](xs: Array[T]): ArraySeq[T] =
     mapNull(xs, ArraySeq.make(xs))
 
   // Since the JVM thinks arrays are covariant, one 0-length Array[AnyRef]
   // is as good as another for all T <: AnyRef.  Instead of creating 100,000,000
   // unique ones by way of this implicit, let's share one.
-  /** @group conversions-array-to-wrapped-array */
+  /**
+   *  @group conversions-array-to-wrapped-array
+   *
+   *  @tparam T the element type of the array, must be a reference type
+   *  @param xs the array of reference-typed elements to wrap as an `ArraySeq`
+   */
   implicit def wrapRefArray[T <: AnyRef | Null](xs: Array[T]): ArraySeq.ofRef[T] =
     mapNull(xs,
       if (xs.length == 0) ArraySeq.empty[AnyRef].asInstanceOf[ArraySeq.ofRef[T]]
       else new ArraySeq.ofRef[T](xs))
 
-  /** @group conversions-array-to-wrapped-array */
+  /**
+   *  @group conversions-array-to-wrapped-array
+   *
+   *  @param xs the array to wrap as an `ArraySeq`
+   */
   implicit def wrapIntArray(xs: Array[Int]): ArraySeq.ofInt = mapNull(xs, new ArraySeq.ofInt(xs))
-  /** @group conversions-array-to-wrapped-array */
+  /**
+   *  @group conversions-array-to-wrapped-array
+   *
+   *  @param xs the array to wrap as an `ArraySeq`
+   */
   implicit def wrapDoubleArray(xs: Array[Double]): ArraySeq.ofDouble = mapNull(xs, new ArraySeq.ofDouble(xs))
-  /** @group conversions-array-to-wrapped-array */
+  /**
+   *  @group conversions-array-to-wrapped-array
+   *
+   *  @param xs the array to wrap as an `ArraySeq`
+   */
   implicit def wrapLongArray(xs: Array[Long]): ArraySeq.ofLong = mapNull(xs, new ArraySeq.ofLong(xs))
-  /** @group conversions-array-to-wrapped-array */
+  /**
+   *  @group conversions-array-to-wrapped-array
+   *
+   *  @param xs the array to wrap as an `ArraySeq`
+   */
   implicit def wrapFloatArray(xs: Array[Float]): ArraySeq.ofFloat = mapNull(xs, new ArraySeq.ofFloat(xs))
-  /** @group conversions-array-to-wrapped-array */
+  /**
+   *  @group conversions-array-to-wrapped-array
+   *
+   *  @param xs the array to wrap as an `ArraySeq`
+   */
   implicit def wrapCharArray(xs: Array[Char]): ArraySeq.ofChar = mapNull(xs, new ArraySeq.ofChar(xs))
-  /** @group conversions-array-to-wrapped-array */
+  /**
+   *  @group conversions-array-to-wrapped-array
+   *
+   *  @param xs the array to wrap as an `ArraySeq`
+   */
   implicit def wrapByteArray(xs: Array[Byte]): ArraySeq.ofByte = mapNull(xs, new ArraySeq.ofByte(xs))
-  /** @group conversions-array-to-wrapped-array */
+  /**
+   *  @group conversions-array-to-wrapped-array
+   *
+   *  @param xs the array to wrap as an `ArraySeq`
+   */
   implicit def wrapShortArray(xs: Array[Short]): ArraySeq.ofShort = mapNull(xs, new ArraySeq.ofShort(xs))
-  /** @group conversions-array-to-wrapped-array */
+  /**
+   *  @group conversions-array-to-wrapped-array
+   *
+   *  @param xs the array to wrap as an `ArraySeq`
+   */
   implicit def wrapBooleanArray(xs: Array[Boolean]): ArraySeq.ofBoolean = mapNull(xs, new ArraySeq.ofBoolean(xs))
-  /** @group conversions-array-to-wrapped-array */
+  /**
+   *  @group conversions-array-to-wrapped-array
+   *
+   *  @param xs the array to wrap as an `ArraySeq`
+   */
   implicit def wrapUnitArray(xs: Array[Unit]): ArraySeq.ofUnit = mapNull(xs, new ArraySeq.ofUnit(xs))
 
-  /** @group conversions-string */
+  /**
+   *  @group conversions-string
+   *
+   *  @param s the string to wrap as a `WrappedString`
+   */
   implicit def wrapString(s: String): WrappedString = mapNull(s, new WrappedString(s))
 }
 

@@ -1,0 +1,102 @@
+public scala.Option Foo.bar1(scala.Option)
+public <A> scala.Option<Box<A>> Foo.bar1(scala.Option<Box<A>>)
+---
+public scala.Option Foo.bar2(scala.Option)
+public scala.Option<IBox> Foo.bar2(scala.Option<IBox>)
+---
+public scala.Option Foo.bar3(scala.Option)
+public scala.Option<SBox> Foo.bar3(scala.Option<SBox>)
+---
+public scala.Option Foo.bar4(scala.Option)
+public scala.Option<Box<java.lang.Object>> Foo.bar4(scala.Option<Box<java.lang.Object>>)
+---
+public scala.Option Foo.bar5(scala.Option)
+public scala.Option<Box<java.lang.String>> Foo.bar5(scala.Option<Box<java.lang.String>>)
+---
+public scala.Option Foo.bar6(scala.Option)
+public scala.Option<Arr<java.lang.Object>> Foo.bar6(scala.Option<Arr<java.lang.Object>>)
+---
+public scala.Option Foo.bar7(scala.Option)
+public scala.Option<Arr<java.lang.String>> Foo.bar7(scala.Option<Arr<java.lang.String>>)
+---
+public java.lang.Object Foo.foo1(java.lang.Object)
+public <A> A Foo.foo1(A)
+---
+public int Foo.foo2(int)
+public int Foo.foo2(int)
+---
+public java.lang.String Foo.foo3(java.lang.String)
+public java.lang.String Foo.foo3(java.lang.String)
+---
+public java.lang.Integer Foo.foo4(java.lang.Integer)
+public java.lang.Integer Foo.foo4(java.lang.Integer)
+---
+public java.lang.String Foo.foo5(java.lang.String)
+public java.lang.String Foo.foo5(java.lang.String)
+---
+public java.lang.Object Foo.foo6(java.lang.Object)
+public java.lang.Object Foo.foo6(java.lang.Object)
+---
+public java.lang.Object[] Foo.foo6b(java.lang.Object[])
+public java.lang.Object[] Foo.foo6b(java.lang.Object[])
+---
+public java.lang.Object Foo.foo7(java.lang.Object)
+public java.lang.Object Foo.foo7(java.lang.Object)
+---
+public int[] Foo.foo8(int[])
+public int[] Foo.foo8(int[])
+---
+public java.lang.String[] Foo.foo9(java.lang.String[])
+public java.lang.String[] Foo.foo9(java.lang.String[])
+---
+public static scala.Option Foo.sbar1(scala.Option)
+public static <A> scala.Option<Box<A>> Foo.sbar1(scala.Option<Box<A>>)
+---
+public static scala.Option Foo.sbar2(scala.Option)
+public static scala.Option<IBox> Foo.sbar2(scala.Option<IBox>)
+---
+public static scala.Option Foo.sbar3(scala.Option)
+public static scala.Option<SBox> Foo.sbar3(scala.Option<SBox>)
+---
+public static scala.Option Foo.sbar4(scala.Option)
+public static scala.Option<Box<java.lang.Object>> Foo.sbar4(scala.Option<Box<java.lang.Object>>)
+---
+public static scala.Option Foo.sbar5(scala.Option)
+public static scala.Option<Box<java.lang.String>> Foo.sbar5(scala.Option<Box<java.lang.String>>)
+---
+public static scala.Option Foo.sbar6(scala.Option)
+public static scala.Option<Arr<java.lang.Object>> Foo.sbar6(scala.Option<Arr<java.lang.Object>>)
+---
+public static scala.Option Foo.sbar7(scala.Option)
+public static scala.Option<Arr<java.lang.String>> Foo.sbar7(scala.Option<Arr<java.lang.String>>)
+---
+public static java.lang.Object Foo.sfoo1(java.lang.Object)
+public static <A> A Foo.sfoo1(A)
+---
+public static int Foo.sfoo2(int)
+public static int Foo.sfoo2(int)
+---
+public static java.lang.String Foo.sfoo3(java.lang.String)
+public static java.lang.String Foo.sfoo3(java.lang.String)
+---
+public static java.lang.Integer Foo.sfoo4(java.lang.Integer)
+public static java.lang.Integer Foo.sfoo4(java.lang.Integer)
+---
+public static java.lang.String Foo.sfoo5(java.lang.String)
+public static java.lang.String Foo.sfoo5(java.lang.String)
+---
+public static java.lang.Object Foo.sfoo6(java.lang.Object)
+public static java.lang.Object Foo.sfoo6(java.lang.Object)
+---
+public static java.lang.Object[] Foo.sfoo6b(java.lang.Object[])
+public static java.lang.Object[] Foo.sfoo6b(java.lang.Object[])
+---
+public static java.lang.Object Foo.sfoo7(java.lang.Object)
+public static java.lang.Object Foo.sfoo7(java.lang.Object)
+---
+public static int[] Foo.sfoo8(int[])
+public static int[] Foo.sfoo8(int[])
+---
+public static java.lang.String[] Foo.sfoo9(java.lang.String[])
+public static java.lang.String[] Foo.sfoo9(java.lang.String[])
+---

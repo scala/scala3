@@ -11,7 +11,6 @@ import scala.meta.pc.SymbolSearch
 import scala.meta.pc.reports.ReportContext
 import scala.util.control.NonFatal
 
-import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.*
 import dotty.tools.dotc.core.Constants.Constant
 import dotty.tools.dotc.core.Contexts.Context
@@ -116,10 +115,9 @@ class CompletionProvider(
               case _ => tpdPath0
           case _ => tpdPath0
 
-        val locatedCtx = Interactive.contextOfPath(tpdPath)(using newctx)
-        val indexedCtx = IndexedContext(pos)(using locatedCtx)
+        val indexedCtx = IndexedContext(pos, tpdPath, newctx)
 
-        val completionPos = CompletionPos.infer(pos, params, adjustedPath, wasCursorApplied)(using locatedCtx)
+        val completionPos = CompletionPos.infer(pos, params, adjustedPath, wasCursorApplied)(using indexedCtx.ctx)
 
         val autoImportsGen = AutoImports.generator(
           completionPos.toSourcePosition,
@@ -133,7 +131,7 @@ class CompletionProvider(
         val (completions, searchResult) =
           new Completions(
             text,
-            locatedCtx,
+            indexedCtx.ctx,
             search,
             buildTargetIdentifier,
             completionPos,
@@ -156,7 +154,7 @@ class CompletionProvider(
             completionPos,
             tpdPath,
             indexedCtx
-          )(using locatedCtx)
+          )(using indexedCtx.ctx)
         }
         val isIncomplete = searchResult match
           case SymbolSearch.Result.COMPLETE => false

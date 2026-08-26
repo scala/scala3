@@ -511,6 +511,12 @@ trait UntypedTreeInfo extends TreeInfo[Untyped] { self: Trees.Instance[Untyped] 
   def bodyKind(body: List[Tree])(using Context): FlagSet =
     body.foldLeft(NoInitsInterface)((fs, stat) => fs & defKind(stat))
 
+  /** Is `tree` a DerivedTypeTree, possibly followed by type arguments? */
+  def hasDerivedTree(tree: Tree)(using Context): Boolean = tree match
+    case tree: DerivedTypeTree => true
+    case AppliedTypeTree(tpt, _) => hasDerivedTree(tpt)
+    case _ => false
+
   /** Info of a variable in a pattern: The named tree and its type */
   type VarInfo = (NameTree, Tree)
 
@@ -602,11 +608,14 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     case TypeApply(fn, _) =>
       val sym = fn.symbol
       if tree.tpe.isInstanceOf[MethodOrPoly] then exprPurity(fn)
+      else if sym == defn.Any_typeCast then
+        fn match
+          case Select(qual, _) => exprPurity(qual) `min` Pure
+          case _ => Impure
       else if sym == defn.QuotedTypeModule_of
           || sym == defn.Predef_classOf
           || sym == defn.Compiletime_erasedValue && tree.tpe.dealias.isInstanceOf[ConstantType]
           || defn.capsErasedValueMethods.contains(sym)
-          || sym == defn.Any_typeCast
       then Pure
       else Impure
     case Apply(fn, args) =>
@@ -660,15 +669,16 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
       cls.is(Case) && cls.isNoInitsRealClass
     }
 
+  /** True for operations known not to observe their arguments, such as primitive arithmetic. */
+  def isKnownPureOp(sym: Symbol)(using Context): Boolean =
+    sym.owner.isPrimitiveValueClass
+    || sym.owner == defn.StringClass
+    || defn.pureMethods.contains(sym)
+
   /** Is the application `tree` with function part `fn` known to be pure?
    *  Function value and arguments can still be impure.
    */
   def isPureApply(tree: Tree, fn: Tree)(using Context): Boolean =
-    def isKnownPureOp(sym: Symbol) =
-      sym.owner.isPrimitiveValueClass
-      || sym.owner == defn.StringClass
-      || defn.pureMethods.contains(sym)
-
     tree.tpe.isInstanceOf[ConstantType] && tree.symbol != NoSymbol && isKnownPureOp(tree.symbol) // A constant expression with pure arguments is pure.
     || fn.symbol.isStableMember && fn.symbol.isConstructor // constructors of no-inits classes are stable
     || isPureSyntheticCaseApply(fn.symbol)
@@ -1110,8 +1120,12 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
           hasRefinement(tp.tp1) || hasRefinement(tp.tp2)
         case _ =>
           false
+      def isDynamicMethod(name: Name): Boolean =
+        name == nme.applyDynamic || name == nme.selectDynamic ||
+        name == nme.updateDynamic || name == nme.applyDynamicNamed
       !tree.symbol.exists
       && tree.isTerm
+      && !isDynamicMethod(tree.name)  // Don't treat dynamic method calls as structural (prevents infinite recursion)
       && hasRefinement(tree.qualifier.tpe)
     funPart(tree) match
       case tree: Select =>

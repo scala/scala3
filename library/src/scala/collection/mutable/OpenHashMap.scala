@@ -41,6 +41,12 @@ object OpenHashMap extends MapFactory[OpenHashMap] {
    *  deleted if and only if its `value` is `None`.
    *  If its `key` is not the default value of type `Key`, the entry is occupied.
    *  If the entry is occupied, `hash` contains the hash value of `key`.
+   *
+   *  @tparam Key the type of keys stored in this entry
+   *  @tparam Value the type of values stored in this entry
+   *  @param key the key associated with this entry
+   *  @param hash the cached hash code of `key`
+   *  @param value `Some(v)` if the entry is occupied, `None` if deleted
    */
   final private class OpenEntry[Key, Value](var key: Key,
                                             var hash: Int,
@@ -101,7 +107,10 @@ class OpenHashMap[Key, Value](initialSize : Int)
   override def knownSize: Int = size
   private def size_=(s : Int): Unit = _size = s
   override def isEmpty: Boolean = _size == 0
-  /** Returns a mangled hash code of the provided key. */
+  /** Returns a mangled hash code of the provided key.
+   *
+   *  @param key the key to compute the hash for
+   */
   protected def hashOf(key: Key) = {
     var h = key.##
     h ^= ((h >>> 20) ^ (h >>> 12))
@@ -126,7 +135,8 @@ class OpenHashMap[Key, Value](initialSize : Int)
   /** Returns the index of the first slot in the hash table (in probe order)
    *  that is, in order of preference, either occupied by the given key, deleted, or empty.
    *
-   *  @param hash hash value for `key`
+   *  @param hash the hash code of `key`
+   *  @param key the key to search for in the hash table
    */
   private def findIndex(key: Key, hash: Int): Int = {
     var index = hash & mask
@@ -186,7 +196,10 @@ class OpenHashMap[Key, Value](initialSize : Int)
     }
   }
 
-  /** Deletes the hash table slot contained in the given entry. */
+  /** Deletes the hash table slot contained in the given entry.
+   *
+   *  @param entry the hash table entry to mark as deleted
+   */
   @`inline`
   private def deleteSlot(entry: Entry) = {
     entry.key = null.asInstanceOf[Key]

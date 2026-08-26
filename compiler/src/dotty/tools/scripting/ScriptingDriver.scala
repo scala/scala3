@@ -1,7 +1,5 @@
 package dotty.tools.scripting
 
-import scala.language.unsafeNulls
-
 import java.nio.file.{ Files, Paths, Path }
 import java.io.File
 
@@ -11,7 +9,7 @@ import dotty.tools.io.{ PlainDirectory, Directory, ClassPath }
 import Util.*
 
 class ScriptingDriver(compilerArgs: Array[String], scriptFile: File, scriptArgs: Array[String]) extends Driver:
-  def compileAndRun(pack:(Path, Seq[Path], String) => Boolean = null): Option[Throwable] =
+  def compileAndRun(pack: ((Path, Seq[Path], String) => Boolean) | Null = null): Option[Throwable] =
     val outDir = Files.createTempDirectory("scala3-scripting")
     outDir.toFile.deleteOnExit()
     setup(compilerArgs :+ scriptFile.getAbsolutePath, initCtx.fresh) match

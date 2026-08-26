@@ -5,24 +5,24 @@ package dotc
 import scala.language.unsafeNulls
 
 import org.junit.{ Test, Ignore, BeforeClass, AfterClass }
-import org.junit.Assert._
-import org.junit.Assume._
+import org.junit.Assert.*
+import org.junit.Assume.*
 import org.junit.experimental.categories.Category
 
 import java.io.File
-import java.nio.file._
+import java.nio.file.*
 import java.util.stream.{ Stream => JStream }
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.matching.Regex
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import TestSources.sources
-import vulpix._
+import vulpix.*
 import reporting.TestReporter
 
 class TastyBootstrapTests {
-  import ParallelTesting._
-  import TestConfiguration._
-  import CompilationTests._
+  import ParallelTesting.*
+  import TestConfiguration.*
+  import TastyBootstrapTests.{*, given}
   import CompilationTest.aggregateTests
 
   /** The purpose of this test is three-fold, being able to compile dotty
@@ -37,16 +37,16 @@ class TastyBootstrapTests {
     val dotty2Group = TestGroup("tastyBootstrap/dotty2")
 
     // Make sure that the directory is clean
-    dotty.tools.io.Directory(defaultOutputDir + "tastyBootstrap").deleteRecursively()
+    dotty.tools.io.Directory(new java.io.File(defaultOutputDir, "tastyBootstrap").getAbsolutePath).deleteRecursively()
 
     val opt = TestFlags(
       List(
         // compile with bootstrapped library on cp:
-        defaultOutputDir + libGroup + "/lib/",
+        Paths.get(defaultOutputDir.getAbsolutePath, libGroup.name, "lib").toString,
         // and bootstrapped tasty-core:
-        defaultOutputDir + tastyCoreGroup + "/tastyCore/",
+        Paths.get(defaultOutputDir.getAbsolutePath, tastyCoreGroup.name, "tastyCore").toString,
         // as well as bootstrapped compiler:
-        defaultOutputDir + dotty1Group + "/dotty1/",
+        Paths.get(defaultOutputDir.getAbsolutePath, dotty1Group.name, "dotty1").toString,
         // and the other compiler dependencies:
         Properties.compilerInterface, Properties.scalaLibrary, Properties.scalaAsm,
         Properties.dottyInterfaces, Properties.jlineTerminal, Properties.jlineReader,
@@ -116,7 +116,8 @@ object TastyBootstrapTests extends ParallelTesting {
   def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
   def failedTests = TestReporter.lastRunFailedTests
 
-  implicit val summaryReport: SummaryReporting = new SummaryReport
+  given summaryReport: SummaryReporting = new SummaryReport
+
   @AfterClass def tearDown(): Unit = {
     super.cleanup()
     summaryReport.echoSummary()

@@ -2,7 +2,6 @@ package dotty.tools.pc
 
 import java.net.URI
 import java.nio.file.Paths
-import java.util.ArrayList
 
 import scala.jdk.CollectionConverters.*
 import scala.meta.internal.pc.DefinitionResultImpl
@@ -50,8 +49,10 @@ class PcDefinitionProvider(
     val path =
       Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
 
-    given ctx: Context = driver.localContext(params)
-    val indexedContext = IndexedContext(pos)(using ctx)
+    val unit = driver.currentCtx.run.nn.units.head
+    val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
+    val indexedContext = IndexedContext(pos, path, newctx)
+    import indexedContext.ctx
     val result =
       if findTypeDef then findTypeDefinitions(path, pos, indexedContext, uri)
       else findDefinitions(path, pos, indexedContext, uri)
@@ -122,7 +123,7 @@ class PcDefinitionProvider(
   )(using ctx: Context): DefinitionResult =
     semanticSymbolsSorted(symbols) match
       case Nil => DefinitionResultImpl.empty
-      case syms @ ((_, headSym) :: tail) =>
+      case syms @ ((_, headSym) :: _) =>
         val locations = syms.flatMap:
           case (sym, semanticdbSymbol) =>
             locationsForSymbol(sym, semanticdbSymbol, uri, pos)

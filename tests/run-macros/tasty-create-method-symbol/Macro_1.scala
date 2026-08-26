@@ -94,7 +94,7 @@ object Macros {
             Some {
               val sym51 : Symbol = Symbol.newMethod(
                 sym5,
-                "sym51",
+                "$anonfun$sym51",
                 MethodType(List("x"))(
                   _ => List(TypeRepr.of[Int]),
                   _ => TypeRepr.of[Int]))

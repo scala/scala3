@@ -9,14 +9,14 @@ nightlyOf: https://docs.scala-lang.org/scala3/reference/experimental/capture-che
 Use Scala 3 nightly for the latest features and fixes.
 
 Add this import in any file that uses capture checking:
-```scala sc:nocompile
+```scala
 import language.experimental.captureChecking
 ```
 
 ### Separation Checking
 
 Requires the import above:
-```scala sc:nocompile
+```scala
 import language.experimental.captureChecking
 import language.experimental.separationChecking
 ```

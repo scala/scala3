@@ -2,9 +2,9 @@ package dotty.tools
 package dotc
 package parsing
 
-import Tokens._, Parsers._
-import core._
-import ast.Trees._
+import Tokens.*, Parsers.*
+import core.*
+import ast.Trees.*
 import ast.desugar
 import core.Mode
 import Contexts.Context
@@ -12,9 +12,9 @@ import Contexts.Context
 
 class DeSugarTest extends ParserTest {
 
-  import dotty.tools.dotc.ast.untpd._
+  import dotty.tools.dotc.ast.untpd.*
 
-  import Mode._
+  import Mode.*
 
   val Expr = Mode(0)
 

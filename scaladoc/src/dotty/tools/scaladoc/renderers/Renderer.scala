@@ -151,7 +151,10 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
    * Main method rendering all the pages
    */
   def render(): Unit =
-    val sites = allPages.map(renderPage(_, Vector.empty))
+    try
+      allPages.foreach(renderPage(_, Vector.empty))
+    finally
+      staticSite.foreach(_.reportSnippetMessages())
 
   /**
    * Handler to prepare the content to be rendered. It's a good place to organize frame, footers, front-matter, etc.
@@ -165,5 +168,3 @@ abstract class Renderer(rootPackage: Member, val members: Map[DRI, Member], prot
     val newParents = parents :+ page.link
     val content = pageContent(page, newParents)
     write(page.link.dri, content, extension) +: page.children.flatMap(renderPage(_, newParents))
-
-

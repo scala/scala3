@@ -141,7 +141,8 @@ type      val       var       while     with      yield
 ### Soft keywords
 
 ```
-as  consume  derives  end  erased  extension  infix  inline  opaque  open  throws  tracked  transparent  update  using  |  *  +  -
+as  consume  derives  end  erased  extension  infix  initially  inline
+opaque  open  throws  tracked  transparent  update  using  |  *  +  -
 ```
 
 See the [separate section on soft keywords](../reference/soft-modifier.md) for additional
@@ -520,13 +521,13 @@ ExtMethod         ::=  {Annotation [nl]} {Modifier} ‘def’ DefDef
 Template          ::=  InheritClauses [TemplateBody]
 InheritClauses    ::=  [‘extends’ ConstrApps]
                        [‘derives’ QualId {‘,’ QualId}]
-                       [‘uses’ CaptureRef {‘,’ CaptureRef}]
-                       [‘uses_init’ CaptureRef {‘,’ CaptureRef}]
+                       [‘uses’ UseRef {‘,’ UseRef}]
 ConstrApps        ::=  ConstrApp ({‘,’ ConstrApp} | {‘with’ ConstrApp})
 ConstrApp         ::=  SimpleType1 {Annotation} {ParArgumentExprs}
 ConstrExpr        ::=  SelfInvocation
                     |  <<< SelfInvocation {semi BlockStat} >>>
 SelfInvocation    ::=  ‘this’ ArgumentExprs {ArgumentExprs}
+UseRef            ::=  CaptureRef [‘initially’]
 
 WithTemplateBody  ::=  <<< [SelfType] TemplateStat {semi TemplateStat} >>>
 TemplateBody      ::=  :<<< [SelfType] TemplateStat {semi TemplateStat} >>>

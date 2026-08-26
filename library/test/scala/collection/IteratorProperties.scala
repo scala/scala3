@@ -19,19 +19,19 @@ object IteratorProperties extends Properties("Iterator") {
 
   property("take") = check(_ take _)
   property("takeRight") = check((it, n) => it match {
-    case it: Iterable[Int] => it.takeRight(n)
-    case it: Iterator[Int] => View.takeRightIterator(it, n)
+    case it: Iterable[Int @unchecked] => it.takeRight(n)
+    case it: Iterator[Int @unchecked] => View.takeRightIterator(it, n)
     case x                 => throw new MatchError(x)
   })
   property("drop") = check(_ drop _)
   property("dropRight") = check((it, n) => it match {
-    case it: Iterable[Int] => it.dropRight(n)
-    case it: Iterator[Int] => View.dropRightIterator(it, n)
+    case it: Iterable[Int @unchecked] => it.dropRight(n)
+    case it: Iterator[Int @unchecked] => View.dropRightIterator(it, n)
     case x                 => throw new MatchError(x)
   })
   property("patch") = check((it, n) => it match {
-    case it: Iterable[Int] => it.iterator.patch(1, Iterator.empty, n)
-    case it: Iterator[Int] => it.patch(1, Iterator.empty, n)
+    case it: Iterable[Int @unchecked] => it.iterator.patch(1, Iterator.empty, n)
+    case it: Iterator[Int @unchecked] => it.patch(1, Iterator.empty, n)
     case x                 => throw new MatchError(x)
   })
 

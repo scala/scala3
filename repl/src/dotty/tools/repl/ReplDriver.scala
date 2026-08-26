@@ -2,6 +2,7 @@ package dotty.tools
 package repl
 
 import scala.language.unsafeNulls
+import scala.util.control.NonFatal
 
 import java.io.{File => JFile, PrintStream}
 import java.nio.charset.StandardCharsets
@@ -45,7 +46,6 @@ import scala.collection.mutable
 import scala.compiletime.uninitialized
 import scala.jdk.CollectionConverters.*
 import scala.tools.asm.ClassReader
-import scala.util.control.NonFatal
 import scala.util.Using
 
 /** The state of the REPL contains necessary bindings instead of having to have
@@ -354,7 +354,10 @@ class ReplDriver(settings: Array[String],
           unit.tpdTree = tpdTree
           given Context = state.context.fresh.setCompilationUnit(unit)
           val srcPos = SourcePosition(file, Span(cursor))
-          try Completion.completions(srcPos)._2 catch case NonFatal(_) => Nil
+          try
+            Completion.completions(srcPos)._2
+          catch case NonFatal(_) =>
+            List(Completion("<Error while fetching completions. Please report it to the Scala 3 maintainers at https://github.com/scala/scala3/issues>", "", Nil))
         }
         .getOrElse(Nil)
   end completions
@@ -650,10 +653,13 @@ class ReplDriver(settings: Array[String],
       expr match {
         case "" => out.println(s":type <expression>")
         case _  =>
-          compiler.typeOf(expr)(using newRun(state)).fold(
-            errs => displayErrors(errs, state),
-            res => out.println(res)  // result has some highlights
-          )
+          try
+            compiler.typeOf(expr)(using newRun(state)).fold(
+              errs => displayErrors(errs, state),
+              res => out.println(res)  // result has some highlights
+            )
+          catch case NonFatal(ex) =>
+            out.println(s"Error: ${ex.getMessage}")
       }
       state
 
@@ -661,10 +667,13 @@ class ReplDriver(settings: Array[String],
       expr match {
         case "" => out.println(s":doc <expression>")
         case _  =>
-          compiler.docOf(expr)(using newRun(state)).fold(
-            errs => displayErrors(errs, state),
-            res => out.println(res)
-          )
+          try
+            compiler.docOf(expr)(using newRun(state)).fold(
+              errs => displayErrors(errs, state),
+              res => out.println(res)
+            )
+          catch case NonFatal(ex) =>
+            out.println(s"Error: ${ex.getMessage}")
       }
       state
 
@@ -732,4 +741,4 @@ class ReplDriver(settings: Array[String],
 
 end ReplDriver
 object ReplDriver:
-  def pprintImport = "import pprint.pprintln\n"
+  def pprintImport = "import dotty.vendored.pprint.pprintln\n"
