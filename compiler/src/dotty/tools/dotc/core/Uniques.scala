@@ -11,7 +11,7 @@ import scala.annotation.tailrec
 
 class Uniques extends WeakHashSet[Type](Config.initialUniquesCapacity):
   override def hash(x: Type): Int = x.hash
-  override def isEqual(x: Type, y: Type) = x.eql(y)
+  override def isEqual(x: Type, y: Type) = x.equals(y)
 
 /** Defines operation `unique` for hash-consing types.
  *  Also defines specialized hash sets for hash consing uniques of a specific type.
@@ -58,8 +58,10 @@ object Uniques:
         def linkedListLoop(entry: Entry[NamedType] | Null): NamedType = entry match
           case null                    => addEntryAt(bucket, newType, h, oldHead)
           case _                       =>
-            val e = entry.get
-            if e != null && (e.prefix eq prefix) && (e.designator eq designator) && (e.isTerm == isTerm) then e
+            if entry.hash == h then
+              val e = entry.get
+              if e != null && (e.prefix eq prefix) && (e.designator eq designator) && (e.isTerm == isTerm) then e
+              else linkedListLoop(entry.tail)
             else linkedListLoop(entry.tail)
 
         linkedListLoop(oldHead)
@@ -93,8 +95,10 @@ object Uniques:
         def linkedListLoop(entry: Entry[AppliedType] | Null): AppliedType = entry match
           case null                    => addEntryAt(bucket, newType, h, oldHead)
           case _                       =>
-            val e = entry.get
-            if e != null && (e.tycon eq tycon) && e.args.eqElements(args) then e
+            if entry.hash == h then
+              val e = entry.get
+              if e != null && (e.tycon eq tycon) && e.args.eqElements(args) then e
+              else linkedListLoop(entry.tail)
             else linkedListLoop(entry.tail)
 
         linkedListLoop(oldHead)

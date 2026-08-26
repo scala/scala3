@@ -186,7 +186,7 @@ object NameKinds {
       var i = name.length
       while i > 0 && name(i - 1).isDigit do i -= 1
       if i >= separator.length && i < name.length
-          && name.slice(i - separator.length, i).toString == separator
+          && name.sliceToString(i - separator.length, i) == separator
       then i
       else -1
 

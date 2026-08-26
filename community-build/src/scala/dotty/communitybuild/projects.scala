@@ -81,6 +81,9 @@ sealed case class MillCommunityProject(
   override val runCommandsArgs = List("-i", "-D", s"dottyVersion=$compilerVersion")
   override val environment = Map.empty
 
+val sbt1Version = "1.12.1"
+val sbt2Version = "2.0.3"
+
 final case class SbtCommunityProject(
     project: String,
     sbtTestCommand: String,
@@ -89,6 +92,7 @@ final case class SbtCommunityProject(
     sbtDocCommand: String = null,
     scalacOptions: List[String] = SbtCommunityProject.scalacOptions,
     override val environment: Map[String, String] = Map.empty,
+    sbtVersion: String = sbt1Version
   ) extends CommunityProject:
   override val binaryName: String = "sbt"
 
@@ -117,7 +121,7 @@ final case class SbtCommunityProject(
     val sbtProps = Option(System.getProperty("sbt.ivy.home")) match
       case Some(ivyHome) => List(s"-Dsbt.ivy.home=$ivyHome")
       case _ => Nil
-    extraSbtArgs ++ sbtProps ++ List("-sbt-version", "1.12.1", "-Dsbt.supershell=false", s"--addPluginSbtFile=$sbtPluginFilePath")
+    extraSbtArgs ++ sbtProps ++ List(s"-Dsbt.version=$sbtVersion", "-Dsbt.supershell=false", s"--addPluginSbtFile=$sbtPluginFilePath")
 
 object SbtCommunityProject:
   def scalacOptions = List(
@@ -687,13 +691,13 @@ object projects:
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Wsafe-init"),
   )
 
-  // Disabled because it requires SBT 2
-  /*lazy val parboiled2 = SbtCommunityProject(
+  lazy val parboiled2 = SbtCommunityProject(
     project = "parboiled2",
-    sbtTestCommand = "parboiledCoreJVM3/test; parboiledJVM3/test",
+    sbtTestCommand = "parboiledCoreJVM3/testFull; parboiledJVM3/testFull",
     sbtPublishCommand = "publishLocal",
     scalacOptions = SbtCommunityProject.scalacOptions.filter(_ != "-Xcheck-macros"),
-  )*/
+    sbtVersion = sbt2Version,
+  )
 
 end projects
 
@@ -774,7 +778,7 @@ def allProjects = List(
   projects.specs2,
   projects.spire,
   projects.http4s,
-  //projects.parboiled2,
+  projects.parboiled2,
 )
 
 lazy val projectMap = allProjects.groupBy(_.project)

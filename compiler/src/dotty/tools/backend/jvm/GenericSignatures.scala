@@ -35,7 +35,10 @@ object GenericSignatures {
    *  @return The signature if it could be generated, `null` otherwise.
    */
   def javaSig(sym0: Symbol, info: Type, onClassRef: ClassSymbol => Unit)(using Context): StringBuilder | Null =
-    if mayNeedSignature(sym0, info) then atPhase(erasurePhase)(javaSig0(sym0, info, onClassRef))
+    if mayNeedSignature(sym0, info) then
+      ctx.handleRecursive("generating the generic signature of", sym0, sym0):
+        atPhase(erasurePhase):
+          javaSig0(sym0, info, onClassRef)
     else null
 
   private def mayNeedSignature(sym0: Symbol, info: Type)(using Context) = {
@@ -222,7 +225,7 @@ object GenericSignatures {
                     builder.append("*")
                 else
                   // For bounded arguments, we can't translate it cleanly so emit an erased type
-                  jsig(erasure(a.tycon))
+                  boxedSig(erasure(a.tycon))
               case res =>
                 // value classes cannot appear as generic arguments
                 jsig(res, vcBoxing = ValueClassBoxing.Box)
@@ -436,7 +439,7 @@ object GenericSignatures {
     jsig(info, toplevel = true)
     for annot <- sym0.annotations do
       annot match
-        case ThrownException(e) =>
+        case ThrownException(e) if sym0.is(Method) => // ThrowsSignature is only valid in MethodSignature
           builder.append('^')
           jsig(e, toplevel = true)
         case _ => ()

@@ -10,10 +10,13 @@ import scala.jdk.CollectionConverters.*
 import scala.meta.pc.SemanticdbFileManager
 import scala.meta.pc.SourcePathMode
 
-import dotty.tools.dotc.interactive.InteractiveDriver
-import dotty.tools.dotc.interactive.LogicalPackage
-import dotty.tools.dotc.interactive.LogicalPackagesProvider
-import dotty.tools.dotc.interactive.ParsedLogicalPackage
+import dotty.tools.dotc.core.Contexts.Context
+import dotty.tools.dotc.interactive.{
+  CachedLogicalPackage,
+  InteractiveDriver,
+  LogicalPackagesProvider,
+  ParsedLogicalPackage
+}
 import dotty.tools.dotc.reporting.Diagnostic
 import dotty.tools.dotc.util.SourceFile
 
@@ -37,8 +40,8 @@ import dotty.tools.dotc.util.SourceFile
  */
 class CachingDriver private (
     override val settings: List[String],
-    precomputedSourcePackages: Option[LogicalPackage]
-) extends InteractiveDriver(settings, precomputedSourcePackages):
+    sourcePackage: CachedLogicalPackage
+) extends InteractiveDriver(settings, sourcePackage):
 
   private var lastCompiledURI: URI = uninitialized
   private var previousDiags = List.empty[Diagnostic]
@@ -56,6 +59,9 @@ class CachingDriver private (
     lastCompiledURI = uri
     previousDiags
 
+  def freshDriver(): InteractiveDriver =
+    new InteractiveDriver(settings, sourcePackage)
+
 end CachingDriver
 
 object CachingDriver:
@@ -65,7 +71,7 @@ object CachingDriver:
       semanticdbFileManager: SemanticdbFileManager,
       sourcePathMode: SourcePathMode
   ): CachingDriver =
-    val precomputedSourcePackages = sourcePathMode match
+    def sourcePackagesExtractor(using Context) = sourcePathMode match
       case SourcePathMode.DISABLED => None
       case SourcePathMode.PRUNED | SourcePathMode.FULL =>
         val sourcePathFiles = sourcePath.get().asScala.toSeq
@@ -73,4 +79,4 @@ object CachingDriver:
         if sourcePathFiles.nonEmpty then Some(new LogicalPackagesProvider(logicalSourcePath).root) else None
       case SourcePathMode.MBT =>
         Some(ParsedLogicalPackage.fromMbtIndex(semanticdbFileManager.listAllPackages()))
-    new CachingDriver(settings, precomputedSourcePackages)
+    new CachingDriver(settings, CachedLogicalPackage(sourcePackagesExtractor))

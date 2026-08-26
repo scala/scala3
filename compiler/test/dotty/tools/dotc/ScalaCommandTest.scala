@@ -26,15 +26,16 @@ class ScalaCommandTest:
   @Test def `Unfold @file`: Unit = inContext {
     val settings = config.ScalaSettings
     val file = temporaryFolder.newFile("config")
+    val sourceRoot = temporaryFolder.newFolder("src")
     val writer = java.io.FileWriter(file);
-    writer.write("-sourceroot myNewRoot someMoreFiles");
+    writer.write(s"-sourceroot $sourceRoot someMoreFiles");
     writer.close();
     val args = s"-cp path/to/classes1:other/path/to/classes2 @${file} someFiles".split(" ")
     val summary = ScalacCommand.distill(args, settings)()
 
     given SettingsState = summary.sstate
     assertEquals("path/to/classes1:other/path/to/classes2", settings.classpath.value)
-    assertEquals("myNewRoot", settings.sourceroot.value)
+    assertEquals(sourceRoot.toString, settings.sourceroot.value.path)
     assertEquals("someMoreFiles" :: "someFiles" :: Nil, summary.arguments)
   }
 

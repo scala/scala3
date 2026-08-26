@@ -1,0 +1,10 @@
+-- Warning: tests/warn/conversion-lang-import.scala:9:6 ----------------------------------------------------------------
+9 |  foo("abc")  // warn
+  |      ^^^^^
+  |      Implicit conversion to type Option[String] is not to an `into[...]` type.
+  |      Therefore, the use of the implicit conversion given instance given_Conversion_A_Option needs to be enabled
+  |      by adding the import clause 'import scala.language.implicitConversions'
+  |      or by setting the compiler option -language:implicitConversions.
+  |      See the Scala docs for value scala.language.implicitConversions for a discussion
+  |      why the feature needs to be explicitly enabled.
+  |      (This will be an error in later Scala versions)

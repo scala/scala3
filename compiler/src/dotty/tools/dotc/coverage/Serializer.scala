@@ -17,29 +17,23 @@ object Serializer:
   private val CoverageDataFormatVersion = "3.0"
 
   def coverageFilePath(dataDir: String): Path =
-    Paths.get(dataDir, CoverageFileName).toAbsolutePath
+    Paths.get(dataDir, CoverageFileName)
 
   /** Write out coverage data to the given data directory, using the default coverage filename */
-  def serialize(coverage: Coverage, dataDir: String, sourceRoot: String): Unit =
-    serialize(coverage, coverageFilePath(dataDir), Paths.get(sourceRoot).toAbsolutePath)
+  def serialize(coverage: Coverage, dataDir: String): Unit =
+    serialize(coverage, coverageFilePath(dataDir))
 
   /** Write out coverage data to a file. */
-  def serialize(coverage: Coverage, file: Path, sourceRoot: Path): Unit =
+  def serialize(coverage: Coverage, file: Path): Unit =
     val writer = Files.newBufferedWriter(file)
     try
-      serialize(coverage, writer, sourceRoot)
+      serialize(coverage, writer)
     finally
       writer.close()
 
   /** Write out coverage data (info about each statement that can be covered) to a writer.
    */
-  def serialize(coverage: Coverage, writer: Writer, sourceRoot: Path): Unit =
-
-    def getRelativePath(filePath: Path): String =
-      // We need to normalize the path here because the relativizing paths containing '.' or '..' differs between Java versions
-      // https://bugs.openjdk.java.net/browse/JDK-8066943
-      val relPath = sourceRoot.normalize.relativize(filePath)
-      relPath.toString
+  def serialize(coverage: Coverage, writer: Writer): Unit =
 
     def writeHeader(writer: Writer): Unit =
       writer.write(s"""# Coverage data, format version: $CoverageDataFormatVersion
@@ -67,7 +61,7 @@ object Serializer:
     def writeStatement(stmt: Statement, writer: Writer): Unit =
       // Note: we write 0 for the count because we have not measured the actual coverage at this point
       writer.write(s"""${stmt.id}
-                      |${getRelativePath(stmt.location.sourcePath).escaped}
+                      |${stmt.location.sourcePath.escaped}
                       |${stmt.location.packageName.escaped}
                       |${stmt.location.className.escaped}
                       |${stmt.location.classType}
@@ -90,12 +84,12 @@ object Serializer:
       .sortBy(_.id)
       .foreach(stmt => writeStatement(stmt, writer))
 
-  def deserialize(file: Path, sourceRoot: String): Coverage =
+  def deserialize(file: Path): Coverage =
     val source = Source.fromFile(file.toFile(), UTF_8.name())
-    try deserialize(source.getLines(), Paths.get(sourceRoot).toAbsolutePath)
+    try deserialize(source.getLines())
     finally source.close()
 
-  def deserialize(lines: Iterator[String], sourceRoot: Path): Coverage =
+  def deserialize(lines: Iterator[String]): Coverage =
     def toStatement(lines: Iterator[String]): Statement =
       val id: Int = lines.next().toInt
       val sourcePath = lines.next()
@@ -110,7 +104,7 @@ object Serializer:
         fullClassName,
         classType,
         method,
-        sourceRoot.resolve(sourcePath).normalize()
+        sourcePath
       )
       val start: Int = lines.next().toInt
       val end: Int = lines.next().toInt

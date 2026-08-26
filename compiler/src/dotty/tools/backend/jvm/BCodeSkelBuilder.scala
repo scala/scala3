@@ -44,7 +44,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     def push(btype: BType): Unit =
       if size == stack.length then
-        stack = java.util.Arrays.copyOf(stack, stack.length * 2)
+        stack = Array.copyOf(stack, stack.length * 2)
       stack(size) = btype
       size += 1
 
@@ -145,7 +145,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     /* ---------------- idiomatic way to ask questions to typer ---------------- */
 
-    def paramTKs(app: Apply, take: Int = -1)(using Context): List[BType] = app match {
+    def paramTKs(app: Apply)(using Context): List[BType] = if app.args.isEmpty then Nil else app match {
       case Apply(fun, _) =>
       val funSym = fun.symbol
       funSym.info.firstParamTypes.map(bTypeLoader.bTypeFromType) // this tracks mentioned inner classes (in innerClassBufferASM)
@@ -161,7 +161,6 @@ trait BCodeSkelBuilder extends BCodeHelpers {
 
     def genPlainClass(cd0: TypeDef)(using Context): ClassNode1 = (cd0: @unchecked) match {
       case TypeDef(_, impl: Template) =>
-      assert(cnode == null, "GenBCode detected nested methods.")
 
       claszSymbol       = cd0.symbol
       isCZStaticModule  = claszSymbol.isStaticModuleClass
@@ -903,7 +902,13 @@ trait BCodeSkelBuilder extends BCodeHelpers {
               ctx.source.atSpan(NoSpan)
             )
           else
-            genLoadTo(trimmedRhs, returnType, LoadDestination.Return)
+            // The JVM doesn't support `synchronized` methods on interfaces so we must implement that ourselves
+            if dd.symbol.is(Synchronized) && dd.symbol.owner.is(Trait) then
+              bc.aloadThis()
+              val generatedType = genSynchronized(trimmedRhs, trimmedRhs :: Nil, returnType)
+              genAdaptAndSendToDest(generatedType, returnType, LoadDestination.Return)
+            else
+              genLoadTo(trimmedRhs, returnType, LoadDestination.Return)
 
           if (emitVars) {
             // add entries to LocalVariableTable JVM attribute
@@ -942,6 +947,8 @@ trait BCodeSkelBuilder extends BCodeHelpers {
       }
     }
 
+    def genSynchronized(tree: Tree, args: List[Tree], expectedType: BType)(using Context): BType
+    def genAdaptAndSendToDest(generatedType: BType | Null, expectedType: BType, dest: LoadDestination)(using Context): Unit
     def genLoadTo(tree: Tree, expectedType: BType, dest: LoadDestination)(using Context): Unit
 
   } // end of class PlainSkelBuilder

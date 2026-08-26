@@ -3,14 +3,8 @@ package dotty
 import java.nio.file.*
 import java.util.regex.{Matcher, Pattern}
 
-/** Runtime properties from defines or environmnent */
+/** Runtime properties from defines or environment */
 object Properties {
-
-  /** If property is unset or "TRUE" we consider it `true` */
-  private def propIsNullOrTrue(name: String): Boolean = {
-    val prop = System.getProperty(name)
-    prop == null || prop == "TRUE"
-  }
 
   /** If property is unset or FALSE we consider it `false` */
   private def propIsTrue(name: String): Boolean =
@@ -18,14 +12,6 @@ object Properties {
 
   /** Are we running on the CI? */
   val isRunByCI: Boolean = sys.env.isDefinedAt("DOTTY_CI_RUN")
-
-  val testCache: Path =
-    sys.env.get("DOTTY_TEST_CACHE").map(Paths.get(_)).getOrElse {
-      Paths.get(sys.props("user.home"), ".cache", "dotty", "test")
-    }
-
-  /** Tests should run interactive? */
-  val testsInteractive: Boolean = propIsNullOrTrue("dotty.tests.interactive")
 
   /** Filter out tests not matching the regex supplied by "dotty.tests.filter"
    *  define
@@ -38,23 +24,8 @@ object Properties {
   /** Tests should override the checkfiles with the current output */
   val testsUpdateCheckfile: Boolean = propIsTrue("dotty.tests.updateCheckfiles")
 
-  /** When set, the run tests are only compiled - not run, a warning will be
-   *  issued
-   */
-  val testsNoRun: Boolean = sys.props.get("dotty.tests.norun").isDefined
-
-  /** Should Unit tests run in safe mode?
-   *
-   *  For run tests this means that we respawn child JVM processes after each
-   *  test, so that they are never reused.
-   */
-  val testsSafeMode: Boolean = sys.props.isDefinedAt("dotty.tests.safemode")
-
   /** Enable Scoverage instrumentation for compilation tests */
   val testsInstrumentCoverage: Boolean = propIsTrue("dotty.tests.instrumentCoverage")
-
-  /** Extra directory containing sources for the compiler */
-  def dottyCompilerManagedSources: Path = Paths.get(sys.props("dotty.tests.dottyCompilerManagedSources"))
 
   /** dotty-interfaces jar */
   def dottyInterfaces: String = sys.props("dotty.tests.classes.dottyInterfaces").nn
@@ -93,12 +64,6 @@ object Properties {
       .map(suffix =>
         asm.replaceAll("asm", "asm" + suffix)
           .replaceFirst(Pattern.quote(sep + "asm" + suffix + sep), Matcher.quoteReplacement(sep + "asm" + sep)))
-
-  /** jline-terminal jar */
-  def jlineTerminal: String = sys.props("dotty.tests.classes.jlineTerminal").nn
-
-  /** jline-reader jar */
-  def jlineReader: String = sys.props("dotty.tests.classes.jlineReader").nn
 
   /** scalajs-javalib jar */
   def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib").nn

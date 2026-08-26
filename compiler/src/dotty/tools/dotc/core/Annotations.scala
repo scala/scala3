@@ -78,7 +78,7 @@ object Annotations {
               if tm.isRange(x) then x
               else
                 val tp1 = tm(tree.tpe)
-                foldOver(if !tp1.exists || tp1.eql(tree.tpe) then x else tp1, tree)
+                foldOver(if !tp1.exists || tp1.equals(tree.tpe) then x else tp1, tree)
           val diff = findDiff(NoType, args)
           if tm.isRange(diff) then EmptyAnnotation
           else if diff.exists then derivedAnnotation(tm.mapOver(tree))
@@ -122,10 +122,6 @@ object Annotations {
         metaSyms.exists(symbol.hasAnnotation) || rec(tree)
       go(metaSyms) || orNoneOf.nonEmpty && !go(orNoneOf)
     }
-
-    /** Operations for hash-consing, can be overridden */
-    def hash: Int = System.identityHashCode(this)
-    def eql(that: Annotation) = this eq that
   }
 
   case class ConcreteAnnotation(t: Tree) extends Annotation:
@@ -192,9 +188,9 @@ object Annotations {
     override def refersToParamOf(tl: TermLambda)(using Context): Boolean =
       refersToLambdaParam(tpe, tl)
 
-    override def hash: Int = tpe.hash
-    override def eql(that: Annotation) = that match
-      case that: CompactAnnotation => this.tpe `eql` that.tpe
+    override def hashCode(): Int = tpe.hash
+    override def equals(that: Any): Boolean = that match
+      case that: CompactAnnotation => this.tpe.equals(that.tpe)
       case _ => false
 
   object CompactAnnotation:

@@ -203,11 +203,6 @@ object ProtoTypes {
 
     override def computeHash(bs: Hashable.Binders): Int = doHash(bs, ignored)
 
-    override def eql(that: Type): Boolean = that match
-      case that: IgnoredProto => ignored eq that.ignored
-      case _ => false
-
-    // equals comes from case class; no need to redefine
   end IgnoredProto
 
   final class CachedIgnoredProto(ignored: Type) extends IgnoredProto(ignored)
@@ -316,13 +311,6 @@ object ProtoTypes {
         (name eq that.name) && memberProto.equals(that.memberProto) && (compat eq that.compat) && (privateOK == that.privateOK)
       case _ =>
         false
-
-    override def eql(that: Type): Boolean = that match {
-      case that: SelectionProto =>
-        (name eq that.name) && (memberProto eq that.memberProto) && (compat eq that.compat) && (privateOK == that.privateOK)
-      case _ =>
-        false
-    }
   }
 
   class CachedSelectionProto(name: Name, memberProto: Type, compat: Compatibility, privateOK: Boolean, nameSpan: Span)
@@ -707,10 +695,6 @@ object ProtoTypes {
 
   class CachedViewProto(argType: Type, resultType: Type) extends ViewProto(argType, resultType) {
     override def computeHash(bs: Hashable.Binders): Int = doHash(bs, argType, resultType)
-    override def eql(that: Type): Boolean = that match
-      case that: ViewProto => (argType eq that.argType) && (resType eq that.resType)
-      case _ => false
-    // equals comes from case class; no need to redefine
   }
 
   object ViewProto {

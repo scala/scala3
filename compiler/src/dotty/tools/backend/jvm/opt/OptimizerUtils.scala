@@ -17,36 +17,10 @@ import org.objectweb.asm.{Handle, Opcodes, Type}
  * This component hosts tools and utilities used in the optimizer that require access to an `OptimizerKnownBTypes` instance.
  */
 class OptimizerUtils(val ts: OptimizerKnownBTypes) {
+  // Contains methods that get instances of various standard library modules, such as `Either$`, `Range$`, etc.
+  private val ScalaPackageObject = "scala/package$"
+  private val PredefModule = "scala/Predef$"
 
-  private val indyLambdaImplMethods: ConcurrentHashMap[InternalName, mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]]] =
-    new ConcurrentHashMap
-
-  def onIndyLambdaImplMethodIfPresent[T](hostClass: InternalName)(action: mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]] => T): Option[T] =
-    indyLambdaImplMethods.get(hostClass) match {
-      case null => None
-      case methods => Some(methods.synchronized(action(methods)))
-    }
-
-  def onIndyLambdaImplMethod[T](hostClass: InternalName)(action: mutable.Map[MethodNode, mutable.Map[InvokeDynamicInsnNode, asm.Handle]] => T): T = {
-    val methods = indyLambdaImplMethods.computeIfAbsent(hostClass, _ => mutable.Map.empty)
-    methods.synchronized(action(methods))
-  }
-
-  def addIndyLambdaImplMethod(hostClass: InternalName, method: MethodNode, indy: InvokeDynamicInsnNode, handle: asm.Handle): Unit = {
-    onIndyLambdaImplMethod(hostClass)(_.getOrElseUpdate(method, mutable.Map.empty)(indy) = handle)
-  }
-
-  def removeIndyLambdaImplMethod(hostClass: InternalName, method: MethodNode, indy: InvokeDynamicInsnNode): Unit = {
-    onIndyLambdaImplMethodIfPresent(hostClass)(_.get(method).foreach(_.remove(indy)))
-  }
-
-  /**
-   * The methods used as lambda bodies for IndyLambda instructions within `method` of `hostClass`.
-   */
-  def indyLambdaBodyMethods(hostClass: InternalName, method: MethodNode): Map[InvokeDynamicInsnNode, Handle] = {
-    onIndyLambdaImplMethodIfPresent(hostClass)(ms => ms.getOrElse(method, Nil).toMap).getOrElse(Map.empty)
-  }
-  
   def isPredefLoad(insn: AbstractInsnNode): Boolean = AnalysisUtils.isModuleLoad(insn, _ == ts.PredefRef.internalName)
 
   // ==============================================================================================
@@ -135,9 +109,8 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
 
   def runtimeRefClassBoxedType(refClass: InternalName): asm.Type = asm.Type.getArgumentTypes(ts.srRefCreateMethods(refClass).methodType.descriptor)(0)
 
-  def isSideEffectFreeConstructorCall(insn: MethodInsnNode): Boolean = {
+  def isSideEffectFreeConstructorCall(insn: MethodInsnNode): Boolean =
     insn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && sideEffectFreeConstructors((insn.owner, insn.desc))
-  }
 
   def isNewForSideEffectFreeConstructor(insn: AbstractInsnNode): Boolean = {
     insn.getOpcode == Opcodes.NEW && {
@@ -150,13 +123,14 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
     isScalaBox(mi) ||  // not Scala unbox, it may CCE
       isJavaBox(mi) || // not Java unbox, it may NPE
       isSideEffectFreeConstructorCall(mi) ||
-      AnalysisUtils.isClassTagApply(mi)
+      AnalysisUtils.isClassTagApply(mi) ||
+      isStdLibModuleAlias(mi)
   }
 
   // methods that are known to return a non-null result
   def isNonNullMethodInvocation(mi: MethodInsnNode): Boolean = {
     isJavaBox(mi) || isScalaBox(mi) || isPredefAutoBox(mi) || isRefCreate(mi) || isRefZero(mi) || AnalysisUtils.isClassTagApply(mi) ||
-      isTupleApply(mi)
+      isTupleApply(mi) || isStdLibModuleAlias(mi)
   }
 
   // unused objects created by these constructors are eliminated by pushPop
@@ -172,16 +146,47 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
 
   lazy val modulesAllowSkipInitialization: Set[InternalName] =
     Set(
+      // Please keep sorted
+      ScalaPackageObject,
+      "scala/Array$",
       "scala/Predef$",
+      "scala/TupleXXL$",
+      "scala/collection/ArrayOps$",
+      "scala/collection/Iterable$",
+      "scala/collection/Iterator$",
+      "scala/collection/StringOps$",
+      "scala/collection/immutable/IndexedSeq$",
+      "scala/collection/immutable/LazyList$",
+      "scala/collection/immutable/List$",
+      "scala/collection/immutable/Nil$",
+      "scala/collection/immutable/Range$",
+      "scala/collection/immutable/Seq$",
+      "scala/collection/immutable/Stream$",
+      "scala/collection/immutable/Vector$",
+      "scala/collection/mutable/StringBuilder$",
+      "scala/math/BigDecimal$",
+      "scala/math/BigInt$",
+      "scala/math/Equiv$",
+      "scala/math/Fractional$",
+      "scala/math/Integral$",
+      "scala/math/Numeric$",
+      "scala/math/Ordered$",
+      "scala/math/Ordering$",
+      "scala/runtime/Arrays$",
       "scala/runtime/ScalaRunTime$",
       "scala/runtime/Scala3RunTime$",
       "scala/reflect/ClassTag$",
       "scala/reflect/ManifestFactory$",
-      "scala/Array$",
-      "scala/collection/ArrayOps$",
-      "scala/collection/StringOps$",
-      "scala/TupleXXL$"
-    ) ++ (1 to Definitions.MaxTupleArity).map(n => s"scala/Tuple$n$$") ++ AnalysisUtils.primitiveTypes.keysIterator
+      "scala/util/Either$",
+      "scala/util/Left$",
+      "scala/util/Right$",
+    ) ++ (1 to Definitions.MaxTupleArity).map(n => s"scala/Tuple$n$$")
+      ++ AnalysisUtils.primitiveTypes.keysIterator.map(n => s"scala/$n$$")
+
+  // e.g., `val Range = collection.immutable.Range` in `scala` package object
+  def isStdLibModuleAlias(mi: MethodInsnNode) =
+    (mi.owner == ScalaPackageObject || mi.owner == PredefModule) &&
+      modulesAllowSkipInitialization(mi.desc.stripPrefix("()L").stripSuffix(";"))
 
   private lazy val classesOfSideEffectFreeConstructors: Set[String] =
     sideEffectFreeConstructors.map(_._1)
@@ -229,8 +234,10 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
       val t = i.getType
       if (t == AbstractInsnNode.METHOD_INSN) {
         val mi = i.asInstanceOf[MethodInsnNode]
-        // invokespecial has, well, special semantics that depend on the class it's being invoked in, see, e.g., https://stackoverflow.com/a/8950564
-        if (!allowPrivateCalls && i.getOpcode == Opcodes.INVOKESPECIAL && mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) {
+        if (isStdLibModuleAlias(mi)) {
+          // allow method calls that return well-known modules, they are removed in `eliminatePushPop`
+        } else if (!allowPrivateCalls && i.getOpcode == Opcodes.INVOKESPECIAL && mi.name != BCodeUtils.INSTANCE_CONSTRUCTOR_NAME) {
+          // invokespecial has, well, special semantics that depend on the class it's being invoked in, see, e.g., https://stackoverflow.com/a/8950564
           numCallsOrNew = 2 // stop here: don't inline forwarders with a private or super call
         } else {
           if (isScalaBox(mi) || isScalaUnbox(mi) || isPredefAutoBox(mi) || isPredefAutoUnbox(mi) || isJavaBox(mi) || isJavaUnbox(mi))
@@ -242,8 +249,9 @@ class OptimizerUtils(val ts: OptimizerKnownBTypes) {
         }
       } else if (nonForwarderInstructionTypes(t)) {
         if (i.getOpcode == Opcodes.GETSTATIC) {
-          if (!allowPrivateCalls && owner == i.asInstanceOf[FieldInsnNode].owner)
+          if (!allowPrivateCalls && owner == i.asInstanceOf[FieldInsnNode].owner) {
             numCallsOrNew = 2 // stop here: not forwarder or trivial
+          }
         } else {
           numCallsOrNew = 2 // stop here: not forwarder or trivial
         }

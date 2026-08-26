@@ -16,7 +16,7 @@ import dotc.core.Contexts.atPhase
 import dotc.config.Feature
 import dotc.core.StdNames.*
 import dotc.core.Symbols.*
-import dotc.reporting.Diagnostic
+import dotc.reporting.{Diagnostic, StoreReporter}
 import dotc.transform.{CheckUnused, CheckShadowing, PostTyper, UnrollDefinitions, WInferUnion}
 import dotc.typer.ImportInfo.{withRootImports, RootRef}
 import dotc.typer.TyperPhase
@@ -48,7 +48,7 @@ class ReplCompiler extends Compiler:
   )
 
   def newRun(initCtx: Context, state: State): Run =
-    val run = new Run(this, initCtx) {
+    new Run(this, initCtx):
       /** Import previous runs and user defined imports */
       override protected def rootContext(using Context): Context = {
         def importContext(imp: tpd.Import)(using Context) =
@@ -74,9 +74,7 @@ class ReplCompiler extends Compiler:
         (state.validObjectIndexes).foldLeft(rootCtx)((ctx, id) =>
           importPreviousRun(id)(using ctx))
       }
-    }
-    run.suppressions.initSuspendedMessages(state.context.run)
-    run
+    .tap(_.suppressions.initSuspendedMessages(state.context.run))
   end newRun
 
   private def packaged(stats: List[untpd.Tree])(using Context): untpd.PackageDef =
@@ -205,7 +203,14 @@ class ReplCompiler extends Compiler:
     }
   }
 
-  final def typeCheck(expr: String, errorsAllowed: Boolean = false)(using state: State): Either[List[Diagnostic], (untpd.ValDef, tpd.ValDef)] = {
+  final def typeCheck(expr: String, errorsAllowed: Boolean = false)(using state: State): Either[List[Diagnostic], (untpd.ValDef, tpd.ValDef)] =
+    typeCheck(expr, errorsAllowed, newStoreReporter)
+
+  private[repl] final def typeCheck(
+    expr: String,
+    errorsAllowed: Boolean,
+    reporter: StoreReporter
+  )(using state: State): Either[List[Diagnostic], (untpd.ValDef, tpd.ValDef)] = {
 
     def wrapped(expr: String, sourceFile: SourceFile, state: State)(using Context): Either[List[Diagnostic], untpd.PackageDef] = {
       def wrap(trees: List[untpd.Tree]): untpd.PackageDef = {
@@ -262,7 +267,7 @@ class ReplCompiler extends Compiler:
 
     val src = SourceFile.virtual("<typecheck>", expr)
     inContext(state.context.fresh
-      .setReporter(newStoreReporter)
+      .setReporter(reporter)
       .setSetting(state.context.settings.YstopAfter, List("typer"))
     ) {
       wrapped(expr, src, state).flatMap { pkg =>

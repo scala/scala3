@@ -94,7 +94,7 @@ abstract class MarkupConversion[T](val repr: Repr)(using dctx: DocContext) {
   private given qctx.type = qctx
 
   private lazy val srcPos = if owner == qctx.reflect.defn.RootClass then {
-    val sourceFile = dctx.args.rootDocPath.map(p => dotty.tools.dotc.util.SourceFile(dotty.tools.io.AbstractFile.getFile(p), scala.io.Codec.UTF8))
+    val sourceFile = dctx.args.rootDocPath.map(p => dotty.tools.dotc.util.SourceFile(dotty.tools.io.AbstractFile.getFile(p), new dotty.tools.io.PlainDirectory(dotty.tools.io.Directory(".")), scala.io.Codec.UTF8))
     sourceFile.fold(dotty.tools.dotc.util.NoSourcePosition)(sf => dotty.tools.dotc.util.SourcePosition(sf, dotty.tools.dotc.util.Spans.NoSpan))
   } else owner.pos.get.asInstanceOf[dotty.tools.dotc.util.SrcPos]
 

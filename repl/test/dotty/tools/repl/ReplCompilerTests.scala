@@ -412,6 +412,11 @@ class ReplCompilerTests extends ReplTest:
   @Test def `i13097 expect template after colon` = contextually:
     assert(ParseResult.isIncomplete("class C:"))
 
+  @Test def `i26585 expect more members in braceless template` = contextually:
+    assert(ParseResult.isIncomplete("class C:\n  private var i = 0"))
+    assert(ParseResult.isIncomplete("class C:\n  private var i = 0\n  def get = i"))
+    assertFalse(ParseResult.isIncomplete("class C:\n  private var i = 0\n"))
+
   @Test def i15562: Unit = initially {
     val s1 = run("List(1, 2).filter(_ % 2 == 0).foreach(println)")
     assertEquals("2", storedOutput().trim)

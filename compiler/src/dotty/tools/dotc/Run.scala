@@ -82,9 +82,10 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     // When the REPL creates a new run (ReplDriver.compile), parsing is already done in the old context, with the
     // previous Run. Parser warnings were suspended in the old run and need to be copied over so they are not lost.
     // Same as scala/scala/commit/79ca1408c7.
-    def initSuspendedMessages(oldRun: Run | Null) = if oldRun != null then
+    def initSuspendedMessages(oldRun: Run | Null) =
       mySuspendedMessages.clear()
-      mySuspendedMessages ++= oldRun.mySuspendedMessages
+      if oldRun != null then
+        mySuspendedMessages ++= oldRun.mySuspendedMessages
 
     def suppressionsComplete(source: SourceFile) = source == NoSource || mySuppressionsComplete(source)
 
@@ -312,6 +313,11 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
    *  a pureFunctions language import.
    */
   var pureFunsImportEncountered = false
+  
+  /** Will be set to true if any of the compiled compilation units contains
+   *  an inlineTraits language import.
+   */
+  var inlineTraitsImportEncountered = false
 
   /** Will be set to true if experimental.captureChecking is enabled
    *  or any of the compiled compilation units contains a captureChecking language import.

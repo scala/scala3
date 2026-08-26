@@ -246,6 +246,7 @@ class Definitions {
   @tu lazy val ScalaCollectionImmutablePackageClass: ClassSymbol = requiredPackage("scala.collection.immutable").moduleClass.asClass
   @tu lazy val ScalaMathPackageClass: ClassSymbol = requiredPackage("scala.math").moduleClass.asClass
   @tu lazy val ScalaUtilPackageClass: ClassSymbol = requiredPackage("scala.util").moduleClass.asClass
+  @tu lazy val ScalaSpecializePackageVal: TermSymbol = requiredPackage("scala.specialize")
 
   // fundamental modules
   @tu lazy val SysPackage : Symbol = requiredModule("scala.sys.package")
@@ -304,12 +305,21 @@ class Definitions {
   def MatchableType: TypeRef = MatchableClass.typeRef
   @tu lazy val AnyValClass: ClassSymbol = requiredClass("scala.AnyVal")
 
+  extension (sym: TermSymbol) private def deprecatedUniversalMethod(replacement: String): TermSymbol =
+    if ctx.explicitNulls then
+      import dotty.tools.dotc.ast.tpd, Constants.Constant, Annotations.Annotation
+      val message = s"Any.${sym.name} does not handle `null` nor equality of primitive numbers; use $replacement instead"
+      sym.addAnnotation(Annotation.deferredSymAndTree(DeprecatedAnnot)(
+        tpd.New(DeprecatedAnnot.typeRef, tpd.Literal(Constant(message)) :: tpd.Literal(Constant("3.10.0")) :: Nil)
+      ))
+    sym
+
   def AnyValType: TypeRef = AnyValClass.typeRef
 
     @tu lazy val Any_== : TermSymbol          = enterMethod(AnyClass, nme.EQ, methOfAny(BooleanType), Final)
     @tu lazy val Any_!= : TermSymbol          = enterMethod(AnyClass, nme.NE, methOfAny(BooleanType), Final)
-    @tu lazy val Any_equals: TermSymbol       = enterMethod(AnyClass, nme.equals_, methOfAny(BooleanType))
-    @tu lazy val Any_hashCode: TermSymbol     = enterMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType))
+    @tu lazy val Any_equals: TermSymbol       = enterMethod(AnyClass, nme.equals_, methOfAny(BooleanType)).deprecatedUniversalMethod("==")
+    @tu lazy val Any_hashCode: TermSymbol     = enterMethod(AnyClass, nme.hashCode_, MethodType(Nil, IntType)).deprecatedUniversalMethod("##")
     @tu lazy val Any_toString: TermSymbol     = enterMethod(AnyClass, nme.toString_, MethodType(Nil, StringType))
     @tu lazy val Any_## : TermSymbol          = enterMethod(AnyClass, nme.HASHHASH, ExprType(IntType), Final)
     @tu lazy val Any_isInstanceOf: TermSymbol = enterT1ParameterlessMethod(AnyClass, nme.isInstanceOf_, _ => BooleanType, Final)
@@ -454,8 +464,13 @@ class Definitions {
     @tu lazy val Object_waitL: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: Nil, UnitType), Final)
     @tu lazy val Object_waitLI: TermSymbol = enterMethod(ObjectClass, nme.wait_, MethodType(LongType :: IntType :: Nil, UnitType), Final)
 
+    // Non-deprecated overrides from Any
+    @tu lazy val Object_equals: TermSymbol = enterMethod(ObjectClass, nme.equals_, methOfAny(BooleanType), Override)
+    @tu lazy val Object_hashCode: TermSymbol = enterMethod(ObjectClass, nme.hashCode_, MethodType(Nil, IntType), Override)
+
     def ObjectMethods: List[TermSymbol] = List(Object_eq, Object_ne, Object_synchronized, Object_clone,
-        Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI)
+        Object_finalize, Object_notify, Object_notifyAll, Object_wait, Object_waitL, Object_waitLI,
+        Object_equals, Object_hashCode)
 
   /** Methods in Object and Any that do not have a side effect */
   @tu lazy val pureMethods: List[TermSymbol] = List(Any_==, Any_!=, Any_equals, Any_hashCode,
@@ -535,6 +550,7 @@ class Definitions {
     @tu lazy val ScalaRuntime__hashCode: Symbol = ScalaRuntimeModule.requiredMethod(nme._hashCode_)
     @tu lazy val ScalaRuntime_toArray: Symbol = ScalaRuntimeModule.requiredMethod(nme.toArray)
     @tu lazy val ScalaRuntime_toObjectArray: Symbol = ScalaRuntimeModule.requiredMethod(nme.toObjectArray)
+    @tu lazy val ScalaRuntime_anyClass: Symbol = ScalaRuntimeModule.requiredMethod(nme.anyClass)
 
   @tu lazy val MurmurHash3Module: Symbol = requiredModule("scala.util.hashing.MurmurHash3")
     @tu lazy val MurmurHash3_productHash = MurmurHash3Module.info.member(termName("productHash")).suchThat(_.info.firstParamTypes.size == 3).symbol
@@ -758,6 +774,8 @@ class Definitions {
     JavaUtilObjectsClass.info.member(nme.hashCode_).suchThat(_.info.firstParamTypes.length == 1).symbol
   def Objects_equals(using Context): Symbol =
     JavaUtilObjectsClass.info.member(nme.equals_).suchThat(_.info.firstParamTypes.length == 2).symbol
+  def Objects_toString(using Context): Symbol =
+    JavaUtilObjectsClass.info.member(nme.toString_).suchThat(_.info.firstParamTypes.length == 1).symbol
 
   @tu lazy val JavaEnumClass: ClassSymbol = {
     val cls = requiredClass("java.lang.Enum")
@@ -808,6 +826,10 @@ class Definitions {
   @tu lazy val StringAddClass    : ClassSymbol = requiredClass("scala.runtime.StringAdd")
     @tu lazy val StringAdd_+ : Symbol = StringAddClass.requiredMethod(nme.raw.PLUS)
 
+  @tu lazy val SpecializedClass : ClassSymbol = requiredClass("scala.specialize.Specialized")
+  @tu lazy val SpecializedModule: Symbol = SpecializedClass.companionModule
+    @tu lazy val SpecializedModule_apply: Symbol = SpecializedModule.requiredMethod(nme.apply)
+
   @tu lazy val StringContextClass: ClassSymbol = requiredClass("scala.StringContext")
     @tu lazy val StringContext_s  : Symbol = StringContextClass.requiredMethod(nme.s)
     @tu lazy val StringContext_raw: Symbol = StringContextClass.requiredMethod(nme.raw_)
@@ -838,6 +860,8 @@ class Definitions {
     @tu lazy val EnumValueSerializationProxyConstructor: TermSymbol =
       EnumValueSerializationProxyClass.requiredMethod(nme.CONSTRUCTOR, List(ClassType(TypeBounds.empty), IntType))
 
+  @tu lazy val AppClass: ClassSymbol = requiredClass("scala.App")
+  @tu lazy val DelayedInitClass: ClassSymbol = requiredClass("scala.DelayedInit")
   @tu lazy val ProductClass: ClassSymbol = requiredClass("scala.Product")
     @tu lazy val Product_canEqual          : Symbol = ProductClass.requiredMethod(nme.canEqual_)
     @tu lazy val Product_productArity      : Symbol = ProductClass.requiredMethod(nme.productArity)
@@ -1608,9 +1632,7 @@ class Definitions {
     private var classRefs: Array[TypeRef | Null] = new Array(22)
     def apply(n: Int): TypeRef =
       while n >= classRefs.length do
-        val classRefs1 = new Array[TypeRef | Null](classRefs.length * 2)
-        Array.copy(classRefs, 0, classRefs1, 0, classRefs.length)
-        classRefs = classRefs1
+        classRefs = Array.copyOf(classRefs, classRefs.length * 2)
       if classRefs(n) == null then
         val funName = s"scala.$prefix$n"
         classRefs(n) =
@@ -1747,6 +1769,12 @@ class Definitions {
   private val PredefImportFns: RootRef =
     RootRef(() => ScalaPredefModule.termRef)
 
+  // The new Specialized lives in scala.specialize. 
+  // This is to avoid conflict with the Scala2 specialized annotation.
+  // It is not imported by default with the scala package, so we additionally import it here.
+  private val SpecializeImportFns: RootRef =
+    RootRef(() => ScalaSpecializePackageVal.termRef)
+
   @tu private lazy val YimportsImportFns: List[RootRef] = ctx.settings.Yimports.value.map { name =>
     val denot =
       getModuleIfDefined(name).suchThat(_.is(Module)) `orElse`
@@ -1762,8 +1790,8 @@ class Definitions {
   @tu private lazy val ScalaRootImportFns: List[RootRef] =
     if !ctx.settings.Yimports.isDefault then YimportsImportFns
     else if ctx.settings.YnoImports.value then Nil
-    else if ctx.settings.YnoPredef.value then ScalaImportFns
-    else ScalaImportFns :+ PredefImportFns
+    else if ctx.settings.YnoPredef.value then ScalaImportFns :+ SpecializeImportFns
+    else ScalaImportFns :+ SpecializeImportFns :+ PredefImportFns
 
   @tu private lazy val JavaRootImportTypes: List[TermRef] = JavaRootImportFns.map(_.refFn())
   @tu private lazy val ScalaRootImportTypes: List[TermRef] = ScalaRootImportFns.map(_.refFn())

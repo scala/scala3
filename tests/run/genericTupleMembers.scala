@@ -1,4 +1,31 @@
 
+// Member selection on a generic tuple hidden behind an abstract type bound
+// (an abstract type member, or a type parameter), where the bound itself
+// resolves to a generic `*:` tuple rather than a literal TupleN. See i26099.
+trait Container:
+  type A <: (Int *: String *: EmptyTuple)
+  def get: A
+
+class ContainerImpl extends Container:
+  type A = Int *: String *: EmptyTuple
+  def get: A = 1 *: "s" *: EmptyTuple
+
+trait ContainerG[T <: Tuple]:
+  type A <: T
+  def get: A
+
+class ContainerGImpl extends ContainerG[Int *: String *: EmptyTuple]:
+  type A = Int *: String *: EmptyTuple
+  def get: A = 1 *: "s" *: EmptyTuple
+
+def testAbstractTupleBound(c: Container): Unit =
+  assert(c.get._1 == 1)
+  assert(c.get._2 == "s")
+
+def testAbstractTupleBoundGeneric(c: ContainerG[Int *: String *: EmptyTuple]): Unit =
+  assert(c.get._1 == 1)
+  assert(c.get._2 == "s")
+
 @main def Test: Unit =
   val tup1 = 1 *: EmptyTuple
   val tup2 = 1 *: 2 *: EmptyTuple
@@ -44,3 +71,6 @@
   tup22._20
   tup22._21
   tup22._22
+
+  testAbstractTupleBound(ContainerImpl())
+  testAbstractTupleBoundGeneric(ContainerGImpl())

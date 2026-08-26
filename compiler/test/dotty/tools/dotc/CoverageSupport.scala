@@ -97,8 +97,7 @@ trait CoverageSupport:
         assert(Files.size(coverageFile) > 0, s"Coverage file is empty: $coverageFile for test ${testSource.title}")
 
         // Verify file can be deserialized (valid format)
-        val sourceRoot = Paths.get(".").toAbsolutePath.toString
-        assert(Try(Serializer.deserialize(coverageFile, sourceRoot)).isSuccess, s"Coverage file has invalid format: $coverageFile for test ${testSource.title}")
+        assert(Try(Serializer.deserialize(coverageFile)).isSuccess, s"Coverage file has invalid format: $coverageFile for test ${testSource.title}")
       finally
         // Cleanup temporary directory even if exceptions are thrown
         try

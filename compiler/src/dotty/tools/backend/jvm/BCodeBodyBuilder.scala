@@ -772,10 +772,12 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
 
           generatedType = bTypeLoader.bTypeFromType(c.typeValue)
           mkArrayConstructorCall(generatedType.asArrayBType, app, av.elems)
-        case Apply(t :TypeApply, _) =>
+        case Apply(t @ TypeApply(fun, _), args) =>
           generatedType =
             if (t.symbol ne defn.Object_synchronized) genTypeApply(t)
-            else genSynchronized(app, expectedType)
+            else
+              genLoadQualifier(fun)
+              genSynchronized(app, args, expectedType)
 
         case Apply(fun @ DesugaredSelect(superRef @ Super(superQual, _), _), args) =>
           // 'super' call: Note: since constructors are supposed to
@@ -1779,7 +1781,6 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
     }
 
 
-    def genSynchronized(tree: Apply, expectedType: BType)(using Context): BType
     def genLoadTry(tree: Try)(using Context): BType
 
     def genInvokeDynamicLambda(lambdaTarget: Symbol, environmentSize: Int, functionalInterface: Symbol)(using Context): BType = {
@@ -1787,8 +1788,12 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
 
       val generatedType = bTypeLoader.classBTypeFromSymbol(functionalInterface)
       // Lambdas should be serializable if they implement a SAM that extends Serializable or if they
-      // implement a scala.Function* class.
-      val isSerializable = functionalInterface.isSerializable || defn.isFunctionClass(functionalInterface)
+      // implement a scala.Function* class. FunctionXXL is named separately because it lives in
+      // scala.runtime, which isFunctionClass does not look in.
+      val isSerializable =
+        functionalInterface.isSerializable
+        || defn.isFunctionClass(functionalInterface)
+        || functionalInterface == defn.FunctionXXLClass
       val isInterface = isEmittedInterface(lambdaTarget.owner)
       val invokeStyle =
         if (lambdaTarget.isStaticMember) asm.Opcodes.H_INVOKESTATIC
@@ -1840,20 +1845,21 @@ trait BCodeBodyBuilder(val primitives: ScalaPrimitives, val bTypes: KnownBTypes)
       // scala/bug#10334: make sure that a lambda object for `T => U` has a method `apply(T)U`, not only the `(Object)Object`
       // version. Using the lambda a structural type `{def apply(t: T): U}` causes a reflective lookup for this method.
       val needsGenericBridge = samMethodType != instantiatedMethodType
-      val bridgeMethods = atPhase(erasurePhase){
+      val bridgeMethods = atPhase(erasurePhase) {
         samMethod.allOverriddenSymbols.toList
       }
       val overriddenMethodTypes = bridgeMethods.map(b => bTypeLoader.methodBTypeFromSymbol(b).toASMType)
+                                               .filterNot(_ == samMethodType)
+                                               .distinct
 
       // any methods which `samMethod` overrides need bridges made for them
       // this is done automatically during erasure for classes we generate, but LMF needs to have them explicitly mentioned
       // so we have to compute them at this relatively late point.
-      val bridgeTypes = (
-        if (needsGenericBridge)
-          instantiatedMethodType +: overriddenMethodTypes
+      val bridgeTypes =
+        if (needsGenericBridge && !overriddenMethodTypes.contains(instantiatedMethodType))
+          instantiatedMethodType :: overriddenMethodTypes
         else
           overriddenMethodTypes
-      ).distinct.filterNot(_ == samMethodType)
 
       val needsBridges = bridgeTypes.nonEmpty
 

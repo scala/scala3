@@ -107,7 +107,7 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
-        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, optimizerUtils)
+        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph)
 
         if (Limits.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get(method) match {
           case Some(closureInits) =>
@@ -240,7 +240,10 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
         receiverProducers.size == 1 && receiverProducers.head == indy
       }
 
-      def isSpecializedVersion(specName: String, nonSpecName: String) = specName.startsWith(nonSpecName) && specializationSuffix.pattern.matcher(specName.substring(nonSpecName.length)).matches
+      def isSpecializedVersion(specName: String, nonSpecName: String) =
+        specName.startsWith(nonSpecName)
+          && ((specName == "applyVoid" && nonSpecName == "apply" && invocation.owner.startsWith("scala/Function"))
+              || specializationSuffix.pattern.matcher(specName.substring(nonSpecName.length)).matches)
 
       def sameOrSpecializedType(specTp: Type, nonSpecTp: Type) = {
         specTp == nonSpecTp || {

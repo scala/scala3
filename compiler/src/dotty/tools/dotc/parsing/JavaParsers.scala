@@ -29,6 +29,7 @@ object JavaParsers {
   import ast.untpd.*
 
 
+  val nonName = termName("non")
   val fakeFlags = Flags.JavaDefined | Flags.PrivateLocal | Flags.Invisible
 
   class JavaParser(source: SourceFile)(using Context) extends ParserCommon(source) {
@@ -515,7 +516,7 @@ object JavaParsers {
             flags |= Flags.Sealed
             in.nextToken()
           // JEP-409: Special trick for the 'non-sealed' java keyword
-          case IDENTIFIER if in.name.toString == "non" =>
+          case IDENTIFIER if in.name == nonName =>
             val lookahead = in.LookaheadScanner()
             ({lookahead.nextToken(); lookahead.token}, {lookahead.nextToken(); lookahead.name.toString}) match
               case (MINUS, "sealed") =>
