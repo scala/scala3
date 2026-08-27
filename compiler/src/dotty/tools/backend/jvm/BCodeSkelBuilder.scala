@@ -705,7 +705,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
            */
           val sym = dd.symbol
           val needsStaticImplMethod =
-            claszSymbol.isInterface && !dd.rhs.isEmpty && !sym.isPrivate && !sym.isStaticMember
+            claszSymbol.isInterface && !dd.rhs.isEmpty && !sym.is(Private) && !sym.isStaticMember
           if needsStaticImplMethod then
             if sym.name == nme.TRAIT_CONSTRUCTOR then
               genTraitConstructorDefDef(dd)
