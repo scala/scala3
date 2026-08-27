@@ -344,7 +344,7 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
 
   def ClassDefWithParents(cls: ClassSymbol, constr: DefDef, parents: List[Tree], body: List[Tree])(using Context): TypeDef = {
     val selfType =
-      if (cls.classInfo.selfInfo ne NoType) ValDef(newSelfSym(cls))
+      if (cls.info ne NoType) && (cls.classInfo.selfInfo ne NoType) then ValDef(newSelfSym(cls))
       else EmptyValDef
     def isOwnTypeParam(stat: Tree) =
       stat.symbol.is(TypeParam) && stat.symbol.owner == cls
