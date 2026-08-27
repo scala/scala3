@@ -32,7 +32,7 @@ class ScalaCommandTest:
 
     given SettingsState = summary.sstate
     assertEquals("path/to/classes1:other/path/to/classes2", settings.classpath.value)
-    assertEquals(sourceRoot.toString, settings.sourceroot.value.path)
+    assertEquals(sourceRoot.path, settings.sourceroot.value.path)
     assertEquals("someMoreFiles" :: "someFiles" :: Nil, summary.arguments)
   }
 
