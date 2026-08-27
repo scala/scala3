@@ -7,8 +7,6 @@
   |For the unprocessed stack overflow trace, compile with -Xno-enrich-error-messages.
   |A recurring operation is (inner to outer):
   |
-  |  type proxy of B
-  |  type proxy of (contextual$2 : B)
   |  type proxy of A
   |  type proxy of (contextual$1 : A)
   |  type proxy of B
@@ -17,6 +15,8 @@
   |  type proxy of (contextual$1 : A)
   |  type proxy of B
   |  type proxy of (contextual$2 : B)
+  |  type proxy of A
+  |  type proxy of (contextual$1 : A)
   |  ...
   |
   |  type proxy of A
