@@ -12,7 +12,7 @@ object Versions {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.9.0"
+  val referenceVersion = "3.10.0-RC1"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -87,7 +87,7 @@ object Versions {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousVersion = "3.9.0" // TODO: update to 3.10.0 when released
+  val mimaPreviousVersion = "3.10.0-RC1" // TODO: update to 3.10.0 when released
 
   /** LTS version against which we check binary compatibility.
    *
