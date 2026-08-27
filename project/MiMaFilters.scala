@@ -195,6 +195,11 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase$InRace"),
         ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase$InRace$Sync"),
         ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase$TailUpdater"),
+
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.package"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.package$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.compiletime.package"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.compiletime.package$"),
       ),
     )
 
