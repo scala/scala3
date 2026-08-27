@@ -39,7 +39,7 @@ object DebugTests extends ParallelTesting:
       verifyDebug(testSource.outDir, testSource, countWarnings(reporters), reporters, logger)
 
     private def verifyDebug(dir: FileContainer, testSource: TestSource, warnings: Int, reporters: Seq[TestReporter], logger: LoggedRunnable) =
-      val checkFile = testSource.checkFile.getOrElse(throw new Exception("Missing check file")).toPath
+      val checkFile = testSource.checkFile.getOrElse(throw new Exception("Missing check file"))
       val debugSteps = DebugStepAssert.parseCheckFile(checkFile)
       val expressionEvaluator =
         ExpressionEvaluator(testSource.sourceFiles, testSource.flags, testSource.runClassPath, testSource.outDir)

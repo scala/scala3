@@ -67,7 +67,6 @@ class CoverageTests:
 
       if Properties.testsUpdateCheckfile then
         targetFile.copyTo(expectFile)
-        Files.copy(targetFile, expectFile, StandardCopyOption.REPLACE_EXISTING)
       else
         val expected = fixWindowsPaths(expectFile.readLines(Codec.UTF8))
         val obtained = fixWindowsPaths(targetFile.readLines(Codec.UTF8))

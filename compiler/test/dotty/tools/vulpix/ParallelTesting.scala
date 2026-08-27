@@ -389,9 +389,9 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
         if (Properties.testsFilter.isEmpty) testSources
         else testSources.filter {
           case JointCompilationSource(_, files, _, _, _, _) =>
-            Properties.testFilter.exists(filter => files.exists(file => file.path.contains(filter)))
+            Properties.testsFilter.exists(filter => files.exists(file => file.path.contains(filter)))
           case SeparateCompilationSource(_, dir, _, _) =>
-            Properties.testFilter.exists(dir.path.contains)
+            Properties.testsFilter.exists(dir.path.contains)
         }
       filteredByName.filterNot(shouldSkipTestSource(_)).filter(shouldReRun(_))
 
@@ -926,7 +926,7 @@ trait ParallelTesting extends RunnerOrchestration with CoverageSupport:
       import testSource.{allToolArgs, runClassPath, title}
       runMain(runClassPath, allToolArgs) match
         case Success(output) =>
-          for file <- checkFile if file.exists do
+          for file <- checkFile do
             diffTest(testSource, file, output.linesIterator.toList, reporters, logger)
         case Failure("") =>
           echo(s"Test '$title' failed with no output")
