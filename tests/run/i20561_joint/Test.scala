@@ -50,6 +50,12 @@ case class Bar(val value: String) extends Comparable[Bar]:
   val r10 = RecVarOnly("x", "y", "z")
   r10 match { case RecVarOnly(_, rest*) => println(rest.mkString(",")) }
 
+  // the matched vararg is an independent copy: mutating the record's array does not affect it
+  val r11 = RecVar(1, "a", "b")
+  val captured = r11 match { case RecVar(_, rest*) => rest }
+  r11.xs(0) = "!!!"
+  println(s"${r11.xs.mkString(",")} / ${captured.mkString(",")}")
+
   // a null scrutinee does not match a record pattern
   try
     (null: Rec1) match { case Rec1(s) => println("matched null") }

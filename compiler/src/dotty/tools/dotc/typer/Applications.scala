@@ -1903,9 +1903,10 @@ trait Applications extends Compatibility {
      *  ```
      *  For a record with no components the result type is `Boolean` and the body is `true`.
      * 
-     *  For a vararg record - Rec(T_1, ..., T_n, T*) - generate unapplySeq, with return type:
-     *  - Seq[T]                   when n = 0
-     *  - (T_1, ..., T_n, Seq[T])  when n > 0
+     *  For a vararg record - Rec(T_1, ..., T_n, T*) - generate unapplySeq.
+     *  The vararg component is exposed through `Array.UnapplySeqWrapper`. The result type is:
+     *  - Array.UnapplySeqWrapper[T]                  when n = 0
+     *  - (T_1, ..., T_n, Array.UnapplySeqWrapper[T]) when n > 0
      */
     def javaRecordUnapply(recCls: ClassSymbol): Tree =
       val recType = recCls.typeRef
@@ -1920,11 +1921,11 @@ trait Applications extends Compatibility {
           if componentTypes.isEmpty then defn.BooleanType
           else if isVararg then
             val defn.ArrayOf(elemType) = componentTypes.last.runtimeChecked
-            val seqType = defn.SeqType.appliedTo(elemType)
-            // For `Rec(T*)` we do `Seq[T]`
-            if componentTypes.length == 1 then seqType
-            // For `Rec(T1, ..., Tn, T*)` we do `(T1, ..., Tn, Seq[T])`
-            else defn.tupleType(componentTypes.init :+ seqType)
+            val wrapperType = defn.ArrayModuleClass.requiredType("UnapplySeqWrapper").typeRef.appliedTo(elemType)
+            // For `Rec(T*)` we do `Array.UnapplySeqWrapper[T]`
+            if componentTypes.length == 1 then wrapperType
+            // For `Rec(T1, ..., Tn, T*)` we do `(T1, ..., Tn, Array.UnapplySeqWrapper[T])`
+            else defn.tupleType(componentTypes.init :+ wrapperType)
           // For `Rec(T1, ..., Tn)` we do `(T1, ..., Tn)`
           else defn.tupleType(componentTypes)
         MethodType(List(nme.x_0), List(recTp), resType)
@@ -1948,7 +1949,8 @@ trait Applications extends Compatibility {
           else if isVararg then
             val lastField = accessor(fields.last)
             val defn.ArrayOf(lastElemType) = lastField.tpe.runtimeChecked
-            val lastFieldSeq = wrapArray(lastField, lastElemType)
+            val lastFieldSeq = ref(defn.ArrayModule.requiredMethod(nme.unapplySeq))
+              .appliedToType(lastElemType).appliedTo(lastField)
             if fields.length == 1 then lastFieldSeq
             else tupleTree(fields.init.map(accessor) :+ lastFieldSeq)
           else tupleTree(fields.map(accessor))
