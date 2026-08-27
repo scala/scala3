@@ -29,6 +29,8 @@ object  DurationConverters {
    *  zero, the returned duration will have a time unit of seconds. If there is a nanoseconds part,
    *  the Scala duration will have a time unit of nanoseconds.
    *
+   *  @param duration the Java `java.time.Duration` to convert
+   *  @return a Scala `FiniteDuration` with the same length, using seconds or nanoseconds as the time unit
    *  @throws IllegalArgumentException If the given Java Duration is out of bounds of what can be
    *                                  expressed by [[scala.concurrent.duration.FiniteDuration]].
    */
@@ -58,6 +60,9 @@ object  DurationConverters {
   /** Converts a Scala `FiniteDuration` to a Java duration. Note that the Scala duration keeps the
    *  time unit it was created with, while a Java duration always is a pair of seconds and nanos,
    *  so the unit it lost.
+   *
+   *  @param duration the Scala `FiniteDuration` to convert
+   *  @return a Java `java.time.Duration` representing the same length of time
    */
   def toJava(duration: FiniteDuration): JDuration = {
     if (duration.length == 0) JDuration.ZERO

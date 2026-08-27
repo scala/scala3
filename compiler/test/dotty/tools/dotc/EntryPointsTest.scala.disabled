@@ -3,11 +3,11 @@ package tools
 package dotc
 
 import org.junit.Test
-import org.junit.Assert._
+import org.junit.Assert.*
 import interfaces.{CompilerCallback, SourceFile}
-import reporting._
+import reporting.*
 import reporting.Diagnostic
-import core.Contexts._
+import core.Contexts.*
 import java.io.File
 import scala.collection.mutable.ListBuffer
 

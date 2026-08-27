@@ -26,8 +26,13 @@ on:
       API-KEY:
         required: true
 
+# Pushes to Chocolatey with an API key, no GITHUB_TOKEN use
+permissions: {}
+
 jobs:
+  # Never push to Chocolatey from a fork, regardless of how this workflow is called
   publish:
+    if: github.repository == 'scala/scala3'
     runs-on: windows-latest
     steps:
       - name: Fetch the Chocolatey package from GitHub
@@ -38,5 +43,5 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
           KEY: ${{ secrets.API-KEY }}
-        run: choco push "scala.$VERSION.nupkg" --source https://push.chocolatey.org/ --api-key "$KEY"
-        
+        shell: pwsh
+        run: choco push "scala.$env:VERSION.nupkg" --source https://push.chocolatey.org/ --api-key $env:KEY

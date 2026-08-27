@@ -128,6 +128,7 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
    *             bound.
    *  @param until the upper bound (exclusive) of this projection wrapped in a `Some`, or `None` if there is no upper
    *              bound.
+   *  @return a new `TreeMap` that is a ranged projection of this map, sharing the same underlying data
    */
   def rangeImpl(from: Option[K], until: Option[K]): TreeMap[K, V] = new TreeMapProjection(from, until)
 
@@ -165,21 +166,30 @@ sealed class TreeMap[K, V] private (tree: RB.Tree[K, V])(implicit val ordering: 
    */
   private final class TreeMapProjection(from: Option[K], until: Option[K]) extends TreeMap[K, V](tree) {
 
-    /** Given a possible new lower bound, chooses and returns the most constraining one (the maximum). */
+    /** Given a possible new lower bound, chooses and returns the most constraining one (the maximum).
+     *
+     *  @param newFrom a possible new lower bound wrapped in a `Some`, or `None` if unconstrained
+     */
     private def pickLowerBound(newFrom: Option[K]): Option[K] = (from, newFrom) match {
       case (Some(fr), Some(newFr)) => Some(ordering.max(fr, newFr))
       case (None, _) => newFrom
       case _ => from
     }
 
-    /** Given a possible new upper bound, chooses and returns the most constraining one (the minimum). */
+    /** Given a possible new upper bound, chooses and returns the most constraining one (the minimum).
+     *
+     *  @param newUntil a possible new upper bound wrapped in a `Some`, or `None` if unconstrained
+     */
     private def pickUpperBound(newUntil: Option[K]): Option[K] = (until, newUntil) match {
       case (Some(unt), Some(newUnt)) => Some(ordering.min(unt, newUnt))
       case (None, _) => newUntil
       case _ => until
     }
 
-    /** Returns true if the argument is inside the view bounds (between `from` and `until`). */
+    /** Returns true if the argument is inside the view bounds (between `from` and `until`).
+     *
+     *  @param key the key to check against the view bounds
+     */
     private def isInsideViewBounds(key: K): Boolean = {
       val afterFrom = from.isEmpty || ordering.compare(from.get, key) <= 0
       val beforeUntil = until.isEmpty || ordering.compare(key, until.get) < 0

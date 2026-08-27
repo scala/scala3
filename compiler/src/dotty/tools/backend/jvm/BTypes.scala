@@ -2,14 +2,13 @@ package dotty.tools
 package backend
 package jvm
 
-import scala.language.unsafeNulls
 import java.util.concurrent.ConcurrentHashMap
 import scala.tools.asm
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.dotc.core.Symbols.ClassSymbol
+import dotty.tools.backend.jvm.opt.{InlineInfoAttribute, OptimizerWarning}
 
+import scala.collection.SortedMap
 import scala.tools.asm.Opcodes
-import scala.tools.asm.tree.{ClassNode, ModuleNode}
 
 
 /**
@@ -67,13 +66,6 @@ sealed trait BType {
 
   final def isNonVoidPrimitiveType: Boolean = isPrimitive && this != UNIT
 
-  def isObjectType: Boolean
-  def isJlCloneableType: Boolean
-  def isJiSerializableType: Boolean
-  def isNullType: Boolean
-  def isNothingType: Boolean
-  def isBoxed: Boolean
-
   final def isIntSizedType: Boolean = this == BOOL || this == CHAR || this == BYTE ||
                                       this == SHORT || this == INT
   final def isIntegralType: Boolean = this == INT || this == BYTE || this == LONG ||
@@ -92,8 +84,9 @@ sealed trait BType {
 
     this match {
       case ArrayBType(component) =>
-        if (other.isObjectType || other.isJlCloneableType || other.isJiSerializableType) true
-        else other match {
+        other match {
+          case ClassBType(name) =>
+            name == "java/lang/Object" || name == "java/lang/Cloneable" || name == "java/io/Serializable"
           case ArrayBType(otherComponent) =>
             // Array[Short]().isInstanceOf[Array[Int]] is false
             // but Array[String]().isInstanceOf[Array[Object]] is true
@@ -104,10 +97,11 @@ sealed trait BType {
 
       case classType: ClassBType =>
         // Quick test for Object to make a common case fast
-        other.isObjectType || (other match {
+        other match {
+          case ClassBType("java/lang/Object") => true
           case otherClassType: ClassBType => classType.isSubtypeOf(otherClassType)
           case _ => false
-        })
+        }
 
       case _ =>
         // there are no bool/byte/short/char primitives at runtime, they are represented as ints.
@@ -128,13 +122,13 @@ sealed trait BType {
    * Compute the upper bound of two types.
    * Takes promotions of numeric primitives into account.
    */
-  final def maxType(other: BType, ts: CoreBTypes): BType = this match {
+  final def maxType(other: BType, ts: WellKnownBTypes): BType = this match {
     case pt: PrimitiveBType => pt.maxValueType(other)
 
     case _: ArrayBType | _: ClassBType =>
-      if isNothingType       then return other
-      if other.isNothingType then return this
-      if this == other       then return this
+      if this == ts.srNothingRef  then return other
+      if other == ts.srNothingRef then return this
+      if this == other            then return this
 
       assert(other.isRef, s"Cannot compute maxType: $this, $other")
       // Approximate `lub`. The common type of two references is always ObjectReference.
@@ -222,14 +216,6 @@ sealed trait BType {
 
 sealed trait PrimitiveBType extends BType {
 
-  override def isObjectType: Boolean = false
-  override def isJlCloneableType: Boolean = false
-  override def isJiSerializableType: Boolean = false
-  override def isNullType: Boolean = false
-  override def isNothingType: Boolean = false
-  override def isBoxed: Boolean = false
-
-
   /**
    * The upper bound of two primitive types. The `other` type has to be either a primitive
    * type or Nothing.
@@ -241,9 +227,12 @@ sealed trait PrimitiveBType extends BType {
 
     def uncomparable: Nothing = throw new AssertionError(s"Cannot compute maxValueType: $this, $other")
 
-    if !other.isPrimitive && !other.isNothingType then uncomparable
+    other match {
+      case ClassBType("scala/runtime/Nothing$") => return this
+      case _ => ()
+    }
 
-    if other.isNothingType then return this
+    if !other.isPrimitive  then uncomparable
     if this == other       then return this
 
     this match {
@@ -307,14 +296,6 @@ case object LONG   extends PrimitiveBType
 case object DOUBLE extends PrimitiveBType
 
 sealed trait RefBType extends BType {
-
-  override def isObjectType: Boolean = false
-  override def isJlCloneableType: Boolean = false
-  override def isJiSerializableType: Boolean = false
-  override def isNullType: Boolean = false
-  override def isNothingType: Boolean = false
-  override def isBoxed: Boolean = false
-
 
   /**
    * The class or array type of this reference type. Used for ANEWARRAY, MULTIANEWARRAY,
@@ -555,12 +536,6 @@ sealed trait RefBType extends BType {
  * TODO: innerclass attributes on mirror class
  */
 
-/** Source of a ClassInfo, used to load further information such as inlining-related info */
-enum ClassInfoSource:
-  case Symbol(classSym: ClassSymbol, internalName: InternalName)
-  case Classfile(classNode: ClassNode, moduleNode: Option[ModuleNode])
-  case Missing
-
 /**
  * The type info for a class. Used for symboltable-independent subtype checks in the backend.
  *
@@ -575,11 +550,11 @@ enum ClassInfoSource:
  *                      InnerClass table, see the InnerClass spec summary above.
  *
  * @param nestedInfo    If this describes a nested class, information for the InnerClass table.
- * @param source        Information about how this class was sourced.
+ * @param inlineInfo    Inlining information for this class, if requested and available.
  */
 final case class ClassInfo(superClass: Option[ClassBType], interfaces: List[ClassBType], flags: Int,
                            nestedClasses: List[ClassBType], nestedInfo: Option[NestedInfo],
-                           source: ClassInfoSource)
+                           inlineInfo: InlineInfo)
 
 /**
  * Information required to add a class to an InnerClass table.
@@ -614,12 +589,61 @@ case class NestedInfo(enclosingClass: ClassBType,
  * @param innerName The simple name of the inner class, may be null.
  * @param flags     The flags for this class in the InnerClass entry.
  */
-case class InnerClassEntry(name: String, outerName: String, innerName: String, flags: Int)
+case class InnerClassEntry(name: String, outerName: String | Null, innerName: String | Null, flags: Int)
+
+
+/**
+ * Metadata about a ClassBType, used by the inliner.
+ *
+ * More information may be added in the future to enable more elaborate inline heuristics.
+ * Note that this class should contain information that can only be obtained from the ClassSymbol.
+ * Information that can be computed from the ClassNode should be added to the call graph instead.
+ *
+ * @param isEffectivelyFinal True if the class cannot have subclasses: final classes, module
+ *                           classes.
+ *
+ * @param sam                If this class is a SAM type, the SAM's "\$name\$descriptor".
+ * @param methodInfos        The [[MethodInlineInfo]]s for the methods declared in this class.
+ *                           The map is indexed by the string s"\$name\$descriptor" (to
+ *                           disambiguate overloads).
+ *
+ * @param warning            Contains a warning message if an error occurred when building this
+ *                           InlineInfo, for example if some classfile could not be found on
+ *                           the classpath. This warning can be reported later by the inliner.
+ *
+ * @param isAccessible       Whether this class's internals can be inlined into callsites, i.e.,
+ *                           it is exported from a public module.
+ */
+final case class InlineInfo(isEffectivelyFinal: Boolean,
+                            sam: Option[String],
+                            methodInfos: collection.SortedMap[(String, String), MethodInlineInfo],
+                            warning: Option[OptimizerWarning],
+                            isAccessible: Boolean)
+
+object InlineInfo {
+  val empty = InlineInfo(isEffectivelyFinal = false, sam = None, methodInfos = SortedMap.empty, warning = None, isAccessible = false)
+}
+
+trait InlineInfoLoader {
+  def loadInlineInfoFor(name: InternalName): InlineInfo
+}
+
+/**
+ * Metadata about a method, used by the inliner.
+ *
+ * @param effectivelyFinal  True if the method cannot be overridden (in Scala)
+ * @param annotatedInline   True if the method is annotated `@inline`
+ * @param annotatedNoInline True if the method is annotated `@noinline`
+ */
+final case class MethodInlineInfo(effectivelyFinal: Boolean = false,
+                                  annotatedInline: Boolean = false,
+                                  annotatedNoInline: Boolean = false)
+
 
 /**
  * A ClassBType represents a class or interface type.
  */
-case class ClassBType private(val internalName: String, private val ts: CoreBTypes) extends RefBType {
+case class ClassBType private(internalName: String) extends RefBType {
   /**
    * Write-once variable allows initializing a cyclic graph of infos. This is required for
    * nested classes. Example: for the definition `class A { class B }` we have
@@ -640,13 +664,6 @@ case class ClassBType private(val internalName: String, private val ts: CoreBTyp
     checkInfoConsistency()
   }
 
-  override def isObjectType: Boolean = this == ts.ObjectRef
-  override def isJlCloneableType: Boolean = this == ts.jlCloneableRef
-  override def isJiSerializableType: Boolean = this == ts.jiSerializableRef
-  override def isNullType: Boolean = this == ts.srNullRef
-  override def isNothingType: Boolean = this == ts.srNothingRef
-  override def isBoxed: Boolean = this.isClass && ts.boxedClasses(this.asClassBType)
-
   private def checkInfoConsistency(): Unit = {
     // we assert some properties. however, some of the linked ClassBType (members, superClass,
     // interfaces) may not yet have an `_info` (initialization of cyclic structures). so we do a
@@ -657,7 +674,7 @@ case class ClassBType private(val internalName: String, private val ts: CoreBTyp
 
     assert(!ClassBType.isInternalPhantomType(internalName), s"Cannot create ClassBType for phantom type $this")
     assert(
-      if (info.superClass.isEmpty) { isJLO(this) || ClassBType.hasNoSuper(internalName) }
+      if (info.superClass.isEmpty) ClassBType.hasNoSuper(internalName)
       else if (isInterface) isJLO(info.superClass.get)
       else !isJLO(this) && ifInit(info.superClass.get)(!_.isInterface),
       s"Invalid superClass in $this: ${info.superClass}"
@@ -720,10 +737,13 @@ case class ClassBType private(val internalName: String, private val ts: CoreBTyp
       )
   }
 
+  def inlineInfoAttribute: InlineInfoAttribute =
+    InlineInfoAttribute(info.inlineInfo)
+
   def isSubtypeOf(other: ClassBType): Boolean = {
     if (this == other) return true
     if (isInterface) {
-      if (other == ts.ObjectRef) return true // interfaces conform to Object
+      if (other.internalName == "java/lang/Object") return true // interfaces conform to Object
       if (!other.isInterface) return false   // this is an interface, the other is some class other than object. interfaces cannot extend classes, so the result is false.
       // else: this and other are both interfaces. continue to (*)
     } else {
@@ -744,8 +764,8 @@ case class ClassBType private(val internalName: String, private val ts: CoreBTyp
    *   http://comments.gmane.org/gmane.comp.java.vm.languages/2293
    *   https://issues.scala-lang.org/browse/SI-3872
    */
-  def jvmWiseLUB(other: ClassBType): ClassBType = {
-    def isNotNullOrNothing(c: ClassBType) = !c.isNullType && !c.isNothingType
+  def jvmWiseLUB(other: ClassBType, ts: WellKnownBTypes): ClassBType = {
+    def isNotNullOrNothing(c: ClassBType) = c != ts.srNullRef && c != ts.srNothingRef
     assert(isNotNullOrNothing(this) && isNotNullOrNothing(other), s"jvmWiseLUB for null or nothing: $this - $other")
 
     val res: ClassBType = (this.isInterface, other.isInterface) match {
@@ -762,14 +782,14 @@ case class ClassBType private(val internalName: String, private val ts: CoreBTyp
         if (this.isSubtypeOf(other)) other else ts.ObjectRef
 
       case _ =>
-        firstCommonSuffix(superClassesChain, other.superClassesChain)
+        firstCommonSuffix(superClassesChain, other.superClassesChain, ts)
     }
 
     assert(isNotNullOrNothing(res), s"jvmWiseLUB computed: $res")
     res
   }
 
-  private def firstCommonSuffix(as: List[ClassBType], bs: List[ClassBType]): ClassBType = {
+  private def firstCommonSuffix(as: List[ClassBType], bs: List[ClassBType], ts: WellKnownBTypes): ClassBType = {
     var chainA = as.tail
     var chainB = bs.tail
     var fcs = ts.ObjectRef
@@ -783,13 +803,14 @@ case class ClassBType private(val internalName: String, private val ts: CoreBTyp
 }
 
 object ClassBType {
+  val javaLangObjectInternalName: String = "java/lang/Object"
+  val scalaRuntimeBoxesRunTimeInternalName: String = "scala/runtime/BoxesRunTime"
 
   /**
    * Retrieve the `ClassBType` for the class with the given internal name, creating the entry if it doesn't
    * already exist in the cache
    *
    * @param internalName The name of the class
-   * @param ts           The core types associated with the compilation
    * @param cache        The cache to use. If you're wondering what to pass here, you're in the wrong place and should not be directly calling this.
    * @param init         Function to initialize the info of this `BType`. During execution of this function,
    *                     code _may_ reenter into `apply(internalName, ...)` and retrieve the initializing
@@ -797,17 +818,19 @@ object ClassBType {
    * @tparam T           The type of the error result.
    * @return             The `ClassBType`
    */
-  final def apply[T](internalName: InternalName, ts: CoreBTypes, cache: ConcurrentHashMap[InternalName, ClassBType])
+  final def apply[T](internalName: InternalName, cache: ConcurrentHashMap[InternalName, ClassBType])
                     (init: ClassBType => Either[T, ClassInfo]): Either[T, ClassBType] = {
     val cached = cache.get(internalName)
     if cached ne null then Right(cached)
     else {
-      val newRes = new ClassBType(internalName, ts)
+      val newRes = new ClassBType(internalName)
       // synchronized is required to ensure proper initialization of info.
       // see comment on def info
       newRes.synchronized {
         cache.putIfAbsent(internalName, newRes) match {
           case null =>
+            // We first create and add the ClassBType to the hash map before computing its info. This
+            // allows initializing cyclic dependencies, see the comment on variable ClassBType._info.
             init(newRes).map(ci => {
               newRes.info = ci
               newRes
@@ -819,9 +842,9 @@ object ClassBType {
     }
   }
 
-  // Primitive classes have no super class. A ClassBType for those is only created when
-  // they are actually being compiled (e.g., when compiling scala/Boolean.scala).
   private val hasNoSuper = Set(
+    // Primitive classes have no super class. A ClassBType for those is only created when
+    // they are actually being compiled (e.g., when compiling scala/Boolean.scala).
     "scala/Unit",
     "scala/Boolean",
     "scala/Char",
@@ -830,7 +853,10 @@ object ClassBType {
     "scala/Int",
     "scala/Float",
     "scala/Long",
-    "scala/Double"
+    "scala/Double",
+    // java.lang.Object and scala.AnyKind have no super either
+    javaLangObjectInternalName,
+    "scala/AnyKind"
   )
 
   private val isInternalPhantomType = Set(
@@ -840,14 +866,6 @@ object ClassBType {
 }
 
 case class ArrayBType(componentType: BType) extends RefBType {
-
-  override def isObjectType: Boolean = false
-  override def isJlCloneableType: Boolean = false
-  override def isJiSerializableType: Boolean = false
-  override def isNullType: Boolean = false
-  override def isNothingType: Boolean = false
-  override def isBoxed: Boolean = false
-
   def dimension: Int = componentType match {
     case a: ArrayBType => 1 + a.dimension
     case _ => 1
@@ -859,16 +877,7 @@ case class ArrayBType(componentType: BType) extends RefBType {
   }
 }
 
-case class MethodBType(argumentTypes: List[BType], returnType: BType) extends BType {
-
-  override def isObjectType: Boolean = false
-  override def isJlCloneableType: Boolean = false
-  override def isJiSerializableType: Boolean = false
-  override def isNullType: Boolean = false
-  override def isNothingType: Boolean = false
-  override def isBoxed: Boolean = false
-
-}
+case class MethodBType(argumentTypes: List[BType], returnType: BType) extends BType
 
 object BTypes {
   /**

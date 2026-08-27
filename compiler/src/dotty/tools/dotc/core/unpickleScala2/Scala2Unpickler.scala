@@ -3,8 +3,6 @@ package dotc
 package core
 package unpickleScala2
 
-import scala.language.unsafeNulls
-
 import java.io.IOException
 import java.lang.Float.intBitsToFloat
 import java.lang.Double.longBitsToDouble
@@ -226,7 +224,12 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
 
   def source(using Context): AbstractFile = {
     val f = classRoot.symbol.associatedFile
-    if (f != null) f else moduleClassRoot.symbol.associatedFile
+    if (f != null)
+      f
+    else
+      val moduleF = moduleClassRoot.symbol.associatedFile
+      assert(moduleF != null, i"neither $classRoot nor $moduleClassRoot has an associated file")
+      moduleF
   }
 
   private def checkVersion(using Context): Unit = {
@@ -686,7 +689,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
   object localMemberUnpickler extends LocalUnpickler
 
   class ClassUnpickler(infoRef: Int) extends LocalUnpickler with TypeParamsCompleter {
-    private var myTypeParams: List[TypeSymbol] = null
+    private var myTypeParams: List[TypeSymbol] | Null = null
 
     private def readTypeParams()(using Context): Unit = {
       val tag = readByte()
@@ -706,7 +709,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     /** Force reading type params early, we need them in setClassInfo of subclasses. */
     def init()(using Context): List[TypeSymbol] =
       if !areParamsInitialized then loadTypeParams()
-      myTypeParams
+      myTypeParams.nn
 
     override def completerTypeParams(sym: Symbol)(using Context): List[TypeSymbol] =
       init()
@@ -1101,27 +1104,22 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
     val tag = readByte()
     val tpe = if (tag == EMPTYtree) NoType else readTypeRef()
 
-    // Set by the three functions to follow.  If symbol is non-null
-    // after the new tree 't' has been created, t has its Symbol
-    // set to symbol; and it always has its Type set to tpe.
-    var symbol: Symbol = null
-    var mods: Modifiers = null
-    var name: Name = null
-
     /** Read a Symbol, Modifiers, and a Name */
-    def setSymModsName(): Unit = {
-      symbol = readSymbolRef()
-      mods = readModifiersRef(symbol.isType)
-      name = readNameRef()
+    def setSymModsName(): Symbol = {
+      val symbol = readSymbolRef()
+      readModifiersRef(symbol.isType)
+      readNameRef()
+      symbol
     }
     /** Read a Symbol and a Name */
-    def setSymName(): Unit = {
-      symbol = readSymbolRef()
-      name = readNameRef()
+    def setSymName(): Symbol = {
+      val symbol = readSymbolRef()
+      readNameRef()
+      symbol
     }
     /** Read a Symbol */
-    def setSym(): Unit =
-      symbol = readSymbolRef()
+    def setSym(): Symbol =
+      readSymbolRef()
 
     implicit val span: Span = NoSpan
 
@@ -1136,7 +1134,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         PackageDef(pid, stats)
 
       case CLASStree =>
-        setSymModsName()
+        val symbol = setSymModsName()
         val impl = readTemplateRef()
         val tparams = until(end, () => readTypeDefRef())
         val cls = symbol.asClass
@@ -1145,17 +1143,17 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         ClassDef(cls, constr, tparams ++ stats)
 
       case MODULEtree =>
-        setSymModsName()
+        val symbol = setSymModsName()
         ModuleDef(symbol.asTerm, readTemplateRef().body)
 
       case VALDEFtree =>
-        setSymModsName()
+        val symbol = setSymModsName()
         val tpt = readTreeRef()
         val rhs = readTreeRef()
         ValDef(symbol.asTerm, rhs)
 
       case DEFDEFtree =>
-        setSymModsName()
+        val symbol = setSymModsName()
         val tparams = times(readNat(), () => readTypeDefRef())
         val vparamss = times(readNat(), () => times(readNat(), () => readValDefRef()))
         val tpt = readTreeRef()
@@ -1163,14 +1161,14 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         DefDef(symbol.asTerm, rhs)
 
       case TYPEDEFtree =>
-        setSymModsName()
+        val symbol = setSymModsName()
         val rhs = readTreeRef()
         val tparams = until(end, () => readTypeDefRef())
         TypeDef(symbol.asType)
 
       case LABELtree =>
         ???
-        setSymName()
+        val symbol = setSymName()
         val rhs = readTreeRef()
         val params = until(end, () => readIdentRef())
         val ldef = DefDef(symbol.asTerm, rhs)
@@ -1179,7 +1177,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         else Block(ldef :: Nil, Apply(Ident(symbol.termRef), Nil))
 
       case IMPORTtree =>
-        setSym()
+        val symbol = setSym()
         val expr = readTreeRef()
         val selectors = until(end, () => {
           val fromName = readNameRef()
@@ -1191,7 +1189,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         Import(expr, selectors)
 
       case TEMPLATEtree =>
-        setSym()
+        val symbol = setSym()
         val parents = times(readNat(), () => readTreeRef())
         val self = readValDefRef()
         val body = until(end, () => readTreeRef())
@@ -1217,7 +1215,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         unimplementedTree("STAR")
 
       case BINDtree =>
-        setSymName()
+        val symbol = setSymName()
         Bind(symbol.asTerm, readTreeRef())
 
       case UNAPPLYtree =>
@@ -1232,7 +1230,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
           // note can't deal with trees passed to Java methods as arrays here
 
       case FUNCTIONtree =>
-        setSym()
+        val symbol = setSym()
         val body = readTreeRef()
         val vparams = until(end, () => readValDefRef())
         val applyType = MethodType(vparams map (_.name), vparams map (_.tpt.tpe), body.tpe)
@@ -1256,7 +1254,7 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         Match(selector, cases)
 
       case RETURNtree =>
-        setSym()
+        val symbol = setSym()
         Return(readTreeRef(), Ident(symbol.termRef))
 
       case TREtree =>
@@ -1305,17 +1303,17 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         Super(qual, mix)
 
       case THIStree =>
-        setSym()
+        val symbol = setSym()
         val name = readTypeNameRef()
         This(symbol.asClass)
 
       case SELECTtree =>
-        setSym()
+        val symbol = setSym()
         val qualifier = readTreeRef()
         val selector = readNameRef()
         qualifier.select(symbol.namedType)
       case IDENTtree =>
-        setSymName()
+        val symbol = setSymName()
         Ident(symbol.namedType)
 
       case LITERALtree =>
@@ -1335,9 +1333,10 @@ class Scala2Unpickler(bytes: Array[Byte], classRoot: ClassDenotation, moduleClas
         SingletonTypeTree(readTreeRef())
 
       case SELECTFROMTYPEtree =>
+        // !!! #25895 Dead code!?
         val qualifier = readTreeRef()
         val selector = readTypeNameRef()
-        Select(qualifier, symbol.namedType)
+        Select(qualifier, selector)
 
       case COMPOUNDTYPEtree =>
         readTemplateRef()

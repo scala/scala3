@@ -1,5 +1,3 @@
-//> using options -preview
-
 package test
 
 into trait T

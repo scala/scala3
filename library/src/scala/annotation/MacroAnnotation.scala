@@ -42,10 +42,9 @@ trait MacroAnnotation extends StaticAnnotation:
    *
    *  #### Example 1
    *  This example shows how to modify a `def` and add a `val` next to it using a macro annotation.
-   *  ```scala
+   *  ```scala sc-hidden sc-name:memoize-context
    *  import scala.quoted.*
    *  import scala.collection.concurrent
-   *
    *  class memoize extends MacroAnnotation:
    *    def transform(using Quotes)(
    *      definition: quotes.reflect.Definition,
@@ -76,7 +75,7 @@ trait MacroAnnotation extends StaticAnnotation:
    *    end transform
    *  ```
    *  with this macro annotation a user can write
-   *  ```scala
+   *  ```scala sc:compile
    *  //{
    *  class memoize extends scala.annotation.StaticAnnotation
    *  //}
@@ -86,7 +85,7 @@ trait MacroAnnotation extends StaticAnnotation:
    *    if n <= 1 then n else fib(n - 1) + fib(n - 2)
    *  ```
    *  and the macro will modify the definition to create
-   *  ```scala
+   *  ```scala sc-compile-with:memoize-context
    *   val fibCache$macro$1 =
    *     scala.collection.concurrent.TrieMap.empty[Int, Int]
    *   def fib(n: Int): Int =
@@ -102,7 +101,7 @@ trait MacroAnnotation extends StaticAnnotation:
    *  #### Example 2
    *  This example shows how to modify a `class` using a macro annotation.
    *  It shows how to override inherited members and add new ones.
-   *  ```scala
+   *  ```scala sc:compile
    *  import scala.annotation.{experimental, MacroAnnotation}
    *  import scala.quoted.*
    *
@@ -193,14 +192,14 @@ trait MacroAnnotation extends StaticAnnotation:
    *      }
    *  ```
    *  with this macro annotation a user can write
-   *  ```scala
+   *  ```scala sc:compile
    *  //{
    *  class equals extends scala.annotation.StaticAnnotation
    *  //}
    *  @equals class User(val name: String, val id: Int)
    *  ```
    *  and the macro will modify the class definition to generate the following code
-   *  ```scala
+   *  ```scala sc:compile
    *  class User(val name: String, val id: Int):
    *    override def equals(that: Any): Boolean =
    *      that match

@@ -1,7 +1,5 @@
 package dotty.tools.backend.sjs
 
-import scala.language.unsafeNulls
-
 import scala.annotation.threadUnsafe
 
 import dotty.tools.dotc.core.*

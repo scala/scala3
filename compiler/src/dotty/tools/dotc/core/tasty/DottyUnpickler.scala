@@ -3,8 +3,6 @@ package dotc
 package core
 package tasty
 
-import scala.language.unsafeNulls
-
 import Contexts.*, SymDenotations.*,  Decorators.*
 import dotty.tools.dotc.ast.tpd
 import TastyUnpickler.*
@@ -94,7 +92,7 @@ class DottyUnpickler(
 
   protected def computeRootTrees(using Context): List[Tree] = treeUnpickler.unpickle(mode)
 
-  private var ids: Array[String] = null
+  private var ids: Array[String] | Null = null
 
   override def mightContain(id: String)(using Context): Boolean = {
     if (ids == null)
@@ -102,6 +100,6 @@ class DottyUnpickler(
         unpickler.nameAtRef.contents.toArray.collect {
           case name: SimpleName => name.toString
         }.sorted
-    ids.binarySearch(id) >= 0
+    ids.nn.binarySearch(id) >= 0
   }
 }

@@ -8,7 +8,6 @@ import java.nio.file.*
 import java.nio.charset.StandardCharsets
 import java.util.stream.Collectors
 import java.util.Comparator
-import scala.util.control.NonFatal
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import javax.tools.ToolProvider

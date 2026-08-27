@@ -2,13 +2,13 @@ package dotty.tools
 package dotc
 package ast
 
-import core._
-import Names._, Types._ , Symbols._, StdNames._, Flags._, Contexts._
+import core.*
+import Names.*, Types.* , Symbols.*, StdNames.*, Flags.*, Contexts.*
 
 import org.junit.Test
 
 class DesugarTests extends DottyTest {
-  import tpd._
+  import tpd.*
 
   private def validSym(sym: Symbol)(using Context): Unit = {
       assert(

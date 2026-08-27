@@ -347,3 +347,17 @@ class HoverDefnSuite extends BaseHoverSuite:
          |""".stripMargin,
       "val `foo  bar`: Int".hover
     )
+
+  /** https://github.com/scala/scala3/issues/19489 */
+  @Test def `derives-typeclass` =
+    check(
+      """|package bar
+         |trait Foo[T]
+         |
+         |object Foo:
+         |  def derived[T]: Foo[T] = ???
+         |
+         |case class Pet(name: String, kind: String) derives F@@oo
+         |""".stripMargin,
+      "trait Foo: Foo".hover
+    )

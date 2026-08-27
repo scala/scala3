@@ -1,0 +1,6 @@
+public A1(F<scala.collection.immutable.List>)
+public F<scala.collection.immutable.List> A1.a()
+---
+public A2(F<scala.collection.immutable.List>)
+public F<scala.collection.immutable.List> A2.a()
+---

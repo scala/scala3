@@ -182,10 +182,16 @@ object internal:
   final class consume extends annotation.StaticAnnotation
 
   /** An annotation on a type indicating that the type was inferred. Added
-   *  during inlining when we want to mark portions of aotherwise explicit type
+   *  during inlining when we want to mark portions of an otherwise explicit type
    *  as inferred.
    */
   final class inferred extends annotation.StaticAnnotation
+
+  /** An annotation on a type indicating that the type was declared. Added
+   *  during PostTyper when we want to mark types of closure parameters as
+   *  explicit, even if the closure type as a whole is inferred.
+   */
+  final class declared extends annotation.StaticAnnotation
 
   /** An internal annotation placed on a refinement created by capture checking.
    *  Refinements with this annotation unconditionally override any
@@ -194,6 +200,13 @@ object internal:
    */
   @deprecated
   final class refineOverride extends annotation.StaticAnnotation
+
+  /** An internal annotation placed on a parameter of a secondary constructor
+   *  that gets forwarded indirectly or directly to a parameter of the
+   *  corresponding primary constructor.
+   *  @param parmName   the name of the primary constructor parameter
+   */
+  final class paramAlias(paramName: String) extends annotation.StaticAnnotation
 
   /** An erasedValue issued internally by the compiler. Unlike the
    *  user-accessible compiletime.erasedValue, this version is assumed

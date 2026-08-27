@@ -2,7 +2,7 @@ package dotty.tools
 package dotc
 package parsing
 
-import ast.Trees._
+import ast.Trees.*
 import core.Contexts.Context
 
 trait DocstringTest extends DottyTest {

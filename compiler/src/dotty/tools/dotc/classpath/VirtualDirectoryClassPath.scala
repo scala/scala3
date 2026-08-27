@@ -1,7 +1,5 @@
 package dotty.tools.dotc.classpath
 
-import scala.language.unsafeNulls
-
 import dotty.tools.io.{ClassPath, ClassRepresentation}
 import dotty.tools.io.{AbstractFile, VirtualDirectory}
 import FileUtils.*
@@ -12,13 +10,14 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
 
   // From AbstractFileClassLoader
   private final def lookupPath(base: AbstractFile)(pathParts: Seq[String], directory: Boolean): AbstractFile | Null = {
-    var file: AbstractFile | Null = base
+    var file: AbstractFile = base
     val dirParts = pathParts.init.iterator
     while (dirParts.hasNext) {
       val dirPart = dirParts.next()
-      file = file.lookupName(dirPart, directory = true)
-      if (file == null)
+      val subFile = file.lookupName(dirPart, directory = true)
+      if (subFile == null)
         return null
+      file = subFile
     }
     file.lookupName(pathParts.last, directory = directory)
   }
@@ -43,8 +42,14 @@ case class VirtualDirectoryClassPath(dir: VirtualDirectory) extends ClassPath wi
     val parentDir = lookupPath(dir)(pathSeq.init.toSeq, directory = true)
     if parentDir == null then None
     else
-      Option(lookupPath(parentDir)(pathSeq.last + ".class" :: Nil, directory = false),
-        Option.when(findModule)(lookupPath(parentDir)("module-info.class" :: Nil, directory = false)))
+      val classFile = lookupPath(parentDir)(pathSeq.last + ".class" :: Nil, directory = false)
+      if classFile == null then
+        None
+      else
+        val optModuleFile =
+          if findModule then Option(lookupPath(parentDir)("module-info.class" :: Nil, directory = false))
+          else None
+        Some((classFile, optModuleFile))
   }
 
   private[dotty] def classes(inPackage: PackageName): Seq[BinaryFileEntry] = files(inPackage)

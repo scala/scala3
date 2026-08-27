@@ -598,8 +598,14 @@ class Synthesizer(typer: Typer)(using @constructorOnly c: Context):
                   resType <:< target
                   val tparams = poly.paramRefs
                   val variances = childClass.typeParams.map(_.paramVarianceSign)
-                  val instanceTypes = tparams.lazyZip(variances).map: (tparam, variance) =>
-                    TypeComparer.instanceType(tparam, fromBelow = variance < 0, Widen.Unions)
+                  @tailrec def fixInstances(cur: List[Type]): List[Type] =
+                    val next = cur.mapConserve(_.substParams(poly, cur))
+                    if next eq cur then next else fixInstances(next)
+                  val instanceTypes = {
+                    val types0 = tparams.lazyZip(variances).map: (tparam, variance) =>
+                      TypeComparer.instanceType(tparam, fromBelow = variance < 0, Widen.Unions)
+                    fixInstances(types0)
+                  }
                   val instanceType = resType.substParams(poly, instanceTypes)
                   // this is broken in tests/run/i13332intersection.scala,
                   // because type parameters are not correctly inferred.

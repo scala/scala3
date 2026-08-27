@@ -30,3 +30,6 @@ i23504.scala
 
 # owner of anon, where package object has funky name
 i20511-1.scala
+
+# NoDenotation.owner
+i18234.scala

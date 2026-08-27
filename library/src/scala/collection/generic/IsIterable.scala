@@ -39,7 +39,7 @@ import caps.unsafe.untrackedCaptures
  *  is to provide a generic extension method `mapReduce` for any type that extends
  *  or can be converted to `Iterable`, such as `String`.
  *
- *  ```
+ *  ```scala sc:compile
  *    import scala.collection.generic.IsIterable
  *
  *    extension [Repr, I <: IsIterable[Repr]](coll: Repr)(using it: I)
@@ -51,9 +51,9 @@ import caps.unsafe.untrackedCaptures
  *        res
  *      }
  *
- *  // See it in action!
- *  List(1, 2, 3).mapReduce(_ * 2)(_ + _) // res0: Int = 12
- *  "Yeah, well, you know, that's just, like, your opinion, man.".mapReduce(x => 1)(_ + _) // res1: Int = 59
+ *    // See it in action!
+ *    val res0 = List(1, 2, 3).mapReduce(_ * 2)(_ + _) // res0: Int = 12
+ *    val res1 = "Yeah, well, you know, that's just, like, your opinion, man.".mapReduce(x => 1)(_ + _) // res1: Int = 59
  *  ```
  *
  *  The extension method takes a receiver `coll` of type `Repr`, where
@@ -79,7 +79,10 @@ import caps.unsafe.untrackedCaptures
  *  the implicit value for any `IterableOps`, as for `List` in the previous example.
  *  Similarly, the instance for `String` was available because the library provides an `IsSeq[String]`.
  *
+ *  ```scala sc-name:iterableops-import sc-hidden
+ *  import scala.collection.IterableOps
  *  ```
+ *  ```scala sc-compile-with:iterableops-import
  *  implicit val rangeRepr: IsIterable[Range] { type A = Int; type C = IndexedSeq[Int] } =
  *   new IsIterable[Range] {
  *     type A = Int
@@ -87,6 +90,11 @@ import caps.unsafe.untrackedCaptures
  *     def apply(coll: Range): IterableOps[Int, IndexedSeq, IndexedSeq[Int]] = coll
  *   }
  *  ```
+ *
+ *  @note In practice the `IsIterable[Range]` instance is already provided by
+ *        the standard library, and it is defined as an `IsSeq[Range]` instance.
+ *
+ *  @tparam Repr the representation type (e.g. `String`, `Array[Int]`) that can be converted to an `Iterable`
  */
 transparent trait IsIterable[Repr] extends IsIterableOnce[Repr] {
 
@@ -102,7 +110,10 @@ transparent trait IsIterable[Repr] extends IsIterableOnce[Repr] {
   @untrackedCaptures
   override val conversion: Repr => IterableOps[A, Iterable, C] = apply(_)
 
-  /** A conversion from the type `Repr` to `IterableOps[A, Iterable, C]`. */
+  /** A conversion from the type `Repr` to `IterableOps[A, Iterable, C]`.
+   *
+   *  @param coll the collection or value to convert to `IterableOps[A, Iterable, C]`
+   */
   def apply(coll: Repr): IterableOps[A, Iterable, C]
 
 }

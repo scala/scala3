@@ -1,38 +1,40 @@
 #!/usr/bin/env bash
 
+set -e
+
 source $(dirname $0)/cmdTestsCommon.inc.sh
 
 # check that `sbt scalac` compiles and `sbt scala` runs it
 echo "testing sbt scalac and scala"
-"$SBT" ";scalac $SOURCE -d $OUT ;scala -classpath $OUT $MAIN" > "$tmp"
+"$SBT" ";scalac $SOURCE -d $OUT ;scala -classpath $OUT $MAIN" | tee "$tmp"
 grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
 # check that `sbt scalac -from-tasty` compiles and `sbt scala` runs it
 echo "testing sbt scalac -from-tasty and scala -classpath"
 clear_out "$OUT"
-"$SBT" ";scalac $SOURCE -d $OUT ;scalac -from-tasty -d $OUT1 $OUT/$TASTY ;scala -classpath $OUT1 $MAIN" > "$tmp"
+"$SBT" ";scalac $SOURCE -d $OUT ;scalac -from-tasty -d $OUT1 $OUT/$TASTY ;scala -classpath $OUT1 $MAIN" | tee "$tmp"
 grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
 echo "testing sbt scalac -from-tasty from a jar and scala -classpath"
 clear_out "$OUT"
-"$SBT" ";scalac -d $OUT/out.jar $SOURCE ;scalac -from-tasty -d $OUT1 $OUT/out.jar ;scala -classpath $OUT1 $MAIN" > "$tmp"
+"$SBT" ";scalac -d $OUT/out.jar $SOURCE ;scalac -from-tasty -d $OUT1 $OUT/out.jar ;scala -classpath $OUT1 $MAIN" | tee "$tmp"
 grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
 echo "testing sbt scala with no -classpath"
 clear_out "$OUT"
-"$SBT" ";scalac $SOURCE ; scala $MAIN" > "$tmp"
+"$SBT" ";scalac $SOURCE ; scala $MAIN" | tee "$tmp"
 grep -qe "$EXPECTED_OUTPUT" "$tmp"
 
 echo "testing sbt scalac -print-tasty"
 clear_out "$OUT"
-"$SBT" ";scalac $SOURCE -d $OUT ;scalac -print-tasty -color:never $OUT/$TASTY" > "$tmp"
+"$SBT" ";scalac $SOURCE -d $OUT ;scalac -print-tasty -color:never $OUT/$TASTY" | tee "$tmp"
 grep -qe "0: ASTs" "$tmp"
 grep -qe "0: 41 \[tests/pos/HelloWorld.scala\]" "$tmp"
 
 echo "testing that paths SourceFile annotations are relativized"
 clear_out "$OUT"
 "$SBT" "scalac -d $OUT/out.jar -sourceroot tests/pos $(pwd)/tests/pos/i10430/lib.scala $(pwd)/tests/pos/i10430/app.scala"
-"$SBT" "scalac -print-tasty -color:never $OUT/out.jar" > "$tmp"
+"$SBT" "scalac -print-tasty -color:never $OUT/out.jar" | tee "$tmp"
 # cat "$tmp" # for debugging
 grep -q ": i10430/lib.scala" "$tmp"
 grep -q ": i10430/app.scala" "$tmp"
@@ -56,7 +58,7 @@ cp tests/neg-macros/i6371/B_2.scala $OUT/B.scala
 "$SBT" "scalac $OUT/A.scala -d $OUT1"
 rm $OUT/A.scala
 # this command is expected to fail
-"$SBT" "scalac -classpath $OUT1 -d $OUT1 $OUT/B.scala" > "$tmp" 2>&1 || echo "ok"
+"$SBT" "scalac -classpath $OUT1 -d $OUT1 $OUT/B.scala" 2>&1 | tee "$tmp" || echo "ok"
 # cat "$tmp" # for debugging
 grep -qe "B.scala:2:7" "$tmp"
 grep -qe "This location contains code that was inlined from A.scala:3" "$tmp"
@@ -68,13 +70,13 @@ clear_out "$OUT"
 ## Disabled because of flakeyness, should be changed to not depend on sbt
 # echo "running Vulpix meta test"
 # tmp=$(mktemp)
-# if "$SBT" "scala3-compiler/testOnly dotty.tools.vulpix.VulpixMetaTests" > "$tmp" 2>&1; then
+# if "$SBT" "scala3-compiler/testOnly dotty.tools.vulpix.VulpixMetaTests"  2>&1 | tee "$tmp"; then
 #   cat "$tmp"
 #   echo "failed: sbt exited without error on VulpixMetaTests, these tests are expected to fail"
 #   exit -1
 # fi
 # tmp1=$(mktemp)
-# cat "$tmp" | sed '/Test run started/,$!d' > "$tmp1"
+# cat "$tmp" | sed '/Test run started/,$!d' | tee "$tmp1"
 # set +x # Or the code below produces too much noise
 # while read expected <&4 && read actual <&3; do
 #   if [[ "$expected" != *"SKIP" ]]; then

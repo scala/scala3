@@ -261,7 +261,7 @@ sealed abstract class CaptureSet extends Showable:
         || // Even though subsumes already follows captureSetOfInfo, this is not enough.
            // For instance x: C^{y, z}. Then neither y nor z subsumes x but {y, z} accounts for x.
           !x.isTerminalCapability
-          && !x.coreType.derivesFrom(defn.Caps_CapSet)
+          && !x.coreType.derivesFromCapSet
           && !(vs.isSeparating && x.captureSetOfInfo.containsTerminalCapability)
             // in VarState.Separate, don't try to widen to `any` since that might succeed with {any} <: {any}
             // and might therefore insert an element that is too unspecific.
@@ -686,7 +686,7 @@ object CaptureSet:
       && variance >= 0
       && sym.isContainedIn(defn.ScalaPackageClass)
     if parent.derivesFromStateful
-      && parent.derivesFromExclusive
+      && parent.derivesFromCapTrait(defn.Caps_ExclusiveCapability)
       && !isArrayFromScalaPackage
     then GlobalAny.readOnly
     else GlobalAny
@@ -1767,7 +1767,7 @@ object CaptureSet:
         case tp: TermParamRef =>
           tp.captureSet
         case tp: (TypeRef | TypeParamRef) =>
-          if tp.derivesFrom(defn.Caps_CapSet) then tp.captureSet
+          if tp.derivesFromCapSet then tp.captureSet
           else empty
         case CapturingOrRetainsType(parent, refs) =>
           recur(parent) ++ refs
@@ -1806,7 +1806,7 @@ object CaptureSet:
         else this(acc, parent)
 
       def abstractTypeCase(acc: CaptureSet, t: TypeRef, upperBound: Type) =
-        if t.derivesFrom(defn.Caps_CapSet) then t.singletonCaptureSet
+        if t.derivesFromCapSet then t.singletonCaptureSet
         else if includeTypevars && upperBound.isExactlyAny then LocalCap(Origin.DeepCS(t)).singletonCaptureSet
         else this(acc, upperBound)
 

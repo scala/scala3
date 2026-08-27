@@ -87,7 +87,7 @@ class MapTest {
       assertEquals(1, i)
 
       m match {
-        case im: immutable.Map[Int, Int] =>
+        case im: immutable.Map[Int @unchecked, Int @unchecked] =>
           checkImmutable(im)
         case _ =>
           ()

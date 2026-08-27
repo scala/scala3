@@ -3,11 +3,11 @@ package dotty.tools
 import scala.language.unsafeNulls
 
 import dotc.ast.tpd
-import dotc.ast.tpd._
+import dotc.ast.tpd.*
 import dotc.core.Contexts.{Context, atPhase}
 import dotty.tools.dotc.core.Phases.{typerPhase, erasurePhase}
 import dotc.core.Symbols.Symbol
-import dotc.core.Decorators._
+import dotc.core.Decorators.*
 import dotc.core.Types.Type
 
 import scala.util.CommandLineParser.FromString

@@ -1,4 +1,4 @@
-//> using jvm 17 // Maximal JDK version which can be used with all Scala 3 versions, can be overriden via command line arguments '--jvm=21'
+//> using jvm 17
 /*
 This script will bisect a problem with the compiler based on success/failure of the validation script passed as an argument.
 It starts with a fast bisection on released nightly builds.
@@ -45,7 +45,7 @@ val usageMessage = """
   |    The ranges are treated as inclusive.
   |
   |* --bootstrapped
-  |    Publish locally and test a bootstrapped compiler rather than a nonboostrapped one.
+  |    Publish locally and test a bootstrapped compiler rather than a nonbootstrapped one.
   |
   |* --should-fail
   |    Expect the validation command to fail rather that succeed. This can be used e.g. to find out when some illegal code started to compile.
@@ -156,7 +156,7 @@ case class ReleasesRange(first: Option[String], last: Option[String]):
   def filter(releases: Seq[Release]) =
     def releaseIndex(version: String): Int =
       val index = releases.indexWhere(_.version == version)
-      assert(index > 0, s"${version} matches no nightly compiler release")
+      assert(index >= 0, s"${version} matches no nightly compiler release")
       index
     val startIdx = first.map(releaseIndex(_)).getOrElse(0)
     val endIdx = last.map(releaseIndex(_) + 1).getOrElse(releases.length)
@@ -244,22 +244,37 @@ class ReleaseBisect(validationScript: File, shouldFail: Boolean, allReleases: Ve
       isGood
     })
 
-class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Boolean, lastGoodHash: String, fistBadHash: String):
+class CommitBisect(validationScript: File, shouldFail: Boolean, bootstrapped: Boolean, lastGoodHash: String, firstBadHash: String):
   def bisect(): Unit =
-    println(s"Starting bisecting commits $lastGoodHash..$fistBadHash\n")
+    println(s"Starting bisecting commits $lastGoodHash..$firstBadHash\n")
     val scala3CompilerProject = if bootstrapped then "scala3-compiler-bootstrapped" else "scala3-compiler"
     val scala3Project = if bootstrapped then "scala3-bootstrapped" else "scala3"
     val validationCommandStatusModifier = if shouldFail then "! " else "" // invert the process status if failure was expected
+    val sbtPublishRecipe = Seq(
+      "clean",
+      """set every doc := new File("unused")""",
+      s"set scaladoc/Compile/resourceGenerators := (`$scala3Project`/Compile/resourceGenerators).value",
+      s"$scala3Project/publishLocal",
+    ).mkString("; ")
+
     val bisectRunScript = raw"""
       |scalaVersion=$$(sbt "print ${scala3CompilerProject}/version" | tail -n1)
       |rm -rf out
       |export JAVA_HOME=${sys.props("java.home")}
-      |(sbt "clean; set every doc := new File(\"unused\"); set scaladoc/Compile/resourceGenerators := (\`${scala3Project}\`/Compile/resourceGenerators).value; ${scala3Project}/publishLocal" \
-      |  || (echo "Failed to build compiler, skip $$scalaVersion"; git bisect skip) \
-      |) && ${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
+      |sbt_build_log=$$(mktemp)
+      |echo 'Running sbt publish recipe: sbt "$sbtPublishRecipe"'
+      |if sbt '$sbtPublishRecipe' >"$$sbt_build_log" 2>&1; then
+      |  rm -f "$$sbt_build_log"
+      |  ${validationCommandStatusModifier}${validationScript.getAbsolutePath} "$$scalaVersion"
+      |else
+      |  echo "Failed to build compiler, skip $$scalaVersion"
+      |  cat "$$sbt_build_log"
+      |  rm -f "$$sbt_build_log"
+      |  git bisect skip
+      |fi
     """.stripMargin
     "git bisect start".!
-    s"git bisect bad $fistBadHash".!
+    s"git bisect bad $firstBadHash".!
     s"git bisect good $lastGoodHash".!
     Seq("git", "bisect", "run", "sh", "-c", bisectRunScript).!
     s"git bisect reset".!

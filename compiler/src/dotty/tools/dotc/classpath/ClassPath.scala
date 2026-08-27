@@ -46,7 +46,7 @@ trait PackageEntry {
 sealed trait BinaryFileEntry extends ClassRepresentation {
   def file: AbstractFile
   final def fileName: String = file.name
-  final def name: String = FileUtils.stripClassExtension(file.name) // class name
+  final def name: String = FileUtils.stripExtension(file.name) // class name
   final def source: Option[AbstractFile] = None
 }
 

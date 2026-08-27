@@ -16,12 +16,12 @@
    |--------------------------------------------------------------------------------------------------------------------
    |Inline stack trace
    |- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-   |This location contains code that was inlined from boundary.scala:71
-71 |  inline def apply[T](inline body: Label[T] ?=> T): T =
+   |This location contains code that was inlined from boundary.scala:85
+85 |  inline def apply[T](inline body: Label[T] ?=> T): T =
    |                                                    ^
-72 |    val local = Label[T]()
-73 |...
-76 |      else throw ex
+86 |    val local = Label[T]()
+87 |...
+90 |      else throw ex
     --------------------------------------------------------------------------------------------------------------------
    |
    | longer explanation available when compiling with `-explain`

@@ -2,14 +2,14 @@ package dotty.tools
 package dotc
 package transform
 
-import core._
+import core.*
 import ast.Trees
 
 
 class CreateCompanionObjectsTest extends DottyTest {
   /* FIXME: re-enable after adapting to new scheme
 
-  import tpd._
+  import tpd.*
 
   type PostTyperTransformer = TreeTransformer // FIXME do without
 

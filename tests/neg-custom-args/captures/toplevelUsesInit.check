@@ -4,18 +4,18 @@
    |  Reference `test.M.c` is not included in the allowed capture set {}
    |  of the enclosing constructor N in object N.
    |
-   |  External uses should be declared explicitly with a uses_init clause in object N:
+   |  External uses should be declared explicitly with a uses clause in object N:
    |
-   |      uses_init test.M.c
+   |      uses test.M.c initially
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:19:2 ----------------------------
 19 |  Console.println()  // error
    |  ^^^^^^^
    |  Reference `test.Console` is not included in the allowed capture set {}
    |  of the enclosing constructor N in object N.
    |
-   |  External uses should be declared explicitly with a uses_init clause in object N:
+   |  External uses should be declared explicitly with a uses clause in object N:
    |
-   |      uses_init test.Console
+   |      uses test.Console initially
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:20:2 ----------------------------
 20 |  Console2.println() // error
    |  ^^^^^^^^
@@ -24,27 +24,27 @@
    |
    |  Note that `test.Console2` is a capability because it uses {test.Console}.
    |
-   |  External uses should be declared explicitly with a uses_init clause in object N:
+   |  External uses should be declared explicitly with a uses clause in object N:
    |
-   |      uses_init test.Console2
+   |      uses test.Console2 initially
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:28:10 ---------------------------
 28 |val _ = M.c.println()          // error
    |        ^^^
    |        Reference `test.M.c` is not included in the allowed capture set {}
    |        of the enclosing top-level definitions in package test.
    |
-   |        The top-level definitions should be wrapped in an object with a uses_init clause:
+   |        The top-level definitions should be wrapped in an object with a uses clause:
    |
-   |            uses_init test.M.c
+   |            uses test.M.c initially
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:29:8 ----------------------------
 29 |val _ = Console.println()      // error
    |        ^^^^^^^
    |        Reference `test.Console` is not included in the allowed capture set {}
    |        of the enclosing top-level definitions in package test.
    |
-   |        The top-level definitions should be wrapped in an object with a uses_init clause:
+   |        The top-level definitions should be wrapped in an object with a uses clause:
    |
-   |            uses_init test.Console
+   |            uses test.Console initially
 -- [E223] CaptureChecking Error: tests/neg-custom-args/captures/toplevelUsesInit.scala:32:16 ---------------------------
 32 |  val x = () => N2.ping()      // error
    |                ^^

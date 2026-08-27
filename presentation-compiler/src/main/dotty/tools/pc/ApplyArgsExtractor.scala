@@ -14,7 +14,6 @@ import dotty.tools.dotc.core.Names.Name
 import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.NoSymbol
 import dotty.tools.dotc.core.Symbols.Symbol
-import dotty.tools.dotc.core.Symbols.defn
 import dotty.tools.dotc.core.SymDenotations.NoDenotation
 import dotty.tools.dotc.core.Types.*
 import dotty.tools.dotc.util.Spans.Span
@@ -82,7 +81,7 @@ object ApplyArgsExtractor:
         method match
           case Ident(name) => indexedContext.findSymbol(name).getOrElse(Nil)
           case Select(This(_), name) => indexedContext.findSymbol(name).getOrElse(Nil)
-          case sel @ Select(from, name) =>
+          case Select(from, name) =>
             val symbol = from.symbol
             val ownerSymbol =
               if symbol.is(Method) && symbol.owner.isClass then

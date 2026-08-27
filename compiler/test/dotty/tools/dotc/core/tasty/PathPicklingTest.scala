@@ -5,7 +5,7 @@ import scala.language.unsafeNulls
 import java.io.{File => JFile, ByteArrayOutputStream, IOException}
 import java.nio.file.{Files, NoSuchFileException, Paths}
 
-import scala.sys.process._
+import scala.sys.process.*
 
 import org.junit.Test
 import org.junit.Assert.{assertEquals, assertTrue, assertFalse, fail}

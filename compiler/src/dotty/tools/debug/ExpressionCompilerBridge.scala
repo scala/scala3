@@ -1,7 +1,6 @@
 package dotty.tools.debug
 
 import java.nio.file.Path
-import scala.util.control.NonFatal
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.Driver
 
@@ -29,6 +28,6 @@ class ExpressionCompilerBridge:
       driver.process(args, reporter)
       !reporter.hasErrors
     catch
-      case NonFatal(cause) =>
+      case cause: Exception =>
         cause.printStackTrace()
         throw cause

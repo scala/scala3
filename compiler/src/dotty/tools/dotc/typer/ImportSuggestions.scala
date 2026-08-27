@@ -13,7 +13,6 @@ import ast.{untpd, tpd}
 import Implicits.{hasExtMethod, Candidate}
 import java.util.{Timer, TimerTask}
 import collection.mutable
-import scala.util.control.NonFatal
 import cc.isCaptureChecking
 
 /** This trait defines the method `importSuggestionAddendum` that adds an addendum
@@ -256,7 +255,7 @@ trait ImportSuggestions:
         match
           case (Nil, partials) => (extensionImports, partials)
           case givenImports => givenImports
-    catch case NonFatal(ex) =>
+    catch case ex: Exception =>
       if ctx.settings.Ydebug.value then
         println("caught exception when searching for suggestions")
         ex.printStackTrace()

@@ -56,6 +56,12 @@ You may also find the ["Compiler Academy"](https://www.youtube.com/channel/UCIH0
   (most maintainers do this part time, so we cannot commit to as short a turnaround time as we would ideally like)
 - Don't break our LLM policy linked above, especially in the form of PRs "vibe-coded" without proper understanding of the contributed change
 
+## Forbidden
+
+**Do not look at the source code of the Oracle JDK or OpenJDK** when working on anything related to the JVM backend!
+This is for license considerations: these JDKs are under a GPL-based license, which is not compatible with our Apache 2.0 license.
+It is also recommended not to look at any other JDK implementation (such as Apache Harmony), to minimize the chance of copyright debate.
+
 ## Maintainers
 
 Principal areas of the compiler and internal team members responsible for their maintenance:

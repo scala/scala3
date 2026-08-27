@@ -6,13 +6,10 @@ import scala.meta.internal.pc.ExtractMethodUtils
 import scala.meta.pc.OffsetParams
 import scala.meta.pc.RangeParams
 import scala.meta.pc.SymbolSearch
-import scala.meta.pc.reports.ReportContext
-import scala.meta as m
 
 import dotty.tools.dotc.ast.Trees.*
 import dotty.tools.dotc.ast.tpd
 import dotty.tools.dotc.ast.tpd.DeepFolder
-import dotty.tools.dotc.core.Contexts.*
 import dotty.tools.dotc.core.Flags
 import dotty.tools.dotc.core.Symbols.Symbol
 import dotty.tools.dotc.core.Types.MethodType
@@ -35,8 +32,7 @@ final class ExtractMethodProvider(
     driver: InteractiveDriver,
     search: SymbolSearch,
     noIndent: Boolean
-)(using ReportContext)
-    extends ExtractMethodUtils:
+) extends ExtractMethodUtils:
 
   def extractMethod(): List[TextEdit] =
     val text = range.text().nn
@@ -48,16 +44,15 @@ final class ExtractMethodProvider(
     val pos = driver.sourcePosition(range).startPos
     val path =
       Interactive.pathTo(driver.openedTrees(uri), pos)(using driver.currentCtx)
-    given locatedCtx: Context =
-      val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
-      Interactive.contextOfPath(path)(using newctx)
-    val indexedCtx = IndexedContext(pos)(using locatedCtx)
+    val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
+    val indexedContext = IndexedContext(pos, path, newctx)
+    import indexedContext.ctx
     val printer =
-      ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedCtx)
+      ShortenedTypePrinter(search, IncludeDefaultParam.Never)(using indexedContext)
     def prettyPrint(tpe: Type) =
       def prettyPrintReturnType(tpe: Type): String =
         tpe match
-          case mt: (MethodType | PolyType) =>
+          case _: (MethodType | PolyType) =>
             prettyPrintReturnType(tpe.resultType)
           case tpe => printer.tpe(tpe)
       def printParams(params: List[Type]) =
@@ -135,7 +130,7 @@ final class ExtractMethodProvider(
         val extractedPos = head.sourcePos.withEnd(expr.sourcePos.end)
         val exprType = prettyPrint(expr.typeOpt.widen)
         val name =
-          genName(indexedCtx.scopeSymbols.map(_.decodedName).toSet, "newMethod")
+          genName(indexedContext.scopeSymbols.map(_.decodedName).toSet, "newMethod")
         val (allMethodParams, typeParams) =
           localRefs(extracted, stat.sourcePos, extractedPos)
         val (methodParams, implicitParams) = allMethodParams.partition(!_.isOneOf(Flags.GivenOrImplicit))

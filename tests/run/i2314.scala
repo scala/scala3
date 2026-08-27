@@ -18,15 +18,15 @@ object Test {
       a.productElement(-1)
       ???
     } catch {
-      case e: IndexOutOfBoundsException =>
-        assert(e.getMessage == "-1")
+      case e: IndexOutOfBoundsException => assert(e.getMessage().contains("-1"))
+      case _ => assert(false)
     }
     try {
       a.productElement(2)
       ???
     } catch {
-      case e: IndexOutOfBoundsException =>
-        assert(e.getMessage == "2")
+      case e: IndexOutOfBoundsException => assert(e.getMessage().contains("2"))
+      case _ => assert(false)
     }
 
     val b = B(1, "s")

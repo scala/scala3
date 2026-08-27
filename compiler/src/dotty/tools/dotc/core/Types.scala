@@ -626,10 +626,11 @@ object Types extends TypeUtils {
      *  instance, or NoSymbol if none exists (either because this type is not a
      *  value type, or because superclasses are ambiguous).
      */
-    final def classSymbol(using Context): Symbol = this match
+    final def classSymbol(using Context): ClassSymbol | NoSymbol.type = this match
       case tp: TypeRef =>
-        val sym = tp.symbol
-        if (sym.isClass) sym else tp.superType.classSymbol
+        tp.symbol match
+          case classSym: ClassSymbol => classSym
+          case _ => tp.superType.classSymbol
       case tp: TypeProxy =>
         tp.superType.classSymbol
       case tp: ClassInfo =>
@@ -736,8 +737,7 @@ object Types extends TypeUtils {
           case tp: WildcardType =>
             tp.effectiveBounds.hi.baseClasses
           case _ => Nil
-      catch case ex: Throwable =>
-        handleRecursive("base classes of", this.show, ex)
+      catch case ex: Throwable => handleRecursive("base classes of", this.show, ex)
 
 // ----- Member access -------------------------------------------------
 
@@ -4967,10 +4967,7 @@ object Types extends TypeUtils {
     }
 
     override def toString: String =
-      try s"RecThis(${binder.hashCode})"
-      catch {
-        case ex: NullPointerException => s"RecThis(<under construction>)"
-      }
+      s"RecThis(${binder.hashCode})"
   }
 
   private final class RecThisImpl(binder: RecType) extends RecThis(binder)
@@ -5838,7 +5835,8 @@ object Types extends TypeUtils {
    *  If we assumed full substitutivity, we would have to reject all recursive match
    *  aliases (or else take the jump and allow full recursive types).
    */
-  class MatchAlias(alias: Type) extends AliasingBounds(alias)
+  class MatchAlias(alias: Type) extends AliasingBounds(alias):
+    override def isMatchAlias(using Context): Boolean = true
 
   object TypeBounds {
     def apply(lo: Type, hi: Type)(using Context): TypeBounds =

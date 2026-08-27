@@ -1,0 +1,32 @@
+-- [E007] Type Mismatch Error: tests/neg/t750/Test_2.scala:3:9 ---------------------------------------------------------
+3 |  AO_1.f(a) // error
+  |         ^
+  |         Found:    (a : Array[Int])
+  |         Required: Array[Object & T]
+  |
+  |         where:    T is a type variable
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/t750/Test_2.scala:4:14 --------------------------------------------------------
+4 |  AO_1.f[Int](a) // error
+  |              ^
+  |              Found:    (a : Array[Int])
+  |              Required: Array[Object & Int]
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/t750/Test_2.scala:5:9 ---------------------------------------------------------
+5 |  AO_2.f(a) // error
+  |         ^
+  |         Found:    (a : Array[Int])
+  |         Required: Array[Object & T]
+  |
+  |         where:    T is a type variable
+  |
+  | longer explanation available when compiling with `-explain`
+-- [E007] Type Mismatch Error: tests/neg/t750/Test_2.scala:6:14 --------------------------------------------------------
+6 |  AO_2.f[Int](a) // error
+  |              ^
+  |              Found:    (a : Array[Int])
+  |              Required: Array[Object & Int]
+  |
+  | longer explanation available when compiling with `-explain`

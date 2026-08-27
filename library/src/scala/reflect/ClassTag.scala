@@ -27,15 +27,13 @@ import scala.runtime.ClassValueCompat
  *  its argument types. This runtime information is enough for runtime `Array` creation.
  *
  *  For example:
- *  ```
- *   scala> def mkArray[T : ClassTag](elems: T*) = Array[T](elems*)
- *   def mkArray[T](elems: T*)(using ClassTag[T]): Array[T]
+ *  ```scala sc:compile
+ *  import scala.reflect.ClassTag
  *
- *   scala> mkArray(42, 13)
- *   val res0: Array[Int] = Array(42, 13)
+ *  def mkArray[T: ClassTag](elems: T*): Array[T] = Array[T](elems*)
  *
- *   scala> mkArray("Japan","Brazil","Germany")
- *   val res1: Array[String] = Array(Japan, Brazil, Germany)
+ *  val ints = mkArray(42, 13)
+ *  val strings = mkArray("Japan", "Brazil", "Germany")
  *  ```
  *
  *  For compile-time type information in macros, see the facilities in the

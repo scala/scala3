@@ -38,7 +38,11 @@ object ScalaRunTime {
   def drop[Repr](coll: Repr, num: Int)(implicit iterable: IsIterable[Repr] { type C <: Repr }): Repr =
     iterable(coll) drop num
 
-  /** Returns the class object representing an array with element class `clazz`. */
+  /** Returns the class object representing an array with element class `clazz`.
+   *
+   *  @param clazz the element class of the desired array type
+   *  @return the `Class` object representing `Array[clazz]`
+   */
   def arrayClass(clazz: jClass[?]): jClass[?] = {
     // newInstance throws an exception if the erasure is Void.TYPE. see scala/bug#5680
     if (clazz == java.lang.Void.TYPE) classOf[Array[Unit]]
@@ -48,11 +52,20 @@ object ScalaRunTime {
   /** Returns the class object representing an unboxed value type,
    *  e.g., classOf[int], not classOf[java.lang.Integer].  The compiler
    *  rewrites expressions like 5.getClass to come here.
+   *
+   *  @tparam T the value type whose runtime class is retrieved
+   *  @param value the boxed value whose unboxed class is returned
+   *  @return the runtime `Class` representing the unboxed type `T`
    */
   def anyValClass[T <: AnyVal : ClassTag](value: T): jClass[T] =
     classTag[T].runtimeClass.asInstanceOf[jClass[T]]
 
-  /** Retrieves generic array element. */
+  /** Retrieves generic array element.
+   *
+   *  @param xs the array to read from (typed as `AnyRef` to support both reference and primitive arrays)
+   *  @param idx the index of the element to retrieve
+   *  @return the element at position `idx` in the array
+   */
   def array_apply(xs: AnyRef, idx: Int): Any = {
     (xs: @unchecked) match {
       case x: Array[AnyRef]  => x(idx).asInstanceOf[Any]
@@ -68,7 +81,12 @@ object ScalaRunTime {
     }
   }
 
-  /** Updates generic array element. */
+  /** Updates generic array element.
+   *
+   *  @param xs the array to update (typed as `AnyRef` to support both reference and primitive arrays)
+   *  @param idx the index of the element to set
+   *  @param value the value to store at the given index
+   */
   def array_update(xs: AnyRef, idx: Int, value: Any): Unit = {
     (xs: @unchecked) match {
       case x: Array[AnyRef]  => x(idx) = value.asInstanceOf[AnyRef]
@@ -84,7 +102,11 @@ object ScalaRunTime {
     }
   }
 
-  /** Gets generic array length. */
+  /** Gets generic array length.
+   *
+   *  @param xs the array to measure, as an `AnyRef`
+   *  @return the number of elements in the array
+   */
   @inline def array_length(xs: AnyRef): Int = java.lang.reflect.Array.getLength(xs)
 
   // TODO: bytecode Object.clone() will in fact work here and avoids
@@ -105,6 +127,9 @@ object ScalaRunTime {
   /** Converts an array to an object array.
    *  Needed to deal with vararg arguments of primitive types that are passed
    *  to a generic Java vararg parameter T ...
+   *
+   *  @param src the source array to convert, which may be a primitive array
+   *  @return an `Array[Object]` containing the (boxed) elements of `src`
    */
   def toObjectArray(src: AnyRef): Array[Object] = {
     def copy[@specialized T <: AnyVal](src: Array[T]): Array[Object] = {
@@ -163,7 +188,12 @@ object ScalaRunTime {
   // There used to be an `_equals` method as well which was removed in 5e7e81ab2a.
   def _hashCode(x: Product): Int = scala.util.hashing.MurmurHash3.caseClassHash(x)
 
-  /** A helper for case classes. */
+  /** A helper for case classes.
+   *
+   *  @tparam T the expected element type; elements are cast to this type without checking
+   *  @param x the product whose elements are iterated over
+   *  @return an iterator over the product's elements, cast to type `T`
+   */
   def typedProductIterator[T](x: Product): Iterator[T] = {
     new AbstractIterator[T] {
       private var c: Int = 0
@@ -272,9 +302,14 @@ object ScalaRunTime {
     }
   }
 
-  /** stringOf formatted for use in a repl result. */
+  /** stringOf formatted for use in a repl result.
+   *
+   *  @param arg the value to convert to its string representation
+   *  @param maxElements the maximum number of collection elements to include
+   *  @return a string representation of `arg`, formatted for REPL display
+   */
   def replStringOf(arg: Any, maxElements: Int): String =
-    stringOf(arg, maxElements) match {
+    (stringOf(arg, maxElements): String | Null) match {
       case null => "null toString"
       case s if s.indexOf('\n') >= 0 => "\n" + s + "\n"
       case s => s + "\n"

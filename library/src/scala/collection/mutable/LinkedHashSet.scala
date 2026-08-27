@@ -152,7 +152,10 @@ class LinkedHashSet[A]
 
   @`inline` private[collection] def unimproveHash(improvedHash: Int): Int = improveHash(improvedHash)
 
-  /** Computes the improved hash of this key. */
+  /** Computes the improved hash of this key.
+   *
+   *  @param o the key whose hash to compute
+   */
   @`inline` private def computeHash(o: A): Int = improveHash(o.##)
 
   @`inline` private def index(hash: Int) = hash & (table.length - 1)
@@ -180,7 +183,10 @@ class LinkedHashSet[A]
     e
   }
 
-  /** Deletes the entry from the LinkedHashSet, set the `earlier` and `later` pointers correctly. */
+  /** Deletes the entry from the `LinkedHashSet`, set the `earlier` and `later` pointers correctly.
+   *
+   *  @param e the entry to remove from the `LinkedHashSet`
+   */
   private def deleteEntry(e: Entry): Unit = {
     if (e.earlier eq null) firstEntry = e.later
     else e.earlier.later = e.later
@@ -329,7 +335,12 @@ object LinkedHashSet extends IterableFactory[LinkedHashSet] {
 
   def newBuilder[A]: GrowableBuilder[A, LinkedHashSet[A]] = new GrowableBuilder(empty[A])
 
-  /** Class for the linked hash set entry, used internally. */
+  /** Class for the linked hash set entry, used internally.
+   *
+   *  @tparam A the type of the elements contained in the linked hash set
+   *  @param key the element stored in this entry
+   *  @param hash the hash value of `key`
+   */
   private[mutable] final class Entry[A](val key: A, val hash: Int) {
     @annotation.stableNull var earlier: Entry[A] | Null = null
     @annotation.stableNull var later: Entry[A] | Null = null

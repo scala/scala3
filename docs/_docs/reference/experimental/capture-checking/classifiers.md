@@ -11,19 +11,24 @@ Capabilities are extremely versatile. They can express concepts from many differ
 Sometimes it is important to restrict, or: _classify_ what kind of capabilities are expected or returned in a context. For instance, we might want to allow only control capabilities such as `CanThrow`s or boundary `Label`s but no
 other capabilities. Or might want to allow mutation, but no other side effects. This is achieved by having a capability class extend a _classifier_.
 
+```scala sc-hidden sc-name:classifiers-cc-context
+import language.experimental.captureChecking
+import caps.*
+```
+
 For instance, the `scala.caps` package defines a classifier trait called `Control`,
 like this:
 ```scala sc:nocompile
-  trait Control extends SharedCapability, Classifier
+trait Control extends SharedCapability, Classifier
 ```
 The [Gears library](https://lampepfl.github.io/gears/) then defines a capability class `Async` which extends `Control`.
 
-```scala sc:nocompile
-  trait Async extends Control
+```scala sc-name:classifiers-async sc-compile-with:classifiers-cc-context
+trait Async extends Control
 ```
 Unlike normal inheritance, classifiers also restrict the capture set of a capability. For instance, say we have a function
-```scala sc:nocompile
-  def f(using async: Async^) = body
+```scala sc-compile-with:classifiers-async
+def f(using async: Async^) = ()
 ```
 (the `^` is as usual redundant here since `Async` is a capability trait).
 Then we have the guarantee that any actual `async` argument can only capture
@@ -42,11 +47,11 @@ trait Classifier
 
 sealed trait Capability
 
-trait SharedCapability extends Capability Classifier
+trait SharedCapability extends Capability, Classifier
 trait Control extends SharedCapability, Classifier
 
 trait ExclusiveCapability extends Capability
-trait Unscoped extends ExclusiveClassifier, Classifier
+trait Unscoped extends ExclusiveCapability, Classifier
 ```
 Here is a graph showing the hierarchy of predefined capability traits. Classifier traits are underlined.
 ```
@@ -82,10 +87,15 @@ Consider the following problem: The `Try.apply` method takes in its `body` param
 the `get` method of a `Try` object. What should a capability-aware signature of `Try` be?
 
 The body passed to `Try.apply` can have arbitrary effects, so it can retain arbitrary capabilities. Yet the resulting `Try` object will retain only those capabilities of `body` which are classified as `Control`. So the signature of `Try.apply` should look like this:
-```scala sc:nocompile
-object Try:
-  def apply[T](body: => T): Try[T]^{body.only[Control]}
+```scala sc-hidden sc-name:classifiers-try-context sc-compile-with:classifiers-cc-context
+class Try[+T]
 ```
+
+```scala sc-compile-with:classifiers-try-context
+object Try:
+  def apply[T](body: => T): Try[T]^{body.only[Control]} = ???
+```
+
 Note a new form of capability in the result's capture set: `body.only[Control]`. This is called a _restricted capability_. The general form of a restricted capability is
 `c.only[A]` where
 

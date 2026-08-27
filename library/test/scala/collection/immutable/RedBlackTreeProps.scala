@@ -97,12 +97,14 @@ trait RedBlackTreeInvariants[K, V] {
     case RedTree(_, _, left, right) => List(left, right).forall(t => isBlack(t) && areRedNodeChildrenBlack(t))
     case BlackTree(_, _, left, right) => List(left, right).forall(areRedNodeChildrenBlack)
     case null => true
+    case _ => assert(false, "unreachable")
   }
 
   def blackNodesToLeaves[A](t: Tree[K, V] | Null): List[Int] = t match {
     case null => List(1)
     case BlackTree(_, _, left, right) => List(left, right).flatMap(blackNodesToLeaves).map(_ + 1)
     case RedTree(_, _, left, right) => List(left, right).flatMap(blackNodesToLeaves)
+    case _ => assert(false, "unreachable")
   }
 
   def areBlackNodesToLeavesEqual[A](t: Tree[K, V] | Null): Boolean = t match {

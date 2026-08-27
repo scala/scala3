@@ -52,7 +52,7 @@ class AliasingFrame[V <: Value](nLocals: Int, nStack: Int) extends Frame[V](nLoc
    *  - If `aliases(i) contains j` then `aliases(i) eq aliases(j)`, i.e., they are references to the
    *    same (mutable) AliasSet.
    */
-  val aliases: Array[AliasSet | Null] = new Array[AliasSet | Null](getLocals + getMaxStackSize)
+  val aliases: Array[AliasSet | Null] = new Array[AliasSet | Null](nLocals + nStack)
 
   /**
    * The set of aliased values for a given entry in the `values` array.

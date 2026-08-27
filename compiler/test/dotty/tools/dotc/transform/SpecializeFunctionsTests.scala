@@ -6,11 +6,11 @@ import scala.language.unsafeNulls
 
 import org.junit.Test
 
-import dotty.tools.backend.jvm.DottyBytecodeTest
+import dotty.DottyBytecodeTest
 
 class SpecializeFunctionsTests extends DottyBytecodeTest {
 
-  import scala.jdk.CollectionConverters._
+  import scala.jdk.CollectionConverters.*
 
   @Test def specializeParentIntToInt = {
     val source = """

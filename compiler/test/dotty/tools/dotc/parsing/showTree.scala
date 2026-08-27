@@ -5,7 +5,7 @@ package parsing
 
 object showTree extends DeSugarTest {
 
-  import dotty.tools.dotc.ast.untpd._
+  import dotty.tools.dotc.ast.untpd.*
 
 
   def test(arg: String) = {

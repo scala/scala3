@@ -5,10 +5,10 @@ import language.experimental.captureChecking
 
 object string:
   /** Concatenation of two `String` singleton types.
-   *  ```scala
-   *  //{
-   *  import compiletime.ops.string.*
-   *  //}
+  *  ```scala sc-hidden sc-name:ops-string-plus-imports
+  *  import compiletime.ops.string.*
+  *  ```
+  *  ```scala sc:compile sc-compile-with:ops-string-plus-imports
    *  val hello: "hello " + "world" = "hello world"
    *  ```
    *  @syntax markdown
@@ -16,10 +16,10 @@ object string:
   infix type +[X <: String, Y <: String] <: String
 
   /** Length of a `String` singleton type.
-   *  ```scala
-   *  //{
-   *  import compiletime.ops.string.*
-   *  //}
+    *  ```scala sc-hidden sc-name:ops-string-length-imports
+    *  import compiletime.ops.string.*
+    *  ```
+    *  ```scala sc:compile sc-compile-with:ops-string-length-imports
    *  val helloSize: Length["hello"] = 5
    *  ```
    *  @syntax markdown
@@ -30,10 +30,10 @@ object string:
    * begin inclusive index `IBeg`, and a singleton type exclusive end index `IEnd`.
    * The substring begins at the specified IBeg and extends to the character at index IEnd - 1.
    * Thus the length of the substring is IEnd-IBeg.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-string-substring-imports
    *  import compiletime.ops.string.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-string-substring-imports
    *  val x: Substring["hamburger", 4, 8] = "urge"
    *  val y: Substring["smiles", 1, 5] = "mile"
    *  ```
@@ -43,10 +43,10 @@ object string:
 
   /** Tests if this `String` singleton type matches the given
    * regular expression `String` singleton type.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-string-matches-imports
    *  import compiletime.ops.string.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-string-matches-imports
    *  val x: Matches["unhappy", "un.*"] = true
    *  ```
    *  @syntax markdown
@@ -56,10 +56,10 @@ object string:
   /** Returns the Char type at the specified index.
    *  An index ranges from 0 to Length[S] - 1. The first Char of
    *  the sequence is at index 0, the next at index 1, and so on.
-   *  ```scala
-   *  //{
+  *  ```scala sc-hidden sc-name:ops-string-charat-imports
    *  import string.*
-   *  //}
+   *  ```
+   *  ```scala sc:compile sc-compile-with:ops-string-charat-imports
    *  val c: CharAt["hello", 0] = 'h'
    *  ```
    *  @syntax markdown

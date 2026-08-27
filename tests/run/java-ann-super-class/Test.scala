@@ -1,5 +1,3 @@
-// scalajs: --skip
-
 class Foo extends Ann {
   override def bar = 3
   override def baz = 4

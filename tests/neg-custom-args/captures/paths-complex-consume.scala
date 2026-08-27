@@ -1,13 +1,13 @@
 import language.experimental.captureChecking
 import language.experimental.separationChecking
 import caps.any
-import scala.caps.Stateful
+import scala.caps.{Stateful, ExclusiveCapability}
 
 // Create a deeper nesting structure
 class D()
 class C(val d: D^)
 class B(val c: C^)
-class A(consume val b: B^) extends Stateful:
+class A(consume val b: B^) extends Stateful, ExclusiveCapability:
   update def use() = println("Using A")
 
 // Test 1: Accessing nested fields through a consumed path
@@ -27,7 +27,7 @@ class Container(consume val a: A^) extends Stateful:
   val other: A^ = A(B(C(D())))
   update def operate() = other.use()
 
-class Outer(consume val container: Container^) extends Stateful:
+class Outer(consume val container: Container^) extends Stateful, ExclusiveCapability:
   update def execute() = container.operate()
 
 def testComplexPrefix =

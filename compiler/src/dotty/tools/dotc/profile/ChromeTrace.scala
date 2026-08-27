@@ -36,7 +36,7 @@ object ChromeTrace {
   }
 }
 
-/** Allows writing a subset of captrue traces based on https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview#
+/** Allows writing a subset of capture traces based on https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU/preview#
   * Can be visualized using https://ui.perfetto.dev/, Chrome's about://tracing (outdated) or the tooling in https://www.google.com.au/search?q=catapult+tracing&oq=catapult+tracing+&aqs=chrome..69i57.3974j0j4&sourceid=chrome&ie=UTF-8 */
 final class ChromeTrace(f: Path) extends Closeable {
   import ChromeTrace.EventType

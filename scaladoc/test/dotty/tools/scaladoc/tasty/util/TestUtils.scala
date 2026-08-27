@@ -20,7 +20,7 @@ object TestUtils {
       if classRoot.isDirectory then
         val bld = new ListBuffer[String]
         go(bld)(classRoot)
-        bld.result
+        bld.result()
       else
         sys.error(s"Class root could not be found: $classRoot")
 

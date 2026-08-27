@@ -266,12 +266,13 @@ private sealed trait WarningSettings:
          |
          |The default configuration is empty.
          |
-         |User-defined configurations are added to the left. The leftmost rule matching
-         |a warning message defines the action.
+         |The last matching configuration for a diagnostic, in definition order,
+         |determines the action for that diagnostic message.
          |
          |Examples:
          |  - change every warning into an error: -Wconf:any:error
          |  - silence deprecations: -Wconf:cat=deprecation:s
+         |  - error but silence deprecations: -Wall -Wconf:any:e,cat=deprecation:s
          |  - silence a deprecation: -Wconf:origin=java\.lang\.Thread\.getId:s
          |  - silence warnings in src_managed directory: -Wconf:src=src_managed/.*:s
          |
@@ -382,6 +383,7 @@ private sealed trait OptimizerSettings:
       |such as `*`, `<`, `>`, and `$`: `'-opt-inline:p.*,!p.C$D' '-opt-inline:<sources>'`.
       |Quoting may not be needed in a build file.""".stripMargin
   val optInline: Setting[List[String]] = MultiStringSetting(RootSetting, "opt-inline", "filter", inlineHelp)
+  def optInlineEnabled(using Context): Boolean = optInline.value.nonEmpty
 
   val YoptInlineHeuristics = ChoiceSetting(
     ForkSetting,
@@ -403,7 +405,7 @@ private sealed trait OptimizerSettings:
       ChoiceWithHelp("any-inline-failed", "A detailed warning for every callsite that was chosen for inlining by the heuristics, but could not be inlined."),
       ChoiceWithHelp("no-inline-mixed", "In mixed compilation, warn at callsites methods defined in java sources (the inlining decision cannot be made without bytecode)."),
       ChoiceWithHelp("no-inline-missing-bytecode", "Warn if an inlining decision cannot be made because a the bytecode of a class or member cannot be found on the compilation classpath."),
-      ChoiceWithHelp("no-inline-missing-attribute", "Warn if an inlining decision cannot be made because a Scala classfile does not have a ScalaInlineInfo attribute.")
+      ChoiceWithHelp("no-inline-missing-attribute", "Warn if an inlining decision cannot be made because a Scala classfile does not have an inline info attribute.")
     ),
     default = Nil
   )
@@ -527,7 +529,7 @@ private sealed trait YSettings:
   val Yskip: Setting[List[String]] = PhasesSetting(ForkSetting, "Yskip", "Skip")
   val YbackendParallelism: Setting[Int] = IntChoiceSetting(ForkSetting, "Ybackend-parallelism", "maximum worker threads for backend", 1 to 16, 1)
   val YbackendWorkerQueue: Setting[Int] = IntChoiceSetting(ForkSetting, "Ybackend-worker-queue", "backend threads worker queue size", 0 to 1000, 0)
-  val YstopAfter: Setting[List[String]] = PhasesSetting(ForkSetting, "Ystop-after", "Stop after", aliases = List("-stop")) // backward compat
+  val YstopAfter: Setting[List[String]] = PhasesSetting(ForkSetting, "Ystop-after", "Stop after the phase group containing the named phase. Mini-phases fused into a MegaPhase share a group, so the rest of that group still runs.", aliases = List("-stop")) // backward compat
   val YstopBefore: Setting[List[String]] = PhasesSetting(ForkSetting, "Ystop-before", "Stop before") // stop before erasure as long as we have not debugged it fully
   val YshowSuppressedErrors: Setting[Boolean] = BooleanSetting(ForkSetting, "Yshow-suppressed-errors", "Also show follow-on errors and warnings that are normally suppressed.")
   val YlogicalPackageLoading: Setting[Boolean] = BooleanSetting(ForkSetting, "Ylogical-package-loading", "Enable logical package loading. This will load the logical package structure by preparsing the source files to discover the package structure. To be used together with -sourcepath option.")

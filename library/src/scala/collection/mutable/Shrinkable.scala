@@ -22,6 +22,8 @@ import scala.annotation.tailrec
  *
  *  @define coll shrinkable collection
  *  @define Coll `Shrinkable`
+ *
+ *  @tparam A the type of elements that can be removed from this collection
  */
 trait Shrinkable[-A] {
 
@@ -68,7 +70,7 @@ trait Shrinkable[-A] {
       }
     } else {
       xs match {
-        case xs: collection.LinearSeq[A] => loop(xs)
+        case xs: collection.LinearSeq[A @unchecked] => loop(xs)
         case xs => xs.iterator.foreach(subtractOne)
       }
     }

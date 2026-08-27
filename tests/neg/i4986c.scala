@@ -14,7 +14,7 @@ class Outer[A] {
   }
 }
 
-trait X$Y
+trait `X$Y`
 
 @implicitNotFound(msg = "There's no U[${X}, ${Y}, ${Z}]")
 trait U[X, Y[_], Z[_, ZZ]] {

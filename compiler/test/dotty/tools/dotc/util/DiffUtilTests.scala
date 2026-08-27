@@ -2,7 +2,7 @@ package dotty.tools.dotc.util
 
 import scala.language.unsafeNulls
 
-import org.junit.Assert._
+import org.junit.Assert.*
 import org.junit.Test
 
 class DiffUtilTests {

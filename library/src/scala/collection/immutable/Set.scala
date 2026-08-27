@@ -20,7 +20,10 @@ import language.experimental.captureChecking
 import scala.collection.immutable.Set.Set4
 import scala.collection.mutable.{Builder, ReusableBuilder}
 
-/** Base trait for immutable set collections. */
+/** Base trait for immutable set collections.
+ *
+ *  @tparam A the element type of the set
+ */
 trait Set[A] extends Iterable[A]
     with collection.Set[A]
     with SetOps[A, Set, Set[A]]
@@ -32,6 +35,9 @@ trait Set[A] extends Iterable[A]
  *
  *  @define coll immutable set
  *  @define Coll `immutable.Set`
+ *
+ *  @tparam A the element type of the set
+ *  @tparam CC the type constructor for the resulting set (e.g., `Set`)
  */
 transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
   extends collection.SetOps[A, CC, C] {
@@ -45,7 +51,10 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
    */
   def incl(elem: A): C
 
-  /** Alias for `incl`. */
+  /** Alias for `incl`.
+   *
+   *  @param elem the element to add
+   */
   override final def + (elem: A): C = incl(elem) // like in collection.Set but not deprecated
 
   /** Creates a new set with a given element removed from this set.
@@ -56,7 +65,10 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
    */
   def excl(elem: A): C
 
-  /** Alias for `excl`. */
+  /** Alias for `excl`.
+   *
+   *  @param elem the element to remove
+   */
   @`inline` final override def - (elem: A): C = excl(elem)
 
   def diff(that: collection.Set[A]): C =
@@ -70,7 +82,10 @@ transparent trait SetOps[A, +CC[X], +C <: SetOps[A, CC, C]]
    */
   def removedAll(that: IterableOnce[A]^): C = that.iterator.foldLeft[C](coll)(_ - _)
 
-  /** Alias for removedAll. */
+  /** Alias for removedAll.
+   *
+   *  @param that the collection of elements to remove
+   */
   override final def -- (that: IterableOnce[A]^): C = removedAll(that)
 }
 
@@ -355,11 +370,16 @@ object Set extends IterableFactory[Set] {
   }
 }
 
-/** Explicit instantiation of the `Set` trait to reduce class file size in subclasses. */
+/** Explicit instantiation of the `Set` trait to reduce class file size in subclasses.
+ *
+ *  @tparam A the element type of the set
+ */
 abstract class AbstractSet[A] extends scala.collection.AbstractSet[A] with Set[A]
 
 /** Builder for Set.
  *  $multipleResults
+ *
+ *  @tparam A the element type of the set being built
  */
 private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
   private var elems: Set[A] = Set.empty

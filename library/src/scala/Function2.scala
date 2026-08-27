@@ -10,8 +10,6 @@
  * additional information regarding copyright ownership.
  */
 
-// GENERATED CODE: DO NOT EDIT. See scala.Function0 for timestamp.
-
 package scala
 
 import scala.language.`2.13`
@@ -34,6 +32,9 @@ import scala.language.`2.13`
  */
 trait Function2[@specialized(Specializable.Args) -T1, @specialized(Specializable.Args) -T2, @specialized(Specializable.Return) +R] extends AnyRef {
   /** Applies the body of this function to the arguments.
+   *
+   *  @param v1 the 1st argument of type `T1`
+   *  @param v2 the 2nd argument of type `T2`
    *  @return   the result of function application.
    */
   def apply(v1: T1, v2: T2): R

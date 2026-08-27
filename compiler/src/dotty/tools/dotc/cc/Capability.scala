@@ -516,6 +516,7 @@ object Capabilities:
         case tp1: (TermRef | TypeRef) => // can't use NamedType here since it is not a capability
           if tp1.symbol.maybeOwner.isClass && !tp1.symbol.is(TypeParam) then
             tp1.prefix match
+              case pre: ObjectCapability if pre.refersToPackage => tp1
               case pre: Capability => pre.pathRoot
               case _ => tp1
           else tp1
@@ -531,6 +532,7 @@ object Capabilities:
     */
     final def pathOwner(using Context): Symbol = pathRoot match
       case tp1: ThisType => tp1.cls
+      case tp1: TermRef if tp1.symbol.is(Module) => tp1.symbol.moduleClass
       case tp1: NamedType => tp1.symbol.owner
       case _: GlobalCap => defn.CapsModule.moduleClass
       case tp1: LocalCap => tp1.ccOwner
@@ -595,11 +597,6 @@ object Capabilities:
       case self: DerivedCapability => self.underlying.derivesFromCapTrait(cls)
       case self: CoreCapability => self.superType.derivesFromCapTrait(cls)
       case _ => false
-
-    def derivesFromCapability(using Context): Boolean = derivesFromCapTrait(defn.Caps_Capability)
-    def derivesFromStateful(using Context): Boolean = derivesFromCapTrait(defn.Caps_Stateful)
-    def derivesFromShared(using Context): Boolean = derivesFromCapTrait(defn.Caps_SharedCapability)
-    def derivesFromUnscoped(using Context): Boolean = derivesFromCapTrait(defn.Caps_Unscoped)
 
     /** The capture set consisting of exactly this reference */
     def singletonCaptureSet(using Context): CaptureSet.Const =
@@ -773,7 +770,7 @@ object Capabilities:
         case Maybe(y1) => this.stripMaybe.subsumes(y1)
         case ReadOnly(y1) => this.stripReadOnly.subsumes(y1)
         case Restricted(y1, cls) => this.stripRestricted(cls).subsumes(y1)
-        case y: TypeRef if y.derivesFrom(defn.Caps_CapSet) =>
+        case y: TypeRef if y.derivesFromCapSet =>
           // The upper and lower bounds don't have to be in the form of `CapSet^{...}`.
           // They can be other capture set variables, which are bounded by `CapSet`,
           // like `def test[X^, Y^, Z >: X <: Y]`.
@@ -784,13 +781,15 @@ object Capabilities:
               this.subsumes(hi)
             case _ =>
               y.captureSetOfInfo.elems.forall(this.subsumes)
+        case y: ThisType if y.cls.is(Module) =>
+          this.subsumes(y.cls.sourceModule.termRef)
         case _ => false
       || this.match
           case Reach(x1) => x1.subsumes(y.stripReach)
           case Restricted(x1, cls) => y.isKnownClassifiedAs(cls) && x1.subsumes(y)
           case x: TermRef => viaInfo(x.info)(subsumingRefs(_, y))
           case x: TypeRef if assumedContainsOf(x).contains(y) => true
-          case x: TypeRef if x.derivesFrom(defn.Caps_CapSet) =>
+          case x: TypeRef if x.derivesFromCapSet =>
             x.info match
               case TypeBounds(CapturingType(_, lorefs), _) =>
                 lorefs.elems.exists(_.subsumes(y))
@@ -798,6 +797,8 @@ object Capabilities:
                 lo.subsumes(y)
               case _ =>
                 x.captureSetOfInfo.elems.exists(_.subsumes(y))
+          case x: ThisType if x.cls.is(Module) =>
+            x.cls.sourceModule.termRef.subsumes(y)
           case _ => false
       catch case ex: AssertionError =>
         println(i"error while subsumes $this >> $y")
@@ -842,15 +843,17 @@ object Capabilities:
         case x: ResultCap =>
           y match
             case y: ResultCap => vs.unify(x, y)
-            case _ => y.derivesFromShared
+            case _ => y.derivesFromCapTrait(defn.Caps_SharedCapability)
         case _: GlobalCap =>
+          def globalCapSubsumes =
+            canAddHidden && vs != VarState.HardSeparate && CCState.globalCapIsRoot
           y match
             case _: GlobalCap => this eq y
             case _: ResultCap => false
-            case _: LocalCap if CCState.collapseLocalCaps => true
-            case _ =>
-              y.derivesFromShared
-              || canAddHidden && vs != VarState.HardSeparate && CCState.globalCapIsRoot
+            case _: LocalCap if CCState.collapseLocalCaps || globalCapSubsumes => true
+            case _ => globalCapSubsumes
+              // also had: || y.derivesFromCapTrait(defn.Caps_SharedCapability)
+              // but this fails i25863a.scala, i.e compilers without errors where there should be
         case Restricted(x1, cls) =>
           y.isKnownClassifiedAs(cls) && x1.maxSubsumes(y, canAddHidden)
         case _ =>
@@ -978,6 +981,20 @@ object Capabilities:
     else if cls2.isSubClass(cls1) then cls2
     else defn.NothingClass
 
+  /** The least classifier that both `cls1` and `cls2` extend, or `AnyClass`,
+   *  if `cls1` and `cls2` don't have a common ancestor classifier. It is
+   *  assumed that each of `cls1` and `cls2` is either a classifier class or
+   *  is equal to AnyClass.
+   */
+  def greatestClassifier(cls1: ClassSymbol, cls2: ClassSymbol)(using Context): ClassSymbol =
+    if cls1.isSubClass(cls2) then cls1
+    else if cls2.isSubClass(cls1) then cls2
+    else
+      cls1.classDenot.baseClasses
+        .find: bc1 =>
+          bc1.isClassifiedCapabilityClass && cls2.isSubClass(bc1)
+        .getOrElse(defn.AnyClass)
+
   /** The smallest list D of class symbols in cs1 and cs2 such that
    *  every class symbol in cs1 and cs2 is a subclass of a class symbol in D
    */
@@ -1076,44 +1093,6 @@ object Capabilities:
   end Origin
 
   // ---------- Maps between different kinds of root capabilities -----------------
-
-  /** Map GlobalFresh capabilities in results of methods to ResultCaps
-   *  This map is peculiar since it has to run very early in Setup where some capture
-   *  sets are not yet known and consequently `map` in CaptureSet might give wrong results.
-   *  A test case where this would happen is neg-custom-args/captures/i13816.scala
-   *  This motivates the various tricks explained below.
-   */
-  class FreshCapToResult(using Context) extends TypeMap {
-    def apply(t: Type) =
-      t match
-        case t @ AnnotatedType(parent, ann) =>
-          // Leave capture sets and other annotations as is
-          t.derivedAnnotatedType(this(parent), ann)
-        case t @ defn.RefinedFunctionOf(mt) =>
-          // Don't touch parents of refined function types
-          t.derivedRefinedType(refinedInfo = apply(mt))
-        case mt: MethodType =>
-          val freshToResultInResult = new TypeMap {
-
-            def apply(t: Type) = t match
-              case t @ CapturingType(parent, refs: CaptureSet.Const) =>
-                // Map capture set elements one-by-one, don't try to form unions
-                val elems1 = refs.elems.map(mapCapability(_))
-                val refs1 = if elems1 == refs.elems then refs else CaptureSet(elems1.toList*)
-                t.derivedCapturingType(this(parent), refs1)
-              case _ =>
-                mapOver(t)
-
-            // Leave all elements unchanged except for mapping GlobalFresh to ResultFresh
-            override def mapCapability(c: Capability, deep: Boolean): Capability = c match
-              case GlobalFresh => ResultCap(mt)
-              case c: DerivedCapability => c.derivedCapability(mapCapability(c.underlying, deep))
-              case c => c
-          }
-          mapOver(mt.derivedLambdaType(resType = freshToResultInResult(mt.resType)))
-        case _ =>
-          mapOver(t)
-  }
 
   /** Map each occurrence of `caps.any` to a different LocalCap instance
    *  Exception: CapSet^ stays as it is.
@@ -1278,7 +1257,7 @@ object Capabilities:
 
   abstract class CapMap(using Context) extends BiTypeMap:
     override def mapOver(t: Type): Type = t match
-      case t @ FunctionOrMethod(args, res) if variance > 0 && !t.isAliasFun =>
+      case t @ FunctionOrMethod(_, _) if variance > 0 && !t.isAliasFun =>
         t // `t` should be mapped in this case by a different call to `toResult`. See [[toResultInResults]].
       case t: (LazyRef | TypeVar) =>
         mapConserveSuper(t)

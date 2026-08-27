@@ -92,7 +92,7 @@ abstract class SignatureTest(
     yield name
 
   private def signaturesFromSources(source: Source, kinds: Seq[String]): Seq[SignatureRes] =
-    source.getLines.map(_.trim)
+    source.getLines().map(_.trim)
       .filterNot(_.isEmpty)
       .filterNot(l => l.startWithAnyOfThese("=",":","{","}", "//") && !l.startsWith("//expected:"))
       .toSeq
@@ -129,7 +129,7 @@ abstract class SignatureTest(
       }
 
     IO.foreachFileIn(output, processFile)
-    signatures.result
+    signatures.result()
 
 object SignatureTest {
   val classlikeKinds = Seq("class",  "object", "trait", "enum") // TODO add docs for packages

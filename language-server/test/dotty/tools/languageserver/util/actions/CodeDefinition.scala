@@ -17,7 +17,7 @@ import org.junit.Assert.assertEquals
 class CodeDefinition(override val range: CodeRange, expected: Seq[CodeRange]) extends ActionOnRange {
 
   override def onMarker(marker: CodeMarker): Exec[Unit] = {
-    val results = server.definition(marker.toTextDocumentPositionParams).get().asScala.toSeq.sorted
+    val results = server.definition(marker.toDefinitionParams).get().getLeft.asScala.toSeq.sorted
     val expectedLocations = expected.map(_.toLocation).sorted
 
     assertEquals(expectedLocations, results)

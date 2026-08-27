@@ -25,25 +25,23 @@ import scala.collection.convert.StreamExtensions
   *
   * The methods `asJavaSeqStream` and `asJavaParStream` convert a collection to a Java Stream:
   *
-  * ```
-  *   scala> import scala.jdk.StreamConverters._
+  * ```scala sc:compile
+  * import scala.jdk.StreamConverters.*
   *
-  *   scala> val s = (1 to 10).toList.asJavaSeqStream
-  *   s: java.util.stream.IntStream = java.util.stream.IntPipeline\$Head@7b1e5e55
-  *
-  *   scala> s.map(_ * 2).filter(_ > 5).toScala(List)
-  *   res1: List[Int] = List(6, 8, 10, 12, 14, 16, 18, 20)
+  * val s = (1 to 10).toList.asJavaSeqStream
+  * // s: java.util.stream.IntStream = java.util.stream.IntPipeline\$Head@7b1e5e55
+  * val doubled = s.map(_ * 2).filter(_ > 5).toScala(List)
+  * assert(doubled == List(6, 8, 10, 12, 14, 16, 18, 20))
   * ```
   *
   * Note: using parallel streams in the Scala REPL causes deadlocks, see
   * [[https://github.com/scala/bug/issues/9076]]. As a workaround, use `scala -Yrepl-class-based`.
   *
-  * ```
-  *   scala> def isPrime(n: Int): Boolean = !(2 +: (3 to Math.sqrt(n).toInt by 2) exists (n % _ == 0))
-  *   isPrime: (n: Int)Boolean
-  *
-  *   scala> (10000 to 1000000).asJavaParStream.filter(isPrime).toScala(Vector)
-  *   res6: scala.collection.immutable.Vector[Int] = Vector(10007, 10009, 10037, 10039, ...
+  * ```scala sc:compile
+  * import scala.jdk.StreamConverters.*
+  * def isPrime(n: Int): Boolean = n > 1 && !(2 +: (3 to Math.sqrt(n).toInt by 2)).exists(n % _ == 0)
+  * val primes = (10000 to 10100).asJavaParStream.filter(isPrime).toScala(Vector)
+  * // primes: scala.collection.immutable.Vector[Int] = Vector(10007, 10009, 10037, 10039, ...
   * ```
   *
   * A Java [[Stream]] provides operations on a sequence of elements. Streams are created from

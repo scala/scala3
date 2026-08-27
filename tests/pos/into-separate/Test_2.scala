@@ -1,4 +1,4 @@
-//> using options -feature -preview
+//> using options -feature
 package test
 
 object Test:
@@ -11,5 +11,3 @@ object Test:
 
   val dclKeywords = Set[Keyword]("def", "val") // ok
   val keywords = dclKeywords + "if" + "then" + "else" // ok
-
-

@@ -15,7 +15,6 @@ import dotty.tools.dotc.CompilationUnit
 import dotty.tools.dotc.core.Types.Type
 import dotty.tools.dotc.core.Symbols.{Symbol, NoSymbol}
 import dotty.tools.dotc.core.Flags
-import dotty.tools.backend.jvm.DottyBackendInterface.symExtensions
 import dotty.tools.io.AbstractFile
 import annotation.internal.sharable
 import dotty.tools.dotc.core.Periods.InitialRunId

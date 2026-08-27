@@ -24,7 +24,6 @@ import dotty.tools.dotc.core.StdNames.*
 import dotty.tools.dotc.core.Symbols.*
 import dotty.tools.dotc.core.SymDenotations.NoDenotation
 import dotty.tools.dotc.core.Types.*
-import dotty.tools.dotc.interactive.Interactive
 import dotty.tools.dotc.interactive.InteractiveDriver
 import dotty.tools.dotc.util.SourcePosition
 import dotty.tools.dotc.util.Spans
@@ -50,25 +49,13 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
           } {
             case trimmed: RangeParams =>
               Spans.Span(trimmed.offset(), trimmed.endOffset())
-            case offset =>
+            case _ =>
               Spans.Span(p.offset(), p.offset())
           }
         case _ if !isZeroExtent => Spans.Span(params.offset(), params.offset() + 1)
         case _ => Spans.Span(params.offset())
 
       new SourcePosition(source, span)
-
-    def localContext(params: OffsetParams): Context =
-      if driver.currentCtx.run.nn.units.isEmpty then
-        throw new RuntimeException(
-          "No source files were passed to the Scala 3 presentation compiler"
-        )
-      val unit = driver.currentCtx.run.nn.units.head
-      val pos = driver.sourcePosition(params)
-      val newctx = driver.currentCtx.fresh.setCompilationUnit(unit)
-      val tpdPath =
-        Interactive.pathTo(newctx.compilationUnit.tpdTree, pos.span)(using newctx)
-      Interactive.contextOfPath(tpdPath)(using newctx)
 
   end extension
 
@@ -108,7 +95,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
     def adjust(
         text: Array[Char],
         forRename: Boolean = false
-    )(using Context): (SourcePosition, Boolean) =
+    ): (SourcePosition, Boolean) =
       if !pos.span.isCorrect(text) then (pos, false)
       else
         val pos0 =
@@ -298,7 +285,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
         val pre = tree.qual
         val denot = sym.denot.asSeenFrom(pre.typeOpt)
         (denot.info, sym.withUpdatedTpe(denot.info))
-      catch case NonFatal(e) => (sym.info, sym)
+      catch case NonFatal(_) => (sym.info, sym)
 
     def isInfix(using ctx: Context) =
       tree match
@@ -372,7 +359,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
                     pos.span
                   ) && !t.typeOpt.isErroneous =>
                 tryTail(tail).orElse(Some(enclosing))
-              case in: Inlined =>
+              case _: Inlined =>
                 tryTail(tail).orElse(Some(enclosing))
               case New(_) =>
                 tail match
@@ -395,7 +382,7 @@ object InteractiveEnrichments extends CommonMtagsEnrichments:
   extension (tpe: Type)
     def deepDealiasAndSimplify(using Context): Type =
       val dealiased = tpe.dealias match
-        case app @ AppliedType(tycon, params) =>
+        case AppliedType(tycon, params) =>
           AppliedType(tycon, params.map(_.deepDealiasAndSimplify))
         case aliasingBounds: AliasingBounds =>
           aliasingBounds.derivedAlias(aliasingBounds.alias.deepDealiasAndSimplify)

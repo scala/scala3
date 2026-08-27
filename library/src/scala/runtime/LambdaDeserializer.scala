@@ -39,7 +39,10 @@ object LambdaDeserializer {
    *  @param cache       A cache used to avoid spinning up a class for each deserialization of a given lambda. May be `null`
    *  @param serialized  The lambda to deserialize. Note that this is typically created by the `readResolve`
    *                    member of the anonymous class created by `LambdaMetaFactory`.
-   *  @return            An instance of the functional interface
+   *  @param targetMethodMap a mapping from lambda implementation method name and signature keys (as produced by
+   *                    `LambdaDeserialize.nameAndDescriptorKey`) to their `MethodHandle`s, used to look up the
+   *                    implementation method during deserialization. Must not be `null`
+   *  @return            an instance of the functional interface
    */
   def deserializeLambda(lookup: MethodHandles.Lookup, cache: java.util.Map[String, MethodHandle],
                         targetMethodMap: java.util.Map[String, MethodHandle], serialized: SerializedLambda): AnyRef = {

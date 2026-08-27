@@ -22,6 +22,11 @@ import scala.collection.Stepper.EfficientSplit
  *  that has an indexable ordering but may have gaps.
  *
  *  For collections that are guaranteed to not have gaps, use `IndexedStepperBase` instead.
+ *
+ *  @tparam Sub the concrete stepper subtype, used as the self-type and return type of `trySplit`
+ *  @tparam Semi the concrete type of the split-off stepper half, constrained to be a subtype of `Sub`
+ *  @param i0 the starting index (inclusive) of the range to step over
+ *  @param iN the ending index (exclusive) of the range to step over
  */
 private[convert] abstract class InOrderStepperBase[Sub, Semi <: Sub](protected var i0: Int, protected var iN: Int)
 extends EfficientSplit {

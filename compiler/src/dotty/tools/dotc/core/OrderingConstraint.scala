@@ -760,6 +760,7 @@ class OrderingConstraint(private val boundsMap: ParamBounds,
     case tp: TypeVar if contains(tp.origin) => withHard(tp)
     case tp: TypeParamRef if contains(tp)   => hardenTypeVars(typeVarOfParam(tp))
     case tp: AndOrType                      => hardenTypeVars(tp.tp1).hardenTypeVars(tp.tp2)
+    case tp: FlexibleType                   => hardenTypeVars(tp.hi)
     case _                                  => this
 
   def remove(pt: TypeLambda)(using Context): This = {
