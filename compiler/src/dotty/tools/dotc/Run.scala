@@ -21,6 +21,7 @@ import reporting.{Suppression, Action, Profile, ActiveProfile, MessageFilter, No
 import reporting.Diagnostic, Diagnostic.Warning
 import rewrites.Rewrites
 import profile.Profiler
+import quoted.QuotesCache
 import printing.XprintMode
 import typer.ImplicitRunInfo
 import config.Feature
@@ -617,6 +618,11 @@ extends ImplicitRunInfo, ConstraintRunInfo, cc.CaptureRunInfo {
     if ctx.settings.YexplicitNulls.value && !Feature.enabledBySetting(nme.unsafeNulls) then
       start = start.addMode(Mode.SafeNulls)
     ctx.initialize()(using start) // re-initialize the base context with start
+
+    // Cache unpickled quote templates for the whole run (keyed by the pickled TASTY
+    // bytes, stable per quote-site), so a macro that expands many times unpickles
+    // each of its quotes once per run rather than once per expansion.
+    QuotesCache.init(start)
 
     // `this` must be unchecked for safe initialization because by being passed to setRun during
     // initialization, it is not yet considered fully initialized by the initialization checker
