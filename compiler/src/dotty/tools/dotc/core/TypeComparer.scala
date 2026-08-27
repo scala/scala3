@@ -1671,9 +1671,11 @@ class TypeComparer(@constructorOnly initctx: Context) extends ConstraintHandling
           rollBack(savedLogSize)
       val savedSuccessCount = successCount
       try
-        val result = inNestedLevel:
-          if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
-          if monitored then monitoredIsSubType else firstTry
+        val result =
+          ctx.handleRecursive("is subtype?", () => i"$tp1 <:< $tp2"):
+            inNestedLevel:
+              if recCount >= Config.LogPendingSubTypesThreshold then monitored = true
+              if monitored then monitoredIsSubType else firstTry
         if !result then restore()
         else if recCount == 0 && needsGc then
           state.gc()
