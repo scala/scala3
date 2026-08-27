@@ -1013,7 +1013,9 @@ trait TypedTreeInfo extends TreeInfo[Type] { self: Trees.Instance[Type] =>
     else
       val locals = new mutable.ListBuffer[Symbol]
       for stat <- stats do
-        if stat.isDef && stat.symbol.exists then locals += stat.symbol
+        if stat.isDef then
+          val sym = stat.symbol
+          if sym.exists then locals += sym
       locals.toList
 
   /** If `tree` is a DefTree, the symbol defined by it, otherwise NoSymbol */

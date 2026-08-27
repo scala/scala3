@@ -495,7 +495,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         else Nil
       implicitRefs.find(ref => ref.underlyingRef.widen <:< tp) match
       case Some(found: TermRef) =>
-        refUsage(found.denot.symbol, pos)
+        refUsage(found.symbol, pos)
         if importInfo `ne` null then
           importInfo.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
           case Some(sel) =>
@@ -503,7 +503,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
           case _ =>
         return
       case Some(found: RenamedImplicitRef) if importInfo `ne` null =>
-        refUsage(found.underlyingRef.denot.symbol, pos)
+        refUsage(found.underlyingRef.symbol, pos)
         importInfo.selectors.find(sel => sel.rename == found.implicitName) match
         case Some(sel) =>
           refInfos.sels.put(sel, ())

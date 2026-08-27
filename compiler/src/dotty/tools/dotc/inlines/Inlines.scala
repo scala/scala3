@@ -191,19 +191,20 @@ object Inlines:
     )
 
     val tree0 = stripper.transform(tree)
+    val symbol0 = tree0.symbol
 
-    if tree0.symbol.denot.exists
-      && tree0.symbol.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass
+    if symbol0.denot.exists
+      && symbol0.effectiveOwner == defn.CompiletimeTestingPackage.moduleClass
     then
-      if (tree0.symbol == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree0)
-      if (tree0.symbol == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree0)
+      if (symbol0 == defn.CompiletimeTesting_typeChecks) return Intrinsics.typeChecks(tree0)
+      if (symbol0 == defn.CompiletimeTesting_typeCheckErrors) return Intrinsics.typeCheckErrors(tree0)
 
     if ctx.isAfterTyper then
       // During typer we wait with cross version checks until PostTyper, in order
       // not to provoke cyclic references. See i16116 for a test case.
-      CrossVersionChecks.checkRef(tree0.symbol, tree0.srcPos)
+      CrossVersionChecks.checkRef(symbol0, tree0.srcPos)
 
-    if tree0.symbol.isConstructor then return tree // error already reported for the inline constructor definition
+    if symbol0.isConstructor then return tree // error already reported for the inline constructor definition
 
     /** Set the position of all trees logically contained in the expansion of
      *  inlined call `call` to the position of `call`. This transform is necessary
@@ -258,7 +259,7 @@ object Inlines:
         cpy.Block(tree0)(bindings.toList, inlineCall(tree1))
       else if enclosingInlineds.length < ctx.settings.XmaxInlines.value && !reachedInlinedTreesLimit then
         val body =
-          try bodyToInline(tree0.symbol) // can typecheck the tree and thereby produce errors
+          try bodyToInline(symbol0) // can typecheck the tree and thereby produce errors
           catch case _: MissingInlineInfo =>
             throw CyclicReference(ctx.owner)
         new InlineCall(tree0).expand(body)
@@ -277,7 +278,7 @@ object Inlines:
     // if tree0 (inline call tree before expansion) is transparent
     // attach the method name to the tree2 (expanded tree)
     val tree3 =
-      if tree0.symbol.is(Transparent) then tree2.withAttachment(TransparentInlinedCall, tree0.symbol.show) else tree2
+      if symbol0.is(Transparent) then tree2.withAttachment(TransparentInlinedCall, symbol0.show) else tree2
     if ctx.base.stopInlining && enclosingInlineds.isEmpty then
       ctx.base.stopInlining = false
         // we have completely backed out of the call that overflowed;

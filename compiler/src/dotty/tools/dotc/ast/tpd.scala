@@ -1200,6 +1200,12 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
       tree
     }
 
+    /** Same as above, but when you already have `tree.symbol` */
+    def setDefTree(sym: Symbol)(using Context): ThisTree = {
+      if (sym.exists) sym.defTree = tree
+      tree
+    }
+
     /** Make sure tree has given symbol. This is called when typing or unpickling
      *  a ValDef or DefDef. It turns out that under very rare circumstances the symbol
      *  computed for a tree is not correct. The only known test case is i21755.scala.
@@ -1209,11 +1215,14 @@ object tpd extends Trees.Instance[Type] with TypedTreeInfo {
      *  corresponding symbol in the superclass. It is not known what are the precise
      *  conditions where this happens, but my guess would be that it's connected to the
      *  recursion in the self type.
+     *  As an optimization, returns the symbol.
      */
-    def ensureHasSym(sym: Symbol)(using Context): Unit =
-      if sym.exists && sym != tree.symbol then
-        typr.println(i"correcting definition symbol from ${tree.symbol.showLocated} to ${sym.showLocated}")
+    def ensureHasSym(sym: Symbol)(using Context): Symbol =
+      val treeSym = tree.symbol
+      if sym.exists && sym != treeSym then
+        typr.println(i"correcting definition symbol from ${treeSym.showLocated} to ${sym.showLocated}")
         tree.overwriteType(NamedType(sym.owner.thisType, sym.name, sym.denot))
+      treeSym
 
     def etaExpandCFT(using Context): Tree =
       def expand(target: Tree, tp: Type)(using Context): Tree = tp match

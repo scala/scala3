@@ -646,8 +646,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     }
 
     // on entering a method
-    def resetMethodBookkeeping(dd: DefDef)(using Context) = {
-      val rhs = dd.rhs
+    def resetMethodBookkeeping()(using Context) = {
       locals.reset(isStaticMethod = methSymbol.isStaticMember)
       jumpDest = immutable.Map.empty
 
@@ -813,14 +812,15 @@ trait BCodeSkelBuilder extends BCodeHelpers {
     private def genDefDef(dd: DefDef)(using Context): Unit = {
       val rhs = dd.rhs
       val vparamss = dd.termParamss
-      // the only method whose implementation is not emitted: getClass()
-      if (dd.symbol eq defn.Any_getClass) { return }
       assert(mnode == null, "GenBCode detected nested method.")
 
       methSymbol  = dd.symbol
+      // the only method whose implementation is not emitted: getClass()
+      if (methSymbol eq defn.Any_getClass) { return }
+
       returnType  = bTypeLoader.methodBTypeFromSymbol(methSymbol).returnType
 
-      resetMethodBookkeeping(dd)
+      resetMethodBookkeeping()
 
       // add method-local vars for params
 
@@ -903,7 +903,7 @@ trait BCodeSkelBuilder extends BCodeHelpers {
             )
           else
             // The JVM doesn't support `synchronized` methods on interfaces so we must implement that ourselves
-            if dd.symbol.is(Synchronized) && dd.symbol.owner.is(Trait) then
+            if methSymbol.is(Synchronized) && methSymbol.owner.is(Trait) then
               bc.aloadThis()
               val generatedType = genSynchronized(trimmedRhs, trimmedRhs :: Nil, returnType)
               genAdaptAndSendToDest(generatedType, returnType, LoadDestination.Return)

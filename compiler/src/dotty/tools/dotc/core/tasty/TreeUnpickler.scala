@@ -927,8 +927,8 @@ class TreeUnpickler(reader: TastyReader,
       def ValDef(tpt: Tree) =
         ta.assignType(untpd.ValDef(sym.name.asTermName, tpt, readRhs(using localCtx)), sym)
 
-      def DefDef(paramss: List[ParamClause], tpt: Tree) =
-        sym.setParamssFromDefs(paramss)
+      def DefDef(paramss: List[ParamClause], paramsSyms: List[List[Symbol]], tpt: Tree) =
+        sym.setParamss(paramsSyms)
         ta.assignType(
           untpd.DefDef(sym.name.asTermName, paramss, tpt, readRhs(using localCtx)),
           sym)
@@ -950,18 +950,18 @@ class TreeUnpickler(reader: TastyReader,
         case DEFDEF =>
           val paramDefss = readParamss()(using localCtx)
           val tpt = readTpt()(using localCtx)
-          val paramss = normalizeIfConstructor(
-              paramDefss.nestedMap(_.symbol), name == nme.CONSTRUCTOR)
+          val paramss = paramDefss.nestedMap(_.symbol)
+          val normalizedParamss = normalizeIfConstructor(paramss, name == nme.CONSTRUCTOR)
           val resType =
             if name == nme.CONSTRUCTOR then
-              effectiveResultType(sym, paramss)
+              effectiveResultType(sym, normalizedParamss)
             else if sym.isAllOf(Given | Method) && Feature.enabled(Feature.modularity) then
-              addParamRefinements(tpt.tpe, paramss)
+              addParamRefinements(tpt.tpe, normalizedParamss)
             else
               tpt.tpe
-          sym.info = methodType(paramss, resType)
+          sym.info = methodType(normalizedParamss, resType)
           nullify(sym)
-          DefDef(paramDefss, tpt)
+          DefDef(paramDefss, paramss, tpt)
         case VALDEF =>
           val tpt = readTpt()(using localCtx)
           sym.info = tpt.tpe.suppressIntoIfParam(sym)
@@ -1036,8 +1036,8 @@ class TreeUnpickler(reader: TastyReader,
         }
       }
 
-      tree.ensureHasSym(sym)
-      tree.setDefTree
+      val sym1 = tree.ensureHasSym(sym)
+      tree.setDefTree(sym1)
     }
 
     /** Read enough of parent to determine its type, without reading arguments
@@ -1530,11 +1530,12 @@ class TreeUnpickler(reader: TastyReader,
               tpd.Super(qual, mixId, mixTpe.typeSymbol)
             case APPLY =>
               val fn = readTree()
+              val sym = fn.symbol
               val args = until(end)(readTree())
-              if fn.symbol.isConstructor then constructorApply(fn, args)
-              else if fn.symbol == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args) // decode pre 3.5.0 encoding
-              else if fn.symbol == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args) // decode pre 3.5.0 encoding
-              else if fn.symbol == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args) // decode pre 3.5.0 encoding
+              if sym.isConstructor then constructorApply(fn, args)
+              else if sym == defn.QuotedRuntime_exprQuote then quotedExpr(fn, args) // decode pre 3.5.0 encoding
+              else if sym == defn.QuotedRuntime_exprSplice then splicedExpr(fn, args) // decode pre 3.5.0 encoding
+              else if sym == defn.QuotedRuntime_exprNestedSplice then nestedSpliceExpr(fn, args) // decode pre 3.5.0 encoding
               else if isSpuriousApply(fn, args) then fn
               else tpd.Apply(fn, args)
             case TYPEAPPLY =>
