@@ -99,9 +99,6 @@ object Properties {
   /** scala-xml jar */
   def scalaXml: String = sys.props("dotty.tests.classes.scalaXml")
 
-  /** scala-xml jar */
-  def scalaXml: String = sys.props("dotty.tests.classes.scalaXml")
-
   /** scalajs-javalib jar */
   def scalaJSJavalib: String = sys.props("dotty.tests.classes.scalaJSJavalib")
 
