@@ -15,7 +15,7 @@ import java.nio.file.*
 class BootstrappedOnlyCompilationTests {
   import ParallelTesting.*
   import TestConfiguration.*
-  import BootstrappedOnlyCompilationTests.*
+  import BootstrappedOnlyCompilationTests.{*, given}
   import CompilationTest.aggregateTests
 
   // Positive tests ------------------------------------------------------------
@@ -107,13 +107,13 @@ class BootstrappedOnlyCompilationTests {
 
   // Run tests -----------------------------------------------------------------
 
-  @Test def runMacros: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
     val compilationTest = withCoverage(compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"), FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyExcludelisted)))
-    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
+    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
-  @Test def runWithCompiler: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def runWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
     val basicTests = List(
       compileFilesInDir("tests/run-with-compiler", withCompilerOptions),
@@ -125,7 +125,7 @@ class BootstrappedOnlyCompilationTests {
       else compileDir("tests/old-tasty-interpreter-prototype", withTastyInspectorOptions) :: basicTests
 
     val compilationTest = withCoverage(aggregateTests(tests*))
-    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
+    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
   @Ignore @Test def runScala2LibraryFromTasty: Unit = {
@@ -138,12 +138,12 @@ class BootstrappedOnlyCompilationTests {
     ).limitThreads(2).checkRuns() // TODO reduce to limitThreads(1) if it still causes problems, this would be around 50% slower based on local benchmarking
   }
 
-  @Test def runBootstrappedOnly: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def runBootstrappedOnly: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runBootstrappedOnly")
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/run-bootstrapped", withCompilerOptions),
     ))
-    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest, "Run")
+    runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
   // Pickling Tests ------------------------------------------------------------
@@ -207,20 +207,4 @@ class BootstrappedOnlyCompilationTests {
   }
 }
 
-object BootstrappedOnlyCompilationTests extends ParallelTesting with CoverageSupport {
-  // Test suite configuration --------------------------------------------------
-
-  def maxDuration = 100.seconds
-  def numberOfWorkers = Runtime.getRuntime().availableProcessors()
-  def safeMode = Properties.testsSafeMode
-  def isInteractive = SummaryReport.isInteractive
-  def testFilter = Properties.testsFilter
-  def updateCheckFiles: Boolean = Properties.testsUpdateCheckfile
-  def failedTests = TestReporter.lastRunFailedTests
-
-  implicit val summaryReport: SummaryReporting = new SummaryReport
-  @AfterClass def tearDown(): Unit = {
-    super.cleanup()
-    summaryReport.echoSummary()
-  }
-}
+object BootstrappedOnlyCompilationTests extends ParallelTesting with CoverageSupport

@@ -66,7 +66,9 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
   override def size: Int = contentSize
 
   @inline private final def computeHash(o: K): Int = {
-    val h = if(o.asInstanceOf[AnyRef] eq null) 0 else o.hashCode
+    // Objects.hashCode is consistent with the requirements, namely:
+    // > Universal equality of numeric types is not supported (similar to `AnyRefMap`).
+    val h = java.util.Objects.hashCode(o)
     h ^ (h >>> 16)
   }
 
@@ -487,7 +489,7 @@ final class CollisionProofHashMap[K, V](initialCapacity: Int, loadFactor: Double
     if(i != 0) i else ordering.compare(key, node.key)
   }
 
-  @`inline` private def compare(key: K, hash: Int, node: RBNode): Int = {
+  @`inline` private def compare(key: K, @unused hash: Int, node: RBNode): Int = {
     /*val i = hash - node.hash
     if(i != 0) i else*/ ordering.compare(key, node.key)
   }
@@ -797,7 +799,7 @@ object CollisionProofHashMap extends SortedMapFactory[CollisionProofHashMap] {
     if(i != 0) i else ord.compare(key, node.key)
   }
 
-  @`inline` private def compare[K, V](key: K, hash: Int, node: RBNode[K, V])(implicit ord: Ordering[K]): Int = {
+  @`inline` private def compare[K, V](key: K, @unused hash: Int, node: RBNode[K, V])(implicit ord: Ordering[K]): Int = {
     /*val i = hash - node.hash
     if(i != 0) i else*/ ord.compare(key, node.key)
   }

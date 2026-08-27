@@ -21,11 +21,13 @@ import util.Stats
 import java.util.WeakHashMap
 import config.Config
 import reporting.*
+import reporting.Diagnostic.LoadingFailure
 import collection.mutable
 import cc.{CapturingType, derivedCapturingType, stripCapturing}
 
 import scala.annotation.internal.sharable
 import scala.compiletime.uninitialized
+import dotty.tools.dotc.transform.Specialization
 
 object SymDenotations {
 
@@ -442,7 +444,6 @@ object SymDenotations {
      *
      */
     def opaqueToBounds(info: Type, rhs: tpd.Tree, tparams: List[TypeSymbol])(using Context): Type =
-
       def setAlias(tp: Type) =
         def recur(self: Type): Unit = self match
           case RefinedType(parent, name, rinfo) => rinfo match
@@ -601,18 +602,33 @@ object SymDenotations {
     /** is this symbol the result of an erroneous definition? */
     def isError: Boolean = false
 
+    private def setAbsentInfo(): Unit = {
+      if (isCompleting)
+        assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
+          s"Illegal attempt to mark $this absent while completing using completer $myInfo")
+      myInfo = NoType
+    }
+
     /** Make denotation not exist.
      *  @pre `isCompleting` is false, or this is a ModuleCompleter or SymbolLoader
      */
     final def markAbsent()(using Context): Unit = {
-      if (isCompleting)
-        assert(myInfo.isInstanceOf[ModuleCompleter | SymbolLoader],
-          s"Illegal call to `markAbsent()` while completing $this using completer $myInfo")
-      myInfo = NoType
+      val wasAbsent = myInfo eq NoType
+      setAbsentInfo()
+      if !wasAbsent && (ctx ne NoContext) && (symbol ne NoSymbol) then
+        val failures = ctx.retainedSymbolLoadingFailures
+        if failures != null then failures.remove(symbol)
     }
 
+    /** Mark this symbol absent and retain the loading failure when retention is enabled. */
+    private[core] final def markLoadFailed(failure: LoadingFailure)(using Context): Unit =
+      setAbsentInfo()
+      val failures = ctx.retainedSymbolLoadingFailures
+      if failures != null then failures(symbol) = failure
+
     /** Is symbol known to not exist?
-     *  @param canForce  If this is true, the info may be forced to avoid a false-negative result
+     *  @param canForce  If true, force the info to avoid a false negative. In contexts that
+     *                   retain loading failures, report the failure for an absent symbol.
      */
     @tailrec
     final def isAbsent(canForce: Boolean = true)(using Context): Boolean = myInfo match {
@@ -626,7 +642,12 @@ object SymDenotations {
         isAbsent(canForce)
       case _ =>
         // Otherwise, no completion is necessary, see the preconditions of `markAbsent()`.
-        (myInfo `eq` NoType)
+        val absent = myInfo `eq` NoType
+        if absent && canForce && (ctx ne NoContext) && (symbol ne NoSymbol) then
+          val failures = ctx.retainedSymbolLoadingFailures
+          if failures != null then
+            failures.get(symbol).foreach(report.loadingError)
+        absent
         || (is(Invisible) && !ctx.mode.is(Mode.ResolveFromTASTy)) && ctx.isTyper
         || is(ModuleVal, butNot = Package) && moduleClass.isAbsent(canForce)
     }
@@ -645,6 +666,20 @@ object SymDenotations {
     /** Is this symbol an anonymous class? */
     final def isAnonymousClass(using Context): Boolean =
       isClass && initial.name.isAnonymousClassName
+
+    /** Is this symbol an specialized trait interface? */
+    final def isSpecializedTraitInterface(using Context): Boolean =
+      isClass && name.isSpecializedTraitInterfaceName
+
+    /** Is this symbol an specialized trait implementation class? */
+    final def isSpecializedTraitImplementationClass(using Context): Boolean =
+      isClass && name.isSpecializedTraitImplementationName
+
+    /** Is this symbol a specialized trait implementation class that 
+     * was generated from a specialization using only top classes / Nothing
+     * and is therefore not subject to a specialized interface */ 
+    final def isRawSpecializedTraitImplementationClass(using Context): Boolean =
+      isClass && name.isSpecializedTraitImplementationName
 
     final def isAnonymousFunction(using Context): Boolean =
       this.symbol.is(Method) && initial.name.isAnonymousFunctionName
@@ -898,7 +933,7 @@ object SymDenotations {
     /** Is this symbol a class of which `null` is a value? */
     final def isNullableClass(using Context): Boolean =
       if ctx.mode.is(Mode.SafeNulls) && !ctx.phase.erasedTypes
-      then symbol == defn.NullClass || symbol == defn.AnyClass || symbol == defn.MatchableClass
+      then symbol == defn.NullClass || symbol == defn.AnyClass || symbol == defn.AnyValClass || symbol == defn.MatchableClass
       else isNullableClassAfterErasure
 
     /** Is this symbol a class of which `null` is a value after erasure?
@@ -1048,6 +1083,15 @@ object SymDenotations {
 
     def isInlineMethod(using Context): Boolean =
       isAllOf(InlineMethod, butNot = Accessor)
+
+    def isInlineTrait(using Context): Boolean =
+      isAllOf(InlineTrait)
+    
+    def isSpecializedMethod(using Context): Boolean = 
+      Specialization.isSpecializedMethod(symbol)
+
+    def isSpecializedTrait(using Context): Boolean = 
+      Specialization.isSpecializedTrait(symbol)
 
     /** Does this method or field need to be retained at runtime */
     def isRetainedInline(using Context): Boolean =
@@ -2371,7 +2415,7 @@ object SymDenotations {
             tp.derivedCapturingType(recur(parent), refs)
 
           case tp: TypeProxy =>
-            def computeTypeProxy = {
+            def computeTypeProxy = ctx.handleRecursive("type proxy of", tp):
               val superTp = tp.superType
               val baseTp = recur(superTp)
               tp match {
@@ -2380,7 +2424,6 @@ object SymDenotations {
                 case _ =>
               }
               baseTp
-            }
             computeTypeProxy
 
           case tp: AndOrType =>
@@ -2440,7 +2483,7 @@ object SymDenotations {
     def computeMemberNames(keepOnly: NameFilter)(implicit onBehalf: MemberNames, ctx: Context): Set[Name] = {
       var names = Set[Name]()
       def maybeAdd(name: Name) = if (keepOnly(thisType, name)) names += name
-      try {
+      ctx.handleRecursive("member names of", this):
         for ptype <- parentTypes do
           ptype.classSymbol match
             case pcls: ClassSymbol =>
@@ -2459,10 +2502,6 @@ object SymDenotations {
           else info.decls.iterator
         for (sym <- ownSyms) maybeAdd(sym.name)
         names
-      }
-      catch {
-        case ex: Throwable => handleRecursive("member names", i"of $this", ex)
-      }
     }
 
     override final def fullNameSeparated(kind: QualifiedNameKind)(using Context): Name = {
@@ -2627,8 +2666,8 @@ object SymDenotations {
         else
           val assocFiles = multi
             .filterWithPredicate(_.symbol.maybeOwner.isPackageObject)
-            .aggregate(d => Set(d.symbol.associatedFile.nn), _ `union` _)
-          if assocFiles.size == 1 then
+            .aggregate(d => if d.symbol.associatedFile == null then Set.empty else Set(d.symbol.associatedFile.nn), _ `union` _)
+          if assocFiles.size <= 1 then
             multi // they are all overloaded variants from the same file
           else
             // pick the variant(s) from the youngest class file
@@ -2693,14 +2732,16 @@ object SymDenotations {
       true
     }
 
-    /** Unlink all package members defined in `file` in a previous run. */
-    def unlinkFromFile(file: AbstractFile)(using Context): Unit = {
+    /** Unlink all package members defined in `path` in a previous run. */
+    def unlinkFromFile(path: String)(using Context): Unit = {
       val scope = unforcedDecls.openForMutations
       for (sym <- scope.toList.iterator)
         // We need to be careful to not force the denotation of `sym` here,
         // otherwise it will be brought forward to the current run.
-        if (sym.defRunId != ctx.runId && sym.isClass && sym.asClass.compUnitInfo != null && sym.asClass.compUnitInfo.nn.associatedFile.path == file.path)
-          scope.unlink(sym, sym.lastKnownDenotation.name)
+        if sym.defRunId != ctx.runId && sym.isClass && sym.asClass.compUnitInfo != null then
+          val file = sym.asClass.compUnitInfo.nn.associatedFile
+          if file != null && file.path == path then
+            scope.unlink(sym, sym.lastKnownDenotation.name)
     }
   }
 

@@ -1,4 +1,16 @@
-6: Match case Unreachable
-13: Pattern Match
-20: Pattern Match
-21: Match case Unreachable
+-- [E030] Match case Unreachable Warning: tests/patmat/null.scala:6:9 ----------
+6 |    case _       =>
+  |         ^
+  |         Unreachable case
+-- [E121] Pattern Match Warning: tests/patmat/null.scala:13:9 ------------------
+13 |    case y              =>
+   |         ^
+   |Unreachable case except for null (if this is intentional, consider writing case null => instead).
+-- [E121] Pattern Match Warning: tests/patmat/null.scala:20:9 ------------------
+20 |    case y              =>
+   |         ^
+   |Unreachable case except for null (if this is intentional, consider writing case null => instead).
+-- [E030] Match case Unreachable Warning: tests/patmat/null.scala:21:9 ---------
+21 |    case _              =>
+   |         ^
+   |         Unreachable case

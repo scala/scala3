@@ -40,6 +40,9 @@ on:
         description: The SHA256 of the uploaded artifact (`win x86-64`)
         value      : ${{ jobs.build.outputs.win-x86_64-digest }}
 
+permissions:
+  contents: read
+  actions: read  # To read back the win-x86_64 artifact through the Actions API
 
 jobs:
   build:
@@ -53,13 +56,13 @@ jobs:
       win-x86_64-id    : ${{ steps.win-x86_64.outputs.artifact-id }}
       win-x86_64-digest: ${{ steps.win-x86_64-digest.outputs.digest }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: temurin
           java-version: ${{ inputs.java-version }}
           cache       : sbt
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
       - name: Build and pack the SDK (universal)
         run : ./project/scripts/sbt dist/Universal/stage
       - name: Build and pack the SDK (linux x86-64)
@@ -73,37 +76,37 @@ jobs:
       - name: Build and pack the SDK (win x86-64)
         run : ./project/scripts/sbt dist-win-x86_64/Universal/stage
       - name: Upload zip archive to GitHub Artifact (universal)
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         id  : universal
         with:
           path: ./dist/target/universal/stage
           name: scala3-universal
       - name: Upload zip archive to GitHub Artifact (linux x86-64)
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         id  : linux-x86_64
         with:
           path: ./dist/linux-x86_64/target/universal/stage
           name: scala3-x86_64-pc-linux
       - name: Upload zip archive to GitHub Artifact (linux aarch64)
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         id  : linux-aarch64
         with:
           path: ./dist/linux-aarch64/target/universal/stage
           name: scala3-aarch64-pc-linux
       - name: Upload zip archive to GitHub Artifact (mac x86-64)
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         id  : mac-x86_64
         with:
           path: ./dist/mac-x86_64/target/universal/stage
           name: scala3-x86_64-apple-darwin
       - name: Upload zip archive to GitHub Artifact (mac aarch64)
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         id  : mac-aarch64
         with:
           path: ./dist/mac-aarch64/target/universal/stage
           name: scala3-aarch64-apple-darwin
       - name: Upload zip archive to GitHub Artifact (win x86-64)
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         id  : win-x86_64
         with:
           path: ./dist/win-x86_64/target/universal/stage
@@ -111,5 +114,5 @@ jobs:
       - name: Compute SHA256 of the uploaded artifact (win x86-64)
         id  : win-x86_64-digest
         run : |
-          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o artifact.zip -L https://api.github.com/repos/scala/scala3/actions/artifacts/${{ steps.win-x86_64.outputs.artifact-id }}/zip
+          curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -o artifact.zip -L https://api.github.com/repos/${{ github.repository }}/actions/artifacts/${{ steps.win-x86_64.outputs.artifact-id }}/zip
           echo "digest=$(sha256sum artifact.zip | cut -d " " -f 1)" >> "$GITHUB_OUTPUT"

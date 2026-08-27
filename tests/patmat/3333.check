@@ -1,1 +1,8 @@
-10: Pattern Match Exhaustivity: NotNaN, _: IntNumber
+-- [E029] Pattern Match Exhaustivity Warning: tests/patmat/3333.scala:10:32 ----
+10 |  def test(o: IntegralNumber) = o match {
+   |                                ^
+   |                     match may not be exhaustive.
+   |
+   |                     It would fail on pattern case: NotNaN, _: IntNumber
+   |
+   | longer explanation available when compiling with `-explain`

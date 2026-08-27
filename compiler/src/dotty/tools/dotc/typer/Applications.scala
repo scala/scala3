@@ -185,7 +185,7 @@ object Applications {
     (0 until argsNum).map(i => if (i < arity - 1) selectorTypes(i) else elemTp).toList
   end seqSelectors
 
-  /** A utility class that matches results of unapplys with patterns. Two queriable members:
+  /** A utility class that matches results of unapplys with patterns. Two queryable members:
    *     val argTypes: List[Type]
    *     def typedPatterns(qual: untpd.Tree, typer: Typer): List[Tree]
    *  TODO: Move into Applications trait. No need to keep it outside. But it's a large
@@ -263,7 +263,7 @@ object Applications {
             case _ => None
         case _ => None
 
-    /** The computed argument types which will be the scutinees of the sub-patterns. */
+    /** The computed argument types which will be the scrutinees of the sub-patterns. */
     val argTypes: List[Type] =
       if unapplyName == nme.unapplySeq then
         unapplySeq(unapplyResult):
@@ -565,10 +565,10 @@ trait Applications extends Compatibility {
     protected def harmonizeArgs(args: List[TypedArg]): List[TypedArg]
 
     /** Signal failure with given message at position of given argument */
-    protected def fail(msg: Message, arg: Arg): Unit
+    protected def fail(msg: => Message, arg: Arg): Unit
 
     /** Signal failure with given message at position of the application itself */
-    protected def fail(msg: Message): Unit
+    protected def fail(msg: => Message): Unit
 
     protected def appPos: SrcPos
 
@@ -1065,9 +1065,9 @@ trait Applications extends Compatibility {
     def typedArg(arg: Arg, formal: Type): Arg = arg
     final def addArg(arg: TypedArg, formal: Type): Unit = ok = ok & argOK(arg, formal)
     def makeVarArg(n: Int, elemFormal: Type): Unit = {}
-    def fail(msg: Message, arg: Arg): Unit =
+    def fail(msg: => Message, arg: Arg): Unit =
       ok = false
-    def fail(msg: Message): Unit =
+    def fail(msg: => Message): Unit =
       ok = false
     def appPos: SrcPos = NoSourcePosition
     @threadUnsafe lazy val normalizedFun: Tree = ref(methRef, needLoad = false)
@@ -1139,12 +1139,12 @@ trait Applications extends Compatibility {
 
     override def appPos: SrcPos = app.srcPos
 
-    def fail(msg: Message, arg: Trees.Tree[T]): Unit = {
+    def fail(msg: => Message, arg: Trees.Tree[T]): Unit = {
       report.error(msg, arg.srcPos)
       ok = false
     }
 
-    def fail(msg: Message): Unit = {
+    def fail(msg: => Message): Unit = {
       report.error(msg, app.srcPos)
       ok = false
     }
@@ -1649,18 +1649,21 @@ trait Applications extends Compatibility {
 
   /** Is `tp` a unary function type or an overloaded type with only unary function
    *  types as alternatives?
+   *  If `skipImplicit` is true, leading implicit parameter sections are
+   *  skipped first.
    */
-  def isUnary(tp: Type)(using Context): Boolean = tp match {
-    case tp: MethodicType =>
-      tp.firstParamTypes match {
-        case ptype :: Nil => !ptype.isRepeatedParam
-        case _ => false
-      }
+  def isUnary(tp: Type, skipImplicit: Boolean)(using Context): Boolean = tp.stripPoly match
+    case mt: MethodType =>
+      if skipImplicit && mt.isImplicitMethod then
+        isUnary(tp.resultType, skipImplicit)
+      else
+        mt.paramInfos match
+          case ptype :: Nil => !ptype.isRepeatedParam
+          case _ => false
     case tp: TermRef =>
-      tp.denot.alternatives.forall(alt => isUnary(alt.info))
+      tp.denot.alternatives.forall(alt => isUnary(alt.info, skipImplicit))
     case _ =>
       false
-  }
 
   /** Should we tuple or untuple the argument before application?
     *  If auto-tupling is enabled then
@@ -1671,14 +1674,15 @@ trait Applications extends Compatibility {
     *     does not consist only of unary alternatives.
     */
   def needsTupledDual(funType: Type, pt: FunProto)(using Context): Boolean =
+    val skipImplicit = pt.applyKind != ApplyKind.Using
     pt.args match
       case untpd.Tuple(elems) :: Nil =>
         elems.length > 1
         && pt.applyKind == ApplyKind.InfixTuple
-        && !isUnary(funType)
+        && !isUnary(funType, skipImplicit)
       case args =>
         args.lengthCompare(1) > 0
-        && isUnary(funType)
+        && isUnary(funType, skipImplicit)
         && Feature.autoTuplingEnabled
 
   /** If `tree` is a complete application of a compiler-generated `apply`

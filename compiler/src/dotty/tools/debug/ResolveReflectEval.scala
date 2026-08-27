@@ -218,7 +218,7 @@ private class ResolveReflectEval(config: ExpressionCompilerConfig, expressionSto
         .filter(term => term.isField)
         .find { field =>
           field.name match
-            case DerivedName(underlying, _) if field.isPrivate =>
+            case DerivedName(underlying, _) if field.is(Private) =>
               underlying == originalName
             case DerivedName(DerivedName(_, info: QualifiedInfo), _) =>
               info.name == originalName

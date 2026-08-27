@@ -47,6 +47,10 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
   def tabComplete(src: String)(implicit state: State): List[String] =
     completions(src.length, src, state).map(_.label).sorted.distinct
 
+  /** The signatures offered under `label`, i.e. all of its overloads */
+  def tabCompleteSignatures(src: String, label: String)(implicit state: State): List[String] =
+    completions(src.length, src, state).filter(_.label == label).map(_.description).sorted
+
   extension [A](state: State)
     infix def andThen(op: State ?=> A): A = op(using state)
 
@@ -63,7 +67,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
 
   /** Returns failures: None if all is well, Some for an error */
   private def testScript(name: => String, lines: List[String], scriptFile: Option[JFile] = None): Option[String] = {
-    val prompt = "scala>"
+    val prompt = "scala> "
 
     def evaluate(state: State, input: String) =
       try {
@@ -91,7 +95,7 @@ extends ReplDriver(options, new PrintStream(out, true, StandardCharsets.UTF_8.na
       resetToInitial(opts)
 
       assert(inputLines.head.startsWith(prompt),
-        s"""Each script must start with the prompt: "$prompt"""")
+        s"""[$name]: Each script must start with the prompt: "$prompt"""")
       val inputRes = inputLines.filter(_.startsWith(prompt))
 
       val buf = new ArrayBuffer[String]

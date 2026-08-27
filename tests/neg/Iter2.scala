@@ -23,7 +23,7 @@ object Test {
 
   implicit class IterableTransforms[A, C[X] <: Iterable[X], D[X] <: SubIterable[X]]
     (val dummy: Unit) {
-    def foo(c: Iterable[A] with FromIterator[C], d: Iterable[A] with FromIterator[D]): Unit = {
+    def foo(c: Iterable[A] & FromIterator[C], d: Iterable[A] & FromIterator[D]): Unit = {
       var cget = c.get()
       var dget = d.get()
       dget = cget // error

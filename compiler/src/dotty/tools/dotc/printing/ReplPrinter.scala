@@ -32,8 +32,9 @@ class ReplPrinter(_ctx: Context) extends RefinedPrinter(_ctx) {
     else
       var c = ctx
       while c ne NoContext do
-        if c.isImportContext && importSiteMatches(c.importInfo.nn.site, owner) then
-          val result = importedNameFrom(c.importInfo.nn, sym.name)
+        val importInfo = c.importInfoIfImportContext
+        if importInfo != null && importSiteMatches(importInfo.site, owner) then
+          val result = importedNameFrom(importInfo, sym.name)
           if result != null then return result
 
         c = c.outer

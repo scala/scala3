@@ -325,7 +325,7 @@ The result will reference a variable that is defined in the next stage.
 ```
 
 To catch both scope extrusion scenarios, our system restricts the use of quotes by only allowing a quote to be spliced if it was not extruded from a splice scope.
-Unlike level consistency, this is checked at run-time[^4] rather than compile-time to avoid making the static type system too complicated.
+Unlike level consistency, this is checked at run-time[^3] rather than compile-time to avoid making the static type system too complicated.
 
 Each `Quotes` instance contains a unique scope identifier and refers to its parent scope, forming a stack of identifiers.
 The parent of the scope of a `Quotes` is the scope of the `Quotes` used to create the enclosing quote.
@@ -631,5 +631,4 @@ def setForExpr[T: Type]()(using Quotes): Expr[Set[T]] =
 
 [^1]: [Scalable Metaprogramming in Scala 3](https://infoscience.epfl.ch/record/299370)
 [^2]: [Semantics-preserving inlining for metaprogramming](https://dl.acm.org/doi/10.1145/3426426.3428486)
-[^3]: Implemented in the Scala 3 Dotty project https://github.com/lampepfl/dotty. sbt library dependency `"org.scala-lang" %% "scala3-staging" % scalaVersion.value`
-[^4]: Using the `-Xcheck-macros` compiler flag
+[^3]: Using the `-Xcheck-macros` compiler flag

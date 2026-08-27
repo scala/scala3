@@ -129,6 +129,7 @@ inline def g(x: Int): Int =
 methodWithErasedInt2(5)  // ok
 methodWithErasedInt2(f(5))  // error, f(22) is not a pure expression
 methodWithErasedInt2(g(5))  // ok since `g` is `inline`.
+```
 
 Besides parameters, `val` definitions can also be marked with `erased`.
 These will also only be usable as arguments to `erased` parameters or

@@ -12,7 +12,7 @@ object Versions {
    *
    *  Warning: Change of this variable needs to be consulted with `expectedTastyVersion`
    */
-  val referenceVersion = "3.9.0-RC1"
+  val referenceVersion = "3.9.0"
 
   /** Version of the Scala compiler targeted in the current release cycle
    *  Contains a version without RC/SNAPSHOT/NIGHTLY specific suffixes
@@ -50,10 +50,8 @@ object Versions {
    *      - in release candidate branch is experimental if {patch == 0}
    *      - in stable release is always non-experimental
    */
-  // TODO: temporary downgraded to 28.9-exp-1 to allow consuming 3.9.0-RC reference compiler. Increment to 28.10-exp-1 when 3.9.0 is released and before 3.10.0-RC1 is published
-  val expectedTastyVersion = "28.9-experimental-1"
-  // TODO: Restore the check once we're bootstrapped on stable 3.9, breaks the nightly releases
-  if (!referenceVersion.startsWith("3.9.0-RC")) checkReleasedTastyVersion()
+  val expectedTastyVersion = "28.10-experimental-1"
+  checkReleasedTastyVersion()
 
   /** Final version of Scala compiler, controlled by environment variables. */
   val dottyVersion = {
@@ -89,12 +87,7 @@ object Versions {
    *   - `3.M.0`     if `P > 0`
    *   - `3.(M-1).0` if `P = 0`
    */
-  val mimaPreviousDottyVersion = "3.9.0-RC1" // TODO: update to 3.9.0 when released
-
-  /** Version of Scala CLI to download */
-  val scalaCliLauncherVersion = "1.15.0"
-  /** Version of Coursier to download for initializing the local maven repo of Scala command */
-  val coursierJarVersion = "2.1.25-M26"
+  val mimaPreviousDottyVersion = "3.9.0"
 
   /* Tests TASTy version invariants during NIGHLY, RC or Stable releases */
   def checkReleasedTastyVersion(): Unit = {

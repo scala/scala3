@@ -92,19 +92,19 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
     script =
       """|scala> new C().c
          |-- [E171] Type Error: ----------------------------------------------------------
-         |1 | new C().c
-         |  | ^^^^^^^
-         |  | missing argument for parameter c of constructor C in class C: (c: Int): C
+         |1 |new C().c
+         |  |^^^^^^^
+         |  |missing argument for parameter c of constructor C in class C: (c: Int): C
          |1 error found
          |
          |scala> new C(13).c
-         |val res1: Int = 13
+         |val res0: Int = 13
          |
          |scala> class C { val c = 42 }
          |// defined class C
          |
          |scala> new C().c
-         |val res2: Int = 42
+         |val res1: Int = 42
          |""".stripMargin
   )
 
@@ -141,9 +141,9 @@ class ShadowingTests extends ReplTest(options = ShadowingTests.options):
     testScript(name = "<shadow-subdir-util>",
       """|scala> import util.Try
          |-- [E008] Not Found Error: -----------------------------------------------------
-         |1 | import util.Try
-         |  |             ^^^
-         |  |             value Try is not a member of util
+         |1 |import util.Try
+         |  |            ^^^
+         |  |            value Try is not a member of util
          |1 error found
          |
          |scala> object util { class Try { override def toString = "you've gotta try!" }  }

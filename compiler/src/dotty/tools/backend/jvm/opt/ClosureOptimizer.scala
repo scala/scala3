@@ -18,9 +18,9 @@ import scala.annotation.switch
 import scala.collection.immutable.IntMap
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
-import scala.tools.asm.Opcodes.*
-import scala.tools.asm.Type
-import scala.tools.asm.tree.*
+import org.objectweb.asm.Opcodes.*
+import org.objectweb.asm.Type
+import org.objectweb.asm.tree.*
 import dotty.tools.dotc.util.NoSourcePosition
 import dotty.tools.backend.jvm.BTypes.InternalName
 import dotty.tools.backend.jvm.analysis.{AnalysisUtils, AsmAnalyzer, ProdConsAnalyzer}
@@ -107,7 +107,7 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
         val ownerClass = closureInitsBeforeDCE.head._2.ownerClass.internalName
 
         // Advanced ProdCons queries (initialProducersForValueAt) expect no unreachable code.
-        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph, optimizerUtils)
+        LocalOptImpls.minimalRemoveUnreachableCode(method, ownerClass, callGraph)
 
         if (Limits.sizeOKForSourceValue(method)) callGraph.closureInstantiations.get(method) match {
           case Some(closureInits) =>
@@ -240,7 +240,10 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
         receiverProducers.size == 1 && receiverProducers.head == indy
       }
 
-      def isSpecializedVersion(specName: String, nonSpecName: String) = specName.startsWith(nonSpecName) && specializationSuffix.pattern.matcher(specName.substring(nonSpecName.length)).matches
+      def isSpecializedVersion(specName: String, nonSpecName: String) =
+        specName.startsWith(nonSpecName)
+          && ((specName == "applyVoid" && nonSpecName == "apply" && invocation.owner.startsWith("scala/Function"))
+              || specializationSuffix.pattern.matcher(specName.substring(nonSpecName.length)).matches)
 
       def sameOrSpecializedType(specTp: Type, nonSpecTp: Type) = {
         specTp == nonSpecTp || {
@@ -549,7 +552,7 @@ class ClosureOptimizer(optimizerUtils: OptimizerUtils,
    * Stores a local variable index the opcode offset required for operating on that variable.
    *
    * The xLOAD / xSTORE opcodes are in the following sequence: I, L, F, D, A, so the offset for
-   * a local variable holding a reference (`A`) is 4. See also method `getOpcode` in [[scala.tools.asm.Type]].
+   * a local variable holding a reference (`A`) is 4. See also method `getOpcode` in [[org.objectweb.asm.Type]].
    */
   private case class Local(local: Int, opcodeOffset: Int) {
     def size = if (loadOpcode == LLOAD || loadOpcode == DLOAD) 2  else 1

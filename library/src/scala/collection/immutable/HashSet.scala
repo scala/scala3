@@ -645,7 +645,7 @@ private final class BitmapIndexedSetNode[A](
           // escalate (singleton or empty) result
           if (this.size == subNode.size) subNodeNew.asInstanceOf[BitmapIndexedSetNode[A]]
           // inline value (move to front)
-          else copyAndMigrateFromNodeToInline(bitpos, elementHash, subNode, subNodeNew)
+          else copyAndMigrateFromNodeToInline(bitpos, subNode, subNodeNew)
         case subNodeNewSize if subNodeNewSize > 1 =>
           // modify current node (set replacement node)
           copyAndSetNode(bitpos, subNode, subNodeNew)
@@ -733,7 +733,7 @@ private final class BitmapIndexedSetNode[A](
           this.cachedJavaKeySetHashCode = subNodeNew.cachedJavaKeySetHashCode
           this
         } else {
-          migrateFromNodeToInlineInPlace(bitpos, originalHash, elementHash, subNode, subNodeNew)
+          migrateFromNodeToInlineInPlace(bitpos, subNode, subNodeNew)
           this
         }
       } else {
@@ -822,20 +822,6 @@ private final class BitmapIndexedSetNode[A](
     new BitmapIndexedSetNode[A](dataMap | bitpos, nodeMap, dst, dstHashes, size + 1, cachedJavaKeySetHashCode + elementHash)
   }
 
-  def copyAndSetValue(bitpos: Int, key: A, originalHash: Int, elementHash: Int) = {
-    val dataIx = dataIndex(bitpos)
-    val idx = TupleLength * dataIx
-
-    val src = this.content
-    val dst = new Array[Any](src.length)
-
-    // copy 'src' and set 1 element(s) at position 'idx'
-    arraycopy(src, 0, dst, 0, src.length)
-    dst(idx) = key
-
-    new BitmapIndexedSetNode[A](dataMap | bitpos, nodeMap, dst, originalHashes, size, cachedJavaKeySetHashCode)
-  }
-
   def copyAndRemoveValue(bitpos: Int, elementHash: Int) = {
     val dataIx = dataIndex(bitpos)
     val idx = TupleLength * dataIx
@@ -903,7 +889,7 @@ private final class BitmapIndexedSetNode[A](
     this
   }
 
-  def copyAndMigrateFromNodeToInline(bitpos: Int, elementHash: Int, oldNode: SetNode[A], node: SetNode[A]) = {
+  def copyAndMigrateFromNodeToInline(bitpos: Int, oldNode: SetNode[A], node: SetNode[A]) = {
     val idxOld = this.content.length - 1 - nodeIndex(bitpos)
     val dataIxNew = dataIndex(bitpos)
     val idxNew = TupleLength * dataIxNew
@@ -944,7 +930,7 @@ private final class BitmapIndexedSetNode[A](
    *  @param oldNode the node currently stored at position `bitpos`
    *  @param node the node containing the single element to migrate inline
    */
-  def migrateFromNodeToInlineInPlace(bitpos: Int, originalHash: Int, elementHash: Int, oldNode: SetNode[A], node: SetNode[A]): Unit = {
+  def migrateFromNodeToInlineInPlace(bitpos: Int, oldNode: SetNode[A], node: SetNode[A]): Unit = {
     val idxOld = this.content.length - 1 - nodeIndex(bitpos)
     val dataIxNew = dataIndex(bitpos)
     val element = node.getPayload(0)
@@ -1438,7 +1424,8 @@ private final class BitmapIndexedSetNode[A](
   override def hashCode(): Int =
     throw new UnsupportedOperationException("Trie nodes do not support hashing.")
 
-  override def toString(): String = f"BitmapIndexedSetNode(size=$size, dataMap=$dataMap%x, nodeMap=$nodeMap%x)" // content=${scala.runtime.ScalaRunTime.stringOf(content)}
+  override def toString(): String =
+    s"BitmapIndexedSetNode(size=$size, dataMap=${dataMap.toHexString}, nodeMap=${nodeMap.toHexString})" // content=${scala.runtime.ScalaRunTime.stringOf(content)}
 
   override def copy(): BitmapIndexedSetNode[A] = {
     val contentClone = content.clone()
@@ -1986,7 +1973,7 @@ private[collection] final class HashSetBuilder[A] extends ReusableBuilder[A, Has
 
   /** The last given out HashSet as a return value of `result()`, if any, otherwise null.
    *  Indicates that on next add, the elements should be copied to an identical structure, before continuing
-   *  mutations. 
+   *  mutations.
    */
   @annotation.stableNull
   private var aliased: HashSet[A] | Null = null

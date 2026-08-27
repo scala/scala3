@@ -8,6 +8,14 @@ on:
   pull_request:
     branches-ignore:
       - 'language-reference-stable'
+    paths:
+      - 'docs/**'
+      - 'scaladoc*/**'
+      - 'compiler/src/dotty/tools/dotc/reporting/**' # When error codes or messages are updated, we need to update the documentation
+      - 'project/scripts/checkSidebarDocs.scala'
+      - 'project/scripts/validateScaladocLinks.sh'
+      - 'project/scripts/checkErrorCodeSnippets*.scala'
+      - '.github/workflows/scaladoc.yaml'
   merge_group:
 permissions:
   contents: read
@@ -25,25 +33,24 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
           cache: 'sbt'
 
-      - uses: sbt/setup-sbt@v1
+      - uses: sbt/setup-sbt@8feba82adc7f01ddcf8165b86f778bdb5b82cebc # v1.5.7
       - name: Compile and test scala3doc-js
         run: ./project/scripts/sbt scaladoc-js-main/test
 
       - name: Compile and test
         run: |
           ./project/scripts/sbt scaladoc/test
-          # TODO: invalid interpolation of inherited @define #24963
-          # ./project/scripts/sbt dist/Universal/stage
-          # ./project/scripts/cmdScaladocTests
+          ./project/scripts/sbt dist/Universal/stage
+          ./project/scripts/cmdScaladocTests
 
       - name: Locally publish self
         run: ./project/scripts/sbt scaladoc/publishLocal
@@ -61,40 +68,42 @@ jobs:
         run: ./project/scripts/sbt scaladoc/generateScalaDocumentation
 
       - name: Upload scaladoc output
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: scaladoc-output
           path: scaladoc/output/scala3
 
   validate-docs:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.15
+      - uses: coursier/cache-action@95e5b1029b6b86e7bac033ee44a0697d8a527d2d # v8.1.1
+      - uses: VirtusLab/scala-cli-setup@8db5313925605c20e292348c1749e80dac7eed0f # v1.16.0
 
       - name: Validate docs sidebars
         run: scala-cli ./project/scripts/checkSidebarDocs.scala
 
   validate-generated-docs:
     needs: build
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Download scaladoc output
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: scaladoc-output
           path: ./scaladoc-output/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b # v1.321.0
         with:
           ruby-version: '3.3'
 
@@ -132,10 +141,10 @@ jobs:
 
     steps:
       - name: Git Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
           distribution: 'temurin'
           java-version: 17
@@ -144,11 +153,12 @@ jobs:
         run: true # ./project/scripts/sbt scaladoc/sourceLinksIntegrationTest:test
 
   check-error-code-snippets:
+    if: github.event_name != 'pull_request' || !contains(github.event.pull_request.body, '[skip ci]')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: coursier/cache-action@v8
-      - uses: VirtusLab/scala-cli-setup@v1.15
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: coursier/cache-action@95e5b1029b6b86e7bac033ee44a0697d8a527d2d # v8.1.1
+      - uses: VirtusLab/scala-cli-setup@8db5313925605c20e292348c1749e80dac7eed0f # v1.16.0
         with:
           jvm: temurin:17
           apps: sbt

@@ -369,7 +369,7 @@ class Namer { typer: Typer =>
         case d: PackageClassDenotation =>
           // Remove existing members coming from a previous compilation of this file,
           // they are obsolete.
-          d.unlinkFromFile(ctx.source.file)
+          d.unlinkFromFile(ctx.source.path)
         case _ =>
       }
       existing
@@ -1023,7 +1023,7 @@ class Namer { typer: Typer =>
       val sym = denot.symbol
 
       def register(child: Symbol, parentCls: ClassSymbol) = {
-        if (parentCls.is(Sealed))
+        if (parentCls.is(Sealed) && !(child.isAnonymousClass && parentCls.isSpecializedTrait))
           if ((child.isInaccessibleChildOf(parentCls) || child.isAnonymousClass) && !sym.hasAnonymousChild)
             addChild(parentCls, parentCls)
           else if (!parentCls.is(ChildrenQueried))

@@ -19,7 +19,12 @@ import org.junit.Ignore
     // or `RunTestWithCoverage` for "run" tests with output, or `WarnTestWithCoverage` for "warn" tests with warnings
     type TestKind = PosTestWithCoverage
     val compilationTest = withCoverage(aggregateTests(test))
-    runWithCoverageOrFallback[TestKind](compilationTest, testGroup.name)
+    runWithCoverageOrFallback[TestKind](compilationTest)
+
+  @Test def rewrite(): Unit =
+    given testGroup: TestGroup = TestGroup("single-test")
+    val options = defaultOptions.and("-indent").and("-rewrite")
+    compileFile("tests/rewrites/i8982.scala", options).checkRewrites()
 
   @Test def bestEffortTasty(): Unit =
     given testGroup: TestGroup = TestGroup("single-test")

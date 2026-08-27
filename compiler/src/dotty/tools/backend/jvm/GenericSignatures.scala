@@ -31,10 +31,14 @@ object GenericSignatures {
    *
    *  @param sym0 The symbol for which to define the signature
    *  @param info The type of the symbol
+   *  @param onClassRef Invoked for every class whose name is written into the signature
    *  @return The signature if it could be generated, `null` otherwise.
    */
-  def javaSig(sym0: Symbol, info: Type)(using Context): StringBuilder | Null =
-    if mayNeedSignature(sym0, info) then atPhase(erasurePhase)(javaSig0(sym0, info))
+  def javaSig(sym0: Symbol, info: Type, onClassRef: ClassSymbol => Unit)(using Context): StringBuilder | Null =
+    if mayNeedSignature(sym0, info) then
+      ctx.handleRecursive("generating the generic signature of", sym0, sym0):
+        atPhase(erasurePhase):
+          javaSig0(sym0, info, onClassRef)
     else null
 
   private def mayNeedSignature(sym0: Symbol, info: Type)(using Context) = {
@@ -49,7 +53,7 @@ object GenericSignatures {
     else mayNeedSignature(info)
   }
 
-  private def javaSig0(sym0: Symbol, info: Type)(using Context): StringBuilder | Null = {
+  private def javaSig0(sym0: Symbol, info: Type, onClassRef: ClassSymbol => Unit)(using Context): StringBuilder | Null = {
     // This works as long as mangled names are always valid Java identifiers (see git history of this method).
     def sanitizeName(name: Name): String = name.mangledString
 
@@ -221,21 +225,28 @@ object GenericSignatures {
                     builder.append("*")
                 else
                   // For bounded arguments, we can't translate it cleanly so emit an erased type
-                  jsig(erasure(a.tycon))
+                  boxedSig(erasure(a.tycon))
               case res =>
                 // value classes cannot appear as generic arguments
                 jsig(res, vcBoxing = ValueClassBoxing.Box)
           case _ =>
-            val typeSym = tp.typeSymbol
-            if typeSym.isTypeParam then
-              typeParamSig(typeSym.name)
-            else
+            boxedSig(tp.widenDealias.widenNullaryMethod)
               // `tp` might be a singleton type referring to a getter.
               // Hence the widenNullaryMethod.
-              boxedSig(tp.widenDealias.widenNullaryMethod)
         }
 
-      pre.widenDealias match {
+      onClassRef(sym)
+
+      // when generating a java generic signature that includes
+      // a selection of an inner class p.I, (p = `pre`, I = `cls`) must
+      // rewrite to p'.I, where p' refers to the class that directly defines
+      // the nested class I. see:
+      // https://github.com/scala/scala3/issues/26532
+      // https://github.com/scala/bug/issues/2585
+      val reboundPre =
+        if pre.exists then pre.baseType(sym.owner)
+        else pre
+      reboundPre.widenDealias match {
         // If the class is an inner class of a generic class, we must emit the outer generic class with its parameters
         // (see test `inner-of-generic` for an example of Java compatibility)
         case RefOrAppliedType(preSym: ClassSymbol, prePre, preArgs) if preArgs.nonEmpty =>
@@ -428,7 +439,7 @@ object GenericSignatures {
     jsig(info, toplevel = true)
     for annot <- sym0.annotations do
       annot match
-        case ThrownException(e) =>
+        case ThrownException(e) if sym0.is(Method) => // ThrowsSignature is only valid in MethodSignature
           builder.append('^')
           jsig(e, toplevel = true)
         case _ => ()

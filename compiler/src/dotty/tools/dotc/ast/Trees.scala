@@ -528,11 +528,15 @@ object Trees {
       putAttachment(untpd.KindOfApply, kind)
       this
 
-    /** The kind of this application. Works reliably only for untyped trees; typed trees
-     *  are under no obligation to update it correctly.
-     */
-    def applyKind: ApplyKind =
-      attachmentOrElse(untpd.KindOfApply, ApplyKind.Regular)
+    /** The kind of this application. */
+    def applyKind(using Context): ApplyKind =
+      // The attachement is only guaranteed to be set on untyped trees.
+      if hasAttachment(untpd.KindOfApply) then
+        attachment(untpd.KindOfApply)
+      else
+        val funTpe = fun.typeOpt
+        if funTpe.exists && funTpe.widen.stripPoly.isImplicitMethod then ApplyKind.Using
+        else ApplyKind.Regular
   }
 
   /** fun[args] */
@@ -899,7 +903,7 @@ object Trees {
     override def isTerm: Boolean = name.isTermName
 
     override def nameSpan(using Context): Span =
-      if span.exists then Span(span.start, span.start + name.toString.length) else span
+      if span.exists then Span(span.start, span.start + name.length) else span
   }
 
   /** tree_1 | ... | tree_n */
@@ -1683,7 +1687,7 @@ object Trees {
           case Nil => x
         fold(x, trees)
 
-      def foldOver(x: X, tree: Tree)(using Context): X =
+      def foldOver(x: X, tree: Tree)(using Context): X = ctx.handleRecursive("folding over", tree):
         if (tree.source != ctx.source && tree.source.exists)
           foldOver(x, tree)(using ctx.withSource(tree.source))
         else {

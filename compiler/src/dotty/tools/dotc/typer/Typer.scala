@@ -52,6 +52,7 @@ import cc.{Setup, CheckCaptures, isRetainsLike, derivesFromCapSet}
 import config.MigrationVersion
 import dotty.tools.dotc.core.Mode.Interactive
 import transform.CheckUnused.withOriginalName
+import dotty.tools.dotc.printing.Formatting
 
 import scala.annotation.{unchecked as _, *}
 import dotty.tools.dotc.util.chaining.*
@@ -172,10 +173,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                with Checking
                with QuotesAndSplices
                with Deriving
-               with Migrations {
+               with Migrations
+               with SpecStrings {
 
   import Typer.*
-  import tpd.{cpy => _, _}
+  import tpd.{cpy => _, *}
   import untpd.cpy
 
   /** The scope of the typer.
@@ -283,7 +285,8 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           // wildcard imports, provided both are in contexts with same scope
           found
         else if newPrec == WildImport && ctx.outersIterator.exists: ctx =>
-          ctx.isImportContext && namedImportRef(ctx.importInfo.uncheckedNN).exists
+          val importInfo = ctx.importInfoIfImportContext
+          (importInfo `ne` null) && namedImportRef(importInfo).exists
         then
           // Don't let two ambiguous wildcard imports rule over
           // a winning named import. See pos/i18529.
@@ -311,14 +314,14 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
        *  @param using_Context the outer context of `precCtx`
        */
       def checkImportAlternatives(previous: Type, prevPrec: BindingPrec, prevCtx: Context)(using Context): Type =
-        if altImports != null && ctx.isImportContext then
+        val curImport = ctx.importInfoIfImportContext
+        if altImports != null && curImport != null then
           def addAltImport(altImp: TermRef) =
             if !TypeComparer.isSameRef(previous, altImp)
               && !altImports.exists(TypeComparer.isSameRef(_, altImp))
             then
               altImports += altImp
 
-          val curImport = ctx.importInfo.uncheckedNN
           namedImportRef(curImport) match
             case altImp: TermRef =>
               if prevPrec == WildImport then
@@ -553,11 +556,11 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           else {  // find import
             val outer = ctx.outer
             val curImport = ctx.importInfo
-            def updateUnimported() =
-              if (curImport.nn.unimported ne NoSymbol) unimported += curImport.nn.unimported
             if (curOwner.is(Package) && curImport != null && curImport.isRootImport && previous.exists)
               previous // no more conflicts possible in this case
             else if (isPossibleImport(NamedImport) && curImport != null && (curImport ne outer.importInfo)) {
+              def updateUnimported() =
+                if (curImport.unimported ne NoSymbol) unimported += curImport.unimported
               val namedImp = namedImportRef(curImport)
               if (namedImp.exists)
                 checkImportAlternatives(namedImp, NamedImport, ctx)(using outer)
@@ -919,6 +922,12 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           tree, pt, IgnoredProto(pt), qual, ctx.typerState.ownedVars, this, inSelect = true)
       else EmptyTree
 
+    // Otherwise, under magic, if selector is `$spec`, convert to spec string representation.
+    def trySpecString(tree: untpd.Select, qual: Tree) =
+      if selName == nme.SPEC then
+        ref(defn.Compiletime_spec).appliedTo(qual).withSpan(tree.span)
+      else EmptyTree
+
     // Otherwise, try a GADT approximation if we're trying to select a member
     def tryGadt() =
       if ctx.gadt.isNarrowing then
@@ -1004,6 +1013,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       .orElse(tryNamedTupleSelection())
       .orElse(trySmallGenericTuple(qual, withCast = true))
       .orElse(tryExt(tree, qual))
+      .orElse(trySpecString(tree, qual))
       .orElse(tryGadt())
       .orElse(tryDefineFurther())
       .orElse(tryDynamic())
@@ -1171,7 +1181,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
 
   def typedThis(tree: untpd.This)(using Context): Tree = {
     record("typedThis")
-    assignType(tree)
+    val res = assignType(tree)
+    if res.tpe.typeSymbol.name.isTopLevelPackageObjectName then
+      report.error(em"Top-level definitions cannot refer to ${Formatting.hl("this")}", tree)
+    res
   }
 
   def typedSuper(tree: untpd.Super, pt: Type)(using Context): Tree = {
@@ -2414,7 +2427,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         typedExpr(tree.body, pt1)(using ctx.addNotNullInfo(guard1.notNullInfoIf(true))),
         pt1, ctx.scope.toList)
       if ctx.gadt.isNarrowing then
-        // Store GADT constraint to later retrieve it (in PostTyper, for now).
+        // Store GADT constraint for retrieval in PostTyper and PatternMatcher.
         // GADT constraints are necessary to correctly check bounds of type app,
         // see tests/pos/i12226 and issue #12226. It might be possible that this
         // will end up taking too much memory. If it does, we should just limit
@@ -3519,9 +3532,33 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
             addAccessorDefs(cls,
               typedStats(impl.body, dummy)(using ctx.inClassContext(self1.symbol))._1)))
 
+      if !ctx.isAfterTyper && cls.isInlineTrait then
+        body1.map(_.symbol).filter(_.isInlineTrait).foreach(innerInlTrait =>
+          report.error(
+            em"Implementation restriction: an inline trait cannot be defined inside of another inline trait",
+            innerInlTrait.srcPos
+          )
+        )
+        val membersToInline = body1.filter(member => Inlines.isInlineableFromInlineTrait(cls, member))
+        membersToInline.foreach {
+          case tdef: TypeDef if tdef.symbol.isClass =>
+            def rec(paramss: List[List[Symbol]]): Unit = paramss match {
+              case (param :: _) :: _ if param.isTerm =>
+                report.error(em"Implementation restriction: inner classes inside inline traits cannot have term parameters", param.srcPos)
+              case _ :: paramss =>
+                rec(paramss)
+              case _ =>
+            }
+            rec(tdef.symbol.primaryConstructor.paramSymss)
+          case _ =>
+        }
+        val wrappedMembersToInline = Block(membersToInline, unitLiteral).withSpan(cdef.span)
+        PrepareInlineable.registerInlineInfo(cls, wrappedMembersToInline)
+
       checkNoDoubleDeclaration(cls)
       val impl1 = cpy.Template(impl)(constr1, parents1, Nil, self1, body1)
         .withType(dummy.termRef)
+      migrate(AppToMain.rewrite(cdef, impl, impl1, cls))
       if (!cls.isOneOf(AbstractOrTrait) && !ctx.isAfterTyper)
         checkRealizableBounds(cls, cdef.sourcePos.withSpan(cdef.nameSpan))
       if cls.isEnum || !cls.isRefinementClass && firstParentTpe.classSymbol.isEnum then
@@ -3534,8 +3571,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         cdef1.tpe.derivesFrom(defn.DynamicClass) &&
         !Feature.dynamicsEnabled
       if (reportDynamicInheritance) {
-        val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
-        report.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef.srcPos)
+        val severity =
+          if parents1.exists(_.tpe.isRef(defn.DynamicClass)) then report.Severity.Error
+          else report.Severity.FeatureWarning
+        report.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, severity, cdef.srcPos)
       }
 
       checkNonCyclicInherited(cls.thisType, cls.info.parents, cls.info.decls, cdef.srcPos)
@@ -3820,6 +3859,15 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           val resTpe = TypeOps.nestedPairs(elemTpes)
           app1.cast(resTpe)
 
+  def typedInterpolated(tree: untpd.InterpolatedString, pt: Type, locked: TypeVars)(using Context) =
+    val tree1 =
+      if tree.id == nme.SPEC then
+        val segments1 = processSpec(tree.segments)
+        if segments1.corresponds(tree.segments)(_ eq _) then tree
+        else untpd.cpy.InterpolatedString(tree)(tree.id, segments1)
+      else tree
+    typedUnadapted(desugar(tree1), pt, locked)
+
  /** Checks if `tree` is a named tuple with one element that could be
   *  interpreted as an assignment, such as `(x = 1)`. If so, issues a warning.
   *  However, only checks the Tuple case if we're not within a type,
@@ -3863,7 +3911,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
    *  @param locked      the set of type variables of the current typer state that cannot be interpolated
    *                     at the present time
    */
-  def typedUnadapted(initTree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = {
+  def typedUnadapted(initTree: untpd.Tree, pt: Type, locked: TypeVars)(using Context): Tree = ctx.handleRecursive("typing", initTree, initTree) {
     record("typedUnadapted")
     val xtree = expanded(initTree)
     xtree.removeAttachment(TypedAhead) match {
@@ -3953,6 +4001,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case tree: untpd.Parens =>
             checkDeprecatedAssignmentSyntax(tree)
             typedUnadapted(desugar(tree, pt), pt, locked)
+          case tree: untpd.InterpolatedString => typedInterpolated(tree, pt, locked)
           case _ => typedUnadapted(desugar(tree, pt), pt, locked)
         }
 
@@ -4897,26 +4946,26 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
                 tree.symbol != defn.StringContext_f &&
                 tree.symbol != defn.StringContext_s)
           if (ctx.settings.XignoreScala2Macros.value) {
-            report.warning("Scala 2 macro cannot be used in Dotty, this call will crash at runtime. See https://docs.scala-lang.org/scala3/reference/dropped-features/macros.html", tree.srcPos.startPos)
+            report.warning("Scala 2 macro cannot be used in Scala 3, this call will crash at runtime. See https://docs.scala-lang.org/scala3/reference/dropped-features/macros.html", tree.srcPos.startPos)
             Throw(New(defn.MatchErrorClass.typeRef, Literal(Constant(s"Reached unexpanded Scala 2 macro call to ${tree.symbol.showFullName} compiled with -Xignore-scala2-macros.")) :: Nil))
               .withType(tree.tpe)
               .withSpan(tree.span)
           }
           else {
             report.error(
-              em"""Scala 2 macro cannot be used in Dotty. See https://docs.scala-lang.org/scala3/reference/dropped-features/macros.html
+              em"""Scala 2 macro cannot be used in Scala 3. See https://docs.scala-lang.org/scala3/reference/dropped-features/macros.html
                   |To turn this error into a warning, pass -Xignore-scala2-macros to the compiler""",
               tree.srcPos.startPos)
             tree
           }
         else TypeComparer.testSubType(tree.tpe.widenExpr, pt) match
-          case CompareResult.Fail(_) =>
+          case CompareResult.Fail(notes) =>
             wtp match
               case wtp: MethodType => missingArgs(wtp)
               case _ =>
                 typr.println(i"adapt to subtype ${tree.tpe} !<:< $pt")
                 //typr.println(TypeComparer.explained(tree.tpe <:< pt))
-                adaptToSubType(wtp)
+                adaptToSubType(wtp, notes)
           case CompareResult.OKwithGADTUsed
           if pt.isValueType
              && !inContext(ctx.fresh.setGadtState(GadtState(GadtConstraint.empty))) {
@@ -5017,7 +5066,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
       case tree: Closure => cpy.Closure(tree)(tpt = TypeTree(samParent)).withType(samParent)
     }
 
-    def adaptToSubType(wtp: Type): Tree =
+    def adaptToSubType(wtp: Type, cmpNotes: List[Message.Note] = Nil): Tree =
       // try converting a constant to the target type
       tree.tpe.widenTermRefExpr.normalized match
         case ConstantType(x) =>
@@ -5086,7 +5135,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         else
           val tree1 = healAdapt(tree, pt)
           if tree1 ne tree then readapt(tree1)
-          else err.typeMismatch(tree, pt, failure.notes)
+          else err.typeMismatch(tree, pt, cmpNotes ++ failure.notes)
 
       pt match
         case _: SelectionProto =>

@@ -313,7 +313,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
         |case object Goo extends TestB
         |case object Both extends TestA with TestB
         |object Main {
-        |  def testExhaustive[T <: TestA with TestB](test: T): Boolean =
+        |  def testExhaustive[T <: TestA & TestB](test: T): Boolean =
         |    test m@@
         |}""".stripMargin,
       s"""
@@ -327,7 +327,7 @@ class CompletionMatchSuite extends BaseCompletionSuite:
          |case object Goo extends TestB
          |case object Both extends TestA with TestB
          |object Main {
-         |  def testExhaustive[T <: TestA with TestB](test: T): Boolean =
+         |  def testExhaustive[T <: TestA & TestB](test: T): Boolean =
          |    test match
          |\tcase Both => $$0
          |\t

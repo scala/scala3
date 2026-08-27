@@ -19,6 +19,7 @@ import printing.Formatting.hl
 import config.Printers
 import parsing.Parsers
 import util.chaining.*
+import collection.immutable.BitSet
 
 import scala.annotation.{unchecked as _, *}, internal.sharable
 
@@ -766,6 +767,16 @@ object desugar {
           else derivedTermParam(vparam)
         derived.withAnnotations(Nil)
 
+    val consumeParamPositions =
+      constrVparamss.head.zipWithIndex.collect:
+          case (param, idx) if param.mods.annotations.exists(isConsumeAnnot(_)) => idx
+        .to(BitSet)
+
+    extension [T <: untpd.DefTree](t: T) def withConsumeIf(cond: Boolean): T =
+      if cond
+      then t.withAddedAnnotation(makeConsumeAnnot().withSpan(t.span)).asInstanceOf[T]
+      else t
+
     val constr = cpy.DefDef(constr1)(paramss = joinParams(constrTparams, constrVparamss))
       .withMods(addImplUse(constr1.mods, initially = true))
 
@@ -897,9 +908,6 @@ object desugar {
     //     def copy(p1: T1 = p1..., pN: TN = pN)(moreParams) =
     //       new C[...](p1, ..., pN)(moreParams)
     val (caseClassMeths, enumScaffolding) = {
-      def syntheticProperty(name: TermName, tpt: Tree, rhs: Tree) =
-        DefDef(name, Nil, tpt, rhs).withMods(synthetic)
-
       def productElemMeths =
         if caseClassInScala2Library then Nil
         else
@@ -913,8 +921,11 @@ object desugar {
           for i <- List.range(0, arity)
               selName = nme.selectorName(i)
               if (selName ne caseParams(i).name) && !selectorNamesInBody.contains(selName)
-          yield syntheticProperty(selName, caseParams(i).tpt,
-            Select(This(EmptyTypeIdent), caseParams(i).name))
+          yield
+            DefDef(selName, Nil, caseParams(i).tpt,
+              Select(This(EmptyTypeIdent), caseParams(i).name))
+                .withMods(synthetic)
+                .withConsumeIf(consumeParamPositions.contains(i))
 
       def enumCaseMeths =
         if isEnumCase then
@@ -927,8 +938,9 @@ object desugar {
         }
         if (mods.is(Abstract) || hasRepeatedParam) Nil  // cannot have default arguments for repeated parameters, hence copy method is not issued
         else {
-          val copyFirstParams = derivedVparamss.head.map(vparam =>
-            cpy.ValDef(vparam)(rhs = refOfDef(vparam)))
+          val copyFirstParams = derivedVparamss.head.zipWithIndex.map: (vparam, idx) =>
+            cpy.ValDef(vparam)(rhs = refOfDef(vparam))
+              .withConsumeIf(consumeParamPositions.contains(idx))
           val copyRestParamss = derivedVparamss.tail.nestedMap(vparam =>
             cpy.ValDef(vparam)(rhs = EmptyTree))
           var flags = Synthetic | constr1.mods.flags & copiedAccessFlags
@@ -937,8 +949,10 @@ object desugar {
             nme.copy,
             joinParams(derivedTparams, copyFirstParams :: copyRestParamss),
             TypeTree(),
-            creatorExpr
-          ).withMods(Modifiers(flags, constr1.mods.privateWithin)) :: Nil
+            creatorExpr)
+          .withMods(Modifiers(flags, constr1.mods.privateWithin))
+          .withConsumeIf(consumeParamPositions.nonEmpty)
+          :: Nil
         }
       }
 
@@ -996,8 +1010,9 @@ object desugar {
               if Feature.shouldBehaveAsScala2 then flags &~= Private
               Modifiers(flags).withPrivateWithin(constr1.mods.privateWithin)
             val appParamss =
-              derivedVparamss.nestedZipWithConserve(constrVparamss)((ap, cp) =>
-                ap.withMods(ap.mods | (cp.mods.flags & HasDefault)))
+              derivedVparamss.nestedZipWithConserve(constrVparamss):(ap, cp) =>
+                ap.withMods(ap.mods | (cp.mods.flags & HasDefault))
+                  .withConsumeIf(cp.mods.annotations.exists(isConsumeAnnot(_)))
             DefDef(nme.apply, joinParams(derivedTparams, appParamss), TypeTree(), creatorExpr)
               .withMods(appMods) :: Nil
           }
@@ -1017,6 +1032,7 @@ object desugar {
           }
           val methName = if (hasRepeatedParam) nme.unapplySeq else nme.unapply
           val unapplyParam = makeSyntheticParameter(tpt = classTypeRef)
+            .withConsumeIf(consumeParamPositions.nonEmpty)
           val unapplyRHS =
             if (arity == 0) Literal(Constant(true))
             else if caseClassInScala2Library then scala2LibCompatUnapplyRhs(unapplyParam.name)
@@ -1533,8 +1549,8 @@ object desugar {
           // we can simplify the match we emit to not have any variable patterns and just use the type directly.
           // In this case too, `variables` may contain wildcard names.
           // Exception:
-          // This optimization cannot be used in the presence of the `@unchecked` annotation,
-          // since given `a: List[A]` and `B <: A`, `val (x: List[B @unchecked], _) = (a, 1): @unchecked` is OK,
+          // This optimization cannot be used in the presence of `@unchecked` or `.runtimeChecked`,
+          // e.g., given `a: List[A]` and `B <: A`, `val (x: List[B @unchecked], _) = (a, 1): @unchecked` is OK,
           // but `val x: List[B @unchecked] = a: @unchecked` is not.
           // So we cannot desugar the first one into `(a, 1) match { $1 @ (_: List[B @unchecked], _) => $1 }`
           // because that loses track of the unchecked-ness.
@@ -1546,18 +1562,23 @@ object desugar {
         val (opt, variables) = pat match {
           case TuplePattern(pats, _) =>
             // We want to include wildcards for the optimizations, so we can't use `IdPattern` which excludes them
-            val allVariables = pats.map {
+            val allVariables = pats.flatMap {
               case id: Ident if isVarPattern(id) => Some(id, TypeTree())
               case Typed(id: Ident, tpt) if isVarPattern(id) => Some((id, tpt))
               case _ => None
-            }.flatten
+            }
             if allVariables.size == pats.size then
               def isMatchingTuple(t: Tree) = t match {
                 case Tuple(elems) => pats.size == elems.length && !hasNamedArg(elems)
                 case _ => false
               }
+              def mayBeUnchecked(t: Tree) = t match {
+                case _: Annotated => true // conservatively; might be @unchecked
+                case Select(_, nme.runtimeChecked) => true
+                case _ => false
+              }
               if forallResults(rhs, isMatchingTuple) then (Optimization.SimpleTuple, allVariables)
-              else if !rhs.isInstanceOf[Annotated] then (Optimization.MatchableTuple, allVariables)
+              else if !mayBeUnchecked(rhs) then (Optimization.MatchableTuple, allVariables)
               else (Optimization.None, generalGetVariables)
             else
               (Optimization.None, generalGetVariables)
@@ -1600,11 +1621,12 @@ object desugar {
           case _ =>
             // ... except we have one more optimization up our sleeve:
             // if we're in the "simple tuple" case and the RHS is also a tuple, for `val (a, b) = (1, 2)` we can emit `val a = 1; val b = 2`.
-            // We don't do this if there are any types or wildcards involved, since those can require conversions or handling side-effects.
+            // We don't do this if there is laziness or any types or wildcards involved; the latter can require conversions or handling side effects.
             val (firstDef, splitRhs) = rhs match
               case TuplePattern(elems, TypeTree()) if opt == Optimization.SimpleTuple
                                                    && elems.size == variables.size
                                                    && !pat.isInstanceOf[Typed]
+                                                   && !mods.is(Lazy)
                                                    && variables.forall((n, _) => n.name != nme.WILDCARD) =>
                 (Nil, elems)
               case _ =>
@@ -1909,7 +1931,7 @@ object desugar {
    *  be using for the package object that will wrap them.
    */
   def packageObjectName(src: SourceFile): TermName =
-    val fileName = src.file.name
+    val fileName = src.name
     val sourceName = fileName.take(fileName.lastIndexOf('.'))
     (sourceName ++ str.TOPLEVEL_SUFFIX).toTermName
 

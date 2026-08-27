@@ -12,9 +12,8 @@ import TestConfiguration.*
  */
 @Category(Array(classOf[dotty.VulpixMetaTests]))
 class VulpixMetaTests {
-  import VulpixMetaTests.*
+  import VulpixMetaTests.{*, given}
 
-  implicit val summaryReport: SummaryReporting = new SummaryReport
   implicit def testGroup: TestGroup = TestGroup("VulpixMetaTests")
 
   @Test def compilePos: Unit = compileFilesInDir("tests/vulpix-tests/meta/pos", defaultOptions).checkCompile()
@@ -22,16 +21,4 @@ class VulpixMetaTests {
   @Test def runAll: Unit     = compileFilesInDir("tests/vulpix-tests/meta/run", defaultOptions).checkRuns()
 }
 
-object VulpixMetaTests extends ParallelTesting {
-  def maxDuration = 1.seconds
-  // Ensure maximum reproducibility.
-  def numberOfWorkers = 1
-  def safeMode = false // Don't fork a new VM after each run test
-  def isInteractive = false // Don't beautify output for interactive use.
-  def testFilter = Nil // Run all the tests.
-  def updateCheckFiles: Boolean = false
-  def failedTests = None
-
-  @AfterClass
-  def tearDown() = this.cleanup()
-}
+object VulpixMetaTests extends ParallelTesting

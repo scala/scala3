@@ -1,54 +1,159 @@
 package dotty.tools
 package repl
 
-import org.junit.Assert.{assertFalse, assertTrue}
+import org.junit.Assert.{assertEquals, assertFalse, assertTrue}
 import org.junit.Test
 
-class ReplDirectiveTests extends ReplTest:
+import ReplDirectives.ReplDirective.{Dependency, Jar, Repository}
+import ReplDirectives.Warning
+
+class ReplDirectiveTests extends ReplTest, SessionFileHelpers:
+
+  @Test def `dependency directive aliases are supported`: Unit =
+    val dependency = "com.lihaoyi::os-lib:0.11.3"
+    val aliases = List("dep", "deps", "dependency", "dependencies")
+    aliases.foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias $dependency")
+      assertEquals(List(Dependency(dependency)), result.directives)
+      assertEquals(Nil, result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: deps, dependency, dependencies"))
+
+  @Test def `test dependency directive aliases are supported with a warning`: Unit =
+    val dependencies = List("org.scalameta::munit:1.1.1", "org.typelevel::cats-effect:3.6.3")
+    val aliases = List("test.dep", "test.deps", "test.dependency", "test.dependencies")
+    aliases.foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${dependencies.mkString(" ")}")
+      assertEquals(dependencies.map(Dependency(_)), result.directives)
+      assertEquals(List(Warning.NoSeparateTestScope), result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: test.deps, test.dependency, test.dependencies"))
+
+  @Test def `jar directive aliases are supported`: Unit =
+    val jars = List("lib/first.jar", "lib/second.jar")
+    List("jar", "jars").foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${jars.mkString(" ")}")
+      assertEquals(jars.map(Jar(_)), result.directives)
+      assertEquals(Nil, result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: jars"))
+
+  @Test def `repository directive aliases are supported`: Unit =
+    val repositories = List("m2Local", "https://jitpack.io")
+    List("repository", "repositories").foreach: alias =>
+      val result = ReplDirectives.classify(s"//> using $alias ${repositories.mkString(" ")}")
+      assertEquals(repositories.map(Repository(_)), result.directives)
+      assertEquals(Nil, result.warnings)
+    assertTrue(ReplDirectives.helpText.contains("Aliases: repositories"))
+
+  @Test def `directives without a value are reported and act on nothing`: Unit =
+    List("dep", "test.dep", "jar", "toolkit", "test.toolkit", "repository").foreach: key =>
+      val result = ReplDirectives.classify(s"//> using $key")
+      assertEquals(key, Nil, result.directives)
+      assertEquals(key, List(Warning.ValueMissing(key)), result.warnings)
+
+  @Test def `toolkit directive accepts explicit versions and flavors`: Unit =
+    val expected = Map(
+      "0.7.0" -> ("org.scala-lang", "0.7.0"),
+      "latest" -> ("org.scala-lang", "latest.release"),
+      "scala:default" -> ("org.scala-lang", "0.9.2"),
+      "org.scala-lang:0.7.0" -> ("org.scala-lang", "0.7.0"),
+      "typelevel:default" -> ("org.typelevel", "0.2.0"),
+      "typelevel:0.1.29" -> ("org.typelevel", "0.1.29"),
+      "org.typelevel:default" -> ("org.typelevel", "0.2.0"),
+      "com.example:1.2.3" -> ("com.example", "1.2.3"),
+      "com.example:latest" -> ("com.example", "latest.release")
+    )
+    expected.foreach:
+      case (coordinates, (org, version)) =>
+        val result = ReplDirectives.classify(s"//> using toolkit $coordinates")
+        assertEquals(
+          coordinates,
+          List(Dependency(s"$org::toolkit:$version"), Dependency(s"$org::toolkit-test:$version")),
+          result.directives
+        )
+
+  @Test def `toolkit directive rejects values of any other shape`: Unit =
+    List(":", "::", "typelevel:", ":default", "a:b:c", "typelevel::default").foreach: coordinates =>
+      val result = ReplDirectives.classify(s"//> using toolkit $coordinates")
+      assertEquals(coordinates, Nil, result.directives)
+      assertEquals(coordinates, List(Warning.MalformedValue("toolkit", coordinates)), result.warnings)
+
+  @Test def `toolkit directives reject more than one value`: Unit =
+    List("toolkit", "test.toolkit").foreach: key =>
+      val result = ReplDirectives.classify(s"//> using $key default typelevel:default")
+      assertEquals(key, Nil, result.directives)
+      assertEquals(key, List(Warning.TooManyValues(key)), result.warnings)
+
+  @Test def `jars directive adds all JARs to the classpath`: Unit =
+    val firstJar = emptyJar()
+    val secondJar = emptyJar()
+    initially:
+      run(s"//> using jars $firstJar $secondJar")
+      assertEquals(
+        s"""Added '$firstJar' to classpath.
+           |Added '$secondJar' to classpath.""".stripMargin,
+        storedOutput().trim
+      )
+
+  @Test def `test dependency directive warns about the shared REPL scope`: Unit =
+    initially:
+      run("//> using test.dep org.scalameta::munit:1.1.1")
+      assertEquals(
+        """[warn] The REPL does not have a separate test scope. Dependencies that would only be
+          |available to tests are added to the current REPL session.
+          |Resolved a dependency (8 JARs)""".stripMargin,
+        storedOutput().trim
+      )
 
   @Test def `lone dep directive is incomplete until code follows`: Unit = contextually:
-    assertTrue(ParseResult.awaitsTrailingCode("//> using dep com.lihaoyi::os-lib:0.11.3"))
+    assertTrue(ParseResult.onlyPreambleSoFar("//> using dep com.lihaoyi::os-lib:0.11.3"))
     assertFalse(ParseResult.isIncomplete("//> using dep com.lihaoyi::os-lib:0.11.3"))
 
   @Test def `dep directive with code is complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode("//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
+    assertFalse(ParseResult.onlyPreambleSoFar("//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
     assertFalse(ParseResult.isIncomplete("//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
 
   @Test def `lone dep directive with trailing newline is complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode("//> using dep com.lihaoyi::os-lib:0.11.3\n"))
+    assertTrue(ParseResult.shouldAcceptLine("//> using dep com.lihaoyi::os-lib:0.11.3\n", hasPendingInput = false))
     assertFalse(ParseResult.isIncomplete("//> using dep com.lihaoyi::os-lib:0.11.3\n"))
 
   @Test def `multiple dep directives without code are incomplete`: Unit = contextually:
-    assertTrue(ParseResult.awaitsTrailingCode(
+    assertTrue(ParseResult.onlyPreambleSoFar(
       "//> using dep com.lihaoyi::upickle:4.4.3\n//> using dep com.lihaoyi::os-lib:0.11.3"))
     assertFalse(ParseResult.isIncomplete(
       "//> using dep com.lihaoyi::upickle:4.4.3\n//> using dep com.lihaoyi::os-lib:0.11.3"))
 
   @Test def `multiple dep directives with code are complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode(
+    assertFalse(ParseResult.onlyPreambleSoFar(
       "//> using dep com.lihaoyi::upickle:4.4.3\n//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
     assertFalse(ParseResult.isIncomplete(
       "//> using dep com.lihaoyi::upickle:4.4.3\n//> using dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
 
   @Test def `unsupported directive with code is complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode("//> using options -Werror\nval x = 1"))
+    assertFalse(ParseResult.onlyPreambleSoFar("//> using options -Werror\nval x = 1"))
     assertFalse(ParseResult.isIncomplete("//> using options -Werror\nval x = 1"))
 
   @Test def `plain comment is complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode("// just a comment"))
+    assertFalse(ParseResult.onlyPreambleSoFar("// just a comment"))
     assertFalse(ParseResult.isIncomplete("// just a comment"))
 
   @Test def `lone command is incomplete until code follows`: Unit = contextually:
-    assertTrue(ParseResult.awaitsTrailingCode(":dep com.lihaoyi::os-lib:0.11.3"))
+    assertTrue(ParseResult.onlyPreambleSoFar(":dep com.lihaoyi::os-lib:0.11.3"))
     assertFalse(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3"))
 
   @Test def `command with code is complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode(":dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
+    assertFalse(ParseResult.onlyPreambleSoFar(":dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
     assertFalse(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3\nval p = os.pwd"))
 
   @Test def `lone command with trailing newline is complete`: Unit = contextually:
-    assertFalse(ParseResult.awaitsTrailingCode(":dep com.lihaoyi::os-lib:0.11.3\n"))
+    assertTrue(ParseResult.shouldAcceptLine(":dep com.lihaoyi::os-lib:0.11.3\n", hasPendingInput = false))
     assertFalse(ParseResult.isIncomplete(":dep com.lihaoyi::os-lib:0.11.3\n"))
+
+  @Test def `command lines with newline still defer when paste is pending`: Unit = contextually:
+    assertFalse(ParseResult.shouldAcceptLine(":settings -old-syntax:false\n", hasPendingInput = true))
+    assertTrue(ParseResult.shouldAcceptLine(":settings -old-syntax:false\n", hasPendingInput = false))
+    assertFalse(ParseResult.shouldAcceptLine(
+      ":settings -old-syntax:false\n:settings -old-syntax:true\n", hasPendingInput = true))
+    assertTrue(ParseResult.shouldAcceptLine(
+      ":settings -old-syntax:false\n:settings -old-syntax:true\n", hasPendingInput = false))
 
   @Test def `command with incomplete trailing code is incomplete`: Unit = contextually:
     assertTrue(ParseResult.isIncomplete(":settings -deprecation\nif true then"))
@@ -68,7 +173,7 @@ class ReplDirectiveTests extends ReplTest:
 
   @Test def `command with trailing code parses as CommandThenCode`: Unit = initially:
     ParseResult(":type \"hello\"\nval x = 5") match
-      case CommandThenCode(TypeOf("\"hello\""), _: Parsed) => // expected
+      case CommandThenCode(TypeOf("\"hello\""), code) if code.contains("val x = 5") => // expected
       case other => org.junit.Assert.fail(s"unexpected parse result: $other")
 
   @Test def `command with trailing code evaluates both`: Unit =
@@ -77,6 +182,92 @@ class ReplDirectiveTests extends ReplTest:
       val output = storedOutput()
       assertTrue(output, output.contains("String"))
       assertTrue(output, output.contains("val x: Int = 5"))
+
+  @Test def `settings command affects trailing code`: Unit =
+    initially:
+      run(":settings -old-syntax\nif true then 1 else 2")
+      val output = storedOutput()
+      assertTrue(output, output.contains("This construct is not allowed under -old-syntax"))
+
+  @Test def `settings command affects subsequent separate input`: Unit =
+    initially {
+      run(":settings -old-syntax")
+    } andThen {
+      storedOutput()
+      run("if true then 1 else 2")
+      val output = storedOutput()
+      assertTrue(output, output.contains("This construct is not allowed under -old-syntax"))
+    }
+
+  @Test def `settings then another command then code uses updated settings`: Unit =
+    initially:
+      run(":settings -old-syntax\n:type 1\nif true then 1 else 2")
+      val output = storedOutput()
+      assertTrue(output, output.contains("Int"))
+      assertTrue(output, output.contains("This construct is not allowed under -old-syntax"))
+
+  @Test def `settings can disable old-syntax for trailing code`: Unit =
+    initially {
+      run(":settings -old-syntax")
+    } andThen {
+      storedOutput()
+      run(":settings -old-syntax:false\nif true then 1 else 2")
+      val output = storedOutput()
+      assertTrue(output, output.contains("val res0: Int = 1"))
+      assertFalse(output, output.contains("This construct is not allowed under -old-syntax"))
+    }
+
+  @Test def `conflicting settings in same block apply to trailing code`: Unit =
+    initially:
+      run(":settings -old-syntax:false\n:settings -old-syntax:true\nif true then println(\"REPL_SETTINGS_MARKER\")")
+      val output = storedOutput()
+      assertTrue(
+        s"trailing code should be rejected under conflicting -old-syntax:true, got:\n$output",
+        output.contains("This construct is not allowed under -old-syntax"))
+      assertFalse(
+        s"trailing code should not run, got:\n$output",
+        output.linesIterator.map(_.trim).contains("REPL_SETTINGS_MARKER"))
+
+  @Test def `conflicting settings in same block stay applied on next input`: Unit =
+    initially {
+      run(":settings -old-syntax:false\n:settings -old-syntax:true\nif true then println(\"REPL_SETTINGS_MARKER\")")
+    } andThen {
+      storedOutput()
+      run("if true then println(\"REPL_SETTINGS_MARKER\")")
+      val output = storedOutput()
+      assertTrue(
+        s"subsequent input should still be rejected under -old-syntax, got:\n$output",
+        output.contains("This construct is not allowed under -old-syntax"))
+      assertFalse(
+        s"subsequent input should not run, got:\n$output",
+        output.linesIterator.map(_.trim).contains("REPL_SETTINGS_MARKER"))
+    }
+
+  @Test def `conflicting settings alone update state immediately`: Unit =
+    initially {
+      val state = run(":settings -old-syntax:false\n:settings -old-syntax:true")
+      assertTrue(
+        "oldSyntax should be true after conflicting :settings in the same block",
+        state.context.settings.oldSyntax.value(using state.context))
+    }
+
+  /** Simulates JLine accepting the first `:settings` line alone, then a follow-up
+   *  paste/submission that contains the conflicting `:settings` plus trailing code.
+   */
+  @Test def `conflicting settings after prior settings apply to trailing code`: Unit =
+    initially {
+      run(":settings -old-syntax:false")
+    } andThen {
+      storedOutput()
+      run(":settings -old-syntax:true\nif true then println(\"REPL_SETTINGS_MARKER\")")
+      val output = storedOutput()
+      assertTrue(
+        s"trailing code should be rejected under conflicting -old-syntax:true, got:\n$output",
+        output.contains("This construct is not allowed under -old-syntax"))
+      assertFalse(
+        s"trailing code should not run, got:\n$output",
+        output.linesIterator.map(_.trim).contains("REPL_SETTINGS_MARKER"))
+    }
 
   @Test def `lone command with trailing newline parses as command`: Unit = initially:
     ParseResult(":type 1\n") match
@@ -205,14 +396,138 @@ class ReplDirectiveTests extends ReplTest:
     assertFalse(ParseResult.shouldAcceptLine("// c\n:settings -deprecation\nif true then", hasPendingInput = false))
 
   @Test def `lone command after comment awaits trailing code`: Unit = contextually:
-    assertTrue(ParseResult.awaitsTrailingCode("// c\n:dep x"))
-    assertFalse(ParseResult.awaitsTrailingCode("// c\n:dep x\n"))
+    assertTrue(ParseResult.onlyPreambleSoFar("// c\n:dep x"))
+    assertTrue(ParseResult.shouldAcceptLine("// c\n:dep x\n", hasPendingInput = false))
 
   @Test def `lone directive after block comment awaits trailing code`: Unit = contextually:
-    assertTrue(ParseResult.awaitsTrailingCode("/* c */\n//> using dep x"))
-    assertFalse(ParseResult.awaitsTrailingCode("/* c */\n//> using dep x\n"))
+    assertTrue(ParseResult.onlyPreambleSoFar("/* c */\n//> using dep x"))
+    assertTrue(ParseResult.shouldAcceptLine("/* c */\n//> using dep x\n", hasPendingInput = false))
 
   @Test def `comment between commands parses as nested CommandThenCode`: Unit = initially:
     ParseResult(":type 1\n// c\n:type 2\nval x = 5") match
-      case CommandThenCode(TypeOf("1"), CommandThenCode(TypeOf("2"), _: Parsed)) => // expected
+      case CommandThenCode(TypeOf("1"), rest) if rest.contains(":type 2") && rest.contains("val x = 5") => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `command then directive parses as mixed`: Unit = initially:
+    ParseResult(":dep a::b:1\n//> using dep c::d:2\nval x = 1") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `directive then command parses as mixed`: Unit = initially:
+    ParseResult("//> using dep c::d:2\n:dep a::b:1\nval x = 1") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `command then directive without trailing code parses as mixed`: Unit = initially:
+    ParseResult(":dep a::b:1\n//> using dep c::d:2") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `multiple commands then directive parses as mixed`: Unit = initially:
+    ParseResult(":type 1\n:type 2\n//> using dep c::d:2\nval x = 1") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `command then directive with interspersed comment parses as mixed`: Unit = initially:
+    ParseResult(":dep a::b:1\n// c\n//> using dep c::d:2") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `directive then command with blank line parses as mixed`: Unit = initially:
+    ParseResult("//> using dep c::d:2\n\n:dep a::b:1") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `mixing commands and directives is rejected without executing`: Unit =
+    initially:
+      run(":dep some.bogus::coords:1\n//> using dep other.bogus::coords:2\nval x = 1")
+      val output = storedOutput()
+      assertTrue(output, output.contains("Cannot mix"))
+      assertFalse(output, output.contains("Resolved"))
+      assertFalse(output, output.contains("val x: Int = 1"))
+
+  @Test def `command with directive-like string is not mixed`: Unit = initially:
+    ParseResult(":type 1\nval s = \"//> using dep x\"") match
+      case CommandThenCode(TypeOf("1"), code) if code.contains("val s =") => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `block comment between commands parses as nested CommandThenCode`: Unit = initially:
+    ParseResult(":type 1\n/* c */\n:type 2\nval x = 5") match
+      case CommandThenCode(TypeOf("1"), rest) if rest.contains(":type 2") && rest.contains("val x = 5") => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `multiline block comment between commands parses as nested CommandThenCode`: Unit = initially:
+    ParseResult(":type 1\n/* multi\n line\n comment */\n:type 2\nval x = 5") match
+      case CommandThenCode(TypeOf("1"), rest) if rest.contains(":type 2") && rest.contains("val x = 5") => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `block comment between command and directive parses as mixed`: Unit = initially:
+    ParseResult(":dep a::b:1\n/* c */\n//> using dep c::d:2") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `multiline block comment between command and directive parses as mixed`: Unit = initially:
+    ParseResult(":dep a::b:1\n/* multi\n line */\n//> using dep c::d:2") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `mixed input is not incomplete`: Unit = contextually:
+    assertFalse(ParseResult.isIncomplete(":dep a::b:1\n//> using dep c::d:2\nval x = 1"))
+    assertFalse(ParseResult.isIncomplete("//> using dep c::d:2\n:dep a::b:1\nval x = 1"))
+
+  @Test def `mixed input accepts line`: Unit = contextually:
+    assertTrue(ParseResult.shouldAcceptLine(":dep a::b:1\n//> using dep c::d:2\nval x = 1", hasPendingInput = false))
+    assertTrue(ParseResult.shouldAcceptLine("//> using dep c::d:2\n:dep a::b:1\nval x = 1", hasPendingInput = false))
+
+  @Test def `directive first mixing is rejected without executing`: Unit =
+    initially:
+      run("//> using dep other.bogus::coords:2\n:dep some.bogus::coords:1\nval x = 1")
+      val output = storedOutput()
+      assertTrue(output, output.contains("Cannot mix"))
+      assertFalse(output, output.contains("Resolved"))
+      assertFalse(output, output.contains("val x: Int = 1"))
+
+  @Test def `unsupported directive with command parses as mixed`: Unit = initially:
+    ParseResult(":dep a::b:1\n//> using options -Werror") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `unsupported directive then command parses as mixed`: Unit = initially:
+    ParseResult("//> using scala 3.3.1\n:type 1") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `post-code directive warning printed exactly once`: Unit =
+    initially:
+      run("val x = 1\n//> using dep foo::bar:1.0")
+      val output = storedOutput()
+      val count = "Ignoring using directive".r.findAllIn(output).length
+      org.junit.Assert.assertEquals("warning should appear exactly once", 1, count)
+      assertTrue(output, output.contains("val x: Int = 1"))
+
+  @Test def `post-code directive diagnostic is surfaced`: Unit =
+    initially:
+      run("val y = 2\n//> using options -Werror")
+      val output = storedOutput()
+      assertTrue(output, output.contains("Ignoring using directive"))
+      assertTrue(output, output.contains("val y: Int = 2"))
+
+  @Test def `shebang with command then directive parses as mixed`: Unit = initially:
+    ParseResult("#!/usr/bin/env scala\n:dep a::b:1\n//> using dep c::d:2") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `shebang with directive then command parses as mixed`: Unit = initially:
+    ParseResult("#!/usr/bin/env scala\n//> using dep c::d:2\n:dep a::b:1") match
+      case MixedCommandsAndDirectives => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `shebang with command only parses as command`: Unit = initially:
+    ParseResult("#!/usr/bin/env scala\n:type 1\nval x = 5") match
+      case CommandThenCode(TypeOf("1"), code) if code.contains("val x = 5") => // expected
+      case other => org.junit.Assert.fail(s"unexpected parse result: $other")
+
+  @Test def `shebang with directive only evaluates normally`: Unit = initially:
+    ParseResult("#!/usr/bin/env scala\n//> using dep x::y:1\nval x = 1") match
+      case _: Parsed => // expected
       case other => org.junit.Assert.fail(s"unexpected parse result: $other")

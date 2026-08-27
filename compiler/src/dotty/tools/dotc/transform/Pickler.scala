@@ -51,7 +51,7 @@ object Pickler {
    * The callbacks should only be called once.
    */
   class AsyncTastyHolder private (
-      val earlyOut: AbstractFile, incCallback: IncrementalCallback | Null)(using @constructorOnly ex: ExecutionContext):
+      val earlyOut: Option[AbstractFile], incCallback: IncrementalCallback | Null)(using @constructorOnly ex: ExecutionContext):
     import scala.concurrent.Future as StdFuture
     import scala.concurrent.Await
     import scala.concurrent.duration.Duration
@@ -104,7 +104,7 @@ object Pickler {
           // we should close the file system so it can be read in the same JVM process.
           // Note: we close even if we have been cancelled.
           earlyOut match
-            case jar: JarArchive => jar.close()
+            case Some(jar: JarArchive) => jar.close()
             case _ =>
         catch
           case ex: Exception =>
@@ -379,12 +379,12 @@ class Pickler extends Phase {
   // This can be called inside a Future in a background thread, it must not capture a Context
   def computePickled(pickler: TastyPickler, treePkl: TreePickler, 
                      tree: Tree, unit: CompilationUnit, internalName: String, attributes: Attributes,
-                     reference: String/*ctx.settings.sourceroot.value*/, dropComments: Boolean/*ctx.settings.XdropComments.value*/): Array[Byte] =
+                     dropComments: Boolean/*ctx.settings.XdropComments.value*/): Array[Byte] =
     serialized.run { scratch =>
       treePkl.compactify(scratch)
       if tree.span.exists then
         PositionPickler.picklePositions(
-          pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots, reference,
+          pickler, treePkl.buf.addrOfTree, treePkl.treeAnnots, treePkl.typeAnnots,
           unit.source, tree :: Nil,
           scratch.positionBuffer, scratch.pickledIndices)
 
@@ -430,16 +430,13 @@ class Pickler extends Phase {
       if ctx.settings.YtestPickler.value then beforePickling(cls) =
         tree.show(using printerContext(unit.typedAsJava))
 
-      val sourceRelativePath =
-        val reference = ctx.settings.sourceroot.value
-        util.SourceFile.relativePath(unit.source, reference)
       val isJavaAttr = unit.isJava // we must always set JAVAattr when pickling Java sources
       if isJavaAttr then
         // assert that Java sources didn't reach Pickler without `-Xjava-tasty`.
         assert(ctx.settings.XjavaTasty.value, "unexpected Java source file without -Xjava-tasty")
       val isOutline = isJavaAttr // TODO: later we may want outline for Scala sources too
       val attributes = Attributes(
-        sourceFile = sourceRelativePath,
+        sourceFile = unit.source.pathRelativeToSourceRoot,
         scala2StandardLibrary = Feature.shouldBehaveAsScala2,
         explicitNulls = ctx.settings.YexplicitNulls.value,
         captureChecked = Feature.ccEnabled,
@@ -463,11 +460,10 @@ class Pickler extends Phase {
       val internalName = if fastDoAsyncTasty then computeInternalName(cls) else ""
 
       if successful then
-        val sourceroot = ctx.settings.sourceroot.value
         val dropComments = ctx.settings.XdropComments.value
         // must not depend on a Context as it's passed to the executor, so we fetch settings before
         def doComputePickled() =
-          computePickled(pickler, treePkl, tree, unit, internalName, attributes, sourceroot, dropComments)
+          computePickled(pickler, treePkl, tree, unit, internalName, attributes, dropComments)
         /** A function that returns the pickled bytes. Depending on `Pickler.ParallelPickling`
          *  either computes the pickled data in a future or eagerly before constructing the
          *  function value.
@@ -498,10 +494,13 @@ class Pickler extends Phase {
     val writeTask: Option[() => Unit] =
       ctx.run.nn.asyncTasty.map: async =>
         fastDoAsyncTasty = true
-        () =>
-          given ReadOnlyContext = if useExecutor then ReadOnlyContext.buffered else ReadOnlyContext.eager
-          val writer = Pickler.EarlyFileWriter(async.earlyOut)
-          writeSigFilesAsync(serialized.result(), writer, async)
+        () => async.earlyOut match {
+          case Some(out) =>
+            given ReadOnlyContext = if useExecutor then ReadOnlyContext.buffered else ReadOnlyContext.eager
+            val writer = Pickler.EarlyFileWriter(out)
+            writeSigFilesAsync(serialized.result(), writer, async)
+          case None =>
+        }
 
     def runPhase(writeCB: (doWrite: () => Unit) => Unit) =
       super.runOn(units).tap(_ => writeTask.foreach(writeCB))
@@ -542,13 +541,12 @@ class Pickler extends Phase {
     val resolveCheck = ctx.settings.YtestPicklerCheck.value
     val unpicklers =
       for ((cls, (unit, bytes)) <- pickledBytes) yield {
-        val unpickler = new DottyUnpickler(new VirtualFile(unit.source.file.path, bytes), isBestEffortTasty = false)
+        val unpickler = new DottyUnpickler(new VirtualFile(unit.source.path, bytes), isBestEffortTasty = false)
         unpickler.enter(roots = Set.empty)
         val optCheck =
-          if resolveCheck then
+          if resolveCheck && unit.source.file != null then
             val resolved = unit.source.file.resolveSibling(s"${cls.name.mangledString}.tastycheck")
-            if resolved == null then None
-            else Some(resolved)
+            Option(resolved)
           else None
         cls -> (unit, unpickler, optCheck)
       }

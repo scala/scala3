@@ -63,7 +63,7 @@ trait Map[K, V]
    *  @param d     default value used for non-present keys
    *  @return      a wrapper of the map with a default value
    */
-  def withDefaultValue(d: V): Map[K, V] = new Map.WithDefault[K, V](this, x => d)
+  def withDefaultValue(d: V): Map[K, V] = new Map.WithDefault[K, V](this, _ => d)
 }
 
 /**

@@ -15,7 +15,7 @@ package backend.jvm
 package opt
 
 import scala.collection.mutable
-import scala.tools.asm.*
+import org.objectweb.asm.*
 
 /**
  * This attribute stores the InlineInfo for a ClassBType as an independent classfile attribute.
@@ -159,11 +159,12 @@ object InlineInfoAttribute {
    */
   private final val VERSION: Byte = 1
 
-  private final val attributeName = "ScalaInlineInfo"
+  // Renamed for Scala 3 so it's not confused with its Scala 2 equivalent
+  final val attributeName = "Scala3InlineInfo"
 }
 
 /**
- * In order to instruct the ASM framework to deserialize the ScalaInlineInfo attribute, we need
+ * In order to instruct the ASM framework to deserialize the attribute, we need
  * to pass a prototype instance when running the class reader.
  */
 object InlineInfoAttributePrototype extends InlineInfoAttribute(InlineInfo(isEffectivelyFinal = false, sam = None, methodInfos = collection.SortedMap(), warning = None, isAccessible = false))

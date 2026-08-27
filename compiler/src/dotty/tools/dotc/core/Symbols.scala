@@ -181,28 +181,19 @@ object Symbols extends SymUtils {
         // periods check out OK. But once a package member is overridden it is not longer
         // valid. If the option would be removed, the check would be no longer needed.
 
-    final def isTerm(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isTerm
-    final def isType(using Context): Boolean =
-      (if (defRunId == ctx.runId) lastDenot else denot).isType
+    final def isTerm(using Context): Boolean = lastDenot.isTerm
+    final def isType(using Context): Boolean = lastDenot.isType
     final def asTerm(using Context): TermSymbol = {
-      assert(isTerm, s"asTerm called on not-a-Term $this" );
+      assert(isTerm, s"asTerm called on not-a-Term $this")
       asInstanceOf[TermSymbol]
     }
     final def asType(using Context): TypeSymbol = {
-      assert(isType, s"asType called on not-a-Type $this");
+      assert(isType, s"asType called on not-a-Type $this")
       asInstanceOf[TypeSymbol]
     }
 
     final def isClass: Boolean = isInstanceOf[ClassSymbol]
     final def asClass: ClassSymbol = asInstanceOf[ClassSymbol]
-
-    /** Test whether symbol is private. This
-     *  conservatively returns `false` if symbol does not yet have a denotation, or denotation
-     *  is a class that is not yet read.
-     */
-    final def isPrivate(using Context): Boolean =
-      lastDenot.flagsUNSAFE.is(Private)
 
     /** Is the symbol a pattern bound symbol?
      */
@@ -244,7 +235,7 @@ object Symbols extends SymUtils {
             if (this.is(Module)) this.moduleClass.validFor |= InitialPeriod
           }
           else owner.ensureFreshScopeAfter(phase)
-          assert(isPrivate || phase.changesMembers, i"$this entered in $owner at undeclared phase $phase")
+          assert(this.is(Private) || phase.changesMembers, i"$this entered in $owner at undeclared phase $phase")
           entered
         case _ => this
       }
@@ -265,7 +256,7 @@ object Symbols extends SymUtils {
       else {
         assert (!this.owner.is(Package))
         this.owner.asClass.ensureFreshScopeAfter(phase)
-        assert(isPrivate || phase.changesMembers, i"$this deleted in ${this.owner} at undeclared phase $phase")
+        assert(this.is(Private) || phase.changesMembers, i"$this deleted in ${this.owner} at undeclared phase $phase")
         drop()
       }
 
@@ -318,7 +309,7 @@ object Symbols extends SymUtils {
 
     final def source(using Context): SourceFile = {
       def valid(src: SourceFile): SourceFile =
-        if (src.exists && !src.file.ext.isScalaBinary) src
+        if (src.exists && !src.ext.isScalaBinary) src
         else NoSource
 
       if (!denot.exists) NoSource

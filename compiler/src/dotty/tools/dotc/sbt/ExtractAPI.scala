@@ -134,9 +134,9 @@ class ExtractAPI extends Phase {
 
     if (ctx.settings.YdumpSbtInc.value) {
       // Append to existing file that should have been created by ExtractDependencies
-      val sourceFileJPath = sourceFile.file.jpath
-      assert(sourceFileJPath != null, s"unexpected null jpath for $sourceFile")
-      val pw = new PrintWriter(File(sourceFileJPath).changeExtension(FileExtension.Inc).toFile
+      val sourceFileJPath = sourceFile.jfile
+      assert(sourceFileJPath.isPresent, s"unexpected null jpath for $sourceFile")
+      val pw = new PrintWriter(File(sourceFileJPath.get().toPath).changeExtension(FileExtension.Inc).toFile
         .bufferedWriter(append = true), true)
       try {
         classes.foreach(source => pw.println(DefaultShowAPI(source)))
@@ -319,10 +319,8 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
     if !sym.isLocal then
       nonLocalClassSymbols += sym
 
-    if (sym.isStatic && !sym.is(Trait) && ctx.platform.hasMainMethod(sym)) {
-       // If sym is an object, all main methods count, otherwise only @static ones count.
+    if ctx.platform.isMainClass(sym) then
       _mainClasses += name
-    }
 
     api.ClassLikeDef.of(name, acc, modifiers, anns, tparams, defType)
   }
@@ -800,7 +798,7 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
           // representation.
           h = MurmurHash3.mix(h, apiType(c.typeValue).hashCode)
         case _ =>
-          h = MurmurHash3.mix(h, c.value.hashCode)
+          h = MurmurHash3.mix(h, java.util.Objects.hashCode(c.value))
       h
     end constantHash
 
@@ -818,10 +816,14 @@ private class ExtractAPICollector(nonLocalClassSymbols: mutable.HashSet[Symbol])
         p match
           case ref: RefTree @unchecked =>
             val sym = ref.symbol
-            if sym.is(Inline, butNot = Param) && !seenInlineCache.contains(sym) then
+            if sym.is(Inline, butNot = Param | Trait) && !seenInlineCache.contains(sym) then
               // An inline method that calls another inline method will eventually inline the call
               // at a non-inline callsite, in this case if the implementation of the nested call
               // changes, then the callsite will have a different API, we should hash the definition
+              // In contrast, if an inline trait A extends an inline trait B, B's body is inlined into
+              // A, so a change to B will cause a change to A directly, so we can skip this, and if 
+              // an inline method accesses a parameter of an inline trait it doesn't care about the definition
+              // of the trait.
               h = MurmurHash3.mix(h, apiDefinition(sym, inlineOrigin).hashCode)
           case _ =>
 
