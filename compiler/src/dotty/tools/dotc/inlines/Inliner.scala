@@ -611,7 +611,11 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  the method will return: `Foo.OpaqueInt`
    */
   def unpackProxiesFromResultType(inlined: Inlined): Type =
-    if thisTypeProxyExists then mapBackToOpaques.typeMap(thisTypeUnpacker.typeMap(inlined.expansion.tpe))
+    if thisTypeProxyExists then
+      val unpacked = mapBackToOpaques.typeMap(thisTypeUnpacker.typeMap(inlined.expansion.tpe))
+      // base inlined.tpe always avoids bindings in it's type (behavior built-in to the
+      // Inlined(...) constructor) so we do that here too
+      TypeAssigner.avoidingType(unpacked, inlined.bindings)
     else inlined.tpe
 
   /** Populate `thisProxy` and `paramProxy` as follows:
