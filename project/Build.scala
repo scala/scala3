@@ -389,13 +389,16 @@ object Build {
   ) ++ scaladocDerivedInstanceSettings
 
   lazy val commonMiMaSettings = Def.settings(
-    mimaPreviousArtifacts += {
+    mimaPreviousArtifacts ++= {
       val thisProjectID = projectID.value
       val crossedName = thisProjectID.crossVersion match {
         case cv: Disabled => thisProjectID.name
         case cv: Binary => s"${thisProjectID.name}_${cv.prefix}3${cv.suffix}"
       }
-      (thisProjectID.organization % crossedName % mimaPreviousDottyVersion)
+      Set(
+        thisProjectID.organization % crossedName % mimaPreviousVersion,
+        thisProjectID.organization % crossedName % mimaPreviousLTSVersion,
+      )
     },
 
     mimaCheckDirection := (CompatMode.value match {
@@ -1020,9 +1023,9 @@ object Build {
       target := target.value / "scala-library-nonbootstrapped",
       // Add configuration for MiMa
       commonMiMaSettings,
-      mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
-      mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
-      customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
+      mimaForwardIssueFilters := MiMaFilters.ScalaLibrary.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.ScalaLibrary.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.ScalaLibrary"),
       scala2LibraryClasspath := Vector((`scala2-library` / Compile / packageBin).value),
       // Generate library.properties, used by scala.util.Properties
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
@@ -1111,9 +1114,9 @@ object Build {
       bootstrappedScalaInstanceSettings,
       // Add configuration for MiMa
       commonMiMaSettings,
-      mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
-      mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
-      customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
+      mimaForwardIssueFilters := MiMaFilters.ScalaLibrary.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.ScalaLibrary.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.ScalaLibrary"),
       scala2LibraryClasspath := Vector((`scala2-library` / Compile / packageBin).value),
       // Generate Scala 3 runtime properties overlay
       Compile / resourceGenerators += generateLibraryProperties.taskValue,

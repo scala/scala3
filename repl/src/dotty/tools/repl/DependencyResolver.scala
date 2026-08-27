@@ -16,7 +16,6 @@ object DependencyResolver:
 
   private val defaultRepositories: List[Repository] = List(
     MavenRepository.of("https://repo1.maven.org/maven2"),
-    MavenRepository.of("https://oss.sonatype.org/content/repositories/releases")
   )
 
   // TODO: support every alias coursier does, once the Coursier Interface exposes its own

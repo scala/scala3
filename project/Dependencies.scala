@@ -34,24 +34,24 @@ object Dependencies {
     "com.vladsch.flexmark" % "flexmark-ext-yaml-front-matter" % flexmarkVersion,
   )
 
-  val guava = "com.google.guava" % "guava" % "33.6.0-jre"
+  val guava = "com.google.guava" % "guava" % "33.7.1-jre"
 
-  private val jacksonVersion = "3.2.1"
+  private val jacksonVersion = "3.2.2"
   val jacksonDatabind = "tools.jackson.core" % "jackson-databind" % jacksonVersion
   val jacksonDataformatYaml = "tools.jackson.dataformat" % "jackson-dataformat-yaml" % jacksonVersion
 
-  private val jlineVersion = "4.3.1"
+  private val jlineVersion = "4.4.0"
   val jlineReader = "org.jline" % "jline-reader" % jlineVersion
   val jlineTerminal = "org.jline" % "jline-terminal" % jlineVersion
   val jlineTerminalJni = "org.jline" % "jline-terminal-jni" % jlineVersion
 
-  val jsoup = "org.jsoup" % "jsoup" % "1.22.2"
+  val jsoup = "org.jsoup" % "jsoup" % "1.23.2"
 
   val liqp = "nl.big-o" % "liqp" % "0.9.2.3"
 
   val lsp4j = "org.eclipse.lsp4j" % "org.eclipse.lsp4j" % "1.0.0"
 
-  val lz4 = "at.yawk.lz4" % "lz4-java" % "1.11.1"
+  val lz4 = "at.yawk.lz4" % "lz4-java" % "1.11.2"
 
   private val mtagsVersion = "1.6.8"
   val mtagsInterfaces = "org.scalameta" % "mtags-interfaces" % mtagsVersion

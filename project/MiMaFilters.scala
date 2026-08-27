@@ -4,29 +4,210 @@ import com.typesafe.tools.mima.core._
 
 object MiMaFilters {
 
-  object Scala3Library {
+  object ScalaLibrary {
 
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
-      Versions.mimaPreviousDottyVersion -> Seq(
+      Versions.mimaPreviousVersion -> Seq.empty,
+
+      // Additions since last LTS
+      Versions.mimaPreviousLTSVersion -> Seq(
         // new feature: CanEqual support for NamedTuple
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTuple.namedTupleCanEqual"),
         // IArray integration with Scala Collections:
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.BuildFrom.buildFromIArray"),
         // IArray integration with Scala Collections:
         ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.generic.IsSeq.iarrayIsSeq"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.collection.Factory.IArrayFactory"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.IArray#package#IArray.convertIArrayToFactory"),
         // new annotation encoding capture checking's `x.except[C]` capabilities
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.exceptCapability"),
         // new annotation carrying the component names of Java records
         ProblemFilters.exclude[MissingClassProblem]("scala.annotation.internal.JavaRecordFields"),
-    ))
+
+        // Operations of the `Rich*` wrappers are now also defined on the primitive companions.
+        // Listed one by one on purpose: a wildcard here would also hide removals of the
+        // pre-existing members of these companions.
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Boolean.<"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Boolean.<="),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Boolean.>"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Boolean.>="),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Boolean.compare"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Byte.abs"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Byte.compare"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Byte.isValidByte"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Byte.isValidChar"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Byte.isValidInt"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Byte.isValidShort"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Byte.isWhole"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Byte.max"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Byte.min"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Byte.sign"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Byte.signum"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Short.abs"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Short.compare"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Short.isValidByte"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Short.isValidChar"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Short.isValidInt"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Short.isValidShort"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Short.isWhole"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Short.max"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Short.min"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Short.sign"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Short.signum"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.abs"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.asDigit"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.compare"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.getDirectionality"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.getNumericValue"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.getType"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isControl"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isDigit"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isHighSurrogate"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isIdentifierIgnorable"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isLetter"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isLetterOrDigit"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isLowSurrogate"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isLower"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isMirrored"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isSpaceChar"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isSurrogate"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isTitleCase"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isUnicodeIdentifierPart"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isUnicodeIdentifierStart"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isUpper"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isValidByte"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isValidChar"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isValidInt"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isValidShort"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isWhitespace"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.isWhole"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.max"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.min"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.reverseBytes"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.sign"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.signum"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.to"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.toLower"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.toTitleCase"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.toUpper"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Char.until"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.abs"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.compare"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.isValidByte"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.isValidChar"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.isValidInt"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.isValidLong"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.isValidShort"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.isWhole"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.max"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.min"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.round"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.sign"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.signum"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.to"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.toBinaryString"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.toHexString"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.toOctalString"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Int.until"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.abs"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.compare"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.isValidByte"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.isValidChar"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.isValidInt"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.isValidLong"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.isValidShort"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.isWhole"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.max"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.min"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.round"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.sign"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.signum"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.to"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.toBinaryString"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.toHexString"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.toOctalString"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Long.until"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.abs"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.ceil"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.compare"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.floor"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.isFinite"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.isInfinity"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.isNaN"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.isNegInfinity"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.isPosInfinity"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.isValidByte"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.isValidChar"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.isValidInt"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.isValidShort"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.isWhole"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.max"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.min"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.round"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.sign"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.signum"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.toDegrees"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Float.toRadians"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.abs"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.ceil"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.compare"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.floor"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.isFinite"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.isInfinity"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.isNaN"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.isNegInfinity"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.isPosInfinity"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.isValidByte"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.isValidChar"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.isValidInt"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.isValidShort"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.isWhole"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.max"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.min"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.round"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.sign"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.signum"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.toDegrees"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.Double.toRadians"),
+
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.NamedTupleDecomposition.createSeqMap"),
+        ProblemFilters.exclude[DirectMissingMethodProblem]("scala.runtime.ScalaRunTime.anyClass"),
+
+        // new language versions and experimental language features
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$3$u002E11$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$3$u002E11$minusmigration$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$dedentedStringLiterals$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$inlineTraits$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$magic$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.language$experimental$specializedTraits$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.runtime.stdLibPatches.language$experimental$specializedTraits$"),
+
+        // scala/scala3#26100: lock-free initialization extracted to a shared base class
+        ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyList"),
+        ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyListIterable"),
+        ProblemFilters.exclude[FinalClassProblem]("scala.collection.immutable.LazyList$MidEvaluation$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListBase"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListBase$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListBase$InRace"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListBase$InRace$Sync"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListBase$TailUpdater"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase$InRace"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase$InRace$Sync"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase$TailUpdater"),
+      ),
+    )
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // In general we should never have backwards incompatible changes in the library.
       // Only exceptional cases should be added here.
 
-      // Breaking changes since last reference version
-      Versions.mimaPreviousDottyVersion -> Seq(
+      Versions.mimaPreviousVersion -> Seq.empty,
+
+      // Breaking changes since last LTS
+      Versions.mimaPreviousLTSVersion -> Seq(
 
         // scala/scala3#26100
         ProblemFilters.exclude[MissingTypesProblem]("scala.collection.immutable.LazyList"),
@@ -479,14 +660,17 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingFieldProblem]("scala.util.control.TailCalls.Cont"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.util.matching.Regex.Match"),
         ProblemFilters.exclude[MissingFieldProblem]("scala.util.matching.Regex.Groups"),
-      )
+      ),
     )
   }
 
   object ScalaLibrarySJS {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
-      Versions.mimaPreviousDottyVersion -> Seq(
+      Versions.mimaPreviousVersion -> Seq.empty,
+
+      // Additions since last LTS
+      Versions.mimaPreviousLTSVersion -> Seq(
         // No .class files generated in the artifacts, only `scala.scalajs.*` files might be present
         ProblemFilters.exclude[MissingClassProblem]("scala.*"),
       ),
@@ -494,34 +678,48 @@ object MiMaFilters {
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // We should never break backwards compatibility
-      Versions.mimaPreviousDottyVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq.empty,
+      Versions.mimaPreviousLTSVersion -> Seq.empty,
     )
   }
 
   object TastyCore {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of tasty core
-      Versions.mimaPreviousDottyVersion -> Seq(
-      )
+      Versions.mimaPreviousVersion -> Seq.empty,
+
+      // Additions since last LTS
+      Versions.mimaPreviousLTSVersion -> Seq.empty,
     )
 
     val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
-      Versions.mimaPreviousDottyVersion -> Seq(
+      Versions.mimaPreviousVersion -> Seq.empty,
+
+      // Breaking changes since last LTS
+      Versions.mimaPreviousLTSVersion -> Seq(
         // Removal of unnecessary nested module fields that were always `null` (PR #25538)
         ProblemFilters.exclude[MissingFieldProblem]("dotty.tools.tasty.TastyBuffer.Addr"),
         ProblemFilters.exclude[MissingFieldProblem]("dotty.tools.tasty.TastyBuffer.NameRef"),
         ProblemFilters.exclude[MissingFieldProblem]("dotty.tools.tasty.TastyFormat.NameTags"),
-      )
+      ),
     )
   }
 
   object Interfaces {
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of interfaces
-      Versions.mimaPreviousDottyVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq.empty,
+
+      // Additions since last LTS
+      Versions.mimaPreviousLTSVersion -> Seq.empty,
     )
 
-    val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map.empty
+    val BackwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
+      Versions.mimaPreviousVersion -> Seq.empty,
+
+      // Breaking changes since last LTS
+      Versions.mimaPreviousLTSVersion -> Seq.empty,
+    )
   }
 
 }
