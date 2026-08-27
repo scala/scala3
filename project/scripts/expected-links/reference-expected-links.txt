@@ -293,6 +293,10 @@
 ./error-codes/E225.html
 ./error-codes/E226.html
 ./error-codes/E227.html
+./error-codes/E228.html
+./error-codes/E229.html
+./error-codes/E230.html
+./error-codes/E231.html
 ./error-codes/index.html
 ./experimental/better-fors.html
 ./experimental/canthrow.html
@@ -369,6 +373,7 @@
 ./other-new-features/generalized-method-syntax.html
 ./other-new-features/indentation.html
 ./other-new-features/index.html
+./other-new-features/into.html
 ./other-new-features/kind-polymorphism.html
 ./other-new-features/matchable.html
 ./other-new-features/named-tuples.html
