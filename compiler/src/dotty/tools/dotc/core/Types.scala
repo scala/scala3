@@ -6593,7 +6593,7 @@ object Types extends TypeUtils {
     /** Derived selection.
      *  @pre   the (upper bound of) prefix `pre` has a member named `tp.name`.
      */
-    override protected def derivedSelect(tp: NamedType, pre: Type): Type = //ctx.handleRecursive("derived select for approximation of", tp):
+    override protected def derivedSelect(tp: NamedType, pre: Type): Type = ctx.handleRecursive("derived select for approximation of", tp):
       if (pre eq tp.prefix) tp
       else pre match {
         case Range(preLo, preHi) =>
