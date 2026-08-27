@@ -1,7 +1,7 @@
 package dotty.tools.backend.jvm.opt
 
 import dotty.tools.backend.jvm.BTypes.InternalName
-import dotty.tools.backend.jvm.{BType, BTypeLoader, ClassBType, KnownBTypes, MethodBType, UNIT}
+import dotty.tools.backend.jvm.{ArrayBType, BType, BTypeLoader, CHAR, ClassBType, KnownBTypes, MethodBType, UNIT}
 import dotty.tools.dotc.core.Contexts.Context
 import dotty.tools.dotc.core.StdNames.nme
 import dotty.tools.dotc.core.Symbols
@@ -158,4 +158,17 @@ final class OptimizerKnownBTypes(ts: BTypeLoader)(using @constructorOnly initctx
       )
     )
   }
+
+  lazy val sideEffectFreeConstructors: Set[(String, String)] =
+    def ownerDesc(p: (InternalName, MethodNameAndType)) = (p._1, p._2.methodType.descriptor)
+    primitiveBoxConstructors.map(ownerDesc).toSet ++
+      srRefConstructors.map(ownerDesc) ++
+      tupleClassConstructors.map(ownerDesc) ++ Set(
+      (ObjectRef.internalName, MethodBType(Nil, UNIT).descriptor),
+      (StringRef.internalName, MethodBType(Nil, UNIT).descriptor),
+      (StringRef.internalName, MethodBType(List(StringRef), UNIT).descriptor),
+      (StringRef.internalName, MethodBType(List(ArrayBType(CHAR)), UNIT).descriptor))
+
+  lazy val classesOfSideEffectFreeConstructors: Set[String] =
+    sideEffectFreeConstructors.map(_._1)
 }

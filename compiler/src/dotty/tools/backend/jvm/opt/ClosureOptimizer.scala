@@ -94,8 +94,6 @@ class ClosureOptimizer(byteCodeRepository: BCodeRepository, callGraph: Optimizer
       callsites += ((invocation, stackHeight))
     }
 
-    // the `toList` prevents modifying closureInstantiations while iterating it.
-    // minimalRemoveUnreachableCode (called in the loop) removes elements
     val methodsToRewrite = methods.getOrElse(callGraph.methodsWithClosureInstantiations())
 
     // For each closure instantiation find callsites of the closure and add them to the toRewrite

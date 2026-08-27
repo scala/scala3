@@ -21,8 +21,6 @@ object OptimizerUtils:
   private val ScalaPackageObject = "scala/package$"
   private val PredefModule = "scala/Predef$"
 
-  private val predefInternalName = "scala/Predef"
-
   extension (ts: OptimizerKnownBTypes) {
 
     def isScalaBox(insn: MethodInsnNode): Boolean =
@@ -65,14 +63,14 @@ object OptimizerUtils:
     def isJavaUnbox(insn: MethodInsnNode): Boolean = calleeInMap(insn, ts.javaUnboxMethods)
 
     def isPredefAutoBox(insn: MethodInsnNode): Boolean = {
-      insn.owner == predefInternalName && (ts.predefAutoBoxMethods.get(insn.name) match {
+      insn.owner == PredefModule && (ts.predefAutoBoxMethods.get(insn.name) match {
         case Some(tp) => insn.desc == tp.descriptor
         case _ => false
       })
     }
 
     def isPredefAutoUnbox(insn: MethodInsnNode): Boolean = {
-      insn.owner == predefInternalName && (ts.predefAutoUnboxMethods.get(insn.name) match {
+      insn.owner == PredefModule && (ts.predefAutoUnboxMethods.get(insn.name) match {
         case Some(tp) => insn.desc == tp.descriptor
         case _ => false
       })
@@ -99,13 +97,13 @@ object OptimizerUtils:
     def runtimeRefClassBoxedType(refClass: InternalName): asm.Type = asm.Type.getArgumentTypes(ts.srRefCreateMethods(refClass).methodType.descriptor)(0)
 
     def isSideEffectFreeConstructorCall(insn: MethodInsnNode): Boolean = {
-      insn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && sideEffectFreeConstructors(ts)((insn.owner, insn.desc))
+      insn.name == BCodeUtils.INSTANCE_CONSTRUCTOR_NAME && ts.sideEffectFreeConstructors((insn.owner, insn.desc))
     }
 
     def isNewForSideEffectFreeConstructor(insn: AbstractInsnNode): Boolean = {
       insn.getOpcode == Opcodes.NEW && {
         val ti = insn.asInstanceOf[TypeInsnNode]
-        classesOfSideEffectFreeConstructors(ts)(ti.desc)
+        ts.classesOfSideEffectFreeConstructors(ti.desc)
       }
     }
 
@@ -191,7 +189,7 @@ object OptimizerUtils:
     }
   }
 
-  def isPredefLoad(insn: AbstractInsnNode): Boolean = AnalysisUtils.isModuleLoad(insn, _ == predefInternalName)
+  def isPredefLoad(insn: AbstractInsnNode): Boolean = AnalysisUtils.isModuleLoad(insn, _ == PredefModule)
 
   val primitiveAsmTypeSortToBType: Map[Int, PrimitiveBType] = Map(
     asm.Type.BOOLEAN -> BOOL,
@@ -298,27 +296,3 @@ object OptimizerUtils:
   // and warning about it is also not productive.
   def isSCoverage(classInternalName: InternalName): Boolean =
     classInternalName.startsWith("scala/runtime/coverage/")
-
-  // ===
-
-  // OK to cache this because we only store internal names and descriptors
-  private var _sideEffectFreeConstructors: Set[(String, String)] = Set.empty
-  private var _classesOfSideEffectFreeConstructors: Set[String] = Set.empty
-  private def sideEffectFreeConstructors(ts: OptimizerKnownBTypes): Set[(String, String)] =
-    if _sideEffectFreeConstructors.isEmpty then
-      val ownerDesc = (p: (InternalName, MethodNameAndType)) => (p._1, p._2.methodType.descriptor)
-      _sideEffectFreeConstructors =
-        ts.primitiveBoxConstructors.map(ownerDesc).toSet ++
-        ts.srRefConstructors.map(ownerDesc) ++
-        ts.tupleClassConstructors.map(ownerDesc) ++ Set(
-        (ts.ObjectRef.internalName, MethodBType(Nil, UNIT).descriptor),
-        (ts.StringRef.internalName, MethodBType(Nil, UNIT).descriptor),
-        (ts.StringRef.internalName, MethodBType(List(ts.StringRef), UNIT).descriptor),
-        (ts.StringRef.internalName, MethodBType(List(ArrayBType(CHAR)), UNIT).descriptor))
-      _classesOfSideEffectFreeConstructors = _sideEffectFreeConstructors.map(_._1)
-    _sideEffectFreeConstructors
-
-  private def classesOfSideEffectFreeConstructors(ts: OptimizerKnownBTypes): Set[String] = {
-    sideEffectFreeConstructors(ts)
-    _classesOfSideEffectFreeConstructors
-  }
