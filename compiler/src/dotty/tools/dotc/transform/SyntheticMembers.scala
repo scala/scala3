@@ -585,6 +585,7 @@ class SyntheticMembers(thisPhase: DenotTransformer) {
       val newClassInfo = oldClassInfo.derivedClassInfo(
         declaredParents = oldClassInfo.declaredParents :+ parent)
       clazz.copySymDenotation(info = newClassInfo).installAfter(thisPhase)
+      parent.classSymbol.asClass.invalidateBaseTypeCache()
     }
     def addMethod(name: TermName, info: Type, cls: Symbol, body: (Symbol, Tree) => Context ?=> Tree): Unit = {
       val meth = newSymbol(clazz, name, Synthetic | Method, info, coord = clazz.coord)
