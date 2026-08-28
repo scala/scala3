@@ -81,7 +81,7 @@ class ReplCompiler extends Compiler:
     import untpd.*
     PackageDef(Ident(nme.EMPTY_PACKAGE), stats)
 
-  final def compile(parsed: Parsed)(using state: State): Either[(List[Diagnostic], State), (CompilationUnit, State)] =
+  final def compile(parsed: Parsed, printSummary: Boolean = true)(using state: State): Either[(List[Diagnostic], State), (CompilationUnit, State)] =
     assert(!parsed.trees.isEmpty)
 
     given Context = state.context
@@ -90,7 +90,7 @@ class ReplCompiler extends Compiler:
       unit.untpdTree.putAttachment(ReplCompiler.ReplState, state)
     }
     ctx.run.nn.compileUnits(unit :: Nil)
-    ctx.run.nn.printSummary() // "2 errors found"
+    if printSummary then ctx.run.nn.printSummary()
 
     val newState = unit.tpdTree.getAttachment(ReplCompiler.ReplState).get
     if !ctx.reporter.hasErrors then Right(unit, newState)
