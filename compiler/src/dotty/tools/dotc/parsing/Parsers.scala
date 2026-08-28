@@ -4191,8 +4191,6 @@ object Parsers {
             if allSourceVersionNames.contains(imported) && prefix.isEmpty then
               if !outermost then
                 syntaxError(em"source version import is only allowed at the toplevel", id.span)
-              else if ctx.compilationUnit.sourceVersion.isDefined then
-                syntaxError(em"duplicate source version import", id.span)
               else if illegalSourceVersionNames.contains(imported) then
                 val candidate =
                   val nonMigration = imported.toString.replace("-migration", "")
@@ -4203,7 +4201,12 @@ object Parsers {
                   case _ => baseMsg
                 syntaxError(msg, id.span)
               else
-                ctx.compilationUnit.sourceVersion = Some(SourceVersion.valueOf(imported.toString))
+                val sourceVersion = SourceVersion.valueOf(imported.toString)
+                ctx.compilationUnit.sourceVersion match
+                  case Some(existing) if existing != sourceVersion =>
+                    syntaxError(em"conflicting source version import: $existing and $sourceVersion", id.span)
+                  case _ =>
+                    ctx.compilationUnit.sourceVersion = Some(sourceVersion)
         case None =>
       imp
 
