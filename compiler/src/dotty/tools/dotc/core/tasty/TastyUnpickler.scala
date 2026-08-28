@@ -113,7 +113,7 @@ class TastyUnpickler(protected val reader: TastyReader, isBestEffortTasty: Boole
       case QUALIFIED | EXPANDED | EXPANDPREFIX =>
         qualifiedNameKindOfTag(tag)(readName(), readName().asSimpleName)
       case UNIQUE =>
-        val separator = readName().toString
+        val separator = readName()
         val num = readNat()
         val originals = until(end)(readName())
         val original = if (originals.isEmpty) EmptyTermName else originals.head

@@ -17,10 +17,10 @@ object NameKinds {
   // These are sharable since all NameKinds are created eagerly at the start of the program
   // before any concurrent threads are forked. for this to work, NameKinds should never
   // be created lazily or in modules that start running after compilers are forked.
-  @sharable private val simpleNameKinds = util.HashMap[Int, ClassifiedNameKind]()
-  @sharable private val qualifiedNameKinds = util.HashMap[Int, QualifiedNameKind]()
-  @sharable private val numberedNameKinds = util.HashMap[Int, NumberedNameKind]()
-  @sharable private val uniqueNameKinds = util.HashMap[String, UniqueNameKind]()
+  @sharable private val simpleNameKinds = new Array[ClassifiedNameKind](64)
+  @sharable private val qualifiedNameKinds = new Array[QualifiedNameKind](64)
+  @sharable private val numberedNameKinds = new Array[NumberedNameKind](64)
+  @sharable private val uniqueNameKinds = util.EqHashMap[TermName, UniqueNameKind]()
 
   /** A class for the info stored in a derived name */
   abstract class NameInfo {
@@ -206,7 +206,7 @@ object NameKinds {
    *
    *  A unique names always constitutes a new name, different from its underlying name.
    */
-  case class UniqueNameKind(val separator: String)
+  case class UniqueNameKind(separator: String)
   extends NumberedNameKind(UNIQUE, s"Unique $separator") {
     override def definesNewName: Boolean = true
 
@@ -225,7 +225,7 @@ object NameKinds {
     def fresh(prefix: TypeName)(using Context): TypeName =
       fresh(prefix.toTermName).toTypeName
 
-    uniqueNameKinds(separator) = this: @unchecked
+    uniqueNameKinds(separatorName) = this: @unchecked
   }
 
   /** An extractor for unique names of arbitrary kind */
@@ -439,8 +439,8 @@ object NameKinds {
   val Scala2MethodNameKinds: List[NameKind] =
     List(DefaultGetterName, ExtMethName, UniqueExtMethName)
 
-  def simpleNameKindOfTag      : util.ReadOnlyMap[Int, ClassifiedNameKind] = simpleNameKinds
-  def qualifiedNameKindOfTag   : util.ReadOnlyMap[Int, QualifiedNameKind]  = qualifiedNameKinds
-  def numberedNameKindOfTag    : util.ReadOnlyMap[Int, NumberedNameKind]   = numberedNameKinds
-  def uniqueNameKindOfSeparator: util.ReadOnlyMap[String, UniqueNameKind]  = uniqueNameKinds
+  def simpleNameKindOfTag      : Array[ClassifiedNameKind] = simpleNameKinds
+  def qualifiedNameKindOfTag   : Array[QualifiedNameKind]  = qualifiedNameKinds
+  def numberedNameKindOfTag    : Array[NumberedNameKind]   = numberedNameKinds
+  def uniqueNameKindOfSeparator: util.EqHashMap[TermName, UniqueNameKind]  = uniqueNameKinds
 }
