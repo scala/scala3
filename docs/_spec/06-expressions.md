@@ -84,7 +84,7 @@ Typing of literals is described along with their [lexical syntax](01-lexical-syn
 
 ## The _Null_ Value
 
-The `null` value is of type `scala.Null`. and thus conforms to every reference type.
+The `null` value is of type `scala.Null`.
 It denotes a special `null` object value.
 This object implements methods in class `scala.Any` as follows:
 
