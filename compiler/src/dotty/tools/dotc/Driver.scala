@@ -37,6 +37,7 @@ class Driver {
       catch
         case ro: RecursionOverflow =>
           report.error(ro.toMessage, ro.pos)(using ro.ctx)
+          ro.ctx.reporter.flush()
         case so: StackOverflowError =>
           // This should be the ONLY point in the compiler where we catch stack overflows.
           // The JVM cannot be assumed to function 100% properly after a stack overflow is caught.

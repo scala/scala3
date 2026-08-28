@@ -6321,7 +6321,7 @@ object Types extends TypeUtils {
       if t2 ne t1 then t2 else t
 
     /** Map this function over given type */
-    def mapOver(tp: Type): Type = ctx.handleRecursive("map over", tp) {
+    def mapOver(tp: Type): Type = {
       record(s"TypeMap mapOver ${getClass}")
       record("TypeMap mapOver total")
       val ctx = this.mapCtx // optimization for performance
@@ -6593,7 +6593,7 @@ object Types extends TypeUtils {
     /** Derived selection.
      *  @pre   the (upper bound of) prefix `pre` has a member named `tp.name`.
      */
-    override protected def derivedSelect(tp: NamedType, pre: Type): Type =
+    override protected def derivedSelect(tp: NamedType, pre: Type): Type = ctx.handleRecursive("derived select for approximation of", tp):
       if (pre eq tp.prefix) tp
       else pre match {
         case Range(preLo, preHi) =>

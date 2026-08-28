@@ -23,7 +23,7 @@ def render(s: String): String = ""
 
 def loop[F[_]: {MyTC, Console}]: F[Unit] =
   Console[F].println("x")
-    >>= render(_) |> Console[F].println // error
+    >>= render(_) |> Console[F].println // error // error
     >> loop[F]
 
 object Test:
