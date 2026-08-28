@@ -647,7 +647,10 @@ class TreeUnpickler(reader: TastyReader,
       val rhsStart = currentAddr
       val rhsIsEmpty = nothingButMods(end)
       if (!rhsIsEmpty) skipTree()
-      val (givenFlags0, annotFns, privateWithin) = readModifiers(end)
+      val annotFns = ListBuffer.empty[Symbol => Annotation]
+      var privateWithinRef: runtime.ObjectRef[Symbol] = runtime.ObjectRef(NoSymbol)
+      val givenFlags0 = readModifiers(end, annotFns, privateWithinRef)
+      val privateWithin = privateWithinRef.elem
       val givenFlags =
         if isClass && unpicklingScala2Library then givenFlags0 | Scala2x | Scala2Tasty
         else if unpicklingJava then givenFlags0 | JavaDefined
@@ -678,7 +681,7 @@ class TreeUnpickler(reader: TastyReader,
       registerSym(start, sym)
       val annotOwner =
         if sym.owner.isClass then newLocalDummy(sym.owner) else sym.owner
-      sym.annotations = annotFns.map(_(annotOwner))
+      sym.annotations = annotFns.map(_(annotOwner)).toList
       if sym.isOpaqueAlias then sym.setFlag(Deferred)
       val isScala2MacroDefinedInScala3 = flags.is(Macro, butNot = Inline) && flags.is(Erased)
       ctx.owner match {
@@ -711,13 +714,13 @@ class TreeUnpickler(reader: TastyReader,
       sym
     }
 
-    /** Read modifier list into triplet of flags, annotations and a privateWithin
+    /** Read modifier list flags, and optionally annotations and a privateWithin
      *  boundary symbol.
      */
-    def readModifiers(end: Addr)(using Context): (FlagSet, List[Symbol => Annotation], Symbol) = {
+    private def readModifiers(end: Addr,
+                      annotFns: ListBuffer[Symbol => Annotation] | Null,
+                      privateWithinRef: runtime.ObjectRef[Symbol] | Null)(using Context): FlagSet = {
       var flags: FlagSet = EmptyFlags
-      var annotFns: List[Symbol => Annotation] = Nil
-      var privateWithin: Symbol = NoSymbol
       while (currentAddr.index != end.index) {
         def addFlag(flag: FlagSet) = {
           flags |= flag
@@ -770,20 +773,21 @@ class TreeUnpickler(reader: TastyReader,
           case INTO => addFlag(Into)
           case PRIVATEqualified =>
             readByte()
-            privateWithin = readWithin
+            if privateWithinRef != null then
+              privateWithinRef.elem = readWithin
           case PROTECTEDqualified =>
             addFlag(Protected)
-            privateWithin = readWithin
+            if privateWithinRef != null then
+              privateWithinRef.elem = readWithin
           case ANNOTATION =>
-            val annotFn =
-              val annot = readAnnot
-              (sym: Symbol) => annot.complete(sym)
-            annotFns = annotFn :: annotFns
+            val annot = readAnnot
+            if annotFns != null then
+              annotFns.addOne((sym: Symbol) => annot.complete(sym))
           case tag =>
             assert(false, s"illegal modifier tag $tag at $currentAddr, end = $end")
         }
       }
-      (flags, annotFns.reverse, privateWithin)
+      flags
     }
 
     private def readWithin(using Context): Symbol = readType().typeSymbol
@@ -1652,7 +1656,7 @@ class TreeUnpickler(reader: TastyReader,
               readName()
               readType()
               val body = readTree()
-              val (givenFlags, _, _) = readModifiers(end)
+              val givenFlags = readModifiers(end, null, null)
               sym.setFlag(givenFlags)
               Bind(sym, body)
             case ALTERNATIVE =>
