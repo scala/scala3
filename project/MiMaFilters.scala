@@ -8,7 +8,12 @@ object MiMaFilters {
 
     val ForwardsBreakingChanges: Map[String, Seq[ProblemFilter]] = Map(
       // Additions that require a new minor version of the library
-      Versions.mimaPreviousVersion -> Seq.empty,
+      Versions.mimaPreviousVersion -> Seq(
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.package"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.package$"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.compiletime.package"),
+        ProblemFilters.exclude[MissingClassProblem]("scala.magic.compiletime.package$"),
+      ),
 
       // Additions since last LTS
       Versions.mimaPreviousLTSVersion -> Seq(
@@ -195,11 +200,6 @@ object MiMaFilters {
         ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase$InRace"),
         ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase$InRace$Sync"),
         ProblemFilters.exclude[MissingClassProblem]("scala.collection.immutable.LazyListIterableBase$TailUpdater"),
-
-        ProblemFilters.exclude[MissingClassProblem]("scala.magic.package"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.magic.package$"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.magic.compiletime.package"),
-        ProblemFilters.exclude[MissingClassProblem]("scala.magic.compiletime.package$"),
       ),
     )
 
