@@ -124,7 +124,7 @@ object NameKinds {
     case class QualInfo(name: SimpleName) extends Info with QualifiedInfo {
       override def map(f: SimpleName => SimpleName): NameInfo = new QualInfo(f(name))
       override def toString: String = s"$infoString $name"
-      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
+      override def hashCode: Int = name.hashCode * 31 + kind.hashCode
     }
 
     def apply(qual: TermName, name: SimpleName): TermName =
@@ -172,9 +172,9 @@ object NameKinds {
   /** The kind of numbered names consisting of an underlying name and a number */
   abstract class NumberedNameKind(tag: Int, val infoString: String) extends NameKind(tag) { self =>
     type ThisInfo = NumberedInfo
-    case class NumberedInfo(val num: Int) extends Info with NameKinds.NumberedInfo {
+    case class NumberedInfo(num: Int) extends Info with NameKinds.NumberedInfo {
       override def toString: String = s"$infoString $num"
-      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
+      override def hashCode: Int = num * 31 + kind.hashCode
     }
     def apply(qual: TermName, num: Int): TermName =
       qual.derived(new NumberedInfo(num))
@@ -417,7 +417,7 @@ object NameKinds {
       override def toString: String =
         val targetStr = if target.isEmpty then "" else s" @$target"
         s"$infoString $sig$targetStr"
-      override def hashCode = scala.runtime.ScalaRunTime._hashCode(this) * 31 + kind.hashCode
+      override def hashCode: Int = ((sig.hashCode * 31) + target.hashCode * 31) + kind.hashCode
     }
     type ThisInfo = SignedInfo
 
