@@ -93,26 +93,13 @@ object Scopes {
     def foreach[U](f: Symbol => U)(using Context): Unit = toList.foreach(f)
 
     /** Selects all Symbols of this Scope which satisfy a predicate. */
-    def filter(p: Symbol => Boolean)(using Context): List[Symbol] = {
-      ensureComplete()
-      var syms: List[Symbol] = Nil
-      var e = lastEntry
-      while ((e != null) && e.owner == this) {
-        val sym = e.sym
-        if (p(sym)) syms = sym :: syms
-        e = e.prev
-      }
-      syms
-    }
+    def filter(p: Symbol => Boolean)(using Context): List[Symbol] = toList.filter(p)
 
     /** Tests whether a predicate holds for at least one Symbol of this Scope. */
-    def exists(p: Symbol => Boolean)(using Context): Boolean = filter(p).nonEmpty
+    def exists(p: Symbol => Boolean)(using Context): Boolean = toList.exists(p)
 
     /** Finds the first Symbol of this Scope satisfying a predicate, if any. */
-    def find(p: Symbol => Boolean)(using Context): Symbol = filter(p) match {
-      case sym :: _ => sym
-      case _ => NoSymbol
-    }
+    def find(p: Symbol => Boolean)(using Context): Symbol = toList.find(p).getOrElse(NoSymbol)
 
     /** Returns a new mutable scope with the same content as this one. */
     def cloneScope(using Context): MutableScope
@@ -204,9 +191,7 @@ object Scopes {
 
   /** A subclass of Scope that defines methods for entering and
    *  unlinking entries.
-   *  Note: constructor is protected to force everyone to use the factory methods newScope or newNestedScope instead.
-   *  This is necessary because when run from reflection every scope needs to have a
-   *  SynchronizedScope as mixin.
+   *  Note: constructor is protected to force everyone to use the factory methods instead.
    */
   class MutableScope protected[Scopes](initElems: ScopeEntry | Null, initSize: Int, val nestingLevel: Int)
       extends Scope {
@@ -463,20 +448,12 @@ object Scopes {
 
   def newScope(nestingLevel: Int): MutableScope = new MutableScope(nestingLevel)
 
-  /** Create a new scope nested in another one with which it shares its elements */
-  def newNestedScope(outer: Scope)(using Context): MutableScope = new MutableScope(outer)
-
   /** Create a new scope with given initial elements */
   def newScopeWith(elems: Symbol*)(using Context): MutableScope = {
     val scope = newScope
     elems foreach scope.enter
     scope
   }
-
-  /** Transform scope of members of `owner` using operation `op`
-   *  This is overridden by the reflective compiler to avoid creating new scopes for packages
-   */
-  def scopeTransform(owner: Symbol)(op: => MutableScope): MutableScope = op
 
   /** The empty scope (immutable).
    */
