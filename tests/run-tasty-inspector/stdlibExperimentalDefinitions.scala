@@ -113,6 +113,7 @@ val experimentalDefinitionInLibrary = Set(
   "scala.magic.runtime.Fail$",
   "scala.magic.runtime.Valid",
   "scala.magic.runtime.Valid$",
+  "scala.magic.runtime.MaybeCase",
 )
 
 
