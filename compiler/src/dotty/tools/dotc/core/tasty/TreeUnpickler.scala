@@ -261,7 +261,7 @@ class TreeUnpickler(reader: TastyReader,
       else tag
     }
 
-    def readName(): TermName = nameAtRef(readNameRef())
+    def readName(): TermName = nameAtRef(readNat())
 
     /** Can `tag` start a type argument of a CompactAnnotation? */
     def isCompactAnnotTypeTag(tag: Int): Boolean = tag match
