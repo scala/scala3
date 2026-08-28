@@ -214,6 +214,10 @@ class TypeApplications(val self: Type) extends AnyVal {
       case NoPrefix => true
       case _ => false
     }
+    // This `handleRecursive` is load-bearing!
+    // It is possible to end up in infinite recursion here,
+    // and if we don't surround the match with a `handleRecursive`, this function is tail-recursive,
+    // so the compiler loops forever. See, e.g., neg/i9328.scala.
     ctx.handleRecursive("type parameters of", self):
       self match
         case self: TypeRef =>
