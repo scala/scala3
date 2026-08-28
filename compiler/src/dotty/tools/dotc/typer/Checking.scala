@@ -41,7 +41,7 @@ import cc.{isCaptureChecking, RetainingAnnotation, isRetainsLike, isDisallowedIn
 import cc.Mutability.isUpdateMethod
 
 import collection.mutable
-import reporting.*
+import reporting.*, report.Severity
 import Annotations.ExperimentalAnnotation
 
 object Checking {
@@ -1278,7 +1278,13 @@ trait Checking {
         case Select(qual, _) => qual.symbol.orElse(sym.owner)
         case _ => sym.owner
       checkFeature(nme.implicitConversions,
-        i"Use of implicit conversion ${conv.showLocated}", NoSymbol, tree.srcPos)
+        i"""Implicit conversion to type $expected is not to an `into[...]` type.
+           |Therefore, the use of the implicit conversion ${conv.showLocated}""",
+        NoSymbol, tree.srcPos,
+        severity =
+          if sourceVersion.errorOnConversion then Severity.Error
+          else if sourceVersion.warnOnConversion then Severity.WarningThenError
+          else Severity.FeatureWarning)
 
   private def infixOKSinceFollowedBy(tree: untpd.Tree): Boolean = tree match {
     case _: untpd.Block | _: untpd.Match => true
@@ -1328,9 +1334,10 @@ trait Checking {
   def checkFeature(name: TermName,
                    description: => String,
                    featureUseSite: Symbol,
-                   pos: SrcPos)(using Context): Unit =
+                   pos: SrcPos,
+                   severity: Severity = Severity.FeatureWarning)(using Context): Unit =
     if !Feature.enabled(name) then
-      report.featureWarning(name.toString, description, featureUseSite, required = false, pos)
+      report.featureWarning(name.toString, description, featureUseSite, severity, pos)
 
   /** Check that `tp` is a class type and that any top-level type arguments in this type
    *  are feasible, i.e. that their lower bound conforms to their upper bound. If a type
@@ -1813,7 +1820,7 @@ trait ReChecking extends Checking {
   override def checkCanThrow(tp: Type, span: Span)(using Context): Tree = EmptyTree
   override def checkCatch(pat: Tree, guard: Tree)(using Context): Unit = ()
   override def checkNoContextFunctionType(tree: Tree)(using Context): Unit = ()
-  override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos)(using Context): Unit = ()
+  override def checkFeature(name: TermName, description: => String, featureUseSite: Symbol, pos: SrcPos, severity: Severity)(using Context): Unit = ()
 }
 
 trait NoChecking extends ReChecking {

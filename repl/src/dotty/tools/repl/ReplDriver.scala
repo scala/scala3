@@ -73,6 +73,7 @@ import scala.util.Using
  *  @param quiet       whether we print evaluation results
  *  @param context     the latest compiler context
  *  @param pastInputs  the replayable inputs of the session, most recent first
+ *  @param repositories the repositories added to dependency resolution, in the order they were added
  */
 case class State(objectIndex: Int,
                  valIndex: Int,
@@ -80,7 +81,8 @@ case class State(objectIndex: Int,
                  invalidObjectIndexes: Set[Int],
                  quiet: Boolean,
                  context: Context,
-                 pastInputs: List[String] = Nil):
+                 pastInputs: List[String] = Nil,
+                 repositories: List[coursierapi.Repository] = Nil):
   def validObjectIndexes = (1 to objectIndex).filterNot(invalidObjectIndexes.contains(_))
 
   def recordInput(input: String): State = copy(pastInputs = input :: pastInputs)
@@ -809,6 +811,12 @@ class ReplDriver(settings: Array[String],
 
     case Dep(dep) => resolveAndAddDeps(List(dep))
 
+    case RepoCmd(repositories) => repositories.split("\\s+").filter(_.nonEmpty).toList match
+      case Nil =>
+        out.println(s"${RepoCmd.command} <url>|<alias> ...")
+        state
+      case repositoryStrings => addRepositories(repositoryStrings)
+
     case ToolkitCmd(coordinates) =>
       val singleValue = coordinates.split("\\s+").filter(_.nonEmpty).toList match
         case coords :: Nil => Some(coords)
@@ -836,9 +844,22 @@ class ReplDriver(settings: Array[String],
       case Dependency(coordinate) => coordinate
     val jars = classified.directives.collect:
       case Jar(path) => path
-    val stateWithDependencies = resolveAndAddDeps(dependencies)
+    val repositories = classified.directives.collect:
+      case Repository(repository) => repository
+    val stateWithRepositories = addRepositories(repositories)
+    val stateWithDependencies = resolveAndAddDeps(dependencies)(using stateWithRepositories)
     jars.foldLeft(stateWithDependencies): (currentState, path) =>
       interpretCommand(JarCmd(path))(using currentState)
+
+  private def addRepositories(repositoryStrings: List[String])(using state: State): State =
+    repositoryStrings.foldLeft(state): (currentState, repositoryString) =>
+      DependencyResolver.parseRepository(repositoryString) match
+        case Some(repository) =>
+          out.println(s"Added repository '$repositoryString'.")
+          currentState.copy(repositories = (currentState.repositories :+ repository).distinct)
+        case None =>
+          out.println(s"Unable to parse repository '$repositoryString'.")
+          currentState
 
   private def resolveAndAddDeps(depStrings: List[String])(using state: State): State =
     if depStrings.isEmpty then state
@@ -846,7 +867,7 @@ class ReplDriver(settings: Array[String],
       val deps = depStrings.flatMap(DependencyResolver.parseDependency)
       if deps.isEmpty then state
       else
-        DependencyResolver.resolveDependencies(deps) match
+        DependencyResolver.resolveDependencies(deps, state.repositories) match
           case Right(files) =>
             if files.nonEmpty then
               val classpathState = newRun(state)

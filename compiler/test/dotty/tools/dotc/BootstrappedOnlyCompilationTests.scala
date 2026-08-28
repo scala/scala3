@@ -107,13 +107,13 @@ class BootstrappedOnlyCompilationTests {
 
   // Run tests -----------------------------------------------------------------
 
-  @Test def runMacros: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def runMacros: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runMacros")
     val compilationTest = withCoverage(compileFilesInDir("tests/run-macros", defaultOptions.and("-Xcheck-macros"), FileFilter.exclude(TestSources.runMacrosScala2LibraryTastyExcludelisted)))
     runWithCoverageOrFallback[RunTestWithCoverage](compilationTest)
   }
 
-  @Test def runWithCompiler: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def runWithCompiler: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runWithCompiler")
     val basicTests = List(
       compileFilesInDir("tests/run-with-compiler", withCompilerOptions),
@@ -138,7 +138,7 @@ class BootstrappedOnlyCompilationTests {
     ).limitThreads(2).checkRuns() // TODO reduce to limitThreads(1) if it still causes problems, this would be around 50% slower based on local benchmarking
   }
 
-  @Test def runBootstrappedOnly: Unit = {
+  @Category(Array(classOf[CoverageCompilationTests])) @Test def runBootstrappedOnly: Unit = {
     implicit val testGroup: TestGroup = TestGroup("runBootstrappedOnly")
     val compilationTest = withCoverage(aggregateTests(
       compileFilesInDir("tests/run-bootstrapped", withCompilerOptions),

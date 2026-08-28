@@ -37,6 +37,7 @@ private[repl] object ReplDirectives:
   enum ReplDirective:
     case Dependency(coordinate: String)
     case Jar(path: String)
+    case Repository(repository: String)
 
   case class DirectiveClassification(
     directives: List[ReplDirective],
@@ -61,7 +62,10 @@ private[repl] object ReplDirectives:
 
   def toolkitCoordinates(coords: String): Option[List[String]] =
     val flavorAndVersion = coords.split(":", -1).toList match
-      case version :: Nil if version.nonEmpty => Some((ScalaToolkit.alias, version))
+      // e.g. //> using toolkit typelevel would otherwise be treated as version `typelevel`
+      // and fail during resolution with a cryptic error, so we reject it early
+      case version :: Nil if version.nonEmpty && !toolkitsByFlavor.keySet.contains(version) =>
+        Some((ScalaToolkit.alias, version))
       case flavor :: version :: Nil if flavor.nonEmpty && version.nonEmpty => Some((flavor, version))
       case _ => None
     flavorAndVersion.map: (flavor, rawVersion) =>
@@ -122,6 +126,13 @@ private[repl] object ReplDirectives:
       toDirectives = toolkitDependencies,
       warnings = List(Warning.TestToolkitSameAsToolkit),
       acceptsMultipleValues = false
+    )
+
+    case Repository extends DirectiveHandler(
+      keys = List("repository", "repositories"),
+      usage = "//> using repository <url>|<alias> ...",
+      description = "Add repositories, consulted before the default ones, to dependency resolution.",
+      toDirectives = repository => List(ReplDirective.Repository(repository))
     )
 
     def process(values: Seq[DirectiveValue]): List[ReplDirective] =

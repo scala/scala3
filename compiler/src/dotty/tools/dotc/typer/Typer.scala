@@ -982,7 +982,7 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
           case Some((_, fieldType)) =>
             val dynSelected = dynamicSelect(fieldType)
             dynSelected match
-              case Apply(sel: Select, _) if !sel.denot.symbol.exists =>
+              case Apply(sel: Select, _) if !sel.symbol.exists =>
                 // Reject corner case where selectDynamic needs annother selectDynamic to be called. E.g. as in neg/unselectable-fields.scala.
                 report.error(i"Cannot use selectDynamic here since it needs another selectDynamic to be invoked", tree.srcPos)
               case _ =>
@@ -3571,8 +3571,10 @@ class Typer(@constructorOnly nestingLevel: Int = 0) extends Namer
         cdef1.tpe.derivesFrom(defn.DynamicClass) &&
         !Feature.dynamicsEnabled
       if (reportDynamicInheritance) {
-        val isRequired = parents1.exists(_.tpe.isRef(defn.DynamicClass))
-        report.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, isRequired, cdef.srcPos)
+        val severity =
+          if parents1.exists(_.tpe.isRef(defn.DynamicClass)) then report.Severity.Error
+          else report.Severity.FeatureWarning
+        report.featureWarning(nme.dynamics.toString, "extension of type scala.Dynamic", cls, severity, cdef.srcPos)
       }
 
       checkNonCyclicInherited(cls.thisType, cls.info.parents, cls.info.decls, cdef.srcPos)

@@ -2,14 +2,13 @@ package dotty.tools.dotc
 package transform
 
 import ast.*, desugar.{ForArtifact, PatternVar}, tpd.*, untpd.ImportSelector
-import config.ScalaSettings
 import core.*, Contexts.*, Decorators.*, Flags.*
 import Names.{Name, SimpleName, DerivedName, TermName, termName}
-import NameKinds.{BodyRetainerName, ContextBoundParamName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
-import NameOps.{isAnonymousFunctionName, isReplWrapperName, setterName}
+import NameKinds.{BodyRetainerName, ContextFunctionParamName, DefaultGetterName, WildcardParamName}
+import NameOps.{isReplWrapperName, setterName}
 import Scopes.newScope
 import StdNames.nme
-import Symbols.{ClassSymbol, NoSymbol, Symbol, defn, isDeprecated, requiredClass, requiredModule}
+import Symbols.{NoSymbol, Symbol, defn, isDeprecated}
 import Types.*
 import reporting.{CodeAction, Diagnostic, UnusedSymbol}
 import rewrites.Rewrites.ActionPatch
@@ -17,14 +16,14 @@ import rewrites.Rewrites.ActionPatch
 import MegaPhase.MiniPhase
 import typer.{ImportInfo, Typer, TyperPhase}
 import typer.Deriving.OriginalTypeClass
-import typer.Implicits.{ContextualImplicits, RenamedImplicitRef}
+import typer.Implicits.RenamedImplicitRef
 import util.{Property, Spans, SrcPos}, Spans.Span
 import util.Chars.{isLineBreakChar, isWhitespace}
 import util.chaining.*
 
 import java.util.IdentityHashMap
 
-import scala.collection.mutable, mutable.{ArrayBuilder, ListBuffer, Stack}
+import scala.collection.mutable, mutable.ArrayBuilder
 
 import CheckUnused.*
 
@@ -485,9 +484,8 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
    *  Avoid cached ctx.implicits because it needs the precise import context that introduces the given.
    */
   def resolveScoped(tp: Type, pos: SrcPos)(using Context): Unit =
-    var done = false
     val ctxs = ctx.outersIterator
-    while !done && ctxs.hasNext do
+    while ctxs.hasNext do
       val cur = ctxs.next()
       val importInfo = cur.importInfoIfImportContext
       val implicitRefs: List[ImplicitRef] =
@@ -497,7 +495,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
         else Nil
       implicitRefs.find(ref => ref.underlyingRef.widen <:< tp) match
       case Some(found: TermRef) =>
-        refUsage(found.denot.symbol, pos)
+        refUsage(found.symbol, pos)
         if importInfo `ne` null then
           importInfo.selectors.find(sel => sel.isGiven || sel.rename == found.name) match
           case Some(sel) =>
@@ -505,7 +503,7 @@ class CheckUnused private (phaseMode: PhaseMode, suffix: String) extends MiniPha
           case _ =>
         return
       case Some(found: RenamedImplicitRef) if importInfo `ne` null =>
-        refUsage(found.underlyingRef.denot.symbol, pos)
+        refUsage(found.underlyingRef.symbol, pos)
         importInfo.selectors.find(sel => sel.rename == found.implicitName) match
         case Some(sel) =>
           refInfos.sels.put(sel, ())
@@ -689,6 +687,7 @@ object CheckUnused:
            m.isDeprecated
         || m.is(Synthetic) && !m.isAnonymousFunction
         || m.hasAnnotation(defn.UnusedAnnot) // param of unused method
+        || sym.name.startsWith("_") // convenient syntax to avoid needing @unused
         || sym.info.isSingleton
         || m.isConstructor && m.owner.thisType.baseClasses.contains(defn.AnnotationClass)
         || sym.isErased // erased param may be unused by design

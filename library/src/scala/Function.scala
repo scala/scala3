@@ -13,6 +13,7 @@
 package scala
 
 import scala.language.`2.13`
+import scala.annotation.unused
 
 /** A module defining utility methods for higher-order functional programming. */
 object Function {
@@ -33,7 +34,7 @@ object Function {
    *  @param y the argument that is ignored
    *  @return `x` regardless of the value of `y`
    */
-  def const[T, U](x: T)(y: U): T = x
+  def const[T, U](x: T)(@unused y: U): T = x
 
   /** Turns a function `A => Option[B]` into a `PartialFunction[A, B]`.
    *

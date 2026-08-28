@@ -54,6 +54,7 @@ private[repl] object ReplCommands:
     command(JarCmd,     "add a JAR to the classpath", "<path>"),
     command(Dep,        "resolve a dependency and make it available in the REPL", "<group>::<artifact>:<version>"),
     command(ToolkitCmd, "resolve a toolkit and make it available in the REPL", "<version>|default|<flavor>:<version>"),
+    command(RepoCmd,    "add repositories used to resolve dependencies", "<url>|<alias>"),
     hidden(Sh),
     hidden(KindOf),
     hidden(Require),

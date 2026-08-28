@@ -23,7 +23,7 @@ object SafeRefs {
 
   val assumedSafePackages = List(
     "scala", "scala.runtime", "scala.collection.immutable", "scala.compiletime.ops",
-    "scala.math", "scala.util", "scala.caps", "java.math", "java.time",
+    "scala.math", "scala.util", "scala.util.matching", "scala.caps", "java.math", "java.time",
     "java.util.function", "java.util.regex", "java.util.stream"
   )
 

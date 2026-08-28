@@ -2,7 +2,6 @@ object Main {
     def main(a: Array[String]): Unit = {
       println("you may not run `testHasThisType` - just check that it compiles")
       // comment lines after "// this line of code makes" comments to make it compilable again
-      testHasThisType()
       testHasThisType2()
     }
 
@@ -17,17 +16,6 @@ object Main {
     }
 
     // ---- ---- ---- ----
-
-    def testHasThisType(): Unit = {
-      def testSelf[PThis <: HasThisType[_ <: PThis]](that: HasThisType[PThis]): Unit = {
-        val thatSelf = that.self()
-        // that.self().type <: that.This
-        assert(implicitly[thatSelf.type <:< that.This] != null)
-      }
-      val that: HasThisType[_] = Foo() // null.asInstanceOf
-      testSelf(that) // error: recursion limit exceeded
-    }
-
 
     def testHasThisType2(): Unit = {
       def testSelf[PThis <: HasThisType[_ <: PThis]](that: PThis & HasThisType[PThis]): Unit = {

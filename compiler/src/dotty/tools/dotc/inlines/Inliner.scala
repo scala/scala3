@@ -63,7 +63,8 @@ object Inliner:
       case New(_) | Closure(_, _, _) =>
         true
       case TypeApply(fn, _) =>
-        if fn.symbol.isErased || fn.symbol == defn.QuotedTypeModule_of then true else apply(fn)
+        val sym = fn.symbol
+        if sym.isErased || sym == defn.QuotedTypeModule_of then true else apply(fn)
       case Apply(fn, args) =>
         val isCaseClassApply = {
           val cls = tree.tpe.classSymbol
@@ -242,12 +243,12 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  When TypeAssigner types `async(...)`, it skolemizes unstable `am` in the
    *  dependent result type, and the call tree is typed as `Wrap[F, ?1.Context]`.
    *  Then the inliner expands the method body and replace `am` by a proxy `am$proxy`.
-   *  Then `new Wrap[F, am.Context]` becomes `new Wrap[F, am$proxy.Context]`.
    *
-   *  In `paramBindingDef`, we type `am$proxy` as $1, so that both expanded tree and
-   *  call tree is typed `Wrap[F, ?1.Context]`. Otherwise, call tree and expanded tree
-   *  has different types `?1.Context` vs `am$proxy.Context` and compile fails.
-   *  See #26153 and #26031.
+   *  Later, when the Inlined node's type avoids that proxy,
+   *  `TypeAssigner.InlineProxySkolem` on the binding recovers `?1` so the result
+   *  matches the call type `Wrap[F, ?1.Context]`
+   *  (instead of `Wrap[F, am$proxy.Context]` avoids to `Wrap[F, ?]`)
+   *  See #26153, #26031, and #26810.
    */
   private val callValueSkolemss: List[List[Option[SkolemType]]] =
     def loop(tree: Tree, skolemss: List[List[Option[SkolemType]]]): List[List[Option[SkolemType]]] = tree match
@@ -311,7 +312,6 @@ class Inliner(val call: tpd.Tree)(using Context):
    *  @param arg0        the argument corresponding to the parameter
    *  @param buf         the buffer to which the definition should be appended
    *  @param skolem      optional skolem from the call's dependent result type.
-   *                     If present, use it as the proxy type.
    */
   private[inlines] def paramBindingDef(name: Name, formal: Type, arg0: Tree,
                               buf: DefBuffer, skolem: Option[SkolemType] = None)(using Context): ValOrDefDef = {
@@ -330,16 +330,10 @@ class Inliner(val call: tpd.Tree)(using Context):
           dropNameArg(arg0)
     val argtpe = arg.tpe.dealiasKeepAnnots.translateFromRepeated(toArray = false)
     val argIsBottom = argtpe.isBottomTypeAfterErasure
-    val baseBindingType =
+    val bindingType =
       if argIsBottom then formal
       else if isByName then ExprType(argtpe.widen)
       else argtpe.widen
-    // If the call result type used a skolem for this argument, use the same skolem
-    // as the proxy type. `?1` has `argtpe.widen` as its underlying type.
-    val proxySkolem = if argIsBottom then None else skolem
-    val bindingType = proxySkolem match
-      case Some(sk) => if isByName then ExprType(sk) else sk
-      case None => baseBindingType
 
     var bindingFlags: FlagSet = InlineProxy
     if formal.widenExpr.hasAnnotation(defn.InlineParamAnnot) then
@@ -353,13 +347,11 @@ class Inliner(val call: tpd.Tree)(using Context):
       var newArg = arg.changeOwner(ctx.owner, boundSym)
       if bindingFlags.is(Inline) && argIsBottom then
         newArg = Typed(newArg, TypeTree(formal.widenExpr)) // type ascribe RHS to avoid type errors in expansion. See i8612.scala
-      else proxySkolem match
-        case Some(sk) =>
-          newArg = newArg.cast(sk) // adapt the rhs to the skolem-typed proxy
-        case None => ()
       if isByName then DefDef(boundSym, newArg)
       else ValDef(boundSym, newArg, inferred = true)
     }.withSpan(boundSym.span)
+    if !argIsBottom then // Record typer skolem on the proxy ValDef, so the `avoidingType` can avoid proxy to skolem.
+      skolem.foreach(binding.putAttachment(TypeAssigner.InlineProxySkolem, _))
     inlining.println(i"parameter binding: $binding, $argIsBottom")
     buf += binding
     binding
@@ -720,8 +712,10 @@ class Inliner(val call: tpd.Tree)(using Context):
         /* Span of the argument. Used when the argument is inlined directly without a binding */
         def argSpan =
           if (tree.name == nme.WILDCARD) tree.span // From type match
-          else if (tree.symbol.isTypeParam && tree.symbol.owner.isClass) tree.span // TODO is this the correct span
-          else paramSpan(tree.name)
+          else
+            val sym = tree.symbol
+            if sym.isTypeParam && sym.owner.isClass then tree.span // TODO is this the correct span
+            else paramSpan(tree.name)
         val inlinedCtx = ctx.withSource(inlinedMethod.topLevelClass.source)
         paramProxy.get(tree.tpe) match {
           case Some(t) if tree.isTerm && t.isSingleton =>

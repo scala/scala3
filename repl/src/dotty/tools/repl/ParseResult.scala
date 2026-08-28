@@ -134,6 +134,14 @@ object ToolkitCmd extends ArgCommand[ToolkitCmd] {
   val command: String = ":toolkit"
 }
 
+/** `:repository <url>|<alias>` adds repositories used to resolve dependencies
+ */
+case class RepoCmd(repositories: String) extends Command:
+  override def replayLine = Some(s"${RepoCmd.command} $repositories")
+object RepoCmd extends ArgCommand[RepoCmd] {
+  val command: String = ":repository"
+}
+
 /** `:kind <type>` display the kind of a type. see also :help kind
  */
 case class KindOf(expr: String) extends Command:

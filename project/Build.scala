@@ -10,6 +10,11 @@ import com.typesafe.sbt.packager.universal.UniversalPlugin
 import com.typesafe.sbt.packager.universal.UniversalPlugin.autoImport.Universal
 import com.typesafe.sbt.packager.windows.WindowsPlugin
 import com.typesafe.sbt.packager.windows.WindowsPlugin.autoImport.Windows
+import com.typesafe.sbt.packager.debian.DebianPlugin
+import com.typesafe.sbt.packager.debian.DebianPlugin.autoImport.Debian
+import com.typesafe.sbt.packager.linux.LinuxPlugin.autoImport.Linux
+import com.typesafe.sbt.packager.rpm.RpmPlugin
+import com.typesafe.sbt.packager.rpm.RpmPlugin.autoImport.Rpm
 import sbt.Package.ManifestAttributes
 import sbt.PublishBinPlugin.autoImport._
 import dotty.tools.sbtplugin._
@@ -87,6 +92,7 @@ object Build {
       // Workaround for #25897
       "-Wconf:cat=deprecation&origin=scala\\.collection\\.Iterable\\.stringPrefix:s",
       //"-Wunused:all",
+      //"-Wunused:params",
       "-encoding", "UTF8",
       "-language:implicitConversions",
       s"--java-output-version:${Versions.minimumJVMVersion}",
@@ -382,21 +388,17 @@ object Build {
     },
   ) ++ scaladocDerivedInstanceSettings
 
-  /*lazy val commonBenchmarkSettings = Seq(
-    Jmh / bspEnabled := false,
-    Jmh / run / mainClass := Some("dotty.tools.benchmarks.Bench"), // custom main for jmh:run
-    javaOptions += "-DBENCH_COMPILER_CLASS_PATH=" + Attributed.data((`scala3-bootstrapped` / Compile / fullClasspath).value).mkString("", File.pathSeparator, ""),
-    javaOptions += "-DBENCH_CLASS_PATH=" + Attributed.data((`scala3-library-bootstrapped` / Compile / fullClasspath).value).mkString("", File.pathSeparator, "")
-  )*/
-
   lazy val commonMiMaSettings = Def.settings(
-    mimaPreviousArtifacts += {
+    mimaPreviousArtifacts ++= {
       val thisProjectID = projectID.value
       val crossedName = thisProjectID.crossVersion match {
         case cv: Disabled => thisProjectID.name
         case cv: Binary => s"${thisProjectID.name}_${cv.prefix}3${cv.suffix}"
       }
-      (thisProjectID.organization % crossedName % mimaPreviousDottyVersion)
+      Set(
+        thisProjectID.organization % crossedName % mimaPreviousVersion,
+        thisProjectID.organization % crossedName % mimaPreviousLTSVersion,
+      )
     },
 
     mimaCheckDirection := (CompatMode.value match {
@@ -551,7 +553,7 @@ object Build {
            |  --from-tasty          runs tests in dotty.tools.dotc.FromTastyTests
            |  --update-checkfiles   override the checkfiles that did not match with the current output
            |  --failed              re-run only failed tests
-           |  --enable-coverage-phase enable Scoverage instrumentation phase for compilation tests
+           |  --enable-coverage-phase run coverage-enabled compilation tests with Scoverage instrumentation
            |  <filter>              substring of the path of the tests file
            |
          """.stripMargin
@@ -576,6 +578,7 @@ object Build {
         else if (coverageFlag) compilationTests
         else s"$compilationTests dotty.tools.dotc.coverage.*"
       val cmd = s" $test -- --exclude-categories=dotty.SlowTests" +
+        (if (enableCoveragePhase) " --include-categories=dotty.CoverageCompilationTests" else "") +
         (if (updateCheckfile) " -Ddotty.tests.updateCheckfiles=TRUE" else "") +
         (if (rerunFailed) " -Ddotty.tests.rerunFailed=TRUE" else "") +
         (if (enableCoveragePhase) " -Ddotty.tests.instrumentCoverage=TRUE" else "") +
@@ -628,6 +631,8 @@ object Build {
     `dist-mac-aarch64`,
     `dist-win-x86_64`,
     `dist-linux-x86_64`,
+    `dist-linux-x86_64-deb`,
+    `dist-linux-x86_64-rpm`,
     `dist-linux-aarch64`,
   )
 
@@ -930,6 +935,7 @@ object Build {
       bootstrappedScalaInstanceSettings,
       // Needed for the JSR223 tests which are "run" tests
       Test / javaOptions += s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
+      Test / javaOptions += s"-Ddotty.tests.scalaCliVersion=${Dependencies.scalaCliLauncherVersion}",
       excludeDependencies += "org.scala-lang" %% "scala3-library",
       excludeDependencies += "org.scala-lang" % "scala-library",
       bspEnabled := enableBspAllProjects,
@@ -961,11 +967,12 @@ object Build {
       moduleName    := "scala2-library",
       scalaVersion  := Versions.scala2Version,
       version       := scalaVersion.value,
-      // Remove Scala 3 specific settings
+      // Remove Scala 3 specific settings (and the unused params one, which is an issue that should be fixed in the 2.x stdlib)
       scalacOptions --= Seq(
         "--java-output-version:17",
         "-Yexplicit-nulls",
-        "-Wsafe-init"
+        "-Wsafe-init",
+        "-Wunused:params"
       ),
       scalacOptions ++= Seq(
         "-release:17",
@@ -1016,9 +1023,9 @@ object Build {
       target := target.value / "scala-library-nonbootstrapped",
       // Add configuration for MiMa
       commonMiMaSettings,
-      mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
-      mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
-      customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
+      mimaForwardIssueFilters := MiMaFilters.ScalaLibrary.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.ScalaLibrary.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.ScalaLibrary"),
       scala2LibraryClasspath := Vector((`scala2-library` / Compile / packageBin).value),
       // Generate library.properties, used by scala.util.Properties
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
@@ -1107,9 +1114,9 @@ object Build {
       bootstrappedScalaInstanceSettings,
       // Add configuration for MiMa
       commonMiMaSettings,
-      mimaForwardIssueFilters := MiMaFilters.Scala3Library.ForwardsBreakingChanges,
-      mimaBackwardIssueFilters := MiMaFilters.Scala3Library.BackwardsBreakingChanges,
-      customMimaReportBinaryIssues("MiMaFilters.Scala3Library"),
+      mimaForwardIssueFilters := MiMaFilters.ScalaLibrary.ForwardsBreakingChanges,
+      mimaBackwardIssueFilters := MiMaFilters.ScalaLibrary.BackwardsBreakingChanges,
+      customMimaReportBinaryIssues("MiMaFilters.ScalaLibrary"),
       scala2LibraryClasspath := Vector((`scala2-library` / Compile / packageBin).value),
       // Generate Scala 3 runtime properties overlay
       Compile / resourceGenerators += generateLibraryProperties.taskValue,
@@ -1563,14 +1570,12 @@ object Build {
         }
         val externalDeps = (ThisProject / Runtime / externalDependencyClasspath).value
         Seq(
-          s"-Ddotty.tests.dottyCompilerManagedSources=${managedSrcDir}",
           s"-Ddotty.tests.classes.dottyInterfaces=${(`scala3-interfaces` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.dottyCompiler=${(ThisProject / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-nonbootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-nonbootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
-          s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
     )
@@ -1693,7 +1698,6 @@ object Build {
         }
         val externalDeps = (ThisProject / Runtime / externalDependencyClasspath).value
         Seq(
-          s"-Ddotty.tests.dottyCompilerManagedSources=${managedSrcDir}",
           s"-Ddotty.tests.classes.dottyInterfaces=${(`scala3-interfaces` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.dottyCompiler=${(ThisProject / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-bootstrapped` / Compile / packageBin).value}",
@@ -1703,7 +1707,6 @@ object Build {
           s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
           s"-Ddotty.tests.classes.dottyStaging=${(LocalProject("scala3-staging") / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.dottyTastyInspector=${(LocalProject("scala3-tasty-inspector") / Compile / packageBin).value}",
-          s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
         )
       },
       bspEnabled := enableBspAllProjects,
@@ -2393,14 +2396,12 @@ object Build {
         val externalDeps = (`scala3-compiler-bootstrapped` / Runtime / externalDependencyClasspath).value
 
         Seq(
-          s"-Ddotty.tests.dottyCompilerManagedSources=${managedSrcDir}",
           s"-Ddotty.tests.classes.dottyInterfaces=${(`scala3-interfaces` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.dottyCompiler=${(`scala3-compiler-bootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.tastyCore=${(`tasty-core-bootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.compilerInterface=${findArtifactPath(externalDeps, "compiler-interface")}",
           s"-Ddotty.tests.classes.scalaLibrary=${(`scala-library-bootstrapped` / Compile / packageBin).value}",
           s"-Ddotty.tests.classes.asm=${findArtifactPath(externalDeps, "asm")}",
-          s"-Ddotty.tools.dotc.semanticdb.test=${(ThisBuild / baseDirectory).value/"tests"/"semanticdb"}",
           "-Ddotty.tests.classes.scalaJSScalalib=" + (`scala-library-sjs` / Compile / packageBin).value,
           "-Ddotty.tests.classes.scalaJSJavalib=" + findArtifactPath(externalJSDeps, "scalajs-javalib"),
           "-Ddotty.tests.classes.scalaJSLibrary=" + findArtifactPath(externalJSDeps, "scalajs-library_2.13"),
@@ -2702,6 +2703,78 @@ object Build {
       republishFetchCoursier := (dist / republishFetchCoursier).value,
       republishLaunchers +=
         ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-pc-linux.gz")
+    )
+
+  lazy val `dist-linux-x86_64-deb` = project.in(file("dist/linux-x86_64-deb")).asDist
+    .enablePlugins(DebianPlugin) // TO GENERATE THE `.deb` package
+    .settings(packageName := (dist / packageName).value + "-x86_64-pc-linux")
+    .settings(
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-pc-linux.gz")
+    )
+    .settings(
+      Linux / packageName := "scala3",
+      Debian / name       := "scala3",
+      // Debian version ordering:
+      //   `-` is used for "debian revision", which we're not using, so we replace it
+      //   `~` sorts BEFORE empty string (so x.y.z~RC is older than x.y.z)
+      //   `+` is just an ordinary character, so we use it instead of `-` when we're not using `~`
+      // For reference: https://www.debian.org/doc/debian-policy/ch-controlfields.html#version
+      Debian / version := version.value
+        .replaceFirst("-RC", "~RC").replaceFirst("-bin-", "~bin-").replace("-", "+"),
+      Debian / packageArchitecture := "amd64",
+      // java17-runtime-headless - virtual package, satisfied by any existing java 17+ package
+      // If it's not available, we try openjdk-17-jre-headless and then openjdk-21-jre-headless (for systems without openjdk 17, e.g. Debian 13 Trixie)
+      debianPackageDependencies := Seq("java17-runtime-headless | openjdk-17-jre-headless | openjdk-21-jre-headless"),
+      maintainer         := "The Scala Programming Language",
+      packageSummary     := s"Scala $dottyVersion",
+      packageDescription := "The Scala Programming Language",
+      // Emit a fixed-name `scala.deb` so CI can reference it without a glob
+      // Debian packaging doesn't seem to respect `artifactPath`
+      Debian / packageBin := {
+        val built = (Debian / packageBin).dependsOn(republish).value
+        val fixed = built.getParentFile / "scala.deb"
+        IO.copyFile(built, fixed)
+        fixed
+      },
+    )
+
+  lazy val `dist-linux-x86_64-rpm` = project.in(file("dist/linux-x86_64-rpm")).asDist
+    .enablePlugins(RpmPlugin) // TO GENERATE THE `.rpm` package
+    .settings(packageName := (dist / packageName).value + "-x86_64-pc-linux")
+    .settings(
+      republishLibexecDir := (dist / republishLibexecDir).value,
+      republishLibexecOverrides += (dist / baseDirectory).value / "libexec-native-overrides",
+      republishFetchCoursier := (dist / republishFetchCoursier).value,
+      republishLaunchers +=
+        ("scala-cli" -> s"gz+https://github.com/VirtusLab/scala-cli/releases/download/v${Dependencies.scalaCliLauncherVersion}/scala-cli-x86_64-pc-linux.gz")
+    )
+    .settings(
+      Linux / packageName := "scala3",
+      // No `Rpm / name := "scala3"` here unlike debian - the name is derived from packageName
+      // RPM version ordering (very similar to Debian):
+      //   `-` is used for RPM release/revision, which is set automatically, so we replace it
+      //   `~` sorts BEFORE empty string (so x.y.z~RC is older than x.y.z)
+      //   `+` is just an ordinary character, so we use it instead of `-` when we're not using `~`
+      // For reference: https://rpm.org/docs/6.0.x/man/rpm-version.7
+      Rpm / version := version.value
+        .replaceFirst("-RC", "~RC").replaceFirst("-bin-", "~bin-").replace("-", "+"),
+      Rpm / packageArchitecture := "x86_64",
+      rpmVendor  := "The Scala Programming Language",
+      rpmLicense := Some("Apache-2.0"),
+      rpmAutoreq  := "no",
+      rpmAutoprov := "no",
+      // `java-headless` for Fedora/RHEL/CentOS, `java-17-headless` for openSUSE
+      rpmRequirements := Seq("(java-headless >= 1:17 or java-17-headless)"),
+      maintainer         := "The Scala Programming Language",
+      packageSummary     := s"Scala $dottyVersion",
+      packageDescription := "The Scala Programming Language",
+      // Emit a fixed-name `scala.rpm` so CI can reference it without a glob
+      Rpm / packageBin / artifactPath := (Rpm / target).value / "scala.rpm",
+      Rpm / packageBin := (Rpm / packageBin).dependsOn(republish).value,
     )
 
   lazy val `dist-linux-aarch64` = project.in(file("dist/linux-aarch64")).asDist

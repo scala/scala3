@@ -346,8 +346,7 @@ class TypeMismatch(val found: Type, expected: Type, val inTree: Option[untpd.Tre
               i"""
                  |
                  |Note that I could not resolve reference $tp.
-                 |${MissingType(pre, tp.name).reason}
-                 """
+                 |${MissingType(pre, tp.name).reason}"""
           mapOver(tp)
         case _ =>
           mapOver(tp)

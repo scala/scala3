@@ -160,10 +160,10 @@ The new rules are as follows: An implicit `a` defined in `A` is more specific th
  - `A` extends `B`, or
  - `A` is an object and the companion class of `A` extends `B`, or
  - `A` and `B` are objects,
-    `B` does not inherit any implicit members from base classes (*),
+    `B` does not inherit any implicit members from base classes[^1],
     and the companion class of `A` extends the companion class of `B`.
 
-Condition (*) is new. It is necessary to ensure that the defined relation is transitive.
+[^1]: This condition is new. It is necessary to ensure that the defined relation is transitive.
 
 [//]: # todo: expand with precise rules
 

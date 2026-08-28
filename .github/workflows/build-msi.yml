@@ -5,7 +5,7 @@
 ###   - IT WILL UPLOAD TO GITHUB THE MSI FILE FOR SCALA UNDER THE 'scala.msi' NAME              ###
 ###                                                                                             ###
 ### NOTE:                                                                                       ###
-###   - WE SHOULD BUILD SCALA USING JAVA 8                                                      ###
+###   - SCALA 3.8.0+ IS DISTRIBUTED USING JAVA 17                                               ###
 ###################################################################################################
 
 name: Build the MSI Package
@@ -14,14 +14,14 @@ on:
   workflow_call:
     outputs:
       version:
-        description: 'The developed Scala version (major.minor.patch) extracted from project/Build.scala'
+        description: 'The full Scala version, from sbt (scala3-compiler-bootstrapped/version)'
         value: ${{ jobs.build.outputs.version }}
 
 permissions:
   contents: read
 
 env:
-  # Release only happends when triggering CI by pushing tag
+  # Release only happens when triggering CI by pushing a tag
   RELEASEBUILD: ${{ startsWith(github.event.ref, 'refs/tags/') && 'yes' || 'no' }}
 
 jobs:
@@ -40,7 +40,7 @@ jobs:
         id: extract-version
         shell: bash
         run: |
-          version=$(sed -n 's/.*val developedVersion = "\(.*\)".*/\1/p' project/Build.scala)
+          version=$(sbt -no-colors "print scala3-compiler-bootstrapped/version" | tr -d '\r' | tail -n1)
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "Extracted Scala version: $version"
       - name: Build MSI package
