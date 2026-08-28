@@ -84,15 +84,19 @@ Typing of literals is described along with their [lexical syntax](01-lexical-syn
 
 ## The _Null_ Value
 
-The `null` value is of type `scala.Null`, and thus conforms to every reference type.
-It denotes a reference value which refers to a special `null` object.
-This object implements methods in class `scala.AnyRef` as follows:
+The `null` value is of type `scala.Null`. and thus conforms to every reference type.
+It denotes a special `null` object value.
+This object implements methods in class `scala.Any` as follows:
 
 - `eq(´x\,´)` and `==(´x\,´)` return `true` iff the argument ´x´ is also the "null" object.
 - `ne(´x\,´)` and `!=(´x\,´)` return true iff the argument x is not also the "null" object.
 - `isInstanceOf[´T\,´]` always returns `false`.
 - `asInstanceOf[´T\,´]` returns the [default value](04-basic-definitions.html#value-definitions) of type ´T´.
 - `##` returns ``0``.
+- `toString` returns `"null"`.
+- `getClass` returns `classOf[scala.Null]`.
+
+Note: `eq` and `ne` are not methods of `scala.Any`, but are provided for `scala.Null` as extension methods in `scala.Predef`.
 
 A reference to any other member of the "null" object causes a `NullPointerException` to be thrown.
 
