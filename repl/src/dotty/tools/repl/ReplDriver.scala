@@ -170,6 +170,8 @@ class ReplDriver(settings: Array[String],
     rendering = new Rendering(classLoader)
   }
 
+  private[repl] def replRootContext: Context = rootCtx
+
   private var rootCtx: Context = uninitialized
   private var shouldStart: Boolean = uninitialized
   private var compiler: ReplCompiler = uninitialized
@@ -344,7 +346,7 @@ class ReplDriver(settings: Array[String],
   /** Detect global language imports in parsed trees and enable them in rootCtx
    *  so subsequent parses and compilations see them (i16250).
    */
-  private def propagateLanguageImports(trees: List[untpd.Tree]): Unit =
+  private[repl] def propagateLanguageImports(trees: List[untpd.Tree]): Unit =
     import dotc.core.NameKinds.QualifiedName
     for case untpd.Import(expr, selectors) <- trees do
       untpd.languageImport(expr) match

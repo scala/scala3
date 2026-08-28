@@ -42,7 +42,8 @@ private[repl] object ReplDirectives:
   case class DirectiveClassification(
     directives: List[ReplDirective],
     warnings: List[Warning],
-    hasDirectives: Boolean
+    hasDirectives: Boolean,
+    directiveLines: List[Int] = Nil
   )
 
   private def resolveVersion(rawVersion: String, default: String): String = rawVersion match
@@ -184,6 +185,11 @@ private[repl] object ReplDirectives:
     try
       val parsed = UsingDirectivesParser.parse(sourceCode).directives
       val (directives, warnings) = parsed.map(classifyDirective).unzip
-      DirectiveClassification(directives.flatten.toList, warnings.flatten.distinct.toList, parsed.nonEmpty)
+      DirectiveClassification(
+        directives.flatten.toList,
+        warnings.flatten.distinct.toList,
+        parsed.nonEmpty,
+        parsed.map(_.keyPosition.line).toList
+      )
     catch
       case NonFatal(_) => DirectiveClassification(Nil, Nil, false)
