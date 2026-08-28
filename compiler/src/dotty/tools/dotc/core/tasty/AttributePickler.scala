@@ -31,7 +31,7 @@ object AttributePickler:
       assertTagOrder(tag)
       val utf8Ref = pickler.nameBuffer.utf8Index(value)
       buf.writeByte(tag)
-      buf.writeNat(utf8Ref.index)
+      buf.writeNat(utf8Ref)
 
   end pickleAttributes
 

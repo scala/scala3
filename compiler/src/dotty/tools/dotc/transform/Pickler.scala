@@ -555,7 +555,7 @@ class Pickler extends Phase {
     for ((cls, (unit, unpickler, optCheck)) <- unpicklers) do
       val testJava = unit.typedAsJava
       if testJava then
-        if unpickler.unpickler.nameAtRef.contents.exists(_ == nme.FromJavaObject) then
+        if unpickler.unpickler.nameAtRef.exists(_ == nme.FromJavaObject) then
           report.error(em"Pickled reference to FromJavaObject in Java defined $cls in ${cls.source}")
       val unpickled = unpickler.rootTrees
       val freshUnit = CompilationUnit(rootCtx.compilationUnit.source)

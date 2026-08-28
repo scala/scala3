@@ -91,7 +91,7 @@ class TreePickler(pickler: TastyPickler, attributes: Attributes) {
       refs.foreach(fillRef(_, currentAddr, relative = false))
       forwardSymRefs -= sym
 
-  def pickleName(name: Name): Unit = writeNat(nameIndex(name).index)
+  def pickleName(name: Name): Unit = writeNat(nameIndex(name))
 
   private def pickleNameAndSig(name: Name, sig: Signature, target: Name): Unit =
     pickleName(

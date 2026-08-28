@@ -43,7 +43,7 @@ class NameBuffer extends TastyBuffer(10000) {
             nameIndex(original)
           case _ =>
         }
-        val ref = NameRef(nameRefs.size)
+        val ref = nameRefs.size
         nameRefs(name1) = ref
         ref
     }
@@ -64,13 +64,13 @@ class NameBuffer extends TastyBuffer(10000) {
     putNat(lengthAddr, length, lengthWidth)
   }
 
-  def writeNameRef(ref: NameRef): Unit = writeNat(ref.index)
+  def writeNameRef(ref: NameRef): Unit = writeNat(ref)
   def writeNameRef(name: Name): Unit = writeNameRef(nameRefs(name.toTermName))
 
   def writeParamSig(paramSig: Signature.ParamSig): Unit ={
     val encodedValue = paramSig match {
       case paramSig: TypeName =>
-        nameRefs(paramSig.toTermName).index
+        nameRefs(paramSig.toTermName)
       case paramSig: Int =>
         -paramSig
     }
@@ -118,7 +118,7 @@ class NameBuffer extends TastyBuffer(10000) {
     var i = 0
     for (name, ref) <- nameRefs do
       val ref = nameRefs(name)
-      assert(ref.index == i)
+      assert(ref == i)
       i += 1
       pickleNameContents(name)
   }

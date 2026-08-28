@@ -77,7 +77,7 @@ object PositionPickler:
 
     def pickleSource(source: SourceFile): Unit = {
       buf.writeInt(SOURCE)
-      buf.writeInt(pickler.nameBuffer.nameIndex(source.pathRelativeToSourceRoot.toTermName).index)
+      buf.writeInt(pickler.nameBuffer.nameIndex(source.pathRelativeToSourceRoot.toTermName))
     }
 
     /** True if x's position shouldn't be reconstructed automatically from its initial span
