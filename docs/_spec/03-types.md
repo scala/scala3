@@ -1634,6 +1634,8 @@ The erased LUB is computed as follows:
 - if both arguments are arrays of same primitives, an array of this primitive
 - if one argument is array of primitives and the other is array of objects, [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html)
 - if one argument is an array, [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html)
+- if one argument is `scala.Nothing`, the other argument
+- if one argument is `scala.Null` and the other derives from [`Object`](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html), the other argument
 - otherwise a common superclass or trait S of the argument classes, with the following two properties:
   - S is minimal: no other common superclass or trait derives from S, and
   - S is last: in the linearization of the first argument type ´|A|´ there are no minimal common superclasses or traits that come after S.
@@ -1642,6 +1644,10 @@ The erased LUB is computed as follows:
 The rules for ´eglb(A, B)´ are given below in pseudocode:
 
 ```
+eglb(scala.Nothing, B)          = B
+eglb(A, scala.Nothing)          = A
+eglb(scala.Null, B)             = B                     if B derives from Object
+eglb(A, scala.Null)             = A                     if A derives from Object
 eglb(scala.Array[A], JArray[B]) = scala.Array[eglb(A, B)]
 eglb(scala.Array[T], _)         = scala.Array[T]
 eglb(_, scala.Array[T])         = scala.Array[T]
