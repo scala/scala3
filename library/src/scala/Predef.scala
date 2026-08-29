@@ -514,13 +514,6 @@ object Predef extends LowPriorityImplicits {
   @(deprecated @companionClass)("Implicit injection of + is deprecated. Convert to String to call +", "2.13.0") // for Scaladoc
   // scala/bug#8229 retaining the pre 2.11 name for source compatibility in shadowing this implicit
   private[scala] final class any2stringadd[A](private val self: A) extends AnyVal {
-    /** Returns the concatenation of the wrapped value's string representation and `other`.
-     *
-     *  The wrapped value is converted with `String.valueOf`, so a `null` value
-     *  renders as the string `"null"`.
-     *
-     *  @param other the string to append
-     */
     def +(other: String): String = String.valueOf(self) + other
   }
   @deprecated
@@ -957,73 +950,20 @@ private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2
   import mutable.ArraySeq
 
   // Deprecated conversions to runtime.Rich* classes; these methods used to be `implicit`
-  /** Wraps a `Byte` in a [[scala.runtime.RichByte]], which adds comparison
-   *  operations and methods such as `min`, `max`, `abs`, and `sign`.
-   *
-   *  @param x the value to wrap
-   *  @return a `RichByte` value class wrapping `x`
-   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def byteWrapper(x: Byte): runtime.RichByte = new runtime.RichByte(x)
-  /** Wraps a `Short` in a [[scala.runtime.RichShort]], which adds comparison
-   *  operations and methods such as `min`, `max`, `abs`, and `sign`.
-   *
-   *  @param x the value to wrap
-   *  @return a `RichShort` value class wrapping `x`
-   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def shortWrapper(x: Short): runtime.RichShort = new runtime.RichShort(x)
-  /** Wraps an `Int` in a [[scala.runtime.RichInt]], which adds comparison
-   *  operations, `min`, `max`, and `abs`, the range constructors `to` and
-   *  `until`, and radix conversions such as `toHexString`.
-   *
-   *  @param x the value to wrap
-   *  @return a `RichInt` value class wrapping `x`
-   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def intWrapper(x: Int): runtime.RichInt = new runtime.RichInt(x)
-  /** Wraps a `Char` in a [[scala.runtime.RichChar]], which adds comparison
-   *  operations, the range constructors `to` and `until`, and the character
-   *  classification and case-conversion methods of `java.lang.Character`.
-   *
-   *  @param c the value to wrap
-   *  @return a `RichChar` value class wrapping `c`
-   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def charWrapper(c: Char): runtime.RichChar = new runtime.RichChar(c)
-  /** Wraps a `Long` in a [[scala.runtime.RichLong]], which adds comparison
-   *  operations, `min`, `max`, and `abs`, the range constructors `to` and
-   *  `until`, and radix conversions such as `toHexString`.
-   *
-   *  @param x the value to wrap
-   *  @return a `RichLong` value class wrapping `x`
-   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def longWrapper(x: Long): runtime.RichLong = new runtime.RichLong(x)
-  /** Wraps a `Float` in a [[scala.runtime.RichFloat]], which adds comparison
-   *  operations, `min`, `max`, and `abs`, rounding methods such as `round`,
-   *  `ceil`, and `floor`, and tests such as `isNaN`.
-   *
-   *  @param x the value to wrap
-   *  @return a `RichFloat` value class wrapping `x`
-   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def floatWrapper(x: Float): runtime.RichFloat = new runtime.RichFloat(x)
-  /** Wraps a `Double` in a [[scala.runtime.RichDouble]], which adds comparison
-   *  operations, `min`, `max`, and `abs`, rounding methods such as `round`,
-   *  `ceil`, and `floor`, and tests such as `isNaN`.
-   *
-   *  @param x the value to wrap
-   *  @return a `RichDouble` value class wrapping `x`
-   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def doubleWrapper(x: Double): runtime.RichDouble = new runtime.RichDouble(x)
-  /** Wraps a `Boolean` in a [[scala.runtime.RichBoolean]], which adds comparison
-   *  operations such as `<` and `compare`, ordering `false` before `true`.
-   *
-   *  @param x the value to wrap
-   *  @return a `RichBoolean` value class wrapping `x`
-   */
   @deprecated("use the extension methods available on primitive types instead", since = "3.10.0")
   @inline def booleanWrapper(x: Boolean): runtime.RichBoolean = new runtime.RichBoolean(x)
 
@@ -1126,12 +1066,6 @@ private[scala] abstract class LowPriorityImplicits extends LowPriorityImplicits2
 }
 
 private[scala] abstract class LowPriorityImplicits2 {
-  /** Copies an array into an immutable [[scala.collection.immutable.IndexedSeq]].
-   *
-   *  @tparam T the element type of the array
-   *  @param xs the array whose elements are copied
-   *  @return a new immutable `IndexedSeq` holding the elements of `xs`, or `null` if `xs` is `null`
-   */
   @deprecated("implicit conversions from Array to immutable.IndexedSeq are implemented by copying; use `toIndexedSeq` explicitly if you want to copy, or use the more efficient non-copying ArraySeq.unsafeWrapArray", since="2.13.0")
   implicit def copyArrayToImmutableIndexedSeq[T](xs: Array[T]): IndexedSeq[T] =
     mapNull(xs, new ArrayOps(xs).toIndexedSeq)

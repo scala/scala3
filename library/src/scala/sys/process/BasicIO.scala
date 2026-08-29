@@ -39,32 +39,12 @@ object BasicIO {
   final val Newline: String = System.lineSeparator
 
   private[process] final class LazilyListed[T](
-    /** Enqueues the given element for `lazyList`, blocking while the underlying queue is full. */
     val  process:   T => Unit,
-    /** Signals with the process exit code that no more elements follow, which determines how `lazyList` terminates. */
     val     done: Int => Unit,
-    /** The elements passed to `process`, in order; evaluating a cell blocks until the next element or the exit code arrives. */
     val lazyList: LazyList[T]
   )
 
   private[process] object LazilyListed {
-    /** Creates a `LazilyListed` backed by a bounded blocking queue, so that the elements
-     *  handed to its `process` function are consumed lazily through its `lazyList`.
-     *
-     *  The `lazyList` ends when `done` is called, which is how the producer signals the
-     *  process exit code. A producer that outpaces the consumer blocks once `capacity`
-     *  elements are queued.
-     *
-     *  @tparam T the type of the elements passed to `process` and read from `lazyList`
-     *  @param nonzeroException if true, evaluating `lazyList` throws a `RuntimeException`
-     *                         when `done` reports a nonzero exit code, instead of simply
-     *                         ending the list
-     *  @param capacity the number of elements the underlying queue holds before `process`
-     *                 blocks; must be a positive, non-`null` `Integer`
-     *  @return a `LazilyListed` whose `process`, `done` and `lazyList` members share one
-     *          queue
-     *  @throws IllegalArgumentException if `capacity` is not positive
-     */
     def apply[T](nonzeroException: Boolean, capacity: Integer): LazilyListed[T] = {
       val queue = new LinkedBlockingQueue[Either[Int, T]](capacity)
       val ll = LazyList.unfold(queue) { q =>
@@ -80,33 +60,13 @@ object BasicIO {
 
   @deprecated("internal", since = "2.13.4")
   private[process] final class Streamed[T](
-    /** Enqueues the given element for the stream, blocking while the underlying queue is full. */
     val process:   T => Unit,
-    /** Signals with the process exit code that no more elements follow, which determines how the stream terminates. */
     val    done: Int => Unit,
-    /** Returns the elements passed to `process`, in order; evaluating a cell blocks until the next element or the exit code arrives. */
     val  stream:  () => Stream[T]
   )
 
   @deprecated("internal", since = "2.13.4")
   private[process] object Streamed {
-    /** Creates a `Streamed` backed by a bounded blocking queue, so that the elements handed
-     *  to its `process` function are consumed lazily through the `Stream` its `stream`
-     *  function returns.
-     *
-     *  The stream ends when `done` is called, which is how the producer signals the process
-     *  exit code. A producer that outpaces the consumer blocks once `capacity` elements are
-     *  queued.
-     *
-     *  @tparam T the type of the elements passed to `process` and read from the stream
-     *  @param nonzeroException if true, evaluating the stream throws a `RuntimeException`
-     *                         when `done` reports a nonzero exit code, instead of simply
-     *                         ending the stream
-     *  @param capacity the number of elements the underlying queue holds before `process`
-     *                 blocks; must be a positive, non-`null` `Integer`
-     *  @return a `Streamed` whose `process`, `done` and `stream` members share one queue
-     *  @throws IllegalArgumentException if `capacity` is not positive
-     */
     def apply[T](nonzeroException: Boolean, capacity: Integer): Streamed[T] = {
       val q = new LinkedBlockingQueue[Either[Int, T]](capacity)
       def next(): Stream[T] = q.take() match {
@@ -119,33 +79,12 @@ object BasicIO {
   }
 
   private[process] trait Uncloseable extends Closeable {
-    /** Does nothing, leaving the underlying resource open. */
     final override def close(): Unit = ()
   }
   private[process] object Uncloseable {
-    /** Returns a view of `in` that reads through to it but whose `close` does nothing.
-     *
-     *  @param in the input stream to shield from closing
-     */
     def apply(in: InputStream): InputStream      = new FilterInputStream(in) with Uncloseable { }
-    /** Returns a view of `out` that writes through to it but whose `close` does nothing.
-     *
-     *  @param out the output stream to shield from closing
-     */
     def apply(out: OutputStream): OutputStream   = new FilterOutputStream(out) with Uncloseable { }
-    /** Shields the standard input stream from being closed by code that consumes it.
-     *
-     *  @param in the input stream to check
-     *  @return an uncloseable view of `in` if it is `stdin`, otherwise `in` itself
-     */
     def protect(in: InputStream): InputStream    = if (in eq stdin) Uncloseable(in) else in
-    /** Shields the standard output and error streams from being closed by code that writes
-     *  to them.
-     *
-     *  @param out the output stream to check
-     *  @return an uncloseable view of `out` if it is `stdout` or `stderr`, otherwise `out`
-     *          itself
-     */
     def protect(out: OutputStream): OutputStream = if ((out eq stdout) || (out eq stderr)) Uncloseable(out) else out
   }
 

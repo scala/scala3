@@ -64,13 +64,7 @@ object Array {
   implicit def toFactory[A : ClassTag](dummy: Array.type): Factory[A, Array[A]] = new ArrayFactory(dummy)
   @SerialVersionUID(3L)
   private class ArrayFactory[A : ClassTag](dummy: Array.type) extends Factory[A, Array[A]] with Serializable {
-    /** Builds an array containing the elements of the given collection.
-     *
-     *  @param it the source of elements to include in the array
-     *  @return a new `Array[A]` holding the elements of `it`, in iteration order
-     */
     def fromSpecific(it: IterableOnce[A]^): Array[A] = Array.from[A](it)
-    /** Returns a new builder that accumulates elements into an `Array[A]`. */
     def newBuilder: mutable.Builder[A, Array[A]] = Array.newBuilder[A]
   }
 
