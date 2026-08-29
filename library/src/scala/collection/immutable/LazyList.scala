@@ -1620,14 +1620,8 @@ object LazyList extends SeqFactory[LazyList] {
   def newBuilder[A]: Builder[A, LazyList[A]] = new LazyBuilder[A]
 
   private class LazyIterator[+A](private var lazyList: LazyList[A]) extends AbstractIterator[A] {
-    /** Returns `true` if the remaining lazy list is non-empty, evaluating its state to find out. */
     override def hasNext: Boolean = !lazyList.isEmpty
 
-    /** Returns the next element and advances to the tail, so that the elements already
-     *  produced can be collected while the iteration goes on.
-     *
-     *  @throws NoSuchElementException if the remaining lazy list is empty
-     */
     override def next(): A =
       if (lazyList.isEmpty) Iterator.empty.next()
       else {
@@ -1642,21 +1636,10 @@ object LazyList extends SeqFactory[LazyList] {
     private val minLen = size - step max 0
     private var first = true
 
-    /** Returns `true` if another group can be produced: for the first group the lazy
-     *  list only has to be non-empty, for later ones it must hold more than `size - step`
-     *  elements, so that a group overlapping the previous one is not repeated.
-     */
     def hasNext: Boolean =
       if (first) !lazyList.isEmpty
       else lazyList.lengthGt(minLen)
 
-    /** Returns the next group of at most `size` elements and advances by `step` elements.
-     *
-     *  The group is itself a lazy list, so its elements are evaluated only when it is
-     *  forced.
-     *
-     *  @throws NoSuchElementException if no further group can be produced
-     */
     def next(): LazyList[A] = {
       if (!hasNext) Iterator.empty.next()
       else {
@@ -1671,38 +1654,9 @@ object LazyList extends SeqFactory[LazyList] {
   private final class WithFilter[A] private[LazyList](lazyList: LazyList[A], p: A => Boolean)
     extends collection.WithFilter[A, LazyList] {
     private val filtered = lazyList.filter(p)
-    /** Returns a lazy list of the results of applying `f` to the elements that satisfy
-     *  the filter's predicate.
-     *
-     *  $preservesLaziness
-     *
-     *  @tparam B the element type of the resulting lazy list
-     *  @param f the function to apply to each retained element
-     */
     def map[B](f: A => B): LazyList[B] = filtered.map(f)
-    /** Returns a lazy list of the concatenated results of applying `f` to the elements
-     *  that satisfy the filter's predicate.
-     *
-     *  $preservesLaziness
-     *
-     *  @tparam B the element type of the resulting lazy list
-     *  @param f the function to apply to each retained element
-     */
     def flatMap[B](f: A => IterableOnce[B]): LazyList[B] = filtered.flatMap(f)
-    /** Applies `f` to each element that satisfies the filter's predicate.
-     *
-     *  This evaluates all elements of the underlying lazy list.
-     *
-     *  @tparam U the result type of `f`, used only for its side effects
-     *  @param f the function to apply to each retained element
-     */
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
-    /** Returns a `WithFilter` that also requires `q`, restricting the elements further.
-     *
-     *  $preservesLaziness
-     *
-     *  @param q the additional predicate an element must satisfy
-     */
     def withFilter(q: A => Boolean): collection.WithFilter[A, LazyList] = new WithFilter(filtered, q)
   }
 
@@ -1714,30 +1668,17 @@ object LazyList extends SeqFactory[LazyList] {
 
     clear()
 
-    /** Discards everything added so far and starts a new, still unevaluated lazy list;
-     *  a lazy list already handed out by `result()` is left untouched.
-     */
     override def clear(): Unit = {
       val deferred = new DeferredState[A]
       list = newLL(deferred.eval())
       next = deferred
     }
 
-    /** Returns the lazy list built so far, ended at the elements added up to this point.
-     *
-     *  Nothing added to this builder is evaluated by this method; the elements are
-     *  evaluated only when the returned lazy list is forced.
-     */
     override def result(): LazyList[A] = {
       next init Empty
       list
     }
 
-    /** Adds `elem` to this builder as the next element of the lazy list being built.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     override def addOne(elem: A): this.type = {
       val deferred = new DeferredState[A]
       next init eagerCons(elem, newLL(deferred.eval()))
@@ -1746,14 +1687,6 @@ object LazyList extends SeqFactory[LazyList] {
     }
 
     // lazy implementation which doesn't evaluate the collection being added
-    /** Adds all elements of `xs` to this builder, without evaluating them.
-     *
-     *  `xs` is iterated only as the resulting lazy list is forced past the elements
-     *  added before it.
-     *
-     *  @param xs the elements to add
-     *  @return this builder
-     */
     override def addAll(xs: IterableOnce[A]): this.type = {
       if (xs.knownSize != 0) {
         val deferred = new DeferredState[A]
@@ -1765,21 +1698,9 @@ object LazyList extends SeqFactory[LazyList] {
   }
 
   private object LazyBuilder {
-    /** Holds the not-yet-known remainder of the lazy list a `LazyBuilder` is building.
-     *
-     *  Each addition to the builder initializes the current state with the elements
-     *  added and leaves a fresh, uninitialized state in place of the rest.
-     *
-     *  @tparam A the element type of the lazy list being built
-     */
     final class DeferredState[A] {
       private var _tail: () => LazyList[A] = compiletime.uninitialized
 
-      /** Returns the lazy list this state stands for, by forcing the expression it was
-       *  initialized with.
-       *
-       *  @throws IllegalStateException if this state has not been initialized yet
-       */
       def eval(): LazyList[A] = {
         val state = _tail
         if (state == null) throw new IllegalStateException("uninitialized")
@@ -1787,11 +1708,6 @@ object LazyList extends SeqFactory[LazyList] {
       }
 
       // racy
-      /** Initializes this state with the lazy list it stands for, without evaluating it.
-       *
-       *  @param state the lazy list this state stands for, evaluated on the first `eval`
-       *  @throws IllegalStateException if this state has already been initialized
-       */
       def init(state: => LazyList[A]): Unit = {
         if (_tail != null) throw new IllegalStateException("already initialized")
         _tail = () => state

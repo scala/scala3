@@ -179,66 +179,20 @@ object Set extends IterableFactory[Set] {
   /** An optimized representation for immutable empty sets. */
   @SerialVersionUID(3L)
   private object EmptySet extends AbstractSet[Any] with Serializable {
-    /** Returns `0`: this set has no elements. */
     override def size: Int = 0
-    /** Returns `true`: this is the empty set. */
     override def isEmpty = true
-    /** Returns `0`: the size is always known. */
     override def knownSize: Int = size
-    /** Returns this set itself: there is no element for `pred` to keep.
-     *
-     *  @param pred the predicate to test; never applied
-     */
     override def filter(pred: Any => Boolean): Set[Any] = this
-    /** Returns this set itself: there is no element for `pred` to drop.
-     *
-     *  @param pred the predicate to test; never applied
-     */
     override def filterNot(pred: Any => Boolean): Set[Any] = this
-    /** Returns this set itself: the empty set has nothing to remove.
-     *
-     *  @param that the elements to remove; never iterated
-     */
     override def removedAll(that: IterableOnce[Any]^): Set[Any] = this
-    /** Returns this set itself: the empty set has nothing to remove.
-     *
-     *  @param that the set of elements to remove; never used
-     */
     override def diff(that: collection.Set[Any]): Set[Any] = this
-    /** Returns `true`: the empty set is a subset of every set.
-     *
-     *  @param that the set to test against; never used
-     */
     override def subsetOf(that: collection.Set[Any]): Boolean = true
-    /** Returns this set itself: nothing can be in common with the empty set.
-     *
-     *  @param that the set to intersect with; never used
-     */
     override def intersect(that: collection.Set[Any]): Set[Any] = this
-    /** Returns the empty view. */
     override def view: View[Any] = View.empty
-    /** Returns `false`: the empty set contains nothing.
-     *
-     *  @param elem the element to test; never used
-     */
     def contains(elem: Any): Boolean = false
-    /** Returns a new `Set1` containing `elem` alone.
-     *
-     *  @param elem the element to add
-     */
     def incl(elem: Any): Set[Any] = new Set1(elem)
-    /** Returns this set itself: the empty set has no element to remove.
-     *
-     *  @param elem the element to remove; never used
-     */
     def excl(elem: Any): Set[Any] = this
-    /** Returns the empty iterator: this set has no elements. */
     def iterator: Iterator[Any] = Iterator.empty
-    /** Does nothing: there is no element to apply `f` to.
-     *
-     *  @tparam U the result type of `f`, used only for its side effects
-     *  @param f the function to apply; never called
-     */
     override def foreach[U](f: Any => U): Unit = ()
   }
   private[collection] def emptyInstance: Set[Any] = EmptySet
@@ -247,20 +201,9 @@ object Set extends IterableFactory[Set] {
   private abstract class SetNIterator[A](n: Int) extends AbstractIterator[A] with Serializable {
     private var current = 0
     private var remainder = n
-    /** Returns the number of elements this iterator has left to produce. */
     override def knownSize: Int = remainder
-    /** Returns `true` while this iterator has elements left to produce. */
     def hasNext = remainder > 0
-    /** Returns the element of the underlying set at position `i`.
-     *
-     *  @param i the position of the element, counting from `0`
-     *  @return the element the underlying set holds at position `i`
-     */
     def apply(i: Int): A
-    /** Returns the next element of the underlying set and advances this iterator.
-     *
-     *  @throws NoSuchElementException if this iterator has no elements left
-     */
     def next(): A =
       if (hasNext) {
         val r = apply(current)
@@ -269,15 +212,6 @@ object Set extends IterableFactory[Set] {
         r
       } else Iterator.empty.next()
 
-    /** Advances this iterator past the next `n` elements and returns this same iterator,
-     *  without creating an intermediate one.
-     *
-     *  A non-positive `n` skips nothing, and skipping past the end leaves an exhausted
-     *  iterator rather than a negative count.
-     *
-     *  @param n the number of elements to skip
-     *  @return this iterator
-     */
     override def drop(n: Int): Iterator[A] = {
       if (n > 0) {
         current += n
@@ -345,16 +279,6 @@ object Set extends IterableFactory[Set] {
      *  @param p the predicate used to test elements
      */
     override def forall(p: A => Boolean): Boolean = p(elem1)
-    /** Returns a set of the elements of this set that satisfy `pred`, or that fail to
-     *  satisfy it when `isFlipped` is `true`.
-     *
-     *  Returns this set itself if its element passes the test, and the empty set
-     *  otherwise.
-     *
-     *  @param pred the predicate used to test elements
-     *  @param isFlipped if `true`, keeps the elements that do not satisfy `pred`
-     *  @return a set of the elements that pass the test
-     */
     override protected[collection] def filterImpl(pred: A => Boolean, isFlipped: Boolean): Set[A] =
       if (pred(elem1) != isFlipped) this else Set.empty
 
@@ -444,17 +368,6 @@ object Set extends IterableFactory[Set] {
     override def forall(p: A => Boolean): Boolean = {
       p(elem1) && p(elem2)
     }
-    /** Returns a set of the elements of this set that satisfy `pred`, or that fail to
-     *  satisfy it when `isFlipped` is `true`.
-     *
-     *  The elements that pass keep their current relative order, and the result is this
-     *  set itself when they all pass, the empty set when none does, and the specialized
-     *  set of the matching size in between.
-     *
-     *  @param pred the predicate used to test elements
-     *  @param isFlipped if `true`, keeps the elements that do not satisfy `pred`
-     *  @return a set of the elements that pass the test
-     */
     override protected[collection] def filterImpl(pred: A => Boolean, isFlipped: Boolean): Set[A] = {
       var r1: A = null.asInstanceOf[A]
       var n = 0
@@ -557,17 +470,6 @@ object Set extends IterableFactory[Set] {
     override def forall(p: A => Boolean): Boolean = {
       p(elem1) && p(elem2) && p(elem3)
     }
-    /** Returns a set of the elements of this set that satisfy `pred`, or that fail to
-     *  satisfy it when `isFlipped` is `true`.
-     *
-     *  The elements that pass keep their current relative order, and the result is this
-     *  set itself when they all pass, the empty set when none does, and the specialized
-     *  set of the matching size in between.
-     *
-     *  @param pred the predicate used to test elements
-     *  @param isFlipped if `true`, keeps the elements that do not satisfy `pred`
-     *  @return a set of the elements that pass the test
-     */
     override protected[collection] def filterImpl(pred: A => Boolean, isFlipped: Boolean): Set[A] = {
       var r1, r2: A = null.asInstanceOf[A]
       var n = 0
@@ -675,17 +577,6 @@ object Set extends IterableFactory[Set] {
     override def forall(p: A => Boolean): Boolean = {
       p(elem1) && p(elem2) && p(elem3) && p(elem4)
     }
-    /** Returns a set of the elements of this set that satisfy `pred`, or that fail to
-     *  satisfy it when `isFlipped` is `true`.
-     *
-     *  The elements that pass keep their current relative order, and the result is this
-     *  set itself when they all pass, the empty set when none does, and the specialized
-     *  set of the matching size in between.
-     *
-     *  @param pred the predicate used to test elements
-     *  @param isFlipped if `true`, keeps the elements that do not satisfy `pred`
-     *  @return a set of the elements that pass the test
-     */
     override protected[collection] def filterImpl(pred: A => Boolean, isFlipped: Boolean): Set[A] = {
       var r1, r2, r3: A = null.asInstanceOf[A]
       var n = 0
@@ -744,9 +635,6 @@ private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
   private var switchedToHashSetBuilder: Boolean = false
   private var hashSetBuilder: HashSetBuilder[A] = compiletime.uninitialized
 
-  /** Discards everything added so far, so that this builder starts again from the empty
-   *  set, keeping any hash set builder it has already allocated for reuse.
-   */
   override def clear(): Unit = {
     elems = Set.empty
     if (hashSetBuilder != null) {
@@ -755,20 +643,9 @@ private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
     switchedToHashSetBuilder = false
   }
 
-  /** Returns the set built so far: one of the specialized small sets while at most four
-   *  distinct elements have been added, and a `HashSet` once more have.
-   */
   override def result(): Set[A] =
     if (switchedToHashSetBuilder) hashSetBuilder.result() else elems
 
-  /** Adds `elem` to this builder, leaving the set unchanged if it is already present.
-   *
-   *  The fifth distinct element makes this builder move the four it holds into a hash
-   *  set builder and keep going there.
-   *
-   *  @param elem the element to add
-   *  @return this builder
-   */
   def addOne(elem: A) = {
     if (switchedToHashSetBuilder) {
       hashSetBuilder.addOne(elem)
@@ -791,14 +668,6 @@ private final class SetBuilderImpl[A] extends ReusableBuilder[A, Set[A]] {
     this
   }
 
-  /** Adds all elements of `xs` to this builder, leaving out the ones already present.
-   *
-   *  Once this builder has moved to a hash set builder, `xs` is handed to it in one go
-   *  rather than element by element.
-   *
-   *  @param xs the elements to add
-   *  @return this builder
-   */
   override def addAll(xs: IterableOnce[A]^): this.type =
     if (switchedToHashSetBuilder) {
       hashSetBuilder.addAll(xs)

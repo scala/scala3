@@ -1673,14 +1673,8 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     (new collection.mutable.ListBuffer[A]).mapResult(from).asInstanceOf // CC cannot figure out correct type
 
   private class LazyIterator[+A](private var lazyList: LazyListIterable[A]^) extends AbstractIterator[A] {
-    /** Returns `true` if the remaining lazy list is non-empty, evaluating its state to find out. */
     override def hasNext: Boolean = !lazyList.isEmpty
 
-    /** Returns the next element and advances to the tail, so that the elements already
-     *  produced can be collected while the iteration goes on.
-     *
-     *  @throws NoSuchElementException if the remaining lazy list is empty
-     */
     override def next(): A =
       if (lazyList.isEmpty) Iterator.empty.next()
       else {
@@ -1696,21 +1690,10 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
     private val minLen = size - step max 0
     private var first = true
 
-    /** Returns `true` if another group can be produced: for the first group the lazy
-     *  list only has to be non-empty, for later ones it must hold more than `size - step`
-     *  elements, so that a group overlapping the previous one is not repeated.
-     */
     def hasNext: Boolean =
       if (first) !lazyList.isEmpty
       else lazyList.lengthGt(minLen)
 
-    /** Returns the next group of at most `size` elements and advances by `step` elements.
-     *
-     *  The group is itself a lazy list, so its elements are evaluated only when it is
-     *  forced.
-     *
-     *  @throws NoSuchElementException if no further group can be produced
-     */
     def next(): LazyListIterable[A]^{l} = {
       if (!hasNext) Iterator.empty.next()
       else {
@@ -1725,38 +1708,9 @@ object LazyListIterable extends IterableFactory[LazyListIterable] {
   private final class WithFilter[A] private[LazyListIterable](lazyList: LazyListIterable[A]^, p: A => Boolean)
     extends collection.WithFilter[A, LazyListIterable] {
     @untrackedCaptures private val filtered = lazyList.filter(p)
-    /** Returns a lazy list of the results of applying `f` to the elements that satisfy
-     *  the filter's predicate.
-     *
-     *  $preservesLaziness
-     *
-     *  @tparam B the element type of the resulting lazy list
-     *  @param f the function to apply to each retained element
-     */
     def map[B](f: A => B): LazyListIterable[B]^{this, f} = filtered.map(f)
-    /** Returns a lazy list of the concatenated results of applying `f` to the elements
-     *  that satisfy the filter's predicate.
-     *
-     *  $preservesLaziness
-     *
-     *  @tparam B the element type of the resulting lazy list
-     *  @param f the function to apply to each retained element
-     */
     def flatMap[B](f: A => IterableOnce[B]^): LazyListIterable[B]^{this, f} = filtered.flatMap(f)
-    /** Applies `f` to each element that satisfies the filter's predicate.
-     *
-     *  This evaluates all elements of the underlying lazy list.
-     *
-     *  @tparam U the result type of `f`, used only for its side effects
-     *  @param f the function to apply to each retained element
-     */
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
-    /** Returns a `WithFilter` that also requires `q`, restricting the elements further.
-     *
-     *  $preservesLaziness
-     *
-     *  @param q the additional predicate an element must satisfy
-     */
     def withFilter(q: A => Boolean): collection.WithFilter[A, LazyListIterable]^{this, q} = new WithFilter(filtered, q)
   }
 

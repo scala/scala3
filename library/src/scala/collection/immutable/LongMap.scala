@@ -26,26 +26,8 @@ import scala.language.implicitConversions
 
 /** Utility class for long maps. */
 private[immutable] object LongMapUtils extends BitOperations.Long {
-  /** Returns a mask with a single bit set at the highest position where `i` and `j`
-   *  differ, or zero if they are equal.
-   *
-   *  @param i the first prefix
-   *  @param j the second prefix
-   */
   def branchMask(i: Long, j: Long) = highestOneBit(i ^ j)
 
-  /** Joins two maps with differing prefixes under a new `Bin` node.
-   *
-   *  The branching bit of the new node is the highest bit at which `p1` and `p2`
-   *  differ; the map whose prefix has a zero at that bit becomes the left subtree.
-   *
-   *  @tparam T the type of the values
-   *  @param p1 the prefix of `t1`
-   *  @param t1 the first map
-   *  @param p2 the prefix of `t2`
-   *  @param t2 the second map
-   *  @return a `Bin` node with `t1` and `t2` as subtrees, ordered by the branching bit
-   */
   def join[T](p1: Long, t1: LongMap[T], p2: Long, t2: LongMap[T]): LongMap[T] = {
     val m = branchMask(p1, p2)
     val p = mask(p1, m)
@@ -53,19 +35,6 @@ private[immutable] object LongMapUtils extends BitOperations.Long {
     else LongMap.Bin(p, m, t2, t1)
   }
 
-  /** Builds a `Bin` node from the given subtrees, collapsing empty ones.
-   *
-   *  If either subtree is `Nil`, returns the other subtree unchanged, maintaining
-   *  the invariant that `Nil` never occurs inside a non-empty map.
-   *
-   *  @tparam T the type of the values
-   *  @param prefix the bits all keys under the node have in common above the branching bit
-   *  @param mask the mask with only the branching bit set
-   *  @param left the subtree of keys with a zero at the branching bit
-   *  @param right the subtree of keys with a one at the branching bit
-   *  @return `left` if `right` is empty, `right` if `left` is empty, otherwise a new
-   *          `Bin` node with the given prefix, mask and subtrees
-   */
   def bin[T](prefix: Long, mask: Long, left: LongMap[T], right: LongMap[T]): LongMap[T] = (left, right) match {
     case (left, LongMap.Nil) => left
     case (LongMap.Nil, right) => right
@@ -127,14 +96,6 @@ object LongMap {
 
   private[immutable] case object Nil extends LongMap[Nothing] {
     // Important, don't remove this! See IntMap for explanation.
-    /** Compares this empty map with `that` for equality.
-     *
-     *  `Nil` equals itself and is unequal to every other `LongMap`, since the only
-     *  empty `LongMap` is this object. For anything else it falls back to the
-     *  structural equality of maps, so it equals any other empty `Map`.
-     *
-     *  @param that the value to compare with
-     */
     override def equals(that : Any) = that match {
       case _: this.type  => true
       case _: LongMap[?] => false // The only empty LongMaps are eq Nil
@@ -143,30 +104,12 @@ object LongMap {
   }
 
   private[immutable] case class Tip[+T](key: Long, value: T) extends LongMap[T] {
-    /** Returns a `Tip` with this node's key and the given value, reusing this node
-     *  when possible.
-     *
-     *  If `s` is the same reference as the current value, returns this node (cast
-     *  to the new value type) to preserve sharing; otherwise creates a new `Tip`.
-     *
-     *  @tparam S the type of the new value
-     *  @param s the new value
-     */
     def withValue[S](s: S) =
       if (s.asInstanceOf[AnyRef] eq value.asInstanceOf[AnyRef]) this.asInstanceOf[LongMap.Tip[S]]
       else LongMap.Tip(key, s)
   }
 
   private[immutable] case class Bin[+T](prefix: Long, mask: Long, left: LongMap[T], right: LongMap[T]) extends LongMap[T] {
-    /** Returns a `Bin` with this node's prefix and mask and the given subtrees,
-     *  reusing this node when possible.
-     *
-     *  @tparam S the type of the values in the subtrees
-     *  @param left the new left subtree
-     *  @param right the new right subtree
-     *  @return this node (cast to the new value type) if both subtrees are the same
-     *          references as this node's, to preserve sharing; otherwise a new `Bin`
-     */
     def bin[S](left: LongMap[S], right: LongMap[S]): LongMap[S] = {
       if ((this.left eq left) && (this.right eq right)) this.asInstanceOf[LongMap.Bin[S]]
       else LongMap.Bin[S](prefix, mask, left, right)
@@ -184,12 +127,7 @@ object LongMap {
 
   @SerialVersionUID(3L)
   private object ToFactory extends Factory[(Long, AnyRef), LongMap[AnyRef]] with Serializable {
-    /** Returns a `LongMap` containing the key/value pairs of `it`.
-     *
-     *  @param it the collection of key/value pairs
-     */
     def fromSpecific(it: IterableOnce[(Long, AnyRef)]^): LongMap[AnyRef] = LongMap.from[AnyRef](it)
-    /** Returns a new builder that accumulates key/value pairs into a `LongMap`. */
     def newBuilder: Builder[(Long, AnyRef), LongMap[AnyRef]] = LongMap.newBuilder[AnyRef]
   }
 
@@ -203,16 +141,7 @@ object LongMap {
    */
   implicit def toBuildFrom[V](factory: LongMap.type): BuildFrom[Any, (Long, V), LongMap[V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (Long, V), LongMap[V]]]
   private object ToBuildFrom extends BuildFrom[Any, (Long, AnyRef), LongMap[AnyRef]] {
-    /** Returns a `LongMap` containing the key/value pairs of `it`.
-     *
-     *  @param from the source collection; never used
-     *  @param it the collection of key/value pairs
-     */
     def fromSpecific(from: Any)(it: IterableOnce[(Long, AnyRef)]^) = LongMap.from(it)
-    /** Returns a new builder that accumulates key/value pairs into a `LongMap`.
-     *
-     *  @param from the source collection; never used
-     */
     def newBuilder(from: Any) = LongMap.newBuilder[AnyRef]
   }
 
@@ -236,23 +165,14 @@ private[immutable] abstract class LongMapIterator[V, T](it: LongMap[V]) extends 
   // because we know that Longs are only 64 bits we can have at most 64 LongMap.Bins and
   // one LongMap.Tip sitting on the tree at any point. Therefore we know the maximum stack
   // depth is 65
-  /** The current stack depth: the index of the next free slot in `buffer`. */
   var index = 0
-  /** The stack of subtrees still to be traversed; `buffer(index - 1)` is the top. */
   var buffer = new Array[AnyRef](65)
 
-  /** Removes and returns the top subtree of the stack. Must not be called when the
-   *  stack is empty.
-   */
   def pop() = {
     index -= 1
     buffer(index).asInstanceOf[LongMap[V]]
   }
 
-  /** Pushes a subtree onto the stack.
-   *
-   *  @param x the subtree still to be traversed
-   */
   def push(x: LongMap[V]): Unit = {
     buffer(index) = x.asInstanceOf[AnyRef]
     index += 1
@@ -266,18 +186,7 @@ private[immutable] abstract class LongMapIterator[V, T](it: LongMap[V]) extends 
    */
   def valueOf(tip: LongMap.Tip[V]): T
 
-  /** Returns `true` if the stack is non-empty, that is, if elements remain. */
   def hasNext = index != 0
-  /** Returns the next element, in unsigned order of the keys.
-   *
-   *  Pops the top subtree and descends along left children, pushing each right
-   *  sibling, until a `Tip` is reached, whose element is returned; a `Bin` whose
-   *  left child is a `Tip` is handled directly, pushing only its right child.
-   *  Must not be called when `hasNext` is false.
-   *
-   *  @throws IllegalStateException if a `Nil` occurs inside a subtree, which never
-   *          happens for a well-formed map
-   */
   @tailrec
   final def next(): T =
     pop() match {
@@ -298,26 +207,14 @@ private[immutable] abstract class LongMapIterator[V, T](it: LongMap[V]) extends 
 }
 
 private[immutable] class LongMapEntryIterator[V](it: LongMap[V]) extends LongMapIterator[V, (Long, V)](it){
-  /** Returns the key/value pair stored in `tip`.
-   *
-   *  @param tip the leaf node
-   */
   def valueOf(tip: LongMap.Tip[V]) = (tip.key, tip.value)
 }
 
 private[immutable] class LongMapValueIterator[V](it: LongMap[V]) extends LongMapIterator[V, V](it){
-  /** Returns the value stored in `tip`.
-   *
-   *  @param tip the leaf node
-   */
   def valueOf(tip: LongMap.Tip[V]) = tip.value
 }
 
 private[immutable] class LongMapKeyIterator[V](it: LongMap[V]) extends LongMapIterator[V, Long](it){
-  /** Returns the key stored in `tip`.
-   *
-   *  @param tip the leaf node
-   */
   def valueOf(tip: LongMap.Tip[V]) = tip.key
 }
 

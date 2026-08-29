@@ -1110,17 +1110,8 @@ private class RangeIterator(
 ) extends AbstractIterator[Int] with Serializable { self: RangeIterator =>
   private var _hasNext: Boolean = !initiallyEmpty
   private var _next: Int = start
-  /** Returns the number of elements remaining, computed in constant time. The subtraction it
-   *  uses is an `Int` one, so the count is not meaningful for a range whose span exceeds
-   *  `Int.MaxValue`.
-   */
   override def knownSize: Int = if (_hasNext) (lastElement - _next) / step + 1 else 0
-  /** Returns `true` if this iterator has more elements. */
   def hasNext: Boolean = _hasNext
-  /** Returns the next element of this iterator and advances past it.
-   *
-   *  @throws NoSuchElementException if there are no more elements
-   */
   @throws[NoSuchElementException]
   def next(): Int = {
     if (!_hasNext) Iterator.empty.next()
@@ -1130,15 +1121,6 @@ private class RangeIterator(
     value
   }
 
-  /** Advances this iterator past its next `n` elements, or to its end if it
-   *  has fewer than `n` remaining, in constant time.
-   *
-   *  A non-positive `n` has no effect.
-   *
-   *  @param n the number of elements to skip; `step * n` is computed as an `Int`, so a
-   *           product that overflows does not skip the number of elements asked for
-   *  @return this iterator
-   */
   override def drop(n: Int): Iterator[Int] = {
     if (n > 0) {
       val longPos = _next.toLong + step * n

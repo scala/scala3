@@ -110,39 +110,12 @@ transparent trait SortedMapOps[K, +V, +CC[X, +Y] <: Map[X, Y] & SortedMapOps[X, 
 
   /** The implementation class of the set returned by `keySet`. */
   private class LazyImmutableKeySortedSet extends LazyKeySortedSet with SortedSet[K] {
-    /** Returns a new sorted set containing the keys of this set that are not also
-     *  contained in `that`.
-     *
-     *  The override serves only to give the inherited result the immutable
-     *  `SortedSet` type.
-     *
-     *  @param that the set of keys to exclude
-     */
     override def diff(that: scala.collection.Set[K]): SortedSet[K] = super.diff(that)
-    /** Creates a ranged projection of this key set, backed by the corresponding ranged
-     *  projection of the underlying map.
-     *
-     *  @param from the lower bound (inclusive) of the projection, `None` if there is no lower bound
-     *  @param until the upper bound (exclusive) of the projection, `None` if there is no upper bound
-     *  @return the key set of the underlying map restricted to the given range
-     */
     override def rangeImpl(from: Option[K], until: Option[K]): SortedSet[K] = {
       val map = self.rangeImpl(from, until)
       new map.LazyImmutableKeySortedSet
     }
-    /** Returns a sorted set containing `elem` and the keys of the underlying map.
-     *
-     *  The keys are first copied out of the map, so the result no longer tracks it.
-     *
-     *  @param elem the element to add
-     */
     def incl(elem: K): SortedSet[K] = fromSpecific(this).incl(elem)
-    /** Returns a sorted set containing the keys of the underlying map except `elem`.
-     *
-     *  The keys are first copied out of the map, so the result no longer tracks it.
-     *
-     *  @param elem the element to remove
-     */
     def excl(elem: K): SortedSet[K] = fromSpecific(this).excl(elem)
   }
 

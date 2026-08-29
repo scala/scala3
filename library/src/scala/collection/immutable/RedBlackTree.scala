@@ -29,20 +29,6 @@ import scala.runtime.Statics.releaseFence
  *  optimizations behind a reasonably clean API.
  */
 private[collection] object RedBlackTree {
-  /** Returns `tree` after asserting that it satisfies the red-black tree invariants.
-   *
-   *  Checks, for every node, that keys are ordered according to `ordering` (strictly
-   *  smaller in the left subtree, strictly greater in the right), that no red node
-   *  has a red child, and that the left and right subtrees have the same black
-   *  height. It does not check that the root is black, so a tree violating only that
-   *  invariant passes. An empty (`null`) tree is trivially valid.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @param tree the red-black tree to validate, or `null` for the empty tree
-   *  @param ordering the ordering used to compare keys
-   *  @return `tree`, unchanged
-   *  @throws AssertionError if any of the checked invariants is violated
-   */
   def validate[A](tree: Tree[A, ?] | Null)(implicit ordering: Ordering[A]): tree.type = {
     def impl(tree: Tree[A, ?], keyProp: A => Boolean): Int = {
       assert(keyProp(tree.key), s"key check failed: $tree")
@@ -59,43 +45,14 @@ private[collection] object RedBlackTree {
     tree
   }
 
-  /** Returns `true` if `tree` is empty, that is, if it is `null`.
-   *
-   *  @param tree the red-black tree to test, or `null` for the empty tree
-   */
   def isEmpty(tree: Tree[?, ?] | Null): Boolean = tree eq null
 
-  /** Returns `true` if `tree` contains an entry whose key is equivalent to `x` under the implicit ordering.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @param tree the red-black tree to search, or `null` for the empty tree
-   *  @param x the key to search for
-   */
   def contains[A: Ordering](tree: Tree[A, ?] | Null, x: A): Boolean = lookup(tree, x) ne null
-  /** Returns the value associated in `tree` with a key equivalent to `x`, if any.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to search, or `null` for the empty tree
-   *  @param x the key to search for
-   *  @return `Some(value)` of the entry whose key is equivalent to `x`, or `None` if no such entry exists
-   */
   def get[A: Ordering, B](tree: Tree[A, B] | Null, x: A): Option[B] = lookup(tree, x) match {
     case null  => None
     case found => Some(found.value)
   }
 
-  /** Returns the node of `tree` whose key is equivalent to `x` under `ordering`, or `null` if there is no such node.
-   *
-   *  Descends from the root, following the left child while `x` compares smaller
-   *  than the current key and the right child while it compares greater.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to search, or `null` for the empty tree
-   *  @param x the key to search for
-   *  @param ordering the ordering used to compare keys
-   */
   @tailrec
   def lookup[A, B](tree: Tree[A, B] | Null, x: A)(implicit ordering: Ordering[A]): Tree[A, B] | Null = if (tree eq null) null else {
     val cmp = ordering.compare(x, tree.key)
@@ -104,18 +61,6 @@ private[collection] object RedBlackTree {
     else tree
   }
   private[immutable] abstract class Helper[A](implicit val ordering: Ordering[A]) {
-    /** Returns `tree` in a form that is safe to share as a top-level immutable tree.
-     *
-     *  If `tree` is mutable, blackens its root, marks the whole tree immutable
-     *  (filling in the size bits of every mutable node), and issues a release
-     *  fence so the tree can be safely published to other threads. If `tree`
-     *  is already immutable, returns it with a blackened root. A `null` tree
-     *  is returned unchanged.
-     *
-     *  @tparam B the value type of the tree entries
-     *  @param tree the possibly mutable tree to publish, or `null` for the empty tree
-     *  @return an immutable tree with a black root containing the entries of `tree`, or `null` if `tree` is `null`
-     */
     def beforePublish[B](tree: Tree[A, B] | Null): Tree[A, B] | Null = {
       if (tree eq null) tree
       else if (tree.isMutable) {
@@ -230,18 +175,6 @@ private[collection] object RedBlackTree {
     }
   }
   private[immutable] class SetHelper[A](implicit ordering: Ordering[A]) extends Helper[A] {
-    /** Returns a tree containing the entries of `tree` and the key `k`, possibly mutating `tree` in place.
-     *
-     *  If `k` is already present (found by reference equality or by the ordering),
-     *  returns `tree` unchanged. Otherwise inserts a mutable red node for `k`, with
-     *  `()` as its value, and rebalances on the way back up with the mutable balance
-     *  helpers, which mutate mutable nodes in place and copy immutable ones. The
-     *  result may be mutable; it must go through `beforePublish` before being shared.
-     *
-     *  @param tree the tree to update, or `null` for the empty tree
-     *  @param k the key to insert
-     *  @return a tree containing `k`, which may be `tree` itself, a mutation of it, or a new tree
-     */
     protected final def mutableUpd(tree: Tree[A, Any] | Null, k: A): Tree[A, Any] =
       if (tree eq null) {
         mutableRedTree(k, (), null, null)
@@ -257,20 +190,6 @@ private[collection] object RedBlackTree {
       }
   }
   private[immutable] class MapHelper[A, B](implicit ordering: Ordering[A]) extends Helper[A] {
-    /** Returns a tree containing the entries of `tree` with `k` mapped to `v`, possibly mutating `tree` in place.
-     *
-     *  If `k` is already present, replaces its value with `v`, in place when the
-     *  node is mutable. Otherwise inserts a mutable red node for the new entry and
-     *  rebalances on the way back up with the mutable balance helpers, which mutate
-     *  mutable nodes in place and copy immutable ones. The result may be mutable;
-     *  it must go through `beforePublish` before being shared.
-     *
-     *  @tparam B1 the value type of the result, a supertype of `B`
-     *  @param tree the tree to update, or `null` for the empty tree
-     *  @param k the key to insert or update
-     *  @param v the value to associate with `k`
-     *  @return a tree in which `k` is mapped to `v`, which may be `tree` itself, a mutation of it, or a new tree
-     */
     protected final def mutableUpd[B1 >: B](tree: Tree[A, B] | Null, k: A, v: B1): Tree[A, B1] =
       if (tree eq null) {
         mutableRedTree(k, v, null, null)
@@ -286,159 +205,30 @@ private[collection] object RedBlackTree {
       }
   }
 
-  /** Returns the number of entries in `tree`, read in O(1) from the size stored in its root, or 0 if `tree` is empty.
-   *
-   *  @param tree the red-black tree whose entries to count, or `null` for the empty tree
-   */
   def count(tree: Tree[?, ?] | Null) = if (tree eq null) 0 else tree.count
-  /** Returns a tree containing the entries of `tree` and the key `k`, without mutating `tree`.
-   *
-   *  If `k` is not present, inserts it with value `v` and rebalances. If a key
-   *  equivalent to `k` is present, replaces its value with `v` when `overwrite`
-   *  is `true` and leaves the entries unchanged otherwise; either way the key
-   *  instance already stored in the tree is retained. The result has a black
-   *  root and shares unmodified subtrees with `tree`.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @tparam B1 the value type of the result, a supertype of `B`
-   *  @param tree the red-black tree to update, or `null` for the empty tree
-   *  @param k the key to insert or update
-   *  @param v the value to associate with `k`
-   *  @param overwrite if `true`, replace the value of an existing entry for `k`; if `false`, keep it
-   *  @return a tree containing an entry for `k`
-   */
   def update[A: Ordering, B, B1 >: B](tree: Tree[A, B] | Null, k: A, v: B1, overwrite: Boolean): Tree[A, B1] | Null = blacken(upd(tree, k, v, overwrite))
-  /** Returns a tree containing the entries of `tree` except any entry whose key is equivalent to `k`, without mutating `tree`.
-   *
-   *  If no key is equivalent to `k` the entries are unchanged. The result has a
-   *  black root and shares unmodified subtrees with `tree`.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to delete from, or `null` for the empty tree
-   *  @param k the key to delete
-   *  @return a tree without an entry for `k`, or `null` if the result is empty
-   */
   def delete[A: Ordering, B](tree: Tree[A, B] | Null, k: A): Tree[A, B] | Null = blacken(del(tree, k))
-  /** Returns a tree containing the entries of `tree` whose keys fall within the given optional bounds.
-   *
-   *  Dispatches to `range`, `from`, or `until` depending on which bounds are
-   *  defined, and returns `tree` itself when neither bound is defined.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to filter, or `null` for the empty tree
-   *  @param from the inclusive lower bound on keys, or `None` for no lower bound
-   *  @param until the exclusive upper bound on keys, or `None` for no upper bound
-   *  @return a tree containing the entries within the bounds, or `null` if there are none
-   */
   def rangeImpl[A: Ordering, B](tree: Tree[A, B] | Null, from: Option[A], until: Option[A]): Tree[A, B] | Null = (from, until) match {
     case (Some(from), Some(until)) => this.range(tree, from, until)
     case (Some(from), None)        => this.from(tree, from)
     case (None,       Some(until)) => this.until(tree, until)
     case (None,       None)        => tree
   }
-  /** Returns a tree containing the entries of `tree` whose keys `k` satisfy `from <= k < until` under the implicit ordering.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to filter, or `null` for the empty tree
-   *  @param from the inclusive lower bound on keys
-   *  @param until the exclusive upper bound on keys
-   *  @return a tree with a black root containing the entries in the range, or `null` if there are none
-   */
   def range[A: Ordering, B](tree: Tree[A, B] | Null, from: A, until: A): Tree[A, B] | Null = blacken(doRange(tree, from, until))
-  /** Returns a tree containing the entries of `tree` whose keys are greater than or equal to `from` under the implicit ordering.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to filter, or `null` for the empty tree
-   *  @param from the inclusive lower bound on keys
-   *  @return a tree with a black root containing the entries at or above `from`, or `null` if there are none
-   */
   def from[A: Ordering, B](tree: Tree[A, B] | Null, from: A): Tree[A, B] | Null = blacken(doFrom(tree, from))
-  /** Returns a tree containing the entries of `tree` whose keys are less than or equal to `to` under the implicit ordering.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to filter, or `null` for the empty tree
-   *  @param to the inclusive upper bound on keys
-   *  @return a tree with a black root containing the entries at or below `to`, or `null` if there are none
-   */
   def to[A: Ordering, B](tree: Tree[A, B] | Null, to: A): Tree[A, B] | Null = blacken(doTo(tree, to))
-  /** Returns a tree containing the entries of `tree` whose keys are strictly less than `key` under the implicit ordering.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to filter, or `null` for the empty tree
-   *  @param key the exclusive upper bound on keys
-   *  @return a tree with a black root containing the entries below `key`, or `null` if there are none
-   */
   def until[A: Ordering, B](tree: Tree[A, B] | Null, key: A): Tree[A, B] | Null = blacken(doUntil(tree, key))
 
-  /** Returns a tree containing the entries of `tree` except the `n` entries with the smallest keys.
-   *
-   *  Keeps all entries when `n <= 0` and returns `null` when `n` is at least the
-   *  size of the tree. Navigates by the sizes stored in the nodes, without
-   *  comparing keys.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to drop from, or `null` for the empty tree
-   *  @param n the number of smallest-keyed entries to drop
-   *  @return a tree with a black root containing the remaining entries, or `null` if none remain
-   */
   def drop[A: Ordering, B](tree: Tree[A, B] | Null, n: Int): Tree[A, B] | Null = blacken(doDrop(tree, n))
-  /** Returns a tree containing the `n` entries of `tree` with the smallest keys.
-   *
-   *  Returns `null` when `n <= 0` and keeps all entries when `n` is at least the
-   *  size of the tree. Navigates by the sizes stored in the nodes, without
-   *  comparing keys.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to take from, or `null` for the empty tree
-   *  @param n the number of smallest-keyed entries to keep
-   *  @return a tree with a black root containing the kept entries, or `null` if there are none
-   */
   def take[A: Ordering, B](tree: Tree[A, B] | Null, n: Int): Tree[A, B] | Null = blacken(doTake(tree, n))
-  /** Returns a tree containing the entries of `tree` whose zero-based position `i` in ascending key order satisfies `from <= i < until`.
-   *
-   *  Navigates by the sizes stored in the nodes, without comparing keys. Indices
-   *  outside the tree are clipped to its bounds.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to slice, or `null` for the empty tree
-   *  @param from the inclusive lower bound on positions
-   *  @param until the exclusive upper bound on positions
-   *  @return a tree with a black root containing the entries in the index range, or `null` if there are none
-   */
   def slice[A: Ordering, B](tree: Tree[A, B] | Null, from: Int, until: Int): Tree[A, B] | Null = blacken(doSlice(tree, from, until))
 
-  /** Returns the node of `tree` with the smallest key, that is, its leftmost node.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to search, or `null` for the empty tree
-   *  @return the leftmost node of `tree`
-   *  @throws NoSuchElementException if `tree` is empty
-   */
   def smallest[A, B](tree: Tree[A, B] | Null): Tree[A, B] = {
     if (tree eq null) throw new NoSuchElementException("empty tree")
     var result = tree
     while (result.left ne null) result = result.left.nn
     result
   }
-  /** Returns the node of `tree` with the greatest key, that is, its rightmost node.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to search, or `null` for the empty tree
-   *  @return the rightmost node of `tree`
-   *  @throws NoSuchElementException if `tree` is empty
-   */
   def greatest[A, B](tree: Tree[A, B] | Null): Tree[A, B] = {
     if (tree eq null) throw new NoSuchElementException("empty tree")
     var result = tree
@@ -446,17 +236,6 @@ private[collection] object RedBlackTree {
     result
   }
 
-  /** Returns a tree containing the entries of `tree` except the one with the smallest key.
-   *
-   *  Rebalances with `balLeft` where the removal unbalances a black subtree.
-   *  The result has a black root.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to remove the smallest entry from, or `null` for the empty tree
-   *  @return a tree containing the remaining entries, or `null` if the result is empty
-   *  @throws NoSuchElementException if `tree` is empty
-   */
   def tail[A, B](tree: Tree[A, B] | Null): Tree[A, B] | Null = {
     def _tail(tree: Tree[A, B] | Null): Tree[A, B] | Null=
       if (tree eq null) throw new NoSuchElementException("empty tree")
@@ -469,17 +248,6 @@ private[collection] object RedBlackTree {
     blacken(_tail(tree))
   }
 
-  /** Returns a tree containing the entries of `tree` except the one with the greatest key.
-   *
-   *  Rebalances with `balRight` where the removal unbalances a black subtree.
-   *  The result has a black root.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to remove the greatest entry from, or `null` for the empty tree
-   *  @return a tree containing the remaining entries, or `null` if the result is empty
-   *  @throws NoSuchElementException if `tree` is empty
-   */
   def init[A, B](tree: Tree[A, B] | Null): Tree[A, B] | Null = {
     def _init(tree: Tree[A, B] | Null): Tree[A, B] | Null =
       if (tree eq null) throw new NoSuchElementException("empty tree")
@@ -526,70 +294,20 @@ private[collection] object RedBlackTree {
     }
   }
 
-  /** Applies `f` to each key-value pair of `tree`, in ascending key order.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @tparam U the result type of `f`, whose results are discarded
-   *  @param tree the red-black tree to traverse, or `null` for the empty tree
-   *  @param f the function applied to each key-value pair, for its side effects
-   */
   def foreach[A,B,U](tree:Tree[A,B] | Null, f:((A,B)) => U):Unit = if (tree ne null) _foreach(tree,f)
 
-  /** Returns `true` if `a` and `b` contain the same number of entries and, taken in ascending order, pairwise equivalent keys.
-   *
-   *  Keys are compared by reference equality first and with `Ordering.equiv`
-   *  otherwise. When the two traversals reach the same node by reference, the
-   *  shared remainder of that subtree is skipped without comparing its keys.
-   *  Two `null` trees are equal; a `null` tree never equals a non-null one.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam X the value type of the entries of `a`, never examined
-   *  @tparam Y the value type of the entries of `b`, never examined
-   *  @param a the first tree, or `null` for the empty tree
-   *  @param b the second tree, or `null` for the empty tree
-   *  @return `true` if the trees contain the same keys, `false` otherwise
-   */
   def keysEqual[A: Ordering, X, Y](a: Tree[A, X] | Null, b: Tree[A, Y] | Null): Boolean = {
     if (a eq b) true
     else if (a eq null) false
     else if (b eq null) false
     else a.count == b.count && (new EqualsIterator(a)).sameKeys(new EqualsIterator(b))
   }
-  /** Returns `true` if `a` and `b` contain the same number of entries and, taken in ascending key order, pairwise equal (`==`) values.
-   *
-   *  Keys are not compared. When the two traversals reach the same node by
-   *  reference, the shared remainder of that subtree is skipped without
-   *  comparing its values. Two `null` trees are equal; a `null` tree never
-   *  equals a non-null one.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam X the value type of the entries of `a`
-   *  @tparam Y the value type of the entries of `b`
-   *  @param a the first tree, or `null` for the empty tree
-   *  @param b the second tree, or `null` for the empty tree
-   *  @return `true` if the trees contain the same sequence of values, `false` otherwise
-   */
   def valuesEqual[A: Ordering, X, Y](a: Tree[A, X] | Null, b: Tree[A, Y] | Null): Boolean = {
     if (a eq b) true
     else if (a eq null) false
     else if (b eq null) false
     else a.count == b.count && (new EqualsIterator(a)).sameValues(new EqualsIterator(b))
   }
-  /** Returns `true` if `a` and `b` contain the same number of entries and, taken in ascending order, pairwise equivalent keys and equal (`==`) values.
-   *
-   *  Keys are compared by reference equality first and with `Ordering.equiv`
-   *  otherwise. When the two traversals reach the same node by reference, the
-   *  shared remainder of that subtree is skipped without comparing its entries.
-   *  Two `null` trees are equal; a `null` tree never equals a non-null one.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam X the value type of the entries of `a`
-   *  @tparam Y the value type of the entries of `b`
-   *  @param a the first tree, or `null` for the empty tree
-   *  @param b the second tree, or `null` for the empty tree
-   *  @return `true` if the trees contain the same entries, `false` otherwise
-   */
   def entriesEqual[A: Ordering, X, Y](a: Tree[A, X] | Null, b: Tree[A, Y] | Null): Boolean = {
     if (a eq b) true
     else if (a eq null) false
@@ -603,13 +321,6 @@ private[collection] object RedBlackTree {
     if (tree.right ne null) _foreach(tree.right.nn, f)
   }
 
-  /** Applies `f` to each key of `tree`, in ascending order.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam U the result type of `f`, whose results are discarded
-   *  @param tree the red-black tree to traverse, or `null` for the empty tree
-   *  @param f the function applied to each key, for its side effects
-   */
   def foreachKey[A, U](tree: Tree[A, ?] | Null, f: A => U):Unit = if (tree ne null) _foreachKey(tree,f)
 
   private def _foreachKey[A, U](tree: Tree[A, ?], f: A => U): Unit = {
@@ -618,14 +329,6 @@ private[collection] object RedBlackTree {
     if (tree.right ne null) _foreachKey(tree.right.nn, f)
   }
 
-  /** Applies `f` to the key and value of each entry of `tree`, passed as two arguments, in ascending key order.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @tparam U the result type of `f`, whose results are discarded
-   *  @param tree the red-black tree to traverse, or `null` for the empty tree
-   *  @param f the function applied to each key and value, for its side effects
-   */
   def foreachEntry[A, B, U](tree: Tree[A,B] | Null, f: (A, B) => U):Unit = if (tree ne null) _foreachEntry(tree,f)
 
   private def _foreachEntry[A, B, U](tree: Tree[A, B], f: (A, B) => U): Unit = {
@@ -634,42 +337,10 @@ private[collection] object RedBlackTree {
     if (tree.right ne null) _foreachEntry(tree.right.nn, f)
   }
 
-  /** Returns an iterator over the key-value pairs of `tree`, in ascending key order.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to iterate over, or `null` for the empty tree
-   *  @param start if defined, iteration starts at the first entry whose key is greater than or equal to `start`
-   */
   def iterator[A: Ordering, B](tree: Tree[A, B] | Null, start: Option[A] = None): Iterator[(A, B)] = new EntriesIterator(tree, start)
-  /** Returns an iterator over the keys of `tree`, in ascending order.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @param tree the red-black tree to iterate over, or `null` for the empty tree
-   *  @param start if defined, iteration starts at the first key greater than or equal to `start`
-   */
   def keysIterator[A: Ordering](tree: Tree[A, ?] | Null, start: Option[A] = None): Iterator[A] = new KeysIterator(tree, start)
-  /** Returns an iterator over the values of `tree`, in ascending key order.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to iterate over, or `null` for the empty tree
-   *  @param start if defined, iteration starts at the value of the first entry whose key is greater than or equal to `start`
-   */
   def valuesIterator[A: Ordering, B](tree: Tree[A, B] | Null, start: Option[A] = None): Iterator[B] = new ValuesIterator(tree, start)
 
-  /** Returns the node of `tree` at zero-based position `n` in ascending key order.
-   *
-   *  Navigates by the sizes stored in the nodes, without comparing keys. `n` must
-   *  satisfy `0 <= n < count(tree)`; an out-of-range index dereferences a `null`
-   *  child and throws a `NullPointerException`.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param tree the red-black tree to index into; must not be `null`
-   *  @param n the zero-based rank of the node to return
-   *  @return the node holding the entry with the `n`-th smallest key
-   */
   @tailrec
   def nth[A, B](tree: Tree[A, B], n: Int): Tree[A, B] = {
     val count = this.count(tree.left)
@@ -678,10 +349,6 @@ private[collection] object RedBlackTree {
     else tree
   }
 
-  /** Returns `true` if `tree` is a black node or empty; an empty (`null`) tree counts as black.
-   *
-   *  @param tree the tree to test, or `null` for the empty tree
-   */
   def isBlack(tree: Tree[?, ?] | Null) = (tree eq null) || tree.isBlack
 
   @`inline` private def isRedTree(tree: Tree[?, ?] | Null) = (tree ne null) && tree.isRed
@@ -955,7 +622,6 @@ private[collection] object RedBlackTree {
     //Note - only used in tests outside RedBlackTree
     @`inline` private[immutable] final def isRed = _count >= 0
 
-    /** Returns a string of the form `RedTree(key, value, left, right)` or `BlackTree(...)`, according to this node's colour, rendering the subtrees recursively */
     override def toString(): String = s"${if(isRed) "RedTree" else "BlackTree"}($key, $value, $left, $right)"
 
     //mutable APIs
@@ -1193,25 +859,10 @@ private[collection] object RedBlackTree {
   //    devTimeAssert ((t eq null) || t.count > 0)
   //  }
   private abstract class TreeIterator[A, B, R](root: Tree[A, B] | Null, start: Option[A])(protected implicit val ordering: Ordering[A]) extends AbstractIterator[R] {
-    /** Returns the iteration result to produce for the visited node `tree`.
-     *
-     *  @param tree the node the iterator is positioned at
-     *  @return the element of type `R` derived from `tree`
-     */
     protected def nextResult(tree: Tree[A, B]): R
 
-    /** Returns `true` if a lookahead node is available, that is, if the iteration is not exhausted */
     override def hasNext: Boolean = lookahead ne null
 
-    /** Returns the result for the current lookahead node and advances the iterator.
-     *
-     *  Advances to the leftmost node of the current node's right subtree, pushing
-     *  the nodes passed on the way onto the ancestor stack, or, if the right
-     *  subtree is empty, pops the next pending ancestor off the stack.
-     *
-     *  @return the result of `nextResult` for the current node
-     *  @throws NoSuchElementException if the iteration is exhausted
-     */
     @throws[NoSuchElementException]
     override def next(): R = {
       val tree = lookahead
@@ -1221,11 +872,6 @@ private[collection] object RedBlackTree {
       } else Iterator.empty.next()
     }
 
-    /** Returns the leftmost node of `tree`, pushing every node passed on the way down onto the ancestor stack.
-     *
-     *  @param tree the subtree to descend into, or `null`
-     *  @return the leftmost node of `tree`, or, if `tree` is `null`, the next pending ancestor popped off the stack (`null` if the stack is empty)
-     */
     @tailrec
     protected final def findLeftMostOrPopOnEmpty(tree: Tree[A, B] | Null): Tree[A, B] | Null =
       if (tree eq null) popNext()
@@ -1241,12 +887,6 @@ private[collection] object RedBlackTree {
       stackOfNexts.nn(index)
     }
 
-    /** The stack of ancestor nodes still to be visited, or `null` when the tree is empty.
-     *
-     *  Sized to the maximum possible height of a red-black tree of `root.count`
-     *  nodes, `2*ceil(log2(n + 2)) - 2` (Hinze's bound), so pushes can never
-     *  overflow it.
-     */
     protected val stackOfNexts: Array[Tree[A, B] | Null] | Null = if (root eq null) null else {
       /*
        * According to "Ralf Hinze. Constructing red-black trees" [https://www.cs.ox.ac.uk/ralf.hinze/publications/#P5]
@@ -1261,11 +901,6 @@ private[collection] object RedBlackTree {
       new Array[Tree[A, B] | Null](maximumHeight)
     }
     private var index = 0
-    /** The node that `next()` will visit next, or `null` when the iteration is exhausted.
-     *
-     *  Starts at the leftmost node of the tree, or, when `start` is defined, at
-     *  the first node whose key is greater than or equal to `start`.
-     */
     protected var lookahead: Tree[A, B] | Null = if (start.isDefined) startFrom(start.get) else findLeftMostOrPopOnEmpty(root)
 
     /** Finds the leftmost subtree whose key is equal to the given key, or if no such thing,
@@ -1295,23 +930,8 @@ private[collection] object RedBlackTree {
   }
 
   private class EqualsIterator[A: Ordering, B](tree: Tree[A, B]) extends TreeIterator[A, B, Unit](tree, None) {
-    /** Always throws `NotImplementedError`; never called, since the `same*` methods drive the traversal through `lookahead` directly rather than through `next()`.
-     *
-     *  @param tree never used
-     */
     override def nextResult(tree: Tree[A, B]): Nothing = ???
 
-    /** Returns `true` if this iterator and `that` yield pairwise equivalent keys and are exhausted together.
-     *
-     *  Keys are compared by reference equality first and with `Ordering.equiv`
-     *  otherwise. When both iterators are positioned on the same node by
-     *  reference, that node and its remaining subtree are skipped on both sides.
-     *  Consumes both iterators.
-     *
-     *  @tparam X the value type of the tree `that` iterates over, never examined
-     *  @param that the iterator to compare against
-     *  @return `true` if both traversals yield the same keys, `false` otherwise
-     */
     def sameKeys[X](that:EqualsIterator[A,X]): Boolean = {
       var equal = true
       while (equal && (this.lookahead ne null) && (that.lookahead ne null)) {
@@ -1327,16 +947,6 @@ private[collection] object RedBlackTree {
       }
       equal && (this.lookahead eq null) && (that.lookahead eq null)
     }
-    /** Returns `true` if this iterator and `that` yield pairwise equal (`==`) values and are exhausted together.
-     *
-     *  Keys are not compared. When both iterators are positioned on the same
-     *  node by reference, that node and its remaining subtree are skipped on
-     *  both sides. Consumes both iterators.
-     *
-     *  @tparam X the value type of the tree `that` iterates over
-     *  @param that the iterator to compare against
-     *  @return `true` if both traversals yield the same values, `false` otherwise
-     */
     def sameValues[X](that:EqualsIterator[A,X]): Boolean = {
       var equal = true
       while (equal && (this.lookahead ne null) && (that.lookahead ne null)) {
@@ -1351,17 +961,6 @@ private[collection] object RedBlackTree {
       }
       equal && (this.lookahead eq null) && (that.lookahead eq null)
     }
-    /** Returns `true` if this iterator and `that` yield pairwise equivalent keys with equal (`==`) values and are exhausted together.
-     *
-     *  Keys are compared by reference equality first and with `Ordering.equiv`
-     *  otherwise; values with `==`. When both iterators are positioned on the
-     *  same node by reference, that node and its remaining subtree are skipped
-     *  on both sides. Consumes both iterators.
-     *
-     *  @tparam X the value type of the tree `that` iterates over
-     *  @param that the iterator to compare against
-     *  @return `true` if both traversals yield the same entries, `false` otherwise
-     */
     def sameEntries[X](that:EqualsIterator[A,X]): Boolean = {
       var equal = true
       while (equal && (this.lookahead ne null) && (that.lookahead ne null)) {
@@ -1379,26 +978,14 @@ private[collection] object RedBlackTree {
     }
   }
   private class EntriesIterator[A: Ordering, B](tree: Tree[A, B] | Null, focus: Option[A]) extends TreeIterator[A, B, (A, B)](tree, focus) {
-    /** Returns the key-value pair of `tree`.
-     *
-     *  @param tree the node the iterator is positioned at
-     */
     override def nextResult(tree: Tree[A, B]) = (tree.key, tree.value)
   }
 
   private class KeysIterator[A: Ordering, B](tree: Tree[A, B] | Null, focus: Option[A]) extends TreeIterator[A, B, A](tree, focus) {
-    /** Returns the key of `tree`.
-     *
-     *  @param tree the node the iterator is positioned at
-     */
     override def nextResult(tree: Tree[A, B]) = tree.key
   }
 
   private class ValuesIterator[A: Ordering, B](tree: Tree[A, B] | Null, focus: Option[A]) extends TreeIterator[A, B, B](tree, focus) {
-    /** Returns the value of `tree`.
-     *
-     *  @param tree the node the iterator is positioned at
-     */
     override def nextResult(tree: Tree[A, B]) = tree.value
   }
 
@@ -1449,19 +1036,6 @@ private[collection] object RedBlackTree {
     f(1, size)
   }
 
-  /** Returns a tree with the same keys and shape as `t` in which each value is replaced by `f(key, value)`.
-   *
-   *  Applies `f` in ascending key order. A node whose value and transformed
-   *  children are unchanged by reference is reused rather than copied, so the
-   *  result is `t` itself when `f` returns every value unchanged.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the entries of `t`
-   *  @tparam C the value type of the resulting entries
-   *  @param t the red-black tree to transform, or `null` for the empty tree
-   *  @param f the function computing the new value for each entry
-   *  @return a tree mapping each key of `t` to its transformed value, or `null` if `t` is `null`
-   */
   def transform[A, B, C](t: Tree[A, B] | Null, f: (A, B) => C): Tree[A, C] | Null =
     if(t eq null) null
     else {
@@ -1478,18 +1052,6 @@ private[collection] object RedBlackTree {
       else mkTree(t.isBlack, k, v2, l2, r2)
     }
 
-  /** Returns a tree containing only the entries of `t` that satisfy the predicate `f`.
-   *
-   *  Applies `f` once to each entry, in ascending key order, and rebuilds around
-   *  removed entries with `join`/`join2`, reusing unchanged subtrees. The result
-   *  has a black root.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param t the red-black tree to filter, or `null` for the empty tree
-   *  @param f the predicate an entry must satisfy to be kept
-   *  @return a tree containing the entries that satisfy `f`, or `null` if none do
-   */
   def filterEntries[A, B](t: Tree[A, B] | Null, f: (A, B) => Boolean): Tree[A, B] | Null = if(t eq null) null else {
     def fk(t: Tree[A, B]): Tree[A, B] | Null = {
       val k = t.key
@@ -1508,18 +1070,6 @@ private[collection] object RedBlackTree {
 
   private val null2 = (null, null)
 
-  /** Returns a pair of trees splitting the entries of `t` by the predicate `p`: those satisfying `p` in the first tree and the rest in the second.
-   *
-   *  Applies `p` once to each entry, in ascending key order. Both result trees
-   *  have black roots, and either may be `null` when it holds no entries; a
-   *  `null` input yields a pair of `null` trees.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param t the red-black tree to partition, or `null` for the empty tree
-   *  @param p the predicate used to place each entry
-   *  @return a pair of trees holding the entries that satisfy `p` and those that do not, respectively
-   */
   def partitionEntries[A, B](t: Tree[A, B] | Null, p: (A, B) => Boolean): (Tree[A, B] | Null, Tree[A, B] | Null) = if(t eq null) null2 else {
       var tmpk: Tree[A, B] | Null = null // shared vars to avoid returning tuples from fk
       var tmpd: Tree[A, B] | Null = null
@@ -1641,48 +1191,10 @@ private[collection] object RedBlackTree {
   // of child nodes from it. Where possible the black height is used directly instead of deriving the rank from it.
   // Our trees are supposed to have a black root so we always blacken as the last step of union/intersect/difference.
 
-  /** Returns a tree containing an entry for every key present in `t1` or `t2`.
-   *
-   *  For a key present in both trees, the resulting entry keeps the key instance
-   *  stored in `t1` and takes its value from `t2`. Implemented with split/join;
-   *  the result has a black root.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param t1 the first tree, or `null` for the empty tree
-   *  @param t2 the second tree, or `null` for the empty tree
-   *  @param ordering the ordering used to compare keys
-   *  @return a tree containing the union of the entries, or `null` if both trees are empty
-   */
   def union[A, B](t1: Tree[A, B] | Null, t2: Tree[A, B] | Null)(implicit ordering: Ordering[A]): Tree[A, B] | Null = blacken(_union(t1, t2))
 
-  /** Returns a tree containing an entry for every key present in both `t1` and `t2`.
-   *
-   *  Each resulting entry keeps the key instance stored in `t1` and takes its
-   *  value from `t2`; when `t1 eq t2` the result is `t1` with a blackened root.
-   *  Implemented with split/join; the result has a black root.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the tree entries
-   *  @param t1 the first tree, or `null` for the empty tree
-   *  @param t2 the second tree, or `null` for the empty tree
-   *  @param ordering the ordering used to compare keys
-   *  @return a tree containing the entries with keys common to both trees, or `null` if there are none
-   */
   def intersect[A, B](t1: Tree[A, B] | Null, t2: Tree[A, B] | Null)(implicit ordering: Ordering[A]): Tree[A, B] | Null = blacken(_intersect(t1, t2))
 
-  /** Returns a tree containing the entries of `t1` whose keys are not present in `t2`.
-   *
-   *  The values of `t2` are never examined; when `t1 eq t2` the result is `null`.
-   *  Implemented with split/join; the result has a black root.
-   *
-   *  @tparam A the key type of the tree entries
-   *  @tparam B the value type of the entries of `t1`
-   *  @param t1 the tree to subtract from, or `null` for the empty tree
-   *  @param t2 the tree whose keys are removed from `t1`, or `null` for the empty tree
-   *  @param ordering the ordering used to compare keys
-   *  @return a tree containing the entries of `t1` without the keys of `t2`, or `null` if none remain
-   */
   def difference[A, B](t1: Tree[A, B] | Null, t2: Tree[A, ?] | Null)(implicit ordering: Ordering[A]): Tree[A, B] | Null =
     blacken(_difference(t1, t2.asInstanceOf[Tree[A, B]]))
 

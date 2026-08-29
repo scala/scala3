@@ -494,29 +494,11 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
     type Tree = RB.Tree[A, Any]
     private var tree:RB.Tree[A, Any] | Null = null
 
-    /** Adds `elem` to this builder, unless it is already present.
-     *
-     *  The internal tree is updated in place while its nodes are unshared; nodes already
-     *  published by `result()` are copied instead of mutated.
-     *
-     *  @param elem the element to add
-     *  @return this builder
-     */
     override def addOne(elem: A): this.type = {
       tree = mutableUpd(tree, elem)
       this
     }
 
-    /** Adds all elements of `xs` to this builder.
-     *
-     *  If `xs` is a `TreeSet` with the same ordering, its elements are added by an efficient
-     *  tree union, after making this builder's current tree immutable; a `TreeMap` with the
-     *  same ordering contributes its keys in the same way. Otherwise the elements are added
-     *  one by one.
-     *
-     *  @param xs the elements to add
-     *  @return this builder
-     */
     override def addAll(xs: IterableOnce[A]^): this.type = {
       (xs: @unchecked) match {
         // TODO consider writing a mutable-safe union for TreeSet/TreeMap builder ++=
@@ -535,16 +517,10 @@ object TreeSet extends SortedIterableFactory[TreeSet] {
       this
     }
 
-    /** Resets this builder to an empty state, leaving previously built sets unaffected. */
     override def clear(): Unit = {
       tree = null
     }
 
-    /** Returns a tree set with the elements added so far.
-     *
-     *  Makes the internal tree immutable, so this builder remains usable afterwards: later
-     *  additions copy nodes instead of mutating them.
-     */
     override def result(): TreeSet[A] = new TreeSet[A](beforePublish(tree))(using ordering)
   }
 }

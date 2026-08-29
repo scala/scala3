@@ -204,7 +204,6 @@ object ListSet extends IterableFactory[ListSet] {
     }
 
   private object EmptyListSet extends ListSet[Any] {
-    /** Returns `0`; this set is the shared empty list set. */
     override def knownSize: Int = 0
   }
   private[collection] def emptyInstance: ListSet[Any] = EmptyListSet

@@ -395,36 +395,18 @@ private[immutable] final class VectorMapBuilder[K, V] extends mutable.Builder[(K
   @annotation.stableNull
   private var aliased: VectorMap[K, V] | Null = null
 
-  /** Clears the contents of this builder: resets the underlying vector and map
-   *  builders and discards any previously built result.
-   */
   override def clear(): Unit = {
     vectorBuilder.clear()
     mapBuilder.clear()
     aliased = null
   }
 
-  /** Returns the `VectorMap` built so far.
-   *
-   *  The result is cached: repeated calls with no intervening addition return the same
-   *  instance. A pair added after this call goes through `updated` on the cached map
-   *  rather than through the underlying builders; since `updated` is itself immutable,
-   *  the map already returned is unaffected and the next call returns a new one.
-   */
   override def result(): VectorMap[K, V] = {
     if (aliased eq null) {
       aliased = new VectorMap(vectorBuilder.result(), mapBuilder.result())
     }
     aliased
   }
-  /** Adds a binding of `key` to `value` to this builder.
-   *
-   *  If `key` was already added, its value is replaced but its position is kept.
-   *
-   *  @param key the key to add or update
-   *  @param value the value to associate with `key`
-   *  @return this builder
-   */
   def addOne(key: K, value: V): this.type = {
     if (aliased ne null) {
       aliased = aliased.updated(key, value)
@@ -441,12 +423,5 @@ private[immutable] final class VectorMapBuilder[K, V] extends mutable.Builder[(K
     this
   }
 
-  /** Adds the key-value pair `elem` to this builder.
-   *
-   *  If the key was already added, its value is replaced but its position is kept.
-   *
-   *  @param elem the key-value pair to add
-   *  @return this builder
-   */
   override def addOne(elem: (K, V)): this.type = addOne(elem._1, elem._2)
 }

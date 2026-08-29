@@ -596,31 +596,12 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
 
     @inline private[immutable] def toBinaryString(i: Int): String = s"$i/${i.toBinaryString}"
 
-    /** Returns the empty ordering, [[Zero]].
-     *
-     *  @tparam T the type of the values
-     *  @return the empty ordering
-     */
     def empty[T] : Ordering[T] = Zero
 
-    /** Returns an ordering containing the given ordinal/value pairs, built by
-     *  successive `include` calls.
-     *
-     *  @tparam T the type of the values
-     *  @param elems the ordinal/value pairs to include
-     *  @return an ordering containing `elems`
-     */
     def apply[T](elems: (Int, T)*): Ordering[T] =
       elems.foldLeft(empty[T])((x, y) => x.include(y._1, y._2))
 
     // Iterator over a non-empty Ordering.
-    /** An iterator over the values of an ordering in ascending unsigned ordinal
-     *  order, using an explicit stack of at most 33 subtrees (one per possible
-     *  `Bin` level plus a `Tip`).
-     *
-     *  @tparam V the type of the values
-     *  @param it the ordering to iterate over; must not contain `Zero` subtrees
-     */
     final class Iterator[+V](it: Ordering[V]) {
       // Basically this uses a simple stack to emulate conversion over the tree. However
       // because we know that Ints are at least 32 bits we can have at most 32 Bins and
@@ -641,12 +622,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
 
       if (it != Zero) push(it)
 
-      /** Returns `true` if there are more values to return. */
       def hasNext = index > 0
-      /** Returns the next value in ascending unsigned ordinal order.
-       *
-       *  @throws NoSuchElementException if this iterator is exhausted
-       */
       @tailrec
       def next(): V =
         if (!hasNext) scala.collection.Iterator.empty.next()
@@ -666,13 +642,7 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
     }
 
     object Iterator {
-      /** The exhausted iterator, shared by all empty orderings. */
       val Empty = new Iterator[Nothing](Ordering.empty[Nothing])
-      /** Returns the shared exhausted iterator.
-       *
-       *  @tparam V the type of the values
-       *  @return an iterator with no values to return
-       */
       def empty[V]: Iterator[V] = Empty.asInstanceOf[Iterator[V]]
     }
 
@@ -681,87 +651,26 @@ object TreeSeqMap extends MapFactory[TreeSeqMap] {
       // loop from Map.equals => size => pattern-match-on-Nil => equals
       // develops.  Case objects and custom equality don't mix without
       // careful handling.
-      /** Returns `true` only if `that` is this object; any other `Ordering` is
-       *  unequal, since `Zero` never appears inside a non-empty ordering.
-       *
-       *  Needed to keep case-object equality from recursing through
-       *  `Map.equals`.
-       *
-       *  @param that the value to compare with
-       *  @return `true` if `that` is `Zero` itself
-       */
       override def equals(that : Any): Boolean = that match {
         case _: this.type => true
         case _: Ordering[?] => false // The only empty Orderings are eq Nil
         case _ => super.equals(that)
       }
-      /** Appends this node's debug representation (`Ø`) to `sb`.
-       *
-       *  @param sb the builder to append to
-       *  @param prefix the prefix for this node's line
-       *  @param subPrefix the prefix for child lines (unused: `Zero` has none)
-       */
       protected def format(sb: StringBuilder, prefix: String, subPrefix: String): Unit = sb ++= s"${prefix}Ø"
     }
 
-    /** A leaf of the ordering trie, holding one value at one ordinal.
-     *
-     *  @tparam T the type of the value
-     *  @param ord the ordinal at which `value` is stored
-     *  @param value the stored value
-     */
     final case class Tip[+T](ord: Int, value: T) extends Ordering[T] {
-      /** Returns a `Tip` at the same ordinal holding `s`, reusing this node when
-       *  `s` is the same reference as the current value.
-       *
-       *  @tparam S the type of the new value
-       *  @param s the value to store
-       */
       def withValue[S](s: S) =
         if (s.asInstanceOf[AnyRef] eq value.asInstanceOf[AnyRef]) this.asInstanceOf[Tip[S]]
         else Tip(ord, s)
-      /** Appends this node's debug representation to `sb`.
-       *
-       *  @param sb the builder to append to
-       *  @param prefix the prefix for this node's line
-       *  @param subPrefix the prefix for child lines (unused: a `Tip` has none)
-       */
       protected def format(sb: StringBuilder, prefix: String, subPrefix: String): Unit = sb ++= s"${prefix}Tip(${toBinaryString(ord)} -> $value)\n"
     }
 
-    /** An inner node of the ordering trie, branching on one bit of the ordinal.
-     *
-     *  Ordinals whose bit selected by `mask` is zero are in `left`, the others
-     *  in `right`. `right` is a `var` only so `appendInPlace` can extend the
-     *  rightmost spine without copying; the structure is otherwise immutable.
-     *
-     *  @tparam T the type of the values
-     *  @param prefix the bits all ordinals in this subtree share above `mask`
-     *  @param mask the single branching bit
-     *  @param left the subtree of ordinals with a zero branching bit
-     *  @param right the subtree of ordinals with a one branching bit
-     */
     final case class Bin[+T](prefix: Int, mask: Int, left: Ordering[T], var right: Ordering[T] @scala.annotation.unchecked.uncheckedVariance) extends Ordering[T] {
-      /** Returns a `Bin` with this node's prefix and mask and the given
-       *  subtrees, reusing this node when both are the same references as the
-       *  current subtrees.
-       *
-       *  @tparam S the type of the values
-       *  @param left the new left subtree
-       *  @param right the new right subtree
-       *  @return a node with the given subtrees
-       */
       def bin[S](left: Ordering[S], right: Ordering[S]): Ordering[S] = {
         if ((this.left eq left) && (this.right eq right)) this.asInstanceOf[Bin[S]]
         else Bin[S](prefix, mask, left, right)
       }
-      /** Appends this subtree's debug representation to `sb`, one line per node,
-       *  drawn as a tree.
-       *
-       *  @param sb the builder to append to
-       *  @param prefix the prefix for this node's line
-       *  @param subPrefix the prefix for child lines
-       */
       protected def format(sb: StringBuilder, prefix: String, subPrefix: String): Unit = {
         sb ++= s"${prefix}Bin(${toBinaryString(this.prefix)}:${toBinaryString(mask)})\n"
         left.format(sb, subPrefix + "├── ", subPrefix + "│   ")

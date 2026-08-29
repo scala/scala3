@@ -813,14 +813,8 @@ object NumericRange {
     private var _hasNext = !self.isEmpty
     private var _next: T = self.start
     private val lastElement: T = if (_hasNext) self.last else self.start
-    /** The number of elements this iterator will still return, or 0 if it is exhausted. */
     override def knownSize: Int = if (_hasNext) num.toInt((lastElement - _next) / self.step) + 1 else 0
-    /** Returns `true` if this iterator has more elements. */
     def hasNext: Boolean = _hasNext
-    /** Returns the next element of the range and advances this iterator.
-     *
-     *  @throws NoSuchElementException if this iterator is exhausted
-     */
     def next(): T = {
       if (!_hasNext) Iterator.empty.next()
       val value = _next

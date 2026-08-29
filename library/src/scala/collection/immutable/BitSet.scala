@@ -60,16 +60,6 @@ sealed abstract class BitSet
   /** The factory used to build immutable bitsets, the [[BitSet$ `BitSet`]] companion object. */
   def bitSetFactory: BitSet.type = BitSet
 
-  /** Returns an immutable bitset holding the bits of the given array, without copying it.
-   *
-   *  Only a result of more than two words keeps `elems` as its backing array; the
-   *  shorter representations store their words in fields instead, and an all-zero array
-   *  yields the shared empty bitset.
-   *
-   *  @param elems the array of `Long` words representing the bits; the caller must not
-   *               modify the array after this call
-   *  @return a bitset holding the bits of `elems`
-   */
   protected[collection] def fromBitMaskNoCopy(elems: Array[Long]): BitSet = BitSet.fromBitMaskNoCopy(elems)
 
   /** Returns a bitset containing `elem` and all elements of this bitset. Returns this
@@ -265,23 +255,8 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
    */
   @deprecated("Implementation classes of BitSet should not be accessed directly", "2.13.0")
   class BitSet1(val elems: Long) extends BitSet {
-    /** Returns `1`; this bitset is stored in one word. */
     protected[collection] def nwords = 1
-    /** Returns the word at index `idx`, which is this bitset's only word for `idx == 0`
-     *  and `0L` beyond it.
-     *
-     *  @param idx the word index
-     */
     protected[collection] def word(idx: Int) = if (idx == 0) elems else 0L
-    /** Returns a bitset that agrees with this one except that the word at `idx` is `w`.
-     *
-     *  The representation widens to two words, or to an array of words, only as far as
-     *  the non-zero words of the result require.
-     *
-     *  @param idx the index of the word to update
-     *  @param w the new value for the word at index `idx`
-     *  @return a bitset with the word at `idx` set to `w`
-     */
     protected[collection] def updateWord(idx: Int, w: Long): BitSet =
       if (idx == 0) new BitSet1(w)
       else if (idx == 1) createSmall(elems, w)
@@ -330,22 +305,8 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
    */
   @deprecated("Implementation classes of BitSet should not be accessed directly", "2.13.0")
   class BitSet2(val elems0: Long, val elems1: Long) extends BitSet {
-    /** Returns `2`; this bitset is stored in two words. */
     protected[collection] def nwords = 2
-    /** Returns the word at index `idx`, which is one of this bitset's two words for
-     *  `idx == 0` or `idx == 1`, and `0L` beyond them.
-     *
-     *  @param idx the word index
-     */
     protected[collection] def word(idx: Int) = if (idx == 0) elems0 else if (idx == 1) elems1 else 0L
-    /** Returns a bitset that agrees with this one except that the word at `idx` is `w`,
-     *  narrowing to a single word when the second word becomes zero and widening to an
-     *  array of words when `idx` lies beyond the two words held here.
-     *
-     *  @param idx the index of the word to update
-     *  @param w the new value for the word at index `idx`
-     *  @return a bitset with the word at `idx` set to `w`
-     */
     protected[collection] def updateWord(idx: Int, w: Long): BitSet =
       if (idx == 0) new BitSet2(w, elems1)
       else if (idx == 1) createSmall(elems0, w)
@@ -415,23 +376,10 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
    */
   @deprecated("Implementation classes of BitSet should not be accessed directly", "2.13.0")
   class BitSetN(val elems: Array[Long]) extends BitSet {
-    /** Returns the number of words this bitset is stored in. */
     protected[collection] def nwords = elems.length
 
-    /** Returns the word at index `idx`, or `0L` if `idx` is beyond the words held here.
-     *
-     *  @param idx the word index
-     */
     protected[collection] def word(idx: Int) = if (idx < nwords) elems(idx) else 0L
 
-    /** Returns a bitset that agrees with this one except that the word at `idx` is `w`,
-     *  growing the array if `idx` lies beyond it and narrowing the representation when
-     *  the higher words become zero.
-     *
-     *  @param idx the index of the word to update
-     *  @param w the new value for the word at index `idx`
-     *  @return a bitset with the word at `idx` set to `w`
-     */
     protected[collection] def updateWord(idx: Int, w: Long): BitSet = this.fromBitMaskNoCopy(updateArray(elems, idx, w))
 
     /** Returns a bitset containing the elements of this bitset that are not in `that`.
@@ -617,9 +565,6 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
 
   @SerialVersionUID(3L)
   private final class SerializationProxy(coll: BitSet) extends scala.collection.BitSet.SerializationProxy(coll) {
-    /** Returns the bitset rebuilt from the words read back from the stream, replacing
-     *  this proxy.
-     */
     protected def readResolve(): Any = BitSet.fromBitMaskNoCopy(elems)
   }
 }

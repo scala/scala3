@@ -533,20 +533,10 @@ final class TreeMap[K, +V] private (private val tree: RB.Tree[K, V] | Null)(impl
   private final class Adder[B1 >: V]
     extends RB.MapHelper[K, B1] with Function1[(K, B1), Unit] {
     private var currentMutableTree: RB.Tree[K,B1] | Null = tree0
-    /** Returns the accumulated tree, converted to an immutable tree that is safe to share. */
     def finalTree = beforePublish(currentMutableTree)
-    /** Adds the key-value pair `kv` to the accumulated tree, overwriting the value if the key
-     *  is already present. Unshared tree nodes are updated in place.
-     *
-     *  @param kv the key-value pair to add
-     */
     override def apply(kv: (K, B1)): Unit = {
       currentMutableTree = mutableUpd(currentMutableTree, kv._1, kv._2)
     }
-    /** Adds all key-value pairs of `ls` to the accumulated tree, in order.
-     *
-     *  @param ls the sequence of key-value pairs to add
-     */
     @tailrec def addAll(ls: LinearSeq[(K, B1)]): Unit = {
       if (!ls.isEmpty) {
         val kv = ls.head
@@ -634,15 +624,6 @@ object TreeMap extends SortedMapFactory[TreeMap] {
     type Tree = RB.Tree[K, V]
     private var tree: Tree | Null = null
 
-    /** Adds the key-value pair `elem` to this builder, overwriting the value if the key is
-     *  already present.
-     *
-     *  The internal tree is updated in place while its nodes are unshared; nodes already
-     *  published by `result()` are copied instead of mutated.
-     *
-     *  @param elem the key-value pair to add
-     *  @return this builder
-     */
     def addOne(elem: (K, V)): this.type = {
       tree = mutableUpd(tree, elem._1, elem._2)
       this
@@ -651,11 +632,6 @@ object TreeMap extends SortedMapFactory[TreeMap] {
       // we cache tree to avoid the outer access to tree
       // in the hot path (apply)
       private var accumulator: Tree | Null = null
-      /** Adds all entries of `hasForEach` to the builder's tree, iterating with `foreachEntry`
-       *  to avoid allocating a tuple per entry.
-       *
-       *  @param hasForEach the map whose entries are added
-       */
       def addForEach(hasForEach: collection.Map[K, V]): Unit = {
         accumulator = tree
         hasForEach.foreachEntry(this)
@@ -664,27 +640,11 @@ object TreeMap extends SortedMapFactory[TreeMap] {
         accumulator = null
       }
 
-      /** Adds a binding of `key` to `value` to the accumulated tree, overwriting the value if
-       *  the key is already present.
-       *
-       *  @param key the key to add or update
-       *  @param value the value to associate with `key`
-       */
       override def apply(key: K, value: V): Unit = {
         accumulator = mutableUpd(accumulator, key, value)
       }
     }
 
-    /** Adds all key-value pairs of `xs` to this builder.
-     *
-     *  If `xs` is a `TreeMap` with the same ordering, the pairs are added by an efficient tree
-     *  union, after making this builder's current tree immutable; if it is another map, its
-     *  entries are added without allocating a tuple per entry; otherwise the pairs are added
-     *  one by one.
-     *
-     *  @param xs the key-value pairs to add
-     *  @return this builder
-     */
     override def addAll(xs: IterableOnce[(K, V)]^): this.type = {
       (xs: @unchecked) match {
         // TODO consider writing a mutable-safe union for TreeSet/TreeMap builder ++=
@@ -703,16 +663,10 @@ object TreeMap extends SortedMapFactory[TreeMap] {
       this
     }
 
-    /** Resets this builder to an empty state, leaving previously built maps unaffected. */
     override def clear(): Unit = {
       tree = null
     }
 
-    /** Returns a tree map with the key-value pairs added so far.
-     *
-     *  Makes the internal tree immutable, so this builder remains usable afterwards: later
-     *  additions copy nodes instead of mutating them.
-     */
     override def result(): TreeMap[K, V] = new TreeMap[K, V](beforePublish(tree))
   }
 }

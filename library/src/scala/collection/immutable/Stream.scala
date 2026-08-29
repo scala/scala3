@@ -717,36 +717,9 @@ object Stream extends SeqFactory[Stream] {
   private final class WithFilter[A](l: Stream[A] @uncheckedVariance, p: A => Boolean) extends collection.WithFilter[A, Stream] {
     private var s: Stream[A] = l // set to null to allow GC after filtered
     private lazy val filtered: Stream[A] = { val f = s.filter(p); s = nullForGC[Stream[A]]; f } // don't set to null if throw during filter
-    /** Returns a stream of the results of applying `f` to the elements that satisfy the
-     *  filter's predicate.
-     *
-     *  The filtering is performed on the first call to any of this wrapper's methods and
-     *  its result is kept, which lets the head of the underlying stream be collected.
-     *
-     *  @tparam B the element type of the resulting stream
-     *  @param f the function to apply to each retained element
-     */
     def map[B](f: A => B): Stream[B] = filtered.map(f)
-    /** Returns a stream of the concatenated results of applying `f` to the elements that
-     *  satisfy the filter's predicate.
-     *
-     *  @tparam B the element type of the resulting stream
-     *  @param f the function to apply to each retained element
-     */
     def flatMap[B](f: A => IterableOnce[B]): Stream[B] = filtered.flatMap(f)
-    /** Applies `f` to each element that satisfies the filter's predicate.
-     *
-     *  This computes every element of the underlying stream, so it does not terminate on
-     *  an infinite stream, and stops early only if the filter's predicate or `f` throws.
-     *
-     *  @tparam U the result type of `f`, used only for its side effects
-     *  @param f the function to apply to each retained element
-     */
     def foreach[U](f: A => U): Unit = filtered.foreach(f)
-    /** Returns a `WithFilter` that also requires `q`, restricting the elements further.
-     *
-     *  @param q the additional predicate an element must satisfy
-     */
     def withFilter(q: A => Boolean): collection.WithFilter[A, Stream] = new WithFilter(filtered, q)
   }
 

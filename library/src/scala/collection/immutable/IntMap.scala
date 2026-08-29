@@ -24,26 +24,8 @@ import scala.language.implicitConversions
 
 /** Utility class for integer maps. */
 private[immutable] object IntMapUtils extends BitOperations.Int {
-  /** Returns a mask with a single bit set at the highest position where `i` and `j`
-   *  differ, or zero if they are equal.
-   *
-   *  @param i the first prefix
-   *  @param j the second prefix
-   */
   def branchMask(i: Int, j: Int) = highestOneBit(i ^ j)
 
-  /** Joins two maps with differing prefixes under a new `Bin` node.
-   *
-   *  The branching bit of the new node is the highest bit at which `p1` and `p2`
-   *  differ; the map whose prefix has a zero at that bit becomes the left subtree.
-   *
-   *  @tparam T the type of the values
-   *  @param p1 the prefix of `t1`
-   *  @param t1 the first map
-   *  @param p2 the prefix of `t2`
-   *  @param t2 the second map
-   *  @return a `Bin` node with `t1` and `t2` as subtrees, ordered by the branching bit
-   */
   def join[T](p1: Int, t1: IntMap[T], p2: Int, t2: IntMap[T]): IntMap[T] = {
     val m = branchMask(p1, p2)
     val p = mask(p1, m)
@@ -51,19 +33,6 @@ private[immutable] object IntMapUtils extends BitOperations.Int {
     else IntMap.Bin(p, m, t2, t1)
   }
 
-  /** Builds a `Bin` node from the given subtrees, collapsing empty ones.
-   *
-   *  If either subtree is `Nil`, returns the other subtree unchanged, maintaining
-   *  the invariant that `Nil` never occurs inside a non-empty map.
-   *
-   *  @tparam T the type of the values
-   *  @param prefix the bits all keys under the node have in common above the branching bit
-   *  @param mask the mask with only the branching bit set
-   *  @param left the subtree of keys with a zero at the branching bit
-   *  @param right the subtree of keys with a one at the branching bit
-   *  @return `left` if `right` is empty, `right` if `left` is empty, otherwise a new
-   *          `Bin` node with the given prefix, mask and subtrees
-   */
   def bin[T](prefix: Int, mask: Int, left: IntMap[T], right: IntMap[T]): IntMap[T] = (left, right) match {
     case (left, IntMap.Nil) => left
     case (IntMap.Nil, right) => right
@@ -119,14 +88,6 @@ object IntMap {
     // loop from Map.equals => size => pattern-match-on-Nil => equals
     // develops.  Case objects and custom equality don't mix without
     // careful handling.
-    /** Compares this empty map with `that` for equality.
-     *
-     *  `Nil` equals itself and is unequal to every other `IntMap`, since the only
-     *  empty `IntMap` is this object. For anything else it falls back to the
-     *  structural equality of maps, so it equals any other empty `Map`.
-     *
-     *  @param that the value to compare with
-     */
     override def equals(that : Any) = that match {
       case _: this.type => true
       case _: IntMap[?] => false // The only empty IntMaps are eq Nil
@@ -135,30 +96,12 @@ object IntMap {
   }
 
   private[immutable] case class Tip[+T](key: Int, value: T) extends IntMap[T]{
-    /** Returns a `Tip` with this node's key and the given value, reusing this node
-     *  when possible.
-     *
-     *  If `s` is the same reference as the current value, returns this node (cast
-     *  to the new value type) to preserve sharing; otherwise creates a new `Tip`.
-     *
-     *  @tparam S the type of the new value
-     *  @param s the new value
-     */
     def withValue[S](s: S) =
       if (s.asInstanceOf[AnyRef] eq value.asInstanceOf[AnyRef]) this.asInstanceOf[IntMap.Tip[S]]
       else IntMap.Tip(key, s)
   }
 
   private[immutable] case class Bin[+T](prefix: Int, mask: Int, left: IntMap[T], right: IntMap[T]) extends IntMap[T] {
-    /** Returns a `Bin` with this node's prefix and mask and the given subtrees,
-     *  reusing this node when possible.
-     *
-     *  @tparam S the type of the values in the subtrees
-     *  @param left the new left subtree
-     *  @param right the new right subtree
-     *  @return this node (cast to the new value type) if both subtrees are the same
-     *          references as this node's, to preserve sharing; otherwise a new `Bin`
-     */
     def bin[S](left: IntMap[S], right: IntMap[S]): IntMap[S] = {
       if ((this.left eq left) && (this.right eq right)) this.asInstanceOf[IntMap.Bin[S]]
       else IntMap.Bin[S](prefix, mask, left, right)
@@ -187,12 +130,7 @@ object IntMap {
 
   @SerialVersionUID(3L)
   private object ToFactory extends Factory[(Int, AnyRef), IntMap[AnyRef]] with Serializable {
-    /** Returns an `IntMap` containing the key/value pairs of `it`.
-     *
-     *  @param it the collection of key/value pairs
-     */
     def fromSpecific(it: IterableOnce[(Int, AnyRef)]^): IntMap[AnyRef] = IntMap.from[AnyRef](it)
-    /** Returns a new builder that accumulates key/value pairs into an `IntMap`. */
     def newBuilder: Builder[(Int, AnyRef), IntMap[AnyRef]] = IntMap.newBuilder[AnyRef]
   }
 
@@ -206,16 +144,7 @@ object IntMap {
    */
   implicit def toBuildFrom[V](factory: IntMap.type): BuildFrom[Any, (Int, V), IntMap[V]] = ToBuildFrom.asInstanceOf[BuildFrom[Any, (Int, V), IntMap[V]]]
   private object ToBuildFrom extends BuildFrom[Any, (Int, AnyRef), IntMap[AnyRef]] {
-    /** Returns an `IntMap` containing the key/value pairs of `it`.
-     *
-     *  @param from the source collection; never used
-     *  @param it the collection of key/value pairs
-     */
     def fromSpecific(from: Any)(it: IterableOnce[(Int, AnyRef)]^) = IntMap.from(it)
-    /** Returns a new builder that accumulates key/value pairs into an `IntMap`.
-     *
-     *  @param from the source collection; never used
-     */
     def newBuilder(from: Any) = IntMap.newBuilder[AnyRef]
   }
 
@@ -239,23 +168,14 @@ private[immutable] abstract class IntMapIterator[V, T](it: IntMap[V]) extends Ab
   // because we know that Ints are at least 32 bits we can have at most 32 IntMap.Bins and
   // one IntMap.Tip sitting on the tree at any point. Therefore we know the maximum stack
   // depth is 33 and
-  /** The current stack depth: the index of the next free slot in `buffer`. */
   var index = 0
-  /** The stack of subtrees still to be traversed; `buffer(index - 1)` is the top. */
   var buffer = new Array[AnyRef](33)
 
-  /** Removes and returns the top subtree of the stack. Must not be called when the
-   *  stack is empty.
-   */
   def pop = {
     index -= 1
     buffer(index).asInstanceOf[IntMap[V]]
   }
 
-  /** Pushes a subtree onto the stack.
-   *
-   *  @param x the subtree still to be traversed
-   */
   def push(x: IntMap[V]): Unit = {
     buffer(index) = x.asInstanceOf[AnyRef]
     index += 1
@@ -269,18 +189,7 @@ private[immutable] abstract class IntMapIterator[V, T](it: IntMap[V]) extends Ab
    */
   def valueOf(tip: IntMap.Tip[V]): T
 
-  /** Returns `true` if the stack is non-empty, that is, if elements remain. */
   def hasNext = index != 0
-  /** Returns the next element, in unsigned order of the keys.
-   *
-   *  Pops the top subtree and descends along left children, pushing each right
-   *  sibling, until a `Tip` is reached, whose element is returned; a `Bin` whose
-   *  left child is a `Tip` is handled directly, pushing only its right child.
-   *  Must not be called when `hasNext` is false.
-   *
-   *  @throws IllegalStateException if a `Nil` occurs inside a subtree, which never
-   *          happens for a well-formed map
-   */
   @tailrec
   final def next(): T =
     pop match {
@@ -301,26 +210,14 @@ private[immutable] abstract class IntMapIterator[V, T](it: IntMap[V]) extends Ab
 }
 
 private[immutable] class IntMapEntryIterator[V](it: IntMap[V]) extends IntMapIterator[V, (Int, V)](it) {
-  /** Returns the key/value pair stored in `tip`.
-   *
-   *  @param tip the leaf node
-   */
   def valueOf(tip: IntMap.Tip[V]) = (tip.key, tip.value)
 }
 
 private[immutable] class IntMapValueIterator[V](it: IntMap[V]) extends IntMapIterator[V, V](it) {
-  /** Returns the value stored in `tip`.
-   *
-   *  @param tip the leaf node
-   */
   def valueOf(tip: IntMap.Tip[V]) = tip.value
 }
 
 private[immutable] class IntMapKeyIterator[V](it: IntMap[V]) extends IntMapIterator[V, Int](it) {
-  /** Returns the key stored in `tip`.
-   *
-   *  @param tip the leaf node
-   */
   def valueOf(tip: IntMap.Tip[V]) = tip.key
 }
 
