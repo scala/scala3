@@ -567,24 +567,11 @@ object MapOps {
    *  @param mp the underlying map whose keys this set exposes; held by reference so the set reflects the map
    */
   private[collection] class LazyKeySet[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C](mp: MapOps[K, V, CC, C]) extends AbstractSet[K] with DefaultSerializable {
-    /** Returns an iterator over the keys of the underlying map. */
     def iterator: Iterator[K] = mp.keysIterator
-    /** Returns a new set containing the keys of this set that are not also contained in `that`.
-     *
-     *  @param that the set of keys to exclude
-     */
     def diff(that: Set[K]): Set[K] = LazyKeySet.this.fromSpecific(this.view.filterNot(that))
-    /** Tests whether the underlying map contains a binding for the given key.
-     *
-     *  @param key the key to look up
-     *  @return `true` if the underlying map has a binding for `key`, `false` otherwise
-     */
     def contains(key: K): Boolean = mp.contains(key)
-    /** Returns the number of keys, which equals the size of the underlying map. */
     override def size: Int = mp.size
-    /** Returns the size of the underlying map if it can be computed cheaply, -1 otherwise. */
     override def knownSize: Int = mp.knownSize
-    /** Tests whether the underlying map is empty. */
     override def isEmpty: Boolean = mp.isEmpty
   }
 
@@ -597,29 +584,12 @@ object MapOps {
    *  @param mp the underlying map whose keys are eagerly copied into this set at construction time
    */
   private[collection] class StrictKeySet[K, +V, +CC[_, _] <: IterableOps[?, AnyConstr, ?], +C](@annotation.constructorOnly mp: MapOps[K, V, CC, C]^) extends AbstractSet[K] with DefaultSerializable {
-    /** The keys of the underlying map, copied into a `LinkedHashSet` when this set is constructed. */
     val allKeys = mp.keysIterator.to(mutable.LinkedHashSet)
-    /** Returns an iterator over the copied keys, in the order the underlying map enumerated
-     *  them at construction time.
-     */
     def iterator: Iterator[K] = allKeys.iterator
-    /** Returns a new set containing the keys of this set that are not also contained in `that`.
-     *
-     *  @param that the set of keys to exclude
-     */
     def diff(that: Set[K]): Set[K] = StrictKeySet.this.fromSpecific(this.view.filterNot(that))
-    /** Tests whether the given key was a key of the underlying map when this set was
-     *  constructed.
-     *
-     *  @param key the key to look up
-     *  @return `true` if `key` is in the copied key set, `false` otherwise
-     */
     def contains(key: K): Boolean = allKeys.contains(key)
-    /** Returns the number of keys the underlying map contained at construction time. */
     override def size: Int = allKeys.size
-    /** Returns the number of copied keys; never -1, since the copied set always knows its size. */
     override def knownSize: Int = allKeys.knownSize
-    /** Tests whether the underlying map was empty when this set was constructed. */
     override def isEmpty: Boolean = allKeys.isEmpty
   }
 }

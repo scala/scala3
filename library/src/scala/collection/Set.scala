@@ -184,12 +184,7 @@ transparent trait SetOps[A, +CC[_], +C <: SetOps[A, CC, C]]
     private var _hasNext = true
     idxs(len) = elms.size
 
-    /** Tests whether further subsets remain. */
     def hasNext = _hasNext
-    /** Returns the next subset of the requested size.
-     *
-     *  @throws NoSuchElementException if no further subsets remain
-     */
     @throws[NoSuchElementException]
     def next(): C = {
       if (!hasNext) Iterator.empty.next()

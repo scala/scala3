@@ -180,22 +180,16 @@ object MapView extends MapViewFactory {
   // Ideally this is public, but bincompat
   @SerialVersionUID(3L)
   private class Keys[K](underlying: SomeMapOps[K, ?]^) extends AbstractView[K] {
-    /** Returns an iterator over the keys of the underlying map. */
     def iterator: Iterator[K]^{this} = underlying.keysIterator
-    /** Returns the number of entries in the underlying map, if it can be computed in constant time, otherwise -1. */
     override def knownSize: Int = underlying.knownSize
-    /** Returns `true` if the underlying map is empty. */
     override def isEmpty: Boolean = underlying.isEmpty
   }
 
   // Ideally this is public, but bincompat
   @SerialVersionUID(3L)
   private class Values[+V](underlying: SomeMapOps[?, V]^) extends AbstractView[V] {
-    /** Returns an iterator over the values of the underlying map. */
     def iterator: Iterator[V]^{this} = underlying.valuesIterator
-    /** Returns the number of entries in the underlying map, if it can be computed in constant time, otherwise -1. */
     override def knownSize: Int = underlying.knownSize
-    /** Returns `true` if the underlying map is empty. */
     override def isEmpty: Boolean = underlying.isEmpty
   }
 

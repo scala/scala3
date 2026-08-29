@@ -654,17 +654,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     private val (elms, idxs) = init()
     private var _hasNext = true
 
-    /** Returns `true` if more distinct permutations remain. */
     def hasNext = _hasNext
-    /** Returns the next distinct permutation and advances this iterator.
-     *
-     *  The result is built from the current arrangement of the elements;
-     *  the following arrangement is then computed with the classic
-     *  next-permutation algorithm on the underlying array of element
-     *  indices.
-     *
-     *  @throws NoSuchElementException if no more permutations remain
-     */
     @throws[NoSuchElementException]
     def next(): C = {
       if (!hasNext)
@@ -717,16 +707,7 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     private val offs = cnts.scanLeft(0)(_ + _)
     private var _hasNext = true
 
-    /** Returns `true` if more combinations remain. */
     def hasNext = _hasNext
-    /** Returns the next `n`-element combination and advances this iterator.
-     *
-     *  The result is built from the current selection counts `nums`, taking
-     *  `nums(k)` copies of the `k`th distinct element; the counts are then
-     *  updated to describe the following combination.
-     *
-     *  @throws NoSuchElementException if no more combinations remain
-     */
     def next(): C = {
       if (!hasNext)
         Iterator.empty.next()
@@ -1080,16 +1061,6 @@ transparent trait SeqOps[+A, +CC[_], +C] extends Any
     iterableFactory.from(new View.Updated(this, index, elem))
   }
 
-  /** Returns a mutable map from each distinct element of `sq` to the number
-   *  of times it occurs in `sq`.
-   *
-   *  Used to implement the multiset operations `diff` and `intersect`.
-   *
-   *  @tparam B the element type of `sq`
-   *  @param sq the sequence whose element occurrences are counted
-   *  @return a mutable map whose keys are the distinct elements of `sq` and
-   *          whose values are their occurrence counts (always positive)
-   */
   protected[collection] def occCounts[B](sq: Seq[B]): mutable.Map[B, Int] = {
     val occ = new mutable.HashMap[B, Int]()
     for (y <- sq) occ.updateWith(y) {

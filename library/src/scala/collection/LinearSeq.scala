@@ -523,17 +523,8 @@ private[collection] final class LinearSeqIterator[A](coll: LinearSeqOps[A, Linea
     new LazyCell(initialHead)
   }
 
-  /** Returns `true` if more elements remain. Forces the lazily stored
-   *  remainder of the sequence to determine whether it is non-empty.
-   */
   def hasNext: Boolean = these.v.nonEmpty
 
-  /** Returns the next element and stores the remaining sequence in a lazy
-   *  cell, so the tail is not evaluated before the next call to `hasNext` or
-   *  `next()`.
-   *
-   *  @throws NoSuchElementException if the iterator is exhausted
-   */
   def next(): A =
     if (isEmpty) Iterator.empty.next()
     else {

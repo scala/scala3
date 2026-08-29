@@ -180,29 +180,10 @@ transparent trait SortedMapOps[K, +V, +CC[X, Y] <: Map[X, Y] & SortedMapOps[X, Y
 
   /** The implementation class of the set returned by `keySet`. */
   private[collection] class LazyKeySortedSet extends MapOps.LazyKeySet(this) with SortedSet[K] {
-    /** The ordering of the underlying map, by which the keys of this set are sorted. */
     implicit def ordering: Ordering[K] = SortedMapOps.this.ordering
-    /** Returns an iterator over the keys of the underlying map that are greater than or equal
-     *  to `start` under the map's ordering.
-     *
-     *  @param start the lower bound (inclusive) on the keys to be returned
-     *  @return an iterator over all keys greater than or equal to `start`
-     */
     def iteratorFrom(start: K): Iterator[K] = SortedMapOps.this.keysIteratorFrom(start)
 
-    /** Returns a new sorted set containing the keys of this set that are not also contained
-     *  in `that`.
-     *
-     *  @param that the set of keys to exclude
-     */
     override def diff(that: Set[K]): SortedSet[K] = fromSpecific(view.filterNot(that))
-    /** Creates a ranged projection of this key set, backed by the corresponding ranged
-     *  projection of the underlying map.
-     *
-     *  @param from the lower-bound (inclusive) of the projection, `None` if there is no lower bound
-     *  @param until the upper-bound (exclusive) of the projection, `None` if there is no upper bound
-     *  @return the key set of the underlying map restricted to the given range
-     */
     override def rangeImpl(from: Option[K], until: Option[K]): SortedSet[K] = {
       val map = SortedMapOps.this.rangeImpl(from, until)
       new map.LazyKeySortedSet

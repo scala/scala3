@@ -412,51 +412,15 @@ object SeqView {
     private class ReverseSorted extends SeqView[A] {
       private lazy val _reversed = new SeqView.Reverse(_sorted)
 
-      /** Returns the element at index `i` in reverse sorted order, forcing the sort on
-       *  the first element access.
-       *
-       *  @param i the index of the element
-       *  @return the element of this view at `i`
-       */
       def apply(i: Int): A = _reversed.apply(i)
-      /** Returns the length, known since the enclosing sorted view was created; does not
-       *  force the sort.
-       */
       def length: Int = len
-      /** Returns an iterator over the elements in reverse sorted order; the sort is
-       *  deferred until the iterator is first queried.
-       */
       def iterator: Iterator[A]^{this} = Iterator.empty ++ _reversed.iterator // very lazy
-      /** Returns the length, known since the enclosing sorted view was created; does not
-       *  force the sort.
-       */
       override def knownSize: Int = len
-      /** Returns `true` if the length is 0; does not force the sort. */
       override def isEmpty: Boolean = len == 0
-      /** Returns a collection containing the elements in reverse sorted order, forcing
-       *  the sort.
-       *
-       *  @tparam C1 the type of the collection to build
-       *  @param factory the factory that builds the result
-       *  @return a collection of the elements in reverse sorted order
-       */
       override def to[C1](factory: Factory[A, C1]): C1 = _reversed.to(factory)
-      /** Returns the enclosing sorted view: reversing this view twice restores it. */
       override def reverse: SeqView[A]^{this} = outer
-      /** Returns the enclosing sorted view, which holds these elements in the ordering
-       *  this view reverses.
-       */
       override protected def reversed: Iterable[A]^{outer} = outer
 
-      /** Returns the enclosing sorted view if `ord1` equals the ordering it was sorted
-       *  by, this view if `ord1` is the reverse of that ordering, and otherwise a new
-       *  sorted view, reusing the cached sorted elements when the sort has already been
-       *  performed.
-       *
-       *  @tparam B1 the type on which `ord1` compares
-       *  @param ord1 the ordering to sort by
-       *  @return a view of the same elements, sorted according to `ord1`
-       */
       override def sorted[B1 >: A](implicit ord1: Ordering[B1]): SeqView[A]^{this} =
         if (ord1 == Sorted.this.ord) outer
         else if (ord1.isReverseOf(Sorted.this.ord)) this

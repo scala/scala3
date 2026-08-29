@@ -58,14 +58,8 @@ object ArrayOps {
 
   @SerialVersionUID(3L)
   private class ArrayView[A](xs: Array[A]) extends AbstractIndexedSeqView[A] {
-    /** Returns the length of the underlying array. */
     def length = xs.length
-    /** Returns the element of the underlying array at index `n`.
-     *
-     *  @param n the index of the element to return
-     */
     def apply(n: Int) = xs(n)
-    /** Returns a string representation of the form `ArrayView(elem1, elem2, ...)`. */
     override def toString(): String = immutable.ArraySeq.unsafeWrapArray(xs).mkString("ArrayView(", ", ", ")")
   }
 
@@ -156,27 +150,14 @@ object ArrayOps {
   private[collection] final class ArrayIterator[@specialized(Specializable.Everything) A](xs: Array[A]) extends AbstractIterator[A] with Serializable {
     private var pos = 0
     private val len = xs.length
-    /** Returns the number of elements remaining in this iterator. */
     override def knownSize: Int = len - pos
-    /** Returns `true` if this iterator has not yet reached the end of the array. */
     def hasNext: Boolean = pos < len
-    /** Returns the next element of the array and advances this iterator.
-     *
-     *  @throws NoSuchElementException if this iterator is exhausted
-     */
     def next(): A = {
       if (pos >= xs.length) Iterator.empty.next()
       val r = xs(pos)
       pos += 1
       r
     }
-    /** Advances this iterator past its next `n` elements in constant time,
-     *  without touching the elements.
-     *
-     *  @param n the number of elements to skip; a negative or zero value skips nothing
-     *  @return this iterator itself, positioned at most `n` elements further
-     *          on, and never past the end of the array
-     */
     override def drop(n: Int): Iterator[A] = {
       if (n > 0) {
         val newPos = pos + n
@@ -191,13 +172,7 @@ object ArrayOps {
   @SerialVersionUID(3L)
   private final class ReverseIterator[@specialized(Specializable.Everything) A](xs: Array[A]) extends AbstractIterator[A] with Serializable {
     private var pos = xs.length-1
-    /** Returns `true` if this iterator has not yet passed the first element of the array. */
     def hasNext: Boolean = pos >= 0
-    /** Returns the next element in reverse order, moving this iterator one
-     *  position towards the start of the array.
-     *
-     *  @throws NoSuchElementException if this iterator is exhausted
-     */
     def next(): A = {
       if (pos < 0) Iterator.empty.next()
       val r = xs(pos)
@@ -205,14 +180,6 @@ object ArrayOps {
       r
     }
 
-    /** Advances this iterator past its next `n` elements (moving `n` positions
-     *  towards the start of the array) in constant time, without touching the
-     *  elements.
-     *
-     *  @param n the number of elements to skip; a negative or zero value skips nothing
-     *  @return this iterator itself, positioned at most `n` elements further
-     *          towards the start, and never before the start of the array
-     */
     override def drop(n: Int): Iterator[A] = {
       if (n > 0) pos = Math.max( -1, pos - n)
       this
@@ -222,13 +189,7 @@ object ArrayOps {
   @SerialVersionUID(3L)
   private final class GroupedIterator[A](xs: Array[A], groupSize: Int) extends AbstractIterator[Array[A]] with Serializable {
     private var pos = 0
-    /** Returns `true` if elements of the array remain to be grouped. */
     def hasNext: Boolean = pos < xs.length
-    /** Returns the next group as a new array of `groupSize` elements copied
-     *  from the underlying array; the last group may be smaller.
-     *
-     *  @throws NoSuchElementException if this iterator is exhausted
-     */
     def next(): Array[A] = {
       if(pos >= xs.length) throw new NoSuchElementException
       val r = new ArrayOps(xs).slice(pos, pos+groupSize)

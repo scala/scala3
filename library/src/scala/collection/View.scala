@@ -677,20 +677,8 @@ object View extends IterableFactory[View] {
       case other              => LazyList.from(other)
     }
 
-    /** Returns an iterator over the underlying elements in which, starting at position
-     *  `from`, `replaced` elements are dropped and the elements of `other` are inserted.
-     *
-     *  A negative `from` is treated as 0, a `from` beyond the end of the underlying
-     *  collection appends the patch, and a non-positive `replaced` drops nothing.
-     */
     def iterator: Iterator[A]^{this} = underlying.iterator.patch(from, _other.iterator, replaced)
-    /** Returns 0 if both the underlying collection and the patch are known to be empty,
-     *  -1 otherwise.
-     */
     override def knownSize: Int = if (underlying.knownSize == 0 && _other.knownSize == 0) 0 else super.knownSize
-    /** Returns `true` if this view has no elements, using `knownSize` when it is 0 and
-     *  otherwise iterating.
-     */
     override def isEmpty: Boolean = if (knownSize == 0) true else iterator.isEmpty
   }
 
@@ -753,10 +741,6 @@ object View extends IterableFactory[View] {
     private var pos: Int = 0
     @annotation.stableNull
     private var buf: ArrayBuffer[AnyRef] | Null = compiletime.uninitialized
-    /** Consumes the entire underlying iterator into a circular buffer holding its last
-     *  `maxlen` elements, then releases the underlying iterator; does nothing after the
-     *  first call.
-     */
     def init(): Unit = if(buf eq null) {
       buf = new ArrayBuffer[AnyRef](maxlen min 256)
       len = 0
@@ -773,22 +757,11 @@ object View extends IterableFactory[View] {
       pos = pos - len
       if(pos < 0) pos += maxlen
     }
-    /** Returns the number of remaining elements, or -1 before the first `hasNext`,
-     *  `next()`, or `drop` call.
-     */
     override def knownSize = len
-    /** Returns `true` if buffered elements remain, consuming the underlying iterator on
-     *  the first call.
-     */
     def hasNext: Boolean = {
       init()
       len > 0
     }
-    /** Returns the next buffered element, consuming the underlying iterator on the first
-     *  call.
-     *
-     *  @throws NoSuchElementException if no elements remain
-     */
     def next(): A = {
       init()
       if(len == 0) Iterator.empty.next()
@@ -800,12 +773,6 @@ object View extends IterableFactory[View] {
         x
       }
     }
-    /** Advances past the next `n` buffered elements in constant time by moving the buffer
-     *  position, consuming the underlying iterator on the first call.
-     *
-     *  @param n the number of elements to skip; non-positive values skip nothing
-     *  @return this iterator
-     */
     override def drop(n: Int): Iterator[A]^{this} = {
       init()
       if (n > 0) {
@@ -830,9 +797,6 @@ object View extends IterableFactory[View] {
     private var pos: Int = 0
     @annotation.stableNull
     private var buf: ArrayBuffer[AnyRef] | Null = compiletime.uninitialized
-    /** Fills the lookahead buffer with up to `maxlen` elements from the underlying
-     *  iterator; does nothing after the first call.
-     */
     def init(): Unit = if(buf eq null) {
       buf = new ArrayBuffer[AnyRef](maxlen min 256)
       while(pos < maxlen && underlying.hasNext) {
@@ -842,20 +806,11 @@ object View extends IterableFactory[View] {
       if(!underlying.hasNext) len = 0
       pos = 0
     }
-    /** Returns 0 once the end of the underlying iterator has been seen, -1 before that. */
     override def knownSize = len
-    /** Returns `true` if the underlying iterator holds more elements than remain buffered
-     *  to be dropped, filling the lookahead buffer on the first call.
-     */
     def hasNext: Boolean = {
       init()
       len != 0
     }
-    /** Returns the oldest buffered element, refilling its buffer slot from the underlying
-     *  iterator.
-     *
-     *  @throws NoSuchElementException if only the `maxlen` elements to drop remain
-     */
     def next(): A = {
       if(!hasNext) Iterator.empty.next()
       else {

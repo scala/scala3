@@ -80,10 +80,6 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
   @SerialVersionUID(3L)
   private[collection] abstract class SerializationProxy(@transient protected val coll: BitSet) extends Serializable {
 
-    /** The 64-bit words of the proxied bitset, populated by `readObject`
-     *  during Java deserialization and read by `readResolve` to rebuild the
-     *  bitset.
-     */
     @transient protected var elems: Array[Long] = compiletime.uninitialized
 
     private def writeObject(out: ObjectOutputStream): Unit = {
@@ -108,9 +104,6 @@ object BitSet extends SpecificIterableFactory[Int, BitSet] {
       }
     }
 
-    /** Reconstitutes the bitset from the deserialized words in `elems`,
-     *  replacing this proxy at the end of Java deserialization.
-     */
     protected def readResolve(): Any
   }
 }

@@ -33,12 +33,7 @@ object StringOps {
 
   private class StringIterator(private val s: String) extends AbstractIterator[Char] {
     private var pos = 0
-    /** Returns `true` if this iterator has not yet reached the end of the string. */
     def hasNext: Boolean = pos < s.length
-    /** Returns the next char of the string and advances this iterator.
-     *
-     *  @throws NoSuchElementException if this iterator is exhausted
-     */
     def next(): Char = {
       if (pos >= s.length) Iterator.empty.next()
       val r = s.charAt(pos)
@@ -49,13 +44,7 @@ object StringOps {
 
   private class ReverseIterator(private val s: String) extends AbstractIterator[Char] {
     private var pos = s.length-1
-    /** Returns `true` if this iterator has not yet passed the first char of the string. */
     def hasNext: Boolean = pos >= 0
-    /** Returns the next char in reverse order, moving this iterator one
-     *  position towards the start of the string.
-     *
-     *  @throws NoSuchElementException if this iterator is exhausted
-     */
     def next(): Char = {
       if (pos < 0) Iterator.empty.next()
       val r = s.charAt(pos)
@@ -66,13 +55,7 @@ object StringOps {
 
   private class GroupedIterator(s: String, groupSize: Int) extends AbstractIterator[String] {
     private var pos = 0
-    /** Returns `true` if chars of the string remain to be grouped. */
     def hasNext: Boolean = pos < s.length
-    /** Returns the next group as a string of `groupSize` chars of the
-     *  underlying string; the last group may be shorter.
-     *
-     *  @throws NoSuchElementException if this iterator is exhausted
-     */
     def next(): String = {
       if(pos >= s.length) Iterator.empty.next()
       val r = s.slice(pos, pos+groupSize)

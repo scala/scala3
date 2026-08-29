@@ -150,16 +150,9 @@ object IndexedSeqView {
   private[collection] class IndexedSeqViewIterator[A](self: IndexedSeqView[A]^) extends AbstractIterator[A] with Serializable {
     private var current = 0
     private var remainder = self.length
-    /** Returns the number of elements remaining in this iterator. */
     override def knownSize: Int = remainder
     @inline private def _hasNext: Boolean = remainder > 0
-    /** Returns `true` if this iterator has more elements. */
     def hasNext: Boolean = _hasNext
-    /** Returns the next element, read from the view at this iterator's
-     *  current index, and advances the iterator.
-     *
-     *  @throws NoSuchElementException if no elements remain
-     */
     def next(): A =
       if (_hasNext) {
         val r = self(current)
@@ -168,15 +161,6 @@ object IndexedSeqView {
         r
       } else Iterator.empty.next()
 
-    /** Advances this iterator past the next `n` elements in constant time,
-     *  without accessing them.
-     *
-     *  A non-positive `n` has no effect; at most the remaining elements are
-     *  dropped.
-     *
-     *  @param n the number of elements to drop
-     *  @return this iterator
-     */
     override def drop(n: Int): Iterator[A]^{this} = {
       if (n > 0) {
         current += n
@@ -185,17 +169,6 @@ object IndexedSeqView {
       this
     }
 
-    /** Restricts this iterator, in place, to the elements between index `from`
-     *  (inclusive) and index `until` (exclusive) of the remaining elements.
-     *
-     *  Both bounds are clamped to the range from 0 to the number of remaining
-     *  elements, and the adjustment is made in constant time by index
-     *  arithmetic, without accessing any elements.
-     *
-     *  @param from the index among the remaining elements of the first element to keep
-     *  @param until the index among the remaining elements one past the last element to keep
-     *  @return this iterator
-     */
     override protected def sliceIterator(from: Int, until: Int): Iterator[A]^{this} = {
 
       def formatRange(value : Int) : Int = if (value < 0) 0 else if (value > remainder) remainder else value
@@ -212,13 +185,7 @@ object IndexedSeqView {
     private var remainder = self.length
     private var pos = remainder - 1
     @inline private def _hasNext: Boolean = remainder > 0
-    /** Returns `true` if this iterator has more elements. */
     def hasNext: Boolean = _hasNext
-    /** Returns the next element in reverse order, read from the view at this
-     *  iterator's current position, and moves the position backward.
-     *
-     *  @throws NoSuchElementException if no elements remain
-     */
     def next(): A =
       if (_hasNext) {
         val r = self(pos)
@@ -229,20 +196,6 @@ object IndexedSeqView {
 
     // from < 0 means don't move pos, until < 0 means don't limit remainder
     //
-    /** Restricts this iterator, in place, to the elements between index `from`
-     *  (inclusive) and index `until` (exclusive) of the remaining elements.
-     *
-     *  Skips `from` elements when `from` is positive and limits the number of
-     *  remaining elements to `until - from`; a negative `until` imposes no
-     *  limit. The adjustment is made in constant time, without accessing any
-     *  elements, and has no effect if this iterator is already exhausted.
-     *
-     *  @param from the index among the remaining elements of the first element
-     *         to keep; if not positive, no elements are skipped
-     *  @param until the index among the remaining elements one past the last
-     *         element to keep; if negative, no limit is applied
-     *  @return this iterator
-     */
     override protected def sliceIterator(from: Int, until: Int): Iterator[A]^{this} = {
       if (_hasNext) {
         if (remainder <= from) remainder = 0                              // exhausted by big skip

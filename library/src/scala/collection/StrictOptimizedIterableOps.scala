@@ -363,17 +363,6 @@ transparent trait StrictOptimizedIterableOps[+A, +CC[_], +C]
    */
   override def filterNot(pred: A => Boolean): C = filterImpl(pred, isFlipped = true)
 
-  /** Shared strict implementation of [[filter]] and [[filterNot]]: builds a
-   *  new collection from the elements whose `pred` result differs from
-   *  `isFlipped`.
-   *
-   *  @param pred the predicate used to test elements
-   *  @param isFlipped if `false`, keeps the elements that satisfy `pred`
-   *                   (`filter`); if `true`, keeps those that do not
-   *                   (`filterNot`)
-   *  @return a new collection containing the selected elements, in the order
-   *          they appear in this collection
-   */
   protected[collection] def filterImpl(pred: A => Boolean, isFlipped: Boolean): C = {
     val b = newSpecificBuilder
     val it = iterator

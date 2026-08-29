@@ -115,17 +115,10 @@ object Stepper {
    * (see for example IntArrayStepper and WidenedByteArrayStepper). */
 
   private[collection] class UnboxingDoubleStepper(st: AnyStepper[Double]^) extends DoubleStepper {
-    /** Returns `true` if the underlying stepper has more elements. */
     def hasStep: Boolean = st.hasStep
-    /** Returns the next element of the underlying stepper as an unboxed `Double`. */
     def nextStep(): Double = st.nextStep()
-    /** Returns the size estimate of the underlying stepper. */
     def estimateSize: Long = st.estimateSize
-    /** Returns the characteristics of the underlying stepper. */
     def characteristics: Int = st.characteristics
-    /** Splits the underlying stepper, wrapping the split-off part in a new
-     *  `UnboxingDoubleStepper`; returns `null` if the underlying stepper cannot be split.
-     */
     def trySplit(): DoubleStepper^{this} | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingDoubleStepper(s)
@@ -133,17 +126,10 @@ object Stepper {
   }
 
   private[collection] class UnboxingIntStepper(st: AnyStepper[Int]^) extends IntStepper {
-    /** Returns `true` if the underlying stepper has more elements. */
     def hasStep: Boolean = st.hasStep
-    /** Returns the next element of the underlying stepper as an unboxed `Int`. */
     def nextStep(): Int = st.nextStep()
-    /** Returns the size estimate of the underlying stepper. */
     def estimateSize: Long = st.estimateSize
-    /** Returns the characteristics of the underlying stepper. */
     def characteristics: Int = st.characteristics
-    /** Splits the underlying stepper, wrapping the split-off part in a new
-     *  `UnboxingIntStepper`; returns `null` if the underlying stepper cannot be split.
-     */
     def trySplit(): IntStepper^{this} | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingIntStepper(s)
@@ -151,17 +137,10 @@ object Stepper {
   }
 
   private[collection] class UnboxingLongStepper(st: AnyStepper[Long]^) extends LongStepper {
-    /** Returns `true` if the underlying stepper has more elements. */
     def hasStep: Boolean = st.hasStep
-    /** Returns the next element of the underlying stepper as an unboxed `Long`. */
     def nextStep(): Long = st.nextStep()
-    /** Returns the size estimate of the underlying stepper. */
     def estimateSize: Long = st.estimateSize
-    /** Returns the characteristics of the underlying stepper. */
     def characteristics: Int = st.characteristics
-    /** Splits the underlying stepper, wrapping the split-off part in a new
-     *  `UnboxingLongStepper`; returns `null` if the underlying stepper cannot be split.
-     */
     def trySplit(): LongStepper^{this} | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingLongStepper(s)
@@ -169,17 +148,10 @@ object Stepper {
   }
 
   private[collection] class UnboxingByteStepper(st: AnyStepper[Byte]^) extends IntStepper {
-    /** Returns `true` if the underlying stepper has more elements. */
     def hasStep: Boolean = st.hasStep
-    /** Returns the next element of the underlying stepper, unboxed and widened to `Int`. */
     def nextStep(): Int = st.nextStep()
-    /** Returns the size estimate of the underlying stepper. */
     def estimateSize: Long = st.estimateSize
-    /** Returns the characteristics of the underlying stepper. */
     def characteristics: Int = st.characteristics
-    /** Splits the underlying stepper, wrapping the split-off part in a new
-     *  `UnboxingByteStepper`; returns `null` if the underlying stepper cannot be split.
-     */
     def trySplit(): IntStepper^{this} | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingByteStepper(s)
@@ -187,17 +159,10 @@ object Stepper {
   }
 
   private[collection] class UnboxingCharStepper(st: AnyStepper[Char]^) extends IntStepper {
-    /** Returns `true` if the underlying stepper has more elements. */
     def hasStep: Boolean = st.hasStep
-    /** Returns the next element of the underlying stepper, unboxed and widened to `Int`. */
     def nextStep(): Int = st.nextStep()
-    /** Returns the size estimate of the underlying stepper. */
     def estimateSize: Long = st.estimateSize
-    /** Returns the characteristics of the underlying stepper. */
     def characteristics: Int = st.characteristics
-    /** Splits the underlying stepper, wrapping the split-off part in a new
-     *  `UnboxingCharStepper`; returns `null` if the underlying stepper cannot be split.
-     */
     def trySplit(): IntStepper^{this} | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingCharStepper(s)
@@ -205,17 +170,10 @@ object Stepper {
   }
 
   private[collection] class UnboxingShortStepper(st: AnyStepper[Short]^) extends IntStepper {
-    /** Returns `true` if the underlying stepper has more elements. */
     def hasStep: Boolean = st.hasStep
-    /** Returns the next element of the underlying stepper, unboxed and widened to `Int`. */
     def nextStep(): Int = st.nextStep()
-    /** Returns the size estimate of the underlying stepper. */
     def estimateSize: Long = st.estimateSize
-    /** Returns the characteristics of the underlying stepper. */
     def characteristics: Int = st.characteristics
-    /** Splits the underlying stepper, wrapping the split-off part in a new
-     *  `UnboxingShortStepper`; returns `null` if the underlying stepper cannot be split.
-     */
     def trySplit(): IntStepper^{this} | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingShortStepper(s)
@@ -223,17 +181,10 @@ object Stepper {
   }
 
   private[collection] class UnboxingFloatStepper(st: AnyStepper[Float]^) extends DoubleStepper {
-    /** Returns `true` if the underlying stepper has more elements. */
     def hasStep: Boolean = st.hasStep
-    /** Returns the next element of the underlying stepper, unboxed and widened to `Double`. */
     def nextStep(): Double = st.nextStep()
-    /** Returns the size estimate of the underlying stepper. */
     def estimateSize: Long = st.estimateSize
-    /** Returns the characteristics of the underlying stepper. */
     def characteristics: Int = st.characteristics
-    /** Splits the underlying stepper, wrapping the split-off part in a new
-     *  `UnboxingFloatStepper`; returns `null` if the underlying stepper cannot be split.
-     */
     def trySplit(): DoubleStepper^{this} | Null = {
       val s = st.trySplit()
       if (s == null) null else new UnboxingFloatStepper(s)
@@ -351,17 +302,10 @@ object AnyStepper {
   def ofParLongStepper(st: LongStepper & EfficientSplit): AnyStepper[Long] & EfficientSplit = new BoxedLongStepper(st) with EfficientSplit
 
   private[collection] class BoxedDoubleStepper(st: DoubleStepper) extends AnyStepper[Double] {
-    /** Returns `true` if the underlying stepper has more elements. */
     def hasStep: Boolean = st.hasStep
-    /** Returns the next element of the underlying `DoubleStepper`. */
     def nextStep(): Double = st.nextStep()
-    /** Returns the size estimate of the underlying stepper. */
     def estimateSize: Long = st.estimateSize
-    /** Returns the characteristics of the underlying stepper. */
     def characteristics: Int = st.characteristics
-    /** Splits the underlying stepper, wrapping the split-off part in a new
-     *  `BoxedDoubleStepper`; returns `null` if the underlying stepper cannot be split.
-     */
     def trySplit(): AnyStepper[Double] | Null = {
       val s = st.trySplit()
       if (s == null) null else new BoxedDoubleStepper(s)
@@ -369,17 +313,10 @@ object AnyStepper {
   }
 
   private[collection] class BoxedIntStepper(st: IntStepper) extends AnyStepper[Int] {
-    /** Returns `true` if the underlying stepper has more elements. */
     def hasStep: Boolean = st.hasStep
-    /** Returns the next element of the underlying `IntStepper`. */
     def nextStep(): Int = st.nextStep()
-    /** Returns the size estimate of the underlying stepper. */
     def estimateSize: Long = st.estimateSize
-    /** Returns the characteristics of the underlying stepper. */
     def characteristics: Int = st.characteristics
-    /** Splits the underlying stepper, wrapping the split-off part in a new
-     *  `BoxedIntStepper`; returns `null` if the underlying stepper cannot be split.
-     */
     def trySplit(): AnyStepper[Int] | Null = {
       val s = st.trySplit()
       if (s == null) null else new BoxedIntStepper(s)
@@ -387,17 +324,10 @@ object AnyStepper {
   }
 
   private[collection] class BoxedLongStepper(st: LongStepper) extends AnyStepper[Long] {
-    /** Returns `true` if the underlying stepper has more elements. */
     def hasStep: Boolean = st.hasStep
-    /** Returns the next element of the underlying `LongStepper`. */
     def nextStep(): Long = st.nextStep()
-    /** Returns the size estimate of the underlying stepper. */
     def estimateSize: Long = st.estimateSize
-    /** Returns the characteristics of the underlying stepper. */
     def characteristics: Int = st.characteristics
-    /** Splits the underlying stepper, wrapping the split-off part in a new
-     *  `BoxedLongStepper`; returns `null` if the underlying stepper cannot be split.
-     */
     def trySplit(): AnyStepper[Long] | Null = {
       val s = st.trySplit()
       if (s == null) null else new BoxedLongStepper(s)

@@ -1431,27 +1431,11 @@ transparent trait IterableOnceOps[+A, +CC[_], +C] extends Any { this: IterableOn
     }
 
   private class Maximized[X, B](descriptor: String)(f: X -> B)(cmp: (B, B) -> Boolean) extends AbstractFunction2[Maximized[X, B], X, Maximized[X, B]] {
-    /** The best element seen so far; meaningful only once `nonEmpty` is `true`. */
     var maxElem: X = null.asInstanceOf[X]
-    /** The measure `f(maxElem)` of the best element seen so far; meaningful only once `nonEmpty` is `true`. */
     var maxF: B = null.asInstanceOf[B]
-    /** Whether at least one element has been folded in. */
     var nonEmpty = false
-    /** Returns the best element inside a `Some`, or `None` if no element has been folded in. */
     def toOption: Option[X] = if (nonEmpty) Some(maxElem) else None
-    /** Returns the best element.
-     *
-     *  @throws UnsupportedOperationException if no element has been folded in
-     */
     def result: X = if (nonEmpty) maxElem else throw new UnsupportedOperationException(s"empty.$descriptor")
-    /** Folds the element `a` into the accumulator: records `a` as the best element if it is
-     *  the first one seen, or if its measure `f(a)` improves on the current best according
-     *  to `cmp`.
-     *
-     *  @param m the accumulator; in every use this is the receiver itself
-     *  @param a the element to fold in
-     *  @return the accumulator `m`
-     */
     def apply(m: Maximized[X, B], a: X): Maximized[X, B] =
       if (m.nonEmpty) {
         val fa = f(a)

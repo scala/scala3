@@ -51,16 +51,11 @@ object Factory {
   implicit val stringFactory: Factory[Char, String] = new StringFactory
   @SerialVersionUID(3L)
   private class StringFactory extends Factory[Char, String] with Serializable {
-    /** Returns a `String` containing the characters of `it`, in iteration order.
-     *
-     *  @param it the characters of the resulting string
-     */
     def fromSpecific(it: IterableOnce[Char]^): String = {
       val b = new mutable.StringBuilder(scala.math.max(0, it.knownSize))
       b ++= it
       b.result()
     }
-    /** Returns a new empty [[scala.collection.mutable.StringBuilder]] for building a `String` from characters. */
     def newBuilder: Builder[Char, String] = new mutable.StringBuilder()
   }
 
@@ -73,29 +68,19 @@ object Factory {
   implicit def arrayFactory[A: ClassTag]: Factory[A, Array[A]] = new ArrayFactory[A]
   @SerialVersionUID(3L)
   private class ArrayFactory[A: ClassTag] extends Factory[A, Array[A]] with Serializable {
-    /** Returns an `Array` containing the elements of `it`, in iteration order.
-     *
-     *  @param it the elements of the resulting array
-     */
     def fromSpecific(it: IterableOnce[A]^): Array[A] = {
       val b = newBuilder
       b.sizeHint(it, delta = 0)
       b ++= it
       b.result()
     }
-    /** Returns a new empty [[scala.collection.mutable.ArrayBuilder]] for building an `Array[A]`. */
     def newBuilder: Builder[A, Array[A]] = mutable.ArrayBuilder.make[A]
   }
 
   given IArrayFactory[A: ClassTag]: Factory[A, IArray[A]] = {
     @SerialVersionUID(3L)
     class ConcreteIArrayFactory[A: ClassTag] extends Factory[A, IArray[A]] with Serializable {
-      /** Returns an `IArray` containing the elements of `it`, in iteration order.
-       *
-       *  @param it the elements of the resulting immutable array
-       */
       def fromSpecific(it: IterableOnce[A]^): IArray[A] = IArray.from(it)
-      /** Returns a new empty builder for building an `IArray[A]`. */
       def newBuilder: Builder[A, IArray[A]] = IArray.newBuilder[A]
     }
     ConcreteIArrayFactory[A]
@@ -338,12 +323,7 @@ object IterableFactory {
 
   @SerialVersionUID(3L)
   private class ToFactory[A, CC[_]](factory: IterableFactory[CC]) extends Factory[A, CC[A]] with Serializable {
-    /** Returns a collection of type `CC[A]` containing the elements of `it`, built with `factory`.
-     *
-     *  @param it the source of elements
-     */
     def fromSpecific(it: IterableOnce[A]^): CC[A]^{it} = factory.from[A](it)
-    /** Returns a new builder for a `CC[A]`, obtained from `factory`. */
     def newBuilder: Builder[A, CC[A]] = factory.newBuilder[A]
   }
 
@@ -661,12 +641,7 @@ object MapFactory {
 
   @SerialVersionUID(3L)
   private class ToFactory[K, V, CC[_, _]](factory: MapFactory[CC]) extends Factory[(K, V), CC[K, V]] with Serializable {
-    /** Returns a map of type `CC[K, V]` containing the key-value pairs of `it`, built with `factory`.
-     *
-     *  @param it the source of key-value pairs
-     */
     def fromSpecific(it: IterableOnce[(K, V)]^): CC[K, V]^{it} = factory.from[K, V](it)
-    /** Returns a new builder for a `CC[K, V]`, obtained from `factory`. */
     def newBuilder: Builder[(K, V), CC[K, V]] = factory.newBuilder[K, V]
   }
 
@@ -835,12 +810,7 @@ object EvidenceIterableFactory {
 
   @SerialVersionUID(3L)
   private class ToFactory[Ev[_], A: Ev, CC[_]](factory: EvidenceIterableFactory[CC, Ev]) extends Factory[A, CC[A]] with Serializable {
-    /** Returns a collection of type `CC[A]` containing the elements of `it`, built with `factory`.
-     *
-     *  @param it the source of elements
-     */
     def fromSpecific(it: IterableOnce[A]^) = factory.from[A](it)
-    /** Returns a new builder for a `CC[A]`, obtained from `factory`. */
     def newBuilder: Builder[A, CC[A]] = factory.newBuilder[A]
   }
 
@@ -858,16 +828,7 @@ object EvidenceIterableFactory {
    */
   implicit def toBuildFrom[Ev[_], A: Ev, CC[_]](factory: EvidenceIterableFactory[CC, Ev]): BuildFrom[Any, A, CC[A]] = new EvidenceIterableFactoryToBuildFrom(factory)
   private class EvidenceIterableFactoryToBuildFrom[Ev[_], A: Ev, CC[_]](factory: EvidenceIterableFactory[CC, Ev]) extends BuildFrom[Any, A, CC[A]] {
-    /** Returns a collection of type `CC[A]` containing the elements of `it`, built with `factory`.
-     *
-     *  @param from the source collection; never used
-     *  @param it the source of elements
-     */
     def fromSpecific(from: Any)(it: IterableOnce[A]^) = factory.from[A](it)
-    /** Returns a new builder for a `CC[A]`, obtained from `factory`.
-     *
-     *  @param from the source collection; never used
-     */
     def newBuilder(from: Any): Builder[A, CC[A]] = factory.newBuilder[A]
   }
 
@@ -1314,12 +1275,7 @@ object SortedMapFactory {
 
   @SerialVersionUID(3L)
   private class ToFactory[K : Ordering, V, CC[_, _]](factory: SortedMapFactory[CC]) extends Factory[(K, V), CC[K, V]] with Serializable {
-    /** Returns a sorted map of type `CC[K, V]` containing the key-value pairs of `it`, built with `factory`.
-     *
-     *  @param it the source of key-value pairs
-     */
     def fromSpecific(it: IterableOnce[(K, V)]^): CC[K, V] = factory.from[K, V](it)
-    /** Returns a new builder for a `CC[K, V]`, obtained from `factory`. */
     def newBuilder: Builder[(K, V), CC[K, V]] = factory.newBuilder[K, V]
   }
 
@@ -1338,16 +1294,7 @@ object SortedMapFactory {
    */
   implicit def toBuildFrom[K : Ordering, V, CC[_, _]](factory: SortedMapFactory[CC]): BuildFrom[Any, (K, V), CC[K, V]] = new SortedMapFactoryToBuildFrom(factory)
   private class SortedMapFactoryToBuildFrom[K : Ordering, V, CC[_, _]](factory: SortedMapFactory[CC]) extends BuildFrom[Any, (K, V), CC[K, V]] {
-    /** Returns a sorted map of type `CC[K, V]` containing the key-value pairs of `it`, built with `factory`.
-     *
-     *  @param from the source collection; never used
-     *  @param it the source of key-value pairs
-     */
     def fromSpecific(from: Any)(it: IterableOnce[(K, V)]^) = factory.from(it)
-    /** Returns a new builder for a `CC[K, V]`, obtained from `factory`.
-     *
-     *  @param from the source collection; never used
-     */
     def newBuilder(from: Any) = factory.newBuilder[K, V]
   }
 

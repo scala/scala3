@@ -401,21 +401,8 @@ private final class IndexedSeqSlidingIterator[A, CC[_], C](s: IndexedSeqOps[A, C
     false
   }
 
-  /** Returns `true` if at least one more window can be produced.
-   *
-   *  @throws java.util.ConcurrentModificationException if the length of the
-   *          underlying sequence has changed since this iterator was created
-   */
   def hasNext: Boolean = chklen && pos < len
 
-  /** Returns the next window, a slice of at most `size` elements starting at
-   *  the current position, and advances the position by `step` (or to the end,
-   *  if the window reached the end of the sequence).
-   *
-   *  @throws NoSuchElementException if no more windows remain
-   *  @throws java.util.ConcurrentModificationException if the length of the
-   *          underlying sequence has changed since this iterator was created
-   */
   def next(): C^{s} = if (!chklen || !hasNext) Iterator.empty.next() else {
     val end = { val x = pos + size; if (x < 0 || x > len) len else x } // (pos.toLong + size).min(len).toInt
     val slice = s.slice(pos, end)

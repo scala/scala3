@@ -18,21 +18,8 @@ import language.experimental.captureChecking
 
 protected[collection] object Hashing {
 
-  /** Returns the hash code of the given key, computed with `##`.
-   *
-   *  @param key the value to hash
-   *  @return `key.##`, which is `0` for `null` and consistent across boxed numeric
-   *          types that compare equal
-   */
   def elemHashCode(key: Any): Int = key.##
 
-  /** Improves the distribution of a hash code by scrambling its bits with a sequence
-   *  of shifts and xor/add steps, reducing collisions in hash tables that select
-   *  buckets from only a subset of the bits.
-   *
-   *  @param hcode the hash code to improve
-   *  @return the scrambled hash code
-   */
   def improve(hcode: Int): Int = {
     var h: Int = hcode + ~(hcode << 9)
     h = h ^ (h >>> 14)
@@ -40,11 +27,6 @@ protected[collection] object Hashing {
     h ^ (h >>> 10)
   }
 
-  /** Returns the improved hash code of the given key.
-   *
-   *  @param key the value to hash
-   *  @return the result of applying [[improve]] to the `##` hash code of `key`
-   */
   def computeHash(key: Any): Int =
     improve(elemHashCode(key))
 
