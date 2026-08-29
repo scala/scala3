@@ -198,57 +198,15 @@ transparent trait MapOps[K, +V, +CC[X, +Y] <: MapOps[X, Y, CC, ?], +C <: MapOps[
 
   /** The implementation class of the set returned by `keySet`. */
   private[immutable] class LazyImmutableKeySet extends MapOps.LazyKeySet(this) with Set[K] {
-    /** Returns a new set containing the keys of this set that are not also
-     *  contained in `that`.
-     *
-     *  @param that the set of keys to exclude
-     *  @return an immutable set of the keys in this set but not in `that`
-     */
     override def diff(that: collection.Set[K]): Set[K] = super.diff(that)
-    /** Returns a set containing `elem` and all keys of this set.
-     *
-     *  If `elem` is already a key of the underlying map, returns this set
-     *  itself; otherwise returns the key set of a new map that also binds
-     *  `elem`, to the unit value `()`.
-     *
-     *  @param elem the key to add
-     *  @return a set containing the keys of this set and `elem`
-     */
     override def incl(elem: K): Set[K] = if (this(elem)) this else MapOps.this.updated(elem, ()).keySet
-    /** Returns a set containing all keys of this set except `elem`.
-     *
-     *  If `elem` is not a key of the underlying map, returns this set itself;
-     *  otherwise returns the key set of a new map with the binding for `elem`
-     *  removed.
-     *
-     *  @param elem the key to remove
-     *  @return a set containing the keys of this set except `elem`
-     */
     override def excl(elem: K): Set[K] = if (this(elem)) MapOps.this.removed(elem).keySet else this
   }
 
   /** The implementation class of the set returned by `keySet`. */
   @deprecated("ImmutableKeySet is no longer used in .keySet implementations", since = "3.8.0")
   protected[immutable] class ImmutableKeySet extends AbstractSet[K] with GenKeySet with DefaultSerializable {
-    /** Returns a set containing `elem` and all keys of this set.
-     *
-     *  If `elem` is already present, returns this set itself; otherwise
-     *  returns a new strict set built by copying the elements of this set and
-     *  adding `elem`.
-     *
-     *  @param elem the key to add
-     *  @return a set containing the keys of this set and `elem`
-     */
     def incl(elem: K): Set[K] = if (this(elem)) this else empty ++ this + elem
-    /** Returns a set containing all keys of this set except `elem`.
-     *
-     *  If `elem` is not present, returns this set itself; otherwise returns a
-     *  new strict set built by copying the elements of this set and removing
-     *  `elem`.
-     *
-     *  @param elem the key to remove
-     *  @return a set containing the keys of this set except `elem`
-     */
     def excl(elem: K): Set[K] = if (this(elem)) empty ++ this - elem else this
   }
 
@@ -445,68 +403,18 @@ object Map extends MapFactory[Map] {
 
   @SerialVersionUID(3L)
   private object EmptyMap extends AbstractMap[Any, Nothing] with Serializable {
-    /** Returns `0`: this map has no bindings. */
     override def size: Int = 0
-    /** Returns `0`: the size is always known. */
     override def knownSize: Int = 0
-    /** Returns `true`: this is the empty map. */
     override def isEmpty: Boolean = true
-    /** Throws a `NoSuchElementException`: the empty map contains no keys.
-     *
-     *  @param key the requested key, reported in the exception message
-     *  @throws NoSuchElementException always
-     */
     override def apply(key: Any) = throw new NoSuchElementException("key not found: " + key)
-    /** Returns `false`: the empty map contains no keys.
-     *
-     *  @param key the key to test; never used
-     */
     override def contains(key: Any) = false
-    /** Returns `None`: the empty map contains no keys.
-     *
-     *  @param key the key to look up; never used
-     *  @return `None`, for every key
-     */
     def get(key: Any): Option[Nothing] = None
-    /** Returns the result of evaluating `default`: the empty map contains no
-     *  keys.
-     *
-     *  @tparam V1 the type of `default`
-     *  @param key the key to look up; never used
-     *  @param default the value to evaluate and return
-     *  @return the value of `default`
-     */
     override def getOrElse [V1](key: Any, default: => V1): V1 = default
-    /** Returns the empty iterator: this map has no key/value pairs. */
     def iterator: Iterator[(Any, Nothing)] = Iterator.empty
-    /** Returns the empty iterator: this map has no keys. */
     override def keysIterator: Iterator[Any] = Iterator.empty
-    /** Returns the empty iterator: this map has no values. */
     override def valuesIterator: Iterator[Nothing] = Iterator.empty
-    /** Returns a new `Map1` containing the single binding `key -> value`.
-     *
-     *  @tparam V1 the type of the added value
-     *  @param key the key
-     *  @param value the value
-     *  @return a one-binding map containing `key -> value`
-     */
     def updated [V1] (key: Any, value: V1): Map[Any, V1] = new Map1(key, value)
-    /** Returns this map itself: the empty map has no binding to remove.
-     *
-     *  @param key the key to remove; never used
-     *  @return this empty map
-     */
     def removed(key: Any): Map[Any, Nothing] = this
-    /** Returns a map containing the key/value pairs of `suffix`.
-     *
-     *  If `suffix` is already an immutable map, it is returned unchanged;
-     *  otherwise a new immutable map is built from its elements.
-     *
-     *  @tparam V2 the type of the values in `suffix`
-     *  @param suffix the key/value pairs of the resulting map
-     *  @return `suffix` itself if it is an immutable map, or a new immutable
-     *          map with its bindings
-     */
     override def concat[V2 >: Nothing](suffix: IterableOnce[(Any, V2)]^): Map[Any, V2] = (suffix: @unchecked) match {
       case m: immutable.Map[Any, V2] => m
       case _ => super.concat(suffix)
@@ -605,13 +513,6 @@ object Map extends MapFactory[Map] {
      *  @param p the predicate to test
      */
     override def forall(p: ((K, V)) => Boolean): Boolean = p((key1, value1))
-    /** Returns this map if its single key/value pair satisfies `pred` (or
-     *  fails it, when `isFlipped` is `true`), or the empty map otherwise.
-     *
-     *  @param pred the predicate to test
-     *  @param isFlipped if `true`, keeps the pair only when `pred` is not satisfied
-     *  @return this map, or the empty map
-     */
     override protected[collection] def filterImpl(pred: ((K, V)) => Boolean, isFlipped: Boolean): Map[K, V] =
       if (pred((key1, value1)) != isFlipped) this else Map.empty
     /** Returns a map obtained by applying `f` to the key and value of this map.
@@ -721,14 +622,7 @@ object Map extends MapFactory[Map] {
 
     private abstract class Map2Iterator[A] extends AbstractIterator[A] {
       private var i = 0
-      /** Returns `true` if this iterator has not yet passed both bindings. */
       override def hasNext: Boolean = i < 2
-      /** Returns the result for the next binding of the map and advances this
-       *  iterator.
-       *
-       *  @return the result of `nextResult` applied to the next key/value pair
-       *  @throws NoSuchElementException if there are no more elements
-       */
       override def next(): A = {
         val result = i match {
           case 0 => nextResult(key1, value1)
@@ -738,24 +632,7 @@ object Map extends MapFactory[Map] {
         i += 1
         result
       }
-      /** Advances this iterator past the next `n` elements and returns this
-       *  same iterator, without creating an intermediate one.
-       *
-       *  `n` is added to the current position without being clamped at 0, so a
-       *  negative `n` moves the position back and replays elements already
-       *  returned, where the inherited `Iterator.drop` would treat it as 0.
-       *
-       *  @param n the number of elements to skip
-       *  @return this iterator
-       */
       override def drop(n: Int): Iterator[A] = { i += n; this }
-      /** Returns the iteration result derived from the key and value of a
-       *  binding.
-       *
-       *  @param k the key of the binding
-       *  @param v the value of the binding
-       *  @return the element this iterator produces for the binding
-       */
       protected def nextResult(k: K, v: V @uncheckedVariance): A
     }
     /** Returns a new map with `key` bound to `value`.
@@ -804,14 +681,6 @@ object Map extends MapFactory[Map] {
      *  @param p the predicate to test
      */
     override def forall(p: ((K, V)) => Boolean): Boolean = p((key1, value1)) && p((key2, value2))
-    /** Returns a map containing the key/value pairs of this map that satisfy
-     *  `pred` (or fail it, when `isFlipped` is `true`).
-     *
-     *  @param pred the predicate to test
-     *  @param isFlipped if `true`, keeps a pair only when `pred` is not satisfied
-     *  @return this map if both pairs are kept, a `Map1` if one is, or the
-     *          empty map if none are
-     */
     override protected[collection] def filterImpl(pred: ((K, V)) => Boolean, isFlipped: Boolean): Map[K, V] = {
       var k1 = null.asInstanceOf[K]
       var v1 = null.asInstanceOf[V]
@@ -944,14 +813,7 @@ object Map extends MapFactory[Map] {
 
     private abstract class Map3Iterator[A] extends AbstractIterator[A] {
       private var i = 0
-      /** Returns `true` if this iterator has not yet passed all three bindings. */
       override def hasNext: Boolean = i < 3
-      /** Returns the result for the next binding of the map and advances this
-       *  iterator.
-       *
-       *  @return the result of `nextResult` applied to the next key/value pair
-       *  @throws NoSuchElementException if there are no more elements
-       */
       override def next(): A = {
         val result = i match {
           case 0 => nextResult(key1, value1)
@@ -962,24 +824,7 @@ object Map extends MapFactory[Map] {
         i += 1
         result
       }
-      /** Advances this iterator past the next `n` elements and returns this
-       *  same iterator, without creating an intermediate one.
-       *
-       *  `n` is added to the current position without being clamped at 0, so a
-       *  negative `n` moves the position back and replays elements already
-       *  returned, where the inherited `Iterator.drop` would treat it as 0.
-       *
-       *  @param n the number of elements to skip
-       *  @return this iterator
-       */
       override def drop(n: Int): Iterator[A] = { i += n; this }
-      /** Returns the iteration result derived from the key and value of a
-       *  binding.
-       *
-       *  @param k the key of the binding
-       *  @param v the value of the binding
-       *  @return the element this iterator produces for the binding
-       */
       protected def nextResult(k: K, v: V @uncheckedVariance): A
     }
     /** Returns a new map with `key` bound to `value`.
@@ -1030,14 +875,6 @@ object Map extends MapFactory[Map] {
      *  @param p the predicate to test
      */
     override def forall(p: ((K, V)) => Boolean): Boolean = p((key1, value1)) && p((key2, value2)) && p((key3, value3))
-    /** Returns a map containing the key/value pairs of this map that satisfy
-     *  `pred` (or fail it, when `isFlipped` is `true`).
-     *
-     *  @param pred the predicate to test
-     *  @param isFlipped if `true`, keeps a pair only when `pred` is not satisfied
-     *  @return this map if all three pairs are kept, or a smaller map, down to
-     *          the empty map, of the pairs that are
-     */
     override protected[collection] def filterImpl(pred: ((K, V)) => Boolean, isFlipped: Boolean): Map[K, V] = {
       var k1, k2 = null.asInstanceOf[K]
       var v1, v2 = null.asInstanceOf[V]
@@ -1186,14 +1023,7 @@ object Map extends MapFactory[Map] {
 
     private abstract class Map4Iterator[A] extends AbstractIterator[A] {
       private var i = 0
-      /** Returns `true` if this iterator has not yet passed all four bindings. */
       override def hasNext: Boolean = i < 4
-      /** Returns the result for the next binding of the map and advances this
-       *  iterator.
-       *
-       *  @return the result of `nextResult` applied to the next key/value pair
-       *  @throws NoSuchElementException if there are no more elements
-       */
       override def next(): A = {
         val result = i match {
           case 0 => nextResult(key1, value1)
@@ -1205,24 +1035,7 @@ object Map extends MapFactory[Map] {
         i += 1
         result
       }
-      /** Advances this iterator past the next `n` elements and returns this
-       *  same iterator, without creating an intermediate one.
-       *
-       *  `n` is added to the current position without being clamped at 0, so a
-       *  negative `n` moves the position back and replays elements already
-       *  returned, where the inherited `Iterator.drop` would treat it as 0.
-       *
-       *  @param n the number of elements to skip
-       *  @return this iterator
-       */
       override def drop(n: Int): Iterator[A] = { i += n; this }
-      /** Returns the iteration result derived from the key and value of a
-       *  binding.
-       *
-       *  @param k the key of the binding
-       *  @param v the value of the binding
-       *  @return the element this iterator produces for the binding
-       */
       protected def nextResult(k: K, v: V @uncheckedVariance): A
     }
     /** Returns a new map with `key` bound to `value`.
@@ -1275,14 +1088,6 @@ object Map extends MapFactory[Map] {
      *  @param p the predicate to test
      */
     override def forall(p: ((K, V)) => Boolean): Boolean = p((key1, value1)) && p((key2, value2)) && p((key3, value3)) && p((key4, value4))
-    /** Returns a map containing the key/value pairs of this map that satisfy
-     *  `pred` (or fail it, when `isFlipped` is `true`).
-     *
-     *  @param pred the predicate to test
-     *  @param isFlipped if `true`, keeps a pair only when `pred` is not satisfied
-     *  @return this map if all four pairs are kept, or a smaller map, down to
-     *          the empty map, of the pairs that are
-     */
     override protected[collection] def filterImpl(pred: ((K, V)) => Boolean, isFlipped: Boolean): Map[K, V] = {
       var k1, k2, k3 = null.asInstanceOf[K]
       var v1, v2, v3 = null.asInstanceOf[V]
@@ -1377,10 +1182,6 @@ private[immutable] final class MapBuilderImpl[K, V] extends ReusableBuilder[(K, 
     if (hashMapBuilder ne null) hashMapBuilder.getOrElse(key, value)
     else elems.getOrElse(key, value)
 
-  /** Clears the contents of this builder: resets the accumulated map to the
-   *  empty map and clears the underlying `HashMap` builder, if one was
-   *  created. The builder can then be reused.
-   */
   override def clear(): Unit = {
     elems = Map.empty
     if (hashMapBuilder != null) {
@@ -1389,24 +1190,9 @@ private[immutable] final class MapBuilderImpl[K, V] extends ReusableBuilder[(K, 
     switchedToHashMapBuilder = false
   }
 
-  /** Returns the map built from the key/value pairs added so far: a
-   *  specialized small map for up to four distinct keys, or the result of the
-   *  underlying `HashMap` builder beyond that.
-   */
   override def result(): Map[K, V] =
     if (switchedToHashMapBuilder) hashMapBuilder.result() else elems
 
-  /** Adds the binding `key -> value` to this builder, replacing any previous
-   *  binding for `key`.
-   *
-   *  Up to four distinct keys are accumulated in the specialized small maps;
-   *  adding a fifth distinct key switches this builder to an underlying
-   *  `HashMap` builder.
-   *
-   *  @param key the key
-   *  @param value the value
-   *  @return this builder
-   */
   def addOne(key: K, value: V): this.type = {
     if (switchedToHashMapBuilder) {
       hashMapBuilder.addOne(key, value)
@@ -1429,19 +1215,8 @@ private[immutable] final class MapBuilderImpl[K, V] extends ReusableBuilder[(K, 
     this
   }
 
-  /** Returns this builder after adding the key/value pair `elem`, replacing any
-   *  previous binding for its key.
-   *
-   *  @param elem the key/value pair to add
-   *  @return this builder
-   */
   def addOne(elem: (K, V)) = addOne(elem._1, elem._2)
 
-  /** Adds all key/value pairs of `xs` to this builder.
-   *
-   *  @param xs the key/value pairs to add
-   *  @return this builder
-   */
   override def addAll(xs: IterableOnce[(K, V)]^): this.type =
     if (switchedToHashMapBuilder) {
       hashMapBuilder.addAll(xs)
